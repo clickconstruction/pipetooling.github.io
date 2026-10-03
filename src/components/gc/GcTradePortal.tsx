@@ -10,15 +10,16 @@ import {
   GC_COMPANY,
   money,
   partnerById,
+  pDate,
   planLabel,
+  pt,
+  pWeekday,
   portalInsurance,
   portalLines,
   portalPlanNews,
   portalPromiseLine,
-  shortDate,
   sowMoney,
   unclearLines,
-  weekdayDate,
   type GcAction,
   type GcProject,
   type GcState,
@@ -26,6 +27,7 @@ import {
   type BidAlternate,
   type Invite,
   type Partner,
+  type PortalLang,
   type TradePackage,
 } from '../../lib/gcMode/gcModel'
 import { BidTabTable } from './GcBidTabs'
@@ -38,6 +40,7 @@ import { GcPortalMessages } from './GcPortalMessages'
 import { GcPortalPaperwork } from './GcPortalPaperwork'
 import { GcPortalPlans } from './GcPortalPlans'
 import { PortalBlock as Block, PortalNote } from './GcPortalUi'
+import { PortalLangContext, usePortalLang } from './gcPortalLang'
 
 /**
  * GC mode design spike: what one trade partner sees. No sign-in: the link is the key, like the
@@ -66,6 +69,8 @@ export function GcTradePortal({ state, project, partnerId, onPickPartner, dispat
   const [viewId, setViewId] = useState<string | null>(null)
   /** Their portal, or their inbox: what we sent them, each message carrying the link. */
   const [screen, setScreen] = useState<'portal' | 'messages'>('portal')
+  /** The company's language. The real build keeps it on the company, so emails go in it too. */
+  const [lang, setLang] = useState<PortalLang>('en')
   const shown = viewId === null ? null : (state.projects.find((p) => p.id === viewId) ?? null)
   const top = useRef<HTMLDivElement | null>(null)
   const go = (id: string | null) => {
@@ -79,6 +84,7 @@ export function GcTradePortal({ state, project, partnerId, onPickPartner, dispat
     <div
       ref={top}
       data-theme="light"
+      lang={lang}
       style={{ background: PAPER, color: INK, border: `1px solid ${INK}`, borderRadius: 10, overflow: 'hidden', width: '100%', maxWidth: 430, marginInline: 'auto' }}
     >
       <div style={{ background: INK, color: PAPER, padding: '0.7rem 0.9rem' }}>
@@ -128,6 +134,23 @@ export function GcTradePortal({ state, project, partnerId, onPickPartner, dispat
         )}
       </div>
 
+      {partner && (
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: 'space-between', padding: '0.45rem 0.9rem', borderBottom: '1px solid #d9d2c3', fontSize: '0.78rem' }}>
+          <span>
+            <strong>{GC_COMPANY.name}</strong> <span style={{ opacity: 0.7 }}>· {pt(lang, 'letterhead')}</span>
+          </span>
+          <button
+            type="button"
+            aria-pressed={lang === 'es'}
+            onClick={() => setLang(lang === 'es' ? 'en' : 'es')}
+            style={{ padding: '0.15rem 0.6rem', borderRadius: 999, border: `1px solid ${INK}`, background: lang === 'es' ? INK : 'transparent', color: lang === 'es' ? PAPER : INK, fontWeight: 600, fontSize: '0.78rem', cursor: 'pointer' }}
+          >
+            {pt(lang, 'switchLang')}
+          </button>
+        </div>
+      )}
+
+      <PortalLangContext.Provider value={lang}>
       {!partner ? (
         <div style={{ padding: '1rem' }}>No trade partner is on this project yet. Invite one from Trades.</div>
       ) : screen === 'messages' ? (
@@ -141,6 +164,7 @@ export function GcTradePortal({ state, project, partnerId, onPickPartner, dispat
           <GcPortalHome state={state} partner={partner} dispatch={dispatch} onOpenProject={(id) => go(id)} />
         </div>
       )}
+      </PortalLangContext.Provider>
     </div>
   )
 }
@@ -159,6 +183,7 @@ function ProjectPage({
   dispatch: Dispatch<GcAction>
   onHome: () => void
 }) {
+  const { t } = usePortalLang()
   const mine = project.packages.flatMap((pkg) => pkg.invites.filter((i) => i.partnerId === partner.id).map((invite) => ({ pkg, invite })))
   const paperworkMissing = partner.msa === 'sent' || !portalInsurance(partner, state.today).done || !partner.w9
   return (
@@ -169,19 +194,19 @@ function ProjectPage({
           onClick={onHome}
           style={{ border: 'none', background: 'transparent', padding: 0, color: 'var(--text-blue-500)', cursor: 'pointer', fontSize: '0.85rem', marginBottom: '0.35rem' }}
         >
-          ← Everything with {GC}
+          {t('backHome', { gc: GC })}
         </button>
         <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>{project.name}</div>
         <div style={{ fontSize: '0.85rem', opacity: 0.8 }}>
           {project.address} · {project.sizeNote}
           <br />
-          General contractor: {GC_COMPANY.name} · Hello, {partner.contact}.
+          {t('gcLine', { name: GC_COMPANY.name, contact: partner.contact })}
         </div>
       </div>
 
       {paperworkMissing && <GcPortalPaperwork partner={partner} today={state.today} dispatch={dispatch} />}
 
-      {mine.length === 0 && <div>You have no open invitation on this project.</div>}
+      {mine.length === 0 && <div>{t('noInvite')}</div>}
       {mine.map(({ pkg, invite }) => (
         <PackageBlock key={invite.id} state={state} project={project} pkg={pkg} invite={invite} partner={partner} dispatch={dispatch} />
       ))}
@@ -204,6 +229,7 @@ function PackageBlock({
   partner: Partner
   dispatch: Dispatch<GcAction>
 }) {
+  const { lang, t } = usePortalLang()
   /** The plans window: closed, open on its first sheet (''), or open on a sheet the company tapped. */
   const [plansAt, setPlansAt] = useState<string | null>(null)
   const news = portalPlanNews(project, pkg, invite)
@@ -219,27 +245,27 @@ function PackageBlock({
 
   return (
     <>
-      <Block title={`${pkg.trade} · plans`}>
+      <Block title={t('plansTitle', { trade: pkg.trade })}>
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.9rem' }}>
           <strong>{latest?.label}</strong>
-          <span style={{ opacity: 0.75 }}>issued {shortDate(latest?.issuedOn ?? null)}</span>
+          <span style={{ opacity: 0.75 }}>{t('issued', { date: pDate(lang, latest?.issuedOn ?? null) })}</span>
           {news.behind ? (
-            <Btn kind={news.neverOpened || news.forTrade.length > 0 ? 'primary' : 'plain'} onClick={() => openPlans()}>Open the plans</Btn>
+            <Btn kind={news.neverOpened || news.forTrade.length > 0 ? 'primary' : 'plain'} onClick={() => openPlans()}>{t('openPlans')}</Btn>
           ) : (
             <>
-              <Chip tone="green">you have the latest set</Chip>
-              <Btn kind="quiet" onClick={() => openPlans()}>Look at the plans</Btn>
+              <Chip tone="green">{t('latestSet')}</Chip>
+              <Btn kind="quiet" onClick={() => openPlans()}>{t('lookPlans')}</Btn>
             </>
           )}
         </div>
         {news.behind && news.forTrade.length > 0 && (
           <div style={{ marginTop: '0.4rem' }}>
             <PortalNote tone="amber">
-              <strong>New for {pkg.trade} since you last looked</strong>
+              <strong>{t('newForTrade', { trade: pkg.trade })}</strong>
               {news.forTrade.map((set) => (
                 <div key={set.rev}>
                   {set.label}: {set.note}
-                  {set.changedSheets.length > 0 && <> Sheets {set.changedSheets.join(', ')}.</>}
+                  {set.changedSheets.length > 0 && <> {t('sheetsList', { list: set.changedSheets.join(', ') })}</>}
                 </div>
               ))}
             </PortalNote>
@@ -247,35 +273,35 @@ function PackageBlock({
         )}
         {news.behind && !news.neverOpened && news.forTrade.length === 0 && latest && (
           <div style={{ marginTop: '0.35rem', fontSize: '0.85rem', opacity: 0.8 }}>
-            {latest.label} does not change {pkg.trade}. Open it so you price on the newest set.
+            {t('setNoChange', { label: latest.label, trade: pkg.trade })}
           </div>
         )}
         {plansAt !== null && <GcPortalPlans key={plansAt} project={project} pkg={pkg} startSheet={plansAt || undefined} onClose={() => setPlansAt(null)} />}
       </Block>
 
       {pkg.bidTab && invite.bid && (
-        <Block title={`${pkg.trade} · bid tab`}>
+        <Block title={t('bidTabTitle', { trade: pkg.trade })}>
           {pkg.bidTab.seenBy.includes(partner.id) ? (
             <div style={{ display: 'grid', gap: '0.4rem', fontSize: '0.9rem' }}>
               <div>{bidTabResult(project, pkg, partner.id)}</div>
               <BidTabTable rows={bidTabRows(state, pkg)} viewerId={partner.id} showNames={pkg.bidTab.showNames} />
-              <div style={{ fontSize: '0.8rem', opacity: 0.75 }}>Thank you for your number. This is how the quotes came in.</div>
+              <div style={{ fontSize: '0.8rem', opacity: 0.75 }}>{t('bidTabThanks')}</div>
             </div>
           ) : (
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.9rem' }}>
-              <span>{GC} shared how the quotes came in on {shortDate(pkg.bidTab.sharedOn)}.</span>
-              <Btn kind="primary" onClick={() => dispatch({ type: 'tradeSeeBidTab', ...ids, partnerId: partner.id })}>See the bid tab</Btn>
+              <span>{t('bidTabShared', { gc: GC, date: pDate(lang, pkg.bidTab.sharedOn) })}</span>
+              <Btn kind="primary" onClick={() => dispatch({ type: 'tradeSeeBidTab', ...ids, partnerId: partner.id })}>{t('seeBidTab')}</Btn>
             </div>
           )}
         </Block>
       )}
 
       {awardedElsewhere ? (
-        <Block title={`${pkg.trade} · result`}>This one went to another company. Thank you for your number.</Block>
+        <Block title={t('resultTitle', { trade: pkg.trade })}>{t('wentElsewhere')}</Block>
       ) : awardedToMe && pkg.sow ? (
         <SowBlock project={project} pkg={pkg} partner={partner} today={state.today} dispatch={dispatch} />
       ) : invite.status === 'declined' ? (
-        <Block title={`${pkg.trade} · invitation`}>You passed on this one.</Block>
+        <Block title={t('inviteTitle', { trade: pkg.trade })}>{t('youPassed')}</Block>
       ) : (
         <BidBlock project={project} pkg={pkg} invite={invite} today={state.today} dispatch={dispatch} onOpenSheet={openPlans} />
       )}
@@ -298,8 +324,9 @@ function BidBlock({
   dispatch: Dispatch<GcAction>
   onOpenSheet: (sheetId: string) => void
 }) {
+  const { lang, t } = usePortalLang()
   const [promiseDay, setPromiseDay] = useState('')
-  const promise = portalPromiseLine(invite, today, GC)
+  const promise = portalPromiseLine(invite, today, GC, lang)
   const unclear = unclearLines(pkg, invite)
   const [editing, setEditing] = useState(invite.bid === null)
   const [amount, setAmount] = useState(invite.bid ? String(invite.bid.amount) : '')
@@ -325,42 +352,42 @@ function BidBlock({
   const ranOut = invite.bid ? bidRanOut(invite.bid, today) : false
 
   return (
-    <Block title={`${pkg.trade} · invitation to bid`}>
+    <Block title={t('bidTitle', { trade: pkg.trade })}>
       {due && (
         <div style={{ fontSize: '0.9rem', marginBottom: '0.4rem' }}>
-          Your number is due <strong>{shortDate(due)}</strong>
-          {days !== null && <> ({days >= 0 ? `${days} days` : 'past due'})</>}.
+          {t('dueIs')} <strong>{pDate(lang, due)}</strong>
+          {days !== null && <> ({days >= 0 ? t('daysN', { n: days }) : t('pastDue')})</>}.
         </div>
       )}
       {invite.bid && !editing ? (
         <div style={{ display: 'grid', gap: '0.4rem', fontSize: '0.9rem' }}>
           <div>
-            Your bid: <strong>{money(invite.bid.amount)}</strong> on {planLabel(project, invite.bid.basedOnRev)}, sent{' '}
-            {shortDate(invite.bid.submittedOn)}.{goodUntil && !ranOut && <> Good until {weekdayDate(goodUntil)}.</>}
+            {t('yourBidLabel')} <strong>{money(invite.bid.amount)}</strong>{' '}
+            {t('yourBidRest', { plans: planLabel(project, invite.bid.basedOnRev), date: pDate(lang, invite.bid.submittedOn) })}
+            {goodUntil && !ranOut && <> {t('goodUntil', { date: pWeekday(lang, goodUntil) })}</>}
           </div>
           {(invite.bid.alternates ?? []).length > 0 && (
             <div>
-              <span style={{ opacity: 0.75 }}>Alternates:</span> {(invite.bid.alternates ?? []).map(alternateWords).join(' · ')}
+              <span style={{ opacity: 0.75 }}>{t('alternatesLabel')}</span> {(invite.bid.alternates ?? []).map((alt) => alternateWords(alt, lang)).join(' · ')}
             </div>
           )}
           {invite.bid.quoteFile && (
             <div>
-              <span style={{ opacity: 0.75 }}>Your own quote:</span> <Chip tone="grey">{invite.bid.quoteFile}</Chip>
+              <span style={{ opacity: 0.75 }}>{t('ownQuoteLabel')}</span> <Chip tone="grey">{invite.bid.quoteFile}</Chip>
             </div>
           )}
           {ranOut && goodUntil && (
             <PortalNote tone="amber">
-              <div>Your number ran out {weekdayDate(goodUntil)}. Send it again to keep it good.</div>
+              <div>{t('ranOut', { date: pWeekday(lang, goodUntil) })}</div>
               <div>
-                <Btn kind="primary" onClick={() => setEditing(true)}>Send it again</Btn>
+                <Btn kind="primary" onClick={() => setEditing(true)}>{t('sendAgain')}</Btn>
               </div>
             </PortalNote>
           )}
           {stale && (
             <PortalNote tone="amber">
               <div>
-                The plans changed for your trade after you bid.{' '}
-                {openedNewest ? 'Confirm your number or change it.' : 'Open the plans above, then confirm your number or change it.'}
+                {t('staleNote')} {t(openedNewest ? 'staleOpened' : 'staleNotOpened')}
               </div>
               <ChangedLines trade={pkg.trade} lines={sheets.lines} otherSheets={sheets.otherSheets} setNames={sheets.sets.map((x) => x.label)} onOpen={onOpenSheet} />
             </PortalNote>
@@ -382,11 +409,10 @@ function BidBlock({
               ) : (
                 <>
                   <div>
-                    {GC} cannot tell if your number covers {unclear.map((i) => i.label.charAt(0).toLowerCase() + i.label.slice(1)).join(' or ')}. Answer it so
-                    your number compares fairly.
+                    {t('unclearAsk', { gc: GC, items: unclear.map((i) => i.label.charAt(0).toLowerCase() + i.label.slice(1)).join(t('or')) })}
                   </div>
                   <div>
-                    <Btn kind="primary" onClick={() => setAnswering(true)}>Answer it</Btn>
+                    <Btn kind="primary" onClick={() => setAnswering(true)}>{t('answerIt')}</Btn>
                   </div>
                 </>
               )}
@@ -397,32 +423,32 @@ function BidBlock({
               <Btn
                 kind="primary"
                 disabled={!openedNewest}
-                title={openedNewest ? undefined : 'Open the plans first.'}
+                title={openedNewest ? undefined : t('openFirst')}
                 onClick={() => dispatch({ type: 'tradeConfirmBid', ...ids })}
               >
-                My number stands on the new plans
+                {t('confirmStands')}
               </Btn>
             )}
-            <Btn onClick={() => setEditing(true)}>Change my bid</Btn>
+            <Btn onClick={() => setEditing(true)}>{t('changeBid')}</Btn>
           </div>
         </div>
       ) : (
         <div style={{ display: 'grid', gap: '0.5rem' }}>
           <div style={{ fontSize: '0.85rem', opacity: 0.8 }}>
-            Tick what your number covers. Untick what it leaves out. Tap a sheet number to open it.
+            {t('tickHelp')}
           </div>
           {pkg.scope.map((item) =>
             includes[item.id] === 'unclear' ? (
               <div key={item.id} style={{ display: 'grid', gap: '0.3rem', fontSize: '0.9rem', padding: '0.4rem 0.5rem', background: 'var(--bg-amber-100)', borderRadius: 6 }}>
                 <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap' }}>
                   <span>
-                    <strong>{item.label}.</strong> {GC} cannot tell if your number covers it.
+                    <strong>{item.label}.</strong> {t('unclearLine', { gc: GC })}
                   </span>
                   <LineSheets line={lineOf(item.id)} onOpen={onOpenSheet} />
                 </div>
                 <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                  <Btn onClick={() => setIncludes({ ...includes, [item.id]: 'yes' })}>It is in my number</Btn>
-                  <Btn onClick={() => setIncludes({ ...includes, [item.id]: 'no' })}>It is left out</Btn>
+                  <Btn onClick={() => setIncludes({ ...includes, [item.id]: 'yes' })}>{t('inMyNumber')}</Btn>
+                  <Btn onClick={() => setIncludes({ ...includes, [item.id]: 'no' })}>{t('leftOut')}</Btn>
                 </div>
               </div>
             ) : (
@@ -439,25 +465,25 @@ function BidBlock({
           )}
           {sheets.otherSheets.length > 0 && (
             <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.85rem' }}>
-              <span>Also changed in {sheets.sets.map((x) => x.label).join(' and ')}</span>
+              <span>{t('alsoChangedIn', { sets: sheets.sets.map((x) => x.label).join(t('and')) })}</span>
               {sheets.otherSheets.map((id) => (
                 <SheetChip key={id} id={id} guessed={false} changed onOpen={onOpenSheet} />
               ))}
             </div>
           )}
           <label style={{ fontSize: '0.9rem' }}>
-            Your number{' '}
+            {t('yourNumber')}{' '}
             <input type="number" min={0} step={100} value={amount} onChange={(e) => setAmount(e.target.value)} style={{ ...input, width: '9rem' }} />
           </label>
           <GoodForPicker value={goodFor} onChange={setGoodFor} />
-          <input style={input} placeholder="Anything we should know" value={note} onChange={(e) => setNote(e.target.value)} />
+          <input style={input} placeholder={t('anythingKnow')} value={note} onChange={(e) => setNote(e.target.value)} />
           <AlternatesEditor value={alternates} onChange={setAlternates} />
           <QuoteFilePicker value={quoteFile} onChange={setQuoteFile} />
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <Btn
               kind="primary"
               disabled={invite.seenRev === null || !(Number(amount) > 0) || unanswered > 0}
-              title={invite.seenRev === null ? 'Open the plans first.' : unanswered > 0 ? 'Answer each line first.' : undefined}
+              title={invite.seenRev === null ? t('openFirst') : unanswered > 0 ? t('answerEach') : undefined}
               onClick={() => {
                 dispatch({
                   type: 'tradeSubmitBid',
@@ -472,9 +498,9 @@ function BidBlock({
                 setEditing(false)
               }}
             >
-              {invite.bid ? 'Send my new number' : 'Send my bid'}
+              {t(invite.bid ? 'sendNew' : 'sendBid')}
             </Btn>
-            {!invite.bid && <Btn kind="quiet" onClick={() => dispatch({ type: 'tradeDecline', ...ids })}>Pass on this one</Btn>}
+            {!invite.bid && <Btn kind="quiet" onClick={() => dispatch({ type: 'tradeDecline', ...ids })}>{t('passOn')}</Btn>}
             {invite.bid && (
               <Btn
                 kind="quiet"
@@ -490,12 +516,12 @@ function BidBlock({
                   setEditing(false)
                 }}
               >
-                Keep my bid as it is
+                {t('keepBid')}
               </Btn>
             )}
-            {invite.seenRev === null && <span style={{ fontSize: '0.8rem', color: 'var(--text-red-700)' }}>Open the plans first.</span>}
+            {invite.seenRev === null && <span style={{ fontSize: '0.8rem', color: 'var(--text-red-700)' }}>{t('openFirst')}</span>}
             {invite.seenRev !== null && unanswered > 0 && (
-              <span style={{ fontSize: '0.8rem', color: 'var(--text-red-700)' }}>Answer each line first.</span>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-red-700)' }}>{t('answerEach')}</span>
             )}
           </div>
           {!invite.bid && (
@@ -503,9 +529,9 @@ function BidBlock({
               {promise ? (
                 <span style={promise.late ? { color: 'var(--text-red-700)', fontWeight: 600 } : undefined}>{promise.text}</span>
               ) : (
-                <span>Not ready yet? Tell {GC} when your number will come.</span>
+                <span>{t('notReady', { gc: GC })}</span>
               )}
-              <input type="date" min={today} value={promiseDay} onChange={(e) => setPromiseDay(e.target.value)} style={input} aria-label="The day your number will come" />
+              <input type="date" min={today} value={promiseDay} onChange={(e) => setPromiseDay(e.target.value)} style={input} aria-label={t('dayAria')} />
               <Btn
                 disabled={promiseDay === ''}
                 onClick={() => {
@@ -513,7 +539,7 @@ function BidBlock({
                   setPromiseDay('')
                 }}
               >
-                {promise?.late ? 'Give a new day' : promise ? 'Change the day' : `Tell ${GC}`}
+                {promise?.late ? t('giveNewDay') : promise ? t('changeDay') : t('tellGc', { gc: GC })}
               </Btn>
             </div>
           )}
@@ -537,54 +563,55 @@ function SowBlock({
   today: string
   dispatch: Dispatch<GcAction>
 }) {
+  const { lang, t } = usePortalLang()
   const sow = pkg.sow
   if (!sow) return null
   const ids = { projectId: project.id, packageId: pkg.id }
   const m = sowMoney(sow)
 
   if (sow.status === 'draft') {
-    return <Block title={`${pkg.trade} · you got the job`}>{GC} picked your number. Your statement of work is being written.</Block>
+    return <Block title={t('gotJobTitle', { trade: pkg.trade })}>{t('sowDraft', { gc: GC })}</Block>
   }
 
   return (
     <>
-      <Block title={`${pkg.trade} · statement of work`}>
+      <Block title={t('sowTitle', { trade: pkg.trade })}>
         <div style={{ display: 'grid', gap: '0.35rem', fontSize: '0.9rem' }}>
           <div>
-            <strong>{money(sow.price)}</strong> · {sow.retainagePct}% held until the end · based on {planLabel(project, sow.basedOnRev)}
+            <strong>{money(sow.price)}</strong> · {t('sowLine', { pct: sow.retainagePct, plans: planLabel(project, sow.basedOnRev) })}
           </div>
           <div style={{ opacity: 0.8 }}>{sow.sov.map((l) => `${l.label} ${money(l.amount)}`).join(' · ')}</div>
           {sow.status === 'sent' ? (
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
               <Btn kind="primary" disabled={partner.msa !== 'signed'} onClick={() => dispatch({ type: 'tradeSignSow', ...ids })}>
-                Sign the statement of work
+                {t('signSow')}
               </Btn>
-              {partner.msa !== 'signed' && <span style={{ fontSize: '0.8rem', color: 'var(--text-red-700)' }}>Sign the master agreement first.</span>}
+              {partner.msa !== 'signed' && <span style={{ fontSize: '0.8rem', color: 'var(--text-red-700)' }}>{t('signMsaFirst')}</span>}
             </div>
           ) : (
-            <Chip tone="green">signed {shortDate(sow.signedOn)}</Chip>
+            <Chip tone="green">{t('signedOn', { date: pDate(lang, sow.signedOn) })}</Chip>
           )}
         </div>
       </Block>
 
       {sow.status === 'signed' && (
-        <Block title={`${pkg.trade} · report your work and get paid`}>
+        <Block title={t('reportTitle', { trade: pkg.trade })}>
           <div style={{ display: 'grid', gap: '0.45rem', fontSize: '0.9rem' }}>
             {sow.sov.map((l) => (
               <label key={l.id} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '0.5rem', alignItems: 'center' }}>
                 <span>
-                  {l.label} <span style={{ opacity: 0.7 }}>· {money(l.amount)} · paid through {l.pctBilled}%</span>
+                  {l.label} <span style={{ opacity: 0.7 }}>· {money(l.amount)} · {t('paidThrough', { pct: l.pctBilled })}</span>
                 </span>
                 <select
                   value={l.pctReported}
                   onChange={(e) => dispatch({ type: 'tradeReport', ...ids, sovId: l.id, pct: Number(e.target.value) })}
                   style={input}
-                  aria-label={`Percent done, ${l.label}`}
+                  aria-label={t('percentAria', { line: l.label })}
                 >
                   {[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
                     .filter((p) => p >= l.pctBilled)
                     .map((p) => (
-                      <option key={p} value={p}>{p}% done</option>
+                      <option key={p} value={p}>{t('pctDone', { pct: p })}</option>
                     ))}
                 </select>
               </label>
@@ -593,20 +620,20 @@ function SowBlock({
             <GcBuildingPayAppDoor project={project} pkg={pkg} partner={partner} today={today} dispatch={dispatch} />
             {sow.draws.map((d) => (
               <div key={d.id} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                <strong>Draw {d.number}</strong>
+                <strong>{t('drawN', { n: d.number })}</strong>
                 <span>{money(d.net)}</span>
                 <Chip tone={d.status === 'paid' ? 'green' : d.status === 'approved' ? 'blue' : 'amber'}>
-                  {d.status === 'requested' ? `${GC} is reviewing it` : d.status === 'approved' ? 'approved, payment coming' : `paid`}
+                  {d.status === 'requested' ? t('drawReviewing', { gc: GC }) : d.status === 'approved' ? t('drawApproved') : t('drawPaid')}
                 </Chip>
                 {d.status === 'paid' && d.waiver === 'conditional' && (
                   <Btn kind="primary" onClick={() => dispatch({ type: 'tradeSignUnconditional', ...ids, drawId: d.id })}>
-                    Sign the unconditional waiver
+                    {t('signUncond')}
                   </Btn>
                 )}
               </div>
             ))}
             <div style={{ fontSize: '0.8rem', opacity: 0.75 }}>
-              Paid so far {money(m.paid)} · held {money(m.retainageHeld)} · left to bill {money(sow.price - m.billed)}
+              {t('sowTotals', { paid: money(m.paid), held: money(m.retainageHeld), left: money(sow.price - m.billed) })}
             </div>
           </div>
         </Block>

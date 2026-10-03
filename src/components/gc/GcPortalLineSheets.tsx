@@ -1,6 +1,7 @@
 import type { MouseEvent } from 'react'
 import type { PortalLine } from '../../lib/gcMode/gcModel'
 import { Chip } from './gcUi'
+import { usePortalLang } from './gcPortalLang'
 
 /**
  * GC mode design spike: the sheet numbers beside each line of a trade's bid form. A tap opens the
@@ -9,10 +10,11 @@ import { Chip } from './gcUi'
  */
 
 export function SheetChip({ id, guessed, changed, onOpen }: { id: string; guessed: boolean; changed: boolean; onOpen: (sheetId: string) => void }) {
+  const { t } = usePortalLang()
   return (
     <button
       type="button"
-      title={guessed ? `Open ${id}. Matched by the line's words.` : `Open ${id}`}
+      title={t(guessed ? 'openSheetGuessed' : 'openSheet', { id })}
       onClick={(e: MouseEvent) => {
         // The chip sits inside the line's label: open the sheet, never tick the box.
         e.preventDefault()
@@ -42,6 +44,7 @@ export function SheetChip({ id, guessed, changed, onOpen }: { id: string; guesse
  * for the whole trade shows no sheets until one of its trade's sheets changes, then those.
  */
 export function LineSheets({ line, onOpen }: { line: PortalLine | undefined; onOpen: (sheetId: string) => void }) {
+  const { t } = usePortalLang()
   if (!line) return null
   const shown = line.wholeTrade ? line.changed : line.sheets
   if (shown.length === 0 && line.by.length === 0) return null
@@ -50,7 +53,7 @@ export function LineSheets({ line, onOpen }: { line: PortalLine | undefined; onO
       {shown.map((id) => (
         <SheetChip key={id} id={id} guessed={line.guessed} changed={line.changed.includes(id)} onOpen={onOpen} />
       ))}
-      {line.by.length > 0 && <Chip tone="amber">changed in {line.by.join(' and ')}</Chip>}
+      {line.by.length > 0 && <Chip tone="amber">{t('changedIn', { set: line.by.join(t('and')) })}</Chip>}
     </span>
   )
 }
@@ -69,15 +72,17 @@ export function ChangedLines({
   setNames: string[]
   onOpen: (sheetId: string) => void
 }) {
+  const { t } = usePortalLang()
   const touched = lines.filter((l) => l.by.length > 0)
   if (touched.length === 0 && otherSheets.length === 0) return null
+  const sets = setNames.join(t('and'))
   return (
     <div style={{ display: 'grid', gap: '0.3rem' }}>
-      {touched.length > 0 && <div>{setNames.join(' and ')} touches these lines of your number.</div>}
+      {touched.length > 0 && <div>{t('touchesLines', { sets })}</div>}
       {touched.map((l) => (
         <div key={l.item.id} style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <strong>{l.item.label}</strong>
-          {l.wholeTrade && <span style={{ fontSize: '0.8rem', opacity: 0.75 }}>reads every {trade} sheet</span>}
+          {l.wholeTrade && <span style={{ fontSize: '0.8rem', opacity: 0.75 }}>{t('readsEvery', { trade })}</span>}
           {l.changed.map((id) => (
             <SheetChip key={id} id={id} guessed={l.guessed} changed onOpen={onOpen} />
           ))}
@@ -85,7 +90,7 @@ export function ChangedLines({
       ))}
       {otherSheets.length > 0 && (
         <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <span>{touched.length > 0 ? 'Also changed' : `Changed in ${setNames.join(' and ')}`}</span>
+          <span>{touched.length > 0 ? t('alsoChanged') : t('changedInSets', { sets })}</span>
           {otherSheets.map((id) => (
             <SheetChip key={id} id={id} guessed={false} changed onOpen={onOpen} />
           ))}
