@@ -377,9 +377,11 @@ function setOn(project: GcProject, day: string): PlanSet | undefined {
  * Everything we sent one company, newest first: invitations, reminders, new plan sets, bid tabs,
  * the master agreement, a statement of work to sign, and the day work starts.
  */
-export function portalMessages(state: GcState, partnerId: string, lang: PortalLang = 'en'): PortalMessage[] {
+export function portalMessages(state: GcState, partnerId: string, language?: PortalLang): PortalMessage[] {
   const partner = partnerById(state, partnerId)
   if (!partner) return []
+  // The company's own language unless asked for another: its messages go out in it.
+  const lang: PortalLang = language ?? partner.lang ?? 'en'
   const gc = GC_COMPANY.name
   const t = (key: Parameters<typeof pt>[1], vars?: Record<string, string | number>) => pt(lang, key, vars)
   const and = t('and')

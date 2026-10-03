@@ -315,6 +315,8 @@ const STEPS: Step[] = [
   },
   // The portal's weekly look-ahead: the trade marks this week's activity.
   { label: 'Fair Oaks D: Pecan Valley marks Lighting not done this week (materials)', action: { type: 'tradeMarkLookAhead', projectId: 'fairoaksd', packageId: 'felec', lineId: 'felec-3', weekOf: '2026-09-28', done: false, reason: 'materials' } },
+  // The portal: a company keeps its language on its record.
+  { label: 'Hillside chooses Spanish for its portal and messages', action: { type: 'tradeSetLanguage', partnerId: 'hillside', lang: 'es' } },
   // Helotes: change orders to the owner. One added and signed, one credit declined.
   {
     label: 'Draft change order 1: sound batts at operatory 3',
@@ -466,6 +468,7 @@ describe('GC mode golden walk', () => {
       'tradeAnswerLines',
       'priceOwnBid',
       'tradeMarkLookAhead',
+      'tradeSetLanguage',
     ]
     expect(all.filter((t) => !used.has(t))).toEqual([])
   })

@@ -986,6 +986,16 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
       )
     }
 
+    case 'tradeSetLanguage': {
+      const partner = partnerById(state, action.partnerId)
+      if (!partner || (partner.lang ?? 'en') === action.lang) return state
+      return logged(
+        { ...state, partners: state.partners.map((p) => (p.id === partner.id ? { ...p, lang: action.lang } : p)) },
+        'trade',
+        `${partner.company} chose ${action.lang === 'es' ? 'Spanish' : 'English'} for its portal and messages.`,
+      )
+    }
+
     case 'draftChangeOrder': {
       const project = state.projects.find((p) => p.id === action.projectId)
       const description = action.description.trim()

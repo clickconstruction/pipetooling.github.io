@@ -224,6 +224,8 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   typed into the portal's words.
 - **A company's link lands on its home** (2026-10-02), not on one project: everything the company
   has with us, what needs them first. A project's page is one tap away.
+- **A company's language is kept on its record** (2026-10-03): the portal opens in it, and the
+  messages we send it go out in it.
 
 ## My defaults the owner has not confirmed
 
@@ -294,7 +296,7 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
   file's name is kept.
 - The portal's Spanish follows the sub portal's (usted, its terms: Contrato maestro, orden de
   trabajo, renuncia de gravamen). What the office typed (project names, trades, scope lines, notes)
-  stays as typed. The choice lasts while the portal is open; the Building lane's pay application
+  stays as typed. The choice is kept on the company's record and its messages go out in it; the Building lane's pay application
   and the Board lane's bid tab table inside the portal stay English until those lanes pass the
   language through (`usePortalLang` in `gcPortalLang.ts`).
 - The look-ahead asks for this week's marks from Friday on (the week's end), and for last week's
@@ -349,9 +351,10 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
     show?~~ Answered 2026-10-02: within a few days, and three weeks.
 24. ~~The schedule: who marks a look-ahead activity done or not each week?~~ Answered
     2026-10-02: the trade in its portal, verified by our superintendent.
-25. Should a company's language be kept on its record, so its emails go out in Spanish, and
-    should the office be able to set it? Today the choice lasts while the portal is open. The
-    Spanish was written by the prototype; a native speaker should read it before it ships.
+25. ~~Should a company's language be kept on its record, so its emails go out in Spanish?~~
+    Answered 2026-10-03: yes (`Partner.lang`, set by the company's **Español** button,
+    `tradeSetLanguage`). Still open: should the office be able to set it too? The Spanish was
+    written by the prototype; a native speaker should read it before it ships.
 
 ## The schedule (proposed, 2026-10-02)
 

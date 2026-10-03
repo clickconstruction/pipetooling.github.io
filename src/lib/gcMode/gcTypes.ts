@@ -217,6 +217,8 @@ export interface Partner {
   portalOpenedOn?: string
   /** The day we sent the master agreement. Unset: not sent, or before the day was kept. */
   msaSentOn?: string
+  /** The language the company chose in its portal; its messages go out in it too. Unset: English. */
+  lang?: 'en' | 'es'
 }
 
 /** A question a trade asked about the plans. The architect answers; every bidder on the trade gets it. */
@@ -470,6 +472,8 @@ export type GcAction =
   | { type: 'crewMarkLookAhead'; projectId: string; weekOf: string; lineId: string; done: boolean; reason?: LookAheadReason }
   /** The trade marks one look-ahead activity done or not for a week, in its portal. A verified mark stays as verified. */
   | { type: 'tradeMarkLookAhead'; projectId: string; packageId: string; lineId: string; weekOf: string; done: boolean; reason?: LookAheadReason }
+  /** The company picks English or Spanish in its portal. Kept on its record: its messages go out in it. */
+  | { type: 'tradeSetLanguage'; partnerId: string; lang: 'en' | 'es' }
   /** A change order to the owner, drafted on Bill the owner. */
   | {
       type: 'draftChangeOrder'

@@ -7076,10 +7076,20 @@ exports[`GC mode golden walk > step 100: Fair Oaks D: Pecan Valley marks Lightin
 }
 `;
 
-exports[`GC mode golden walk > step 101: Draft change order 1: sound batts at operatory 3 1`] = `
+exports[`GC mode golden walk > step 101: Hillside chooses Spanish for its portal and messages 1`] = `
 {
   "changed": {
     "lastLog.id": 97,
+    "lastLog.text": "Hillside Excavation chose Spanish for its portal and messages.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 102: Draft change order 1: sound batts at operatory 3 1`] = `
+{
+  "changed": {
+    "lastLog.id": 98,
     "lastLog.text": "Drafted change order 1 on Helotes Dental Office: Add sound batts to the walls of operatory 3, per detail 4 on A-201, $5,280.",
     "lastLog.who": "office",
   },
@@ -7087,60 +7097,60 @@ exports[`GC mode golden walk > step 101: Draft change order 1: sound batts at op
 }
 `;
 
-exports[`GC mode golden walk > step 102: Send change order 1 to Dr. Raman 1`] = `
+exports[`GC mode golden walk > step 103: Send change order 1 to Dr. Raman 1`] = `
 {
   "changed": {
-    "lastLog.id": 98,
+    "lastLog.id": 99,
     "lastLog.text": "Sent change order 1 to Dr. Priya Raman for signature: $5,280.",
   },
   "removed": [],
 }
 `;
 
-exports[`GC mode golden walk > step 103: Dr. Raman signs change order 1 1`] = `
+exports[`GC mode golden walk > step 104: Dr. Raman signs change order 1 1`] = `
 {
   "changed": {
-    "lastLog.id": 99,
+    "lastLog.id": 100,
     "lastLog.text": "Dr. Priya Raman signed change order 1 in their portal. Their price goes up $5,280.",
   },
   "removed": [],
 }
 `;
 
-exports[`GC mode golden walk > step 104: Change order 1 is done 1`] = `
+exports[`GC mode golden walk > step 105: Change order 1 is done 1`] = `
 {
   "changed": {
-    "lastLog.id": 100,
+    "lastLog.id": 101,
     "lastLog.text": "Change order 1 on Helotes Dental Office is 100% done.",
   },
   "removed": [],
 }
 `;
 
-exports[`GC mode golden walk > step 105: Draft change order 2: a credit, the break room sink comes out 1`] = `
+exports[`GC mode golden walk > step 106: Draft change order 2: a credit, the break room sink comes out 1`] = `
 {
   "changed": {
-    "lastLog.id": 101,
+    "lastLog.id": 102,
     "lastLog.text": "Drafted change order 2 on Helotes Dental Office: Delete the break room sink, $-1,320.",
   },
   "removed": [],
 }
 `;
 
-exports[`GC mode golden walk > step 106: Send change order 2 to Dr. Raman 1`] = `
+exports[`GC mode golden walk > step 107: Send change order 2 to Dr. Raman 1`] = `
 {
   "changed": {
-    "lastLog.id": 102,
+    "lastLog.id": 103,
     "lastLog.text": "Sent change order 2 to Dr. Priya Raman for signature: $-1,320.",
   },
   "removed": [],
 }
 `;
 
-exports[`GC mode golden walk > step 107: Dr. Raman declines change order 2 1`] = `
+exports[`GC mode golden walk > step 108: Dr. Raman declines change order 2 1`] = `
 {
   "changed": {
-    "lastLog.id": 103,
+    "lastLog.id": 104,
     "lastLog.text": "Dr. Priya Raman declined change order 2 in their portal.",
   },
   "removed": [],
@@ -7347,39 +7357,44 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
-      "id": 103,
+      "id": 104,
       "text": "Dr. Priya Raman declined change order 2 in their portal.",
       "who": "office",
     },
     {
-      "id": 102,
+      "id": 103,
       "text": "Sent change order 2 to Dr. Priya Raman for signature: $-1,320.",
       "who": "office",
     },
     {
-      "id": 101,
+      "id": 102,
       "text": "Drafted change order 2 on Helotes Dental Office: Delete the break room sink, $-1,320.",
       "who": "office",
     },
     {
-      "id": 100,
+      "id": 101,
       "text": "Change order 1 on Helotes Dental Office is 100% done.",
       "who": "office",
     },
     {
-      "id": 99,
+      "id": 100,
       "text": "Dr. Priya Raman signed change order 1 in their portal. Their price goes up $5,280.",
       "who": "office",
     },
     {
-      "id": 98,
+      "id": 99,
       "text": "Sent change order 1 to Dr. Priya Raman for signature: $5,280.",
       "who": "office",
     },
     {
-      "id": 97,
+      "id": 98,
       "text": "Drafted change order 1 on Helotes Dental Office: Add sound batts to the walls of operatory 3, per detail 4 on A-201, $5,280.",
       "who": "office",
+    },
+    {
+      "id": 97,
+      "text": "Hillside Excavation chose Spanish for its portal and messages.",
+      "who": "trade",
     },
     {
       "id": 96,
@@ -7491,11 +7506,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "text": "Alamo Concrete answered on Concrete: Rebar supply is in their number.",
       "who": "trade",
     },
-    {
-      "id": 74,
-      "text": "AquaShield Sprinkler opened their portal for the first time.",
-      "who": "trade",
-    },
   ],
   "partners": [
     {
@@ -7544,6 +7554,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "contact": "Greg Paulk",
       "id": "hillside",
       "invited": 2,
+      "lang": "es",
       "maxMiles": 60,
       "msa": "signed",
       "msaSentOn": "2026-10-02",
