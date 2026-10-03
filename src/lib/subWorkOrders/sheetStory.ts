@@ -6,6 +6,7 @@
  * stage stamps, the Activity feed's Sub labor lines, the job's bill and the
  * payments already hold. Pure: no React, no Supabase.
  */
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import type { JobWorkOrderCoverage } from './workOrderCoverage'
 import type { SheetRail, SheetRailStepKey, SheetRailStepState } from './sheetRail'
 import { SHEET_RAIL_STEP_LABEL, daysBetweenYmd } from './sheetRail'
@@ -116,6 +117,7 @@ export type SheetStoryInput = {
 }
 
 const money = (n: number) => `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+/** A `date` column's YYYY-MM-DD. Not for a `timestamptz`: its day is `calendarYmdInAppTzFromIso`. */
 const ymd = (v: string | null | undefined) => (v ?? '').slice(0, 10) || null
 const when = (iso: string | null | undefined): string => {
   if (!iso) return ''
@@ -167,7 +169,7 @@ export function buildSheetStory(input: SheetStoryInput): SheetStoryRow[] {
     else if (c.kind === 'draft') sent.facts.push({ text: c.unpriced ? 'Not sent yet — price it first.' : 'Priced — it just needs to go out.' })
     else if (order?.offered_at) {
       const expired = c.kind === 'sent' && c.expired
-      sent.chip = expired ? { label: 'offer expired', tone: 'gap' } : c.kind === 'sent' ? { label: `waiting ${Math.max(0, daysBetweenYmd(ymd(order.offered_at), input.todayYmd))} day${daysBetweenYmd(ymd(order.offered_at), input.todayYmd) === 1 ? '' : 's'}`, tone: 'amber' } : { label: 'done', tone: 'gray' }
+      sent.chip = expired ? { label: 'offer expired', tone: 'gap' } : c.kind === 'sent' ? { label: `waiting ${Math.max(0, daysBetweenYmd(calendarYmdInAppTzFromIso(order.offered_at), input.todayYmd))} day${daysBetweenYmd(calendarYmdInAppTzFromIso(order.offered_at), input.todayYmd) === 1 ? '' : 's'}`, tone: 'amber' } : { label: 'done', tone: 'gray' }
       sent.facts.push({ k: when(order.offered_at), text: `to ${subName}'s portal${order.offer_expires_at ? ` · good through ${ymd(order.offer_expires_at)}` : ''}${expired ? ' — expired' : ''}` })
       if (c.kind === 'sent') {
         sent.sees = SUB_SEES.offer
@@ -210,13 +212,13 @@ export function buildSheetStory(input: SheetStoryInput): SheetStoryRow[] {
 
   // Work
   const work: SheetStoryRow = { key: 'work', label: SHEET_RAIL_STEP_LABEL.work, state: stateOf('work'), office: false, chip: null, facts: [], sees: null, seesOn: null, actions: [] }
-  const started = sheet.job_date ?? ymd(sheet.created_at)
+  const started = sheet.job_date ?? (calendarYmdInAppTzFromIso(sheet.created_at ?? '') || null)
   const items = sheet.items ?? []
   const fixed = items.filter((i) => i.is_fixed || i.direct_labor_amount != null).length
   work.facts.push({ k: 'Started', text: started ? `${when(started)} — ${sheet.created_at ? 'sheet created' : 'sheet dated'}${m.unpriced ? '' : ''}` : 'no date on the sheet' })
   work.facts.push({ k: 'Scope on the sheet', text: items.length === 0 ? 'no line items yet' : `${items.length} line item${items.length === 1 ? '' : 's'}${fixed ? ` · ${fixed} fixed-price` : ''} · ${m.unpriced ? 'unpriced' : money(m.agreed)}` })
   if (sheet.progress_pct != null && sheet.progress_pct < 100) {
-    work.facts.push({ k: sheet.progress_at ? when(ymd(sheet.progress_at)) : 'Progress', text: `${subName} says ${sheet.progress_pct}% along (portal)` })
+    work.facts.push({ k: sheet.progress_at ? when(calendarYmdInAppTzFromIso(sheet.progress_at)) : 'Progress', text: `${subName} says ${sheet.progress_pct}% along (portal)` })
     if (sheet.progress_note) work.facts.push({ text: `“${sheet.progress_note}”`, quote: true })
   }
   if (current === 'work') {
@@ -241,7 +243,7 @@ export function buildSheetStory(input: SheetStoryInput): SheetStoryRow[] {
     walk.facts.push({ text: 'When the sub taps Done, the date and their note land here; you call it in for inspection.' })
   }
   if (current === 'inspection') {
-    const since = toWalk ? ymd(toWalk.occurred_at) : ymd(sheet.stage_changed_at)
+    const since = calendarYmdInAppTzFromIso(toWalk ? toWalk.occurred_at : (sheet.stage_changed_at ?? ''))
     const days = since ? daysBetweenYmd(since, input.todayYmd) : 0
     walk.chip = { label: `current${days > 0 ? ` · ${days} day${days === 1 ? '' : 's'}` : ''}`, tone: 'violet' }
     walk.facts.push({ k: 'Next', text: 'call it in for inspection' })

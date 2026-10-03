@@ -4,6 +4,7 @@
  * jobContractCoverage for the money-out side. Pure; batch-fed by the board
  * and the Pipeline, single-fed by the job window's fact row.
  */
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 export type WorkOrderRowLike = {
   id: string
@@ -38,11 +39,11 @@ const RANK: Record<string, number> = { signed: 0, sent: 1, draft: 2, declined: 3
 function kindOf(r: WorkOrderRowLike, todayYmd: string): JobWorkOrderCoverage | null {
   if (r.status === 'cancelled') return null
   if (r.status === 'accepted' || r.status === 'approved' || r.status === 'settled') {
-    return { kind: 'signed', id: r.id, subName: r.display_name, amount: Number(r.amount) || 0, signedOn: (r.signed_at ?? r.accepted_at ?? '').slice(0, 10) || null, laborJobId: r.labor_job_id, recordId: r.record_id }
+    return { kind: 'signed', id: r.id, subName: r.display_name, amount: Number(r.amount) || 0, signedOn: calendarYmdInAppTzFromIso(r.signed_at ?? r.accepted_at ?? '') || null, laborJobId: r.labor_job_id, recordId: r.record_id }
   }
   if (r.status === 'offered') {
     const exp = (r.offer_expires_at ?? '').trim() || null
-    return { kind: 'sent', id: r.id, subName: r.display_name, amount: Number(r.amount) || 0, sentAt: (r.offered_at ?? '').slice(0, 10) || null, expiresOn: exp, expired: !!exp && exp < todayYmd }
+    return { kind: 'sent', id: r.id, subName: r.display_name, amount: Number(r.amount) || 0, sentAt: calendarYmdInAppTzFromIso(r.offered_at ?? '') || null, expiresOn: exp, expired: !!exp && exp < todayYmd }
   }
   if (r.status === 'declined') return { kind: 'declined', id: r.id, subName: r.display_name, reason: r.decline_reason }
   if (r.status === 'draft') return { kind: 'draft', id: r.id, subName: r.display_name, unpriced: r.amount == null }

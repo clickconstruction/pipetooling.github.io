@@ -96,3 +96,15 @@ describe('lienWaiverMoney', () => {
     expect(lienWaiverMoney(4200)).toBe('$4,200.00')
   })
 })
+
+describe('a payment with no payment day keeps its Central day (v2.4469)', () => {
+  it('counts the settle days from the day it was recorded, in the company calendar', () => {
+    // 00:30 UTC on Sep 3 is 7:30 pm CDT on Sep 2: 5 days old on Sep 7, so presumed settled.
+    const evening = guessLienWaiver({ payments: [{ amount: 4500, payment_date: null, created_at: '2026-09-03T00:30:00Z' }], balance: 1000, todayYmd: TODAY })
+    expect(evening.settled).toBe(true)
+    expect(evening.reasons[0]).toMatch(/5 days ago/)
+    // 00:30 UTC on Dec 2 is 6:30 pm CST on Dec 1.
+    expect(guessLienWaiver({ payments: [{ amount: 4500, payment_date: null, created_at: '2026-12-02T00:30:00+00:00' }], balance: 1000, todayYmd: '2026-12-06' }).settled).toBe(true)
+    expect(guessLienWaiver({ payments: [{ amount: 4500, payment_date: null, created_at: '2026-09-03T12:00:00Z' }], balance: 1000, todayYmd: TODAY }).settled).toBe(false)
+  })
+})

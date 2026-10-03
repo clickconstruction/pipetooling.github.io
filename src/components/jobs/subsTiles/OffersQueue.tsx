@@ -20,6 +20,7 @@ import { SubsTileModal, HandledCell } from './SubsTileModal'
 import { useQueueState } from './useQueueState'
 import { WITHDRAWN_DRAFT_KEPT, type RosterContact, type SubsTileActions } from './subsTileActions'
 import { acts, btn, chip, expandedRow, handledRow, money, muted, shortDay, spanLabel, td, tdAct, tdNum, telHref, th, where, who } from './subsTileStyles'
+import { calendarYmdInAppTzFromIso } from '../../../utils/dateUtils'
 
 export type OffersQueueProps = {
   board: WorkOrderBoardRow[]
@@ -196,7 +197,7 @@ export function OffersQueue({ board, ordersById, stageByOrderId, jobs, contacts,
                     ) : (
                       <span style={muted}>—</span>
                     )}
-                    <div style={where}>{v == null ? '' : v.outsideOpens === 0 ? 'never opened their portal' : `opened ${v.lastOutsideAt ? shortDay(v.lastOutsideAt.slice(0, 10)) : ''} · ${v.outsideOpens}×`}</div>
+                    <div style={where}>{v == null ? '' : v.outsideOpens === 0 ? 'never opened their portal' : `opened ${v.lastOutsideAt ? shortDay(calendarYmdInAppTzFromIso(v.lastOutsideAt)) : ''} · ${v.outsideOpens}×`}</div>
                   </td>
                   <td style={{ ...td, ...noBottom, whiteSpace: 'nowrap' }}>
                     {r.goodThrough ? <span style={chip(r.expired ? 'red' : r.daysLeft != null && r.daysLeft <= 2 ? 'amber' : 'green')}>{r.expired ? `expired ${shortDay(r.goodThrough)}` : `${shortDay(r.goodThrough)} · ${r.daysLeft} day${r.daysLeft === 1 ? '' : 's'} left`}</span> : <span style={muted}>no end date</span>}

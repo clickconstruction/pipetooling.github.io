@@ -246,7 +246,7 @@ export default function JobsCrewPnlTab({
       jobId: lj.job_ledger_id ?? jobIdByNumber.get((lj.job_number ?? '').trim().toLowerCase()) ?? null,
       jobNumberText: lj.job_number ?? null,
       jobLabel: `Sub sheet ${lj.job_number?.trim() || lj.assigned_to_name || lj.id}`,
-      jobDate: (lj.job_date ?? lj.created_at ?? '').slice(0, 10) || null,
+      jobDate: lj.job_date ? lj.job_date.slice(0, 10) : calendarYmdInAppTzFromIso(lj.created_at ?? '') || null,
       assignedNames: (lj.assigned_to_name ?? '')
         .split(LABOR_ASSIGNED_DELIMITER)
         .map((n) => n.trim())
