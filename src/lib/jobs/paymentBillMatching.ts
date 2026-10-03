@@ -12,6 +12,7 @@
  */
 
 import { invoiceRecordsThroughStripe } from './paymentInvoiceLinking'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 export type MatchableInvoiceSlice = {
   id: string
@@ -44,13 +45,14 @@ export type BillChoice = {
 
 const toCents = (v: number | string | null | undefined): number => Math.round((Number(v) || 0) * 100)
 
+/** A `date` column's day (`estimated_bill_date`). An instant's day is `calendarYmdInAppTzFromIso`. */
 function ymdOf(value: string | null | undefined): string | null {
   const s = (value ?? '').trim()
   return /^\d{4}-\d{2}-\d{2}/.test(s) ? s.slice(0, 10) : null
 }
 
 function billSentYmd(inv: MatchableInvoiceSlice): string | null {
-  return ymdOf(inv.sent_to_customer_at) ?? ymdOf(inv.billed_at) ?? ymdOf(inv.estimated_bill_date)
+  return calendarYmdInAppTzFromIso(inv.sent_to_customer_at ?? '') || calendarYmdInAppTzFromIso(inv.billed_at ?? '') || ymdOf(inv.estimated_bill_date)
 }
 
 /**

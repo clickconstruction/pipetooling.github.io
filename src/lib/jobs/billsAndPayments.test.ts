@@ -62,9 +62,13 @@ describe('paymentSource — the chip comes from where the row came from', () => 
 
 describe('daysAfterBill and billSentYmd', () => {
   it('counts whole days from the bill going out, from the sent stamp else the billed stamp', () => {
-    expect(billSentYmd({ sent_to_customer_at: '2026-07-15T12:00:00Z', billed_at: '2026-07-10T00:00:00Z' })).toBe('2026-07-15')
-    expect(billSentYmd({ sent_to_customer_at: null, billed_at: '2026-07-10T00:00:00Z' })).toBe('2026-07-10')
+    expect(billSentYmd({ sent_to_customer_at: '2026-07-15T12:00:00Z', billed_at: '2026-07-10T17:00:00Z' })).toBe('2026-07-15')
+    expect(billSentYmd({ sent_to_customer_at: null, billed_at: '2026-07-10T17:00:00Z' })).toBe('2026-07-10')
     expect(billSentYmd({ sent_to_customer_at: null, billed_at: null })).toBeNull()
+    // An evening stamp is its own Central day: 7:30 pm CDT on Oct 2 (also as +00:00), 6:30 pm CST on Dec 1, noon UTC.
+    expect(billSentYmd({ sent_to_customer_at: '2026-10-03T00:30:00+00:00', billed_at: null })).toBe('2026-10-02')
+    expect(billSentYmd({ sent_to_customer_at: null, billed_at: '2026-12-02T00:30:00Z' })).toBe('2026-12-01')
+    expect(billSentYmd({ sent_to_customer_at: null, billed_at: '2026-10-03T12:00:00Z' })).toBe('2026-10-03')
     expect(daysAfterBill('2026-07-15', '2026-09-14')).toBe(61)
     expect(daysAfterBill('2026-07-15', '2026-09-28')).toBe(75)
     expect(daysAfterBill(null, '2026-09-28')).toBeNull()

@@ -86,6 +86,15 @@ describe('paymentDateBeforeBilled', () => {
     expect(paymentDateBeforeBilled({ amount: 1, invoice_id: 'a', paid_on: '2026-08-11' }, invoices)).toBe(false)
   })
 
+  it('a bill marked billed in a Central evening and paid that day does not warn', () => {
+    // Billed 8 pm CDT on Oct 2 (Oct 3 in UTC), paid at the door the same day.
+    const evening = [inv('a', 'billed', '2026-10-03T01:00:00+00:00')]
+    expect(paymentDateBeforeBilled({ amount: 1, invoice_id: 'a', paid_on: '2026-10-02' }, evening)).toBe(false)
+    expect(paymentDateBeforeBilled({ amount: 1, invoice_id: 'a', paid_on: '2026-10-01' }, evening)).toBe(true)
+    // 6:30 pm CST on Dec 1: paid Dec 1 is the same day.
+    expect(paymentDateBeforeBilled({ amount: 1, invoice_id: 'a', paid_on: '2026-12-01' }, [inv('a', 'billed', '2026-12-02T00:30:00Z')])).toBe(false)
+  })
+
   it('falls back to the est. bill date and stays quiet without dates or a link', () => {
     const estOnly = [inv('a', 'billed', null, '2026-08-10')]
     expect(paymentDateBeforeBilled({ amount: 1, invoice_id: 'a', paid_on: '2026-08-01' }, estOnly)).toBe(true)

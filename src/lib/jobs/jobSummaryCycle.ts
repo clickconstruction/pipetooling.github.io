@@ -1,5 +1,6 @@
 import type { JobDayLedger } from './jobDayLedger'
 import { ymdToDayNumber } from './jobRunningTimeline'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import type { JobSummaryEnrichedRow, JobSummaryLedgerRowInput } from './jobSummaryLedgerView'
 
 /**
@@ -41,7 +42,8 @@ export function median(values: readonly number[]): number | null {
 export function jobCycleRow(row: JobSummaryEnrichedRow, ledger: JobDayLedger | null): JobCycleRow {
   const job = row.row.job
   const lastWorkYmd = ledger?.jobs.get(job.id)?.lastYmd ?? ymd(job.last_work_date)
-  const billed = (job.invoices ?? []).map((i) => ymd(i.billed_at)).filter((d): d is string => d != null).sort()
+  // billed_at is an instant: its day in APP_CALENDAR_TZ. last_work_date and paid_on are dates and keep `ymd`.
+  const billed = (job.invoices ?? []).map((i) => calendarYmdInAppTzFromIso(i.billed_at ?? '') || null).filter((d): d is string => d != null).sort()
   const billYmd = billed[0] ?? null
   const paid = (job.payments ?? []).map((p) => ymd(p.paid_on)).filter((d): d is string => d != null).sort()
   const invoiced = (job.invoices ?? []).reduce((a, i) => a + (i.amount ?? 0), 0)

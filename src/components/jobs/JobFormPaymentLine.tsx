@@ -28,7 +28,7 @@ import { CHECK_DID_NOT_CLEAR_LABEL, CHECK_DID_NOT_CLEAR_TITLE, paymentRowOffersC
 import { paymentMoveBlock, paymentMoveBlockText } from '../../lib/jobs/jobPaymentMove'
 import { autoApplyInvoiceId } from '../../lib/jobs/paymentInvoiceLinking'
 import type { InvoiceWithJobForBillView } from './BilledBillViewModal'
-import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils'
 
 /** The host's doors a payment line opens — the same seven the ③ table always had. */
 export type PaymentLineActions = {
@@ -402,7 +402,7 @@ export function JobFormPaymentLine({ row, bill, sliceAmount, partial, job, bankF
                 <option value="">Job (no bill picked)</option>
                 {linkable.map((inv) => (
                   <option key={inv.id} value={inv.id}>
-                    {`$${formatCurrency(Number(inv.amount ?? 0))} bill${inv.sent_to_customer_at ? ` · sent ${String(inv.sent_to_customer_at).slice(0, 10)}` : ''}`}
+                    {`$${formatCurrency(Number(inv.amount ?? 0))} bill${inv.sent_to_customer_at ? ` · sent ${calendarYmdInAppTzFromIso(String(inv.sent_to_customer_at))}` : ''}`}
                   </option>
                 ))}
               </select>
