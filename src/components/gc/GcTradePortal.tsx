@@ -19,6 +19,7 @@ import {
   type TradePackage,
 } from '../../lib/gcMode/gcModel'
 import { BidTabTable } from './GcBidTabs'
+import { GcBuildingPayAppDoor } from './GcBuildingPayApp'
 import { Btn, Chip, input } from './gcUi'
 
 /**
@@ -327,12 +328,10 @@ function SowBlock({
   partner: Partner
   dispatch: Dispatch<GcAction>
 }) {
-  const [waiver, setWaiver] = useState(false)
   const sow = pkg.sow
   if (!sow) return null
   const ids = { projectId: project.id, packageId: pkg.id }
   const m = sowMoney(sow)
-  const open = sow.draws.some((d) => d.status === 'requested')
 
   if (sow.status === 'draft') {
     return <Block title={`${pkg.trade} · you got the job`}>Click picked your number. Your statement of work is being written.</Block>
@@ -381,30 +380,8 @@ function SowBlock({
                 </select>
               </label>
             ))}
-            {m.ready > 0 && !open && (
-              <div style={{ padding: '0.55rem 0.65rem', background: PAPER, borderRadius: 6, display: 'grid', gap: '0.4rem' }}>
-                <div>
-                  You can ask for <strong>{money(m.ready)}</strong>. Click holds {sow.retainagePct}%, so{' '}
-                  <strong>{money(m.ready * (1 - sow.retainagePct / 100))}</strong> comes to you now.
-                </div>
-                <label style={{ display: 'flex', gap: '0.45rem', alignItems: 'center' }}>
-                  <input type="checkbox" checked={waiver} onChange={(e) => setWaiver(e.target.checked)} />
-                  I sign the conditional lien waiver for this amount.
-                </label>
-                <div>
-                  <Btn
-                    kind="primary"
-                    disabled={!waiver}
-                    onClick={() => {
-                      dispatch({ type: 'tradeRequestDraw', ...ids })
-                      setWaiver(false)
-                    }}
-                  >
-                    Ask for this draw
-                  </Btn>
-                </div>
-              </div>
-            )}
+            {/* Building lane: a draw is asked for with its pay application (the 702 and 703). */}
+            <GcBuildingPayAppDoor project={project} pkg={pkg} partner={partner} dispatch={dispatch} />
             {sow.draws.map((d) => (
               <div key={d.id} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                 <strong>Draw {d.number}</strong>

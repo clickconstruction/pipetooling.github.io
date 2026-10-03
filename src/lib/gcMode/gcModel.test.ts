@@ -97,6 +97,21 @@ const STEPS: Step[] = [
   { label: 'A call with Cibolo Creek Partners', action: { type: 'logCustomerContact', customerId: 'cibolo', note: 'Asked when the pad building bids are due.' } },
   { label: 'Pad B: ask Lonestar for Sitework', action: { type: 'invite', projectId: 'padb', packageId: 'bsite', partnerId: 'lonestar' } },
   { label: 'Pad B: ask Alamo for Concrete', action: { type: 'invite', projectId: 'padb', packageId: 'bconc', partnerId: 'alamo' } },
+  // Helotes, building: a draw asked for with its G702/G703.
+  {
+    label: 'Hill Country sends pay application 3 (ceilings done)',
+    action: {
+      type: 'tradeSendPayApp',
+      projectId: 'helotes',
+      packageId: 'dry',
+      toPct: { 'dry-3': 100 },
+      periodTo: '2026-10-02',
+      address: '418 River Rd, Boerne, TX 78006',
+      license: '',
+      signedBy: 'Rosa Medina',
+      signedTitle: 'Office manager',
+    },
+  },
 ]
 
 const CUSTOMER_IDS = ['cibolo', 'raman']
@@ -218,6 +233,7 @@ describe('GC mode golden walk', () => {
       'carry', 'markWon', 'markBidSent', 'shareBidTab', 'tradeSeeBidTab', 'award', 'sendMsa', 'tradeSignMsa',
       'sendSow', 'tradeSignSow', 'tradeReport', 'tradeRequestDraw', 'approveDraw', 'payDraw',
       'tradeSignUnconditional', 'setMarkup', 'logCustomerContact', 'addPartner', 'setCoverage', 'reset',
+      'tradeSendPayApp',
     ]
     expect(all.filter((t) => !used.has(t))).toEqual([])
   })

@@ -9,6 +9,7 @@ import { planRecipients } from './gcPlans'
 import { bidsIn } from './gcBids'
 import { awardedPartner, find, logged, mapInvite, mapPackage, mapProject, mapSow, sowFromBid } from './gcReducerHelpers'
 import { initialGcState } from './gcFixture'
+import { payApplication } from './gcBuilding'
 
 export function gcReducer(state: GcState, action: GcAction): GcState {
   switch (action.type) {
@@ -478,5 +479,52 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
 
     case 'setMarkup':
       return mapProject(state, action.projectId, (p) => ({ ...p, [action.field]: action.value }))
+
+    case 'tradeSendPayApp': {
+      // The draw, asked for with its G702/G703: the same money as tradeRequestDraw, from the
+      // percents the application claims, with what the trade typed kept on the draw.
+      const { pkg } = find(state, action.projectId, action.packageId)
+      const partner = awardedPartner(state, pkg)
+      const sow = pkg?.sow
+      if (!pkg || !partner || !sow || sow.status !== 'signed') return state
+      if (sow.draws.some((d) => d.status === 'requested')) return state
+      const number = sow.draws.length + 1
+      const app = payApplication(sow, number, action.toPct)
+      const gross = app.totals.thisPeriod
+      if (gross <= 0) return state
+      const retainage = (gross * sow.retainagePct) / 100
+      const address = action.address.trim()
+      const license = action.license.trim()
+      const draw: Draw = {
+        id: `${pkg.id}-draw-${number}`,
+        number,
+        requestedOn: state.today,
+        gross,
+        retainage,
+        net: gross - retainage,
+        status: 'requested',
+        waiver: 'conditional',
+        lines: app.lines.filter((l) => l.thisPeriod > 0).map((l) => ({ sovId: l.sovId, toPct: l.pct })),
+        payApp: { periodTo: action.periodTo, address, license, signedBy: action.signedBy.trim(), signedTitle: action.signedTitle.trim(), signedOn: state.today },
+      }
+      const claimed = new Map(app.lines.map((l) => [l.sovId, l.pct]))
+      const next = mapProject(state, action.projectId, (p) =>
+        mapPackage(p, pkg.id, (k) =>
+          mapSow(k, (s) => ({
+            ...s,
+            sov: s.sov.map((l) => ({ ...l, pctReported: Math.max(l.pctReported, claimed.get(l.id) ?? 0) })),
+            draws: [...s.draws, draw],
+          })),
+        ),
+      )
+      // Their address and license are kept on the company, so the next application has them.
+      const kept: GcState = {
+        ...next,
+        partners: next.partners.map((p) =>
+          p.id === partner.id ? { ...p, ...(address ? { address } : {}), ...(license ? { license } : {}) } : p,
+        ),
+      }
+      return logged(kept, 'trade', `${partner.company} sent pay application ${number} on ${pkg.trade}: ${money(gross)}, with a conditional waiver signed.`)
+    }
   }
 }

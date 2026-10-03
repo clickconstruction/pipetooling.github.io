@@ -29,6 +29,7 @@ import {
   type TradePackage,
 } from '../../lib/gcMode/gcModel'
 import { AskThread } from './GcAskThread'
+import { GcBuildingPayAppWindow } from './GcBuildingPayApp'
 import { GcNewPlansWindow } from './GcNewPlans'
 import { Btn, Card, Chip, Stat, Why, input, num, td, th, type Tone } from './gcUi'
 
@@ -849,6 +850,11 @@ export function GcContractsTab({ state, project, dispatch }: GcPaneProps) {
 
 export function GcDrawsTab({ state, project, dispatch }: GcPaneProps) {
   const signed = project.packages.filter((p) => p.sow?.status === 'signed')
+  const [looking, setLooking] = useState<{ packageId: string; drawId: string } | null>(null)
+  const lookPkg = looking ? signed.find((p) => p.id === looking.packageId) : undefined
+  const lookDraw = lookPkg?.sow?.draws.find((d) => d.id === looking?.drawId)
+  const lookInvite = lookPkg?.invites.find((i) => i.id === lookPkg.awardedInviteId)
+  const lookPartner = lookInvite ? partnerById(state, lookInvite.partnerId) : undefined
   return (
     <div style={{ display: 'grid', gap: '0.9rem' }}>
       <Why>
@@ -918,6 +924,9 @@ export function GcDrawsTab({ state, project, dispatch }: GcPaneProps) {
                   {d.status === 'approved' && (
                     <Btn kind="primary" onClick={() => dispatch({ type: 'payDraw', ...ids, drawId: d.id })}>Mark paid</Btn>
                   )}
+                  <Btn kind="quiet" onClick={() => setLooking({ packageId: pkg.id, drawId: d.id })}>
+                    {d.payApp ? 'Pay application' : 'Pay application, rebuilt'}
+                  </Btn>
                 </div>
               ))}
               {m.ready > 0 && !sow.draws.some((d) => d.status === 'requested') && (
@@ -929,6 +938,9 @@ export function GcDrawsTab({ state, project, dispatch }: GcPaneProps) {
           </Card>
         )
       })}
+      {lookPkg && lookDraw && lookPartner && (
+        <GcBuildingPayAppWindow project={project} pkg={lookPkg} partner={lookPartner} draw={lookDraw} viewer="office" onClose={() => setLooking(null)} />
+      )}
     </div>
   )
 }

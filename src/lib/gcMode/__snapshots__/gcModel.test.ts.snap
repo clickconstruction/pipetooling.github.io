@@ -4553,6 +4553,25 @@ exports[`GC mode golden walk > step 56: Pad B: ask Alamo for Concrete 1`] = `
 }
 `;
 
+exports[`GC mode golden walk > step 57: Hill Country sends pay application 3 (ceilings done) 1`] = `
+{
+  "changed": {
+    "lastLog.id": 53,
+    "lastLog.text": "Hill Country Interiors sent pay application 3 on Framing and drywall: $7,500, with a conditional waiver signed.",
+    "lastLog.who": "trade",
+    "projects.helotes.stageProgress.also[0]": "Hill Country Interiors asked for draw 3. Approve it.",
+    "projects.helotes.stageProgress.center": "31%",
+    "projects.helotes.stageProgress.groups[0].items[0].detail": "100% reported",
+    "projects.helotes.stageProgress.groups[0].items[0].done": true,
+    "projects.helotes.stageProgress.headline": "31% of the work is done, by what the trades have reported.",
+    "projects.helotes.stageProgress.share": 0.3079136690647482,
+  },
+  "removed": [
+    "projects.helotes.stageProgress.also",
+  ],
+}
+`;
+
 exports[`GC mode golden walk > the whole state at the end 1`] = `
 {
   "customers": [
@@ -4689,6 +4708,11 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
     },
   ],
   "log": [
+    {
+      "id": 53,
+      "text": "Hill Country Interiors sent pay application 3 on Framing and drywall: $7,500, with a conditional waiver signed.",
+      "who": "trade",
+    },
     {
       "id": 52,
       "text": "Invited Alamo Concrete to bid Concrete.",
@@ -4832,11 +4856,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
     {
       "id": 24,
       "text": "Sent the master agreement to Hillside Excavation.",
-      "who": "office",
-    },
-    {
-      "id": 23,
-      "text": "Awarded Sitework to Lonestar Earthworks. A statement of work is drafted from their bid.",
       "who": "office",
     },
   ],
@@ -5165,6 +5184,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "won": 0,
     },
     {
+      "address": "418 River Rd, Boerne, TX 78006",
       "base": "Boerne",
       "bids": 4,
       "coiExpires": "2027-04-12",
@@ -6414,6 +6434,30 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
                 "status": "paid",
                 "waiver": "unconditional",
               },
+              {
+                "gross": 7500,
+                "id": "dry-draw-3",
+                "lines": [
+                  {
+                    "sovId": "dry-3",
+                    "toPct": 100,
+                  },
+                ],
+                "net": 6750,
+                "number": 3,
+                "payApp": {
+                  "address": "418 River Rd, Boerne, TX 78006",
+                  "license": "",
+                  "periodTo": "2026-10-02",
+                  "signedBy": "Rosa Medina",
+                  "signedOn": "2026-10-02",
+                  "signedTitle": "Office manager",
+                },
+                "requestedOn": "2026-10-02",
+                "retainage": 750,
+                "status": "requested",
+                "waiver": "conditional",
+              },
             ],
             "price": 64200,
             "retainagePct": 10,
@@ -6438,7 +6482,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
                 "id": "dry-3",
                 "label": "Ceilings",
                 "pctBilled": 50,
-                "pctReported": 50,
+                "pctReported": 100,
               },
             ],
             "status": "signed",

@@ -89,6 +89,8 @@ export interface Draw {
   status: 'requested' | 'approved' | 'paid'
   waiver: 'conditional' | 'unconditional'
   lines: { sovId: string; toPct: number }[]
+  /** The G702/G703 the trade sent with this draw. Absent on a draw asked for without one. */
+  payApp?: DrawPayApp
 }
 
 export interface Sow {
@@ -155,6 +157,10 @@ export interface Partner {
   /** Promises of a quote date before today's live asks: how many they made, how many they kept. */
   promisesMade: number
   promisesKept: number
+  /** Their mailing address for the pay application. Asked once, in their first one. */
+  address?: string
+  /** Their license line for the pay application. Optional. */
+  license?: string
 }
 
 /** A question a trade asked about the plans. The architect answers; every bidder on the trade gets it. */
@@ -305,3 +311,25 @@ export type GcAction =
   | { type: 'addPartner'; company: string; contact: string; trade: string; base: string | null; maxMiles: number | null }
   | { type: 'setCoverage'; partnerId: string; base: string | null; maxMiles: number | null }
   | { type: 'reset' }
+  | {
+      type: 'tradeSendPayApp'
+      projectId: string
+      packageId: string
+      /** Percent done per line, as the pay application claims it. */
+      toPct: Record<string, number>
+      periodTo: string
+      address: string
+      license: string
+      signedBy: string
+      signedTitle: string
+    }
+
+/** What the trade typed on a draw's pay application. The numbers are rebuilt from the draws (`payApplicationForDraw`). */
+export interface DrawPayApp {
+  periodTo: string
+  address: string
+  license: string
+  signedBy: string
+  signedTitle: string
+  signedOn: string
+}
