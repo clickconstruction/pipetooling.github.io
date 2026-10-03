@@ -2,7 +2,7 @@
  * GC mode — design spike. Plans: sheets and disciplines, who hears about a new set, the email, who opened it.
  * Split out of gcModel.ts verbatim; import from `./gcModel`, which re-exports every file.
  */
-import type { GcProject, GcState, Invite, Partner, PlanQuestion, PlanSheet, TradePackage } from './gcTypes'
+import type { GcProject, GcState, Invite, Partner, PlanQuestion, PlanSheet, SpecSection, TradePackage } from './gcTypes'
 import { weekdayDate } from './gcWords'
 import { currentRev, partnerById } from './gcLookups'
 
@@ -142,6 +142,7 @@ function andList(words: string[]): string {
  * The words a company reads when a new set goes out. Two versions: their trade changed, or it did
  * not. `lines`: the scope lines of their trade that read from a changed sheet, named in the email.
  * `adds`: scope lines the set adds to their trade. `moves`: sentences on their activities' new dates.
+ * `specs`: the sections of the manual the set revises, with their titles.
  */
 export function planEmail(
   project: GcProject,
@@ -149,13 +150,14 @@ export function planEmail(
   note: string,
   sheets: string[],
   r: PlanRecipient | null,
-  more: { lines?: string[]; adds?: string[]; moves?: string[] } = {},
+  more: { lines?: string[]; adds?: string[]; moves?: string[]; specs?: SpecSection[] } = {},
 ): { subject: string; body: string[] } {
   const lines = more.lines ?? []
   const adds = more.adds ?? []
   const moves = (more.moves ?? []).map((m) => ` ${m}`).join('')
   const body = [`${label} for ${project.name} is out. Your portal now shows it.`, `What changed: ${note || 'see the sheets below.'}`]
   if (sheets.length > 0) body.push(`Sheets: ${sheets.join(', ')}.`)
+  if (more.specs && more.specs.length > 0) body.push(`Spec sections: ${more.specs.map((x) => `${x.id} ${x.title}`.trim()).join(', ')}.`)
   if (!r) return { subject: `${project.name}: ${label} is out`, body }
   const trade = r.pkg.trade.toLowerCase()
   const named = lines.map((l) => l.toLowerCase())
@@ -197,8 +199,9 @@ export function questionsCloseOn(project: GcProject): string | null {
   return new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, (d ?? 1) - QUESTIONS_CLOSE_DAYS)).toISOString().slice(0, 10)
 }
 
-/** A company can still ask today. */
+/** A company can still ask today. Never on a bid we lost: nobody is open on it. */
 export function questionsOpen(project: GcProject, today: string): boolean {
+  if (project.lostOn) return false
   const close = questionsCloseOn(project)
   return close === null || today < close
 }

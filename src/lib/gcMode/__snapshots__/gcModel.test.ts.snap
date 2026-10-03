@@ -350,8 +350,7 @@ exports[`GC mode golden walk > before any step 1`] = `
         "«project padb»",
         "«project fairoaksd»",
       ],
-      "sets": 4,
-      "waiting": [
+      "notSent": [
         {
           "days": 5,
           "project": "«project boerne»",
@@ -379,6 +378,8 @@ exports[`GC mode golden walk > before any step 1`] = `
           },
         },
       ],
+      "sets": 4,
+      "waiting": [],
     },
     "ocotillo": {
       "addenda": 0,
@@ -399,6 +400,7 @@ exports[`GC mode golden walk > before any step 1`] = `
       "live": [
         "«project helotes»",
       ],
+      "notSent": [],
       "sets": 1,
       "waiting": [],
     },
@@ -7426,16 +7428,16 @@ exports[`GC mode golden walk > step 120: Fair Oaks D: the rough-in inspection pa
 exports[`GC mode golden walk > step 121: Pad B: Lonestar asks whether the drive-through lane is concrete 1`] = `
 {
   "changed": {
-    "customers.marshvale.waiting[2].days": 0,
-    "customers.marshvale.waiting[2].project": "«project padb»",
-    "customers.marshvale.waiting[2].question.answer": null,
-    "customers.marshvale.waiting[2].question.answeredOn": null,
-    "customers.marshvale.waiting[2].question.askedOn": "2026-10-02",
-    "customers.marshvale.waiting[2].question.id": "padb-q-1",
-    "customers.marshvale.waiting[2].question.packageId": "bsite",
-    "customers.marshvale.waiting[2].question.partnerId": "lonestar",
-    "customers.marshvale.waiting[2].question.sheets[0]": "C-101",
-    "customers.marshvale.waiting[2].question.text": "Is the drive-through lane concrete or asphalt?",
+    "customers.marshvale.notSent[2].days": 0,
+    "customers.marshvale.notSent[2].project": "«project padb»",
+    "customers.marshvale.notSent[2].question.answer": null,
+    "customers.marshvale.notSent[2].question.answeredOn": null,
+    "customers.marshvale.notSent[2].question.askedOn": "2026-10-02",
+    "customers.marshvale.notSent[2].question.id": "padb-q-1",
+    "customers.marshvale.notSent[2].question.packageId": "bsite",
+    "customers.marshvale.notSent[2].question.partnerId": "lonestar",
+    "customers.marshvale.notSent[2].question.sheets[0]": "C-101",
+    "customers.marshvale.notSent[2].question.text": "Is the drive-through lane concrete or asphalt?",
     "lastLog.id": 117,
     "lastLog.text": "Lonestar Earthworks asked about C-101: Is the drive-through lane concrete or asphalt?",
     "lastLog.who": "trade",
@@ -7447,12 +7449,34 @@ exports[`GC mode golden walk > step 121: Pad B: Lonestar asks whether the drive-
 exports[`GC mode golden walk > step 122: Pad B: send the question to the architect 1`] = `
 {
   "changed": {
-    "customers.marshvale.waiting[2].question.sentToArchitectOn": "2026-10-02",
+    "customers.marshvale.waiting[0].days": 0,
+    "customers.marshvale.waiting[0].project": "«project padb»",
+    "customers.marshvale.waiting[0].question.answer": null,
+    "customers.marshvale.waiting[0].question.answeredOn": null,
+    "customers.marshvale.waiting[0].question.askedOn": "2026-10-02",
+    "customers.marshvale.waiting[0].question.id": "padb-q-1",
+    "customers.marshvale.waiting[0].question.packageId": "bsite",
+    "customers.marshvale.waiting[0].question.partnerId": "lonestar",
+    "customers.marshvale.waiting[0].question.sentToArchitectOn": "2026-10-02",
+    "customers.marshvale.waiting[0].question.sheets[0]": "C-101",
+    "customers.marshvale.waiting[0].question.text": "Is the drive-through lane concrete or asphalt?",
     "lastLog.id": 118,
     "lastLog.text": "Sent Lonestar Earthworks's question to Marsh & Vale Architects.",
     "lastLog.who": "office",
   },
-  "removed": [],
+  "removed": [
+    "customers.marshvale.waiting",
+    "customers.marshvale.notSent[2].project",
+    "customers.marshvale.notSent[2].question.id",
+    "customers.marshvale.notSent[2].question.packageId",
+    "customers.marshvale.notSent[2].question.partnerId",
+    "customers.marshvale.notSent[2].question.text",
+    "customers.marshvale.notSent[2].question.askedOn",
+    "customers.marshvale.notSent[2].question.answeredOn",
+    "customers.marshvale.notSent[2].question.answer",
+    "customers.marshvale.notSent[2].question.sheets[0]",
+    "customers.marshvale.notSent[2].days",
+  ],
 }
 `;
 
@@ -7471,21 +7495,22 @@ exports[`GC mode golden walk > step 123: Pad B: the architect answers, sent to t
     "customers.marshvale.answered[1].question.sentToArchitectOn": "2026-10-02",
     "customers.marshvale.answered[1].question.sheets[0]": "C-101",
     "customers.marshvale.answered[1].question.text": "Is the drive-through lane concrete or asphalt?",
+    "customers.marshvale.waiting": "[]",
     "lastLog.id": 119,
     "lastLog.text": "Answered a sitework question on Boerne Retail Pad B and sent it to 1 company.",
   },
   "removed": [
-    "customers.marshvale.waiting[2].project",
-    "customers.marshvale.waiting[2].question.id",
-    "customers.marshvale.waiting[2].question.packageId",
-    "customers.marshvale.waiting[2].question.partnerId",
-    "customers.marshvale.waiting[2].question.text",
-    "customers.marshvale.waiting[2].question.askedOn",
-    "customers.marshvale.waiting[2].question.answeredOn",
-    "customers.marshvale.waiting[2].question.answer",
-    "customers.marshvale.waiting[2].question.sheets[0]",
-    "customers.marshvale.waiting[2].question.sentToArchitectOn",
-    "customers.marshvale.waiting[2].days",
+    "customers.marshvale.waiting[0].project",
+    "customers.marshvale.waiting[0].question.id",
+    "customers.marshvale.waiting[0].question.packageId",
+    "customers.marshvale.waiting[0].question.partnerId",
+    "customers.marshvale.waiting[0].question.text",
+    "customers.marshvale.waiting[0].question.askedOn",
+    "customers.marshvale.waiting[0].question.answeredOn",
+    "customers.marshvale.waiting[0].question.answer",
+    "customers.marshvale.waiting[0].question.sheets[0]",
+    "customers.marshvale.waiting[0].question.sentToArchitectOn",
+    "customers.marshvale.waiting[0].days",
   ],
 }
 `;
@@ -7801,10 +7826,22 @@ exports[`GC mode golden walk > step 137: Accept the concrete work on Fair Oaks D
 }
 `;
 
-exports[`GC mode golden walk > step 138: Fair Oaks D: the service re-inspection fails again 1`] = `
+exports[`GC mode golden walk > step 138: Leon Springs: Addendum 1 revises the roofing section 1`] = `
 {
   "changed": {
+    "customers.marshvale.addenda": 5,
+    "customers.marshvale.sets": 9,
     "lastLog.id": 134,
+    "lastLog.text": "Issued Addendum 1 on Leon Springs Urgent Care and emailed 0 companies. 0 were told it changes their trade. It adds 1 scope line.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 139: Fair Oaks D: the service re-inspection fails again 1`] = `
+{
+  "changed": {
+    "lastLog.id": 135,
     "lastLog.text": "The electrical service inspection failed on Fair Oaks Shops, Building D: The jumper is in. The service disconnect label is still missing. It was Electrical's work. Re-inspection Tue Oct 6.",
     "projects.fairoaksd.stageProgress.also[1]": "The electrical service inspection failed Oct 2 on the Electrical work. Re-inspection Oct 6.",
   },
@@ -8012,8 +8049,13 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
-      "id": 134,
+      "id": 135,
       "text": "The electrical service inspection failed on Fair Oaks Shops, Building D: The jumper is in. The service disconnect label is still missing. It was Electrical's work. Re-inspection Tue Oct 6.",
+      "who": "office",
+    },
+    {
+      "id": 134,
+      "text": "Issued Addendum 1 on Leon Springs Urgent Care and emailed 0 companies. 0 were told it changes their trade. It adds 1 scope line.",
       "who": "office",
     },
     {
@@ -8154,11 +8196,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
     {
       "id": 106,
       "text": "Set Comal Iron's language to Spanish: its portal and messages.",
-      "who": "office",
-    },
-    {
-      "id": 105,
-      "text": "Issued Bulletin 2 on Helotes Dental Office and emailed 1 company. 1 was told it changes their trade. It adds 38 days to the job.",
       "who": "office",
     },
   ],
@@ -13509,6 +13546,14 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
               "id": "leon-springs-urgent-care-roofing-2",
               "label": "Sheet metal and flashing",
             },
+            {
+              "id": "leon-springs-urgent-care-roofing-r1-1",
+              "label": "Walk pads",
+              "sheets": [],
+              "specs": [
+                "07 54 23",
+              ],
+            },
           ],
           "selfPerform": null,
           "sow": null,
@@ -13583,6 +13628,32 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
           "note": "5 sheets.",
           "rev": 0,
           "touches": [],
+        },
+        {
+          "addedLines": [
+            {
+              "packageId": "leon-springs-urgent-care-roofing",
+              "scopeId": "leon-springs-urgent-care-roofing-r1-1",
+            },
+          ],
+          "addedSpecs": [
+            {
+              "id": "07 54 23",
+              "title": "Thermoplastic polyolefin roofing",
+            },
+          ],
+          "changedSheets": [],
+          "changedSpecs": [
+            "07 54 23",
+          ],
+          "issuedOn": "2026-10-02",
+          "label": "Addendum 1",
+          "note": "Section 07 54 23: the membrane goes from 60 to 80 mil, with walk pads to each rooftop unit.",
+          "rev": 1,
+          "sentTo": [],
+          "touches": [
+            "leon-springs-urgent-care-roofing",
+          ],
         },
       ],
       "questions": [],
