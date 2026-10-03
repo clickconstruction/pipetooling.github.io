@@ -362,6 +362,8 @@ const STEPS: Step[] = [
   { label: 'Send Dr. Raman pay application 2', action: { type: 'sendOwnerPayApp', projectId: 'helotes' } },
   { label: 'Studio Ocotillo certifies pay application 2 for $2,000 less', action: { type: 'architectCertify', projectId: 'helotes', number: 2, amount: 54_302, note: 'Two operatory cabinets are not set yet' } },
   { label: 'Dr. Raman pays pay application 2', action: { type: 'ownerPaid', projectId: 'helotes', number: 2 } },
+  // An inspection is the job's own activity (Building lane): our superintendent records the pass.
+  { label: 'Fair Oaks D: the rough-in inspection passes', action: { type: 'passInspection', projectId: 'fairoaksd', lineId: 'fairoaksd-insp-roughin' } },
 ]
 
 const CUSTOMER_IDS = ['cibolo', 'raman']
@@ -497,6 +499,7 @@ describe('GC mode golden walk', () => {
       'draftSchedule', 'setScheduleActivity', 'setScheduleMilestone', 'removeScheduleMilestone',
       'verifyLookAhead', 'crewMarkLookAhead',
       'sendTradeChange', 'tradeSignChange',
+      'passInspection',
       'tradeOpenPortal',
       'tradeAnswerLines',
       'priceOwnBid',

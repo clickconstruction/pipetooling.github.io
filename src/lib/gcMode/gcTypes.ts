@@ -513,6 +513,8 @@ export type GcAction =
   | { type: 'tradeSignChange'; projectId: string; changeOrderId: string }
   /** The architect certifies one of our pay applications to the owner, for what we asked or less. */
   | { type: 'architectCertify'; projectId: string; number: number; amount: number; note: string }
+  /** Our superintendent records an inspection passed, today. */
+  | { type: 'passInspection'; projectId: string; lineId: string }
 
 /** One trade on a new project, as the office left it in the New project window. */
 export interface NewTradeDraft {

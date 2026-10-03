@@ -2,7 +2,7 @@
  * GC mode — design spike. The made-up data the prototype starts from (Start over puts it back).
  * Split out of gcModel.ts verbatim; import from `./gcModel`, which re-exports every file.
  */
-import type { AskContact, GcCustomer, GcProject, GcState, Includes, Invite, InviteStatus, LookAheadReason, Partner, ProjectSchedule, ScopeItem, SubBid, TradePackage } from './gcTypes'
+import type { AskContact, GcCustomer, GcProject, GcState, Includes, Invite, InviteStatus, LookAheadReason, Partner, ProjectSchedule, ScheduleActivity, ScopeItem, SubBid, TradePackage } from './gcTypes'
 
 // ---------------------------------------------------------------------------------------------
 // Fixture
@@ -844,6 +844,14 @@ export function initialGcState(): GcState {
   // Roofing slipped a week since; dry-in is late; two weeks of verified look-ahead marks, and this
   // week's marks in from the trades and waiting on our superintendent.
   const act = (lineId: string, packageId: string, start: string, finish: string, after: string[] = []) => ({ lineId, packageId, start, finish, after })
+  const inspection = (lineId: string, label: string, start: string, finish: string, after: string[]): ScheduleActivity => ({
+    lineId,
+    packageId: '',
+    start,
+    finish,
+    after,
+    inspection: { label },
+  })
   const mark = (weekOf: string, lineId: string, packageId: string, done: boolean, verified: boolean, reason?: LookAheadReason) => ({
     weekOf,
     lineId,
@@ -853,7 +861,7 @@ export function initialGcState(): GcState {
     markedOn: addDaysIso(weekOf, 4),
     verifiedOn: verified ? addDaysIso(weekOf, 7) : null,
   })
-  const fairOaksActivities = [
+  const fairOaksWork: ScheduleActivity[] = [
     act('fsite-1', 'fsite', '2026-07-06', '2026-07-17'),
     act('fsite-2', 'fsite', '2026-07-13', '2026-07-31'),
     act('fsite-3', 'fsite', '2026-08-10', '2026-08-21', ['fsite-2']),
@@ -873,14 +881,28 @@ export function initialGcState(): GcState {
     act('felec-2', 'felec', '2026-09-14', '2026-10-02', ['felec-1']),
     act('felec-3', 'felec', '2026-09-14', '2026-10-23', ['felec-1']),
     act('felec-5', 'felec', '2026-10-19', '2026-10-30', ['fconc-3']),
-    act('felec-4', 'felec', '2026-11-02', '2026-11-20', ['felec-3']),
+    act('felec-4', 'felec', '2026-11-02', '2026-11-20', ['felec-3', 'fairoaksd-insp-roughin']),
     act('fplumb-2', 'fplumb', '2026-09-14', '2026-09-25', ['fconc-2']),
     act('fplumb-3', 'fplumb', '2026-09-28', '2026-10-09', ['fplumb-2']),
     act('fhvac-2', 'fhvac', '2026-09-14', '2026-10-09', ['fsteel-1']),
     act('fhvac-1', 'fhvac', '2026-10-12', '2026-10-23', ['froof-1']),
-    act('fhvac-3', 'fhvac', '2026-11-02', '2026-11-13', ['fhvac-1']),
-    act('fplumb-4', 'fplumb', '2026-11-30', '2026-12-04', ['fplumb-3']),
+    act('fhvac-3', 'fhvac', '2026-11-02', '2026-11-13', ['fhvac-1', 'fairoaksd-insp-roughin']),
+    act('fplumb-4', 'fplumb', '2026-11-30', '2026-12-04', ['fplumb-3', 'fairoaksd-insp-roughin']),
     act('fhvac-4', 'fhvac', '2026-11-30', '2026-12-04', ['fhvac-3']),
+    // The inspections (owner, 2026-10-03) are the job's own activities. The rough-in inspection
+    // waits on the rough-ins; the fire alarm, controls and plumbing trim wait on it.
+    inspection('fairoaksd-insp-roughin', 'Rough-in inspection', '2026-10-12', '2026-10-13', ['felec-2', 'fplumb-3', 'fhvac-2']),
+  ]
+  // The final inspection waits on everything nothing else waits on.
+  const fairOaksActivities = [
+    ...fairOaksWork,
+    inspection(
+      'fairoaksd-insp-final',
+      'Final inspection',
+      '2026-12-07',
+      '2026-12-08',
+      fairOaksWork.filter((a) => !fairOaksWork.some((b) => b.after.includes(a.lineId))).map((a) => a.lineId),
+    ),
   ]
   // The plan at Start: the membrane was to be down by Oct 2, the curbs and flashing a week sooner.
   const fairOaksBaseline = Object.fromEntries(
@@ -898,7 +920,7 @@ export function initialGcState(): GcState {
     milestones: [
       { id: 'fo-slab', label: 'Slab poured', planned: '2026-08-28', packageId: 'fconc', metOn: '2026-08-27' },
       { id: 'fo-dryin', label: 'Dry-in', planned: '2026-09-25', packageId: 'froof', metOn: null },
-      { id: 'fo-roughin', label: 'Rough-in inspection', planned: '2026-10-06', packageId: null, metOn: null },
+      { id: 'fo-roughin', label: 'Rough-in inspection', planned: '2026-10-13', packageId: null, metOn: null },
       { id: 'fo-substantial', label: 'Substantial completion', planned: '2026-12-11', packageId: null, metOn: null },
     ],
     baseline: { lockedOn: '2026-07-01', activities: fairOaksBaseline },

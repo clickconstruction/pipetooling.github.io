@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  activityName,
   daysBetween,
   draftSchedule,
   gcReducer,
@@ -10,6 +11,7 @@ import {
   mondayOf,
   plannedPct,
   scheduleFloat,
+  scheduleItems,
   scheduleMeasures,
   scheduleLinesOf,
   scheduleRows,
@@ -69,8 +71,11 @@ describe('Fair Oaks D, mid-build', () => {
     expect(m.work.daysBehind).toBe(3)
   })
 
-  it('runs its critical path out to the trims', () => {
-    expect(m.critical.map((r) => `${r.trade} · ${r.label}`)).toEqual(['Plumbing · Trim', 'HVAC · Test and balance'])
+  it('runs its critical path out to the final inspection', () => {
+    // The trims finish Friday Dec 4 and the final inspection starts Monday Dec 7: on calendar days
+    // the weekend reads as 2 spare days, so the inspection alone has none.
+    expect(m.critical.map(activityName)).toEqual(['Final inspection'])
+    expect(m.float.get('fplumb-4')).toBe(2)
   })
 
   it('hit the slab, and dry-in is late', () => {
@@ -78,7 +83,7 @@ describe('Fair Oaks D, mid-build', () => {
     expect(rows.map((r) => [r.milestone.label, r.state, r.daysLate])).toEqual([
       ['Slab poured', 'hit', -1],
       ['Dry-in', 'late', 7],
-      ['Rough-in inspection', 'due', -4],
+      ['Rough-in inspection', 'due', -11],
       ['Substantial completion', 'due', -70],
     ])
     expect(milestoneHitRate(rows)).toEqual({ hit: 1, of: 2 })
@@ -110,7 +115,7 @@ describe('drawing the schedule', () => {
     const d = draftSchedule(project, '2026-10-12')
     const ids = d.activities.map((a) => a.lineId)
     const lines = project.packages.flatMap((k) => scheduleLinesOf(k).map((l) => l.lineId))
-    // Inspections are activities of their own, no trade's line (New Project lane, with the Building lane's OK).
+    // The draft's inspections are the job's own activities, not trade lines.
     expect(d.activities.filter((a) => !a.inspection).map((a) => a.lineId).sort()).toEqual([...lines].sort())
     expect(d.activities.every((a) => a.start >= '2026-10-12' && a.finish >= a.start && a.after.every((id) => ids.includes(id) && id !== a.lineId))).toBe(true)
     expect(d.milestones.map((m) => m.id)).toEqual(expect.arrayContaining(['helotes-roughin', 'helotes-substantial']))
@@ -169,5 +174,59 @@ describe("the superintendent's verify list", () => {
     expect(fairOaks(s).schedule?.lookAhead.find((x) => x.weekOf === '2026-10-05')).toMatchObject({ lineId: 'fplumb-3', done: true, verifiedOn: '2026-10-02' })
     const hired = initialGcState()
     expect(gcReducer(hired, { type: 'crewMarkLookAhead', projectId: 'fairoaksd', weekOf: '2026-09-28', lineId: 'fsteel-3', done: true })).toBe(hired)
+  })
+})
+
+describe('inspections', () => {
+  const at = (today: string): GcState => ({ ...initialGcState(), today })
+  const pass = (s: GcState, lineId = 'fairoaksd-insp-roughin') => gcReducer(s, { type: 'passInspection', projectId: 'fairoaksd', lineId })
+
+  it('are on the chart but carry no dollars: work done against the plan reads the trades only', () => {
+    const s = initialGcState()
+    const items = scheduleItems(s, fairOaks(s))
+    const insp = items.filter((i) => i.activity.inspection)
+    expect(insp.map((i) => [i.label, i.trade, i.company, i.worth, i.pkg])).toEqual([
+      ['Rough-in inspection', 'Inspections', 'The city', 0, null],
+      ['Final inspection', 'Inspections', 'The city', 0, null],
+    ])
+    expect(scheduleRows(s, fairOaks(s)).some((r) => r.activity.inspection)).toBe(false)
+    expect(scheduleMeasures(s, fairOaks(s)).float.get('fairoaksd-insp-roughin')).toBe(35)
+  })
+
+  it('shows in the look-ahead the week it is planned, and on the verify list from that week', () => {
+    const s = initialGcState()
+    const weeks = lookAheadWeeks(fairOaks(s), scheduleRows(s, fairOaks(s)), s.today)
+    expect(weeks.map((w) => w.inspections.map((i) => i.label))).toEqual([[], [], ['Rough-in inspection']])
+    expect(verifyList(fairOaks(s), scheduleRows(s, fairOaks(s)), s.today).inspections).toEqual([])
+    const later = at('2026-10-12')
+    expect(verifyList(fairOaks(later), scheduleRows(later, fairOaks(later)), later.today).inspections.map((i) => i.label)).toEqual(['Rough-in inspection'])
+  })
+
+  it('passes once, today, and meets the milestone of the same name', () => {
+    const passed = pass(at('2026-10-13'))
+    const a = fairOaks(passed).schedule?.activities.find((x) => x.lineId === 'fairoaksd-insp-roughin')
+    expect(a?.inspection).toEqual({ label: 'Rough-in inspection', passedOn: '2026-10-13' })
+    expect(milestoneRows(passed, fairOaks(passed)).find((r) => r.milestone.id === 'fo-roughin')).toMatchObject({ state: 'hit', daysLate: 0 })
+    expect(passed.log[0]?.text).toBe('The rough-in inspection passed on Fair Oaks Shops, Building D. The Rough-in inspection milestone is met.')
+    const item = scheduleItems(passed, fairOaks(passed)).find((i) => i.activity.lineId === 'fairoaksd-insp-roughin')
+    expect(item?.actual).toBe(100)
+    // Once only, and only an inspection.
+    expect(pass(passed)).toBe(passed)
+    const s = initialGcState()
+    expect(pass(s, 'fplumb-4')).toBe(s)
+  })
+
+  it('moves like any activity, logged by its own name', () => {
+    const moved = gcReducer(initialGcState(), {
+      type: 'setScheduleActivity',
+      projectId: 'fairoaksd',
+      lineId: 'fairoaksd-insp-roughin',
+      start: '2026-10-14',
+      finish: '2026-10-15',
+      after: ['felec-2', 'fplumb-3', 'fhvac-2'],
+    })
+    expect(moved.log[0]?.text).toBe('Rough-in inspection now runs Wed Oct 14 to Thu Oct 15.')
+    const row = scheduleItems(moved, fairOaks(moved)).find((i) => i.activity.lineId === 'fairoaksd-insp-roughin')
+    expect(row?.slipDays).toBe(2)
   })
 })
