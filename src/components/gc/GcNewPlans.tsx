@@ -103,6 +103,11 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
   const [titles, setTitles] = useState<Record<string, string>>({})
   const [touchOverride, setTouchOverride] = useState<string[] | null>(null)
   const [brought, setBrought] = useState<BroughtTrade[]>([])
+  /** Scope lines this set adds, by trade (package id). */
+  const [newLines, setNewLines] = useState<Record<string, string[]>>({})
+  /** The trade whose Add a line box is open, and what is typed in it. */
+  const [lineFor, setLineFor] = useState<string | null>(null)
+  const [lineText, setLineText] = useState('')
   const [addText, setAddText] = useState('')
   const [skipped, setSkipped] = useState<string[]>([])
   const [previewId, setPreviewId] = useState<string | null>(null)
@@ -119,7 +124,15 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
   const companies = new Set(going.map((r) => r.partner.id)).size
   const ours = project.packages.filter((p) => p.selfPerform && touches.includes(p.id))
   const preview = going.find((r) => r.partner.id === previewId) ?? going.find((r) => r.touched) ?? going[0] ?? null
-  const email = planEmail(project, label, note.trim(), sheets, preview, preview?.touched ? linesOnSheets(project, preview.pkg, sheets).map((l) => l.label) : [])
+  const email = planEmail(
+    project,
+    label,
+    note.trim(),
+    sheets,
+    preview,
+    preview?.touched ? linesOnSheets(project, preview.pkg, sheets).map((l) => l.label) : [],
+    preview?.touched ? (newLines[preview.pkg.id] ?? []) : [],
+  )
   /** Every sheet once the set is in: the index and the ones this set adds. */
   const allSheets = [...index, ...added.filter((a) => !index.some((s) => s.id === a.id))]
   const sheetsOfTrade = (trade: string) => {
@@ -150,6 +163,15 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
   }, [onClose])
 
   const missing = note.trim() === '' ? 'Say what changed first.' : label === '' ? 'Give the set a name.' : null
+  const addLine = (packageId: string) => {
+    const t = lineText.trim()
+    if (t !== '') setNewLines((all) => ({ ...all, [packageId]: [...(all[packageId] ?? []), t] }))
+    setLineText('')
+    setLineFor(null)
+  }
+  /** A new line reads from the changed sheets that belong to its trade. None: the trade as a whole. */
+  const newLineSheets = (trade: string) => sheetsOfTrade(trade).map((x) => x.id).filter((id) => sheets.includes(id))
+  const linesAdded = project.packages.filter((p) => touches.includes(p.id)).reduce((n, p) => n + (newLines[p.id]?.length ?? 0), 0)
 
   return (
     <div
@@ -296,19 +318,73 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
               {touches.length > 0 && (
                 <div style={{ display: 'grid', gap: '0.2rem' }}>
                   <span style={{ fontWeight: 600 }}>The scope lines it touches</span>
+                  {linesAdded > 0 && (
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                      A quote already in never answered a new line. Compare bids shows it as not clear until you set a cost to cover it.
+                    </span>
+                  )}
                   {project.packages
                     .filter((p) => touches.includes(p.id))
                     .map((p) => {
                       const hit = linesOnSheets(project, p, sheets)
+                      const adding = newLines[p.id] ?? []
+                      const reads = newLineSheets(p.trade)
                       return (
                         <div key={p.id} style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap' }}>
                           <span style={{ minWidth: '8rem' }}>{p.trade}</span>
-                          {hit.length === 0 ? (
+                          {hit.length === 0 && adding.length === 0 ? (
                             <span style={{ color: 'var(--text-muted)' }}>no line names these sheets, so the trade as a whole</span>
                           ) : (
                             hit.map((l) => (
                               <Chip key={l.id} tone="amber">{l.label}</Chip>
                             ))
+                          )}
+                          {adding.map((l, i) => (
+                            <span
+                              key={`${l}-${i}`}
+                              title={reads.length > 0 ? `Reads from ${reads.join(', ')}` : `Reads every ${p.trade.toLowerCase()} sheet`}
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.15rem', padding: '0.1rem 0.15rem 0.1rem 0.5rem', borderRadius: 999, background: 'var(--bg-blue-200)', color: 'var(--text-blue-800)', fontSize: '0.75rem', fontWeight: 600 }}
+                            >
+                              new: {l}
+                              <button
+                                type="button"
+                                onClick={() => setNewLines((all) => ({ ...all, [p.id]: adding.filter((_, j) => j !== i) }))}
+                                aria-label={`Take out the new line ${l}`}
+                                style={{ border: 'none', background: 'transparent', color: 'inherit', cursor: 'pointer', padding: '0 0.25rem', lineHeight: 1 }}
+                              >
+                                ×
+                              </button>
+                            </span>
+                          ))}
+                          {lineFor === p.id ? (
+                            <>
+                              <input
+                                autoFocus
+                                style={{ ...input, flex: '0 1 14rem' }}
+                                value={lineText}
+                                onChange={(e) => setLineText(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') addLine(p.id)
+                                  if (e.key === 'Escape') {
+                                    e.stopPropagation()
+                                    setLineFor(null)
+                                  }
+                                }}
+                                placeholder="Detention pond"
+                                aria-label={`A line this set adds to ${p.trade}`}
+                              />
+                              <Btn onClick={() => addLine(p.id)}>Add</Btn>
+                            </>
+                          ) : (
+                            <Btn
+                              kind="quiet"
+                              onClick={() => {
+                                setLineFor(p.id)
+                                setLineText('')
+                              }}
+                            >
+                              + Add a line this set brings
+                            </Btn>
                           )}
                         </div>
                       )
@@ -469,6 +545,7 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
             {companies === 0
               ? 'No email goes out.'
               : `${companies} ${companies === 1 ? 'company gets' : 'companies get'} an email. ${going.filter((r) => r.touched).length} are told it changes their trade.`}
+            {linesAdded > 0 && ` It adds ${linesAdded} scope ${linesAdded === 1 ? 'line' : 'lines'}.`}
             {brought.length > 0 && ` It adds ${brought.length === 1 ? 'a trade' : `${brought.length} trades`}.`}
           </span>
           <span style={{ flex: 1 }} />
@@ -487,6 +564,9 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
                 addedSheets: added,
                 touches,
                 recipients: going.map((r) => r.partner.id),
+                newLines: project.packages
+                  .filter((p) => touches.includes(p.id))
+                  .flatMap((p) => (newLines[p.id] ?? []).map((l) => ({ packageId: p.id, label: l, sheets: newLineSheets(p.trade) }))),
                 newTrades: brought.map((b) => ({
                   trade: b.trade,
                   budget: Number(b.budget.replace(/[^0-9.]/g, '')) || 0,

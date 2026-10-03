@@ -21,6 +21,8 @@ export interface PlanSet {
   sentTo?: { partnerId: string; on: string; touched: boolean }[]
   /** Sheets this set adds to the index, with the titles the office gave them. */
   addedSheets?: PlanSheet[]
+  /** Scope lines this set adds to trades already on the job. Quotes in before it never answered them. */
+  addedLines?: { packageId: string; scopeId: string }[]
 }
 
 /** One drawing in the set. The discipline is read from the number's letters (E-201 → Electrical). */
@@ -387,6 +389,8 @@ export type GcAction =
       recipients: string[]
       /** Trades the job did not have that this set brings. Each gets a package; nobody is asked yet. */
       newTrades: NewTradeDraft[]
+      /** Scope lines this set adds to trades already on the job, with the sheets each reads from. */
+      newLines?: { packageId: string; label: string; sheets: string[] }[]
     }
   | { type: 'acceptWork'; projectId: string; packageId: string }
   | { type: 'tradeSendWarranty'; projectId: string; packageId: string }

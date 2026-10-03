@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  compareBids,
   gcReducer,
   initialGcState,
   nextSetLabel,
@@ -9,6 +10,7 @@ import {
   sheetAsIndexed,
   sheetsAtRev,
   sheetsInText,
+  setThatAddedLine,
   type GcAction,
   type GcProject,
 } from './gcModel'
@@ -132,5 +134,50 @@ describe('planEmail', () => {
 
   it('says nothing about lines when none are named', () => {
     expect(last(planEmail(boerne, 'Addendum 2', 'More fixtures.', ['E-101'], voltage).body)).toMatch(/^This changes electrical\. Please open the plans/)
+  })
+})
+
+describe('a new set that adds scope lines', () => {
+  const next = gcReducer(state, {
+    type: 'issuePlanSet',
+    projectId: 'boerne',
+    label: 'Addendum 2',
+    note: 'A detention pond at the north end. C-101 changed.',
+    sheets: ['C-101'],
+    addedSheets: [],
+    touches: [],
+    recipients: ['lonestar', 'tricounty'],
+    newTrades: [],
+    newLines: [
+      { packageId: 'site', label: 'Detention pond', sheets: ['C-101'] },
+      { packageId: 'site', label: '  ', sheets: [] },
+    ],
+  })
+  const boerne = next.projects.find((p) => p.id === 'boerne')
+  const site = boerne?.packages.find((p) => p.id === 'site')
+
+  it('adds the line to the end of the trade, with its sheets, and the set remembers it', () => {
+    expect(site?.scope[site.scope.length - 1]).toEqual({ id: 'site-r2-1', label: 'Detention pond', sheets: ['C-101'] })
+    expect(site?.scope).toHaveLength(5)
+    const set = boerne?.planSets[boerne.planSets.length - 1]
+    expect(set?.addedLines).toEqual([{ packageId: 'site', scopeId: 'site-r2-1' }])
+    expect(set?.touches).toEqual(['site'])
+    expect(boerne ? setThatAddedLine(boerne, 'site-r2-1') : null).toBe('Addendum 2')
+    expect(boerne ? setThatAddedLine(boerne, 'site-1') : 'x').toBeNull()
+    expect(next.log[0]?.text).toBe('Issued Addendum 2 on Boerne Retail Shell and emailed 2 companies. 2 were told it changes their trade. It adds 1 scope line.')
+  })
+
+  it('leaves the line unanswered on quotes already in, so Compare bids reads it as not clear', () => {
+    if (!boerne || !site) throw new Error('no Boerne sitework')
+    const tri = compareBids(next, boerne, site).lines.find((l) => l.company === 'Tri-County Site')
+    expect(tri?.text).toMatch(/^Tri-County Site bid \$191,000 and is not clear about detention pond\. No cost is set for detention pond yet/)
+    expect(tri?.complete).toBe(false)
+  })
+
+  it('names the line it adds in the email', () => {
+    const boerneBefore = project('boerne')
+    const lonestar = planRecipients(state, boerneBefore, ['site']).find((r) => r.partner.id === 'lonestar') ?? null
+    const body = planEmail(boerneBefore, 'Addendum 2', 'A pond.', ['C-101'], lonestar, ['Paving'], ['Detention pond']).body
+    expect(body[body.length - 1]).toMatch(/^This changes sitework\. It adds detention pond to your scope\. The line it touches is paving\. Please open/)
   })
 })
