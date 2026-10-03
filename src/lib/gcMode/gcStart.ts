@@ -4,7 +4,7 @@
  */
 import type { GcProject, GcState, Invite, Partner, TradePackage } from './gcTypes'
 import { daysUntil, shortDate, weekdayDate } from './gcWords'
-import { currentRev, partnerById, planLabel } from './gcLookups'
+import { currentRev, ownBidPriced, partnerById, planLabel } from './gcLookups'
 
 // ---------------------------------------------------------------------------------------------
 // Going into the job: is everything signed?
@@ -63,7 +63,16 @@ export function startChecklist(state: GcState, project: GcProject): StartCheckli
   ]
   const trades: StartTradeRow[] = project.packages.map((pkg) => {
     if (pkg.selfPerform) {
-      return { pkg, partner: null, invite: null, ready: true, next: null, checks: [{ key: 'self', label: 'Ours', done: true, detail: `our own crew, ${pkg.selfPerform.ref}` }] }
+      // Our own crew: one step, and it is done once our Trades mode bid is priced.
+      const priced = ownBidPriced(pkg)
+      return {
+        pkg,
+        partner: null,
+        invite: null,
+        ready: priced,
+        next: priced ? null : 'Price our own bid.',
+        checks: [{ key: 'self', label: 'Ours', done: priced, detail: priced ? `our own crew, ${pkg.selfPerform.ref}` : 'our own bid is not priced yet' }],
+      }
     }
     const invite = pkg.invites.find((i) => i.id === pkg.awardedInviteId) ?? null
     const partner = invite ? (partnerById(state, invite.partnerId) ?? null) : null

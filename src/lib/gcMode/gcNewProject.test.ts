@@ -136,14 +136,14 @@ describe('buildNewProject', () => {
 })
 
 describe('createProject', () => {
-  it('adds the project and the new owner, and says so in the log', () => {
+  it('adds the project and the new owner; our unpriced plumbing is a hole until priced', () => {
     const next = gcReducer(initialGcState(), { type: 'createProject', draft: draft() })
     const project = next.projects.find((p) => p.id === 'leon-springs-urgent-care')
     expect(project).toBeDefined()
     expect(next.customers.some((c) => c.id === 'leon-springs-health')).toBe(true)
     expect(next.log[0]?.text).toBe('Started Leon Springs Urgent Care. The bid set has 21 sheets, split into 2 trades.')
     if (!project) return
-    expect(proposalTotals(project).holes.map((p) => p.trade)).toEqual(['Sitework'])
+    expect(proposalTotals(project).holes.map((p) => p.trade)).toEqual(['Sitework', 'Plumbing'])
     expect(stageProgress(next, project).center).toMatch(/\d+\/\d+/)
   })
 })
