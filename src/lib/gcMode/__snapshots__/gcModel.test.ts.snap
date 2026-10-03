@@ -6334,6 +6334,10 @@ exports[`GC mode golden walk > step 60: Hillside signs a W-9 1`] = `
 exports[`GC mode golden walk > step 61: Send Dr. Raman pay application 1 1`] = `
 {
   "changed": {
+    "customers.raman.billed": 88051.98947368421,
+    "customers.raman.owed": 79246.79052631579,
+    "customers.raman.paid": 0,
+    "customers.raman.retainageHeld": 8805.19894736842,
     "lastLog.id": 57,
     "lastLog.text": "Sent pay application 1 to Dr. Priya Raman: $79,247 to pay, $8,805 held.",
     "lastLog.who": "office",
@@ -6345,6 +6349,8 @@ exports[`GC mode golden walk > step 61: Send Dr. Raman pay application 1 1`] = `
 exports[`GC mode golden walk > step 62: Dr. Raman pays pay application 1 1`] = `
 {
   "changed": {
+    "customers.raman.owed": 0,
+    "customers.raman.paid": 79246.79052631579,
     "lastLog.id": 58,
     "lastLog.text": "Dr. Priya Raman paid pay application 1: $79,247.",
   },
@@ -9368,6 +9374,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
             "basedOnRev": 0,
             "draws": [
               {
+                "approvedOn": "2026-09-21",
                 "gross": 22000,
                 "id": "dry-draw-1",
                 "lines": [
@@ -9378,12 +9385,14 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
                 ],
                 "net": 19800,
                 "number": 1,
+                "paidOn": "2026-09-28",
                 "requestedOn": "2026-09-19",
                 "retainage": 2200,
                 "status": "paid",
                 "waiver": "unconditional",
               },
               {
+                "approvedOn": "2026-10-02",
                 "gross": 34700,
                 "id": "dry-draw-2",
                 "lines": [
@@ -9398,12 +9407,14 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
                 ],
                 "net": 31230,
                 "number": 2,
+                "paidOn": "2026-10-02",
                 "requestedOn": "2026-10-02",
                 "retainage": 3470,
                 "status": "paid",
                 "waiver": "unconditional",
               },
               {
+                "approvedOn": "2026-10-02",
                 "gross": 7500,
                 "id": "dry-draw-3",
                 "lines": [
@@ -9414,6 +9425,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
                 ],
                 "net": 6750,
                 "number": 3,
+                "paidOn": "2026-10-02",
                 "payApp": {
                   "address": "418 River Rd, Boerne, TX 78006",
                   "license": "",
@@ -9428,12 +9440,14 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
                 "waiver": "unconditional",
               },
               {
+                "approvedOn": "2026-10-02",
                 "final": true,
                 "gross": 0,
                 "id": "dry-draw-4",
                 "lines": [],
                 "net": 6420,
                 "number": 4,
+                "paidOn": "2026-10-02",
                 "payApp": {
                   "address": "418 River Rd, Boerne, TX 78006",
                   "license": "",
@@ -9789,6 +9803,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
             "basedOnRev": 0,
             "draws": [
               {
+                "approvedOn": "2026-10-02",
                 "gross": 17160,
                 "id": "mill-draw-1",
                 "lines": [
@@ -9817,6 +9832,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
                 "waiver": "conditional",
               },
               {
+                "approvedOn": "2026-10-02",
                 "asked": {
                   "gross": 15940,
                   "lines": [
@@ -10588,6 +10604,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
             "basedOnRev": 0,
             "draws": [
               {
+                "approvedOn": "2026-07-26",
                 "gross": 98000,
                 "id": "fsite-draw-1",
                 "lines": [
@@ -10602,6 +10619,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
                 ],
                 "net": 88200,
                 "number": 1,
+                "paidOn": "2026-08-02",
                 "payApp": {
                   "address": "2210 Old San Antonio Rd, Boerne, TX 78006",
                   "license": "",
@@ -10616,6 +10634,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
                 "waiver": "unconditional",
               },
               {
+                "approvedOn": "2026-08-27",
                 "gross": 70000,
                 "id": "fsite-draw-2",
                 "lines": [
@@ -10630,6 +10649,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
                 ],
                 "net": 63000,
                 "number": 2,
+                "paidOn": "2026-09-03",
                 "payApp": {
                   "address": "2210 Old San Antonio Rd, Boerne, TX 78006",
                   "license": "",
@@ -10728,6 +10748,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
             "basedOnRev": 0,
             "draws": [
               {
+                "approvedOn": "2026-08-02",
                 "gross": 78000,
                 "id": "fconc-draw-1",
                 "lines": [
@@ -10738,6 +10759,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
                 ],
                 "net": 70200,
                 "number": 1,
+                "paidOn": "2026-08-09",
                 "payApp": {
                   "address": "4415 Rittiman Rd, San Antonio, TX 78218",
                   "license": "",
@@ -10752,6 +10774,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
                 "waiver": "unconditional",
               },
               {
+                "approvedOn": "2026-08-31",
                 "gross": 136000,
                 "id": "fconc-draw-2",
                 "lines": [
@@ -10766,6 +10789,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
                 ],
                 "net": 122400,
                 "number": 2,
+                "paidOn": "2026-09-07",
                 "payApp": {
                   "address": "4415 Rittiman Rd, San Antonio, TX 78218",
                   "license": "",
@@ -10856,6 +10880,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
             "basedOnRev": 0,
             "draws": [
               {
+                "approvedOn": "2026-08-23",
                 "gross": 92000,
                 "id": "fsteel-draw-1",
                 "lines": [
@@ -10866,6 +10891,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
                 ],
                 "net": 82800,
                 "number": 1,
+                "paidOn": "2026-08-30",
                 "payApp": {
                   "address": "9030 Rigsby Ave, San Antonio, TX 78263",
                   "license": "",
@@ -10994,6 +11020,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
             "basedOnRev": 0,
             "draws": [
               {
+                "approvedOn": "2026-08-22",
                 "gross": 89000,
                 "id": "felec-draw-1",
                 "lines": [
@@ -11008,6 +11035,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
                 ],
                 "net": 80100,
                 "number": 1,
+                "paidOn": "2026-08-29",
                 "payApp": {
                   "address": "1817 Austin Hwy, San Antonio, TX 78218",
                   "license": "",
@@ -11332,6 +11360,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
             "basedOnRev": 0,
             "draws": [
               {
+                "approvedOn": "2026-09-24",
                 "gross": 32400,
                 "id": "fhvac-draw-1",
                 "lines": [
@@ -11342,6 +11371,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
                 ],
                 "net": 29160,
                 "number": 1,
+                "paidOn": "2026-10-01",
                 "payApp": {
                   "address": "12700 Toepperwein Rd, Live Oak, TX 78233",
                   "license": "",
@@ -12186,6 +12216,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
             "basedOnRev": 0,
             "draws": [
               {
+                "approvedOn": "2026-07-22",
                 "gross": 21000,
                 "id": "sdry-draw-1",
                 "lines": [
@@ -12196,12 +12227,14 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
                 ],
                 "net": 18900,
                 "number": 1,
+                "paidOn": "2026-07-29",
                 "requestedOn": "2026-07-20",
                 "retainage": 2100,
                 "status": "paid",
                 "waiver": "unconditional",
               },
               {
+                "approvedOn": "2026-09-20",
                 "gross": 21000,
                 "id": "sdry-draw-2",
                 "lines": [
@@ -12216,6 +12249,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
                 ],
                 "net": 18900,
                 "number": 2,
+                "paidOn": "2026-09-27",
                 "requestedOn": "2026-09-18",
                 "retainage": 2100,
                 "status": "paid",
@@ -12320,6 +12354,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
             "basedOnRev": 0,
             "draws": [
               {
+                "approvedOn": "2026-07-24",
                 "gross": 14000,
                 "id": "selec-draw-1",
                 "lines": [
@@ -12330,12 +12365,14 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
                 ],
                 "net": 12600,
                 "number": 1,
+                "paidOn": "2026-07-31",
                 "requestedOn": "2026-07-22",
                 "retainage": 1400,
                 "status": "paid",
                 "waiver": "unconditional",
               },
               {
+                "approvedOn": "2026-09-21",
                 "gross": 24000,
                 "id": "selec-draw-2",
                 "lines": [
@@ -12350,6 +12387,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
                 ],
                 "net": 21600,
                 "number": 2,
+                "paidOn": "2026-09-28",
                 "requestedOn": "2026-09-19",
                 "retainage": 2400,
                 "status": "paid",
@@ -12454,6 +12492,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
             "basedOnRev": 0,
             "draws": [
               {
+                "approvedOn": "2026-08-20",
                 "gross": 25000,
                 "id": "shvac-draw-1",
                 "lines": [
@@ -12468,12 +12507,14 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
                 ],
                 "net": 22500,
                 "number": 1,
+                "paidOn": "2026-08-27",
                 "requestedOn": "2026-08-18",
                 "retainage": 2500,
                 "status": "paid",
                 "waiver": "unconditional",
               },
               {
+                "approvedOn": "2026-09-24",
                 "gross": 6000,
                 "id": "shvac-draw-2",
                 "lines": [
@@ -12484,6 +12525,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
                 ],
                 "net": 5400,
                 "number": 2,
+                "paidOn": "2026-10-01",
                 "requestedOn": "2026-09-22",
                 "retainage": 600,
                 "status": "paid",

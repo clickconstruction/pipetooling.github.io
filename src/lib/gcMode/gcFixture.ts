@@ -65,6 +65,39 @@ function addDaysIso(iso: string, days: number): string {
   return new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, (d ?? 1) + days)).toISOString().slice(0, 10)
 }
 
+/**
+ * Portal lane: made-up days on the draws already approved or paid, from before draws kept them:
+ * approved two days after asked, paid seven days after that (inside the 10 days we pay within).
+ */
+function withPayDays(project: GcProject): GcProject {
+  const plus = (iso: string, days: number) => {
+    const [y, m, d] = iso.split('-').map(Number)
+    return new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, (d ?? 1) + days)).toISOString().slice(0, 10)
+  }
+  return {
+    ...project,
+    packages: project.packages.map((k) =>
+      k.sow
+        ? {
+            ...k,
+            sow: {
+              ...k.sow,
+              draws: k.sow.draws.map((d) =>
+                d.status === 'requested'
+                  ? d
+                  : {
+                      ...d,
+                      approvedOn: d.approvedOn ?? plus(d.requestedOn, 2),
+                      ...(d.status === 'paid' ? { paidOn: d.paidOn ?? plus(d.requestedOn, 9) } : {}),
+                    },
+              ),
+            },
+          }
+        : k,
+    ),
+  }
+}
+
 export function initialGcState(): GcState {
   const site = scope('site', ['Clearing and grading', 'Utilities to 5 ft of the building', 'Paving', 'Striping and signs'])
   const conc = scope('conc', ['Foundations', 'Slab on grade', 'Sidewalks and curbs', 'Rebar supply'])
@@ -1199,7 +1232,7 @@ export function initialGcState(): GcState {
   return {
     today: '2026-10-02',
     customers,
-    projects: [withStory(boerne), padB, helotes, fairOaksD, stoneOak],
+    projects: [withStory(boerne), padB, helotes, fairOaksD, stoneOak].map(withPayDays),
     partners: [
       partner('lonestar', 'Lonestar Earthworks', 'Dale Whitfield', ['Sitework'], 'signed', '2027-03-01', true, [6, 5, 2]),
       partner('tricounty', 'Tri-County Site', 'Marisol Vega', ['Sitework'], 'signed', '2027-01-15', true, [4, 4, 1]),

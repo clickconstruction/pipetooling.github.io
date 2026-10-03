@@ -1,5 +1,6 @@
 import { useState, type Dispatch } from 'react'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
+import { GcOwnerBillingCash } from './GcOwnerBillingCash'
 import { GcOwnerBillingChangeOrders } from './GcOwnerBillingChangeOrders'
 import { OwnerPayAppWindow } from './GcOwnerBillingPayApp'
 import { GcOwnerBillingPortal } from './GcOwnerBillingPortal'
@@ -122,6 +123,8 @@ function OfficeSide({ state, project, dispatch }: { state: GcState; project: GcP
           </div>
         </Card>
       )}
+
+      <GcOwnerBillingCash state={state} project={project} />
 
       {closeout.steps[0]?.done || closeout.final ? (
         <CloseoutCard project={project} closeout={closeout} onSendFinal={() => dispatch({ type: 'sendOwnerFinalPayApp', projectId: project.id })} />

@@ -12,6 +12,7 @@ import {
   ownerPayAppForm,
   ownerCloseout,
   ownerReleasedRetainage,
+  projectCash,
   ownerAccount,
   ownerPayApp,
   ownerPayAppHasWork,
@@ -544,6 +545,45 @@ describe('our pay application as the form (G702 and G703)', () => {
     state = gcReducer(state, { type: 'sendOwnerFinalPayApp', projectId: 'stoneoak' })
     const form = ownerPayAppForm(state, projectOf(state, 'stoneoak'), 4)
     expect([form?.app.final, form?.app.summary.retainage, form?.app.totals.retainage, cents(form?.app.summary.currentDue ?? 0)]).toEqual([true, 0, 0, 18_241.3])
+  })
+})
+
+describe('money in and money out on a job', () => {
+  const projectOf = (state: GcState, id: string) => {
+    const p = state.projects.find((x) => x.id === id)
+    if (!p) throw new Error(`fixture has no ${id}`)
+    return p
+  }
+  const cents = (n: number) => Math.round(n * 100) / 100
+
+  it('reads Stone Oak: the owner paid three bills, the trades were paid, two asked for their retainage', () => {
+    const state = initialGcState()
+    const cash = projectCash(state, projectOf(state, 'stoneoak'))
+    expect([cents(cash.in.paid), cash.in.owed, cents(cash.in.held)]).toEqual([164_171.7, 0, 18_241.3])
+    expect(cash.out).toEqual({ paid: 99_900, approved: 0, asked: 8_000, held: 11_100 })
+    expect(cents(cash.net)).toBe(64_271.7)
+    expect(cash.byTrade.map((t) => t.company)).toEqual(['Live Oak Drywall', 'Westside Electric', 'Cool Breeze Mechanical'])
+    expect(cash.ownCrew).toEqual(['Plumbing'])
+  })
+
+  it('uses the made-up record on Helotes until a pay application goes, then the pay applications', () => {
+    let state = initialGcState()
+    const before = projectCash(state, projectOf(state, 'helotes'))
+    expect([before.in.paid, before.in.owed, before.in.held, before.out.paid, before.net]).toEqual([42_300, 12_600, 6_100, 19_800, 22_500])
+    state = gcReducer(state, { type: 'sendOwnerPayApp', projectId: 'helotes' })
+    state = gcReducer(state, { type: 'ownerPaid', projectId: 'helotes', number: 1 })
+    const after = projectCash(state, projectOf(state, 'helotes'))
+    expect([Math.round(after.in.paid), after.in.owed, Math.round(after.net)]).toEqual([47_301, 0, 27_501])
+  })
+
+  it('a draw we pay moves money out, and where we stand', () => {
+    let state = gcReducer(initialGcState(), { type: 'tradeRequestDraw', projectId: 'helotes', packageId: 'dry' })
+    expect(projectCash(state, projectOf(state, 'helotes')).out.asked).toBe(14_688)
+    state = gcReducer(state, { type: 'approveDraw', projectId: 'helotes', packageId: 'dry', drawId: 'dry-draw-2' })
+    expect(projectCash(state, projectOf(state, 'helotes')).out.approved).toBe(14_688)
+    state = gcReducer(state, { type: 'payDraw', projectId: 'helotes', packageId: 'dry', drawId: 'dry-draw-2' })
+    const cash = projectCash(state, projectOf(state, 'helotes'))
+    expect([cash.out.paid, cash.out.approved, cash.net]).toEqual([34_488, 0, 7_812])
   })
 })
 
