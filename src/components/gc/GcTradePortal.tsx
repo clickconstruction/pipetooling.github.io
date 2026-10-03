@@ -471,7 +471,7 @@ function BidBlock({
             <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.85rem' }}>
               <span>{t('alsoChangedIn', { sets: sheets.sets.map((x) => x.label).join(t('and')) })}</span>
               {sheets.otherSheets.map((id) => (
-                <SheetChip key={id} id={id} guessed={false} changed onOpen={onOpenSheet} />
+                <SheetChip key={id} id={id} changed onOpen={onOpenSheet} />
               ))}
             </div>
           )}

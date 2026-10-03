@@ -4,17 +4,17 @@ import { Chip } from './gcUi'
 import { usePortalLang } from './gcPortalLang'
 
 /**
- * GC mode design spike: the sheet numbers beside each line of a trade's bid form. A tap opens the
- * plans on that sheet. A dashed edge: matched from the line's words, not said by the office. Amber:
- * a set newer than the company's number changed it.
+ * GC mode design spike: the sheet numbers beside each line of a trade's bid form, only the ones
+ * the office set (owner, 2026-10-03). A tap opens the plans on that sheet. Amber: a set newer than
+ * the company's number changed it.
  */
 
-export function SheetChip({ id, guessed, changed, onOpen }: { id: string; guessed: boolean; changed: boolean; onOpen: (sheetId: string) => void }) {
+export function SheetChip({ id, changed, onOpen }: { id: string; changed: boolean; onOpen: (sheetId: string) => void }) {
   const { t } = usePortalLang()
   return (
     <button
       type="button"
-      title={t(guessed ? 'openSheetGuessed' : 'openSheet', { id })}
+      title={t('openSheet', { id })}
       onClick={(e: MouseEvent) => {
         // The chip sits inside the line's label: open the sheet, never tick the box.
         e.preventDefault()
@@ -24,7 +24,7 @@ export function SheetChip({ id, guessed, changed, onOpen }: { id: string; guesse
       style={{
         padding: '0.05rem 0.4rem',
         borderRadius: 4,
-        border: `1px ${guessed ? 'dashed' : 'solid'} ${changed ? 'var(--text-amber-700)' : 'var(--border-strong)'}`,
+        border: `1px solid ${changed ? 'var(--text-amber-700)' : 'var(--border-strong)'}`,
         background: changed ? 'var(--bg-amber-100)' : 'var(--surface)',
         color: 'inherit',
         fontSize: '0.72rem',
@@ -51,7 +51,7 @@ export function LineSheets({ line, onOpen }: { line: PortalLine | undefined; onO
   return (
     <span style={{ display: 'inline-flex', gap: '0.25rem', alignItems: 'center', flexWrap: 'wrap' }}>
       {shown.map((id) => (
-        <SheetChip key={id} id={id} guessed={line.guessed} changed={line.changed.includes(id)} onOpen={onOpen} />
+        <SheetChip key={id} id={id} changed={line.changed.includes(id)} onOpen={onOpen} />
       ))}
       {line.by.length > 0 && <Chip tone="amber">{t('changedIn', { set: line.by.join(t('and')) })}</Chip>}
     </span>
@@ -74,28 +74,45 @@ export function ChangedLines({
 }) {
   const { t } = usePortalLang()
   const touched = lines.filter((l) => l.by.length > 0)
+  const named = touched.filter((l) => !l.wholeTrade)
+  const whole = touched.filter((l) => l.wholeTrade)
   if (touched.length === 0 && otherSheets.length === 0) return null
   const sets = setNames.join(t('and'))
   return (
     <div style={{ display: 'grid', gap: '0.3rem' }}>
       {touched.length > 0 && <div>{t('touchesLines', { sets })}</div>}
-      {touched.map((l) => (
+      {named.map((l) => (
         <div key={l.item.id} style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <strong>{l.item.label}</strong>
-          {l.wholeTrade && <span style={{ fontSize: '0.8rem', opacity: 0.75 }}>{t('readsEvery', { trade })}</span>}
           {l.changed.map((id) => (
-            <SheetChip key={id} id={id} guessed={l.guessed} changed onOpen={onOpen} />
+            <SheetChip key={id} id={id} changed onOpen={onOpen} />
           ))}
         </div>
       ))}
+      {whole.length > 0 && (
+        // The lines that stand for the whole trade read the same sheets: one row, the sheets once.
+        <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <strong>{listWords(whole.map((l) => l.item.label), t('and'))}</strong>
+          <span style={{ fontSize: '0.8rem', opacity: 0.75 }}>{t(whole.length === 1 ? 'readsEvery' : 'readEveryMany', { trade })}</span>
+          {[...new Set(whole.flatMap((l) => l.changed))].map((id) => (
+            <SheetChip key={id} id={id} changed onOpen={onOpen} />
+          ))}
+        </div>
+      )}
       {otherSheets.length > 0 && (
         <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <span>{touched.length > 0 ? t('alsoChanged') : t('changedInSets', { sets })}</span>
           {otherSheets.map((id) => (
-            <SheetChip key={id} id={id} guessed={false} changed onOpen={onOpen} />
+            <SheetChip key={id} id={id} changed onOpen={onOpen} />
           ))}
         </div>
       )}
     </div>
   )
+}
+
+/** "A", "A and B", "A, B and C". */
+function listWords(items: string[], and: string): string {
+  if (items.length <= 1) return items[0] ?? ''
+  return `${items.slice(0, -1).join(', ')}${and}${items[items.length - 1]}`
 }
