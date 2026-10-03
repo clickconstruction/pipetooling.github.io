@@ -4,7 +4,9 @@ import {
   budgetFromSize,
   buildNewProject,
   defaultAsks,
+  lineStage,
   ownBidPriced,
+  scheduleDraft,
   sqFtInText,
   guessLineSheets,
   lineReads,
@@ -275,5 +277,73 @@ describe('budgets from the size', () => {
     expect(budgetFromSize('Sitework', 6800)).toBe(81_500)
     expect(budgetFromSize('Electrical', 6800)).toBe(122_500)
     expect(budgetFromSize('Elevator', 6800)).toBeNull()
+  })
+})
+
+describe('the schedule\'s first draft', () => {
+  const state = initialGcState()
+  const boerne = state.projects.find((p) => p.id === 'boerne')
+  const helotes = state.projects.find((p) => p.id === 'helotes')
+  if (!boerne || !helotes) throw new Error('no fixture projects')
+  const at = (draft: ReturnType<typeof scheduleDraft>, lineId: string) => {
+    const a = draft.activities.find((x) => x.lineId === lineId)
+    if (!a) throw new Error(`no activity ${lineId}`)
+    return a
+  }
+
+  it('puts each line in a stage of the job from its words, or from its trade', () => {
+    expect(lineStage('Plumbing', 'Underground')).toBe('underground')
+    expect(lineStage('HVAC', 'Rooftop units')).toBe('roughIn')
+    expect(lineStage('Roofing', 'Roof curbs')).toBe('dryIn')
+    expect(lineStage('Concrete', 'Sidewalks and curbs')).toBe('siteFinish')
+    expect(lineStage('HVAC', 'Test and balance')).toBe('closeout')
+    expect(lineStage('Millwork', 'Break room')).toBe('finishes')
+  })
+
+  const shell = scheduleDraft(boerne, '2026-10-12')
+
+  it('draws every line once, from the start day', () => {
+    const lines = boerne.packages.reduce((n, p) => n + p.scope.length, 0)
+    expect(shell.activities).toHaveLength(lines)
+    expect(shell.activities.every((a) => a.start >= '2026-10-12' && a.finish >= a.start)).toBe(true)
+  })
+
+  it('puts plumbing\'s underground before the slab, and the slab after foundations', () => {
+    expect(at(shell, 'plumb-1').finish < at(shell, 'conc-2').start).toBe(true)
+    expect(at(shell, 'conc-2').after).toContain('plumb-1')
+    expect(at(shell, 'conc-1').finish < at(shell, 'conc-2').start).toBe(true)
+  })
+
+  it('starts the trades\' rough-ins side by side once the roof is on, and the trims after them', () => {
+    const roughStarts = ['plumb-2', 'hvac-1', 'elec-1', 'fire-2'].map((id) => at(shell, id).start)
+    expect(new Set(roughStarts).size).toBe(1)
+    expect(roughStarts[0] && roughStarts[0] > at(shell, 'roof-4').finish).toBe(true)
+    expect(at(shell, 'plumb-4').start > at(shell, 'plumb-3').finish).toBe(true)
+    expect(at(shell, 'plumb-4').start > at(shell, 'elec-2').finish).toBe(true)
+  })
+
+  it('lets paving run beside the work inside, after dry-in', () => {
+    expect(at(shell, 'site-3').start > at(shell, 'roof-4').finish).toBe(true)
+    expect(at(shell, 'site-3').start <= at(shell, 'plumb-2').finish).toBe(true)
+  })
+
+  it('splits a stage\'s days across a trade\'s lines in it, and sets the three milestones', () => {
+    const roof = shell.activities.filter((a) => a.packageId === 'roof')
+    expect(roof.map((a) => a.start)).toEqual(['2026-11-26', '2026-11-29', '2026-12-02', '2026-12-05'])
+    expect(shell.milestones.map((m) => [m.id, m.planned])).toEqual([
+      ['boerne-dryin', at(shell, 'roof-4').finish],
+      ['boerne-roughin', '2026-12-25'],
+      ['boerne-substantial', '2027-01-15'],
+    ])
+    expect(shell.baseline).toBeNull()
+  })
+
+  it('draws a finish-out with no roof: underground, framing, rough-ins, the inspection, close-in', () => {
+    const fit = scheduleDraft(helotes, '2026-10-12')
+    expect(at(fit, 'dry-1').after).toEqual(['dplumb-1'])
+    expect(['delec-1', 'dhvac-1', 'dplumb-2'].map((id) => at(fit, id).start)).toEqual(['2026-10-27', '2026-10-27', '2026-10-27'])
+    // Close-in waits two days after the last rough-in, for the inspection.
+    expect(at(fit, 'dry-2').start).toBe('2026-11-14')
+    expect(fit.milestones.map((m) => m.label)).toEqual(['Rough-in inspection', 'Substantial completion'])
   })
 })

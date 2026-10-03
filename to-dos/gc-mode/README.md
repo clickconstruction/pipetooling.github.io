@@ -70,7 +70,7 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
 | **+ ?** after a number | A quote that leaves out work with no cost set still counts that work as $0 in its all-in number, so every place that number shows says "+ ?": Trades' *Lowest, all in* and *We are carrying*, Compare bids' *All in*, the *Award at* buttons, Our number's *Carried*, *Trades* and the price, and the price on the board row and the project header. Hovering names the work ("1 line has no cost yet: roof curbs."). Against our budget reads "at least $X over" or "not known yet". Setting the cost in Compare bids clears it. `uncostedLines`, `carriedUncosted`, `proposalUncosted` in `gcBids.ts`; the totals themselves are unchanged. |
 | The ring on each row | How far the project is through its stage (`stageProgress` in the model; `GcProgressRing`). Hover it, tap it on a phone, or tab to it: a card lists what the ring counts by type, what is left in each spelled out, what is done in one line, and an *Also* list it does not count. Bidding: enough quotes (2 per hired trade), a number to carry, quotes on the newest plans, our bid sent. Buyout: the Get started checklist by kind of step (the owner side, awarded, master agreement, insurance, W-9, statement of work). Building: work reported per trade, weighted by its statement of work, and our own crew's percent weighted by our own number; draws and waivers waiting under *Also*. |
 | **Project Board** | Projects in three sections: Bidding to the owner, Buying out, Building. Each row leads with the days left before our bid (red inside a week, amber inside two), then the name, the owner and architect (each a link), chips, the Bid Board's folder and plans icons, and the price. |
-| **+ New project** (beside *Bidding to the owner*) | One window in four steps, each feeding the next. **The project**: name, address, town, owner and architect from the one customer list ("Someone new" makes a record), bid due, size. **The plans**: the set's name (Bid set, Pricing set, Permit set or typed), the day it came in, the sheet index pasted from the cover sheet and read as you paste (A-101, A101, A1.01, FP-101; capitals become sentence case; a line not read is listed). **The trades**: guessed from the sheets in build order, each with the sheets behind it; untick, add, mark **Ours**, a budget. **Each scope**: each trade's usual lines to change, each with the sheets it reads from (guessed from its words, × takes one off, **+ sheet** adds one; none means the trade's sheets as a whole); Enter starts the next line. **Who to ask**: for each trade we hire out, every company that does it, closest first, with its drive, how it answers asks and any missing paperwork; the closest three in range come ticked. **Create the project** puts it under Bidding to the owner, sends each ticked company the board's invitation, and opens it on Trades. **Paste a made-up sheet index** tries it. |
+| **+ New project** (beside *Bidding to the owner*) | One window in four steps, each feeding the next. **The project**: name, address, town, owner and architect from the one customer list ("Someone new" makes a record), bid due, size. **The plans**: the set's name (Bid set, Pricing set, Permit set or typed), the day it came in, the sheet index pasted from the cover sheet and read as you paste (A-101, A101, A1.01, FP-101; capitals become sentence case; a line not read is listed). **The trades**: guessed from the sheets, in the order the specs list trades, each with the sheets behind it; untick, add, mark **Ours**, a budget. **Each scope**: each trade's usual lines to change, each with the sheets it reads from (guessed from its words, × takes one off, **+ sheet** adds one; none means the trade's sheets as a whole); Enter starts the next line. **Who to ask**: for each trade we hire out, every company that does it, closest first, with its drive, how it answers asks and any missing paperwork; the closest three in range come ticked. **Create the project** puts it under Bidding to the owner, sends each ticked company the board's invitation, and opens it on Trades. **Paste a made-up sheet index** tries it. |
 | Plans icon on a row | A plans window over the board: newest set first, the sheet list by discipline, what the last addendum changed, arrow keys flip sheets, and under each sheet the scope lines that read from it. Drawings are stand-ins. |
 | Owner or architect name | One company window, shaped by what the company is to us: an owner gets money, how they buy and pay, projects we build for them; an architect gets addenda and questions waiting on them. One call log either way. |
 | **Trades** tab | One row per trade: who we asked with each bid in thousands, our budget, the lowest all in, what we carry. **Compare bids** opens the comparison. **On a map** opens the map. |
@@ -128,7 +128,7 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
 - **A later set says what it is** (approved as built, 2026-10-02): **A new set of plans came in**
   names the set (an addendum while we bid, a bulletin once the job is ours, or a whole revised,
   permit or construction set), gives a sheet new to the index its title, and can bring a trade
-  the job did not have, put in build order with its usual scope (`issuePlanSet`). The trade guess
+  the job did not have, put in the list's order with its usual scope (`issuePlanSet`). The trade guess
   is the one New Project uses, so a title like "Roof plan" flags roofing.
 - **Each scope line names its sheets** (approved as built, 2026-10-02): a line carries the sheets
   it reads from (`ScopeItem.sheets`), guessed from the words it shares with the trade's sheet
@@ -361,8 +361,12 @@ they point to, for the lanes to pick up.
   in `gcBuilding.ts`): underground, rough in, top out and trim. So "how far along" and "how far
   along it should be" are read on the same line for every trade.
 - **We draw it during Buying out.** Each activity gets a planned start and finish and the
-  activities it waits on. The trades' build order (sitework, concrete, steel, roofing, the rough
-  ins, drywall, the trims) is the first draft of those links. Milestones (dry-in, rough-in
+  activities it waits on. The first draft comes from the stages of the job (`scheduleDraft`,
+  `lineStage`, `SCHEDULE_STAGES` in `gcNewProject.ts`): each line falls in a stage by its words or
+  its trade (site prep, foundations, underground, slab, structure, dry-in, framing, rough-in,
+  close-in, finishes, trim, site finish, closeout), each stage waits on the one before it, the
+  trades' rough-ins run side by side, close-in waits two days for the inspection, and paving waits
+  only on dry-in. The Building lane's **Draw a first draft** switches to it from its stand-in. Milestones (dry-in, rough-in
   inspection, substantial completion) are dates the schedule must meet; each can belong to a trade.
   **Get started** gains a step, "the schedule is drawn", and **Start** locks it as the baseline.
 - **The four measures, read in Building:**
@@ -384,9 +388,9 @@ they point to, for the lanes to pick up.
 - **Who builds what**: the Building lane, the schedule view and the four measures; the Board
   lane, the Get started step, the board row's chip and the lines on Trade partners; the Portal
   lane, the trade's weekly done or not (built 2026-10-03: `tradeMarkLookAhead`,
-  `portalLookAhead` in `gcPortal.ts`, `GcPortalLookAhead.tsx`); the Building lane also, the superintendent's verify; the
-  New Project lane, the first draft of the links from the build
-  order, and a set issued after Start saying which activities it moves.
+  `portalLookAhead` in `gcPortal.ts`, `GcPortalLookAhead.tsx`); the Building lane also, the
+  superintendent's verify; the New Project lane, the first draft of the links from the stages of
+  the job, and a set issued after Start saying which activities it moves.
 
 ## Workflow steps not built yet
 
