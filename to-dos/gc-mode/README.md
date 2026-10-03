@@ -165,6 +165,14 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   milestone, since more time is a change order. The set records the days (`PlanSet.pushed`), and
   each company's email names its new dates (`activitiesTouched`, `pushSchedule`,
   `issuePlanSet.schedulePushes`).
+- **A set that changes a job we have won starts its change orders to the owner** (approved as
+  built, 2026-10-03): **A new set of plans came in** gains **Change orders to the owner**, one row
+  per trade the set touches or brings, ticked when it adds lines or days. Each is prefilled
+  (`changeOrderFromSet`: "Bulletin 2, Electrical: data drops added at each operatory, per E-102",
+  the time from the schedule push); the office types our cost and Owner Billing's rule adds the
+  fee. Issuing drafts each one with a cost through Owner Billing's own `draftChangeOrder` (reason
+  "plans"), to review and send on **Bill the owner**. The matching change to the trade's
+  statement of work is not built.
 - **The schedule** (2026-10-02, decided before anything is built): several activities per trade,
   like rough in, top out and trim. We draw it; the companies do not propose dates. It lives only
   inside GC mode for now, not on the app's Schedule page. A milestone counts as hit within a few
@@ -411,6 +419,8 @@ they point to, for the lanes to pick up.
 
 ## Workflow steps not built yet
 
+- A change to a trade's statement of work when a set changes its scope (the trade side of a
+  change order). A set can start the owner's change order, not the trade's amendment.
 - A schedule link cannot carry a fixed wait. The two days drawn for the rough-in inspection read as
   spare days, so a push into them is absorbed. A wait on a link (or the inspection as an activity)
   is the Building lane's schedule model. A set's added days could also start a change order with

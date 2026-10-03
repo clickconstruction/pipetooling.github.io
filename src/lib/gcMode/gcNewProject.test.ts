@@ -3,6 +3,7 @@ import {
   SAMPLE_SHEET_INDEX,
   budgetFromSize,
   buildNewProject,
+  changeOrderFromSet,
   defaultAsks,
   lineStage,
   ownBidPriced,
@@ -345,5 +346,30 @@ describe('the schedule\'s first draft', () => {
     // Close-in waits two days after the last rough-in, for the inspection.
     expect(at(fit, 'dry-2').start).toBe('2026-11-14')
     expect(fit.milestones.map((m) => m.label)).toEqual(['Rough-in inspection', 'Substantial completion'])
+  })
+})
+
+describe('changeOrderFromSet', () => {
+  const set = { label: 'Bulletin 2', note: 'Data drops added at each operatory. E-102 changed.', sheets: ['E-102'] }
+
+  it('says what the set does to the trade, per its sheets, with no brackets and no full stop', () => {
+    expect(changeOrderFromSet(set, 'Electrical', [], 3)).toEqual({
+      description: 'Bulletin 2, Electrical: data drops added at each operatory, per E-102',
+      schedule: '+3 days',
+    })
+  })
+
+  it('names the lines the set adds, and the time as none when the days fit in spare days', () => {
+    expect(changeOrderFromSet({ ...set, sheets: ['C-101', 'C-201'] }, 'Sitework', ['Detention pond', 'Riprap'], 0)).toEqual({
+      description: 'Bulletin 2, Sitework: adds detention pond and riprap, per C-101 and C-201',
+      schedule: 'none',
+    })
+    expect(changeOrderFromSet(set, 'Electrical', [], 1).schedule).toBe('+1 day')
+  })
+
+  it('drops a sheet number at the head of the note, and keeps a word in capitals', () => {
+    const fromNote = (note: string) => changeOrderFromSet({ label: 'Bulletin 1', note, sheets: ['E-201'] }, 'Electrical', [], 0).description
+    expect(fromNote('E-201: the tenant in bay 2 wants twelve more floor boxes.')).toBe('Bulletin 1, Electrical: the tenant in bay 2 wants twelve more floor boxes, per E-201')
+    expect(fromNote('RTU-3 moved 6 ft north.')).toBe('Bulletin 1, Electrical: RTU-3 moved 6 ft north, per E-201')
   })
 })
