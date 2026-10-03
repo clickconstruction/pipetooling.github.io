@@ -97,6 +97,40 @@ const STEPS: Step[] = [
   { label: 'A call with Cibolo Creek Partners', action: { type: 'logCustomerContact', customerId: 'cibolo', note: 'Asked when the pad building bids are due.' } },
   { label: 'Pad B: ask Lonestar for Sitework', action: { type: 'invite', projectId: 'padb', packageId: 'bsite', partnerId: 'lonestar' } },
   { label: 'Pad B: ask Alamo for Concrete', action: { type: 'invite', projectId: 'padb', packageId: 'bconc', partnerId: 'alamo' } },
+  // New Project: a project starts with its plans, split into trades, each with its scope.
+  {
+    label: 'A new project: Leon Springs Urgent Care',
+    action: {
+      type: 'createProject',
+      draft: {
+        name: 'Leon Springs Urgent Care',
+        address: '24165 IH-10 W, San Antonio',
+        town: 'San Antonio',
+        customerId: null,
+        ownerName: 'Leon Springs Health',
+        architectId: 'marshvale',
+        architectName: 'Marsh & Vale Architects',
+        bidDue: '2026-10-16',
+        sizeNote: '6,800 sq ft clinic, one story',
+        setLabel: 'Bid set',
+        issuedOn: '2026-10-02',
+        setNote: '',
+        sheets: [
+          { id: 'C-101', title: 'Site plan' },
+          { id: 'A-101', title: 'Floor plan' },
+          { id: 'A-501', title: 'Roof plan and details' },
+          { id: 'P-101', title: 'Plumbing plan' },
+          { id: 'E-101', title: 'Lighting plan' },
+        ],
+        trades: [
+          { trade: 'Sitework', budget: 90_000, ours: false, scope: ['Clearing and grading', 'Paving', 'Detention pond'] },
+          { trade: 'Roofing', budget: 0, ours: false, scope: ['Roof membrane', 'Sheet metal and flashing'] },
+          { trade: 'Plumbing', budget: 72_000, ours: true, scope: ['Underground', 'Rough in', 'Top out', 'Trim'] },
+          { trade: 'Electrical', budget: 0, ours: false, scope: ['Service and gear', 'Lighting', 'Devices'] },
+        ],
+      },
+    },
+  },
   // The portal: a company does its own paperwork.
   { label: 'Hillside sends an insurance certificate', action: { type: 'tradeUploadCoi', partnerId: 'hillside', expires: '2027-10-02' } },
   { label: 'Hillside signs a W-9', action: { type: 'tradeSignW9', partnerId: 'hillside' } },
@@ -221,6 +255,7 @@ describe('GC mode golden walk', () => {
       'carry', 'markWon', 'markBidSent', 'shareBidTab', 'tradeSeeBidTab', 'award', 'sendMsa', 'tradeSignMsa',
       'sendSow', 'tradeSignSow', 'tradeReport', 'tradeRequestDraw', 'approveDraw', 'payDraw',
       'tradeSignUnconditional', 'setMarkup', 'logCustomerContact', 'addPartner', 'setCoverage', 'reset',
+      'createProject',
       'tradeUploadCoi', 'tradeSignW9',
     ]
     expect(all.filter((t) => !used.has(t))).toEqual([])
