@@ -50,6 +50,7 @@ export function GcOwnerBillingCash({ state, project }: { state: GcState; project
           {heading(`In, from ${project.owner}`)}
           {row('Paid us', cash.in.paid, true)}
           {row('Owes us now', cash.in.owed)}
+          {Math.round(cash.in.waitingOnArchitect) > 0 && row(`Of that, waiting on ${project.architect}`, cash.in.waitingOnArchitect)}
           {row('Holds until the end', cash.in.held)}
         </div>
         <div>

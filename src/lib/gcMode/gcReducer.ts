@@ -12,7 +12,7 @@ import { initialGcState } from './gcFixture'
 import { draftSchedule, scheduleLinesOf, withBaselineKept } from './gcBuildingSchedule'
 import { buildNewProject, packagesFromDrafts, pushSchedule, withNewLines, withTradesInOrder } from './gcNewProject'
 import { changeOrderTradePct, crewPctFromStages, drawApprovedLess, finalPayApplication, jobCloseout, payApplication, timesSentBack, tradeCloseout, workAllBilled } from './gcBuilding'
-import { changeOrderPrice, ownerCloseout, ownerFinalPayAppToSend, ownerPayApp, ownerPayAppHasWork, ownerPayAppToSend } from './gcOwnerBilling'
+import { appClaimed, changeOrderPrice, ownerCloseout, ownerFinalPayAppToSend, ownerPayApp, ownerPayAppHasWork, ownerPayAppToSend } from './gcOwnerBilling'
 
 export function gcReducer(state: GcState, action: GcAction): GcState {
   switch (action.type) {
@@ -595,12 +595,13 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
               ...p,
               ownerBilling: {
                 ...p.ownerBilling,
-                payApps: (p.ownerBilling.payApps ?? []).map((a) => (a.number === app.number ? { ...a, paidOn: state.today } : a)),
+                // They pay what the architect certified (or what we asked, when it came in without a certificate).
+                payApps: (p.ownerBilling.payApps ?? []).map((a) => (a.number === app.number ? { ...a, paidOn: state.today, paidAmount: appClaimed(a) } : a)),
               },
             }
           : p,
       )
-      return logged(next, 'office', `${project.owner} paid pay application ${app.number}: ${money(app.due)}.`)
+      return logged(next, 'office', `${project.owner} paid pay application ${app.number}: ${money(appClaimed(app))}.`)
     }
 
     case 'issuePlanSet': {
@@ -1126,6 +1127,38 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
         changeOrders: (p.changeOrders ?? []).map((c) => (c.id === co.id ? { ...c, tradeChange: { ...change, status: 'signed' as const, signedOn: state.today } } : c)),
       }))
       return logged(next, 'trade', `${partner.company} signed change order ${co.number} into their ${pkg.trade} statement of work: ${money(co.cost)}.`)
+    }
+
+    case 'architectCertify': {
+      // The architect certifies our pay application before the owner pays (owner's call, 2026-10-03),
+      // for what we asked or less. Less comes back on the next bill through line 7.
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const app = project?.ownerBilling?.payApps?.find((a) => a.number === action.number)
+      if (!project || !app || app.certified !== null || app.paidOn !== null) return state
+      const amount = Math.max(0, Math.min(app.due, Math.round(action.amount * 100) / 100))
+      const less = app.due - amount
+      const note = action.note.trim()
+      const next = mapProject(state, project.id, (p) =>
+        p.ownerBilling
+          ? {
+              ...p,
+              ownerBilling: {
+                ...p.ownerBilling,
+                payApps: (p.ownerBilling.payApps ?? []).map((a) =>
+                  a.number === app.number ? { ...a, certified: amount, certifiedOn: state.today, ...(less > 0.005 && note ? { certifiedNote: note } : {}) } : a,
+                ),
+              },
+            }
+          : p,
+      )
+      const name = app.final ? 'the final pay application' : `pay application ${app.number}`
+      return logged(
+        next,
+        'office',
+        less > 0.005
+          ? `${project.architect} certified ${name} for ${money(amount)}, ${money(less)} less than asked${note ? `: ${note.replace(/[.\s]+$/, '')}` : ''}.`
+          : `${project.architect} certified ${name} for ${money(amount)}.`,
+      )
     }
 
     case 'passInspection': {

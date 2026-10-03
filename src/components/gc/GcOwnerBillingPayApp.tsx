@@ -241,11 +241,16 @@ export function OwnerPayAppWindow({
                   Certificate for payment · the architect fills this in
                 </p>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(9rem, 1fr))', gap: '0.5rem' }}>
-                  <Box name="Amount certified">
-                    <Blank />
-                  </Box>
+                  <Box name="Amount certified">{form.certificate.amount === null ? <Blank /> : money(form.certificate.amount)}</Box>
                   <Box name="Architect">{project.architect}</Box>
+                  <Box name="Date">{form.certificate.on ? shortDate(form.certificate.on) : <Blank />}</Box>
                 </div>
+                {form.certificate.amount !== null && form.certificate.amount < s.currentDue - 0.005 && (
+                  <p style={{ margin: '0.5em 0 0' }}>
+                    Certified for {money(s.currentDue - form.certificate.amount)} less than applied for
+                    {form.certificate.note ? `: ${form.certificate.note.replace(/[.\s]+$/, '')}` : ''}.
+                  </p>
+                )}
               </div>
             </>
           ) : (

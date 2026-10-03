@@ -5,6 +5,8 @@ import { PortalBlock, PortalNote } from './GcPortalUi'
 import {
   GC_COMPANY_NAME,
   CHANGE_ORDER_REASON_WORDS,
+  appCertified,
+  appPaid,
   money,
   ourOwnerWaivers,
   owedDrawWords,
@@ -248,10 +250,12 @@ function BillRow({ state, project, app, onPay }: { state: GcState; project: GcPr
       </div>
       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.8rem' }}>
         {app.paidOn !== null ? (
-          <Chip tone="green">paid {shortDate(app.paidOn)}</Chip>
+          <Chip tone="green">{`paid ${money(appPaid(app))} ${shortDate(app.paidOn)}`}</Chip>
+        ) : appCertified(app) === null ? (
+          <Chip tone="amber">{`waiting on ${project.architect} to certify`}</Chip>
         ) : (
           <Btn kind="primary" onClick={onPay} title="In the real build this opens the pay page or the bank transfer details, the way the customer portal does today.">
-            Pay {money(app.due)}
+            Pay {money(appCertified(app) ?? 0)}
           </Btn>
         )}
         <span style={{ color: 'var(--text-muted)' }}>
@@ -274,6 +278,19 @@ function BillRow({ state, project, app, onPay }: { state: GcState; project: GcPr
           {open ? 'Hide the lines' : 'See every line'}
         </button>
       </div>
+      {app.paidOn === null && appCertified(app) === null && (
+        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+          Your architect, {project.architect}, checks it first. You pay what they certify.
+        </div>
+      )}
+      {appCertified(app) !== null && app.certifiedOn && (
+        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+          {project.architect} certified {money(appCertified(app) ?? 0)} {shortDate(app.certifiedOn)}.
+          {(appCertified(app) ?? 0) < app.due - 0.005
+            ? ` That is ${money(app.due - (appCertified(app) ?? 0))} less than asked${app.certifiedNote ? `: ${app.certifiedNote.replace(/[.\s]+$/, '')}` : ''}. It comes back on a later bill.`
+            : ''}
+        </div>
+      )}
       {open && (
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
           <thead>

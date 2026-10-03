@@ -7272,12 +7272,48 @@ exports[`GC mode golden walk > step 116: Cedar & Pine reports the coffee bar hal
 }
 `;
 
-exports[`GC mode golden walk > step 117: Fair Oaks D: the rough-in inspection passes 1`] = `
+exports[`GC mode golden walk > step 117: Send Dr. Raman pay application 2 1`] = `
 {
   "changed": {
+    "customers.raman.billed": 150610.26315789472,
+    "customers.raman.owed": 56302.446315789464,
+    "customers.raman.retainageHeld": 15061.026315789471,
     "lastLog.id": 113,
-    "lastLog.text": "The rough-in inspection passed on Fair Oaks Shops, Building D. The Rough-in inspection milestone is met.",
+    "lastLog.text": "Sent pay application 2 to Dr. Priya Raman: $56,302 to pay, $15,061 held.",
     "lastLog.who": "office",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 118: Studio Ocotillo certifies pay application 2 for $2,000 less 1`] = `
+{
+  "changed": {
+    "customers.raman.owed": 54302.000000000015,
+    "lastLog.id": 114,
+    "lastLog.text": "Studio Ocotillo certified pay application 2 for $54,302, $2,000 less than asked: Two operatory cabinets are not set yet.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 119: Dr. Raman pays pay application 2 1`] = `
+{
+  "changed": {
+    "customers.raman.owed": 0,
+    "customers.raman.paid": 133548.7905263158,
+    "lastLog.id": 115,
+    "lastLog.text": "Dr. Priya Raman paid pay application 2: $54,302.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 120: Fair Oaks D: the rough-in inspection passes 1`] = `
+{
+  "changed": {
+    "lastLog.id": 116,
+    "lastLog.text": "The rough-in inspection passed on Fair Oaks Shops, Building D. The Rough-in inspection milestone is met.",
     "projects.fairoaksd.stageProgress.also[0]": "The schedule: 3 days behind the plan, 72% done where 76% was planned. Dry-in is 7 days late. Next: Substantial completion, Dec 11. 3 look-ahead marks wait on our superintendent.",
   },
   "removed": [],
@@ -7484,8 +7520,23 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
-      "id": 113,
+      "id": 116,
       "text": "The rough-in inspection passed on Fair Oaks Shops, Building D. The Rough-in inspection milestone is met.",
+      "who": "office",
+    },
+    {
+      "id": 115,
+      "text": "Dr. Priya Raman paid pay application 2: $54,302.",
+      "who": "office",
+    },
+    {
+      "id": 114,
+      "text": "Studio Ocotillo certified pay application 2 for $54,302, $2,000 less than asked: Two operatory cabinets are not set yet.",
+      "who": "office",
+    },
+    {
+      "id": 113,
+      "text": "Sent pay application 2 to Dr. Priya Raman: $56,302 to pay, $15,061 held.",
       "who": "office",
     },
     {
@@ -7617,21 +7668,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "id": 87,
       "text": "Closed Fair Oaks Shops, Building D. 8 things were still open.",
       "who": "office",
-    },
-    {
-      "id": 86,
-      "text": "Our own crew reported Underground on Plumbing at 100%. The whole trade is 20% done.",
-      "who": "office",
-    },
-    {
-      "id": 85,
-      "text": "Approved $11,970 of draw 2 on Millwork, less than the $14,346 asked. Two operatory cabinets are still on order.",
-      "who": "office",
-    },
-    {
-      "id": 84,
-      "text": "Cedar & Pine Millwork sent pay application 2 on Millwork: $15,940, with a conditional waiver signed.",
-      "who": "trade",
     },
   ],
   "partners": [
@@ -9293,6 +9329,8 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
         "paid": 42300,
         "payApps": [
           {
+            "certified": null,
+            "certifiedOn": null,
             "doneToDate": {
               "contingency": 2331.4736842105262,
               "delec": 0,
@@ -9305,6 +9343,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
             },
             "due": 79246.79052631579,
             "number": 1,
+            "paidAmount": 79246.79052631579,
             "paidOn": "2026-10-02",
             "periodTo": "2026-10-25",
             "retainage": 8805.19894736842,
@@ -9319,6 +9358,46 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
               "dry": 64200,
               "fee": 30797,
               "gc": 52000,
+              "mill": 39800,
+            },
+          },
+          {
+            "certified": 54302,
+            "certifiedNote": "Two operatory cabinets are not set yet",
+            "certifiedOn": "2026-10-02",
+            "doneToDate": {
+              "co-1": 5280,
+              "co-3": 1320,
+              "contingency": 3813.157894736842,
+              "delec": 0,
+              "dhvac": 0,
+              "dplumb": 7700,
+              "dry": 64200,
+              "fee": 13091.842105263158,
+              "gc": 22105.263157894737,
+              "helotes-glass-and-storefront": 0,
+              "mill": 33100,
+            },
+            "due": 56302.446315789464,
+            "number": 2,
+            "paidAmount": 54302,
+            "paidOn": "2026-10-02",
+            "periodTo": "2026-11-25",
+            "retainage": 15061.026315789471,
+            "retainagePct": 10,
+            "sentOn": "2026-10-02",
+            "workToDate": 150610.26315789472,
+            "worthByLine": {
+              "co-1": 5280,
+              "co-3": 2640,
+              "contingency": 8970,
+              "delec": 56900,
+              "dhvac": 47600,
+              "dplumb": 38500,
+              "dry": 64200,
+              "fee": 30797,
+              "gc": 52000,
+              "helotes-glass-and-storefront": 0,
               "mill": 39800,
             },
           },
@@ -12136,6 +12215,8 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
             "workToDate": 182413,
           },
           {
+            "certified": null,
+            "certifiedOn": null,
             "doneToDate": {
               "contingency": 4830,
               "fee": 16583,
@@ -12148,6 +12229,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
             "due": 18241.29999999999,
             "final": true,
             "number": 4,
+            "paidAmount": 18241.29999999999,
             "paidOn": "2026-10-02",
             "periodTo": "2026-10-02",
             "retainage": 0,

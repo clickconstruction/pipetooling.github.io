@@ -4,12 +4,15 @@ import { GcOwnerBillingCash } from './GcOwnerBillingCash'
 import { GcOwnerBillingChangeOrders } from './GcOwnerBillingChangeOrders'
 import { OwnerPayAppWindow } from './GcOwnerBillingPayApp'
 import { GcOwnerBillingPortal } from './GcOwnerBillingPortal'
-import { Btn, Card, Chip, Stat, Why, num, td, th } from './gcUi'
+import { Btn, Card, Chip, Stat, Why, input, num, td, th } from './gcUi'
 import {
+  appCertified,
+  appPaid,
   daysUntil,
   missingTradeWaivers,
   money,
   owedDrawWords,
+  ownerCarriedForward,
   ownerCloseout,
   ownerAccount,
   ownerExpectPaidOn,
@@ -109,6 +112,11 @@ function OfficeSide({ state, project, dispatch }: { state: GcState; project: GcP
             <Stat label="Paid" value={money(account.paid)} />
             <Stat label="They owe us now" value={money(account.owed)} tone={Math.round(account.owed) > 0 ? 'red' : 'green'} />
           </div>
+          {Math.round(account.waitingOnArchitect) > 0 && (
+            <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
+              Of that, {money(account.waitingOnArchitect)} waits on {project.architect} to certify. They pay once it is certified.
+            </div>
+          )}
           <div style={{ display: 'grid', gap: '0.4rem' }}>
             {[...sent].reverse().map((a) => (
               <SentRow
@@ -118,6 +126,8 @@ function OfficeSide({ state, project, dispatch }: { state: GcState; project: GcP
                 today={state.today}
                 onPaid={() => dispatch({ type: 'ownerPaid', projectId: project.id, number: a.number })}
                 onForm={() => setFormFor(a.number)}
+                architect={project.architect}
+                onCertify={(amount, note) => dispatch({ type: 'architectCertify', projectId: project.id, number: a.number, amount, note })}
               />
             ))}
           </div>
@@ -151,6 +161,8 @@ function OfficeSide({ state, project, dispatch }: { state: GcState; project: GcP
         </div>
         <div style={{ marginTop: '0.7rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
           After this bill, {money(app.leftToBill)} is left to bill. That counts the {money(app.retainage)} they hold.
+          {ownerCarriedForward(app) > 0 &&
+            ` It includes ${money(ownerCarriedForward(app))} that ${project.architect} did not certify on an earlier bill.`}
           {app.changeOrdersTotal !== 0 &&
             ` Our price is the ${money(app.originalContract)} they signed for, ${app.changeOrdersTotal > 0 ? 'plus' : 'less'} ${money(Math.abs(app.changeOrdersTotal))} of change orders.`}
         </div>
@@ -304,6 +316,8 @@ function SentRow({
   today,
   onPaid,
   onForm,
+  architect,
+  onCertify,
 }: {
   app: OwnerPayAppSent
   expectOn: string | null
@@ -311,40 +325,98 @@ function SentRow({
   onPaid: () => void
   /** Opens it as the form: the G702 and G703 as it went. */
   onForm: () => void
+  architect: string
+  /** The architect's certificate, pressed on their behalf in the prototype. */
+  onCertify: (amount: number, note: string) => void
 }) {
+  const [certifying, setCertifying] = useState(false)
+  const [amount, setAmount] = useState(String(Math.round(app.due * 100) / 100))
+  const [note, setNote] = useState('')
   const month = MONTH_NAMES[Number(app.periodTo.slice(5, 7)) - 1] ?? ''
   const late = app.paidOn === null && expectOn !== null && daysUntil(expectOn, today) < 0
+  const certified = appCertified(app)
+  const amountNum = Number(amount)
+  const less = Number.isFinite(amountNum) && amountNum < app.due - 0.005
+  const canCertify = Number.isFinite(amountNum) && amountNum >= 0 && amountNum <= app.due + 0.005 && (!less || note.trim() !== '')
   return (
-    <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.875rem', borderTop: '1px solid var(--border)', paddingTop: '0.4rem' }}>
-      <strong>{app.final ? 'Final pay application' : `Pay application ${app.number}`}</strong>
-      <span style={{ color: 'var(--text-muted)' }}>{month} · sent {shortDate(app.sentOn)}</span>
-      <span>
-        <strong>{money(app.due)}</strong> to pay · {money(app.retainage)} held
-      </span>
-      <Btn kind="quiet" onClick={onForm} title="The G702 and G703 as it went.">
-        Pay application
-      </Btn>
-      {app.paidOn !== null ? (
-        <>
-          <Chip tone="green">paid {shortDate(app.paidOn)}</Chip>
-          <Chip tone="green">our unconditional waiver{app.final ? ' on final payment' : ''} signed</Chip>
-        </>
-      ) : (
-        <>
-          <Chip tone={late ? 'red' : 'amber'}>
-            {late ? `late · expected ${shortDate(expectOn)}` : expectOn ? `waiting · expected ${shortDate(expectOn)}` : 'waiting'}
-          </Chip>
-          <Chip tone="grey">our conditional waiver{app.final ? ' on final payment' : ''} went with it</Chip>
-          <Btn kind="primary" onClick={onPaid} title="Marks it paid and signs our unconditional waiver for this amount.">
-            Mark paid
+    <div style={{ borderTop: '1px solid var(--border)', paddingTop: '0.4rem', display: 'grid', gap: '0.35rem', fontSize: '0.875rem' }}>
+      <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        <strong>{app.final ? 'Final pay application' : `Pay application ${app.number}`}</strong>
+        <span style={{ color: 'var(--text-muted)' }}>{month} · sent {shortDate(app.sentOn)}</span>
+        <span>
+          <strong>{money(app.due)}</strong> asked · {money(app.retainage)} held
+        </span>
+        <Btn kind="quiet" onClick={onForm} title="The G702 and G703 as it went.">
+          Pay application
+        </Btn>
+        {app.paidOn !== null ? (
+          <>
+            <Chip tone="green">{`paid ${money(appPaid(app))} ${shortDate(app.paidOn)}`}</Chip>
+            <Chip tone="green">our unconditional waiver{app.final ? ' on final payment' : ''} signed</Chip>
+          </>
+        ) : certified === null ? (
+          <>
+            <Chip tone="amber">{`waiting on ${architect} to certify`}</Chip>
+            <Chip tone="grey">our conditional waiver{app.final ? ' on final payment' : ''} went with it</Chip>
+            {!certifying && (
+              <Btn onClick={() => setCertifying(true)} title="In the real build the architect certifies it from a link, the way the owner and the trades use theirs.">
+                {`Certify it as ${architect}`}
+              </Btn>
+            )}
+            <Btn kind="primary" disabled title="It waits for the architect’s certificate." onClick={onPaid}>
+              Mark paid
+            </Btn>
+          </>
+        ) : (
+          <>
+            <Chip tone="blue">{`certified ${money(certified)}${app.certifiedOn ? ` ${shortDate(app.certifiedOn)}` : ''}`}</Chip>
+            <Chip tone={late ? 'red' : 'amber'}>
+              {late ? `late · expected ${shortDate(expectOn)}` : expectOn ? `waiting · expected ${shortDate(expectOn)}` : 'waiting'}
+            </Chip>
+            <Btn kind="primary" onClick={onPaid} title="Marks it paid and signs our unconditional waiver for this amount.">
+              {`Mark paid ${money(certified)}`}
+            </Btn>
+          </>
+        )}
+      </div>
+      {certified !== null && certified < app.due - 0.005 && (
+        <div style={{ color: 'var(--text-amber-800)' }}>
+          {architect} certified {money(app.due - certified)} less than we asked
+          {app.certifiedNote ? `: ${app.certifiedNote.replace(/[.\s]+$/, '')}` : ''}. It comes back on the next bill.
+        </div>
+      )}
+      {certifying && certified === null && (
+        <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-end', flexWrap: 'wrap', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.6rem' }}>
+          <label style={{ display: 'grid', gap: '0.2rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+            Amount certified
+            <input style={{ ...input, width: '9rem' }} type="number" min={0} value={amount} onChange={(e) => setAmount(e.target.value)} />
+          </label>
+          {less && (
+            <label style={{ display: 'grid', gap: '0.2rem', fontSize: '0.8rem', color: 'var(--text-muted)', flex: '1 1 14rem' }}>
+              Why less
+              <input style={input} value={note} onChange={(e) => setNote(e.target.value)} placeholder="The architect's reason, in a sentence" />
+            </label>
+          )}
+          <Btn
+            kind="primary"
+            disabled={!canCertify}
+            onClick={() => {
+              onCertify(amountNum, note)
+              setCertifying(false)
+            }}
+          >
+            Certify
           </Btn>
-        </>
+          <Btn kind="quiet" onClick={() => setCertifying(false)}>
+            Cancel
+          </Btn>
+        </div>
       )}
     </div>
   )
 }
 
-const WHO_WORDS: Record<OwnerCloseout['steps'][number]['who'], string> = { office: 'us', trades: 'the trades', owner: 'the owner' }
+const WHO_WORDS: Record<OwnerCloseout['steps'][number]['who'], string> = { office: 'us', trades: 'the trades', architect: 'the architect', owner: 'the owner' }
 
 /** Our closeout with the owner, once every line is billed: what is left before they release what they hold. */
 function CloseoutCard({ project, closeout, onSendFinal }: { project: GcProject; closeout: OwnerCloseout; onSendFinal: () => void }) {

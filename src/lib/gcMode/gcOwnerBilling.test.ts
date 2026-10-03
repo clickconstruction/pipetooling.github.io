@@ -9,6 +9,7 @@ import {
   ourOwnerWaivers,
   owedDrawWords,
   ownerAllBilled,
+  ownerCarriedForward,
   ownerPayAppForm,
   ownerCloseout,
   ownerReleasedRetainage,
@@ -203,7 +204,7 @@ describe('the retainage the owner holds, released at the end', () => {
     const state = initialGcState()
     const c = ownerCloseout(state, stoneOakOf(state))
     expect(ownerAllBilled(state, stoneOakOf(state))).toBe(true)
-    expect(c.steps.map((st) => [st.key, st.done])).toEqual([['billed', true], ['trades', false], ['accepted', false], ['finalApp', false], ['paid', false]])
+    expect(c.steps.map((st) => [st.key, st.done])).toEqual([['billed', true], ['trades', false], ['accepted', false], ['finalApp', false], ['certified', false], ['paid', false]])
     // Building lane, owner's call 2026-10-02: closeout asks for no warranty letter, so the next step is the final.
     expect(c.tradesWaiting).toEqual([{ packageId: 'shvac', company: 'Cool Breeze Mechanical', why: 'Cool Breeze Mechanical has not sent it yet.' }])
     expect(c.held).toBeCloseTo(18_241.3, 2)
@@ -230,6 +231,9 @@ describe('the retainage the owner holds, released at the end', () => {
     expect(ourOwnerWaivers(stoneOakOf(state))[0]).toMatchObject({ payApp: 4, kind: 'conditional', final: true })
     expect(ownerReleasedRetainage(stoneOakOf(state))).toBe(false)
     expect(Math.round((ownerAccount(stoneOakOf(state))?.owed ?? 0) * 100) / 100).toBe(18_241.3)
+    expect(ownerCloseout(state, stoneOakOf(state)).next?.key).toBe('certified')
+    state = gcReducer(state, { type: 'architectCertify', projectId: 'stoneoak', number: 4, amount: 18_241.3, note: '' })
+    expect(ownerCloseout(state, stoneOakOf(state)).next?.key).toBe('paid')
     state = gcReducer(state, { type: 'ownerPaid', projectId: 'stoneoak', number: 4 })
     const c = ownerCloseout(state, stoneOakOf(state))
     expect([c.closed, c.held]).toEqual([true, 0])
@@ -584,6 +588,46 @@ describe('money in and money out on a job', () => {
     state = gcReducer(state, { type: 'payDraw', projectId: 'helotes', packageId: 'dry', drawId: 'dry-draw-2' })
     const cash = projectCash(state, projectOf(state, 'helotes'))
     expect([cash.out.paid, cash.out.approved, cash.net]).toEqual([34_488, 0, 7_812])
+  })
+})
+
+describe('the architect certifies first', () => {
+  const helotesOf = (state: GcState) => {
+    const p = state.projects.find((x) => x.id === 'helotes')
+    if (!p) throw new Error('fixture has no helotes')
+    return p
+  }
+  const sent = () => gcReducer(initialGcState(), { type: 'sendOwnerPayApp', projectId: 'helotes' })
+
+  it('a bill waits on the architect until certified', () => {
+    const state = sent()
+    const app = helotesOf(state).ownerBilling?.payApps?.[0]
+    expect([app?.certified, app?.certifiedOn]).toEqual([null, null])
+    const account = ownerAccount(helotesOf(state))
+    expect([Math.round(account?.waitingOnArchitect ?? 0), account?.certifiedUnpaid]).toEqual([47_301, 0])
+  })
+
+  it('certified for less: the owner pays that, our waiver names it, and the rest comes back on the next bill', () => {
+    let state = gcReducer(sent(), { type: 'architectCertify', projectId: 'helotes', number: 1, amount: 40_000, note: 'Ceilings are not hung yet.' })
+    const app = helotesOf(state).ownerBilling?.payApps?.[0]
+    expect([app?.certified, app?.certifiedOn, app?.certifiedNote]).toEqual([40_000, '2026-10-02', 'Ceilings are not hung yet.'])
+    expect(gcReducer(state, { type: 'architectCertify', projectId: 'helotes', number: 1, amount: 47_301, note: '' })).toBe(state)
+    state = gcReducer(state, { type: 'ownerPaid', projectId: 'helotes', number: 1 })
+    const account = ownerAccount(helotesOf(state))
+    expect([account?.paid, account?.owed]).toEqual([40_000, 0])
+    expect(ourOwnerWaivers(helotesOf(state))[0]).toMatchObject({ kind: 'unconditional', amount: 40_000 })
+    // No new work, yet the next bill asks for what the architect cut: line 7 counts the certificate.
+    const next = ownerPayApp(state, helotesOf(state))
+    expect([Math.round(next.askedBefore), Math.round(next.due)]).toEqual([40_000, 7_301])
+    expect(Math.round(ownerCarriedForward(next))).toBe(7_301)
+    const form = ownerPayAppForm(state, helotesOf(state), 1)
+    expect([form?.certificate.amount, form?.certificate.note]).toEqual([40_000, 'Ceilings are not hung yet.'])
+  })
+
+  it('never certifies more than asked', () => {
+    const state = gcReducer(sent(), { type: 'architectCertify', projectId: 'helotes', number: 1, amount: 999_999, note: '' })
+    const app = helotesOf(state).ownerBilling?.payApps?.[0]
+    expect(app?.certified).toBe(app?.due)
   })
 })
 

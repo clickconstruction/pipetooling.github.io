@@ -511,6 +511,8 @@ export type GcAction =
   | { type: 'sendTradeChange'; projectId: string; changeOrderId: string }
   /** The trade signs the change in its portal: it becomes a line of its statement of work. */
   | { type: 'tradeSignChange'; projectId: string; changeOrderId: string }
+  /** The architect certifies one of our pay applications to the owner, for what we asked or less. */
+  | { type: 'architectCertify'; projectId: string; number: number; amount: number; note: string }
   /** Our superintendent records an inspection passed, today. */
   | { type: 'passInspection'; projectId: string; lineId: string }
 
@@ -579,6 +581,16 @@ export interface OwnerPayAppSent {
   final?: boolean
   /** Each line's scheduled value when it went, by line id. Absent on the made-up ones: today's values stand in. */
   worthByLine?: Record<string, number>
+  /**
+   * What the architect certified the owner should pay (owner's call, 2026-10-03: the architect
+   * certifies first). Null: waiting on the architect. Absent: the made-up history, certified as asked.
+   */
+  certified?: number | null
+  certifiedOn?: string | null
+  /** Why the architect certified less than we asked. */
+  certifiedNote?: string
+  /** What the owner paid, once paid: the certified amount. Absent: as asked. */
+  paidAmount?: number
 }
 
 /** A pay application the office sent back: the draw as the trade sent it, why, and what we see. */
