@@ -333,7 +333,7 @@ export function buildSubSheets(
       jobNumber: (sheet.job_number ?? '').trim() || null,
       address: cleanPortalAddress(sheet.address),
       stage: normalizeStage(sheet.stage),
-      stageChangedOn: (sheet.stage_changed_at ?? '').slice(0, 10) || null,
+      stageChangedOn: ymdInAppTzFromIso(sheet.stage_changed_at) || null,
       stageSource: normalizeStageSource(sheet.stage_source),
       items: sheetItems.map((it) => ({
         label: itemLabel(it, rate),
@@ -348,7 +348,7 @@ export function buildSubSheets(
       agreement: null,
       plansUrl: (sheet.plans_url ?? '').trim() || null,
       dates: null,
-      progress: sheet.progress_pct == null ? null : { pct: Math.max(0, Math.min(100, Number(sheet.progress_pct) || 0)), note: (sheet.progress_note ?? '').trim() || null, on: (sheet.progress_at ?? '').slice(0, 10) || null },
+      progress: sheet.progress_pct == null ? null : { pct: Math.max(0, Math.min(100, Number(sheet.progress_pct) || 0)), note: (sheet.progress_note ?? '').trim() || null, on: ymdInAppTzFromIso(sheet.progress_at) || null },
     }
   })
 }
@@ -391,7 +391,7 @@ export function attachSheetAgreements(sheets: SubPortalSheet[], agreements: SubA
       ...sheet,
       dates: todayYmd ? agreementDates(a, todayYmd) : null,
       agreement: {
-        signedOn: (a.signed_at ?? a.accepted_at ?? '').slice(0, 10) || null,
+        signedOn: ymdInAppTzFromIso(a.signed_at ?? a.accepted_at) || null,
         signerName: (a.signer_printed_name ?? '').trim() || null,
         amount: round2(Number(a.amount) || 0),
         lines: parseScopeLines(a.offer_scope_snapshot),
