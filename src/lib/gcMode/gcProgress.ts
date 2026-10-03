@@ -104,9 +104,11 @@ function biddingProgress(state: GcState, project: GcProject): StageProgress {
         done: amount !== null && !isGuess(pkg),
         detail:
           amount === null
-            ? n > 0
-              ? `${quotes}. Pick one to carry.`
-              : 'No quote yet.'
+            ? pkg.selfPerform
+              ? 'Our own bid is not priced yet.'
+              : n > 0
+                ? `${quotes}. Pick one to carry.`
+                : 'No quote yet.'
             : pkg.selfPerform
               ? `Our own crew, ${thousands(amount)}K`
               : isGuess(pkg)
@@ -187,8 +189,11 @@ function buyoutProgress(state: GcState, project: GcProject): StageProgress {
     items: list.trades.flatMap((t) => {
       const check = t.checks.find((c) => c.key === g.key)
       if (check) return [{ label: t.pkg.trade, detail: check.detail, done: check.done }]
-      // Our own crew: one step, counted under Awarded, nothing to sign.
-      return g.key === 'awarded' && t.pkg.selfPerform ? [{ label: t.pkg.trade, detail: 'Our own crew', done: true }] : []
+      // Our own crew: one step, counted under Awarded, nothing to sign; done once our bid is priced.
+      const self = t.checks.find((c) => c.key === 'self')
+      return g.key === 'awarded' && self
+        ? [{ label: t.pkg.trade, detail: self.done ? 'Our own crew' : 'Our own bid is not priced yet.', done: self.done }]
+        : []
     }),
   }))
   const groups = [owner, ...byStep].filter((g) => g.items.length > 0)

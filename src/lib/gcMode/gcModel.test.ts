@@ -331,6 +331,23 @@ const STEPS: Step[] = [
   },
   { label: 'Send change order 2 to Dr. Raman', action: { type: 'sendChangeOrder', projectId: 'helotes', changeOrderId: 'co-2' } },
   { label: 'Dr. Raman declines change order 2', action: { type: 'ownerDeclineChangeOrder', projectId: 'helotes', changeOrderId: 'co-2' } },
+  // A set issued on a job with a schedule adds days to an activity; what waits on it moves out.
+  {
+    label: 'Helotes: Bulletin 2 adds data drops, five more days of low voltage rough',
+    action: {
+      type: 'issuePlanSet',
+      projectId: 'helotes',
+      label: 'Bulletin 2',
+      note: 'Data drops added at each operatory. E-102 changed.',
+      sheets: ['E-102'],
+      addedSheets: [],
+      touches: ['delec'],
+      recipients: ['brightline'],
+      newTrades: [],
+      schedulePushes: { 'delec-4': 5 },
+    },
+  },
+  { label: 'The office sets Comal Iron to Spanish', action: { type: 'setPartnerLanguage', partnerId: 'comal', lang: 'es' } },
   // Change orders, the trade's side (Building lane): the owner signs, the trade signs it into its statement of work.
   {
     label: 'Change order 3: a coffee bar cabinet in the break room',
@@ -480,6 +497,7 @@ describe('GC mode golden walk', () => {
       'priceOwnBid',
       'tradeMarkLookAhead',
       'tradeSetLanguage',
+      'setPartnerLanguage',
     ]
     expect(all.filter((t) => !used.has(t))).toEqual([])
   })

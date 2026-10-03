@@ -582,3 +582,106 @@ export function scheduleDraft(project: GcProject, start: string): ProjectSchedul
   ]
   return { activities, milestones, baseline: null, lookAhead: [] }
 }
+
+// ---------------------------------------------------------------------------------------------
+// A set issued once the job has a schedule: the activities it touches, and the days it adds
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * The scheduled activities a set's changed sheets reach: the scope lines they touch, found on
+ * the schedule by line id (a statement of work keeps its scope line ids). Empty with no schedule.
+ */
+export function activitiesTouched(project: GcProject, sheetIds: string[]): ScheduleActivity[] {
+  const schedule = project.schedule
+  if (!schedule || sheetIds.length === 0) return []
+  const ids = new Set(project.packages.flatMap((pkg) => linesOnSheets(project, pkg, sheetIds).map((l) => l.id)))
+  return schedule.activities.filter((a) => ids.has(a.lineId))
+}
+
+/** What a push does: every activity's new dates, the ones that moved, and the job's last day before and after. */
+export interface SchedulePush {
+  activities: ScheduleActivity[]
+  moved: { lineId: string; days: number }[]
+  lastBefore: string
+  lastAfter: string
+}
+
+function dayIndex(iso: string): number {
+  const [y, m, d] = iso.split('-').map(Number)
+  return Date.UTC(y ?? 1970, (m ?? 1) - 1, d ?? 1) / 86_400_000
+}
+
+/**
+ * Add days to activities a set changes: each one's finish moves out by its days (the work takes
+ * longer), and everything waiting on it moves out as far as it must to start the day after, never
+ * earlier than it was. Lengths are kept. A loop in what waits on what is left as drawn.
+ */
+export function pushSchedule(activities: ScheduleActivity[], pushes: Record<string, number>): SchedulePush {
+  const byId = new Map(activities.map((a) => [a.lineId, { ...a }]))
+  const order: string[] = []
+  const placed = new Set<string>()
+  const place = (id: string, seen: Set<string>) => {
+    const a = byId.get(id)
+    if (!a || placed.has(id) || seen.has(id)) return
+    seen.add(id)
+    for (const before of a.after) place(before, seen)
+    placed.add(id)
+    order.push(id)
+  }
+  for (const a of activities) place(a.lineId, new Set())
+  for (const id of order) {
+    const a = byId.get(id)
+    if (!a) continue
+    const length = dayIndex(a.finish) - dayIndex(a.start)
+    const waits = a.after.map((b) => byId.get(b)?.finish).filter((f): f is string => !!f)
+    const latest = waits.reduce<string | null>((m, f) => (m === null || f > m ? f : m), null)
+    if (latest && latest >= a.start) {
+      a.start = plusDays(latest, 1)
+      a.finish = plusDays(a.start, length)
+    }
+    const add = Math.max(0, Math.round(pushes[id] ?? 0))
+    if (add > 0) a.finish = plusDays(a.finish, add)
+  }
+  const next = activities.map((a) => byId.get(a.lineId) ?? a)
+  const moved = activities
+    .map((a) => ({ lineId: a.lineId, days: dayIndex(byId.get(a.lineId)?.finish ?? a.finish) - dayIndex(a.finish) }))
+    .filter((m) => m.days > 0)
+  const last = (list: ScheduleActivity[]) => list.reduce((m, a) => (a.finish > m ? a.finish : m), '')
+  return { activities: next, moved, lastBefore: last(activities), lastAfter: last(next) }
+}
+
+// ---------------------------------------------------------------------------------------------
+// A set that changes a job we have won starts its change orders to the owner
+// ---------------------------------------------------------------------------------------------
+
+function wordsAnd(words: string[]): string {
+  if (words.length <= 1) return words[0] ?? ''
+  return `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}`
+}
+
+/**
+ * The words a change order to the owner starts with when a set of plans changes a trade on a job
+ * we have won: what the set does to the trade, "per" its sheets, and the time it adds to the job.
+ * No closing full stop: Owner Billing adds it. The office types the cost; Owner Billing's draft
+ * adds our fee for the price (reason 'plans', price 0, its `changeOrderPrice`).
+ */
+export function changeOrderFromSet(
+  set: { label: string; note: string; sheets: string[] },
+  trade: string,
+  addedLines: string[],
+  jobDays: number,
+): { description: string; schedule: string } {
+  // The note's first sentence, without a sheet number at its head ("E-201: the tenant…"): "per" names the sheets.
+  const firstSentence = (set.note.trim().split(/(?<=[.!?])\s+/)[0] ?? '')
+    .replace(/[.!?]+$/, '')
+    .replace(/^[A-Za-z]{1,2}-?\d[\d.]*[A-Za-z]?\s*[:\-–—]\s*/, '')
+  // Lower the first letter to run on after the colon, unless the word is in capitals (RTU-3).
+  const runOn = /^[A-Z][A-Z0-9]/.test(firstSentence) ? firstSentence : firstSentence.charAt(0).toLowerCase() + firstSentence.slice(1)
+  const what = addedLines.length > 0 ? `adds ${wordsAnd(addedLines.map((l) => l.trim().toLowerCase()))}` : runOn
+  // Plain words reach the owner's portal and the pay application: "per E-102", never in brackets.
+  const sheets = set.sheets.length > 0 ? `, per ${wordsAnd(set.sheets)}` : ''
+  return {
+    description: `${set.label}, ${trade}: ${what || 'the changes in the set'}${sheets}`,
+    schedule: jobDays > 0 ? `+${jobDays} ${jobDays === 1 ? 'day' : 'days'}` : 'none',
+  }
+}

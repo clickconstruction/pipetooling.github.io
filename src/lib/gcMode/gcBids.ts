@@ -4,7 +4,7 @@
  */
 import type { GcProject, GcState, Invite, ScopeItem, Sow, TradePackage } from './gcTypes'
 import { money, shortDate } from './gcWords'
-import { partnerById } from './gcLookups'
+import { ownBidPriced, partnerById } from './gcLookups'
 
 /** The bid plus the office's plug for every scope item it does not clearly include. */
 export function leveledTotal(pkg: TradePackage, invite: Invite): number | null {
@@ -146,10 +146,11 @@ export function lowLeveled(pkg: TradePackage): { invite: Invite; total: number }
   return best
 }
 
-export type Coverage = 'self' | 'awarded' | 'carried' | 'plug' | 'bids' | 'waiting' | 'empty'
+/** 'self-unpriced': our own Trades mode bid is started but not priced yet (`ownBidPriced`). */
+export type Coverage = 'self' | 'self-unpriced' | 'awarded' | 'carried' | 'plug' | 'bids' | 'waiting' | 'empty'
 
 export function packageCoverage(pkg: TradePackage): Coverage {
-  if (pkg.selfPerform) return 'self'
+  if (pkg.selfPerform) return ownBidPriced(pkg) ? 'self' : 'self-unpriced'
   if (pkg.awardedInviteId) return 'awarded'
   if (pkg.carried === 'plug') return 'plug'
   if (pkg.carried) return 'carried'
@@ -164,7 +165,8 @@ export function isGuess(pkg: TradePackage): boolean {
 }
 
 export function carriedAmount(pkg: TradePackage): number | null {
-  if (pkg.selfPerform) return pkg.selfPerform.value
+  // Our own bid counts once it is priced (the owner, 2026-10-02): until then its value is our guess, a hole.
+  if (pkg.selfPerform) return ownBidPriced(pkg) ? pkg.selfPerform.value : null
   if (pkg.sow) return pkg.sow.price
   if (pkg.carried === 'plug') return pkg.budget
   const invite = pkg.invites.find((i) => i.id === (pkg.awardedInviteId ?? pkg.carried))

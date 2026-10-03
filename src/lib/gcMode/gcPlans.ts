@@ -141,7 +141,7 @@ function andList(words: string[]): string {
 /**
  * The words a company reads when a new set goes out. Two versions: their trade changed, or it did
  * not. `lines`: the scope lines of their trade that read from a changed sheet, named in the email.
- * `adds`: scope lines the set adds to their trade.
+ * `adds`: scope lines the set adds to their trade. `moves`: sentences on their activities' new dates.
  */
 export function planEmail(
   project: GcProject,
@@ -149,9 +149,11 @@ export function planEmail(
   note: string,
   sheets: string[],
   r: PlanRecipient | null,
-  lines: string[] = [],
-  adds: string[] = [],
+  more: { lines?: string[]; adds?: string[]; moves?: string[] } = {},
 ): { subject: string; body: string[] } {
+  const lines = more.lines ?? []
+  const adds = more.adds ?? []
+  const moves = (more.moves ?? []).map((m) => ` ${m}`).join('')
   const body = [`${label} for ${project.name} is out. Your portal now shows it.`, `What changed: ${note || 'see the sheets below.'}`]
   if (sheets.length > 0) body.push(`Sheets: ${sheets.join(', ')}.`)
   if (!r) return { subject: `${project.name}: ${label} is out`, body }
@@ -168,7 +170,7 @@ export function planEmail(
         : `This changes ${trade}.${touches} Please price the new set${project.bidDue ? `. Your number is due ${weekdayDate(project.bidDue)}` : ''}.`,
     )
   } else if (r.touched) {
-    body.push(`This changes ${trade}.${touches} Build from this set. If it changes your price, tell us before you do the work.`)
+    body.push(`This changes ${trade}.${touches}${moves} Build from this set. If it changes your price, tell us before you do the work.`)
   } else {
     body.push(`It does not change ${trade}. No action needed. It is for your records.`)
   }

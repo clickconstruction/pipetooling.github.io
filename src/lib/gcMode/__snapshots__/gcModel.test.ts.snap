@@ -5928,18 +5928,19 @@ exports[`GC mode golden walk > step 57: A new project: Leon Springs Urgent Care 
     "lastLog.text": "Started Leon Springs Urgent Care. The bid set has 5 sheets, split into 4 trades.",
     "projects.leon-springs-urgent-care.planRecipients.allTouched": "[]",
     "projects.leon-springs-urgent-care.planRecipients.noneTouched": "[]",
-    "projects.leon-springs-urgent-care.proposalTotals.contingency": 2160,
-    "projects.leon-springs-urgent-care.proposalTotals.fee": 5932.8,
+    "projects.leon-springs-urgent-care.proposalTotals.contingency": 0,
+    "projects.leon-springs-urgent-care.proposalTotals.fee": 0,
     "projects.leon-springs-urgent-care.proposalTotals.generalConditions": 0,
     "projects.leon-springs-urgent-care.proposalTotals.holes[0]": "«package leon-springs-urgent-care-sitework»",
     "projects.leon-springs-urgent-care.proposalTotals.holes[1]": "«package leon-springs-urgent-care-roofing»",
-    "projects.leon-springs-urgent-care.proposalTotals.holes[2]": "«package leon-springs-urgent-care-electrical»",
+    "projects.leon-springs-urgent-care.proposalTotals.holes[2]": "«package leon-springs-urgent-care-plumbing»",
+    "projects.leon-springs-urgent-care.proposalTotals.holes[3]": "«package leon-springs-urgent-care-electrical»",
     "projects.leon-springs-urgent-care.proposalTotals.plugged": "[]",
-    "projects.leon-springs-urgent-care.proposalTotals.price": 80092.8,
-    "projects.leon-springs-urgent-care.proposalTotals.trades": 72000,
+    "projects.leon-springs-urgent-care.proposalTotals.price": 0,
+    "projects.leon-springs-urgent-care.proposalTotals.trades": 0,
     "projects.leon-springs-urgent-care.stage": "pursuing",
     "projects.leon-springs-urgent-care.stageProgress.also": "[]",
-    "projects.leon-springs-urgent-care.stageProgress.center": "1/8",
+    "projects.leon-springs-urgent-care.stageProgress.center": "0/8",
     "projects.leon-springs-urgent-care.stageProgress.groups[0].items[0].detail": "0 of 2 in. Ask more companies.",
     "projects.leon-springs-urgent-care.stageProgress.groups[0].items[0].done": false,
     "projects.leon-springs-urgent-care.stageProgress.groups[0].items[0].label": "Sitework",
@@ -5958,8 +5959,8 @@ exports[`GC mode golden walk > step 57: A new project: Leon Springs Urgent Care 
     "projects.leon-springs-urgent-care.stageProgress.groups[1].items[1].detail": "No quote yet.",
     "projects.leon-springs-urgent-care.stageProgress.groups[1].items[1].done": false,
     "projects.leon-springs-urgent-care.stageProgress.groups[1].items[1].label": "Roofing",
-    "projects.leon-springs-urgent-care.stageProgress.groups[1].items[2].detail": "Our own crew, 72K",
-    "projects.leon-springs-urgent-care.stageProgress.groups[1].items[2].done": true,
+    "projects.leon-springs-urgent-care.stageProgress.groups[1].items[2].detail": "Our own bid is not priced yet.",
+    "projects.leon-springs-urgent-care.stageProgress.groups[1].items[2].done": false,
     "projects.leon-springs-urgent-care.stageProgress.groups[1].items[2].label": "Plumbing",
     "projects.leon-springs-urgent-care.stageProgress.groups[1].items[3].detail": "No quote yet.",
     "projects.leon-springs-urgent-care.stageProgress.groups[1].items[3].done": false,
@@ -5973,15 +5974,16 @@ exports[`GC mode golden walk > step 57: A new project: Leon Springs Urgent Care 
     "projects.leon-springs-urgent-care.stageProgress.groups[2].key": "sent",
     "projects.leon-springs-urgent-care.stageProgress.groups[2].label": "Our bid to the owner",
     "projects.leon-springs-urgent-care.stageProgress.groups[2].why": "The last step here. Send our price to the owner.",
-    "projects.leon-springs-urgent-care.stageProgress.headline": "1 of 8 steps done before our bid can go in.",
-    "projects.leon-springs-urgent-care.stageProgress.share": 0.125,
-    "projects.leon-springs-urgent-care.startChecklist.done": 1,
+    "projects.leon-springs-urgent-care.stageProgress.headline": "0 of 8 steps done before our bid can go in.",
+    "projects.leon-springs-urgent-care.stageProgress.share": 0,
+    "projects.leon-springs-urgent-care.startChecklist.done": 0,
     "projects.leon-springs-urgent-care.startChecklist.missing[0]": "Our contract with Leon Springs Health is signed: not signed yet.",
     "projects.leon-springs-urgent-care.startChecklist.missing[1]": "The permit is in hand: not yet.",
     "projects.leon-springs-urgent-care.startChecklist.missing[2]": "A start date is set: no date yet.",
     "projects.leon-springs-urgent-care.startChecklist.missing[3]": "Sitework: Pick a company and award the trade.",
     "projects.leon-springs-urgent-care.startChecklist.missing[4]": "Roofing: Pick a company and award the trade.",
-    "projects.leon-springs-urgent-care.startChecklist.missing[5]": "Electrical: Pick a company and award the trade.",
+    "projects.leon-springs-urgent-care.startChecklist.missing[5]": "Plumbing: Price our own bid.",
+    "projects.leon-springs-urgent-care.startChecklist.missing[6]": "Electrical: Pick a company and award the trade.",
     "projects.leon-springs-urgent-care.startChecklist.owner[0].detail": "not signed yet",
     "projects.leon-springs-urgent-care.startChecklist.owner[0].done": false,
     "projects.leon-springs-urgent-care.startChecklist.owner[0].key": "ownerContract",
@@ -6046,15 +6048,15 @@ exports[`GC mode golden walk > step 57: A new project: Leon Springs Urgent Care 
     "projects.leon-springs-urgent-care.startChecklist.trades[1].partner": null,
     "projects.leon-springs-urgent-care.startChecklist.trades[1].pkg": "«package leon-springs-urgent-care-roofing»",
     "projects.leon-springs-urgent-care.startChecklist.trades[1].ready": false,
-    "projects.leon-springs-urgent-care.startChecklist.trades[2].checks[0].detail": "our own crew, New bid",
-    "projects.leon-springs-urgent-care.startChecklist.trades[2].checks[0].done": true,
+    "projects.leon-springs-urgent-care.startChecklist.trades[2].checks[0].detail": "our own bid is not priced yet",
+    "projects.leon-springs-urgent-care.startChecklist.trades[2].checks[0].done": false,
     "projects.leon-springs-urgent-care.startChecklist.trades[2].checks[0].key": "self",
     "projects.leon-springs-urgent-care.startChecklist.trades[2].checks[0].label": "Ours",
     "projects.leon-springs-urgent-care.startChecklist.trades[2].invite": null,
-    "projects.leon-springs-urgent-care.startChecklist.trades[2].next": null,
+    "projects.leon-springs-urgent-care.startChecklist.trades[2].next": "Price our own bid.",
     "projects.leon-springs-urgent-care.startChecklist.trades[2].partner": null,
     "projects.leon-springs-urgent-care.startChecklist.trades[2].pkg": "«package leon-springs-urgent-care-plumbing»",
-    "projects.leon-springs-urgent-care.startChecklist.trades[2].ready": true,
+    "projects.leon-springs-urgent-care.startChecklist.trades[2].ready": false,
     "projects.leon-springs-urgent-care.startChecklist.trades[3].checks[0].detail": "no company picked",
     "projects.leon-springs-urgent-care.startChecklist.trades[3].checks[0].done": false,
     "projects.leon-springs-urgent-care.startChecklist.trades[3].checks[0].key": "awarded",
@@ -6981,11 +6983,25 @@ exports[`GC mode golden walk > step 92: Leon Springs: we price our own plumbing 
     "lastLog.text": "Priced our own bid on Plumbing for Leon Springs Urgent Care: $68,000.",
     "projects.leon-springs-urgent-care.proposalTotals.contingency": 2040,
     "projects.leon-springs-urgent-care.proposalTotals.fee": 5603.2,
+    "projects.leon-springs-urgent-care.proposalTotals.holes[2]": "«package leon-springs-urgent-care-electrical»",
     "projects.leon-springs-urgent-care.proposalTotals.price": 75643.2,
     "projects.leon-springs-urgent-care.proposalTotals.trades": 68000,
+    "projects.leon-springs-urgent-care.stageProgress.center": "1/8",
     "projects.leon-springs-urgent-care.stageProgress.groups[1].items[2].detail": "Our own crew, 68K",
+    "projects.leon-springs-urgent-care.stageProgress.groups[1].items[2].done": true,
+    "projects.leon-springs-urgent-care.stageProgress.headline": "1 of 8 steps done before our bid can go in.",
+    "projects.leon-springs-urgent-care.stageProgress.share": 0.125,
+    "projects.leon-springs-urgent-care.startChecklist.done": 1,
+    "projects.leon-springs-urgent-care.startChecklist.missing[5]": "Electrical: Pick a company and award the trade.",
+    "projects.leon-springs-urgent-care.startChecklist.trades[2].checks[0].detail": "our own crew, New bid",
+    "projects.leon-springs-urgent-care.startChecklist.trades[2].checks[0].done": true,
+    "projects.leon-springs-urgent-care.startChecklist.trades[2].next": null,
+    "projects.leon-springs-urgent-care.startChecklist.trades[2].ready": true,
   },
-  "removed": [],
+  "removed": [
+    "projects.leon-springs-urgent-care.proposalTotals.holes[3]",
+    "projects.leon-springs-urgent-care.startChecklist.missing[6]",
+  ],
 }
 `;
 
@@ -7157,50 +7173,74 @@ exports[`GC mode golden walk > step 108: Dr. Raman declines change order 2 1`] =
 }
 `;
 
-exports[`GC mode golden walk > step 109: Change order 3: a coffee bar cabinet in the break room 1`] = `
+exports[`GC mode golden walk > step 109: Helotes: Bulletin 2 adds data drops, five more days of low voltage rough 1`] = `
 {
   "changed": {
+    "customers.ocotillo.addenda": 3,
+    "customers.ocotillo.sets": 4,
     "lastLog.id": 105,
+    "lastLog.text": "Issued Bulletin 2 on Helotes Dental Office and emailed 1 company. 1 was told it changes their trade. It adds 36 days to the job.",
+    "projects.helotes.trades.delec.compareBids.lines[0].text": "Brightline Electric bid $56,900 and covers everything. They priced an older set of plans, so ask them to confirm.",
+    "projects.helotes.trades.delec.compareBids.lines[1].text": "Voltage Brothers bid $61,400 and covers everything. They priced an older set of plans, so ask them to confirm.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 110: The office sets Comal Iron to Spanish 1`] = `
+{
+  "changed": {
+    "lastLog.id": 106,
+    "lastLog.text": "Set Comal Iron's language to Spanish: its portal and messages.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 111: Change order 3: a coffee bar cabinet in the break room 1`] = `
+{
+  "changed": {
+    "lastLog.id": 107,
     "lastLog.text": "Drafted change order 3 on Helotes Dental Office: Add a coffee bar cabinet in the break room, per A-501, $2,640.",
   },
   "removed": [],
 }
 `;
 
-exports[`GC mode golden walk > step 110: Send change order 3 to Dr. Raman 1`] = `
+exports[`GC mode golden walk > step 112: Send change order 3 to Dr. Raman 1`] = `
 {
   "changed": {
-    "lastLog.id": 106,
+    "lastLog.id": 108,
     "lastLog.text": "Sent change order 3 to Dr. Priya Raman for signature: $2,640.",
   },
   "removed": [],
 }
 `;
 
-exports[`GC mode golden walk > step 111: Dr. Raman signs change order 3 1`] = `
+exports[`GC mode golden walk > step 113: Dr. Raman signs change order 3 1`] = `
 {
   "changed": {
-    "lastLog.id": 107,
+    "lastLog.id": 109,
     "lastLog.text": "Dr. Priya Raman signed change order 3 in their portal. Their price goes up $2,640.",
   },
   "removed": [],
 }
 `;
 
-exports[`GC mode golden walk > step 112: Send change order 3 to Cedar & Pine 1`] = `
+exports[`GC mode golden walk > step 114: Send change order 3 to Cedar & Pine 1`] = `
 {
   "changed": {
-    "lastLog.id": 108,
+    "lastLog.id": 110,
     "lastLog.text": "Sent change order 3 to Cedar & Pine Millwork as a change to their Millwork statement of work: $2,400.",
   },
   "removed": [],
 }
 `;
 
-exports[`GC mode golden walk > step 113: Cedar & Pine signs change order 3 1`] = `
+exports[`GC mode golden walk > step 115: Cedar & Pine signs change order 3 1`] = `
 {
   "changed": {
-    "lastLog.id": 109,
+    "lastLog.id": 111,
     "lastLog.text": "Cedar & Pine Millwork signed change order 3 into their Millwork statement of work: $2,400.",
     "lastLog.who": "trade",
     "projects.helotes.stageProgress.center": "42%",
@@ -7212,10 +7252,10 @@ exports[`GC mode golden walk > step 113: Cedar & Pine signs change order 3 1`] =
 }
 `;
 
-exports[`GC mode golden walk > step 114: Cedar & Pine reports the coffee bar half done 1`] = `
+exports[`GC mode golden walk > step 116: Cedar & Pine reports the coffee bar half done 1`] = `
 {
   "changed": {
-    "lastLog.id": 110,
+    "lastLog.id": 112,
     "lastLog.text": "Cedar & Pine Millwork reported Change order 3: Add a coffee bar cabinet in the break room, per A-501 at 50%.",
     "projects.helotes.stageProgress.center": "43%",
     "projects.helotes.stageProgress.groups[0].items[4].detail": "81% reported",
@@ -7426,33 +7466,43 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
-      "id": 110,
+      "id": 112,
       "text": "Cedar & Pine Millwork reported Change order 3: Add a coffee bar cabinet in the break room, per A-501 at 50%.",
       "who": "trade",
     },
     {
-      "id": 109,
+      "id": 111,
       "text": "Cedar & Pine Millwork signed change order 3 into their Millwork statement of work: $2,400.",
       "who": "trade",
     },
     {
-      "id": 108,
+      "id": 110,
       "text": "Sent change order 3 to Cedar & Pine Millwork as a change to their Millwork statement of work: $2,400.",
       "who": "office",
     },
     {
-      "id": 107,
+      "id": 109,
       "text": "Dr. Priya Raman signed change order 3 in their portal. Their price goes up $2,640.",
       "who": "office",
     },
     {
-      "id": 106,
+      "id": 108,
       "text": "Sent change order 3 to Dr. Priya Raman for signature: $2,640.",
       "who": "office",
     },
     {
-      "id": 105,
+      "id": 107,
       "text": "Drafted change order 3 on Helotes Dental Office: Add a coffee bar cabinet in the break room, per A-501, $2,640.",
+      "who": "office",
+    },
+    {
+      "id": 106,
+      "text": "Set Comal Iron's language to Spanish: its portal and messages.",
+      "who": "office",
+    },
+    {
+      "id": 105,
+      "text": "Issued Bulletin 2 on Helotes Dental Office and emailed 1 company. 1 was told it changes their trade. It adds 36 days to the job.",
       "who": "office",
     },
     {
@@ -7563,16 +7613,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
     {
       "id": 83,
       "text": "Hollis Family Pharmacy paid pay application 4: $18,241.",
-      "who": "office",
-    },
-    {
-      "id": 82,
-      "text": "Sent the final pay application to Hollis Family Pharmacy: $18,241 of retainage, with our conditional waiver on final payment.",
-      "who": "office",
-    },
-    {
-      "id": 81,
-      "text": "Hollis Family Pharmacy accepted the work on Stone Oak Pharmacy in their portal.",
       "who": "office",
     },
   ],
@@ -7701,6 +7741,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "contact": "Ray Odom",
       "id": "comal",
       "invited": 2,
+      "lang": "es",
       "maxMiles": 50,
       "msa": "none",
       "msaSignedOn": null,
@@ -9950,6 +9991,31 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
             "helotes-glass-and-storefront",
           ],
         },
+        {
+          "changedSheets": [
+            "E-102",
+          ],
+          "issuedOn": "2026-10-02",
+          "label": "Bulletin 2",
+          "note": "Data drops added at each operatory. E-102 changed.",
+          "pushed": [
+            {
+              "days": 5,
+              "lineId": "delec-4",
+            },
+          ],
+          "rev": 3,
+          "sentTo": [
+            {
+              "on": "2026-10-02",
+              "partnerId": "brightline",
+              "touched": true,
+            },
+          ],
+          "touches": [
+            "delec",
+          ],
+        },
       ],
       "questions": [
         {
@@ -9994,68 +10060,68 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
             "after": [
               "delec-1",
             ],
-            "finish": "2026-11-25",
+            "finish": "2026-12-13",
             "lineId": "dry-1",
             "packageId": "dry",
-            "start": "2026-11-16",
+            "start": "2026-12-04",
           },
           {
             "after": [
               "dry-1",
             ],
-            "finish": "2026-11-13",
+            "finish": "2026-12-03",
             "lineId": "delec-1",
             "packageId": "delec",
-            "start": "2026-11-06",
+            "start": "2026-11-26",
           },
           {
             "after": [
               "dry-1",
               "delec-1",
             ],
-            "finish": "2026-11-21",
+            "finish": "2026-12-26",
             "lineId": "delec-4",
             "packageId": "delec",
-            "start": "2026-11-14",
+            "start": "2026-12-14",
           },
           {
             "after": [
               "dry-1",
             ],
-            "finish": "2026-11-13",
+            "finish": "2026-12-21",
             "lineId": "dhvac-1",
             "packageId": "dhvac",
-            "start": "2026-11-06",
+            "start": "2026-12-14",
           },
           {
             "after": [
               "dry-1",
               "dhvac-1",
             ],
-            "finish": "2026-11-21",
+            "finish": "2026-12-29",
             "lineId": "dhvac-2",
             "packageId": "dhvac",
-            "start": "2026-11-14",
+            "start": "2026-12-22",
           },
           {
             "after": [
               "dry-1",
               "dplumb-1",
             ],
-            "finish": "2026-11-13",
+            "finish": "2026-12-21",
             "lineId": "dplumb-2",
             "packageId": "dplumb",
-            "start": "2026-11-06",
+            "start": "2026-12-14",
           },
           {
             "after": [
               "dry-1",
               "dplumb-2",
             ],
-            "finish": "2026-11-21",
+            "finish": "2026-12-29",
             "lineId": "dplumb-3",
             "packageId": "dplumb",
-            "start": "2026-11-14",
+            "start": "2026-12-22",
           },
           {
             "after": [
@@ -10067,10 +10133,10 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
               "dplumb-3",
               "dry-1",
             ],
-            "finish": "2026-11-28",
+            "finish": "2027-01-03",
             "lineId": "dry-2",
             "packageId": "dry",
-            "start": "2026-11-24",
+            "start": "2026-12-30",
           },
           {
             "after": [
@@ -10082,20 +10148,20 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
               "dplumb-3",
               "dry-2",
             ],
-            "finish": "2026-12-03",
+            "finish": "2027-01-08",
             "lineId": "dry-3",
             "packageId": "dry",
-            "start": "2026-11-29",
+            "start": "2027-01-04",
           },
           {
             "after": [
               "dry-2",
               "dry-3",
             ],
-            "finish": "2026-12-07",
+            "finish": "2027-01-12",
             "lineId": "mill-1",
             "packageId": "mill",
-            "start": "2026-12-04",
+            "start": "2027-01-09",
           },
           {
             "after": [
@@ -10103,10 +10169,10 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
               "dry-3",
               "mill-1",
             ],
-            "finish": "2026-12-11",
+            "finish": "2027-01-16",
             "lineId": "mill-2",
             "packageId": "mill",
-            "start": "2026-12-08",
+            "start": "2027-01-13",
           },
           {
             "after": [
@@ -10114,10 +10180,10 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
               "dry-3",
               "mill-2",
             ],
-            "finish": "2026-12-15",
+            "finish": "2027-01-20",
             "lineId": "mill-3",
             "packageId": "mill",
-            "start": "2026-12-12",
+            "start": "2027-01-17",
           },
           {
             "after": [
@@ -10126,10 +10192,10 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
               "mill-3",
               "delec-4",
             ],
-            "finish": "2026-12-19",
+            "finish": "2027-01-24",
             "lineId": "delec-2",
             "packageId": "delec",
-            "start": "2026-12-16",
+            "start": "2027-01-21",
           },
           {
             "after": [
@@ -10138,10 +10204,10 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
               "mill-3",
               "delec-2",
             ],
-            "finish": "2026-12-23",
+            "finish": "2027-01-28",
             "lineId": "delec-3",
             "packageId": "delec",
-            "start": "2026-12-20",
+            "start": "2027-01-25",
           },
           {
             "after": [
@@ -10150,10 +10216,10 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
               "mill-3",
               "dhvac-2",
             ],
-            "finish": "2026-12-22",
+            "finish": "2027-01-27",
             "lineId": "dhvac-3",
             "packageId": "dhvac",
-            "start": "2026-12-16",
+            "start": "2027-01-21",
           },
           {
             "after": [
@@ -10162,10 +10228,10 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
               "mill-3",
               "dplumb-3",
             ],
-            "finish": "2026-12-22",
+            "finish": "2027-01-27",
             "lineId": "dplumb-4",
             "packageId": "dplumb",
-            "start": "2026-12-16",
+            "start": "2027-01-21",
           },
         ],
         "baseline": {

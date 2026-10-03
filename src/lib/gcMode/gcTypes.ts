@@ -23,6 +23,8 @@ export interface PlanSet {
   addedSheets?: PlanSheet[]
   /** Scope lines this set adds to trades already on the job. Quotes in before it never answered them. */
   addedLines?: { packageId: string; scopeId: string }[]
+  /** Days this set added to scheduled activities, by line id. What waited on them moved too. */
+  pushed?: { lineId: string; days: number }[]
 }
 
 /** One drawing in the set. The discipline is read from the number's letters (E-201 → Electrical). */
@@ -422,6 +424,8 @@ export type GcAction =
       newTrades: NewTradeDraft[]
       /** Scope lines this set adds to trades already on the job, with the sheets each reads from. */
       newLines?: { packageId: string; label: string; sheets: string[] }[]
+      /** Days this set adds to scheduled activities, by line id. What waits on them moves out too. */
+      schedulePushes?: Record<string, number>
     }
   | { type: 'acceptWork'; projectId: string; packageId: string }
   | { type: 'tradeSendWarranty'; projectId: string; packageId: string }
@@ -497,6 +501,8 @@ export type GcAction =
   | { type: 'ownerDeclineChangeOrder'; projectId: string; changeOrderId: string }
   /** How much of a signed change order's work is done, for the owner's bill. */
   | { type: 'setChangeOrderPct'; projectId: string; changeOrderId: string; pct: number }
+  /** The office sets a company's language, say when it asks for Spanish on a call. Same record as tradeSetLanguage. */
+  | { type: 'setPartnerLanguage'; partnerId: string; lang: 'en' | 'es' }
   /** Send a signed change order to the trade as a change to its statement of work. */
   | { type: 'sendTradeChange'; projectId: string; changeOrderId: string }
   /** The trade signs the change in its portal: it becomes a line of its statement of work. */

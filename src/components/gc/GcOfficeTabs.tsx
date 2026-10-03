@@ -4,6 +4,7 @@ import {
   bidsIn,
   carriedAmount,
   carriedUncosted,
+  ownBidPriced,
   compareBids,
   currentRev,
   daysUntil,
@@ -98,10 +99,11 @@ export function PaperworkChips({ partner, today }: { partner: Partner; today: st
 
 export function GcPackagesTab({ state, project, dispatch, onSeePortal, onMap, openPackageId }: GcPaneProps) {
   const [openId, setOpenId] = useState<string | null>(openPackageId ?? null)
-  const counts = { carried: 0, toLevel: 0, waiting: 0, empty: 0 }
+  const counts = { carried: 0, ours: 0, toLevel: 0, waiting: 0, empty: 0 }
   for (const p of project.packages) {
     const c = packageCoverage(p)
     if (carriedAmount(p) !== null) counts.carried += 1
+    else if (c === 'self-unpriced') counts.ours += 1
     else if (c === 'bids') counts.toLevel += 1
     else if (c === 'waiting') counts.waiting += 1
     else counts.empty += 1
@@ -114,6 +116,7 @@ export function GcPackagesTab({ state, project, dispatch, onSeePortal, onMap, op
         compare the bids and carry a number. Of {project.packages.length} trades, {counts.carried} carry a number,{' '}
         {counts.toLevel} have bids to compare, {counts.waiting} are waiting on bids and {counts.empty} have no one
         invited.
+        {counts.ours > 0 && ` ${counts.ours === 1 ? 'One is' : `${counts.ours} are`} our own bid, not priced yet.`}
       </Why>
       <Card style={{ padding: 0, overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -216,7 +219,7 @@ export function GcPackagesTab({ state, project, dispatch, onSeePortal, onMap, op
                       )}
                     </td>
                     <td style={td}>
-                      <CarriedWords state={state} pkg={pkg} />
+                      <CarriedWords state={state} project={project} pkg={pkg} dispatch={dispatch} />
                     </td>
                     <td style={{ ...td, textAlign: 'right' }}>
                       {pkg.selfPerform ? (
@@ -254,8 +257,19 @@ export function GcPackagesTab({ state, project, dispatch, onSeePortal, onMap, op
   )
 }
 
-function CarriedWords({ state, pkg }: { state: GcState; pkg: TradePackage }) {
+function CarriedWords({
+  state,
+  project,
+  pkg,
+  dispatch,
+}: {
+  state: GcState
+  project: GcProject
+  pkg: TradePackage
+  dispatch: Dispatch<GcAction>
+}) {
   const amount = carriedAmount(pkg)
+  if (pkg.selfPerform && !ownBidPriced(pkg)) return <PriceOwnBid project={project} pkg={pkg} dispatch={dispatch} />
   if (pkg.selfPerform) return <span>{money(pkg.selfPerform.value)} · our own bid {pkg.selfPerform.ref}</span>
   if (amount === null) return <Chip tone="red">Nothing. A hole in our number.</Chip>
   if (pkg.carried === 'plug') return <span>{money(amount)} · <Chip tone="amber">our budget, no bid</Chip></span>
@@ -269,10 +283,50 @@ function CarriedWords({ state, pkg }: { state: GcState; pkg: TradePackage }) {
   )
 }
 
+/**
+ * Our own Trades mode bid is started but not priced (the owner, 2026-10-02): the trade is a hole in
+ * our number until we type the price from that bid. Our guess shows as the box's hint, never as the
+ * number.
+ */
+function PriceOwnBid({ project, pkg, dispatch }: { project: GcProject; pkg: TradePackage; dispatch: Dispatch<GcAction> }) {
+  const guess = pkg.selfPerform?.value ?? 0
+  const [value, setValue] = useState('')
+  const typed = Number(value.replace(/[$,\s]/g, ''))
+  return (
+    <span style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
+      <Chip tone="red" title={guess > 0 ? `Our guess so far is ${money(guess)}. It is not in our price until our own bid is priced.` : undefined}>
+        ours · not priced yet
+      </Chip>
+      <input
+        type="text"
+        inputMode="numeric"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        placeholder={guess > 0 ? `our guess ${money(guess)}` : 'our price'}
+        aria-label={`Our price for ${pkg.trade}`}
+        style={{ ...input, width: '9rem' }}
+      />
+      <Btn
+        kind="primary"
+        disabled={!(typed > 0)}
+        title="Type the price from our own bid in Trades mode."
+        onClick={() => dispatch({ type: 'priceOwnBid', projectId: project.id, packageId: pkg.id, value: typed })}
+      >
+        Price our bid
+      </Btn>
+    </span>
+  )
+}
+
 function SelfPerformPanel({ pkg }: { pkg: TradePackage }) {
   if (!pkg.selfPerform) return null
   return (
     <div>
+      {!ownBidPriced(pkg) && (
+        <div style={{ marginBottom: '0.4rem', color: 'var(--text-red-700)' }}>
+          Our own bid is not priced yet. Type its price under We are carrying to put {pkg.trade} in our number.
+        </div>
+      )}
       <strong>{pkg.trade} is ours.</strong> {pkg.selfPerform.note} Its number flows into this project from{' '}
       <strong>{pkg.selfPerform.ref}</strong>: counts, takeoff, labor and pricing all live where they do today.
       <div style={{ marginTop: '0.5rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
@@ -791,7 +845,7 @@ export function GcNumberTab({ state, project, dispatch }: GcPaneProps) {
               return (
                 <tr key={pkg.id}>
                   <td style={{ ...td, fontWeight: 600 }}>{pkg.trade}</td>
-                  <td style={td}><CarriedWords state={state} pkg={pkg} /></td>
+                  <td style={td}><CarriedWords state={state} project={project} pkg={pkg} dispatch={dispatch} /></td>
                   <td style={num}>{money(pkg.budget)}</td>
                   <td style={{ ...num, fontWeight: 600 }}>
                     {amount === null ? '—' : money(amount)}

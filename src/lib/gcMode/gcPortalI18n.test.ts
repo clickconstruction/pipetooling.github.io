@@ -82,4 +82,12 @@ describe('the portal in two languages', () => {
     expect(portalMessages(state, 'hillside')[0]?.lines[0]).toBe('Hello Greg,')
     expect(gcReducer(spanish, { type: 'tradeSetLanguage', partnerId: 'hillside', lang: 'es' })).toBe(spanish)
   })
+
+  it('lets the office set a company’s language, on the same record', () => {
+    const set = gcReducer(state, { type: 'setPartnerLanguage', partnerId: 'comal', lang: 'es' })
+    expect(set.partners.find((p) => p.id === 'comal')?.lang).toBe('es')
+    expect(set.log[0]).toMatchObject({ who: 'office', text: "Set Comal Iron's language to Spanish: its portal and messages." })
+    expect(portalMessages(set, 'comal')[0]?.lines[0]).toBe('Hola Ray:')
+    expect(gcReducer(set, { type: 'setPartnerLanguage', partnerId: 'comal', lang: 'es' })).toBe(set)
+  })
 })
