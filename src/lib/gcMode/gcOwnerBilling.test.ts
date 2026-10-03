@@ -84,6 +84,31 @@ describe('sending the owner a pay application, then the next month', () => {
   })
 })
 
+describe('our own crew reports its percent done', () => {
+  const plumbing = (state: GcState) => state.projects.find((p) => p.id === 'helotes')?.packages.find((k) => k.id === 'dplumb')
+
+  it('bills the crew’s percent of the trade, and our costs follow', () => {
+    const state = gcReducer(initialGcState(), { type: 'selfReport', projectId: 'helotes', packageId: 'dplumb', pct: 40 })
+    expect(plumbing(state)?.selfPerform?.pctDone).toBe(40)
+    const project = state.projects.find((p) => p.id === 'helotes')
+    if (!project) throw new Error('fixture has no helotes')
+    const app = ownerPayApp(state, project)
+    const line = app.lines.find((l) => l.id === 'dplumb')
+    expect([line?.crewPct, line?.doneToDate, line?.source]).toEqual([40, 15_400, 'Our own crew reported 40% done.'])
+    expect(Math.round(app.doneToDate)).toBe(73_678)
+    expect(Math.round(app.due)).toBe(66_311)
+  })
+
+  it('keeps it between 0 and 100, does nothing when it does not change, and only on a trade we do ourselves', () => {
+    const over = gcReducer(initialGcState(), { type: 'selfReport', projectId: 'helotes', packageId: 'dplumb', pct: 140 })
+    expect(plumbing(over)?.selfPerform?.pctDone).toBe(100)
+    expect(gcReducer(over, { type: 'selfReport', projectId: 'helotes', packageId: 'dplumb', pct: 100 })).toBe(over)
+    const fresh = initialGcState()
+    expect(gcReducer(fresh, { type: 'selfReport', projectId: 'helotes', packageId: 'dplumb', pct: 0 })).toBe(fresh)
+    expect(gcReducer(fresh, { type: 'selfReport', projectId: 'helotes', packageId: 'dry', pct: 50 })).toBe(fresh)
+  })
+})
+
 describe('nextOwnerBillDay', () => {
   it('is the 25th of this month until it passes, then next month’s', () => {
     expect(nextOwnerBillDay('2026-10-02')).toBe('2026-10-25')

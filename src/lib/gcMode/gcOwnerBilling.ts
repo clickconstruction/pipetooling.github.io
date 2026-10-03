@@ -35,6 +35,8 @@ export interface OwnerLine {
   source: string
   /** The trade's own lines behind the number, when a statement of work has them. */
   detail: { label: string; pct: number }[]
+  /** Our own crew's percent done, on a trade we do ourselves. The office reports it here. */
+  crewPct?: number
 }
 
 export interface OwnerPayApp {
@@ -83,12 +85,15 @@ function tradeLine(state: GcState, pkg: TradePackage): OwnerLine {
   const worth = carriedAmount(pkg) ?? 0
   const base = { id: pkg.id, label: pkg.trade, worth, doneBefore: 0, detail: [] as OwnerLine['detail'] }
   if (pkg.selfPerform) {
+    const pct = pkg.selfPerform.pctDone ?? 0
+    const done = (worth * pct) / 100
     return {
       ...base,
       kind: 'self',
-      doneToDate: 0,
-      thisMonth: 0,
-      source: `Our own crew. Their progress is on the Pipeline job ${pkg.selfPerform.ref}. This page does not read it yet.`,
+      doneToDate: done,
+      thisMonth: done,
+      crewPct: pct,
+      source: pct > 0 ? `Our own crew reported ${pct}% done.` : 'Our own crew has not reported any work yet.',
     }
   }
   const invite = pkg.invites.find((i) => i.id === pkg.awardedInviteId)

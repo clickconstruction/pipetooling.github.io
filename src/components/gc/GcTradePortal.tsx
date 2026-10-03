@@ -1,5 +1,6 @@
-import { useState, type Dispatch } from 'react'
+import { useRef, useState, type Dispatch } from 'react'
 import {
+  bidIsStale,
   bidTabResult,
   bidTabRows,
   daysUntil,
@@ -7,6 +8,7 @@ import {
   money,
   partnerById,
   planLabel,
+  portalInsurance,
   portalPlanNews,
   portalPromiseLine,
   shortDate,
@@ -23,6 +25,7 @@ import {
 import { BidTabTable } from './GcBidTabs'
 import { GcBuildingPayAppDoor } from './GcBuildingPayApp'
 import { Btn, Chip, input } from './gcUi'
+import { GcPortalHome } from './GcPortalHome'
 import { GcPortalPaperwork } from './GcPortalPaperwork'
 import { GcPortalPlans } from './GcPortalPlans'
 import { PortalBlock as Block, PortalNote } from './GcPortalUi'
@@ -30,6 +33,9 @@ import { PortalBlock as Block, PortalNote } from './GcPortalUi'
 /**
  * GC mode design spike: what one trade partner sees. No sign-in: the link is the key, like the
  * sub portal and the customer portal. Everything pressed here lands on the office's side at once.
+ *
+ * Two pages: the company's home (everything it has with us, GcPortalHome) and one project's page.
+ * The link opens on the home, whatever project the office has open: one link per company.
  */
 
 interface Props {
@@ -47,12 +53,22 @@ const GC = GC_COMPANY.shortName
 export function GcTradePortal({ state, project, partnerId, onPickPartner, dispatch }: Props) {
   const onProject = state.partners.filter((p) => project.packages.some((k) => k.invites.some((i) => i.partnerId === p.id)))
   const partner = partnerById(state, partnerId) ?? onProject[0]
-  const mine = partner
-    ? project.packages.flatMap((pkg) => pkg.invites.filter((i) => i.partnerId === partner.id).map((invite) => ({ pkg, invite })))
-    : []
+  /** The project page on show. Null: the company's home, where the link lands. */
+  const [viewId, setViewId] = useState<string | null>(null)
+  const shown = viewId === null ? null : (state.projects.find((p) => p.id === viewId) ?? null)
+  const top = useRef<HTMLDivElement | null>(null)
+  const go = (id: string | null) => {
+    setViewId(id)
+    const box = top.current?.getBoundingClientRect()
+    if (box && box.top < 0) top.current?.scrollIntoView({ block: 'start' })
+  }
 
   return (
-    <div data-theme="light" style={{ background: PAPER, color: INK, border: `1px solid ${INK}`, borderRadius: 10, overflow: 'hidden' }}>
+    <div
+      ref={top}
+      data-theme="light"
+      style={{ background: PAPER, color: INK, border: `1px solid ${INK}`, borderRadius: 10, overflow: 'hidden', width: '100%', maxWidth: 430, marginInline: 'auto' }}
+    >
       <div style={{ background: INK, color: PAPER, padding: '0.7rem 0.9rem' }}>
         <div style={{ fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', opacity: 0.8 }}>
           What the trade sees · their portal
@@ -71,25 +87,57 @@ export function GcTradePortal({ state, project, partnerId, onPickPartner, dispat
 
       {!partner ? (
         <div style={{ padding: '1rem' }}>No trade partner is on this project yet. Invite one from Trades.</div>
+      ) : shown ? (
+        <ProjectPage state={state} project={shown} partner={partner} dispatch={dispatch} onHome={() => go(null)} />
       ) : (
-        <div style={{ padding: '0.9rem', display: 'grid', gap: '0.9rem' }}>
-          <div>
-            <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>{project.name}</div>
-            <div style={{ fontSize: '0.85rem', opacity: 0.8 }}>
-              {project.address} · {project.sizeNote}
-              <br />
-              General contractor: {GC_COMPANY.name} · Hello, {partner.contact}.
-            </div>
-          </div>
-
-          <GcPortalPaperwork partner={partner} today={state.today} dispatch={dispatch} />
-
-          {mine.length === 0 && <div>You have no open invitation on this project.</div>}
-          {mine.map(({ pkg, invite }) => (
-            <PackageBlock key={invite.id} state={state} project={project} pkg={pkg} invite={invite} partner={partner} dispatch={dispatch} />
-          ))}
+        <div style={{ padding: '0.9rem' }}>
+          <GcPortalHome state={state} partner={partner} dispatch={dispatch} onOpenProject={(id) => go(id)} />
         </div>
       )}
+    </div>
+  )
+}
+
+/** One project's page: the company's asks on it. Paperwork shows here only while something is missing. */
+function ProjectPage({
+  state,
+  project,
+  partner,
+  dispatch,
+  onHome,
+}: {
+  state: GcState
+  project: GcProject
+  partner: Partner
+  dispatch: Dispatch<GcAction>
+  onHome: () => void
+}) {
+  const mine = project.packages.flatMap((pkg) => pkg.invites.filter((i) => i.partnerId === partner.id).map((invite) => ({ pkg, invite })))
+  const paperworkMissing = partner.msa === 'sent' || !portalInsurance(partner, state.today).done || !partner.w9
+  return (
+    <div style={{ padding: '0.9rem', display: 'grid', gap: '0.9rem' }}>
+      <div>
+        <button
+          type="button"
+          onClick={onHome}
+          style={{ border: 'none', background: 'transparent', padding: 0, color: 'var(--text-blue-500)', cursor: 'pointer', fontSize: '0.85rem', marginBottom: '0.35rem' }}
+        >
+          ← Everything with {GC}
+        </button>
+        <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>{project.name}</div>
+        <div style={{ fontSize: '0.85rem', opacity: 0.8 }}>
+          {project.address} · {project.sizeNote}
+          <br />
+          General contractor: {GC_COMPANY.name} · Hello, {partner.contact}.
+        </div>
+      </div>
+
+      {paperworkMissing && <GcPortalPaperwork partner={partner} today={state.today} dispatch={dispatch} />}
+
+      {mine.length === 0 && <div>You have no open invitation on this project.</div>}
+      {mine.map(({ pkg, invite }) => (
+        <PackageBlock key={invite.id} state={state} project={project} pkg={pkg} invite={invite} partner={partner} dispatch={dispatch} />
+      ))}
     </div>
   )
 }
@@ -215,7 +263,7 @@ function BidBlock({
   const days = due ? daysUntil(due, today) : null
   const unanswered = pkg.scope.filter((item) => includes[item.id] === 'unclear').length
   const openedNewest = !portalPlanNews(project, pkg, invite).behind
-  const stale = invite.bid !== null && project.planSets.some((s) => s.rev > (invite.bid?.basedOnRev ?? 0) && s.touches.includes(pkg.id))
+  const stale = bidIsStale(project, pkg, invite)
 
   return (
     <Block title={`${pkg.trade} · invitation to bid`}>

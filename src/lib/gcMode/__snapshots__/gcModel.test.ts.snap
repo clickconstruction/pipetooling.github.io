@@ -5254,11 +5254,23 @@ exports[`GC mode golden walk > step 72: Hill Country signs the unconditional wai
 }
 `;
 
-exports[`GC mode golden walk > step 73: Cedar & Pine sends pay application 1 1`] = `
+exports[`GC mode golden walk > step 73: Our crew reports plumbing at 50% 1`] = `
 {
   "changed": {
     "lastLog.id": 69,
+    "lastLog.text": "Our own crew reported Plumbing at 50%.",
+    "lastLog.who": "office",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 74: Cedar & Pine sends pay application 1 1`] = `
+{
+  "changed": {
+    "lastLog.id": 70,
     "lastLog.text": "Cedar & Pine Millwork sent pay application 1 on Millwork: $19,800, with a conditional waiver signed.",
+    "lastLog.who": "trade",
     "projects.helotes.stageProgress.also[0]": "Cedar & Pine Millwork asked for draw 1. Approve it.",
     "projects.helotes.stageProgress.center": "40%",
     "projects.helotes.stageProgress.groups[0].items[3].detail": "50% reported",
@@ -5271,10 +5283,10 @@ exports[`GC mode golden walk > step 73: Cedar & Pine sends pay application 1 1`]
 }
 `;
 
-exports[`GC mode golden walk > step 74: Send it back: we see the cabinets at 30% 1`] = `
+exports[`GC mode golden walk > step 75: Send it back: we see the cabinets at 30% 1`] = `
 {
   "changed": {
-    "lastLog.id": 70,
+    "lastLog.id": 71,
     "lastLog.text": "Sent pay application 1 on Millwork back to Cedar & Pine Millwork. Four of the twelve operatory cabinets are set, not half.",
     "lastLog.who": "office",
     "projects.helotes.stageProgress.also[0]": "Pay application 1 is back with Cedar & Pine Millwork. Waiting on a fixed one.",
@@ -5283,10 +5295,10 @@ exports[`GC mode golden walk > step 74: Send it back: we see the cabinets at 30%
 }
 `;
 
-exports[`GC mode golden walk > step 75: Cedar & Pine sends pay application 1 again, fixed 1`] = `
+exports[`GC mode golden walk > step 76: Cedar & Pine sends pay application 1 again, fixed 1`] = `
 {
   "changed": {
-    "lastLog.id": 71,
+    "lastLog.id": 72,
     "lastLog.text": "Cedar & Pine Millwork sent pay application 1 on Millwork again, fixed: $17,160, with a conditional waiver signed.",
     "lastLog.who": "trade",
     "projects.helotes.stageProgress.also[0]": "Cedar & Pine Millwork asked for draw 1. Approve it.",
@@ -5299,10 +5311,10 @@ exports[`GC mode golden walk > step 75: Cedar & Pine sends pay application 1 aga
 }
 `;
 
-exports[`GC mode golden walk > step 76: Approve the fixed pay application 1 1`] = `
+exports[`GC mode golden walk > step 77: Approve the fixed pay application 1 1`] = `
 {
   "changed": {
-    "lastLog.id": 72,
+    "lastLog.id": 73,
     "lastLog.text": "Approved draw 1 on Millwork. $15,444 to pay, $1,716 held.",
     "lastLog.who": "office",
     "projects.helotes.stageProgress.also[0]": "Draw 1 for Cedar & Pine Millwork is approved. Pay it.",
@@ -5467,24 +5479,29 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
-      "id": 72,
+      "id": 73,
       "text": "Approved draw 1 on Millwork. $15,444 to pay, $1,716 held.",
       "who": "office",
     },
     {
-      "id": 71,
+      "id": 72,
       "text": "Cedar & Pine Millwork sent pay application 1 on Millwork again, fixed: $17,160, with a conditional waiver signed.",
       "who": "trade",
     },
     {
-      "id": 70,
+      "id": 71,
       "text": "Sent pay application 1 on Millwork back to Cedar & Pine Millwork. Four of the twelve operatory cabinets are set, not half.",
       "who": "office",
     },
     {
-      "id": 69,
+      "id": 70,
       "text": "Cedar & Pine Millwork sent pay application 1 on Millwork: $19,800, with a conditional waiver signed.",
       "who": "trade",
+    },
+    {
+      "id": 69,
+      "text": "Our own crew reported Plumbing at 50%.",
+      "who": "office",
     },
     {
       "id": 68,
@@ -5609,11 +5626,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
     {
       "id": 44,
       "text": "Hill Country Interiors reported Ceilings at 50%.",
-      "who": "trade",
-    },
-    {
-      "id": 43,
-      "text": "Hill Country Interiors reported Hang and tape at 100%.",
       "who": "trade",
     },
   ],
@@ -7522,6 +7534,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
           ],
           "selfPerform": {
             "note": "Our own crew. The job runs on the Pipeline.",
+            "pctDone": 50,
             "ref": "J 1042",
             "value": 38500,
           },

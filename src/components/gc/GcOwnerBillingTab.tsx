@@ -1,5 +1,5 @@
 import type { Dispatch } from 'react'
-import { Btn, Card, Chip, Stat, Why, num, td, th } from './gcUi'
+import { Btn, Card, Chip, Stat, Why, input, num, td, th } from './gcUi'
 import {
   daysUntil,
   money,
@@ -142,7 +142,16 @@ export function GcOwnerBillingTab({ state, project, dispatch }: { state: GcState
           </thead>
           <tbody>
             {trades.map((l) => (
-              <LineRow key={l.id} line={l} />
+              <LineRow
+                key={l.id}
+                line={l}
+                pipelineRef={project.packages.find((p) => p.id === l.id)?.selfPerform?.ref}
+                onCrewPct={
+                  l.kind === 'self'
+                    ? (pct) => dispatch({ type: 'selfReport', projectId: project.id, packageId: l.id, pct })
+                    : undefined
+                }
+              />
             ))}
             <tr>
               <td colSpan={7} style={{ ...th, paddingTop: '0.8rem' }}>Our own costs and fee</td>
@@ -166,14 +175,47 @@ export function GcOwnerBillingTab({ state, project, dispatch }: { state: GcState
   )
 }
 
-function LineRow({ line }: { line: OwnerLine }) {
+const CREW_STEPS = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+
+function LineRow({
+  line,
+  pipelineRef,
+  onCrewPct,
+}: {
+  line: OwnerLine
+  /** The Pipeline job our own crew runs this trade on. */
+  pipelineRef?: string
+  /** Our own crew reports its percent done here. Only on a trade we do ourselves. */
+  onCrewPct?: (pct: number) => void
+}) {
   const pct = line.worth === 0 ? null : Math.round((line.doneToDate / line.worth) * 100)
   const quiet = line.doneToDate === 0
+  const crewPct = line.crewPct ?? 0
+  const steps = CREW_STEPS.includes(crewPct) ? CREW_STEPS : [...CREW_STEPS, crewPct].sort((a, b) => a - b)
   return (
     <tr>
       <td style={{ ...td, fontWeight: 600, whiteSpace: 'nowrap' }}>{line.label}</td>
       <td style={{ ...td, color: quiet ? 'var(--text-muted)' : undefined }}>
         {line.source}
+        {onCrewPct && (
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '0.3rem' }}>
+            <select
+              aria-label={`Our own crew's percent done on ${line.label}`}
+              value={crewPct}
+              onChange={(e) => onCrewPct(Number(e.target.value))}
+              style={input}
+            >
+              {steps.map((n) => (
+                <option key={n} value={n}>{n}% done</option>
+              ))}
+            </select>
+            {pipelineRef && (
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                The real build reads it from the Pipeline job {pipelineRef}.
+              </span>
+            )}
+          </div>
+        )}
         {line.detail.length > 0 && (
           <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '0.15rem' }}>
             {line.detail.map((d) => `${d.label} ${d.pct}%`).join(' · ')}

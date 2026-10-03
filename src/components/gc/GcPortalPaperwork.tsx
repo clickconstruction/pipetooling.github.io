@@ -10,8 +10,21 @@ import { PortalBlock, PortalNote } from './GcPortalUi'
  * office for them: Get started waits on all three.
  */
 
-export function GcPortalPaperwork({ partner, today, dispatch }: { partner: Partner; today: string; dispatch: Dispatch<GcAction> }) {
-  const [open, setOpen] = useState<'msa' | 'coi' | 'w9' | null>(null)
+export type PaperworkLine = 'msa' | 'coi' | 'w9'
+
+export function GcPortalPaperwork({
+  partner,
+  today,
+  dispatch,
+  startOpen = null,
+}: {
+  partner: Partner
+  today: string
+  dispatch: Dispatch<GcAction>
+  /** Open on one line's form or agreement, when the company came here from "Needs you". */
+  startOpen?: PaperworkLine | null
+}) {
+  const [open, setOpen] = useState<PaperworkLine | null>(startOpen)
   const coi = portalInsurance(partner, today)
   const gc = GC_COMPANY.shortName
 
