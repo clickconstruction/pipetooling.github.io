@@ -70,6 +70,11 @@ export const GC_TOUR_STEPS: SpotlightTourStep[] = [
     body: 'A trade asks for a draw in its portal. A draw is a payment for the work done so far. It comes with a lien waiver. That paper says they will not put a lien on the property for that money. You approve the draw and pay it. We hold back 10 percent until the end. That is called retainage.',
   },
   {
+    anchor: 'gc-stage-closed',
+    title: 'Closed',
+    body: 'A finished job moves down here. Close it on its Closeout tab with Close the job. That button comes once every trade is closed out and the owner paid our last bill. Closed jobs stay here for the record.',
+  },
+  {
     anchor: 'gc-new-here',
     title: 'Try it',
     body: 'Open Boerne Retail Shell and start on Trades. Tap See what the trade sees to watch the trade partner’s side. Tap Start over at any time to put the made-up projects back. Tap New here? to see this again.',
