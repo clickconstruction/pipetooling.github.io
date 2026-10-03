@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
   activitiesTouched,
+  answeredNotInSet,
+  openQuestions,
+  questionInNote,
+  questionRecipients,
+  questionState,
   compareBids,
   gcReducer,
   initialGcState,
@@ -257,5 +262,72 @@ describe('a set issued on a job with a schedule', () => {
     const r = planRecipients(state, project('helotes'), ['delec']).find((x) => x.partner.id === 'brightline') ?? null
     const body = planEmail(project('helotes'), 'Bulletin 1', 'Data drops.', ['E-102'], r, { moves: ['Low voltage rough now runs Wed Nov 4 to Mon Nov 16.'] }).body
     expect(body[body.length - 1]).toMatch(/Low voltage rough now runs Wed Nov 4 to Mon Nov 16\. Build from this set\./)
+  })
+})
+
+describe('questions about the plans', () => {
+  // Only a company asked to quote the trade can ask about it.
+  const invited = gcReducer(state, { type: 'invite', projectId: 'padb', packageId: 'bsite', partnerId: 'lonestar' })
+  const asked = gcReducer(invited, {
+    type: 'tradeAskQuestion',
+    projectId: 'padb',
+    packageId: 'bsite',
+    partnerId: 'lonestar',
+    text: 'Is the drive-through lane concrete or asphalt?',
+    sheets: ['c-101', ' C-101 '],
+  })
+  const padb = (s: typeof state) => {
+    const p = s.projects.find((x) => x.id === 'padb')
+    if (!p) throw new Error('no Pad B')
+    return p
+  }
+
+  it('adds the question with the sheets it is about, and says so in the log', () => {
+    const q = padb(asked).questions[0]
+    expect(q).toMatchObject({ id: 'padb-q-1', packageId: 'bsite', partnerId: 'lonestar', askedOn: '2026-10-02', answer: null, sheets: ['C-101'] })
+    expect(q ? questionState(q) : null).toBe('asked')
+    expect(openQuestions(padb(asked)).map((x) => x.id)).toEqual(['padb-q-1'])
+    expect(asked.log[0]?.text).toBe('Lonestar Earthworks asked about C-101: Is the drive-through lane concrete or asphalt?')
+    expect(gcReducer(invited, { type: 'tradeAskQuestion', projectId: 'padb', packageId: 'bsite', partnerId: 'lonestar', text: '  ', sheets: [] })).toBe(invited)
+    expect(gcReducer(state, { type: 'tradeAskQuestion', projectId: 'padb', packageId: 'bsite', partnerId: 'lonestar', text: 'Asked before being asked?', sheets: [] })).toBe(state)
+  })
+
+  const sent = gcReducer(asked, { type: 'sendQuestionToArchitect', projectId: 'padb', questionId: 'padb-q-1' })
+
+  it('sends it to the architect once', () => {
+    const q = padb(sent).questions[0]
+    expect(q?.sentToArchitectOn).toBe('2026-10-02')
+    expect(q ? questionState(q) : null).toBe('with the architect')
+    expect(sent.log[0]?.text).toBe("Sent Lonestar Earthworks's question to Marsh & Vale Architects.")
+    expect(gcReducer(sent, { type: 'sendQuestionToArchitect', projectId: 'padb', questionId: 'padb-q-1' })).toBe(sent)
+  })
+
+  it('sends the answer only to companies on the trade, while we bid every one of them', () => {
+    const q = padb(sent).questions[0]
+    if (!q) throw new Error('no question')
+    // Alamo bids concrete, not sitework, so it does not hear the answer even if ticked.
+    expect(questionRecipients(sent, padb(sent), q).map((r) => r.partner.id)).toEqual(['lonestar'])
+    const answered = gcReducer(sent, { type: 'answerQuestion', projectId: 'padb', questionId: 'padb-q-1', answer: 'Concrete, per detail 3 on C-101.', recipients: ['lonestar', 'alamo'] })
+    const a = padb(answered).questions[0]
+    expect(a).toMatchObject({ answer: 'Concrete, per detail 3 on C-101.', answeredOn: '2026-10-02', answerSentTo: [{ partnerId: 'lonestar', on: '2026-10-02' }] })
+    expect(answered.log[0]?.text).toBe('Answered a sitework question on Boerne Retail Pad B and sent it to 1 company.')
+    expect(answeredNotInSet(padb(answered)).map((x) => x.id)).toEqual(['padb-q-1'])
+    expect(a ? questionInNote(padb(answered), a) : '').toBe('C-101, Sitework: Is the drive-through lane concrete or asphalt? Answer: Concrete, per detail 3 on C-101.')
+
+    // A new set carries the answer: the question remembers the set.
+    const carried = gcReducer(answered, {
+      type: 'issuePlanSet',
+      projectId: 'padb',
+      label: 'Addendum 1',
+      note: a ? questionInNote(padb(answered), a) : '',
+      sheets: [],
+      addedSheets: [],
+      touches: [],
+      recipients: ['lonestar'],
+      newTrades: [],
+      questionIds: ['padb-q-1'],
+    })
+    expect(padb(carried).questions[0]?.inSetRev).toBe(1)
+    expect(answeredNotInSet(padb(carried))).toEqual([])
   })
 })

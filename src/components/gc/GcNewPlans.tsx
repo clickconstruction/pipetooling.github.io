@@ -5,6 +5,8 @@ import {
   TRADE_TEMPLATES,
   currentRev,
   activitiesTouched,
+  answeredNotInSet,
+  openQuestions,
   changeOrderFromSet,
   changeOrderPrice,
   defaultSetKind,
@@ -23,6 +25,7 @@ import {
   sheetAsIndexed,
   sheetsAtRev,
   sheetsInText,
+  questionInNote,
   tradesForSheets,
   usualScope,
   type GcAction,
@@ -31,6 +34,7 @@ import {
   type PlanSheet,
 } from '../../lib/gcMode/gcModel'
 import { ScopeLines, type ScopeLineDraft } from './GcNewProject'
+import { GcNewProjectQuestions } from './GcNewProjectQuestions'
 import { Btn, Chip, input } from './gcUi'
 
 /**
@@ -113,6 +117,9 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
   const [brought, setBrought] = useState<BroughtTrade[]>([])
   /** Scope lines this set adds, by trade (package id). */
   const [newLines, setNewLines] = useState<Record<string, string[]>>({})
+  const [askingOpen, setAskingOpen] = useState(false)
+  /** Answered questions kept out of this set's note, by id. The rest ride in it. */
+  const [skipQ, setSkipQ] = useState<string[]>([])
   /** Change orders to the owner this set starts, by package id: ticked or not, the cost, the words. */
   const [coOn, setCoOn] = useState<Record<string, boolean>>({})
   const [coCost, setCoCost] = useState<Record<string, string>>({})
@@ -194,7 +201,11 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
     }
   })
   const coDrafted = coRows.filter((r) => r.on && r.cost !== 0 && r.description.trim() !== '')
-  const email = planEmail(project, label, note.trim(), sheets, preview, {
+  const answers = answeredNotInSet(project)
+  const carriedQs = answers.filter((q) => !skipQ.includes(q.id))
+  /** What the set says changed: the office's words, then each answer it carries. */
+  const fullNote = [note.trim(), ...carriedQs.map((q) => questionInNote(project, q))].filter(Boolean).join('\n')
+  const email = planEmail(project, label, fullNote, sheets, preview, {
     lines: preview?.touched ? linesOnSheets(project, preview.pkg, sheets).map((l) => l.label) : [],
     adds: preview?.touched ? (newLines[preview.pkg.id] ?? []) : [],
     moves: preview?.touched ? movesFor(preview.pkg.id) : [],
@@ -222,13 +233,14 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      // With the questions window open over this one, Escape closes only that one.
+      if (e.key === 'Escape' && !askingOpen) onClose()
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [onClose])
+  }, [onClose, askingOpen])
 
-  const missing = note.trim() === '' ? 'Say what changed first.' : label === '' ? 'Give the set a name.' : null
+  const missing = fullNote === '' ? 'Say what changed first.' : label === '' ? 'Give the set a name.' : null
   const addLine = (packageId: string) => {
     const t = lineText.trim()
     if (t !== '') setNewLines((all) => ({ ...all, [packageId]: [...(all[packageId] ?? []), t] }))
@@ -317,6 +329,34 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
               placeholder={'For example:\nE-201: two more floor boxes in bay 2.\nM-101: RTU-3 moved 6 ft north. Curb detail changed on A-401.'}
               style={{ ...input, width: '100%', boxSizing: 'border-box', fontFamily: 'inherit', resize: 'vertical' }}
             />
+            {openQuestions(project).length > 0 && (
+              <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.875rem' }}>
+                <span style={{ color: 'var(--text-600)' }}>
+                  {openQuestions(project).length} {openQuestions(project).length === 1 ? 'question about the plans is' : 'questions about the plans are'} still waiting on an answer.
+                </span>
+                <Btn kind="quiet" onClick={() => setAskingOpen(true)}>Questions about the plans</Btn>
+              </div>
+            )}
+            {askingOpen && <GcNewProjectQuestions state={state} project={project} dispatch={dispatch} onClose={() => setAskingOpen(false)} />}
+            {answers.length > 0 && (
+              <div style={{ marginTop: '0.5rem', padding: '0.5rem 0.7rem', borderRadius: 8, border: '1px solid var(--border)', display: 'grid', gap: '0.3rem', fontSize: '0.875rem' }}>
+                <strong>Answers to carry in this set</strong>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                  An answered question goes out with the next set, in its note. Untick one to keep it out.
+                </span>
+                {answers.map((q) => (
+                  <label key={q.id} style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={!skipQ.includes(q.id)}
+                      onChange={(e) => setSkipQ((all) => (e.target.checked ? all.filter((x) => x !== q.id) : [...all, q.id]))}
+                      style={{ marginTop: '0.2rem' }}
+                    />
+                    <span>{questionInNote(project, q)}</span>
+                  </label>
+                ))}
+              </div>
+            )}
           </section>
 
           <section>
@@ -736,7 +776,8 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
                 type: 'issuePlanSet',
                 projectId: project.id,
                 label,
-                note: note.trim(),
+                note: fullNote,
+                questionIds: carriedQs.map((q) => q.id),
                 sheets,
                 addedSheets: added,
                 touches,
