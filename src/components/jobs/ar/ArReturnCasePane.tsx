@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { AR_CAME_BACK_SENTENCE } from '../../../lib/jobs/arApplySentence'
 import { arCaseDay, arCaseMoney, type ArReplacementDeposit, type ArReturnCaseView } from '../../../lib/jobs/arReturnCase'
+import { calendarYmdInAppTzFromIso } from '../../../utils/dateUtils'
 
 export type ArCaseCloseReason = 'settled_other_way' | 'not_coming'
 
@@ -117,7 +118,7 @@ export function ArReturnCasePane(props: ArReturnCasePaneProps) {
       {replacement && canApply ? (
         <div data-testid="ar-return-case-replacement" style={{ ...box('green'), borderRadius: 8, padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
           <div style={{ fontWeight: 600 }}>
-            This looks like the new check. {(replacement.counterparty_name ?? '').trim() || view.payer} · {arCaseMoney(Math.abs(Number(replacement.amount) || 0))} · {arCaseDay(String(replacement.posted_at ?? '').slice(0, 10), todayYmd)}.
+            This looks like the new check. {(replacement.counterparty_name ?? '').trim() || view.payer} · {arCaseMoney(Math.abs(Number(replacement.amount) || 0))} · {arCaseDay(calendarYmdInAppTzFromIso(String(replacement.posted_at ?? '')), todayYmd)}.
           </div>
           <div style={{ color: 'var(--text-700)' }}>Use it, and it goes on the bills this check paid. Then the case closes.</div>
           <div>
