@@ -373,6 +373,31 @@ describe('our costs and fee spread into the trades', () => {
   })
 })
 
+describe('our own crew on Bill the owner, read from Draws', () => {
+  const plumbingLine = (state: GcState) => {
+    const project = state.projects.find((p) => p.id === 'fairoaksd')
+    if (!project) throw new Error('fixture has no fairoaksd')
+    return ownerPayApp(state, project).lines.find((l) => l.id === 'fplumb')
+  }
+
+  it('shows the stages as Draws keeps them, and bills the same number', () => {
+    const line = plumbingLine(initialGcState())
+    expect([line?.source, line?.doneToDate, line?.crewPct]).toEqual(['Our own crew reported 65% done, by stage.', 72_800, 65])
+    expect(line?.detail).toEqual([
+      { label: 'Underground', pct: 100 },
+      { label: 'Rough in', pct: 100 },
+      { label: 'Top out', pct: 40 },
+      { label: 'Trim', pct: 0 },
+    ])
+  })
+
+  it('follows a stage reported on Draws', () => {
+    const state = gcReducer(initialGcState(), { type: 'selfReportStage', projectId: 'fairoaksd', packageId: 'fplumb', lineId: 'fplumb-3', pct: 100 })
+    const line = plumbingLine(state)
+    expect([line?.crewPct, line?.doneToDate, line?.detail[2]]).toEqual([80, 89_600, { label: 'Top out', pct: 100 }])
+  })
+})
+
 describe('nextOwnerBillDay', () => {
   it('is the 25th of this month until it passes, then next month’s', () => {
     expect(nextOwnerBillDay('2026-10-02')).toBe('2026-10-25')

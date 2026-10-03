@@ -9,7 +9,7 @@
 import type { GcCustomer, GcProject, GcState, OwnerPayAppSent, TradePackage } from './gcTypes'
 import { carriedAmount, proposalTotals } from './gcBids'
 import { partnerById } from './gcLookups'
-import { tradeCloseout } from './gcBuilding'
+import { ownCrewWork, tradeCloseout } from './gcBuilding'
 import { money, shortDate } from './gcWords'
 
 /** We bill the owner once a month (the owner's call, 2026-10-02). The day of the month is my default. */
@@ -37,7 +37,7 @@ export interface OwnerLine {
   source: string
   /** The trade's own lines behind the number, when a statement of work has them. */
   detail: { label: string; pct: number; theySay?: number }[]
-  /** Our own crew's percent done, on a trade we do ourselves. The office reports it here. */
+  /** Our own crew's percent done, on a trade we do ourselves, as Draws → Our own crew reports it. */
   crewPct?: number
 }
 
@@ -87,15 +87,18 @@ function tradeLine(state: GcState, pkg: TradePackage): OwnerLine {
   const worth = carriedAmount(pkg) ?? 0
   const base = { id: pkg.id, label: pkg.trade, worth, doneBefore: 0, detail: [] as OwnerLine['detail'] }
   if (pkg.selfPerform) {
-    const pct = pkg.selfPerform.pctDone ?? 0
-    const done = (worth * pct) / 100
+    // One number with the Building lane's Our own crew card: by stage once reported that way.
+    const crew = ownCrewWork(pkg)
+    const pct = crew?.pct ?? 0
+    const done = crew && crew.worth > 0 ? (worth * crew.done) / crew.worth : 0
     return {
       ...base,
       kind: 'self',
       doneToDate: done,
       thisMonth: done,
       crewPct: pct,
-      source: pct > 0 ? `Our own crew reported ${pct}% done.` : 'Our own crew has not reported any work yet.',
+      source: done > 0 ? `Our own crew reported ${pct}% done${crew?.byStage ? ', by stage' : ''}.` : 'Our own crew has not reported any work yet.',
+      detail: crew?.byStage ? crew.stages.map((st) => ({ label: st.label, pct: st.pct })) : [],
     }
   }
   const invite = pkg.invites.find((i) => i.id === pkg.awardedInviteId)
