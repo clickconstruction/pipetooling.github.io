@@ -1632,6 +1632,8 @@ The customer's signed-copy email (subject *Signed: … — Job #…*, PDF attach
 
 ### submit-legal-portal
 
+> **v2.4457 — redeploy only**: bundles [`_shared/legalEmails.ts`](../supabase/functions/_shared/legalEmails.ts), whose digest now reads its days in `APP_CALENDAR_TZ` ([legal-notify-dispatch](#legal-notify-dispatch)). This function sends only the confirm email, which carries no date, so nothing it sends changes; redeploy after merge so the bundle matches the repo.
+
 > **v2.4132 — sends as the company**: the From is [`COMPANY_EMAIL_FROM`](../supabase/functions/_shared/emailFrom.ts) — *Click Plumbing and Electrical* on `EMAIL_FROM`'s verified address (punch list #53, PR 2); `email_send_log.from_email` records it.
 
 **Purpose**: The firm's acts on its portal (Legal portal train PR 4, v2.3322): one POST, token-authenticated like `submit-sub-portal`. `{ token, matterId, kind, … }` with `kind` one of **`fee` · `cost`** (`amount`, `note` — rolls into the matter's total demand), **`step`** (`stage` = `demand` · `suit` · `judgment` · `settled`, optional `note` — moves `legal_matters.stage`; `settled` also stamps `closed_at`), **`question`** (`note`), **`answer`** (v2.3790: `askId` — an office ask, a `question` entry with `via_portal = false` on this matter and not withdrawn — with `note` and, for a sign-off, `signedOff` true / false; the body defaults to *Signed off* / *Not yet*), **`payment_received`** (`amount`, `note` — money the firm holds; the office applies it to the job and records the firm's cut from the desk). Every act is one `legal_matter_entries` row with `via_portal = true` and `acknowledged_at NULL` — exactly what the office's "The law firm has N things for you" Needs You card reads; the desk's Fees & steps tab answers, applies or acknowledges each (`legal_add_entry`, `legal_acknowledge_entry`).
@@ -1647,6 +1649,8 @@ The customer's signed-copy email (subject *Signed: … — Job #…*, PDF attach
 **v2.3521:** the confirm email links to `${APP_ORIGIN}/legal/confirm?t=<raw>` (the app page), not the function.
 
 ### legal-notify-dispatch
+
+> **v2.4457 — the digest's days**: the weekly digest ([`_shared/legalEmails.ts`](../supabase/functions/_shared/legalEmails.ts) `buildLegalDigestEmail`) prints a matter's *since* (`legal_matters.released_at`) and each event's day (`legal_notification_queue.created_at`) in `APP_CALENDAR_TZ` (`todayYmdInAppTz(new Date(iso))`), not as the UTC date, which read the next day for anything after 7 pm Central. Redeploy after merge.
 
 > **v2.4132 — sends as the company**: the From is [`COMPANY_EMAIL_FROM`](../supabase/functions/_shared/emailFrom.ts) — *Click Plumbing and Electrical* on `EMAIL_FROM`'s verified address (punch list #53, PR 2); `email_send_log.from_email` records it.
 

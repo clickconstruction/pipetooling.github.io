@@ -6,6 +6,7 @@
  * them so Settings → What customers see renders the same emails over the sample. Pure: the
  * wording is the senders' own, moved here verbatim; the company name is passed in.
  */
+import { todayYmdInAppTz } from './appTimeZone.ts'
 
 export function legalEsc(s: unknown): string {
   return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
@@ -54,16 +55,17 @@ export function buildLegalNowEmail(i: {
   return { subject, text: `${subject}\n\n${i.portalUrl}`, html }
 }
 
+/** `releasedAt` and `createdAt` are instants (`legal_matters.released_at`, `legal_notification_queue.created_at`); the digest prints their day in the company's zone. */
 export type LegalDigestMatter = { payerName: string; stage: string; handlingName?: string | null; releasedAt?: string | null }
 export type LegalDigestEvent = { createdAt: string; trigger: LegalNowTrigger; payer: string; body?: string | null }
 
 /** `legal-notify-dispatch` → the once-a-day digest for recipients on "digest". */
 export function buildLegalDigestEmail(i: { companyName: string; recipientName: string; matters: LegalDigestMatter[]; events: LegalDigestEvent[]; portalUrl: string; unsubscribeUrl: string }): LegalEmail {
   const matterLines = i.matters.length
-    ? i.matters.map((m) => `<li><b>${legalEsc(m.payerName)}</b> — ${legalEsc(m.stage)}${m.handlingName ? ` · handling ${legalEsc(m.handlingName)}` : ''}${m.releasedAt ? ` · since ${legalEsc(String(m.releasedAt).slice(0, 10))}` : ''}</li>`).join('')
+    ? i.matters.map((m) => `<li><b>${legalEsc(m.payerName)}</b> — ${legalEsc(m.stage)}${m.handlingName ? ` · handling ${legalEsc(m.handlingName)}` : ''}${m.releasedAt ? ` · since ${legalEsc(todayYmdInAppTz(new Date(m.releasedAt)))}` : ''}</li>`).join('')
     : '<li>No open matters.</li>'
   const eventLines = i.events.length
-    ? i.events.map((e) => `<li>${legalEsc(String(e.createdAt).slice(0, 10))} · ${e.trigger === 'referred' ? 'New account referred' : e.trigger === 'answer' ? 'Office answered' : 'Pulled back'}: <b>${legalEsc(e.payer)}</b>${e.trigger === 'answer' && e.body ? ` — ${legalEsc(e.body)}` : ''}</li>`).join('')
+    ? i.events.map((e) => `<li>${legalEsc(todayYmdInAppTz(new Date(e.createdAt)))} · ${e.trigger === 'referred' ? 'New account referred' : e.trigger === 'answer' ? 'Office answered' : 'Pulled back'}: <b>${legalEsc(e.payer)}</b>${e.trigger === 'answer' && e.body ? ` — ${legalEsc(e.body)}` : ''}</li>`).join('')
     : '<li>Nothing new since your last digest.</li>'
   const subject = `Weekly digest — ${i.matters.length} open matter${i.matters.length === 1 ? '' : 's'} at ${i.companyName}`
   const html = legalWrapHtml(i.companyName, `<p>Your weekly digest, ${legalEsc(i.recipientName)}.</p><h3 style="font-size:14px;margin:12px 0 4px">Open matters</h3><ul>${matterLines}</ul><h3 style="font-size:14px;margin:12px 0 4px">Since your last digest</h3><ul>${eventLines}</ul>${PORTAL_BUTTON(i.portalUrl)}`, i.unsubscribeUrl)

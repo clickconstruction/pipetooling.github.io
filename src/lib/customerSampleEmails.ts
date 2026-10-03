@@ -274,11 +274,12 @@ export function buildSampleLegalEmail(id: 'legal-confirm' | 'legal-now' | 'legal
       portalUrl,
       unsubscribeUrl,
     })
+  // The digest reads instants (released_at, created_at), so the sample's days go in as instants on those days.
   return buildLegalDigestEmail({
     companyName: PORTAL_COMPANY.name,
     recipientName: SAMPLE_FIRM.recipients[1].name,
-    matters: [{ payerName: SAMPLE_HOMEOWNER.name, stage: 'with_firm', handlingName: SAMPLE_FIRM.handling, releasedAt: ymdPlusDays(ctx.todayYmd, -3) }],
-    events: [{ createdAt: ymdPlusDays(ctx.todayYmd, -1), trigger: 'referred', payer: SAMPLE_HOMEOWNER.name }],
+    matters: [{ payerName: SAMPLE_HOMEOWNER.name, stage: 'with_firm', handlingName: SAMPLE_FIRM.handling, releasedAt: `${ymdPlusDays(ctx.todayYmd, -3)}T18:00:00Z` }],
+    events: [{ createdAt: `${ymdPlusDays(ctx.todayYmd, -1)}T18:00:00Z`, trigger: 'referred', payer: SAMPLE_HOMEOWNER.name }],
     portalUrl,
     unsubscribeUrl,
   })
