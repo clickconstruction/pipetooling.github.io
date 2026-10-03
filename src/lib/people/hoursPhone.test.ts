@@ -54,3 +54,14 @@ describe('approvalsPhonePeople', () => {
     ])
   })
 })
+
+describe('approvalsPhonePeople · a session with no work date keeps its Central day (v2.4472)', () => {
+  it('dates an evening clock-in by the day it started in the company calendar', () => {
+    // 01:00 UTC on Sep 22 is 8 pm CDT on Sep 21.
+    const pending = [
+      s({ user_id: 'k', name: 'Kyle', work_date: null, clocked_in_at: '2026-09-22T01:00:00Z', clocked_out_at: '2026-09-22T03:00:00Z', label: 'J892' }),
+      s({ user_id: 'k', name: 'Kyle', work_date: '2026-09-21', clocked_in_at: '2026-09-21T13:00:00Z', clocked_out_at: '2026-09-21T15:00:00Z', label: 'J892' }),
+    ]
+    expect(approvalsPhonePeople(pending)).toEqual([{ userId: 'k', name: 'Kyle', sessions: 2, days: 1, hours: 4, oldestYmd: '2026-09-21', noJob: 0 }])
+  })
+})

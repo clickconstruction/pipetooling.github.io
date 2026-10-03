@@ -38,7 +38,7 @@ import type { LienDeskNeedsYou } from './jobs/lienDesk'
 import { LIEN_SUIT_COUNSEL_LEAD_DAYS } from './jobs/lienDeadlines'
 import type { CapacityUnderStreak } from './jobs/jobSummaryCapacity'
 import { daysBetweenYmd } from './jobs/billedExpectedPay'
-import { todayYmdInAppTz } from '../utils/dateUtils'
+import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../utils/dateUtils'
 import { followupNamesLine, type BidFollowupsDue } from './bids/bidFollowupsDue'
 
 /** Whole days from today (the company calendar) to a 'YYYY-MM-DD' — the Lien desk cards' urgency. */
@@ -844,7 +844,7 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
   }
 
   if (inputs.bankReturnedEnabled && inputs.bankReturnCases && inputs.bankReturnCases.length > 0) {
-    const views = inputs.bankReturnCases.map((row) => arReturnCaseView({ row, trail: [], todayYmd: inputs.todayYmd ?? row.opened_at?.slice(0, 10) ?? '' }))
+    const views = inputs.bankReturnCases.map((row) => arReturnCaseView({ row, trail: [], todayYmd: inputs.todayYmd ?? calendarYmdInAppTzFromIso(row.opened_at ?? '') }))
     const n = views.length
     const total = views.reduce((sum, v) => sum + v.amount, 0)
     const money = (v: number) => v.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })

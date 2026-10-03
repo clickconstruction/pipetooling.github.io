@@ -137,3 +137,15 @@ describe('buildJobClockSummaries', () => {
     expect([...map.keys()].sort()).toEqual(['a', 'c'])
   })
 })
+
+describe('buildJobClockSummaries · a clock-in with no work date keeps its Central day (v2.4472)', () => {
+  it('reads an evening clock-in as its own day', () => {
+    // 00:30 UTC on Jun 4 is 7:30 pm CDT on Jun 3; 00:30 UTC on Dec 2 is 6:30 pm CST on Dec 1.
+    const map = buildJobClockSummaries([
+      { job_ledger_id: 'a', clocked_in_at: '2026-06-04T00:30:00Z', clocked_out_at: '2026-06-04T02:00:00Z', work_date: null },
+      { job_ledger_id: 'a', clocked_in_at: '2026-12-02T00:30:00+00:00', clocked_out_at: null, work_date: null },
+      { job_ledger_id: 'a', clocked_in_at: '2026-06-05T12:00:00Z', clocked_out_at: '2026-06-05T14:00:00Z', work_date: null },
+    ])
+    expect(map.get('a')?.workDates).toEqual(['2026-06-03', '2026-06-05', '2026-12-01'])
+  })
+})

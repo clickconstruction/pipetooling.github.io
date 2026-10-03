@@ -1,3 +1,4 @@
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import type { JobDayLedger } from './jobDayLedger'
 import { ymdToDayNumber } from './jobRunningTimeline'
 import { jobCycleRow, jobNumberLabel } from './jobSummaryCycle'
@@ -64,7 +65,7 @@ function place(rows: readonly JobSummaryEnrichedRow[], ledger: JobDayLedger | nu
     const key = reworkAddressKey(job)
     if (!key) continue
     const c = jobCycleRow(r, ledger)
-    const startYmd = ledger?.jobs.get(job.id)?.firstYmd ?? job.created_at?.slice(0, 10) ?? null
+    const startYmd = ledger?.jobs.get(job.id)?.firstYmd ?? (calendarYmdInAppTzFromIso(job.created_at ?? '') || null)
     const doneYmd = c.billYmd ?? c.paidYmd ?? c.lastWorkYmd
     out.push({ row: r, key, ref: { jobId: job.id, number: jobNumberLabel(job), name: (job.job_name ?? '').trim(), startYmd, doneYmd } })
   }

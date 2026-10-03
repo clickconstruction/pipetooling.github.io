@@ -125,3 +125,16 @@ describe('capacity under 60% three weeks running (Needs You)', () => {
     expect(capacityUnderStreak(series([]))).toBeNull()
   })
 })
+
+describe('capacity · a person archived in the evening (v2.4472)', () => {
+  it('is off the roster from the Central day they were archived', () => {
+    // 01:00 UTC on Aug 7 is 8 pm CDT on Aug 6: x counts Mon–Wed of week 1.
+    const roster = [
+      { id: 'a', kind: 'master_technician', start_date: null, end_date: null, archived_at: null },
+      { id: 'x', kind: 'helper', start_date: null, end_date: null, archived_at: '2026-08-07T01:00:00Z' },
+    ]
+    expect(buildCapacitySeries({ ledger, people: roster }).weeks[0]).toMatchObject({ availableHours: 64 })
+    const noon = [roster[0]!, { ...roster[1]!, archived_at: '2026-08-07T12:00:00Z' }]
+    expect(buildCapacitySeries({ ledger, people: noon }).weeks[0]).toMatchObject({ availableHours: 72 })
+  })
+})
