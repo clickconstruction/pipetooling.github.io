@@ -18,11 +18,24 @@ import { PortalNote, PortalWindow } from './GcPortalUi'
  * Nothing about who else opened it: that is the office's to know. The drawings are stand-ins.
  */
 
-export function GcPortalPlans({ project, pkg, onClose }: { project: GcProject; pkg: TradePackage; onClose: () => void }) {
+export function GcPortalPlans({
+  project,
+  pkg,
+  onClose,
+  startSheet,
+}: {
+  project: GcProject
+  pkg: TradePackage
+  onClose: () => void
+  /** Open on this sheet, when the company tapped a sheet number beside a line of its bid. */
+  startSheet?: string
+}) {
   const newest = currentRev(project)
   const [rev, setRev] = useState(newest)
   const sheets = useMemo(() => sheetsAtRev(project, rev), [project, rev])
-  const [sheetId, setSheetId] = useState(() => sheets.find((s) => s.changedInRev === rev && rev > 0)?.id ?? sheets[0]?.id ?? '')
+  const [sheetId, setSheetId] = useState(
+    () => sheets.find((s) => s.id === startSheet)?.id ?? sheets.find((s) => s.changedInRev === rev && rev > 0)?.id ?? sheets[0]?.id ?? '',
+  )
   const index = Math.max(0, sheets.findIndex((s) => s.id === sheetId))
   const sheet = sheets[index]
   const set = project.planSets.find((s) => s.rev === rev)

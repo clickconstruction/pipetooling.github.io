@@ -9,6 +9,7 @@ import {
   portalFirstVisit,
   portalHome,
   portalLink,
+  portalLines,
   portalMessages,
   portalPlanNews,
   portalPromiseLine,
@@ -175,5 +176,49 @@ describe('how a company arrives', () => {
       const used = portalHome(state, p.id).bidding.length + portalHome(state, p.id).jobs.length + portalHome(state, p.id).past.length > 0
       if (used) expect([p.id, portalFirstVisit(state, p.id)]).toEqual([p.id, false])
     }
+  })
+})
+
+describe('the sheets behind each line', () => {
+  it('marks the Electrical lines Addendum 1 touches for Voltage, the whole-trade lines with them', () => {
+    // Voltage priced the bid set. Addendum 1 changed E-201 and E-301 (E-301 is the panel schedules).
+    // Service and gear and Fire alarm name no sheet, so they stand for every Electrical sheet.
+    const { project, pkg, invite } = ask(state, 'boerne', 'elec', 'voltage')
+    const r = portalLines(project, pkg, invite)
+    expect(r.sets.map((x) => x.label)).toEqual(['Addendum 1'])
+    expect(r.lines.filter((l) => l.by.length > 0).map((l) => [l.item.label, l.wholeTrade, l.changed])).toEqual([
+      ['Service and gear', true, ['E-201', 'E-301']],
+      ['Panels and feeders', false, ['E-301']],
+      ['Fire alarm', true, ['E-201', 'E-301']],
+    ])
+    expect(r.otherSheets).toEqual([])
+  })
+
+  it('leaves the lighting lines alone: E-101 did not change', () => {
+    const { project, pkg, invite } = ask(state, 'boerne', 'elec', 'voltage')
+    const untouched = portalLines(project, pkg, invite).lines.filter((l) => l.by.length === 0)
+    expect(untouched.map((l) => l.item.label)).toEqual(['Lighting', 'Site lighting'])
+  })
+
+  it('gives each line its sheets, guessed from its words on a made-up project', () => {
+    const { project, pkg, invite } = ask(state, 'boerne', 'elec', 'voltage')
+    const lighting = portalLines(project, pkg, invite).lines.find((l) => l.item.label === 'Lighting')
+    expect(lighting).toMatchObject({ sheets: ['E-101'], guessed: true, wholeTrade: false, changed: [] })
+  })
+
+  it('marks nothing for Brightline, who priced Addendum 1 already', () => {
+    const { project, pkg, invite } = ask(state, 'boerne', 'elec', 'brightline')
+    expect(portalLines(project, pkg, invite).sets).toEqual([])
+  })
+
+  it('marks nothing once Voltage confirms its number on the new plans', () => {
+    const confirmed = gcReducer(state, { type: 'tradeConfirmBid', projectId: 'boerne', packageId: 'elec', inviteId: 'elec-voltage' })
+    const { project, pkg, invite } = ask(confirmed, 'boerne', 'elec', 'voltage')
+    expect(portalLines(project, pkg, invite).sets).toEqual([])
+  })
+
+  it('marks nothing for a company that never opened the plans', () => {
+    const { project, pkg, invite } = ask(state, 'boerne', 'steel', 'bexar')
+    expect(portalLines(project, pkg, invite).sets).toEqual([])
   })
 })

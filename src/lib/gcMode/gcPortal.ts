@@ -11,6 +11,7 @@ import { currentRev, partnerById } from './gcLookups'
 import { askPromise, type AskPromise } from './gcFollowUp'
 import { bidIsStale, sowMoney } from './gcBids'
 import { GC_COMPANY } from './gcFixture'
+import { lineReads, tradeSheets } from './gcNewProject'
 
 /** What the plans block tells one company on one ask. */
 export interface PortalPlanNews {
@@ -424,4 +425,45 @@ export function portalFirstVisit(state: GcState, partnerId: string): boolean {
     }
   }
   return true
+}
+
+// ---------------------------------------------------------------------------------------------
+// The sheets behind each line of a bid, and what a newer set changed
+// ---------------------------------------------------------------------------------------------
+
+/** One scope line on the bid form, with the sheets it reads from and what changed on them. */
+export interface PortalLine {
+  item: ScopeItem
+  /** The sheets the line names, shown beside it. Empty for a line that stands for the whole trade. */
+  sheets: string[]
+  /** Matched from the line's words. The office has not said which sheets this line reads from. */
+  guessed: boolean
+  /** The line names no sheet, so it reads every sheet of its trade (the owner's call, `lineReads`). */
+  wholeTrade: boolean
+  /** The sheets it reads that a set newer than the company's number changed. */
+  changed: string[]
+  /** Those sets, by name. */
+  by: string[]
+}
+
+/**
+ * Each line of a trade with its sheets, and the sets that changed this trade since the company's
+ * number, or since it last opened the plans when it has no number yet. A company that never
+ * opened the plans has nothing marked: every sheet is new to it. A line that names no sheet is
+ * touched by any change to its trade's sheets. `otherSheets` are the trade's changed sheets that
+ * no touched line reads.
+ */
+export function portalLines(project: GcProject, pkg: TradePackage, invite: Invite): { lines: PortalLine[]; sets: PlanSet[]; otherSheets: string[] } {
+  const basis = invite.bid?.basedOnRev ?? invite.seenRev
+  const sets = basis === null ? [] : project.planSets.filter((s) => s.rev > basis && s.touches.includes(pkg.id)).sort((a, b) => a.rev - b.rev)
+  const lines = pkg.scope.map((item) => {
+    const { sheets: reads, guessed, wholeTrade } = lineReads(project, pkg, item)
+    const by = sets.filter((set) => set.changedSheets.some((id) => reads.includes(id)))
+    const changed = reads.filter((id) => by.some((set) => set.changedSheets.includes(id)))
+    return { item, sheets: wholeTrade ? [] : reads, guessed, wholeTrade, changed, by: by.map((set) => set.label) }
+  })
+  const named = new Set(lines.flatMap((l) => l.changed))
+  const own = new Set(tradeSheets(project, pkg.trade).map((sh) => sh.id))
+  const otherSheets = [...new Set(sets.flatMap((set) => set.changedSheets))].filter((id) => own.has(id) && !named.has(id))
+  return { lines, sets, otherSheets }
 }
