@@ -147,6 +147,10 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   do ourselves weighs in the Building ring by our own number, from the one percent Bill the owner
   bills from (`ownCrewWork`). Draws shows it with the same picker; it has no draws, retainage or
   waivers, since we pay our own crew through payroll.
+- **A project already building opens with the page** (approved as built, 2026-10-02, Building
+  lane): Fair Oaks Shops, Building D (`fairoaksd` in `gcFixture.ts`), with Pecan Valley Electric
+  added for it. Its seven trades sit at different points so Draws, Closeout and the ring show on
+  open. It uses only companies the other lanes' tests do not read.
 - **We bill the owner once a month** (Owner Billing lane, 2026-10-02): one pay application a
   month covering every trade's work since the last one, not a bill each time a trade asks for a
   draw. The day of the month is a default (`OWNER_BILL_DAY` in `gcOwnerBilling.ts`).
@@ -269,6 +273,9 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
   fixture, not from the pay applications on **Bill the owner** (`ownerAccount` has the numbers);
   our own crew's percent read from its Pipeline job (typed on **Bill the owner** for now);
   the owner's retainage released at the end, with our waivers on final payment.
+- Fair Oaks Shops, Building D has no owner billing in the fixture yet (`ownerBilling: null`):
+  its history of pay applications to the owner is Owner Billing's to add. Until then Bill the
+  owner shows all its work as the first bill.
 - No email is sent and nothing notifies anyone when a promised day passes.
 - The portal's messages leave out the master agreement sent, the statement of work sent and work
   starting: the model keeps no day for them yet.
@@ -416,6 +423,11 @@ follow the plain-words rules; the prototype's own words were written to them as 
 - **Our number → We sent our bid**, then **Bid tabs** opens. **We won this** moves it to Buying out.
 - **Helotes Dental Office → Get started**: from 14 of 24 steps to Start, signing as each
   company through **Sign it as them**. A new plan set after Start goes to four companies only.
+- **Fair Oaks Shops, Building D** (under Building): point at the ring for what waits. On
+  **Draws**, approve or **Send back** Iron Horse's draw 2; Pecan Valley's **Approve** stays shut
+  on its insurance. On **Closeout**, **Accept the work** on Concrete. In the portal as Summit
+  Roofing, **Fix and resend pay application 1**; as Guadalupe, **Fill out the final pay
+  application** once accepted.
 - **Follow up**: log a call with a new day on Hillside Excavation and watch the card move down.
 - **The portal's home**: see it as Voltage Brothers (a number on old plans, then the insurance that
   ran out, both red), Brightline Electric (one job, one bid), Hill Country Interiors (Helotes:
