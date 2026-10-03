@@ -5,6 +5,7 @@
  * runs past the job's stage window. The Needs You kernel words them; this only counts and
  * picks the one to name.
  */
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 
 export type NudgeBid = { bidId: string; bidLabel: string; outcome: string | null; outcomeAt: string | null; jobId: string | null; /** the office answered "not needed on this job" (4c) */ notNeeded?: boolean }
 export type NudgeRevision = { id: string; bidId: string; revNumber: number; sharedAt: string | null; status: string }
@@ -77,7 +78,8 @@ function newestByBid(revisions: ReadonlyArray<NudgeRevision>): { shared: Map<str
 export function summarizeSubmittalNudge(input: SubmittalNudgeInput, now: Date, opts: { wonDays?: number; sharedDays?: number; todayYmd?: string } = {}): SubmittalNudge {
   const wonDays = opts.wonDays ?? WON_NO_SUBMITTAL_DAYS
   const sharedDays = opts.sharedDays ?? SHARED_UNOPENED_DAYS
-  const today = opts.todayYmd ?? ymd(now)
+  // The company's day, not the UTC date of `now` (tomorrow every evening after 7 PM Central).
+  const today = opts.todayYmd ?? todayYmdInAppTz(now)
   const labelOf = new Map(input.bids.map((b) => [b.bidId, b.bidLabel]))
   const { shared, any } = newestByBid(input.revisions)
   const bidsWithRevision = new Set(input.revisions.map((r) => r.bidId))
