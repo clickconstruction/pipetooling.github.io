@@ -214,7 +214,10 @@ export function GcCustomerWindow({ state, customer, dispatch, onClose, onOpenPro
                         <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center', marginBottom: '0.2rem' }}>
                           <Chip tone={waited >= 3 ? 'red' : 'amber'}>{days(waited)}</Chip>
                           <strong>{project.name}</strong>
-                          <span style={{ color: 'var(--text-muted)' }}>· {pkg?.trade} · asked by {partner?.company} on {shortDate(question.askedOn)}</span>
+                          <span style={{ color: 'var(--text-muted)' }}>
+                            · {pkg?.trade} · asked by {partner?.company} on {shortDate(question.askedOn)}
+                            {question.sentToArchitectOn ? ` · sent to them ${shortDate(question.sentToArchitectOn)}` : ''}
+                          </span>
                         </div>
                         <div>{question.text}</div>
                         <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '0.2rem' }}>
@@ -224,6 +227,18 @@ export function GcCustomerWindow({ state, customer, dispatch, onClose, onOpenPro
                       </div>
                     )
                   })}
+                </div>
+              )}
+              {architect.notSent.length > 0 && (
+                <div style={{ marginTop: '0.5rem', display: 'grid', gap: '0.25rem', fontSize: '0.85rem' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>
+                    Not sent to them yet. These wait on us, so they do not count against {customer.name}.
+                  </span>
+                  {architect.notSent.map(({ project, question, days: waited }) => (
+                    <div key={question.id}>
+                      <Chip tone="amber">ours · {days(waited)}</Chip> {project.name}: {question.text}
+                    </div>
+                  ))}
                 </div>
               )}
               {architect.answered.length > 0 && (
