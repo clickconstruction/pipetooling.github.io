@@ -69,7 +69,7 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
 | **New here?** (top right) | An 11-stop spotlight walkthrough of the three stages on the Project Board: each stage's question, what you do in it, how it ends, then where to try it. Stops in `src/lib/gcMode/gcTour.ts`, on the app's `SpotlightTour`. |
 | The ring on each row | How far the project is through its stage (`stageProgress` in the model; `GcProgressRing`). Hover it, tap it on a phone, or tab to it: a card lists what the ring counts by type, what is left in each spelled out, what is done in one line, and an *Also* list it does not count. Bidding: enough quotes (2 per hired trade), a number to carry, quotes on the newest plans, our bid sent. Buyout: the Get started checklist by kind of step (the owner side, awarded, master agreement, insurance, W-9, statement of work). Building: work reported per trade, weighted by its statement of work, and our own crew's percent weighted by our own number; draws and waivers waiting under *Also*. |
 | **Project Board** | Projects in three sections: Bidding to the owner, Buying out, Building. Each row leads with the days left before our bid (red inside a week, amber inside two), then the name, the owner and architect (each a link), chips, the Bid Board's folder and plans icons, and the price. |
-| **+ New project** (beside *Bidding to the owner*) | One window in four steps, each feeding the next. **The project**: name, address, town, owner and architect from the one customer list ("Someone new" makes a record), bid due, size. **The plans**: the set's name (Bid set, Pricing set, Permit set or typed), the day it came in, the sheet index pasted from the cover sheet and read as you paste (A-101, A101, A1.01, FP-101; capitals become sentence case; a line not read is listed). **The trades**: guessed from the sheets in build order, each with the sheets behind it; untick, add, mark **Ours**, a budget. **Each scope**: each trade's usual lines to change, each with the sheets it reads from (guessed from its words, × takes one off, **+ sheet** adds one; none means the trade's sheets as a whole); Enter starts the next line. **Create the project** puts it under Bidding to the owner and opens it on Trades. **Paste a made-up sheet index** tries it. |
+| **+ New project** (beside *Bidding to the owner*) | One window in four steps, each feeding the next. **The project**: name, address, town, owner and architect from the one customer list ("Someone new" makes a record), bid due, size. **The plans**: the set's name (Bid set, Pricing set, Permit set or typed), the day it came in, the sheet index pasted from the cover sheet and read as you paste (A-101, A101, A1.01, FP-101; capitals become sentence case; a line not read is listed). **The trades**: guessed from the sheets in build order, each with the sheets behind it; untick, add, mark **Ours**, a budget. **Each scope**: each trade's usual lines to change, each with the sheets it reads from (guessed from its words, × takes one off, **+ sheet** adds one; none means the trade's sheets as a whole); Enter starts the next line. **Who to ask**: for each trade we hire out, every company that does it, closest first, with its drive, how it answers asks and any missing paperwork; the closest three in range come ticked. **Create the project** puts it under Bidding to the owner, sends each ticked company the board's invitation, and opens it on Trades. **Paste a made-up sheet index** tries it. |
 | Plans icon on a row | A plans window over the board: newest set first, the sheet list by discipline, what the last addendum changed, arrow keys flip sheets, and under each sheet the scope lines that read from it. Drawings are stand-ins. |
 | Owner or architect name | One company window, shaped by what the company is to us: an owner gets money, how they buy and pay, projects we build for them; an architect gets addenda and questions waiting on them. One call log either way. |
 | **Trades** tab | One row per trade: who we asked with each bid in thousands, our budget, the lowest all in, what we carry. **Compare bids** opens the comparison. **On a map** opens the map. |
@@ -140,6 +140,11 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   remembers it (`issuePlanSet.newLines`, `PlanSet.addedLines`). A quote already in never answered
   it, so Compare bids reads it as not clear until a cost is set to cover it or the company
   answers. The email says "It adds detention pond to your scope."
+- **New Project ends with Who to ask** (approved as built, 2026-10-02): the step ticks the
+  companies in range in the map's own order (`tradeLineup`), up to `BENCH_WANTED`, so the map
+  and the step move together when question 7 is answered. A company missing its master
+  agreement, insurance or W-9 is still ticked, with what is missing in a muted line: paperwork is
+  fixed before award, not before a quote. Create sends the board's own invite to each.
 - **Each draw comes with a 702 and 703** (2026-10-02, Building lane): the trade fills the pay
   application in its portal and watches the form fill, typing only what the app cannot know. Most
   of it comes from the job and from the work they reported (`gcBuilding.ts`, `GcBuildingPayApp.tsx`).
@@ -461,7 +466,9 @@ follow the plain-words rules; the prototype's own words were written to them as 
 - **+ New project**: pick an owner, **Paste a made-up sheet index**, see 21 sheets and 13 trades,
   change a scope line, **Create the project**. It opens on Trades and sits under Bidding to the
   owner with its days left. On Electrical, Lighting reads from E-101; add E-201 to Devices, then
-  the plans window under E-201 lists Devices.
+  the plans window under E-201 lists Devices. On **Who to ask**, Sitework ticks Lonestar and
+  Tri-County and leaves Hillside, past its 50 miles; Create the project opens Trades with 15
+  companies asked.
 - **Plans → A new set of plans came in** on Boerne: type "C-101: a detention pond is added",
   press **+ Add a line this set brings** on Sitework, type Detention pond, issue. Compare bids on
   Sitework now says each quote "is not clear about detention pond".

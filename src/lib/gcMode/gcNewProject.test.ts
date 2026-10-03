@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   SAMPLE_SHEET_INDEX,
   buildNewProject,
+  defaultAsks,
   guessLineSheets,
   lineReads,
   lineSheets,
@@ -200,5 +201,41 @@ describe('scope lines and their sheets', () => {
     expect(ducts ? lineReads(boerne, hvac, ducts) : null).toEqual({ sheets: ['M-101', 'M-201'], guessed: true, wholeTrade: true })
     expect(linesOnSheets(boerne, hvac, ['M-101']).map((i) => i.label)).toEqual(['Rooftop units', 'Ductwork', 'Controls', 'Test and balance'])
     expect(ducts ? lineReads(boerne, hvac, { ...ducts, sheets: [] }) : null).toEqual({ sheets: ['M-101', 'M-201'], guessed: false, wholeTrade: true })
+  })
+})
+
+describe('defaultAsks', () => {
+  const state = initialGcState()
+  const { project } = buildNewProject(
+    state,
+    draft({
+      town: 'San Antonio',
+      trades: [
+        { trade: 'Sitework', budget: 0, ours: false, scope: ['Paving'] },
+        { trade: 'Structural steel', budget: 0, ours: false, scope: ['Erection'] },
+        { trade: 'Plumbing', budget: 0, ours: true, scope: ['Rough in'] },
+        { trade: 'Landscaping', budget: 0, ours: false, scope: ['Planting'] },
+      ],
+    }),
+  )
+  const pkg = (trade: string) => {
+    const p = project.packages.find((x) => x.trade === trade)
+    if (!p) throw new Error(`no ${trade}`)
+    return p
+  }
+
+  it('ticks the closest companies in range, and leaves out one past its drive', () => {
+    // Hillside drives 50 miles from Kerrville; San Antonio is about 70.
+    expect(defaultAsks(state, project, pkg('Sitework'))).toEqual(['lonestar', 'tricounty'])
+  })
+
+  it('ticks in the map\'s order, closest first, whatever the record, up to three', () => {
+    // Bexar and Comal answer under 40% of asks, but they are closest; Iron Horse is new to us.
+    expect(defaultAsks(state, project, pkg('Structural steel'))).toEqual(['bexar', 'comal', 'ironhorse'])
+  })
+
+  it('asks nobody on our own trade, or where no company does the trade', () => {
+    expect(defaultAsks(state, project, pkg('Plumbing'))).toEqual([])
+    expect(defaultAsks(state, project, pkg('Landscaping'))).toEqual([])
   })
 })
