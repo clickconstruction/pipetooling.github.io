@@ -26,6 +26,8 @@ export function OpenRfiChip({ bidId }: { bidId: string }) {
     }
   }, [bidId])
   if (open.length === 0) return null
+  // v2.4453: no nowrap. Its rows already wrap, so the chip breaks onto two lines only when it is
+  // wider than a phone's card, where it used to push the page sideways.
   return (
     <span
       title={open.map((s) => s.text).join('\n')}
@@ -37,7 +39,6 @@ export function OpenRfiChip({ bidId }: { bidId: string }) {
         background: 'var(--bg-amber-tint)',
         color: 'var(--text-amber-800)',
         border: '1px solid var(--text-amber-800)',
-        whiteSpace: 'nowrap',
       }}
     >
       {open.length} open RFI{open.length === 1 ? '' : 's'} — carry as assumptions/exclusions

@@ -853,7 +853,9 @@ export function BidsLaborTab({
                     rowDomId={laborRowDomId}
                     rowJumpFlashDomId={rowJumpFlashDomId}
                   />
-                <div style={{ marginTop: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                {/* v2.4453: the rate and the print buttons wrap, so on a phone the buttons drop below the
+                    rate. On one line they pushed the page 66 px sideways. */}
+                <div style={{ marginTop: '0.75rem', display: 'flex', flexWrap: 'wrap', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
                     <label style={{ marginRight: '0.5rem', fontWeight: 500 }}>Labor rate ($/hr)</label>
                     <input
@@ -868,7 +870,7 @@ export function BidsLaborTab({
                       style={{ width: '8rem', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, ...cellSaveStyle('rate:labor') }}
                     />
                   </div>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                     <button
                       type="button"
                       onClick={printRoughInSubSheet}
