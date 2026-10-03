@@ -5026,6 +5026,16 @@ exports[`GC mode golden walk > step 62: Dr. Raman pays pay application 1 1`] = `
 }
 `;
 
+exports[`GC mode golden walk > step 63: Our crew reports plumbing at 50% 1`] = `
+{
+  "changed": {
+    "lastLog.id": 59,
+    "lastLog.text": "Our own crew reported Plumbing at 50%.",
+  },
+  "removed": [],
+}
+`;
+
 exports[`GC mode golden walk > the whole state at the end 1`] = `
 {
   "customers": [
@@ -5182,6 +5192,11 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
+      "id": 59,
+      "text": "Our own crew reported Plumbing at 50%.",
+      "who": "office",
+    },
+    {
       "id": 58,
       "text": "Dr. Priya Raman paid pay application 1: $79,247.",
       "who": "office",
@@ -5325,11 +5340,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "id": 30,
       "text": "Sent the HVAC statement of work to Kendall Air.",
       "who": "office",
-    },
-    {
-      "id": 29,
-      "text": "Kendall Air signed the master agreement.",
-      "who": "trade",
     },
   ],
   "partners": [
@@ -7193,6 +7203,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
           ],
           "selfPerform": {
             "note": "Our own crew. The job runs on the Pipeline.",
+            "pctDone": 50,
             "ref": "J 1042",
             "value": 38500,
           },

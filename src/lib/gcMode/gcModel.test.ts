@@ -152,6 +152,8 @@ const STEPS: Step[] = [
   // Helotes: our pay application to the owner, and the owner paying it.
   { label: 'Send Dr. Raman pay application 1', action: { type: 'sendOwnerPayApp', projectId: 'helotes' } },
   { label: 'Dr. Raman pays pay application 1', action: { type: 'ownerPaid', projectId: 'helotes', number: 1 } },
+  // Helotes: our own crew reports plumbing on Bill the owner.
+  { label: 'Our crew reports plumbing at 50%', action: { type: 'selfReport', projectId: 'helotes', packageId: 'dplumb', pct: 50 } },
 ]
 
 const CUSTOMER_IDS = ['cibolo', 'raman']
@@ -277,6 +279,7 @@ describe('GC mode golden walk', () => {
       'tradeSendPayApp',
       'tradeUploadCoi', 'tradeSignW9',
       'sendOwnerPayApp', 'ownerPaid',
+      'selfReport',
     ]
     expect(all.filter((t) => !used.has(t))).toEqual([])
   })
