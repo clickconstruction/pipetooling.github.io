@@ -165,7 +165,7 @@ export interface LienTimelineMonth {
   deadline: string
   fromCreation: boolean
   outcome: LienTimelineMonthOutcome
-  /** sent: the send date-time; skipped: when; missed: when it was noted ('' = nobody has). */
+  /** 'YYYY-MM-DD' in the company calendar: sent: the send day; skipped: when; missed: when it was noted ('' = nobody has). The adapters read each instant's day. */
   at: string
   /** True when the reader cannot know whether a miss was noted (the Lien window has no desk items) — the words say *window closed* and nothing more. */
   noteUnknown?: boolean
@@ -198,6 +198,7 @@ export interface LienTimelineInput {
   } | null
   /** The § 53.101 clock: null until the job carries the fact (#33 §3). */
   originalContractCompletedOn: string | null
+  /** 'YYYY-MM-DD': the release's `filed_at`, else the day its row was made in the company calendar. */
   releasedAt: string | null
   paid: boolean
   /** The job's demand letters (v2.3877); absent when the caller has not loaded them — the strip then draws no letter. */

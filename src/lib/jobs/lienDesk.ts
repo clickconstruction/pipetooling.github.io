@@ -1,4 +1,5 @@
 import type { Database } from '../../types/database'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { daysBetweenYmd } from './billedExpectedPay'
 import { NOTICE_CLOSING_DAYS, NOTICE_DUE_DAYS } from './forecastWorkMonths'
 import { ownerKind } from './ownerConfirm'
@@ -198,7 +199,7 @@ export function buildLienDeskQueue(
       const prev = itemByJob.get(it.job_id)
       if (!prev || it.created_at > prev.created_at) itemByJob.set(it.job_id, it)
     } else if (it.status === 'sent' && it.sent_at) {
-      const age = daysBetweenYmd(it.sent_at.slice(0, 10), todayYmd) ?? 0
+      const age = daysBetweenYmd(calendarYmdInAppTzFromIso(it.sent_at), todayYmd) ?? 0
       if (age <= LIEN_DESK_SENT_DAYS) {
         const prev = sentByJob.get(it.job_id)
         if (!prev || it.sent_at > (prev.sent_at ?? '')) sentByJob.set(it.job_id, it)

@@ -8,6 +8,7 @@ import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { LienRulesDoor } from './LienRulesDoor'
 import { LIEN_GC_PICKER_URGENT_DAYS, buildLienGcPickerOptions, lienGcPickerCloseWords } from '../../lib/jobs/lienDeskGcPicker'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { lienPropertyOwnerDisplayName, resolveLienProperty } from '../../lib/jobs/lienProperty'
 import { workMonthLabel, workMonthShort, type JobWorkMonths } from '../../lib/jobs/forecastWorkMonths'
@@ -865,7 +866,7 @@ export default function LienDeskModal({
               const named = e.item && e.item.status !== 'sent' && e.item.status !== 'missed' && e.item.months.length ? e.item.months : e.dueMonths
               const state =
                 e.pile === 'awaiting'
-                  ? `awaiting approval · ${e.item?.submitted_at ? formatYmdMonthDay(e.item.submitted_at.slice(0, 10)) : ''}`
+                  ? `awaiting approval · ${e.item?.submitted_at ? formatYmdMonthDay(calendarYmdInAppTzFromIso(e.item.submitted_at)) : ''}`
                   : e.pile === 'ready'
                     ? e.item?.approval_mode === 'word'
                       ? wordRecordWords(e.item)
@@ -875,7 +876,7 @@ export default function LienDeskModal({
                     : e.pile === 'held'
                       ? `held · ${e.item?.hold_reason === 'promised' ? 'they promised' : 'call first'} · re-asks ${e.item?.hold_until ? formatYmdMonthDay(e.item.hold_until) : ''}`
                       : e.pile === 'sent'
-                        ? `sent ${e.item?.sent_at ? formatYmdMonthDay(e.item.sent_at.slice(0, 10)) : ''}${(() => { const f = (data?.filingsByJob[e.jobId] ?? []).find((x) => x.id === e.item?.sent_filing_id); return f && sendsTrackingOwed(f.sends).length ? ' · tracking owed' : '' })()}`
+                        ? `sent ${e.item?.sent_at ? formatYmdMonthDay(calendarYmdInAppTzFromIso(e.item.sent_at)) : ''}${(() => { const f = (data?.filingsByJob[e.jobId] ?? []).find((x) => x.id === e.item?.sent_filing_id); return f && sendsTrackingOwed(f.sends).length ? ' · tracking owed' : '' })()}`
                         : e.pile === 'missed'
                           ? `window closed on ${e.missedMonths.map(workMonthShort).join(', ')}`
                           : e.pile === 'needs_owner'
@@ -1065,7 +1066,7 @@ export default function LienDeskModal({
         <strong style={{ fontSize: '1rem' }}>{jobLabel(job, selected.jobId)}</strong>
         {storedDraft?.letterTwo && item ? (
           <span style={chip('var(--bg-blue-tint)', 'var(--text-blue-800)')} data-lien-letter-two-heading title="The second owner letter, on the same form to the same two recipients; the first packet stays on the record">
-            letter two · {letterTwoKindLabel(storedDraft.letterTwo.kind)}{storedDraft.letterTwo.afterSentAt ? ` · after the ${formatYmdMonthDay(storedDraft.letterTwo.afterSentAt.slice(0, 10))} packet` : ''}
+            letter two · {letterTwoKindLabel(storedDraft.letterTwo.kind)}{storedDraft.letterTwo.afterSentAt ? ` · after the ${formatYmdMonthDay(calendarYmdInAppTzFromIso(storedDraft.letterTwo.afterSentAt))} packet` : ''}
           </span>
         ) : null}
         <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
@@ -1282,7 +1283,7 @@ export default function LienDeskModal({
       {correction && correctionNeedsLook(correction, lastSentAt) ? (
         <div data-lien-claim-carry-strip style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.3rem 0.8rem', padding: '0.5rem 0.75rem', borderRadius: 9, border: '1px solid var(--border-amber)', background: 'var(--bg-amber-tint)', fontSize: '0.8125rem' }}>
           <span style={{ color: 'var(--text-amber-800)', minWidth: 0, flex: '1 1 20rem' }}>
-            <strong>Carrying {correction.setByName || 'the office'}’s correction{correction.setAt ? ` from ${formatYmdMonthDay(correction.setAt.slice(0, 10))}` : ''}:</strong> {formatUsdNoCents(correction.amountOff)} {correction.amountOff < 0 ? 'on top' : 'off'} — “{correction.reason}”. This notice claims <strong>{formatUsdNoCents(claimed.claim)}</strong>, not the app’s {formatUsdNoCents(openBalance)}.
+            <strong>Carrying {correction.setByName || 'the office'}’s correction{correction.setAt ? ` from ${formatYmdMonthDay(calendarYmdInAppTzFromIso(correction.setAt))}` : ''}:</strong> {formatUsdNoCents(correction.amountOff)} {correction.amountOff < 0 ? 'on top' : 'off'} — “{correction.reason}”. This notice claims <strong>{formatUsdNoCents(claimed.claim)}</strong>, not the app’s {formatUsdNoCents(openBalance)}.
           </span>
           {office ? (
             <>
@@ -1790,7 +1791,7 @@ export default function LienDeskModal({
         />
       ) : (
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-          <span>Waiting on the leader since {selected.item?.submitted_at ? demandDate(selected.item.submitted_at.slice(0, 10)) : '—'}.</span>
+          <span>Waiting on the leader since {selected.item?.submitted_at ? demandDate(calendarYmdInAppTzFromIso(selected.item.submitted_at)) : '—'}.</span>
           <span style={{ flex: 1 }} />
           <button type="button" onClick={() => setByHandOpen(true)} disabled={!office || busy} style={btn('plain', !office || busy)} data-lien-desk-by-hand title="The paper was printed here and already went out by hand — record it, and this stops waiting">
             Already mailed? Record it…
@@ -1814,7 +1815,7 @@ export default function LienDeskModal({
       footer = byHandPane ?? (
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
           <span>
-            {selected.item?.approval_mode === 'word' ? `On ${wordRecordWords(selected.item).slice(3)}` : selected.item?.approval_mode === 'rule' ? `Approved by ${gc?.name ?? 'the GC'}'s standing rule` : `Approved${selected.item?.approved_at ? ` ${demandDate(selected.item.approved_at.slice(0, 10))}` : ''}`} · in the run.
+            {selected.item?.approval_mode === 'word' ? `On ${wordRecordWords(selected.item).slice(3)}` : selected.item?.approval_mode === 'rule' ? `Approved by ${gc?.name ?? 'the GC'}'s standing rule` : `Approved${selected.item?.approved_at ? ` ${demandDate(calendarYmdInAppTzFromIso(selected.item.approved_at))}` : ''}`} · in the run.
           </span>
           {leader && selected.item?.approval_mode === 'word' ? (
             <button type="button" onClick={pullBack} disabled={busy} style={btn('plain', busy)} title="Pull it back to the office's draft — it has not gone out">Not what I said</button>
@@ -1886,10 +1887,10 @@ export default function LienDeskModal({
       footer = (
         <>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem 1rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }} data-lien-since-sent>
-            <span>Sent <strong style={{ color: 'var(--text-700)' }}>{first?.sent_at ? demandDate(first.sent_at.slice(0, 10)) : ''}</strong> · on the job's lien instruments</span>
+            <span>Sent <strong style={{ color: 'var(--text-700)' }}>{first?.sent_at ? demandDate(calendarYmdInAppTzFromIso(first.sent_at)) : ''}</strong> · on the job's lien instruments</span>
             {lt && lt.day != null ? <span>Day <strong style={{ color: 'var(--text-700)' }}>{lt.day}</strong></span> : null}
             <span>GC paid: <strong style={{ color: 'var(--text-700)' }}>{jobBalance <= 0.005 ? 'yes' : 'no'}</strong></span>
-            <span>GC authorized direct pay: <strong style={{ color: 'var(--text-700)' }}>{lt?.gcAuthorized ? `yes · ${formatYmdMonthDay(lt.gcAuthorized.at.slice(0, 10))}${lt.gcAuthorized.note ? ` · ${lt.gcAuthorized.note}` : ''}` : 'no'}</strong></span>
+            <span>GC authorized direct pay: <strong style={{ color: 'var(--text-700)' }}>{lt?.gcAuthorized ? `yes · ${formatYmdMonthDay(calendarYmdInAppTzFromIso(lt.gcAuthorized.at))}${lt.gcAuthorized.note ? ` · ${lt.gcAuthorized.note}` : ''}` : 'no'}</strong></span>
             {sentFiling && trackingOwed.length ? <LienTrackingOwedEditor filing={sentFiling} onSaved={onChanged} /> : null}
             {lt?.letterTwo ? <span>Letter two: <strong style={{ color: 'var(--text-700)' }}>{lt.words}</strong></span> : null}
             {signoff ? <span data-lien-counsel-signoff style={signoff.state === 'signed_off' ? { color: 'var(--text-green-800)' } : signoff.state === 'declined' ? { color: 'var(--text-red-600)' } : undefined}>Counsel: <strong style={{ color: 'inherit' }}>{signoffLine || 'not asked'}</strong></span> : null}

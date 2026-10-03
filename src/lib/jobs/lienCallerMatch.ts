@@ -1,3 +1,4 @@
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import type { LienDeskItemRow } from './lienDesk'
 import type { LienDeskGc, LienDeskJob } from '../../hooks/useLienDeskData'
 import type { CustomerAddressRow, JobPropertyOwnerLike } from './lienProperty'
@@ -83,7 +84,7 @@ export function callLetterFactsFor(input: { item: LienDeskItemRow; job: LienDesk
     us: input.us,
     instrument,
     letterKind,
-    mailedOn: (item.sent_at ?? '').slice(0, 10),
+    mailedOn: calendarYmdInAppTzFromIso(item.sent_at ?? ''),
     amount: demandMoney(notice?.claimAmount ?? ''),
     months: instrument === 'retainage_53_057' ? '' : describeNoticeMonths(months),
     signer: notice?.contactPerson ?? '',

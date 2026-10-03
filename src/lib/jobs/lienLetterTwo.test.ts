@@ -71,3 +71,26 @@ describe('counsel’s paid-out letter', () => {
     expect(parseLienDeskDraftFields({ notice, gcEmail: '', letterTwo: { kind: 'nope' } })?.letterTwo).toBeUndefined()
   })
 })
+
+describe('letter two — an evening packet, okay, call or send keeps its day (v2.4468)', () => {
+  // 00:30 UTC on Sep 6 is 7:30 pm CDT on Sep 5; 00:30 UTC on Dec 2 is 6:30 pm CST on Dec 1.
+  const evening = item({ id: 'first', status: 'sent', sent_at: '2026-09-06T00:30:00Z', fields: { notice, gcEmail: '' } })
+
+  it('counts the days from the Central day the first packet went out', () => {
+    expect(letterTwoStatus({ items: [evening], openBalance: 9_800, todayYmd: '2026-09-15' })).toMatchObject({ state: 'due', day: 10 })
+    expect(letterTwoStatus({ items: [evening], openBalance: 9_800, todayYmd: '2026-09-19' })).toMatchObject({ state: 'overdue', day: 14 })
+    const noon = item({ ...evening, sent_at: '2026-09-06T12:00:00Z' })
+    expect(letterTwoStatus({ items: [noon], openBalance: 9_800, todayYmd: '2026-09-15' })).toMatchObject({ state: 'waiting', day: 9 })
+  })
+
+  it('dates the GC’s okay, the owner’s call and the second letter by the Central day', () => {
+    const fmt = (d: string) => d
+    const okayed = item({ ...evening, fields: { notice, gcEmail: '', gcAuthorizedDirectPay: { at: '2026-09-16T00:30:00+00:00', name: 'Taunya', note: '' } } })
+    expect(letterTwoStatus({ items: [okayed], openBalance: 9_800, todayYmd: TODAY, formatDay: fmt }).words).toBe('GC authorized direct pay 2026-09-15')
+    expect(letterTwoStatus({ items: [evening], openBalance: 9_800, todayYmd: '2026-12-10', ownerCalledAt: '2026-12-02T00:30:00Z', formatDay: fmt }).words).toBe('owner called 2026-12-01')
+    const twoSent = item({ id: 'two', status: 'sent', created_at: '2026-09-16T10:00:00Z', sent_at: '2026-09-20T00:30:00Z', fields: { notice, gcEmail: '', letterTwo: { kind: 'paid_out', afterItemId: 'first', afterSentAt: '2026-09-06T00:30:00Z' } } })
+    expect(letterTwoStatus({ items: [evening, twoSent], openBalance: 9_800, todayYmd: '2026-09-22', formatDay: fmt }).words).toBe('letter two sent 2026-09-19 · paid-out')
+    const twoNoon = item({ ...twoSent, sent_at: '2026-09-20T12:00:00Z' })
+    expect(letterTwoStatus({ items: [evening, twoNoon], openBalance: 9_800, todayYmd: '2026-09-22', formatDay: fmt }).words).toBe('letter two sent 2026-09-20 · paid-out')
+  })
+})

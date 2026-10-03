@@ -1,3 +1,4 @@
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { formatUsdNoCents } from './jobFormatting'
 import { workMonthLabel } from './forecastWorkMonths'
 
@@ -70,7 +71,7 @@ export function claimSplitWords(split: ReadonlyArray<{ month: string; amount: nu
 
 /** "Taunya · Sep 21 · “GC disputes…”" — the line under the figure and on the leader's card. */
 export function correctionSetWords(c: Pick<LienClaimCorrection, 'setByName' | 'setAt' | 'reason'>, formatDay: (ymd: string) => string): string {
-  return [c.setByName, c.setAt ? formatDay(c.setAt.slice(0, 10)) : '', `“${c.reason}”`].filter(Boolean).join(' · ')
+  return [c.setByName, c.setAt ? formatDay(calendarYmdInAppTzFromIso(c.setAt)) : '', `“${c.reason}”`].filter(Boolean).join(' · ')
 }
 
 /** A carried correction that nobody has looked at since the last notice went out — the strip asks "still true?". */

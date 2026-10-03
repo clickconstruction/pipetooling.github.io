@@ -1,3 +1,4 @@
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { daysBetweenYmd } from './billedExpectedPay'
 import { LIEN_DESK_SENT_DAYS, severityForDaysLeft, type LienDeskItemRow, type LienDeskSeverity } from './lienDesk'
 
@@ -165,7 +166,7 @@ export function buildLienRetainageQueue(rows: ReadonlyArray<LienRetainageRow>, i
   for (const it of items) {
     if (it.kind !== 'retainage_53_057' || it.voided_at) continue
     if (it.status === 'sent') {
-      const age = it.sent_at ? (daysBetweenYmd(it.sent_at.slice(0, 10), todayYmd) ?? 0) : 0
+      const age = it.sent_at ? (daysBetweenYmd(calendarYmdInAppTzFromIso(it.sent_at), todayYmd) ?? 0) : 0
       if (age <= LIEN_DESK_SENT_DAYS) {
         const prev = sent.get(it.job_id)
         if (!prev || (it.sent_at ?? '') > (prev.sent_at ?? '')) sent.set(it.job_id, it)

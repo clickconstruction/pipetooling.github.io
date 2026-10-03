@@ -1182,3 +1182,33 @@ describe('LienDeskModal the owner’s call and the piles (v2.3767)', () => {
     })
   })
 })
+
+describe('LienDeskModal · an evening stamp keeps its day (v2.4468)', () => {
+  // 00:30 UTC on Sep 3 is 7:30 pm CDT on Sep 2; 01:00 UTC on Sep 11 is 8 pm CDT on Sep 10.
+  const notice = { noticeDate: '2026-09-02', projectDescription: '', claimantName: 'Click Plumbing and Electrical', laborMaterialsType: 'Plumbing labor and materials', originalContractorName: 'Loberg Contracting', contractedWithIfDifferent: '', claimAmount: '33500.00', contactPerson: 'Robert', claimantAddress: '' }
+  const packet = {
+    id: 'sentE', job_id: 'j650', kind: 'notice_53_056', months: ['2026-06', '2026-07'], status: 'sent', approval_mode: 'leader', drafted_by: 'u-taunya', submitted_at: '2026-09-02T20:00:00Z', approved_at: '2026-09-02T21:00:00Z', sent_at: '2026-09-03T00:30:00Z',
+    fields: { notice, gcEmail: 'office@loberg.test', gcAuthorizedDirectPay: { at: '2026-09-11T01:00:00Z', name: 'Taunya', note: 'email from Loberg' } },
+    cover_note: true, word_note: '', word_channel: '', hold_reason: '', hold_until: null, approved_by: 'u-robert', held_by: null, held_at: null, sent_filing_id: null, pulled_back_by: null, pulled_back_at: null, drafted_at: '2026-09-02T14:00:00Z', created_at: '2026-09-02T14:00:00Z', updated_at: '2026-09-03T00:30:00Z', voided_at: null,
+  } as unknown as LienDeskItemRow
+
+  it('the sent row, the sent footer, its day count and the GC’s okay read the Central day', () => {
+    const d = data(J650.map((r) => ({ ...r, has_owner: true, noticed: true })), [packet], true)
+    d.letterTwoByJob = letterTwoByJobFrom(d.items, () => 33_500, TODAY, formatYmdMonthDay)
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={d} />)
+    const since = document.querySelector('[data-lien-since-sent]') as HTMLElement
+    expect(since.textContent).toContain('Sent September 2, 2026')
+    expect(since.textContent).toContain('Day 12')
+    expect(since.textContent).toContain('GC authorized direct pay: yes · Sep 10 · email from Loberg')
+    expect(document.body.textContent).toContain('sent Sep 2')
+  })
+
+  it('a correction set in the evening is carried from its Central day', () => {
+    const d = data(J650.map((r) => ({ ...r, has_owner: true })), [], true)
+    d.claimCorrectionsByJob = { j650: { jobId: 'j650', amountOff: 1_500, perMonth: null, reason: 'GC disputes the 8/14 change order', carry: true, setByName: 'Taunya', setAt: '2026-09-11T01:00:00Z', lookedAt: null, lookedByName: '' } }
+    d.items = [{ ...packet, fields: { notice, gcEmail: '' }, sent_at: '2026-09-12T15:00:00Z' } as LienDeskItemRow]
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="master_technician" data={d} />)
+    expect((document.querySelector('[data-lien-claim-carry-strip]') as HTMLElement).textContent).toContain('Carrying Taunya’s correction from Sep 10:')
+    expect((document.querySelector('[data-lien-claim-box]') as HTMLElement).textContent).toContain('Taunya · Sep 10 · “GC disputes the 8/14 change order”')
+  })
+})

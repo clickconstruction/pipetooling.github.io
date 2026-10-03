@@ -72,3 +72,22 @@ describe('buildLienMonthGrid · months down, papers across (#38)', () => {
     expect(lienGridPaperWords(grid.papers[1]!, money, label)).toBe('')
   })
 })
+
+describe('buildLienMonthGrid · a paper recorded in the evening keeps its day (v2.4468)', () => {
+  // A filing with no send day dates from its row: 00:30 UTC on Sep 16 is 7:30 pm CDT on Sep 15, the July window's last day.
+  const gridFor = (created_at: string, key = '2026-07', deadline = '2026-09-15') =>
+    buildLienMonthGrid({ jobId: 'j273', months: [month(key, deadline)], items: [], filings: [filing({ id: 'fE', months_covered: [key], created_at })], checked: new Set(), thisItem: null, thisPile: '', propertyKind: 'residential', todayYmd: TODAY })
+
+  it('names the month inside its window, not as information', () => {
+    const evening = gridFor('2026-09-16T00:30:00Z')
+    expect(evening.papers[0]!.sentOn).toBe('2026-09-15')
+    expect(evening.rows[0]!.cells.fE).toBe('named')
+    // 00:30 UTC on Dec 16 is 6:30 pm CST on Dec 15.
+    const winter = gridFor('2026-12-16T00:30:00+00:00', '2026-10', '2026-12-15')
+    expect(winter.papers[0]!.sentOn).toBe('2026-12-15')
+    expect(winter.rows[0]!.cells.fE).toBe('named')
+    const noonAfter = gridFor('2026-09-16T12:00:00Z')
+    expect(noonAfter.papers[0]!.sentOn).toBe('2026-09-16')
+    expect(noonAfter.rows[0]!.cells.fE).toBe('info')
+  })
+})

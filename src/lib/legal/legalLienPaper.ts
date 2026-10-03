@@ -20,6 +20,7 @@
  * packet print all read these, so the three never disagree on a date.
  */
 import type { JobWithDetails } from '../../types/jobWithDetails'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import type { JobLienFilingRow } from '../jobs/lienDeadlines'
 import { noticeDeadlineForMonth } from '../jobs/lienDeadlines'
 import { buildLienTimelineFromWindow } from '../jobs/lienTimelineDesk'
@@ -187,6 +188,7 @@ export type LegalEnvelope = {
 const RECIPIENT_LABEL: Record<string, string> = { owner: 'owner of record', original_contractor: 'original contractor' }
 const KIND_LABEL: Record<string, string> = { notice_53_056: '§ 53.056 notice', retainage_53_057: '§ 53.057 retainage notice', affidavit: "Mechanic's lien affidavit", release_of_record: 'Release of record' }
 
+/** A `date` column's YYYY-MM-DD (`filed_at`, `served_at`). Not for a `timestamptz`: its day is `calendarYmdInAppTzFromIso`. */
 function ymdOf(iso: string | null | undefined): string | null {
   if (!iso) return null
   const s = String(iso)
@@ -236,7 +238,7 @@ export function buildLegalEnvelopes(filings: ReadonlyArray<JobLienFilingRow>, op
     const first = g.rows.slice().sort((a, b) => a.created_at.localeCompare(b.created_at))[0]
     if (!first) continue
     const sends = parseSends(first.sends)
-    const wentOutYmd = sends.map((s) => s.sentOn).filter(Boolean).sort()[0] ?? ymdOf(first.filed_at) ?? ymdOf(first.created_at)
+    const wentOutYmd = sends.map((s) => s.sentOn).filter(Boolean).sort()[0] ?? ymdOf(first.filed_at) ?? (calendarYmdInAppTzFromIso(first.created_at) || null)
     const shares: LegalEnvelopeShare[] = g.rows
       .map((r) => ({ jobId: r.job_id, jobLabel: opts.labelOf(r.job_id), amount: Number(r.amount ?? 0) }))
       .sort((a, b) => a.jobLabel.localeCompare(b.jobLabel, undefined, { numeric: true }))
@@ -390,7 +392,7 @@ function letterTwoClockWords(s: LetterTwoStatus, day: (ymd: string) => string): 
     case 'gc_authorized': return 'not needed — the GC authorized direct pay'
     case 'owner_called': return `day ${s.day} · turned off by the owner's call`
     case 'in_flight': return `${letterTwoKindLabel(s.letterTwo!.kind)} · drafted at the office, not yet sent`
-    case 'sent': return `sent${s.letterTwo?.sentAt ? ` ${day(s.letterTwo.sentAt.slice(0, 10))}` : ''} · ${letterTwoKindLabel(s.letterTwo!.kind)}`
+    case 'sent': return `sent${s.letterTwo?.sentAt ? ` ${day(calendarYmdInAppTzFromIso(s.letterTwo.sentAt))}` : ''} · ${letterTwoKindLabel(s.letterTwo!.kind)}`
   }
 }
 
@@ -408,7 +410,7 @@ export function envelopeAnswersWords(a: LegalEnvelopeAnswers, opts: { todayYmd: 
   const c = a.ownerCall
   if (!c) owner = 'no call recorded yet — the three answers the letter asks for are still owed'
   else {
-    const when = `${day(c.at.slice(0, 10))}${c.name ? `, ${c.name}` : ''}`
+    const when = `${day(calendarYmdInAppTzFromIso(c.at))}${c.name ? `, ${c.name}` : ''}`
     const owes = c.owesGc === 'yes' ? `still owes ${gc}${c.owesAmount != null ? ` ${fmt(c.owesAmount)}` : ''}` : c.owesGc === 'no' ? `owes ${gc} nothing` : `whether they still owe ${gc}: unknown`
     const reserved = c.reserved === 'held' ? 'reserved the 10% and still holds it' : c.reserved === 'released' ? 'reserved the 10% and released it to the GC' : c.reserved === 'never' ? 'never reserved the 10%' : 'the 10%: unknown'
     const done = c.originalContractCompletedOn ? `their contract ${c.originalContractCompletedOn <= opts.todayYmd ? 'completed' : 'completes'} ${day(c.originalContractCompletedOn)}` : 'their contract is still open or undated'
@@ -420,6 +422,6 @@ export function envelopeAnswersWords(a: LegalEnvelopeAnswers, opts: { todayYmd: 
   const distinct = [...new Set(clocks.map((x) => x.words))]
   const letterTwo = clocks.length === 0 ? '—' : distinct.length === 1 ? distinct[0]! : clocks.map((x) => `${x.label}: ${x.words}`).join(' · ')
   const g = a.gcAuthorized
-  const gcOkay = g ? `${day(g.at.slice(0, 10))}${g.name ? ` · ${g.name}` : ''}${g.note.trim() ? ` · ${g.note.trim()}` : ''}` : 'none'
+  const gcOkay = g ? `${day(calendarYmdInAppTzFromIso(g.at))}${g.name ? ` · ${g.name}` : ''}${g.note.trim() ? ` · ${g.note.trim()}` : ''}` : 'none'
   return { owner, letterTwo, gcOkay }
 }

@@ -4,6 +4,7 @@ import type { LienDeskEntry, LienDeskPile } from './lienDesk'
 import type { LienAffidavitPile } from './lienDeskAffidavits'
 import type { LienRetainagePile } from './lienDeskRetainage'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { formatUsdNoCents } from './jobFormatting'
 import { lienSupplierHouseNotice, lienSupplierMark, type LienSupplierJob } from './lienJobSuppliers'
 import type { LienStatusHouseJob, LienStatusJob, LienStatusLien, LienStatusNeed, LienStatusPayload, LienStatusWhere } from '../../../supabase/functions/_shared/lienDeskStatus'
@@ -74,7 +75,7 @@ export function lienStatusJobFor(data: LienDeskData, e: LienDeskEntry): LienStat
     owed: Math.round(e.openBalance * 100) / 100,
     where,
     byYmd,
-    sinceYmd: where === 'approval' && item?.submitted_at ? item.submitted_at.slice(0, 10) : '',
+    sinceYmd: where === 'approval' && item?.submitted_at ? calendarYmdInAppTzFromIso(item.submitted_at) : '',
   }
 }
 

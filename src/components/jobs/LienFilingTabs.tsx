@@ -29,7 +29,7 @@ import { sendsTrackingOwed } from '../../lib/jobs/lienSendTracking'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
-import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils'
 import { homesteadStatementApplies } from '../../lib/jobs/lienNoticeDraft'
 
 /**
@@ -506,7 +506,7 @@ export default function LienFilingTabs({
     const sends = Array.isArray(f.sends) ? (f.sends as { recipient?: string; method?: string; tracking?: string; sent_on?: string }[]) : []
     const snapExtras: FilingDocExtras = {
       ...docExtras,
-      refItems: [`Job #${jobNumber}`, ...((f.months_covered ?? []).length > 0 ? [`Work month ${(f.months_covered ?? []).join(', ')}`] : []), demandDate(f.created_at?.slice(0, 10) ?? '')],
+      refItems: [`Job #${jobNumber}`, ...((f.months_covered ?? []).length > 0 ? [`Work month ${(f.months_covered ?? []).join(', ')}`] : []), demandDate(calendarYmdInAppTzFromIso(f.created_at ?? ''))],
       deliveryLines: sends.map(
         (s) => `${s.recipient === 'owner' ? 'Owner of record' : 'Original contractor'} — ${SEND_METHOD_LABELS[s.method ?? ''] ?? s.method ?? '—'}${s.tracking ? ` · ${s.tracking}` : ''}${s.sent_on ? ` · ${demandDate(s.sent_on)}` : ''}`,
       ),

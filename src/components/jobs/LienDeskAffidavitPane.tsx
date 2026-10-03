@@ -5,6 +5,7 @@ import { buildLienAffidavitBlocks, filingDocHtml, filingLetterheadFromIssuer } f
 import { demandDate } from '../../lib/jobsDocuments/demandLetter'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { lienPropertyOwnerDisplayName, resolveLienProperty } from '../../lib/jobs/lienProperty'
 import { workMonthLabel, type JobWorkMonths } from '../../lib/jobs/forecastWorkMonths'
@@ -257,7 +258,7 @@ export default function LienDeskAffidavitPane({
       )
     ) : (
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-        <span>Waiting on the leader since {item?.submitted_at ? demandDate(item.submitted_at.slice(0, 10)) : '—'}. {forfeit}</span>
+        <span>Waiting on the leader since {item?.submitted_at ? demandDate(calendarYmdInAppTzFromIso(item.submitted_at)) : '—'}. {forfeit}</span>
         <span style={{ flex: 1 }} />
         <button type="button" onClick={pullBack} disabled={busy || !office} style={btn('plain', busy || !office)}>Pull back to draft</button>
       </div>
@@ -285,7 +286,7 @@ export default function LienDeskAffidavitPane({
   } else if (entry.pile === 'filed') {
     footer = (
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-        <span>Filed{item?.sent_at ? ` ${demandDate(item.sent_at.slice(0, 10))}` : ''} · a copy must reach the owner and the contractor by the 5th day after filing (§ 53.055) — the Lien window records the service. {entry.openBalance > 0 ? 'Still unpaid: the account is the Legal desk’s next.' : ''}</span>
+        <span>Filed{item?.sent_at ? ` ${demandDate(calendarYmdInAppTzFromIso(item.sent_at))}` : ''} · a copy must reach the owner and the contractor by the 5th day after filing (§ 53.055) — the Lien window records the service. {entry.openBalance > 0 ? 'Still unpaid: the account is the Legal desk’s next.' : ''}</span>
         <span style={{ flex: 1 }} />
         <button type="button" onClick={() => onOpenLienAffidavit(entry.jobId)} style={btn('plain')}>Record service ›</button>
         {onOpenLegalDesk && entry.openBalance > 0 ? <button type="button" onClick={onOpenLegalDesk} style={btn('primary')}>Refer to the Legal desk ›</button> : null}

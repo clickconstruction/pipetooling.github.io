@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { buildLienTimelineFromWindow } from './lienTimelineDesk'
+import { buildLienTimelineFromWindow, lienTimelineMonthsFromDesk } from './lienTimelineDesk'
+import type { LienDeskItemRow, LienNoticeMonthRow } from './lienDesk'
 import type { JobLienFilingRow } from './lienDeadlines'
 import type { JobWorkMonths } from './forecastWorkMonths'
 
@@ -44,5 +45,38 @@ describe('the demand letter through the window adapter (v2.3877)', () => {
     const paid = buildLienTimelineFromWindow({ ...src, openBalance: 0, demandLetters: [letter()] })
     expect(paid.steps.find((s) => s.kind === 'demand')).toMatchObject({ state: 'done', dateWords: 'paid' })
     expect(buildLienTimelineFromWindow(src).steps.some((s) => s.kind === 'demand')).toBe(false)
+  })
+})
+
+describe('an evening instant keeps its day on the timeline (v2.4468)', () => {
+  // 00:30 UTC is 7:30 pm CDT (6:30 pm CST in winter) the evening before.
+  it('dates a job with no sessions from its creation month in the company calendar, as list_lien_notice_months does', () => {
+    const fromCreation = (created_at: string) => buildLienTimelineFromWindow({ workMonths: null, filings: [], job: { id: 'j1', created_at, last_work_date: null }, isSub: true, propertyKind: 'non_residential', openBalance: 4_100, todayYmd: TODAY }).steps.find((s) => s.kind === 'notice')
+    expect(fromCreation('2026-10-01T00:30:00Z')).toMatchObject({ key: 'notice:2026-09', date: '2026-12-15' })
+    expect(fromCreation('2026-12-01T00:30:00+00:00')?.key).toBe('notice:2026-11')
+    expect(fromCreation('2026-10-01T12:00:00Z')?.key).toBe('notice:2026-10')
+  })
+
+  it('reads a notice and a release with no filed day by the day their rows were made', () => {
+    const wm: JobWorkMonths = { jobId: 'j1', role: 'sub', propertyKind: 'non_residential', months: [month('2026-07', '2026-10-15', 22)], totalHours: 20, sessionCount: 3, pendingSessions: 0, lastMonthKey: '2026-07', affidavitDue: '2026-11-16' }
+    const job = { id: 'j1', created_at: '2026-06-09T14:00:00Z', last_work_date: '2026-07-20' }
+    const notice = filing({ id: 'n', months_covered: ['2026-07'], filed_at: null, created_at: '2026-09-16T00:30:00Z' })
+    const t = buildLienTimelineFromWindow({ workMonths: wm, filings: [notice], job, isSub: true, propertyKind: 'non_residential', openBalance: 5_000, todayYmd: TODAY })
+    expect(t.steps.find((s) => s.key === 'notice:2026-07')?.words).toBe('sent Sep 15')
+    const affidavit = filing({ id: 'a', kind: 'affidavit', filed_at: '2026-07-14', served_at: '2026-07-16' })
+    const release = filing({ id: 'r', kind: 'release_of_record', filed_at: null, created_at: '2026-12-02T00:30:00Z' })
+    const released = buildLienTimelineFromWindow({ workMonths: wm, filings: [notice, affidavit, release], job, isSub: true, propertyKind: 'non_residential', openBalance: 0, todayYmd: '2026-12-10' })
+    expect(released.steps.find((s) => s.kind === 'release')?.dateWords).toBe('released Dec 1')
+    expect(released.next.words).toBe('Released Dec 1 — the clock stopped.')
+  })
+
+  it('reads the desk’s sent, skipped and noted stamps by the Central day', () => {
+    const row = { job_id: 'j1', work_month: '2026-07', approved_hours: 20, deadline: '2026-10-15', noticed: true, open_balance: 5_000, customer_id: 'gc', gc_customer_id: 'gc', property_kind: 'non_residential', has_owner: true, desk_item_id: null, desk_status: null, desk_months: null } as LienNoticeMonthRow
+    const sent = { id: 'i', job_id: 'j1', kind: 'notice_53_056', status: 'sent', months: ['2026-07'], fields: {}, voided_at: null, created_at: '2026-09-10T15:00:00Z', updated_at: '2026-09-16T00:30:00Z', sent_at: '2026-09-16T00:30:00Z' } as unknown as LienDeskItemRow
+    expect(lienTimelineMonthsFromDesk('j1', [row], [sent], TODAY)).toEqual([{ key: '2026-07', deadline: '2026-10-15', fromCreation: false, outcome: 'sent', at: '2026-09-15' }])
+    const noted = { ...sent, status: 'missed', months: ['2026-06'], sent_at: null, fields: { notice: {}, gcEmail: '', windowClosed: { name: 'Taunya', at: '2026-12-02T00:30:00Z' } } } as unknown as LienDeskItemRow
+    expect(lienTimelineMonthsFromDesk('j1', [], [noted], TODAY, 'non_residential')).toMatchObject([{ key: '2026-06', outcome: 'missed', at: '2026-12-01' }])
+    const noon = { ...sent, sent_at: '2026-09-16T12:00:00Z' } as LienDeskItemRow
+    expect(lienTimelineMonthsFromDesk('j1', [row], [noon], TODAY)[0]!.at).toBe('2026-09-16')
   })
 })

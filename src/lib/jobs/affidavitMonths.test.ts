@@ -28,3 +28,15 @@ describe('affidavitMonthRows (v2.3681)', () => {
     expect(affidavitMonthsSentence([{ key: '2026-08', status: 'open', words: '' }], label)).toBe('Nothing is on the lien yet — August 2026 joins it once the notice has gone out.')
   })
 })
+
+describe('a month noticed or skipped in the evening keeps its day (v2.4468)', () => {
+  it('reads the Central day', () => {
+    // 00:30 UTC on Sep 25 is 7:30 pm CDT on Sep 24; 00:30 UTC on Dec 2 is 6:30 pm CST on Dec 1.
+    const sent = affidavitMonthRows([wm('2026-07', 41.4, { due: '2026-10-15', daysLeft: 24, state: 'sent' })], [hist('2026-07', { outcome: 'sent', at: '2026-09-25T00:30:00Z' })])
+    expect(sent[0]!.words).toBe('41.4 approved hours · notice sent Sep 24')
+    const skipped = affidavitMonthRows([wm('2026-09', 1, { due: '2026-12-15', daysLeft: 13, state: 'closed' })], [hist('2026-09', { outcome: 'skipped', at: '2026-12-02T00:30:00+00:00', byName: 'Taunya', reason: 'paid' })])
+    expect(skipped[0]!.words).toMatch(/^1 approved hour · skipped Dec 1 by Taunya/)
+    const noon = affidavitMonthRows([wm('2026-07', 41.4, { due: '2026-10-15', daysLeft: 24, state: 'sent' })], [hist('2026-07', { outcome: 'sent', at: '2026-09-25T12:00:00Z' })])
+    expect(noon[0]!.words).toBe('41.4 approved hours · notice sent Sep 25')
+  })
+})

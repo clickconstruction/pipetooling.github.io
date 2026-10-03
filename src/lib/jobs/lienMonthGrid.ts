@@ -10,6 +10,7 @@
  * it and the card draws it.
  */
 import type { LienDeskItemRow, LienDeskMonth } from './lienDesk'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { daysBetweenYmd } from './billedExpectedPay'
 import { noticeDeadlineForMonth, type JobLienFilingRow } from './lienDeadlines'
 import { normalizeDocumentUrl, type LienFilingDocument } from './lienFilingDocumentLink'
@@ -113,7 +114,7 @@ export function buildLienMonthGrid(input: {
       key: f.id,
       letter: LETTERS[i] ?? String(i + 1),
       kind: 'filing',
-      sentOn: send.sent_on || f.created_at.slice(0, 10),
+      sentOn: send.sent_on || calendarYmdInAppTzFromIso(f.created_at),
       byHand: x.by_hand === true,
       amount: Number(f.amount) || 0,
       printedClaim: x.printed_claim == null ? null : Number(x.printed_claim),

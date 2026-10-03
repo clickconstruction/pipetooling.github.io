@@ -91,3 +91,14 @@ describe('retainage gates and piles', () => {
     expect(paymentBondWords('yes')).toBe('payment bond on the project')
   })
 })
+
+describe('a retainage notice sent in the evening keeps its day (v2.4468)', () => {
+  it('stays in Sent for 30 days from the Central day', () => {
+    // 00:30 UTC on Oct 3 is 7:30 pm CDT on Oct 2.
+    const evening = [item({ job_id: 'gone', status: 'sent', sent_at: '2026-10-03T00:30:00+00:00' })]
+    expect(buildLienRetainageQueue([], evening, '2026-11-01').entries.map((e) => e.jobId)).toEqual(['gone'])
+    expect(buildLienRetainageQueue([], evening, '2026-11-02').entries).toEqual([])
+    const noon = [item({ job_id: 'gone', status: 'sent', sent_at: '2026-10-03T12:00:00Z' })]
+    expect(buildLienRetainageQueue([], noon, '2026-11-02').entries.map((e) => e.jobId)).toEqual(['gone'])
+  })
+})
