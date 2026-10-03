@@ -13,6 +13,7 @@
  * reviewable plan out; nothing writes here.
  */
 
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { normalizeHcpNumber, type BackfillDateSource, type HcpExportRow } from './backfillHcpPayments'
 
 export const TIP_LINE_NAME = 'Tip (HCP)'
@@ -101,7 +102,7 @@ export function planHcpTipsSweep(
       paidOn = hcp.createdOn
       dateSource = 'hcp_created'
     } else if (job?.created_at) {
-      paidOn = job.created_at.slice(0, 10)
+      paidOn = calendarYmdInAppTzFromIso(job.created_at) || null
     }
     const revenueBefore = Number(job?.revenue ?? 0)
     const base: Omit<TipsSweepRow, 'state'> = {
