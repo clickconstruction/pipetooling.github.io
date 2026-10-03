@@ -222,11 +222,21 @@ describe('buildLienUnconditionalQueue (the Dashboard queue)', () => {
 
   it('falls back to the payment created date and a plain label when the row is bare; unknown jobs get empty identity', () => {
     const releases = [release({ id: 'r1', job_id: 'job-x', invoice_ids: ['inv-1'], amount: 100 })]
-    const rows = buildLienUnconditionalQueue(releases, [payment({ invoice_id: 'inv-1', amount: 100, created_at: '2026-09-03T04:00:00Z' })], jobs)
+    const rows = buildLienUnconditionalQueue(releases, [payment({ invoice_id: 'inv-1', amount: 100, created_at: '2026-09-03T17:00:00Z' })], jobs)
     expect(rows[0]?.clearedOn).toBe('2026-09-03')
     expect(rows[0]?.clearedBy).toBe('Payment')
     expect(rows[0]?.jobNumber).toBe('')
     expect(rows[0]?.jobName).toBe('')
+  })
+
+  it('an evening issue and an evening payment with no paid day read their own Central day', () => {
+    // Issued 7:30 pm CDT on Oct 2; the payment, with no paid_on, recorded 6:30 pm CST on Dec 1.
+    const releases = [release({ id: 'r1', job_id: 'job-1', invoice_ids: ['inv-1'], amount: 100, created_at: '2026-10-03T00:30:00+00:00' })]
+    const rows = buildLienUnconditionalQueue(releases, [payment({ invoice_id: 'inv-1', amount: 100, created_at: '2026-12-02T00:30:00Z' })], jobs)
+    expect(rows[0]?.issuedOn).toBe('2026-10-02')
+    expect(rows[0]?.clearedOn).toBe('2026-12-01')
+    // A paid_on is a date and wins as stored.
+    expect(buildLienUnconditionalQueue(releases, [payment({ invoice_id: 'inv-1', amount: 100, paid_on: '2026-12-05', created_at: '2026-12-02T00:30:00Z' })], jobs)[0]?.clearedOn).toBe('2026-12-05')
   })
 
   it('lienQueuePaymentLabel: type + reference, either alone, or "Payment"', () => {

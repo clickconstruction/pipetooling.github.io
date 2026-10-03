@@ -23,6 +23,7 @@ import {
 import { openHtmlPreviewWindow } from '../../lib/jobsDocuments/printWindow'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
 import LienReleaseModal from './LienReleaseModal'
@@ -203,7 +204,7 @@ export default function BillCustomerLienReleaseStrip({
                   {Number(r.amount ?? 0).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
                 </span>
                 <span style={{ color: 'var(--text-muted)' }}>
-                  issued {lienWaiverDate((r.created_at ?? '').slice(0, 10))}
+                  issued {lienWaiverDate(calendarYmdInAppTzFromIso(r.created_at ?? ''))}
                   {conditional && jobDetails ? (clearance === 'cleared' ? ' · payment cleared' : ' · check not cleared yet') : ''}
                 </span>
                 <span style={{ marginLeft: 'auto', display: 'flex', gap: '0.55rem', alignItems: 'center' }}>

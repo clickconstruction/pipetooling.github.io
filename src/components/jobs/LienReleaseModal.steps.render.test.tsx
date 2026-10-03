@@ -133,8 +133,9 @@ describe('LienReleaseModal — six steps (v2.4314)', () => {
     expect(screen.queryByTestId('lien-waiver-form')).toBeNull()
     expect(screen.getByTestId('lien-release-where').textContent).toBe('Step 1 needs you')
     expect(screen.getByText('Greyed until step 1 is settled.')).toBeTruthy()
-    // Already on this job, above the steps.
+    // Already on this job, above the steps, dated in the company zone: made 9:17 pm CDT on Sep 30 (02:17 UTC on Oct 1).
     expect(screen.getByTestId('lien-release-already').textContent).toContain('$15,722.49')
+    expect(screen.getByTestId('lien-release-already').textContent).toContain('September 30, 2026')
     fireEvent.click(within(step(1)).getByRole('button', { name: 'Make it anyway' }))
     await waitFor(() => expect(step(5).getAttribute('data-state')).toBe('now'))
     expect(step(1).getAttribute('data-state')).toBe('done')

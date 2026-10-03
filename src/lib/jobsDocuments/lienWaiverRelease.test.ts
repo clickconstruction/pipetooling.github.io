@@ -232,6 +232,14 @@ describe('buildLienWaiverPrefill', () => {
     expect(f.throughDate).toBe('2026-08-29')
     expect(f.signerName).toBe('Robert Douglas')
   })
+  it('the through date is the last bill\'s day in the company zone, evenings included', () => {
+    // 7:30 pm CDT on Oct 2 (+00:00 shape); 6:30 pm CST on Dec 1 from created_at when there is no billed_at.
+    const ctx = (invoices: JobWithDetails['invoices']) => ({ job: jobWith({ invoices }), invoices, issuer: null, ownerName: null, signerName: '' })
+    expect(buildLienWaiverPrefill('conditional_progress', ctx([inv({ id: 'a', amount: 1, billed_at: '2026-10-03T00:30:00+00:00' })])).throughDate).toBe('2026-10-02')
+    expect(buildLienWaiverPrefill('conditional_progress', ctx([inv({ id: 'a', amount: 1, billed_at: '2026-10-01T15:00:00Z' }), inv({ id: 'b', amount: 1, created_at: '2026-12-02T00:30:00Z' })])).throughDate).toBe('2026-12-01')
+    expect(buildLienWaiverPrefill('conditional_progress', ctx([inv({ id: 'a', amount: 1, billed_at: '2026-10-03T12:00:00Z' })])).throughDate).toBe('2026-10-03')
+  })
+
   it('falls back: issuer→ClickConstruction, owner→GC→customer, through→last_work_date', () => {
     const job = jobWith({ gcCustomer: { id: 'gc', name: 'GC Fallback Inc' } })
     const f = buildLienWaiverPrefill('unconditional_final', {

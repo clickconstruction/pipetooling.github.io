@@ -2,7 +2,7 @@ import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { PhysicalInvoiceIssuer } from '../physicalInvoiceIssuer'
 import { loadJsPDF } from '../loadJsPDF'
-import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils'
 import { billCheckClearsYmd } from '../jobs/checkClearing'
 import { isUnfinishedDate } from '../autosaveDateHold'
 import { unfinishedDateStopsMessage } from '../dateBoxEntry'
@@ -280,6 +280,7 @@ export function lienWaiverInvoiceOpenRemaining(job: JobWithDetails, inv: JobsLed
   return Math.max(0, Number(inv.amount ?? 0) - sumAppliedToInvoice(job, inv.id))
 }
 
+/** A `date` column's day (`last_work_date`). An instant's day is `calendarYmdInAppTzFromIso`: its first ten characters are the UTC date. */
 function ymdFromIso(iso: string | null | undefined): string {
   const d = (iso ?? '').trim().slice(0, 10)
   return /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : ''
@@ -374,7 +375,7 @@ export function buildLienWaiverPrefill(formType: LienWaiverFormType, ctx: LienWa
   const address = (job.job_address ?? '').trim()
   const projectDescription = name && address ? `${name} — ${address}` : name || address
   const throughDate =
-    invoices.map((i) => ymdFromIso(i.billed_at) || ymdFromIso(i.created_at)).filter(Boolean).sort().pop() ??
+    invoices.map((i) => calendarYmdInAppTzFromIso(i.billed_at ?? '') || calendarYmdInAppTzFromIso(i.created_at ?? '')).filter(Boolean).sort().pop() ??
     (ymdFromIso(job.last_work_date) || todayYmd())
   return {
     companyName: (issuer?.companyName ?? '').trim() || 'ClickConstruction LLC',

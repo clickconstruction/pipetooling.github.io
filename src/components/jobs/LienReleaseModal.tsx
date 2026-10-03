@@ -1034,7 +1034,7 @@ export default function LienReleaseModal({
     <div key={r.id} style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem', fontSize: '0.75rem' }}>
       <span style={{ fontWeight: 700 }}>{lienReleaseFormLabel(r.form_type)}</span>
       <span style={{ fontWeight: 700 }}>{Number(r.amount ?? 0).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</span>
-      <span style={{ color: 'var(--text-muted)' }}>{lienWaiverDate((r.created_at ?? '').slice(0, 10))}</span>
+      <span style={{ color: 'var(--text-muted)' }}>{lienWaiverDate(calendarYmdInAppTzFromIso(r.created_at ?? ''))}</span>
       {lienReleaseChips(r).map((c) => (
         <span key={c.label} style={lienChipStyle(c)}>
           {c.label}
@@ -1375,7 +1375,7 @@ export default function LienReleaseModal({
                 {asked && releaseRow ? (
                   <div style={{ padding: '0.55rem 0.7rem', borderRadius: 9, background: 'var(--bg-amber-100)', border: '1px solid var(--border-strong)', fontSize: '0.8125rem', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
                     <strong style={{ color: 'var(--text-amber-800)' }}>✍ Waiting for {fields.signerName.trim() || 'the signer'} to sign</strong>
-                    <span style={{ color: 'var(--text-muted)' }}>Asked for his signature {lienWaiverDate((releaseRow.signature_requested_at ?? '').slice(0, 10))}. Until it is signed, the waiver stays locked.</span>
+                    <span style={{ color: 'var(--text-muted)' }}>Asked for his signature {lienWaiverDate(calendarYmdInAppTzFromIso(releaseRow.signature_requested_at ?? ''))}. Until it is signed, the waiver stays locked.</span>
                     <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
                       {authUser?.id && releaseRow.signer_user_id === authUser.id ? (
                         <button type="button" onClick={() => setSignOpen(true)} style={{ padding: '0.35rem 0.85rem', fontSize: '0.8125rem', fontWeight: 700, background: '#2563eb', color: '#ffffff', border: 'none', borderRadius: 7, cursor: 'pointer', fontFamily: 'inherit' }}>
@@ -1456,7 +1456,7 @@ export default function LienReleaseModal({
                     {releaseRow.sent_to_customer_at ? (
                       <>
                         <dt style={{ color: 'var(--text-muted)', margin: 0 }}>Sent</dt>
-                        <dd style={{ margin: 0, color: 'var(--text-green-700)', fontWeight: 600 }}>{lienWaiverDate((releaseRow.sent_to_customer_at ?? '').slice(0, 10))}</dd>
+                        <dd style={{ margin: 0, color: 'var(--text-green-700)', fontWeight: 600 }}>{lienWaiverDate(calendarYmdInAppTzFromIso(releaseRow.sent_to_customer_at ?? ''))}</dd>
                       </>
                     ) : null}
                   </dl>
