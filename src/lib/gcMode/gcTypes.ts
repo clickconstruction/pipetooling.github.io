@@ -47,6 +47,18 @@ export interface SubBid {
   /** The office's plug for a scope item the bid leaves out, so two bids compare like with like. */
   plugs: Record<string, number>
   note: string
+  /** How many days the number holds from the day it was sent. Unset: the company did not say. */
+  goodForDays?: number
+  /** Another way to do the work, at a different price: what it is, and what it adds (plus) or takes off (minus). */
+  alternates?: BidAlternate[]
+  /** The company's own quote, attached in its portal. Only the file's name is kept in the prototype. */
+  quoteFile?: string
+}
+
+export interface BidAlternate {
+  label: string
+  /** Added to the number when plus, taken off when minus. */
+  amount: number
 }
 
 /**
@@ -317,6 +329,10 @@ export type GcAction =
       amount: number
       includes: Record<string, Includes>
       note: string
+      /** The portal's bid form adds these; a bid without them is the same as before. */
+      goodForDays?: number
+      alternates?: BidAlternate[]
+      quoteFile?: string
     }
   | { type: 'tradeDecline'; projectId: string; packageId: string; inviteId: string }
   | { type: 'officeDecline'; projectId: string; packageId: string; inviteId: string; why: 'wont' | 'cant' }
@@ -401,6 +417,8 @@ export type GcAction =
     }
   /** The company presses Got it on its portal's first-visit welcome. */
   | { type: 'tradeOpenPortal'; partnerId: string }
+  /** The trade answers the lines of its number the office could not read: each one in it, or left out. The number stays. */
+  | { type: 'tradeAnswerLines'; projectId: string; packageId: string; inviteId: string; answers: Record<string, 'yes' | 'no'> }
   /** The owner accepts the work in their portal: the punch list is done. */
   | { type: 'ownerAcceptsWork'; projectId: string }
   /** Our final pay application to the owner: the retainage they hold, with our conditional waiver on final payment. */

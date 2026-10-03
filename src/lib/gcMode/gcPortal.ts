@@ -5,7 +5,7 @@
  *
  * The words follow the plain-words rules at the top of `gcTour.ts`.
  */
-import type { GcProject, GcState, Invite, Partner, PlanSet, ScopeItem, TradePackage } from './gcTypes'
+import type { BidAlternate, GcProject, GcState, Invite, Partner, PlanSet, ScopeItem, SubBid, TradePackage } from './gcTypes'
 import { daysUntil, money, shortDate, weekdayDate } from './gcWords'
 import { currentRev, partnerById } from './gcLookups'
 import { askPromise, type AskPromise } from './gcFollowUp'
@@ -95,6 +95,8 @@ export interface PortalAsk {
   unclear: ScopeItem[]
   /** The day they said their number will come. Null once a number is in. */
   promise: AskPromise | null
+  /** Their number passed the days they said it is good for. */
+  ranOut: boolean
 }
 
 /** The money on one job, as the company sees it. */
@@ -148,6 +150,7 @@ export function portalAsks(state: GcState, partnerId: string): PortalAsk[] {
           stale: bidIsStale(project, pkg, invite),
           unclear: unclearLines(pkg, invite),
           promise: invite.bid ? null : askPromise(invite, state.today),
+          ranOut: invite.bid ? bidRanOut(invite.bid, state.today) : false,
         })
       }
     }
@@ -218,6 +221,9 @@ export function portalTodos(state: GcState, partnerId: string, asks: PortalAsk[]
       } else if (a.unclear.length > 0) {
         const n = a.unclear.length
         todos.push({ key: `${key}:unclear`, projectId, text: `Answer ${n === 1 ? 'one line' : `${n} lines`} of your ${trade} number for ${where}.`, tone: 'amber', by: due })
+      } else if (a.invite.bid && a.ranOut) {
+        const until = bidGoodUntil(a.invite.bid)
+        todos.push({ key: `${key}:ranout`, projectId, text: `Your ${trade} number for ${where} ran out ${weekdayDate(until)}. Send it again to keep it good.`, tone: 'amber', by: until })
       } else if (!a.invite.bid && a.promise?.state === 'passed') {
         todos.push({ key: `${key}:late`, projectId, text: `You said your ${trade} number for ${where} would come ${weekdayDate(a.promise.by)}. Send it or give a new day.`, tone: 'red', by: a.promise.by })
       } else if (!a.invite.bid && due) {
@@ -466,4 +472,33 @@ export function portalLines(project: GcProject, pkg: TradePackage, invite: Invit
   const own = new Set(tradeSheets(project, pkg.trade).map((sh) => sh.id))
   const otherSheets = [...new Set(sets.flatMap((set) => set.changedSheets))].filter((id) => own.has(id) && !named.has(id))
   return { lines, sets, otherSheets }
+}
+
+// ---------------------------------------------------------------------------------------------
+// The bid form: how long a number is good for, and its alternates
+// ---------------------------------------------------------------------------------------------
+
+/** The choices for how long a number holds, in days. */
+export const GOOD_FOR_DAYS = [15, 30, 60, 90]
+
+function addDays(iso: string, days: number): string {
+  const [y, m, d] = iso.split('-').map(Number)
+  const t = new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, (d ?? 1) + days))
+  return t.toISOString().slice(0, 10)
+}
+
+/** The last day a number holds. Null when the company did not say. */
+export function bidGoodUntil(bid: SubBid): string | null {
+  return bid.goodForDays ? addDays(bid.submittedOn, bid.goodForDays) : null
+}
+
+/** The number passed its last good day. */
+export function bidRanOut(bid: SubBid, today: string): boolean {
+  const until = bidGoodUntil(bid)
+  return until !== null && until < today
+}
+
+/** "LED high bays adds $4,200", "Owner buys the fixtures takes off $12,000". */
+export function alternateWords(alt: BidAlternate): string {
+  return `${alt.label} ${alt.amount >= 0 ? 'adds' : 'takes off'} ${money(Math.abs(alt.amount))}`
 }

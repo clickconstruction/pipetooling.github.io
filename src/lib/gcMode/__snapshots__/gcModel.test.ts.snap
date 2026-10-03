@@ -5798,20 +5798,207 @@ exports[`GC mode golden walk > step 78: AquaShield opens its portal for the firs
 }
 `;
 
-exports[`GC mode golden walk > step 79: Cool Breeze sends the warranty letter 1`] = `
+exports[`GC mode golden walk > step 79: Alamo answers: the rebar is in its number 1`] = `
 {
   "changed": {
     "lastLog.id": 75,
+    "lastLog.text": "Alamo Concrete answered on Concrete: Rebar supply is in their number.",
+    "projects.boerne.trades.conc.compareBids.conclusion": "Alamo Concrete is lowest for the same work, by $14,300.",
+    "projects.boerne.trades.conc.compareBids.lines[0].allIn": 205500,
+    "projects.boerne.trades.conc.compareBids.lines[0].text": "Alamo Concrete bid $205,500 and covers everything.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 80: Pad B: Lonestar opens the plans 1`] = `
+{
+  "changed": {
+    "followUps[0].invite": "«invite bsite-lonestar»",
+    "followUps[0].order": 300,
+    "followUps[0].partner": "«partner lonestar»",
+    "followUps[0].pkg": "«package bsite»",
+    "followUps[0].project": "«project padb»",
+    "followUps[0].why": "nodate",
+    "followUps[0].words": "Has the plans and has not said when the quote will come. Our bid is due Thu Oct 22.",
+    "followUps[1].invite": "«invite roof-bluebonnet»",
+    "followUps[1].order": 404,
+    "followUps[1].partner": "«partner bluebonnet»",
+    "followUps[1].pkg": "«package roof»",
+    "followUps[1].project": "«project boerne»",
+    "followUps[1].why": "waiting",
+    "followUps[1].words": "Promised a quote by Tue Oct 6, in 4 days.",
+    "lastLog.id": 76,
+    "lastLog.text": "Lonestar Earthworks opened Pricing set.",
+    "projects.padb.stageProgress.also[0]": "1 company needs a call. See Follow up.",
+    "projects.padb.stageProgress.also[1]": "1 of 2 companies have not opened Pricing set.",
+    "tradeBenches[0].needs[1].looking": 1,
+    "tradeBenches[0].needs[1].silent": 0,
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 81: Pad B: Lonestar bids, good for 30 days, with an alternate and its own quote 1`] = `
+{
+  "changed": {
+    "assistantRules[0].items[0].action.trade": "Roofing",
+    "assistantRules[0].items[0].id": "bench-Roofing",
+    "assistantRules[0].items[0].text": "Roofing has 2. Find 1 more.",
+    "assistantRules[0].items[1].action.trade": "Fire sprinkler",
+    "assistantRules[0].items[1].id": "bench-Fire sprinkler",
+    "assistantRules[0].items[1].text": "Fire sprinkler has 2. Find 1 more.",
+    "assistantRules[0].items[2].action.trade": "Sitework",
+    "assistantRules[0].items[2].id": "bench-Sitework",
+    "assistantRules[0].items[2].text": "Sitework has 2. Find 1 more.",
+    "assistantRules[1].items[3].action.packageId": "leon-springs-urgent-care-roofing",
+    "assistantRules[1].items[3].action.partnerIds[0]": "summit",
+    "assistantRules[1].items[3].actionLabel": "Ask the 1 we have not asked",
+    "assistantRules[1].items[3].id": "bids-leon-springs-urgent-care-roofing",
+    "assistantRules[1].items[3].text": "Leon Springs Urgent Care, Roofing: 0 of 2 bids. Due Oct 16, in 14 days.",
+    "assistantRules[1].items[4].action.packageId": "leon-springs-urgent-care-sitework",
+    "assistantRules[1].items[4].action.partnerIds[0]": "tricounty",
+    "assistantRules[1].items[4].action.partnerIds[1]": "lonestar",
+    "assistantRules[1].items[4].action.partnerIds[2]": "hillside",
+    "assistantRules[1].items[4].actionLabel": "Ask the 3 we have not asked",
+    "assistantRules[1].items[4].id": "bids-leon-springs-urgent-care-sitework",
+    "assistantRules[1].items[4].text": "Leon Springs Urgent Care, Sitework: 0 of 2 bids. Due Oct 16, in 14 days.",
+    "assistantRules[1].items[6].action.packageId": "bconc",
+    "assistantRules[1].items[6].action.partnerIds[0]": "guadalupe",
+    "assistantRules[1].items[6].actionLabel": "Ask the 1 we have not asked",
+    "assistantRules[1].items[6].id": "bids-bconc",
+    "assistantRules[1].items[6].text": "Boerne Retail Pad B, Concrete: 0 of 2 bids. Due Oct 22, in 20 days.",
+    "assistantRules[1].items[7].action.packageId": "bsite",
+    "assistantRules[1].items[7].action.partnerIds[0]": "tricounty",
+    "assistantRules[1].items[7].action.partnerIds[1]": "hillside",
+    "assistantRules[1].items[7].actionLabel": "Ask the 2 we have not asked",
+    "assistantRules[1].items[7].id": "bids-bsite",
+    "assistantRules[1].items[7].text": "Boerne Retail Pad B, Sitework: 1 of 2 bids. Due Oct 22, in 20 days.",
+    "followUps[0].invite": "«invite roof-bluebonnet»",
+    "followUps[0].order": 404,
+    "followUps[0].partner": "«partner bluebonnet»",
+    "followUps[0].pkg": "«package roof»",
+    "followUps[0].project": "«project boerne»",
+    "followUps[0].why": "waiting",
+    "followUps[0].words": "Promised a quote by Tue Oct 6, in 4 days.",
+    "lastLog.id": 77,
+    "lastLog.text": "Lonestar Earthworks bid $92,500 on Sitework.",
+    "projects.padb.planRecipients.allTouched[0].hasBid": true,
+    "projects.padb.planRecipients.noneTouched[0].hasBid": true,
+    "projects.padb.stageProgress.also[0]": "1 of 2 companies have not opened Pricing set.",
+    "projects.padb.stageProgress.center": "2/7",
+    "projects.padb.stageProgress.groups[0].items[0].detail": "1 of 2 in. Ask more companies.",
+    "projects.padb.stageProgress.groups[1].items[0].detail": "1 quote in. Pick one to carry.",
+    "projects.padb.stageProgress.groups[2].doneWords": "«says» 1 quote is on Pricing set.",
+    "projects.padb.stageProgress.groups[2].items[0].detail": "On Pricing set",
+    "projects.padb.stageProgress.groups[2].items[0].done": true,
+    "projects.padb.stageProgress.groups[2].items[0].label": "Lonestar Earthworks on Sitework",
+    "projects.padb.stageProgress.groups[2].key": "current",
+    "projects.padb.stageProgress.groups[2].label": "Quotes on the newest plans",
+    "projects.padb.stageProgress.groups[2].why": "A quote priced on older plans has to be confirmed after a change.",
+    "projects.padb.stageProgress.groups[3].items[0].detail": "Due Thu Oct 22",
+    "projects.padb.stageProgress.groups[3].items[0].done": false,
+    "projects.padb.stageProgress.groups[3].items[0].label": "Not sent yet",
+    "projects.padb.stageProgress.groups[3].key": "sent",
+    "projects.padb.stageProgress.groups[3].label": "Our bid to the owner",
+    "projects.padb.stageProgress.groups[3].why": "The last step here. Send our price to the owner.",
+    "projects.padb.stageProgress.headline": "2 of 7 steps done before our bid can go in.",
+    "projects.padb.stageProgress.share": 0.2857142857142857,
+    "projects.padb.trades.bsite.bidTabRows[0].amount": 92500,
+    "projects.padb.trades.bsite.bidTabRows[0].awarded": false,
+    "projects.padb.trades.bsite.bidTabRows[0].company": "Lonestar Earthworks",
+    "projects.padb.trades.bsite.bidTabRows[0].overLowPct": 0,
+    "projects.padb.trades.bsite.bidTabRows[0].partnerId": "lonestar",
+    "projects.padb.trades.bsite.bidTabRows[0].rank": 1,
+    "projects.padb.trades.bsite.compareBids.conclusion": "One bid only. You want at least 2 to compare.",
+    "projects.padb.trades.bsite.compareBids.lines[0].allIn": 92500,
+    "projects.padb.trades.bsite.compareBids.lines[0].company": "Lonestar Earthworks",
+    "projects.padb.trades.bsite.compareBids.lines[0].complete": true,
+    "projects.padb.trades.bsite.compareBids.lines[0].inviteId": "bsite-lonestar",
+    "projects.padb.trades.bsite.compareBids.lines[0].text": "Lonestar Earthworks bid $92,500 and covers everything.",
+    "tradeBenches[0].needs[0].bids": 1,
+    "tradeBenches[0].needs[0].daysLeft": 6,
+    "tradeBenches[0].needs[0].looking": 1,
+    "tradeBenches[0].needs[0].pkg": "«package roof»",
+    "tradeBenches[0].needs[0].project": "«project boerne»",
+    "tradeBenches[0].needs[0].short": 1,
+    "tradeBenches[0].needs[1].daysLeft": 14,
+    "tradeBenches[0].needs[1].looking": 0,
+    "tradeBenches[0].needs[1].pkg": "«package leon-springs-urgent-care-roofing»",
+    "tradeBenches[0].needs[1].project": "«project leon-springs-urgent-care»",
+    "tradeBenches[0].partners[0]": "«partner summit»",
+    "tradeBenches[0].partners[1]": "«partner bluebonnet»",
+    "tradeBenches[0].short": 3,
+    "tradeBenches[0].trade": "Roofing",
+    "tradeBenches[0].urgency": 9,
+    "tradeBenches[1].needs[0].bids": 0,
+    "tradeBenches[1].needs[0].looking": 0,
+    "tradeBenches[1].needs[0].pkg": "«package fire»",
+    "tradeBenches[1].needs[0].short": 2,
+    "tradeBenches[1].partners[0]": "«partner redline»",
+    "tradeBenches[1].partners[1]": "«partner aquashield»",
+    "tradeBenches[1].short": 2,
+    "tradeBenches[1].trade": "Fire sprinkler",
+    "tradeBenches[1].urgency": 8,
+    "tradeBenches[2].needs[0].daysLeft": 14,
+    "tradeBenches[2].needs[0].pkg": "«package leon-springs-urgent-care-sitework»",
+    "tradeBenches[2].needs[0].project": "«project leon-springs-urgent-care»",
+    "tradeBenches[2].needs[1].bids": 1,
+    "tradeBenches[2].needs[1].daysLeft": 20,
+    "tradeBenches[2].needs[1].looking": 0,
+    "tradeBenches[2].needs[1].passed": 0,
+    "tradeBenches[2].needs[1].pkg": "«package bsite»",
+    "tradeBenches[2].needs[1].project": "«project padb»",
+    "tradeBenches[2].needs[1].short": 1,
+    "tradeBenches[2].needs[1].silent": 0,
+    "tradeBenches[2].partners[0]": "«partner tricounty»",
+    "tradeBenches[2].partners[1]": "«partner lonestar»",
+    "tradeBenches[2].partners[2]": "«partner hillside»",
+    "tradeBenches[2].short": 3,
+    "tradeBenches[2].trade": "Sitework",
+    "tradeBenches[2].urgency": 7,
+  },
+  "removed": [
+    "projects.padb.stageProgress.also[1]",
+    "projects.padb.trades.bsite.compareBids.lines",
+    "projects.padb.trades.bsite.bidTabRows",
+    "followUps[1].project",
+    "followUps[1].pkg",
+    "followUps[1].invite",
+    "followUps[1].partner",
+    "followUps[1].why",
+    "followUps[1].order",
+    "followUps[1].words",
+    "tradeBenches[0].partners[2]",
+    "tradeBenches[1].needs[1].project",
+    "tradeBenches[1].needs[1].pkg",
+    "tradeBenches[1].needs[1].bids",
+    "tradeBenches[1].needs[1].looking",
+    "tradeBenches[1].needs[1].silent",
+    "tradeBenches[1].needs[1].passed",
+    "tradeBenches[1].needs[1].short",
+    "tradeBenches[1].needs[1].daysLeft",
+    "assistantRules[1].items[3].action.partnerIds[1]",
+    "assistantRules[1].items[3].action.partnerIds[2]",
+    "assistantRules[1].items[6].action.partnerIds[1]",
+  ],
+}
+`;
+
+exports[`GC mode golden walk > step 82: Cool Breeze sends the warranty letter 1`] = `
+{
+  "changed": {
+    "lastLog.id": 78,
     "lastLog.text": "Cool Breeze Mechanical sent the warranty letter for HVAC.",
   },
   "removed": [],
 }
 `;
 
-exports[`GC mode golden walk > step 80: Cool Breeze sends the final pay application 1`] = `
+exports[`GC mode golden walk > step 83: Cool Breeze sends the final pay application 1`] = `
 {
   "changed": {
-    "lastLog.id": 76,
+    "lastLog.id": 79,
     "lastLog.text": "Cool Breeze Mechanical sent the final pay application on HVAC: $3,100 of retainage, with a conditional waiver on final payment.",
     "projects.stoneoak.stageProgress.also[2]": "Cool Breeze Mechanical asked for its retainage back. Approve it on Closeout.",
     "projects.stoneoak.stageProgress.also[3]": "All the work is reported. 0 of 3 trades are closed out. See Closeout.",
@@ -5820,10 +6007,10 @@ exports[`GC mode golden walk > step 80: Cool Breeze sends the final pay applicat
 }
 `;
 
-exports[`GC mode golden walk > step 81: Hollis accepts the work 1`] = `
+exports[`GC mode golden walk > step 84: Hollis accepts the work 1`] = `
 {
   "changed": {
-    "lastLog.id": 77,
+    "lastLog.id": 80,
     "lastLog.text": "Hollis Family Pharmacy accepted the work on Stone Oak Pharmacy in their portal.",
     "lastLog.who": "office",
   },
@@ -5831,20 +6018,20 @@ exports[`GC mode golden walk > step 81: Hollis accepts the work 1`] = `
 }
 `;
 
-exports[`GC mode golden walk > step 82: Send Hollis the final pay application 1`] = `
+exports[`GC mode golden walk > step 85: Send Hollis the final pay application 1`] = `
 {
   "changed": {
-    "lastLog.id": 78,
+    "lastLog.id": 81,
     "lastLog.text": "Sent the final pay application to Hollis Family Pharmacy: $18,241 of retainage, with our conditional waiver on final payment.",
   },
   "removed": [],
 }
 `;
 
-exports[`GC mode golden walk > step 83: Hollis pays the final pay application 1`] = `
+exports[`GC mode golden walk > step 86: Hollis pays the final pay application 1`] = `
 {
   "changed": {
-    "lastLog.id": 79,
+    "lastLog.id": 82,
     "lastLog.text": "Hollis Family Pharmacy paid pay application 4: $18,241.",
   },
   "removed": [],
@@ -6051,28 +6238,43 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
-      "id": 79,
+      "id": 82,
       "text": "Hollis Family Pharmacy paid pay application 4: $18,241.",
       "who": "office",
     },
     {
-      "id": 78,
+      "id": 81,
       "text": "Sent the final pay application to Hollis Family Pharmacy: $18,241 of retainage, with our conditional waiver on final payment.",
       "who": "office",
     },
     {
-      "id": 77,
+      "id": 80,
       "text": "Hollis Family Pharmacy accepted the work on Stone Oak Pharmacy in their portal.",
       "who": "office",
     },
     {
-      "id": 76,
+      "id": 79,
       "text": "Cool Breeze Mechanical sent the final pay application on HVAC: $3,100 of retainage, with a conditional waiver on final payment.",
       "who": "trade",
     },
     {
-      "id": 75,
+      "id": 78,
       "text": "Cool Breeze Mechanical sent the warranty letter for HVAC.",
+      "who": "trade",
+    },
+    {
+      "id": 77,
+      "text": "Lonestar Earthworks bid $92,500 on Sitework.",
+      "who": "trade",
+    },
+    {
+      "id": 76,
+      "text": "Lonestar Earthworks opened Pricing set.",
+      "who": "trade",
+    },
+    {
+      "id": 75,
+      "text": "Alamo Concrete answered on Concrete: Rebar supply is in their number.",
       "who": "trade",
     },
     {
@@ -6185,26 +6387,11 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "text": "Started Leon Springs Urgent Care. The bid set has 5 sheets, split into 4 trades.",
       "who": "office",
     },
-    {
-      "id": 52,
-      "text": "Invited Alamo Concrete to bid Concrete.",
-      "who": "office",
-    },
-    {
-      "id": 51,
-      "text": "Invited Lonestar Earthworks to bid Sitework.",
-      "who": "office",
-    },
-    {
-      "id": 50,
-      "text": "Logged a contact with Cibolo Creek Partners.",
-      "who": "office",
-    },
   ],
   "partners": [
     {
       "base": "San Antonio",
-      "bids": 5,
+      "bids": 6,
       "coiExpires": "2027-03-01",
       "company": "Lonestar Earthworks",
       "contact": "Dale Whitfield",
@@ -6821,7 +7008,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
                   "conc-1": "yes",
                   "conc-2": "yes",
                   "conc-3": "yes",
-                  "conc-4": "unclear",
+                  "conc-4": "yes",
                 },
                 "note": "Rebar per the structural drawings.",
                 "plugs": {
@@ -7570,12 +7757,31 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
           "id": "bsite",
           "invites": [
             {
-              "bid": null,
+              "bid": {
+                "alternates": [
+                  {
+                    "amount": -6000,
+                    "label": "Asphalt paving in place of concrete",
+                  },
+                ],
+                "amount": 92500,
+                "basedOnRev": 0,
+                "goodForDays": 30,
+                "includes": {
+                  "bsite-1": "yes",
+                  "bsite-2": "yes",
+                  "bsite-3": "yes",
+                },
+                "note": "",
+                "plugs": {},
+                "quoteFile": "lonestar-pad-b.pdf",
+                "submittedOn": "2026-10-02",
+              },
               "id": "bsite-lonestar",
               "invitedOn": "2026-10-02",
               "partnerId": "lonestar",
-              "seenRev": null,
-              "status": "invited",
+              "seenRev": 0,
+              "status": "bid",
             },
           ],
           "scope": [

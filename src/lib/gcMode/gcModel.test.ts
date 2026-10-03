@@ -217,6 +217,24 @@ const STEPS: Step[] = [
   { label: 'Approve the fixed pay application 1', action: { type: 'approveDraw', projectId: 'helotes', packageId: 'mill', drawId: 'mill-draw-1' } },
   // The portal: a company's first visit.
   { label: 'AquaShield opens its portal for the first time', action: { type: 'tradeOpenPortal', partnerId: 'aquashield' } },
+  // The portal's bid form: answer a line, and a bid with how long it holds, an alternate and the company's own quote.
+  { label: 'Alamo answers: the rebar is in its number', action: { type: 'tradeAnswerLines', projectId: 'boerne', packageId: 'conc', inviteId: 'conc-alamo', answers: { 'conc-4': 'yes' } } },
+  { label: 'Pad B: Lonestar opens the plans', action: { type: 'tradeOpenPlans', projectId: 'padb', packageId: 'bsite', inviteId: 'bsite-lonestar' } },
+  {
+    label: 'Pad B: Lonestar bids, good for 30 days, with an alternate and its own quote',
+    action: {
+      type: 'tradeSubmitBid',
+      projectId: 'padb',
+      packageId: 'bsite',
+      inviteId: 'bsite-lonestar',
+      amount: 92_500,
+      includes: { 'bsite-1': 'yes', 'bsite-2': 'yes', 'bsite-3': 'yes' },
+      note: '',
+      goodForDays: 30,
+      alternates: [{ label: 'Asphalt paving in place of concrete', amount: -6_000 }],
+      quoteFile: 'lonestar-pad-b.pdf',
+    },
+  },
   // Stone Oak Pharmacy, closeout with the owner: the last trade's final, the owner accepts, our final, paid.
   { label: 'Cool Breeze sends the warranty letter', action: { type: 'tradeSendWarranty', projectId: 'stoneoak', packageId: 'shvac' } },
   {
@@ -365,6 +383,7 @@ describe('GC mode golden walk', () => {
       'ownerAcceptsWork', 'sendOwnerFinalPayApp',
       'sendDrawBack',
       'tradeOpenPortal',
+      'tradeAnswerLines',
     ]
     expect(all.filter((t) => !used.has(t))).toEqual([])
   })
