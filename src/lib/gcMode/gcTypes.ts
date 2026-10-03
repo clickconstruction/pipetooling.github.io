@@ -32,6 +32,11 @@ export interface PlanSheet {
 export interface ScopeItem {
   id: string
   label: string
+  /**
+   * The sheets this line reads from. Missing: not said, so a guess from the line's words is shown.
+   * Empty: the trade's sheets as a whole, no one sheet in particular.
+   */
+  sheets?: string[]
 }
 
 export interface SubBid {
@@ -400,6 +405,8 @@ export interface NewTradeDraft {
   ours: boolean
   /** The scope lines, each a piece of work a quote says yes or no to. */
   scope: string[]
+  /** The sheets each scope line reads from, in the order of `scope`. Missing: not said. */
+  scopeSheets?: string[][]
 }
 
 /** What the office fills in before a project exists. The reducer makes the project from it. */
