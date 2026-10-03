@@ -7,7 +7,7 @@
  *
  * Days are calendar days in the prototype. Import from `./gcModel`, which re-exports this file.
  */
-import type { GcProject, GcState, LookAheadMark, ProjectSchedule, ScheduleActivity, ScheduleMilestone, TradePackage } from './gcTypes'
+import type { GcProject, GcState, LookAheadMark, LookAheadReason, ProjectSchedule, ScheduleActivity, ScheduleMilestone, TradePackage } from './gcTypes'
 import { carriedAmount } from './gcBids'
 import { tradeOrder } from './gcNewProject'
 import { partnerById } from './gcLookups'
@@ -340,9 +340,40 @@ export function lookAheadWeeks(project: GcProject, rows: ScheduleRow[], today: s
   })
 }
 
+/** Why not, as it counts: the superintendent's reason when they corrected the mark, else the trade's. */
+export function markReason(mark: LookAheadMark): LookAheadReason | null {
+  return mark.verifiedReason ?? mark.reason ?? null
+}
+
+export interface VerifyItem {
+  mark: LookAheadMark
+  row: ScheduleRow
+}
+
 /**
- * How reliable the look-ahead has been: of the verified marks in the past weeks (RELIABILITY_WEEKS),
- * how many were done as planned. Per company too. Marks not yet verified are counted apart.
+ * The superintendent's verify list (owner, 2026-10-02): every trade mark not verified yet, oldest
+ * week first, with its activity. And our own crew's activities in this week's look-ahead with no
+ * mark yet: we mark those ourselves, and our mark counts as verified.
+ */
+export function verifyList(project: GcProject, rows: ScheduleRow[], today: string): { waiting: VerifyItem[]; ourCrew: ScheduleRow[] } {
+  const marks = project.schedule?.lookAhead ?? []
+  const byLine = new Map(rows.map((r) => [r.activity.lineId, r]))
+  const waiting = marks
+    .filter((m) => !m.verifiedOn)
+    .flatMap((mark) => {
+      const row = byLine.get(mark.lineId)
+      return row ? [{ mark, row }] : []
+    })
+    .sort((a, b) => (a.mark.weekOf < b.mark.weekOf ? -1 : a.mark.weekOf > b.mark.weekOf ? 1 : 0))
+  const thisWeek = lookAheadWeeks(project, rows, today)[0]
+  const ourCrew = (thisWeek?.items ?? []).filter((i) => i.row.pkg.selfPerform && !i.mark).map((i) => i.row)
+  return { waiting, ourCrew }
+}
+
+/**
+ * How reliable the look-ahead has been: of the verified marks in the last weeks (RELIABILITY_WEEKS,
+ * this week counted once its marks are verified), how many were done as planned. Per company too.
+ * Marks not yet verified are counted apart.
  */
 export function lookAheadReliability(
   state: GcState,
@@ -350,8 +381,8 @@ export function lookAheadReliability(
 ): { done: number; of: number; waiting: number; byCompany: { company: string; done: number; of: number }[] } {
   const marks = project.schedule?.lookAhead ?? []
   const thisWeek = mondayOf(state.today)
-  const from = addDays(thisWeek, -7 * RELIABILITY_WEEKS)
-  const counted = marks.filter((m) => m.weekOf < thisWeek && m.weekOf >= from && m.verifiedOn)
+  const from = addDays(thisWeek, -7 * (RELIABILITY_WEEKS - 1))
+  const counted = marks.filter((m) => m.weekOf <= thisWeek && m.weekOf >= from && m.verifiedOn)
   const companies = new Map<string, { done: number; of: number }>()
   for (const m of counted) {
     const pkg = project.packages.find((k) => k.id === m.packageId)

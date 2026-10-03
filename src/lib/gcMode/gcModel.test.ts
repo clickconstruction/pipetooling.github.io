@@ -303,6 +303,16 @@ const STEPS: Step[] = [
     action: { type: 'setScheduleMilestone', projectId: 'helotes', milestone: { id: 'helotes-ms-cabinets', label: 'Cabinets set', planned: '2026-12-18', packageId: 'mill', metOn: null } },
   },
   { label: 'Take the rough-in inspection off', action: { type: 'removeScheduleMilestone', projectId: 'helotes', milestoneId: 'helotes-roughin' } },
+  // The superintendent's verify list (Building lane): a mark confirmed, one corrected, our crew's own.
+  { label: 'Superintendent: Iron Horse’s erection not done, right', action: { type: 'verifyLookAhead', projectId: 'fairoaksd', weekOf: '2026-09-28', lineId: 'fsteel-3', done: false } },
+  {
+    label: 'Superintendent: the membrane is not done (weather), not as Summit says',
+    action: { type: 'verifyLookAhead', projectId: 'fairoaksd', weekOf: '2026-09-28', lineId: 'froof-1', done: false, reason: 'weather' },
+  },
+  {
+    label: 'Our crew’s top out this week: not done after all (materials)',
+    action: { type: 'crewMarkLookAhead', projectId: 'fairoaksd', weekOf: '2026-09-28', lineId: 'fplumb-3', done: false, reason: 'materials' },
+  },
 ]
 
 const CUSTOMER_IDS = ['cibolo', 'raman']
@@ -434,6 +444,7 @@ describe('GC mode golden walk', () => {
       'sendDrawBack',
       'closeJob', 'approveDrawLess', 'selfReportStage',
       'draftSchedule', 'setScheduleActivity', 'setScheduleMilestone', 'removeScheduleMilestone',
+      'verifyLookAhead', 'crewMarkLookAhead',
       'tradeOpenPortal',
       'tradeAnswerLines',
       'priceOwnBid',

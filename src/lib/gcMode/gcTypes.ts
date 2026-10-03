@@ -464,6 +464,8 @@ export type GcAction =
   | { type: 'setScheduleActivity'; projectId: string; lineId: string; start: string; finish: string; after: string[] }
   | { type: 'setScheduleMilestone'; projectId: string; milestone: ScheduleMilestone }
   | { type: 'removeScheduleMilestone'; projectId: string; milestoneId: string }
+  | { type: 'verifyLookAhead'; projectId: string; weekOf: string; lineId: string; done: boolean; reason?: LookAheadReason }
+  | { type: 'crewMarkLookAhead'; projectId: string; weekOf: string; lineId: string; done: boolean; reason?: LookAheadReason }
 
 /** One trade on a new project, as the office left it in the New project window. */
 export interface NewTradeDraft {
@@ -585,6 +587,8 @@ export interface LookAheadMark {
   verifiedOn: string | null
   /** The superintendent's mark, when it differs from the trade's. */
   verifiedDone?: boolean
+  /** Why not, in the superintendent's words, when they corrected a "done" to not done. */
+  verifiedReason?: LookAheadReason
 }
 
 export interface ProjectSchedule {
