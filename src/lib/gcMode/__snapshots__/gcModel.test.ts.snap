@@ -19,16 +19,6 @@ exports[`GC mode golden walk > before any step 1`] = `
         {
           "action": {
             "kind": "add",
-            "trade": "Framing and drywall",
-          },
-          "actionLabel": "Add a company",
-          "doneNote": null,
-          "id": "bench-Framing and drywall",
-          "text": "Framing and drywall has 1. Find 2 more.",
-        },
-        {
-          "action": {
-            "kind": "add",
             "trade": "Fire sprinkler",
           },
           "actionLabel": "Add a company",
@@ -65,6 +55,16 @@ exports[`GC mode golden walk > before any step 1`] = `
           "doneNote": null,
           "id": "bench-Roofing",
           "text": "Roofing has 2. Find 1 more.",
+        },
+        {
+          "action": {
+            "kind": "add",
+            "trade": "Framing and drywall",
+          },
+          "actionLabel": "Add a company",
+          "doneNote": null,
+          "id": "bench-Framing and drywall",
+          "text": "Framing and drywall has 2. Find 1 more.",
         },
         {
           "action": {
@@ -1250,9 +1250,18 @@ exports[`GC mode golden walk > before any step 1`] = `
               },
             },
             {
+              "invite": null,
+              "partner": "«partner westside»",
+              "rank": 2,
+              "travel": {
+                "inZone": true,
+                "miles": 35,
+              },
+            },
+            {
               "invite": "«invite elec-brightline»",
               "partner": "«partner brightline»",
-              "rank": 2,
+              "rank": 3,
               "travel": {
                 "inZone": true,
                 "miles": 57,
@@ -1261,7 +1270,7 @@ exports[`GC mode golden walk > before any step 1`] = `
             {
               "invite": "«invite elec-tejas»",
               "partner": "«partner tejas»",
-              "rank": 3,
+              "rank": 4,
               "travel": {
                 "inZone": true,
                 "miles": 195,
@@ -2018,9 +2027,18 @@ exports[`GC mode golden walk > before any step 1`] = `
               },
             },
             {
+              "invite": null,
+              "partner": "«partner westside»",
+              "rank": 2,
+              "travel": {
+                "inZone": true,
+                "miles": 19,
+              },
+            },
+            {
               "invite": "«invite delec-brightline»",
               "partner": "«partner brightline»",
-              "rank": 2,
+              "rank": 3,
               "travel": {
                 "inZone": true,
                 "miles": 60,
@@ -2029,7 +2047,7 @@ exports[`GC mode golden walk > before any step 1`] = `
             {
               "invite": null,
               "partner": "«partner tejas»",
-              "rank": 3,
+              "rank": 4,
               "travel": {
                 "inZone": true,
                 "miles": 179,
@@ -2123,6 +2141,15 @@ exports[`GC mode golden walk > before any step 1`] = `
               "travel": {
                 "inZone": true,
                 "miles": 18,
+              },
+            },
+            {
+              "invite": null,
+              "partner": "«partner liveoak»",
+              "rank": 2,
+              "travel": {
+                "inZone": true,
+                "miles": 19,
               },
             },
           ],
@@ -2470,6 +2497,424 @@ exports[`GC mode golden walk > before any step 1`] = `
         },
       },
     },
+    "stoneoak": {
+      "planRecipients": {
+        "allTouched": [
+          {
+            "hasBid": true,
+            "invite": "«invite sdry-liveoak»",
+            "partner": "«partner liveoak»",
+            "pkg": "«package sdry»",
+            "touched": true,
+          },
+          {
+            "hasBid": true,
+            "invite": "«invite selec-westside»",
+            "partner": "«partner westside»",
+            "pkg": "«package selec»",
+            "touched": true,
+          },
+          {
+            "hasBid": true,
+            "invite": "«invite shvac-coolbreeze»",
+            "partner": "«partner coolbreeze»",
+            "pkg": "«package shvac»",
+            "touched": true,
+          },
+        ],
+        "noneTouched": [
+          {
+            "hasBid": true,
+            "invite": "«invite sdry-liveoak»",
+            "partner": "«partner liveoak»",
+            "pkg": "«package sdry»",
+            "touched": false,
+          },
+          {
+            "hasBid": true,
+            "invite": "«invite selec-westside»",
+            "partner": "«partner westside»",
+            "pkg": "«package selec»",
+            "touched": false,
+          },
+          {
+            "hasBid": true,
+            "invite": "«invite shvac-coolbreeze»",
+            "partner": "«partner coolbreeze»",
+            "pkg": "«package shvac»",
+            "touched": false,
+          },
+        ],
+      },
+      "proposalTotals": {
+        "contingency": 4830,
+        "fee": 16583,
+        "generalConditions": 24000,
+        "holes": [],
+        "plugged": [],
+        "price": 182413,
+        "trades": 137000,
+      },
+      "stage": "building",
+      "stageProgress": {
+        "also": [
+          "Live Oak Drywall asked for its retainage back. Approve it on Closeout.",
+          "Westside Electric asked for its retainage back. Approve it on Closeout.",
+          "All the work is reported. 0 of 3 trades are closed out. See Closeout.",
+        ],
+        "center": "100%",
+        "groups": [
+          {
+            "items": [
+              {
+                "detail": "100% reported",
+                "done": true,
+                "label": "Framing and drywall",
+              },
+              {
+                "detail": "100% reported",
+                "done": true,
+                "label": "Electrical",
+              },
+              {
+                "detail": "100% reported",
+                "done": true,
+                "label": "HVAC",
+              },
+            ],
+            "key": "work",
+            "label": "Work done",
+            "why": "What each trade has reported, out of its statement of work.",
+          },
+        ],
+        "headline": "100% of the work is done, by what the trades have reported.",
+        "share": 1,
+      },
+      "startChecklist": {
+        "done": 19,
+        "missing": [],
+        "owner": [
+          {
+            "detail": "signed May 29",
+            "done": true,
+            "key": "ownerContract",
+            "label": "Our contract with Hollis Family Pharmacy is signed",
+          },
+          {
+            "detail": "in hand Jun 5",
+            "done": true,
+            "key": "permit",
+            "label": "The permit is in hand",
+          },
+          {
+            "detail": "Mon Jun 15",
+            "done": true,
+            "key": "startDate",
+            "label": "A start date is set",
+          },
+        ],
+        "ready": true,
+        "total": 19,
+        "trades": [
+          {
+            "checks": [
+              {
+                "detail": "Live Oak Drywall",
+                "done": true,
+                "key": "awarded",
+                "label": "Awarded",
+              },
+              {
+                "detail": "signed",
+                "done": true,
+                "key": "msa",
+                "label": "Master agreement",
+              },
+              {
+                "detail": "good to May 1",
+                "done": true,
+                "key": "coi",
+                "label": "Insurance",
+              },
+              {
+                "detail": "on file",
+                "done": true,
+                "key": "w9",
+                "label": "W-9",
+              },
+              {
+                "detail": "signed Jun 2",
+                "done": true,
+                "key": "sow",
+                "label": "Statement of work",
+              },
+            ],
+            "invite": "«invite sdry-liveoak»",
+            "next": null,
+            "partner": "«partner liveoak»",
+            "pkg": "«package sdry»",
+            "ready": true,
+          },
+          {
+            "checks": [
+              {
+                "detail": "Westside Electric",
+                "done": true,
+                "key": "awarded",
+                "label": "Awarded",
+              },
+              {
+                "detail": "signed",
+                "done": true,
+                "key": "msa",
+                "label": "Master agreement",
+              },
+              {
+                "detail": "good to Apr 15",
+                "done": true,
+                "key": "coi",
+                "label": "Insurance",
+              },
+              {
+                "detail": "on file",
+                "done": true,
+                "key": "w9",
+                "label": "W-9",
+              },
+              {
+                "detail": "signed Jun 3",
+                "done": true,
+                "key": "sow",
+                "label": "Statement of work",
+              },
+            ],
+            "invite": "«invite selec-westside»",
+            "next": null,
+            "partner": "«partner westside»",
+            "pkg": "«package selec»",
+            "ready": true,
+          },
+          {
+            "checks": [
+              {
+                "detail": "Cool Breeze Mechanical",
+                "done": true,
+                "key": "awarded",
+                "label": "Awarded",
+              },
+              {
+                "detail": "signed",
+                "done": true,
+                "key": "msa",
+                "label": "Master agreement",
+              },
+              {
+                "detail": "good to Jan 31",
+                "done": true,
+                "key": "coi",
+                "label": "Insurance",
+              },
+              {
+                "detail": "on file",
+                "done": true,
+                "key": "w9",
+                "label": "W-9",
+              },
+              {
+                "detail": "signed Jun 4",
+                "done": true,
+                "key": "sow",
+                "label": "Statement of work",
+              },
+            ],
+            "invite": "«invite shvac-coolbreeze»",
+            "next": null,
+            "partner": "«partner coolbreeze»",
+            "pkg": "«package shvac»",
+            "ready": true,
+          },
+          {
+            "checks": [
+              {
+                "detail": "our own crew, J 1071",
+                "done": true,
+                "key": "self",
+                "label": "Ours",
+              },
+            ],
+            "invite": null,
+            "next": null,
+            "partner": null,
+            "pkg": "«package splumb»",
+            "ready": true,
+          },
+        ],
+      },
+      "trades": {
+        "sdry": {
+          "bidTabRows": [
+            {
+              "amount": 42000,
+              "awarded": true,
+              "company": "Live Oak Drywall",
+              "overLowPct": 0,
+              "partnerId": "liveoak",
+              "rank": 1,
+            },
+          ],
+          "compareBids": {
+            "complete": true,
+            "conclusion": "One bid only. You want at least 2 to compare.",
+            "lines": [
+              {
+                "allIn": 42000,
+                "company": "Live Oak Drywall",
+                "complete": true,
+                "inviteId": "sdry-liveoak",
+                "text": "Live Oak Drywall bid $42,000 and covers everything.",
+              },
+            ],
+          },
+          "tradeLineup": [
+            {
+              "invite": "«invite sdry-liveoak»",
+              "partner": "«partner liveoak»",
+              "rank": 1,
+              "travel": {
+                "inZone": true,
+                "miles": 0,
+              },
+            },
+            {
+              "invite": null,
+              "partner": "«partner hillcountry»",
+              "rank": 2,
+              "travel": {
+                "inZone": true,
+                "miles": 35,
+              },
+            },
+          ],
+        },
+        "selec": {
+          "bidTabRows": [
+            {
+              "amount": 38000,
+              "awarded": true,
+              "company": "Westside Electric",
+              "overLowPct": 0,
+              "partnerId": "westside",
+              "rank": 1,
+            },
+          ],
+          "compareBids": {
+            "complete": true,
+            "conclusion": "One bid only. You want at least 2 to compare.",
+            "lines": [
+              {
+                "allIn": 38000,
+                "company": "Westside Electric",
+                "complete": true,
+                "inviteId": "selec-westside",
+                "text": "Westside Electric bid $38,000 and covers everything.",
+              },
+            ],
+          },
+          "tradeLineup": [
+            {
+              "invite": null,
+              "partner": "«partner voltage»",
+              "rank": 1,
+              "travel": {
+                "inZone": true,
+                "miles": 0,
+              },
+            },
+            {
+              "invite": "«invite selec-westside»",
+              "partner": "«partner westside»",
+              "rank": 2,
+              "travel": {
+                "inZone": true,
+                "miles": 0,
+              },
+            },
+            {
+              "invite": null,
+              "partner": "«partner brightline»",
+              "rank": 3,
+              "travel": {
+                "inZone": true,
+                "miles": 55,
+              },
+            },
+            {
+              "invite": null,
+              "partner": "«partner tejas»",
+              "rank": 4,
+              "travel": {
+                "inZone": true,
+                "miles": 173,
+              },
+            },
+          ],
+        },
+        "shvac": {
+          "bidTabRows": [
+            {
+              "amount": 31000,
+              "awarded": true,
+              "company": "Cool Breeze Mechanical",
+              "overLowPct": 0,
+              "partnerId": "coolbreeze",
+              "rank": 1,
+            },
+          ],
+          "compareBids": {
+            "complete": true,
+            "conclusion": "One bid only. You want at least 2 to compare.",
+            "lines": [
+              {
+                "allIn": 31000,
+                "company": "Cool Breeze Mechanical",
+                "complete": true,
+                "inviteId": "shvac-coolbreeze",
+                "text": "Cool Breeze Mechanical bid $31,000 and covers everything.",
+              },
+            ],
+          },
+          "tradeLineup": [
+            {
+              "invite": "«invite shvac-coolbreeze»",
+              "partner": "«partner coolbreeze»",
+              "rank": 1,
+              "travel": {
+                "inZone": true,
+                "miles": 0,
+              },
+            },
+            {
+              "invite": null,
+              "partner": "«partner kendall»",
+              "rank": 2,
+              "travel": {
+                "inZone": true,
+                "miles": 35,
+              },
+            },
+          ],
+        },
+        "splumb": {
+          "bidTabRows": [],
+          "compareBids": {
+            "complete": true,
+            "conclusion": "",
+            "lines": [],
+          },
+          "tradeLineup": [],
+        },
+      },
+    },
   },
   "tradeBenches": [
     {
@@ -2605,10 +3050,11 @@ exports[`GC mode golden walk > before any step 1`] = `
       "urgency": 3,
     },
     {
-      "dependable": 1,
+      "dependable": 2,
       "needs": [],
       "partners": [
         "«partner hillcountry»",
+        "«partner liveoak»",
       ],
       "short": 0,
       "trade": "Framing and drywall",
@@ -2659,7 +3105,7 @@ exports[`GC mode golden walk > before any step 1`] = `
       "urgency": 0,
     },
     {
-      "dependable": 3,
+      "dependable": 4,
       "needs": [
         {
           "bids": 2,
@@ -2674,6 +3120,7 @@ exports[`GC mode golden walk > before any step 1`] = `
       ],
       "partners": [
         "«partner brightline»",
+        "«partner westside»",
         "«partner voltage»",
         "«partner tejas»",
       ],
@@ -3849,10 +4296,12 @@ exports[`GC mode golden walk > step 30: Tejas’s coverage cleared 1`] = `
   "changed": {
     "lastLog.id": 27,
     "lastLog.text": "Tejas Power coverage: not set.",
-    "projects.boerne.trades.elec.tradeLineup[2].rank": null,
-    "projects.boerne.trades.elec.tradeLineup[2].travel.miles": null,
-    "projects.helotes.trades.delec.tradeLineup[2].rank": null,
-    "projects.helotes.trades.delec.tradeLineup[2].travel.miles": null,
+    "projects.boerne.trades.elec.tradeLineup[3].rank": null,
+    "projects.boerne.trades.elec.tradeLineup[3].travel.miles": null,
+    "projects.helotes.trades.delec.tradeLineup[3].rank": null,
+    "projects.helotes.trades.delec.tradeLineup[3].travel.miles": null,
+    "projects.stoneoak.trades.selec.tradeLineup[3].rank": null,
+    "projects.stoneoak.trades.selec.tradeLineup[3].travel.miles": null,
   },
   "removed": [],
 }
@@ -3861,30 +4310,27 @@ exports[`GC mode golden walk > step 30: Tejas’s coverage cleared 1`] = `
 exports[`GC mode golden walk > step 31: Add a steel company 1`] = `
 {
   "changed": {
-    "assistantRules[0].items[0].action.trade": "Framing and drywall",
-    "assistantRules[0].items[0].id": "bench-Framing and drywall",
-    "assistantRules[0].items[0].text": "Framing and drywall has 1. Find 2 more.",
-    "assistantRules[0].items[1].action.trade": "Fire sprinkler",
-    "assistantRules[0].items[1].id": "bench-Fire sprinkler",
-    "assistantRules[0].items[1].text": "Fire sprinkler has 2. Find 1 more.",
-    "assistantRules[0].items[2].action.trade": "Concrete",
-    "assistantRules[0].items[2].id": "bench-Concrete",
-    "assistantRules[0].items[2].text": "Concrete has 2. Find 1 more.",
-    "assistantRules[0].items[3].action.trade": "Sitework",
-    "assistantRules[0].items[3].id": "bench-Sitework",
-    "assistantRules[0].items[3].text": "Sitework has 2. Find 1 more.",
-    "assistantRules[0].items[4].action.trade": "Roofing",
-    "assistantRules[0].items[4].id": "bench-Roofing",
-    "assistantRules[0].items[4].text": "Roofing has 2. Find 1 more.",
-    "assistantRules[0].items[5].action.trade": "Structural steel",
-    "assistantRules[0].items[5].id": "bench-Structural steel",
-    "assistantRules[0].items[5].text": "Structural steel has 2. Find 1 more.",
+    "assistantRules[0].items[0].action.trade": "Fire sprinkler",
+    "assistantRules[0].items[0].id": "bench-Fire sprinkler",
+    "assistantRules[0].items[0].text": "Fire sprinkler has 2. Find 1 more.",
+    "assistantRules[0].items[1].action.trade": "Concrete",
+    "assistantRules[0].items[1].id": "bench-Concrete",
+    "assistantRules[0].items[1].text": "Concrete has 2. Find 1 more.",
+    "assistantRules[0].items[2].action.trade": "Sitework",
+    "assistantRules[0].items[2].id": "bench-Sitework",
+    "assistantRules[0].items[2].text": "Sitework has 2. Find 1 more.",
+    "assistantRules[0].items[3].action.trade": "Roofing",
+    "assistantRules[0].items[3].id": "bench-Roofing",
+    "assistantRules[0].items[3].text": "Roofing has 2. Find 1 more.",
+    "assistantRules[0].items[4].action.trade": "Structural steel",
+    "assistantRules[0].items[4].id": "bench-Structural steel",
+    "assistantRules[0].items[4].text": "Structural steel has 2. Find 1 more.",
     "assistantRules[1].items[1].action.trade": "Roofing",
     "assistantRules[1].items[1].id": "bids-roof",
     "assistantRules[1].items[1].text": "Boerne Retail Shell, Roofing: 1 of 2 bids. Due Oct 8, in 6 days.",
     "assistantRules[1].items[2].action.kind": "ask",
     "assistantRules[1].items[2].action.packageId": "steel",
-    "assistantRules[1].items[2].action.partnerIds[0]": "new-21",
+    "assistantRules[1].items[2].action.partnerIds[0]": "new-23",
     "assistantRules[1].items[2].action.projectId": "boerne",
     "assistantRules[1].items[2].actionLabel": "Ask the 1 we have not asked",
     "assistantRules[1].items[2].id": "bids-steel",
@@ -3892,7 +4338,7 @@ exports[`GC mode golden walk > step 31: Add a steel company 1`] = `
     "lastLog.id": 28,
     "lastLog.text": "Added Pecos Steel to Structural steel.",
     "projects.boerne.trades.steel.tradeLineup[1].invite": null,
-    "projects.boerne.trades.steel.tradeLineup[1].partner": "«partner new-21»",
+    "projects.boerne.trades.steel.tradeLineup[1].partner": "«partner new-23»",
     "projects.boerne.trades.steel.tradeLineup[1].travel.miles": 35,
     "projects.boerne.trades.steel.tradeLineup[2].invite": "«invite steel-comal»",
     "projects.boerne.trades.steel.tradeLineup[2].partner": "«partner comal»",
@@ -3915,7 +4361,7 @@ exports[`GC mode golden walk > step 31: Add a steel company 1`] = `
     "tradeBenches[4].partners[0]": "«partner ironhorse»",
     "tradeBenches[4].partners[1]": "«partner bexar»",
     "tradeBenches[4].partners[2]": "«partner comal»",
-    "tradeBenches[4].partners[3]": "«partner new-21»",
+    "tradeBenches[4].partners[3]": "«partner new-23»",
     "tradeBenches[4].trade": "Structural steel",
   },
   "removed": [
@@ -4556,18 +5002,18 @@ exports[`GC mode golden walk > step 56: Pad B: ask Alamo for Concrete 1`] = `
 exports[`GC mode golden walk > step 57: A new project: Leon Springs Urgent Care 1`] = `
 {
   "changed": {
-    "assistantRules[0].items[1].action.trade": "Sitework",
-    "assistantRules[0].items[1].id": "bench-Sitework",
-    "assistantRules[0].items[1].text": "Sitework has 2. Find 1 more.",
-    "assistantRules[0].items[2].action.trade": "Roofing",
-    "assistantRules[0].items[2].id": "bench-Roofing",
-    "assistantRules[0].items[2].text": "Roofing has 2. Find 1 more.",
-    "assistantRules[0].items[3].action.trade": "Fire sprinkler",
-    "assistantRules[0].items[3].id": "bench-Fire sprinkler",
-    "assistantRules[0].items[3].text": "Fire sprinkler has 2. Find 1 more.",
-    "assistantRules[0].items[4].action.trade": "Concrete",
-    "assistantRules[0].items[4].id": "bench-Concrete",
-    "assistantRules[0].items[4].text": "Concrete has 2. Find 1 more.",
+    "assistantRules[0].items[0].action.trade": "Sitework",
+    "assistantRules[0].items[0].id": "bench-Sitework",
+    "assistantRules[0].items[0].text": "Sitework has 2. Find 1 more.",
+    "assistantRules[0].items[1].action.trade": "Roofing",
+    "assistantRules[0].items[1].id": "bench-Roofing",
+    "assistantRules[0].items[1].text": "Roofing has 2. Find 1 more.",
+    "assistantRules[0].items[2].action.trade": "Fire sprinkler",
+    "assistantRules[0].items[2].id": "bench-Fire sprinkler",
+    "assistantRules[0].items[2].text": "Fire sprinkler has 2. Find 1 more.",
+    "assistantRules[0].items[3].action.trade": "Concrete",
+    "assistantRules[0].items[3].id": "bench-Concrete",
+    "assistantRules[0].items[3].text": "Concrete has 2. Find 1 more.",
     "assistantRules[1].items[3].action.packageId": "leon-springs-urgent-care-sitework",
     "assistantRules[1].items[3].action.partnerIds[0]": "tricounty",
     "assistantRules[1].items[3].action.partnerIds[1]": "lonestar",
@@ -4585,10 +5031,11 @@ exports[`GC mode golden walk > step 57: A new project: Leon Springs Urgent Care 
     "assistantRules[1].items[5].action.kind": "ask",
     "assistantRules[1].items[5].action.packageId": "leon-springs-urgent-care-electrical",
     "assistantRules[1].items[5].action.partnerIds[0]": "brightline",
-    "assistantRules[1].items[5].action.partnerIds[1]": "voltage",
-    "assistantRules[1].items[5].action.partnerIds[2]": "tejas",
+    "assistantRules[1].items[5].action.partnerIds[1]": "westside",
+    "assistantRules[1].items[5].action.partnerIds[2]": "voltage",
+    "assistantRules[1].items[5].action.partnerIds[3]": "tejas",
     "assistantRules[1].items[5].action.projectId": "leon-springs-urgent-care",
-    "assistantRules[1].items[5].actionLabel": "Ask the 3 we have not asked",
+    "assistantRules[1].items[5].actionLabel": "Ask the 4 we have not asked",
     "assistantRules[1].items[5].doneNote": null,
     "assistantRules[1].items[5].id": "bids-leon-springs-urgent-care-electrical",
     "assistantRules[1].items[5].text": "Leon Springs Urgent Care, Electrical: 0 of 2 bids. Due Oct 16, in 14 days.",
@@ -4778,15 +5225,20 @@ exports[`GC mode golden walk > step 57: A new project: Leon Springs Urgent Care 
     "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-electrical.tradeLineup[0].travel.inZone": true,
     "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-electrical.tradeLineup[0].travel.miles": 0,
     "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-electrical.tradeLineup[1].invite": null,
-    "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-electrical.tradeLineup[1].partner": "«partner brightline»",
+    "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-electrical.tradeLineup[1].partner": "«partner westside»",
     "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-electrical.tradeLineup[1].rank": 2,
     "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-electrical.tradeLineup[1].travel.inZone": true,
-    "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-electrical.tradeLineup[1].travel.miles": 55,
+    "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-electrical.tradeLineup[1].travel.miles": 0,
     "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-electrical.tradeLineup[2].invite": null,
-    "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-electrical.tradeLineup[2].partner": "«partner tejas»",
-    "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-electrical.tradeLineup[2].rank": null,
+    "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-electrical.tradeLineup[2].partner": "«partner brightline»",
+    "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-electrical.tradeLineup[2].rank": 3,
     "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-electrical.tradeLineup[2].travel.inZone": true,
-    "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-electrical.tradeLineup[2].travel.miles": null,
+    "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-electrical.tradeLineup[2].travel.miles": 55,
+    "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-electrical.tradeLineup[3].invite": null,
+    "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-electrical.tradeLineup[3].partner": "«partner tejas»",
+    "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-electrical.tradeLineup[3].rank": null,
+    "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-electrical.tradeLineup[3].travel.inZone": true,
+    "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-electrical.tradeLineup[3].travel.miles": null,
     "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-plumbing.bidTabRows": "[]",
     "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-plumbing.compareBids.complete": true,
     "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-plumbing.compareBids.conclusion": "",
@@ -4863,7 +5315,7 @@ exports[`GC mode golden walk > step 57: A new project: Leon Springs Urgent Care 
     "tradeBenches[2].partners[1]": "«partner aquashield»",
     "tradeBenches[2].trade": "Fire sprinkler",
     "tradeBenches[2].urgency": 8,
-    "tradeBenches[3].dependable": 3,
+    "tradeBenches[3].dependable": 4,
     "tradeBenches[3].needs[0].bids": 2,
     "tradeBenches[3].needs[0].looking": 0,
     "tradeBenches[3].needs[0].passed": 1,
@@ -4878,8 +5330,9 @@ exports[`GC mode golden walk > step 57: A new project: Leon Springs Urgent Care 
     "tradeBenches[3].needs[1].short": 2,
     "tradeBenches[3].needs[1].silent": 0,
     "tradeBenches[3].partners[0]": "«partner brightline»",
-    "tradeBenches[3].partners[1]": "«partner voltage»",
-    "tradeBenches[3].partners[2]": "«partner tejas»",
+    "tradeBenches[3].partners[1]": "«partner westside»",
+    "tradeBenches[3].partners[2]": "«partner voltage»",
+    "tradeBenches[3].partners[3]": "«partner tejas»",
     "tradeBenches[3].short": 2,
     "tradeBenches[3].trade": "Electrical",
     "tradeBenches[3].urgency": 6,
@@ -4900,7 +5353,6 @@ exports[`GC mode golden walk > step 57: A new project: Leon Springs Urgent Care 
     "tradeBenches[4].short": 2,
     "tradeBenches[4].trade": "Concrete",
     "tradeBenches[4].urgency": 4,
-    "tradeBenches[5].dependable": 2,
     "tradeBenches[5].needs[0].bids": 1,
     "tradeBenches[5].needs[0].daysLeft": 6,
     "tradeBenches[5].needs[0].looking": 0,
@@ -4912,13 +5364,13 @@ exports[`GC mode golden walk > step 57: A new project: Leon Springs Urgent Care 
     "tradeBenches[5].partners[0]": "«partner ironhorse»",
     "tradeBenches[5].partners[1]": "«partner bexar»",
     "tradeBenches[5].partners[2]": "«partner comal»",
-    "tradeBenches[5].partners[3]": "«partner new-21»",
+    "tradeBenches[5].partners[3]": "«partner new-23»",
     "tradeBenches[5].short": 1,
     "tradeBenches[5].trade": "Structural steel",
     "tradeBenches[5].urgency": 3,
-    "tradeBenches[6].dependable": 1,
     "tradeBenches[6].needs": "[]",
     "tradeBenches[6].partners[0]": "«partner hillcountry»",
+    "tradeBenches[6].partners[1]": "«partner liveoak»",
     "tradeBenches[6].trade": "Framing and drywall",
     "tradeBenches[7].needs[0].bids": 2,
     "tradeBenches[7].needs[0].daysLeft": 6,
@@ -4942,7 +5394,6 @@ exports[`GC mode golden walk > step 57: A new project: Leon Springs Urgent Care 
     "tradeBenches[4].partners[2]",
     "tradeBenches[4].partners[3]",
     "tradeBenches[5].needs",
-    "tradeBenches[6].partners[1]",
     "tradeBenches[6].needs[0].project",
     "tradeBenches[6].needs[0].pkg",
     "tradeBenches[6].needs[0].bids",
@@ -4953,6 +5404,7 @@ exports[`GC mode golden walk > step 57: A new project: Leon Springs Urgent Care 
     "tradeBenches[6].needs[0].daysLeft",
     "tradeBenches[7].needs",
     "tradeBenches[8].partners[2]",
+    "tradeBenches[8].partners[3]",
     "tradeBenches[8].needs[0].project",
     "tradeBenches[8].needs[0].pkg",
     "tradeBenches[8].needs[0].bids",
@@ -5334,6 +5786,59 @@ exports[`GC mode golden walk > step 78: AquaShield opens its portal for the firs
 }
 `;
 
+exports[`GC mode golden walk > step 79: Cool Breeze sends the warranty letter 1`] = `
+{
+  "changed": {
+    "lastLog.id": 75,
+    "lastLog.text": "Cool Breeze Mechanical sent the warranty letter for HVAC.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 80: Cool Breeze sends the final pay application 1`] = `
+{
+  "changed": {
+    "lastLog.id": 76,
+    "lastLog.text": "Cool Breeze Mechanical sent the final pay application on HVAC: $3,100 of retainage, with a conditional waiver on final payment.",
+    "projects.stoneoak.stageProgress.also[2]": "Cool Breeze Mechanical asked for its retainage back. Approve it on Closeout.",
+    "projects.stoneoak.stageProgress.also[3]": "All the work is reported. 0 of 3 trades are closed out. See Closeout.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 81: Hollis accepts the work 1`] = `
+{
+  "changed": {
+    "lastLog.id": 77,
+    "lastLog.text": "Hollis Family Pharmacy accepted the work on Stone Oak Pharmacy in their portal.",
+    "lastLog.who": "office",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 82: Send Hollis the final pay application 1`] = `
+{
+  "changed": {
+    "lastLog.id": 78,
+    "lastLog.text": "Sent the final pay application to Hollis Family Pharmacy: $18,241 of retainage, with our conditional waiver on final payment.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 83: Hollis pays the final pay application 1`] = `
+{
+  "changed": {
+    "lastLog.id": 79,
+    "lastLog.text": "Hollis Family Pharmacy paid pay application 4: $18,241.",
+  },
+  "removed": [],
+}
+`;
+
 exports[`GC mode golden walk > the whole state at the end 1`] = `
 {
   "customers": [
@@ -5469,6 +5974,50 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "tradesNote": null,
     },
     {
+      "address": "20811 Stone Oak Pkwy, Suite 104, San Antonio",
+      "answerDays": null,
+      "contact": "Dana Hollis",
+      "contactRole": "Owner and pharmacist",
+      "contacts": [
+        {
+          "by": "Robert",
+          "note": "Dana wants to open October 20. She asked what is left before the last bill.",
+          "on": "2026-09-29",
+        },
+      ],
+      "email": "dana@hollispharmacy.example",
+      "howTheyBuy": "Picked us from three builders on price and schedule.",
+      "id": "hollis",
+      "kind": "Owner who will use the space",
+      "name": "Hollis Family Pharmacy",
+      "past": [],
+      "payDays": 18,
+      "phone": "(210) 555-0142",
+      "portalLastOpened": "2026-09-26",
+      "portalOn": true,
+      "retainagePct": 10,
+      "tradesNote": null,
+    },
+    {
+      "address": "1202 S Alamo St, San Antonio",
+      "answerDays": 2,
+      "contact": "Theo Park",
+      "contactRole": "Project architect",
+      "contacts": [],
+      "email": "theo@mesquitedesign.example",
+      "howTheyBuy": null,
+      "id": "mesquite",
+      "kind": "Architect",
+      "name": "Mesquite Design Studio",
+      "past": [],
+      "payDays": null,
+      "phone": "(210) 555-0188",
+      "portalLastOpened": null,
+      "portalOn": false,
+      "retainagePct": null,
+      "tradesNote": null,
+    },
+    {
       "address": "",
       "answerDays": null,
       "contact": "",
@@ -5489,6 +6038,31 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
     },
   ],
   "log": [
+    {
+      "id": 79,
+      "text": "Hollis Family Pharmacy paid pay application 4: $18,241.",
+      "who": "office",
+    },
+    {
+      "id": 78,
+      "text": "Sent the final pay application to Hollis Family Pharmacy: $18,241 of retainage, with our conditional waiver on final payment.",
+      "who": "office",
+    },
+    {
+      "id": 77,
+      "text": "Hollis Family Pharmacy accepted the work on Stone Oak Pharmacy in their portal.",
+      "who": "office",
+    },
+    {
+      "id": 76,
+      "text": "Cool Breeze Mechanical sent the final pay application on HVAC: $3,100 of retainage, with a conditional waiver on final payment.",
+      "who": "trade",
+    },
+    {
+      "id": 75,
+      "text": "Cool Breeze Mechanical sent the warranty letter for HVAC.",
+      "who": "trade",
+    },
     {
       "id": 74,
       "text": "AquaShield Sprinkler opened their portal for the first time.",
@@ -5613,31 +6187,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "id": 50,
       "text": "Logged a contact with Cibolo Creek Partners.",
       "who": "office",
-    },
-    {
-      "id": 49,
-      "text": "Issued Addendum 1 on Helotes Dental Office and emailed 4 companies. 1 were told it changes their trade.",
-      "who": "office",
-    },
-    {
-      "id": 48,
-      "text": "Hill Country Interiors signed the unconditional waiver for draw 2.",
-      "who": "trade",
-    },
-    {
-      "id": 47,
-      "text": "Paid draw 2 on Framing and drywall: $31,230.",
-      "who": "office",
-    },
-    {
-      "id": 46,
-      "text": "Approved draw 2 on Framing and drywall. $31,230 to pay, $3,470 held.",
-      "who": "office",
-    },
-    {
-      "id": 45,
-      "text": "Hill Country Interiors asked for draw 2 on Framing and drywall: $34,700, with a conditional waiver signed.",
-      "who": "trade",
     },
   ],
   "partners": [
@@ -5832,6 +6381,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "won": 0,
     },
     {
+      "address": "1188 Culebra Rd, San Antonio, TX 78201",
       "base": "San Antonio",
       "bids": 4,
       "coiExpires": "2027-01-31",
@@ -6026,11 +6576,49 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
     },
     {
       "base": "San Antonio",
+      "bids": 3,
+      "coiExpires": "2027-05-01",
+      "company": "Live Oak Drywall",
+      "contact": "Marcus Bell",
+      "id": "liveoak",
+      "invited": 3,
+      "maxMiles": 60,
+      "msa": "signed",
+      "msaSignedOn": "2026-06-12",
+      "promisesKept": 0,
+      "promisesMade": 0,
+      "trades": [
+        "Framing and drywall",
+      ],
+      "w9": true,
+      "won": 1,
+    },
+    {
+      "base": "San Antonio",
+      "bids": 3,
+      "coiExpires": "2027-04-15",
+      "company": "Westside Electric",
+      "contact": "Ana Flores",
+      "id": "westside",
+      "invited": 3,
+      "maxMiles": 80,
+      "msa": "signed",
+      "msaSignedOn": "2026-06-12",
+      "promisesKept": 0,
+      "promisesMade": 0,
+      "trades": [
+        "Electrical",
+      ],
+      "w9": true,
+      "won": 1,
+    },
+    {
+      "base": "San Antonio",
       "bids": 0,
       "coiExpires": null,
       "company": "Pecos Steel",
       "contact": "Ana Ruiz",
-      "id": "new-21",
+      "id": "new-23",
       "invited": 0,
       "maxMiles": 80,
       "msa": "none",
@@ -7855,6 +8443,587 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "startDate": "2026-10-12",
       "startedOn": "2026-10-02",
       "town": "Helotes",
+    },
+    {
+      "address": "20811 Stone Oak Pkwy, Suite 104, San Antonio",
+      "architect": "Mesquite Design Studio",
+      "architectId": "mesquite",
+      "bidDue": null,
+      "contingencyPct": 3,
+      "customerId": "hollis",
+      "feePct": 10,
+      "generalConditions": 24000,
+      "id": "stoneoak",
+      "name": "Stone Oak Pharmacy",
+      "ourBidSentOn": "2026-05-14",
+      "owner": "Hollis Family Pharmacy",
+      "ownerBilling": {
+        "acceptedOn": "2026-10-02",
+        "billed": 182413,
+        "paid": 164171.7,
+        "payApps": [
+          {
+            "doneToDate": {
+              "contingency": 1600.6,
+              "fee": 5495.39,
+              "gc": 7953.28,
+              "sdry": 21000,
+              "selec": 14000,
+              "shvac": 0,
+              "splumb": 10400,
+            },
+            "due": 54404.34,
+            "number": 1,
+            "paidOn": "2026-08-14",
+            "periodTo": "2026-07-25",
+            "retainage": 6044.93,
+            "retainagePct": 10,
+            "sentOn": "2026-07-25",
+            "workToDate": 60449.27,
+          },
+          {
+            "doneToDate": {
+              "contingency": 2756.98,
+              "fee": 9465.62,
+              "gc": 13699.27,
+              "sdry": 21000,
+              "selec": 14000,
+              "shvac": 25000,
+              "splumb": 18200,
+            },
+            "due": 39305.34,
+            "number": 2,
+            "paidOn": "2026-09-15",
+            "periodTo": "2026-08-25",
+            "retainage": 10412.19,
+            "retainagePct": 10,
+            "sentOn": "2026-08-25",
+            "workToDate": 104121.87,
+          },
+          {
+            "doneToDate": {
+              "contingency": 4830,
+              "fee": 16583,
+              "gc": 24000,
+              "sdry": 42000,
+              "selec": 38000,
+              "shvac": 31000,
+              "splumb": 26000,
+            },
+            "due": 70462.02,
+            "number": 3,
+            "paidOn": "2026-10-01",
+            "periodTo": "2026-09-25",
+            "retainage": 18241.3,
+            "retainagePct": 10,
+            "sentOn": "2026-09-25",
+            "workToDate": 182413,
+          },
+          {
+            "doneToDate": {
+              "contingency": 4830,
+              "fee": 16583,
+              "gc": 24000,
+              "sdry": 42000,
+              "selec": 38000,
+              "shvac": 31000,
+              "splumb": 26000,
+            },
+            "due": 18241.29999999999,
+            "final": true,
+            "number": 4,
+            "paidOn": "2026-10-02",
+            "periodTo": "2026-10-02",
+            "retainage": 0,
+            "retainagePct": 10,
+            "sentOn": "2026-10-02",
+            "workToDate": 182413,
+          },
+        ],
+        "retainageHeld": 18241.3,
+      },
+      "ownerContractSignedOn": "2026-05-29",
+      "packages": [
+        {
+          "awardedInviteId": "sdry-liveoak",
+          "bidTab": null,
+          "budget": 43000,
+          "carried": "sdry-liveoak",
+          "id": "sdry",
+          "invites": [
+            {
+              "bid": {
+                "amount": 42000,
+                "basedOnRev": 0,
+                "includes": {
+                  "sdry-1": "yes",
+                  "sdry-2": "yes",
+                  "sdry-3": "yes",
+                },
+                "note": "",
+                "plugs": {},
+                "submittedOn": "2026-05-06",
+              },
+              "id": "sdry-liveoak",
+              "invitedOn": "2026-09-19",
+              "partnerId": "liveoak",
+              "seenRev": 0,
+              "status": "bid",
+            },
+          ],
+          "scope": [
+            {
+              "id": "sdry-1",
+              "label": "Framing",
+            },
+            {
+              "id": "sdry-2",
+              "label": "Hang and tape",
+            },
+            {
+              "id": "sdry-3",
+              "label": "Ceilings",
+            },
+          ],
+          "selfPerform": null,
+          "sow": {
+            "acceptedOn": "2026-09-24",
+            "basedOnRev": 0,
+            "draws": [
+              {
+                "gross": 21000,
+                "id": "sdry-draw-1",
+                "lines": [
+                  {
+                    "sovId": "sdry-1",
+                    "toPct": 100,
+                  },
+                ],
+                "net": 18900,
+                "number": 1,
+                "requestedOn": "2026-07-20",
+                "retainage": 2100,
+                "status": "paid",
+                "waiver": "unconditional",
+              },
+              {
+                "gross": 21000,
+                "id": "sdry-draw-2",
+                "lines": [
+                  {
+                    "sovId": "sdry-2",
+                    "toPct": 100,
+                  },
+                  {
+                    "sovId": "sdry-3",
+                    "toPct": 100,
+                  },
+                ],
+                "net": 18900,
+                "number": 2,
+                "requestedOn": "2026-09-18",
+                "retainage": 2100,
+                "status": "paid",
+                "waiver": "unconditional",
+              },
+              {
+                "final": true,
+                "gross": 0,
+                "id": "sdry-draw-3",
+                "lines": [],
+                "net": 4200,
+                "number": 3,
+                "payApp": {
+                  "address": "5410 Bandera Rd, San Antonio, TX 78238",
+                  "license": "",
+                  "periodTo": "2026-09-30",
+                  "signedBy": "Marcus Bell",
+                  "signedOn": "2026-09-30",
+                  "signedTitle": "Owner",
+                },
+                "requestedOn": "2026-09-30",
+                "retainage": -4200,
+                "status": "requested",
+                "waiver": "conditional",
+              },
+            ],
+            "price": 42000,
+            "retainagePct": 10,
+            "signedOn": "2026-06-02",
+            "sov": [
+              {
+                "amount": 21000,
+                "id": "sdry-1",
+                "label": "Framing",
+                "pctBilled": 100,
+                "pctReported": 100,
+              },
+              {
+                "amount": 12000,
+                "id": "sdry-2",
+                "label": "Hang and tape",
+                "pctBilled": 100,
+                "pctReported": 100,
+              },
+              {
+                "amount": 9000,
+                "id": "sdry-3",
+                "label": "Ceilings",
+                "pctBilled": 100,
+                "pctReported": 100,
+              },
+            ],
+            "status": "signed",
+            "warrantyOn": "2026-09-26",
+          },
+          "trade": "Framing and drywall",
+        },
+        {
+          "awardedInviteId": "selec-westside",
+          "bidTab": null,
+          "budget": 39000,
+          "carried": "selec-westside",
+          "id": "selec",
+          "invites": [
+            {
+              "bid": {
+                "amount": 38000,
+                "basedOnRev": 0,
+                "includes": {
+                  "selec-1": "yes",
+                  "selec-2": "yes",
+                  "selec-3": "yes",
+                },
+                "note": "",
+                "plugs": {},
+                "submittedOn": "2026-05-07",
+              },
+              "id": "selec-westside",
+              "invitedOn": "2026-09-19",
+              "partnerId": "westside",
+              "seenRev": 0,
+              "status": "bid",
+            },
+          ],
+          "scope": [
+            {
+              "id": "selec-1",
+              "label": "Panels and feeders",
+            },
+            {
+              "id": "selec-2",
+              "label": "Lighting",
+            },
+            {
+              "id": "selec-3",
+              "label": "Devices",
+            },
+          ],
+          "selfPerform": null,
+          "sow": {
+            "acceptedOn": "2026-09-24",
+            "basedOnRev": 0,
+            "draws": [
+              {
+                "gross": 14000,
+                "id": "selec-draw-1",
+                "lines": [
+                  {
+                    "sovId": "selec-1",
+                    "toPct": 100,
+                  },
+                ],
+                "net": 12600,
+                "number": 1,
+                "requestedOn": "2026-07-22",
+                "retainage": 1400,
+                "status": "paid",
+                "waiver": "unconditional",
+              },
+              {
+                "gross": 24000,
+                "id": "selec-draw-2",
+                "lines": [
+                  {
+                    "sovId": "selec-2",
+                    "toPct": 100,
+                  },
+                  {
+                    "sovId": "selec-3",
+                    "toPct": 100,
+                  },
+                ],
+                "net": 21600,
+                "number": 2,
+                "requestedOn": "2026-09-19",
+                "retainage": 2400,
+                "status": "paid",
+                "waiver": "unconditional",
+              },
+              {
+                "final": true,
+                "gross": 0,
+                "id": "selec-draw-3",
+                "lines": [],
+                "net": 3800,
+                "number": 3,
+                "payApp": {
+                  "address": "2210 Fredericksburg Rd, San Antonio, TX 78201",
+                  "license": "TECL 31876",
+                  "periodTo": "2026-09-30",
+                  "signedBy": "Ana Flores",
+                  "signedOn": "2026-09-30",
+                  "signedTitle": "Owner",
+                },
+                "requestedOn": "2026-09-30",
+                "retainage": -3800,
+                "status": "requested",
+                "waiver": "conditional",
+              },
+            ],
+            "price": 38000,
+            "retainagePct": 10,
+            "signedOn": "2026-06-03",
+            "sov": [
+              {
+                "amount": 14000,
+                "id": "selec-1",
+                "label": "Panels and feeders",
+                "pctBilled": 100,
+                "pctReported": 100,
+              },
+              {
+                "amount": 14000,
+                "id": "selec-2",
+                "label": "Lighting",
+                "pctBilled": 100,
+                "pctReported": 100,
+              },
+              {
+                "amount": 10000,
+                "id": "selec-3",
+                "label": "Devices",
+                "pctBilled": 100,
+                "pctReported": 100,
+              },
+            ],
+            "status": "signed",
+            "warrantyOn": "2026-09-25",
+          },
+          "trade": "Electrical",
+        },
+        {
+          "awardedInviteId": "shvac-coolbreeze",
+          "bidTab": null,
+          "budget": 32000,
+          "carried": "shvac-coolbreeze",
+          "id": "shvac",
+          "invites": [
+            {
+              "bid": {
+                "amount": 31000,
+                "basedOnRev": 0,
+                "includes": {
+                  "shvac-1": "yes",
+                  "shvac-2": "yes",
+                  "shvac-3": "yes",
+                },
+                "note": "",
+                "plugs": {},
+                "submittedOn": "2026-05-08",
+              },
+              "id": "shvac-coolbreeze",
+              "invitedOn": "2026-09-19",
+              "partnerId": "coolbreeze",
+              "seenRev": 0,
+              "status": "bid",
+            },
+          ],
+          "scope": [
+            {
+              "id": "shvac-1",
+              "label": "Split systems",
+            },
+            {
+              "id": "shvac-2",
+              "label": "Ductwork",
+            },
+            {
+              "id": "shvac-3",
+              "label": "Controls",
+            },
+          ],
+          "selfPerform": null,
+          "sow": {
+            "acceptedOn": "2026-09-29",
+            "basedOnRev": 0,
+            "draws": [
+              {
+                "gross": 25000,
+                "id": "shvac-draw-1",
+                "lines": [
+                  {
+                    "sovId": "shvac-1",
+                    "toPct": 100,
+                  },
+                  {
+                    "sovId": "shvac-2",
+                    "toPct": 100,
+                  },
+                ],
+                "net": 22500,
+                "number": 1,
+                "requestedOn": "2026-08-18",
+                "retainage": 2500,
+                "status": "paid",
+                "waiver": "unconditional",
+              },
+              {
+                "gross": 6000,
+                "id": "shvac-draw-2",
+                "lines": [
+                  {
+                    "sovId": "shvac-3",
+                    "toPct": 100,
+                  },
+                ],
+                "net": 5400,
+                "number": 2,
+                "requestedOn": "2026-09-22",
+                "retainage": 600,
+                "status": "paid",
+                "waiver": "unconditional",
+              },
+              {
+                "final": true,
+                "gross": 0,
+                "id": "shvac-draw-3",
+                "lines": [],
+                "net": 3100,
+                "number": 3,
+                "payApp": {
+                  "address": "1188 Culebra Rd, San Antonio, TX 78201",
+                  "license": "",
+                  "periodTo": "2026-10-02",
+                  "signedBy": "Andre Wallace",
+                  "signedOn": "2026-10-02",
+                  "signedTitle": "Owner",
+                },
+                "requestedOn": "2026-10-02",
+                "retainage": -3100,
+                "status": "requested",
+                "waiver": "conditional",
+              },
+            ],
+            "price": 31000,
+            "retainagePct": 10,
+            "signedOn": "2026-06-04",
+            "sov": [
+              {
+                "amount": 13000,
+                "id": "shvac-1",
+                "label": "Split systems",
+                "pctBilled": 100,
+                "pctReported": 100,
+              },
+              {
+                "amount": 12000,
+                "id": "shvac-2",
+                "label": "Ductwork",
+                "pctBilled": 100,
+                "pctReported": 100,
+              },
+              {
+                "amount": 6000,
+                "id": "shvac-3",
+                "label": "Controls",
+                "pctBilled": 100,
+                "pctReported": 100,
+              },
+            ],
+            "status": "signed",
+            "warrantyOn": "2026-10-02",
+          },
+          "trade": "HVAC",
+        },
+        {
+          "awardedInviteId": null,
+          "bidTab": null,
+          "budget": 26000,
+          "carried": "self",
+          "id": "splumb",
+          "invites": [],
+          "scope": [
+            {
+              "id": "splumb-1",
+              "label": "Underground",
+            },
+            {
+              "id": "splumb-2",
+              "label": "Rough in",
+            },
+            {
+              "id": "splumb-3",
+              "label": "Top out",
+            },
+            {
+              "id": "splumb-4",
+              "label": "Trim",
+            },
+          ],
+          "selfPerform": {
+            "note": "Our own crew. The job runs on the Pipeline.",
+            "pctDone": 100,
+            "ref": "J 1071",
+            "value": 26000,
+          },
+          "sow": null,
+          "trade": "Plumbing",
+        },
+      ],
+      "permitOn": "2026-06-05",
+      "planSets": [
+        {
+          "changedSheets": [],
+          "issuedOn": "2026-05-01",
+          "label": "Permit set",
+          "note": "The set the city approved. 6 sheets.",
+          "rev": 0,
+          "touches": [],
+        },
+      ],
+      "questions": [],
+      "sheets": [
+        {
+          "id": "G-001",
+          "title": "Cover and code summary",
+        },
+        {
+          "id": "A-101",
+          "title": "Floor plan",
+        },
+        {
+          "id": "A-201",
+          "title": "Interior elevations",
+        },
+        {
+          "id": "M-101",
+          "title": "Mechanical plan",
+        },
+        {
+          "id": "E-101",
+          "title": "Lighting and power plan",
+        },
+        {
+          "id": "P-101",
+          "title": "Plumbing plan",
+        },
+      ],
+      "sizeNote": "2,400 sq ft pharmacy finish out",
+      "stage": "building",
+      "startDate": "2026-06-15",
+      "startedOn": "2026-06-12",
+      "town": "San Antonio",
     },
     {
       "address": "24165 IH-10 W, San Antonio",

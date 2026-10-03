@@ -9,6 +9,8 @@
 import type { GcCustomer, GcProject, GcState, OwnerPayAppSent, TradePackage } from './gcTypes'
 import { carriedAmount, proposalTotals } from './gcBids'
 import { partnerById } from './gcLookups'
+import { tradeCloseout } from './gcBuilding'
+import { money, shortDate } from './gcWords'
 
 /** We bill the owner once a month (the owner's call, 2026-10-02). The day of the month is my default. */
 export const OWNER_BILL_DAY = 25
@@ -244,6 +246,8 @@ export function ownerExpectPaidOn(state: GcState, project: GcProject, app: Owner
 export interface OurOwnerWaiver {
   payApp: number
   kind: 'conditional' | 'unconditional'
+  /** On final payment: the waivers with our final pay application. Otherwise on progress payment. */
+  final: boolean
   amount: number
   signedOn: string
 }
@@ -255,8 +259,9 @@ export interface OurOwnerWaiver {
 export function ourOwnerWaivers(project: GcProject): OurOwnerWaiver[] {
   const out: OurOwnerWaiver[] = []
   for (const app of ownerPayAppsSent(project)) {
-    out.push({ payApp: app.number, kind: 'conditional', amount: app.due, signedOn: app.sentOn })
-    if (app.paidOn !== null) out.push({ payApp: app.number, kind: 'unconditional', amount: app.due, signedOn: app.paidOn })
+    const final = app.final === true
+    out.push({ payApp: app.number, kind: 'conditional', final, amount: app.due, signedOn: app.sentOn })
+    if (app.paidOn !== null) out.push({ payApp: app.number, kind: 'unconditional', final, amount: app.due, signedOn: app.paidOn })
   }
   return out.reverse()
 }
@@ -338,4 +343,154 @@ export function sentPayAppLines(state: GcState, project: GcProject, number: numb
     const doneBefore = before?.doneToDate[l.id] ?? 0
     return { id: l.id, label: l.label, worth: l.worth, doneBefore, thisMonth: doneToDate - doneBefore, doneToDate }
   })
+}
+
+// ---------------------------------------------------------------------------------------------
+// Closeout with the owner: the retainage they hold, released with our final pay application.
+// Owner's calls (2026-10-02): our final waits until every trade has sent its final pay
+// application; the owner accepts the work in their portal; a trade's retainage is paid only
+// after the owner has paid us ours (`ownerReleasedRetainage`, for the Building lane's Closeout).
+// ---------------------------------------------------------------------------------------------
+
+/** Every line billed: our last progress pay application billed the whole price, and nothing new waits. */
+export function ownerAllBilled(state: GcState, project: GcProject): boolean {
+  const app = ownerPayApp(state, project)
+  const lastProgress = [...ownerPayAppsSent(project)].reverse().find((a) => !a.final)
+  return lastProgress !== undefined && Math.round(app.contract - lastProgress.workToDate) <= 0 && !ownerPayAppHasWork(app)
+}
+
+export type OwnerCloseoutKey = 'billed' | 'trades' | 'accepted' | 'finalApp' | 'paid'
+
+export interface OwnerCloseoutStep {
+  key: OwnerCloseoutKey
+  label: string
+  /** Who moves it: our office, the trades from their portals, or the owner from theirs. */
+  who: 'office' | 'trades' | 'owner'
+  done: boolean
+  detail: string
+}
+
+export interface OwnerCloseout {
+  steps: OwnerCloseoutStep[]
+  /** The first step not done. Null once the owner has paid us everything. */
+  next: OwnerCloseoutStep | null
+  closed: boolean
+  /** What the owner holds on us right now. */
+  held: number
+  /** Our final pay application, once it went. */
+  final: OwnerPayAppSent | null
+  /** The trades that have not sent their final pay application yet, each with what still stands in the way. */
+  tradesWaiting: { packageId: string; company: string; why: string }[]
+  /** May the owner accept the work now? */
+  canAccept: boolean
+  /** May our final pay application go now? */
+  canSendFinal: boolean
+}
+
+/**
+ * Our closeout with the owner, in order: every line billed, every trade's final pay application
+ * (with its conditional waiver on final payment), the owner accepts the work, our final pay
+ * application for what they hold (with our conditional waiver on final payment), and they pay it
+ * (which signs our unconditional waiver on final payment).
+ */
+export function ownerCloseout(state: GcState, project: GcProject): OwnerCloseout {
+  const sent = ownerPayAppsSent(project)
+  const final = sent.find((a) => a.final) ?? null
+  const lastProgress = [...sent].reverse().find((a) => !a.final) ?? null
+  const contract = ownerPayApp(state, project).contract
+  const billed = ownerAllBilled(state, project)
+  const held = final ? (final.paidOn ? 0 : final.due) : (lastProgress?.retainage ?? 0)
+  const tradesWaiting: OwnerCloseout['tradesWaiting'] = []
+  let trades = 0
+  for (const pkg of project.packages) {
+    if (pkg.selfPerform) continue
+    trades += 1
+    const invite = pkg.invites.find((i) => i.id === pkg.awardedInviteId)
+    const company = (invite ? partnerById(state, invite.partnerId)?.company : undefined) ?? pkg.trade
+    if (!pkg.sow || pkg.sow.status !== 'signed') {
+      tradesWaiting.push({ packageId: pkg.id, company, why: `${pkg.trade} has no signed statement of work.` })
+      continue
+    }
+    const c = tradeCloseout(pkg.sow)
+    if (c.finalDraw) continue
+    const why: Record<string, string> = {
+      billed: `${company} has not billed every line yet.`,
+      accepted: `We have not accepted ${company}’s work yet.`,
+      warranty: `${company} still owes its warranty letter.`,
+      finalApp: `${company} has not sent it yet.`,
+    }
+    tradesWaiting.push({ packageId: pkg.id, company, why: why[c.next?.key ?? 'finalApp'] ?? why.finalApp ?? '' })
+  }
+  const tradesDone = tradesWaiting.length === 0
+  const acceptedOn = project.ownerBilling?.acceptedOn ?? null
+  const billedPct = contract === 0 || !lastProgress ? 0 : Math.round((lastProgress.workToDate / contract) * 100)
+  const steps: OwnerCloseoutStep[] = [
+    {
+      key: 'billed',
+      label: 'Every line billed',
+      who: 'office',
+      done: billed,
+      detail: billed && lastProgress
+        ? `Pay application ${lastProgress.number} billed all ${money(contract)}.`
+        : `${billedPct}% billed so far.`,
+    },
+    {
+      key: 'trades',
+      label: 'Every trade’s final pay application',
+      who: 'trades',
+      done: tradesDone,
+      detail: tradesDone
+        ? 'Every trade has asked for its retainage, with its conditional waiver on final payment.'
+        : `${trades - tradesWaiting.length} of ${trades} trades have sent theirs. ${tradesWaiting.map((w) => w.why).join(' ')}`,
+    },
+    {
+      key: 'accepted',
+      label: 'The owner accepts the work',
+      who: 'owner',
+      done: acceptedOn !== null,
+      detail: acceptedOn ? `Accepted ${shortDate(acceptedOn)}.` : 'They walk it and accept it in their portal.',
+    },
+    {
+      key: 'finalApp',
+      label: 'Our final pay application',
+      who: 'office',
+      done: final !== null,
+      detail: final
+        ? `Sent ${shortDate(final.sentOn)} for ${money(final.due)}, with our conditional waiver on final payment.`
+        : `It asks for the ${money(held)} they hold.`,
+    },
+    {
+      key: 'paid',
+      label: 'They pay it',
+      who: 'owner',
+      done: final?.paidOn != null,
+      detail: final?.paidOn
+        ? `Paid ${shortDate(final.paidOn)}. Our unconditional waiver on final payment is signed.`
+        : final
+          ? 'Waiting on them.'
+          : 'Waits for our final pay application.',
+    },
+  ]
+  const next = steps.find((st) => !st.done) ?? null
+  return {
+    steps,
+    next,
+    closed: next === null,
+    held,
+    final,
+    tradesWaiting,
+    canAccept: billed && acceptedOn === null,
+    canSendFinal: billed && tradesDone && acceptedOn !== null && final === null && held > 0,
+  }
+}
+
+/** Our final pay application as it goes today: every line done, nothing held, it asks for the rest. */
+export function ownerFinalPayAppToSend(state: GcState, project: GcProject, today: string): OwnerPayAppSent {
+  const app = ownerPayApp(state, project)
+  return { ...ownerPayAppToSend(app, today), periodTo: today, retainage: 0, due: app.doneToDate - app.askedBefore, final: true }
+}
+
+/** The owner has paid us the retainage they held. The Building lane's trade release waits for it (owner's call). */
+export function ownerReleasedRetainage(project: GcProject): boolean {
+  return ownerPayAppsSent(project).some((a) => a.final === true && a.paidOn !== null)
 }

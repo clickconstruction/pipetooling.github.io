@@ -5,6 +5,7 @@ import {
   GC_COMPANY_NAME,
   money,
   ourOwnerWaivers,
+  ownerCloseout,
   ownerAccount,
   ownerPayApp,
   ownerPayAppsSent,
@@ -39,6 +40,9 @@ export function GcOwnerBillingPortal({ state, project, dispatch }: { state: GcSt
   const ours = ourOwnerWaivers(project)
   const trades = last ? tradeWaiverChecks(state, project, last.doneToDate) : []
   const billedPct = last && next.contract > 0 ? Math.round((last.workToDate / next.contract) * 100) : 0
+  const closeout = ownerCloseout(state, project)
+  const acceptedOn = project.ownerBilling?.acceptedOn ?? null
+  const allBilled = closeout.steps[0]?.done === true
 
   return (
     <div data-theme="light" style={{ background: PAPER, color: INK, border: `1px solid ${INK}`, borderRadius: 10, overflow: 'hidden' }}>
@@ -74,6 +78,33 @@ export function GcOwnerBillingPortal({ state, project, dispatch }: { state: GcSt
           </div>
         </PortalBlock>
 
+        {(allBilled || acceptedOn) && (
+          <PortalBlock title="The work">
+            {closeout.closed ? (
+              <div style={{ fontSize: '0.875rem' }}>
+                The work is done and paid in full. Thank you for building with {GC_COMPANY_NAME}.
+              </div>
+            ) : acceptedOn ? (
+              <div style={{ fontSize: '0.875rem' }}>
+                You accepted the work {shortDate(acceptedOn)}.{' '}
+                {closeout.final ? 'The last bill is below. It is what you held.' : `${GC_COMPANY_NAME} sends the last bill next. It is what you held.`}
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gap: '0.45rem', fontSize: '0.875rem' }}>
+                <div>
+                  Every line is billed. Walk the space with us. When the punch list is done, accept the work. Then the last
+                  bill asks for the {money(closeout.held)} you hold.
+                </div>
+                <div>
+                  <Btn kind="primary" onClick={() => dispatch({ type: 'ownerAcceptsWork', projectId: project.id })}>
+                    Accept the work
+                  </Btn>
+                </div>
+              </div>
+            )}
+          </PortalBlock>
+        )}
+
         <PortalBlock title="Your bills">
           <div style={{ display: 'grid', gap: '0.55rem' }}>
             {sent.length === 0 && (
@@ -88,7 +119,7 @@ export function GcOwnerBillingPortal({ state, project, dispatch }: { state: GcSt
                 onPay={() => dispatch({ type: 'ownerPaid', projectId: project.id, number: app.number })}
               />
             ))}
-            {sent.length > 0 && (
+            {sent.length > 0 && !allBilled && (
               <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>The next bill comes {weekdayDate(next.billOn)}.</div>
             )}
           </div>
@@ -109,7 +140,8 @@ export function GcOwnerBillingPortal({ state, project, dispatch }: { state: GcSt
                 <WaiverLine
                   key={`${w.payApp}-${w.kind}`}
                   kind={w.kind}
-                  words={`${money(w.amount)} · pay application ${w.payApp} · signed ${shortDate(w.signedOn)}`}
+                  final={w.final}
+                  words={`${money(w.amount)} · ${w.final ? 'final pay application' : `pay application ${w.payApp}`} · signed ${shortDate(w.signedOn)}`}
                 />
               ))}
             </div>
@@ -152,8 +184,8 @@ function BillRow({ state, project, app, onPay }: { state: GcState; project: GcPr
   return (
     <div style={{ borderTop: `1px solid ${RULE}`, paddingTop: '0.45rem', display: 'grid', gap: '0.35rem' }}>
       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.875rem' }}>
-        <strong>Pay application {app.number}</strong>
-        <span style={{ color: 'var(--text-muted)' }}>{month} · sent {shortDate(app.sentOn)}</span>
+        <strong>{app.final ? 'Final pay application' : `Pay application ${app.number}`}</strong>
+        <span style={{ color: 'var(--text-muted)' }}>{app.final ? 'what you held' : month} · sent {shortDate(app.sentOn)}</span>
         <span style={{ flex: 1 }} />
         <strong>{money(app.due)}</strong>
       </div>
@@ -166,7 +198,9 @@ function BillRow({ state, project, app, onPay }: { state: GcState; project: GcPr
           </Btn>
         )}
         <span style={{ color: 'var(--text-muted)' }}>
-          Work {money(app.workToDate)} less {money(app.retainage)} you hold, less earlier bills.
+          {app.final
+            ? `All ${money(app.workToDate)} of the work, less earlier bills. Nothing is held back.`
+            : `Work ${money(app.workToDate)} less ${money(app.retainage)} you hold, less earlier bills.`}
         </span>
         <button
           type="button"

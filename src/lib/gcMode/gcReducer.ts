@@ -11,7 +11,7 @@ import { awardedPartner, find, logged, mapInvite, mapPackage, mapProject, mapSow
 import { initialGcState } from './gcFixture'
 import { buildNewProject, packagesFromDrafts, withTradesInOrder } from './gcNewProject'
 import { finalPayApplication, payApplication, timesSentBack, tradeCloseout, workAllBilled } from './gcBuilding'
-import { ownerPayApp, ownerPayAppHasWork, ownerPayAppToSend } from './gcOwnerBilling'
+import { ownerCloseout, ownerFinalPayAppToSend, ownerPayApp, ownerPayAppHasWork, ownerPayAppToSend } from './gcOwnerBilling'
 
 export function gcReducer(state: GcState, action: GcAction): GcState {
   switch (action.type) {
@@ -738,6 +738,27 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
         { ...state, partners: state.partners.map((p) => (p.id === partner.id ? { ...p, portalOpenedOn: state.today } : p)) },
         'trade',
         `${partner.company} opened their portal for the first time.`,
+      )
+    }
+
+    case 'ownerAcceptsWork': {
+      const project = state.projects.find((p) => p.id === action.projectId)
+      if (!project || !project.ownerBilling || !ownerCloseout(state, project).canAccept) return state
+      const next = mapProject(state, project.id, (p) => (p.ownerBilling ? { ...p, ownerBilling: { ...p.ownerBilling, acceptedOn: state.today } } : p))
+      return logged(next, 'office', `${project.owner} accepted the work on ${project.name} in their portal.`)
+    }
+
+    case 'sendOwnerFinalPayApp': {
+      const project = state.projects.find((p) => p.id === action.projectId)
+      if (!project || !ownerCloseout(state, project).canSendFinal) return state
+      const sent = ownerFinalPayAppToSend(state, project, state.today)
+      const next = mapProject(state, project.id, (p) =>
+        p.ownerBilling ? { ...p, ownerBilling: { ...p.ownerBilling, payApps: [...(p.ownerBilling.payApps ?? []), sent] } } : p,
+      )
+      return logged(
+        next,
+        'office',
+        `Sent the final pay application to ${project.owner}: ${money(sent.due)} of retainage, with our conditional waiver on final payment.`,
       )
     }
   }

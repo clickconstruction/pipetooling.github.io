@@ -207,6 +207,8 @@ export interface OwnerBilling {
   retainageHeld: number
   /** Our pay applications to the owner, oldest first, as each went. Absent: none sent yet. */
   payApps?: OwnerPayAppSent[]
+  /** The day the owner accepted the work in their portal. Absent: not yet. Our final pay application waits for it. */
+  acceptedOn?: string
 }
 
 /**
@@ -399,6 +401,10 @@ export type GcAction =
     }
   /** The company presses Got it on its portal's first-visit welcome. */
   | { type: 'tradeOpenPortal'; partnerId: string }
+  /** The owner accepts the work in their portal: the punch list is done. */
+  | { type: 'ownerAcceptsWork'; projectId: string }
+  /** Our final pay application to the owner: the retainage they hold, with our conditional waiver on final payment. */
+  | { type: 'sendOwnerFinalPayApp'; projectId: string }
 
 /** One trade on a new project, as the office left it in the New project window. */
 export interface NewTradeDraft {
@@ -461,6 +467,8 @@ export interface OwnerPayAppSent {
   due: number
   /** The day the owner paid it. Null until they do. */
   paidOn: string | null
+  /** The final pay application: it asks for the retainage the owner held, with our waivers on final payment. */
+  final?: boolean
 }
 
 /** A pay application the office sent back: the draw as the trade sent it, why, and what we see. */

@@ -217,6 +217,24 @@ const STEPS: Step[] = [
   { label: 'Approve the fixed pay application 1', action: { type: 'approveDraw', projectId: 'helotes', packageId: 'mill', drawId: 'mill-draw-1' } },
   // The portal: a company's first visit.
   { label: 'AquaShield opens its portal for the first time', action: { type: 'tradeOpenPortal', partnerId: 'aquashield' } },
+  // Stone Oak Pharmacy, closeout with the owner: the last trade's final, the owner accepts, our final, paid.
+  { label: 'Cool Breeze sends the warranty letter', action: { type: 'tradeSendWarranty', projectId: 'stoneoak', packageId: 'shvac' } },
+  {
+    label: 'Cool Breeze sends the final pay application',
+    action: {
+      type: 'tradeSendFinalPayApp',
+      projectId: 'stoneoak',
+      packageId: 'shvac',
+      periodTo: '2026-10-02',
+      address: '1188 Culebra Rd, San Antonio, TX 78201',
+      license: '',
+      signedBy: 'Andre Wallace',
+      signedTitle: 'Owner',
+    },
+  },
+  { label: 'Hollis accepts the work', action: { type: 'ownerAcceptsWork', projectId: 'stoneoak' } },
+  { label: 'Send Hollis the final pay application', action: { type: 'sendOwnerFinalPayApp', projectId: 'stoneoak' } },
+  { label: 'Hollis pays the final pay application', action: { type: 'ownerPaid', projectId: 'stoneoak', number: 4 } },
 ]
 
 const CUSTOMER_IDS = ['cibolo', 'raman']
@@ -344,6 +362,7 @@ describe('GC mode golden walk', () => {
       'sendOwnerPayApp', 'ownerPaid', 'issuePlanSet',
       'acceptWork', 'tradeSendWarranty', 'tradeSendFinalPayApp', 'approveRetainage',
       'selfReport',
+      'ownerAcceptsWork', 'sendOwnerFinalPayApp',
       'sendDrawBack',
       'tradeOpenPortal',
     ]
