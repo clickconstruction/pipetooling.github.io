@@ -1,6 +1,9 @@
 import { useRef, useState, type Dispatch } from 'react'
 import {
+  alternateWords,
+  bidGoodUntil,
   bidIsStale,
+  bidRanOut,
   bidTabResult,
   bidTabRows,
   daysUntil,
@@ -9,15 +12,18 @@ import {
   partnerById,
   planLabel,
   portalInsurance,
+  portalLines,
   portalPlanNews,
   portalPromiseLine,
   shortDate,
   sowMoney,
   unclearLines,
+  weekdayDate,
   type GcAction,
   type GcProject,
   type GcState,
   type Includes,
+  type BidAlternate,
   type Invite,
   type Partner,
   type TradePackage,
@@ -26,6 +32,8 @@ import { BidTabTable } from './GcBidTabs'
 import { GcBuildingPayAppDoor } from './GcBuildingPayApp'
 import { Btn, Chip, input } from './gcUi'
 import { GcPortalHome } from './GcPortalHome'
+import { AlternatesEditor, AnswerLines, GoodForPicker, QuoteFilePicker } from './GcPortalBidExtras'
+import { ChangedLines, LineSheets, SheetChip } from './GcPortalLineSheets'
 import { GcPortalMessages } from './GcPortalMessages'
 import { GcPortalPaperwork } from './GcPortalPaperwork'
 import { GcPortalPlans } from './GcPortalPlans'
@@ -196,13 +204,15 @@ function PackageBlock({
   partner: Partner
   dispatch: Dispatch<GcAction>
 }) {
-  const [plansOpen, setPlansOpen] = useState(false)
+  /** The plans window: closed, open on its first sheet (''), or open on a sheet the company tapped. */
+  const [plansAt, setPlansAt] = useState<string | null>(null)
   const news = portalPlanNews(project, pkg, invite)
   const latest = news.latest
   const ids = { projectId: project.id, packageId: pkg.id }
-  const openPlans = () => {
+  // Any look at the newest set counts as opening it, from the button or from a sheet number.
+  const openPlans = (sheetId = '') => {
     if (news.behind) dispatch({ type: 'tradeOpenPlans', ...ids, inviteId: invite.id })
-    setPlansOpen(true)
+    setPlansAt(sheetId)
   }
   const awardedToMe = pkg.awardedInviteId === invite.id
   const awardedElsewhere = pkg.awardedInviteId !== null && !awardedToMe
@@ -214,11 +224,11 @@ function PackageBlock({
           <strong>{latest?.label}</strong>
           <span style={{ opacity: 0.75 }}>issued {shortDate(latest?.issuedOn ?? null)}</span>
           {news.behind ? (
-            <Btn kind={news.neverOpened || news.forTrade.length > 0 ? 'primary' : 'plain'} onClick={openPlans}>Open the plans</Btn>
+            <Btn kind={news.neverOpened || news.forTrade.length > 0 ? 'primary' : 'plain'} onClick={() => openPlans()}>Open the plans</Btn>
           ) : (
             <>
               <Chip tone="green">you have the latest set</Chip>
-              <Btn kind="quiet" onClick={openPlans}>Look at the plans</Btn>
+              <Btn kind="quiet" onClick={() => openPlans()}>Look at the plans</Btn>
             </>
           )}
         </div>
@@ -240,7 +250,7 @@ function PackageBlock({
             {latest.label} does not change {pkg.trade}. Open it so you price on the newest set.
           </div>
         )}
-        {plansOpen && <GcPortalPlans project={project} pkg={pkg} onClose={() => setPlansOpen(false)} />}
+        {plansAt !== null && <GcPortalPlans key={plansAt} project={project} pkg={pkg} startSheet={plansAt || undefined} onClose={() => setPlansAt(null)} />}
       </Block>
 
       {pkg.bidTab && invite.bid && (
@@ -267,7 +277,7 @@ function PackageBlock({
       ) : invite.status === 'declined' ? (
         <Block title={`${pkg.trade} · invitation`}>You passed on this one.</Block>
       ) : (
-        <BidBlock project={project} pkg={pkg} invite={invite} today={state.today} dispatch={dispatch} />
+        <BidBlock project={project} pkg={pkg} invite={invite} today={state.today} dispatch={dispatch} onOpenSheet={openPlans} />
       )}
     </>
   )
@@ -279,12 +289,14 @@ function BidBlock({
   invite,
   today,
   dispatch,
+  onOpenSheet,
 }: {
   project: GcProject
   pkg: TradePackage
   invite: Invite
   today: string
   dispatch: Dispatch<GcAction>
+  onOpenSheet: (sheetId: string) => void
 }) {
   const [promiseDay, setPromiseDay] = useState('')
   const promise = portalPromiseLine(invite, today, GC)
@@ -297,12 +309,20 @@ function BidBlock({
     for (const item of pkg.scope) start[item.id] = invite.bid?.includes[item.id] ?? 'yes'
     return start
   })
+  const [goodFor, setGoodFor] = useState(invite.bid?.goodForDays ?? 30)
+  const [alternates, setAlternates] = useState<BidAlternate[]>(invite.bid?.alternates ?? [])
+  const [quoteFile, setQuoteFile] = useState(invite.bid?.quoteFile ?? '')
+  const [answering, setAnswering] = useState(false)
   const ids = { projectId: project.id, packageId: pkg.id, inviteId: invite.id }
   const due = project.bidDue
   const days = due ? daysUntil(due, today) : null
   const unanswered = pkg.scope.filter((item) => includes[item.id] === 'unclear').length
   const openedNewest = !portalPlanNews(project, pkg, invite).behind
   const stale = bidIsStale(project, pkg, invite)
+  const sheets = portalLines(project, pkg, invite)
+  const lineOf = (id: string) => sheets.lines.find((l) => l.item.id === id)
+  const goodUntil = invite.bid ? bidGoodUntil(invite.bid) : null
+  const ranOut = invite.bid ? bidRanOut(invite.bid, today) : false
 
   return (
     <Block title={`${pkg.trade} · invitation to bid`}>
@@ -316,23 +336,60 @@ function BidBlock({
         <div style={{ display: 'grid', gap: '0.4rem', fontSize: '0.9rem' }}>
           <div>
             Your bid: <strong>{money(invite.bid.amount)}</strong> on {planLabel(project, invite.bid.basedOnRev)}, sent{' '}
-            {shortDate(invite.bid.submittedOn)}.
+            {shortDate(invite.bid.submittedOn)}.{goodUntil && !ranOut && <> Good until {weekdayDate(goodUntil)}.</>}
           </div>
+          {(invite.bid.alternates ?? []).length > 0 && (
+            <div>
+              <span style={{ opacity: 0.75 }}>Alternates:</span> {(invite.bid.alternates ?? []).map(alternateWords).join(' · ')}
+            </div>
+          )}
+          {invite.bid.quoteFile && (
+            <div>
+              <span style={{ opacity: 0.75 }}>Your own quote:</span> <Chip tone="grey">{invite.bid.quoteFile}</Chip>
+            </div>
+          )}
+          {ranOut && goodUntil && (
+            <PortalNote tone="amber">
+              <div>Your number ran out {weekdayDate(goodUntil)}. Send it again to keep it good.</div>
+              <div>
+                <Btn kind="primary" onClick={() => setEditing(true)}>Send it again</Btn>
+              </div>
+            </PortalNote>
+          )}
           {stale && (
             <PortalNote tone="amber">
-              The plans changed for your trade after you bid.{' '}
-              {openedNewest ? 'Confirm your number or change it.' : 'Open the plans above, then confirm your number or change it.'}
+              <div>
+                The plans changed for your trade after you bid.{' '}
+                {openedNewest ? 'Confirm your number or change it.' : 'Open the plans above, then confirm your number or change it.'}
+              </div>
+              <ChangedLines trade={pkg.trade} lines={sheets.lines} otherSheets={sheets.otherSheets} setNames={sheets.sets.map((x) => x.label)} onOpen={onOpenSheet} />
             </PortalNote>
           )}
           {unclear.length > 0 && (
             <PortalNote tone="amber">
-              <div>
-                {GC} cannot tell if your number covers {unclear.map((i) => i.label.charAt(0).toLowerCase() + i.label.slice(1)).join(' or ')}. Answer it so
-                your number compares fairly.
-              </div>
-              <div>
-                <Btn kind="primary" onClick={() => setEditing(true)}>Answer it</Btn>
-              </div>
+              {answering ? (
+                <AnswerLines
+                  items={unclear}
+                  lineOf={lineOf}
+                  onOpenSheet={onOpenSheet}
+                  onCancel={() => setAnswering(false)}
+                  onSend={(answers) => {
+                    dispatch({ type: 'tradeAnswerLines', ...ids, answers })
+                    setIncludes({ ...includes, ...answers })
+                    setAnswering(false)
+                  }}
+                />
+              ) : (
+                <>
+                  <div>
+                    {GC} cannot tell if your number covers {unclear.map((i) => i.label.charAt(0).toLowerCase() + i.label.slice(1)).join(' or ')}. Answer it so
+                    your number compares fairly.
+                  </div>
+                  <div>
+                    <Btn kind="primary" onClick={() => setAnswering(true)}>Answer it</Btn>
+                  </div>
+                </>
+              )}
             </PortalNote>
           )}
           <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
@@ -351,12 +408,17 @@ function BidBlock({
         </div>
       ) : (
         <div style={{ display: 'grid', gap: '0.5rem' }}>
-          <div style={{ fontSize: '0.85rem', opacity: 0.8 }}>Tick what your number covers. Untick what it leaves out.</div>
+          <div style={{ fontSize: '0.85rem', opacity: 0.8 }}>
+            Tick what your number covers. Untick what it leaves out. Tap a sheet number to open it.
+          </div>
           {pkg.scope.map((item) =>
             includes[item.id] === 'unclear' ? (
               <div key={item.id} style={{ display: 'grid', gap: '0.3rem', fontSize: '0.9rem', padding: '0.4rem 0.5rem', background: 'var(--bg-amber-100)', borderRadius: 6 }}>
-                <div>
-                  <strong>{item.label}.</strong> {GC} cannot tell if your number covers it.
+                <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <span>
+                    <strong>{item.label}.</strong> {GC} cannot tell if your number covers it.
+                  </span>
+                  <LineSheets line={lineOf(item.id)} onOpen={onOpenSheet} />
                 </div>
                 <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
                   <Btn onClick={() => setIncludes({ ...includes, [item.id]: 'yes' })}>It is in my number</Btn>
@@ -364,28 +426,49 @@ function BidBlock({
                 </div>
               </div>
             ) : (
-              <label key={item.id} style={{ display: 'flex', gap: '0.45rem', alignItems: 'center', fontSize: '0.9rem' }}>
+              <label key={item.id} style={{ display: 'flex', gap: '0.45rem', alignItems: 'center', fontSize: '0.9rem', flexWrap: 'wrap' }}>
                 <input
                   type="checkbox"
                   checked={includes[item.id] === 'yes'}
                   onChange={(e) => setIncludes({ ...includes, [item.id]: e.target.checked ? 'yes' : 'no' })}
                 />
                 {item.label}
+                <LineSheets line={lineOf(item.id)} onOpen={onOpenSheet} />
               </label>
             ),
+          )}
+          {sheets.otherSheets.length > 0 && (
+            <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.85rem' }}>
+              <span>Also changed in {sheets.sets.map((x) => x.label).join(' and ')}</span>
+              {sheets.otherSheets.map((id) => (
+                <SheetChip key={id} id={id} guessed={false} changed onOpen={onOpenSheet} />
+              ))}
+            </div>
           )}
           <label style={{ fontSize: '0.9rem' }}>
             Your number{' '}
             <input type="number" min={0} step={100} value={amount} onChange={(e) => setAmount(e.target.value)} style={{ ...input, width: '9rem' }} />
           </label>
+          <GoodForPicker value={goodFor} onChange={setGoodFor} />
           <input style={input} placeholder="Anything we should know" value={note} onChange={(e) => setNote(e.target.value)} />
+          <AlternatesEditor value={alternates} onChange={setAlternates} />
+          <QuoteFilePicker value={quoteFile} onChange={setQuoteFile} />
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <Btn
               kind="primary"
               disabled={invite.seenRev === null || !(Number(amount) > 0) || unanswered > 0}
               title={invite.seenRev === null ? 'Open the plans first.' : unanswered > 0 ? 'Answer each line first.' : undefined}
               onClick={() => {
-                dispatch({ type: 'tradeSubmitBid', ...ids, amount: Number(amount), includes, note: note.trim() })
+                dispatch({
+                  type: 'tradeSubmitBid',
+                  ...ids,
+                  amount: Number(amount),
+                  includes,
+                  note: note.trim(),
+                  goodForDays: goodFor,
+                  alternates,
+                  ...(quoteFile ? { quoteFile } : {}),
+                })
                 setEditing(false)
               }}
             >
@@ -401,6 +484,9 @@ function BidBlock({
                   setAmount(String(was.amount))
                   setNote(was.note)
                   setIncludes(Object.fromEntries(pkg.scope.map((item) => [item.id, was.includes[item.id] ?? 'yes'])))
+                  setGoodFor(was.goodForDays ?? 30)
+                  setAlternates(was.alternates ?? [])
+                  setQuoteFile(was.quoteFile ?? '')
                   setEditing(false)
                 }}
               >

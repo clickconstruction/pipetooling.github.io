@@ -84,7 +84,7 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
 | **Bill the owner** | Our pay application to the owner, once a month: one line per trade with the work its company reported, then general conditions, contingency and fee, which follow the trades. Done so far, less what the owner holds, less what we asked for before, is this bill. **Send to** the owner keeps it as it went, and next month's starts from it. **So far with** the owner lists what went, with **Mark paid**. A trade our own crew does (plumbing) has a percent-done picker on its line. **Waivers with this bill** says whose waiver is missing. **See what the owner sees** puts their portal beside it: their contract, each bill with every line and **Pay**, and their papers (our lien waivers and the trades'). |
 | **Follow up** (board tab) | Everyone we are waiting on across every project, the ones to call first. Log a contact; record the day they promised a quote; a passed day returns them to the top. |
 | **Trade partners** (board tab) | By trade: the bench, who answers when asked, every project short of quotes, coverage (where they drive from, how far they go), one press to ask the companies not yet asked. **Actions for assistants** on top: each standard as the ideal, where we are, and what closes the gap. |
-| The trade's portal | One link per company, carried by every message we send (**Their messages** beside **Their portal**: the invitation as an email and a text, reminders, new plan sets, bid tabs). The first visit opens on a welcome until **Got it**. The link opens on the company's **home**: what needs them across every project (late or blocking first), their money once a dollar moves, their jobs, what they are asked to bid, their paperwork, and what came before. A row opens that project's page, with **← Everything with Click** back. On a project page: paperwork done by the company itself (read and sign the master agreement, send an insurance certificate, fill in and sign a W-9), the plans window (sets, sheets, whether a set changes their trade), the invitation and the bid form, "tell Click when your number will come" (a passed day shows in red), answer a line the office could not read, confirm a number after an addendum, the bid tab, sign the statement of work, report work, ask for a draw with its pay application (next row). |
+| The trade's portal | One link per company, carried by every message we send (**Their messages** beside **Their portal**: the invitation as an email and a text, reminders, new plan sets, bid tabs). The first visit opens on a welcome until **Got it**. The link opens on the company's **home**: what needs them across every project (late or blocking first), their money once a dollar moves, their jobs, what they are asked to bid, their paperwork, and what came before. A row opens that project's page, with **← Everything with Click** back. On a project page: paperwork done by the company itself (read and sign the master agreement, send an insurance certificate, fill in and sign a W-9), the plans window (sets, sheets, whether a set changes their trade), the invitation and the bid form (each line with its sheet numbers, a tap opens that sheet; after a new set the lines it touches are marked; how many days the number is good for; alternates that add or take off; their own quote attached), "tell Click when your number will come" (a passed day shows in red), answer a line the office could not read (its own short step, the number stays), confirm a number after an addendum, the bid tab, sign the statement of work, report work, ask for a draw with its pay application (next row). |
 | Pay application (from the portal) | **Fill out pay application N**: four steps on a rail like the Release of Lien window (Check your work, Fill in a few details, Sign it, Send it to Click) beside the 702 and 703, which fill in as the trade types and mark what each step fills. The app knows the job, the contract, the lines, what was billed and the retainage; the trade checks the percents, picks the period, types its address once, and signs. Closing the window keeps the draft. |
 | **Closeout** | Each trade's last six steps: every line billed, **Accept the work** (the punch list is done), their warranty letter, their final pay application for the retainage with a conditional waiver on final payment, **Approve the release** and **Mark paid**, their unconditional waiver on final payment. Totals for held, paid back and trades closed out. In the portal the same steps show as the trade's closeout list, ending "You are closed out on this job." |
 
@@ -210,6 +210,14 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
   scope lines; the text says the same in one sentence with the link. A company sees the welcome
   until it presses **Got it**; one that already bid, opened plans or signed the master agreement
   never sees it.
+- The bid form shows a sheet the office did not set (matched from the line's words, `lineSheets`)
+  with a dashed edge, beside the ones it did. Lines are marked against the company's number, or
+  against the set it last opened when it has no number; a company that never opened the plans
+  has nothing marked.
+- A number is good for 30 days unless the company picks 15, 60 or 90; past its last good day it
+  shows as ran out and asks to be sent again. Alternates are the company's own (another way, at a
+  different price); the office does not set alternates every bidder must price. Only the quote
+  file's name is kept.
 
 ## Open questions (the owner's to answer)
 
@@ -236,11 +244,12 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
 13. On the owner's bill, do our general conditions, contingency and fee show as lines of their
     own, or spread into each trade's line so the owner never sees the fee? (Built as lines of
     their own for now. The total is the same either way.)
-14. The bid form is one number with in-or-out lines. Should a trade also give alternates, attach
-    its own quote, and say how many days the number is good for? Each one also needs Compare
-    bids to read it.
-15. Answering a "not clear" line logs as "revised their bid to $205,500" though the price did
-    not change. Should it be a move of its own ("answered: rebar is in their number")?
+14. ~~Should a trade also give alternates, attach its own quote, and say how many days the number
+    is good for?~~ Built on the owner's word (2026-10-02). Still open: Compare bids and Trades do
+    not read them yet (the Board lane's change). Should an alternate the office takes change the
+    number we carry, and should a number that ran out stop counting toward the two quotes?
+15. ~~Should answering a "not clear" line be a move of its own?~~ Built (2026-10-02):
+    `tradeAnswerLines`, logged as "answered on Concrete: Rebar supply is in their number".
 16. Should a trade's retainage wait until the owner releases ours (pay when paid), or for some
     days after we accept the work? Built with no wait.
 17. What papers must a trade turn in before its retainage comes back? Built with a warranty
@@ -255,6 +264,8 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
     Follow up)? The portal records the first visit (`portalOpenedOn`). That is the Board lane's change.
 21. Our own crew reports one percent for the whole trade. Should it report by stage instead
     (underground, rough in, top out, trim), the way the Pipeline runs a plumbing job?
+22. Should a trade see sheets the office did not set (the dashed ones, matched from the line's
+    words), or only the sheets the office set when writing the scope?
 
 ## Workflow steps not built yet
 
@@ -314,11 +325,13 @@ imitates it.
 | `gcBids.ts` · `gcCustomers.ts` · `gcMap.ts` | Compare all in, what we carry, our price, bid tabs, statement-of-work money · the company window's summaries · towns, the drive and the map's list. |
 | `gcFollowUp.ts` · `gcBench.ts` | Promised days, word records, who to call first · the bench by trade and Actions for assistants. |
 | `gcNewProject.ts` · `gcNewProject.test.ts` | New Project: the sheet index read from a paste, the trades guessed from the sheets (a later set uses the same guess, `packagesForSheets`), each trade's usual scope and each line's sheets (`guessLineSheets`, `lineSheets`, `linesOnSheets`), the project made from the draft (`createProject`), trades a later set brings · its kernel test. |
-| `gcPortal.ts` · `gcPortal.test.ts` | What the portal tells one company: its home (every ask sorted into bidding, jobs and before, what needs it in order, its money), plan news for its trade, its promised day, its insurance, the lines the office could not read · its kernel test. |
+| `gcPortal.ts` · `gcPortal.test.ts` | What the portal tells one company: its home (every ask sorted into bidding, jobs and before, what needs it in order, its money), plan news for its trade, its promised day, its insurance, the lines the office could not read, each line's sheets and what a newer set changed (`portalLines`, on `lineReads`) · its kernel test. |
 | `gcReducer.ts` · `gcReducerHelpers.ts` · `gcFixture.ts` | Every action applied to the state · its small helpers (not in the barrel) · the made-up data (`initialGcState`). |
 | `gcModel.test.ts` | The golden test (see *Working in parallel*). |
 | `GcOfficeTabs.tsx` | Trades (with Compare bids), Plans, Our number, Contracts, Draws, the flat company list |
 | `GcTradePortal.tsx` | The trade partner's side: the frame, each trade's plans, bid, bid tab, statement of work and draws |
+| `GcPortalBidExtras.tsx` | The bid form past the number: good for how many days, alternates, the company's own quote, answering the lines the office could not read |
+| `GcPortalLineSheets.tsx` | The sheet numbers beside each line of the bid form, and the lines a new set touches |
 | `GcPortalHome.tsx` · `GcPortalMessages.tsx` | The company's home in its portal, where the link lands, with the first-visit welcome · what we sent the company, each message carrying the link |
 | `GcPortalPaperwork.tsx` · `GcPortalAgreement.tsx` · `GcPortalPlans.tsx` · `GcPortalUi.tsx` | The portal's paperwork block (insurance and W-9 forms) · the master agreement to read and sign · the plans window as a trade sees it · the portal's block, note and window |
 | `GcTradeBench.tsx` | Trade partners by trade, Actions for assistants |

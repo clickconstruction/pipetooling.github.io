@@ -141,6 +141,9 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
         includes: action.includes,
         plugs: invite.bid?.plugs ?? {},
         note: action.note,
+        ...(action.goodForDays ? { goodForDays: action.goodForDays } : {}),
+        ...(action.alternates && action.alternates.length > 0 ? { alternates: action.alternates } : {}),
+        ...(action.quoteFile ? { quoteFile: action.quoteFile } : {}),
       }
       const next = mapProject(state, project.id, (p) =>
         mapPackage(p, pkg.id, (k) =>
@@ -739,6 +742,21 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
         'trade',
         `${partner.company} opened their portal for the first time.`,
       )
+    }
+
+    case 'tradeAnswerLines': {
+      const { pkg, invite, partner } = find(state, action.projectId, action.packageId, action.inviteId)
+      const bid = invite?.bid
+      if (!pkg || !invite || !bid || !partner) return state
+      const answered = pkg.scope.filter((item) => bid.includes[item.id] === 'unclear' && action.answers[item.id] !== undefined)
+      if (answered.length === 0) return state
+      const includes = { ...bid.includes }
+      for (const item of answered) includes[item.id] = action.answers[item.id] ?? 'unclear'
+      const next = mapProject(state, action.projectId, (p) =>
+        mapPackage(p, pkg.id, (k) => mapInvite(k, invite.id, (i) => (i.bid ? { ...i, bid: { ...i.bid, includes } } : i))),
+      )
+      const words = answered.map((item) => `${item.label} is ${includes[item.id] === 'yes' ? 'in their number' : 'left out'}`).join('. ')
+      return logged(next, 'trade', `${partner.company} answered on ${pkg.trade}: ${words}.`)
     }
   }
 }
