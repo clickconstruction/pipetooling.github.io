@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   daysBetween,
+  draftSchedule,
+  gcReducer,
   initialGcState,
   lookAheadWeeks,
   milestoneHitRate,
@@ -90,5 +92,47 @@ describe('Fair Oaks D, mid-build', () => {
     expect(weeks.map((w) => w.weekOf)).toEqual(['2026-09-28', '2026-10-05', '2026-10-12'])
     const thisWeek = weeks[0]?.items.map((i) => `${i.row.activity.lineId}:${i.state}`)
     expect(thisWeek).toEqual(['fsteel-3:waiting', 'froof-1:waiting', 'felec-2:waiting', 'felec-3:unmarked', 'fplumb-3:done', 'fhvac-2:waiting'])
+  })
+})
+
+describe('drawing the schedule', () => {
+  const helotes = (s: GcState) => {
+    const p = s.projects.find((x) => x.id === 'helotes')
+    if (!p) throw new Error('no Helotes')
+    return p
+  }
+
+  it('drafts every line, trades by phase, each line after the one before', () => {
+    const d = draftSchedule(helotes(initialGcState()), '2026-10-12')
+    expect(d.activities.length).toBe(17)
+    expect(d.activities[0]).toMatchObject({ lineId: 'dplumb-1', start: '2026-10-12', finish: '2026-10-21', after: [] })
+    expect(d.activities.find((a) => a.lineId === 'dry-1')?.after).toEqual(['delec-1'])
+    expect(d.milestones.map((m) => [m.label, m.planned])).toEqual([
+      ['Rough-in inspection', '2026-11-02'],
+      ['Substantial completion', '2026-12-25'],
+    ])
+  })
+
+  it('moves an activity; before Start nothing is locked yet', () => {
+    const drawn = gcReducer(initialGcState(), { type: 'draftSchedule', projectId: 'helotes', start: '2026-10-12' })
+    const moved = gcReducer(drawn, { type: 'setScheduleActivity', projectId: 'helotes', lineId: 'dry-1', start: '2026-11-16', finish: '2026-11-25', after: ['delec-1', 'dry-1', 'nope'] })
+    const a = helotes(moved).schedule?.activities.find((x) => x.lineId === 'dry-1')
+    // Itself and an unknown line are dropped from what it waits on.
+    expect(a).toMatchObject({ start: '2026-11-16', finish: '2026-11-25', after: ['delec-1'] })
+    expect(helotes(moved).schedule?.baseline).toBeNull()
+    // A finish before the start is refused; a second draft does not replace a drawn one.
+    expect(gcReducer(moved, { type: 'setScheduleActivity', projectId: 'helotes', lineId: 'dry-1', start: '2026-11-16', finish: '2026-11-10', after: [] })).toBe(moved)
+    expect(gcReducer(moved, { type: 'draftSchedule', projectId: 'helotes', start: '2026-12-01' })).toBe(moved)
+  })
+
+  it('after Start, the first change keeps the plan at Start as the baseline', () => {
+    const started: GcState = { ...initialGcState(), projects: initialGcState().projects.map((p) => (p.id === 'helotes' ? { ...p, stage: 'building' as const, startedOn: '2026-10-02' } : p)) }
+    const drawn = gcReducer(started, { type: 'draftSchedule', projectId: 'helotes', start: '2026-10-12' })
+    const moved = gcReducer(drawn, { type: 'setScheduleActivity', projectId: 'helotes', lineId: 'dry-1', start: '2026-11-16', finish: '2026-11-25', after: ['delec-1'] })
+    const schedule = helotes(moved).schedule
+    expect(schedule?.baseline?.lockedOn).toBe('2026-10-02')
+    expect(schedule?.baseline?.activities['dry-1']).toEqual({ start: '2026-11-11', finish: '2026-11-20' })
+    const row = scheduleRows(moved, helotes(moved)).find((r) => r.activity.lineId === 'dry-1')
+    expect(row?.slipDays).toBe(5)
   })
 })

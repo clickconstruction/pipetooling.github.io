@@ -460,6 +460,10 @@ export type GcAction =
   | { type: 'selfReportStage'; projectId: string; packageId: string; lineId: string; pct: number }
   /** Our own bid in Trades mode is priced: the trade carries a real number from now on. */
   | { type: 'priceOwnBid'; projectId: string; packageId: string; value: number }
+  | { type: 'draftSchedule'; projectId: string; start: string }
+  | { type: 'setScheduleActivity'; projectId: string; lineId: string; start: string; finish: string; after: string[] }
+  | { type: 'setScheduleMilestone'; projectId: string; milestone: ScheduleMilestone }
+  | { type: 'removeScheduleMilestone'; projectId: string; milestoneId: string }
 
 /** One trade on a new project, as the office left it in the New project window. */
 export interface NewTradeDraft {

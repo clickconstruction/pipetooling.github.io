@@ -6988,6 +6988,46 @@ exports[`GC mode golden walk > step 92: Leon Springs: we price our own plumbing 
 }
 `;
 
+exports[`GC mode golden walk > step 93: Draw Helotes’s schedule from Oct 12 1`] = `
+{
+  "changed": {
+    "lastLog.id": 89,
+    "lastLog.text": "Drew a first draft of the schedule on Helotes Dental Office: 19 activities from Mon Oct 12.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 94: Framing waits on electrical: Nov 16 to 25 1`] = `
+{
+  "changed": {
+    "lastLog.id": 90,
+    "lastLog.text": "Framing and drywall · Framing now runs Mon Nov 16 to Wed Nov 25.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 95: A milestone: cabinets set 1`] = `
+{
+  "changed": {
+    "lastLog.id": 91,
+    "lastLog.text": "Cabinets set on Helotes Dental Office is planned for Fri Dec 18.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 96: Take the rough-in inspection off 1`] = `
+{
+  "changed": {
+    "lastLog.id": 92,
+    "lastLog.text": "Took Rough-in inspection off the schedule on Helotes Dental Office.",
+  },
+  "removed": [],
+}
+`;
+
 exports[`GC mode golden walk > the whole state at the end 1`] = `
 {
   "customers": [
@@ -7188,6 +7228,26 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
+      "id": 92,
+      "text": "Took Rough-in inspection off the schedule on Helotes Dental Office.",
+      "who": "office",
+    },
+    {
+      "id": 91,
+      "text": "Cabinets set on Helotes Dental Office is planned for Fri Dec 18.",
+      "who": "office",
+    },
+    {
+      "id": 90,
+      "text": "Framing and drywall · Framing now runs Mon Nov 16 to Wed Nov 25.",
+      "who": "office",
+    },
+    {
+      "id": 89,
+      "text": "Drew a first draft of the schedule on Helotes Dental Office: 19 activities from Mon Oct 12.",
+      "who": "office",
+    },
+    {
       "id": 88,
       "text": "Priced our own bid on Plumbing for Leon Springs Urgent Care: $68,000.",
       "who": "office",
@@ -7315,26 +7375,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
     {
       "id": 63,
       "text": "Accepted the Framing and drywall work from Hill Country Interiors. The punch list is done.",
-      "who": "office",
-    },
-    {
-      "id": 62,
-      "text": "Hill Country Interiors signed the unconditional waiver for draw 3.",
-      "who": "trade",
-    },
-    {
-      "id": 61,
-      "text": "Paid draw 3 on Framing and drywall: $6,750.",
-      "who": "office",
-    },
-    {
-      "id": 60,
-      "text": "Approved draw 3 on Framing and drywall. $6,750 to pay, $750 held.",
-      "who": "office",
-    },
-    {
-      "id": 59,
-      "text": "Issued Bulletin 1 on Helotes Dental Office and emailed 1 company. 1 was told it changes their trade. It adds glass and storefront. Nobody is asked yet.",
       "who": "office",
     },
   ],
@@ -9665,6 +9705,277 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
           "text": "Are the operatory walls full height to the deck?",
         },
       ],
+      "schedule": {
+        "activities": [
+          {
+            "after": [],
+            "finish": "2026-10-21",
+            "lineId": "dplumb-1",
+            "packageId": "dplumb",
+            "start": "2026-10-12",
+          },
+          {
+            "after": [
+              "dplumb-1",
+            ],
+            "finish": "2026-10-31",
+            "lineId": "dplumb-2",
+            "packageId": "dplumb",
+            "start": "2026-10-22",
+          },
+          {
+            "after": [
+              "dplumb-2",
+            ],
+            "finish": "2026-11-10",
+            "lineId": "dplumb-3",
+            "packageId": "dplumb",
+            "start": "2026-11-01",
+          },
+          {
+            "after": [
+              "dplumb-3",
+            ],
+            "finish": "2026-11-20",
+            "lineId": "dplumb-4",
+            "packageId": "dplumb",
+            "start": "2026-11-11",
+          },
+          {
+            "after": [
+              "dplumb-1",
+            ],
+            "finish": "2026-10-31",
+            "lineId": "dhvac-1",
+            "packageId": "dhvac",
+            "start": "2026-10-22",
+          },
+          {
+            "after": [
+              "dhvac-1",
+            ],
+            "finish": "2026-11-10",
+            "lineId": "dhvac-2",
+            "packageId": "dhvac",
+            "start": "2026-11-01",
+          },
+          {
+            "after": [
+              "dhvac-2",
+            ],
+            "finish": "2026-11-20",
+            "lineId": "dhvac-3",
+            "packageId": "dhvac",
+            "start": "2026-11-11",
+          },
+          {
+            "after": [
+              "dhvac-1",
+            ],
+            "finish": "2026-11-10",
+            "lineId": "delec-1",
+            "packageId": "delec",
+            "start": "2026-11-01",
+          },
+          {
+            "after": [
+              "delec-1",
+            ],
+            "finish": "2026-11-20",
+            "lineId": "delec-2",
+            "packageId": "delec",
+            "start": "2026-11-11",
+          },
+          {
+            "after": [
+              "delec-2",
+            ],
+            "finish": "2026-11-30",
+            "lineId": "delec-3",
+            "packageId": "delec",
+            "start": "2026-11-21",
+          },
+          {
+            "after": [
+              "delec-3",
+            ],
+            "finish": "2026-12-10",
+            "lineId": "delec-4",
+            "packageId": "delec",
+            "start": "2026-12-01",
+          },
+          {
+            "after": [
+              "delec-1",
+            ],
+            "finish": "2026-11-25",
+            "lineId": "dry-1",
+            "packageId": "dry",
+            "start": "2026-11-16",
+          },
+          {
+            "after": [
+              "dry-1",
+            ],
+            "finish": "2026-11-30",
+            "lineId": "dry-2",
+            "packageId": "dry",
+            "start": "2026-11-21",
+          },
+          {
+            "after": [
+              "dry-2",
+            ],
+            "finish": "2026-12-10",
+            "lineId": "dry-3",
+            "packageId": "dry",
+            "start": "2026-12-01",
+          },
+          {
+            "after": [
+              "dry-1",
+            ],
+            "finish": "2026-11-30",
+            "lineId": "helotes-glass-and-storefront-1",
+            "packageId": "helotes-glass-and-storefront",
+            "start": "2026-11-21",
+          },
+          {
+            "after": [
+              "helotes-glass-and-storefront-1",
+            ],
+            "finish": "2026-12-10",
+            "lineId": "helotes-glass-and-storefront-2",
+            "packageId": "helotes-glass-and-storefront",
+            "start": "2026-12-01",
+          },
+          {
+            "after": [
+              "helotes-glass-and-storefront-1",
+            ],
+            "finish": "2026-12-10",
+            "lineId": "mill-1",
+            "packageId": "mill",
+            "start": "2026-12-01",
+          },
+          {
+            "after": [
+              "mill-1",
+            ],
+            "finish": "2026-12-20",
+            "lineId": "mill-2",
+            "packageId": "mill",
+            "start": "2026-12-11",
+          },
+          {
+            "after": [
+              "mill-2",
+            ],
+            "finish": "2026-12-30",
+            "lineId": "mill-3",
+            "packageId": "mill",
+            "start": "2026-12-21",
+          },
+        ],
+        "baseline": {
+          "activities": {
+            "delec-1": {
+              "finish": "2026-11-10",
+              "start": "2026-11-01",
+            },
+            "delec-2": {
+              "finish": "2026-11-20",
+              "start": "2026-11-11",
+            },
+            "delec-3": {
+              "finish": "2026-11-30",
+              "start": "2026-11-21",
+            },
+            "delec-4": {
+              "finish": "2026-12-10",
+              "start": "2026-12-01",
+            },
+            "dhvac-1": {
+              "finish": "2026-10-31",
+              "start": "2026-10-22",
+            },
+            "dhvac-2": {
+              "finish": "2026-11-10",
+              "start": "2026-11-01",
+            },
+            "dhvac-3": {
+              "finish": "2026-11-20",
+              "start": "2026-11-11",
+            },
+            "dplumb-1": {
+              "finish": "2026-10-21",
+              "start": "2026-10-12",
+            },
+            "dplumb-2": {
+              "finish": "2026-10-31",
+              "start": "2026-10-22",
+            },
+            "dplumb-3": {
+              "finish": "2026-11-10",
+              "start": "2026-11-01",
+            },
+            "dplumb-4": {
+              "finish": "2026-11-20",
+              "start": "2026-11-11",
+            },
+            "dry-1": {
+              "finish": "2026-11-20",
+              "start": "2026-11-11",
+            },
+            "dry-2": {
+              "finish": "2026-11-30",
+              "start": "2026-11-21",
+            },
+            "dry-3": {
+              "finish": "2026-12-10",
+              "start": "2026-12-01",
+            },
+            "helotes-glass-and-storefront-1": {
+              "finish": "2026-11-30",
+              "start": "2026-11-21",
+            },
+            "helotes-glass-and-storefront-2": {
+              "finish": "2026-12-10",
+              "start": "2026-12-01",
+            },
+            "mill-1": {
+              "finish": "2026-12-10",
+              "start": "2026-12-01",
+            },
+            "mill-2": {
+              "finish": "2026-12-20",
+              "start": "2026-12-11",
+            },
+            "mill-3": {
+              "finish": "2026-12-30",
+              "start": "2026-12-21",
+            },
+          },
+          "lockedOn": "2026-10-02",
+        },
+        "lookAhead": [],
+        "milestones": [
+          {
+            "id": "helotes-substantial",
+            "label": "Substantial completion",
+            "metOn": null,
+            "packageId": null,
+            "planned": "2027-01-04",
+          },
+          {
+            "id": "helotes-ms-cabinets",
+            "label": "Cabinets set",
+            "metOn": null,
+            "packageId": "mill",
+            "planned": "2026-12-18",
+          },
+        ],
+      },
       "sheets": [
         {
           "id": "G-001",

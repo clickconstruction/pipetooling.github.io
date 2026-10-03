@@ -7,7 +7,9 @@
  *
  * Days are calendar days in the prototype. Import from `./gcModel`, which re-exports this file.
  */
-import type { GcProject, GcState, LookAheadMark, ScheduleActivity, ScheduleMilestone, TradePackage } from './gcTypes'
+import type { GcProject, GcState, LookAheadMark, ProjectSchedule, ScheduleActivity, ScheduleMilestone, TradePackage } from './gcTypes'
+import { carriedAmount } from './gcBids'
+import { tradeOrder } from './gcNewProject'
 import { partnerById } from './gcLookups'
 import { addDays, crewStages, sentBackOpen } from './gcBuilding'
 
@@ -62,7 +64,11 @@ export interface ScheduleRow {
   slipDays: number
 }
 
-/** A line's name, worth and percent done, whether a hired trade's or our own crew's stage. */
+/**
+ * A line's name, worth and percent done, whether a hired trade's or our own crew's stage. Before a
+ * trade has a statement of work (while buying out), its scope lines stand in, each an even share
+ * of the number we carry. A schedule-of-values line keeps its scope line's id, so the two match.
+ */
 function lineOf(pkg: TradePackage, lineId: string): { label: string; worth: number; actual: number } | null {
   const self = pkg.selfPerform
   if (self) {
@@ -71,10 +77,100 @@ function lineOf(pkg: TradePackage, lineId: string): { label: string; worth: numb
     return { label: stage.label, worth: (self.value * stage.weight) / 100, actual: self.pctByLine?.[lineId] ?? self.pctDone ?? 0 }
   }
   const sow = pkg.sow
-  const line = sow?.sov.find((l) => l.id === lineId)
-  if (!sow || !line) return null
+  if (!sow) {
+    const item = pkg.scope.find((l) => l.id === lineId)
+    if (!item) return null
+    return { label: item.label, worth: (carriedAmount(pkg) ?? pkg.budget) / Math.max(1, pkg.scope.length), actual: 0 }
+  }
+  const line = sow.sov.find((l) => l.id === lineId)
+  if (!line) return null
   const weSee = sentBackOpen(sow)?.lines.find((l) => l.sovId === lineId)?.weSee
   return { label: line.label, worth: line.amount, actual: weSee ?? line.pctReported }
+}
+
+/** The lines a trade's activities are drawn from: its schedule of values, or its scope before one. */
+export function scheduleLinesOf(pkg: TradePackage): { lineId: string; label: string }[] {
+  if (pkg.sow && !pkg.selfPerform) return pkg.sow.sov.map((l) => ({ lineId: l.id, label: l.label }))
+  return pkg.scope.map((l) => ({ lineId: l.id, label: l.label }))
+}
+
+/** How long a drawn activity runs in the first draft, in days. My default; the office changes each one. */
+export const DRAFT_ACTIVITY_DAYS = 10
+
+/**
+ * The order trades build in, by phase, for the first draft: site, structure, roof, the rough-ins,
+ * the walls, the finishes. My stand-in; a trade not on it goes after, in the New Project lane's order.
+ */
+export const DRAFT_BUILD_ORDER = [
+  'Sitework',
+  'Concrete',
+  'Masonry',
+  'Structural steel',
+  'Roofing',
+  'Fire sprinkler',
+  'Plumbing',
+  'HVAC',
+  'Electrical',
+  'Framing and drywall',
+  'Glass and storefront',
+  'Doors and hardware',
+  'Millwork',
+  'Painting',
+  'Flooring',
+  'Landscaping',
+]
+
+function draftOrder(trade: string): number {
+  const i = DRAFT_BUILD_ORDER.indexOf(trade)
+  return i === -1 ? DRAFT_BUILD_ORDER.length + tradeOrder(trade) : i
+}
+
+/**
+ * A first draft to draw from (the Building lane's stand-in until the New Project lane's draft from
+ * the build order): every line of every trade, trades in build order (`DRAFT_BUILD_ORDER`), each line
+ * after the one before it in its trade, each trade's first line after the previous trade's first.
+ * Every activity runs DRAFT_ACTIVITY_DAYS. Milestones: dry-in, rough-in inspection, substantial completion.
+ */
+export function draftSchedule(project: GcProject, start: string): ProjectSchedule {
+  const trades = [...project.packages].sort((a, b) => draftOrder(a.trade) - draftOrder(b.trade))
+  const activities: ScheduleActivity[] = []
+  let prevTradeFirst: ScheduleActivity | null = null
+  for (const pkg of trades) {
+    let prev: ScheduleActivity | null = null
+    for (const line of scheduleLinesOf(pkg)) {
+      const waits = prev ? [prev] : prevTradeFirst ? [prevTradeFirst] : []
+      const from = waits.length > 0 ? addDays(waits[0]?.finish ?? start, 1) : start
+      const a: ScheduleActivity = { lineId: line.lineId, packageId: pkg.id, start: from, finish: addDays(from, DRAFT_ACTIVITY_DAYS - 1), after: waits.map((w) => w.lineId) }
+      activities.push(a)
+      if (!prev) prevTradeFirst = a
+      prev = a
+    }
+  }
+  const last = activities.reduce((m, a) => (a.finish > m ? a.finish : m), start)
+  const roof = project.packages.find((k) => /roof/i.test(k.trade))
+  const roofLast = activities.filter((a) => a.packageId === roof?.id).reduce((m, a) => (a.finish > m ? a.finish : m), '')
+  // The inspection follows the last line named "Rough in" ("Low voltage rough" is not one).
+  const roughs = activities.filter((a) => /^rough/i.test(scheduleLinesOf(project.packages.find((k) => k.id === a.packageId) as TradePackage).find((l) => l.lineId === a.lineId)?.label ?? ''))
+  const roughLast = roughs.reduce((m, a) => (a.finish > m ? a.finish : m), '')
+  const milestones: ScheduleMilestone[] = [
+    ...(roofLast ? [{ id: `${project.id}-dryin`, label: 'Dry-in', planned: roofLast, packageId: roof?.id ?? null, metOn: null }] : []),
+    ...(roughLast ? [{ id: `${project.id}-roughin`, label: 'Rough-in inspection', planned: addDays(roughLast, 2), packageId: null, metOn: null }] : []),
+    { id: `${project.id}-substantial`, label: 'Substantial completion', planned: addDays(last, 5), packageId: null, metOn: null },
+  ]
+  return { activities, milestones, baseline: null, lookAhead: [] }
+}
+
+/**
+ * The plan at Start, kept as the baseline (owner: Start locks it). The Board lane's Start does not
+ * touch the schedule, so the first change after Start keeps the plan as it stood: until a change,
+ * the plan is the plan at Start.
+ */
+export function withBaselineKept(project: GcProject, schedule: ProjectSchedule): ProjectSchedule {
+  if (!project.startedOn || schedule.baseline) return schedule
+  return {
+    ...schedule,
+    baseline: { lockedOn: project.startedOn, activities: Object.fromEntries(schedule.activities.map((a) => [a.lineId, { start: a.start, finish: a.finish }])) },
+  }
 }
 
 function companyOf(state: GcState, pkg: TradePackage): string {
