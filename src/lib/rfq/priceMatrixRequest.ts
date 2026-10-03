@@ -11,6 +11,7 @@
  */
 
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
+import { toDatetimeLocal } from '../../utils/datetimeLocal'
 import type { DeskRfq, RfqChip } from './rfqDesk'
 import { deriveRfqChip } from './rfqDesk'
 
@@ -188,7 +189,8 @@ export function buildPricerRequestPrompt(
   const num = bid.bid_number ? `b${bid.bid_number}` : 'this bid'
   const name = bid.project_name?.trim() || 'the project'
   const who = requesterName ? ` asked by ${requesterName}` : ''
-  const when = request.requested_at.slice(0, 16).replace('T', ' ')
+  // The office's clock (APP_CALENDAR_TZ), not the stamp's UTC wall time.
+  const when = toDatetimeLocal(request.requested_at).replace('T', ' ')
   const rows = request.scope.length
   const houses = request.sources.map((s) => s.house_name)
   const houseList = houses.length ? houses.join(', ') : 'no linked quotes yet'

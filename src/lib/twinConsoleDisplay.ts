@@ -7,6 +7,7 @@
  * note formats are written by TWO edge functions (twin-login, twin-mcp) and the
  * panel must keep up with both.
  */
+import { calendarYmdInAppTzFromIso } from '../utils/dateUtils'
 
 export type TwinRunVerb = 'sign-in' | 'report' | 'run' | 'heartbeat'
 
@@ -72,7 +73,7 @@ export function relativeTimeFrom(iso: string, nowMs: number): string {
   if (s < 86400) return `${Math.floor(s / 3600)}h ago`
   if (s < 172800) return 'yesterday'
   if (s < 14 * 86400) return `${Math.floor(s / 86400)}d ago`
-  return iso.slice(0, 10)
+  return calendarYmdInAppTzFromIso(iso)
 }
 
 export type TwinSeatKind = 'estimator' | 'pricer'

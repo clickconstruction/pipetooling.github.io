@@ -58,7 +58,7 @@ describe('relativeTimeFrom', () => {
     ['2026-08-28T09:00:00Z', '3h ago'],
     ['2026-08-27T05:00:00Z', 'yesterday'],
     ['2026-08-24T12:00:00Z', '4d ago'],
-    ['2026-08-01T00:00:00Z', '2026-08-01'],
+    ['2026-08-01T12:00:00Z', '2026-08-01'],
   ])('%s → %s', (iso, want) => {
     expect(relativeTimeFrom(iso, now)).toBe(want)
   })
@@ -97,5 +97,14 @@ describe('describeTwinRun — heartbeat rows (v2.2483)', () => {
   it('blocked state surfaces as the mission', () => {
     const d = describeTwinRun('heartbeat', 'heartbeat stage=STG-2 state=blocked waiting on scale answer', undefined)
     expect(d.mission).toBe('blocked')
+  })
+})
+
+describe('relativeTimeFrom · an old evening stamp keeps its day (v2.4476)', () => {
+  it('reads the Central day once it is two weeks old', () => {
+    const now = Date.parse('2026-08-28T12:00:00Z')
+    // 00:30 UTC on Aug 2 is 7:30 pm CDT on Aug 1.
+    expect(relativeTimeFrom('2026-08-02T00:30:00Z', now)).toBe('2026-08-01')
+    expect(relativeTimeFrom('2026-08-02T12:00:00Z', now)).toBe('2026-08-02')
   })
 })
