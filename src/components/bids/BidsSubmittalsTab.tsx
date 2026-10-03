@@ -75,7 +75,7 @@ import { loadBidOrderFacts, loadPartOrderWords, loadRowOrderFacts, rememberLeftO
 import { planRowsAdded, planSummary, type TakeoffPlan } from '../../lib/submittals/takeoffPicks'
 import { SubmittalOrderOnlyRows } from './SubmittalOrderOnlyRows'
 import { SubmittalTakeOffDialog } from './SubmittalTakeOffDialog'
-import { DECISION_LABELS, decisionsAsText, describeDecisions, itemsSentBack, summarizeDecisions } from '../../lib/submittals/reviewDecisions'
+import { DECISION_LABELS, decisionsAsText, describeDecisions, resubmitConfirm, resubmitLabel, resubmitSplit, summarizeDecisions } from '../../lib/submittals/reviewDecisions'
 import { describeEnteredCount, describeReviewerFile, parseReviewerFiles, reviewerFileKind, reviewerFilePath, serializeReviewerFiles, type ReviewerFile } from '../../lib/submittals/reviewerFiles'
 import { CLEAR_DECISION_PATCH, enteredDecisionAt, enteredDecisionPatch, enteredEntryBody, enteredSuffix, rowsToApproveAll } from '../../lib/submittals/enteredDecisions'
 import { matchRoomPerson, type ReviewerChoice, type ReviewerSources } from '../../lib/submittals/reviewerPick'
@@ -997,21 +997,24 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     const onNewest = newestRev.id === selectedRev?.id
     const previous = onNewest ? items : await loadItems(newestRev.id)
     const previousParts = onNewest ? partsOf : partsByItem(await loadItemParts(db, previous.map((p) => p.id)))
-    const sentBack = itemsSentBack(previous)
+    // 2026-10-03 · only an approved row stays behind. A row sent back goes on to be fixed; a row nobody answered goes on to keep waiting.
+    const split = resubmitSplit(gcRows(previous))
+    const goOn = [...split.sentBack, ...split.noAnswer]
     const preview = buildSubmittalRows({ specified, picks, previous: previous.map(itemToPrevious), overrides: overridesByTag })
     // 2026-10-02 · an order-only row was never the reviewer's to send back: it carries either way, so it stays on the log.
-    const kept = onlySentBack ? preview.filter((r) => r.orderOnly || sentBack.some((it) => (r.tag.trim() ? it.tag === r.tag : it.submitted_label === r.submittedLabel))) : preview
+    const kept = onlySentBack ? preview.filter((r) => r.orderOnly || goOn.some((it) => (r.tag.trim() ? it.tag === r.tag : it.submitted_label === r.submittedLabel))) : preview
     // 2026-10-01 · the rows the picks do not rebuild (from the takeoff, typed by hand) carry as they stand.
     const carried = rowsToCarry(previous, preview)
-    const carriedKept = onlySentBack ? carried.filter((it) => isOrderOnlyRow(it) || sentBack.some((sb) => sb.id === it.id)) : carried
+    const carriedKept = onlySentBack ? carried.filter((it) => isOrderOnlyRow(it) || goOn.some((x) => x.id === it.id)) : carried
     const total = kept.length + carriedKept.length
     const fromPicks = specified.length > 0 || picks.length > 0
+    const resubmit = resubmitConfirm(newestRev.rev_number, { sentBack: split.sentBack.length, noAnswer: split.noAnswer.length, approved: split.approved.length, orderOnly: orderOnlyRows(previous).length, total })
     const ok = await confirm({
-      title: onlySentBack ? `Rev ${newestRev.rev_number + 1} from the ${sentBack.length} row${sentBack.length === 1 ? '' : 's'} sent back` : fromPicks ? `Rev ${newestRev.rev_number + 1} from today's picks` : `Rev ${newestRev.rev_number + 1} from Rev ${newestRev.rev_number}`,
+      title: onlySentBack ? resubmit.title : fromPicks ? `Rev ${newestRev.rev_number + 1} from today's picks` : `Rev ${newestRev.rev_number + 1} from Rev ${newestRev.rev_number}`,
       message: onlySentBack
-        ? `Only the rows the reviewer marked Revise or Reject on Rev ${newestRev.rev_number} carry into the new draft — ${total} row${total === 1 ? '' : 's'}. The rest stand as approved on Rev ${newestRev.rev_number} and stay on the procurement log.`
+        ? resubmit.message
         : `${preview.length > 0 ? `${summarizeChanges(preview)} against Rev ${newestRev.rev_number}. ` : ''}${carried.length > 0 ? `${carried.length} row${carried.length === 1 ? '' : 's'} from the takeoff or typed by hand carry as ${carried.length === 1 ? 'it stands' : 'they stand'}, with ${carried.length === 1 ? 'its' : 'their'} parts. ` : ''}Sheets, reasons and lead times carry where the product is unchanged.${asRevisionStatus(newestRev.status) === 'draft' ? ` Rev ${newestRev.rev_number} was never shared and will read superseded.` : ''}`,
-      confirmLabel: `Build Rev ${newestRev.rev_number + 1}`,
+      confirmLabel: onlySentBack ? resubmit.confirmLabel : `Build Rev ${newestRev.rev_number + 1}`,
     })
     if (!ok) return
     setBusy(true)
@@ -1029,7 +1032,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       if (inserts.length > 0) {
         const { data: made, error: insErr } = await db.from('bid_submittal_items').insert(inserts).select('id, carried_from_item_id, submitted_label')
         if (insErr) throw insErr
-        // A resubmit of the rows sent back: the parts the GC approved stand; only the parts sent back are asked again.
+        // A resubmit: the parts the GC approved stand; the parts sent back, and the parts with no answer, are asked again.
         await carryPartsOnto((made ?? []) as Array<{ id: string; carried_from_item_id: string | null; submitted_label: string | null }>, previous, previousParts, onlySentBack)
       }
       if (asRevisionStatus(newestRev.status) === 'draft') {
@@ -2764,11 +2767,11 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
 
               {/* 7 · Resubmit */}
               <RoadSection n={7} about={SUBMITTAL_STAGE_ABOUT[7]} onHelp={() => startWalkThrough(7)} title="Resubmit" status={stageStatus('resubmit')} open={sectionOpen('resubmit')} onToggle={() => toggleSection('resubmit')} onJump={() => jumpToSection('resubmit')} anchor="submittals-resubmit-section"
-                summary={isNewest && decisions.sentBack > 0 ? `${decisions.sentBack} row${decisions.sentBack === 1 ? '' : 's'} sent back — start Rev ${selectedRev.rev_number + 1} with just ${decisions.sentBack === 1 ? 'that row' : 'those rows'}` : previousRev ? `Rev ${selectedRev.rev_number} carries what Rev ${previousRev.rev_number} sent back` : 'nothing sent back'}>
+                summary={isNewest && decisions.sentBack > 0 ? (decisions.noAnswer > 0 ? `${decisions.sentBack} row${decisions.sentBack === 1 ? '' : 's'} sent back · ${decisions.noAnswer} with no answer go on Rev ${selectedRev.rev_number + 1} too` : `${decisions.sentBack} row${decisions.sentBack === 1 ? '' : 's'} sent back — start Rev ${selectedRev.rev_number + 1} with just ${decisions.sentBack === 1 ? 'that row' : 'those rows'}`) : previousRev ? `Rev ${selectedRev.rev_number} carries what Rev ${previousRev.rev_number} sent back` : 'nothing sent back'}>
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
                   {isNewest && decisions.sentBack > 0 ? (
-                    <button type="button" disabled={busy} onClick={() => void newRevision(true)} style={btnGreen} title="A new version with only the rows marked Revise or Reject" data-tour="submittals-resubmit">
-                      Rev {selectedRev.rev_number + 1} from the {decisions.sentBack} row{decisions.sentBack === 1 ? '' : 's'} sent back
+                    <button type="button" disabled={busy} onClick={() => void newRevision(true)} style={btnGreen} title={decisions.noAnswer > 0 ? 'A new version with the rows sent back and the rows with no answer yet. Approved rows stay where they are' : 'A new version with only the rows marked Revise or Reject'} data-tour="submittals-resubmit" data-testid="resubmit-sent-back">
+                      {resubmitLabel(selectedRev.rev_number + 1, decisions.sentBack, decisions.noAnswer)}
                     </button>
                   ) : null}
                   <button type="button" disabled={busy || !isNewest || !gates.resubmit.on} onClick={() => void newRevision()} style={{ ...(decisions.sentBack > 0 || !isNewest || !gates.resubmit.on ? btn : btnGreen), opacity: !isNewest || !gates.resubmit.on ? 0.5 : 1 }} data-testid="new-revision" title={isNewest ? 'Carry every row into a new draft and mark what changed' : 'Only the newest revision can be revised'} data-tour={isNewest && decisions.sentBack > 0 ? undefined : 'submittals-resubmit'}>

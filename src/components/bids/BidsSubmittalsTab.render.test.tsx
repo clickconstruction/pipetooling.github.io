@@ -1307,8 +1307,8 @@ describe('BidsSubmittalsTab', () => {
       await waitFor(() => expect(screen.getAllByTestId('procurement-row')).toHaveLength(2))
       fireEvent.click(screen.getAllByRole('button', { name: 'Rev 2 from the 1 row sent back' })[0]!)
       const confirmDialog = await screen.findByRole('alertdialog')
-      expect(confirmDialog.textContent).toMatch(/The rest stand as approved on Rev 1/)
-      fireEvent.click(within(confirmDialog).getByRole('button', { name: 'Build Rev 2' }))
+      expect(confirmDialog.textContent).toMatch(/1 row was approved\. It stays on Rev 1 and on the procurement log\./)
+      fireEvent.click(within(confirmDialog).getByRole('button', { name: 'Build Rev 2 with 1 row' }))
       await waitFor(() => expect(screen.getAllByTestId('revision-chip')).toHaveLength(2))
       // Rev 2 holds the one row sent back …
       expect(state.items.filter((r) => r.submittal_id === 'rev-2').map((r) => r.tag)).toEqual(['DWH-1'])
@@ -1327,6 +1327,35 @@ describe('BidsSubmittalsTab', () => {
       state.procRecords = []
       state.noSources = false
       localStorage.removeItem('submittals_procure_lens')
+    }
+  })
+  it('2026-10-03 · a resubmit carries the rows nobody answered beside the row sent back; only the approved row stays on Rev 1', async () => {
+    // BP375's shape: answers typed on a draft, one row sent back, one approved, two with no answer (one of them with no product).
+    state.revisions = [{ id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'draft', title: 'Plumbing fixtures & equipment', note: null, package_path: null, source_files: [], shared_at: null, created_at: '2026-09-29T00:00:00Z' }]
+    state.items = [
+      item({ id: 'it-1', tag: 'WC-1', sequence_order: 1, submitted_label: 'TOTO CT728CUVG#01', status: 'proposed', review_decision: 'approved', reviewed_at: '2026-10-02T15:00:00Z', reviewed_by_name: 'structura' }),
+      item({ id: 'it-2', tag: 'LAV-1', sequence_order: 2, submitted_label: 'TOTO T25S51E#CP', status: 'proposed', review_decision: 'rejected', review_note: 'TEL145', reviewed_at: '2026-10-02T15:00:00Z', reviewed_by_name: 'structura' }),
+      item({ id: 'it-3', tag: 'FCO', sequence_order: 3, submitted_label: 'ZURN ZN1400-2NL', status: 'proposed' }),
+      item({ id: 'it-4', tag: 'UTILITY SINK', sequence_order: 4, submitted_label: null, status: 'missing' }),
+    ]
+    state.writes = []
+    state.parts = []
+    state.tasks = []
+    state.noSources = true
+    try {
+      mount()
+      // On a draft the step is still folded: the strip reads answers only on a shared revision.
+      fireEvent.click(await screen.findByRole('button', { name: 'Unfold step 7' }))
+      const button = await screen.findByTestId('resubmit-sent-back')
+      expect(button.textContent).toBe('Rev 2 from the 1 row sent back and the 2 with no answer')
+      fireEvent.click(button)
+      const confirmDialog = await screen.findByRole('alertdialog')
+      expect(confirmDialog.textContent).toContain('1 row was sent back. It goes on Rev 2 so you can fix it. 2 rows have no answer yet. They go on Rev 2 too and keep waiting. 1 row was approved. It stays on Rev 1 and on the procurement log.')
+      fireEvent.click(within(confirmDialog).getByRole('button', { name: 'Build Rev 2 with 3 rows' }))
+      await waitFor(() => expect(screen.getAllByTestId('revision-chip')).toHaveLength(2))
+      expect(state.items.filter((r) => r.submittal_id === 'rev-2').map((r) => r.tag)).toEqual(['LAV-1', 'FCO', 'UTILITY SINK'])
+    } finally {
+      state.noSources = false
     }
   })
 })

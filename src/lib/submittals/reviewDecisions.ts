@@ -8,11 +8,11 @@ import { asDecision, formatShortDate, type ReviewDecision } from './submittalRev
 
 export const DECISION_LABELS: Record<ReviewDecision, string> = { approved: 'Approved', revise: 'Revise', rejected: 'Rejected' }
 
-export type DecisionSummary = { decided: number; approved: number; revise: number; rejected: number; open: number; sentBack: number; byName: string[]; /** rows the office entered on a reviewer's behalf (5b) */ entered: number; enteredBy: string[] }
+export type DecisionSummary = { decided: number; approved: number; revise: number; rejected: number; open: number; /** rows with no answer at all, whatever their status: what a resubmit carries beside the rows sent back */ noAnswer: number; sentBack: number; byName: string[]; /** rows the office entered on a reviewer's behalf (5b) */ entered: number; enteredBy: string[] }
 
 /** Open counts the rows that differ from the schedule and carry no decision — the ones a reviewer is asked about. */
 export function summarizeDecisions(items: ReadonlyArray<Pick<SubmittalItemRow, 'status' | 'review_decision' | 'reviewed_by_name'> & { decision_source?: string | null; decision_entered_by_name?: string | null }>): DecisionSummary {
-  const s: DecisionSummary = { decided: 0, approved: 0, revise: 0, rejected: 0, open: 0, sentBack: 0, byName: [], entered: 0, enteredBy: [] }
+  const s: DecisionSummary = { decided: 0, approved: 0, revise: 0, rejected: 0, open: 0, noAnswer: 0, sentBack: 0, byName: [], entered: 0, enteredBy: [] }
   for (const it of items) {
     const d = asDecision(it.review_decision)
     if (d) {
@@ -26,7 +26,10 @@ export function summarizeDecisions(items: ReadonlyArray<Pick<SubmittalItemRow, '
         const e = (it.decision_entered_by_name ?? '').trim() || 'the office'
         if (!s.enteredBy.includes(e)) s.enteredBy.push(e)
       }
-    } else if (it.status !== 'as_specified' && it.status !== 'missing' && it.status !== 'accessory') s.open += 1
+    } else {
+      s.noAnswer += 1
+      if (it.status !== 'as_specified' && it.status !== 'missing' && it.status !== 'accessory') s.open += 1
+    }
   }
   return s
 }
@@ -62,12 +65,53 @@ function formatShortDateTz(iso: string | null, tz: string): string {
   return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: tz })
 }
 
-/** Rows a next revision should carry when it answers only what was sent back. */
+/** Rows the reviewer sent back: Revise or Reject. */
 export function itemsSentBack<T extends Pick<SubmittalItemRow, 'review_decision'>>(items: ReadonlyArray<T>): T[] {
   return items.filter((it) => {
     const d = asDecision(it.review_decision)
     return d === 'revise' || d === 'rejected'
   })
+}
+
+/**
+ * How a revision's rows split when the next one answers what was sent back (2026-10-03). Only an
+ * approved row stays behind: it stands on its revision and on the procurement log. A row sent back
+ * goes on to be fixed, and a row with no answer goes on to keep waiting. Before this the resubmit
+ * carried the rows sent back alone and called the rest approved: on BP375, four rows sent back
+ * would have dropped nine rows nobody had answered, off the draft and off the log.
+ */
+export type ResubmitSplit<T> = { sentBack: T[]; noAnswer: T[]; approved: T[] }
+
+export function resubmitSplit<T extends Pick<SubmittalItemRow, 'review_decision'>>(items: ReadonlyArray<T>): ResubmitSplit<T> {
+  const split: ResubmitSplit<T> = { sentBack: [], noAnswer: [], approved: [] }
+  for (const it of items) {
+    const d = asDecision(it.review_decision)
+    if (d === 'approved') split.approved.push(it)
+    else if (d) split.sentBack.push(it)
+    else split.noAnswer.push(it)
+  }
+  return split
+}
+
+const rowsWord = (n: number) => `${n} row${n === 1 ? '' : 's'}`
+
+/** The resubmit button: "Rev 2 from the 4 rows sent back", and "… and the 9 with no answer" when some still wait. */
+export function resubmitLabel(nextRev: number, sentBack: number, noAnswer = 0): string {
+  return `Rev ${nextRev} from the ${rowsWord(sentBack)} sent back${noAnswer > 0 ? ` and the ${noAnswer} with no answer` : ''}`
+}
+
+/**
+ * The question before the resubmit is built: every kind of row, counted, and where it goes.
+ * `total` is the rows the new draft will hold, order-only rows included.
+ */
+export function resubmitConfirm(rev: number, c: { sentBack: number; noAnswer: number; approved: number; orderOnly?: number; total: number }): { title: string; message: string; confirmLabel: string } {
+  const next = rev + 1
+  const one = (n: number, single: string, many: string) => (n === 1 ? single : many)
+  const lines = [`${rowsWord(c.sentBack)} ${one(c.sentBack, 'was', 'were')} sent back. ${one(c.sentBack, 'It goes', 'They go')} on Rev ${next} so you can fix ${one(c.sentBack, 'it', 'them')}.`]
+  if (c.noAnswer > 0) lines.push(`${rowsWord(c.noAnswer)} ${one(c.noAnswer, 'has', 'have')} no answer yet. ${one(c.noAnswer, 'It goes', 'They go')} on Rev ${next} too and ${one(c.noAnswer, 'keeps', 'keep')} waiting.`)
+  lines.push(c.approved > 0 ? `${rowsWord(c.approved)} ${one(c.approved, 'was', 'were')} approved. ${one(c.approved, 'It stays', 'They stay')} on Rev ${rev} and on the procurement log.` : `No row was approved on Rev ${rev}.`)
+  if ((c.orderOnly ?? 0) > 0) lines.push(`${rowsWord(c.orderOnly ?? 0)} you buy without the GC ${one(c.orderOnly ?? 0, 'goes', 'go')} on Rev ${next} too.`)
+  return { title: resubmitLabel(next, c.sentBack, c.noAnswer), message: lines.join(' '), confirmLabel: `Build Rev ${next} with ${rowsWord(c.total)}` }
 }
 
 export { formatShortDate }
