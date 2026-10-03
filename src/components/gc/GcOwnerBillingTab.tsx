@@ -13,7 +13,9 @@ import {
   ownerPayApp,
   ownerPayAppHasWork,
   ownerPayAppsSent,
+  markupOnTop,
   shortDate,
+  spreadMarkup,
   tradesOwingUnconditional,
   tradeWaiverChecks,
   weekdayDate,
@@ -68,10 +70,10 @@ function OfficeSide({ state, project, dispatch }: { state: GcState; project: GcP
   const sent = ownerPayAppsSent(project)
   const account = ownerAccount(project)
   const hasWork = ownerPayAppHasWork(app)
-  const trades = app.lines.filter((l) => l.kind === 'trade' || l.kind === 'self')
-  const ours = app.lines.filter((l) => l.kind !== 'trade' && l.kind !== 'self')
   const donePct = app.contract === 0 ? 0 : Math.round((app.doneToDate / app.contract) * 100)
   const doneBefore = app.lines.reduce((s, l) => s + l.doneBefore, 0)
+  // Owner's call (2026-10-02): our costs and fee are spread into the trades' lines, no line of their own.
+  const shownTrades = spreadMarkup(app.lines)
   const checks = tradeWaiverChecks(state, project, Object.fromEntries(app.lines.map((l) => [l.id, l.doneToDate])))
   const missing = missingTradeWaivers(checks)
   const owing = tradesOwingUnconditional(checks)
@@ -81,8 +83,9 @@ function OfficeSide({ state, project, dispatch }: { state: GcState; project: GcP
     <div style={{ display: 'grid', gap: '1rem' }}>
       <Why>
         Once a month we bill {project.owner} for the work done so far. Each trade&rsquo;s line is the work its company
-        reported. Our own costs and fee follow the trades. {project.owner} holds {app.retainagePct}% of every bill until
-        the end.
+        reported. Each trade&rsquo;s line also carries its share of our costs and fee,{' '}
+        {(Math.round(markupOnTop(app.lines) * 1000) / 10).toLocaleString('en-US')}% on top of its price. {project.owner} holds{' '}
+        {app.retainagePct}% of every bill until the end.
       </Why>
 
       {!app.started && (
@@ -212,10 +215,11 @@ function OfficeSide({ state, project, dispatch }: { state: GcState; project: GcP
             </tr>
           </thead>
           <tbody>
-            {trades.map((l) => (
+            {shownTrades.map((l) => (
               <LineRow
                 key={l.id}
                 line={l}
+                spreadWords={`${l.kind === 'self' ? 'Our crew’s price' : 'Their price'} ${money(l.tradeWorth)} plus ${money(l.ourShare)} of our costs and fee.`}
                 pipelineRef={project.packages.find((p) => p.id === l.id)?.selfPerform?.ref}
                 onCrewPct={
                   l.kind === 'self'
@@ -223,12 +227,6 @@ function OfficeSide({ state, project, dispatch }: { state: GcState; project: GcP
                     : undefined
                 }
               />
-            ))}
-            <tr>
-              <td colSpan={7} style={{ ...th, paddingTop: '0.8rem' }}>Our own costs and fee</td>
-            </tr>
-            {ours.map((l) => (
-              <LineRow key={l.id} line={l} />
             ))}
             <tr>
               <td style={{ ...td, fontWeight: 700 }}>Total</td>
@@ -252,8 +250,11 @@ function LineRow({
   line,
   pipelineRef,
   onCrewPct,
+  spreadWords,
 }: {
   line: OwnerLine
+  /** With our costs and fee spread in: what the trade's price is and what we added to it. */
+  spreadWords?: string
   /** The Pipeline job our own crew runs this trade on. */
   pipelineRef?: string
   /** Our own crew reports its percent done here. Only on a trade we do ourselves. */
@@ -268,6 +269,7 @@ function LineRow({
       <td style={{ ...td, fontWeight: 600, whiteSpace: 'nowrap' }}>{line.label}</td>
       <td style={{ ...td, color: quiet ? 'var(--text-muted)' : undefined }}>
         {line.source}
+        {spreadWords && <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '0.15rem' }}>{spreadWords}</div>}
         {onCrewPct && (
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '0.3rem' }}>
             <select
@@ -407,3 +409,4 @@ function CloseoutCard({ project, closeout, onSendFinal }: { project: GcProject; 
     </Card>
   )
 }
+
