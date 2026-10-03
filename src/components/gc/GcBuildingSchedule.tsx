@@ -8,6 +8,8 @@ import {
   mondayOf,
   RELIABILITY_WEEKS,
   scheduleMeasures,
+  scheduleSummary,
+  scheduleSummaryWords,
   shortDate,
   verifyList,
   type GcAction,
@@ -732,5 +734,47 @@ function VerifyLine({
         )}
       </div>
     </div>
+  )
+}
+
+// ---------------------------------------------------------------------------------------------
+// The board row
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * A won job's block on the Project Board, once its schedule is drawn (owner, 2026-10-03: the row
+ * shows the schedule's measures on Building): days behind or ahead in the big number, then the
+ * milestones hit and the look-ahead. The sentences behind it are on hover. Null: no schedule, so
+ * the board keeps its own block.
+ */
+export function GcBuildingScheduleBlock({ project, today, box }: { project: GcProject; today: string; box: CSSProperties }) {
+  const sum = scheduleSummary(project, today)
+  if (!sum) return null
+  const d = sum.daysBehind
+  const tone =
+    d > 7
+      ? { bg: 'var(--bg-red-100)', fg: 'var(--text-red-800)' }
+      : d > 0
+        ? { bg: 'var(--bg-amber-100)', fg: 'var(--text-amber-800)' }
+        : { bg: 'var(--bg-green-100)', fg: 'var(--text-green-800)' }
+  const late = sum.milestones.late.length > 0
+  const small: CSSProperties = { fontSize: '0.68rem', whiteSpace: 'nowrap' }
+  return (
+    <span style={{ ...box, background: tone.bg, color: tone.fg, textAlign: 'center' }} title={scheduleSummaryWords(sum)} aria-label={scheduleSummaryWords(sum)}>
+      {d === 0 ? (
+        <span style={{ fontSize: '0.95rem', fontWeight: 800, letterSpacing: '0.02em' }}>ON PLAN</span>
+      ) : (
+        <>
+          <span style={{ fontSize: '1.35rem', fontWeight: 800 }}>{Math.abs(d)}</span>
+          <span style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+            {Math.abs(d) === 1 ? 'day' : 'days'} {d > 0 ? 'behind' : 'ahead'}
+          </span>
+        </>
+      )}
+      <span style={{ ...small, fontWeight: late ? 700 : 400 }}>
+        {sum.milestones.of > 0 ? `${sum.milestones.hit} of ${sum.milestones.of} milestones` : 'no milestone yet'}
+      </span>
+      <span style={small}>{sum.lookAhead.of > 0 ? `look-ahead ${Math.round((sum.lookAhead.done / sum.lookAhead.of) * 100)}%` : 'look-ahead new'}</span>
+    </span>
   )
 }

@@ -11,7 +11,7 @@ import {
 import { GcFollowUpTab } from '../components/gc/GcAskThread'
 import { GcOwnerBillingTab } from '../components/gc/GcOwnerBillingTab'
 import { GcCloseoutTab } from '../components/gc/GcCloseout'
-import { GcBuildingScheduleTab } from '../components/gc/GcBuildingSchedule'
+import { GcBuildingScheduleBlock, GcBuildingScheduleTab } from '../components/gc/GcBuildingSchedule'
 import { GcBidTabsTab } from '../components/gc/GcBidTabs'
 import { GcCustomerWindow } from '../components/gc/GcCustomerWindow'
 import { GcPlansQuickLook } from '../components/gc/GcPlansQuickLook'
@@ -431,6 +431,8 @@ function DueBlock({ project, today }: { project: GcProject; today: string }) {
   } as const
   // A won job's row shows what is next, not when our bid went in (the owner, 2026-10-03).
   if (project.stage === 'buyout') return <StartBlock project={project} today={today} box={box} />
+  // Building lane: once a schedule is drawn, its measures (days behind or ahead, milestones, look-ahead).
+  if (project.stage === 'building' && project.schedule) return <GcBuildingScheduleBlock project={project} today={today} box={box} />
   if (project.stage === 'building' && project.startedOn) {
     // Until the schedule's measures exist (the Building lane), the day work started.
     return (
