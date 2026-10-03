@@ -1653,7 +1653,7 @@ exports[`GC mode golden walk > before any step 1`] = `
       "stage": "building",
       "stageProgress": {
         "also": [
-          "The schedule: 3 days behind the plan, 72% done where 76% was planned. Dry-in is 7 days late. Next: Rough-in inspection, Oct 6. 4 look-ahead marks wait on our superintendent.",
+          "The schedule: 3 days behind the plan, 72% done where 76% was planned. Dry-in is 7 days late. Next: Rough-in inspection, Oct 13. 4 look-ahead marks wait on our superintendent.",
           "Concrete is all billed. Walk it, then accept the work on Closeout.",
           "Iron Horse Fabrication asked for draw 2. Approve it.",
           "Pecan Valley Electric owes the unconditional waiver on draw 1.",
@@ -7053,7 +7053,7 @@ exports[`GC mode golden walk > step 97: Superintendent: Iron Horse’s erection 
   "changed": {
     "lastLog.id": 93,
     "lastLog.text": "Our superintendent verified the mark on Structural steel · Erection for the week of Mon Sep 28: not done, crew.",
-    "projects.fairoaksd.stageProgress.also[0]": "The schedule: 3 days behind the plan, 72% done where 76% was planned. Dry-in is 7 days late. Next: Rough-in inspection, Oct 6. 3 look-ahead marks wait on our superintendent.",
+    "projects.fairoaksd.stageProgress.also[0]": "The schedule: 3 days behind the plan, 72% done where 76% was planned. Dry-in is 7 days late. Next: Rough-in inspection, Oct 13. 3 look-ahead marks wait on our superintendent.",
   },
   "removed": [],
 }
@@ -7064,7 +7064,7 @@ exports[`GC mode golden walk > step 98: Superintendent: the membrane is not done
   "changed": {
     "lastLog.id": 94,
     "lastLog.text": "Our superintendent corrected the mark on Roofing · TPO membrane for the week of Mon Sep 28: not done, weather.",
-    "projects.fairoaksd.stageProgress.also[0]": "The schedule: 3 days behind the plan, 72% done where 76% was planned. Dry-in is 7 days late. Next: Rough-in inspection, Oct 6. 2 look-ahead marks wait on our superintendent.",
+    "projects.fairoaksd.stageProgress.also[0]": "The schedule: 3 days behind the plan, 72% done where 76% was planned. Dry-in is 7 days late. Next: Rough-in inspection, Oct 13. 2 look-ahead marks wait on our superintendent.",
   },
   "removed": [],
 }
@@ -7086,7 +7086,7 @@ exports[`GC mode golden walk > step 100: Fair Oaks D: Pecan Valley marks Lightin
     "lastLog.id": 96,
     "lastLog.text": "Pecan Valley Electric marked Lighting on Electrical not done for the week of Mon Sep 28: materials.",
     "lastLog.who": "trade",
-    "projects.fairoaksd.stageProgress.also[0]": "The schedule: 3 days behind the plan, 72% done where 76% was planned. Dry-in is 7 days late. Next: Rough-in inspection, Oct 6. 3 look-ahead marks wait on our superintendent.",
+    "projects.fairoaksd.stageProgress.also[0]": "The schedule: 3 days behind the plan, 72% done where 76% was planned. Dry-in is 7 days late. Next: Rough-in inspection, Oct 13. 3 look-ahead marks wait on our superintendent.",
   },
   "removed": [],
 }
@@ -7261,6 +7261,18 @@ exports[`GC mode golden walk > step 116: Cedar & Pine reports the coffee bar hal
     "projects.helotes.stageProgress.groups[0].items[4].detail": "81% reported",
     "projects.helotes.stageProgress.headline": "43% of the work is done, by what the trades and our own crew have reported.",
     "projects.helotes.stageProgress.share": 0.42582197273456296,
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 117: Fair Oaks D: the rough-in inspection passes 1`] = `
+{
+  "changed": {
+    "lastLog.id": 113,
+    "lastLog.text": "The rough-in inspection passed on Fair Oaks Shops, Building D. The Rough-in inspection milestone is met.",
+    "lastLog.who": "office",
+    "projects.fairoaksd.stageProgress.also[0]": "The schedule: 3 days behind the plan, 72% done where 76% was planned. Dry-in is 7 days late. Next: Substantial completion, Dec 11. 3 look-ahead marks wait on our superintendent.",
   },
   "removed": [],
 }
@@ -7466,6 +7478,11 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
+      "id": 113,
+      "text": "The rough-in inspection passed on Fair Oaks Shops, Building D. The Rough-in inspection milestone is met.",
+      "who": "office",
+    },
+    {
       "id": 112,
       "text": "Cedar & Pine Millwork reported Change order 3: Add a coffee bar cabinet in the break room, per A-501 at 50%.",
       "who": "trade",
@@ -7609,11 +7626,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "id": 84,
       "text": "Cedar & Pine Millwork sent pay application 2 on Millwork: $15,940, with a conditional waiver signed.",
       "who": "trade",
-    },
-    {
-      "id": 83,
-      "text": "Hollis Family Pharmacy paid pay application 4: $18,241.",
-      "who": "office",
     },
   ],
   "partners": [
@@ -11567,6 +11579,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
           {
             "after": [
               "felec-3",
+              "fairoaksd-insp-roughin",
             ],
             "finish": "2026-11-20",
             "lineId": "felec-4",
@@ -11612,6 +11625,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
           {
             "after": [
               "fhvac-1",
+              "fairoaksd-insp-roughin",
             ],
             "finish": "2026-11-13",
             "lineId": "fhvac-3",
@@ -11621,6 +11635,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
           {
             "after": [
               "fplumb-3",
+              "fairoaksd-insp-roughin",
             ],
             "finish": "2026-12-04",
             "lineId": "fplumb-4",
@@ -11636,9 +11651,52 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
             "packageId": "fhvac",
             "start": "2026-11-30",
           },
+          {
+            "after": [
+              "felec-2",
+              "fplumb-3",
+              "fhvac-2",
+            ],
+            "finish": "2026-10-13",
+            "inspection": {
+              "label": "Rough-in inspection",
+              "passedOn": "2026-10-02",
+            },
+            "lineId": "fairoaksd-insp-roughin",
+            "packageId": "",
+            "start": "2026-10-12",
+          },
+          {
+            "after": [
+              "fsite-4",
+              "fsteel-3",
+              "froof-2",
+              "froof-3",
+              "froof-4",
+              "felec-5",
+              "felec-4",
+              "fplumb-4",
+              "fhvac-4",
+            ],
+            "finish": "2026-12-08",
+            "inspection": {
+              "label": "Final inspection",
+            },
+            "lineId": "fairoaksd-insp-final",
+            "packageId": "",
+            "start": "2026-12-07",
+          },
         ],
         "baseline": {
           "activities": {
+            "fairoaksd-insp-final": {
+              "finish": "2026-12-08",
+              "start": "2026-12-07",
+            },
+            "fairoaksd-insp-roughin": {
+              "finish": "2026-10-13",
+              "start": "2026-10-12",
+            },
             "fconc-1": {
               "finish": "2026-08-07",
               "start": "2026-07-20",
@@ -11907,9 +11965,9 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
           {
             "id": "fo-roughin",
             "label": "Rough-in inspection",
-            "metOn": null,
+            "metOn": "2026-10-02",
             "packageId": null,
-            "planned": "2026-10-06",
+            "planned": "2026-10-13",
           },
           {
             "id": "fo-substantial",

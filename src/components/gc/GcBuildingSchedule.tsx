@@ -105,7 +105,7 @@ function ScheduleWhy() {
       Each activity is a line of a trade's statement of work, or a stage our own crew runs. We draw the dates and what each
       waits on while buying out. Start locks it as the baseline, the plan we measure against. Spare days are how long an
       activity can slip before the job finishes later. No spare days is the critical path. An inspection is an activity of its
-      own. It belongs to the job and has no dollars, so it counts on the critical path but not in work done.
+      own. It belongs to the job and has no dollars. It counts on the critical path, not in work done.
     </Why>
   )
 }
