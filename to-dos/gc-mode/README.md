@@ -147,8 +147,10 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   fixed before award, not before a quote. Create sends the board's own invite to each.
 - **The schedule** (2026-10-02, decided before anything is built): several activities per trade,
   like rough in, top out and trim. We draw it; the companies do not propose dates. It lives only
-  inside GC mode for now, not on the app's Schedule page. The proposal is under *The schedule
-  (proposed)*.
+  inside GC mode for now, not on the app's Schedule page. A milestone counts as hit within a few
+  days of its planned day. Each week the trade marks its look-ahead activities done or not in its
+  portal, and our superintendent verifies them; only a verified mark counts. The proposal is
+  under *The schedule (proposed)*.
 - **Each draw comes with a 702 and 703** (2026-10-02, Building lane): the trade fills the pay
   application in its portal and watches the form fill, typing only what the app cannot know. Most
   of it comes from the job and from the work they reported (`gcBuilding.ts`, `GcBuildingPayApp.tsx`).
@@ -205,6 +207,8 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
   came does not count against them.
 - Start is a hard stop: no "start anyway".
 - Red inside 7 days and amber inside 14 on the days-left block.
+- The schedule's "a few days" of grace on a milestone is 3 days (`MILESTONE_GRACE_DAYS`, not built
+  yet).
 - A new set starts as an addendum while we bid and a bulletin once the job is ours. In pasted
   notes a sheet number without a dash needs three digits (A101, not R30), and a sheet the index
   lacks is written the way the index writes its others (S301 reads S-301).
@@ -288,10 +292,10 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
     (underground, rough in, top out, trim), the way the Pipeline runs a plumbing job?
 22. Should a trade see sheets the office did not set (the dashed ones, matched from the line's
     words), or only the sheets the office set when writing the scope?
-23. The schedule: is a milestone hit only on its planned day or earlier, or within a few days of
-    grace? How many weeks does the look-ahead show, two or three?
-24. The schedule: who marks a look-ahead activity done or not each week, the trade in its portal
-    or our superintendent?
+23. The schedule: how many weeks does the look-ahead show, two or three? (The other half,
+    answered 2026-10-02: a milestone is hit within a few days of its planned day.)
+24. ~~The schedule: who marks a look-ahead activity done or not each week?~~ Answered
+    2026-10-02: the trade in its portal, verified by our superintendent.
 
 ## The schedule (proposed, 2026-10-02)
 
@@ -311,17 +315,21 @@ they point to, for the lanes to pick up.
     baseline planned for today, weighted by each line's dollars, the way the ring weighs work now.
   - *Critical-path float*: each activity's spare days, from the links and durations. Zero spare
     days is the critical path.
-  - *Milestone hit rate*: milestones finished on or before their planned day (open question 23),
-    for the job and for each company.
-  - *Look-ahead reliability*: each week the schedule lists the coming weeks' activities; at the
-    week's end each is done or not, with a reason (weather, the trade before, materials, crew).
-    Done out of planned, per week, per trade and per company (open question 24).
+  - *Milestone hit rate*: milestones finished within a few days of their planned day
+    (`MILESTONE_GRACE_DAYS`), for the job and for each company.
+  - *Look-ahead reliability*: each week the schedule lists the coming weeks' activities (two or
+    three, open question 23). At the week's end the trade marks each done or not in its portal,
+    with a reason when not (weather, the trade before, materials, crew), and our superintendent
+    verifies the mark or corrects it. Verified done out of planned, per week, per trade and per
+    company. A mark not yet verified is shown as waiting and does not count.
 - **Where it shows**: a schedule view in Building; "4 days behind" on the board row and in the
   ring's card; milestone hit rate and look-ahead reliability on Trade partners, beside "answers
-  when asked"; the weekly done or not in the trade's portal, if the trade marks it.
+  when asked"; the weekly done or not in the trade's portal; the superintendent's verify list in
+  Building.
 - **Who builds what**: the Building lane, the schedule view and the four measures; the Board
   lane, the Get started step, the board row's chip and the lines on Trade partners; the Portal
-  lane, the weekly done or not; the New Project lane, the first draft of the links from the build
+  lane, the trade's weekly done or not; the Building lane also, the superintendent's verify; the
+  New Project lane, the first draft of the links from the build
   order, and a set issued after Start saying which activities it moves.
 
 ## Workflow steps not built yet
