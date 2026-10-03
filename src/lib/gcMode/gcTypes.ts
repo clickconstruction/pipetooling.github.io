@@ -571,6 +571,8 @@ export interface OwnerPayAppSent {
   paidOn: string | null
   /** The final pay application: it asks for the retainage the owner held, with our waivers on final payment. */
   final?: boolean
+  /** Each line's scheduled value when it went, by line id. Absent on the made-up ones: today's values stand in. */
+  worthByLine?: Record<string, number>
 }
 
 /** A pay application the office sent back: the draw as the trade sent it, why, and what we see. */
