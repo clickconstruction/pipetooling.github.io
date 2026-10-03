@@ -2,7 +2,7 @@
 name: "GC mode: Bids, mirrored. We are the general contractor and the trades bid to us"
 number: 81
 group: gated
-status: explored 2026-10-02 as a design spike · a playable prototype on made-up data lives on branch `spike/gc-mode` (page `/bids/gc`, dev only) · nothing is on main, nothing touches the database · the owner is still shaping it screen by screen · four lanes build it at once since 2026-10-02 (Board, Portal, Building, New Project: see Working in parallel)
+status: explored 2026-10-02 as a design spike · a playable prototype on made-up data lives on branch `spike/gc-mode` (page `/bids/gc`, dev only) · nothing is on main, nothing touches the database · the owner is still shaping it screen by screen · five lanes build it at once since 2026-10-02 (Board, Portal, Building, New Project, Owner Billing: see Working in parallel)
 summary: >
   The owner's idea (2026-10-02): Bids manages our bid as a trade to a GC. Offer a second mode
   where we are the GC: a set of plans comes in once, each trade is offered to several trade
@@ -223,6 +223,7 @@ branch and a dev-server port of its own; `spike/gc-mode` is where the lanes meet
 | Portal | `spike/gc-mode-portal` | 5241 | The trade partner's portal: everything a company sees and presses | `src/components/gc/GcTradePortal.tsx`; new files `src/components/gc/GcPortal*.tsx`, `src/lib/gcMode/gcPortal.ts` |
 | Building | `spike/gc-mode-building` | 5242 | Building and Closeout: reports, draws, retainage release, final waivers | `GcDrawsTab` inside `src/components/gc/GcOfficeTabs.tsx` (that function only); `buildingProgress` in `src/lib/gcMode/gcProgress.ts` (that function only); new files `src/components/gc/GcBuilding*.tsx` / `GcCloseout*.tsx`, `src/lib/gcMode/gcBuilding.ts` |
 | New Project | `spike/gc-mode-new-project` | 5243 | New Project with the plans coming in, splitting the plans into trades, writing each scope; the plan sets that follow | `src/components/gc/GcNewPlans.tsx`, `GcPlansQuickLook.tsx`; `src/lib/gcMode/gcPlans.ts`; new files `src/components/gc/GcNewProject*.tsx`, `src/lib/gcMode/gcNewProject.ts` |
+| Owner Billing | `spike/gc-mode-owner-billing` | 5244 | Billing the owner: our pay applications from the work the trades report, the retainage the owner holds on us, what the owner has paid | new files `src/components/gc/GcOwnerBilling*.tsx`, `src/lib/gcMode/gcOwnerBilling.ts`; the `OwnerBilling` record in `gcTypes.ts` (add fields only). It reads the trades' reported work (Building's) and never writes it; the owner window's billed and paid cells (`GcCustomerWindow.tsx`, `customerSummary`) stay the Board's to change |
 
 **Shared files** — every lane may *add* to them; nobody renames, reorders or rewords what is there:
 `src/lib/gcMode/gcTypes.ts` (new record shapes and fields, new actions at the end of `GcAction`),
@@ -253,8 +254,8 @@ the walk (new snapshots are written; existing ones must not move).
 - Each lane keeps a session card in the main checkout's `.claude/sessions/active/`
   (`spike-gc-mode*.md`).
 
-**Ports.** `.claude/launch.json` is gitignored, so it does not ride the branches: the four
-configs (`dev-5237`, `dev-5241`, `dev-5242`, `dev-5243`) live in the main checkout's copy. A lane
+**Ports.** `.claude/launch.json` is gitignored, so it does not ride the branches: the five
+configs (`dev-5237`, `dev-5241`, `dev-5242`, `dev-5243`, `dev-5244`) live in the main checkout's copy. A lane
 whose worktree has none copies it from `/Users/todd/Documents/GitHub/pipetooling.github.io/.claude/launch.json`.
 Never start another lane's port.
 
