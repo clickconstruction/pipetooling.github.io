@@ -36,10 +36,10 @@ makes; nobody builds it until he answers.
 
 ## Board (GC 0)
 
-1. ~~**A "Money" board tab.**~~ done (this commit; see the merge log). Place the Owner Billing lane's `GcOwnerBillingMoney` (built; the owner
+1. ~~**A "Money" board tab.**~~ done 0ecca9192. Place the Owner Billing lane's `GcOwnerBillingMoney` (built; the owner
    approved it) after Trade partners: `BoardTab` gets `'money'`, `onOpenBill` opens the project on
    Bill the owner. A Screens row in `README.md`.
-2. **The company window shows "waiting on the architect" and "certified, not paid"** from
+2. ~~**The company window shows "waiting on the architect" and "certified, not paid"**~~ done (under They owe us now; this commit) from
    `ownerAccount` (`waitingOnArchitect`, `certifiedUnpaid`).
 3. **Compare bids and Trades read what trades send now:** alternates, an attached quote, and how
    many days the number holds (question 14's built half).
