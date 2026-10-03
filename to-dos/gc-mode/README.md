@@ -67,6 +67,7 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
 | Where | What it does |
 |---|---|
 | **New here?** (top right) | An 11-stop spotlight walkthrough of the three stages on the Project Board: each stage's question, what you do in it, how it ends, then where to try it. Stops in `src/lib/gcMode/gcTour.ts`, on the app's `SpotlightTour`. |
+| **+ ?** after a number | A quote that leaves out work with no cost set still counts that work as $0 in its all-in number, so every place that number shows says "+ ?": Trades' *Lowest, all in* and *We are carrying*, Compare bids' *All in*, the *Award at* buttons, Our number's *Carried*, *Trades* and the price, and the price on the board row and the project header. Hovering names the work ("1 line has no cost yet: roof curbs."). Against our budget reads "at least $X over" or "not known yet". Setting the cost in Compare bids clears it. `uncostedLines`, `carriedUncosted`, `proposalUncosted` in `gcBids.ts`; the totals themselves are unchanged. |
 | The ring on each row | How far the project is through its stage (`stageProgress` in the model; `GcProgressRing`). Hover it, tap it on a phone, or tab to it: a card lists what the ring counts by type, what is left in each spelled out, what is done in one line, and an *Also* list it does not count. Bidding: enough quotes (2 per hired trade), a number to carry, quotes on the newest plans, our bid sent. Buyout: the Get started checklist by kind of step (the owner side, awarded, master agreement, insurance, W-9, statement of work). Building: work reported per trade, weighted by its statement of work, and our own crew's percent weighted by our own number; draws and waivers waiting under *Also*. |
 | **Project Board** | Projects in three sections: Bidding to the owner, Buying out, Building. Each row leads with the days left before our bid (red inside a week, amber inside two), then the name, the owner and architect (each a link), chips, the Bid Board's folder and plans icons, and the price. |
 | **+ New project** (beside *Bidding to the owner*) | One window in four steps, each feeding the next. **The project**: name, address, town, owner and architect from the one customer list ("Someone new" makes a record), bid due, size. **The plans**: the set's name (Bid set, Pricing set, Permit set or typed), the day it came in, the sheet index pasted from the cover sheet and read as you paste (A-101, A101, A1.01, FP-101; capitals become sentence case; a line not read is listed). **The trades**: guessed from the sheets in build order, each with the sheets behind it; untick, add, mark **Ours**, a budget. **Each scope**: each trade's usual lines to change, each with the sheets it reads from (guessed from its words, × takes one off, **+ sheet** adds one; none means the trade's sheets as a whole); Enter starts the next line. **Who to ask**: for each trade we hire out, every company that does it, closest first, with its drive, how it answers asks and any missing paperwork; the closest three in range come ticked. **Create the project** puts it under Bidding to the owner, sends each ticked company the board's invitation, and opens it on Trades. **Paste a made-up sheet index** tries it. |
@@ -145,11 +146,22 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   and the step move together when question 7 is answered. A company missing its master
   agreement, insurance or W-9 is still ticked, with what is missing in a muted line: paperwork is
   fixed before award, not before a quote. Create sends the board's own invite to each.
+- **Our own trade counts once our bid is priced** (answered 2026-10-02, was open question 10):
+  ticking **Ours** on a new project starts our own bid in Trades mode (`selfPerform.priced:
+  false`, our guess as its value). The trade becomes a real number when that bid is priced
+  (`priceOwnBid`; `ownBidPriced` in `gcLookups.ts`). The made-up projects' own trades are priced
+  already.
+- **A won job's row shows what is next, not when our bid went in** (2026-10-03): on Buying out
+  the block beside the ring shows the days until the planned start (the Board lane, now); on
+  Building it shows the schedule's measures, days behind or ahead with milestones and the
+  look-ahead, once the schedule is built (the Building lane builds the measures, the Board lane
+  shows them).
 - **The schedule** (2026-10-02, decided before anything is built): several activities per trade,
   like rough in, top out and trim. We draw it; the companies do not propose dates. It lives only
   inside GC mode for now, not on the app's Schedule page. A milestone counts as hit within a few
-  days of its planned day. Each week the trade marks its look-ahead activities done or not in its
-  portal, and our superintendent verifies them; only a verified mark counts. The proposal is
+  days of its planned day. The look-ahead shows three weeks. Each week the trade marks its
+  look-ahead activities done or not in its portal, and our superintendent verifies them; only a
+  verified mark counts. The proposal is
   under *The schedule (proposed)*.
 - **Each draw comes with a 702 and 703** (2026-10-02, Building lane): the trade fills the pay
   application in its portal and watches the form fill, typing only what the app cannot know. Most
@@ -228,6 +240,10 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
 - Red inside 7 days and amber inside 14 on the days-left block.
 - The schedule's "a few days" of grace on a milestone is 3 days (`MILESTONE_GRACE_DAYS`, not built
   yet).
+- A new project's budgets start blank. **Fill the empty budgets from the size** multiplies the
+  square feet in the size line by a rough cost per square foot for each trade
+  (`BUDGET_PER_SQ_FT`, made-up numbers, $3 for painting to $18 for steel and electrical),
+  rounded to $500. The owner left this call to the New Project lane.
 - A new set starts as an addendum while we bid and a bulletin once the job is ours. In pasted
   notes a sheet number without a dash needs three digits (A101, not R30), and a sheet the index
   lacks is written the way the index writes its others (S301 reads S-301).
@@ -286,10 +302,10 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
 8. Should promises other than a quote date be tracked (insurance by Friday, a start date)?
 9. Should the Project Board also group by customer, and should Actions for assistants also sit
    on the Project Board?
-10. A trade ticked **Ours** on a new project counts as a real number on the ring, even at $0.
-    Should ticking it start our own bid in Trades mode, and count only once that bid is priced?
-11. A new project's budgets start blank. Should a budget come from the size (a cost per square
-    foot for each trade)? Asked before building, after distance pricing was built and removed.
+10. ~~Should ticking **Ours** start our own bid in Trades mode, and count only once that bid is
+    priced?~~ Answered 2026-10-02: yes (see *Decided by the owner*).
+11. ~~Should a budget come from the size?~~ Left to the New Project lane, 2026-10-02: budgets
+    start blank and **Fill the empty budgets from the size** fills them (see *My defaults*).
 12. The pay application leaves out the notary block, materials stored on site (column F reads $0)
     and change orders (line 2 reads $0). Which of these do our trades need? Should it also
     download as the AIA Excel template the Jobs Stages tab fills, or as a PDF?
@@ -313,8 +329,8 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
 21. ~~Should our own crew report by stage?~~ Answered: yes (*Decided by the owner*).
 22. Should a trade see sheets the office did not set (the dashed ones, matched from the line's
     words), or only the sheets the office set when writing the scope?
-23. The schedule: how many weeks does the look-ahead show, two or three? (The other half,
-    answered 2026-10-02: a milestone is hit within a few days of its planned day.)
+23. ~~The schedule: is a milestone hit only on its day, and how many weeks does the look-ahead
+    show?~~ Answered 2026-10-02: within a few days, and three weeks.
 24. ~~The schedule: who marks a look-ahead activity done or not each week?~~ Answered
     2026-10-02: the trade in its portal, verified by our superintendent.
 25. Should a company's language be kept on its record, so its emails go out in Spanish, and
@@ -327,8 +343,10 @@ Nothing is built. The owner's three answers are under *Decided by the owner*; th
 they point to, for the lanes to pick up.
 
 - **The activities are the statement of work lines**: the same schedule-of-values lines a trade
-  reports its percent on and draws against. Plumbing's are underground, rough in, top out and
-  trim. So "how far along" and "how far along it should be" are read on the same line.
+  reports its percent on and draws against. Our own crew has no statement of work; its activities
+  are its scope lines, which it already reports by stage (`selfPerform.pctByLine`, `crewStages`
+  in `gcBuilding.ts`): underground, rough in, top out and trim. So "how far along" and "how far
+  along it should be" are read on the same line for every trade.
 - **We draw it during Buying out.** Each activity gets a planned start and finish and the
   activities it waits on. The trades' build order (sitework, concrete, steel, roofing, the rough
   ins, drywall, the trims) is the first draft of those links. Milestones (dry-in, rough-in
@@ -342,7 +360,7 @@ they point to, for the lanes to pick up.
   - *Milestone hit rate*: milestones finished within a few days of their planned day
     (`MILESTONE_GRACE_DAYS`), for the job and for each company.
   - *Look-ahead reliability*: each week the schedule lists the coming weeks' activities (two or
-    three, open question 23). At the week's end the trade marks each done or not in its portal,
+    three weeks). At the week's end the trade marks each done or not in its portal,
     with a reason when not (weather, the trade before, materials, crew), and our superintendent
     verifies the mark or corrects it. Verified done out of planned, per week, per trade and per
     company. A mark not yet verified is shown as waiting and does not count.
@@ -361,10 +379,9 @@ they point to, for the lanes to pick up.
 - The schedule and its four measures (*The schedule, proposed*).
 
 - New Project past its first form: a scope line tied to its spec section, exclusions, and a
-  budget from the size (open question 11). A line's sheets show only in New Project, a new set
+  budget from real costs, not a made-up rate per square foot. A line's sheets show only in New Project, a new set
   and the plans window; the portal's bid form, Trades and Compare bids do not show them yet. A
-  later set cannot yet take a sheet out of the set. The Trades table's "lowest, all in" counts
-  a line with no cost to cover it as $0 (Compare bids says the number is not known).
+  later set cannot yet take a sheet out of the set.
 - A trade asks a question about the plans, the architect answers, every bidder on the trade
   gets the answer. Three made-up questions show in the architect's window, read-only.
 - Change orders, both to the owner and to a trade (a statement of work amendment).

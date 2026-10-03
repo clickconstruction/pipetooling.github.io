@@ -838,5 +838,15 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
       )
       return logged(next, 'office', `Our own crew reported ${line.label} on ${pkg.trade} at ${pct}%. The whole trade is ${pctDone}% done.`)
     }
+
+    case 'priceOwnBid': {
+      // Our own bid in Trades mode is priced: the trade now carries a real number.
+      const { project, pkg } = find(state, action.projectId, action.packageId)
+      if (!project || !pkg?.selfPerform) return state
+      const next = mapProject(state, project.id, (p) =>
+        mapPackage(p, pkg.id, (k) => (k.selfPerform ? { ...k, selfPerform: { ...k.selfPerform, value: action.value, priced: true } } : k)),
+      )
+      return logged(next, 'office', `Priced our own bid on ${pkg.trade} for ${project.name}: ${money(action.value)}.`)
+    }
   }
 }

@@ -3,10 +3,15 @@ import {
   bidIsStale,
   bidsIn,
   carriedAmount,
+  carriedUncosted,
   compareBids,
   currentRev,
   daysUntil,
   leveledTotal,
+  proposalUncosted,
+  proposalUncostedWords,
+  uncostedLines,
+  uncostedWords,
   lowLeveled,
   money,
   packageCoverage,
@@ -38,7 +43,7 @@ import { GcBuildingPayAppWindow } from './GcBuildingPayApp'
 import { GcBuildingSendBackForm, GcBuildingSentBackList } from './GcBuildingSendBack'
 import { GcBuildingCrewCard } from './GcBuildingCrew'
 import { GcNewPlansWindow } from './GcNewPlans'
-import { Btn, Card, Chip, Stat, Why, input, num, td, th, type Tone } from './gcUi'
+import { Btn, Card, Chip, PlusUnknown, Stat, Why, input, num, td, th, type Tone } from './gcUi'
 
 /** GC mode design spike: the office's side of one project. */
 
@@ -143,7 +148,9 @@ export function GcPackagesTab({ state, project, dispatch, onSeePortal, onMap, op
                               <Fragment key={inv.id}>
                                 <span
                                   title={
-                                    inv.bid && leveled !== null && leveled !== inv.bid.amount
+                                    inv.bid && uncostedLines(pkg, inv).length > 0
+                                      ? `Their bid as sent: ${money(inv.bid.amount)}. ${uncostedWords(uncostedLines(pkg, inv))} So their all-in number is not known yet.`
+                                      : inv.bid && leveled !== null && leveled !== inv.bid.amount
                                       ? `Their bid as sent: ${money(inv.bid.amount)}. With what it leaves out added, it is ${money(leveled)}.`
                                       : inv.bid
                                         ? `Their bid as sent: ${money(inv.bid.amount)}.`
@@ -180,8 +187,19 @@ export function GcPackagesTab({ state, project, dispatch, onSeePortal, onMap, op
                     <td style={num}>{money(pkg.budget)}</td>
                     <td style={num}>
                       {low ? (
-                        <span style={{ color: low.total > pkg.budget ? 'var(--text-red-700)' : 'var(--text-green-700)' }}>
+                        // Over budget stays red with a cost missing (it can only rise); under is not known yet.
+                        <span
+                          style={{
+                            color:
+                              low.total > pkg.budget
+                                ? 'var(--text-red-700)'
+                                : uncostedLines(pkg, low.invite).length > 0
+                                  ? 'var(--text-base)'
+                                  : 'var(--text-green-700)',
+                          }}
+                        >
                           {money(low.total)}
+                          <PlusUnknown words={uncostedWords(uncostedLines(pkg, low.invite))} />
                         </span>
                       ) : (
                         <span style={{ color: 'var(--text-muted)' }}>none yet</span>
@@ -235,7 +253,8 @@ function CarriedWords({ state, pkg }: { state: GcState; pkg: TradePackage }) {
   const partner = invite ? partnerById(state, invite.partnerId) : undefined
   return (
     <span>
-      {money(amount)} · {partner?.company} {pkg.awardedInviteId && <Chip tone="green">awarded</Chip>}
+      {money(amount)}
+      <PlusUnknown words={uncostedWords(carriedUncosted(pkg))} /> · {partner?.company} {pkg.awardedInviteId && <Chip tone="green">awarded</Chip>}
     </span>
   )
 }
@@ -415,7 +434,8 @@ function LevelPanel({ state, project, pkg, dispatch, onSeePortal }: GcPaneProps 
                   const line = comparison.lines.find((l) => l.inviteId === inv.id)
                   return (
                     <td key={inv.id} style={{ ...num, fontWeight: 700 }}>
-                      {money(total)}{' '}
+                      {money(total)}
+                      <PlusUnknown words={uncostedWords(uncostedLines(pkg, inv))} />{' '}
                       {line && !line.complete ? (
                         <Chip tone="amber">needs a cost</Chip>
                       ) : (
@@ -429,9 +449,18 @@ function LevelPanel({ state, project, pkg, dispatch, onSeePortal }: GcPaneProps 
                 <td style={td}>Against our budget of {money(pkg.budget)}</td>
                 {bidders.map((inv) => {
                   const diff = (leveledTotal(pkg, inv) ?? 0) - pkg.budget
+                  // A missing cost can only raise the total: over stays true as "at least", under is not known.
+                  const unknown = uncostedLines(pkg, inv).length > 0
+                  if (unknown && diff <= 0) {
+                    return (
+                      <td key={inv.id} style={{ ...num, color: 'var(--text-muted)' }} title={uncostedWords(uncostedLines(pkg, inv))}>
+                        not known yet
+                      </td>
+                    )
+                  }
                   return (
                     <td key={inv.id} style={{ ...num, color: diff > 0 ? 'var(--text-red-700)' : 'var(--text-green-700)' }}>
-                      {diff > 0 ? `${money(diff)} over` : `${money(-diff)} under`}
+                      {diff > 0 ? `${unknown ? 'at least ' : ''}${money(diff)} over` : `${money(-diff)} under`}
                     </td>
                   )
                 })}
@@ -694,11 +723,15 @@ export function GcNumberTab({ state, project, dispatch }: GcPaneProps) {
       </Why>
       <Card>
         <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-          <Stat label="Trades" value={money(totals.trades)} />
+          <Stat label="Trades" value={<>{money(totals.trades)}<PlusUnknown words={proposalUncostedWords(project)} /></>} />
           <Stat label="General conditions" value={money(totals.generalConditions)} />
           <Stat label={`Contingency ${project.contingencyPct}%`} value={money(totals.contingency)} />
           <Stat label={`Fee ${project.feePct}%`} value={money(totals.fee)} />
-          <Stat label={`Price to ${project.owner}`} value={money(totals.price)} tone={totals.holes.length > 0 ? 'red' : 'green'} />
+          <Stat
+            label={`Price to ${project.owner}`}
+            value={<>{money(totals.price)}<PlusUnknown words={proposalUncostedWords(project)} /></>}
+            tone={totals.holes.length > 0 ? 'red' : proposalUncosted(project).length > 0 ? undefined : 'green'}
+          />
         </div>
         {(totals.holes.length > 0 || totals.plugged.length > 0) && (
           <div style={{ marginTop: '0.7rem', display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
@@ -745,7 +778,10 @@ export function GcNumberTab({ state, project, dispatch }: GcPaneProps) {
                   <td style={{ ...td, fontWeight: 600 }}>{pkg.trade}</td>
                   <td style={td}><CarriedWords state={state} pkg={pkg} /></td>
                   <td style={num}>{money(pkg.budget)}</td>
-                  <td style={{ ...num, fontWeight: 600 }}>{amount === null ? '—' : money(amount)}</td>
+                  <td style={{ ...num, fontWeight: 600 }}>
+                    {amount === null ? '—' : money(amount)}
+                    {amount !== null && <PlusUnknown words={uncostedWords(carriedUncosted(pkg))} />}
+                  </td>
                 </tr>
               )
             })}
@@ -807,8 +843,13 @@ export function GcContractsTab({ state, project, dispatch }: GcPaneProps) {
 
             {!sow && project.stage !== 'pursuing' && (
               <div style={{ marginTop: '0.6rem' }}>
-                <Btn kind="primary" onClick={() => dispatch({ type: 'award', ...ids, inviteId: inv.id })}>
-                  Award at {money(leveledTotal(pkg, inv) ?? 0)} and draft the statement of work
+                <Btn
+                  kind="primary"
+                  title={uncostedWords(uncostedLines(pkg, inv)) || undefined}
+                  onClick={() => dispatch({ type: 'award', ...ids, inviteId: inv.id })}
+                >
+                  Award at {money(leveledTotal(pkg, inv) ?? 0)}
+                  {uncostedLines(pkg, inv).length > 0 ? ' + ?' : ''} and draft the statement of work
                 </Btn>
               </div>
             )}

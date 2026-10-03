@@ -170,6 +170,11 @@ export interface TradePackage {
      * job (owner, 2026-10-02). When present, pctDone follows from it. Absent: none reported by stage.
      */
     pctByLine?: Record<string, number>
+    /**
+     * False: our own bid in Trades mode is started but not priced, so `value` is only our guess and
+     * the trade is not a real number yet (the owner, 2026-10-02). Absent: priced.
+     */
+    priced?: boolean
   } | null
   invites: Invite[]
   /** An invite id, 'plug' (our budget) or 'self'. */
@@ -451,6 +456,8 @@ export type GcAction =
       note: string
     }
   | { type: 'selfReportStage'; projectId: string; packageId: string; lineId: string; pct: number }
+  /** Our own bid in Trades mode is priced: the trade carries a real number from now on. */
+  | { type: 'priceOwnBid'; projectId: string; packageId: string; value: number }
 
 /** One trade on a new project, as the office left it in the New project window. */
 export interface NewTradeDraft {
