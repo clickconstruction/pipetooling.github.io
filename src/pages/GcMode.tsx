@@ -21,7 +21,7 @@ import { GcTradeMap } from '../components/gc/GcTradeMap'
 import { GcTradePortal } from '../components/gc/GcTradePortal'
 import { GC_ICON_PATHS } from '../components/gc/gcIcons'
 import { GcProgressRing } from '../components/gc/GcProgressRing'
-import { Btn, Card, Chip, Stat, type Tone } from '../components/gc/gcUi'
+import { Btn, Card, Chip, PlusUnknown, Stat, type Tone } from '../components/gc/gcUi'
 import { useMatchMedia } from '../hooks/useMatchMedia'
 import {
   carriedAmount,
@@ -33,6 +33,7 @@ import {
   initialGcState,
   money,
   planLabel,
+  proposalUncostedWords,
   RING_COLORS,
   plansReach,
   proposalTotals,
@@ -590,6 +591,7 @@ function ProjectRow({
       </span>
       <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', fontSize: '1.05rem', textAlign: 'right', ...(narrow ? { gridColumn: '3 / -1' } : null) }}>
         {money(totals.price)}
+        <PlusUnknown words={proposalUncostedWords(project)} />
         {totals.holes.length > 0 ? (
           <span style={{ display: 'block', fontWeight: 400, fontSize: '0.75rem', color: 'var(--text-red-700)' }}>so far, with holes</span>
         ) : (
@@ -659,7 +661,10 @@ function ProjectHeader({
               </button>
             }
           />
-          <Stat label={totals.holes.length > 0 ? 'Price so far, with holes' : 'Price to the owner'} value={money(totals.price)} />
+          <Stat
+            label={totals.holes.length > 0 ? 'Price so far, with holes' : 'Price to the owner'}
+            value={<>{money(totals.price)}<PlusUnknown words={proposalUncostedWords(project)} /></>}
+          />
         </div>
       </div>
     </Card>

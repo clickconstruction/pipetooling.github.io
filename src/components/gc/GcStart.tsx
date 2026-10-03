@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react'
 import {
   leveledTotal,
+  uncostedLines,
+  uncostedWords,
   money,
   planRecipients,
   shortDate,
@@ -184,8 +186,13 @@ function TradeLine({ row, project, dispatch, onSeePortal, locked }: Omit<GcPaneP
   if (!locked && first) {
     if (first.key === 'awarded' && carried) {
       action = (
-        <Btn kind="primary" onClick={() => dispatch({ type: 'award', ...ids, inviteId: carried.id })}>
+        <Btn
+          kind="primary"
+          title={uncostedWords(uncostedLines(pkg, carried)) || undefined}
+          onClick={() => dispatch({ type: 'award', ...ids, inviteId: carried.id })}
+        >
           Award at {money(leveledTotal(pkg, carried) ?? 0)}
+          {uncostedLines(pkg, carried).length > 0 ? ' + ?' : ''}
         </Btn>
       )
     } else if (first.key === 'msa' && partner?.msa === 'none') {
