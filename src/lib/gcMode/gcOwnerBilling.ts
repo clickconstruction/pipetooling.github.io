@@ -9,7 +9,7 @@
 import type { ChangeOrder, GcCustomer, GcProject, GcState, OwnerPayAppSent, TradePackage } from './gcTypes'
 import { carriedAmount, proposalTotals } from './gcBids'
 import { partnerById } from './gcLookups'
-import { ownCrewWork, tradeCloseout, type PayApplication, type PayAppLine } from './gcBuilding'
+import { changeOrderTradePct, ownCrewWork, tradeCloseout, type PayApplication, type PayAppLine } from './gcBuilding'
 import { money, shortDate } from './gcWords'
 
 /** We bill the owner once a month (the owner's call, 2026-10-02). The day of the month is my default. */
@@ -181,7 +181,7 @@ export function ownerPayApp(state: GcState, project: GcProject): OwnerPayApp {
     follows('gc', 'General conditions', 'generalConditions', totals.generalConditions),
     follows('contingency', `Contingency ${project.contingencyPct}%`, 'contingency', totals.contingency),
     follows('fee', `Fee ${project.feePct}%`, 'fee', totals.fee),
-    ...signedChangeOrders(project).map(changeOrderLine),
+    ...signedChangeOrders(project).map((co) => changeOrderLine(state, project, co)),
   ].map((l) => {
     const doneBefore = last?.doneToDate[l.id] ?? 0
     const doneToDate = Math.max(l.doneToDate, doneBefore)
@@ -638,8 +638,20 @@ export function changeOrderWho(state: GcState, project: GcProject, co: ChangeOrd
   return company ? `${company} on ${pkg.trade}` : pkg.trade
 }
 
-function changeOrderLine(co: ChangeOrder): OwnerLine {
-  const done = (co.price * co.pctDone) / 100
+/**
+ * How far a change order's work is, for the owner's bill: the trade's report on its line once the
+ * trade has signed the change (owner's call, 2026-10-03), the percent set on Bill the owner before
+ * that, and for our own work.
+ */
+export function changeOrderPct(project: GcProject, co: ChangeOrder): { pct: number; fromTrade: boolean } {
+  const trade = changeOrderTradePct(project, co)
+  return trade === null ? { pct: co.pctDone, fromTrade: false } : { pct: trade, fromTrade: true }
+}
+
+function changeOrderLine(state: GcState, project: GcProject, co: ChangeOrder): OwnerLine {
+  const { pct, fromTrade } = changeOrderPct(project, co)
+  const done = (co.price * pct) / 100
+  const who = changeOrderWho(state, project, co).replace(/ on .*$/, '')
   return {
     id: co.id,
     label: `Change order ${co.number}`,
@@ -648,7 +660,7 @@ function changeOrderLine(co: ChangeOrder): OwnerLine {
     doneToDate: done,
     doneBefore: 0,
     thisMonth: done,
-    source: `${co.description.trim().replace(/[.\s]+$/, '')}.${co.answeredOn ? ` Signed ${shortDate(co.answeredOn)}.` : ''}`,
+    source: `${co.description.trim().replace(/[.\s]+$/, '')}.${co.answeredOn ? ` Signed ${shortDate(co.answeredOn)}.` : ''}${fromTrade ? ` ${who.charAt(0).toUpperCase()}${who.slice(1)} reported ${pct}% done.` : ''}`,
     detail: [],
     changeOrderId: co.id,
   }
