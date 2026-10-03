@@ -125,7 +125,9 @@ export function PricingShareMenu({
     : { padding: '0.5rem 0.9rem', background: 'var(--bg-muted)', color: 'var(--text-strong)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', font: 'inherit' }
 
   return (
-    <div ref={wrapRef} style={{ position: 'relative', display: 'inline-flex' }}>
+    // v2.4451: no wider than its row, so on a phone the two labels wrap inside the buttons
+    // instead of running past the card.
+    <div ref={wrapRef} style={{ position: 'relative', display: 'inline-flex', maxWidth: '100%' }}>
       {canShare ? (
         <button
           type="button"
@@ -161,7 +163,7 @@ export function PricingShareMenu({
       >
         {canShare ? (
           <>
-            <span style={{ fontSize: '0.75rem', fontWeight: 500, whiteSpace: 'nowrap' }}>Supply house prices (RFQ)</span>{' '}▾
+            <span style={{ fontSize: '0.75rem', fontWeight: 500 }}>Supply house prices (RFQ)</span>{' '}▾
           </>
         ) : (
           'Export ▾'
