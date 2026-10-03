@@ -69,7 +69,7 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
 | **New here?** (top right) | An 11-stop spotlight walkthrough of the three stages on the Project Board: each stage's question, what you do in it, how it ends, then where to try it. Stops in `src/lib/gcMode/gcTour.ts`, on the app's `SpotlightTour`. |
 | The ring on each row | How far the project is through its stage (`stageProgress` in the model; `GcProgressRing`). Hover it, tap it on a phone, or tab to it: a card lists what the ring counts by type, what is left in each spelled out, what is done in one line, and an *Also* list it does not count. Bidding: enough quotes (2 per hired trade), a number to carry, quotes on the newest plans, our bid sent. Buyout: the Get started checklist by kind of step (the owner side, awarded, master agreement, insurance, W-9, statement of work). Building: work reported per trade, weighted by its statement of work, and our own crew's percent weighted by our own number; draws and waivers waiting under *Also*. |
 | **Project Board** | Projects in three sections: Bidding to the owner, Buying out, Building. Each row leads with the days left before our bid (red inside a week, amber inside two), then the name, the owner and architect (each a link), chips, the Bid Board's folder and plans icons, and the price. |
-| **+ New project** (beside *Bidding to the owner*) | One window in four steps, each feeding the next. **The project**: name, address, town, owner and architect from the one customer list ("Someone new" makes a record), bid due, size. **The plans**: the set's name (Bid set, Pricing set, Permit set or typed), the day it came in, the sheet index pasted from the cover sheet and read as you paste (A-101, A101, A1.01, FP-101; capitals become sentence case; a line not read is listed). **The trades**: guessed from the sheets in build order, each with the sheets behind it; untick, add, mark **Ours**, a budget. **Each scope**: each trade's usual lines to change, each with the sheets it reads from (guessed from its words, × takes one off, **+ sheet** adds one; none means the trade's sheets as a whole); Enter starts the next line. **Create the project** puts it under Bidding to the owner and opens it on Trades. **Paste a made-up sheet index** tries it. |
+| **+ New project** (beside *Bidding to the owner*) | One window in four steps, each feeding the next. **The project**: name, address, town, owner and architect from the one customer list ("Someone new" makes a record), bid due, size. **The plans**: the set's name (Bid set, Pricing set, Permit set or typed), the day it came in, the sheet index pasted from the cover sheet and read as you paste (A-101, A101, A1.01, FP-101; capitals become sentence case; a line not read is listed). **The trades**: guessed from the sheets in build order, each with the sheets behind it; untick, add, mark **Ours**, a budget. **Each scope**: each trade's usual lines to change, each with the sheets it reads from (guessed from its words, × takes one off, **+ sheet** adds one; none means the trade's sheets as a whole); Enter starts the next line. **Who to ask**: for each trade we hire out, every company that does it, closest first, with its drive, how it answers asks and any missing paperwork; the closest three in range come ticked. **Create the project** puts it under Bidding to the owner, sends each ticked company the board's invitation, and opens it on Trades. **Paste a made-up sheet index** tries it. |
 | Plans icon on a row | A plans window over the board: newest set first, the sheet list by discipline, what the last addendum changed, arrow keys flip sheets, and under each sheet the scope lines that read from it. Drawings are stand-ins. |
 | Owner or architect name | One company window, shaped by what the company is to us: an owner gets money, how they buy and pay, projects we build for them; an architect gets addenda and questions waiting on them. One call log either way. |
 | **Trades** tab | One row per trade: who we asked with each bid in thousands, our budget, the lowest all in, what we carry. **Compare bids** opens the comparison. **On a map** opens the map. |
@@ -81,7 +81,7 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
 | **Contracts** | Per trade: paperwork chips, award, the statement of work drafted from the bid, send, sign. |
 | **Get started** | The checklist before work starts: owner contract, permit, start date, and five steps per trade. Start stays shut until nothing is missing. |
 | **Draws** | Percent reported per line, a draw asked from the portal with its pay application (the 702 and 703) and a conditional waiver, approve, pay, unconditional waiver. **Pay application** on each draw opens the signed form read-only. **Send back** returns a waiting draw with a note and the percent we see on each line we doubt; the trade gets **Fix and resend** in its portal, our numbers filled in, and the fixed one comes back marked "revised". A trade our own crew does shows as **Our own crew** with its percent and its Pipeline job: no draws there. |
-| **Bill the owner** | Our pay application to the owner, once a month: one line per trade with the work its company reported, then general conditions, contingency and fee, which follow the trades. Done so far, less what the owner holds, less what we asked for before, is this bill. **Send to** the owner keeps it as it went, and next month's starts from it. **So far with** the owner lists what went, with **Mark paid**. A trade our own crew does (plumbing) has a percent-done picker on its line. **Waivers with this bill** says whose waiver is missing. **See what the owner sees** puts their portal beside it: their contract, each bill with every line and **Pay**, and their papers (our lien waivers and the trades'). Once every line is billed, **Closeout with** the owner replaces the draft: every trade's final, the owner's **Accept the work**, then **Send the final pay application** for what they hold. |
+| **Bill the owner** | Our pay application to the owner, once a month: one line per trade with the work its company reported, then general conditions, contingency and fee, which follow the trades. Done so far, less what the owner holds, less what we asked for before, is this bill. **Send to** the owner keeps it as it went, and next month's starts from it. **So far with** the owner lists what went, with **Mark paid**. A trade our own crew does (plumbing) has a percent-done picker on its line. **Waivers with this bill** says whose waiver is missing. **See what the owner sees** puts their portal beside it: their contract, each bill with every line and **Pay**, and their papers (our lien waivers and the trades'). A trade's pay application we sent back bills what we see on the lines we doubt. Once every line is billed, **Closeout with** the owner replaces the draft: every trade's final, the owner's **Accept the work**, then **Send the final pay application** for what they hold. |
 | **Follow up** (board tab) | Everyone we are waiting on across every project, the ones to call first. Log a contact; record the day they promised a quote; a passed day returns them to the top. |
 | **Trade partners** (board tab) | By trade: the bench, who answers when asked, every project short of quotes, coverage (where they drive from, how far they go), one press to ask the companies not yet asked. **Actions for assistants** on top: each standard as the ideal, where we are, and what closes the gap. |
 | The trade's portal | One link per company, carried by every message we send (**Their messages** beside **Their portal**: the invitation as an email and a text, reminders, new plan sets, bid tabs, the master agreement, a statement of work to sign, and the day work starts by email and text). The first visit opens on a welcome until **Got it**. The link opens on the company's **home**: what needs them across every project (late or blocking first; a pay application we sent back, their closeout steps), their money once a dollar moves, their jobs, what they are asked to bid, their paperwork, and what came before. A row opens that project's page, with **← Everything with Click** back. On a project page: paperwork done by the company itself (read and sign the master agreement, send an insurance certificate, fill in and sign a W-9), the plans window (sets, sheets, whether a set changes their trade), the invitation and the bid form (each line with its sheet numbers, a tap opens that sheet; after a new set the lines it touches are marked; how many days the number is good for; alternates that add or take off; their own quote attached), "tell Click when your number will come" (a passed day shows in red), answer a line the office could not read (its own short step, the number stays), confirm a number after an addendum, the bid tab, sign the statement of work, report work, ask for a draw with its pay application (next row). |
@@ -140,6 +140,11 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   remembers it (`issuePlanSet.newLines`, `PlanSet.addedLines`). A quote already in never answered
   it, so Compare bids reads it as not clear until a cost is set to cover it or the company
   answers. The email says "It adds detention pond to your scope."
+- **New Project ends with Who to ask** (approved as built, 2026-10-02): the step ticks the
+  companies in range in the map's own order (`tradeLineup`), up to `BENCH_WANTED`, so the map
+  and the step move together when question 7 is answered. A company missing its master
+  agreement, insurance or W-9 is still ticked, with what is missing in a muted line: paperwork is
+  fixed before award, not before a quote. Create sends the board's own invite to each.
 - **Each draw comes with a 702 and 703** (2026-10-02, Building lane): the trade fills the pay
   application in its portal and watches the form fill, typing only what the app cannot know. Most
   of it comes from the job and from the work they reported (`gcBuilding.ts`, `GcBuildingPayApp.tsx`).
@@ -189,6 +194,8 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   unconditional one. Our final waits until every trade has sent its own final pay application.
   A trade's retainage is paid only after the owner has paid us ours (`ownerReleasedRetainage`):
   that rule is the Building lane's to apply on Closeout.
+- **A pay application we sent back bills what we see** (Owner Billing lane, 2026-10-02): until
+  the trade resends it, the owner's bill uses our percent on the lines we doubt, not theirs.
 - **A trade sees "Click Construction"** (2026-10-02). The name comes from one record
   (`GC_COMPANY` in `gcFixture.ts`: the full name and the short "Click" used in sentences), never
   typed into the portal's words.
@@ -310,9 +317,6 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
   fixture, not from the pay applications on **Bill the owner** (`ownerAccount` has the numbers);
   our own crew's percent read from its Pipeline job (typed on **Bill the owner** for now);
   a trade's retainage held until the owner has paid us ours (the Building lane's Closeout).
-- Fair Oaks Shops, Building D has no owner billing in the fixture yet (`ownerBilling: null`):
-  its history of pay applications to the owner is Owner Billing's to add. Until then Bill the
-  owner shows all its work as the first bill.
 - No email is sent and nothing notifies anyone when a promised day passes.
 
 ## Where it plugs into the app that exists
@@ -467,6 +471,9 @@ follow the plain-words rules; the prototype's own words were written to them as 
   In the portal as Summit Roofing, **Fix and resend pay application 1**; as Tri-County, **Fill out
   the final pay application**. On Draws, change a stage of our own crew's plumbing.
 - **Follow up**: log a call with a new day on Hillside Excavation and watch the card move down.
+- **Fair Oaks Shops, Building D → Bill the owner**: three pay applications to Cibolo, the third
+  still waiting; **Mark paid** it. The October draft bills Summit Roofing at what we see (the
+  membrane at 50%, they say 100%), and Summit and Cool Breeze are named for missing waivers.
 - **Stone Oak Pharmacy → Bill the owner** (the job at its end, under Building): the closeout
   waits on Cool Breeze. In the owner's portal press **Accept the work**; as Cool Breeze send the
   final pay application; then **Send the final pay application** and
@@ -477,7 +484,9 @@ follow the plain-words rules; the prototype's own words were written to them as 
 - **+ New project**: pick an owner, **Paste a made-up sheet index**, see 21 sheets and 13 trades,
   change a scope line, **Create the project**. It opens on Trades and sits under Bidding to the
   owner with its days left. On Electrical, Lighting reads from E-101; add E-201 to Devices, then
-  the plans window under E-201 lists Devices.
+  the plans window under E-201 lists Devices. On **Who to ask**, Sitework ticks Lonestar and
+  Tri-County and leaves Hillside, past its 50 miles; Create the project opens Trades with 15
+  companies asked.
 - **Plans → A new set of plans came in** on Boerne: type "C-101: a detention pond is added",
   press **+ Add a line this set brings** on Sitework, type Detention pond, issue. Compare bids on
   Sitework now says each quote "is not clear about detention pond".

@@ -7,6 +7,8 @@
 import type { GcCustomer, GcProject, GcState, NewProjectDraft, NewTradeDraft, PlanSheet, ScopeItem, TradePackage } from './gcTypes'
 import { sheetDiscipline, sheetsAtRev } from './gcPlans'
 import { currentRev } from './gcLookups'
+import { tradeLineup } from './gcMap'
+import { BENCH_WANTED } from './gcBench'
 
 /** One trade the office may buy, in the order the work goes in. */
 export interface TradeTemplate {
@@ -282,6 +284,21 @@ export function withTradesInOrder(existing: TradePackage[], added: TradePackage[
     else out.splice(at, 0, pkg)
   }
   return out
+}
+
+/**
+ * Who to ask first on a new project's trade: the companies in range in the map's own order
+ * (`tradeLineup`, closest first), up to a deep bench (BENCH_WANTED), so at least two quotes come
+ * back. The owner, 2026-10-02: keep the map's order, so his answer to closest first or most
+ * reliable first (open question 7) moves both. A company with no coverage set is in range, after
+ * the ones whose drive is known. Our own trade asks nobody.
+ */
+export function defaultAsks(state: GcState, project: GcProject, pkg: TradePackage): string[] {
+  if (pkg.selfPerform) return []
+  return tradeLineup(state, project, pkg)
+    .filter((r) => r.travel.inZone)
+    .slice(0, BENCH_WANTED)
+    .map((r) => r.partner.id)
 }
 
 /** The id the project will get. The window reads it to open the project once it is made. */

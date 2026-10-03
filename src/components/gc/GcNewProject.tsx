@@ -12,6 +12,13 @@ import {
   tradesForSheets,
   usualScope,
   guessLineSheets,
+  answerRecord,
+  buildNewProject,
+  partnerBlockers,
+  defaultAsks,
+  tradeLineup,
+  travelWords,
+  type AnswerRecord,
   type GcAction,
   type GcState,
   type NewProjectDraft,
@@ -46,6 +53,7 @@ const STEPS = [
   { title: 'The plans', hint: 'The set that came in and its sheets.' },
   { title: 'The trades', hint: 'Who we buy, guessed from the sheets.' },
   { title: 'Each scope', hint: 'The work each quote must cover.' },
+  { title: 'Who to ask', hint: 'The companies asked to quote each trade.' },
 ] as const
 
 /** What the office changed on one trade. A field left out follows the guess. */
@@ -122,6 +130,8 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
   const [added, setAdded] = useState<string[]>([])
   const [addText, setAddText] = useState('')
   const [scopeFor, setScopeFor] = useState<string | null>(null)
+  /** The companies ticked per trade. A trade left out follows the default: the closest in range. */
+  const [asks, setAsks] = useState<Record<string, string[]>>({})
 
   const reading = useMemo(() => sheetIndexInText(indexText), [indexText])
   const guesses = useMemo(() => tradesForSheets(reading.sheets), [reading.sheets])
@@ -187,11 +197,16 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
   const scopeLines = picked.reduce((n, r) => n + r.scope.filter((l) => l.label.trim()).length, 0)
   const ours = picked.filter((r) => r.ours).length
   const budgets = picked.reduce((n, r) => n + budgetNumber(r.budget), 0)
+  /** The project as it will be made, so each trade's companies can be lined up before it exists. */
+  const built = buildNewProject(state, draft).project
+  const asksFor = (trade: string, pkg: (typeof built.packages)[number]) => asks[trade] ?? defaultAsks(state, built, pkg)
+  const asked = built.packages.reduce((n, pkg) => n + asksFor(pkg.trade, pkg).length, 0)
   const summaries = [
     draft.name || 'No name yet',
     `${draft.setLabel} · ${reading.sheets.length} ${reading.sheets.length === 1 ? 'sheet' : 'sheets'}`,
     `${picked.length} ${picked.length === 1 ? 'trade' : 'trades'}${ours > 0 ? `, ${ours} ours` : ''}`,
     `${scopeLines} scope ${scopeLines === 1 ? 'line' : 'lines'}`,
+    asked === 0 ? 'Nobody asked yet' : `${asked} ${asked === 1 ? 'company' : 'companies'} asked`,
   ]
 
   useEffect(() => {
@@ -205,6 +220,10 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
   const create = () => {
     const id = newProjectId(state, draft)
     dispatch({ type: 'createProject', draft })
+    // Each ask is the board's own invite, so the company's count and the log move as they do on Trades.
+    for (const pkg of built.packages) {
+      for (const partnerId of asksFor(pkg.trade, pkg)) dispatch({ type: 'invite', projectId: id, packageId: pkg.id, partnerId })
+    }
     onCreated(id)
   }
 
@@ -587,13 +606,82 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
               )}
             </div>
           )}
+
+          {step === 4 && (
+            <div style={{ display: 'grid', gap: '0.8rem' }}>
+              <div style={{ fontSize: '0.875rem' }}>
+                The closest companies in range are ticked, up to three a trade, so at least two quotes come back. Each one gets a portal link with the plans, its trade&apos;s scope and the due date. Missing paperwork does not stop a quote. It shows under the company, to fix before you award.
+              </div>
+              {built.packages.length === 0 && <div style={{ color: 'var(--text-muted)' }}>No trades are ticked yet. Pick them on step 3.</div>}
+              {built.packages.map((pkg) => {
+                if (pkg.selfPerform) {
+                  return (
+                    <div key={pkg.id} style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+                      <strong style={{ color: 'var(--text-base)' }}>{pkg.trade}</strong> is ours. Nobody is asked.
+                    </div>
+                  )
+                }
+                const lineup = tradeLineup(state, built, pkg)
+                const on = asksFor(pkg.trade, pkg)
+                return (
+                  <div key={pkg.id} style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', padding: '0.4rem 0.7rem', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)', fontSize: '0.875rem' }}>
+                      <strong>{pkg.trade}</strong>
+                      <span style={{ color: on.length >= 2 ? 'var(--text-muted)' : 'var(--text-red-700)' }}>
+                        {on.length === 0 ? 'nobody asked' : `${on.length} asked`}
+                        {on.length > 0 && on.length < 2 ? '. Two quotes is the least you want.' : ''}
+                      </span>
+                      <span style={{ flex: 1 }} />
+                      {asks[pkg.trade] && (
+                        <Btn kind="quiet" onClick={() => setAsks((all) => Object.fromEntries(Object.entries(all).filter(([t]) => t !== pkg.trade)))}>
+                          Tick the closest again
+                        </Btn>
+                      )}
+                    </div>
+                    {lineup.length === 0 ? (
+                      <div style={{ padding: '0.4rem 0.7rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                        No company in the directory does {pkg.trade.toLowerCase()} yet. Add one on Trade partners after you create the project.
+                      </div>
+                    ) : (
+                      lineup.map((row) => {
+                        const ticked = on.includes(row.partner.id)
+                        const miles = travelWords(row.travel, row.partner)
+                        const blockers = partnerBlockers(row.partner, state.today)
+                        return (
+                          <label
+                            key={row.partner.id}
+                            style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)', fontSize: '0.875rem', cursor: 'pointer', opacity: row.travel.inZone ? 1 : 0.6 }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={ticked}
+                              onChange={(e) => setAsks((all) => ({ ...all, [pkg.trade]: e.target.checked ? [...on, row.partner.id] : on.filter((x) => x !== row.partner.id) }))}
+                            />
+                            <strong>{row.partner.company}</strong>
+                            <span style={{ color: 'var(--text-muted)' }}>{miles || 'coverage not set'}</span>
+                            <span style={{ flex: 1 }} />
+                            <RecordChip record={answerRecord(row.partner)} />
+                            {blockers.length > 0 && (
+                              <span style={{ flexBasis: '100%', paddingLeft: '1.6rem', color: 'var(--text-muted)', fontSize: '0.78rem' }}>{blockers.join(' ')}</span>
+                            )}
+                          </label>
+                        )
+                      })
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
 
         <div style={{ padding: '0.65rem 1rem', borderTop: '1px solid var(--border)', display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <span style={{ fontSize: '0.85rem', color: 'var(--text-600)', flex: '1 1 18rem' }}>
             {missing.length > 0
               ? missing[0]
-              : `${draft.name} starts under Bidding to the owner with ${picked.length} ${picked.length === 1 ? 'trade' : 'trades'}. Nobody is asked yet.`}
+              : `${draft.name} starts under Bidding to the owner with ${picked.length} ${picked.length === 1 ? 'trade' : 'trades'}. ${
+                  asked === 0 ? 'Nobody is asked yet.' : `${asked} ${asked === 1 ? 'company is' : 'companies are'} asked to quote.`
+                }`}
           </span>
           <Btn kind="quiet" onClick={onClose}>Cancel</Btn>
           {step > 0 && <Btn onClick={() => setStep(step - 1)}>← Back</Btn>}
@@ -608,6 +696,18 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
       </div>
     </div>
   )
+}
+
+const RECORD_WORDS: Record<AnswerRecord, { tone: 'green' | 'amber' | 'red' | 'grey'; words: string }> = {
+  reliable: { tone: 'green', words: 'answers when asked' },
+  mixed: { tone: 'amber', words: 'answers some asks' },
+  silent: { tone: 'red', words: 'often silent' },
+  new: { tone: 'grey', words: 'new to us' },
+}
+
+function RecordChip({ record }: { record: AnswerRecord }) {
+  const r = RECORD_WORDS[record]
+  return <Chip tone={r.tone}>{r.words}</Chip>
 }
 
 function ScopeEditor({

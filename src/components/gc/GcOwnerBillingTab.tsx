@@ -279,7 +279,7 @@ function LineRow({
         )}
         {line.detail.length > 0 && (
           <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '0.15rem' }}>
-            {line.detail.map((d) => `${d.label} ${d.pct}%`).join(' · ')}
+            {line.detail.map((d) => (d.theySay === undefined ? `${d.label} ${d.pct}%` : `${d.label} ${d.pct}%, they say ${d.theySay}%`)).join(' · ')}
           </div>
         )}
       </td>
