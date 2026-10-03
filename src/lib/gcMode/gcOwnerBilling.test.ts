@@ -1,6 +1,6 @@
 /** GC mode design spike: the owner's pay application, read off the made-up Helotes Dental Office. */
 import { describe, expect, it } from 'vitest'
-import { initialGcState, nextOwnerBillDay, ownerPayApp, proposalTotals } from './gcModel'
+import { gcReducer, initialGcState, nextOwnerBillDay, ownerAccount, ownerPayApp, ownerPayAppHasWork, proposalTotals, type GcState } from './gcModel'
 
 function helotes() {
   const state = initialGcState()
@@ -32,6 +32,55 @@ describe('ownerPayApp', () => {
     for (const id of ['delec', 'dhvac', 'dplumb', 'mill']) {
       expect(app.lines.find((l) => l.id === id)?.doneToDate).toBe(0)
     }
+  })
+})
+
+describe('sending the owner a pay application, then the next month', () => {
+  const project = (state: GcState) => {
+    const p = state.projects.find((x) => x.id === 'helotes')
+    if (!p) throw new Error('fixture has no helotes')
+    return p
+  }
+
+  it('keeps pay application 1 as it went, and starts pay application 2 from it', () => {
+    const sent = gcReducer(initialGcState(), { type: 'sendOwnerPayApp', projectId: 'helotes' })
+    const apps = project(sent).ownerBilling?.payApps ?? []
+    expect(apps.map((a) => [a.number, a.periodTo, a.sentOn, Math.round(a.due), a.paidOn])).toEqual([[1, '2026-10-25', '2026-10-02', 47_301, null]])
+    // The made-up billed and paid numbers are left alone: the owner window still reads them.
+    expect(project(sent).ownerBilling?.billed).toBe(61_000)
+    const next = ownerPayApp(sent, project(sent))
+    expect(next.number).toBe(2)
+    expect(next.billOn).toBe('2026-11-25')
+    expect(ownerPayAppHasWork(next)).toBe(false)
+    // Nothing new: a second send does nothing.
+    expect(gcReducer(sent, { type: 'sendOwnerPayApp', projectId: 'helotes' })).toBe(sent)
+  })
+
+  it('bills only the new work the next month, less what it asked for before', () => {
+    let state = gcReducer(initialGcState(), { type: 'sendOwnerPayApp', projectId: 'helotes' })
+    state = gcReducer(state, { type: 'tradeReport', projectId: 'helotes', packageId: 'dry', sovId: 'dry-2', pct: 100 })
+    const app = ownerPayApp(state, project(state))
+    const dry = app.lines.find((l) => l.id === 'dry')
+    expect([dry?.doneBefore, dry?.thisMonth, dry?.doneToDate]).toEqual([38_320, 10_880, 49_200])
+    expect(Math.round(app.doneToDate)).toBe(67_479)
+    expect(Math.round(app.retainage)).toBe(6_748)
+    expect(Math.round(app.askedBefore)).toBe(47_301)
+    expect(Math.round(app.due)).toBe(13_430)
+  })
+
+  it('marks a pay application paid once, and the account says what is owed', () => {
+    let state = gcReducer(initialGcState(), { type: 'sendOwnerPayApp', projectId: 'helotes' })
+    expect(Math.round(ownerAccount(project(state))?.owed ?? 0)).toBe(47_301)
+    state = gcReducer(state, { type: 'ownerPaid', projectId: 'helotes', number: 1 })
+    const account = ownerAccount(project(state))
+    expect(account && [Math.round(account.billed), Math.round(account.retainageHeld), Math.round(account.paid), Math.round(account.owed)]).toEqual([52_557, 5_256, 47_301, 0])
+    expect(gcReducer(state, { type: 'ownerPaid', projectId: 'helotes', number: 1 })).toBe(state)
+    expect(ownerAccount(project(initialGcState()))).toBeNull()
+  })
+
+  it('sends nothing on a project we are still bidding', () => {
+    const state = initialGcState()
+    expect(gcReducer(state, { type: 'sendOwnerPayApp', projectId: 'boerne' })).toBe(state)
   })
 })
 

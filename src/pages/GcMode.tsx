@@ -315,7 +315,7 @@ export default function GcMode() {
               )}
               {tab === 'contracts' && <GcContractsTab state={state} project={project} dispatch={dispatch} />}
               {tab === 'draws' && <GcDrawsTab state={state} project={project} dispatch={dispatch} />}
-              {tab === 'owner' && <GcOwnerBillingTab state={state} project={project} />}
+              {tab === 'owner' && <GcOwnerBillingTab state={state} project={project} dispatch={dispatch} />}
             </div>
             {portalOpen && (
               <div style={{ display: 'grid', gap: '0.75rem', position: wide ? 'sticky' : 'static', top: '0.5rem' }}>

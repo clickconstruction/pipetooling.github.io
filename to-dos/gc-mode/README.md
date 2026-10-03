@@ -81,6 +81,7 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
 | **Contracts** | Per trade: paperwork chips, award, the statement of work drafted from the bid, send, sign. |
 | **Get started** | The checklist before work starts: owner contract, permit, start date, and five steps per trade. Start stays shut until nothing is missing. |
 | **Draws** | Percent reported per line, a draw asked from the portal with its pay application (the 702 and 703) and a conditional waiver, approve, pay, unconditional waiver. **Pay application** on each draw opens the signed form read-only. |
+| **Bill the owner** | Our pay application to the owner, once a month: one line per trade with the work its company reported, then general conditions, contingency and fee, which follow the trades. Done so far, less what the owner holds, less what we asked for before, is this bill. **Send to** the owner keeps it as it went, and next month's starts from it. **So far with** the owner lists what went, with **Mark paid**. |
 | **Follow up** (board tab) | Everyone we are waiting on across every project, the ones to call first. Log a contact; record the day they promised a quote; a passed day returns them to the top. |
 | **Trade partners** (board tab) | By trade: the bench, who answers when asked, every project short of quotes, coverage (where they drive from, how far they go), one press to ask the companies not yet asked. **Actions for assistants** on top: each standard as the ideal, where we are, and what closes the gap. |
 | The trade's portal | Paperwork, the newest plans, the invitation and the bid form, "tell Click when your number will come", confirm a number after an addendum, the bid tab, sign the master agreement and statement of work, report work, ask for a draw. |
@@ -190,7 +191,10 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
   gets the answer. Three made-up questions show in the architect's window, read-only.
 - Change orders, both to the owner and to a trade (a statement of work amendment).
 - Closeout: retainage release, final waivers.
-- Our billing to the owner. The owner's window shows billed and paid from the fixture only.
+- Our billing to the owner, the rest: the owner's window still shows billed and paid from the
+  fixture, not from the pay applications on **Bill the owner** (`ownerAccount` has the numbers);
+  our own crew's progress on a self-performed trade; retainage released at the end; our lien
+  waivers to the owner; what the owner sees.
 - No email is sent and nothing notifies anyone when a promised day passes.
 
 ## Where it plugs into the app that exists
@@ -237,6 +241,7 @@ imitates it.
 | `GcNewPlans.tsx` | The new-set-of-plans window |
 | `GcNewProject.tsx` | The New project window and its **+ New project** button |
 | `GcBuildingPayApp.tsx` · `src/lib/gcMode/gcBuilding.ts` | The pay application window, its door in the portal and its read-only view from Draws · the 702 and 703 numbers and the four steps (tested in `gcBuilding.test.ts`) |
+| `GcOwnerBillingTab.tsx` · `src/lib/gcMode/gcOwnerBilling.ts` | Bill the owner: the owner's lines, the draft pay application, the ones sent and paid · the lines and the 702 math, `ownerAccount` (tested in `gcOwnerBilling.test.ts`) |
 | `GcStart.tsx` | Get started |
 | `GcBidTabs.tsx` | Bid tabs |
 | `GcCustomerWindow.tsx` | The one company window |

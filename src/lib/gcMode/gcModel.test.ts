@@ -146,6 +146,9 @@ const STEPS: Step[] = [
       signedTitle: 'Office manager',
     },
   },
+  // Helotes: our pay application to the owner, and the owner paying it.
+  { label: 'Send Dr. Raman pay application 1', action: { type: 'sendOwnerPayApp', projectId: 'helotes' } },
+  { label: 'Dr. Raman pays pay application 1', action: { type: 'ownerPaid', projectId: 'helotes', number: 1 } },
 ]
 
 const CUSTOMER_IDS = ['cibolo', 'raman']
@@ -269,6 +272,7 @@ describe('GC mode golden walk', () => {
       'tradeSignUnconditional', 'setMarkup', 'logCustomerContact', 'addPartner', 'setCoverage', 'reset',
       'createProject',
       'tradeSendPayApp',
+      'sendOwnerPayApp', 'ownerPaid',
     ]
     expect(all.filter((t) => !used.has(t))).toEqual([])
   })

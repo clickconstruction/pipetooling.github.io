@@ -4985,6 +4985,27 @@ exports[`GC mode golden walk > step 58: Hill Country sends pay application 3 (ce
 }
 `;
 
+exports[`GC mode golden walk > step 59: Send Dr. Raman pay application 1 1`] = `
+{
+  "changed": {
+    "lastLog.id": 55,
+    "lastLog.text": "Sent pay application 1 to Dr. Priya Raman: $79,247 to pay, $8,805 held.",
+    "lastLog.who": "office",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 60: Dr. Raman pays pay application 1 1`] = `
+{
+  "changed": {
+    "lastLog.id": 56,
+    "lastLog.text": "Dr. Priya Raman paid pay application 1: $79,247.",
+  },
+  "removed": [],
+}
+`;
+
 exports[`GC mode golden walk > the whole state at the end 1`] = `
 {
   "customers": [
@@ -5141,6 +5162,16 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
+      "id": 56,
+      "text": "Dr. Priya Raman paid pay application 1: $79,247.",
+      "who": "office",
+    },
+    {
+      "id": 55,
+      "text": "Sent pay application 1 to Dr. Priya Raman: $79,247 to pay, $8,805 held.",
+      "who": "office",
+    },
+    {
       "id": 54,
       "text": "Hill Country Interiors sent pay application 3 on Framing and drywall: $7,500, with a conditional waiver signed.",
       "who": "trade",
@@ -5279,16 +5310,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "id": 27,
       "text": "Tejas Power coverage: not set.",
       "who": "office",
-    },
-    {
-      "id": 26,
-      "text": "Hillside Excavation coverage: from Boerne, goes 60 miles.",
-      "who": "office",
-    },
-    {
-      "id": 25,
-      "text": "Hillside Excavation signed the master agreement.",
-      "who": "trade",
     },
   ],
   "partners": [
@@ -6781,6 +6802,28 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "ownerBilling": {
         "billed": 61000,
         "paid": 42300,
+        "payApps": [
+          {
+            "doneToDate": {
+              "contingency": 2331.4736842105262,
+              "delec": 0,
+              "dhvac": 0,
+              "dplumb": 0,
+              "dry": 64200,
+              "fee": 8004.726315789473,
+              "gc": 13515.78947368421,
+              "mill": 0,
+            },
+            "due": 79246.79052631579,
+            "number": 1,
+            "paidOn": "2026-10-02",
+            "periodTo": "2026-10-25",
+            "retainage": 8805.19894736842,
+            "retainagePct": 10,
+            "sentOn": "2026-10-02",
+            "workToDate": 88051.98947368421,
+          },
+        ],
         "retainageHeld": 6100,
       },
       "ownerContractSignedOn": "2026-10-02",
