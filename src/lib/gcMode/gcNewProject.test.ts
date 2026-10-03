@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
   SAMPLE_SHEET_INDEX,
+  SAMPLE_SPEC_INDEX,
+  guessLineSpecs,
+  specDivision,
+  specIndexInText,
+  tradeForSpec,
+  tradesForPlans,
   budgetFromSize,
   buildNewProject,
   changeOrderFromSet,
@@ -381,5 +387,84 @@ describe('changeOrderFromSet', () => {
     const fromNote = (note: string) => changeOrderFromSet({ label: 'Bulletin 1', note, sheets: ['E-201'] }, 'Electrical', [], 0).description
     expect(fromNote('E-201: the tenant in bay 2 wants twelve more floor boxes.')).toBe('Bulletin 1, Electrical: the tenant in bay 2 wants twelve more floor boxes, per E-201')
     expect(fromNote('RTU-3 moved 6 ft north.')).toBe('Bulletin 1, Electrical: RTU-3 moved 6 ft north, per E-201')
+  })
+})
+
+describe('the project manual', () => {
+  const manual = specIndexInText(SAMPLE_SPEC_INDEX).sections
+
+  it('reads the made-up table of contents as 25 sections, and passes over the division headings', () => {
+    const r = specIndexInText(SAMPLE_SPEC_INDEX)
+    expect(r.sections).toHaveLength(25)
+    expect(r.unread).toEqual([])
+    expect(r.sections[0]).toEqual({ id: '01 10 00', title: 'Summary' })
+    expect(r.sections.find((x) => x.id === '08 41 13')?.title).toBe('Aluminum-framed entrances and storefronts')
+    expect(new Set(r.sections.map((x) => specDivision(x.id))).size).toBe(12)
+  })
+
+  it('reads the numbering styles manuals use, each section once, and keeps a line it could not read', () => {
+    const r = specIndexInText(
+      'DIVISION 07\n075423 TPO roofing\nSection 09 91 23 - Interior painting\n09-29-00: GYPSUM BOARD\n07 54 23 Roofing again\nAddendum 2 items\nFinishes',
+    )
+    expect(r.sections).toEqual([
+      { id: '07 54 23', title: 'TPO roofing' },
+      { id: '09 91 23', title: 'Interior painting' },
+      { id: '09 29 00', title: 'Gypsum board' },
+    ])
+    expect(r.unread).toEqual(['Addendum 2 items'])
+  })
+
+  it('gives each section a trade by the start of its number, the longest match first', () => {
+    expect(tradeForSpec('09 91 23')).toBe('Painting')
+    expect(tradeForSpec('09 29 00')).toBe('Framing and drywall')
+    expect(tradeForSpec('09 65 19')).toBe('Flooring')
+    expect(tradeForSpec('08 41 13')).toBe('Glass and storefront')
+    expect(tradeForSpec('32 84 00')).toBe('Landscaping')
+    expect(tradeForSpec('32 12 16')).toBe('Sitework')
+    expect(tradeForSpec('01 10 00')).toBeNull()
+  })
+
+  it('adds the trades the sections suggest to the ones the sheets suggest, in the list order', () => {
+    const guesses = tradesForPlans([{ id: 'P-101', title: 'Plumbing plan' }], manual)
+    expect(guesses.find((g) => g.trade === 'Plumbing')).toEqual({ trade: 'Plumbing', from: ['P-101'], specs: ['22 11 16', '22 40 00'] })
+    expect(guesses.find((g) => g.trade === 'Glass and storefront')).toEqual({ trade: 'Glass and storefront', from: [], specs: ['08 41 13'] })
+    expect(guesses.map((g) => g.trade)).toEqual([
+      'Sitework',
+      'Landscaping',
+      'Concrete',
+      'Structural steel',
+      'Framing and drywall',
+      'Roofing',
+      'Doors and hardware',
+      'Glass and storefront',
+      'Painting',
+      'Flooring',
+      'Fire sprinkler',
+      'Plumbing',
+      'HVAC',
+      'Electrical',
+    ])
+  })
+
+  it('ties a scope line to the trade sections that share a word with it', () => {
+    const roofing = manual.filter((x) => tradeForSpec(x.id) === 'Roofing')
+    expect(guessLineSpecs('Roof membrane', roofing)).toEqual(['07 54 23'])
+    expect(guessLineSpecs('Sheet metal and flashing', roofing)).toEqual(['07 62 00'])
+    expect(guessLineSpecs('Insulation', roofing)).toEqual([])
+  })
+
+  it('keeps the manual on the project and the sections tied to each line, and leaves them off when none came in', () => {
+    const { project } = buildNewProject(
+      initialGcState(),
+      draft({
+        specs: manual,
+        trades: [{ trade: 'Roofing', budget: 0, ours: false, scope: ['Roof membrane', '  ', 'Insulation'], scopeSpecs: [['07 54 23'], ['07 62 00'], []] }],
+      }),
+    )
+    expect(project.specs).toHaveLength(25)
+    expect(project.packages[0]?.scope.map((l) => l.specs)).toEqual([['07 54 23'], []])
+    const bare = buildNewProject(initialGcState(), draft()).project
+    expect(bare.specs).toBeUndefined()
+    expect(bare.packages[0]?.scope[0]?.specs).toBeUndefined()
   })
 })

@@ -27,6 +27,8 @@ import {
   sheetsInText,
   questionInNote,
   tradesForSheets,
+  tradeForSpec,
+  guessLineSpecs,
   usualScope,
   type GcAction,
   type GcProject,
@@ -140,6 +142,15 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
   const index = useMemo(() => sheetsAtRev(project, currentRev(project)), [project])
   const added: PlanSheet[] = sheets.filter((id) => !index.some((s) => s.id === id)).map((id) => ({ id, title: (titles[id] ?? '').trim() }))
   const touches = touchOverride ?? packagesForSheets(project, sheets, added)
+  /** Every sheet once the set is in: the index and the ones this set adds. */
+  const allSheets = [...index, ...added.filter((a) => !index.some((s) => s.id === a.id))]
+  const sheetsOfTrade = (trade: string) => {
+    const from = tradesForSheets(allSheets).find((g) => g.trade === trade)?.from ?? []
+    return allSheets.filter((s) => from.includes(s.id))
+  }
+  /** The project manual's sections, and the ones that point at a trade. */
+  const specs = project.specs ?? []
+  const specsOfTrade = (trade: string) => specs.filter((x) => tradeForSpec(x.id) === trade)
   const everyone = planRecipients(state, project, touches)
   const going = everyone.filter((r) => !skipped.includes(r.partner.id))
   const companies = new Set(going.map((r) => r.partner.id)).size
@@ -178,6 +189,7 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
     ours: b.ours,
     scope: b.scope.map((l) => l.label),
     scopeSheets: b.scope.map((l) => l.sheets ?? guessLineSheets(l.label, sheetsOfTrade(b.trade))),
+    ...(specs.length > 0 ? { scopeSpecs: b.scope.map((l) => l.specs ?? guessLineSpecs(l.label, specsOfTrade(b.trade))) } : {}),
   }))
   const coTrades =
     project.stage === 'pursuing'
@@ -210,12 +222,6 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
     adds: preview?.touched ? (newLines[preview.pkg.id] ?? []) : [],
     moves: preview?.touched ? movesFor(preview.pkg.id) : [],
   })
-  /** Every sheet once the set is in: the index and the ones this set adds. */
-  const allSheets = [...index, ...added.filter((a) => !index.some((s) => s.id === a.id))]
-  const sheetsOfTrade = (trade: string) => {
-    const from = tradesForSheets(allSheets).find((g) => g.trade === trade)?.from ?? []
-    return allSheets.filter((s) => from.includes(s.id))
-  }
 
   const onJob = (trade: string) =>
     project.packages.some((p) => p.trade.toLowerCase() === trade.toLowerCase()) || brought.some((b) => b.trade.toLowerCase() === trade.toLowerCase())
@@ -609,7 +615,15 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
                       </label>
                       <Btn kind="quiet" onClick={() => setBrought((all) => all.filter((_, j) => j !== i))}>Take it out</Btn>
                     </div>
-                    <ScopeLines trade={b.trade} lines={b.scope} onChange={(scope) => change(i, { scope })} sheets={allSheets} tradeSheets={sheetsOfTrade(b.trade)} />
+                    <ScopeLines
+                      trade={b.trade}
+                      lines={b.scope}
+                      onChange={(scope) => change(i, { scope })}
+                      sheets={allSheets}
+                      tradeSheets={sheetsOfTrade(b.trade)}
+                      specs={specs}
+                      tradeSpecs={specsOfTrade(b.trade)}
+                    />
                   </div>
                 ))}
               </div>
