@@ -145,6 +145,10 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   and the step move together when question 7 is answered. A company missing its master
   agreement, insurance or W-9 is still ticked, with what is missing in a muted line: paperwork is
   fixed before award, not before a quote. Create sends the board's own invite to each.
+- **The schedule** (2026-10-02, decided before anything is built): several activities per trade,
+  like rough in, top out and trim. We draw it; the companies do not propose dates. It lives only
+  inside GC mode for now, not on the app's Schedule page. The proposal is under *The schedule
+  (proposed)*.
 - **Each draw comes with a 702 and 703** (2026-10-02, Building lane): the trade fills the pay
   application in its portal and watches the form fill, typing only what the app cannot know. Most
   of it comes from the job and from the work they reported (`gcBuilding.ts`, `GcBuildingPayApp.tsx`).
@@ -284,8 +288,45 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
     (underground, rough in, top out, trim), the way the Pipeline runs a plumbing job?
 22. Should a trade see sheets the office did not set (the dashed ones, matched from the line's
     words), or only the sheets the office set when writing the scope?
+23. The schedule: is a milestone hit only on its planned day or earlier, or within a few days of
+    grace? How many weeks does the look-ahead show, two or three?
+24. The schedule: who marks a look-ahead activity done or not each week, the trade in its portal
+    or our superintendent?
+
+## The schedule (proposed, 2026-10-02)
+
+Nothing is built. The owner's three answers are under *Decided by the owner*; this is the shape
+they point to, for the lanes to pick up.
+
+- **The activities are the statement of work lines**: the same schedule-of-values lines a trade
+  reports its percent on and draws against. Plumbing's are underground, rough in, top out and
+  trim. So "how far along" and "how far along it should be" are read on the same line.
+- **We draw it during Buying out.** Each activity gets a planned start and finish and the
+  activities it waits on. The trades' build order (sitework, concrete, steel, roofing, the rough
+  ins, drywall, the trims) is the first draft of those links. Milestones (dry-in, rough-in
+  inspection, substantial completion) are dates the schedule must meet; each can belong to a trade.
+  **Get started** gains a step, "the schedule is drawn", and **Start** locks it as the baseline.
+- **The four measures, read in Building:**
+  - *Percent complete vs planned*: the percent reported on each line against the percent the
+    baseline planned for today, weighted by each line's dollars, the way the ring weighs work now.
+  - *Critical-path float*: each activity's spare days, from the links and durations. Zero spare
+    days is the critical path.
+  - *Milestone hit rate*: milestones finished on or before their planned day (open question 23),
+    for the job and for each company.
+  - *Look-ahead reliability*: each week the schedule lists the coming weeks' activities; at the
+    week's end each is done or not, with a reason (weather, the trade before, materials, crew).
+    Done out of planned, per week, per trade and per company (open question 24).
+- **Where it shows**: a schedule view in Building; "4 days behind" on the board row and in the
+  ring's card; milestone hit rate and look-ahead reliability on Trade partners, beside "answers
+  when asked"; the weekly done or not in the trade's portal, if the trade marks it.
+- **Who builds what**: the Building lane, the schedule view and the four measures; the Board
+  lane, the Get started step, the board row's chip and the lines on Trade partners; the Portal
+  lane, the weekly done or not; the New Project lane, the first draft of the links from the build
+  order, and a set issued after Start saying which activities it moves.
 
 ## Workflow steps not built yet
+
+- The schedule and its four measures (*The schedule, proposed*).
 
 - New Project past its first form: a scope line tied to its spec section, exclusions, and a
   budget from the size (open question 11). A line's sheets show only in New Project, a new set
