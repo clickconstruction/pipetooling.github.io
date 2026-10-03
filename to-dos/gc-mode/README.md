@@ -352,9 +352,10 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
   file's name is kept.
 - The portal's Spanish follows the sub portal's (usted, its terms: Contrato maestro, orden de
   trabajo, renuncia de gravamen). What the office typed (project names, trades, scope lines, notes)
-  stays as typed. The choice is kept on the company's record and its messages go out in it; the Building lane's pay application
-  and the Board lane's bid tab table inside the portal stay English until those lanes pass the
-  language through (`usePortalLang` in `gcPortalLang.ts`; their words are in `PORTAL_SPANISH.md`).
+  stays as typed. The choice is kept on the company's record and its messages go out in it. The
+  Building lane's pay application reads it too, the 702 and 703 included (the owner's call); the
+  Board lane's bid tab table inside the portal stays English until that lane passes the language
+  through (`usePortalLang` in `gcPortalLang.ts`; its words are in `PORTAL_SPANISH.md`).
 - The look-ahead asks for this week's marks from Friday on (the week's end), and for last week's
   any day while one is unmarked; it shows only on a job being built. A mark replaces the
   company's earlier one for that week until our superintendent verifies it, then it stays.

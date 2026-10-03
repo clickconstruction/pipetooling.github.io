@@ -2,8 +2,8 @@
 
 The trade's portal reads in English or Spanish, kept on the company's record (`Partner.lang`, the
 owner's call 2026-10-03). Two pieces inside it belong to other lanes and still read English: the
-Building lane's pay application door (`GcBuildingPayApp.tsx`, including "Sign the change") and the
-Board lane's bid tab table (`GcBidTabs.tsx`, `bidTabResult` in `gcBids.ts`). This page gives each
+Building lane's pay application door (`GcBuildingPayApp.tsx`, including "Sign the change"; now
+built) and the Board lane's bid tab table (`GcBidTabs.tsx`, `bidTabResult` in `gcBids.ts`). This page gives each
 lane the words, so the portal reads in one voice. The Spanish follows the sub portal's
 (`src/lib/subPortal/subPortalI18n.ts`): formal *usted*, plain Mexican construction words. A native
 speaker should read it before anything ships (README, question 25).
@@ -48,9 +48,10 @@ Use these so a company reads one word for one thing across the portal.
 
 ## The Building lane: the pay application door
 
-A recommendation: keep the AIA G702/G703 form itself in English (page 1 · 702, page 2 · 703, its
-line names and column headers). It is the standard document a lender or the owner reads. Put
-everything around it in Spanish.
+Built (Building lane, 2026-10-03, `gcBuildingWords.ts`): the door, the closeout list, the window's
+steps and the 702 and 703 forms themselves read Spanish in a Spanish portal; the office's copy from
+Draws stays English. The owner chose to translate the forms too. The form's own line names and
+column headers are in one block at the end of `gcBuildingWords.ts`, for the native speaker's read.
 
 | English | Spanish |
 |---|---|
