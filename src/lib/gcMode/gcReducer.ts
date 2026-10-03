@@ -9,6 +9,7 @@ import { planRecipients, questionRecipients, questionsOpen } from './gcPlans'
 import { bidsIn } from './gcBids'
 import { awardedPartner, find, logged, mapInvite, mapPackage, mapProject, mapSow, sowFromBid } from './gcReducerHelpers'
 import { initialGcState } from './gcFixture'
+import { lostWhyLabel } from './gcLost'
 import { draftSchedule, scheduleLinesOf, withBaselineKept } from './gcBuildingSchedule'
 import { buildNewProject, packagesFromDrafts, pushSchedule, withNewLines, withTradesInOrder } from './gcNewProject'
 import { changeOrderTradePct, crewPctFromStages, drawApprovedLess, finalPayApplication, jobCloseout, payApplication, timesSentBack, tradeCloseout, workAllBilled } from './gcBuilding'
@@ -1237,6 +1238,26 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
       }))
       const trade = project.packages.find((k) => k.id === q.packageId)?.trade.toLowerCase() ?? 'the trade'
       return logged(next, 'office', `Answered a ${trade} question on ${project.name} and sent it to ${to.length} ${to.length === 1 ? 'company' : 'companies'}.`)
+    }
+
+    case 'markLost': {
+      // The owner picked another builder (owner, 2026-10-03). The project keeps its stage and leaves
+      // Bidding for the board's Lost section; Follow up and the bench stop chasing it (packageIsOpen).
+      const project = state.projects.find((p) => p.id === action.projectId)
+      if (!project || project.stage !== 'pursuing' || project.lostOn) return state
+      const wonBy = action.wonBy?.trim() || null
+      const note = action.note.trim() || null
+      const next = mapProject(state, project.id, (p) => ({ ...p, lostOn: state.today, lostWhy: action.why, wonBy, lostNote: note }))
+      const why = lostWhyLabel(action.why)?.toLowerCase() ?? 'no reason given'
+      return logged(next, 'office', `Lost ${project.name}: ${why}.${wonBy ? ` ${wonBy} won it.` : ''}`)
+    }
+
+    case 'reopenLost': {
+      // The owner came back to us: the bid is in Bidding again, as it stood.
+      const project = state.projects.find((p) => p.id === action.projectId)
+      if (!project || !project.lostOn) return state
+      const next = mapProject(state, project.id, (p) => ({ ...p, lostOn: null, lostWhy: null, wonBy: null, lostNote: null }))
+      return logged(next, 'office', `${project.name} is back in the bidding.`)
     }
   }
 }

@@ -5,6 +5,7 @@ import {
   customerSummary,
   ownerMoney,
   daysUntil,
+  lostWords,
   money,
   partnerById,
   planLabel,
@@ -72,7 +73,8 @@ export function GcCustomerWindow({ state, customer, dispatch, onClose, onOpenPro
   const isOwner = owner.live.length > 0 || customer.past.length > 0
   const isArchitect = architect.live.length > 0
   const both = isOwner && isArchitect
-  const decided = owner.won + customer.past.filter((p) => p.outcome === 'lost').length
+  // A live bid we lost (owner, 2026-10-03) counts as decided, like a lost one in their history.
+  const decided = owner.won + customer.past.filter((p) => p.outcome === 'lost').length + owner.live.filter((p) => p.lostOn).length
   const oldest = architect.waiting[0]?.days ?? 0
   // The owner's portal shows a job that is ours: won and buying out, or building. A job still
   // bidding has nothing to bill on. 'pick' asks which first when there is more than one.
@@ -509,8 +511,12 @@ function OwnerRow({
         </div>
       </td>
       <td style={td}>
-        <Chip tone={stage.tone}>{stage.word}</Chip>{' '}
-        {due !== null && project.stage === 'pursuing' && <Chip tone={due <= 7 ? 'red' : 'amber'}>due {shortDate(project.bidDue)}</Chip>}{' '}
+        {project.lostOn ? (
+          <Chip tone="grey" title={lostWords(project)}>lost {shortDate(project.lostOn)}</Chip>
+        ) : (
+          <Chip tone={stage.tone}>{stage.word}</Chip>
+        )}{' '}
+        {due !== null && project.stage === 'pursuing' && !project.lostOn && <Chip tone={due <= 7 ? 'red' : 'amber'}>due {shortDate(project.bidDue)}</Chip>}{' '}
         {totals.holes.length > 0 && <Chip tone="red">{totals.holes.length} trades with no number</Chip>}
       </td>
       <td style={num}>{money(totals.price)}</td>

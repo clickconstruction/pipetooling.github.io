@@ -341,7 +341,20 @@ export interface GcProject {
   schedule?: ProjectSchedule
   /** Our people on the job, for a trade to call (Portal lane). Unset: none named yet. */
   team?: ProjectContact[]
+  /**
+   * The day we heard the owner picked another builder (owner, 2026-10-03). The project keeps its
+   * stage ('pursuing') and leaves Bidding for the board's Lost section. Absent or null: not lost.
+   */
+  lostOn?: string | null
+  /** Why we lost it, in Trades mode's loss reasons (gcLost.ts). */
+  lostWhy?: GcLostWhy | null
+  /** Who the owner picked, when we know. */
+  wonBy?: string | null
+  lostNote?: string | null
 }
+
+/** Why a bid to an owner was lost: Trades mode's loss reasons, in GC words (gcLost.ts). */
+export type GcLostWhy = 'price' | 'other_builder' | 'project_died' | 'no_bid' | 'no_answer'
 
 export interface LogEntry {
   id: number
@@ -541,6 +554,10 @@ export type GcAction =
   | { type: 'sendQuestionToArchitect'; projectId: string; questionId: string }
   /** We record the architect's answer and send it to the companies on the trade. */
   | { type: 'answerQuestion'; projectId: string; questionId: string; answer: string; recipients: string[] }
+  /** The owner picked another builder: the bid leaves Bidding for the board's Lost section (owner, 2026-10-03). */
+  | { type: 'markLost'; projectId: string; why: GcLostWhy; wonBy: string | null; note: string }
+  /** A lost bid comes back: the owner returns to us, and it is in Bidding again. */
+  | { type: 'reopenLost'; projectId: string }
 
 /** One trade on a new project, as the office left it in the New project window. */
 export interface NewTradeDraft {
