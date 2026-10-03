@@ -62,11 +62,23 @@ export interface PortalPaperLine {
   words: string
 }
 
-export function portalInsurance(partner: Partner, today: string, lang: PortalLang = 'en'): PortalPaperLine & { ranOut: boolean } {
-  if (partner.coiExpires === null) return { done: false, ranOut: false, words: pt(lang, 'noneOnFile') }
+/** Insurance this close to running out gets a warning: the chip turns amber, Needs you asks, an email goes out. */
+export const COI_WARN_DAYS = 30
+
+export function portalInsurance(
+  partner: Partner,
+  today: string,
+  lang: PortalLang = 'en',
+): PortalPaperLine & { ranOut: boolean; soon: boolean; daysLeft: number | null } {
+  if (partner.coiExpires === null) return { done: false, ranOut: false, soon: false, daysLeft: null, words: pt(lang, 'noneOnFile') }
   const left = daysUntil(partner.coiExpires, today)
-  if (left < 0) return { done: false, ranOut: true, words: pt(lang, 'coiRanOut', { date: pDate(lang, partner.coiExpires) }) }
-  return { done: true, ranOut: false, words: pt(lang, 'coiGoodTo', { date: pDate(lang, partner.coiExpires) }) }
+  const date = pDate(lang, partner.coiExpires)
+  if (left < 0) return { done: false, ranOut: true, soon: false, daysLeft: left, words: pt(lang, 'coiRanOut', { date }) }
+  if (left <= COI_WARN_DAYS) {
+    const words = left === 0 ? pt(lang, 'coiSoonToday') : left === 1 ? pt(lang, 'coiSoonTomorrow', { date }) : pt(lang, 'coiSoon', { date, n: left })
+    return { done: true, ranOut: false, soon: true, daysLeft: left, words }
+  }
+  return { done: true, ranOut: false, soon: false, daysLeft: left, words: pt(lang, 'coiGoodTo', { date }) }
 }
 
 /** The scope lines of a bid the office marked "not clear": the company has to say in or out. */
@@ -212,6 +224,18 @@ export function portalTodos(state: GcState, partnerId: string, asks: PortalAsk[]
       text: coi.ranOut ? pt(lang, 'todoCoiRanOut', { date: pDate(lang, partner.coiExpires) }) : pt(lang, 'todoCoi'),
       tone: coi.ranOut ? 'red' : 'amber',
       by: null,
+    })
+  }
+  if (coi.soon && partner.coiExpires) {
+    // Still good, but not for long: a draw stops the day it runs out.
+    const date = pWeekday(lang, partner.coiExpires)
+    const n = coi.daysLeft ?? 0
+    todos.push({
+      key: 'coi:soon',
+      projectId: null,
+      text: n === 0 ? pt(lang, 'todoCoiToday', { date }) : n === 1 ? pt(lang, 'todoCoiTomorrow', { date }) : pt(lang, 'todoCoiSoon', { date, n }),
+      tone: 'amber',
+      by: partner.coiExpires,
     })
   }
   if (!partner.w9) todos.push({ key: 'w9', projectId: null, text: pt(lang, 'todoW9'), tone: 'amber', by: null })
@@ -373,7 +397,7 @@ export function portalLink(partnerId: string): string {
 export interface PortalMessage {
   key: string
   on: string
-  kind: 'invite' | 'nudge' | 'plans' | 'bidTab' | 'msa' | 'sow' | 'start' | 'less' | 'change' | 'paid' | 'answer'
+  kind: 'invite' | 'nudge' | 'plans' | 'bidTab' | 'msa' | 'sow' | 'start' | 'less' | 'change' | 'paid' | 'answer' | 'coi'
   /** Null: about the company, not one project (the master agreement). */
   projectId: string | null
   subject: string
@@ -385,7 +409,7 @@ export interface PortalMessage {
   text?: string
 }
 
-const KIND_ORDER: Record<PortalMessage['kind'], number> = { answer: 0, paid: 1, change: 2, less: 3, start: 4, sow: 5, msa: 6, bidTab: 7, plans: 8, nudge: 9, invite: 10 }
+const KIND_ORDER: Record<PortalMessage['kind'], number> = { coi: 0, answer: 1, paid: 2, change: 3, less: 4, start: 5, sow: 6, msa: 7, bidTab: 8, plans: 9, nudge: 10, invite: 11 }
 
 function firstName(contact: string): string {
   return contact.split(' ')[0] ?? contact
@@ -411,6 +435,22 @@ export function portalMessages(state: GcState, partnerId: string, language?: Por
   const hello = t('mHello', { first: firstName(partner.contact) })
   const link = portalLink(partnerId)
   const out: PortalMessage[] = []
+
+  // Insurance running out: the email goes out COI_WARN_DAYS before, once that day has come, while it still holds.
+  if (partner.coiExpires) {
+    const warnOn = addDays(partner.coiExpires, -COI_WARN_DAYS)
+    if (warnOn <= state.today && partner.coiExpires >= state.today) {
+      const date = pWeekday(lang, partner.coiExpires)
+      out.push({
+        key: `coi:${partner.coiExpires}`,
+        on: warnOn,
+        kind: 'coi',
+        projectId: null,
+        subject: t('mCoiSubject', { date }),
+        lines: [hello, t('mCoiWhat', { gc, date }), t('mCoiWhy'), t('mCoiOpen')],
+      })
+    }
+  }
 
   if (partner.msaSentOn) {
     out.push({

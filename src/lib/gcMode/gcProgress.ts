@@ -2,7 +2,7 @@
  * GC mode — design spike. The progress ring on a Project Board row and its hover card.
  * Split out of gcModel.ts verbatim; import from `./gcModel`, which re-exports every file.
  */
-import type { GcProject, GcStage, GcState } from './gcTypes'
+import type { Draw, GcProject, GcStage, GcState } from './gcTypes'
 import { shortDate, thousands, weekdayDate } from './gcWords'
 import { currentRev, partnerById, planLabel } from './gcLookups'
 import { plansReach } from './gcPlans'
@@ -12,6 +12,7 @@ import { followUps } from './gcFollowUp'
 import { partnerBlockers } from './gcBench'
 import { ownCrewWork, sentBackOpen, timesSentBack, tradeCloseout } from './gcBuilding'
 import { scheduleSummary, scheduleSummaryWords } from './gcBuildingSchedule'
+import { drawPayDays } from './gcBuildingPay'
 
 /** The stage colors, saturated on purpose: the ring is a status mark, not a neutral surface. */
 export const RING_COLORS: Record<GcStage, string> = {
@@ -235,6 +236,8 @@ function buildingProgress(state: GcState, project: GcProject): StageProgress {
     items: counted.map((c) => ({ label: c.pkg.trade, detail: c.detail, done: c.worth > 0 && c.done >= c.worth })),
   }
   const also: string[] = []
+  // An approved draw past its pay-by day leads the card, after the schedule (owner, 2026-10-03).
+  const latePay: string[] = []
   for (const pkg of withSow) {
     const awarded = (() => {
       const invite = pkg.invites.find((i) => i.id === pkg.awardedInviteId)
@@ -244,14 +247,23 @@ function buildingProgress(state: GcState, project: GcProject): StageProgress {
     // A draw cannot be approved while their paperwork is not current: say why it waits.
     const blocked = awarded ? partnerBlockers(awarded, state.today) : []
     const approveIt = blocked.length > 0 ? `${blocked.join(' ')} Approve it once that is fixed.` : 'Approve it.'
+    // Approved, not paid: by when, or how late (drawPayDays, the owner's pay terms).
+    const payIt = (what: string, d: Draw) => {
+      const days = drawPayDays(project, pkg, d, state.today)
+      if (days.daysLate > 0) {
+        latePay.push(`${what} is ${days.daysLate} ${days.daysLate === 1 ? 'day' : 'days'} late to pay. It was due ${shortDate(days.payBy)}.`)
+      } else {
+        also.push(`${what} is approved. Pay it${days.payBy ? (days.payBy === state.today ? ' today' : ` by ${shortDate(days.payBy)}`) : ''}.`)
+      }
+    }
     for (const d of pkg.sow?.draws ?? []) {
       if (d.final) {
         // Closeout: the retainage release and its waivers are the final-payment ones.
         if (d.status === 'requested') also.push(`${company} asked for its retainage back. Approve it on Closeout.`)
-        else if (d.status === 'approved') also.push(`The retainage release for ${company} is approved. Pay it.`)
+        else if (d.status === 'approved') payIt(`The retainage release for ${company}`, d)
         else if (d.waiver === 'conditional') also.push(`${company} owes the unconditional final release of lien.`)
       } else if (d.status === 'requested') also.push(`${company} asked for draw ${d.number}. ${approveIt}`)
-      else if (d.status === 'approved') also.push(`Draw ${d.number} for ${company} is approved. Pay it.`)
+      else if (d.status === 'approved') payIt(`Draw ${d.number} for ${company}`, d)
       else if (d.waiver === 'conditional') also.push(`${company} owes the unconditional waiver on draw ${d.number}.`)
     }
     const sow = pkg.sow
@@ -271,6 +283,7 @@ function buildingProgress(state: GcState, project: GcProject): StageProgress {
   }
   const pct = Math.round(share * 100)
   // The schedule, once drawn (owner, 2026-10-03: its measures on a won job's row and in this card).
+  also.unshift(...latePay)
   const sum = scheduleSummary(project, state.today)
   if (sum) also.unshift(scheduleSummaryWords(sum))
   if (share >= 1) {

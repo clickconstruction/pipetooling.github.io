@@ -389,6 +389,12 @@ const STEPS: Step[] = [
       questionIds: ['padb-q-1'],
     },
   },
+  // A bid we lost (Board lane, 2026-10-03): Pad B leaves Bidding for the Lost section, then comes back.
+  {
+    label: 'Pad B: we lost it, on price, to Hill Country Builders',
+    action: { type: 'markLost', projectId: 'padb', why: 'price', wonBy: 'Hill Country Builders', note: 'They came in about 6% under us.' },
+  },
+  { label: 'Pad B: the owner comes back to us', action: { type: 'reopenLost', projectId: 'padb' } },
   // Fair Oaks D: Cibolo missed the day it gave, gives a new one, and pays part.
   { label: 'Cibolo says checks go out Oct 9', action: { type: 'ownerPromisePay', projectId: 'fairoaksd', number: 3, by: '2026-10-09', note: 'Their controller, on a call', who: 'office' } },
   { label: 'Cibolo pays $150,000 of pay application 3', action: { type: 'ownerPayPart', projectId: 'fairoaksd', number: 3, amount: 150_000 } },
@@ -536,6 +542,7 @@ describe('GC mode golden walk', () => {
       'tradeMarkLookAhead',
       'tradeSetLanguage',
       'setPartnerLanguage',
+      'markLost', 'reopenLost',
     ]
     expect(all.filter((t) => !used.has(t))).toEqual([])
   })

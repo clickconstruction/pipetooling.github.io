@@ -33,6 +33,7 @@ import {
   gcReducer,
   initialGcState,
   money,
+  lostWords,
   planLabel,
   proposalUncostedWords,
   RING_COLORS,
@@ -68,7 +69,7 @@ const STAGES: { key: GcStage; label: string; tone: Tone; blurb: string }[] = [
  * Building lane's Close the job on Closeout.
  */
 const BOARD_SECTIONS: {
-  key: GcStage | 'closed'
+  key: GcStage | 'closed' | 'lost'
   label: string
   blurb: string
   empty: string
@@ -80,7 +81,7 @@ const BOARD_SECTIONS: {
     label: s.label,
     blurb: s.blurb,
     empty: 'None right now.',
-    holds: (p: GcProject) => p.stage === s.key && !p.closedOn,
+    holds: (p: GcProject) => p.stage === s.key && !p.closedOn && !p.lostOn,
     order: (a: GcProject, b: GcProject) => (a.bidDue ?? '9999').localeCompare(b.bidDue ?? '9999'),
   })),
   {
@@ -91,6 +92,16 @@ const BOARD_SECTIONS: {
     holds: (p: GcProject) => Boolean(p.closedOn),
     // Newest closed first.
     order: (a: GcProject, b: GcProject) => (b.closedOn ?? '').localeCompare(a.closedOn ?? ''),
+  },
+  {
+    // A bid the owner gave to someone else (the owner, 2026-10-03): it keeps its stage and leaves
+    // Bidding once lostOn is set, from We lost this on Our number.
+    key: 'lost',
+    label: 'Lost',
+    blurb: 'Bids the owner gave to another builder. Kept so we learn why.',
+    empty: 'None yet.',
+    holds: (p: GcProject) => Boolean(p.lostOn),
+    order: (a: GcProject, b: GcProject) => (b.lostOn ?? '').localeCompare(a.lostOn ?? ''),
   },
 ]
 
@@ -460,6 +471,14 @@ function DueBlock({ project, today }: { project: GcProject; today: string }) {
     lineHeight: 1.15,
     fontVariantNumeric: 'tabular-nums',
   } as const
+  if (project.lostOn) {
+    return (
+      <span style={{ ...box, color: 'var(--text-muted)', fontSize: '0.75rem', textAlign: 'center' }} title={`Lost ${weekdayDate(project.lostOn)}. ${lostWords(project)}.`}>
+        <span>lost</span>
+        <span style={{ fontWeight: 600 }}>{shortDate(project.lostOn)}</span>
+      </span>
+    )
+  }
   if (project.closedOn) {
     return (
       <span style={{ ...box, color: 'var(--text-muted)', fontSize: '0.75rem', textAlign: 'center' }} title={`Closed ${weekdayDate(project.closedOn)}.`}>
@@ -610,7 +629,7 @@ function ProjectRow({
         alignItems: 'center',
       }}
     >
-      <GcProgressRing progress={progress} color={RING_COLORS[project.stage]} stageLabel={project.closedOn ? 'Closed' : (STAGES.find((st) => st.key === project.stage)?.label ?? '')} />
+      <GcProgressRing progress={progress} color={RING_COLORS[project.stage]} stageLabel={project.lostOn ? 'Lost' : project.closedOn ? 'Closed' : (STAGES.find((st) => st.key === project.stage)?.label ?? '')} />
       <DueBlock project={project} today={today} />
       <span>
         <button
@@ -643,6 +662,7 @@ function ProjectRow({
         </span>
       </span>
       <span style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', ...under }}>
+        {project.lostOn && <Chip tone="grey" title={project.lostNote ?? undefined}>{lostWords(project)}</Chip>}
         <Chip tone={totals.holes.length > 0 ? 'red' : totals.plugged.length > 0 ? 'amber' : 'green'}>{coverageWords(project)}</Chip>
         {chase > 0 && (
           <button
@@ -718,7 +738,9 @@ function ProjectHeader({
           <Btn kind="quiet" onClick={onBack}>← Project Board</Btn>
           <h2 style={{ margin: '0.1rem 0 0.15rem', fontSize: '1.3rem' }}>
             {project.name}{' '}
-            {project.closedOn ? (
+            {project.lostOn ? (
+              <Chip tone="grey" title={`Lost ${weekdayDate(project.lostOn)}. ${lostWords(project)}.`}>Lost</Chip>
+            ) : project.closedOn ? (
               <Chip tone="grey" title={`Closed ${weekdayDate(project.closedOn)}.`}>Closed</Chip>
             ) : (
               stage && <Chip tone={stage.tone}>{stage.label}</Chip>
@@ -731,7 +753,7 @@ function ProjectHeader({
           </div>
         </div>
         <div style={{ display: 'flex', gap: '1.75rem', flexWrap: 'wrap' }}>
-          {project.stage === 'pursuing' && project.bidDue && <DueBlock project={project} today={today} />}
+          {project.stage === 'pursuing' && project.bidDue && !project.lostOn && <DueBlock project={project} today={today} />}
           <Stat
             label="Trades"
             tone={totals.holes.length > 0 ? 'red' : 'green'}
