@@ -25,6 +25,10 @@ export interface PlanSet {
   addedLines?: { packageId: string; scopeId: string }[]
   /** Days this set added to scheduled activities, by line id. What waited on them moved too. */
   pushed?: { lineId: string; days: number }[]
+  /** Sections of the project manual this set revises, like "09 91 23". */
+  changedSpecs?: string[]
+  /** Sections this set adds to the manual, with the titles the office gave them. */
+  addedSpecs?: SpecSection[]
 }
 
 /** One drawing in the set. The discipline is read from the number's letters (E-201 → Electrical). */
@@ -468,11 +472,14 @@ export type GcAction =
       /** Trades the job did not have that this set brings. Each gets a package; nobody is asked yet. */
       newTrades: NewTradeDraft[]
       /** Scope lines this set adds to trades already on the job, with the sheets each reads from. */
-      newLines?: { packageId: string; label: string; sheets: string[] }[]
+      newLines?: { packageId: string; label: string; sheets: string[]; specs?: string[] }[]
       /** Days this set adds to scheduled activities, by line id. What waits on them moves out too. */
       schedulePushes?: Record<string, number>
       /** Answered questions this set carries, in its note. */
       questionIds?: string[]
+      /** Sections of the manual this set revises, and the ones in that list new to the manual with their titles. */
+      specs?: string[]
+      addedSpecs?: SpecSection[]
     }
   | { type: 'acceptWork'; projectId: string; packageId: string }
   | { type: 'tradeSendWarranty'; projectId: string; packageId: string }

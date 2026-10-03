@@ -14,7 +14,6 @@ import {
   pushSchedule,
   scheduleFloat,
   weekdayDate,
-  linesOnSheets,
   money,
   nextSetLabel,
   packagesForSheets,
@@ -29,6 +28,12 @@ import {
   tradesForSheets,
   tradeForSpec,
   guessLineSpecs,
+  linesOnPlans,
+  packagesForSpecs,
+  specsAtRev,
+  specsInText,
+  tradesForPlans,
+  type SpecSection,
   usualScope,
   type GcAction,
   type GcProject,
@@ -101,6 +106,33 @@ function pill(active: boolean) {
   } as const
 }
 
+/**
+ * The Plans tab's two doors: a new set came in, and the questions about the plans. A bid we lost
+ * has neither (the owner, 2026-10-03): nobody is open on it, so its plans stay only to read.
+ */
+export function GcPlansDoors({ state, project, dispatch }: Omit<Props, 'onClose'>) {
+  const [adding, setAdding] = useState(false)
+  const [asking, setAsking] = useState(false)
+  if (project.lostOn) {
+    return (
+      <div style={{ padding: '0.55rem 0.75rem', borderRadius: 8, background: 'var(--bg-muted)', color: 'var(--text-600)', fontSize: '0.9rem' }}>
+        We lost this bid. Nothing goes out.
+      </div>
+    )
+  }
+  const open = openQuestions(project).length
+  return (
+    <>
+      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+        <Btn kind="primary" onClick={() => setAdding(true)}>A new set of plans came in</Btn>
+        <Btn onClick={() => setAsking(true)}>Questions about the plans{open > 0 ? ` · ${open} open` : ''}</Btn>
+      </div>
+      {adding && <GcNewPlansWindow state={state} project={project} dispatch={dispatch} onClose={() => setAdding(false)} />}
+      {asking && <GcNewProjectQuestions state={state} project={project} dispatch={dispatch} onClose={() => setAsking(false)} />}
+    </>
+  )
+}
+
 export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
   const [kind, setKind] = useState(defaultSetKind(project))
   /** Null: the name follows the kind. A string: the office typed its own. */
@@ -115,6 +147,9 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
   /** Null: follow what the notes say. A list: the office has taken over. */
   const [sheetText, setSheetText] = useState<string | null>(null)
   const [titles, setTitles] = useState<Record<string, string>>({})
+  /** The spec sections, the same way: null follows the notes, a string is the office's own list. */
+  const [specText, setSpecText] = useState<string | null>(null)
+  const [specTitles, setSpecTitles] = useState<Record<string, string>>({})
   const [touchOverride, setTouchOverride] = useState<string[] | null>(null)
   const [brought, setBrought] = useState<BroughtTrade[]>([])
   /** Scope lines this set adds, by trade (package id). */
@@ -141,16 +176,26 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
   }, [note, sheetText, project])
   const index = useMemo(() => sheetsAtRev(project, currentRev(project)), [project])
   const added: PlanSheet[] = sheets.filter((id) => !index.some((s) => s.id === id)).map((id) => ({ id, title: (titles[id] ?? '').trim() }))
-  const touches = touchOverride ?? packagesForSheets(project, sheets, added)
+  const manual = useMemo(() => specsAtRev(project, currentRev(project)), [project])
+  const specIds = useMemo(
+    () => (specText === null ? specsInText(note) : [...new Set(specText.split(',').flatMap((x) => specsInText(`section ${x.trim()}`)))]),
+    [note, specText],
+  )
+  /** Sections this set names that the manual does not have yet, with the titles the office gives them. */
+  const addedSpecs: SpecSection[] = specIds.filter((id) => !manual.some((x) => x.id === id)).map((id) => ({ id, title: (specTitles[id] ?? '').trim() }))
+  const bySheets = packagesForSheets(project, sheets, added)
+  const bySpecs = packagesForSpecs(project, specIds)
+  const touches = touchOverride ?? project.packages.filter((p) => bySheets.includes(p.id) || bySpecs.includes(p.id)).map((p) => p.id)
   /** Every sheet once the set is in: the index and the ones this set adds. */
   const allSheets = [...index, ...added.filter((a) => !index.some((s) => s.id === a.id))]
   const sheetsOfTrade = (trade: string) => {
     const from = tradesForSheets(allSheets).find((g) => g.trade === trade)?.from ?? []
     return allSheets.filter((s) => from.includes(s.id))
   }
-  /** The project manual's sections, and the ones that point at a trade. */
-  const specs = project.specs ?? []
+  /** Every section once the set is in: the manual and the ones this set adds, and the ones that point at a trade. */
+  const specs = [...manual, ...addedSpecs]
   const specsOfTrade = (trade: string) => specs.filter((x) => tradeForSpec(x.id) === trade)
+  const specNamed = (id: string): SpecSection => specs.find((x) => x.id === id) ?? { id, title: '' }
   const everyone = planRecipients(state, project, touches)
   const going = everyone.filter((r) => !skipped.includes(r.partner.id))
   const companies = new Set(going.map((r) => r.partner.id)).size
@@ -158,7 +203,7 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
   const preview = going.find((r) => r.partner.id === previewId) ?? going.find((r) => r.touched) ?? going[0] ?? null
   // The schedule: the activities this set reaches, the days typed against them, and what that moves.
   const schedule = project.schedule ?? null
-  const reached = activitiesTouched(project, sheets).filter((a) => touches.includes(a.packageId))
+  const reached = activitiesTouched(project, sheets, specIds, addedSpecs).filter((a) => touches.includes(a.packageId))
   const spare = schedule ? scheduleFloat(schedule.activities) : new Map<string, number>()
   const pushes = Object.fromEntries(
     Object.entries(pushDays)
@@ -201,7 +246,7 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
   const coRows = coTrades.map((t) => {
     const lines = newLines[t.id] ?? []
     const pushed = reached.some((a) => a.packageId === t.id && (pushes[a.lineId] ?? 0) > 0)
-    const start = changeOrderFromSet({ label, note, sheets }, t.trade, t.brought ? [t.trade] : lines, pushed ? endDays : 0)
+    const start = changeOrderFromSet({ label, note, sheets, specs: specIds }, t.trade, t.brought ? [t.trade] : lines, pushed ? endDays : 0)
     const cost = Math.round(Number((coCost[t.id] ?? '').replace(/[^0-9.-]/g, '')) || 0)
     return {
       ...t,
@@ -218,17 +263,19 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
   /** What the set says changed: the office's words, then each answer it carries. */
   const fullNote = [note.trim(), ...carriedQs.map((q) => questionInNote(project, q))].filter(Boolean).join('\n')
   const email = planEmail(project, label, fullNote, sheets, preview, {
-    lines: preview?.touched ? linesOnSheets(project, preview.pkg, sheets).map((l) => l.label) : [],
+    lines: preview?.touched ? linesOnPlans(project, preview.pkg, sheets, specIds, addedSpecs).map((l) => l.label) : [],
     adds: preview?.touched ? (newLines[preview.pkg.id] ?? []) : [],
     moves: preview?.touched ? movesFor(preview.pkg.id) : [],
+    specs: specIds.map(specNamed),
   })
 
   const onJob = (trade: string) =>
     project.packages.some((p) => p.trade.toLowerCase() === trade.toLowerCase()) || brought.some((b) => b.trade.toLowerCase() === trade.toLowerCase())
-  /** Trades the sheets point at that the job does not have yet. */
-  const suggested = tradesForSheets(sheets.map((id) => index.find((s) => s.id === id) ?? added.find((s) => s.id === id) ?? { id, title: '' })).filter(
-    (g) => !onJob(g.trade),
-  )
+  /** Trades the sheets and the sections point at that the job does not have yet. */
+  const suggested = tradesForPlans(
+    sheets.map((id) => index.find((s) => s.id === id) ?? added.find((s) => s.id === id) ?? { id, title: '' }),
+    specIds.map(specNamed),
+  ).filter((g) => !onJob(g.trade))
   const bring = (trade: string) => {
     const t = trade.trim()
     if (t === '' || onJob(t)) return
@@ -255,6 +302,8 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
   }
   /** A new line reads from the changed sheets that belong to its trade. None: the trade as a whole. */
   const newLineSheets = (trade: string) => sheetsOfTrade(trade).map((x) => x.id).filter((id) => sheets.includes(id))
+  /** And from the changed sections that belong to its trade. */
+  const newLineSpecs = (trade: string) => specIds.filter((id) => tradeForSpec(id) === trade)
   const linesAdded = project.packages.filter((p) => touches.includes(p.id)).reduce((n, p) => n + (newLines[p.id]?.length ?? 0), 0)
 
   return (
@@ -332,7 +381,7 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
               value={note}
               onChange={(e) => setNote(e.target.value)}
               rows={4}
-              placeholder={'For example:\nE-201: two more floor boxes in bay 2.\nM-101: RTU-3 moved 6 ft north. Curb detail changed on A-401.'}
+              placeholder={'For example:\nE-201: two more floor boxes in bay 2.\nM-101: RTU-3 moved 6 ft north. Curb detail changed on A-401.\nSection 09 91 23: low-VOC paint throughout.'}
               style={{ ...input, width: '100%', boxSizing: 'border-box', fontFamily: 'inherit', resize: 'vertical' }}
             />
             {openQuestions(project).length > 0 && (
@@ -407,6 +456,47 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
                   })}
                 </div>
               )}
+              {(manual.length > 0 || specIds.length > 0 || specText !== null) && (
+                <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                  Spec sections that changed
+                  <input
+                    style={{ ...input, flex: '1 1 14rem' }}
+                    value={specText ?? specIds.join(', ')}
+                    onChange={(e) => setSpecText(e.target.value)}
+                    placeholder="None found yet. Type them, like 09 91 23, 22 40 00"
+                  />
+                  {specText !== null && <Btn kind="quiet" onClick={() => setSpecText(null)}>Read them from the notes again</Btn>}
+                </label>
+              )}
+              {specIds.length > 0 && (
+                <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+                  {specIds.map((id) => {
+                    const known = manual.find((x) => x.id === id)
+                    return (
+                      <div key={id} style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', padding: '0.3rem 0.7rem', borderBottom: '1px solid var(--border)' }}>
+                        <span style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums', minWidth: '4.6rem' }}>{id}</span>
+                        {known ? (
+                          <>
+                            <span style={{ color: 'var(--text-600)', flex: 1, minWidth: 0 }}>{known.title}</span>
+                            <Chip tone="violet">revised</Chip>
+                          </>
+                        ) : (
+                          <>
+                            <input
+                              style={{ ...input, flex: '1 1 14rem' }}
+                              value={specTitles[id] ?? ''}
+                              onChange={(e) => setSpecTitles((t) => ({ ...t, [id]: e.target.value }))}
+                              placeholder="Its title, as the manual says it"
+                              aria-label={`Title of section ${id}`}
+                            />
+                            <Chip tone="blue">new to the manual</Chip>
+                          </>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
 
               <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
                 Trades it changes
@@ -422,9 +512,11 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
                 ))}
                 {touchOverride !== null && <Btn kind="quiet" onClick={() => setTouchOverride(null)}>Guess from the sheets again</Btn>}
               </div>
-              {touchOverride === null && sheets.length > 0 && (
+              {touchOverride === null && sheets.length + specIds.length > 0 && (
                 <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-                  The trades are a guess from the sheet letters and titles. Tick or untick to fix it.
+                  {specIds.length > 0
+                    ? 'The trades are a guess from the sheets and the section numbers. Tick or untick to fix it.'
+                    : 'The trades are a guess from the sheet letters and titles. Tick or untick to fix it.'}
                 </span>
               )}
               {touches.length > 0 && (
@@ -438,14 +530,16 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
                   {project.packages
                     .filter((p) => touches.includes(p.id))
                     .map((p) => {
-                      const hit = linesOnSheets(project, p, sheets)
+                      const hit = linesOnPlans(project, p, sheets, specIds, addedSpecs)
                       const adding = newLines[p.id] ?? []
-                      const reads = newLineSheets(p.trade)
+                      const reads = [...newLineSheets(p.trade), ...newLineSpecs(p.trade)]
                       return (
                         <div key={p.id} style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap' }}>
                           <span style={{ minWidth: '8rem' }}>{p.trade}</span>
                           {hit.length === 0 && adding.length === 0 ? (
-                            <span style={{ color: 'var(--text-muted)' }}>no line names these sheets, so the trade as a whole</span>
+                            <span style={{ color: 'var(--text-muted)' }}>
+                              {specIds.length > 0 ? 'no line names these sheets or sections, so the trade as a whole' : 'no line names these sheets, so the trade as a whole'}
+                            </span>
                           ) : (
                             hit.map((l) => (
                               <Chip key={l.id} tone="amber">{l.label}</Chip>
@@ -587,7 +681,7 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
                 </div>
                 {suggested.length > 0 && (
                   <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap', padding: '0.4rem 0.6rem', borderRadius: 6, background: 'var(--bg-blue-tint)' }}>
-                    The sheets point at {suggested.map((g) => g.trade.toLowerCase()).join(' and ')}, which the job does not have.
+                    The {specIds.length > 0 ? 'plans' : 'sheets'} point at {suggested.map((g) => g.trade.toLowerCase()).join(' and ')}, which the job does not have.
                     {suggested.map((g) => (
                       <Btn key={g.trade} kind="quiet" onClick={() => bring(g.trade)}>Add {g.trade}</Btn>
                     ))}
@@ -799,8 +893,10 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
                 schedulePushes: pushes,
                 newLines: project.packages
                   .filter((p) => touches.includes(p.id))
-                  .flatMap((p) => (newLines[p.id] ?? []).map((l) => ({ packageId: p.id, label: l, sheets: newLineSheets(p.trade) }))),
+                  .flatMap((p) => (newLines[p.id] ?? []).map((l) => ({ packageId: p.id, label: l, sheets: newLineSheets(p.trade), specs: newLineSpecs(p.trade) }))),
                 newTrades: broughtDrafts,
+                specs: specIds,
+                addedSpecs,
               })
               // Each change order is Owner Billing's own draft, so it reads on Bill the owner as theirs do.
               for (const r of coDrafted) {

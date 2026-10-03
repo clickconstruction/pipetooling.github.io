@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
+  SPEC_DIVISIONS,
   currentRev,
   lineReads,
+  lineReadsSpec,
+  lineSpecs,
+  specDivision,
+  specsAtRev,
   setThatAddedLine,
   planLabel,
   plansReach,
@@ -10,6 +15,7 @@ import {
   shortDate,
   type GcProject,
   type SheetInSet,
+  type SpecInSet,
 } from '../../lib/gcMode/gcModel'
 import { Btn, Chip } from './gcUi'
 
@@ -38,6 +44,13 @@ export function GcPlansQuickLook({ project, onClose, onSeeWhoHasIt }: Props) {
   const set = project.planSets.find((s) => s.rev === rev)
   const reach = plansReach(project)
   const sets = [...project.planSets].sort((a, b) => b.rev - a.rev)
+  // The project manual beside the sheets: the same window flips through its sections.
+  const specs = useMemo(() => specsAtRev(project, rev), [project, rev])
+  const [view, setView] = useState<'sheets' | 'specs'>('sheets')
+  const showSpecs = view === 'specs' && specs.length > 0
+  const [specId, setSpecId] = useState(specs.find((x) => x.changedInRev === rev)?.id ?? specs[0]?.id ?? '')
+  const specIndex = Math.max(0, specs.findIndex((x) => x.id === specId))
+  const spec = specs[specIndex]
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -45,12 +58,17 @@ export function GcPlansQuickLook({ project, onClose, onSeeWhoHasIt }: Props) {
       const step = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : 0
       if (step === 0) return
       e.preventDefault()
+      if (showSpecs) {
+        const next = specs[Math.min(specs.length - 1, Math.max(0, specIndex + step))]
+        if (next) setSpecId(next.id)
+        return
+      }
       const next = sheets[Math.min(sheets.length - 1, Math.max(0, index + step))]
       if (next) setSheetId(next.id)
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [sheets, index, onClose])
+  }, [sheets, index, specs, specIndex, showSpecs, onClose])
 
   const groups: { discipline: string; rows: SheetInSet[] }[] = []
   for (const s of sheets) {
@@ -66,8 +84,34 @@ export function GcPlansQuickLook({ project, onClose, onSeeWhoHasIt }: Props) {
         .map((pkg) => ({ pkg, lines: pkg.scope.map((item) => ({ item, ...lineReads(project, pkg, item) })).filter((l) => l.sheets.includes(sheet.id)) }))
         .filter((t) => t.lines.length > 0)
     : []
-  const guessedHere = onSheet.some((t) => t.lines.some((l) => l.guessed && !l.wholeTrade))
-  const wholeHere = onSheet.some((t) => t.lines.some((l) => l.wholeTrade))
+  const revisedSpecs = specs.filter((x) => x.changedInRev === rev && !x.added).length
+  const addedSpecs = specs.filter((x) => x.changedInRev === rev && x.added).length
+  const specGroups: { division: string; rows: SpecInSet[] }[] = []
+  for (const x of specs) {
+    const division = specDivision(x.id)
+    const group = specGroups.find((g) => g.division === division)
+    if (group) group.rows.push(x)
+    else specGroups.push({ division, rows: [x] })
+  }
+  /** The scope lines that read from the section on screen, trade by trade. */
+  const onSpec = spec
+    ? project.packages
+        .map((pkg) => ({
+          pkg,
+          lines: pkg.scope
+            .filter((item) => lineReadsSpec(project, pkg, item, spec.id))
+            .map((item) => {
+              const said = lineSpecs(project, pkg, item)
+              return { item, guessed: said.guessed, wholeTrade: said.specs.length === 0 }
+            }),
+        }))
+        .filter((t) => t.lines.length > 0)
+    : []
+  const here = showSpecs
+    ? { id: spec?.id ?? '', trades: onSpec, kind: 'section' }
+    : { id: sheet?.id ?? '', trades: onSheet.map((t) => ({ pkg: t.pkg, lines: t.lines.map((l) => ({ item: l.item, guessed: l.guessed, wholeTrade: l.wholeTrade })) })), kind: 'sheet' }
+  const guessedOn = here.trades.some((t) => t.lines.some((l) => l.guessed && !l.wholeTrade))
+  const wholeOn = here.trades.some((t) => t.lines.some((l) => l.wholeTrade))
 
   return (
     <div
@@ -108,6 +152,8 @@ export function GcPlansQuickLook({ project, onClose, onSeeWhoHasIt }: Props) {
                     setRev(s.rev)
                     const at = sheetsAtRev(project, s.rev)
                     if (!at.some((x) => x.id === sheetId)) setSheetId(at[0]?.id ?? '')
+                    const atSpecs = specsAtRev(project, s.rev)
+                    if (!atSpecs.some((x) => x.id === specId)) setSpecId(atSpecs[0]?.id ?? '')
                   }}
                   style={{
                     padding: '0.3rem 0.7rem',
@@ -148,12 +194,80 @@ export function GcPlansQuickLook({ project, onClose, onSeeWhoHasIt }: Props) {
             {rev < newest && <strong>An older set. {planLabel(project, newest)} replaced it. </strong>}
             {set.note}
             {changedCount > 0 && <> {changedCount} {changedCount === 1 ? 'sheet' : 'sheets'} changed in this set.</>}
+            {revisedSpecs > 0 && <> {revisedSpecs} spec {revisedSpecs === 1 ? 'section' : 'sections'} revised.</>}
+            {addedSpecs > 0 && <> {addedSpecs} spec {addedSpecs === 1 ? 'section' : 'sections'} new to the manual.</>}
           </div>
         )}
 
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(11rem, 17rem) minmax(0, 1fr)', minHeight: 0, flex: 1 }}>
           <div style={{ overflowY: 'auto', borderRight: '1px solid var(--border)', padding: '0.5rem' }}>
-            {groups.map((g) => (
+            {specs.length > 0 && (
+              <div role="group" aria-label="Sheets or specs" style={{ display: 'flex', gap: '0.3rem', padding: '0.1rem 0.2rem 0.5rem' }}>
+                {(['sheets', 'specs'] as const).map((v) => {
+                  const active = (v === 'specs') === showSpecs
+                  return (
+                    <button
+                      key={v}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => setView(v)}
+                      style={{
+                        flex: 1,
+                        padding: '0.25rem 0.5rem',
+                        borderRadius: 999,
+                        border: `1px solid ${active ? 'var(--text-blue-500)' : 'var(--border-strong)'}`,
+                        background: active ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                        color: active ? 'var(--text-blue-500)' : 'var(--text-600)',
+                        fontWeight: active ? 600 : 400,
+                        cursor: 'pointer',
+                        fontSize: '0.8rem',
+                      }}
+                    >
+                      {v === 'sheets' ? `Sheets · ${sheets.length}` : `Specs · ${specs.length}`}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+            {showSpecs &&
+              specGroups.map((g) => (
+                <div key={g.division} style={{ marginBottom: '0.5rem' }}>
+                  <div style={{ fontSize: '0.68rem', letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)', padding: '0.2rem 0.4rem' }}>
+                    {g.division} · {SPEC_DIVISIONS[g.division] ?? 'Other'}
+                  </div>
+                  {g.rows.map((x) => {
+                    const active = x.id === spec?.id
+                    return (
+                      <button
+                        key={x.id}
+                        type="button"
+                        onClick={() => setSpecId(x.id)}
+                        aria-current={active}
+                        style={{
+                          display: 'flex',
+                          gap: '0.4rem',
+                          alignItems: 'baseline',
+                          width: '100%',
+                          textAlign: 'left',
+                          padding: '0.3rem 0.4rem',
+                          border: 'none',
+                          borderRadius: 5,
+                          background: active ? 'var(--bg-blue-tint)' : 'transparent',
+                          color: 'var(--text-base)',
+                          cursor: 'pointer',
+                          fontSize: '0.85rem',
+                        }}
+                      >
+                        <span style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>{x.id}</span>
+                        <span style={{ flex: 1, minWidth: 0 }}>{x.title}</span>
+                        {x.changedInRev === rev && rev > 0 && <Chip tone="violet">{x.added ? 'new' : 'revised'}</Chip>}
+                        {x.changedInRev !== null && x.changedInRev < rev && <Chip tone="grey">{planLabel(project, x.changedInRev)}</Chip>}
+                      </button>
+                    )
+                  })}
+                </div>
+              ))}
+            {!showSpecs && groups.map((g) => (
               <div key={g.discipline} style={{ marginBottom: '0.5rem' }}>
                 <div style={{ fontSize: '0.68rem', letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)', padding: '0.2rem 0.4rem' }}>
                   {g.discipline}
@@ -193,21 +307,36 @@ export function GcPlansQuickLook({ project, onClose, onSeeWhoHasIt }: Props) {
           </div>
 
           <div style={{ padding: '0.75rem', overflow: 'auto', background: 'var(--bg-muted)' }}>
-            {sheet && <StandInSheet project={project} sheet={sheet} rev={rev} />}
-            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: 'center', marginTop: '0.5rem', fontSize: '0.85rem' }}>
-              <Btn disabled={index === 0} onClick={() => setSheetId(sheets[index - 1]?.id ?? sheetId)}>← Back</Btn>
-              <span style={{ color: 'var(--text-muted)' }}>
-                Sheet {index + 1} of {sheets.length}. The arrow keys flip sheets.
-              </span>
-              <Btn disabled={index >= sheets.length - 1} onClick={() => setSheetId(sheets[index + 1]?.id ?? sheetId)}>Next →</Btn>
-            </div>
-            {sheet && (
+            {showSpecs ? (
+              <>
+                {spec && <StandInSection project={project} spec={spec} rev={rev} />}
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: 'center', marginTop: '0.5rem', fontSize: '0.85rem' }}>
+                  <Btn disabled={specIndex === 0} onClick={() => setSpecId(specs[specIndex - 1]?.id ?? specId)}>← Back</Btn>
+                  <span style={{ color: 'var(--text-muted)' }}>
+                    Section {specIndex + 1} of {specs.length}. The arrow keys flip sections.
+                  </span>
+                  <Btn disabled={specIndex >= specs.length - 1} onClick={() => setSpecId(specs[specIndex + 1]?.id ?? specId)}>Next →</Btn>
+                </div>
+              </>
+            ) : (
+              <>
+                {sheet && <StandInSheet project={project} sheet={sheet} rev={rev} />}
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: 'center', marginTop: '0.5rem', fontSize: '0.85rem' }}>
+                  <Btn disabled={index === 0} onClick={() => setSheetId(sheets[index - 1]?.id ?? sheetId)}>← Back</Btn>
+                  <span style={{ color: 'var(--text-muted)' }}>
+                    Sheet {index + 1} of {sheets.length}. The arrow keys flip sheets.
+                  </span>
+                  <Btn disabled={index >= sheets.length - 1} onClick={() => setSheetId(sheets[index + 1]?.id ?? sheetId)}>Next →</Btn>
+                </div>
+              </>
+            )}
+            {here.id !== '' && (
               <div style={{ marginTop: '0.6rem', padding: '0.5rem 0.65rem', borderRadius: 6, background: 'var(--surface)', border: '1px solid var(--border)', fontSize: '0.85rem', display: 'grid', gap: '0.3rem' }}>
-                <strong>Scope that reads from {sheet.id}</strong>
-                {onSheet.length === 0 ? (
-                  <span style={{ color: 'var(--text-muted)' }}>No scope line names this sheet.</span>
+                <strong>Scope that reads from {here.id}</strong>
+                {here.trades.length === 0 ? (
+                  <span style={{ color: 'var(--text-muted)' }}>No scope line names this {here.kind}.</span>
                 ) : (
-                  onSheet.map((t) => (
+                  here.trades.map((t) => (
                     <div key={t.pkg.id} style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap' }}>
                       <span style={{ minWidth: '7rem' }}>{t.pkg.trade}</span>
                       {t.lines.map((l) => {
@@ -222,8 +351,12 @@ export function GcPlansQuickLook({ project, onClose, onSeeWhoHasIt }: Props) {
                     </div>
                   ))
                 )}
-                {guessedHere && <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>Some of these are guessed from the line's words. Set them when you write the scope.</span>}
-                {wholeHere && <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>A line that names no sheet reads every sheet of its trade, so it shows here too.</span>}
+                {guessedOn && <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>Some of these are guessed from the line's words. Set them when you write the scope.</span>}
+                {wholeOn && (
+                  <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>
+                    A line that names no {here.kind} reads every {here.kind} of its trade, so it shows here too.
+                  </span>
+                )}
               </div>
             )}
           </div>
@@ -247,6 +380,41 @@ export function GcPlansQuickLook({ project, onClose, onSeeWhoHasIt }: Props) {
           </Btn>
         </div>
       </div>
+    </div>
+  )
+}
+
+/** A stand-in for a section's first page: its number and title, the three parts every section has, and a mark where a set revised it. */
+function StandInSection({ project, spec, rev }: { project: GcProject; spec: SpecInSet; rev: number }) {
+  const revisedHere = spec.changedInRev === rev && rev > 0
+  const by = spec.changedInRev !== null ? planLabel(project, spec.changedInRev) : null
+  const parts = ['PART 1  GENERAL', 'PART 2  PRODUCTS', 'PART 3  EXECUTION']
+  return (
+    <div
+      data-theme="light"
+      style={{ background: 'var(--surface)', color: 'var(--text-slate-900)', border: '1px solid var(--border-strong)', borderRadius: 4, padding: '1.4rem 1.6rem', minHeight: '22rem', display: 'grid', alignContent: 'start', gap: '0.9rem' }}
+    >
+      {revisedHere && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <span style={{ border: '2px dashed #d97706', color: '#d97706', borderRadius: 6, padding: '0.15rem 0.5rem', fontWeight: 700, fontSize: '0.8rem' }}>
+            {spec.added ? `Added by ${by}` : `Revised by ${by}`}
+          </span>
+        </div>
+      )}
+      <div style={{ textAlign: 'center', display: 'grid', gap: '0.2rem' }}>
+        <span style={{ fontSize: '0.75rem', letterSpacing: '0.08em', opacity: 0.7 }}>{project.name.toUpperCase()}</span>
+        <span style={{ fontWeight: 700, fontSize: '1.05rem', letterSpacing: '0.04em' }}>SECTION {spec.id}</span>
+        <span style={{ fontWeight: 700, letterSpacing: '0.04em' }}>{spec.title.toUpperCase()}</span>
+      </div>
+      {parts.map((part, i) => (
+        <div key={part} style={{ display: 'grid', gap: '0.35rem' }}>
+          <span style={{ fontWeight: 700, fontSize: '0.8rem' }}>{part}</span>
+          {[0, 1, 2].map((j) => (
+            <span key={j} style={{ display: 'block', height: '0.45rem', borderRadius: 2, background: 'currentColor', opacity: 0.18, width: `${92 - ((i + j) % 3) * 14}%` }} />
+          ))}
+        </div>
+      ))}
+      <span style={{ textAlign: 'center', fontSize: '0.8rem', opacity: 0.5 }}>Stand-in page. The real section shows here.</span>
     </div>
   )
 }

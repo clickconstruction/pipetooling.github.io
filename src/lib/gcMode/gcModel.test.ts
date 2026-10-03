@@ -395,6 +395,24 @@ const STEPS: Step[] = [
     action: { type: 'markLost', projectId: 'padb', why: 'price', wonBy: 'Hill Country Builders', note: 'They came in about 6% under us.' },
   },
   { label: 'Pad B: the owner comes back to us', action: { type: 'reopenLost', projectId: 'padb' } },
+  // The project manual (New Project lane, 2026-10-03): a set revises a section and adds a line that reads it.
+  {
+    label: 'Leon Springs: Addendum 1 revises the roofing section',
+    action: {
+      type: 'issuePlanSet',
+      projectId: 'leon-springs-urgent-care',
+      label: 'Addendum 1',
+      note: 'Section 07 54 23: the membrane goes from 60 to 80 mil, with walk pads to each rooftop unit.',
+      sheets: [],
+      addedSheets: [],
+      touches: ['leon-springs-urgent-care-roofing'],
+      recipients: [],
+      newTrades: [],
+      newLines: [{ packageId: 'leon-springs-urgent-care-roofing', label: 'Walk pads', sheets: [], specs: ['07 54 23'] }],
+      specs: ['07 54 23'],
+      addedSpecs: [{ id: '07 54 23', title: 'Thermoplastic polyolefin roofing' }],
+    },
+  },
 ]
 
 const CUSTOMER_IDS = ['cibolo', 'raman']

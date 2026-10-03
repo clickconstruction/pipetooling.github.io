@@ -7659,6 +7659,18 @@ exports[`GC mode golden walk > step 126: Pad B: the owner comes back to us 1`] =
 }
 `;
 
+exports[`GC mode golden walk > step 127: Leon Springs: Addendum 1 revises the roofing section 1`] = `
+{
+  "changed": {
+    "customers.marshvale.addenda": 5,
+    "customers.marshvale.sets": 9,
+    "lastLog.id": 123,
+    "lastLog.text": "Issued Addendum 1 on Leon Springs Urgent Care and emailed 0 companies. 0 were told it changes their trade. It adds 1 scope line.",
+  },
+  "removed": [],
+}
+`;
+
 exports[`GC mode golden walk > the whole state at the end 1`] = `
 {
   "customers": [
@@ -7859,6 +7871,11 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
+      "id": 123,
+      "text": "Issued Addendum 1 on Leon Springs Urgent Care and emailed 0 companies. 0 were told it changes their trade. It adds 1 scope line.",
+      "who": "office",
+    },
+    {
       "id": 122,
       "text": "Boerne Retail Pad B is back in the bidding.",
       "who": "office",
@@ -8001,11 +8018,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
     {
       "id": 94,
       "text": "Our superintendent corrected the mark on Roofing · TPO membrane for the week of Mon Sep 28: not done, weather.",
-      "who": "office",
-    },
-    {
-      "id": 93,
-      "text": "Our superintendent verified the mark on Structural steel · Erection for the week of Mon Sep 28: not done, crew.",
       "who": "office",
     },
   ],
@@ -13240,6 +13252,14 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
               "id": "leon-springs-urgent-care-roofing-2",
               "label": "Sheet metal and flashing",
             },
+            {
+              "id": "leon-springs-urgent-care-roofing-r1-1",
+              "label": "Walk pads",
+              "sheets": [],
+              "specs": [
+                "07 54 23",
+              ],
+            },
           ],
           "selfPerform": null,
           "sow": null,
@@ -13314,6 +13334,32 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
           "note": "5 sheets.",
           "rev": 0,
           "touches": [],
+        },
+        {
+          "addedLines": [
+            {
+              "packageId": "leon-springs-urgent-care-roofing",
+              "scopeId": "leon-springs-urgent-care-roofing-r1-1",
+            },
+          ],
+          "addedSpecs": [
+            {
+              "id": "07 54 23",
+              "title": "Thermoplastic polyolefin roofing",
+            },
+          ],
+          "changedSheets": [],
+          "changedSpecs": [
+            "07 54 23",
+          ],
+          "issuedOn": "2026-10-02",
+          "label": "Addendum 1",
+          "note": "Section 07 54 23: the membrane goes from 60 to 80 mil, with walk pads to each rooftop unit.",
+          "rev": 1,
+          "sentTo": [],
+          "touches": [
+            "leon-springs-urgent-care-roofing",
+          ],
         },
       ],
       "questions": [],
