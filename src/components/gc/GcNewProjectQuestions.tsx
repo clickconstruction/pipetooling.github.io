@@ -7,7 +7,10 @@ import {
   planLabel,
   questionRecipients,
   questionState,
+  questionsCloseOn,
+  questionsOpen,
   shortDate,
+  weekdayDate,
   type GcAction,
   type GcProject,
   type GcState,
@@ -71,6 +74,10 @@ export function GcNewProjectQuestions({ state, project, dispatch, onClose }: Pro
             <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
               A trade asks. We send it to {project.architect}. The answer goes to{' '}
               {project.stage === 'pursuing' ? 'every company bidding the trade.' : 'the company on the trade.'}
+              {questionsCloseOn(project) &&
+                (questionsOpen(project, state.today)
+                  ? ` Questions close ${weekdayDate(questionsCloseOn(project))}.`
+                  : ` Questions closed ${weekdayDate(questionsCloseOn(project))}.`)}
             </div>
           </div>
           <span style={{ flex: 1 }} />
@@ -86,7 +93,11 @@ export function GcNewProjectQuestions({ state, project, dispatch, onClose }: Pro
 
         <div style={{ padding: '0.9rem 1rem', overflowY: 'auto', display: 'grid', gap: '1rem' }}>
           <div>
-            {adding ? (
+            {!questionsOpen(project, state.today) ? (
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+                Questions closed {weekdayDate(questionsCloseOn(project))}. They close three days before our bid is due.
+              </span>
+            ) : adding ? (
               <AskForm state={state} project={project} dispatch={dispatch} onDone={() => setAdding(false)} />
             ) : (
               <Btn onClick={() => setAdding(true)}>A question came in by phone or email</Btn>
