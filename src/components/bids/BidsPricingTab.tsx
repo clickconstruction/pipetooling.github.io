@@ -2146,11 +2146,12 @@ export function BidsPricingTab({
               {/* v2.4448: the group may shrink (minWidth 0) so its own items wrap inside it; at its
                   max-content width the chips pushed the flow strip off the right of a 1,400 px window. */}
               <div style={{ display: 'flex', alignItems: 'center', flex: '1 1 auto', minWidth: 0, flexWrap: 'wrap', gap: '0.75rem' }}>
+                {/* v2.4451: no h2Style, so the title may shrink and wrap as on every other tab. Held
+                    at its full width (flex 0 0 auto), it ran past the card on a phone. */}
                 <BidWorkflowTabTitleWithPreview
                   bid={selectedBidForPricing}
                   previewEnabled={bidPreview != null}
                   onOpenPreview={() => bidPreview?.openBidPreviewFromBid(selectedBidForPricing)}
-                  h2Style={{ margin: 0, flex: '0 0 auto' }}
                 />
                 {/* v2.4448: "Bids like this" sits here, after the title. Its numbers (the Workbench's
                     effective revenue and margin) are derived further down, inside the Workbench block,
@@ -2183,7 +2184,8 @@ export function BidsPricingTab({
                     </button>
                 </span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: '0 0 auto' }}>
+              {/* v2.4451: may shrink to the card and wrap (the RFQ chip above the Share button) on a phone. */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: '0 1 auto', minWidth: 0, flexWrap: 'wrap' }}>
                 {/* v2.2630/31/36: one chip, five states (deriveRfqChip) — quotes-only
                     opens compare (as shipped); any request opens the RFQ desk. */}
                 {canPackageAndSendBidPricing && rfqChip.kind !== 'none' ? (

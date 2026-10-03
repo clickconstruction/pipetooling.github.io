@@ -44,7 +44,7 @@ There is no staging environment, so production is the only real render target. T
 
 A different animal from the suite above: it **writes**, it runs against a **local dev server** as the dev login, and nobody runs it but the person changing Bids. [`scripts/bids-live-walk.mjs`](../scripts/bids-live-walk.mjs) (`npm run walk:bids -- …`) does an estimator's day on a throwaway version of BP398 *ZZ Test*: twenty steps across Takeoffs, Labor, Pricing, Cover Letter and the Approval PDF, each recording what the screen said. It was written for the By Stage retirement (punch list #77), where it caught the one bug the unit suites missed.
 
-**When:** before merging a change to Takeoffs, Labor, Pricing, Cover Letter or the pricing engine, and once more on `origin/main` after it deploys.
+**When:** before merging a change to Takeoffs, Labor, Pricing, Cover Letter or the pricing engine, and once more on `origin/main` after it deploys. Add `phone` when the change touches the open bid's card or title line, since the suite above never opens a bid.
 
 ```bash
 PORT=5175 npm run walk:bids -- login                    # dev-login once (the dev server must be up)
@@ -55,6 +55,7 @@ git checkout my-branch
 PORT=5175 npm run walk:bids -- walk out/branch
 PORT=5175 npm run walk:bids -- snapshot out/branch 398,490,375
 npm run walk:bids -- diff out/main out/branch           # steps and tab lines that differ; exits 1 when any do
+PORT=5175 npm run walk:bids -- phone out/phone 398,403  # every bid tab at 375 px; exits 1 when the title line leaves its card
 rm e2e/.auth/bids-walk.json                             # a real prod session
 ```
 
