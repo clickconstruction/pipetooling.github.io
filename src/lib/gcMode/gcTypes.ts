@@ -311,6 +311,7 @@ export type GcAction =
   | { type: 'addPartner'; company: string; contact: string; trade: string; base: string | null; maxMiles: number | null }
   | { type: 'setCoverage'; partnerId: string; base: string | null; maxMiles: number | null }
   | { type: 'reset' }
+  | { type: 'createProject'; draft: NewProjectDraft }
   | {
       type: 'tradeSendPayApp'
       projectId: string
@@ -323,6 +324,38 @@ export type GcAction =
       signedBy: string
       signedTitle: string
     }
+
+/** One trade on a new project, as the office left it in the New project window. */
+export interface NewTradeDraft {
+  trade: string
+  /** Our own number for the trade. 0 when none was typed. */
+  budget: number
+  /** We do this trade ourselves: its number comes from our own bid in Trades mode. */
+  ours: boolean
+  /** The scope lines, each a piece of work a quote says yes or no to. */
+  scope: string[]
+}
+
+/** What the office fills in before a project exists. The reducer makes the project from it. */
+export interface NewProjectDraft {
+  name: string
+  address: string
+  town: string
+  /** A customer record, or null for a company named for the first time in ownerName. */
+  customerId: string | null
+  ownerName: string
+  /** A customer record too, or null for a firm named for the first time in architectName. */
+  architectId: string | null
+  architectName: string
+  bidDue: string | null
+  sizeNote: string
+  /** The first set of plans: what it is called, the day it came in, a line about it, its sheets. */
+  setLabel: string
+  issuedOn: string
+  setNote: string
+  sheets: PlanSheet[]
+  trades: NewTradeDraft[]
+}
 
 /** What the trade typed on a draw's pay application. The numbers are rebuilt from the draws (`payApplicationForDraw`). */
 export interface DrawPayApp {

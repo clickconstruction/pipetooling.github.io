@@ -9,6 +9,7 @@ import { planRecipients } from './gcPlans'
 import { bidsIn } from './gcBids'
 import { awardedPartner, find, logged, mapInvite, mapPackage, mapProject, mapSow, sowFromBid } from './gcReducerHelpers'
 import { initialGcState } from './gcFixture'
+import { buildNewProject } from './gcNewProject'
 import { payApplication } from './gcBuilding'
 
 export function gcReducer(state: GcState, action: GcAction): GcState {
@@ -479,6 +480,18 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
 
     case 'setMarkup':
       return mapProject(state, action.projectId, (p) => ({ ...p, [action.field]: action.value }))
+
+    case 'createProject': {
+      const { project, customers } = buildNewProject(state, action.draft)
+      const set = project.planSets[0]
+      const n = project.sheets.length
+      const k = project.packages.length
+      return logged(
+        { ...state, customers: [...state.customers, ...customers], projects: [...state.projects, project] },
+        'office',
+        `Started ${project.name}. The ${set?.label.toLowerCase() ?? 'first set'} has ${n} ${n === 1 ? 'sheet' : 'sheets'}, split into ${k} ${k === 1 ? 'trade' : 'trades'}.`,
+      )
+    }
 
     case 'tradeSendPayApp': {
       // The draw, asked for with its G702/G703: the same money as tradeRequestDraw, from the
