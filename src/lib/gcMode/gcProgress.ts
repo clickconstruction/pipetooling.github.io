@@ -11,6 +11,7 @@ import { BIDS_WANTED, bidIsStale, bidsIn, carriedAmount, isGuess } from './gcBid
 import { followUps } from './gcFollowUp'
 import { partnerBlockers } from './gcBench'
 import { ownCrewWork, sentBackOpen, timesSentBack, tradeCloseout } from './gcBuilding'
+import { scheduleSummary, scheduleSummaryWords } from './gcBuildingSchedule'
 
 /** The stage colors, saturated on purpose: the ring is a status mark, not a neutral surface. */
 export const RING_COLORS: Record<GcStage, string> = {
@@ -263,6 +264,9 @@ function buildingProgress(state: GcState, project: GcProject): StageProgress {
     }
   }
   const pct = Math.round(share * 100)
+  // The schedule, once drawn (owner, 2026-10-03: its measures on a won job's row and in this card).
+  const sum = scheduleSummary(project, state.today)
+  if (sum) also.unshift(scheduleSummaryWords(sum))
   if (share >= 1) {
     const signed = withSow.filter((p) => p.sow?.status === 'signed')
     const closed = signed.filter((p) => p.sow && tradeCloseout(p.sow, project, state.today).closed).length

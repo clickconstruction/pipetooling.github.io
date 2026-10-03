@@ -303,6 +303,50 @@ const STEPS: Step[] = [
     action: { type: 'setScheduleMilestone', projectId: 'helotes', milestone: { id: 'helotes-ms-cabinets', label: 'Cabinets set', planned: '2026-12-18', packageId: 'mill', metOn: null } },
   },
   { label: 'Take the rough-in inspection off', action: { type: 'removeScheduleMilestone', projectId: 'helotes', milestoneId: 'helotes-roughin' } },
+  // The superintendent's verify list (Building lane): a mark confirmed, one corrected, our crew's own.
+  { label: 'Superintendent: Iron Horse’s erection not done, right', action: { type: 'verifyLookAhead', projectId: 'fairoaksd', weekOf: '2026-09-28', lineId: 'fsteel-3', done: false } },
+  {
+    label: 'Superintendent: the membrane is not done (weather), not as Summit says',
+    action: { type: 'verifyLookAhead', projectId: 'fairoaksd', weekOf: '2026-09-28', lineId: 'froof-1', done: false, reason: 'weather' },
+  },
+  {
+    label: 'Our crew’s top out this week: not done after all (materials)',
+    action: { type: 'crewMarkLookAhead', projectId: 'fairoaksd', weekOf: '2026-09-28', lineId: 'fplumb-3', done: false, reason: 'materials' },
+  },
+  // The portal's weekly look-ahead: the trade marks this week's activity.
+  { label: 'Fair Oaks D: Pecan Valley marks Lighting not done this week (materials)', action: { type: 'tradeMarkLookAhead', projectId: 'fairoaksd', packageId: 'felec', lineId: 'felec-3', weekOf: '2026-09-28', done: false, reason: 'materials' } },
+  // The portal: a company keeps its language on its record.
+  { label: 'Hillside chooses Spanish for its portal and messages', action: { type: 'tradeSetLanguage', partnerId: 'hillside', lang: 'es' } },
+  // Helotes: change orders to the owner. One added and signed, one credit declined.
+  {
+    label: 'Draft change order 1: sound batts at operatory 3',
+    action: { type: 'draftChangeOrder', projectId: 'helotes', description: 'Add sound batts to the walls of operatory 3, per detail 4 on A-201', reason: 'owner', schedule: '+1 working day', packageId: 'dry', cost: 4_800, price: 5_280 },
+  },
+  { label: 'Send change order 1 to Dr. Raman', action: { type: 'sendChangeOrder', projectId: 'helotes', changeOrderId: 'co-1' } },
+  { label: 'Dr. Raman signs change order 1', action: { type: 'ownerSignChangeOrder', projectId: 'helotes', changeOrderId: 'co-1' } },
+  { label: 'Change order 1 is done', action: { type: 'setChangeOrderPct', projectId: 'helotes', changeOrderId: 'co-1', pct: 100 } },
+  {
+    label: 'Draft change order 2: a credit, the break room sink comes out',
+    action: { type: 'draftChangeOrder', projectId: 'helotes', description: 'Delete the break room sink', reason: 'plans', schedule: 'none', packageId: 'dplumb', cost: -1_200, price: -1_320 },
+  },
+  { label: 'Send change order 2 to Dr. Raman', action: { type: 'sendChangeOrder', projectId: 'helotes', changeOrderId: 'co-2' } },
+  { label: 'Dr. Raman declines change order 2', action: { type: 'ownerDeclineChangeOrder', projectId: 'helotes', changeOrderId: 'co-2' } },
+  // A set issued on a job with a schedule adds days to an activity; what waits on it moves out.
+  {
+    label: 'Helotes: Bulletin 2 adds data drops, five more days of low voltage rough',
+    action: {
+      type: 'issuePlanSet',
+      projectId: 'helotes',
+      label: 'Bulletin 2',
+      note: 'Data drops added at each operatory. E-102 changed.',
+      sheets: ['E-102'],
+      addedSheets: [],
+      touches: ['delec'],
+      recipients: ['brightline'],
+      newTrades: [],
+      schedulePushes: { 'delec-4': 5 },
+    },
+  },
 ]
 
 const CUSTOMER_IDS = ['cibolo', 'raman']
@@ -431,12 +475,16 @@ describe('GC mode golden walk', () => {
       'acceptWork', 'tradeSendWarranty', 'tradeSendFinalPayApp', 'approveRetainage',
       'selfReport',
       'ownerAcceptsWork', 'sendOwnerFinalPayApp',
+      'draftChangeOrder', 'sendChangeOrder', 'ownerSignChangeOrder', 'ownerDeclineChangeOrder', 'setChangeOrderPct',
       'sendDrawBack',
       'closeJob', 'approveDrawLess', 'selfReportStage',
       'draftSchedule', 'setScheduleActivity', 'setScheduleMilestone', 'removeScheduleMilestone',
+      'verifyLookAhead', 'crewMarkLookAhead',
       'tradeOpenPortal',
       'tradeAnswerLines',
       'priceOwnBid',
+      'tradeMarkLookAhead',
+      'tradeSetLanguage',
     ]
     expect(all.filter((t) => !used.has(t))).toEqual([])
   })

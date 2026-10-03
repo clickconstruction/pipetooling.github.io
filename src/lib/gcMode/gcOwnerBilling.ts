@@ -6,10 +6,10 @@
  * The math is the AIA pay application's (G702 on top, G703 the lines), said in plain words: work
  * done so far, less what the owner holds, less what we billed before, is this bill.
  */
-import type { GcCustomer, GcProject, GcState, OwnerPayAppSent, TradePackage } from './gcTypes'
+import type { ChangeOrder, GcCustomer, GcProject, GcState, OwnerPayAppSent, TradePackage } from './gcTypes'
 import { carriedAmount, proposalTotals } from './gcBids'
 import { partnerById } from './gcLookups'
-import { tradeCloseout } from './gcBuilding'
+import { ownCrewWork, tradeCloseout } from './gcBuilding'
 import { money, shortDate } from './gcWords'
 
 /** We bill the owner once a month (the owner's call, 2026-10-02). The day of the month is my default. */
@@ -18,7 +18,7 @@ export const OWNER_BILL_DAY = 25
 /** What the owner holds back from each bill when their customer record does not say. */
 export const OWNER_RETAINAGE_DEFAULT_PCT = 10
 
-export type OwnerLineKind = 'trade' | 'self' | 'generalConditions' | 'contingency' | 'fee'
+export type OwnerLineKind = 'trade' | 'self' | 'generalConditions' | 'contingency' | 'fee' | 'changeOrder'
 
 /** One line of the owner's bill: a trade, or one of our own costs. */
 export interface OwnerLine {
@@ -37,8 +37,10 @@ export interface OwnerLine {
   source: string
   /** The trade's own lines behind the number, when a statement of work has them. */
   detail: { label: string; pct: number; theySay?: number }[]
-  /** Our own crew's percent done, on a trade we do ourselves. The office reports it here. */
+  /** Our own crew's percent done, on a trade we do ourselves, as Draws → Our own crew reports it. */
   crewPct?: number
+  /** The change order this line bills, on a change order's line. */
+  changeOrderId?: string
 }
 
 export interface OwnerPayApp {
@@ -48,8 +50,12 @@ export interface OwnerPayApp {
   /** The bill day plus the owner's usual days to pay. Null when they have never paid us. */
   expectPaidOn: string | null
   lines: OwnerLine[]
-  /** Our price to the owner: every line's worth. */
+  /** Our price to the owner: every line's worth, signed change orders included. */
   contract: number
+  /** The price before change orders: what the owner contract was signed for. */
+  originalContract: number
+  /** What signed change orders added, less what they took out. */
+  changeOrdersTotal: number
   doneToDate: number
   /** 0 to 1: the share of the trades' work done. Our own costs and fee follow it. */
   tradeShare: number
@@ -87,15 +93,18 @@ function tradeLine(state: GcState, pkg: TradePackage): OwnerLine {
   const worth = carriedAmount(pkg) ?? 0
   const base = { id: pkg.id, label: pkg.trade, worth, doneBefore: 0, detail: [] as OwnerLine['detail'] }
   if (pkg.selfPerform) {
-    const pct = pkg.selfPerform.pctDone ?? 0
-    const done = (worth * pct) / 100
+    // One number with the Building lane's Our own crew card: by stage once reported that way.
+    const crew = ownCrewWork(pkg)
+    const pct = crew?.pct ?? 0
+    const done = crew && crew.worth > 0 ? (worth * crew.done) / crew.worth : 0
     return {
       ...base,
       kind: 'self',
       doneToDate: done,
       thisMonth: done,
       crewPct: pct,
-      source: pct > 0 ? `Our own crew reported ${pct}% done.` : 'Our own crew has not reported any work yet.',
+      source: done > 0 ? `Our own crew reported ${pct}% done${crew?.byStage ? ', by stage' : ''}.` : 'Our own crew has not reported any work yet.',
+      detail: crew?.byStage ? crew.stages.map((st) => ({ label: st.label, pct: st.pct })) : [],
     }
   }
   const invite = pkg.invites.find((i) => i.id === pkg.awardedInviteId)
@@ -170,12 +179,14 @@ export function ownerPayApp(state: GcState, project: GcProject): OwnerPayApp {
     follows('gc', 'General conditions', 'generalConditions', totals.generalConditions),
     follows('contingency', `Contingency ${project.contingencyPct}%`, 'contingency', totals.contingency),
     follows('fee', `Fee ${project.feePct}%`, 'fee', totals.fee),
+    ...signedChangeOrders(project).map(changeOrderLine),
   ].map((l) => {
     const doneBefore = last?.doneToDate[l.id] ?? 0
     const doneToDate = Math.max(l.doneToDate, doneBefore)
     return { ...l, doneBefore, doneToDate, thisMonth: doneToDate - doneBefore }
   })
   const contract = lines.reduce((s, l) => s + l.worth, 0)
+  const changeOrdersTotal = lines.filter((l) => l.kind === 'changeOrder').reduce((s, l) => s + l.worth, 0)
   const doneToDate = lines.reduce((s, l) => s + l.doneToDate, 0)
   const retainagePct = customer?.retainagePct ?? OWNER_RETAINAGE_DEFAULT_PCT
   const retainage = (doneToDate * retainagePct) / 100
@@ -187,6 +198,8 @@ export function ownerPayApp(state: GcState, project: GcProject): OwnerPayApp {
     expectPaidOn: customer?.payDays == null ? null : addDays(billOn, customer.payDays),
     lines,
     contract,
+    originalContract: contract - changeOrdersTotal,
+    changeOrdersTotal,
     doneToDate,
     tradeShare,
     retainagePct,
@@ -528,4 +541,107 @@ export function ownerFinalPayAppToSend(state: GcState, project: GcProject, today
 /** The owner has paid us the retainage they held. The Building lane's trade release waits for it (owner's call). */
 export function ownerReleasedRetainage(project: GcProject): boolean {
   return ownerPayAppsSent(project).some((a) => a.final === true && a.paidOn !== null)
+}
+
+// ---------------------------------------------------------------------------------------------
+// Our costs and fee, spread into the trades (open question 13): the same bill, where each trade's
+// line carries its share of general conditions, contingency and fee, so the lines add up to the
+// price with no fee line. Each column is shared out in proportion to the trades' own amounts in
+// that column, so every total is the same as with our costs as lines of their own.
+// ---------------------------------------------------------------------------------------------
+
+/** The lines that are our own costs and fee, not a trade. */
+export const OUR_COST_LINE_IDS = ['gc', 'contingency', 'fee']
+
+export type SpreadLine<L> = L & {
+  /** The trade's own amount before our share was added: its worth in the price. */
+  tradeWorth: number
+  /** Our costs and fee carried on this line. */
+  ourShare: number
+}
+
+/** The trade lines with our costs and fee spread into them. Our own lines drop out. */
+export function spreadMarkup<L extends { id: string; worth: number; doneBefore: number; thisMonth: number; doneToDate: number }>(
+  lines: L[],
+): SpreadLine<L>[] {
+  const ours = lines.filter((l) => OUR_COST_LINE_IDS.includes(l.id))
+  // A change order's price already carries our fee: its line passes through as it is.
+  const changes = lines.filter((l) => isChangeOrderLineId(l.id))
+  const trades = lines.filter((l) => !OUR_COST_LINE_IDS.includes(l.id) && !isChangeOrderLineId(l.id))
+  const total = (rows: L[], key: 'worth' | 'doneBefore' | 'doneToDate') => rows.reduce((s, l) => s + l[key], 0)
+  const share = (l: L, key: 'worth' | 'doneBefore' | 'doneToDate') => {
+    const t = total(trades, key)
+    return t === 0 ? 0 : (total(ours, key) * l[key]) / t
+  }
+  return trades.map((l) => {
+    const doneBefore = l.doneBefore + share(l, 'doneBefore')
+    const doneToDate = l.doneToDate + share(l, 'doneToDate')
+    const ourShare = share(l, 'worth')
+    return { ...l, worth: l.worth + ourShare, doneBefore, doneToDate, thisMonth: doneToDate - doneBefore, tradeWorth: l.worth, ourShare }
+  })
+    .concat(changes.map((l) => ({ ...l, tradeWorth: l.worth, ourShare: 0 })))
+}
+
+/** Our costs and fee as a share of the trades' price: 0.372 reads "37.2% on top". */
+export function markupOnTop(lines: { id: string; worth: number }[]): number {
+  const trades = lines.filter((l) => !OUR_COST_LINE_IDS.includes(l.id) && !isChangeOrderLineId(l.id)).reduce((s, l) => s + l.worth, 0)
+  const ours = lines.filter((l) => OUR_COST_LINE_IDS.includes(l.id)).reduce((s, l) => s + l.worth, 0)
+  return trades === 0 ? 0 : ours / trades
+}
+
+// ---------------------------------------------------------------------------------------------
+// Change orders to the owner (owner's go-ahead, 2026-10-03). The app's own change orders live in
+// Estimates and use these words: a description of change, a reason, the impact on schedule, added
+// work or a credit. A signed one raises the owner's price and is a line of its own on our bill.
+// ---------------------------------------------------------------------------------------------
+
+export const CHANGE_ORDER_REASON_WORDS: Record<ChangeOrder['reason'], string> = {
+  owner: 'Owner directive',
+  field: 'Field condition',
+  plans: 'Plan revision',
+}
+
+/** Change-order lines on the bill are keyed by the change order's id, which starts "co-". */
+export function isChangeOrderLineId(id: string): boolean {
+  return id.startsWith('co-')
+}
+
+export function projectChangeOrders(project: GcProject): ChangeOrder[] {
+  return project.changeOrders ?? []
+}
+
+export function signedChangeOrders(project: GcProject): ChangeOrder[] {
+  return projectChangeOrders(project).filter((co) => co.status === 'signed')
+}
+
+/** The price a change order starts at: what it costs us plus the job's fee, in whole dollars. */
+export function changeOrderPrice(project: GcProject, cost: number): number {
+  return Math.round(cost * (1 + project.feePct / 100))
+}
+
+/** "Change order 2 · Hill Country Interiors" or "Change order 2 · our own work". */
+export function changeOrderWho(state: GcState, project: GcProject, co: ChangeOrder): string {
+  if (co.packageId === null) return 'our own work'
+  const pkg = project.packages.find((p) => p.id === co.packageId)
+  if (!pkg) return 'our own work'
+  if (pkg.selfPerform) return `our own crew on ${pkg.trade}`
+  const invite = pkg.invites.find((i) => i.id === pkg.awardedInviteId)
+  const company = invite ? partnerById(state, invite.partnerId)?.company : undefined
+  return company ? `${company} on ${pkg.trade}` : pkg.trade
+}
+
+function changeOrderLine(co: ChangeOrder): OwnerLine {
+  const done = (co.price * co.pctDone) / 100
+  return {
+    id: co.id,
+    label: `Change order ${co.number}`,
+    kind: 'changeOrder',
+    worth: co.price,
+    doneToDate: done,
+    doneBefore: 0,
+    thisMonth: done,
+    source: `${co.description.trim().replace(/[.\s]+$/, '')}.${co.answeredOn ? ` Signed ${shortDate(co.answeredOn)}.` : ''}`,
+    detail: [],
+    changeOrderId: co.id,
+  }
 }

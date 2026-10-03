@@ -7,11 +7,12 @@
  *
  * Days are calendar days in the prototype. Import from `./gcModel`, which re-exports this file.
  */
-import type { GcProject, GcState, LookAheadMark, ProjectSchedule, ScheduleActivity, ScheduleMilestone, TradePackage } from './gcTypes'
+import type { GcProject, GcState, LookAheadMark, LookAheadReason, ProjectSchedule, ScheduleActivity, ScheduleMilestone, TradePackage } from './gcTypes'
 import { carriedAmount } from './gcBids'
-import { tradeOrder } from './gcNewProject'
+import { scheduleDraft } from './gcNewProject'
 import { partnerById } from './gcLookups'
 import { addDays, crewStages, sentBackOpen } from './gcBuilding'
+import { shortDate } from './gcWords'
 
 /** How many weeks the look-ahead shows (owner, 2026-10-02: three). */
 export const LOOKAHEAD_WEEKS = 3
@@ -94,70 +95,13 @@ export function scheduleLinesOf(pkg: TradePackage): { lineId: string; label: str
   return pkg.scope.map((l) => ({ lineId: l.id, label: l.label }))
 }
 
-/** How long a drawn activity runs in the first draft, in days. My default; the office changes each one. */
-export const DRAFT_ACTIVITY_DAYS = 10
-
 /**
- * The order trades build in, by phase, for the first draft: site, structure, roof, the rough-ins,
- * the walls, the finishes. My stand-in; a trade not on it goes after, in the New Project lane's order.
- */
-export const DRAFT_BUILD_ORDER = [
-  'Sitework',
-  'Concrete',
-  'Masonry',
-  'Structural steel',
-  'Roofing',
-  'Fire sprinkler',
-  'Plumbing',
-  'HVAC',
-  'Electrical',
-  'Framing and drywall',
-  'Glass and storefront',
-  'Doors and hardware',
-  'Millwork',
-  'Painting',
-  'Flooring',
-  'Landscaping',
-]
-
-function draftOrder(trade: string): number {
-  const i = DRAFT_BUILD_ORDER.indexOf(trade)
-  return i === -1 ? DRAFT_BUILD_ORDER.length + tradeOrder(trade) : i
-}
-
-/**
- * A first draft to draw from (the Building lane's stand-in until the New Project lane's draft from
- * the build order): every line of every trade, trades in build order (`DRAFT_BUILD_ORDER`), each line
- * after the one before it in its trade, each trade's first line after the previous trade's first.
- * Every activity runs DRAFT_ACTIVITY_DAYS. Milestones: dry-in, rough-in inspection, substantial completion.
+ * The first draft to draw from: the New Project lane's draft from the stages of the job
+ * (`scheduleDraft` in gcNewProject.ts: the rough-ins side by side after framing, close-in after
+ * the inspection, the trims after the finishes). The Draw a first draft button calls this.
  */
 export function draftSchedule(project: GcProject, start: string): ProjectSchedule {
-  const trades = [...project.packages].sort((a, b) => draftOrder(a.trade) - draftOrder(b.trade))
-  const activities: ScheduleActivity[] = []
-  let prevTradeFirst: ScheduleActivity | null = null
-  for (const pkg of trades) {
-    let prev: ScheduleActivity | null = null
-    for (const line of scheduleLinesOf(pkg)) {
-      const waits = prev ? [prev] : prevTradeFirst ? [prevTradeFirst] : []
-      const from = waits.length > 0 ? addDays(waits[0]?.finish ?? start, 1) : start
-      const a: ScheduleActivity = { lineId: line.lineId, packageId: pkg.id, start: from, finish: addDays(from, DRAFT_ACTIVITY_DAYS - 1), after: waits.map((w) => w.lineId) }
-      activities.push(a)
-      if (!prev) prevTradeFirst = a
-      prev = a
-    }
-  }
-  const last = activities.reduce((m, a) => (a.finish > m ? a.finish : m), start)
-  const roof = project.packages.find((k) => /roof/i.test(k.trade))
-  const roofLast = activities.filter((a) => a.packageId === roof?.id).reduce((m, a) => (a.finish > m ? a.finish : m), '')
-  // The inspection follows the last line named "Rough in" ("Low voltage rough" is not one).
-  const roughs = activities.filter((a) => /^rough/i.test(scheduleLinesOf(project.packages.find((k) => k.id === a.packageId) as TradePackage).find((l) => l.lineId === a.lineId)?.label ?? ''))
-  const roughLast = roughs.reduce((m, a) => (a.finish > m ? a.finish : m), '')
-  const milestones: ScheduleMilestone[] = [
-    ...(roofLast ? [{ id: `${project.id}-dryin`, label: 'Dry-in', planned: roofLast, packageId: roof?.id ?? null, metOn: null }] : []),
-    ...(roughLast ? [{ id: `${project.id}-roughin`, label: 'Rough-in inspection', planned: addDays(roughLast, 2), packageId: null, metOn: null }] : []),
-    { id: `${project.id}-substantial`, label: 'Substantial completion', planned: addDays(last, 5), packageId: null, metOn: null },
-  ]
-  return { activities, milestones, baseline: null, lookAhead: [] }
+  return scheduleDraft(project, start)
 }
 
 /**
@@ -340,9 +284,40 @@ export function lookAheadWeeks(project: GcProject, rows: ScheduleRow[], today: s
   })
 }
 
+/** Why not, as it counts: the superintendent's reason when they corrected the mark, else the trade's. */
+export function markReason(mark: LookAheadMark): LookAheadReason | null {
+  return mark.verifiedReason ?? mark.reason ?? null
+}
+
+export interface VerifyItem {
+  mark: LookAheadMark
+  row: ScheduleRow
+}
+
 /**
- * How reliable the look-ahead has been: of the verified marks in the past weeks (RELIABILITY_WEEKS),
- * how many were done as planned. Per company too. Marks not yet verified are counted apart.
+ * The superintendent's verify list (owner, 2026-10-02): every trade mark not verified yet, oldest
+ * week first, with its activity. And our own crew's activities in this week's look-ahead with no
+ * mark yet: we mark those ourselves, and our mark counts as verified.
+ */
+export function verifyList(project: GcProject, rows: ScheduleRow[], today: string): { waiting: VerifyItem[]; ourCrew: ScheduleRow[] } {
+  const marks = project.schedule?.lookAhead ?? []
+  const byLine = new Map(rows.map((r) => [r.activity.lineId, r]))
+  const waiting = marks
+    .filter((m) => !m.verifiedOn)
+    .flatMap((mark) => {
+      const row = byLine.get(mark.lineId)
+      return row ? [{ mark, row }] : []
+    })
+    .sort((a, b) => (a.mark.weekOf < b.mark.weekOf ? -1 : a.mark.weekOf > b.mark.weekOf ? 1 : 0))
+  const thisWeek = lookAheadWeeks(project, rows, today)[0]
+  const ourCrew = (thisWeek?.items ?? []).filter((i) => i.row.pkg.selfPerform && !i.mark).map((i) => i.row)
+  return { waiting, ourCrew }
+}
+
+/**
+ * How reliable the look-ahead has been: of the verified marks in the last weeks (RELIABILITY_WEEKS,
+ * this week counted once its marks are verified), how many were done as planned. Per company too.
+ * Marks not yet verified are counted apart.
  */
 export function lookAheadReliability(
   state: GcState,
@@ -350,8 +325,8 @@ export function lookAheadReliability(
 ): { done: number; of: number; waiting: number; byCompany: { company: string; done: number; of: number }[] } {
   const marks = project.schedule?.lookAhead ?? []
   const thisWeek = mondayOf(state.today)
-  const from = addDays(thisWeek, -7 * RELIABILITY_WEEKS)
-  const counted = marks.filter((m) => m.weekOf < thisWeek && m.weekOf >= from && m.verifiedOn)
+  const from = addDays(thisWeek, -7 * (RELIABILITY_WEEKS - 1))
+  const counted = marks.filter((m) => m.weekOf <= thisWeek && m.weekOf >= from && m.verifiedOn)
   const companies = new Map<string, { done: number; of: number }>()
   for (const m of counted) {
     const pkg = project.packages.find((k) => k.id === m.packageId)
@@ -384,4 +359,71 @@ export function scheduleMeasures(state: GcState, project: GcProject) {
     lookAhead: lookAheadWeeks(project, rows, state.today),
     reliability: lookAheadReliability(state, project),
   }
+}
+
+/** A milestone's state on `today`: hit, missed, late, or still due (MILESTONE_GRACE_DAYS of grace). */
+function milestoneStateOn(m: ScheduleMilestone, today: string): { state: MilestoneState; daysLate: number } {
+  const daysLate = daysBetween(m.planned, m.metOn ?? today)
+  const state: MilestoneState = m.metOn ? (daysLate <= MILESTONE_GRACE_DAYS ? 'hit' : 'missed') : daysLate > MILESTONE_GRACE_DAYS ? 'late' : 'due'
+  return { state, daysLate }
+}
+
+export interface ScheduleSummary {
+  /** Days behind the baseline (negative: ahead). */
+  daysBehind: number
+  donePct: number
+  plannedPct: number
+  milestones: { hit: number; of: number; late: { label: string; daysLate: number }[]; next: { label: string; planned: string } | null }
+  lookAhead: { done: number; of: number; waiting: number }
+}
+
+/**
+ * The schedule in a few words, for a won job's board row and the ring's card (owner, 2026-10-03:
+ * the row shows the schedule's measures on Building). It reads only the project and today, so
+ * the row can draw it. Null: no schedule drawn.
+ */
+export function scheduleSummary(project: GcProject, today: string): ScheduleSummary | null {
+  const schedule = project.schedule
+  if (!schedule || schedule.activities.length === 0) return null
+  const rows: ScheduleRow[] = schedule.activities.flatMap((activity) => {
+    const pkg = project.packages.find((k) => k.id === activity.packageId)
+    const line = pkg ? lineOf(pkg, activity.lineId) : null
+    if (!pkg || !line) return []
+    const baseline = schedule.baseline?.activities[activity.lineId] ?? { start: activity.start, finish: activity.finish }
+    return [{ activity, pkg, trade: pkg.trade, label: line.label, company: '', worth: line.worth, actual: line.actual, baseline, plannedToday: plannedPct(baseline.start, baseline.finish, today), slipDays: daysBetween(baseline.finish, activity.finish) }]
+  })
+  const work = workVsPlan(rows, today)
+  const states = schedule.milestones.map((m) => ({ m, ...milestoneStateOn(m, today) }))
+  const decided = states.filter((x) => x.state !== 'due')
+  const next = states.filter((x) => x.state === 'due').sort((a, b) => (a.m.planned < b.m.planned ? -1 : 1))[0]
+  const thisWeek = mondayOf(today)
+  const from = addDays(thisWeek, -7 * (RELIABILITY_WEEKS - 1))
+  const counted = schedule.lookAhead.filter((m) => m.weekOf <= thisWeek && m.weekOf >= from && m.verifiedOn)
+  return {
+    daysBehind: work.daysBehind,
+    donePct: work.donePct,
+    plannedPct: work.plannedPct,
+    milestones: {
+      hit: decided.filter((x) => x.state === 'hit').length,
+      of: decided.length,
+      late: states.filter((x) => x.state === 'late' || x.state === 'missed').map((x) => ({ label: x.m.label, daysLate: x.daysLate })),
+      next: next ? { label: next.m.label, planned: next.m.planned } : null,
+    },
+    lookAhead: {
+      done: counted.filter((m) => markState(m) === 'done').length,
+      of: counted.length,
+      waiting: schedule.lookAhead.filter((m) => !m.verifiedOn).length,
+    },
+  }
+}
+
+/** The summary as sentences: the board row's hover and the ring's card. */
+export function scheduleSummaryWords(sum: ScheduleSummary): string {
+  const d = sum.daysBehind
+  const pace = d > 0 ? `${d} ${d === 1 ? 'day' : 'days'} behind the plan` : d < 0 ? `${-d} ${d === -1 ? 'day' : 'days'} ahead of the plan` : 'on plan'
+  const parts = [`The schedule: ${pace}, ${Math.round(sum.donePct)}% done where ${Math.round(sum.plannedPct)}% was planned.`]
+  for (const l of sum.milestones.late) parts.push(`${l.label} is ${l.daysLate} days late.`)
+  if (sum.milestones.next) parts.push(`Next: ${sum.milestones.next.label}, ${shortDate(sum.milestones.next.planned)}.`)
+  if (sum.lookAhead.waiting > 0) parts.push(`${sum.lookAhead.waiting} look-ahead ${sum.lookAhead.waiting === 1 ? 'mark waits' : 'marks wait'} on our superintendent.`)
+  return parts.join(' ')
 }

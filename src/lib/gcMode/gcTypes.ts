@@ -23,6 +23,8 @@ export interface PlanSet {
   addedSheets?: PlanSheet[]
   /** Scope lines this set adds to trades already on the job. Quotes in before it never answered them. */
   addedLines?: { packageId: string; scopeId: string }[]
+  /** Days this set added to scheduled activities, by line id. What waited on them moved too. */
+  pushed?: { lineId: string; days: number }[]
 }
 
 /** One drawing in the set. The discipline is read from the number's letters (E-201 → Electrical). */
@@ -217,6 +219,8 @@ export interface Partner {
   portalOpenedOn?: string
   /** The day we sent the master agreement. Unset: not sent, or before the day was kept. */
   msaSentOn?: string
+  /** The language the company chose in its portal; its messages go out in it too. Unset: English. */
+  lang?: 'en' | 'es'
 }
 
 /** A question a trade asked about the plans. The architect answers; every bidder on the trade gets it. */
@@ -289,6 +293,8 @@ export interface GcProject {
   /** The customer's name, kept on the row for display. */
   owner: string
   ownerBilling: OwnerBilling | null
+  /** Changes to our contract with the owner, oldest first. Absent: none yet. */
+  changeOrders?: ChangeOrder[]
   /** A customer record too: the firm that drew the plans. */
   architectId: string
   /** The firm's name, kept on the row for display. */
@@ -413,6 +419,8 @@ export type GcAction =
       newTrades: NewTradeDraft[]
       /** Scope lines this set adds to trades already on the job, with the sheets each reads from. */
       newLines?: { packageId: string; label: string; sheets: string[] }[]
+      /** Days this set adds to scheduled activities, by line id. What waits on them moves out too. */
+      schedulePushes?: Record<string, number>
     }
   | { type: 'acceptWork'; projectId: string; packageId: string }
   | { type: 'tradeSendWarranty'; projectId: string; packageId: string }
@@ -464,6 +472,30 @@ export type GcAction =
   | { type: 'setScheduleActivity'; projectId: string; lineId: string; start: string; finish: string; after: string[] }
   | { type: 'setScheduleMilestone'; projectId: string; milestone: ScheduleMilestone }
   | { type: 'removeScheduleMilestone'; projectId: string; milestoneId: string }
+  | { type: 'verifyLookAhead'; projectId: string; weekOf: string; lineId: string; done: boolean; reason?: LookAheadReason }
+  | { type: 'crewMarkLookAhead'; projectId: string; weekOf: string; lineId: string; done: boolean; reason?: LookAheadReason }
+  /** The trade marks one look-ahead activity done or not for a week, in its portal. A verified mark stays as verified. */
+  | { type: 'tradeMarkLookAhead'; projectId: string; packageId: string; lineId: string; weekOf: string; done: boolean; reason?: LookAheadReason }
+  /** The company picks English or Spanish in its portal. Kept on its record: its messages go out in it. */
+  | { type: 'tradeSetLanguage'; partnerId: string; lang: 'en' | 'es' }
+  /** A change order to the owner, drafted on Bill the owner. */
+  | {
+      type: 'draftChangeOrder'
+      projectId: string
+      description: string
+      reason: ChangeOrderReason
+      schedule: string
+      packageId: string | null
+      cost: number
+      price: number
+    }
+  | { type: 'sendChangeOrder'; projectId: string; changeOrderId: string }
+  /** The owner signs a change order in their portal. */
+  | { type: 'ownerSignChangeOrder'; projectId: string; changeOrderId: string }
+  /** The owner declines a change order in their portal. */
+  | { type: 'ownerDeclineChangeOrder'; projectId: string; changeOrderId: string }
+  /** How much of a signed change order's work is done, for the owner's bill. */
+  | { type: 'setChangeOrderPct'; projectId: string; changeOrderId: string; pct: number }
 
 /** One trade on a new project, as the office left it in the New project window. */
 export interface NewTradeDraft {
@@ -585,6 +617,8 @@ export interface LookAheadMark {
   verifiedOn: string | null
   /** The superintendent's mark, when it differs from the trade's. */
   verifiedDone?: boolean
+  /** Why not, in the superintendent's words, when they corrected a "done" to not done. */
+  verifiedReason?: LookAheadReason
 }
 
 export interface ProjectSchedule {
@@ -593,4 +627,34 @@ export interface ProjectSchedule {
   /** Locked at Start: each activity's planned start and finish then, by line id. Null: not locked yet. */
   baseline: { lockedOn: string; activities: Record<string, { start: string; finish: string }> } | null
   lookAhead: LookAheadMark[]
+}
+
+/** Why the work changed, in the words the app's change orders already use. */
+export type ChangeOrderReason = 'owner' | 'field' | 'plans'
+
+/**
+ * A change to our contract with the owner: what changed, what it costs us, what it adds to their
+ * price, and their signature. The owner side is the Owner Billing lane's; amending the trade's
+ * statement of work to match is the Building lane's to add (new fields only).
+ */
+export interface ChangeOrder {
+  id: string
+  number: number
+  /** What is changing, in a sentence, with the plan reference if there is one. */
+  description: string
+  reason: ChangeOrderReason
+  /** Plain words: "+2 working days", "none". */
+  schedule: string
+  /** The trade the work belongs to. Null: our own work, under general conditions. */
+  packageId: string | null
+  /** What the work costs us. Negative: a credit, work coming out. */
+  cost: number
+  /** What it adds to the owner's price: the cost plus our fee on it, unless the office typed another. */
+  price: number
+  status: 'draft' | 'sent' | 'signed' | 'declined'
+  sentOn: string | null
+  /** The day the owner signed or declined it. */
+  answeredOn: string | null
+  /** Percent of its work done, for the owner's bill. */
+  pctDone: number
 }

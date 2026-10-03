@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  activitiesTouched,
   compareBids,
   gcReducer,
   initialGcState,
@@ -7,6 +8,7 @@ import {
   packagesForSheets,
   planEmail,
   planRecipients,
+  pushSchedule,
   sheetAsIndexed,
   sheetsAtRev,
   sheetsInText,
@@ -126,9 +128,9 @@ describe('planEmail', () => {
   const voltage = planRecipients(state, boerne, ['elec']).find((r) => r.partner.id === 'voltage') ?? null
 
   it('names the scope lines the new set touches', () => {
-    const one = planEmail(boerne, 'Addendum 2', 'More fixtures.', ['E-101'], voltage, ['Lighting'])
+    const one = planEmail(boerne, 'Addendum 2', 'More fixtures.', ['E-101'], voltage, { lines: ['Lighting'] })
     expect(last(one.body)).toMatch(/^This changes electrical\. The line it touches is lighting\. Please open the plans/)
-    const two = planEmail(boerne, 'Addendum 2', 'More fixtures.', ['E-101'], voltage, ['Lighting', 'Site lighting'])
+    const two = planEmail(boerne, 'Addendum 2', 'More fixtures.', ['E-101'], voltage, { lines: ['Lighting', 'Site lighting'] })
     expect(last(two.body)).toMatch(/The lines it touches are lighting and site lighting\./)
   })
 
@@ -177,7 +179,82 @@ describe('a new set that adds scope lines', () => {
   it('names the line it adds in the email', () => {
     const boerneBefore = project('boerne')
     const lonestar = planRecipients(state, boerneBefore, ['site']).find((r) => r.partner.id === 'lonestar') ?? null
-    const body = planEmail(boerneBefore, 'Addendum 2', 'A pond.', ['C-101'], lonestar, ['Paving'], ['Detention pond']).body
+    const body = planEmail(boerneBefore, 'Addendum 2', 'A pond.', ['C-101'], lonestar, { lines: ['Paving'], adds: ['Detention pond'] }).body
     expect(body[body.length - 1]).toMatch(/^This changes sitework\. It adds detention pond to your scope\. The line it touches is paving\. Please open/)
+  })
+})
+
+describe('a set issued on a job with a schedule', () => {
+  const drawn = gcReducer(state, { type: 'draftSchedule', projectId: 'helotes', start: '2026-10-12' })
+  const helotes = () => {
+    const p = drawn.projects.find((x) => x.id === 'helotes')
+    if (!p) throw new Error('no Helotes')
+    return p
+  }
+  const act = (acts: { lineId: string; start: string; finish: string }[], id: string) => {
+    const a = acts.find((x) => x.lineId === id)
+    if (!a) throw new Error(`no activity ${id}`)
+    return a
+  }
+
+  it('finds the scheduled activities its changed sheets reach', () => {
+    // E-101 is the lighting plan: Lighting names it, and lines that name no sheet read all of
+    // Electrical. Panels and feeders names E-201, the panel schedules, so it is not reached.
+    expect(activitiesTouched(helotes(), ['E-101']).map((a) => a.lineId).sort()).toEqual(['delec-2', 'delec-3', 'delec-4'])
+    expect(activitiesTouched(project('helotes'), ['E-101'])).toEqual([])
+  })
+
+  it('adds days to an activity and moves what waits on it, never earlier', () => {
+    const schedule = helotes().schedule
+    if (!schedule) throw new Error('no schedule')
+    const before = act(schedule.activities, 'dry-2')
+    const push = pushSchedule(schedule.activities, { 'delec-4': 5 })
+    // Low voltage rough takes five days longer; hang and tape waits on it, so it starts five days later.
+    expect(act(push.activities, 'delec-4').finish).toBe('2026-11-16')
+    expect(act(push.activities, 'dry-2').start > before.start).toBe(true)
+    expect(push.moved.find((m) => m.lineId === 'delec-4')?.days).toBe(5)
+    expect(push.lastAfter > push.lastBefore).toBe(true)
+    // Framing waited on nothing that moved, so it stays put.
+    expect(act(push.activities, 'dry-1')).toEqual(act(schedule.activities, 'dry-1'))
+  })
+
+  it('lets a push inside an activity\'s spare days leave the job\'s last day alone', () => {
+    const schedule = helotes().schedule
+    if (!schedule) throw new Error('no schedule')
+    const push = pushSchedule(schedule.activities, { 'dhvac-1': 1 })
+    expect(push.lastAfter).toBe(push.lastBefore)
+  })
+
+  it('records the days on the set, moves the schedule, keeps the baseline once started, and says so', () => {
+    const started = {
+      ...drawn,
+      projects: drawn.projects.map((p) => (p.id === 'helotes' ? { ...p, stage: 'building' as const, startedOn: '2026-10-12' } : p)),
+    }
+    const next = gcReducer(started, {
+      type: 'issuePlanSet',
+      projectId: 'helotes',
+      label: 'Bulletin 1',
+      note: 'Data drops added at each operatory.',
+      sheets: ['E-102'],
+      addedSheets: [],
+      touches: ['delec'],
+      recipients: ['brightline'],
+      newTrades: [],
+      schedulePushes: { 'delec-4': 5, 'delec-1': 0 },
+    })
+    const p = next.projects.find((x) => x.id === 'helotes')
+    const set = p?.planSets[p.planSets.length - 1]
+    expect(set?.pushed).toEqual([{ lineId: 'delec-4', days: 5 }])
+    expect(p?.schedule?.baseline?.lockedOn).toBe('2026-10-12')
+    expect(p?.schedule?.baseline?.activities['delec-4']?.finish).toBe('2026-11-11')
+    expect(act(p?.schedule?.activities ?? [], 'delec-4').finish).toBe('2026-11-16')
+    // Five days on low voltage rough; the two days drawn for the inspection absorb two of them.
+    expect(next.log[0]?.text).toMatch(/It adds 3 days to the job\.$/)
+  })
+
+  it('names the new dates in the email to the company on the trade', () => {
+    const r = planRecipients(state, project('helotes'), ['delec']).find((x) => x.partner.id === 'brightline') ?? null
+    const body = planEmail(project('helotes'), 'Bulletin 1', 'Data drops.', ['E-102'], r, { moves: ['Low voltage rough now runs Wed Nov 4 to Mon Nov 16.'] }).body
+    expect(body[body.length - 1]).toMatch(/Low voltage rough now runs Wed Nov 4 to Mon Nov 16\. Build from this set\./)
   })
 })

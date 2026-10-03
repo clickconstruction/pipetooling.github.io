@@ -39,6 +39,8 @@ import {
   type Partner,
   type TradePackage,
 } from '../../lib/gcMode/gcModel'
+import { linkNeverOpened } from '../../lib/gcMode/gcPortal'
+import { LinkNeverOpenedChip } from './GcPortalLinkChip'
 import { AskThread } from './GcAskThread'
 import { GcBuildingPayAppWindow } from './GcBuildingPayApp'
 import { GcBuildingSendBackForm, GcBuildingSentBackList } from './GcBuildingSendBack'
@@ -177,9 +179,14 @@ export function GcPackagesTab({ state, project, dispatch, onSeePortal, onMap, op
                                   )}
                                 </span>
                                 <span>
+                                  {/* Portal lane: a company that never opened its link says so in place of "not opened". */}
+                                  {inv.status === 'invited' && linkNeverOpened(state, inv.partnerId) ? (
+                                    <LinkNeverOpenedChip state={state} partnerId={inv.partnerId} company={partner?.company} />
+                                  ) : (
                                   <Chip tone={stale ? 'amber' : words.tone} title={stale ? 'Their bid is on an older set of plans.' : undefined}>
                                     {partner?.company} · {stale ? 'old plans' : words.word}
                                   </Chip>
+                                  )}
                                 </span>
                               </Fragment>
                             )
@@ -374,7 +381,12 @@ function LevelPanel({ state, project, pkg, dispatch, onSeePortal }: GcPaneProps 
             return (
               <div key={inv.id} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                 <span style={{ fontWeight: 600 }}>{partner.company}</span>
-                <Chip tone={words.tone}>{words.word}</Chip>
+                {/* Portal lane: never opened the link, in place of "not opened". */}
+                {inv.status === 'invited' && linkNeverOpened(state, inv.partnerId) ? (
+                  <LinkNeverOpenedChip state={state} partnerId={inv.partnerId} />
+                ) : (
+                  <Chip tone={words.tone}>{words.word}</Chip>
+                )}
                 <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
                   asked {shortDate(inv.invitedOn)} · plans: {planLabel(project, inv.seenRev)}
                 </span>

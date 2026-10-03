@@ -3,13 +3,18 @@ import {
   addDays,
   daysBetween,
   LOOKAHEAD_WEEKS,
+  markReason,
   MILESTONE_GRACE_DAYS,
   mondayOf,
   RELIABILITY_WEEKS,
   scheduleMeasures,
+  scheduleSummary,
+  scheduleSummaryWords,
   shortDate,
+  verifyList,
   type GcAction,
   type GcProject,
+  type LookAheadReason,
   type LookAheadState,
   type MilestoneRow,
   type ScheduleMilestone,
@@ -77,6 +82,8 @@ export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps)
       </Card>
 
       <MilestonesCard project={project} milestones={schedule.milestones} dispatch={dispatch} />
+
+      {building && <VerifyCard project={project} rows={m.rows} today={state.today} dispatch={dispatch} />}
 
       {building && <LookAhead weeks={m.lookAhead} />}
     </div>
@@ -588,7 +595,7 @@ function LookAhead({ weeks }: { weeks: ReturnType<typeof scheduleMeasures>['look
                     {mark && state === 'waiting' && (
                       <span style={{ color: 'var(--text-muted)' }}>they say {mark.done ? 'done' : `not done${mark.reason ? `, ${mark.reason}` : ''}`}</span>
                     )}
-                    {mark && state === 'not' && mark.reason && <span style={{ color: 'var(--text-muted)' }}>{mark.reason}</span>}
+                    {mark && state === 'not' && markReason(mark) && <span style={{ color: 'var(--text-muted)' }}>{markReason(mark)}</span>}
                   </span>
                 )}
               </div>
@@ -597,5 +604,177 @@ function LookAhead({ weeks }: { weeks: ReturnType<typeof scheduleMeasures>['look
         ))}
       </div>
     </Card>
+  )
+}
+
+// ---------------------------------------------------------------------------------------------
+// The superintendent's verify list
+// ---------------------------------------------------------------------------------------------
+
+const REASONS: LookAheadReason[] = ['weather', 'trade before', 'materials', 'crew', 'other']
+
+/**
+ * The superintendent's verify list (owner, 2026-10-02): each trade mark waiting, with what they say
+ * and what they reported against the plan; right, or corrected. Our own crew's activities this
+ * week are marked here too, and count as verified.
+ */
+function VerifyCard({ project, rows, today, dispatch }: { project: GcProject; rows: ScheduleRow[]; today: string; dispatch: Dispatch<GcAction> }) {
+  const { waiting, ourCrew } = verifyList(project, rows, today)
+  if (waiting.length === 0 && ourCrew.length === 0) {
+    return (
+      <Card>
+        <strong>To verify</strong> <span style={{ color: 'var(--text-muted)' }}>· nothing waits on our superintendent.</span>
+      </Card>
+    )
+  }
+  const thisWeek = mondayOf(today)
+  return (
+    <Card style={{ border: '1px solid var(--border-strong)' }}>
+      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap', marginBottom: '0.15rem' }}>
+        <strong>To verify</strong>
+        <Chip tone="amber">
+          {waiting.length + ourCrew.length} {waiting.length + ourCrew.length === 1 ? 'mark' : 'marks'}
+        </Chip>
+      </div>
+      <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '0.6rem' }}>
+        Our superintendent checks each trade's mark on the job. Only a verified mark counts toward the look-ahead.
+      </div>
+      <div style={{ display: 'grid', gap: '0.6rem' }}>
+        {waiting.map(({ mark, row }) => (
+          <VerifyLine
+            key={`${mark.weekOf}-${mark.lineId}`}
+            row={row}
+            weekOf={mark.weekOf}
+            saysDone={mark.done}
+            saysReason={mark.reason ?? null}
+            onVerify={(done, reason) => dispatch({ type: 'verifyLookAhead', projectId: project.id, weekOf: mark.weekOf, lineId: mark.lineId, done, ...(reason ? { reason } : {}) })}
+          />
+        ))}
+        {ourCrew.map((row) => (
+          <VerifyLine
+            key={`crew-${row.activity.lineId}`}
+            row={row}
+            weekOf={thisWeek}
+            saysDone={null}
+            saysReason={null}
+            onVerify={(done, reason) => dispatch({ type: 'crewMarkLookAhead', projectId: project.id, weekOf: thisWeek, lineId: row.activity.lineId, done, ...(reason ? { reason } : {}) })}
+          />
+        ))}
+      </div>
+    </Card>
+  )
+}
+
+/**
+ * One mark to verify. `saysDone` null: our own crew's activity, which we mark ourselves. A "done"
+ * marked not done asks why; a "not done" corrected to done needs no reason.
+ */
+function VerifyLine({
+  row,
+  weekOf,
+  saysDone,
+  saysReason,
+  onVerify,
+}: {
+  row: ScheduleRow
+  weekOf: string
+  saysDone: boolean | null
+  saysReason: LookAheadReason | null
+  onVerify: (done: boolean, reason?: LookAheadReason) => void
+}) {
+  const [reason, setReason] = useState<LookAheadReason>('other')
+  const ours = saysDone === null
+  const reasonPick = (
+    <select value={reason} onChange={(e) => setReason(e.target.value as LookAheadReason)} style={input} aria-label={`Why not, ${row.label}`}>
+      {REASONS.map((r) => (
+        <option key={r} value={r}>
+          {r}
+        </option>
+      ))}
+    </select>
+  )
+  return (
+    <div style={{ display: 'grid', gap: '0.25rem', fontSize: '0.85rem', paddingTop: '0.5rem', borderTop: '1px solid var(--border)' }}>
+      <div>
+        <strong>
+          {row.trade} · {row.label}
+        </strong>{' '}
+        <span style={{ color: 'var(--text-muted)' }}>
+          · {row.company} · week of {shortDate(weekOf)}
+        </span>
+      </div>
+      <div style={{ color: 'var(--text-muted)' }}>
+        {ours ? 'Our own crew. Mark it yourself.' : saysDone ? 'They say done.' : `They say not done${saysReason ? `: ${saysReason}` : ''}.`} Reported{' '}
+        {Math.round(row.actual)}%, planned {Math.round(row.plannedToday)}% by today.
+      </div>
+      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        {ours ? (
+          <>
+            <Btn kind="primary" onClick={() => onVerify(true)}>
+              Done
+            </Btn>
+            {reasonPick}
+            <Btn onClick={() => onVerify(false, reason)}>Not done</Btn>
+          </>
+        ) : saysDone ? (
+          <>
+            <Btn kind="primary" onClick={() => onVerify(true)}>
+              Right, done
+            </Btn>
+            {reasonPick}
+            <Btn onClick={() => onVerify(false, reason)}>Not done</Btn>
+          </>
+        ) : (
+          <>
+            <Btn kind="primary" onClick={() => onVerify(false)}>
+              Right, not done
+            </Btn>
+            <Btn onClick={() => onVerify(true)}>It is done</Btn>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------------------------
+// The board row
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * A won job's block on the Project Board, once its schedule is drawn (owner, 2026-10-03: the row
+ * shows the schedule's measures on Building): days behind or ahead in the big number, then the
+ * milestones hit and the look-ahead. The sentences behind it are on hover. Null: no schedule, so
+ * the board keeps its own block.
+ */
+export function GcBuildingScheduleBlock({ project, today, box }: { project: GcProject; today: string; box: CSSProperties }) {
+  const sum = scheduleSummary(project, today)
+  if (!sum) return null
+  const d = sum.daysBehind
+  const tone =
+    d > 7
+      ? { bg: 'var(--bg-red-100)', fg: 'var(--text-red-800)' }
+      : d > 0
+        ? { bg: 'var(--bg-amber-100)', fg: 'var(--text-amber-800)' }
+        : { bg: 'var(--bg-green-100)', fg: 'var(--text-green-800)' }
+  const late = sum.milestones.late.length > 0
+  const small: CSSProperties = { fontSize: '0.68rem', whiteSpace: 'nowrap' }
+  return (
+    <span style={{ ...box, background: tone.bg, color: tone.fg, textAlign: 'center' }} title={scheduleSummaryWords(sum)} aria-label={scheduleSummaryWords(sum)}>
+      {d === 0 ? (
+        <span style={{ fontSize: '0.95rem', fontWeight: 800, letterSpacing: '0.02em' }}>ON PLAN</span>
+      ) : (
+        <>
+          <span style={{ fontSize: '1.35rem', fontWeight: 800 }}>{Math.abs(d)}</span>
+          <span style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+            {Math.abs(d) === 1 ? 'day' : 'days'} {d > 0 ? 'behind' : 'ahead'}
+          </span>
+        </>
+      )}
+      <span style={{ ...small, fontWeight: late ? 700 : 400 }}>
+        {sum.milestones.of > 0 ? `${sum.milestones.hit} of ${sum.milestones.of} milestones` : 'no milestone yet'}
+      </span>
+      <span style={small}>{sum.lookAhead.of > 0 ? `look-ahead ${Math.round((sum.lookAhead.done / sum.lookAhead.of) * 100)}%` : 'look-ahead new'}</span>
+    </span>
   )
 }

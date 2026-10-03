@@ -2,17 +2,17 @@
  * GC mode — design spike. The reducer: every action, applied to the state.
  * Split out of gcModel.ts verbatim; import from `./gcModel`, which re-exports every file.
  */
-import type { AskContact, Draw, DrawSentBack, GcAction, GcState, Invite, Partner, PlanSet, SubBid } from './gcTypes'
-import { money, shortDate, weekdayDate } from './gcWords'
+import type { AskContact, Draw, DrawSentBack, GcAction, GcState, Invite, LookAheadMark, Partner, PlanSet, SubBid } from './gcTypes'
+import { money, shortDate, weekdayDate, daysUntil } from './gcWords'
 import { currentRev, partnerById, planLabel } from './gcLookups'
 import { planRecipients } from './gcPlans'
 import { bidsIn } from './gcBids'
 import { awardedPartner, find, logged, mapInvite, mapPackage, mapProject, mapSow, sowFromBid } from './gcReducerHelpers'
 import { initialGcState } from './gcFixture'
 import { draftSchedule, scheduleLinesOf, withBaselineKept } from './gcBuildingSchedule'
-import { buildNewProject, packagesFromDrafts, withNewLines, withTradesInOrder } from './gcNewProject'
+import { buildNewProject, packagesFromDrafts, pushSchedule, withNewLines, withTradesInOrder } from './gcNewProject'
 import { crewPctFromStages, drawApprovedLess, finalPayApplication, jobCloseout, payApplication, timesSentBack, tradeCloseout, workAllBilled } from './gcBuilding'
-import { ownerCloseout, ownerFinalPayAppToSend, ownerPayApp, ownerPayAppHasWork, ownerPayAppToSend } from './gcOwnerBilling'
+import { changeOrderPrice, ownerCloseout, ownerFinalPayAppToSend, ownerPayApp, ownerPayAppHasWork, ownerPayAppToSend } from './gcOwnerBilling'
 
 export function gcReducer(state: GcState, action: GcAction): GcState {
   switch (action.type) {
@@ -609,7 +609,14 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
       const rev = currentRev(project) + 1
       const brought = packagesFromDrafts(project.id, action.newTrades, project.packages.map((p) => p.id))
       const lined = withNewLines(project, rev, action.newLines ?? [])
-      const withTrades = { ...lined.project, packages: withTradesInOrder(lined.project.packages, brought) }
+      const pushes = Object.fromEntries(Object.entries(action.schedulePushes ?? {}).filter(([, d]) => d > 0).map(([id, d]) => [id, Math.round(d)]))
+      const kept = project.schedule && Object.keys(pushes).length > 0 ? withBaselineKept(project, project.schedule) : null
+      const push = kept ? pushSchedule(kept.activities, pushes) : null
+      const withTrades = {
+        ...lined.project,
+        packages: withTradesInOrder(lined.project.packages, brought),
+        ...(kept && push ? { schedule: { ...kept, activities: push.activities } } : {}),
+      }
       const touches = [...new Set([...action.touches, ...lined.added.map((l) => l.packageId), ...brought.map((p) => p.id)])]
       const chosen = planRecipients(state, withTrades, touches).filter((r) => action.recipients.includes(r.partner.id))
       const sentTo = [...new Map(chosen.map((r) => [r.partner.id, { partnerId: r.partner.id, on: state.today, touched: chosen.some((x) => x.partner.id === r.partner.id && x.touched) }])).values()]
@@ -623,10 +630,13 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
         sentTo,
         ...(action.addedSheets.length > 0 ? { addedSheets: action.addedSheets } : {}),
         ...(lined.added.length > 0 ? { addedLines: lined.added } : {}),
+        ...(push ? { pushed: Object.entries(pushes).map(([lineId, days]) => ({ lineId, days })) } : {}),
       }
       const next = mapProject(state, project.id, () => ({ ...withTrades, planSets: [...withTrades.planSets, set] }))
       const newLines = lined.added.length > 0 ? ` It adds ${lined.added.length} scope ${lined.added.length === 1 ? 'line' : 'lines'}.` : ''
-      const adds = `${newLines}${brought.length > 0 ? ` It adds ${brought.map((p) => p.trade.toLowerCase()).join(' and ')}. Nobody is asked yet.` : ''}`
+      const endDays = push ? daysUntil(push.lastAfter, push.lastBefore) : 0
+      const time = push ? (endDays > 0 ? ` It adds ${endDays} ${endDays === 1 ? 'day' : 'days'} to the job.` : ' The days it adds fit in the spare days.') : ''
+      const adds = `${newLines}${time}${brought.length > 0 ? ` It adds ${brought.map((p) => p.trade.toLowerCase()).join(' and ')}. Nobody is asked yet.` : ''}`
       const told = sentTo.filter((x) => x.touched).length
       return logged(
         next,
@@ -904,6 +914,165 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
         'office',
         `Took ${m.label} off the schedule on ${project.name}.`,
       )
+    }
+
+    case 'verifyLookAhead': {
+      // Our superintendent verifies a trade's look-ahead mark, or corrects it (owner, 2026-10-02:
+      // only a verified mark counts). A "done" corrected to not done carries the superintendent's reason.
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const schedule = project?.schedule
+      const mark = schedule?.lookAhead.find((m) => m.weekOf === action.weekOf && m.lineId === action.lineId)
+      if (!project || !schedule || !mark || mark.verifiedOn) return state
+      const corrected = action.done !== mark.done
+      const verified = {
+        ...mark,
+        verifiedOn: state.today,
+        ...(corrected ? { verifiedDone: action.done } : {}),
+        ...(corrected && !action.done && action.reason ? { verifiedReason: action.reason } : {}),
+      }
+      const lookAhead = schedule.lookAhead.map((m) => (m === mark ? verified : m))
+      const pkg = project.packages.find((k) => k.id === mark.packageId)
+      const line = pkg ? (scheduleLinesOf(pkg).find((l) => l.lineId === mark.lineId)?.label ?? mark.lineId) : mark.lineId
+      const words = action.done ? 'done' : `not done${(corrected ? action.reason : mark.reason) ? `, ${corrected ? action.reason : mark.reason}` : ''}`
+      return logged(
+        mapProject(state, project.id, (p) => ({ ...p, schedule: { ...schedule, lookAhead } })),
+        'office',
+        `Our superintendent ${corrected ? 'corrected' : 'verified'} the mark on ${pkg?.trade ?? ''} · ${line} for the week of ${weekdayDate(mark.weekOf)}: ${words}.`,
+      )
+    }
+
+    case 'crewMarkLookAhead': {
+      // Our own crew's activities: we mark them ourselves, and the mark counts as verified.
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const schedule = project?.schedule
+      const activity = schedule?.activities.find((a) => a.lineId === action.lineId)
+      const pkg = activity ? project?.packages.find((k) => k.id === activity.packageId) : undefined
+      if (!project || !schedule || !activity || !pkg?.selfPerform || !action.weekOf) return state
+      const mark = {
+        weekOf: action.weekOf,
+        lineId: action.lineId,
+        packageId: pkg.id,
+        done: action.done,
+        ...(!action.done && action.reason ? { reason: action.reason } : {}),
+        markedOn: state.today,
+        verifiedOn: state.today,
+      }
+      const others = schedule.lookAhead.filter((m) => !(m.weekOf === action.weekOf && m.lineId === action.lineId))
+      const line = scheduleLinesOf(pkg).find((l) => l.lineId === action.lineId)?.label ?? action.lineId
+      return logged(
+        mapProject(state, project.id, (p) => ({ ...p, schedule: { ...schedule, lookAhead: [...others, mark] } })),
+        'office',
+        `Our own crew's ${line} on ${pkg.trade} is marked ${action.done ? 'done' : `not done${action.reason ? `, ${action.reason}` : ''}`} for the week of ${weekdayDate(action.weekOf)}.`,
+      )
+    }
+
+    case 'tradeMarkLookAhead': {
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const schedule = project?.schedule
+      const { pkg } = find(state, action.projectId, action.packageId)
+      const partner = awardedPartner(state, pkg)
+      if (!project || !schedule || !pkg || !partner) return state
+      const was = schedule.lookAhead.find((m) => m.weekOf === action.weekOf && m.lineId === action.lineId)
+      if (was?.verifiedOn) return state
+      const mark: LookAheadMark = {
+        weekOf: action.weekOf,
+        lineId: action.lineId,
+        packageId: pkg.id,
+        done: action.done,
+        ...(action.done ? {} : { reason: action.reason ?? 'other' }),
+        markedOn: state.today,
+        verifiedOn: null,
+      }
+      const lookAhead = was ? schedule.lookAhead.map((m) => (m === was ? mark : m)) : [...schedule.lookAhead, mark]
+      const next = mapProject(state, project.id, (p) => (p.schedule ? { ...p, schedule: { ...p.schedule, lookAhead } } : p))
+      const label = scheduleLinesOf(pkg).find((l) => l.lineId === action.lineId)?.label ?? action.lineId
+      const week = weekdayDate(action.weekOf)
+      return logged(
+        next,
+        'trade',
+        action.done
+          ? `${partner.company} marked ${label} on ${pkg.trade} done for the week of ${week}.`
+          : `${partner.company} marked ${label} on ${pkg.trade} not done for the week of ${week}: ${mark.reason}.`,
+      )
+    }
+
+    case 'tradeSetLanguage': {
+      const partner = partnerById(state, action.partnerId)
+      if (!partner || (partner.lang ?? 'en') === action.lang) return state
+      return logged(
+        { ...state, partners: state.partners.map((p) => (p.id === partner.id ? { ...p, lang: action.lang } : p)) },
+        'trade',
+        `${partner.company} chose ${action.lang === 'es' ? 'Spanish' : 'English'} for its portal and messages.`,
+      )
+    }
+
+    case 'draftChangeOrder': {
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const description = action.description.trim()
+      if (!project || project.stage === 'pursuing' || description === '' || action.cost === 0) return state
+      const existing = project.changeOrders ?? []
+      const number = existing.length + 1
+      const price = Number.isFinite(action.price) && action.price !== 0 ? Math.round(action.price) : changeOrderPrice(project, action.cost)
+      const co = {
+        id: `co-${number}`,
+        number,
+        description,
+        reason: action.reason,
+        schedule: action.schedule.trim() || 'none',
+        packageId: action.packageId,
+        cost: Math.round(action.cost),
+        price,
+        status: 'draft' as const,
+        sentOn: null,
+        answeredOn: null,
+        pctDone: 0,
+      }
+      const next = mapProject(state, project.id, (p) => ({ ...p, changeOrders: [...existing, co] }))
+      return logged(next, 'office', `Drafted change order ${number} on ${project.name}: ${description}, ${money(price)}.`)
+    }
+
+    case 'sendChangeOrder': {
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const co = project?.changeOrders?.find((c) => c.id === action.changeOrderId)
+      if (!project || !co || co.status !== 'draft') return state
+      const next = mapProject(state, project.id, (p) => ({
+        ...p,
+        changeOrders: (p.changeOrders ?? []).map((c) => (c.id === co.id ? { ...c, status: 'sent' as const, sentOn: state.today } : c)),
+      }))
+      return logged(next, 'office', `Sent change order ${co.number} to ${project.owner} for signature: ${money(co.price)}.`)
+    }
+
+    case 'ownerSignChangeOrder':
+    case 'ownerDeclineChangeOrder': {
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const co = project?.changeOrders?.find((c) => c.id === action.changeOrderId)
+      if (!project || !co || co.status !== 'sent') return state
+      const signed = action.type === 'ownerSignChangeOrder'
+      const next = mapProject(state, project.id, (p) => ({
+        ...p,
+        changeOrders: (p.changeOrders ?? []).map((c) =>
+          c.id === co.id ? { ...c, status: signed ? ('signed' as const) : ('declined' as const), answeredOn: state.today } : c,
+        ),
+      }))
+      return logged(
+        next,
+        'office',
+        signed
+          ? `${project.owner} signed change order ${co.number} in their portal. Their price ${co.price < 0 ? 'goes down' : 'goes up'} ${money(Math.abs(co.price))}.`
+          : `${project.owner} declined change order ${co.number} in their portal.`,
+      )
+    }
+
+    case 'setChangeOrderPct': {
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const co = project?.changeOrders?.find((c) => c.id === action.changeOrderId)
+      const pct = Math.max(0, Math.min(100, Math.round(action.pct)))
+      if (!project || !co || co.status !== 'signed' || co.pctDone === pct) return state
+      const next = mapProject(state, project.id, (p) => ({
+        ...p,
+        changeOrders: (p.changeOrders ?? []).map((c) => (c.id === co.id ? { ...c, pctDone: pct } : c)),
+      }))
+      return logged(next, 'office', `Change order ${co.number} on ${project.name} is ${pct}% done.`)
     }
   }
 }

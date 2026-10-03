@@ -1,7 +1,8 @@
 import { useState, type Dispatch } from 'react'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
+import { GcOwnerBillingChangeOrders } from './GcOwnerBillingChangeOrders'
 import { GcOwnerBillingPortal } from './GcOwnerBillingPortal'
-import { Btn, Card, Chip, Stat, Why, input, num, td, th } from './gcUi'
+import { Btn, Card, Chip, Stat, Why, num, td, th } from './gcUi'
 import {
   daysUntil,
   missingTradeWaivers,
@@ -13,7 +14,9 @@ import {
   ownerPayApp,
   ownerPayAppHasWork,
   ownerPayAppsSent,
+  markupOnTop,
   shortDate,
+  spreadMarkup,
   tradesOwingUnconditional,
   tradeWaiverChecks,
   weekdayDate,
@@ -68,10 +71,10 @@ function OfficeSide({ state, project, dispatch }: { state: GcState; project: GcP
   const sent = ownerPayAppsSent(project)
   const account = ownerAccount(project)
   const hasWork = ownerPayAppHasWork(app)
-  const trades = app.lines.filter((l) => l.kind === 'trade' || l.kind === 'self')
-  const ours = app.lines.filter((l) => l.kind !== 'trade' && l.kind !== 'self')
   const donePct = app.contract === 0 ? 0 : Math.round((app.doneToDate / app.contract) * 100)
   const doneBefore = app.lines.reduce((s, l) => s + l.doneBefore, 0)
+  // Owner's call (2026-10-02): our costs and fee are spread into the trades' lines, no line of their own.
+  const shownTrades = spreadMarkup(app.lines)
   const checks = tradeWaiverChecks(state, project, Object.fromEntries(app.lines.map((l) => [l.id, l.doneToDate])))
   const missing = missingTradeWaivers(checks)
   const owing = tradesOwingUnconditional(checks)
@@ -81,8 +84,9 @@ function OfficeSide({ state, project, dispatch }: { state: GcState; project: GcP
     <div style={{ display: 'grid', gap: '1rem' }}>
       <Why>
         Once a month we bill {project.owner} for the work done so far. Each trade&rsquo;s line is the work its company
-        reported. Our own costs and fee follow the trades. {project.owner} holds {app.retainagePct}% of every bill until
-        the end.
+        reported. Each trade&rsquo;s line also carries its share of our costs and fee,{' '}
+        {(Math.round(markupOnTop(app.lines) * 1000) / 10).toLocaleString('en-US')}% on top of its price. {project.owner} holds{' '}
+        {app.retainagePct}% of every bill until the end.
       </Why>
 
       {!app.started && (
@@ -140,6 +144,8 @@ function OfficeSide({ state, project, dispatch }: { state: GcState; project: GcP
         </div>
         <div style={{ marginTop: '0.7rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
           After this bill, {money(app.leftToBill)} is left to bill. That counts the {money(app.retainage)} they hold.
+          {app.changeOrdersTotal !== 0 &&
+            ` Our price is the ${money(app.originalContract)} they signed for, ${app.changeOrdersTotal > 0 ? 'plus' : 'less'} ${money(Math.abs(app.changeOrdersTotal))} of change orders.`}
         </div>
         {hasWork && (
           <div style={{ marginTop: '0.8rem', borderTop: '1px solid var(--border)', paddingTop: '0.6rem', display: 'grid', gap: '0.3rem', fontSize: '0.875rem' }}>
@@ -198,6 +204,8 @@ function OfficeSide({ state, project, dispatch }: { state: GcState; project: GcP
       </Card>
       )}
 
+      <GcOwnerBillingChangeOrders state={state} project={project} dispatch={dispatch} />
+
       <Card style={{ padding: 0, overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
@@ -212,23 +220,17 @@ function OfficeSide({ state, project, dispatch }: { state: GcState; project: GcP
             </tr>
           </thead>
           <tbody>
-            {trades.map((l) => (
+            {shownTrades.map((l) => (
               <LineRow
                 key={l.id}
                 line={l}
-                pipelineRef={project.packages.find((p) => p.id === l.id)?.selfPerform?.ref}
-                onCrewPct={
-                  l.kind === 'self'
-                    ? (pct) => dispatch({ type: 'selfReport', projectId: project.id, packageId: l.id, pct })
-                    : undefined
+                spreadWords={
+                  l.kind === 'changeOrder'
+                    ? undefined
+                    : `${l.kind === 'self' ? 'Our crew’s price' : 'Their price'} ${money(l.tradeWorth)} plus ${money(l.ourShare)} of our costs and fee.`
                 }
+                pipelineRef={project.packages.find((p) => p.id === l.id)?.selfPerform?.ref}
               />
-            ))}
-            <tr>
-              <td colSpan={7} style={{ ...th, paddingTop: '0.8rem' }}>Our own costs and fee</td>
-            </tr>
-            {ours.map((l) => (
-              <LineRow key={l.id} line={l} />
             ))}
             <tr>
               <td style={{ ...td, fontWeight: 700 }}>Total</td>
@@ -246,50 +248,34 @@ function OfficeSide({ state, project, dispatch }: { state: GcState; project: GcP
   )
 }
 
-const CREW_STEPS = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
-
 function LineRow({
   line,
   pipelineRef,
-  onCrewPct,
+  spreadWords,
 }: {
   line: OwnerLine
   /** The Pipeline job our own crew runs this trade on. */
   pipelineRef?: string
-  /** Our own crew reports its percent done here. Only on a trade we do ourselves. */
-  onCrewPct?: (pct: number) => void
+  /** With our costs and fee spread in: what the trade's price is and what we added to it. */
+  spreadWords?: string
 }) {
   const pct = line.worth === 0 ? null : Math.round((line.doneToDate / line.worth) * 100)
   const quiet = line.doneToDate === 0
-  const crewPct = line.crewPct ?? 0
-  const steps = CREW_STEPS.includes(crewPct) ? CREW_STEPS : [...CREW_STEPS, crewPct].sort((a, b) => a - b)
   return (
     <tr>
       <td style={{ ...td, fontWeight: 600, whiteSpace: 'nowrap' }}>{line.label}</td>
       <td style={{ ...td, color: quiet ? 'var(--text-muted)' : undefined }}>
         {line.source}
-        {onCrewPct && (
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '0.3rem' }}>
-            <select
-              aria-label={`Our own crew's percent done on ${line.label}`}
-              value={crewPct}
-              onChange={(e) => onCrewPct(Number(e.target.value))}
-              style={input}
-            >
-              {steps.map((n) => (
-                <option key={n} value={n}>{n}% done</option>
-              ))}
-            </select>
-            {pipelineRef && (
-              <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-                The real build reads it from the Pipeline job {pipelineRef}.
-              </span>
-            )}
-          </div>
-        )}
+        {spreadWords && <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '0.15rem' }}>{spreadWords}</div>}
         {line.detail.length > 0 && (
           <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '0.15rem' }}>
             {line.detail.map((d) => (d.theySay === undefined ? `${d.label} ${d.pct}%` : `${d.label} ${d.pct}%, they say ${d.theySay}%`)).join(' · ')}
+          </div>
+        )}
+        {line.kind === 'self' && (
+          <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '0.15rem' }}>
+            Our crew reports it on Draws, under Our own crew.
+            {pipelineRef ? ` The real build reads it from the Pipeline job ${pipelineRef}.` : ''}
           </div>
         )}
       </td>
@@ -407,3 +393,4 @@ function CloseoutCard({ project, closeout, onSendFinal }: { project: GcProject; 
     </Card>
   )
 }
+

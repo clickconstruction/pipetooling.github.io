@@ -5,15 +5,16 @@
  *
  * The words follow the plain-words rules at the top of `gcTour.ts`.
  */
-import type { BidAlternate, GcProject, GcState, Invite, Partner, PlanSet, ScopeItem, SubBid, TradePackage } from './gcTypes'
+import type { BidAlternate, GcProject, GcState, Invite, LookAheadMark, Partner, PlanSet, ScopeItem, SubBid, TradePackage } from './gcTypes'
 import { daysUntil, money } from './gcWords'
 import { currentRev, partnerById } from './gcLookups'
-import { askPromise, type AskPromise } from './gcFollowUp'
+import { askPromise, OPEN_WITHIN_DAYS, type AskPromise } from './gcFollowUp'
 import { bidIsStale, sowMoney } from './gcBids'
 import { GC_COMPANY } from './gcFixture'
 import { pDate, pt, pWeekday, type PortalLang } from './gcPortalI18n'
 import { lineReads, tradeSheets } from './gcNewProject'
-import { sentBackOpen, tradeCloseout, workAllBilled } from './gcBuilding'
+import { addDays, sentBackOpen, tradeCloseout, workAllBilled } from './gcBuilding'
+import { lookAheadWeeks, markState, mondayOf, scheduleRows, type LookAheadState, type ScheduleRow } from './gcBuildingSchedule'
 import { planLabel } from './gcLookups'
 
 /** What the plans block tells one company on one ask. */
@@ -248,6 +249,17 @@ export function portalTodos(state: GcState, partnerId: string, asks: PortalAsk[]
     if (a.kind === 'job' && a.pkg.sow) {
       const sow = a.pkg.sow
       const signed = sow.status === 'signed'
+      // The look-ahead is per project: ask once, on the company's first job there.
+      const firstJobHere = asks.find((x) => x.kind === 'job' && x.project.id === a.project.id) === a
+      if (firstJobHere) {
+        const owed = lookAheadOwed(state, partnerId, a.project)
+        if (owed.late > 0) {
+          todos.push({ key: `${a.project.id}:lookahead:late`, projectId, text: pt(lang, 'todoLookLate', { n: owed.late, project }), tone: 'amber', by: addDays(mondayOf(today), -7) })
+        }
+        if (owed.thisWeek > 0) {
+          todos.push({ key: `${a.project.id}:lookahead`, projectId, text: pt(lang, 'todoLookWeek', { n: owed.thisWeek, project }), tone: 'amber', by: addDays(mondayOf(today), 4) })
+        }
+      }
       if (sow.status === 'sent') {
         todos.push({ key: `${key}:sow`, projectId, text: pt(lang, 'todoSow', { trade, project }), tone: 'amber', by: null })
       }
@@ -365,9 +377,11 @@ function setOn(project: GcProject, day: string): PlanSet | undefined {
  * Everything we sent one company, newest first: invitations, reminders, new plan sets, bid tabs,
  * the master agreement, a statement of work to sign, and the day work starts.
  */
-export function portalMessages(state: GcState, partnerId: string, lang: PortalLang = 'en'): PortalMessage[] {
+export function portalMessages(state: GcState, partnerId: string, language?: PortalLang): PortalMessage[] {
   const partner = partnerById(state, partnerId)
   if (!partner) return []
+  // The company's own language unless asked for another: its messages go out in it.
+  const lang: PortalLang = language ?? partner.lang ?? 'en'
   const gc = GC_COMPANY.name
   const t = (key: Parameters<typeof pt>[1], vars?: Record<string, string | number>) => pt(lang, key, vars)
   const and = t('and')
@@ -583,12 +597,6 @@ export function portalLines(project: GcProject, pkg: TradePackage, invite: Invit
 /** The choices for how long a number holds, in days. */
 export const GOOD_FOR_DAYS = [15, 30, 60, 90]
 
-function addDays(iso: string, days: number): string {
-  const [y, m, d] = iso.split('-').map(Number)
-  const t = new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, (d ?? 1) + days))
-  return t.toISOString().slice(0, 10)
-}
-
 /** The last day a number holds. Null when the company did not say. */
 export function bidGoodUntil(bid: SubBid): string | null {
   return bid.goodForDays ? addDays(bid.submittedOn, bid.goodForDays) : null
@@ -603,4 +611,91 @@ export function bidRanOut(bid: SubBid, today: string): boolean {
 /** "LED high bays adds $4,200", "Owner buys the fixtures takes off $12,000". */
 export function alternateWords(alt: BidAlternate, lang: PortalLang = 'en'): string {
   return pt(lang, alt.amount >= 0 ? 'altAdds' : 'altTakesOff', { label: alt.label, amount: money(Math.abs(alt.amount)) })
+}
+
+// ---------------------------------------------------------------------------------------------
+// The weekly look-ahead (owner, 2026-10-02): three weeks of the company's activities from our
+// schedule; at each week's end the company marks each done or not, our superintendent verifies
+// ---------------------------------------------------------------------------------------------
+
+/** Which week, as the company reads it. Last week shows only while something in it is unmarked. */
+export type PortalWeekWhen = 'last' | 'this' | 'next' | 'later'
+
+export interface PortalLookAheadItem {
+  row: ScheduleRow
+  mark: LookAheadMark | null
+  state: LookAheadState
+  /** The company can mark it: last week or this week, and our superintendent has not verified it. */
+  canMark: boolean
+}
+
+export interface PortalLookAheadWeek {
+  weekOf: string
+  when: PortalWeekWhen
+  items: PortalLookAheadItem[]
+}
+
+/** From Friday on, this week's marks are due (owner: "at the week's end"). */
+const MARK_FROM_WEEKDAY = 5
+
+function isOurs(partnerId: string, row: ScheduleRow): boolean {
+  const invite = row.pkg.invites.find((i) => i.id === row.pkg.awardedInviteId)
+  return invite?.partnerId === partnerId
+}
+
+/**
+ * One company's look-ahead on one project: last week while anything in it is unmarked, then
+ * this week and the next two (the Building lane's lookAheadWeeks, three weeks in all).
+ */
+export function portalLookAhead(state: GcState, partnerId: string, project: GcProject): PortalLookAheadWeek[] {
+  // Only on a job being built: a schedule drawn while buying out asks nothing of anyone yet.
+  if (!project.schedule || project.stage !== 'building') return []
+  const rows = scheduleRows(state, project).filter((r) => isOurs(partnerId, r))
+  if (rows.length === 0) return []
+  const marks = project.schedule.lookAhead
+  const thisWeek = mondayOf(state.today)
+  const lastWeek = addDays(thisWeek, -7)
+  const lastItems = rows
+    .filter((r) => r.activity.start <= addDays(lastWeek, 6) && r.activity.finish >= lastWeek)
+    .map((row) => {
+      const mark = marks.find((m) => m.weekOf === lastWeek && m.lineId === row.activity.lineId) ?? null
+      return { row, mark, state: markState(mark), canMark: !mark?.verifiedOn }
+    })
+  const weeks: PortalLookAheadWeek[] = []
+  if (lastItems.some((i) => i.mark === null)) weeks.push({ weekOf: lastWeek, when: 'last', items: lastItems })
+  lookAheadWeeks(project, rows, state.today).forEach((w, i) => {
+    weeks.push({
+      weekOf: w.weekOf,
+      when: i === 0 ? 'this' : i === 1 ? 'next' : 'later',
+      items: w.items.map((it) => ({ ...it, canMark: i === 0 && !it.mark?.verifiedOn })),
+    })
+  })
+  return weeks
+}
+
+/** The look-ahead marks a company owes: last week's still unmarked, and this week's once it is Friday. */
+export function lookAheadOwed(state: GcState, partnerId: string, project: GcProject): { late: number; thisWeek: number } {
+  const weeks = portalLookAhead(state, partnerId, project)
+  const unmarked = (when: PortalWeekWhen) => weeks.find((w) => w.when === when)?.items.filter((i) => i.mark === null).length ?? 0
+  const day = new Date(`${state.today}T00:00:00Z`).getUTCDay()
+  const weekEnd = day === 0 || day >= MARK_FROM_WEEKDAY
+  return { late: unmarked('last'), thisWeek: weekEnd ? unmarked('this') : 0 }
+}
+
+// ---------------------------------------------------------------------------------------------
+// For the office: a company that never opened its link
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * A company we asked that has never been in its portal (portalFirstVisit): the email may not have
+ * reached it. With the day we first asked, and whether that is past the days a company should take
+ * to open the plans (OPEN_WITHIN_DAYS). Null once it has opened its link.
+ */
+export function linkNeverOpened(state: GcState, partnerId: string): { since: string; days: number; late: boolean } | null {
+  if (!portalFirstVisit(state, partnerId)) return null
+  const asked = state.projects.flatMap((p) => p.packages.flatMap((k) => k.invites.filter((i) => i.partnerId === partnerId).map((i) => i.invitedOn)))
+  if (asked.length === 0) return null
+  const since = [...asked].sort()[0] ?? state.today
+  const days = Math.max(0, -daysUntil(since, state.today))
+  return { since, days, late: days > OPEN_WITHIN_DAYS }
 }

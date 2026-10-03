@@ -11,7 +11,9 @@ import {
   plannedPct,
   scheduleFloat,
   scheduleMeasures,
+  scheduleLinesOf,
   scheduleRows,
+  verifyList,
   type GcState,
   type ScheduleActivity,
 } from './gcModel'
@@ -82,8 +84,8 @@ describe('Fair Oaks D, mid-build', () => {
     expect(milestoneHitRate(rows)).toEqual({ hit: 1, of: 2 })
   })
 
-  it('counts only verified marks: 7 of 10 done as planned, 4 waiting', () => {
-    expect([m.reliability.done, m.reliability.of, m.reliability.waiting]).toEqual([7, 10, 4])
+  it('counts only verified marks: 8 of 11 done as planned (this week too), 4 waiting', () => {
+    expect([m.reliability.done, m.reliability.of, m.reliability.waiting]).toEqual([8, 11, 4])
     expect(m.reliability.byCompany.find((c) => c.company === 'Summit Roofing')).toEqual({ company: 'Summit Roofing', done: 1, of: 2 })
   })
 
@@ -102,15 +104,16 @@ describe('drawing the schedule', () => {
     return p
   }
 
-  it('drafts every line, trades by phase, each line after the one before', () => {
-    const d = draftSchedule(helotes(initialGcState()), '2026-10-12')
-    expect(d.activities.length).toBe(17)
-    expect(d.activities[0]).toMatchObject({ lineId: 'dplumb-1', start: '2026-10-12', finish: '2026-10-21', after: [] })
-    expect(d.activities.find((a) => a.lineId === 'dry-1')?.after).toEqual(['delec-1'])
-    expect(d.milestones.map((m) => [m.label, m.planned])).toEqual([
-      ['Rough-in inspection', '2026-11-02'],
-      ['Substantial completion', '2026-12-25'],
-    ])
+  it('drafts every line once, linked only to lines it has, with the three milestones', () => {
+    // The draft itself is the New Project lane's (scheduleDraft); this pins only its shape.
+    const project = helotes(initialGcState())
+    const d = draftSchedule(project, '2026-10-12')
+    const ids = d.activities.map((a) => a.lineId)
+    const lines = project.packages.flatMap((k) => scheduleLinesOf(k).map((l) => l.lineId))
+    expect([...ids].sort()).toEqual([...lines].sort())
+    expect(d.activities.every((a) => a.start >= '2026-10-12' && a.finish >= a.start && a.after.every((id) => ids.includes(id) && id !== a.lineId))).toBe(true)
+    expect(d.milestones.map((m) => m.id)).toEqual(expect.arrayContaining(['helotes-roughin', 'helotes-substantial']))
+    expect(d.baseline).toBeNull()
   })
 
   it('moves an activity; before Start nothing is locked yet', () => {
@@ -130,9 +133,40 @@ describe('drawing the schedule', () => {
     const drawn = gcReducer(started, { type: 'draftSchedule', projectId: 'helotes', start: '2026-10-12' })
     const moved = gcReducer(drawn, { type: 'setScheduleActivity', projectId: 'helotes', lineId: 'dry-1', start: '2026-11-16', finish: '2026-11-25', after: ['delec-1'] })
     const schedule = helotes(moved).schedule
+    const drafted = helotes(drawn).schedule?.activities.find((a) => a.lineId === 'dry-1')
     expect(schedule?.baseline?.lockedOn).toBe('2026-10-02')
-    expect(schedule?.baseline?.activities['dry-1']).toEqual({ start: '2026-11-11', finish: '2026-11-20' })
+    expect(schedule?.baseline?.activities['dry-1']).toEqual({ start: drafted?.start, finish: drafted?.finish })
     const row = scheduleRows(moved, helotes(moved)).find((r) => r.activity.lineId === 'dry-1')
-    expect(row?.slipDays).toBe(5)
+    expect(row?.slipDays).toBe(daysBetween(drafted?.finish ?? '', '2026-11-25'))
+  })
+})
+
+describe("the superintendent's verify list", () => {
+  const verify = (s: GcState, lineId: string, done: boolean, reason?: 'weather') =>
+    gcReducer(s, { type: 'verifyLookAhead', projectId: 'fairoaksd', weekOf: '2026-09-28', lineId, done, ...(reason ? { reason } : {}) })
+
+  it('lists the marks waiting, oldest week first, and our crew when it is not marked', () => {
+    const s = initialGcState()
+    const { waiting, ourCrew } = verifyList(fairOaks(s), scheduleRows(s, fairOaks(s)), s.today)
+    expect(waiting.map((w) => w.mark.lineId)).toEqual(['froof-1', 'fsteel-3', 'felec-2', 'fhvac-2'])
+    expect(ourCrew).toEqual([])
+  })
+
+  it('a confirmed mark counts as the trade said; a corrected one counts as the superintendent says', () => {
+    const right = verify(initialGcState(), 'fsteel-3', false)
+    const corrected = verify(right, 'froof-1', false, 'weather')
+    const marks = fairOaks(corrected).schedule?.lookAhead ?? []
+    expect(marks.find((x) => x.weekOf === '2026-09-28' && x.lineId === 'froof-1')).toMatchObject({ done: true, verifiedDone: false, verifiedReason: 'weather', verifiedOn: '2026-10-02' })
+    const r = scheduleMeasures(corrected, fairOaks(corrected)).reliability
+    expect([r.done, r.of, r.waiting]).toEqual([8, 13, 2])
+    // Verified once only.
+    expect(verify(corrected, 'froof-1', true)).toBe(corrected)
+  })
+
+  it('marks our own crew ourselves, verified at once; a hired trade it will not mark', () => {
+    const s = gcReducer(initialGcState(), { type: 'crewMarkLookAhead', projectId: 'fairoaksd', weekOf: '2026-10-05', lineId: 'fplumb-3', done: true })
+    expect(fairOaks(s).schedule?.lookAhead.find((x) => x.weekOf === '2026-10-05')).toMatchObject({ lineId: 'fplumb-3', done: true, verifiedOn: '2026-10-02' })
+    const hired = initialGcState()
+    expect(gcReducer(hired, { type: 'crewMarkLookAhead', projectId: 'fairoaksd', weekOf: '2026-09-28', lineId: 'fsteel-3', done: true })).toBe(hired)
   })
 })

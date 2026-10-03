@@ -4,6 +4,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import {
+  gcReducer,
   initialGcState,
   pDate,
   PORTAL_KEYS,
@@ -71,5 +72,14 @@ describe('the portal in two languages', () => {
     expect(portalPromiseLine(invite, state.today, 'Click', 'es')?.text).toBe(
       'Le dijo a Click que su precio llegaría a más tardar el mié 30 sep. Esa fecha pasó hace 2 días. Envíe su precio o dé un nuevo día.',
     )
+  })
+
+  it('keeps the company’s language on its record, and sends its messages in it', () => {
+    const spanish = gcReducer(state, { type: 'tradeSetLanguage', partnerId: 'hillside', lang: 'es' })
+    expect(spanish.partners.find((p) => p.id === 'hillside')?.lang).toBe('es')
+    expect(spanish.log[0]?.text).toBe('Hillside Excavation chose Spanish for its portal and messages.')
+    expect(portalMessages(spanish, 'hillside')[0]?.lines[0]).toBe('Hola Greg:')
+    expect(portalMessages(state, 'hillside')[0]?.lines[0]).toBe('Hello Greg,')
+    expect(gcReducer(spanish, { type: 'tradeSetLanguage', partnerId: 'hillside', lang: 'es' })).toBe(spanish)
   })
 })
