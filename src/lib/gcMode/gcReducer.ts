@@ -12,7 +12,7 @@ import { initialGcState } from './gcFixture'
 import { draftSchedule, scheduleLinesOf, withBaselineKept } from './gcBuildingSchedule'
 import { buildNewProject, packagesFromDrafts, pushSchedule, withNewLines, withTradesInOrder } from './gcNewProject'
 import { changeOrderTradePct, crewPctFromStages, drawApprovedLess, finalPayApplication, jobCloseout, payApplication, timesSentBack, tradeCloseout, workAllBilled } from './gcBuilding'
-import { appClaimed, changeOrderPrice, ownerCloseout, ownerFinalPayAppToSend, ownerPayApp, ownerPayAppHasWork, ownerPayAppToSend } from './gcOwnerBilling'
+import { appClaimed, appOpen, changeOrderPrice, ownerCloseout, ownerFinalPayAppToSend, ownerPayApp, ownerPayAppHasWork, ownerPayAppToSend } from './gcOwnerBilling'
 
 export function gcReducer(state: GcState, action: GcAction): GcState {
   switch (action.type) {
@@ -595,13 +595,18 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
               ...p,
               ownerBilling: {
                 ...p.ownerBilling,
-                // They pay what the architect certified (or what we asked, when it came in without a certificate).
-                payApps: (p.ownerBilling.payApps ?? []).map((a) => (a.number === app.number ? { ...a, paidOn: state.today, paidAmount: appClaimed(a) } : a)),
+                // They pay the rest of what the architect certified (or of what we asked, when it came in
+                // without a certificate), as one more payment.
+                payApps: (p.ownerBilling.payApps ?? []).map((a) =>
+                  a.number === app.number
+                    ? { ...a, paidOn: state.today, paidAmount: appClaimed(a), payments: [...(a.payments ?? []), { on: state.today, amount: appOpen(a) }] }
+                    : a,
+                ),
               },
             }
           : p,
       )
-      return logged(next, 'office', `${project.owner} paid pay application ${app.number}: ${money(appClaimed(app))}.`)
+      return logged(next, 'office', `${project.owner} paid pay application ${app.number}: ${money(appOpen(app))}.`)
     }
 
     case 'issuePlanSet': {
@@ -1237,6 +1242,63 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
       }))
       const trade = project.packages.find((k) => k.id === q.packageId)?.trade.toLowerCase() ?? 'the trade'
       return logged(next, 'office', `Answered a ${trade} question on ${project.name} and sent it to ${to.length} ${to.length === 1 ? 'company' : 'companies'}.`)
+    }
+
+    case 'ownerPayPart': {
+      // The owner pays part of a bill. The rest stays open; paying all of it closes the bill.
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const app = project?.ownerBilling?.payApps?.find((a) => a.number === action.number)
+      if (!project || !app || app.paidOn !== null) return state
+      const open = appOpen(app)
+      const amount = Math.min(open, Math.round(action.amount * 100) / 100)
+      if (!(amount > 0)) return state
+      const full = open - amount < 0.005
+      const next = mapProject(state, project.id, (p) =>
+        p.ownerBilling
+          ? {
+              ...p,
+              ownerBilling: {
+                ...p.ownerBilling,
+                payApps: (p.ownerBilling.payApps ?? []).map((a) =>
+                  a.number === app.number
+                    ? {
+                        ...a,
+                        payments: [...(a.payments ?? []), { on: state.today, amount }],
+                        ...(full ? { paidOn: state.today, paidAmount: appClaimed(a) } : {}),
+                      }
+                    : a,
+                ),
+              },
+            }
+          : p,
+      )
+      return logged(
+        next,
+        'office',
+        full
+          ? `${project.owner} paid the last ${money(amount)} on pay application ${app.number}.`
+          : `${project.owner} paid ${money(amount)} on pay application ${app.number}. ${money(open - amount)} is still open.`,
+      )
+    }
+
+    case 'ownerPromisePay': {
+      // The owner's word on when they will pay: the newest counts, a passed one stays on the record.
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const app = project?.ownerBilling?.payApps?.find((a) => a.number === action.number)
+      if (!project || !app || app.paidOn !== null || !/^\d{4}-\d{2}-\d{2}$/.test(action.by)) return state
+      const promise = { by: action.by, madeOn: state.today, note: action.note.trim(), who: action.who }
+      const next = mapProject(state, project.id, (p) =>
+        p.ownerBilling
+          ? {
+              ...p,
+              ownerBilling: {
+                ...p.ownerBilling,
+                payApps: (p.ownerBilling.payApps ?? []).map((a) => (a.number === app.number ? { ...a, promises: [...(a.promises ?? []), promise] } : a)),
+              },
+            }
+          : p,
+      )
+      return logged(next, 'office', `${project.owner} said they will pay pay application ${app.number} by ${weekdayDate(action.by)}.`)
     }
   }
 }

@@ -389,6 +389,9 @@ const STEPS: Step[] = [
       questionIds: ['padb-q-1'],
     },
   },
+  // Fair Oaks D: Cibolo missed the day it gave, gives a new one, and pays part.
+  { label: 'Cibolo says checks go out Oct 9', action: { type: 'ownerPromisePay', projectId: 'fairoaksd', number: 3, by: '2026-10-09', note: 'Their controller, on a call', who: 'office' } },
+  { label: 'Cibolo pays $150,000 of pay application 3', action: { type: 'ownerPayPart', projectId: 'fairoaksd', number: 3, amount: 150_000 } },
 ]
 
 const CUSTOMER_IDS = ['cibolo', 'raman']
@@ -519,6 +522,7 @@ describe('GC mode golden walk', () => {
       'ownerAcceptsWork', 'sendOwnerFinalPayApp',
       'draftChangeOrder', 'sendChangeOrder', 'ownerSignChangeOrder', 'ownerDeclineChangeOrder', 'setChangeOrderPct',
       'architectCertify',
+      'ownerPayPart', 'ownerPromisePay',
       'sendDrawBack',
       'closeJob', 'approveDrawLess', 'selfReportStage',
       'draftSchedule', 'setScheduleActivity', 'setScheduleMilestone', 'removeScheduleMilestone',

@@ -1,12 +1,15 @@
 import { useState, type Dispatch } from 'react'
-import { Btn, Chip } from './gcUi'
+import { Btn, Chip, input } from './gcUi'
 import { OwnerPayAppWindow } from './GcOwnerBillingPayApp'
 import { PortalBlock, PortalNote } from './GcPortalUi'
 import {
   GC_COMPANY_NAME,
   CHANGE_ORDER_REASON_WORDS,
+  GC_COMPANY,
   appCertified,
+  appOpen,
   appPaid,
+  ownerPayDue,
   money,
   ourOwnerWaivers,
   owedDrawWords,
@@ -30,6 +33,8 @@ import {
 const INK = '#16283c'
 const PAPER = '#f6f3ec'
 const RULE = '#d9d2c3'
+
+const GC_SHORT = GC_COMPANY.shortName
 
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
@@ -167,6 +172,8 @@ export function GcOwnerBillingPortal({ state, project, dispatch }: { state: GcSt
                 project={project}
                 app={app}
                 onPay={() => dispatch({ type: 'ownerPaid', projectId: project.id, number: app.number })}
+                onPayPart={(amount) => dispatch({ type: 'ownerPayPart', projectId: project.id, number: app.number, amount })}
+                onPromise={(by) => dispatch({ type: 'ownerPromisePay', projectId: project.id, number: app.number, by, note: '', who: 'owner' })}
               />
             ))}
             {sent.length > 0 && !allBilled && (
@@ -232,9 +239,29 @@ export function GcOwnerBillingPortal({ state, project, dispatch }: { state: GcSt
   )
 }
 
-function BillRow({ state, project, app, onPay }: { state: GcState; project: GcProject; app: OwnerPayAppSent; onPay: () => void }) {
+function BillRow({
+  state,
+  project,
+  app,
+  onPay,
+  onPayPart,
+  onPromise,
+}: {
+  state: GcState
+  project: GcProject
+  app: OwnerPayAppSent
+  onPay: () => void
+  onPayPart: (amount: number) => void
+  onPromise: (by: string) => void
+}) {
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState(false)
+  const [ask, setAsk] = useState<'part' | 'when' | null>(null)
+  const [part, setPart] = useState('')
+  const [by, setBy] = useState('')
+  const due = ownerPayDue(state, project, app)
+  const left = appOpen(app)
+  const paidSoFar = appPaid(app)
   const month = MONTH_NAMES[Number(app.periodTo.slice(5, 7)) - 1] ?? ''
   const sentLines = open ? sentPayAppLines(state, project, app.number) : []
   // Owner's call (2026-10-02): our costs and fee are spread into the trades' lines.
@@ -254,9 +281,17 @@ function BillRow({ state, project, app, onPay }: { state: GcState; project: GcPr
         ) : appCertified(app) === null ? (
           <Chip tone="amber">{`waiting on ${project.architect} to certify`}</Chip>
         ) : (
-          <Btn kind="primary" onClick={onPay} title="In the real build this opens the pay page or the bank transfer details, the way the customer portal does today.">
-            Pay {money(appCertified(app) ?? 0)}
-          </Btn>
+          <>
+            <Btn kind="primary" onClick={onPay} title="In the real build this opens the pay page or the bank transfer details, the way the customer portal does today.">
+              Pay {money(left)}
+            </Btn>
+            <Btn kind="quiet" onClick={() => setAsk(ask === 'part' ? null : 'part')}>
+              Pay another amount
+            </Btn>
+            <Btn kind="quiet" onClick={() => setAsk(ask === 'when' ? null : 'when')}>
+              Tell {GC_SHORT} when you will pay
+            </Btn>
+          </>
         )}
         <span style={{ color: 'var(--text-muted)' }}>
           {app.final
@@ -278,6 +313,49 @@ function BillRow({ state, project, app, onPay }: { state: GcState; project: GcPr
           {open ? 'Hide the lines' : 'See every line'}
         </button>
       </div>
+      {app.paidOn === null && appCertified(app) !== null && (paidSoFar > 0.005 || due.on !== null) && (
+        <div style={{ fontSize: '0.8rem', color: due.daysLate > 0 ? 'var(--text-red-700)' : 'var(--text-muted)' }}>
+          {paidSoFar > 0.005 ? `You paid ${money(paidSoFar)}. ${money(left)} is open. ` : ''}
+          {due.on !== null &&
+            (due.daysLate > 0
+              ? `It was due ${shortDate(due.on)}${due.promised ? ', the day you gave' : ''}.`
+              : due.promised
+                ? `You said you will pay by ${shortDate(due.on)}.`
+                : '')}
+        </div>
+      )}
+      {ask === 'part' && app.paidOn === null && (
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.8rem' }}>
+          <input style={{ ...input, width: '8rem' }} type="number" min={0} value={part} onChange={(e) => setPart(e.target.value)} aria-label="Amount to pay" />
+          <Btn
+            kind="primary"
+            disabled={!(Number(part) > 0)}
+            onClick={() => {
+              onPayPart(Number(part))
+              setAsk(null)
+              setPart('')
+            }}
+          >
+            Pay {Number(part) > 0 ? money(Math.min(Number(part), left)) : ''}
+          </Btn>
+        </div>
+      )}
+      {ask === 'when' && app.paidOn === null && (
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.8rem' }}>
+          <input style={input} type="date" value={by} onChange={(e) => setBy(e.target.value)} aria-label="The day you will pay" />
+          <Btn
+            kind="primary"
+            disabled={by === ''}
+            onClick={() => {
+              onPromise(by)
+              setAsk(null)
+              setBy('')
+            }}
+          >
+            Send it
+          </Btn>
+        </div>
+      )}
       {app.paidOn === null && appCertified(app) === null && (
         <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
           Your architect, {project.architect}, checks it first. You pay what they certify.

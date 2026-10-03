@@ -10,7 +10,7 @@ import type { ChangeOrder, GcCustomer, GcProject, GcState, OwnerPayAppSent, Trad
 import { carriedAmount, proposalTotals } from './gcBids'
 import { partnerById } from './gcLookups'
 import { changeOrderTradePct, ownCrewWork, retainageHeldNow, tradeCloseout, type PayApplication, type PayAppLine } from './gcBuilding'
-import { money, shortDate } from './gcWords'
+import { daysUntil, money, shortDate } from './gcWords'
 
 /** We bill the owner once a month (the owner's call, 2026-10-02). The day of the month is my default. */
 export const OWNER_BILL_DAY = 25
@@ -158,9 +158,15 @@ export function appClaimed(app: OwnerPayAppSent): number {
   return appCertified(app) ?? app.due
 }
 
-/** What the owner paid on a pay application. 0 until they pay. */
+/** What the owner has paid on a pay application so far: every payment, a part payment included. */
 export function appPaid(app: OwnerPayAppSent): number {
+  if (app.payments && app.payments.length > 0) return app.payments.reduce((s, p) => s + p.amount, 0)
   return app.paidOn === null ? 0 : (app.paidAmount ?? appClaimed(app))
+}
+
+/** What is still open on a pay application: what it counts for, less what the owner paid. */
+export function appOpen(app: OwnerPayAppSent): number {
+  return app.paidOn !== null ? 0 : Math.max(0, appClaimed(app) - appPaid(app))
 }
 
 /**
@@ -294,7 +300,7 @@ export function ownerAccount(project: GcProject): OwnerAccount | null {
     asked,
     paid,
     owed: asked - paid,
-    certifiedUnpaid: unpaid.reduce((s, a) => s + (appCertified(a) ?? 0), 0),
+    certifiedUnpaid: unpaid.reduce((s, a) => s + (appCertified(a) === null ? 0 : appOpen(a)), 0),
     waitingOnArchitect: unpaid.filter((a) => appCertified(a) === null).reduce((s, a) => s + a.due, 0),
   }
 }
@@ -330,7 +336,10 @@ export function ourOwnerWaivers(project: GcProject): OurOwnerWaiver[] {
   for (const app of ownerPayAppsSent(project)) {
     const final = app.final === true
     out.push({ payApp: app.number, kind: 'conditional', final, amount: app.due, signedOn: app.sentOn })
-    if (app.paidOn !== null) out.push({ payApp: app.number, kind: 'unconditional', final, amount: appPaid(app), signedOn: app.paidOn })
+    // One unconditional waiver for each payment received, for what it paid.
+    if (app.payments && app.payments.length > 0) {
+      for (const p of app.payments) out.push({ payApp: app.number, kind: 'unconditional', final, amount: p.amount, signedOn: p.on })
+    } else if (app.paidOn !== null) out.push({ payApp: app.number, kind: 'unconditional', final, amount: appPaid(app), signedOn: app.paidOn })
   }
   return out.reverse()
 }
@@ -872,4 +881,44 @@ export function projectCash(state: GcState, project: GcProject): ProjectCash {
     net: owner.paid - out.paid,
     ownCrew: project.packages.filter((p) => p.selfPerform).map((p) => p.trade),
   }
+}
+
+// ---------------------------------------------------------------------------------------------
+// When the owner pays: late, short, or on their word (owner's go-ahead, 2026-10-03). A bill is due
+// on the newest day the owner promised, or, with no promise, the day we expected it (the certificate
+// plus their usual days to pay). It is late the day after. The Pipeline's payment promises use the
+// same rule. A promise that passed stays on the record even after they give a new day.
+// ---------------------------------------------------------------------------------------------
+
+export interface OwnerPayDue {
+  /** The day it is due: their newest promise, or the day we expected it. Null: we cannot say yet. */
+  on: string | null
+  /** True when the day is their own word. */
+  promised: boolean
+  /** Days past that day, while it is not paid. 0: not late. */
+  daysLate: number
+  /** Earlier promises whose day passed with the bill not paid. */
+  missed: number
+}
+
+export function ownerPayDue(state: GcState, project: GcProject, app: OwnerPayAppSent): OwnerPayDue {
+  const promises = app.promises ?? []
+  const newest = promises[promises.length - 1]
+  const on = newest?.by ?? ownerExpectPaidOn(state, project, app)
+  const unpaid = app.paidOn === null
+  const daysLate = unpaid && on !== null ? Math.max(0, daysUntil(state.today, on)) : 0
+  // An earlier promise counts as missed when its day passed before they gave the next one.
+  const missed = promises.slice(0, -1).filter((p, i) => {
+    const next = promises[i + 1]
+    return next !== undefined && daysUntil(next.madeOn, p.by) > 0
+  }).length
+  return { on, promised: newest !== undefined, daysLate, missed }
+}
+
+/** The bills on a project that are late, the latest first. */
+export function ownerLateBills(state: GcState, project: GcProject): { app: OwnerPayAppSent; due: OwnerPayDue; open: number }[] {
+  return ownerPayAppsSent(project)
+    .map((app) => ({ app, due: ownerPayDue(state, project, app), open: appOpen(app) }))
+    .filter((b) => b.due.daysLate > 0 && b.open > 0.005)
+    .sort((a, b) => b.due.daysLate - a.due.daysLate)
 }

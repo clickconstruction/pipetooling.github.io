@@ -10,6 +10,8 @@ import {
   owedDrawWords,
   ownerAllBilled,
   ownerCarriedForward,
+  ownerLateBills,
+  ownerPayDue,
   ownerPayAppForm,
   ownerCloseout,
   ownerReleasedRetainage,
@@ -628,6 +630,57 @@ describe('the architect certifies first', () => {
     const state = gcReducer(sent(), { type: 'architectCertify', projectId: 'helotes', number: 1, amount: 999_999, note: '' })
     const app = helotesOf(state).ownerBilling?.payApps?.[0]
     expect(app?.certified).toBe(app?.due)
+  })
+})
+
+describe('when the owner pays: late, short, or on their word', () => {
+  const projectOf = (state: GcState, id: string) => {
+    const p = state.projects.find((x) => x.id === id)
+    if (!p) throw new Error(`fixture has no ${id}`)
+    return p
+  }
+  const certified = () => {
+    let state = gcReducer(initialGcState(), { type: 'sendOwnerPayApp', projectId: 'helotes' })
+    state = gcReducer(state, { type: 'architectCertify', projectId: 'helotes', number: 1, amount: 40_000, note: 'Ceilings are not hung yet' })
+    return state
+  }
+
+  it('a part payment leaves the rest open, and each payment has its own waiver', () => {
+    let state = gcReducer(certified(), { type: 'ownerPayPart', projectId: 'helotes', number: 1, amount: 15_000 })
+    let account = ownerAccount(projectOf(state, 'helotes'))
+    expect([account?.paid, account?.owed, account?.certifiedUnpaid]).toEqual([15_000, 25_000, 25_000])
+    expect(projectOf(state, 'helotes').ownerBilling?.payApps?.[0]?.paidOn).toBeNull()
+    state = gcReducer(state, { type: 'ownerPaid', projectId: 'helotes', number: 1 })
+    account = ownerAccount(projectOf(state, 'helotes'))
+    expect([account?.paid, account?.owed]).toEqual([40_000, 0])
+    const unconditional = ourOwnerWaivers(projectOf(state, 'helotes')).filter((w) => w.kind === 'unconditional').map((w) => w.amount)
+    expect(unconditional.sort((a, b) => a - b)).toEqual([15_000, 25_000])
+  })
+
+  it('a part payment of everything open closes the bill; nothing more is taken', () => {
+    const state = gcReducer(certified(), { type: 'ownerPayPart', projectId: 'helotes', number: 1, amount: 99_999 })
+    const app = projectOf(state, 'helotes').ownerBilling?.payApps?.[0]
+    expect([app?.paidOn, app?.payments]).toEqual(['2026-10-02', [{ on: '2026-10-02', amount: 40_000 }]])
+    expect(gcReducer(state, { type: 'ownerPayPart', projectId: 'helotes', number: 1, amount: 10 })).toBe(state)
+    expect(gcReducer(certified(), { type: 'ownerPayPart', projectId: 'helotes', number: 1, amount: 0 })).toEqual(certified())
+  })
+
+  it('their word sets the day; Fair Oaks D is two days past Cibolo\'s', () => {
+    const state = gcReducer(certified(), { type: 'ownerPromisePay', projectId: 'helotes', number: 1, by: '2026-10-28', note: 'Dr. Raman, on the phone', who: 'office' })
+    const app = projectOf(state, 'helotes').ownerBilling?.payApps?.[0]
+    if (!app) throw new Error('no app')
+    expect(ownerPayDue(state, projectOf(state, 'helotes'), app)).toEqual({ on: '2026-10-28', promised: true, daysLate: 0, missed: 0 })
+    const fresh = initialGcState()
+    const late = ownerLateBills(fresh, projectOf(fresh, 'fairoaksd'))
+    expect(late.map((b) => [b.app.number, b.due.on, b.due.promised, b.due.daysLate, Math.round(b.open * 100) / 100])).toEqual([[3, '2026-09-30', true, 2, 288_878.51]])
+    expect(gcReducer(fresh, { type: 'ownerPromisePay', projectId: 'fairoaksd', number: 3, by: 'soon', note: '', who: 'office' })).toBe(fresh)
+  })
+
+  it('a new day after a missed one: no longer late, but the miss stays on the record', () => {
+    const state = gcReducer(initialGcState(), { type: 'ownerPromisePay', projectId: 'fairoaksd', number: 3, by: '2026-10-09', note: 'Checks go out next Friday', who: 'office' })
+    const app = projectOf(state, 'fairoaksd').ownerBilling?.payApps?.[2]
+    if (!app) throw new Error('no app')
+    expect(ownerPayDue(state, projectOf(state, 'fairoaksd'), app)).toEqual({ on: '2026-10-09', promised: true, daysLate: 0, missed: 1 })
   })
 })
 

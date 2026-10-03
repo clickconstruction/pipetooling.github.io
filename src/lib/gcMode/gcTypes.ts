@@ -541,6 +541,10 @@ export type GcAction =
   | { type: 'sendQuestionToArchitect'; projectId: string; questionId: string }
   /** We record the architect's answer and send it to the companies on the trade. */
   | { type: 'answerQuestion'; projectId: string; questionId: string; answer: string; recipients: string[] }
+  /** The owner pays part of a certified pay application. The rest stays open. */
+  | { type: 'ownerPayPart'; projectId: string; number: number; amount: number }
+  /** The owner's word on when they will pay: taken by the office on a call, or given in their portal. */
+  | { type: 'ownerPromisePay'; projectId: string; number: number; by: string; note: string; who: 'office' | 'owner' }
 
 /** One trade on a new project, as the office left it in the New project window. */
 export interface NewTradeDraft {
@@ -617,6 +621,10 @@ export interface OwnerPayAppSent {
   certifiedNote?: string
   /** What the owner paid, once paid: the certified amount. Absent: as asked. */
   paidAmount?: number
+  /** Each payment the owner made on it, oldest first. A part payment leaves the rest open. Absent: none, or the made-up history. */
+  payments?: { on: string; amount: number }[]
+  /** The owner's word on when they will pay, oldest first. The newest counts; a passed one stays on the record. */
+  promises?: { by: string; madeOn: string; note: string; who: 'office' | 'owner' }[]
 }
 
 /** A pay application the office sent back: the draw as the trade sent it, why, and what we see. */
