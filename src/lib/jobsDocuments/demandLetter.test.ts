@@ -158,6 +158,22 @@ describe('prefill', () => {
     expect(f.includeTheftOfServices).toBe(false)
     expect(f.invoiceDate).toBe('2026-07-15')
   })
+
+  it('the invoice date is the first bill\'s day in the company zone, evenings included', () => {
+    const base = {
+      job,
+      issuer: { companyName: 'Click Plumbing and Electrical', addressText: '5501 Balcones Dr', phone: '', email: '', tagline: '', licenseLine: '' },
+      senderName: 'Malachi',
+      senderEmailFallback: 'office@x.com',
+      recipient: { name: 'Knight Contracting', email: 'ap@k.com', address: 'Flower Mound' },
+      priorNotices: [],
+      propertyKind: 'non_residential',
+      todayYmd: '2026-12-20',
+    }
+    // 7:30 pm CDT on Oct 2 (the +00:00 shape), and 6:30 pm CST on Dec 1 ahead of a later bill.
+    expect(buildDemandLetterPrefill({ ...base, invoices: [inv('a', 100, '2026-10-03T00:30:00.123+00:00')] }).invoiceDate).toBe('2026-10-02')
+    expect(buildDemandLetterPrefill({ ...base, invoices: [inv('b', 100, '2026-12-05T18:00:00Z'), inv('a', 100, '2026-12-02T00:30:00Z')] }).invoiceDate).toBe('2026-12-01')
+  })
 })
 
 describe('misc', () => {
@@ -317,6 +333,20 @@ describe('buildDemandStatement — read from the bill, never typed', () => {
     expect(st?.invoiceNumber).toBe('#867')
     const text = buildDemandLetterText({ ...FIELDS, statement: [STMT_867], outstanding: '1710.00' }, '2026-09-14')
     expect(text).toContain("This letter is Click Plumbing and Electrical's final formal demand")
+  })
+
+  it('a bill marked billed or sent in a Central evening reads that day on the statement', () => {
+    // 7:30 pm CDT on Oct 2, also in PostgREST's +00:00 shape.
+    const [billed] = buildDemandStatement(job, [{ inv: inv({ billed_at: '2026-10-03T00:30:00Z' }), doc: null, stripe: null }])
+    expect(billed?.sentYmd).toBe('2026-10-02')
+    const [sent] = buildDemandStatement(job, [{ inv: inv({ billed_at: null, sent_to_customer_at: '2026-10-03T00:30:00.123+00:00' }), doc: null, stripe: null }])
+    expect(sent?.sentYmd).toBe('2026-10-02')
+    // 6:30 pm CST on Dec 1; the due date is a date and stays as stored; noon UTC reads its own day.
+    const [winter] = buildDemandStatement(job, [{ inv: inv({ billed_at: '2026-12-02T00:30:00Z' }), doc: null, stripe: null }])
+    expect(winter?.sentYmd).toBe('2026-12-01')
+    expect(winter?.dueYmd).toBe('2026-09-05')
+    const [noon] = buildDemandStatement(job, [{ inv: inv({ billed_at: '2026-10-03T12:00:00Z' }), doc: null, stripe: null }])
+    expect(noon?.sentYmd).toBe('2026-10-03')
   })
 
   it('paid and balance come from the payments applied to that invoice', () => {

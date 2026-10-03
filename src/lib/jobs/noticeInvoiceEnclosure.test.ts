@@ -38,6 +38,20 @@ describe('the invoice behind the notice (v2.3437)', () => {
     expect(noticeEnclosureRefItem(docs)).toBe('2 invoices enclosed')
   })
 
+  it('a bill marked billed or sent in a Central evening reads that day, in the title and on the enclosed invoice', () => {
+    const one = (over: Record<string, unknown>) => ({ ...job, invoices: [{ ...inv('open', 1710, 2), ...over }] }) as unknown as JobWithDetails
+    // 7:30 pm CDT on Oct 2, in PostgREST's +00:00 shape.
+    const [billed] = noticeInvoiceDocs(one({ billed_at: '2026-10-03T00:30:00.123+00:00' }))
+    expect(billed?.title).toBe('Invoice #2, October 2, 2026')
+    expect(billed?.doc.invoiceDateDisplay).toBe('October 2, 2026')
+    // The enclosed invoice dates from the send when there is one: 6:30 pm CST on Dec 1.
+    const [sent] = noticeInvoiceDocs(one({ billed_at: '2026-12-02T00:30:00Z', sent_to_customer_at: '2026-12-02T00:30:00Z' }))
+    expect(sent?.title).toBe('Invoice #2, December 1, 2026')
+    expect(sent?.doc.invoiceDateDisplay).toBe('December 1, 2026')
+    // Noon UTC reads its own day.
+    expect(noticeInvoiceDocs(one({ billed_at: '2026-10-03T12:00:00Z' }))[0]?.title).toBe('Invoice #2, October 3, 2026')
+  })
+
   it('carries what the pay page needs (v2.3758): the balance still owed and whether the bill has a payment page', () => {
     const docs = noticeInvoiceDocs(job)
     expect(docs.map((d) => [d.openAmount, d.stripeInvoiceId])).toEqual([

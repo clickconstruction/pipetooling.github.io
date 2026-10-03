@@ -8,6 +8,7 @@ import type { StripeInvoiceLineDetail } from '../stripeInvoiceDetailsResponse'
 import { effectiveInvoiceParty, type EffectiveBillParty } from '../../../supabase/functions/_shared/billToParty'
 import { enclosuresLine, exhibitsSentence, type DemandExhibit } from './demandLetterPacket'
 import { loadJsPDF } from '../loadJsPDF'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 /**
  * Final demand letter (v2.2640, Lien Instruments phase 2): the lientooling.com
@@ -710,6 +711,7 @@ export function fallbackInvoiceNumber(inv: Pick<JobsLedgerInvoice, 'sequence_ord
   return h ? `#${h}` : '#1'
 }
 
+/** A `date` column's day. An instant's day is `calendarYmdInAppTzFromIso` (its first ten characters are the UTC date). */
 function ymdOf(raw: string | null | undefined): string {
   const t = (raw ?? '').trim()
   return /^\d{4}-\d{2}-\d{2}/.test(t) ? t.slice(0, 10) : ''
@@ -744,7 +746,7 @@ export function buildDemandStatement(job: JobWithDetails, sources: DemandInvoice
     return {
       invoiceNumber,
       // The day the bill went out (billed_at), not the day it was later delivered or re-sent (v2.3445).
-      sentYmd: ymdOf(inv.billed_at) || ymdOf(inv.sent_to_customer_at) || ymdOf(inv.created_at),
+      sentYmd: calendarYmdInAppTzFromIso(inv.billed_at ?? '') || calendarYmdInAppTzFromIso(inv.sent_to_customer_at ?? '') || calendarYmdInAppTzFromIso(inv.created_at ?? ''),
       dueYmd: ymdOf(inv.estimated_bill_date) || ymdOf(stripe?.dueYmd ?? null),
       lines,
       total: moneyInput(total),
@@ -824,7 +826,7 @@ export function buildDemandLetterPrefill(ctx: DemandLetterPrefillContext): Deman
   const outstanding = Math.max(0, total - applied)
   const hcp = (job.hcp_number ?? '').trim()
   const firstBilled = invoices
-    .map((i) => (i.billed_at ?? i.created_at ?? '').slice(0, 10))
+    .map((i) => calendarYmdInAppTzFromIso(i.billed_at ?? i.created_at ?? ''))
     .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d))
     .sort()[0]
   const lastWork = (job.last_work_date ?? '').slice(0, 10)
