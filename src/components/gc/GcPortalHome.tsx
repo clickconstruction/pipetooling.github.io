@@ -3,23 +3,26 @@ import {
   daysUntil,
   GC_COMPANY,
   money,
+  pDate,
   portalFirstVisit,
   portalHome,
+  pt,
+  pWeekday,
   sentBackOpen,
   tradeCloseout,
   workAllBilled,
-  shortDate,
-  weekdayDate,
   type GcAction,
   type GcState,
   type Partner,
   type PortalAsk,
   type PortalJobMoney,
+  type PortalLang,
   type PortalTodo,
 } from '../../lib/gcMode/gcModel'
 import { Btn, Chip, type Tone } from './gcUi'
 import { GcPortalPaperwork, type PaperworkLine } from './GcPortalPaperwork'
 import { PortalBlock } from './GcPortalUi'
+import { usePortalLang } from './gcPortalLang'
 
 /**
  * GC mode design spike: a company's home in its portal. The link we send a trade is one link for
@@ -47,7 +50,8 @@ export function GcPortalHome({
   dispatch: Dispatch<GcAction>
   onOpenProject: (projectId: string) => void
 }) {
-  const home = portalHome(state, partner.id)
+  const { lang, t: tr } = usePortalLang()
+  const home = portalHome(state, partner.id, lang)
   const firstVisit = portalFirstVisit(state, partner.id)
   const paperRef = useRef<HTMLDivElement | null>(null)
   const [paperAsk, setPaperAsk] = useState<{ line: PaperworkLine; n: number } | null>(null)
@@ -67,16 +71,14 @@ export function GcPortalHome({
         <Welcome partner={partner} firstAsk={home.bidding[0]} onDone={() => dispatch({ type: 'tradeOpenPortal', partnerId: partner.id })} />
       ) : (
         <div>
-          <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>Hello, {partner.contact}.</div>
-          <div style={{ fontSize: '0.85rem', opacity: 0.8 }}>
-            This is everything {partner.company} has with {GC_COMPANY.name}. The link is yours. Keep it.
-          </div>
+          <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>{tr('hello', { name: partner.contact })}</div>
+          <div style={{ fontSize: '0.85rem', opacity: 0.8 }}>{tr('homeIntro', { company: partner.company, gc: GC_COMPANY.name })}</div>
         </div>
       )}
 
-      <PortalBlock title={home.todos.length > 0 ? `Needs you · ${home.todos.length}` : 'Needs you'}>
+      <PortalBlock title={home.todos.length > 0 ? `${tr('needsYou')} · ${home.todos.length}` : tr('needsYou')}>
         {home.todos.length === 0 ? (
-          <div style={{ fontSize: '0.9rem' }}>Nothing needs you right now.</div>
+          <div style={{ fontSize: '0.9rem' }}>{tr('nothingNeeds')}</div>
         ) : (
           <div style={{ display: 'grid' }}>
             {home.todos.map((t, i) => (
@@ -90,18 +92,18 @@ export function GcPortalHome({
       </PortalBlock>
 
       {home.money && (
-        <PortalBlock title="Your money">
+        <PortalBlock title={tr('yourMoney')}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.5rem' }}>
-            <Stat label="Paid to you" value={money(home.money.paid)} />
-            <Stat label="Held until the end" value={money(home.money.held)} />
-            {home.money.coming > 0 && <Stat label="Approved, on the way" value={money(home.money.coming)} />}
-            {home.money.reviewing > 0 && <Stat label={`${GC} is looking at`} value={money(home.money.reviewing)} />}
+            <Stat label={tr('paidToYou')} value={money(home.money.paid)} />
+            <Stat label={tr('heldEnd')} value={money(home.money.held)} />
+            {home.money.coming > 0 && <Stat label={tr('approvedWay')} value={money(home.money.coming)} />}
+            {home.money.reviewing > 0 && <Stat label={tr('gcLooking', { gc: GC })} value={money(home.money.reviewing)} />}
           </div>
         </PortalBlock>
       )}
 
       {home.jobs.length > 0 && (
-        <PortalBlock title={`Your jobs · ${home.jobs.length}`}>
+        <PortalBlock title={`${tr('yourJobs')} · ${home.jobs.length}`}>
           <div style={{ display: 'grid' }}>
             {home.jobs.map(({ ask, money: m }, i) => (
               <Row key={ask.invite.id} first={i === 0} onClick={() => onOpenProject(ask.project.id)}>
@@ -112,9 +114,9 @@ export function GcPortalHome({
                     {m ? ` · ${money(m.price)}` : ''}
                   </span>
                   <span>
-                    <JobChip ask={ask} />
+                    <JobChip ask={ask} lang={lang} />
                   </span>
-                  {m && ask.pkg.sow?.status === 'signed' && <JobLine m={m} />}
+                  {m && ask.pkg.sow?.status === 'signed' && <JobLine m={m} lang={lang} />}
                 </div>
               </Row>
             ))}
@@ -123,7 +125,7 @@ export function GcPortalHome({
       )}
 
       {home.bidding.length > 0 && (
-        <PortalBlock title={`Asked to bid · ${home.bidding.length}`}>
+        <PortalBlock title={`${tr('askedToBid')} · ${home.bidding.length}`}>
           <div style={{ display: 'grid' }}>
             {home.bidding.map((ask, i) => (
               <Row key={ask.invite.id} first={i === 0} onClick={() => onOpenProject(ask.project.id)}>
@@ -132,9 +134,9 @@ export function GcPortalHome({
                   <span style={{ opacity: 0.8 }}>
                     {ask.pkg.trade} · {ask.project.town}
                   </span>
-                  <span style={{ fontSize: '0.85rem' }}>{whenWords(ask, state.today)}</span>
+                  <span style={{ fontSize: '0.85rem' }}>{whenWords(ask, state.today, lang)}</span>
                   <span style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
-                    <BidChips ask={ask} />
+                    <BidChips ask={ask} lang={lang} />
                   </span>
                 </div>
               </Row>
@@ -148,11 +150,11 @@ export function GcPortalHome({
       </div>
 
       {home.past.length > 0 && (
-        <PortalBlock title="Before">
+        <PortalBlock title={tr('before')}>
           <div style={{ display: 'grid', gap: '0.3rem', fontSize: '0.85rem', opacity: 0.85 }}>
             {home.past.map((ask) => (
               <div key={ask.invite.id}>
-                {ask.project.name} · {ask.pkg.trade} · {ask.kind === 'lost' ? 'went to another company' : 'you passed'}
+                {ask.project.name} · {ask.pkg.trade} · {tr(ask.kind === 'lost' ? 'wentOther' : 'youPassedShort')}
               </div>
             ))}
           </div>
@@ -164,26 +166,27 @@ export function GcPortalHome({
 
 /** The first time a company opens its link: who we are, what this page is, and the three things to know. */
 function Welcome({ partner, firstAsk, onDone }: { partner: Partner; firstAsk: PortalAsk | undefined; onDone: () => void }) {
+  const { t } = usePortalLang()
   const name = partner.contact.split(' ')[0] ?? partner.contact
   return (
-    <PortalBlock title="Welcome">
+    <PortalBlock title={t('welcomeTitle')}>
       <div style={{ display: 'grid', gap: '0.5rem', fontSize: '0.9rem', lineHeight: 1.45 }}>
-        <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>Welcome, {name}.</div>
+        <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>{t('welcomeName', { name })}</div>
         <div>
           {firstAsk
-            ? `${GC_COMPANY.name} asked ${partner.company} to bid ${firstAsk.pkg.trade} on ${firstAsk.project.name}.`
-            : `${GC_COMPANY.name} added ${partner.company} to its trade partners.`}{' '}
-          This portal is where you work with us.
+            ? t('welcomeAsked', { gc: GC_COMPANY.name, company: partner.company, trade: firstAsk.pkg.trade, project: firstAsk.project.name })
+            : t('welcomeAdded', { gc: GC_COMPANY.name, company: partner.company })}{' '}
+          {t('welcomeWhere')}
         </div>
-        <div>It holds every job, the plans, your paperwork and your pay. There is no password. The link is yours, so keep it.</div>
+        <div>{t('welcomeHolds')}</div>
         <ol style={{ margin: 0, paddingLeft: '1.2rem', display: 'grid', gap: '0.25rem' }}>
-          <li>Open the plans before you price.</li>
-          <li>Send your number by the day it is due. Not for you? Press Pass on this one.</li>
-          <li>Send your insurance and W-9 when you can. We need them before any work starts.</li>
+          <li>{t('welcome1')}</li>
+          <li>{t('welcome2')}</li>
+          <li>{t('welcome3')}</li>
         </ol>
         <div>
           <Btn kind="primary" onClick={onDone}>
-            Got it
+            {t('gotIt')}
           </Btn>
         </div>
       </div>
@@ -231,25 +234,26 @@ function Stat({ label, value }: { label: string; value: string }) {
 }
 
 /** When their number is due, or where the job stands once our own bid went in. */
-function whenWords(ask: PortalAsk, today: string): string {
+function whenWords(ask: PortalAsk, today: string, lang: PortalLang): string {
   const p = ask.project
-  if (p.stage !== 'pursuing') return `${GC} won the job. ${ask.pkg.trade} is not picked yet.`
-  if (p.ourBidSentOn) return `${GC} sent its bid ${shortDate(p.ourBidSentOn)}. The owner picks next.`
-  if (!p.bidDue) return 'No due day yet.'
+  if (p.stage !== 'pursuing') return pt(lang, 'whenWon', { gc: GC, trade: ask.pkg.trade })
+  if (p.ourBidSentOn) return pt(lang, 'whenSent', { gc: GC, date: pDate(lang, p.ourBidSentOn) })
+  if (!p.bidDue) return pt(lang, 'noDueDay')
   const left = daysUntil(p.bidDue, today)
-  if (left < 0) return `Was due ${weekdayDate(p.bidDue)}.`
-  if (left === 0) return `Due today, ${weekdayDate(p.bidDue)}.`
-  return `Due ${weekdayDate(p.bidDue)}, ${left} ${left === 1 ? 'day' : 'days'} left.`
+  const date = pWeekday(lang, p.bidDue)
+  if (left < 0) return pt(lang, 'wasDue', { date })
+  if (left === 0) return pt(lang, 'dueToday', { date })
+  return pt(lang, left === 1 ? 'dueIn1' : 'dueInN', { date, n: left })
 }
 
-function BidChips({ ask }: { ask: PortalAsk }) {
+function BidChips({ ask, lang }: { ask: PortalAsk; lang: PortalLang }) {
   const chips: { tone: Tone; words: string }[] = []
-  if (ask.invite.bid) chips.push({ tone: 'green', words: `your number ${money(ask.invite.bid.amount)}` })
-  else if (ask.promise?.state === 'passed') chips.push({ tone: 'red', words: 'your day passed' })
-  else chips.push({ tone: 'grey', words: 'no number yet' })
-  if (ask.ranOut) chips.push({ tone: 'amber', words: 'your number ran out' })
-  if (ask.stale) chips.push({ tone: 'amber', words: 'plans changed' })
-  if (ask.unclear.length > 0) chips.push({ tone: 'amber', words: 'a line to answer' })
+  if (ask.invite.bid) chips.push({ tone: 'green', words: pt(lang, 'chipNumber', { amount: money(ask.invite.bid.amount) }) })
+  else if (ask.promise?.state === 'passed') chips.push({ tone: 'red', words: pt(lang, 'chipDayPassed') })
+  else chips.push({ tone: 'grey', words: pt(lang, 'chipNoNumber') })
+  if (ask.ranOut) chips.push({ tone: 'amber', words: pt(lang, 'chipRanOut') })
+  if (ask.stale) chips.push({ tone: 'amber', words: pt(lang, 'chipPlansChanged') })
+  if (ask.unclear.length > 0) chips.push({ tone: 'amber', words: pt(lang, 'chipLineToAnswer') })
   return (
     <>
       {chips.map((c) => (
@@ -261,20 +265,16 @@ function BidChips({ ask }: { ask: PortalAsk }) {
   )
 }
 
-function JobChip({ ask }: { ask: PortalAsk }) {
+function JobChip({ ask, lang }: { ask: PortalAsk; lang: PortalLang }) {
   const sow = ask.pkg.sow
-  if (!sow || sow.status === 'draft') return <Chip tone="grey">statement of work being written</Chip>
-  if (sow.status === 'sent') return <Chip tone="amber">sign the statement of work</Chip>
-  if (workAllBilled(sow)) return tradeCloseout(sow).closed ? <Chip tone="green">closed out</Chip> : <Chip tone="blue">closing out</Chip>
+  if (!sow || sow.status === 'draft') return <Chip tone="grey">{pt(lang, 'chipSowWritten')}</Chip>
+  if (sow.status === 'sent') return <Chip tone="amber">{pt(lang, 'chipSignSow')}</Chip>
+  if (workAllBilled(sow)) return tradeCloseout(sow).closed ? <Chip tone="green">{pt(lang, 'chipClosedOut')}</Chip> : <Chip tone="blue">{pt(lang, 'chipClosingOut')}</Chip>
   const back = sentBackOpen(sow)
-  if (back) return <Chip tone="amber">pay application {back.draw.number} sent back</Chip>
-  return <Chip tone="green">signed {shortDate(sow.signedOn)}</Chip>
+  if (back) return <Chip tone="amber">{pt(lang, 'chipSentBack', { n: back.draw.number })}</Chip>
+  return <Chip tone="green">{pt(lang, 'signedOn', { date: pDate(lang, sow.signedOn) })}</Chip>
 }
 
-function JobLine({ m }: { m: PortalJobMoney }) {
-  return (
-    <span style={{ fontSize: '0.82rem', opacity: 0.8 }}>
-      Work {m.donePct}% done · paid {money(m.paid)} · held {money(m.held)}
-    </span>
-  )
+function JobLine({ m, lang }: { m: PortalJobMoney; lang: PortalLang }) {
+  return <span style={{ fontSize: '0.82rem', opacity: 0.8 }}>{pt(lang, 'jobLine', { pct: m.donePct, paid: money(m.paid), held: money(m.held) })}</span>
 }
