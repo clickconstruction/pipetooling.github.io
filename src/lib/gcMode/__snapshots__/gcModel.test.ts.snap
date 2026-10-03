@@ -9253,6 +9253,14 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "stage": "buyout",
       "startDate": null,
       "startedOn": null,
+      "team": [
+        {
+          "email": "dana@clickconstruction.example",
+          "name": "Dana Whitaker",
+          "phone": "(210) 555-0131",
+          "role": "projectManager",
+        },
+      ],
       "town": "Boerne",
     },
     {
@@ -9483,6 +9491,14 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "stage": "pursuing",
       "startDate": null,
       "startedOn": null,
+      "team": [
+        {
+          "email": "dana@clickconstruction.example",
+          "name": "Dana Whitaker",
+          "phone": "(210) 555-0131",
+          "role": "projectManager",
+        },
+      ],
       "town": "Boerne",
     },
     {
@@ -10764,6 +10780,19 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "stage": "building",
       "startDate": "2026-10-12",
       "startedOn": "2026-10-02",
+      "team": [
+        {
+          "name": "Marcy Pruett",
+          "phone": "(210) 555-0152",
+          "role": "superintendent",
+        },
+        {
+          "email": "dana@clickconstruction.example",
+          "name": "Dana Whitaker",
+          "phone": "(210) 555-0131",
+          "role": "projectManager",
+        },
+      ],
       "town": "Helotes",
     },
     {
@@ -12361,6 +12390,19 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "stage": "building",
       "startDate": "2026-07-06",
       "startedOn": "2026-07-01",
+      "team": [
+        {
+          "name": "Luis Ortega",
+          "phone": "(210) 555-0147",
+          "role": "superintendent",
+        },
+        {
+          "email": "dana@clickconstruction.example",
+          "name": "Dana Whitaker",
+          "phone": "(210) 555-0131",
+          "role": "projectManager",
+        },
+      ],
       "town": "Boerne",
     },
     {
@@ -12966,6 +13008,19 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "stage": "building",
       "startDate": "2026-06-15",
       "startedOn": "2026-06-12",
+      "team": [
+        {
+          "name": "Marcy Pruett",
+          "phone": "(210) 555-0152",
+          "role": "superintendent",
+        },
+        {
+          "email": "dana@clickconstruction.example",
+          "name": "Dana Whitaker",
+          "phone": "(210) 555-0131",
+          "role": "projectManager",
+        },
+      ],
       "town": "San Antonio",
     },
     {

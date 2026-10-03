@@ -34,6 +34,7 @@ import {
 import { BidTabTable } from './GcBidTabs'
 import { GcBuildingPayAppDoor } from './GcBuildingPayApp'
 import { Btn, Chip, input } from './gcUi'
+import { GcPortalContacts } from './GcPortalContacts'
 import { GcPortalHome } from './GcPortalHome'
 import { GcPortalPay } from './GcPortalPay'
 import { GcPortalLookAhead } from './GcPortalLookAhead'
@@ -42,6 +43,7 @@ import { ChangedLines, LineSheets, SheetChip } from './GcPortalLineSheets'
 import { GcPortalMessages } from './GcPortalMessages'
 import { GcPortalPaperwork } from './GcPortalPaperwork'
 import { GcPortalPlans } from './GcPortalPlans'
+import { GcPortalQuestions } from './GcPortalQuestions'
 import { PortalBlock as Block, PortalNote } from './GcPortalUi'
 import { PortalLangContext, usePortalLang } from './gcPortalLang'
 
@@ -229,6 +231,8 @@ function ProjectPage({
       {mine.map(({ pkg, invite }) => (
         <PackageBlock key={invite.id} state={state} project={project} pkg={pkg} invite={invite} partner={partner} dispatch={dispatch} />
       ))}
+
+      <GcPortalContacts project={project} />
     </div>
   )
 }
@@ -297,6 +301,11 @@ function PackageBlock({
         )}
         {plansAt !== null && <GcPortalPlans key={plansAt} project={project} pkg={pkg} startSheet={plansAt || undefined} onClose={() => setPlansAt(null)} />}
       </Block>
+
+      {/* Questions about the plans, while the company is still on this trade. */}
+      {!awardedElsewhere && invite.status !== 'declined' && (
+        <GcPortalQuestions project={project} pkg={pkg} partner={partner} today={state.today} dispatch={dispatch} onOpenSheet={openPlans} />
+      )}
 
       {pkg.bidTab && invite.bid && (
         <Block title={t('bidTabTitle', { trade: pkg.trade })}>
