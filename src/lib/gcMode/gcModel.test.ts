@@ -358,6 +358,8 @@ const STEPS: Step[] = [
   { label: 'Send change order 3 to Cedar & Pine', action: { type: 'sendTradeChange', projectId: 'helotes', changeOrderId: 'co-3' } },
   { label: 'Cedar & Pine signs change order 3', action: { type: 'tradeSignChange', projectId: 'helotes', changeOrderId: 'co-3' } },
   { label: 'Cedar & Pine reports the coffee bar half done', action: { type: 'tradeReport', projectId: 'helotes', packageId: 'mill', sovId: 'mill-co3', pct: 50 } },
+  // An inspection is the job's own activity (Building lane): our superintendent records the pass.
+  { label: 'Fair Oaks D: the rough-in inspection passes', action: { type: 'passInspection', projectId: 'fairoaksd', lineId: 'fairoaksd-insp-roughin' } },
 ]
 
 const CUSTOMER_IDS = ['cibolo', 'raman']
@@ -492,6 +494,7 @@ describe('GC mode golden walk', () => {
       'draftSchedule', 'setScheduleActivity', 'setScheduleMilestone', 'removeScheduleMilestone',
       'verifyLookAhead', 'crewMarkLookAhead',
       'sendTradeChange', 'tradeSignChange',
+      'passInspection',
       'tradeOpenPortal',
       'tradeAnswerLines',
       'priceOwnBid',

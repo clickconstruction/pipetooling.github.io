@@ -1,5 +1,6 @@
 import { useMemo, useState, type CSSProperties, type Dispatch, type ReactNode } from 'react'
 import {
+  activityName,
   addDays,
   daysBetween,
   LOOKAHEAD_WEEKS,
@@ -17,6 +18,7 @@ import {
   type LookAheadReason,
   type LookAheadState,
   type MilestoneRow,
+  type ScheduleItem,
   type ScheduleMilestone,
   type ScheduleRow,
 } from '../../lib/gcMode/gcModel'
@@ -27,7 +29,8 @@ import { Btn, Card, Chip, Why, input, type Tone } from './gcUi'
  * GC mode design spike: the schedule (Building lane, owner's shape 2026-10-02). Each activity is a
  * line of a trade's statement of work, or a stage our own crew runs. We draw it while buying out
  * (a first draft, then each activity's dates and what it waits on, and the milestones); Start
- * locks it as the baseline. Once building: four measures on top, the chart, the look-ahead.
+ * locks it as the baseline. Once building: four measures on top, the chart, the look-ahead. An
+ * inspection is an activity of its own (owner, 2026-10-03): the city's, with no dollars.
  */
 
 const DAY_PX = 6
@@ -48,7 +51,8 @@ export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps)
     )
   }
 
-  const pickedRow = m.rows.find((r) => r.activity.lineId === picked) ?? null
+  const pickedRow = m.items.find((r) => r.activity.lineId === picked) ?? null
+  const pickedInspection = pickedRow?.activity.inspection
 
   return (
     <div style={{ display: 'grid', gap: '0.9rem' }}>
@@ -70,15 +74,20 @@ export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps)
         <ActivityEditor
           key={pickedRow.activity.lineId}
           row={pickedRow}
-          rows={m.rows}
+          rows={m.items}
           started={Boolean(project.startedOn)}
           onSave={(start, finish, after) => dispatch({ type: 'setScheduleActivity', projectId: project.id, lineId: pickedRow.activity.lineId, start, finish, after })}
+          onPass={
+            building && pickedInspection && !pickedInspection.passedOn
+              ? () => dispatch({ type: 'passInspection', projectId: project.id, lineId: pickedRow.activity.lineId })
+              : undefined
+          }
           onClose={() => setPicked(null)}
         />
       )}
 
       <Card style={{ padding: 0, overflow: 'hidden' }}>
-        <ScheduleChart rows={m.rows} float={m.float} milestones={m.milestones} today={state.today} building={building} picked={picked} onPick={setPicked} />
+        <ScheduleChart rows={m.items} float={m.float} milestones={m.milestones} today={state.today} building={building} picked={picked} onPick={setPicked} />
       </Card>
 
       <MilestonesCard project={project} milestones={schedule.milestones} dispatch={dispatch} />
@@ -95,7 +104,8 @@ function ScheduleWhy() {
     <Why>
       Each activity is a line of a trade's statement of work, or a stage our own crew runs. We draw the dates and what each
       waits on while buying out. Start locks it as the baseline, the plan we measure against. Spare days are how long an
-      activity can slip before the job finishes later. No spare days is the critical path.
+      activity can slip before the job finishes later. No spare days is the critical path. An inspection is an activity of its
+      own. It belongs to the job and has no dollars, so it counts on the critical path but not in work done.
     </Why>
   )
 }
@@ -128,18 +138,24 @@ function DraftCard({ project, today, dispatch }: { project: GcProject; today: st
   )
 }
 
-/** One activity: its dates and what it waits on. After Start, the plan at Start stays the baseline. */
+/**
+ * One activity: its dates and what it waits on. After Start, the plan at Start stays the baseline.
+ * An inspection on a job being built also takes its pass, recorded today.
+ */
 function ActivityEditor({
   row,
   rows,
   started,
   onSave,
+  onPass,
   onClose,
 }: {
-  row: ScheduleRow
-  rows: ScheduleRow[]
+  row: ScheduleItem
+  rows: ScheduleItem[]
   started: boolean
   onSave: (start: string, finish: string, after: string[]) => void
+  /** An inspection not passed yet, on a job being built. */
+  onPass?: () => void
   onClose: () => void
 }) {
   const a = row.activity
@@ -149,7 +165,7 @@ function ActivityEditor({
   const bad = !start || !finish || finish < start
   const changed = start !== a.start || finish !== a.finish || after.join() !== a.after.join()
   const others = rows.filter((r) => r.activity.lineId !== a.lineId)
-  const trades = [...new Set(others.map((r) => r.pkg.id))]
+  const trades = [...new Set(others.map((r) => r.pkg?.id ?? ''))]
   // What it waits on, finishing after it starts: it cannot start on the day drawn.
   const late = others.filter((r) => after.includes(r.activity.lineId) && r.activity.finish >= start)
   return (
@@ -157,7 +173,7 @@ function ActivityEditor({
       <div style={{ display: 'grid', gap: '0.6rem', fontSize: '0.875rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap' }}>
           <strong>
-            {row.trade} · {row.label} <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>· {row.company}</span>
+            {activityName(row)} <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>· {row.company}</span>
           </strong>
           <Btn kind="quiet" onClick={onClose}>
             Close
@@ -180,7 +196,7 @@ function ActivityEditor({
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(14rem, 1fr))', gap: '0.15rem 0.75rem' }}>
             {trades.map((pkgId) =>
               others
-                .filter((r) => r.pkg.id === pkgId)
+                .filter((r) => (r.pkg?.id ?? '') === pkgId)
                 .map((r) => (
                   <label key={r.activity.lineId} style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
                     <input
@@ -189,7 +205,7 @@ function ActivityEditor({
                       onChange={(e) => setAfter((list) => (e.target.checked ? [...list, r.activity.lineId] : list.filter((id) => id !== r.activity.lineId)))}
                     />
                     <span>
-                      {r.trade} · {r.label} <span style={{ color: 'var(--text-muted)' }}>· ends {shortDate(r.activity.finish)}</span>
+                      {activityName(r)} <span style={{ color: 'var(--text-muted)' }}>· ends {shortDate(r.activity.finish)}</span>
                     </span>
                   </label>
                 )),
@@ -198,7 +214,7 @@ function ActivityEditor({
         </div>
         {late.length > 0 && (
           <div style={{ color: 'var(--text-amber-800)' }}>
-            {late.map((r) => `${r.trade} · ${r.label}`).join(', ')} {late.length === 1 ? 'finishes' : 'finish'} on or after this starts. The
+            {late.map(activityName).join(', ')} {late.length === 1 ? 'finishes' : 'finish'} on or after this starts. The
             spare days count it starting the day after.
           </div>
         )}
@@ -208,6 +224,15 @@ function ActivityEditor({
           </Btn>
           {started && <span style={{ color: 'var(--text-muted)' }}>The plan at Start stays as the baseline this is measured against.</span>}
         </div>
+        {row.activity.inspection?.passedOn && (
+          <div style={{ color: 'var(--text-green-800)' }}>It passed {shortDate(row.activity.inspection.passedOn)}.</div>
+        )}
+        {onPass && (
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', paddingTop: '0.5rem', borderTop: '1px solid var(--border)' }}>
+            <Btn onClick={onPass}>It passed today</Btn>
+            <span style={{ color: 'var(--text-muted)' }}>Our superintendent records the pass. A milestone with the same name is met with it.</span>
+          </div>
+        )}
       </div>
     </Card>
   )
@@ -309,7 +334,7 @@ function Measures({ m }: { m: ReturnType<typeof scheduleMeasures> }) {
         {Math.round(m.work.plannedPct)}% was planned by today, weighted by what each line is worth.
       </Measure>
       <Measure label="Critical path" value={`${m.critical.length} ${m.critical.length === 1 ? 'activity' : 'activities'}`} tone={m.critical.length > 0 ? 'amber' : 'green'} chip="no spare days">
-        {m.critical.length > 0 ? m.critical.map((r) => `${r.trade} · ${r.label}`).join(', ') : 'Every open activity has spare days.'}
+        {m.critical.length > 0 ? m.critical.map(activityName).join(', ') : 'Every open activity has spare days.'}
       </Measure>
       <Measure
         label="Milestones hit"
@@ -360,7 +385,7 @@ function ScheduleChart({
   picked,
   onPick,
 }: {
-  rows: ScheduleRow[]
+  rows: ScheduleItem[]
   float: Map<string, number>
   milestones: MilestoneRow[]
   today: string
@@ -379,7 +404,8 @@ function ScheduleChart({
     // A month's name, unless it would sit under the "today" mark.
     if ((d.endsWith('-01') || d === first) && Math.abs(x(d) - x(today)) > 44) months.push({ label: shortDate(d).split(' ')[0] ?? d, at: x(d) })
   }
-  const trades = [...new Set(rows.map((r) => r.pkg.id))]
+  // One group per trade, in the order drawn; the inspections are one group of their own.
+  const trades = [...new Set(rows.map((r) => r.pkg?.id ?? ''))]
   const rowStyle: CSSProperties = { display: 'flex', borderTop: '1px solid var(--border)', minHeight: 30 }
   const labelStyle: CSSProperties = {
     position: 'sticky',
@@ -432,7 +458,7 @@ function ScheduleChart({
           </div>
         </div>
         {trades.map((pkgId) => {
-          const list = rows.filter((r) => r.pkg.id === pkgId)
+          const list = rows.filter((r) => (r.pkg?.id ?? '') === pkgId)
           const head = list[0]
           if (!head) return null
           return (
@@ -478,7 +504,7 @@ function ChartRow({
   picked,
   onPick,
 }: {
-  row: ScheduleRow
+  row: ScheduleItem
   spare: number
   x: (iso: string) => number
   width: number
@@ -490,6 +516,7 @@ function ChartRow({
   onPick: () => void
 }) {
   const a = row.activity
+  const passedOn = a.inspection?.passedOn
   const done = row.actual >= 100
   const critical = spare === 0 && !done
   const behind = building && !done && row.actual + 0.5 < row.plannedToday
@@ -510,7 +537,11 @@ function ChartRow({
           >
             {row.label}
           </button>
-          {building ? (
+          {building && a.inspection ? (
+            <span style={{ color: passedOn ? 'var(--text-green-800)' : behind ? 'var(--text-amber-800)' : 'var(--text-muted)' }}>
+              {passedOn ? `passed ${shortDate(passedOn)}` : 'not passed yet'}
+            </span>
+          ) : building ? (
             <span style={{ fontVariantNumeric: 'tabular-nums', color: behind ? 'var(--text-amber-800)' : 'var(--text-muted)' }}>
               {Math.round(row.actual)}%{done ? '' : ` · plan ${Math.round(row.plannedToday)}%`}
             </span>
@@ -537,7 +568,7 @@ function ChartRow({
           />
         )}
         <span
-          title={`${shortDate(a.start)} to ${shortDate(a.finish)} · ${Math.round(row.actual)}% done`}
+          title={`${shortDate(a.start)} to ${shortDate(a.finish)} · ${a.inspection ? (passedOn ? `passed ${shortDate(passedOn)}` : 'not passed yet') : `${Math.round(row.actual)}% done`}`}
           style={{
             position: 'absolute',
             left: planLeft,
@@ -545,8 +576,8 @@ function ChartRow({
             top: 7,
             height: 14,
             borderRadius: 4,
-            background: done ? 'var(--bg-green-200)' : 'var(--bg-blue-200)',
-            border: `1.5px solid ${critical ? '#dc2626' : done ? '#16a34a' : '#3b82f6'}`,
+            background: done ? 'var(--bg-green-200)' : a.inspection ? 'var(--bg-violet-100)' : 'var(--bg-blue-200)',
+            border: `1.5px ${a.inspection ? 'dashed' : 'solid'} ${critical ? '#dc2626' : done ? '#16a34a' : a.inspection ? '#7c3aed' : '#3b82f6'}`,
             boxSizing: 'border-box',
             overflow: 'hidden',
           }}
@@ -583,7 +614,7 @@ function LookAhead({ weeks }: { weeks: ReturnType<typeof scheduleMeasures>['look
             <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>
               {i === 0 ? 'This week' : i === 1 ? 'Next week' : 'In two weeks'} · {shortDate(w.weekOf)}
             </div>
-            {w.items.length === 0 && <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Nothing planned.</span>}
+            {w.items.length === 0 && w.inspections.length === 0 && <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Nothing planned.</span>}
             {w.items.map(({ row, mark, state }) => (
               <div key={row.activity.lineId} style={{ fontSize: '0.82rem', display: 'grid', gap: '0.1rem' }}>
                 <span>
@@ -598,6 +629,18 @@ function LookAhead({ weeks }: { weeks: ReturnType<typeof scheduleMeasures>['look
                     {mark && state === 'not' && markReason(mark) && <span style={{ color: 'var(--text-muted)' }}>{markReason(mark)}</span>}
                   </span>
                 )}
+              </div>
+            ))}
+            {w.inspections.map((insp) => (
+              <div key={insp.activity.lineId} style={{ fontSize: '0.82rem', display: 'grid', gap: '0.1rem' }}>
+                <span>
+                  {insp.label} <span style={{ color: 'var(--text-muted)' }}>· {insp.company} · {shortDate(insp.activity.start)} to {shortDate(insp.activity.finish)}</span>
+                </span>
+                <span>
+                  <Chip tone={insp.activity.inspection?.passedOn ? 'green' : 'violet'}>
+                    {insp.activity.inspection?.passedOn ? `passed ${shortDate(insp.activity.inspection.passedOn)}` : 'inspection'}
+                  </Chip>
+                </span>
               </div>
             ))}
           </div>
@@ -619,8 +662,8 @@ const REASONS: LookAheadReason[] = ['weather', 'trade before', 'materials', 'cre
  * week are marked here too, and count as verified.
  */
 function VerifyCard({ project, rows, today, dispatch }: { project: GcProject; rows: ScheduleRow[]; today: string; dispatch: Dispatch<GcAction> }) {
-  const { waiting, ourCrew } = verifyList(project, rows, today)
-  if (waiting.length === 0 && ourCrew.length === 0) {
+  const { waiting, ourCrew, inspections } = verifyList(project, rows, today)
+  if (waiting.length === 0 && ourCrew.length === 0 && inspections.length === 0) {
     return (
       <Card>
         <strong>To verify</strong> <span style={{ color: 'var(--text-muted)' }}>· nothing waits on our superintendent.</span>
@@ -632,9 +675,16 @@ function VerifyCard({ project, rows, today, dispatch }: { project: GcProject; ro
     <Card style={{ border: '1px solid var(--border-strong)' }}>
       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap', marginBottom: '0.15rem' }}>
         <strong>To verify</strong>
-        <Chip tone="amber">
-          {waiting.length + ourCrew.length} {waiting.length + ourCrew.length === 1 ? 'mark' : 'marks'}
-        </Chip>
+        {waiting.length + ourCrew.length > 0 && (
+          <Chip tone="amber">
+            {waiting.length + ourCrew.length} {waiting.length + ourCrew.length === 1 ? 'mark' : 'marks'}
+          </Chip>
+        )}
+        {inspections.length > 0 && (
+          <Chip tone="violet">
+            {inspections.length} {inspections.length === 1 ? 'inspection' : 'inspections'}
+          </Chip>
+        )}
       </div>
       <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '0.6rem' }}>
         Our superintendent checks each trade's mark on the job. Only a verified mark counts toward the look-ahead.
@@ -659,6 +709,22 @@ function VerifyCard({ project, rows, today, dispatch }: { project: GcProject; ro
             saysReason={null}
             onVerify={(done, reason) => dispatch({ type: 'crewMarkLookAhead', projectId: project.id, weekOf: thisWeek, lineId: row.activity.lineId, done, ...(reason ? { reason } : {}) })}
           />
+        ))}
+        {inspections.map((insp) => (
+          <div key={insp.activity.lineId} style={{ display: 'grid', gap: '0.25rem', fontSize: '0.85rem', paddingTop: '0.5rem', borderTop: '1px solid var(--border)' }}>
+            <div>
+              <strong>{insp.label}</strong>{' '}
+              <span style={{ color: 'var(--text-muted)' }}>
+                · {insp.company} · planned {shortDate(insp.activity.start)} to {shortDate(insp.activity.finish)}
+              </span>
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+              <Btn kind="primary" onClick={() => dispatch({ type: 'passInspection', projectId: project.id, lineId: insp.activity.lineId })}>
+                It passed today
+              </Btn>
+              <span style={{ color: 'var(--text-muted)' }}>Not passed yet? Move its days on the chart.</span>
+            </div>
+          </div>
         ))}
       </div>
     </Card>

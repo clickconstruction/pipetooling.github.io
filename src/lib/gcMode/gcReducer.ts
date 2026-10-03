@@ -883,10 +883,12 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
       const changed = { ...kept, activities: kept.activities.map((a) => (a.lineId === activity.lineId ? { ...a, start: action.start, finish: action.finish, after } : a)) }
       const pkg = project.packages.find((k) => k.id === activity.packageId)
       const label = pkg ? (scheduleLinesOf(pkg).find((l) => l.lineId === activity.lineId)?.label ?? activity.lineId) : activity.lineId
+      // An inspection goes by its own name (Building lane, 2026-10-03).
+      const name = activity.inspection ? activity.inspection.label : `${pkg?.trade ?? 'An activity'} · ${label}`
       return logged(
         mapProject(state, project.id, (p) => ({ ...p, schedule: changed })),
         'office',
-        `${pkg?.trade ?? 'An activity'} · ${label} now runs ${weekdayDate(action.start)} to ${weekdayDate(action.finish)}.`,
+        `${name} now runs ${weekdayDate(action.start)} to ${weekdayDate(action.finish)}.`,
       )
     }
 
@@ -1123,6 +1125,28 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
         changeOrders: (p.changeOrders ?? []).map((c) => (c.id === co.id ? { ...c, tradeChange: { ...change, status: 'signed' as const, signedOn: state.today } } : c)),
       }))
       return logged(next, 'trade', `${partner.company} signed change order ${co.number} into their ${pkg.trade} statement of work: ${money(co.cost)}.`)
+    }
+
+    case 'passInspection': {
+      // Building lane: our superintendent records an inspection passed (owner, 2026-10-03). A
+      // milestone of the same name not met yet is met the same day.
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const schedule = project?.schedule
+      const activity = schedule?.activities.find((a) => a.lineId === action.lineId)
+      const inspection = activity?.inspection
+      if (!project || project.stage !== 'building' || !schedule || !activity || !inspection || inspection.passedOn) return state
+      const sameName = (label: string) => label.trim().toLowerCase() === inspection.label.trim().toLowerCase()
+      const met = schedule.milestones.find((m) => !m.metOn && sameName(m.label))
+      const changed = {
+        ...schedule,
+        activities: schedule.activities.map((a) => (a === activity ? { ...a, inspection: { ...inspection, passedOn: state.today } } : a)),
+        milestones: schedule.milestones.map((m) => (m === met ? { ...m, metOn: state.today } : m)),
+      }
+      return logged(
+        mapProject(state, project.id, (p) => ({ ...p, schedule: changed })),
+        'office',
+        `The ${inspection.label.toLowerCase()} passed on ${project.name}.${met ? ` The ${met.label} milestone is met.` : ''}`,
+      )
     }
   }
 }

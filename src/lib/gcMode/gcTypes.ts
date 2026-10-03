@@ -507,6 +507,8 @@ export type GcAction =
   | { type: 'sendTradeChange'; projectId: string; changeOrderId: string }
   /** The trade signs the change in its portal: it becomes a line of its statement of work. */
   | { type: 'tradeSignChange'; projectId: string; changeOrderId: string }
+  /** Our superintendent records an inspection passed, today. */
+  | { type: 'passInspection'; projectId: string; lineId: string }
 
 /** One trade on a new project, as the office left it in the New project window. */
 export interface NewTradeDraft {

@@ -5,6 +5,9 @@
  * are read in Building: work done against the plan, spare days (the critical path), milestones hit
  * within a few days, and how often the look-ahead's activities get done as planned.
  *
+ * An inspection is an activity of its own (owner, 2026-10-03): the job's, not a trade's line, with
+ * no dollars. It counts on the critical path, not in work done against the plan.
+ *
  * Days are calendar days in the prototype. Import from `./gcModel`, which re-exports this file.
  */
 import type { GcProject, GcState, LookAheadMark, LookAheadReason, ProjectSchedule, ScheduleActivity, ScheduleMilestone, TradePackage } from './gcTypes'
@@ -46,9 +49,15 @@ export function plannedPct(start: string, finish: string, on: string): number {
   return (done / days) * 100
 }
 
-export interface ScheduleRow {
+/** Who an inspection belongs to, in the chart's words: the city inspects, not a trade. */
+export const INSPECTION_TRADE = 'Inspections'
+export const INSPECTION_COMPANY = 'The city'
+
+/** Any activity on the chart: a trade's line (a ScheduleRow) or an inspection. */
+export interface ScheduleItem {
   activity: ScheduleActivity
-  pkg: TradePackage
+  /** The trade it belongs to. Null: an inspection, the job's own. */
+  pkg: TradePackage | null
   trade: string
   label: string
   /** The company doing it, or "Our own crew". */
@@ -63,6 +72,16 @@ export interface ScheduleRow {
   plannedToday: number
   /** Days the current finish moved past the baseline's. */
   slipDays: number
+}
+
+/** A trade's line on the schedule: what work done against the plan, the look-ahead and the portal read. */
+export interface ScheduleRow extends ScheduleItem {
+  pkg: TradePackage
+}
+
+/** An activity in a sentence: "Plumbing · Trim", or an inspection by its own name. */
+export function activityName(item: ScheduleItem): string {
+  return item.activity.inspection ? item.label : `${item.trade} · ${item.label}`
 }
 
 /**
@@ -123,29 +142,71 @@ function companyOf(state: GcState, pkg: TradePackage): string {
   return (invite ? partnerById(state, invite.partnerId)?.company : undefined) ?? pkg.trade
 }
 
-/** Every activity on the schedule with its trade, worth, percent done and what the baseline planned by today. */
+function rowOf(state: GcState, project: GcProject, schedule: ProjectSchedule, activity: ScheduleActivity): ScheduleRow | null {
+  const pkg = project.packages.find((k) => k.id === activity.packageId)
+  const line = pkg ? lineOf(pkg, activity.lineId) : null
+  if (!pkg || !line) return null
+  const baseline = schedule.baseline?.activities[activity.lineId] ?? { start: activity.start, finish: activity.finish }
+  return {
+    activity,
+    pkg,
+    trade: pkg.trade,
+    label: line.label,
+    company: companyOf(state, pkg),
+    worth: line.worth,
+    actual: line.actual,
+    baseline,
+    plannedToday: plannedPct(baseline.start, baseline.finish, state.today),
+    slipDays: daysBetween(baseline.finish, activity.finish),
+  }
+}
+
+/** An inspection as a chart row: no dollars, done once it passed. Null: not an inspection. */
+function inspectionOf(schedule: ProjectSchedule, activity: ScheduleActivity, today: string): ScheduleItem | null {
+  const inspection = activity.inspection
+  if (!inspection) return null
+  const baseline = schedule.baseline?.activities[activity.lineId] ?? { start: activity.start, finish: activity.finish }
+  return {
+    activity,
+    pkg: null,
+    trade: INSPECTION_TRADE,
+    label: inspection.label,
+    company: INSPECTION_COMPANY,
+    worth: 0,
+    actual: inspection.passedOn ? 100 : 0,
+    baseline,
+    plannedToday: plannedPct(baseline.start, baseline.finish, today),
+    slipDays: daysBetween(baseline.finish, activity.finish),
+  }
+}
+
+/** Every trade's activity on the schedule with its trade, worth, percent done and what the baseline planned by today. */
 export function scheduleRows(state: GcState, project: GcProject): ScheduleRow[] {
   const schedule = project.schedule
   if (!schedule) return []
   return schedule.activities.flatMap((activity) => {
-    const pkg = project.packages.find((k) => k.id === activity.packageId)
-    const line = pkg ? lineOf(pkg, activity.lineId) : null
-    if (!pkg || !line) return []
-    const baseline = schedule.baseline?.activities[activity.lineId] ?? { start: activity.start, finish: activity.finish }
-    return [
-      {
-        activity,
-        pkg,
-        trade: pkg.trade,
-        label: line.label,
-        company: companyOf(state, pkg),
-        worth: line.worth,
-        actual: line.actual,
-        baseline,
-        plannedToday: plannedPct(baseline.start, baseline.finish, state.today),
-        slipDays: daysBetween(baseline.finish, activity.finish),
-      },
-    ]
+    const row = rowOf(state, project, schedule, activity)
+    return row ? [row] : []
+  })
+}
+
+/** Every activity on the chart, in the order drawn: the trades' lines and the inspections. */
+export function scheduleItems(state: GcState, project: GcProject): ScheduleItem[] {
+  const schedule = project.schedule
+  if (!schedule) return []
+  return schedule.activities.flatMap((activity) => {
+    const item = activity.inspection ? inspectionOf(schedule, activity, state.today) : rowOf(state, project, schedule, activity)
+    return item ? [item] : []
+  })
+}
+
+/** The inspections on the schedule, in the order drawn. */
+export function inspectionItems(project: GcProject, today: string): ScheduleItem[] {
+  const schedule = project.schedule
+  if (!schedule) return []
+  return schedule.activities.flatMap((activity) => {
+    const item = inspectionOf(schedule, activity, today)
+    return item ? [item] : []
   })
 }
 
@@ -258,6 +319,8 @@ export function markState(mark: LookAheadMark | null): LookAheadState {
 export interface LookAheadWeek {
   weekOf: string
   items: { row: ScheduleRow; mark: LookAheadMark | null; state: LookAheadState }[]
+  /** The inspections planned that week. Nobody marks them: they pass, or not yet. */
+  inspections: ScheduleItem[]
 }
 
 /**
@@ -280,7 +343,8 @@ export function lookAheadWeeks(project: GcProject, rows: ScheduleRow[], today: s
         const mark = marks.find((m) => m.weekOf === weekOf && m.lineId === row.activity.lineId) ?? null
         return { row, mark, state: markState(mark) }
       })
-    return { weekOf, items }
+    const inspections = inspectionItems(project, today).filter((i) => i.activity.start <= weekEnd && i.activity.finish >= weekOf)
+    return { weekOf, items, inspections }
   })
 }
 
@@ -297,9 +361,14 @@ export interface VerifyItem {
 /**
  * The superintendent's verify list (owner, 2026-10-02): every trade mark not verified yet, oldest
  * week first, with its activity. And our own crew's activities in this week's look-ahead with no
- * mark yet: we mark those ourselves, and our mark counts as verified.
+ * mark yet: we mark those ourselves, and our mark counts as verified. And each inspection planned
+ * to start by this week's end that has not passed: our superintendent records the pass.
  */
-export function verifyList(project: GcProject, rows: ScheduleRow[], today: string): { waiting: VerifyItem[]; ourCrew: ScheduleRow[] } {
+export function verifyList(
+  project: GcProject,
+  rows: ScheduleRow[],
+  today: string,
+): { waiting: VerifyItem[]; ourCrew: ScheduleRow[]; inspections: ScheduleItem[] } {
   const marks = project.schedule?.lookAhead ?? []
   const byLine = new Map(rows.map((r) => [r.activity.lineId, r]))
   const waiting = marks
@@ -311,7 +380,9 @@ export function verifyList(project: GcProject, rows: ScheduleRow[], today: strin
     .sort((a, b) => (a.mark.weekOf < b.mark.weekOf ? -1 : a.mark.weekOf > b.mark.weekOf ? 1 : 0))
   const thisWeek = lookAheadWeeks(project, rows, today)[0]
   const ourCrew = (thisWeek?.items ?? []).filter((i) => i.row.pkg.selfPerform && !i.mark).map((i) => i.row)
-  return { waiting, ourCrew }
+  const weekEnd = addDays(mondayOf(today), 6)
+  const inspections = inspectionItems(project, today).filter((i) => !i.activity.inspection?.passedOn && i.activity.start <= weekEnd)
+  return { waiting, ourCrew, inspections }
 }
 
 /**
@@ -347,13 +418,17 @@ export function lookAheadReliability(
 /** Everything the Schedule tab reads, in one place. */
 export function scheduleMeasures(state: GcState, project: GcProject) {
   const rows = scheduleRows(state, project)
+  const items = scheduleItems(state, project)
   const float = scheduleFloat(project.schedule?.activities ?? [])
   const milestones = milestoneRows(state, project)
   return {
+    /** The trades' lines: work done against the plan, the look-ahead, the verify list. */
     rows,
+    /** Every activity, the inspections too: the chart, the editor, the critical path. */
+    items,
     float,
     work: workVsPlan(rows, state.today),
-    critical: rows.filter((r) => float.get(r.activity.lineId) === 0 && r.actual < 100),
+    critical: items.filter((r) => float.get(r.activity.lineId) === 0 && r.actual < 100),
     milestones,
     hitRate: milestoneHitRate(milestones),
     lookAhead: lookAheadWeeks(project, rows, state.today),
