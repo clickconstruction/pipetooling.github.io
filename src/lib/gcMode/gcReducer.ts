@@ -9,7 +9,7 @@ import { planRecipients } from './gcPlans'
 import { bidsIn } from './gcBids'
 import { awardedPartner, find, logged, mapInvite, mapPackage, mapProject, mapSow, sowFromBid } from './gcReducerHelpers'
 import { initialGcState } from './gcFixture'
-import { buildNewProject, packagesFromDrafts, withTradesInOrder } from './gcNewProject'
+import { buildNewProject, packagesFromDrafts, withNewLines, withTradesInOrder } from './gcNewProject'
 import { finalPayApplication, payApplication, timesSentBack, tradeCloseout, workAllBilled } from './gcBuilding'
 import { ownerCloseout, ownerFinalPayAppToSend, ownerPayApp, ownerPayAppHasWork, ownerPayAppToSend } from './gcOwnerBilling'
 
@@ -607,8 +607,9 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
       if (!project) return state
       const rev = currentRev(project) + 1
       const brought = packagesFromDrafts(project.id, action.newTrades, project.packages.map((p) => p.id))
-      const withTrades = { ...project, packages: withTradesInOrder(project.packages, brought) }
-      const touches = [...new Set([...action.touches, ...brought.map((p) => p.id)])]
+      const lined = withNewLines(project, rev, action.newLines ?? [])
+      const withTrades = { ...lined.project, packages: withTradesInOrder(lined.project.packages, brought) }
+      const touches = [...new Set([...action.touches, ...lined.added.map((l) => l.packageId), ...brought.map((p) => p.id)])]
       const chosen = planRecipients(state, withTrades, touches).filter((r) => action.recipients.includes(r.partner.id))
       const sentTo = [...new Map(chosen.map((r) => [r.partner.id, { partnerId: r.partner.id, on: state.today, touched: chosen.some((x) => x.partner.id === r.partner.id && x.touched) }])).values()]
       const set: PlanSet = {
@@ -620,9 +621,11 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
         touches,
         sentTo,
         ...(action.addedSheets.length > 0 ? { addedSheets: action.addedSheets } : {}),
+        ...(lined.added.length > 0 ? { addedLines: lined.added } : {}),
       }
       const next = mapProject(state, project.id, () => ({ ...withTrades, planSets: [...withTrades.planSets, set] }))
-      const adds = brought.length > 0 ? ` It adds ${brought.map((p) => p.trade.toLowerCase()).join(' and ')}. Nobody is asked yet.` : ''
+      const newLines = lined.added.length > 0 ? ` It adds ${lined.added.length} scope ${lined.added.length === 1 ? 'line' : 'lines'}.` : ''
+      const adds = `${newLines}${brought.length > 0 ? ` It adds ${brought.map((p) => p.trade.toLowerCase()).join(' and ')}. Nobody is asked yet.` : ''}`
       const told = sentTo.filter((x) => x.touched).length
       return logged(
         next,

@@ -6848,20 +6848,40 @@ exports[`GC mode golden walk > step 81: Pad B: Lonestar bids, good for 30 days, 
 }
 `;
 
-exports[`GC mode golden walk > step 82: Cool Breeze sends the warranty letter 1`] = `
+exports[`GC mode golden walk > step 82: Boerne: Bulletin 1 adds a detention pond to Sitework 1`] = `
 {
   "changed": {
+    "customers.marshvale.addenda": 3,
+    "customers.marshvale.sets": 7,
     "lastLog.id": 78,
-    "lastLog.text": "Cool Breeze Mechanical sent the warranty letter for HVAC.",
+    "lastLog.text": "Issued Bulletin 1 on Boerne Retail Shell and emailed 1 company. 1 was told it changes their trade. It adds 1 scope line.",
+    "lastLog.who": "office",
+    "projects.boerne.trades.site.compareBids.complete": false,
+    "projects.boerne.trades.site.compareBids.conclusion": "Set a cost for the work that is missing to see who is really lowest.",
+    "projects.boerne.trades.site.compareBids.lines[0].complete": false,
+    "projects.boerne.trades.site.compareBids.lines[0].text": "Lonestar Earthworks bid $178,400 and left out striping and signs and is not clear about detention pond. No cost is set for detention pond yet, so their real number is not known. They priced an older set of plans, so ask them to confirm.",
+    "projects.boerne.trades.site.compareBids.lines[1].complete": false,
+    "projects.boerne.trades.site.compareBids.lines[1].text": "Tri-County Site bid $191,000 and is not clear about detention pond. No cost is set for detention pond yet, so their real number is not known. They priced an older set of plans, so ask them to confirm.",
   },
   "removed": [],
 }
 `;
 
-exports[`GC mode golden walk > step 83: Cool Breeze sends the final pay application 1`] = `
+exports[`GC mode golden walk > step 83: Cool Breeze sends the warranty letter 1`] = `
 {
   "changed": {
     "lastLog.id": 79,
+    "lastLog.text": "Cool Breeze Mechanical sent the warranty letter for HVAC.",
+    "lastLog.who": "trade",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 84: Cool Breeze sends the final pay application 1`] = `
+{
+  "changed": {
+    "lastLog.id": 80,
     "lastLog.text": "Cool Breeze Mechanical sent the final pay application on HVAC: $3,100 of retainage, with a conditional waiver on final payment.",
     "projects.stoneoak.stageProgress.also[2]": "Cool Breeze Mechanical asked for its retainage back. Approve it on Closeout.",
     "projects.stoneoak.stageProgress.also[3]": "All the work is reported. 0 of 3 trades are closed out. See Closeout.",
@@ -6870,10 +6890,10 @@ exports[`GC mode golden walk > step 83: Cool Breeze sends the final pay applicat
 }
 `;
 
-exports[`GC mode golden walk > step 84: Hollis accepts the work 1`] = `
+exports[`GC mode golden walk > step 85: Hollis accepts the work 1`] = `
 {
   "changed": {
-    "lastLog.id": 80,
+    "lastLog.id": 81,
     "lastLog.text": "Hollis Family Pharmacy accepted the work on Stone Oak Pharmacy in their portal.",
     "lastLog.who": "office",
   },
@@ -6881,20 +6901,20 @@ exports[`GC mode golden walk > step 84: Hollis accepts the work 1`] = `
 }
 `;
 
-exports[`GC mode golden walk > step 85: Send Hollis the final pay application 1`] = `
+exports[`GC mode golden walk > step 86: Send Hollis the final pay application 1`] = `
 {
   "changed": {
-    "lastLog.id": 81,
+    "lastLog.id": 82,
     "lastLog.text": "Sent the final pay application to Hollis Family Pharmacy: $18,241 of retainage, with our conditional waiver on final payment.",
   },
   "removed": [],
 }
 `;
 
-exports[`GC mode golden walk > step 86: Hollis pays the final pay application 1`] = `
+exports[`GC mode golden walk > step 87: Hollis pays the final pay application 1`] = `
 {
   "changed": {
-    "lastLog.id": 82,
+    "lastLog.id": 83,
     "lastLog.text": "Hollis Family Pharmacy paid pay application 4: $18,241.",
   },
   "removed": [],
@@ -7101,29 +7121,34 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
-      "id": 82,
+      "id": 83,
       "text": "Hollis Family Pharmacy paid pay application 4: $18,241.",
       "who": "office",
     },
     {
-      "id": 81,
+      "id": 82,
       "text": "Sent the final pay application to Hollis Family Pharmacy: $18,241 of retainage, with our conditional waiver on final payment.",
       "who": "office",
     },
     {
-      "id": 80,
+      "id": 81,
       "text": "Hollis Family Pharmacy accepted the work on Stone Oak Pharmacy in their portal.",
       "who": "office",
     },
     {
-      "id": 79,
+      "id": 80,
       "text": "Cool Breeze Mechanical sent the final pay application on HVAC: $3,100 of retainage, with a conditional waiver on final payment.",
       "who": "trade",
     },
     {
-      "id": 78,
+      "id": 79,
       "text": "Cool Breeze Mechanical sent the warranty letter for HVAC.",
       "who": "trade",
+    },
+    {
+      "id": 78,
+      "text": "Issued Bulletin 1 on Boerne Retail Shell and emailed 1 company. 1 was told it changes their trade. It adds 1 scope line.",
+      "who": "office",
     },
     {
       "id": 77,
@@ -7244,11 +7269,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "id": 54,
       "text": "Hill Country Interiors sent pay application 3 on Framing and drywall: $7,500, with a conditional waiver signed.",
       "who": "trade",
-    },
-    {
-      "id": 53,
-      "text": "Started Leon Springs Urgent Care. The bid set has 5 sheets, split into 4 trades.",
-      "who": "office",
     },
   ],
   "partners": [
@@ -7832,6 +7852,13 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
             {
               "id": "site-4",
               "label": "Striping and signs",
+            },
+            {
+              "id": "site-r3-1",
+              "label": "Detention pond",
+              "sheets": [
+                "C-101",
+              ],
             },
           ],
           "selfPerform": null,
@@ -8502,6 +8529,31 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
           "touches": [
             "elec",
             "steel",
+            "site",
+          ],
+        },
+        {
+          "addedLines": [
+            {
+              "packageId": "site",
+              "scopeId": "site-r3-1",
+            },
+          ],
+          "changedSheets": [
+            "C-101",
+          ],
+          "issuedOn": "2026-10-02",
+          "label": "Bulletin 1",
+          "note": "A detention pond at the north end. C-101 changed.",
+          "rev": 3,
+          "sentTo": [
+            {
+              "on": "2026-10-02",
+              "partnerId": "lonestar",
+              "touched": true,
+            },
+          ],
+          "touches": [
             "site",
           ],
         },

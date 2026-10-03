@@ -247,6 +247,32 @@ export function packagesFromDrafts(projectId: string, drafts: NewTradeDraft[], t
     })
 }
 
+/**
+ * Scope lines a new set adds to trades already on the job, put at the end of each trade's scope.
+ * A quote that came in before never answered them, so Compare bids reads them as not clear until
+ * a cost is set to cover them or the company answers.
+ */
+export function withNewLines(
+  project: GcProject,
+  rev: number,
+  lines: { packageId: string; label: string; sheets: string[] }[],
+): { project: GcProject; added: { packageId: string; scopeId: string }[] } {
+  const added: { packageId: string; scopeId: string }[] = []
+  const packages = project.packages.map((pkg) => {
+    const mine = lines.filter((l) => l.packageId === pkg.id && l.label.trim() !== '')
+    if (mine.length === 0) return pkg
+    const items: ScopeItem[] = mine.map((l, i) => ({ id: `${pkg.id}-r${rev}-${i + 1}`, label: l.label.trim(), sheets: l.sheets }))
+    for (const item of items) added.push({ packageId: pkg.id, scopeId: item.id })
+    return { ...pkg, scope: [...pkg.scope, ...items] }
+  })
+  return { project: { ...project, packages }, added }
+}
+
+/** The set that added a scope line to the job, when a later set added it. */
+export function setThatAddedLine(project: GcProject, scopeId: string): string | null {
+  return project.planSets.find((s) => s.addedLines?.some((l) => l.scopeId === scopeId))?.label ?? null
+}
+
 /** The project's trades with new ones put in build order. The trades already there keep their order. */
 export function withTradesInOrder(existing: TradePackage[], added: TradePackage[]): TradePackage[] {
   const out = [...existing]
