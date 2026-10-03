@@ -10,11 +10,15 @@ import {
   payAppDraftPcts,
   payAppKnown,
   payAppSteps,
+  resendPayAppDraft,
+  sentBackOpen,
   shortDate,
+  timesSentBack,
   tradeCloseout,
   workAllBilled,
   type Draw,
   type DrawPayApp,
+  type DrawSentBack,
   type GcAction,
   type GcProject,
   type Partner,
@@ -82,18 +86,29 @@ export function GcBuildingPayAppDoor({
 }) {
   const [open, setOpen] = useState<'draft' | 'final' | Draw | null>(null)
   // The draft lives here, not in the window: a click outside closes the window, never the work.
-  const [draft, setDraft] = useState<PayAppInput | null>(null)
+  // Its key says which application it is for: a new one, a resend after we sent one back, the final.
+  const [held, setHeld] = useState<{ key: string; input: PayAppInput } | null>(null)
   const sow = pkg.sow
   if (!sow || sow.status !== 'signed') return null
   const waiting = sow.draws.find((d) => d.status === 'requested')
+  const back = sentBackOpen(sow)
+  const keyFor = (which: 'draft' | 'final') =>
+    which === 'final' ? 'final' : back ? `resend-${back.draw.number}-${timesSentBack(sow, back.draw.number)}` : 'new'
+  const draft = held && held.key === keyFor('draft') ? held.input : null
   // What the draft asks for now, or what their reported work comes to before they open it.
   const asks = payApplication(sow, sow.draws.length + 1, draft?.toPct ?? payAppDraftPcts(sow))
   const ready = asks.summary.currentDue
   const closing = workAllBilled(sow)
   const openWindow = (which: 'draft' | 'final') => {
-    if (!draft) setDraft(newPayAppDraft(sow, partner))
+    const key = keyFor(which)
+    if (held?.key !== key) {
+      setHeld({ key, input: which === 'draft' && back ? resendPayAppDraft(sow, partner, back) : newPayAppDraft(sow, partner) })
+    }
     setOpen(which)
   }
+  const onDraft: Dispatch<SetStateAction<PayAppInput>> = (next) =>
+    setHeld((h) => (h ? { ...h, input: typeof next === 'function' ? next(h.input) : next } : h))
+  const label = (sovId: string) => sow.sov.find((l) => l.id === sovId)?.label ?? sovId
 
   return (
     <>
@@ -110,6 +125,26 @@ export function GcBuildingPayAppDoor({
                 <Btn onClick={() => setOpen(waiting)}>See pay application {waiting.number}</Btn>
               </div>
             )}
+          </>
+        ) : back ? (
+          <>
+            <div>
+              <strong style={{ color: 'var(--text-amber-800)' }}>
+                {GC_SHORT} sent pay application {back.draw.number} back {shortDate(back.on)}.
+              </strong>{' '}
+              Fix it and send it again.
+            </div>
+            {back.note && <div>&ldquo;{back.note}&rdquo;</div>}
+            {back.lines.map((l) => (
+              <div key={l.sovId}>
+                {label(l.sovId)}: {GC_SHORT} sees {l.weSee}%. You asked for {back.draw.lines.find((x) => x.sovId === l.sovId)?.toPct ?? 0}%.
+              </div>
+            ))}
+            <div>
+              <Btn kind="primary" onClick={() => openWindow('draft')}>
+                {draft ? 'Go on with' : 'Fix and resend'} pay application {back.draw.number}
+              </Btn>
+            </div>
           </>
         ) : (
           <>
@@ -130,20 +165,24 @@ export function GcBuildingPayAppDoor({
           </>
         )}
       </div>
-      {open !== null && (
+      {open !== null && held && (open === 'draft' || open === 'final') && (
         <GcBuildingPayAppWindow
           project={project}
           pkg={pkg}
           partner={partner}
           dispatch={dispatch}
-          draw={open === 'draft' || open === 'final' ? null : open}
+          draw={null}
           final={open === 'final'}
+          sentBack={open === 'draft' ? back : null}
           viewer="trade"
-          draft={draft}
-          onDraft={setDraft as Dispatch<SetStateAction<PayAppInput>>}
-          onSent={() => setDraft(null)}
+          draft={held.input}
+          onDraft={onDraft}
+          onSent={() => setHeld(null)}
           onClose={() => setOpen(null)}
         />
+      )}
+      {open !== null && open !== 'draft' && open !== 'final' && (
+        <GcBuildingPayAppWindow project={project} pkg={pkg} partner={partner} draw={open} viewer="trade" onClose={() => setOpen(null)} />
       )}
     </>
   )
@@ -181,6 +220,7 @@ function CloseoutForTrade({
   }
   const accepted = Boolean(sow.acceptedOn)
   const warranty = Boolean(sow.warrantyOn)
+  const back = sentBackOpen(sow)
   const item = (done: boolean, words: ReactNode, extra?: ReactNode) => (
     <div style={{ display: 'grid', gridTemplateColumns: '1rem minmax(0, 1fr)', gap: '0.4rem', alignItems: 'baseline' }}>
       <span aria-hidden style={{ fontWeight: 700, color: done ? 'var(--text-green-700)' : 'var(--text-muted)' }}>{done ? '✓' : '•'}</span>
@@ -195,6 +235,14 @@ function CloseoutForTrade({
       <div>
         <strong>Closeout.</strong> All your work is billed. {GC_SHORT} holds <strong>{money(c.held)}</strong> until the end. That is your retainage.
       </div>
+      {back?.draw.final && (
+        <div>
+          <strong style={{ color: 'var(--text-amber-800)' }}>
+            {GC_SHORT} sent your final pay application back {shortDate(back.on)}.
+          </strong>{' '}
+          {back.note} Fix it and send it again.
+        </div>
+      )}
       {item(accepted, accepted ? `${GC_SHORT} accepted your work ${shortDate(sow.acceptedOn ?? null)}.` : `${GC_SHORT} walks the work with you and checks the punch list.`)}
       {item(
         warranty,
@@ -240,6 +288,7 @@ export function GcBuildingPayAppWindow({
   dispatch,
   draw,
   final: finalProp = false,
+  sentBack = null,
   viewer,
   draft: heldDraft = null,
   onDraft,
@@ -254,6 +303,8 @@ export function GcBuildingPayAppWindow({
   draw: Draw | null
   /** A new final pay application: it asks for the retainage, every line at 100%. */
   final?: boolean
+  /** A resend after we sent this application back: our note and numbers show beside theirs. */
+  sentBack?: DrawSentBack | null
   viewer: 'trade' | 'office'
   /** The trade's draft, held by the door so closing the window keeps it. */
   draft?: PayAppInput | null
@@ -282,6 +333,10 @@ export function GcBuildingPayAppWindow({
   }, [onClose])
 
   const final = draw ? draw.final === true : finalProp
+  // A draw we sent back, opened from the history; or an application sent again after one went back.
+  const returnedAs = draw ? ((sow?.sentBack ?? []).find((b) => b.draw === draw) ?? null) : null
+  const revised = !returnedAs && sow ? timesSentBack(sow, draw ? draw.number : sow.draws.length + 1) > 0 : false
+  const weSee = new Map((sentBack?.lines ?? []).map((l) => [l.sovId, l.weSee]))
   const app = useMemo(() => {
     if (!sow) return null
     if (draw) return payApplicationForDraw(sow, draw)
@@ -318,7 +373,7 @@ export function GcBuildingPayAppWindow({
     onClose()
   }
   const net = app.summary.currentDue
-  const title = `${final ? 'Final pay application' : 'Pay application'} ${app.number}`
+  const title = `${final ? 'Final pay application' : 'Pay application'} ${app.number}${returnedAs ? ' · sent back' : revised ? ' · revised' : ''}`
   const waiverWords = final ? 'conditional waiver on final payment' : 'conditional lien waiver'
   const titleId = 'gc-payapp-title'
 
@@ -332,7 +387,8 @@ export function GcBuildingPayAppWindow({
       mark={mark}
       page={page}
       onPage={(p) => setPick({ page: p, at: mark })}
-      approved={draw ? draw.status !== 'requested' : false}
+      approved={draw ? draw.status !== 'requested' && !returnedAs : false}
+      stamp={returnedAs ? 'sent back' : revised ? 'revised' : null}
     />
   )
 
@@ -399,6 +455,15 @@ export function GcBuildingPayAppWindow({
               ) : (
                 <>This draw was asked for before pay applications. The form is rebuilt from the draw.</>
               )}
+              {returnedAs && (
+                <>
+                  {' '}
+                  <strong style={{ color: 'var(--text-amber-800)' }}>
+                    {viewer === 'office' ? 'We' : GC_SHORT} sent it back {shortDate(returnedAs.on)}.
+                  </strong>{' '}
+                  {returnedAs.note}
+                </>
+              )}
             </div>
             <div data-theme="light" style={{ padding: '0.75rem 1.25rem 1.25rem' }}>
               {paper}
@@ -414,12 +479,19 @@ export function GcBuildingPayAppWindow({
                 say={
                   final
                     ? 'Every line is billed at 100%. This application asks for the retainage.'
-                    : app.totals.thisPeriod > 0
+                    : sentBack
+                      ? `${GC_SHORT} sent this back. Its numbers are in where it sees less. Change a line if you see it differently.`
+                      : app.totals.thisPeriod > 0
                       ? 'Each line starts at what you reported. Change a line if it moved.'
                       : 'Nothing new to bill yet. Raise a line that moved.'
                 }
               >
                 <div style={{ display: 'grid', gap: '0.4rem', fontSize: '0.875rem' }} onFocus={() => setFocus('work')}>
+                  {sentBack?.note && (
+                    <div style={{ padding: '0.4rem 0.55rem', borderRadius: 6, background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)' }}>
+                      {GC_SHORT}: &ldquo;{sentBack.note}&rdquo;
+                    </div>
+                  )}
                   {final && (
                     <>
                       {app.lines.map((l) => (
@@ -441,6 +513,9 @@ export function GcBuildingPayAppWindow({
                       <label key={l.sovId} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '0.5rem', alignItems: 'center' }}>
                         <span>
                           {l.label} <span style={{ color: 'var(--text-muted)' }}>· {money(l.scheduled)}{before > 0 ? ` · paid through ${before}%` : ''}</span>
+                          {weSee.has(l.sovId) && (
+                            <span style={{ color: 'var(--text-amber-800)', fontWeight: 600 }}> · {GC_SHORT} sees {weSee.get(l.sovId)}%</span>
+                          )}
                         </span>
                         <select
                           value={l.pct}
@@ -660,6 +735,7 @@ function PayAppPaper({
   page,
   onPage,
   approved,
+  stamp,
 }: {
   app: PayApplication
   project: GcProject
@@ -670,6 +746,8 @@ function PayAppPaper({
   page: Page
   onPage: (p: Page) => void
   approved: boolean
+  /** A word after the page line: "revised", "sent back". */
+  stamp: string | null
 }) {
   const s = app.summary
   const contractDate = pkg.sow?.signedOn ?? null
@@ -728,7 +806,7 @@ function PayAppPaper({
               Application and certificate for payment
             </p>
             <p style={{ ...label, textAlign: 'center', margin: '0 0 0.9em' }}>
-              AIA G702 · page 1 of 2{app.final ? ' · final, retainage release' : ''}
+              AIA G702 · page 1 of 2{app.final ? ' · final, retainage release' : ''}{stamp ? ` · ${stamp}` : ''}
             </p>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(13rem, 1fr))', gap: '0.6rem 1.25rem' }}>

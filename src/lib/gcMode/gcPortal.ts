@@ -5,10 +5,12 @@
  *
  * The words follow the plain-words rules at the top of `gcTour.ts`.
  */
-import type { GcProject, Invite, Partner, PlanSet, ScopeItem, TradePackage } from './gcTypes'
-import { daysUntil, shortDate, weekdayDate } from './gcWords'
-import { currentRev } from './gcLookups'
-import { askPromise } from './gcFollowUp'
+import type { GcProject, GcState, Invite, Partner, PlanSet, ScopeItem, TradePackage } from './gcTypes'
+import { daysUntil, money, shortDate, weekdayDate } from './gcWords'
+import { currentRev, partnerById } from './gcLookups'
+import { askPromise, type AskPromise } from './gcFollowUp'
+import { bidIsStale, sowMoney } from './gcBids'
+import { GC_COMPANY } from './gcFixture'
 
 /** What the plans block tells one company on one ask. */
 export interface PortalPlanNews {
@@ -72,4 +74,209 @@ export function unclearLines(pkg: TradePackage, invite: Invite): ScopeItem[] {
 export function aYearFrom(iso: string): string {
   const [y, m, d] = iso.split('-')
   return `${Number(y) + 1}-${m}-${m === '02' && d === '29' ? '28' : d}`
+}
+
+// ---------------------------------------------------------------------------------------------
+// The company's home: everything one company has with us, on every project
+// ---------------------------------------------------------------------------------------------
+
+/** Where one ask stands for the company: still bidding, their job, gone to another company, or passed. */
+export type PortalAskKind = 'bidding' | 'job' | 'lost' | 'passed'
+
+export interface PortalAsk {
+  project: GcProject
+  pkg: TradePackage
+  invite: Invite
+  kind: PortalAskKind
+  /** A newer set changed their trade after they priced it. */
+  stale: boolean
+  /** Lines of their number the office could not read. */
+  unclear: ScopeItem[]
+  /** The day they said their number will come. Null once a number is in. */
+  promise: AskPromise | null
+}
+
+/** The money on one job, as the company sees it. */
+export interface PortalJobMoney {
+  price: number
+  /** How much of the work they reported done, weighted by each line's amount. 0 to 100. */
+  donePct: number
+  paid: number
+  /** Held back until the end of the job. */
+  held: number
+  /** Approved, payment on the way. */
+  coming: number
+  /** Asked for, the office is looking at it. */
+  reviewing: number
+}
+
+export interface PortalTodo {
+  key: string
+  /** The project to open. Null: company paperwork, done on the home itself. */
+  projectId: string | null
+  text: string
+  /** red: late or holding up work. amber: due within a week, or new. plain: when they can. */
+  tone: 'red' | 'amber' | 'plain'
+  /** The day it is due by, for the order. */
+  by: string | null
+}
+
+export interface PortalHome {
+  bidding: PortalAsk[]
+  jobs: { ask: PortalAsk; money: PortalJobMoney | null }[]
+  past: PortalAsk[]
+  todos: PortalTodo[]
+  /** Across every job: paid so far, held until the end, approved and coming, asked and being looked at. Null until a dollar moves. */
+  money: { paid: number; held: number; coming: number; reviewing: number } | null
+}
+
+/** Every ask one company has with us, newest project first as the fixture lists them. */
+export function portalAsks(state: GcState, partnerId: string): PortalAsk[] {
+  const out: PortalAsk[] = []
+  for (const project of state.projects) {
+    for (const pkg of project.packages) {
+      for (const invite of pkg.invites) {
+        if (invite.partnerId !== partnerId) continue
+        const kind: PortalAskKind =
+          pkg.awardedInviteId === invite.id ? 'job' : pkg.awardedInviteId !== null ? 'lost' : invite.status === 'declined' ? 'passed' : 'bidding'
+        out.push({
+          project,
+          pkg,
+          invite,
+          kind,
+          stale: bidIsStale(project, pkg, invite),
+          unclear: unclearLines(pkg, invite),
+          promise: invite.bid ? null : askPromise(invite, state.today),
+        })
+      }
+    }
+  }
+  return out
+}
+
+export function portalJobMoney(pkg: TradePackage): PortalJobMoney | null {
+  const sow = pkg.sow
+  if (!sow) return null
+  const m = sowMoney(sow)
+  const total = sow.sov.reduce((s, l) => s + l.amount, 0)
+  const done = sow.sov.reduce((s, l) => s + l.amount * l.pctReported, 0)
+  const net = (status: 'approved' | 'requested') => sow.draws.filter((d) => d.status === status).reduce((s, d) => s + d.net, 0)
+  return {
+    price: sow.price,
+    donePct: total > 0 ? Math.round(done / total) : 0,
+    paid: m.paid,
+    held: m.retainageHeld,
+    coming: net('approved'),
+    reviewing: net('requested'),
+  }
+}
+
+const TONE_ORDER: Record<PortalTodo['tone'], number> = { red: 0, amber: 1, plain: 2 }
+
+/** What needs the company, most pressing first: red, then amber, then the rest; sooner days first in each. */
+export function portalTodos(state: GcState, partnerId: string, asks: PortalAsk[] = portalAsks(state, partnerId)): PortalTodo[] {
+  const partner = partnerById(state, partnerId)
+  if (!partner) return []
+  const gc = GC_COMPANY.shortName
+  const today = state.today
+  const todos: PortalTodo[] = []
+  const sowWaiting = asks.some((a) => a.kind === 'job' && a.pkg.sow?.status === 'sent')
+
+  if (partner.msa === 'sent') {
+    todos.push({
+      key: 'msa',
+      projectId: null,
+      text: sowWaiting ? 'Read and sign the master agreement. Your statement of work waits on it.' : 'Read and sign the master agreement.',
+      tone: sowWaiting ? 'red' : 'amber',
+      by: null,
+    })
+  }
+  const coi = portalInsurance(partner, today)
+  if (!coi.done) {
+    todos.push({
+      key: 'coi',
+      projectId: null,
+      text: coi.ranOut ? `Your insurance ran out ${shortDate(partner.coiExpires)}. Send a new certificate.` : 'Send your insurance certificate.',
+      tone: coi.ranOut ? 'red' : 'amber',
+      by: null,
+    })
+  }
+  if (!partner.w9) todos.push({ key: 'w9', projectId: null, text: 'Fill in your W-9.', tone: 'amber', by: null })
+
+  for (const a of asks) {
+    const where = a.project.name
+    const trade = a.pkg.trade
+    const key = a.invite.id
+    const projectId = a.project.id
+    if (a.kind === 'bidding') {
+      const due = a.project.stage === 'pursuing' && a.project.ourBidSentOn === null ? a.project.bidDue : null
+      const left = due ? daysUntil(due, today) : null
+      const news = portalPlanNews(a.project, a.pkg, a.invite)
+      if (a.invite.bid && a.stale) {
+        todos.push({ key: `${key}:stale`, projectId, text: `The plans changed for ${trade} on ${where}. Confirm your number or change it.`, tone: left !== null && left <= 7 ? 'red' : 'amber', by: due })
+      } else if (a.unclear.length > 0) {
+        const n = a.unclear.length
+        todos.push({ key: `${key}:unclear`, projectId, text: `Answer ${n === 1 ? 'one line' : `${n} lines`} of your ${trade} number for ${where}.`, tone: 'amber', by: due })
+      } else if (!a.invite.bid && a.promise?.state === 'passed') {
+        todos.push({ key: `${key}:late`, projectId, text: `You said your ${trade} number for ${where} would come ${weekdayDate(a.promise.by)}. Send it or give a new day.`, tone: 'red', by: a.promise.by })
+      } else if (!a.invite.bid && due) {
+        const open = news.neverOpened ? 'Open the plans and send' : 'Send'
+        todos.push({
+          key: `${key}:send`,
+          projectId,
+          text: left !== null && left < 0 ? `Your ${trade} number for ${where} was due ${weekdayDate(due)}.` : `${open} your ${trade} number for ${where} by ${weekdayDate(due)}.`,
+          tone: left !== null && left < 0 ? 'red' : left !== null && left <= 7 ? 'amber' : 'plain',
+          by: due,
+        })
+      } else if (news.behind && !news.neverOpened && news.forTrade.length === 0 && news.latest) {
+        todos.push({ key: `${key}:open`, projectId, text: `Open ${news.latest.label} on ${where}. It does not change ${trade}.`, tone: 'plain', by: null })
+      }
+    }
+    if (a.pkg.bidTab && a.invite.bid && !a.pkg.bidTab.seenBy.includes(partnerId)) {
+      todos.push({ key: `${key}:tab`, projectId, text: `See how the ${trade} quotes came in on ${where}.`, tone: 'plain', by: null })
+    }
+    if (a.kind === 'job' && a.pkg.sow) {
+      const sow = a.pkg.sow
+      if (sow.status === 'sent') {
+        todos.push({ key: `${key}:sow`, projectId, text: `Sign your ${trade} statement of work for ${where}.`, tone: 'amber', by: null })
+      }
+      for (const d of sow.draws) {
+        if (d.status === 'paid' && d.waiver === 'conditional') {
+          todos.push({ key: `${key}:waiver:${d.id}`, projectId, text: `Draw ${d.number} on ${where} is paid. Sign the unconditional waiver.`, tone: 'amber', by: null })
+        }
+      }
+      const m = sowMoney(sow)
+      if (sow.status === 'signed' && a.project.stage === 'building' && m.ready > 0 && !sow.draws.some((d) => d.status === 'requested')) {
+        todos.push({ key: `${key}:draw`, projectId, text: `You can ask ${gc} for ${money(m.ready)} on ${where}.`, tone: 'plain', by: null })
+      }
+    }
+  }
+
+  return todos
+    .map((t, i) => ({ t, i }))
+    .sort((a, b) => TONE_ORDER[a.t.tone] - TONE_ORDER[b.t.tone] || (a.t.by ?? '9999').localeCompare(b.t.by ?? '9999') || a.i - b.i)
+    .map(({ t }) => t)
+}
+
+/** The company's home: its asks sorted into bidding, jobs and past, what needs it, and its money. */
+export function portalHome(state: GcState, partnerId: string): PortalHome {
+  const asks = portalAsks(state, partnerId)
+  const jobs = asks.filter((a) => a.kind === 'job').map((ask) => ({ ask, money: portalJobMoney(ask.pkg) }))
+  // Money shows once a dollar has moved: a job not started yet has nothing to say.
+  const withMoney = jobs.flatMap((j) => (j.money && j.money.paid + j.money.held + j.money.coming + j.money.reviewing > 0 ? [j.money] : []))
+  return {
+    bidding: asks.filter((a) => a.kind === 'bidding'),
+    jobs,
+    past: asks.filter((a) => a.kind === 'lost' || a.kind === 'passed'),
+    todos: portalTodos(state, partnerId, asks),
+    money:
+      withMoney.length === 0
+        ? null
+        : {
+            paid: withMoney.reduce((s, m) => s + m.paid, 0),
+            held: withMoney.reduce((s, m) => s + m.held, 0),
+            coming: withMoney.reduce((s, m) => s + m.coming, 0),
+            reviewing: withMoney.reduce((s, m) => s + m.reviewing, 0),
+          },
+  }
 }
