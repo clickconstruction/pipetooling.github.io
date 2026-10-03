@@ -39,6 +39,16 @@ describe('lienWaiverAmountMath — job 650, bill #1', () => {
       ['Check', '2026-09-28', 6077.51],
     ])
   })
+  it('a bill marked billed in a Central evening reads that day; a payment with no paid day reads its Central day', () => {
+    // Billed 7:30 pm CDT on Oct 2 (+00:00 shape); the payment has no paid_on or sent_on and was entered 6:30 pm CST on Dec 1.
+    const bill = { id: 'e', amount: 1000, status: 'billed', billed_at: '2026-10-03T00:30:00+00:00', created_at: '2026-10-03T00:30:00+00:00', sequence_order: 0 }
+    const pay = [{ id: 'pe', invoice_id: 'e', amount: 400, paid_on: null, sent_on: null, created_at: '2026-12-02T00:30:00Z', payment_type: 'check' }]
+    const evening = { id: 'je', revenue: 1000, payments: pay, invoices: [bill] } as unknown as JobWithDetails
+    const m = lienWaiverAmountMath('conditional_progress', evening, [bill] as unknown as JobWithDetails['invoices'], [bill] as unknown as JobWithDetails['invoices'])!
+    expect(m.bills[0]!.billedYmd).toBe('2026-10-02')
+    expect(m.bills[0]!.payments.map((p) => p.ymd)).toEqual(['2026-12-01'])
+  })
+
   it('two bills picked: one line each, the total is the two owed together', () => {
     const m = lienWaiverAmountMath('conditional_final', job, both, numbered)!
     expect(m.total).toBe(15722.49)

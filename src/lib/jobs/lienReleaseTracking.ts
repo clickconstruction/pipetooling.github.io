@@ -1,5 +1,6 @@
 import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import {
   LIEN_WAIVER_FORM_SHORT_LABELS,
   type LienWaiverFields,
@@ -253,7 +254,8 @@ export function buildLienUnconditionalQueue(
       const covered = new Set(invoiceIds)
       const matching = payments.filter((p) => p.invoice_id != null && covered.has(p.invoice_id))
       const dated = matching
-        .map((p) => ({ p, on: (p.paid_on ?? p.created_at ?? '').slice(0, 10) }))
+        // paid_on is a date; the created_at fallback is an instant, read in APP_CALENDAR_TZ.
+        .map((p) => ({ p, on: p.paid_on != null ? p.paid_on.slice(0, 10) : calendarYmdInAppTzFromIso(p.created_at ?? '') }))
         .sort((a, b) => a.on.localeCompare(b.on))
       const newest = dated[dated.length - 1]
       rows.push({
@@ -265,7 +267,7 @@ export function buildLienUnconditionalQueue(
         jobAddress: (job?.job_address ?? '').trim(),
         release: r,
         amount: Number(r.amount ?? 0),
-        issuedOn: (r.created_at ?? '').slice(0, 10),
+        issuedOn: calendarYmdInAppTzFromIso(r.created_at ?? ''),
         invoiceIds,
         appliedTotal: matching.reduce((s, p) => s + Number(p.amount ?? 0), 0),
         clearedOn: newest?.on ?? '',
