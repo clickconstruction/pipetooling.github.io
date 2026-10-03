@@ -107,6 +107,15 @@ describe('buildLegalReview', () => {
     { key: 'n:bryan herber', name: 'Bryan Herber', reviewDays: 21, balance: 1239 },
     { key: 'c:hill', name: 'Hilltop', reviewDays: 30, balance: 6200 },
   ]
+  it('a review asked for in a Central evening counts from that evening\'s day', () => {
+    // Asked 7:30 pm CDT on Sep 9 (Sep 10 in UTC): two days by Sep 11, not one.
+    const r = buildLegalReview(accounts, [matter({ id: 'm2', payer_key: 'c:sam', review_requested_by: 'u-t', review_requested_at: '2026-09-10T00:30:00+00:00' })], '2026-09-11')
+    expect(r.requested[0]?.days).toBe(2)
+    // 6:30 pm CST on Dec 1 counts from Dec 1; noon UTC from its own day.
+    expect(buildLegalReview(accounts, [matter({ id: 'm2', payer_key: 'c:sam', review_requested_at: '2026-12-02T00:30:00Z' })], '2026-12-03').requested[0]?.days).toBe(2)
+    expect(buildLegalReview(accounts, [matter({ id: 'm2', payer_key: 'c:sam', review_requested_at: '2026-12-02T12:00:00Z' })], '2026-12-03').requested[0]?.days).toBe(1)
+  })
+
   it('counts accounts under review, lists requested ones first, and opens on the request', () => {
     const matters = [
       matter({ payer_key: 'c:hill', stage: 'referred' }),

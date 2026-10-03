@@ -18,6 +18,7 @@ import {
   type LegalAccountSummary,
   type LegalPacketInput,
 } from './legalPacket'
+import { buildLegalPacketPrintHtml } from './legalPacketPrint'
 
 const TODAY = '2026-09-11'
 
@@ -150,6 +151,15 @@ describe('buildLegalPacket', () => {
     expect(partial.gaps.find((g) => g.key === 'contract:job-a')?.severity).toBe('stop')
     expect(partial.gaps.find((g) => g.key === 'contract:job-b')?.severity).toBe('warn')
     expect(partial.worth.verdict).toBe('worth it')
+  })
+
+  it('the printed packet dates a signed or sent agreement on the company calendar', () => {
+    // Signed 7:30 pm CDT on Apr 2 (Apr 3 in UTC); the other job's agreement went out 6:30 pm CST on Dec 1.
+    const signed: JobContractRowLike = { id: 'c1', job_id: 'job-a', status: 'signed', revision: 1, recipient_email: null, sent_at: null, last_sent_at: null, view_count: 0, signed_at: '2026-04-03T00:30:00+00:00', signer_printed_name: 'Aaron Smith', signer_mode: 'typed', voided_at: null }
+    const sent: JobContractRowLike = { id: 'c2', job_id: 'job-b', status: 'sent', revision: 1, recipient_email: 'aaron@tle.test', sent_at: '2026-12-02T00:30:00Z', last_sent_at: null, view_count: 2, signed_at: null, signer_printed_name: null, signer_mode: null, voided_at: null }
+    const html = buildLegalPacketPrintHtml(buildLegalPacket(baseInput(account, { contracts: [signed, sent] })), { preparedOn: TODAY, companyName: 'Click Plumbing and Electrical' })
+    expect(html).toContain('Signed 2026-04-02 by Aaron Smith')
+    expect(html).toContain('Sent 2026-12-01 · viewed 2×')
   })
 
   it('a dispute on record breaks the sworn account; a signed paper contract restores the theory and letters the exhibit', () => {

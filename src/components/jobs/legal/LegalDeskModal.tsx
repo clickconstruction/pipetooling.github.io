@@ -32,7 +32,7 @@ import type { FirmTab } from './legalFirmMatterViewShared'
 import type { LegalEntryRow } from '../../../lib/legal/legalMatters'
 import { INK as PORTAL_INK, MUTED as PORTAL_MUTED, PAPER as PORTAL_PAPER, PORTAL_FONT } from '../../../lib/portal/portalTheme'
 import { openHtmlPrintWindow } from '../../../lib/jobsDocuments/printWindow'
-import { todayYmdInAppTz } from '../../../utils/dateUtils'
+import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../../utils/dateUtils'
 import { useEditCustomerModal } from '../../../contexts/EditCustomerModalContext'
 import { useToastContext } from '../../../contexts/ToastContext'
 import { legalRpc, type LegalMattersData } from '../../../hooks/useLegalMatters'
@@ -167,8 +167,8 @@ function Table({ head, rows, empty, numCols = [], subRows = [] }: { head: string
 }
 
 function coverageText(c: JobContractCoverage): string {
-  if (c.kind === 'signed') return `Signed${c.signedAt ? ` ${c.signedAt.slice(0, 10)}` : ''}${c.signerName ? ` by ${c.signerName}` : ''} · ${c.source}`
-  if (c.kind === 'sent') return `Sent ${c.sentAt.slice(0, 10)} · viewed ${c.viewCount}× · never signed`
+  if (c.kind === 'signed') return `Signed${c.signedAt ? ` ${calendarYmdInAppTzFromIso(c.signedAt)}` : ''}${c.signerName ? ` by ${c.signerName}` : ''} · ${c.source}`
+  if (c.kind === 'sent') return `Sent ${calendarYmdInAppTzFromIso(c.sentAt)} · viewed ${c.viewCount}× · never signed`
   if (c.kind === 'draft') return 'Draft, never sent'
   return 'None on file'
 }
@@ -187,7 +187,8 @@ const FIX_LABEL: Record<LegalGap['fix'], string> = {
 type Sheet = { kind: 'ready'; handling: string; note: string } | { kind: 'ask'; note: string } | { kind: 'pull'; note: string } | null
 
 function daysAgo(iso: string | null | undefined, todayYmd: string): number | null {
-  const y = (iso ?? '').slice(0, 10)
+  // An instant's day in APP_CALENDAR_TZ, not its first ten characters (the UTC date).
+  const y = calendarYmdInAppTzFromIso(iso ?? '')
   if (!/^\d{4}-\d{2}-\d{2}$/.test(y)) return null
   const a = Date.UTC(Number(y.slice(0, 4)), Number(y.slice(5, 7)) - 1, Number(y.slice(8, 10)))
   const b = Date.UTC(Number(todayYmd.slice(0, 4)), Number(todayYmd.slice(5, 7)) - 1, Number(todayYmd.slice(8, 10)))
@@ -423,11 +424,11 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
     <span style={{ ...MUTED, fontSize: '0.76rem' }}>Read-only until the legal tables are applied.</span>
   ) : withFirm ? (
     <>
-      {pill(`With ${firm?.name ?? 'the firm'} since ${(matter?.released_at ?? '').slice(0, 10)} · ${legalStageLabel(stage).replace('With the firm · ', '')}`, 'legal')}
+      {pill(`With ${firm?.name ?? 'the firm'} since ${calendarYmdInAppTzFromIso(matter?.released_at ?? '')} · ${legalStageLabel(stage).replace('With the firm · ', '')}`, 'legal')}
       {canMarkReady ? <button type="button" onClick={() => setSheet({ kind: 'pull', note: '' })} style={btn}>Pull back</button> : null}
     </>
   ) : closed ? (
-    pill(`${legalStageLabel(stage)} ${(matter?.closed_at ?? '').slice(0, 10)}${matter?.closed_reason ? ` · ${matter.closed_reason}` : ''}`, 'neutral')
+    pill(`${legalStageLabel(stage)} ${calendarYmdInAppTzFromIso(matter?.closed_at ?? '')}${matter?.closed_reason ? ` · ${matter.closed_reason}` : ''}`, 'neutral')
   ) : (
     <>
       {matter?.review_requested_at ? pill(`${requesterName} asked for a dev${requestedDays != null ? ` · ${requestedDays}d ago` : ''}`, 'blue') : null}
@@ -839,7 +840,7 @@ function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDo
         <Table head={['Job', 'Field reports', 'Clock sessions', 'Hours', 'Worked', 'Job notes', 'Links']} numCols={[3]}
           rows={packet.evidence.map((e) => [
             <b key="l">{e.jobLabel}</b>,
-            <span key="r">{e.reports}{e.reports ? <span style={MUTED}> · {e.reportsWithGps} with GPS</span> : null}{e.latestReport ? <div style={{ ...MUTED, fontSize: '0.76rem' }}>latest {e.latestReport.createdAt.slice(0, 10)} · {e.latestReport.templateName || 'report'} · {e.latestReport.authorName}</div> : null}</span>,
+            <span key="r">{e.reports}{e.reports ? <span style={MUTED}> · {e.reportsWithGps} with GPS</span> : null}{e.latestReport ? <div style={{ ...MUTED, fontSize: '0.76rem' }}>latest {calendarYmdInAppTzFromIso(e.latestReport.createdAt)} · {e.latestReport.templateName || 'report'} · {e.latestReport.authorName}</div> : null}</span>,
             <span key="s">{e.sessions}{e.sessions ? <span style={MUTED}> · {e.approvedSessions} approved · {e.sessionsWithGps} with GPS</span> : null}</span>,
             `${e.hours}h`, e.firstWorkYmd ? `${e.firstWorkYmd} → ${e.lastWorkYmd}` : '—',
             <span key="n">{e.threadNotes}{e.latestNote ? <div style={{ ...MUTED, fontSize: '0.76rem', maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.latestNote.body}</div> : null}</span>,
