@@ -330,7 +330,7 @@ function PackageBlock({
         <Block title={t('bidTabTitle', { trade: pkg.trade })}>
           {pkg.bidTab.seenBy.includes(partner.id) ? (
             <div style={{ display: 'grid', gap: '0.4rem', fontSize: '0.9rem' }}>
-              <div>{bidTabResult(project, pkg, partner.id)}</div>
+              <div>{bidTabResult(project, pkg, partner.id, lang)}</div>
               <BidTabTable rows={bidTabRows(state, pkg)} viewerId={partner.id} showNames={pkg.bidTab.showNames} />
               <div style={{ fontSize: '0.8rem', opacity: 0.75 }}>{t('bidTabThanks')}</div>
             </div>
