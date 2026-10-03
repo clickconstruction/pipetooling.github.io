@@ -183,6 +183,26 @@ export function planEmail(
 
 export type QuestionState = 'asked' | 'with the architect' | 'answered'
 
+/** Questions close this many days before our bid is due (the owner, 2026-10-03). */
+export const QUESTIONS_CLOSE_DAYS = 3
+
+/**
+ * The day questions close on a project we are bidding: three days before our bid is due. From
+ * that day on no company can ask. Null: they never close, because there is no due date or the
+ * job is ours (questions while building are part of the work).
+ */
+export function questionsCloseOn(project: GcProject): string | null {
+  if (project.stage !== 'pursuing' || !project.bidDue) return null
+  const [y, m, d] = project.bidDue.split('-').map(Number)
+  return new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, (d ?? 1) - QUESTIONS_CLOSE_DAYS)).toISOString().slice(0, 10)
+}
+
+/** A company can still ask today. */
+export function questionsOpen(project: GcProject, today: string): boolean {
+  const close = questionsCloseOn(project)
+  return close === null || today < close
+}
+
 /** Where a question stands: asked and not sent on, with the architect, or answered. */
 export function questionState(q: PlanQuestion): QuestionState {
   if (q.answer !== null) return 'answered'

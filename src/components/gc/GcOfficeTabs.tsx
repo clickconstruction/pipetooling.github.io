@@ -15,6 +15,7 @@ import {
   uncostedWords,
   lowLeveled,
   money,
+  openQuestions,
   packageCoverage,
   partnerBlockers,
   partnerById,
@@ -47,8 +48,10 @@ import { AskThread } from './GcAskThread'
 import { GcBuildingPayAppWindow } from './GcBuildingPayApp'
 import { GcBuildingSendBackForm, GcBuildingSentBackList } from './GcBuildingSendBack'
 import { GcBuildingTradeChanges } from './GcBuildingChanges'
+import { GcBuildingDrawDays, GcBuildingToPay } from './GcBuildingPayDays'
 import { GcBuildingCrewCard } from './GcBuildingCrew'
 import { GcNewPlansWindow } from './GcNewPlans'
+import { GcNewProjectQuestions } from './GcNewProjectQuestions'
 import { Btn, Card, Chip, PlusUnknown, Stat, Why, input, num, td, th, type Tone } from './gcUi'
 
 /** GC mode design spike: the office's side of one project. */
@@ -633,6 +636,7 @@ function LevelPanel({ state, project, pkg, dispatch, onSeePortal }: GcPaneProps 
 
 export function GcPlansTab({ state, project, dispatch }: GcPaneProps) {
   const [adding, setAdding] = useState(false)
+  const [asking, setAsking] = useState(false)
   const rev = currentRev(project)
   const sets = [...project.planSets].sort((a, b) => b.rev - a.rev)
   const newest = sets[0]
@@ -645,10 +649,14 @@ export function GcPlansTab({ state, project, dispatch }: GcPaneProps) {
         When a new set comes in, write down what changed and the companies who need it are emailed. Every portal then
         shows the newest set. The table says who was told, who has opened it, and whose number still needs confirming.
       </Why>
-      <div>
+      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
         <Btn kind="primary" onClick={() => setAdding(true)}>A new set of plans came in</Btn>
+        <Btn onClick={() => setAsking(true)}>
+          Questions about the plans{openQuestions(project).length > 0 ? ` · ${openQuestions(project).length} open` : ''}
+        </Btn>
       </div>
       {adding && <GcNewPlansWindow state={state} project={project} dispatch={dispatch} onClose={() => setAdding(false)} />}
+      {asking && <GcNewProjectQuestions state={state} project={project} dispatch={dispatch} onClose={() => setAsking(false)} />}
 
       <div style={{ display: 'grid', gap: '0.75rem', gridTemplateColumns: 'repeat(auto-fit, minmax(20rem, 1fr))' }}>
         {sets.map((s) => (
@@ -983,6 +991,7 @@ export function GcDrawsTab({ state, project, dispatch }: GcPaneProps) {
         fixed. The unconditional waiver follows the payment.
       </Why>
       {signed.length === 0 && <Card>No trade we hire has a signed statement of work on this project yet.</Card>}
+      <GcBuildingToPay state={state} project={project} />
       {signed.map((pkg) => {
         const sow = pkg.sow
         const inv = pkg.invites.find((i) => i.id === pkg.awardedInviteId)
@@ -1030,7 +1039,7 @@ export function GcDrawsTab({ state, project, dispatch }: GcPaneProps) {
                     {d.final ? `Draw ${d.number} · retainage release` : `Draw ${d.number}`}
                     {timesSentBack(sow, d.number) > 0 ? ' · revised' : ''}
                   </strong>
-                  <span>{shortDate(d.requestedOn)}</span>
+                  <span>asked {shortDate(d.requestedOn)}</span>
                   {d.final ? (
                     <span>pays back what we held: <strong>{money(d.net)}</strong></span>
                   ) : (
@@ -1042,6 +1051,7 @@ export function GcDrawsTab({ state, project, dispatch }: GcPaneProps) {
                   <Chip tone={d.status === 'paid' ? 'green' : d.status === 'approved' ? 'blue' : 'amber'}>
                     {d.status === 'requested' ? 'waiting on us' : d.status}
                   </Chip>
+                  <GcBuildingDrawDays project={project} pkg={pkg} draw={d} today={state.today} />
                   <Chip tone={d.waiver === 'unconditional' ? 'green' : d.status === 'paid' ? 'amber' : 'grey'}>
                     {d.final
                       ? d.waiver === 'unconditional'
