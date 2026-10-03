@@ -21,6 +21,8 @@ export interface PlanSet {
   sentTo?: { partnerId: string; on: string; touched: boolean }[]
   /** Sheets this set adds to the index, with the titles the office gave them. */
   addedSheets?: PlanSheet[]
+  /** Scope lines this set adds to trades already on the job. Quotes in before it never answered them. */
+  addedLines?: { packageId: string; scopeId: string }[]
 }
 
 /** One drawing in the set. The discipline is read from the number's letters (E-201 → Electrical). */
@@ -129,8 +131,12 @@ export interface Sow {
   draws: Draw[]
   /** Closeout: the day we accepted the work, after the punch list. Null or absent: not yet. */
   acceptedOn?: string | null
+  /** The day their warranty letter came in. Kept as a record: closeout no longer asks for it (owner, 2026-10-02). */
+  warrantyOn?: string | null
   /** Pay applications the office sent back, oldest first. A resend takes the same number. */
   sentBack?: DrawSentBack[]
+  /** The day we sent it to the trade to sign. Unset: not sent, or before the day was kept. */
+  sentOn?: string
 }
 
 /**
@@ -204,6 +210,8 @@ export interface Partner {
   license?: string
   /** The day they first went through their portal's welcome. Unset: never, or before the portal kept it. */
   portalOpenedOn?: string
+  /** The day we sent the master agreement. Unset: not sent, or before the day was kept. */
+  msaSentOn?: string
 }
 
 /** A question a trade asked about the plans. The architect answers; every bidder on the trade gets it. */
@@ -224,6 +232,8 @@ export interface OwnerBilling {
   retainageHeld: number
   /** Our pay applications to the owner, oldest first, as each went. Absent: none sent yet. */
   payApps?: OwnerPayAppSent[]
+  /** The day the owner accepted the work in their portal. Absent: not yet. Our final pay application waits for it. */
+  acceptedOn?: string
 }
 
 /**
@@ -289,8 +299,6 @@ export interface GcProject {
   generalConditions: number
   contingencyPct: number
   feePct: number
-  /** The day the owner released the retainage they hold on us. A trade's comes 10 days after. */
-  ownerRetainageReleasedOn?: string | null
   /** The day we closed the job: every trade closed out and our own crew done. */
   closedOn?: string | null
 }
@@ -396,8 +404,11 @@ export type GcAction =
       recipients: string[]
       /** Trades the job did not have that this set brings. Each gets a package; nobody is asked yet. */
       newTrades: NewTradeDraft[]
+      /** Scope lines this set adds to trades already on the job, with the sheets each reads from. */
+      newLines?: { packageId: string; label: string; sheets: string[] }[]
     }
   | { type: 'acceptWork'; projectId: string; packageId: string }
+  | { type: 'tradeSendWarranty'; projectId: string; packageId: string }
   | {
       type: 'tradeSendFinalPayApp'
       projectId: string
@@ -425,7 +436,10 @@ export type GcAction =
   | { type: 'tradeOpenPortal'; partnerId: string }
   /** The trade answers the lines of its number the office could not read: each one in it, or left out. The number stays. */
   | { type: 'tradeAnswerLines'; projectId: string; packageId: string; inviteId: string; answers: Record<string, 'yes' | 'no'> }
-  | { type: 'ownerReleasedRetainage'; projectId: string; on: string }
+  /** The owner accepts the work in their portal: the punch list is done. */
+  | { type: 'ownerAcceptsWork'; projectId: string }
+  /** Our final pay application to the owner: the retainage they hold, with our conditional waiver on final payment. */
+  | { type: 'sendOwnerFinalPayApp'; projectId: string }
   | { type: 'closeJob'; projectId: string }
   | {
       type: 'approveDrawLess'
@@ -499,6 +513,8 @@ export interface OwnerPayAppSent {
   due: number
   /** The day the owner paid it. Null until they do. */
   paidOn: string | null
+  /** The final pay application: it asks for the retainage the owner held, with our waivers on final payment. */
+  final?: boolean
 }
 
 /** A pay application the office sent back: the draw as the trade sent it, why, and what we see. */

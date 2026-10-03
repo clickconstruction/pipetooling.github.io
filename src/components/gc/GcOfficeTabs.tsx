@@ -17,6 +17,7 @@ import {
   proposalTotals,
   retainageHeldNow,
   timesSentBack,
+  tradeCloseout,
   shortDate,
   sowMoney,
   thousands,
@@ -878,6 +879,8 @@ export function GcDrawsTab({ state, project, dispatch }: GcPaneProps) {
         if (!sow || !partner) return null
         const m = sowMoney(sow)
         const blockers = partnerBlockers(partner, state.today)
+        // A retainage release is paid 10 days after the owner pays us ours (owner, 2026-10-02).
+        const releaseWaits = tradeCloseout(sow, project, state.today).canPay ? [] : ['The owner has not paid us our retainage, or 10 days have not passed.']
         const ids = { projectId: project.id, packageId: pkg.id }
         return (
           <Card key={pkg.id}>
@@ -943,7 +946,12 @@ export function GcDrawsTab({ state, project, dispatch }: GcPaneProps) {
                   </Chip>
                   {d.status === 'requested' && (
                     <>
-                      <Btn kind="primary" disabled={blockers.length > 0} title={blockers.join(' ')} onClick={() => dispatch(d.final ? { type: 'approveRetainage', ...ids, drawId: d.id } : { type: 'approveDraw', ...ids, drawId: d.id })}>
+                      <Btn
+                        kind="primary"
+                        disabled={blockers.length > 0 || (d.final === true && releaseWaits.length > 0)}
+                        title={[...blockers, ...(d.final ? releaseWaits : [])].join(' ')}
+                        onClick={() => dispatch(d.final ? { type: 'approveRetainage', ...ids, drawId: d.id } : { type: 'approveDraw', ...ids, drawId: d.id })}
+                      >
                         Approve
                       </Btn>
                       {formFor?.drawId !== d.id && (

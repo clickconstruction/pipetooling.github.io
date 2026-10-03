@@ -175,8 +175,7 @@ const STEPS: Step[] = [
   { label: 'Pay draw 3', action: { type: 'payDraw', projectId: 'helotes', packageId: 'dry', drawId: 'dry-draw-3' } },
   { label: 'Hill Country signs the unconditional waiver on draw 3', action: { type: 'tradeSignUnconditional', projectId: 'helotes', packageId: 'dry', drawId: 'dry-draw-3' } },
   { label: 'Accept the drywall work', action: { type: 'acceptWork', projectId: 'helotes', packageId: 'dry' } },
-  // The owner's answer (2026-10-02): a trade's retainage comes 10 days after the owner releases ours.
-  { label: 'Dr. Raman released our retainage Sep 20', action: { type: 'ownerReleasedRetainage', projectId: 'helotes', on: '2026-09-20' } },
+  { label: 'Hill Country sends the warranty letter', action: { type: 'tradeSendWarranty', projectId: 'helotes', packageId: 'dry' } },
   {
     label: 'Hill Country sends the final pay application',
     action: {
@@ -236,6 +235,40 @@ const STEPS: Step[] = [
       quoteFile: 'lonestar-pad-b.pdf',
     },
   },
+  // A new set that adds work to a trade already on the job.
+  {
+    label: 'Boerne: Bulletin 1 adds a detention pond to Sitework',
+    action: {
+      type: 'issuePlanSet',
+      projectId: 'boerne',
+      label: 'Bulletin 1',
+      note: 'A detention pond at the north end. C-101 changed.',
+      sheets: ['C-101'],
+      addedSheets: [],
+      touches: ['site'],
+      recipients: ['lonestar'],
+      newTrades: [],
+      newLines: [{ packageId: 'site', label: 'Detention pond', sheets: ['C-101'] }],
+    },
+  },
+  // Stone Oak Pharmacy, closeout with the owner: the last trade's final, the owner accepts, our final, paid.
+  { label: 'Cool Breeze sends the warranty letter', action: { type: 'tradeSendWarranty', projectId: 'stoneoak', packageId: 'shvac' } },
+  {
+    label: 'Cool Breeze sends the final pay application',
+    action: {
+      type: 'tradeSendFinalPayApp',
+      projectId: 'stoneoak',
+      packageId: 'shvac',
+      periodTo: '2026-10-02',
+      address: '1188 Culebra Rd, San Antonio, TX 78201',
+      license: '',
+      signedBy: 'Andre Wallace',
+      signedTitle: 'Owner',
+    },
+  },
+  { label: 'Hollis accepts the work', action: { type: 'ownerAcceptsWork', projectId: 'stoneoak' } },
+  { label: 'Send Hollis the final pay application', action: { type: 'sendOwnerFinalPayApp', projectId: 'stoneoak' } },
+  { label: 'Hollis pays the final pay application', action: { type: 'ownerPaid', projectId: 'stoneoak', number: 4 } },
   // The owner's answers (2026-10-02): approve less than asked, our crew by stage, close a job.
   {
     label: 'Cedar & Pine sends pay application 2',
@@ -379,10 +412,11 @@ describe('GC mode golden walk', () => {
       'tradeSendPayApp',
       'tradeUploadCoi', 'tradeSignW9',
       'sendOwnerPayApp', 'ownerPaid', 'issuePlanSet',
-      'acceptWork', 'tradeSendFinalPayApp', 'approveRetainage',
+      'acceptWork', 'tradeSendWarranty', 'tradeSendFinalPayApp', 'approveRetainage',
       'selfReport',
+      'ownerAcceptsWork', 'sendOwnerFinalPayApp',
       'sendDrawBack',
-      'ownerReleasedRetainage', 'closeJob', 'approveDrawLess', 'selfReportStage',
+      'closeJob', 'approveDrawLess', 'selfReportStage',
       'tradeOpenPortal',
       'tradeAnswerLines',
     ]

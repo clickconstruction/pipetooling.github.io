@@ -139,30 +139,53 @@ describe('closeout: retainage release and the final releases of lien', () => {
       { type: 'approveDraw', ...ids, drawId: 'dry-draw-2' },
       { type: 'payDraw', ...ids, drawId: 'dry-draw-2' },
     ])
-  /** Accepted, and the owner released ours on Sep 20: today (Oct 2) is past Sep 30. */
-  const ready = () => play([{ type: 'acceptWork', ...ids }, { type: 'ownerReleasedRetainage', projectId: 'helotes', on: '2026-09-20' }], allBilled())
+  /** Every line billed and accepted: the final pay application can go in. */
+  const ready = () => play([{ type: 'acceptWork', ...ids }], allBilled())
+  /** The owner paid our final pay application on `on` (Bill the owner's record, written by hand here). */
+  const ownerPaid = (s: GcState, on: string): GcState => ({
+    ...s,
+    projects: s.projects.map((p) =>
+      p.id === 'helotes'
+        ? {
+            ...p,
+            ownerBilling: {
+              ...(p.ownerBilling ?? { billed: 0, paid: 0, retainageHeld: 0 }),
+              payApps: [
+                ...(p.ownerBilling?.payApps ?? []),
+                { number: 9, periodTo: on, sentOn: on, doneToDate: {}, workToDate: 0, retainagePct: 10, retainage: 0, due: 0, paidOn: on, final: true },
+              ],
+            },
+          }
+        : p,
+    ),
+  })
 
   it('holds 10% of every draw until the release is paid', () => {
     expect(retainageHeldNow(drySow(allBilled()))).toBe(6_420)
   })
 
-  it('waits for our acceptance, then 10 days after the owner releases ours', () => {
+  it('opens the final pay application once we accept the work', () => {
     const billed = allBilled()
     expect(closeout(billed).next?.key).toBe('accepted')
     const early = { type: 'tradeSendFinalPayApp' as const, ...ids, ...typed }
     expect(gcReducer(billed, early)).toBe(billed)
-    const accepted = play([{ type: 'acceptWork', ...ids }], billed)
-    expect(closeout(accepted).next?.key).toBe('ownerReleased')
-    expect(gcReducer(accepted, early)).toBe(accepted)
-    // Released Sep 25: theirs opens Oct 5, after today.
-    const tooSoon = play([{ type: 'ownerReleasedRetainage', projectId: 'helotes', on: '2026-09-25' }], accepted)
-    expect(closeout(tooSoon)).toMatchObject({ canAskFinal: false, opensOn: '2026-10-05' })
-    expect(gcReducer(tooSoon, early)).toBe(tooSoon)
-    expect(closeout(ready()).canAskFinal).toBe(true)
+    expect(closeout(ready())).toMatchObject({ canAskFinal: true, canPay: false })
   })
 
-  it('an older caller without the project never opens the final pay application early', () => {
-    expect(tradeCloseout(drySow(ready())).canAskFinal).toBe(false)
+  it('pays it 10 days after the owner pays us ours', () => {
+    const asked = play([{ type: 'tradeSendFinalPayApp', ...ids, ...typed }], ready())
+    expect(closeout(asked).next?.key).toBe('ownerReleased')
+    // The owner paid us Sep 25: theirs can be paid Oct 5, after today (Oct 2).
+    expect(closeout(ownerPaid(asked, '2026-09-25'))).toMatchObject({ canPay: false, opensOn: '2026-10-05' })
+    // Paid Sep 20: Sep 30 has passed.
+    const paid = ownerPaid(asked, '2026-09-20')
+    expect(closeout(paid)).toMatchObject({ canPay: true, opensOn: '2026-09-30' })
+    expect(closeout(paid).next?.key).toBe('released')
+  })
+
+  it('an older caller without the project never pays early', () => {
+    const asked = play([{ type: 'tradeSendFinalPayApp', ...ids, ...typed }], ready())
+    expect(tradeCloseout(drySow(ownerPaid(asked, '2026-09-20'))).canPay).toBe(false)
   })
 
   it('the final 702 releases the retainage: nothing held, line 8 is what was held', () => {
@@ -196,12 +219,14 @@ describe('closeout: retainage release and the final releases of lien', () => {
     expect(closeout(closed).closed).toBe(true)
   })
 
-  it('a job closes only once every trade is closed out, our crew is done and the owner released ours', () => {
+  it('a job closes only once every trade is closed out, our crew is done and the owner paid our final', () => {
     const left = jobCloseout(ready(), helotes(ready()))
     expect(left.ready).toBe(false)
     expect(left.left).toContain('Plumbing: our own crew is 0% done.')
     expect(left.left).toContain('Framing and drywall: final pay application.')
-    expect(left.left).not.toContain('The owner has not released our retainage.')
+    expect(left.left).toContain('The owner has not paid our final pay application.')
+    const paid = ownerPaid(ready(), '2026-09-20')
+    expect(jobCloseout(paid, helotes(paid)).left).not.toContain('The owner has not paid our final pay application.')
   })
 })
 

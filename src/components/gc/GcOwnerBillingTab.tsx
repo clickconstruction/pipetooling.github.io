@@ -6,6 +6,7 @@ import {
   daysUntil,
   missingTradeWaivers,
   money,
+  ownerCloseout,
   ownerAccount,
   ownerExpectPaidOn,
   ownerPayApp,
@@ -17,6 +18,7 @@ import {
   type GcAction,
   type GcProject,
   type GcState,
+  type OwnerCloseout,
   type OwnerLine,
   type OwnerPayAppSent,
 } from '../../lib/gcMode/gcModel'
@@ -70,6 +72,7 @@ function OfficeSide({ state, project, dispatch }: { state: GcState; project: GcP
   const doneBefore = app.lines.reduce((s, l) => s + l.doneBefore, 0)
   const checks = tradeWaiverChecks(state, project, Object.fromEntries(app.lines.map((l) => [l.id, l.doneToDate])))
   const missing = missingTradeWaivers(checks)
+  const closeout = ownerCloseout(state, project)
 
   return (
     <div style={{ display: 'grid', gap: '1rem' }}>
@@ -109,6 +112,9 @@ function OfficeSide({ state, project, dispatch }: { state: GcState; project: GcP
         </Card>
       )}
 
+      {closeout.steps[0]?.done || closeout.final ? (
+        <CloseoutCard project={project} closeout={closeout} onSendFinal={() => dispatch({ type: 'sendOwnerFinalPayApp', projectId: project.id })} />
+      ) : (
       <Card>
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', marginBottom: '0.35rem' }}>
           <strong style={{ fontSize: '1.05rem' }}>Pay application {app.number}</strong>
@@ -180,6 +186,7 @@ function OfficeSide({ state, project, dispatch }: { state: GcState; project: GcP
           )}
         </div>
       </Card>
+      )}
 
       <Card style={{ padding: 0, overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -300,7 +307,7 @@ function SentRow({
   const late = app.paidOn === null && expectOn !== null && daysUntil(expectOn, today) < 0
   return (
     <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.875rem', borderTop: '1px solid var(--border)', paddingTop: '0.4rem' }}>
-      <strong>Pay application {app.number}</strong>
+      <strong>{app.final ? 'Final pay application' : `Pay application ${app.number}`}</strong>
       <span style={{ color: 'var(--text-muted)' }}>{month} · sent {shortDate(app.sentOn)}</span>
       <span>
         <strong>{money(app.due)}</strong> to pay · {money(app.retainage)} held
@@ -308,19 +315,85 @@ function SentRow({
       {app.paidOn !== null ? (
         <>
           <Chip tone="green">paid {shortDate(app.paidOn)}</Chip>
-          <Chip tone="green">our unconditional waiver signed</Chip>
+          <Chip tone="green">our unconditional waiver{app.final ? ' on final payment' : ''} signed</Chip>
         </>
       ) : (
         <>
           <Chip tone={late ? 'red' : 'amber'}>
             {late ? `late · expected ${shortDate(expectOn)}` : expectOn ? `waiting · expected ${shortDate(expectOn)}` : 'waiting'}
           </Chip>
-          <Chip tone="grey">our conditional waiver went with it</Chip>
+          <Chip tone="grey">our conditional waiver{app.final ? ' on final payment' : ''} went with it</Chip>
           <Btn kind="primary" onClick={onPaid} title="Marks it paid and signs our unconditional waiver for this amount.">
             Mark paid
           </Btn>
         </>
       )}
     </div>
+  )
+}
+
+const WHO_WORDS: Record<OwnerCloseout['steps'][number]['who'], string> = { office: 'us', trades: 'the trades', owner: 'the owner' }
+
+/** Our closeout with the owner, once every line is billed: what is left before they release what they hold. */
+function CloseoutCard({ project, closeout, onSendFinal }: { project: GcProject; closeout: OwnerCloseout; onSendFinal: () => void }) {
+  return (
+    <Card>
+      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', marginBottom: '0.35rem' }}>
+        <strong style={{ fontSize: '1.05rem' }}>Closeout with {project.owner}</strong>
+        <Chip tone={closeout.closed ? 'green' : 'blue'}>{closeout.closed ? 'all paid' : `they hold ${money(closeout.held)}`}</Chip>
+      </div>
+      <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '0.7rem' }}>
+        {closeout.closed
+          ? 'Every line is billed and paid. They released everything they held.'
+          : 'Every line is billed. What is left is the retainage they hold. It comes with our final pay application.'}
+      </div>
+      <div style={{ display: 'grid', gap: '0.45rem' }}>
+        {closeout.steps.map((st, i) => {
+          const isNext = closeout.next?.key === st.key
+          return (
+            <div key={st.key} style={{ display: 'grid', gridTemplateColumns: '1.6rem 1fr', gap: '0.5rem', alignItems: 'start', fontSize: '0.875rem' }}>
+              <span
+                style={{
+                  width: '1.4rem',
+                  height: '1.4rem',
+                  borderRadius: 999,
+                  display: 'grid',
+                  placeItems: 'center',
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  background: st.done ? 'var(--bg-green-100)' : isNext ? 'var(--bg-blue-200)' : 'var(--bg-muted)',
+                  color: st.done ? 'var(--text-green-800)' : isNext ? 'var(--text-blue-800)' : 'var(--text-600)',
+                }}
+              >
+                {st.done ? '✓' : i + 1}
+              </span>
+              <div>
+                <strong>{st.label}</strong> <span style={{ color: 'var(--text-muted)' }}>· {WHO_WORDS[st.who]}</span>
+                <div style={{ color: st.done ? 'var(--text-muted)' : undefined }}>{st.detail}</div>
+                {st.key === 'finalApp' && !st.done && (
+                  <div style={{ marginTop: '0.35rem', display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <Btn
+                      kind="primary"
+                      disabled={!closeout.canSendFinal}
+                      onClick={onSendFinal}
+                      title="It asks for everything they hold. Our conditional waiver on final payment goes with it."
+                    >
+                      Send the final pay application
+                    </Btn>
+                    {!closeout.canSendFinal && (
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                        {closeout.tradesWaiting.length > 0
+                          ? 'It waits for every trade’s final pay application.'
+                          : 'It waits for the owner to accept the work.'}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </Card>
   )
 }

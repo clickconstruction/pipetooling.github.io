@@ -351,9 +351,9 @@ export function workAllBilled(sow: Sow): boolean {
   return sow.sov.length > 0 && sow.sov.every((l) => l.pctBilled >= 100)
 }
 
-export type CloseoutKey = 'billed' | 'accepted' | 'ownerReleased' | 'finalApp' | 'released' | 'finalWaiver'
+export type CloseoutKey = 'billed' | 'accepted' | 'finalApp' | 'ownerReleased' | 'released' | 'finalWaiver'
 
-/** A trade's retainage comes this many days after the owner releases ours (owner, 2026-10-02). */
+/** We pay a trade its retainage this many days after the owner pays us ours (owner, 2026-10-02). */
 export const TRADE_RETAINAGE_WAIT_DAYS = 10
 
 /** The day after `days` days, as YYYY-MM-DD (UTC, so no time zone moves it). */
@@ -362,16 +362,26 @@ export function addDays(iso: string, days: number): string {
   return new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, (d ?? 1) + days)).toISOString().slice(0, 10)
 }
 
-/** The first day a trade may ask for its retainage: 10 days after the owner releases ours. Null: not released. */
+/**
+ * The day the owner paid us the retainage they held: the day they paid our final pay application
+ * on Bill the owner. The same record Owner Billing's `ownerReleasedRetainage` reads (that file
+ * imports this one, so this reads the record itself). Null: not paid yet.
+ */
+export function ownerRetainagePaidOn(project: GcProject): string | null {
+  return project.ownerBilling?.payApps?.find((a) => a.final === true && a.paidOn !== null)?.paidOn ?? null
+}
+
+/** The first day we may pay a trade its retainage: 10 days after the owner pays us ours. Null: not paid yet. */
 export function tradeRetainageOpensOn(project: GcProject): string | null {
-  return project.ownerRetainageReleasedOn ? addDays(project.ownerRetainageReleasedOn, TRADE_RETAINAGE_WAIT_DAYS) : null
+  const paidOn = ownerRetainagePaidOn(project)
+  return paidOn ? addDays(paidOn, TRADE_RETAINAGE_WAIT_DAYS) : null
 }
 
 export interface CloseoutStep {
   key: CloseoutKey
   label: string
-  /** Who moves it: our office, or the trade from its portal. */
-  who: 'office' | 'trade'
+  /** Who moves it: our office, the trade from its portal, or the owner paying us. */
+  who: 'office' | 'trade' | 'owner'
   done: boolean
   detail: string
 }
@@ -386,15 +396,17 @@ export interface TradeCloseout {
   finalDraw: Draw | null
   /** May the trade send its final pay application now? */
   canAskFinal: boolean
-  /** The first day they may ask, once the owner has released ours. Null: not yet released. */
+  /** May we approve and pay their retainage now: 10 days after the owner paid us ours. */
+  canPay: boolean
+  /** The first day we may pay it, once the owner has paid us. Null: the owner has not yet. */
   opensOn: string | null
 }
 
 /**
- * A trade's closeout, in order: every line billed, we accept the work (the punch list is done),
- * the owner releases our retainage and 10 days pass (owner, 2026-10-02), their final pay
- * application with a conditional final release of lien (the one paper asked for), we approve
- * and pay the retainage, then their unconditional final release of lien.
+ * A trade's closeout, in order (owner, 2026-10-02): every line billed; we accept the work (the
+ * punch list is done); their final pay application with a conditional final release of lien, the
+ * one paper asked for (our own final to the owner waits for every trade's); the owner pays us our
+ * retainage and 10 days pass; we approve and pay theirs; their unconditional final release of lien.
  */
 export function tradeCloseout(sow: Sow, project?: GcProject, today?: string): TradeCloseout {
   const billed = workAllBilled(sow)
@@ -404,11 +416,12 @@ export function tradeCloseout(sow: Sow, project?: GcProject, today?: string): Tr
   const scheduled = sow.sov.reduce((s, l) => s + l.amount, 0)
   const billedPct = scheduled === 0 ? 0 : Math.round(sow.sov.reduce((s, l) => s + l.amount * l.pctBilled, 0) / scheduled)
   const accepted = Boolean(sow.acceptedOn)
-  // Without the project and today (an older caller), the owner's release counts as not yet in.
-  const releasedOn = project?.ownerRetainageReleasedOn ?? null
+  // Without the project and today (an older caller), the owner's payment counts as not yet in.
+  const paidOn = project ? ownerRetainagePaidOn(project) : null
   const opensOn = project ? tradeRetainageOpensOn(project) : null
-  // A final application already in went past this step, whatever the dates say now.
-  const waited = finalDraw !== null || (opensOn !== null && today !== undefined && opensOn <= today)
+  const paidBack = finalDraw?.status === 'paid'
+  // A release already paid went past this step, whatever the dates say now.
+  const waited = paidBack || (opensOn !== null && today !== undefined && opensOn <= today)
   const steps: CloseoutStep[] = [
     {
       key: 'billed',
@@ -425,17 +438,6 @@ export function tradeCloseout(sow: Sow, project?: GcProject, today?: string): Tr
       detail: accepted ? `Accepted ${shortDate(sow.acceptedOn ?? null)}.` : 'Walk the work with them. When the punch list is done, accept it.',
     },
     {
-      key: 'ownerReleased',
-      label: 'The owner releases ours',
-      who: 'office',
-      done: waited,
-      detail: waited
-        ? `The owner released ours ${shortDate(releasedOn)}.`
-        : releasedOn
-          ? `The owner released ours ${shortDate(releasedOn)}. Theirs can be asked for ${shortDate(opensOn)}.`
-          : `The owner still holds our retainage. Theirs comes ${TRADE_RETAINAGE_WAIT_DAYS} days after the owner releases ours.`,
-    },
-    {
       key: 'finalApp',
       label: 'Final pay application',
       who: 'trade',
@@ -445,26 +447,38 @@ export function tradeCloseout(sow: Sow, project?: GcProject, today?: string): Tr
         : `It asks for the ${money(held)} we hold, with a conditional final release of lien.`,
     },
     {
+      key: 'ownerReleased',
+      label: 'The owner pays us ours',
+      who: 'owner',
+      done: waited,
+      detail: waited
+        ? `The owner paid us our retainage ${shortDate(paidOn)}.`
+        : paidOn
+          ? `The owner paid us ours ${shortDate(paidOn)}. Theirs can be paid ${shortDate(opensOn)}.`
+          : `Theirs is paid ${TRADE_RETAINAGE_WAIT_DAYS} days after the owner pays our final pay application on Bill the owner.`,
+    },
+    {
       key: 'released',
       label: 'Retainage paid',
       who: 'office',
-      done: finalDraw?.status === 'paid',
-      detail:
-        finalDraw?.status === 'paid'
-          ? `Paid ${money(finalDraw.net)}.`
-          : finalDraw?.status === 'approved'
-            ? 'Approved. Mark it paid.'
-            : finalDraw
+      done: paidBack,
+      detail: paidBack
+        ? `Paid ${money(finalDraw?.net ?? 0)}.`
+        : finalDraw?.status === 'approved'
+          ? 'Approved. Mark it paid.'
+          : finalDraw
+            ? waited
               ? 'Check the final pay application and approve it.'
-              : 'Waits for the final pay application.',
+              : 'Approve it once the owner has paid us and 10 days have passed.'
+            : 'Waits for the final pay application.',
     },
     {
       key: 'finalWaiver',
       label: 'Unconditional final release',
       who: 'trade',
-      done: finalDraw?.status === 'paid' && finalDraw.waiver === 'unconditional',
+      done: paidBack && finalDraw?.waiver === 'unconditional',
       detail:
-        finalDraw?.status === 'paid' && finalDraw.waiver === 'unconditional'
+        paidBack && finalDraw?.waiver === 'unconditional'
           ? 'Their unconditional final release of lien is in.'
           : 'They sign the unconditional final release of lien once paid.',
     },
@@ -476,7 +490,8 @@ export function tradeCloseout(sow: Sow, project?: GcProject, today?: string): Tr
     closed: next === null,
     held,
     finalDraw,
-    canAskFinal: billed && accepted && waited && finalDraw === null && !open && held > 0,
+    canAskFinal: billed && accepted && finalDraw === null && !open && held > 0,
+    canPay: waited,
     opensOn,
   }
 }
@@ -509,7 +524,7 @@ export function projectCloseout(state: GcState, project: GcProject) {
 
 /**
  * Can we close the job? Every trade we hire is closed out, our own crew is done, and the owner
- * has released our retainage. Says what is left, in words, until it can (owner, 2026-10-02: a
+ * has paid our final pay application. Says what is left, in words, until it can (owner, 2026-10-02: a
  * closed job leaves Building for its own section on the board).
  */
 export function jobCloseout(state: GcState, project: GcProject): { ready: boolean; left: string[]; closedOn: string | null } {
@@ -527,6 +542,6 @@ export function jobCloseout(state: GcState, project: GcProject): { ready: boolea
     const c = tradeCloseout(pkg.sow, project, state.today)
     if (!c.closed) left.push(`${pkg.trade}: ${c.next?.label.toLowerCase() ?? 'not closed out'}.`)
   }
-  if (!project.ownerRetainageReleasedOn) left.push('The owner has not released our retainage.')
+  if (!ownerRetainagePaidOn(project)) left.push('The owner has not paid our final pay application.')
   return { ready: left.length === 0 && !project.closedOn, left, closedOn: project.closedOn ?? null }
 }

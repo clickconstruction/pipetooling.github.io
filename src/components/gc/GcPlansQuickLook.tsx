@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   currentRev,
   lineReads,
+  setThatAddedLine,
   planLabel,
   plansReach,
   sheetDiscipline,
@@ -146,7 +147,7 @@ export function GcPlansQuickLook({ project, onClose, onSeeWhoHasIt }: Props) {
           >
             {rev < newest && <strong>An older set. {planLabel(project, newest)} replaced it. </strong>}
             {set.note}
-            {changedCount > 0 && <> {changedCount} sheets changed in this set.</>}
+            {changedCount > 0 && <> {changedCount} {changedCount === 1 ? 'sheet' : 'sheets'} changed in this set.</>}
           </div>
         )}
 
@@ -209,9 +210,15 @@ export function GcPlansQuickLook({ project, onClose, onSeeWhoHasIt }: Props) {
                   onSheet.map((t) => (
                     <div key={t.pkg.id} style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap' }}>
                       <span style={{ minWidth: '7rem' }}>{t.pkg.trade}</span>
-                      {t.lines.map((l) => (
-                        <Chip key={l.item.id} tone="grey">{l.item.label}</Chip>
-                      ))}
+                      {t.lines.map((l) => {
+                        const by = setThatAddedLine(project, l.item.id)
+                        return (
+                          <Chip key={l.item.id} tone={by ? 'blue' : 'grey'} title={by ? `${by} added this line` : undefined}>
+                            {l.item.label}
+                            {by ? ` · new in ${by}` : ''}
+                          </Chip>
+                        )
+                      })}
                     </div>
                   ))
                 )}

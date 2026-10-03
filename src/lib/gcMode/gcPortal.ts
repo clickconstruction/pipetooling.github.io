@@ -12,6 +12,8 @@ import { askPromise, type AskPromise } from './gcFollowUp'
 import { bidIsStale, sowMoney } from './gcBids'
 import { GC_COMPANY } from './gcFixture'
 import { lineReads, tradeSheets } from './gcNewProject'
+import { sentBackOpen, tradeCloseout, workAllBilled } from './gcBuilding'
+import { planLabel } from './gcLookups'
 
 /** What the plans block tells one company on one ask. */
 export interface PortalPlanNews {
@@ -244,16 +246,34 @@ export function portalTodos(state: GcState, partnerId: string, asks: PortalAsk[]
     }
     if (a.kind === 'job' && a.pkg.sow) {
       const sow = a.pkg.sow
+      const signed = sow.status === 'signed'
       if (sow.status === 'sent') {
         todos.push({ key: `${key}:sow`, projectId, text: `Sign your ${trade} statement of work for ${where}.`, tone: 'amber', by: null })
       }
       for (const d of sow.draws) {
-        if (d.status === 'paid' && d.waiver === 'conditional') {
+        if (!d.final && d.status === 'paid' && d.waiver === 'conditional') {
           todos.push({ key: `${key}:waiver:${d.id}`, projectId, text: `Draw ${d.number} on ${where} is paid. Sign the unconditional waiver.`, tone: 'amber', by: null })
         }
       }
+      // A pay application we sent back waits on them: the work they reported is not new money to ask for.
+      const back = signed ? sentBackOpen(sow) : null
+      if (back) {
+        todos.push({ key: `${key}:back`, projectId, text: `${gc} sent pay application ${back.draw.number} on ${where} back. Fix it and send it again.`, tone: 'amber', by: back.on })
+      }
+      // Every line billed: the job is in closeout, and the trade's own steps come here.
+      const closing = signed && workAllBilled(sow)
+      if (closing) {
+        const c = tradeCloseout(sow)
+        if (c.canAskFinal) {
+          todos.push({ key: `${key}:final`, projectId, text: `Send your final pay application for ${where}. It asks for the ${money(c.held)} ${gc} holds, with your conditional final release of lien.`, tone: 'amber', by: null })
+        }
+        if (c.finalDraw?.status === 'paid' && c.finalDraw.waiver === 'conditional') {
+          todos.push({ key: `${key}:finalwaiver`, projectId, text: `Your retainage on ${where} is paid. Sign your unconditional final release of lien.`, tone: 'amber', by: null })
+        }
+      }
       const m = sowMoney(sow)
-      if (sow.status === 'signed' && a.project.stage === 'building' && m.ready > 0 && !sow.draws.some((d) => d.status === 'requested')) {
+      // Insurance that ran out stops a draw: its own red line above says so.
+      if (signed && !back && !closing && coi.done && a.project.stage === 'building' && m.ready > 0 && !sow.draws.some((d) => d.status === 'requested')) {
         todos.push({ key: `${key}:draw`, projectId, text: `You can ask ${gc} for ${money(m.ready)} on ${where}.`, tone: 'plain', by: null })
       }
     }
@@ -307,8 +327,9 @@ export function portalLink(partnerId: string): string {
 export interface PortalMessage {
   key: string
   on: string
-  kind: 'invite' | 'nudge' | 'plans' | 'bidTab'
-  projectId: string
+  kind: 'invite' | 'nudge' | 'plans' | 'bidTab' | 'msa' | 'sow' | 'start'
+  /** Null: about the company, not one project (the master agreement). */
+  projectId: string | null
   subject: string
   /** The email, one paragraph a line. */
   lines: string[]
@@ -318,7 +339,7 @@ export interface PortalMessage {
   text?: string
 }
 
-const KIND_ORDER: Record<PortalMessage['kind'], number> = { bidTab: 0, plans: 1, nudge: 2, invite: 3 }
+const KIND_ORDER: Record<PortalMessage['kind'], number> = { start: 0, sow: 1, msa: 2, bidTab: 3, plans: 4, nudge: 5, invite: 6 }
 
 function firstName(contact: string): string {
   return contact.split(' ')[0] ?? contact
@@ -329,7 +350,10 @@ function setOn(project: GcProject, day: string): PlanSet | undefined {
   return [...project.planSets].filter((s) => s.issuedOn <= day).sort((a, b) => b.rev - a.rev)[0]
 }
 
-/** Everything we sent one company, newest first: invitations, reminders, new plan sets, bid tabs. */
+/**
+ * Everything we sent one company, newest first: invitations, reminders, new plan sets, bid tabs,
+ * the master agreement, a statement of work to sign, and the day work starts.
+ */
 export function portalMessages(state: GcState, partnerId: string): PortalMessage[] {
   const partner = partnerById(state, partnerId)
   if (!partner) return []
@@ -337,8 +361,63 @@ export function portalMessages(state: GcState, partnerId: string): PortalMessage
   const hello = `Hello ${firstName(partner.contact)},`
   const out: PortalMessage[] = []
 
+  if (partner.msaSentOn) {
+    out.push({
+      key: 'msa',
+      on: partner.msaSentOn,
+      kind: 'msa',
+      projectId: null,
+      subject: `Your master agreement with ${gc}`,
+      lines: [
+        hello,
+        'Here is our master agreement. You sign it once, and it covers every job you do for us.',
+        'After that, each job is a short statement of work.',
+        'Open your portal to read it and sign it.',
+      ],
+    })
+  }
+
   for (const project of state.projects) {
     const mine = project.packages.flatMap((pkg) => pkg.invites.filter((i) => i.partnerId === partnerId).map((invite) => ({ pkg, invite })))
+    const won = mine.filter(({ pkg, invite }) => pkg.awardedInviteId === invite.id)
+
+    for (const { pkg } of won) {
+      const sow = pkg.sow
+      if (!sow?.sentOn) continue
+      out.push({
+        key: `${pkg.id}:sow`,
+        on: sow.sentOn,
+        kind: 'sow',
+        projectId: project.id,
+        subject: `Your statement of work for ${pkg.trade} on ${project.name}`,
+        lines: [
+          hello,
+          `We picked your number for ${pkg.trade} on ${project.name}. Thank you.`,
+          `Your statement of work is ready: ${money(sow.price)}, based on the ${planLabel(project, sow.basedOnRev)}.`,
+          `We hold back ${sow.retainagePct}% of each draw until the job is done.`,
+          'Open your portal to read it and sign it.',
+        ],
+      })
+    }
+
+    if (project.startedOn && won.length > 0) {
+      const begins = project.startDate ? weekdayDate(project.startDate) : null
+      const trades = won.map((w) => w.pkg.trade).join(' and ')
+      out.push({
+        key: `${project.id}:start`,
+        on: project.startedOn,
+        kind: 'start',
+        projectId: project.id,
+        subject: begins ? `Work starts on ${project.name} ${begins}` : `${project.name} is started`,
+        lines: [
+          hello,
+          begins ? `${project.name} is started. Work begins ${begins}.` : `${project.name} is started.`,
+          `Your part is ${trades}.`,
+          'Report your work in your portal as it goes. That is how you ask for each draw.',
+        ],
+        text: `${gc}: work on ${project.name} begins${begins ? ` ${begins}` : ' soon'}. Your part is ${trades}. Details: ${portalLink(partnerId)}`,
+      })
+    }
     for (const { pkg, invite } of mine) {
       const set = setOn(project, invite.invitedOn)
       const due = project.bidDue && invite.invitedOn <= project.bidDue ? weekdayDate(project.bidDue) : null

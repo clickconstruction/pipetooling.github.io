@@ -228,7 +228,6 @@ function CloseoutForTrade({
     )
   }
   const accepted = Boolean(sow.acceptedOn)
-  const waited = c.steps.find((st) => st.key === 'ownerReleased')?.done ?? false
   const back = sentBackOpen(sow)
   const item = (done: boolean, words: ReactNode, extra?: ReactNode) => (
     <div style={{ display: 'grid', gridTemplateColumns: '1rem minmax(0, 1fr)', gap: '0.4rem', alignItems: 'baseline' }}>
@@ -239,11 +238,7 @@ function CloseoutForTrade({
       </span>
     </div>
   )
-  const opensWhen = !accepted
-    ? `It opens once ${GC_SHORT} accepts your work.`
-    : c.opensOn
-      ? `It opens ${shortDate(c.opensOn)}.`
-      : `It opens ${TRADE_RETAINAGE_WAIT_DAYS} days after the owner pays ${GC_SHORT} its retainage.`
+  const opensWhen = `It opens once ${GC_SHORT} accepts your work.`
   return (
     <>
       <div>
@@ -259,14 +254,6 @@ function CloseoutForTrade({
       )}
       {item(accepted, accepted ? `${GC_SHORT} accepted your work ${shortDate(sow.acceptedOn ?? null)}.` : `${GC_SHORT} walks the work with you and checks the punch list.`)}
       {item(
-        waited,
-        waited
-          ? `The owner released ${GC_SHORT}'s retainage. Yours is ready to ask for.`
-          : c.opensOn
-            ? `The owner released ${GC_SHORT}'s retainage. You can ask for yours ${shortDate(c.opensOn)}.`
-            : `Your retainage comes ${TRADE_RETAINAGE_WAIT_DAYS} days after the owner pays ${GC_SHORT} its retainage.`,
-      )}
-      {item(
         f !== null,
         f ? `Your final pay application is with ${GC_SHORT}.` : `Ask for the ${money(c.held)} with a final pay application.`,
         f ? (
@@ -280,7 +267,13 @@ function CloseoutForTrade({
       {!f && !c.canAskFinal && <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', paddingLeft: '1.4rem' }}>{opensWhen}</div>}
       {item(
         f?.status === 'paid',
-        f?.status === 'paid' ? `${GC_SHORT} paid your retainage.` : f?.status === 'approved' ? `${GC_SHORT} approved it. Payment is coming.` : `${GC_SHORT} pays your retainage.`,
+        f?.status === 'paid'
+          ? `${GC_SHORT} paid your retainage.`
+          : f?.status === 'approved'
+            ? `${GC_SHORT} approved it. Payment is coming.`
+            : c.opensOn
+              ? `${GC_SHORT} pays your retainage ${shortDate(c.opensOn)}, ${TRADE_RETAINAGE_WAIT_DAYS} days after the owner paid ${GC_SHORT}.`
+              : `${GC_SHORT} pays your retainage ${TRADE_RETAINAGE_WAIT_DAYS} days after the owner pays ${GC_SHORT} its own.`,
       )}
       {item(
         false,

@@ -6,6 +6,9 @@ import {
   missingTradeWaivers,
   nextOwnerBillDay,
   ourOwnerWaivers,
+  ownerAllBilled,
+  ownerCloseout,
+  ownerReleasedRetainage,
   ownerAccount,
   ownerPayApp,
   ownerPayAppHasWork,
@@ -166,6 +169,75 @@ describe('lien waivers to the owner', () => {
     const dry = sentPayAppLines(state, helotesOf(state), 2).find((l) => l.id === 'dry')
     expect(dry && [dry.worth, dry.doneBefore, dry.thisMonth, dry.doneToDate]).toEqual([64_200, 38_320, 10_880, 49_200])
     expect(sentPayAppLines(state, helotesOf(state), 3)).toEqual([])
+  })
+})
+
+describe('the retainage the owner holds, released at the end', () => {
+  const stoneOakOf = (state: GcState) => {
+    const p = state.projects.find((x) => x.id === 'stoneoak')
+    if (!p) throw new Error('fixture has no stoneoak')
+    return p
+  }
+  const coolBreezeCloses = (state: GcState) => {
+    const warranty = gcReducer(state, { type: 'tradeSendWarranty', projectId: 'stoneoak', packageId: 'shvac' })
+    return gcReducer(warranty, {
+      type: 'tradeSendFinalPayApp',
+      projectId: 'stoneoak',
+      packageId: 'shvac',
+      periodTo: '2026-10-02',
+      address: '1188 Culebra Rd, San Antonio, TX 78201',
+      license: '',
+      signedBy: 'Andre Wallace',
+      signedTitle: 'Owner',
+    })
+  }
+
+  it('starts with every line billed, Cool Breeze still to send its final, and $18,241.30 held', () => {
+    const state = initialGcState()
+    const c = ownerCloseout(state, stoneOakOf(state))
+    expect(ownerAllBilled(state, stoneOakOf(state))).toBe(true)
+    expect(c.steps.map((st) => [st.key, st.done])).toEqual([['billed', true], ['trades', false], ['accepted', false], ['finalApp', false], ['paid', false]])
+    // Building lane, owner's call 2026-10-02: closeout asks for no warranty letter, so the next step is the final.
+    expect(c.tradesWaiting).toEqual([{ packageId: 'shvac', company: 'Cool Breeze Mechanical', why: 'Cool Breeze Mechanical has not sent it yet.' }])
+    expect(c.held).toBeCloseTo(18_241.3, 2)
+    expect([c.canAccept, c.canSendFinal]).toEqual([true, false])
+    // Nothing new to bill: the draft asks for nothing.
+    expect(ownerPayAppHasWork(ownerPayApp(state, stoneOakOf(state)))).toBe(false)
+  })
+
+  it('holds our final until every trade has sent its final pay application, and the owner has accepted', () => {
+    let state = gcReducer(initialGcState(), { type: 'ownerAcceptsWork', projectId: 'stoneoak' })
+    expect(stoneOakOf(state).ownerBilling?.acceptedOn).toBe('2026-10-02')
+    expect(gcReducer(state, { type: 'sendOwnerFinalPayApp', projectId: 'stoneoak' })).toBe(state)
+    state = coolBreezeCloses(state)
+    const c = ownerCloseout(state, stoneOakOf(state))
+    expect([c.tradesWaiting, c.canSendFinal]).toEqual([[], true])
+  })
+
+  it('asks for everything the owner holds, with our waivers on final payment, and releases it when paid', () => {
+    let state = coolBreezeCloses(initialGcState())
+    state = gcReducer(state, { type: 'ownerAcceptsWork', projectId: 'stoneoak' })
+    state = gcReducer(state, { type: 'sendOwnerFinalPayApp', projectId: 'stoneoak' })
+    const final = stoneOakOf(state).ownerBilling?.payApps?.[3]
+    expect(final && [final.number, final.final, final.retainage, Math.round(final.due * 100) / 100, final.paidOn]).toEqual([4, true, 0, 18_241.3, null])
+    expect(ourOwnerWaivers(stoneOakOf(state))[0]).toMatchObject({ payApp: 4, kind: 'conditional', final: true })
+    expect(ownerReleasedRetainage(stoneOakOf(state))).toBe(false)
+    expect(Math.round((ownerAccount(stoneOakOf(state))?.owed ?? 0) * 100) / 100).toBe(18_241.3)
+    state = gcReducer(state, { type: 'ownerPaid', projectId: 'stoneoak', number: 4 })
+    const c = ownerCloseout(state, stoneOakOf(state))
+    expect([c.closed, c.held]).toEqual([true, 0])
+    expect(ourOwnerWaivers(stoneOakOf(state))[0]).toMatchObject({ kind: 'unconditional', final: true })
+    expect(ownerReleasedRetainage(stoneOakOf(state))).toBe(true)
+    expect(Math.round(ownerAccount(stoneOakOf(state))?.owed ?? 1)).toBe(0)
+  })
+
+  it('does not let the owner accept, or our final go, before every line is billed', () => {
+    const state = initialGcState()
+    const helotes = state.projects.find((p) => p.id === 'helotes')
+    if (!helotes) throw new Error('fixture has no helotes')
+    expect(ownerCloseout(state, helotes).canAccept).toBe(false)
+    expect(gcReducer(state, { type: 'ownerAcceptsWork', projectId: 'helotes' })).toBe(state)
+    expect(gcReducer(state, { type: 'sendOwnerFinalPayApp', projectId: 'helotes' })).toBe(state)
   })
 })
 

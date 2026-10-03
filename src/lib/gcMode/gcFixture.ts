@@ -281,6 +281,7 @@ export function initialGcState(): GcState {
         awardedInviteId: 'delec-brightline',
         sow: {
           status: 'sent',
+          sentOn: '2026-09-30',
           price: 56_900,
           retainagePct: 10,
           basedOnRev: 0,
@@ -372,6 +373,184 @@ export function initialGcState(): GcState {
     feePct: 8,
   }
 
+  // Owner Billing lane: a project at its end, so the retainage the owner holds can be released.
+  // Every line is billed and paid; Live Oak and Westside have asked for their retainage;
+  // Cool Breeze still owes its warranty letter and final pay application.
+  const sDry = scope('sdry', ['Framing', 'Hang and tape', 'Ceilings'])
+  const sElec = scope('selec', ['Panels and feeders', 'Lighting', 'Devices'])
+  const sHvac = scope('shvac', ['Split systems', 'Ductwork', 'Controls'])
+  const stoneOak: GcProject = {
+    id: 'stoneoak',
+    name: 'Stone Oak Pharmacy',
+    address: '20811 Stone Oak Pkwy, Suite 104, San Antonio',
+    town: 'San Antonio',
+    ourBidSentOn: '2026-05-14',
+    ownerContractSignedOn: '2026-05-29',
+    permitOn: '2026-06-05',
+    startDate: '2026-06-15',
+    startedOn: '2026-06-12',
+    customerId: 'hollis',
+    owner: 'Hollis Family Pharmacy',
+    ownerBilling: {
+      billed: 182_413,
+      paid: 164_171.7,
+      retainageHeld: 18_241.3,
+      payApps: [
+        {
+          number: 1,
+          periodTo: '2026-07-25',
+          sentOn: '2026-07-25',
+          doneToDate: { sdry: 21_000, selec: 14_000, shvac: 0, splumb: 10_400, gc: 7_953.28, contingency: 1_600.6, fee: 5_495.39 },
+          workToDate: 60_449.27,
+          retainagePct: 10,
+          retainage: 6_044.93,
+          due: 54_404.34,
+          paidOn: '2026-08-14',
+        },
+        {
+          number: 2,
+          periodTo: '2026-08-25',
+          sentOn: '2026-08-25',
+          doneToDate: { sdry: 21_000, selec: 14_000, shvac: 25_000, splumb: 18_200, gc: 13_699.27, contingency: 2_756.98, fee: 9_465.62 },
+          workToDate: 104_121.87,
+          retainagePct: 10,
+          retainage: 10_412.19,
+          due: 39_305.34,
+          paidOn: '2026-09-15',
+        },
+        {
+          number: 3,
+          periodTo: '2026-09-25',
+          sentOn: '2026-09-25',
+          doneToDate: { sdry: 42_000, selec: 38_000, shvac: 31_000, splumb: 26_000, gc: 24_000, contingency: 4_830, fee: 16_583 },
+          workToDate: 182_413,
+          retainagePct: 10,
+          retainage: 18_241.3,
+          due: 70_462.02,
+          paidOn: '2026-10-01',
+        },
+      ],
+    },
+    architectId: 'mesquite',
+    architect: 'Mesquite Design Studio',
+    questions: [],
+    stage: 'building',
+    bidDue: null,
+    sizeNote: '2,400 sq ft pharmacy finish out',
+    sheets: [
+      { id: 'G-001', title: 'Cover and code summary' },
+      { id: 'A-101', title: 'Floor plan' },
+      { id: 'A-201', title: 'Interior elevations' },
+      { id: 'M-101', title: 'Mechanical plan' },
+      { id: 'E-101', title: 'Lighting and power plan' },
+      { id: 'P-101', title: 'Plumbing plan' },
+    ],
+    planSets: [
+      { rev: 0, label: 'Permit set', issuedOn: '2026-05-01', note: 'The set the city approved. 6 sheets.', changedSheets: [], touches: [] },
+    ],
+    packages: [
+      pkg('sdry', 'Framing and drywall', sDry, 43_000, [invite('sdry', 'liveoak', 'bid', 0, bid(sDry, 42_000, 0, '2026-05-06'))], {
+        carried: 'sdry-liveoak',
+        awardedInviteId: 'sdry-liveoak',
+        sow: {
+          status: 'signed',
+          price: 42_000,
+          retainagePct: 10,
+          basedOnRev: 0,
+          signedOn: '2026-06-02',
+          sov: [
+            { id: 'sdry-1', label: 'Framing', amount: 21_000, pctReported: 100, pctBilled: 100 },
+            { id: 'sdry-2', label: 'Hang and tape', amount: 12_000, pctReported: 100, pctBilled: 100 },
+            { id: 'sdry-3', label: 'Ceilings', amount: 9_000, pctReported: 100, pctBilled: 100 },
+          ],
+          draws: [
+            { id: 'sdry-draw-1', number: 1, requestedOn: '2026-07-20', gross: 21_000, retainage: 2_100, net: 18_900, status: 'paid', waiver: 'unconditional', lines: [{ sovId: 'sdry-1', toPct: 100 }] },
+            { id: 'sdry-draw-2', number: 2, requestedOn: '2026-09-18', gross: 21_000, retainage: 2_100, net: 18_900, status: 'paid', waiver: 'unconditional', lines: [{ sovId: 'sdry-2', toPct: 100 }, { sovId: 'sdry-3', toPct: 100 }] },
+            {
+              id: 'sdry-draw-3',
+              number: 3,
+              requestedOn: '2026-09-30',
+              gross: 0,
+              retainage: -4_200,
+              net: 4_200,
+              status: 'requested',
+              waiver: 'conditional',
+              lines: [],
+              payApp: { periodTo: '2026-09-30', address: '5410 Bandera Rd, San Antonio, TX 78238', license: '', signedBy: 'Darnell Pruitt', signedTitle: 'Owner', signedOn: '2026-09-30' },
+              final: true,
+            },
+          ],
+          acceptedOn: '2026-09-24',
+          warrantyOn: '2026-09-26',
+        },
+      }),
+      pkg('selec', 'Electrical', sElec, 39_000, [invite('selec', 'westside', 'bid', 0, bid(sElec, 38_000, 0, '2026-05-07'))], {
+        carried: 'selec-westside',
+        awardedInviteId: 'selec-westside',
+        sow: {
+          status: 'signed',
+          price: 38_000,
+          retainagePct: 10,
+          basedOnRev: 0,
+          signedOn: '2026-06-03',
+          sov: [
+            { id: 'selec-1', label: 'Panels and feeders', amount: 14_000, pctReported: 100, pctBilled: 100 },
+            { id: 'selec-2', label: 'Lighting', amount: 14_000, pctReported: 100, pctBilled: 100 },
+            { id: 'selec-3', label: 'Devices', amount: 10_000, pctReported: 100, pctBilled: 100 },
+          ],
+          draws: [
+            { id: 'selec-draw-1', number: 1, requestedOn: '2026-07-22', gross: 14_000, retainage: 1_400, net: 12_600, status: 'paid', waiver: 'unconditional', lines: [{ sovId: 'selec-1', toPct: 100 }] },
+            { id: 'selec-draw-2', number: 2, requestedOn: '2026-09-19', gross: 24_000, retainage: 2_400, net: 21_600, status: 'paid', waiver: 'unconditional', lines: [{ sovId: 'selec-2', toPct: 100 }, { sovId: 'selec-3', toPct: 100 }] },
+            {
+              id: 'selec-draw-3',
+              number: 3,
+              requestedOn: '2026-09-30',
+              gross: 0,
+              retainage: -3_800,
+              net: 3_800,
+              status: 'requested',
+              waiver: 'conditional',
+              lines: [],
+              payApp: { periodTo: '2026-09-30', address: '2210 Fredericksburg Rd, San Antonio, TX 78201', license: 'TECL 31876', signedBy: 'Ana Flores', signedTitle: 'Owner', signedOn: '2026-09-30' },
+              final: true,
+            },
+          ],
+          acceptedOn: '2026-09-24',
+          warrantyOn: '2026-09-25',
+        },
+      }),
+      pkg('shvac', 'HVAC', sHvac, 32_000, [invite('shvac', 'coolbreeze', 'bid', 0, bid(sHvac, 31_000, 0, '2026-05-08'))], {
+        carried: 'shvac-coolbreeze',
+        awardedInviteId: 'shvac-coolbreeze',
+        sow: {
+          status: 'signed',
+          price: 31_000,
+          retainagePct: 10,
+          basedOnRev: 0,
+          signedOn: '2026-06-04',
+          sov: [
+            { id: 'shvac-1', label: 'Split systems', amount: 13_000, pctReported: 100, pctBilled: 100 },
+            { id: 'shvac-2', label: 'Ductwork', amount: 12_000, pctReported: 100, pctBilled: 100 },
+            { id: 'shvac-3', label: 'Controls', amount: 6_000, pctReported: 100, pctBilled: 100 },
+          ],
+          draws: [
+            { id: 'shvac-draw-1', number: 1, requestedOn: '2026-08-18', gross: 25_000, retainage: 2_500, net: 22_500, status: 'paid', waiver: 'unconditional', lines: [{ sovId: 'shvac-1', toPct: 100 }, { sovId: 'shvac-2', toPct: 100 }] },
+            { id: 'shvac-draw-2', number: 2, requestedOn: '2026-09-22', gross: 6_000, retainage: 600, net: 5_400, status: 'paid', waiver: 'unconditional', lines: [{ sovId: 'shvac-3', toPct: 100 }] },
+          ],
+          acceptedOn: '2026-09-29',
+          warrantyOn: null,
+        },
+      }),
+      pkg('splumb', 'Plumbing', scope('splumb', ['Underground', 'Rough in', 'Top out', 'Trim']), 26_000, [], {
+        selfPerform: { ref: 'J 1071', value: 26_000, note: 'Our own crew. The job runs on the Pipeline.', pctDone: 100 },
+        carried: 'self',
+      }),
+    ],
+    generalConditions: 24_000,
+    contingencyPct: 3,
+    feePct: 10,
+  }
+
   const customers: GcCustomer[] = [
     {
       id: 'cibolo',
@@ -461,6 +640,46 @@ export function initialGcState(): GcState {
       past: [],
       tradesNote: null,
     },
+    {
+      id: 'hollis',
+      name: 'Hollis Family Pharmacy',
+      kind: 'Owner who will use the space',
+      contact: 'Dana Hollis',
+      contactRole: 'Owner and pharmacist',
+      phone: '(210) 555-0142',
+      email: 'dana@hollispharmacy.example',
+      address: '20811 Stone Oak Pkwy, Suite 104, San Antonio',
+      howTheyBuy: 'Picked us from three builders on price and schedule.',
+      payDays: 18,
+      retainagePct: 10,
+      portalOn: true,
+      portalLastOpened: '2026-09-26',
+      answerDays: null,
+      contacts: [
+        { on: '2026-09-29', by: 'Robert', note: 'Dana wants to open October 20. She asked what is left before the last bill.' },
+      ],
+      past: [],
+      tradesNote: null,
+    },
+    {
+      id: 'mesquite',
+      name: 'Mesquite Design Studio',
+      kind: 'Architect',
+      contact: 'Theo Park',
+      contactRole: 'Project architect',
+      phone: '(210) 555-0188',
+      email: 'theo@mesquitedesign.example',
+      address: '1202 S Alamo St, San Antonio',
+      howTheyBuy: null,
+      payDays: null,
+      retainagePct: null,
+      portalOn: false,
+      portalLastOpened: null,
+      answerDays: 2,
+      contacts: [],
+      past: [],
+      tradesNote: null,
+    },
   ]
 
   const partner = (
@@ -512,7 +731,12 @@ export function initialGcState(): GcState {
     hillcountry: ['Boerne', 60],
     cedar: ['Fredericksburg', 80],
     sawtooth: ['San Antonio', 100],
+    liveoak: ['San Antonio', 60],
+    westside: ['San Antonio', 80],
   }
+
+  /** The day the master agreement went out, for the ones sent and not signed yet. */
+  const msaSent: Record<string, string> = { bluebonnet: '2026-09-30', kendall: '2026-09-29' }
 
   /** Promises of a quote date on earlier jobs: made, kept. */
   const word: Record<string, [number, number]> = {
@@ -822,7 +1046,7 @@ export function initialGcState(): GcState {
   return {
     today: '2026-10-02',
     customers,
-    projects: [withStory(boerne), padB, helotes, fairOaksD],
+    projects: [withStory(boerne), padB, helotes, fairOaksD, stoneOak],
     partners: [
       partner('lonestar', 'Lonestar Earthworks', 'Dale Whitfield', ['Sitework'], 'signed', '2027-03-01', true, [6, 5, 2]),
       partner('tricounty', 'Tri-County Site', 'Marisol Vega', ['Sitework'], 'signed', '2027-01-15', true, [4, 4, 1]),
@@ -846,10 +1070,14 @@ export function initialGcState(): GcState {
       partner('sawtooth', 'Sawtooth Cabinet Co', 'Jill Arnett', ['Millwork'], 'signed', '2027-03-03', true, [2, 2, 1]),
       // Building lane: the electrician on Fair Oaks D, whose insurance ran out mid-job.
       partner('pecanvalley', 'Pecan Valley Electric', 'Marcus Bell', ['Electrical'], 'signed', '2026-09-15', true, [3, 3, 1]),
+      // Owner Billing lane: the two companies on Stone Oak Pharmacy, a job at its end.
+      partner('liveoak', 'Live Oak Drywall', 'Darnell Pruitt', ['Framing and drywall'], 'signed', '2027-05-01', true, [3, 3, 1]),
+      partner('westside', 'Westside Electric', 'Ana Flores', ['Electrical'], 'signed', '2027-04-15', true, [3, 3, 1]),
     ].map((p) => {
       const c = coverage[p.id]
       const w = word[p.id] ?? [0, 0]
-      return { ...p, promisesMade: w[0], promisesKept: w[1], ...(c ? { base: c[0], maxMiles: c[1] } : {}) }
+      const sent = msaSent[p.id]
+      return { ...p, promisesMade: w[0], promisesKept: w[1], ...(c ? { base: c[0], maxMiles: c[1] } : {}), ...(sent ? { msaSentOn: sent } : {}) }
     }),
     log: [],
   }

@@ -7,13 +7,14 @@ import {
   projectCloseout,
   shortDate,
   TRADE_RETAINAGE_WAIT_DAYS,
+  ownerRetainagePaidOn,
   tradeRetainageOpensOn,
   type CloseoutRow,
   type Draw,
 } from '../../lib/gcMode/gcModel'
 import { GcBuildingPayAppWindow } from './GcBuildingPayApp'
 import type { GcPaneProps } from './GcOfficeTabs'
-import { Btn, Card, Chip, Stat, Why, input } from './gcUi'
+import { Btn, Card, Chip, Stat, Why } from './gcUi'
 
 /**
  * GC mode design spike: Closeout. Each trade's last steps, in order: every line billed, we accept
@@ -30,18 +31,12 @@ export function GcCloseoutTab({ state, project, dispatch, onSeePortal }: GcPaneP
     <div style={{ display: 'grid', gap: '0.9rem' }}>
       <Why>
         We hold back {c.rows[0]?.pkg.sow?.retainagePct ?? 10}% of every draw. That is retainage. A trade gets it back at the end, once
-        every line is billed and we accept the work. Its retainage comes {TRADE_RETAINAGE_WAIT_DAYS} days after the owner releases
-        ours. It asks with a final pay application and a conditional final release of lien. After we pay, it signs the
-        unconditional final release of lien. Then the trade is closed out. Once every trade is, we close the job.
+        every line is billed and we accept the work. It asks with a final pay application and a conditional final release of
+        lien. We pay it {TRADE_RETAINAGE_WAIT_DAYS} days after the owner pays us ours. Then it signs the unconditional final release
+        of lien and the trade is closed out. Once every trade is, we close the job.
       </Why>
 
-      <OwnerRetainageCard
-        owner={project.owner}
-        releasedOn={project.ownerRetainageReleasedOn ?? null}
-        opensOn={tradeRetainageOpensOn(project)}
-        today={state.today}
-        onReleased={(on) => dispatch({ type: 'ownerReleasedRetainage', projectId: project.id, on })}
-      />
+      <OwnerRetainageCard owner={project.owner} paidOn={ownerRetainagePaidOn(project)} opensOn={tradeRetainageOpensOn(project)} today={state.today} />
 
       <Card>
         <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
@@ -163,7 +158,7 @@ function TradeCloseoutCard({
                 <div style={{ display: 'grid', gap: '0.25rem', paddingTop: '0.2rem' }}>
                   <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
                     <strong style={{ fontSize: '0.9rem', color: state === 'wait' ? 'var(--text-muted)' : 'var(--text-strong)' }}>{step.label}</strong>
-                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{step.who === 'office' ? 'us' : company}</span>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{step.who === 'office' ? 'us' : step.who === 'owner' ? 'the owner' : company}</span>
                   </div>
                   <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{step.detail}</div>
                   {isNext && (
@@ -186,6 +181,7 @@ function TradeCloseoutCard({
                           Mark paid
                         </Btn>
                       )}
+                      {step.who === 'owner' && <span style={{ fontSize: '0.85rem' }}>Waiting on the owner. See Bill the owner.</span>}
                       {step.who === 'trade' && partner && onSeePortal && (
                         <>
                           <span style={{ fontSize: '0.85rem' }}>Waiting on {company}.</span>
@@ -214,41 +210,23 @@ function TradeCloseoutCard({
 }
 
 /**
- * The owner's retainage on us, which a trade's waits on: 10 days after the owner releases ours
- * (owner, 2026-10-02). The press is a stand-in until Bill the owner records the owner's last
- * payment itself.
+ * The owner's retainage on us, which a trade's waits on: we pay a trade 10 days after the owner
+ * pays our final pay application (owner, 2026-10-02). Read from Bill the owner; nothing to press.
  */
-function OwnerRetainageCard({
-  owner,
-  releasedOn,
-  opensOn,
-  today,
-  onReleased,
-}: {
-  owner: string
-  releasedOn: string | null
-  opensOn: string | null
-  today: string
-  onReleased: (on: string) => void
-}) {
-  const [on, setOn] = useState(today)
+function OwnerRetainageCard({ owner, paidOn, opensOn, today }: { owner: string; paidOn: string | null; opensOn: string | null; today: string }) {
   return (
     <Card>
-      <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.9rem' }}>
+      <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', flexWrap: 'wrap', fontSize: '0.9rem' }}>
         <strong>The owner's retainage on us</strong>
-        {releasedOn ? (
+        {paidOn ? (
           <span>
-            {owner} released it {shortDate(releasedOn)}. A trade can ask for theirs {opensOn && opensOn > today ? `from ${shortDate(opensOn)}` : 'now'}.
+            {owner} paid it {shortDate(paidOn)}. We can pay the trades theirs {opensOn && opensOn > today ? `from ${shortDate(opensOn)}` : 'now'}.
           </span>
         ) : (
-          <>
-            <span>
-              {owner} still holds it. A trade's comes {TRADE_RETAINAGE_WAIT_DAYS} days after they release it.
-            </span>
-            <input type="date" value={on} max={today} onChange={(e) => setOn(e.target.value)} style={input} aria-label="The day the owner released our retainage" />
-            <Btn onClick={() => on && onReleased(on)}>The owner released it</Btn>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>A stand-in until Bill the owner records it.</span>
-          </>
+          <span style={{ color: 'var(--text-muted)' }}>
+            {owner} still holds it. We pay the trades theirs {TRADE_RETAINAGE_WAIT_DAYS} days after {owner} pays our final pay application on
+            Bill the owner.
+          </span>
         )}
       </div>
     </Card>
