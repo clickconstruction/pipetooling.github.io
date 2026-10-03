@@ -24,6 +24,7 @@ export type PartnerJobCosting = {
   as_of: string
   hours: { name: string; hours: number }[]
   supply_invoices: { vendor: string | null; invoice_number: string | null; invoice_date: string | null; invoice_amount: number; pct: number; allocated: number }[]
+  /** posted_at is the Mercury instant as the RPC returns it; its day is `calendarYmdInAppTzFromIso`, not its first ten characters. */
   card_charges: { counterparty: string | null; posted_at: string | null; allocated: number }[]
   direct: { description: string; amount: number }[]
 }
