@@ -16,7 +16,9 @@ import {
   planRecipients,
   proposalTotals,
   retainageHeldNow,
+  sentBackOpen,
   timesSentBack,
+  tradeCloseout,
   shortDate,
   sowMoney,
   thousands,
@@ -857,7 +859,8 @@ export function GcDrawsTab({ state, project, dispatch }: GcPaneProps) {
   const signed = project.packages.filter((p) => p.sow?.status === 'signed')
   // The draw whose pay application is open: one on the list, or one we sent back.
   const [looking, setLooking] = useState<{ packageId: string; draw: Draw } | null>(null)
-  const [sendingBack, setSendingBack] = useState<string | null>(null)
+  // The form open under a waiting draw: send it back, or approve it for less.
+  const [formFor, setFormFor] = useState<{ drawId: string; mode: 'back' | 'less' } | null>(null)
   const lookPkg = looking ? signed.find((p) => p.id === looking.packageId) : undefined
   const lookDraw = looking?.draw
   const lookInvite = lookPkg?.invites.find((i) => i.id === lookPkg.awardedInviteId)
@@ -877,6 +880,8 @@ export function GcDrawsTab({ state, project, dispatch }: GcPaneProps) {
         if (!sow || !partner) return null
         const m = sowMoney(sow)
         const blockers = partnerBlockers(partner, state.today)
+        // A retainage release is paid 10 days after the owner pays us ours (owner, 2026-10-02).
+        const releaseWaits = tradeCloseout(sow, project, state.today).canPay ? [] : ['The owner has not paid us our retainage, or 10 days have not passed.']
         const ids = { projectId: project.id, packageId: pkg.id }
         return (
           <Card key={pkg.id}>
@@ -919,7 +924,10 @@ export function GcDrawsTab({ state, project, dispatch }: GcPaneProps) {
                   {d.final ? (
                     <span>pays back what we held: <strong>{money(d.net)}</strong></span>
                   ) : (
-                    <span>{money(d.gross)} less {money(d.retainage)} held = <strong>{money(d.net)}</strong></span>
+                    <span>
+                      {money(d.gross)} less {money(d.retainage)} held = <strong>{money(d.net)}</strong>
+                      {d.asked && <span style={{ color: 'var(--text-amber-800)' }}> · approved for less, they asked {money(d.asked.net)}</span>}
+                    </span>
                   )}
                   <Chip tone={d.status === 'paid' ? 'green' : d.status === 'approved' ? 'blue' : 'amber'}>
                     {d.status === 'requested' ? 'waiting on us' : d.status}
@@ -927,10 +935,10 @@ export function GcDrawsTab({ state, project, dispatch }: GcPaneProps) {
                   <Chip tone={d.waiver === 'unconditional' ? 'green' : d.status === 'paid' ? 'amber' : 'grey'}>
                     {d.final
                       ? d.waiver === 'unconditional'
-                        ? 'final waiver in'
+                        ? 'unconditional final release in'
                         : d.status === 'paid'
-                          ? 'final waiver owed'
-                          : 'conditional final waiver in'
+                          ? 'unconditional final release owed'
+                          : 'conditional final release in'
                       : d.waiver === 'unconditional'
                         ? 'unconditional waiver in'
                         : d.status === 'paid'
@@ -939,11 +947,23 @@ export function GcDrawsTab({ state, project, dispatch }: GcPaneProps) {
                   </Chip>
                   {d.status === 'requested' && (
                     <>
-                      <Btn kind="primary" disabled={blockers.length > 0} title={blockers.join(' ')} onClick={() => dispatch(d.final ? { type: 'approveRetainage', ...ids, drawId: d.id } : { type: 'approveDraw', ...ids, drawId: d.id })}>
+                      <Btn
+                        kind="primary"
+                        disabled={blockers.length > 0 || (d.final === true && releaseWaits.length > 0)}
+                        title={[...blockers, ...(d.final ? releaseWaits : [])].join(' ')}
+                        onClick={() => dispatch(d.final ? { type: 'approveRetainage', ...ids, drawId: d.id } : { type: 'approveDraw', ...ids, drawId: d.id })}
+                      >
                         Approve
                       </Btn>
-                      {sendingBack !== d.id && (
-                        <Btn onClick={() => setSendingBack(d.id)}>Send back</Btn>
+                      {formFor?.drawId !== d.id && (
+                        <>
+                          {!d.final && (
+                            <Btn disabled={blockers.length > 0} title={blockers.join(' ')} onClick={() => setFormFor({ drawId: d.id, mode: 'less' })}>
+                              Approve less
+                            </Btn>
+                          )}
+                          <Btn onClick={() => setFormFor({ drawId: d.id, mode: 'back' })}>Send back</Btn>
+                        </>
                       )}
                       {blockers.length > 0 && <span style={{ color: 'var(--text-red-700)' }}>{blockers.join(' ')}</span>}
                     </>
@@ -954,16 +974,22 @@ export function GcDrawsTab({ state, project, dispatch }: GcPaneProps) {
                   <Btn kind="quiet" onClick={() => setLooking({ packageId: pkg.id, draw: d })}>
                     {d.payApp ? (d.final ? 'Final pay application' : 'Pay application') : 'Pay application, rebuilt'}
                   </Btn>
-                  {sendingBack === d.id && d.status === 'requested' && (
+                  {formFor?.drawId === d.id && d.status === 'requested' && (
                     <div style={{ flexBasis: '100%' }}>
                       <GcBuildingSendBackForm
+                        mode={formFor.mode}
                         sow={sow}
                         draw={d}
                         partner={partner}
-                        onCancel={() => setSendingBack(null)}
+                        blocked={blockers}
+                        onCancel={() => setFormFor(null)}
                         onSend={(note, weSee) => {
-                          dispatch({ type: 'sendDrawBack', ...ids, drawId: d.id, note, weSee })
-                          setSendingBack(null)
+                          dispatch(
+                            formFor.mode === 'less'
+                              ? { type: 'approveDrawLess', ...ids, drawId: d.id, note, weApprove: weSee }
+                              : { type: 'sendDrawBack', ...ids, drawId: d.id, note, weSee },
+                          )
+                          setFormFor(null)
                         }}
                       />
                     </div>
@@ -971,7 +997,7 @@ export function GcDrawsTab({ state, project, dispatch }: GcPaneProps) {
                 </div>
               ))}
               <GcBuildingSentBackList sow={sow} onLook={(draw) => setLooking({ packageId: pkg.id, draw })} />
-              {m.ready > 0 && !sow.draws.some((d) => d.status === 'requested') && (
+              {m.ready > 0 && !sow.draws.some((d) => d.status === 'requested') && !sentBackOpen(sow) && (
                 <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
                   {partner.company} has reported {money(m.ready)} of work they have not asked to be paid for.
                 </span>

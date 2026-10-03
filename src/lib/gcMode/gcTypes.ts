@@ -117,6 +117,8 @@ export interface Draw {
    * was held (retainage is negative, net is the release) and its waivers are the final-payment ones.
    */
   final?: boolean
+  /** Approved for less than asked: what the trade asked for, why we approved less, and the day we did. */
+  asked?: { gross: number; retainage: number; net: number; lines: { sovId: string; toPct: number }[]; note: string; on: string }
 }
 
 export interface Sow {
@@ -129,7 +131,7 @@ export interface Sow {
   draws: Draw[]
   /** Closeout: the day we accepted the work, after the punch list. Null or absent: not yet. */
   acceptedOn?: string | null
-  /** Closeout: the day their warranty letter came in. Null or absent: not yet. */
+  /** The day their warranty letter came in. Kept as a record: closeout no longer asks for it (owner, 2026-10-02). */
   warrantyOn?: string | null
   /** Pay applications the office sent back, oldest first. A resend takes the same number. */
   sentBack?: DrawSentBack[]
@@ -163,6 +165,11 @@ export interface TradePackage {
     note: string
     /** Our own crew's percent done, reported on Bill the owner. Absent: nothing reported yet. */
     pctDone?: number
+    /**
+     * Our own crew's percent done on each stage (a scope line id), the way the Pipeline runs the
+     * job (owner, 2026-10-02). When present, pctDone follows from it. Absent: none reported by stage.
+     */
+    pctByLine?: Record<string, number>
   } | null
   invites: Invite[]
   /** An invite id, 'plug' (our budget) or 'self'. */
@@ -292,6 +299,8 @@ export interface GcProject {
   generalConditions: number
   contingencyPct: number
   feePct: number
+  /** The day we closed the job: every trade closed out and our own crew done. */
+  closedOn?: string | null
 }
 
 export interface LogEntry {
@@ -431,6 +440,17 @@ export type GcAction =
   | { type: 'ownerAcceptsWork'; projectId: string }
   /** Our final pay application to the owner: the retainage they hold, with our conditional waiver on final payment. */
   | { type: 'sendOwnerFinalPayApp'; projectId: string }
+  | { type: 'closeJob'; projectId: string }
+  | {
+      type: 'approveDrawLess'
+      projectId: string
+      packageId: string
+      drawId: string
+      /** The percent we approve on each line we doubt. Lines left out are approved as asked. */
+      weApprove: Record<string, number>
+      note: string
+    }
+  | { type: 'selfReportStage'; projectId: string; packageId: string; lineId: string; pct: number }
 
 /** One trade on a new project, as the office left it in the New project window. */
 export interface NewTradeDraft {

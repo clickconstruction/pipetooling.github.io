@@ -199,7 +199,8 @@ describe('the retainage the owner holds, released at the end', () => {
     const c = ownerCloseout(state, stoneOakOf(state))
     expect(ownerAllBilled(state, stoneOakOf(state))).toBe(true)
     expect(c.steps.map((st) => [st.key, st.done])).toEqual([['billed', true], ['trades', false], ['accepted', false], ['finalApp', false], ['paid', false]])
-    expect(c.tradesWaiting).toEqual([{ packageId: 'shvac', company: 'Cool Breeze Mechanical', why: 'Cool Breeze Mechanical still owes its warranty letter.' }])
+    // Building lane, owner's call 2026-10-02: closeout asks for no warranty letter, so the next step is the final.
+    expect(c.tradesWaiting).toEqual([{ packageId: 'shvac', company: 'Cool Breeze Mechanical', why: 'Cool Breeze Mechanical has not sent it yet.' }])
     expect(c.held).toBeCloseTo(18_241.3, 2)
     expect([c.canAccept, c.canSendFinal]).toEqual([true, false])
     // Nothing new to bill: the draft asks for nothing.

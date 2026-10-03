@@ -1,5 +1,17 @@
 import { useState } from 'react'
-import { money, ownCrewWork, partnerBlockers, projectCloseout, type CloseoutRow, type Draw } from '../../lib/gcMode/gcModel'
+import {
+  jobCloseout,
+  money,
+  ownCrewWork,
+  partnerBlockers,
+  projectCloseout,
+  shortDate,
+  TRADE_RETAINAGE_WAIT_DAYS,
+  ownerRetainagePaidOn,
+  tradeRetainageOpensOn,
+  type CloseoutRow,
+  type Draw,
+} from '../../lib/gcMode/gcModel'
 import { GcBuildingPayAppWindow } from './GcBuildingPayApp'
 import type { GcPaneProps } from './GcOfficeTabs'
 import { Btn, Card, Chip, Stat, Why } from './gcUi'
@@ -12,16 +24,19 @@ import { Btn, Card, Chip, Stat, Why } from './gcUi'
  */
 export function GcCloseoutTab({ state, project, dispatch, onSeePortal }: GcPaneProps) {
   const c = projectCloseout(state, project)
+  const job = jobCloseout(state, project)
   const [looking, setLooking] = useState<{ row: CloseoutRow; draw: Draw } | null>(null)
 
   return (
     <div style={{ display: 'grid', gap: '0.9rem' }}>
       <Why>
         We hold back {c.rows[0]?.pkg.sow?.retainagePct ?? 10}% of every draw. That is retainage. A trade gets it back at the end, once
-        every line is billed, we accept the work and its warranty letter is in. It asks with a final pay application and a
-        conditional waiver on final payment. After we pay, it signs the unconditional waiver on final payment. Then the trade is
-        closed out.
+        every line is billed and we accept the work. It asks with a final pay application and a conditional final release of
+        lien. We pay it {TRADE_RETAINAGE_WAIT_DAYS} days after the owner pays us ours. Then it signs the unconditional final release
+        of lien and the trade is closed out. Once every trade is, we close the job.
       </Why>
+
+      <OwnerRetainageCard owner={project.owner} paidOn={ownerRetainagePaidOn(project)} opensOn={tradeRetainageOpensOn(project)} today={state.today} />
 
       <Card>
         <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
@@ -34,6 +49,8 @@ export function GcCloseoutTab({ state, project, dispatch, onSeePortal }: GcPaneP
           />
         </div>
       </Card>
+
+      <CloseJobCard job={job} onClose={() => dispatch({ type: 'closeJob', projectId: project.id })} />
 
       {c.rows.length === 0 && <Card>No trade has a signed statement of work yet. Closeout starts once one does.</Card>}
 
@@ -141,7 +158,7 @@ function TradeCloseoutCard({
                 <div style={{ display: 'grid', gap: '0.25rem', paddingTop: '0.2rem' }}>
                   <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
                     <strong style={{ fontSize: '0.9rem', color: state === 'wait' ? 'var(--text-muted)' : 'var(--text-strong)' }}>{step.label}</strong>
-                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{step.who === 'office' ? 'us' : company}</span>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{step.who === 'office' ? 'us' : step.who === 'owner' ? 'the owner' : company}</span>
                   </div>
                   <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{step.detail}</div>
                   {isNext && (
@@ -164,6 +181,7 @@ function TradeCloseoutCard({
                           Mark paid
                         </Btn>
                       )}
+                      {step.who === 'owner' && <span style={{ fontSize: '0.85rem' }}>Waiting on the owner. See Bill the owner.</span>}
                       {step.who === 'trade' && partner && onSeePortal && (
                         <>
                           <span style={{ fontSize: '0.85rem' }}>Waiting on {company}.</span>
@@ -187,6 +205,62 @@ function TradeCloseoutCard({
           })}
         </ol>
       )}
+    </Card>
+  )
+}
+
+/**
+ * The owner's retainage on us, which a trade's waits on: we pay a trade 10 days after the owner
+ * pays our final pay application (owner, 2026-10-02). Read from Bill the owner; nothing to press.
+ */
+function OwnerRetainageCard({ owner, paidOn, opensOn, today }: { owner: string; paidOn: string | null; opensOn: string | null; today: string }) {
+  return (
+    <Card>
+      <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', flexWrap: 'wrap', fontSize: '0.9rem' }}>
+        <strong>The owner's retainage on us</strong>
+        {paidOn ? (
+          <span>
+            {owner} paid it {shortDate(paidOn)}. We can pay the trades theirs {opensOn && opensOn > today ? `from ${shortDate(opensOn)}` : 'now'}.
+          </span>
+        ) : (
+          <span style={{ color: 'var(--text-muted)' }}>
+            {owner} still holds it. We pay the trades theirs {TRADE_RETAINAGE_WAIT_DAYS} days after {owner} pays our final pay application on
+            Bill the owner.
+          </span>
+        )}
+      </div>
+    </Card>
+  )
+}
+
+/** Close the job once every trade is closed out (owner, 2026-10-02): it leaves Building on the board. */
+function CloseJobCard({ job, onClose }: { job: { ready: boolean; left: string[]; closedOn: string | null }; onClose: () => void }) {
+  if (job.closedOn) {
+    return (
+      <Card>
+        <Chip tone="green">job closed {shortDate(job.closedOn)}</Chip>
+      </Card>
+    )
+  }
+  return (
+    <Card>
+      <div style={{ display: 'grid', gap: '0.4rem', fontSize: '0.875rem' }}>
+        <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <Btn kind="primary" disabled={!job.ready} title={job.ready ? undefined : 'Every trade closes out first.'} onClick={onClose}>
+            Close the job
+          </Btn>
+        </div>
+        {job.ready ? (
+          <span style={{ color: 'var(--text-muted)' }}>Every trade is closed out, our own crew is done and the owner released our retainage.</span>
+        ) : (
+          <div style={{ color: 'var(--text-muted)', display: 'grid', gap: '0.15rem' }}>
+            <span>Left before it can close:</span>
+            {job.left.map((l) => (
+              <span key={l}>· {l}</span>
+            ))}
+          </div>
+        )}
+      </div>
     </Card>
   )
 }

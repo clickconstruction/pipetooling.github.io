@@ -10,7 +10,7 @@ import { bidsIn } from './gcBids'
 import { awardedPartner, find, logged, mapInvite, mapPackage, mapProject, mapSow, sowFromBid } from './gcReducerHelpers'
 import { initialGcState } from './gcFixture'
 import { buildNewProject, packagesFromDrafts, withNewLines, withTradesInOrder } from './gcNewProject'
-import { finalPayApplication, payApplication, timesSentBack, tradeCloseout, workAllBilled } from './gcBuilding'
+import { crewPctFromStages, drawApprovedLess, finalPayApplication, jobCloseout, payApplication, timesSentBack, tradeCloseout, workAllBilled } from './gcBuilding'
 import { ownerCloseout, ownerFinalPayAppToSend, ownerPayApp, ownerPayAppHasWork, ownerPayAppToSend } from './gcOwnerBilling'
 
 export function gcReducer(state: GcState, action: GcAction): GcState {
@@ -656,10 +656,10 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
     case 'tradeSendFinalPayApp': {
       // The retainage release: the last draw. It pays back what was held, so its retainage is
       // negative and its net is the release; its waivers are the final-payment ones.
-      const { pkg } = find(state, action.projectId, action.packageId)
+      const { project, pkg } = find(state, action.projectId, action.packageId)
       const partner = awardedPartner(state, pkg)
       const sow = pkg?.sow
-      if (!pkg || !partner || !sow || !tradeCloseout(sow).canAskFinal) return state
+      if (!project || !pkg || !partner || !sow || !tradeCloseout(sow, project, state.today).canAskFinal) return state
       const app = finalPayApplication(sow)
       const release = app.summary.currentDue
       if (release <= 0) return state
@@ -688,7 +688,7 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
       return logged(
         kept,
         'trade',
-        `${partner.company} sent the final pay application on ${pkg.trade}: ${money(release)} of retainage, with a conditional waiver on final payment.`,
+        `${partner.company} sent the final pay application on ${pkg.trade}: ${money(release)} of retainage, with a conditional final release of lien.`,
       )
     }
 
@@ -781,6 +781,62 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
         'office',
         `Sent the final pay application to ${project.owner}: ${money(sent.due)} of retainage, with our conditional waiver on final payment.`,
       )
+    }
+
+    case 'closeJob': {
+      // The screen offers it once every trade is closed out (jobCloseout); the reducer trusts it,
+      // as it does Approve. A closed job leaves Building for its own section on the board.
+      const project = state.projects.find((p) => p.id === action.projectId)
+      if (!project || project.closedOn || project.stage !== 'building') return state
+      const left = jobCloseout(state, project).left.length
+      const next = mapProject(state, project.id, (p) => ({ ...p, closedOn: state.today }))
+      return logged(next, 'office', `Closed ${project.name}.${left > 0 ? ` ${left} ${left === 1 ? 'thing was' : 'things were'} still open.` : ''}`)
+    }
+
+    case 'approveDrawLess': {
+      // Approve a pay application for less than it asks (owner, 2026-10-02): the lines we doubt at
+      // the percent we see. It is paid as approved; what they asked is kept on the draw, and the
+      // rest of their reported work stays theirs to ask for next time.
+      const { pkg } = find(state, action.projectId, action.packageId)
+      const sow = pkg?.sow
+      const draw = sow?.draws.find((d) => d.id === action.drawId)
+      if (!pkg || !sow || !draw || draw.status !== 'requested' || draw.final) return state
+      const less = drawApprovedLess(sow, draw, action.weApprove)
+      if (less.net >= draw.net) return state
+      const note = action.note.trim()
+      const asked = { gross: draw.gross, retainage: draw.retainage, net: draw.net, lines: draw.lines, note, on: state.today }
+      const toPct = new Map(less.lines.map((l) => [l.sovId, l.toPct]))
+      const next = mapProject(state, action.projectId, (p) =>
+        mapPackage(p, pkg.id, (k) =>
+          mapSow(k, (s) => ({
+            ...s,
+            sov: s.sov.map((l) => ({ ...l, pctBilled: Math.max(l.pctBilled, toPct.get(l.id) ?? 0) })),
+            draws: s.draws.map((d) => (d.id === draw.id ? { ...d, ...less, status: 'approved', asked } : d)),
+          })),
+        ),
+      )
+      return logged(
+        next,
+        'office',
+        `Approved ${money(less.net)} of draw ${draw.number} on ${pkg.trade}, less than the ${money(draw.net)} asked.${note ? ` ${note}` : ''}`,
+      )
+    }
+
+    case 'selfReportStage': {
+      // Our own crew reports by stage (owner, 2026-10-02). The whole-trade percent Bill the owner
+      // bills from (pctDone) follows from the stages, so both stay the same number.
+      const { pkg } = find(state, action.projectId, action.packageId)
+      const self = pkg?.selfPerform
+      const line = pkg?.scope.find((l) => l.id === action.lineId)
+      if (!pkg || !self || !line) return state
+      const pct = Math.max(0, Math.min(100, Math.round(action.pct)))
+      if ((self.pctByLine?.[line.id] ?? 0) === pct && self.pctByLine) return state
+      const pctByLine = { ...Object.fromEntries(pkg.scope.map((l) => [l.id, self.pctByLine?.[l.id] ?? 0])), [line.id]: pct }
+      const pctDone = Math.round(crewPctFromStages(pkg, pctByLine))
+      const next = mapProject(state, action.projectId, (p) =>
+        mapPackage(p, pkg.id, (k) => (k.selfPerform ? { ...k, selfPerform: { ...k.selfPerform, pctByLine, pctDone } } : k)),
+      )
+      return logged(next, 'office', `Our own crew reported ${line.label} on ${pkg.trade} at ${pct}%. The whole trade is ${pctDone}% done.`)
     }
   }
 }

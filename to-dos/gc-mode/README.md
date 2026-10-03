@@ -86,7 +86,7 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
 | **Trade partners** (board tab) | By trade: the bench, who answers when asked, every project short of quotes, coverage (where they drive from, how far they go), one press to ask the companies not yet asked. **Actions for assistants** on top: each standard as the ideal, where we are, and what closes the gap. |
 | The trade's portal | English or Spanish (**Español** on the portal's letterhead: every word the portal writes, and the messages). One link per company, carried by every message we send (**Their messages** beside **Their portal**: the invitation as an email and a text, reminders, new plan sets, bid tabs, the master agreement, a statement of work to sign, and the day work starts by email and text). The first visit opens on a welcome until **Got it**. The link opens on the company's **home**: what needs them across every project (late or blocking first; a pay application we sent back, their closeout steps), their money once a dollar moves, their jobs, what they are asked to bid, their paperwork, and what came before. A row opens that project's page, with **← Everything with Click** back. On a project page: paperwork done by the company itself (read and sign the master agreement, send an insurance certificate, fill in and sign a W-9), the plans window (sets, sheets, whether a set changes their trade), the invitation and the bid form (each line with its sheet numbers, a tap opens that sheet; after a new set the lines it touches are marked; how many days the number is good for; alternates that add or take off; their own quote attached), "tell Click when your number will come" (a passed day shows in red), answer a line the office could not read (its own short step, the number stays), confirm a number after an addendum, the bid tab, sign the statement of work, report work, ask for a draw with its pay application (next row). |
 | Pay application (from the portal) | **Fill out pay application N**: four steps on a rail like the Release of Lien window (Check your work, Fill in a few details, Sign it, Send it to Click) beside the 702 and 703, which fill in as the trade types and mark what each step fills. The app knows the job, the contract, the lines, what was billed and the retainage; the trade checks the percents, picks the period, types its address once, and signs. Closing the window keeps the draft. |
-| **Closeout** | Each trade's last six steps: every line billed, **Accept the work** (the punch list is done), their warranty letter, their final pay application for the retainage with a conditional waiver on final payment, **Approve the release** and **Mark paid**, their unconditional waiver on final payment. Totals for held, paid back and trades closed out. In the portal the same steps show as the trade's closeout list, ending "You are closed out on this job." |
+| **Closeout** | Each trade's last six steps: every line billed, **Accept the work** (the punch list is done), their final pay application for the retainage with a conditional final release of lien, the owner paying our final and 10 days passing, **Approve the release** and **Mark paid**, their unconditional final release of lien. Totals for held, paid back and trades closed out; the owner's retainage on us, read from Bill the owner; **Close the job** once every trade is closed out, with what is left until then. In the portal the same steps show as the trade's closeout list, ending "You are closed out on this job." |
 
 ## Decided by the owner (2026-10-02)
 
@@ -156,9 +156,27 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   of it comes from the job and from the work they reported (`gcBuilding.ts`, `GcBuildingPayApp.tsx`).
 - **Closeout runs per trade** (approved as built, 2026-10-02, Building lane): the retainage
   comes back as the trade's last draw, asked for with a final pay application and the
-  final-payment waivers, once every line is billed, we accept the work and the warranty letter
-  is in (`tradeCloseout` in `gcBuilding.ts`, `GcCloseout.tsx`). The retainage the owner holds on
-  us stays Owner Billing's.
+  final-payment releases of lien, once every line is billed and we accept the work
+  (`tradeCloseout` in `gcBuilding.ts`, `GcCloseout.tsx`). The retainage the owner holds on us
+  stays Owner Billing's.
+- **A trade's retainage is paid 10 days after the owner pays ours** (answered 2026-10-02, was
+  open question 16): the trade's final pay application can go in once we accept the work (our own
+  final to the owner waits for every trade's); we approve and pay it 10 days after the owner pays
+  our final pay application (`ownerRetainagePaidOn`, `TRADE_RETAINAGE_WAIT_DAYS`).
+- **The one paper before release is the conditional final release of lien** (answered
+  2026-10-02, was 17). It is signed with the final pay application; no warranty letter is asked
+  for (`warrantyOn` stays only as a record). The words on screen are "conditional final release
+  of lien" and "unconditional final release of lien".
+- **A closed job leaves Building** (answered 2026-10-02, was 18): **Close the job** on Closeout
+  once every trade is closed out, our own crew is done and the owner paid our final
+  (`jobCloseout`, `closedOn`). The board's own Closed section is the Board lane's to build.
+- **The office can approve less than asked, and a draw sent back twice is flagged** (answered
+  2026-10-02, was 19): **Approve less** pays the lines we doubt at our percent and keeps what was
+  asked on the draw (`draw.asked`); the rest stays the trade's to ask for. Sent back twice, the
+  ring's card says to call them.
+- **Our own crew reports by stage** (answered 2026-10-02, was 21): underground, rough in, top
+  out, trim, each worth its share of the trade (`CREW_STAGE_WEIGHTS`); the whole-trade percent
+  Bill the owner bills from follows from the stages.
 - **Our own crew counts in Building** (approved as built, 2026-10-02, Building lane): a trade we
   do ourselves weighs in the Building ring by our own number, from the one percent Bill the owner
   bills from (`ownCrewWork`). Draws shows it with the same picker; it has no draws, retainage or
@@ -217,9 +235,11 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
   the company), and a typed name and title with the waiver tick as the signature. A line can be
   lowered to what was billed before, never below. The 702's "To" line reads Click Construction,
   the name the portal already uses (`GC_COMPANY_NAME`).
-- Closeout: the release waits for nothing else (not the owner, not a number of days). Its
-  approval is locked by the same paperwork rules as a draw. "Held" counts until the release is
-  paid, not when it is approved (`retainageHeldNow`).
+- Closeout: a release's approval is locked by the same paperwork rules as a draw. "Held" counts
+  until the release is paid, not when it is approved (`retainageHeldNow`). The stages of our own
+  crew's work are worth underground 20%, rough in 35%, top out 25%, trim 20%
+  (`CREW_STAGE_WEIGHTS`). Approving less needs a note, like sending back. **Close the job** is
+  offered only when nothing is left; the model trusts the screen, as it does for Approve.
 - Sending a draw back: the note is required; a resend keeps the same application number; only a
   draw waiting on us can go back (a retainage release too); nothing billed changes. The resend's
   percents become the trade's report, even lower than it was.
@@ -282,20 +302,15 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
     number we carry, and should a number that ran out stop counting toward the two quotes?
 15. ~~Should answering a "not clear" line be a move of its own?~~ Built (2026-10-02):
     `tradeAnswerLines`, logged as "answered on Concrete: Rebar supply is in their number".
-16. Should a trade's retainage wait until the owner releases ours (pay when paid), or for some
-    days after we accept the work? Built with no wait.
-17. What papers must a trade turn in before its retainage comes back? Built with a warranty
-    letter only. Some trades may owe drawings of what was built, equipment manuals, or final
-    waivers from their own suppliers.
-18. Should a project whose trades are all closed out leave Building for a fourth section on
-    the board? It stays under Building today. That is the Board lane's change.
-19. Besides sending a draw back, should the office be able to approve less than was asked, the
-    way an architect certifies a smaller amount on a 702? Should a draw sent back twice flag
-    anything on the board?
+16. ~~Should a trade's retainage wait until the owner releases ours?~~ Answered: 10 days after.
+17. ~~What papers must a trade turn in before its retainage comes back?~~ Answered: the
+    conditional final release of lien.
+18. ~~Should a closed-out project leave Building for its own section?~~ Answered: yes. The
+    section on the board is the Board lane's to build.
+19. ~~Approve less than asked? Flag a draw sent back twice?~~ Answered: yes and yes.
 20. Should the office see which companies never opened their link (a chip on Trades and in
     Follow up)? The portal records the first visit (`portalOpenedOn`). That is the Board lane's change.
-21. Our own crew reports one percent for the whole trade. Should it report by stage instead
-    (underground, rough in, top out, trim), the way the Pipeline runs a plumbing job?
+21. ~~Should our own crew report by stage?~~ Answered: yes (*Decided by the owner*).
 22. Should a trade see sheets the office did not set (the dashed ones, matched from the line's
     words), or only the sheets the office set when writing the scope?
 23. The schedule: how many weeks does the look-ahead show, two or three? (The other half,
@@ -353,9 +368,9 @@ they point to, for the lanes to pick up.
 - A trade asks a question about the plans, the architect answers, every bidder on the trade
   gets the answer. Three made-up questions show in the architect's window, read-only.
 - Change orders, both to the owner and to a trade (a statement of work amendment).
-- Closeout for the job as a whole: the owner's final payment and the retainage the owner holds
-  on us (Owner Billing), and a closed job leaving the board (open question 18). Each trade's
-  closeout is built.
+- A closed job's own section on the board (answered yes, 2026-10-02): the Board lane reads
+  `closedOn`. Closing it on Closeout is built. Bill the owner's picker for our own crew still
+  sets one number; by stage it is set on Draws.
 - Our billing to the owner, the rest: the owner's window still shows billed and paid from the
   fixture, not from the pay applications on **Bill the owner** (`ownerAccount` has the numbers);
   our own crew's percent read from its Pipeline job (typed on **Bill the owner** for now);
@@ -511,16 +526,17 @@ follow the plain-words rules; the prototype's own words were written to them as 
   company through **Sign it as them**. A new plan set after Start goes to four companies only.
 - **Fair Oaks Shops, Building D** (under Building): point at the ring for what waits. On
   **Draws**, approve or **Send back** Iron Horse's draw 2; Pecan Valley's **Approve** stays shut
-  on its insurance. On **Closeout**, **Accept the work** on Concrete. In the portal as Summit
-  Roofing, **Fix and resend pay application 1**; as Guadalupe, **Fill out the final pay
-  application** once accepted.
+  on its insurance; **Approve less** Iron Horse's erection at 50% and see it in their portal. On
+  **Closeout**, **Accept the work** on Concrete and read what is left before **Close the job**.
+  In the portal as Summit Roofing, **Fix and resend pay application 1**; as Tri-County, **Fill out
+  the final pay application**. On Draws, change a stage of our own crew's plumbing.
 - **Follow up**: log a call with a new day on Hillside Excavation and watch the card move down.
 - **Fair Oaks Shops, Building D → Bill the owner**: three pay applications to Cibolo, the third
   still waiting; **Mark paid** it. The October draft bills Summit Roofing at what we see (the
   membrane at 50%, they say 100%), and Summit and Cool Breeze are named for missing waivers.
 - **Stone Oak Pharmacy → Bill the owner** (the job at its end, under Building): the closeout
   waits on Cool Breeze. In the owner's portal press **Accept the work**; as Cool Breeze send the
-  warranty letter and the final pay application; then **Send the final pay application** and
+  final pay application; then **Send the final pay application** and
   **Pay** it in the owner's portal. Their papers end with our waivers on final payment.
 - **The portal's home**: see it as Voltage Brothers (a number on old plans, then the insurance that
   ran out, both red), Brightline Electric (one job, one bid), Hill Country Interiors (Helotes:

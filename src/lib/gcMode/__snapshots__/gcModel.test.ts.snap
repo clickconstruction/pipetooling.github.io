@@ -6531,7 +6531,7 @@ exports[`GC mode golden walk > step 69: Hill Country sends the final pay applica
 {
   "changed": {
     "lastLog.id": 65,
-    "lastLog.text": "Hill Country Interiors sent the final pay application on Framing and drywall: $6,420 of retainage, with a conditional waiver on final payment.",
+    "lastLog.text": "Hill Country Interiors sent the final pay application on Framing and drywall: $6,420 of retainage, with a conditional final release of lien.",
     "projects.helotes.stageProgress.also[0]": "Hill Country Interiors asked for its retainage back. Approve it on Closeout.",
   },
   "removed": [
@@ -6557,7 +6557,7 @@ exports[`GC mode golden walk > step 71: Pay the retainage 1`] = `
   "changed": {
     "lastLog.id": 67,
     "lastLog.text": "Paid draw 4 on Framing and drywall: $6,420.",
-    "projects.helotes.stageProgress.also[0]": "Hill Country Interiors owes the unconditional waiver on final payment.",
+    "projects.helotes.stageProgress.also[0]": "Hill Country Interiors owes the unconditional final release of lien.",
   },
   "removed": [],
 }
@@ -6882,7 +6882,7 @@ exports[`GC mode golden walk > step 84: Cool Breeze sends the final pay applicat
 {
   "changed": {
     "lastLog.id": 80,
-    "lastLog.text": "Cool Breeze Mechanical sent the final pay application on HVAC: $3,100 of retainage, with a conditional waiver on final payment.",
+    "lastLog.text": "Cool Breeze Mechanical sent the final pay application on HVAC: $3,100 of retainage, with a conditional final release of lien.",
     "projects.stoneoak.stageProgress.also[2]": "Cool Breeze Mechanical asked for its retainage back. Approve it on Closeout.",
     "projects.stoneoak.stageProgress.also[3]": "All the work is reported. 0 of 3 trades are closed out. See Closeout.",
   },
@@ -6916,6 +6916,58 @@ exports[`GC mode golden walk > step 87: Hollis pays the final pay application 1`
   "changed": {
     "lastLog.id": 83,
     "lastLog.text": "Hollis Family Pharmacy paid pay application 4: $18,241.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 88: Cedar & Pine sends pay application 2 1`] = `
+{
+  "changed": {
+    "lastLog.id": 84,
+    "lastLog.text": "Cedar & Pine Millwork sent pay application 2 on Millwork: $15,940, with a conditional waiver signed.",
+    "lastLog.who": "trade",
+    "projects.helotes.stageProgress.also[1]": "Cedar & Pine Millwork asked for draw 2. Approve it.",
+    "projects.helotes.stageProgress.center": "47%",
+    "projects.helotes.stageProgress.groups[0].items[4].detail": "83% reported",
+    "projects.helotes.stageProgress.headline": "47% of the work is done, by what the trades and our own crew have reported.",
+    "projects.helotes.stageProgress.share": 0.47186234817813766,
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 89: Approve less: the cabinets at 80% 1`] = `
+{
+  "changed": {
+    "lastLog.id": 85,
+    "lastLog.text": "Approved $11,970 of draw 2 on Millwork, less than the $14,346 asked. Two operatory cabinets are still on order.",
+    "lastLog.who": "office",
+    "projects.helotes.stageProgress.also[1]": "Draw 2 for Cedar & Pine Millwork is approved. Pay it.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 90: Our crew reports underground done 1`] = `
+{
+  "changed": {
+    "lastLog.id": 86,
+    "lastLog.text": "Our own crew reported Underground on Plumbing at 100%. The whole trade is 20% done.",
+    "projects.helotes.stageProgress.center": "43%",
+    "projects.helotes.stageProgress.groups[0].items[3].detail": "Our own crew, 20% done",
+    "projects.helotes.stageProgress.headline": "43% of the work is done, by what the trades and our own crew have reported.",
+    "projects.helotes.stageProgress.share": 0.4251012145748988,
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 91: Close Fair Oaks D with work still open (the screen would not offer it) 1`] = `
+{
+  "changed": {
+    "lastLog.id": 87,
+    "lastLog.text": "Closed Fair Oaks Shops, Building D. 8 things were still open.",
   },
   "removed": [],
 }
@@ -7121,6 +7173,26 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
+      "id": 87,
+      "text": "Closed Fair Oaks Shops, Building D. 8 things were still open.",
+      "who": "office",
+    },
+    {
+      "id": 86,
+      "text": "Our own crew reported Underground on Plumbing at 100%. The whole trade is 20% done.",
+      "who": "office",
+    },
+    {
+      "id": 85,
+      "text": "Approved $11,970 of draw 2 on Millwork, less than the $14,346 asked. Two operatory cabinets are still on order.",
+      "who": "office",
+    },
+    {
+      "id": 84,
+      "text": "Cedar & Pine Millwork sent pay application 2 on Millwork: $15,940, with a conditional waiver signed.",
+      "who": "trade",
+    },
+    {
       "id": 83,
       "text": "Hollis Family Pharmacy paid pay application 4: $18,241.",
       "who": "office",
@@ -7137,7 +7209,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
     },
     {
       "id": 80,
-      "text": "Cool Breeze Mechanical sent the final pay application on HVAC: $3,100 of retainage, with a conditional waiver on final payment.",
+      "text": "Cool Breeze Mechanical sent the final pay application on HVAC: $3,100 of retainage, with a conditional final release of lien.",
       "who": "trade",
     },
     {
@@ -7212,7 +7284,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
     },
     {
       "id": 65,
-      "text": "Hill Country Interiors sent the final pay application on Framing and drywall: $6,420 of retainage, with a conditional waiver on final payment.",
+      "text": "Hill Country Interiors sent the final pay application on Framing and drywall: $6,420 of retainage, with a conditional final release of lien.",
       "who": "trade",
     },
     {
@@ -7249,26 +7321,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "id": 58,
       "text": "Dr. Priya Raman paid pay application 1: $79,247.",
       "who": "office",
-    },
-    {
-      "id": 57,
-      "text": "Sent pay application 1 to Dr. Priya Raman: $79,247 to pay, $8,805 held.",
-      "who": "office",
-    },
-    {
-      "id": 56,
-      "text": "Hillside Excavation filled in and signed a W-9.",
-      "who": "trade",
-    },
-    {
-      "id": 55,
-      "text": "Hillside Excavation sent a new insurance certificate, good to Oct 2.",
-      "who": "trade",
-    },
-    {
-      "id": 54,
-      "text": "Hill Country Interiors sent pay application 3 on Framing and drywall: $7,500, with a conditional waiver signed.",
-      "who": "trade",
     },
   ],
   "partners": [
@@ -9292,7 +9344,13 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
           ],
           "selfPerform": {
             "note": "Our own crew. The job runs on the Pipeline.",
-            "pctDone": 50,
+            "pctByLine": {
+              "dplumb-1": 100,
+              "dplumb-2": 0,
+              "dplumb-3": 0,
+              "dplumb-4": 0,
+            },
+            "pctDone": 20,
             "ref": "J 1042",
             "value": 38500,
           },
@@ -9391,6 +9449,51 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
                 "status": "approved",
                 "waiver": "conditional",
               },
+              {
+                "asked": {
+                  "gross": 15940,
+                  "lines": [
+                    {
+                      "sovId": "mill-2",
+                      "toPct": 100,
+                    },
+                    {
+                      "sovId": "mill-3",
+                      "toPct": 50,
+                    },
+                  ],
+                  "net": 14346,
+                  "note": "Two operatory cabinets are still on order.",
+                  "on": "2026-10-02",
+                  "retainage": 1594,
+                },
+                "gross": 13300,
+                "id": "mill-draw-2",
+                "lines": [
+                  {
+                    "sovId": "mill-2",
+                    "toPct": 80,
+                  },
+                  {
+                    "sovId": "mill-3",
+                    "toPct": 50,
+                  },
+                ],
+                "net": 11970,
+                "number": 2,
+                "payApp": {
+                  "address": "77 Main St, Fredericksburg, TX 78624",
+                  "license": "",
+                  "periodTo": "2026-10-02",
+                  "signedBy": "Owen Blake",
+                  "signedOn": "2026-10-02",
+                  "signedTitle": "Owner",
+                },
+                "requestedOn": "2026-10-02",
+                "retainage": 1330,
+                "status": "approved",
+                "waiver": "conditional",
+              },
             ],
             "price": 39800,
             "retainagePct": 10,
@@ -9448,15 +9551,15 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
                 "amount": 13200,
                 "id": "mill-2",
                 "label": "Operatory cabinets",
-                "pctBilled": 30,
-                "pctReported": 30,
+                "pctBilled": 80,
+                "pctReported": 100,
               },
               {
                 "amount": 13400,
                 "id": "mill-3",
                 "label": "Break room",
-                "pctBilled": 0,
-                "pctReported": 0,
+                "pctBilled": 50,
+                "pctReported": 50,
               },
             ],
             "status": "signed",
@@ -9608,6 +9711,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "architect": "Marsh & Vale Architects",
       "architectId": "marshvale",
       "bidDue": null,
+      "closedOn": "2026-10-02",
       "contingencyPct": 3,
       "customerId": "cibolo",
       "feePct": 10,
@@ -9798,26 +9902,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
                 "status": "paid",
                 "waiver": "unconditional",
               },
-              {
-                "final": true,
-                "gross": 0,
-                "id": "fsite-draw-3",
-                "lines": [],
-                "net": 16800,
-                "number": 3,
-                "payApp": {
-                  "address": "2210 Old San Antonio Rd, Boerne, TX 78006",
-                  "license": "",
-                  "periodTo": "2026-09-14",
-                  "signedBy": "Marisol Vega",
-                  "signedOn": "2026-09-14",
-                  "signedTitle": "Owner",
-                },
-                "requestedOn": "2026-09-14",
-                "retainage": -16800,
-                "status": "paid",
-                "waiver": "unconditional",
-              },
             ],
             "price": 168000,
             "retainagePct": 10,
@@ -9853,7 +9937,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
               },
             ],
             "status": "signed",
-            "warrantyOn": "2026-09-10",
           },
           "trade": "Sitework",
         },
@@ -9983,7 +10066,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
               },
             ],
             "status": "signed",
-            "warrantyOn": "2026-09-30",
           },
           "trade": "Concrete",
         },
@@ -10445,6 +10527,12 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
           ],
           "selfPerform": {
             "note": "Our own crew. The job runs on the Pipeline.",
+            "pctByLine": {
+              "fplumb-1": 100,
+              "fplumb-2": 100,
+              "fplumb-3": 40,
+              "fplumb-4": 0,
+            },
             "pctDone": 65,
             "ref": "J 1088",
             "value": 112000,

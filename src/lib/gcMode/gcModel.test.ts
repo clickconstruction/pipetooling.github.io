@@ -269,6 +269,24 @@ const STEPS: Step[] = [
   { label: 'Hollis accepts the work', action: { type: 'ownerAcceptsWork', projectId: 'stoneoak' } },
   { label: 'Send Hollis the final pay application', action: { type: 'sendOwnerFinalPayApp', projectId: 'stoneoak' } },
   { label: 'Hollis pays the final pay application', action: { type: 'ownerPaid', projectId: 'stoneoak', number: 4 } },
+  // The owner's answers (2026-10-02): approve less than asked, our crew by stage, close a job.
+  {
+    label: 'Cedar & Pine sends pay application 2',
+    action: { type: 'tradeSendPayApp', projectId: 'helotes', packageId: 'mill', toPct: { 'mill-2': 100, 'mill-3': 50 }, ...CEDAR_TYPED },
+  },
+  {
+    label: 'Approve less: the cabinets at 80%',
+    action: {
+      type: 'approveDrawLess',
+      projectId: 'helotes',
+      packageId: 'mill',
+      drawId: 'mill-draw-2',
+      weApprove: { 'mill-2': 80 },
+      note: 'Two operatory cabinets are still on order.',
+    },
+  },
+  { label: 'Our crew reports underground done', action: { type: 'selfReportStage', projectId: 'helotes', packageId: 'dplumb', lineId: 'dplumb-1', pct: 100 } },
+  { label: 'Close Fair Oaks D with work still open (the screen would not offer it)', action: { type: 'closeJob', projectId: 'fairoaksd' } },
 ]
 
 const CUSTOMER_IDS = ['cibolo', 'raman']
@@ -398,6 +416,7 @@ describe('GC mode golden walk', () => {
       'selfReport',
       'ownerAcceptsWork', 'sendOwnerFinalPayApp',
       'sendDrawBack',
+      'closeJob', 'approveDrawLess', 'selfReportStage',
       'tradeOpenPortal',
       'tradeAnswerLines',
     ]

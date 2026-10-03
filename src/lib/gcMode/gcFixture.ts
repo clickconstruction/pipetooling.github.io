@@ -777,7 +777,8 @@ export function initialGcState(): GcState {
   })
 
   // Building lane (2026-10-02): a project already well into building, so Building and Closeout
-  // show on open. Each trade sits at a different point: closed out, waiting on our acceptance, a
+  // show on open. Each trade sits at a different point: accepted and waiting on the owner's
+  // retainage (a trade's comes 10 days after ours), waiting on our acceptance, a
   // draw waiting on us, a draw locked by expired insurance with a waiver owed, a pay application
   // sent back, our own crew, and a quiet one. Its owner billing is left to the Owner Billing lane.
   // Its companies are ones the other lanes' tests do not read (plus Pecan Valley, new), so their
@@ -882,7 +883,7 @@ export function initialGcState(): GcState {
       ], {
         carried: 'fsite-tricounty',
         awardedInviteId: 'fsite-tricounty',
-        // Closed out: every line billed, accepted, warranty in, the retainage paid back, both final waivers in.
+        // Accepted Sep 8. Its retainage waits on the owner releasing ours, then 10 days.
         sow: {
           status: 'signed',
           price: 168_000,
@@ -906,14 +907,8 @@ export function initialGcState(): GcState {
               lines: [{ sovId: 'fsite-3', toPct: 100 }, { sovId: 'fsite-4', toPct: 100 }],
               payApp: typedBy('Marisol Vega', 'Owner', '2026-08-25', '2026-08-25', '2210 Old San Antonio Rd, Boerne, TX 78006'),
             },
-            {
-              id: 'fsite-draw-3', number: 3, requestedOn: '2026-09-14', gross: 0, retainage: -16_800, net: 16_800, status: 'paid', waiver: 'unconditional',
-              lines: [], final: true,
-              payApp: typedBy('Marisol Vega', 'Owner', '2026-09-14', '2026-09-14', '2210 Old San Antonio Rd, Boerne, TX 78006'),
-            },
           ],
           acceptedOn: '2026-09-08',
-          warrantyOn: '2026-09-10',
         },
       }),
       pkg('fconc', 'Concrete', fConc, 220_000, [
@@ -921,7 +916,7 @@ export function initialGcState(): GcState {
       ], {
         carried: 'fconc-guadalupe',
         awardedInviteId: 'fconc-guadalupe',
-        // Every line billed and the warranty letter in: waiting on us to walk it and accept the work.
+        // Every line billed: waiting on us to walk it and accept the work.
         sow: {
           status: 'signed',
           price: 214_000,
@@ -946,7 +941,6 @@ export function initialGcState(): GcState {
             },
           ],
           acceptedOn: null,
-          warrantyOn: '2026-09-30',
         },
       }),
       pkg('fsteel', 'Structural steel', fSteel, 190_000, [
@@ -1049,7 +1043,14 @@ export function initialGcState(): GcState {
         },
       }),
       pkg('fplumb', 'Plumbing', scope('fplumb', ['Underground', 'Rough in', 'Top out', 'Trim']), 112_000, [], {
-        selfPerform: { ref: 'J 1088', value: 112_000, note: 'Our own crew. The job runs on the Pipeline.', pctDone: 65 },
+        // Our own crew reports by stage; the whole trade (65%, what Bill the owner bills) follows from them.
+        selfPerform: {
+          ref: 'J 1088',
+          value: 112_000,
+          note: 'Our own crew. The job runs on the Pipeline.',
+          pctDone: 65,
+          pctByLine: { 'fplumb-1': 100, 'fplumb-2': 100, 'fplumb-3': 40, 'fplumb-4': 0 },
+        },
         carried: 'self',
       }),
       pkg('fhvac', 'HVAC', fHvac, 160_000, [

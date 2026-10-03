@@ -10,7 +10,7 @@ import { startChecklist } from './gcStart'
 import { BIDS_WANTED, bidIsStale, bidsIn, carriedAmount, isGuess } from './gcBids'
 import { followUps } from './gcFollowUp'
 import { partnerBlockers } from './gcBench'
-import { ownCrewWork, sentBackOpen, tradeCloseout } from './gcBuilding'
+import { ownCrewWork, sentBackOpen, timesSentBack, tradeCloseout } from './gcBuilding'
 
 /** The stage colors, saturated on purpose: the ring is a status mark, not a neutral surface. */
 export const RING_COLORS: Record<GcStage, string> = {
@@ -237,22 +237,30 @@ function buildingProgress(state: GcState, project: GcProject): StageProgress {
         // Closeout: the retainage release and its waivers are the final-payment ones.
         if (d.status === 'requested') also.push(`${company} asked for its retainage back. Approve it on Closeout.`)
         else if (d.status === 'approved') also.push(`The retainage release for ${company} is approved. Pay it.`)
-        else if (d.waiver === 'conditional') also.push(`${company} owes the unconditional waiver on final payment.`)
+        else if (d.waiver === 'conditional') also.push(`${company} owes the unconditional final release of lien.`)
       } else if (d.status === 'requested') also.push(`${company} asked for draw ${d.number}. ${approveIt}`)
       else if (d.status === 'approved') also.push(`Draw ${d.number} for ${company} is approved. Pay it.`)
       else if (d.waiver === 'conditional') also.push(`${company} owes the unconditional waiver on draw ${d.number}.`)
     }
     const sow = pkg.sow
     const back = sow ? sentBackOpen(sow) : null
-    if (back) also.push(`Pay application ${back.draw.number} is back with ${company}. Waiting on a fixed one.`)
-    if (sow && sow.status === 'signed' && tradeCloseout(sow).next?.key === 'accepted') {
+    if (back) {
+      // Sent back twice or more (owner, 2026-10-02): flag it so someone calls them.
+      const times = sow ? timesSentBack(sow, back.draw.number) : 1
+      also.push(
+        times >= 2
+          ? `Pay application ${back.draw.number} went back to ${company} ${times} times. Call them.`
+          : `Pay application ${back.draw.number} is back with ${company}. Waiting on a fixed one.`,
+      )
+    }
+    if (sow && sow.status === 'signed' && tradeCloseout(sow, project, state.today).next?.key === 'accepted') {
       also.push(`${pkg.trade} is all billed. Walk it, then accept the work on Closeout.`)
     }
   }
   const pct = Math.round(share * 100)
   if (share >= 1) {
     const signed = withSow.filter((p) => p.sow?.status === 'signed')
-    const closed = signed.filter((p) => p.sow && tradeCloseout(p.sow).closed).length
+    const closed = signed.filter((p) => p.sow && tradeCloseout(p.sow, project, state.today).closed).length
     also.push(`All the work is reported. ${closed} of ${signed.length} ${signed.length === 1 ? 'trade is' : 'trades are'} closed out. See Closeout.`)
   }
   return {
