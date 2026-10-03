@@ -810,7 +810,50 @@ export function initialGcState(): GcState {
     startedOn: '2026-07-01',
     customerId: 'cibolo',
     owner: 'Cibolo Creek Partners',
-    ownerBilling: null,
+    // Owner Billing lane: three monthly pay applications to Cibolo, built from what the trades had
+    // reported by each 25th. The first two are paid (Cibolo pays in about 38 days); the third
+    // waits. The October draft bills the work reported since. billed, paid and retainageHeld
+    // match the pay applications, so the owner window reads the same.
+    ownerBilling: {
+      billed: 956_327.91,
+      paid: 571_816.61,
+      retainageHeld: 95_632.79,
+      payApps: [
+        {
+          number: 1,
+          periodTo: '2026-07-25',
+          sentOn: '2026-07-25',
+          doneToDate: { fsite: 98_000, fconc: 46_800, fsteel: 0, felec: 0, froof: 0, fplumb: 22_400, fhvac: 0, gc: 13_178.33, contingency: 5_411.35, fee: 18_578.97 },
+          workToDate: 204_368.65,
+          retainagePct: 10,
+          retainage: 20_436.87,
+          due: 183_931.78,
+          paidOn: '2026-09-01',
+        },
+        {
+          number: 2,
+          periodTo: '2026-08-25',
+          sentOn: '2026-08-25',
+          doneToDate: { fsite: 168_000, fconc: 126_000, fsteel: 92_000, felec: 89_000, froof: 0, fplumb: 44_800, fhvac: 0, gc: 40_969.46, contingency: 16_823.08, fee: 57_759.25 },
+          workToDate: 635_351.79,
+          retainagePct: 10,
+          retainage: 63_535.18,
+          due: 387_884.83,
+          paidOn: '2026-10-01',
+        },
+        {
+          number: 3,
+          periodTo: '2026-09-25',
+          sentOn: '2026-09-25',
+          doneToDate: { fsite: 168_000, fconc: 214_000, fsteel: 171_000, felec: 103_400, froof: 32_000, fplumb: 61_600, fhvac: 32_400, gc: 61_667, contingency: 25_322.01, fee: 86_938.9 },
+          workToDate: 956_327.91,
+          retainagePct: 10,
+          retainage: 95_632.79,
+          due: 288_878.51,
+          paidOn: null,
+        },
+      ],
+    },
     architectId: 'marshvale',
     architect: 'Marsh & Vale Architects',
     questions: [],
