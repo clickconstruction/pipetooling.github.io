@@ -5,9 +5,10 @@
  *
  * The words follow the plain-words rules at the top of `gcTour.ts`.
  */
-import type { BidAlternate, Draw, GcProject, GcState, Invite, LookAheadMark, Partner, PlanSet, ProjectContact, ScopeItem, SubBid, TradePackage } from './gcTypes'
+import type { BidAlternate, Draw, GcProject, GcState, Invite, LookAheadMark, Partner, PlanQuestion, PlanSet, ProjectContact, ScopeItem, SubBid, TradePackage } from './gcTypes'
 import { daysUntil, money } from './gcWords'
 import { currentRev, partnerById } from './gcLookups'
+import { questionState, questionsFor, type QuestionState } from './gcPlans'
 import { askPromise, OPEN_WITHIN_DAYS, type AskPromise } from './gcFollowUp'
 import { bidIsStale, sowMoney } from './gcBids'
 import { GC_COMPANY } from './gcFixture'
@@ -182,6 +183,9 @@ export function portalJobMoney(pkg: TradePackage): PortalJobMoney | null {
 
 const TONE_ORDER: Record<PortalTodo['tone'], number> = { red: 0, amber: 1, plain: 2 }
 
+/** An answer to a question about the plans shows under Needs you for this many days after it reached the company. */
+const ANSWER_NEW_DAYS = 7
+
 /** What needs the company, most pressing first: red, then amber, then the rest; sooner days first in each. */
 export function portalTodos(state: GcState, partnerId: string, asks: PortalAsk[] = portalAsks(state, partnerId), lang: PortalLang = 'en'): PortalTodo[] {
   const partner = partnerById(state, partnerId)
@@ -242,6 +246,13 @@ export function portalTodos(state: GcState, partnerId: string, asks: PortalAsk[]
         })
       } else if (news.behind && !news.neverOpened && news.forTrade.length === 0 && news.latest) {
         todos.push({ key: `${key}:open`, projectId, text: pt(lang, 'todoOpenSet', { label: news.latest.label, project, trade }), tone: 'plain', by: null })
+      }
+    }
+    // An answer to a question about the plans reached them this past week.
+    if (a.kind !== 'lost' && a.kind !== 'passed') {
+      for (const pq of portalQuestions(a.project, a.pkg.id, partnerId)) {
+        if (!pq.answerOn || daysUntil(pq.answerOn, today) < -ANSWER_NEW_DAYS) continue
+        todos.push({ key: `${pq.q.id}:answer`, projectId, text: pt(lang, 'todoAnswer', { trade, project }), tone: 'plain', by: pq.answerOn })
       }
     }
     if (a.pkg.bidTab && a.invite.bid && !a.pkg.bidTab.seenBy.includes(partnerId)) {
@@ -362,7 +373,7 @@ export function portalLink(partnerId: string): string {
 export interface PortalMessage {
   key: string
   on: string
-  kind: 'invite' | 'nudge' | 'plans' | 'bidTab' | 'msa' | 'sow' | 'start' | 'less' | 'change' | 'paid'
+  kind: 'invite' | 'nudge' | 'plans' | 'bidTab' | 'msa' | 'sow' | 'start' | 'less' | 'change' | 'paid' | 'answer'
   /** Null: about the company, not one project (the master agreement). */
   projectId: string | null
   subject: string
@@ -374,7 +385,7 @@ export interface PortalMessage {
   text?: string
 }
 
-const KIND_ORDER: Record<PortalMessage['kind'], number> = { paid: 0, change: 1, less: 2, start: 3, sow: 4, msa: 5, bidTab: 6, plans: 7, nudge: 8, invite: 9 }
+const KIND_ORDER: Record<PortalMessage['kind'], number> = { answer: 0, paid: 1, change: 2, less: 3, start: 4, sow: 5, msa: 6, bidTab: 7, plans: 8, nudge: 9, invite: 10 }
 
 function firstName(contact: string): string {
   return contact.split(' ')[0] ?? contact
@@ -433,6 +444,27 @@ export function portalMessages(state: GcState, partnerId: string, language?: Por
             t('mChangeWhat', { trade: pkg.trade, project: name, description: co.description.replace(/\.$/, '') }),
             t(co.cost >= 0 ? 'mChangeAdds' : 'mChangeTakes', { amount }),
             t('mChangeOpen'),
+          ],
+        })
+      }
+    }
+
+    // An answer to a question about the plans, sent to this company. Never who asked.
+    for (const { pkg } of mine) {
+      for (const pq of portalQuestions(project, pkg.id, partnerId)) {
+        if (!pq.answerOn || pq.q.answer === null) continue
+        out.push({
+          key: `${pq.q.id}:answer`,
+          on: pq.answerOn,
+          kind: 'answer',
+          projectId: project.id,
+          subject: t('mAnswerSubject', { trade: pkg.trade, project: name }),
+          lines: [
+            hello,
+            t('mAnswerWhat', { trade: pkg.trade, project: name }),
+            t('mAnswerQ', { text: pq.q.text }),
+            t('mAnswerA', { text: pq.q.answer }),
+            ...(pq.q.inSetRev !== undefined ? [t('mAnswerSet', { set: planLabel(project, pq.q.inSetRev) })] : []),
           ],
         })
       }
@@ -871,4 +903,51 @@ export function portalContacts(project: GcProject): { team: ProjectContact[]; bi
     bidding,
     team: bidding ? team.filter((c) => c.role === 'projectManager') : [...team].sort((a, b) => order(a) - order(b)),
   }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Questions about the plans (owner, 2026-10-03): a company asks in its portal; the answer goes to
+// every company on the trade without who asked; questions close three days before the bid is due
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * The day questions close while we bid a job: three days before our bid is due (owner, 2026-10-03).
+ * Null: they stay open (no due day, or the job is ours). A company can ask before that day, not on it.
+ * The same rule as the New Project lane's questionsCloseOn in gcPlans.ts; once that lands, the
+ * portal reads it and these two go (named apart so the barrel has one of each).
+ */
+const PORTAL_QUESTIONS_CLOSE_DAYS = 3
+
+export function portalQuestionsCloseOn(project: GcProject): string | null {
+  if (project.stage !== 'pursuing' || !project.bidDue) return null
+  return addDays(project.bidDue, -PORTAL_QUESTIONS_CLOSE_DAYS)
+}
+
+export function portalQuestionsOpen(project: GcProject, today: string): boolean {
+  const close = portalQuestionsCloseOn(project)
+  return close === null || today < close
+}
+
+export interface PortalQuestion {
+  q: PlanQuestion
+  /** The company asked it. Another company's question never shows who asked. */
+  mine: boolean
+  state: QuestionState
+  /** The day the answer reached this company. Null: not sent to it yet. */
+  answerOn: string | null
+}
+
+/**
+ * The questions one company sees on one trade: every one it asked, and each other company's once
+ * the answer was sent to it. Newest first.
+ */
+export function portalQuestions(project: GcProject, packageId: string, partnerId: string): PortalQuestion[] {
+  return questionsFor(project, packageId).flatMap((q) => {
+    const mine = q.partnerId === partnerId
+    const sent = q.answerSentTo?.find((x) => x.partnerId === partnerId)?.on ?? null
+    // An answer to its own question shows even from before answers were sent on.
+    const answerOn = q.answer !== null ? (sent ?? (mine ? q.answeredOn : null)) : null
+    if (!mine && answerOn === null) return []
+    return [{ q, mine, state: questionState(q), answerOn }]
+  })
 }

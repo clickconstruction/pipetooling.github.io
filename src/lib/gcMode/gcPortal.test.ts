@@ -18,6 +18,9 @@ import {
   portalMessages,
   portalContacts,
   portalPay,
+  portalQuestions,
+  portalQuestionsCloseOn,
+  portalQuestionsOpen,
   portalPlanNews,
   portalPromiseLine,
   portalTodos,
@@ -567,5 +570,43 @@ describe('who to call', () => {
     const c = portalContacts(project('boerne'))
     expect(c.bidding).toBe(true)
     expect(c.team.map((x) => x.role)).toEqual(['projectManager'])
+  })
+})
+
+describe('questions about the plans', () => {
+  const boerne = (s: GcState) => {
+    const p = s.projects.find((x) => x.id === 'boerne')
+    if (!p) throw new Error('no Boerne')
+    return p
+  }
+
+  it('closes three days before the bid is due, only while we bid', () => {
+    expect(portalQuestionsCloseOn(boerne(state))).toBe('2026-10-05')
+    expect(portalQuestionsOpen(boerne(state), '2026-10-04')).toBe(true)
+    expect(portalQuestionsOpen(boerne(state), '2026-10-05')).toBe(false)
+    expect(portalQuestionsCloseOn(state.projects.find((p) => p.id === 'helotes') ?? boerne(state))).toBeNull()
+  })
+
+  it('shows a company its own question, and another company only the answered ones sent to it, without who asked', () => {
+    const asked = gcReducer(state, { type: 'tradeAskQuestion', projectId: 'boerne', packageId: 'elec', partnerId: 'voltage', text: 'Is the tenant panel 200A or 400A?', sheets: ['E-301'] })
+    const q = boerne(asked).questions.find((x) => x.text.startsWith('Is the tenant panel'))
+    if (!q) throw new Error('no question')
+    expect(portalQuestions(boerne(asked), 'elec', 'voltage').map((p) => [p.q.id, p.mine, p.state])).toContainEqual([q.id, true, 'asked'])
+    expect(portalQuestions(boerne(asked), 'elec', 'brightline').some((p) => p.q.id === q.id)).toBe(false)
+
+    const answered = gcReducer(gcReducer(asked, { type: 'sendQuestionToArchitect', projectId: 'boerne', questionId: q.id }), {
+      type: 'answerQuestion',
+      projectId: 'boerne',
+      questionId: q.id,
+      answer: '400A, per the revised one-line.',
+      recipients: ['voltage', 'brightline'],
+    })
+    const theirs = portalQuestions(boerne(answered), 'elec', 'brightline').find((p) => p.q.id === q.id)
+    expect(theirs).toMatchObject({ mine: false, state: 'answered', answerOn: state.today })
+    const todo = portalTodos(answered, 'brightline').find((t) => t.key === `${q.id}:answer`)
+    expect(todo?.text).toBe('A question about the Electrical plans on Boerne Retail Shell has an answer.')
+    const m = portalMessages(answered, 'brightline').find((x) => x.kind === 'answer')
+    expect(m?.lines).toContain('The answer: 400A, per the revised one-line.')
+    expect(m?.lines.join(' ')).not.toContain('Voltage')
   })
 })
