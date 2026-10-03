@@ -14,6 +14,8 @@ import { setLineFacts } from '../../lib/submittals/itemPartsIo'
 import { tagBlock, type TagGuide } from '../../lib/submittals/procurementTagBlocks'
 import { isPlausibleDate, readDateBoxEntry } from '../../lib/dateBoxEntry'
 import {
+  ANSWER_DOOR_WORDS,
+  answerDoor,
   buildProcurementLog,
   buildProcurementUpdateHtml,
   diffProcurementLog,
@@ -73,6 +75,8 @@ type Props = {
   onCounts?: (c: { released: number; ordered: number; delivered: number; late: number }) => void
   /** A tap on a line's item opens its row's Edit window, on that part (2026-10-02, Grace: no scrolling back and forth). */
   onOpenItem?: (line: { itemId: string; partKey: string | null; /** the house cell was what was tapped */ house?: boolean }) => void
+  /** A line the GC still holds opens its row's Their answer window, on that part (2026-10-02). Not given: no door. */
+  onAnswerItem?: (line: { itemId: string; partKey: string | null }) => void
   /** The supply houses the tick bar can set on many lines at once (2026-10-02). */
   houses?: ReadonlyArray<{ id: string; name: string }>
   /** The rows' parts changed from the log (house, lead time, stage): the caller reads them again. */
@@ -146,7 +150,7 @@ type Draft = Partial<Record<'po' | 'note' | 'label' | 'lead' | DateField, string
  * the delivered date and a note. Send update records a dated snapshot with what
  * changed, opens the sheet to print, and copies the text for the email.
  */
-export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items, reviewerNames, currentUser, letterhead = null, projectAddress = null, gcName = null, roomUrl = null, busy = false, onCounts, onOpenItem, houses = [], onLinesChanged }: Props) {
+export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items, reviewerNames, currentUser, letterhead = null, projectAddress = null, gcName = null, roomUrl = null, busy = false, onCounts, onOpenItem, onAnswerItem, houses = [], onLinesChanged }: Props) {
   const { showToast } = useToastContext()
   const confirmDialog = useConfirmDialog()
   const [records, setRecords] = useState<ProcurementRecord[]>([])
@@ -691,6 +695,13 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
         {status.sub ? <span style={{ ...smallMuted, display: 'block' }}>{status.sub}</span> : null}
       </button>
     )
+    // A line the GC's answer still holds: the door to the window that records it, under the status (2026-10-02).
+    const door = onAnswerItem && r.itemId ? answerDoor(r) : null
+    const answerButton = door ? (
+      <button type="button" onClick={() => onAnswerItem!({ itemId: r.itemId!, partKey: r.partKey ?? null })} disabled={busy} title="Record what they said about this part. Nobody is emailed." aria-label={`${door === 'enter' ? 'Enter' : 'Change'} their answer on ${name}${r.partKey ? ` ${head}` : ''}`} style={{ ...link, display: 'block', marginTop: '0.2rem', textAlign: 'left' }} data-testid="procurement-answer-door" data-door={door}>
+        {ANSWER_DOOR_WORDS[door]}
+      </button>
+    ) : null
     const remove = r.isHand ? <button type="button" onClick={() => void removeHandRow(r)} disabled={disabled} title="Remove this item" aria-label={`Remove ${r.product || 'item'}`} style={{ ...link, color: 'var(--text-red-600)', textDecoration: 'none', fontSize: '0.95rem' }}>×</button> : null
     const editor = (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem 1.1rem', alignItems: 'flex-start' }}>
@@ -752,6 +763,7 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
                 {remove}
               </div>
               {statusButton}
+              {answerButton}
             </div>
           </div>
           {open ? (
@@ -774,7 +786,10 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
           <td style={{ ...td, whiteSpace: 'nowrap' }} data-testid="procurement-house">{house}</td>
           <td style={{ ...td, whiteSpace: 'nowrap' }} data-testid="procurement-stage">{stage}</td>
           <td style={{ ...td, whiteSpace: 'nowrap' }}>{lead}</td>
-          <td style={{ ...td, minWidth: '12.5rem', width: '13.5rem' }}>{statusButton}</td>
+          <td style={{ ...td, minWidth: '12.5rem', width: '13.5rem' }}>
+            {statusButton}
+            {answerButton}
+          </td>
           <td style={{ ...td, whiteSpace: 'nowrap' }}>{remove}</td>
         </tr>
         {open ? (

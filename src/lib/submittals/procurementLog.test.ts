@@ -35,7 +35,7 @@ import {
   tagMatchesFixture,
   type ProcurementDecision,
   type ProcurementItemSource,
-  type ProcurementRecord, foldByHouse, gcProcurementRows, houseFoldNote, lineStatus, logIsDraft, orderBlockers, procurementSections, procurementCounts, tagRollUp } from './procurementLog'
+  type ProcurementRecord, ANSWER_DOOR_WORDS, answerDoor, foldByHouse, gcProcurementRows, houseFoldNote, lineStatus, logIsDraft, orderBlockers, procurementSections, procurementCounts, tagRollUp } from './procurementLog'
 
 const item = (p: Partial<ProcurementItemSource> & { tag: string; product: string }): ProcurementItemSource => ({ supplyHouse: null, leadTimeDays: null, decision: null, shared: true, ...p })
 const rec = (p: Partial<ProcurementRecord> & { tag: string | null }): ProcurementRecord => ({ id: 'r-' + (p.tag ?? p.label ?? 'x'), label: '', leadTimeDays: null, stage: null, orderedOn: null, poRef: '', expectedOn: null, deliveredOn: null, note: '', sortOrder: 0, ...p })
@@ -637,5 +637,52 @@ describe('2026-10-02 · an order-only fixture on the log', () => {
   it('once ordered it reads as any ordered line', () => {
     const rows = buildProcurementLog({ items: [fco], records: [rec({ tag: 'FCO', orderedOn: '2026-10-01' })], tagStage: {}, stageDates: {} })
     expect(rows[0]!.status).toBe('ordered')
+  })
+})
+
+describe('2026-10-02 · the door from a line to Their answer', () => {
+  // BP375's WC-1, WC-2 on a shared revision: the bowl waits on the GC, the valve was sent back, the seat
+  // was approved, the stop is order only; HB-3 is one product, ordered before anyone answered.
+  const part = (k: string, product: string, extra: Partial<ProcurementItemSource> = {}) =>
+    item({ tag: 'WC-1, WC-2', product, itemId: 'row-wc', partKey: k, partOrder: 1, supplyHouse: 'Moore Supply', ...extra })
+  const lines = buildProcurementLog({
+    items: [
+      part('k-bowl', 'TOTO CT728CUVG#01'),
+      part('k-valve', 'TOTO TET2UB31#SS', { partOrder: 2, decision: { kind: 'rejected', at: '2026-10-02T15:00:00Z' } }),
+      part('k-seat', 'MAINLINE ML1055SSC000', { partOrder: 3, decision: approved('2026-10-02T15:00:00Z') }),
+      part('k-stop', 'BRASSCRA PLB113XP', { partOrder: 4, orderOnly: true }),
+      item({ tag: 'HB-3', product: 'WOODFORD B74C', itemId: 'row-hb' }),
+      item({ tag: 'UTILITY SINK', product: '(no product)', itemId: 'row-us', noProduct: true }),
+      item({ tag: 'FCO', product: 'ZURN ZN1400-2NL', itemId: 'row-fco', orderOnly: true, noGc: true }),
+    ],
+    records: [rec({ tag: 'HB-3', orderedOn: '2026-10-01' }), rec({ tag: null, label: 'Grease interceptor 750 gal', sortOrder: 0 })],
+    tagStage: {},
+    stageDates: {},
+  })
+  const doorOf = (pick: (r: (typeof lines)[number]) => boolean) => answerDoor(lines.find(pick)!)
+
+  it('a line the GC still holds offers Enter their answer…; one they sent back offers Change their answer…', () => {
+    expect(doorOf((r) => r.partKey === 'k-bowl')).toBe('enter')
+    expect(doorOf((r) => r.partKey === 'k-valve')).toBe('change')
+    expect(ANSWER_DOOR_WORDS).toEqual({ enter: 'Enter their answer…', change: 'Change their answer…' })
+  })
+
+  it('none on a released, ordered or order-only line, a row with no product, or a hand line', () => {
+    expect(doorOf((r) => r.partKey === 'k-seat')).toBeNull()
+    expect(doorOf((r) => r.partKey === 'k-stop')).toBeNull()
+    expect(doorOf((r) => r.tag === 'HB-3')).toBeNull()
+    expect(doorOf((r) => r.tag === 'UTILITY SINK')).toBeNull()
+    expect(doorOf((r) => r.tag === 'FCO')).toBeNull()
+    expect(doorOf((r) => r.isHand)).toBeNull()
+  })
+
+  it('on a draft every line the GC sees offers the door: the office records an answer that came outside the app', () => {
+    const draft = buildProcurementLog({ items: [part('k-bowl', 'TOTO CT728CUVG#01', { shared: false }), item({ tag: 'HB-3', product: 'WOODFORD B74C', itemId: 'row-hb', shared: false })], records: [], tagStage: {}, stageDates: {} })
+    expect(draft.map((r) => [r.status, answerDoor(r)])).toEqual([
+      ['not_submitted', 'enter'],
+      ['not_submitted', 'enter'],
+    ])
+    // A line with no row behind it (an older caller that does not pass itemId) has no door to open.
+    expect(answerDoor({ ...draft[1]!, itemId: null })).toBeNull()
   })
 })

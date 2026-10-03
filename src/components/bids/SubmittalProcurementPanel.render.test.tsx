@@ -333,6 +333,48 @@ describe('SubmittalProcurementPanel', () => {
     expect(screen.queryByTestId('procurement-open-row')).toBeNull()
   })
 
+  it('2026-10-02 · a line the GC still holds offers Their answer under its status: Enter on a line nobody answered, Change on one sent back, none on a released, ordered or order-only line', async () => {
+    localStorage.setItem('submittals_procure_lens', 'by_tag')
+    state.records = [{ id: 'p-hb', bid_id: 'b1', tag: 'HB-3', part_key: null, label: '', lead_time_days: null, stage: null, ordered_on: '2026-10-01', po_ref: '', expected_on: null, delivered_on: null, note: '', sort_order: 0, created_at: '', updated_at: '' }]
+    const onAnswerItem = vi.fn<(line: { itemId: string; partKey: string | null }) => void>()
+    const shared: ProcurementItemSource[] = [
+      { tag: 'WC-1, WC-2', product: 'TOTO CT728CUVG#01 TORNADO FLUSH TOILET', supplyHouse: 'Moore Supply', leadTimeDays: null, decision: null, shared: true, partKey: 'k-bowl', partOrder: 1, itemId: 'row-wc' },
+      { tag: 'WC-1, WC-2', product: 'TOTO TET2UB31#SS FLUSH VALVE', supplyHouse: 'Moore Supply', leadTimeDays: null, decision: { kind: 'rejected', at: '2026-10-02T15:00:00Z' }, shared: true, partKey: 'k-valve', partOrder: 2, itemId: 'row-wc' },
+      { tag: 'WC-1, WC-2', product: 'MAINLINE ML1055SSC000 SEAT', supplyHouse: 'Moore Supply', leadTimeDays: null, decision: { kind: 'approved', at: '2026-10-02T15:00:00Z' }, shared: true, partKey: 'k-seat', partOrder: 3, itemId: 'row-wc' },
+      { tag: 'WC-1, WC-2', product: 'BRASSCRA PLB113XP ANGLE STOP', supplyHouse: null, leadTimeDays: null, decision: null, shared: true, partKey: 'k-stop', partOrder: 4, orderOnly: true, itemId: 'row-wc' },
+      { tag: 'HB-3', product: 'WOODFORD B74C', supplyHouse: 'Moore Supply', leadTimeDays: null, decision: null, shared: true, itemId: 'row-hb' },
+    ]
+    try {
+      const { unmount } = renderWithProviders(<SubmittalProcurementPanel bidId="b1" bidLabel="B375" companyName="Click" items={shared} reviewerNames={[]} currentUser={{ id: 'u', name: 'Wendi' }} onOpenItem={() => {}} onAnswerItem={onAnswerItem} />)
+      await screen.findAllByTestId('procurement-row')
+      await waitFor(() => expect(screen.getAllByTestId('procurement-answer-door')).toHaveLength(2))
+      const doors = screen.getAllByTestId('procurement-answer-door')
+      expect(doors.map((d) => [d.textContent, d.getAttribute('data-door')])).toEqual([
+        ['Enter their answer…', 'enter'],
+        ['Change their answer…', 'change'],
+      ])
+      // Each door sits in its own line's status cell, under the status.
+      const lineOf = (d: HTMLElement) => d.closest('[data-testid="procurement-row"]')!
+      expect(lineOf(doors[0]!).querySelector('[data-testid="procurement-status"]')!.textContent).toBe('Waiting on the GC')
+      expect(lineOf(doors[1]!).querySelector('[data-testid="procurement-status"]')!.textContent).toBe('Rejected by the GC')
+      fireEvent.click(screen.getByRole('button', { name: 'Enter their answer on WC-1, WC-2 TOTO CT728CUVG#01' }))
+      expect(onAnswerItem).toHaveBeenLastCalledWith({ itemId: 'row-wc', partKey: 'k-bowl' })
+      fireEvent.click(screen.getByRole('button', { name: 'Change their answer on WC-1, WC-2 TOTO TET2UB31#SS' }))
+      expect(onAnswerItem).toHaveBeenLastCalledWith({ itemId: 'row-wc', partKey: 'k-valve' })
+      // The status still opens the line's dates: the door is a button of its own beside it.
+      openDates('WC-1, WC-2 TOTO CT728CUVG#01')
+      expect(screen.getByTestId('procurement-editor')).toBeTruthy()
+      expect(onAnswerItem).toHaveBeenCalledTimes(2)
+      unmount()
+      // No door given (the GC's copies, older callers): no link on any line.
+      renderWithProviders(<SubmittalProcurementPanel bidId="b1" bidLabel="B375" companyName="Click" items={shared} reviewerNames={[]} currentUser={{ id: 'u', name: 'Wendi' }} onOpenItem={() => {}} />)
+      await screen.findAllByTestId('procurement-row')
+      expect(screen.queryByTestId('procurement-answer-door')).toBeNull()
+    } finally {
+      localStorage.removeItem('submittals_procure_lens')
+    }
+  })
+
   it('2026-10-02 · By tag on a draft: said once that nothing is released; the GC’s parts, then a divider and the order-only ones in grey; two carriers flagged', async () => {
     localStorage.setItem('submittals_procure_lens', 'by_tag')
     state.records = []
@@ -493,7 +535,8 @@ describe('SubmittalProcurementPanel', () => {
         { tag: 'WC-1, WC-2', product: 'TOTO CT728CUVG#01 TORNADO FLUSH TOILET', supplyHouse: 'Moore Supply', leadTimeDays: 14, decision: null, shared: false, partKey: 'k-bowl', partOrder: 1, quantity: 10, stage: 'trim_set', itemId: 'row-wc', fixture: 'WC 1&2', fixtureCount: 10 },
         { tag: 'WC-1, WC-2', product: 'JOSAM 12694 closet carrier', supplyHouse: null, leadTimeDays: null, decision: null, shared: false, partKey: 'k-josam', partOrder: 2, quantity: 10, stage: 'rough_in', itemId: 'row-wc', fixture: 'WC 1&2', fixtureCount: 10 },
       ]
-      renderWithProviders(<SubmittalProcurementPanel bidId="b1" bidLabel="B375" companyName="Click" items={lines} reviewerNames={[]} currentUser={{ id: 'u', name: 'Wendi' }} onOpenItem={() => {}} />)
+      const onAnswerItem = vi.fn<(line: { itemId: string; partKey: string | null }) => void>()
+      renderWithProviders(<SubmittalProcurementPanel bidId="b1" bidLabel="B375" companyName="Click" items={lines} reviewerNames={[]} currentUser={{ id: 'u', name: 'Wendi' }} onOpenItem={() => {}} onAnswerItem={onAnswerItem} />)
       const cards = await screen.findAllByTestId('procurement-row')
       expect(cards.map((c) => c.tagName)).toEqual(['DIV', 'DIV'])
       expect(document.querySelector('table')).toBeNull()
@@ -503,6 +546,12 @@ describe('SubmittalProcurementPanel', () => {
       openDates('WC-1, WC-2 JOSAM 12694')
       expect(screen.getByTestId('procurement-editor').tagName).toBe('DIV')
       expect(screen.getByLabelText('WC-1, WC-2 ordered on')).toBeTruthy()
+      // A draft card still offers the door, under its status: the answer may have come by email.
+      const door = within(cards[1]!).getByTestId('procurement-answer-door')
+      expect(door.textContent).toBe('Enter their answer…')
+      expect(door.previousElementSibling!.getAttribute('data-testid')).toBe('procurement-status')
+      fireEvent.click(door)
+      expect(onAnswerItem).toHaveBeenLastCalledWith({ itemId: 'row-wc', partKey: 'k-josam' })
     } finally {
       window.matchMedia = real
       localStorage.removeItem('submittals_procure_lens')

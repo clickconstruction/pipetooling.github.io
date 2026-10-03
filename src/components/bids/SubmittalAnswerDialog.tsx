@@ -2,12 +2,13 @@
  * Their answer on one submittal row, in a window of its own (Submittals stage 5b, 2026-10-02):
  * who answered, the day, then one line per part the GC sees with its own Approved / Revise /
  * Rejected and its own note. One Save records every line that changed. Opened from the row's
- * Their answer button, and from the row editor.
+ * Their answer button, from the row editor, and from a line of the procurement log, which rings
+ * its own part.
  *
  * It only writes records: nobody is emailed or contacted, and the window says so. The window is
  * held to the screen's height; the title and the buttons are pinned and the lines scroll.
  */
-import { useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 
 import { answerLines, answerNeedsReviewer, answerSaveLabel, answerSummary, answerWrites, approveOpenLines, clearLines, initialAnswerDrafts, tapAnswer, type AnswerDrafts, type AnswerWrites } from '../../lib/submittals/answerEntry'
 import { ENTERED_ON_MIN, enteredOnProblem } from '../../lib/submittals/enteredDecisions'
@@ -31,7 +32,7 @@ const inputStyle: CSSProperties = { padding: '0.35rem 0.5rem', border: '1px soli
 const smallMuted: CSSProperties = { fontSize: '0.75rem', color: 'var(--text-muted)' }
 const quietBtn: CSSProperties = { padding: '0.2rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit', fontSize: '0.75rem', cursor: 'pointer' }
 
-export function SubmittalAnswerDialog({ item, parts = [], people = [], sources = NO_REVIEWER_SOURCES, revLabel, busy = false, onSave, onClose }: {
+export function SubmittalAnswerDialog({ item, parts = [], people = [], sources = NO_REVIEWER_SOURCES, revLabel, focusPartId = null, busy = false, onSave, onClose }: {
   item: SubmittalItemRow
   /** the row's parts; the ones the GC sees each get a line */
   parts?: ReadonlyArray<SubmittalPartRow>
@@ -40,6 +41,8 @@ export function SubmittalAnswerDialog({ item, parts = [], people = [], sources =
   sources?: ReviewerSources
   /** "Rev 1" */
   revLabel: string
+  /** The part a procurement log line opened the window on: ringed, scrolled to, its answer ready. */
+  focusPartId?: string | null
   busy?: boolean
   onSave: (save: AnswerSave) => void
   onClose: () => void
@@ -58,6 +61,16 @@ export function SubmittalAnswerDialog({ item, parts = [], people = [], sources =
   const tag = item.tag.trim() || 'Accessory'
   const byParts = lines.some((l) => l.partId != null)
   const setNote = (key: string, note: string) => setDrafts((cur) => ({ ...cur, [key]: { decision: cur[key]?.decision ?? null, note } }))
+  const focusRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    const el = focusRef.current
+    if (!el) return
+    el.scrollIntoView?.({ block: 'center' })
+    // The answer it already has, else the first: one tap or one key from Record.
+    const btn = el.querySelector<HTMLButtonElement>('[role="group"] button[aria-pressed="true"]') ?? el.querySelector<HTMLButtonElement>('[role="group"] button')
+    btn?.focus({ preventScroll: true })
+    // Once, on open: the window keeps its own place after that.
+  }, [])
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: Z, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))' }} role="presentation" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
@@ -97,8 +110,9 @@ export function SubmittalAnswerDialog({ item, parts = [], people = [], sources =
               {lines.map((l, i) => {
                 const d = drafts[l.key] ?? { decision: l.current, note: l.currentNote }
                 const showNote = d.decision === 'revise' || d.decision === 'rejected' || d.note.trim() !== ''
+                const focused = focusPartId != null && l.partId === focusPartId
                 return (
-                  <div key={l.key} data-testid="answer-line" data-answer={d.decision ?? ''} style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem 0.75rem', alignItems: 'center', padding: '0.5rem 0.6rem', borderTop: i === 0 ? 'none' : '1px solid var(--border)', background: d.decision ? TINT[d.decision] : 'var(--surface)' }}>
+                  <div key={l.key} ref={focused ? focusRef : undefined} data-testid="answer-line" data-answer={d.decision ?? ''} data-focused={focused ? 'true' : undefined} style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem 0.75rem', alignItems: 'center', padding: '0.5rem 0.6rem', borderTop: i === 0 ? 'none' : '1px solid var(--border)', background: d.decision ? TINT[d.decision] : 'var(--surface)', boxShadow: focused ? 'inset 0 0 0 2px #2563eb' : undefined }}>
                     <div style={{ flex: '1 1 14rem', minWidth: 0, fontSize: '0.8125rem' }}>
                       <span style={{ fontWeight: 600, color: 'var(--text-strong)', overflowWrap: 'anywhere' }}>{l.head}</span>
                       {l.words ? <span style={{ ...smallMuted, display: 'block', overflowWrap: 'anywhere' }}>{l.words}</span> : null}

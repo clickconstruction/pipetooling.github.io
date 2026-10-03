@@ -122,4 +122,36 @@ describe('SubmittalAnswerDialog', () => {
     fireEvent.click(screen.getByTestId('answer-save'))
     expect(onSave.mock.calls[0]![0].writes.sets).toEqual([{ decision: 'revise', note: '', partIds: [], row: true }])
   })
+
+  it('2026-10-02 · opened from a procurement log line: that part is ringed and its answer is ready; opened from the row, nothing is', () => {
+    const scrolled: Element[] = []
+    const real = Element.prototype.scrollIntoView
+    Element.prototype.scrollIntoView = function (this: Element) { scrolled.push(this) }
+    try {
+      const carried = [
+        part('bowl', 'TOTO CT728CUVG#01', 1),
+        part('valve', 'TOTO TET2UB31#SS', 2, { review_decision: 'rejected', review_note: 'TET2UA31#SS', reviewed_by_name: 'structura', decision_source: 'entered' }),
+        part('seat', 'MAINLINE ML1055SSC000 WHT ELONG', 3),
+      ]
+      const { unmount } = renderWithProviders(<SubmittalAnswerDialog item={item()} parts={carried} sources={sources} revLabel="Rev 1" focusPartId="seat" onSave={() => {}} onClose={() => {}} />)
+      const ringed = screen.getAllByTestId('answer-line').filter((l) => l.getAttribute('data-focused') === 'true')
+      expect(ringed).toHaveLength(1)
+      expect(ringed[0]!.textContent).toContain('MAINLINE ML1055SSC000')
+      expect(scrolled).toEqual([ringed[0]])
+      // Nothing picked on it yet: the keyboard is on its first answer, one tap from Approved.
+      expect(document.activeElement).toBe(within(line('MAINLINE ML1055SSC000')).getByRole('button', { name: 'Approved' }))
+      unmount()
+      // A part sent back opens on the answer it has, ready to change.
+      const { unmount: unmount2 } = renderWithProviders(<SubmittalAnswerDialog item={item()} parts={carried} sources={sources} revLabel="Rev 1" focusPartId="valve" onSave={() => {}} onClose={() => {}} />)
+      expect(document.activeElement).toBe(within(line('TOTO TET2UB31#SS')).getByRole('button', { name: 'Rejected' }))
+      unmount2()
+      // From the row's own button, no part is ringed and nothing scrolls.
+      scrolled.length = 0
+      renderWithProviders(<SubmittalAnswerDialog item={item()} parts={carried} sources={sources} revLabel="Rev 1" onSave={() => {}} onClose={() => {}} />)
+      expect(screen.getAllByTestId('answer-line').some((l) => l.getAttribute('data-focused') === 'true')).toBe(false)
+      expect(scrolled).toEqual([])
+    } finally {
+      Element.prototype.scrollIntoView = real
+    }
+  })
 })
