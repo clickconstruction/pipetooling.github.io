@@ -16,6 +16,7 @@ import {
   planRecipients,
   proposalTotals,
   retainageHeldNow,
+  sentBackOpen,
   timesSentBack,
   tradeCloseout,
   shortDate,
@@ -996,7 +997,7 @@ export function GcDrawsTab({ state, project, dispatch }: GcPaneProps) {
                 </div>
               ))}
               <GcBuildingSentBackList sow={sow} onLook={(draw) => setLooking({ packageId: pkg.id, draw })} />
-              {m.ready > 0 && !sow.draws.some((d) => d.status === 'requested') && (
+              {m.ready > 0 && !sow.draws.some((d) => d.status === 'requested') && !sentBackOpen(sow) && (
                 <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
                   {partner.company} has reported {money(m.ready)} of work they have not asked to be paid for.
                 </span>

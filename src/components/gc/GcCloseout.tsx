@@ -246,7 +246,6 @@ function CloseJobCard({ job, onClose }: { job: { ready: boolean; left: string[];
     <Card>
       <div style={{ display: 'grid', gap: '0.4rem', fontSize: '0.875rem' }}>
         <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <strong>Close the job</strong>
           <Btn kind="primary" disabled={!job.ready} title={job.ready ? undefined : 'Every trade closes out first.'} onClick={onClose}>
             Close the job
           </Btn>
