@@ -16,6 +16,7 @@ import type { JobsLedgerInvoiceRow, PaymentRow } from './jobFormTypes'
 import { attributeJobPayments, type PaymentSlice } from './paymentAttribution'
 import { mercuryLinkedPaymentRow, stripeBillInvoiceForPaymentRow } from './jobFormPaymentPredicates'
 import { daysBetweenYmd, formatYmdMonthDay } from './billedExpectedPay'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 /** What the bank synced about the deposit behind a bank-linked row. */
 export type MercuryDepositFacts = {
@@ -94,10 +95,12 @@ export function sourceWords(source: PaymentSource, bank?: MercuryDepositFacts | 
   }
 }
 
-/** The bill's day the pay gap is measured from: when it was sent, else when it was billed. */
+/**
+ * The bill's day the pay gap is measured from: when it was sent, else when it was billed. Both are
+ * instants, read as their day in APP_CALENDAR_TZ, not their first ten characters (the UTC date).
+ */
 export function billSentYmd(inv: Pick<JobsLedgerInvoiceRow, 'sent_to_customer_at' | 'billed_at'>): string | null {
-  const raw = (inv.sent_to_customer_at ?? inv.billed_at ?? '').trim()
-  return raw ? raw.slice(0, 10) : null
+  return calendarYmdInAppTzFromIso((inv.sent_to_customer_at ?? inv.billed_at ?? '').trim()) || null
 }
 
 /** Whole days from the bill going out to the money arriving; null without both dates, never negative words. */

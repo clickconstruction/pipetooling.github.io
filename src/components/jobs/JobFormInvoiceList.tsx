@@ -35,7 +35,7 @@ import { useJobBilledExpectedPay } from '../../hooks/useJobBilledExpectedPay'
 import { invoiceRowMenuSide, type InvoiceRowMenuSide } from '../../lib/jobs/invoiceRowMenuSide'
 import { billSettled, lienWaiverCellForBill } from '../../lib/jobs/lienWaiverCell'
 import { billCheckClearsYmd } from '../../lib/jobs/checkClearing'
-import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils'
 import type { JobLienReleaseRow } from '../../lib/jobs/lienReleaseTracking'
 import LienReleaseModal from './LienReleaseModal'
 import { billPaidBar, orderMoneyByDate, splitBillsAndPayments, type MercuryDepositFacts, type MoneyByDateItem } from '../../lib/jobs/billsAndPayments'
@@ -399,18 +399,19 @@ export function JobFormInvoiceList({
         gc: gcName,
         other: billTo ? billTo.name ?? billTo.email : null,
       })
-      const sentIso = (inv.sent_to_customer_at ?? inv.billed_at ?? '').trim()
+      // Instants: the day in APP_CALENDAR_TZ, not the UTC date of their first ten characters.
+      const sentYmd = calendarYmdInAppTzFromIso((inv.sent_to_customer_at ?? inv.billed_at ?? '').trim()) || null
       const row = invoiceLedgerRow({
         status: inv.status,
         amount: Number(inv.amount ?? 0),
-        sentYmd: sentIso ? sentIso.slice(0, 10) : null,
+        sentYmd,
         payments: appliedSlices.map((s) => ({ amount: s.amount, paidOnYmd: s.payment.paid_on ? String(s.payment.paid_on).slice(0, 10) : null })),
         billsTo,
         drawLabel: drawLabelByInvoiceId?.[inv.id] ?? null,
         isAutoRemainder: inv.status === 'ready_to_bill' && Boolean(inv.is_primary_rtb_bundle),
         expected: inv.status === 'billed' ? expectedFor(inv) : null,
       })
-      return row ? { inv, row, party, billTo, invPayments, sentYmd: row.state === 'draft' ? null : sentIso.slice(0, 10) || null } : null
+      return row ? { inv, row, party, billTo, invPayments, sentYmd: row.state === 'draft' ? null : sentYmd } : null
     })
     .filter((r): r is NonNullable<typeof r> => r != null)
     .sort((a, b) => compareInvoiceLedgerRows({ state: a.row.state, sentYmd: a.sentYmd }, { state: b.row.state, sentYmd: b.sentYmd }))

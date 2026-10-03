@@ -88,6 +88,14 @@ describe('billChoicesForPayment', () => {
     expect(b?.sentYmd).toBe('2026-08-15')
   })
 
+  it('a bill sent or billed in a Central evening is offered on that day', () => {
+    // 7:30 pm CDT on Oct 2 (PostgREST's +00:00 shape); 6:30 pm CST on Dec 1 from billed_at.
+    const [a] = billChoicesForPayment(pay(), [inv({ sent_to_customer_at: '2026-10-03T00:30:00+00:00' })], [])
+    expect(a?.sentYmd).toBe('2026-10-02')
+    const [b] = billChoicesForPayment(pay(), [inv({ sent_to_customer_at: null, billed_at: '2026-12-02T00:30:00Z' })], [])
+    expect(b?.sentYmd).toBe('2026-12-01')
+  })
+
   it('reports over-applied bills as negative remaining, not a match', () => {
     const choices = billChoicesForPayment(pay({ amount: 100 }), [inv({ amount: 1000 })], [pay({ id: 'p9', amount: 1100, invoice_id: 'i1' })])
     expect(choices[0]?.remaining).toBe(-100)

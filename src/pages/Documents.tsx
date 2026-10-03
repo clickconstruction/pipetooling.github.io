@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { calendarYmdInAppTzFromIso } from '../utils/dateUtils'
 import { useAuth } from '../hooks/useAuth'
 import type { Tables } from '../types/database'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
@@ -1024,7 +1025,7 @@ function DocumentsJobsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
                       <td style={{ ...tdStyle, textAlign: 'right', whiteSpace: 'nowrap' }}>{formatJobRevenueUsd(r.revenue)}</td>
                     </tr>
                     {jobInvoices.map((inv) => {
-                      const sent = (inv.sent_to_customer_at ?? '').trim().slice(0, 10)
+                      const sent = calendarYmdInAppTzFromIso((inv.sent_to_customer_at ?? '').trim())
                       return (
                         <tr key={inv.id}>
                           <td colSpan={6} style={{ ...tdStyle, paddingLeft: '1.75rem', background: 'var(--bg-page)' }}>

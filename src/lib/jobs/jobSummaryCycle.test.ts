@@ -39,6 +39,14 @@ describe('cycle (v2.2823)', () => {
     expect(median([1, 4])).toBe(2.5)
   })
 
+  it('a bill marked billed in a Central evening counts from that day', () => {
+    // Last work Oct 2; billed 7:30 pm CDT that evening (Oct 3 in UTC), paid Oct 12.
+    const job = mk('e1', { lastWork: '2026-10-02', paid: ['2026-10-12'], status: 'paid' })
+    job.job.invoices = [{ status: 'billed', amount: 1000, billed_at: '2026-10-03T00:30:00+00:00' }]
+    const [c] = jobCycleRows(enrichJobSummaryRows({ rows: [job], reportPctByJobId: new Map(), ledger: null, method: 'day' }), null)
+    expect(c).toMatchObject({ billYmd: '2026-10-02', workToBillDays: 0, billToPaidDays: 10 })
+  })
+
   it('derives the two lags per job from last work, first bill, and the paid date', () => {
     const c = jobCycleRows(rows, null)
     expect(c[0]).toMatchObject({ number: 'a', workToBillDays: 4, billToPaidDays: 20, gcLabel: 'Knight' })
