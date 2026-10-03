@@ -62,6 +62,10 @@ const PAGES: Array<{ path: string; marker: RegExp | string }> = [
   // Bid Board phone cards: the header row (jump-icon cluster + inline due chip)
   // used to run past the card and scroll the whole page sideways.
   { path: '/bids?tab=bid-board', marker: /Bid Board/ },
+  // Bids → Labor with no bid picked still shows the labor book, whose column grew to the
+  // entries table's widest row until v2.4453. The marker waits for real entries, since
+  // "0 entries" shows before the book loads and would measure an empty table.
+  { path: '/bids?tab=labor', marker: /[1-9]\d* entries/ },
 ]
 
 for (const { path, marker } of PAGES) {
