@@ -1,3 +1,4 @@
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import type { LienDeskEntry, LienDeskItemRow, LienDeskMonth, LienNoticeMonthRow } from './lienDesk'
 import { monthFromCreation } from './lienDesk'
 import type { LienAffidavitEntry } from './lienDeskAffidavits'
@@ -78,7 +79,7 @@ export function lienTimelineMonthsFromDesk(jobId: string, rows: ReadonlyArray<Li
   for (const h of history) {
     const prev = byKey.get(h.month)
     // A closed month the RPC no longer returns carries no deadline in its history row; the statute still knows it (v2.4111 — the fold's tray prints it).
-    byKey.set(h.month, { key: h.month, deadline: prev?.deadline || h.deadline || noticeDeadlineForMonth(`${h.month}-01`, propertyKind), fromCreation: prev?.fromCreation ?? false, outcome: h.outcome, at: h.at })
+    byKey.set(h.month, { key: h.month, deadline: prev?.deadline || h.deadline || noticeDeadlineForMonth(`${h.month}-01`, propertyKind), fromCreation: prev?.fromCreation ?? false, outcome: h.outcome, at: calendarYmdInAppTzFromIso(h.at) })
   }
   return [...byKey.values()].sort((a, b) => a.key.localeCompare(b.key))
 }
@@ -119,7 +120,7 @@ export function buildLienTimelineFromDesk(jobId: string, src: LienTimelineDeskSo
     retainage: src.retainage ?? null,
     affidavit,
     originalContractCompletedOn: src.originalContractCompletedOn ?? null,
-    releasedAt: releaseFiling ? (releaseFiling.filed_at ?? releaseFiling.created_at) : null,
+    releasedAt: releaseFiling ? (releaseFiling.filed_at ?? calendarYmdInAppTzFromIso(releaseFiling.created_at)) : null,
     paid: src.openBalance <= 0,
     demandLetters: lienDemandLettersFromRows(src.demandLetters, src.openBalance),
   })
@@ -164,7 +165,7 @@ export function buildLienTimelineFromWindow(src: {
 }): LienTimeline {
   const live = src.filings.filter((f) => f.job_id === src.job.id && f.voided_at == null)
   const sentMonths = new Map<string, string>()
-  for (const f of live) if (f.kind === 'notice_53_056') for (const m of f.months_covered ?? []) if (!sentMonths.has(m)) sentMonths.set(m, f.filed_at ?? f.created_at)
+  for (const f of live) if (f.kind === 'notice_53_056') for (const m of f.months_covered ?? []) if (!sentMonths.has(m)) sentMonths.set(m, f.filed_at ?? calendarYmdInAppTzFromIso(f.created_at))
   let months: LienTimelineMonth[] = []
   let lastMonth = ''
   let lastMonthFromCreation = false
@@ -178,7 +179,7 @@ export function buildLienTimelineFromWindow(src: {
     })
     lastMonth = wm.lastMonthKey || (src.job.last_work_date ?? '').slice(0, 7)
   } else {
-    const created = (src.job.created_at ?? '').slice(0, 7)
+    const created = calendarYmdInAppTzFromIso(src.job.created_at ?? '').slice(0, 7)
     const fromLedger = (src.job.last_work_date ?? '').slice(0, 7)
     lastMonth = fromLedger || created
     lastMonthFromCreation = !fromLedger && Boolean(created)
@@ -204,7 +205,7 @@ export function buildLienTimelineFromWindow(src: {
       ? { deadline: '', filedAt: affidavitFiling.filed_at, recordingNumber: affidavitFiling.recording_number, county: affidavitFiling.county, servedAt: affidavitFiling.served_at, serveDue: affidavitFiling.serve_due, missingGates: [] }
       : null,
     originalContractCompletedOn: null,
-    releasedAt: releaseFiling ? (releaseFiling.filed_at ?? releaseFiling.created_at) : null,
+    releasedAt: releaseFiling ? (releaseFiling.filed_at ?? calendarYmdInAppTzFromIso(releaseFiling.created_at)) : null,
     paid: src.openBalance <= 0,
     demandLetters: lienDemandLettersFromRows(src.demandLetters, src.openBalance),
   })

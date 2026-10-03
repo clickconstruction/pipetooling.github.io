@@ -5,6 +5,7 @@ import { buildLienRetainageNoticeBlocks, filingDocHtml, filingLetterheadFromIssu
 import { demandDate, demandMoney } from '../../lib/jobsDocuments/demandLetter'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { lienPropertyOwnerDisplayName, resolveLienProperty } from '../../lib/jobs/lienProperty'
 import { canSendLienOnWord, holdUntilFor, isLienLeader, isLienOffice, submitOutcome } from '../../lib/jobs/lienDesk'
@@ -219,7 +220,7 @@ export default function LienDeskRetainagePane({
       )
     ) : (
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-        <span>Waiting on the leader since {item?.submitted_at ? demandDate(item.submitted_at.slice(0, 10)) : '—'}. {fuse}</span>
+        <span>Waiting on the leader since {item?.submitted_at ? demandDate(calendarYmdInAppTzFromIso(item.submitted_at)) : '—'}. {fuse}</span>
         <span style={{ flex: 1 }} />
         <button type="button" onClick={pullBack} disabled={busy || !office} style={btn('plain', busy || !office)}>Pull back to draft</button>
       </div>
@@ -245,7 +246,7 @@ export default function LienDeskRetainagePane({
   } else if (entry.pile === 'sent') {
     footer = (
       <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-        Sent{entry.item?.sent_at ? ` ${demandDate(entry.item.sent_at.slice(0, 10))}` : ''} · the notice is on the job's lien instruments.{entry.inClaim ? '' : ' The owner may withhold this retainage once they receive a copy of the filed affidavit (§ 53.081(c)) — the Affidavits tab is watching this job.'}
+        Sent{entry.item?.sent_at ? ` ${demandDate(calendarYmdInAppTzFromIso(entry.item.sent_at))}` : ''} · the notice is on the job's lien instruments.{entry.inClaim ? '' : ' The owner may withhold this retainage once they receive a copy of the filed affidavit (§ 53.081(c)) — the Affidavits tab is watching this job.'}
       </div>
     )
   } else if (entry.pile === 'missed') {

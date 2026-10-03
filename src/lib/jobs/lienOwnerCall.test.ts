@@ -52,3 +52,12 @@ describe('the owner’s call → counsel’s piles', () => {
     expect(html).toContain('10% hold ends 2026-09-21')
   })
 })
+
+describe('an owner’s call taken in the evening keeps its day (v2.4468)', () => {
+  it('reads the Central day', () => {
+    // 00:30 UTC on Sep 18 is 7:30 pm CDT on Sep 17; 00:30 UTC on Dec 2 is 6:30 pm CST on Dec 1.
+    expect(ownerCallWords(call({ at: '2026-09-18T00:30:00Z' }), fmt.day, fmt.money)).toBe('owner called 2026-09-17 · still owes the GC ($14,000) · 10% held')
+    expect(ownerCallWords(call({ at: '2026-12-02T00:30:00+00:00' }), fmt.day, fmt.money)).toMatch(/^owner called 2026-12-01 · /)
+    expect(ownerCallWords(call({ at: '2026-09-18T12:00:00Z' }), fmt.day, fmt.money)).toMatch(/^owner called 2026-09-18 · /)
+  })
+})

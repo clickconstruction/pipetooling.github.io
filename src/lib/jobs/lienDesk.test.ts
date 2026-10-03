@@ -258,3 +258,17 @@ describe('the printed pile (v2.4119)', () => {
     expect(printed.counts.ready).toBe(0)
   })
 })
+
+describe('a notice sent in the evening keeps its day (v2.4468)', () => {
+  // 00:30 UTC on Oct 3 is 7:30 pm CDT on Oct 2; 00:30 UTC on Dec 2 is 6:30 pm CST on Dec 1. Sent stays LIEN_DESK_SENT_DAYS (30).
+  it('stays in Sent for 30 days from the Central day', () => {
+    const evening = item({ job_id: 'j2', status: 'sent', sent_at: '2026-10-03T00:30:00Z' })
+    expect(buildLienDeskQueue([], [evening], {}, '2026-11-01').entries.map((e) => e.jobId)).toEqual(['j2'])
+    expect(buildLienDeskQueue([], [evening], {}, '2026-11-02').entries).toEqual([])
+    const winter = item({ job_id: 'j3', status: 'sent', sent_at: '2026-12-02T00:30:00Z' })
+    expect(buildLienDeskQueue([], [winter], {}, '2026-12-31').entries.map((e) => e.jobId)).toEqual(['j3'])
+    expect(buildLienDeskQueue([], [winter], {}, '2027-01-01').entries).toEqual([])
+    const noon = item({ job_id: 'j4', status: 'sent', sent_at: '2026-10-03T12:00:00Z' })
+    expect(buildLienDeskQueue([], [noon], {}, '2026-11-02').entries.map((e) => e.jobId)).toEqual(['j4'])
+  })
+})

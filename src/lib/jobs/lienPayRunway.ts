@@ -1,3 +1,4 @@
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { filingDeadlineForMonth, noticeDeadlineForMonth } from './lienDeadlines'
 import { formatYmdMonthDay } from './billedExpectedPay'
 import { DATED_FROM_CREATION_WORDS } from './lienDesk'
@@ -44,7 +45,7 @@ export type LienRunwayInput = {
   openBalance: number
   /** The job's last work date (latest approved clock session); '' / null when none. */
   lastWorkYmd: string | null | undefined
-  /** The job's creation instant — the month that stands in when there are no clock hours (the Lien desk's rule). */
+  /** The job's creation instant — its month in the company calendar stands in when there are no clock hours (the Lien desk's rule). */
   createdAt?: string | null
   /** '' | 'residential' | 'non_residential' from the property record. */
   propertyKind: string
@@ -241,7 +242,7 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
   if (ymdToUtcDays(today) == null) return NONE
 
   const worked = (input.lastWorkYmd ?? '').trim().slice(0, 10)
-  const created = (input.createdAt ?? '').trim().slice(0, 10)
+  const created = calendarYmdInAppTzFromIso((input.createdAt ?? '').trim())
   const datedFromCreation = !/^\d{4}-\d{2}-\d{2}$/.test(worked) && /^\d{4}-\d{2}-\d{2}$/.test(created)
   const lastWork = datedFromCreation ? created : worked
   const basisYmd = /^\d{4}-\d{2}-\d{2}$/.test(lastWork) ? lastWork : ''

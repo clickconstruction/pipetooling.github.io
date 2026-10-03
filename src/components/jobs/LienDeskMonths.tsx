@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { workMonthLabel, workMonthShort } from '../../lib/jobs/forecastWorkMonths'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { DATED_FROM_CREATION_WORDS } from '../../lib/jobs/lienDesk'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { documentLinkWords } from '../../lib/jobs/lienFilingDocumentLink'
@@ -81,7 +82,7 @@ function windowCell(r: LienGridRow, onNoteMissed: ((month: string) => void) | un
   return (
     <>
       <span style={chip('var(--bg-red-tint)', 'var(--text-red-700)')}>closed {w.deadline ? formatYmdMonthDay(w.deadline) : ''}</span>{' '}
-      {w.noted ? <span style={faint}>noted{w.notedBy ? ` by ${w.notedBy}` : ''}{w.notedAt ? ` ${formatYmdMonthDay(w.notedAt.slice(0, 10))}` : ''}</span> : <span style={chip('var(--bg-amber-tint)', 'var(--text-amber-800)')}>not noted</span>}
+      {w.noted ? <span style={faint}>noted{w.notedBy ? ` by ${w.notedBy}` : ''}{w.notedAt ? ` ${formatYmdMonthDay(calendarYmdInAppTzFromIso(w.notedAt))}` : ''}</span> : <span style={chip('var(--bg-amber-tint)', 'var(--text-amber-800)')}>not noted</span>}
       {opensOn && w.deadline ? spentBar(100, true) : null}
       <div style={faint}>
         {opensOn && w.deadline ? `it was open ${formatYmdMonthDay(opensOn)} → ${formatYmdMonthDay(w.deadline)} · ` : ''}lien right gone · the money still rides

@@ -147,3 +147,13 @@ describe('someone’s calling (v2.3854)', () => {
     expect(f.mailedOn).toBe('2026-10-06')
   })
 })
+
+describe('a notice mailed in the evening keeps its day on the call sheet (v2.4468)', () => {
+  it('reads the Central day', () => {
+    // 00:30 UTC on Sep 23 is 7:30 pm CDT on Sep 22; 00:30 UTC on Dec 2 is 6:30 pm CST on Dec 1.
+    const facts = (sent_at: string) => callLetterFactsFor({ item: notice({ id: 'n', job_id: 'j273', sent_at }), job: undefined, gc: undefined, address: null, owner: null, us: 'Click' }).mailedOn
+    expect(facts('2026-09-23T00:30:00Z')).toBe('2026-09-22')
+    expect(facts('2026-12-02T00:30:00+00:00')).toBe('2026-12-01')
+    expect(facts('2026-09-23T12:00:00Z')).toBe('2026-09-23')
+  })
+})

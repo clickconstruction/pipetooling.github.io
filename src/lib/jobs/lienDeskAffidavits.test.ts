@@ -73,3 +73,15 @@ describe('buildLienAffidavitQueue · a job with no clock hours is dated from its
     expect(q.entries.map((e) => [e.jobId, e.lastMonthFromCreation])).toEqual([['j858', true], ['j273', false]])
   })
 })
+
+describe('an affidavit filed in the evening keeps its day (v2.4468)', () => {
+  it('stays listed for 30 days from the Central day', () => {
+    // 00:30 UTC on Dec 2 is 6:30 pm CST on Dec 1.
+    const rows = [row({ job_id: 'f1', filed: true })]
+    const evening = [item({ job_id: 'f1', status: 'sent', sent_at: '2026-12-02T00:30:00Z' })]
+    expect(buildLienAffidavitQueue(rows, evening, '2026-12-31').entries.map((e) => [e.jobId, e.pile])).toEqual([['f1', 'filed']])
+    expect(buildLienAffidavitQueue(rows, evening, '2027-01-01').entries).toEqual([])
+    const noon = [item({ job_id: 'f1', status: 'sent', sent_at: '2026-12-02T12:00:00Z' })]
+    expect(buildLienAffidavitQueue(rows, noon, '2027-01-01').entries.map((e) => e.jobId)).toEqual(['f1'])
+  })
+})

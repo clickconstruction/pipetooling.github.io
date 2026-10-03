@@ -1,3 +1,4 @@
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import type { LienDeskItemRow } from './lienDesk'
 import { parseLienDeskDraftFields } from './lienNoticeDraft'
 import { retainageDeadlineFor } from './lienDeadlines'
@@ -126,7 +127,7 @@ export function ownerCallWords(call: OwnerCall, formatDay: (ymd: string) => stri
   const against = call.reserved === 'released' ? releasedAgainstHold(call.releasedOn, call.originalContractCompletedOn) : null
   const reserved = call.reserved === 'released' && call.releasedOn ? `10% released ${formatDay(call.releasedOn)}${against ? (against.inside ? ' · inside the hold' : ' · after the hold') : ''}` : (OWNER_RESERVED_OPTIONS.find((o) => o.key === call.reserved)?.words ?? '')
   const tails = [call.wantsToPayUs ? 'wants to pay us → counsel' : '', call.gcSilentToThem ? 'GC silent to them' : '', call.callbackWanted ? 'wants a call back' : ''].filter(Boolean)
-  return [`owner called ${formatDay(call.at.slice(0, 10))}`, owes, reserved, ...tails].join(' · ')
+  return [`owner called ${formatDay(calendarYmdInAppTzFromIso(call.at))}`, owes, reserved, ...tails].join(' · ')
 }
 
 /** The latest owner call on a job, from its notice items (the first packet carries it; a later call overwrites). */
