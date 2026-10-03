@@ -246,3 +246,12 @@ describe('buildProgressPaymentView — the rules at the edges', () => {
   })
 
 })
+
+describe('percentClause · a percent set in the evening keeps its day (v2.4472)', () => {
+  it('reads the Central day', () => {
+    // 00:30 UTC on Sep 4 is 7:30 pm CDT on Sep 3; 00:30 UTC on Dec 2 is 6:30 pm CST on Dec 1.
+    expect(percentClause({ pct: 80, source: 'typed', at: '2026-09-04T00:30:00Z' })).toBe('80% typed Sep 3')
+    expect(percentClause({ pct: 12, source: 'report', at: '2026-12-02T00:30:00+00:00' })).toBe('12% reported Dec 1')
+    expect(percentClause({ pct: 80, source: 'typed', at: '2026-09-04T12:00:00Z' })).toBe('80% typed Sep 4')
+  })
+})

@@ -26,7 +26,7 @@ import type { StagesMoneyBarModel } from '../stagesMoneyBar'
 import type { PipelineStageBar } from './pipelineStageBar'
 import { crewShortName, newestPercent, percentIsStale, type JobCrewPosition, type PercentSource } from './jobCrewPosition'
 import { formatUsdNoCents } from './jobFormatting'
-import { formatWorkDateYmdMonthDayShort, formatWorkDateYmdWeekdayShortFriendly } from '../../utils/dateUtils'
+import { calendarYmdInAppTzFromIso, formatWorkDateYmdMonthDayShort, formatWorkDateYmdWeekdayShortFriendly } from '../../utils/dateUtils'
 
 export type ProgressPaymentMode = 'stages' | 'lines' | 'nobid'
 export type ProgressPaymentTone = 'plain' | 'amber' | 'green' | 'red' | 'muted'
@@ -160,7 +160,7 @@ const PERCENT_SOURCE_WORD: Record<PercentSource, string> = { typed: 'typed', rep
  */
 export function percentClause(p: ProgressPaymentView['percent'], opts: { source?: boolean } = {}): string {
   if (!p) return 'no % yet'
-  const when = p.at ? ` ${formatWorkDateYmdMonthDayShort(p.at.slice(0, 10))}` : ''
+  const when = p.at ? ` ${formatWorkDateYmdMonthDayShort(calendarYmdInAppTzFromIso(p.at))}` : ''
   if (opts.source === false) return `${p.pct}%${when}`
   return `${p.pct}% ${PERCENT_SOURCE_WORD[p.source]}${when}`
 }

@@ -1,3 +1,4 @@
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { jobPartyName } from './jobPartyExclusive'
 import { earnedRevenueInWindow } from '../bridge/earnedRevenue'
 import { burnProjectedMarginForSort, projectJobSummaryBurn, type JobBudgetFooting, type JobSummaryBurn } from './jobSummaryBurn'
@@ -403,7 +404,7 @@ export type JobSummaryEnrichedRow<R extends JobSummaryLedgerRowInput = JobSummar
 
 function jobLastWorkedYmd(job: JobSummaryLedgerRowInput['job'], ledger: JobDayLedger | null): string | null {
   const fromLedger = ledger?.jobs.get(job.id)?.lastYmd ?? null
-  const fromJob = (job.last_work_date ?? job.created_at ?? '').slice(0, 10) || null
+  const fromJob = job.last_work_date ? job.last_work_date.slice(0, 10) : calendarYmdInAppTzFromIso(job.created_at ?? '') || null
   if (fromLedger && fromJob) return fromLedger > fromJob ? fromLedger : fromJob
   return fromLedger ?? fromJob
 }

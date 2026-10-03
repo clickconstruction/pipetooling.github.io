@@ -300,3 +300,16 @@ describe('billMarkFor (which part of the bar a bill row is about, v2.4353)', () 
     expect(billMarkFor(none.view, { billId: 'i2', fixtures: [], invoices: springtownInvoices })).toBeNull()
   })
 })
+
+describe('buildJobMoneyBar · a percent set in the evening keeps its day (v2.4472)', () => {
+  it('dates the percent by the Central day', () => {
+    // 00:30 UTC on Aug 8 is 7:30 pm CDT on Aug 7.
+    const crew = crewPositionsFromRpc([crewRow({ job_ledger_id: 'heron', last_work_date: '2026-09-12', last_day_people: ['Behar Kraja'], sessions_60d: 14, people_60d: 6, pct_set_at: '2026-08-08T00:30:00Z', pct_source: 'seed' })], today).get('heron')!
+    const { view } = progressPaymentForJob(
+      { id: 'heron', revenue: 48_700, payments_made: 24_359.44, pct_complete: 40, status: 'working', fixtures: [stage('r', 'Rough In', 19_480, 0), stage('t', 'Top Out', 19_480, 1), stage('s', 'Trim Set', 9_740, 2)], invoices: [], payments: [] },
+      crew,
+      today,
+    )
+    expect(buildJobMoneyBar(view, { pctComplete: 40 }).date).toMatchObject({ text: 'Aug 7' })
+  })
+})
