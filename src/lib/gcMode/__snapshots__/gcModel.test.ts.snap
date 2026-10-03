@@ -5723,7 +5723,7 @@ exports[`GC mode golden walk > step 50: Approve draw 2 1`] = `
     "lastLog.id": 46,
     "lastLog.text": "Approved draw 2 on Framing and drywall. $31,230 to pay, $3,470 held.",
     "lastLog.who": "office",
-    "projects.helotes.stageProgress.also[0]": "Draw 2 for Hill Country Interiors is approved. Pay it.",
+    "projects.helotes.stageProgress.also[0]": "Draw 2 for Hill Country Interiors is approved. Pay it by Oct 12.",
   },
   "removed": [],
 }
@@ -6478,7 +6478,7 @@ exports[`GC mode golden walk > step 64: Approve draw 3 1`] = `
   "changed": {
     "lastLog.id": 60,
     "lastLog.text": "Approved draw 3 on Framing and drywall. $6,750 to pay, $750 held.",
-    "projects.helotes.stageProgress.also[0]": "Draw 3 for Hill Country Interiors is approved. Pay it.",
+    "projects.helotes.stageProgress.also[0]": "Draw 3 for Hill Country Interiors is approved. Pay it by Oct 12.",
     "projects.helotes.stageProgress.also[1]": "Framing and drywall is all billed. Walk it, then accept the work on Closeout.",
   },
   "removed": [],
@@ -6554,7 +6554,7 @@ exports[`GC mode golden walk > step 70: Approve the retainage release 1`] = `
     "lastLog.id": 66,
     "lastLog.text": "Approved the retainage release on Framing and drywall: $6,420 to pay.",
     "lastLog.who": "office",
-    "projects.helotes.stageProgress.also[0]": "The retainage release for Hill Country Interiors is approved. Pay it.",
+    "projects.helotes.stageProgress.also[0]": "The retainage release for Hill Country Interiors is approved. Pay it by Oct 12.",
   },
   "removed": [],
 }
@@ -6652,7 +6652,7 @@ exports[`GC mode golden walk > step 77: Approve the fixed pay application 1 1`] 
     "lastLog.id": 73,
     "lastLog.text": "Approved draw 1 on Millwork. $15,444 to pay, $1,716 held.",
     "lastLog.who": "office",
-    "projects.helotes.stageProgress.also[0]": "Draw 1 for Cedar & Pine Millwork is approved. Pay it.",
+    "projects.helotes.stageProgress.also[0]": "Draw 1 for Cedar & Pine Millwork is approved. Pay it by Oct 12.",
   },
   "removed": [],
 }
@@ -6951,7 +6951,7 @@ exports[`GC mode golden walk > step 89: Approve less: the cabinets at 80% 1`] = 
     "lastLog.id": 85,
     "lastLog.text": "Approved $11,970 of draw 2 on Millwork, less than the $14,346 asked. Two operatory cabinets are still on order.",
     "lastLog.who": "office",
-    "projects.helotes.stageProgress.also[1]": "Draw 2 for Cedar & Pine Millwork is approved. Pay it.",
+    "projects.helotes.stageProgress.also[1]": "Draw 2 for Cedar & Pine Millwork is approved. Pay it by Oct 12.",
   },
   "removed": [],
 }
@@ -7016,8 +7016,8 @@ exports[`GC mode golden walk > step 93: Draw Helotes’s schedule from Oct 12 1`
     "lastLog.id": 89,
     "lastLog.text": "Drew a first draft of the schedule on Helotes Dental Office: 21 activities from Mon Oct 12.",
     "projects.helotes.stageProgress.also[0]": "The schedule: 45 days ahead of the plan, 40% done where 0% was planned. Next: Dry-in, Oct 26.",
-    "projects.helotes.stageProgress.also[1]": "Draw 1 for Cedar & Pine Millwork is approved. Pay it.",
-    "projects.helotes.stageProgress.also[2]": "Draw 2 for Cedar & Pine Millwork is approved. Pay it.",
+    "projects.helotes.stageProgress.also[1]": "Draw 1 for Cedar & Pine Millwork is approved. Pay it by Oct 12.",
+    "projects.helotes.stageProgress.also[2]": "Draw 2 for Cedar & Pine Millwork is approved. Pay it by Oct 12.",
   },
   "removed": [],
 }
