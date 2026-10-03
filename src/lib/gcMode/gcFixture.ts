@@ -475,7 +475,7 @@ export function initialGcState(): GcState {
               status: 'requested',
               waiver: 'conditional',
               lines: [],
-              payApp: { periodTo: '2026-09-30', address: '5410 Bandera Rd, San Antonio, TX 78238', license: '', signedBy: 'Marcus Bell', signedTitle: 'Owner', signedOn: '2026-09-30' },
+              payApp: { periodTo: '2026-09-30', address: '5410 Bandera Rd, San Antonio, TX 78238', license: '', signedBy: 'Darnell Pruitt', signedTitle: 'Owner', signedOn: '2026-09-30' },
               final: true,
             },
           ],
@@ -772,10 +772,276 @@ export function initialGcState(): GcState {
     })),
   })
 
+  // Building lane (2026-10-02): a project already well into building, so Building and Closeout
+  // show on open. Each trade sits at a different point: closed out, waiting on our acceptance, a
+  // draw waiting on us, a draw locked by expired insurance with a waiver owed, a pay application
+  // sent back, our own crew, and a quiet one. Its owner billing is left to the Owner Billing lane.
+  // Its companies are ones the other lanes' tests do not read (plus Pecan Valley, new), so their
+  // pins on Lonestar, Alamo, Bexar, Voltage, Brightline and Kendall stay as they were.
+  const fSite = scope('fsite', ['Clearing and grading', 'Utilities to 5 ft of the building', 'Paving', 'Striping and signs'])
+  const fConc = scope('fconc', ['Foundations', 'Slab on grade', 'Sidewalks and curbs'])
+  const fSteel = scope('fsteel', ['Structural steel', 'Joists and deck', 'Erection'])
+  const fElec = scope('felec', ['Service and gear', 'Panels and feeders', 'Lighting', 'Fire alarm', 'Site lighting'])
+  const fRoof = scope('froof', ['TPO membrane', 'Insulation', 'Sheet metal and flashing', 'Roof curbs'])
+  const fHvac = scope('fhvac', ['Rooftop units', 'Ductwork', 'Controls', 'Test and balance'])
+  const asked = (packageId: string, partnerId: string, b: SubBid): Invite => ({ ...invite(packageId, partnerId, 'bid', 0, b), invitedOn: '2026-04-30' })
+  const typedBy = (signedBy: string, signedTitle: string, signedOn: string, periodTo: string, address: string) => ({
+    periodTo,
+    address,
+    license: '',
+    signedBy,
+    signedTitle,
+    signedOn,
+  })
+
+  const fairOaksD: GcProject = {
+    id: 'fairoaksd',
+    name: 'Fair Oaks Shops, Building D',
+    address: '7920 Fair Oaks Pkwy, Fair Oaks Ranch',
+    town: 'Boerne',
+    ourBidSentOn: '2026-05-14',
+    ownerContractSignedOn: '2026-06-02',
+    permitOn: '2026-06-20',
+    startDate: '2026-07-06',
+    startedOn: '2026-07-01',
+    customerId: 'cibolo',
+    owner: 'Cibolo Creek Partners',
+    ownerBilling: null,
+    architectId: 'marshvale',
+    architect: 'Marsh & Vale Architects',
+    questions: [],
+    stage: 'building',
+    bidDue: null,
+    sizeNote: '9,600 sq ft retail shell, four bays',
+    sheets: [
+      { id: 'G-001', title: 'Cover and code summary' },
+      { id: 'C-101', title: 'Site plan' },
+      { id: 'S-101', title: 'Foundation plan' },
+      { id: 'S-201', title: 'Roof framing plan' },
+      { id: 'A-101', title: 'Floor plan' },
+      { id: 'A-201', title: 'Exterior elevations' },
+      { id: 'A-501', title: 'Roof plan and details' },
+      { id: 'M-101', title: 'Mechanical plan' },
+      { id: 'P-101', title: 'Plumbing plan' },
+      { id: 'E-101', title: 'Power and lighting plan' },
+      { id: 'E-201', title: 'Site lighting and panel schedules' },
+    ],
+    planSets: [
+      { rev: 0, label: 'Permit set', issuedOn: '2026-04-28', note: 'The set the city approved. 11 sheets.', changedSheets: [], touches: [] },
+    ],
+    packages: [
+      pkg('fsite', 'Sitework', fSite, 172_000, [
+        asked('fsite', 'tricounty', bid(fSite, 168_000, 0, '2026-05-07')),
+      ], {
+        carried: 'fsite-tricounty',
+        awardedInviteId: 'fsite-tricounty',
+        // Closed out: every line billed, accepted, warranty in, the retainage paid back, both final waivers in.
+        sow: {
+          status: 'signed',
+          price: 168_000,
+          retainagePct: 10,
+          basedOnRev: 0,
+          signedOn: '2026-06-08',
+          sov: [
+            { id: 'fsite-1', label: 'Clearing and grading', amount: 42_000, pctReported: 100, pctBilled: 100 },
+            { id: 'fsite-2', label: 'Utilities to 5 ft of the building', amount: 56_000, pctReported: 100, pctBilled: 100 },
+            { id: 'fsite-3', label: 'Paving', amount: 54_000, pctReported: 100, pctBilled: 100 },
+            { id: 'fsite-4', label: 'Striping and signs', amount: 16_000, pctReported: 100, pctBilled: 100 },
+          ],
+          draws: [
+            {
+              id: 'fsite-draw-1', number: 1, requestedOn: '2026-07-24', gross: 98_000, retainage: 9_800, net: 88_200, status: 'paid', waiver: 'unconditional',
+              lines: [{ sovId: 'fsite-1', toPct: 100 }, { sovId: 'fsite-2', toPct: 100 }],
+              payApp: typedBy('Marisol Vega', 'Owner', '2026-07-24', '2026-07-24', '2210 Old San Antonio Rd, Boerne, TX 78006'),
+            },
+            {
+              id: 'fsite-draw-2', number: 2, requestedOn: '2026-08-25', gross: 70_000, retainage: 7_000, net: 63_000, status: 'paid', waiver: 'unconditional',
+              lines: [{ sovId: 'fsite-3', toPct: 100 }, { sovId: 'fsite-4', toPct: 100 }],
+              payApp: typedBy('Marisol Vega', 'Owner', '2026-08-25', '2026-08-25', '2210 Old San Antonio Rd, Boerne, TX 78006'),
+            },
+            {
+              id: 'fsite-draw-3', number: 3, requestedOn: '2026-09-14', gross: 0, retainage: -16_800, net: 16_800, status: 'paid', waiver: 'unconditional',
+              lines: [], final: true,
+              payApp: typedBy('Marisol Vega', 'Owner', '2026-09-14', '2026-09-14', '2210 Old San Antonio Rd, Boerne, TX 78006'),
+            },
+          ],
+          acceptedOn: '2026-09-08',
+          warrantyOn: '2026-09-10',
+        },
+      }),
+      pkg('fconc', 'Concrete', fConc, 220_000, [
+        asked('fconc', 'guadalupe', bid(fConc, 214_000, 0, '2026-05-09')),
+      ], {
+        carried: 'fconc-guadalupe',
+        awardedInviteId: 'fconc-guadalupe',
+        // Every line billed and the warranty letter in: waiting on us to walk it and accept the work.
+        sow: {
+          status: 'signed',
+          price: 214_000,
+          retainagePct: 10,
+          basedOnRev: 0,
+          signedOn: '2026-06-09',
+          sov: [
+            { id: 'fconc-1', label: 'Foundations', amount: 78_000, pctReported: 100, pctBilled: 100 },
+            { id: 'fconc-2', label: 'Slab on grade', amount: 96_000, pctReported: 100, pctBilled: 100 },
+            { id: 'fconc-3', label: 'Sidewalks and curbs', amount: 40_000, pctReported: 100, pctBilled: 100 },
+          ],
+          draws: [
+            {
+              id: 'fconc-draw-1', number: 1, requestedOn: '2026-07-31', gross: 78_000, retainage: 7_800, net: 70_200, status: 'paid', waiver: 'unconditional',
+              lines: [{ sovId: 'fconc-1', toPct: 100 }],
+              payApp: typedBy('Ines Barrera', 'President', '2026-07-31', '2026-07-31', '4415 Rittiman Rd, San Antonio, TX 78218'),
+            },
+            {
+              id: 'fconc-draw-2', number: 2, requestedOn: '2026-08-29', gross: 136_000, retainage: 13_600, net: 122_400, status: 'paid', waiver: 'unconditional',
+              lines: [{ sovId: 'fconc-2', toPct: 100 }, { sovId: 'fconc-3', toPct: 100 }],
+              payApp: typedBy('Ines Barrera', 'President', '2026-08-29', '2026-08-29', '4415 Rittiman Rd, San Antonio, TX 78218'),
+            },
+          ],
+          acceptedOn: null,
+          warrantyOn: '2026-09-30',
+        },
+      }),
+      pkg('fsteel', 'Structural steel', fSteel, 190_000, [
+        asked('fsteel', 'ironhorse', bid(fSteel, 186_000, 0, '2026-05-11')),
+      ], {
+        carried: 'fsteel-ironhorse',
+        awardedInviteId: 'fsteel-ironhorse',
+        // Draw 2 is waiting on us, with its pay application: approve it or send it back.
+        sow: {
+          status: 'signed',
+          price: 186_000,
+          retainagePct: 10,
+          basedOnRev: 0,
+          signedOn: '2026-06-11',
+          sov: [
+            { id: 'fsteel-1', label: 'Structural steel', amount: 92_000, pctReported: 100, pctBilled: 100 },
+            { id: 'fsteel-2', label: 'Joists and deck', amount: 64_000, pctReported: 100, pctBilled: 0 },
+            { id: 'fsteel-3', label: 'Erection', amount: 30_000, pctReported: 80, pctBilled: 0 },
+          ],
+          draws: [
+            {
+              id: 'fsteel-draw-1', number: 1, requestedOn: '2026-08-21', gross: 92_000, retainage: 9_200, net: 82_800, status: 'paid', waiver: 'unconditional',
+              lines: [{ sovId: 'fsteel-1', toPct: 100 }],
+              payApp: typedBy('Luz Carrasco', 'Project manager', '2026-08-21', '2026-08-21', '9030 Rigsby Ave, San Antonio, TX 78263'),
+            },
+            {
+              id: 'fsteel-draw-2', number: 2, requestedOn: '2026-09-30', gross: 88_000, retainage: 8_800, net: 79_200, status: 'requested', waiver: 'conditional',
+              lines: [{ sovId: 'fsteel-2', toPct: 100 }, { sovId: 'fsteel-3', toPct: 80 }],
+              payApp: typedBy('Luz Carrasco', 'Project manager', '2026-09-30', '2026-09-30', '9030 Rigsby Ave, San Antonio, TX 78263'),
+            },
+          ],
+        },
+      }),
+      pkg('felec', 'Electrical', fElec, 252_000, [
+        asked('felec', 'pecanvalley', bid(fElec, 248_000, 0, '2026-05-12')),
+      ], {
+        carried: 'felec-pecanvalley',
+        awardedInviteId: 'felec-pecanvalley',
+        // Draw 1 is paid but its unconditional waiver is owed. Draw 2 is waiting on us, and their
+        // insurance ran out Sep 15, so Approve stays locked until a new certificate comes in.
+        sow: {
+          status: 'signed',
+          price: 248_000,
+          retainagePct: 10,
+          basedOnRev: 0,
+          signedOn: '2026-06-12',
+          sov: [
+            { id: 'felec-1', label: 'Service and gear', amount: 62_000, pctReported: 100, pctBilled: 100 },
+            { id: 'felec-2', label: 'Panels and feeders', amount: 54_000, pctReported: 80, pctBilled: 50 },
+            { id: 'felec-3', label: 'Lighting', amount: 72_000, pctReported: 40, pctBilled: 0 },
+            { id: 'felec-4', label: 'Fire alarm', amount: 36_000, pctReported: 0, pctBilled: 0 },
+            { id: 'felec-5', label: 'Site lighting', amount: 24_000, pctReported: 0, pctBilled: 0 },
+          ],
+          draws: [
+            {
+              id: 'felec-draw-1', number: 1, requestedOn: '2026-08-20', gross: 89_000, retainage: 8_900, net: 80_100, status: 'paid', waiver: 'conditional',
+              lines: [{ sovId: 'felec-1', toPct: 100 }, { sovId: 'felec-2', toPct: 50 }],
+              payApp: typedBy('Marcus Bell', 'Owner', '2026-08-20', '2026-08-20', '1817 Austin Hwy, San Antonio, TX 78218'),
+            },
+            {
+              id: 'felec-draw-2', number: 2, requestedOn: '2026-10-01', gross: 45_000, retainage: 4_500, net: 40_500, status: 'requested', waiver: 'conditional',
+              lines: [{ sovId: 'felec-2', toPct: 80 }, { sovId: 'felec-3', toPct: 40 }],
+              payApp: typedBy('Marcus Bell', 'Owner', '2026-10-01', '2026-09-30', '1817 Austin Hwy, San Antonio, TX 78218'),
+            },
+          ],
+        },
+      }),
+      pkg('froof', 'Roofing', fRoof, 136_000, [
+        asked('froof', 'summit', bid(fRoof, 132_000, 0, '2026-05-11')),
+        asked('froof', 'bluebonnet', bid(fRoof, 139_800, 0, '2026-05-12')),
+      ], {
+        carried: 'froof-summit',
+        awardedInviteId: 'froof-summit',
+        // Pay application 1 went back: they asked for the whole membrane, we see half of it down.
+        sow: {
+          status: 'signed',
+          price: 132_000,
+          retainagePct: 10,
+          basedOnRev: 0,
+          signedOn: '2026-06-15',
+          sov: [
+            { id: 'froof-1', label: 'TPO membrane', amount: 64_000, pctReported: 100, pctBilled: 0 },
+            { id: 'froof-2', label: 'Insulation', amount: 28_000, pctReported: 100, pctBilled: 0 },
+            { id: 'froof-3', label: 'Sheet metal and flashing', amount: 26_000, pctReported: 0, pctBilled: 0 },
+            { id: 'froof-4', label: 'Roof curbs', amount: 14_000, pctReported: 0, pctBilled: 0 },
+          ],
+          draws: [],
+          sentBack: [
+            {
+              draw: {
+                id: 'froof-draw-1', number: 1, requestedOn: '2026-09-26', gross: 92_000, retainage: 9_200, net: 82_800, status: 'requested', waiver: 'conditional',
+                lines: [{ sovId: 'froof-1', toPct: 100 }, { sovId: 'froof-2', toPct: 100 }],
+                payApp: typedBy('Carla Nguyen', 'Office manager', '2026-09-26', '2026-09-25', '640 FM 306, New Braunfels, TX 78130'),
+              },
+              on: '2026-09-29',
+              note: 'The membrane is down on the east half only. The west half is still insulation board.',
+              lines: [{ sovId: 'froof-1', weSee: 50 }],
+            },
+          ],
+        },
+      }),
+      pkg('fplumb', 'Plumbing', scope('fplumb', ['Underground', 'Rough in', 'Top out', 'Trim']), 112_000, [], {
+        selfPerform: { ref: 'J 1088', value: 112_000, note: 'Our own crew. The job runs on the Pipeline.', pctDone: 65 },
+        carried: 'self',
+      }),
+      pkg('fhvac', 'HVAC', fHvac, 160_000, [
+        asked('fhvac', 'coolbreeze', bid(fHvac, 158_000, 0, '2026-05-12')),
+      ], {
+        carried: 'fhvac-coolbreeze',
+        awardedInviteId: 'fhvac-coolbreeze',
+        // Quiet: draw 1 paid and waived; they have reported more work than they have asked for.
+        sow: {
+          status: 'signed',
+          price: 158_000,
+          retainagePct: 10,
+          basedOnRev: 0,
+          signedOn: '2026-06-16',
+          sov: [
+            { id: 'fhvac-1', label: 'Rooftop units', amount: 72_000, pctReported: 0, pctBilled: 0 },
+            { id: 'fhvac-2', label: 'Ductwork', amount: 54_000, pctReported: 80, pctBilled: 60 },
+            { id: 'fhvac-3', label: 'Controls', amount: 18_000, pctReported: 0, pctBilled: 0 },
+            { id: 'fhvac-4', label: 'Test and balance', amount: 14_000, pctReported: 0, pctBilled: 0 },
+          ],
+          draws: [
+            {
+              id: 'fhvac-draw-1', number: 1, requestedOn: '2026-09-22', gross: 32_400, retainage: 3_240, net: 29_160, status: 'paid', waiver: 'unconditional',
+              lines: [{ sovId: 'fhvac-2', toPct: 60 }],
+              payApp: typedBy('Andre Wallace', 'Owner', '2026-09-22', '2026-09-22', '12700 Toepperwein Rd, Live Oak, TX 78233'),
+            },
+          ],
+        },
+      }),
+    ],
+    generalConditions: 96_000,
+    contingencyPct: 3,
+    feePct: 10,
+  }
+
   return {
     today: '2026-10-02',
     customers,
-    projects: [withStory(boerne), padB, helotes, stoneOak],
+    projects: [withStory(boerne), padB, helotes, fairOaksD, stoneOak],
     partners: [
       partner('lonestar', 'Lonestar Earthworks', 'Dale Whitfield', ['Sitework'], 'signed', '2027-03-01', true, [6, 5, 2]),
       partner('tricounty', 'Tri-County Site', 'Marisol Vega', ['Sitework'], 'signed', '2027-01-15', true, [4, 4, 1]),
@@ -797,8 +1063,10 @@ export function initialGcState(): GcState {
       partner('hillcountry', 'Hill Country Interiors', 'Rosa Medina', ['Framing and drywall'], 'signed', '2027-04-12', true, [4, 4, 3]),
       partner('cedar', 'Cedar & Pine Millwork', 'Owen Blake', ['Millwork'], 'none', '2027-01-08', true, [2, 2, 0]),
       partner('sawtooth', 'Sawtooth Cabinet Co', 'Jill Arnett', ['Millwork'], 'signed', '2027-03-03', true, [2, 2, 1]),
+      // Building lane: the electrician on Fair Oaks D, whose insurance ran out mid-job.
+      partner('pecanvalley', 'Pecan Valley Electric', 'Marcus Bell', ['Electrical'], 'signed', '2026-09-15', true, [3, 3, 1]),
       // Owner Billing lane: the two companies on Stone Oak Pharmacy, a job at its end.
-      partner('liveoak', 'Live Oak Drywall', 'Marcus Bell', ['Framing and drywall'], 'signed', '2027-05-01', true, [3, 3, 1]),
+      partner('liveoak', 'Live Oak Drywall', 'Darnell Pruitt', ['Framing and drywall'], 'signed', '2027-05-01', true, [3, 3, 1]),
       partner('westside', 'Westside Electric', 'Ana Flores', ['Electrical'], 'signed', '2027-04-15', true, [3, 3, 1]),
     ].map((p) => {
       const c = coverage[p.id]

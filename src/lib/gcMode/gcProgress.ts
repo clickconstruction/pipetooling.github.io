@@ -9,6 +9,7 @@ import { plansReach } from './gcPlans'
 import { startChecklist } from './gcStart'
 import { BIDS_WANTED, bidIsStale, bidsIn, carriedAmount, isGuess } from './gcBids'
 import { followUps } from './gcFollowUp'
+import { partnerBlockers } from './gcBench'
 import { ownCrewWork, sentBackOpen, tradeCloseout } from './gcBuilding'
 
 /** The stage colors, saturated on purpose: the ring is a status mark, not a neutral surface. */
@@ -223,17 +224,21 @@ function buildingProgress(state: GcState, project: GcProject): StageProgress {
   }
   const also: string[] = []
   for (const pkg of withSow) {
-    const company = (() => {
+    const awarded = (() => {
       const invite = pkg.invites.find((i) => i.id === pkg.awardedInviteId)
-      return invite ? (partnerById(state, invite.partnerId)?.company ?? pkg.trade) : pkg.trade
+      return invite ? partnerById(state, invite.partnerId) : undefined
     })()
+    const company = awarded?.company ?? pkg.trade
+    // A draw cannot be approved while their paperwork is not current: say why it waits.
+    const blocked = awarded ? partnerBlockers(awarded, state.today) : []
+    const approveIt = blocked.length > 0 ? `${blocked.join(' ')} Approve it once that is fixed.` : 'Approve it.'
     for (const d of pkg.sow?.draws ?? []) {
       if (d.final) {
         // Closeout: the retainage release and its waivers are the final-payment ones.
         if (d.status === 'requested') also.push(`${company} asked for its retainage back. Approve it on Closeout.`)
         else if (d.status === 'approved') also.push(`The retainage release for ${company} is approved. Pay it.`)
         else if (d.waiver === 'conditional') also.push(`${company} owes the unconditional waiver on final payment.`)
-      } else if (d.status === 'requested') also.push(`${company} asked for draw ${d.number}. Approve it.`)
+      } else if (d.status === 'requested') also.push(`${company} asked for draw ${d.number}. ${approveIt}`)
       else if (d.status === 'approved') also.push(`Draw ${d.number} for ${company} is approved. Pay it.`)
       else if (d.waiver === 'conditional') also.push(`${company} owes the unconditional waiver on draw ${d.number}.`)
     }
