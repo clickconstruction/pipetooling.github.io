@@ -52,8 +52,8 @@ describe('buildPortalBills', () => {
       job({ id: 'gc', job_name: 'Bexar Lofts', hcp_number: '1302', customer_id: 'cust-lofts', gc_customer_id: VIEWER, bill_to_party: 'gc' }),
     ]
     const invoices = [
-      { id: 'i1', job_id: 'own', amount: 2200, status: 'billed', billed_at: '2026-08-12', sequence_order: 1, hosted_invoice_url: null },
-      { id: 'i2', job_id: 'gc', amount: 28500, status: 'billed', billed_at: '2026-08-20', sequence_order: 1, hosted_invoice_url: 'https://pay.example/x' },
+      { id: 'i1', job_id: 'own', amount: 2200, status: 'billed', billed_at: '2026-08-12T18:00:00Z', sequence_order: 1, hosted_invoice_url: null },
+      { id: 'i2', job_id: 'gc', amount: 28500, status: 'billed', billed_at: '2026-08-20T18:00:00Z', sequence_order: 1, hosted_invoice_url: 'https://pay.example/x' },
     ]
     const merged = buildPortalBills({
       jobs,
@@ -82,8 +82,8 @@ describe('buildPortalBills', () => {
   it('subtracts payments per invoice and drops settled lines', () => {
     const jobs = [job({ id: 'j1', hcp_number: '10' })]
     const invoices = [
-      { id: 'i1', job_id: 'j1', amount: 1000, status: 'billed', billed_at: '2026-08-01', sequence_order: 1, hosted_invoice_url: null },
-      { id: 'i2', job_id: 'j1', amount: 500, status: 'billed', billed_at: '2026-08-02', sequence_order: 2, hosted_invoice_url: null },
+      { id: 'i1', job_id: 'j1', amount: 1000, status: 'billed', billed_at: '2026-08-01T18:00:00Z', sequence_order: 1, hosted_invoice_url: null },
+      { id: 'i2', job_id: 'j1', amount: 500, status: 'billed', billed_at: '2026-08-02T18:00:00Z', sequence_order: 2, hosted_invoice_url: null },
     ]
     const payments = [
       { invoice_id: 'i1', amount: 400 },
@@ -107,8 +107,8 @@ describe('buildPortalBills', () => {
   it('sorts undated rows first, then newest billed (matching the shipped statement order)', () => {
     const jobs = [job({ id: 'a', hcp_number: '1' }), job({ id: 'b', hcp_number: '2' }), job({ id: 'c', hcp_number: '3', revenue: 10 })]
     const invoices = [
-      { id: 'ia', job_id: 'a', amount: 100, status: 'billed', billed_at: '2026-08-01', sequence_order: 1, hosted_invoice_url: null },
-      { id: 'ib', job_id: 'b', amount: 100, status: 'billed', billed_at: '2026-08-15', sequence_order: 1, hosted_invoice_url: null },
+      { id: 'ia', job_id: 'a', amount: 100, status: 'billed', billed_at: '2026-08-01T18:00:00Z', sequence_order: 1, hosted_invoice_url: null },
+      { id: 'ib', job_id: 'b', amount: 100, status: 'billed', billed_at: '2026-08-15T18:00:00Z', sequence_order: 1, hosted_invoice_url: null },
     ]
     const bills = buildPortalBills({ jobs, invoices, payments: [], viewerCustomerId: VIEWER, markGcRows: true })
     expect(bills.map((b) => b.jobNumber)).toEqual(['3', '2', '1'])
@@ -122,10 +122,20 @@ describe('buildPortalBills', () => {
   it('a billed invoice on a working job IS a bill (membership rule in portalBillMembership.ts)', () => {
     const jobs = [job({ id: 'w', hcp_number: '977', status: 'working', revenue: 50000 })]
     const invoices = [
-      { id: 'i1', job_id: 'w', amount: 5000, status: 'billed', billed_at: '2026-09-01', sequence_order: 1, hosted_invoice_url: 'https://pay.example/i1' },
+      { id: 'i1', job_id: 'w', amount: 5000, status: 'billed', billed_at: '2026-09-01T18:00:00Z', sequence_order: 1, hosted_invoice_url: 'https://pay.example/i1' },
     ]
     const bills = buildPortalBills({ jobs, invoices, payments: [], viewerCustomerId: VIEWER, markGcRows: true })
     expect(bills.map((b) => [b.jobNumber, b.amount, b.billedOn])).toEqual([['977', 5000, '2026-09-01']])
+  })
+
+  it('2026-10-02 · a bill marked billed at 7:30 pm Central reads billed that day, not the UTC day after', () => {
+    const jobs = [job({ id: 'w', hcp_number: '977', status: 'working', revenue: 50000 })]
+    const billedOn = (billed_at: string) =>
+      buildPortalBills({ jobs, invoices: [{ id: 'i1', job_id: 'w', amount: 5000, status: 'billed', billed_at, sequence_order: 1, hosted_invoice_url: null }], payments: [], viewerCustomerId: VIEWER, markGcRows: true })[0]!.billedOn
+    expect(billedOn('2026-10-03T00:30:00Z')).toBe('2026-10-02')
+    expect(billedOn('2026-10-03T00:30:00+00:00')).toBe('2026-10-02')
+    expect(billedOn('2026-12-02T00:30:00Z')).toBe('2026-12-01')
+    expect(billedOn('2026-10-02T12:00:00Z')).toBe('2026-10-02')
   })
 })
 
@@ -166,12 +176,13 @@ describe('share this bill (v2.3375)', () => {
   const GC = 'cust-gc'
   const ownerPays = job({ id: 'j1', hcp_number: '1017', job_name: 'Sewer line repair', job_address: '4410 Cedar Hollow, Kyle, TX 78640', customer_id: VIEWER, gc_customer_id: GC, bill_to_party: 'customer' })
   const gcPays = job({ id: 'j2', hcp_number: '1042', job_name: 'Pretest', job_address: '7712 Ranch Rd 12, Wimberley, TX', customer_id: VIEWER, gc_customer_id: GC, bill_to_party: 'gc' })
-  const line = (id: string, job_id: string, amount: number, billed_at: string, shown_to_party: string | null) => ({
+  // billed_at is an instant; a day typed in by the office is stamped 18:00 UTC (`billedAtIsoFromYmd`).
+  const line = (id: string, job_id: string, amount: number, billedOn: string, shown_to_party: string | null) => ({
     id,
     job_id,
     amount,
     status: 'billed',
-    billed_at,
+    billed_at: `${billedOn}T18:00:00Z`,
     sequence_order: 1,
     hosted_invoice_url: `https://pay.example/${id}`,
     shown_to_party,
@@ -194,6 +205,11 @@ describe('share this bill (v2.3375)', () => {
     expect(shared[0]).toMatchObject({ jobNumber: '1017', billedTo: 'Maria Delgado', amount: 4420, billedAmount: 6420, totalPaid: 2000, billedOn: '2026-08-03', viewerRole: 'gc' })
     // The owner sees nothing shared on their own job's owner-paid bills.
     expect(buildPortalSharedBills({ jobs: [ownerPays], invoices, payments, viewerCustomerId: VIEWER, partyNames: names })).toEqual([])
+  })
+
+  it('2026-10-02 · the GC’s card reads a bill marked billed at 7:30 pm Central as billed that day', () => {
+    const invoices = [{ ...line('i1', 'j1', 6420, '2026-10-02', 'gc'), billed_at: '2026-10-03T00:30:00Z' }]
+    expect(buildPortalSharedBills({ jobs: [ownerPays], invoices, payments: [], viewerCustomerId: GC, partyNames: names })[0]!.billedOn).toBe('2026-10-02')
   })
 
   it('a GC-paid bill stamped for the customer shows on the owner’s card as the builder’s bill', () => {

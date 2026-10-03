@@ -14,6 +14,7 @@
  * Pure and dependency-free beyond the shared rules; tested from vitest
  * (src/lib/portal/portalWaivers.test.ts). The function turns `pdfPath` into a signed URL.
  */
+import { todayYmdInAppTz } from './appTimeZone.ts'
 import { statementRoleFor } from './billVisibility.ts'
 
 export type PortalWaiverJobRow = {
@@ -98,9 +99,10 @@ function jobLabel(j: PortalWaiverJobRow): string {
   return [num, name].filter(Boolean).join(' · ') || 'Job'
 }
 
+/** The day an instant (sent, signed, billed) falls on in the company's zone, never its UTC date. */
 function ymd(iso: string | null | undefined): string | null {
-  const d = (iso ?? '').slice(0, 10)
-  return /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : null
+  const d = iso ? new Date(iso) : null
+  return d && !Number.isNaN(d.getTime()) ? todayYmdInAppTz(d) : null
 }
 
 function isConditional(formType: string): boolean {

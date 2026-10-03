@@ -17,6 +17,7 @@
  * dependency-free beyond the shared rules; tested from vitest
  * (src/lib/portal/portalChecks.test.ts).
  */
+import { todayYmdInAppTz } from './appTimeZone.ts'
 import { effectiveInvoiceParty, payerCustomerId } from './billToParty.ts'
 
 /** The id the page passes as the "GC" — every kept job's customer. */
@@ -123,7 +124,7 @@ export function buildPortalChecks(args: {
       gc_customer_id: null,
       bill_to_party: null,
       lien_retainage_held: job.lien_retainage_held ?? null,
-      invoices: mine.map((i) => ({ id: i.id, job_id: i.job_id, sequence_order: i.sequence_order, amount: Number(i.amount ?? 0), status: i.status, billed_at: i.billed_at ? String(i.billed_at).slice(0, 10) : null })),
+      invoices: mine.map((i) => ({ id: i.id, job_id: i.job_id, sequence_order: i.sequence_order, amount: Number(i.amount ?? 0), status: i.status, billed_at: i.billed_at ? todayYmdInAppTz(new Date(i.billed_at)) : null })),
       payments: kept.map((p) => ({
         id: p.id,
         job_id: p.job_id,

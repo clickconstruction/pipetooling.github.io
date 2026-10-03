@@ -38,6 +38,23 @@ describe('buildPortalWaivers (v2.4278, v2.4304)', () => {
     expect(rows[0]!.final).toBe(true)
   })
 
+  it('2026-10-02 · a waiver signed, a waiver sent and a bill marked billed at 7:30 pm Central each read that day', () => {
+    const evening = '2026-10-03T00:30:00Z'
+    const [row] = buildPortalWaivers({
+      jobs: [job('650')],
+      invoices: [inv('a', '650', 1, 100, { billed_at: evening })],
+      payments: [],
+      releases: [
+        rel('c', '650', 'conditional_final', ['a'], { signed_at: evening }),
+        rel('u', '650', 'unconditional_final', ['a'], { signed_at: '2026-10-02T15:00:00Z', sent_to_customer_at: '2026-10-03T00:30:00+00:00' }),
+      ],
+      viewerCustomerId: GC,
+    })
+    expect([row!.billedYmd, row!.conditional.state, row!.conditional.ymd, row!.unconditional.state, row!.unconditional.ymd]).toEqual(['2026-10-02', 'signed', '2026-10-02', 'sent', '2026-10-02'])
+    const winter = buildPortalWaivers({ jobs: [job('650')], invoices: [inv('a', '650', 1, 100, { billed_at: '2026-12-02T00:30:00Z' })], payments: [], releases: [rel('c', '650', 'conditional_final', ['a'], { signed_at: '2026-12-02T00:30:00Z' })], viewerCustomerId: GC })[0]!
+    expect([winter.billedYmd, winter.conditional.ymd]).toEqual(['2026-12-01', '2026-12-01'])
+  })
+
   it('the owner sees the waivers on bills the office shared with them, open or paid; an unshared bill stays hidden', () => {
     const args = {
       jobs: [job('977')],
