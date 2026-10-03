@@ -4966,21 +4966,39 @@ exports[`GC mode golden walk > step 57: A new project: Leon Springs Urgent Care 
 }
 `;
 
-exports[`GC mode golden walk > step 58: Hillside sends an insurance certificate 1`] = `
+exports[`GC mode golden walk > step 58: Hill Country sends pay application 3 (ceilings done) 1`] = `
 {
   "changed": {
     "lastLog.id": 54,
-    "lastLog.text": "Hillside Excavation sent a new insurance certificate, good to Oct 2.",
+    "lastLog.text": "Hill Country Interiors sent pay application 3 on Framing and drywall: $7,500, with a conditional waiver signed.",
     "lastLog.who": "trade",
+    "projects.helotes.stageProgress.also[0]": "Hill Country Interiors asked for draw 3. Approve it.",
+    "projects.helotes.stageProgress.center": "31%",
+    "projects.helotes.stageProgress.groups[0].items[0].detail": "100% reported",
+    "projects.helotes.stageProgress.groups[0].items[0].done": true,
+    "projects.helotes.stageProgress.headline": "31% of the work is done, by what the trades have reported.",
+    "projects.helotes.stageProgress.share": 0.3079136690647482,
+  },
+  "removed": [
+    "projects.helotes.stageProgress.also",
+  ],
+}
+`;
+
+exports[`GC mode golden walk > step 59: Hillside sends an insurance certificate 1`] = `
+{
+  "changed": {
+    "lastLog.id": 55,
+    "lastLog.text": "Hillside Excavation sent a new insurance certificate, good to Oct 2.",
   },
   "removed": [],
 }
 `;
 
-exports[`GC mode golden walk > step 59: Hillside signs a W-9 1`] = `
+exports[`GC mode golden walk > step 60: Hillside signs a W-9 1`] = `
 {
   "changed": {
-    "lastLog.id": 55,
+    "lastLog.id": 56,
     "lastLog.text": "Hillside Excavation filled in and signed a W-9.",
   },
   "removed": [],
@@ -5143,13 +5161,18 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
-      "id": 55,
+      "id": 56,
       "text": "Hillside Excavation filled in and signed a W-9.",
       "who": "trade",
     },
     {
-      "id": 54,
+      "id": 55,
       "text": "Hillside Excavation sent a new insurance certificate, good to Oct 2.",
+      "who": "trade",
+    },
+    {
+      "id": 54,
+      "text": "Hill Country Interiors sent pay application 3 on Framing and drywall: $7,500, with a conditional waiver signed.",
       "who": "trade",
     },
     {
@@ -5285,11 +5308,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
     {
       "id": 27,
       "text": "Tejas Power coverage: not set.",
-      "who": "office",
-    },
-    {
-      "id": 26,
-      "text": "Hillside Excavation coverage: from Boerne, goes 60 miles.",
       "who": "office",
     },
   ],
@@ -5618,6 +5636,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "won": 0,
     },
     {
+      "address": "418 River Rd, Boerne, TX 78006",
       "base": "Boerne",
       "bids": 4,
       "coiExpires": "2027-04-12",
@@ -6867,6 +6886,30 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
                 "status": "paid",
                 "waiver": "unconditional",
               },
+              {
+                "gross": 7500,
+                "id": "dry-draw-3",
+                "lines": [
+                  {
+                    "sovId": "dry-3",
+                    "toPct": 100,
+                  },
+                ],
+                "net": 6750,
+                "number": 3,
+                "payApp": {
+                  "address": "418 River Rd, Boerne, TX 78006",
+                  "license": "",
+                  "periodTo": "2026-10-02",
+                  "signedBy": "Rosa Medina",
+                  "signedOn": "2026-10-02",
+                  "signedTitle": "Office manager",
+                },
+                "requestedOn": "2026-10-02",
+                "retainage": 750,
+                "status": "requested",
+                "waiver": "conditional",
+              },
             ],
             "price": 64200,
             "retainagePct": 10,
@@ -6891,7 +6934,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
                 "id": "dry-3",
                 "label": "Ceilings",
                 "pctBilled": 50,
-                "pctReported": 50,
+                "pctReported": 100,
               },
             ],
             "status": "signed",

@@ -80,10 +80,11 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
 | **Bid tabs** | After our bid is in, each trade's quotes go back to the companies that quoted, low to high, their own row marked, names hidden unless ticked. |
 | **Contracts** | Per trade: paperwork chips, award, the statement of work drafted from the bid, send, sign. |
 | **Get started** | The checklist before work starts: owner contract, permit, start date, and five steps per trade. Start stays shut until nothing is missing. |
-| **Draws** | Percent reported per line, a draw asked from the portal with a conditional waiver, approve, pay, unconditional waiver. |
+| **Draws** | Percent reported per line, a draw asked from the portal with its pay application (the 702 and 703) and a conditional waiver, approve, pay, unconditional waiver. **Pay application** on each draw opens the signed form read-only. |
 | **Follow up** (board tab) | Everyone we are waiting on across every project, the ones to call first. Log a contact; record the day they promised a quote; a passed day returns them to the top. |
 | **Trade partners** (board tab) | By trade: the bench, who answers when asked, every project short of quotes, coverage (where they drive from, how far they go), one press to ask the companies not yet asked. **Actions for assistants** on top: each standard as the ideal, where we are, and what closes the gap. |
-| The trade's portal | Paperwork done by the company itself (read and sign the master agreement, send an insurance certificate, fill in and sign a W-9), the plans window (sets, sheets, whether a set changes their trade), the invitation and the bid form, "tell Click when your number will come" (a passed day shows in red), answer a line the office could not read, confirm a number after an addendum, the bid tab, sign the statement of work, report work, ask for a draw. |
+| The trade's portal | Paperwork done by the company itself (read and sign the master agreement, send an insurance certificate, fill in and sign a W-9), the plans window (sets, sheets, whether a set changes their trade), the invitation and the bid form, "tell Click when your number will come" (a passed day shows in red), answer a line the office could not read, confirm a number after an addendum, the bid tab, sign the statement of work, report work, ask for a draw with its pay application (next row). |
+| Pay application (from the portal) | **Fill out pay application N**: four steps on a rail like the Release of Lien window (Check your work, Fill in a few details, Sign it, Send it to Click) beside the 702 and 703, which fill in as the trade types and mark what each step fills. The app knows the job, the contract, the lines, what was billed and the retainage; the trade checks the percents, picks the period, types its address once, and signs. Closing the window keeps the draft. |
 
 ## Decided by the owner (2026-10-02)
 
@@ -120,6 +121,9 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   like "roof" or "door", `TRADE_TEMPLATES` in `gcNewProject.ts`); each scope starts from the
   trade's usual lines. Nobody is asked until the office asks on Trades. The company's own trades
   (`OUR_TRADES`, plumbing) come in ticked as ours.
+- **Each draw comes with a 702 and 703** (2026-10-02, Building lane): the trade fills the pay
+  application in its portal and watches the form fill, typing only what the app cannot know. Most
+  of it comes from the job and from the work they reported (`gcBuilding.ts`, `GcBuildingPayApp.tsx`).
 - **A trade sees "Click Construction"** (2026-10-02). The name comes from one record
   (`GC_COMPANY` in `gcFixture.ts`: the full name and the short "Click" used in sentences), never
   typed into the portal's words.
@@ -141,6 +145,10 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
   came does not count against them.
 - Start is a hard stop: no "start anyway".
 - Red inside 7 days and amber inside 14 on the days-left block.
+- The pay application asks for the period date every time, the address and license once (kept on
+  the company), and a typed name and title with the waiver tick as the signature. A line can be
+  lowered to what was billed before, never below. The 702's "To" line reads Click Construction,
+  the name the portal already uses (`GC_COMPANY_NAME`).
 - A new insurance certificate counts the moment the company sends it; nobody in the office checks
   it first. A new one is good for a year until they change the day.
 - A company answers every line the office marked "not clear" (in or left out) before its number
@@ -165,10 +173,13 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
     Should ticking it start our own bid in Trades mode, and count only once that bid is priced?
 11. A new project's budgets start blank. Should a budget come from the size (a cost per square
     foot for each trade)? Asked before building, after distance pricing was built and removed.
-12. The bid form is one number with in-or-out lines. Should a trade also give alternates, attach
+12. The pay application leaves out the notary block, materials stored on site (column F reads $0)
+    and change orders (line 2 reads $0). Which of these do our trades need? Should it also
+    download as the AIA Excel template the Jobs Stages tab fills, or as a PDF?
+13. The bid form is one number with in-or-out lines. Should a trade also give alternates, attach
     its own quote, and say how many days the number is good for? Each one also needs Compare
     bids to read it.
-13. Answering a "not clear" line logs as "revised their bid to $205,500" though the price did
+14. Answering a "not clear" line logs as "revised their bid to $205,500" though the price did
     not change. Should it be a move of its own ("answered: rebar is in their number")?
 
 ## Workflow steps not built yet
@@ -199,6 +210,7 @@ imitates it.
 | Our price to the owner | The cover letter and the bid room: a signable link with options. |
 | Waivers on a draw | The lien waiver train (v2.4274 to v2.4335), pointed the other way. |
 | The map | The Bid Board's map and the app's geocoded addresses. The prototype draws its own from a short list of towns. |
+| The pay application (702 and 703) | The Jobs Stages tab's AIA G702-G703 window: `aiaG702G703Template.ts` (fields and cells) and `fillAiaG702G703Workbook.ts` (fills the bundled xlsx). The prototype draws the form on screen; the real build fills that template. |
 | "See what the trade sees" | Punch list #62, the same idea for the GC's room. |
 | Email | Resend through the existing edge functions. |
 
@@ -227,6 +239,7 @@ imitates it.
 | `GcAskThread.tsx` | The contact log, promises, the Follow up tab |
 | `GcNewPlans.tsx` | The new-set-of-plans window |
 | `GcNewProject.tsx` | The New project window and its **+ New project** button |
+| `GcBuildingPayApp.tsx` · `src/lib/gcMode/gcBuilding.ts` | The pay application window, its door in the portal and its read-only view from Draws · the 702 and 703 numbers and the four steps (tested in `gcBuilding.test.ts`) |
 | `GcStart.tsx` | Get started |
 | `GcBidTabs.tsx` | Bid tabs |
 | `GcCustomerWindow.tsx` | The one company window |

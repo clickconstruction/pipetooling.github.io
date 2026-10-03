@@ -131,6 +131,21 @@ const STEPS: Step[] = [
       },
     },
   },
+  // Helotes, building: a draw asked for with its G702/G703.
+  {
+    label: 'Hill Country sends pay application 3 (ceilings done)',
+    action: {
+      type: 'tradeSendPayApp',
+      projectId: 'helotes',
+      packageId: 'dry',
+      toPct: { 'dry-3': 100 },
+      periodTo: '2026-10-02',
+      address: '418 River Rd, Boerne, TX 78006',
+      license: '',
+      signedBy: 'Rosa Medina',
+      signedTitle: 'Office manager',
+    },
+  },
   // The portal: a company does its own paperwork.
   { label: 'Hillside sends an insurance certificate', action: { type: 'tradeUploadCoi', partnerId: 'hillside', expires: '2027-10-02' } },
   { label: 'Hillside signs a W-9', action: { type: 'tradeSignW9', partnerId: 'hillside' } },
@@ -256,6 +271,7 @@ describe('GC mode golden walk', () => {
       'sendSow', 'tradeSignSow', 'tradeReport', 'tradeRequestDraw', 'approveDraw', 'payDraw',
       'tradeSignUnconditional', 'setMarkup', 'logCustomerContact', 'addPartner', 'setCoverage', 'reset',
       'createProject',
+      'tradeSendPayApp',
       'tradeUploadCoi', 'tradeSignW9',
     ]
     expect(all.filter((t) => !used.has(t))).toEqual([])
