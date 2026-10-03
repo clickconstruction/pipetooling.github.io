@@ -595,6 +595,12 @@ export interface ScheduleActivity {
   finish: string
   /** The activities (line ids) it waits on: it starts after each one finishes. */
   after: string[]
+  /**
+   * An inspection (owner, 2026-10-03): the job's own activity, not a trade's line, with no dollars.
+   * Its packageId is '' and its lineId its own (`${projectId}-insp-roughin`). It counts on the
+   * critical path, not in work done against the plan. Passed: the day it passed.
+   */
+  inspection?: { label: string; passedOn?: string }
 }
 
 /** A date the schedule must meet: dry-in, the rough-in inspection, substantial completion. */
