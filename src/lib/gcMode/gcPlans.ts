@@ -2,7 +2,7 @@
  * GC mode — design spike. Plans: sheets and disciplines, who hears about a new set, the email, who opened it.
  * Split out of gcModel.ts verbatim; import from `./gcModel`, which re-exports every file.
  */
-import type { GcProject, GcState, Invite, Partner, PlanSheet, TradePackage } from './gcTypes'
+import type { GcProject, GcState, Invite, Partner, PlanQuestion, PlanSheet, TradePackage } from './gcTypes'
 import { weekdayDate } from './gcWords'
 import { currentRev, partnerById } from './gcLookups'
 
@@ -175,6 +175,48 @@ export function planEmail(
     body.push(`It does not change ${trade}. No action needed. It is for your records.`)
   }
   return { subject: `${project.name}: ${label} is out${r.touched ? ' and it changes your trade' : ''}`, body }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Questions about the plans: a trade asks, the architect answers, every company on the trade hears
+// ---------------------------------------------------------------------------------------------
+
+export type QuestionState = 'asked' | 'with the architect' | 'answered'
+
+/** Where a question stands: asked and not sent on, with the architect, or answered. */
+export function questionState(q: PlanQuestion): QuestionState {
+  if (q.answer !== null) return 'answered'
+  return q.sentToArchitectOn ? 'with the architect' : 'asked'
+}
+
+/** The project's questions still waiting on an answer, the oldest first. */
+export function openQuestions(project: GcProject): PlanQuestion[] {
+  return project.questions.filter((q) => q.answer === null).sort((a, b) => a.askedOn.localeCompare(b.askedOn))
+}
+
+/** One trade's questions, the newest first. */
+export function questionsFor(project: GcProject, packageId: string): PlanQuestion[] {
+  return project.questions.filter((q) => q.packageId === packageId).sort((a, b) => b.askedOn.localeCompare(a.askedOn))
+}
+
+/** Answered questions no set has carried yet: the ones a new set can put in its note. */
+export function answeredNotInSet(project: GcProject): PlanQuestion[] {
+  return project.questions.filter((q) => q.answer !== null && q.inSetRev === undefined)
+}
+
+/**
+ * Who hears an answer: every company on the question's trade while we bid, only the company on it
+ * once the job is ours. The same rule a new set follows. A company that passed hears nothing.
+ */
+export function questionRecipients(state: GcState, project: GcProject, q: PlanQuestion): PlanRecipient[] {
+  return planRecipients(state, project, [q.packageId]).filter((r) => r.pkg.id === q.packageId)
+}
+
+/** A question and its answer as one line for a set's note: "E-301, Electrical: … Answer: …" */
+export function questionInNote(project: GcProject, q: PlanQuestion): string {
+  const trade = project.packages.find((p) => p.id === q.packageId)?.trade ?? 'A trade'
+  const about = q.sheets && q.sheets.length > 0 ? `${q.sheets.join(', ')}, ${trade}` : trade
+  return `${about}: ${q.text.trim()} Answer: ${(q.answer ?? '').trim()}`
 }
 
 /** How many invited trade partners have opened the newest set. */

@@ -263,7 +263,9 @@ export function initialGcState(): GcState {
     startedOn: null,
     customerId: 'raman',
     owner: 'Dr. Priya Raman',
-    ownerBilling: { billed: 61_000, paid: 42_300, retainageHeld: 6_100 },
+    // Owner Billing lane (owner's call, 2026-10-03): nothing billed yet. Work has not started, and
+    // our first pay application to Dr. Raman goes from Bill the owner.
+    ownerBilling: null,
     architectId: 'ocotillo',
     architect: 'Studio Ocotillo',
     questions: [

@@ -241,6 +241,14 @@ export interface PlanQuestion {
   askedOn: string
   answeredOn: string | null
   answer: string | null
+  /** The sheets the question is about. */
+  sheets?: string[]
+  /** The day we sent it to the architect. Missing: not sent yet. */
+  sentToArchitectOn?: string
+  /** Who got the answer, and when. */
+  answerSentTo?: { partnerId: string; on: string }[]
+  /** The plan set that carried the answer. */
+  inSetRev?: number
 }
 
 /** What we have billed the owner on a project we are building, and what they have paid. */
@@ -440,6 +448,8 @@ export type GcAction =
       newLines?: { packageId: string; label: string; sheets: string[] }[]
       /** Days this set adds to scheduled activities, by line id. What waits on them moves out too. */
       schedulePushes?: Record<string, number>
+      /** Answered questions this set carries, in its note. */
+      questionIds?: string[]
     }
   | { type: 'acceptWork'; projectId: string; packageId: string }
   | { type: 'tradeSendWarranty'; projectId: string; packageId: string }
@@ -525,6 +535,12 @@ export type GcAction =
   | { type: 'architectCertify'; projectId: string; number: number; amount: number; note: string }
   /** Our superintendent records an inspection passed, today. */
   | { type: 'passInspection'; projectId: string; lineId: string }
+  /** A trade asks a question about the plans: in its portal, or by phone and the office types it. */
+  | { type: 'tradeAskQuestion'; projectId: string; packageId: string; partnerId: string; text: string; sheets: string[] }
+  /** We send a trade's question to the architect. */
+  | { type: 'sendQuestionToArchitect'; projectId: string; questionId: string }
+  /** We record the architect's answer and send it to the companies on the trade. */
+  | { type: 'answerQuestion'; projectId: string; questionId: string; answer: string; recipients: string[] }
 
 /** One trade on a new project, as the office left it in the New project window. */
 export interface NewTradeDraft {

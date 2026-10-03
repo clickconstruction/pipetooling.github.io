@@ -364,6 +364,31 @@ const STEPS: Step[] = [
   { label: 'Dr. Raman pays pay application 2', action: { type: 'ownerPaid', projectId: 'helotes', number: 2 } },
   // An inspection is the job's own activity (Building lane): our superintendent records the pass.
   { label: 'Fair Oaks D: the rough-in inspection passes', action: { type: 'passInspection', projectId: 'fairoaksd', lineId: 'fairoaksd-insp-roughin' } },
+  // Questions about the plans on Pad B: Lonestar asks, the architect answers, a set carries it.
+  {
+    label: 'Pad B: Lonestar asks whether the drive-through lane is concrete',
+    action: { type: 'tradeAskQuestion', projectId: 'padb', packageId: 'bsite', partnerId: 'lonestar', text: 'Is the drive-through lane concrete or asphalt?', sheets: ['C-101'] },
+  },
+  { label: 'Pad B: send the question to the architect', action: { type: 'sendQuestionToArchitect', projectId: 'padb', questionId: 'padb-q-1' } },
+  {
+    label: 'Pad B: the architect answers, sent to the sitework bidders',
+    action: { type: 'answerQuestion', projectId: 'padb', questionId: 'padb-q-1', answer: 'Concrete, per detail 3 on C-101.', recipients: ['lonestar'] },
+  },
+  {
+    label: 'Pad B: Addendum 1 carries the answer',
+    action: {
+      type: 'issuePlanSet',
+      projectId: 'padb',
+      label: 'Addendum 1',
+      note: 'C-101, Sitework: Is the drive-through lane concrete or asphalt? Answer: Concrete, per detail 3 on C-101.',
+      sheets: [],
+      addedSheets: [],
+      touches: [],
+      recipients: ['lonestar', 'alamo'],
+      newTrades: [],
+      questionIds: ['padb-q-1'],
+    },
+  },
 ]
 
 const CUSTOMER_IDS = ['cibolo', 'raman']
@@ -503,6 +528,7 @@ describe('GC mode golden walk', () => {
       'tradeOpenPortal',
       'tradeAnswerLines',
       'priceOwnBid',
+      'tradeAskQuestion', 'sendQuestionToArchitect', 'answerQuestion',
       'tradeMarkLookAhead',
       'tradeSetLanguage',
       'setPartnerLanguage',
