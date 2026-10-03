@@ -477,7 +477,10 @@ function ProjectRow({
   const newest = planLabel(project, currentRev(project))
   // A phone or a narrow pane: the ring, the days and the name on top, the rest on the lines under.
   const narrow = useMatchMedia('(max-width: 760px)')
-  const under = narrow ? ({ gridColumn: '1 / -1' } as const) : undefined
+  // Six columns side by side need about 1,060 px: the widest chip is about 260 px and the name
+  // needs as much. Between a phone and that, the chips take a line of their own under the name.
+  const roomy = useMatchMedia('(min-width: 1100px)')
+  const under = narrow ? ({ gridColumn: '1 / -1' } as const) : roomy ? undefined : ({ gridColumn: '3 / -1', gridRow: 2 } as const)
   return (
     <div
       onClick={onOpen}
@@ -489,8 +492,12 @@ function ProjectRow({
         cursor: 'pointer',
         color: 'var(--text-base)',
         display: 'grid',
-        gridTemplateColumns: narrow ? '3.5rem 5.5rem minmax(0, 1fr)' : '3.5rem 6.5rem minmax(0, 2fr) minmax(0, 2fr) auto auto',
-        gap: narrow ? '0.6rem 0.75rem' : '1rem',
+        gridTemplateColumns: narrow
+          ? '3.5rem 5.5rem minmax(0, 1fr)'
+          : roomy
+            ? '3.5rem 6.5rem minmax(0, 2fr) minmax(0, 2fr) auto auto'
+            : '3.5rem 6.5rem minmax(0, 1fr) auto auto',
+        gap: narrow ? '0.6rem 0.75rem' : roomy ? '1rem' : '0.5rem 1rem',
         alignItems: 'center',
       }}
     >
