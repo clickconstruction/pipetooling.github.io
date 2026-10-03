@@ -9,7 +9,7 @@
  */
 import type { GcProject, GcState, LookAheadMark, LookAheadReason, ProjectSchedule, ScheduleActivity, ScheduleMilestone, TradePackage } from './gcTypes'
 import { carriedAmount } from './gcBids'
-import { tradeOrder } from './gcNewProject'
+import { scheduleDraft } from './gcNewProject'
 import { partnerById } from './gcLookups'
 import { addDays, crewStages, sentBackOpen } from './gcBuilding'
 import { shortDate } from './gcWords'
@@ -95,70 +95,13 @@ export function scheduleLinesOf(pkg: TradePackage): { lineId: string; label: str
   return pkg.scope.map((l) => ({ lineId: l.id, label: l.label }))
 }
 
-/** How long a drawn activity runs in the first draft, in days. My default; the office changes each one. */
-export const DRAFT_ACTIVITY_DAYS = 10
-
 /**
- * The order trades build in, by phase, for the first draft: site, structure, roof, the rough-ins,
- * the walls, the finishes. My stand-in; a trade not on it goes after, in the New Project lane's order.
- */
-export const DRAFT_BUILD_ORDER = [
-  'Sitework',
-  'Concrete',
-  'Masonry',
-  'Structural steel',
-  'Roofing',
-  'Fire sprinkler',
-  'Plumbing',
-  'HVAC',
-  'Electrical',
-  'Framing and drywall',
-  'Glass and storefront',
-  'Doors and hardware',
-  'Millwork',
-  'Painting',
-  'Flooring',
-  'Landscaping',
-]
-
-function draftOrder(trade: string): number {
-  const i = DRAFT_BUILD_ORDER.indexOf(trade)
-  return i === -1 ? DRAFT_BUILD_ORDER.length + tradeOrder(trade) : i
-}
-
-/**
- * A first draft to draw from (the Building lane's stand-in until the New Project lane's draft from
- * the build order): every line of every trade, trades in build order (`DRAFT_BUILD_ORDER`), each line
- * after the one before it in its trade, each trade's first line after the previous trade's first.
- * Every activity runs DRAFT_ACTIVITY_DAYS. Milestones: dry-in, rough-in inspection, substantial completion.
+ * The first draft to draw from: the New Project lane's draft from the stages of the job
+ * (`scheduleDraft` in gcNewProject.ts: the rough-ins side by side after framing, close-in after
+ * the inspection, the trims after the finishes). The Draw a first draft button calls this.
  */
 export function draftSchedule(project: GcProject, start: string): ProjectSchedule {
-  const trades = [...project.packages].sort((a, b) => draftOrder(a.trade) - draftOrder(b.trade))
-  const activities: ScheduleActivity[] = []
-  let prevTradeFirst: ScheduleActivity | null = null
-  for (const pkg of trades) {
-    let prev: ScheduleActivity | null = null
-    for (const line of scheduleLinesOf(pkg)) {
-      const waits = prev ? [prev] : prevTradeFirst ? [prevTradeFirst] : []
-      const from = waits.length > 0 ? addDays(waits[0]?.finish ?? start, 1) : start
-      const a: ScheduleActivity = { lineId: line.lineId, packageId: pkg.id, start: from, finish: addDays(from, DRAFT_ACTIVITY_DAYS - 1), after: waits.map((w) => w.lineId) }
-      activities.push(a)
-      if (!prev) prevTradeFirst = a
-      prev = a
-    }
-  }
-  const last = activities.reduce((m, a) => (a.finish > m ? a.finish : m), start)
-  const roof = project.packages.find((k) => /roof/i.test(k.trade))
-  const roofLast = activities.filter((a) => a.packageId === roof?.id).reduce((m, a) => (a.finish > m ? a.finish : m), '')
-  // The inspection follows the last line named "Rough in" ("Low voltage rough" is not one).
-  const roughs = activities.filter((a) => /^rough/i.test(scheduleLinesOf(project.packages.find((k) => k.id === a.packageId) as TradePackage).find((l) => l.lineId === a.lineId)?.label ?? ''))
-  const roughLast = roughs.reduce((m, a) => (a.finish > m ? a.finish : m), '')
-  const milestones: ScheduleMilestone[] = [
-    ...(roofLast ? [{ id: `${project.id}-dryin`, label: 'Dry-in', planned: roofLast, packageId: roof?.id ?? null, metOn: null }] : []),
-    ...(roughLast ? [{ id: `${project.id}-roughin`, label: 'Rough-in inspection', planned: addDays(roughLast, 2), packageId: null, metOn: null }] : []),
-    { id: `${project.id}-substantial`, label: 'Substantial completion', planned: addDays(last, 5), packageId: null, metOn: null },
-  ]
-  return { activities, milestones, baseline: null, lookAhead: [] }
+  return scheduleDraft(project, start)
 }
 
 /**

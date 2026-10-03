@@ -11,6 +11,7 @@ import {
   plannedPct,
   scheduleFloat,
   scheduleMeasures,
+  scheduleLinesOf,
   scheduleRows,
   verifyList,
   type GcState,
@@ -103,15 +104,16 @@ describe('drawing the schedule', () => {
     return p
   }
 
-  it('drafts every line, trades by phase, each line after the one before', () => {
-    const d = draftSchedule(helotes(initialGcState()), '2026-10-12')
-    expect(d.activities.length).toBe(17)
-    expect(d.activities[0]).toMatchObject({ lineId: 'dplumb-1', start: '2026-10-12', finish: '2026-10-21', after: [] })
-    expect(d.activities.find((a) => a.lineId === 'dry-1')?.after).toEqual(['delec-1'])
-    expect(d.milestones.map((m) => [m.label, m.planned])).toEqual([
-      ['Rough-in inspection', '2026-11-02'],
-      ['Substantial completion', '2026-12-25'],
-    ])
+  it('drafts every line once, linked only to lines it has, with the three milestones', () => {
+    // The draft itself is the New Project lane's (scheduleDraft); this pins only its shape.
+    const project = helotes(initialGcState())
+    const d = draftSchedule(project, '2026-10-12')
+    const ids = d.activities.map((a) => a.lineId)
+    const lines = project.packages.flatMap((k) => scheduleLinesOf(k).map((l) => l.lineId))
+    expect([...ids].sort()).toEqual([...lines].sort())
+    expect(d.activities.every((a) => a.start >= '2026-10-12' && a.finish >= a.start && a.after.every((id) => ids.includes(id) && id !== a.lineId))).toBe(true)
+    expect(d.milestones.map((m) => m.id)).toEqual(expect.arrayContaining(['helotes-roughin', 'helotes-substantial']))
+    expect(d.baseline).toBeNull()
   })
 
   it('moves an activity; before Start nothing is locked yet', () => {
@@ -131,10 +133,11 @@ describe('drawing the schedule', () => {
     const drawn = gcReducer(started, { type: 'draftSchedule', projectId: 'helotes', start: '2026-10-12' })
     const moved = gcReducer(drawn, { type: 'setScheduleActivity', projectId: 'helotes', lineId: 'dry-1', start: '2026-11-16', finish: '2026-11-25', after: ['delec-1'] })
     const schedule = helotes(moved).schedule
+    const drafted = helotes(drawn).schedule?.activities.find((a) => a.lineId === 'dry-1')
     expect(schedule?.baseline?.lockedOn).toBe('2026-10-02')
-    expect(schedule?.baseline?.activities['dry-1']).toEqual({ start: '2026-11-11', finish: '2026-11-20' })
+    expect(schedule?.baseline?.activities['dry-1']).toEqual({ start: drafted?.start, finish: drafted?.finish })
     const row = scheduleRows(moved, helotes(moved)).find((r) => r.activity.lineId === 'dry-1')
-    expect(row?.slipDays).toBe(5)
+    expect(row?.slipDays).toBe(daysBetween(drafted?.finish ?? '', '2026-11-25'))
   })
 })
 
