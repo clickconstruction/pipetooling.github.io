@@ -25,6 +25,7 @@ import { StripeInvoiceSendFromStripeButton } from './StripeInvoiceSendFromStripe
 import { stripeModeForBillingFromRole } from '../../lib/voidStripeInvoiceForRevert'
 import type { UserRole } from '../../hooks/useAuth'
 import { telHrefFor } from '../../lib/phoneContact'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 /**
  * Payment follow-up call mode (owner-approved "Payment Chase Loop" v2 mockup,
@@ -681,7 +682,7 @@ export default function PaymentChaseModal({
                   <div style={{ fontSize: '0.95rem', fontWeight: 700 }}>⚠ {currentDispute.customerName} — dispute</div>
                   <div style={{ fontSize: '0.8rem', padding: '0.4rem 0.6rem', borderRadius: 8, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' }}>
                     {currentDispute.bill ? `${currentDispute.bill.label} · ${formatUsdNoCents(currentDispute.bill.open)} open` : 'Bill'} · flagged{' '}
-                    {formatYmdMonthDay(currentDispute.touch.createdAt.slice(0, 10))} by {currentDispute.touch.createdByName}
+                    {formatYmdMonthDay(calendarYmdInAppTzFromIso(currentDispute.touch.createdAt))} by {currentDispute.touch.createdByName}
                     {currentDispute.touch.note ? ` · "${currentDispute.touch.note}"` : ''}
                   </div>
                   <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: 0 }}>

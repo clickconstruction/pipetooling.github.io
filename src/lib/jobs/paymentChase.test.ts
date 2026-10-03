@@ -112,6 +112,22 @@ describe('buildPaymentChaseQueue', () => {
     expect(BROKEN_PROMISE_GRACE_DAYS).toBe(7)
   })
 
+  it('an evening bill and an evening call read their own Central day', () => {
+    // Billed 7:30 pm CDT on Jul 1 (PostgREST's +00:00 shape): the card says billed Jul 1, and net 30 lands Jul 31.
+    const rows = [invRow({ customerId: 'knight', customerName: 'Knight', jobId: 'j1', invoiceId: 'i1', amount: 3600, billedAt: '2026-07-02T00:30:00+00:00' })]
+    const q = buildPaymentChaseQueue(rows, speeds, null, [], TODAY)
+    expect(q.due[0]?.bills[0]?.billedYmd).toBe('2026-07-01')
+    expect(resolvePromiseDates({ mode: 'billed', days: 30, bills: q.due[0]!.bills, todayYmd: TODAY })?.byInvoice.get('i1')).toBe('2026-07-31')
+    // A can't-reach call at 7:30 pm CDT on Aug 18 snoozes 7 days from Aug 18.
+    const snoozed = buildPaymentChaseQueue(rows, speeds, null, [touch({ customerId: 'knight', outcome: 'cant_reach', createdAt: '2026-08-19T00:30:00+00:00', snoozeDays: 7 })], TODAY)
+    expect(snoozed.waiting[0]?.waitReason).toMatchObject({ kind: 'snoozed', untilYmd: '2026-08-25' })
+    // 6:30 pm CST on Dec 1 reads Dec 1; noon UTC reads its own day.
+    const winter = buildPaymentChaseQueue([invRow({ customerId: 'knight', customerName: 'Knight', jobId: 'j1', invoiceId: 'i1', amount: 3600, billedAt: '2026-12-02T00:30:00Z' })], speeds, null, [], '2027-01-15')
+    expect(winter.due[0]?.bills[0]?.billedYmd).toBe('2026-12-01')
+    const noon = buildPaymentChaseQueue([invRow({ customerId: 'knight', customerName: 'Knight', jobId: 'j1', invoiceId: 'i1', amount: 3600, billedAt: '2026-07-02T12:00:00Z' })], speeds, null, [], TODAY)
+    expect(noon.due[0]?.bills[0]?.billedYmd).toBe('2026-07-02')
+  })
+
   it("can't-reach snoozes the customer for its window; quiet period holds recent touches", () => {
     const rows = [
       invRow({ customerId: 'knight', customerName: 'Knight', jobId: 'j1', invoiceId: 'i1', amount: 3600, billedAt: '2026-07-01T12:00:00Z' }),

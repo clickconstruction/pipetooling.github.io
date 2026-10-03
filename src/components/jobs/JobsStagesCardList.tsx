@@ -48,7 +48,7 @@ import { StagesCardMoreActionsSheet, type StagesCardMoreAction } from './StagesC
 import { StagesPhoneRow } from './StagesPhoneRow'
 import { phoneRowPasses } from '../../lib/jobs/jobNextLine'
 import { useShareJob } from './ShareJobButton'
-import { getDefaultWeekRange } from '../../utils/dateUtils'
+import { calendarYmdInAppTzFromIso, getDefaultWeekRange } from '../../utils/dateUtils'
 import StagesProgressPaymentCell from './StagesProgressPaymentCell'
 import { JobsStagesThreadPanel } from './JobsStagesThreadPanel'
 import type { Database } from '../../types/database'
@@ -1292,7 +1292,7 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
               {inv && inv.status === 'billed' && (row.kind === 'invoice' || (j.invoices?.length ?? 0) > 1) ? (
                 <StagesBillRowLine
                   compact
-                  line={stagesBillRowLine({ amount: inv.amount, applied: sumInvoiceAppliedFromJobPayments(j, inv.id), billedYmd: inv.billed_at ? inv.billed_at.slice(0, 10) : null })}
+                  line={stagesBillRowLine({ amount: inv.amount, applied: sumInvoiceAppliedFromJobPayments(j, inv.id), billedYmd: calendarYmdInAppTzFromIso(inv.billed_at ?? '') || null })}
                 />
               ) : null}
               {billLine?.extras}

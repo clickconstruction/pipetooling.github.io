@@ -9,6 +9,8 @@ import {
   parsePromisedPayDatesRpc,
   type PaySpeedData,
 } from './billedExpectedPay'
+import { billedReferenceYmd as serverBilledReferenceYmd } from '../../../supabase/functions/_shared/paymentForecastCore'
+import { buildMoneyWaitingFromPayload } from '../../../supabase/functions/_shared/moneyWaitingCore'
 
 const data: PaySpeedData = {
   company: { medianDays: 27, samples: 240 },
@@ -107,8 +109,27 @@ describe('parsePaySpeedsRpc', () => {
 })
 
 describe('billedReferenceYmd', () => {
-  it('prefers billed_at, slicing the ISO date part', () => {
+  it('prefers billed_at, read as its day in the company zone', () => {
     expect(billedReferenceYmd({ billedAtIso: '2026-08-04T15:22:00+00:00', estBillYmd: '2026-08-01' })).toBe('2026-08-04')
+  })
+
+  it('a bill marked billed in a Central evening reads that day, not the UTC date', () => {
+    // 7:30 pm CDT on Oct 2, in both the Z shape and the +00:00 shape PostgREST returns.
+    expect(billedReferenceYmd({ billedAtIso: '2026-10-03T00:30:00Z', estBillYmd: null })).toBe('2026-10-02')
+    expect(billedReferenceYmd({ billedAtIso: '2026-10-03T00:30:00.123+00:00', estBillYmd: '2026-09-30' })).toBe('2026-10-02')
+    // 6:30 pm CST on Dec 1.
+    expect(billedReferenceYmd({ billedAtIso: '2026-12-02T00:30:00Z', estBillYmd: null })).toBe('2026-12-01')
+    // Noon UTC is the morning of its own day.
+    expect(billedReferenceYmd({ billedAtIso: '2026-10-03T12:00:00Z', estBillYmd: null })).toBe('2026-10-03')
+  })
+
+  it('the server twin (paymentForecastCore, the forecast and Money waiting emails) reads the same day', () => {
+    for (const at of ['2026-10-03T00:30:00Z', '2026-10-03T00:30:00.123+00:00', '2026-12-02T00:30:00Z', '2026-10-03T12:00:00Z', '2026-08-04T15:22:00+00:00']) {
+      expect(serverBilledReferenceYmd({ billed_at: at, est_bill_ymd: null })).toBe(billedReferenceYmd({ billedAtIso: at, estBillYmd: null }))
+    }
+    expect(serverBilledReferenceYmd({ billed_at: null, est_bill_ymd: '2026-08-01' })).toBe('2026-08-01')
+    expect(serverBilledReferenceYmd({ billed_at: 'not a time', est_bill_ymd: '2026-08-01' })).toBe('2026-08-01')
+    expect(serverBilledReferenceYmd({ billed_at: null, est_bill_ymd: null })).toBeNull()
   })
 
   it('falls back to the est. bill date', () => {
@@ -146,6 +167,12 @@ describe('billedExpectedPayModel', () => {
     expect(m!.source).toBe('customer')
     expect(m!.daysLate).toBe(0)
     expect(m!.label).toBe('Expect pay ~Sep 8 · pays in ~35d')
+  })
+
+  it('an evening bill counts its expected date from its own day', () => {
+    const m = billedExpectedPayModel({ billedAtIso: '2026-10-03T00:30:00Z', estBillYmd: null, customerId: 'knight' }, data, '2026-10-03')!
+    expect(m.expectedYmd).toBe('2026-11-06') // Oct 2 + 35
+    expect(m.title).toContain('Billed Oct 2 +')
   })
 
   it('the expected date itself is still upcoming; late starts the day after', () => {
@@ -214,5 +241,19 @@ describe('parsePromisedPayDatesRpc', () => {
 
   it('null for gate-refused payloads', () => {
     expect(parsePromisedPayDatesRpc(null)).toBeNull()
+  })
+})
+
+describe('Money waiting email (moneyWaitingCore)', () => {
+  it('an evening bill waits from its own day', () => {
+    const mw = buildMoneyWaitingFromPayload({
+      generated_at: '2026-10-12T14:00:00Z',
+      today: '2026-10-12',
+      rows: [{ invoice_id: 'i1', job_id: 'j1', display_number: '1041', job_name: 'Rough-in', job_address: null, customer_id: 'knight', customer_name: 'Knight', billed_at: '2026-10-03T00:30:00+00:00', est_bill_ymd: null, remaining: 500 }],
+      pay_speeds: { company: { medianDays: 5, samples: 40 }, customers: { knight: { medianDays: 5, samples: 9 } }, segments: { residential: null, commercial: null }, customerTypes: {} },
+    })!
+    const bill = mw.rows[0]!.bills[0]!
+    expect(bill.billedYmd).toBe('2026-10-02')
+    expect(bill.waitDays).toBe(10)
   })
 })

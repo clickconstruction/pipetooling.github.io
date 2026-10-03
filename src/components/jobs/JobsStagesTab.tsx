@@ -4657,7 +4657,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         payments={markPaidInvoice?.job.payments}
         job={null}
         stripeModeForBilling={stripeModeForBillingFromRole(authRole)}
-        billedYmd={markPaidInvoice?.billed_at ? markPaidInvoice.billed_at.slice(0, 10) : null}
+        billedYmd={calendarYmdInAppTzFromIso(markPaidInvoice?.billed_at ?? '') || null}
         existingPromiseYmd={markPaidInvoice ? (promisedPayDates?.[markPaidInvoice.job.id]?.promisedYmd ?? null) : null}
         onClose={() => setMarkPaidInvoice(null)}
         onSuccess={async () => {

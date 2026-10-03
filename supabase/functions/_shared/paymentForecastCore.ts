@@ -9,9 +9,9 @@
  * kernels change, change this port in the same train.
  *
  * Deliberate identities kept from the client:
- *   - billedReferenceYmd slices the RAW billed_at ISO (UTC date), falling
- *     back to the est. bill date — NOT the Chicago conversion the billed
- *     report SQL uses.
+ *   - billedReferenceYmd reads billed_at as its day in APP_CALENDAR_TZ (as
+ *     the pay-speed RPCs and the billed report SQL do), falling back to the
+ *     est. bill date.
  *   - A customer's own median only counts with >= 3 samples
  *     (PAY_SPEED_MIN_SAMPLES); otherwise the company median ("company avg").
  *   - A promised date overrides the statistical estimate entirely.
@@ -19,6 +19,8 @@
  *     following (2 weeks) / later / unknown (no reference date or no speeds).
  *   - Rows with no open money are skipped and counted (skippedNoMoney).
  */
+
+import { todayYmdInAppTz } from './appTimeZone.ts'
 
 export type PaySpeedStat = { medianDays: number; samples: number }
 
@@ -95,10 +97,12 @@ export function formatYmdMonthDay(ymd: string): string {
   return `${MONTHS[Number(m[2]) - 1] ?? m[2]} ${Number(m[3])}`
 }
 
-/** The row's bill reference date (billedReferenceYmd: billed_at UTC slice, else est. bill date). */
+/** The row's bill reference date (billedReferenceYmd: billed_at's day in APP_CALENDAR_TZ, else est. bill date). */
 export function billedReferenceYmd(row: Pick<PayloadRow, 'billed_at' | 'est_bill_ymd'>): string | null {
   const billed = row.billed_at?.trim()
-  if (billed && billed.length >= 10) return billed.slice(0, 10)
+  const at = billed ? new Date(billed) : null
+  // todayYmdInAppTz throws on an Invalid Date; an unreadable billed_at falls back like a missing one.
+  if (at && !Number.isNaN(at.getTime())) return todayYmdInAppTz(at)
   const est = row.est_bill_ymd?.trim()
   if (est && ymdToUtcMs(est) != null) return est
   return null

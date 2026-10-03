@@ -7,6 +7,7 @@ import {
   jobBilledUnpaidDollars,
   jobStagesActiveBillingInvoices,
   jobStagesInvoiceJumpChipTargets,
+  billedRowReferenceYmd,
   printBilledRowReferenceDate,
   sortStageRowsForTotalByNameDetail,
   buildBilledTotalByNameEntries,
@@ -188,6 +189,17 @@ describe('printBilledRowReferenceDate', () => {
   it('invoice row falls back to est bill date with (est.) suffix', () => {
     const r = { kind: 'invoice', inv: inv({ billed_at: null, estimated_bill_date: '2026-05-21' }), job: job({}) } as StageRow
     expect(printBilledRowReferenceDate(r, now)).toEqual({ display: 'May 21, 2026 (est.)', ageDays: 10 })
+  })
+  it('a bill marked billed in a Central evening prints that day, the day the board ages it from', () => {
+    const at = (billed_at: string) => ({ kind: 'invoice', inv: inv({ billed_at }), job: job({}) }) as StageRow
+    const oct12 = new Date('2026-10-12T15:00:00Z')
+    // 7:30 pm CDT on Oct 2, also in the +00:00 shape PostgREST returns.
+    expect(printBilledRowReferenceDate(at('2026-10-03T00:30:00Z'), oct12)).toEqual({ display: 'Oct 2, 2026', ageDays: 10 })
+    expect(printBilledRowReferenceDate(at('2026-10-03T00:30:00.123+00:00'), oct12)).toEqual({ display: 'Oct 2, 2026', ageDays: 10 })
+    expect(stageRowBilledAgeReference(at('2026-10-03T00:30:00Z'))?.ymd).toBe('2026-10-02')
+    // 6:30 pm CST on Dec 1; noon UTC reads its own day.
+    expect(billedRowReferenceYmd(at('2026-12-02T00:30:00Z'))).toEqual({ ymd: '2026-12-01', isEstimate: false })
+    expect(billedRowReferenceYmd(at('2026-10-03T12:00:00Z'))).toEqual({ ymd: '2026-10-03', isEstimate: false })
   })
 })
 
