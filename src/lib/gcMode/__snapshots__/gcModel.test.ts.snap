@@ -5323,6 +5323,17 @@ exports[`GC mode golden walk > step 77: Approve the fixed pay application 1 1`] 
 }
 `;
 
+exports[`GC mode golden walk > step 78: AquaShield opens its portal for the first time 1`] = `
+{
+  "changed": {
+    "lastLog.id": 74,
+    "lastLog.text": "AquaShield Sprinkler opened their portal for the first time.",
+    "lastLog.who": "trade",
+  },
+  "removed": [],
+}
+`;
+
 exports[`GC mode golden walk > the whole state at the end 1`] = `
 {
   "customers": [
@@ -5479,6 +5490,11 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
+      "id": 74,
+      "text": "AquaShield Sprinkler opened their portal for the first time.",
+      "who": "trade",
+    },
+    {
       "id": 73,
       "text": "Approved draw 1 on Millwork. $15,444 to pay, $1,716 held.",
       "who": "office",
@@ -5621,11 +5637,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
     {
       "id": 45,
       "text": "Hill Country Interiors asked for draw 2 on Framing and drywall: $34,700, with a conditional waiver signed.",
-      "who": "trade",
-    },
-    {
-      "id": 44,
-      "text": "Hill Country Interiors reported Ceilings at 50%.",
       "who": "trade",
     },
   ],
@@ -5945,6 +5956,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "maxMiles": 100,
       "msa": "none",
       "msaSignedOn": null,
+      "portalOpenedOn": "2026-10-02",
       "promisesKept": 0,
       "promisesMade": 0,
       "trades": [

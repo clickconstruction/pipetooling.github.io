@@ -185,6 +185,8 @@ export interface Partner {
   address?: string
   /** Their license line for the pay application. Optional. */
   license?: string
+  /** The day they first went through their portal's welcome. Unset: never, or before the portal kept it. */
+  portalOpenedOn?: string
 }
 
 /** A question a trade asked about the plans. The architect answers; every bidder on the trade gets it. */
@@ -395,6 +397,8 @@ export type GcAction =
       /** Lines where we see less done than they asked for: the percent we see. */
       weSee: Record<string, number>
     }
+  /** The company presses Got it on its portal's first-visit welcome. */
+  | { type: 'tradeOpenPortal'; partnerId: string }
 
 /** One trade on a new project, as the office left it in the New project window. */
 export interface NewTradeDraft {

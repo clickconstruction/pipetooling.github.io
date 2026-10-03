@@ -3,6 +3,7 @@ import {
   daysUntil,
   GC_COMPANY,
   money,
+  portalFirstVisit,
   portalHome,
   shortDate,
   weekdayDate,
@@ -13,7 +14,7 @@ import {
   type PortalJobMoney,
   type PortalTodo,
 } from '../../lib/gcMode/gcModel'
-import { Chip, type Tone } from './gcUi'
+import { Btn, Chip, type Tone } from './gcUi'
 import { GcPortalPaperwork, type PaperworkLine } from './GcPortalPaperwork'
 import { PortalBlock } from './GcPortalUi'
 
@@ -44,6 +45,7 @@ export function GcPortalHome({
   onOpenProject: (projectId: string) => void
 }) {
   const home = portalHome(state, partner.id)
+  const firstVisit = portalFirstVisit(state, partner.id)
   const paperRef = useRef<HTMLDivElement | null>(null)
   const [paperAsk, setPaperAsk] = useState<{ line: PaperworkLine; n: number } | null>(null)
 
@@ -58,12 +60,16 @@ export function GcPortalHome({
 
   return (
     <div style={{ display: 'grid', gap: '0.9rem' }}>
-      <div>
-        <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>Hello, {partner.contact}.</div>
-        <div style={{ fontSize: '0.85rem', opacity: 0.8 }}>
-          This is everything {partner.company} has with {GC_COMPANY.name}. The link is yours. Keep it.
+      {firstVisit ? (
+        <Welcome partner={partner} firstAsk={home.bidding[0]} onDone={() => dispatch({ type: 'tradeOpenPortal', partnerId: partner.id })} />
+      ) : (
+        <div>
+          <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>Hello, {partner.contact}.</div>
+          <div style={{ fontSize: '0.85rem', opacity: 0.8 }}>
+            This is everything {partner.company} has with {GC_COMPANY.name}. The link is yours. Keep it.
+          </div>
         </div>
-      </div>
+      )}
 
       <PortalBlock title={home.todos.length > 0 ? `Needs you · ${home.todos.length}` : 'Needs you'}>
         {home.todos.length === 0 ? (
@@ -150,6 +156,35 @@ export function GcPortalHome({
         </PortalBlock>
       )}
     </div>
+  )
+}
+
+/** The first time a company opens its link: who we are, what this page is, and the three things to know. */
+function Welcome({ partner, firstAsk, onDone }: { partner: Partner; firstAsk: PortalAsk | undefined; onDone: () => void }) {
+  const name = partner.contact.split(' ')[0] ?? partner.contact
+  return (
+    <PortalBlock title="Welcome">
+      <div style={{ display: 'grid', gap: '0.5rem', fontSize: '0.9rem', lineHeight: 1.45 }}>
+        <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>Welcome, {name}.</div>
+        <div>
+          {firstAsk
+            ? `${GC_COMPANY.name} asked ${partner.company} to bid ${firstAsk.pkg.trade} on ${firstAsk.project.name}.`
+            : `${GC_COMPANY.name} added ${partner.company} to its trade partners.`}{' '}
+          This portal is where you work with us.
+        </div>
+        <div>It holds every job, the plans, your paperwork and your pay. There is no password. The link is yours, so keep it.</div>
+        <ol style={{ margin: 0, paddingLeft: '1.2rem', display: 'grid', gap: '0.25rem' }}>
+          <li>Open the plans before you price.</li>
+          <li>Send your number by the day it is due. Not for you? Press Pass on this one.</li>
+          <li>Send your insurance and W-9 when you can. We need them before any work starts.</li>
+        </ol>
+        <div>
+          <Btn kind="primary" onClick={onDone}>
+            Got it
+          </Btn>
+        </div>
+      </div>
+    </PortalBlock>
   )
 }
 
