@@ -16,6 +16,7 @@ import {
   portalLines,
   portalLookAhead,
   portalMessages,
+  portalPay,
   portalPlanNews,
   portalPromiseLine,
   portalTodos,
@@ -510,5 +511,37 @@ describe('a change order to sign', () => {
     const signed = gcReducer(sent, { type: 'tradeSignChange', projectId: 'helotes', changeOrderId: coId })
     expect(portalTodos(signed, 'hillcountry').some((t) => t.key.endsWith(':sign'))).toBe(false)
     expect(portalHome(signed, 'hillcountry').jobs[0]?.money?.price).toBe(before + 3_100)
+  })
+})
+
+describe('Your pay', () => {
+  it('lists Hill Country’s paid pay application with its days, made up for draws from before', () => {
+    const pay = portalPay(state, 'hillcountry')
+    const first = pay.rows.find((r) => r.draw.id === 'dry-draw-1')
+    expect(first?.state).toBe('paid')
+    expect(first?.draw.approvedOn).toBeDefined()
+    expect(first?.draw.paidOn).toBeDefined()
+    expect(pay.totals.paid).toBeGreaterThan(0)
+  })
+
+  it('says when an approved one should arrive, and turns late after that day', () => {
+    const ids = { projectId: 'helotes', packageId: 'dry' }
+    const asked = gcReducer(state, { type: 'tradeReport', ...ids, sovId: 'dry-3', pct: 100 })
+    const req = gcReducer(asked, { type: 'tradeRequestDraw', ...ids })
+    const draws = req.projects.find((p) => p.id === 'helotes')?.packages.find((k) => k.id === 'dry')?.sow?.draws ?? []
+    const drawId = draws[draws.length - 1]?.id ?? ''
+    expect(portalPay(req, 'hillcountry').rows.find((r) => r.draw.id === drawId)?.state).toBe('checking')
+    const approved = gcReducer(req, { type: 'approveDraw', ...ids, drawId })
+    const row = portalPay(approved, 'hillcountry').rows.find((r) => r.draw.id === drawId)
+    expect(row).toMatchObject({ state: 'approved', payBy: '2026-10-12' })
+    expect(portalPay({ ...approved, today: '2026-10-13' }, 'hillcountry').rows.find((r) => r.draw.id === drawId)?.state).toBe('late')
+    const paid = gcReducer(approved, { type: 'payDraw', ...ids, drawId })
+    const message = portalMessages(paid, 'hillcountry').find((m) => m.kind === 'paid' && m.key.startsWith(drawId))
+    expect(message?.on).toBe(state.today)
+    expect(message?.lines.some((l) => l.startsWith('We hold '))).toBe(true)
+  })
+
+  it('has nothing for a company with no job', () => {
+    expect(portalPay(state, 'lonestar').rows).toEqual([])
   })
 })

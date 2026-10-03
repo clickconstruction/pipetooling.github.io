@@ -35,6 +35,7 @@ import { BidTabTable } from './GcBidTabs'
 import { GcBuildingPayAppDoor } from './GcBuildingPayApp'
 import { Btn, Chip, input } from './gcUi'
 import { GcPortalHome } from './GcPortalHome'
+import { GcPortalPay } from './GcPortalPay'
 import { GcPortalLookAhead } from './GcPortalLookAhead'
 import { AlternatesEditor, AnswerLines, GoodForPicker, QuoteFilePicker } from './GcPortalBidExtras'
 import { ChangedLines, LineSheets, SheetChip } from './GcPortalLineSheets'
@@ -71,12 +72,15 @@ export function GcTradePortal({ state, project, partnerId, onPickPartner, dispat
   const [viewId, setViewId] = useState<string | null>(null)
   /** Their portal, or their inbox: what we sent them, each message carrying the link. */
   const [screen, setScreen] = useState<'portal' | 'messages'>('portal')
+  /** The Your pay page, over the home. */
+  const [payOpen, setPayOpen] = useState(false)
   /** The company's language, kept on its record (owner, 2026-10-03): its messages go out in it too. */
   const lang: PortalLang = partner?.lang ?? 'en'
   const shown = viewId === null ? null : (state.projects.find((p) => p.id === viewId) ?? null)
   const top = useRef<HTMLDivElement | null>(null)
   const go = (id: string | null) => {
     setViewId(id)
+    setPayOpen(false)
     setScreen('portal')
     const box = top.current?.getBoundingClientRect()
     if (box && box.top < 0) top.current?.scrollIntoView({ block: 'start' })
@@ -159,11 +163,22 @@ export function GcTradePortal({ state, project, partnerId, onPickPartner, dispat
         <div style={{ padding: '0.9rem' }}>
           <GcPortalMessages key={partner.id} state={state} partner={partner} onOpenPortal={() => go(null)} />
         </div>
+      ) : payOpen ? (
+        <GcPortalPay state={state} partner={partner} onHome={() => go(null)} />
       ) : shown ? (
         <ProjectPage state={state} project={shown} partner={partner} dispatch={dispatch} onHome={() => go(null)} />
       ) : (
         <div style={{ padding: '0.9rem' }}>
-          <GcPortalHome state={state} partner={partner} dispatch={dispatch} onOpenProject={(id) => go(id)} />
+          <GcPortalHome
+            state={state}
+            partner={partner}
+            dispatch={dispatch}
+            onOpenProject={(id) => go(id)}
+            onOpenPay={() => {
+              go(null)
+              setPayOpen(true)
+            }}
+          />
         </div>
       )}
       </PortalLangContext.Provider>

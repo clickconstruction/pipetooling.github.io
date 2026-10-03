@@ -44,11 +44,14 @@ export function GcPortalHome({
   partner,
   dispatch,
   onOpenProject,
+  onOpenPay,
 }: {
   state: GcState
   partner: Partner
   dispatch: Dispatch<GcAction>
   onOpenProject: (projectId: string) => void
+  /** Open Your pay: every pay application on the company's jobs. */
+  onOpenPay: () => void
 }) {
   const { lang, t: tr } = usePortalLang()
   const home = portalHome(state, partner.id, lang)
@@ -98,6 +101,11 @@ export function GcPortalHome({
             <Stat label={tr('heldEnd')} value={money(home.money.held)} />
             {home.money.coming > 0 && <Stat label={tr('approvedWay')} value={money(home.money.coming)} />}
             {home.money.reviewing > 0 && <Stat label={tr('gcLooking', { gc: GC })} value={money(home.money.reviewing)} />}
+          </div>
+          <div style={{ marginTop: '0.5rem' }}>
+            <Btn kind="quiet" onClick={onOpenPay}>
+              {tr('seeEveryPayment')} ›
+            </Btn>
           </div>
         </PortalBlock>
       )}

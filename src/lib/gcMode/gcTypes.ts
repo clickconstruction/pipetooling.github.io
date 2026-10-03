@@ -126,6 +126,10 @@ export interface Draw {
   final?: boolean
   /** Approved for less than asked: what the trade asked for, why we approved less, and the day we did. */
   asked?: { gross: number; retainage: number; net: number; lines: { sovId: string; toPct: number }[]; note: string; on: string }
+  /** The day we approved it. Unset: not yet, or before the day was kept. */
+  approvedOn?: string
+  /** The day we paid it. Unset: not yet, or before the day was kept. */
+  paidOn?: string
 }
 
 export interface Sow {
