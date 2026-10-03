@@ -192,7 +192,8 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   conditional waiver on progress payment goes with each pay application for the amount it asks;
   marking the bill paid signs our unconditional one (the real build waits for the money to clear,
   as the Jobs board does). Each trade's waivers go too. A trade whose waivers do not cover its
-  work on the bill is a warning on the bill and a note on the owner's portal, never a stop.
+  work on the bill is a warning on the bill and a note on the owner's portal, never a stop; so
+  is a draw we paid whose unconditional waiver the trade still owes.
 - **The owner sees every line** of each pay application in their portal, not the totals only.
 - **The owner's retainage comes back at the end** (Owner Billing lane, 2026-10-02): once every
   line is billed, the owner accepts the work in their portal, and our final pay application asks

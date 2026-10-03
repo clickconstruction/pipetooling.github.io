@@ -294,6 +294,8 @@ export interface TradeWaiverCheck {
   conditional: number
   /** Their work on our bills with no waiver from them yet. */
   missing: number
+  /** Draws we paid whose unconditional waiver they still owe: only the conditional one is in. */
+  owedUnconditional: { draw: number; amount: number; final: boolean }[]
   /** Each draw's waiver, oldest first: the papers the owner gets. */
   waivers: { draw: number; kind: 'conditional' | 'unconditional'; amount: number; final: boolean }[]
 }
@@ -322,6 +324,9 @@ export function tradeWaiverChecks(state: GcState, project: GcProject, billedByLi
       unconditional: Math.min(billed, unconditional),
       conditional: Math.max(0, Math.min(billed, covered) - unconditional),
       missing: Math.max(0, billed - covered),
+      owedUnconditional: draws
+        .filter((d) => d.status === 'paid' && d.waiver === 'conditional')
+        .map((d) => ({ draw: d.number, amount: d.net, final: d.final === true })),
       waivers: draws.map((d) => ({ draw: d.number, kind: d.waiver, amount: d.net, final: d.final === true })),
     })
   }
@@ -331,6 +336,21 @@ export function tradeWaiverChecks(state: GcState, project: GcProject, billedByLi
 /** The trades on a bill whose waivers do not cover their work on it yet. */
 export function missingTradeWaivers(checks: TradeWaiverCheck[]): TradeWaiverCheck[] {
   return checks.filter((c) => Math.round(c.missing) > 0)
+}
+
+/** The trades we paid that still owe an unconditional waiver on a draw. */
+export function tradesOwingUnconditional(checks: TradeWaiverCheck[]): TradeWaiverCheck[] {
+  return checks.filter((c) => c.owedUnconditional.length > 0)
+}
+
+/** "draw 1", "draws 1 and 2", "the final draw": the draws a trade still owes an unconditional waiver on. */
+export function owedDrawWords(owed: TradeWaiverCheck['owedUnconditional']): string {
+  const progress = owed.filter((o) => !o.final).map((o) => String(o.draw))
+  const parts: string[] = []
+  if (progress.length === 1) parts.push(`draw ${progress[0]}`)
+  else if (progress.length > 1) parts.push(`draws ${progress.slice(0, -1).join(', ')} and ${progress[progress.length - 1]}`)
+  if (owed.some((o) => o.final)) parts.push('the final draw')
+  return parts.join(' and ')
 }
 
 /** One line of a sent pay application as the owner reads it: the same columns as the draft. */
