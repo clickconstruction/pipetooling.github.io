@@ -265,6 +265,8 @@ function PackageBlock({
   // We lost the project: the plans stay to look at, nothing else asks for anything.
   const closed = Boolean(project.lostOn) && invite.status !== 'declined'
   const closedWords = closed ? portalClosedWords(project, Boolean(invite.bid), lang) : null
+  // An opened bid tab already says how it ended (owner, 2026-10-03): the result would say it twice.
+  const tabSaysResult = Boolean(pkg.bidTab && invite.bid && pkg.bidTab.seenBy.includes(partner.id))
   // A newer set to open, said only while it still matters to their number.
   const behind = news.behind && !closed
   // Any look at the newest set counts as opening it, from the button or from a sheet number.
@@ -332,12 +334,14 @@ function PackageBlock({
       )}
 
       {closedWords ? (
-        <Block title={t('resultTitle', { trade: pkg.trade })}>
-          <div style={{ display: 'grid', gap: '0.3rem', fontSize: '0.9rem' }}>
-            <strong>{closedWords.why}</strong>
-            <span>{closedWords.next}</span>
-          </div>
-        </Block>
+        tabSaysResult ? null : (
+          <Block title={t('resultTitle', { trade: pkg.trade })}>
+            <div style={{ display: 'grid', gap: '0.3rem', fontSize: '0.9rem' }}>
+              <strong>{closedWords.why}</strong>
+              <span>{closedWords.next}</span>
+            </div>
+          </Block>
+        )
       ) : awardedElsewhere ? (
         <Block title={t('resultTitle', { trade: pkg.trade })}>{t('wentElsewhere')}</Block>
       ) : awardedToMe && pkg.sow ? (
