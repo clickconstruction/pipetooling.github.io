@@ -44,33 +44,62 @@ export function sheetsAtRev(project: GcProject, rev: number): SheetInSet[] {
   for (const set of sets) {
     for (const id of set.changedSheets) {
       const known = out.get(id)
-      out.set(id, known ? { ...known, changedInRev: set.rev } : { id, title: `Added by ${set.label}`, changedInRev: set.rev, added: true })
+      const title = set.addedSheets?.find((x) => x.id === id)?.title || `Added by ${set.label}`
+      out.set(id, known ? { ...known, changedInRev: set.rev } : { id, title, changedInRev: set.rev, added: true })
     }
   }
   return [...out.values()]
 }
 
-/** Sheet numbers found in pasted notes: "E-201", "FP-101". Each once, in the order they appear. */
+/**
+ * Sheet numbers found in pasted notes, each once, in the order they appear. With a dash: "E-201",
+ * "FP-101", "A-1.01". Without one, only a full number reads as a sheet ("A101", "A1.01"), so a
+ * word like R30 or T24 in the notes is not taken for a drawing.
+ */
 export function sheetsInText(text: string): string[] {
-  const found = text.toUpperCase().match(/\b[A-Z]{1,2}-\d{2,3}\b/g) ?? []
+  const found = text.toUpperCase().match(/\b[A-Z]{1,2}(?:-\d{2,3}|-?\d\.\d{2}|\d{3})[A-Z]?\b/g) ?? []
   return [...new Set(found)]
 }
 
-/** Which trades a drawing's discipline usually belongs to. A guess to start from, never the last word. */
-const DISCIPLINE_TRADES: Record<string, string[]> = {
-  Civil: ['Sitework'],
-  Structural: ['Structural steel', 'Concrete'],
-  Mechanical: ['HVAC'],
-  Electrical: ['Electrical'],
-  Plumbing: ['Plumbing'],
-  'Fire protection': ['Fire sprinkler'],
-  Interiors: ['Millwork', 'Framing and drywall'],
+/**
+ * A sheet number as the project's index writes it: "A101" in the notes is "A-101" in a set that
+ * uses dashes. A sheet the index does not have is written the way the index writes its others.
+ */
+export function sheetAsIndexed(project: GcProject, id: string): string {
+  const bare = (x: string) => x.toUpperCase().replace(/[-.\s]/g, '')
+  const known = [...project.sheets, ...project.planSets.flatMap((s) => s.addedSheets ?? [])].find((s) => bare(s.id) === bare(id))
+  if (known) return known.id
+  const upper = id.toUpperCase()
+  const dashed = project.sheets.filter((s) => s.id.includes('-')).length > project.sheets.length / 2
+  return dashed && !upper.includes('-') ? upper.replace(/^([A-Z]+)/, '$1-') : upper
 }
 
-/** The package ids a list of changed sheets most likely touches. */
-export function packagesForSheets(project: GcProject, sheets: string[]): string[] {
-  const trades = new Set(sheets.flatMap((id) => DISCIPLINE_TRADES[sheetDiscipline(id)] ?? []))
-  return project.packages.filter((p) => trades.has(p.trade)).map((p) => p.id)
+/** What a later set can be called. An addendum comes while we bid; a bulletin once the job is ours. */
+export const SET_KINDS: { kind: string; numbered: boolean }[] = [
+  { kind: 'Addendum', numbered: true },
+  { kind: 'Bulletin', numbered: true },
+  { kind: 'Revised set', numbered: false },
+  { kind: 'Permit set', numbered: false },
+  { kind: 'Construction set', numbered: false },
+]
+
+/** The kind a new set starts as: an addendum while we bid, a bulletin once the job is ours. */
+export function defaultSetKind(project: GcProject): string {
+  return project.stage === 'pursuing' ? 'Addendum' : 'Bulletin'
+}
+
+/** The next set's name for a kind. Each numbered kind counts on its own: Addendum 2, then Bulletin 1. */
+export function nextSetLabel(project: GcProject, kind: string): string {
+  const numbered = SET_KINDS.find((k) => k.kind === kind)?.numbered ?? false
+  const labels = project.planSets.map((s) => s.label)
+  if (numbered) {
+    const n = labels.filter((l) => new RegExp(`^${kind} \\d+$`).test(l)).length
+    return `${kind} ${n + 1}`
+  }
+  if (!labels.includes(kind)) return kind
+  let n = 2
+  while (labels.includes(`${kind} ${n}`)) n += 1
+  return `${kind} ${n}`
 }
 
 export interface PlanRecipient {

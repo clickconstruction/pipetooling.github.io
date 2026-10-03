@@ -601,7 +601,39 @@ function ScopeEditor({
   next: string | null
   onNext: (trade: string) => void
 }) {
-  const lines = row.scope
+  return (
+    <div style={{ flex: '1 1 auto', border: '1px solid var(--border)', borderRadius: 8, padding: '0.7rem 0.8rem', display: 'grid', gap: '0.45rem', minWidth: 0 }}>
+      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
+        <strong>{row.trade}</strong>
+        <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+          {row.ours ? 'Ours. This is the scope of our own bid.' : row.from.length > 0 ? `Reads from ${sheetsWords(row.from)}.` : 'You added this trade.'}
+        </span>
+      </div>
+      <ScopeLines trade={row.trade} lines={row.scope} onChange={onChange}>
+        {row.scopeEdited && usualScope(row.trade).length > 0 && <Btn kind="quiet" onClick={onReset}>Put back the usual lines</Btn>}
+        <span style={{ flex: 1 }} />
+        {next && <Btn kind="quiet" onClick={() => onNext(next)}>Next trade: {next} →</Btn>}
+      </ScopeLines>
+    </div>
+  )
+}
+
+/**
+ * A trade's scope lines to change: each line a box, × takes it out, Enter starts the next one.
+ * The New project window and the new-set-of-plans window both write scope with it.
+ */
+export function ScopeLines({
+  trade,
+  lines,
+  onChange,
+  children,
+}: {
+  trade: string
+  lines: string[]
+  onChange: (scope: string[]) => void
+  /** More buttons on the line under the boxes. */
+  children?: ReactNode
+}) {
   const boxes = useRef<(HTMLInputElement | null)[]>([])
   const [focusAt, setFocusAt] = useState<number | null>(null)
   useEffect(() => {
@@ -614,13 +646,7 @@ function ScopeEditor({
     setFocusAt(i + 1)
   }
   return (
-    <div style={{ flex: '1 1 auto', border: '1px solid var(--border)', borderRadius: 8, padding: '0.7rem 0.8rem', display: 'grid', gap: '0.45rem', minWidth: 0 }}>
-      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
-        <strong>{row.trade}</strong>
-        <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-          {row.ours ? 'Ours. This is the scope of our own bid.' : row.from.length > 0 ? `Reads from ${sheetsWords(row.from)}.` : 'You added this trade.'}
-        </span>
-      </div>
+    <>
       {lines.length === 0 && <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>No lines yet. A quote with no lines cannot be compared.</div>}
       {lines.map((line, i) => (
         <div key={i} style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
@@ -635,7 +661,7 @@ function ScopeEditor({
             onKeyDown={(e) => {
               if (e.key === 'Enter') addAfter(i)
             }}
-            aria-label={`${row.trade} line ${i + 1}`}
+            aria-label={`${trade} line ${i + 1}`}
           />
           <button
             type="button"
@@ -650,11 +676,9 @@ function ScopeEditor({
       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
         <Btn onClick={() => addAfter(lines.length - 1)}>Add a line</Btn>
         <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>Enter in a line starts the next one.</span>
-        {row.scopeEdited && usualScope(row.trade).length > 0 && <Btn kind="quiet" onClick={onReset}>Put back the usual lines</Btn>}
-        <span style={{ flex: 1 }} />
-        {next && <Btn kind="quiet" onClick={() => onNext(next)}>Next trade: {next} →</Btn>}
+        {children}
       </div>
-    </div>
+    </>
   )
 }
 

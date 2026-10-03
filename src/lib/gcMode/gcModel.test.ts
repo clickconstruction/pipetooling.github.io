@@ -152,6 +152,21 @@ const STEPS: Step[] = [
   // Helotes: our pay application to the owner, and the owner paying it.
   { label: 'Send Dr. Raman pay application 1', action: { type: 'sendOwnerPayApp', projectId: 'helotes' } },
   { label: 'Dr. Raman pays pay application 1', action: { type: 'ownerPaid', projectId: 'helotes', number: 1 } },
+  // The sets that follow: a set named for what it is, a sheet it adds, a trade it brings.
+  {
+    label: 'Helotes: Bulletin 1 adds a storefront and its trade',
+    action: {
+      type: 'issuePlanSet',
+      projectId: 'helotes',
+      label: 'Bulletin 1',
+      note: 'A new storefront at the entry. A-601 is new.',
+      sheets: ['A-201', 'A-601'],
+      addedSheets: [{ id: 'A-601', title: 'Storefront elevations' }],
+      touches: ['dry'],
+      recipients: ['hillcountry'],
+      newTrades: [{ trade: 'Glass and storefront', budget: 18_000, ours: false, scope: ['Storefront', 'Glass'] }],
+    },
+  },
 ]
 
 const CUSTOMER_IDS = ['cibolo', 'raman']
@@ -276,7 +291,7 @@ describe('GC mode golden walk', () => {
       'createProject',
       'tradeSendPayApp',
       'tradeUploadCoi', 'tradeSignW9',
-      'sendOwnerPayApp', 'ownerPaid',
+      'sendOwnerPayApp', 'ownerPaid', 'issuePlanSet',
     ]
     expect(all.filter((t) => !used.has(t))).toEqual([])
   })
