@@ -905,5 +905,55 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
         `Took ${m.label} off the schedule on ${project.name}.`,
       )
     }
+
+    case 'verifyLookAhead': {
+      // Our superintendent verifies a trade's look-ahead mark, or corrects it (owner, 2026-10-02:
+      // only a verified mark counts). A "done" corrected to not done carries the superintendent's reason.
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const schedule = project?.schedule
+      const mark = schedule?.lookAhead.find((m) => m.weekOf === action.weekOf && m.lineId === action.lineId)
+      if (!project || !schedule || !mark || mark.verifiedOn) return state
+      const corrected = action.done !== mark.done
+      const verified = {
+        ...mark,
+        verifiedOn: state.today,
+        ...(corrected ? { verifiedDone: action.done } : {}),
+        ...(corrected && !action.done && action.reason ? { verifiedReason: action.reason } : {}),
+      }
+      const lookAhead = schedule.lookAhead.map((m) => (m === mark ? verified : m))
+      const pkg = project.packages.find((k) => k.id === mark.packageId)
+      const line = pkg ? (scheduleLinesOf(pkg).find((l) => l.lineId === mark.lineId)?.label ?? mark.lineId) : mark.lineId
+      const words = action.done ? 'done' : `not done${(corrected ? action.reason : mark.reason) ? `, ${corrected ? action.reason : mark.reason}` : ''}`
+      return logged(
+        mapProject(state, project.id, (p) => ({ ...p, schedule: { ...schedule, lookAhead } })),
+        'office',
+        `Our superintendent ${corrected ? 'corrected' : 'verified'} the mark on ${pkg?.trade ?? ''} · ${line} for the week of ${weekdayDate(mark.weekOf)}: ${words}.`,
+      )
+    }
+
+    case 'crewMarkLookAhead': {
+      // Our own crew's activities: we mark them ourselves, and the mark counts as verified.
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const schedule = project?.schedule
+      const activity = schedule?.activities.find((a) => a.lineId === action.lineId)
+      const pkg = activity ? project?.packages.find((k) => k.id === activity.packageId) : undefined
+      if (!project || !schedule || !activity || !pkg?.selfPerform || !action.weekOf) return state
+      const mark = {
+        weekOf: action.weekOf,
+        lineId: action.lineId,
+        packageId: pkg.id,
+        done: action.done,
+        ...(!action.done && action.reason ? { reason: action.reason } : {}),
+        markedOn: state.today,
+        verifiedOn: state.today,
+      }
+      const others = schedule.lookAhead.filter((m) => !(m.weekOf === action.weekOf && m.lineId === action.lineId))
+      const line = scheduleLinesOf(pkg).find((l) => l.lineId === action.lineId)?.label ?? action.lineId
+      return logged(
+        mapProject(state, project.id, (p) => ({ ...p, schedule: { ...schedule, lookAhead: [...others, mark] } })),
+        'office',
+        `Our own crew's ${line} on ${pkg.trade} is marked ${action.done ? 'done' : `not done${action.reason ? `, ${action.reason}` : ''}`} for the week of ${weekdayDate(action.weekOf)}.`,
+      )
+    }
   }
 }
