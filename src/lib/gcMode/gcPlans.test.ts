@@ -221,7 +221,8 @@ describe('a set issued on a job with a schedule', () => {
   it('lets a push inside an activity\'s spare days leave the job\'s last day alone', () => {
     const schedule = helotes().schedule
     if (!schedule) throw new Error('no schedule')
-    const push = pushSchedule(schedule.activities, { 'dhvac-1': 1 })
+    // HVAC controls run seven days beside electrical's eight-day trims: one spare day absorbs one.
+    const push = pushSchedule(schedule.activities, { 'dhvac-3': 1 })
     expect(push.lastAfter).toBe(push.lastBefore)
   })
 
@@ -248,8 +249,8 @@ describe('a set issued on a job with a schedule', () => {
     expect(p?.schedule?.baseline?.lockedOn).toBe('2026-10-12')
     expect(p?.schedule?.baseline?.activities['delec-4']?.finish).toBe('2026-11-11')
     expect(act(p?.schedule?.activities ?? [], 'delec-4').finish).toBe('2026-11-16')
-    // Five days on low voltage rough; the two days drawn for the inspection absorb two of them.
-    expect(next.log[0]?.text).toMatch(/It adds 3 days to the job\.$/)
+    // Five days on low voltage rough: the rough-in inspection is an activity now, so all five reach the end.
+    expect(next.log[0]?.text).toMatch(/It adds 5 days to the job\.$/)
   })
 
   it('names the new dates in the email to the company on the trade', () => {

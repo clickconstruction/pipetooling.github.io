@@ -152,6 +152,9 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
   const endDays = push ? Math.round((Date.parse(push.lastAfter) - Date.parse(push.lastBefore)) / 86_400_000) : 0
   const substantial = schedule?.milestones.find((m) => /substantial/i.test(m.label)) ?? null
   const lineName = (packageId: string, lineId: string) => {
+    // An inspection is no trade's line: it carries its own name.
+    const inspection = schedule?.activities.find((a) => a.lineId === lineId)?.inspection
+    if (inspection) return inspection.label
     const pkg = project.packages.find((k) => k.id === packageId)
     return pkg?.sow?.sov.find((l) => l.id === lineId)?.label ?? pkg?.scope.find((l) => l.id === lineId)?.label ?? lineId
   }
