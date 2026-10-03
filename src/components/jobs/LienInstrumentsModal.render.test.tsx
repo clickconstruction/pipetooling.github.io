@@ -243,6 +243,17 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
     expect(screen.getByText('The invoice is enclosed as Exhibit A. All payments and credits have been allowed.')).toBeTruthy()
   })
 
+  it('an evening bill reads its own day on the statement, the exhibit and the notice history', async () => {
+    // Marked billed and sent at 7:30 pm CDT on Oct 2 (the UTC date is Oct 3).
+    const evening = makeInvoice({ ...INV, billed_at: '2026-10-03T00:30:00+00:00', sent_to_customer_at: '2026-10-03T00:30:10+00:00' })
+    renderWithProviders(<LienInstrumentsModal {...baseProps} invoice={evening} job={job({ invoices: [evening] })} />)
+    await settle()
+    await waitFor(() => expect(document.querySelector('[data-demand-statement]')).toBeTruthy())
+    expect((document.querySelector('[data-demand-statement]') as HTMLElement).textContent).toContain('#1 — sent October 2, 2026')
+    expect((document.querySelector('[data-demand-enclosed]') as HTMLElement).textContent).toContain('Exhibit A · Invoice #1, as sent October 2, 2026')
+    await waitFor(() => expect(screen.getByText('October 2, 2026 — Invoice sent')).toBeTruthy())
+  })
+
   it('a bill addressed to the customer is demanded of the customer, with no notice pointer', async () => {
     renderWithProviders(<LienInstrumentsModal {...baseProps} job={job({ gc_customer_id: null, gcCustomer: null, bill_to_party: 'customer' })} />)
     await waitFor(() => expect(screen.getByText(/the customer on the job/)).toBeTruthy())

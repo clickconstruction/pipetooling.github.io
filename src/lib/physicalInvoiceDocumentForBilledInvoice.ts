@@ -3,6 +3,7 @@ import type { Database } from '../types/database'
 import { buildPhysicalInvoiceDocument, type PhysicalInvoiceDocument } from './physicalInvoiceDocument'
 import { jobBillingContextFromJob } from './jobBillingContext'
 import { buildPhysicalInvoiceDetailFromJob, jobContextForPhysicalDoc } from './physicalInvoiceJobContext'
+import { calendarYmdInAppTzFromIso } from '../utils/dateUtils'
 
 type JobsLedgerInvoiceRow = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 
@@ -31,8 +32,9 @@ export function buildPhysicalInvoiceDocumentForBilledInvoice(
 ): PhysicalInvoiceDocument | null {
   const billingCtx = jobBillingContextFromJob(job)
   const jobCtx = jobContextForPhysicalDoc(billingCtx, job)
-  const sentYmd = ymdFromDbDateish(inv.sent_to_customer_at)
-  const billedYmd = ymdFromDbDateish(inv.billed_at)
+  // Instants: their day in APP_CALENDAR_TZ, not their UTC date (a bill sent at 8 pm would print tomorrow).
+  const sentYmd = calendarYmdInAppTzFromIso(inv.sent_to_customer_at ?? '') || null
+  const billedYmd = calendarYmdInAppTzFromIso(inv.billed_at ?? '') || null
   const invoiceDateYmd = sentYmd ?? billedYmd ?? todayIsoLocalYmd()
   const dueYmd = ymdFromDbDateish(inv.estimated_bill_date) ?? invoiceDateYmd
   const lineMemo = (inv.stripe_invoice_memo ?? '').trim()

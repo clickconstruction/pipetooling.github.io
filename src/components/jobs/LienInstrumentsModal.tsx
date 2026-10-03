@@ -54,7 +54,7 @@ import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
-import { APP_CALENDAR_TZ, todayYmdInAppTz } from '../../utils/dateUtils'
+import { APP_CALENDAR_TZ, calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 
@@ -277,7 +277,7 @@ export default function LienInstrumentsModal({
           if (!cancelled) {
             if (signed) {
               const path = (signed.signed_pdf_path ?? '').trim() || (signed.paper_upload_path ?? '').trim()
-              const when = (signed.signed_at ?? '').slice(0, 10) || (signed.paper_signed_on ?? '').slice(0, 10)
+              const when = calendarYmdInAppTzFromIso(signed.signed_at ?? '') || (signed.paper_signed_on ?? '').slice(0, 10)
               setSignedAgreement({ path, title: `Signed agreement — ${(signed.template_name ?? '').trim() || 'contract'}${when ? `, signed ${demandDate(when)}` : ''}` })
             } else {
               setSignedAgreement(null)
@@ -379,9 +379,10 @@ export default function LienInstrumentsModal({
     void (async () => {
       const notices: DemandPriorNotice[] = []
       for (const inv of selectedInvoices) {
-        const billed = (inv.billed_at ?? inv.created_at ?? '').slice(0, 10)
+        // Every notice below is an instant: its day in APP_CALENDAR_TZ, never its UTC date.
+        const billed = calendarYmdInAppTzFromIso(inv.billed_at ?? inv.created_at ?? '')
         if (/^\d{4}-\d{2}-\d{2}$/.test(billed)) notices.push({ date: billed, label: 'Invoice sent' })
-        const sentOut = (inv.sent_to_customer_at ?? '').slice(0, 10)
+        const sentOut = calendarYmdInAppTzFromIso(inv.sent_to_customer_at ?? '')
         if (/^\d{4}-\d{2}-\d{2}$/.test(sentOut) && sentOut !== billed)
           notices.push({ date: sentOut, label: 'Invoice delivered to customer' })
       }
@@ -391,7 +392,7 @@ export default function LienInstrumentsModal({
           .select('jobs_ledger_invoice_id, sent_at')
           .in('jobs_ledger_invoice_id', selectedInvoices.map((i) => i.id))
         for (const r of (resends ?? []) as { sent_at: string }[]) {
-          const d = (r.sent_at ?? '').slice(0, 10)
+          const d = calendarYmdInAppTzFromIso(r.sent_at ?? '')
           if (/^\d{4}-\d{2}-\d{2}$/.test(d)) notices.push({ date: d, label: 'Invoice re-sent by email' })
         }
       } catch {
@@ -403,7 +404,7 @@ export default function LienInstrumentsModal({
         const { data: promRaw } = await supabase.rpc('list_job_payment_promises' as never)
         for (const pr of parsePaymentPromisesRpc(promRaw as unknown) ?? []) {
           if (pr.jobId !== job.id) continue
-          const d = pr.createdAt.slice(0, 10)
+          const d = calendarYmdInAppTzFromIso(pr.createdAt)
           if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) continue
           const by =
             pr.source === 'customer'
@@ -420,7 +421,7 @@ export default function LienInstrumentsModal({
           .select('created_at, outcome')
           .eq('job_id', job.id)
         for (const t of (touches ?? []) as { created_at: string; outcome: string }[]) {
-          const d = (t.created_at ?? '').slice(0, 10)
+          const d = calendarYmdInAppTzFromIso(t.created_at ?? '')
           if (/^\d{4}-\d{2}-\d{2}$/.test(d))
             notices.push({ date: d, label: `Collection call — ${(t.outcome ?? '').replace(/_/g, ' ') || 'recorded'}` })
         }
@@ -765,7 +766,7 @@ export default function LienInstrumentsModal({
         showToast('This record has no stored letter snapshot.', 'error')
         return
       }
-      const ok = openHtmlPreviewWindow(buildDemandLetterPrintHtml(snap, (r.sent_at ?? r.created_at).slice(0, 10), jobNumber))
+      const ok = openHtmlPreviewWindow(buildDemandLetterPrintHtml(snap, r.sent_at ? r.sent_at.slice(0, 10) : calendarYmdInAppTzFromIso(r.created_at), jobNumber))
       if (!ok) showToast('Popup blocked — allow popups to view the letter.', 'error')
     },
     [jobNumber, showToast],
