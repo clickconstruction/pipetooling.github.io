@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type CSSProperties, type Dispatch, type ReactNode, type SetStateAction } from 'react'
 import { createPortal } from 'react-dom'
 import {
+  GC_COMPANY,
   GC_COMPANY_NAME,
   finalPayApplication,
   money,
@@ -41,7 +42,7 @@ import { Btn, input as inputStyle } from './gcUi'
  */
 
 /** The gc's short name for sentences: "Click checks it". */
-const GC_SHORT = GC_COMPANY_NAME.split(' ')[0] ?? GC_COMPANY_NAME
+const GC_SHORT = GC_COMPANY.shortName
 
 const STEP_TITLES: Record<PayAppStepKey, string> = {
   work: 'Check your work',

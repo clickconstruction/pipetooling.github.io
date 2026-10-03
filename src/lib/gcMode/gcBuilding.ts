@@ -10,12 +10,13 @@
 import type { Draw, DrawSentBack, GcProject, GcState, Partner, Sow, TradePackage } from './gcTypes'
 import { money, shortDate } from './gcWords'
 import { partnerById } from './gcLookups'
+import { GC_COMPANY } from './gcFixture'
 
 /**
- * The general contractor's name on the "To" line, as the portal and the plans email already say it.
- * One company for now (owner, 2026-10-02): change it here.
+ * The general contractor's name on the "To" line. It reads the one company record in the fixture
+ * (`GC_COMPANY`), so a later company changes it there (owner, 2026-10-02: one record).
  */
-export const GC_COMPANY_NAME = 'Click Construction'
+export const GC_COMPANY_NAME = GC_COMPANY.name
 
 /** What only the trade can say on a pay application. Everything else comes from the job. */
 export interface PayAppInput {
