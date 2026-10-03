@@ -21,6 +21,7 @@ import { SampleModeBanner } from '../components/SampleModeBanner'
 import { ROOM_ROLES, rollUpPartDecisions, type RoomMessage, type RoomRevision, type RoomRole, type RoomRow, type SubmittalRoomPayload } from '../../supabase/functions/_shared/submittalRoomPayload'
 import type { DecisionKind } from '../../supabase/functions/_shared/submittalReviewActions'
 import { buildProcurementLog, floatText, procurementHeadline, shortDate as logDate, statusText, tagStagesFrom, type ProcurementItemSource, type ProcurementRecord, type ProcurementStage, type StageDates } from '../lib/submittals/procurementLog'
+import { rowsThatStand } from '../lib/submittals/standingRows'
 import type { StageSplitRecord, StageSplitSource } from '../lib/bids/materialsByStage'
 
 // The live build's env carries a trailing slash — strip it so the function URLs read one slash.
@@ -360,7 +361,7 @@ export default function SubmittalRoom() {
               ) : null}
             />
 
-            {payload.procurement && rev.current ? <ProcurementCard rev={rev} procurement={payload.procurement} companyName={payload.company.name} /> : null}
+            {payload.procurement && rev.current ? <ProcurementCard revisions={[rev, ...payload.revisions.filter((r) => r.id !== rev.id && r.rev < rev.rev).sort((a, b) => b.rev - a.rev)]} procurement={payload.procurement} companyName={payload.company.name} /> : null}
 
             {Object.keys(pending).length > 0 ? (
               <div style={{ ...card, marginTop: 10, borderColor: COPPER }} data-testid="room-pending">
@@ -507,12 +508,16 @@ export default function SubmittalRoom() {
  * only; the PO and the supply house stay on the office's screen. Derived here with the
  * same kernel the office uses, from the pieces the room fetch carries.
  */
-function ProcurementCard({ rev, procurement, companyName }: { rev: RoomRevision; procurement: NonNullable<SubmittalRoomPayload['procurement']>; companyName: string }) {
+function ProcurementCard({ revisions, procurement, companyName }: { /** The current revision first, then the shared ones before it, newest first. */ revisions: RoomRevision[]; procurement: NonNullable<SubmittalRoomPayload['procurement']>; companyName: string }) {
+  // 2026-10-02 · a resubmit from the rows sent back leaves the approved rows on the revision before; they are
+  // released, so the card lists them too (`rowsThatStand`, the office's log reads the same way).
+  const stands = rowsThatStand(revisions.map((r) => ({ rev: r.rev, rows: r.rows })), (r) => r.decision?.kind === 'approved' || (r.parts ?? []).some((p) => p.decision?.kind === 'approved'))
+  const sources = [...(revisions[0]?.rows ?? []).map((row) => ({ row, standsOnRev: null as number | null })), ...stands.map((s) => ({ row: s.row, standsOnRev: s.rev }))]
   // A row with parts (2026-10-01): a line per part the GC sees, each with its own call; the order-only parts never reach the room.
-  const items: ProcurementItemSource[] = rev.rows
-    .filter((r) => r.tag.trim())
-    .flatMap((r): ProcurementItemSource[] => {
-      const base = { tag: r.tag.trim(), supplyHouse: null, leadTimeDays: r.leadTimeDays ?? null, shared: true }
+  const items: ProcurementItemSource[] = sources
+    .filter(({ row }) => row.tag.trim())
+    .flatMap(({ row: r, standsOnRev }): ProcurementItemSource[] => {
+      const base = { tag: r.tag.trim(), supplyHouse: null, leadTimeDays: r.leadTimeDays ?? null, shared: true, standsOnRev }
       const parts = (r.parts ?? []).filter((p) => p.procureKey)
       if (parts.length === 0) return [{ ...base, product: r.proposed || r.plans || '(no product)', decision: r.decision ? { kind: r.decision.kind, at: r.decision.at } : null }]
       return parts.map((p, k) => ({ ...base, product: p.head, decision: p.decision ? { kind: p.decision.kind, at: p.decision.at } : r.decision ? { kind: r.decision.kind, at: r.decision.at } : null, partKey: p.procureKey, partOrder: k + 1 }))

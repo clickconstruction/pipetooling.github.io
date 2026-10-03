@@ -77,6 +77,33 @@ describe('SubmittalRoom', () => {
     expect(screen.getByText('Everything matches the plans')).toBeTruthy()
   })
 
+  it('2026-10-02 · the procurement card after a resubmit from the rows sent back: the row approved on Rev 1 stands on it, ordered; the row asked again on Rev 2 waits', async () => {
+    const procurement = {
+      records: [{ tag: 'WC-1', label: '', leadTimeDays: null, stage: null, orderedOn: '2026-09-23', expectedOn: null, deliveredOn: null, note: '', sortOrder: 0 }],
+      countRows: [],
+      splits: [],
+      stageDates: {},
+      lastUpdateAt: null,
+    }
+    const approved = { kind: 'approved', note: null, byName: 'Dana W.', byPersonId: 'p1', at: '2026-09-20T16:00:00Z' }
+    const rejected = { kind: 'rejected', note: 'hold the 199', byName: 'Dana W.', byPersonId: 'p1', at: '2026-09-20T16:00:00Z' }
+    mockFetch(200, payload({
+      revisions: [
+        { id: 'rev-2', rev: 2, sharedAt: '2026-09-22T15:00:00Z', current: true, hasPackage: true, rows: [row({ id: 'b', tag: 'DWH-1', kind: 'differs', proposed: 'A.O. Smith BTH-199', why: 'x' })], counts: { total: 1, matches: 0, differs: 1, notQuoted: 0, added: 0, decided: 0, open: 1 } },
+        { id: 'rev-1', rev: 1, sharedAt: '2026-09-16T15:00:00Z', current: false, hasPackage: true, rows: [row({ id: 'a', tag: 'WC-1', kind: 'matches', decision: approved, leadTimeDays: 0 }), row({ id: 'z', tag: 'DWH-1', kind: 'differs', proposed: 'A.O. Smith BTH-120', why: 'x', decision: rejected })], counts: { total: 2, matches: 1, differs: 1, notQuoted: 0, added: 0, decided: 2, open: 0 } },
+      ],
+      procurement,
+    }))
+    mount('/submittal?t=roomtoken')
+    const cardEl = await screen.findByTestId('room-procurement')
+    const lines = screen.getAllByTestId('room-procurement-row').map((r) => r.textContent ?? '')
+    expect(lines).toHaveLength(1)
+    expect(lines[0]).toContain('WC-1')
+    expect(lines[0]).toContain('Ordered 09/23')
+    // DWH-1 is Rev 2's to call: Rev 1's rejection says nothing on the card, and a row waiting on the GC is not listed.
+    expect(cardEl.textContent).not.toContain('DWH-1')
+  })
+
   it('the procurement card (v2.4087): released, ordered and delivered tags with when they land against the schedule — status and dates, never a PO or a house', async () => {
     const procurement = {
       records: [

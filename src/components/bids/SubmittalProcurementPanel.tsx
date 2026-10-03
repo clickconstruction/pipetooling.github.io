@@ -639,6 +639,8 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
           // Away from its fixture (To order, By house, a one-line fixture), a part names its assembly (2026-10-02).
           if (r.assembly && !guides?.length) bits.push({ key: 'assembly', node: <span data-testid="procurement-in-assembly">in {r.assembly}</span> })
           if (r.orderOnly && !underTag) bits.push({ key: 'oo', node: <span data-testid="procurement-order-only">order only, not on the GC’s copy</span> })
+          // 2026-10-02 · a row the newest revision no longer holds: approved on an earlier one, still to order.
+          if (r.standsOnRev != null) bits.push({ key: 'stands', node: <span data-testid="procurement-stands-on">{r.submittal === 'approved' ? `approved on Rev ${r.standsOnRev}` : `on Rev ${r.standsOnRev} · no call from the GC`}</span> })
           if (r.countedWith.length > 0) bits.push({ key: 'counted', node: <span data-testid="procurement-counted-with">counted with {r.countedWith.join(', ')} on the takeoff</span> })
           return bits.length > 0 ? (
             <span style={{ ...smallMuted, display: 'block' }}>

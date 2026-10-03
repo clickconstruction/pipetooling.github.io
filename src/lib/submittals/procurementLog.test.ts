@@ -59,6 +59,22 @@ const records = [
 ]
 const tagStage = { 'WH-1': 'trim_set', 'FS-2': 'rough_in', 'BFP-1': 'rough_in', 'HS-1': 'trim_set', 'L-1': 'trim_set', 'S-3': 'trim_set' } as const
 
+describe('standsOnRev (2026-10-02)', () => {
+  it('a row approved on an earlier revision marks every line of it, the fixture’s pre-parts line too; a newest-revision row marks none', () => {
+    const items: ProcurementItemSource[] = [
+      item({ tag: 'WC-1', product: 'bowl', partKey: 'k-bowl', partOrder: 1, itemId: 'it-1', decision: { kind: 'approved', at: '2026-09-20T15:00:00Z' }, standsOnRev: 1 }),
+      item({ tag: 'DWH-1', product: 'heater', itemId: 'it-2' }),
+    ]
+    const records: ProcurementRecord[] = [{ id: 'r1', tag: 'WC-1', partKey: null, label: '', leadTimeDays: null, stage: null, orderedOn: '2026-09-28', poRef: '', expectedOn: null, deliveredOn: null, note: '', sortOrder: 0 }]
+    const rows = buildProcurementLog({ items, records, tagStage: {}, stageDates: {} })
+    expect(rows.map((r) => [r.key, r.standsOnRev])).toEqual([
+      ['DWH-1', null],
+      ['WC-1', 1],
+      ['part:k-bowl', 1],
+    ])
+  })
+})
+
 describe('dates', () => {
   it('adds days and measures gaps on ISO dates without a timezone wobble', () => {
     expect(addDays('2026-09-24', 42)).toBe('2026-11-05')

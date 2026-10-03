@@ -202,7 +202,8 @@ serve(async (req) => {
         note: String(r.note ?? ''),
         sortOrder: Number(r.sort_order ?? 0),
       }))
-      const hasReleased = revisions[0]?.rows.some((r) => r.decision?.kind === 'approved') ?? false
+      // 2026-10-02 · a resubmit from the rows sent back leaves the approved rows on the revision before, so every shared revision counts.
+      const hasReleased = revisions.some((rev) => rev.rows.some((r) => r.decision?.kind === 'approved'))
       if (records.length > 0 || hasReleased) {
         procurement = {
           records,

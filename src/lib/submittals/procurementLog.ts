@@ -191,6 +191,8 @@ export type ProcurementItemSource = {
   addedByHand?: boolean
   /** A row with no product yet (a Missing row): the line reads the plans' words (2026-10-02). */
   noProduct?: boolean
+  /** 2026-10-02 · the row was approved on this earlier revision and the newest no longer holds its tag (`rowsThatStand`): released there, still to order. */
+  standsOnRev?: number | null
 }
 
 /** A `bid_procurement_items` row. */
@@ -265,6 +267,8 @@ export type ProcurementRow = {
   assembly?: string | null
   addedByHand?: boolean
   noProduct?: boolean
+  /** The earlier revision the row stands approved on; null when the newest revision holds it. */
+  standsOnRev?: number | null
 }
 
 export type ProcurementLogInput = {
@@ -319,6 +323,7 @@ function rowFrom(source: ProcurementItemSource | null, rec: ProcurementRecord, s
     assembly: source?.assembly ?? null,
     addedByHand: source?.addedByHand ?? false,
     noProduct: source?.noProduct ?? false,
+    standsOnRev: source?.standsOnRev ?? null,
     orderOnly: source?.orderOnly ?? false,
     noGc: source?.noGc ?? false,
     quantity: source?.quantity ?? null,
@@ -369,7 +374,7 @@ export function buildProcurementLog(input: ProcurementLogInput): ProcurementRow[
     const rec = byTag.get(tag)
     if (rec && (rec.orderedOn || rec.poRef || rec.expectedOn || rec.deliveredOn || rec.note)) {
       const first = input.items.find((it) => it.tag === tag)!
-      sources.push({ tag, product: 'the fixture, as logged before its parts', supplyHouse: null, leadTimeDays: rec.leadTimeDays, decision: first.decision, shared: first.shared, sourceCountRowId: first.sourceCountRowId ?? null, partOrder: -1, itemId: first.itemId ?? null })
+      sources.push({ tag, product: 'the fixture, as logged before its parts', supplyHouse: null, leadTimeDays: rec.leadTimeDays, decision: first.decision, shared: first.shared, sourceCountRowId: first.sourceCountRowId ?? null, partOrder: -1, itemId: first.itemId ?? null, standsOnRev: first.standsOnRev ?? null })
     }
   }
   const tagged = sources
