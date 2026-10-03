@@ -5,14 +5,18 @@ import {
   TRADE_TEMPLATES,
   currentRev,
   activitiesTouched,
+  changeOrderFromSet,
+  changeOrderPrice,
   defaultSetKind,
   guessLineSheets,
   pushSchedule,
   scheduleFloat,
   weekdayDate,
   linesOnSheets,
+  money,
   nextSetLabel,
   packagesForSheets,
+  packagesFromDrafts,
   planEmail,
   planLabel,
   planRecipients,
@@ -109,6 +113,10 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
   const [brought, setBrought] = useState<BroughtTrade[]>([])
   /** Scope lines this set adds, by trade (package id). */
   const [newLines, setNewLines] = useState<Record<string, string[]>>({})
+  /** Change orders to the owner this set starts, by package id: ticked or not, the cost, the words. */
+  const [coOn, setCoOn] = useState<Record<string, boolean>>({})
+  const [coCost, setCoCost] = useState<Record<string, string>>({})
+  const [coText, setCoText] = useState<Record<string, string>>({})
   /** Days this set adds to scheduled activities, as typed, by line id. */
   const [pushDays, setPushDays] = useState<Record<string, string>>({})
   /** The trade whose Add a line box is open, and what is typed in it. */
@@ -153,6 +161,36 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
       .map((m) => push?.activities.find((a) => a.lineId === m.lineId))
       .filter((a): a is NonNullable<typeof a> => !!a && a.packageId === packageId)
       .map((a) => `${lineName(a.packageId, a.lineId)} now runs ${weekdayDate(a.start)} to ${weekdayDate(a.finish)}.`)
+  /** The trades a change order can start on: the ones the set changes, and the ones it brings, with the ids they will get. */
+  const broughtDrafts = brought.map((b) => ({
+    trade: b.trade,
+    budget: Number(b.budget.replace(/[^0-9.]/g, '')) || 0,
+    ours: b.ours,
+    scope: b.scope.map((l) => l.label),
+    scopeSheets: b.scope.map((l) => l.sheets ?? guessLineSheets(l.label, sheetsOfTrade(b.trade))),
+  }))
+  const coTrades =
+    project.stage === 'pursuing'
+      ? []
+      : [
+          ...project.packages.filter((p) => touches.includes(p.id)).map((p) => ({ id: p.id, trade: p.trade, brought: false })),
+          ...packagesFromDrafts(project.id, broughtDrafts, project.packages.map((p) => p.id)).map((p) => ({ id: p.id, trade: p.trade, brought: true })),
+        ]
+  const coRows = coTrades.map((t) => {
+    const lines = newLines[t.id] ?? []
+    const pushed = reached.some((a) => a.packageId === t.id && (pushes[a.lineId] ?? 0) > 0)
+    const start = changeOrderFromSet({ label, note, sheets }, t.trade, t.brought ? [t.trade] : lines, pushed ? endDays : 0)
+    const cost = Math.round(Number((coCost[t.id] ?? '').replace(/[^0-9.-]/g, '')) || 0)
+    return {
+      ...t,
+      on: coOn[t.id] ?? (t.brought || lines.length > 0 || pushed),
+      description: coText[t.id] ?? start.description,
+      schedule: start.schedule,
+      cost,
+      price: cost !== 0 ? changeOrderPrice(project, cost) : 0,
+    }
+  })
+  const coDrafted = coRows.filter((r) => r.on && r.cost !== 0 && r.description.trim() !== '')
   const email = planEmail(project, label, note.trim(), sheets, preview, {
     lines: preview?.touched ? linesOnSheets(project, preview.pkg, sheets).map((l) => l.label) : [],
     adds: preview?.touched ? (newLines[preview.pkg.id] ?? []) : [],
@@ -535,9 +573,61 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
             </div>
           </section>
 
+          {coRows.length > 0 && (
+            <section>
+              <StepHeading n={3} title="Change orders to the owner" hint="The job is ours, so a change to the work is a change to our price." />
+              <div style={{ display: 'grid', gap: '0.5rem', fontSize: '0.875rem' }}>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                  Tick a trade to start a change order for it. Type what the change costs us. Our fee is added for the price. Each one is drafted on Bill the owner, for you to review and send.
+                </span>
+                {coRows.map((r) => (
+                  <div key={r.id} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.7rem', display: 'grid', gap: '0.35rem', opacity: r.on ? 1 : 0.6 }}>
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <label style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', cursor: 'pointer' }}>
+                        <input type="checkbox" checked={r.on} onChange={(e) => setCoOn((all) => ({ ...all, [r.id]: e.target.checked }))} />
+                        <strong>{r.trade}</strong>
+                      </label>
+                      {r.brought && <Chip tone="blue">a new trade</Chip>}
+                      <Chip tone="grey">time: {r.schedule}</Chip>
+                      <span style={{ flex: 1 }} />
+                      {r.on && (
+                        <label style={{ display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
+                          <span style={{ color: 'var(--text-muted)' }}>Our cost</span>
+                          <input
+                            style={{ ...input, width: '7rem', textAlign: 'right' }}
+                            inputMode="numeric"
+                            value={coCost[r.id] ?? ''}
+                            onChange={(e) => setCoCost((all) => ({ ...all, [r.id]: e.target.value }))}
+                            placeholder="$0"
+                            aria-label={`What the change to ${r.trade} costs us`}
+                          />
+                        </label>
+                      )}
+                    </div>
+                    {r.on && (
+                      <>
+                        <input
+                          style={{ ...input, width: '100%', boxSizing: 'border-box' }}
+                          value={r.description}
+                          onChange={(e) => setCoText((all) => ({ ...all, [r.id]: e.target.value }))}
+                          aria-label={`What the change order to the owner says for ${r.trade}`}
+                        />
+                        <span style={{ color: r.cost === 0 ? 'var(--text-muted)' : 'var(--text-600)', fontSize: '0.8rem' }}>
+                          {r.cost === 0
+                            ? 'Type a cost to draft it. A credit is a cost below zero.'
+                            : `The price to the owner is ${money(r.price)}, our cost plus our fee.`}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
           <section>
             <StepHeading
-              n={3}
+              n={coRows.length > 0 ? 4 : 3}
               title="Who hears about it"
               hint={
                 project.stage === 'pursuing'
@@ -604,7 +694,7 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
           </section>
 
           <section>
-            <StepHeading n={4} title="The email" hint={preview ? `As ${preview.partner.company} gets it.` : 'No one to email.'} />
+            <StepHeading n={coRows.length > 0 ? 5 : 4} title="The email" hint={preview ? `As ${preview.partner.company} gets it.` : 'No one to email.'} />
             <div data-theme="light" style={{ border: '1px solid var(--border-strong)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text-base)', padding: '0.8rem 1rem', fontSize: '0.9rem', display: 'grid', gap: '0.5rem' }}>
               <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
                 To: {preview ? `${preview.partner.contact}, ${preview.partner.company}` : 'no one'} · From: Click Construction
@@ -629,6 +719,7 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
                 } told it changes their trade.`}
             {linesAdded > 0 && ` It adds ${linesAdded} scope ${linesAdded === 1 ? 'line' : 'lines'}.`}
             {endDays > 0 && ` It adds ${endDays} ${endDays === 1 ? 'day' : 'days'} to the job.`}
+            {coDrafted.length > 0 && ` It drafts ${coDrafted.length} ${coDrafted.length === 1 ? 'change order' : 'change orders'} to the owner.`}
             {brought.length > 0 && ` It adds ${brought.length === 1 ? 'a trade' : `${brought.length} trades`}.`}
           </span>
           <span style={{ flex: 1 }} />
@@ -651,14 +742,12 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
                 newLines: project.packages
                   .filter((p) => touches.includes(p.id))
                   .flatMap((p) => (newLines[p.id] ?? []).map((l) => ({ packageId: p.id, label: l, sheets: newLineSheets(p.trade) }))),
-                newTrades: brought.map((b) => ({
-                  trade: b.trade,
-                  budget: Number(b.budget.replace(/[^0-9.]/g, '')) || 0,
-                  ours: b.ours,
-                  scope: b.scope.map((l) => l.label),
-                  scopeSheets: b.scope.map((l) => l.sheets ?? guessLineSheets(l.label, sheetsOfTrade(b.trade))),
-                })),
+                newTrades: broughtDrafts,
               })
+              // Each change order is Owner Billing's own draft, so it reads on Bill the owner as theirs do.
+              for (const r of coDrafted) {
+                dispatch({ type: 'draftChangeOrder', projectId: project.id, description: r.description.trim(), reason: 'plans', schedule: r.schedule, packageId: r.id, cost: r.cost, price: 0 })
+              }
               onClose()
             }}
           >

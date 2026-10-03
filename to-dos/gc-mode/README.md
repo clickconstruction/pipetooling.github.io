@@ -72,7 +72,7 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
 | **Project Board** | Projects in three sections: Bidding to the owner, Buying out, Building. Each row leads with the days left before our bid (red inside a week, amber inside two), then the name, the owner and architect (each a link), chips, the Bid Board's folder and plans icons, and the price. |
 | **+ New project** (beside *Bidding to the owner*) | One window in four steps, each feeding the next. **The project**: name, address, town, owner and architect from the one customer list ("Someone new" makes a record), bid due, size. **The plans**: the set's name (Bid set, Pricing set, Permit set or typed), the day it came in, the sheet index pasted from the cover sheet and read as you paste (A-101, A101, A1.01, FP-101; capitals become sentence case; a line not read is listed). **The trades**: guessed from the sheets, in the order the specs list trades, each with the sheets behind it; untick, add, mark **Ours**, a budget. **Each scope**: each trade's usual lines to change, each with the sheets it reads from (guessed from its words, × takes one off, **+ sheet** adds one; none means the trade's sheets as a whole); Enter starts the next line. **Who to ask**: for each trade we hire out, every company that does it, closest first, with its drive, how it answers asks and any missing paperwork; the closest three in range come ticked. **Create the project** puts it under Bidding to the owner, sends each ticked company the board's invitation, and opens it on Trades. **Paste a made-up sheet index** tries it. |
 | Plans icon on a row | A plans window over the board: newest set first, the sheet list by discipline, what the last addendum changed, arrow keys flip sheets, and under each sheet the scope lines that read from it. Drawings are stand-ins. |
-| Owner or architect name | One company window, shaped by what the company is to us: an owner gets money, how they buy and pay, projects we build for them; an architect gets addenda and questions waiting on them. One call log either way. |
+| Owner or architect name | One company window, shaped by what the company is to us: an owner gets money, how they buy and pay, projects we build for them; an architect gets addenda and questions waiting on them. One call log either way. An owner's **See what they see ↗** opens their portal (the Owner Billing lane's panel) in a window over it, for the jobs that are ours (buying out or building): one opens straight to it, more than one asks *Which job?* first; Escape or a click outside closes the portal only. |
 | **Trades** tab | One row per trade: who we asked with each bid in thousands, our budget, the lowest all in, what we carry. **Compare bids** opens the comparison. **On a map** opens the map. |
 | Compare bids | Sentences first ("Voltage Brothers bid $166,000 and left out fire alarm. Covering that adds $14,000, so they come to $180,000."), then the table behind them: is each piece of work in their price, a cost to cover what is not, the all-in total, who is lowest. |
 | On a map | The project in the middle, every company in the trade as a numbered pin (closest first), the same companies in a list beside it to work down. "Will not do it" / "Cannot do it" moves you to the next closest. |
@@ -165,6 +165,14 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   milestone, since more time is a change order. The set records the days (`PlanSet.pushed`), and
   each company's email names its new dates (`activitiesTouched`, `pushSchedule`,
   `issuePlanSet.schedulePushes`).
+- **A set that changes a job we have won starts its change orders to the owner** (approved as
+  built, 2026-10-03): **A new set of plans came in** gains **Change orders to the owner**, one row
+  per trade the set touches or brings, ticked when it adds lines or days. Each is prefilled
+  (`changeOrderFromSet`: "Bulletin 2, Electrical: data drops added at each operatory, per E-102",
+  the time from the schedule push); the office types our cost and Owner Billing's rule adds the
+  fee. Issuing drafts each one with a cost through Owner Billing's own `draftChangeOrder` (reason
+  "plans"), to review and send on **Bill the owner**. The matching change to the trade's
+  statement of work is not built.
 - **The schedule** (2026-10-02, decided before anything is built): several activities per trade,
   like rough in, top out and trim. We draw it; the companies do not propose dates. It lives only
   inside GC mode for now, not on the app's Schedule page. A milestone counts as hit within a few
@@ -233,7 +241,8 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
 - **A company's link lands on its home** (2026-10-02), not on one project: everything the company
   has with us, what needs them first. A project's page is one tap away.
 - **A company's language is kept on its record** (2026-10-03): the portal opens in it, and the
-  messages we send it go out in it.
+  messages we send it go out in it. The company sets it in its portal; the office can set it too,
+  on Trade partners.
 
 ## My defaults the owner has not confirmed
 
@@ -361,8 +370,9 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
     2026-10-02: the trade in its portal, verified by our superintendent.
 25. ~~Should a company's language be kept on its record, so its emails go out in Spanish?~~
     Answered 2026-10-03: yes (`Partner.lang`, set by the company's **Español** button,
-    `tradeSetLanguage`). Still open: should the office be able to set it too? The Spanish was
-    written by the prototype; a native speaker should read it before it ships.
+    `tradeSetLanguage`), and the office can set it too on Trade partners (`setPartnerLanguage`,
+    `GcPortalLanguagePick.tsx`). The Spanish was written by the prototype; a native speaker should
+    read it before it ships.
 26. Does the architect certify our pay application before the owner pays, the usual AIA way and
     what lenders often want? The form leaves the architect's certificate blank and the owner can
     pay without it. (Owner Billing lane.)
@@ -412,6 +422,8 @@ they point to, for the lanes to pick up.
 
 ## Workflow steps not built yet
 
+- A change to a trade's statement of work when a set changes its scope (the trade side of a
+  change order). A set can start the owner's change order, not the trade's amendment.
 - A schedule link cannot carry a fixed wait. The two days drawn for the rough-in inspection read as
   spare days, so a push into them is absorbed. A wait on a link (or the inspection as an activity)
   is the Building lane's schedule model. A set's added days could also start a change order with
@@ -478,6 +490,7 @@ imitates it.
 | `GcTradePortal.tsx` | The trade partner's side: the frame, each trade's plans, bid, bid tab, statement of work and draws |
 | `gcPortalLang.ts` | The portal's language, held by the frame and read by every portal screen (`usePortalLang`) |
 | `GcPortalBidExtras.tsx` | The bid form past the number: good for how many days, alternates, the company's own quote, answering the lines the office could not read |
+| `GcPortalLanguagePick.tsx` | For the office: a company's language on Trade partners |
 | `GcPortalLinkChip.tsx` | For the office: a company we asked that never opened its portal link (Trades, Follow up) |
 | `GcPortalLookAhead.tsx` | The weekly look-ahead in the trade's portal: three weeks, the company's done or not done with a reason |
 | `GcPortalLineSheets.tsx` | The sheet numbers beside each line of the bid form, and the lines a new set touches |

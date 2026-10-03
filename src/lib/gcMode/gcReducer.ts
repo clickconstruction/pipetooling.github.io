@@ -1074,5 +1074,15 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
       }))
       return logged(next, 'office', `Change order ${co.number} on ${project.name} is ${pct}% done.`)
     }
+
+    case 'setPartnerLanguage': {
+      const partner = partnerById(state, action.partnerId)
+      if (!partner || (partner.lang ?? 'en') === action.lang) return state
+      return logged(
+        { ...state, partners: state.partners.map((p) => (p.id === partner.id ? { ...p, lang: action.lang } : p)) },
+        'office',
+        `Set ${partner.company}'s language to ${action.lang === 'es' ? 'Spanish' : 'English'}: its portal and messages.`,
+      )
+    }
   }
 }

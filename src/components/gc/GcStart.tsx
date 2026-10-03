@@ -172,8 +172,9 @@ function TradeLine({ row, project, dispatch, onSeePortal, locked }: Omit<GcPaneP
         <td style={{ ...td, fontWeight: 600 }}>{pkg.trade}</td>
         <td style={td} colSpan={6}>
           <Chip tone="violet">We do this ourselves</Chip> {pkg.selfPerform.note}
+          {!row.ready && ' Our own bid is not priced yet. Price it on Trades or Our number.'}
         </td>
-        <td style={td}><Chip tone="green">ready</Chip></td>
+        <td style={td}>{row.ready ? <Chip tone="green">ready</Chip> : <Chip tone="amber">not priced yet</Chip>}</td>
       </tr>
     )
   }

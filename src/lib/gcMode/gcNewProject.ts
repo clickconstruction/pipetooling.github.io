@@ -649,3 +649,39 @@ export function pushSchedule(activities: ScheduleActivity[], pushes: Record<stri
   const last = (list: ScheduleActivity[]) => list.reduce((m, a) => (a.finish > m ? a.finish : m), '')
   return { activities: next, moved, lastBefore: last(activities), lastAfter: last(next) }
 }
+
+// ---------------------------------------------------------------------------------------------
+// A set that changes a job we have won starts its change orders to the owner
+// ---------------------------------------------------------------------------------------------
+
+function wordsAnd(words: string[]): string {
+  if (words.length <= 1) return words[0] ?? ''
+  return `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}`
+}
+
+/**
+ * The words a change order to the owner starts with when a set of plans changes a trade on a job
+ * we have won: what the set does to the trade, "per" its sheets, and the time it adds to the job.
+ * No closing full stop: Owner Billing adds it. The office types the cost; Owner Billing's draft
+ * adds our fee for the price (reason 'plans', price 0, its `changeOrderPrice`).
+ */
+export function changeOrderFromSet(
+  set: { label: string; note: string; sheets: string[] },
+  trade: string,
+  addedLines: string[],
+  jobDays: number,
+): { description: string; schedule: string } {
+  // The note's first sentence, without a sheet number at its head ("E-201: the tenant…"): "per" names the sheets.
+  const firstSentence = (set.note.trim().split(/(?<=[.!?])\s+/)[0] ?? '')
+    .replace(/[.!?]+$/, '')
+    .replace(/^[A-Za-z]{1,2}-?\d[\d.]*[A-Za-z]?\s*[:\-–—]\s*/, '')
+  // Lower the first letter to run on after the colon, unless the word is in capitals (RTU-3).
+  const runOn = /^[A-Z][A-Z0-9]/.test(firstSentence) ? firstSentence : firstSentence.charAt(0).toLowerCase() + firstSentence.slice(1)
+  const what = addedLines.length > 0 ? `adds ${wordsAnd(addedLines.map((l) => l.trim().toLowerCase()))}` : runOn
+  // Plain words reach the owner's portal and the pay application: "per E-102", never in brackets.
+  const sheets = set.sheets.length > 0 ? `, per ${wordsAnd(set.sheets)}` : ''
+  return {
+    description: `${set.label}, ${trade}: ${what || 'the changes in the set'}${sheets}`,
+    schedule: jobDays > 0 ? `+${jobDays} ${jobDays === 1 ? 'day' : 'days'}` : 'none',
+  }
+}
