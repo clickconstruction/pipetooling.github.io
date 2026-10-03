@@ -386,3 +386,13 @@ describe('billedRowsRemainingTotal', () => {
     expect(billedRowsRemainingTotal([])).toBe(0)
   })
 })
+
+describe('stageRowBilledAgeDays · the evening reads today on the company calendar (v2.4475)', () => {
+  it('ages a bill to the Central day, not the UTC one', () => {
+    // 00:30 UTC on Jun 1 is 7:30 pm CDT on May 31.
+    const row = { kind: 'invoice', job: job({}), inv: inv({ estimated_bill_date: '2026-05-21' }) } as StageRow
+    expect(stageRowBilledAgeDays(row, new Date('2026-06-01T00:30:00Z'))).toBe(10)
+    expect(printBilledRowReferenceDate(row, new Date('2026-06-01T00:30:00Z')).ageDays).toBe(10)
+    expect(stageRowBilledAgeDays(row, new Date('2026-06-01T12:00:00Z'))).toBe(11)
+  })
+})

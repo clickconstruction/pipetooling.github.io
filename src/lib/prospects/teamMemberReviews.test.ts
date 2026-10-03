@@ -217,3 +217,11 @@ describe('subjectReviewHistory', () => {
     expect(subjectReviewHistory(rows, 'subject').map((r) => r.id)).toEqual(['new', 'old'])
   })
 })
+
+describe('formatTenure · counts to today on the company calendar (v2.4475)', () => {
+  it('does not turn a month on the evening before the day', () => {
+    // 00:30 UTC on May 15 is 7:30 pm CDT on May 14: a start on Mar 15, 2024 is 2 yr 1 mo until May 15.
+    expect(formatTenure('2024-03-15', new Date('2026-05-15T00:30:00Z'))).toBe('2 yr 1 mo')
+    expect(formatTenure('2024-03-15', new Date('2026-05-15T12:00:00Z'))).toBe('2 yr 2 mo')
+  })
+})

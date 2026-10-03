@@ -15,7 +15,7 @@ import {
 } from '../../lib/bids/backtestCandidates'
 import { buildAxisCards, type RunScoreRow } from '../../lib/bids/confidenceBoard'
 import type { ShadowRunRow } from '../../lib/bids/shadowStory'
-import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils'
+import { calendarYmdInAppTzFromIso, todayYmdInAppTz, ymdAddDays } from '../../utils/dateUtils'
 import { BID_UPDATE_NOT_APPLIED_MESSAGE, bidUpdateRefused } from '../../lib/bids/updateGuard'
 import { usePriceMatrixRequests, type PriceMatrixRequestWithBid } from '../../hooks/usePriceMatrixRequests'
 import { useUserDisplayNames } from '../../hooks/useUserDisplayNames'
@@ -59,7 +59,7 @@ function decidedMonth(ymd: string | null): string {
 export function BidsRobotQueueTab({ bids, twinBidBySourceId, referencePresence, onOpenBid }: BidsRobotQueueTabProps) {
   const { showToast } = useToastContext()
   const queue = useMemo(() => {
-    const staleDueBefore = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10)
+    const staleDueBefore = ymdAddDays(todayYmdInAppTz(), -30)
     return buildRobotQueue(bids, (bidId) => twinBidBySourceId.has(bidId), { staleDueBefore })
   }, [bids, twinBidBySourceId])
   const [copiedBidId, setCopiedBidId] = useState<string | null>(null)

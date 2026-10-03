@@ -12,6 +12,7 @@ import {
   type PhoneDockPageKey,
 } from '../../lib/phoneDock'
 import { PhoneDockGlyph } from './PhoneDockGlyph'
+import { todayYmdInAppTz, ymdAddDays } from '../../utils/dateUtils'
 
 export type PhoneDockModeRow = {
   key: string
@@ -39,7 +40,7 @@ export type PhoneDockMoreSheetProps = {
 const SUGGESTION_DAYS = 90
 
 async function loadOwnMinutes(userId: string): Promise<ActivityMinutesRow[]> {
-  const since = new Date(Date.now() - SUGGESTION_DAYS * 86400_000).toISOString().slice(0, 10)
+  const since = ymdAddDays(todayYmdInAppTz(), -SUGGESTION_DAYS)
   const { data, error } = await supabase
     .from('user_app_activity_page_daily')
     .select('page, active_seconds')

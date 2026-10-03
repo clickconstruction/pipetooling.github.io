@@ -277,3 +277,13 @@ describe('computeStagesHeaderStats · stage plans (v2.3809)', () => {
     expect(computeStagesHeaderStats([plain], NOW, EMPTY_WORKING_STAGE_INPUTS).capableToBill).toBe(400)
   })
 })
+
+describe('collectedByDayFromPayments · the window ends today on the company calendar (v2.4475)', () => {
+  it('puts a payment from today in the last bar in the evening', () => {
+    // 00:30 UTC on Oct 3 is 7:30 pm CDT on Oct 2: the last bar is Oct 2.
+    const days = collectedByDayFromPayments([{ paid_on: '2026-10-02', amount: 50 }], new Date('2026-10-03T00:30:00Z'))
+    expect(days.length).toBe(30)
+    expect(days[0]!.dayYmd).toBe('2026-09-03')
+    expect(days[days.length - 1]).toEqual({ dayYmd: '2026-10-02', total: 50 })
+  })
+})

@@ -1,4 +1,4 @@
-import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
+import { APP_CALENDAR_TZ, todayYmdInAppTz } from '../../utils/dateUtils'
 
 /** Job Summary cost breakdown: substring match on person name; empty query shows all. */
 export function personMatchesJobSummaryBreakdownFilter(
@@ -122,12 +122,16 @@ export function formatUsdNoCents(n: number): string {
   return `$${formatCurrencyNoCents(n)}`
 }
 
-/** Calendar whole days from an ISO date/timestamp to now in UTC (avoids DST edge cases). */
+/**
+ * Whole calendar days from a day ('YYYY-MM-DD'; callers pass one, an ISO stamp would read as its UTC date)
+ * to today on the company calendar (`APP_CALENDAR_TZ`) — never now's UTC date, which is tomorrow every
+ * evening after 7 PM Central. Both ends are civil days, so DST does not move the count.
+ */
 export function calendarDaysSinceDateUtc(dateIso: string, now = new Date()): number {
   const d = new Date(dateIso)
   if (Number.isNaN(d.getTime())) return -1
   const fromUtc = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
-  const toUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+  const toUtc = Date.parse(`${todayYmdInAppTz(now)}T00:00:00Z`)
   return Math.floor((toUtc - fromUtc) / 86400000)
 }
 

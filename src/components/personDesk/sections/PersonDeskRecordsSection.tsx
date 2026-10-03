@@ -3,6 +3,7 @@ import { supabase } from '../../../lib/supabase'
 import { derivePersonFileFreshness, type PersonFileFreshness } from '../../../lib/people/personFileFreshness'
 import type { PersonDeskViewer } from '../../../lib/people/personDeskGates'
 import { BTN, BTN_QUIET, Chip, DeskRow, DeskSection, LockTag, fmtDate } from '../personDeskShared'
+import { todayYmdInAppTz, ymdAddDays } from '../../../utils/dateUtils'
 
 /**
  * Records (PR 3): the HR file's freshness and pending reports (dev), write-ups
@@ -19,7 +20,7 @@ export function PersonDeskRecordsSection({ userId, personId, viewer, changeKey }
   useEffect(() => {
     let cancelled = false
     void (async () => {
-      const ninetyDaysAgo = new Date(Date.now() - 90 * 86_400_000).toISOString().slice(0, 10)
+      const ninetyDaysAgo = ymdAddDays(todayYmdInAppTz(), -90)
       const [files, entries, reports, wu, inc] = await Promise.all([
         viewer.isDev && personId ? supabase.from('person_files').select('kind, updated_at, covered_through').eq('person_id', personId).eq('kind', 'summary').maybeSingle() : Promise.resolve({ data: null }),
         viewer.isDev && personId ? supabase.from('person_file_entries').select('created_at').eq('person_id', personId) : Promise.resolve({ data: [] }),
