@@ -9,6 +9,7 @@ import {
   bidRanOut,
   gcReducer,
   initialGcState,
+  linkNeverOpened,
   portalFirstVisit,
   portalHome,
   portalLink,
@@ -424,5 +425,27 @@ describe('the weekly look-ahead', () => {
 
   it('shows nothing on a job that is not being built yet', () => {
     expect(portalLookAhead(state, 'hillcountry', state.projects.find((p) => p.id === 'helotes') ?? fairOaks(state))).toEqual([])
+  })
+})
+
+describe('for the office: a company that never opened its link', () => {
+  const asked = gcReducer(state, { type: 'invite', projectId: 'boerne', packageId: 'fire', partnerId: 'aquashield' })
+
+  it('flags AquaShield the day we ask it, amber', () => {
+    expect(linkNeverOpened(asked, 'aquashield')).toEqual({ since: '2026-10-02', days: 0, late: false })
+  })
+
+  it('turns late once past the days a company should take to open the plans', () => {
+    expect(linkNeverOpened({ ...asked, today: '2026-10-05' }, 'aquashield')?.late).toBe(false)
+    expect(linkNeverOpened({ ...asked, today: '2026-10-06' }, 'aquashield')?.late).toBe(true)
+  })
+
+  it('clears once the company opens its link', () => {
+    const opened = gcReducer(asked, { type: 'tradeOpenPortal', partnerId: 'aquashield' })
+    expect(linkNeverOpened(opened, 'aquashield')).toBeNull()
+  })
+
+  it('flags no one in the made-up data, where every company asked has used its portal', () => {
+    expect(state.partners.filter((p) => linkNeverOpened(state, p.id)).map((p) => p.id)).toEqual([])
   })
 })

@@ -8,7 +8,7 @@
 import type { BidAlternate, GcProject, GcState, Invite, LookAheadMark, Partner, PlanSet, ScopeItem, SubBid, TradePackage } from './gcTypes'
 import { daysUntil, money } from './gcWords'
 import { currentRev, partnerById } from './gcLookups'
-import { askPromise, type AskPromise } from './gcFollowUp'
+import { askPromise, OPEN_WITHIN_DAYS, type AskPromise } from './gcFollowUp'
 import { bidIsStale, sowMoney } from './gcBids'
 import { GC_COMPANY } from './gcFixture'
 import { pDate, pt, pWeekday, type PortalLang } from './gcPortalI18n'
@@ -678,4 +678,22 @@ export function lookAheadOwed(state: GcState, partnerId: string, project: GcProj
   const day = new Date(`${state.today}T00:00:00Z`).getUTCDay()
   const weekEnd = day === 0 || day >= MARK_FROM_WEEKDAY
   return { late: unmarked('last'), thisWeek: weekEnd ? unmarked('this') : 0 }
+}
+
+// ---------------------------------------------------------------------------------------------
+// For the office: a company that never opened its link
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * A company we asked that has never been in its portal (portalFirstVisit): the email may not have
+ * reached it. With the day we first asked, and whether that is past the days a company should take
+ * to open the plans (OPEN_WITHIN_DAYS). Null once it has opened its link.
+ */
+export function linkNeverOpened(state: GcState, partnerId: string): { since: string; days: number; late: boolean } | null {
+  if (!portalFirstVisit(state, partnerId)) return null
+  const asked = state.projects.flatMap((p) => p.packages.flatMap((k) => k.invites.filter((i) => i.partnerId === partnerId).map((i) => i.invitedOn)))
+  if (asked.length === 0) return null
+  const since = [...asked].sort()[0] ?? state.today
+  const days = Math.max(0, -daysUntil(since, state.today))
+  return { since, days, late: days > OPEN_WITHIN_DAYS }
 }
