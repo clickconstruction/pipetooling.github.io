@@ -88,7 +88,7 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
 | The trade's portal | English or Spanish (**Español** on the portal's letterhead: every word the portal writes, and the messages). One link per company, carried by every message we send (**Their messages** beside **Their portal**: the invitation as an email and a text, reminders, new plan sets, bid tabs, the master agreement, a statement of work to sign, the day work starts by email and text, and a draw approved for less with our reason). The first visit opens on a welcome until **Got it**. The link opens on the company's **home**: what needs them across every project (late or blocking first; a pay application we sent back, a draw we approved for less, their closeout steps), their money once a dollar moves, their jobs, what they are asked to bid, their paperwork, and what came before. A row opens that project's page, with **← Everything with Click** back. On a project page: paperwork done by the company itself (read and sign the master agreement, send an insurance certificate, fill in and sign a W-9), the plans window (sets, sheets, whether a set changes their trade), the invitation and the bid form (each line with its sheet numbers, a tap opens that sheet; after a new set the lines it touches are marked; how many days the number is good for; alternates that add or take off; their own quote attached), "tell Click when your number will come" (a passed day shows in red), answer a line the office could not read (its own short step, the number stays), confirm a number after an addendum, the bid tab, sign the statement of work, report work, ask for a draw with its pay application (next row). |
 | Pay application (from the portal) | **Fill out pay application N**: four steps on a rail like the Release of Lien window (Check your work, Fill in a few details, Sign it, Send it to Click) beside the 702 and 703, which fill in as the trade types and mark what each step fills. The app knows the job, the contract, the lines, what was billed and the retainage; the trade checks the percents, picks the period, types its address once, and signs. Closing the window keeps the draft. |
 | **Closeout** | Each trade's last six steps: every line billed, **Accept the work** (the punch list is done), their final pay application for the retainage with a conditional final release of lien, the owner paying our final and 10 days passing, **Approve the release** and **Mark paid**, their unconditional final release of lien. Totals for held, paid back and trades closed out; the owner's retainage on us, read from Bill the owner; **Close the job** once every trade is closed out, with what is left until then. In the portal the same steps show as the trade's closeout list, ending "You are closed out on this job." |
-| **Schedule** | Each activity is a line of a trade's statement of work, or a stage our own crew runs. Four measures on top: work done against the plan with days behind (by dollars), the critical path (no spare days), milestones hit within 3 days, and the look-ahead done as planned (verified marks, last 4 weeks). The chart: each trade's lines, the plan with percent done, the plan at Start under it where it moved, today, milestones. The look-ahead: this week and the next two, this week's marks with their state. Read-only so far; Fair Oaks D has one. |
+| **Schedule** | Each activity is a line of a trade's statement of work, or a stage our own crew runs. Four measures on top: work done against the plan with days behind (by dollars), the critical path (no spare days), milestones hit within 3 days, and the look-ahead done as planned (verified marks, last 4 weeks). The chart: each trade's lines, the plan with percent done, the plan at Start under it where it moved, today, milestones. The look-ahead: this week and the next two, this week's marks with their state. In Buying out it is drawn here: **Draw a first draft** (every line of every trade, by phase), then pick any activity to set its dates and what it waits on, and add, move or take off milestones; the first change after Start keeps the plan at Start as the baseline. Fair Oaks D has one drawn; draw Helotes. |
 
 ## Decided by the owner (2026-10-02)
 
@@ -253,7 +253,9 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
   lowered to what was billed before, never below. The 702's "To" line reads Click Construction,
   the name the portal already uses (`GC_COMPANY_NAME`).
 - The schedule counts calendar days, not work days. The look-ahead's reliability is read over the
-  last 4 weeks (`RELIABILITY_WEEKS`). A line we sent back counts at what we see on it.
+  last 4 weeks (`RELIABILITY_WEEKS`). A line we sent back counts at what we see on it. The first
+  draft runs each activity 10 days (`DRAFT_ACTIVITY_DAYS`), trades by phase: site, structure, roof,
+  the rough-ins, the walls, the finishes.
 - Closeout: a release's approval is locked by the same paperwork rules as a draw. "Held" counts
   until the release is paid, not when it is approved (`retainageHeldNow`). The stages of our own
   crew's work are worth underground 20%, rough in 35%, top out 25%, trim 20%
@@ -342,7 +344,7 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
 
 ## The schedule (proposed, 2026-10-02)
 
-Built so far (Building lane, 2026-10-03): the **Schedule** tab, its four measures and the look-ahead, read-only, on Fair Oaks D (`gcBuildingSchedule.ts`, `GcBuildingSchedule.tsx`). Drawing it in Buying out and the superintendent's verify list are next. The owner's answers are under *Decided by the owner*; this is the shape
+Built so far (Building lane, 2026-10-03): the **Schedule** tab, its four measures and the look-ahead on Fair Oaks D, and drawing it in Buying out with Start keeping the baseline (`gcBuildingSchedule.ts`, `GcBuildingSchedule.tsx`). The superintendent's verify list is next. The first draft's build order is a stand-in (`DRAFT_BUILD_ORDER`) until the New Project lane's draft. The owner's answers are under *Decided by the owner*; this is the shape
 they point to, for the lanes to pick up.
 
 - **The activities are the statement of work lines**: the same schedule-of-values lines a trade
@@ -379,7 +381,7 @@ they point to, for the lanes to pick up.
 
 ## Workflow steps not built yet
 
-- The schedule, the rest: drawing it in Buying out and Start locking the baseline, the superintendent's verify list, and the other lanes' parts (*The schedule, proposed*).
+- The schedule, the rest: the superintendent's verify list, and the other lanes' parts (*The schedule, proposed*).
 
 - New Project past its first form: a scope line tied to its spec section, exclusions, and a
   budget from real costs, not a made-up rate per square foot. A line's sheets show only in New Project, a new set
