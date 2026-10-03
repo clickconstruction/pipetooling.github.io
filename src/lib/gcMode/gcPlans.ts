@@ -20,6 +20,8 @@ const DISCIPLINES: Record<string, string> = {
   E: 'Electrical',
   P: 'Plumbing',
   FP: 'Fire protection',
+  L: 'Landscape',
+  T: 'Technology',
 }
 
 export function sheetDiscipline(sheetId: string): string {

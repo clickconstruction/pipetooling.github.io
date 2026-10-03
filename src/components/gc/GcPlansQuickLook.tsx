@@ -195,9 +195,13 @@ export function GcPlansQuickLook({ project, onClose, onSeeWhoHasIt }: Props) {
         </div>
 
         <div style={{ padding: '0.6rem 1rem', borderTop: '1px solid var(--border)', display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.85rem' }}>
-          <Chip tone={reach.have === reach.of ? 'green' : 'amber'}>
-            {reach.have} of {reach.of} trade partners have opened {planLabel(project, newest)}
-          </Chip>
+          {reach.of === 0 ? (
+            <Chip tone="grey">No trade partner is asked yet, so nobody has the plans</Chip>
+          ) : (
+            <Chip tone={reach.have === reach.of ? 'green' : 'amber'}>
+              {reach.have} of {reach.of} trade partners have opened {planLabel(project, newest)}
+            </Chip>
+          )}
           <Btn kind="quiet" onClick={onSeeWhoHasIt}>See who has it</Btn>
           <span style={{ flex: 1 }} />
           <Btn
