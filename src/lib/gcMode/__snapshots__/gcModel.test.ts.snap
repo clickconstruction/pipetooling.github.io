@@ -6973,6 +6973,61 @@ exports[`GC mode golden walk > step 91: Close Fair Oaks D with work still open (
 }
 `;
 
+exports[`GC mode golden walk > step 92: Leon Springs: we price our own plumbing bid 1`] = `
+{
+  "changed": {
+    "lastLog.id": 88,
+    "lastLog.text": "Priced our own bid on Plumbing for Leon Springs Urgent Care: $68,000.",
+    "projects.leon-springs-urgent-care.proposalTotals.contingency": 2040,
+    "projects.leon-springs-urgent-care.proposalTotals.fee": 5603.2,
+    "projects.leon-springs-urgent-care.proposalTotals.price": 75643.2,
+    "projects.leon-springs-urgent-care.proposalTotals.trades": 68000,
+    "projects.leon-springs-urgent-care.stageProgress.groups[1].items[2].detail": "Our own crew, 68K",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 93: Draw Helotes’s schedule from Oct 12 1`] = `
+{
+  "changed": {
+    "lastLog.id": 89,
+    "lastLog.text": "Drew a first draft of the schedule on Helotes Dental Office: 19 activities from Mon Oct 12.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 94: Framing waits on electrical: Nov 16 to 25 1`] = `
+{
+  "changed": {
+    "lastLog.id": 90,
+    "lastLog.text": "Framing and drywall · Framing now runs Mon Nov 16 to Wed Nov 25.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 95: A milestone: cabinets set 1`] = `
+{
+  "changed": {
+    "lastLog.id": 91,
+    "lastLog.text": "Cabinets set on Helotes Dental Office is planned for Fri Dec 18.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 96: Take the rough-in inspection off 1`] = `
+{
+  "changed": {
+    "lastLog.id": 92,
+    "lastLog.text": "Took Rough-in inspection off the schedule on Helotes Dental Office.",
+  },
+  "removed": [],
+}
+`;
+
 exports[`GC mode golden walk > the whole state at the end 1`] = `
 {
   "customers": [
@@ -7173,6 +7228,31 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
+      "id": 92,
+      "text": "Took Rough-in inspection off the schedule on Helotes Dental Office.",
+      "who": "office",
+    },
+    {
+      "id": 91,
+      "text": "Cabinets set on Helotes Dental Office is planned for Fri Dec 18.",
+      "who": "office",
+    },
+    {
+      "id": 90,
+      "text": "Framing and drywall · Framing now runs Mon Nov 16 to Wed Nov 25.",
+      "who": "office",
+    },
+    {
+      "id": 89,
+      "text": "Drew a first draft of the schedule on Helotes Dental Office: 19 activities from Mon Oct 12.",
+      "who": "office",
+    },
+    {
+      "id": 88,
+      "text": "Priced our own bid on Plumbing for Leon Springs Urgent Care: $68,000.",
+      "who": "office",
+    },
+    {
       "id": 87,
       "text": "Closed Fair Oaks Shops, Building D. 8 things were still open.",
       "who": "office",
@@ -7295,31 +7375,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
     {
       "id": 63,
       "text": "Accepted the Framing and drywall work from Hill Country Interiors. The punch list is done.",
-      "who": "office",
-    },
-    {
-      "id": 62,
-      "text": "Hill Country Interiors signed the unconditional waiver for draw 3.",
-      "who": "trade",
-    },
-    {
-      "id": 61,
-      "text": "Paid draw 3 on Framing and drywall: $6,750.",
-      "who": "office",
-    },
-    {
-      "id": 60,
-      "text": "Approved draw 3 on Framing and drywall. $6,750 to pay, $750 held.",
-      "who": "office",
-    },
-    {
-      "id": 59,
-      "text": "Issued Bulletin 1 on Helotes Dental Office and emailed 1 company. 1 was told it changes their trade. It adds glass and storefront. Nobody is asked yet.",
-      "who": "office",
-    },
-    {
-      "id": 58,
-      "text": "Dr. Priya Raman paid pay application 1: $79,247.",
       "who": "office",
     },
   ],
@@ -9650,6 +9705,277 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
           "text": "Are the operatory walls full height to the deck?",
         },
       ],
+      "schedule": {
+        "activities": [
+          {
+            "after": [],
+            "finish": "2026-10-21",
+            "lineId": "dplumb-1",
+            "packageId": "dplumb",
+            "start": "2026-10-12",
+          },
+          {
+            "after": [
+              "dplumb-1",
+            ],
+            "finish": "2026-10-31",
+            "lineId": "dplumb-2",
+            "packageId": "dplumb",
+            "start": "2026-10-22",
+          },
+          {
+            "after": [
+              "dplumb-2",
+            ],
+            "finish": "2026-11-10",
+            "lineId": "dplumb-3",
+            "packageId": "dplumb",
+            "start": "2026-11-01",
+          },
+          {
+            "after": [
+              "dplumb-3",
+            ],
+            "finish": "2026-11-20",
+            "lineId": "dplumb-4",
+            "packageId": "dplumb",
+            "start": "2026-11-11",
+          },
+          {
+            "after": [
+              "dplumb-1",
+            ],
+            "finish": "2026-10-31",
+            "lineId": "dhvac-1",
+            "packageId": "dhvac",
+            "start": "2026-10-22",
+          },
+          {
+            "after": [
+              "dhvac-1",
+            ],
+            "finish": "2026-11-10",
+            "lineId": "dhvac-2",
+            "packageId": "dhvac",
+            "start": "2026-11-01",
+          },
+          {
+            "after": [
+              "dhvac-2",
+            ],
+            "finish": "2026-11-20",
+            "lineId": "dhvac-3",
+            "packageId": "dhvac",
+            "start": "2026-11-11",
+          },
+          {
+            "after": [
+              "dhvac-1",
+            ],
+            "finish": "2026-11-10",
+            "lineId": "delec-1",
+            "packageId": "delec",
+            "start": "2026-11-01",
+          },
+          {
+            "after": [
+              "delec-1",
+            ],
+            "finish": "2026-11-20",
+            "lineId": "delec-2",
+            "packageId": "delec",
+            "start": "2026-11-11",
+          },
+          {
+            "after": [
+              "delec-2",
+            ],
+            "finish": "2026-11-30",
+            "lineId": "delec-3",
+            "packageId": "delec",
+            "start": "2026-11-21",
+          },
+          {
+            "after": [
+              "delec-3",
+            ],
+            "finish": "2026-12-10",
+            "lineId": "delec-4",
+            "packageId": "delec",
+            "start": "2026-12-01",
+          },
+          {
+            "after": [
+              "delec-1",
+            ],
+            "finish": "2026-11-25",
+            "lineId": "dry-1",
+            "packageId": "dry",
+            "start": "2026-11-16",
+          },
+          {
+            "after": [
+              "dry-1",
+            ],
+            "finish": "2026-11-30",
+            "lineId": "dry-2",
+            "packageId": "dry",
+            "start": "2026-11-21",
+          },
+          {
+            "after": [
+              "dry-2",
+            ],
+            "finish": "2026-12-10",
+            "lineId": "dry-3",
+            "packageId": "dry",
+            "start": "2026-12-01",
+          },
+          {
+            "after": [
+              "dry-1",
+            ],
+            "finish": "2026-11-30",
+            "lineId": "helotes-glass-and-storefront-1",
+            "packageId": "helotes-glass-and-storefront",
+            "start": "2026-11-21",
+          },
+          {
+            "after": [
+              "helotes-glass-and-storefront-1",
+            ],
+            "finish": "2026-12-10",
+            "lineId": "helotes-glass-and-storefront-2",
+            "packageId": "helotes-glass-and-storefront",
+            "start": "2026-12-01",
+          },
+          {
+            "after": [
+              "helotes-glass-and-storefront-1",
+            ],
+            "finish": "2026-12-10",
+            "lineId": "mill-1",
+            "packageId": "mill",
+            "start": "2026-12-01",
+          },
+          {
+            "after": [
+              "mill-1",
+            ],
+            "finish": "2026-12-20",
+            "lineId": "mill-2",
+            "packageId": "mill",
+            "start": "2026-12-11",
+          },
+          {
+            "after": [
+              "mill-2",
+            ],
+            "finish": "2026-12-30",
+            "lineId": "mill-3",
+            "packageId": "mill",
+            "start": "2026-12-21",
+          },
+        ],
+        "baseline": {
+          "activities": {
+            "delec-1": {
+              "finish": "2026-11-10",
+              "start": "2026-11-01",
+            },
+            "delec-2": {
+              "finish": "2026-11-20",
+              "start": "2026-11-11",
+            },
+            "delec-3": {
+              "finish": "2026-11-30",
+              "start": "2026-11-21",
+            },
+            "delec-4": {
+              "finish": "2026-12-10",
+              "start": "2026-12-01",
+            },
+            "dhvac-1": {
+              "finish": "2026-10-31",
+              "start": "2026-10-22",
+            },
+            "dhvac-2": {
+              "finish": "2026-11-10",
+              "start": "2026-11-01",
+            },
+            "dhvac-3": {
+              "finish": "2026-11-20",
+              "start": "2026-11-11",
+            },
+            "dplumb-1": {
+              "finish": "2026-10-21",
+              "start": "2026-10-12",
+            },
+            "dplumb-2": {
+              "finish": "2026-10-31",
+              "start": "2026-10-22",
+            },
+            "dplumb-3": {
+              "finish": "2026-11-10",
+              "start": "2026-11-01",
+            },
+            "dplumb-4": {
+              "finish": "2026-11-20",
+              "start": "2026-11-11",
+            },
+            "dry-1": {
+              "finish": "2026-11-20",
+              "start": "2026-11-11",
+            },
+            "dry-2": {
+              "finish": "2026-11-30",
+              "start": "2026-11-21",
+            },
+            "dry-3": {
+              "finish": "2026-12-10",
+              "start": "2026-12-01",
+            },
+            "helotes-glass-and-storefront-1": {
+              "finish": "2026-11-30",
+              "start": "2026-11-21",
+            },
+            "helotes-glass-and-storefront-2": {
+              "finish": "2026-12-10",
+              "start": "2026-12-01",
+            },
+            "mill-1": {
+              "finish": "2026-12-10",
+              "start": "2026-12-01",
+            },
+            "mill-2": {
+              "finish": "2026-12-20",
+              "start": "2026-12-11",
+            },
+            "mill-3": {
+              "finish": "2026-12-30",
+              "start": "2026-12-21",
+            },
+          },
+          "lockedOn": "2026-10-02",
+        },
+        "lookAhead": [],
+        "milestones": [
+          {
+            "id": "helotes-substantial",
+            "label": "Substantial completion",
+            "metOn": null,
+            "packageId": null,
+            "planned": "2027-01-04",
+          },
+          {
+            "id": "helotes-ms-cabinets",
+            "label": "Cabinets set",
+            "metOn": null,
+            "packageId": "mill",
+            "planned": "2026-12-18",
+          },
+        ],
+      },
       "sheets": [
         {
           "id": "G-001",
@@ -10665,6 +10991,520 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
         },
       ],
       "questions": [],
+      "schedule": {
+        "activities": [
+          {
+            "after": [],
+            "finish": "2026-07-17",
+            "lineId": "fsite-1",
+            "packageId": "fsite",
+            "start": "2026-07-06",
+          },
+          {
+            "after": [],
+            "finish": "2026-07-31",
+            "lineId": "fsite-2",
+            "packageId": "fsite",
+            "start": "2026-07-13",
+          },
+          {
+            "after": [
+              "fsite-2",
+            ],
+            "finish": "2026-08-21",
+            "lineId": "fsite-3",
+            "packageId": "fsite",
+            "start": "2026-08-10",
+          },
+          {
+            "after": [
+              "fsite-3",
+            ],
+            "finish": "2026-08-28",
+            "lineId": "fsite-4",
+            "packageId": "fsite",
+            "start": "2026-08-24",
+          },
+          {
+            "after": [
+              "fsite-1",
+            ],
+            "finish": "2026-08-07",
+            "lineId": "fconc-1",
+            "packageId": "fconc",
+            "start": "2026-07-20",
+          },
+          {
+            "after": [
+              "fsite-1",
+            ],
+            "finish": "2026-08-07",
+            "lineId": "fplumb-1",
+            "packageId": "fplumb",
+            "start": "2026-07-27",
+          },
+          {
+            "after": [
+              "fconc-1",
+              "fplumb-1",
+            ],
+            "finish": "2026-08-28",
+            "lineId": "fconc-2",
+            "packageId": "fconc",
+            "start": "2026-08-10",
+          },
+          {
+            "after": [
+              "fsite-3",
+            ],
+            "finish": "2026-09-11",
+            "lineId": "fconc-3",
+            "packageId": "fconc",
+            "start": "2026-08-31",
+          },
+          {
+            "after": [
+              "fconc-1",
+            ],
+            "finish": "2026-09-04",
+            "lineId": "fsteel-1",
+            "packageId": "fsteel",
+            "start": "2026-08-17",
+          },
+          {
+            "after": [
+              "fsteel-1",
+            ],
+            "finish": "2026-09-18",
+            "lineId": "fsteel-2",
+            "packageId": "fsteel",
+            "start": "2026-09-07",
+          },
+          {
+            "after": [
+              "fsteel-1",
+            ],
+            "finish": "2026-10-02",
+            "lineId": "fsteel-3",
+            "packageId": "fsteel",
+            "start": "2026-09-07",
+          },
+          {
+            "after": [
+              "fsteel-2",
+            ],
+            "finish": "2026-09-30",
+            "lineId": "froof-2",
+            "packageId": "froof",
+            "start": "2026-09-21",
+          },
+          {
+            "after": [
+              "fsteel-2",
+            ],
+            "finish": "2026-10-09",
+            "lineId": "froof-1",
+            "packageId": "froof",
+            "start": "2026-09-21",
+          },
+          {
+            "after": [
+              "froof-1",
+            ],
+            "finish": "2026-10-21",
+            "lineId": "froof-3",
+            "packageId": "froof",
+            "start": "2026-10-12",
+          },
+          {
+            "after": [
+              "fsteel-2",
+            ],
+            "finish": "2026-10-09",
+            "lineId": "froof-4",
+            "packageId": "froof",
+            "start": "2026-10-05",
+          },
+          {
+            "after": [
+              "fconc-1",
+            ],
+            "finish": "2026-09-11",
+            "lineId": "felec-1",
+            "packageId": "felec",
+            "start": "2026-08-24",
+          },
+          {
+            "after": [
+              "felec-1",
+            ],
+            "finish": "2026-10-02",
+            "lineId": "felec-2",
+            "packageId": "felec",
+            "start": "2026-09-14",
+          },
+          {
+            "after": [
+              "felec-1",
+            ],
+            "finish": "2026-10-23",
+            "lineId": "felec-3",
+            "packageId": "felec",
+            "start": "2026-09-14",
+          },
+          {
+            "after": [
+              "fconc-3",
+            ],
+            "finish": "2026-10-30",
+            "lineId": "felec-5",
+            "packageId": "felec",
+            "start": "2026-10-19",
+          },
+          {
+            "after": [
+              "felec-3",
+            ],
+            "finish": "2026-11-20",
+            "lineId": "felec-4",
+            "packageId": "felec",
+            "start": "2026-11-02",
+          },
+          {
+            "after": [
+              "fconc-2",
+            ],
+            "finish": "2026-09-25",
+            "lineId": "fplumb-2",
+            "packageId": "fplumb",
+            "start": "2026-09-14",
+          },
+          {
+            "after": [
+              "fplumb-2",
+            ],
+            "finish": "2026-10-09",
+            "lineId": "fplumb-3",
+            "packageId": "fplumb",
+            "start": "2026-09-28",
+          },
+          {
+            "after": [
+              "fsteel-1",
+            ],
+            "finish": "2026-10-09",
+            "lineId": "fhvac-2",
+            "packageId": "fhvac",
+            "start": "2026-09-14",
+          },
+          {
+            "after": [
+              "froof-1",
+            ],
+            "finish": "2026-10-23",
+            "lineId": "fhvac-1",
+            "packageId": "fhvac",
+            "start": "2026-10-12",
+          },
+          {
+            "after": [
+              "fhvac-1",
+            ],
+            "finish": "2026-11-13",
+            "lineId": "fhvac-3",
+            "packageId": "fhvac",
+            "start": "2026-11-02",
+          },
+          {
+            "after": [
+              "fplumb-3",
+            ],
+            "finish": "2026-12-04",
+            "lineId": "fplumb-4",
+            "packageId": "fplumb",
+            "start": "2026-11-30",
+          },
+          {
+            "after": [
+              "fhvac-3",
+            ],
+            "finish": "2026-12-04",
+            "lineId": "fhvac-4",
+            "packageId": "fhvac",
+            "start": "2026-11-30",
+          },
+        ],
+        "baseline": {
+          "activities": {
+            "fconc-1": {
+              "finish": "2026-08-07",
+              "start": "2026-07-20",
+            },
+            "fconc-2": {
+              "finish": "2026-08-28",
+              "start": "2026-08-10",
+            },
+            "fconc-3": {
+              "finish": "2026-09-11",
+              "start": "2026-08-31",
+            },
+            "felec-1": {
+              "finish": "2026-09-11",
+              "start": "2026-08-24",
+            },
+            "felec-2": {
+              "finish": "2026-10-02",
+              "start": "2026-09-14",
+            },
+            "felec-3": {
+              "finish": "2026-10-23",
+              "start": "2026-09-14",
+            },
+            "felec-4": {
+              "finish": "2026-11-20",
+              "start": "2026-11-02",
+            },
+            "felec-5": {
+              "finish": "2026-10-30",
+              "start": "2026-10-19",
+            },
+            "fhvac-1": {
+              "finish": "2026-10-23",
+              "start": "2026-10-12",
+            },
+            "fhvac-2": {
+              "finish": "2026-10-09",
+              "start": "2026-09-14",
+            },
+            "fhvac-3": {
+              "finish": "2026-11-13",
+              "start": "2026-11-02",
+            },
+            "fhvac-4": {
+              "finish": "2026-12-04",
+              "start": "2026-11-30",
+            },
+            "fplumb-1": {
+              "finish": "2026-08-07",
+              "start": "2026-07-27",
+            },
+            "fplumb-2": {
+              "finish": "2026-09-25",
+              "start": "2026-09-14",
+            },
+            "fplumb-3": {
+              "finish": "2026-10-09",
+              "start": "2026-09-28",
+            },
+            "fplumb-4": {
+              "finish": "2026-12-04",
+              "start": "2026-11-30",
+            },
+            "froof-1": {
+              "finish": "2026-10-02",
+              "start": "2026-09-14",
+            },
+            "froof-2": {
+              "finish": "2026-09-30",
+              "start": "2026-09-21",
+            },
+            "froof-3": {
+              "finish": "2026-10-14",
+              "start": "2026-10-05",
+            },
+            "froof-4": {
+              "finish": "2026-10-09",
+              "start": "2026-10-05",
+            },
+            "fsite-1": {
+              "finish": "2026-07-17",
+              "start": "2026-07-06",
+            },
+            "fsite-2": {
+              "finish": "2026-07-31",
+              "start": "2026-07-13",
+            },
+            "fsite-3": {
+              "finish": "2026-08-21",
+              "start": "2026-08-10",
+            },
+            "fsite-4": {
+              "finish": "2026-08-28",
+              "start": "2026-08-24",
+            },
+            "fsteel-1": {
+              "finish": "2026-09-04",
+              "start": "2026-08-17",
+            },
+            "fsteel-2": {
+              "finish": "2026-09-18",
+              "start": "2026-09-07",
+            },
+            "fsteel-3": {
+              "finish": "2026-10-02",
+              "start": "2026-09-07",
+            },
+          },
+          "lockedOn": "2026-07-01",
+        },
+        "lookAhead": [
+          {
+            "done": true,
+            "lineId": "fsteel-2",
+            "markedOn": "2026-09-18",
+            "packageId": "fsteel",
+            "verifiedOn": "2026-09-21",
+            "weekOf": "2026-09-14",
+          },
+          {
+            "done": true,
+            "lineId": "fsteel-3",
+            "markedOn": "2026-09-18",
+            "packageId": "fsteel",
+            "verifiedOn": "2026-09-21",
+            "weekOf": "2026-09-14",
+          },
+          {
+            "done": false,
+            "lineId": "felec-2",
+            "markedOn": "2026-09-18",
+            "packageId": "felec",
+            "reason": "materials",
+            "verifiedOn": "2026-09-21",
+            "weekOf": "2026-09-14",
+          },
+          {
+            "done": true,
+            "lineId": "fplumb-2",
+            "markedOn": "2026-09-18",
+            "packageId": "fplumb",
+            "verifiedOn": "2026-09-21",
+            "weekOf": "2026-09-14",
+          },
+          {
+            "done": true,
+            "lineId": "fhvac-2",
+            "markedOn": "2026-09-18",
+            "packageId": "fhvac",
+            "verifiedOn": "2026-09-21",
+            "weekOf": "2026-09-14",
+          },
+          {
+            "done": false,
+            "lineId": "froof-1",
+            "markedOn": "2026-09-25",
+            "packageId": "froof",
+            "reason": "weather",
+            "verifiedOn": "2026-09-28",
+            "weekOf": "2026-09-21",
+          },
+          {
+            "done": true,
+            "lineId": "froof-2",
+            "markedOn": "2026-09-25",
+            "packageId": "froof",
+            "verifiedOn": "2026-09-28",
+            "weekOf": "2026-09-21",
+          },
+          {
+            "done": false,
+            "lineId": "fsteel-3",
+            "markedOn": "2026-09-25",
+            "packageId": "fsteel",
+            "reason": "crew",
+            "verifiedOn": "2026-09-28",
+            "weekOf": "2026-09-21",
+          },
+          {
+            "done": true,
+            "lineId": "fplumb-2",
+            "markedOn": "2026-09-25",
+            "packageId": "fplumb",
+            "verifiedOn": "2026-09-28",
+            "weekOf": "2026-09-21",
+          },
+          {
+            "done": true,
+            "lineId": "fhvac-2",
+            "markedOn": "2026-09-25",
+            "packageId": "fhvac",
+            "verifiedOn": "2026-09-28",
+            "weekOf": "2026-09-21",
+          },
+          {
+            "done": true,
+            "lineId": "froof-1",
+            "markedOn": "2026-10-02",
+            "packageId": "froof",
+            "verifiedOn": null,
+            "weekOf": "2026-09-28",
+          },
+          {
+            "done": false,
+            "lineId": "fsteel-3",
+            "markedOn": "2026-10-02",
+            "packageId": "fsteel",
+            "reason": "crew",
+            "verifiedOn": null,
+            "weekOf": "2026-09-28",
+          },
+          {
+            "done": false,
+            "lineId": "felec-2",
+            "markedOn": "2026-10-02",
+            "packageId": "felec",
+            "reason": "materials",
+            "verifiedOn": null,
+            "weekOf": "2026-09-28",
+          },
+          {
+            "done": true,
+            "lineId": "fplumb-3",
+            "markedOn": "2026-10-02",
+            "packageId": "fplumb",
+            "verifiedOn": "2026-10-02",
+            "weekOf": "2026-09-28",
+          },
+          {
+            "done": true,
+            "lineId": "fhvac-2",
+            "markedOn": "2026-10-02",
+            "packageId": "fhvac",
+            "verifiedOn": null,
+            "weekOf": "2026-09-28",
+          },
+        ],
+        "milestones": [
+          {
+            "id": "fo-slab",
+            "label": "Slab poured",
+            "metOn": "2026-08-27",
+            "packageId": "fconc",
+            "planned": "2026-08-28",
+          },
+          {
+            "id": "fo-dryin",
+            "label": "Dry-in",
+            "metOn": null,
+            "packageId": "froof",
+            "planned": "2026-09-25",
+          },
+          {
+            "id": "fo-roughin",
+            "label": "Rough-in inspection",
+            "metOn": null,
+            "packageId": null,
+            "planned": "2026-10-06",
+          },
+          {
+            "id": "fo-substantial",
+            "label": "Substantial completion",
+            "metOn": null,
+            "packageId": null,
+            "planned": "2026-12-11",
+          },
+        ],
+      },
       "sheets": [
         {
           "id": "G-001",
@@ -11387,8 +12227,9 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
           ],
           "selfPerform": {
             "note": "Ours. Price it as our own bid in Trades mode.",
+            "priced": true,
             "ref": "New bid",
-            "value": 72000,
+            "value": 68000,
           },
           "sow": null,
           "trade": "Plumbing",

@@ -341,3 +341,34 @@ describe('Needs you on a job being built', () => {
     expect(todos.some((t) => t.key.endsWith(':draw'))).toBe(false)
   })
 })
+
+describe('a draw approved for less', () => {
+  const ids = { projectId: 'helotes', packageId: 'dry' }
+  const typed = { periodTo: '2026-10-02', address: '418 River Rd, Boerne, TX 78006', license: '', signedBy: 'Rosa Medina', signedTitle: 'Office manager' }
+  const asked = gcReducer(state, { type: 'tradeSendPayApp', ...ids, toPct: { 'dry-2': 60 }, ...typed })
+  const less = gcReducer(asked, { type: 'approveDrawLess', ...ids, drawId: 'dry-draw-2', weApprove: { 'dry-2': 40 }, note: 'The hall is not taped.' })
+  const draw = less.projects.find((p) => p.id === 'helotes')?.packages.find((k) => k.id === 'dry')?.sow?.draws[1]
+
+  it('tells Hill Country what we approved of what it asked, until it is paid', () => {
+    if (!draw?.asked) throw new Error('no approve-less draw')
+    const line = portalTodos(less, 'hillcountry').find((t) => t.key.includes(':less:'))
+    expect(line?.text).toBe(
+      `Click approved ${'$' + draw.net.toLocaleString('en-US')} of the ${'$' + draw.asked.net.toLocaleString('en-US')} you asked for on Helotes Dental Office. The rest is still yours to ask for.`,
+    )
+    const paid = gcReducer(less, { type: 'payDraw', ...ids, drawId: 'dry-draw-2' })
+    expect(portalTodos(paid, 'hillcountry').some((t) => t.key.includes(':less:'))).toBe(false)
+  })
+
+  it('sends a message on the day we approved less, with our reason', () => {
+    const m = portalMessages(less, 'hillcountry').find((x) => x.kind === 'less')
+    expect(m?.subject).toBe('Pay application 2 on Helotes Dental Office: approved for less')
+    expect(m?.lines).toContain('The hall is not taped.')
+    expect(m?.on).toBe(less.today)
+  })
+
+  it('says nothing about less on a draw approved as asked', () => {
+    const approved = gcReducer(asked, { type: 'approveDraw', ...ids, drawId: 'dry-draw-2' })
+    expect(portalTodos(approved, 'hillcountry').some((t) => t.key.includes(':less:'))).toBe(false)
+    expect(portalMessages(approved, 'hillcountry').some((x) => x.kind === 'less')).toBe(false)
+  })
+})

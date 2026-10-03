@@ -9,6 +9,7 @@ import { planRecipients } from './gcPlans'
 import { bidsIn } from './gcBids'
 import { awardedPartner, find, logged, mapInvite, mapPackage, mapProject, mapSow, sowFromBid } from './gcReducerHelpers'
 import { initialGcState } from './gcFixture'
+import { draftSchedule, scheduleLinesOf, withBaselineKept } from './gcBuildingSchedule'
 import { buildNewProject, packagesFromDrafts, withNewLines, withTradesInOrder } from './gcNewProject'
 import { crewPctFromStages, drawApprovedLess, finalPayApplication, jobCloseout, payApplication, timesSentBack, tradeCloseout, workAllBilled } from './gcBuilding'
 import { ownerCloseout, ownerFinalPayAppToSend, ownerPayApp, ownerPayAppHasWork, ownerPayAppToSend } from './gcOwnerBilling'
@@ -837,6 +838,72 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
         mapPackage(p, pkg.id, (k) => (k.selfPerform ? { ...k, selfPerform: { ...k.selfPerform, pctByLine, pctDone } } : k)),
       )
       return logged(next, 'office', `Our own crew reported ${line.label} on ${pkg.trade} at ${pct}%. The whole trade is ${pctDone}% done.`)
+    }
+
+    case 'priceOwnBid': {
+      // Our own bid in Trades mode is priced: the trade now carries a real number.
+      const { project, pkg } = find(state, action.projectId, action.packageId)
+      if (!project || !pkg?.selfPerform) return state
+      const next = mapProject(state, project.id, (p) =>
+        mapPackage(p, pkg.id, (k) => (k.selfPerform ? { ...k, selfPerform: { ...k.selfPerform, value: action.value, priced: true } } : k)),
+      )
+      return logged(next, 'office', `Priced our own bid on ${pkg.trade} for ${project.name}: ${money(action.value)}.`)
+    }
+
+    case 'draftSchedule': {
+      // A first draft to draw from, only when nothing is drawn yet (owner, 2026-10-02: we draw it).
+      const project = state.projects.find((p) => p.id === action.projectId)
+      if (!project || project.schedule || !action.start) return state
+      const schedule = draftSchedule(project, action.start)
+      const next = mapProject(state, project.id, (p) => ({ ...p, schedule }))
+      return logged(next, 'office', `Drew a first draft of the schedule on ${project.name}: ${schedule.activities.length} activities from ${weekdayDate(action.start)}.`)
+    }
+
+    case 'setScheduleActivity': {
+      // Change an activity's dates and what it waits on. After Start, the plan at Start is kept as
+      // the baseline first, so the measures read against it.
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const schedule = project?.schedule
+      const activity = schedule?.activities.find((a) => a.lineId === action.lineId)
+      if (!project || !schedule || !activity || !action.start || !action.finish || action.finish < action.start) return state
+      const ids = new Set(schedule.activities.map((a) => a.lineId))
+      const after = [...new Set(action.after)].filter((id) => id !== activity.lineId && ids.has(id))
+      if (activity.start === action.start && activity.finish === action.finish && after.join() === activity.after.join()) return state
+      const kept = withBaselineKept(project, schedule)
+      const changed = { ...kept, activities: kept.activities.map((a) => (a.lineId === activity.lineId ? { ...a, start: action.start, finish: action.finish, after } : a)) }
+      const pkg = project.packages.find((k) => k.id === activity.packageId)
+      const label = pkg ? (scheduleLinesOf(pkg).find((l) => l.lineId === activity.lineId)?.label ?? activity.lineId) : activity.lineId
+      return logged(
+        mapProject(state, project.id, (p) => ({ ...p, schedule: changed })),
+        'office',
+        `${pkg?.trade ?? 'An activity'} · ${label} now runs ${weekdayDate(action.start)} to ${weekdayDate(action.finish)}.`,
+      )
+    }
+
+    case 'setScheduleMilestone': {
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const schedule = project?.schedule
+      const m = action.milestone
+      if (!project || !schedule || !m.label.trim() || !m.planned) return state
+      const known = schedule.milestones.some((x) => x.id === m.id)
+      const milestones = known ? schedule.milestones.map((x) => (x.id === m.id ? { ...m, label: m.label.trim() } : x)) : [...schedule.milestones, { ...m, label: m.label.trim() }]
+      return logged(
+        mapProject(state, project.id, (p) => ({ ...p, schedule: { ...schedule, milestones } })),
+        'office',
+        `${m.label.trim()} on ${project.name} is planned for ${weekdayDate(m.planned)}.`,
+      )
+    }
+
+    case 'removeScheduleMilestone': {
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const schedule = project?.schedule
+      const m = schedule?.milestones.find((x) => x.id === action.milestoneId)
+      if (!project || !schedule || !m) return state
+      return logged(
+        mapProject(state, project.id, (p) => ({ ...p, schedule: { ...schedule, milestones: schedule.milestones.filter((x) => x.id !== m.id) } })),
+        'office',
+        `Took ${m.label} off the schedule on ${project.name}.`,
+      )
     }
   }
 }

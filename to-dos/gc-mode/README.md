@@ -67,6 +67,7 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
 | Where | What it does |
 |---|---|
 | **New here?** (top right) | An 11-stop spotlight walkthrough of the three stages on the Project Board: each stage's question, what you do in it, how it ends, then where to try it. Stops in `src/lib/gcMode/gcTour.ts`, on the app's `SpotlightTour`. |
+| **+ ?** after a number | A quote that leaves out work with no cost set still counts that work as $0 in its all-in number, so every place that number shows says "+ ?": Trades' *Lowest, all in* and *We are carrying*, Compare bids' *All in*, the *Award at* buttons, Our number's *Carried*, *Trades* and the price, and the price on the board row and the project header. Hovering names the work ("1 line has no cost yet: roof curbs."). Against our budget reads "at least $X over" or "not known yet". Setting the cost in Compare bids clears it. `uncostedLines`, `carriedUncosted`, `proposalUncosted` in `gcBids.ts`; the totals themselves are unchanged. |
 | The ring on each row | How far the project is through its stage (`stageProgress` in the model; `GcProgressRing`). Hover it, tap it on a phone, or tab to it: a card lists what the ring counts by type, what is left in each spelled out, what is done in one line, and an *Also* list it does not count. Bidding: enough quotes (2 per hired trade), a number to carry, quotes on the newest plans, our bid sent. Buyout: the Get started checklist by kind of step (the owner side, awarded, master agreement, insurance, W-9, statement of work). Building: work reported per trade, weighted by its statement of work, and our own crew's percent weighted by our own number; draws and waivers waiting under *Also*. |
 | **Project Board** | Projects in three sections: Bidding to the owner, Buying out, Building. Each row leads with the days left before our bid (red inside a week, amber inside two), then the name, the owner and architect (each a link), chips, the Bid Board's folder and plans icons, and the price. |
 | **+ New project** (beside *Bidding to the owner*) | One window in four steps, each feeding the next. **The project**: name, address, town, owner and architect from the one customer list ("Someone new" makes a record), bid due, size. **The plans**: the set's name (Bid set, Pricing set, Permit set or typed), the day it came in, the sheet index pasted from the cover sheet and read as you paste (A-101, A101, A1.01, FP-101; capitals become sentence case; a line not read is listed). **The trades**: guessed from the sheets in build order, each with the sheets behind it; untick, add, mark **Ours**, a budget. **Each scope**: each trade's usual lines to change, each with the sheets it reads from (guessed from its words, × takes one off, **+ sheet** adds one; none means the trade's sheets as a whole); Enter starts the next line. **Who to ask**: for each trade we hire out, every company that does it, closest first, with its drive, how it answers asks and any missing paperwork; the closest three in range come ticked. **Create the project** puts it under Bidding to the owner, sends each ticked company the board's invitation, and opens it on Trades. **Paste a made-up sheet index** tries it. |
@@ -84,9 +85,10 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
 | **Bill the owner** | Our pay application to the owner, once a month: one line per trade with the work its company reported, each carrying its share of our general conditions, contingency and fee ("Their price $64,200 plus $23,852 of our costs and fee"). No fee line. Done so far, less what the owner holds, less what we asked for before, is this bill. **Send to** the owner keeps it as it went, and next month's starts from it. **So far with** the owner lists what went, with **Mark paid**. A trade our own crew does (plumbing) has a percent-done picker on its line. **Waivers with this bill** says whose waiver is missing. **See what the owner sees** puts their portal beside it: their contract, each bill with every line and **Pay**, and their papers (our lien waivers and the trades'). A trade's pay application we sent back bills what we see on the lines we doubt. Once every line is billed, **Closeout with** the owner replaces the draft: every trade's final, the owner's **Accept the work**, then **Send the final pay application** for what they hold. |
 | **Follow up** (board tab) | Everyone we are waiting on across every project, the ones to call first. Log a contact; record the day they promised a quote; a passed day returns them to the top. |
 | **Trade partners** (board tab) | By trade: the bench, who answers when asked, every project short of quotes, coverage (where they drive from, how far they go), one press to ask the companies not yet asked. **Actions for assistants** on top: each standard as the ideal, where we are, and what closes the gap. |
-| The trade's portal | One link per company, carried by every message we send (**Their messages** beside **Their portal**: the invitation as an email and a text, reminders, new plan sets, bid tabs, the master agreement, a statement of work to sign, and the day work starts by email and text). The first visit opens on a welcome until **Got it**. The link opens on the company's **home**: what needs them across every project (late or blocking first; a pay application we sent back, their closeout steps), their money once a dollar moves, their jobs, what they are asked to bid, their paperwork, and what came before. A row opens that project's page, with **← Everything with Click** back. On a project page: paperwork done by the company itself (read and sign the master agreement, send an insurance certificate, fill in and sign a W-9), the plans window (sets, sheets, whether a set changes their trade), the invitation and the bid form (each line with its sheet numbers, a tap opens that sheet; after a new set the lines it touches are marked; how many days the number is good for; alternates that add or take off; their own quote attached), "tell Click when your number will come" (a passed day shows in red), answer a line the office could not read (its own short step, the number stays), confirm a number after an addendum, the bid tab, sign the statement of work, report work, ask for a draw with its pay application (next row). |
+| The trade's portal | English or Spanish (**Español** on the portal's letterhead: every word the portal writes, and the messages). One link per company, carried by every message we send (**Their messages** beside **Their portal**: the invitation as an email and a text, reminders, new plan sets, bid tabs, the master agreement, a statement of work to sign, the day work starts by email and text, and a draw approved for less with our reason). The first visit opens on a welcome until **Got it**. The link opens on the company's **home**: what needs them across every project (late or blocking first; a pay application we sent back, a draw we approved for less, their closeout steps), their money once a dollar moves, their jobs, what they are asked to bid, their paperwork, and what came before. A row opens that project's page, with **← Everything with Click** back. On a project page: paperwork done by the company itself (read and sign the master agreement, send an insurance certificate, fill in and sign a W-9), the plans window (sets, sheets, whether a set changes their trade), the invitation and the bid form (each line with its sheet numbers, a tap opens that sheet; after a new set the lines it touches are marked; how many days the number is good for; alternates that add or take off; their own quote attached), "tell Click when your number will come" (a passed day shows in red), answer a line the office could not read (its own short step, the number stays), confirm a number after an addendum, the bid tab, sign the statement of work, report work, ask for a draw with its pay application (next row). |
 | Pay application (from the portal) | **Fill out pay application N**: four steps on a rail like the Release of Lien window (Check your work, Fill in a few details, Sign it, Send it to Click) beside the 702 and 703, which fill in as the trade types and mark what each step fills. The app knows the job, the contract, the lines, what was billed and the retainage; the trade checks the percents, picks the period, types its address once, and signs. Closing the window keeps the draft. |
 | **Closeout** | Each trade's last six steps: every line billed, **Accept the work** (the punch list is done), their final pay application for the retainage with a conditional final release of lien, the owner paying our final and 10 days passing, **Approve the release** and **Mark paid**, their unconditional final release of lien. Totals for held, paid back and trades closed out; the owner's retainage on us, read from Bill the owner; **Close the job** once every trade is closed out, with what is left until then. In the portal the same steps show as the trade's closeout list, ending "You are closed out on this job." |
+| **Schedule** | Each activity is a line of a trade's statement of work, or a stage our own crew runs. Four measures on top: work done against the plan with days behind (by dollars), the critical path (no spare days), milestones hit within 3 days, and the look-ahead done as planned (verified marks, last 4 weeks). The chart: each trade's lines, the plan with percent done, the plan at Start under it where it moved, today, milestones. The look-ahead: this week and the next two, this week's marks with their state. In Buying out it is drawn here: **Draw a first draft** (every line of every trade, by phase), then pick any activity to set its dates and what it waits on, and add, move or take off milestones; the first change after Start keeps the plan at Start as the baseline. Fair Oaks D has one drawn; draw Helotes. |
 
 ## Decided by the owner (2026-10-02)
 
@@ -145,11 +147,22 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   and the step move together when question 7 is answered. A company missing its master
   agreement, insurance or W-9 is still ticked, with what is missing in a muted line: paperwork is
   fixed before award, not before a quote. Create sends the board's own invite to each.
+- **Our own trade counts once our bid is priced** (answered 2026-10-02, was open question 10):
+  ticking **Ours** on a new project starts our own bid in Trades mode (`selfPerform.priced:
+  false`, our guess as its value). The trade becomes a real number when that bid is priced
+  (`priceOwnBid`; `ownBidPriced` in `gcLookups.ts`). The made-up projects' own trades are priced
+  already.
+- **A won job's row shows what is next, not when our bid went in** (2026-10-03): on Buying out
+  the block beside the ring shows the days until the planned start (the Board lane, now); on
+  Building it shows the schedule's measures, days behind or ahead with milestones and the
+  look-ahead, once the schedule is built (the Building lane builds the measures, the Board lane
+  shows them).
 - **The schedule** (2026-10-02, decided before anything is built): several activities per trade,
   like rough in, top out and trim. We draw it; the companies do not propose dates. It lives only
   inside GC mode for now, not on the app's Schedule page. A milestone counts as hit within a few
-  days of its planned day. Each week the trade marks its look-ahead activities done or not in its
-  portal, and our superintendent verifies them; only a verified mark counts. The proposal is
+  days of its planned day. The look-ahead shows three weeks. Each week the trade marks its
+  look-ahead activities done or not in its portal, and our superintendent verifies them; only a
+  verified mark counts. The proposal is
   under *The schedule (proposed)*.
 - **Each draw comes with a 702 and 703** (2026-10-02, Building lane): the trade fills the pay
   application in its portal and watches the form fill, typing only what the app cannot know. Most
@@ -231,6 +244,10 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
 - Red inside 7 days and amber inside 14 on the days-left block.
 - The schedule's "a few days" of grace on a milestone is 3 days (`MILESTONE_GRACE_DAYS`, not built
   yet).
+- A new project's budgets start blank. **Fill the empty budgets from the size** multiplies the
+  square feet in the size line by a rough cost per square foot for each trade
+  (`BUDGET_PER_SQ_FT`, made-up numbers, $3 for painting to $18 for steel and electrical),
+  rounded to $500. The owner left this call to the New Project lane.
 - A new set starts as an addendum while we bid and a bulletin once the job is ours. In pasted
   notes a sheet number without a dash needs three digits (A101, not R30), and a sheet the index
   lacks is written the way the index writes its others (S301 reads S-301).
@@ -238,6 +255,10 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
   the company), and a typed name and title with the waiver tick as the signature. A line can be
   lowered to what was billed before, never below. The 702's "To" line reads Click Construction,
   the name the portal already uses (`GC_COMPANY_NAME`).
+- The schedule counts calendar days, not work days. The look-ahead's reliability is read over the
+  last 4 weeks (`RELIABILITY_WEEKS`). A line we sent back counts at what we see on it. The first
+  draft runs each activity 10 days (`DRAFT_ACTIVITY_DAYS`), trades by phase: site, structure, roof,
+  the rough-ins, the walls, the finishes.
 - Closeout: a release's approval is locked by the same paperwork rules as a draw. "Held" counts
   until the release is paid, not when it is approved (`retainageHeldNow`). The stages of our own
   crew's work are worth underground 20%, rough in 35%, top out 25%, trim 20%
@@ -268,6 +289,11 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
   shows as ran out and asks to be sent again. Alternates are the company's own (another way, at a
   different price); the office does not set alternates every bidder must price. Only the quote
   file's name is kept.
+- The portal's Spanish follows the sub portal's (usted, its terms: Contrato maestro, orden de
+  trabajo, renuncia de gravamen). What the office typed (project names, trades, scope lines, notes)
+  stays as typed. The choice lasts while the portal is open; the Building lane's pay application
+  and the Board lane's bid tab table inside the portal stay English until those lanes pass the
+  language through (`usePortalLang` in `gcPortalLang.ts`).
 
 ## Open questions (the owner's to answer)
 
@@ -284,10 +310,10 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
 8. Should promises other than a quote date be tracked (insurance by Friday, a start date)?
 9. Should the Project Board also group by customer, and should Actions for assistants also sit
    on the Project Board?
-10. A trade ticked **Ours** on a new project counts as a real number on the ring, even at $0.
-    Should ticking it start our own bid in Trades mode, and count only once that bid is priced?
-11. A new project's budgets start blank. Should a budget come from the size (a cost per square
-    foot for each trade)? Asked before building, after distance pricing was built and removed.
+10. ~~Should ticking **Ours** start our own bid in Trades mode, and count only once that bid is
+    priced?~~ Answered 2026-10-02: yes (see *Decided by the owner*).
+11. ~~Should a budget come from the size?~~ Left to the New Project lane, 2026-10-02: budgets
+    start blank and **Fill the empty budgets from the size** fills them (see *My defaults*).
 12. The pay application leaves out the notary block, materials stored on site (column F reads $0)
     and change orders (line 2 reads $0). Which of these do our trades need? Should it also
     download as the AIA Excel template the Jobs Stages tab fills, or as a PDF?
@@ -311,19 +337,24 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
 21. ~~Should our own crew report by stage?~~ Answered: yes (*Decided by the owner*).
 22. Should a trade see sheets the office did not set (the dashed ones, matched from the line's
     words), or only the sheets the office set when writing the scope?
-23. The schedule: how many weeks does the look-ahead show, two or three? (The other half,
-    answered 2026-10-02: a milestone is hit within a few days of its planned day.)
+23. ~~The schedule: is a milestone hit only on its day, and how many weeks does the look-ahead
+    show?~~ Answered 2026-10-02: within a few days, and three weeks.
 24. ~~The schedule: who marks a look-ahead activity done or not each week?~~ Answered
     2026-10-02: the trade in its portal, verified by our superintendent.
+25. Should a company's language be kept on its record, so its emails go out in Spanish, and
+    should the office be able to set it? Today the choice lasts while the portal is open. The
+    Spanish was written by the prototype; a native speaker should read it before it ships.
 
 ## The schedule (proposed, 2026-10-02)
 
-Nothing is built. The owner's three answers are under *Decided by the owner*; this is the shape
+Built so far (Building lane, 2026-10-03): the **Schedule** tab, its four measures and the look-ahead on Fair Oaks D, and drawing it in Buying out with Start keeping the baseline (`gcBuildingSchedule.ts`, `GcBuildingSchedule.tsx`). The superintendent's verify list is next. The first draft's build order is a stand-in (`DRAFT_BUILD_ORDER`) until the New Project lane's draft. The owner's answers are under *Decided by the owner*; this is the shape
 they point to, for the lanes to pick up.
 
 - **The activities are the statement of work lines**: the same schedule-of-values lines a trade
-  reports its percent on and draws against. Plumbing's are underground, rough in, top out and
-  trim. So "how far along" and "how far along it should be" are read on the same line.
+  reports its percent on and draws against. Our own crew has no statement of work; its activities
+  are its scope lines, which it already reports by stage (`selfPerform.pctByLine`, `crewStages`
+  in `gcBuilding.ts`): underground, rough in, top out and trim. So "how far along" and "how far
+  along it should be" are read on the same line for every trade.
 - **We draw it during Buying out.** Each activity gets a planned start and finish and the
   activities it waits on. The trades' build order (sitework, concrete, steel, roofing, the rough
   ins, drywall, the trims) is the first draft of those links. Milestones (dry-in, rough-in
@@ -337,7 +368,7 @@ they point to, for the lanes to pick up.
   - *Milestone hit rate*: milestones finished within a few days of their planned day
     (`MILESTONE_GRACE_DAYS`), for the job and for each company.
   - *Look-ahead reliability*: each week the schedule lists the coming weeks' activities (two or
-    three, open question 23). At the week's end the trade marks each done or not in its portal,
+    three weeks). At the week's end the trade marks each done or not in its portal,
     with a reason when not (weather, the trade before, materials, crew), and our superintendent
     verifies the mark or corrects it. Verified done out of planned, per week, per trade and per
     company. A mark not yet verified is shown as waiting and does not count.
@@ -353,13 +384,12 @@ they point to, for the lanes to pick up.
 
 ## Workflow steps not built yet
 
-- The schedule and its four measures (*The schedule, proposed*).
+- The schedule, the rest: the superintendent's verify list, and the other lanes' parts (*The schedule, proposed*).
 
 - New Project past its first form: a scope line tied to its spec section, exclusions, and a
-  budget from the size (open question 11). A line's sheets show only in New Project, a new set
+  budget from real costs, not a made-up rate per square foot. A line's sheets show only in New Project, a new set
   and the plans window; the portal's bid form, Trades and Compare bids do not show them yet. A
-  later set cannot yet take a sheet out of the set. The Trades table's "lowest, all in" counts
-  a line with no cost to cover it as $0 (Compare bids says the number is not known).
+  later set cannot yet take a sheet out of the set.
 - A trade asks a question about the plans, the architect answers, every bidder on the trade
   gets the answer. Three made-up questions show in the architect's window, read-only.
 - Change orders, both to the owner and to a trade (a statement of work amendment).
@@ -406,11 +436,13 @@ imitates it.
 | `gcBids.ts` · `gcCustomers.ts` · `gcMap.ts` | Compare all in, what we carry, our price, bid tabs, statement-of-work money · the company window's summaries · towns, the drive and the map's list. |
 | `gcFollowUp.ts` · `gcBench.ts` | Promised days, word records, who to call first · the bench by trade and Actions for assistants. |
 | `gcNewProject.ts` · `gcNewProject.test.ts` | New Project: the sheet index read from a paste, the trades guessed from the sheets (a later set uses the same guess, `packagesForSheets`), each trade's usual scope and each line's sheets (`guessLineSheets`, `lineSheets`, `linesOnSheets`), the project made from the draft (`createProject`), trades a later set brings · its kernel test. |
+| `gcPortalI18n.ts` · `gcPortalI18n.test.ts` | Every word of the trade's portal in English and Spanish, the Spanish dates, and the test that both languages carry the same blanks |
 | `gcPortal.ts` · `gcPortal.test.ts` | What the portal tells one company: its home (every ask sorted into bidding, jobs and before, what needs it in order, its money), plan news for its trade, its promised day, its insurance, the lines the office could not read, each line's sheets and what a newer set changed (`portalLines`, on `lineReads`) · its kernel test. |
 | `gcReducer.ts` · `gcReducerHelpers.ts` · `gcFixture.ts` | Every action applied to the state · its small helpers (not in the barrel) · the made-up data (`initialGcState`). |
 | `gcModel.test.ts` | The golden test (see *Working in parallel*). |
 | `GcOfficeTabs.tsx` | Trades (with Compare bids), Plans, Our number, Contracts, Draws, the flat company list |
 | `GcTradePortal.tsx` | The trade partner's side: the frame, each trade's plans, bid, bid tab, statement of work and draws |
+| `gcPortalLang.ts` | The portal's language, held by the frame and read by every portal screen (`usePortalLang`) |
 | `GcPortalBidExtras.tsx` | The bid form past the number: good for how many days, alternates, the company's own quote, answering the lines the office could not read |
 | `GcPortalLineSheets.tsx` | The sheet numbers beside each line of the bid form, and the lines a new set touches |
 | `GcPortalHome.tsx` · `GcPortalMessages.tsx` | The company's home in its portal, where the link lands, with the first-visit welcome · what we sent the company, each message carrying the link |
@@ -423,6 +455,7 @@ imitates it.
 | `GcBuildingPayApp.tsx` · `src/lib/gcMode/gcBuilding.ts` | The pay application window (progress and final), its door in the portal (which turns into the trade's closeout list) and its read-only view from Draws · the 702 and 703 numbers, the four steps, retainage held and each trade's closeout (tested in `gcBuilding.test.ts`) |
 | `GcOwnerBillingTab.tsx` · `GcOwnerBillingPortal.tsx` · `src/lib/gcMode/gcOwnerBilling.ts` | Bill the owner: the owner's lines, the draft pay application, the ones sent and paid · what the owner sees · the lines and the 702 math, `ownerAccount`, our waivers and the trades' (tested in `gcOwnerBilling.test.ts`) |
 | `GcCloseout.tsx` | The Closeout tab |
+| `GcBuildingSchedule.tsx` · `src/lib/gcMode/gcBuildingSchedule.ts` | The Schedule tab · its rows, the four measures and the look-ahead (tested in `gcBuildingSchedule.test.ts`) |
 | `GcBuildingSendBack.tsx` | The Send back form under a waiting draw, and the list of what went back |
 | `GcBuildingCrew.tsx` | The Our own crew card on Draws |
 | `GcStart.tsx` | Get started |
@@ -448,7 +481,7 @@ branch and a dev-server port of its own; `spike/gc-mode` is where the lanes meet
 |---|---|---|---|---|
 | Board | `spike/gc-mode` (works on it directly) | 5237 | The Project Board and a project's office tabs: the row, the ring and its card, New here?, Trades and Compare bids, Our number, Bid tabs, Contracts, Get started, Follow up, Trade partners, the map, the company window | `src/pages/GcMode.tsx`; `src/components/gc/`: `GcOfficeTabs.tsx` (all but `GcDrawsTab`), `GcProgressRing.tsx`, `GcStart.tsx`, `GcBidTabs.tsx`, `GcAskThread.tsx`, `GcTradeBench.tsx`, `GcTradeMap.tsx`, `GcCustomerWindow.tsx`, `BidsModeToggle.tsx`, `gcUi.tsx`, `gcIcons.ts`; `src/lib/gcMode/`: `gcProgress.ts` (all but `buildingProgress`), `gcStart.ts`, `gcBids.ts`, `gcFollowUp.ts`, `gcBench.ts`, `gcMap.ts`, `gcCustomers.ts`, `gcTour.ts` |
 | Portal | `spike/gc-mode-portal` | 5241 | The trade partner's portal: everything a company sees and presses | `src/components/gc/GcTradePortal.tsx`; new files `src/components/gc/GcPortal*.tsx`, `src/lib/gcMode/gcPortal.ts` |
-| Building | `spike/gc-mode-building` | 5242 | Building and Closeout: reports, draws, retainage release, final waivers | `GcDrawsTab` inside `src/components/gc/GcOfficeTabs.tsx` (that function only); `buildingProgress` in `src/lib/gcMode/gcProgress.ts` (that function only); new files `src/components/gc/GcBuilding*.tsx` / `GcCloseout*.tsx`, `src/lib/gcMode/gcBuilding.ts` |
+| Building | `spike/gc-mode-building` | 5242 | Building and Closeout: reports, draws, retainage release, final waivers | `GcDrawsTab` inside `src/components/gc/GcOfficeTabs.tsx` (that function only); `buildingProgress` in `src/lib/gcMode/gcProgress.ts` (that function only); new files `src/components/gc/GcBuilding*.tsx` / `GcCloseout*.tsx`, `src/lib/gcMode/gcBuilding*.ts` |
 | New Project | `spike/gc-mode-new-project` | 5243 | New Project with the plans coming in, splitting the plans into trades, writing each scope; the plan sets that follow | `src/components/gc/GcNewPlans.tsx`, `GcPlansQuickLook.tsx`; `src/lib/gcMode/gcPlans.ts`; new files `src/components/gc/GcNewProject*.tsx`, `src/lib/gcMode/gcNewProject.ts` |
 | Owner Billing | `spike/gc-mode-owner-billing` | 5244 | Billing the owner: our pay applications from the work the trades report, the retainage the owner holds on us, what the owner has paid | new files `src/components/gc/GcOwnerBilling*.tsx`, `src/lib/gcMode/gcOwnerBilling.ts`; the `OwnerBilling` record in `gcTypes.ts` (add fields only). It reads the trades' reported work (Building's) and never writes it; the owner window's billed and paid cells (`GcCustomerWindow.tsx`, `customerSummary`) stay the Board's to change |
 

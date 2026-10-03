@@ -287,6 +287,22 @@ const STEPS: Step[] = [
   },
   { label: 'Our crew reports underground done', action: { type: 'selfReportStage', projectId: 'helotes', packageId: 'dplumb', lineId: 'dplumb-1', pct: 100 } },
   { label: 'Close Fair Oaks D with work still open (the screen would not offer it)', action: { type: 'closeJob', projectId: 'fairoaksd' } },
+  // Our own bid on a new project's trade: started unpriced, then priced.
+  {
+    label: 'Leon Springs: we price our own plumbing bid',
+    action: { type: 'priceOwnBid', projectId: 'leon-springs-urgent-care', packageId: 'leon-springs-urgent-care-plumbing', value: 68_000 },
+  },
+  // The schedule, drawn (Building lane): a first draft on Helotes, an activity moved, milestones.
+  { label: 'Draw Helotes’s schedule from Oct 12', action: { type: 'draftSchedule', projectId: 'helotes', start: '2026-10-12' } },
+  {
+    label: 'Framing waits on electrical: Nov 16 to 25',
+    action: { type: 'setScheduleActivity', projectId: 'helotes', lineId: 'dry-1', start: '2026-11-16', finish: '2026-11-25', after: ['delec-1'] },
+  },
+  {
+    label: 'A milestone: cabinets set',
+    action: { type: 'setScheduleMilestone', projectId: 'helotes', milestone: { id: 'helotes-ms-cabinets', label: 'Cabinets set', planned: '2026-12-18', packageId: 'mill', metOn: null } },
+  },
+  { label: 'Take the rough-in inspection off', action: { type: 'removeScheduleMilestone', projectId: 'helotes', milestoneId: 'helotes-roughin' } },
 ]
 
 const CUSTOMER_IDS = ['cibolo', 'raman']
@@ -417,8 +433,10 @@ describe('GC mode golden walk', () => {
       'ownerAcceptsWork', 'sendOwnerFinalPayApp',
       'sendDrawBack',
       'closeJob', 'approveDrawLess', 'selfReportStage',
+      'draftSchedule', 'setScheduleActivity', 'setScheduleMilestone', 'removeScheduleMilestone',
       'tradeOpenPortal',
       'tradeAnswerLines',
+      'priceOwnBid',
     ]
     expect(all.filter((t) => !used.has(t))).toEqual([])
   })

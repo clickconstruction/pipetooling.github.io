@@ -6,11 +6,12 @@
  * The words follow the plain-words rules at the top of `gcTour.ts`.
  */
 import type { BidAlternate, GcProject, GcState, Invite, Partner, PlanSet, ScopeItem, SubBid, TradePackage } from './gcTypes'
-import { daysUntil, money, shortDate, weekdayDate } from './gcWords'
+import { daysUntil, money } from './gcWords'
 import { currentRev, partnerById } from './gcLookups'
 import { askPromise, type AskPromise } from './gcFollowUp'
 import { bidIsStale, sowMoney } from './gcBids'
 import { GC_COMPANY } from './gcFixture'
+import { pDate, pt, pWeekday, type PortalLang } from './gcPortalI18n'
 import { lineReads, tradeSheets } from './gcNewProject'
 import { sentBackOpen, tradeCloseout, workAllBilled } from './gcBuilding'
 import { planLabel } from './gcLookups'
@@ -43,14 +44,14 @@ export function portalPlanNews(project: GcProject, pkg: TradePackage, invite: In
 }
 
 /** The day a company said its number will come, in its own portal's words. Late: the day passed with no number. */
-export function portalPromiseLine(invite: Invite, today: string, gc: string): { text: string; late: boolean } | null {
+export function portalPromiseLine(invite: Invite, today: string, gc: string, lang: PortalLang = 'en'): { text: string; late: boolean } | null {
   const p = askPromise(invite, today)
   if (!p || invite.bid) return null
-  const day = weekdayDate(p.by)
-  if (p.state === 'pending') return { text: `You told ${gc} your number will come by ${day}.`, late: false }
-  if (p.state === 'today') return { text: `You told ${gc} your number will come today.`, late: false }
-  const ago = p.days === 1 ? 'yesterday' : `${p.days} days ago`
-  return { text: `You told ${gc} your number would come by ${day}. That day passed ${ago}. Send your number or give a new day.`, late: true }
+  const date = pWeekday(lang, p.by)
+  if (p.state === 'pending') return { text: pt(lang, 'promisePending', { gc, date }), late: false }
+  if (p.state === 'today') return { text: pt(lang, 'promiseToday', { gc }), late: false }
+  const ago = p.days === 1 ? pt(lang, 'agoYesterday') : pt(lang, 'agoN', { n: p.days })
+  return { text: pt(lang, 'promiseLate', { gc, date, ago }), late: true }
 }
 
 /** One line of a company's paperwork: is it done, and what the chip beside it says. */
@@ -59,11 +60,11 @@ export interface PortalPaperLine {
   words: string
 }
 
-export function portalInsurance(partner: Partner, today: string): PortalPaperLine & { ranOut: boolean } {
-  if (partner.coiExpires === null) return { done: false, ranOut: false, words: 'none on file' }
+export function portalInsurance(partner: Partner, today: string, lang: PortalLang = 'en'): PortalPaperLine & { ranOut: boolean } {
+  if (partner.coiExpires === null) return { done: false, ranOut: false, words: pt(lang, 'noneOnFile') }
   const left = daysUntil(partner.coiExpires, today)
-  if (left < 0) return { done: false, ranOut: true, words: `ran out ${shortDate(partner.coiExpires)}` }
-  return { done: true, ranOut: false, words: `good to ${shortDate(partner.coiExpires)}` }
+  if (left < 0) return { done: false, ranOut: true, words: pt(lang, 'coiRanOut', { date: pDate(lang, partner.coiExpires) }) }
+  return { done: true, ranOut: false, words: pt(lang, 'coiGoodTo', { date: pDate(lang, partner.coiExpires) }) }
 }
 
 /** The scope lines of a bid the office marked "not clear": the company has to say in or out. */
@@ -180,7 +181,7 @@ export function portalJobMoney(pkg: TradePackage): PortalJobMoney | null {
 const TONE_ORDER: Record<PortalTodo['tone'], number> = { red: 0, amber: 1, plain: 2 }
 
 /** What needs the company, most pressing first: red, then amber, then the rest; sooner days first in each. */
-export function portalTodos(state: GcState, partnerId: string, asks: PortalAsk[] = portalAsks(state, partnerId)): PortalTodo[] {
+export function portalTodos(state: GcState, partnerId: string, asks: PortalAsk[] = portalAsks(state, partnerId), lang: PortalLang = 'en'): PortalTodo[] {
   const partner = partnerById(state, partnerId)
   if (!partner) return []
   const gc = GC_COMPANY.shortName
@@ -192,25 +193,25 @@ export function portalTodos(state: GcState, partnerId: string, asks: PortalAsk[]
     todos.push({
       key: 'msa',
       projectId: null,
-      text: sowWaiting ? 'Read and sign the master agreement. Your statement of work waits on it.' : 'Read and sign the master agreement.',
+      text: pt(lang, sowWaiting ? 'todoMsaWaits' : 'todoMsa'),
       tone: sowWaiting ? 'red' : 'amber',
       by: null,
     })
   }
-  const coi = portalInsurance(partner, today)
+  const coi = portalInsurance(partner, today, lang)
   if (!coi.done) {
     todos.push({
       key: 'coi',
       projectId: null,
-      text: coi.ranOut ? `Your insurance ran out ${shortDate(partner.coiExpires)}. Send a new certificate.` : 'Send your insurance certificate.',
+      text: coi.ranOut ? pt(lang, 'todoCoiRanOut', { date: pDate(lang, partner.coiExpires) }) : pt(lang, 'todoCoi'),
       tone: coi.ranOut ? 'red' : 'amber',
       by: null,
     })
   }
-  if (!partner.w9) todos.push({ key: 'w9', projectId: null, text: 'Fill in your W-9.', tone: 'amber', by: null })
+  if (!partner.w9) todos.push({ key: 'w9', projectId: null, text: pt(lang, 'todoW9'), tone: 'amber', by: null })
 
   for (const a of asks) {
-    const where = a.project.name
+    const project = a.project.name
     const trade = a.pkg.trade
     const key = a.invite.id
     const projectId = a.project.id
@@ -219,62 +220,72 @@ export function portalTodos(state: GcState, partnerId: string, asks: PortalAsk[]
       const left = due ? daysUntil(due, today) : null
       const news = portalPlanNews(a.project, a.pkg, a.invite)
       if (a.invite.bid && a.stale) {
-        todos.push({ key: `${key}:stale`, projectId, text: `The plans changed for ${trade} on ${where}. Confirm your number or change it.`, tone: left !== null && left <= 7 ? 'red' : 'amber', by: due })
+        todos.push({ key: `${key}:stale`, projectId, text: pt(lang, 'todoStale', { trade, project }), tone: left !== null && left <= 7 ? 'red' : 'amber', by: due })
       } else if (a.unclear.length > 0) {
         const n = a.unclear.length
-        todos.push({ key: `${key}:unclear`, projectId, text: `Answer ${n === 1 ? 'one line' : `${n} lines`} of your ${trade} number for ${where}.`, tone: 'amber', by: due })
+        todos.push({ key: `${key}:unclear`, projectId, text: pt(lang, n === 1 ? 'todoUnclear1' : 'todoUnclearN', { n, trade, project }), tone: 'amber', by: due })
       } else if (a.invite.bid && a.ranOut) {
         const until = bidGoodUntil(a.invite.bid)
-        todos.push({ key: `${key}:ranout`, projectId, text: `Your ${trade} number for ${where} ran out ${weekdayDate(until)}. Send it again to keep it good.`, tone: 'amber', by: until })
+        todos.push({ key: `${key}:ranout`, projectId, text: pt(lang, 'todoRanOut', { trade, project, date: pWeekday(lang, until) }), tone: 'amber', by: until })
       } else if (!a.invite.bid && a.promise?.state === 'passed') {
-        todos.push({ key: `${key}:late`, projectId, text: `You said your ${trade} number for ${where} would come ${weekdayDate(a.promise.by)}. Send it or give a new day.`, tone: 'red', by: a.promise.by })
+        todos.push({ key: `${key}:late`, projectId, text: pt(lang, 'todoLate', { trade, project, date: pWeekday(lang, a.promise.by) }), tone: 'red', by: a.promise.by })
       } else if (!a.invite.bid && due) {
-        const open = news.neverOpened ? 'Open the plans and send' : 'Send'
+        const date = pWeekday(lang, due)
         todos.push({
           key: `${key}:send`,
           projectId,
-          text: left !== null && left < 0 ? `Your ${trade} number for ${where} was due ${weekdayDate(due)}.` : `${open} your ${trade} number for ${where} by ${weekdayDate(due)}.`,
+          text: pt(lang, left !== null && left < 0 ? 'todoWasDue' : news.neverOpened ? 'todoOpenSend' : 'todoSend', { trade, project, date }),
           tone: left !== null && left < 0 ? 'red' : left !== null && left <= 7 ? 'amber' : 'plain',
           by: due,
         })
       } else if (news.behind && !news.neverOpened && news.forTrade.length === 0 && news.latest) {
-        todos.push({ key: `${key}:open`, projectId, text: `Open ${news.latest.label} on ${where}. It does not change ${trade}.`, tone: 'plain', by: null })
+        todos.push({ key: `${key}:open`, projectId, text: pt(lang, 'todoOpenSet', { label: news.latest.label, project, trade }), tone: 'plain', by: null })
       }
     }
     if (a.pkg.bidTab && a.invite.bid && !a.pkg.bidTab.seenBy.includes(partnerId)) {
-      todos.push({ key: `${key}:tab`, projectId, text: `See how the ${trade} quotes came in on ${where}.`, tone: 'plain', by: null })
+      todos.push({ key: `${key}:tab`, projectId, text: pt(lang, 'todoTab', { trade, project }), tone: 'plain', by: null })
     }
     if (a.kind === 'job' && a.pkg.sow) {
       const sow = a.pkg.sow
       const signed = sow.status === 'signed'
       if (sow.status === 'sent') {
-        todos.push({ key: `${key}:sow`, projectId, text: `Sign your ${trade} statement of work for ${where}.`, tone: 'amber', by: null })
+        todos.push({ key: `${key}:sow`, projectId, text: pt(lang, 'todoSow', { trade, project }), tone: 'amber', by: null })
       }
       for (const d of sow.draws) {
+        // Approved for less and not paid yet: say so until the money comes.
+        if (d.asked && d.status === 'approved') {
+          todos.push({
+            key: `${key}:less:${d.id}`,
+            projectId,
+            text: pt(lang, 'todoLess', { gc, approved: money(d.net), asked: money(d.asked.net), project }),
+            tone: 'plain',
+            by: d.asked.on,
+          })
+        }
         if (!d.final && d.status === 'paid' && d.waiver === 'conditional') {
-          todos.push({ key: `${key}:waiver:${d.id}`, projectId, text: `Draw ${d.number} on ${where} is paid. Sign the unconditional waiver.`, tone: 'amber', by: null })
+          todos.push({ key: `${key}:waiver:${d.id}`, projectId, text: pt(lang, 'todoWaiver', { n: d.number, project }), tone: 'amber', by: null })
         }
       }
       // A pay application we sent back waits on them: the work they reported is not new money to ask for.
       const back = signed ? sentBackOpen(sow) : null
       if (back) {
-        todos.push({ key: `${key}:back`, projectId, text: `${gc} sent pay application ${back.draw.number} on ${where} back. Fix it and send it again.`, tone: 'amber', by: back.on })
+        todos.push({ key: `${key}:back`, projectId, text: pt(lang, 'todoBack', { gc, n: back.draw.number, project }), tone: 'amber', by: back.on })
       }
       // Every line billed: the job is in closeout, and the trade's own steps come here.
       const closing = signed && workAllBilled(sow)
       if (closing) {
         const c = tradeCloseout(sow)
         if (c.canAskFinal) {
-          todos.push({ key: `${key}:final`, projectId, text: `Send your final pay application for ${where}. It asks for the ${money(c.held)} ${gc} holds, with your conditional final release of lien.`, tone: 'amber', by: null })
+          todos.push({ key: `${key}:final`, projectId, text: pt(lang, 'todoFinal', { project, amount: money(c.held), gc }), tone: 'amber', by: null })
         }
         if (c.finalDraw?.status === 'paid' && c.finalDraw.waiver === 'conditional') {
-          todos.push({ key: `${key}:finalwaiver`, projectId, text: `Your retainage on ${where} is paid. Sign your unconditional final release of lien.`, tone: 'amber', by: null })
+          todos.push({ key: `${key}:finalwaiver`, projectId, text: pt(lang, 'todoFinalWaiver', { project }), tone: 'amber', by: null })
         }
       }
       const m = sowMoney(sow)
       // Insurance that ran out stops a draw: its own red line above says so.
       if (signed && !back && !closing && coi.done && a.project.stage === 'building' && m.ready > 0 && !sow.draws.some((d) => d.status === 'requested')) {
-        todos.push({ key: `${key}:draw`, projectId, text: `You can ask ${gc} for ${money(m.ready)} on ${where}.`, tone: 'plain', by: null })
+        todos.push({ key: `${key}:draw`, projectId, text: pt(lang, 'todoDraw', { gc, amount: money(m.ready), project }), tone: 'plain', by: null })
       }
     }
   }
@@ -286,7 +297,7 @@ export function portalTodos(state: GcState, partnerId: string, asks: PortalAsk[]
 }
 
 /** The company's home: its asks sorted into bidding, jobs and past, what needs it, and its money. */
-export function portalHome(state: GcState, partnerId: string): PortalHome {
+export function portalHome(state: GcState, partnerId: string, lang: PortalLang = 'en'): PortalHome {
   const asks = portalAsks(state, partnerId)
   const jobs = asks.filter((a) => a.kind === 'job').map((ask) => ({ ask, money: portalJobMoney(ask.pkg) }))
   // Money shows once a dollar has moved: a job not started yet has nothing to say.
@@ -295,7 +306,7 @@ export function portalHome(state: GcState, partnerId: string): PortalHome {
     bidding: asks.filter((a) => a.kind === 'bidding'),
     jobs,
     past: asks.filter((a) => a.kind === 'lost' || a.kind === 'passed'),
-    todos: portalTodos(state, partnerId, asks),
+    todos: portalTodos(state, partnerId, asks, lang),
     money:
       withMoney.length === 0
         ? null
@@ -327,7 +338,7 @@ export function portalLink(partnerId: string): string {
 export interface PortalMessage {
   key: string
   on: string
-  kind: 'invite' | 'nudge' | 'plans' | 'bidTab' | 'msa' | 'sow' | 'start'
+  kind: 'invite' | 'nudge' | 'plans' | 'bidTab' | 'msa' | 'sow' | 'start' | 'less'
   /** Null: about the company, not one project (the master agreement). */
   projectId: string | null
   subject: string
@@ -339,7 +350,7 @@ export interface PortalMessage {
   text?: string
 }
 
-const KIND_ORDER: Record<PortalMessage['kind'], number> = { start: 0, sow: 1, msa: 2, bidTab: 3, plans: 4, nudge: 5, invite: 6 }
+const KIND_ORDER: Record<PortalMessage['kind'], number> = { less: 0, start: 1, sow: 2, msa: 3, bidTab: 4, plans: 5, nudge: 6, invite: 7 }
 
 function firstName(contact: string): string {
   return contact.split(' ')[0] ?? contact
@@ -354,11 +365,14 @@ function setOn(project: GcProject, day: string): PlanSet | undefined {
  * Everything we sent one company, newest first: invitations, reminders, new plan sets, bid tabs,
  * the master agreement, a statement of work to sign, and the day work starts.
  */
-export function portalMessages(state: GcState, partnerId: string): PortalMessage[] {
+export function portalMessages(state: GcState, partnerId: string, lang: PortalLang = 'en'): PortalMessage[] {
   const partner = partnerById(state, partnerId)
   if (!partner) return []
   const gc = GC_COMPANY.name
-  const hello = `Hello ${firstName(partner.contact)},`
+  const t = (key: Parameters<typeof pt>[1], vars?: Record<string, string | number>) => pt(lang, key, vars)
+  const and = t('and')
+  const hello = t('mHello', { first: firstName(partner.contact) })
+  const link = portalLink(partnerId)
   const out: PortalMessage[] = []
 
   if (partner.msaSentOn) {
@@ -367,19 +381,35 @@ export function portalMessages(state: GcState, partnerId: string): PortalMessage
       on: partner.msaSentOn,
       kind: 'msa',
       projectId: null,
-      subject: `Your master agreement with ${gc}`,
-      lines: [
-        hello,
-        'Here is our master agreement. You sign it once, and it covers every job you do for us.',
-        'After that, each job is a short statement of work.',
-        'Open your portal to read it and sign it.',
-      ],
+      subject: t('mMsaSubject', { gc }),
+      lines: [hello, t('mMsaHere'), t('mMsaAfter'), t('mMsaOpen')],
     })
   }
 
   for (const project of state.projects) {
     const mine = project.packages.flatMap((pkg) => pkg.invites.filter((i) => i.partnerId === partnerId).map((invite) => ({ pkg, invite })))
     const won = mine.filter(({ pkg, invite }) => pkg.awardedInviteId === invite.id)
+    const name = project.name
+
+    // A draw we approved for less than asked: what we approved, what they asked, and why.
+    for (const { pkg } of won) {
+      for (const d of pkg.sow?.draws ?? []) {
+        if (!d.asked) continue
+        out.push({
+          key: `${d.id}:less`,
+          on: d.asked.on,
+          kind: 'less',
+          projectId: project.id,
+          subject: t('mLessSubject', { n: d.number, project: name }),
+          lines: [
+            hello,
+            t('mLessApproved', { approved: money(d.net), asked: money(d.asked.net), n: d.number, trade: pkg.trade, project: name }),
+            ...(d.asked.note ? [d.asked.note] : []),
+            t('mLessRest'),
+          ],
+        })
+      }
+    }
 
     for (const { pkg } of won) {
       const sow = pkg.sow
@@ -389,54 +419,54 @@ export function portalMessages(state: GcState, partnerId: string): PortalMessage
         on: sow.sentOn,
         kind: 'sow',
         projectId: project.id,
-        subject: `Your statement of work for ${pkg.trade} on ${project.name}`,
+        subject: t('mSowSubject', { trade: pkg.trade, project: name }),
         lines: [
           hello,
-          `We picked your number for ${pkg.trade} on ${project.name}. Thank you.`,
-          `Your statement of work is ready: ${money(sow.price)}, based on the ${planLabel(project, sow.basedOnRev)}.`,
-          `We hold back ${sow.retainagePct}% of each draw until the job is done.`,
-          'Open your portal to read it and sign it.',
+          t('mSowPicked', { trade: pkg.trade, project: name }),
+          t('mSowReady', { price: money(sow.price), plans: planLabel(project, sow.basedOnRev) }),
+          t('mSowHold', { pct: sow.retainagePct }),
+          t('mSowOpen'),
         ],
       })
     }
 
     if (project.startedOn && won.length > 0) {
-      const begins = project.startDate ? weekdayDate(project.startDate) : null
-      const trades = won.map((w) => w.pkg.trade).join(' and ')
+      const begins = project.startDate ? pWeekday(lang, project.startDate) : null
+      const trades = won.map((w) => w.pkg.trade).join(and)
       out.push({
         key: `${project.id}:start`,
         on: project.startedOn,
         kind: 'start',
         projectId: project.id,
-        subject: begins ? `Work starts on ${project.name} ${begins}` : `${project.name} is started`,
+        subject: begins ? t('mStartSubject', { project: name, date: begins }) : t('mStartSubjectNoDate', { project: name }),
         lines: [
           hello,
-          begins ? `${project.name} is started. Work begins ${begins}.` : `${project.name} is started.`,
-          `Your part is ${trades}.`,
-          'Report your work in your portal as it goes. That is how you ask for each draw.',
+          begins ? t('mStartBegins', { project: name, date: begins }) : t('mStartNoDate', { project: name }),
+          t('mStartPart', { trades }),
+          t('mStartReport'),
         ],
-        text: `${gc}: work on ${project.name} begins${begins ? ` ${begins}` : ' soon'}. Your part is ${trades}. Details: ${portalLink(partnerId)}`,
+        text: t('mStartText', { gc, project: name, when: begins ? t('mWhen', { date: begins }) : t('mSoon'), trades, link }),
       })
     }
     for (const { pkg, invite } of mine) {
       const set = setOn(project, invite.invitedOn)
-      const due = project.bidDue && invite.invitedOn <= project.bidDue ? weekdayDate(project.bidDue) : null
+      const due = project.bidDue && invite.invitedOn <= project.bidDue ? pWeekday(lang, project.bidDue) : null
       out.push({
         key: `${invite.id}:invite`,
         on: invite.invitedOn,
         kind: 'invite',
         projectId: project.id,
-        subject: `${gc} asks you to bid ${pkg.trade} on ${project.name}`,
+        subject: t('mInviteSubject', { gc, trade: pkg.trade, project: name }),
         lines: [
           hello,
-          `We would like your number for ${pkg.trade} on ${project.name}.`,
+          t('mInviteWant', { trade: pkg.trade, project: name }),
           `${project.address}. ${project.sizeNote.charAt(0).toUpperCase()}${project.sizeNote.slice(1)}.`,
-          ...(due ? [`Your number is due ${due}.`] : []),
-          ...(set ? [`Plans to price: ${set.label}, issued ${shortDate(set.issuedOn)}.`] : []),
-          'Your number should cover these lines.',
+          ...(due ? [t('mInviteDue', { date: due })] : []),
+          ...(set ? [t('mInvitePlans', { label: set.label, date: pDate(lang, set.issuedOn) })] : []),
+          t('mInviteCover'),
         ],
         scope: pkg.scope.map((item) => item.label),
-        text: `${gc}: we would like your ${pkg.trade} number for ${project.name}${due ? ` by ${due}` : ''}. Plans and details: ${portalLink(partnerId)}`,
+        text: t('mInviteText', { gc, trade: pkg.trade, project: name, by: due ? t('mBy', { date: due }) : '', link }),
       })
 
       for (const c of invite.contacts ?? []) {
@@ -447,13 +477,8 @@ export function portalMessages(state: GcState, partnerId: string): PortalMessage
           on: c.on,
           kind: 'nudge',
           projectId: project.id,
-          subject: `A reminder: ${about}`,
-          lines: [
-            hello,
-            `A reminder about your ${pkg.trade} number for ${project.name}.`,
-            ...(due ? [`It is due ${due}.`] : []),
-            'Open your portal to send it. Not ready? Tell us the day it will come.',
-          ],
+          subject: t('mNudgeSubject', { about }),
+          lines: [hello, t('mNudgeAbout', { trade: pkg.trade, project: name }), ...(due ? [t('mNudgeDue', { date: due })] : []), t('mNudgeOpen')],
         })
       }
 
@@ -463,8 +488,8 @@ export function portalMessages(state: GcState, partnerId: string): PortalMessage
           on: pkg.bidTab.sharedOn,
           kind: 'bidTab',
           projectId: project.id,
-          subject: `How the ${pkg.trade} quotes came in on ${project.name}`,
-          lines: [hello, 'Thank you for your number. We share every bid tab with the companies that quoted.', 'Open your portal to see where you stood.'],
+          subject: t('mTabSubject', { trade: pkg.trade, project: name }),
+          lines: [hello, t('mTabThanks'), t('mTabOpen')],
         })
       }
     }
@@ -472,20 +497,18 @@ export function portalMessages(state: GcState, partnerId: string): PortalMessage
     for (const set of project.planSets) {
       const sent = set.sentTo?.find((x) => x.partnerId === partnerId)
       if (!sent) continue
-      const trades = mine.map((m) => m.pkg.trade).join(' and ')
+      const trades = mine.map((m) => m.pkg.trade).join(and)
       out.push({
         key: `${project.id}:plans:${set.rev}`,
         on: sent.on,
         kind: 'plans',
         projectId: project.id,
-        subject: `${set.label} for ${project.name}`,
+        subject: t('mPlansSubject', { label: set.label, project: name }),
         lines: [
           hello,
-          `${set.label} for ${project.name} is out. ${set.note}`,
-          ...(set.changedSheets.length > 0 ? [`Sheets ${set.changedSheets.join(', ')}.`] : []),
-          sent.touched
-            ? `It changes ${trades}. Open it, then confirm your number or change it.`
-            : `It does not change ${trades}. Open it so you price on the newest set.`,
+          t('mPlansOut', { label: set.label, project: name, note: set.note }),
+          ...(set.changedSheets.length > 0 ? [t('sheetsList', { list: set.changedSheets.join(', ') })] : []),
+          t(sent.touched ? 'mPlansChanges' : 'mPlansNoChange', { trades }),
         ],
       })
     }
@@ -578,6 +601,6 @@ export function bidRanOut(bid: SubBid, today: string): boolean {
 }
 
 /** "LED high bays adds $4,200", "Owner buys the fixtures takes off $12,000". */
-export function alternateWords(alt: BidAlternate): string {
-  return `${alt.label} ${alt.amount >= 0 ? 'adds' : 'takes off'} ${money(Math.abs(alt.amount))}`
+export function alternateWords(alt: BidAlternate, lang: PortalLang = 'en'): string {
+  return pt(lang, alt.amount >= 0 ? 'altAdds' : 'altTakesOff', { label: alt.label, amount: money(Math.abs(alt.amount)) })
 }
