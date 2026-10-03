@@ -300,7 +300,7 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
       const partner = partnerById(state, action.partnerId)
       if (!partner) return state
       return logged(
-        { ...state, partners: state.partners.map((p) => (p.id === partner.id ? { ...p, msa: 'sent' } : p)) },
+        { ...state, partners: state.partners.map((p) => (p.id === partner.id ? { ...p, msa: 'sent', msaSentOn: state.today } : p)) },
         'office',
         `Sent the master agreement to ${partner.company}.`,
       )
@@ -326,7 +326,7 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
       const partner = awardedPartner(state, pkg)
       if (!pkg || !partner) return state
       const next = mapProject(state, action.projectId, (p) =>
-        mapPackage(p, pkg.id, (k) => mapSow(k, (s) => ({ ...s, status: 'sent' }))),
+        mapPackage(p, pkg.id, (k) => mapSow(k, (s) => ({ ...s, status: 'sent', sentOn: state.today }))),
       )
       return logged(next, 'office', `Sent the ${pkg.trade} statement of work to ${partner.company}.`)
     }
