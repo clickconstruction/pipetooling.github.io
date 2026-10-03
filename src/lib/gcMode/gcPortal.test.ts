@@ -4,6 +4,9 @@
  */
 import { describe, expect, it } from 'vitest'
 import {
+  alternateWords,
+  bidGoodUntil,
+  bidRanOut,
   gcReducer,
   initialGcState,
   portalFirstVisit,
@@ -220,5 +223,72 @@ describe('the sheets behind each line', () => {
   it('marks nothing for a company that never opened the plans', () => {
     const { project, pkg, invite } = ask(state, 'boerne', 'steel', 'bexar')
     expect(portalLines(project, pkg, invite).sets).toEqual([])
+  })
+})
+
+describe('the bid form', () => {
+  const lonestarBids = (days: number) =>
+    gcReducer(
+      gcReducer(gcReducer(state, { type: 'invite', projectId: 'padb', packageId: 'bsite', partnerId: 'lonestar' }), {
+        type: 'tradeOpenPlans',
+        projectId: 'padb',
+        packageId: 'bsite',
+        inviteId: 'bsite-lonestar',
+      }),
+      {
+        type: 'tradeSubmitBid',
+        projectId: 'padb',
+        packageId: 'bsite',
+        inviteId: 'bsite-lonestar',
+        amount: 92_500,
+        includes: { 'bsite-1': 'yes', 'bsite-2': 'yes', 'bsite-3': 'yes' },
+        note: '',
+        goodForDays: days,
+        alternates: [{ label: 'Asphalt paving in place of concrete', amount: -6_000 }],
+        quoteFile: 'lonestar-pad-b.pdf',
+      },
+    )
+
+  it('keeps how long the number holds, its alternates and the quote file on the bid', () => {
+    const bid = ask(lonestarBids(30), 'padb', 'bsite', 'lonestar').invite.bid
+    expect(bid).toMatchObject({ goodForDays: 30, quoteFile: 'lonestar-pad-b.pdf', alternates: [{ amount: -6_000 }] })
+    expect(bid && bidGoodUntil(bid)).toBe('2026-11-01')
+  })
+
+  it('leaves a bid sent without them as it was', () => {
+    const bid = ask(state, 'boerne', 'site', 'lonestar').invite.bid
+    expect(bid && 'goodForDays' in bid).toBe(false)
+    expect(bid && bidGoodUntil(bid)).toBeNull()
+  })
+
+  it('says a number ran out the day after its last good day, and asks for it again', () => {
+    const s = lonestarBids(15)
+    const bid = ask(s, 'padb', 'bsite', 'lonestar').invite.bid
+    if (!bid) throw new Error('no bid')
+    expect(bidRanOut(bid, '2026-10-17')).toBe(false)
+    expect(bidRanOut(bid, '2026-10-18')).toBe(true)
+    const later = { ...s, today: '2026-10-18' }
+    expect(portalTodos(later, 'lonestar').find((t) => t.key === 'bsite-lonestar:ranout')?.text).toBe(
+      'Your Sitework number for Boerne Retail Pad B ran out Sat Oct 17. Send it again to keep it good.',
+    )
+  })
+
+  it('words an alternate that adds and one that takes off', () => {
+    expect(alternateWords({ label: 'LED high bays', amount: 4_200 })).toBe('LED high bays adds $4,200')
+    expect(alternateWords({ label: 'Owner buys the fixtures', amount: -12_000 })).toBe('Owner buys the fixtures takes off $12,000')
+  })
+
+  it('answers a line the office could not read without touching the number', () => {
+    const before = ask(state, 'boerne', 'conc', 'alamo').invite.bid
+    const s = gcReducer(state, { type: 'tradeAnswerLines', projectId: 'boerne', packageId: 'conc', inviteId: 'conc-alamo', answers: { 'conc-4': 'yes' } })
+    const after = ask(s, 'boerne', 'conc', 'alamo').invite.bid
+    expect(after?.includes['conc-4']).toBe('yes')
+    expect([after?.amount, after?.submittedOn]).toEqual([before?.amount, before?.submittedOn])
+    expect(s.log[0]?.text).toBe('Alamo Concrete answered on Concrete: Rebar supply is in their number.')
+    expect(portalTodos(s, 'alamo').map((t) => t.key)).not.toContain('conc-alamo:unclear')
+  })
+
+  it('ignores an answer for a line that was already clear', () => {
+    expect(gcReducer(state, { type: 'tradeAnswerLines', projectId: 'boerne', packageId: 'conc', inviteId: 'conc-alamo', answers: { 'conc-1': 'no' } })).toBe(state)
   })
 })

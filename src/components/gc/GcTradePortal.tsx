@@ -1,6 +1,9 @@
 import { useRef, useState, type Dispatch } from 'react'
 import {
+  alternateWords,
+  bidGoodUntil,
   bidIsStale,
+  bidRanOut,
   bidTabResult,
   bidTabRows,
   daysUntil,
@@ -15,10 +18,12 @@ import {
   shortDate,
   sowMoney,
   unclearLines,
+  weekdayDate,
   type GcAction,
   type GcProject,
   type GcState,
   type Includes,
+  type BidAlternate,
   type Invite,
   type Partner,
   type TradePackage,
@@ -27,6 +32,7 @@ import { BidTabTable } from './GcBidTabs'
 import { GcBuildingPayAppDoor } from './GcBuildingPayApp'
 import { Btn, Chip, input } from './gcUi'
 import { GcPortalHome } from './GcPortalHome'
+import { AlternatesEditor, AnswerLines, GoodForPicker, QuoteFilePicker } from './GcPortalBidExtras'
 import { ChangedLines, LineSheets, SheetChip } from './GcPortalLineSheets'
 import { GcPortalMessages } from './GcPortalMessages'
 import { GcPortalPaperwork } from './GcPortalPaperwork'
@@ -303,6 +309,10 @@ function BidBlock({
     for (const item of pkg.scope) start[item.id] = invite.bid?.includes[item.id] ?? 'yes'
     return start
   })
+  const [goodFor, setGoodFor] = useState(invite.bid?.goodForDays ?? 30)
+  const [alternates, setAlternates] = useState<BidAlternate[]>(invite.bid?.alternates ?? [])
+  const [quoteFile, setQuoteFile] = useState(invite.bid?.quoteFile ?? '')
+  const [answering, setAnswering] = useState(false)
   const ids = { projectId: project.id, packageId: pkg.id, inviteId: invite.id }
   const due = project.bidDue
   const days = due ? daysUntil(due, today) : null
@@ -311,6 +321,8 @@ function BidBlock({
   const stale = bidIsStale(project, pkg, invite)
   const sheets = portalLines(project, pkg, invite)
   const lineOf = (id: string) => sheets.lines.find((l) => l.item.id === id)
+  const goodUntil = invite.bid ? bidGoodUntil(invite.bid) : null
+  const ranOut = invite.bid ? bidRanOut(invite.bid, today) : false
 
   return (
     <Block title={`${pkg.trade} · invitation to bid`}>
@@ -324,8 +336,26 @@ function BidBlock({
         <div style={{ display: 'grid', gap: '0.4rem', fontSize: '0.9rem' }}>
           <div>
             Your bid: <strong>{money(invite.bid.amount)}</strong> on {planLabel(project, invite.bid.basedOnRev)}, sent{' '}
-            {shortDate(invite.bid.submittedOn)}.
+            {shortDate(invite.bid.submittedOn)}.{goodUntil && !ranOut && <> Good until {weekdayDate(goodUntil)}.</>}
           </div>
+          {(invite.bid.alternates ?? []).length > 0 && (
+            <div>
+              <span style={{ opacity: 0.75 }}>Alternates:</span> {(invite.bid.alternates ?? []).map(alternateWords).join(' · ')}
+            </div>
+          )}
+          {invite.bid.quoteFile && (
+            <div>
+              <span style={{ opacity: 0.75 }}>Your own quote:</span> <Chip tone="grey">{invite.bid.quoteFile}</Chip>
+            </div>
+          )}
+          {ranOut && goodUntil && (
+            <PortalNote tone="amber">
+              <div>Your number ran out {weekdayDate(goodUntil)}. Send it again to keep it good.</div>
+              <div>
+                <Btn kind="primary" onClick={() => setEditing(true)}>Send it again</Btn>
+              </div>
+            </PortalNote>
+          )}
           {stale && (
             <PortalNote tone="amber">
               <div>
@@ -337,13 +367,29 @@ function BidBlock({
           )}
           {unclear.length > 0 && (
             <PortalNote tone="amber">
-              <div>
-                {GC} cannot tell if your number covers {unclear.map((i) => i.label.charAt(0).toLowerCase() + i.label.slice(1)).join(' or ')}. Answer it so
-                your number compares fairly.
-              </div>
-              <div>
-                <Btn kind="primary" onClick={() => setEditing(true)}>Answer it</Btn>
-              </div>
+              {answering ? (
+                <AnswerLines
+                  items={unclear}
+                  lineOf={lineOf}
+                  onOpenSheet={onOpenSheet}
+                  onCancel={() => setAnswering(false)}
+                  onSend={(answers) => {
+                    dispatch({ type: 'tradeAnswerLines', ...ids, answers })
+                    setIncludes({ ...includes, ...answers })
+                    setAnswering(false)
+                  }}
+                />
+              ) : (
+                <>
+                  <div>
+                    {GC} cannot tell if your number covers {unclear.map((i) => i.label.charAt(0).toLowerCase() + i.label.slice(1)).join(' or ')}. Answer it so
+                    your number compares fairly.
+                  </div>
+                  <div>
+                    <Btn kind="primary" onClick={() => setAnswering(true)}>Answer it</Btn>
+                  </div>
+                </>
+              )}
             </PortalNote>
           )}
           <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
@@ -403,14 +449,26 @@ function BidBlock({
             Your number{' '}
             <input type="number" min={0} step={100} value={amount} onChange={(e) => setAmount(e.target.value)} style={{ ...input, width: '9rem' }} />
           </label>
+          <GoodForPicker value={goodFor} onChange={setGoodFor} />
           <input style={input} placeholder="Anything we should know" value={note} onChange={(e) => setNote(e.target.value)} />
+          <AlternatesEditor value={alternates} onChange={setAlternates} />
+          <QuoteFilePicker value={quoteFile} onChange={setQuoteFile} />
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <Btn
               kind="primary"
               disabled={invite.seenRev === null || !(Number(amount) > 0) || unanswered > 0}
               title={invite.seenRev === null ? 'Open the plans first.' : unanswered > 0 ? 'Answer each line first.' : undefined}
               onClick={() => {
-                dispatch({ type: 'tradeSubmitBid', ...ids, amount: Number(amount), includes, note: note.trim() })
+                dispatch({
+                  type: 'tradeSubmitBid',
+                  ...ids,
+                  amount: Number(amount),
+                  includes,
+                  note: note.trim(),
+                  goodForDays: goodFor,
+                  alternates,
+                  ...(quoteFile ? { quoteFile } : {}),
+                })
                 setEditing(false)
               }}
             >
@@ -426,6 +484,9 @@ function BidBlock({
                   setAmount(String(was.amount))
                   setNote(was.note)
                   setIncludes(Object.fromEntries(pkg.scope.map((item) => [item.id, was.includes[item.id] ?? 'yes'])))
+                  setGoodFor(was.goodForDays ?? 30)
+                  setAlternates(was.alternates ?? [])
+                  setQuoteFile(was.quoteFile ?? '')
                   setEditing(false)
                 }}
               >

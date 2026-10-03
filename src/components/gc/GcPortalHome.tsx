@@ -244,6 +244,7 @@ function BidChips({ ask }: { ask: PortalAsk }) {
   if (ask.invite.bid) chips.push({ tone: 'green', words: `your number ${money(ask.invite.bid.amount)}` })
   else if (ask.promise?.state === 'passed') chips.push({ tone: 'red', words: 'your day passed' })
   else chips.push({ tone: 'grey', words: 'no number yet' })
+  if (ask.ranOut) chips.push({ tone: 'amber', words: 'your number ran out' })
   if (ask.stale) chips.push({ tone: 'amber', words: 'plans changed' })
   if (ask.unclear.length > 0) chips.push({ tone: 'amber', words: 'a line to answer' })
   return (
