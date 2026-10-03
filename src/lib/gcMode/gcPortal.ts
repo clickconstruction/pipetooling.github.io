@@ -5,7 +5,7 @@
  *
  * The words follow the plain-words rules at the top of `gcTour.ts`.
  */
-import type { BidAlternate, GcProject, GcState, Invite, LookAheadMark, Partner, PlanSet, ScopeItem, SubBid, TradePackage } from './gcTypes'
+import type { BidAlternate, Draw, GcProject, GcState, Invite, LookAheadMark, Partner, PlanSet, ScopeItem, SubBid, TradePackage } from './gcTypes'
 import { daysUntil, money } from './gcWords'
 import { currentRev, partnerById } from './gcLookups'
 import { askPromise, OPEN_WITHIN_DAYS, type AskPromise } from './gcFollowUp'
@@ -13,7 +13,7 @@ import { bidIsStale, sowMoney } from './gcBids'
 import { GC_COMPANY } from './gcFixture'
 import { pDate, pt, pWeekday, type PortalLang } from './gcPortalI18n'
 import { lineSheets, tradeSheets } from './gcNewProject'
-import { addDays, sentBackOpen, sowContractSum, tradeChangesFor, tradeCloseout, workAllBilled } from './gcBuilding'
+import { addDays, retainageHeldNow, sentBackOpen, sowContractSum, tradeChangesFor, tradeCloseout, workAllBilled } from './gcBuilding'
 import { lookAheadWeeks, markState, mondayOf, scheduleRows, type LookAheadState, type ScheduleRow } from './gcBuildingSchedule'
 import { planLabel } from './gcLookups'
 
@@ -362,7 +362,7 @@ export function portalLink(partnerId: string): string {
 export interface PortalMessage {
   key: string
   on: string
-  kind: 'invite' | 'nudge' | 'plans' | 'bidTab' | 'msa' | 'sow' | 'start' | 'less' | 'change'
+  kind: 'invite' | 'nudge' | 'plans' | 'bidTab' | 'msa' | 'sow' | 'start' | 'less' | 'change' | 'paid'
   /** Null: about the company, not one project (the master agreement). */
   projectId: string | null
   subject: string
@@ -374,7 +374,7 @@ export interface PortalMessage {
   text?: string
 }
 
-const KIND_ORDER: Record<PortalMessage['kind'], number> = { change: 0, less: 1, start: 2, sow: 3, msa: 4, bidTab: 5, plans: 6, nudge: 7, invite: 8 }
+const KIND_ORDER: Record<PortalMessage['kind'], number> = { paid: 0, change: 1, less: 2, start: 3, sow: 4, msa: 5, bidTab: 6, plans: 7, nudge: 8, invite: 9 }
 
 function firstName(contact: string): string {
   return contact.split(' ')[0] ?? contact
@@ -433,6 +433,29 @@ export function portalMessages(state: GcState, partnerId: string, language?: Por
             t('mChangeWhat', { trade: pkg.trade, project: name, description: co.description.replace(/\.$/, '') }),
             t(co.cost >= 0 ? 'mChangeAdds' : 'mChangeTakes', { amount }),
             t('mChangeOpen'),
+          ],
+        })
+      }
+    }
+
+    // A draw we paid: what, what we hold of it, and the waiver it now asks for.
+    for (const { pkg } of won) {
+      for (const d of pkg.sow?.draws ?? []) {
+        if (!d.paidOn) continue
+        const amount = money(d.net)
+        out.push({
+          key: `${d.id}:paid`,
+          on: d.paidOn,
+          kind: 'paid',
+          projectId: project.id,
+          subject: d.final ? t('mPaidFinalSubject', { project: name }) : t('mPaidSubject', { n: d.number, project: name }),
+          lines: [
+            hello,
+            d.final
+              ? t('mPaidFinalWhat', { amount, trade: pkg.trade, project: name })
+              : t('mPaidWhat', { amount, n: d.number, trade: pkg.trade, project: name }),
+            ...(!d.final && d.retainage > 0 ? [t('mPaidHeld', { amount: money(d.retainage) })] : []),
+            ...(d.waiver === 'conditional' ? [t(d.final ? 'mPaidFinalWaiver' : 'mPaidWaiver')] : []),
           ],
         })
       }
@@ -735,4 +758,99 @@ export function linkNeverOpened(state: GcState, partnerId: string): { since: str
   const since = [...asked].sort()[0] ?? state.today
   const days = Math.max(0, -daysUntil(since, state.today))
   return { since, days, late: days > OPEN_WITHIN_DAYS }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Your pay: every pay application on the company's jobs, when it was asked, approved and paid
+// ---------------------------------------------------------------------------------------------
+
+/** We pay an approved pay application within this many days (owner, 2026-10-03). Retainage keeps its own day. */
+export const PAY_WITHIN_DAYS = 10
+
+export type PortalPayState = 'checking' | 'approved' | 'late' | 'paid'
+
+export interface PortalPayRow {
+  project: GcProject
+  pkg: TradePackage
+  draw: Draw
+  state: PortalPayState
+  /** Approved and not paid yet: the day it should arrive by. */
+  payBy: string | null
+}
+
+export interface PortalPayJob {
+  project: GcProject
+  pkg: TradePackage
+  /** The contract to date: the statement of work plus signed change orders. */
+  contract: number
+  paid: number
+  /** Held back now, until the end of the job. */
+  held: number
+  leftToBill: number
+  /** When the held money comes back: paid back on a day, can be paid from a day, or after acceptance. */
+  heldBack: { state: 'returned' | 'on' | 'after'; on: string | null }
+}
+
+/** The day an approved pay application should be paid by: PAY_WITHIN_DAYS after approval, or retainage's own day. */
+function payByOf(project: GcProject, pkg: TradePackage, draw: Draw, today: string): string | null {
+  if (draw.status !== 'approved') return null
+  const within = draw.approvedOn ? addDays(draw.approvedOn, PAY_WITHIN_DAYS) : null
+  if (!draw.final || !pkg.sow) return within
+  return tradeCloseout(pkg.sow, project, today).opensOn ?? within
+}
+
+export function portalPay(state: GcState, partnerId: string): {
+  rows: PortalPayRow[]
+  jobs: PortalPayJob[]
+  totals: { paid: number; coming: number; checking: number; held: number; late: number }
+} {
+  const rows: PortalPayRow[] = []
+  const jobs: PortalPayJob[] = []
+  for (const a of portalAsks(state, partnerId)) {
+    const sow = a.pkg.sow
+    if (a.kind !== 'job' || !sow || sow.status !== 'signed') continue
+    for (const draw of sow.draws) {
+      const payBy = payByOf(a.project, a.pkg, draw, state.today)
+      const late = payBy !== null && payBy < state.today
+      rows.push({
+        project: a.project,
+        pkg: a.pkg,
+        draw,
+        state: draw.status === 'requested' ? 'checking' : draw.status === 'paid' ? 'paid' : late ? 'late' : 'approved',
+        payBy,
+      })
+    }
+    const m = sowMoney(sow)
+    const contract = sowContractSum(sow)
+    const held = Math.max(0, retainageHeldNow(sow))
+    const c = tradeCloseout(sow, a.project, state.today)
+    const returned = c.finalDraw?.status === 'paid'
+    jobs.push({
+      project: a.project,
+      pkg: a.pkg,
+      contract,
+      paid: m.paid,
+      held,
+      leftToBill: contract - m.billed,
+      heldBack: returned
+        ? { state: 'returned', on: c.finalDraw?.paidOn ?? null }
+        : c.opensOn
+          ? { state: 'on', on: c.opensOn }
+          : { state: 'after', on: null },
+    })
+  }
+  const when = (r: PortalPayRow) => r.draw.paidOn ?? r.draw.approvedOn ?? r.draw.requestedOn
+  rows.sort((x, y) => when(y).localeCompare(when(x)) || y.draw.number - x.draw.number)
+  const sum = (st: PortalPayState[]) => rows.filter((r) => st.includes(r.state)).reduce((t, r) => t + r.draw.net, 0)
+  return {
+    rows,
+    jobs,
+    totals: {
+      paid: sum(['paid']),
+      coming: sum(['approved', 'late']),
+      checking: sum(['checking']),
+      held: jobs.reduce((t, j) => t + j.held, 0),
+      late: rows.filter((r) => r.state === 'late').length,
+    },
+  }
 }
