@@ -5,7 +5,7 @@
 import type { AskContact, Draw, DrawSentBack, GcAction, GcState, SovLine, Invite, LookAheadMark, Partner, PlanQuestion, PlanSet, SubBid } from './gcTypes'
 import { money, shortDate, weekdayDate, daysUntil } from './gcWords'
 import { currentRev, partnerById, planLabel } from './gcLookups'
-import { planRecipients, questionRecipients } from './gcPlans'
+import { planRecipients, questionRecipients, questionsOpen } from './gcPlans'
 import { bidsIn } from './gcBids'
 import { awardedPartner, find, logged, mapInvite, mapPackage, mapProject, mapSow, sowFromBid } from './gcReducerHelpers'
 import { initialGcState } from './gcFixture'
@@ -1193,7 +1193,8 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
       const text = action.text.trim()
       // Only a company asked to quote the trade can ask about it.
       const onTrade = pkg?.invites.some((i) => i.partnerId === action.partnerId && i.status !== 'declined')
-      if (!project || !pkg || !partner || !onTrade || text === '') return state
+      // Questions close three days before our bid is due (the owner, 2026-10-03).
+      if (!project || !pkg || !partner || !onTrade || text === '' || !questionsOpen(project, state.today)) return state
       const used = new Set(project.questions.map((q) => q.id))
       let n = project.questions.length + 1
       while (used.has(`${project.id}-q-${n}`)) n += 1
