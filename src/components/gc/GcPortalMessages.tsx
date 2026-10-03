@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { GC_COMPANY, portalLink, portalMessages, weekdayDate, type GcState, type Partner, type PortalMessage } from '../../lib/gcMode/gcModel'
+import { GC_COMPANY, portalLink, portalMessages, pWeekday, type GcState, type Partner, type PortalMessage } from '../../lib/gcMode/gcModel'
 import { Btn } from './gcUi'
+import { usePortalLang } from './gcPortalLang'
 
 /**
  * GC mode design spike: how a company arrives. What we sent it, as it lands in its inbox: the
@@ -11,15 +12,16 @@ import { Btn } from './gcUi'
 const RULE = '#d9d2c3'
 
 export function GcPortalMessages({ state, partner, onOpenPortal }: { state: GcState; partner: Partner; onOpenPortal: () => void }) {
-  const messages = portalMessages(state, partner.id)
+  const { lang, t } = usePortalLang()
+  const messages = portalMessages(state, partner.id, lang)
   const [openKey, setOpenKey] = useState<string | null>(messages[0]?.key ?? null)
 
   return (
     <div style={{ display: 'grid', gap: '0.6rem' }}>
       <div style={{ fontSize: '0.85rem', opacity: 0.8 }}>
-        What {GC_COMPANY.name} sent {partner.company}, newest first. Every message carries the same link.
+        {t('messagesIntro', { gc: GC_COMPANY.name, company: partner.company })}
       </div>
-      {messages.length === 0 && <div style={{ fontSize: '0.9rem' }}>Nothing sent yet.</div>}
+      {messages.length === 0 && <div style={{ fontSize: '0.9rem' }}>{t('nothingSent')}</div>}
       {messages.map((m) =>
         m.key === openKey ? (
           <Message key={m.key} m={m} partner={partner} onOpenPortal={onOpenPortal} />
@@ -43,7 +45,7 @@ export function GcPortalMessages({ state, partner, onOpenPortal }: { state: GcSt
             }}
           >
             <span style={{ fontSize: '0.75rem', opacity: 0.7 }}>
-              {GC_COMPANY.name} · {weekdayDate(m.on)}
+              {GC_COMPANY.name} · {pWeekday(lang, m.on)}
             </span>
             <span style={{ fontWeight: 600 }}>{m.subject}</span>
           </button>
@@ -54,14 +56,15 @@ export function GcPortalMessages({ state, partner, onOpenPortal }: { state: GcSt
 }
 
 function Message({ m, partner, onOpenPortal }: { m: PortalMessage; partner: Partner; onOpenPortal: () => void }) {
+  const { lang, t } = usePortalLang()
   return (
     <div style={{ display: 'grid', gap: '0.5rem' }}>
       <article style={{ background: 'var(--surface)', border: `1px solid ${RULE}`, borderRadius: 8, overflow: 'hidden' }}>
         <div style={{ padding: '0.55rem 0.75rem', borderBottom: `1px solid ${RULE}`, fontSize: '0.78rem', display: 'grid', gap: '0.1rem' }}>
           <span>
-            <strong>{GC_COMPANY.name}</strong> <span style={{ opacity: 0.7 }}>· {weekdayDate(m.on)}</span>
+            <strong>{GC_COMPANY.name}</strong> <span style={{ opacity: 0.7 }}>· {pWeekday(lang, m.on)}</span>
           </span>
-          <span style={{ opacity: 0.7 }}>To {partner.contact}, {partner.company}</span>
+          <span style={{ opacity: 0.7 }}>{t('toLine', { contact: partner.contact, company: partner.company })}</span>
           <span style={{ fontSize: '0.95rem', fontWeight: 700, marginTop: '0.2rem' }}>{m.subject}</span>
         </div>
         <div style={{ padding: '0.7rem 0.75rem', display: 'grid', gap: '0.5rem', fontSize: '0.9rem', lineHeight: 1.45 }}>
@@ -77,20 +80,24 @@ function Message({ m, partner, onOpenPortal }: { m: PortalMessage; partner: Part
           )}
           <div style={{ display: 'grid', gap: '0.25rem', justifyItems: 'start', marginTop: '0.2rem' }}>
             <Btn kind="primary" onClick={onOpenPortal}>
-              Open your portal
+              {t('openPortal')}
             </Btn>
             <span style={{ fontSize: '0.75rem', opacity: 0.65 }}>{portalLink(partner.id)}</span>
           </div>
           <div style={{ fontSize: '0.8rem', opacity: 0.75 }}>
-            This link is yours. It holds every job you have with us. There is no password.
+            {t('linkYours')}
           </div>
-          <div>Thank you,<br />{GC_COMPANY.name}</div>
+          <div>
+            {t('thanks')}
+            <br />
+            {GC_COMPANY.name}
+          </div>
         </div>
       </article>
 
       {m.text && (
         <div style={{ display: 'grid', gap: '0.25rem' }}>
-          <div style={{ fontSize: '0.72rem', letterSpacing: '0.06em', textTransform: 'uppercase', opacity: 0.7 }}>The same, by text</div>
+          <div style={{ fontSize: '0.72rem', letterSpacing: '0.06em', textTransform: 'uppercase', opacity: 0.7 }}>{t('byText')}</div>
           <div
             style={{
               justifySelf: 'start',

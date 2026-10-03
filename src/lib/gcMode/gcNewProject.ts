@@ -40,6 +40,42 @@ export const TRADE_TEMPLATES: TradeTemplate[] = [
   { trade: 'Electrical', disciplines: ['Electrical', 'Technology'], words: [], scope: ['Service and gear', 'Panels and feeders', 'Lighting', 'Devices', 'Fire alarm'] },
 ]
 
+/**
+ * A rough cost per square foot for each trade on a small commercial building: made-up numbers to
+ * start a budget from, never a price. The office changes any of them line by line.
+ */
+export const BUDGET_PER_SQ_FT: Record<string, number> = {
+  Sitework: 12,
+  Landscaping: 3,
+  Concrete: 14,
+  Masonry: 8,
+  'Structural steel': 18,
+  'Framing and drywall': 12,
+  Roofing: 9,
+  'Doors and hardware': 4,
+  'Glass and storefront': 6,
+  Painting: 3,
+  Flooring: 5,
+  Millwork: 6,
+  'Fire sprinkler': 4.5,
+  Plumbing: 10,
+  HVAC: 16,
+  Electrical: 18,
+}
+
+/** The square feet in a size line: "6,800 sq ft clinic" reads 6800. Null when it names none. */
+export function sqFtInText(text: string): number | null {
+  const m = text.match(/([\d,]+(?:\.\d+)?)\s*(?:sq\.?\s*ft|sf|square\s+feet)\b/i)
+  const n = m?.[1] ? Number(m[1].replace(/,/g, '')) : NaN
+  return Number.isFinite(n) && n > 0 ? n : null
+}
+
+/** A trade's rough budget from the size, to the nearest $500. Null for a trade with no rate. */
+export function budgetFromSize(trade: string, sqFt: number): number | null {
+  const rate = BUDGET_PER_SQ_FT[trade]
+  return rate === undefined ? null : Math.round((rate * sqFt) / 500) * 500
+}
+
 /** The trades the company does with its own crews. Their number comes from our own bid in Trades mode. */
 export const OUR_TRADES = ['Plumbing']
 
@@ -240,7 +276,7 @@ export function packagesFromDrafts(projectId: string, drafts: NewTradeDraft[], t
         bidTab: null,
         scope: lines.map((l, i) => ({ id: `${pkgId}-${i + 1}`, label: l.label, ...(t.scopeSheets ? { sheets: l.sheets ?? [] } : {}) })),
         budget: t.budget,
-        selfPerform: t.ours ? { ref: 'New bid', value: t.budget, note: 'Ours. Price it as our own bid in Trades mode.' } : null,
+        selfPerform: t.ours ? { ref: 'New bid', value: t.budget, note: 'Ours. Price it as our own bid in Trades mode.', priced: false } : null,
         invites: [],
         carried: t.ours ? 'self' : null,
         awardedInviteId: null,

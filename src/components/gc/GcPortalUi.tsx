@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from 'react'
+import { usePortalLang } from './gcPortalLang'
 
 /**
  * GC mode design spike: the pieces the trade's portal draws with. The portal is a page of its own
@@ -57,6 +58,7 @@ export function PortalWindow({
   children: ReactNode
   footer?: ReactNode
 }) {
+  const { t } = usePortalLang()
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
@@ -96,7 +98,7 @@ export function PortalWindow({
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t('close')}
             style={{ border: 'none', background: 'transparent', fontSize: '1.3rem', lineHeight: 1, cursor: 'pointer', color: PAPER, padding: '0.1rem 0.3rem' }}
           >
             ×

@@ -13,7 +13,9 @@ import {
   usualScope,
   guessLineSheets,
   answerRecord,
+  budgetFromSize,
   buildNewProject,
+  sqFtInText,
   partnerBlockers,
   defaultAsks,
   tradeLineup,
@@ -197,6 +199,7 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
   const scopeLines = picked.reduce((n, r) => n + r.scope.filter((l) => l.label.trim()).length, 0)
   const ours = picked.filter((r) => r.ours).length
   const budgets = picked.reduce((n, r) => n + budgetNumber(r.budget), 0)
+  const sqFt = sqFtInText(sizeNote)
   /** The project as it will be made, so each trade's companies can be lined up before it exists. */
   const built = buildNewProject(state, draft).project
   const asksFor = (trade: string, pkg: (typeof built.packages)[number]) => asks[trade] ?? defaultAsks(state, built, pkg)
@@ -463,7 +466,7 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
           {step === 2 && (
             <div style={{ display: 'grid', gap: '0.75rem' }}>
               <div style={{ fontSize: '0.875rem' }}>
-                The trades are a guess from the sheets. Untick a trade we do not need. Tick <strong>Ours</strong> when our own crew does it. Its number then comes from our own bid in Trades mode.
+                The trades are a guess from the sheets. Untick a trade we do not need. Tick <strong>Ours</strong> when our own crew does it. That starts our own bid in Trades mode. The trade counts as a real number once that bid is priced. Until then its budget is our guess.
               </div>
               {rows.length === 0 ? (
                 <div style={{ color: 'var(--text-muted)' }}>No trades yet. Paste the sheet index on step 2, or add a trade below.</div>
@@ -497,7 +500,7 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
                             Ours
                           </label>
                           <label style={{ display: 'flex', gap: '0.3rem', alignItems: 'center', whiteSpace: 'nowrap' }}>
-                            <span style={{ color: 'var(--text-muted)' }}>{r.ours ? 'Our bid' : 'Our budget'}</span>
+                            <span style={{ color: 'var(--text-muted)' }}>{r.ours ? 'Our guess' : 'Our budget'}</span>
                             <input
                               style={{ ...input, width: '7.5rem', textAlign: 'right' }}
                               inputMode="numeric"
@@ -537,6 +540,29 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
                 />
                 <Btn disabled={addText.trim() === ''} onClick={() => addTrade(addText)}>Add</Btn>
               </div>
+              {picked.some((r) => r.budget.trim() === '') && (
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.875rem' }}>
+                  {sqFt === null ? (
+                    <span style={{ color: 'var(--text-muted)' }}>Give the size in square feet on step 1, like 6,800 sq ft. Then the budgets can be filled from it.</span>
+                  ) : (
+                    <>
+                      <Btn
+                        onClick={() => {
+                          for (const r of picked) {
+                            const b = r.budget.trim() === '' ? budgetFromSize(r.trade, sqFt) : null
+                            if (b !== null) edit(r.trade, { budget: b.toLocaleString('en-US') })
+                          }
+                        }}
+                      >
+                        Fill the empty budgets from the size
+                      </Btn>
+                      <span style={{ color: 'var(--text-muted)' }}>
+                        A rough cost per square foot for each trade, times {sqFt.toLocaleString('en-US')} sq ft. Change any of them.
+                      </span>
+                    </>
+                  )}
+                </div>
+              )}
               {budgets > 0 && (
                 <div style={{ color: 'var(--text-600)', fontSize: '0.875rem' }}>
                   The budgets add up to <strong>{money(budgets)}</strong>. A budget is our own guess. It fills the price until a quote comes in.

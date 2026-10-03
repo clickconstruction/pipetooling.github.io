@@ -1,16 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   currentRev,
+  pDate,
+  pDiscipline,
   planLabel,
   sheetDiscipline,
   sheetsAtRev,
-  shortDate,
   type GcProject,
   type SheetInSet,
   type TradePackage,
 } from '../../lib/gcMode/gcModel'
 import { Btn, Chip } from './gcUi'
 import { PortalNote, PortalWindow } from './GcPortalUi'
+import { usePortalLang } from './gcPortalLang'
 
 /**
  * GC mode design spike: the plans as a trade reads them in its portal. The newest set first, the
@@ -30,6 +32,7 @@ export function GcPortalPlans({
   /** Open on this sheet, when the company tapped a sheet number beside a line of its bid. */
   startSheet?: string
 }) {
+  const { lang, t } = usePortalLang()
   const newest = currentRev(project)
   const [rev, setRev] = useState(newest)
   const sheets = useMemo(() => sheetsAtRev(project, rev), [project, rev])
@@ -68,13 +71,13 @@ export function GcPortalPlans({
 
   return (
     <PortalWindow
-      title={`${project.name} · plans`}
-      sub={`${project.address} · drawn by ${project.architect}`}
+      title={t('plansWindowTitle', { project: project.name })}
+      sub={t('drawnBy', { address: project.address, architect: project.architect })}
       onClose={onClose}
       width={1000}
     >
       <div style={{ padding: '0.75rem 0.9rem', display: 'grid', gap: '0.6rem' }}>
-        <div role="group" aria-label="Plan set" style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+        <div role="group" aria-label={t('planSetGroup')} style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
           {sets.map((s) => {
             const active = s.rev === rev
             return (
@@ -98,8 +101,8 @@ export function GcPortalPlans({
                   fontSize: '0.85rem',
                 }}
               >
-                {s.label} · {shortDate(s.issuedOn)}
-                {s.rev === newest ? ' · newest' : ''}
+                {s.label} · {pDate(lang, s.issuedOn)}
+                {s.rev === newest ? ` · ${t('newest')}` : ''}
               </button>
             )
           })}
@@ -108,12 +111,12 @@ export function GcPortalPlans({
         {set && (
           <PortalNote tone={set.touches.includes(pkg.id) ? 'amber' : 'paper'}>
             <div>
-              {rev < newest && <strong>An older set. {planLabel(project, newest)} replaced it. </strong>}
+              {rev < newest && <strong>{t('olderSet', { label: planLabel(project, newest) })} </strong>}
               {set.note}
             </div>
             {rev > 0 && (
               <div>
-                {set.touches.includes(pkg.id) ? <strong>This set changes {pkg.trade}.</strong> : <>This set does not change {pkg.trade}.</>}
+                {set.touches.includes(pkg.id) ? <strong>{t('setChanges', { trade: pkg.trade })}</strong> : <>{t('setNotChange', { trade: pkg.trade })}</>}
               </div>
             )}
           </PortalNote>
@@ -124,7 +127,7 @@ export function GcPortalPlans({
             {groups.map((g) => (
               <div key={g.discipline} style={{ marginBottom: '0.4rem' }}>
                 <div style={{ fontSize: '0.68rem', letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)', padding: '0.2rem 0.4rem' }}>
-                  {g.discipline}
+                  {pDiscipline(lang, g.discipline)}
                 </div>
                 {g.rows.map((s) => {
                   const active = s.id === sheet?.id
@@ -152,7 +155,7 @@ export function GcPortalPlans({
                     >
                       <span style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>{s.id}</span>
                       <span style={{ flex: 1, minWidth: 0 }}>{s.title}</span>
-                      {s.changedInRev === rev && rev > 0 && <Chip tone="amber">{s.added ? 'new' : 'changed'}</Chip>}
+                      {s.changedInRev === rev && rev > 0 && <Chip tone="amber">{t(s.added ? 'chipNew' : 'chipChanged')}</Chip>}
                     </button>
                   )
                 })}
@@ -163,11 +166,9 @@ export function GcPortalPlans({
           <div style={{ flex: '3 1 20rem', minWidth: 0, display: 'grid', gap: '0.5rem' }}>
             {sheet && <StandIn project={project} sheet={sheet} setLabel={planLabel(project, rev)} />}
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', flexWrap: 'wrap' }}>
-              <Btn disabled={index === 0} onClick={() => setSheetId(sheets[index - 1]?.id ?? sheetId)}>← Back</Btn>
-              <span style={{ opacity: 0.75 }}>
-                Sheet {index + 1} of {sheets.length}
-              </span>
-              <Btn disabled={index >= sheets.length - 1} onClick={() => setSheetId(sheets[index + 1]?.id ?? sheetId)}>Next →</Btn>
+              <Btn disabled={index === 0} onClick={() => setSheetId(sheets[index - 1]?.id ?? sheetId)}>{t('back')}</Btn>
+              <span style={{ opacity: 0.75 }}>{t('sheetOf', { i: index + 1, n: sheets.length })}</span>
+              <Btn disabled={index >= sheets.length - 1} onClick={() => setSheetId(sheets[index + 1]?.id ?? sheetId)}>{t('next')}</Btn>
             </div>
           </div>
         </div>
@@ -178,6 +179,7 @@ export function GcPortalPlans({
 
 /** A stand-in drawing: a sheet border, a few lines, the title block. The real build shows the page. */
 function StandIn({ project, sheet, setLabel }: { project: GcProject; sheet: SheetInSet; setLabel: string }) {
+  const { t } = usePortalLang()
   return (
     <div
       style={{
@@ -196,7 +198,7 @@ function StandIn({ project, sheet, setLabel }: { project: GcProject; sheet: Shee
       {sheet.changedInRev !== null && (
         <div style={{ position: 'absolute', left: '40%', top: '30%' }}>
           <Chip tone="amber">
-            {sheet.added ? 'added' : 'changed'} in {planLabel(project, sheet.changedInRev)}
+            {t(sheet.added ? 'addedIn' : 'changedIn', { set: planLabel(project, sheet.changedInRev) })}
           </Chip>
         </div>
       )}

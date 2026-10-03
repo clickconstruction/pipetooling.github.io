@@ -83,6 +83,26 @@ export function Btn({
   )
 }
 
+/**
+ * " + ?" after a total that counts some work at $0 because no cost is set for it yet. The words
+ * name the work ("1 line has no cost yet: roof curbs."); hovering shows them, and a screen reader
+ * reads them instead of the question mark. Nothing renders when nothing is missing.
+ */
+export function PlusUnknown({ words }: { words: string }) {
+  if (!words) return null
+  return (
+    <span
+      title={`${words} This number counts it as $0 until you set a cost in Compare bids.`}
+      style={{ color: 'var(--text-amber-800)', fontWeight: 700, whiteSpace: 'nowrap', cursor: 'help' }}
+    >
+      <span aria-hidden> + ?</span>
+      <span style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap' }}>
+        {` plus work with no cost yet. ${words}`}
+      </span>
+    </span>
+  )
+}
+
 export function Stat({ label, value, tone }: { label: string; value: ReactNode; tone?: 'red' | 'green' }) {
   return (
     <div style={{ minWidth: 0 }}>

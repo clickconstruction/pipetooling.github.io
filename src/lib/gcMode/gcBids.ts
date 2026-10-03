@@ -16,6 +16,46 @@ export function leveledTotal(pkg: TradePackage, invite: Invite): number | null {
   return bid.amount + plugs
 }
 
+/**
+ * The work a quote does not clearly include and has no cost set for. While any is left, the
+ * quote's all-in number is not known: `leveledTotal` counts it as $0, so every screen that shows
+ * that total marks it "+ ?". The same rule as `compareBids` ("No cost is set for … yet").
+ */
+export function uncostedLines(pkg: TradePackage, invite: Invite): ScopeItem[] {
+  const bid = invite.bid
+  if (!bid) return []
+  return pkg.scope.filter((item) => bid.includes[item.id] !== 'yes' && !((bid.plugs[item.id] ?? 0) > 0))
+}
+
+/**
+ * The work with no cost in the quote we carry (or awarded) on a trade. Empty for our own bid, our
+ * budget, a statement of work (its price is the contract) and a trade with nothing carried.
+ */
+export function carriedUncosted(pkg: TradePackage): ScopeItem[] {
+  if (pkg.selfPerform || pkg.sow || pkg.carried === 'plug') return []
+  const invite = pkg.invites.find((i) => i.id === (pkg.awardedInviteId ?? pkg.carried))
+  return invite ? uncostedLines(pkg, invite) : []
+}
+
+/** The trades whose carried quote is missing a cost: our price to the owner is not known while any is. */
+export function proposalUncosted(project: GcProject): TradePackage[] {
+  return project.packages.filter((pkg) => carriedUncosted(pkg).length > 0)
+}
+
+/** Our price's gap named trade by trade: "In Roofing, 1 line has no cost yet: roof curbs." */
+export function proposalUncostedWords(project: GcProject): string {
+  return proposalUncosted(project)
+    .map((pkg) => `In ${pkg.trade}, ${uncostedWords(carriedUncosted(pkg))}`)
+    .join(' ')
+}
+
+/** "1 line has no cost yet: roof curbs." Said beside a "+ ?" so the number's gap is named. */
+export function uncostedWords(items: ScopeItem[]): string {
+  if (items.length === 0) return ''
+  const names = listWords(items.map((i) => i.label.toLowerCase()))
+  return items.length === 1 ? `1 line has no cost yet: ${names}.` : `${items.length} lines have no cost yet: ${names}.`
+}
+
 /** A bid is stale when a plan set newer than its basis changed this package's scope. */
 export function bidIsStale(project: GcProject, pkg: TradePackage, invite: Invite): boolean {
   const bid = invite.bid

@@ -287,6 +287,11 @@ const STEPS: Step[] = [
   },
   { label: 'Our crew reports underground done', action: { type: 'selfReportStage', projectId: 'helotes', packageId: 'dplumb', lineId: 'dplumb-1', pct: 100 } },
   { label: 'Close Fair Oaks D with work still open (the screen would not offer it)', action: { type: 'closeJob', projectId: 'fairoaksd' } },
+  // Our own bid on a new project's trade: started unpriced, then priced.
+  {
+    label: 'Leon Springs: we price our own plumbing bid',
+    action: { type: 'priceOwnBid', projectId: 'leon-springs-urgent-care', packageId: 'leon-springs-urgent-care-plumbing', value: 68_000 },
+  },
 ]
 
 const CUSTOMER_IDS = ['cibolo', 'raman']
@@ -419,6 +424,7 @@ describe('GC mode golden walk', () => {
       'closeJob', 'approveDrawLess', 'selfReportStage',
       'tradeOpenPortal',
       'tradeAnswerLines',
+      'priceOwnBid',
     ]
     expect(all.filter((t) => !used.has(t))).toEqual([])
   })

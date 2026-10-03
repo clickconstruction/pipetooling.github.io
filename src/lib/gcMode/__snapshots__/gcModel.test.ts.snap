@@ -6973,6 +6973,21 @@ exports[`GC mode golden walk > step 91: Close Fair Oaks D with work still open (
 }
 `;
 
+exports[`GC mode golden walk > step 92: Leon Springs: we price our own plumbing bid 1`] = `
+{
+  "changed": {
+    "lastLog.id": 88,
+    "lastLog.text": "Priced our own bid on Plumbing for Leon Springs Urgent Care: $68,000.",
+    "projects.leon-springs-urgent-care.proposalTotals.contingency": 2040,
+    "projects.leon-springs-urgent-care.proposalTotals.fee": 5603.2,
+    "projects.leon-springs-urgent-care.proposalTotals.price": 75643.2,
+    "projects.leon-springs-urgent-care.proposalTotals.trades": 68000,
+    "projects.leon-springs-urgent-care.stageProgress.groups[1].items[2].detail": "Our own crew, 68K",
+  },
+  "removed": [],
+}
+`;
+
 exports[`GC mode golden walk > the whole state at the end 1`] = `
 {
   "customers": [
@@ -7173,6 +7188,11 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
+      "id": 88,
+      "text": "Priced our own bid on Plumbing for Leon Springs Urgent Care: $68,000.",
+      "who": "office",
+    },
+    {
       "id": 87,
       "text": "Closed Fair Oaks Shops, Building D. 8 things were still open.",
       "who": "office",
@@ -7315,11 +7335,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
     {
       "id": 59,
       "text": "Issued Bulletin 1 on Helotes Dental Office and emailed 1 company. 1 was told it changes their trade. It adds glass and storefront. Nobody is asked yet.",
-      "who": "office",
-    },
-    {
-      "id": 58,
-      "text": "Dr. Priya Raman paid pay application 1: $79,247.",
       "who": "office",
     },
   ],
@@ -11901,8 +11916,9 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
           ],
           "selfPerform": {
             "note": "Ours. Price it as our own bid in Trades mode.",
+            "priced": true,
             "ref": "New bid",
-            "value": 72000,
+            "value": 68000,
           },
           "sow": null,
           "trade": "Plumbing",

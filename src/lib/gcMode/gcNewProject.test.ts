@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
   SAMPLE_SHEET_INDEX,
+  budgetFromSize,
   buildNewProject,
   defaultAsks,
+  ownBidPriced,
+  sqFtInText,
   guessLineSheets,
   lineReads,
   lineSheets,
@@ -237,5 +240,40 @@ describe('defaultAsks', () => {
   it('asks nobody on our own trade, or where no company does the trade', () => {
     expect(defaultAsks(state, project, pkg('Plumbing'))).toEqual([])
     expect(defaultAsks(state, project, pkg('Landscaping'))).toEqual([])
+  })
+})
+
+describe('our own bid on a new project', () => {
+  const start = gcReducer(initialGcState(), { type: 'createProject', draft: draft() })
+  const plumbing = () => start.projects.find((p) => p.id === 'leon-springs-urgent-care')?.packages.find((p) => p.trade === 'Plumbing')
+
+  it('starts as our own bid, not priced, with our guess as its value', () => {
+    expect(plumbing()?.selfPerform).toMatchObject({ ref: 'New bid', value: 72_000, priced: false })
+    const p = plumbing()
+    expect(p ? ownBidPriced(p) : null).toBe(false)
+  })
+
+  it('counts as priced once we price it, and the made-up projects are priced already', () => {
+    const priced = gcReducer(start, { type: 'priceOwnBid', projectId: 'leon-springs-urgent-care', packageId: 'leon-springs-urgent-care-plumbing', value: 68_000 })
+    const p = priced.projects.find((x) => x.id === 'leon-springs-urgent-care')?.packages.find((x) => x.trade === 'Plumbing')
+    expect(p?.selfPerform).toMatchObject({ value: 68_000, priced: true })
+    expect(p ? ownBidPriced(p) : null).toBe(true)
+    expect(priced.log[0]?.text).toBe('Priced our own bid on Plumbing for Leon Springs Urgent Care: $68,000.')
+    const boernePlumbing = initialGcState().projects.find((x) => x.id === 'boerne')?.packages.find((x) => x.id === 'plumb')
+    expect(boernePlumbing ? ownBidPriced(boernePlumbing) : null).toBe(true)
+  })
+})
+
+describe('budgets from the size', () => {
+  it('reads the square feet in a size line', () => {
+    expect(sqFtInText('6,800 sq ft clinic, one story')).toBe(6800)
+    expect(sqFtInText('A 4200 SF pad building')).toBe(4200)
+    expect(sqFtInText('three tenant bays')).toBeNull()
+  })
+
+  it('rounds a trade\'s rough budget to the nearest $500, and has none for a trade with no rate', () => {
+    expect(budgetFromSize('Sitework', 6800)).toBe(81_500)
+    expect(budgetFromSize('Electrical', 6800)).toBe(122_500)
+    expect(budgetFromSize('Elevator', 6800)).toBeNull()
   })
 })
