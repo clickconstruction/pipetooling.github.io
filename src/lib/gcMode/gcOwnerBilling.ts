@@ -529,3 +529,46 @@ export function ownerFinalPayAppToSend(state: GcState, project: GcProject, today
 export function ownerReleasedRetainage(project: GcProject): boolean {
   return ownerPayAppsSent(project).some((a) => a.final === true && a.paidOn !== null)
 }
+
+// ---------------------------------------------------------------------------------------------
+// Our costs and fee, spread into the trades (open question 13): the same bill, where each trade's
+// line carries its share of general conditions, contingency and fee, so the lines add up to the
+// price with no fee line. Each column is shared out in proportion to the trades' own amounts in
+// that column, so every total is the same as with our costs as lines of their own.
+// ---------------------------------------------------------------------------------------------
+
+/** The lines that are our own costs and fee, not a trade. */
+export const OUR_COST_LINE_IDS = ['gc', 'contingency', 'fee']
+
+export type SpreadLine<L> = L & {
+  /** The trade's own amount before our share was added: its worth in the price. */
+  tradeWorth: number
+  /** Our costs and fee carried on this line. */
+  ourShare: number
+}
+
+/** The trade lines with our costs and fee spread into them. Our own lines drop out. */
+export function spreadMarkup<L extends { id: string; worth: number; doneBefore: number; thisMonth: number; doneToDate: number }>(
+  lines: L[],
+): SpreadLine<L>[] {
+  const ours = lines.filter((l) => OUR_COST_LINE_IDS.includes(l.id))
+  const trades = lines.filter((l) => !OUR_COST_LINE_IDS.includes(l.id))
+  const total = (rows: L[], key: 'worth' | 'doneBefore' | 'doneToDate') => rows.reduce((s, l) => s + l[key], 0)
+  const share = (l: L, key: 'worth' | 'doneBefore' | 'doneToDate') => {
+    const t = total(trades, key)
+    return t === 0 ? 0 : (total(ours, key) * l[key]) / t
+  }
+  return trades.map((l) => {
+    const doneBefore = l.doneBefore + share(l, 'doneBefore')
+    const doneToDate = l.doneToDate + share(l, 'doneToDate')
+    const ourShare = share(l, 'worth')
+    return { ...l, worth: l.worth + ourShare, doneBefore, doneToDate, thisMonth: doneToDate - doneBefore, tradeWorth: l.worth, ourShare }
+  })
+}
+
+/** Our costs and fee as a share of the trades' price: 0.372 reads "37.2% on top". */
+export function markupOnTop(lines: { id: string; worth: number }[]): number {
+  const trades = lines.filter((l) => !OUR_COST_LINE_IDS.includes(l.id)).reduce((s, l) => s + l.worth, 0)
+  const ours = lines.filter((l) => OUR_COST_LINE_IDS.includes(l.id)).reduce((s, l) => s + l.worth, 0)
+  return trades === 0 ? 0 : ours / trades
+}

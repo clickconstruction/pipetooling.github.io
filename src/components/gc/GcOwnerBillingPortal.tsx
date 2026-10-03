@@ -12,6 +12,7 @@ import {
   ownerPayAppsSent,
   sentPayAppLines,
   shortDate,
+  spreadMarkup,
   tradeWaiverChecks,
   weekdayDate,
   type GcAction,
@@ -186,7 +187,9 @@ export function GcOwnerBillingPortal({ state, project, dispatch }: { state: GcSt
 function BillRow({ state, project, app, onPay }: { state: GcState; project: GcProject; app: OwnerPayAppSent; onPay: () => void }) {
   const [open, setOpen] = useState(false)
   const month = MONTH_NAMES[Number(app.periodTo.slice(5, 7)) - 1] ?? ''
-  const lines = open ? sentPayAppLines(state, project, app.number).filter((l) => l.worth > 0) : []
+  const sentLines = open ? sentPayAppLines(state, project, app.number) : []
+  // Owner's call (2026-10-02): our costs and fee are spread into the trades' lines.
+  const lines = spreadMarkup(sentLines).filter((l) => l.worth > 0)
   return (
     <div style={{ borderTop: `1px solid ${RULE}`, paddingTop: '0.45rem', display: 'grid', gap: '0.35rem' }}>
       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.875rem' }}>

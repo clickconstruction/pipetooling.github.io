@@ -82,7 +82,7 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
 | **Contracts** | Per trade: paperwork chips, award, the statement of work drafted from the bid, send, sign. |
 | **Get started** | The checklist before work starts: owner contract, permit, start date, and five steps per trade. Start stays shut until nothing is missing. |
 | **Draws** | Percent reported per line, a draw asked from the portal with its pay application (the 702 and 703) and a conditional waiver, approve, pay, unconditional waiver. **Pay application** on each draw opens the signed form read-only. **Send back** returns a waiting draw with a note and the percent we see on each line we doubt; the trade gets **Fix and resend** in its portal, our numbers filled in, and the fixed one comes back marked "revised". A trade our own crew does shows as **Our own crew** with its percent and its Pipeline job: no draws there. |
-| **Bill the owner** | Our pay application to the owner, once a month: one line per trade with the work its company reported, then general conditions, contingency and fee, which follow the trades. Done so far, less what the owner holds, less what we asked for before, is this bill. **Send to** the owner keeps it as it went, and next month's starts from it. **So far with** the owner lists what went, with **Mark paid**. A trade our own crew does (plumbing) has a percent-done picker on its line. **Waivers with this bill** says whose waiver is missing. **See what the owner sees** puts their portal beside it: their contract, each bill with every line and **Pay**, and their papers (our lien waivers and the trades'). A trade's pay application we sent back bills what we see on the lines we doubt. Once every line is billed, **Closeout with** the owner replaces the draft: every trade's final, the owner's **Accept the work**, then **Send the final pay application** for what they hold. |
+| **Bill the owner** | Our pay application to the owner, once a month: one line per trade with the work its company reported, each carrying its share of our general conditions, contingency and fee ("Their price $64,200 plus $23,852 of our costs and fee"). No fee line. Done so far, less what the owner holds, less what we asked for before, is this bill. **Send to** the owner keeps it as it went, and next month's starts from it. **So far with** the owner lists what went, with **Mark paid**. A trade our own crew does (plumbing) has a percent-done picker on its line. **Waivers with this bill** says whose waiver is missing. **See what the owner sees** puts their portal beside it: their contract, each bill with every line and **Pay**, and their papers (our lien waivers and the trades'). A trade's pay application we sent back bills what we see on the lines we doubt. Once every line is billed, **Closeout with** the owner replaces the draft: every trade's final, the owner's **Accept the work**, then **Send the final pay application** for what they hold. |
 | **Follow up** (board tab) | Everyone we are waiting on across every project, the ones to call first. Log a contact; record the day they promised a quote; a passed day returns them to the top. |
 | **Trade partners** (board tab) | By trade: the bench, who answers when asked, every project short of quotes, coverage (where they drive from, how far they go), one press to ask the companies not yet asked. **Actions for assistants** on top: each standard as the ideal, where we are, and what closes the gap. |
 | The trade's portal | English or Spanish (**Español** on the portal's letterhead: every word the portal writes, and the messages). One link per company, carried by every message we send (**Their messages** beside **Their portal**: the invitation as an email and a text, reminders, new plan sets, bid tabs, the master agreement, a statement of work to sign, the day work starts by email and text, and a draw approved for less with our reason). The first visit opens on a welcome until **Got it**. The link opens on the company's **home**: what needs them across every project (late or blocking first; a pay application we sent back, a draw we approved for less, their closeout steps), their money once a dollar moves, their jobs, what they are asked to bid, their paperwork, and what came before. A row opens that project's page, with **← Everything with Click** back. On a project page: paperwork done by the company itself (read and sign the master agreement, send an insurance certificate, fill in and sign a W-9), the plans window (sets, sheets, whether a set changes their trade), the invitation and the bid form (each line with its sheet numbers, a tap opens that sheet; after a new set the lines it touches are marked; how many days the number is good for; alternates that add or take off; their own quote attached), "tell Click when your number will come" (a passed day shows in red), answer a line the office could not read (its own short step, the number stays), confirm a number after an addendum, the bid tab, sign the statement of work, report work, ask for a draw with its pay application (next row). |
@@ -214,6 +214,9 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   unconditional one. Our final waits until every trade has sent its own final pay application.
   A trade's retainage is paid only after the owner has paid us ours (`ownerReleasedRetainage`):
   that rule is the Building lane's to apply on Closeout.
+- **Our costs and fee are spread into the trades** on the owner's bill (Owner Billing lane,
+  2026-10-02, was open question 13): each trade's line carries its share of general conditions,
+  contingency and fee, so the lines add up to the price and the owner never sees a fee line.
 - **A pay application we sent back bills what we see** (Owner Billing lane, 2026-10-02): until
   the trade resends it, the owner's bill uses our percent on the lines we doubt, not theirs.
 - **A trade sees "Click Construction"** (2026-10-02). The name comes from one record
@@ -266,8 +269,8 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
   percents become the trade's report, even lower than it was.
 - Owner billing (`gcOwnerBilling.ts`): the pay application goes on the 25th. A trade's line on
   the owner's bill is the work its company reported, before we approve their draw. General
-  conditions, contingency and fee follow the share of the trades' work done, so the bill totals
-  the same whether they show as lines or spread into the trades. The owner holds the percent on
+  conditions, contingency and fee follow the share of the trades' work done, and each trade's
+  line carries its share of them in proportion to its own amounts (`spreadMarkup`). The owner holds the percent on
   their customer record, 10% when it says nothing. Our own crew reports one percent for the whole
   trade, in 10% steps, the way the Pipeline keeps one percent on a job.
 - A new insurance certificate counts the moment the company sends it; nobody in the office checks
@@ -314,9 +317,9 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
 12. The pay application leaves out the notary block, materials stored on site (column F reads $0)
     and change orders (line 2 reads $0). Which of these do our trades need? Should it also
     download as the AIA Excel template the Jobs Stages tab fills, or as a PDF?
-13. On the owner's bill, do our general conditions, contingency and fee show as lines of their
-    own, or spread into each trade's line so the owner never sees the fee? (Built as lines of
-    their own for now. The total is the same either way.)
+13. ~~On the owner's bill, do our general conditions, contingency and fee show as lines of their
+    own, or spread into each trade's line so the owner never sees the fee?~~ Answered: spread
+    into the trades (see *Decided by the owner*).
 14. ~~Should a trade also give alternates, attach its own quote, and say how many days the number
     is good for?~~ Built on the owner's word (2026-10-02). Still open: Compare bids and Trades do
     not read them yet (the Board lane's change). Should an alternate the office takes change the
