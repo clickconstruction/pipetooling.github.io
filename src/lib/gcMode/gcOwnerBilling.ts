@@ -233,3 +233,109 @@ export function ownerExpectPaidOn(state: GcState, project: GcProject, app: Owner
   const payDays = customerOf(state, project)?.payDays
   return payDays == null ? null : addDays(app.sentOn, payDays)
 }
+
+// ---------------------------------------------------------------------------------------------
+// Lien waivers to the owner (owner's calls, 2026-10-02): ours and the trades' go with each pay
+// application; ours is signed unconditional when we mark the bill paid; a trade's missing waiver
+// is a warning, never a stop.
+// ---------------------------------------------------------------------------------------------
+
+/** One of our own waivers to the owner, on one pay application. */
+export interface OurOwnerWaiver {
+  payApp: number
+  kind: 'conditional' | 'unconditional'
+  amount: number
+  signedOn: string
+}
+
+/**
+ * Our waivers to the owner: a conditional waiver on progress payment with each pay application
+ * when it goes, and the unconditional one when we mark it paid. Newest first.
+ */
+export function ourOwnerWaivers(project: GcProject): OurOwnerWaiver[] {
+  const out: OurOwnerWaiver[] = []
+  for (const app of ownerPayAppsSent(project)) {
+    out.push({ payApp: app.number, kind: 'conditional', amount: app.due, signedOn: app.sentOn })
+    if (app.paidOn !== null) out.push({ payApp: app.number, kind: 'unconditional', amount: app.due, signedOn: app.paidOn })
+  }
+  return out.reverse()
+}
+
+/** One trade's waivers against the work of theirs we billed the owner. */
+export interface TradeWaiverCheck {
+  packageId: string
+  trade: string
+  company: string
+  /** Their work on our bills so far. */
+  billed: number
+  /** Their work their unconditional waivers cover: draws we paid and they waived. */
+  unconditional: number
+  /** Their work only a conditional waiver covers so far: draws asked for, not yet waived for good. */
+  conditional: number
+  /** Their work on our bills with no waiver from them yet. */
+  missing: number
+  /** Each draw's waiver, oldest first: the papers the owner gets. */
+  waivers: { draw: number; kind: 'conditional' | 'unconditional'; amount: number; final: boolean }[]
+}
+
+/**
+ * The trades' waivers behind our bills: for each trade with work on them, how much of that work
+ * their waivers cover. A draw's waiver covers the work it asked for; the amount it names is what
+ * they are paid. `billedByLine` is done so far by owner line: the draft's, or a sent bill's.
+ */
+export function tradeWaiverChecks(state: GcState, project: GcProject, billedByLine: Record<string, number>): TradeWaiverCheck[] {
+  const out: TradeWaiverCheck[] = []
+  for (const pkg of project.packages) {
+    const billed = billedByLine[pkg.id] ?? 0
+    const sow = pkg.sow
+    const invite = pkg.invites.find((i) => i.id === pkg.awardedInviteId)
+    const partner = invite ? partnerById(state, invite.partnerId) : undefined
+    if (pkg.selfPerform || billed <= 0 || !sow || !partner) continue
+    const draws = sow.draws
+    const covered = draws.reduce((s, d) => s + d.gross, 0)
+    const unconditional = draws.filter((d) => d.waiver === 'unconditional').reduce((s, d) => s + d.gross, 0)
+    out.push({
+      packageId: pkg.id,
+      trade: pkg.trade,
+      company: partner.company,
+      billed,
+      unconditional: Math.min(billed, unconditional),
+      conditional: Math.max(0, Math.min(billed, covered) - unconditional),
+      missing: Math.max(0, billed - covered),
+      waivers: draws.map((d) => ({ draw: d.number, kind: d.waiver, amount: d.net, final: d.final === true })),
+    })
+  }
+  return out
+}
+
+/** The trades on a bill whose waivers do not cover their work on it yet. */
+export function missingTradeWaivers(checks: TradeWaiverCheck[]): TradeWaiverCheck[] {
+  return checks.filter((c) => Math.round(c.missing) > 0)
+}
+
+/** One line of a sent pay application as the owner reads it: the same columns as the draft. */
+export interface SentPayAppLine {
+  id: string
+  label: string
+  worth: number
+  doneBefore: number
+  thisMonth: number
+  doneToDate: number
+}
+
+/**
+ * A sent pay application's lines, every one (owner's call: the owner sees each line). Done so far
+ * is what it said when it went; done before is what the one before it said. Labels and worth are
+ * today's lines.
+ */
+export function sentPayAppLines(state: GcState, project: GcProject, number: number): SentPayAppLine[] {
+  const sent = ownerPayAppsSent(project)
+  const app = sent.find((a) => a.number === number)
+  const before = sent.find((a) => a.number === number - 1)
+  if (!app) return []
+  return ownerPayApp(state, project).lines.map((l) => {
+    const doneToDate = app.doneToDate[l.id] ?? 0
+    const doneBefore = before?.doneToDate[l.id] ?? 0
+    return { id: l.id, label: l.label, worth: l.worth, doneBefore, thisMonth: doneToDate - doneBefore, doneToDate }
+  })
+}
