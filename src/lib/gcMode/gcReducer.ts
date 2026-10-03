@@ -704,5 +704,15 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
       )
       return logged(next, 'office', `Our own crew reported ${pkg.trade} at ${pct}%.`)
     }
+
+    case 'tradeOpenPortal': {
+      const partner = partnerById(state, action.partnerId)
+      if (!partner || partner.portalOpenedOn) return state
+      return logged(
+        { ...state, partners: state.partners.map((p) => (p.id === partner.id ? { ...p, portalOpenedOn: state.today } : p)) },
+        'trade',
+        `${partner.company} opened their portal for the first time.`,
+      )
+    }
   }
 }

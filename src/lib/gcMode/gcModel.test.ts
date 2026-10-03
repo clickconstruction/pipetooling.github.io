@@ -191,6 +191,8 @@ const STEPS: Step[] = [
   { label: 'Hill Country signs the unconditional waiver on final payment', action: { type: 'tradeSignUnconditional', projectId: 'helotes', packageId: 'dry', drawId: 'dry-draw-4' } },
   // Helotes: our own crew reports plumbing on Bill the owner.
   { label: 'Our crew reports plumbing at 50%', action: { type: 'selfReport', projectId: 'helotes', packageId: 'dplumb', pct: 50 } },
+  // The portal: a company's first visit.
+  { label: 'AquaShield opens its portal for the first time', action: { type: 'tradeOpenPortal', partnerId: 'aquashield' } },
 ]
 
 const CUSTOMER_IDS = ['cibolo', 'raman']
@@ -318,6 +320,7 @@ describe('GC mode golden walk', () => {
       'sendOwnerPayApp', 'ownerPaid', 'issuePlanSet',
       'acceptWork', 'tradeSendWarranty', 'tradeSendFinalPayApp', 'approveRetainage',
       'selfReport',
+      'tradeOpenPortal',
     ]
     expect(all.filter((t) => !used.has(t))).toEqual([])
   })

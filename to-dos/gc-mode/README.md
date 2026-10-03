@@ -84,7 +84,7 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
 | **Bill the owner** | Our pay application to the owner, once a month: one line per trade with the work its company reported, then general conditions, contingency and fee, which follow the trades. Done so far, less what the owner holds, less what we asked for before, is this bill. **Send to** the owner keeps it as it went, and next month's starts from it. **So far with** the owner lists what went, with **Mark paid**. A trade our own crew does (plumbing) has a percent-done picker on its line. |
 | **Follow up** (board tab) | Everyone we are waiting on across every project, the ones to call first. Log a contact; record the day they promised a quote; a passed day returns them to the top. |
 | **Trade partners** (board tab) | By trade: the bench, who answers when asked, every project short of quotes, coverage (where they drive from, how far they go), one press to ask the companies not yet asked. **Actions for assistants** on top: each standard as the ideal, where we are, and what closes the gap. |
-| The trade's portal | One link per company. It opens on the company's **home**: what needs them across every project (late or blocking first), their money once a dollar moves, their jobs, what they are asked to bid, their paperwork, and what came before. A row opens that project's page, with **← Everything with Click** back. On a project page: paperwork done by the company itself (read and sign the master agreement, send an insurance certificate, fill in and sign a W-9), the plans window (sets, sheets, whether a set changes their trade), the invitation and the bid form, "tell Click when your number will come" (a passed day shows in red), answer a line the office could not read, confirm a number after an addendum, the bid tab, sign the statement of work, report work, ask for a draw with its pay application (next row). |
+| The trade's portal | One link per company, carried by every message we send (**Their messages** beside **Their portal**: the invitation as an email and a text, reminders, new plan sets, bid tabs). The first visit opens on a welcome until **Got it**. The link opens on the company's **home**: what needs them across every project (late or blocking first), their money once a dollar moves, their jobs, what they are asked to bid, their paperwork, and what came before. A row opens that project's page, with **← Everything with Click** back. On a project page: paperwork done by the company itself (read and sign the master agreement, send an insurance certificate, fill in and sign a W-9), the plans window (sets, sheets, whether a set changes their trade), the invitation and the bid form, "tell Click when your number will come" (a passed day shows in red), answer a line the office could not read, confirm a number after an addendum, the bid tab, sign the statement of work, report work, ask for a draw with its pay application (next row). |
 | Pay application (from the portal) | **Fill out pay application N**: four steps on a rail like the Release of Lien window (Check your work, Fill in a few details, Sign it, Send it to Click) beside the 702 and 703, which fill in as the trade types and mark what each step fills. The app knows the job, the contract, the lines, what was billed and the retainage; the trade checks the percents, picks the period, types its address once, and signs. Closing the window keeps the draft. |
 | **Closeout** | Each trade's last six steps: every line billed, **Accept the work** (the punch list is done), their warranty letter, their final pay application for the retainage with a conditional waiver on final payment, **Approve the release** and **Mark paid**, their unconditional waiver on final payment. Totals for held, paid back and trades closed out. In the portal the same steps show as the trade's closeout list, ending "You are closed out on this job." |
 
@@ -182,6 +182,10 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
   it first. A new one is good for a year until they change the day.
 - A company answers every line the office marked "not clear" (in or left out) before its number
   can go again. A new set that does not change their trade asks them to open it but does not warn.
+- The invitation names the trade, the address and size, the due day, the newest plans and the
+  scope lines; the text says the same in one sentence with the link. A company sees the welcome
+  until it presses **Got it**; one that already bid, opened plans or signed the master agreement
+  never sees it.
 
 ## Open questions (the owner's to answer)
 
@@ -220,6 +224,8 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
     waivers from their own suppliers.
 18. Should a project whose trades are all closed out leave Building for a fourth section on
     the board? It stays under Building today. That is the Board lane's change.
+19. Should the office see which companies never opened their link (a chip on Trades and in
+    Follow up)? The portal records the first visit (`portalOpenedOn`). That is the Board lane's change.
 
 ## Workflow steps not built yet
 
@@ -237,6 +243,8 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
   our own crew's percent read from its Pipeline job (typed on **Bill the owner** for now);
   retainage released at the end; our lien waivers to the owner; what the owner sees.
 - No email is sent and nothing notifies anyone when a promised day passes.
+- The portal's messages leave out the master agreement sent, the statement of work sent and work
+  starting: the model keeps no day for them yet.
 
 ## Where it plugs into the app that exists
 
@@ -277,7 +285,7 @@ imitates it.
 | `gcModel.test.ts` | The golden test (see *Working in parallel*). |
 | `GcOfficeTabs.tsx` | Trades (with Compare bids), Plans, Our number, Contracts, Draws, the flat company list |
 | `GcTradePortal.tsx` | The trade partner's side: the frame, each trade's plans, bid, bid tab, statement of work and draws |
-| `GcPortalHome.tsx` | The company's home in its portal, where the link lands |
+| `GcPortalHome.tsx` · `GcPortalMessages.tsx` | The company's home in its portal, where the link lands, with the first-visit welcome · what we sent the company, each message carrying the link |
 | `GcPortalPaperwork.tsx` · `GcPortalAgreement.tsx` · `GcPortalPlans.tsx` · `GcPortalUi.tsx` | The portal's paperwork block (insurance and W-9 forms) · the master agreement to read and sign · the plans window as a trade sees it · the portal's block, note and window |
 | `GcTradeBench.tsx` | Trade partners by trade, Actions for assistants |
 | `GcTradeMap.tsx` | The map window |

@@ -3,7 +3,18 @@
  * names the company and the fixture fact it leans on, so a fixture change that breaks one says why.
  */
 import { describe, expect, it } from 'vitest'
-import { gcReducer, initialGcState, portalHome, portalPlanNews, portalPromiseLine, portalTodos, type GcState } from './gcModel'
+import {
+  gcReducer,
+  initialGcState,
+  portalFirstVisit,
+  portalHome,
+  portalLink,
+  portalMessages,
+  portalPlanNews,
+  portalPromiseLine,
+  portalTodos,
+  type GcState,
+} from './gcModel'
 
 const state = initialGcState()
 
@@ -113,5 +124,56 @@ describe('plan news and promises', () => {
       text: 'You told Click your number would come by Wed Sep 30. That day passed 2 days ago. Send your number or give a new day.',
       late: true,
     })
+  })
+})
+
+describe('how a company arrives', () => {
+  it('gives each company its own link', () => {
+    expect(portalLink('voltage')).toMatch(/^clicktooling\.com\/t\/[0-9A-Z]{7}$/)
+    expect(portalLink('voltage')).toBe(portalLink('voltage'))
+    expect(portalLink('voltage')).not.toBe(portalLink('brightline'))
+  })
+
+  it('lists what we sent Voltage, newest first', () => {
+    expect(portalMessages(state, 'voltage').map((m) => `${m.on} ${m.kind} ${m.projectId}`)).toMatchInlineSnapshot(`
+      [
+        "2026-09-29 plans boerne",
+        "2026-09-19 invite boerne",
+        "2026-09-19 invite helotes",
+      ]
+    `)
+  })
+
+  it('writes the invitation as an email and a text, with the link in the text', () => {
+    const invite = portalMessages(state, 'voltage').find((m) => m.kind === 'invite' && m.projectId === 'boerne')
+    expect(invite?.subject).toBe('Click Construction asks you to bid Electrical on Boerne Retail Shell')
+    expect(invite?.lines).toContain('Your number is due Thu Oct 8.')
+    expect(invite?.scope?.length).toBeGreaterThan(0)
+    expect(invite?.text).toContain(portalLink('voltage'))
+  })
+
+  it('tells Hillside the new set does not change Sitework, and Voltage that it changes Electrical', () => {
+    const plans = (id: string) => {
+      const lines = portalMessages(state, id).find((m) => m.kind === 'plans')?.lines ?? []
+      return lines[lines.length - 1]
+    }
+    expect(plans('hillside')).toBe('It does not change Sitework. Open it so you price on the newest set.')
+    expect(plans('voltage')).toBe('It changes Electrical. Open it, then confirm your number or change it.')
+  })
+
+  it('welcomes a company the first time it opens its link, and not after Got it', () => {
+    // AquaShield Sprinkler has never been asked and never signed anything.
+    const asked = gcReducer(state, { type: 'invite', projectId: 'boerne', packageId: 'fire', partnerId: 'aquashield' })
+    expect(portalFirstVisit(asked, 'aquashield')).toBe(true)
+    const opened = gcReducer(asked, { type: 'tradeOpenPortal', partnerId: 'aquashield' })
+    expect(portalFirstVisit(opened, 'aquashield')).toBe(false)
+    expect(gcReducer(opened, { type: 'tradeOpenPortal', partnerId: 'aquashield' })).toBe(opened)
+  })
+
+  it('does not welcome a company that already used its portal', () => {
+    for (const p of state.partners.filter((x) => x.id !== 'aquashield')) {
+      const used = portalHome(state, p.id).bidding.length + portalHome(state, p.id).jobs.length + portalHome(state, p.id).past.length > 0
+      if (used) expect([p.id, portalFirstVisit(state, p.id)]).toEqual([p.id, false])
+    }
   })
 })

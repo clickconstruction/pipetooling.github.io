@@ -5265,6 +5265,17 @@ exports[`GC mode golden walk > step 73: Our crew reports plumbing at 50% 1`] = `
 }
 `;
 
+exports[`GC mode golden walk > step 74: AquaShield opens its portal for the first time 1`] = `
+{
+  "changed": {
+    "lastLog.id": 70,
+    "lastLog.text": "AquaShield Sprinkler opened their portal for the first time.",
+    "lastLog.who": "trade",
+  },
+  "removed": [],
+}
+`;
+
 exports[`GC mode golden walk > the whole state at the end 1`] = `
 {
   "customers": [
@@ -5421,6 +5432,11 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
+      "id": 70,
+      "text": "AquaShield Sprinkler opened their portal for the first time.",
+      "who": "trade",
+    },
+    {
       "id": 69,
       "text": "Our own crew reported Plumbing at 50%.",
       "who": "office",
@@ -5563,11 +5579,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
     {
       "id": 41,
       "text": "The permit is marked done on Helotes Dental Office.",
-      "who": "office",
-    },
-    {
-      "id": 40,
-      "text": "The permit is marked not done on Helotes Dental Office.",
       "who": "office",
     },
   ],
@@ -5887,6 +5898,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "maxMiles": 100,
       "msa": "none",
       "msaSignedOn": null,
+      "portalOpenedOn": "2026-10-02",
       "promisesKept": 0,
       "promisesMade": 0,
       "trades": [
