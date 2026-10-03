@@ -454,7 +454,7 @@ function DueBlock({ project, today }: { project: GcProject; today: string }) {
   const box = {
     display: 'grid',
     justifyItems: 'center',
-    padding: '0.35rem 0.4rem',
+    padding: '0.35rem 0.25rem',
     borderRadius: 8,
     lineHeight: 1.15,
     fontVariantNumeric: 'tabular-nums',
@@ -598,11 +598,13 @@ function ProjectRow({
         cursor: 'pointer',
         color: 'var(--text-base)',
         display: 'grid',
+        // The block column fits the Building lane's schedule block ("1 of 2 milestones", which does
+        // not wrap) with the block's slim side padding; one width per layout keeps the rows aligned.
         gridTemplateColumns: narrow
-          ? '3.5rem 5.5rem minmax(0, 1fr)'
+          ? '3.5rem 6.5rem minmax(0, 1fr)'
           : roomy
-            ? '3.5rem 6.5rem minmax(0, 2fr) minmax(0, 2fr) auto auto'
-            : '3.5rem 6.5rem minmax(0, 1fr) auto auto',
+            ? '3.5rem 7rem minmax(0, 2fr) minmax(0, 2fr) auto auto'
+            : '3.5rem 7rem minmax(0, 1fr) auto auto',
         gap: narrow ? '0.6rem 0.75rem' : roomy ? '1rem' : '0.5rem 1rem',
         alignItems: 'center',
       }}
