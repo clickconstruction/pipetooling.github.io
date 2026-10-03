@@ -47,6 +47,7 @@ import { AskThread } from './GcAskThread'
 import { GcBuildingPayAppWindow } from './GcBuildingPayApp'
 import { GcBuildingSendBackForm, GcBuildingSentBackList } from './GcBuildingSendBack'
 import { GcBuildingTradeChanges } from './GcBuildingChanges'
+import { GcBuildingDrawDays, GcBuildingToPay } from './GcBuildingPayDays'
 import { GcBuildingCrewCard } from './GcBuildingCrew'
 import { GcNewPlansWindow } from './GcNewPlans'
 import { Btn, Card, Chip, PlusUnknown, Stat, Why, input, num, td, th, type Tone } from './gcUi'
@@ -983,6 +984,7 @@ export function GcDrawsTab({ state, project, dispatch }: GcPaneProps) {
         fixed. The unconditional waiver follows the payment.
       </Why>
       {signed.length === 0 && <Card>No trade we hire has a signed statement of work on this project yet.</Card>}
+      <GcBuildingToPay state={state} project={project} />
       {signed.map((pkg) => {
         const sow = pkg.sow
         const inv = pkg.invites.find((i) => i.id === pkg.awardedInviteId)
@@ -1030,7 +1032,7 @@ export function GcDrawsTab({ state, project, dispatch }: GcPaneProps) {
                     {d.final ? `Draw ${d.number} · retainage release` : `Draw ${d.number}`}
                     {timesSentBack(sow, d.number) > 0 ? ' · revised' : ''}
                   </strong>
-                  <span>{shortDate(d.requestedOn)}</span>
+                  <span>asked {shortDate(d.requestedOn)}</span>
                   {d.final ? (
                     <span>pays back what we held: <strong>{money(d.net)}</strong></span>
                   ) : (
@@ -1042,6 +1044,7 @@ export function GcDrawsTab({ state, project, dispatch }: GcPaneProps) {
                   <Chip tone={d.status === 'paid' ? 'green' : d.status === 'approved' ? 'blue' : 'amber'}>
                     {d.status === 'requested' ? 'waiting on us' : d.status}
                   </Chip>
+                  <GcBuildingDrawDays project={project} pkg={pkg} draw={d} today={state.today} />
                   <Chip tone={d.waiver === 'unconditional' ? 'green' : d.status === 'paid' ? 'amber' : 'grey'}>
                     {d.final
                       ? d.waiver === 'unconditional'
