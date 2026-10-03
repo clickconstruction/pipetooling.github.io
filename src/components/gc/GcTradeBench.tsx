@@ -2,10 +2,13 @@ import { useState, type Dispatch } from 'react'
 import {
   BIDS_WANTED,
   TOWNS,
+  PARTNER_SCHEDULE_WHY,
   answerRecord,
   askPromise,
   assistantRules,
   partnerAsks,
+  partnerScheduleRecord,
+  partnerScheduleWords,
   promiseWords,
   shortDate,
   tradeBenches,
@@ -411,6 +414,8 @@ function PartnerLine({ state, partner, bench, dispatch }: { state: GcState; part
   const [base, setBase] = useState(partner.base ?? '')
   const [maxMiles, setMaxMiles] = useState(partner.maxMiles === null ? '' : String(partner.maxMiles))
   const record = RECORD_WORDS[answerRecord(partner)]
+  // The schedule plan (owner, 2026-10-02): how they keep our dates, beside how they answer.
+  const schedule = partnerScheduleRecord(state, partner)
   const asks = partnerAsks(state, partner.id, bench.trade)
   const askedOn = new Set(asks.map((a) => a.pkg.id))
   const open = bench.needs.filter((n) => n.short > 0 && !askedOn.has(n.pkg.id))
@@ -469,6 +474,11 @@ function PartnerLine({ state, partner, bench, dispatch }: { state: GcState; part
         <span style={{ color: 'var(--text-600)', fontSize: '0.85rem' }}>
           {partner.invited === 0 ? 'never asked' : `bid ${partner.bids} of ${partner.invited} asks`}
         </span>
+        {schedule && (
+          <div style={{ color: 'var(--text-600)', fontSize: '0.8rem', marginTop: '0.2rem' }} title={PARTNER_SCHEDULE_WHY}>
+            On our jobs: {partnerScheduleWords(schedule)}
+          </div>
+        )}
       </td>
       <td style={td}>
         <span style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap', alignItems: 'center' }}>

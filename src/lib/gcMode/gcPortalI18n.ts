@@ -275,6 +275,38 @@ const S = {
   alsoChanged: { en: 'Also changed', es: 'También cambió' },
   changedInSets: { en: 'Changed in {sets}', es: 'Cambió en {sets}' },
 
+  // Questions about the plans
+  questionsTitle: { en: '{trade} · questions about the plans', es: '{trade} · preguntas sobre los planos' },
+  askPrompt: { en: 'Ask about the plans. Every company on this trade gets the answer, without your name.', es: 'Pregunte sobre los planos. Todas las empresas de esta especialidad reciben la respuesta, sin su nombre.' },
+  askBy: { en: 'Ask before {date}. Questions close that day.', es: 'Pregunte antes del {date}. Ese día se cierran las preguntas.' },
+  askClosed: { en: 'Questions closed {date}, three days before the bid is due.', es: 'Las preguntas se cerraron el {date}, tres días antes de la fecha de entrega.' },
+  yourQuestion: { en: 'Your question', es: 'Su pregunta' },
+  questionSheets: { en: 'Sheets it is about, if any (like E-301)', es: 'Hojas a las que se refiere, si aplica (como E-301)' },
+  sendQuestion: { en: 'Send the question', es: 'Enviar la pregunta' },
+  youAsked: { en: 'You asked {date}', es: 'Usted preguntó el {date}' },
+  anotherAsked: { en: 'Another company asked {date}', es: 'Otra empresa preguntó el {date}' },
+  qWaiting: { en: 'waiting on {gc}', es: 'en espera de {gc}' },
+  qWithArchitect: { en: 'with the architect', es: 'con el arquitecto' },
+  qAnswer: { en: 'Answer, {date}:', es: 'Respuesta, {date}:' },
+  qInSet: { en: 'Part of {set}.', es: 'Incluida en {set}.' },
+  todoAnswer: { en: 'A question about the {trade} plans on {project} has an answer.', es: 'Una pregunta sobre los planos de {trade} en {project} tiene respuesta.' },
+  mAnswerSubject: { en: 'An answer about the {trade} plans on {project}', es: 'Una respuesta sobre los planos de {trade} en {project}' },
+  mAnswerWhat: { en: 'A question about the {trade} plans on {project} has an answer.', es: 'Una pregunta sobre los planos de {trade} en {project} tiene respuesta.' },
+  mAnswerQ: { en: 'The question: {text}', es: 'La pregunta: {text}' },
+  mAnswerA: { en: 'The answer: {text}', es: 'La respuesta: {text}' },
+  mAnswerSet: { en: 'It is part of {set}.', es: 'Está incluida en {set}.' },
+
+  // Who to call
+  whoToCall: { en: 'Who to call', es: 'A quién llamar' },
+  roleSuper: { en: 'superintendent, on site', es: 'superintendente en obra' },
+  rolePm: { en: 'project manager', es: 'gerente de proyecto' },
+  rolePmBid: { en: 'project manager, for this bid', es: 'gerente de proyecto, para esta cotización' },
+  rolePay: { en: 'pay and paperwork', es: 'pagos y documentos' },
+  callLink: { en: 'Call', es: 'Llamar' },
+  textLink: { en: 'Text', es: 'Mensaje' },
+  emailLink: { en: 'Email', es: 'Correo' },
+  payQuestions: { en: 'Questions about pay: {name}, {phone}.', es: 'Preguntas sobre pagos: {name}, {phone}.' },
+
   // Your pay
   payTitle: { en: 'Your pay', es: 'Sus pagos' },
   payIntro: {

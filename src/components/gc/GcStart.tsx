@@ -20,7 +20,7 @@ import { Btn, Card, Chip, Why, input, td, th } from './gcUi'
  * next and has the button for it. Start stays shut until nothing is missing, and pressing it
  * tells every company on the job.
  */
-export function GcStartTab({ state, project, dispatch, onSeePortal }: GcPaneProps) {
+export function GcStartTab({ state, project, dispatch, onSeePortal, onOpenSchedule }: GcPaneProps & { onOpenSchedule?: () => void }) {
   const list = startChecklist(state, project)
   const started = project.startedOn !== null
   const onJob = planRecipients(state, { ...project, stage: 'building' }, []).length
@@ -111,6 +111,27 @@ export function GcStartTab({ state, project, dispatch, onSeePortal }: GcPaneProp
               )}
             </div>
           ))}
+        </div>
+      </Card>
+
+      <Card>
+        <div style={{ fontSize: '0.72rem', letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.4rem' }}>
+          The schedule
+        </div>
+        <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.9rem' }}>
+          <Tick done={list.schedule.done} />
+          <span style={{ flex: '1 1 16rem' }}>
+            {list.schedule.label}
+            <span style={{ display: 'block', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+              The dates and what waits on what. Start locks it as the plan we measure against.
+            </span>
+          </span>
+          <span style={{ color: list.schedule.done ? 'var(--text-green-700)' : 'var(--text-muted)' }}>{list.schedule.detail}</span>
+          {onOpenSchedule && (
+            <Btn kind={list.schedule.done ? 'quiet' : 'plain'} onClick={onOpenSchedule}>
+              {list.schedule.done ? 'Open the schedule' : 'Draw it on Schedule'}
+            </Btn>
+          )}
         </div>
       </Card>
 
