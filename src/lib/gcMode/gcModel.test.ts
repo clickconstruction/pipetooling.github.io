@@ -358,6 +358,10 @@ const STEPS: Step[] = [
   { label: 'Send change order 3 to Cedar & Pine', action: { type: 'sendTradeChange', projectId: 'helotes', changeOrderId: 'co-3' } },
   { label: 'Cedar & Pine signs change order 3', action: { type: 'tradeSignChange', projectId: 'helotes', changeOrderId: 'co-3' } },
   { label: 'Cedar & Pine reports the coffee bar half done', action: { type: 'tradeReport', projectId: 'helotes', packageId: 'mill', sovId: 'mill-co3', pct: 50 } },
+  // Helotes: the architect certifies our pay application before the owner pays.
+  { label: 'Send Dr. Raman pay application 2', action: { type: 'sendOwnerPayApp', projectId: 'helotes' } },
+  { label: 'Studio Ocotillo certifies pay application 2 for $2,000 less', action: { type: 'architectCertify', projectId: 'helotes', number: 2, amount: 54_302, note: 'Two operatory cabinets are not set yet' } },
+  { label: 'Dr. Raman pays pay application 2', action: { type: 'ownerPaid', projectId: 'helotes', number: 2 } },
 ]
 
 const CUSTOMER_IDS = ['cibolo', 'raman']
@@ -487,6 +491,7 @@ describe('GC mode golden walk', () => {
       'selfReport',
       'ownerAcceptsWork', 'sendOwnerFinalPayApp',
       'draftChangeOrder', 'sendChangeOrder', 'ownerSignChangeOrder', 'ownerDeclineChangeOrder', 'setChangeOrderPct',
+      'architectCertify',
       'sendDrawBack',
       'closeJob', 'approveDrawLess', 'selfReportStage',
       'draftSchedule', 'setScheduleActivity', 'setScheduleMilestone', 'removeScheduleMilestone',

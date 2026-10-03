@@ -148,6 +148,21 @@ export function ownerPayAppsSent(project: GcProject): OwnerPayAppSent[] {
   return project.ownerBilling?.payApps ?? []
 }
 
+/** What the architect certified on a pay application. Null: waiting on them. The made-up history counts as certified as asked. */
+export function appCertified(app: OwnerPayAppSent): number | null {
+  return app.certified === undefined ? app.due : app.certified
+}
+
+/** What a pay application counts for on the bills after it (G702 line 7): its certificate, or what we asked while it waits. */
+export function appClaimed(app: OwnerPayAppSent): number {
+  return appCertified(app) ?? app.due
+}
+
+/** What the owner paid on a pay application. 0 until they pay. */
+export function appPaid(app: OwnerPayAppSent): number {
+  return app.paidOn === null ? 0 : (app.paidAmount ?? appClaimed(app))
+}
+
 /**
  * The next pay application to the owner, as a draft: what the bill would say if it went on the
  * next bill day with the work reported today. Each trade's line is the work its company reported.
@@ -192,7 +207,8 @@ export function ownerPayApp(state: GcState, project: GcProject): OwnerPayApp {
   const doneToDate = lines.reduce((s, l) => s + l.doneToDate, 0)
   const retainagePct = customer?.retainagePct ?? OWNER_RETAINAGE_DEFAULT_PCT
   const retainage = (doneToDate * retainagePct) / 100
-  const askedBefore = sent.reduce((s, a) => s + a.due, 0)
+  // Earlier certificates, not what we asked: what the architect cut comes back on this bill.
+  const askedBefore = sent.reduce((s, a) => s + appClaimed(a), 0)
   const billOn = last ? nextOwnerBillDay(addDays(last.periodTo, 1)) : nextOwnerBillDay(state.today)
   return {
     number: sent.length + 1,
@@ -213,6 +229,13 @@ export function ownerPayApp(state: GcState, project: GcProject): OwnerPayApp {
   }
 }
 
+/** What a draft asks for beyond this month's work: what the architect left out of earlier certificates. */
+export function ownerCarriedForward(app: OwnerPayApp): number {
+  const thisMonth = app.lines.reduce((t, l) => t + l.thisMonth, 0)
+  const carried = app.due - (thisMonth * (100 - app.retainagePct)) / 100
+  return carried > 0.5 ? carried : 0
+}
+
 /** True when the draft asks for something: a dollar or more of new work. */
 export function ownerPayAppHasWork(app: OwnerPayApp): boolean {
   return Math.round(app.due) > 0
@@ -231,6 +254,8 @@ export function ownerPayAppToSend(app: OwnerPayApp, today: string): OwnerPayAppS
     retainage: app.retainage,
     due: app.due,
     paidOn: null,
+    certified: null,
+    certifiedOn: null,
   }
 }
 
@@ -240,11 +265,15 @@ export interface OwnerAccount {
   billed: number
   /** What the owner holds on it until the end. */
   retainageHeld: number
-  /** What our pay applications asked them to pay, added up. */
+  /** What our pay applications asked them to pay, added up: the architect's certificate where there is one. */
   asked: number
   paid: number
   /** Asked less paid. */
   owed: number
+  /** Of what they owe: certified by the architect and not paid yet. */
+  certifiedUnpaid: number
+  /** Of what they owe: sent and waiting on the architect to certify. */
+  waitingOnArchitect: number
 }
 
 /**
@@ -256,15 +285,24 @@ export function ownerAccount(project: GcProject): OwnerAccount | null {
   const sent = ownerPayAppsSent(project)
   const last = sent[sent.length - 1]
   if (!last) return null
-  const asked = sent.reduce((s, a) => s + a.due, 0)
-  const paid = sent.filter((a) => a.paidOn !== null).reduce((s, a) => s + a.due, 0)
-  return { billed: last.workToDate, retainageHeld: last.retainage, asked, paid, owed: asked - paid }
+  const asked = sent.reduce((s, a) => s + appClaimed(a), 0)
+  const paid = sent.reduce((s, a) => s + appPaid(a), 0)
+  const unpaid = sent.filter((a) => a.paidOn === null)
+  return {
+    billed: last.workToDate,
+    retainageHeld: last.retainage,
+    asked,
+    paid,
+    owed: asked - paid,
+    certifiedUnpaid: unpaid.reduce((s, a) => s + (appCertified(a) ?? 0), 0),
+    waitingOnArchitect: unpaid.filter((a) => appCertified(a) === null).reduce((s, a) => s + a.due, 0),
+  }
 }
 
-/** The day we expect the owner to pay a pay application: the day it went plus their usual days. */
+/** The day we expect the owner to pay a pay application: the day the architect certified it (or it went) plus their usual days. */
 export function ownerExpectPaidOn(state: GcState, project: GcProject, app: OwnerPayAppSent): string | null {
   const payDays = customerOf(state, project)?.payDays
-  return payDays == null ? null : addDays(app.sentOn, payDays)
+  return payDays == null ? null : addDays(app.certifiedOn ?? app.sentOn, payDays)
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -292,7 +330,7 @@ export function ourOwnerWaivers(project: GcProject): OurOwnerWaiver[] {
   for (const app of ownerPayAppsSent(project)) {
     const final = app.final === true
     out.push({ payApp: app.number, kind: 'conditional', final, amount: app.due, signedOn: app.sentOn })
-    if (app.paidOn !== null) out.push({ payApp: app.number, kind: 'unconditional', final, amount: app.due, signedOn: app.paidOn })
+    if (app.paidOn !== null) out.push({ payApp: app.number, kind: 'unconditional', final, amount: appPaid(app), signedOn: app.paidOn })
   }
   return out.reverse()
 }
@@ -413,13 +451,13 @@ export function ownerAllBilled(state: GcState, project: GcProject): boolean {
   return lastProgress !== undefined && Math.round(app.contract - lastProgress.workToDate) <= 0 && !ownerPayAppHasWork(app)
 }
 
-export type OwnerCloseoutKey = 'billed' | 'trades' | 'accepted' | 'finalApp' | 'paid'
+export type OwnerCloseoutKey = 'billed' | 'trades' | 'accepted' | 'finalApp' | 'certified' | 'paid'
 
 export interface OwnerCloseoutStep {
   key: OwnerCloseoutKey
   label: string
-  /** Who moves it: our office, the trades from their portals, or the owner from theirs. */
-  who: 'office' | 'trades' | 'owner'
+  /** Who moves it: our office, the trades from their portals, the architect, or the owner from theirs. */
+  who: 'office' | 'trades' | 'architect' | 'owner'
   done: boolean
   detail: string
 }
@@ -514,15 +552,27 @@ export function ownerCloseout(state: GcState, project: GcProject): OwnerCloseout
         : `It asks for the ${money(held)} they hold.`,
     },
     {
+      key: 'certified',
+      label: 'The architect certifies it',
+      who: 'architect',
+      done: final !== null && appCertified(final) !== null,
+      detail:
+        final && appCertified(final) !== null
+          ? `${project.architect} certified ${money(appCertified(final) ?? 0)}${final.certifiedOn ? ` ${shortDate(final.certifiedOn)}` : ''}.`
+          : final
+            ? `Waiting on ${project.architect}.`
+            : 'Waits for our final pay application.',
+    },
+    {
       key: 'paid',
       label: 'They pay it',
       who: 'owner',
       done: final?.paidOn != null,
       detail: final?.paidOn
         ? `Paid ${shortDate(final.paidOn)}. Our unconditional waiver on final payment is signed.`
-        : final
+        : final && appCertified(final) !== null
           ? 'Waiting on them.'
-          : 'Waits for our final pay application.',
+          : 'Waits for the architect’s certificate.',
     },
   ]
   const next = steps.find((st) => !st.done) ?? null
@@ -682,6 +732,8 @@ export interface OwnerPayAppForm {
   contractDate: string | null
   /** The signed change orders on it: line 2 is their sum. */
   changeOrders: { number: number; description: string; price: number }[]
+  /** The architect's certificate: the amount, the day, why less. Null amount: not certified yet. */
+  certificate: { amount: number | null; on: string | null; note: string }
 }
 
 /** Our pay application number `which` as the form, or the next one as a draft. Null: no such bill. */
@@ -713,7 +765,7 @@ export function ownerPayAppForm(state: GcState, project: GcProject, which: numbe
   const changeOrders = lines.filter((l) => isChangeOrderLineId(l.sovId)).reduce((s, l) => s + l.scheduled, 0)
   const retainage = record ? record.retainage : draft.retainage
   const earned = toDate - retainage
-  const previous = record ? sent.filter((a) => a.number < record.number).reduce((s, a) => s + a.due, 0) : draft.askedBefore
+  const previous = record ? sent.filter((a) => a.number < record.number).reduce((s, a) => s + appClaimed(a), 0) : draft.askedBefore
   const signed = new Map(signedChangeOrders(project).map((co) => [co.id, co]))
   return {
     app: {
@@ -746,6 +798,11 @@ export function ownerPayAppForm(state: GcState, project: GcProject, which: numbe
     periodTo: record?.periodTo ?? draft.billOn,
     sentOn: record?.sentOn ?? null,
     contractDate: project.ownerContractSignedOn,
+    certificate: {
+      amount: record ? appCertified(record) : null,
+      on: record?.certifiedOn ?? null,
+      note: record?.certifiedNote ?? '',
+    },
     changeOrders: lines
       .filter((l) => isChangeOrderLineId(l.sovId))
       .flatMap((l) => {
@@ -778,8 +835,8 @@ export interface TradeCash {
 }
 
 export interface ProjectCash {
-  /** From the owner. */
-  in: { paid: number; owed: number; held: number }
+  /** From the owner. owed counts what waits on the architect, also shown on its own. */
+  in: { paid: number; owed: number; held: number; waitingOnArchitect: number }
   /** To the trades, added up. */
   out: { paid: number; approved: number; asked: number; held: number }
   byTrade: TradeCash[]
@@ -793,10 +850,10 @@ export function projectCash(state: GcState, project: GcProject): ProjectCash {
   const account = ownerAccount(project)
   const made = project.ownerBilling
   const owner = account
-    ? { paid: account.paid, owed: account.owed, held: account.retainageHeld }
+    ? { paid: account.paid, owed: account.owed, held: account.retainageHeld, waitingOnArchitect: account.waitingOnArchitect }
     : made
-      ? { paid: made.paid, owed: made.billed - made.retainageHeld - made.paid, held: made.retainageHeld }
-      : { paid: 0, owed: 0, held: 0 }
+      ? { paid: made.paid, owed: made.billed - made.retainageHeld - made.paid, held: made.retainageHeld, waitingOnArchitect: 0 }
+      : { paid: 0, owed: 0, held: 0, waitingOnArchitect: 0 }
   const byTrade: TradeCash[] = []
   for (const pkg of project.packages) {
     const sow = pkg.sow
