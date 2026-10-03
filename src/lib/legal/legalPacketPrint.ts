@@ -5,6 +5,7 @@
  * surfaces pin light — every color is literal on purpose.
  */
 import { formatLegalMoney, type LegalPacket } from './legalPacket'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { envelopeAnswersWords, envelopeKindWords, envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords } from './legalLienPaper'
 
 function esc(s: string | null | undefined): string {
@@ -37,7 +38,7 @@ export function buildLegalPacketPrintHtml(packet: LegalPacket, opts: { preparedO
   })
   const agreementRows = packet.paper.agreements.map((g) => {
     const c = g.coverage
-    const text = c.kind === 'signed' ? `Signed${c.signedAt ? ` ${c.signedAt.slice(0, 10)}` : ''}${c.signerName ? ` by ${c.signerName}` : ''} · ${c.source}` : c.kind === 'sent' ? `Sent ${c.sentAt.slice(0, 10)} · viewed ${c.viewCount}× · never signed` : 'Draft'
+    const text = c.kind === 'signed' ? `Signed${c.signedAt ? ` ${calendarYmdInAppTzFromIso(c.signedAt)}` : ''}${c.signerName ? ` by ${c.signerName}` : ''} · ${c.source}` : c.kind === 'sent' ? `Sent ${calendarYmdInAppTzFromIso(c.sentAt)} · viewed ${c.viewCount}× · never signed` : 'Draft'
     return row([esc(g.jobLabel), esc(text)])
   })
   const saidRows = shared.map((e) => row([esc(e.ymd), esc(e.kind), esc(e.jobLabel ?? ''), esc(e.text), esc(e.by ?? '—')]))

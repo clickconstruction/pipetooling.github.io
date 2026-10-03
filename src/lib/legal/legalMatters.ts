@@ -7,6 +7,7 @@
  * generated types catch up.
  */
 import { LEGAL_DEFAULT_FEE, type LegalFeeModel } from './legalPacket'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 export const LEGAL_STAGES = ['review', 'referred', 'demand', 'suit', 'judgment', 'settled', 'written_down', 'pulled'] as const
 export type LegalStage = (typeof LEGAL_STAGES)[number]
@@ -165,7 +166,8 @@ export function buildLegalReview(
     .filter((a) => byKey.get(a.key)?.review_requested_at)
     .map((a) => {
       const m = byKey.get(a.key) as LegalMatterRow
-      const at = (m.review_requested_at ?? '').slice(0, 10)
+      // An instant: its day in APP_CALENDAR_TZ, as the desk's own "asked N days ago" reads it.
+      const at = calendarYmdInAppTzFromIso(m.review_requested_at ?? '')
       return { key: a.key, name: a.name, by: userNameOf(m.review_requested_by), note: m.review_request_note, days: /^\d{4}-\d{2}-\d{2}$/.test(at) ? daysBetween(at, todayYmd) : null }
     })
     .sort((x, y) => (y.days ?? 0) - (x.days ?? 0))

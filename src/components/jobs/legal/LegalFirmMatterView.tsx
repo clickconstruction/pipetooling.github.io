@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { COPPER, FAINT, HAIR, INK, MUTED, NOTE_BAND, PAPER_GREEN, PAPER_RED } from '../../../lib/portal/portalTheme'
 import { formatLegalMoney, type LegalPacket } from '../../../lib/legal/legalPacket'
+import { calendarYmdInAppTzFromIso } from '../../../utils/dateUtils'
 import { envelopeAnswersWords, envelopeKindWords, envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords, type LegalEnvelope } from '../../../lib/legal/legalLienPaper'
 import { legalEntryKindWords } from '../../../lib/legal/legalAsks'
 import LienTimelineStrip from '../LienTimelineStrip'
@@ -108,7 +109,7 @@ export function FirmMatterTab({ tab, packet, matter, acts }: { tab: FirmTab; pac
         <div style={h}>Agreements and theory</div>
         <PortalTable head={['Job', 'Agreement', 'Sworn account', '']} rows={a.jobs.map((j) => {
           const c = matter.contracts.find((x) => x.job_id === j.jobId && x.signedPdfUrl)
-          return [<b key="l">{j.label}</b>, <span key="s" style={{ color: j.contract.kind === 'signed' ? undefined : PAPER_RED }}>{j.contract.kind === 'signed' ? `Signed${j.contract.signedAt ? ` ${j.contract.signedAt.slice(0, 10)}` : ''}${j.contract.signerName ? ` by ${j.contract.signerName}` : ''} · ${j.contract.source}` : j.contract.kind === 'sent' ? 'Sent, never signed' : 'None on file'}</span>, j.swornMissing.length ? `needs ${j.swornMissing.join(', ')}` : 'holds — bill received, GPS evidence, no dispute', c ? <a key="p" href={c.signedPdfUrl as string} target="_blank" rel="noreferrer" style={{ color: COPPER }}>PDF ↗</a> : null]
+          return [<b key="l">{j.label}</b>, <span key="s" style={{ color: j.contract.kind === 'signed' ? undefined : PAPER_RED }}>{j.contract.kind === 'signed' ? `Signed${j.contract.signedAt ? ` ${calendarYmdInAppTzFromIso(j.contract.signedAt)}` : ''}${j.contract.signerName ? ` by ${j.contract.signerName}` : ''} · ${j.contract.source}` : j.contract.kind === 'sent' ? 'Sent, never signed' : 'None on file'}</span>, j.swornMissing.length ? `needs ${j.swornMissing.join(', ')}` : 'holds — bill received, GPS evidence, no dispute', c ? <a key="p" href={c.signedPdfUrl as string} target="_blank" rel="noreferrer" style={{ color: COPPER }}>PDF ↗</a> : null]
         })} empty="No jobs." />
         <div style={h}>Where each job stands</div>
         <JobTimelines packet={packet} />

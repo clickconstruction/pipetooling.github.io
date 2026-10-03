@@ -4,6 +4,7 @@ import { supabase } from '../../../lib/supabase'
 import { useToastContext } from '../../../contexts/ToastContext'
 import { useConfirmDialog } from '../../../contexts/ConfirmDialogContext'
 import { withPreviewFlag } from '../../../lib/publicViewCounting'
+import { calendarYmdInAppTzFromIso } from '../../../utils/dateUtils'
 
 const db = supabase as unknown as SupabaseClient
 
@@ -103,7 +104,7 @@ export default function LegalPortalLinkButton({ firmId, firmName }: { firmId: st
             {state.kind === 'active' && url ? (
               <>
                 <div style={{ fontFamily: 'ui-monospace, monospace', fontSize: '0.78rem', background: 'var(--bg-muted)', border: '1px solid var(--border)', borderRadius: 5, padding: '6px 8px', wordBreak: 'break-all' }}>{url}</div>
-                <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', margin: '4px 0 10px' }}>active since {state.since.slice(0, 10)}</div>
+                <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', margin: '4px 0 10px' }}>active since {calendarYmdInAppTzFromIso(state.since)}</div>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   <button type="button" onClick={() => void copy()} style={{ ...btn, background: 'var(--text-700)', color: 'var(--surface)', borderColor: 'var(--text-700)' }}>Copy link</button>
                   <a href={withPreviewFlag(url)} target="_blank" rel="noreferrer" style={{ ...btn, textDecoration: 'none' }}>Preview ↗</a>
