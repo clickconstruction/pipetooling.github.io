@@ -55,6 +55,8 @@ export function answerRecord(partner: Partner): AnswerRecord {
 export function partnerAsks(state: GcState, partnerId: string, trade: string): PartnerAsk[] {
   const out: PartnerAsk[] = []
   for (const project of state.projects) {
+    // "Asked right now": a lost bid is over for them too.
+    if (project.lostOn) continue
     for (const pkg of project.packages) {
       if (pkg.trade !== trade) continue
       const invite = pkg.invites.find((i) => i.partnerId === partnerId)

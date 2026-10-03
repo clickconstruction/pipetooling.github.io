@@ -127,7 +127,8 @@ export function followUps(state: GcState): FollowUp[] {
 
 /** A trade is still open on a project until it is awarded. A trade we do ourselves never is. */
 export function packageIsOpen(project: GcProject, pkg: TradePackage): boolean {
-  return !pkg.selfPerform && pkg.awardedInviteId === null && project.stage !== 'building'
+  // A lost bid (owner, 2026-10-03) is chased no more: nothing on it is open.
+  return !pkg.selfPerform && pkg.awardedInviteId === null && project.stage !== 'building' && !project.lostOn
 }
 
 /** A company we ask should open the plans within this many days. */

@@ -610,3 +610,24 @@ describe('questions about the plans', () => {
     expect(m?.lines.join(' ')).not.toContain('Voltage')
   })
 })
+
+describe('insurance running out soon', () => {
+  const sent = (expires: string) => gcReducer(state, { type: 'tradeUploadCoi', partnerId: 'lonestar', expires })
+
+  it('warns from 30 days out, amber, and not before', () => {
+    expect(portalTodos(sent('2026-11-02'), 'lonestar').some((t) => t.key === 'coi:soon')).toBe(false)
+    const soon = portalTodos(sent('2026-10-20'), 'lonestar').find((t) => t.key === 'coi:soon')
+    expect(soon).toMatchObject({ tone: 'amber', text: 'Your insurance runs out Tue Oct 20, in 18 days. Send a new certificate before then.' })
+  })
+
+  it('says tomorrow and today on the last two days', () => {
+    expect(portalTodos(sent('2026-10-03'), 'lonestar').find((t) => t.key === 'coi:soon')?.text).toBe('Your insurance runs out tomorrow, Sat Oct 3. Send a new certificate.')
+    expect(portalTodos(sent('2026-10-02'), 'lonestar').find((t) => t.key === 'coi:soon')?.text).toBe('Your insurance runs out today, Fri Oct 2. Send a new certificate.')
+  })
+
+  it('emails the warning 30 days before, while the certificate still holds', () => {
+    const m = portalMessages(sent('2026-10-20'), 'lonestar').find((x) => x.kind === 'coi')
+    expect(m).toMatchObject({ on: '2026-09-20', subject: 'Your insurance runs out Tue Oct 20' })
+    expect(portalMessages(sent('2026-11-02'), 'lonestar').some((x) => x.kind === 'coi')).toBe(false)
+  })
+})

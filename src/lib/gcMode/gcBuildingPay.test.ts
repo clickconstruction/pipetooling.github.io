@@ -3,7 +3,7 @@
  * within PAY_WITHIN_DAYS of approval; late is counted against the day it was paid, or today.
  */
 import { describe, expect, it } from 'vitest'
-import { drawPayDays, drawsToPay, gcReducer, initialGcState, PAY_WITHIN_DAYS, type GcState } from './gcModel'
+import { drawPayDays, drawsToPay, gcReducer, initialGcState, PAY_WITHIN_DAYS, stageProgress, type GcState } from './gcModel'
 
 const fairOaks = (s: GcState) => {
   const p = s.projects.find((x) => x.id === 'fairoaksd')
@@ -47,5 +47,13 @@ describe('when we pay a draw', () => {
     expect(drawsToPay(paid, fairOaks(paid))).toEqual([])
     const { pkg, draw } = steel(paid)
     expect(drawPayDays(fairOaks(paid), pkg, draw, '2026-10-30')).toMatchObject({ paidOn: '2026-10-15', daysLate: 3 })
+  })
+
+  it("says when to pay on the board's ring card, and puts a late one first after the schedule", () => {
+    expect(stageProgress(approved, fairOaks(approved)).also).toContain('Draw 2 for Iron Horse Fabrication is approved. Pay it by Oct 12.')
+    const later: GcState = { ...approved, today: '2026-10-15' }
+    const also = stageProgress(later, fairOaks(later)).also
+    expect(also[0]).toMatch(/^The schedule:/)
+    expect(also[1]).toBe('Draw 2 for Iron Horse Fabrication is 3 days late to pay. It was due Oct 12.')
   })
 })
