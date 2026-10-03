@@ -3,7 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { buildLegalReview, type LegalMatterRow, type LegalReviewSummary } from '../lib/legal/legalMatters'
 import { daysBetweenYmd, payerForJob } from '../lib/legal/legalPacket'
-import { todayYmdInAppTz } from '../utils/dateUtils'
+import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../utils/dateUtils'
 
 const db = supabase as unknown as SupabaseClient
 
@@ -63,7 +63,8 @@ export function useLegalReviewNudge(enabled: boolean): { review: LegalReviewSumm
         const payer = payerForJob({ customer_id: j.customer_id, customer_name: j.customer_name, gc_customer_id: j.gc_customer_id, gcCustomer: j.gc_customer_id ? { id: j.gc_customer_id, name: gcName.get(j.gc_customer_id) ?? null } : null })
         const acc = accounts.get(payer.key) ?? { key: payer.key, name: payer.name, reviewDays: null, balance: 0 }
         acc.balance += Math.max(0, Number(j.revenue ?? 0) - Number(j.payments_made ?? 0))
-        const flagged = (j.collections_at ?? '').slice(0, 10)
+        // collections_at is an instant: its day in APP_CALENDAR_TZ, as the desk's groupCollectionsByPayer reads it.
+        const flagged = calendarYmdInAppTzFromIso(j.collections_at ?? '')
         if (/^\d{4}-\d{2}-\d{2}$/.test(flagged)) {
           const d = daysBetweenYmd(flagged, today)
           acc.reviewDays = acc.reviewDays == null ? d : Math.max(acc.reviewDays, d)

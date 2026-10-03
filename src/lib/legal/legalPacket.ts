@@ -48,6 +48,7 @@ import { attachEnvelopeAnswers, buildLegalEnvelopes, buildLegalJobTimelines, typ
 import type { PaymentPromise, PromiseOutcome } from '../jobs/paymentPromises'
 import type { ChaseTouch } from '../jobs/paymentChase'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 
@@ -113,6 +114,12 @@ export function daysBetweenYmd(fromYmd: string, toYmd: string): number {
   return Math.round((b - a) / 86_400_000)
 }
 
+/**
+ * A `date` column's day (`last_bill_date`, `last_work_date`, `paid_on`, `sent_on`, a filing's
+ * `filed_at` / `served_at`, a demand letter's `sent_at`). An instant's day is
+ * `calendarYmdInAppTzFromIso`: its first ten characters are the UTC date, tomorrow after 7 pm
+ * Central. The legal-portal function reads the same days for the held rule, so the two sides agree.
+ */
 function ymdOfIso(iso: string | null | undefined): string | null {
   if (!iso) return null
   const s = String(iso)
@@ -123,10 +130,10 @@ function ymdOfIso(iso: string | null | undefined): string | null {
 export function jobAgingYmd(job: JobWithDetails): string | null {
   const billedYmds = (job.invoices ?? [])
     .filter((i) => i.status === 'billed')
-    .map((i) => ymdOfIso(i.billed_at))
+    .map((i) => calendarYmdInAppTzFromIso(i.billed_at ?? '') || null)
     .filter((y): y is string => y != null)
     .sort()
-  return billedYmds[0] ?? ymdOfIso(job.last_bill_date) ?? ymdOfIso(job.collections_at) ?? null
+  return billedYmds[0] ?? ymdOfIso(job.last_bill_date) ?? (calendarYmdInAppTzFromIso(job.collections_at ?? '') || null)
 }
 
 /** Group Collections jobs into payer accounts, largest balance first (the desk re-sorts by net). */
@@ -146,7 +153,7 @@ export function groupCollectionsByPayer(
       const d = daysBetweenYmd(aging, todayYmd)
       acc.oldestDays = acc.oldestDays == null ? d : Math.max(acc.oldestDays, d)
     }
-    const flagged = ymdOfIso(job.collections_at)
+    const flagged = calendarYmdInAppTzFromIso(job.collections_at ?? '') || null
     if (flagged) {
       const d = daysBetweenYmd(flagged, todayYmd)
       acc.reviewDays = acc.reviewDays == null ? d : Math.max(acc.reviewDays, d)
@@ -617,7 +624,7 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
       agingDays: aging ? daysBetweenYmd(aging, todayYmd) : null,
       collectionsNote: (j.collections_note ?? '').trim() || null,
       collectionsBy: userName(j.collections_by),
-      collectionsYmd: ymdOfIso(j.collections_at),
+      collectionsYmd: calendarYmdInAppTzFromIso(j.collections_at ?? '') || null,
       contract: coverage.get(j.id) ?? { kind: 'none' },
       swornMissing: swornMissingFor(j),
       primaryInvoiceId: openBilled[0]?.id ?? null,
@@ -635,9 +642,9 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
       const amt = Number(inv.amount ?? 0)
       billedTotal += amt
       const channel = (inv.external_send_channel ?? '').trim()
-      const sentYmd = ymdOfIso(inv.sent_to_customer_at)
+      const sentYmd = calendarYmdInAppTzFromIso(inv.sent_to_customer_at ?? '') || null
       ledger.push({
-        ymd: ymdOfIso(inv.billed_at) ?? sentYmd,
+        ymd: calendarYmdInAppTzFromIso(inv.billed_at ?? '') || sentYmd,
         jobId: j.id,
         jobLabel: label,
         kind: 'invoice',
@@ -650,7 +657,7 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
       if (inv.agreed_write_down_at && typeof wd === 'number' && wd > amt) {
         writtenDown += wd - amt
         ledger.push({
-          ymd: ymdOfIso(inv.agreed_write_down_at),
+          ymd: calendarYmdInAppTzFromIso(inv.agreed_write_down_at ?? '') || null,
           jobId: j.id,
           jobLabel: label,
           kind: 'write_down',
@@ -753,7 +760,7 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
     const state = outcomeById.get(p.id)?.state ?? 'open'
     raw.push({
       key: `promise:${p.id}`,
-      ymd: ymdOfIso(p.createdAt) ?? p.promisedYmd,
+      ymd: calendarYmdInAppTzFromIso(p.createdAt) || p.promisedYmd,
       kind: 'promise',
       text: `Promised to pay by ${p.promisedYmd}${p.saidBy ? ` — ${p.saidBy}` : p.source === 'customer' ? ' — the customer, on their statement page' : ''}${p.channel ? ` (${p.channel})` : ''} · ${state}${p.note ? ` — ${p.note}` : ''}`,
       by: p.heardByName,
@@ -763,7 +770,7 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
   for (const t of accountTouches) {
     raw.push({
       key: `call:${t.id}`,
-      ymd: ymdOfIso(t.createdAt) ?? todayYmd,
+      ymd: calendarYmdInAppTzFromIso(t.createdAt) || todayYmd,
       kind: 'call',
       text: `Collection call · ${t.outcome.replace('_', ' ')}${t.note ? ` — ${t.note}` : ''}${t.promisedYmd ? ` · named ${t.promisedYmd}` : ''}`,
       by: t.createdByName,
@@ -824,7 +831,7 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
   }
   for (const a of agreements) {
     if (a.coverage.kind === 'signed') {
-      const y = ymdOfIso(a.coverage.signedAt)
+      const y = calendarYmdInAppTzFromIso(a.coverage.signedAt ?? '') || null
       steps.push({ ymd: y, sortKey: y ?? '0000', kind: 'contract', text: `Agreement signed${a.coverage.signerName ? ` by ${a.coverage.signerName}` : ''} (${a.coverage.source})`, jobLabel: a.jobLabel })
     }
   }

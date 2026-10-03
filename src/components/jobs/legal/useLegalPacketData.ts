@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../../../lib/supabase'
 import { withSupabaseRetry } from '../../../utils/errorHandling'
-import { todayYmdInAppTz } from '../../../utils/dateUtils'
+import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../../utils/dateUtils'
 import {
   buildLegalPacket,
   type LegalAccountSummary,
@@ -114,7 +114,7 @@ export function useLegalPacketData(
               () => db.from('customer_contacts').select('id, contact_date, contact_method, details, created_by').eq('customer_id', customerId).order('contact_date').limit(ROW_CAP),
               'load legal packet contact history',
             )) ?? []
-            return rows.map((r): LegalContactEntryLike => ({ id: r.id, ymd: String(r.contact_date).slice(0, 10), method: r.contact_method, by: userName(r.created_by), text: (r.details ?? '').trim() }))
+            return rows.map((r): LegalContactEntryLike => ({ id: r.id, ymd: calendarYmdInAppTzFromIso(String(r.contact_date)), method: r.contact_method, by: userName(r.created_by), text: (r.details ?? '').trim() }))
           }, []),
           src<CustomerAddressRow[]>('property record', async () => {
             if (!customerId) return []
