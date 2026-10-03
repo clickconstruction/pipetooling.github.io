@@ -5,6 +5,7 @@ import {
   GC_COMPANY_NAME,
   money,
   ourOwnerWaivers,
+  owedDrawWords,
   ownerCloseout,
   ownerAccount,
   ownerPayApp,
@@ -165,6 +166,11 @@ export function GcOwnerBillingPortal({ state, project, dispatch }: { state: GcSt
                   {Math.round(t.missing) > 0 && (
                     <PortalNote tone="amber">
                       {GC_COMPANY_NAME} is waiting on their waiver for {money(t.missing)} of their work on your bills.
+                    </PortalNote>
+                  )}
+                  {t.owedUnconditional.length > 0 && (
+                    <PortalNote tone="amber">
+                      {GC_COMPANY_NAME} paid them for {owedDrawWords(t.owedUnconditional)}. Their unconditional waiver is still to come.
                     </PortalNote>
                   )}
                 </div>

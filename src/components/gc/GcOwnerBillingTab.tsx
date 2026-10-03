@@ -6,6 +6,7 @@ import {
   daysUntil,
   missingTradeWaivers,
   money,
+  owedDrawWords,
   ownerCloseout,
   ownerAccount,
   ownerExpectPaidOn,
@@ -13,6 +14,7 @@ import {
   ownerPayAppHasWork,
   ownerPayAppsSent,
   shortDate,
+  tradesOwingUnconditional,
   tradeWaiverChecks,
   weekdayDate,
   type GcAction,
@@ -72,6 +74,7 @@ function OfficeSide({ state, project, dispatch }: { state: GcState; project: GcP
   const doneBefore = app.lines.reduce((s, l) => s + l.doneBefore, 0)
   const checks = tradeWaiverChecks(state, project, Object.fromEntries(app.lines.map((l) => [l.id, l.doneToDate])))
   const missing = missingTradeWaivers(checks)
+  const owing = tradesOwingUnconditional(checks)
   const closeout = ownerCloseout(state, project)
 
   return (
@@ -146,19 +149,26 @@ function OfficeSide({ state, project, dispatch }: { state: GcState; project: GcP
             <div>
               Ours: a conditional waiver for {money(app.due)} goes with it. We sign the unconditional one when they pay.
             </div>
-            {checks.map((c) =>
-              Math.round(c.missing) > 0 ? (
-                <div key={c.packageId} style={{ color: 'var(--text-amber-800)' }}>
-                  {c.company} has not given a waiver for {money(c.missing)} of their work on this bill. It still goes.
-                  Their waiver comes when they ask for that draw.
-                </div>
-              ) : (
-                <div key={c.packageId}>
-                  {c.company}: their waivers cover all {money(c.billed)} of their work on this bill.
-                </div>
-              ),
-            )}
-            {missing.length === 0 && checks.length > 0 && (
+            {checks.map((c) => (
+              <div key={c.packageId}>
+                {Math.round(c.missing) > 0 ? (
+                  <div style={{ color: 'var(--text-amber-800)' }}>
+                    {c.company} has not given a waiver for {money(c.missing)} of their work on this bill. It still goes.
+                    Their waiver comes when they ask for that draw.
+                  </div>
+                ) : (
+                  <div>
+                    {c.company}: their waivers cover all {money(c.billed)} of their work on this bill.
+                  </div>
+                )}
+                {c.owedUnconditional.length > 0 && (
+                  <div style={{ color: 'var(--text-amber-800)' }}>
+                    We paid {c.company} for {owedDrawWords(c.owedUnconditional)}. They still owe the unconditional waiver.
+                  </div>
+                )}
+              </div>
+            ))}
+            {missing.length === 0 && owing.length === 0 && checks.length > 0 && (
               <div style={{ color: 'var(--text-green-700)' }}>Every trade&rsquo;s waiver is in.</div>
             )}
           </div>

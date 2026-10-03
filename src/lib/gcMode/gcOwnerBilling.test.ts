@@ -6,6 +6,7 @@ import {
   missingTradeWaivers,
   nextOwnerBillDay,
   ourOwnerWaivers,
+  owedDrawWords,
   ownerAllBilled,
   ownerCloseout,
   ownerReleasedRetainage,
@@ -14,6 +15,7 @@ import {
   ownerPayAppHasWork,
   proposalTotals,
   sentPayAppLines,
+  tradesOwingUnconditional,
   tradeWaiverChecks,
   type GcState,
 } from './gcModel'
@@ -291,6 +293,39 @@ describe('Fair Oaks D: three months billed to Cibolo, and a pay application we s
         asked = cents(asked + app.due)
       }
     }
+  })
+})
+
+describe('a paid draw still owing its unconditional waiver', () => {
+  const checksOn = (state: GcState, id: string) => {
+    const project = state.projects.find((p) => p.id === id)
+    if (!project) throw new Error(`fixture has no ${id}`)
+    const app = ownerPayApp(state, project)
+    return tradeWaiverChecks(state, project, Object.fromEntries(app.lines.map((l) => [l.id, l.doneToDate])))
+  }
+
+  it('flags Pecan Valley on Fair Oaks D: draw 1 paid, only the conditional waiver in', () => {
+    const owing = tradesOwingUnconditional(checksOn(initialGcState(), 'fairoaksd'))
+    expect(owing.map((c) => [c.company, c.owedUnconditional])).toEqual([['Pecan Valley Electric', [{ draw: 1, amount: 80_100, final: false }]]])
+  })
+
+  it('flags a draw once we pay it, and clears when they sign the unconditional waiver', () => {
+    let state = gcReducer(initialGcState(), { type: 'tradeRequestDraw', projectId: 'helotes', packageId: 'dry' })
+    state = gcReducer(state, { type: 'approveDraw', projectId: 'helotes', packageId: 'dry', drawId: 'dry-draw-2' })
+    expect(tradesOwingUnconditional(checksOn(state, 'helotes'))).toEqual([])
+    state = gcReducer(state, { type: 'payDraw', projectId: 'helotes', packageId: 'dry', drawId: 'dry-draw-2' })
+    expect(tradesOwingUnconditional(checksOn(state, 'helotes')).map((c) => owedDrawWords(c.owedUnconditional))).toEqual(['draw 2'])
+    state = gcReducer(state, { type: 'tradeSignUnconditional', projectId: 'helotes', packageId: 'dry', drawId: 'dry-draw-2' })
+    expect(tradesOwingUnconditional(checksOn(state, 'helotes'))).toEqual([])
+  })
+
+  it('names the draws in words', () => {
+    const d = (draw: number, final = false) => ({ draw, amount: 1, final })
+    expect(owedDrawWords([d(1)])).toBe('draw 1')
+    expect(owedDrawWords([d(1), d(2)])).toBe('draws 1 and 2')
+    expect(owedDrawWords([d(1), d(2), d(3)])).toBe('draws 1, 2 and 3')
+    expect(owedDrawWords([d(4, true)])).toBe('the final draw')
+    expect(owedDrawWords([d(2), d(4, true)])).toBe('draw 2 and the final draw')
   })
 })
 
