@@ -365,6 +365,29 @@ export interface GcProject {
   /** Who the owner picked, when we know. */
   wonBy?: string | null
   lostNote?: string | null
+  /** The punch list (Building lane, 2026-10-03): what is left to fix on each trade's work. Unset: none yet. */
+  punch?: PunchItem[]
+}
+
+/**
+ * One punch-list item (owner, 2026-10-03): something left to fix on a trade's work, found when our
+ * superintendent walks it. The trade marks it fixed in its portal; our superintendent checks it.
+ * We accept a trade's work once every item on it is checked fixed.
+ */
+export interface PunchItem {
+  id: string
+  packageId: string
+  /** What is wrong, as our superintendent wrote it. */
+  text: string
+  /** Where on the job: a room, a grid line. */
+  where?: string
+  addedOn: string
+  /** The day the trade said it is fixed. Null: still open. */
+  fixedOn: string | null
+  /** The day our superintendent checked it fixed. Null: not checked yet. */
+  checkedOn: string | null
+  /** Checked and not fixed: sent back to the trade, how many times, with the last note. */
+  sentBack?: { times: number; note: string; on: string }
 }
 
 /** Why a bid to an owner was lost: Trades mode's loss reasons, in GC words (gcLost.ts). */
@@ -575,6 +598,16 @@ export type GcAction =
   | { type: 'markLost'; projectId: string; why: GcLostWhy; wonBy: string | null; note: string }
   /** A lost bid comes back: the owner returns to us, and it is in Bidding again. */
   | { type: 'reopenLost'; projectId: string }
+  /** The owner pays part of a certified pay application. The rest stays open. */
+  | { type: 'ownerPayPart'; projectId: string; number: number; amount: number }
+  /** The owner's word on when they will pay: taken by the office on a call, or given in their portal. */
+  | { type: 'ownerPromisePay'; projectId: string; number: number; by: string; note: string; who: 'office' | 'owner' }
+  /** Our superintendent adds an item to a trade's punch list. */
+  | { type: 'addPunchItem'; projectId: string; packageId: string; text: string; where?: string }
+  /** The trade marks a punch item fixed in its portal. */
+  | { type: 'tradeFixPunchItem'; projectId: string; itemId: string }
+  /** Our superintendent checks a fixed item: fixed, or sent back with a note. */
+  | { type: 'checkPunchItem'; projectId: string; itemId: string; fixed: boolean; note?: string }
 
 /** One trade on a new project, as the office left it in the New project window. */
 export interface NewTradeDraft {
@@ -655,6 +688,10 @@ export interface OwnerPayAppSent {
   certifiedNote?: string
   /** What the owner paid, once paid: the certified amount. Absent: as asked. */
   paidAmount?: number
+  /** Each payment the owner made on it, oldest first. A part payment leaves the rest open. Absent: none, or the made-up history. */
+  payments?: { on: string; amount: number }[]
+  /** The owner's word on when they will pay, oldest first. The newest counts; a passed one stays on the record. */
+  promises?: { by: string; madeOn: string; note: string; who: 'office' | 'owner' }[]
 }
 
 /** A pay application the office sent back: the draw as the trade sent it, why, and what we see. */

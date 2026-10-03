@@ -41,6 +41,10 @@ const S = {
   seeBidTab: { en: 'See the bid tab', es: 'Ver la tabla de precios' },
   resultTitle: { en: '{trade} · result', es: '{trade} · resultado' },
   wentElsewhere: { en: 'This one went to another company. Thank you for your number.', es: 'Este trabajo fue para otra empresa. Gracias por su precio.' },
+  closedLost: { en: '{gc} did not win this project.', es: '{gc} no ganó este proyecto.' },
+  closedDied: { en: 'The owner stopped this project or put it on hold.', es: 'El dueño detuvo este proyecto o lo puso en pausa.' },
+  closedNoNumber: { en: 'You do not need to send a number. Thank you for your time.', es: 'No necesita enviar su precio. Gracias por su tiempo.' },
+  closedThanksQuote: { en: 'Thank you for your number.', es: 'Gracias por su precio.' },
   inviteTitle: { en: '{trade} · invitation', es: '{trade} · invitación' },
   youPassed: { en: 'You passed on this one.', es: 'Usted no cotizó este.' },
 
@@ -144,6 +148,8 @@ const S = {
   askedToBid: { en: 'Asked to bid', es: 'Invitado a cotizar' },
   before: { en: 'Before', es: 'Anteriores' },
   wentOther: { en: 'went to another company', es: 'fue para otra empresa' },
+  closedShortLost: { en: '{gc} did not win it', es: '{gc} no lo ganó' },
+  closedShortDied: { en: 'stopped or on hold', es: 'detenido o en pausa' },
   youPassedShort: { en: 'you passed', es: 'no cotizó' },
   whenWon: { en: '{gc} won the job. {trade} is not picked yet.', es: '{gc} ganó el proyecto. Todavía no se elige a nadie para {trade}.' },
   whenSent: { en: '{gc} sent its bid {date}. The owner picks next.', es: '{gc} envió su propuesta el {date}. Ahora decide el dueño.' },
@@ -429,6 +435,8 @@ const S = {
   mCoiWhat: { en: 'The insurance certificate {gc} has on file for you runs out {date}.', es: 'El certificado de seguro que {gc} tiene de usted vence el {date}.' },
   mCoiWhy: { en: 'We cannot pay a draw without current insurance.', es: 'No podemos pagarle sin un seguro vigente.' },
   mCoiOpen: { en: 'Send the new certificate in your portal.', es: 'Envíe el certificado nuevo en su portal.' },
+  mClosedSubject: { en: '{project}: {gc} is not building it', es: '{project}: {gc} no lo va a construir' },
+  mClosedAbout: { en: 'This is about {trade} on {project}.', es: 'Le escribimos sobre {trade} en {project}.' },
   mLessSubject: { en: 'Pay application {n} on {project}: approved for less', es: 'Solicitud de pago {n} de {project}: aprobada por menos' },
   mLessApproved: {
     en: 'We approved {approved} of the {asked} you asked for on pay application {n} for {trade} on {project}.',

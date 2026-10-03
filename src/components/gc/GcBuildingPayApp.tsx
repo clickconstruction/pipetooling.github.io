@@ -38,6 +38,7 @@ import { LienReleaseStepRow } from '../jobs/LienReleaseStepRow'
 import type { ReleaseStep } from '../../lib/jobs/lienReleaseSteps'
 import { Btn, input as inputStyle } from './gcUi'
 import { usePortalLang } from './gcPortalLang'
+import { GcBuildingPunchForTrade } from './GcBuildingPunch'
 
 /**
  * GC mode design spike: the pay application a trade sends with each draw. The window is the
@@ -146,6 +147,7 @@ export function GcBuildingPayAppDoor({
 
   return (
     <>
+      <GcBuildingPunchForTrade project={project} pkg={pkg} dispatch={dispatch} />
       {changesToSign.map(({ co }) => (
         <div key={co.id} style={{ padding: '0.55rem 0.65rem', background: 'var(--bg-subtle)', border: '1px solid var(--border-strong)', borderRadius: 6, display: 'grid', gap: '0.4rem' }}>
           <div>

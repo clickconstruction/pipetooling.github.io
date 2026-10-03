@@ -198,6 +198,18 @@ const W = {
   colBalance: { en: 'Balance', es: 'Saldo' },
   colRetainage: { en: 'Retainage', es: 'Retención' },
   grandTotal: { en: 'Grand total', es: 'Total general' },
+
+  // The punch list in the trade's portal (2026-10-03)
+  punchHead: { en: 'Punch list from {gc}', es: 'Lista de pendientes de {gc}' },
+  punchToFix: { en: '{n} to fix', es: '{n} por arreglar' },
+  punchFixedBtn: { en: 'It is fixed', es: 'Ya está arreglado' },
+  punchWaiting: { en: 'Waiting on {gc} to check it.', es: 'Esperando que {gc} lo revise.' },
+  punchBack: { en: '{gc} checked it {date}. It is not fixed yet.', es: '{gc} lo revisó el {date}. Todavía no está arreglado.' },
+  punchChecked: { en: 'Checked by {gc}: {n}.', es: 'Revisados por {gc}: {n}.' },
+  punchWhy: {
+    en: 'Fix each one, then tell {gc} here. {gc} checks it on the job. Your work is accepted once every item is checked.',
+    es: 'Arregle cada uno y avísele a {gc} aquí. {gc} lo revisa en la obra. Su trabajo se acepta cuando todos estén revisados.',
+  },
 } satisfies Record<string, Record<PortalLang, string>>
 
 export type BuildingWordKey = keyof typeof W

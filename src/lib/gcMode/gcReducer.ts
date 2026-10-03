@@ -12,8 +12,9 @@ import { initialGcState } from './gcFixture'
 import { lostWhyLabel } from './gcLost'
 import { draftSchedule, scheduleLinesOf, withBaselineKept } from './gcBuildingSchedule'
 import { buildNewProject, packagesFromDrafts, pushSchedule, withNewLines, withTradesInOrder } from './gcNewProject'
+import { nextPunchId, punchClear } from './gcBuildingPunch'
 import { changeOrderTradePct, crewPctFromStages, drawApprovedLess, finalPayApplication, jobCloseout, payApplication, timesSentBack, tradeCloseout, workAllBilled } from './gcBuilding'
-import { appClaimed, changeOrderPrice, ownerCloseout, ownerFinalPayAppToSend, ownerPayApp, ownerPayAppHasWork, ownerPayAppToSend } from './gcOwnerBilling'
+import { appClaimed, appOpen, changeOrderPrice, ownerCloseout, ownerFinalPayAppToSend, ownerPayApp, ownerPayAppHasWork, ownerPayAppToSend } from './gcOwnerBilling'
 
 export function gcReducer(state: GcState, action: GcAction): GcState {
   switch (action.type) {
@@ -596,13 +597,18 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
               ...p,
               ownerBilling: {
                 ...p.ownerBilling,
-                // They pay what the architect certified (or what we asked, when it came in without a certificate).
-                payApps: (p.ownerBilling.payApps ?? []).map((a) => (a.number === app.number ? { ...a, paidOn: state.today, paidAmount: appClaimed(a) } : a)),
+                // They pay the rest of what the architect certified (or of what we asked, when it came in
+                // without a certificate), as one more payment.
+                payApps: (p.ownerBilling.payApps ?? []).map((a) =>
+                  a.number === app.number
+                    ? { ...a, paidOn: state.today, paidAmount: appClaimed(a), payments: [...(a.payments ?? []), { on: state.today, amount: appOpen(a) }] }
+                    : a,
+                ),
               },
             }
           : p,
       )
-      return logged(next, 'office', `${project.owner} paid pay application ${app.number}: ${money(appClaimed(app))}.`)
+      return logged(next, 'office', `${project.owner} paid pay application ${app.number}: ${money(appOpen(app))}.`)
     }
 
     case 'issuePlanSet': {
@@ -656,10 +662,12 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
 
     case 'acceptWork': {
       // Closeout: we walked the work and the punch list is done. Only once every line is billed.
-      const { pkg } = find(state, action.projectId, action.packageId)
+      const { project, pkg } = find(state, action.projectId, action.packageId)
       const partner = awardedPartner(state, pkg)
       const sow = pkg?.sow
-      if (!pkg || !partner || !sow || !workAllBilled(sow) || sow.acceptedOn) return state
+      if (!project || !pkg || !partner || !sow || !workAllBilled(sow) || sow.acceptedOn) return state
+      // Not while anything on its punch list is still to fix or to check (Building lane, 2026-10-03).
+      if (!punchClear(project, pkg.id)) return state
       const next = mapProject(state, action.projectId, (p) => mapPackage(p, pkg.id, (k) => mapSow(k, (s) => ({ ...s, acceptedOn: state.today }))))
       return logged(next, 'office', `Accepted the ${pkg.trade} work from ${partner.company}. The punch list is done.`)
     }
@@ -1261,6 +1269,109 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
       if (!project || !project.lostOn) return state
       const next = mapProject(state, project.id, (p) => ({ ...p, lostOn: null, lostWhy: null, wonBy: null, lostNote: null }))
       return logged(next, 'office', `${project.name} is back in the bidding.`)
+    }
+
+    case 'ownerPayPart': {
+      // The owner pays part of a bill. The rest stays open; paying all of it closes the bill.
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const app = project?.ownerBilling?.payApps?.find((a) => a.number === action.number)
+      if (!project || !app || app.paidOn !== null) return state
+      const open = appOpen(app)
+      const amount = Math.min(open, Math.round(action.amount * 100) / 100)
+      if (!(amount > 0)) return state
+      const full = open - amount < 0.005
+      const next = mapProject(state, project.id, (p) =>
+        p.ownerBilling
+          ? {
+              ...p,
+              ownerBilling: {
+                ...p.ownerBilling,
+                payApps: (p.ownerBilling.payApps ?? []).map((a) =>
+                  a.number === app.number
+                    ? {
+                        ...a,
+                        payments: [...(a.payments ?? []), { on: state.today, amount }],
+                        ...(full ? { paidOn: state.today, paidAmount: appClaimed(a) } : {}),
+                      }
+                    : a,
+                ),
+              },
+            }
+          : p,
+      )
+      return logged(
+        next,
+        'office',
+        full
+          ? `${project.owner} paid the last ${money(amount)} on pay application ${app.number}.`
+          : `${project.owner} paid ${money(amount)} on pay application ${app.number}. ${money(open - amount)} is still open.`,
+      )
+    }
+
+    case 'ownerPromisePay': {
+      // The owner's word on when they will pay: the newest counts, a passed one stays on the record.
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const app = project?.ownerBilling?.payApps?.find((a) => a.number === action.number)
+      if (!project || !app || app.paidOn !== null || !/^\d{4}-\d{2}-\d{2}$/.test(action.by)) return state
+      const promise = { by: action.by, madeOn: state.today, note: action.note.trim(), who: action.who }
+      const next = mapProject(state, project.id, (p) =>
+        p.ownerBilling
+          ? {
+              ...p,
+              ownerBilling: {
+                ...p.ownerBilling,
+                payApps: (p.ownerBilling.payApps ?? []).map((a) => (a.number === app.number ? { ...a, promises: [...(a.promises ?? []), promise] } : a)),
+              },
+            }
+          : p,
+      )
+      return logged(next, 'office', `${project.owner} said they will pay pay application ${app.number} by ${weekdayDate(action.by)}.`)
+    }
+
+    case 'addPunchItem': {
+      // Building lane: our superintendent lists what is left to fix on a trade we hire. Not once the
+      // work is accepted: after that it is warranty.
+      const { project, pkg } = find(state, action.projectId, action.packageId)
+      const partner = awardedPartner(state, pkg)
+      const text = action.text.trim().replace(/\s+/g, ' ')
+      const where = action.where?.trim()
+      if (!project || project.stage !== 'building' || !pkg || pkg.selfPerform || !partner || pkg.sow?.status !== 'signed' || pkg.sow.acceptedOn || !text) return state
+      const item = { id: nextPunchId(project), packageId: pkg.id, text, ...(where ? { where } : {}), addedOn: state.today, fixedOn: null, checkedOn: null }
+      const next = mapProject(state, project.id, (p) => ({ ...p, punch: [...(p.punch ?? []), item] }))
+      return logged(next, 'office', `Punch list, ${pkg.trade}: ${text.replace(/[.\s]+$/, '')}${where ? `, ${where}` : ''}. ${partner.company} fixes it in their portal.`)
+    }
+
+    case 'tradeFixPunchItem': {
+      // The trade marks an item fixed in its portal; it waits on our superintendent's check.
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const item = project?.punch?.find((i) => i.id === action.itemId)
+      const pkg = item ? project?.packages.find((k) => k.id === item.packageId) : undefined
+      const partner = awardedPartner(state, pkg)
+      if (!project || !item || !pkg || !partner || item.fixedOn || item.checkedOn) return state
+      const next = mapProject(state, project.id, (p) => ({ ...p, punch: (p.punch ?? []).map((i) => (i.id === item.id ? { ...i, fixedOn: state.today } : i)) }))
+      return logged(next, 'trade', `${partner.company} fixed a punch item on ${pkg.trade}: ${item.text.replace(/[.\s]+$/, '')}.`)
+    }
+
+    case 'checkPunchItem': {
+      // Our superintendent checks a fixed item: fixed, or back to the trade with a note.
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const item = project?.punch?.find((i) => i.id === action.itemId)
+      const pkg = item ? project?.packages.find((k) => k.id === item.packageId) : undefined
+      const partner = awardedPartner(state, pkg)
+      if (!project || !item || !pkg || !partner || !item.fixedOn || item.checkedOn) return state
+      const note = action.note?.trim() ?? ''
+      const checked = action.fixed
+        ? { ...item, checkedOn: state.today }
+        : { ...item, fixedOn: null, sentBack: { times: (item.sentBack?.times ?? 0) + 1, note, on: state.today } }
+      const next = mapProject(state, project.id, (p) => ({ ...p, punch: (p.punch ?? []).map((i) => (i.id === item.id ? checked : i)) }))
+      const what = item.text.replace(/[.\s]+$/, '')
+      return logged(
+        next,
+        'office',
+        action.fixed
+          ? `Our superintendent checked a punch item on ${pkg.trade}: ${what}. It is fixed.`
+          : `Our superintendent sent a punch item back to ${partner.company}: ${what}.${note ? ` ${note.replace(/[.\s]+$/, '')}.` : ''}`,
+      )
     }
   }
 }

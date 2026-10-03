@@ -395,6 +395,25 @@ const STEPS: Step[] = [
     action: { type: 'markLost', projectId: 'padb', why: 'price', wonBy: 'Hill Country Builders', note: 'They came in about 6% under us.' },
   },
   { label: 'Pad B: the owner comes back to us', action: { type: 'reopenLost', projectId: 'padb' } },
+  // Fair Oaks D: Cibolo missed the day it gave, gives a new one, and pays part.
+  { label: 'Cibolo says checks go out Oct 9', action: { type: 'ownerPromisePay', projectId: 'fairoaksd', number: 3, by: '2026-10-09', note: 'Their controller, on a call', who: 'office' } },
+  { label: 'Cibolo pays $150,000 of pay application 3', action: { type: 'ownerPayPart', projectId: 'fairoaksd', number: 3, amount: 150_000 } },
+  // The punch list (Building lane): Fair Oaks D's concrete, walked Sep 28, to accepted.
+  {
+    label: 'Fair Oaks D: one more punch item on the concrete',
+    action: { type: 'addPunchItem', projectId: 'fairoaksd', packageId: 'fconc', text: 'Grind the trip edge at the sidewalk joint', where: 'East entry' },
+  },
+  { label: 'Guadalupe fixes the spalled footing corner', action: { type: 'tradeFixPunchItem', projectId: 'fairoaksd', itemId: 'fairoaksd-punch-1' } },
+  {
+    label: 'Superintendent: the stockroom joints are not all sealed',
+    action: { type: 'checkPunchItem', projectId: 'fairoaksd', itemId: 'fairoaksd-punch-2', fixed: false, note: 'Two joints in the back corner are still open.' },
+  },
+  { label: 'Guadalupe seals the last two joints', action: { type: 'tradeFixPunchItem', projectId: 'fairoaksd', itemId: 'fairoaksd-punch-2' } },
+  { label: 'Guadalupe grinds the trip edge', action: { type: 'tradeFixPunchItem', projectId: 'fairoaksd', itemId: 'fairoaksd-punch-4' } },
+  { label: 'Superintendent checks the footing corner', action: { type: 'checkPunchItem', projectId: 'fairoaksd', itemId: 'fairoaksd-punch-1', fixed: true } },
+  { label: 'Superintendent checks the stockroom joints', action: { type: 'checkPunchItem', projectId: 'fairoaksd', itemId: 'fairoaksd-punch-2', fixed: true } },
+  { label: 'Superintendent checks the trip edge', action: { type: 'checkPunchItem', projectId: 'fairoaksd', itemId: 'fairoaksd-punch-4', fixed: true } },
+  { label: 'Accept the concrete work on Fair Oaks D', action: { type: 'acceptWork', projectId: 'fairoaksd', packageId: 'fconc' } },
   // The project manual (New Project lane, 2026-10-03): a set revises a section and adds a line that reads it.
   {
     label: 'Leon Springs: Addendum 1 revises the roofing section',
@@ -543,12 +562,14 @@ describe('GC mode golden walk', () => {
       'ownerAcceptsWork', 'sendOwnerFinalPayApp',
       'draftChangeOrder', 'sendChangeOrder', 'ownerSignChangeOrder', 'ownerDeclineChangeOrder', 'setChangeOrderPct',
       'architectCertify',
+      'ownerPayPart', 'ownerPromisePay',
       'sendDrawBack',
       'closeJob', 'approveDrawLess', 'selfReportStage',
       'draftSchedule', 'setScheduleActivity', 'setScheduleMilestone', 'removeScheduleMilestone',
       'verifyLookAhead', 'crewMarkLookAhead',
       'sendTradeChange', 'tradeSignChange',
       'passInspection',
+      'addPunchItem', 'tradeFixPunchItem', 'checkPunchItem',
       'tradeOpenPortal',
       'tradeAnswerLines',
       'priceOwnBid',

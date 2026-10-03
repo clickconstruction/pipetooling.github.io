@@ -631,3 +631,47 @@ describe('insurance running out soon', () => {
     expect(portalMessages(sent('2026-11-02'), 'lonestar').some((x) => x.kind === 'coi')).toBe(false)
   })
 })
+
+describe('a project we lost', () => {
+  const lost = (why: 'price' | 'project_died', s: GcState = state) =>
+    gcReducer(s, { type: 'markLost', projectId: 'boerne', why, wonBy: 'Hill Country Builders', note: 'Owner went with a lower number.' })
+
+  it('moves Hillside’s Boerne ask from Bidding to Before, and Comal stays passed', () => {
+    const h = home('hillside', lost('price'))
+    expect(h.bidding.some((a) => a.project.id === 'boerne')).toBe(false)
+    expect(h.past.filter((a) => a.project.id === 'boerne').map((a) => a.kind)).toEqual(['closed'])
+    expect(home('comal', lost('price')).past.map((a) => a.kind)).toEqual(['passed'])
+  })
+
+  it('asks nothing more on it', () => {
+    const before = portalTodos(state, 'hillside').filter((t) => t.projectId === 'boerne')
+    expect(before.length).toBeGreaterThan(0)
+    expect(portalTodos(lost('price'), 'hillside').filter((t) => t.projectId === 'boerne')).toEqual([])
+  })
+
+  it('says we did not win, or that the project died, and never the price or who won', () => {
+    const won = portalMessages(lost('price'), 'hillside').find((m) => m.kind === 'closed')
+    expect(won?.lines.slice(1)).toEqual([
+      'This is about Sitework on Boerne Retail Shell.',
+      'Click did not win this project.',
+      'You do not need to send a number. Thank you for your time.',
+    ])
+    expect(won?.lines.join(' ')).not.toMatch(/Hill Country|lower number/)
+    const died = portalMessages(lost('project_died'), 'lonestar').find((m) => m.kind === 'closed')
+    expect(died?.lines.slice(2)).toEqual(['The owner stopped this project or put it on hold.', 'Thank you for your number.'])
+  })
+
+  it('emails each company still on a trade there the day it is marked, in its language, and not one that passed', () => {
+    const m = portalMessages(lost('price'), 'hillside').find((x) => x.kind === 'closed')
+    expect(m).toMatchObject({ on: state.today, projectId: 'boerne', subject: 'Boerne Retail Shell: Click is not building it' })
+    expect(portalMessages(lost('price'), 'comal').some((x) => x.kind === 'closed')).toBe(false)
+    const es = gcReducer(lost('price'), { type: 'setPartnerLanguage', partnerId: 'hillside', lang: 'es' })
+    expect(portalMessages(es, 'hillside').find((x) => x.kind === 'closed')?.subject).toBe('Boerne Retail Shell: Click no lo va a construir')
+  })
+
+  it('opens again when the office brings it back', () => {
+    const back = gcReducer(lost('price'), { type: 'reopenLost', projectId: 'boerne' })
+    expect(home('hillside', back).bidding.some((a) => a.project.id === 'boerne')).toBe(true)
+    expect(portalMessages(back, 'hillside').some((x) => x.kind === 'closed')).toBe(false)
+  })
+})
