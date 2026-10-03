@@ -34,6 +34,7 @@ import { BidTabTable } from './GcBidTabs'
 import { GcBuildingPayAppDoor } from './GcBuildingPayApp'
 import { Btn, Chip, input } from './gcUi'
 import { GcPortalHome } from './GcPortalHome'
+import { GcPortalLookAhead } from './GcPortalLookAhead'
 import { AlternatesEditor, AnswerLines, GoodForPicker, QuoteFilePicker } from './GcPortalBidExtras'
 import { ChangedLines, LineSheets, SheetChip } from './GcPortalLineSheets'
 import { GcPortalMessages } from './GcPortalMessages'
@@ -205,6 +206,8 @@ function ProjectPage({
       </div>
 
       {paperworkMissing && <GcPortalPaperwork partner={partner} today={state.today} dispatch={dispatch} />}
+
+      <GcPortalLookAhead state={state} project={project} partner={partner} dispatch={dispatch} />
 
       {mine.length === 0 && <div>{t('noInvite')}</div>}
       {mine.map(({ pkg, invite }) => (

@@ -303,6 +303,8 @@ const STEPS: Step[] = [
     action: { type: 'setScheduleMilestone', projectId: 'helotes', milestone: { id: 'helotes-ms-cabinets', label: 'Cabinets set', planned: '2026-12-18', packageId: 'mill', metOn: null } },
   },
   { label: 'Take the rough-in inspection off', action: { type: 'removeScheduleMilestone', projectId: 'helotes', milestoneId: 'helotes-roughin' } },
+  // The portal's weekly look-ahead: the trade marks this week's activity.
+  { label: 'Fair Oaks D: Pecan Valley marks Lighting not done this week (materials)', action: { type: 'tradeMarkLookAhead', projectId: 'fairoaksd', packageId: 'felec', lineId: 'felec-3', weekOf: '2026-09-28', done: false, reason: 'materials' } },
 ]
 
 const CUSTOMER_IDS = ['cibolo', 'raman']
@@ -437,6 +439,7 @@ describe('GC mode golden walk', () => {
       'tradeOpenPortal',
       'tradeAnswerLines',
       'priceOwnBid',
+      'tradeMarkLookAhead',
     ]
     expect(all.filter((t) => !used.has(t))).toEqual([])
   })

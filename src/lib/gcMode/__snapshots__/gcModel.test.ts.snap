@@ -7028,6 +7028,17 @@ exports[`GC mode golden walk > step 96: Take the rough-in inspection off 1`] = `
 }
 `;
 
+exports[`GC mode golden walk > step 97: Fair Oaks D: Pecan Valley marks Lighting not done this week (materials) 1`] = `
+{
+  "changed": {
+    "lastLog.id": 93,
+    "lastLog.text": "Pecan Valley Electric marked Lighting on Electrical not done for the week of Mon Sep 28: materials.",
+    "lastLog.who": "trade",
+  },
+  "removed": [],
+}
+`;
+
 exports[`GC mode golden walk > the whole state at the end 1`] = `
 {
   "customers": [
@@ -7228,6 +7239,11 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
+      "id": 93,
+      "text": "Pecan Valley Electric marked Lighting on Electrical not done for the week of Mon Sep 28: materials.",
+      "who": "trade",
+    },
+    {
       "id": 92,
       "text": "Took Rough-in inspection off the schedule on Helotes Dental Office.",
       "who": "office",
@@ -7371,11 +7387,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "id": 64,
       "text": "Hill Country Interiors sent the warranty letter for Framing and drywall.",
       "who": "trade",
-    },
-    {
-      "id": 63,
-      "text": "Accepted the Framing and drywall work from Hill Country Interiors. The punch list is done.",
-      "who": "office",
     },
   ],
   "partners": [
@@ -11470,6 +11481,15 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
             "lineId": "fhvac-2",
             "markedOn": "2026-10-02",
             "packageId": "fhvac",
+            "verifiedOn": null,
+            "weekOf": "2026-09-28",
+          },
+          {
+            "done": false,
+            "lineId": "felec-3",
+            "markedOn": "2026-10-02",
+            "packageId": "felec",
+            "reason": "materials",
             "verifiedOn": null,
             "weekOf": "2026-09-28",
           },

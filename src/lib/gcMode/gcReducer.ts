@@ -2,7 +2,7 @@
  * GC mode — design spike. The reducer: every action, applied to the state.
  * Split out of gcModel.ts verbatim; import from `./gcModel`, which re-exports every file.
  */
-import type { AskContact, Draw, DrawSentBack, GcAction, GcState, Invite, Partner, PlanSet, SubBid } from './gcTypes'
+import type { AskContact, Draw, DrawSentBack, GcAction, GcState, Invite, LookAheadMark, Partner, PlanSet, SubBid } from './gcTypes'
 import { money, shortDate, weekdayDate } from './gcWords'
 import { currentRev, partnerById, planLabel } from './gcLookups'
 import { planRecipients } from './gcPlans'
@@ -903,6 +903,36 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
         mapProject(state, project.id, (p) => ({ ...p, schedule: { ...schedule, milestones: schedule.milestones.filter((x) => x.id !== m.id) } })),
         'office',
         `Took ${m.label} off the schedule on ${project.name}.`,
+      )
+    }
+
+    case 'tradeMarkLookAhead': {
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const schedule = project?.schedule
+      const { pkg } = find(state, action.projectId, action.packageId)
+      const partner = awardedPartner(state, pkg)
+      if (!project || !schedule || !pkg || !partner) return state
+      const was = schedule.lookAhead.find((m) => m.weekOf === action.weekOf && m.lineId === action.lineId)
+      if (was?.verifiedOn) return state
+      const mark: LookAheadMark = {
+        weekOf: action.weekOf,
+        lineId: action.lineId,
+        packageId: pkg.id,
+        done: action.done,
+        ...(action.done ? {} : { reason: action.reason ?? 'other' }),
+        markedOn: state.today,
+        verifiedOn: null,
+      }
+      const lookAhead = was ? schedule.lookAhead.map((m) => (m === was ? mark : m)) : [...schedule.lookAhead, mark]
+      const next = mapProject(state, project.id, (p) => (p.schedule ? { ...p, schedule: { ...p.schedule, lookAhead } } : p))
+      const label = scheduleLinesOf(pkg).find((l) => l.lineId === action.lineId)?.label ?? action.lineId
+      const week = weekdayDate(action.weekOf)
+      return logged(
+        next,
+        'trade',
+        action.done
+          ? `${partner.company} marked ${label} on ${pkg.trade} done for the week of ${week}.`
+          : `${partner.company} marked ${label} on ${pkg.trade} not done for the week of ${week}: ${mark.reason}.`,
       )
     }
   }
