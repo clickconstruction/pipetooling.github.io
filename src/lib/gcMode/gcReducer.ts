@@ -2,7 +2,7 @@
  * GC mode — design spike. The reducer: every action, applied to the state.
  * Split out of gcModel.ts verbatim; import from `./gcModel`, which re-exports every file.
  */
-import type { AskContact, Draw, DrawSentBack, GcAction, GcState, Invite, LookAheadMark, Partner, PlanSet, SubBid } from './gcTypes'
+import type { AskContact, Draw, DrawSentBack, GcAction, GcState, SovLine, Invite, LookAheadMark, Partner, PlanSet, SubBid } from './gcTypes'
 import { money, shortDate, weekdayDate, daysUntil } from './gcWords'
 import { currentRev, partnerById, planLabel } from './gcLookups'
 import { planRecipients } from './gcPlans'
@@ -1083,6 +1083,46 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
         'office',
         `Set ${partner.company}'s language to ${action.lang === 'es' ? 'Spanish' : 'English'}: its portal and messages.`,
       )
+    }
+
+    case 'sendTradeChange': {
+      // Building lane: a signed change order goes to the trade it belongs to, as a change to its
+      // statement of work, for what the change costs us (its price to the trade).
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const co = project?.changeOrders?.find((c) => c.id === action.changeOrderId)
+      const pkg = co ? project?.packages.find((k) => k.id === co.packageId) : undefined
+      const partner = awardedPartner(state, pkg)
+      if (!project || !co || co.status !== 'signed' || co.tradeChange || !pkg || pkg.selfPerform || pkg.sow?.status !== 'signed' || !partner) return state
+      const tradeChange = { status: 'sent' as const, sentOn: state.today, signedOn: null, sovLineId: `${pkg.id}-co${co.number}` }
+      const next = mapProject(state, project.id, (p) => ({
+        ...p,
+        changeOrders: (p.changeOrders ?? []).map((c) => (c.id === co.id ? { ...c, tradeChange } : c)),
+      }))
+      return logged(next, 'office', `Sent change order ${co.number} to ${partner.company} as a change to their ${pkg.trade} statement of work: ${money(co.cost)}.`)
+    }
+
+    case 'tradeSignChange': {
+      // The trade signs the change: it becomes a line of its statement of work, reported and drawn
+      // on like any other. A credit counts as done at once, so it comes off their next draw.
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const co = project?.changeOrders?.find((c) => c.id === action.changeOrderId)
+      const pkg = co ? project?.packages.find((k) => k.id === co.packageId) : undefined
+      const partner = awardedPartner(state, pkg)
+      const change = co?.tradeChange
+      if (!project || !co || !change || change.status !== 'sent' || !pkg?.sow || !partner) return state
+      const line: SovLine = {
+        id: change.sovLineId,
+        label: `Change order ${co.number}: ${co.description}`,
+        amount: co.cost,
+        pctReported: co.cost < 0 ? 100 : 0,
+        pctBilled: 0,
+        changeOrderId: co.id,
+      }
+      const next = mapProject(state, project.id, (p) => ({
+        ...mapPackage(p, pkg.id, (k) => mapSow(k, (s) => ({ ...s, sov: [...s.sov, line] }))),
+        changeOrders: (p.changeOrders ?? []).map((c) => (c.id === co.id ? { ...c, tradeChange: { ...change, status: 'signed' as const, signedOn: state.today } } : c)),
+      }))
+      return logged(next, 'trade', `${partner.company} signed change order ${co.number} into their ${pkg.trade} statement of work: ${money(co.cost)}.`)
     }
   }
 }

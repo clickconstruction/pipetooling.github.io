@@ -7197,6 +7197,75 @@ exports[`GC mode golden walk > step 110: The office sets Comal Iron to Spanish 1
 }
 `;
 
+exports[`GC mode golden walk > step 111: Change order 3: a coffee bar cabinet in the break room 1`] = `
+{
+  "changed": {
+    "lastLog.id": 107,
+    "lastLog.text": "Drafted change order 3 on Helotes Dental Office: Add a coffee bar cabinet in the break room, per A-501, $2,640.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 112: Send change order 3 to Dr. Raman 1`] = `
+{
+  "changed": {
+    "lastLog.id": 108,
+    "lastLog.text": "Sent change order 3 to Dr. Priya Raman for signature: $2,640.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 113: Dr. Raman signs change order 3 1`] = `
+{
+  "changed": {
+    "lastLog.id": 109,
+    "lastLog.text": "Dr. Priya Raman signed change order 3 in their portal. Their price goes up $2,640.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 114: Send change order 3 to Cedar & Pine 1`] = `
+{
+  "changed": {
+    "lastLog.id": 110,
+    "lastLog.text": "Sent change order 3 to Cedar & Pine Millwork as a change to their Millwork statement of work: $2,400.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 115: Cedar & Pine signs change order 3 1`] = `
+{
+  "changed": {
+    "lastLog.id": 111,
+    "lastLog.text": "Cedar & Pine Millwork signed change order 3 into their Millwork statement of work: $2,400.",
+    "lastLog.who": "trade",
+    "projects.helotes.stageProgress.center": "42%",
+    "projects.helotes.stageProgress.groups[0].items[4].detail": "78% reported",
+    "projects.helotes.stageProgress.headline": "42% of the work is done, by what the trades and our own crew have reported.",
+    "projects.helotes.stageProgress.share": 0.4210104250200481,
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 116: Cedar & Pine reports the coffee bar half done 1`] = `
+{
+  "changed": {
+    "lastLog.id": 112,
+    "lastLog.text": "Cedar & Pine Millwork reported Change order 3: Add a coffee bar cabinet in the break room, per A-501 at 50%.",
+    "projects.helotes.stageProgress.center": "43%",
+    "projects.helotes.stageProgress.groups[0].items[4].detail": "81% reported",
+    "projects.helotes.stageProgress.headline": "43% of the work is done, by what the trades and our own crew have reported.",
+    "projects.helotes.stageProgress.share": 0.42582197273456296,
+  },
+  "removed": [],
+}
+`;
+
 exports[`GC mode golden walk > the whole state at the end 1`] = `
 {
   "customers": [
@@ -7397,6 +7466,36 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
+      "id": 112,
+      "text": "Cedar & Pine Millwork reported Change order 3: Add a coffee bar cabinet in the break room, per A-501 at 50%.",
+      "who": "trade",
+    },
+    {
+      "id": 111,
+      "text": "Cedar & Pine Millwork signed change order 3 into their Millwork statement of work: $2,400.",
+      "who": "trade",
+    },
+    {
+      "id": 110,
+      "text": "Sent change order 3 to Cedar & Pine Millwork as a change to their Millwork statement of work: $2,400.",
+      "who": "office",
+    },
+    {
+      "id": 109,
+      "text": "Dr. Priya Raman signed change order 3 in their portal. Their price goes up $2,640.",
+      "who": "office",
+    },
+    {
+      "id": 108,
+      "text": "Sent change order 3 to Dr. Priya Raman for signature: $2,640.",
+      "who": "office",
+    },
+    {
+      "id": 107,
+      "text": "Drafted change order 3 on Helotes Dental Office: Add a coffee bar cabinet in the break room, per A-501, $2,640.",
+      "who": "office",
+    },
+    {
       "id": 106,
       "text": "Set Comal Iron's language to Spanish: its portal and messages.",
       "who": "office",
@@ -7515,36 +7614,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "id": 83,
       "text": "Hollis Family Pharmacy paid pay application 4: $18,241.",
       "who": "office",
-    },
-    {
-      "id": 82,
-      "text": "Sent the final pay application to Hollis Family Pharmacy: $18,241 of retainage, with our conditional waiver on final payment.",
-      "who": "office",
-    },
-    {
-      "id": 81,
-      "text": "Hollis Family Pharmacy accepted the work on Stone Oak Pharmacy in their portal.",
-      "who": "office",
-    },
-    {
-      "id": 80,
-      "text": "Cool Breeze Mechanical sent the final pay application on HVAC: $3,100 of retainage, with a conditional final release of lien.",
-      "who": "trade",
-    },
-    {
-      "id": 79,
-      "text": "Cool Breeze Mechanical sent the warranty letter for HVAC.",
-      "who": "trade",
-    },
-    {
-      "id": 78,
-      "text": "Issued Bulletin 1 on Boerne Retail Shell and emailed 1 company. 1 was told it changes their trade. It adds 1 scope line.",
-      "who": "office",
-    },
-    {
-      "id": 77,
-      "text": "Lonestar Earthworks bid $92,500 on Sitework.",
-      "who": "trade",
     },
   ],
   "partners": [
@@ -9172,6 +9241,26 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
           "sentOn": "2026-10-02",
           "status": "declined",
         },
+        {
+          "answeredOn": "2026-10-02",
+          "cost": 2400,
+          "description": "Add a coffee bar cabinet in the break room, per A-501",
+          "id": "co-3",
+          "number": 3,
+          "packageId": "mill",
+          "pctDone": 0,
+          "price": 2640,
+          "reason": "owner",
+          "schedule": "+2 working days",
+          "sentOn": "2026-10-02",
+          "status": "signed",
+          "tradeChange": {
+            "sentOn": "2026-10-02",
+            "signedOn": "2026-10-02",
+            "sovLineId": "mill-co3",
+            "status": "signed",
+          },
+        },
       ],
       "contingencyPct": 3,
       "customerId": "raman",
@@ -9825,6 +9914,14 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
                 "id": "mill-3",
                 "label": "Break room",
                 "pctBilled": 50,
+                "pctReported": 50,
+              },
+              {
+                "amount": 2400,
+                "changeOrderId": "co-3",
+                "id": "mill-co3",
+                "label": "Change order 3: Add a coffee bar cabinet in the break room, per A-501",
+                "pctBilled": 0,
                 "pctReported": 50,
               },
             ],

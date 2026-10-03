@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  changeOrderTradePct,
   finalPayApplication,
   gcReducer,
   initialGcState,
@@ -12,6 +13,8 @@ import {
   payAppSteps,
   resendPayAppDraft,
   retainageHeldNow,
+  sowContractSum,
+  tradeChangesFor,
   sentBackOpen,
   timesSentBack,
   tradeCloseout,
@@ -361,5 +364,69 @@ describe('a pay application sent back twice', () => {
     const helotes = building.projects.find((p) => p.id === 'helotes')
     if (!helotes) throw new Error('no Helotes')
     expect(stageProgress(building, helotes).also).toContain('Pay application 2 went back to Hill Country Interiors 2 times. Call them.')
+  })
+})
+
+describe("change orders, the trade's side", () => {
+  const helotes = (st: GcState) => {
+    const p = st.projects.find((x) => x.id === 'helotes')
+    if (!p) throw new Error('no Helotes')
+    return p
+  }
+  const dry = (st: GcState) => {
+    const k = helotes(st).packages.find((x) => x.id === 'dry')
+    if (!k) throw new Error('no drywall')
+    return k
+  }
+  /** A change order on drywall, drafted, sent and signed by the owner (Owner Billing's actions). */
+  const signedByOwner = (cost: number) =>
+    [
+      { type: 'draftChangeOrder', projectId: 'helotes', description: 'Sound batts in operatory 3', reason: 'owner', schedule: '+1 working day', packageId: 'dry', cost, price: 0 },
+      { type: 'sendChangeOrder', projectId: 'helotes', changeOrderId: 'co-1' },
+      { type: 'ownerSignChangeOrder', projectId: 'helotes', changeOrderId: 'co-1' },
+    ].reduce((st, a) => gcReducer(st, a as GcAction), initialGcState())
+
+  it('goes to the trade once the owner signs, and becomes a line of its statement of work when they sign', () => {
+    const owner = signedByOwner(4_800)
+    expect(tradeChangesFor(helotes(owner), dry(owner)).map((c) => c.state)).toEqual(['toSend'])
+    const sent = gcReducer(owner, { type: 'sendTradeChange', projectId: 'helotes', changeOrderId: 'co-1' })
+    expect(tradeChangesFor(helotes(sent), dry(sent)).map((c) => c.state)).toEqual(['sent'])
+    const signed = gcReducer(sent, { type: 'tradeSignChange', projectId: 'helotes', changeOrderId: 'co-1' })
+    const sow = dry(signed).sow
+    if (!sow) throw new Error('no statement of work')
+    expect(sow.sov[sow.sov.length - 1]).toEqual({ id: 'dry-co1', label: 'Change order 1: Sound batts in operatory 3', amount: 4_800, pctReported: 0, pctBilled: 0, changeOrderId: 'co-1' })
+    // The original price stays; the contract to date and the 702's line 2 carry the change.
+    expect([sow.price, sowContractSum(sow)]).toEqual([64_200, 69_000])
+    expect(payApplication(sow, 2, payAppDraftPcts(sow)).summary).toMatchObject({ originalSum: 64_200, changeOrders: 4_800, sumToDate: 69_000 })
+    const reported = gcReducer(signed, { type: 'tradeReport', projectId: 'helotes', packageId: 'dry', sovId: 'dry-co1', pct: 50 })
+    const co = helotes(reported).changeOrders?.[0]
+    if (!co) throw new Error('no change order')
+    expect(changeOrderTradePct(helotes(reported), co)).toBe(50)
+  })
+
+  it('a credit counts as done at once, so it comes off their next draw', () => {
+    const owner = signedByOwner(-1_000)
+    const signed = [
+      { type: 'sendTradeChange', projectId: 'helotes', changeOrderId: 'co-1' },
+      { type: 'tradeSignChange', projectId: 'helotes', changeOrderId: 'co-1' },
+    ].reduce((st, a) => gcReducer(st, a as GcAction), owner)
+    const sow = dry(signed).sow
+    if (!sow) throw new Error('no statement of work')
+    expect(sowContractSum(sow)).toBe(63_200)
+    expect(sow.sov[sow.sov.length - 1]).toMatchObject({ amount: -1_000, pctReported: 100 })
+    // Hang and tape at 60% ($16,320) less the $1,000 credit.
+    expect(payApplication(sow, 2, payAppDraftPcts(sow)).totals.thisPeriod).toBe(15_320)
+  })
+
+  it('has no trade side for our own crew, and goes only once', () => {
+    const owner = signedByOwner(4_800)
+    const sent = gcReducer(owner, { type: 'sendTradeChange', projectId: 'helotes', changeOrderId: 'co-1' })
+    expect(gcReducer(sent, { type: 'sendTradeChange', projectId: 'helotes', changeOrderId: 'co-1' })).toBe(sent)
+    const crew = [
+      { type: 'draftChangeOrder', projectId: 'helotes', description: 'A hose bib', reason: 'field', schedule: 'none', packageId: 'dplumb', cost: 600, price: 0 },
+      { type: 'sendChangeOrder', projectId: 'helotes', changeOrderId: 'co-1' },
+      { type: 'ownerSignChangeOrder', projectId: 'helotes', changeOrderId: 'co-1' },
+    ].reduce((st, a) => gcReducer(st, a as GcAction), initialGcState())
+    expect(gcReducer(crew, { type: 'sendTradeChange', projectId: 'helotes', changeOrderId: 'co-1' })).toBe(crew)
   })
 })
