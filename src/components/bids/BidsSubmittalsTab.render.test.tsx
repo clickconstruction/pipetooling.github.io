@@ -927,6 +927,53 @@ describe('BidsSubmittalsTab', () => {
     }
   })
 
+  it('2026-10-02 · a Procure line still held by the GC opens the row’s Their answer window on that part; once answered, the line has no door', async () => {
+    state.revisions = [{ id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'draft', title: 'Plumbing fixtures & equipment', note: null, package_path: null, shared_at: null, created_at: '2026-09-15T00:00:00Z', source_files: [] }]
+    state.items = [item({ id: 'dwh', tag: 'DWH-1', sequence_order: 1, submitted_label: 'RHEEM PROPH40 + WATTS LFN36M1', status: 'proposed', supply_house_id: null })]
+    state.parts = [
+      { id: 'pt-rheem', item_id: 'dwh', bid_id: 'b398', sequence_order: 1, label: 'RHEEM PROPH40-T2-RH400-SO', quantity: 1, on_submittal: true, source: 'takeoff', sheet_pages: [], procure_key: 'k-rheem', decision_source: 'room', review_decision: null, supply_house_id: null },
+      { id: 'pt-watts', item_id: 'dwh', bid_id: 'b398', sequence_order: 2, label: 'WATTS LFN36M1 0556031 VACUUM RELIEF VALVE', quantity: 1, on_submittal: true, source: 'takeoff', sheet_pages: [], procure_key: 'k-watts', decision_source: 'room', review_decision: null, supply_house_id: null },
+    ]
+    state.writes = []
+    state.noRoom = true
+    localStorage.setItem('submittals_procure_lens', 'by_tag')
+    try {
+      mount()
+      const door = await waitFor(() => {
+        // The part's own door, once the parts are read (before that the row reads as one line).
+        const d = screen.queryByRole('button', { name: 'Enter their answer on DWH-1 WATTS LFN36M1' })
+        if (!d) throw new Error('no door yet')
+        return d
+      })
+      expect(door.textContent).toBe('Enter their answer…')
+      fireEvent.click(door)
+      const dialog = await screen.findByRole('dialog', { name: 'Their answer on DWH-1' })
+      // The part tapped is ringed, and its first answer has the keyboard.
+      const ringed = within(dialog).getAllByTestId('answer-line').filter((l) => l.getAttribute('data-focused') === 'true')
+      expect(ringed).toHaveLength(1)
+      expect(ringed[0]!.textContent).toContain('WATTS LFN36M1')
+      const approve = within(within(dialog).getByRole('group', { name: 'Their answer on WATTS LFN36M1' })).getByRole('button', { name: 'Approved' })
+      expect(document.activeElement).toBe(approve)
+      fireEvent.click(approve)
+      fireEvent.change(within(dialog).getByLabelText('Reviewer name'), { target: { value: 'Structura' } })
+      fireEvent.click(within(dialog).getByTestId('answer-save'))
+      await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Their answer on DWH-1' })).toBeNull())
+      expect(state.parts.find((p) => p.id === 'pt-watts')).toMatchObject({ review_decision: 'approved', reviewed_by_name: 'Structura', decision_source: 'entered' })
+      expect(state.parts.find((p) => p.id === 'pt-rheem')!.review_decision).toBeNull()
+      // The answered part is released, so its line loses the door; the other part still waits and keeps it.
+      await waitFor(() => expect(screen.queryByRole('button', { name: 'Enter their answer on DWH-1 WATTS LFN36M1' })).toBeNull())
+      expect(screen.getByRole('button', { name: 'Enter their answer on DWH-1 RHEEM PROPH40-T2-RH400-SO' })).toBeTruthy()
+      // From the row's own button the same window opens with no part ringed.
+      fireEvent.click(screen.getByRole('button', { name: 'Their answer on DWH-1' }))
+      const again = await screen.findByRole('dialog', { name: 'Their answer on DWH-1' })
+      expect(within(again).getAllByTestId('answer-line').some((l) => l.getAttribute('data-focused') === 'true')).toBe(false)
+    } finally {
+      state.parts = []
+      state.noRoom = false
+      localStorage.removeItem('submittals_procure_lens')
+    }
+  })
+
   it('2026-10-02 · a fixture listing two carriers says so; Make it a part takes the place of the takeoff’s carrier, at Rough In', async () => {
     state.revisions = [{ id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'draft', title: 'Plumbing fixtures & equipment', note: null, package_path: null, shared_at: null, created_at: '2026-09-15T00:00:00Z', source_files: [] }]
     state.items = [

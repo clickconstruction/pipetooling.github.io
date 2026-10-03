@@ -250,6 +250,11 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   const [approvingAll, setApprovingAll] = useState(false)
   /** 2026-10-02 · the row whose answer window is open: what the reviewer said, part by part. */
   const [answering, setAnswering] = useState<SubmittalItemRow | null>(null)
+  /** 2026-10-02 · the part a procurement log line opened the answer window on; gone when the window closes. */
+  const [answerFocus, setAnswerFocus] = useState<{ itemId: string; partId: string | null } | null>(null)
+  useEffect(() => {
+    if (!answering) setAnswerFocus(null)
+  }, [answering])
   /** The GC's contacts the app already holds, offered as who answered. */
   const [gcContacts, setGcContacts] = useState<ReviewerSources['contacts']>([])
   const gcCustomerId = selectedBid?.customer_id ?? null
@@ -2813,6 +2818,14 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                     setEditFocus({ itemId, partId: part?.id ?? null, house: house === true })
                     setEditing(it)
                   }}
+                  onAnswerItem={({ itemId, partKey }) => {
+                    // A line the GC still holds: the row's Their answer window over the log, on the part tapped.
+                    const it = items.find((x) => x.id === itemId)
+                    if (!it || isOrderOnlyRow(it)) return
+                    const part = partKey ? (partsOf.get(itemId) ?? []).find((p) => p.procure_key === partKey) : undefined
+                    setAnswerFocus({ itemId, partId: part?.id ?? null })
+                    setAnswering(it)
+                  }}
                 />
               ) : null}
             </RoadSection>
@@ -2848,7 +2861,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       ) : null}
       {editing ? <SubmittalItemEditDialog item={editing} sourceFiles={sourceFiles} houses={houses} parts={partsOf.get(editing.id) ?? []} canEnterDecision={editing.id !== NEW_ROW_ID} canEditProduct={isDraft && !standing.revOf.has(editing.id)} orderOnly={isOrderOnlyRow(editing)} boughtParts={editBought} focusPartId={editFocus?.itemId === editing.id ? editFocus.partId : null} focusHouse={editFocus?.itemId === editing.id && editFocus.house && editFocus.partId == null} onSave={(p) => void saveItem(p)} onClose={() => setEditing(null)} /> : null}
       {answering && selectedRev ? (
-        <SubmittalAnswerDialog item={answering} parts={partsOf.get(answering.id) ?? []} people={people} sources={reviewerSources} revLabel={`Rev ${selectedRev.rev_number}`} busy={busy} onSave={(a) => void saveAnswer(a)} onClose={() => setAnswering(null)} />
+        <SubmittalAnswerDialog key={answering.id} item={answering} parts={partsOf.get(answering.id) ?? []} people={people} sources={reviewerSources} revLabel={`Rev ${selectedRev.rev_number}`} focusPartId={answerFocus?.itemId === answering.id ? answerFocus.partId : null} busy={busy} onSave={(a) => void saveAnswer(a)} onClose={() => setAnswering(null)} />
       ) : null}
       {takeOff ? (
         <SubmittalTakeOffDialog

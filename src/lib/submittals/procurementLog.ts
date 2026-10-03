@@ -479,6 +479,22 @@ export function lineStatus(r: ProcurementRow): LineStatus {
   return { tone: 'none', text: '', sub: extra([]) }
 }
 
+/**
+ * The door a line offers to the window where the office records what the GC said (2026-10-02):
+ * only on a line the GC's answer still holds — waiting on it, not shared yet, or sent back — and
+ * only for a part the GC sees. A hand line, an order-only part, a row with no product, and a line
+ * that is released, ordered or delivered get none: the row's own Their answer button is there.
+ */
+export type AnswerDoor = 'enter' | 'change'
+export const ANSWER_DOOR_WORDS: Record<AnswerDoor, string> = { enter: 'Enter their answer…', change: 'Change their answer…' }
+export function answerDoor(r: ProcurementRow): AnswerDoor | null {
+  if (r.isHand || !r.itemId || r.orderOnly || r.noGc) return null
+  if (!r.partKey && r.noProduct) return null
+  if (r.status === 'sent_back') return 'change'
+  if (r.status === 'awaiting' || r.status === 'not_submitted') return 'enter'
+  return null
+}
+
 export type OrderBlockers = { noLead: string[]; noHouse: string[]; noStage: string[]; noProduct: Array<{ key: string; tag: string; itemId: string | null }> }
 
 /**
