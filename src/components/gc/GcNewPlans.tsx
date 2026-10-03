@@ -5,6 +5,8 @@ import {
   TRADE_TEMPLATES,
   currentRev,
   defaultSetKind,
+  guessLineSheets,
+  linesOnSheets,
   nextSetLabel,
   packagesForSheets,
   planEmail,
@@ -20,7 +22,7 @@ import {
   type GcState,
   type PlanSheet,
 } from '../../lib/gcMode/gcModel'
-import { ScopeLines } from './GcNewProject'
+import { ScopeLines, type ScopeLineDraft } from './GcNewProject'
 import { Btn, Chip, input } from './gcUi'
 
 /**
@@ -44,7 +46,7 @@ interface BroughtTrade {
   trade: string
   budget: string
   ours: boolean
-  scope: string[]
+  scope: ScopeLineDraft[]
 }
 
 function StepHeading({ n, title, hint }: { n: number; title: string; hint: string }) {
@@ -117,7 +119,13 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
   const companies = new Set(going.map((r) => r.partner.id)).size
   const ours = project.packages.filter((p) => p.selfPerform && touches.includes(p.id))
   const preview = going.find((r) => r.partner.id === previewId) ?? going.find((r) => r.touched) ?? going[0] ?? null
-  const email = planEmail(project, label, note.trim(), sheets, preview)
+  const email = planEmail(project, label, note.trim(), sheets, preview, preview?.touched ? linesOnSheets(project, preview.pkg, sheets).map((l) => l.label) : [])
+  /** Every sheet once the set is in: the index and the ones this set adds. */
+  const allSheets = [...index, ...added.filter((a) => !index.some((s) => s.id === a.id))]
+  const sheetsOfTrade = (trade: string) => {
+    const from = tradesForSheets(allSheets).find((g) => g.trade === trade)?.from ?? []
+    return allSheets.filter((s) => from.includes(s.id))
+  }
 
   const onJob = (trade: string) =>
     project.packages.some((p) => p.trade.toLowerCase() === trade.toLowerCase()) || brought.some((b) => b.trade.toLowerCase() === trade.toLowerCase())
@@ -128,7 +136,7 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
   const bring = (trade: string) => {
     const t = trade.trim()
     if (t === '' || onJob(t)) return
-    setBrought((b) => [...b, { trade: t, budget: '', ours: OUR_TRADES.includes(t), scope: usualScope(t) }])
+    setBrought((b) => [...b, { trade: t, budget: '', ours: OUR_TRADES.includes(t), scope: usualScope(t).map((l) => ({ label: l, sheets: null })) }])
     setAddText('')
   }
   const change = (i: number, patch: Partial<BroughtTrade>) => setBrought((b) => b.map((x, j) => (j === i ? { ...x, ...patch } : x)))
@@ -285,6 +293,28 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
                   The trades are a guess from the sheet letters and titles. Tick or untick to fix it.
                 </span>
               )}
+              {touches.length > 0 && (
+                <div style={{ display: 'grid', gap: '0.2rem' }}>
+                  <span style={{ fontWeight: 600 }}>The scope lines it touches</span>
+                  {project.packages
+                    .filter((p) => touches.includes(p.id))
+                    .map((p) => {
+                      const hit = linesOnSheets(project, p, sheets)
+                      return (
+                        <div key={p.id} style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                          <span style={{ minWidth: '8rem' }}>{p.trade}</span>
+                          {hit.length === 0 ? (
+                            <span style={{ color: 'var(--text-muted)' }}>no line names these sheets, so the trade as a whole</span>
+                          ) : (
+                            hit.map((l) => (
+                              <Chip key={l.id} tone="amber">{l.label}</Chip>
+                            ))
+                          )}
+                        </div>
+                      )
+                    })}
+                </div>
+              )}
               {ours.length > 0 && (
                 <div style={{ padding: '0.4rem 0.6rem', background: 'var(--bg-violet-100)', color: 'var(--text-violet-800)', borderRadius: 6 }}>
                   This changes {ours.map((p) => p.trade.toLowerCase()).join(' and ')}, which is ours. Check {ours.map((p) => p.selfPerform?.ref).join(', ')} against the new set.
@@ -342,7 +372,7 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
                       </label>
                       <Btn kind="quiet" onClick={() => setBrought((all) => all.filter((_, j) => j !== i))}>Take it out</Btn>
                     </div>
-                    <ScopeLines trade={b.trade} lines={b.scope} onChange={(scope) => change(i, { scope })} />
+                    <ScopeLines trade={b.trade} lines={b.scope} onChange={(scope) => change(i, { scope })} sheets={allSheets} tradeSheets={sheetsOfTrade(b.trade)} />
                   </div>
                 ))}
               </div>
@@ -457,7 +487,13 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
                 addedSheets: added,
                 touches,
                 recipients: going.map((r) => r.partner.id),
-                newTrades: brought.map((b) => ({ trade: b.trade, budget: Number(b.budget.replace(/[^0-9.]/g, '')) || 0, ours: b.ours, scope: b.scope })),
+                newTrades: brought.map((b) => ({
+                  trade: b.trade,
+                  budget: Number(b.budget.replace(/[^0-9.]/g, '')) || 0,
+                  ours: b.ours,
+                  scope: b.scope.map((l) => l.label),
+                  scopeSheets: b.scope.map((l) => l.sheets ?? guessLineSheets(l.label, sheetsOfTrade(b.trade))),
+                })),
               })
               onClose()
             }}

@@ -11,11 +11,23 @@ import {
   tradeOrder,
   tradesForSheets,
   usualScope,
+  guessLineSheets,
   type GcAction,
   type GcState,
   type NewProjectDraft,
   type PlanSheet,
 } from '../../lib/gcMode/gcModel'
+
+/** One scope line as the office is writing it. `sheets` null: follow the guess from the line's words. */
+export interface ScopeLineDraft {
+  label: string
+  sheets: string[] | null
+}
+
+/** The usual lines for a trade, each following the guess. */
+function usualLines(trade: string): ScopeLineDraft[] {
+  return usualScope(trade).map((label) => ({ label, sheets: null }))
+}
 import { useMatchMedia } from '../../hooks/useMatchMedia'
 import { Btn, Chip, input } from './gcUi'
 
@@ -41,7 +53,7 @@ interface TradeEdit {
   on?: boolean
   ours?: boolean
   budget?: string
-  scope?: string[]
+  scope?: ScopeLineDraft[]
 }
 
 interface TradeRow {
@@ -51,7 +63,7 @@ interface TradeRow {
   on: boolean
   ours: boolean
   budget: string
-  scope: string[]
+  scope: ScopeLineDraft[]
   scopeEdited: boolean
 }
 
@@ -125,7 +137,7 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
           on: e.on ?? true,
           ours: e.ours ?? OUR_TRADES.includes(trade),
           budget: e.budget ?? '',
-          scope: e.scope ?? usualScope(trade),
+          scope: e.scope ?? usualLines(trade),
           scopeEdited: e.scope !== undefined,
         }
       })
@@ -154,7 +166,16 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
     issuedOn,
     setNote: setNote.trim(),
     sheets: reading.sheets,
-    trades: picked.map((r) => ({ trade: r.trade, budget: budgetNumber(r.budget), ours: r.ours, scope: r.scope })),
+    trades: picked.map((r) => {
+      const own = reading.sheets.filter((x) => r.from.includes(x.id))
+      return {
+        trade: r.trade,
+        budget: budgetNumber(r.budget),
+        ours: r.ours,
+        scope: r.scope.map((l) => l.label),
+        scopeSheets: r.scope.map((l) => l.sheets ?? guessLineSheets(l.label, own)),
+      }
+    }),
   }
 
   const missing: string[] = []
@@ -163,7 +184,7 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
   if (archName === '') missing.push('Pick the architect.')
   if (picked.length === 0) missing.push(reading.sheets.length === 0 ? 'Paste the sheet index or add a trade.' : 'Tick at least one trade.')
 
-  const scopeLines = picked.reduce((n, r) => n + r.scope.filter((s) => s.trim()).length, 0)
+  const scopeLines = picked.reduce((n, r) => n + r.scope.filter((l) => l.label.trim()).length, 0)
   const ours = picked.filter((r) => r.ours).length
   const budgets = picked.reduce((n, r) => n + budgetNumber(r.budget), 0)
   const summaries = [
@@ -521,7 +542,7 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
                   >
                     {picked.map((r) => {
                       const active = r.trade === shown?.trade
-                      const n = r.scope.filter((s) => s.trim()).length
+                      const n = r.scope.filter((l) => l.label.trim()).length
                       return (
                         <button
                           key={r.trade}
@@ -555,6 +576,7 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
                     <ScopeEditor
                       key={shown.trade}
                       row={shown}
+                      sheets={reading.sheets}
                       onChange={(scope) => edit(shown.trade, { scope })}
                       onReset={() => edit(shown.trade, { scope: undefined })}
                       next={picked[picked.indexOf(shown) + 1]?.trade ?? null}
@@ -590,13 +612,15 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
 
 function ScopeEditor({
   row,
+  sheets,
   onChange,
   onReset,
   next,
   onNext,
 }: {
   row: TradeRow
-  onChange: (scope: string[]) => void
+  sheets: PlanSheet[]
+  onChange: (scope: ScopeLineDraft[]) => void
   onReset: () => void
   next: string | null
   onNext: (trade: string) => void
@@ -609,7 +633,7 @@ function ScopeEditor({
           {row.ours ? 'Ours. This is the scope of our own bid.' : row.from.length > 0 ? `Reads from ${sheetsWords(row.from)}.` : 'You added this trade.'}
         </span>
       </div>
-      <ScopeLines trade={row.trade} lines={row.scope} onChange={onChange}>
+      <ScopeLines trade={row.trade} lines={row.scope} onChange={onChange} sheets={sheets} tradeSheets={sheets.filter((x) => row.from.includes(x.id))}>
         {row.scopeEdited && usualScope(row.trade).length > 0 && <Btn kind="quiet" onClick={onReset}>Put back the usual lines</Btn>}
         <span style={{ flex: 1 }} />
         {next && <Btn kind="quiet" onClick={() => onNext(next)}>Next trade: {next} →</Btn>}
@@ -619,18 +643,26 @@ function ScopeEditor({
 }
 
 /**
- * A trade's scope lines to change: each line a box, × takes it out, Enter starts the next one.
- * The New project window and the new-set-of-plans window both write scope with it.
+ * A trade's scope lines to change: each line a box with the sheets it reads from beside it, ×
+ * takes a line or a sheet out, Enter starts the next line. A line's sheets follow a guess from its
+ * words until the office changes them. The New project window and the new-set-of-plans window
+ * both write scope with it.
  */
 export function ScopeLines({
   trade,
   lines,
   onChange,
+  sheets,
+  tradeSheets,
   children,
 }: {
   trade: string
-  lines: string[]
-  onChange: (scope: string[]) => void
+  lines: ScopeLineDraft[]
+  onChange: (lines: ScopeLineDraft[]) => void
+  /** Every sheet in the set, to tie a line to. */
+  sheets: PlanSheet[]
+  /** The sheets that suggest this trade: the guess reads these, and they come first in the list. */
+  tradeSheets: PlanSheet[]
   /** More buttons on the line under the boxes. */
   children?: ReactNode
 }) {
@@ -642,37 +674,90 @@ export function ScopeLines({
     setFocusAt(null)
   }, [focusAt])
   const addAfter = (i: number) => {
-    onChange([...lines.slice(0, i + 1), '', ...lines.slice(i + 1)])
+    onChange([...lines.slice(0, i + 1), { label: '', sheets: null }, ...lines.slice(i + 1)])
     setFocusAt(i + 1)
   }
+  const set = (i: number, patch: Partial<ScopeLineDraft>) => onChange(lines.map((l, j) => (j === i ? { ...l, ...patch } : l)))
+  const others = sheets.filter((x) => !tradeSheets.some((t) => t.id === x.id))
+  const titleOf = (id: string) => sheets.find((x) => x.id === id)?.title ?? ''
   return (
     <>
       {lines.length === 0 && <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>No lines yet. A quote with no lines cannot be compared.</div>}
-      {lines.map((line, i) => (
-        <div key={i} style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-          <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', width: '1.2rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{i + 1}</span>
-          <input
-            ref={(el) => {
-              boxes.current[i] = el
-            }}
-            style={{ ...input, flex: 1, minWidth: 0 }}
-            value={line}
-            onChange={(e) => onChange(lines.map((l, j) => (j === i ? e.target.value : l)))}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') addAfter(i)
-            }}
-            aria-label={`${trade} line ${i + 1}`}
-          />
-          <button
-            type="button"
-            onClick={() => onChange(lines.filter((_, j) => j !== i))}
-            aria-label={`Take out ${line || 'this line'}`}
-            style={{ border: 'none', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1.1rem', lineHeight: 1, padding: '0.1rem 0.3rem' }}
-          >
-            ×
-          </button>
+      {lines.length > 0 && (
+        <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>
+          Each line shows the sheets it reads from, guessed from its words. Take one out with × or add one.
         </div>
-      ))}
+      )}
+      {lines.map((line, i) => {
+        const on = line.sheets ?? guessLineSheets(line.label, tradeSheets)
+        return (
+          <div key={i} style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', width: '1.2rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{i + 1}</span>
+            <input
+              ref={(el) => {
+                boxes.current[i] = el
+              }}
+              style={{ ...input, flex: '1 1 12rem', minWidth: 0 }}
+              value={line.label}
+              onChange={(e) => set(i, { label: e.target.value })}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') addAfter(i)
+              }}
+              aria-label={`${trade} line ${i + 1}`}
+            />
+            <span style={{ display: 'inline-flex', gap: '0.25rem', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', flex: '0 1 14rem' }}>
+              {on.length === 0 && <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>all {trade.toLowerCase()} sheets</span>}
+              {on.map((id) => (
+                <span
+                  key={id}
+                  title={titleOf(id)}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.15rem', padding: '0 0.15rem 0 0.45rem', borderRadius: 999, background: 'var(--bg-muted)', color: 'var(--text-600)', fontSize: '0.75rem', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}
+                >
+                  {id}
+                  <button
+                    type="button"
+                    onClick={() => set(i, { sheets: on.filter((x) => x !== id) })}
+                    aria-label={`Take ${id} off ${line.label || 'this line'}`}
+                    style={{ border: 'none', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', padding: '0 0.2rem', lineHeight: 1 }}
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+              {sheets.length > 0 && (
+                <select
+                  value=""
+                  onChange={(e) => e.target.value && set(i, { sheets: [...on, e.target.value] })}
+                  aria-label={`Add a sheet to ${line.label || 'this line'}`}
+                  style={{ ...input, padding: '0.1rem 0.25rem', fontSize: '0.75rem', width: '4.6rem' }}
+                >
+                  <option value="">+ sheet</option>
+                  {tradeSheets.length > 0 && (
+                    <optgroup label={`${trade} sheets`}>
+                      {tradeSheets.filter((x) => !on.includes(x.id)).map((x) => (
+                        <option key={x.id} value={x.id}>{x.id} {x.title}</option>
+                      ))}
+                    </optgroup>
+                  )}
+                  <optgroup label="Other sheets">
+                    {others.filter((x) => !on.includes(x.id)).map((x) => (
+                      <option key={x.id} value={x.id}>{x.id} {x.title}</option>
+                    ))}
+                  </optgroup>
+                </select>
+              )}
+            </span>
+            <button
+              type="button"
+              onClick={() => onChange(lines.filter((_, j) => j !== i))}
+              aria-label={`Take out ${line.label || 'this line'}`}
+              style={{ border: 'none', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1.1rem', lineHeight: 1, padding: '0.1rem 0.3rem' }}
+            >
+              ×
+            </button>
+          </div>
+        )
+      })}
       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
         <Btn onClick={() => addAfter(lines.length - 1)}>Add a line</Btn>
         <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>Enter in a line starts the next one.</span>

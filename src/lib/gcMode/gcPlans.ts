@@ -132,21 +132,40 @@ export function planRecipients(state: GcState, project: GcProject, touches: stri
   return out.sort((a, b) => Number(b.touched) - Number(a.touched))
 }
 
-/** The words a company reads when a new set goes out. Two versions: their trade changed, or it did not. */
-export function planEmail(project: GcProject, label: string, note: string, sheets: string[], r: PlanRecipient | null): { subject: string; body: string[] } {
+/** "a", "a and b", "a, b and c". */
+function andList(words: string[]): string {
+  if (words.length <= 1) return words[0] ?? ''
+  return `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}`
+}
+
+/**
+ * The words a company reads when a new set goes out. Two versions: their trade changed, or it did
+ * not. `lines`: the scope lines of their trade that read from a changed sheet, named in the email.
+ */
+export function planEmail(
+  project: GcProject,
+  label: string,
+  note: string,
+  sheets: string[],
+  r: PlanRecipient | null,
+  lines: string[] = [],
+): { subject: string; body: string[] } {
   const body = [`${label} for ${project.name} is out. Your portal now shows it.`, `What changed: ${note || 'see the sheets below.'}`]
   if (sheets.length > 0) body.push(`Sheets: ${sheets.join(', ')}.`)
   if (!r) return { subject: `${project.name}: ${label} is out`, body }
+  const trade = r.pkg.trade.toLowerCase()
+  const named = lines.map((l) => l.toLowerCase())
+  const touches = named.length === 0 ? '' : named.length === 1 ? ` The line it touches is ${named[0]}.` : ` The lines it touches are ${andList(named)}.`
   if (r.touched && project.stage === 'pursuing') {
     body.push(
       r.hasBid
-        ? `This changes ${r.pkg.trade.toLowerCase()}. Please open the plans and confirm your number, or send a new one${project.bidDue ? `, by ${weekdayDate(project.bidDue)}` : ''}.`
-        : `This changes ${r.pkg.trade.toLowerCase()}. Please price the new set${project.bidDue ? `. Your number is due ${weekdayDate(project.bidDue)}` : ''}.`,
+        ? `This changes ${trade}.${touches} Please open the plans and confirm your number, or send a new one${project.bidDue ? `, by ${weekdayDate(project.bidDue)}` : ''}.`
+        : `This changes ${trade}.${touches} Please price the new set${project.bidDue ? `. Your number is due ${weekdayDate(project.bidDue)}` : ''}.`,
     )
   } else if (r.touched) {
-    body.push(`This changes ${r.pkg.trade.toLowerCase()}. Build from this set. If it changes your price, tell us before you do the work.`)
+    body.push(`This changes ${trade}.${touches} Build from this set. If it changes your price, tell us before you do the work.`)
   } else {
-    body.push(`It does not change ${r.pkg.trade.toLowerCase()}. No action needed. It is for your records.`)
+    body.push(`It does not change ${trade}. No action needed. It is for your records.`)
   }
   return { subject: `${project.name}: ${label} is out${r.touched ? ' and it changes your trade' : ''}`, body }
 }

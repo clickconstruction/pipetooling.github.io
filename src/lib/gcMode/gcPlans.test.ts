@@ -4,6 +4,8 @@ import {
   initialGcState,
   nextSetLabel,
   packagesForSheets,
+  planEmail,
+  planRecipients,
   sheetAsIndexed,
   sheetsAtRev,
   sheetsInText,
@@ -113,5 +115,22 @@ describe('issuePlanSet', () => {
     const withBulletin = gcReducer(next, { ...action, label: 'Bulletin 1', addedSheets: [], newTrades: [] })
     const p = withBulletin.projects.find((x) => x.id === 'boerne')
     expect(p ? nextSetLabel(p, 'Addendum') : '').toBe('Addendum 3')
+  })
+})
+
+describe('planEmail', () => {
+  const last = (lines: string[]) => lines[lines.length - 1]
+  const boerne = project('boerne')
+  const voltage = planRecipients(state, boerne, ['elec']).find((r) => r.partner.id === 'voltage') ?? null
+
+  it('names the scope lines the new set touches', () => {
+    const one = planEmail(boerne, 'Addendum 2', 'More fixtures.', ['E-101'], voltage, ['Lighting'])
+    expect(last(one.body)).toMatch(/^This changes electrical\. The line it touches is lighting\. Please open the plans/)
+    const two = planEmail(boerne, 'Addendum 2', 'More fixtures.', ['E-101'], voltage, ['Lighting', 'Site lighting'])
+    expect(last(two.body)).toMatch(/The lines it touches are lighting and site lighting\./)
+  })
+
+  it('says nothing about lines when none are named', () => {
+    expect(last(planEmail(boerne, 'Addendum 2', 'More fixtures.', ['E-101'], voltage).body)).toMatch(/^This changes electrical\. Please open the plans/)
   })
 })

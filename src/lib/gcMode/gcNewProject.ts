@@ -4,7 +4,7 @@
  * starts from its usual scope. A later set of plans uses the same guess, and can bring a trade
  * the job did not have. Every guess here is a starting point the office changes.
  */
-import type { GcCustomer, GcProject, GcState, NewProjectDraft, NewTradeDraft, PlanSheet, TradePackage } from './gcTypes'
+import type { GcCustomer, GcProject, GcState, NewProjectDraft, NewTradeDraft, PlanSheet, ScopeItem, TradePackage } from './gcTypes'
 import { sheetDiscipline, sheetsAtRev } from './gcPlans'
 import { currentRev } from './gcLookups'
 
@@ -119,6 +119,47 @@ export function packagesForSheets(project: GcProject, sheets: string[], added: P
   return project.packages.filter((p) => trades.has(p.trade)).map((p) => p.id)
 }
 
+/** Words too common in drawing titles and scope lines to tie one to the other. */
+const LINE_STOP = new Set(['and', 'the', 'with', 'from', 'plan', 'plans', 'detail', 'details', 'sheet', 'sheets', 'schedule', 'schedules', 'section', 'sections', 'building', 'supply'])
+
+/** The words of a title or a line, cut to their first four letters, so "utilities" meets "utility". */
+function stems(text: string): string[] {
+  return text
+    .toLowerCase()
+    .split(/[^a-z]+/)
+    .filter((w) => w.length >= 4 && !LINE_STOP.has(w))
+    .map((w) => w.slice(0, 4))
+}
+
+/**
+ * The sheets a scope line most likely reads from: the trade's sheets whose titles share a word
+ * with the line. "Lighting" reads from the lighting plan. A line that meets no title gets none,
+ * which means the trade's sheets as a whole.
+ */
+export function guessLineSheets(label: string, tradeSheets: PlanSheet[]): string[] {
+  const want = new Set(stems(label))
+  if (want.size === 0) return []
+  return tradeSheets.filter((s) => stems(s.title).some((w) => want.has(w))).map((s) => s.id)
+}
+
+/** The sheets of the newest set that suggest a trade, with their titles. */
+export function tradeSheets(project: GcProject, trade: string): PlanSheet[] {
+  const index = sheetsAtRev(project, currentRev(project))
+  const from = tradesForSheets(index).find((g) => g.trade === trade)?.from ?? []
+  return index.filter((s) => from.includes(s.id))
+}
+
+/** The sheets one scope line reads from: what the office said, or the guess when it said nothing. */
+export function lineSheets(project: GcProject, pkg: TradePackage, item: ScopeItem): { sheets: string[]; guessed: boolean } {
+  if (item.sheets) return { sheets: item.sheets, guessed: false }
+  return { sheets: guessLineSheets(item.label, tradeSheets(project, pkg.trade)), guessed: true }
+}
+
+/** The scope lines of a trade that read from any of these sheets. */
+export function linesOnSheets(project: GcProject, pkg: TradePackage, sheetIds: string[]): ScopeItem[] {
+  return pkg.scope.filter((item) => lineSheets(project, pkg, item).sheets.some((id) => sheetIds.includes(id)))
+}
+
 /** The usual scope for a trade. A trade not on the list starts empty. */
 export function usualScope(trade: string): string[] {
   return TRADE_TEMPLATES.find((t) => t.trade === trade)?.scope ?? []
@@ -177,12 +218,14 @@ export function packagesFromDrafts(projectId: string, drafts: NewTradeDraft[], t
     .map((t) => {
       const pkgId = freeId(`${projectId}-${slug(t.trade)}`, used)
       used.push(pkgId)
-      const lines = t.scope.map((x) => x.trim()).filter(Boolean)
+      const lines = t.scope
+        .map((label, i) => ({ label: label.trim(), sheets: t.scopeSheets?.[i] }))
+        .filter((l) => l.label !== '')
       return {
         id: pkgId,
         trade: t.trade,
         bidTab: null,
-        scope: lines.map((label, i) => ({ id: `${pkgId}-${i + 1}`, label })),
+        scope: lines.map((l, i) => ({ id: `${pkgId}-${i + 1}`, label: l.label, ...(t.scopeSheets ? { sheets: l.sheets ?? [] } : {}) })),
         budget: t.budget,
         selfPerform: t.ours ? { ref: 'New bid', value: t.budget, note: 'Ours. Price it as our own bid in Trades mode.' } : null,
         invites: [],
