@@ -252,6 +252,16 @@ export function portalTodos(state: GcState, partnerId: string, asks: PortalAsk[]
         todos.push({ key: `${key}:sow`, projectId, text: pt(lang, 'todoSow', { trade, project }), tone: 'amber', by: null })
       }
       for (const d of sow.draws) {
+        // Approved for less and not paid yet: say so until the money comes.
+        if (d.asked && d.status === 'approved') {
+          todos.push({
+            key: `${key}:less:${d.id}`,
+            projectId,
+            text: pt(lang, 'todoLess', { gc, approved: money(d.net), asked: money(d.asked.net), project }),
+            tone: 'plain',
+            by: d.asked.on,
+          })
+        }
         if (!d.final && d.status === 'paid' && d.waiver === 'conditional') {
           todos.push({ key: `${key}:waiver:${d.id}`, projectId, text: pt(lang, 'todoWaiver', { n: d.number, project }), tone: 'amber', by: null })
         }
@@ -328,7 +338,7 @@ export function portalLink(partnerId: string): string {
 export interface PortalMessage {
   key: string
   on: string
-  kind: 'invite' | 'nudge' | 'plans' | 'bidTab' | 'msa' | 'sow' | 'start'
+  kind: 'invite' | 'nudge' | 'plans' | 'bidTab' | 'msa' | 'sow' | 'start' | 'less'
   /** Null: about the company, not one project (the master agreement). */
   projectId: string | null
   subject: string
@@ -340,7 +350,7 @@ export interface PortalMessage {
   text?: string
 }
 
-const KIND_ORDER: Record<PortalMessage['kind'], number> = { start: 0, sow: 1, msa: 2, bidTab: 3, plans: 4, nudge: 5, invite: 6 }
+const KIND_ORDER: Record<PortalMessage['kind'], number> = { less: 0, start: 1, sow: 2, msa: 3, bidTab: 4, plans: 5, nudge: 6, invite: 7 }
 
 function firstName(contact: string): string {
   return contact.split(' ')[0] ?? contact
@@ -380,6 +390,26 @@ export function portalMessages(state: GcState, partnerId: string, lang: PortalLa
     const mine = project.packages.flatMap((pkg) => pkg.invites.filter((i) => i.partnerId === partnerId).map((invite) => ({ pkg, invite })))
     const won = mine.filter(({ pkg, invite }) => pkg.awardedInviteId === invite.id)
     const name = project.name
+
+    // A draw we approved for less than asked: what we approved, what they asked, and why.
+    for (const { pkg } of won) {
+      for (const d of pkg.sow?.draws ?? []) {
+        if (!d.asked) continue
+        out.push({
+          key: `${d.id}:less`,
+          on: d.asked.on,
+          kind: 'less',
+          projectId: project.id,
+          subject: t('mLessSubject', { n: d.number, project: name }),
+          lines: [
+            hello,
+            t('mLessApproved', { approved: money(d.net), asked: money(d.asked.net), n: d.number, trade: pkg.trade, project: name }),
+            ...(d.asked.note ? [d.asked.note] : []),
+            t('mLessRest'),
+          ],
+        })
+      }
+    }
 
     for (const { pkg } of won) {
       const sow = pkg.sow

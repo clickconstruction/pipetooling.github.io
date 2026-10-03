@@ -621,7 +621,10 @@ function SowBlock({
             {sow.draws.map((d) => (
               <div key={d.id} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                 <strong>{t('drawN', { n: d.number })}</strong>
-                <span>{money(d.net)}</span>
+                <span>
+                  {money(d.net)}
+                  {d.asked && <span style={{ opacity: 0.75 }}> {t('drawOfAsked', { asked: money(d.asked.net) })}</span>}
+                </span>
                 <Chip tone={d.status === 'paid' ? 'green' : d.status === 'approved' ? 'blue' : 'amber'}>
                   {d.status === 'requested' ? t('drawReviewing', { gc: GC }) : d.status === 'approved' ? t('drawApproved') : t('drawPaid')}
                 </Chip>

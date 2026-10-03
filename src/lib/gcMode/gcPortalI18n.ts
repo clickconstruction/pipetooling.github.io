@@ -126,6 +126,7 @@ const S = {
   drawReviewing: { en: '{gc} is reviewing it', es: '{gc} lo está revisando' },
   drawApproved: { en: 'approved, payment coming', es: 'aprobado, el pago viene en camino' },
   drawPaid: { en: 'paid', es: 'pagado' },
+  drawOfAsked: { en: 'of {asked} asked', es: 'de {asked} pedidos' },
   signUncond: { en: 'Sign the unconditional waiver', es: 'Firmar la renuncia incondicional' },
   sowTotals: { en: 'Paid so far {paid} · held {held} · left to bill {left}', es: 'Pagado hasta hoy {paid} · retenido {held} · por facturar {left}' },
 
@@ -318,6 +319,12 @@ const S = {
   mStartReport: { en: 'Report your work in your portal as it goes. That is how you ask for each draw.', es: 'Reporte su avance en su portal conforme avance. Así pide cada pago.' },
   mStartText: { en: '{gc}: work on {project} begins{when}. Your part is {trades}. Details: {link}', es: '{gc}: el trabajo en {project} comienza{when}. Su parte es {trades}. Detalles: {link}' },
   mWhen: { en: ' {date}', es: ' el {date}' },
+  mLessSubject: { en: 'Pay application {n} on {project}: approved for less', es: 'Solicitud de pago {n} de {project}: aprobada por menos' },
+  mLessApproved: {
+    en: 'We approved {approved} of the {asked} you asked for on pay application {n} for {trade} on {project}.',
+    es: 'Aprobamos {approved} de los {asked} que pidió en la solicitud de pago {n} de {trade} para {project}.',
+  },
+  mLessRest: { en: 'The rest is still yours to ask for once the work is there.', es: 'El resto lo puede pedir cuando el trabajo esté hecho.' },
   mSoon: { en: ' soon', es: ' pronto' },
 
   // Needs you
@@ -345,6 +352,10 @@ const S = {
   },
   todoFinalWaiver: { en: 'Your retainage on {project} is paid. Sign your unconditional final release of lien.', es: 'Su retención de {project} ya se pagó. Firme su liberación final de gravamen incondicional.' },
   todoDraw: { en: 'You can ask {gc} for {amount} on {project}.', es: 'Puede pedirle a {gc} {amount} de {project}.' },
+  todoLess: {
+    en: '{gc} approved {approved} of the {asked} you asked for on {project}. The rest is still yours to ask for.',
+    es: '{gc} aprobó {approved} de los {asked} que pidió en {project}. El resto lo puede seguir pidiendo.',
+  },
 
   // The day a company promised
   promisePending: { en: 'You told {gc} your number will come by {date}.', es: 'Le dijo a {gc} que su precio llegaría a más tardar el {date}.' },
