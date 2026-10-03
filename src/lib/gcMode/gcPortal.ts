@@ -280,3 +280,148 @@ export function portalHome(state: GcState, partnerId: string): PortalHome {
           },
   }
 }
+
+// ---------------------------------------------------------------------------------------------
+// How a company arrives: the messages we send it, the link in them, and its first visit
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * The link we send a company. One per company, and it is the key: no password. Made up here from
+ * the company's id; the real one is a long random token, like the sub portal's.
+ */
+export function portalLink(partnerId: string): string {
+  let h = 2166136261
+  for (const c of partnerId) h = Math.imul(h ^ c.charCodeAt(0), 16777619) >>> 0
+  const token = h.toString(36).toUpperCase().padStart(7, '0').slice(0, 7)
+  return `clicktooling.com/t/${token}`
+}
+
+/** One message we sent a company: an email, and for an invitation the same news by text. */
+export interface PortalMessage {
+  key: string
+  on: string
+  kind: 'invite' | 'nudge' | 'plans' | 'bidTab'
+  projectId: string
+  subject: string
+  /** The email, one paragraph a line. */
+  lines: string[]
+  /** What the number should cover, for an invitation. */
+  scope?: string[]
+  /** The same news as a text message. */
+  text?: string
+}
+
+const KIND_ORDER: Record<PortalMessage['kind'], number> = { bidTab: 0, plans: 1, nudge: 2, invite: 3 }
+
+function firstName(contact: string): string {
+  return contact.split(' ')[0] ?? contact
+}
+
+/** The plan set that was newest on a day: what an invitation sent that day pointed to. */
+function setOn(project: GcProject, day: string): PlanSet | undefined {
+  return [...project.planSets].filter((s) => s.issuedOn <= day).sort((a, b) => b.rev - a.rev)[0]
+}
+
+/** Everything we sent one company, newest first: invitations, reminders, new plan sets, bid tabs. */
+export function portalMessages(state: GcState, partnerId: string): PortalMessage[] {
+  const partner = partnerById(state, partnerId)
+  if (!partner) return []
+  const gc = GC_COMPANY.name
+  const hello = `Hello ${firstName(partner.contact)},`
+  const out: PortalMessage[] = []
+
+  for (const project of state.projects) {
+    const mine = project.packages.flatMap((pkg) => pkg.invites.filter((i) => i.partnerId === partnerId).map((invite) => ({ pkg, invite })))
+    for (const { pkg, invite } of mine) {
+      const set = setOn(project, invite.invitedOn)
+      const due = project.bidDue && invite.invitedOn <= project.bidDue ? weekdayDate(project.bidDue) : null
+      out.push({
+        key: `${invite.id}:invite`,
+        on: invite.invitedOn,
+        kind: 'invite',
+        projectId: project.id,
+        subject: `${gc} asks you to bid ${pkg.trade} on ${project.name}`,
+        lines: [
+          hello,
+          `We would like your number for ${pkg.trade} on ${project.name}.`,
+          `${project.address}. ${project.sizeNote.charAt(0).toUpperCase()}${project.sizeNote.slice(1)}.`,
+          ...(due ? [`Your number is due ${due}.`] : []),
+          ...(set ? [`Plans to price: ${set.label}, issued ${shortDate(set.issuedOn)}.`] : []),
+          'Your number should cover these lines.',
+        ],
+        scope: pkg.scope.map((item) => item.label),
+        text: `${gc}: we would like your ${pkg.trade} number for ${project.name}${due ? ` by ${due}` : ''}. Plans and details: ${portalLink(partnerId)}`,
+      })
+
+      for (const c of invite.contacts ?? []) {
+        if (c.how !== 'nudge') continue
+        const about = c.note.replace(/^Nudged: /, '')
+        out.push({
+          key: `${invite.id}:nudge:${c.on}`,
+          on: c.on,
+          kind: 'nudge',
+          projectId: project.id,
+          subject: `A reminder: ${about}`,
+          lines: [
+            hello,
+            `A reminder about your ${pkg.trade} number for ${project.name}.`,
+            ...(due ? [`It is due ${due}.`] : []),
+            'Open your portal to send it. Not ready? Tell us the day it will come.',
+          ],
+        })
+      }
+
+      if (pkg.bidTab && invite.bid) {
+        out.push({
+          key: `${invite.id}:tab`,
+          on: pkg.bidTab.sharedOn,
+          kind: 'bidTab',
+          projectId: project.id,
+          subject: `How the ${pkg.trade} quotes came in on ${project.name}`,
+          lines: [hello, 'Thank you for your number. We share every bid tab with the companies that quoted.', 'Open your portal to see where you stood.'],
+        })
+      }
+    }
+
+    for (const set of project.planSets) {
+      const sent = set.sentTo?.find((x) => x.partnerId === partnerId)
+      if (!sent) continue
+      const trades = mine.map((m) => m.pkg.trade).join(' and ')
+      out.push({
+        key: `${project.id}:plans:${set.rev}`,
+        on: sent.on,
+        kind: 'plans',
+        projectId: project.id,
+        subject: `${set.label} for ${project.name}`,
+        lines: [
+          hello,
+          `${set.label} for ${project.name} is out. ${set.note}`,
+          ...(set.changedSheets.length > 0 ? [`Sheets ${set.changedSheets.join(', ')}.`] : []),
+          sent.touched
+            ? `It changes ${trades}. Open it, then confirm your number or change it.`
+            : `It does not change ${trades}. Open it so you price on the newest set.`,
+        ],
+      })
+    }
+  }
+
+  return out.sort((a, b) => b.on.localeCompare(a.on) || KIND_ORDER[a.kind] - KIND_ORDER[b.kind])
+}
+
+/**
+ * A company that has never been in its portal: no visit on record, and nothing it did there.
+ * Its home opens with a welcome until it presses Got it.
+ */
+export function portalFirstVisit(state: GcState, partnerId: string): boolean {
+  const partner = partnerById(state, partnerId)
+  if (!partner || partner.portalOpenedOn || partner.msa === 'signed') return false
+  for (const project of state.projects) {
+    for (const pkg of project.packages) {
+      for (const i of pkg.invites) {
+        if (i.partnerId !== partnerId) continue
+        if (i.seenRev !== null || i.bid || (i.contacts ?? []).some((c) => c.how === 'portal')) return false
+      }
+    }
+  }
+  return true
+}

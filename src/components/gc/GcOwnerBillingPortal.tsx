@@ -1,0 +1,221 @@
+import { useState, type Dispatch } from 'react'
+import { Btn, Chip } from './gcUi'
+import { PortalBlock, PortalNote } from './GcPortalUi'
+import {
+  GC_COMPANY_NAME,
+  money,
+  ourOwnerWaivers,
+  ownerAccount,
+  ownerPayApp,
+  ownerPayAppsSent,
+  sentPayAppLines,
+  shortDate,
+  tradeWaiverChecks,
+  weekdayDate,
+  type GcAction,
+  type GcProject,
+  type GcState,
+  type OwnerPayAppSent,
+} from '../../lib/gcMode/gcModel'
+
+/** The portal's paper look, the same as the trade's portal: it stays light in both themes. */
+const INK = '#16283c'
+const PAPER = '#f6f3ec'
+const RULE = '#d9d2c3'
+
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+
+/**
+ * GC mode design spike: what the project's owner sees in their portal. Their contract, every pay
+ * application with each line, a Pay button, and their papers: our lien waivers and the trades'.
+ * In the real build this is the customer portal they already use for our bills.
+ */
+export function GcOwnerBillingPortal({ state, project, dispatch }: { state: GcState; project: GcProject; dispatch: Dispatch<GcAction> }) {
+  const customer = state.customers.find((c) => c.id === project.customerId)
+  const sent = ownerPayAppsSent(project)
+  const last = sent[sent.length - 1]
+  const account = ownerAccount(project)
+  const next = ownerPayApp(state, project)
+  const ours = ourOwnerWaivers(project)
+  const trades = last ? tradeWaiverChecks(state, project, last.doneToDate) : []
+  const billedPct = last && next.contract > 0 ? Math.round((last.workToDate / next.contract) * 100) : 0
+
+  return (
+    <div data-theme="light" style={{ background: PAPER, color: INK, border: `1px solid ${INK}`, borderRadius: 10, overflow: 'hidden' }}>
+      <div style={{ background: INK, color: PAPER, padding: '0.7rem 0.9rem' }}>
+        <div style={{ fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', opacity: 0.8 }}>
+          What the owner sees · their portal
+        </div>
+        <div style={{ fontWeight: 700, marginTop: '0.15rem' }}>{project.owner}</div>
+      </div>
+
+      <div style={{ padding: '0.8rem 0.9rem', display: 'grid', gap: '0.75rem' }}>
+        <div>
+          <div style={{ fontWeight: 700, fontSize: '1.05rem' }}>{project.name}</div>
+          <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{project.address}</div>
+          <div style={{ fontSize: '0.85rem', marginTop: '0.2rem' }}>
+            Builder: {GC_COMPANY_NAME}
+            {customer ? ` · Hello, ${customer.contact}.` : ''}
+          </div>
+        </div>
+
+        <PortalBlock title="Your contract">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '0.2rem 0.75rem', fontSize: '0.875rem' }}>
+            <span>The price</span>
+            <strong style={{ textAlign: 'right' }}>{money(next.contract)}</strong>
+            <span>Billed so far · {billedPct}% of the work</span>
+            <span style={{ textAlign: 'right' }}>{money(account?.billed ?? 0)}</span>
+            <span>You hold until the end</span>
+            <span style={{ textAlign: 'right' }}>{money(account?.retainageHeld ?? 0)}</span>
+            <span>You paid</span>
+            <span style={{ textAlign: 'right' }}>{money(account?.paid ?? 0)}</span>
+            <span>You owe now</span>
+            <strong style={{ textAlign: 'right' }}>{money(account?.owed ?? 0)}</strong>
+          </div>
+        </PortalBlock>
+
+        <PortalBlock title="Your bills">
+          <div style={{ display: 'grid', gap: '0.55rem' }}>
+            {sent.length === 0 && (
+              <div style={{ fontSize: '0.875rem' }}>Your first bill comes {weekdayDate(next.billOn)}.</div>
+            )}
+            {[...sent].reverse().map((app) => (
+              <BillRow
+                key={app.number}
+                state={state}
+                project={project}
+                app={app}
+                onPay={() => dispatch({ type: 'ownerPaid', projectId: project.id, number: app.number })}
+              />
+            ))}
+            {sent.length > 0 && (
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>The next bill comes {weekdayDate(next.billOn)}.</div>
+            )}
+          </div>
+        </PortalBlock>
+
+        <PortalBlock title="Your papers · lien waivers">
+          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.45rem' }}>
+            A lien waiver says a company gives up its right to a lien for the money named. A conditional one counts once
+            the money clears.
+          </div>
+          {ours.length === 0 && trades.length === 0 && (
+            <div style={{ fontSize: '0.875rem' }}>Waivers come with your first bill.</div>
+          )}
+          {ours.length > 0 && (
+            <div style={{ display: 'grid', gap: '0.25rem', marginBottom: '0.6rem' }}>
+              <div style={{ fontSize: '0.8rem', fontWeight: 700 }}>From {GC_COMPANY_NAME}</div>
+              {ours.map((w) => (
+                <WaiverLine
+                  key={`${w.payApp}-${w.kind}`}
+                  kind={w.kind}
+                  words={`${money(w.amount)} · pay application ${w.payApp} · signed ${shortDate(w.signedOn)}`}
+                />
+              ))}
+            </div>
+          )}
+          {trades.length > 0 && (
+            <div style={{ display: 'grid', gap: '0.45rem' }}>
+              <div style={{ fontSize: '0.8rem', fontWeight: 700 }}>From the trades</div>
+              {trades.map((t) => (
+                <div key={t.packageId} style={{ display: 'grid', gap: '0.2rem' }}>
+                  <div style={{ fontSize: '0.85rem' }}>
+                    <strong>{t.company}</strong> · {t.trade}
+                  </div>
+                  {t.waivers.map((w) => (
+                    <WaiverLine
+                      key={w.draw}
+                      kind={w.kind}
+                      final={w.final}
+                      words={`${money(w.amount)} · their draw ${w.draw}`}
+                    />
+                  ))}
+                  {Math.round(t.missing) > 0 && (
+                    <PortalNote tone="amber">
+                      {GC_COMPANY_NAME} is waiting on their waiver for {money(t.missing)} of their work on your bills.
+                    </PortalNote>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </PortalBlock>
+      </div>
+    </div>
+  )
+}
+
+function BillRow({ state, project, app, onPay }: { state: GcState; project: GcProject; app: OwnerPayAppSent; onPay: () => void }) {
+  const [open, setOpen] = useState(false)
+  const month = MONTH_NAMES[Number(app.periodTo.slice(5, 7)) - 1] ?? ''
+  const lines = open ? sentPayAppLines(state, project, app.number).filter((l) => l.worth > 0) : []
+  return (
+    <div style={{ borderTop: `1px solid ${RULE}`, paddingTop: '0.45rem', display: 'grid', gap: '0.35rem' }}>
+      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.875rem' }}>
+        <strong>Pay application {app.number}</strong>
+        <span style={{ color: 'var(--text-muted)' }}>{month} · sent {shortDate(app.sentOn)}</span>
+        <span style={{ flex: 1 }} />
+        <strong>{money(app.due)}</strong>
+      </div>
+      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.8rem' }}>
+        {app.paidOn !== null ? (
+          <Chip tone="green">paid {shortDate(app.paidOn)}</Chip>
+        ) : (
+          <Btn kind="primary" onClick={onPay} title="In the real build this opens the pay page or the bank transfer details, the way the customer portal does today.">
+            Pay {money(app.due)}
+          </Btn>
+        )}
+        <span style={{ color: 'var(--text-muted)' }}>
+          Work {money(app.workToDate)} less {money(app.retainage)} you hold, less earlier bills.
+        </span>
+        <button
+          type="button"
+          onClick={() => setOpen(!open)}
+          style={{ border: 'none', background: 'transparent', color: 'var(--text-link)', cursor: 'pointer', padding: 0, fontSize: '0.8rem' }}
+        >
+          {open ? 'Hide the lines' : 'See every line'}
+        </button>
+      </div>
+      {open && (
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+          <thead>
+            <tr style={{ color: 'var(--text-muted)', textAlign: 'left' }}>
+              <th style={{ fontWeight: 600, padding: '0.2rem 0' }}>Line</th>
+              <th style={{ fontWeight: 600, padding: '0.2rem 0', textAlign: 'right' }}>Done so far</th>
+              <th style={{ fontWeight: 600, padding: '0.2rem 0', textAlign: 'right' }}>This bill</th>
+            </tr>
+          </thead>
+          <tbody>
+            {lines.map((l) => (
+              <tr key={l.id} style={{ borderTop: `1px solid ${RULE}` }}>
+                <td style={{ padding: '0.25rem 0' }}>
+                  {l.label}
+                  <div style={{ color: 'var(--text-muted)' }}>of {money(l.worth)}</div>
+                </td>
+                <td style={{ padding: '0.25rem 0', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                  {money(l.doneToDate)}
+                  <div style={{ color: 'var(--text-muted)' }}>{Math.round((l.doneToDate / l.worth) * 100)}%</div>
+                </td>
+                <td style={{ padding: '0.25rem 0', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                  {Math.round(l.thisMonth) === 0 ? '—' : money(l.thisMonth)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  )
+}
+
+function WaiverLine({ kind, words, final = false }: { kind: 'conditional' | 'unconditional'; words: string; final?: boolean }) {
+  const name = `${kind === 'conditional' ? 'Conditional' : 'Unconditional'} waiver on ${final ? 'final' : 'progress'} payment`
+  return (
+    <div style={{ fontSize: '0.8rem', display: 'flex', gap: '0.4rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
+      <span title="In the real build this opens the signed form, as Your papers does on the customer portal today." style={{ fontWeight: 600 }}>
+        ⤓ {name}
+      </span>
+      <span style={{ color: 'var(--text-muted)' }}>{words}</span>
+    </div>
+  )
+}

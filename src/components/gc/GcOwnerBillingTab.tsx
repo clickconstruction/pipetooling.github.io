@@ -1,7 +1,10 @@
-import type { Dispatch } from 'react'
+import { useState, type Dispatch } from 'react'
+import { useMatchMedia } from '../../hooks/useMatchMedia'
+import { GcOwnerBillingPortal } from './GcOwnerBillingPortal'
 import { Btn, Card, Chip, Stat, Why, input, num, td, th } from './gcUi'
 import {
   daysUntil,
+  missingTradeWaivers,
   money,
   ownerAccount,
   ownerExpectPaidOn,
@@ -9,6 +12,7 @@ import {
   ownerPayAppHasWork,
   ownerPayAppsSent,
   shortDate,
+  tradeWaiverChecks,
   weekdayDate,
   type GcAction,
   type GcProject,
@@ -25,6 +29,8 @@ const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'Ju
  * the owner paid. Nothing here changes a trade's work.
  */
 export function GcOwnerBillingTab({ state, project, dispatch }: { state: GcState; project: GcProject; dispatch: Dispatch<GcAction> }) {
+  const [ownerView, setOwnerView] = useState(true)
+  const side = useMatchMedia('(min-width: 1200px)')
   if (project.stage === 'pursuing') {
     return (
       <Why>
@@ -32,6 +38,27 @@ export function GcOwnerBillingTab({ state, project, dispatch }: { state: GcState
       </Why>
     )
   }
+  return (
+    <div style={{ display: 'grid', gap: '0.5rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <Btn kind="quiet" onClick={() => setOwnerView(!ownerView)}>
+          {ownerView ? 'Hide what the owner sees' : 'See what the owner sees'}
+        </Btn>
+      </div>
+      <div style={{ display: 'grid', gap: '1rem', alignItems: 'start', gridTemplateColumns: ownerView && side ? 'minmax(0, 1fr) 23rem' : 'minmax(0, 1fr)' }}>
+        <OfficeSide state={state} project={project} dispatch={dispatch} />
+        {ownerView && (
+          <div style={{ position: side ? 'sticky' : 'static', top: '0.5rem' }}>
+            <GcOwnerBillingPortal state={state} project={project} dispatch={dispatch} />
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/** The office's side of the tab: what we have sent, the next pay application, its lines. */
+function OfficeSide({ state, project, dispatch }: { state: GcState; project: GcProject; dispatch: Dispatch<GcAction> }) {
   const app = ownerPayApp(state, project)
   const customer = state.customers.find((c) => c.id === project.customerId)
   const sent = ownerPayAppsSent(project)
@@ -41,6 +68,8 @@ export function GcOwnerBillingTab({ state, project, dispatch }: { state: GcState
   const ours = app.lines.filter((l) => l.kind !== 'trade' && l.kind !== 'self')
   const donePct = app.contract === 0 ? 0 : Math.round((app.doneToDate / app.contract) * 100)
   const doneBefore = app.lines.reduce((s, l) => s + l.doneBefore, 0)
+  const checks = tradeWaiverChecks(state, project, Object.fromEntries(app.lines.map((l) => [l.id, l.doneToDate])))
+  const missing = missingTradeWaivers(checks)
 
   return (
     <div style={{ display: 'grid', gap: '1rem' }}>
@@ -103,6 +132,31 @@ export function GcOwnerBillingTab({ state, project, dispatch }: { state: GcState
         <div style={{ marginTop: '0.7rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
           After this bill, {money(app.leftToBill)} is left to bill. That counts the {money(app.retainage)} they hold.
         </div>
+        {hasWork && (
+          <div style={{ marginTop: '0.8rem', borderTop: '1px solid var(--border)', paddingTop: '0.6rem', display: 'grid', gap: '0.3rem', fontSize: '0.875rem' }}>
+            <div style={{ fontSize: '0.72rem', letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+              Waivers with this bill
+            </div>
+            <div>
+              Ours: a conditional waiver for {money(app.due)} goes with it. We sign the unconditional one when they pay.
+            </div>
+            {checks.map((c) =>
+              Math.round(c.missing) > 0 ? (
+                <div key={c.packageId} style={{ color: 'var(--text-amber-800)' }}>
+                  {c.company} has not given a waiver for {money(c.missing)} of their work on this bill. It still goes.
+                  Their waiver comes when they ask for that draw.
+                </div>
+              ) : (
+                <div key={c.packageId}>
+                  {c.company}: their waivers cover all {money(c.billed)} of their work on this bill.
+                </div>
+              ),
+            )}
+            {missing.length === 0 && checks.length > 0 && (
+              <div style={{ color: 'var(--text-green-700)' }}>Every trade&rsquo;s waiver is in.</div>
+            )}
+          </div>
+        )}
         <div style={{ marginTop: '0.8rem', display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
           {hasWork ? (
             <>
@@ -252,13 +306,19 @@ function SentRow({
         <strong>{money(app.due)}</strong> to pay · {money(app.retainage)} held
       </span>
       {app.paidOn !== null ? (
-        <Chip tone="green">paid {shortDate(app.paidOn)}</Chip>
+        <>
+          <Chip tone="green">paid {shortDate(app.paidOn)}</Chip>
+          <Chip tone="green">our unconditional waiver signed</Chip>
+        </>
       ) : (
         <>
           <Chip tone={late ? 'red' : 'amber'}>
             {late ? `late · expected ${shortDate(expectOn)}` : expectOn ? `waiting · expected ${shortDate(expectOn)}` : 'waiting'}
           </Chip>
-          <Btn kind="primary" onClick={onPaid}>Mark paid</Btn>
+          <Chip tone="grey">our conditional waiver went with it</Chip>
+          <Btn kind="primary" onClick={onPaid} title="Marks it paid and signs our unconditional waiver for this amount.">
+            Mark paid
+          </Btn>
         </>
       )}
     </div>

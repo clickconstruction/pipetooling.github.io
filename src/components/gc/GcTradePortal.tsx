@@ -26,6 +26,7 @@ import { BidTabTable } from './GcBidTabs'
 import { GcBuildingPayAppDoor } from './GcBuildingPayApp'
 import { Btn, Chip, input } from './gcUi'
 import { GcPortalHome } from './GcPortalHome'
+import { GcPortalMessages } from './GcPortalMessages'
 import { GcPortalPaperwork } from './GcPortalPaperwork'
 import { GcPortalPlans } from './GcPortalPlans'
 import { PortalBlock as Block, PortalNote } from './GcPortalUi'
@@ -55,10 +56,13 @@ export function GcTradePortal({ state, project, partnerId, onPickPartner, dispat
   const partner = partnerById(state, partnerId) ?? onProject[0]
   /** The project page on show. Null: the company's home, where the link lands. */
   const [viewId, setViewId] = useState<string | null>(null)
+  /** Their portal, or their inbox: what we sent them, each message carrying the link. */
+  const [screen, setScreen] = useState<'portal' | 'messages'>('portal')
   const shown = viewId === null ? null : (state.projects.find((p) => p.id === viewId) ?? null)
   const top = useRef<HTMLDivElement | null>(null)
   const go = (id: string | null) => {
     setViewId(id)
+    setScreen('portal')
     const box = top.current?.getBoundingClientRect()
     if (box && box.top < 0) top.current?.scrollIntoView({ block: 'start' })
   }
@@ -83,10 +87,45 @@ export function GcTradePortal({ state, project, partnerId, onPickPartner, dispat
             <option key={p.id} value={p.id}>{p.company}</option>
           ))}
         </select>
+        {partner && (
+          <div role="tablist" aria-label="What to show" style={{ display: 'flex', gap: '0.3rem', marginTop: '0.45rem' }}>
+            {(
+              [
+                ['portal', 'Their portal'],
+                ['messages', 'Their messages'],
+              ] as const
+            ).map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                role="tab"
+                aria-selected={screen === key}
+                onClick={() => setScreen(key)}
+                style={{
+                  flex: 1,
+                  padding: '0.3rem 0.5rem',
+                  borderRadius: 999,
+                  border: `1px solid ${PAPER}`,
+                  background: screen === key ? PAPER : 'transparent',
+                  color: screen === key ? INK : PAPER,
+                  fontWeight: 600,
+                  fontSize: '0.8rem',
+                  cursor: 'pointer',
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {!partner ? (
         <div style={{ padding: '1rem' }}>No trade partner is on this project yet. Invite one from Trades.</div>
+      ) : screen === 'messages' ? (
+        <div style={{ padding: '0.9rem' }}>
+          <GcPortalMessages key={partner.id} state={state} partner={partner} onOpenPortal={() => go(null)} />
+        </div>
       ) : shown ? (
         <ProjectPage state={state} project={shown} partner={partner} dispatch={dispatch} onHome={() => go(null)} />
       ) : (

@@ -215,6 +215,8 @@ const STEPS: Step[] = [
     action: { type: 'tradeSendPayApp', projectId: 'helotes', packageId: 'mill', toPct: { 'mill-1': 100, 'mill-2': 30 }, ...CEDAR_TYPED },
   },
   { label: 'Approve the fixed pay application 1', action: { type: 'approveDraw', projectId: 'helotes', packageId: 'mill', drawId: 'mill-draw-1' } },
+  // The portal: a company's first visit.
+  { label: 'AquaShield opens its portal for the first time', action: { type: 'tradeOpenPortal', partnerId: 'aquashield' } },
 ]
 
 const CUSTOMER_IDS = ['cibolo', 'raman']
@@ -343,6 +345,7 @@ describe('GC mode golden walk', () => {
       'acceptWork', 'tradeSendWarranty', 'tradeSendFinalPayApp', 'approveRetainage',
       'selfReport',
       'sendDrawBack',
+      'tradeOpenPortal',
     ]
     expect(all.filter((t) => !used.has(t))).toEqual([])
   })

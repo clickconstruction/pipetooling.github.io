@@ -1,6 +1,19 @@
 /** GC mode design spike: the owner's pay application, read off the made-up Helotes Dental Office. */
 import { describe, expect, it } from 'vitest'
-import { gcReducer, initialGcState, nextOwnerBillDay, ownerAccount, ownerPayApp, ownerPayAppHasWork, proposalTotals, type GcState } from './gcModel'
+import {
+  gcReducer,
+  initialGcState,
+  missingTradeWaivers,
+  nextOwnerBillDay,
+  ourOwnerWaivers,
+  ownerAccount,
+  ownerPayApp,
+  ownerPayAppHasWork,
+  proposalTotals,
+  sentPayAppLines,
+  tradeWaiverChecks,
+  type GcState,
+} from './gcModel'
 
 function helotes() {
   const state = initialGcState()
@@ -106,6 +119,53 @@ describe('our own crew reports its percent done', () => {
     const fresh = initialGcState()
     expect(gcReducer(fresh, { type: 'selfReport', projectId: 'helotes', packageId: 'dplumb', pct: 0 })).toBe(fresh)
     expect(gcReducer(fresh, { type: 'selfReport', projectId: 'helotes', packageId: 'dry', pct: 50 })).toBe(fresh)
+  })
+})
+
+describe('lien waivers to the owner', () => {
+  const helotesOf = (state: GcState) => {
+    const p = state.projects.find((x) => x.id === 'helotes')
+    if (!p) throw new Error('fixture has no helotes')
+    return p
+  }
+  const draftChecks = (state: GcState) => {
+    const project = helotesOf(state)
+    const app = ownerPayApp(state, project)
+    return tradeWaiverChecks(state, project, Object.fromEntries(app.lines.map((l) => [l.id, l.doneToDate])))
+  }
+
+  it('says how much of each trade’s billed work their waivers cover', () => {
+    const checks = draftChecks(initialGcState())
+    // Only Hill Country has work on the bill; our own crew and the unsigned trades are left out.
+    expect(checks.map((c) => [c.company, c.billed, c.unconditional, c.conditional, c.missing])).toEqual([
+      ['Hill Country Interiors', 38_320, 22_000, 0, 16_320],
+    ])
+    expect(checks[0]?.waivers).toEqual([{ draw: 1, kind: 'unconditional', amount: 19_800, final: false }])
+    expect(missingTradeWaivers(checks).map((c) => c.packageId)).toEqual(['dry'])
+  })
+
+  it('counts a draw asked for as covered by its conditional waiver', () => {
+    const state = gcReducer(initialGcState(), { type: 'tradeRequestDraw', projectId: 'helotes', packageId: 'dry' })
+    const checks = draftChecks(state)
+    expect(checks.map((c) => [c.unconditional, c.conditional, c.missing])).toEqual([[22_000, 16_320, 0]])
+    expect(missingTradeWaivers(checks)).toEqual([])
+  })
+
+  it('signs our conditional waiver when a bill goes and the unconditional one when it is paid', () => {
+    let state = gcReducer(initialGcState(), { type: 'sendOwnerPayApp', projectId: 'helotes' })
+    expect(ourOwnerWaivers(helotesOf(state)).map((w) => [w.payApp, w.kind, Math.round(w.amount), w.signedOn])).toEqual([[1, 'conditional', 47_301, '2026-10-02']])
+    state = gcReducer(state, { type: 'ownerPaid', projectId: 'helotes', number: 1 })
+    expect(ourOwnerWaivers(helotesOf(state)).map((w) => w.kind)).toEqual(['unconditional', 'conditional'])
+    expect(ourOwnerWaivers(helotesOf(initialGcState()))).toEqual([])
+  })
+
+  it('shows the owner every line of a sent bill, from the one before it', () => {
+    let state = gcReducer(initialGcState(), { type: 'sendOwnerPayApp', projectId: 'helotes' })
+    state = gcReducer(state, { type: 'tradeReport', projectId: 'helotes', packageId: 'dry', sovId: 'dry-2', pct: 100 })
+    state = gcReducer(state, { type: 'sendOwnerPayApp', projectId: 'helotes' })
+    const dry = sentPayAppLines(state, helotesOf(state), 2).find((l) => l.id === 'dry')
+    expect(dry && [dry.worth, dry.doneBefore, dry.thisMonth, dry.doneToDate]).toEqual([64_200, 38_320, 10_880, 49_200])
+    expect(sentPayAppLines(state, helotesOf(state), 3)).toEqual([])
   })
 })
 
