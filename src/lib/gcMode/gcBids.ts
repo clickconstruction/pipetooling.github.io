@@ -5,6 +5,7 @@
 import type { GcProject, GcState, Invite, ScopeItem, Sow, TradePackage } from './gcTypes'
 import { money, shortDate } from './gcWords'
 import { ownBidPriced, partnerById } from './gcLookups'
+import { pDate, type PortalLang } from './gcPortalI18n'
 
 /** The bid plus the office's plug for every scope item it does not clearly include. */
 export function leveledTotal(pkg: TradePackage, invite: Invite): number | null {
@@ -252,19 +253,28 @@ export function packageHasTab(pkg: TradePackage): boolean {
 }
 
 /** What a company that quoted is told about how it came out. */
-export function bidTabResult(project: GcProject, pkg: TradePackage, partnerId: string): string {
+/**
+ * The line beside a company's bid tab: where the project stands for them. In the portal's language
+ * (the Portal lane's words, to-dos/gc-mode/PORTAL_SPANISH.md); English everywhere else.
+ */
+export function bidTabResult(project: GcProject, pkg: TradePackage, partnerId: string, lang: PortalLang = 'en'): string {
+  const es = lang === 'es'
   // A lost bid (owner, 2026-10-03), the portal's words: never the price, never who won.
   if (project.lostOn) {
-    return project.lostWhy === 'project_died'
-      ? 'The owner stopped this project or put it on hold. Thank you for your quote.'
-      : 'Click did not win this project. Thank you for your quote.'
+    const why =
+      project.lostWhy === 'project_died'
+        ? es ? 'El dueño detuvo este proyecto o lo puso en pausa.' : 'The owner stopped this project or put it on hold.'
+        : es ? 'Click no ganó este proyecto.' : 'Click did not win this project.'
+    return `${why} ${es ? 'Gracias por su precio.' : 'Thank you for your quote.'}`
   }
   if (project.stage === 'pursuing') {
-    return `Click sent its bid${project.ourBidSentOn ? ` on ${shortDate(project.ourBidSentOn)}` : ''}. The owner has not picked a builder yet.`
+    const on = project.ourBidSentOn ? (es ? ` el ${pDate(lang, project.ourBidSentOn)}` : ` on ${shortDate(project.ourBidSentOn)}`) : ''
+    return es ? `Click envió su propuesta${on}. El dueño todavía no elige constructor.` : `Click sent its bid${on}. The owner has not picked a builder yet.`
   }
-  if (pkg.awardedInviteId === null) return 'Click won the project. This trade is not awarded yet.'
+  if (pkg.awardedInviteId === null) return es ? 'Click ganó el proyecto. Esta especialidad todavía no se adjudica.' : 'Click won the project. This trade is not awarded yet.'
   const winner = pkg.invites.find((i) => i.id === pkg.awardedInviteId)
-  return winner?.partnerId === partnerId ? 'Click won the project. This trade is yours.' : 'Click won the project. This trade went to another company.'
+  if (winner?.partnerId === partnerId) return es ? 'Click ganó el proyecto. Esta especialidad es suya.' : 'Click won the project. This trade is yours.'
+  return es ? 'Click ganó el proyecto. Esta especialidad fue para otra empresa.' : 'Click won the project. This trade went to another company.'
 }
 
 /** The least quotes we want on a trade, from different companies, before we trust the number. */
