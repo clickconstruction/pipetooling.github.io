@@ -5254,6 +5254,17 @@ exports[`GC mode golden walk > step 72: Hill Country signs the unconditional wai
 }
 `;
 
+exports[`GC mode golden walk > step 73: Our crew reports plumbing at 50% 1`] = `
+{
+  "changed": {
+    "lastLog.id": 69,
+    "lastLog.text": "Our own crew reported Plumbing at 50%.",
+    "lastLog.who": "office",
+  },
+  "removed": [],
+}
+`;
+
 exports[`GC mode golden walk > the whole state at the end 1`] = `
 {
   "customers": [
@@ -5410,6 +5421,11 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
+      "id": 69,
+      "text": "Our own crew reported Plumbing at 50%.",
+      "who": "office",
+    },
+    {
       "id": 68,
       "text": "Hill Country Interiors signed the unconditional waiver for draw 4.",
       "who": "trade",
@@ -5552,11 +5568,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
     {
       "id": 40,
       "text": "The permit is marked not done on Helotes Dental Office.",
-      "who": "office",
-    },
-    {
-      "id": 39,
-      "text": "The permit is marked done on Helotes Dental Office.",
       "who": "office",
     },
   ],
@@ -7464,6 +7475,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
           ],
           "selfPerform": {
             "note": "Our own crew. The job runs on the Pipeline.",
+            "pctDone": 50,
             "ref": "J 1042",
             "value": 38500,
           },

@@ -134,7 +134,13 @@ export interface TradePackage {
   /** Our own number for the trade before anyone bids. Carried as a plug when no bid is in. */
   budget: number
   /** We do this trade ourselves: the package is a Trades mode bid, not an invitation. */
-  selfPerform: { ref: string; value: number; note: string } | null
+  selfPerform: {
+    ref: string
+    value: number
+    note: string
+    /** Our own crew's percent done, reported on Bill the owner. Absent: nothing reported yet. */
+    pctDone?: number
+  } | null
   invites: Invite[]
   /** An invite id, 'plug' (our budget) or 'self'. */
   carried: string | null
@@ -370,6 +376,8 @@ export type GcAction =
       signedTitle: string
     }
   | { type: 'approveRetainage'; projectId: string; packageId: string; drawId: string }
+  /** Our own crew's percent done on a trade we do ourselves, reported in the office. */
+  | { type: 'selfReport'; projectId: string; packageId: string; pct: number }
 
 /** One trade on a new project, as the office left it in the New project window. */
 export interface NewTradeDraft {

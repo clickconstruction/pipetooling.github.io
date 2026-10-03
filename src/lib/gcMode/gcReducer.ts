@@ -692,5 +692,17 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
       )
       return logged(next, 'office', `Approved the retainage release on ${pkg.trade}: ${money(draw.net)} to pay.`)
     }
+
+    case 'selfReport': {
+      const { pkg } = find(state, action.projectId, action.packageId)
+      const self = pkg?.selfPerform
+      if (!pkg || !self) return state
+      const pct = Math.max(0, Math.min(100, Math.round(action.pct)))
+      if ((self.pctDone ?? 0) === pct) return state
+      const next = mapProject(state, action.projectId, (p) =>
+        mapPackage(p, pkg.id, (k) => (k.selfPerform ? { ...k, selfPerform: { ...k.selfPerform, pctDone: pct } } : k)),
+      )
+      return logged(next, 'office', `Our own crew reported ${pkg.trade} at ${pct}%.`)
+    }
   }
 }

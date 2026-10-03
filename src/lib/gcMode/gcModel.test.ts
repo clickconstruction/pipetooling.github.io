@@ -189,6 +189,8 @@ const STEPS: Step[] = [
   { label: 'Approve the retainage release', action: { type: 'approveRetainage', projectId: 'helotes', packageId: 'dry', drawId: 'dry-draw-4' } },
   { label: 'Pay the retainage', action: { type: 'payDraw', projectId: 'helotes', packageId: 'dry', drawId: 'dry-draw-4' } },
   { label: 'Hill Country signs the unconditional waiver on final payment', action: { type: 'tradeSignUnconditional', projectId: 'helotes', packageId: 'dry', drawId: 'dry-draw-4' } },
+  // Helotes: our own crew reports plumbing on Bill the owner.
+  { label: 'Our crew reports plumbing at 50%', action: { type: 'selfReport', projectId: 'helotes', packageId: 'dplumb', pct: 50 } },
 ]
 
 const CUSTOMER_IDS = ['cibolo', 'raman']
@@ -315,6 +317,7 @@ describe('GC mode golden walk', () => {
       'tradeUploadCoi', 'tradeSignW9',
       'sendOwnerPayApp', 'ownerPaid', 'issuePlanSet',
       'acceptWork', 'tradeSendWarranty', 'tradeSendFinalPayApp', 'approveRetainage',
+      'selfReport',
     ]
     expect(all.filter((t) => !used.has(t))).toEqual([])
   })
