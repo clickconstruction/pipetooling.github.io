@@ -11,6 +11,7 @@ import { awardedPartner, find, logged, mapInvite, mapPackage, mapProject, mapSow
 import { initialGcState } from './gcFixture'
 import { buildNewProject } from './gcNewProject'
 import { finalPayApplication, payApplication, tradeCloseout, workAllBilled } from './gcBuilding'
+import { ownerPayApp, ownerPayAppHasWork, ownerPayAppToSend } from './gcOwnerBilling'
 
 export function gcReducer(state: GcState, action: GcAction): GcState {
   switch (action.type) {
@@ -558,6 +559,41 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
         'trade',
         `${partner.company} filled in and signed a W-9.`,
       )
+    }
+
+    case 'sendOwnerPayApp': {
+      const project = state.projects.find((p) => p.id === action.projectId)
+      if (!project || project.stage === 'pursuing') return state
+      const app = ownerPayApp(state, project)
+      if (!ownerPayAppHasWork(app)) return state
+      const sent = ownerPayAppToSend(app, state.today)
+      const next = mapProject(state, project.id, (p) => {
+        const billing = p.ownerBilling ?? { billed: 0, paid: 0, retainageHeld: 0 }
+        return { ...p, ownerBilling: { ...billing, payApps: [...(billing.payApps ?? []), sent] } }
+      })
+      return logged(
+        next,
+        'office',
+        `Sent pay application ${sent.number} to ${project.owner}: ${money(sent.due)} to pay, ${money(sent.retainage)} held.`,
+      )
+    }
+
+    case 'ownerPaid': {
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const app = project?.ownerBilling?.payApps?.find((a) => a.number === action.number)
+      if (!project || !app || app.paidOn !== null) return state
+      const next = mapProject(state, project.id, (p) =>
+        p.ownerBilling
+          ? {
+              ...p,
+              ownerBilling: {
+                ...p.ownerBilling,
+                payApps: (p.ownerBilling.payApps ?? []).map((a) => (a.number === app.number ? { ...a, paidOn: state.today } : a)),
+              },
+            }
+          : p,
+      )
+      return logged(next, 'office', `${project.owner} paid pay application ${app.number}: ${money(app.due)}.`)
     }
 
     case 'acceptWork': {

@@ -6,7 +6,7 @@
  * The math is the AIA pay application's (G702 on top, G703 the lines), said in plain words: work
  * done so far, less what the owner holds, less what we billed before, is this bill.
  */
-import type { GcCustomer, GcProject, GcState, TradePackage } from './gcTypes'
+import type { GcCustomer, GcProject, GcState, OwnerPayAppSent, TradePackage } from './gcTypes'
 import { carriedAmount, proposalTotals } from './gcBids'
 import { partnerById } from './gcLookups'
 
@@ -27,7 +27,7 @@ export interface OwnerLine {
   worth: number
   /** The work done on it so far, in dollars. */
   doneToDate: number
-  /** The work done on it by the last pay application. None is recorded yet, so this is 0 for now. */
+  /** The work done on it by the last pay application. 0 before the first one goes. */
   doneBefore: number
   /** The work done since the last pay application: done so far less done before. */
   thisMonth: number
@@ -39,7 +39,7 @@ export interface OwnerLine {
 
 export interface OwnerPayApp {
   number: number
-  /** The day it goes to the owner: the next bill day on or after today. */
+  /** The day it goes to the owner: the next bill day after the last one, or on or after today. */
   billOn: string
   /** The bill day plus the owner's usual days to pay. Null when they have never paid us. */
   expectPaidOn: string | null
@@ -52,7 +52,7 @@ export interface OwnerPayApp {
   retainagePct: number
   /** What the owner holds back on the work done so far. */
   retainage: number
-  /** What earlier pay applications asked the owner to pay: their work less what the owner held. */
+  /** What earlier pay applications asked the owner to pay, added up. */
   askedBefore: number
   /** What this bill asks the owner to pay now. */
   due: number
@@ -110,15 +110,23 @@ function tradeLine(state: GcState, pkg: TradePackage): OwnerLine {
   }
 }
 
+/** The pay applications we sent the owner on this project, oldest first. */
+export function ownerPayAppsSent(project: GcProject): OwnerPayAppSent[] {
+  return project.ownerBilling?.payApps ?? []
+}
+
 /**
- * This month's pay application to the owner, as a draft: what the bill would say if it went on the
+ * The next pay application to the owner, as a draft: what the bill would say if it went on the
  * next bill day with the work reported today. Each trade's line is the work its company reported.
  * General conditions, contingency and fee follow the share of the trades' work done, so the bill
- * comes to the same total whether the owner sees them as lines or spread into the trades.
+ * comes to the same total whether the owner sees them as lines or spread into the trades. A line
+ * starts from what the last pay application said and never goes below it.
  */
 export function ownerPayApp(state: GcState, project: GcProject): OwnerPayApp {
   const customer = customerOf(state, project)
   const totals = proposalTotals(project)
+  const sent = ownerPayAppsSent(project)
+  const last = sent[sent.length - 1]
   const trades = project.packages.map((pkg) => tradeLine(state, pkg))
   const tradeWorth = trades.reduce((s, l) => s + l.worth, 0)
   const tradeDone = trades.reduce((s, l) => s + l.doneToDate, 0)
@@ -140,15 +148,19 @@ export function ownerPayApp(state: GcState, project: GcProject): OwnerPayApp {
     follows('gc', 'General conditions', 'generalConditions', totals.generalConditions),
     follows('contingency', `Contingency ${project.contingencyPct}%`, 'contingency', totals.contingency),
     follows('fee', `Fee ${project.feePct}%`, 'fee', totals.fee),
-  ]
+  ].map((l) => {
+    const doneBefore = last?.doneToDate[l.id] ?? 0
+    const doneToDate = Math.max(l.doneToDate, doneBefore)
+    return { ...l, doneBefore, doneToDate, thisMonth: doneToDate - doneBefore }
+  })
   const contract = lines.reduce((s, l) => s + l.worth, 0)
   const doneToDate = lines.reduce((s, l) => s + l.doneToDate, 0)
   const retainagePct = customer?.retainagePct ?? OWNER_RETAINAGE_DEFAULT_PCT
   const retainage = (doneToDate * retainagePct) / 100
-  const askedBefore = 0
-  const billOn = nextOwnerBillDay(state.today)
+  const askedBefore = sent.reduce((s, a) => s + a.due, 0)
+  const billOn = last ? nextOwnerBillDay(addDays(last.periodTo, 1)) : nextOwnerBillDay(state.today)
   return {
-    number: 1,
+    number: sent.length + 1,
     billOn,
     expectPaidOn: customer?.payDays == null ? null : addDays(billOn, customer.payDays),
     lines,
@@ -162,4 +174,57 @@ export function ownerPayApp(state: GcState, project: GcProject): OwnerPayApp {
     leftToBill: contract - doneToDate + retainage,
     started: project.startedOn !== null,
   }
+}
+
+/** True when the draft asks for something: a dollar or more of new work. */
+export function ownerPayAppHasWork(app: OwnerPayApp): boolean {
+  return Math.round(app.due) > 0
+}
+
+/** The draft as it goes to the owner today: the record the reducer keeps. */
+export function ownerPayAppToSend(app: OwnerPayApp, today: string): OwnerPayAppSent {
+  return {
+    number: app.number,
+    periodTo: app.billOn,
+    sentOn: today,
+    doneToDate: Object.fromEntries(app.lines.map((l) => [l.id, l.doneToDate])),
+    workToDate: app.doneToDate,
+    retainagePct: app.retainagePct,
+    retainage: app.retainage,
+    due: app.due,
+    paidOn: null,
+  }
+}
+
+/** Where we stand with the owner on one project, from the pay applications we sent. */
+export interface OwnerAccount {
+  /** The work billed so far: the last pay application's done so far. */
+  billed: number
+  /** What the owner holds on it until the end. */
+  retainageHeld: number
+  /** What our pay applications asked them to pay, added up. */
+  asked: number
+  paid: number
+  /** Asked less paid. */
+  owed: number
+}
+
+/**
+ * The owner's account on a project, read off the pay applications we sent. Null when none went.
+ * The same three numbers the OwnerBilling record holds by hand (billed, paid, retainage held), so
+ * the owner window could read these instead.
+ */
+export function ownerAccount(project: GcProject): OwnerAccount | null {
+  const sent = ownerPayAppsSent(project)
+  const last = sent[sent.length - 1]
+  if (!last) return null
+  const asked = sent.reduce((s, a) => s + a.due, 0)
+  const paid = sent.filter((a) => a.paidOn !== null).reduce((s, a) => s + a.due, 0)
+  return { billed: last.workToDate, retainageHeld: last.retainage, asked, paid, owed: asked - paid }
+}
+
+/** The day we expect the owner to pay a pay application: the day it went plus their usual days. */
+export function ownerExpectPaidOn(state: GcState, project: GcProject, app: OwnerPayAppSent): string | null {
+  const payDays = customerOf(state, project)?.payDays
+  return payDays == null ? null : addDays(app.sentOn, payDays)
 }

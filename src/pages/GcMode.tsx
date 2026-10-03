@@ -317,7 +317,7 @@ export default function GcMode() {
               )}
               {tab === 'contracts' && <GcContractsTab state={state} project={project} dispatch={dispatch} />}
               {tab === 'draws' && <GcDrawsTab state={state} project={project} dispatch={dispatch} />}
-              {tab === 'owner' && <GcOwnerBillingTab state={state} project={project} />}
+              {tab === 'owner' && <GcOwnerBillingTab state={state} project={project} dispatch={dispatch} />}
               {tab === 'closeout' && (
                 <GcCloseoutTab
                   state={state}

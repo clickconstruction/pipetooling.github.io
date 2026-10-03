@@ -188,6 +188,8 @@ export interface OwnerBilling {
   billed: number
   paid: number
   retainageHeld: number
+  /** Our pay applications to the owner, oldest first, as each went. Absent: none sent yet. */
+  payApps?: OwnerPayAppSent[]
 }
 
 /**
@@ -337,6 +339,8 @@ export type GcAction =
   | { type: 'tradeUploadCoi'; partnerId: string; expires: string }
   /** The trade fills in and signs a W-9 in its portal. */
   | { type: 'tradeSignW9'; partnerId: string }
+  | { type: 'sendOwnerPayApp'; projectId: string }
+  | { type: 'ownerPaid'; projectId: string; number: number }
   | { type: 'acceptWork'; projectId: string; packageId: string }
   | { type: 'tradeSendWarranty'; projectId: string; packageId: string }
   | {
@@ -391,4 +395,23 @@ export interface DrawPayApp {
   signedBy: string
   signedTitle: string
   signedOn: string
+}
+
+/** One pay application we sent the owner, kept as it went. The next one starts from its lines. */
+export interface OwnerPayAppSent {
+  number: number
+  /** The bill day it went for. One a month. */
+  periodTo: string
+  sentOn: string
+  /** Done so far on each of the owner's lines when it went, by line id. */
+  doneToDate: Record<string, number>
+  /** Every line's done so far, added up. */
+  workToDate: number
+  retainagePct: number
+  /** What the owner holds on the work done so far. */
+  retainage: number
+  /** What it asked the owner to pay. */
+  due: number
+  /** The day the owner paid it. Null until they do. */
+  paidOn: string | null
 }

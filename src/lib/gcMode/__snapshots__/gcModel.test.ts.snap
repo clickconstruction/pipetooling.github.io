@@ -5005,12 +5005,32 @@ exports[`GC mode golden walk > step 60: Hillside signs a W-9 1`] = `
 }
 `;
 
-exports[`GC mode golden walk > step 61: Approve draw 3 1`] = `
+exports[`GC mode golden walk > step 61: Send Dr. Raman pay application 1 1`] = `
 {
   "changed": {
     "lastLog.id": 57,
-    "lastLog.text": "Approved draw 3 on Framing and drywall. $6,750 to pay, $750 held.",
+    "lastLog.text": "Sent pay application 1 to Dr. Priya Raman: $79,247 to pay, $8,805 held.",
     "lastLog.who": "office",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 62: Dr. Raman pays pay application 1 1`] = `
+{
+  "changed": {
+    "lastLog.id": 58,
+    "lastLog.text": "Dr. Priya Raman paid pay application 1: $79,247.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 63: Approve draw 3 1`] = `
+{
+  "changed": {
+    "lastLog.id": 59,
+    "lastLog.text": "Approved draw 3 on Framing and drywall. $6,750 to pay, $750 held.",
     "projects.helotes.stageProgress.also[0]": "Draw 3 for Hill Country Interiors is approved. Pay it.",
     "projects.helotes.stageProgress.also[1]": "Framing and drywall is all billed. Walk it, then accept the work on Closeout.",
   },
@@ -5018,10 +5038,10 @@ exports[`GC mode golden walk > step 61: Approve draw 3 1`] = `
 }
 `;
 
-exports[`GC mode golden walk > step 62: Pay draw 3 1`] = `
+exports[`GC mode golden walk > step 64: Pay draw 3 1`] = `
 {
   "changed": {
-    "lastLog.id": 58,
+    "lastLog.id": 60,
     "lastLog.text": "Paid draw 3 on Framing and drywall: $6,750.",
     "projects.helotes.stageProgress.also[0]": "Hill Country Interiors owes the unconditional waiver on draw 3.",
   },
@@ -5029,10 +5049,10 @@ exports[`GC mode golden walk > step 62: Pay draw 3 1`] = `
 }
 `;
 
-exports[`GC mode golden walk > step 63: Hill Country signs the unconditional waiver on draw 3 1`] = `
+exports[`GC mode golden walk > step 65: Hill Country signs the unconditional waiver on draw 3 1`] = `
 {
   "changed": {
-    "lastLog.id": 59,
+    "lastLog.id": 61,
     "lastLog.text": "Hill Country Interiors signed the unconditional waiver for draw 3.",
     "lastLog.who": "trade",
     "projects.helotes.stageProgress.also[0]": "Framing and drywall is all billed. Walk it, then accept the work on Closeout.",
@@ -5043,10 +5063,10 @@ exports[`GC mode golden walk > step 63: Hill Country signs the unconditional wai
 }
 `;
 
-exports[`GC mode golden walk > step 64: Accept the drywall work 1`] = `
+exports[`GC mode golden walk > step 66: Accept the drywall work 1`] = `
 {
   "changed": {
-    "lastLog.id": 60,
+    "lastLog.id": 62,
     "lastLog.text": "Accepted the Framing and drywall work from Hill Country Interiors. The punch list is done.",
     "lastLog.who": "office",
     "projects.helotes.stageProgress.also": "[]",
@@ -5057,10 +5077,10 @@ exports[`GC mode golden walk > step 64: Accept the drywall work 1`] = `
 }
 `;
 
-exports[`GC mode golden walk > step 65: Hill Country sends the warranty letter 1`] = `
+exports[`GC mode golden walk > step 67: Hill Country sends the warranty letter 1`] = `
 {
   "changed": {
-    "lastLog.id": 61,
+    "lastLog.id": 63,
     "lastLog.text": "Hill Country Interiors sent the warranty letter for Framing and drywall.",
     "lastLog.who": "trade",
   },
@@ -5068,10 +5088,10 @@ exports[`GC mode golden walk > step 65: Hill Country sends the warranty letter 1
 }
 `;
 
-exports[`GC mode golden walk > step 66: Hill Country sends the final pay application 1`] = `
+exports[`GC mode golden walk > step 68: Hill Country sends the final pay application 1`] = `
 {
   "changed": {
-    "lastLog.id": 62,
+    "lastLog.id": 64,
     "lastLog.text": "Hill Country Interiors sent the final pay application on Framing and drywall: $6,420 of retainage, with a conditional waiver on final payment.",
     "projects.helotes.stageProgress.also[0]": "Hill Country Interiors asked for its retainage back. Approve it on Closeout.",
   },
@@ -5081,10 +5101,10 @@ exports[`GC mode golden walk > step 66: Hill Country sends the final pay applica
 }
 `;
 
-exports[`GC mode golden walk > step 67: Approve the retainage release 1`] = `
+exports[`GC mode golden walk > step 69: Approve the retainage release 1`] = `
 {
   "changed": {
-    "lastLog.id": 63,
+    "lastLog.id": 65,
     "lastLog.text": "Approved the retainage release on Framing and drywall: $6,420 to pay.",
     "lastLog.who": "office",
     "projects.helotes.stageProgress.also[0]": "The retainage release for Hill Country Interiors is approved. Pay it.",
@@ -5093,10 +5113,10 @@ exports[`GC mode golden walk > step 67: Approve the retainage release 1`] = `
 }
 `;
 
-exports[`GC mode golden walk > step 68: Pay the retainage 1`] = `
+exports[`GC mode golden walk > step 70: Pay the retainage 1`] = `
 {
   "changed": {
-    "lastLog.id": 64,
+    "lastLog.id": 66,
     "lastLog.text": "Paid draw 4 on Framing and drywall: $6,420.",
     "projects.helotes.stageProgress.also[0]": "Hill Country Interiors owes the unconditional waiver on final payment.",
   },
@@ -5104,10 +5124,10 @@ exports[`GC mode golden walk > step 68: Pay the retainage 1`] = `
 }
 `;
 
-exports[`GC mode golden walk > step 69: Hill Country signs the unconditional waiver on final payment 1`] = `
+exports[`GC mode golden walk > step 71: Hill Country signs the unconditional waiver on final payment 1`] = `
 {
   "changed": {
-    "lastLog.id": 65,
+    "lastLog.id": 67,
     "lastLog.text": "Hill Country Interiors signed the unconditional waiver for draw 4.",
     "lastLog.who": "trade",
     "projects.helotes.stageProgress.also": "[]",
@@ -5274,48 +5294,58 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
-      "id": 65,
+      "id": 67,
       "text": "Hill Country Interiors signed the unconditional waiver for draw 4.",
       "who": "trade",
     },
     {
-      "id": 64,
+      "id": 66,
       "text": "Paid draw 4 on Framing and drywall: $6,420.",
       "who": "office",
     },
     {
-      "id": 63,
+      "id": 65,
       "text": "Approved the retainage release on Framing and drywall: $6,420 to pay.",
       "who": "office",
     },
     {
-      "id": 62,
+      "id": 64,
       "text": "Hill Country Interiors sent the final pay application on Framing and drywall: $6,420 of retainage, with a conditional waiver on final payment.",
       "who": "trade",
     },
     {
-      "id": 61,
+      "id": 63,
       "text": "Hill Country Interiors sent the warranty letter for Framing and drywall.",
       "who": "trade",
     },
     {
-      "id": 60,
+      "id": 62,
       "text": "Accepted the Framing and drywall work from Hill Country Interiors. The punch list is done.",
       "who": "office",
     },
     {
-      "id": 59,
+      "id": 61,
       "text": "Hill Country Interiors signed the unconditional waiver for draw 3.",
       "who": "trade",
     },
     {
-      "id": 58,
+      "id": 60,
       "text": "Paid draw 3 on Framing and drywall: $6,750.",
       "who": "office",
     },
     {
-      "id": 57,
+      "id": 59,
       "text": "Approved draw 3 on Framing and drywall. $6,750 to pay, $750 held.",
+      "who": "office",
+    },
+    {
+      "id": 58,
+      "text": "Dr. Priya Raman paid pay application 1: $79,247.",
+      "who": "office",
+    },
+    {
+      "id": 57,
+      "text": "Sent pay application 1 to Dr. Priya Raman: $79,247 to pay, $8,805 held.",
       "who": "office",
     },
     {
@@ -5411,16 +5441,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
     {
       "id": 38,
       "text": "Our contract with Dr. Priya Raman is marked done on Helotes Dental Office.",
-      "who": "office",
-    },
-    {
-      "id": 37,
-      "text": "Cedar & Pine Millwork signed the Millwork statement of work.",
-      "who": "trade",
-    },
-    {
-      "id": 36,
-      "text": "Sent the Millwork statement of work to Cedar & Pine Millwork.",
       "who": "office",
     },
   ],
@@ -6914,6 +6934,28 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "ownerBilling": {
         "billed": 61000,
         "paid": 42300,
+        "payApps": [
+          {
+            "doneToDate": {
+              "contingency": 2331.4736842105262,
+              "delec": 0,
+              "dhvac": 0,
+              "dplumb": 0,
+              "dry": 64200,
+              "fee": 8004.726315789473,
+              "gc": 13515.78947368421,
+              "mill": 0,
+            },
+            "due": 79246.79052631579,
+            "number": 1,
+            "paidOn": "2026-10-02",
+            "periodTo": "2026-10-25",
+            "retainage": 8805.19894736842,
+            "retainagePct": 10,
+            "sentOn": "2026-10-02",
+            "workToDate": 88051.98947368421,
+          },
+        ],
         "retainageHeld": 6100,
       },
       "ownerContractSignedOn": "2026-10-02",

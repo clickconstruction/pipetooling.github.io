@@ -1,19 +1,30 @@
-import { Card, Chip, Stat, Why, num, td, th } from './gcUi'
+import type { Dispatch } from 'react'
+import { Btn, Card, Chip, Stat, Why, num, td, th } from './gcUi'
 import {
+  daysUntil,
   money,
+  ownerAccount,
+  ownerExpectPaidOn,
   ownerPayApp,
+  ownerPayAppHasWork,
+  ownerPayAppsSent,
   shortDate,
   weekdayDate,
+  type GcAction,
   type GcProject,
   type GcState,
   type OwnerLine,
+  type OwnerPayAppSent,
 } from '../../lib/gcMode/gcModel'
 
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+
 /**
- * GC mode design spike: the Bill the owner tab. This month's pay application to the project's
- * owner, built from the work the trades report. It only reads; nothing here changes a trade's work.
+ * GC mode design spike: the Bill the owner tab. Our pay applications to the project's owner, built
+ * from the work the trades report: the next one as a draft to send, and the ones sent with what
+ * the owner paid. Nothing here changes a trade's work.
  */
-export function GcOwnerBillingTab({ state, project }: { state: GcState; project: GcProject }) {
+export function GcOwnerBillingTab({ state, project, dispatch }: { state: GcState; project: GcProject; dispatch: Dispatch<GcAction> }) {
   if (project.stage === 'pursuing') {
     return (
       <Why>
@@ -23,6 +34,9 @@ export function GcOwnerBillingTab({ state, project }: { state: GcState; project:
   }
   const app = ownerPayApp(state, project)
   const customer = state.customers.find((c) => c.id === project.customerId)
+  const sent = ownerPayAppsSent(project)
+  const account = ownerAccount(project)
+  const hasWork = ownerPayAppHasWork(app)
   const trades = app.lines.filter((l) => l.kind === 'trade' || l.kind === 'self')
   const ours = app.lines.filter((l) => l.kind !== 'trade' && l.kind !== 'self')
   const donePct = app.contract === 0 ? 0 : Math.round((app.doneToDate / app.contract) * 100)
@@ -39,6 +53,30 @@ export function GcOwnerBillingTab({ state, project }: { state: GcState; project:
       {!app.started && (
         <Card style={{ background: 'var(--bg-amber-100)', borderColor: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', fontSize: '0.9rem' }}>
           We have not pressed Start on this project yet. The bill below is what it would say today.
+        </Card>
+      )}
+
+      {account && (
+        <Card>
+          <strong style={{ fontSize: '1.05rem' }}>So far with {project.owner}</strong>
+          <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', margin: '0.6rem 0 0.8rem' }}>
+            <Stat label="Work billed" value={money(account.billed)} />
+            <Stat label="They hold" value={money(account.retainageHeld)} />
+            <Stat label="Asked for" value={money(account.asked)} />
+            <Stat label="Paid" value={money(account.paid)} />
+            <Stat label="They owe us now" value={money(account.owed)} tone={Math.round(account.owed) > 0 ? 'red' : 'green'} />
+          </div>
+          <div style={{ display: 'grid', gap: '0.4rem' }}>
+            {[...sent].reverse().map((a) => (
+              <SentRow
+                key={a.number}
+                app={a}
+                expectOn={ownerExpectPaidOn(state, project, a)}
+                today={state.today}
+                onPaid={() => dispatch({ type: 'ownerPaid', projectId: project.id, number: a.number })}
+              />
+            ))}
+          </div>
         </Card>
       )}
 
@@ -60,10 +98,32 @@ export function GcOwnerBillingTab({ state, project }: { state: GcState; project:
           <Stat label={`Done so far · ${donePct}%`} value={money(app.doneToDate)} />
           <Stat label={`They hold ${app.retainagePct}%`} value={money(app.retainage)} />
           <Stat label="Asked for before" value={money(app.askedBefore)} />
-          <Stat label="This bill" value={money(app.due)} tone="green" />
+          <Stat label="This bill" value={money(Math.max(0, app.due))} tone={hasWork ? 'green' : undefined} />
         </div>
         <div style={{ marginTop: '0.7rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
           After this bill, {money(app.leftToBill)} is left to bill. That counts the {money(app.retainage)} they hold.
+        </div>
+        <div style={{ marginTop: '0.8rem', display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          {hasWork ? (
+            <>
+              <Btn
+                kind="primary"
+                onClick={() => dispatch({ type: 'sendOwnerPayApp', projectId: project.id })}
+                title="In the real build this is one of the Pipeline's bills. It goes by email with a pay link and shows on their portal statement."
+              >
+                Send to {project.owner}
+              </Btn>
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                It asks for {money(app.due)}. It goes out {weekdayDate(app.billOn)}, or now if you send it.
+              </span>
+            </>
+          ) : (
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+              {sent.length > 0
+                ? `Nothing new to bill. No trade has reported more work since pay application ${sent.length}.`
+                : 'Nothing to bill yet. No trade has reported any work.'}
+            </span>
+          )}
         </div>
       </Card>
 
@@ -121,10 +181,44 @@ function LineRow({ line }: { line: OwnerLine }) {
         )}
       </td>
       <td style={num}>{money(line.worth)}</td>
-      <td style={num}>{money(line.doneBefore)}</td>
+      <td style={num}>{line.doneBefore === 0 ? '—' : money(line.doneBefore)}</td>
       <td style={{ ...num, fontWeight: 600 }}>{line.thisMonth === 0 ? '—' : money(line.thisMonth)}</td>
       <td style={num}>{quiet ? '—' : money(line.doneToDate)}</td>
       <td style={num}>{pct === null ? '—' : `${pct}%`}</td>
     </tr>
+  )
+}
+
+function SentRow({
+  app,
+  expectOn,
+  today,
+  onPaid,
+}: {
+  app: OwnerPayAppSent
+  expectOn: string | null
+  today: string
+  onPaid: () => void
+}) {
+  const month = MONTH_NAMES[Number(app.periodTo.slice(5, 7)) - 1] ?? ''
+  const late = app.paidOn === null && expectOn !== null && daysUntil(expectOn, today) < 0
+  return (
+    <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.875rem', borderTop: '1px solid var(--border)', paddingTop: '0.4rem' }}>
+      <strong>Pay application {app.number}</strong>
+      <span style={{ color: 'var(--text-muted)' }}>{month} · sent {shortDate(app.sentOn)}</span>
+      <span>
+        <strong>{money(app.due)}</strong> to pay · {money(app.retainage)} held
+      </span>
+      {app.paidOn !== null ? (
+        <Chip tone="green">paid {shortDate(app.paidOn)}</Chip>
+      ) : (
+        <>
+          <Chip tone={late ? 'red' : 'amber'}>
+            {late ? `late · expected ${shortDate(expectOn)}` : expectOn ? `waiting · expected ${shortDate(expectOn)}` : 'waiting'}
+          </Chip>
+          <Btn kind="primary" onClick={onPaid}>Mark paid</Btn>
+        </>
+      )}
+    </div>
   )
 }
