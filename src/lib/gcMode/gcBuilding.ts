@@ -11,6 +11,7 @@ import type { ChangeOrder, Draw, DrawSentBack, GcProject, GcState, Partner, Sow,
 import { money, shortDate } from './gcWords'
 import { partnerById } from './gcLookups'
 import { GC_COMPANY } from './gcFixture'
+import { punchCounts, punchWords } from './gcBuildingPunch'
 
 /**
  * The general contractor's name on the "To" line. It reads the one company record in the fixture
@@ -419,6 +420,9 @@ export function tradeCloseout(sow: Sow, project?: GcProject, today?: string): Tr
   const scheduled = sow.sov.reduce((s, l) => s + l.amount, 0)
   const billedPct = scheduled === 0 ? 0 : Math.round(sow.sov.reduce((s, l) => s + l.amount * l.pctBilled, 0) / scheduled)
   const accepted = Boolean(sow.acceptedOn)
+  // The trade's punch list (owner, 2026-10-03): the work is accepted once every item is checked fixed.
+  const pkg = project?.packages.find((k) => k.sow === sow)
+  const punch = project && pkg ? punchCounts(project, pkg.id) : null
   // Without the project and today (an older caller), the owner's payment counts as not yet in.
   const paidOn = project ? ownerRetainagePaidOn(project) : null
   const opensOn = project ? tradeRetainageOpensOn(project) : null
@@ -438,7 +442,13 @@ export function tradeCloseout(sow: Sow, project?: GcProject, today?: string): Tr
       label: 'We accept the work',
       who: 'office',
       done: accepted,
-      detail: accepted ? `Accepted ${shortDate(sow.acceptedOn ?? null)}.` : 'Walk the work with them. When the punch list is done, accept it.',
+      detail: accepted
+        ? `Accepted ${shortDate(sow.acceptedOn ?? null)}.`
+        : punch && punch.total > 0
+          ? punch.open + punch.fixed === 0
+            ? `The punch list is done: ${punch.done} checked. Accept the work.`
+            : `Punch list: ${punchWords(punch)}. Accept the work once every item is checked fixed.`
+          : 'Walk the work with them. When the punch list is done, accept it.',
     },
     {
       key: 'finalApp',

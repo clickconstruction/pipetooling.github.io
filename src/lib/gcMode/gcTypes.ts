@@ -341,6 +341,29 @@ export interface GcProject {
   schedule?: ProjectSchedule
   /** Our people on the job, for a trade to call (Portal lane). Unset: none named yet. */
   team?: ProjectContact[]
+  /** The punch list (Building lane, 2026-10-03): what is left to fix on each trade's work. Unset: none yet. */
+  punch?: PunchItem[]
+}
+
+/**
+ * One punch-list item (owner, 2026-10-03): something left to fix on a trade's work, found when our
+ * superintendent walks it. The trade marks it fixed in its portal; our superintendent checks it.
+ * We accept a trade's work once every item on it is checked fixed.
+ */
+export interface PunchItem {
+  id: string
+  packageId: string
+  /** What is wrong, as our superintendent wrote it. */
+  text: string
+  /** Where on the job: a room, a grid line. */
+  where?: string
+  addedOn: string
+  /** The day the trade said it is fixed. Null: still open. */
+  fixedOn: string | null
+  /** The day our superintendent checked it fixed. Null: not checked yet. */
+  checkedOn: string | null
+  /** Checked and not fixed: sent back to the trade, how many times, with the last note. */
+  sentBack?: { times: number; note: string; on: string }
 }
 
 export interface LogEntry {
@@ -541,6 +564,12 @@ export type GcAction =
   | { type: 'sendQuestionToArchitect'; projectId: string; questionId: string }
   /** We record the architect's answer and send it to the companies on the trade. */
   | { type: 'answerQuestion'; projectId: string; questionId: string; answer: string; recipients: string[] }
+  /** Our superintendent adds an item to a trade's punch list. */
+  | { type: 'addPunchItem'; projectId: string; packageId: string; text: string; where?: string }
+  /** The trade marks a punch item fixed in its portal. */
+  | { type: 'tradeFixPunchItem'; projectId: string; itemId: string }
+  /** Our superintendent checks a fixed item: fixed, or sent back with a note. */
+  | { type: 'checkPunchItem'; projectId: string; itemId: string; fixed: boolean; note?: string }
 
 /** One trade on a new project, as the office left it in the New project window. */
 export interface NewTradeDraft {

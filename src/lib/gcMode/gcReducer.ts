@@ -11,6 +11,7 @@ import { awardedPartner, find, logged, mapInvite, mapPackage, mapProject, mapSow
 import { initialGcState } from './gcFixture'
 import { draftSchedule, scheduleLinesOf, withBaselineKept } from './gcBuildingSchedule'
 import { buildNewProject, packagesFromDrafts, pushSchedule, withNewLines, withTradesInOrder } from './gcNewProject'
+import { nextPunchId, punchClear } from './gcBuildingPunch'
 import { changeOrderTradePct, crewPctFromStages, drawApprovedLess, finalPayApplication, jobCloseout, payApplication, timesSentBack, tradeCloseout, workAllBilled } from './gcBuilding'
 import { appClaimed, changeOrderPrice, ownerCloseout, ownerFinalPayAppToSend, ownerPayApp, ownerPayAppHasWork, ownerPayAppToSend } from './gcOwnerBilling'
 
@@ -652,10 +653,12 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
 
     case 'acceptWork': {
       // Closeout: we walked the work and the punch list is done. Only once every line is billed.
-      const { pkg } = find(state, action.projectId, action.packageId)
+      const { project, pkg } = find(state, action.projectId, action.packageId)
       const partner = awardedPartner(state, pkg)
       const sow = pkg?.sow
-      if (!pkg || !partner || !sow || !workAllBilled(sow) || sow.acceptedOn) return state
+      if (!project || !pkg || !partner || !sow || !workAllBilled(sow) || sow.acceptedOn) return state
+      // Not while anything on its punch list is still to fix or to check (Building lane, 2026-10-03).
+      if (!punchClear(project, pkg.id)) return state
       const next = mapProject(state, action.projectId, (p) => mapPackage(p, pkg.id, (k) => mapSow(k, (s) => ({ ...s, acceptedOn: state.today }))))
       return logged(next, 'office', `Accepted the ${pkg.trade} work from ${partner.company}. The punch list is done.`)
     }
@@ -1237,6 +1240,52 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
       }))
       const trade = project.packages.find((k) => k.id === q.packageId)?.trade.toLowerCase() ?? 'the trade'
       return logged(next, 'office', `Answered a ${trade} question on ${project.name} and sent it to ${to.length} ${to.length === 1 ? 'company' : 'companies'}.`)
+    }
+
+    case 'addPunchItem': {
+      // Building lane: our superintendent lists what is left to fix on a trade we hire. Not once the
+      // work is accepted: after that it is warranty.
+      const { project, pkg } = find(state, action.projectId, action.packageId)
+      const partner = awardedPartner(state, pkg)
+      const text = action.text.trim().replace(/\s+/g, ' ')
+      const where = action.where?.trim()
+      if (!project || project.stage !== 'building' || !pkg || pkg.selfPerform || !partner || pkg.sow?.status !== 'signed' || pkg.sow.acceptedOn || !text) return state
+      const item = { id: nextPunchId(project), packageId: pkg.id, text, ...(where ? { where } : {}), addedOn: state.today, fixedOn: null, checkedOn: null }
+      const next = mapProject(state, project.id, (p) => ({ ...p, punch: [...(p.punch ?? []), item] }))
+      return logged(next, 'office', `Punch list, ${pkg.trade}: ${text.replace(/[.\s]+$/, '')}${where ? `, ${where}` : ''}. ${partner.company} fixes it in their portal.`)
+    }
+
+    case 'tradeFixPunchItem': {
+      // The trade marks an item fixed in its portal; it waits on our superintendent's check.
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const item = project?.punch?.find((i) => i.id === action.itemId)
+      const pkg = item ? project?.packages.find((k) => k.id === item.packageId) : undefined
+      const partner = awardedPartner(state, pkg)
+      if (!project || !item || !pkg || !partner || item.fixedOn || item.checkedOn) return state
+      const next = mapProject(state, project.id, (p) => ({ ...p, punch: (p.punch ?? []).map((i) => (i.id === item.id ? { ...i, fixedOn: state.today } : i)) }))
+      return logged(next, 'trade', `${partner.company} fixed a punch item on ${pkg.trade}: ${item.text.replace(/[.\s]+$/, '')}.`)
+    }
+
+    case 'checkPunchItem': {
+      // Our superintendent checks a fixed item: fixed, or back to the trade with a note.
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const item = project?.punch?.find((i) => i.id === action.itemId)
+      const pkg = item ? project?.packages.find((k) => k.id === item.packageId) : undefined
+      const partner = awardedPartner(state, pkg)
+      if (!project || !item || !pkg || !partner || !item.fixedOn || item.checkedOn) return state
+      const note = action.note?.trim() ?? ''
+      const checked = action.fixed
+        ? { ...item, checkedOn: state.today }
+        : { ...item, fixedOn: null, sentBack: { times: (item.sentBack?.times ?? 0) + 1, note, on: state.today } }
+      const next = mapProject(state, project.id, (p) => ({ ...p, punch: (p.punch ?? []).map((i) => (i.id === item.id ? checked : i)) }))
+      const what = item.text.replace(/[.\s]+$/, '')
+      return logged(
+        next,
+        'office',
+        action.fixed
+          ? `Our superintendent checked a punch item on ${pkg.trade}: ${what}. It is fixed.`
+          : `Our superintendent sent a punch item back to ${partner.company}: ${what}.${note ? ` ${note.replace(/[.\s]+$/, '')}.` : ''}`,
+      )
     }
   }
 }

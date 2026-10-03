@@ -13,6 +13,7 @@ import { partnerBlockers } from './gcBench'
 import { ownCrewWork, sentBackOpen, timesSentBack, tradeCloseout } from './gcBuilding'
 import { scheduleSummary, scheduleSummaryWords } from './gcBuildingSchedule'
 import { drawPayDays } from './gcBuildingPay'
+import { punchCounts } from './gcBuildingPunch'
 
 /** The stage colors, saturated on purpose: the ring is a status mark, not a neutral surface. */
 export const RING_COLORS: Record<GcStage, string> = {
@@ -277,8 +278,15 @@ function buildingProgress(state: GcState, project: GcProject): StageProgress {
           : `Pay application ${back.draw.number} is back with ${company}. Waiting on a fixed one.`,
       )
     }
+    // The punch list (Building lane, 2026-10-03): what the trade still has to fix, what waits on our check.
+    const punch = punchCounts(project, pkg.id)
     if (sow && sow.status === 'signed' && tradeCloseout(sow, project, state.today).next?.key === 'accepted') {
-      also.push(`${pkg.trade} is all billed. Walk it, then accept the work on Closeout.`)
+      if (punch.total === 0) also.push(`${pkg.trade} is all billed. Walk it, then accept the work on Closeout.`)
+      else if (punch.open + punch.fixed === 0) also.push(`The punch list on ${pkg.trade} is done. Accept the work on Closeout.`)
+    }
+    if (punch.open > 0) also.push(`${company} has ${punch.open} punch ${punch.open === 1 ? 'item' : 'items'} to fix on ${pkg.trade}.`)
+    if (punch.fixed > 0) {
+      also.push(`${punch.fixed} punch ${punch.fixed === 1 ? 'item' : 'items'} on ${pkg.trade} ${punch.fixed === 1 ? 'is' : 'are'} fixed. Check ${punch.fixed === 1 ? 'it' : 'them'} on Closeout.`)
     }
   }
   const pct = Math.round(share * 100)

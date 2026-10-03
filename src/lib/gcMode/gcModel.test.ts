@@ -389,6 +389,22 @@ const STEPS: Step[] = [
       questionIds: ['padb-q-1'],
     },
   },
+  // The punch list (Building lane): Fair Oaks D's concrete, walked Sep 28, to accepted.
+  {
+    label: 'Fair Oaks D: one more punch item on the concrete',
+    action: { type: 'addPunchItem', projectId: 'fairoaksd', packageId: 'fconc', text: 'Grind the trip edge at the sidewalk joint', where: 'East entry' },
+  },
+  { label: 'Guadalupe fixes the spalled footing corner', action: { type: 'tradeFixPunchItem', projectId: 'fairoaksd', itemId: 'fairoaksd-punch-1' } },
+  {
+    label: 'Superintendent: the stockroom joints are not all sealed',
+    action: { type: 'checkPunchItem', projectId: 'fairoaksd', itemId: 'fairoaksd-punch-2', fixed: false, note: 'Two joints in the back corner are still open.' },
+  },
+  { label: 'Guadalupe seals the last two joints', action: { type: 'tradeFixPunchItem', projectId: 'fairoaksd', itemId: 'fairoaksd-punch-2' } },
+  { label: 'Guadalupe grinds the trip edge', action: { type: 'tradeFixPunchItem', projectId: 'fairoaksd', itemId: 'fairoaksd-punch-4' } },
+  { label: 'Superintendent checks the footing corner', action: { type: 'checkPunchItem', projectId: 'fairoaksd', itemId: 'fairoaksd-punch-1', fixed: true } },
+  { label: 'Superintendent checks the stockroom joints', action: { type: 'checkPunchItem', projectId: 'fairoaksd', itemId: 'fairoaksd-punch-2', fixed: true } },
+  { label: 'Superintendent checks the trip edge', action: { type: 'checkPunchItem', projectId: 'fairoaksd', itemId: 'fairoaksd-punch-4', fixed: true } },
+  { label: 'Accept the concrete work on Fair Oaks D', action: { type: 'acceptWork', projectId: 'fairoaksd', packageId: 'fconc' } },
 ]
 
 const CUSTOMER_IDS = ['cibolo', 'raman']
@@ -525,6 +541,7 @@ describe('GC mode golden walk', () => {
       'verifyLookAhead', 'crewMarkLookAhead',
       'sendTradeChange', 'tradeSignChange',
       'passInspection',
+      'addPunchItem', 'tradeFixPunchItem', 'checkPunchItem',
       'tradeOpenPortal',
       'tradeAnswerLines',
       'priceOwnBid',
