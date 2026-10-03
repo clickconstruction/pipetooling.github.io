@@ -8,6 +8,7 @@
  * asGc=true plus the owner's name for the statement's AS GC tag.
  */
 
+import { todayYmdInAppTz } from './appTimeZone.ts'
 import { jobCarriesOpenBills, jobPrintsShellRemainder } from './portalBillMembership.ts'
 import { attributeJobPayments } from './paymentAttribution.ts'
 import { effectiveInvoiceParty, payerCustomerId } from './billToParty.ts'
@@ -88,6 +89,7 @@ export type PortalBillOut = {
   serviceTag: string | null
   jobAddress: string | null
   amount: number
+  /** The day `billed_at` (an instant) falls on in the company's zone. */
   billedOn: string | null
   payUrl: string | null
   checkRef: string
@@ -245,7 +247,7 @@ export function buildPortalBills(args: {
       serviceTag: jobTradeTag(job),
       jobAddress: (job.job_address ?? '').trim() || null,
       amount: open,
-      billedOn: inv.billed_at ? String(inv.billed_at).slice(0, 10) : null,
+      billedOn: inv.billed_at ? todayYmdInAppTz(new Date(inv.billed_at)) : null,
       payUrl: (inv.hosted_invoice_url ?? '').trim() || null,
       checkRef: jobNumber(job) || String(inv.sequence_order ?? ''),
       ...asGcFields(job),
@@ -351,7 +353,7 @@ export function buildPortalSharedBills(args: {
       amount: open,
       billedAmount: round2(Number(inv.amount ?? 0)),
       totalPaid: paid,
-      billedOn: inv.billed_at ? String(inv.billed_at).slice(0, 10) : null,
+      billedOn: inv.billed_at ? todayYmdInAppTz(new Date(inv.billed_at)) : null,
       billedTo: billedToFor(job, inv),
       viewerRole: viewerRoleFor(job),
     })
