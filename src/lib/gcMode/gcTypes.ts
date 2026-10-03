@@ -581,6 +581,8 @@ export type GcAction =
   | { type: 'architectCertify'; projectId: string; number: number; amount: number; note: string }
   /** Our superintendent records an inspection passed, today. */
   | { type: 'passInspection'; projectId: string; lineId: string }
+  /** Our superintendent records an inspection failed, today: what, whose work, and the re-inspection day. */
+  | { type: 'failInspection'; projectId: string; lineId: string; note: string; packageIds: string[]; reinspectOn: string }
   /** A trade asks a question about the plans: in its portal, or by phone and the office types it. */
   | { type: 'tradeAskQuestion'; projectId: string; packageId: string; partnerId: string; text: string; sheets: string[] }
   /** We send a trade's question to the architect. */
@@ -714,7 +716,19 @@ export interface ScheduleActivity {
    * Its packageId is '' and its lineId its own (`${projectId}-insp-roughin`). It counts on the
    * critical path, not in work done against the plan. Passed: the day it passed.
    */
-  inspection?: { label: string; passedOn?: string }
+  inspection?: { label: string; passedOn?: string; failed?: InspectionFailure[] }
+}
+
+/**
+ * An inspection that did not pass (owner, 2026-10-03): the day, what failed, whose work it was,
+ * and the day it is inspected again. The activity moves to that day; what waits on it moves out.
+ */
+export interface InspectionFailure {
+  on: string
+  note: string
+  /** The trades whose work failed. Empty: not known. */
+  packageIds: string[]
+  reinspectOn: string
 }
 
 /** A date the schedule must meet: dry-in, the rough-in inspection, substantial completion. */

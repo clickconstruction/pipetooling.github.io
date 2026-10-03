@@ -909,6 +909,15 @@ export function initialGcState(): GcState {
     // The inspections (owner, 2026-10-03) are the job's own activities. The rough-in inspection
     // waits on the rough-ins; the fire alarm, controls and plumbing trim wait on it.
     inspection('fairoaksd-insp-roughin', 'Rough-in inspection', '2026-10-12', '2026-10-13', ['felec-2', 'fplumb-3', 'fhvac-2']),
+    // The service inspection was drawn for Sep 28 and failed that day on the electrician's work; it
+    // moved to today's re-inspection (the plan at Start keeps Sep 28).
+    {
+      ...inspection('fairoaksd-insp-service', 'Electrical service inspection', '2026-10-02', '2026-10-02', ['felec-1']),
+      inspection: {
+        label: 'Electrical service inspection',
+        failed: [{ on: '2026-09-28', note: 'The main bonding jumper is missing at the service panel.', packageIds: ['felec'], reinspectOn: '2026-10-02' }],
+      },
+    },
   ]
   // The final inspection waits on everything nothing else waits on.
   const fairOaksActivities = [
@@ -929,7 +938,9 @@ export function initialGcState(): GcState {
         ? { start: '2026-09-14', finish: '2026-10-02' }
         : a.lineId === 'froof-3'
           ? { start: '2026-10-05', finish: '2026-10-14' }
-          : { start: a.start, finish: a.finish },
+          : a.lineId === 'fairoaksd-insp-service'
+            ? { start: '2026-09-28', finish: '2026-09-28' }
+            : { start: a.start, finish: a.finish },
     ]),
   )
   const fairOaksSchedule: ProjectSchedule = {

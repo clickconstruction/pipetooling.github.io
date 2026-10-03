@@ -3,6 +3,8 @@ import {
   activityName,
   daysBetween,
   draftSchedule,
+  inspectedTrades,
+  openInspectionFailures,
   gcReducer,
   initialGcState,
   lookAheadWeeks,
@@ -187,6 +189,7 @@ describe('inspections', () => {
     const insp = items.filter((i) => i.activity.inspection)
     expect(insp.map((i) => [i.label, i.trade, i.company, i.worth, i.pkg])).toEqual([
       ['Rough-in inspection', 'Inspections', 'The city', 0, null],
+      ['Electrical service inspection', 'Inspections', 'The city', 0, null],
       ['Final inspection', 'Inspections', 'The city', 0, null],
     ])
     expect(scheduleRows(s, fairOaks(s)).some((r) => r.activity.inspection)).toBe(false)
@@ -196,10 +199,14 @@ describe('inspections', () => {
   it('shows in the look-ahead the week it is planned, and on the verify list from that week', () => {
     const s = initialGcState()
     const weeks = lookAheadWeeks(fairOaks(s), scheduleRows(s, fairOaks(s)), s.today)
-    expect(weeks.map((w) => w.inspections.map((i) => i.label))).toEqual([[], [], ['Rough-in inspection']])
-    expect(verifyList(fairOaks(s), scheduleRows(s, fairOaks(s)), s.today).inspections).toEqual([])
+    // The service inspection failed Sep 28 and is inspected again today.
+    expect(weeks.map((w) => w.inspections.map((i) => i.label))).toEqual([['Electrical service inspection'], [], ['Rough-in inspection']])
+    expect(verifyList(fairOaks(s), scheduleRows(s, fairOaks(s)), s.today).inspections.map((i) => i.label)).toEqual(['Electrical service inspection'])
     const later = at('2026-10-12')
-    expect(verifyList(fairOaks(later), scheduleRows(later, fairOaks(later)), later.today).inspections.map((i) => i.label)).toEqual(['Rough-in inspection'])
+    expect(verifyList(fairOaks(later), scheduleRows(later, fairOaks(later)), later.today).inspections.map((i) => i.label)).toEqual([
+      'Rough-in inspection',
+      'Electrical service inspection',
+    ])
   })
 
   it('passes once, today, and meets the milestone of the same name', () => {
@@ -228,5 +235,51 @@ describe('inspections', () => {
     expect(moved.log[0]?.text).toBe('Rough-in inspection now runs Wed Oct 14 to Thu Oct 15.')
     const row = scheduleItems(moved, fairOaks(moved)).find((i) => i.activity.lineId === 'fairoaksd-insp-roughin')
     expect(row?.slipDays).toBe(2)
+  })
+})
+
+describe('a failed inspection', () => {
+  const fail = (s: GcState, reinspectOn: string, note = 'The panel schedule is missing on two panels.', packageIds = ['felec']) =>
+    gcReducer(s, { type: 'failInspection', projectId: 'fairoaksd', lineId: 'fairoaksd-insp-roughin', note, packageIds, reinspectOn })
+  const act = (s: GcState, lineId: string) => fairOaks(s).schedule?.activities.find((a) => a.lineId === lineId)
+
+  it("reads the one still open, and whose work it was", () => {
+    const s = initialGcState()
+    const open = openInspectionFailures(fairOaks(s))
+    expect(open.map((f) => [f.label, f.times, f.failure.packageIds, f.failure.reinspectOn])).toEqual([['Electrical service inspection', 1, ['felec'], '2026-10-02']])
+    expect(openInspectionFailures(fairOaks(s), 'felec')).toHaveLength(1)
+    expect(openInspectionFailures(fairOaks(s), 'fconc')).toEqual([])
+    const roughIn = act(s, 'fairoaksd-insp-roughin')
+    expect(roughIn ? inspectedTrades(fairOaks(s), roughIn).map((k) => k.id) : []).toEqual(['felec', 'fplumb', 'fhvac'])
+  })
+
+  it('moves the inspection to the re-inspection day, and what waits on it out', () => {
+    const s = fail(initialGcState(), '2026-11-05')
+    expect(act(s, 'fairoaksd-insp-roughin')).toMatchObject({ start: '2026-11-05', finish: '2026-11-06' })
+    expect(act(s, 'fairoaksd-insp-roughin')?.inspection?.failed).toEqual([
+      { on: '2026-10-02', note: 'The panel schedule is missing on two panels.', packageIds: ['felec'], reinspectOn: '2026-11-05' },
+    ])
+    // The fire alarm and the controls started Nov 2; they wait on it, so they start the day after.
+    expect([act(s, 'felec-4')?.start, act(s, 'fhvac-3')?.start, act(s, 'fplumb-4')?.start]).toEqual(['2026-11-07', '2026-11-07', '2026-11-30'])
+    expect(s.log[0]?.text).toBe(
+      'The rough-in inspection failed on Fair Oaks Shops, Building D: The panel schedule is missing on two panels. It was Electrical\'s work. Re-inspection Thu Nov 5. 2 activities after it move out.',
+    )
+    // The slip shows against the plan at Start.
+    const row = scheduleItems(s, fairOaks(s)).find((i) => i.activity.lineId === 'fairoaksd-insp-roughin')
+    expect(row?.slipDays).toBe(24)
+  })
+
+  it('passes once inspected again, and the failure is no longer open', () => {
+    const s = gcReducer(initialGcState(), { type: 'passInspection', projectId: 'fairoaksd', lineId: 'fairoaksd-insp-service' })
+    expect(openInspectionFailures(fairOaks(s))).toEqual([])
+    expect(act(s, 'fairoaksd-insp-service')?.inspection?.failed).toHaveLength(1)
+  })
+
+  it('needs what failed and a day after today, and not once it passed', () => {
+    const s = initialGcState()
+    expect(fail(s, '2026-10-16', '  ')).toBe(s)
+    expect(fail(s, '2026-10-02')).toBe(s)
+    const passed = gcReducer(s, { type: 'passInspection', projectId: 'fairoaksd', lineId: 'fairoaksd-insp-roughin' })
+    expect(fail(passed, '2026-10-16')).toBe(passed)
   })
 })

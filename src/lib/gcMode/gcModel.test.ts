@@ -414,6 +414,18 @@ const STEPS: Step[] = [
   { label: 'Superintendent checks the stockroom joints', action: { type: 'checkPunchItem', projectId: 'fairoaksd', itemId: 'fairoaksd-punch-2', fixed: true } },
   { label: 'Superintendent checks the trip edge', action: { type: 'checkPunchItem', projectId: 'fairoaksd', itemId: 'fairoaksd-punch-4', fixed: true } },
   { label: 'Accept the concrete work on Fair Oaks D', action: { type: 'acceptWork', projectId: 'fairoaksd', packageId: 'fconc' } },
+  // A failed inspection (Building lane): the service re-inspection fails again, on the electrician's work.
+  {
+    label: 'Fair Oaks D: the service re-inspection fails again',
+    action: {
+      type: 'failInspection',
+      projectId: 'fairoaksd',
+      lineId: 'fairoaksd-insp-service',
+      note: 'The jumper is in. The service disconnect label is still missing.',
+      packageIds: ['felec'],
+      reinspectOn: '2026-10-06',
+    },
+  },
 ]
 
 const CUSTOMER_IDS = ['cibolo', 'raman']
@@ -552,6 +564,7 @@ describe('GC mode golden walk', () => {
       'sendTradeChange', 'tradeSignChange',
       'passInspection',
       'addPunchItem', 'tradeFixPunchItem', 'checkPunchItem',
+      'failInspection',
       'tradeOpenPortal',
       'tradeAnswerLines',
       'priceOwnBid',
