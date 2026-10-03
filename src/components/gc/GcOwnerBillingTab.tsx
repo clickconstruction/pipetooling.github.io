@@ -1,7 +1,7 @@
 import { useState, type Dispatch } from 'react'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
 import { GcOwnerBillingPortal } from './GcOwnerBillingPortal'
-import { Btn, Card, Chip, Stat, Why, input, num, td, th } from './gcUi'
+import { Btn, Card, Chip, Stat, Why, num, td, th } from './gcUi'
 import {
   daysUntil,
   missingTradeWaivers,
@@ -221,11 +221,6 @@ function OfficeSide({ state, project, dispatch }: { state: GcState; project: GcP
                 line={l}
                 spreadWords={`${l.kind === 'self' ? 'Our crew’s price' : 'Their price'} ${money(l.tradeWorth)} plus ${money(l.ourShare)} of our costs and fee.`}
                 pipelineRef={project.packages.find((p) => p.id === l.id)?.selfPerform?.ref}
-                onCrewPct={
-                  l.kind === 'self'
-                    ? (pct) => dispatch({ type: 'selfReport', projectId: project.id, packageId: l.id, pct })
-                    : undefined
-                }
               />
             ))}
             <tr>
@@ -244,54 +239,34 @@ function OfficeSide({ state, project, dispatch }: { state: GcState; project: GcP
   )
 }
 
-const CREW_STEPS = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
-
 function LineRow({
   line,
   pipelineRef,
-  onCrewPct,
   spreadWords,
 }: {
   line: OwnerLine
-  /** With our costs and fee spread in: what the trade's price is and what we added to it. */
-  spreadWords?: string
   /** The Pipeline job our own crew runs this trade on. */
   pipelineRef?: string
-  /** Our own crew reports its percent done here. Only on a trade we do ourselves. */
-  onCrewPct?: (pct: number) => void
+  /** With our costs and fee spread in: what the trade's price is and what we added to it. */
+  spreadWords?: string
 }) {
   const pct = line.worth === 0 ? null : Math.round((line.doneToDate / line.worth) * 100)
   const quiet = line.doneToDate === 0
-  const crewPct = line.crewPct ?? 0
-  const steps = CREW_STEPS.includes(crewPct) ? CREW_STEPS : [...CREW_STEPS, crewPct].sort((a, b) => a - b)
   return (
     <tr>
       <td style={{ ...td, fontWeight: 600, whiteSpace: 'nowrap' }}>{line.label}</td>
       <td style={{ ...td, color: quiet ? 'var(--text-muted)' : undefined }}>
         {line.source}
         {spreadWords && <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '0.15rem' }}>{spreadWords}</div>}
-        {onCrewPct && (
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '0.3rem' }}>
-            <select
-              aria-label={`Our own crew's percent done on ${line.label}`}
-              value={crewPct}
-              onChange={(e) => onCrewPct(Number(e.target.value))}
-              style={input}
-            >
-              {steps.map((n) => (
-                <option key={n} value={n}>{n}% done</option>
-              ))}
-            </select>
-            {pipelineRef && (
-              <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-                The real build reads it from the Pipeline job {pipelineRef}.
-              </span>
-            )}
-          </div>
-        )}
         {line.detail.length > 0 && (
           <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '0.15rem' }}>
             {line.detail.map((d) => (d.theySay === undefined ? `${d.label} ${d.pct}%` : `${d.label} ${d.pct}%, they say ${d.theySay}%`)).join(' · ')}
+          </div>
+        )}
+        {line.kind === 'self' && (
+          <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '0.15rem' }}>
+            Our crew reports it on Draws, under Our own crew.
+            {pipelineRef ? ` The real build reads it from the Pipeline job ${pipelineRef}.` : ''}
           </div>
         )}
       </td>
