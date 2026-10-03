@@ -395,6 +395,11 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
   (the made-up record before any went); paid out is the trades' paid draws, retainage released
   included. Our own crew (payroll) and general conditions carry no cost in the prototype. In the
   real build it is for the owner and the controller, like the rest of the app's money.
+- Money across every job (`allJobsMoney`, `GcOwnerBillingMoney.tsx`, built by the Owner Billing
+  lane for the Board lane to place as a **Money** tab on the board): the jobs that are ours (buying
+  out or building) added up the way `projectCash` adds one ("Across our 3 jobs we are $80,428
+  ahead"), then **Who owes us**, a late bill first and one waiting on the architect last, then each
+  job on a row. **Bill the owner** on any row opens that job's tab.
 - Insurance within 30 days of running out (`COI_WARN_DAYS`) turns its chip amber, asks under
   Needs you, and emails the company 30 days before the date.
 - A new insurance certificate counts the moment the company sends it; nobody in the office checks
