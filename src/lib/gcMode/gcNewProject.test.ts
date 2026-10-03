@@ -303,9 +303,13 @@ describe('the schedule\'s first draft', () => {
 
   const shell = scheduleDraft(boerne, '2026-10-12')
 
-  it('draws every line once, from the start day', () => {
+  it('draws every line once, from the start day, and the two inspections', () => {
     const lines = boerne.packages.reduce((n, p) => n + p.scope.length, 0)
-    expect(shell.activities).toHaveLength(lines)
+    expect(shell.activities).toHaveLength(lines + 2)
+    expect(shell.activities.filter((a) => a.inspection).map((a) => [a.lineId, a.packageId, a.inspection?.label])).toEqual([
+      ['boerne-insp-roughin', '', 'Rough-in inspection'],
+      ['boerne-insp-final', '', 'Final inspection'],
+    ])
     expect(shell.activities.every((a) => a.start >= '2026-10-12' && a.finish >= a.start)).toBe(true)
   })
 
@@ -334,7 +338,7 @@ describe('the schedule\'s first draft', () => {
     expect(shell.milestones.map((m) => [m.id, m.planned])).toEqual([
       ['boerne-dryin', at(shell, 'roof-4').finish],
       ['boerne-roughin', '2026-12-25'],
-      ['boerne-substantial', '2027-01-15'],
+      ['boerne-substantial', '2027-01-17'],
     ])
     expect(shell.baseline).toBeNull()
   })
@@ -343,8 +347,14 @@ describe('the schedule\'s first draft', () => {
     const fit = scheduleDraft(helotes, '2026-10-12')
     expect(at(fit, 'dry-1').after).toEqual(['dplumb-1'])
     expect(['delec-1', 'dhvac-1', 'dplumb-2'].map((id) => at(fit, id).start)).toEqual(['2026-10-27', '2026-10-27', '2026-10-27'])
-    // Close-in waits two days after the last rough-in, for the inspection.
+    // Close-in waits on the rough-in inspection, an activity of its own after the last rough-in.
+    expect(at(fit, 'helotes-insp-roughin')).toMatchObject({ start: '2026-11-12', finish: '2026-11-13' })
+    expect(at(fit, 'dry-2').after).toContain('helotes-insp-roughin')
     expect(at(fit, 'dry-2').start).toBe('2026-11-14')
+    // The final inspection waits on all the work; substantial completion is three days after it.
+    const final = at(fit, 'helotes-insp-final')
+    expect(final.start > fit.activities.filter((a) => !a.inspection).reduce((m, a) => (a.finish > m ? a.finish : m), '')).toBe(true)
+    expect(fit.milestones.find((m) => m.label === 'Substantial completion')?.planned).toBe('2026-12-18')
     expect(fit.milestones.map((m) => m.label)).toEqual(['Rough-in inspection', 'Substantial completion'])
   })
 })

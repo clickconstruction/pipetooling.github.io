@@ -445,7 +445,8 @@ export const SAMPLE_SHEET_INDEX = [
  * The stages a job goes through, in the order they are drawn. Each waits on the stage named in
  * `after` (or the nearest earlier one the job has). Site finish waits only on dry-in, so paving
  * runs beside the work inside. `days` is a first-draft length; `lag` is days between the stage
- * before and this one (close-in waits two days for the rough-in inspection).
+ * before and this one. The rough-in and final inspections are activities of their own (the owner,
+ * 2026-10-03), drawn by `scheduleDraft`, not waits on a link.
  */
 export const SCHEDULE_STAGES: { key: string; label: string; after: string | null; days: number; lag?: number }[] = [
   { key: 'sitePrep', label: 'Site prep', after: null, days: 10 },
@@ -456,12 +457,15 @@ export const SCHEDULE_STAGES: { key: string; label: string; after: string | null
   { key: 'dryIn', label: 'Dry-in', after: 'structure', days: 10 },
   { key: 'framing', label: 'Framing', after: 'dryIn', days: 10 },
   { key: 'roughIn', label: 'Rough-in', after: 'framing', days: 15 },
-  { key: 'closeIn', label: 'Close-in', after: 'roughIn', days: 10, lag: 2 },
+  { key: 'closeIn', label: 'Close-in', after: 'roughIn', days: 10 },
   { key: 'finishes', label: 'Finishes', after: 'closeIn', days: 10 },
   { key: 'trim', label: 'Trim', after: 'finishes', days: 7 },
   { key: 'siteFinish', label: 'Site finish', after: 'dryIn', days: 10 },
   { key: 'closeout', label: 'Closeout', after: 'trim', days: 5 },
 ]
+
+/** How long an inspection runs in the first draft, in days. The office changes it. */
+export const INSPECTION_DAYS = 2
 
 /** Words in a line's name that put it in a stage, the most telling first ("rooftop units" is rough-in, not roofing). */
 const STAGE_WORDS: [string, string[]][] = [
@@ -523,9 +527,11 @@ function draftLines(pkg: TradePackage): { lineId: string; label: string }[] {
  * stage. A stage starts when the stage before it is done, so the trades' rough-ins run side by
  * side after framing, close-in waits on all of them and the inspection, and the trims come after
  * the finishes. Inside a trade, its lines run in stage order, one after another, and its lines in
- * one stage share that stage's days (at least two each). Milestones:
- * dry-in (the last dry-in line), the rough-in inspection (two days after the last rough-in) and
- * substantial completion (five days after the last line). The office changes every date.
+ * one stage share that stage's days (at least two each). Two inspections are activities of their
+ * own, with no trade (packageId ''): the rough-in inspection after every rough-in, which close-in
+ * and anything else after the rough-ins wait on, and the final inspection after all the work.
+ * Milestones: dry-in (the last dry-in line), the rough-in inspection (on its finish) and
+ * substantial completion (three days after the final inspection). The office changes every date.
  */
 export function scheduleDraft(project: GcProject, start: string): ProjectSchedule {
   const order = new Map(SCHEDULE_STAGES.map((st, i) => [st.key, i]))
@@ -542,9 +548,16 @@ export function scheduleDraft(project: GcProject, start: string): ProjectSchedul
   }
   const done = new Map<string, ScheduleActivity>()
   const activities: ScheduleActivity[] = []
+  /** The rough-in inspection, once the rough-ins are drawn. Whatever waits on the rough-ins waits on it. */
+  let roughInspection: ScheduleActivity | null = null
   for (const stage of SCHEDULE_STAGES) {
     const gate = gateOf(stage.key)
-    const gateActs = gate ? byStage(gate).map((l) => done.get(l.lineId)).filter((a): a is ScheduleActivity => !!a) : []
+    const gateActs =
+      gate === 'roughIn' && roughInspection
+        ? [roughInspection]
+        : gate
+          ? byStage(gate).map((l) => done.get(l.lineId)).filter((a): a is ScheduleActivity => !!a)
+          : []
     const gateDay = gateActs.reduce<string | null>((m, a) => (m === null || a.finish > m ? a.finish : m), null)
     for (const line of byStage(stage.key)) {
       // The line before it in its own trade, in stage order: a crew does its lines one after another.
@@ -566,19 +579,42 @@ export function scheduleDraft(project: GcProject, start: string): ProjectSchedul
       done.set(line.lineId, a)
       activities.push(a)
     }
+    if (stage.key === 'roughIn' && byStage('roughIn').length > 0) {
+      const roughs = byStage('roughIn').map((l) => done.get(l.lineId)).filter((a): a is ScheduleActivity => !!a)
+      const from = plusDays(roughs.reduce((m, a) => (a.finish > m ? a.finish : m), start), 1)
+      roughInspection = {
+        lineId: `${project.id}-insp-roughin`,
+        packageId: '',
+        start: from,
+        finish: plusDays(from, INSPECTION_DAYS - 1),
+        after: roughs.map((a) => a.lineId),
+        inspection: { label: 'Rough-in inspection' },
+      }
+      activities.push(roughInspection)
+    }
   }
+  // The final inspection waits on all the work; substantial completion follows it.
+  const workEnd = activities.reduce((m, a) => (a.finish > m ? a.finish : m), start)
+  const finalFrom = plusDays(workEnd, 1)
+  const finalInspection: ScheduleActivity = {
+    lineId: `${project.id}-insp-final`,
+    packageId: '',
+    start: finalFrom,
+    finish: plusDays(finalFrom, INSPECTION_DAYS - 1),
+    after: activities.map((a) => a.lineId).filter((id) => !activities.some((b) => b.after.includes(id))),
+    inspection: { label: 'Final inspection' },
+  }
+  activities.push(finalInspection)
   const lastOf = (key: string) => byStage(key).reduce((m, l) => {
     const f = done.get(l.lineId)?.finish ?? ''
     return f > m ? f : m
   }, '')
-  const last = activities.reduce((m, a) => (a.finish > m ? a.finish : m), start)
   const dryIn = lastOf('dryIn')
-  const rough = lastOf('roughIn')
   const roof = project.packages.find((k) => k.trade === 'Roofing') ?? null
   const milestones: ScheduleMilestone[] = [
     ...(dryIn ? [{ id: `${project.id}-dryin`, label: 'Dry-in', planned: dryIn, packageId: roof?.id ?? null, metOn: null }] : []),
-    ...(rough ? [{ id: `${project.id}-roughin`, label: 'Rough-in inspection', planned: plusDays(rough, 2), packageId: null, metOn: null }] : []),
-    { id: `${project.id}-substantial`, label: 'Substantial completion', planned: plusDays(last, 5), packageId: null, metOn: null },
+    ...(roughInspection ? [{ id: `${project.id}-roughin`, label: 'Rough-in inspection', planned: roughInspection.finish, packageId: null, metOn: null }] : []),
+    { id: `${project.id}-substantial`, label: 'Substantial completion', planned: plusDays(finalInspection.finish, 3), packageId: null, metOn: null },
   ]
   return { activities, milestones, baseline: null, lookAhead: [] }
 }

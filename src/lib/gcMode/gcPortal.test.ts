@@ -449,3 +449,42 @@ describe('for the office: a company that never opened its link', () => {
     expect(state.partners.filter((p) => linkNeverOpened(state, p.id)).map((p) => p.id)).toEqual([])
   })
 })
+
+describe('a change order to sign', () => {
+  const drafted = gcReducer(state, {
+    type: 'draftChangeOrder',
+    projectId: 'helotes',
+    description: 'Add a soffit over the reception desk, per A-201',
+    reason: 'owner',
+    schedule: '+1 working day',
+    packageId: 'dry',
+    cost: 3_100,
+    price: 0,
+  })
+  const orders = drafted.projects.find((p) => p.id === 'helotes')?.changeOrders ?? []
+  const coId = orders[orders.length - 1]?.id ?? ''
+  const sent = [
+    { type: 'sendChangeOrder' as const, projectId: 'helotes', changeOrderId: coId },
+    { type: 'ownerSignChangeOrder' as const, projectId: 'helotes', changeOrderId: coId },
+    { type: 'sendTradeChange' as const, projectId: 'helotes', changeOrderId: coId },
+  ].reduce((s2, a) => gcReducer(s2, a), drafted)
+
+  it('asks Hill Country to sign it, with what it adds', () => {
+    const line = portalTodos(sent, 'hillcountry').find((t) => t.key.endsWith(':sign'))
+    expect(line?.text).toMatch(/^Sign change order \d+ on Helotes Dental Office\. It adds \$3,100\.$/)
+  })
+
+  it('sends a message the day we send it, in Spanish too', () => {
+    const m = portalMessages(sent, 'hillcountry').find((x) => x.kind === 'change')
+    expect(m?.lines).toContain('We have a change to your Framing and drywall work on Helotes Dental Office: Add a soffit over the reception desk, per A-201.')
+    expect(m?.lines).toContain('It adds $3,100 to your statement of work.')
+    expect(portalMessages(sent, 'hillcountry', 'es').find((x) => x.kind === 'change')?.lines).toContain('Suma $3,100 a su orden de trabajo.')
+  })
+
+  it('drops the line once signed, and the job money counts the change', () => {
+    const before = portalHome(sent, 'hillcountry').jobs[0]?.money?.price ?? 0
+    const signed = gcReducer(sent, { type: 'tradeSignChange', projectId: 'helotes', changeOrderId: coId })
+    expect(portalTodos(signed, 'hillcountry').some((t) => t.key.endsWith(':sign'))).toBe(false)
+    expect(portalHome(signed, 'hillcountry').jobs[0]?.money?.price).toBe(before + 3_100)
+  })
+})
