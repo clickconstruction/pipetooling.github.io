@@ -113,6 +113,9 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   doing GC work ourselves, but the entire app is designed in a way where a later company could
   put their company in this app." Build for one company; name nothing Click-only, so a later
   company could be added the way the rest of the app allows.
+- **We bill the owner once a month** (Owner Billing lane, 2026-10-02): one pay application a
+  month covering every trade's work since the last one, not a bill each time a trade asks for a
+  draw. The day of the month is a default (`OWNER_BILL_DAY` in `gcOwnerBilling.ts`).
 
 ## My defaults the owner has not confirmed
 
@@ -131,6 +134,11 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
   came does not count against them.
 - Start is a hard stop: no "start anyway".
 - Red inside 7 days and amber inside 14 on the days-left block.
+- Owner billing (`gcOwnerBilling.ts`): the pay application goes on the 25th. A trade's line on
+  the owner's bill is the work its company reported, before we approve their draw. General
+  conditions, contingency and fee follow the share of the trades' work done, so the bill totals
+  the same whether they show as lines or spread into the trades. The owner holds the percent on
+  their customer record, 10% when it says nothing.
 
 ## Open questions (the owner's to answer)
 
@@ -147,6 +155,9 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
 8. Should promises other than a quote date be tracked (insurance by Friday, a start date)?
 9. Should the Project Board also group by customer, and should Actions for assistants also sit
    on the Project Board?
+10. On the owner's bill, do our general conditions, contingency and fee show as lines of their
+    own, or spread into each trade's line so the owner never sees the fee? (Built as lines of
+    their own for now. The total is the same either way.)
 
 ## Workflow steps not built yet
 

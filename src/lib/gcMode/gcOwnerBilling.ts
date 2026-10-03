@@ -1,0 +1,165 @@
+/**
+ * GC mode — design spike. Billing the owner: the lines we bill the owner against, the work done on
+ * each, and this month's pay application. It reads the work the trades report (the Building
+ * lane's) and never writes it.
+ *
+ * The math is the AIA pay application's (G702 on top, G703 the lines), said in plain words: work
+ * done so far, less what the owner holds, less what we billed before, is this bill.
+ */
+import type { GcCustomer, GcProject, GcState, TradePackage } from './gcTypes'
+import { carriedAmount, proposalTotals } from './gcBids'
+import { partnerById } from './gcLookups'
+
+/** We bill the owner once a month (the owner's call, 2026-10-02). The day of the month is my default. */
+export const OWNER_BILL_DAY = 25
+
+/** What the owner holds back from each bill when their customer record does not say. */
+export const OWNER_RETAINAGE_DEFAULT_PCT = 10
+
+export type OwnerLineKind = 'trade' | 'self' | 'generalConditions' | 'contingency' | 'fee'
+
+/** One line of the owner's bill: a trade, or one of our own costs. */
+export interface OwnerLine {
+  id: string
+  label: string
+  kind: OwnerLineKind
+  /** What the line is worth in our price to the owner. */
+  worth: number
+  /** The work done on it so far, in dollars. */
+  doneToDate: number
+  /** The work done on it by the last pay application. None is recorded yet, so this is 0 for now. */
+  doneBefore: number
+  /** The work done since the last pay application: done so far less done before. */
+  thisMonth: number
+  /** Where the line's progress comes from, in one sentence. */
+  source: string
+  /** The trade's own lines behind the number, when a statement of work has them. */
+  detail: { label: string; pct: number }[]
+}
+
+export interface OwnerPayApp {
+  number: number
+  /** The day it goes to the owner: the next bill day on or after today. */
+  billOn: string
+  /** The bill day plus the owner's usual days to pay. Null when they have never paid us. */
+  expectPaidOn: string | null
+  lines: OwnerLine[]
+  /** Our price to the owner: every line's worth. */
+  contract: number
+  doneToDate: number
+  /** 0 to 1: the share of the trades' work done. Our own costs and fee follow it. */
+  tradeShare: number
+  retainagePct: number
+  /** What the owner holds back on the work done so far. */
+  retainage: number
+  /** What earlier pay applications asked the owner to pay: their work less what the owner held. */
+  askedBefore: number
+  /** What this bill asks the owner to pay now. */
+  due: number
+  /** What is still to bill, with what the owner holds. */
+  leftToBill: number
+  /** False until we press Start on Get started. */
+  started: boolean
+}
+
+function customerOf(state: GcState, project: GcProject): GcCustomer | undefined {
+  return state.customers.find((c) => c.id === project.customerId)
+}
+
+function addDays(iso: string, days: number): string {
+  const [y, m, d] = iso.split('-').map(Number)
+  return new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, (d ?? 1) + days)).toISOString().slice(0, 10)
+}
+
+/** The next bill day on or after today. */
+export function nextOwnerBillDay(today: string): string {
+  const [y, m, d] = today.split('-').map(Number)
+  const year = y ?? 1970
+  const month = (m ?? 1) - 1 + ((d ?? 1) > OWNER_BILL_DAY ? 1 : 0)
+  return new Date(Date.UTC(year, month, OWNER_BILL_DAY)).toISOString().slice(0, 10)
+}
+
+function tradeLine(state: GcState, pkg: TradePackage): OwnerLine {
+  const worth = carriedAmount(pkg) ?? 0
+  const base = { id: pkg.id, label: pkg.trade, worth, doneBefore: 0, detail: [] as OwnerLine['detail'] }
+  if (pkg.selfPerform) {
+    return {
+      ...base,
+      kind: 'self',
+      doneToDate: 0,
+      thisMonth: 0,
+      source: `Our own crew. Their progress is on the Pipeline job ${pkg.selfPerform.ref}. This page does not read it yet.`,
+    }
+  }
+  const invite = pkg.invites.find((i) => i.id === pkg.awardedInviteId)
+  const company = invite ? (partnerById(state, invite.partnerId)?.company ?? 'The company') : null
+  const sow = pkg.sow
+  if (!company) return { ...base, kind: 'trade', doneToDate: 0, thisMonth: 0, source: 'Not awarded yet.' }
+  if (!sow || sow.status !== 'signed') {
+    return { ...base, kind: 'trade', doneToDate: 0, thisMonth: 0, source: `${company}. Their statement of work is not signed yet.` }
+  }
+  const done = sow.sov.reduce((s, l) => s + (l.amount * l.pctReported) / 100, 0)
+  const pct = sow.price === 0 ? 0 : Math.round((done / sow.price) * 100)
+  return {
+    ...base,
+    kind: 'trade',
+    doneToDate: done,
+    thisMonth: done,
+    source: done > 0 ? `${company} reported ${pct}% done.` : `${company} has not reported any work yet.`,
+    detail: sow.sov.map((l) => ({ label: l.label, pct: l.pctReported })),
+  }
+}
+
+/**
+ * This month's pay application to the owner, as a draft: what the bill would say if it went on the
+ * next bill day with the work reported today. Each trade's line is the work its company reported.
+ * General conditions, contingency and fee follow the share of the trades' work done, so the bill
+ * comes to the same total whether the owner sees them as lines or spread into the trades.
+ */
+export function ownerPayApp(state: GcState, project: GcProject): OwnerPayApp {
+  const customer = customerOf(state, project)
+  const totals = proposalTotals(project)
+  const trades = project.packages.map((pkg) => tradeLine(state, pkg))
+  const tradeWorth = trades.reduce((s, l) => s + l.worth, 0)
+  const tradeDone = trades.reduce((s, l) => s + l.doneToDate, 0)
+  const tradeShare = tradeWorth === 0 ? 0 : tradeDone / tradeWorth
+  const sharePct = Math.round(tradeShare * 100)
+  const follows = (id: string, label: string, kind: OwnerLineKind, worth: number): OwnerLine => ({
+    id,
+    label,
+    kind,
+    worth,
+    doneToDate: worth * tradeShare,
+    doneBefore: 0,
+    thisMonth: worth * tradeShare,
+    source: `Follows the trades, which are ${sharePct}% done.`,
+    detail: [],
+  })
+  const lines: OwnerLine[] = [
+    ...trades,
+    follows('gc', 'General conditions', 'generalConditions', totals.generalConditions),
+    follows('contingency', `Contingency ${project.contingencyPct}%`, 'contingency', totals.contingency),
+    follows('fee', `Fee ${project.feePct}%`, 'fee', totals.fee),
+  ]
+  const contract = lines.reduce((s, l) => s + l.worth, 0)
+  const doneToDate = lines.reduce((s, l) => s + l.doneToDate, 0)
+  const retainagePct = customer?.retainagePct ?? OWNER_RETAINAGE_DEFAULT_PCT
+  const retainage = (doneToDate * retainagePct) / 100
+  const askedBefore = 0
+  const billOn = nextOwnerBillDay(state.today)
+  return {
+    number: 1,
+    billOn,
+    expectPaidOn: customer?.payDays == null ? null : addDays(billOn, customer.payDays),
+    lines,
+    contract,
+    doneToDate,
+    tradeShare,
+    retainagePct,
+    retainage,
+    askedBefore,
+    due: doneToDate - retainage - askedBefore,
+    leftToBill: contract - doneToDate + retainage,
+    started: project.startedOn !== null,
+  }
+}
