@@ -13,6 +13,7 @@ import { partnerBlockers } from './gcBench'
 import { ownCrewWork, sentBackOpen, timesSentBack, tradeCloseout } from './gcBuilding'
 import { scheduleSummary, scheduleSummaryWords } from './gcBuildingSchedule'
 import { drawPayDays } from './gcBuildingPay'
+import { staleChange, staleWords } from './gcStale'
 
 /** The stage colors, saturated on purpose: the ring is a status mark, not a neutral surface. */
 export const RING_COLORS: Record<GcStage, string> = {
@@ -128,11 +129,13 @@ function biddingProgress(state: GcState, project: GcProject): StageProgress {
     items: priced.map(({ pkg, invite }) => {
       const stale = bidIsStale(project, pkg, invite)
       const company = partnerById(state, invite.partnerId)?.company ?? 'A company'
+      // Name what changed under the quote (the owner's pick, 2026-10-03), not only the trade.
+      const change = stale ? staleChange(project, pkg, invite) : null
       return {
         label: `${company} on ${pkg.trade}`,
         done: !stale,
         detail: stale
-          ? `Priced on ${planLabel(project, invite.bid?.basedOnRev ?? null)}. Ask them to confirm.`
+          ? `Priced on ${planLabel(project, invite.bid?.basedOnRev ?? null)}. ${change ? `${staleWords(pkg, change)} ` : ''}Ask them to confirm.`
           : `On ${planLabel(project, newest)}`,
       }
     }),
