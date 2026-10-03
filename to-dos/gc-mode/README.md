@@ -157,6 +157,14 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   Building it shows the schedule's measures, days behind or ahead with milestones and the
   look-ahead, once the schedule is built (the Building lane builds the measures, the Board lane
   shows them).
+- **A set issued on a job with a schedule says what it does to it** (approved as built,
+  2026-10-03): **A new set of plans came in** lists the scheduled activities its changed sheets
+  reach, each with its spare days, and takes the days the change adds to each. What waits on it
+  moves out too, never earlier, and the plan at Start stays as the baseline. It says whether the
+  job's last day moves and whether substantial completion still holds; it never moves that
+  milestone, since more time is a change order. The set records the days (`PlanSet.pushed`), and
+  each company's email names its new dates (`activitiesTouched`, `pushSchedule`,
+  `issuePlanSet.schedulePushes`).
 - **The schedule** (2026-10-02, decided before anything is built): several activities per trade,
   like rough in, top out and trim. We draw it; the companies do not propose dates. It lives only
   inside GC mode for now, not on the app's Schedule page. A milestone counts as hit within a few
@@ -400,6 +408,11 @@ they point to, for the lanes to pick up.
   the job, and a set issued after Start saying which activities it moves.
 
 ## Workflow steps not built yet
+
+- A schedule link cannot carry a fixed wait. The two days drawn for the rough-in inspection read as
+  spare days, so a push into them is absorbed. A wait on a link (or the inspection as an activity)
+  is the Building lane's schedule model. A set's added days could also start a change order with
+  the time in it (Owner Billing's change orders carry a schedule field).
 
 - The schedule, the rest: the other lanes' parts (*The schedule, proposed*): the Get started step, the lines on Trade partners, the trade's weekly marks in its portal, and the New Project lane's draft.
 

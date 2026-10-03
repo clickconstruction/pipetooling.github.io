@@ -23,6 +23,8 @@ export interface PlanSet {
   addedSheets?: PlanSheet[]
   /** Scope lines this set adds to trades already on the job. Quotes in before it never answered them. */
   addedLines?: { packageId: string; scopeId: string }[]
+  /** Days this set added to scheduled activities, by line id. What waited on them moved too. */
+  pushed?: { lineId: string; days: number }[]
 }
 
 /** One drawing in the set. The discipline is read from the number's letters (E-201 → Electrical). */
@@ -417,6 +419,8 @@ export type GcAction =
       newTrades: NewTradeDraft[]
       /** Scope lines this set adds to trades already on the job, with the sheets each reads from. */
       newLines?: { packageId: string; label: string; sheets: string[] }[]
+      /** Days this set adds to scheduled activities, by line id. What waits on them moves out too. */
+      schedulePushes?: Record<string, number>
     }
   | { type: 'acceptWork'; projectId: string; packageId: string }
   | { type: 'tradeSendWarranty'; projectId: string; packageId: string }
