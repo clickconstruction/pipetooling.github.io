@@ -8,6 +8,7 @@
  * The Billed row's pay history then says "2 checks came back · Apr". Pure; tested beside it.
  */
 import { effectiveInvoiceParty, payerCustomerId } from './billToParty'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 export type ArReturnedCheckPayerRow = {
   mercury_transaction_id: string
@@ -31,7 +32,8 @@ export function arReturnsByPayer(rows: ReadonlyArray<ArReturnedCheckPayerRow>): 
     const job = { bill_to_party: r.job_bill_to_party, gc_customer_id: r.job_gc_customer_id, customer_id: r.job_customer_id }
     const payer = payerCustomerId(job, effectiveInvoiceParty(job, { bill_to_party: r.invoice_bill_to_party, bill_to_email: r.invoice_bill_to_email }))
     if (!payer) continue
-    const ymd = r.came_back_at ? String(r.came_back_at).slice(0, 10) : null
+    // came_back_at is an instant: its day in APP_CALENDAR_TZ, not its UTC date.
+    const ymd = calendarYmdInAppTzFromIso(String(r.came_back_at ?? '')) || null
     const g = seen.get(payer) ?? { txs: new Set<string>(), lastYmd: null }
     g.txs.add(r.mercury_transaction_id)
     if (ymd && (!g.lastYmd || ymd > g.lastYmd)) g.lastYmd = ymd

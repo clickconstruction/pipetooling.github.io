@@ -80,6 +80,15 @@ describe('summarizeBankReturnedPayments', () => {
     expect(summarizeBankReturnedPayments([], tx, jobs)).toEqual({ count: 0, total: 0, first: null, items: [] })
   })
 
+  it('a deposit posted in a Central evening reads that day', () => {
+    // 7:30 pm CDT on Oct 2 (PostgREST's +00:00 shape), 6:30 pm CST on Dec 1, and noon UTC.
+    const posted = (at: string) =>
+      summarizeBankReturnedPayments([{ id: 'p', job_id: 'j-878', amount: 100, mercury_transaction_id: 't' }], new Map([['t', { id: 't', status: 'failed', posted_at: at, amount: 100, failure_reason: 'Insufficient funds' }]]), jobs).first?.postedYmd
+    expect(posted('2026-10-03T00:30:00+00:00')).toBe('2026-10-02')
+    expect(posted('2026-12-02T00:30:00Z')).toBe('2026-12-01')
+    expect(posted('2026-10-03T12:00:00Z')).toBe('2026-10-03')
+  })
+
   it('labels a job by number and name, falling back to the customer', () => {
     expect(jobLabelForBankReturn({ id: 'x', hcp_number: '878', job_name: 'Take 5 – Seguin' })).toBe('J878 Take 5 – Seguin')
     expect(jobLabelForBankReturn({ id: 'x', hcp_number: ' ', job_name: '', customer_name: 'Dudley' })).toBe('Dudley')

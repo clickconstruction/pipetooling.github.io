@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { MercuryDepositFacts } from '../lib/jobs/billsAndPayments'
+import { calendarYmdInAppTzFromIso } from '../utils/dateUtils'
 
 type Linked = { mercury_transaction_id: string | null }
 
@@ -34,7 +35,8 @@ export function useMercuryDepositFacts(payments: ReadonlyArray<Linked>): Record<
       const next: Record<string, MercuryDepositFacts> = {}
       for (const t of data as unknown as Array<{ id: string; posted_at: string | null; status: string | null; kind: string | null; counterparty_name: string | null; failure_reason: string | null }>) {
         next[t.id] = {
-          postedYmd: t.posted_at ? String(t.posted_at).slice(0, 10) : null,
+          // posted_at is an instant: its day in APP_CALENDAR_TZ, not its UTC date (an evening deposit would read tomorrow).
+          postedYmd: calendarYmdInAppTzFromIso(String(t.posted_at ?? '')) || null,
           counterparty: t.counterparty_name ?? null,
           kind: t.kind ?? null,
           status: t.status ?? null,
