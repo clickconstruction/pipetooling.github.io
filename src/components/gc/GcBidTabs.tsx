@@ -10,7 +10,14 @@ import {
   type TradePackage,
 } from '../../lib/gcMode/gcModel'
 import type { GcPaneProps } from './GcOfficeTabs'
+import { usePortalLang } from './gcPortalLang'
 import { Btn, Card, Chip, Why, num, td, th } from './gcUi'
+
+/** The table's words in the portal's language (the Portal lane's, PORTAL_SPANISH.md). */
+const TAB_WORDS = {
+  en: { rank: 'Rank', company: 'Company', quote: 'Quote', overLow: 'Over the low', low: 'low', you: '(you)', awarded: 'awarded', another: 'Another company' },
+  es: { rank: 'Lugar', company: 'Empresa', quote: 'Cotización', overLow: 'Arriba de la más baja', low: 'la más baja', you: '(usted)', awarded: 'adjudicada', another: 'Otra empresa' },
+} as const
 
 /**
  * GC mode design spike: bid tabs. After our bid is in, every company that quoted a trade gets
@@ -21,29 +28,31 @@ import { Btn, Card, Chip, Why, num, td, th } from './gcUi'
 
 /** The tab as one company reads it. viewerId null is the office's own read: every name shows. */
 export function BidTabTable({ rows, viewerId, showNames }: { rows: BidTabRow[]; viewerId: string | null; showNames: boolean }) {
+  // 'en' everywhere outside the portal, so the office's own read stays English.
+  const w = TAB_WORDS[usePortalLang().lang]
   return (
     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
       <thead>
         <tr>
-          <th style={th}>Rank</th>
-          <th style={th}>Company</th>
-          <th style={{ ...th, textAlign: 'right' }}>Quote</th>
-          <th style={{ ...th, textAlign: 'right' }}>Over the low</th>
+          <th style={th}>{w.rank}</th>
+          <th style={th}>{w.company}</th>
+          <th style={{ ...th, textAlign: 'right' }}>{w.quote}</th>
+          <th style={{ ...th, textAlign: 'right' }}>{w.overLow}</th>
         </tr>
       </thead>
       <tbody>
         {rows.map((r) => {
           const mine = r.partnerId === viewerId
-          const name = viewerId === null || showNames || mine ? r.company : 'Another company'
+          const name = viewerId === null || showNames || mine ? r.company : w.another
           return (
             <tr key={r.partnerId} style={{ background: mine ? 'var(--bg-amber-100)' : undefined, fontWeight: mine ? 700 : 400 }}>
               <td style={td}>{r.rank}</td>
               <td style={td}>
                 {name}
-                {mine ? ' (you)' : ''} {r.awarded && <Chip tone="green">awarded</Chip>}
+                {mine ? ` ${w.you}` : ''} {r.awarded && <Chip tone="green">{w.awarded}</Chip>}
               </td>
               <td style={num}>{money(r.amount)}</td>
-              <td style={num}>{r.rank === 1 ? 'low' : `${r.overLowPct}%`}</td>
+              <td style={num}>{r.rank === 1 ? w.low : `${r.overLowPct}%`}</td>
             </tr>
           )
         })}

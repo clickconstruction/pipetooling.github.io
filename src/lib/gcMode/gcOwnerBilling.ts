@@ -922,3 +922,64 @@ export function ownerLateBills(state: GcState, project: GcProject): { app: Owner
     .filter((b) => b.due.daysLate > 0 && b.open > 0.005)
     .sort((a, b) => b.due.daysLate - a.due.daysLate)
 }
+
+// ---------------------------------------------------------------------------------------------
+// Money across every job (owner's go-ahead, 2026-10-03): the jobs that are ours side by side,
+// where we stand on each and in all, and who owes us, late first. The Board lane places it on the
+// Project Board. It only reads what each job's Bill the owner already works out.
+// ---------------------------------------------------------------------------------------------
+
+export interface JobMoney {
+  project: GcProject
+  cash: ProjectCash
+  /** The trades' draws that wait on us: approved and not paid, or asked for. */
+  tradesWaiting: number
+}
+
+/** One bill with money open on it, for the who-owes-us list. */
+export interface OwedBill {
+  project: GcProject
+  app: OwnerPayAppSent
+  open: number
+  due: OwnerPayDue
+  /** Sent, and the architect has not certified it yet. */
+  waitingOnArchitect: boolean
+}
+
+export interface AllJobsMoney {
+  jobs: JobMoney[]
+  totals: { paidIn: number; paidOut: number; net: number; owed: number; ownerHolds: number; weHold: number; tradesWaiting: number }
+  /** Late first (most days late), then waiting on the architect, then the rest, biggest first. */
+  owed: OwedBill[]
+}
+
+export function allJobsMoney(state: GcState): AllJobsMoney {
+  const ours = state.projects.filter((p) => p.stage === 'buyout' || p.stage === 'building')
+  const jobs: JobMoney[] = ours.map((project) => {
+    const cash = projectCash(state, project)
+    return { project, cash, tradesWaiting: cash.out.approved + cash.out.asked }
+  })
+  const owed: OwedBill[] = ours.flatMap((project) =>
+    ownerPayAppsSent(project)
+      .filter((app) => app.paidOn === null && appOpen(app) > 0.005)
+      .map((app) => ({ project, app, open: appOpen(app), due: ownerPayDue(state, project, app), waitingOnArchitect: appCertified(app) === null })),
+  )
+  const rank = (b: OwedBill) => (b.due.daysLate > 0 ? 0 : b.waitingOnArchitect ? 2 : 1)
+  owed.sort((a, b) => rank(a) - rank(b) || b.due.daysLate - a.due.daysLate || b.open - a.open)
+  const sum = (f: (j: JobMoney) => number) => jobs.reduce((t, j) => t + f(j), 0)
+  const paidIn = sum((j) => j.cash.in.paid)
+  const paidOut = sum((j) => j.cash.out.paid)
+  return {
+    jobs,
+    totals: {
+      paidIn,
+      paidOut,
+      net: paidIn - paidOut,
+      owed: sum((j) => j.cash.in.owed),
+      ownerHolds: sum((j) => j.cash.in.held),
+      weHold: sum((j) => j.cash.out.held),
+      tradesWaiting: sum((j) => j.tradesWaiting),
+    },
+    owed,
+  }
+}

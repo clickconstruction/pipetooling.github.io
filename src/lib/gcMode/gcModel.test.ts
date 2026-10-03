@@ -414,6 +414,24 @@ const STEPS: Step[] = [
   { label: 'Superintendent checks the stockroom joints', action: { type: 'checkPunchItem', projectId: 'fairoaksd', itemId: 'fairoaksd-punch-2', fixed: true } },
   { label: 'Superintendent checks the trip edge', action: { type: 'checkPunchItem', projectId: 'fairoaksd', itemId: 'fairoaksd-punch-4', fixed: true } },
   { label: 'Accept the concrete work on Fair Oaks D', action: { type: 'acceptWork', projectId: 'fairoaksd', packageId: 'fconc' } },
+  // The project manual (New Project lane, 2026-10-03): a set revises a section and adds a line that reads it.
+  {
+    label: 'Leon Springs: Addendum 1 revises the roofing section',
+    action: {
+      type: 'issuePlanSet',
+      projectId: 'leon-springs-urgent-care',
+      label: 'Addendum 1',
+      note: 'Section 07 54 23: the membrane goes from 60 to 80 mil, with walk pads to each rooftop unit.',
+      sheets: [],
+      addedSheets: [],
+      touches: ['leon-springs-urgent-care-roofing'],
+      recipients: [],
+      newTrades: [],
+      newLines: [{ packageId: 'leon-springs-urgent-care-roofing', label: 'Walk pads', sheets: [], specs: ['07 54 23'] }],
+      specs: ['07 54 23'],
+      addedSpecs: [{ id: '07 54 23', title: 'Thermoplastic polyolefin roofing' }],
+    },
+  },
 ]
 
 const CUSTOMER_IDS = ['cibolo', 'raman']
