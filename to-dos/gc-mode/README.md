@@ -69,6 +69,7 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
 | **New here?** (top right) | An 11-stop spotlight walkthrough of the three stages on the Project Board: each stage's question, what you do in it, how it ends, then where to try it. Stops in `src/lib/gcMode/gcTour.ts`, on the app's `SpotlightTour`. |
 | The ring on each row | How far the project is through its stage (`stageProgress` in the model; `GcProgressRing`). Hover it, tap it on a phone, or tab to it: a card lists what the ring counts by type, what is left in each spelled out, what is done in one line, and an *Also* list it does not count. Bidding: enough quotes (2 per hired trade), a number to carry, quotes on the newest plans, our bid sent. Buyout: the Get started checklist by kind of step (the owner side, awarded, master agreement, insurance, W-9, statement of work). Building: work reported per trade, weighted by its statement of work; draws and waivers waiting under *Also*. |
 | **Project Board** | Projects in three sections: Bidding to the owner, Buying out, Building. Each row leads with the days left before our bid (red inside a week, amber inside two), then the name, the owner and architect (each a link), chips, the Bid Board's folder and plans icons, and the price. |
+| **+ New project** (beside *Bidding to the owner*) | One window in four steps, each feeding the next. **The project**: name, address, town, owner and architect from the one customer list ("Someone new" makes a record), bid due, size. **The plans**: the set's name (Bid set, Pricing set, Permit set or typed), the day it came in, the sheet index pasted from the cover sheet and read as you paste (A-101, A101, A1.01, FP-101; capitals become sentence case; a line not read is listed). **The trades**: guessed from the sheets in build order, each with the sheets behind it; untick, add, mark **Ours**, a budget. **Each scope**: each trade's usual lines to change; Enter starts the next line. **Create the project** puts it under Bidding to the owner and opens it on Trades. **Paste a made-up sheet index** tries it. |
 | Plans icon on a row | A plans window over the board: newest set first, the sheet list by discipline, what the last addendum changed, arrow keys flip sheets. Drawings are stand-ins. |
 | Owner or architect name | One company window, shaped by what the company is to us: an owner gets money, how they buy and pay, projects we build for them; an architect gets addenda and questions waiting on them. One call log either way. |
 | **Trades** tab | One row per trade: who we asked with each bid in thousands, our budget, the lowest all in, what we carry. **Compare bids** opens the comparison. **On a map** opens the map. |
@@ -113,6 +114,12 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   doing GC work ourselves, but the entire app is designed in a way where a later company could
   put their company in this app." Build for one company; name nothing Click-only, so a later
   company could be added the way the rest of the app allows.
+- **New Project starts with the plans** (approved as built, 2026-10-02): a **+ New project**
+  button beside *Bidding to the owner* opens four steps: the project, the plans, the trades,
+  each scope. The trades are a guess from the sheet index (discipline letters plus title words
+  like "roof" or "door", `TRADE_TEMPLATES` in `gcNewProject.ts`); each scope starts from the
+  trade's usual lines. Nobody is asked until the office asks on Trades. The company's own trades
+  (`OUR_TRADES`, plumbing) come in ticked as ours.
 - **We bill the owner once a month** (Owner Billing lane, 2026-10-02): one pay application a
   month covering every trade's work since the last one, not a bill each time a trade asks for a
   draw. The day of the month is a default (`OWNER_BILL_DAY` in `gcOwnerBilling.ts`).
@@ -155,14 +162,19 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
 8. Should promises other than a quote date be tracked (insurance by Friday, a start date)?
 9. Should the Project Board also group by customer, and should Actions for assistants also sit
    on the Project Board?
-10. On the owner's bill, do our general conditions, contingency and fee show as lines of their
+10. A trade ticked **Ours** on a new project counts as a real number on the ring, even at $0.
+    Should ticking it start our own bid in Trades mode, and count only once that bid is priced?
+11. A new project's budgets start blank. Should a budget come from the size (a cost per square
+    foot for each trade)? Asked before building, after distance pricing was built and removed.
+12. On the owner's bill, do our general conditions, contingency and fee show as lines of their
     own, or spread into each trade's line so the owner never sees the fee? (Built as lines of
     their own for now. The total is the same either way.)
 
 ## Workflow steps not built yet
 
-- Starting a project: New Project, with the plans coming in (the prototype's projects are pre-made).
-- Splitting the plans into trades and writing each scope (the trades are pre-made).
+- New Project past its first form: a scope line tied to the sheets or spec section it reads
+  from, exclusions, and a budget from the size (open question 11). A later set cannot yet add a
+  trade, name itself anything but "Addendum N", or give an added sheet its real title.
 - A trade asks a question about the plans, the architect answers, every bidder on the trade
   gets the answer. Three made-up questions show in the architect's window, read-only.
 - Change orders, both to the owner and to a trade (a statement of work amendment).
@@ -202,6 +214,7 @@ imitates it.
 | `gcPlans.ts` · `gcStart.ts` · `gcProgress.ts` | Plans, sheets and who hears about a new set · the Get started checklist · the ring and its hover card. |
 | `gcBids.ts` · `gcCustomers.ts` · `gcMap.ts` | Compare all in, what we carry, our price, bid tabs, statement-of-work money · the company window's summaries · towns, the drive and the map's list. |
 | `gcFollowUp.ts` · `gcBench.ts` | Promised days, word records, who to call first · the bench by trade and Actions for assistants. |
+| `gcNewProject.ts` · `gcNewProject.test.ts` | New Project: the sheet index read from a paste, the trades guessed from the sheets, each trade's usual scope, the project made from the draft (`createProject`) · its kernel test. |
 | `gcReducer.ts` · `gcReducerHelpers.ts` · `gcFixture.ts` | Every action applied to the state · its small helpers (not in the barrel) · the made-up data (`initialGcState`). |
 | `gcModel.test.ts` | The golden test (see *Working in parallel*). |
 | `GcOfficeTabs.tsx` | Trades (with Compare bids), Plans, Our number, Contracts, Draws, the flat company list |
@@ -210,6 +223,7 @@ imitates it.
 | `GcTradeMap.tsx` | The map window |
 | `GcAskThread.tsx` | The contact log, promises, the Follow up tab |
 | `GcNewPlans.tsx` | The new-set-of-plans window |
+| `GcNewProject.tsx` | The New project window and its **+ New project** button |
 | `GcStart.tsx` | Get started |
 | `GcBidTabs.tsx` | Bid tabs |
 | `GcCustomerWindow.tsx` | The one company window |
@@ -219,7 +233,8 @@ imitates it.
 Two existing files are touched: `src/App.tsx` (the `bids/gc` route) and `src/pages/Bids.tsx`
 (the switch, for a dev only).
 
-State of the branch: `npm run typecheck`, the theme check and the golden test pass. Lint has
+State of the branch: `npm run typecheck`, the theme check, the golden test and the New Project
+kernel test pass. Lint has
 four fast-refresh warnings in `gcUi.tsx` (it exports style objects beside components). The UI is
 checked by hand in the browser after every change; the model is pinned by the golden test.
 
@@ -298,11 +313,14 @@ follow the plain-words rules; the prototype's own words were written to them as 
 - **Helotes Dental Office → Get started**: from 14 of 24 steps to Start, signing as each
   company through **Sign it as them**. A new plan set after Start goes to four companies only.
 - **Follow up**: log a call with a new day on Hillside Excavation and watch the card move down.
+- **+ New project**: pick an owner, **Paste a made-up sheet index**, see 21 sheets and 13 trades,
+  change a scope line, **Create the project**. It opens on Trades and sits under Bidding to the
+  owner with its days left.
 
 ## Where it stands
 
 2026-10-02: one session, the owner steering. He said "I think this has great potential" and has
 been changing it screen by screen since. The last things built were the new-plans flow and Get
 started. The prototype is a branch, not a PR: it should not merge as it is (fixture data inside
-the client, one golden test and no kernel tests). Since the evening of 2026-10-02 several
+the client, one golden test and one kernel test). Since the evening of 2026-10-02 several
 sessions build it at once (*Working in parallel*).
