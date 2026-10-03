@@ -14,7 +14,9 @@ import {
   ownerPayApp,
   ownerPayAppHasWork,
   proposalTotals,
+  markupOnTop,
   sentPayAppLines,
+  spreadMarkup,
   tradesOwingUnconditional,
   tradeWaiverChecks,
   type GcState,
@@ -327,6 +329,47 @@ describe('a paid draw still owing its unconditional waiver', () => {
     expect(owedDrawWords([d(1), d(2), d(3)])).toBe('draws 1, 2 and 3')
     expect(owedDrawWords([d(4, true)])).toBe('the final draw')
     expect(owedDrawWords([d(2), d(4, true)])).toBe('draw 2 and the final draw')
+  })
+})
+
+describe('our costs and fee spread into the trades', () => {
+  const sum = (rows: { worth: number; doneBefore: number; thisMonth: number; doneToDate: number }[], key: 'worth' | 'doneBefore' | 'thisMonth' | 'doneToDate') =>
+    Math.round(rows.reduce((s, l) => s + l[key], 0) * 100) / 100
+
+  it('keeps every total and every percent, with no line of our own', () => {
+    for (const id of ['helotes', 'fairoaksd', 'stoneoak']) {
+      const state = initialGcState()
+      const project = state.projects.find((p) => p.id === id)
+      if (!project) throw new Error(`fixture has no ${id}`)
+      const lines = ownerPayApp(state, project).lines
+      const spread = spreadMarkup(lines)
+      expect(spread.some((l) => ['gc', 'contingency', 'fee'].includes(l.id))).toBe(false)
+      for (const key of ['worth', 'doneBefore', 'thisMonth', 'doneToDate'] as const) expect(sum(spread, key)).toBe(sum(lines, key))
+      for (const l of spread) {
+        const own = lines.find((x) => x.id === l.id)
+        if (own && own.worth > 0) expect(Math.round((l.doneToDate / l.worth) * 1000)).toBe(Math.round((own.doneToDate / own.worth) * 1000))
+      }
+    }
+  })
+
+  it('puts 37.2% on top of each trade on Helotes', () => {
+    const state = initialGcState()
+    const helotes = state.projects.find((p) => p.id === 'helotes')
+    if (!helotes) throw new Error('fixture has no helotes')
+    const lines = ownerPayApp(state, helotes).lines
+    expect(Math.round(markupOnTop(lines) * 1000) / 10).toBe(37.2)
+    const dry = spreadMarkup(lines).find((l) => l.id === 'dry')
+    expect(dry && [dry.tradeWorth, Math.round(dry.ourShare), Math.round(dry.worth), Math.round(dry.doneToDate)]).toEqual([64_200, 23_852, 88_052, 52_557])
+  })
+
+  it('spreads a sent bill the same way, from what it said when it went', () => {
+    const state = initialGcState()
+    const fairOaks = state.projects.find((p) => p.id === 'fairoaksd')
+    if (!fairOaks) throw new Error('fixture has no fairoaksd')
+    const lines = sentPayAppLines(state, fairOaks, 3)
+    const spread = spreadMarkup(lines)
+    expect(sum(spread, 'doneToDate')).toBe(956_327.91)
+    expect(sum(spread, 'doneBefore')).toBe(635_351.79)
   })
 })
 
