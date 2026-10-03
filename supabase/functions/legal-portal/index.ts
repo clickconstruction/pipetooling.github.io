@@ -48,6 +48,11 @@ function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
 }
 
+/**
+ * A `date` column's day (`paid_on`). An instant's day is `todayYmdInAppTz(new Date(iso))`, never its
+ * first ten characters (the UTC date): the held rule compares those days with the desk's, which reads
+ * them in APP_CALENDAR_TZ too (src/lib/legal/legalPacket.ts).
+ */
 function ymd(iso: unknown): string | null {
   const s = typeof iso === 'string' ? iso : ''
   return /^\d{4}-\d{2}-\d{2}/.test(s) ? s.slice(0, 10) : null
@@ -245,7 +250,7 @@ serve(async (req) => {
       const heldOverrides = (m.held_overrides && typeof m.held_overrides === 'object' ? (m.held_overrides as Record<string, unknown>) : {}) as Record<string, unknown>
       const firstBill = invoices
         .filter((i) => jobIdSet.has(i.job_id as string) && (i.status === 'billed' || i.status === 'paid'))
-        .map((i) => ymd(i.billed_at) ?? ymd(i.sent_to_customer_at))
+        .map((i) => (i.billed_at ? todayYmdInAppTz(new Date(i.billed_at as string)) : i.sent_to_customer_at ? todayYmdInAppTz(new Date(i.sent_to_customer_at as string)) : null))
         .filter((y): y is string => Boolean(y))
         .sort()[0] ?? null
       const goes = (key: string, entryYmd: string): boolean => {
@@ -267,19 +272,19 @@ serve(async (req) => {
       }))
       const mContacts = contacts
         .filter((c) => customerId && c.customer_id === customerId)
-        .map((c) => ({ id: c.id as string, ymd: ymd(c.contact_date) ?? todayYmd, method: (c.contact_method as string | null) ?? null, by: userName.get(c.created_by as string) ?? null, text: ((c.details as string | null) ?? '').trim() }))
+        .map((c) => ({ id: c.id as string, ymd: c.contact_date ? todayYmdInAppTz(new Date(c.contact_date as string)) : todayYmd, method: (c.contact_method as string | null) ?? null, by: userName.get(c.created_by as string) ?? null, text: ((c.details as string | null) ?? '').trim() }))
         .filter((c) => goes(`contact:${c.id}`, c.ymd))
       const mPromises = promises
         .filter((p) => jobIdSet.has(p.job_id as string))
         .map((p) => ({ id: p.id as string, jobId: p.job_id as string, customerId: (p.customer_id as string | null) ?? null, promisedYmd: p.promised_date as string, saidBy: (p.said_by as string | null) ?? null, heardByName: userName.get(p.heard_by as string) ?? null, channel: (p.channel as string | null) ?? null, source: p.source === 'customer' ? 'customer' : 'office', note: (p.note as string | null) ?? null, createdAt: p.created_at as string }))
-        .filter((p) => goes(`promise:${p.id}`, ymd(p.createdAt) ?? p.promisedYmd))
+        .filter((p) => goes(`promise:${p.id}`, p.createdAt ? todayYmdInAppTz(new Date(p.createdAt)) : p.promisedYmd))
       const mTouches = touches
         .filter((t) => t.job_id ? jobIdSet.has(t.job_id as string) : customerId != null && t.customer_id === customerId)
         .map((t) => ({ id: t.id as string, customerId: t.customer_id as string, jobId: (t.job_id as string | null) ?? null, outcome: t.outcome as string, note: (t.note as string | null) ?? null, promisedYmd: (t.promised_date as string | null) ?? null, snoozeDays: (t.snooze_days as number | null) ?? null, resolvedAt: (t.resolved_at as string | null) ?? null, createdAt: t.created_at as string, createdByName: userName.get(t.created_by as string) ?? 'the office' }))
-        .filter((t) => goes(`call:${t.id}`, ymd(t.createdAt) ?? todayYmd))
+        .filter((t) => goes(`call:${t.id}`, t.createdAt ? todayYmdInAppTz(new Date(t.createdAt)) : todayYmd))
       // The collections note rides on the job; a held note is blanked, the job stays.
       for (const j of jobsWithDetails) {
-        const noteYmd = ymd(j.collections_at) ?? todayYmd
+        const noteYmd = j.collections_at ? todayYmdInAppTz(new Date(j.collections_at as string)) : todayYmd
         if (j.collections_note && !goes(`note:${j.id}`, noteYmd)) (j as Row).collections_note = null
       }
       // Promise records: the outcome inputs (billed at the promise, dated payments) — the page classifies.
@@ -301,7 +306,7 @@ serve(async (req) => {
         payer: { key: m.payer_key, name: m.payer_name, customerId },
         handling: m.handling_name,
         noteToFirm: m.note_to_firm,
-        releasedAt: ymd(m.released_at),
+        releasedAt: m.released_at ? todayYmdInAppTz(new Date(m.released_at as string)) : null,
         feesToStatement: Boolean(m.fees_to_statement),
         heldCount: 0,
         sharedOverrides,

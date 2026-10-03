@@ -10,6 +10,7 @@ import {
   daysBetweenYmd,
   groupCollectionsByPayer,
   invoiceReachedCustomer,
+  jobAgingYmd,
   jobOpenBalance,
   payerForJob,
   quickNet,
@@ -195,6 +196,39 @@ describe('buildLegalPacket', () => {
     const sub = buildLegalPacket(baseInput(subAcc, { clockSessions: [gpsSession('job-s', '2026-07-29')] }))
     expect(sub.paper.lienClock[0]).toEqual(expect.objectContaining({ noticeDeadline: '2026-10-15', status: 'notice_open' }))
     expect(sub.gaps.find((g) => g.key === 'lien:job-s')?.label).toMatch(/§ 53.056 notice due 2026-10-15/)
+  })
+
+  it('their word reads each instant on the company calendar: a call or promise the evening before the first bill is held', () => {
+    // The first bill is Apr 17 at noon. Both were logged at 7:30 pm CDT on Apr 16, which is Apr 17 in UTC.
+    const packet = buildLegalPacket(
+      baseInput(account, {
+        promises: [{ id: 'pr0', jobId: 'job-a', customerId: 'tle', promisedYmd: '2026-04-30', saidBy: 'Aaron', heardByName: 'Malachi', channel: 'phone', source: 'office', note: null, createdAt: '2026-04-17T00:30:00+00:00' }],
+        chaseTouches: [{ id: 't0', customerId: 'tle', jobId: null, outcome: 'cant_reach', note: null, promisedYmd: null, snoozeDays: null, resolvedAt: null, createdAt: '2026-04-17T00:30:00Z', createdByName: 'Taunya' }],
+      }),
+    )
+    const byKey = new Map(packet.theirWord.timeline.map((e) => [e.key, e] as const))
+    expect(byKey.get('call:t0')).toEqual(expect.objectContaining({ ymd: '2026-04-16', sharedByDefault: false, shared: false }))
+    expect(byKey.get('promise:pr0')).toEqual(expect.objectContaining({ ymd: '2026-04-16', sharedByDefault: false, shared: false }))
+    // The same call at noon UTC on Apr 17 is the bill's own day, and goes.
+    const noon = buildLegalPacket(baseInput(account, { chaseTouches: [{ id: 't0', customerId: 'tle', jobId: null, outcome: 'cant_reach', note: null, promisedYmd: null, snoozeDays: null, resolvedAt: null, createdAt: '2026-04-17T12:00:00Z', createdByName: 'Taunya' }] }))
+    expect(noon.theirWord.timeline.find((e) => e.key === 'call:t0')).toEqual(expect.objectContaining({ ymd: '2026-04-17', shared: true }))
+  })
+
+  it('the first bill, the aging and the collections flag read their instants on the company calendar', () => {
+    // Billed 7:30 pm CDT on Apr 16 (Apr 17 in UTC); flagged for collections 6:30 pm CST on Dec 1.
+    const evening = collectionsJob({
+      id: 'job-e', hcp_number: '719', customer_id: 'tle', customer_name: 'The Learning Experience', collections_note: 'Moved after the third call.',
+      collections_at: '2026-12-02T00:30:00Z',
+      invoices: [billedInvoice('inv-e', 500, '2026-04-17', { billed_at: '2026-04-17T00:30:00+00:00' })],
+    })
+    expect(jobAgingYmd(evening)).toBe('2026-04-16')
+    const acc = groupCollectionsByPayer([evening], new Map(), '2026-12-10')[0] as LegalAccountSummary
+    expect(acc.oldestDays).toBe(daysBetweenYmd('2026-04-16', '2026-12-10'))
+    expect(acc.reviewDays).toBe(9)
+    const packet = buildLegalPacket({ ...baseInput(acc), todayYmd: '2026-12-10' })
+    expect(packet.theirWord.firstBillYmd).toBe('2026-04-16')
+    expect(packet.account.ledger[0]).toEqual(expect.objectContaining({ kind: 'invoice', ymd: '2026-04-16' }))
+    expect(packet.theirWord.timeline.find((e) => e.kind === 'note')?.ymd).toBe('2026-12-01')
   })
 
   it('their word: one timeline, entries before the first bill held by default, overrides win both ways', () => {
