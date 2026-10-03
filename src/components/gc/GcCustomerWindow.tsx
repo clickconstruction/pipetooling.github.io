@@ -3,6 +3,7 @@ import {
   architectSummary,
   currentRev,
   customerSummary,
+  ownerMoney,
   daysUntil,
   money,
   partnerById,
@@ -496,6 +497,8 @@ function OwnerRow({
   const totals = proposalTotals(project)
   const stage = STAGE_WORDS[project.stage]
   const due = project.bidDue ? daysUntil(project.bidDue, today) : null
+  // Our sent pay applications once any went, the made-up record before (the same choice as customerSummary).
+  const billing = ownerMoney(project)
   return (
     <tr>
       <td style={td}>
@@ -511,8 +514,8 @@ function OwnerRow({
         {totals.holes.length > 0 && <Chip tone="red">{totals.holes.length} trades with no number</Chip>}
       </td>
       <td style={num}>{money(totals.price)}</td>
-      <td style={num}>{project.ownerBilling ? money(project.ownerBilling.billed) : '—'}</td>
-      <td style={num}>{project.ownerBilling ? money(project.ownerBilling.paid) : '—'}</td>
+      <td style={num}>{billing ? money(billing.billed) : '—'}</td>
+      <td style={num}>{billing ? money(billing.paid) : '—'}</td>
       <td style={{ ...td, whiteSpace: 'nowrap', textAlign: 'right' }}>
         <Btn kind="quiet" onClick={onPlans} title={`Plans · ${planLabel(project, currentRev(project))}`}>Plans</Btn>
         <Btn kind="quiet" onClick={onOpen}>Open</Btn>
