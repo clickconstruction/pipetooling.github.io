@@ -560,7 +560,7 @@ they point to, for the lanes to pick up.
   sets one number; by stage it is set on Draws.
 - Our billing to the owner, the rest: the owner's window still shows billed and paid from the
   fixture, not from the pay applications on **Bill the owner** (`ownerAccount` has the numbers);
-  our own crew's percent read from its Pipeline job (reported on **Draws** for now);
+  our own crew's percent read from its Pipeline job (real build only; see *Where it plugs in*);
   a trade's retainage held until the owner has paid us ours (the Building lane's Closeout).
 - No email is sent and nothing notifies anyone when a promised day passes.
 
@@ -581,6 +581,7 @@ imitates it.
 | Waivers on a draw | The lien waiver train (v2.4274 to v2.4335), pointed the other way. Its four forms are the ones GC mode uses: conditional and unconditional, on progress and on final payment (`LienWaiverFormType`). |
 | The map | The Bid Board's map and the app's geocoded addresses. The prototype draws its own from a short list of towns. |
 | The pay application (702 and 703) | The Jobs Stages tab's AIA G702-G703 window: `aiaG702G703Template.ts` (fields and cells) and `fillAiaG702G703Workbook.ts` (fills the bundled xlsx). The prototype draws the form on screen; the real build fills that template. |
+| Our own crew's percent done | The Pipeline job's percent reports, newest wins: `currentReportPctByJobId` (`jobSummaryPercentComplete.ts`) and `newestPercentEvent` (`jobChargesTimeline.ts`). In the real build our own trade names its Pipeline job (`selfPerform.ref`), each stage reads that job's newest report, and Draws shows the stages read-only with the day reported. The prototype has the stages set by hand on Draws. Building lane, real build only. |
 | "See what the trade sees" | Punch list #62, the same idea for the GC's room. |
 | Email | Resend through the existing edge functions. |
 
