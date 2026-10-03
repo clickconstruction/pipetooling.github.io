@@ -110,7 +110,8 @@ describe('drawing the schedule', () => {
     const d = draftSchedule(project, '2026-10-12')
     const ids = d.activities.map((a) => a.lineId)
     const lines = project.packages.flatMap((k) => scheduleLinesOf(k).map((l) => l.lineId))
-    expect([...ids].sort()).toEqual([...lines].sort())
+    // Inspections are activities of their own, no trade's line (New Project lane, with the Building lane's OK).
+    expect(d.activities.filter((a) => !a.inspection).map((a) => a.lineId).sort()).toEqual([...lines].sort())
     expect(d.activities.every((a) => a.start >= '2026-10-12' && a.finish >= a.start && a.after.every((id) => ids.includes(id) && id !== a.lineId))).toBe(true)
     expect(d.milestones.map((m) => m.id)).toEqual(expect.arrayContaining(['helotes-roughin', 'helotes-substantial']))
     expect(d.baseline).toBeNull()

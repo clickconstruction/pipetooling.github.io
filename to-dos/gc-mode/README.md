@@ -193,7 +193,10 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   picking a wait in days on the link): it sits between the work it inspects and the work that
   waits on it, with its own days, so the wait stops reading as spare days. It is no trade's line
   and has no dollars, so it counts on the critical path but not in work done against the plan.
-  Not built yet (see *The schedule*).
+  The first draft draws two (owner, 2026-10-03: "include the final inspection"): the rough-in
+  inspection after every rough-in, which close-in waits on, and the final inspection after all
+  the work, before substantial completion (`ScheduleActivity.inspection`, packageId ''). The
+  Building lane's rows and the superintendent's pass are its half.
 - **Closeout runs per trade** (approved as built, 2026-10-02, Building lane): the retainage
   comes back as the trade's last draw, asked for with a final pay application and the
   final-payment releases of lien, once every line is billed and we accept the work
@@ -406,7 +409,8 @@ they point to, for the lanes to pick up.
   `lineStage`, `SCHEDULE_STAGES` in `gcNewProject.ts`): each line falls in a stage by its words or
   its trade (site prep, foundations, underground, slab, structure, dry-in, framing, rough-in,
   close-in, finishes, trim, site finish, closeout), each stage waits on the one before it, the
-  trades' rough-ins run side by side, close-in waits two days for the inspection, and paving waits
+  trades' rough-ins run side by side, close-in waits on the rough-in inspection, a final inspection
+  follows all the work, and paving waits
   only on dry-in. The Building lane's **Draw a first draft** switches to it from its stand-in. Milestones (dry-in, rough-in
   inspection, substantial completion) are dates the schedule must meet; each can belong to a trade.
   **Get started** gains a step, "the schedule is drawn", and **Start** locks it as the baseline.
@@ -438,10 +442,8 @@ they point to, for the lanes to pick up.
 
 - A change to a trade's statement of work when a set changes its scope (the trade side of a
   change order). A set can start the owner's change order, not the trade's amendment.
-- A schedule link cannot carry a fixed wait. The two days drawn for the rough-in inspection read as
-  spare days, so a push into them is absorbed. A wait on a link (or the inspection as an activity)
-  is the Building lane's schedule model. A set's added days could also start a change order with
-  the time in it (Owner Billing's change orders carry a schedule field).
+- A set's added days could also carry their time onto the change order it starts, beyond the
+  "+N days" words (Owner Billing's change orders carry a schedule field).
 
 - The schedule, the rest: the other lanes' parts (*The schedule, proposed*): the Get started step, the lines on Trade partners, the trade's weekly marks in its portal, and the New Project lane's draft.
 
