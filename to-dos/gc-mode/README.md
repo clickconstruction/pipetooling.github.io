@@ -318,7 +318,8 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   you and the paperwork block go away there. The plans stay open to look at. The line is "Click did
   not win this project." or, when the project died, "The owner stopped this project or put it on
   hold.", then "You do not need to send a number. Thank you for your time." (or "Thank you for
-  your number." once one came). Never the price and never who won. Each company still on a trade
+  your number." once one came). Once the company has opened the bid tab, its own line says how it
+  ended, so the result block hides. Never the price and never who won. Each company still on a trade
   there gets one email the day it is marked, in its language; one that passed gets none. Bring it
   back opens it all again (`portalClosedWords`, the `closed` ask kind and message in `gcPortal.ts`).
 
