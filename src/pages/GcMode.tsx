@@ -1,4 +1,4 @@
-import { useReducer, useState } from 'react'
+import { useReducer, useState, type CSSProperties } from 'react'
 import { SpotlightTour } from '../components/SpotlightTour'
 import { BidsModeToggle } from '../components/gc/BidsModeToggle'
 import {
@@ -426,6 +426,17 @@ function DueBlock({ project, today }: { project: GcProject; today: string }) {
     lineHeight: 1.15,
     fontVariantNumeric: 'tabular-nums',
   } as const
+  // A won job's row shows what is next, not when our bid went in (the owner, 2026-10-03).
+  if (project.stage === 'buyout') return <StartBlock project={project} today={today} box={box} />
+  if (project.stage === 'building' && project.startedOn) {
+    // Until the schedule's measures exist (the Building lane), the day work started.
+    return (
+      <span style={{ ...box, color: 'var(--text-muted)', fontSize: '0.75rem', textAlign: 'center' }} title={`Work started ${weekdayDate(project.startedOn)}.`}>
+        <span>started</span>
+        <span style={{ fontWeight: 600 }}>{shortDate(project.startedOn)}</span>
+      </span>
+    )
+  }
   if (project.stage !== 'pursuing' || !project.bidDue) {
     return (
       <span style={{ ...box, color: 'var(--text-muted)', fontSize: '0.75rem', textAlign: 'center' }}>
@@ -462,6 +473,39 @@ function DueBlock({ project, today }: { project: GcProject; today: string }) {
       )}
       <span style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.03em' }}>{words}</span>
       <span style={{ fontSize: '0.75rem' }}>{weekdayDate(project.bidDue)}</span>
+    </span>
+  )
+}
+
+/**
+ * Buying out: the days until the planned start, coloured like the days-left block (red inside a
+ * week, amber inside two). No start date yet says so; a planned day that passed reads "days late"
+ * because Start is still shut.
+ */
+function StartBlock({ project, today, box }: { project: GcProject; today: string; box: CSSProperties }) {
+  if (!project.startDate) {
+    return (
+      <span style={{ ...box, color: 'var(--text-muted)', fontSize: '0.75rem', textAlign: 'center' }} title="No start date yet. Set it on Get started.">
+        <span>no start date</span>
+      </span>
+    )
+  }
+  const days = daysUntil(project.startDate, today)
+  const tone =
+    days <= 7
+      ? { bg: 'var(--bg-red-100)', fg: 'var(--text-red-800)' }
+      : days <= 14
+        ? { bg: 'var(--bg-amber-100)', fg: 'var(--text-amber-800)' }
+        : { bg: 'var(--bg-muted)', fg: 'var(--text-700)' }
+  const words = days < 0 ? (days === -1 ? 'day late' : 'days late') : days === 0 ? 'starts today' : days === 1 ? 'day to start' : 'days to start'
+  return (
+    <span
+      style={{ ...box, background: tone.bg, color: tone.fg }}
+      title={days < 0 ? `Work was planned to start ${weekdayDate(project.startDate)}. Start is still shut.` : `Work is planned to start ${weekdayDate(project.startDate)}.`}
+    >
+      {days !== 0 && <span style={{ fontSize: '1.6rem', fontWeight: 700 }}>{Math.abs(days)}</span>}
+      <span style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.03em' }}>{words}</span>
+      <span style={{ fontSize: '0.75rem' }}>{weekdayDate(project.startDate)}</span>
     </span>
   )
 }
