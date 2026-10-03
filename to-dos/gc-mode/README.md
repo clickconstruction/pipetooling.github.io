@@ -257,6 +257,9 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   typed into the portal's words.
 - **A company's link lands on its home** (2026-10-02), not on one project: everything the company
   has with us, what needs them first. A project's page is one tap away.
+- **Questions about the plans** (2026-10-03): a company asks in its portal; when the answer goes
+  out to the other companies on the trade, they see the question and the answer but not who asked.
+  Questions close three days before the bid is due.
 - **A trade sees only the sheets the office set** (2026-10-03). A line whose sheet was only
   guessed from its words shows no sheet number and counts as the whole trade, so any change to the
   trade's sheets marks it (`portalLines` in `gcPortal.ts`). The made-up projects set none.
