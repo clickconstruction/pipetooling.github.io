@@ -9,6 +9,7 @@ import { plansReach } from './gcPlans'
 import { startChecklist } from './gcStart'
 import { BIDS_WANTED, bidIsStale, bidsIn, carriedAmount, isGuess } from './gcBids'
 import { followUps } from './gcFollowUp'
+import { tradeCloseout } from './gcBuilding'
 
 /** The stage colors, saturated on purpose: the ring is a status mark, not a neutral surface. */
 export const RING_COLORS: Record<GcStage, string> = {
@@ -222,12 +223,26 @@ function buildingProgress(state: GcState, project: GcProject): StageProgress {
       return invite ? (partnerById(state, invite.partnerId)?.company ?? pkg.trade) : pkg.trade
     })()
     for (const d of pkg.sow?.draws ?? []) {
-      if (d.status === 'requested') also.push(`${company} asked for draw ${d.number}. Approve it.`)
+      if (d.final) {
+        // Closeout: the retainage release and its waivers are the final-payment ones.
+        if (d.status === 'requested') also.push(`${company} asked for its retainage back. Approve it on Closeout.`)
+        else if (d.status === 'approved') also.push(`The retainage release for ${company} is approved. Pay it.`)
+        else if (d.waiver === 'conditional') also.push(`${company} owes the unconditional waiver on final payment.`)
+      } else if (d.status === 'requested') also.push(`${company} asked for draw ${d.number}. Approve it.`)
       else if (d.status === 'approved') also.push(`Draw ${d.number} for ${company} is approved. Pay it.`)
-      else if (d.waiver === 'conditional') also.push(`${company} owes the final waiver on draw ${d.number}.`)
+      else if (d.waiver === 'conditional') also.push(`${company} owes the unconditional waiver on draw ${d.number}.`)
+    }
+    const sow = pkg.sow
+    if (sow && sow.status === 'signed' && tradeCloseout(sow).next?.key === 'accepted') {
+      also.push(`${pkg.trade} is all billed. Walk it, then accept the work on Closeout.`)
     }
   }
   const pct = Math.round(share * 100)
+  if (share >= 1) {
+    const signed = withSow.filter((p) => p.sow?.status === 'signed')
+    const closed = signed.filter((p) => p.sow && tradeCloseout(p.sow).closed).length
+    also.push(`All the work is reported. ${closed} of ${signed.length} ${signed.length === 1 ? 'trade is' : 'trades are'} closed out. See Closeout.`)
+  }
   return {
     share,
     center: `${pct}%`,

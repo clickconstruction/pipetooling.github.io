@@ -84,6 +84,7 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
 | **Follow up** (board tab) | Everyone we are waiting on across every project, the ones to call first. Log a contact; record the day they promised a quote; a passed day returns them to the top. |
 | **Trade partners** (board tab) | By trade: the bench, who answers when asked, every project short of quotes, coverage (where they drive from, how far they go), one press to ask the companies not yet asked. **Actions for assistants** on top: each standard as the ideal, where we are, and what closes the gap. |
 | The trade's portal | Paperwork, the newest plans, the invitation and the bid form, "tell Click when your number will come", confirm a number after an addendum, the bid tab, sign the master agreement and statement of work, report work, ask for a draw. |
+| **Closeout** | Each trade's last six steps: every line billed, **Accept the work** (the punch list is done), their warranty letter, their final pay application for the retainage with a conditional waiver on final payment, **Approve the release** and **Mark paid**, their unconditional waiver on final payment. Totals for held, paid back and trades closed out. In the portal the same steps show as the trade's closeout list, ending "You are closed out on this job." |
 | Pay application (from the portal) | **Fill out pay application N**: four steps on a rail like the Release of Lien window (Check your work, Fill in a few details, Sign it, Send it to Click) beside the 702 and 703, which fill in as the trade types and mark what each step fills. The app knows the job, the contract, the lines, what was billed and the retainage; the trade checks the percents, picks the period, types its address once, and signs. Closing the window keeps the draft. |
 
 ## Decided by the owner (2026-10-02)
@@ -124,6 +125,11 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
 - **Each draw comes with a 702 and 703** (2026-10-02, Building lane): the trade fills the pay
   application in its portal and watches the form fill, typing only what the app cannot know. Most
   of it comes from the job and from the work they reported (`gcBuilding.ts`, `GcBuildingPayApp.tsx`).
+- **Closeout runs per trade** (approved as built, 2026-10-02, Building lane): the retainage
+  comes back as the trade's last draw, asked for with a final pay application and the
+  final-payment waivers, once every line is billed, we accept the work and the warranty letter
+  is in (`tradeCloseout` in `gcBuilding.ts`, `GcCloseout.tsx`). The retainage the owner holds on
+  us stays Owner Billing's.
 - **We bill the owner once a month** (Owner Billing lane, 2026-10-02): one pay application a
   month covering every trade's work since the last one, not a bill each time a trade asks for a
   draw. The day of the month is a default (`OWNER_BILL_DAY` in `gcOwnerBilling.ts`).
@@ -149,6 +155,9 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
   the company), and a typed name and title with the waiver tick as the signature. A line can be
   lowered to what was billed before, never below. The 702's "To" line reads Click Construction,
   the name the portal already uses (`GC_COMPANY_NAME`).
+- Closeout: the release waits for nothing else (not the owner, not a number of days). Its
+  approval is locked by the same paperwork rules as a draw. "Held" counts until the release is
+  paid, not when it is approved (`retainageHeldNow`).
 - Owner billing (`gcOwnerBilling.ts`): the pay application goes on the 25th. A trade's line on
   the owner's bill is the work its company reported, before we approve their draw. General
   conditions, contingency and fee follow the share of the trades' work done, so the bill totals
@@ -180,6 +189,13 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
 13. On the owner's bill, do our general conditions, contingency and fee show as lines of their
     own, or spread into each trade's line so the owner never sees the fee? (Built as lines of
     their own for now. The total is the same either way.)
+14. Should a trade's retainage wait until the owner releases ours (pay when paid), or for some
+    days after we accept the work? Built with no wait.
+15. What papers must a trade turn in before its retainage comes back? Built with a warranty
+    letter only. Some trades may owe drawings of what was built, equipment manuals, or final
+    waivers from their own suppliers.
+16. Should a project whose trades are all closed out leave Building for a fourth section on
+    the board? It stays under Building today. That is the Board lane's change.
 
 ## Workflow steps not built yet
 
@@ -189,7 +205,9 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
 - A trade asks a question about the plans, the architect answers, every bidder on the trade
   gets the answer. Three made-up questions show in the architect's window, read-only.
 - Change orders, both to the owner and to a trade (a statement of work amendment).
-- Closeout: retainage release, final waivers.
+- Closeout for the job as a whole: the owner's final payment and the retainage the owner holds
+  on us (Owner Billing), and a closed job leaving the board (open question 16). Each trade's
+  closeout is built.
 - Our billing to the owner. The owner's window shows billed and paid from the fixture only.
 - No email is sent and nothing notifies anyone when a promised day passes.
 
@@ -207,7 +225,7 @@ imitates it.
 | Asking several companies and comparing | The supply-house price requests ([`docs/SUPPLY_HOUSE_RFQ_PLAN.md`](../../docs/SUPPLY_HOUSE_RFQ_PLAN.md)): one request to several houses, a link to answer, a compare. |
 | The call log and promises | `bids_submission_entries` (every contact is an entry) and the payment promises (append-only promise events, v2.3280 to v2.3286). |
 | Our price to the owner | The cover letter and the bid room: a signable link with options. |
-| Waivers on a draw | The lien waiver train (v2.4274 to v2.4335), pointed the other way. |
+| Waivers on a draw | The lien waiver train (v2.4274 to v2.4335), pointed the other way. Its four forms are the ones GC mode uses: conditional and unconditional, on progress and on final payment (`LienWaiverFormType`). |
 | The map | The Bid Board's map and the app's geocoded addresses. The prototype draws its own from a short list of towns. |
 | The pay application (702 and 703) | The Jobs Stages tab's AIA G702-G703 window: `aiaG702G703Template.ts` (fields and cells) and `fillAiaG702G703Workbook.ts` (fills the bundled xlsx). The prototype draws the form on screen; the real build fills that template. |
 | "See what the trade sees" | Punch list #62, the same idea for the GC's room. |
@@ -236,7 +254,8 @@ imitates it.
 | `GcAskThread.tsx` | The contact log, promises, the Follow up tab |
 | `GcNewPlans.tsx` | The new-set-of-plans window |
 | `GcNewProject.tsx` | The New project window and its **+ New project** button |
-| `GcBuildingPayApp.tsx` · `src/lib/gcMode/gcBuilding.ts` | The pay application window, its door in the portal and its read-only view from Draws · the 702 and 703 numbers and the four steps (tested in `gcBuilding.test.ts`) |
+| `GcBuildingPayApp.tsx` · `src/lib/gcMode/gcBuilding.ts` | The pay application window (progress and final), its door in the portal (which turns into the trade's closeout list) and its read-only view from Draws · the 702 and 703 numbers, the four steps, retainage held and each trade's closeout (tested in `gcBuilding.test.ts`) |
+| `GcCloseout.tsx` | The Closeout tab |
 | `GcStart.tsx` | Get started |
 | `GcBidTabs.tsx` | Bid tabs |
 | `GcCustomerWindow.tsx` | The one company window |

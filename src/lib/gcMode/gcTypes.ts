@@ -91,6 +91,11 @@ export interface Draw {
   lines: { sovId: string; toPct: number }[]
   /** The G702/G703 the trade sent with this draw. Absent on a draw asked for without one. */
   payApp?: DrawPayApp
+  /**
+   * The retainage release: the last draw, asked for once the work is accepted. It pays back what
+   * was held (retainage is negative, net is the release) and its waivers are the final-payment ones.
+   */
+  final?: boolean
 }
 
 export interface Sow {
@@ -101,6 +106,10 @@ export interface Sow {
   sov: SovLine[]
   signedOn: string | null
   draws: Draw[]
+  /** Closeout: the day we accepted the work, after the punch list. Null or absent: not yet. */
+  acceptedOn?: string | null
+  /** Closeout: the day their warranty letter came in. Null or absent: not yet. */
+  warrantyOn?: string | null
 }
 
 /**
@@ -324,6 +333,19 @@ export type GcAction =
       signedBy: string
       signedTitle: string
     }
+  | { type: 'acceptWork'; projectId: string; packageId: string }
+  | { type: 'tradeSendWarranty'; projectId: string; packageId: string }
+  | {
+      type: 'tradeSendFinalPayApp'
+      projectId: string
+      packageId: string
+      periodTo: string
+      address: string
+      license: string
+      signedBy: string
+      signedTitle: string
+    }
+  | { type: 'approveRetainage'; projectId: string; packageId: string; drawId: string }
 
 /** One trade on a new project, as the office left it in the New project window. */
 export interface NewTradeDraft {

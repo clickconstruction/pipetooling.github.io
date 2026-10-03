@@ -146,6 +146,28 @@ const STEPS: Step[] = [
       signedTitle: 'Office manager',
     },
   },
+  // Helotes, closeout: the last of the work, then the retainage back with the final waivers.
+  { label: 'Approve draw 3', action: { type: 'approveDraw', projectId: 'helotes', packageId: 'dry', drawId: 'dry-draw-3' } },
+  { label: 'Pay draw 3', action: { type: 'payDraw', projectId: 'helotes', packageId: 'dry', drawId: 'dry-draw-3' } },
+  { label: 'Hill Country signs the unconditional waiver on draw 3', action: { type: 'tradeSignUnconditional', projectId: 'helotes', packageId: 'dry', drawId: 'dry-draw-3' } },
+  { label: 'Accept the drywall work', action: { type: 'acceptWork', projectId: 'helotes', packageId: 'dry' } },
+  { label: 'Hill Country sends the warranty letter', action: { type: 'tradeSendWarranty', projectId: 'helotes', packageId: 'dry' } },
+  {
+    label: 'Hill Country sends the final pay application',
+    action: {
+      type: 'tradeSendFinalPayApp',
+      projectId: 'helotes',
+      packageId: 'dry',
+      periodTo: '2026-10-02',
+      address: '418 River Rd, Boerne, TX 78006',
+      license: '',
+      signedBy: 'Rosa Medina',
+      signedTitle: 'Office manager',
+    },
+  },
+  { label: 'Approve the retainage release', action: { type: 'approveRetainage', projectId: 'helotes', packageId: 'dry', drawId: 'dry-draw-4' } },
+  { label: 'Pay the retainage', action: { type: 'payDraw', projectId: 'helotes', packageId: 'dry', drawId: 'dry-draw-4' } },
+  { label: 'Hill Country signs the unconditional waiver on final payment', action: { type: 'tradeSignUnconditional', projectId: 'helotes', packageId: 'dry', drawId: 'dry-draw-4' } },
 ]
 
 const CUSTOMER_IDS = ['cibolo', 'raman']
@@ -269,6 +291,7 @@ describe('GC mode golden walk', () => {
       'tradeSignUnconditional', 'setMarkup', 'logCustomerContact', 'addPartner', 'setCoverage', 'reset',
       'createProject',
       'tradeSendPayApp',
+      'acceptWork', 'tradeSendWarranty', 'tradeSendFinalPayApp', 'approveRetainage',
     ]
     expect(all.filter((t) => !used.has(t))).toEqual([])
   })
