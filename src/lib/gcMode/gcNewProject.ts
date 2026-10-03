@@ -4,7 +4,7 @@
  * starts from its usual scope. A later set of plans uses the same guess, and can bring a trade
  * the job did not have. Every guess here is a starting point the office changes.
  */
-import type { GcCustomer, GcProject, GcState, NewProjectDraft, NewTradeDraft, PlanSheet, ProjectSchedule, ScheduleActivity, ScheduleMilestone, ScopeItem, TradePackage } from './gcTypes'
+import type { GcCustomer, GcProject, GcState, NewProjectDraft, NewTradeDraft, PlanSheet, ProjectSchedule, ScheduleActivity, ScheduleMilestone, ScopeItem, SpecSection, TradePackage } from './gcTypes'
 import { sheetDiscipline, sheetsAtRev } from './gcPlans'
 import { currentRev } from './gcLookups'
 import { tradeLineup } from './gcMap'
@@ -271,13 +271,18 @@ export function packagesFromDrafts(projectId: string, drafts: NewTradeDraft[], t
       const pkgId = freeId(`${projectId}-${slug(t.trade)}`, used)
       used.push(pkgId)
       const lines = t.scope
-        .map((label, i) => ({ label: label.trim(), sheets: t.scopeSheets?.[i] }))
+        .map((label, i) => ({ label: label.trim(), sheets: t.scopeSheets?.[i], specs: t.scopeSpecs?.[i] }))
         .filter((l) => l.label !== '')
       return {
         id: pkgId,
         trade: t.trade,
         bidTab: null,
-        scope: lines.map((l, i) => ({ id: `${pkgId}-${i + 1}`, label: l.label, ...(t.scopeSheets ? { sheets: l.sheets ?? [] } : {}) })),
+        scope: lines.map((l, i) => ({
+          id: `${pkgId}-${i + 1}`,
+          label: l.label,
+          ...(t.scopeSheets ? { sheets: l.sheets ?? [] } : {}),
+          ...(t.scopeSpecs ? { specs: l.specs ?? [] } : {}),
+        })),
         budget: t.budget,
         selfPerform: t.ours ? { ref: 'New bid', value: t.budget, note: 'Ours. Price it as our own bid in Trades mode.', priced: false } : null,
         invites: [],
@@ -388,6 +393,7 @@ export function buildNewProject(state: GcState, draft: NewProjectDraft): { proje
     bidDue: draft.bidDue,
     sizeNote: draft.sizeNote.trim(),
     sheets: draft.sheets,
+    ...(draft.specs && draft.specs.length > 0 ? { specs: draft.specs } : {}),
     planSets: [
       {
         rev: 0,
@@ -721,3 +727,191 @@ export function changeOrderFromSet(
     schedule: jobDays > 0 ? `+${jobDays} ${jobDays === 1 ? 'day' : 'days'}` : 'none',
   }
 }
+
+// ---------------------------------------------------------------------------------------------
+// The specs: the project manual's sections, the trades they point at, the lines that read them
+// ---------------------------------------------------------------------------------------------
+
+/** The divisions of the project manual, by their two-digit number. */
+export const SPEC_DIVISIONS: Record<string, string> = {
+  '00': 'Procurement and contracting',
+  '01': 'General requirements',
+  '02': 'Existing conditions',
+  '03': 'Concrete',
+  '04': 'Masonry',
+  '05': 'Metals',
+  '06': 'Wood, plastics and composites',
+  '07': 'Thermal and moisture protection',
+  '08': 'Openings',
+  '09': 'Finishes',
+  '10': 'Specialties',
+  '11': 'Equipment',
+  '12': 'Furnishings',
+  '13': 'Special construction',
+  '14': 'Conveying equipment',
+  '21': 'Fire suppression',
+  '22': 'Plumbing',
+  '23': 'HVAC',
+  '25': 'Integrated automation',
+  '26': 'Electrical',
+  '27': 'Communications',
+  '28': 'Electronic safety and security',
+  '31': 'Earthwork',
+  '32': 'Exterior improvements',
+  '33': 'Utilities',
+}
+
+/** A section's division: its first two digits. */
+export function specDivision(id: string): string {
+  return id.replace(/\D/g, '').slice(0, 2)
+}
+
+/**
+ * Which trade a section belongs to, by the start of its number: the longest match wins, so
+ * "09 91" is painting while "09 2" is drywall. Divisions 00 and 01 belong to no trade.
+ */
+const SPEC_TRADES: [string, string][] = [
+  ['0241', 'Sitework'],
+  ['03', 'Concrete'],
+  ['04', 'Masonry'],
+  ['051', 'Structural steel'],
+  ['052', 'Structural steel'],
+  ['053', 'Structural steel'],
+  ['055', 'Structural steel'],
+  ['061', 'Framing and drywall'],
+  ['064', 'Millwork'],
+  ['075', 'Roofing'],
+  ['076', 'Roofing'],
+  ['077', 'Roofing'],
+  ['081', 'Doors and hardware'],
+  ['087', 'Doors and hardware'],
+  ['084', 'Glass and storefront'],
+  ['088', 'Glass and storefront'],
+  ['092', 'Framing and drywall'],
+  ['095', 'Framing and drywall'],
+  ['093', 'Flooring'],
+  ['096', 'Flooring'],
+  ['099', 'Painting'],
+  ['123', 'Millwork'],
+  ['21', 'Fire sprinkler'],
+  ['22', 'Plumbing'],
+  ['23', 'HVAC'],
+  ['26', 'Electrical'],
+  ['27', 'Electrical'],
+  ['28', 'Electrical'],
+  ['31', 'Sitework'],
+  ['321', 'Sitework'],
+  ['328', 'Landscaping'],
+  ['329', 'Landscaping'],
+  ['33', 'Sitework'],
+]
+
+/** The trade a section most likely belongs to. Null: none, like the general requirements. */
+export function tradeForSpec(id: string): string | null {
+  const digits = id.replace(/\D/g, '')
+  let best: [string, string] | null = null
+  for (const rule of SPEC_TRADES) if (digits.startsWith(rule[0]) && (!best || rule[0].length > best[0].length)) best = rule
+  return best?.[1] ?? null
+}
+
+/** What a pasted table of contents reads as: the sections, and the lines with numbers that were not read. */
+export interface SpecIndexReading {
+  sections: SpecSection[]
+  unread: string[]
+}
+
+/** "07 54 23", "075423", "07-54-23", "Section 09 91 23" at the head of a line, then the title. */
+const SPEC_LINE = /^\s*(?:section\s+)?(\d{2})[\s.-]?(\d{2})[\s.-]?(\d{2})(?:\.\d+)?\b[\s\-–—:.,]*(.*)$/i
+
+/**
+ * The sections in a pasted table of contents, one a line, each once, in the order they appear.
+ * A division heading ("DIVISION 09 - FINISHES") and a line with no digit are passed over. A line
+ * with digits that does not start with a section number is kept in `unread`.
+ */
+export function specIndexInText(text: string): SpecIndexReading {
+  const sections: SpecSection[] = []
+  const unread: string[] = []
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim()
+    if (line === '' || !/\d/.test(line) || /^division\b/i.test(line)) continue
+    const m = line.match(SPEC_LINE)
+    if (!m) {
+      unread.push(line)
+      continue
+    }
+    const id = `${m[1]} ${m[2]} ${m[3]}`
+    if (sections.some((s) => s.id === id)) continue
+    sections.push({ id, title: titleWords(m[4] ?? '') })
+  }
+  return { sections, unread }
+}
+
+/** One trade the plans suggest: the sheets and the sections behind the guess. */
+export interface PlansTradeGuess {
+  trade: string
+  from: string[]
+  specs: string[]
+}
+
+/** The trades the sheets and the sections suggest together, in the list's order. */
+export function tradesForPlans(sheets: PlanSheet[], specs: SpecSection[]): PlansTradeGuess[] {
+  const out = new Map<string, PlansTradeGuess>()
+  for (const g of tradesForSheets(sheets)) out.set(g.trade, { trade: g.trade, from: g.from, specs: [] })
+  for (const s of specs) {
+    const trade = tradeForSpec(s.id)
+    if (!trade) continue
+    const g = out.get(trade) ?? { trade, from: [], specs: [] }
+    g.specs.push(s.id)
+    out.set(trade, g)
+  }
+  return [...out.values()].sort((a, b) => tradeOrder(a.trade) - tradeOrder(b.trade))
+}
+
+/** The sections a scope line most likely reads from: the trade's sections whose titles share a word with it. */
+export function guessLineSpecs(label: string, tradeSpecs: SpecSection[]): string[] {
+  const want = new Set(stems(label))
+  if (want.size === 0) return []
+  return tradeSpecs.filter((s) => stems(s.title).some((w) => want.has(w))).map((s) => s.id)
+}
+
+/** A made-up table of contents for the made-up clinic, as a project manual prints it. */
+export const SAMPLE_SPEC_INDEX = [
+  'PROJECT MANUAL, TABLE OF CONTENTS',
+  'DIVISION 01 - GENERAL REQUIREMENTS',
+  '01 10 00  SUMMARY',
+  '01 25 00  SUBSTITUTION PROCEDURES',
+  'DIVISION 03 - CONCRETE',
+  '03 30 00  CAST-IN-PLACE CONCRETE',
+  'DIVISION 05 - METALS',
+  '05 12 00  STRUCTURAL STEEL FRAMING',
+  '05 31 00  STEEL DECKING',
+  'DIVISION 07 - THERMAL AND MOISTURE PROTECTION',
+  '07 54 23  THERMOPLASTIC POLYOLEFIN ROOFING',
+  '07 62 00  SHEET METAL FLASHING AND TRIM',
+  'DIVISION 08 - OPENINGS',
+  '08 11 13  HOLLOW METAL DOORS AND FRAMES',
+  '08 41 13  ALUMINUM-FRAMED ENTRANCES AND STOREFRONTS',
+  '08 71 00  DOOR HARDWARE',
+  'DIVISION 09 - FINISHES',
+  '09 22 16  NON-STRUCTURAL METAL FRAMING',
+  '09 29 00  GYPSUM BOARD',
+  '09 51 13  ACOUSTICAL PANEL CEILINGS',
+  '09 65 19  RESILIENT TILE FLOORING',
+  '09 91 23  INTERIOR PAINTING',
+  'DIVISION 21 - FIRE SUPPRESSION',
+  '21 13 13  WET-PIPE SPRINKLER SYSTEMS',
+  'DIVISION 22 - PLUMBING',
+  '22 11 16  DOMESTIC WATER PIPING',
+  '22 40 00  PLUMBING FIXTURES',
+  'DIVISION 23 - HVAC',
+  '23 31 13  METAL DUCTS',
+  '23 74 13  PACKAGED ROOFTOP AIR-CONDITIONING UNITS',
+  'DIVISION 26 - ELECTRICAL',
+  '26 24 16  PANELBOARDS',
+  '26 51 00  INTERIOR LIGHTING',
+  'DIVISION 31 - EARTHWORK',
+  '31 23 00  EXCAVATION AND FILL',
+  'DIVISION 32 - EXTERIOR IMPROVEMENTS',
+  '32 12 16  ASPHALT PAVING',
+  '32 84 00  PLANTING IRRIGATION',
+].join('\n')

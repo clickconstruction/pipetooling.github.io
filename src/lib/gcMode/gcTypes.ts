@@ -33,6 +33,12 @@ export interface PlanSheet {
   title: string
 }
 
+/** One section of the project manual (the specs): its number, like "09 91 23", and its title. */
+export interface SpecSection {
+  id: string
+  title: string
+}
+
 export interface ScopeItem {
   id: string
   label: string
@@ -41,6 +47,8 @@ export interface ScopeItem {
    * Empty: the trade's sheets as a whole, no one sheet in particular.
    */
   sheets?: string[]
+  /** The sections of the project manual this line reads from. Missing: not said. */
+  specs?: string[]
 }
 
 export interface SubBid {
@@ -330,6 +338,8 @@ export interface GcProject {
   sizeNote: string
   /** The sheet index of the bid set. An addendum names the sheets it changed or added. */
   sheets: PlanSheet[]
+  /** The project manual's table of contents: its sections. Missing: no manual came in. */
+  specs?: SpecSection[]
   planSets: PlanSet[]
   packages: TradePackage[]
   generalConditions: number
@@ -341,6 +351,16 @@ export interface GcProject {
   schedule?: ProjectSchedule
   /** Our people on the job, for a trade to call (Portal lane). Unset: none named yet. */
   team?: ProjectContact[]
+  /**
+   * The day we heard the owner picked another builder (owner, 2026-10-03). The project keeps its
+   * stage ('pursuing') and leaves Bidding for the board's Lost section. Absent or null: not lost.
+   */
+  lostOn?: string | null
+  /** Why we lost it, in Trades mode's loss reasons (gcLost.ts). */
+  lostWhy?: GcLostWhy | null
+  /** Who the owner picked, when we know. */
+  wonBy?: string | null
+  lostNote?: string | null
   /** The punch list (Building lane, 2026-10-03): what is left to fix on each trade's work. Unset: none yet. */
   punch?: PunchItem[]
 }
@@ -365,6 +385,9 @@ export interface PunchItem {
   /** Checked and not fixed: sent back to the trade, how many times, with the last note. */
   sentBack?: { times: number; note: string; on: string }
 }
+
+/** Why a bid to an owner was lost: Trades mode's loss reasons, in GC words (gcLost.ts). */
+export type GcLostWhy = 'price' | 'other_builder' | 'project_died' | 'no_bid' | 'no_answer'
 
 export interface LogEntry {
   id: number
@@ -564,6 +587,10 @@ export type GcAction =
   | { type: 'sendQuestionToArchitect'; projectId: string; questionId: string }
   /** We record the architect's answer and send it to the companies on the trade. */
   | { type: 'answerQuestion'; projectId: string; questionId: string; answer: string; recipients: string[] }
+  /** The owner picked another builder: the bid leaves Bidding for the board's Lost section (owner, 2026-10-03). */
+  | { type: 'markLost'; projectId: string; why: GcLostWhy; wonBy: string | null; note: string }
+  /** A lost bid comes back: the owner returns to us, and it is in Bidding again. */
+  | { type: 'reopenLost'; projectId: string }
   /** Our superintendent adds an item to a trade's punch list. */
   | { type: 'addPunchItem'; projectId: string; packageId: string; text: string; where?: string }
   /** The trade marks a punch item fixed in its portal. */
@@ -582,6 +609,8 @@ export interface NewTradeDraft {
   scope: string[]
   /** The sheets each scope line reads from, in the order of `scope`. Missing: not said. */
   scopeSheets?: string[][]
+  /** The sections of the project manual each scope line reads from, in the order of `scope`. */
+  scopeSpecs?: string[][]
 }
 
 /** What the office fills in before a project exists. The reducer makes the project from it. */
@@ -602,6 +631,8 @@ export interface NewProjectDraft {
   issuedOn: string
   setNote: string
   sheets: PlanSheet[]
+  /** The project manual's sections, read from its table of contents. Missing or empty: none came in. */
+  specs?: SpecSection[]
   trades: NewTradeDraft[]
 }
 

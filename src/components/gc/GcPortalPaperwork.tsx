@@ -44,9 +44,9 @@ export function GcPortalPaperwork({
         </Line>
 
         <Line label={t('insuranceCert')}>
-          <Chip tone={coi.done ? 'green' : 'red'}>{coi.words}</Chip>
+          <Chip tone={coi.soon ? 'amber' : coi.done ? 'green' : 'red'}>{coi.words}</Chip>
           {open !== 'coi' && (
-            <Btn kind={coi.done ? 'quiet' : 'primary'} onClick={() => setOpen('coi')}>
+            <Btn kind={coi.done && !coi.soon ? 'quiet' : 'primary'} onClick={() => setOpen('coi')}>
               {t(coi.done ? 'sendNewer' : 'sendCert')}
             </Btn>
           )}

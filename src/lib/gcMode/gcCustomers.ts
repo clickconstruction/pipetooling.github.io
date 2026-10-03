@@ -53,6 +53,8 @@ export function customerSummary(state: GcState, customer: GcCustomer): CustomerS
   }
   for (const project of live) {
     const price = proposalTotals(project).price
+    // A lost bid is no longer in front of them (owner, 2026-10-03); the window counts it as a loss.
+    if (project.lostOn) continue
     if (project.stage === 'pursuing') sum.inFront += price
     else {
       sum.underContract += price

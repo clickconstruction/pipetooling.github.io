@@ -39,7 +39,7 @@ export const GC_TOUR_STEPS: SpotlightTourStep[] = [
   {
     anchor: 'gc-row-pursuing',
     title: 'How bidding ends',
-    body: 'Open the project and go to Our number. Tap We sent our bid when the price goes to the owner. When the owner picks us, tap We won this. The project moves down to Buying out.',
+    body: 'Open the project and go to Our number. Tap We sent our bid when the price goes to the owner. When the owner picks us, tap We won this. The project moves down to Buying out. If the owner picks someone else, tap We lost this.',
     missingBody: 'No project is bidding right now.',
   },
   {
@@ -73,6 +73,11 @@ export const GC_TOUR_STEPS: SpotlightTourStep[] = [
     anchor: 'gc-stage-closed',
     title: 'Closed',
     body: 'A finished job moves down here. Close it on its Closeout tab with Close the job. That button comes once every trade is closed out and the owner paid our last bill. Closed jobs stay here for the record.',
+  },
+  {
+    anchor: 'gc-stage-lost',
+    title: 'Lost',
+    body: 'A bid we did not win moves down here. Each one says why we lost it and who won, if we know. Nobody is chased on it anymore. Tap Bring it back on Our number if the owner comes back to us.',
   },
   {
     anchor: 'gc-new-here',
