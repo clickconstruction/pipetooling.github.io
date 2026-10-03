@@ -331,6 +331,16 @@ const STEPS: Step[] = [
   },
   { label: 'Send change order 2 to Dr. Raman', action: { type: 'sendChangeOrder', projectId: 'helotes', changeOrderId: 'co-2' } },
   { label: 'Dr. Raman declines change order 2', action: { type: 'ownerDeclineChangeOrder', projectId: 'helotes', changeOrderId: 'co-2' } },
+  // Change orders, the trade's side (Building lane): the owner signs, the trade signs it into its statement of work.
+  {
+    label: 'Change order 3: a coffee bar cabinet in the break room',
+    action: { type: 'draftChangeOrder', projectId: 'helotes', description: 'Add a coffee bar cabinet in the break room, per A-501', reason: 'owner', schedule: '+2 working days', packageId: 'mill', cost: 2_400, price: 0 },
+  },
+  { label: 'Send change order 3 to Dr. Raman', action: { type: 'sendChangeOrder', projectId: 'helotes', changeOrderId: 'co-3' } },
+  { label: 'Dr. Raman signs change order 3', action: { type: 'ownerSignChangeOrder', projectId: 'helotes', changeOrderId: 'co-3' } },
+  { label: 'Send change order 3 to Cedar & Pine', action: { type: 'sendTradeChange', projectId: 'helotes', changeOrderId: 'co-3' } },
+  { label: 'Cedar & Pine signs change order 3', action: { type: 'tradeSignChange', projectId: 'helotes', changeOrderId: 'co-3' } },
+  { label: 'Cedar & Pine reports the coffee bar half done', action: { type: 'tradeReport', projectId: 'helotes', packageId: 'mill', sovId: 'mill-co3', pct: 50 } },
 ]
 
 const CUSTOMER_IDS = ['cibolo', 'raman']
@@ -464,6 +474,7 @@ describe('GC mode golden walk', () => {
       'closeJob', 'approveDrawLess', 'selfReportStage',
       'draftSchedule', 'setScheduleActivity', 'setScheduleMilestone', 'removeScheduleMilestone',
       'verifyLookAhead', 'crewMarkLookAhead',
+      'sendTradeChange', 'tradeSignChange',
       'tradeOpenPortal',
       'tradeAnswerLines',
       'priceOwnBid',

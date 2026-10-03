@@ -7,7 +7,7 @@
  *
  * The real build fills the same AIA template the Jobs Stages tab fills (`aiaG702G703Template.ts`).
  */
-import type { Draw, DrawSentBack, GcProject, GcState, Partner, Sow, TradePackage } from './gcTypes'
+import type { ChangeOrder, Draw, DrawSentBack, GcProject, GcState, Partner, Sow, SovLine, TradePackage } from './gcTypes'
 import { money, shortDate } from './gcWords'
 import { partnerById } from './gcLookups'
 import { GC_COMPANY } from './gcFixture'
@@ -61,7 +61,7 @@ export interface PayAppLine {
 export interface PayAppSummary {
   /** 1 */
   originalSum: number
-  /** 2. No change orders in the prototype yet. */
+  /** 2: the change orders signed into the statement of work. */
   changeOrders: number
   /** 3 */
   sumToDate: number
@@ -142,7 +142,9 @@ export function payApplication(sow: Sow, number: number, toPct: Record<string, n
     retainage: sum((l) => l.retainage),
   }
   const previousCertificates = sow.draws.filter((d) => d.number < number).reduce((s, d) => s + d.net, 0)
-  const sumToDate = sow.price
+  // Line 2: the change orders signed into the statement of work. Line 3 adds them to the original.
+  const changeOrders = changeOrderLines(sow).reduce((s, l) => s + l.amount, 0)
+  const sumToDate = sow.price + changeOrders
   const earnedLessRetainage = toDate - totals.retainage
   return {
     number,
@@ -151,7 +153,7 @@ export function payApplication(sow: Sow, number: number, toPct: Record<string, n
     totals,
     summary: {
       originalSum: sow.price,
-      changeOrders: 0,
+      changeOrders,
       sumToDate,
       completedToDate: toDate,
       retainagePct: sow.retainagePct,
@@ -545,4 +547,54 @@ export function jobCloseout(state: GcState, project: GcProject): { ready: boolea
   }
   if (!ownerRetainagePaidOn(project)) left.push('The owner has not paid our final pay application.')
   return { ready: left.length === 0 && !project.closedOn, left, closedOn: project.closedOn ?? null }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Change orders, the trade's side (Owner Billing builds the owner's side)
+// ---------------------------------------------------------------------------------------------
+
+/** The lines signed change orders added to a statement of work. */
+export function changeOrderLines(sow: Sow): SovLine[] {
+  return sow.sov.filter((l) => l.changeOrderId !== undefined)
+}
+
+/**
+ * The contract with the trade to date: the original price plus the signed changes. The original
+ * price (`sow.price`) never moves, since it is what we carry in our number to the owner; the owner's
+ * change order bills the change on a line of its own.
+ */
+export function sowContractSum(sow: Sow): number {
+  return sow.price + changeOrderLines(sow).reduce((s, l) => s + l.amount, 0)
+}
+
+/** Where a change order stands on the trade's side: with the owner, ours to send, waiting on the trade, signed. */
+export type TradeChangeState = 'owner' | 'toSend' | 'sent' | 'signed'
+
+export interface TradeChange {
+  co: ChangeOrder
+  state: TradeChangeState
+}
+
+/**
+ * The change orders that belong to a trade we hire with a signed statement of work, and where each
+ * stands. A declined one is left out. Our own crew's and our own work's have no trade side.
+ */
+export function tradeChangesFor(project: GcProject, pkg: TradePackage): TradeChange[] {
+  if (pkg.selfPerform || pkg.sow?.status !== 'signed') return []
+  return (project.changeOrders ?? [])
+    .filter((co) => co.packageId === pkg.id && co.status !== 'declined')
+    .map((co) => ({
+      co,
+      state: co.status !== 'signed' ? 'owner' : !co.tradeChange ? 'toSend' : co.tradeChange.status === 'sent' ? 'sent' : 'signed',
+    }))
+}
+
+/**
+ * How far the trade says a change order's work is: its line's reported percent, once the trade has
+ * signed the change. Null before that. For Owner Billing's bill, the way it reads ownCrewWork.
+ */
+export function changeOrderTradePct(project: GcProject, co: ChangeOrder): number | null {
+  if (co.tradeChange?.status !== 'signed') return null
+  const pkg = project.packages.find((k) => k.id === co.packageId)
+  return pkg?.sow?.sov.find((l) => l.id === co.tradeChange?.sovLineId)?.pctReported ?? null
 }

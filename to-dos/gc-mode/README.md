@@ -81,7 +81,7 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
 | **Bid tabs** | After our bid is in, each trade's quotes go back to the companies that quoted, low to high, their own row marked, names hidden unless ticked. |
 | **Contracts** | Per trade: paperwork chips, award, the statement of work drafted from the bid, send, sign. |
 | **Get started** | The checklist before work starts: owner contract, permit, start date, and five steps per trade. Start stays shut until nothing is missing. |
-| **Draws** | Percent reported per line, a draw asked from the portal with its pay application (the 702 and 703) and a conditional waiver, approve, pay, unconditional waiver. **Pay application** on each draw opens the signed form read-only. **Send back** returns a waiting draw with a note and the percent we see on each line we doubt; the trade gets **Fix and resend** in its portal, our numbers filled in, and the fixed one comes back marked "revised". A trade our own crew does shows as **Our own crew** with its percent and its Pipeline job: no draws there. |
+| **Draws** | Percent reported per line, a draw asked from the portal with its pay application (the 702 and 703) and a conditional waiver, approve, pay, unconditional waiver. **Pay application** on each draw opens the signed form read-only. **Send back** returns a waiting draw with a note and the percent we see on each line we doubt; the trade gets **Fix and resend** in its portal, our numbers filled in, and the fixed one comes back marked "revised". A trade our own crew does shows as **Our own crew** with its percent and its Pipeline job: no draws there. A change order the owner signed shows on its trade's card with **Send the change to** the company; the company signs it in its portal (**Sign the change**) and it becomes a line of its own on their statement of work, reported and billed like the others. Contract and the 702's line 2 count it. |
 | **Bill the owner** | Our pay application to the owner, once a month: one line per trade with the work its company reported, each carrying its share of our general conditions, contingency and fee ("Their price $64,200 plus $23,852 of our costs and fee"). No fee line. Done so far, less what the owner holds, less what we asked for before, is this bill. **Send to** the owner keeps it as it went, and next month's starts from it. **So far with** the owner lists what went, with **Mark paid**. A trade our own crew does (plumbing) shows what **Draws → Our own crew** reports, its stages read-only. **Waivers with this bill** says whose waiver is missing. **See what the owner sees** puts their portal beside it: their contract, each bill with every line and **Pay**, and their papers (our lien waivers and the trades'). A trade's pay application we sent back bills what we see on the lines we doubt. **Change orders**: draft one (description, reason, whose work, schedule, added work or a credit, what it costs us, what it adds), **Send for signature**, and the owner signs or declines in their portal; a signed one is its own line on the bill. Once every line is billed, **Closeout with** the owner replaces the draft: every trade's final, the owner's **Accept the work**, then **Send the final pay application** for what they hold. |
 | **Follow up** (board tab) | Everyone we are waiting on across every project, the ones to call first. Log a contact; record the day they promised a quote; a passed day returns them to the top. |
 | **Trade partners** (board tab) | By trade: the bench, who answers when asked, every project short of quotes, coverage (where they drive from, how far they go), one press to ask the companies not yet asked. **Actions for assistants** on top: each standard as the ideal, where we are, and what closes the gap. |
@@ -167,6 +167,17 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
 - **Each draw comes with a 702 and 703** (2026-10-02, Building lane): the trade fills the pay
   application in its portal and watches the form fill, typing only what the app cannot know. Most
   of it comes from the job and from the work they reported (`gcBuilding.ts`, `GcBuildingPayApp.tsx`).
+- **A signed change order goes to the trade as a change to its statement of work** (approved as
+  built, 2026-10-03, Building lane): once the owner signs, **Send the change to** the company on
+  Draws, and the company signs it in its portal. It becomes a schedule-of-values line of its own
+  (`changeOrderId`), so the original contract (`sow.price`) never moves; the 702's line 2 and the
+  Contract on Draws add the changes (`sowContractSum`, `tradeChangesFor` in `gcBuilding.ts`,
+  `GcBuildingChanges.tsx`). Our own crew's change orders have no trade side.
+- **An inspection is an activity of its own on the schedule** (answered 2026-10-03, after first
+  picking a wait in days on the link): it sits between the work it inspects and the work that
+  waits on it, with its own days, so the wait stops reading as spare days. It is no trade's line
+  and has no dollars, so it counts on the critical path but not in work done against the plan.
+  Not built yet (see *The schedule*).
 - **Closeout runs per trade** (approved as built, 2026-10-02, Building lane): the retainage
   comes back as the trade's last draw, asked for with a final pay application and the
   final-payment releases of lien, once every line is billed and we accept the work
@@ -268,6 +279,9 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
 - Sending a draw back: the note is required; a resend keeps the same application number; only a
   draw waiting on us can go back (a retainage release too); nothing billed changes. The resend's
   percents become the trade's report, even lower than it was.
+- A trade's change order is numbered and worded as the owner's ("Change order 3: Add a coffee bar
+  cabinet…") and carries what it costs us, not what the owner pays. A credit is signed as done
+  (100%), so it comes off the trade's next pay application.
 - Owner billing (`gcOwnerBilling.ts`): the pay application goes on the 25th. A trade's line on
   the owner's bill is the work its company reported, before we approve their draw. General
   conditions, contingency and fee follow the share of the trades' work done, and each trade's
@@ -322,8 +336,8 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
     priced?~~ Answered 2026-10-02: yes (see *Decided by the owner*).
 11. ~~Should a budget come from the size?~~ Left to the New Project lane, 2026-10-02: budgets
     start blank and **Fill the empty budgets from the size** fills them (see *My defaults*).
-12. The pay application leaves out the notary block, materials stored on site (column F reads $0)
-    and change orders (line 2 reads $0). Which of these do our trades need? Should it also
+12. The pay application leaves out the notary block and materials stored on site (column F reads
+    $0); change orders fill line 2 since 2026-10-03. Which of these do our trades need? Should it also
     download as the AIA Excel template the Jobs Stages tab fills, or as a PDF?
 13. ~~On the owner's bill, do our general conditions, contingency and fee show as lines of their
     own, or spread into each trade's line so the owner never sees the fee?~~ Answered: spread
@@ -358,7 +372,7 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
 
 ## The schedule (proposed, 2026-10-02)
 
-Built so far (Building lane, 2026-10-03): the **Schedule** tab, its four measures and the look-ahead on Fair Oaks D, drawing it in Buying out with Start keeping the baseline, and the superintendent's verify list (`gcBuildingSchedule.ts`, `GcBuildingSchedule.tsx`), and the measures on a building job's board row and ring card (`scheduleSummary`). The trade's weekly done or not in its portal is the Portal lane's (`LookAheadMark`; the verify list reads every mark not verified). **Draw a first draft** uses the New Project lane's draft by stage of the job (`scheduleDraft`). The owner's answers are under *Decided by the owner*; this is the shape
+Built so far (Building lane, 2026-10-03): the **Schedule** tab, its four measures and the look-ahead on Fair Oaks D, drawing it in Buying out with Start keeping the baseline, and the superintendent's verify list (`gcBuildingSchedule.ts`, `GcBuildingSchedule.tsx`), and the measures on a building job's board row and ring card (`scheduleSummary`). The trade's weekly done or not in its portal is the Portal lane's (`LookAheadMark`; the verify list reads every mark not verified). **Draw a first draft** uses the New Project lane's draft by stage of the job (`scheduleDraft`). An inspection as its own activity (answered 2026-10-03) is not built: the rows, the chart and the editor take an activity that is no trade's line (the Building lane), and the draft puts the inspection in place of close-in's two-day wait (the New Project lane). The owner's answers are under *Decided by the owner*; this is the shape
 they point to, for the lanes to pick up.
 
 - **The activities are the statement of work lines**: the same schedule-of-values lines a trade
@@ -409,8 +423,9 @@ they point to, for the lanes to pick up.
   later set cannot yet take a sheet out of the set.
 - A trade asks a question about the plans, the architect answers, every bidder on the trade
   gets the answer. Three made-up questions show in the architect's window, read-only.
-- Change orders to a trade (a statement of work amendment). The owner side is built on **Bill the
-  owner**; the record (`ChangeOrder` on the project) takes the trade side as new fields.
+- Change orders to a trade, the rest: the owner's change order still reads its own percent done,
+  not the trade's on its line (`changeOrderTradePct`, the Owner Billing lane's to read), and the
+  portal's "left to bill" counts the original contract only (`sowContractSum`, the Portal lane's).
 - A closed job's own section on the board (answered yes, 2026-10-02): the Board lane reads
   `closedOn`. Closing it on Closeout is built. Bill the owner's picker for our own crew still
   sets one number; by stage it is set on Draws.
@@ -478,6 +493,7 @@ imitates it.
 | `GcBuildingSchedule.tsx` · `src/lib/gcMode/gcBuildingSchedule.ts` | The Schedule tab · its rows, the four measures and the look-ahead (tested in `gcBuildingSchedule.test.ts`) |
 | `GcBuildingSendBack.tsx` | The Send back form under a waiting draw, and the list of what went back |
 | `GcBuildingCrew.tsx` | The Our own crew card on Draws |
+| `GcBuildingChanges.tsx` | A trade's change orders on Draws, with **Send the change to** (the trade signs in the pay application door in its portal) |
 | `GcStart.tsx` | Get started |
 | `GcBidTabs.tsx` | Bid tabs |
 | `GcCustomerWindow.tsx` | The one company window |

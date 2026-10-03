@@ -98,6 +98,11 @@ export interface SovLine {
   amount: number
   pctReported: number
   pctBilled: number
+  /**
+   * A line a signed change order added to the statement of work (Building lane): the change's
+   * cost to the trade. Readers of the original contract leave these out (`sowContractSum` adds them).
+   */
+  changeOrderId?: string
 }
 
 export interface Draw {
@@ -492,6 +497,10 @@ export type GcAction =
   | { type: 'ownerDeclineChangeOrder'; projectId: string; changeOrderId: string }
   /** How much of a signed change order's work is done, for the owner's bill. */
   | { type: 'setChangeOrderPct'; projectId: string; changeOrderId: string; pct: number }
+  /** Send a signed change order to the trade as a change to its statement of work. */
+  | { type: 'sendTradeChange'; projectId: string; changeOrderId: string }
+  /** The trade signs the change in its portal: it becomes a line of its statement of work. */
+  | { type: 'tradeSignChange'; projectId: string; changeOrderId: string }
 
 /** One trade on a new project, as the office left it in the New project window. */
 export interface NewTradeDraft {
@@ -653,4 +662,9 @@ export interface ChangeOrder {
   answeredOn: string | null
   /** Percent of its work done, for the owner's bill. */
   pctDone: number
+  /**
+   * The trade's side (Building lane): the change sent to the company on that trade as an amendment
+   * to its statement of work. Once they sign, it is a line of their statement of work (`sovLineId`).
+   */
+  tradeChange?: { status: 'sent' | 'signed'; sentOn: string; signedOn: string | null; sovLineId: string }
 }

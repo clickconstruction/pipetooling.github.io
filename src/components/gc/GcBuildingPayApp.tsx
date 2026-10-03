@@ -15,6 +15,8 @@ import {
   sentBackOpen,
   shortDate,
   timesSentBack,
+  tradeChangesFor,
+  changeOrderLines,
   TRADE_RETAINAGE_WAIT_DAYS,
   tradeCloseout,
   workAllBilled,
@@ -120,8 +122,25 @@ export function GcBuildingPayAppDoor({
     ? `${GC_SHORT} approved ${money(last.net)} of the ${money(last.asked.net)} you asked for on pay application ${last.number}. ${last.asked.note} The rest is still yours to ask for.`
     : null
 
+  // A change order sent to them: they sign it into their statement of work here (Building lane).
+  const changesToSign = tradeChangesFor(project, pkg).filter((c) => c.state === 'sent')
+
   return (
     <>
+      {changesToSign.map(({ co }) => (
+        <div key={co.id} style={{ padding: '0.55rem 0.65rem', background: 'var(--bg-subtle)', border: '1px solid var(--border-strong)', borderRadius: 6, display: 'grid', gap: '0.4rem' }}>
+          <div>
+            <strong>Change order {co.number} to your statement of work.</strong> {co.description.trim().replace(/[.\s]+$/, '')}.{' '}
+            {co.cost < 0 ? `It takes ${money(-co.cost)} off.` : `It adds ${money(co.cost)}.`} {co.schedule !== 'none' ? `Time: ${co.schedule}.` : ''}
+          </div>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            <Btn kind="primary" disabled={partner.msa !== 'signed'} onClick={() => dispatch({ type: 'tradeSignChange', projectId: project.id, changeOrderId: co.id })}>
+              Sign the change
+            </Btn>
+            {partner.msa !== 'signed' && <span style={{ fontSize: '0.8rem', color: 'var(--text-red-700)' }}>Sign the master agreement first.</span>}
+          </div>
+        </div>
+      ))}
       <div style={{ padding: '0.55rem 0.65rem', background: 'var(--bg-subtle)', borderRadius: 6, display: 'grid', gap: '0.4rem' }}>
         {closing ? (
           <CloseoutForTrade project={project} pkg={pkg} today={today} onFinal={() => openWindow('final')} onSee={(d) => setOpen(d)} />
@@ -879,7 +898,12 @@ function PayAppPaper({
               {line('8', 'Current payment due', money(s.currentDue), true)}
             </Mark>
             {line('9', 'Balance to finish, including retainage', money(s.balanceToFinish))}
-            <div style={{ ...label, marginTop: '0.4rem' }}>Change orders: none on this contract</div>
+            <div style={{ ...label, marginTop: '0.4rem' }}>
+              {(() => {
+                const n = pkg.sow ? changeOrderLines(pkg.sow).length : 0
+                return n === 0 ? 'Change orders: none on this contract' : `Change orders: ${n} signed, ${money(s.changeOrders)} in all`
+              })()}
+            </div>
 
             <Mark on={mark === 'sign'} tag={MARK_WORDS.sign}>
               <div style={{ marginTop: '0.9rem' }}>

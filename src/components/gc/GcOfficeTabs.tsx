@@ -22,6 +22,8 @@ import {
   proposalTotals,
   retainageHeldNow,
   sentBackOpen,
+  sowContractSum,
+  tradeChangesFor,
   timesSentBack,
   tradeCloseout,
   shortDate,
@@ -43,6 +45,7 @@ import { LinkNeverOpenedChip } from './GcPortalLinkChip'
 import { AskThread } from './GcAskThread'
 import { GcBuildingPayAppWindow } from './GcBuildingPayApp'
 import { GcBuildingSendBackForm, GcBuildingSentBackList } from './GcBuildingSendBack'
+import { GcBuildingTradeChanges } from './GcBuildingChanges'
 import { GcBuildingCrewCard } from './GcBuildingCrew'
 import { GcNewPlansWindow } from './GcNewPlans'
 import { Btn, Card, Chip, PlusUnknown, Stat, Why, input, num, td, th, type Tone } from './gcUi'
@@ -941,11 +944,11 @@ export function GcDrawsTab({ state, project, dispatch }: GcPaneProps) {
             <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
               <div><strong>{pkg.trade}</strong> · {partner.company}</div>
               <div style={{ display: 'flex', gap: '1.75rem', flexWrap: 'wrap' }}>
-                <Stat label="Contract" value={money(sow.price)} />
+                <Stat label="Contract" value={money(sowContractSum(sow))} />
                 <Stat label="Billed" value={money(m.billed)} />
                 <Stat label="Paid" value={money(m.paid)} />
                 <Stat label="Retainage held" value={money(retainageHeldNow(sow))} />
-                <Stat label="Left to bill" value={money(sow.price - m.billed)} />
+                <Stat label="Left to bill" value={money(sowContractSum(sow) - m.billed)} />
               </div>
             </div>
             <div style={{ display: 'grid', gap: '0.35rem', marginTop: '0.7rem' }}>
@@ -1050,6 +1053,11 @@ export function GcDrawsTab({ state, project, dispatch }: GcPaneProps) {
                 </div>
               ))}
               <GcBuildingSentBackList sow={sow} onLook={(draw) => setLooking({ packageId: pkg.id, draw })} />
+              <GcBuildingTradeChanges
+                changes={tradeChangesFor(project, pkg)}
+                company={partner.company}
+                onSend={(changeOrderId) => dispatch({ type: 'sendTradeChange', projectId: project.id, changeOrderId })}
+              />
               {m.ready > 0 && !sow.draws.some((d) => d.status === 'requested') && !sentBackOpen(sow) && (
                 <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
                   {partner.company} has reported {money(m.ready)} of work they have not asked to be paid for.
