@@ -9,7 +9,7 @@
 import type { ChangeOrder, GcCustomer, GcProject, GcState, OwnerPayAppSent, TradePackage } from './gcTypes'
 import { carriedAmount, proposalTotals } from './gcBids'
 import { partnerById } from './gcLookups'
-import { changeOrderTradePct, ownCrewWork, tradeCloseout, type PayApplication, type PayAppLine } from './gcBuilding'
+import { changeOrderTradePct, ownCrewWork, retainageHeldNow, tradeCloseout, type PayApplication, type PayAppLine } from './gcBuilding'
 import { money, shortDate } from './gcWords'
 
 /** We bill the owner once a month (the owner's call, 2026-10-02). The day of the month is my default. */
@@ -752,5 +752,67 @@ export function ownerPayAppForm(state: GcState, project: GcProject, which: numbe
         const co = signed.get(l.sovId)
         return co ? [{ number: co.number, description: co.description, price: co.price }] : []
       }),
+  }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Money in and money out on one job (owner's go-ahead, 2026-10-03): what the owner has paid us
+// beside what we have paid the trades, so it shows where we carry the cash. It reads the owner's
+// side from our pay applications (the made-up record before any went, the rule the owner window
+// uses) and the trades' side from their draws. Our own crew (payroll) and general conditions
+// have no cost here.
+// ---------------------------------------------------------------------------------------------
+
+export interface TradeCash {
+  packageId: string
+  trade: string
+  company: string
+  /** What we paid them, retainage released included. */
+  paid: number
+  /** Draws we approved and have not paid yet. */
+  approved: number
+  /** Draws they asked for that wait on us. */
+  asked: number
+  /** What we hold of theirs until the end. */
+  held: number
+}
+
+export interface ProjectCash {
+  /** From the owner. */
+  in: { paid: number; owed: number; held: number }
+  /** To the trades, added up. */
+  out: { paid: number; approved: number; asked: number; held: number }
+  byTrade: TradeCash[]
+  /** Paid in less paid out. Below zero: we are carrying the job. */
+  net: number
+  /** The trades our own crew does: paid through payroll, so not counted here. */
+  ownCrew: string[]
+}
+
+export function projectCash(state: GcState, project: GcProject): ProjectCash {
+  const account = ownerAccount(project)
+  const made = project.ownerBilling
+  const owner = account
+    ? { paid: account.paid, owed: account.owed, held: account.retainageHeld }
+    : made
+      ? { paid: made.paid, owed: made.billed - made.retainageHeld - made.paid, held: made.retainageHeld }
+      : { paid: 0, owed: 0, held: 0 }
+  const byTrade: TradeCash[] = []
+  for (const pkg of project.packages) {
+    const sow = pkg.sow
+    if (pkg.selfPerform || !sow || sow.status !== 'signed') continue
+    const invite = pkg.invites.find((i) => i.id === pkg.awardedInviteId)
+    const company = (invite ? partnerById(state, invite.partnerId)?.company : undefined) ?? pkg.trade
+    const net = (status: 'requested' | 'approved' | 'paid') => sow.draws.filter((d) => d.status === status).reduce((t, d) => t + d.net, 0)
+    byTrade.push({ packageId: pkg.id, trade: pkg.trade, company, paid: net('paid'), approved: net('approved'), asked: net('requested'), held: retainageHeldNow(sow) })
+  }
+  const total = (key: 'paid' | 'approved' | 'asked' | 'held') => byTrade.reduce((t, r) => t + r[key], 0)
+  const out = { paid: total('paid'), approved: total('approved'), asked: total('asked'), held: total('held') }
+  return {
+    in: owner,
+    out,
+    byTrade,
+    net: owner.paid - out.paid,
+    ownCrew: project.packages.filter((p) => p.selfPerform).map((p) => p.trade),
   }
 }
