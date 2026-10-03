@@ -185,30 +185,54 @@ describe('how a company arrives', () => {
 })
 
 describe('the sheets behind each line', () => {
-  it('marks the Electrical lines Addendum 1 touches for Voltage, the whole-trade lines with them', () => {
-    // Voltage priced the bid set. Addendum 1 changed E-201 and E-301 (E-301 is the panel schedules).
-    // Service and gear and Fire alarm name no sheet, so they stand for every Electrical sheet.
+  // The office sets sheets on three Electrical lines; the other two it leaves for the whole trade.
+  const officeSet = (s: GcState): GcState => ({
+    ...s,
+    projects: s.projects.map((p) =>
+      p.id !== 'boerne'
+        ? p
+        : {
+            ...p,
+            packages: p.packages.map((k) =>
+              k.id !== 'elec'
+                ? k
+                : {
+                    ...k,
+                    scope: k.scope.map((item) =>
+                      item.label === 'Panels and feeders' ? { ...item, sheets: ['E-301'] } : item.label.endsWith('ighting') ? { ...item, sheets: ['E-101'] } : item,
+                    ),
+                  },
+            ),
+          },
+    ),
+  })
+
+  it('shows no sheet the office did not set: on made-up Boerne every line stands for the whole trade', () => {
+    // Voltage priced the bid set; Addendum 1 changed E-201 and E-301, so every Electrical line is touched.
     const { project, pkg, invite } = ask(state, 'boerne', 'elec', 'voltage')
     const r = portalLines(project, pkg, invite)
-    expect(r.sets.map((x) => x.label)).toEqual(['Addendum 1'])
-    expect(r.lines.filter((l) => l.by.length > 0).map((l) => [l.item.label, l.wholeTrade, l.changed])).toEqual([
-      ['Service and gear', true, ['E-201', 'E-301']],
-      ['Panels and feeders', false, ['E-301']],
-      ['Fire alarm', true, ['E-201', 'E-301']],
+    expect(r.lines.every((l) => l.sheets.length === 0 && l.wholeTrade)).toBe(true)
+    expect(r.lines.map((l) => [l.item.label, l.changed])).toEqual([
+      ['Service and gear', ['E-201', 'E-301']],
+      ['Panels and feeders', ['E-201', 'E-301']],
+      ['Lighting', ['E-201', 'E-301']],
+      ['Fire alarm', ['E-201', 'E-301']],
+      ['Site lighting', ['E-201', 'E-301']],
+    ])
+  })
+
+  it('shows the sheets the office set, and marks only the lines Addendum 1 touches', () => {
+    const s = officeSet(state)
+    const { project, pkg, invite } = ask(s, 'boerne', 'elec', 'voltage')
+    const r = portalLines(project, pkg, invite)
+    expect(r.lines.map((l) => [l.item.label, l.sheets, l.wholeTrade, l.changed])).toEqual([
+      ['Service and gear', [], true, ['E-201', 'E-301']],
+      ['Panels and feeders', ['E-301'], false, ['E-301']],
+      ['Lighting', ['E-101'], false, []],
+      ['Fire alarm', [], true, ['E-201', 'E-301']],
+      ['Site lighting', ['E-101'], false, []],
     ])
     expect(r.otherSheets).toEqual([])
-  })
-
-  it('leaves the lighting lines alone: E-101 did not change', () => {
-    const { project, pkg, invite } = ask(state, 'boerne', 'elec', 'voltage')
-    const untouched = portalLines(project, pkg, invite).lines.filter((l) => l.by.length === 0)
-    expect(untouched.map((l) => l.item.label)).toEqual(['Lighting', 'Site lighting'])
-  })
-
-  it('gives each line its sheets, guessed from its words on a made-up project', () => {
-    const { project, pkg, invite } = ask(state, 'boerne', 'elec', 'voltage')
-    const lighting = portalLines(project, pkg, invite).lines.find((l) => l.item.label === 'Lighting')
-    expect(lighting).toMatchObject({ sheets: ['E-101'], guessed: true, wholeTrade: false, changed: [] })
   })
 
   it('marks nothing for Brightline, who priced Addendum 1 already', () => {

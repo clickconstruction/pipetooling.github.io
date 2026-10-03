@@ -12,7 +12,7 @@ import { askPromise, OPEN_WITHIN_DAYS, type AskPromise } from './gcFollowUp'
 import { bidIsStale, sowMoney } from './gcBids'
 import { GC_COMPANY } from './gcFixture'
 import { pDate, pt, pWeekday, type PortalLang } from './gcPortalI18n'
-import { lineReads, tradeSheets } from './gcNewProject'
+import { lineSheets, tradeSheets } from './gcNewProject'
 import { addDays, sentBackOpen, sowContractSum, tradeChangesFor, tradeCloseout, workAllBilled } from './gcBuilding'
 import { lookAheadWeeks, markState, mondayOf, scheduleRows, type LookAheadState, type ScheduleRow } from './gcBuildingSchedule'
 import { planLabel } from './gcLookups'
@@ -589,11 +589,13 @@ export function portalFirstVisit(state: GcState, partnerId: string): boolean {
 /** One scope line on the bid form, with the sheets it reads from and what changed on them. */
 export interface PortalLine {
   item: ScopeItem
-  /** The sheets the line names, shown beside it. Empty for a line that stands for the whole trade. */
+  /** The sheets the office set for the line, shown beside it. Empty for a line that stands for the whole trade. */
   sheets: string[]
-  /** Matched from the line's words. The office has not said which sheets this line reads from. */
-  guessed: boolean
-  /** The line names no sheet, so it reads every sheet of its trade (the owner's call, `lineReads`). */
+  /**
+   * The office set no sheet for the line, so it reads every sheet of its trade (owner, 2026-10-02).
+   * A sheet only guessed from the line's words is not set (owner, 2026-10-03: show only the sheets
+   * the office set).
+   */
   wholeTrade: boolean
   /** The sheets it reads that a set newer than the company's number changed. */
   changed: string[]
@@ -612,10 +614,12 @@ export function portalLines(project: GcProject, pkg: TradePackage, invite: Invit
   const basis = invite.bid?.basedOnRev ?? invite.seenRev
   const sets = basis === null ? [] : project.planSets.filter((s) => s.rev > basis && s.touches.includes(pkg.id)).sort((a, b) => a.rev - b.rev)
   const lines = pkg.scope.map((item) => {
-    const { sheets: reads, guessed, wholeTrade } = lineReads(project, pkg, item)
+    const { sheets: said, guessed } = lineSheets(project, pkg, item)
+    const wholeTrade = guessed || said.length === 0
+    const reads = wholeTrade ? tradeSheets(project, pkg.trade).map((sh) => sh.id) : said
     const by = sets.filter((set) => set.changedSheets.some((id) => reads.includes(id)))
     const changed = reads.filter((id) => by.some((set) => set.changedSheets.includes(id)))
-    return { item, sheets: wholeTrade ? [] : reads, guessed, wholeTrade, changed, by: by.map((set) => set.label) }
+    return { item, sheets: wholeTrade ? [] : said, wholeTrade, changed, by: by.map((set) => set.label) }
   })
   const named = new Set(lines.flatMap((l) => l.changed))
   const own = new Set(tradeSheets(project, pkg.trade).map((sh) => sh.id))

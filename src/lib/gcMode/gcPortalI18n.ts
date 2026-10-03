@@ -269,9 +269,9 @@ const S = {
   sheetOf: { en: 'Sheet {i} of {n}', es: 'Hoja {i} de {n}' },
   planSetGroup: { en: 'Plan set', es: 'Juego de planos' },
   openSheet: { en: 'Open {id}', es: 'Abrir {id}' },
-  openSheetGuessed: { en: "Open {id}. Matched by the line's words.", es: 'Abrir {id}. Encontrada por las palabras de la partida.' },
   touchesLines: { en: '{sets} touches these lines of your number.', es: '{sets} toca estas partidas de su precio.' },
   readsEvery: { en: 'reads every {trade} sheet', es: 'usa todas las hojas de {trade}' },
+  readEveryMany: { en: 'read every {trade} sheet', es: 'usan todas las hojas de {trade}' },
   alsoChanged: { en: 'Also changed', es: 'También cambió' },
   changedInSets: { en: 'Changed in {sets}', es: 'Cambió en {sets}' },
 
