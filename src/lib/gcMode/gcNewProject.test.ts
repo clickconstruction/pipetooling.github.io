@@ -3,6 +3,7 @@ import {
   SAMPLE_SHEET_INDEX,
   buildNewProject,
   guessLineSheets,
+  lineReads,
   lineSheets,
   linesOnSheets,
   tradeSheets,
@@ -185,7 +186,19 @@ describe('scope lines and their sheets', () => {
     expect(tradeSheets(boerne, 'Electrical').map((x) => x.id)).toEqual(['E-101', 'E-201', 'E-301'])
     const lighting = elecPkg.scope.find((i) => i.label === 'Lighting')
     expect(lighting ? lineSheets(boerne, elecPkg, lighting) : null).toEqual({ sheets: ['E-101'], guessed: true })
-    expect(linesOnSheets(boerne, elecPkg, ['E-101']).map((i) => i.label)).toEqual(['Lighting', 'Site lighting'])
+    // Lighting and Site lighting name E-101; Service and gear and Fire alarm name no sheet, so they read all of Electrical.
+    expect(linesOnSheets(boerne, elecPkg, ['E-101']).map((i) => i.label)).toEqual(['Service and gear', 'Lighting', 'Fire alarm', 'Site lighting'])
+    expect(linesOnSheets(boerne, elecPkg, ['M-101'])).toEqual([])
     expect(lighting ? lineSheets(boerne, elecPkg, { ...lighting, sheets: ['E-201'] }) : null).toEqual({ sheets: ['E-201'], guessed: false })
+  })
+
+  it('counts a line that names no sheet as reading every sheet of its trade', () => {
+    const boerne = initialGcState().projects.find((p) => p.id === 'boerne')
+    const hvac = boerne?.packages.find((p) => p.id === 'hvac')
+    if (!boerne || !hvac) throw new Error('no Boerne HVAC')
+    const ducts = hvac.scope.find((i) => i.label === 'Ductwork')
+    expect(ducts ? lineReads(boerne, hvac, ducts) : null).toEqual({ sheets: ['M-101', 'M-201'], guessed: true, wholeTrade: true })
+    expect(linesOnSheets(boerne, hvac, ['M-101']).map((i) => i.label)).toEqual(['Rooftop units', 'Ductwork', 'Controls', 'Test and balance'])
+    expect(ducts ? lineReads(boerne, hvac, { ...ducts, sheets: [] }) : null).toEqual({ sheets: ['M-101', 'M-201'], guessed: false, wholeTrade: true })
   })
 })

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { money, partnerBlockers, projectCloseout, type CloseoutRow, type Draw } from '../../lib/gcMode/gcModel'
+import { money, ownCrewWork, partnerBlockers, projectCloseout, type CloseoutRow, type Draw } from '../../lib/gcMode/gcModel'
 import { GcBuildingPayAppWindow } from './GcBuildingPayApp'
 import type { GcPaneProps } from './GcOfficeTabs'
 import { Btn, Card, Chip, Stat, Why } from './gcUi'
@@ -59,7 +59,8 @@ export function GcCloseoutTab({ state, project, dispatch, onSeePortal }: GcPaneP
           ))}
           {c.ours.map((pkg) => (
             <div key={pkg.id}>
-              <strong style={{ color: 'var(--text-base)' }}>{pkg.trade}</strong>: our own crew. Nothing is held. Its closeout runs on the Pipeline.
+              <strong style={{ color: 'var(--text-base)' }}>{pkg.trade}</strong>: our own crew, {ownCrewWork(pkg)?.pct ?? 0}% done. Nothing is held. Its
+              closeout runs on the Pipeline.
             </div>
           ))}
         </div>

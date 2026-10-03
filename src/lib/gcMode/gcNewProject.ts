@@ -155,9 +155,20 @@ export function lineSheets(project: GcProject, pkg: TradePackage, item: ScopeIte
   return { sheets: guessLineSheets(item.label, tradeSheets(project, pkg.trade)), guessed: true }
 }
 
-/** The scope lines of a trade that read from any of these sheets. */
+/**
+ * Every sheet one scope line reads from. A line that names no sheet stands for the whole trade,
+ * so it reads every sheet of its trade (`wholeTrade`). The owner, 2026-10-02: count those lines
+ * as touched when any of the trade's sheets changes.
+ */
+export function lineReads(project: GcProject, pkg: TradePackage, item: ScopeItem): { sheets: string[]; guessed: boolean; wholeTrade: boolean } {
+  const said = lineSheets(project, pkg, item)
+  if (said.sheets.length > 0) return { ...said, wholeTrade: false }
+  return { sheets: tradeSheets(project, pkg.trade).map((s) => s.id), guessed: said.guessed, wholeTrade: true }
+}
+
+/** The scope lines of a trade that read from any of these sheets, a line that names no sheet included. */
 export function linesOnSheets(project: GcProject, pkg: TradePackage, sheetIds: string[]): ScopeItem[] {
-  return pkg.scope.filter((item) => lineSheets(project, pkg, item).sheets.some((id) => sheetIds.includes(id)))
+  return pkg.scope.filter((item) => lineReads(project, pkg, item).sheets.some((id) => sheetIds.includes(id)))
 }
 
 /** The usual scope for a trade. A trade not on the list starts empty. */

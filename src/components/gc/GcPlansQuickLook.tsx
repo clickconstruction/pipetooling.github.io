@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   currentRev,
-  lineSheets,
+  lineReads,
   planLabel,
   plansReach,
   sheetDiscipline,
@@ -62,10 +62,11 @@ export function GcPlansQuickLook({ project, onClose, onSeeWhoHasIt }: Props) {
   /** The scope lines that read from the sheet on screen, trade by trade. */
   const onSheet = sheet
     ? project.packages
-        .map((pkg) => ({ pkg, lines: pkg.scope.map((item) => ({ item, ...lineSheets(project, pkg, item) })).filter((l) => l.sheets.includes(sheet.id)) }))
+        .map((pkg) => ({ pkg, lines: pkg.scope.map((item) => ({ item, ...lineReads(project, pkg, item) })).filter((l) => l.sheets.includes(sheet.id)) }))
         .filter((t) => t.lines.length > 0)
     : []
-  const guessedHere = onSheet.some((t) => t.lines.some((l) => l.guessed))
+  const guessedHere = onSheet.some((t) => t.lines.some((l) => l.guessed && !l.wholeTrade))
+  const wholeHere = onSheet.some((t) => t.lines.some((l) => l.wholeTrade))
 
   return (
     <div
@@ -215,6 +216,7 @@ export function GcPlansQuickLook({ project, onClose, onSeeWhoHasIt }: Props) {
                   ))
                 )}
                 {guessedHere && <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>Some of these are guessed from the line's words. Set them when you write the scope.</span>}
+                {wholeHere && <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>A line that names no sheet reads every sheet of its trade, so it shows here too.</span>}
               </div>
             )}
           </div>

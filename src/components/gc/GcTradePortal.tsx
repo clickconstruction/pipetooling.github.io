@@ -9,6 +9,7 @@ import {
   partnerById,
   planLabel,
   portalInsurance,
+  portalLines,
   portalPlanNews,
   portalPromiseLine,
   shortDate,
@@ -26,6 +27,7 @@ import { BidTabTable } from './GcBidTabs'
 import { GcBuildingPayAppDoor } from './GcBuildingPayApp'
 import { Btn, Chip, input } from './gcUi'
 import { GcPortalHome } from './GcPortalHome'
+import { ChangedLines, LineSheets, SheetChip } from './GcPortalLineSheets'
 import { GcPortalMessages } from './GcPortalMessages'
 import { GcPortalPaperwork } from './GcPortalPaperwork'
 import { GcPortalPlans } from './GcPortalPlans'
@@ -196,13 +198,15 @@ function PackageBlock({
   partner: Partner
   dispatch: Dispatch<GcAction>
 }) {
-  const [plansOpen, setPlansOpen] = useState(false)
+  /** The plans window: closed, open on its first sheet (''), or open on a sheet the company tapped. */
+  const [plansAt, setPlansAt] = useState<string | null>(null)
   const news = portalPlanNews(project, pkg, invite)
   const latest = news.latest
   const ids = { projectId: project.id, packageId: pkg.id }
-  const openPlans = () => {
+  // Any look at the newest set counts as opening it, from the button or from a sheet number.
+  const openPlans = (sheetId = '') => {
     if (news.behind) dispatch({ type: 'tradeOpenPlans', ...ids, inviteId: invite.id })
-    setPlansOpen(true)
+    setPlansAt(sheetId)
   }
   const awardedToMe = pkg.awardedInviteId === invite.id
   const awardedElsewhere = pkg.awardedInviteId !== null && !awardedToMe
@@ -214,11 +218,11 @@ function PackageBlock({
           <strong>{latest?.label}</strong>
           <span style={{ opacity: 0.75 }}>issued {shortDate(latest?.issuedOn ?? null)}</span>
           {news.behind ? (
-            <Btn kind={news.neverOpened || news.forTrade.length > 0 ? 'primary' : 'plain'} onClick={openPlans}>Open the plans</Btn>
+            <Btn kind={news.neverOpened || news.forTrade.length > 0 ? 'primary' : 'plain'} onClick={() => openPlans()}>Open the plans</Btn>
           ) : (
             <>
               <Chip tone="green">you have the latest set</Chip>
-              <Btn kind="quiet" onClick={openPlans}>Look at the plans</Btn>
+              <Btn kind="quiet" onClick={() => openPlans()}>Look at the plans</Btn>
             </>
           )}
         </div>
@@ -240,7 +244,7 @@ function PackageBlock({
             {latest.label} does not change {pkg.trade}. Open it so you price on the newest set.
           </div>
         )}
-        {plansOpen && <GcPortalPlans project={project} pkg={pkg} onClose={() => setPlansOpen(false)} />}
+        {plansAt !== null && <GcPortalPlans key={plansAt} project={project} pkg={pkg} startSheet={plansAt || undefined} onClose={() => setPlansAt(null)} />}
       </Block>
 
       {pkg.bidTab && invite.bid && (
@@ -267,7 +271,7 @@ function PackageBlock({
       ) : invite.status === 'declined' ? (
         <Block title={`${pkg.trade} · invitation`}>You passed on this one.</Block>
       ) : (
-        <BidBlock project={project} pkg={pkg} invite={invite} today={state.today} dispatch={dispatch} />
+        <BidBlock project={project} pkg={pkg} invite={invite} today={state.today} dispatch={dispatch} onOpenSheet={openPlans} />
       )}
     </>
   )
@@ -279,12 +283,14 @@ function BidBlock({
   invite,
   today,
   dispatch,
+  onOpenSheet,
 }: {
   project: GcProject
   pkg: TradePackage
   invite: Invite
   today: string
   dispatch: Dispatch<GcAction>
+  onOpenSheet: (sheetId: string) => void
 }) {
   const [promiseDay, setPromiseDay] = useState('')
   const promise = portalPromiseLine(invite, today, GC)
@@ -303,6 +309,8 @@ function BidBlock({
   const unanswered = pkg.scope.filter((item) => includes[item.id] === 'unclear').length
   const openedNewest = !portalPlanNews(project, pkg, invite).behind
   const stale = bidIsStale(project, pkg, invite)
+  const sheets = portalLines(project, pkg, invite)
+  const lineOf = (id: string) => sheets.lines.find((l) => l.item.id === id)
 
   return (
     <Block title={`${pkg.trade} · invitation to bid`}>
@@ -320,8 +328,11 @@ function BidBlock({
           </div>
           {stale && (
             <PortalNote tone="amber">
-              The plans changed for your trade after you bid.{' '}
-              {openedNewest ? 'Confirm your number or change it.' : 'Open the plans above, then confirm your number or change it.'}
+              <div>
+                The plans changed for your trade after you bid.{' '}
+                {openedNewest ? 'Confirm your number or change it.' : 'Open the plans above, then confirm your number or change it.'}
+              </div>
+              <ChangedLines trade={pkg.trade} lines={sheets.lines} otherSheets={sheets.otherSheets} setNames={sheets.sets.map((x) => x.label)} onOpen={onOpenSheet} />
             </PortalNote>
           )}
           {unclear.length > 0 && (
@@ -351,12 +362,17 @@ function BidBlock({
         </div>
       ) : (
         <div style={{ display: 'grid', gap: '0.5rem' }}>
-          <div style={{ fontSize: '0.85rem', opacity: 0.8 }}>Tick what your number covers. Untick what it leaves out.</div>
+          <div style={{ fontSize: '0.85rem', opacity: 0.8 }}>
+            Tick what your number covers. Untick what it leaves out. Tap a sheet number to open it.
+          </div>
           {pkg.scope.map((item) =>
             includes[item.id] === 'unclear' ? (
               <div key={item.id} style={{ display: 'grid', gap: '0.3rem', fontSize: '0.9rem', padding: '0.4rem 0.5rem', background: 'var(--bg-amber-100)', borderRadius: 6 }}>
-                <div>
-                  <strong>{item.label}.</strong> {GC} cannot tell if your number covers it.
+                <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <span>
+                    <strong>{item.label}.</strong> {GC} cannot tell if your number covers it.
+                  </span>
+                  <LineSheets line={lineOf(item.id)} onOpen={onOpenSheet} />
                 </div>
                 <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
                   <Btn onClick={() => setIncludes({ ...includes, [item.id]: 'yes' })}>It is in my number</Btn>
@@ -364,15 +380,24 @@ function BidBlock({
                 </div>
               </div>
             ) : (
-              <label key={item.id} style={{ display: 'flex', gap: '0.45rem', alignItems: 'center', fontSize: '0.9rem' }}>
+              <label key={item.id} style={{ display: 'flex', gap: '0.45rem', alignItems: 'center', fontSize: '0.9rem', flexWrap: 'wrap' }}>
                 <input
                   type="checkbox"
                   checked={includes[item.id] === 'yes'}
                   onChange={(e) => setIncludes({ ...includes, [item.id]: e.target.checked ? 'yes' : 'no' })}
                 />
                 {item.label}
+                <LineSheets line={lineOf(item.id)} onOpen={onOpenSheet} />
               </label>
             ),
+          )}
+          {sheets.otherSheets.length > 0 && (
+            <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.85rem' }}>
+              <span>Also changed in {sheets.sets.map((x) => x.label).join(' and ')}</span>
+              {sheets.otherSheets.map((id) => (
+                <SheetChip key={id} id={id} guessed={false} changed onOpen={onOpenSheet} />
+              ))}
+            </div>
           )}
           <label style={{ fontSize: '0.9rem' }}>
             Your number{' '}

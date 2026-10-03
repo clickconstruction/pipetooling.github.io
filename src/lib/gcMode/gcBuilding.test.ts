@@ -3,6 +3,8 @@ import {
   finalPayApplication,
   gcReducer,
   initialGcState,
+  ownCrewWork,
+  stageProgress,
   payApplication,
   payApplicationForDraw,
   payAppDraftPcts,
@@ -230,5 +232,33 @@ describe('the office sends a pay application back', () => {
   it('only a draw waiting on us can go back', () => {
     const approved = gcReducer(asked, { type: 'approveDraw', ...ids, drawId: 'dry-draw-2' })
     expect(gcReducer(approved, { type: 'sendDrawBack', ...ids, drawId: 'dry-draw-2', note: 'x', weSee: {} })).toBe(approved)
+  })
+})
+
+describe('our own crew in Building', () => {
+  const plumbing = (state: GcState) => {
+    const pkg = state.projects.find((p) => p.id === 'helotes')?.packages.find((k) => k.id === 'dplumb')
+    if (!pkg) throw new Error('no plumbing on Helotes')
+    return pkg
+  }
+
+  it('reads the one percent Bill the owner bills from, worth our own number', () => {
+    const reported = gcReducer(initialGcState(), { type: 'selfReport', projectId: 'helotes', packageId: 'dplumb', pct: 50 })
+    expect(ownCrewWork(plumbing(initialGcState()))).toEqual({ pct: 0, worth: 38_500, done: 0, ref: 'J 1042' })
+    expect(ownCrewWork(plumbing(reported))).toMatchObject({ pct: 50, done: 19_250 })
+  })
+
+  it('counts in the Building ring beside the trades we hire', () => {
+    const building = (s: GcState): GcState => ({ ...s, projects: s.projects.map((p) => (p.id === 'helotes' ? { ...p, stage: 'building' as const } : p)) })
+    const before = building(initialGcState())
+    const helotes = (s: GcState) => {
+      const p = s.projects.find((x) => x.id === 'helotes')
+      if (!p) throw new Error('no Helotes')
+      return p
+    }
+    const ring = stageProgress(before, helotes(before))
+    expect(ring.groups[0]?.items.map((i) => [i.label, i.detail])).toContainEqual(['Plumbing', 'Our own crew, 0% done'])
+    const after = building(gcReducer(initialGcState(), { type: 'selfReport', projectId: 'helotes', packageId: 'dplumb', pct: 100 }))
+    expect(stageProgress(after, helotes(after)).share).toBeGreaterThan(ring.share)
   })
 })
