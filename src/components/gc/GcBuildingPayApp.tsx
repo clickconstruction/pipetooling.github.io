@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import {
   GC_COMPANY,
   GC_COMPANY_NAME,
+  bw,
   finalPayApplication,
   money,
   newPayAppDraft,
@@ -11,6 +12,7 @@ import {
   payAppDraftPcts,
   payAppKnown,
   payAppSteps,
+  pDate,
   resendPayAppDraft,
   sentBackOpen,
   shortDate,
@@ -20,6 +22,7 @@ import {
   TRADE_RETAINAGE_WAIT_DAYS,
   tradeCloseout,
   workAllBilled,
+  type BuildingWordKey,
   type Draw,
   type DrawPayApp,
   type DrawSentBack,
@@ -34,6 +37,7 @@ import {
 import { LienReleaseStepRow } from '../jobs/LienReleaseStepRow'
 import type { ReleaseStep } from '../../lib/jobs/lienReleaseSteps'
 import { Btn, input as inputStyle } from './gcUi'
+import { usePortalLang } from './gcPortalLang'
 
 /**
  * GC mode design spike: the pay application a trade sends with each draw. The window is the
@@ -41,24 +45,40 @@ import { Btn, input as inputStyle } from './gcUi'
  * filling in as the trade types and marking what the current step fills. Almost every box comes
  * from the job; the trade checks the percents, adds the period and its address, and signs.
  * The office opens the same paper, read-only, from the Draws tab.
+ *
+ * Inside a Spanish portal the door, the window and the G702 and G703 read in Spanish
+ * (gcBuildingWords.ts; owner, 2026-10-03). Outside the portal, the office's copy, it is English.
  */
 
 /** The gc's short name for sentences: "Click checks it". */
 const GC_SHORT = GC_COMPANY.shortName
 
-const STEP_TITLES: Record<PayAppStepKey, string> = {
-  work: 'Check your work',
-  details: 'Fill in a few details',
-  sign: 'Sign it',
-  send: `Send it to ${GC_SHORT}`,
-}
+const STEP_TITLES: Record<PayAppStepKey, BuildingWordKey> = { work: 'stepWork', details: 'stepDetails', sign: 'stepSign', send: 'stepSend' }
 
 /** The tag each step puts on the paper where it fills. */
-const MARK_WORDS: Record<PayAppStepKey, string> = {
-  work: '1 · Your work',
-  details: '2 · Your details',
-  sign: '3 · You sign here',
-  send: '4 · What you ask for',
+const MARK_WORDS: Record<PayAppStepKey, BuildingWordKey> = { work: 'markWork', details: 'markDetails', sign: 'markSign', send: 'markSend' }
+
+/** The pay application's words in the portal's language, Click's short name filled in. */
+function useWords() {
+  const { lang } = usePortalLang()
+  return { lang, w: (key: BuildingWordKey, vars?: Record<string, string | number>) => bw(lang, key, { gc: GC_SHORT, ...vars }) }
+}
+
+/** A sentence with its {amount} drawn bold. */
+function withBold(text: string, value: string): ReactNode {
+  return withNode(text, 'amount', <strong>{value}</strong>)
+}
+
+/** A sentence with one {blank} drawn as a node: a bold amount, a value that fills in on the paper. */
+function withNode(text: string, blank: string, node: ReactNode): ReactNode {
+  const [before = '', after = ''] = text.split(`{${blank}}`)
+  return (
+    <>
+      {before}
+      {node}
+      {after}
+    </>
+  )
 }
 
 /** Which page each step fills: the work is on the G703, the rest on the G702. */
@@ -95,6 +115,7 @@ export function GcBuildingPayAppDoor({
   // The draft lives here, not in the window: a click outside closes the window, never the work.
   // Its key says which application it is for: a new one, a resend after we sent one back, the final.
   const [held, setHeld] = useState<{ key: string; input: PayAppInput } | null>(null)
+  const { lang, w } = useWords()
   const sow = pkg.sow
   if (!sow || sow.status !== 'signed') return null
   const waiting = sow.draws.find((d) => d.status === 'requested')
@@ -118,9 +139,7 @@ export function GcBuildingPayAppDoor({
   const label = (sovId: string) => sow.sov.find((l) => l.id === sovId)?.label ?? sovId
   // The last draw approved for less than asked: say so, and that the rest is still theirs to ask for.
   const last = sow.draws[sow.draws.length - 1]
-  const lessNote = last?.asked
-    ? `${GC_SHORT} approved ${money(last.net)} of the ${money(last.asked.net)} you asked for on pay application ${last.number}. ${last.asked.note} The rest is still yours to ask for.`
-    : null
+  const lessNote = last?.asked ? w('lessNote', { x: money(last.net), y: money(last.asked.net), n: last.number, note: last.asked.note }) : null
 
   // A change order sent to them: they sign it into their statement of work here (Building lane).
   const changesToSign = tradeChangesFor(project, pkg).filter((c) => c.state === 'sent')
@@ -130,14 +149,15 @@ export function GcBuildingPayAppDoor({
       {changesToSign.map(({ co }) => (
         <div key={co.id} style={{ padding: '0.55rem 0.65rem', background: 'var(--bg-subtle)', border: '1px solid var(--border-strong)', borderRadius: 6, display: 'grid', gap: '0.4rem' }}>
           <div>
-            <strong>Change order {co.number} to your statement of work.</strong> {co.description.trim().replace(/[.\s]+$/, '')}.{' '}
-            {co.cost < 0 ? `It takes ${money(-co.cost)} off.` : `It adds ${money(co.cost)}.`} {co.schedule !== 'none' ? `Time: ${co.schedule}.` : ''}
+            <strong>{w('changeTo', { n: co.number })}</strong> {co.description.trim().replace(/[.\s]+$/, '')}.{' '}
+            {co.cost < 0 ? w('changeTakes', { amount: money(-co.cost) }) : w('changeAdds', { amount: money(co.cost) })}{' '}
+            {co.schedule !== 'none' ? w('changeTime', { schedule: co.schedule }) : ''}
           </div>
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <Btn kind="primary" disabled={partner.msa !== 'signed'} onClick={() => dispatch({ type: 'tradeSignChange', projectId: project.id, changeOrderId: co.id })}>
-              Sign the change
+              {w('signChange')}
             </Btn>
-            {partner.msa !== 'signed' && <span style={{ fontSize: '0.8rem', color: 'var(--text-red-700)' }}>Sign the master agreement first.</span>}
+            {partner.msa !== 'signed' && <span style={{ fontSize: '0.8rem', color: 'var(--text-red-700)' }}>{w('signMsaFirst')}</span>}
           </div>
         </div>
       ))}
@@ -146,32 +166,25 @@ export function GcBuildingPayAppDoor({
           <CloseoutForTrade project={project} pkg={pkg} today={today} onFinal={() => openWindow('final')} onSee={(d) => setOpen(d)} />
         ) : waiting ? (
           <>
-            <div>
-              Pay application {waiting.number} is with {GC_SHORT}. They are checking it.
-            </div>
+            <div>{w('withGc', { n: waiting.number })}</div>
             {waiting.payApp && (
               <div>
-                <Btn onClick={() => setOpen(waiting)}>See pay application {waiting.number}</Btn>
+                <Btn onClick={() => setOpen(waiting)}>{w('seePayApp', { n: waiting.number })}</Btn>
               </div>
             )}
           </>
         ) : back ? (
           <>
             <div>
-              <strong style={{ color: 'var(--text-amber-800)' }}>
-                {GC_SHORT} sent pay application {back.draw.number} back {shortDate(back.on)}.
-              </strong>{' '}
-              Fix it and send it again.
+              <strong style={{ color: 'var(--text-amber-800)' }}>{w('sentBackHead', { n: back.draw.number, date: pDate(lang, back.on) })}</strong> {w('fixIt')}
             </div>
             {back.note && <div>&ldquo;{back.note}&rdquo;</div>}
             {back.lines.map((l) => (
-              <div key={l.sovId}>
-                {label(l.sovId)}: {GC_SHORT} sees {l.weSee}%. You asked for {back.draw.lines.find((x) => x.sovId === l.sovId)?.toPct ?? 0}%.
-              </div>
+              <div key={l.sovId}>{w('seesLine', { line: label(l.sovId), n: l.weSee, m: back.draw.lines.find((x) => x.sovId === l.sovId)?.toPct ?? 0 })}</div>
             ))}
             <div>
               <Btn kind="primary" onClick={() => openWindow('draft')}>
-                {draft ? 'Go on with' : 'Fix and resend'} pay application {back.draw.number}
+                {w(draft ? 'goOn' : 'fixResend', { n: back.draw.number })}
               </Btn>
             </div>
           </>
@@ -179,17 +192,11 @@ export function GcBuildingPayAppDoor({
           <>
             {lessNote && <div>{lessNote}</div>}
             <div>
-              {ready > 0 ? (
-                <>
-                  You can ask for <strong>{money(ready)}</strong> now. Most of the pay application is filled in for you.
-                </>
-              ) : (
-                <>Report your work above. Then fill out the pay application to ask for a draw.</>
-              )}
+              {ready > 0 ? withBold(w('canAsk'), money(ready)) : w('reportFirst')}
             </div>
             <div>
               <Btn kind="primary" onClick={() => openWindow('draft')}>
-                {draft ? 'Go on with' : 'Fill out'} pay application {sow.draws.length + 1}
+                {w(draft ? 'goOn' : 'fillOut', { n: sow.draws.length + 1 })}
               </Btn>
             </div>
           </>
@@ -236,6 +243,7 @@ function CloseoutForTrade({
   onFinal: () => void
   onSee: (draw: Draw) => void
 }) {
+  const { lang, w } = useWords()
   const sow = pkg.sow
   if (!sow) return null
   const c = tradeCloseout(sow, project, today)
@@ -243,7 +251,7 @@ function CloseoutForTrade({
   if (c.closed) {
     return (
       <div>
-        <strong>You are closed out on this job.</strong> {GC_SHORT} paid back the {money(f?.net ?? 0)} it held. Thank you.
+        <strong>{w('closedOut')}</strong> {w('paidBackThanks', { amount: money(f?.net ?? 0) })}
       </div>
     )
   }
@@ -258,29 +266,26 @@ function CloseoutForTrade({
       </span>
     </div>
   )
-  const opensWhen = `It opens once ${GC_SHORT} accepts your work.`
+  const opensWhen = w('opensWhen')
   return (
     <>
       <div>
-        <strong>Closeout.</strong> All your work is billed. {GC_SHORT} holds <strong>{money(c.held)}</strong> until the end. That is your retainage.
+        <strong>{w('closeoutHead')}</strong> {withBold(w('allBilled'), money(c.held))}
       </div>
       {back?.draw.final && (
         <div>
-          <strong style={{ color: 'var(--text-amber-800)' }}>
-            {GC_SHORT} sent your final pay application back {shortDate(back.on)}.
-          </strong>{' '}
-          {back.note} Fix it and send it again.
+          <strong style={{ color: 'var(--text-amber-800)' }}>{w('finalSentBack', { date: pDate(lang, back.on) })}</strong> {back.note} {w('fixIt')}
         </div>
       )}
-      {item(accepted, accepted ? `${GC_SHORT} accepted your work ${shortDate(sow.acceptedOn ?? null)}.` : `${GC_SHORT} walks the work with you and checks the punch list.`)}
+      {item(accepted, accepted ? w('accepted', { date: pDate(lang, sow.acceptedOn ?? null) }) : w('walks'))}
       {item(
         f !== null,
-        f ? `Your final pay application is with ${GC_SHORT}.` : `Ask for the ${money(c.held)} with a final pay application.`,
+        f ? w('finalWith') : w('askFinal', { amount: money(c.held) }),
         f ? (
-          <Btn onClick={() => onSee(f)}>See it</Btn>
+          <Btn onClick={() => onSee(f)}>{w('seeIt')}</Btn>
         ) : (
           <Btn kind="primary" disabled={!c.canAskFinal} onClick={onFinal}>
-            Fill out the final pay application
+            {w('fillFinal')}
           </Btn>
         ),
       )}
@@ -288,16 +293,16 @@ function CloseoutForTrade({
       {item(
         f?.status === 'paid',
         f?.status === 'paid'
-          ? `${GC_SHORT} paid your retainage.`
+          ? w('retPaid')
           : f?.status === 'approved'
-            ? `${GC_SHORT} approved it. Payment is coming.`
+            ? w('retApproved')
             : c.opensOn
-              ? `${GC_SHORT} pays your retainage ${shortDate(c.opensOn)}, ${TRADE_RETAINAGE_WAIT_DAYS} days after the owner paid ${GC_SHORT}.`
-              : `${GC_SHORT} pays your retainage ${TRADE_RETAINAGE_WAIT_DAYS} days after the owner pays ${GC_SHORT} its own.`,
+              ? w('retOn', { date: pDate(lang, c.opensOn), days: TRADE_RETAINAGE_WAIT_DAYS })
+              : w('retAfter', { days: TRADE_RETAINAGE_WAIT_DAYS }),
       )}
       {item(
         false,
-        f?.status === 'paid' ? 'Sign the unconditional final release of lien below.' : 'Last, you sign the unconditional final release of lien.',
+        f?.status === 'paid' ? w('signFinalBelow') : w('signFinalLast'),
       )}
     </>
   )
@@ -339,6 +344,7 @@ export function GcBuildingPayAppWindow({
   onSent?: () => void
   onClose: () => void
 }) {
+  const { lang, w } = useWords()
   const sow = pkg.sow
   const known = payAppKnown(partner)
   const [ownDraft, setOwnDraft] = useState<PayAppInput>(
@@ -399,8 +405,11 @@ export function GcBuildingPayAppWindow({
     onClose()
   }
   const net = app.summary.currentDue
-  const title = `${final ? 'Final pay application' : 'Pay application'} ${app.number}${returnedAs ? ' · sent back' : revised ? ' · revised' : ''}`
-  const waiverWords = final ? 'conditional final release of lien' : 'conditional lien waiver'
+  const title = `${w(final ? 'titleFinal' : 'title', { n: app.number })}${returnedAs ? w('stampBack') : revised ? w('stampRevised') : ''}`
+  const waiverWords = w(final ? 'waiverFinal' : 'waiverProgress')
+  // The shared step row writes "Done" and "You are here" itself; in Spanish the window's CSS puts these over them.
+  const stepWords = lang === 'es' ? ({ '--gcStepDone': JSON.stringify(w('stepDone')), '--gcStepNow': JSON.stringify(w('stepNow')) } as CSSProperties) : undefined
+  const waitWord = lang === 'es' ? w('stepWaiting') : undefined
   const titleId = 'gc-payapp-title'
 
   const paper = (
@@ -414,7 +423,7 @@ export function GcBuildingPayAppWindow({
       page={page}
       onPage={(p) => setPick({ page: p, at: mark })}
       certified={draw && draw.status !== 'requested' && !returnedAs ? draw.net : null}
-      stamp={returnedAs ? 'sent back' : revised ? 'revised' : null}
+      stamp={returnedAs ? w('stampBack') : revised ? w('stampRevised') : null}
     />
   )
 
@@ -457,12 +466,12 @@ export function GcBuildingPayAppWindow({
               {title}
             </h2>
             <p style={{ margin: '0.3rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-              {pkg.trade} · {partner.company} · {project.name} · the 702 and 703 forms
+              {w('subtitle', { trade: pkg.trade, company: partner.company, project: project.name })}
             </p>
           </div>
           <button
             type="button"
-            aria-label="Close"
+            aria-label={w('close')}
             onClick={onClose}
             style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '1.25rem', lineHeight: 1, cursor: 'pointer', padding: '0.1rem 0.35rem' }}
           >
@@ -475,17 +484,21 @@ export function GcBuildingPayAppWindow({
             <div style={{ padding: '0.75rem 1.25rem 0', fontSize: '0.875rem' }}>
               {draw.payApp ? (
                 <>
-                  {viewer === 'trade' ? 'You sent this' : `${partner.company} sent this`} {shortDate(draw.payApp.signedOn)}. {draw.payApp.signedBy}
-                  {draw.payApp.signedTitle ? `, ${draw.payApp.signedTitle},` : ''} signed it with a {waiverWords} for {money(draw.net)}.
+                  {viewer === 'trade' ? w('youSent', { date: pDate(lang, draw.payApp.signedOn) }) : `${partner.company} sent this ${shortDate(draw.payApp.signedOn)}.`}{' '}
+                  {w('signedIt', {
+                    name: `${draw.payApp.signedBy}${draw.payApp.signedTitle ? `, ${draw.payApp.signedTitle},` : ''}`,
+                    waiver: waiverWords,
+                    amount: money(draw.net),
+                  })}
                 </>
               ) : (
-                <>This draw was asked for before pay applications. The form is rebuilt from the draw.</>
+                <>{w('beforePayApps')}</>
               )}
               {draw.asked && (
                 <>
                   {' '}
                   <strong style={{ color: 'var(--text-amber-800)' }}>
-                    {viewer === 'office' ? 'We' : GC_SHORT} approved {money(draw.net)} of the {money(draw.asked.net)} asked.
+                    {viewer === 'office' ? `We approved ${money(draw.net)} of the ${money(draw.asked.net)} asked.` : w('approvedLess', { x: money(draw.net), y: money(draw.asked.net) })}
                   </strong>{' '}
                   {draw.asked.note}
                 </>
@@ -494,7 +507,7 @@ export function GcBuildingPayAppWindow({
                 <>
                   {' '}
                   <strong style={{ color: 'var(--text-amber-800)' }}>
-                    {viewer === 'office' ? 'We' : GC_SHORT} sent it back {shortDate(returnedAs.on)}.
+                    {viewer === 'office' ? `We sent it back ${shortDate(returnedAs.on)}.` : w('sentItBack', { date: pDate(lang, returnedAs.on) })}
                   </strong>{' '}
                   {returnedAs.note}
                 </>
@@ -505,21 +518,14 @@ export function GcBuildingPayAppWindow({
             </div>
           </div>
         ) : (
-          <div className="lienRelease-body gcPayApp-body">
+          <div className={`lienRelease-body gcPayApp-body${lang === 'es' ? ' gcPayApp-es' : ''}`} style={stepWords}>
             <div className="lienRelease-steps">
               <LienReleaseStepRow
                 step={stepAt('work')}
-                title={final ? 'Check it is all done' : STEP_TITLES.work}
+                title={w(final ? 'stepWorkFinal' : STEP_TITLES.work)}
                 nextIsCurrent={current === 'details'}
-                say={
-                  final
-                    ? 'Every line is billed at 100%. This application asks for the retainage.'
-                    : sentBack
-                      ? `${GC_SHORT} sent this back. Its numbers are in where it sees less. Change a line if you see it differently.`
-                      : app.totals.thisPeriod > 0
-                      ? 'Each line starts at what you reported. Change a line if it moved.'
-                      : 'Nothing new to bill yet. Raise a line that moved.'
-                }
+                waitLabel={waitWord}
+                say={w(final ? 'sayFinal' : sentBack ? 'saySentBack' : app.totals.thisPeriod > 0 ? 'sayStarts' : 'sayNothing')}
               >
                 <div style={{ display: 'grid', gap: '0.4rem', fontSize: '0.875rem' }} onFocus={() => setFocus('work')}>
                   {sentBack?.note && (
@@ -534,11 +540,11 @@ export function GcBuildingPayAppWindow({
                           <span>
                             {l.label} <span style={{ color: 'var(--text-muted)' }}>· {money(l.scheduled)}</span>
                           </span>
-                          <span style={{ color: 'var(--text-green-700)', fontWeight: 600 }}>100% billed</span>
+                          <span style={{ color: 'var(--text-green-700)', fontWeight: 600 }}>{w('billed100')}</span>
                         </div>
                       ))}
                       <div style={{ color: 'var(--text-muted)' }}>
-                        Retainage held: <strong style={{ color: 'var(--text-base)' }}>{money(net)}</strong>
+                        {w('retHeld')} <strong style={{ color: 'var(--text-base)' }}>{money(net)}</strong>
                       </div>
                     </>
                   )}
@@ -547,20 +553,20 @@ export function GcBuildingPayAppWindow({
                     return (
                       <label key={l.sovId} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '0.5rem', alignItems: 'center' }}>
                         <span>
-                          {l.label} <span style={{ color: 'var(--text-muted)' }}>· {money(l.scheduled)}{before > 0 ? ` · paid through ${before}%` : ''}</span>
+                          {l.label} <span style={{ color: 'var(--text-muted)' }}>· {money(l.scheduled)}{before > 0 ? w('paidThrough', { n: before }) : ''}</span>
                           {weSee.has(l.sovId) && (
-                            <span style={{ color: 'var(--text-amber-800)', fontWeight: 600 }}> · {GC_SHORT} sees {weSee.get(l.sovId)}%</span>
+                            <span style={{ color: 'var(--text-amber-800)', fontWeight: 600 }}>{w('gcSees', { n: weSee.get(l.sovId) ?? 0 })}</span>
                           )}
                         </span>
                         <select
                           value={l.pct}
                           onChange={(e) => set({ toPct: { ...draft.toPct, [l.sovId]: Number(e.target.value) } })}
                           style={input_}
-                          aria-label={`Percent done, ${l.label}`}
+                          aria-label={w('pctAria', { line: l.label })}
                         >
                           {PCTS.filter((p) => p >= before).map((p) => (
                             <option key={p} value={p}>
-                              {p}% done
+                              {w('pctDone', { n: p })}
                             </option>
                           ))}
                         </select>
@@ -569,7 +575,7 @@ export function GcBuildingPayAppWindow({
                   })}
                   {!final && (
                     <div style={{ color: 'var(--text-muted)' }}>
-                      Work this period: <strong style={{ color: 'var(--text-base)' }}>{money(app.totals.thisPeriod)}</strong>
+                      {w('workPeriod')} <strong style={{ color: 'var(--text-base)' }}>{money(app.totals.thisPeriod)}</strong>
                     </div>
                   )}
                 </div>
@@ -577,18 +583,19 @@ export function GcBuildingPayAppWindow({
 
               <LienReleaseStepRow
                 step={stepAt('details')}
-                title={STEP_TITLES.details}
+                title={w(STEP_TITLES.details)}
                 nextIsCurrent={current === 'sign'}
-                say="Pick the last day this draw covers. Your address goes on the form."
+                waitLabel={waitWord}
+                say={w('sayDetails')}
               >
                 <div style={{ display: 'grid', gap: '0.5rem', fontSize: '0.875rem' }} onFocus={() => setFocus('details')}>
-                  <Field label="Period ends">
+                  <Field label={w('periodEnds')}>
                     <input type="date" value={draft.periodTo} onChange={(e) => set({ periodTo: e.target.value })} style={input_} />
                   </Field>
-                  <Field label="Your mailing address" note={known.address ? 'On file from your last one.' : 'We keep it for next time.'}>
-                    <input type="text" value={draft.address} onChange={(e) => set({ address: e.target.value })} placeholder="Street, city, state, zip" style={input_} />
+                  <Field label={w('address')} note={w(known.address ? 'onFile' : 'keepIt')}>
+                    <input type="text" value={draft.address} onChange={(e) => set({ address: e.target.value })} placeholder={w('addressHint')} style={input_} />
                   </Field>
-                  <Field label="License line" note="If your trade needs one.">
+                  <Field label={w('license')} note={w('licenseNote')}>
                     <input type="text" value={draft.license} onChange={(e) => set({ license: e.target.value })} style={input_} />
                   </Field>
                 </div>
@@ -596,50 +603,41 @@ export function GcBuildingPayAppWindow({
 
               <LienReleaseStepRow
                 step={stepAt('sign')}
-                title={STEP_TITLES.sign}
+                title={w(STEP_TITLES.sign)}
                 nextIsCurrent={current === 'send'}
-                say="Type your name and title. Then tick the waiver box."
+                waitLabel={waitWord}
+                say={w('saySign')}
               >
                 <div style={{ display: 'grid', gap: '0.5rem', fontSize: '0.875rem' }} onFocus={() => setFocus('sign')}>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(10rem, 1fr))', gap: '0.5rem' }}>
-                    <Field label="Your name">
+                    <Field label={w('yourName')}>
                       <input type="text" value={draft.signedBy} onChange={(e) => set({ signedBy: e.target.value })} style={input_} />
                     </Field>
-                    <Field label="Your title">
-                      <input type="text" value={draft.signedTitle} onChange={(e) => set({ signedTitle: e.target.value })} placeholder="Owner, office manager" style={input_} />
+                    <Field label={w('yourTitle')}>
+                      <input type="text" value={draft.signedTitle} onChange={(e) => set({ signedTitle: e.target.value })} placeholder={w('titleHint')} style={input_} />
                     </Field>
                   </div>
                   <label style={{ display: 'flex', gap: '0.45rem', alignItems: 'flex-start' }}>
                     <input type="checkbox" checked={draft.waiverSigned} onChange={(e) => set({ waiverSigned: e.target.checked })} style={{ marginTop: '0.2rem' }} />
-                    <span>
-                      I sign the {waiverWords} for {money(net)}.
-                    </span>
+                    <span>{w('iSign', { waiver: waiverWords, amount: money(net) })}</span>
                   </label>
                 </div>
               </LienReleaseStepRow>
 
               <LienReleaseStepRow
                 step={stepAt('send')}
-                title={STEP_TITLES.send}
+                title={w(STEP_TITLES.send)}
                 last
-                waitLabel="Opens when 1 to 3 are done"
-                say={final ? `${GC_SHORT} checks it and pays back the retainage.` : `${GC_SHORT} checks it and pays the draw.`}
+                waitLabel={w('opensAfter')}
+                say={w(final ? 'saySendFinal' : 'saySend')}
               >
                 <div style={{ display: 'grid', gap: '0.45rem', fontSize: '0.875rem' }} onFocus={() => setFocus('send')}>
                   <div>
-                    {final ? (
-                      <>
-                        You ask for <strong>{money(net)}</strong>. That is everything {GC_SHORT} held back.
-                      </>
-                    ) : (
-                      <>
-                        You ask for <strong>{money(net)}</strong>. {GC_SHORT} holds {sow.retainagePct}% of the work until the end.
-                      </>
-                    )}
+                    {final ? withBold(w('askAllHeld'), money(net)) : withBold(w('askHolds', { pct: sow.retainagePct }), money(net))}
                   </div>
                   <div>
                     <Btn kind="primary" disabled={!ready || !dispatch} onClick={send}>
-                      Send to {GC_SHORT}
+                      {w('sendTo')}
                     </Btn>
                   </div>
                 </div>
@@ -649,7 +647,7 @@ export function GcBuildingPayAppWindow({
             {/* The paper: pinned light like the printed form, kept in view while the steps scroll. */}
             <div className="lienRelease-preview" data-theme="light">
               <div style={{ marginBottom: '0.6rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                <strong style={{ color: 'var(--text-base)' }}>The form</strong> · it fills in as you work
+                <strong style={{ color: 'var(--text-base)' }}>{w('theForm')}</strong> · {w('fillsIn')}
               </div>
               {paper}
             </div>
@@ -661,7 +659,7 @@ export function GcBuildingPayAppWindow({
             <span style={{ fontSize: '0.8125rem', fontWeight: 650, color: 'var(--text-blue-700)' }}>
               {(() => {
                 const now = steps.find((s) => s.state === 'now')
-                return now ? `You are on step ${now.n} of 4 · ${STEP_TITLES[now.key]}` : 'All four steps done'
+                return now ? w('onStep', { n: now.n, step: w(STEP_TITLES[now.key]) }) : w('allDone')
               })()}
             </span>
           </div>
@@ -703,6 +701,10 @@ const PAY_APP_CSS = `
 }
 .gcPayApp-table td.gcPayApp-left { text-align: left; white-space: normal; }
 .gcPayApp-table tr.gcPayApp-total td { font-weight: 700; border-top: 2px solid var(--text-base); }
+/* In Spanish: the step row's own "Done" and "You are here", replaced by the window's words (--gcStepDone, --gcStepNow). */
+.gcPayApp-es .lienStep-label[data-state='done'], .gcPayApp-es .lienStep-label[data-state='now'] { font-size: 0; }
+.gcPayApp-es .lienStep-label[data-state='done']::after { content: var(--gcStepDone); font-size: 0.6875rem; }
+.gcPayApp-es .lienStep-label[data-state='now']::after { content: var(--gcStepNow); font-size: 0.6875rem; }
 `
 
 /** A value on the paper that flashes when it changes, so the trade sees the form fill. A blank reads as a line. */
@@ -782,12 +784,13 @@ function PayAppPaper({
   onPage: (p: Page) => void
   /** What we certified: the draw's net once approved, which is less than asked when we approved less. */
   certified: number | null
-  /** A word after the page line: "revised", "sent back". */
+  /** Words after the page line: " · revised", " · sent back". */
   stamp: string | null
 }) {
+  const { lang, w } = useWords()
   const s = app.summary
   const contractDate = pkg.sow?.signedOn ?? null
-  const signedOnWords = typed.signedOn === 'today' ? 'today' : shortDate(typed.signedOn)
+  const signedOnWords = typed.signedOn === 'today' ? w('today') : pDate(lang, typed.signedOn)
   const tab = (p: Page, words: string) => (
     <button
       type="button"
@@ -820,8 +823,8 @@ function PayAppPaper({
   return (
     <div>
       <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.6rem' }}>
-        {tab('g702', 'Page 1 · 702')}
-        {tab('g703', 'Page 2 · 703')}
+        {tab('g702', w('page702'))}
+        {tab('g703', w('page703'))}
       </div>
       <div
         style={{
@@ -839,17 +842,19 @@ function PayAppPaper({
         {page === 'g702' ? (
           <>
             <p style={{ textAlign: 'center', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', margin: '0 0 0.15em' }}>
-              Application and certificate for payment
+              {w('g702Title')}
             </p>
             <p style={{ ...label, textAlign: 'center', margin: '0 0 0.9em' }}>
-              AIA G702 · page 1 of 2{app.final ? ' · final, retainage release' : ''}{stamp ? ` · ${stamp}` : ''}
+              {w('g702Sub')}
+              {app.final ? w('g702Final') : ''}
+              {stamp ?? ''}
             </p>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(13rem, 1fr))', gap: '0.6rem 1.25rem' }}>
               <div style={{ display: 'grid', gap: '0.45rem' }}>
-                <Box name="To">{GC_COMPANY_NAME}</Box>
-                <Mark on={mark === 'details'} tag={MARK_WORDS.details}>
-                  <Box name="From">
+                <Box name={w('boxTo')}>{GC_COMPANY_NAME}</Box>
+                <Mark on={mark === 'details'} tag={w(MARK_WORDS.details)}>
+                  <Box name={w('boxFrom')}>
                     {partner.company}
                     <br />
                     <Val>{typed.address}</Val>
@@ -861,83 +866,81 @@ function PayAppPaper({
                     ) : null}
                   </Box>
                 </Mark>
-                <Box name="Contract for">{pkg.trade}</Box>
+                <Box name={w('boxContractFor')}>{pkg.trade}</Box>
               </div>
               <div style={{ display: 'grid', gap: '0.45rem' }}>
-                <Box name="Project">
+                <Box name={w('boxProject')}>
                   {project.name}
                   <br />
                   {project.address}
                 </Box>
-                <Box name="Via architect">{project.architect}</Box>
+                <Box name={w('boxArchitect')}>{project.architect}</Box>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.45rem' }}>
-                  <Box name="Application no.">{String(app.number)}</Box>
+                  <Box name={w('boxAppNo')}>{String(app.number)}</Box>
                   <Mark on={mark === 'details'} tag="2">
-                    <Box name="Period to">
-                      <Val>{shortDate(typed.periodTo || null)}</Val>
+                    <Box name={w('boxPeriodTo')}>
+                      <Val>{pDate(lang, typed.periodTo || null)}</Val>
                     </Box>
                   </Mark>
-                  <Box name="Contract date">{shortDate(contractDate)}</Box>
+                  <Box name={w('boxContractDate')}>{pDate(lang, contractDate)}</Box>
                 </div>
               </div>
             </div>
 
             <p style={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.03em', margin: '1.1em 0 0.3em', fontSize: '0.75rem' }}>
-              Application for payment
+              {w('appForPayment')}
             </p>
-            {line('1', 'Original contract sum', money(s.originalSum))}
-            {line('2', 'Net change by change orders', money(s.changeOrders))}
-            {line('3', 'Contract sum to date', money(s.sumToDate))}
-            <Mark on={mark === 'work'} tag={MARK_WORDS.work}>
-              {line('4', 'Total completed and stored to date, from the 703', money(s.completedToDate))}
+            {line('1', w('line1'), money(s.originalSum))}
+            {line('2', w('line2'), money(s.changeOrders))}
+            {line('3', w('line3'), money(s.sumToDate))}
+            <Mark on={mark === 'work'} tag={w(MARK_WORDS.work)}>
+              {line('4', w('line4'), money(s.completedToDate))}
             </Mark>
-            {line('5', app.final ? `Retainage, released on this final application` : `Retainage, ${s.retainagePct}% of completed work`, money(s.retainage))}
-            {line('6', 'Total earned less retainage', money(s.earnedLessRetainage))}
-            {line('7', 'Less previous certificates for payment', money(s.previousCertificates))}
-            <Mark on={mark === 'send'} tag={MARK_WORDS.send}>
-              {line('8', 'Current payment due', money(s.currentDue), true)}
+            {line('5', app.final ? w('line5Final') : w('line5', { pct: s.retainagePct }), money(s.retainage))}
+            {line('6', w('line6'), money(s.earnedLessRetainage))}
+            {line('7', w('line7'), money(s.previousCertificates))}
+            <Mark on={mark === 'send'} tag={w(MARK_WORDS.send)}>
+              {line('8', w('line8'), money(s.currentDue), true)}
             </Mark>
-            {line('9', 'Balance to finish, including retainage', money(s.balanceToFinish))}
+            {line('9', w('line9'), money(s.balanceToFinish))}
             <div style={{ ...label, marginTop: '0.4rem' }}>
               {(() => {
                 const n = pkg.sow ? changeOrderLines(pkg.sow).length : 0
-                return n === 0 ? 'Change orders: none on this contract' : `Change orders: ${n} signed, ${money(s.changeOrders)} in all`
+                return n === 0 ? w('coNone') : w('coSome', { n, amount: money(s.changeOrders) })
               })()}
             </div>
 
-            <Mark on={mark === 'sign'} tag={MARK_WORDS.sign}>
+            <Mark on={mark === 'sign'} tag={w(MARK_WORDS.sign)}>
               <div style={{ marginTop: '0.9rem' }}>
                 <p style={{ margin: '0 0 0.6em' }}>
-                  The undersigned certifies that the work covered by this application is done as shown. Everyone owed for earlier
-                  payments has been paid. The current payment shown is now due. A{' '}
-                  {app.final ? 'conditional final release of lien' : 'conditional lien waiver'} for {money(s.currentDue)} is signed with it.
+                  {w('certifies', { waiver: w(app.final ? 'waiverFinal' : 'waiverProgress'), amount: money(s.currentDue) })}
                 </p>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(9rem, 1fr))', gap: '0.5rem', alignItems: 'end' }}>
                   <div style={{ borderBottom: '1px solid var(--text-base)', paddingBottom: '0.15rem', minHeight: '1.6em', fontStyle: typed.signedOn ? 'italic' : undefined, fontSize: typed.signedOn ? '1rem' : undefined }}>
                     {typed.signedOn ? <Val>{typed.signedBy}</Val> : null}
                   </div>
-                  <Box name="Title">
+                  <Box name={w('boxTitle')}>
                     <Val>{typed.signedTitle}</Val>
                   </Box>
-                  <Box name="Date">
+                  <Box name={w('boxDate')}>
                     <Val>{typed.signedOn ? signedOnWords : ''}</Val>
                   </Box>
                 </div>
                 <div style={{ ...label, marginTop: '0.2rem' }}>
-                  By <Val>{typed.signedBy}</Val> for {partner.company}
+                  {withNode(w('byFor', { company: partner.company }), 'name', <Val>{typed.signedBy}</Val>)}
                 </div>
               </div>
             </Mark>
 
             <div style={{ marginTop: '1rem', paddingTop: '0.6rem', borderTop: '1px solid var(--border-strong)' }}>
               <p style={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.03em', margin: '0 0 0.3em', fontSize: '0.75rem' }}>
-                Certificate for payment · {GC_SHORT} fills this in
+                {w('certificate')}
               </p>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(9rem, 1fr))', gap: '0.5rem' }}>
-                <Box name="Amount certified">
+                <Box name={w('boxCertified')}>
                   <Val>{certified === null ? '' : money(certified)}</Val>
                 </Box>
-                <Box name="By">
+                <Box name={w('boxBy')}>
                   <Val>{certified === null ? '' : GC_COMPANY_NAME}</Val>
                 </Box>
               </div>
@@ -946,31 +949,31 @@ function PayAppPaper({
         ) : (
           <>
             <p style={{ textAlign: 'center', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', margin: '0 0 0.15em' }}>
-              Continuation sheet
+              {w('g703Title')}
             </p>
-            <p style={{ ...label, textAlign: 'center', margin: '0 0 0.8em' }}>AIA G703 · page 2 of 2</p>
+            <p style={{ ...label, textAlign: 'center', margin: '0 0 0.8em' }}>{w('g703Sub')}</p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(8rem, 1fr))', gap: '0.45rem', marginBottom: '0.7rem' }}>
-              <Box name="Application no.">{String(app.number)}</Box>
-              <Box name="Period to">
-                <Val>{shortDate(typed.periodTo || null)}</Val>
+              <Box name={w('boxAppNo')}>{String(app.number)}</Box>
+              <Box name={w('boxPeriodTo')}>
+                <Val>{pDate(lang, typed.periodTo || null)}</Val>
               </Box>
-              <Box name="Project">{project.name}</Box>
+              <Box name={w('boxProject')}>{project.name}</Box>
             </div>
-            <Mark on={mark === 'work'} tag={MARK_WORDS.work}>
+            <Mark on={mark === 'work'} tag={w(MARK_WORDS.work)}>
               <div style={{ overflowX: 'auto' }}>
                 <table className="gcPayApp-table">
                   <thead>
                     <tr>
-                      <th>A<br />Item</th>
-                      <th>B<br />Work</th>
-                      <th>C<br />Scheduled value</th>
-                      <th>D<br />Previous</th>
-                      <th>E<br />This period</th>
-                      <th>F<br />Stored</th>
-                      <th>G<br />Done to date</th>
+                      <th>A<br />{w('colItem')}</th>
+                      <th>B<br />{w('colWork')}</th>
+                      <th>C<br />{w('colScheduled')}</th>
+                      <th>D<br />{w('colPrevious')}</th>
+                      <th>E<br />{w('colThisPeriod')}</th>
+                      <th>F<br />{w('colStored')}</th>
+                      <th>G<br />{w('colToDate')}</th>
                       <th>%<br />G ÷ C</th>
-                      <th>H<br />Balance</th>
-                      <th>I<br />Retainage</th>
+                      <th>H<br />{w('colBalance')}</th>
+                      <th>I<br />{w('colRetainage')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1000,7 +1003,7 @@ function PayAppPaper({
                     ))}
                     <tr className="gcPayApp-total">
                       <td />
-                      <td className="gcPayApp-left">Grand total</td>
+                      <td className="gcPayApp-left">{w('grandTotal')}</td>
                       <td>{money(app.totals.scheduled)}</td>
                       <td>{money(app.totals.fromPrevious)}</td>
                       <td>
