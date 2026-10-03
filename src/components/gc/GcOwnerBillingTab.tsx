@@ -1,6 +1,7 @@
 import { useState, type Dispatch } from 'react'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
 import { GcOwnerBillingChangeOrders } from './GcOwnerBillingChangeOrders'
+import { OwnerPayAppWindow } from './GcOwnerBillingPayApp'
 import { GcOwnerBillingPortal } from './GcOwnerBillingPortal'
 import { Btn, Card, Chip, Stat, Why, num, td, th } from './gcUi'
 import {
@@ -66,6 +67,7 @@ export function GcOwnerBillingTab({ state, project, dispatch }: { state: GcState
 
 /** The office's side of the tab: what we have sent, the next pay application, its lines. */
 function OfficeSide({ state, project, dispatch }: { state: GcState; project: GcProject; dispatch: Dispatch<GcAction> }) {
+  const [formFor, setFormFor] = useState<number | 'draft' | null>(null)
   const app = ownerPayApp(state, project)
   const customer = state.customers.find((c) => c.id === project.customerId)
   const sent = ownerPayAppsSent(project)
@@ -82,6 +84,7 @@ function OfficeSide({ state, project, dispatch }: { state: GcState; project: GcP
 
   return (
     <div style={{ display: 'grid', gap: '1rem' }}>
+      {formFor !== null && <OwnerPayAppWindow state={state} project={project} which={formFor} onClose={() => setFormFor(null)} />}
       <Why>
         Once a month we bill {project.owner} for the work done so far. Each trade&rsquo;s line is the work its company
         reported. Each trade&rsquo;s line also carries its share of our costs and fee,{' '}
@@ -113,6 +116,7 @@ function OfficeSide({ state, project, dispatch }: { state: GcState; project: GcP
                 expectOn={ownerExpectPaidOn(state, project, a)}
                 today={state.today}
                 onPaid={() => dispatch({ type: 'ownerPaid', projectId: project.id, number: a.number })}
+                onForm={() => setFormFor(a.number)}
               />
             ))}
           </div>
@@ -192,6 +196,9 @@ function OfficeSide({ state, project, dispatch }: { state: GcState; project: GcP
               <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
                 It asks for {money(app.due)}. It goes out {weekdayDate(app.billOn)}, or now if you send it.
               </span>
+              <Btn kind="quiet" onClick={() => setFormFor('draft')}>
+                See the form
+              </Btn>
             </>
           ) : (
             <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
@@ -293,11 +300,14 @@ function SentRow({
   expectOn,
   today,
   onPaid,
+  onForm,
 }: {
   app: OwnerPayAppSent
   expectOn: string | null
   today: string
   onPaid: () => void
+  /** Opens it as the form: the G702 and G703 as it went. */
+  onForm: () => void
 }) {
   const month = MONTH_NAMES[Number(app.periodTo.slice(5, 7)) - 1] ?? ''
   const late = app.paidOn === null && expectOn !== null && daysUntil(expectOn, today) < 0
@@ -308,6 +318,9 @@ function SentRow({
       <span>
         <strong>{money(app.due)}</strong> to pay · {money(app.retainage)} held
       </span>
+      <Btn kind="quiet" onClick={onForm} title="The G702 and G703 as it went.">
+        Pay application
+      </Btn>
       {app.paidOn !== null ? (
         <>
           <Chip tone="green">paid {shortDate(app.paidOn)}</Chip>

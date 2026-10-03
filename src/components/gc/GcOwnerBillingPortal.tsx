@@ -1,5 +1,6 @@
 import { useState, type Dispatch } from 'react'
 import { Btn, Chip } from './gcUi'
+import { OwnerPayAppWindow } from './GcOwnerBillingPayApp'
 import { PortalBlock, PortalNote } from './GcPortalUi'
 import {
   GC_COMPANY_NAME,
@@ -231,12 +232,14 @@ export function GcOwnerBillingPortal({ state, project, dispatch }: { state: GcSt
 
 function BillRow({ state, project, app, onPay }: { state: GcState; project: GcProject; app: OwnerPayAppSent; onPay: () => void }) {
   const [open, setOpen] = useState(false)
+  const [form, setForm] = useState(false)
   const month = MONTH_NAMES[Number(app.periodTo.slice(5, 7)) - 1] ?? ''
   const sentLines = open ? sentPayAppLines(state, project, app.number) : []
   // Owner's call (2026-10-02): our costs and fee are spread into the trades' lines.
   const lines = spreadMarkup(sentLines).filter((l) => l.worth > 0)
   return (
     <div style={{ borderTop: `1px solid ${RULE}`, paddingTop: '0.45rem', display: 'grid', gap: '0.35rem' }}>
+      {form && <OwnerPayAppWindow state={state} project={project} which={app.number} onClose={() => setForm(false)} />}
       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.875rem' }}>
         <strong>{app.final ? 'Final pay application' : `Pay application ${app.number}`}</strong>
         <span style={{ color: 'var(--text-muted)' }}>{app.final ? 'what you held' : month} · sent {shortDate(app.sentOn)}</span>
@@ -256,6 +259,13 @@ function BillRow({ state, project, app, onPay }: { state: GcState; project: GcPr
             ? `All ${money(app.workToDate)} of the work, less earlier bills. Nothing is held back.`
             : `Work ${money(app.workToDate)} less ${money(app.retainage)} you hold, less earlier bills.`}
         </span>
+        <button
+          type="button"
+          onClick={() => setForm(true)}
+          style={{ border: 'none', background: 'transparent', color: 'var(--text-link)', cursor: 'pointer', padding: 0, fontSize: '0.8rem' }}
+        >
+          ⤓ Pay application
+        </button>
         <button
           type="button"
           onClick={() => setOpen(!open)}

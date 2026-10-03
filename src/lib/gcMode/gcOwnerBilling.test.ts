@@ -9,6 +9,7 @@ import {
   ourOwnerWaivers,
   owedDrawWords,
   ownerAllBilled,
+  ownerPayAppForm,
   ownerCloseout,
   ownerReleasedRetainage,
   ownerAccount,
@@ -363,6 +364,14 @@ describe('our costs and fee spread into the trades', () => {
     expect(dry && [dry.tradeWorth, Math.round(dry.ourShare), Math.round(dry.worth), Math.round(dry.doneToDate)]).toEqual([64_200, 23_852, 88_052, 52_557])
   })
 
+  it('reads a line with no new work as exactly $0 this month, never minus zero', () => {
+    const state = initialGcState()
+    const fairOaks = state.projects.find((p) => p.id === 'fairoaksd')
+    if (!fairOaks) throw new Error('fixture has no fairoaksd')
+    const site = spreadMarkup(ownerPayApp(state, fairOaks).lines).find((l) => l.id === 'fsite')
+    expect(Object.is(site?.thisMonth, 0)).toBe(true)
+  })
+
   it('spreads a sent bill the same way, from what it said when it went', () => {
     const state = initialGcState()
     const fairOaks = state.projects.find((p) => p.id === 'fairoaksd')
@@ -443,6 +452,20 @@ describe('change orders to the owner', () => {
     expect(Math.round(markupOnTop(app.lines) * 1000) / 10).toBe(37.2)
   })
 
+  it('bills a change the trade signed once: on its own line, not again on the trade\'s', () => {
+    let state = signedOne()
+    state = gcReducer(state, { type: 'sendTradeChange', projectId: 'helotes', changeOrderId: 'co-1' })
+    state = gcReducer(state, { type: 'tradeSignChange', projectId: 'helotes', changeOrderId: 'co-1' })
+    const dryOf = (st: GcState) => ownerPayApp(st, helotesOf(st)).lines.find((l) => l.id === 'dry')
+    const before = dryOf(state)
+    const lineId = helotesOf(state).packages.find((p) => p.id === 'dry')?.sow?.sov.find((l) => l.changeOrderId === 'co-1')?.id
+    expect(lineId).toBeDefined()
+    state = gcReducer(state, { type: 'tradeReport', projectId: 'helotes', packageId: 'dry', sovId: lineId ?? '', pct: 100 })
+    const after = dryOf(state)
+    expect([after?.doneToDate, after?.worth, after?.source]).toEqual([before?.doneToDate, 64_200, before?.source])
+    expect(after?.detail.map((d) => d.label)).toEqual(['Framing', 'Hang and tape', 'Ceilings'])
+  })
+
   it('a declined credit never reaches the bill', () => {
     let state = draft(initialGcState(), -1_200)
     expect(helotesOf(state).changeOrders?.[0]?.price).toBe(-1_320)
@@ -461,6 +484,62 @@ describe('change orders to the owner', () => {
     expect(gcReducer(drafted, { type: 'setChangeOrderPct', projectId: 'helotes', changeOrderId: 'co-1', pct: 50 })).toBe(drafted)
     const signed = signedOne()
     expect(gcReducer(signed, { type: 'sendChangeOrder', projectId: 'helotes', changeOrderId: 'co-1' })).toBe(signed)
+  })
+})
+
+describe('our pay application as the form (G702 and G703)', () => {
+  const projectOf = (state: GcState, id: string) => {
+    const p = state.projects.find((x) => x.id === id)
+    if (!p) throw new Error(`fixture has no ${id}`)
+    return p
+  }
+  const cents = (n: number) => Math.round(n * 100) / 100
+
+  it('reads Fair Oaks D pay application 3 line by line', () => {
+    const state = initialGcState()
+    const form = ownerPayAppForm(state, projectOf(state, 'fairoaksd'), 3)
+    if (!form) throw new Error('no form')
+    const s = form.app.summary
+    expect([s.originalSum, s.changeOrders, s.sumToDate].map(cents)).toEqual([1_488_762, 0, 1_488_762])
+    expect([s.completedToDate, s.retainage, s.earnedLessRetainage, s.previousCertificates, s.currentDue, s.balanceToFinish].map(cents)).toEqual([
+      956_327.91, 95_632.79, 860_695.12, 571_816.61, 288_878.51, 628_066.88,
+    ])
+    // Seven trades, our costs and fee spread into them; no line of their own.
+    expect(form.app.lines.map((l) => l.sovId)).toEqual(['fsite', 'fconc', 'fsteel', 'felec', 'froof', 'fplumb', 'fhvac'])
+    expect(cents(form.app.totals.toDate)).toBe(956_327.91)
+    expect(form.app.lines.filter((l) => l.pct === 100).map((l) => Object.is(l.balance, 0))).toEqual([true, true])
+    expect([form.periodTo, form.sentOn, form.contractDate]).toEqual(['2026-09-25', '2026-09-25', '2026-06-02'])
+    expect(ownerPayAppForm(state, projectOf(state, 'fairoaksd'), 9)).toBeNull()
+  })
+
+  it('puts a signed change order on line 2, and not on a bill that went before it', () => {
+    let state = gcReducer(initialGcState(), { type: 'sendOwnerPayApp', projectId: 'helotes' })
+    state = gcReducer(state, { type: 'draftChangeOrder', projectId: 'helotes', description: 'Add sound batts to operatory 3', reason: 'owner', schedule: 'none', packageId: 'dry', cost: 4_800, price: 0 })
+    state = gcReducer(state, { type: 'sendChangeOrder', projectId: 'helotes', changeOrderId: 'co-1' })
+    state = gcReducer(state, { type: 'ownerSignChangeOrder', projectId: 'helotes', changeOrderId: 'co-1' })
+    const helotes = projectOf(state, 'helotes')
+    const first = ownerPayAppForm(state, helotes, 1)
+    expect([first?.app.summary.changeOrders, first?.app.lines.some((l) => l.sovId === 'co-1')]).toEqual([0, false])
+    const next = ownerPayAppForm(state, helotes, 'draft')
+    expect([next?.app.number, next?.sentOn, next?.app.summary.changeOrders, Math.round(next?.app.summary.originalSum ?? 0)]).toEqual([2, null, 5_280, 338_767])
+    expect(next?.changeOrders).toEqual([{ number: 1, description: 'Add sound batts to operatory 3', price: 5_280 }])
+  })
+
+  it('shows the final pay application with nothing held', () => {
+    let state = gcReducer(initialGcState(), {
+      type: 'tradeSendFinalPayApp',
+      projectId: 'stoneoak',
+      packageId: 'shvac',
+      periodTo: '2026-10-02',
+      address: '1188 Culebra Rd, San Antonio, TX 78201',
+      license: '',
+      signedBy: 'Andre Wallace',
+      signedTitle: 'Owner',
+    })
+    state = gcReducer(state, { type: 'ownerAcceptsWork', projectId: 'stoneoak' })
+    state = gcReducer(state, { type: 'sendOwnerFinalPayApp', projectId: 'stoneoak' })
+    const form = ownerPayAppForm(state, projectOf(state, 'stoneoak'), 4)
+    expect([form?.app.final, form?.app.summary.retainage, form?.app.totals.retainage, cents(form?.app.summary.currentDue ?? 0)]).toEqual([true, 0, 0, 18_241.3])
   })
 })
 

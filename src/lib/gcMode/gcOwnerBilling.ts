@@ -9,7 +9,7 @@
 import type { ChangeOrder, GcCustomer, GcProject, GcState, OwnerPayAppSent, TradePackage } from './gcTypes'
 import { carriedAmount, proposalTotals } from './gcBids'
 import { partnerById } from './gcLookups'
-import { ownCrewWork, tradeCloseout } from './gcBuilding'
+import { ownCrewWork, tradeCloseout, type PayApplication, type PayAppLine } from './gcBuilding'
 import { money, shortDate } from './gcWords'
 
 /** We bill the owner once a month (the owner's call, 2026-10-02). The day of the month is my default. */
@@ -122,8 +122,10 @@ function tradeLine(state: GcState, pkg: TradePackage): OwnerLine {
     for (const line of back.lines) weSee.set(line.sovId, Math.min(weSee.get(line.sovId) ?? 100, line.weSee))
   }
   const pctOf = (l: { id: string; pctReported: number }) => Math.min(l.pctReported, weSee.get(l.id) ?? 100)
-  const reported = sow.sov.reduce((s, l) => s + (l.amount * l.pctReported) / 100, 0)
-  const done = sow.sov.reduce((s, l) => s + (l.amount * pctOf(l)) / 100, 0)
+  // A change order's line on their statement of work bills on the change order's own line, not here.
+  const ownLines = sow.sov.filter((l) => l.changeOrderId === undefined)
+  const reported = ownLines.reduce((s, l) => s + (l.amount * l.pctReported) / 100, 0)
+  const done = ownLines.reduce((s, l) => s + (l.amount * pctOf(l)) / 100, 0)
   const pct = sow.price === 0 ? 0 : Math.round((done / sow.price) * 100)
   const reportedPct = sow.price === 0 ? 0 : Math.round((reported / sow.price) * 100)
   const doubted = Math.round(reported - done) > 0
@@ -137,7 +139,7 @@ function tradeLine(state: GcState, pkg: TradePackage): OwnerLine {
       : done > 0
         ? `${company} reported ${pct}% done.`
         : `${company} has not reported any work yet.`,
-    detail: sow.sov.map((l) => (pctOf(l) < l.pctReported ? { label: l.label, pct: pctOf(l), theySay: l.pctReported } : { label: l.label, pct: l.pctReported })),
+    detail: ownLines.map((l) => (pctOf(l) < l.pctReported ? { label: l.label, pct: pctOf(l), theySay: l.pctReported } : { label: l.label, pct: l.pctReported })),
   }
 }
 
@@ -223,6 +225,7 @@ export function ownerPayAppToSend(app: OwnerPayApp, today: string): OwnerPayAppS
     periodTo: app.billOn,
     sentOn: today,
     doneToDate: Object.fromEntries(app.lines.map((l) => [l.id, l.doneToDate])),
+    worthByLine: Object.fromEntries(app.lines.map((l) => [l.id, l.worth])),
     workToDate: app.doneToDate,
     retainagePct: app.retainagePct,
     retainage: app.retainage,
@@ -386,11 +389,14 @@ export function sentPayAppLines(state: GcState, project: GcProject, number: numb
   const app = sent.find((a) => a.number === number)
   const before = sent.find((a) => a.number === number - 1)
   if (!app) return []
-  return ownerPayApp(state, project).lines.map((l) => {
-    const doneToDate = app.doneToDate[l.id] ?? 0
-    const doneBefore = before?.doneToDate[l.id] ?? 0
-    return { id: l.id, label: l.label, worth: l.worth, doneBefore, thisMonth: doneToDate - doneBefore, doneToDate }
-  })
+  // Only the lines the bill had when it went: a change order signed later is not on it.
+  return ownerPayApp(state, project)
+    .lines.filter((l) => l.id in app.doneToDate)
+    .map((l) => {
+      const doneToDate = app.doneToDate[l.id] ?? 0
+      const doneBefore = before?.doneToDate[l.id] ?? 0
+      return { id: l.id, label: l.label, worth: app.worthByLine?.[l.id] ?? l.worth, doneBefore, thisMonth: doneToDate - doneBefore, doneToDate }
+    })
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -577,7 +583,9 @@ export function spreadMarkup<L extends { id: string; worth: number; doneBefore: 
     const doneBefore = l.doneBefore + share(l, 'doneBefore')
     const doneToDate = l.doneToDate + share(l, 'doneToDate')
     const ourShare = share(l, 'worth')
-    return { ...l, worth: l.worth + ourShare, doneBefore, doneToDate, thisMonth: doneToDate - doneBefore, tradeWorth: l.worth, ourShare }
+    // Sharing out in proportion can leave a hair below zero on a line with no new work: it reads $0.
+    const thisMonth = Math.abs(doneToDate - doneBefore) < 0.005 ? 0 : doneToDate - doneBefore
+    return { ...l, worth: l.worth + ourShare, doneBefore, doneToDate, thisMonth, tradeWorth: l.worth, ourShare }
   })
     .concat(changes.map((l) => ({ ...l, tradeWorth: l.worth, ourShare: 0 })))
 }
@@ -643,5 +651,94 @@ function changeOrderLine(co: ChangeOrder): OwnerLine {
     source: `${co.description.trim().replace(/[.\s]+$/, '')}.${co.answeredOn ? ` Signed ${shortDate(co.answeredOn)}.` : ''}`,
     detail: [],
     changeOrderId: co.id,
+  }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Our pay application as the form: the AIA G702 and G703 the owner, the architect and a lender
+// read, in the Building lane's PayApplication shape. The lines are the bill's own, our costs and
+// fee spread into the trades (owner's call), change orders as lines of their own.
+// ---------------------------------------------------------------------------------------------
+
+export interface OwnerPayAppForm {
+  app: PayApplication
+  /** The bill day it is for. */
+  periodTo: string
+  /** The day it went. Null on the draft. */
+  sentOn: string | null
+  /** The day the owner contract was signed. */
+  contractDate: string | null
+  /** The signed change orders on it: line 2 is their sum. */
+  changeOrders: { number: number; description: string; price: number }[]
+}
+
+/** Our pay application number `which` as the form, or the next one as a draft. Null: no such bill. */
+export function ownerPayAppForm(state: GcState, project: GcProject, which: number | 'draft'): OwnerPayAppForm | null {
+  const sent = ownerPayAppsSent(project)
+  const draft = ownerPayApp(state, project)
+  const record = which === 'draft' ? null : (sent.find((a) => a.number === which) ?? null)
+  if (which !== 'draft' && !record) return null
+  const final = record?.final === true
+  const retainagePct = record ? record.retainagePct : draft.retainagePct
+  const rows = spreadMarkup(record ? sentPayAppLines(state, project, record.number) : draft.lines)
+  const lines: PayAppLine[] = rows.map((l, i) => ({
+    item: i + 1,
+    sovId: l.id,
+    label: l.label,
+    scheduled: l.worth,
+    fromPrevious: l.doneBefore,
+    thisPeriod: l.thisMonth,
+    stored: 0,
+    toDate: l.doneToDate,
+    pct: l.worth === 0 ? 0 : Math.round((l.doneToDate / l.worth) * 100),
+    // A line done in full can land a hair under zero from the spread's arithmetic: it reads $0.
+    balance: Math.abs(l.worth - l.doneToDate) < 0.005 ? 0 : l.worth - l.doneToDate,
+    retainage: final ? 0 : (l.doneToDate * retainagePct) / 100,
+  }))
+  const sum = (key: 'scheduled' | 'fromPrevious' | 'thisPeriod' | 'toDate' | 'balance' | 'retainage') => lines.reduce((s, l) => s + l[key], 0)
+  const scheduled = sum('scheduled')
+  const toDate = sum('toDate')
+  const changeOrders = lines.filter((l) => isChangeOrderLineId(l.sovId)).reduce((s, l) => s + l.scheduled, 0)
+  const retainage = record ? record.retainage : draft.retainage
+  const earned = toDate - retainage
+  const previous = record ? sent.filter((a) => a.number < record.number).reduce((s, a) => s + a.due, 0) : draft.askedBefore
+  const signed = new Map(signedChangeOrders(project).map((co) => [co.id, co]))
+  return {
+    app: {
+      number: record?.number ?? draft.number,
+      final,
+      lines,
+      totals: {
+        scheduled,
+        fromPrevious: sum('fromPrevious'),
+        thisPeriod: sum('thisPeriod'),
+        stored: 0,
+        toDate,
+        pct: scheduled === 0 ? 0 : Math.round((toDate / scheduled) * 100),
+        balance: sum('balance'),
+        retainage: sum('retainage'),
+      },
+      summary: {
+        originalSum: scheduled - changeOrders,
+        changeOrders,
+        sumToDate: scheduled,
+        completedToDate: toDate,
+        retainagePct,
+        retainage,
+        earnedLessRetainage: earned,
+        previousCertificates: previous,
+        currentDue: record ? record.due : draft.due,
+        balanceToFinish: scheduled - earned,
+      },
+    },
+    periodTo: record?.periodTo ?? draft.billOn,
+    sentOn: record?.sentOn ?? null,
+    contractDate: project.ownerContractSignedOn,
+    changeOrders: lines
+      .filter((l) => isChangeOrderLineId(l.sovId))
+      .flatMap((l) => {
+        const co = signed.get(l.sovId)
+        return co ? [{ number: co.number, description: co.description, price: co.price }] : []
+      }),
   }
 }
