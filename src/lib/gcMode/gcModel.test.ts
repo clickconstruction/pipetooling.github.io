@@ -389,6 +389,12 @@ const STEPS: Step[] = [
       questionIds: ['padb-q-1'],
     },
   },
+  // A bid we lost (Board lane, 2026-10-03): Pad B leaves Bidding for the Lost section, then comes back.
+  {
+    label: 'Pad B: we lost it, on price, to Hill Country Builders',
+    action: { type: 'markLost', projectId: 'padb', why: 'price', wonBy: 'Hill Country Builders', note: 'They came in about 6% under us.' },
+  },
+  { label: 'Pad B: the owner comes back to us', action: { type: 'reopenLost', projectId: 'padb' } },
 ]
 
 const CUSTOMER_IDS = ['cibolo', 'raman']
@@ -532,6 +538,7 @@ describe('GC mode golden walk', () => {
       'tradeMarkLookAhead',
       'tradeSetLanguage',
       'setPartnerLanguage',
+      'markLost', 'reopenLost',
     ]
     expect(all.filter((t) => !used.has(t))).toEqual([])
   })

@@ -9,6 +9,8 @@ import {
   currentRev,
   daysUntil,
   leveledTotal,
+  LOST_WHY,
+  lostWords,
   proposalUncosted,
   proposalUncostedWords,
   uncostedLines,
@@ -35,6 +37,7 @@ import {
   travelWords,
   type Draw,
   type GcAction,
+  type GcLostWhy,
   type GcProject,
   type GcState,
   type Includes,
@@ -775,6 +778,7 @@ export function GcPlansTab({ state, project, dispatch }: GcPaneProps) {
 
 export function GcNumberTab({ state, project, dispatch }: GcPaneProps) {
   const totals = proposalTotals(project)
+  const [losing, setLosing] = useState(false)
   const field = (label: string, key: 'generalConditions' | 'contingencyPct' | 'feePct', suffix: string) => (
     <label style={{ display: 'grid', gap: '0.2rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
       {label}
@@ -824,18 +828,34 @@ export function GcNumberTab({ state, project, dispatch }: GcPaneProps) {
           {field('General conditions', 'generalConditions', 'dollars')}
           {field('Contingency', 'contingencyPct', '%')}
           {field('Fee', 'feePct', '%')}
-          {project.stage === 'pursuing' && project.ourBidSentOn === null && (
+          {project.stage === 'pursuing' && !project.lostOn && project.ourBidSentOn === null && (
             <Btn onClick={() => dispatch({ type: 'markBidSent', projectId: project.id })}>We sent our bid</Btn>
           )}
           {project.stage === 'pursuing' && project.ourBidSentOn !== null && (
             <Chip tone="green">our bid went in {shortDate(project.ourBidSentOn)}</Chip>
           )}
-          {project.stage === 'pursuing' && (
+          {project.stage === 'pursuing' && !project.lostOn && (
             <Btn kind="primary" onClick={() => dispatch({ type: 'markWon', projectId: project.id })}>
               We won this. Start buyout
             </Btn>
           )}
+          {project.stage === 'pursuing' && !project.lostOn && !losing && <Btn onClick={() => setLosing(true)}>We lost this</Btn>}
         </div>
+        {losing && !project.lostOn && <LostForm project={project} dispatch={dispatch} onDone={() => setLosing(false)} />}
+        {project.lostOn && (
+          <div style={{ marginTop: '0.9rem', display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            <Chip tone="grey">Lost {shortDate(project.lostOn)}</Chip>
+            <span>{lostWords(project)}</span>
+            {project.lostNote && <span style={{ color: 'var(--text-muted)' }}>· {project.lostNote}</span>}
+            <span style={{ flex: 1 }} />
+            <Btn
+              title="The owner came back to us. It goes back under Bidding to the owner, as it stood."
+              onClick={() => dispatch({ type: 'reopenLost', projectId: project.id })}
+            >
+              Bring it back
+            </Btn>
+          </div>
+        )}
       </Card>
       <Card style={{ padding: 0, overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -865,6 +885,53 @@ export function GcNumberTab({ state, project, dispatch }: GcPaneProps) {
           </tbody>
         </table>
       </Card>
+    </div>
+  )
+}
+
+/**
+ * We lost this (the owner, 2026-10-03): why, who won it if we know, and a note. Mark it lost
+ * moves the bid off Bidding into the board's Lost section and stops the chasing on it.
+ */
+function LostForm({ project, dispatch, onDone }: { project: GcProject; dispatch: Dispatch<GcAction>; onDone: () => void }) {
+  const [why, setWhy] = useState<GcLostWhy | null>(null)
+  const [wonBy, setWonBy] = useState('')
+  const [note, setNote] = useState('')
+  return (
+    <div style={{ marginTop: '0.9rem', padding: '0.75rem', border: '1px solid var(--border)', borderRadius: 8, display: 'grid', gap: '0.55rem' }}>
+      <strong>Why did we lose {project.name}?</strong>
+      <span style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+        {LOST_WHY.map((w) => (
+          <Btn key={w.key} kind={why === w.key ? 'primary' : 'plain'} onClick={() => setWhy(w.key)}>
+            {w.label}
+          </Btn>
+        ))}
+      </span>
+      <label style={{ display: 'grid', gap: '0.2rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+        Who won it, if we know
+        <input value={wonBy} onChange={(e) => setWonBy(e.target.value)} placeholder="the builder the owner picked" style={{ ...input, maxWidth: '22rem' }} />
+      </label>
+      <label style={{ display: 'grid', gap: '0.2rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+        A note for next time
+        <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="what the owner said" style={input} />
+      </label>
+      <span style={{ display: 'flex', gap: '0.4rem' }}>
+        <Btn
+          kind="primary"
+          disabled={!why}
+          title={why ? undefined : 'Pick why we lost it first.'}
+          onClick={() => {
+            if (!why) return
+            dispatch({ type: 'markLost', projectId: project.id, why, wonBy: wonBy.trim() || null, note })
+            onDone()
+          }}
+        >
+          Mark it lost
+        </Btn>
+        <Btn kind="quiet" onClick={onDone}>
+          Cancel
+        </Btn>
+      </span>
     </div>
   )
 }

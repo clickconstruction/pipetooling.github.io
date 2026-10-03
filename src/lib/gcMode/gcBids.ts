@@ -253,6 +253,7 @@ export function packageHasTab(pkg: TradePackage): boolean {
 
 /** What a company that quoted is told about how it came out. */
 export function bidTabResult(project: GcProject, pkg: TradePackage, partnerId: string): string {
+  if (project.lostOn) return 'Click did not win the project. The owner picked another builder. Thank you for your quote.'
   if (project.stage === 'pursuing') {
     return `Click sent its bid${project.ourBidSentOn ? ` on ${shortDate(project.ourBidSentOn)}` : ''}. The owner has not picked a builder yet.`
   }
