@@ -293,6 +293,14 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   Building lane): in a Spanish portal the door, the closeout list, the window's steps and the form
   itself read in Spanish (`gcBuildingWords.ts`, on the Portal lane's words). The office's copy,
   opened from Draws, is always English.
+- **A project we lost closes in the portal and says why in one line** (owner, 2026-10-03, on the
+  Board lane's markLost): it leaves Bidding for Before, and the bid form, the questions box, Needs
+  you and the paperwork block go away there. The plans stay open to look at. The line is "Click did
+  not win this project." or, when the project died, "The owner stopped this project or put it on
+  hold.", then "You do not need to send a number. Thank you for your time." (or "Thank you for
+  your number." once one came). Never the price and never who won. Each company still on a trade
+  there gets one email the day it is marked, in its language; one that passed gets none. Bring it
+  back opens it all again (`portalClosedWords`, the `closed` ask kind and message in `gcPortal.ts`).
 
 ## My defaults the owner has not confirmed
 
