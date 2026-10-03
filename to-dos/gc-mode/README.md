@@ -174,6 +174,13 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   fee. Issuing drafts each one with a cost through Owner Billing's own `draftChangeOrder` (reason
   "plans"), to review and send on **Bill the owner**. The matching change to the trade's
   statement of work is not built.
+- **Questions about the plans** (approved as built, 2026-10-03): a trade asks about the plans
+  (only a company asked to quote the trade can), we send it to the architect, we record the
+  answer, and it goes to every company bidding the trade while we bid, or only the company on it
+  once the job is ours, the same rule a new set follows. An answered question rides in the next
+  set: A new set of plans came in offers it, ticked, in the note, and the question remembers the
+  set (`tradeAskQuestion`, `sendQuestionToArchitect`, `answerQuestion`, `issuePlanSet.questionIds`;
+  the window `GcNewProjectQuestions.tsx`).
 - **The schedule** (2026-10-02, decided before anything is built): several activities per trade,
   like rough in, top out and trim. We draw it; the companies do not propose dates. It lives only
   inside GC mode for now, not on the app's Schedule page. A milestone counts as hit within a few
@@ -481,8 +488,10 @@ they point to, for the lanes to pick up.
   budget from real costs, not a made-up rate per square foot. A line's sheets show only in New Project, a new set
   and the plans window; the portal's bid form, Trades and Compare bids do not show them yet. A
   later set cannot yet take a sheet out of the set.
-- A trade asks a question about the plans, the architect answers, every bidder on the trade
-  gets the answer. Three made-up questions show in the architect's window, read-only.
+- Questions about the plans, the rest: a trade asks in its portal (the Portal lane: the action
+  `tradeAskQuestion` is ready), the answers show in the portal, and a **Questions about the plans**
+  door on the Plans tab (the Board lane). Today the office types a question that came in by phone
+  or email, and the window opens from A new set of plans came in.
 - Change orders to a trade, the rest: the owner's change order still reads its own percent done,
   not the trade's on its line (`changeOrderTradePct`, the Owner Billing lane's to read), and the
   portal's "left to bill" counts the original contract only (`sowContractSum`, the Portal lane's).

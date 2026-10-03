@@ -70,8 +70,8 @@ describe('sending the owner a pay application, then the next month', () => {
     const sent = gcReducer(initialGcState(), { type: 'sendOwnerPayApp', projectId: 'helotes' })
     const apps = project(sent).ownerBilling?.payApps ?? []
     expect(apps.map((a) => [a.number, a.periodTo, a.sentOn, Math.round(a.due), a.paidOn])).toEqual([[1, '2026-10-25', '2026-10-02', 47_301, null]])
-    // The made-up billed and paid numbers are left alone: the owner window still reads them.
-    expect(project(sent).ownerBilling?.billed).toBe(61_000)
+    // Helotes started with nothing billed (owner's call): the record is made when the first bill goes.
+    expect(project(sent).ownerBilling?.billed).toBe(0)
     const next = ownerPayApp(sent, project(sent))
     expect(next.number).toBe(2)
     expect(next.billOn).toBe('2026-11-25')
@@ -570,10 +570,10 @@ describe('money in and money out on a job', () => {
     expect(cash.ownCrew).toEqual(['Plumbing'])
   })
 
-  it('uses the made-up record on Helotes until a pay application goes, then the pay applications', () => {
+  it('starts Helotes with nothing billed, so we carry the framing we paid for, until the owner pays', () => {
     let state = initialGcState()
     const before = projectCash(state, projectOf(state, 'helotes'))
-    expect([before.in.paid, before.in.owed, before.in.held, before.out.paid, before.net]).toEqual([42_300, 12_600, 6_100, 19_800, 22_500])
+    expect([before.in.paid, before.in.owed, before.in.held, before.out.paid, before.net]).toEqual([0, 0, 0, 19_800, -19_800])
     state = gcReducer(state, { type: 'sendOwnerPayApp', projectId: 'helotes' })
     state = gcReducer(state, { type: 'ownerPaid', projectId: 'helotes', number: 1 })
     const after = projectCash(state, projectOf(state, 'helotes'))
@@ -587,7 +587,7 @@ describe('money in and money out on a job', () => {
     expect(projectCash(state, projectOf(state, 'helotes')).out.approved).toBe(14_688)
     state = gcReducer(state, { type: 'payDraw', projectId: 'helotes', packageId: 'dry', drawId: 'dry-draw-2' })
     const cash = projectCash(state, projectOf(state, 'helotes'))
-    expect([cash.out.paid, cash.out.approved, cash.net]).toEqual([34_488, 0, 7_812])
+    expect([cash.out.paid, cash.out.approved, cash.net]).toEqual([34_488, 0, -34_488])
   })
 })
 
