@@ -315,6 +315,20 @@ const STEPS: Step[] = [
   },
   // The portal's weekly look-ahead: the trade marks this week's activity.
   { label: 'Fair Oaks D: Pecan Valley marks Lighting not done this week (materials)', action: { type: 'tradeMarkLookAhead', projectId: 'fairoaksd', packageId: 'felec', lineId: 'felec-3', weekOf: '2026-09-28', done: false, reason: 'materials' } },
+  // Helotes: change orders to the owner. One added and signed, one credit declined.
+  {
+    label: 'Draft change order 1: sound batts at operatory 3',
+    action: { type: 'draftChangeOrder', projectId: 'helotes', description: 'Add sound batts to the walls of operatory 3, per detail 4 on A-201', reason: 'owner', schedule: '+1 working day', packageId: 'dry', cost: 4_800, price: 5_280 },
+  },
+  { label: 'Send change order 1 to Dr. Raman', action: { type: 'sendChangeOrder', projectId: 'helotes', changeOrderId: 'co-1' } },
+  { label: 'Dr. Raman signs change order 1', action: { type: 'ownerSignChangeOrder', projectId: 'helotes', changeOrderId: 'co-1' } },
+  { label: 'Change order 1 is done', action: { type: 'setChangeOrderPct', projectId: 'helotes', changeOrderId: 'co-1', pct: 100 } },
+  {
+    label: 'Draft change order 2: a credit, the break room sink comes out',
+    action: { type: 'draftChangeOrder', projectId: 'helotes', description: 'Delete the break room sink', reason: 'plans', schedule: 'none', packageId: 'dplumb', cost: -1_200, price: -1_320 },
+  },
+  { label: 'Send change order 2 to Dr. Raman', action: { type: 'sendChangeOrder', projectId: 'helotes', changeOrderId: 'co-2' } },
+  { label: 'Dr. Raman declines change order 2', action: { type: 'ownerDeclineChangeOrder', projectId: 'helotes', changeOrderId: 'co-2' } },
 ]
 
 const CUSTOMER_IDS = ['cibolo', 'raman']
@@ -443,6 +457,7 @@ describe('GC mode golden walk', () => {
       'acceptWork', 'tradeSendWarranty', 'tradeSendFinalPayApp', 'approveRetainage',
       'selfReport',
       'ownerAcceptsWork', 'sendOwnerFinalPayApp',
+      'draftChangeOrder', 'sendChangeOrder', 'ownerSignChangeOrder', 'ownerDeclineChangeOrder', 'setChangeOrderPct',
       'sendDrawBack',
       'closeJob', 'approveDrawLess', 'selfReportStage',
       'draftSchedule', 'setScheduleActivity', 'setScheduleMilestone', 'removeScheduleMilestone',

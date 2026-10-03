@@ -4,6 +4,7 @@ import {
   gcReducer,
   initialGcState,
   missingTradeWaivers,
+  changeOrderPrice,
   nextOwnerBillDay,
   ourOwnerWaivers,
   owedDrawWords,
@@ -395,6 +396,71 @@ describe('our own crew on Bill the owner, read from Draws', () => {
     const state = gcReducer(initialGcState(), { type: 'selfReportStage', projectId: 'fairoaksd', packageId: 'fplumb', lineId: 'fplumb-3', pct: 100 })
     const line = plumbingLine(state)
     expect([line?.crewPct, line?.doneToDate, line?.detail[2]]).toEqual([80, 89_600, { label: 'Top out', pct: 100 }])
+  })
+})
+
+describe('change orders to the owner', () => {
+  const helotesOf = (state: GcState) => {
+    const p = state.projects.find((x) => x.id === 'helotes')
+    if (!p) throw new Error('fixture has no helotes')
+    return p
+  }
+  const draft = (state: GcState, cost: number, price = 0) =>
+    gcReducer(state, { type: 'draftChangeOrder', projectId: 'helotes', description: 'Add sound batts to operatory 3', reason: 'owner', schedule: '+1 working day', packageId: 'dry', cost, price })
+  const signedOne = () => {
+    let state = draft(initialGcState(), 4_800)
+    state = gcReducer(state, { type: 'sendChangeOrder', projectId: 'helotes', changeOrderId: 'co-1' })
+    return gcReducer(state, { type: 'ownerSignChangeOrder', projectId: 'helotes', changeOrderId: 'co-1' })
+  }
+
+  it('prices at the cost plus the job fee, unless typed', () => {
+    expect(changeOrderPrice(helotesOf(initialGcState()), 4_800)).toBe(5_280)
+    expect(helotesOf(draft(initialGcState(), 4_800)).changeOrders?.[0]).toMatchObject({ id: 'co-1', number: 1, price: 5_280, status: 'draft', pctDone: 0 })
+    expect(helotesOf(draft(initialGcState(), 4_800, 6_000)).changeOrders?.[0]?.price).toBe(6_000)
+  })
+
+  it('changes nothing on the bill until the owner signs', () => {
+    const before = ownerPayApp(initialGcState(), helotesOf(initialGcState()))
+    let state = draft(initialGcState(), 4_800)
+    state = gcReducer(state, { type: 'sendChangeOrder', projectId: 'helotes', changeOrderId: 'co-1' })
+    const sent = ownerPayApp(state, helotesOf(state))
+    expect([sent.contract, sent.changeOrdersTotal, sent.lines.length]).toEqual([before.contract, 0, before.lines.length])
+  })
+
+  it('a signed one raises the price and is its own line, not spread', () => {
+    let state = signedOne()
+    const before = ownerPayApp(initialGcState(), helotesOf(initialGcState()))
+    let app = ownerPayApp(state, helotesOf(state))
+    expect([Math.round(app.contract - before.contract), Math.round(app.originalContract), app.changeOrdersTotal]).toEqual([5_280, Math.round(before.contract), 5_280])
+    const line = app.lines.find((l) => l.id === 'co-1')
+    expect(line && [line.label, line.kind, line.worth, line.doneToDate]).toEqual(['Change order 1', 'changeOrder', 5_280, 0])
+    state = gcReducer(state, { type: 'setChangeOrderPct', projectId: 'helotes', changeOrderId: 'co-1', pct: 100 })
+    app = ownerPayApp(state, helotesOf(state))
+    expect(app.lines.find((l) => l.id === 'co-1')?.doneToDate).toBe(5_280)
+    expect(Math.round(app.doneToDate - before.doneToDate)).toBe(5_280)
+    const spread = spreadMarkup(app.lines)
+    expect(spread.find((l) => l.id === 'co-1')).toMatchObject({ worth: 5_280, doneToDate: 5_280, ourShare: 0 })
+    expect(Math.round(markupOnTop(app.lines) * 1000) / 10).toBe(37.2)
+  })
+
+  it('a declined credit never reaches the bill', () => {
+    let state = draft(initialGcState(), -1_200)
+    expect(helotesOf(state).changeOrders?.[0]?.price).toBe(-1_320)
+    state = gcReducer(state, { type: 'sendChangeOrder', projectId: 'helotes', changeOrderId: 'co-1' })
+    state = gcReducer(state, { type: 'ownerDeclineChangeOrder', projectId: 'helotes', changeOrderId: 'co-1' })
+    expect(helotesOf(state).changeOrders?.[0]?.status).toBe('declined')
+    expect(ownerPayApp(state, helotesOf(state)).changeOrdersTotal).toBe(0)
+  })
+
+  it('keeps each step in order', () => {
+    const fresh = initialGcState()
+    expect(gcReducer(fresh, { type: 'draftChangeOrder', projectId: 'boerne', description: 'x', reason: 'owner', schedule: '', packageId: null, cost: 100, price: 0 })).toBe(fresh)
+    expect(draft(fresh, 0)).toBe(fresh)
+    const drafted = draft(fresh, 4_800)
+    expect(gcReducer(drafted, { type: 'ownerSignChangeOrder', projectId: 'helotes', changeOrderId: 'co-1' })).toBe(drafted)
+    expect(gcReducer(drafted, { type: 'setChangeOrderPct', projectId: 'helotes', changeOrderId: 'co-1', pct: 50 })).toBe(drafted)
+    const signed = signedOne()
+    expect(gcReducer(signed, { type: 'sendChangeOrder', projectId: 'helotes', changeOrderId: 'co-1' })).toBe(signed)
   })
 })
 

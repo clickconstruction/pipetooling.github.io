@@ -12,7 +12,7 @@ import { initialGcState } from './gcFixture'
 import { draftSchedule, scheduleLinesOf, withBaselineKept } from './gcBuildingSchedule'
 import { buildNewProject, packagesFromDrafts, withNewLines, withTradesInOrder } from './gcNewProject'
 import { crewPctFromStages, drawApprovedLess, finalPayApplication, jobCloseout, payApplication, timesSentBack, tradeCloseout, workAllBilled } from './gcBuilding'
-import { ownerCloseout, ownerFinalPayAppToSend, ownerPayApp, ownerPayAppHasWork, ownerPayAppToSend } from './gcOwnerBilling'
+import { changeOrderPrice, ownerCloseout, ownerFinalPayAppToSend, ownerPayApp, ownerPayAppHasWork, ownerPayAppToSend } from './gcOwnerBilling'
 
 export function gcReducer(state: GcState, action: GcAction): GcState {
   switch (action.type) {
@@ -984,6 +984,75 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
           ? `${partner.company} marked ${label} on ${pkg.trade} done for the week of ${week}.`
           : `${partner.company} marked ${label} on ${pkg.trade} not done for the week of ${week}: ${mark.reason}.`,
       )
+    }
+
+    case 'draftChangeOrder': {
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const description = action.description.trim()
+      if (!project || project.stage === 'pursuing' || description === '' || action.cost === 0) return state
+      const existing = project.changeOrders ?? []
+      const number = existing.length + 1
+      const price = Number.isFinite(action.price) && action.price !== 0 ? Math.round(action.price) : changeOrderPrice(project, action.cost)
+      const co = {
+        id: `co-${number}`,
+        number,
+        description,
+        reason: action.reason,
+        schedule: action.schedule.trim() || 'none',
+        packageId: action.packageId,
+        cost: Math.round(action.cost),
+        price,
+        status: 'draft' as const,
+        sentOn: null,
+        answeredOn: null,
+        pctDone: 0,
+      }
+      const next = mapProject(state, project.id, (p) => ({ ...p, changeOrders: [...existing, co] }))
+      return logged(next, 'office', `Drafted change order ${number} on ${project.name}: ${description}, ${money(price)}.`)
+    }
+
+    case 'sendChangeOrder': {
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const co = project?.changeOrders?.find((c) => c.id === action.changeOrderId)
+      if (!project || !co || co.status !== 'draft') return state
+      const next = mapProject(state, project.id, (p) => ({
+        ...p,
+        changeOrders: (p.changeOrders ?? []).map((c) => (c.id === co.id ? { ...c, status: 'sent' as const, sentOn: state.today } : c)),
+      }))
+      return logged(next, 'office', `Sent change order ${co.number} to ${project.owner} for signature: ${money(co.price)}.`)
+    }
+
+    case 'ownerSignChangeOrder':
+    case 'ownerDeclineChangeOrder': {
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const co = project?.changeOrders?.find((c) => c.id === action.changeOrderId)
+      if (!project || !co || co.status !== 'sent') return state
+      const signed = action.type === 'ownerSignChangeOrder'
+      const next = mapProject(state, project.id, (p) => ({
+        ...p,
+        changeOrders: (p.changeOrders ?? []).map((c) =>
+          c.id === co.id ? { ...c, status: signed ? ('signed' as const) : ('declined' as const), answeredOn: state.today } : c,
+        ),
+      }))
+      return logged(
+        next,
+        'office',
+        signed
+          ? `${project.owner} signed change order ${co.number} in their portal. Their price ${co.price < 0 ? 'goes down' : 'goes up'} ${money(Math.abs(co.price))}.`
+          : `${project.owner} declined change order ${co.number} in their portal.`,
+      )
+    }
+
+    case 'setChangeOrderPct': {
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const co = project?.changeOrders?.find((c) => c.id === action.changeOrderId)
+      const pct = Math.max(0, Math.min(100, Math.round(action.pct)))
+      if (!project || !co || co.status !== 'signed' || co.pctDone === pct) return state
+      const next = mapProject(state, project.id, (p) => ({
+        ...p,
+        changeOrders: (p.changeOrders ?? []).map((c) => (c.id === co.id ? { ...c, pctDone: pct } : c)),
+      }))
+      return logged(next, 'office', `Change order ${co.number} on ${project.name} is ${pct}% done.`)
     }
   }
 }

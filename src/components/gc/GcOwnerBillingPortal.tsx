@@ -3,6 +3,7 @@ import { Btn, Chip } from './gcUi'
 import { PortalBlock, PortalNote } from './GcPortalUi'
 import {
   GC_COMPANY_NAME,
+  CHANGE_ORDER_REASON_WORDS,
   money,
   ourOwnerWaivers,
   owedDrawWords,
@@ -10,6 +11,7 @@ import {
   ownerAccount,
   ownerPayApp,
   ownerPayAppsSent,
+  projectChangeOrders,
   sentPayAppLines,
   shortDate,
   spreadMarkup,
@@ -43,6 +45,8 @@ export function GcOwnerBillingPortal({ state, project, dispatch }: { state: GcSt
   const trades = last ? tradeWaiverChecks(state, project, last.doneToDate) : []
   const billedPct = last && next.contract > 0 ? Math.round((last.workToDate / next.contract) * 100) : 0
   const closeout = ownerCloseout(state, project)
+  // The owner sees a change order once it is sent; a draft is ours.
+  const changeOrders = projectChangeOrders(project).filter((co) => co.status !== 'draft')
   const acceptedOn = project.ownerBilling?.acceptedOn ?? null
   const allBilled = closeout.steps[0]?.done === true
 
@@ -67,7 +71,15 @@ export function GcOwnerBillingPortal({ state, project, dispatch }: { state: GcSt
 
         <PortalBlock title="Your contract">
           <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '0.2rem 0.75rem', fontSize: '0.875rem' }}>
-            <span>The price</span>
+            {next.changeOrdersTotal !== 0 && (
+              <>
+                <span>The price you signed for</span>
+                <span style={{ textAlign: 'right' }}>{money(next.originalContract)}</span>
+                <span>Change orders you signed</span>
+                <span style={{ textAlign: 'right' }}>{`${next.changeOrdersTotal > 0 ? '+' : '−'}${money(Math.abs(next.changeOrdersTotal))}`}</span>
+              </>
+            )}
+            <span>{next.changeOrdersTotal !== 0 ? 'The price now' : 'The price'}</span>
             <strong style={{ textAlign: 'right' }}>{money(next.contract)}</strong>
             <span>Billed so far · {billedPct}% of the work</span>
             <span style={{ textAlign: 'right' }}>{money(account?.billed ?? 0)}</span>
@@ -104,6 +116,39 @@ export function GcOwnerBillingPortal({ state, project, dispatch }: { state: GcSt
                 </div>
               </div>
             )}
+          </PortalBlock>
+        )}
+
+        {changeOrders.length > 0 && (
+          <PortalBlock title="Change orders">
+            <div style={{ display: 'grid', gap: '0.55rem' }}>
+              {changeOrders.map((co) => (
+                <div key={co.id} style={{ display: 'grid', gap: '0.3rem', fontSize: '0.85rem', borderTop: `1px solid ${RULE}`, paddingTop: '0.4rem' }}>
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
+                    <strong>Change order {co.number}</strong>
+                    <span style={{ flex: 1 }} />
+                    <strong>{`${co.price < 0 ? '−' : '+'}${money(Math.abs(co.price))}`}</strong>
+                  </div>
+                  <div>{co.description}</div>
+                  <div style={{ color: 'var(--text-muted)' }}>
+                    {CHANGE_ORDER_REASON_WORDS[co.reason]} · schedule: {co.schedule}
+                  </div>
+                  {co.status === 'sent' && (
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <Btn kind="primary" onClick={() => dispatch({ type: 'ownerSignChangeOrder', projectId: project.id, changeOrderId: co.id })}>
+                        Sign it
+                      </Btn>
+                      <Btn onClick={() => dispatch({ type: 'ownerDeclineChangeOrder', projectId: project.id, changeOrderId: co.id })}>Decline</Btn>
+                      <span style={{ color: 'var(--text-muted)' }}>
+                        {co.price < 0 ? 'It takes' : 'It adds'} {money(Math.abs(co.price))} {co.price < 0 ? 'off' : 'to'} your price.
+                      </span>
+                    </div>
+                  )}
+                  {co.status === 'signed' && <Chip tone="green">{`you signed it ${shortDate(co.answeredOn)}`}</Chip>}
+                  {co.status === 'declined' && <Chip tone="grey">{`you declined it ${shortDate(co.answeredOn)}`}</Chip>}
+                </div>
+              ))}
+            </div>
           </PortalBlock>
         )}
 

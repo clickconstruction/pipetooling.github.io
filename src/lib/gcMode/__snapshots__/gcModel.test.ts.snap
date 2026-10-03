@@ -7069,6 +7069,77 @@ exports[`GC mode golden walk > step 100: Fair Oaks D: Pecan Valley marks Lightin
 }
 `;
 
+exports[`GC mode golden walk > step 101: Draft change order 1: sound batts at operatory 3 1`] = `
+{
+  "changed": {
+    "lastLog.id": 97,
+    "lastLog.text": "Drafted change order 1 on Helotes Dental Office: Add sound batts to the walls of operatory 3, per detail 4 on A-201, $5,280.",
+    "lastLog.who": "office",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 102: Send change order 1 to Dr. Raman 1`] = `
+{
+  "changed": {
+    "lastLog.id": 98,
+    "lastLog.text": "Sent change order 1 to Dr. Priya Raman for signature: $5,280.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 103: Dr. Raman signs change order 1 1`] = `
+{
+  "changed": {
+    "lastLog.id": 99,
+    "lastLog.text": "Dr. Priya Raman signed change order 1 in their portal. Their price goes up $5,280.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 104: Change order 1 is done 1`] = `
+{
+  "changed": {
+    "lastLog.id": 100,
+    "lastLog.text": "Change order 1 on Helotes Dental Office is 100% done.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 105: Draft change order 2: a credit, the break room sink comes out 1`] = `
+{
+  "changed": {
+    "lastLog.id": 101,
+    "lastLog.text": "Drafted change order 2 on Helotes Dental Office: Delete the break room sink, $-1,320.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 106: Send change order 2 to Dr. Raman 1`] = `
+{
+  "changed": {
+    "lastLog.id": 102,
+    "lastLog.text": "Sent change order 2 to Dr. Priya Raman for signature: $-1,320.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 107: Dr. Raman declines change order 2 1`] = `
+{
+  "changed": {
+    "lastLog.id": 103,
+    "lastLog.text": "Dr. Priya Raman declined change order 2 in their portal.",
+  },
+  "removed": [],
+}
+`;
+
 exports[`GC mode golden walk > the whole state at the end 1`] = `
 {
   "customers": [
@@ -7269,6 +7340,41 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
+      "id": 103,
+      "text": "Dr. Priya Raman declined change order 2 in their portal.",
+      "who": "office",
+    },
+    {
+      "id": 102,
+      "text": "Sent change order 2 to Dr. Priya Raman for signature: $-1,320.",
+      "who": "office",
+    },
+    {
+      "id": 101,
+      "text": "Drafted change order 2 on Helotes Dental Office: Delete the break room sink, $-1,320.",
+      "who": "office",
+    },
+    {
+      "id": 100,
+      "text": "Change order 1 on Helotes Dental Office is 100% done.",
+      "who": "office",
+    },
+    {
+      "id": 99,
+      "text": "Dr. Priya Raman signed change order 1 in their portal. Their price goes up $5,280.",
+      "who": "office",
+    },
+    {
+      "id": 98,
+      "text": "Sent change order 1 to Dr. Priya Raman for signature: $5,280.",
+      "who": "office",
+    },
+    {
+      "id": 97,
+      "text": "Drafted change order 1 on Helotes Dental Office: Add sound batts to the walls of operatory 3, per detail 4 on A-201, $5,280.",
+      "who": "office",
+    },
+    {
       "id": 96,
       "text": "Pecan Valley Electric marked Lighting on Electrical not done for the week of Mon Sep 28: materials.",
       "who": "trade",
@@ -7382,41 +7488,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "id": 74,
       "text": "AquaShield Sprinkler opened their portal for the first time.",
       "who": "trade",
-    },
-    {
-      "id": 73,
-      "text": "Approved draw 1 on Millwork. $15,444 to pay, $1,716 held.",
-      "who": "office",
-    },
-    {
-      "id": 72,
-      "text": "Cedar & Pine Millwork sent pay application 1 on Millwork again, fixed: $17,160, with a conditional waiver signed.",
-      "who": "trade",
-    },
-    {
-      "id": 71,
-      "text": "Sent pay application 1 on Millwork back to Cedar & Pine Millwork. Four of the twelve operatory cabinets are set, not half.",
-      "who": "office",
-    },
-    {
-      "id": 70,
-      "text": "Cedar & Pine Millwork sent pay application 1 on Millwork: $19,800, with a conditional waiver signed.",
-      "who": "trade",
-    },
-    {
-      "id": 69,
-      "text": "Our own crew reported Plumbing at 50%.",
-      "who": "office",
-    },
-    {
-      "id": 68,
-      "text": "Hill Country Interiors signed the unconditional waiver for draw 4.",
-      "who": "trade",
-    },
-    {
-      "id": 67,
-      "text": "Paid draw 4 on Framing and drywall: $6,420.",
-      "who": "office",
     },
   ],
   "partners": [
@@ -9013,6 +9084,36 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "architect": "Studio Ocotillo",
       "architectId": "ocotillo",
       "bidDue": null,
+      "changeOrders": [
+        {
+          "answeredOn": "2026-10-02",
+          "cost": 4800,
+          "description": "Add sound batts to the walls of operatory 3, per detail 4 on A-201",
+          "id": "co-1",
+          "number": 1,
+          "packageId": "dry",
+          "pctDone": 100,
+          "price": 5280,
+          "reason": "owner",
+          "schedule": "+1 working day",
+          "sentOn": "2026-10-02",
+          "status": "signed",
+        },
+        {
+          "answeredOn": "2026-10-02",
+          "cost": -1200,
+          "description": "Delete the break room sink",
+          "id": "co-2",
+          "number": 2,
+          "packageId": "dplumb",
+          "pctDone": 0,
+          "price": -1320,
+          "reason": "plans",
+          "schedule": "none",
+          "sentOn": "2026-10-02",
+          "status": "declined",
+        },
+      ],
       "contingencyPct": 3,
       "customerId": "raman",
       "feePct": 10,

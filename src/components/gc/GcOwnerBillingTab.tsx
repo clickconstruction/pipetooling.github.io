@@ -1,5 +1,6 @@
 import { useState, type Dispatch } from 'react'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
+import { GcOwnerBillingChangeOrders } from './GcOwnerBillingChangeOrders'
 import { GcOwnerBillingPortal } from './GcOwnerBillingPortal'
 import { Btn, Card, Chip, Stat, Why, num, td, th } from './gcUi'
 import {
@@ -143,6 +144,8 @@ function OfficeSide({ state, project, dispatch }: { state: GcState; project: GcP
         </div>
         <div style={{ marginTop: '0.7rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
           After this bill, {money(app.leftToBill)} is left to bill. That counts the {money(app.retainage)} they hold.
+          {app.changeOrdersTotal !== 0 &&
+            ` Our price is the ${money(app.originalContract)} they signed for, ${app.changeOrdersTotal > 0 ? 'plus' : 'less'} ${money(Math.abs(app.changeOrdersTotal))} of change orders.`}
         </div>
         {hasWork && (
           <div style={{ marginTop: '0.8rem', borderTop: '1px solid var(--border)', paddingTop: '0.6rem', display: 'grid', gap: '0.3rem', fontSize: '0.875rem' }}>
@@ -201,6 +204,8 @@ function OfficeSide({ state, project, dispatch }: { state: GcState; project: GcP
       </Card>
       )}
 
+      <GcOwnerBillingChangeOrders state={state} project={project} dispatch={dispatch} />
+
       <Card style={{ padding: 0, overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
@@ -219,7 +224,11 @@ function OfficeSide({ state, project, dispatch }: { state: GcState; project: GcP
               <LineRow
                 key={l.id}
                 line={l}
-                spreadWords={`${l.kind === 'self' ? 'Our crew’s price' : 'Their price'} ${money(l.tradeWorth)} plus ${money(l.ourShare)} of our costs and fee.`}
+                spreadWords={
+                  l.kind === 'changeOrder'
+                    ? undefined
+                    : `${l.kind === 'self' ? 'Our crew’s price' : 'Their price'} ${money(l.tradeWorth)} plus ${money(l.ourShare)} of our costs and fee.`
+                }
                 pipelineRef={project.packages.find((p) => p.id === l.id)?.selfPerform?.ref}
               />
             ))}
