@@ -3344,6 +3344,8 @@ interface SendPhysicalInvoiceEmailBody {
 
 ### gc-statement-email-dispatch
 
+> **v2.4455 — a move and a deposit read their own day**: [`_shared/gcChecksApplied.ts`](../supabase/functions/_shared/gcChecksApplied.ts) reads a payment move's `created_at` and a deposit's `posted_at` as their day in `APP_CALENDAR_TZ` (`todayYmdInAppTz(new Date(iso))`), not their UTC date. The statement's payments block prints only the received day (`paid_on`), so the email does not change; redeploy after merge so the bundle matches the repo.
+
 > **v2.4132 — sends as the company**: the From is [`COMPANY_EMAIL_FROM`](../supabase/functions/_shared/emailFrom.ts) — *Click Plumbing and Electrical* on `EMAIL_FROM`'s verified address (punch list #53, PR 2); `email_send_log.from_email` records it.
 
 > **v2.4260 — payments we have received**: a GC's statement ends its table with the GC's payments of the last `STATEMENT_RECEIVED_DAYS` (30) days and where each went — `receivedFor(admin, gcId, todayYmd)` reads the jobs the GC pays on with their bills, payments and payment moves (the rows `src/lib/jobs/gcChecksAppliedIo.ts` reads on the client) and folds them with [`_shared/gcChecksApplied.ts`](../supabase/functions/_shared/gcChecksApplied.ts) (the "Where the checks went" kernel, moved here from the client) into `statementReceivedFromChecks`. Best-effort: a failed read sends the statement without the block. Development statements carry none.

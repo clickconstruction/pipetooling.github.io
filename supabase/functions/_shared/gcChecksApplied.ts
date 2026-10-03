@@ -18,7 +18,10 @@
  * `gc-statement-email-dispatch` calls it for the statement's "Payments we have
  * received". `src/lib/jobs/gcChecksAppliedIo.ts` reads the rows on the client;
  * the print and CSV builders live in `src/lib/jobsDocuments/gcChecksAppliedReport.ts`.
+ * A move's `created_at` and a deposit's `posted_at` are instants, read as their
+ * day in the company's zone; `paid_on` and `sent_on` are calendar days already.
  */
+import { todayYmdInAppTz } from './appTimeZone.ts'
 import { attributeJobPayments, isSentBill, type PaymentSlice } from './paymentAttribution.ts'
 import { effectiveInvoiceParty, payerCustomerId } from './billToParty.ts'
 import {
@@ -335,7 +338,7 @@ export function buildGcChecksReport(input: {
       d.sentYmd = minYmd(d.sentYmd, ymd(p.sent_on))
       const dep = p.mercury_transaction_id ? deposits.get(p.mercury_transaction_id) : undefined
       if (dep) {
-        d.depositedYmd = d.depositedYmd ?? ymd(dep.posted_at)
+        d.depositedYmd = d.depositedYmd ?? (dep.posted_at ? todayYmdInAppTz(new Date(dep.posted_at)) : null)
         d.unapplied = Math.max(d.unapplied, round2(Math.max(0, num(dep.amount) - dep.applied)))
       }
       if ((p.created_at ?? '') > d.createdAt) d.createdAt = p.created_at ?? ''
@@ -348,7 +351,7 @@ export function buildGcChecksReport(input: {
     if (e.kind !== 'moved' || !e.payment_id) continue
     for (const d of drafts.values()) {
       if (!d.paymentIds.has(e.payment_id)) continue
-      d.wasOn.push({ amount: round2(num(e.amount)), fromJobLabel: labelFor(e.from_job_id), toJobLabel: labelFor(e.to_job_id), onYmd: e.created_at.slice(0, 10) })
+      d.wasOn.push({ amount: round2(num(e.amount)), fromJobLabel: labelFor(e.from_job_id), toJobLabel: labelFor(e.to_job_id), onYmd: todayYmdInAppTz(new Date(e.created_at)) })
     }
   }
 
