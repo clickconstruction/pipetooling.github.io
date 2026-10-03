@@ -124,6 +124,9 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
 - **Each draw comes with a 702 and 703** (2026-10-02, Building lane): the trade fills the pay
   application in its portal and watches the form fill, typing only what the app cannot know. Most
   of it comes from the job and from the work they reported (`gcBuilding.ts`, `GcBuildingPayApp.tsx`).
+- **We bill the owner once a month** (Owner Billing lane, 2026-10-02): one pay application a
+  month covering every trade's work since the last one, not a bill each time a trade asks for a
+  draw. The day of the month is a default (`OWNER_BILL_DAY` in `gcOwnerBilling.ts`).
 - **A trade sees "Click Construction"** (2026-10-02). The name comes from one record
   (`GC_COMPANY` in `gcFixture.ts`: the full name and the short "Click" used in sentences), never
   typed into the portal's words.
@@ -149,6 +152,11 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
   the company), and a typed name and title with the waiver tick as the signature. A line can be
   lowered to what was billed before, never below. The 702's "To" line reads Click Construction,
   the name the portal already uses (`GC_COMPANY_NAME`).
+- Owner billing (`gcOwnerBilling.ts`): the pay application goes on the 25th. A trade's line on
+  the owner's bill is the work its company reported, before we approve their draw. General
+  conditions, contingency and fee follow the share of the trades' work done, so the bill totals
+  the same whether they show as lines or spread into the trades. The owner holds the percent on
+  their customer record, 10% when it says nothing.
 - A new insurance certificate counts the moment the company sends it; nobody in the office checks
   it first. A new one is good for a year until they change the day.
 - A company answers every line the office marked "not clear" (in or left out) before its number
@@ -176,10 +184,13 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
 12. The pay application leaves out the notary block, materials stored on site (column F reads $0)
     and change orders (line 2 reads $0). Which of these do our trades need? Should it also
     download as the AIA Excel template the Jobs Stages tab fills, or as a PDF?
-13. The bid form is one number with in-or-out lines. Should a trade also give alternates, attach
+13. On the owner's bill, do our general conditions, contingency and fee show as lines of their
+    own, or spread into each trade's line so the owner never sees the fee? (Built as lines of
+    their own for now. The total is the same either way.)
+14. The bid form is one number with in-or-out lines. Should a trade also give alternates, attach
     its own quote, and say how many days the number is good for? Each one also needs Compare
     bids to read it.
-14. Answering a "not clear" line logs as "revised their bid to $205,500" though the price did
+15. Answering a "not clear" line logs as "revised their bid to $205,500" though the price did
     not change. Should it be a move of its own ("answered: rebar is in their number")?
 
 ## Workflow steps not built yet
