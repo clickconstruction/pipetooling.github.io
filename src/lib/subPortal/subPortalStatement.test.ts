@@ -230,6 +230,33 @@ describe('buildSubOffers', () => {
   })
 })
 
+describe('2026-10-02 · a stage, a progress report and a signature read as their day in the company’s zone', () => {
+  // 7:30 pm CDT on Oct 2 is 00:30 UTC on Oct 3: the UTC date of each is the day after.
+  const evening = '2026-10-03T00:30:00Z'
+  const card = (over: Partial<SubSheetRow>) => buildSubSheets([sheet({ id: 's1', stage: 'walkthrough', ...over })], [item({ job_id: 's1' })], [])[0]!
+  const signedOn = (signed_at: string | null, accepted_at: string | null) =>
+    attachSheetAgreements(buildSubSheets([sheet({ id: 's1' })], [item({ job_id: 's1' })], []), [
+      { labor_job_id: 's1', amount: 3120, signed_at, accepted_at, signer_printed_name: 'Danny Vasquez', offer_scope_snapshot: null, signer_acknowledgements: null },
+    ])[0]!.agreement!.signedOn
+
+  it('a stage moved and a progress report sent at 7:30 pm Central read that day, not the UTC day after', () => {
+    expect(card({ stage_changed_at: evening }).stageChangedOn).toBe('2026-10-02')
+    expect(card({ progress_pct: 60, progress_at: '2026-10-03T00:30:00+00:00' }).progress).toMatchObject({ pct: 60, on: '2026-10-02' })
+  })
+
+  it('an order signed, or accepted with no signature, at 7:30 pm Central reads that day', () => {
+    expect(signedOn(evening, null)).toBe('2026-10-02')
+    expect(signedOn(null, evening)).toBe('2026-10-02')
+  })
+
+  it('in winter 6:30 pm Central is still that day; noon UTC reads its own day; none reads none', () => {
+    expect(card({ stage_changed_at: '2026-12-02T00:30:00Z' }).stageChangedOn).toBe('2026-12-01')
+    expect(signedOn('2026-10-02T12:00:00Z', null)).toBe('2026-10-02')
+    expect(card({ stage_changed_at: null }).stageChangedOn).toBeNull()
+    expect(signedOn(null, null)).toBeNull()
+  })
+})
+
 describe('attachSheetAgreements (v2.2789)', () => {
   it('joins the newest signed order onto its sheet and reads what was ticked', () => {
     const sheets = buildSubSheets([sheet({ id: 's1' }), sheet({ id: 's2' })], [item({ job_id: 's1' })], [])
