@@ -30,6 +30,8 @@ export interface StartTradeRow {
 
 export interface StartChecklist {
   owner: StartCheck[]
+  /** The schedule is drawn (owner, 2026-10-02: Get started gains the step; Start locks it as the baseline). */
+  schedule: StartCheck
   trades: StartTradeRow[]
   done: number
   total: number
@@ -120,10 +122,24 @@ export function startChecklist(state: GcState, project: GcProject): StartCheckli
                   : 'The plans changed after they signed. Send a new statement of work.'
     return { pkg, partner, invite, checks, ready: !firstOpen, next }
   })
-  const all = [...owner, ...trades.flatMap((t) => t.checks)]
+  // Drawn on the Schedule tab (the Building lane's). The first change after Start keeps the plan as
+  // it stood at Start as the baseline (withBaselineKept), so Start needs nothing more than a drawing.
+  const drawn = project.schedule?.activities ?? []
+  const milestones = project.schedule?.milestones.length ?? 0
+  const schedule: StartCheck = {
+    key: 'schedule',
+    label: 'The schedule is drawn',
+    done: drawn.length > 0,
+    detail:
+      drawn.length > 0
+        ? `${drawn.length} ${drawn.length === 1 ? 'activity' : 'activities'}${milestones > 0 ? `, ${milestones} ${milestones === 1 ? 'milestone' : 'milestones'}` : ''}`
+        : 'not drawn yet',
+  }
+  const all = [...owner, schedule, ...trades.flatMap((t) => t.checks)]
   const missing = [
     ...owner.filter((c) => !c.done).map((c) => `${c.label}: ${c.detail}.`),
+    ...(schedule.done ? [] : [`${schedule.label}: ${schedule.detail}.`]),
     ...trades.filter((t) => !t.ready).map((t) => `${t.pkg.trade}: ${t.next}`),
   ]
-  return { owner, trades, done: all.filter((c) => c.done).length, total: all.length, missing, ready: missing.length === 0 }
+  return { owner, schedule, trades, done: all.filter((c) => c.done).length, total: all.length, missing, ready: missing.length === 0 }
 }

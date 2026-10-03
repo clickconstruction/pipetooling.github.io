@@ -196,7 +196,13 @@ function buyoutProgress(state: GcState, project: GcProject): StageProgress {
         : []
     }),
   }))
-  const groups = [owner, ...byStep].filter((g) => g.items.length > 0)
+  const schedule: ProgressGroup = {
+    key: 'schedule',
+    label: 'The schedule',
+    why: 'The dates and what waits on what. Start locks it as the plan we measure against.',
+    items: [{ label: list.schedule.label, detail: list.schedule.detail, done: list.schedule.done }],
+  }
+  const groups = [owner, schedule, ...byStep].filter((g) => g.items.length > 0)
   return {
     share: list.total === 0 ? 0 : list.done / list.total,
     center: `${list.done}/${list.total}`,

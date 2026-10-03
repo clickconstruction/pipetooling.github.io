@@ -56,7 +56,7 @@ export const GC_TOUR_STEPS: SpotlightTourStep[] = [
   {
     anchor: 'gc-row-buyout',
     title: 'How buyout ends',
-    body: 'Open the project and go to Get started. It lists every step left before work starts. You need the owner contract, the permit and a start date. The ring on the row fills as these steps get done. The block beside it counts the days to the planned start. Start stays locked until nothing is missing. Tap Start and every trade hears that work has begun.',
+    body: 'Open the project and go to Get started. It lists every step left before work starts. You need the owner contract, the permit, a start date and the schedule drawn. The ring on the row fills as these steps get done. The block beside it counts the days to the planned start. Start stays locked until nothing is missing. Tap Start and every trade hears that work has begun.',
     missingBody: 'No project is in buyout right now.',
   },
   {
