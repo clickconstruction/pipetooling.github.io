@@ -3,8 +3,9 @@ import { useMatchMedia } from '../../hooks/useMatchMedia'
 import { GcOwnerBillingCash } from './GcOwnerBillingCash'
 import { GcOwnerBillingChangeOrders } from './GcOwnerBillingChangeOrders'
 import { OwnerPayAppWindow } from './GcOwnerBillingPayApp'
+import { GcOwnerBillingArchitectPortal } from './GcOwnerBillingArchitect'
 import { GcOwnerBillingPortal } from './GcOwnerBillingPortal'
-import { Btn, Card, Chip, Stat, Why, input, num, td, th } from './gcUi'
+import { Btn, Card, Chip, Stat, Why, num, td, th } from './gcUi'
 import {
   appCertified,
   appPaid,
@@ -41,7 +42,8 @@ const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'Ju
  * the owner paid. Nothing here changes a trade's work.
  */
 export function GcOwnerBillingTab({ state, project, dispatch }: { state: GcState; project: GcProject; dispatch: Dispatch<GcAction> }) {
-  const [ownerView, setOwnerView] = useState(true)
+  // Their side, one portal at a time: the owner's or the architect's.
+  const [theirs, setTheirs] = useState<'owner' | 'architect' | null>('owner')
   const side = useMatchMedia('(min-width: 1200px)')
   if (project.stage === 'pursuing') {
     return (
@@ -52,16 +54,23 @@ export function GcOwnerBillingTab({ state, project, dispatch }: { state: GcState
   }
   return (
     <div style={{ display: 'grid', gap: '0.5rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-        <Btn kind="quiet" onClick={() => setOwnerView(!ownerView)}>
-          {ownerView ? 'Hide what the owner sees' : 'See what the owner sees'}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', flexWrap: 'wrap' }}>
+        <Btn kind="quiet" onClick={() => setTheirs(theirs === 'owner' ? null : 'owner')}>
+          {theirs === 'owner' ? 'Hide what the owner sees' : 'See what the owner sees'}
+        </Btn>
+        <Btn kind="quiet" onClick={() => setTheirs(theirs === 'architect' ? null : 'architect')}>
+          {theirs === 'architect' ? 'Hide what the architect sees' : 'See what the architect sees'}
         </Btn>
       </div>
-      <div style={{ display: 'grid', gap: '1rem', alignItems: 'start', gridTemplateColumns: ownerView && side ? 'minmax(0, 1fr) 23rem' : 'minmax(0, 1fr)' }}>
-        <OfficeSide state={state} project={project} dispatch={dispatch} />
-        {ownerView && (
+      <div style={{ display: 'grid', gap: '1rem', alignItems: 'start', gridTemplateColumns: theirs && side ? 'minmax(0, 1fr) 23rem' : 'minmax(0, 1fr)' }}>
+        <OfficeSide state={state} project={project} dispatch={dispatch} onSeeArchitect={() => setTheirs('architect')} />
+        {theirs && (
           <div style={{ position: side ? 'sticky' : 'static', top: '0.5rem' }}>
-            <GcOwnerBillingPortal state={state} project={project} dispatch={dispatch} />
+            {theirs === 'owner' ? (
+              <GcOwnerBillingPortal state={state} project={project} dispatch={dispatch} />
+            ) : (
+              <GcOwnerBillingArchitectPortal state={state} project={project} dispatch={dispatch} />
+            )}
           </div>
         )}
       </div>
@@ -70,7 +79,18 @@ export function GcOwnerBillingTab({ state, project, dispatch }: { state: GcState
 }
 
 /** The office's side of the tab: what we have sent, the next pay application, its lines. */
-function OfficeSide({ state, project, dispatch }: { state: GcState; project: GcProject; dispatch: Dispatch<GcAction> }) {
+function OfficeSide({
+  state,
+  project,
+  dispatch,
+  onSeeArchitect,
+}: {
+  state: GcState
+  project: GcProject
+  dispatch: Dispatch<GcAction>
+  /** Opens the architect's portal beside it, where they certify. */
+  onSeeArchitect: () => void
+}) {
   const [formFor, setFormFor] = useState<number | 'draft' | null>(null)
   const app = ownerPayApp(state, project)
   const customer = state.customers.find((c) => c.id === project.customerId)
@@ -127,7 +147,7 @@ function OfficeSide({ state, project, dispatch }: { state: GcState; project: GcP
                 onPaid={() => dispatch({ type: 'ownerPaid', projectId: project.id, number: a.number })}
                 onForm={() => setFormFor(a.number)}
                 architect={project.architect}
-                onCertify={(amount, note) => dispatch({ type: 'architectCertify', projectId: project.id, number: a.number, amount, note })}
+                onSeeArchitect={onSeeArchitect}
               />
             ))}
           </div>
@@ -317,7 +337,7 @@ function SentRow({
   onPaid,
   onForm,
   architect,
-  onCertify,
+  onSeeArchitect,
 }: {
   app: OwnerPayAppSent
   expectOn: string | null
@@ -326,18 +346,12 @@ function SentRow({
   /** Opens it as the form: the G702 and G703 as it went. */
   onForm: () => void
   architect: string
-  /** The architect's certificate, pressed on their behalf in the prototype. */
-  onCertify: (amount: number, note: string) => void
+  /** Opens the architect's portal, where they certify it. */
+  onSeeArchitect: () => void
 }) {
-  const [certifying, setCertifying] = useState(false)
-  const [amount, setAmount] = useState(String(Math.round(app.due * 100) / 100))
-  const [note, setNote] = useState('')
   const month = MONTH_NAMES[Number(app.periodTo.slice(5, 7)) - 1] ?? ''
   const late = app.paidOn === null && expectOn !== null && daysUntil(expectOn, today) < 0
   const certified = appCertified(app)
-  const amountNum = Number(amount)
-  const less = Number.isFinite(amountNum) && amountNum < app.due - 0.005
-  const canCertify = Number.isFinite(amountNum) && amountNum >= 0 && amountNum <= app.due + 0.005 && (!less || note.trim() !== '')
   return (
     <div style={{ borderTop: '1px solid var(--border)', paddingTop: '0.4rem', display: 'grid', gap: '0.35rem', fontSize: '0.875rem' }}>
       <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -358,11 +372,9 @@ function SentRow({
           <>
             <Chip tone="amber">{`waiting on ${architect} to certify`}</Chip>
             <Chip tone="grey">our conditional waiver{app.final ? ' on final payment' : ''} went with it</Chip>
-            {!certifying && (
-              <Btn onClick={() => setCertifying(true)} title="In the real build the architect certifies it from a link, the way the owner and the trades use theirs.">
-                {`Certify it as ${architect}`}
-              </Btn>
-            )}
+            <Btn kind="quiet" onClick={onSeeArchitect} title="They certify it in their portal.">
+              See what the architect sees
+            </Btn>
             <Btn kind="primary" disabled title="It waits for the architect’s certificate." onClick={onPaid}>
               Mark paid
             </Btn>
@@ -383,33 +395,6 @@ function SentRow({
         <div style={{ color: 'var(--text-amber-800)' }}>
           {architect} certified {money(app.due - certified)} less than we asked
           {app.certifiedNote ? `: ${app.certifiedNote.replace(/[.\s]+$/, '')}` : ''}. It comes back on the next bill.
-        </div>
-      )}
-      {certifying && certified === null && (
-        <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-end', flexWrap: 'wrap', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.6rem' }}>
-          <label style={{ display: 'grid', gap: '0.2rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-            Amount certified
-            <input style={{ ...input, width: '9rem' }} type="number" min={0} value={amount} onChange={(e) => setAmount(e.target.value)} />
-          </label>
-          {less && (
-            <label style={{ display: 'grid', gap: '0.2rem', fontSize: '0.8rem', color: 'var(--text-muted)', flex: '1 1 14rem' }}>
-              Why less
-              <input style={input} value={note} onChange={(e) => setNote(e.target.value)} placeholder="The architect's reason, in a sentence" />
-            </label>
-          )}
-          <Btn
-            kind="primary"
-            disabled={!canCertify}
-            onClick={() => {
-              onCertify(amountNum, note)
-              setCertifying(false)
-            }}
-          >
-            Certify
-          </Btn>
-          <Btn kind="quiet" onClick={() => setCertifying(false)}>
-            Cancel
-          </Btn>
         </div>
       )}
     </div>
