@@ -1248,6 +1248,13 @@ export function initialGcState(): GcState {
     contingencyPct: 3,
     feePct: 10,
     schedule: fairOaksSchedule,
+    // Building lane (2026-10-03): the concrete walked on Sep 28. One item to fix, one fixed and
+    // waiting on our superintendent's check, one checked.
+    punch: [
+      { id: 'fairoaksd-punch-1', packageId: 'fconc', text: 'Patch the spalled corner on the column footing', where: 'Grid C-4', addedOn: '2026-09-28', fixedOn: null, checkedOn: null },
+      { id: 'fairoaksd-punch-2', packageId: 'fconc', text: 'Seal the control joints in the stockroom slab', where: 'Stockroom', addedOn: '2026-09-28', fixedOn: '2026-10-01', checkedOn: null },
+      { id: 'fairoaksd-punch-3', packageId: 'fconc', text: 'Clean the curb paint off the sidewalk', where: 'East entry', addedOn: '2026-09-28', fixedOn: '2026-09-30', checkedOn: '2026-10-01' },
+    ],
   }
 
   return {

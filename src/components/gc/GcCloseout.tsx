@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import {
   jobCloseout,
   money,
   ownCrewWork,
   partnerBlockers,
   projectCloseout,
+  punchCounts,
   shortDate,
   TRADE_RETAINAGE_WAIT_DAYS,
   ownerRetainagePaidOn,
@@ -13,6 +14,7 @@ import {
   type Draw,
 } from '../../lib/gcMode/gcModel'
 import { GcBuildingPayAppWindow } from './GcBuildingPayApp'
+import { GcBuildingPunchList } from './GcBuildingPunch'
 import type { GcPaneProps } from './GcOfficeTabs'
 import { Btn, Card, Chip, Stat, Why } from './gcUi'
 
@@ -26,6 +28,7 @@ export function GcCloseoutTab({ state, project, dispatch, onSeePortal }: GcPaneP
   const c = projectCloseout(state, project)
   const job = jobCloseout(state, project)
   const [looking, setLooking] = useState<{ row: CloseoutRow; draw: Draw } | null>(null)
+  const punch = punchCounts(project)
 
   return (
     <div style={{ display: 'grid', gap: '0.9rem' }}>
@@ -47,6 +50,9 @@ export function GcCloseoutTab({ state, project, dispatch, onSeePortal }: GcPaneP
             value={`${c.closed} of ${c.rows.length}`}
             tone={c.rows.length > 0 && c.closed === c.rows.length ? 'green' : undefined}
           />
+          {punch.total > 0 && (
+            <Stat label="Punch items open" value={`${punch.open + punch.fixed} of ${punch.total}`} tone={punch.open + punch.fixed === 0 ? 'green' : undefined} />
+          )}
         </div>
       </Card>
 
@@ -54,18 +60,32 @@ export function GcCloseoutTab({ state, project, dispatch, onSeePortal }: GcPaneP
 
       {c.rows.length === 0 && <Card>No trade has a signed statement of work yet. Closeout starts once one does.</Card>}
 
-      {c.rows.map((row) => (
-        <TradeCloseoutCard
-          key={row.pkg.id}
-          row={row}
-          today={state.today}
-          onAccept={() => dispatch({ type: 'acceptWork', projectId: project.id, packageId: row.pkg.id })}
-          onApprove={(drawId) => dispatch({ type: 'approveRetainage', projectId: project.id, packageId: row.pkg.id, drawId })}
-          onPay={(drawId) => dispatch({ type: 'payDraw', projectId: project.id, packageId: row.pkg.id, drawId })}
-          onLook={(draw) => setLooking({ row, draw })}
-          onSeePortal={onSeePortal}
-        />
-      ))}
+      {c.rows.map((row) => {
+        // The work is accepted once every punch item on it is checked fixed (owner, 2026-10-03).
+        const left = punchCounts(project, row.pkg.id)
+        const notChecked = left.open + left.fixed
+        return (
+          <TradeCloseoutCard
+            key={row.pkg.id}
+            row={row}
+            today={state.today}
+            acceptBlocked={notChecked > 0 ? `${notChecked} punch ${notChecked === 1 ? 'item is' : 'items are'} not checked fixed yet.` : null}
+            onAccept={() => dispatch({ type: 'acceptWork', projectId: project.id, packageId: row.pkg.id })}
+            onApprove={(drawId) => dispatch({ type: 'approveRetainage', projectId: project.id, packageId: row.pkg.id, drawId })}
+            onPay={(drawId) => dispatch({ type: 'payDraw', projectId: project.id, packageId: row.pkg.id, drawId })}
+            onLook={(draw) => setLooking({ row, draw })}
+            onSeePortal={onSeePortal}
+          >
+            <GcBuildingPunchList
+              project={project}
+              pkg={row.pkg}
+              company={row.partner?.company ?? row.pkg.trade}
+              canAdd={project.stage === 'building' && !row.pkg.sow?.acceptedOn}
+              dispatch={dispatch}
+            />
+          </TradeCloseoutCard>
+        )
+      })}
 
       {(c.notStarted.length > 0 || c.ours.length > 0) && (
         <div style={{ display: 'grid', gap: '0.3rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
@@ -100,6 +120,8 @@ export function GcCloseoutTab({ state, project, dispatch, onSeePortal }: GcPaneP
 function TradeCloseoutCard({
   row,
   today,
+  acceptBlocked,
+  children,
   onAccept,
   onApprove,
   onPay,
@@ -108,6 +130,10 @@ function TradeCloseoutCard({
 }: {
   row: CloseoutRow
   today: string
+  /** Why the work cannot be accepted yet: punch items not checked. Null: it can be. */
+  acceptBlocked: string | null
+  /** The trade's punch list, under its steps. */
+  children?: ReactNode
   onAccept: () => void
   onApprove: (drawId: string) => void
   onPay: (drawId: string) => void
@@ -164,9 +190,12 @@ function TradeCloseoutCard({
                   {isNext && (
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                       {step.key === 'accepted' && (
-                        <Btn kind="primary" onClick={onAccept}>
-                          Accept the work
-                        </Btn>
+                        <>
+                          <Btn kind="primary" disabled={acceptBlocked !== null} title={acceptBlocked ?? undefined} onClick={onAccept}>
+                            Accept the work
+                          </Btn>
+                          {acceptBlocked && <span style={{ fontSize: '0.85rem', color: 'var(--text-amber-800)' }}>{acceptBlocked}</span>}
+                        </>
                       )}
                       {step.key === 'released' && f?.status === 'requested' && (
                         <>
@@ -205,6 +234,7 @@ function TradeCloseoutCard({
           })}
         </ol>
       )}
+      {children}
     </Card>
   )
 }

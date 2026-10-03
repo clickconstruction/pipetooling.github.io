@@ -9,6 +9,8 @@ import {
   currentRev,
   daysUntil,
   leveledTotal,
+  staleChange,
+  staleWords,
   LOST_WHY,
   lostWords,
   proposalUncosted,
@@ -192,7 +194,7 @@ export function GcPackagesTab({ state, project, dispatch, onSeePortal, onMap, op
                                   {inv.status === 'invited' && linkNeverOpened(state, inv.partnerId) ? (
                                     <LinkNeverOpenedChip state={state} partnerId={inv.partnerId} company={partner?.company} />
                                   ) : (
-                                  <Chip tone={stale ? 'amber' : words.tone} title={stale ? 'Their bid is on an older set of plans.' : undefined}>
+                                  <Chip tone={stale ? 'amber' : words.tone} title={stale ? `Their bid is on an older set of plans. ${staleSentence(project, pkg, inv)}` : undefined}>
                                     {partner?.company} · {stale ? 'old plans' : words.word}
                                   </Chip>
                                   )}
@@ -261,6 +263,12 @@ export function GcPackagesTab({ state, project, dispatch, onSeePortal, onMap, op
       </Card>
     </div>
   )
+}
+
+/** What changed under a quote on older plans, in words (gcStale.ts); '' when it is on the newest. */
+function staleSentence(project: GcProject, pkg: TradePackage, invite: Invite): string {
+  const change = staleChange(project, pkg, invite)
+  return change ? staleWords(pkg, change) : ''
 }
 
 function CarriedWords({
@@ -567,8 +575,13 @@ function LevelPanel({ state, project, pkg, dispatch, onSeePortal }: GcPaneProps 
                       <Chip tone={stale ? 'amber' : 'green'}>{planLabel(project, inv.bid?.basedOnRev ?? null)}</Chip>
                       {stale && (
                         <div style={{ marginTop: '0.3rem', fontSize: '0.8rem', color: 'var(--text-amber-800)' }}>
-                          {planLabel(project, rev)} changed this trade.{' '}
-                          <Btn kind="quiet" onClick={() => dispatch({ type: 'nudge', ...ids, inviteId: inv.id, about: `please confirm your ${pkg.trade} number on ${planLabel(project, rev)}.` })}>
+                          {staleSentence(project, pkg, inv) || `${planLabel(project, rev)} changed this trade.`}{' '}
+                          <Btn
+                            kind="quiet"
+                            onClick={() =>
+                              dispatch({ type: 'nudge', ...ids, inviteId: inv.id, about: `please confirm your ${pkg.trade} number on ${planLabel(project, rev)}. ${staleSentence(project, pkg, inv)}`.trim() })
+                            }
+                          >
                             Ask them to confirm
                           </Btn>
                         </div>
@@ -736,7 +749,7 @@ export function GcPlansTab({ state, project, dispatch }: GcPaneProps) {
                       {!inv.bid ? (
                         <span style={{ color: 'var(--text-muted)' }}>no bid yet</span>
                       ) : stale ? (
-                        <Chip tone="amber">{money(inv.bid.amount)} · priced on {planLabel(project, inv.bid.basedOnRev)} · needs confirming</Chip>
+                        <Chip tone="amber" title={staleSentence(project, pkg, inv) || undefined}>{money(inv.bid.amount)} · priced on {planLabel(project, inv.bid.basedOnRev)} · needs confirming</Chip>
                       ) : (
                         <Chip tone="green">{money(inv.bid.amount)} · good on {planLabel(project, inv.bid.basedOnRev)}</Chip>
                       )}
