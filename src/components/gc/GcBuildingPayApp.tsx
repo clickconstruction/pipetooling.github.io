@@ -6,6 +6,7 @@ import {
   bw,
   finalPayApplication,
   money,
+  openInspectionFailures,
   newPayAppDraft,
   payApplication,
   payApplicationForDraw,
@@ -147,6 +148,7 @@ export function GcBuildingPayAppDoor({
 
   return (
     <>
+      <InspectionFailedForTrade project={project} pkg={pkg} />
       <GcBuildingPunchForTrade project={project} pkg={pkg} dispatch={dispatch} />
       {changesToSign.map(({ co }) => (
         <div key={co.id} style={{ padding: '0.55rem 0.65rem', background: 'var(--bg-subtle)', border: '1px solid var(--border-strong)', borderRadius: 6, display: 'grid', gap: '0.4rem' }}>
@@ -223,6 +225,30 @@ export function GcBuildingPayAppDoor({
       {open !== null && open !== 'draft' && open !== 'final' && (
         <GcBuildingPayAppWindow project={project} pkg={pkg} partner={partner} draw={open} viewer="trade" onClose={() => setOpen(null)} />
       )}
+    </>
+  )
+}
+
+/**
+ * An inspection that failed on the trade's work and has not passed since (owner, 2026-10-03):
+ * what failed, in our superintendent's words, and the re-inspection day to fix it by.
+ */
+function InspectionFailedForTrade({ project, pkg }: { project: GcProject; pkg: TradePackage }) {
+  const { lang, w } = useWords()
+  const open = openInspectionFailures(project, pkg.id)
+  if (open.length === 0) return null
+  return (
+    <>
+      {open.map((f) => (
+        <div
+          key={f.activity.lineId}
+          style={{ padding: '0.55rem 0.65rem', background: 'var(--bg-red-100)', border: '1px solid var(--border-strong)', borderRadius: 6, display: 'grid', gap: '0.25rem' }}
+        >
+          <strong style={{ color: 'var(--text-red-800)' }}>{w('inspFailed', { label: f.label, date: pDate(lang, f.failure.on) })}</strong>
+          <span>&ldquo;{f.failure.note}&rdquo;</span>
+          <span>{w('inspAgain', { date: pDate(lang, f.failure.reinspectOn) })}</span>
+        </div>
+      ))}
     </>
   )
 }
