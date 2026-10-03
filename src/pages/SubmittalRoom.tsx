@@ -10,7 +10,7 @@
  */
 import { useEffect, useState, type CSSProperties } from 'react'
 import { RoomRevisionBody } from '../components/bids/SubmittalRoomView'
-import { APP_CALENDAR_TZ } from '../utils/dateUtils'
+import { APP_CALENDAR_TZ, calendarYmdInAppTzFromIso } from '../utils/dateUtils'
 import { useSearchParams } from 'react-router-dom'
 
 import { staffAwarePublicHeaders } from '../lib/publicFunctionStaffHeaders'
@@ -532,7 +532,7 @@ function ProcurementCard({ revisions, procurement, companyName }: { /** The curr
     <div style={{ ...card, marginTop: 10 }} data-testid="room-procurement">
       <div style={{ ...label, color: COPPER }}>Procurement</div>
       <div style={{ ...quiet, marginTop: 4 }}>
-        {procurement.lastUpdateAt ? `Updated ${logDate(procurement.lastUpdateAt.slice(0, 10))} by ${companyName}` : `As it stands today, from ${companyName}`} · {procurementHeadline(rows)}
+        {procurement.lastUpdateAt ? `Updated ${logDate(calendarYmdInAppTzFromIso(procurement.lastUpdateAt))} by ${companyName}` : `As it stands today, from ${companyName}`} · {procurementHeadline(rows)}
       </div>
       <div style={{ overflowX: 'auto', marginTop: 8 }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', minWidth: 420 }}>

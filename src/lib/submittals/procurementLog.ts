@@ -8,11 +8,13 @@
  *   expected  = ordered + the lead time from the pick, unless the house gave a date;
  *   required  = the start of the stage the item belongs to, on the job's stage windows;
  *   float     = required − expected; order by = required − lead time while unordered.
- * Pure: dates are ISO `YYYY-MM-DD` strings, "today" is passed in. The reads live in
- * `./procurementLogIo.ts`; the sheet and the text of an update are built here too.
+ * Pure: dates are ISO `YYYY-MM-DD` strings, "today" is passed in, and a call's `at` is an
+ * instant read as its day in the company's zone. The reads live in `./procurementLogIo.ts`;
+ * the sheet and the text of an update are built here too.
  */
 import { escapeHtml } from '../bidDocuments/htmlDoc'
 import { isPlausibleDate } from '../dateBoxEntry'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { compareTags } from './buildSubmittalRows'
 import { describeLeadTime } from './leadTime'
 import { isCarrier } from './itemParts'
@@ -131,7 +133,7 @@ export function readTypedLogDate(text: string, asOf: string): TypedLogDate {
 
 export type ProcurementDecisionKind = 'approved' | 'revise' | 'rejected'
 
-export type ProcurementDecision = { kind: ProcurementDecisionKind; at: string | null }
+export type ProcurementDecision = { kind: ProcurementDecisionKind; /** When the call was recorded: `reviewed_at`, an instant, never a bare day. */ at: string | null }
 
 /**
  * The call a part's line reads (2026-10-02). Its own, when the GC called that part. A row no
@@ -285,7 +287,9 @@ function rowFrom(source: ProcurementItemSource | null, rec: ProcurementRecord, s
   const isHand = source == null
   const decision = source?.decision ?? null
   const submittal: ProcurementRow['submittal'] = source ? (decision ? decision.kind : source.shared ? 'open' : 'none') : 'none'
-  const releasedOn = decision?.kind === 'approved' && decision.at ? decision.at.slice(0, 10) : null
+  // The call's day in the company's zone: the UTC date of `at` is tomorrow after 7 PM Central.
+  const calledOn = decision?.at ? calendarYmdInAppTzFromIso(decision.at) || null : null
+  const releasedOn = decision?.kind === 'approved' ? calledOn : null
   const leadTimeDays = isHand ? rec.leadTimeDays : source!.leadTimeDays
   const requiredOn = stage ? stageDates[stage] ?? null : null
   let expectedOn: string | null = null
@@ -333,7 +337,7 @@ function rowFrom(source: ProcurementItemSource | null, rec: ProcurementRecord, s
     supplyHouse: source?.supplyHouse ?? null,
     stage,
     submittal,
-    submittalAt: decision?.at ? decision.at.slice(0, 10) : null,
+    submittalAt: calledOn,
     releasedOn,
     orderedOn: rec.orderedOn,
     poRef: rec.poRef,
