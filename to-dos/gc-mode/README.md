@@ -84,7 +84,7 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
 | **Bill the owner** | Our pay application to the owner, once a month: one line per trade with the work its company reported, then general conditions, contingency and fee, which follow the trades. Done so far, less what the owner holds, less what we asked for before, is this bill. **Send to** the owner keeps it as it went, and next month's starts from it. **So far with** the owner lists what went, with **Mark paid**. |
 | **Follow up** (board tab) | Everyone we are waiting on across every project, the ones to call first. Log a contact; record the day they promised a quote; a passed day returns them to the top. |
 | **Trade partners** (board tab) | By trade: the bench, who answers when asked, every project short of quotes, coverage (where they drive from, how far they go), one press to ask the companies not yet asked. **Actions for assistants** on top: each standard as the ideal, where we are, and what closes the gap. |
-| The trade's portal | Paperwork, the newest plans, the invitation and the bid form, "tell Click when your number will come", confirm a number after an addendum, the bid tab, sign the master agreement and statement of work, report work, ask for a draw. |
+| The trade's portal | Paperwork done by the company itself (read and sign the master agreement, send an insurance certificate, fill in and sign a W-9), the plans window (sets, sheets, whether a set changes their trade), the invitation and the bid form, "tell Click when your number will come" (a passed day shows in red), answer a line the office could not read, confirm a number after an addendum, the bid tab, sign the statement of work, report work, ask for a draw with its pay application (next row). |
 | Pay application (from the portal) | **Fill out pay application N**: four steps on a rail like the Release of Lien window (Check your work, Fill in a few details, Sign it, Send it to Click) beside the 702 and 703, which fill in as the trade types and mark what each step fills. The app knows the job, the contract, the lines, what was billed and the retainage; the trade checks the percents, picks the period, types its address once, and signs. Closing the window keeps the draft. |
 
 ## Decided by the owner (2026-10-02)
@@ -128,6 +128,9 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
 - **We bill the owner once a month** (Owner Billing lane, 2026-10-02): one pay application a
   month covering every trade's work since the last one, not a bill each time a trade asks for a
   draw. The day of the month is a default (`OWNER_BILL_DAY` in `gcOwnerBilling.ts`).
+- **A trade sees "Click Construction"** (2026-10-02). The name comes from one record
+  (`GC_COMPANY` in `gcFixture.ts`: the full name and the short "Click" used in sentences), never
+  typed into the portal's words.
 
 ## My defaults the owner has not confirmed
 
@@ -155,6 +158,10 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
   conditions, contingency and fee follow the share of the trades' work done, so the bill totals
   the same whether they show as lines or spread into the trades. The owner holds the percent on
   their customer record, 10% when it says nothing.
+- A new insurance certificate counts the moment the company sends it; nobody in the office checks
+  it first. A new one is good for a year until they change the day.
+- A company answers every line the office marked "not clear" (in or left out) before its number
+  can go again. A new set that does not change their trade asks them to open it but does not warn.
 
 ## Open questions (the owner's to answer)
 
@@ -181,6 +188,11 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
 13. On the owner's bill, do our general conditions, contingency and fee show as lines of their
     own, or spread into each trade's line so the owner never sees the fee? (Built as lines of
     their own for now. The total is the same either way.)
+14. The bid form is one number with in-or-out lines. Should a trade also give alternates, attach
+    its own quote, and say how many days the number is good for? Each one also needs Compare
+    bids to read it.
+15. Answering a "not clear" line logs as "revised their bid to $205,500" though the price did
+    not change. Should it be a move of its own ("answered: rebar is in their number")?
 
 ## Workflow steps not built yet
 
@@ -231,10 +243,12 @@ imitates it.
 | `gcBids.ts` · `gcCustomers.ts` · `gcMap.ts` | Compare all in, what we carry, our price, bid tabs, statement-of-work money · the company window's summaries · towns, the drive and the map's list. |
 | `gcFollowUp.ts` · `gcBench.ts` | Promised days, word records, who to call first · the bench by trade and Actions for assistants. |
 | `gcNewProject.ts` · `gcNewProject.test.ts` | New Project: the sheet index read from a paste, the trades guessed from the sheets, each trade's usual scope, the project made from the draft (`createProject`) · its kernel test. |
+| `gcPortal.ts` | What the portal tells one company: plan news for its trade, its promised day, its insurance, the lines the office could not read. |
 | `gcReducer.ts` · `gcReducerHelpers.ts` · `gcFixture.ts` | Every action applied to the state · its small helpers (not in the barrel) · the made-up data (`initialGcState`). |
 | `gcModel.test.ts` | The golden test (see *Working in parallel*). |
 | `GcOfficeTabs.tsx` | Trades (with Compare bids), Plans, Our number, Contracts, Draws, the flat company list |
-| `GcTradePortal.tsx` | The trade partner's side |
+| `GcTradePortal.tsx` | The trade partner's side: the frame, each trade's plans, bid, bid tab, statement of work and draws |
+| `GcPortalPaperwork.tsx` · `GcPortalAgreement.tsx` · `GcPortalPlans.tsx` · `GcPortalUi.tsx` | The portal's paperwork block (insurance and W-9 forms) · the master agreement to read and sign · the plans window as a trade sees it · the portal's block, note and window |
 | `GcTradeBench.tsx` | Trade partners by trade, Actions for assistants |
 | `GcTradeMap.tsx` | The map window |
 | `GcAskThread.tsx` | The contact log, promises, the Follow up tab |

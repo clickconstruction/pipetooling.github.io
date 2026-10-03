@@ -4985,10 +4985,30 @@ exports[`GC mode golden walk > step 58: Hill Country sends pay application 3 (ce
 }
 `;
 
-exports[`GC mode golden walk > step 59: Send Dr. Raman pay application 1 1`] = `
+exports[`GC mode golden walk > step 59: Hillside sends an insurance certificate 1`] = `
 {
   "changed": {
     "lastLog.id": 55,
+    "lastLog.text": "Hillside Excavation sent a new insurance certificate, good to Oct 2.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 60: Hillside signs a W-9 1`] = `
+{
+  "changed": {
+    "lastLog.id": 56,
+    "lastLog.text": "Hillside Excavation filled in and signed a W-9.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 61: Send Dr. Raman pay application 1 1`] = `
+{
+  "changed": {
+    "lastLog.id": 57,
     "lastLog.text": "Sent pay application 1 to Dr. Priya Raman: $79,247 to pay, $8,805 held.",
     "lastLog.who": "office",
   },
@@ -4996,10 +5016,10 @@ exports[`GC mode golden walk > step 59: Send Dr. Raman pay application 1 1`] = `
 }
 `;
 
-exports[`GC mode golden walk > step 60: Dr. Raman pays pay application 1 1`] = `
+exports[`GC mode golden walk > step 62: Dr. Raman pays pay application 1 1`] = `
 {
   "changed": {
-    "lastLog.id": 56,
+    "lastLog.id": 58,
     "lastLog.text": "Dr. Priya Raman paid pay application 1: $79,247.",
   },
   "removed": [],
@@ -5162,14 +5182,24 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
-      "id": 56,
+      "id": 58,
       "text": "Dr. Priya Raman paid pay application 1: $79,247.",
       "who": "office",
     },
     {
-      "id": 55,
+      "id": 57,
       "text": "Sent pay application 1 to Dr. Priya Raman: $79,247 to pay, $8,805 held.",
       "who": "office",
+    },
+    {
+      "id": 56,
+      "text": "Hillside Excavation filled in and signed a W-9.",
+      "who": "trade",
+    },
+    {
+      "id": 55,
+      "text": "Hillside Excavation sent a new insurance certificate, good to Oct 2.",
+      "who": "trade",
     },
     {
       "id": 54,
@@ -5301,16 +5331,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "text": "Kendall Air signed the master agreement.",
       "who": "trade",
     },
-    {
-      "id": 28,
-      "text": "Added Pecos Steel to Structural steel.",
-      "who": "office",
-    },
-    {
-      "id": 27,
-      "text": "Tejas Power coverage: not set.",
-      "who": "office",
-    },
   ],
   "partners": [
     {
@@ -5354,7 +5374,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
     {
       "base": "Boerne",
       "bids": 0,
-      "coiExpires": null,
+      "coiExpires": "2027-10-02",
       "company": "Hillside Excavation",
       "contact": "Greg Paulk",
       "id": "hillside",
@@ -5367,7 +5387,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "trades": [
         "Sitework",
       ],
-      "w9": false,
+      "w9": true,
       "won": 0,
     },
     {

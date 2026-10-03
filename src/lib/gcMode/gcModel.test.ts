@@ -146,6 +146,9 @@ const STEPS: Step[] = [
       signedTitle: 'Office manager',
     },
   },
+  // The portal: a company does its own paperwork.
+  { label: 'Hillside sends an insurance certificate', action: { type: 'tradeUploadCoi', partnerId: 'hillside', expires: '2027-10-02' } },
+  { label: 'Hillside signs a W-9', action: { type: 'tradeSignW9', partnerId: 'hillside' } },
   // Helotes: our pay application to the owner, and the owner paying it.
   { label: 'Send Dr. Raman pay application 1', action: { type: 'sendOwnerPayApp', projectId: 'helotes' } },
   { label: 'Dr. Raman pays pay application 1', action: { type: 'ownerPaid', projectId: 'helotes', number: 1 } },
@@ -272,6 +275,7 @@ describe('GC mode golden walk', () => {
       'tradeSignUnconditional', 'setMarkup', 'logCustomerContact', 'addPartner', 'setCoverage', 'reset',
       'createProject',
       'tradeSendPayApp',
+      'tradeUploadCoi', 'tradeSignW9',
       'sendOwnerPayApp', 'ownerPaid',
     ]
     expect(all.filter((t) => !used.has(t))).toEqual([])
