@@ -49,7 +49,8 @@ export function GcPortalHome({
   state: GcState
   partner: Partner
   dispatch: Dispatch<GcAction>
-  onOpenProject: (projectId: string) => void
+  /** Opens a project page, landing on one of its blocks when the to-do names one. */
+  onOpenProject: (projectId: string, anchor?: string) => void
   /** Open Your pay: every pay application on the company's jobs. */
   onOpenPay: () => void
 }) {
@@ -61,7 +62,7 @@ export function GcPortalHome({
 
   const openTodo = (t: PortalTodo) => {
     if (t.projectId) {
-      onOpenProject(t.projectId)
+      onOpenProject(t.projectId, t.anchor)
       return
     }
     if (t.key === 'msa' || t.key === 'coi' || t.key === 'w9') setPaperAsk({ line: t.key, n: (paperAsk?.n ?? 0) + 1 })

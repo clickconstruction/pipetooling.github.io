@@ -36,7 +36,7 @@ makes; nobody builds it until he answers.
 
 ## Board (GC 0)
 
-1. **A "Money" board tab.** Place the Owner Billing lane's `GcOwnerBillingMoney` (built; the owner
+1. ~~**A "Money" board tab.**~~ done (this commit; see the merge log). Place the Owner Billing lane's `GcOwnerBillingMoney` (built; the owner
    approved it) after Trade partners: `BoardTab` gets `'money'`, `onOpenBill` opens the project on
    Bill the owner. A Screens row in `README.md`.
 2. **The company window shows "waiting on the architect" and "certified, not paid"** from
@@ -80,10 +80,10 @@ makes; nobody builds it until he answers.
 
 ## Portal (GC 3)
 
-1. **Pass `lang` to `bidTabResult`** in `GcTradePortal.tsx` (agreed).
-2. **The lost-bid portal (owner's OK to commit, item 15 in Owner).**
-3. **A trade asks a question in its portal and sees the answer there** (`tradeAskQuestion` is ready).
-4. **"Left to bill" counts signed change orders** (`sowContractSum`).
+1. ~~**Pass `lang` to `bidTabResult`** in `GcTradePortal.tsx` (agreed).~~ done 6463bf58c
+2. ~~**The lost-bid portal (owner's OK to commit, item 15 in Owner).**~~ done 83dcdcd20, a018d96df (owner's OK in the Portal session)
+3. ~~**A trade asks a question in its portal and sees the answer there** (`tradeAskQuestion` is ready).~~ done c2a22ad26
+4. ~~**"Left to bill" counts signed change orders** (`sowContractSum`).~~ done (the job block and Your pay both read `sowContractSum`)
 5. **The Spanish list for a native speaker to read** before anything ships (question 25), and no
    "Click" written into the portal's words (Board item 7).
 6. **A phone pass on the portal.** It is the screen trades use most on a phone.

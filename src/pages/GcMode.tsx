@@ -17,6 +17,7 @@ import { GcCustomerWindow } from '../components/gc/GcCustomerWindow'
 import { GcPlansQuickLook } from '../components/gc/GcPlansQuickLook'
 import { GcNewProjectButton } from '../components/gc/GcNewProject'
 import { GcPartnersBoard } from '../components/gc/GcTradeBench'
+import { GcOwnerBillingMoney } from '../components/gc/GcOwnerBillingMoney'
 import { GcStartTab } from '../components/gc/GcStart'
 import { GcTradeMap } from '../components/gc/GcTradeMap'
 import { GcTradePortal } from '../components/gc/GcTradePortal'
@@ -54,7 +55,7 @@ import { GC_TOUR_STEPS } from '../lib/gcMode/gcTour'
  * contracts and draws come back through a portal. Runs on a fixture; nothing is saved.
  */
 
-type BoardTab = 'projects' | 'followup' | 'partners'
+type BoardTab = 'projects' | 'followup' | 'partners' | 'money'
 type ProjectTab = 'packages' | 'plans' | 'number' | 'tabs' | 'contracts' | 'start' | 'draws' | 'owner' | 'closeout' | 'schedule'
 
 const STAGES: { key: GcStage; label: string; tone: Tone; blurb: string }[] = [
@@ -169,6 +170,10 @@ export default function GcMode() {
           <button type="button" style={tabButton(boardTab === 'partners')} onClick={() => { setBoardTab('partners'); setProjectId(null) }}>
             Trade partners
           </button>
+          {/* Money across every job that is ours (the Owner Billing lane's; the owner, 2026-10-03). In the real build: the owner and the controller only. */}
+          <button type="button" style={tabButton(boardTab === 'money')} onClick={() => { setBoardTab('money'); setProjectId(null) }}>
+            Money
+          </button>
         </div>
         <Chip tone="violet" title="Runs on made-up data. Nothing is saved.">Prototype</Chip>
         <Btn kind="quiet" onClick={() => { dispatch({ type: 'reset' }); setProjectId(null) }}>Start over</Btn>
@@ -245,6 +250,17 @@ export default function GcMode() {
 
       {boardTab === 'followup' && (
         <GcFollowUpTab state={state} dispatch={dispatch} onMap={(projectId, packageId) => setMapFor({ projectId, packageId })} />
+      )}
+
+      {boardTab === 'money' && (
+        <GcOwnerBillingMoney
+          state={state}
+          onOpenBill={(id) => {
+            setBoardTab('projects')
+            setProjectId(id)
+            setTab('owner')
+          }}
+        />
       )}
 
       {boardTab === 'partners' && (
