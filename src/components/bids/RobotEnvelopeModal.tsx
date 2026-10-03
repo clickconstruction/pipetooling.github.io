@@ -10,6 +10,7 @@ import { questionContextLine, threadAuditNotes, type BidAuditNoteRow, type BidAu
 import { orderedChoices, answerFromChoice } from '../../lib/bids/twinQuestionChoices'
 import { TwinQuestionChoiceButtons } from './TwinQuestionChoiceButtons'
 import type { TwinQuestionRow } from '../../lib/bids/standingRulings'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 // bid_audits / twin_questions predate the generated types (BidsAuditsTab pattern).
 const db = supabase as unknown as SupabaseClient
@@ -242,7 +243,7 @@ export function RobotEnvelopeModal({ bid, run, authUser, onClose, onOpenAudits }
         <div style={{ padding: '0.9rem 1.1rem', overflowY: 'auto', display: 'grid', gap: '0.9rem' }}>
           <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
             <span style={kpi}>
-              <span style={kpiLabel}>{run.kind === 'shadow' ? 'Robot locked' : 'Robot draft'}{run.at ? ` · ${run.at.slice(5, 10).replace('-', '/')}` : ''}</span>
+              <span style={kpiLabel}>{run.kind === 'shadow' ? 'Robot locked' : 'Robot draft'}{run.at ? ` · ${calendarYmdInAppTzFromIso(run.at).slice(5, 10).replace('-', '/')}` : ''}</span>
               <b style={mono}>{money(robotTotal)}</b>
             </span>
             <span style={kpi}>
