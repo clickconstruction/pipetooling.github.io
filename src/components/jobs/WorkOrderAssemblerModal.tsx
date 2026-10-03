@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { formatErrorMessage } from '../../utils/errorHandling'
-import { localCalendarDayKey, todayYmdInAppTz } from '../../utils/dateUtils'
+import { calendarYmdInAppTzFromIso, localCalendarDayKey, todayYmdInAppTz } from '../../utils/dateUtils'
 import { resolveSubPortalUrl } from '../../lib/subPortal/resolveSubPortalUrl'
 import { notifySheetWorkOrderOffered } from '../../lib/workflow/workOrderNotifications'
 import { roleTitle } from '../../lib/subWorkOrders/quickSendWorkOrder'
@@ -388,7 +388,7 @@ export function WorkOrderAssemblerModal({
   const previewDoc = useMemo(() => {
     if (!draft) return null
     const amountNum = draft.amount.trim() === '' ? null : Number(draft.amount)
-    const snap = existing && readOnly ? existing.offer_scope_snapshot : buildSnapshot(draft, existing?.record_id ?? null, existing?.offered_at ? existing.offered_at.slice(0, 10) : todayYmdInAppTz())
+    const snap = existing && readOnly ? existing.offer_scope_snapshot : buildSnapshot(draft, existing?.record_id ?? null, existing?.offered_at ? calendarYmdInAppTzFromIso(existing.offered_at) : todayYmdInAppTz())
     return buildWorkOrderDocument({
       snapshot: snap,
       commitment: {

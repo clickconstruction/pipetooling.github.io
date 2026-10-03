@@ -12,7 +12,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
-import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils'
 import {
   LIEN_WAIVER_DOCUMENT_NAMES,
   LIEN_WAIVER_FORMS,
@@ -249,7 +249,7 @@ export function LienWaiverSendModal({ target, onClose, onSent }: { target: LienW
           </div>
           {prior.length ? (
             <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-              Already on this sheet: {prior.map((p) => `${p.document_name.replace(' Waiver and Release on ', ' · ')} (${p.status}${p.signed_at ? ` ${p.signed_at.slice(0, 10)}` : p.sent_at ? ` ${p.sent_at.slice(0, 10)}` : ''})`).join(' · ')}
+              Already on this sheet: {prior.map((p) => `${p.document_name.replace(' Waiver and Release on ', ' · ')} (${p.status}${p.signed_at ? ` ${p.signed_at.slice(0, 10)}` : p.sent_at ? ` ${calendarYmdInAppTzFromIso(p.sent_at)}` : ''})`).join(' · ')}
             </div>
           ) : null}
           {entries && missing.length ? (

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'r
 import { subPaymentTraceLines } from '../../lib/jobs/subPaymentMoveRemove'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/jobs/jobFormatting'
-import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils'
 import { buildJobWorkOrderCoverage, type JobWorkOrderCoverage, type WorkOrderRowLike } from '../../lib/subWorkOrders/workOrderCoverage'
 import { buildSheetRail, sheetNextAction, type SheetNextAction, type SheetRail as SheetRailShape } from '../../lib/subWorkOrders/sheetRail'
 import { isRosterSubSheet, type NeedsWorkOrderRosterPerson } from '../../lib/subWorkOrders/sheetsNeedingWorkOrder'
@@ -603,7 +603,7 @@ export default function JobsSubLaborTab({
                 const body = g.rows.flatMap((r) => {
                   const { job, totalCost, paid, backcharges, balance, rail, next, coverage, jobId, personId, parties, payWhen, stageView } = r
                   const jobRate = job.labor_rate ?? 0
-                  const dateInputValue = job.job_date ?? (job.created_at ? job.created_at.slice(0, 10) : '')
+                  const dateInputValue = job.job_date ?? (job.created_at ? calendarYmdInAppTzFromIso(job.created_at) : '')
                   const expanded = expandedSubLaborJobIds.has(job.id)
                   const toggle = () => {
                     setExpandedSubLaborJobIds((prev) => {

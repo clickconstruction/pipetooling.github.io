@@ -113,3 +113,21 @@ describe('buildSheetStory — variants', () => {
     expect(done[6]!.chip).toEqual({ label: 'paid in full', tone: 'green' })
   })
 })
+
+describe('buildSheetStory — an evening stamp keeps its day (v2.4469)', () => {
+  // 00:30 UTC is 7:30 pm CDT the evening before; 01:00 UTC is 8 pm CDT.
+  it('counts an offer’s waiting days from the Central day it went out', () => {
+    const order = { status: 'offered', amount: 1208.97, created_at: '2026-08-28T19:10:00Z', offered_at: '2026-08-30T00:30:00Z', offer_expires_at: '2026-09-05', signed_at: null, accepted_at: null, declined_at: null, decline_reason: null, record_id: null, signer_printed_name: null, signer_signature_mode: null }
+    expect(buildSheetStory(input({ coverage: sent, order, agreed: 1208.97 }))[1]!.chip).toEqual({ label: 'waiting 7 days', tone: 'amber' })
+  })
+  it('starts an undated sheet on the Central day it was made', () => {
+    const rows = buildSheetStory(input({ sheet: { assigned_to_name: 'Texas R & A Electrical LLC', job_number: '977', address: 'Hospital-415 Springtown Way', job_date: null, created_at: '2026-08-21T00:30:00Z', stage: 'working', items: [], payments: [] } }))
+    expect(rows[3]!.chip!.label).toBe('current · 16 days')
+  })
+  it('counts the walk-through from the Central day the sub tapped Done', () => {
+    const rows = buildSheetStory(input({ coverage: signed, stage: 'walkthrough', agreed: 1208.97, events: [{ occurred_at: '2026-09-04T01:00:00Z', from: 'working', to: 'walkthrough', source: 'portal', note: null, actorName: null }] }))
+    expect(rows[4]!.chip!.label).toBe('current · 2 days')
+    const noon = buildSheetStory(input({ coverage: signed, stage: 'walkthrough', agreed: 1208.97, events: [{ occurred_at: '2026-09-04T12:00:00Z', from: 'working', to: 'walkthrough', source: 'portal', note: null, actorName: null }] }))
+    expect(noon[4]!.chip!.label).toBe('current · 1 day')
+  })
+})

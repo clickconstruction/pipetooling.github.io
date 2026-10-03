@@ -56,3 +56,12 @@ describe('effectiveSubSheetStage', () => {
     expect(effectiveSubSheetStage({ ...base, stageSource: 'auto', stageChangedAt: '2026-09-06T09:00:00Z', workEndYmd: '2026-09-05' })).toMatchObject({ stage: 'walkthrough', reason: 'window' })
   })
 })
+
+describe('a hand move on the window’s last evening keeps its day (v2.4469)', () => {
+  it('is inside the window, so the window still fires once it has ended', () => {
+    // 01:00 UTC on Sep 6 is 8 pm CDT on Sep 5, the window's last day; 00:30 UTC on Dec 2 is 6:30 pm CST on Dec 1.
+    expect(effectiveSubSheetStage({ ...base, stageSource: 'office', stageChangedAt: '2026-09-06T01:00:00Z', workEndYmd: '2026-09-05' })).toMatchObject({ stage: 'walkthrough', reason: 'window' })
+    expect(effectiveSubSheetStage({ ...base, todayYmd: '2026-12-03', stageSource: 'portal', stageChangedAt: '2026-12-02T00:30:00+00:00', workEndYmd: '2026-12-01' })).toMatchObject({ stage: 'walkthrough', reason: 'window' })
+    expect(effectiveSubSheetStage({ ...base, stageSource: 'office', stageChangedAt: '2026-09-06T12:00:00Z', workEndYmd: '2026-09-05' })).toMatchObject({ stage: 'working', derived: false })
+  })
+})

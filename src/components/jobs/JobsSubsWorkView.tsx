@@ -16,7 +16,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import { formatErrorMessage } from '../../utils/errorHandling'
-import { formatWorkDateYmdMonthDayShort, todayYmdInAppTz } from '../../utils/dateUtils'
+import { calendarYmdInAppTzFromIso, formatWorkDateYmdMonthDayShort, todayYmdInAppTz } from '../../utils/dateUtils'
 import { calendarRowName } from '../../lib/subs/stageCalendar'
 import { formatCurrency } from '../../lib/jobs/jobFormatting'
 import { subLaborAssignPickerRows, subLaborJobNumberForStorage } from '../../lib/jobs/subLaborJobPicker'
@@ -589,7 +589,7 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
     const sh = sheetId ? sheetsById.get(sheetId) : null
     if (!sh || sh.progress_pct == null || sh.progress_pct >= 100) return null
     return (
-      <span title={sh.progress_at ? `reported ${sh.progress_at.slice(0, 10)} from their portal` : 'from their portal'} style={{ marginLeft: 6, display: 'inline-block', padding: '0 6px', borderRadius: 999, fontSize: '0.66rem', fontWeight: 700, background: 'var(--bg-subtle)', color: 'var(--text-700)', border: '1px solid var(--border)', verticalAlign: 1 }}>
+      <span title={sh.progress_at ? `reported ${calendarYmdInAppTzFromIso(sh.progress_at)} from their portal` : 'from their portal'} style={{ marginLeft: 6, display: 'inline-block', padding: '0 6px', borderRadius: 999, fontSize: '0.66rem', fontWeight: 700, background: 'var(--bg-subtle)', color: 'var(--text-700)', border: '1px solid var(--border)', verticalAlign: 1 }}>
         {sh.progress_pct}% along
       </span>
     )
@@ -941,7 +941,7 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
         windowBy: w ? (w.window_by === 'gc' ? ('gc' as const) : ('office' as const)) : null,
         pick: d.pick,
         pickBy: d.order?.picked_start ? (d.order.picked_by === 'office' ? ('office' as const) : ('sub' as const)) : null,
-        ask: d.ask && w ? { span: d.ask, note: w.asked_note ?? null, askedOn: w.asked_at ? w.asked_at.slice(0, 10) : null } : null,
+        ask: d.ask && w ? { span: d.ask, note: w.asked_note ?? null, askedOn: w.asked_at ? calendarYmdInAppTzFromIso(w.asked_at) : null } : null,
         gc: { state: d.gc, gcName: d.gcName, shownSince: null },
         subName: r.board?.subName || null,
         subLine,

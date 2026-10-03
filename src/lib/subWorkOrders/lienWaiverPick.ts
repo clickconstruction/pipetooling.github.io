@@ -15,6 +15,8 @@
  * confirms: a payment older than SETTLE_DAYS is presumed settled.
  */
 
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
+
 export type LienWaiverKind = 'conditional_progress' | 'unconditional_progress' | 'conditional_final' | 'unconditional_final'
 
 export type LienWaiverForm = {
@@ -117,7 +119,7 @@ export type LienWaiverGuess = {
 }
 
 function paymentDay(p: LienWaiverPaymentLike): string {
-  return (p.payment_date && p.payment_date.slice(0, 10)) || p.created_at.slice(0, 10)
+  return (p.payment_date && p.payment_date.slice(0, 10)) || calendarYmdInAppTzFromIso(p.created_at)
 }
 
 function daysBetween(fromYmd: string, toYmd: string): number {
