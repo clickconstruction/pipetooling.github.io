@@ -5,6 +5,9 @@ import {
   money,
   portalFirstVisit,
   portalHome,
+  sentBackOpen,
+  tradeCloseout,
+  workAllBilled,
   shortDate,
   weekdayDate,
   type GcAction,
@@ -262,6 +265,9 @@ function JobChip({ ask }: { ask: PortalAsk }) {
   const sow = ask.pkg.sow
   if (!sow || sow.status === 'draft') return <Chip tone="grey">statement of work being written</Chip>
   if (sow.status === 'sent') return <Chip tone="amber">sign the statement of work</Chip>
+  if (workAllBilled(sow)) return tradeCloseout(sow).closed ? <Chip tone="green">closed out</Chip> : <Chip tone="blue">closing out</Chip>
+  const back = sentBackOpen(sow)
+  if (back) return <Chip tone="amber">pay application {back.draw.number} sent back</Chip>
   return <Chip tone="green">signed {shortDate(sow.signedOn)}</Chip>
 }
 

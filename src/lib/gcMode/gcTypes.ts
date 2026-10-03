@@ -133,6 +133,8 @@ export interface Sow {
   warrantyOn?: string | null
   /** Pay applications the office sent back, oldest first. A resend takes the same number. */
   sentBack?: DrawSentBack[]
+  /** The day we sent it to the trade to sign. Unset: not sent, or before the day was kept. */
+  sentOn?: string
 }
 
 /**
@@ -201,6 +203,8 @@ export interface Partner {
   license?: string
   /** The day they first went through their portal's welcome. Unset: never, or before the portal kept it. */
   portalOpenedOn?: string
+  /** The day we sent the master agreement. Unset: not sent, or before the day was kept. */
+  msaSentOn?: string
 }
 
 /** A question a trade asked about the plans. The architect answers; every bidder on the trade gets it. */

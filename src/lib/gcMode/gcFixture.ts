@@ -281,6 +281,7 @@ export function initialGcState(): GcState {
         awardedInviteId: 'delec-brightline',
         sow: {
           status: 'sent',
+          sentOn: '2026-09-30',
           price: 56_900,
           retainagePct: 10,
           basedOnRev: 0,
@@ -734,6 +735,9 @@ export function initialGcState(): GcState {
     westside: ['San Antonio', 80],
   }
 
+  /** The day the master agreement went out, for the ones sent and not signed yet. */
+  const msaSent: Record<string, string> = { bluebonnet: '2026-09-30', kendall: '2026-09-29' }
+
   /** Promises of a quote date on earlier jobs: made, kept. */
   const word: Record<string, [number, number]> = {
     hillside: [2, 0],
@@ -1071,7 +1075,8 @@ export function initialGcState(): GcState {
     ].map((p) => {
       const c = coverage[p.id]
       const w = word[p.id] ?? [0, 0]
-      return { ...p, promisesMade: w[0], promisesKept: w[1], ...(c ? { base: c[0], maxMiles: c[1] } : {}) }
+      const sent = msaSent[p.id]
+      return { ...p, promisesMade: w[0], promisesKept: w[1], ...(c ? { base: c[0], maxMiles: c[1] } : {}), ...(sent ? { msaSentOn: sent } : {}) }
     }),
     log: [],
   }

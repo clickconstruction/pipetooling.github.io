@@ -7320,6 +7320,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "invited": 2,
       "maxMiles": 60,
       "msa": "signed",
+      "msaSentOn": "2026-10-02",
       "msaSignedOn": "2026-10-02",
       "promisesKept": 0,
       "promisesMade": 2,
@@ -7453,6 +7454,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "invited": 2,
       "maxMiles": 75,
       "msa": "sent",
+      "msaSentOn": "2026-09-30",
       "msaSignedOn": null,
       "promisesKept": 1,
       "promisesMade": 2,
@@ -7492,6 +7494,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "invited": 4,
       "maxMiles": 75,
       "msa": "signed",
+      "msaSentOn": "2026-09-29",
       "msaSignedOn": "2026-10-02",
       "promisesKept": 3,
       "promisesMade": 3,
@@ -7628,6 +7631,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "invited": 2,
       "maxMiles": 80,
       "msa": "signed",
+      "msaSentOn": "2026-10-02",
       "msaSignedOn": "2026-10-02",
       "promisesKept": 0,
       "promisesMade": 0,
@@ -9149,6 +9153,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
             "draws": [],
             "price": 56900,
             "retainagePct": 10,
+            "sentOn": "2026-09-30",
             "signedOn": "2026-10-02",
             "sov": [
               {
@@ -9231,6 +9236,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
             "draws": [],
             "price": 47600,
             "retainagePct": 10,
+            "sentOn": "2026-10-02",
             "signedOn": "2026-10-02",
             "sov": [
               {
@@ -9428,6 +9434,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
                 "on": "2026-10-02",
               },
             ],
+            "sentOn": "2026-10-02",
             "signedOn": "2026-10-02",
             "sov": [
               {

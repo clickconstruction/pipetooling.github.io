@@ -292,3 +292,52 @@ describe('the bid form', () => {
     expect(gcReducer(state, { type: 'tradeAnswerLines', projectId: 'boerne', packageId: 'conc', inviteId: 'conc-alamo', answers: { 'conc-1': 'no' } })).toBe(state)
   })
 })
+
+describe('the messages for sent and start days', () => {
+  it('sends Kendall its master agreement on the day it went out', () => {
+    const msa = portalMessages(state, 'kendall').find((m) => m.kind === 'msa')
+    expect(msa).toMatchObject({ on: '2026-09-29', projectId: null, subject: 'Your master agreement with Click Construction' })
+  })
+
+  it('dates the master agreement the day the office sends it', () => {
+    const sent = gcReducer(state, { type: 'sendMsa', partnerId: 'hillside' })
+    expect(portalMessages(sent, 'hillside')[0]).toMatchObject({ kind: 'msa', on: '2026-10-02' })
+  })
+
+  it('sends Brightline its statement of work with the price and what is held back', () => {
+    const sow = portalMessages(state, 'brightline').find((m) => m.kind === 'sow')
+    expect(sow?.on).toBe('2026-09-30')
+    expect(sow?.lines).toContain('Your statement of work is ready: $56,900, based on the Permit set.')
+    expect(sow?.lines).toContain('We hold back 10% of each draw until the job is done.')
+  })
+
+  it('tells the companies on a started job the day work begins, by email and by text', () => {
+    const start = portalMessages(state, 'summit').find((m) => m.kind === 'start')
+    expect(start?.subject).toBe('Work starts on Fair Oaks Shops, Building D Mon Jul 6')
+    expect(start?.text).toContain(portalLink('summit'))
+  })
+
+  it('tells only the companies on the job when we press Start', () => {
+    const started = gcReducer(gcReducer(state, { type: 'setStartDate', projectId: 'helotes', date: '2026-10-12' }), { type: 'startProject', projectId: 'helotes' })
+    expect(portalMessages(started, 'hillcountry').map((m) => m.kind)).toContain('start')
+    expect(portalMessages(started, 'voltage').map((m) => m.kind)).not.toContain('start')
+  })
+})
+
+describe('Needs you on a job being built', () => {
+  it('asks Summit to fix the pay application we sent back, not to ask for new money', () => {
+    const keys = portalTodos(state, 'summit').map((t) => t.key)
+    expect(keys.some((k) => k.endsWith(':back'))).toBe(true)
+    expect(keys.some((k) => k.endsWith(':draw'))).toBe(false)
+  })
+
+  it('asks Guadalupe for nothing while its closeout waits on us', () => {
+    expect(portalTodos(state, 'guadalupe')).toEqual([])
+  })
+
+  it('does not offer Pecan Valley a draw while its insurance has run out', () => {
+    const todos = portalTodos(state, 'pecanvalley')
+    expect(todos[0]?.key).toBe('coi')
+    expect(todos.some((t) => t.key.endsWith(':draw'))).toBe(false)
+  })
+})
