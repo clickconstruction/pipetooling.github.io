@@ -135,13 +135,14 @@ export function sortStageRowsForTotalByNameDetail(rows: StageRow[]): StageRow[] 
 }
 
 /**
- * The day a Billed row's bill went out: the billed date, else the estimated
- * bill date (`isEstimate`); null for a job balance with no bill behind it.
+ * The day a Billed row's bill went out: the billed date (`billed_at` in
+ * `APP_CALENDAR_TZ`, as the age above reads it), else the estimated bill date
+ * (`isEstimate`); null for a job balance with no bill behind it.
  */
 export function billedRowReferenceYmd(r: StageRow): { ymd: string; isEstimate: boolean } | null {
   if (r.kind === 'job') return null
-  const billedAt = r.inv.billed_at?.trim()
-  if (billedAt) return { ymd: billedAt.length >= 10 ? billedAt.slice(0, 10) : billedAt, isEstimate: false }
+  const billedYmd = calendarYmdInAppTzFromIso(r.inv.billed_at?.trim() ?? '')
+  if (billedYmd) return { ymd: billedYmd, isEstimate: false }
   const est = effectiveInvoiceEstBillDate(r.inv)
   return est ? { ymd: est, isEstimate: true } : null
 }

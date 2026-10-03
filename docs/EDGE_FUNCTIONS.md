@@ -3420,6 +3420,8 @@ interface SendPhysicalInvoiceEmailBody {
 
 ### payment-forecast-email-dispatch
 
+> **v2.4460 — a bill's day reads in the company zone**: `billedReferenceYmd` in [`_shared/paymentForecastCore.ts`](../supabase/functions/_shared/paymentForecastCore.ts) reads `billed_at` (an instant) as its day in `APP_CALENDAR_TZ` (`todayYmdInAppTz(new Date(iso))`), not its UTC date, as the app's `billedExpectedPay.ts` now does. A bill marked billed after 7 pm Central lands in the right week. Redeploy after merge.
+
 > **v2.4376 — one payment is enough**: `PAY_SPEED_MIN_SAMPLES` in `_shared/paymentForecastCore.ts` is 1 (was 3), as in the app; `money-waiting-email-dispatch` imports the same constant. Redeploy both.
 
 > **v2.4365 — the payer's pace**: [`_shared/paymentForecastCore.ts`](../supabase/functions/_shared/paymentForecastCore.ts) looks each row's pay speed up under `payer_id` (whoever the bill went to; the payload carries it since migration `20261002030000`, whose medians are keyed on the payer) and names `payer_name`, falling back to `customer_id` / `customer_name` on an older payload (`rowPaySpeedKey`). Redeploy after the push.
@@ -3435,6 +3437,8 @@ interface SendPhysicalInvoiceEmailBody {
 **Deploy**: `supabase functions deploy payment-forecast-email-dispatch --no-verify-jwt`. Requires migration `20260824133529` (table + payload RPC + pg_cron).
 
 ### money-waiting-email-dispatch
+
+> **v2.4460 — a bill's wait counts from its own day**: [`_shared/moneyWaitingCore.ts`](../supabase/functions/_shared/moneyWaitingCore.ts) takes each bill's day from `paymentForecastCore`'s `billedReferenceYmd`, which now reads `billed_at` in `APP_CALENDAR_TZ`. A bill marked billed after 7 pm Central no longer waits a day short. Redeploy after merge.
 
 > **v2.4367 — filed by payer**: [`_shared/moneyWaitingCore.ts`](../supabase/functions/_shared/moneyWaitingCore.ts) groups each row under `payer_id` / `payer_name` (whoever the bill went to; the payload carries them since migration `20261002030000`), falling back to `customer_id` for a bill typed to someone else or an older payload (`moneyWaitingRowPayer`, the app's `listPayer`). Redeploy after the push.
 

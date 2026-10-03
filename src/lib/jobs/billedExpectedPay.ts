@@ -14,6 +14,8 @@
  * own history, which is a sharper follow-up signal than a flat 30/90 bucket.
  */
 
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
+
 export type PaySpeedStat = { medianDays: number; samples: number }
 
 export type CustomerSegment = 'residential' | 'commercial'
@@ -219,7 +221,7 @@ export type ExpectedPayModel = {
 }
 
 export type ExpectedPayRowInput = {
-  /** jobs_ledger_invoices.billed_at (ISO timestamptz) — the primary bill clock. */
+  /** jobs_ledger_invoices.billed_at (ISO timestamptz) — the primary bill clock. A bare day goes in estBillYmd. */
   billedAtIso: string | null
   /** Effective est. bill date (YYYY-MM-DD) — the board's aging fallback clock. */
   estBillYmd: string | null
@@ -229,10 +231,14 @@ export type ExpectedPayRowInput = {
   payerName?: string | null
 }
 
-/** The row's bill reference date as YYYY-MM-DD (same precedence as printBilledRowReferenceDate). */
+/**
+ * The row's bill reference date as YYYY-MM-DD (same precedence as printBilledRowReferenceDate):
+ * billed_at's day in APP_CALENDAR_TZ, never its first ten characters (the UTC date, tomorrow
+ * after 7 pm Central), else the est. bill date.
+ */
 export function billedReferenceYmd(input: Pick<ExpectedPayRowInput, 'billedAtIso' | 'estBillYmd'>): string | null {
-  const billed = input.billedAtIso?.trim()
-  if (billed && billed.length >= 10) return billed.slice(0, 10)
+  const billedYmd = calendarYmdInAppTzFromIso(input.billedAtIso?.trim() ?? '')
+  if (billedYmd) return billedYmd
   const est = input.estBillYmd?.trim()
   if (est && ymdToUtcMs(est) != null) return est
   return null

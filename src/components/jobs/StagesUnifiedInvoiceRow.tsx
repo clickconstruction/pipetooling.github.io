@@ -25,6 +25,7 @@ import { progressPaymentForJob } from '../../lib/jobs/progressPaymentForJob'
 import { showAiaG702G703 } from '../../lib/aiaG702G703Eligibility'
 import { stagesBillSentPctAlert } from '../../lib/jobs/stagesBillSentPctAlert'
 import { datesBlockBilledYmd } from '../../lib/jobs/stagesRowDoors'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 export type StagesUnifiedInvoiceRowKind = Extract<StageRow, { kind: 'invoice' }>
 
@@ -82,7 +83,7 @@ export function StagesUnifiedInvoiceRow({ row, t }: { row: StagesUnifiedInvoiceR
   // v2.4349: a sent bill's row says what is paid and left on that bill.
   const sentBillLine =
     inv.status === 'billed'
-      ? stagesBillRowLine({ amount: inv.amount, applied: sumInvoiceAppliedFromJobPayments(job, inv.id), billedYmd: inv.billed_at ? inv.billed_at.slice(0, 10) : null })
+      ? stagesBillRowLine({ amount: inv.amount, applied: sumInvoiceAppliedFromJobPayments(job, inv.id), billedYmd: calendarYmdInAppTzFromIso(inv.billed_at ?? '') || null })
       : null
   const stagesInvoiceHcpTrimmed = (job.hcp_number ?? '').trim()
   const stagesInvoiceRowHcpLabel = stagesInvoiceHcpTrimmed

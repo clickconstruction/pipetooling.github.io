@@ -34,7 +34,7 @@ function invRow(over: Partial<Record<string, unknown>> & { id: string; job: JobW
       job_id: j.id,
       status: 'billed',
       sequence_order: 0,
-      billed_at: '2026-07-01T00:00:00Z',
+      billed_at: '2026-07-01T17:00:00Z',
       estimated_bill_date: null,
       ...invOver,
     } as never,
@@ -163,7 +163,7 @@ describe('buildGcReviewRollup', () => {
     const a = job({ id: 'j1', gcCustomer: KNIGHT })
     const rollup = buildGcReviewRollup(
       [
-        invRow({ id: 'i1', job: a, amount: 100, billed_at: '2026-07-01T00:00:00Z' }),
+        invRow({ id: 'i1', job: a, amount: 100, billed_at: '2026-07-01T17:00:00Z' }),
         invRow({ id: 'i2', job: a, amount: 50, billed_at: null, estimated_bill_date: '2026-07-21' }),
       ],
       [],
@@ -188,9 +188,9 @@ describe('buildGcReviewRollup', () => {
     const rollup = buildGcReviewRollup(
       [
         // Oldest bill on the blank-address job — address still wins the sort.
-        invRow({ id: 'i1', job: blank, amount: 10, billed_at: '2026-06-01T00:00:00Z' }),
-        invRow({ id: 'i2', job: zeta, amount: 20, billed_at: '2026-07-01T00:00:00Z' }),
-        invRow({ id: 'i3', job: alpha, amount: 30, billed_at: '2026-07-21T00:00:00Z' }),
+        invRow({ id: 'i1', job: blank, amount: 10, billed_at: '2026-06-01T17:00:00Z' }),
+        invRow({ id: 'i2', job: zeta, amount: 20, billed_at: '2026-07-01T17:00:00Z' }),
+        invRow({ id: 'i3', job: alpha, amount: 30, billed_at: '2026-07-21T17:00:00Z' }),
       ],
       [],
       { now: NOW },

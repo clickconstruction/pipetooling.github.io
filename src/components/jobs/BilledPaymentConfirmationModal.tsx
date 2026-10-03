@@ -7,6 +7,7 @@ import type { BillingStripeModePref } from '../../lib/billingStripeModePref'
 import { stripeModeInvokeBody } from '../../lib/billingStripeModePref'
 import { readEdgeFunctionErrorBody } from '../../lib/readEdgeFunctionErrorBody'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 import { promiseBackfillChoices, shouldAskPromiseBackfill } from '../../lib/jobs/promiseBackfillPrompt'
 import {
@@ -403,7 +404,7 @@ export default function BilledPaymentConfirmationModal({
               {inv.sent_to_customer_at && (
                 <div>
                   <span style={{ color: 'var(--text-muted)' }}>Sent: </span>
-                  {String(inv.sent_to_customer_at).slice(0, 10)}
+                  {calendarYmdInAppTzFromIso(String(inv.sent_to_customer_at))}
                 </div>
               )}
               {inv.external_send_note && (
