@@ -4,6 +4,7 @@
  * One team_member_reviews row per (subject, reviewer, month).
  */
 import { AUTH_USER_ROLE_SECTION_ORDER } from '../usersTabRosterRoleSections'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 
 export type TeamMemberReviewRow = {
   id: string
@@ -155,8 +156,9 @@ export function formatTenure(startedOn: string | null | undefined, now: Date): s
   if (!startedOn) return null
   const [y, m, d] = startedOn.split('-').map(Number)
   if (!y || !m || !d) return null
-  const start = new Date(Date.UTC(y, m - 1, d))
-  const months = (now.getUTCFullYear() - start.getUTCFullYear()) * 12 + (now.getUTCMonth() - start.getUTCMonth()) - (now.getUTCDate() < start.getUTCDate() ? 1 : 0)
+  // Today on the company calendar: now's UTC date is tomorrow every evening after 7 PM Central.
+  const [ty, tm, td] = todayYmdInAppTz(now).split('-').map(Number) as [number, number, number]
+  const months = (ty - y) * 12 + (tm - m) - (td < d ? 1 : 0)
   if (months < 0) return null
   if (months === 0) return 'under a month'
   const years = Math.floor(months / 12)

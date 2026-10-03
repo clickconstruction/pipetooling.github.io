@@ -16,6 +16,7 @@ import { capableToBillTotalWithPlans, type WorkingStageInputs } from './capableT
 import { buildBilledAgingBuckets, countBilledRowsMissingDates, type BilledAgingBuckets } from './invoiceBilling'
 import { addDaysYmd } from '../emailSchedule/emailScheduleWeek'
 import { computeBillTruthFromJobs, type BillTruth } from '../billing/billTruth'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 
 export type StagesSectionStat = { count: number; total: number }
 
@@ -47,12 +48,12 @@ export type StagesHeaderStats = {
 // Monday-start weeks — and only devs + controllers see it.
 export const COLLECTED_DAYS = 30
 
-/** Σ payment.amount per day over the trailing COLLECTED_DAYS days incl. today (UTC clock). */
+/** Σ payment.amount per day over the trailing COLLECTED_DAYS days incl. today on the company calendar. */
 export function collectedByDayFromPayments(
   payments: ReadonlyArray<{ paid_on?: string | null; amount: number | null }>,
   now = new Date(),
 ): CollectedDayPoint[] {
-  const todayYmd = now.toISOString().slice(0, 10)
+  const todayYmd = todayYmdInAppTz(now)
   const days: CollectedDayPoint[] = []
   const index = new Map<string, number>()
   for (let i = COLLECTED_DAYS - 1; i >= 0; i--) {

@@ -225,3 +225,12 @@ describe('splitFormattedAmountCents', () => {
     expect(splitFormattedAmountCents('1,235')).toEqual({ main: '1,235', cents: '' })
   })
 })
+
+describe('calendarDaysSinceDateUtc · counts to today on the company calendar (v2.4475)', () => {
+  it('does not add a day in the evening', () => {
+    // 00:30 UTC on Oct 3 is 7:30 pm CDT on Oct 2; 00:30 UTC on Dec 2 is 6:30 pm CST on Dec 1.
+    expect(calendarDaysSinceDateUtc('2026-09-22', new Date('2026-10-03T00:30:00Z'))).toBe(10)
+    expect(calendarDaysSinceDateUtc('2026-11-21', new Date('2026-12-02T00:30:00Z'))).toBe(10)
+    expect(calendarDaysSinceDateUtc('2026-09-22', new Date('2026-10-03T12:00:00Z'))).toBe(11)
+  })
+})

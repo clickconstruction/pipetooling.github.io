@@ -18,6 +18,7 @@ import { TwinOperatorQuestionsCard } from './TwinOperatorQuestionsCard'
 import { TwinOwnerMemoCard } from './TwinOwnerMemoCard'
 import { TwinRunsLedger } from './TwinRunsLedger'
 import { BTN, BTN_PRIMARY, CARD, CARD_TITLE, CHIP, MUTED, PROMPT_PRE, STEP_REF, TWIN_VIOLET } from './twinConsoleStyles'
+import { todayYmdInAppTz, ymdAddDays } from '../../utils/dateUtils'
 
 /**
  * The 🤖 Console lens (v2.3224, dev only): the operator's desk. Everything a
@@ -63,7 +64,7 @@ export function BidsRobotConsoleTab({ bids, twinBidBySourceId, onOpenQueue }: Pr
 
   // Same rule as the Queue lens, so the counts here and the rows there can never disagree.
   const queue = useMemo(() => {
-    const staleDueBefore = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10)
+    const staleDueBefore = ymdAddDays(todayYmdInAppTz(), -30)
     return buildRobotQueue(bids, (bidId) => twinBidBySourceId.has(bidId), { staleDueBefore })
   }, [bids, twinBidBySourceId])
 

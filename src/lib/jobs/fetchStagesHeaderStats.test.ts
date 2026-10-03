@@ -175,3 +175,11 @@ describe('fetchStagesHeaderStats', () => {
     expect(await fetchStagesHeaderStats(null, now)).toEqual({ ok: false, error: 'Could not load board stats' })
   })
 })
+
+describe('collectedWindowStartYmd · today on the company calendar (v2.4475)', () => {
+  it('starts the window 29 days before the Central day', () => {
+    // 00:30 UTC on Oct 3 is 7:30 pm CDT on Oct 2.
+    expect(collectedWindowStartYmd(new Date('2026-10-03T00:30:00Z'))).toBe('2026-09-03')
+    expect(collectedWindowStartYmd(new Date('2026-10-03T12:00:00Z'))).toBe('2026-09-04')
+  })
+})
