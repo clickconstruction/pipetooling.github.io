@@ -7028,6 +7028,47 @@ exports[`GC mode golden walk > step 96: Take the rough-in inspection off 1`] = `
 }
 `;
 
+exports[`GC mode golden walk > step 97: Superintendent: Iron Horse’s erection not done, right 1`] = `
+{
+  "changed": {
+    "lastLog.id": 93,
+    "lastLog.text": "Our superintendent verified the mark on Structural steel · Erection for the week of Mon Sep 28: not done, crew.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 98: Superintendent: the membrane is not done (weather), not as Summit says 1`] = `
+{
+  "changed": {
+    "lastLog.id": 94,
+    "lastLog.text": "Our superintendent corrected the mark on Roofing · TPO membrane for the week of Mon Sep 28: not done, weather.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 99: Our crew’s top out this week: not done after all (materials) 1`] = `
+{
+  "changed": {
+    "lastLog.id": 95,
+    "lastLog.text": "Our own crew's Top out on Plumbing is marked not done, materials for the week of Mon Sep 28.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 100: Fair Oaks D: Pecan Valley marks Lighting not done this week (materials) 1`] = `
+{
+  "changed": {
+    "lastLog.id": 96,
+    "lastLog.text": "Pecan Valley Electric marked Lighting on Electrical not done for the week of Mon Sep 28: materials.",
+    "lastLog.who": "trade",
+  },
+  "removed": [],
+}
+`;
+
 exports[`GC mode golden walk > the whole state at the end 1`] = `
 {
   "customers": [
@@ -7228,6 +7269,26 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
+      "id": 96,
+      "text": "Pecan Valley Electric marked Lighting on Electrical not done for the week of Mon Sep 28: materials.",
+      "who": "trade",
+    },
+    {
+      "id": 95,
+      "text": "Our own crew's Top out on Plumbing is marked not done, materials for the week of Mon Sep 28.",
+      "who": "office",
+    },
+    {
+      "id": 94,
+      "text": "Our superintendent corrected the mark on Roofing · TPO membrane for the week of Mon Sep 28: not done, weather.",
+      "who": "office",
+    },
+    {
+      "id": 93,
+      "text": "Our superintendent verified the mark on Structural steel · Erection for the week of Mon Sep 28: not done, crew.",
+      "who": "office",
+    },
+    {
       "id": 92,
       "text": "Took Rough-in inspection off the schedule on Helotes Dental Office.",
       "who": "office",
@@ -7355,26 +7416,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
     {
       "id": 67,
       "text": "Paid draw 4 on Framing and drywall: $6,420.",
-      "who": "office",
-    },
-    {
-      "id": 66,
-      "text": "Approved the retainage release on Framing and drywall: $6,420 to pay.",
-      "who": "office",
-    },
-    {
-      "id": 65,
-      "text": "Hill Country Interiors sent the final pay application on Framing and drywall: $6,420 of retainage, with a conditional final release of lien.",
-      "who": "trade",
-    },
-    {
-      "id": 64,
-      "text": "Hill Country Interiors sent the warranty letter for Framing and drywall.",
-      "who": "trade",
-    },
-    {
-      "id": 63,
-      "text": "Accepted the Framing and drywall work from Hill Country Interiors. The punch list is done.",
       "who": "office",
     },
   ],
@@ -11436,7 +11477,9 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
             "lineId": "froof-1",
             "markedOn": "2026-10-02",
             "packageId": "froof",
-            "verifiedOn": null,
+            "verifiedDone": false,
+            "verifiedOn": "2026-10-02",
+            "verifiedReason": "weather",
             "weekOf": "2026-09-28",
           },
           {
@@ -11445,7 +11488,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
             "markedOn": "2026-10-02",
             "packageId": "fsteel",
             "reason": "crew",
-            "verifiedOn": null,
+            "verifiedOn": "2026-10-02",
             "weekOf": "2026-09-28",
           },
           {
@@ -11459,17 +11502,27 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
           },
           {
             "done": true,
+            "lineId": "fhvac-2",
+            "markedOn": "2026-10-02",
+            "packageId": "fhvac",
+            "verifiedOn": null,
+            "weekOf": "2026-09-28",
+          },
+          {
+            "done": false,
             "lineId": "fplumb-3",
             "markedOn": "2026-10-02",
             "packageId": "fplumb",
+            "reason": "materials",
             "verifiedOn": "2026-10-02",
             "weekOf": "2026-09-28",
           },
           {
-            "done": true,
-            "lineId": "fhvac-2",
+            "done": false,
+            "lineId": "felec-3",
             "markedOn": "2026-10-02",
-            "packageId": "fhvac",
+            "packageId": "felec",
+            "reason": "materials",
             "verifiedOn": null,
             "weekOf": "2026-09-28",
           },

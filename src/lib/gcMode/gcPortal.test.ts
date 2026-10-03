@@ -13,6 +13,7 @@ import {
   portalHome,
   portalLink,
   portalLines,
+  portalLookAhead,
   portalMessages,
   portalPlanNews,
   portalPromiseLine,
@@ -370,5 +371,58 @@ describe('a draw approved for less', () => {
     const approved = gcReducer(asked, { type: 'approveDraw', ...ids, drawId: 'dry-draw-2' })
     expect(portalTodos(approved, 'hillcountry').some((t) => t.key.includes(':less:'))).toBe(false)
     expect(portalMessages(approved, 'hillcountry').some((x) => x.kind === 'less')).toBe(false)
+  })
+})
+
+describe('the weekly look-ahead', () => {
+  const fairOaks = (s: GcState) => {
+    const p = s.projects.find((x) => x.id === 'fairoaksd')
+    if (!p) throw new Error('no Fair Oaks D')
+    return p
+  }
+  const mark = { type: 'tradeMarkLookAhead' as const, projectId: 'fairoaksd', packageId: 'felec', lineId: 'felec-3', weekOf: '2026-09-28' }
+
+  it('shows Pecan Valley last week while it is unmarked, this week, and the next two', () => {
+    const weeks = portalLookAhead(state, 'pecanvalley', fairOaks(state))
+    expect(weeks.map((w) => `${w.when} ${w.weekOf}`)).toEqual(['last 2026-09-21', 'this 2026-09-28', 'next 2026-10-05', 'later 2026-10-12'])
+    expect(weeks[1]?.items.map((i) => [i.row.label, i.state, i.canMark])).toEqual([
+      ['Panels and feeders', 'waiting', true],
+      ['Lighting', 'unmarked', true],
+    ])
+    expect(weeks[2]?.items.every((i) => !i.canMark)).toBe(true)
+  })
+
+  it('asks Pecan Valley for last week late, and for this week since it is Friday', () => {
+    const texts = portalTodos(state, 'pecanvalley').map((t) => t.text)
+    expect(texts).toContain("Mark last week's work on Fair Oaks Shops, Building D: 2 still to mark.")
+    expect(texts).toContain("Mark this week's work on Fair Oaks Shops, Building D: 1 to mark.")
+  })
+
+  it('does not ask for this week before Friday', () => {
+    const thursday = { ...state, today: '2026-10-01' }
+    expect(portalTodos(thursday, 'pecanvalley').some((t) => t.key === 'fairoaksd:lookahead')).toBe(false)
+  })
+
+  it('keeps the mark waiting on our superintendent, and lets the company change it until then', () => {
+    const notDone = gcReducer(state, { ...mark, done: false, reason: 'materials' })
+    const m1 = fairOaks(notDone).schedule?.lookAhead.find((x) => x.weekOf === '2026-09-28' && x.lineId === 'felec-3')
+    expect(m1).toMatchObject({ done: false, reason: 'materials', verifiedOn: null, markedOn: state.today })
+    expect(notDone.log[0]?.text).toBe('Pecan Valley Electric marked Lighting on Electrical not done for the week of Mon Sep 28: materials.')
+    const changed = gcReducer(notDone, { ...mark, done: true })
+    const marks = fairOaks(changed).schedule?.lookAhead.filter((x) => x.weekOf === '2026-09-28' && x.lineId === 'felec-3') ?? []
+    expect(marks).toHaveLength(1)
+    expect(marks[0]).toMatchObject({ done: true })
+    expect(marks[0] && 'reason' in marks[0]).toBe(false)
+  })
+
+  it('leaves a verified mark as our superintendent left it', () => {
+    // Our own crew's top out this week is already verified; Summit's is waiting.
+    const verified = fairOaks(state).schedule?.lookAhead.find((x) => x.verifiedOn)
+    if (!verified) throw new Error('no verified mark')
+    expect(gcReducer(state, { type: 'tradeMarkLookAhead', projectId: 'fairoaksd', packageId: 'fsteel', lineId: verified.lineId, weekOf: verified.weekOf, done: false, reason: 'crew' })).toBe(state)
+  })
+
+  it('shows nothing on a job that is not being built yet', () => {
+    expect(portalLookAhead(state, 'hillcountry', state.projects.find((p) => p.id === 'helotes') ?? fairOaks(state))).toEqual([])
   })
 })

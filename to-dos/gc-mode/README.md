@@ -82,13 +82,13 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
 | **Contracts** | Per trade: paperwork chips, award, the statement of work drafted from the bid, send, sign. |
 | **Get started** | The checklist before work starts: owner contract, permit, start date, and five steps per trade. Start stays shut until nothing is missing. |
 | **Draws** | Percent reported per line, a draw asked from the portal with its pay application (the 702 and 703) and a conditional waiver, approve, pay, unconditional waiver. **Pay application** on each draw opens the signed form read-only. **Send back** returns a waiting draw with a note and the percent we see on each line we doubt; the trade gets **Fix and resend** in its portal, our numbers filled in, and the fixed one comes back marked "revised". A trade our own crew does shows as **Our own crew** with its percent and its Pipeline job: no draws there. |
-| **Bill the owner** | Our pay application to the owner, once a month: one line per trade with the work its company reported, then general conditions, contingency and fee, which follow the trades. Done so far, less what the owner holds, less what we asked for before, is this bill. **Send to** the owner keeps it as it went, and next month's starts from it. **So far with** the owner lists what went, with **Mark paid**. A trade our own crew does (plumbing) has a percent-done picker on its line. **Waivers with this bill** says whose waiver is missing. **See what the owner sees** puts their portal beside it: their contract, each bill with every line and **Pay**, and their papers (our lien waivers and the trades'). A trade's pay application we sent back bills what we see on the lines we doubt. Once every line is billed, **Closeout with** the owner replaces the draft: every trade's final, the owner's **Accept the work**, then **Send the final pay application** for what they hold. |
+| **Bill the owner** | Our pay application to the owner, once a month: one line per trade with the work its company reported, each carrying its share of our general conditions, contingency and fee ("Their price $64,200 plus $23,852 of our costs and fee"). No fee line. Done so far, less what the owner holds, less what we asked for before, is this bill. **Send to** the owner keeps it as it went, and next month's starts from it. **So far with** the owner lists what went, with **Mark paid**. A trade our own crew does (plumbing) has a percent-done picker on its line. **Waivers with this bill** says whose waiver is missing. **See what the owner sees** puts their portal beside it: their contract, each bill with every line and **Pay**, and their papers (our lien waivers and the trades'). A trade's pay application we sent back bills what we see on the lines we doubt. Once every line is billed, **Closeout with** the owner replaces the draft: every trade's final, the owner's **Accept the work**, then **Send the final pay application** for what they hold. |
 | **Follow up** (board tab) | Everyone we are waiting on across every project, the ones to call first. Log a contact; record the day they promised a quote; a passed day returns them to the top. |
 | **Trade partners** (board tab) | By trade: the bench, who answers when asked, every project short of quotes, coverage (where they drive from, how far they go), one press to ask the companies not yet asked. **Actions for assistants** on top: each standard as the ideal, where we are, and what closes the gap. |
-| The trade's portal | English or Spanish (**Español** on the portal's letterhead: every word the portal writes, and the messages). One link per company, carried by every message we send (**Their messages** beside **Their portal**: the invitation as an email and a text, reminders, new plan sets, bid tabs, the master agreement, a statement of work to sign, the day work starts by email and text, and a draw approved for less with our reason). The first visit opens on a welcome until **Got it**. The link opens on the company's **home**: what needs them across every project (late or blocking first; a pay application we sent back, a draw we approved for less, their closeout steps), their money once a dollar moves, their jobs, what they are asked to bid, their paperwork, and what came before. A row opens that project's page, with **← Everything with Click** back. On a project page: paperwork done by the company itself (read and sign the master agreement, send an insurance certificate, fill in and sign a W-9), the plans window (sets, sheets, whether a set changes their trade), the invitation and the bid form (each line with its sheet numbers, a tap opens that sheet; after a new set the lines it touches are marked; how many days the number is good for; alternates that add or take off; their own quote attached), "tell Click when your number will come" (a passed day shows in red), answer a line the office could not read (its own short step, the number stays), confirm a number after an addendum, the bid tab, sign the statement of work, report work, ask for a draw with its pay application (next row). |
+| The trade's portal | English or Spanish (**Español** on the portal's letterhead: every word the portal writes, and the messages). One link per company, carried by every message we send (**Their messages** beside **Their portal**: the invitation as an email and a text, reminders, new plan sets, bid tabs, the master agreement, a statement of work to sign, the day work starts by email and text, and a draw approved for less with our reason). The first visit opens on a welcome until **Got it**. The link opens on the company's **home**: what needs them across every project (late or blocking first; a pay application we sent back, a draw we approved for less, their closeout steps), their money once a dollar moves, their jobs, what they are asked to bid, their paperwork, and what came before. A row opens that project's page, with **← Everything with Click** back. On a project page: **Your next three weeks**, the weekly look-ahead (this week and the next two from our schedule, last week while anything in it is unmarked; **Done** or **Not done** with a reason, waiting on our superintendent, changeable until verified), then paperwork done by the company itself (read and sign the master agreement, send an insurance certificate, fill in and sign a W-9), the plans window (sets, sheets, whether a set changes their trade), the invitation and the bid form (each line with its sheet numbers, a tap opens that sheet; after a new set the lines it touches are marked; how many days the number is good for; alternates that add or take off; their own quote attached), "tell Click when your number will come" (a passed day shows in red), answer a line the office could not read (its own short step, the number stays), confirm a number after an addendum, the bid tab, sign the statement of work, report work, ask for a draw with its pay application (next row). |
 | Pay application (from the portal) | **Fill out pay application N**: four steps on a rail like the Release of Lien window (Check your work, Fill in a few details, Sign it, Send it to Click) beside the 702 and 703, which fill in as the trade types and mark what each step fills. The app knows the job, the contract, the lines, what was billed and the retainage; the trade checks the percents, picks the period, types its address once, and signs. Closing the window keeps the draft. |
 | **Closeout** | Each trade's last six steps: every line billed, **Accept the work** (the punch list is done), their final pay application for the retainage with a conditional final release of lien, the owner paying our final and 10 days passing, **Approve the release** and **Mark paid**, their unconditional final release of lien. Totals for held, paid back and trades closed out; the owner's retainage on us, read from Bill the owner; **Close the job** once every trade is closed out, with what is left until then. In the portal the same steps show as the trade's closeout list, ending "You are closed out on this job." |
-| **Schedule** | Each activity is a line of a trade's statement of work, or a stage our own crew runs. Four measures on top: work done against the plan with days behind (by dollars), the critical path (no spare days), milestones hit within 3 days, and the look-ahead done as planned (verified marks, last 4 weeks). The chart: each trade's lines, the plan with percent done, the plan at Start under it where it moved, today, milestones. The look-ahead: this week and the next two, this week's marks with their state. In Buying out it is drawn here: **Draw a first draft** (every line of every trade, by phase), then pick any activity to set its dates and what it waits on, and add, move or take off milestones; the first change after Start keeps the plan at Start as the baseline. Fair Oaks D has one drawn; draw Helotes. |
+| **Schedule** | Each activity is a line of a trade's statement of work, or a stage our own crew runs. Four measures on top: work done against the plan with days behind (by dollars), the critical path (no spare days), milestones hit within 3 days, and the look-ahead done as planned (verified marks, last 4 weeks). The chart: each trade's lines, the plan with percent done, the plan at Start under it where it moved, today, milestones. The look-ahead: this week and the next two, this week's marks with their state. In Buying out it is drawn here: **Draw a first draft** (every line of every trade, by phase), then pick any activity to set its dates and what it waits on, and add, move or take off milestones; the first change after Start keeps the plan at Start as the baseline. **To verify**: each trade mark waiting, with what they reported against the plan; **Right**, or corrected with a reason; our own crew marked here, verified at once. Fair Oaks D has one drawn; draw Helotes. |
 
 ## Decided by the owner (2026-10-02)
 
@@ -214,6 +214,9 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   unconditional one. Our final waits until every trade has sent its own final pay application.
   A trade's retainage is paid only after the owner has paid us ours (`ownerReleasedRetainage`):
   that rule is the Building lane's to apply on Closeout.
+- **Our costs and fee are spread into the trades** on the owner's bill (Owner Billing lane,
+  2026-10-02, was open question 13): each trade's line carries its share of general conditions,
+  contingency and fee, so the lines add up to the price and the owner never sees a fee line.
 - **A pay application we sent back bills what we see** (Owner Billing lane, 2026-10-02): until
   the trade resends it, the owner's bill uses our percent on the lines we doubt, not theirs.
 - **A trade sees "Click Construction"** (2026-10-02). The name comes from one record
@@ -253,7 +256,7 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
   lowered to what was billed before, never below. The 702's "To" line reads Click Construction,
   the name the portal already uses (`GC_COMPANY_NAME`).
 - The schedule counts calendar days, not work days. The look-ahead's reliability is read over the
-  last 4 weeks (`RELIABILITY_WEEKS`). A line we sent back counts at what we see on it. The first
+  last 4 weeks (`RELIABILITY_WEEKS`), this week counted once its marks are verified. A line we sent back counts at what we see on it. The first
   draft runs each activity 10 days (`DRAFT_ACTIVITY_DAYS`), trades by phase: site, structure, roof,
   the rough-ins, the walls, the finishes.
 - Closeout: a release's approval is locked by the same paperwork rules as a draw. "Held" counts
@@ -266,8 +269,8 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
   percents become the trade's report, even lower than it was.
 - Owner billing (`gcOwnerBilling.ts`): the pay application goes on the 25th. A trade's line on
   the owner's bill is the work its company reported, before we approve their draw. General
-  conditions, contingency and fee follow the share of the trades' work done, so the bill totals
-  the same whether they show as lines or spread into the trades. The owner holds the percent on
+  conditions, contingency and fee follow the share of the trades' work done, and each trade's
+  line carries its share of them in proportion to its own amounts (`spreadMarkup`). The owner holds the percent on
   their customer record, 10% when it says nothing. Our own crew reports one percent for the whole
   trade, in 10% steps, the way the Pipeline keeps one percent on a job.
 - A new insurance certificate counts the moment the company sends it; nobody in the office checks
@@ -291,6 +294,9 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
   stays as typed. The choice lasts while the portal is open; the Building lane's pay application
   and the Board lane's bid tab table inside the portal stay English until those lanes pass the
   language through (`usePortalLang` in `gcPortalLang.ts`).
+- The look-ahead asks for this week's marks from Friday on (the week's end), and for last week's
+  any day while one is unmarked; it shows only on a job being built. A mark replaces the
+  company's earlier one for that week until our superintendent verifies it, then it stays.
 
 ## Open questions (the owner's to answer)
 
@@ -314,9 +320,9 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
 12. The pay application leaves out the notary block, materials stored on site (column F reads $0)
     and change orders (line 2 reads $0). Which of these do our trades need? Should it also
     download as the AIA Excel template the Jobs Stages tab fills, or as a PDF?
-13. On the owner's bill, do our general conditions, contingency and fee show as lines of their
-    own, or spread into each trade's line so the owner never sees the fee? (Built as lines of
-    their own for now. The total is the same either way.)
+13. ~~On the owner's bill, do our general conditions, contingency and fee show as lines of their
+    own, or spread into each trade's line so the owner never sees the fee?~~ Answered: spread
+    into the trades (see *Decided by the owner*).
 14. ~~Should a trade also give alternates, attach its own quote, and say how many days the number
     is good for?~~ Built on the owner's word (2026-10-02). Still open: Compare bids and Trades do
     not read them yet (the Board lane's change). Should an alternate the office takes change the
@@ -344,7 +350,7 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
 
 ## The schedule (proposed, 2026-10-02)
 
-Built so far (Building lane, 2026-10-03): the **Schedule** tab, its four measures and the look-ahead on Fair Oaks D, and drawing it in Buying out with Start keeping the baseline (`gcBuildingSchedule.ts`, `GcBuildingSchedule.tsx`). The superintendent's verify list is next. The first draft's build order is a stand-in (`DRAFT_BUILD_ORDER`) until the New Project lane's draft. The owner's answers are under *Decided by the owner*; this is the shape
+Built so far (Building lane, 2026-10-03): the **Schedule** tab, its four measures and the look-ahead on Fair Oaks D, drawing it in Buying out with Start keeping the baseline, and the superintendent's verify list (`gcBuildingSchedule.ts`, `GcBuildingSchedule.tsx`). The trade's weekly done or not in its portal is the Portal lane's (`LookAheadMark`; the verify list reads every mark not verified). The first draft's build order is a stand-in (`DRAFT_BUILD_ORDER`) until the New Project lane's draft. The owner's answers are under *Decided by the owner*; this is the shape
 they point to, for the lanes to pick up.
 
 - **The activities are the statement of work lines**: the same schedule-of-values lines a trade
@@ -379,13 +385,14 @@ they point to, for the lanes to pick up.
   Building.
 - **Who builds what**: the Building lane, the schedule view and the four measures; the Board
   lane, the Get started step, the board row's chip and the lines on Trade partners; the Portal
-  lane, the trade's weekly done or not; the Building lane also, the superintendent's verify; the
-  New Project lane, the first draft of the links from the stages of the job, and a set issued
-  after Start saying which activities it moves.
+  lane, the trade's weekly done or not (built 2026-10-03: `tradeMarkLookAhead`,
+  `portalLookAhead` in `gcPortal.ts`, `GcPortalLookAhead.tsx`); the Building lane also, the
+  superintendent's verify; the New Project lane, the first draft of the links from the stages of
+  the job, and a set issued after Start saying which activities it moves.
 
 ## Workflow steps not built yet
 
-- The schedule, the rest: the superintendent's verify list, and the other lanes' parts (*The schedule, proposed*).
+- The schedule, the rest: the other lanes' parts (*The schedule, proposed*): the Get started step, the board row's "days behind" chip, the lines on Trade partners, the trade's weekly marks in its portal, and the New Project lane's draft.
 
 - New Project past its first form: a scope line tied to its spec section, exclusions, and a
   budget from real costs, not a made-up rate per square foot. A line's sheets show only in New Project, a new set
@@ -445,6 +452,7 @@ imitates it.
 | `GcTradePortal.tsx` | The trade partner's side: the frame, each trade's plans, bid, bid tab, statement of work and draws |
 | `gcPortalLang.ts` | The portal's language, held by the frame and read by every portal screen (`usePortalLang`) |
 | `GcPortalBidExtras.tsx` | The bid form past the number: good for how many days, alternates, the company's own quote, answering the lines the office could not read |
+| `GcPortalLookAhead.tsx` | The weekly look-ahead in the trade's portal: three weeks, the company's done or not done with a reason |
 | `GcPortalLineSheets.tsx` | The sheet numbers beside each line of the bid form, and the lines a new set touches |
 | `GcPortalHome.tsx` · `GcPortalMessages.tsx` | The company's home in its portal, where the link lands, with the first-visit welcome · what we sent the company, each message carrying the link |
 | `GcPortalPaperwork.tsx` · `GcPortalAgreement.tsx` · `GcPortalPlans.tsx` · `GcPortalUi.tsx` | The portal's paperwork block (insurance and W-9 forms) · the master agreement to read and sign · the plans window as a trade sees it · the portal's block, note and window |
