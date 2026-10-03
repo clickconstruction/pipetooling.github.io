@@ -301,6 +301,8 @@ export interface GcProject {
   feePct: number
   /** The day we closed the job: every trade closed out and our own crew done. */
   closedOn?: string | null
+  /** The schedule we draw while buying out; Start locks it as the baseline (owner, 2026-10-02). */
+  schedule?: ProjectSchedule
 }
 
 export interface LogEntry {
@@ -524,4 +526,60 @@ export interface DrawSentBack {
   note: string
   /** Lines where we see less done than they asked for. */
   lines: { sovId: string; weSee: number }[]
+}
+
+/**
+ * One activity on the schedule (owner, 2026-10-02: several per trade): a line of a trade's
+ * statement of work, or a stage our own crew runs. The same line the trade reports and draws on.
+ */
+export interface ScheduleActivity {
+  /** The schedule-of-values line id (a trade we hire) or the scope line id (our own crew). */
+  lineId: string
+  packageId: string
+  /** Planned start and finish, YYYY-MM-DD, both days counted. */
+  start: string
+  finish: string
+  /** The activities (line ids) it waits on: it starts after each one finishes. */
+  after: string[]
+}
+
+/** A date the schedule must meet: dry-in, the rough-in inspection, substantial completion. */
+export interface ScheduleMilestone {
+  id: string
+  label: string
+  planned: string
+  /** The trade it belongs to. Null: the job's own. */
+  packageId: string | null
+  /** The day it was met. Null: not yet. */
+  metOn: string | null
+}
+
+export type LookAheadReason = 'weather' | 'trade before' | 'materials' | 'crew' | 'other'
+
+/**
+ * A week's look-ahead mark (owner, 2026-10-02): the trade marks an activity done or not in its
+ * portal; our superintendent verifies the mark or corrects it. Only a verified mark counts.
+ */
+export interface LookAheadMark {
+  /** The Monday of the week. */
+  weekOf: string
+  lineId: string
+  packageId: string
+  /** The trade's mark. */
+  done: boolean
+  /** Why not, when not done. */
+  reason?: LookAheadReason
+  markedOn: string
+  /** The day our superintendent verified it. Null: waiting on them. */
+  verifiedOn: string | null
+  /** The superintendent's mark, when it differs from the trade's. */
+  verifiedDone?: boolean
+}
+
+export interface ProjectSchedule {
+  activities: ScheduleActivity[]
+  milestones: ScheduleMilestone[]
+  /** Locked at Start: each activity's planned start and finish then, by line id. Null: not locked yet. */
+  baseline: { lockedOn: string; activities: Record<string, { start: string; finish: string }> } | null
+  lookAhead: LookAheadMark[]
 }

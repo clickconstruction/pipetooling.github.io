@@ -2,7 +2,7 @@
  * GC mode — design spike. The made-up data the prototype starts from (Start over puts it back).
  * Split out of gcModel.ts verbatim; import from `./gcModel`, which re-exports every file.
  */
-import type { AskContact, GcCustomer, GcProject, GcState, Includes, Invite, InviteStatus, Partner, ScopeItem, SubBid, TradePackage } from './gcTypes'
+import type { AskContact, GcCustomer, GcProject, GcState, Includes, Invite, InviteStatus, LookAheadReason, Partner, ProjectSchedule, ScopeItem, SubBid, TradePackage } from './gcTypes'
 
 // ---------------------------------------------------------------------------------------------
 // Fixture
@@ -57,6 +57,12 @@ function pkg(
     sow: null,
     ...rest,
   }
+}
+
+/** A day plus `days`, as YYYY-MM-DD (the schedule's look-ahead marks). */
+function addDaysIso(iso: string, days: number): string {
+  const [y, m, d] = iso.split('-').map(Number)
+  return new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, (d ?? 1) + days)).toISOString().slice(0, 10)
 }
 
 export function initialGcState(): GcState {
@@ -799,6 +805,87 @@ export function initialGcState(): GcState {
     signedOn,
   })
 
+  // Building lane (2026-10-02): Fair Oaks D's schedule, drawn in June and locked at Start on Jul 1.
+  // Roofing slipped a week since; dry-in is late; two weeks of verified look-ahead marks, and this
+  // week's marks in from the trades and waiting on our superintendent.
+  const act = (lineId: string, packageId: string, start: string, finish: string, after: string[] = []) => ({ lineId, packageId, start, finish, after })
+  const mark = (weekOf: string, lineId: string, packageId: string, done: boolean, verified: boolean, reason?: LookAheadReason) => ({
+    weekOf,
+    lineId,
+    packageId,
+    done,
+    ...(reason ? { reason } : {}),
+    markedOn: addDaysIso(weekOf, 4),
+    verifiedOn: verified ? addDaysIso(weekOf, 7) : null,
+  })
+  const fairOaksActivities = [
+    act('fsite-1', 'fsite', '2026-07-06', '2026-07-17'),
+    act('fsite-2', 'fsite', '2026-07-13', '2026-07-31'),
+    act('fsite-3', 'fsite', '2026-08-10', '2026-08-21', ['fsite-2']),
+    act('fsite-4', 'fsite', '2026-08-24', '2026-08-28', ['fsite-3']),
+    act('fconc-1', 'fconc', '2026-07-20', '2026-08-07', ['fsite-1']),
+    act('fplumb-1', 'fplumb', '2026-07-27', '2026-08-07', ['fsite-1']),
+    act('fconc-2', 'fconc', '2026-08-10', '2026-08-28', ['fconc-1', 'fplumb-1']),
+    act('fconc-3', 'fconc', '2026-08-31', '2026-09-11', ['fsite-3']),
+    act('fsteel-1', 'fsteel', '2026-08-17', '2026-09-04', ['fconc-1']),
+    act('fsteel-2', 'fsteel', '2026-09-07', '2026-09-18', ['fsteel-1']),
+    act('fsteel-3', 'fsteel', '2026-09-07', '2026-10-02', ['fsteel-1']),
+    act('froof-2', 'froof', '2026-09-21', '2026-09-30', ['fsteel-2']),
+    act('froof-1', 'froof', '2026-09-21', '2026-10-09', ['fsteel-2']),
+    act('froof-3', 'froof', '2026-10-12', '2026-10-21', ['froof-1']),
+    act('froof-4', 'froof', '2026-10-05', '2026-10-09', ['fsteel-2']),
+    act('felec-1', 'felec', '2026-08-24', '2026-09-11', ['fconc-1']),
+    act('felec-2', 'felec', '2026-09-14', '2026-10-02', ['felec-1']),
+    act('felec-3', 'felec', '2026-09-14', '2026-10-23', ['felec-1']),
+    act('felec-5', 'felec', '2026-10-19', '2026-10-30', ['fconc-3']),
+    act('felec-4', 'felec', '2026-11-02', '2026-11-20', ['felec-3']),
+    act('fplumb-2', 'fplumb', '2026-09-14', '2026-09-25', ['fconc-2']),
+    act('fplumb-3', 'fplumb', '2026-09-28', '2026-10-09', ['fplumb-2']),
+    act('fhvac-2', 'fhvac', '2026-09-14', '2026-10-09', ['fsteel-1']),
+    act('fhvac-1', 'fhvac', '2026-10-12', '2026-10-23', ['froof-1']),
+    act('fhvac-3', 'fhvac', '2026-11-02', '2026-11-13', ['fhvac-1']),
+    act('fplumb-4', 'fplumb', '2026-11-30', '2026-12-04', ['fplumb-3']),
+    act('fhvac-4', 'fhvac', '2026-11-30', '2026-12-04', ['fhvac-3']),
+  ]
+  // The plan at Start: the membrane was to be down by Oct 2, the curbs and flashing a week sooner.
+  const fairOaksBaseline = Object.fromEntries(
+    fairOaksActivities.map((a) => [
+      a.lineId,
+      a.lineId === 'froof-1'
+        ? { start: '2026-09-14', finish: '2026-10-02' }
+        : a.lineId === 'froof-3'
+          ? { start: '2026-10-05', finish: '2026-10-14' }
+          : { start: a.start, finish: a.finish },
+    ]),
+  )
+  const fairOaksSchedule: ProjectSchedule = {
+    activities: fairOaksActivities,
+    milestones: [
+      { id: 'fo-slab', label: 'Slab poured', planned: '2026-08-28', packageId: 'fconc', metOn: '2026-08-27' },
+      { id: 'fo-dryin', label: 'Dry-in', planned: '2026-09-25', packageId: 'froof', metOn: null },
+      { id: 'fo-roughin', label: 'Rough-in inspection', planned: '2026-10-06', packageId: null, metOn: null },
+      { id: 'fo-substantial', label: 'Substantial completion', planned: '2026-12-11', packageId: null, metOn: null },
+    ],
+    baseline: { lockedOn: '2026-07-01', activities: fairOaksBaseline },
+    lookAhead: [
+      mark('2026-09-14', 'fsteel-2', 'fsteel', true, true),
+      mark('2026-09-14', 'fsteel-3', 'fsteel', true, true),
+      mark('2026-09-14', 'felec-2', 'felec', false, true, 'materials'),
+      mark('2026-09-14', 'fplumb-2', 'fplumb', true, true),
+      mark('2026-09-14', 'fhvac-2', 'fhvac', true, true),
+      mark('2026-09-21', 'froof-1', 'froof', false, true, 'weather'),
+      mark('2026-09-21', 'froof-2', 'froof', true, true),
+      mark('2026-09-21', 'fsteel-3', 'fsteel', false, true, 'crew'),
+      mark('2026-09-21', 'fplumb-2', 'fplumb', true, true),
+      mark('2026-09-21', 'fhvac-2', 'fhvac', true, true),
+      mark('2026-09-28', 'froof-1', 'froof', true, false),
+      mark('2026-09-28', 'fsteel-3', 'fsteel', false, false, 'crew'),
+      mark('2026-09-28', 'felec-2', 'felec', false, false, 'materials'),
+      { ...mark('2026-09-28', 'fplumb-3', 'fplumb', true, true), verifiedOn: '2026-10-02' },
+      mark('2026-09-28', 'fhvac-2', 'fhvac', true, false),
+    ],
+  }
+
   const fairOaksD: GcProject = {
     id: 'fairoaksd',
     name: 'Fair Oaks Shops, Building D',
@@ -1084,6 +1171,7 @@ export function initialGcState(): GcState {
     generalConditions: 96_000,
     contingencyPct: 3,
     feePct: 10,
+    schedule: fairOaksSchedule,
   }
 
   return {
