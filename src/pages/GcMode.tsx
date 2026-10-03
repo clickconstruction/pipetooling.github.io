@@ -62,6 +62,38 @@ const STAGES: { key: GcStage; label: string; tone: Tone; blurb: string }[] = [
   { key: 'building', label: 'Building', tone: 'green', blurb: 'Trades report their work and ask for draws.' },
 ]
 
+/**
+ * The board's sections: the three stages, then Closed (the owner, 2026-10-02). A closed job keeps
+ * its stage ('building') and leaves Building for its own section once `closedOn` is set, from the
+ * Building lane's Close the job on Closeout.
+ */
+const BOARD_SECTIONS: {
+  key: GcStage | 'closed'
+  label: string
+  blurb: string
+  empty: string
+  holds: (p: GcProject) => boolean
+  order: (a: GcProject, b: GcProject) => number
+}[] = [
+  ...STAGES.map((s) => ({
+    key: s.key,
+    label: s.label,
+    blurb: s.blurb,
+    empty: 'None right now.',
+    holds: (p: GcProject) => p.stage === s.key && !p.closedOn,
+    order: (a: GcProject, b: GcProject) => (a.bidDue ?? '9999').localeCompare(b.bidDue ?? '9999'),
+  })),
+  {
+    key: 'closed',
+    label: 'Closed',
+    blurb: 'Every trade closed out and the owner paid our last bill. Kept here for the record.',
+    empty: 'None yet.',
+    holds: (p: GcProject) => Boolean(p.closedOn),
+    // Newest closed first.
+    order: (a: GcProject, b: GcProject) => (b.closedOn ?? '').localeCompare(a.closedOn ?? ''),
+  },
+]
+
 const PROJECT_TABS: { key: ProjectTab; label: string }[] = [
   { key: 'packages', label: 'Trades' },
   { key: 'plans', label: 'Plans' },
@@ -219,10 +251,8 @@ export default function GcMode() {
 
       {boardTab === 'projects' && !project && (
         <div style={{ display: 'grid', gap: '1.1rem' }} data-tour="gc-board">
-          {STAGES.map((stage) => {
-            const rows = state.projects
-              .filter((p) => p.stage === stage.key)
-              .sort((a, b) => (a.bidDue ?? '9999').localeCompare(b.bidDue ?? '9999'))
+          {BOARD_SECTIONS.map((stage) => {
+            const rows = state.projects.filter(stage.holds).sort(stage.order)
             return (
               <section key={stage.key} data-tour={`gc-stage-${stage.key}`}>
                 <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', marginBottom: '0.4rem' }}>
@@ -231,7 +261,7 @@ export default function GcMode() {
                   {stage.key === 'pursuing' && <span style={{ marginLeft: 'auto' }} data-tour="gc-new-project"><GcNewProjectButton state={state} dispatch={dispatch} onCreated={(id) => { setProjectId(id); setTab('packages') }} /></span>}
                 </div>
                 {rows.length === 0 ? (
-                  <Card style={{ color: 'var(--text-muted)' }}>None right now.</Card>
+                  <Card style={{ color: 'var(--text-muted)' }}>{stage.empty}</Card>
                 ) : (
                   <div style={{ display: 'grid', gap: '0.5rem' }}>
                     {rows.map((p, i) => (
@@ -429,6 +459,14 @@ function DueBlock({ project, today }: { project: GcProject; today: string }) {
     lineHeight: 1.15,
     fontVariantNumeric: 'tabular-nums',
   } as const
+  if (project.closedOn) {
+    return (
+      <span style={{ ...box, color: 'var(--text-muted)', fontSize: '0.75rem', textAlign: 'center' }} title={`Closed ${weekdayDate(project.closedOn)}.`}>
+        <span>closed</span>
+        <span style={{ fontWeight: 600 }}>{shortDate(project.closedOn)}</span>
+      </span>
+    )
+  }
   // A won job's row shows what is next, not when our bid went in (the owner, 2026-10-03).
   if (project.stage === 'buyout') return <StartBlock project={project} today={today} box={box} />
   // Building lane: once a schedule is drawn, its measures (days behind or ahead, milestones, look-ahead).
@@ -569,7 +607,7 @@ function ProjectRow({
         alignItems: 'center',
       }}
     >
-      <GcProgressRing progress={progress} color={RING_COLORS[project.stage]} stageLabel={STAGES.find((st) => st.key === project.stage)?.label ?? ''} />
+      <GcProgressRing progress={progress} color={RING_COLORS[project.stage]} stageLabel={project.closedOn ? 'Closed' : (STAGES.find((st) => st.key === project.stage)?.label ?? '')} />
       <DueBlock project={project} today={today} />
       <span>
         <button
@@ -676,7 +714,12 @@ function ProjectHeader({
         <div>
           <Btn kind="quiet" onClick={onBack}>← Project Board</Btn>
           <h2 style={{ margin: '0.1rem 0 0.15rem', fontSize: '1.3rem' }}>
-            {project.name} {stage && <Chip tone={stage.tone}>{stage.label}</Chip>}
+            {project.name}{' '}
+            {project.closedOn ? (
+              <Chip tone="grey" title={`Closed ${weekdayDate(project.closedOn)}.`}>Closed</Chip>
+            ) : (
+              stage && <Chip tone={stage.tone}>{stage.label}</Chip>
+            )}
           </h2>
           <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
             {project.address} · {project.sizeNote} · Owner:{' '}

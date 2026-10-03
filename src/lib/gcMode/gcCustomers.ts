@@ -5,6 +5,7 @@
 import type { GcCustomer, GcProject, GcState, PlanQuestion } from './gcTypes'
 import { daysUntil } from './gcWords'
 import { proposalTotals } from './gcBids'
+import { ownerAccount } from './gcOwnerBilling'
 
 export interface CustomerSummary {
   live: GcProject[]
@@ -18,6 +19,18 @@ export interface CustomerSummary {
   retainageHeld: number
   asked: number
   won: number
+}
+
+/**
+ * What a project's owner has been billed, has paid and is holding. Our sent pay applications when
+ * any went (`ownerAccount`, the owner's ask 2026-10-03); before the first one, the record's
+ * made-up `ownerBilling`. Null when neither: nothing billed yet.
+ */
+export function ownerMoney(project: GcProject): { billed: number; paid: number; retainageHeld: number } | null {
+  const account = ownerAccount(project)
+  if (account) return { billed: account.billed, paid: account.paid, retainageHeld: account.retainageHeld }
+  const record = project.ownerBilling
+  return record ? { billed: record.billed, paid: record.paid, retainageHeld: record.retainageHeld } : null
 }
 
 /** One customer across every project: what is live, what is owed, how often they pick us. */
@@ -41,10 +54,11 @@ export function customerSummary(state: GcState, customer: GcCustomer): CustomerS
       sum.underContract += price
       sum.won += 1
     }
-    if (project.ownerBilling) {
-      sum.billed += project.ownerBilling.billed
-      sum.paid += project.ownerBilling.paid
-      sum.retainageHeld += project.ownerBilling.retainageHeld
+    const money = ownerMoney(project)
+    if (money) {
+      sum.billed += money.billed
+      sum.paid += money.paid
+      sum.retainageHeld += money.retainageHeld
     }
   }
   sum.owed = sum.billed - sum.retainageHeld - sum.paid
