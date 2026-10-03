@@ -97,6 +97,9 @@ const STEPS: Step[] = [
   { label: 'A call with Cibolo Creek Partners', action: { type: 'logCustomerContact', customerId: 'cibolo', note: 'Asked when the pad building bids are due.' } },
   { label: 'Pad B: ask Lonestar for Sitework', action: { type: 'invite', projectId: 'padb', packageId: 'bsite', partnerId: 'lonestar' } },
   { label: 'Pad B: ask Alamo for Concrete', action: { type: 'invite', projectId: 'padb', packageId: 'bconc', partnerId: 'alamo' } },
+  // The portal: a company does its own paperwork.
+  { label: 'Hillside sends an insurance certificate', action: { type: 'tradeUploadCoi', partnerId: 'hillside', expires: '2027-10-02' } },
+  { label: 'Hillside signs a W-9', action: { type: 'tradeSignW9', partnerId: 'hillside' } },
 ]
 
 const CUSTOMER_IDS = ['cibolo', 'raman']
@@ -218,6 +221,7 @@ describe('GC mode golden walk', () => {
       'carry', 'markWon', 'markBidSent', 'shareBidTab', 'tradeSeeBidTab', 'award', 'sendMsa', 'tradeSignMsa',
       'sendSow', 'tradeSignSow', 'tradeReport', 'tradeRequestDraw', 'approveDraw', 'payDraw',
       'tradeSignUnconditional', 'setMarkup', 'logCustomerContact', 'addPartner', 'setCoverage', 'reset',
+      'tradeUploadCoi', 'tradeSignW9',
     ]
     expect(all.filter((t) => !used.has(t))).toEqual([])
   })

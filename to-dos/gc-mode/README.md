@@ -82,7 +82,7 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
 | **Draws** | Percent reported per line, a draw asked from the portal with a conditional waiver, approve, pay, unconditional waiver. |
 | **Follow up** (board tab) | Everyone we are waiting on across every project, the ones to call first. Log a contact; record the day they promised a quote; a passed day returns them to the top. |
 | **Trade partners** (board tab) | By trade: the bench, who answers when asked, every project short of quotes, coverage (where they drive from, how far they go), one press to ask the companies not yet asked. **Actions for assistants** on top: each standard as the ideal, where we are, and what closes the gap. |
-| The trade's portal | Paperwork, the newest plans, the invitation and the bid form, "tell Click when your number will come", confirm a number after an addendum, the bid tab, sign the master agreement and statement of work, report work, ask for a draw. |
+| The trade's portal | Paperwork done by the company itself (read and sign the master agreement, send an insurance certificate, fill in and sign a W-9), the plans window (sets, sheets, whether a set changes their trade), the invitation and the bid form, "tell Click when your number will come" (a passed day shows in red), answer a line the office could not read, confirm a number after an addendum, the bid tab, sign the statement of work, report work, ask for a draw. |
 
 ## Decided by the owner (2026-10-02)
 
@@ -113,6 +113,9 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   doing GC work ourselves, but the entire app is designed in a way where a later company could
   put their company in this app." Build for one company; name nothing Click-only, so a later
   company could be added the way the rest of the app allows.
+- **A trade sees "Click Construction"** (2026-10-02). The name comes from one record
+  (`GC_COMPANY` in `gcFixture.ts`: the full name and the short "Click" used in sentences), never
+  typed into the portal's words.
 
 ## My defaults the owner has not confirmed
 
@@ -131,6 +134,10 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
   came does not count against them.
 - Start is a hard stop: no "start anyway".
 - Red inside 7 days and amber inside 14 on the days-left block.
+- A new insurance certificate counts the moment the company sends it; nobody in the office checks
+  it first. A new one is good for a year until they change the day.
+- A company answers every line the office marked "not clear" (in or left out) before its number
+  can go again. A new set that does not change their trade asks them to open it but does not warn.
 
 ## Open questions (the owner's to answer)
 
@@ -147,6 +154,11 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
 8. Should promises other than a quote date be tracked (insurance by Friday, a start date)?
 9. Should the Project Board also group by customer, and should Actions for assistants also sit
    on the Project Board?
+10. The bid form is one number with in-or-out lines. Should a trade also give alternates, attach
+    its own quote, and say how many days the number is good for? Each one also needs Compare
+    bids to read it.
+11. Answering a "not clear" line logs as "revised their bid to $205,500" though the price did
+    not change. Should it be a move of its own ("answered: rebar is in their number")?
 
 ## Workflow steps not built yet
 
@@ -191,10 +203,12 @@ imitates it.
 | `gcPlans.ts` · `gcStart.ts` · `gcProgress.ts` | Plans, sheets and who hears about a new set · the Get started checklist · the ring and its hover card. |
 | `gcBids.ts` · `gcCustomers.ts` · `gcMap.ts` | Compare all in, what we carry, our price, bid tabs, statement-of-work money · the company window's summaries · towns, the drive and the map's list. |
 | `gcFollowUp.ts` · `gcBench.ts` | Promised days, word records, who to call first · the bench by trade and Actions for assistants. |
+| `gcPortal.ts` | What the portal tells one company: plan news for its trade, its promised day, its insurance, the lines the office could not read. |
 | `gcReducer.ts` · `gcReducerHelpers.ts` · `gcFixture.ts` | Every action applied to the state · its small helpers (not in the barrel) · the made-up data (`initialGcState`). |
 | `gcModel.test.ts` | The golden test (see *Working in parallel*). |
 | `GcOfficeTabs.tsx` | Trades (with Compare bids), Plans, Our number, Contracts, Draws, the flat company list |
-| `GcTradePortal.tsx` | The trade partner's side |
+| `GcTradePortal.tsx` | The trade partner's side: the frame, each trade's plans, bid, bid tab, statement of work and draws |
+| `GcPortalPaperwork.tsx` · `GcPortalAgreement.tsx` · `GcPortalPlans.tsx` · `GcPortalUi.tsx` | The portal's paperwork block (insurance and W-9 forms) · the master agreement to read and sign · the plans window as a trade sees it · the portal's block, note and window |
 | `GcTradeBench.tsx` | Trade partners by trade, Actions for assistants |
 | `GcTradeMap.tsx` | The map window |
 | `GcAskThread.tsx` | The contact log, promises, the Follow up tab |

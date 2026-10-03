@@ -4553,6 +4553,27 @@ exports[`GC mode golden walk > step 56: Pad B: ask Alamo for Concrete 1`] = `
 }
 `;
 
+exports[`GC mode golden walk > step 57: Hillside sends an insurance certificate 1`] = `
+{
+  "changed": {
+    "lastLog.id": 53,
+    "lastLog.text": "Hillside Excavation sent a new insurance certificate, good to Oct 2.",
+    "lastLog.who": "trade",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 58: Hillside signs a W-9 1`] = `
+{
+  "changed": {
+    "lastLog.id": 54,
+    "lastLog.text": "Hillside Excavation filled in and signed a W-9.",
+  },
+  "removed": [],
+}
+`;
+
 exports[`GC mode golden walk > the whole state at the end 1`] = `
 {
   "customers": [
@@ -4689,6 +4710,16 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
     },
   ],
   "log": [
+    {
+      "id": 54,
+      "text": "Hillside Excavation filled in and signed a W-9.",
+      "who": "trade",
+    },
+    {
+      "id": 53,
+      "text": "Hillside Excavation sent a new insurance certificate, good to Oct 2.",
+      "who": "trade",
+    },
     {
       "id": 52,
       "text": "Invited Alamo Concrete to bid Concrete.",
@@ -4829,16 +4860,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "text": "Hillside Excavation signed the master agreement.",
       "who": "trade",
     },
-    {
-      "id": 24,
-      "text": "Sent the master agreement to Hillside Excavation.",
-      "who": "office",
-    },
-    {
-      "id": 23,
-      "text": "Awarded Sitework to Lonestar Earthworks. A statement of work is drafted from their bid.",
-      "who": "office",
-    },
   ],
   "partners": [
     {
@@ -4882,7 +4903,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
     {
       "base": "Boerne",
       "bids": 0,
-      "coiExpires": null,
+      "coiExpires": "2027-10-02",
       "company": "Hillside Excavation",
       "contact": "Greg Paulk",
       "id": "hillside",
@@ -4895,7 +4916,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "trades": [
         "Sitework",
       ],
-      "w9": false,
+      "w9": true,
       "won": 0,
     },
     {

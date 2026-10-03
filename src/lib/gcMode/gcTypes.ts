@@ -305,3 +305,7 @@ export type GcAction =
   | { type: 'addPartner'; company: string; contact: string; trade: string; base: string | null; maxMiles: number | null }
   | { type: 'setCoverage'; partnerId: string; base: string | null; maxMiles: number | null }
   | { type: 'reset' }
+  /** The trade sends a new insurance certificate from its portal. `expires`: the day the policy runs out. */
+  | { type: 'tradeUploadCoi'; partnerId: string; expires: string }
+  /** The trade fills in and signs a W-9 in its portal. */
+  | { type: 'tradeSignW9'; partnerId: string }

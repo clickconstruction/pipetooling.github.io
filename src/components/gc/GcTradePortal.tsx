@@ -1,15 +1,17 @@
-import { useState, type Dispatch, type ReactNode } from 'react'
+import { useState, type Dispatch } from 'react'
 import {
-  askPromise,
   bidTabResult,
   bidTabRows,
-  currentRev,
   daysUntil,
+  GC_COMPANY,
   money,
   partnerById,
   planLabel,
+  portalPlanNews,
+  portalPromiseLine,
   shortDate,
   sowMoney,
+  unclearLines,
   type GcAction,
   type GcProject,
   type GcState,
@@ -20,6 +22,9 @@ import {
 } from '../../lib/gcMode/gcModel'
 import { BidTabTable } from './GcBidTabs'
 import { Btn, Chip, input } from './gcUi'
+import { GcPortalPaperwork } from './GcPortalPaperwork'
+import { GcPortalPlans } from './GcPortalPlans'
+import { PortalBlock as Block, PortalNote } from './GcPortalUi'
 
 /**
  * GC mode design spike: what one trade partner sees. No sign-in: the link is the key, like the
@@ -36,7 +41,7 @@ interface Props {
 
 const INK = '#16283c'
 const PAPER = '#f6f3ec'
-const COPPER = '#b0662f'
+const GC = GC_COMPANY.shortName
 
 export function GcTradePortal({ state, project, partnerId, onPickPartner, dispatch }: Props) {
   const onProject = state.partners.filter((p) => project.packages.some((k) => k.invites.some((i) => i.partnerId === p.id)))
@@ -64,7 +69,7 @@ export function GcTradePortal({ state, project, partnerId, onPickPartner, dispat
       </div>
 
       {!partner ? (
-        <div style={{ padding: '1rem' }}>No trade partner is on this project yet. Invite one from Packages.</div>
+        <div style={{ padding: '1rem' }}>No trade partner is on this project yet. Invite one from Trades.</div>
       ) : (
         <div style={{ padding: '0.9rem', display: 'grid', gap: '0.9rem' }}>
           <div>
@@ -72,11 +77,11 @@ export function GcTradePortal({ state, project, partnerId, onPickPartner, dispat
             <div style={{ fontSize: '0.85rem', opacity: 0.8 }}>
               {project.address} · {project.sizeNote}
               <br />
-              General contractor: Click Construction · Hello, {partner.contact}.
+              General contractor: {GC_COMPANY.name} · Hello, {partner.contact}.
             </div>
           </div>
 
-          <Paperwork partner={partner} today={state.today} dispatch={dispatch} />
+          <GcPortalPaperwork partner={partner} today={state.today} dispatch={dispatch} />
 
           {mine.length === 0 && <div>You have no open invitation on this project.</div>}
           {mine.map(({ pkg, invite }) => (
@@ -85,46 +90,6 @@ export function GcTradePortal({ state, project, partnerId, onPickPartner, dispat
         </div>
       )}
     </div>
-  )
-}
-
-function Block({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section style={{ background: 'var(--surface)', border: '1px solid #d9d2c3', borderRadius: 8, padding: '0.75rem 0.85rem' }}>
-      <div style={{ fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: COPPER, fontWeight: 700, marginBottom: '0.4rem' }}>
-        {title}
-      </div>
-      {children}
-    </section>
-  )
-}
-
-function Paperwork({ partner, today, dispatch }: { partner: Partner; today: string; dispatch: Dispatch<GcAction> }) {
-  const coiOk = partner.coiExpires !== null && daysUntil(partner.coiExpires, today) >= 0
-  return (
-    <Block title="Your paperwork with Click">
-      <div style={{ display: 'grid', gap: '0.4rem', fontSize: '0.9rem' }}>
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <span>Master agreement</span>
-          {partner.msa === 'signed' && <Chip tone="green">signed {shortDate(partner.msaSignedOn)}</Chip>}
-          {partner.msa === 'sent' && (
-            <Btn kind="primary" onClick={() => dispatch({ type: 'tradeSignMsa', partnerId: partner.id })}>Read and sign</Btn>
-          )}
-          {partner.msa === 'none' && <Chip tone="grey">not sent to you yet</Chip>}
-        </div>
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <span>Insurance certificate</span>
-          <Chip tone={coiOk ? 'green' : 'red'}>
-            {partner.coiExpires ? (coiOk ? `good to ${shortDate(partner.coiExpires)}` : `expired ${shortDate(partner.coiExpires)}. Upload a new one`) : 'upload one'}
-          </Chip>
-          <span>W-9</span>
-          <Chip tone={partner.w9 ? 'green' : 'red'}>{partner.w9 ? 'on file' : 'fill it in'}</Chip>
-        </div>
-        <div style={{ fontSize: '0.8rem', opacity: 0.75 }}>
-          You sign the master agreement once. Each job after that is a short statement of work.
-        </div>
-      </div>
-    </Block>
   )
 }
 
@@ -143,10 +108,14 @@ function PackageBlock({
   partner: Partner
   dispatch: Dispatch<GcAction>
 }) {
-  const rev = currentRev(project)
-  const latest = project.planSets.find((s) => s.rev === rev)
-  const behind = invite.seenRev === null || invite.seenRev < rev
+  const [plansOpen, setPlansOpen] = useState(false)
+  const news = portalPlanNews(project, pkg, invite)
+  const latest = news.latest
   const ids = { projectId: project.id, packageId: pkg.id }
+  const openPlans = () => {
+    if (news.behind) dispatch({ type: 'tradeOpenPlans', ...ids, inviteId: invite.id })
+    setPlansOpen(true)
+  }
   const awardedToMe = pkg.awardedInviteId === invite.id
   const awardedElsewhere = pkg.awardedInviteId !== null && !awardedToMe
 
@@ -156,18 +125,34 @@ function PackageBlock({
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.9rem' }}>
           <strong>{latest?.label}</strong>
           <span style={{ opacity: 0.75 }}>issued {shortDate(latest?.issuedOn ?? null)}</span>
-          {behind ? (
-            <Btn kind="primary" onClick={() => dispatch({ type: 'tradeOpenPlans', ...ids, inviteId: invite.id })}>Open the plans</Btn>
+          {news.behind ? (
+            <Btn kind={news.neverOpened || news.forTrade.length > 0 ? 'primary' : 'plain'} onClick={openPlans}>Open the plans</Btn>
           ) : (
-            <Chip tone="green">you have the latest set</Chip>
+            <>
+              <Chip tone="green">you have the latest set</Chip>
+              <Btn kind="quiet" onClick={openPlans}>Look at the plans</Btn>
+            </>
           )}
         </div>
-        {behind && invite.seenRev !== null && latest && (
-          <div style={{ marginTop: '0.4rem', padding: '0.45rem 0.6rem', background: 'var(--bg-amber-100)', borderRadius: 6, fontSize: '0.85rem' }}>
-            New since you last looked: {latest.note}
-            {latest.changedSheets.length > 0 && <> Sheets: {latest.changedSheets.join(', ')}.</>}
+        {news.behind && news.forTrade.length > 0 && (
+          <div style={{ marginTop: '0.4rem' }}>
+            <PortalNote tone="amber">
+              <strong>New for {pkg.trade} since you last looked</strong>
+              {news.forTrade.map((set) => (
+                <div key={set.rev}>
+                  {set.label}: {set.note}
+                  {set.changedSheets.length > 0 && <> Sheets {set.changedSheets.join(', ')}.</>}
+                </div>
+              ))}
+            </PortalNote>
           </div>
         )}
+        {news.behind && !news.neverOpened && news.forTrade.length === 0 && latest && (
+          <div style={{ marginTop: '0.35rem', fontSize: '0.85rem', opacity: 0.8 }}>
+            {latest.label} does not change {pkg.trade}. Open it so you price on the newest set.
+          </div>
+        )}
+        {plansOpen && <GcPortalPlans project={project} pkg={pkg} onClose={() => setPlansOpen(false)} />}
       </Block>
 
       {pkg.bidTab && invite.bid && (
@@ -180,7 +165,7 @@ function PackageBlock({
             </div>
           ) : (
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.9rem' }}>
-              <span>Click shared how the quotes came in on {shortDate(pkg.bidTab.sharedOn)}.</span>
+              <span>{GC} shared how the quotes came in on {shortDate(pkg.bidTab.sharedOn)}.</span>
               <Btn kind="primary" onClick={() => dispatch({ type: 'tradeSeeBidTab', ...ids, partnerId: partner.id })}>See the bid tab</Btn>
             </div>
           )}
@@ -214,7 +199,8 @@ function BidBlock({
   dispatch: Dispatch<GcAction>
 }) {
   const [promiseDay, setPromiseDay] = useState('')
-  const promise = askPromise(invite, today)
+  const promise = portalPromiseLine(invite, today, GC)
+  const unclear = unclearLines(pkg, invite)
   const [editing, setEditing] = useState(invite.bid === null)
   const [amount, setAmount] = useState(invite.bid ? String(invite.bid.amount) : '')
   const [note, setNote] = useState(invite.bid?.note ?? '')
@@ -226,6 +212,8 @@ function BidBlock({
   const ids = { projectId: project.id, packageId: pkg.id, inviteId: invite.id }
   const due = project.bidDue
   const days = due ? daysUntil(due, today) : null
+  const unanswered = pkg.scope.filter((item) => includes[item.id] === 'unclear').length
+  const openedNewest = !portalPlanNews(project, pkg, invite).behind
   const stale = invite.bid !== null && project.planSets.some((s) => s.rev > (invite.bid?.basedOnRev ?? 0) && s.touches.includes(pkg.id))
 
   return (
@@ -243,13 +231,30 @@ function BidBlock({
             {shortDate(invite.bid.submittedOn)}.
           </div>
           {stale && (
-            <div style={{ padding: '0.45rem 0.6rem', background: 'var(--bg-amber-100)', borderRadius: 6 }}>
-              The plans changed for your trade after you bid. Open the new set, then confirm or change your number.
-            </div>
+            <PortalNote tone="amber">
+              The plans changed for your trade after you bid.{' '}
+              {openedNewest ? 'Confirm your number or change it.' : 'Open the plans above, then confirm your number or change it.'}
+            </PortalNote>
+          )}
+          {unclear.length > 0 && (
+            <PortalNote tone="amber">
+              <div>
+                {GC} cannot tell if your number covers {unclear.map((i) => i.label.charAt(0).toLowerCase() + i.label.slice(1)).join(' or ')}. Answer it so
+                your number compares fairly.
+              </div>
+              <div>
+                <Btn kind="primary" onClick={() => setEditing(true)}>Answer it</Btn>
+              </div>
+            </PortalNote>
           )}
           <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
             {stale && (
-              <Btn kind="primary" onClick={() => dispatch({ type: 'tradeConfirmBid', ...ids })}>
+              <Btn
+                kind="primary"
+                disabled={!openedNewest}
+                title={openedNewest ? undefined : 'Open the plans first.'}
+                onClick={() => dispatch({ type: 'tradeConfirmBid', ...ids })}
+              >
                 My number stands on the new plans
               </Btn>
             )}
@@ -259,16 +264,28 @@ function BidBlock({
       ) : (
         <div style={{ display: 'grid', gap: '0.5rem' }}>
           <div style={{ fontSize: '0.85rem', opacity: 0.8 }}>Tick what your number covers. Untick what it leaves out.</div>
-          {pkg.scope.map((item) => (
-            <label key={item.id} style={{ display: 'flex', gap: '0.45rem', alignItems: 'center', fontSize: '0.9rem' }}>
-              <input
-                type="checkbox"
-                checked={includes[item.id] === 'yes'}
-                onChange={(e) => setIncludes({ ...includes, [item.id]: e.target.checked ? 'yes' : 'no' })}
-              />
-              {item.label}
-            </label>
-          ))}
+          {pkg.scope.map((item) =>
+            includes[item.id] === 'unclear' ? (
+              <div key={item.id} style={{ display: 'grid', gap: '0.3rem', fontSize: '0.9rem', padding: '0.4rem 0.5rem', background: 'var(--bg-amber-100)', borderRadius: 6 }}>
+                <div>
+                  <strong>{item.label}.</strong> {GC} cannot tell if your number covers it.
+                </div>
+                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                  <Btn onClick={() => setIncludes({ ...includes, [item.id]: 'yes' })}>It is in my number</Btn>
+                  <Btn onClick={() => setIncludes({ ...includes, [item.id]: 'no' })}>It is left out</Btn>
+                </div>
+              </div>
+            ) : (
+              <label key={item.id} style={{ display: 'flex', gap: '0.45rem', alignItems: 'center', fontSize: '0.9rem' }}>
+                <input
+                  type="checkbox"
+                  checked={includes[item.id] === 'yes'}
+                  onChange={(e) => setIncludes({ ...includes, [item.id]: e.target.checked ? 'yes' : 'no' })}
+                />
+                {item.label}
+              </label>
+            ),
+          )}
           <label style={{ fontSize: '0.9rem' }}>
             Your number{' '}
             <input type="number" min={0} step={100} value={amount} onChange={(e) => setAmount(e.target.value)} style={{ ...input, width: '9rem' }} />
@@ -277,8 +294,8 @@ function BidBlock({
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <Btn
               kind="primary"
-              disabled={invite.seenRev === null || !(Number(amount) > 0)}
-              title={invite.seenRev === null ? 'Open the plans first.' : undefined}
+              disabled={invite.seenRev === null || !(Number(amount) > 0) || unanswered > 0}
+              title={invite.seenRev === null ? 'Open the plans first.' : unanswered > 0 ? 'Answer each line first.' : undefined}
               onClick={() => {
                 dispatch({ type: 'tradeSubmitBid', ...ids, amount: Number(amount), includes, note: note.trim() })
                 setEditing(false)
@@ -287,16 +304,32 @@ function BidBlock({
               {invite.bid ? 'Send my new number' : 'Send my bid'}
             </Btn>
             {!invite.bid && <Btn kind="quiet" onClick={() => dispatch({ type: 'tradeDecline', ...ids })}>Pass on this one</Btn>}
+            {invite.bid && (
+              <Btn
+                kind="quiet"
+                onClick={() => {
+                  const was = invite.bid
+                  if (!was) return
+                  setAmount(String(was.amount))
+                  setNote(was.note)
+                  setIncludes(Object.fromEntries(pkg.scope.map((item) => [item.id, was.includes[item.id] ?? 'yes'])))
+                  setEditing(false)
+                }}
+              >
+                Keep my bid as it is
+              </Btn>
+            )}
             {invite.seenRev === null && <span style={{ fontSize: '0.8rem', color: 'var(--text-red-700)' }}>Open the plans first.</span>}
+            {invite.seenRev !== null && unanswered > 0 && (
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-red-700)' }}>Answer each line first.</span>
+            )}
           </div>
           {!invite.bid && (
             <div style={{ borderTop: '1px solid #d9d2c3', paddingTop: '0.5rem', display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.85rem' }}>
               {promise ? (
-                <span>
-                  You told Click your number will come by <strong>{shortDate(promise.by)}</strong>.
-                </span>
+                <span style={promise.late ? { color: 'var(--text-red-700)', fontWeight: 600 } : undefined}>{promise.text}</span>
               ) : (
-                <span>Not ready yet? Tell Click when your number will come.</span>
+                <span>Not ready yet? Tell {GC} when your number will come.</span>
               )}
               <input type="date" min={today} value={promiseDay} onChange={(e) => setPromiseDay(e.target.value)} style={input} aria-label="The day your number will come" />
               <Btn
@@ -306,7 +339,7 @@ function BidBlock({
                   setPromiseDay('')
                 }}
               >
-                {promise ? 'Change the day' : 'Tell Click'}
+                {promise?.late ? 'Give a new day' : promise ? 'Change the day' : `Tell ${GC}`}
               </Btn>
             </div>
           )}
@@ -335,7 +368,7 @@ function SowBlock({
   const open = sow.draws.some((d) => d.status === 'requested')
 
   if (sow.status === 'draft') {
-    return <Block title={`${pkg.trade} · you got the job`}>Click picked your number. Your statement of work is being written.</Block>
+    return <Block title={`${pkg.trade} · you got the job`}>{GC} picked your number. Your statement of work is being written.</Block>
   }
 
   return (
@@ -384,7 +417,7 @@ function SowBlock({
             {m.ready > 0 && !open && (
               <div style={{ padding: '0.55rem 0.65rem', background: PAPER, borderRadius: 6, display: 'grid', gap: '0.4rem' }}>
                 <div>
-                  You can ask for <strong>{money(m.ready)}</strong>. Click holds {sow.retainagePct}%, so{' '}
+                  You can ask for <strong>{money(m.ready)}</strong>. {GC} holds {sow.retainagePct}%, so{' '}
                   <strong>{money(m.ready * (1 - sow.retainagePct / 100))}</strong> comes to you now.
                 </div>
                 <label style={{ display: 'flex', gap: '0.45rem', alignItems: 'center' }}>
@@ -410,7 +443,7 @@ function SowBlock({
                 <strong>Draw {d.number}</strong>
                 <span>{money(d.net)}</span>
                 <Chip tone={d.status === 'paid' ? 'green' : d.status === 'approved' ? 'blue' : 'amber'}>
-                  {d.status === 'requested' ? 'Click is reviewing it' : d.status === 'approved' ? 'approved, payment coming' : `paid`}
+                  {d.status === 'requested' ? `${GC} is reviewing it` : d.status === 'approved' ? 'approved, payment coming' : `paid`}
                 </Chip>
                 {d.status === 'paid' && d.waiver === 'conditional' && (
                   <Btn kind="primary" onClick={() => dispatch({ type: 'tradeSignUnconditional', ...ids, drawId: d.id })}>

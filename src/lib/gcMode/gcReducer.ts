@@ -3,7 +3,7 @@
  * Split out of gcModel.ts verbatim; import from `./gcModel`, which re-exports every file.
  */
 import type { AskContact, Draw, GcAction, GcState, Invite, Partner, PlanSet, SubBid } from './gcTypes'
-import { money, weekdayDate } from './gcWords'
+import { money, shortDate, weekdayDate } from './gcWords'
 import { currentRev, partnerById, planLabel } from './gcLookups'
 import { planRecipients } from './gcPlans'
 import { bidsIn } from './gcBids'
@@ -478,5 +478,25 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
 
     case 'setMarkup':
       return mapProject(state, action.projectId, (p) => ({ ...p, [action.field]: action.value }))
+
+    case 'tradeUploadCoi': {
+      const partner = partnerById(state, action.partnerId)
+      if (!partner) return state
+      return logged(
+        { ...state, partners: state.partners.map((p) => (p.id === partner.id ? { ...p, coiExpires: action.expires } : p)) },
+        'trade',
+        `${partner.company} sent a new insurance certificate, good to ${shortDate(action.expires)}.`,
+      )
+    }
+
+    case 'tradeSignW9': {
+      const partner = partnerById(state, action.partnerId)
+      if (!partner || partner.w9) return state
+      return logged(
+        { ...state, partners: state.partners.map((p) => (p.id === partner.id ? { ...p, w9: true } : p)) },
+        'trade',
+        `${partner.company} filled in and signed a W-9.`,
+      )
+    }
   }
 }
