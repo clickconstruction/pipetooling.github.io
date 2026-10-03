@@ -36,7 +36,7 @@ export interface OwnerLine {
   /** Where the line's progress comes from, in one sentence. */
   source: string
   /** The trade's own lines behind the number, when a statement of work has them. */
-  detail: { label: string; pct: number }[]
+  detail: { label: string; pct: number; theySay?: number }[]
   /** Our own crew's percent done, on a trade we do ourselves. The office reports it here. */
   crewPct?: number
 }
@@ -105,15 +105,30 @@ function tradeLine(state: GcState, pkg: TradePackage): OwnerLine {
   if (!sow || sow.status !== 'signed') {
     return { ...base, kind: 'trade', doneToDate: 0, thisMonth: 0, source: `${company}. Their statement of work is not signed yet.` }
   }
-  const done = sow.sov.reduce((s, l) => s + (l.amount * l.pctReported) / 100, 0)
+  // A pay application we sent back is open until they resend it under the same number. Until
+  // then the owner is billed what we see on the lines we doubt (owner's call, 2026-10-02).
+  const weSee = new Map<string, number>()
+  for (const back of sow.sentBack ?? []) {
+    if (sow.draws.some((d) => d.number === back.draw.number)) continue
+    for (const line of back.lines) weSee.set(line.sovId, Math.min(weSee.get(line.sovId) ?? 100, line.weSee))
+  }
+  const pctOf = (l: { id: string; pctReported: number }) => Math.min(l.pctReported, weSee.get(l.id) ?? 100)
+  const reported = sow.sov.reduce((s, l) => s + (l.amount * l.pctReported) / 100, 0)
+  const done = sow.sov.reduce((s, l) => s + (l.amount * pctOf(l)) / 100, 0)
   const pct = sow.price === 0 ? 0 : Math.round((done / sow.price) * 100)
+  const reportedPct = sow.price === 0 ? 0 : Math.round((reported / sow.price) * 100)
+  const doubted = Math.round(reported - done) > 0
   return {
     ...base,
     kind: 'trade',
     doneToDate: done,
     thisMonth: done,
-    source: done > 0 ? `${company} reported ${pct}% done.` : `${company} has not reported any work yet.`,
-    detail: sow.sov.map((l) => ({ label: l.label, pct: l.pctReported })),
+    source: doubted
+      ? `${company} reported ${reportedPct}%. We sent their pay application back, so this bills what we see: ${pct}%.`
+      : done > 0
+        ? `${company} reported ${pct}% done.`
+        : `${company} has not reported any work yet.`,
+    detail: sow.sov.map((l) => (pctOf(l) < l.pctReported ? { label: l.label, pct: pctOf(l), theySay: l.pctReported } : { label: l.label, pct: l.pctReported })),
   }
 }
 

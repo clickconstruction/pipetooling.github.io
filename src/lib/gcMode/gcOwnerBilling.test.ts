@@ -240,6 +240,60 @@ describe('the retainage the owner holds, released at the end', () => {
   })
 })
 
+describe('Fair Oaks D: three months billed to Cibolo, and a pay application we sent back', () => {
+  const fairOaksOf = (state: GcState) => {
+    const p = state.projects.find((x) => x.id === 'fairoaksd')
+    if (!p) throw new Error('fixture has no fairoaksd')
+    return p
+  }
+  const cents = (n: number) => Math.round(n * 100) / 100
+
+  it('reads the account off the three pay applications, the same as the record says', () => {
+    const project = fairOaksOf(initialGcState())
+    const account = ownerAccount(project)
+    expect(account && [cents(account.billed), cents(account.retainageHeld), cents(account.paid), cents(account.owed)]).toEqual([956_327.91, 95_632.79, 571_816.61, 288_878.51])
+    expect(project.ownerBilling && [project.ownerBilling.billed, project.ownerBilling.retainageHeld, project.ownerBilling.paid]).toEqual([956_327.91, 95_632.79, 571_816.61])
+  })
+
+  it('bills October from what we see on the roofing we sent back', () => {
+    const state = initialGcState()
+    const app = ownerPayApp(state, fairOaksOf(state))
+    expect([app.number, app.billOn, cents(app.doneToDate), cents(app.retainage), cents(app.askedBefore), cents(app.due)]).toEqual([4, '2026-10-25', 1_065_846.03, 106_584.6, 860_695.12, 98_566.31])
+    const roof = app.lines.find((l) => l.id === 'froof')
+    expect([roof?.doneBefore, roof?.thisMonth, roof?.source]).toEqual([32_000, 28_000, 'Summit Roofing reported 70%. We sent their pay application back, so this bills what we see: 45%.'])
+    expect(roof?.detail[0]).toEqual({ label: 'TPO membrane', pct: 50, theySay: 100 })
+  })
+
+  it('bills their own numbers again once they resend', () => {
+    const state = gcReducer(initialGcState(), {
+      type: 'tradeSendPayApp',
+      projectId: 'fairoaksd',
+      packageId: 'froof',
+      toPct: { 'froof-1': 50, 'froof-2': 100 },
+      periodTo: '2026-10-02',
+      address: '4100 Broadway, San Antonio, TX 78209',
+      license: '',
+      signedBy: 'Carla Nguyen',
+      signedTitle: 'Owner',
+    })
+    const roof = ownerPayApp(state, fairOaksOf(state)).lines.find((l) => l.id === 'froof')
+    expect([roof?.doneToDate, roof?.source]).toEqual([60_000, 'Summit Roofing reported 45% done.'])
+  })
+
+  it('every made-up pay application adds up to the cent', () => {
+    for (const project of initialGcState().projects) {
+      let asked = 0
+      for (const app of project.ownerBilling?.payApps ?? []) {
+        const lines = Object.values(app.doneToDate).reduce((s, x) => s + x, 0)
+        expect(cents(lines)).toBe(app.workToDate)
+        expect(cents((app.workToDate * app.retainagePct) / 100)).toBe(app.retainage)
+        expect(cents(app.workToDate - app.retainage - asked)).toBe(app.due)
+        asked = cents(asked + app.due)
+      }
+    }
+  })
+})
+
 describe('nextOwnerBillDay', () => {
   it('is the 25th of this month until it passes, then next month’s', () => {
     expect(nextOwnerBillDay('2026-10-02')).toBe('2026-10-25')

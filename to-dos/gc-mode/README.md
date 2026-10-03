@@ -81,7 +81,7 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
 | **Contracts** | Per trade: paperwork chips, award, the statement of work drafted from the bid, send, sign. |
 | **Get started** | The checklist before work starts: owner contract, permit, start date, and five steps per trade. Start stays shut until nothing is missing. |
 | **Draws** | Percent reported per line, a draw asked from the portal with its pay application (the 702 and 703) and a conditional waiver, approve, pay, unconditional waiver. **Pay application** on each draw opens the signed form read-only. **Send back** returns a waiting draw with a note and the percent we see on each line we doubt; the trade gets **Fix and resend** in its portal, our numbers filled in, and the fixed one comes back marked "revised". A trade our own crew does shows as **Our own crew** with its percent and its Pipeline job: no draws there. |
-| **Bill the owner** | Our pay application to the owner, once a month: one line per trade with the work its company reported, then general conditions, contingency and fee, which follow the trades. Done so far, less what the owner holds, less what we asked for before, is this bill. **Send to** the owner keeps it as it went, and next month's starts from it. **So far with** the owner lists what went, with **Mark paid**. A trade our own crew does (plumbing) has a percent-done picker on its line. **Waivers with this bill** says whose waiver is missing. **See what the owner sees** puts their portal beside it: their contract, each bill with every line and **Pay**, and their papers (our lien waivers and the trades'). Once every line is billed, **Closeout with** the owner replaces the draft: every trade's final, the owner's **Accept the work**, then **Send the final pay application** for what they hold. |
+| **Bill the owner** | Our pay application to the owner, once a month: one line per trade with the work its company reported, then general conditions, contingency and fee, which follow the trades. Done so far, less what the owner holds, less what we asked for before, is this bill. **Send to** the owner keeps it as it went, and next month's starts from it. **So far with** the owner lists what went, with **Mark paid**. A trade our own crew does (plumbing) has a percent-done picker on its line. **Waivers with this bill** says whose waiver is missing. **See what the owner sees** puts their portal beside it: their contract, each bill with every line and **Pay**, and their papers (our lien waivers and the trades'). A trade's pay application we sent back bills what we see on the lines we doubt. Once every line is billed, **Closeout with** the owner replaces the draft: every trade's final, the owner's **Accept the work**, then **Send the final pay application** for what they hold. |
 | **Follow up** (board tab) | Everyone we are waiting on across every project, the ones to call first. Log a contact; record the day they promised a quote; a passed day returns them to the top. |
 | **Trade partners** (board tab) | By trade: the bench, who answers when asked, every project short of quotes, coverage (where they drive from, how far they go), one press to ask the companies not yet asked. **Actions for assistants** on top: each standard as the ideal, where we are, and what closes the gap. |
 | The trade's portal | One link per company, carried by every message we send (**Their messages** beside **Their portal**: the invitation as an email and a text, reminders, new plan sets, bid tabs, the master agreement, a statement of work to sign, and the day work starts by email and text). The first visit opens on a welcome until **Got it**. The link opens on the company's **home**: what needs them across every project (late or blocking first; a pay application we sent back, their closeout steps), their money once a dollar moves, their jobs, what they are asked to bid, their paperwork, and what came before. A row opens that project's page, with **← Everything with Click** back. On a project page: paperwork done by the company itself (read and sign the master agreement, send an insurance certificate, fill in and sign a W-9), the plans window (sets, sheets, whether a set changes their trade), the invitation and the bid form (each line with its sheet numbers, a tap opens that sheet; after a new set the lines it touches are marked; how many days the number is good for; alternates that add or take off; their own quote attached), "tell Click when your number will come" (a passed day shows in red), answer a line the office could not read (its own short step, the number stays), confirm a number after an addendum, the bid tab, sign the statement of work, report work, ask for a draw with its pay application (next row). |
@@ -176,6 +176,8 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   unconditional one. Our final waits until every trade has sent its own final pay application.
   A trade's retainage is paid only after the owner has paid us ours (`ownerReleasedRetainage`):
   that rule is the Building lane's to apply on Closeout.
+- **A pay application we sent back bills what we see** (Owner Billing lane, 2026-10-02): until
+  the trade resends it, the owner's bill uses our percent on the lines we doubt, not theirs.
 - **A trade sees "Click Construction"** (2026-10-02). The name comes from one record
   (`GC_COMPANY` in `gcFixture.ts`: the full name and the short "Click" used in sentences), never
   typed into the portal's words.
@@ -300,9 +302,6 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
   fixture, not from the pay applications on **Bill the owner** (`ownerAccount` has the numbers);
   our own crew's percent read from its Pipeline job (typed on **Bill the owner** for now);
   a trade's retainage held until the owner has paid us ours (the Building lane's Closeout).
-- Fair Oaks Shops, Building D has no owner billing in the fixture yet (`ownerBilling: null`):
-  its history of pay applications to the owner is Owner Billing's to add. Until then Bill the
-  owner shows all its work as the first bill.
 - No email is sent and nothing notifies anyone when a promised day passes.
 
 ## Where it plugs into the app that exists
@@ -456,6 +455,9 @@ follow the plain-words rules; the prototype's own words were written to them as 
   Roofing, **Fix and resend pay application 1**; as Guadalupe, **Fill out the final pay
   application** once accepted.
 - **Follow up**: log a call with a new day on Hillside Excavation and watch the card move down.
+- **Fair Oaks Shops, Building D → Bill the owner**: three pay applications to Cibolo, the third
+  still waiting; **Mark paid** it. The October draft bills Summit Roofing at what we see (the
+  membrane at 50%, they say 100%), and Summit and Cool Breeze are named for missing waivers.
 - **Stone Oak Pharmacy → Bill the owner** (the job at its end, under Building): the closeout
   waits on Cool Breeze. In the owner's portal press **Accept the work**; as Cool Breeze send the
   warranty letter and the final pay application; then **Send the final pay application** and
