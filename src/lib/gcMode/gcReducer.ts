@@ -400,7 +400,7 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
           mapSow(k, (s) => ({
             ...s,
             sov: s.sov.map((l) => ({ ...l, pctBilled: Math.max(l.pctBilled, toPct.get(l.id) ?? 0) })),
-            draws: s.draws.map((d) => (d.id === draw.id ? { ...d, status: 'approved' } : d)),
+            draws: s.draws.map((d) => (d.id === draw.id ? { ...d, status: 'approved', approvedOn: state.today } : d)),
           })),
         ),
       )
@@ -417,7 +417,7 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
       if (!pkg || !draw) return state
       const next = mapProject(state, action.projectId, (p) =>
         mapPackage(p, pkg.id, (k) =>
-          mapSow(k, (s) => ({ ...s, draws: s.draws.map((d) => (d.id === draw.id ? { ...d, status: 'paid' } : d)) })),
+          mapSow(k, (s) => ({ ...s, draws: s.draws.map((d) => (d.id === draw.id ? { ...d, status: 'paid', paidOn: state.today } : d)) })),
         ),
       )
       return logged(next, 'office', `Paid draw ${draw.number} on ${pkg.trade}: ${money(draw.net)}.`)
@@ -709,7 +709,7 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
       const draw = pkg?.sow?.draws.find((d) => d.id === action.drawId)
       if (!pkg || !draw || !draw.final || draw.status !== 'requested') return state
       const next = mapProject(state, action.projectId, (p) =>
-        mapPackage(p, pkg.id, (k) => mapSow(k, (s) => ({ ...s, draws: s.draws.map((d) => (d.id === draw.id ? { ...d, status: 'approved' } : d)) }))),
+        mapPackage(p, pkg.id, (k) => mapSow(k, (s) => ({ ...s, draws: s.draws.map((d) => (d.id === draw.id ? { ...d, status: 'approved', approvedOn: state.today } : d)) }))),
       )
       return logged(next, 'office', `Approved the retainage release on ${pkg.trade}: ${money(draw.net)} to pay.`)
     }
@@ -823,7 +823,7 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
           mapSow(k, (s) => ({
             ...s,
             sov: s.sov.map((l) => ({ ...l, pctBilled: Math.max(l.pctBilled, toPct.get(l.id) ?? 0) })),
-            draws: s.draws.map((d) => (d.id === draw.id ? { ...d, ...less, status: 'approved', asked } : d)),
+            draws: s.draws.map((d) => (d.id === draw.id ? { ...d, ...less, status: 'approved', approvedOn: state.today, asked } : d)),
           })),
         ),
       )

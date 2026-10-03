@@ -275,6 +275,34 @@ const S = {
   alsoChanged: { en: 'Also changed', es: 'También cambió' },
   changedInSets: { en: 'Changed in {sets}', es: 'Cambió en {sets}' },
 
+  // Your pay
+  payTitle: { en: 'Your pay', es: 'Sus pagos' },
+  payIntro: {
+    en: 'Every pay application on your jobs with {gc}, newest first. {gc} pays an approved one within {days} days.',
+    es: 'Cada solicitud de pago de sus trabajos con {gc}, la más reciente primero. {gc} paga una aprobada en {days} días o menos.',
+  },
+  seeEveryPayment: { en: 'See every payment', es: 'Ver todos los pagos' },
+  payOnTheWay: { en: 'On the way', es: 'En camino' },
+  payChecking: { en: '{gc} is checking', es: '{gc} está revisando' },
+  payLate1: { en: 'One payment is late. Call {gc}.', es: 'Un pago está atrasado. Llame a {gc}.' },
+  payLateN: { en: '{n} payments are late. Call {gc}.', es: '{n} pagos están atrasados. Llame a {gc}.' },
+  payAppN: { en: 'pay application {n}', es: 'solicitud de pago {n}' },
+  payAppFinal: { en: 'final pay application', es: 'solicitud de pago final' },
+  payHeld: { en: 'held {held}', es: 'retenido {held}' },
+  payAsked: { en: 'asked {date}', es: 'pedido el {date}' },
+  payApprovedOn: { en: 'approved {date}', es: 'aprobado el {date}' },
+  payPaidOn: { en: 'paid {date}', es: 'pagado el {date}' },
+  payBy: { en: 'payment by {date}', es: 'pago a más tardar el {date}' },
+  payWasDue: { en: 'payment was due {date}', es: 'el pago vencía el {date}' },
+  heldReturned: { en: 'paid back {date}', es: 'devuelto el {date}' },
+  heldOn: { en: 'comes back {date}', es: 'se devuelve el {date}' },
+  heldAfter: {
+    en: 'comes back after {gc} accepts your work and the owner pays {gc}',
+    es: 'se devuelve después de que {gc} acepte su trabajo y el dueño le pague a {gc}',
+  },
+  jobPayLine: { en: 'contract {contract} · paid {paid} · left to bill {left}', es: 'contrato {contract} · pagado {paid} · por facturar {left}' },
+  noPayYet: { en: 'No pay applications yet.', es: 'Todavía no hay solicitudes de pago.' },
+
   // The weekly look-ahead
   lookTitle: { en: 'Your next three weeks', es: 'Sus próximas tres semanas' },
   lookIntro: {
@@ -355,6 +383,13 @@ const S = {
   mChangeAdds: { en: 'It adds {amount} to your statement of work.', es: 'Suma {amount} a su orden de trabajo.' },
   mChangeTakes: { en: 'It takes off {amount} from your statement of work.', es: 'Resta {amount} de su orden de trabajo.' },
   mChangeOpen: { en: 'Open your portal to read it and sign it.', es: 'Abra su portal para leerla y firmarla.' },
+  mPaidSubject: { en: 'Pay application {n} on {project} is paid', es: 'La solicitud de pago {n} de {project} está pagada' },
+  mPaidFinalSubject: { en: 'Your retainage on {project} is paid', es: 'Su retención de {project} está pagada' },
+  mPaidWhat: { en: 'We paid {amount} for pay application {n} on {trade} for {project}.', es: 'Pagamos {amount} por la solicitud de pago {n} de {trade} para {project}.' },
+  mPaidFinalWhat: { en: 'We paid back the {amount} we held on {trade} for {project}.', es: 'Le devolvimos los {amount} que retuvimos de {trade} en {project}.' },
+  mPaidHeld: { en: 'We hold {amount} of it until the job is done.', es: 'Retenemos {amount} hasta que termine el trabajo.' },
+  mPaidWaiver: { en: 'Sign the unconditional waiver for it in your portal.', es: 'Firme la renuncia incondicional en su portal.' },
+  mPaidFinalWaiver: { en: 'Sign your unconditional final release of lien in your portal.', es: 'Firme su liberación final de gravamen incondicional en su portal.' },
   mLessSubject: { en: 'Pay application {n} on {project}: approved for less', es: 'Solicitud de pago {n} de {project}: aprobada por menos' },
   mLessApproved: {
     en: 'We approved {approved} of the {asked} you asked for on pay application {n} for {trade} on {project}.',
