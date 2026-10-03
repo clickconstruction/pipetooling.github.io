@@ -1659,7 +1659,7 @@ exports[`GC mode golden walk > before any step 1`] = `
           "Pecan Valley Electric asked for draw 2. Their insurance expired Sep 15. Approve it once that is fixed.",
           "Pay application 1 is back with Summit Roofing. Waiting on a fixed one.",
         ],
-        "center": "75%",
+        "center": "74%",
         "groups": [
           {
             "items": [
@@ -1689,7 +1689,7 @@ exports[`GC mode golden walk > before any step 1`] = `
                 "label": "Roofing",
               },
               {
-                "detail": "Our own crew, 70% done",
+                "detail": "Our own crew, 65% done",
                 "done": false,
                 "label": "Plumbing",
               },
@@ -1704,8 +1704,8 @@ exports[`GC mode golden walk > before any step 1`] = `
             "why": "What each trade has reported, out of its statement of work. Our own crew counts too.",
           },
         ],
-        "headline": "75% of the work is done, by what the trades and our own crew have reported.",
-        "share": 0.7467980295566502,
+        "headline": "74% of the work is done, by what the trades and our own crew have reported.",
+        "share": 0.7422003284072249,
       },
       "startChecklist": {
         "done": 33,
@@ -10530,10 +10530,10 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
             "pctByLine": {
               "fplumb-1": 100,
               "fplumb-2": 100,
-              "fplumb-3": 60,
+              "fplumb-3": 40,
               "fplumb-4": 0,
             },
-            "pctDone": 70,
+            "pctDone": 65,
             "ref": "J 1088",
             "value": 112000,
           },

@@ -1043,13 +1043,13 @@ export function initialGcState(): GcState {
         },
       }),
       pkg('fplumb', 'Plumbing', scope('fplumb', ['Underground', 'Rough in', 'Top out', 'Trim']), 112_000, [], {
-        // Our own crew reports by stage; the whole trade (70%) follows from the stages.
+        // Our own crew reports by stage; the whole trade (65%, what Bill the owner bills) follows from them.
         selfPerform: {
           ref: 'J 1088',
           value: 112_000,
           note: 'Our own crew. The job runs on the Pipeline.',
-          pctDone: 70,
-          pctByLine: { 'fplumb-1': 100, 'fplumb-2': 100, 'fplumb-3': 60, 'fplumb-4': 0 },
+          pctDone: 65,
+          pctByLine: { 'fplumb-1': 100, 'fplumb-2': 100, 'fplumb-3': 40, 'fplumb-4': 0 },
         },
         carried: 'self',
       }),
