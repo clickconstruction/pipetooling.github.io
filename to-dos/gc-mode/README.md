@@ -641,6 +641,8 @@ checked by hand in the browser after every change; the model is pinned by the go
 
 ## Working in parallel
 
+**What is left, lane by lane: [`REMAINING.md`](./REMAINING.md)** (2026-10-03). Each lane works down its own section, testing along the way; the Board lane drives it.
+
 Since 2026-10-02 several sessions build the prototype at once, one area each. Each lane is a
 branch and a dev-server port of its own; `spike/gc-mode` is where the lanes meet.
 
