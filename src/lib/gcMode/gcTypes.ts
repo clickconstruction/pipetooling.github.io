@@ -112,6 +112,8 @@ export interface Sow {
   acceptedOn?: string | null
   /** Closeout: the day their warranty letter came in. Null or absent: not yet. */
   warrantyOn?: string | null
+  /** Pay applications the office sent back, oldest first. A resend takes the same number. */
+  sentBack?: DrawSentBack[]
 }
 
 /**
@@ -370,6 +372,16 @@ export type GcAction =
       signedTitle: string
     }
   | { type: 'approveRetainage'; projectId: string; packageId: string; drawId: string }
+  | {
+      type: 'sendDrawBack'
+      projectId: string
+      packageId: string
+      drawId: string
+      /** What is not right, in the office's words. The trade reads it in its portal. */
+      note: string
+      /** Lines where we see less done than they asked for: the percent we see. */
+      weSee: Record<string, number>
+    }
 
 /** One trade on a new project, as the office left it in the New project window. */
 export interface NewTradeDraft {
@@ -430,4 +442,13 @@ export interface OwnerPayAppSent {
   due: number
   /** The day the owner paid it. Null until they do. */
   paidOn: string | null
+}
+
+/** A pay application the office sent back: the draw as the trade sent it, why, and what we see. */
+export interface DrawSentBack {
+  draw: Draw
+  on: string
+  note: string
+  /** Lines where we see less done than they asked for. */
+  lines: { sovId: string; weSee: number }[]
 }

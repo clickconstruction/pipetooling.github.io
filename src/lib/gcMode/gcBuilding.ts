@@ -7,7 +7,7 @@
  *
  * The real build fills the same AIA template the Jobs Stages tab fills (`aiaG702G703Template.ts`).
  */
-import type { Draw, GcProject, GcState, Partner, Sow, TradePackage } from './gcTypes'
+import type { Draw, DrawSentBack, GcProject, GcState, Partner, Sow, TradePackage } from './gcTypes'
 import { money, shortDate } from './gcWords'
 import { partnerById } from './gcLookups'
 
@@ -219,6 +219,46 @@ export function newPayAppDraft(sow: Sow, partner: Partner): PayAppInput {
     license: known.license,
     signedBy: known.signedBy,
     signedTitle: '',
+    waiverSigned: false,
+  }
+}
+
+// ---------------------------------------------------------------------------------------------
+// The office sends a pay application back
+// ---------------------------------------------------------------------------------------------
+
+/** The pay application we sent back that the trade has not sent again yet. Null: none waiting. */
+export function sentBackOpen(sow: Sow): DrawSentBack | null {
+  const next = sow.draws.length + 1
+  const list = sow.sentBack ?? []
+  for (let i = list.length - 1; i >= 0; i--) {
+    const back = list[i]
+    if (back && back.draw.number === next) return back
+  }
+  return null
+}
+
+/** How many times pay application `number` went back to the trade. 0: never. */
+export function timesSentBack(sow: Sow, number: number): number {
+  return (sow.sentBack ?? []).filter((b) => b.draw.number === number).length
+}
+
+/**
+ * The resend starts from what they asked for, with the percent we see on each line we flagged,
+ * and what they typed last time. They sign again: a new amount needs a new waiver.
+ */
+export function resendPayAppDraft(sow: Sow, partner: Partner, back: DrawSentBack): PayAppInput {
+  const asked = new Map(back.draw.lines.map((l) => [l.sovId, l.toPct]))
+  const weSee = new Map(back.lines.map((l) => [l.sovId, l.weSee]))
+  const known = payAppKnown(partner)
+  const typed = back.draw.payApp
+  return {
+    toPct: Object.fromEntries(sow.sov.map((l) => [l.id, weSee.get(l.id) ?? asked.get(l.id) ?? l.pctReported])),
+    periodTo: typed?.periodTo ?? '',
+    address: typed?.address || known.address,
+    license: typed?.license || known.license,
+    signedBy: typed?.signedBy || known.signedBy,
+    signedTitle: typed?.signedTitle ?? '',
     waiverSigned: false,
   }
 }

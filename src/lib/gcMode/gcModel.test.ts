@@ -35,6 +35,9 @@ import {
 
 type Step = { label: string; action: GcAction }
 
+/** What Cedar & Pine types on its pay applications in the walk. */
+const CEDAR_TYPED = { periodTo: '2026-10-02', address: '77 Main St, Fredericksburg, TX 78624', license: '', signedBy: 'Owen Blake', signedTitle: 'Owner' }
+
 const STEPS: Step[] = [
   // Boerne Retail Shell, bidding: compare, chase, quote, carry.
   { label: 'Concrete: a cost to cover Alamo’s unclear rebar', action: { type: 'setPlug', projectId: 'boerne', packageId: 'conc', inviteId: 'conc-alamo', scopeId: 'conc-4', amount: 8_000 } },
@@ -189,6 +192,27 @@ const STEPS: Step[] = [
   { label: 'Approve the retainage release', action: { type: 'approveRetainage', projectId: 'helotes', packageId: 'dry', drawId: 'dry-draw-4' } },
   { label: 'Pay the retainage', action: { type: 'payDraw', projectId: 'helotes', packageId: 'dry', drawId: 'dry-draw-4' } },
   { label: 'Hill Country signs the unconditional waiver on final payment', action: { type: 'tradeSignUnconditional', projectId: 'helotes', packageId: 'dry', drawId: 'dry-draw-4' } },
+  // Helotes, a draw sent back: Cedar & Pine asks for too much, we send it back, they fix it.
+  {
+    label: 'Cedar & Pine sends pay application 1',
+    action: { type: 'tradeSendPayApp', projectId: 'helotes', packageId: 'mill', toPct: { 'mill-1': 100, 'mill-2': 50 }, ...CEDAR_TYPED },
+  },
+  {
+    label: 'Send it back: we see the cabinets at 30%',
+    action: {
+      type: 'sendDrawBack',
+      projectId: 'helotes',
+      packageId: 'mill',
+      drawId: 'mill-draw-1',
+      note: 'Four of the twelve operatory cabinets are set, not half.',
+      weSee: { 'mill-1': 100, 'mill-2': 30 },
+    },
+  },
+  {
+    label: 'Cedar & Pine sends pay application 1 again, fixed',
+    action: { type: 'tradeSendPayApp', projectId: 'helotes', packageId: 'mill', toPct: { 'mill-1': 100, 'mill-2': 30 }, ...CEDAR_TYPED },
+  },
+  { label: 'Approve the fixed pay application 1', action: { type: 'approveDraw', projectId: 'helotes', packageId: 'mill', drawId: 'mill-draw-1' } },
 ]
 
 const CUSTOMER_IDS = ['cibolo', 'raman']
@@ -315,6 +339,7 @@ describe('GC mode golden walk', () => {
       'tradeUploadCoi', 'tradeSignW9',
       'sendOwnerPayApp', 'ownerPaid', 'issuePlanSet',
       'acceptWork', 'tradeSendWarranty', 'tradeSendFinalPayApp', 'approveRetainage',
+      'sendDrawBack',
     ]
     expect(all.filter((t) => !used.has(t))).toEqual([])
   })

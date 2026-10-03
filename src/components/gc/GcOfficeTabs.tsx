@@ -16,11 +16,13 @@ import {
   planRecipients,
   proposalTotals,
   retainageHeldNow,
+  timesSentBack,
   shortDate,
   sowMoney,
   thousands,
   travelFor,
   travelWords,
+  type Draw,
   type GcAction,
   type GcProject,
   type GcState,
@@ -31,6 +33,7 @@ import {
 } from '../../lib/gcMode/gcModel'
 import { AskThread } from './GcAskThread'
 import { GcBuildingPayAppWindow } from './GcBuildingPayApp'
+import { GcBuildingSendBackForm, GcBuildingSentBackList } from './GcBuildingSendBack'
 import { GcNewPlansWindow } from './GcNewPlans'
 import { Btn, Card, Chip, Stat, Why, input, num, td, th, type Tone } from './gcUi'
 
@@ -851,17 +854,19 @@ export function GcContractsTab({ state, project, dispatch }: GcPaneProps) {
 
 export function GcDrawsTab({ state, project, dispatch }: GcPaneProps) {
   const signed = project.packages.filter((p) => p.sow?.status === 'signed')
-  const [looking, setLooking] = useState<{ packageId: string; drawId: string } | null>(null)
+  // The draw whose pay application is open: one on the list, or one we sent back.
+  const [looking, setLooking] = useState<{ packageId: string; draw: Draw } | null>(null)
+  const [sendingBack, setSendingBack] = useState<string | null>(null)
   const lookPkg = looking ? signed.find((p) => p.id === looking.packageId) : undefined
-  const lookDraw = lookPkg?.sow?.draws.find((d) => d.id === looking?.drawId)
+  const lookDraw = looking?.draw
   const lookInvite = lookPkg?.invites.find((i) => i.id === lookPkg.awardedInviteId)
   const lookPartner = lookInvite ? partnerById(state, lookInvite.partnerId) : undefined
   return (
     <div style={{ display: 'grid', gap: '0.9rem' }}>
       <Why>
         A trade reports percent done on each line of their statement of work, then asks for a draw from their portal.
-        Their conditional lien waiver comes with the ask. We approve, hold retainage and pay. The unconditional
-        waiver follows the payment.
+        Their conditional lien waiver comes with the ask. We approve, hold retainage and pay, or send it back to be
+        fixed. The unconditional waiver follows the payment.
       </Why>
       {signed.length === 0 && <Card>No signed statement of work on this project yet.</Card>}
       {signed.map((pkg) => {
@@ -905,7 +910,10 @@ export function GcDrawsTab({ state, project, dispatch }: GcPaneProps) {
               {sow.draws.length === 0 && <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No draw asked for yet.</span>}
               {sow.draws.map((d) => (
                 <div key={d.id} style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.875rem' }}>
-                  <strong>{d.final ? `Draw ${d.number} · retainage release` : `Draw ${d.number}`}</strong>
+                  <strong>
+                    {d.final ? `Draw ${d.number} · retainage release` : `Draw ${d.number}`}
+                    {timesSentBack(sow, d.number) > 0 ? ' · revised' : ''}
+                  </strong>
                   <span>{shortDate(d.requestedOn)}</span>
                   {d.final ? (
                     <span>pays back what we held: <strong>{money(d.net)}</strong></span>
@@ -933,17 +941,35 @@ export function GcDrawsTab({ state, project, dispatch }: GcPaneProps) {
                       <Btn kind="primary" disabled={blockers.length > 0} title={blockers.join(' ')} onClick={() => dispatch(d.final ? { type: 'approveRetainage', ...ids, drawId: d.id } : { type: 'approveDraw', ...ids, drawId: d.id })}>
                         Approve
                       </Btn>
+                      {sendingBack !== d.id && (
+                        <Btn onClick={() => setSendingBack(d.id)}>Send back</Btn>
+                      )}
                       {blockers.length > 0 && <span style={{ color: 'var(--text-red-700)' }}>{blockers.join(' ')}</span>}
                     </>
                   )}
                   {d.status === 'approved' && (
                     <Btn kind="primary" onClick={() => dispatch({ type: 'payDraw', ...ids, drawId: d.id })}>Mark paid</Btn>
                   )}
-                  <Btn kind="quiet" onClick={() => setLooking({ packageId: pkg.id, drawId: d.id })}>
+                  <Btn kind="quiet" onClick={() => setLooking({ packageId: pkg.id, draw: d })}>
                     {d.payApp ? (d.final ? 'Final pay application' : 'Pay application') : 'Pay application, rebuilt'}
                   </Btn>
+                  {sendingBack === d.id && d.status === 'requested' && (
+                    <div style={{ flexBasis: '100%' }}>
+                      <GcBuildingSendBackForm
+                        sow={sow}
+                        draw={d}
+                        partner={partner}
+                        onCancel={() => setSendingBack(null)}
+                        onSend={(note, weSee) => {
+                          dispatch({ type: 'sendDrawBack', ...ids, drawId: d.id, note, weSee })
+                          setSendingBack(null)
+                        }}
+                      />
+                    </div>
+                  )}
                 </div>
               ))}
+              <GcBuildingSentBackList sow={sow} onLook={(draw) => setLooking({ packageId: pkg.id, draw })} />
               {m.ready > 0 && !sow.draws.some((d) => d.status === 'requested') && (
                 <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
                   {partner.company} has reported {money(m.ready)} of work they have not asked to be paid for.

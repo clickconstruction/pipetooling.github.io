@@ -80,7 +80,7 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
 | **Bid tabs** | After our bid is in, each trade's quotes go back to the companies that quoted, low to high, their own row marked, names hidden unless ticked. |
 | **Contracts** | Per trade: paperwork chips, award, the statement of work drafted from the bid, send, sign. |
 | **Get started** | The checklist before work starts: owner contract, permit, start date, and five steps per trade. Start stays shut until nothing is missing. |
-| **Draws** | Percent reported per line, a draw asked from the portal with its pay application (the 702 and 703) and a conditional waiver, approve, pay, unconditional waiver. **Pay application** on each draw opens the signed form read-only. |
+| **Draws** | Percent reported per line, a draw asked from the portal with its pay application (the 702 and 703) and a conditional waiver, approve, pay, unconditional waiver. **Pay application** on each draw opens the signed form read-only. **Send back** returns a waiting draw with a note and the percent we see on each line we doubt; the trade gets **Fix and resend** in its portal, our numbers filled in, and the fixed one comes back marked "revised". |
 | **Bill the owner** | Our pay application to the owner, once a month: one line per trade with the work its company reported, then general conditions, contingency and fee, which follow the trades. Done so far, less what the owner holds, less what we asked for before, is this bill. **Send to** the owner keeps it as it went, and next month's starts from it. **So far with** the owner lists what went, with **Mark paid**. |
 | **Follow up** (board tab) | Everyone we are waiting on across every project, the ones to call first. Log a contact; record the day they promised a quote; a passed day returns them to the top. |
 | **Trade partners** (board tab) | By trade: the bench, who answers when asked, every project short of quotes, coverage (where they drive from, how far they go), one press to ask the companies not yet asked. **Actions for assistants** on top: each standard as the ideal, where we are, and what closes the gap. |
@@ -170,6 +170,9 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
 - Closeout: the release waits for nothing else (not the owner, not a number of days). Its
   approval is locked by the same paperwork rules as a draw. "Held" counts until the release is
   paid, not when it is approved (`retainageHeldNow`).
+- Sending a draw back: the note is required; a resend keeps the same application number; only a
+  draw waiting on us can go back (a retainage release too); nothing billed changes. The resend's
+  percents become the trade's report, even lower than it was.
 - Owner billing (`gcOwnerBilling.ts`): the pay application goes on the 25th. A trade's line on
   the owner's bill is the work its company reported, before we approve their draw. General
   conditions, contingency and fee follow the share of the trades' work done, so the bill totals
@@ -217,6 +220,9 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
     waivers from their own suppliers.
 18. Should a project whose trades are all closed out leave Building for a fourth section on
     the board? It stays under Building today. That is the Board lane's change.
+19. Besides sending a draw back, should the office be able to approve less than was asked, the
+    way an architect certifies a smaller amount on a 702? Should a draw sent back twice flag
+    anything on the board?
 
 ## Workflow steps not built yet
 
@@ -283,6 +289,7 @@ imitates it.
 | `GcBuildingPayApp.tsx` · `src/lib/gcMode/gcBuilding.ts` | The pay application window (progress and final), its door in the portal (which turns into the trade's closeout list) and its read-only view from Draws · the 702 and 703 numbers, the four steps, retainage held and each trade's closeout (tested in `gcBuilding.test.ts`) |
 | `GcOwnerBillingTab.tsx` · `src/lib/gcMode/gcOwnerBilling.ts` | Bill the owner: the owner's lines, the draft pay application, the ones sent and paid · the lines and the 702 math, `ownerAccount` (tested in `gcOwnerBilling.test.ts`) |
 | `GcCloseout.tsx` | The Closeout tab |
+| `GcBuildingSendBack.tsx` | The Send back form under a waiting draw, and the list of what went back |
 | `GcStart.tsx` | Get started |
 | `GcBidTabs.tsx` | Bid tabs |
 | `GcCustomerWindow.tsx` | The one company window |
