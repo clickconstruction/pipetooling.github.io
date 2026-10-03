@@ -33,6 +33,12 @@ export interface PlanSheet {
   title: string
 }
 
+/** One section of the project manual (the specs): its number, like "09 91 23", and its title. */
+export interface SpecSection {
+  id: string
+  title: string
+}
+
 export interface ScopeItem {
   id: string
   label: string
@@ -41,6 +47,8 @@ export interface ScopeItem {
    * Empty: the trade's sheets as a whole, no one sheet in particular.
    */
   sheets?: string[]
+  /** The sections of the project manual this line reads from. Missing: not said. */
+  specs?: string[]
 }
 
 export interface SubBid {
@@ -330,6 +338,8 @@ export interface GcProject {
   sizeNote: string
   /** The sheet index of the bid set. An addendum names the sheets it changed or added. */
   sheets: PlanSheet[]
+  /** The project manual's table of contents: its sections. Missing: no manual came in. */
+  specs?: SpecSection[]
   planSets: PlanSet[]
   packages: TradePackage[]
   generalConditions: number
@@ -574,6 +584,8 @@ export interface NewTradeDraft {
   scope: string[]
   /** The sheets each scope line reads from, in the order of `scope`. Missing: not said. */
   scopeSheets?: string[][]
+  /** The sections of the project manual each scope line reads from, in the order of `scope`. */
+  scopeSpecs?: string[][]
 }
 
 /** What the office fills in before a project exists. The reducer makes the project from it. */
@@ -594,6 +606,8 @@ export interface NewProjectDraft {
   issuedOn: string
   setNote: string
   sheets: PlanSheet[]
+  /** The project manual's sections, read from its table of contents. Missing or empty: none came in. */
+  specs?: SpecSection[]
   trades: NewTradeDraft[]
 }
 
