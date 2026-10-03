@@ -5,7 +5,7 @@
  *
  * The words follow the plain-words rules at the top of `gcTour.ts`.
  */
-import type { BidAlternate, Draw, GcProject, GcState, Invite, LookAheadMark, Partner, PlanSet, ScopeItem, SubBid, TradePackage } from './gcTypes'
+import type { BidAlternate, Draw, GcProject, GcState, Invite, LookAheadMark, Partner, PlanSet, ProjectContact, ScopeItem, SubBid, TradePackage } from './gcTypes'
 import { daysUntil, money } from './gcWords'
 import { currentRev, partnerById } from './gcLookups'
 import { askPromise, OPEN_WITHIN_DAYS, type AskPromise } from './gcFollowUp'
@@ -852,5 +852,23 @@ export function portalPay(state: GcState, partnerId: string): {
       held: jobs.reduce((t, j) => t + j.held, 0),
       late: rows.filter((r) => r.state === 'late').length,
     },
+  }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Who to call: our people on a job, and pay and paperwork
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * Who a company calls about one job: once the job is ours, the superintendent on site first, then
+ * the project manager; while we bid, the project manager. Pay and paperwork is the company's own.
+ */
+export function portalContacts(project: GcProject): { team: ProjectContact[]; bidding: boolean } {
+  const bidding = project.stage === 'pursuing'
+  const team = project.team ?? []
+  const order = (c: ProjectContact) => (c.role === 'superintendent' ? 0 : 1)
+  return {
+    bidding,
+    team: bidding ? team.filter((c) => c.role === 'projectManager') : [...team].sort((a, b) => order(a) - order(b)),
   }
 }

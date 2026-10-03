@@ -2,7 +2,7 @@
  * GC mode — design spike. The made-up data the prototype starts from (Start over puts it back).
  * Split out of gcModel.ts verbatim; import from `./gcModel`, which re-exports every file.
  */
-import type { AskContact, GcCustomer, GcProject, GcState, Includes, Invite, InviteStatus, LookAheadReason, Partner, ProjectSchedule, ScheduleActivity, ScopeItem, SubBid, TradePackage } from './gcTypes'
+import type { AskContact, GcCustomer, GcProject, GcState, Includes, Invite, InviteStatus, LookAheadReason, Partner, ProjectContact, ProjectSchedule, ScheduleActivity, ScopeItem, SubBid, TradePackage } from './gcTypes'
 
 // ---------------------------------------------------------------------------------------------
 // Fixture
@@ -96,6 +96,23 @@ function withPayDays(project: GcProject): GcProject {
         : k,
     ),
   }
+}
+
+/** Portal lane: our made-up people on each job, for a trade to call. 555 numbers and .example addresses. */
+const DANA: ProjectContact = { role: 'projectManager', name: 'Dana Whitaker', phone: '(210) 555-0131', email: 'dana@clickconstruction.example' }
+const LUIS: ProjectContact = { role: 'superintendent', name: 'Luis Ortega', phone: '(210) 555-0147' }
+const MARCY: ProjectContact = { role: 'superintendent', name: 'Marcy Pruett', phone: '(210) 555-0152' }
+const TEAMS: Record<string, ProjectContact[]> = {
+  boerne: [DANA],
+  padb: [DANA],
+  helotes: [MARCY, DANA],
+  fairoaksd: [LUIS, DANA],
+  stoneoak: [MARCY, DANA],
+}
+
+function withTeam(project: GcProject): GcProject {
+  const team = TEAMS[project.id]
+  return team ? { ...project, team } : project
 }
 
 export function initialGcState(): GcState {
@@ -1232,7 +1249,7 @@ export function initialGcState(): GcState {
   return {
     today: '2026-10-02',
     customers,
-    projects: [withStory(boerne), padB, helotes, fairOaksD, stoneOak].map(withPayDays),
+    projects: [withStory(boerne), padB, helotes, fairOaksD, stoneOak].map(withPayDays).map(withTeam),
     partners: [
       partner('lonestar', 'Lonestar Earthworks', 'Dale Whitfield', ['Sitework'], 'signed', '2027-03-01', true, [6, 5, 2]),
       partner('tricounty', 'Tri-County Site', 'Marisol Vega', ['Sitework'], 'signed', '2027-01-15', true, [4, 4, 1]),
@@ -1274,4 +1291,9 @@ export function initialGcState(): GcState {
  * name a company: a later company is a new record, not new words. `shortName` is what a trade
  * reads in a sentence ("Tell Click when your number will come").
  */
-export const GC_COMPANY = { name: 'Click Construction', shortName: 'Click' }
+export const GC_COMPANY = {
+  name: 'Click Construction',
+  shortName: 'Click',
+  /** Who a trade calls about pay and paperwork. Made up: 555 numbers and an .example address. */
+  pay: { name: 'Accounts payable', phone: '(210) 555-0104', email: 'pay@clickconstruction.example' },
+}

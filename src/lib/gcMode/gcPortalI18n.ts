@@ -275,6 +275,17 @@ const S = {
   alsoChanged: { en: 'Also changed', es: 'También cambió' },
   changedInSets: { en: 'Changed in {sets}', es: 'Cambió en {sets}' },
 
+  // Who to call
+  whoToCall: { en: 'Who to call', es: 'A quién llamar' },
+  roleSuper: { en: 'superintendent, on site', es: 'superintendente en obra' },
+  rolePm: { en: 'project manager', es: 'gerente de proyecto' },
+  rolePmBid: { en: 'project manager, for this bid', es: 'gerente de proyecto, para esta cotización' },
+  rolePay: { en: 'pay and paperwork', es: 'pagos y documentos' },
+  callLink: { en: 'Call', es: 'Llamar' },
+  textLink: { en: 'Text', es: 'Mensaje' },
+  emailLink: { en: 'Email', es: 'Correo' },
+  payQuestions: { en: 'Questions about pay: {name}, {phone}.', es: 'Preguntas sobre pagos: {name}, {phone}.' },
+
   // Your pay
   payTitle: { en: 'Your pay', es: 'Sus pagos' },
   payIntro: {

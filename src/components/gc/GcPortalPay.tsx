@@ -70,6 +70,10 @@ export function GcPortalPay({ state, partner, onHome }: { state: GcState; partne
         )}
       </PortalBlock>
 
+      <div style={{ fontSize: '0.85rem', opacity: 0.85 }}>
+        {t('payQuestions', { name: GC_COMPANY.pay.name, phone: GC_COMPANY.pay.phone })}
+      </div>
+
       {pay.jobs.length > 0 && (
         <PortalBlock title={t('heldEnd')}>
           <div style={{ display: 'grid', gap: '0.5rem', fontSize: '0.9rem' }}>

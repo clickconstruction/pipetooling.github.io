@@ -16,6 +16,7 @@ import {
   portalLines,
   portalLookAhead,
   portalMessages,
+  portalContacts,
   portalPay,
   portalPlanNews,
   portalPromiseLine,
@@ -543,5 +544,28 @@ describe('Your pay', () => {
 
   it('has nothing for a company with no job', () => {
     expect(portalPay(state, 'lonestar').rows).toEqual([])
+  })
+})
+
+describe('who to call', () => {
+  const project = (id: string) => {
+    const p = state.projects.find((x) => x.id === id)
+    if (!p) throw new Error(`no project ${id}`)
+    return p
+  }
+
+  it('puts the superintendent on site first on a job being built', () => {
+    const c = portalContacts(project('fairoaksd'))
+    expect(c.bidding).toBe(false)
+    expect(c.team.map((x) => [x.role, x.name])).toEqual([
+      ['superintendent', 'Luis Ortega'],
+      ['projectManager', 'Dana Whitaker'],
+    ])
+  })
+
+  it('gives the project manager alone while we bid', () => {
+    const c = portalContacts(project('boerne'))
+    expect(c.bidding).toBe(true)
+    expect(c.team.map((x) => x.role)).toEqual(['projectManager'])
   })
 })
