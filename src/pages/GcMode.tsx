@@ -10,6 +10,7 @@ import {
 } from '../components/gc/GcOfficeTabs'
 import { GcFollowUpTab } from '../components/gc/GcAskThread'
 import { GcOwnerBillingTab } from '../components/gc/GcOwnerBillingTab'
+import { GcCloseoutTab } from '../components/gc/GcCloseout'
 import { GcBidTabsTab } from '../components/gc/GcBidTabs'
 import { GcCustomerWindow } from '../components/gc/GcCustomerWindow'
 import { GcPlansQuickLook } from '../components/gc/GcPlansQuickLook'
@@ -51,7 +52,7 @@ import { GC_TOUR_STEPS } from '../lib/gcMode/gcTour'
  */
 
 type BoardTab = 'projects' | 'followup' | 'partners'
-type ProjectTab = 'packages' | 'plans' | 'number' | 'tabs' | 'contracts' | 'start' | 'draws' | 'owner'
+type ProjectTab = 'packages' | 'plans' | 'number' | 'tabs' | 'contracts' | 'start' | 'draws' | 'owner' | 'closeout'
 
 const STAGES: { key: GcStage; label: string; tone: Tone; blurb: string }[] = [
   { key: 'pursuing', label: 'Bidding to the owner', tone: 'amber', blurb: 'Collect a number for every trade, then give the owner a price.' },
@@ -68,6 +69,7 @@ const PROJECT_TABS: { key: ProjectTab; label: string }[] = [
   { key: 'start', label: 'Get started' },
   { key: 'draws', label: 'Draws' },
   { key: 'owner', label: 'Bill the owner' },
+  { key: 'closeout', label: 'Closeout' },
 ]
 
 function tabButton(active: boolean) {
@@ -316,6 +318,17 @@ export default function GcMode() {
               {tab === 'contracts' && <GcContractsTab state={state} project={project} dispatch={dispatch} />}
               {tab === 'draws' && <GcDrawsTab state={state} project={project} dispatch={dispatch} />}
               {tab === 'owner' && <GcOwnerBillingTab state={state} project={project} dispatch={dispatch} />}
+              {tab === 'closeout' && (
+                <GcCloseoutTab
+                  state={state}
+                  project={project}
+                  dispatch={dispatch}
+                  onSeePortal={(id) => {
+                    setPortalPartnerId(id)
+                    setPortalOpen(true)
+                  }}
+                />
+              )}
             </div>
             {portalOpen && (
               <div style={{ display: 'grid', gap: '0.75rem', position: wide ? 'sticky' : 'static', top: '0.5rem' }}>

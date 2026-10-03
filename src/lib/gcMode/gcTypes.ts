@@ -19,6 +19,8 @@ export interface PlanSet {
   touches: string[]
   /** Who was emailed when the set went out, and whether it changed their trade. */
   sentTo?: { partnerId: string; on: string; touched: boolean }[]
+  /** Sheets this set adds to the index, with the titles the office gave them. */
+  addedSheets?: PlanSheet[]
 }
 
 /** One drawing in the set. The discipline is read from the number's letters (E-201 → Electrical). */
@@ -91,6 +93,11 @@ export interface Draw {
   lines: { sovId: string; toPct: number }[]
   /** The G702/G703 the trade sent with this draw. Absent on a draw asked for without one. */
   payApp?: DrawPayApp
+  /**
+   * The retainage release: the last draw, asked for once the work is accepted. It pays back what
+   * was held (retainage is negative, net is the release) and its waivers are the final-payment ones.
+   */
+  final?: boolean
 }
 
 export interface Sow {
@@ -101,6 +108,10 @@ export interface Sow {
   sov: SovLine[]
   signedOn: string | null
   draws: Draw[]
+  /** Closeout: the day we accepted the work, after the punch list. Null or absent: not yet. */
+  acceptedOn?: string | null
+  /** Closeout: the day their warranty letter came in. Null or absent: not yet. */
+  warrantyOn?: string | null
 }
 
 /**
@@ -338,6 +349,33 @@ export type GcAction =
   | { type: 'tradeSignW9'; partnerId: string }
   | { type: 'sendOwnerPayApp'; projectId: string }
   | { type: 'ownerPaid'; projectId: string; number: number }
+  | {
+      type: 'issuePlanSet'
+      projectId: string
+      /** What the set is called: "Addendum 2", "Bulletin 1", "Permit set". */
+      label: string
+      note: string
+      sheets: string[]
+      /** The sheets in `sheets` that are new to the index, with their titles. */
+      addedSheets: PlanSheet[]
+      touches: string[]
+      recipients: string[]
+      /** Trades the job did not have that this set brings. Each gets a package; nobody is asked yet. */
+      newTrades: NewTradeDraft[]
+    }
+  | { type: 'acceptWork'; projectId: string; packageId: string }
+  | { type: 'tradeSendWarranty'; projectId: string; packageId: string }
+  | {
+      type: 'tradeSendFinalPayApp'
+      projectId: string
+      packageId: string
+      periodTo: string
+      address: string
+      license: string
+      signedBy: string
+      signedTitle: string
+    }
+  | { type: 'approveRetainage'; projectId: string; packageId: string; drawId: string }
   /** Our own crew's percent done on a trade we do ourselves, reported in the office. */
   | { type: 'selfReport'; projectId: string; packageId: string; pct: number }
 

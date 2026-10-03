@@ -152,6 +152,43 @@ const STEPS: Step[] = [
   // Helotes: our pay application to the owner, and the owner paying it.
   { label: 'Send Dr. Raman pay application 1', action: { type: 'sendOwnerPayApp', projectId: 'helotes' } },
   { label: 'Dr. Raman pays pay application 1', action: { type: 'ownerPaid', projectId: 'helotes', number: 1 } },
+  // The sets that follow: a set named for what it is, a sheet it adds, a trade it brings.
+  {
+    label: 'Helotes: Bulletin 1 adds a storefront and its trade',
+    action: {
+      type: 'issuePlanSet',
+      projectId: 'helotes',
+      label: 'Bulletin 1',
+      note: 'A new storefront at the entry. A-601 is new.',
+      sheets: ['A-201', 'A-601'],
+      addedSheets: [{ id: 'A-601', title: 'Storefront elevations' }],
+      touches: ['dry'],
+      recipients: ['hillcountry'],
+      newTrades: [{ trade: 'Glass and storefront', budget: 18_000, ours: false, scope: ['Storefront', 'Glass'] }],
+    },
+  },
+  // Helotes, closeout: the last of the work, then the retainage back with the final waivers.
+  { label: 'Approve draw 3', action: { type: 'approveDraw', projectId: 'helotes', packageId: 'dry', drawId: 'dry-draw-3' } },
+  { label: 'Pay draw 3', action: { type: 'payDraw', projectId: 'helotes', packageId: 'dry', drawId: 'dry-draw-3' } },
+  { label: 'Hill Country signs the unconditional waiver on draw 3', action: { type: 'tradeSignUnconditional', projectId: 'helotes', packageId: 'dry', drawId: 'dry-draw-3' } },
+  { label: 'Accept the drywall work', action: { type: 'acceptWork', projectId: 'helotes', packageId: 'dry' } },
+  { label: 'Hill Country sends the warranty letter', action: { type: 'tradeSendWarranty', projectId: 'helotes', packageId: 'dry' } },
+  {
+    label: 'Hill Country sends the final pay application',
+    action: {
+      type: 'tradeSendFinalPayApp',
+      projectId: 'helotes',
+      packageId: 'dry',
+      periodTo: '2026-10-02',
+      address: '418 River Rd, Boerne, TX 78006',
+      license: '',
+      signedBy: 'Rosa Medina',
+      signedTitle: 'Office manager',
+    },
+  },
+  { label: 'Approve the retainage release', action: { type: 'approveRetainage', projectId: 'helotes', packageId: 'dry', drawId: 'dry-draw-4' } },
+  { label: 'Pay the retainage', action: { type: 'payDraw', projectId: 'helotes', packageId: 'dry', drawId: 'dry-draw-4' } },
+  { label: 'Hill Country signs the unconditional waiver on final payment', action: { type: 'tradeSignUnconditional', projectId: 'helotes', packageId: 'dry', drawId: 'dry-draw-4' } },
   // Helotes: our own crew reports plumbing on Bill the owner.
   { label: 'Our crew reports plumbing at 50%', action: { type: 'selfReport', projectId: 'helotes', packageId: 'dplumb', pct: 50 } },
 ]
@@ -278,7 +315,8 @@ describe('GC mode golden walk', () => {
       'createProject',
       'tradeSendPayApp',
       'tradeUploadCoi', 'tradeSignW9',
-      'sendOwnerPayApp', 'ownerPaid',
+      'sendOwnerPayApp', 'ownerPaid', 'issuePlanSet',
+      'acceptWork', 'tradeSendWarranty', 'tradeSendFinalPayApp', 'approveRetainage',
       'selfReport',
     ]
     expect(all.filter((t) => !used.has(t))).toEqual([])

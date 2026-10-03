@@ -9,8 +9,8 @@ import { planRecipients } from './gcPlans'
 import { bidsIn } from './gcBids'
 import { awardedPartner, find, logged, mapInvite, mapPackage, mapProject, mapSow, sowFromBid } from './gcReducerHelpers'
 import { initialGcState } from './gcFixture'
-import { buildNewProject } from './gcNewProject'
-import { payApplication } from './gcBuilding'
+import { buildNewProject, packagesFromDrafts, withTradesInOrder } from './gcNewProject'
+import { finalPayApplication, payApplication, tradeCloseout, workAllBilled } from './gcBuilding'
 import { ownerPayApp, ownerPayAppHasWork, ownerPayAppToSend } from './gcOwnerBilling'
 
 export function gcReducer(state: GcState, action: GcAction): GcState {
@@ -594,6 +594,103 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
           : p,
       )
       return logged(next, 'office', `${project.owner} paid pay application ${app.number}: ${money(app.due)}.`)
+    }
+
+    case 'issuePlanSet': {
+      const project = state.projects.find((p) => p.id === action.projectId)
+      if (!project) return state
+      const rev = currentRev(project) + 1
+      const brought = packagesFromDrafts(project.id, action.newTrades, project.packages.map((p) => p.id))
+      const withTrades = { ...project, packages: withTradesInOrder(project.packages, brought) }
+      const touches = [...new Set([...action.touches, ...brought.map((p) => p.id)])]
+      const chosen = planRecipients(state, withTrades, touches).filter((r) => action.recipients.includes(r.partner.id))
+      const sentTo = [...new Map(chosen.map((r) => [r.partner.id, { partnerId: r.partner.id, on: state.today, touched: chosen.some((x) => x.partner.id === r.partner.id && x.touched) }])).values()]
+      const set: PlanSet = {
+        rev,
+        label: action.label,
+        issuedOn: state.today,
+        note: action.note,
+        changedSheets: action.sheets,
+        touches,
+        sentTo,
+        ...(action.addedSheets.length > 0 ? { addedSheets: action.addedSheets } : {}),
+      }
+      const next = mapProject(state, project.id, () => ({ ...withTrades, planSets: [...withTrades.planSets, set] }))
+      const adds = brought.length > 0 ? ` It adds ${brought.map((p) => p.trade.toLowerCase()).join(' and ')}. Nobody is asked yet.` : ''
+      const told = sentTo.filter((x) => x.touched).length
+      return logged(
+        next,
+        'office',
+        `Issued ${set.label} on ${project.name} and emailed ${sentTo.length} ${sentTo.length === 1 ? 'company' : 'companies'}. ${told} ${told === 1 ? 'was' : 'were'} told it changes their trade.${adds}`,
+      )
+    }
+
+    case 'acceptWork': {
+      // Closeout: we walked the work and the punch list is done. Only once every line is billed.
+      const { pkg } = find(state, action.projectId, action.packageId)
+      const partner = awardedPartner(state, pkg)
+      const sow = pkg?.sow
+      if (!pkg || !partner || !sow || !workAllBilled(sow) || sow.acceptedOn) return state
+      const next = mapProject(state, action.projectId, (p) => mapPackage(p, pkg.id, (k) => mapSow(k, (s) => ({ ...s, acceptedOn: state.today }))))
+      return logged(next, 'office', `Accepted the ${pkg.trade} work from ${partner.company}. The punch list is done.`)
+    }
+
+    case 'tradeSendWarranty': {
+      const { pkg } = find(state, action.projectId, action.packageId)
+      const partner = awardedPartner(state, pkg)
+      const sow = pkg?.sow
+      if (!pkg || !partner || !sow || sow.status !== 'signed' || sow.warrantyOn) return state
+      const next = mapProject(state, action.projectId, (p) => mapPackage(p, pkg.id, (k) => mapSow(k, (s) => ({ ...s, warrantyOn: state.today }))))
+      return logged(next, 'trade', `${partner.company} sent the warranty letter for ${pkg.trade}.`)
+    }
+
+    case 'tradeSendFinalPayApp': {
+      // The retainage release: the last draw. It pays back what was held, so its retainage is
+      // negative and its net is the release; its waivers are the final-payment ones.
+      const { pkg } = find(state, action.projectId, action.packageId)
+      const partner = awardedPartner(state, pkg)
+      const sow = pkg?.sow
+      if (!pkg || !partner || !sow || !tradeCloseout(sow).canAskFinal) return state
+      const app = finalPayApplication(sow)
+      const release = app.summary.currentDue
+      if (release <= 0) return state
+      const address = action.address.trim()
+      const license = action.license.trim()
+      const draw: Draw = {
+        id: `${pkg.id}-draw-${app.number}`,
+        number: app.number,
+        requestedOn: state.today,
+        gross: 0,
+        retainage: -release,
+        net: release,
+        status: 'requested',
+        waiver: 'conditional',
+        lines: [],
+        payApp: { periodTo: action.periodTo, address, license, signedBy: action.signedBy.trim(), signedTitle: action.signedTitle.trim(), signedOn: state.today },
+        final: true,
+      }
+      const next = mapProject(state, action.projectId, (p) => mapPackage(p, pkg.id, (k) => mapSow(k, (s) => ({ ...s, draws: [...s.draws, draw] }))))
+      const kept: GcState = {
+        ...next,
+        partners: next.partners.map((p) =>
+          p.id === partner.id ? { ...p, ...(address ? { address } : {}), ...(license ? { license } : {}) } : p,
+        ),
+      }
+      return logged(
+        kept,
+        'trade',
+        `${partner.company} sent the final pay application on ${pkg.trade}: ${money(release)} of retainage, with a conditional waiver on final payment.`,
+      )
+    }
+
+    case 'approveRetainage': {
+      const { pkg } = find(state, action.projectId, action.packageId)
+      const draw = pkg?.sow?.draws.find((d) => d.id === action.drawId)
+      if (!pkg || !draw || !draw.final || draw.status !== 'requested') return state
+      const next = mapProject(state, action.projectId, (p) =>
+        mapPackage(p, pkg.id, (k) => mapSow(k, (s) => ({ ...s, draws: s.draws.map((d) => (d.id === draw.id ? { ...d, status: 'approved' } : d)) }))),
+      )
+      return logged(next, 'office', `Approved the retainage release on ${pkg.trade}: ${money(draw.net)} to pay.`)
     }
 
     case 'selfReport': {

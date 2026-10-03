@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type CSSProperties, type Dispatch, type R
 import { createPortal } from 'react-dom'
 import {
   GC_COMPANY_NAME,
+  finalPayApplication,
   money,
   newPayAppDraft,
   payApplication,
@@ -10,6 +11,8 @@ import {
   payAppKnown,
   payAppSteps,
   shortDate,
+  tradeCloseout,
+  workAllBilled,
   type Draw,
   type DrawPayApp,
   type GcAction,
@@ -63,7 +66,8 @@ const PCTS = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
 
 /**
  * Where a trade asks for a draw in its portal: one button that opens the pay application, or, once
- * one is sent, a line that says it is with the office and opens it to look.
+ * one is sent, a line that says it is with the office and opens it to look. Once every line is
+ * billed it turns into the trade's closeout: the warranty letter, the final pay application.
  */
 export function GcBuildingPayAppDoor({
   project,
@@ -76,7 +80,7 @@ export function GcBuildingPayAppDoor({
   partner: Partner
   dispatch: Dispatch<GcAction>
 }) {
-  const [open, setOpen] = useState<'draft' | Draw | null>(null)
+  const [open, setOpen] = useState<'draft' | 'final' | Draw | null>(null)
   // The draft lives here, not in the window: a click outside closes the window, never the work.
   const [draft, setDraft] = useState<PayAppInput | null>(null)
   const sow = pkg.sow
@@ -85,11 +89,18 @@ export function GcBuildingPayAppDoor({
   // What the draft asks for now, or what their reported work comes to before they open it.
   const asks = payApplication(sow, sow.draws.length + 1, draft?.toPct ?? payAppDraftPcts(sow))
   const ready = asks.summary.currentDue
+  const closing = workAllBilled(sow)
+  const openWindow = (which: 'draft' | 'final') => {
+    if (!draft) setDraft(newPayAppDraft(sow, partner))
+    setOpen(which)
+  }
 
   return (
     <>
       <div style={{ padding: '0.55rem 0.65rem', background: 'var(--bg-subtle)', borderRadius: 6, display: 'grid', gap: '0.4rem' }}>
-        {waiting ? (
+        {closing ? (
+          <CloseoutForTrade project={project} pkg={pkg} dispatch={dispatch} onFinal={() => openWindow('final')} onSee={(d) => setOpen(d)} />
+        ) : waiting ? (
           <>
             <div>
               Pay application {waiting.number} is with {GC_SHORT}. They are checking it.
@@ -112,13 +123,7 @@ export function GcBuildingPayAppDoor({
               )}
             </div>
             <div>
-              <Btn
-                kind="primary"
-                onClick={() => {
-                  if (!draft) setDraft(newPayAppDraft(sow, partner))
-                  setOpen('draft')
-                }}
-              >
+              <Btn kind="primary" onClick={() => openWindow('draft')}>
                 {draft ? 'Go on with' : 'Fill out'} pay application {sow.draws.length + 1}
               </Btn>
             </div>
@@ -131,13 +136,94 @@ export function GcBuildingPayAppDoor({
           pkg={pkg}
           partner={partner}
           dispatch={dispatch}
-          draw={open === 'draft' ? null : open}
+          draw={open === 'draft' || open === 'final' ? null : open}
+          final={open === 'final'}
           viewer="trade"
           draft={draft}
           onDraft={setDraft as Dispatch<SetStateAction<PayAppInput>>}
           onSent={() => setDraft(null)}
           onClose={() => setOpen(null)}
         />
+      )}
+    </>
+  )
+}
+
+/**
+ * The trade's closeout, in its portal: what is left before the retainage comes back. Click's
+ * steps read as waits; theirs carry the button. The final waiver's button is the portal's own,
+ * on the paid draw in the list under this block.
+ */
+function CloseoutForTrade({
+  project,
+  pkg,
+  dispatch,
+  onFinal,
+  onSee,
+}: {
+  project: GcProject
+  pkg: TradePackage
+  dispatch: Dispatch<GcAction>
+  onFinal: () => void
+  onSee: (draw: Draw) => void
+}) {
+  const sow = pkg.sow
+  if (!sow) return null
+  const c = tradeCloseout(sow)
+  const f = c.finalDraw
+  const ids = { projectId: project.id, packageId: pkg.id }
+  if (c.closed) {
+    return (
+      <div>
+        <strong>You are closed out on this job.</strong> {GC_SHORT} paid back the {money(f?.net ?? 0)} it held. Thank you.
+      </div>
+    )
+  }
+  const accepted = Boolean(sow.acceptedOn)
+  const warranty = Boolean(sow.warrantyOn)
+  const item = (done: boolean, words: ReactNode, extra?: ReactNode) => (
+    <div style={{ display: 'grid', gridTemplateColumns: '1rem minmax(0, 1fr)', gap: '0.4rem', alignItems: 'baseline' }}>
+      <span aria-hidden style={{ fontWeight: 700, color: done ? 'var(--text-green-700)' : 'var(--text-muted)' }}>{done ? '✓' : '•'}</span>
+      <span style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem 0.6rem', alignItems: 'center' }}>
+        <span style={{ color: done ? 'var(--text-muted)' : undefined }}>{words}</span>
+        {extra}
+      </span>
+    </div>
+  )
+  return (
+    <>
+      <div>
+        <strong>Closeout.</strong> All your work is billed. {GC_SHORT} holds <strong>{money(c.held)}</strong> until the end. That is your retainage.
+      </div>
+      {item(accepted, accepted ? `${GC_SHORT} accepted your work ${shortDate(sow.acceptedOn ?? null)}.` : `${GC_SHORT} walks the work with you and checks the punch list.`)}
+      {item(
+        warranty,
+        warranty ? 'Your warranty letter is in.' : 'Send your warranty letter.',
+        warranty ? null : <Btn onClick={() => dispatch({ type: 'tradeSendWarranty', ...ids })}>Send the warranty letter</Btn>,
+      )}
+      {item(
+        f !== null,
+        f ? `Your final pay application is with ${GC_SHORT}.` : `Ask for the ${money(c.held)} with a final pay application.`,
+        f ? (
+          <Btn onClick={() => onSee(f)}>See it</Btn>
+        ) : (
+          <Btn kind="primary" disabled={!c.canAskFinal} onClick={onFinal}>
+            Fill out the final pay application
+          </Btn>
+        ),
+      )}
+      {!f && !c.canAskFinal && (
+        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', paddingLeft: '1.4rem' }}>
+          It opens once {GC_SHORT} accepts your work and has your warranty letter.
+        </div>
+      )}
+      {item(
+        f?.status === 'paid',
+        f?.status === 'paid' ? `${GC_SHORT} paid your retainage.` : f?.status === 'approved' ? `${GC_SHORT} approved it. Payment is coming.` : `${GC_SHORT} pays your retainage.`,
+      )}
+      {item(
+        false,
+        f?.status === 'paid' ? 'Sign the unconditional waiver on final payment below.' : 'Last, you sign the unconditional waiver on final payment.',
       )}
     </>
   )
@@ -153,6 +239,7 @@ export function GcBuildingPayAppWindow({
   partner,
   dispatch,
   draw,
+  final: finalProp = false,
   viewer,
   draft: heldDraft = null,
   onDraft,
@@ -165,6 +252,8 @@ export function GcBuildingPayAppWindow({
   dispatch?: Dispatch<GcAction>
   /** A sent application to look at. Null: the trade is filling out a new one. */
   draw: Draw | null
+  /** A new final pay application: it asks for the retainage, every line at 100%. */
+  final?: boolean
   viewer: 'trade' | 'office'
   /** The trade's draft, held by the door so closing the window keeps it. */
   draft?: PayAppInput | null
@@ -192,10 +281,12 @@ export function GcBuildingPayAppWindow({
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
 
+  const final = draw ? draw.final === true : finalProp
   const app = useMemo(() => {
     if (!sow) return null
-    return draw ? payApplicationForDraw(sow, draw) : payApplication(sow, sow.draws.length + 1, draft.toPct)
-  }, [sow, draw, draft.toPct])
+    if (draw) return payApplicationForDraw(sow, draw)
+    return finalProp ? finalPayApplication(sow) : payApplication(sow, sow.draws.length + 1, draft.toPct)
+  }, [sow, draw, finalProp, draft.toPct])
 
   const { steps, ready } = useMemo(
     () => (app ? payAppSteps(app, draft) : { steps: [], ready: false }),
@@ -220,22 +311,15 @@ export function GcBuildingPayAppWindow({
   }
   const send = () => {
     if (!dispatch || !ready) return
-    dispatch({
-      type: 'tradeSendPayApp',
-      projectId: project.id,
-      packageId: pkg.id,
-      toPct: draft.toPct,
-      periodTo: draft.periodTo,
-      address: draft.address,
-      license: draft.license,
-      signedBy: draft.signedBy,
-      signedTitle: draft.signedTitle,
-    })
+    const typedIn = { periodTo: draft.periodTo, address: draft.address, license: draft.license, signedBy: draft.signedBy, signedTitle: draft.signedTitle }
+    if (final) dispatch({ type: 'tradeSendFinalPayApp', projectId: project.id, packageId: pkg.id, ...typedIn })
+    else dispatch({ type: 'tradeSendPayApp', projectId: project.id, packageId: pkg.id, toPct: draft.toPct, ...typedIn })
     onSent?.()
     onClose()
   }
   const net = app.summary.currentDue
-  const title = `Pay application ${app.number}`
+  const title = `${final ? 'Final pay application' : 'Pay application'} ${app.number}`
+  const waiverWords = final ? 'conditional waiver on final payment' : 'conditional lien waiver'
   const titleId = 'gc-payapp-title'
 
   const paper = (
@@ -310,7 +394,7 @@ export function GcBuildingPayAppWindow({
               {draw.payApp ? (
                 <>
                   {viewer === 'trade' ? 'You sent this' : `${partner.company} sent this`} {shortDate(draw.payApp.signedOn)}. {draw.payApp.signedBy}
-                  {draw.payApp.signedTitle ? `, ${draw.payApp.signedTitle},` : ''} signed it with a conditional lien waiver for {money(draw.net)}.
+                  {draw.payApp.signedTitle ? `, ${draw.payApp.signedTitle},` : ''} signed it with a {waiverWords} for {money(draw.net)}.
                 </>
               ) : (
                 <>This draw was asked for before pay applications. The form is rebuilt from the draw.</>
@@ -325,12 +409,33 @@ export function GcBuildingPayAppWindow({
             <div className="lienRelease-steps">
               <LienReleaseStepRow
                 step={stepAt('work')}
-                title={STEP_TITLES.work}
+                title={final ? 'Check it is all done' : STEP_TITLES.work}
                 nextIsCurrent={current === 'details'}
-                say={app.totals.thisPeriod > 0 ? 'Each line starts at what you reported. Change a line if it moved.' : 'Nothing new to bill yet. Raise a line that moved.'}
+                say={
+                  final
+                    ? 'Every line is billed at 100%. This application asks for the retainage.'
+                    : app.totals.thisPeriod > 0
+                      ? 'Each line starts at what you reported. Change a line if it moved.'
+                      : 'Nothing new to bill yet. Raise a line that moved.'
+                }
               >
                 <div style={{ display: 'grid', gap: '0.4rem', fontSize: '0.875rem' }} onFocus={() => setFocus('work')}>
-                  {app.lines.map((l) => {
+                  {final && (
+                    <>
+                      {app.lines.map((l) => (
+                        <div key={l.sovId} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem' }}>
+                          <span>
+                            {l.label} <span style={{ color: 'var(--text-muted)' }}>· {money(l.scheduled)}</span>
+                          </span>
+                          <span style={{ color: 'var(--text-green-700)', fontWeight: 600 }}>100% billed</span>
+                        </div>
+                      ))}
+                      <div style={{ color: 'var(--text-muted)' }}>
+                        Retainage held: <strong style={{ color: 'var(--text-base)' }}>{money(net)}</strong>
+                      </div>
+                    </>
+                  )}
+                  {!final && app.lines.map((l) => {
                     const before = l.fromPrevious === 0 ? 0 : Math.round((l.fromPrevious / l.scheduled) * 100)
                     return (
                       <label key={l.sovId} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '0.5rem', alignItems: 'center' }}>
@@ -352,9 +457,11 @@ export function GcBuildingPayAppWindow({
                       </label>
                     )
                   })}
-                  <div style={{ color: 'var(--text-muted)' }}>
-                    Work this period: <strong style={{ color: 'var(--text-base)' }}>{money(app.totals.thisPeriod)}</strong>
-                  </div>
+                  {!final && (
+                    <div style={{ color: 'var(--text-muted)' }}>
+                      Work this period: <strong style={{ color: 'var(--text-base)' }}>{money(app.totals.thisPeriod)}</strong>
+                    </div>
+                  )}
                 </div>
               </LienReleaseStepRow>
 
@@ -394,7 +501,9 @@ export function GcBuildingPayAppWindow({
                   </div>
                   <label style={{ display: 'flex', gap: '0.45rem', alignItems: 'flex-start' }}>
                     <input type="checkbox" checked={draft.waiverSigned} onChange={(e) => set({ waiverSigned: e.target.checked })} style={{ marginTop: '0.2rem' }} />
-                    <span>I sign the conditional lien waiver for {money(net)}.</span>
+                    <span>
+                      I sign the {waiverWords} for {money(net)}.
+                    </span>
                   </label>
                 </div>
               </LienReleaseStepRow>
@@ -404,11 +513,19 @@ export function GcBuildingPayAppWindow({
                 title={STEP_TITLES.send}
                 last
                 waitLabel="Opens when 1 to 3 are done"
-                say={`${GC_SHORT} checks it and pays the draw.`}
+                say={final ? `${GC_SHORT} checks it and pays back the retainage.` : `${GC_SHORT} checks it and pays the draw.`}
               >
                 <div style={{ display: 'grid', gap: '0.45rem', fontSize: '0.875rem' }} onFocus={() => setFocus('send')}>
                   <div>
-                    You ask for <strong>{money(net)}</strong>. {GC_SHORT} holds {sow.retainagePct}% of the work until the end.
+                    {final ? (
+                      <>
+                        You ask for <strong>{money(net)}</strong>. That is everything {GC_SHORT} held back.
+                      </>
+                    ) : (
+                      <>
+                        You ask for <strong>{money(net)}</strong>. {GC_SHORT} holds {sow.retainagePct}% of the work until the end.
+                      </>
+                    )}
                   </div>
                   <div>
                     <Btn kind="primary" disabled={!ready || !dispatch} onClick={send}>
@@ -610,7 +727,9 @@ function PayAppPaper({
             <p style={{ textAlign: 'center', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', margin: '0 0 0.15em' }}>
               Application and certificate for payment
             </p>
-            <p style={{ ...label, textAlign: 'center', margin: '0 0 0.9em' }}>AIA G702 · page 1 of 2</p>
+            <p style={{ ...label, textAlign: 'center', margin: '0 0 0.9em' }}>
+              AIA G702 · page 1 of 2{app.final ? ' · final, retainage release' : ''}
+            </p>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(13rem, 1fr))', gap: '0.6rem 1.25rem' }}>
               <div style={{ display: 'grid', gap: '0.45rem' }}>
@@ -658,7 +777,7 @@ function PayAppPaper({
             <Mark on={mark === 'work'} tag={MARK_WORDS.work}>
               {line('4', 'Total completed and stored to date, from the 703', money(s.completedToDate))}
             </Mark>
-            {line('5', `Retainage, ${s.retainagePct}% of completed work`, money(s.retainage))}
+            {line('5', app.final ? `Retainage, released on this final application` : `Retainage, ${s.retainagePct}% of completed work`, money(s.retainage))}
             {line('6', 'Total earned less retainage', money(s.earnedLessRetainage))}
             {line('7', 'Less previous certificates for payment', money(s.previousCertificates))}
             <Mark on={mark === 'send'} tag={MARK_WORDS.send}>
@@ -671,8 +790,8 @@ function PayAppPaper({
               <div style={{ marginTop: '0.9rem' }}>
                 <p style={{ margin: '0 0 0.6em' }}>
                   The undersigned certifies that the work covered by this application is done as shown. Everyone owed for earlier
-                  payments has been paid. The current payment shown is now due. A conditional lien waiver for{' '}
-                  {money(s.currentDue)} is signed with it.
+                  payments has been paid. The current payment shown is now due. A{' '}
+                  {app.final ? 'conditional waiver on final payment' : 'conditional lien waiver'} for {money(s.currentDue)} is signed with it.
                 </p>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(9rem, 1fr))', gap: '0.5rem', alignItems: 'end' }}>
                   <div style={{ borderBottom: '1px solid var(--text-base)', paddingBottom: '0.15rem', minHeight: '1.6em', fontStyle: typed.signedOn ? 'italic' : undefined, fontSize: typed.signedOn ? '1rem' : undefined }}>

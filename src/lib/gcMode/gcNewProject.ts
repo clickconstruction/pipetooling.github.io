@@ -1,10 +1,12 @@
 /**
- * GC mode — design spike. New Project: a project starts with its plans. The sheet index is read
- * out of what the office pastes, the trades are guessed from the sheets, and each trade starts
- * from its usual scope. Every guess here is a starting point the office changes.
+ * GC mode — design spike. New Project, and splitting the plans into trades: the sheet index is
+ * read out of what the office pastes, the trades are guessed from the sheets, and each trade
+ * starts from its usual scope. A later set of plans uses the same guess, and can bring a trade
+ * the job did not have. Every guess here is a starting point the office changes.
  */
-import type { GcCustomer, GcProject, GcState, NewProjectDraft, PlanSheet, TradePackage } from './gcTypes'
-import { sheetDiscipline } from './gcPlans'
+import type { GcCustomer, GcProject, GcState, NewProjectDraft, NewTradeDraft, PlanSheet, TradePackage } from './gcTypes'
+import { sheetDiscipline, sheetsAtRev } from './gcPlans'
+import { currentRev } from './gcLookups'
 
 /** One trade the office may buy, in the order the work goes in. */
 export interface TradeTemplate {
@@ -106,6 +108,17 @@ export function tradesForSheets(sheets: PlanSheet[]): TradeGuess[] {
   return out
 }
 
+/**
+ * The trades on a project that a later set's sheets most likely change. The sheets' titles come
+ * from the project's index, or from the set itself for a sheet it adds.
+ */
+export function packagesForSheets(project: GcProject, sheets: string[], added: PlanSheet[] = []): string[] {
+  const index = sheetsAtRev(project, currentRev(project))
+  const named: PlanSheet[] = sheets.map((id) => added.find((s) => s.id === id) ?? index.find((s) => s.id === id) ?? { id, title: '' })
+  const trades = new Set(tradesForSheets(named).map((g) => g.trade))
+  return project.packages.filter((p) => trades.has(p.trade)).map((p) => p.id)
+}
+
 /** The usual scope for a trade. A trade not on the list starts empty. */
 export function usualScope(trade: string): string[] {
   return TRADE_TEMPLATES.find((t) => t.trade === trade)?.scope ?? []
@@ -156,6 +169,41 @@ function newCustomer(id: string, name: string, kind: string): GcCustomer {
   }
 }
 
+/** Trade packages made from the office's drafts, ids kept clear of the ones already taken. */
+export function packagesFromDrafts(projectId: string, drafts: NewTradeDraft[], taken: string[] = []): TradePackage[] {
+  const used = [...taken]
+  return [...drafts]
+    .sort((a, b) => tradeOrder(a.trade) - tradeOrder(b.trade))
+    .map((t) => {
+      const pkgId = freeId(`${projectId}-${slug(t.trade)}`, used)
+      used.push(pkgId)
+      const lines = t.scope.map((x) => x.trim()).filter(Boolean)
+      return {
+        id: pkgId,
+        trade: t.trade,
+        bidTab: null,
+        scope: lines.map((label, i) => ({ id: `${pkgId}-${i + 1}`, label })),
+        budget: t.budget,
+        selfPerform: t.ours ? { ref: 'New bid', value: t.budget, note: 'Ours. Price it as our own bid in Trades mode.' } : null,
+        invites: [],
+        carried: t.ours ? 'self' : null,
+        awardedInviteId: null,
+        sow: null,
+      }
+    })
+}
+
+/** The project's trades with new ones put in build order. The trades already there keep their order. */
+export function withTradesInOrder(existing: TradePackage[], added: TradePackage[]): TradePackage[] {
+  const out = [...existing]
+  for (const pkg of added) {
+    const at = out.findIndex((p) => tradeOrder(p.trade) > tradeOrder(pkg.trade))
+    if (at === -1) out.push(pkg)
+    else out.splice(at, 0, pkg)
+  }
+  return out
+}
+
 /** The id the project will get. The window reads it to open the project once it is made. */
 export function newProjectId(state: GcState, draft: NewProjectDraft): string {
   return freeId(slug(draft.name), state.projects.map((p) => p.id))
@@ -181,26 +229,7 @@ export function buildNewProject(state: GcState, draft: NewProjectDraft): { proje
   const owner = record(draft.customerId, draft.ownerName, 'Owner')
   const architect = record(draft.architectId, draft.architectName, 'Architect')
 
-  const used: string[] = []
-  const packages: TradePackage[] = [...draft.trades]
-    .sort((a, b) => tradeOrder(a.trade) - tradeOrder(b.trade))
-    .map((t) => {
-      const pkgId = freeId(`${id}-${slug(t.trade)}`, used)
-      used.push(pkgId)
-      const lines = t.scope.map((s) => s.trim()).filter(Boolean)
-      return {
-        id: pkgId,
-        trade: t.trade,
-        bidTab: null,
-        scope: lines.map((label, i) => ({ id: `${pkgId}-${i + 1}`, label })),
-        budget: t.budget,
-        selfPerform: t.ours ? { ref: 'New bid', value: t.budget, note: 'Ours. Price it as our own bid in Trades mode.' } : null,
-        invites: [],
-        carried: t.ours ? 'self' : null,
-        awardedInviteId: null,
-        sow: null,
-      }
-    })
+  const packages = packagesFromDrafts(id, draft.trades)
 
   const n = draft.sheets.length
   const project: GcProject = {

@@ -15,6 +15,7 @@ import {
   planLabel,
   planRecipients,
   proposalTotals,
+  retainageHeldNow,
   shortDate,
   sowMoney,
   thousands,
@@ -879,7 +880,7 @@ export function GcDrawsTab({ state, project, dispatch }: GcPaneProps) {
                 <Stat label="Contract" value={money(sow.price)} />
                 <Stat label="Billed" value={money(m.billed)} />
                 <Stat label="Paid" value={money(m.paid)} />
-                <Stat label="Retainage held" value={money(m.retainageHeld)} />
+                <Stat label="Retainage held" value={money(retainageHeldNow(sow))} />
                 <Stat label="Left to bill" value={money(sow.price - m.billed)} />
               </div>
             </div>
@@ -904,18 +905,32 @@ export function GcDrawsTab({ state, project, dispatch }: GcPaneProps) {
               {sow.draws.length === 0 && <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No draw asked for yet.</span>}
               {sow.draws.map((d) => (
                 <div key={d.id} style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.875rem' }}>
-                  <strong>Draw {d.number}</strong>
+                  <strong>{d.final ? `Draw ${d.number} · retainage release` : `Draw ${d.number}`}</strong>
                   <span>{shortDate(d.requestedOn)}</span>
-                  <span>{money(d.gross)} less {money(d.retainage)} held = <strong>{money(d.net)}</strong></span>
+                  {d.final ? (
+                    <span>pays back what we held: <strong>{money(d.net)}</strong></span>
+                  ) : (
+                    <span>{money(d.gross)} less {money(d.retainage)} held = <strong>{money(d.net)}</strong></span>
+                  )}
                   <Chip tone={d.status === 'paid' ? 'green' : d.status === 'approved' ? 'blue' : 'amber'}>
                     {d.status === 'requested' ? 'waiting on us' : d.status}
                   </Chip>
                   <Chip tone={d.waiver === 'unconditional' ? 'green' : d.status === 'paid' ? 'amber' : 'grey'}>
-                    {d.waiver === 'unconditional' ? 'unconditional waiver in' : d.status === 'paid' ? 'unconditional waiver owed' : 'conditional waiver in'}
+                    {d.final
+                      ? d.waiver === 'unconditional'
+                        ? 'final waiver in'
+                        : d.status === 'paid'
+                          ? 'final waiver owed'
+                          : 'conditional final waiver in'
+                      : d.waiver === 'unconditional'
+                        ? 'unconditional waiver in'
+                        : d.status === 'paid'
+                          ? 'unconditional waiver owed'
+                          : 'conditional waiver in'}
                   </Chip>
                   {d.status === 'requested' && (
                     <>
-                      <Btn kind="primary" disabled={blockers.length > 0} title={blockers.join(' ')} onClick={() => dispatch({ type: 'approveDraw', ...ids, drawId: d.id })}>
+                      <Btn kind="primary" disabled={blockers.length > 0} title={blockers.join(' ')} onClick={() => dispatch(d.final ? { type: 'approveRetainage', ...ids, drawId: d.id } : { type: 'approveDraw', ...ids, drawId: d.id })}>
                         Approve
                       </Btn>
                       {blockers.length > 0 && <span style={{ color: 'var(--text-red-700)' }}>{blockers.join(' ')}</span>}
@@ -925,7 +940,7 @@ export function GcDrawsTab({ state, project, dispatch }: GcPaneProps) {
                     <Btn kind="primary" onClick={() => dispatch({ type: 'payDraw', ...ids, drawId: d.id })}>Mark paid</Btn>
                   )}
                   <Btn kind="quiet" onClick={() => setLooking({ packageId: pkg.id, drawId: d.id })}>
-                    {d.payApp ? 'Pay application' : 'Pay application, rebuilt'}
+                    {d.payApp ? (d.final ? 'Final pay application' : 'Pay application') : 'Pay application, rebuilt'}
                   </Btn>
                 </div>
               ))}
