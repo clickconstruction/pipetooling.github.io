@@ -357,6 +357,8 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
   (the made-up record before any went); paid out is the trades' paid draws, retainage released
   included. Our own crew (payroll) and general conditions carry no cost in the prototype. In the
   real build it is for the owner and the controller, like the rest of the app's money.
+- Insurance within 30 days of running out (`COI_WARN_DAYS`) turns its chip amber, asks under
+  Needs you, and emails the company 30 days before the date.
 - A new insurance certificate counts the moment the company sends it; nobody in the office checks
   it first. A new one is good for a year until they change the day.
 - A company answers every line the office marked "not clear" (in or left out) before its number
