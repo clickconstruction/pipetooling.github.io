@@ -466,6 +466,8 @@ export type GcAction =
   | { type: 'removeScheduleMilestone'; projectId: string; milestoneId: string }
   | { type: 'verifyLookAhead'; projectId: string; weekOf: string; lineId: string; done: boolean; reason?: LookAheadReason }
   | { type: 'crewMarkLookAhead'; projectId: string; weekOf: string; lineId: string; done: boolean; reason?: LookAheadReason }
+  /** The trade marks one look-ahead activity done or not for a week, in its portal. A verified mark stays as verified. */
+  | { type: 'tradeMarkLookAhead'; projectId: string; packageId: string; lineId: string; weekOf: string; done: boolean; reason?: LookAheadReason }
 
 /** One trade on a new project, as the office left it in the New project window. */
 export interface NewTradeDraft {

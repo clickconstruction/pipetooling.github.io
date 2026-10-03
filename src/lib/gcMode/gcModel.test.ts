@@ -313,6 +313,8 @@ const STEPS: Step[] = [
     label: 'Our crew’s top out this week: not done after all (materials)',
     action: { type: 'crewMarkLookAhead', projectId: 'fairoaksd', weekOf: '2026-09-28', lineId: 'fplumb-3', done: false, reason: 'materials' },
   },
+  // The portal's weekly look-ahead: the trade marks this week's activity.
+  { label: 'Fair Oaks D: Pecan Valley marks Lighting not done this week (materials)', action: { type: 'tradeMarkLookAhead', projectId: 'fairoaksd', packageId: 'felec', lineId: 'felec-3', weekOf: '2026-09-28', done: false, reason: 'materials' } },
 ]
 
 const CUSTOMER_IDS = ['cibolo', 'raman']
@@ -448,6 +450,7 @@ describe('GC mode golden walk', () => {
       'tradeOpenPortal',
       'tradeAnswerLines',
       'priceOwnBid',
+      'tradeMarkLookAhead',
     ]
     expect(all.filter((t) => !used.has(t))).toEqual([])
   })
