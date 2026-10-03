@@ -225,7 +225,8 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
 - **A company's link lands on its home** (2026-10-02), not on one project: everything the company
   has with us, what needs them first. A project's page is one tap away.
 - **A company's language is kept on its record** (2026-10-03): the portal opens in it, and the
-  messages we send it go out in it.
+  messages we send it go out in it. The company sets it in its portal; the office can set it too,
+  on Trade partners.
 
 ## My defaults the owner has not confirmed
 
@@ -353,8 +354,9 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
     2026-10-02: the trade in its portal, verified by our superintendent.
 25. ~~Should a company's language be kept on its record, so its emails go out in Spanish?~~
     Answered 2026-10-03: yes (`Partner.lang`, set by the company's **Español** button,
-    `tradeSetLanguage`). Still open: should the office be able to set it too? The Spanish was
-    written by the prototype; a native speaker should read it before it ships.
+    `tradeSetLanguage`), and the office can set it too on Trade partners (`setPartnerLanguage`,
+    `GcPortalLanguagePick.tsx`). The Spanish was written by the prototype; a native speaker should
+    read it before it ships.
 
 ## The schedule (proposed, 2026-10-02)
 
@@ -462,6 +464,7 @@ imitates it.
 | `GcTradePortal.tsx` | The trade partner's side: the frame, each trade's plans, bid, bid tab, statement of work and draws |
 | `gcPortalLang.ts` | The portal's language, held by the frame and read by every portal screen (`usePortalLang`) |
 | `GcPortalBidExtras.tsx` | The bid form past the number: good for how many days, alternates, the company's own quote, answering the lines the office could not read |
+| `GcPortalLanguagePick.tsx` | For the office: a company's language on Trade partners |
 | `GcPortalLinkChip.tsx` | For the office: a company we asked that never opened its portal link (Trades, Follow up) |
 | `GcPortalLookAhead.tsx` | The weekly look-ahead in the trade's portal: three weeks, the company's done or not done with a reason |
 | `GcPortalLineSheets.tsx` | The sheet numbers beside each line of the bid form, and the lines a new set touches |

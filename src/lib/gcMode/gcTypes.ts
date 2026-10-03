@@ -492,6 +492,8 @@ export type GcAction =
   | { type: 'ownerDeclineChangeOrder'; projectId: string; changeOrderId: string }
   /** How much of a signed change order's work is done, for the owner's bill. */
   | { type: 'setChangeOrderPct'; projectId: string; changeOrderId: string; pct: number }
+  /** The office sets a company's language, say when it asks for Spanish on a call. Same record as tradeSetLanguage. */
+  | { type: 'setPartnerLanguage'; partnerId: string; lang: 'en' | 'es' }
 
 /** One trade on a new project, as the office left it in the New project window. */
 export interface NewTradeDraft {

@@ -21,6 +21,7 @@ import {
   type TradeBench,
   type TradeNeed,
 } from '../../lib/gcMode/gcModel'
+import { CompanyLanguagePick } from './GcPortalLanguagePick'
 import { GcPartnersTab, PaperworkChips } from './GcOfficeTabs'
 import { Btn, Card, Chip, input, td, th, type Tone } from './gcUi'
 
@@ -421,6 +422,10 @@ function PartnerLine({ state, partner, bench, dispatch }: { state: GcState; part
       <td style={{ ...td, minWidth: '14rem' }}>
         <strong>{partner.company}</strong>
         <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{partner.contact || 'no contact yet'}</div>
+        {/* Portal lane: the company's language, for its portal and messages. */}
+        <div>
+          <CompanyLanguagePick partner={partner} dispatch={dispatch} />
+        </div>
         {editing ? (
           <div style={{ marginTop: '0.3rem', display: 'grid', gap: '0.3rem' }}>
             <CoverageFields base={base} maxMiles={maxMiles} onBase={setBase} onMaxMiles={setMaxMiles} />

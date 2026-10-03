@@ -7157,6 +7157,16 @@ exports[`GC mode golden walk > step 108: Dr. Raman declines change order 2 1`] =
 }
 `;
 
+exports[`GC mode golden walk > step 109: The office sets Comal Iron to Spanish 1`] = `
+{
+  "changed": {
+    "lastLog.id": 105,
+    "lastLog.text": "Set Comal Iron's language to Spanish: its portal and messages.",
+  },
+  "removed": [],
+}
+`;
+
 exports[`GC mode golden walk > the whole state at the end 1`] = `
 {
   "customers": [
@@ -7357,6 +7367,11 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
+      "id": 105,
+      "text": "Set Comal Iron's language to Spanish: its portal and messages.",
+      "who": "office",
+    },
+    {
       "id": 104,
       "text": "Dr. Priya Raman declined change order 2 in their portal.",
       "who": "office",
@@ -7501,11 +7516,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "text": "Lonestar Earthworks opened Pricing set.",
       "who": "trade",
     },
-    {
-      "id": 75,
-      "text": "Alamo Concrete answered on Concrete: Rebar supply is in their number.",
-      "who": "trade",
-    },
   ],
   "partners": [
     {
@@ -7632,6 +7642,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "contact": "Ray Odom",
       "id": "comal",
       "invited": 2,
+      "lang": "es",
       "maxMiles": 50,
       "msa": "none",
       "msaSignedOn": null,

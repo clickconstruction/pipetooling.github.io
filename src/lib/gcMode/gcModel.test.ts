@@ -331,6 +331,7 @@ const STEPS: Step[] = [
   },
   { label: 'Send change order 2 to Dr. Raman', action: { type: 'sendChangeOrder', projectId: 'helotes', changeOrderId: 'co-2' } },
   { label: 'Dr. Raman declines change order 2', action: { type: 'ownerDeclineChangeOrder', projectId: 'helotes', changeOrderId: 'co-2' } },
+  { label: 'The office sets Comal Iron to Spanish', action: { type: 'setPartnerLanguage', partnerId: 'comal', lang: 'es' } },
 ]
 
 const CUSTOMER_IDS = ['cibolo', 'raman']
@@ -469,6 +470,7 @@ describe('GC mode golden walk', () => {
       'priceOwnBid',
       'tradeMarkLookAhead',
       'tradeSetLanguage',
+      'setPartnerLanguage',
     ]
     expect(all.filter((t) => !used.has(t))).toEqual([])
   })
