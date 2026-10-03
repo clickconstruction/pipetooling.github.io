@@ -9,7 +9,12 @@ import {
   sheetDiscipline,
   sheetIndexInText,
   tradeOrder,
-  tradesForSheets,
+  tradesForPlans,
+  specIndexInText,
+  specDivision,
+  guessLineSpecs,
+  SAMPLE_SPEC_INDEX,
+  SPEC_DIVISIONS,
   usualScope,
   guessLineSheets,
   answerRecord,
@@ -25,12 +30,14 @@ import {
   type GcState,
   type NewProjectDraft,
   type PlanSheet,
+  type SpecSection,
 } from '../../lib/gcMode/gcModel'
 
-/** One scope line as the office is writing it. `sheets` null: follow the guess from the line's words. */
+/** One scope line as the office is writing it. `sheets` or `specs` null or missing: follow the guess from the line's words. */
 export interface ScopeLineDraft {
   label: string
   sheets: string[] | null
+  specs?: string[] | null
 }
 
 /** The usual lines for a trade, each following the guess. */
@@ -68,6 +75,8 @@ interface TradeEdit {
 
 interface TradeRow {
   trade: string
+  /** The sections of the project manual that suggest the trade. */
+  specs: string[]
   /** The sheets that suggest the trade. Empty: the office added it. */
   from: string[]
   on: boolean
@@ -127,6 +136,7 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
   const [issuedOn, setIssuedOn] = useState(state.today)
   const [setNote, setSetNote] = useState('')
   const [indexText, setIndexText] = useState('')
+  const [specText, setSpecText] = useState('')
 
   const [edits, setEdits] = useState<Record<string, TradeEdit>>({})
   const [added, setAdded] = useState<string[]>([])
@@ -136,7 +146,8 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
   const [asks, setAsks] = useState<Record<string, string[]>>({})
 
   const reading = useMemo(() => sheetIndexInText(indexText), [indexText])
-  const guesses = useMemo(() => tradesForSheets(reading.sheets), [reading.sheets])
+  const specReading = useMemo(() => specIndexInText(specText), [specText])
+  const guesses = useMemo(() => tradesForPlans(reading.sheets, specReading.sections), [reading.sheets, specReading.sections])
 
   const rows: TradeRow[] = useMemo(() => {
     const names = [...guesses.map((g) => g.trade), ...added.filter((t) => !guesses.some((g) => g.trade === t))]
@@ -146,6 +157,7 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
         return {
           trade,
           from: guesses.find((g) => g.trade === trade)?.from ?? [],
+          specs: guesses.find((g) => g.trade === trade)?.specs ?? [],
           on: e.on ?? true,
           ours: e.ours ?? OUR_TRADES.includes(trade),
           budget: e.budget ?? '',
@@ -178,14 +190,17 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
     issuedOn,
     setNote: setNote.trim(),
     sheets: reading.sheets,
+    ...(specReading.sections.length > 0 ? { specs: specReading.sections } : {}),
     trades: picked.map((r) => {
       const own = reading.sheets.filter((x) => r.from.includes(x.id))
+      const ownSpecs = specReading.sections.filter((x) => r.specs.includes(x.id))
       return {
         trade: r.trade,
         budget: budgetNumber(r.budget),
         ours: r.ours,
         scope: r.scope.map((l) => l.label),
         scopeSheets: r.scope.map((l) => l.sheets ?? guessLineSheets(l.label, own)),
+        ...(specReading.sections.length > 0 ? { scopeSpecs: r.scope.map((l) => l.specs ?? guessLineSpecs(l.label, ownSpecs)) } : {}),
       }
     }),
   }
@@ -206,7 +221,9 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
   const asked = built.packages.reduce((n, pkg) => n + asksFor(pkg.trade, pkg).length, 0)
   const summaries = [
     draft.name || 'No name yet',
-    `${draft.setLabel} · ${reading.sheets.length} ${reading.sheets.length === 1 ? 'sheet' : 'sheets'}`,
+    `${draft.setLabel} · ${reading.sheets.length} ${reading.sheets.length === 1 ? 'sheet' : 'sheets'}${
+      specReading.sections.length > 0 ? `, ${specReading.sections.length} ${specReading.sections.length === 1 ? 'section' : 'sections'}` : ''
+    }`,
     `${picked.length} ${picked.length === 1 ? 'trade' : 'trades'}${ours > 0 ? `, ${ours} ours` : ''}`,
     `${scopeLines} scope ${scopeLines === 1 ? 'line' : 'lines'}`,
     asked === 0 ? 'Nobody asked yet' : `${asked} ${asked === 1 ? 'company' : 'companies'} asked`,
@@ -429,6 +446,23 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
                     <Btn kind="quiet" onClick={() => setIndexText(SAMPLE_SHEET_INDEX)}>Paste a made-up sheet index</Btn>
                   </div>
                 )}
+                <Field
+                  label="The project manual's table of contents"
+                  hint="Paste the list of sections from the front of the specs. Each line that starts with a section number becomes a section. Leave it empty when no specs came in."
+                >
+                  <textarea
+                    value={specText}
+                    onChange={(e) => setSpecText(e.target.value)}
+                    rows={7}
+                    placeholder={'07 54 23  TPO roofing\n09 29 00  Gypsum board\n09 91 23  Interior painting\n22 40 00  Plumbing fixtures'}
+                    style={{ ...field, fontFamily: 'inherit', resize: 'vertical' }}
+                  />
+                </Field>
+                {specText.trim() === '' && (
+                  <div>
+                    <Btn kind="quiet" onClick={() => setSpecText(SAMPLE_SPEC_INDEX)}>Paste a made-up table of contents</Btn>
+                  </div>
+                )}
               </div>
 
               <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem 0.75rem', background: 'var(--bg-subtle)', fontSize: '0.85rem' }}>
@@ -459,6 +493,34 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
                     ))}
                   </div>
                 )}
+                {(specReading.sections.length > 0 || specReading.unread.length > 0) && (
+                  <div style={{ marginTop: '0.6rem', borderTop: '1px solid var(--border)', paddingTop: '0.5rem' }}>
+                    <div style={{ fontWeight: 600, marginBottom: '0.4rem' }}>{specReading.sections.length} sections read</div>
+                    {[...new Set(specReading.sections.map((x) => specDivision(x.id)))].map((div) => (
+                      <div key={div} style={{ marginBottom: '0.45rem' }}>
+                        <div style={{ fontSize: '0.68rem', letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+                          Division {div} · {SPEC_DIVISIONS[div] ?? 'Other'}
+                        </div>
+                        {specReading.sections
+                          .filter((x) => specDivision(x.id) === div)
+                          .map((x) => (
+                            <div key={x.id} style={{ display: 'flex', gap: '0.45rem' }}>
+                              <span style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums', minWidth: '4.6rem' }}>{x.id}</span>
+                              <span>{x.title || 'no title'}</span>
+                            </div>
+                          ))}
+                      </div>
+                    ))}
+                    {specReading.unread.length > 0 && (
+                      <div style={{ marginTop: '0.4rem', padding: '0.4rem 0.55rem', borderRadius: 6, background: 'var(--bg-amber-tint)' }}>
+                        These lines were not read as sections. A section line starts with its number, like 09 91 23.
+                        {specReading.unread.map((l) => (
+                          <div key={l} style={{ fontFamily: 'ui-monospace, monospace', fontSize: '0.8rem' }}>{l}</div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -466,7 +528,7 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
           {step === 2 && (
             <div style={{ display: 'grid', gap: '0.75rem' }}>
               <div style={{ fontSize: '0.875rem' }}>
-                The trades are a guess from the sheets. Untick a trade we do not need. Tick <strong>Ours</strong> when our own crew does it. That starts our own bid in Trades mode. The trade counts as a real number once that bid is priced. Until then its budget is our guess.
+                The trades are a guess from the sheets and the specs. Untick a trade we do not need. Tick <strong>Ours</strong> when our own crew does it. That starts our own bid in Trades mode. The trade counts as a real number once that bid is priced. Until then its budget is our guess.
               </div>
               {rows.length === 0 ? (
                 <div style={{ color: 'var(--text-muted)' }}>No trades yet. Paste the sheet index on step 2, or add a trade below.</div>
@@ -490,7 +552,7 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
                         <input type="checkbox" checked={r.on} onChange={(e) => edit(r.trade, { on: e.target.checked })} />
                         <strong>{r.trade}</strong>
                         <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {r.from.length > 0 ? `from ${sheetsWords(r.from)}` : 'you added it'}
+                          {r.from.length > 0 || r.specs.length > 0 ? `from ${sheetsWords([...r.from, ...r.specs])}` : 'you added it'}
                         </span>
                       </label>
                       {r.on && (
@@ -622,6 +684,7 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
                       key={shown.trade}
                       row={shown}
                       sheets={reading.sheets}
+                      specs={specReading.sections}
                       onChange={(scope) => edit(shown.trade, { scope })}
                       onReset={() => edit(shown.trade, { scope: undefined })}
                       next={picked[picked.indexOf(shown) + 1]?.trade ?? null}
@@ -739,6 +802,7 @@ function RecordChip({ record }: { record: AnswerRecord }) {
 function ScopeEditor({
   row,
   sheets,
+  specs,
   onChange,
   onReset,
   next,
@@ -746,6 +810,7 @@ function ScopeEditor({
 }: {
   row: TradeRow
   sheets: PlanSheet[]
+  specs: SpecSection[]
   onChange: (scope: ScopeLineDraft[]) => void
   onReset: () => void
   next: string | null
@@ -756,10 +821,22 @@ function ScopeEditor({
       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
         <strong>{row.trade}</strong>
         <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-          {row.ours ? 'Ours. This is the scope of our own bid.' : row.from.length > 0 ? `Reads from ${sheetsWords(row.from)}.` : 'You added this trade.'}
+          {row.ours
+            ? 'Ours. This is the scope of our own bid.'
+            : row.from.length > 0 || row.specs.length > 0
+              ? `Reads from ${sheetsWords([...row.from, ...row.specs])}.`
+              : 'You added this trade.'}
         </span>
       </div>
-      <ScopeLines trade={row.trade} lines={row.scope} onChange={onChange} sheets={sheets} tradeSheets={sheets.filter((x) => row.from.includes(x.id))}>
+      <ScopeLines
+        trade={row.trade}
+        lines={row.scope}
+        onChange={onChange}
+        sheets={sheets}
+        tradeSheets={sheets.filter((x) => row.from.includes(x.id))}
+        specs={specs}
+        tradeSpecs={specs.filter((x) => row.specs.includes(x.id))}
+      >
         {row.scopeEdited && usualScope(row.trade).length > 0 && <Btn kind="quiet" onClick={onReset}>Put back the usual lines</Btn>}
         <span style={{ flex: 1 }} />
         {next && <Btn kind="quiet" onClick={() => onNext(next)}>Next trade: {next} →</Btn>}
@@ -780,6 +857,8 @@ export function ScopeLines({
   onChange,
   sheets,
   tradeSheets,
+  specs = [],
+  tradeSpecs = [],
   children,
 }: {
   trade: string
@@ -789,6 +868,10 @@ export function ScopeLines({
   sheets: PlanSheet[]
   /** The sheets that suggest this trade: the guess reads these, and they come first in the list. */
   tradeSheets: PlanSheet[]
+  /** Every section of the project manual, to tie a line to. Empty: no specs came in. */
+  specs?: SpecSection[]
+  /** The sections that suggest this trade: the guess reads these, and they come first. */
+  tradeSpecs?: SpecSection[]
   /** More buttons on the line under the boxes. */
   children?: ReactNode
 }) {
@@ -805,17 +888,20 @@ export function ScopeLines({
   }
   const set = (i: number, patch: Partial<ScopeLineDraft>) => onChange(lines.map((l, j) => (j === i ? { ...l, ...patch } : l)))
   const others = sheets.filter((x) => !tradeSheets.some((t) => t.id === x.id))
+  const otherSpecs = specs.filter((x) => !tradeSpecs.some((t) => t.id === x.id))
   const titleOf = (id: string) => sheets.find((x) => x.id === id)?.title ?? ''
+  const specTitle = (id: string) => specs.find((x) => x.id === id)?.title ?? ''
   return (
     <>
       {lines.length === 0 && <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>No lines yet. A quote with no lines cannot be compared.</div>}
       {lines.length > 0 && (
         <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>
-          Each line shows the sheets it reads from, guessed from its words. Take one out with × or add one.
+          Each line shows the sheets{specs.length > 0 ? ' and spec sections' : ''} it reads from, guessed from its words. Take one out with × or add one.
         </div>
       )}
       {lines.map((line, i) => {
         const on = line.sheets ?? guessLineSheets(line.label, tradeSheets)
+        const onSpecs = line.specs ?? guessLineSpecs(line.label, tradeSpecs)
         return (
           <div key={i} style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', width: '1.2rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{i + 1}</span>
@@ -850,26 +936,63 @@ export function ScopeLines({
                   </button>
                 </span>
               ))}
-              {sheets.length > 0 && (
+              {onSpecs.map((id) => (
+                <span
+                  key={`spec-${id}`}
+                  title={specTitle(id)}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.15rem', padding: '0 0.15rem 0 0.45rem', borderRadius: 999, background: 'var(--bg-violet-100)', color: 'var(--text-violet-800)', fontSize: '0.75rem', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}
+                >
+                  {id}
+                  <button
+                    type="button"
+                    onClick={() => set(i, { specs: onSpecs.filter((x) => x !== id) })}
+                    aria-label={`Take section ${id} off ${line.label || 'this line'}`}
+                    style={{ border: 'none', background: 'transparent', color: 'inherit', cursor: 'pointer', padding: '0 0.2rem', lineHeight: 1 }}
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+              {sheets.length + specs.length > 0 && (
                 <select
                   value=""
-                  onChange={(e) => e.target.value && set(i, { sheets: [...on, e.target.value] })}
-                  aria-label={`Add a sheet to ${line.label || 'this line'}`}
+                  onChange={(e) => {
+                    const v = e.target.value
+                    if (v.startsWith('sheet:')) set(i, { sheets: [...on, v.slice(6)] })
+                    if (v.startsWith('spec:')) set(i, { specs: [...onSpecs, v.slice(5)] })
+                  }}
+                  aria-label={`Add a sheet or a section to ${line.label || 'this line'}`}
                   style={{ ...input, padding: '0.1rem 0.25rem', fontSize: '0.75rem', width: '4.6rem' }}
                 >
-                  <option value="">+ sheet</option>
+                  <option value="">+ add</option>
                   {tradeSheets.length > 0 && (
                     <optgroup label={`${trade} sheets`}>
                       {tradeSheets.filter((x) => !on.includes(x.id)).map((x) => (
-                        <option key={x.id} value={x.id}>{x.id} {x.title}</option>
+                        <option key={x.id} value={`sheet:${x.id}`}>{x.id} {x.title}</option>
                       ))}
                     </optgroup>
                   )}
-                  <optgroup label="Other sheets">
-                    {others.filter((x) => !on.includes(x.id)).map((x) => (
-                      <option key={x.id} value={x.id}>{x.id} {x.title}</option>
-                    ))}
-                  </optgroup>
+                  {others.length > 0 && (
+                    <optgroup label="Other sheets">
+                      {others.filter((x) => !on.includes(x.id)).map((x) => (
+                        <option key={x.id} value={`sheet:${x.id}`}>{x.id} {x.title}</option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {tradeSpecs.length > 0 && (
+                    <optgroup label={`${trade} sections`}>
+                      {tradeSpecs.filter((x) => !onSpecs.includes(x.id)).map((x) => (
+                        <option key={x.id} value={`spec:${x.id}`}>{x.id} {x.title}</option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {otherSpecs.length > 0 && (
+                    <optgroup label="Other sections">
+                      {otherSpecs.filter((x) => !onSpecs.includes(x.id)).map((x) => (
+                        <option key={x.id} value={`spec:${x.id}`}>{x.id} {x.title}</option>
+                      ))}
+                    </optgroup>
+                  )}
                 </select>
               )}
             </span>
