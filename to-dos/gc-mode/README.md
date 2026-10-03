@@ -271,7 +271,9 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   has with us, what needs them first. A project's page is one tap away.
 - **Questions about the plans** (2026-10-03): a company asks in its portal; when the answer goes
   out to the other companies on the trade, they see the question and the answer but not who asked.
-  Questions close three days before the bid is due.
+  Questions close three days before the bid is due, and never once the job is ours
+  (`questionsCloseOn`, `questionsOpen` in `gcPlans.ts`; the asking action refuses a late one, so
+  the rule holds outside the portal too).
 - **We pay an approved pay application within 10 days** (2026-10-03, `PAY_WITHIN_DAYS`); a
   trade's retainage keeps its own day. Draws keep the day they were approved and paid
   (`approvedOn`, `paidOn`); the made-up draws from before got made-up days. The office reads the
@@ -488,10 +490,10 @@ they point to, for the lanes to pick up.
   budget from real costs, not a made-up rate per square foot. A line's sheets show only in New Project, a new set
   and the plans window; the portal's bid form, Trades and Compare bids do not show them yet. A
   later set cannot yet take a sheet out of the set.
-- Questions about the plans, the rest: a trade asks in its portal (the Portal lane: the action
-  `tradeAskQuestion` is ready), the answers show in the portal, and a **Questions about the plans**
-  door on the Plans tab (the Board lane). Today the office types a question that came in by phone
-  or email, and the window opens from A new set of plans came in.
+- Questions about the plans, the rest: a trade asks in its portal and sees the answers there (the
+  Portal lane: the action `tradeAskQuestion` is ready). Today the office types a question that came
+  in by phone or email. The window opens from **Questions about the plans** on the Plans tab and
+  from A new set of plans came in.
 - Change orders to a trade, the rest: the owner's change order still reads its own percent done,
   not the trade's on its line (`changeOrderTradePct`, the Owner Billing lane's to read), and the
   portal's "left to bill" counts the original contract only (`sowContractSum`, the Portal lane's).

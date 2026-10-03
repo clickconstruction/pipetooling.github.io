@@ -6,6 +6,8 @@ import {
   questionInNote,
   questionRecipients,
   questionState,
+  questionsCloseOn,
+  questionsOpen,
   compareBids,
   gcReducer,
   initialGcState,
@@ -329,5 +331,23 @@ describe('questions about the plans', () => {
     })
     expect(padb(carried).questions[0]?.inSetRev).toBe(1)
     expect(answeredNotInSet(padb(carried))).toEqual([])
+  })
+})
+
+describe('questions close before the bid is due', () => {
+  it('closes three days before our bid is due, and never once the job is ours', () => {
+    expect(questionsCloseOn(project('boerne'))).toBe('2026-10-05')
+    expect(questionsOpen(project('boerne'), '2026-10-04')).toBe(true)
+    expect(questionsOpen(project('boerne'), '2026-10-05')).toBe(false)
+    expect(questionsCloseOn(project('helotes'))).toBeNull()
+    expect(questionsOpen(project('helotes'), '2027-01-01')).toBe(true)
+  })
+
+  it('refuses a question once they have closed', () => {
+    const late = { ...state, today: '2026-10-06' }
+    const before = late.projects.find((p) => p.id === 'boerne')?.questions.length
+    const next = gcReducer(late, { type: 'tradeAskQuestion', projectId: 'boerne', packageId: 'elec', partnerId: 'voltage', text: 'One more?', sheets: [] })
+    expect(next).toBe(late)
+    expect(next.projects.find((p) => p.id === 'boerne')?.questions.length).toBe(before)
   })
 })
