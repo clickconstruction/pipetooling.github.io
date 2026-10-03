@@ -785,7 +785,7 @@ exports[`GC mode golden walk > before any step 1`] = `
                 "label": "Summit Roofing on Roofing",
               },
               {
-                "detail": "Priced on Bid set. Ask them to confirm.",
+                "detail": "Priced on Bid set. Addendum 1 changed the HVAC sheets. Ask them to confirm.",
                 "done": false,
                 "label": "Cool Breeze Mechanical on HVAC",
               },
@@ -795,7 +795,7 @@ exports[`GC mode golden walk > before any step 1`] = `
                 "label": "Kendall Air on HVAC",
               },
               {
-                "detail": "Priced on Bid set. Ask them to confirm.",
+                "detail": "Priced on Bid set. Addendum 1 changed panels and feeders, and the trade as a whole. Ask them to confirm.",
                 "done": false,
                 "label": "Voltage Brothers on Electrical",
               },
@@ -1661,7 +1661,8 @@ exports[`GC mode golden walk > before any step 1`] = `
       "stageProgress": {
         "also": [
           "The schedule: 3 days behind the plan, 72% done where 76% was planned. Dry-in is 7 days late. Next: Rough-in inspection, Oct 13. 4 look-ahead marks wait on our superintendent.",
-          "Concrete is all billed. Walk it, then accept the work on Closeout.",
+          "Guadalupe Flatwork has 1 punch item to fix on Concrete.",
+          "1 punch item on Concrete is fixed. Check it on Closeout.",
           "Iron Horse Fabrication asked for draw 2. Approve it.",
           "Pecan Valley Electric owes the unconditional waiver on draw 1.",
           "Pecan Valley Electric asked for draw 2. Their insurance expired Sep 15. Approve it once that is fixed.",
@@ -4324,13 +4325,13 @@ exports[`GC mode golden walk > step 09: Structural steel: Iron Horse bids 1`] = 
     "projects.boerne.stageProgress.groups[2].items[5].detail": "On Addendum 1",
     "projects.boerne.stageProgress.groups[2].items[5].done": true,
     "projects.boerne.stageProgress.groups[2].items[5].label": "Summit Roofing on Roofing",
-    "projects.boerne.stageProgress.groups[2].items[6].detail": "Priced on Bid set. Ask them to confirm.",
+    "projects.boerne.stageProgress.groups[2].items[6].detail": "Priced on Bid set. Addendum 1 changed the HVAC sheets. Ask them to confirm.",
     "projects.boerne.stageProgress.groups[2].items[6].done": false,
     "projects.boerne.stageProgress.groups[2].items[6].label": "Cool Breeze Mechanical on HVAC",
     "projects.boerne.stageProgress.groups[2].items[7].detail": "On Addendum 1",
     "projects.boerne.stageProgress.groups[2].items[7].done": true,
     "projects.boerne.stageProgress.groups[2].items[7].label": "Kendall Air on HVAC",
-    "projects.boerne.stageProgress.groups[2].items[8].detail": "Priced on Bid set. Ask them to confirm.",
+    "projects.boerne.stageProgress.groups[2].items[8].detail": "Priced on Bid set. Addendum 1 changed panels and feeders, and the trade as a whole. Ask them to confirm.",
     "projects.boerne.stageProgress.groups[2].items[8].done": false,
     "projects.boerne.stageProgress.groups[2].items[8].label": "Voltage Brothers on Electrical",
     "projects.boerne.stageProgress.groups[2].items[9].detail": "On Addendum 1",
@@ -4606,17 +4607,18 @@ exports[`GC mode golden walk > step 17: A new set of plans: three sheets 1`] = `
     "projects.boerne.stageProgress.also[0]": "12 of 12 companies have not opened Addendum 2.",
     "projects.boerne.stageProgress.center": "14/26",
     "projects.boerne.stageProgress.groups[2].doneWords": "«says» 4 quotes are on Addendum 2.",
-    "projects.boerne.stageProgress.groups[2].items[0].detail": "Priced on Addendum 1. Ask them to confirm.",
+    "projects.boerne.stageProgress.groups[2].items[0].detail": "Priced on Addendum 1. Addendum 2 changed the Sitework sheets. Ask them to confirm.",
     "projects.boerne.stageProgress.groups[2].items[0].done": false,
-    "projects.boerne.stageProgress.groups[2].items[1].detail": "Priced on Addendum 1. Ask them to confirm.",
+    "projects.boerne.stageProgress.groups[2].items[1].detail": "Priced on Addendum 1. Addendum 2 changed the Sitework sheets. Ask them to confirm.",
     "projects.boerne.stageProgress.groups[2].items[1].done": false,
     "projects.boerne.stageProgress.groups[2].items[2].detail": "On Addendum 2",
     "projects.boerne.stageProgress.groups[2].items[3].detail": "On Addendum 2",
-    "projects.boerne.stageProgress.groups[2].items[4].detail": "Priced on Addendum 1. Ask them to confirm.",
+    "projects.boerne.stageProgress.groups[2].items[4].detail": "Priced on Addendum 1. Addendum 2 changed the Structural steel sheets. Ask them to confirm.",
     "projects.boerne.stageProgress.groups[2].items[4].done": false,
     "projects.boerne.stageProgress.groups[2].items[5].detail": "On Addendum 2",
     "projects.boerne.stageProgress.groups[2].items[7].detail": "On Addendum 2",
-    "projects.boerne.stageProgress.groups[2].items[9].detail": "Priced on Addendum 1. Ask them to confirm.",
+    "projects.boerne.stageProgress.groups[2].items[8].detail": "Priced on Bid set. Addendum 1 changed panels and feeders, and the trade as a whole. Addendum 2 changed the Electrical sheets. Ask them to confirm.",
+    "projects.boerne.stageProgress.groups[2].items[9].detail": "Priced on Addendum 1. Addendum 2 changed the Electrical sheets. Ask them to confirm.",
     "projects.boerne.stageProgress.groups[2].items[9].done": false,
     "projects.boerne.stageProgress.headline": "14 of 26 steps done before our bid can go in.",
     "projects.boerne.stageProgress.share": 0.5384615384615384,
@@ -7681,6 +7683,123 @@ exports[`GC mode golden walk > step 128: Cibolo pays $150,000 of pay application
 }
 `;
 
+exports[`GC mode golden walk > step 129: Fair Oaks D: one more punch item on the concrete 1`] = `
+{
+  "changed": {
+    "lastLog.id": 125,
+    "lastLog.text": "Punch list, Concrete: Grind the trip edge at the sidewalk joint, East entry. Guadalupe Flatwork fixes it in their portal.",
+    "projects.fairoaksd.stageProgress.also[1]": "Guadalupe Flatwork has 2 punch items to fix on Concrete.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 130: Guadalupe fixes the spalled footing corner 1`] = `
+{
+  "changed": {
+    "lastLog.id": 126,
+    "lastLog.text": "Guadalupe Flatwork fixed a punch item on Concrete: Patch the spalled corner on the column footing.",
+    "lastLog.who": "trade",
+    "projects.fairoaksd.stageProgress.also[1]": "Guadalupe Flatwork has 1 punch item to fix on Concrete.",
+    "projects.fairoaksd.stageProgress.also[2]": "2 punch items on Concrete are fixed. Check them on Closeout.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 131: Superintendent: the stockroom joints are not all sealed 1`] = `
+{
+  "changed": {
+    "lastLog.id": 127,
+    "lastLog.text": "Our superintendent sent a punch item back to Guadalupe Flatwork: Seal the control joints in the stockroom slab. Two joints in the back corner are still open.",
+    "lastLog.who": "office",
+    "projects.fairoaksd.stageProgress.also[1]": "Guadalupe Flatwork has 2 punch items to fix on Concrete.",
+    "projects.fairoaksd.stageProgress.also[2]": "1 punch item on Concrete is fixed. Check it on Closeout.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 132: Guadalupe seals the last two joints 1`] = `
+{
+  "changed": {
+    "lastLog.id": 128,
+    "lastLog.text": "Guadalupe Flatwork fixed a punch item on Concrete: Seal the control joints in the stockroom slab.",
+    "lastLog.who": "trade",
+    "projects.fairoaksd.stageProgress.also[1]": "Guadalupe Flatwork has 1 punch item to fix on Concrete.",
+    "projects.fairoaksd.stageProgress.also[2]": "2 punch items on Concrete are fixed. Check them on Closeout.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 133: Guadalupe grinds the trip edge 1`] = `
+{
+  "changed": {
+    "lastLog.id": 129,
+    "lastLog.text": "Guadalupe Flatwork fixed a punch item on Concrete: Grind the trip edge at the sidewalk joint.",
+    "projects.fairoaksd.stageProgress.also[1]": "3 punch items on Concrete are fixed. Check them on Closeout.",
+    "projects.fairoaksd.stageProgress.also[2]": "Iron Horse Fabrication asked for draw 2. Approve it.",
+    "projects.fairoaksd.stageProgress.also[3]": "Pecan Valley Electric owes the unconditional waiver on draw 1.",
+    "projects.fairoaksd.stageProgress.also[4]": "Pecan Valley Electric asked for draw 2. Their insurance expired Sep 15. Approve it once that is fixed.",
+    "projects.fairoaksd.stageProgress.also[5]": "Pay application 1 is back with Summit Roofing. Waiting on a fixed one.",
+  },
+  "removed": [
+    "projects.fairoaksd.stageProgress.also[6]",
+  ],
+}
+`;
+
+exports[`GC mode golden walk > step 134: Superintendent checks the footing corner 1`] = `
+{
+  "changed": {
+    "lastLog.id": 130,
+    "lastLog.text": "Our superintendent checked a punch item on Concrete: Patch the spalled corner on the column footing. It is fixed.",
+    "lastLog.who": "office",
+    "projects.fairoaksd.stageProgress.also[1]": "2 punch items on Concrete are fixed. Check them on Closeout.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 135: Superintendent checks the stockroom joints 1`] = `
+{
+  "changed": {
+    "lastLog.id": 131,
+    "lastLog.text": "Our superintendent checked a punch item on Concrete: Seal the control joints in the stockroom slab. It is fixed.",
+    "projects.fairoaksd.stageProgress.also[1]": "1 punch item on Concrete is fixed. Check it on Closeout.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 136: Superintendent checks the trip edge 1`] = `
+{
+  "changed": {
+    "lastLog.id": 132,
+    "lastLog.text": "Our superintendent checked a punch item on Concrete: Grind the trip edge at the sidewalk joint. It is fixed.",
+    "projects.fairoaksd.stageProgress.also[1]": "The punch list on Concrete is done. Accept the work on Closeout.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 137: Accept the concrete work on Fair Oaks D 1`] = `
+{
+  "changed": {
+    "lastLog.id": 133,
+    "lastLog.text": "Accepted the Concrete work from Guadalupe Flatwork. The punch list is done.",
+    "projects.fairoaksd.stageProgress.also[1]": "Iron Horse Fabrication asked for draw 2. Approve it.",
+    "projects.fairoaksd.stageProgress.also[2]": "Pecan Valley Electric owes the unconditional waiver on draw 1.",
+    "projects.fairoaksd.stageProgress.also[3]": "Pecan Valley Electric asked for draw 2. Their insurance expired Sep 15. Approve it once that is fixed.",
+    "projects.fairoaksd.stageProgress.also[4]": "Pay application 1 is back with Summit Roofing. Waiting on a fixed one.",
+  },
+  "removed": [
+    "projects.fairoaksd.stageProgress.also[5]",
+  ],
+}
+`;
+
 exports[`GC mode golden walk > the whole state at the end 1`] = `
 {
   "customers": [
@@ -7881,6 +8000,51 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
+      "id": 133,
+      "text": "Accepted the Concrete work from Guadalupe Flatwork. The punch list is done.",
+      "who": "office",
+    },
+    {
+      "id": 132,
+      "text": "Our superintendent checked a punch item on Concrete: Grind the trip edge at the sidewalk joint. It is fixed.",
+      "who": "office",
+    },
+    {
+      "id": 131,
+      "text": "Our superintendent checked a punch item on Concrete: Seal the control joints in the stockroom slab. It is fixed.",
+      "who": "office",
+    },
+    {
+      "id": 130,
+      "text": "Our superintendent checked a punch item on Concrete: Patch the spalled corner on the column footing. It is fixed.",
+      "who": "office",
+    },
+    {
+      "id": 129,
+      "text": "Guadalupe Flatwork fixed a punch item on Concrete: Grind the trip edge at the sidewalk joint.",
+      "who": "trade",
+    },
+    {
+      "id": 128,
+      "text": "Guadalupe Flatwork fixed a punch item on Concrete: Seal the control joints in the stockroom slab.",
+      "who": "trade",
+    },
+    {
+      "id": 127,
+      "text": "Our superintendent sent a punch item back to Guadalupe Flatwork: Seal the control joints in the stockroom slab. Two joints in the back corner are still open.",
+      "who": "office",
+    },
+    {
+      "id": 126,
+      "text": "Guadalupe Flatwork fixed a punch item on Concrete: Patch the spalled corner on the column footing.",
+      "who": "trade",
+    },
+    {
+      "id": 125,
+      "text": "Punch list, Concrete: Grind the trip edge at the sidewalk joint, East entry. Guadalupe Flatwork fixes it in their portal.",
+      "who": "office",
+    },
+    {
       "id": 124,
       "text": "Cibolo Creek Partners paid $150,000 on pay application 3. $138,879 is still open.",
       "who": "office",
@@ -7983,51 +8147,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
     {
       "id": 104,
       "text": "Dr. Priya Raman declined change order 2 in their portal.",
-      "who": "office",
-    },
-    {
-      "id": 103,
-      "text": "Sent change order 2 to Dr. Priya Raman for signature: $-1,320.",
-      "who": "office",
-    },
-    {
-      "id": 102,
-      "text": "Drafted change order 2 on Helotes Dental Office: Delete the break room sink, $-1,320.",
-      "who": "office",
-    },
-    {
-      "id": 101,
-      "text": "Change order 1 on Helotes Dental Office is 100% done.",
-      "who": "office",
-    },
-    {
-      "id": 100,
-      "text": "Dr. Priya Raman signed change order 1 in their portal. Their price goes up $5,280.",
-      "who": "office",
-    },
-    {
-      "id": 99,
-      "text": "Sent change order 1 to Dr. Priya Raman for signature: $5,280.",
-      "who": "office",
-    },
-    {
-      "id": 98,
-      "text": "Drafted change order 1 on Helotes Dental Office: Add sound batts to the walls of operatory 3, per detail 4 on A-201, $5,280.",
-      "who": "office",
-    },
-    {
-      "id": 97,
-      "text": "Hillside Excavation chose Spanish for its portal and messages.",
-      "who": "trade",
-    },
-    {
-      "id": 96,
-      "text": "Pecan Valley Electric marked Lighting on Electrical not done for the week of Mon Sep 28: materials.",
-      "who": "trade",
-    },
-    {
-      "id": 95,
-      "text": "Our own crew's Top out on Plumbing is marked not done, materials for the week of Mon Sep 28.",
       "who": "office",
     },
   ],
@@ -11290,7 +11409,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
           ],
           "selfPerform": null,
           "sow": {
-            "acceptedOn": null,
+            "acceptedOn": "2026-10-02",
             "basedOnRev": 0,
             "draws": [
               {
@@ -11979,6 +12098,49 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
           "note": "The set the city approved. 11 sheets.",
           "rev": 0,
           "touches": [],
+        },
+      ],
+      "punch": [
+        {
+          "addedOn": "2026-09-28",
+          "checkedOn": "2026-10-02",
+          "fixedOn": "2026-10-02",
+          "id": "fairoaksd-punch-1",
+          "packageId": "fconc",
+          "text": "Patch the spalled corner on the column footing",
+          "where": "Grid C-4",
+        },
+        {
+          "addedOn": "2026-09-28",
+          "checkedOn": "2026-10-02",
+          "fixedOn": "2026-10-02",
+          "id": "fairoaksd-punch-2",
+          "packageId": "fconc",
+          "sentBack": {
+            "note": "Two joints in the back corner are still open.",
+            "on": "2026-10-02",
+            "times": 1,
+          },
+          "text": "Seal the control joints in the stockroom slab",
+          "where": "Stockroom",
+        },
+        {
+          "addedOn": "2026-09-28",
+          "checkedOn": "2026-10-01",
+          "fixedOn": "2026-09-30",
+          "id": "fairoaksd-punch-3",
+          "packageId": "fconc",
+          "text": "Clean the curb paint off the sidewalk",
+          "where": "East entry",
+        },
+        {
+          "addedOn": "2026-10-02",
+          "checkedOn": "2026-10-02",
+          "fixedOn": "2026-10-02",
+          "id": "fairoaksd-punch-4",
+          "packageId": "fconc",
+          "text": "Grind the trip edge at the sidewalk joint",
+          "where": "East entry",
         },
       ],
       "questions": [],
