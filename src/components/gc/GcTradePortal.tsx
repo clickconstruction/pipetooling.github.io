@@ -14,6 +14,7 @@ import {
   planLabel,
   pt,
   pWeekday,
+  portalClosedWords,
   portalInsurance,
   portalLines,
   portalPlanNews,
@@ -223,7 +224,8 @@ function ProjectPage({
         </div>
       </div>
 
-      {paperworkMissing && <GcPortalPaperwork partner={partner} today={state.today} dispatch={dispatch} />}
+      {/* A project we lost asks for nothing, paperwork included. */}
+      {paperworkMissing && !project.lostOn && <GcPortalPaperwork partner={partner} today={state.today} dispatch={dispatch} />}
 
       <GcPortalLookAhead state={state} project={project} partner={partner} dispatch={dispatch} />
 
@@ -258,13 +260,18 @@ function PackageBlock({
   const news = portalPlanNews(project, pkg, invite)
   const latest = news.latest
   const ids = { projectId: project.id, packageId: pkg.id }
+  const awardedToMe = pkg.awardedInviteId === invite.id
+  const awardedElsewhere = pkg.awardedInviteId !== null && !awardedToMe
+  // We lost the project: the plans stay to look at, nothing else asks for anything.
+  const closed = Boolean(project.lostOn) && invite.status !== 'declined'
+  const closedWords = closed ? portalClosedWords(project, Boolean(invite.bid), lang) : null
+  // A newer set to open, said only while it still matters to their number.
+  const behind = news.behind && !closed
   // Any look at the newest set counts as opening it, from the button or from a sheet number.
   const openPlans = (sheetId = '') => {
     if (news.behind) dispatch({ type: 'tradeOpenPlans', ...ids, inviteId: invite.id })
     setPlansAt(sheetId)
   }
-  const awardedToMe = pkg.awardedInviteId === invite.id
-  const awardedElsewhere = pkg.awardedInviteId !== null && !awardedToMe
 
   return (
     <>
@@ -272,16 +279,16 @@ function PackageBlock({
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.9rem' }}>
           <strong>{latest?.label}</strong>
           <span style={{ opacity: 0.75 }}>{t('issued', { date: pDate(lang, latest?.issuedOn ?? null) })}</span>
-          {news.behind ? (
+          {behind ? (
             <Btn kind={news.neverOpened || news.forTrade.length > 0 ? 'primary' : 'plain'} onClick={() => openPlans()}>{t('openPlans')}</Btn>
           ) : (
             <>
-              <Chip tone="green">{t('latestSet')}</Chip>
+              {!news.behind && <Chip tone="green">{t('latestSet')}</Chip>}
               <Btn kind="quiet" onClick={() => openPlans()}>{t('lookPlans')}</Btn>
             </>
           )}
         </div>
-        {news.behind && news.forTrade.length > 0 && (
+        {behind && news.forTrade.length > 0 && (
           <div style={{ marginTop: '0.4rem' }}>
             <PortalNote tone="amber">
               <strong>{t('newForTrade', { trade: pkg.trade })}</strong>
@@ -294,7 +301,7 @@ function PackageBlock({
             </PortalNote>
           </div>
         )}
-        {news.behind && !news.neverOpened && news.forTrade.length === 0 && latest && (
+        {behind && !news.neverOpened && news.forTrade.length === 0 && latest && (
           <div style={{ marginTop: '0.35rem', fontSize: '0.85rem', opacity: 0.8 }}>
             {t('setNoChange', { label: latest.label, trade: pkg.trade })}
           </div>
@@ -303,7 +310,7 @@ function PackageBlock({
       </Block>
 
       {/* Questions about the plans, while the company is still on this trade. */}
-      {!awardedElsewhere && invite.status !== 'declined' && (
+      {!closed && !awardedElsewhere && invite.status !== 'declined' && (
         <GcPortalQuestions project={project} pkg={pkg} partner={partner} today={state.today} dispatch={dispatch} onOpenSheet={openPlans} />
       )}
 
@@ -324,7 +331,14 @@ function PackageBlock({
         </Block>
       )}
 
-      {awardedElsewhere ? (
+      {closedWords ? (
+        <Block title={t('resultTitle', { trade: pkg.trade })}>
+          <div style={{ display: 'grid', gap: '0.3rem', fontSize: '0.9rem' }}>
+            <strong>{closedWords.why}</strong>
+            <span>{closedWords.next}</span>
+          </div>
+        </Block>
+      ) : awardedElsewhere ? (
         <Block title={t('resultTitle', { trade: pkg.trade })}>{t('wentElsewhere')}</Block>
       ) : awardedToMe && pkg.sow ? (
         <SowBlock project={project} pkg={pkg} partner={partner} today={state.today} dispatch={dispatch} />

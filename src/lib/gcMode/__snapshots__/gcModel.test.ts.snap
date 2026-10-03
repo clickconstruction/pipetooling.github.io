@@ -7660,6 +7660,28 @@ exports[`GC mode golden walk > step 126: Pad B: the owner comes back to us 1`] =
 }
 `;
 
+exports[`GC mode golden walk > step 127: Cibolo says checks go out Oct 9 1`] = `
+{
+  "changed": {
+    "lastLog.id": 123,
+    "lastLog.text": "Cibolo Creek Partners said they will pay pay application 3 by Fri Oct 9.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 128: Cibolo pays $150,000 of pay application 3 1`] = `
+{
+  "changed": {
+    "customers.cibolo.owed": 138878.51,
+    "customers.cibolo.paid": 721816.61,
+    "lastLog.id": 124,
+    "lastLog.text": "Cibolo Creek Partners paid $150,000 on pay application 3. $138,879 is still open.",
+  },
+  "removed": [],
+}
+`;
+
 exports[`GC mode golden walk > the whole state at the end 1`] = `
 {
   "customers": [
@@ -7860,6 +7882,16 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
+      "id": 124,
+      "text": "Cibolo Creek Partners paid $150,000 on pay application 3. $138,879 is still open.",
+      "who": "office",
+    },
+    {
+      "id": 123,
+      "text": "Cibolo Creek Partners said they will pay pay application 3 by Fri Oct 9.",
+      "who": "office",
+    },
+    {
       "id": 122,
       "text": "Boerne Retail Pad B is back in the bidding.",
       "who": "office",
@@ -7997,16 +8029,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
     {
       "id": 95,
       "text": "Our own crew's Top out on Plumbing is marked not done, materials for the week of Mon Sep 28.",
-      "who": "office",
-    },
-    {
-      "id": 94,
-      "text": "Our superintendent corrected the mark on Roofing · TPO membrane for the week of Mon Sep 28: not done, weather.",
-      "who": "office",
-    },
-    {
-      "id": 93,
-      "text": "Our superintendent verified the mark on Structural steel · Erection for the week of Mon Sep 28: not done, crew.",
       "who": "office",
     },
   ],
@@ -9746,6 +9768,12 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
             "number": 1,
             "paidAmount": 79246.79052631579,
             "paidOn": "2026-10-02",
+            "payments": [
+              {
+                "amount": 79246.79052631579,
+                "on": "2026-10-02",
+              },
+            ],
             "periodTo": "2026-10-25",
             "retainage": 8805.19894736842,
             "retainagePct": 10,
@@ -9783,6 +9811,12 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
             "number": 2,
             "paidAmount": 54302,
             "paidOn": "2026-10-02",
+            "payments": [
+              {
+                "amount": 54302,
+                "on": "2026-10-02",
+              },
+            ],
             "periodTo": "2026-11-25",
             "retainage": 15061.026315789471,
             "retainagePct": 10,
@@ -11034,7 +11068,27 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
             "due": 288878.51,
             "number": 3,
             "paidOn": null,
+            "payments": [
+              {
+                "amount": 150000,
+                "on": "2026-10-02",
+              },
+            ],
             "periodTo": "2026-09-25",
+            "promises": [
+              {
+                "by": "2026-09-30",
+                "madeOn": "2026-09-26",
+                "note": "Their controller said checks go out Wednesday the 30th",
+                "who": "office",
+              },
+              {
+                "by": "2026-10-09",
+                "madeOn": "2026-10-02",
+                "note": "Their controller, on a call",
+                "who": "office",
+              },
+            ],
             "retainage": 95632.79,
             "retainagePct": 10,
             "sentOn": "2026-09-25",
@@ -12658,6 +12712,12 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
             "number": 4,
             "paidAmount": 18241.29999999999,
             "paidOn": "2026-10-02",
+            "payments": [
+              {
+                "amount": 18241.29999999999,
+                "on": "2026-10-02",
+              },
+            ],
             "periodTo": "2026-10-02",
             "retainage": 0,
             "retainagePct": 10,

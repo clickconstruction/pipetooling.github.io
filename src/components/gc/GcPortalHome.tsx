@@ -160,11 +160,24 @@ export function GcPortalHome({
       {home.past.length > 0 && (
         <PortalBlock title={tr('before')}>
           <div style={{ display: 'grid', gap: '0.3rem', fontSize: '0.85rem', opacity: 0.85 }}>
-            {home.past.map((ask) => (
-              <div key={ask.invite.id}>
-                {ask.project.name} · {ask.pkg.trade} · {tr(ask.kind === 'lost' ? 'wentOther' : 'youPassedShort')}
-              </div>
-            ))}
+            {home.past.map((ask) =>
+              ask.kind === 'closed' ? (
+                // A project we lost still opens: its plans stay there to look at.
+                <button
+                  key={ask.invite.id}
+                  type="button"
+                  onClick={() => onOpenProject(ask.project.id)}
+                  style={{ border: 'none', background: 'transparent', padding: 0, textAlign: 'left', color: 'inherit', cursor: 'pointer', font: 'inherit' }}
+                >
+                  {ask.project.name} · {ask.pkg.trade} · {tr(ask.project.lostWhy === 'project_died' ? 'closedShortDied' : 'closedShortLost', { gc: GC })}{' '}
+                  <span aria-hidden style={{ opacity: 0.5 }}>›</span>
+                </button>
+              ) : (
+                <div key={ask.invite.id}>
+                  {ask.project.name} · {ask.pkg.trade} · {tr(ask.kind === 'lost' ? 'wentOther' : 'youPassedShort')}
+                </div>
+              ),
+            )}
           </div>
         </PortalBlock>
       )}
