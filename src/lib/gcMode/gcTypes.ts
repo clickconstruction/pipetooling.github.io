@@ -292,6 +292,14 @@ export interface GcCustomer {
   tradesNote: string | null
 }
 
+/** One of our people on a project, for a trade to call: the superintendent on site, the project manager. */
+export interface ProjectContact {
+  role: 'superintendent' | 'projectManager'
+  name: string
+  phone: string
+  email?: string
+}
+
 export interface GcProject {
   id: string
   name: string
@@ -331,6 +339,8 @@ export interface GcProject {
   closedOn?: string | null
   /** The schedule we draw while buying out; Start locks it as the baseline (owner, 2026-10-02). */
   schedule?: ProjectSchedule
+  /** Our people on the job, for a trade to call (Portal lane). Unset: none named yet. */
+  team?: ProjectContact[]
 }
 
 export interface LogEntry {

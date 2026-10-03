@@ -342,6 +342,7 @@ export default function GcMode() {
                   state={state}
                   project={project}
                   dispatch={dispatch}
+                  onOpenSchedule={() => setTab('schedule')}
                   onSeePortal={(id) => {
                     setPortalPartnerId(id)
                     setPortalOpen(true)
