@@ -20,6 +20,11 @@ export const GC_TOUR_STEPS: SpotlightTourStep[] = [
     body: 'The question here is: can we win this job? The owner is picking a builder. We are one of the builders giving a price. Nothing is ours yet.',
   },
   {
+    anchor: 'gc-new-project',
+    title: 'Start a new project',
+    body: 'A project starts the day its plans come in. Tap + New project. A window walks you through four steps: the project, the plans, the trades and each trade’s scope. Tap Create the project. It lands here, open on Trades, ready to ask companies for quotes.',
+  },
+  {
     anchor: 'gc-row-pursuing',
     title: 'What you do while bidding',
     body: 'You ask companies to quote each trade. Get at least two quotes for every trade. You compare them and pick one number to carry. Our price to the owner adds up those numbers. Then it adds our costs and our fee.',

@@ -221,7 +221,7 @@ export default function GcMode() {
                 <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', marginBottom: '0.4rem' }}>
                   <h3 style={{ margin: 0, fontSize: '1rem' }}>{stage.label} ({rows.length})</h3>
                   <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{stage.blurb}</span>
-                  {stage.key === 'pursuing' && <span style={{ marginLeft: 'auto' }}><GcNewProjectButton state={state} dispatch={dispatch} onCreated={(id) => { setProjectId(id); setTab('packages') }} /></span>}
+                  {stage.key === 'pursuing' && <span style={{ marginLeft: 'auto' }} data-tour="gc-new-project"><GcNewProjectButton state={state} dispatch={dispatch} onCreated={(id) => { setProjectId(id); setTab('packages') }} /></span>}
                 </div>
                 {rows.length === 0 ? (
                   <Card style={{ color: 'var(--text-muted)' }}>None right now.</Card>
