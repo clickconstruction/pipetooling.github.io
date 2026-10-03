@@ -4,8 +4,12 @@ import {
   SET_KINDS,
   TRADE_TEMPLATES,
   currentRev,
+  activitiesTouched,
   defaultSetKind,
   guessLineSheets,
+  pushSchedule,
+  scheduleFloat,
+  weekdayDate,
   linesOnSheets,
   nextSetLabel,
   packagesForSheets,
@@ -105,6 +109,8 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
   const [brought, setBrought] = useState<BroughtTrade[]>([])
   /** Scope lines this set adds, by trade (package id). */
   const [newLines, setNewLines] = useState<Record<string, string[]>>({})
+  /** Days this set adds to scheduled activities, as typed, by line id. */
+  const [pushDays, setPushDays] = useState<Record<string, string>>({})
   /** The trade whose Add a line box is open, and what is typed in it. */
   const [lineFor, setLineFor] = useState<string | null>(null)
   const [lineText, setLineText] = useState('')
@@ -124,15 +130,34 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
   const companies = new Set(going.map((r) => r.partner.id)).size
   const ours = project.packages.filter((p) => p.selfPerform && touches.includes(p.id))
   const preview = going.find((r) => r.partner.id === previewId) ?? going.find((r) => r.touched) ?? going[0] ?? null
-  const email = planEmail(
-    project,
-    label,
-    note.trim(),
-    sheets,
-    preview,
-    preview?.touched ? linesOnSheets(project, preview.pkg, sheets).map((l) => l.label) : [],
-    preview?.touched ? (newLines[preview.pkg.id] ?? []) : [],
+  // The schedule: the activities this set reaches, the days typed against them, and what that moves.
+  const schedule = project.schedule ?? null
+  const reached = activitiesTouched(project, sheets).filter((a) => touches.includes(a.packageId))
+  const spare = schedule ? scheduleFloat(schedule.activities) : new Map<string, number>()
+  const pushes = Object.fromEntries(
+    Object.entries(pushDays)
+      .filter(([id]) => reached.some((a) => a.lineId === id))
+      .map(([id, t]) => [id, Math.round(Number(t) || 0)] as const)
+      .filter(([, d]) => d > 0),
   )
+  const push = schedule && Object.keys(pushes).length > 0 ? pushSchedule(schedule.activities, pushes) : null
+  const endDays = push ? Math.round((Date.parse(push.lastAfter) - Date.parse(push.lastBefore)) / 86_400_000) : 0
+  const substantial = schedule?.milestones.find((m) => /substantial/i.test(m.label)) ?? null
+  const lineName = (packageId: string, lineId: string) => {
+    const pkg = project.packages.find((k) => k.id === packageId)
+    return pkg?.sow?.sov.find((l) => l.id === lineId)?.label ?? pkg?.scope.find((l) => l.id === lineId)?.label ?? lineId
+  }
+  /** The new dates of one trade's activities this push moved, said as sentences for its email. */
+  const movesFor = (packageId: string) =>
+    (push?.moved ?? [])
+      .map((m) => push?.activities.find((a) => a.lineId === m.lineId))
+      .filter((a): a is NonNullable<typeof a> => !!a && a.packageId === packageId)
+      .map((a) => `${lineName(a.packageId, a.lineId)} now runs ${weekdayDate(a.start)} to ${weekdayDate(a.finish)}.`)
+  const email = planEmail(project, label, note.trim(), sheets, preview, {
+    lines: preview?.touched ? linesOnSheets(project, preview.pkg, sheets).map((l) => l.label) : [],
+    adds: preview?.touched ? (newLines[preview.pkg.id] ?? []) : [],
+    moves: preview?.touched ? movesFor(preview.pkg.id) : [],
+  })
   /** Every sheet once the set is in: the index and the ones this set adds. */
   const allSheets = [...index, ...added.filter((a) => !index.some((s) => s.id === a.id))]
   const sheetsOfTrade = (trade: string) => {
@@ -391,6 +416,61 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
                     })}
                 </div>
               )}
+              {schedule && reached.length > 0 && (
+                <div style={{ display: 'grid', gap: '0.3rem', borderTop: '1px solid var(--border)', paddingTop: '0.6rem' }}>
+                  <span style={{ fontWeight: 600 }}>What it does to the schedule</span>
+                  <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                    Type the days the change adds to an activity. What waits on it moves out too. The plan at Start stays as the baseline.
+                  </span>
+                  {reached.map((a) => {
+                    const days = spare.get(a.lineId) ?? 0
+                    const pkg = project.packages.find((k) => k.id === a.packageId)
+                    return (
+                      <div key={a.lineId} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <span style={{ minWidth: '12rem' }}>
+                          {pkg?.trade} · {lineName(a.packageId, a.lineId)}
+                        </span>
+                        <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                          {weekdayDate(a.start)} to {weekdayDate(a.finish)}
+                        </span>
+                        {days <= 0 ? <Chip tone="red">on the critical path</Chip> : <Chip tone="grey">{days} spare {days === 1 ? 'day' : 'days'}</Chip>}
+                        <span style={{ flex: 1 }} />
+                        <label style={{ display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
+                          <span style={{ color: 'var(--text-muted)' }}>adds</span>
+                          <input
+                            style={{ ...input, width: '3.5rem', textAlign: 'right' }}
+                            inputMode="numeric"
+                            value={pushDays[a.lineId] ?? ''}
+                            onChange={(e) => setPushDays((all) => ({ ...all, [a.lineId]: e.target.value.replace(/[^0-9]/g, '') }))}
+                            placeholder="0"
+                            aria-label={`Days this set adds to ${lineName(a.packageId, a.lineId)}`}
+                          />
+                          <span style={{ color: 'var(--text-muted)' }}>days</span>
+                        </label>
+                      </div>
+                    )
+                  })}
+                  {push && (
+                    <div style={{ padding: '0.4rem 0.6rem', borderRadius: 6, background: endDays > 0 ? 'var(--bg-amber-tint)' : 'var(--bg-subtle)', display: 'grid', gap: '0.15rem' }}>
+                      <span>
+                        It moves {push.moved.length} {push.moved.length === 1 ? 'activity' : 'activities'}.{' '}
+                        {endDays > 0
+                          ? `The job's last day moves from ${weekdayDate(push.lastBefore)} to ${weekdayDate(push.lastAfter)}.`
+                          : `The days fit in the spare days. The job's last day stays ${weekdayDate(push.lastBefore)}.`}
+                      </span>
+                      {substantial &&
+                        (push.lastAfter > substantial.planned ? (
+                          <strong style={{ color: 'var(--text-red-700)' }}>
+                            Substantial completion, planned {weekdayDate(substantial.planned)}, would be missed by{' '}
+                            {Math.round((Date.parse(push.lastAfter) - Date.parse(substantial.planned)) / 86_400_000)} days.
+                          </strong>
+                        ) : (
+                          <span>Substantial completion, planned {weekdayDate(substantial.planned)}, still holds.</span>
+                        ))}
+                    </div>
+                  )}
+                </div>
+              )}
               {ours.length > 0 && (
                 <div style={{ padding: '0.4rem 0.6rem', background: 'var(--bg-violet-100)', color: 'var(--text-violet-800)', borderRadius: 6 }}>
                   This changes {ours.map((p) => p.trade.toLowerCase()).join(' and ')}, which is ours. Check {ours.map((p) => p.selfPerform?.ref).join(', ')} against the new set.
@@ -499,7 +579,7 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
                       <strong>{r.partner.company}</strong>
                       <span style={{ color: 'var(--text-muted)' }}>{r.pkg.trade}</span>
                       {r.touched ? (
-                        <Chip tone="amber">{r.hasBid ? 'changes their trade · asked to confirm their number' : 'changes their trade'}</Chip>
+                        <Chip tone="amber">{r.hasBid && project.stage === 'pursuing' ? 'changes their trade · asked to confirm their number' : 'changes their trade'}</Chip>
                       ) : (
                         <Chip tone="grey">no change to their trade · for their records</Chip>
                       )}
@@ -544,8 +624,11 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
           <span style={{ fontSize: '0.85rem', color: 'var(--text-600)' }}>
             {companies === 0
               ? 'No email goes out.'
-              : `${companies} ${companies === 1 ? 'company gets' : 'companies get'} an email. ${going.filter((r) => r.touched).length} are told it changes their trade.`}
+              : `${companies} ${companies === 1 ? 'company gets' : 'companies get'} an email. ${going.filter((r) => r.touched).length} ${
+                  going.filter((r) => r.touched).length === 1 ? 'is' : 'are'
+                } told it changes their trade.`}
             {linesAdded > 0 && ` It adds ${linesAdded} scope ${linesAdded === 1 ? 'line' : 'lines'}.`}
+            {endDays > 0 && ` It adds ${endDays} ${endDays === 1 ? 'day' : 'days'} to the job.`}
             {brought.length > 0 && ` It adds ${brought.length === 1 ? 'a trade' : `${brought.length} trades`}.`}
           </span>
           <span style={{ flex: 1 }} />
@@ -564,6 +647,7 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
                 addedSheets: added,
                 touches,
                 recipients: going.map((r) => r.partner.id),
+                schedulePushes: pushes,
                 newLines: project.packages
                   .filter((p) => touches.includes(p.id))
                   .flatMap((p) => (newLines[p.id] ?? []).map((l) => ({ packageId: p.id, label: l, sheets: newLineSheets(p.trade) }))),

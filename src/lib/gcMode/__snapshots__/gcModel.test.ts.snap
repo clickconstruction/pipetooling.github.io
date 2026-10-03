@@ -7157,10 +7157,24 @@ exports[`GC mode golden walk > step 108: Dr. Raman declines change order 2 1`] =
 }
 `;
 
-exports[`GC mode golden walk > step 109: The office sets Comal Iron to Spanish 1`] = `
+exports[`GC mode golden walk > step 109: Helotes: Bulletin 2 adds data drops, five more days of low voltage rough 1`] = `
 {
   "changed": {
+    "customers.ocotillo.addenda": 3,
+    "customers.ocotillo.sets": 4,
     "lastLog.id": 105,
+    "lastLog.text": "Issued Bulletin 2 on Helotes Dental Office and emailed 1 company. 1 was told it changes their trade. It adds 36 days to the job.",
+    "projects.helotes.trades.delec.compareBids.lines[0].text": "Brightline Electric bid $56,900 and covers everything. They priced an older set of plans, so ask them to confirm.",
+    "projects.helotes.trades.delec.compareBids.lines[1].text": "Voltage Brothers bid $61,400 and covers everything. They priced an older set of plans, so ask them to confirm.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 110: The office sets Comal Iron to Spanish 1`] = `
+{
+  "changed": {
+    "lastLog.id": 106,
     "lastLog.text": "Set Comal Iron's language to Spanish: its portal and messages.",
   },
   "removed": [],
@@ -7367,8 +7381,13 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
-      "id": 105,
+      "id": 106,
       "text": "Set Comal Iron's language to Spanish: its portal and messages.",
+      "who": "office",
+    },
+    {
+      "id": 105,
+      "text": "Issued Bulletin 2 on Helotes Dental Office and emailed 1 company. 1 was told it changes their trade. It adds 36 days to the job.",
       "who": "office",
     },
     {
@@ -7509,11 +7528,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
     {
       "id": 77,
       "text": "Lonestar Earthworks bid $92,500 on Sitework.",
-      "who": "trade",
-    },
-    {
-      "id": 76,
-      "text": "Lonestar Earthworks opened Pricing set.",
       "who": "trade",
     },
   ],
@@ -9864,6 +9878,31 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
             "helotes-glass-and-storefront",
           ],
         },
+        {
+          "changedSheets": [
+            "E-102",
+          ],
+          "issuedOn": "2026-10-02",
+          "label": "Bulletin 2",
+          "note": "Data drops added at each operatory. E-102 changed.",
+          "pushed": [
+            {
+              "days": 5,
+              "lineId": "delec-4",
+            },
+          ],
+          "rev": 3,
+          "sentTo": [
+            {
+              "on": "2026-10-02",
+              "partnerId": "brightline",
+              "touched": true,
+            },
+          ],
+          "touches": [
+            "delec",
+          ],
+        },
       ],
       "questions": [
         {
@@ -9908,68 +9947,68 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
             "after": [
               "delec-1",
             ],
-            "finish": "2026-11-25",
+            "finish": "2026-12-13",
             "lineId": "dry-1",
             "packageId": "dry",
-            "start": "2026-11-16",
+            "start": "2026-12-04",
           },
           {
             "after": [
               "dry-1",
             ],
-            "finish": "2026-11-13",
+            "finish": "2026-12-03",
             "lineId": "delec-1",
             "packageId": "delec",
-            "start": "2026-11-06",
+            "start": "2026-11-26",
           },
           {
             "after": [
               "dry-1",
               "delec-1",
             ],
-            "finish": "2026-11-21",
+            "finish": "2026-12-26",
             "lineId": "delec-4",
             "packageId": "delec",
-            "start": "2026-11-14",
+            "start": "2026-12-14",
           },
           {
             "after": [
               "dry-1",
             ],
-            "finish": "2026-11-13",
+            "finish": "2026-12-21",
             "lineId": "dhvac-1",
             "packageId": "dhvac",
-            "start": "2026-11-06",
+            "start": "2026-12-14",
           },
           {
             "after": [
               "dry-1",
               "dhvac-1",
             ],
-            "finish": "2026-11-21",
+            "finish": "2026-12-29",
             "lineId": "dhvac-2",
             "packageId": "dhvac",
-            "start": "2026-11-14",
+            "start": "2026-12-22",
           },
           {
             "after": [
               "dry-1",
               "dplumb-1",
             ],
-            "finish": "2026-11-13",
+            "finish": "2026-12-21",
             "lineId": "dplumb-2",
             "packageId": "dplumb",
-            "start": "2026-11-06",
+            "start": "2026-12-14",
           },
           {
             "after": [
               "dry-1",
               "dplumb-2",
             ],
-            "finish": "2026-11-21",
+            "finish": "2026-12-29",
             "lineId": "dplumb-3",
             "packageId": "dplumb",
-            "start": "2026-11-14",
+            "start": "2026-12-22",
           },
           {
             "after": [
@@ -9981,10 +10020,10 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
               "dplumb-3",
               "dry-1",
             ],
-            "finish": "2026-11-28",
+            "finish": "2027-01-03",
             "lineId": "dry-2",
             "packageId": "dry",
-            "start": "2026-11-24",
+            "start": "2026-12-30",
           },
           {
             "after": [
@@ -9996,20 +10035,20 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
               "dplumb-3",
               "dry-2",
             ],
-            "finish": "2026-12-03",
+            "finish": "2027-01-08",
             "lineId": "dry-3",
             "packageId": "dry",
-            "start": "2026-11-29",
+            "start": "2027-01-04",
           },
           {
             "after": [
               "dry-2",
               "dry-3",
             ],
-            "finish": "2026-12-07",
+            "finish": "2027-01-12",
             "lineId": "mill-1",
             "packageId": "mill",
-            "start": "2026-12-04",
+            "start": "2027-01-09",
           },
           {
             "after": [
@@ -10017,10 +10056,10 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
               "dry-3",
               "mill-1",
             ],
-            "finish": "2026-12-11",
+            "finish": "2027-01-16",
             "lineId": "mill-2",
             "packageId": "mill",
-            "start": "2026-12-08",
+            "start": "2027-01-13",
           },
           {
             "after": [
@@ -10028,10 +10067,10 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
               "dry-3",
               "mill-2",
             ],
-            "finish": "2026-12-15",
+            "finish": "2027-01-20",
             "lineId": "mill-3",
             "packageId": "mill",
-            "start": "2026-12-12",
+            "start": "2027-01-17",
           },
           {
             "after": [
@@ -10040,10 +10079,10 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
               "mill-3",
               "delec-4",
             ],
-            "finish": "2026-12-19",
+            "finish": "2027-01-24",
             "lineId": "delec-2",
             "packageId": "delec",
-            "start": "2026-12-16",
+            "start": "2027-01-21",
           },
           {
             "after": [
@@ -10052,10 +10091,10 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
               "mill-3",
               "delec-2",
             ],
-            "finish": "2026-12-23",
+            "finish": "2027-01-28",
             "lineId": "delec-3",
             "packageId": "delec",
-            "start": "2026-12-20",
+            "start": "2027-01-25",
           },
           {
             "after": [
@@ -10064,10 +10103,10 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
               "mill-3",
               "dhvac-2",
             ],
-            "finish": "2026-12-22",
+            "finish": "2027-01-27",
             "lineId": "dhvac-3",
             "packageId": "dhvac",
-            "start": "2026-12-16",
+            "start": "2027-01-21",
           },
           {
             "after": [
@@ -10076,10 +10115,10 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
               "mill-3",
               "dplumb-3",
             ],
-            "finish": "2026-12-22",
+            "finish": "2027-01-27",
             "lineId": "dplumb-4",
             "packageId": "dplumb",
-            "start": "2026-12-16",
+            "start": "2027-01-21",
           },
         ],
         "baseline": {
