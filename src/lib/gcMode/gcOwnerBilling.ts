@@ -122,8 +122,10 @@ function tradeLine(state: GcState, pkg: TradePackage): OwnerLine {
     for (const line of back.lines) weSee.set(line.sovId, Math.min(weSee.get(line.sovId) ?? 100, line.weSee))
   }
   const pctOf = (l: { id: string; pctReported: number }) => Math.min(l.pctReported, weSee.get(l.id) ?? 100)
-  const reported = sow.sov.reduce((s, l) => s + (l.amount * l.pctReported) / 100, 0)
-  const done = sow.sov.reduce((s, l) => s + (l.amount * pctOf(l)) / 100, 0)
+  // A change order's line on their statement of work bills on the change order's own line, not here.
+  const ownLines = sow.sov.filter((l) => l.changeOrderId === undefined)
+  const reported = ownLines.reduce((s, l) => s + (l.amount * l.pctReported) / 100, 0)
+  const done = ownLines.reduce((s, l) => s + (l.amount * pctOf(l)) / 100, 0)
   const pct = sow.price === 0 ? 0 : Math.round((done / sow.price) * 100)
   const reportedPct = sow.price === 0 ? 0 : Math.round((reported / sow.price) * 100)
   const doubted = Math.round(reported - done) > 0
@@ -137,7 +139,7 @@ function tradeLine(state: GcState, pkg: TradePackage): OwnerLine {
       : done > 0
         ? `${company} reported ${pct}% done.`
         : `${company} has not reported any work yet.`,
-    detail: sow.sov.map((l) => (pctOf(l) < l.pctReported ? { label: l.label, pct: pctOf(l), theySay: l.pctReported } : { label: l.label, pct: l.pctReported })),
+    detail: ownLines.map((l) => (pctOf(l) < l.pctReported ? { label: l.label, pct: pctOf(l), theySay: l.pctReported } : { label: l.label, pct: l.pctReported })),
   }
 }
 

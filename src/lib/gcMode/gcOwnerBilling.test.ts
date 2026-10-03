@@ -452,6 +452,20 @@ describe('change orders to the owner', () => {
     expect(Math.round(markupOnTop(app.lines) * 1000) / 10).toBe(37.2)
   })
 
+  it('bills a change the trade signed once: on its own line, not again on the trade\'s', () => {
+    let state = signedOne()
+    state = gcReducer(state, { type: 'sendTradeChange', projectId: 'helotes', changeOrderId: 'co-1' })
+    state = gcReducer(state, { type: 'tradeSignChange', projectId: 'helotes', changeOrderId: 'co-1' })
+    const dryOf = (st: GcState) => ownerPayApp(st, helotesOf(st)).lines.find((l) => l.id === 'dry')
+    const before = dryOf(state)
+    const lineId = helotesOf(state).packages.find((p) => p.id === 'dry')?.sow?.sov.find((l) => l.changeOrderId === 'co-1')?.id
+    expect(lineId).toBeDefined()
+    state = gcReducer(state, { type: 'tradeReport', projectId: 'helotes', packageId: 'dry', sovId: lineId ?? '', pct: 100 })
+    const after = dryOf(state)
+    expect([after?.doneToDate, after?.worth, after?.source]).toEqual([before?.doneToDate, 64_200, before?.source])
+    expect(after?.detail.map((d) => d.label)).toEqual(['Framing', 'Hang and tape', 'Ceilings'])
+  })
+
   it('a declined credit never reaches the bill', () => {
     let state = draft(initialGcState(), -1_200)
     expect(helotesOf(state).changeOrders?.[0]?.price).toBe(-1_320)
