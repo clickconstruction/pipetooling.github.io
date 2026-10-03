@@ -8,7 +8,7 @@ const note: ReleaseNote = {
   highlights: [
     'A robot run, key or twin seat older than two weeks showed the next day when it came after 7 pm Central. The run’s hover showed the time in UTC. Both now read the company’s clock.',
     'A missing deposit on the Mercury check in Banking read the next day for an evening posting.',
-    'Keep trying on a hiring trial, pressed in the evening, read the next day.',
+    'Keep trying on a hiring trial, pressed in the evening, read the next day. The pricing robot’s prompt printed a request’s time in UTC; it now prints the office’s clock.',
   ],
 }
 
