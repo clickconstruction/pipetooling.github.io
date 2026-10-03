@@ -464,6 +464,10 @@ describe('change orders to the owner', () => {
     const after = dryOf(state)
     expect([after?.doneToDate, after?.worth, after?.source]).toEqual([before?.doneToDate, 64_200, before?.source])
     expect(after?.detail.map((d) => d.label)).toEqual(['Framing', 'Hang and tape', 'Ceilings'])
+    // The change order's own line reads the trade's report, and the hand-set percent no longer applies.
+    const co = ownerPayApp(state, helotesOf(state)).lines.find((l) => l.id === 'co-1')
+    expect([co?.doneToDate, co?.source.endsWith('Hill Country Interiors reported 100% done.')]).toEqual([5_280, true])
+    expect(gcReducer(state, { type: 'setChangeOrderPct', projectId: 'helotes', changeOrderId: 'co-1', pct: 20 })).toBe(state)
   })
 
   it('a declined credit never reaches the bill', () => {

@@ -308,7 +308,9 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
 - Change orders to the owner (`gcOwnerBilling.ts`): the price starts at what it costs us plus the
   job's fee, and the office can type over it. A signed one raises the owner's price and bills as a
   line of its own, not spread, since its price already carries our fee. Its percent done is marked
-  under Change orders until the trade's statement of work carries it.
+  under Change orders until the trade signs the change; from then on it is the trade's report on
+  that line (`changeOrderPct`, owner's call 2026-10-03), and the trade's own line leaves the
+  change's line out, so the work bills once.
 - A new insurance certificate counts the moment the company sends it; nobody in the office checks
   it first. A new one is good for a year until they change the day.
 - A company answers every line the office marked "not clear" (in or left out) before its number

@@ -2,6 +2,7 @@ import { useState, type Dispatch } from 'react'
 import { Btn, Card, Chip, input } from './gcUi'
 import {
   CHANGE_ORDER_REASON_WORDS,
+  changeOrderPct,
   changeOrderPrice,
   changeOrderWho,
   money,
@@ -79,7 +80,16 @@ function ChangeOrderRow({ state, project, co, dispatch }: { state: GcState; proj
         )}
         {co.status === 'sent' && <Chip tone="amber">{`waiting on them since ${shortDate(co.sentOn)}`}</Chip>}
         {co.status === 'declined' && <Chip tone="red">{`declined ${shortDate(co.answeredOn)}`}</Chip>}
-        {co.status === 'signed' && (
+        {co.status === 'signed' && changeOrderPct(project, co).fromTrade && (
+          <>
+            <Chip tone="green">{`signed ${shortDate(co.answeredOn)}`}</Chip>
+            <span>
+              {`${changeOrderWho(state, project, co).replace(/ on .*$/, '')} reported ${changeOrderPct(project, co).pct}% done in their portal.`}
+            </span>
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Its line on the bill follows their report.</span>
+          </>
+        )}
+        {co.status === 'signed' && !changeOrderPct(project, co).fromTrade && (
           <>
             <Chip tone="green">{`signed ${shortDate(co.answeredOn)}`}</Chip>
             <select

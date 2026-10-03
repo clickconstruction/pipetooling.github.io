@@ -11,7 +11,7 @@ import { awardedPartner, find, logged, mapInvite, mapPackage, mapProject, mapSow
 import { initialGcState } from './gcFixture'
 import { draftSchedule, scheduleLinesOf, withBaselineKept } from './gcBuildingSchedule'
 import { buildNewProject, packagesFromDrafts, pushSchedule, withNewLines, withTradesInOrder } from './gcNewProject'
-import { crewPctFromStages, drawApprovedLess, finalPayApplication, jobCloseout, payApplication, timesSentBack, tradeCloseout, workAllBilled } from './gcBuilding'
+import { changeOrderTradePct, crewPctFromStages, drawApprovedLess, finalPayApplication, jobCloseout, payApplication, timesSentBack, tradeCloseout, workAllBilled } from './gcBuilding'
 import { changeOrderPrice, ownerCloseout, ownerFinalPayAppToSend, ownerPayApp, ownerPayAppHasWork, ownerPayAppToSend } from './gcOwnerBilling'
 
 export function gcReducer(state: GcState, action: GcAction): GcState {
@@ -1067,7 +1067,8 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
       const project = state.projects.find((p) => p.id === action.projectId)
       const co = project?.changeOrders?.find((c) => c.id === action.changeOrderId)
       const pct = Math.max(0, Math.min(100, Math.round(action.pct)))
-      if (!project || !co || co.status !== 'signed' || co.pctDone === pct) return state
+      // Once the trade has signed its change, its report is the number (owner's call, 2026-10-03).
+      if (!project || !co || co.status !== 'signed' || co.pctDone === pct || changeOrderTradePct(project, co) !== null) return state
       const next = mapProject(state, project.id, (p) => ({
         ...p,
         changeOrders: (p.changeOrders ?? []).map((c) => (c.id === co.id ? { ...c, pctDone: pct } : c)),
