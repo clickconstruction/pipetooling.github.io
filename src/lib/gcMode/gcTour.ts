@@ -22,7 +22,7 @@ export const GC_TOUR_STEPS: SpotlightTourStep[] = [
   {
     anchor: 'gc-new-project',
     title: 'Start a new project',
-    body: 'A project starts the day its plans come in. Tap + New project. A window walks you through four steps: the project, the plans, the trades and each trade’s scope. Tap Create the project. It lands here, open on Trades, ready to ask companies for quotes.',
+    body: 'A project starts the day its plans come in. Tap + New project. A window walks you through five steps: the project, the plans, the trades, each trade’s scope and who to ask. Tap Create the project. It lands here, open on Trades. The companies you ticked are asked to quote.',
   },
   {
     anchor: 'gc-row-pursuing',
