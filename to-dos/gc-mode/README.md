@@ -205,7 +205,9 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   the time from the schedule push); the office types our cost and Owner Billing's rule adds the
   fee. Issuing drafts each one with a cost through Owner Billing's own `draftChangeOrder` (reason
   "plans"), to review and send on **Bill the owner**, with the days the set adds as a number
-  (`ChangeOrder.days`; a signed one adds them to the contract time). The matching change to the trade's
+  (`ChangeOrder.days`; a signed one adds them to the contract time). The days ride on one change
+  order only, the first going out whose trade caused them, so they are never counted twice
+  (`changeOrderTakingTheDays`). The matching change to the trade's
   statement of work is not built.
 - **Questions about the plans** (approved as built, 2026-10-03): a trade asks about the plans
   (only a company asked to quote the trade can), we send it to the architect, we record the
@@ -517,10 +519,9 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
     adds? Today a signed one's days add to the contract time (`contractDaysAdded`): the owner's
     portal says "Days your change orders add to the job: +5 days". The milestone on the schedule
     (the Building lane's) stays where it was. (Owner Billing lane, 2026-10-03.)
-29. Texts to trade partners: the portal's invitation, the start day and a few urgent notes go by
-    text as well as email (*Workflow steps not built yet*, the portal's events). The app sends
-    email through Resend and has no text sender. Add one before the real build, or send email only?
-    (Portal lane, 2026-10-03.)
+29. ~~Texts to trade partners: add a text sender before the real build, or send email only?~~
+    Answered 2026-10-03: **email only for now** (through Resend, as the app sends today). Every
+    lane's notification table reads "by email"; a text sender is not part of the first real build.
 
 ## The schedule (proposed 2026-10-02, built 2026-10-03)
 
@@ -568,8 +569,6 @@ the bullets below are the shape they set.
 
 ## Workflow steps not built yet
 
-- A set's added days could also carry their time onto the change order it starts, beyond the
-  "+N days" words (Owner Billing's change orders carry a schedule field).
 
 - The schedule, the rest: a trade or a line a later set brings in does not join a schedule already
   drawn (the New Project lane's `issuePlanSet`, asked 2026-10-03; the golden walk's "Draw Helotes's
