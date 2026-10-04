@@ -5,6 +5,8 @@ import { GcOwnerBillingChangeOrders } from './GcOwnerBillingChangeOrders'
 import { OwnerPayAppWindow } from './GcOwnerBillingPayApp'
 import { GcOwnerBillingArchitectPortal } from './GcOwnerBillingArchitect'
 import { GcOwnerBillingPortal } from './GcOwnerBillingPortal'
+import { GcOwnerBillingRetainage } from './GcOwnerBillingRetainage'
+import { GcOwnerBillingInterest } from './GcOwnerBillingInterest'
 import { Btn, Card, Chip, Stat, Why, input, num, td, th } from './gcUi'
 import {
   appCertified,
@@ -17,6 +19,7 @@ import {
   ownerCloseout,
   ownerAccount,
   ownerLateBills,
+  ownerRetainageWords,
   ownerPayDue,
   ownerPayApp,
   ownerPayAppHasWork,
@@ -121,7 +124,7 @@ function OfficeSide({
         Once a month we bill {project.owner} for the work done so far. Each trade&rsquo;s line is the work its company
         reported. Each trade&rsquo;s line also carries its share of our costs and fee,{' '}
         {(Math.round(markupOnTop(app.lines) * 1000) / 10).toLocaleString('en-US')}% on top of its price. {project.owner} holds{' '}
-        {app.retainagePct}% of every bill until the end.
+        {ownerRetainageWords(app.retainagePct, app.retainageStep)}.
       </Why>
 
       {!app.started && (
@@ -191,7 +194,10 @@ function OfficeSide({
         <div style={{ display: 'flex', gap: '0.75rem 2rem', flexWrap: 'wrap' }}>
           <Stat label="Our price" value={money(app.contract)} />
           <Stat label={`Done so far · ${donePct}%`} value={money(app.doneToDate)} />
-          <Stat label={`They hold ${app.retainagePct}%`} value={money(app.retainage)} />
+          <Stat
+            label={`They hold ${app.retainageStep && app.doneToDate > 0 ? Math.round((app.retainage / app.doneToDate) * 1000) / 10 : app.retainagePct}%`}
+            value={money(app.retainage)}
+          />
           <Stat label="Asked for before" value={money(app.askedBefore)} />
           <Stat label="This bill" value={money(Math.max(0, app.due))} tone={hasWork ? 'green' : undefined} />
         </div>
@@ -261,6 +267,10 @@ function OfficeSide({
         </div>
       </Card>
       )}
+
+      <GcOwnerBillingRetainage state={state} project={project} dispatch={dispatch} />
+
+      <GcOwnerBillingInterest state={state} project={project} dispatch={dispatch} />
 
       <GcOwnerBillingChangeOrders state={state} project={project} dispatch={dispatch} />
 

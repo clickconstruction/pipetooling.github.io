@@ -14,6 +14,7 @@ import {
   changeOrderScheduleWords,
   contractDaysAdded,
   daysWords,
+  ownerInterest,
   ownerPayDue,
   money,
   ourOwnerWaivers,
@@ -22,6 +23,7 @@ import {
   ownerAccount,
   ownerPayApp,
   ownerPayAppsSent,
+  ownerRetainageWords,
   projectChangeOrders,
   sentPayAppLines,
   shortDate,
@@ -56,6 +58,7 @@ export function GcOwnerBillingPortal({ state, project, dispatch }: { state: GcSt
   const account = ownerAccount(project)
   const next = ownerPayApp(state, project)
   const finish = substantialCompletionOn(project)
+  const interest = ownerInterest(state, project)
   const ours = ourOwnerWaivers(project)
   const trades = last ? tradeWaiverChecks(state, project, last.doneToDate) : []
   const billedPct = last && next.contract > 0 ? Math.round((last.workToDate / next.contract) * 100) : 0
@@ -100,6 +103,11 @@ export function GcOwnerBillingPortal({ state, project, dispatch }: { state: GcSt
             <span style={{ textAlign: 'right' }}>{money(account?.billed ?? 0)}</span>
             <span>You hold until the end</span>
             <span style={{ textAlign: 'right' }}>{money(account?.retainageHeld ?? 0)}</span>
+            {next.retainageStep && (
+              <span style={{ gridColumn: '1 / -1', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                You hold {ownerRetainageWords(next.retainagePct, next.retainageStep)}.
+              </span>
+            )}
             <span>You paid</span>
             <span style={{ textAlign: 'right' }}>{money(account?.paid ?? 0)}</span>
             <span>You owe now</span>
@@ -203,6 +211,29 @@ export function GcOwnerBillingPortal({ state, project, dispatch }: { state: GcSt
                 onPromise={(by) => dispatch({ type: 'ownerPromisePay', projectId: project.id, number: app.number, by, note: '', who: 'owner' })}
               />
             ))}
+            {(project.ownerBilling?.interestBills ?? [])
+              .filter((b) => b.paidOn === null)
+              .map((b) => (
+                <div key={`interest-${b.number}`} style={{ display: 'grid', gap: '0.3rem', fontSize: '0.85rem', borderTop: `1px solid ${RULE}`, paddingTop: '0.4rem' }}>
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
+                    <strong>Interest on late bills</strong>
+                    <span style={{ color: 'var(--text-muted)' }}>sent {shortDate(b.sentOn)}</span>
+                    <span style={{ flex: 1 }} />
+                    <strong>{money(b.amount)}</strong>
+                  </div>
+                  <div>
+                    <Btn kind="primary" onClick={() => dispatch({ type: 'ownerPaidInterest', projectId: project.id, number: b.number })}>
+                      Pay {money(b.amount)}
+                    </Btn>
+                  </div>
+                </div>
+              ))}
+            {interest.pctPerMonth !== null && (
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                A late bill adds {interest.pctPerMonth}% a month on what is still open, from the day it was due.
+                {Math.round(interest.toBill) > 0 && ` ${money(interest.toBill)} has built up so far.`}
+              </div>
+            )}
             {sent.length > 0 && !allBilled && (
               <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>The next bill comes {weekdayDate(next.billOn)}.</div>
             )}

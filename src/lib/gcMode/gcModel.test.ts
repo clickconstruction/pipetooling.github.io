@@ -598,6 +598,25 @@ const STEPS: Step[] = [
       signedTitle: 'Owner',
     },
   },
+  { label: 'Fair Oaks D: retainage drops to 5% on the work after half done', action: { type: 'setOwnerRetainageStep', projectId: 'fairoaksd', step: { atPct: 50, toPct: 5, way: 'after' } } },
+  // Interest on late bills (the owner, 2026-10-04): ours to choose per job, on a bill of its own.
+  { label: 'Fair Oaks D: Cibolo pays 1.5% a month on a late bill', action: { type: 'setOwnerLateInterest', projectId: 'fairoaksd', pctPerMonth: 1.5 } },
+  { label: 'Bill Cibolo the interest on pay application 3', action: { type: 'sendOwnerInterestBill', projectId: 'fairoaksd' } },
+  { label: 'Cibolo pays the interest bill', action: { type: 'ownerPaidInterest', projectId: 'fairoaksd', number: 1 } },
+  // Question 4 (the owner, 2026-10-04): a trade's own schedule of values, beside ours.
+  {
+    label: 'Fair Oaks D: Cool Breeze sends its schedule of values',
+    action: {
+      type: 'tradeSendSov',
+      projectId: 'fairoaksd',
+      packageId: 'fhvac',
+      sov: [
+        { label: 'Rough-in: ductwork', amount: 70_000 },
+        { label: 'Set the units', amount: 60_000 },
+        { label: 'Trim and start-up', amount: 28_000 },
+      ],
+    },
+  },
   // Building's promises (question 8): each kept by the trade's own move; a delivery the office marks.
   {
     label: 'Pecan Valley promises the site lighting submittal by Tue Oct 6',
@@ -773,6 +792,9 @@ describe('GC mode golden walk', () => {
       'markLost', 'reopenLost',
       'takeAlternate',
       'vetPartner', 'tradeVettingForm', 'recordPromise', 'keepPromise',
+      'setOwnerRetainageStep',
+      'setOwnerLateInterest', 'sendOwnerInterestBill', 'ownerPaidInterest',
+      'tradeSendSov',
     ]
     expect(all.filter((t) => !used.has(t))).toEqual([])
   })
