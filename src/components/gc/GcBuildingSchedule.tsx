@@ -8,6 +8,7 @@ import {
   markReason,
   MILESTONE_GRACE_DAYS,
   mondayOf,
+  onSiteWords,
   RELIABILITY_WEEKS,
   scheduleMeasures,
   scheduleSummary,
@@ -712,6 +713,7 @@ function VerifyCard({ project, rows, today, dispatch }: { project: GcProject; ro
             weekOf={mark.weekOf}
             saysDone={mark.done}
             saysReason={mark.reason ?? null}
+            onSite={onSiteWords(project, row.pkg.id, mark.weekOf)}
             onVerify={(done, reason) => dispatch({ type: 'verifyLookAhead', projectId: project.id, weekOf: mark.weekOf, lineId: mark.lineId, done, ...(reason ? { reason } : {}) })}
           />
         ))}
@@ -722,6 +724,7 @@ function VerifyCard({ project, rows, today, dispatch }: { project: GcProject; ro
             weekOf={thisWeek}
             saysDone={null}
             saysReason={null}
+            onSite={onSiteWords(project, row.pkg.id, thisWeek)}
             onVerify={(done, reason) => dispatch({ type: 'crewMarkLookAhead', projectId: project.id, weekOf: thisWeek, lineId: row.activity.lineId, done, ...(reason ? { reason } : {}) })}
           />
         ))}
@@ -750,12 +753,15 @@ function VerifyLine({
   weekOf,
   saysDone,
   saysReason,
+  onSite = null,
   onVerify,
 }: {
   row: ScheduleRow
   weekOf: string
   saysDone: boolean | null
   saysReason: LookAheadReason | null
+  /** What the daily log says of their week on site (owner, 2026-10-04). Null: no log that week. */
+  onSite?: string | null
   onVerify: (done: boolean, reason?: LookAheadReason) => void
 }) {
   const [reason, setReason] = useState<LookAheadReason>('other')
@@ -783,6 +789,7 @@ function VerifyLine({
         {ours ? 'Our own crew. Mark it yourself.' : saysDone ? 'They say done.' : `They say not done${saysReason ? `: ${saysReason}` : ''}.`} Reported{' '}
         {Math.round(row.actual)}%, planned {Math.round(row.plannedToday)}% by today.
       </div>
+      {onSite && <div style={{ color: 'var(--text-muted)' }}>{onSite}</div>}
       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
         {ours ? (
           <>

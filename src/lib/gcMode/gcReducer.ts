@@ -13,6 +13,7 @@ import { lostWhyLabel } from './gcLost'
 import { daysBetween, draftSchedule, scheduleLinesOf, withBaselineKept } from './gcBuildingSchedule'
 import { buildNewProject, packagesFromDrafts, pushSchedule, scheduleSetLines, withNewLines, withRetiedLines, withTradesInOrder } from './gcNewProject'
 import { nextPunchId, punchClear } from './gcBuildingPunch'
+import { logTrades } from './gcBuildingLog'
 import { addDays, changeOrderTradePct, crewPctFromStages, drawApprovedLess, finalPayApplication, jobCloseout, payApplication, timesSentBack, tradeCloseout, workAllBilled } from './gcBuilding'
 import { appClaimed, appOpen, changeOrderPrice, ownerCloseout, ownerFinalPayAppToSend, ownerPayApp, ownerPayAppHasWork, ownerPayAppToSend } from './gcOwnerBilling'
 
@@ -1435,6 +1436,48 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
         action.fixed
           ? `Our superintendent checked a punch item on ${pkg.trade}: ${what}. It is fixed.`
           : `Our superintendent sent a punch item back to ${partner.company}: ${what}.${note ? ` ${note.replace(/[.\s]+$/, '')}.` : ''}`,
+      )
+    }
+
+    case 'saveDailyLog': {
+      // Building lane (owner, 2026-10-04): our superintendent's log for a day on a job being built,
+      // today or a day missed since work started. A day has one log; saving again replaces it.
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const log = action.log
+      if (!project || project.stage !== 'building' || !project.startedOn) return state
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(log.date) || log.date > state.today || log.date < project.startedOn) return state
+      const trades = new Set(logTrades(project).map((k) => k.id))
+      const crews = log.crews.filter((c) => trades.has(c.packageId) && c.workers > 0).map((c) => ({ packageId: c.packageId, workers: Math.round(c.workers) }))
+      const delays = log.delays
+        .filter((d) => d.packageId === null || trades.has(d.packageId))
+        .map((d) => ({ packageId: d.packageId, reason: d.reason, note: d.note.trim() }))
+      const saved = {
+        date: log.date,
+        sky: log.sky,
+        high: Math.round(log.high),
+        low: Math.round(log.low),
+        weatherStop: log.weatherStop,
+        crews,
+        done: log.done.trim(),
+        delays,
+        visitors: log.visitors.trim(),
+        writtenOn: state.today,
+      }
+      const known = (project.dailyLogs ?? []).some((l) => l.date === log.date)
+      const next = mapProject(state, project.id, (p) => ({
+        ...p,
+        dailyLogs: [...(p.dailyLogs ?? []).filter((l) => l.date !== log.date), saved].sort((a, b) => a.date.localeCompare(b.date)),
+      }))
+      const workers = crews.reduce((n, c) => n + c.workers, 0)
+      const parts = [
+        `${workers} ${workers === 1 ? 'worker' : 'workers'} from ${crews.length} ${crews.length === 1 ? 'trade' : 'trades'} on site`,
+        ...(log.weatherStop ? ['work stopped for the weather'] : []),
+        ...(delays.length > 0 ? [`${delays.length} ${delays.length === 1 ? 'delay' : 'delays'}`] : []),
+      ]
+      return logged(
+        next,
+        'office',
+        `${known ? 'Changed' : 'Wrote'} the daily log for ${weekdayDate(log.date)} on ${project.name}: ${parts.join(', ')}.${log.date < state.today && !known ? ' Caught up after the day.' : ''}`,
       )
     }
   }

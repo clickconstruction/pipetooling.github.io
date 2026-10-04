@@ -2,7 +2,7 @@
  * GC mode — design spike. The made-up data the prototype starts from (Start over puts it back).
  * Split out of gcModel.ts verbatim; import from `./gcModel`, which re-exports every file.
  */
-import type { AskContact, GcCustomer, GcProject, GcState, Includes, Invite, InviteStatus, LookAheadReason, Partner, ProjectContact, ProjectSchedule, ScheduleActivity, ScopeItem, SubBid, TradePackage } from './gcTypes'
+import type { AskContact, DailyLog, GcCustomer, GcProject, GcState, Includes, Invite, InviteStatus, LookAheadReason, Partner, ProjectContact, ProjectSchedule, ScheduleActivity, ScopeItem, SubBid, TradePackage } from './gcTypes'
 
 // ---------------------------------------------------------------------------------------------
 // Fixture
@@ -861,6 +861,17 @@ export function initialGcState(): GcState {
   // Roofing slipped a week since; dry-in is late; two weeks of verified look-ahead marks, and this
   // week's marks in from the trades and waiting on our superintendent.
   const act = (lineId: string, packageId: string, start: string, finish: string, after: string[] = []) => ({ lineId, packageId, start, finish, after })
+  const fairOaksLog = (
+    date: string,
+    sky: DailyLog['sky'],
+    high: number,
+    low: number,
+    crews: Record<string, number>,
+    done: string,
+    delays: DailyLog['delays'] = [],
+    visitors = '',
+    weatherStop = false,
+  ): DailyLog => ({ date, sky, high, low, weatherStop, crews: Object.entries(crews).map(([packageId, workers]) => ({ packageId, workers })), done, delays, visitors, writtenOn: date })
   const inspection = (lineId: string, label: string, start: string, finish: string, after: string[]): ScheduleActivity => ({
     lineId,
     packageId: '',
@@ -1259,6 +1270,26 @@ export function initialGcState(): GcState {
     contingencyPct: 3,
     feePct: 10,
     schedule: fairOaksSchedule,
+    // Building lane (2026-10-04): the superintendent's daily log, Sep 21 to Oct 1. The rain on
+    // Sep 24 and 25 is the roofers' weather delay; Sep 30 was missed.
+    dailyLogs: [
+      fairOaksLog('2026-09-21', 'clear', 88, 68, { fsteel: 5, froof: 4, felec: 3, fplumb: 3, fhvac: 3 }, 'Deck welded on the north half. Roofers set insulation on the east bays. Panels B and C hung.'),
+      fairOaksLog('2026-09-22', 'clear', 90, 70, { fsteel: 5, froof: 5, felec: 3, fplumb: 3, fhvac: 3 }, 'Insulation down on all four bays. Duct mains run in bays 1 and 2.'),
+      fairOaksLog('2026-09-23', 'cloudy', 86, 71, { fsteel: 3, froof: 5, felec: 3, fplumb: 3, fhvac: 3 }, 'Membrane started on the east half.', [
+        { packageId: 'fsteel', reason: 'crew', note: 'Iron Horse came with three ironworkers, not five.' },
+      ]),
+      fairOaksLog('2026-09-24', 'rain', 78, 69, { felec: 3, fplumb: 3, fhvac: 2 }, 'Inside work only. Feeders pulled in bay 3.', [
+        { packageId: 'froof', reason: 'weather', note: 'Rain all day. The membrane cannot go down wet.' },
+      ]),
+      fairOaksLog('2026-09-25', 'storm', 75, 66, { felec: 2 }, 'Lightning by noon. Everyone off the site at 12:30.', [
+        { packageId: null, reason: 'weather', note: 'Work stopped at 12:30 for lightning.' },
+      ], '', true),
+      fairOaksLog('2026-09-28', 'clear', 87, 67, { fsteel: 4, froof: 5, felec: 3, fplumb: 3, fhvac: 3 }, 'Membrane down on the east half. Canopy steel set.', [], 'City inspector: the electrical service inspection failed, the bonding jumper is missing.'),
+      fairOaksLog('2026-09-29', 'clear', 89, 69, { fsteel: 4, froof: 5, felec: 2, fplumb: 3, fhvac: 3 }, 'Membrane started on the west half.', [
+        { packageId: 'felec', reason: 'materials', note: 'Panel boards are two weeks out.' },
+      ]),
+      fairOaksLog('2026-10-01', 'cloudy', 85, 70, { fsteel: 3, froof: 4, felec: 2, fplumb: 3, fhvac: 3 }, 'West half membrane half down. Ductwork in bay 4.', [], "Cibolo's owner rep walked bays 1 and 2."),
+    ],
     // Building lane (2026-10-03): the concrete walked on Sep 28. One item to fix, one fixed and
     // waiting on our superintendent's check, one checked.
     punch: [
