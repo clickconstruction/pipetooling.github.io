@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
+import { plainWordsFailures } from '../plainWords'
 import {
+  SET_KIND_HELP,
   budgetBySize,
   perSqFtWords,
   nextSheetNumber,
@@ -785,5 +787,14 @@ describe('the budgets against the size', () => {
     expect(summary.lines[0]?.perSqFt).toBeNull()
     expect(summary.totalPerSqFt).toBeNull()
     expect(summary.total).toBe(84000)
+  })
+})
+
+describe('what the kinds of plan sets are', () => {
+  it('covers the three chips in their order, and every sentence reads in plain words', () => {
+    expect(SET_KIND_HELP.map((k) => k.kind)).toEqual(['Bid set', 'Pricing set', 'Permit set'])
+    for (const k of SET_KIND_HELP) {
+      for (const text of [k.alsoCalled ?? '', k.when, k.who, k.inIt, k.forWhat]) expect(plainWordsFailures(text)).toEqual([])
+    }
   })
 })
