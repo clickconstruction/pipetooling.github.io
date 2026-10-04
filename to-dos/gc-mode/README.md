@@ -183,6 +183,15 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   piping to HVAC). The gap check flags what nobody picks up: left to a trade not on the job, or to
   one whose scope has no line for it (`scopeGaps`, a shared word). **Add it to HVAC** or **Add
   HVAC** closes it. The package keeps the list (`TradePackage.excludes`, `projectScopeGaps`).
+- **Pickers with search in New project and a new set** (the owner, 2026-10-04: "I would like the
+  dropdown to be more attractive, I would like for it to have search"): every dropdown in the New
+  project, new-set and Questions windows is the app's SearchableSelect (`GcNewProjectPickers.tsx`).
+  Rows show the name in bold and what it is beneath it. The Owner and Architect pickers put the
+  ones that fit first (owners and developers, or architects), then everyone else, and typing a
+  name the list does not have offers **Add "…" as someone new**. **Add a trade** is one picker
+  that adds a typed trade the same way. Escape in an open picker closes only the picker. Step 2's
+  set line is **Note to the trades (optional)**, with "Every company we ask sees this beside the
+  set's name."
 - **A set says who checked it** (the owner, 2026-10-04: "plans live in google drive, uploaded by
   someone who checks them"; "yes, add the checked by step"): step 1 of **A new set of plans came
   in** asks **Checked by**, the job's own team first, then our other people, or someone typed

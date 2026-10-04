@@ -58,6 +58,8 @@ import {
 import { ScopeLines, type ScopeLineDraft } from './GcNewProject'
 import { GcNewProjectQuestions } from './GcNewProjectQuestions'
 import { Btn, Chip, input } from './gcUi'
+import { Picker } from './GcNewProjectPickers'
+import { pickerFace, pickerGroup, pickerRow } from './GcNewProjectPickerRows'
 
 /**
  * GC mode design spike: a new set of plans came in. Four steps on one page, each feeding the
@@ -194,7 +196,6 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
   /** The trade whose Add a line box is open, and what is typed in it. */
   const [lineFor, setLineFor] = useState<string | null>(null)
   const [lineText, setLineText] = useState('')
-  const [addText, setAddText] = useState('')
   const [skipped, setSkipped] = useState<string[]>([])
   const [previewId, setPreviewId] = useState<string | null>(null)
 
@@ -402,14 +403,14 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
     const t = trade.trim()
     if (t === '' || onJob(t)) return
     setBrought((b) => [...b, { trade: t, budget: '', ours: OUR_TRADES.includes(t), scope: usualScope(t).map((l) => ({ label: l, sheets: null })) }])
-    setAddText('')
   }
   const change = (i: number, patch: Partial<BroughtTrade>) => setBrought((b) => b.map((x, j) => (j === i ? { ...x, ...patch } : x)))
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       // With the questions window open over this one, Escape closes only that one.
-      if (e.key === 'Escape' && !askingOpen) onClose()
+      // An open picker takes Escape for itself too.
+      if (e.key === 'Escape' && !askingOpen && !e.defaultPrevented && !document.querySelector('[role="listbox"]')) onClose()
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
@@ -502,15 +503,41 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
               </span>
               <div style={{ display: 'flex', gap: '0.45rem', alignItems: 'center', flexWrap: 'wrap' }}>
                 <label htmlFor="gc-set-checker" style={{ fontWeight: 600 }}>Checked by</label>
-                <select id="gc-set-checker" style={{ ...input, flex: '0 1 14rem', minWidth: 0 }} value={checker} onChange={(e) => setChecker(e.target.value)}>
-                  <option value="">Pick who checked it</option>
-                  {ourPeople(state, project).map((name) => (
-                    <option key={name} value={name}>
-                      {name}
-                    </option>
-                  ))}
-                  <option value={OTHER}>Someone else</option>
-                </select>
+                <div style={{ flex: '0 1 16rem', minWidth: 0 }}>
+                  <Picker
+                    id="gc-set-checker"
+                    value={checker}
+                    onChange={setChecker}
+                    placeholder="Pick who checked it"
+                    ariaLabel="Who checked the set"
+                    searchPlaceholder="Search our people"
+                    options={(() => {
+                      // The job's own team under its heading, then our people on other jobs under theirs.
+                      const people = ourPeople(state, project)
+                      const team = project.team ?? []
+                      const own = people.filter((name) => team.some((c) => c.name === name))
+                      const rest = people.filter((name) => !team.some((c) => c.name === name))
+                      const row = (name: string) => {
+                        const c = team.find((x) => x.name === name)
+                        const role = c ? (c.role === 'projectManager' ? 'Project manager' : 'Superintendent') : 'On our other jobs'
+                        return { value: name, label: `${name} ${role}`, labelContent: pickerRow(name, role), triggerContent: pickerFace(name) }
+                      }
+                      return [
+                        ...(own.length > 0 ? [pickerGroup('job', 'On this job'), ...own.map(row)] : []),
+                        ...(rest.length > 0 ? [pickerGroup('rest', own.length > 0 ? 'Our other people' : 'Our people'), ...rest.map(row)] : []),
+                        pickerGroup('else', ''),
+                        { value: OTHER, label: 'Someone else', labelContent: <span style={{ color: 'var(--text-blue-500)', fontWeight: 600 }}>+ Someone else</span> },
+                      ]
+                    })()}
+                    onNoMatch={{
+                      label: (q) => `"${q.trim()}" checked it`,
+                      onSelect: (q) => {
+                        setChecker(OTHER)
+                        setCheckerTyped(q.trim())
+                      },
+                    }}
+                  />
+                </div>
                 {checker === OTHER && (
                   <input
                     style={{ ...input, flex: '1 1 10rem', minWidth: 0 }}
@@ -837,20 +864,22 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
                             <span style={{ flex: '1 1 16rem', minWidth: 0 }}>
                               {trade} · {l.item.label} read only {l[kindOf].join(' and ')}.
                             </span>
-                            <select
-                              value={retie[key] ?? ''}
-                              onChange={(e) => setRetie((r) => ({ ...r, [key]: e.target.value }))}
-                              aria-label={`What ${l.item.label} reads now`}
-                              style={{ ...input, flex: '1 1 12rem', minWidth: 0, maxWidth: '100%' }}
-                            >
-                              <option value="">Leave it as it is</option>
-                              <option value="whole">Every {inSentence(trade)} {kindOf === 'sheets' ? 'sheet' : 'section'}</option>
-                              {choices.map((x) => (
-                                <option key={x.id} value={x.id}>
-                                  {x.id} {x.title}
-                                </option>
-                              ))}
-                            </select>
+                            <div style={{ flex: '1 1 12rem', minWidth: 0, maxWidth: '100%' }}>
+                              <Picker
+                                compact
+                                value={retie[key] ?? ''}
+                                onChange={(v) => setRetie((r) => ({ ...r, [key]: v }))}
+                                placeholder="Leave it as it is"
+                                ariaLabel={`What ${l.item.label} reads now`}
+                                searchPlaceholder={kindOf === 'sheets' ? 'Search the sheets' : 'Search the sections'}
+                                options={[
+                                  { value: '', label: 'Leave it as it is' },
+                                  { value: 'whole', label: `Every ${inSentence(trade)} ${kindOf === 'sheets' ? 'sheet' : 'section'}` },
+                                  ...(choices.length > 0 ? [pickerGroup('choices', kindOf === 'sheets' ? 'Its sheets now' : 'Its sections now')] : []),
+                                  ...choices.map((x) => ({ value: x.id, label: `${x.id} ${x.title}`, labelContent: pickerRow(x.id, x.title), triggerContent: pickerFace(x.id, x.title) })),
+                                ]}
+                              />
+                            </div>
                           </div>
                         )
                       })
@@ -940,23 +969,17 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
               <div style={{ borderTop: '1px solid var(--border)', paddingTop: '0.6rem', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '0.5rem' }}>
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                   <strong>A trade the job does not have yet</strong>
-                  <select style={input} value="" onChange={(e) => bring(e.target.value)} aria-label="Add a trade from the usual list">
-                    <option value="">From the usual list</option>
-                    {TRADE_TEMPLATES.filter((t) => !onJob(t.trade)).map((t) => (
-                      <option key={t.trade} value={t.trade}>{t.trade}</option>
-                    ))}
-                  </select>
-                  <span style={{ color: 'var(--text-muted)' }}>or type one</span>
-                  <input
-                    style={{ ...input, flex: '0 1 12rem' }}
-                    value={addText}
-                    onChange={(e) => setAddText(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') bring(addText)
-                    }}
-                    placeholder="Canopy steel"
-                  />
-                  <Btn disabled={addText.trim() === ''} onClick={() => bring(addText)}>Add</Btn>
+                  <div style={{ flex: '0 1 18rem', minWidth: 0 }}>
+                    <Picker
+                      value=""
+                      onChange={bring}
+                      placeholder="From the usual list, or type one"
+                      ariaLabel="Add a trade from the usual list"
+                      searchPlaceholder="Search, or type a trade like Canopy steel"
+                      options={TRADE_TEMPLATES.filter((t) => !onJob(t.trade)).map((t) => ({ value: t.trade, label: t.trade, labelContent: pickerRow(t.trade, t.scope.join(', ')) }))}
+                      onNoMatch={{ label: (q) => `Add "${q.trim()}" as a trade`, onSelect: bring }}
+                    />
+                  </div>
                 </div>
                 {suggested.length > 0 && (
                   <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap', padding: '0.4rem 0.6rem', borderRadius: 6, background: 'var(--bg-blue-tint)' }}>

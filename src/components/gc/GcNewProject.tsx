@@ -55,6 +55,8 @@ function usualLines(trade: string): ScopeLineDraft[] {
 }
 import { useMatchMedia } from '../../hooks/useMatchMedia'
 import { Btn, Chip, input } from './gcUi'
+import { CustomerPicker, Picker } from './GcNewProjectPickers'
+import { pickerFace, pickerGroup, pickerRow } from './GcNewProjectPickerRows'
 
 /**
  * GC mode design spike: New Project. A project starts the day its plans come in. Four steps in
@@ -161,7 +163,6 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
 
   const [edits, setEdits] = useState<Record<string, TradeEdit>>({})
   const [added, setAdded] = useState<string[]>([])
-  const [addText, setAddText] = useState('')
   const [scopeFor, setScopeFor] = useState<string | null>(null)
   /** The companies ticked per trade. A trade left out follows the default: the most reliable in range. */
   const [asks, setAsks] = useState<Record<string, string[]>>({})
@@ -257,7 +258,8 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      // An open picker takes Escape for itself; only an Escape nothing else used closes the window.
+      if (e.key === 'Escape' && !e.defaultPrevented && !document.querySelector('[role="listbox"]')) onClose()
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
@@ -289,7 +291,6 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
     if (t === '' || rows.some((r) => r.trade.toLowerCase() === t.toLowerCase())) return
     setAdded((a) => [...a, t])
     edit(t, { on: true })
-    setAddText('')
   }
 
   return (
@@ -428,31 +429,38 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
                 <input style={field} value={address} onChange={(e) => setAddress(e.target.value)} placeholder="24165 IH-10 W, San Antonio" />
               </Field>
               <Field label="Town" hint="Each company's drive is measured from here.">
-                <select style={field} value={town} onChange={(e) => setTown(e.target.value)}>
-                  {TOWNS.map((t) => (
-                    <option key={t.name} value={t.name}>{t.name}</option>
-                  ))}
-                </select>
+                <Picker
+                  value={town}
+                  onChange={setTown}
+                  options={TOWNS.map((t) => ({ value: t.name, label: t.name }))}
+                  placeholder="Pick the town"
+                  ariaLabel="Towns"
+                  searchPlaceholder="Search towns"
+                />
               </Field>
               <Field label="Owner" hint="The company we build it for. It comes from the customer list.">
-                <select style={field} value={ownerPick} onChange={(e) => setOwnerPick(e.target.value)}>
-                  <option value="">Pick one</option>
-                  {customers.map((c) => (
-                    <option key={c.id} value={c.id}>{c.name} · {c.kind}</option>
-                  ))}
-                  <option value={NEW}>Someone new</option>
-                </select>
-                {ownerPick === NEW && <input style={field} value={ownerNew} onChange={(e) => setOwnerNew(e.target.value)} placeholder="Their company name" />}
+                <CustomerPicker
+                  customers={customers}
+                  value={ownerPick}
+                  onChange={setOwnerPick}
+                  onNewName={setOwnerNew}
+                  fits={(c) => !/architect/i.test(c.kind)}
+                  fitsLabel="Owners and developers"
+                  ariaLabel="Owners"
+                />
+                {ownerPick === NEW && <input style={field} value={ownerNew} onChange={(e) => setOwnerNew(e.target.value)} placeholder="Their company name" aria-label="The new owner's company name" />}
               </Field>
               <Field label="Architect" hint="The firm that drew the plans. The same customer list.">
-                <select style={field} value={archPick} onChange={(e) => setArchPick(e.target.value)}>
-                  <option value="">Pick one</option>
-                  {customers.map((c) => (
-                    <option key={c.id} value={c.id}>{c.name} · {c.kind}</option>
-                  ))}
-                  <option value={NEW}>Someone new</option>
-                </select>
-                {archPick === NEW && <input style={field} value={archNew} onChange={(e) => setArchNew(e.target.value)} placeholder="The firm's name" />}
+                <CustomerPicker
+                  customers={customers}
+                  value={archPick}
+                  onChange={setArchPick}
+                  onNewName={setArchNew}
+                  fits={(c) => /architect/i.test(c.kind)}
+                  fitsLabel="Architects"
+                  ariaLabel="Architects"
+                />
+                {archPick === NEW && <input style={field} value={archNew} onChange={(e) => setArchNew(e.target.value)} placeholder="The firm's name" aria-label="The new architect's name" />}
               </Field>
               <Field label="Our bid is due" hint="The days-left block on the board counts down to it.">
                 <input type="date" style={field} value={bidDue} onChange={(e) => setBidDue(e.target.value)} />
@@ -494,7 +502,7 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
                   <Field label="It came in on">
                     <input type="date" style={field} value={issuedOn} onChange={(e) => setIssuedOn(e.target.value)} />
                   </Field>
-                  <Field label="A line about it">
+                  <Field label="Note to the trades (optional)" hint="Every company we ask sees this beside the set's name.">
                     <input style={field} value={setNote} onChange={(e) => setSetNote(e.target.value)} placeholder="The set the owner sent out to bid." />
                   </Field>
                 </div>
@@ -648,28 +656,17 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
               )}
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.875rem' }}>
                 <span style={{ fontWeight: 600 }}>Add a trade</span>
-                <select
-                  style={input}
-                  value=""
-                  onChange={(e) => addTrade(e.target.value)}
-                  aria-label="Add a trade from the usual list"
-                >
-                  <option value="">From the usual list</option>
-                  {notListed.map((t) => (
-                    <option key={t.trade} value={t.trade}>{t.trade}</option>
-                  ))}
-                </select>
-                <span style={{ color: 'var(--text-muted)' }}>or type one</span>
-                <input
-                  style={{ ...input, flex: '0 1 14rem' }}
-                  value={addText}
-                  onChange={(e) => setAddText(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') addTrade(addText)
-                  }}
-                  placeholder="Elevator"
-                />
-                <Btn disabled={addText.trim() === ''} onClick={() => addTrade(addText)}>Add</Btn>
+                <div style={{ flex: '0 1 18rem', minWidth: 0 }}>
+                  <Picker
+                    value=""
+                    onChange={addTrade}
+                    options={notListed.map((t) => ({ value: t.trade, label: t.trade, labelContent: pickerRow(t.trade, t.scope.join(', ')) }))}
+                    placeholder="From the usual list, or type one"
+                    ariaLabel="Add a trade from the usual list"
+                    searchPlaceholder="Search, or type a trade like Elevator"
+                    onNoMatch={{ label: (q) => `Add "${q.trim()}" as a trade`, onSelect: addTrade }}
+                  />
+                </div>
               </div>
               {picked.some((r) => r.budget.trim() === '') && (
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.875rem' }}>
@@ -1054,18 +1051,25 @@ function Excludes({ trade, excludes, trades, onChange }: { trade: string; exclud
             aria-label={`What ${trade} leaves out`}
           />
           <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>by</span>
-          <select style={{ ...input, flex: '0 1 12rem', minWidth: 0 }} value={x.by} onChange={(e) => set(i, { by: e.target.value })} aria-label={`Who does ${x.label || 'it'} instead`}>
-            {[...others, ...(others.includes(x.by) || BY_NOT_A_TRADE.includes(x.by) ? [] : [x.by])].map((t) => (
-              <option key={t} value={t}>
-                {others.includes(t) ? t : `${t} (not on this job)`}
-              </option>
-            ))}
-            {BY_NOT_A_TRADE.map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
-          </select>
+          <div style={{ flex: '0 1 12rem', minWidth: 0 }}>
+            <Picker
+              compact
+              value={x.by}
+              onChange={(by) => set(i, { by })}
+              placeholder="Who does it"
+              ariaLabel={`Who does ${x.label || 'it'} instead`}
+              searchPlaceholder="Search the trades"
+              options={[
+                pickerGroup('job', 'On this job'),
+                ...others.map((t) => ({ value: t, label: t })),
+                ...(others.includes(x.by) || BY_NOT_A_TRADE.includes(x.by)
+                  ? []
+                  : [pickerGroup('off', 'Not on this job'), { value: x.by, label: x.by, triggerContent: pickerFace(x.by, 'not on this job') }]),
+                pickerGroup('not-a-trade', 'Not a trade'),
+                ...BY_NOT_A_TRADE.map((t) => ({ value: t, label: t })),
+              ]}
+            />
+          </div>
           <button
             type="button"
             onClick={() => onChange(excludes.filter((_, j) => j !== i))}
@@ -1192,46 +1196,30 @@ export function ScopeLines({
                 </span>
               ))}
               {sheets.length + specs.length > 0 && (
-                <select
-                  value=""
-                  onChange={(e) => {
-                    const v = e.target.value
-                    if (v.startsWith('sheet:')) set(i, { sheets: [...on, v.slice(6)] })
-                    if (v.startsWith('spec:')) set(i, { specs: [...onSpecs, v.slice(5)] })
-                  }}
-                  aria-label={`Add a sheet or a section to ${line.label || 'this line'}`}
-                  style={{ ...input, padding: '0.1rem 0.25rem', fontSize: '0.75rem', width: '4.6rem' }}
-                >
-                  <option value="">+ add</option>
-                  {tradeSheets.length > 0 && (
-                    <optgroup label={`${trade} sheets`}>
-                      {tradeSheets.filter((x) => !on.includes(x.id)).map((x) => (
-                        <option key={x.id} value={`sheet:${x.id}`}>{x.id} {x.title}</option>
-                      ))}
-                    </optgroup>
-                  )}
-                  {others.length > 0 && (
-                    <optgroup label="Other sheets">
-                      {others.filter((x) => !on.includes(x.id)).map((x) => (
-                        <option key={x.id} value={`sheet:${x.id}`}>{x.id} {x.title}</option>
-                      ))}
-                    </optgroup>
-                  )}
-                  {tradeSpecs.length > 0 && (
-                    <optgroup label={`${trade} sections`}>
-                      {tradeSpecs.filter((x) => !onSpecs.includes(x.id)).map((x) => (
-                        <option key={x.id} value={`spec:${x.id}`}>{x.id} {x.title}</option>
-                      ))}
-                    </optgroup>
-                  )}
-                  {otherSpecs.length > 0 && (
-                    <optgroup label="Other sections">
-                      {otherSpecs.filter((x) => !onSpecs.includes(x.id)).map((x) => (
-                        <option key={x.id} value={`spec:${x.id}`}>{x.id} {x.title}</option>
-                      ))}
-                    </optgroup>
-                  )}
-                </select>
+                <span style={{ width: '5.2rem', flexShrink: 0 }}>
+                  <Picker
+                    compact
+                    value=""
+                    onChange={(v) => {
+                      if (v.startsWith('sheet:')) set(i, { sheets: [...on, v.slice(6)] })
+                      if (v.startsWith('spec:')) set(i, { specs: [...onSpecs, v.slice(5)] })
+                    }}
+                    placeholder="+ add"
+                    ariaLabel={`Add a sheet or a section to ${line.label || 'this line'}`}
+                    searchPlaceholder="Search sheets and sections"
+                    minListWidth={300}
+                    options={[
+                      ...(tradeSheets.length > 0 ? [pickerGroup('ts', `${trade} sheets`)] : []),
+                      ...tradeSheets.filter((x) => !on.includes(x.id)).map((x) => ({ value: `sheet:${x.id}`, label: `${x.id} ${x.title}`, labelContent: pickerRow(x.id, x.title) })),
+                      ...(others.length > 0 ? [pickerGroup('os', 'Other sheets')] : []),
+                      ...others.filter((x) => !on.includes(x.id)).map((x) => ({ value: `sheet:${x.id}`, label: `${x.id} ${x.title}`, labelContent: pickerRow(x.id, x.title) })),
+                      ...(tradeSpecs.length > 0 ? [pickerGroup('tp', `${trade} sections`)] : []),
+                      ...tradeSpecs.filter((x) => !onSpecs.includes(x.id)).map((x) => ({ value: `spec:${x.id}`, label: `${x.id} ${x.title}`, labelContent: pickerRow(x.id, x.title) })),
+                      ...(otherSpecs.length > 0 ? [pickerGroup('op', 'Other sections')] : []),
+                      ...otherSpecs.filter((x) => !onSpecs.includes(x.id)).map((x) => ({ value: `spec:${x.id}`, label: `${x.id} ${x.title}`, labelContent: pickerRow(x.id, x.title) })),
+                    ]}
+                  />
+                </span>
               )}
             </span>
             <button

@@ -17,6 +17,7 @@ import {
   type PlanQuestion,
 } from '../../lib/gcMode/gcModel'
 import { Btn, Chip, input } from './gcUi'
+import { Picker } from './GcNewProjectPickers'
 
 /**
  * GC mode design spike: questions about the plans. A trade asks (in its portal, or by phone and we
@@ -40,7 +41,8 @@ export function GcNewProjectQuestions({ state, project, dispatch, onClose }: Pro
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      // An open picker takes Escape for itself; only an Escape nothing else used closes the window.
+      if (e.key === 'Escape' && !e.defaultPrevented && !document.querySelector('[role="listbox"]')) onClose()
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
@@ -237,16 +239,26 @@ function AskForm({ state, project, dispatch, onDone }: { state: GcState; project
       ) : (
         <>
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <select style={input} value={packageId} onChange={(e) => setPackageId(e.target.value)} aria-label="The trade it is about">
-              {trades.map((p) => (
-                <option key={p.id} value={p.id}>{p.trade}</option>
-              ))}
-            </select>
-            <select style={input} value={who} onChange={(e) => setPartnerId(e.target.value)} aria-label="The company that asked">
-              {companies.map((c) => (
-                <option key={c.id} value={c.id}>{c.company}</option>
-              ))}
-            </select>
+            <div style={{ flex: '1 1 10rem', minWidth: 0 }}>
+              <Picker
+                value={packageId}
+                onChange={setPackageId}
+                placeholder="The trade"
+                ariaLabel="The trade it is about"
+                searchPlaceholder="Search the trades"
+                options={trades.map((p) => ({ value: p.id, label: p.trade }))}
+              />
+            </div>
+            <div style={{ flex: '1 1 12rem', minWidth: 0 }}>
+              <Picker
+                value={who}
+                onChange={setPartnerId}
+                placeholder="The company"
+                ariaLabel="The company that asked"
+                searchPlaceholder="Search the companies"
+                options={companies.map((c) => ({ value: c.id, label: c.company }))}
+              />
+            </div>
             <input style={{ ...input, flex: '1 1 10rem' }} value={sheets} onChange={(e) => setSheets(e.target.value)} placeholder="Sheets, like E-301" aria-label="The sheets it is about" />
           </div>
           <textarea
