@@ -90,7 +90,13 @@ function CoiForm({ partner, today, dispatch, onDone }: { partner: Partner; today
     <PortalNote tone="paper">
       <label style={{ display: 'grid', gap: '0.2rem' }}>
         {t('certFile')}
-        <input type="file" accept="image/*,application/pdf" onChange={(e) => setFile(e.target.files?.[0]?.name ?? '')} />
+        {/* A bare file input will not shrink below about 300px, wider than a phone's form. */}
+        <input
+          type="file"
+          accept="image/*,application/pdf"
+          onChange={(e) => setFile(e.target.files?.[0]?.name ?? '')}
+          style={{ width: '100%', minWidth: 0, fontSize: '0.85rem' }}
+        />
       </label>
       <label style={{ display: 'grid', gap: '0.2rem' }}>
         {t('certExpires')}

@@ -11,6 +11,25 @@ const PAPER = '#f6f3ec'
 const COPPER = '#b0662f'
 const RULE = '#d9d2c3'
 
+const TAG_TONES = {
+  green: { bg: 'var(--bg-green-100)', fg: 'var(--text-green-800)' },
+  red: { bg: 'var(--bg-red-100)', fg: 'var(--text-red-800)' },
+  grey: { bg: 'var(--bg-muted)', fg: 'var(--text-600)' },
+} as const
+
+/**
+ * A status that reads as a sentence: the chip's look, but it wraps. A chip never wraps, so a long one
+ * (a Spanish one most of all) is wider than a phone and widens the whole page.
+ */
+export function PortalTag({ tone, children }: { tone: keyof typeof TAG_TONES; children: ReactNode }) {
+  const c = TAG_TONES[tone]
+  return (
+    <span style={{ display: 'inline-block', padding: '0.1rem 0.5rem', borderRadius: 8, background: c.bg, color: c.fg, fontSize: '0.75rem', fontWeight: 600, lineHeight: 1.35 }}>
+      {children}
+    </span>
+  )
+}
+
 /** One titled block of the portal. */
 export function PortalBlock({ title, children }: { title: string; children: ReactNode }) {
   return (

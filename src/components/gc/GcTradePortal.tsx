@@ -331,7 +331,10 @@ function PackageBlock({
           {pkg.bidTab.seenBy.includes(partner.id) ? (
             <div style={{ display: 'grid', gap: '0.4rem', fontSize: '0.9rem' }}>
               <div>{bidTabResult(project, pkg, partner.id, lang)}</div>
-              <BidTabTable rows={bidTabRows(state, pkg)} viewerId={partner.id} showNames={pkg.bidTab.showNames} />
+              {/* The Board lane's table is wider than a phone: it scrolls in its own box, not the page. */}
+              <div style={{ overflowX: 'auto', minWidth: 0 }}>
+                <BidTabTable rows={bidTabRows(state, pkg)} viewerId={partner.id} showNames={pkg.bidTab.showNames} />
+              </div>
               <div style={{ fontSize: '0.8rem', opacity: 0.75 }}>{t('bidTabThanks')}</div>
             </div>
           ) : (
