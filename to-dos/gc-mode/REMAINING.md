@@ -62,13 +62,14 @@ makes; nobody builds it until he answers.
 
 ## Building (GC 1)
 
-1. **Our own crew's percent from its Pipeline job** in the real build; reported on Draws for now.
-2. **A phone pass on Building's tabs:** Draws, Schedule, Closeout.
+1. ~~**Our own crew's percent from its Pipeline job**~~ done c0a4c6c61: real build only, how it plugs in is in the README.
+2. ~~**A phone pass on Building's tabs:** Draws, Schedule, Closeout.~~ done 248c99720
 3. **The walk's order (owner first, item 12 in Owner):** if he says yes, move "Draw Helotes's
    schedule" before Start in the golden walk, since Start is shut until the schedule is drawn.
-4. **Notifications for Building's events** (a draw asked, a look-ahead to verify, a milestone due):
-   say where each would go; nothing is sent yet (item 21).
-5. **Tidy your lines in `README.md`.**
+   The owner said yes, and to fix a gap first (2026-10-03): a trade a later set brings in does
+   not join a drawn schedule. Waiting on the New Project lane's `issuePlanSet`.
+4. ~~**Notifications for Building's events**~~ done ac44df256: the table under *Workflow steps not built yet*.
+5. ~~**Tidy your lines in `README.md`.**~~ done c3de80230
 
 ## New Project (GC 2)
 
