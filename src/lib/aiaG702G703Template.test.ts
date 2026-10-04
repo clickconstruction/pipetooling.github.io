@@ -4,7 +4,9 @@ import {
   aiaContractSignedOn,
   aiaDownloadFilename,
   buildAiaPrefillFromJob,
+  buildAiaPrefillLinesFromJob,
   formatAiaDate,
+  jobValueCreated,
   type AiaFieldKey,
 } from './aiaG702G703Template'
 import type { JobWithDetails } from '../types/jobWithDetails'
@@ -55,9 +57,11 @@ describe('buildAiaPrefillFromJob', () => {
     expect(pre.g702_n9_contract_date).toBe('')
     expect(pre.g703_k3_application_date).toMatch(/^\d{2}\/\d{2}\/\d{4}$/)
     expect(pre.g702_h18_original_contract_sum).toBe(2500.5)
-    expect(pre.g703_d13_scheduled_value).toBe(2500.5)
-    expect(pre.g703_f13_this_period).toBeUndefined()
-    expect(pre.g703_g13_materials_stored).toBeUndefined()
+    // The G703's row is the application's one line, not a form field.
+    expect(Object.keys(pre).filter((k) => /^g703_[c-g]13_/.test(k))).toEqual([])
+    expect(buildAiaPrefillLinesFromJob(minimalLimitedJob())).toEqual([
+      { id: 'line-1', label: '', scheduledValue: 2500.5, labor: null, stage: null, fromPrevious: 0, thisPeriod: 0, stored: 0 },
+    ])
     expect(pre.g702_f49_previous_month_change_order_additions).toBeUndefined()
     expect(pre.g702_h49_previous_month_change_order_deductions).toBeUndefined()
     expect(pre.g702_f50_this_month_change_order_additions).toBeUndefined()
@@ -94,14 +98,19 @@ describe('buildAiaPrefillFromJob', () => {
     expect(pre.g703_k5_architect_project_no).toBe('1023')
   })
 
-  it('prefills WORK COMPLETED THIS PERIOD from Value Created when pct_complete is set', () => {
+  it('offers the job\'s value created as the one line\'s work this period, and describes it by its fixtures', () => {
     const job = {
       ...minimalLimitedJob(),
       revenue: 10000,
       pct_complete: 40,
+      fixtures: [{ name: 'Water closet', count: 3 }, { name: 'Lavatory', count: 2 }],
     } as unknown as JobWithDetails
-    const pre = buildAiaPrefillFromJob(job, null)
-    expect(pre.g703_f13_this_period).toBe(4000)
+    expect(jobValueCreated(job)).toBe(4000)
+    expect(buildAiaPrefillLinesFromJob(job)).toEqual([
+      { id: 'line-1', label: 'Water closet × 3; Lavatory × 2', scheduledValue: 10000, labor: null, stage: null, fromPrevious: 0, thisPeriod: 4000, stored: 0 },
+    ])
+    expect(jobValueCreated(minimalLimitedJob())).toBe(0)
+    expect(buildAiaPrefillLinesFromJob({ ...minimalLimitedJob(), revenue: null })[0]).toMatchObject({ scheduledValue: 0, thisPeriod: 0 })
   })
 
   it('defines Previous Month Change Order Deductions on G702 H49', () => {

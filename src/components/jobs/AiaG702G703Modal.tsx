@@ -11,13 +11,25 @@ import {
   type AiaFieldValues,
   type AiaModalDetailsGroupId,
   type AiaPrefillFacts,
+  buildAiaPrefillLinesFromJob,
+  jobValueCreated,
   aiaDownloadFilename,
   buildAiaPrefillFromJob,
 } from '../../lib/aiaG702G703Template'
-import { fetchAndFillAiaTemplate } from '../../lib/fillAiaG702G703Workbook'
+import { AiaTooManyRows, fetchAndFillAiaTemplate } from '../../lib/fillAiaG702G703Workbook'
+import {
+  AIA_G703_MAX_ROWS,
+  type PayApplicationLine,
+  cents,
+  emptyLine,
+  linePercentDone,
+  printRowsOf,
+  thisPeriodForPercent,
+} from '../../lib/aiaPayApplicationLines'
 import { buildAiaPreview, formatAiaMoney } from '../../lib/aiaG702G703Preview'
 import { loadAiaPrefillFacts } from '../../lib/aiaG702G703PrefillIo'
 import {
+  type PayApplicationForm,
   type SavedPayApplication,
   carryForwardPayApplication,
   carryMismatch,
@@ -31,7 +43,7 @@ import {
   sortPayApplications,
   withCarriedAmounts,
 } from '../../lib/aiaPayApplications'
-import { PayApplicationNumberTaken, deletePayApplication, loadPayApplications, savePayApplication } from '../../lib/aiaPayApplicationsIo'
+import { PayApplicationLinesNotReady, PayApplicationNumberTaken, deletePayApplication, loadPayApplications, savePayApplication } from '../../lib/aiaPayApplicationsIo'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import AiaG702G703Paper from './AiaG702G703Paper'
@@ -114,6 +126,26 @@ function fieldValuesToFormState(values: AiaFieldValues): Record<AiaFieldKey, str
   return next
 }
 
+/** A line as the form holds it: its four amounts as typed strings. */
+type LineForm = Pick<PayApplicationLine, 'id' | 'label' | 'labor' | 'stage'> & { scheduled: string; fromPrevious: string; thisPeriod: string; stored: string }
+
+const amountText = (n: number): string => (n === 0 ? '' : String(n))
+const amountOf = (s: string): number => {
+  const n = Number(s.replace(/[,$\s]/g, ''))
+  return Number.isFinite(n) ? cents(n) : 0
+}
+
+function lineToForm(l: PayApplicationLine): LineForm {
+  return { id: l.id, label: l.label, labor: l.labor, stage: l.stage, scheduled: amountText(l.scheduledValue), fromPrevious: amountText(l.fromPrevious), thisPeriod: amountText(l.thisPeriod), stored: amountText(l.stored) }
+}
+
+function formToLine(f: LineForm): PayApplicationLine {
+  return { id: f.id, label: f.label, labor: f.labor, stage: f.stage, scheduledValue: amountOf(f.scheduled), fromPrevious: amountOf(f.fromPrevious), thisPeriod: amountOf(f.thisPeriod), stored: amountOf(f.stored) }
+}
+
+const lineInputStyle: CSSProperties = { width: '100%', boxSizing: 'border-box', fontSize: '0.875rem', padding: '0.4rem 0.5rem', borderRadius: 4, border: '1px solid var(--border-strong)', background: 'var(--surface)' }
+const lineLabelStyle: CSSProperties = { fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-700)' }
+
 function formStateToFieldValues(form: Record<AiaFieldKey, string>): AiaFieldValues {
   const out: AiaFieldValues = {}
   for (const def of AIA_FIELD_DEFS) {
@@ -156,19 +188,32 @@ export default function AiaG702G703Modal({
   // Side by side from 1000px: the paper on the left, the form on the right. Under that, one at a time.
   const wide = useMatchMedia('(min-width: 1000px)')
   const [narrowView, setNarrowView] = useState<'form' | 'preview'>('form')
-  const [activeKey, setActiveKey] = useState<AiaFieldKey | null>(null)
+  // The box lit on the paper: a form field's key, or `line:<id>:<column>` for a row of the G703.
+  const [activeKey, setActiveKey] = useState<string | null>(null)
   const [changeOrdersOpen, setChangeOrdersOpen] = useState(false)
-  const preview = useMemo(() => buildAiaPreview(formStateToFieldValues(form)), [form])
+  // The G703's lines as typed, and whether each prints as a labor row and a material row.
+  const [lineForms, setLineForms] = useState<LineForm[]>([])
+  const [split, setSplit] = useState(false)
+  // A percent being typed, kept as typed until the box is left (33. must not snap back to 33).
+  const [pctDraft, setPctDraft] = useState<Record<string, string>>({})
+  /** What the window holds: the header boxes, the lines, and how the lines print. */
+  const appForm = useMemo<PayApplicationForm>(
+    () => ({ values: formStateToFieldValues(form), lines: lineForms.map(formToLine), splitLaborMaterial: split }),
+    [form, lineForms, split],
+  )
+  const preview = useMemo(() => buildAiaPreview(appForm.values, appForm.lines, { splitLaborMaterial: appForm.splitLaborMaterial }), [appForm])
   // Past halfway with more than 5% held: the contract may let retainage drop.
-  const dropOffer = useMemo(() => retainageDropOffer(formStateToFieldValues(form)), [form])
+  const dropOffer = useMemo(() => retainageDropOffer(appForm), [appForm])
+  const printedRows = useMemo(() => printRowsOf(appForm.lines, appForm.splitLaborMaterial).length, [appForm])
 
   /** A box pressed on the paper: put the cursor in its field. */
-  const pickField = useCallback((key: AiaFieldKey) => {
+  const pickField = useCallback((key: string) => {
     setActiveKey(key)
     setNarrowView('form')
     if (AIA_FIELD_DEFS.find((d) => d.key === key)?.detailsGroupId) setChangeOrdersOpen(true)
     window.setTimeout(() => {
-      const input = document.getElementById(`aia-field-${key}`)
+      const line = /^line:(.+):(label|scheduled|from|this|stored)$/.exec(key)
+      const input = document.getElementById(line ? `aia-line-${line[1]}-${line[2]}` : `aia-field-${key}`)
       if (!input) return
       input.focus()
       if (typeof input.scrollIntoView === 'function') input.scrollIntoView({ block: 'center', behavior: 'smooth' })
@@ -182,6 +227,8 @@ export default function AiaG702G703Modal({
   const [openId, setOpenId] = useState<string | null>(null)
   // The form as it was loaded or last saved: what "you typed something" is measured against.
   const [baseline, setBaseline] = useState<Record<AiaFieldKey, string>>(emptyFormState)
+  const [baselineLines, setBaselineLines] = useState('[]')
+  const [baselineSplit, setBaselineSplit] = useState(false)
   // A link to the file that was sent (a Google Drive link), kept beside the application.
   const [link, setLink] = useState('')
   const [baselineLink, setBaselineLink] = useState('')
@@ -193,19 +240,30 @@ export default function AiaG702G703Modal({
 
   const openApp = saved.find((a) => a.id === openId) ?? null
   const dirty = useMemo(
-    () => link !== baselineLink || carryReason !== baselineReason || JSON.stringify(form) !== JSON.stringify(baseline),
-    [form, baseline, link, baselineLink, carryReason, baselineReason],
+    () =>
+      link !== baselineLink ||
+      carryReason !== baselineReason ||
+      split !== baselineSplit ||
+      JSON.stringify(form) !== JSON.stringify(baseline) ||
+      JSON.stringify(lineForms) !== baselineLines,
+    [form, baseline, link, baselineLink, carryReason, baselineReason, split, baselineSplit, lineForms, baselineLines],
   )
   // Nothing locks a saved application, so the one before this may have changed since this went out.
   const mismatch = useMemo(
-    () => carryMismatch(formStateToFieldValues(form), parseApplicationNumber(form.g702_n5_project), saved.filter((a) => a.id !== openId)),
-    [form, saved, openId],
+    () => carryMismatch(appForm, parseApplicationNumber(form.g702_n5_project), saved.filter((a) => a.id !== openId)),
+    [appForm, form.g702_n5_project, saved, openId],
   )
 
-  const loadForm = useCallback((values: AiaFieldValues, withLink = '', withReason = '') => {
-    const next = fieldValuesToFormState(values)
+  const loadForm = useCallback((loaded: PayApplicationForm, withLink = '', withReason = '') => {
+    const next = fieldValuesToFormState(loaded.values)
+    const nextLines = loaded.lines.map(lineToForm)
     setForm(next)
     setBaseline(next)
+    setLineForms(nextLines)
+    setBaselineLines(JSON.stringify(nextLines))
+    setSplit(loaded.splitLaborMaterial)
+    setBaselineSplit(loaded.splitLaborMaterial)
+    setPctDraft({})
     setLink(withLink)
     setBaselineLink(withLink)
     setCarryReason(withReason)
@@ -214,14 +272,20 @@ export default function AiaG702G703Modal({
 
   /** A new application's starting form: the job today, carried on from the last saved application when there is one. */
   const newApplicationValues = useCallback(
-    (list: ReadonlyArray<SavedPayApplication>, withFacts: AiaPrefillFacts | null): AiaFieldValues => {
-      if (!job) return {}
+    (list: ReadonlyArray<SavedPayApplication>, withFacts: AiaPrefillFacts | null): PayApplicationForm => {
+      if (!job) return { values: {}, lines: [emptyLine()], splitLaborMaterial: false }
       const jobPrefill = buildAiaPrefillFromJob(job, getPhysicalInvoiceIssuerDraft(), withFacts)
       const last = previousPayApplication(list, nextApplicationNumber(list))
-      return last ? carryForwardPayApplication(last, jobPrefill) : jobPrefill
+      if (last) return carryForwardPayApplication(last, jobPrefill, jobValueCreated(job))
+      return { values: jobPrefill, lines: buildAiaPrefillLinesFromJob(job), splitLaborMaterial: false }
     },
     [job],
   )
+
+  /** A saved application as the window holds it. */
+  const formOfSaved = (app: SavedPayApplication): PayApplicationForm => ({ values: app.fields, lines: app.lines, splitLaborMaterial: app.splitLaborMaterial })
+
+  const setLine = (id: string, patch: Partial<LineForm>) => setLineForms((list) => list.map((l) => (l.id === id ? { ...l, ...patch } : l)))
 
   useEffect(() => {
     if (!open || !job) return
@@ -237,7 +301,7 @@ export default function AiaG702G703Modal({
       setSaved(list)
       const first = initialApplicationNumber == null ? null : list.find((a) => a.applicationNumber === initialApplicationNumber) ?? null
       setOpenId(first?.id ?? null)
-      if (first) loadForm(first.fields, first.link, first.carryReason)
+      if (first) loadForm({ values: first.fields, lines: first.lines, splitLaborMaterial: first.splitLaborMaterial }, first.link, first.carryReason)
       else loadForm(newApplicationValues(list, loadedFacts))
     })()
     return () => {
@@ -266,36 +330,41 @@ export default function AiaG702G703Modal({
     if ((app?.id ?? null) === openId && !dirty) return
     if (!(await mayLeave())) return
     setOpenId(app?.id ?? null)
-    if (app) loadForm(app.fields, app.link, app.carryReason)
+    if (app) loadForm(formOfSaved(app), app.link, app.carryReason)
     else loadForm(newApplicationValues(saved, facts))
   }
 
   /** Back to where this application started: the saved one as saved, a new one as the job and the last one give it. */
-  const resetForm = () => (openApp ? loadForm(openApp.fields, openApp.link, openApp.carryReason) : loadForm(newApplicationValues(saved, facts)))
+  const resetForm = () => (openApp ? loadForm(formOfSaved(openApp), openApp.link, openApp.carryReason) : loadForm(newApplicationValues(saved, facts)))
 
   /** Take the amounts the application before this one gives today; the reason is then moot. */
   const takeCarriedAmounts = () => {
     if (!mismatch) return
     const previous = saved.find((a) => a.id !== openId && a.applicationNumber === mismatch.previousNumber)
     if (!previous) return
-    setForm(fieldValuesToFormState(withCarriedAmounts(formStateToFieldValues(form), previous)))
+    const taken = withCarriedAmounts(appForm, previous)
+    setForm(fieldValuesToFormState(taken.values))
+    setLineForms(taken.lines.map(lineToForm))
+    setPctDraft({})
     setCarryReason('')
   }
 
   type SaveOutcome = { saved: SavedPayApplication } | { notSaved: string }
 
   /** Save the form on the job as its application number. Never throws: the reason comes back as words. */
-  const saveOnJob = async (values: AiaFieldValues): Promise<SaveOutcome> => {
+  const saveOnJob = async (toSave: PayApplicationForm): Promise<SaveOutcome> => {
     if (!job) return { notSaved: 'No job is open.' }
     // The reason goes with the row only when there is one to write or one to clear.
     const reason = mismatch ? carryReason : ''
-    const write = payApplicationWriteFromForm(job.id, values, link, reason || openApp?.carryReason ? reason : undefined)
+    const write = payApplicationWriteFromForm(job.id, toSave, link, reason || openApp?.carryReason ? reason : undefined)
     if (!write.ok) return { notSaved: write.reason }
     try {
       const row = await savePayApplication(write.row, openId)
       setSaved((list) => sortPayApplications([...list.filter((a) => a.id !== row.id), row]))
       setOpenId(row.id)
       setBaseline(form)
+      setBaselineLines(JSON.stringify(lineForms))
+      setBaselineSplit(split)
       setLink(row.link)
       setBaselineLink(row.link)
       setCarryReason(row.carryReason)
@@ -305,6 +374,7 @@ export default function AiaG702G703Modal({
       if (e instanceof PayApplicationNumberTaken) {
         return { notSaved: `Application ${e.applicationNumber} is already saved on this job. Open it from the list, or use another number.` }
       }
+      if (e instanceof PayApplicationLinesNotReady) return { notSaved: e.message }
       console.error(e)
       return { notSaved: 'The application could not be saved on the job.' }
     }
@@ -313,7 +383,7 @@ export default function AiaG702G703Modal({
   const onSave = async () => {
     setSaving(true)
     try {
-      const outcome = await saveOnJob(formStateToFieldValues(form))
+      const outcome = await saveOnJob(appForm)
       if ('saved' in outcome) showToast(`Application ${outcome.saved.applicationNumber} saved on the job.`, 'success')
       else showToast(outcome.notSaved, 'error')
     } finally {
@@ -347,16 +417,16 @@ export default function AiaG702G703Modal({
     if (!job) return
     setGenerating(true)
     try {
-      const values = formStateToFieldValues(form)
-      const ab = await fetchAndFillAiaTemplate(AIA_TEMPLATE_PUBLIC_PATH, values)
+      const { values, lines, splitLaborMaterial } = appForm
+      const ab = await fetchAndFillAiaTemplate(AIA_TEMPLATE_PUBLIC_PATH, values, lines, { splitLaborMaterial })
       const jobNumber = effectiveJobLedgerNumber(hcpForFilename || job.hcp_number, 'click_number' in job ? job.click_number : null)
       triggerDownloadArrayBuffer(ab, aiaDownloadFilename(jobNumber || job.id, values.g702_n5_project))
       // What went out is kept on the job, so the next application can start from it.
-      const outcome = await saveOnJob(values)
+      const outcome = await saveOnJob(appForm)
       if ('saved' in outcome) showToast(`Workbook downloaded. Application ${outcome.saved.applicationNumber} saved on the job.`, 'success')
       else showToast(`Workbook downloaded. Not saved on the job: ${outcome.notSaved}`, 'warning')
     } catch (e) {
-      console.error(e)
+      if (!(e instanceof AiaTooManyRows)) console.error(e)
       showToast(e instanceof Error ? e.message : 'Could not generate workbook.', 'error')
     } finally {
       setGenerating(false)
@@ -547,9 +617,9 @@ export default function AiaG702G703Modal({
                   aria-pressed={app.id === openId}
                   onClick={() => void showApplication(app)}
                   style={applicationChipStyle(app.id === openId)}
-                  title={carryMismatch(app.fields, app.applicationNumber, saved) ? 'Its previous amounts no longer match the application before it.' : undefined}
+                  title={carryMismatch({ values: app.fields, lines: app.lines }, app.applicationNumber, saved) ? 'Its previous amounts no longer match the application before it.' : undefined}
                 >
-                  {carryMismatch(app.fields, app.applicationNumber, saved) ? '⚠ ' : ''}
+                  {carryMismatch({ values: app.fields, lines: app.lines }, app.applicationNumber, saved) ? '⚠ ' : ''}
                   {payApplicationLabel(app)}
                 </button>
               ))}
@@ -864,6 +934,106 @@ export default function AiaG702G703Modal({
                 </details>
               ),
             )}
+
+            <div data-testid="aia-lines" style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', paddingTop: '0.5rem', borderTop: '1px solid var(--border)' }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
+                <span style={{ flex: 1, fontSize: '0.8125rem', fontWeight: 700, color: 'var(--text-strong)' }}>LINES</span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  {printedRows} of {AIA_G703_MAX_ROWS} rows
+                </span>
+              </div>
+              {lineForms.some((l) => l.labor != null) ? (
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8125rem', color: 'var(--text-700)' }}>
+                  <input type="checkbox" id="aia-lines-split" checked={split} onChange={(e) => setSplit(e.target.checked)} />
+                  Labor and material on their own rows
+                </label>
+              ) : null}
+              {printedRows > AIA_G703_MAX_ROWS ? (
+                <div
+                  data-testid="aia-lines-over"
+                  style={{ padding: '0.5rem 0.6rem', borderRadius: 4, fontSize: '0.8125rem', background: 'var(--bg-amber-100)', color: 'var(--text-amber-900)', border: '1px solid var(--border-amber)' }}
+                >
+                  The continuation sheet holds {AIA_G703_MAX_ROWS} rows and this application has {printedRows}. You can save it. Group some lines to generate it.
+                </div>
+              ) : null}
+              {lineForms.map((lf, i) => {
+                const line = formToLine(lf)
+                const pct = linePercentDone(line)
+                const no = String(i + 1).padStart(3, '0')
+                const focus = (col: string) => () => setActiveKey(`line:${lf.id}:${col}`)
+                return (
+                  <div
+                    key={lf.id}
+                    data-testid="aia-line"
+                    style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', padding: '0.6rem', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--bg-page)' }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
+                      <span style={{ ...lineLabelStyle, flex: 1 }}>LINE {no}</span>
+                      {lineForms.length > 1 ? (
+                        <button
+                          type="button"
+                          aria-label={`Remove line ${no}`}
+                          onClick={() => setLineForms((list) => list.filter((l) => l.id !== lf.id))}
+                          style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', fontSize: '0.75rem', color: 'var(--text-red-700)', textDecoration: 'underline' }}
+                        >
+                          Remove
+                        </button>
+                      ) : null}
+                    </div>
+                    <label style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                      <span style={lineLabelStyle}>DESCRIPTION OF WORK</span>
+                      <input type="text" id={`aia-line-${lf.id}-label`} value={lf.label} onFocus={focus('label')} onChange={(e) => setLine(lf.id, { label: e.target.value })} style={lineInputStyle} />
+                    </label>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem 0.5rem' }}>
+                      <label style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                        <span style={lineLabelStyle}>SCHEDULED VALUE</span>
+                        <input type="text" inputMode="decimal" id={`aia-line-${lf.id}-scheduled`} value={lf.scheduled} onFocus={focus('scheduled')} onChange={(e) => setLine(lf.id, { scheduled: e.target.value })} style={lineInputStyle} />
+                      </label>
+                      <label style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                        <span style={lineLabelStyle}>FROM PREVIOUS APPLICATION</span>
+                        <input type="text" inputMode="decimal" id={`aia-line-${lf.id}-from`} value={lf.fromPrevious} onFocus={focus('from')} onChange={(e) => setLine(lf.id, { fromPrevious: e.target.value })} style={lineInputStyle} />
+                      </label>
+                      <label style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                        <span style={lineLabelStyle}>% DONE TO DATE</span>
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          id={`aia-line-${lf.id}-pct`}
+                          disabled={pct == null}
+                          value={pctDraft[lf.id] ?? (pct == null ? '' : String(pct))}
+                          onFocus={focus('this')}
+                          onChange={(e) => {
+                            const text = e.target.value
+                            setPctDraft((d) => ({ ...d, [lf.id]: text }))
+                            const n = Number(text.replace(/[%\s]/g, ''))
+                            if (text.trim() && Number.isFinite(n)) setLine(lf.id, { thisPeriod: amountText(thisPeriodForPercent(line, n)) })
+                          }}
+                          onBlur={() => setPctDraft(({ [lf.id]: _left, ...rest }) => rest)}
+                          style={lineInputStyle}
+                        />
+                      </label>
+                      <label style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                        <span style={lineLabelStyle}>WORK THIS PERIOD</span>
+                        <input type="text" inputMode="decimal" id={`aia-line-${lf.id}-this`} value={lf.thisPeriod} onFocus={focus('this')} onChange={(e) => setLine(lf.id, { thisPeriod: e.target.value })} style={lineInputStyle} />
+                      </label>
+                      <label style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                        <span style={lineLabelStyle}>MATERIALS STORED ON SITE</span>
+                        <input type="text" inputMode="decimal" id={`aia-line-${lf.id}-stored`} value={lf.stored} onFocus={focus('stored')} onChange={(e) => setLine(lf.id, { stored: e.target.value })} style={lineInputStyle} />
+                      </label>
+                    </div>
+                  </div>
+                )
+              })}
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setLineForms((list) => [...list, lineToForm(emptyLine())])}
+                  style={{ padding: '0.3rem 0.7rem', fontSize: '0.8125rem', borderRadius: 4, cursor: 'pointer', border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)' }}
+                >
+                  Add a line
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 

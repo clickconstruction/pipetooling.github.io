@@ -4,6 +4,7 @@ import type { PhysicalInvoiceIssuer } from './physicalInvoiceIssuer'
 import { splitJobAddressForPrefill } from './txLocalityAddressSplit'
 import { effectiveJobLedgerNumber } from './ledgerDisplayPrefixes'
 import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../utils/dateUtils'
+import { LEGACY_LINE_ID, cents, type PayApplicationLine } from './aiaPayApplicationLines'
 
 /** Public URL path (Vite serves from `public/`). */
 export const AIA_TEMPLATE_PUBLIC_PATH = '/templates/aia-g702-g703-mission-hills.xlsx'
@@ -46,11 +47,6 @@ export type AiaFieldKey =
   | 'g703_k3_application_date'
   | 'g703_k4_period_to'
   | 'g703_k5_architect_project_no'
-  | 'g703_c13_description'
-  | 'g703_d13_scheduled_value'
-  | 'g703_e13_from_previous'
-  | 'g703_f13_this_period'
-  | 'g703_g13_materials_stored'
 
 export type AiaFieldDef = {
   key: AiaFieldKey
@@ -61,7 +57,10 @@ export type AiaFieldDef = {
   detailsGroupId?: AiaModalDetailsGroupId
 }
 
-/** Ordered form fields and their Excel targets (Mission Hills G702/G703 template). */
+/**
+ * Ordered form fields and their Excel targets (Mission Hills G702/G703 template). The G703's
+ * rows are not here: they are the application's lines (`aiaPayApplicationLines.ts`).
+ */
 export const AIA_FIELD_DEFS: readonly AiaFieldDef[] = [
   { key: 'g702_n5_project', label: 'APPLICATION NUMBER:', kind: 'text', sheetName: AIA_G702_SHEET, cellRef: 'N5' },
   { key: 'g702_n6_period_to', label: 'Period to (G702)', kind: 'text', sheetName: AIA_G702_SHEET, cellRef: 'N6' },
@@ -140,35 +139,6 @@ export const AIA_FIELD_DEFS: readonly AiaFieldDef[] = [
   { key: 'g703_k3_application_date', label: 'APPLICATION DATE', kind: 'text', sheetName: AIA_G703_SHEET, cellRef: 'K3' },
   { key: 'g703_k4_period_to', label: 'PERIOD TO:', kind: 'text', sheetName: AIA_G703_SHEET, cellRef: 'K4' },
   { key: 'g703_k5_architect_project_no', label: "ARCHITECT'S PROJECT NO:", kind: 'text', sheetName: AIA_G703_SHEET, cellRef: 'K5' },
-  { key: 'g703_c13_description', label: 'DESCRIPTION OF WORK', kind: 'textarea', sheetName: AIA_G703_SHEET, cellRef: 'C13' },
-  {
-    key: 'g703_d13_scheduled_value',
-    label: 'SCHEDULED VALUE',
-    kind: 'number',
-    sheetName: AIA_G703_SHEET,
-    cellRef: 'D13',
-  },
-  {
-    key: 'g703_e13_from_previous',
-    label: 'WORK COMPLETED FROM PREVIOUS APPLICATION',
-    kind: 'number',
-    sheetName: AIA_G703_SHEET,
-    cellRef: 'E13',
-  },
-  {
-    key: 'g703_f13_this_period',
-    label: 'WORK COMPLETED THIS PERIOD',
-    kind: 'number',
-    sheetName: AIA_G703_SHEET,
-    cellRef: 'F13',
-  },
-  {
-    key: 'g703_g13_materials_stored',
-    label: 'MATERIALS STORED ON SITE',
-    kind: 'number',
-    sheetName: AIA_G703_SHEET,
-    cellRef: 'G13',
-  },
 ]
 
 /**
@@ -189,9 +159,6 @@ export const AIA_G703_G702_MIRROR_CELLS: readonly AiaG703MirrorDef[] = [
   { destRef: 'K4', kind: 'g702_cell', sourceRef: 'N6' },
   { destRef: 'K5', kind: 'g702_cell', sourceRef: 'N7' },
 ]
-
-/** G703 cells that ship with formulas in the template; if still a formula after fill, replace with cached value to avoid bad OOXML on write. */
-export const AIA_G703_MATERIALIZE_IF_FORMULA_REFS: readonly string[] = ['G13']
 
 export type AiaFieldValues = Partial<Record<AiaFieldKey, string | number>>
 
@@ -251,7 +218,8 @@ function firstFixtureDescription(job: JobWithDetails): string {
  *
  * The owner block is the party the bills go to: the GC on a job that bills its GC, else the
  * customer, with that party's own mailing address. The job's name and address are the project.
- * The application number is left for the person to type: the app keeps no count of them yet.
+ * The application number is left for the person to type on a job with nothing saved.
+ * The G703's one starting line comes from `buildAiaPrefillLinesFromJob`.
  */
 export function buildAiaPrefillFromJob(
   job: JobWithDetails | LimitedJobDetailSnapshot,
@@ -266,14 +234,12 @@ export function buildAiaPrefillFromJob(
   const ownerName = (facts?.ownerName ?? '').trim() || gcName.trim() || customerName.trim()
   const owner = splitJobAddressForPrefill((facts?.ownerAddress ?? '').trim())
 
-  const revenue = 'revenue' in job && job.revenue != null ? Number(job.revenue) : NaN
+  const revenue = jobRevenue(job)
   const jobNumber = effectiveJobLedgerNumber(job.hcp_number, 'click_number' in job ? job.click_number : null)
 
   const contractorName = issuer?.companyName?.trim() ?? ''
   const contractorAddr = issuer ? issuerAddressOneLine(issuer) : ''
   const contractorLicense = issuer?.licenseLine?.trim() ?? ''
-
-  const fixtureDesc = 'fixtures' in job ? firstFixtureDescription(job as JobWithDetails) : ''
 
   const out: AiaFieldValues = {
     g702_n5_project: '',
@@ -296,24 +262,43 @@ export function buildAiaPrefillFromJob(
     g703_k5_architect_project_no: jobNumber,
   }
 
-  if (!Number.isNaN(revenue) && revenue > 0) {
-    out.g702_h18_original_contract_sum = revenue
-    out.g703_d13_scheduled_value = revenue
-  }
-
-  // Jobs Stages "Value Created": revenue × (pct_complete / 100)
-  if ('pct_complete' in job && job.pct_complete != null && !Number.isNaN(revenue) && revenue > 0) {
-    const valueCreated = revenue * (Number(job.pct_complete) / 100)
-    if (Number.isFinite(valueCreated) && valueCreated > 0) {
-      out.g703_f13_this_period = valueCreated
-    }
-  }
-
-  if (fixtureDesc) {
-    out.g703_c13_description = fixtureDesc
-  }
+  if (revenue > 0) out.g702_h18_original_contract_sum = revenue
 
   return out
+}
+
+function jobRevenue(job: JobWithDetails | LimitedJobDetailSnapshot): number {
+  const n = 'revenue' in job && job.revenue != null ? Number(job.revenue) : NaN
+  return Number.isFinite(n) ? n : 0
+}
+
+/** The job's value created to date: its price × its percent complete (the Pipeline's "Value Created"). 0 when unknown. */
+export function jobValueCreated(job: JobWithDetails | LimitedJobDetailSnapshot): number {
+  const revenue = jobRevenue(job)
+  if (!('pct_complete' in job) || job.pct_complete == null || revenue <= 0) return 0
+  const v = revenue * (Number(job.pct_complete) / 100)
+  return Number.isFinite(v) && v > 0 ? cents(v) : 0
+}
+
+/**
+ * The one line a job with nothing saved starts with (the owner, 2026-10-04: a job with no bid
+ * gets "one line"): the whole contract, described by its first fixtures, with the job's value
+ * created to date offered as this period's work.
+ */
+export function buildAiaPrefillLinesFromJob(job: JobWithDetails | LimitedJobDetailSnapshot): PayApplicationLine[] {
+  const revenue = jobRevenue(job)
+  return [
+    {
+      id: LEGACY_LINE_ID,
+      label: 'fixtures' in job ? firstFixtureDescription(job as JobWithDetails) : '',
+      scheduledValue: revenue > 0 ? revenue : 0,
+      labor: null,
+      stage: null,
+      fromPrevious: 0,
+      thisPeriod: jobValueCreated(job),
+      stored: 0,
+    },
+  ]
 }
 
 /** The file's name: the job's number, the application number when it is one, and the day. */

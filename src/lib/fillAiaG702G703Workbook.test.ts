@@ -177,13 +177,11 @@ describe('fillAiaG702G703Workbook', () => {
     }
   })
 
-  it('writes THIS PERIOD (F13) when g703_f13_this_period is set', async () => {
+  it('writes THIS PERIOD (F13) from the first line', async () => {
     const fileBuf = readFileSync(templatePath)
     const templateAb = fileBuf.buffer.slice(fileBuf.byteOffset, fileBuf.byteOffset + fileBuf.byteLength)
 
-    const out = await fillAiaG702G703Workbook(templateAb, {
-      g703_f13_this_period: 1234.5,
-    })
+    const out = await fillAiaG702G703Workbook(templateAb, {}, [{ id: 'l1', label: '', scheduledValue: 0, labor: null, stage: null, fromPrevious: 0, thisPeriod: 1234.5, stored: 0 }])
 
     const tmp = join(tmpdir(), `aia-test-${randomBytes(8).toString('hex')}.xlsx`)
     writeFileSync(tmp, Buffer.from(out))
@@ -200,13 +198,11 @@ describe('fillAiaG702G703Workbook', () => {
     }
   })
 
-  it('writes MATERIALS STORED ON SITE (G13) when g703_g13_materials_stored is set', async () => {
+  it('writes MATERIALS STORED ON SITE (G13) from the first line', async () => {
     const fileBuf = readFileSync(templatePath)
     const templateAb = fileBuf.buffer.slice(fileBuf.byteOffset, fileBuf.byteOffset + fileBuf.byteLength)
 
-    const out = await fillAiaG702G703Workbook(templateAb, {
-      g703_g13_materials_stored: 777.25,
-    })
+    const out = await fillAiaG702G703Workbook(templateAb, {}, [{ id: 'l1', label: '', scheduledValue: 0, labor: null, stage: null, fromPrevious: 0, thisPeriod: 0, stored: 777.25 }])
 
     const tmp = join(tmpdir(), `aia-test-${randomBytes(8).toString('hex')}.xlsx`)
     writeFileSync(tmp, Buffer.from(out))

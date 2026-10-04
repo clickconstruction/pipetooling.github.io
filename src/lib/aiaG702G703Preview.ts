@@ -1,4 +1,5 @@
 import { AIA_FIELD_DEFS, type AiaFieldKey, type AiaFieldValues } from './aiaG702G703Template'
+import { type PayApplicationLine, type PayApplicationLineMath, type PayApplicationPrintRow, lineMath, printRowsOf } from './aiaPayApplicationLines'
 
 /**
  * What the downloaded workbook will say, worked out without opening it. The AIA window's paper
@@ -19,8 +20,13 @@ const G703_FOLLOWS_G702: Readonly<Partial<Record<AiaFieldKey, AiaFieldKey>>> = {
   g703_k5_architect_project_no: 'g702_n7_project_no',
 }
 
+/** One printed G703 row: its math, the line it belongs to, and which part of that line it is. */
+export type AiaPreviewRow = PayApplicationLineMath & { lineId: string; part: PayApplicationPrintRow['part'] }
+
 export type AiaPreviewMath = {
-  /** G703 line 001, the one line the form fills. */
+  /** The G703's item rows as printed: a row per line, or a labor and a material row when split. */
+  rows: AiaPreviewRow[]
+  /** The G703's totals row (row 49): the columns summed over the item rows. */
   line: {
     scheduledValue: number
     fromPrevious: number
@@ -92,8 +98,13 @@ function cellText(key: AiaFieldKey, value: string | number): string {
   return KIND_BY_KEY[key] === 'percent' ? formatAiaPercent(value / 100) : formatAiaMoney(value)
 }
 
-/** The paper as the download will read: every mapped box, and the sheet's own math over them. */
-export function buildAiaPreview(values: AiaFieldValues): AiaPreview {
+export type AiaPreviewOptions = { splitLaborMaterial?: boolean }
+
+/**
+ * The paper as the download will read: every mapped box, the G703's rows from the application's
+ * lines, and the sheet's own math over them.
+ */
+export function buildAiaPreview(values: AiaFieldValues, lines: ReadonlyArray<PayApplicationLine> = [], options: AiaPreviewOptions = {}): AiaPreview {
   const cells = {} as Record<AiaFieldKey, AiaPreviewCell>
   const num = {} as Record<AiaFieldKey, number>
   for (const def of AIA_FIELD_DEFS) {
@@ -105,14 +116,19 @@ export function buildAiaPreview(values: AiaFieldValues): AiaPreview {
   const retainagePct = num.g702_c28_retainage_percent / 100
   const materialPct = num.g702_c31_retainage_material_percent / 100
 
-  // G703 row 13: H = E + F + G, I = H / D, J = D − H, K = H × G702!C28. Row 49 sums a column;
-  // every other row is 0, so the totals are this row.
-  const scheduledValue = num.g703_d13_scheduled_value
-  const fromPrevious = num.g703_e13_from_previous
-  const thisPeriod = num.g703_f13_this_period
-  const materialsStored = num.g703_g13_materials_stored
-  const totalToDate = fromPrevious + thisPeriod + materialsStored
-  const lineRetainage = totalToDate * retainagePct
+  // G703 rows 13–46: H = E + F + G, I = H / D, J = D − H, K = H × G702!C28. Row 49 sums each column.
+  const rows: AiaPreviewRow[] = printRowsOf(lines, options.splitLaborMaterial === true).map((row) => ({
+    ...lineMath(row, retainagePct),
+    lineId: row.lineId,
+    part: row.part,
+  }))
+  const sum = (pick: (r: AiaPreviewRow) => number) => round2(rows.reduce((t, r) => t + pick(r), 0))
+  const scheduledValue = sum((r) => r.scheduledValue)
+  const fromPrevious = sum((r) => r.fromPrevious)
+  const thisPeriod = sum((r) => r.thisPeriod)
+  const materialsStored = sum((r) => r.stored)
+  const totalToDate = sum((r) => r.totalToDate)
+  const lineRetainage = sum((r) => r.retainage)
 
   // G702 rows 49–52.
   const additions =
@@ -134,15 +150,16 @@ export function buildAiaPreview(values: AiaFieldValues): AiaPreview {
   return {
     cells,
     math: {
+      rows,
       line: {
         scheduledValue,
-        fromPrevious: round2(fromPrevious),
+        fromPrevious,
         thisPeriod,
         materialsStored,
-        totalToDate: round2(totalToDate),
+        totalToDate,
         pctComplete: scheduledValue === 0 ? null : totalToDate / scheduledValue,
         balanceToFinish: round2(scheduledValue - totalToDate),
-        retainage: round2(lineRetainage),
+        retainage: lineRetainage,
       },
       changeOrders: { additions: round2(additions), deductions: round2(deductions), net: round2(net) },
       originalContractSum,

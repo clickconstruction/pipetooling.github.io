@@ -47,6 +47,7 @@ SELECT bedt.ok('created_by is the caller, not what was sent', (SELECT created_by
 SELECT bedt.ok('created_at is now, not what was sent', (SELECT created_at > now() - interval '1 hour' FROM public.job_pay_applications));
 SELECT bedt.ok('it starts as made in the window, with no files', (SELECT source = 'window' AND files = '[]'::jsonb FROM public.job_pay_applications));
 SELECT bedt.ok('it starts with no reason for keeping old amounts', (SELECT carry_reason = '' FROM public.job_pay_applications));
+SELECT bedt.ok('it starts with no lines of its own and no split', (SELECT lines = '[]'::jsonb AND split_labor_material = false FROM public.job_pay_applications));
 
 -- 2 · a job holds one application per number; another job may use the same number.
 DO $$
@@ -75,6 +76,11 @@ BEGIN
   EXCEPTION WHEN check_violation THEN RAISE NOTICE 'ok: the form must be an object';
   END;
   BEGIN
+    INSERT INTO public.job_pay_applications (job_id, application_number, lines) VALUES ('00000000-0000-0000-0000-00000000c001', 7, '{"id":"a"}');
+    RAISE EXCEPTION 'FAILED: lines that are not a list were kept';
+  EXCEPTION WHEN check_violation THEN RAISE NOTICE 'ok: the lines must be a list';
+  END;
+  BEGIN
     INSERT INTO public.job_pay_applications (job_id, application_number, retainage_pct) VALUES ('00000000-0000-0000-0000-00000000c001', 8, 150);
     RAISE EXCEPTION 'FAILED: 150 percent retainage was kept';
   EXCEPTION WHEN check_violation THEN RAISE NOTICE 'ok: retainage over 100 percent is refused';
@@ -87,6 +93,8 @@ SELECT bedt.as_user('00000000-0000-0000-0000-0000000000a4');
 SET LOCAL ROLE authenticated;
 UPDATE public.job_pay_applications SET current_payment_due = 16000, created_by = '00000000-0000-0000-0000-0000000000a4'
   WHERE job_id = '00000000-0000-0000-0000-00000000c001' AND application_number = 1;
+UPDATE public.job_pay_applications SET lines = '[{"id":"a","label":"Top-out","scheduledValue":28800}]', split_labor_material = true WHERE job_id = '00000000-0000-0000-0000-00000000c001' AND application_number = 2;
+SELECT bedt.ok('the master saved lines and the split on application 2', (SELECT jsonb_array_length(lines) = 1 AND split_labor_material FROM public.job_pay_applications WHERE job_id = '00000000-0000-0000-0000-00000000c001' AND application_number = 2));
 UPDATE public.job_pay_applications SET carry_reason = 'It went out this way.' WHERE job_id = '00000000-0000-0000-0000-00000000c001' AND application_number = 2;
 SELECT bedt.ok('the master wrote why application 2 stays as it is', (SELECT carry_reason = 'It went out this way.' FROM public.job_pay_applications WHERE job_id = '00000000-0000-0000-0000-00000000c001' AND application_number = 2));
 SELECT bedt.ok('the master changed it', (SELECT current_payment_due = 16000 FROM public.job_pay_applications WHERE job_id = '00000000-0000-0000-0000-00000000c001' AND application_number = 1));

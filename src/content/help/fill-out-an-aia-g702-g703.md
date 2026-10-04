@@ -33,8 +33,25 @@ You type **Period to** yourself. On a job with nothing saved, you type **APPLICA
 A blue box on the paper holds something from the form. A plain number is the sheet's own math. You never type the nine lines of the G702. The sheet works them out.
 
 :::example what the paper works out
-Type an **ORIGINAL CONTRACT SUM** of 48,500 and **WORK COMPLETED THIS PERIOD** of 19,400 with **Retainage %** at 10. The paper shows total completed $19,400.00, retainage $1,940.00 and **CURRENT PAYMENT DUE $17,460.00**.
+Type an **ORIGINAL CONTRACT SUM** of 48,500. On the line, type a **SCHEDULED VALUE** of 48,500 and **WORK THIS PERIOD** of 19,400. With **Retainage %** at 10, the paper shows total completed $19,400.00, retainage $1,940.00 and **CURRENT PAYMENT DUE $17,460.00**.
 :::
+
+## The lines
+
+The bottom of the form is **LINES**. Each line is one row of the continuation sheet. A job starts with one line for the whole contract.
+
+A line has these boxes.
+
+- **DESCRIPTION OF WORK** is the line's name.
+- **SCHEDULED VALUE** is the line's part of the contract.
+- **FROM PREVIOUS APPLICATION** is the work you asked for before.
+- **% DONE TO DATE** is how far along the line is. Type a percent and **WORK THIS PERIOD** is worked out for you.
+- **WORK THIS PERIOD** is the work you are asking for now. Type dollars here if you would rather.
+- **MATERIALS STORED ON SITE** is material on the job that is not installed yet.
+
+Press **Add a line** to add a row. A change order can be its own line. Press **Remove** on a line to take it off.
+
+The sheet holds 34 rows. The form shows how many you have used. You can save more than 34 lines. You cannot generate until some are grouped.
 
 ## Leave a field empty
 
@@ -64,7 +81,8 @@ Open the window again next month. It opens on a new application. The number is o
 
 The new one starts from the last one saved.
 
-- **WORK COMPLETED FROM PREVIOUS APPLICATION** is the work you asked for before.
+- Each line keeps its name and its value. Its **FROM PREVIOUS APPLICATION** is the work you asked for before.
+- **WORK THIS PERIOD** starts empty on each line. Material stored on site stays on its line.
 - **LESS PREVIOUS CERTIFICATES FOR PAYMENT** is what the last application had earned, less retainage.
 - Last month's change orders move to the previous months.
 - **Retainage %** stays what it was.
@@ -78,7 +96,7 @@ Press **Use 5%** when the contract allows it. The 5% covers everything to date. 
 Leave it alone when the contract keeps the retainage. Nothing changes until you press the button.
 
 :::example the second application
-Application 1 asked for $19,400.00 of work at 10% retainage, so $17,460.00 was due. A month later the job is at $29,100.00. Application 2 opens with 19,400 as previous work and 9,700 this period. **CURRENT PAYMENT DUE** reads $8,730.00.
+Application 1 asked for $19,400.00 of work on its one line at 10% retainage, so $17,460.00 was due. A month later the job is at $29,100.00. Application 2 opens with 19,400 from the previous application and 9,700 this period on that line. **CURRENT PAYMENT DUE** reads $8,730.00.
 :::
 
 ## When an earlier application changes
