@@ -17,14 +17,14 @@
  * the people on it, the trail, and Close; 4a-ii reads their decisions back
  * onto the rows and builds the next revision from the rows sent back.
  */
-import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { smallMuted, btn, btnPrimary, btnQuiet, btnGreen } from './submittalTabStyles'
 import { RoadSection, type RoadStatus } from './SubmittalRoadSection'
 import { SubmittalRowsTable } from './SubmittalRowsTable'
 import { SubmittalRoomPanel } from './SubmittalRoomPanel'
+import { SubmittalSourcesPanel } from './SubmittalSourcesPanel'
 import { SubmittalTheirCallPanel } from './SubmittalTheirCallPanel'
 import { SpotlightTour, spotlightTourStepsPresent, type SpotlightTourStep } from '../SpotlightTour'
-import { RobotOffer } from './RobotOffer'
 import { robotSeatState, staleAsk, type RobotSeatRow, type RobotSeatState } from '../../lib/submittals/robotOffer'
 import { SeeWhatTheGcSees } from './SeeWhatTheGcSees'
 import { describeForReviewer } from '../../lib/submittals/seeWhatTheySee'
@@ -82,7 +82,7 @@ import { parseReviewerFiles, reviewerFileKind, reviewerFilePath, serializeReview
 import { CLEAR_DECISION_PATCH, enteredDecisionAt, enteredDecisionPatch, enteredEntryBody, rowsToApproveAll } from '../../lib/submittals/enteredDecisions'
 import { matchRoomPerson, type ReviewerChoice, type ReviewerSources } from '../../lib/submittals/reviewerPick'
 import { newRoomToken } from '../../lib/submittals/submittalRoom'
-import { confirmLabel, guessByPage, liveTask, redlinesToConfirm, scheduleToConfirm, sheetGuessesToConfirm, taskInput, taskStatus, type SubmittalTaskRow } from '../../lib/submittals/robotTasks'
+import { confirmLabel, guessByPage, liveTask, redlinesToConfirm, sheetGuessesToConfirm, taskInput, taskStatus, type SubmittalTaskRow } from '../../lib/submittals/robotTasks'
 import { describeTask, type SubmittalTaskKind } from '../../../supabase/functions/_shared/submittalRobot'
 import { keptPages, remapAfterTrim } from '../../lib/submittals/sheetAssignment'
 import { assignmentsFromItems } from '../../lib/submittals/sheetStripModel'
@@ -2149,87 +2149,25 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
           {/* 1 · Sources (Where the rows come from) — the source line is in the header; the robot's offer lives here while there is no schedule. */}
           <RoadSection n={1} about={SUBMITTAL_STAGE_ABOUT[1]} onHelp={() => startWalkThrough(1)} title="Where the rows come from" status={stageStatus('picks')} open={sectionOpen('picks')} onToggle={() => toggleSection('picks')} onJump={() => jumpToSection('picks')} anchor="submittals-schedule"
             summary={<>{takeoffFixtures > 0 ? <>{takeoffFixtures} on the takeoff · </> : null}{specified.length === 0 ? 'no schedule yet' : `${specified.length} tag${specified.length === 1 ? '' : 's'}`}{picks.length > 0 ? <> · {picks.length} picked line{picks.length === 1 ? '' : 's'}</> : null}{takeoffFixtures > 0 && specified.length === 0 && picks.length === 0 ? <> · <button type="button" onClick={openTakeoffPicker} style={{ ...btnQuiet, textDecoration: 'underline', fontSize: 'inherit' }}>choose from the takeoff</button></> : onOpenPricing ? <> · <button type="button" onClick={() => (specified.length === 0 ? setPlugInOpen(true) : onOpenPricing(bid))} style={{ ...btnQuiet, textDecoration: 'underline', fontSize: 'inherit' }}>{specified.length === 0 ? 'type or paste the fixture schedule' : 'the picks on Pricing'}</button></> : null}</>}>
-            {/* v2.4107 · three sources, the takeoff first: a bid priced from a takeoff has no picks and often no schedule, yet the takeoff already names every product. */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.6rem', maxWidth: 900 }} data-testid="submittal-sources">
-              <div style={{ border: `1px solid ${takeoffFixtures > 0 && specified.length === 0 && picks.length === 0 ? '#2563eb' : 'var(--border)'}`, borderRadius: 8, padding: '0.6rem 0.75rem', background: 'var(--surface)', display: 'flex', flexDirection: 'column', gap: '0.4rem' }} data-testid="source-takeoff">
-                <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)' }}>The takeoff <span style={{ ...smallMuted, fontWeight: 400 }}>· {takeoffFixtures === 0 ? 'none on this bid' : `${takeoffFixtures} fixture${takeoffFixtures === 1 ? '' : 's'}, ${takeoff?.withProduct ?? 0} with a part`}</span></div>
-                <span style={smallMuted}>{takeoffFixtures === 0 ? 'Count the fixtures on Takeoffs and they show here.' : 'One row per fixture you tick. The part under it is the product.'}</span>
-                <button type="button" disabled={busy || takeoffFixtures === 0} onClick={openTakeoffPicker} style={{ ...(takeoffFixtures > 0 && specified.length === 0 && picks.length === 0 ? btnPrimary : btn), alignSelf: 'flex-start', opacity: takeoffFixtures === 0 ? 0.5 : 1 }} title="Tick the fixtures you counted. Each one becomes a row, with its part as the product" data-testid="choose-from-takeoff" data-tour="submittals-takeoff">
-                  {revisions.length === 0 ? 'Choose from the takeoff' : 'Add from the takeoff'}
-                </button>
-              </div>
-              {picks.length > 0 ? (
-                <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem 0.75rem', background: 'var(--surface)', display: 'flex', flexDirection: 'column', gap: '0.4rem' }} data-testid="source-picks">
-                  <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)' }}>Quotes compared <span style={{ ...smallMuted, fontWeight: 400 }}>· {picks.length} picked line{picks.length === 1 ? '' : 's'}</span></div>
-                  <span style={smallMuted}>The house you picked for each line on Pricing, with the reason and lead time you gave.</span>
-                  {onOpenPricing ? <button type="button" disabled={busy} onClick={() => onOpenPricing(bid)} style={{ ...btn, alignSelf: 'flex-start' }}>Open the compare</button> : null}
-                </div>
-              ) : null}
-              {(() => {
-                // v2.4109 · the robot lives in the schedule card: the offer under the typed door, the state while it works, Cancel beside it.
-                // v2.4144 · the state row is two lines, not three: the sentence, then the task line with Cancel/Dismiss at its right.
-                const t = liveTask(tasks, 'read_schedule')
-                const st = t ? taskStatus(t) : null
-                const conf = t ? scheduleToConfirm(t) : null
-                // 2026-10-03 · a queued ask nobody is coming for says the day it was asked and that no robot is on shift.
-                const stale = t && st === 'queued' ? staleAsk('read_schedule', t.requested_at, robotSeat, Date.now(), formatShortDate) : null
-                return (
-                  <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem 0.75rem', background: 'var(--surface)', display: 'flex', flexDirection: 'column', gap: '0.4rem' }} data-testid="source-schedule">
-                    <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)' }}>The plans’ schedule <span style={{ ...smallMuted, fontWeight: 400 }}>· {specified.length === 0 ? 'none yet' : `${specified.length} tag${specified.length === 1 ? '' : 's'}`}</span></div>
-                    <span style={smallMuted}>{specified.length === 0 ? 'Optional. A tag is the plan’s name for a fixture, like WC-1. With the schedule, the app checks each row against the plans.' : 'Every tag here becomes a row. A row with no pick gets its product typed with Edit.'}</span>
-                    {t ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem', background: stale ? 'var(--bg-amber-tint)' : 'var(--bg-muted)', borderRadius: 6, padding: '0.3rem 0.55rem', fontSize: '0.8rem' }} data-testid="robot-schedule" data-stale={stale ? 'true' : undefined} data-tour="submittals-robot">
-                        <span style={{ color: 'var(--text-strong)' }}>
-                          {stale ? stale.head : st === 'ready' ? (conf ? 'The robot read the schedule. Confirm the tags below.' : 'The robot read the schedule and found no tags.') : st === 'blocked' ? (t.summary || 'The robot could not read the plans.') : st === 'working' ? 'The robot is reading the fixture schedule off the plans.' : 'The robot is queued to read the fixture schedule off the plans.'}
-                        </span>
-                        <span style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', alignItems: 'baseline' }}>
-                          <span style={{ ...smallMuted, fontStyle: stale ? 'normal' : 'italic' }} data-testid="robot-line">{stale ? stale.detail : describeTask(t)}</span>
-                          {st === 'blocked' || st === 'queued' ? (
-                            <button type="button" disabled={busy} onClick={() => void markTask(t.id, 'cancelled').then(() => loadTasks(bidId as string))} style={{ ...btnQuiet, textDecoration: 'underline', fontSize: '0.78rem', flexShrink: 0 }}>{st === 'blocked' ? 'Dismiss' : stale ? 'Take the ask back' : 'Cancel'}</button>
-                          ) : null}
-                        </span>
-                      </div>
-                    ) : null}
-                    <button type="button" disabled={busy} onClick={() => setPlugInOpen(true)} style={{ ...((specified.length === 0 && takeoffFixtures === 0) || stale ? btnPrimary : btn), alignSelf: 'flex-start' }} title="Type or paste the tags from the plans, one per line" data-testid="plug-in-schedule" data-tour="submittals-plug-in">
-                      {specified.length === 0 ? 'Type or paste the schedule' : 'Add to the schedule'}
-                    </button>
-                    {!t && specified.length === 0 ? <RobotOffer kind="read_schedule" seat={robotSeat} hasPlans={Boolean(selectedBid?.plans_link)} busy={busy} onAsk={() => void askRobot('read_schedule', {}, null)} testId="ask-robot-schedule" tour="submittals-robot" /> : null}
-                  </div>
-                )
-              })()}
-            </div>
-        {!loading ? (() => {
-          // 6b · the schedule read, ready: the tags to confirm, under the cards at full width
-          const t = liveTask(tasks, 'read_schedule')
-          const conf = t ? scheduleToConfirm(t) : null
-          if (!t || !conf) return null
-          const n = conf.sure.length + conf.look.length
-          return (
-            <div style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '0.6rem 0.9rem', display: 'flex', flexDirection: 'column', gap: '0.45rem', maxWidth: 900, marginTop: '0.6rem' }} data-testid="robot-schedule-confirm">
-              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-strong)' }}>The robot read {n} tag{n === 1 ? '' : 's'} off the plans <span style={{ ...smallMuted, fontWeight: 400 }}>· confirm them and they join the schedule; the rest are dropped</span></div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '0.2rem 0.6rem', fontSize: '0.8125rem', alignItems: 'baseline' }}>
-                {conf.sure.map((r) => (
-                  <Fragment key={r.tag}><span style={{ color: 'var(--text-green-700)', fontWeight: 600 }}>{r.tag} ✓</span><span>{[r.manufacturer, r.model].filter(Boolean).join(' ') || r.description || r.fixture || '—'}{r.fixture ? <span style={smallMuted}> · {r.fixture}</span> : null}</span></Fragment>
-                ))}
-                {conf.look.map((r) => (
-                  <Fragment key={r.tag}>
-                    <label style={{ color: 'var(--text-amber-700)', fontWeight: 600, display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
-                      <input type="checkbox" aria-label={`Keep ${r.tag}`} checked={!!lookChecked[r.tag]} onChange={(e) => setLookChecked((m) => ({ ...m, [r.tag]: e.target.checked }))} /> {r.tag} ?
-                    </label>
-                    <span>{[r.manufacturer, r.model].filter(Boolean).join(' ') || r.description || r.fixture || '—'}{r.fixture ? <span style={smallMuted}> · {r.fixture}</span> : null}<span style={smallMuted}> · want a look</span></span>
-                  </Fragment>
-                ))}
-              </div>
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                <button type="button" disabled={busy} onClick={() => void confirmSchedule(t, [...conf.sure.map((r) => r.tag), ...conf.look.filter((r) => lookChecked[r.tag]).map((r) => r.tag)])} style={btnGreen} data-testid="confirm-schedule">
-                  {confirmLabel(conf.sure.length + conf.look.filter((r) => lookChecked[r.tag]).length, conf.look.filter((r) => !lookChecked[r.tag]).length, 'leave') || 'Confirm'}
-                </button>
-                <button type="button" disabled={busy} onClick={() => void confirmSchedule(t, [])} style={{ ...btn, color: 'var(--text-muted)' }}>Discard the robot's rows</button>
-                <span style={smallMuted}>Confirmed tags join the schedule; the rest are dropped.</span>
-              </div>
-            </div>
-          )
-        })() : null}
+            <SubmittalSourcesPanel
+              takeoffFixtures={takeoffFixtures}
+              takeoffWithProduct={takeoff?.withProduct ?? 0}
+              scheduleTags={specified.length}
+              picks={picks.length}
+              hasRevision={revisions.length > 0}
+              hasPlans={Boolean(selectedBid?.plans_link)}
+              tasks={tasks}
+              robotSeat={robotSeat}
+              lookChecked={lookChecked}
+              busy={busy}
+              onChooseFromTakeoff={openTakeoffPicker}
+              onOpenCompare={onOpenPricing ? () => onOpenPricing(bid) : undefined}
+              onPlugIn={() => setPlugInOpen(true)}
+              onAskRobot={() => void askRobot('read_schedule', {}, null)}
+              onCancelTask={(id) => void markTask(id, 'cancelled').then(() => loadTasks(bidId as string))}
+              onLookChecked={(tag, checked) => setLookChecked((m) => ({ ...m, [tag]: checked }))}
+              onConfirmSchedule={(t, tags) => void confirmSchedule(t, tags)}
+            />
           </RoadSection>
 
           {/* 2 · Build Rev 1 / the revision */}
