@@ -10661,6 +10661,7 @@ export type Database = {
         Row: {
           application_date: string | null
           application_number: number
+          carry_reason: string
           contract_sum_to_date: number
           created_at: string
           created_by: string | null
@@ -10681,6 +10682,7 @@ export type Database = {
         Insert: {
           application_date?: string | null
           application_number: number
+          carry_reason?: string
           contract_sum_to_date?: number
           created_at?: string
           created_by?: string | null
@@ -10701,6 +10703,7 @@ export type Database = {
         Update: {
           application_date?: string | null
           application_number?: number
+          carry_reason?: string
           contract_sum_to_date?: number
           created_at?: string
           created_by?: string | null
