@@ -68,7 +68,7 @@ const S = {
     es: '{gc} no sabe si su precio incluye {items}. Contéstelo para que su precio se compare de forma justa.',
   },
   answerIt: { en: 'Answer it', es: 'Contestar' },
-  confirmStands: { en: 'My number stands on the new plans', es: 'Mi precio se mantiene con los planos nuevos' },
+  confirmStands: { en: 'My number stands on the new plans', es: 'Mantengo mi precio' },
   openFirst: { en: 'Open the plans first.', es: 'Primero abra los planos.' },
   changeBid: { en: 'Change my bid', es: 'Cambiar mi precio' },
   tickHelp: {
