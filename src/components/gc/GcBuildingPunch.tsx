@@ -9,11 +9,13 @@ import {
   shortDate,
   type GcAction,
   type GcProject,
+  type GcState,
   type PunchItem,
   type PunchState,
   type TradePackage,
 } from '../../lib/gcMode/gcModel'
 import { Btn, Chip, input, type Tone } from './gcUi'
+import { GcBuildingPromise } from './GcBuildingPromise'
 import { usePortalLang } from './gcPortalLang'
 
 /**
@@ -30,12 +32,15 @@ const STATE_WORDS: Record<PunchState, { tone: Tone; word: string }> = {
 
 /** One trade's punch list on Closeout: the items, their checks, and a line to add one. */
 export function GcBuildingPunchList({
+  state,
   project,
   pkg,
   company,
   canAdd,
   dispatch,
 }: {
+  /** For the day the trade gave to fix them (question 8). Unset: no promise line. */
+  state?: GcState
   project: GcProject
   pkg: TradePackage
   company: string
@@ -95,6 +100,7 @@ export function GcBuildingPunchList({
           </Btn>
         </div>
       )}
+      {state && <GcBuildingPromise state={state} project={project} pkg={pkg} kind="punch" ask={c.open > 0} dispatch={dispatch} />}
       {items.length > 0 && c.open + c.fixed > 0 && (
         <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
           {company} marks each item fixed in their portal. Our superintendent checks it on the job. We accept the work once every item is checked.

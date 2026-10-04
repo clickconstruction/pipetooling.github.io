@@ -19,6 +19,7 @@ import {
   type TradePackage,
 } from '../../lib/gcMode/gcModel'
 import type { GcPaneProps } from './GcOfficeTabs'
+import { GcBuildingPromise } from './GcBuildingPromise'
 import { Btn, Card, Chip, Why, input, type Tone } from './gcUi'
 import { usePortalLang } from './gcPortalLang'
 
@@ -89,6 +90,9 @@ function TradeSubmittals({
 }) {
   const [adding, setAdding] = useState(false)
   const company = rows[0]?.company ?? pkg.trade
+  // The days the trade gave (question 8): to send what we wait on, and for a delivery once something is approved.
+  const waiting = rows.some((r) => r.state === 'trade')
+  const approved = rows.some((r) => r.state === 'approved')
   return (
     <Card>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'baseline' }}>
@@ -103,6 +107,10 @@ function TradeSubmittals({
         )}
       </div>
       {rows.length === 0 && !adding && <div style={{ marginTop: '0.3rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>None asked for yet.</div>}
+      <div style={{ display: 'grid', gap: '0.4rem', marginTop: '0.4rem' }}>
+        <GcBuildingPromise state={state} project={project} pkg={pkg} kind="submittals" ask={waiting} dispatch={dispatch} />
+        <GcBuildingPromise state={state} project={project} pkg={pkg} kind="delivery" askWhat ask={approved} dispatch={dispatch} />
+      </div>
       <div style={{ display: 'grid', gap: '0.6rem', marginTop: rows.length > 0 ? '0.6rem' : 0 }}>
         {rows.map((r) => (
           <SubmittalLine key={r.submittal.id} project={project} row={r} today={state.today} dispatch={dispatch} />

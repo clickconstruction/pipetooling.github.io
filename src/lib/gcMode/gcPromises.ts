@@ -9,13 +9,14 @@ import type { GcAction, GcState, Partner, PromiseKind, TradePromise } from './gc
 import type { PromiseState } from './gcFollowUp'
 import { daysUntil, shortDate, weekdayDate } from './gcWords'
 import { partnerById } from './gcLookups'
+import { buildingPromisesKeptBy } from './gcBuildingPromises'
 
 /** What each kind is, in a few words, when the office does not say. */
 export const PROMISE_WHAT: Record<PromiseKind, string> = {
   insurance: 'the renewed insurance certificate',
   w9: 'a signed W-9',
   sow: 'the signed statement of work',
-  start: 'their start day',
+  start: 'their crew on site',
   submittals: 'their submittals',
   delivery: 'the material delivery',
   payApp: 'the fixed pay application',
@@ -120,8 +121,11 @@ export function insuranceRenewalWords(r: InsuranceRenewal): string {
   return `Their insurance runs out ${weekdayDate(r.expires)}, in ${r.days} ${r.days === 1 ? 'day' : 'days'}.`
 }
 
-/** What a move keeps: the open promises it settles. Each lane adds its own moves here. */
-export function promisesKeptBy(state: GcState, action: GcAction): { partnerId: string; kind: PromiseKind; projectId?: string; packageId?: string }[] {
+/**
+ * What a move keeps: the open promises it settles. Each lane adds its own moves here. `on`: the day
+ * it came, when that is not today (Building: a daily log caught up late keeps a start on its own day).
+ */
+export function promisesKeptBy(state: GcState, action: GcAction): { partnerId: string; kind: PromiseKind; projectId?: string; packageId?: string; on?: string }[] {
   switch (action.type) {
     // Board's kinds.
     case 'tradeUploadCoi':
@@ -133,17 +137,29 @@ export function promisesKeptBy(state: GcState, action: GcAction): { partnerId: s
       const partnerId = pkg?.invites.find((i) => i.id === pkg.awardedInviteId)?.partnerId
       return partnerId ? [{ partnerId, kind: 'sow', projectId: action.projectId, packageId: action.packageId }] : []
     }
+    // Building's kinds: the moves are in gcBuildingPromises.ts.
+    case 'saveDailyLog':
+    case 'tradeSendSubmittal':
+    case 'tradeSendPayApp':
+    case 'tradeFixPunchItem':
+    case 'tradeSendFinalPayApp':
+    case 'tradeSignUnconditional':
+      return buildingPromisesKeptBy(state, action)
     default:
       return []
   }
 }
 
-/** Marks kept, today, every open promise a move settled. The same state back when none did. */
+/** Marks kept every open promise a move settled: today, or the day the move says it came. The same state back when none did. */
 export function keepPromisesOn(state: GcState, matches: ReturnType<typeof promisesKeptBy>): GcState {
   if (matches.length === 0 || !state.tradePromises) return state
-  const ids = new Set(matches.map((m) => openPromiseFor(state, m)?.id).filter((id): id is string => Boolean(id)))
-  if (ids.size === 0) return state
-  return { ...state, tradePromises: state.tradePromises.map((p) => (ids.has(p.id) ? { ...p, keptOn: state.today } : p)) }
+  const on = new Map<string, string>()
+  for (const m of matches) {
+    const id = openPromiseFor(state, m)?.id
+    if (id) on.set(id, m.on ?? state.today)
+  }
+  if (on.size === 0) return state
+  return { ...state, tradePromises: state.tradePromises.map((p) => (on.has(p.id) ? { ...p, keptOn: on.get(p.id) } : p)) }
 }
 
 /** The partner a promise is with, for the words around it. */
