@@ -219,6 +219,13 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   letters say no discipline gets a picker (`PlanSheet.discipline`). The pick groups it on the right,
   in the quick look, and brings its trades on step 3 (`disciplineOf`, `withPickedDisciplines`).
   A sheet the PDF reads that is already listed only gets its page.
+- **The budgets against the size** (the owner, 2026-10-04: "show the amount of square feet added at
+  the prior page and then the cost per square foot, broken down by trade, and the total"): step 3
+  closes with **The budgets**: the size from step 1, then each ticked trade with its budget and
+  its cost per square foot to the cent ("$12.35/sq ft"), then the total (`budgetBySize`,
+  `perSqFtWords`). A trade that is ours shows its guess the same way. Without a size it says "Give
+  the size on step 1 to see the cost per square foot." Each budget box shows its own rate as it is
+  typed.
 - **New project, step 1 and 3 follow-ups** (the owner, 2026-10-04): no Town field; each company's
   drive is measured from the town in the address ("Drives are measured from Boerne"; the Board's
   `townFromAddress`), and a town picker shows only when the address names none. **Size** is square

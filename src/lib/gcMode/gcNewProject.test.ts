@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
+  budgetBySize,
+  perSqFtWords,
   nextSheetNumber,
   readSheetLines,
   readTitleBlock,
@@ -759,5 +761,29 @@ describe('the sheet index as one table: a plan PDF, a paste or typing', () => {
     const twoLines = page.map((i) => (i.str === 'FLOOR PLAN' ? { ...i, str: 'FLOOR AND' } : i)).concat([{ str: 'FINISH PLAN', x: 620, y: 110, size: 12 }])
     expect(readTitleBlock(twoLines, 792, 612)).toEqual({ id: 'A-101', title: 'First floor and finish plan' })
     expect(readTitleBlock([{ str: 'COVER', x: 300, y: 300, size: 40 }], 792, 612)).toBeNull()
+  })
+})
+
+describe('the budgets against the size', () => {
+  it('gives each trade and the total a cost per square foot, to the cent', () => {
+    const summary = budgetBySize(
+      [
+        { trade: 'Concrete', amount: 84000, ours: false },
+        { trade: 'Plumbing', amount: 52000, ours: true },
+        { trade: 'Painting', amount: 0, ours: false },
+      ],
+      6800,
+    )
+    expect(summary.total).toBe(136000)
+    expect(summary.lines.map((l) => (l.perSqFt === null ? null : perSqFtWords(l.perSqFt)))).toEqual(['$12.35/sq ft', '$7.65/sq ft', '$0.00/sq ft'])
+    expect(perSqFtWords(summary.totalPerSqFt ?? 0)).toBe('$20.00/sq ft')
+    expect(perSqFtWords(1234.5)).toBe('$1,234.50/sq ft')
+  })
+
+  it('gives amounts only when no size was given', () => {
+    const summary = budgetBySize([{ trade: 'Concrete', amount: 84000, ours: false }], null)
+    expect(summary.lines[0]?.perSqFt).toBeNull()
+    expect(summary.totalPerSqFt).toBeNull()
+    expect(summary.total).toBe(84000)
   })
 })

@@ -33,6 +33,8 @@ import {
   guessLineSheets,
   answerRecord,
   budgetForSize,
+  budgetBySize,
+  perSqFtWords,
   buildNewProject,
   partnerBlockers,
   defaultAsks,
@@ -58,7 +60,7 @@ function usualLines(trade: string): ScopeLineDraft[] {
   return usualScope(trade).map((label) => ({ label, sheets: null }))
 }
 import { useMatchMedia } from '../../hooks/useMatchMedia'
-import { Btn, Chip, input } from './gcUi'
+import { Btn, Chip, input, num, td, th } from './gcUi'
 import { CustomerPicker, Picker } from './GcNewProjectPickers'
 import { FIELD_HEIGHT_PX, pickerFace, pickerGroup, pickerRow } from './GcNewProjectPickerRows'
 import { SheetIndexTable } from './GcNewProjectSheetIndex'
@@ -121,6 +123,59 @@ function Field({ label, hint, children, wide }: { label: string; hint?: string; 
 
 /** A one-line entry field: the same height as the pickers beside it. Textareas set their own height. */
 const field: CSSProperties = { ...input, width: '100%', boxSizing: 'border-box', height: FIELD_HEIGHT_PX }
+
+const cell: CSSProperties = { ...td, padding: '0.3rem 0.5rem', fontSize: '0.85rem' }
+const cellNum: CSSProperties = { ...num, padding: '0.3rem 0.5rem', fontSize: '0.85rem' }
+
+/**
+ * The budgets against the size given on step 1 (the owner, 2026-10-04: "show the amount of square
+ * feet added at the prior page and then the cost per square foot, broken down by trade, and the
+ * total"). A trade that is ours shows its guess the same way.
+ */
+function BudgetSummary({ picked, sqFt }: { picked: { trade: string; budget: string; ours: boolean }[]; sqFt: number | null }) {
+  const summary = budgetBySize(
+    picked.map((r) => ({ trade: r.trade, amount: budgetNumber(r.budget), ours: r.ours })),
+    sqFt,
+  )
+  const muted: CSSProperties = { color: 'var(--text-muted)' }
+  return (
+    <div style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-subtle)', padding: '0.55rem 0.75rem', fontSize: '0.875rem', display: 'grid', gap: '0.4rem' }}>
+      <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap' }}>
+        <strong>The budgets</strong>
+        <span style={muted}>
+          {sqFt === null ? 'Give the size on step 1 to see the cost per square foot.' : `Size ${sqFt.toLocaleString('en-US')} sq ft, from step 1`}
+        </span>
+      </div>
+      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <thead>
+          <tr>
+            <th style={{ ...th, padding: '0.3rem 0.5rem' }}>Trade</th>
+            <th style={{ ...th, padding: '0.3rem 0.5rem', textAlign: 'right' }}>Budget</th>
+            {sqFt !== null && <th style={{ ...th, padding: '0.3rem 0.5rem', textAlign: 'right' }}>Cost per sq ft</th>}
+          </tr>
+        </thead>
+        <tbody>
+          {summary.lines.map((l) => (
+            <tr key={l.trade}>
+              <td style={cell}>
+                {l.trade}
+                {l.ours && <span style={muted}> · ours</span>}
+              </td>
+              <td style={cellNum}>{l.amount > 0 ? money(l.amount) : <span style={muted}>no budget yet</span>}</td>
+              {sqFt !== null && <td style={cellNum}>{l.amount > 0 && l.perSqFt !== null ? perSqFtWords(l.perSqFt) : ''}</td>}
+            </tr>
+          ))}
+          <tr>
+            <td style={{ ...cell, fontWeight: 700, borderBottom: 'none' }}>Total</td>
+            <td style={{ ...cellNum, fontWeight: 700, borderBottom: 'none' }}>{money(summary.total)}</td>
+            {sqFt !== null && <td style={{ ...cellNum, fontWeight: 700, borderBottom: 'none' }}>{perSqFtWords(summary.totalPerSqFt ?? 0)}</td>}
+          </tr>
+        </tbody>
+      </table>
+      <div style={{ color: 'var(--text-600)' }}>A budget is our own guess. It fills the price until a quote comes in.</div>
+    </div>
+  )
+}
 
 function sheetsWords(ids: string[]): string {
   if (ids.length <= 4) return ids.join(', ')
@@ -710,8 +765,13 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
                               placeholder="$0"
                             />
                           </label>
-                          {filled[r.trade] && filled[r.trade]?.budget === r.budget && (
+                          {filled[r.trade] && filled[r.trade]?.budget === r.budget ? (
                             <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem', whiteSpace: 'nowrap' }}>{filled[r.trade]?.words}</span>
+                          ) : (
+                            sqFt !== null &&
+                            budgetNumber(r.budget) > 0 && (
+                              <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem', whiteSpace: 'nowrap' }}>{perSqFtWords(budgetNumber(r.budget) / sqFt)}</span>
+                            )
                           )}
                         </>
                       )}
@@ -751,7 +811,7 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
                             const b = r.budget.trim() === '' ? budgetForSize(state, r.trade, sqFt) : null
                             if (b === null) continue
                             const budget = b.amount.toLocaleString('en-US')
-                            const rate = `$${b.perSqFt.toFixed(2)} a sq ft`
+                            const rate = perSqFtWords(b.perSqFt)
                             next[r.trade] = { budget, words: b.jobs > 0 ? `${rate}, from ${b.jobs} past ${b.jobs === 1 ? 'job' : 'jobs'}` : `${rate}, a rough rate` }
                             edit(r.trade, { budget })
                           }
@@ -767,11 +827,7 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
                   )}
                 </div>
               )}
-              {budgets > 0 && (
-                <div style={{ color: 'var(--text-600)', fontSize: '0.875rem' }}>
-                  The budgets add up to <strong>{money(budgets)}</strong>. A budget is our own guess. It fills the price until a quote comes in.
-                </div>
-              )}
+              {budgets > 0 && <BudgetSummary picked={picked} sqFt={sqFt} />}
             </div>
           )}
 
