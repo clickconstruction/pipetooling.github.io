@@ -27,7 +27,7 @@ describe('SeeWhatTheGcSees (v2.4189, #62 Layer 2)', () => {
     expect(pane.textContent).toContain('CLICK PLUMBING')
     expect(pane.textContent).toContain('Product review · Rev 1')
     expect(pane.textContent).toContain('ZZ Test')
-    expect(screen.getByTestId('room-headline').textContent).toContain('1 row needs a call')
+    expect(screen.getByTestId('room-headline').textContent).toContain('1 product needs your answer')
     expect(screen.getAllByTestId('room-row')).toHaveLength(1)
     expect(screen.getAllByTestId('room-row')[0]!.textContent).toContain('DWH-1')
     expect(screen.queryByRole('group', { name: /Your call on/ })).toBeNull()

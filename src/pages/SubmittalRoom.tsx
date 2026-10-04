@@ -382,7 +382,7 @@ export default function SubmittalRoom() {
             ) : null}
             <div style={{ ...card, marginTop: 12, background: 'var(--bg-muted)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }} data-testid="room-footer">
               <span style={{ fontSize: '0.85rem' }}>
-                <b>{rev.counts.decided} decided · {rev.rows.filter((r) => (r.kind === 'differs' || r.kind === 'proposed') && !foldPending(r, pending, me?.name ?? '', '').decision).length} to go</b>
+                <b>{rev.counts.decided} decided · {rev.rows.filter((r) => (r.kind === 'differs' || r.kind === 'proposed') && !foldPending(r, pending, me?.name ?? '', '').decision).length} to answer</b>
                 {Object.keys(pending).length > 0 ? <span style={quiet}> · {Object.keys(pending).length} to send</span> : null}
               </span>
               {rev.counts.open > 0 && me?.mayDecide !== false ? (

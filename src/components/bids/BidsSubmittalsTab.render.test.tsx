@@ -498,7 +498,7 @@ describe('BidsSubmittalsTab', () => {
     const dialog = screen.getByRole('dialog', { name: 'What the GC sees' })
     const pane = within(dialog).getByTestId('see-gc-pane')
     expect(pane.textContent).toContain('Product review · Rev 1')
-    expect(screen.getByTestId('room-headline').textContent).toContain('1 row needs a call')
+    expect(screen.getByTestId('room-headline').textContent).toContain('1 product needs your answer')
     expect(screen.getAllByTestId('room-row')).toHaveLength(1)
     expect(screen.queryByRole('group', { name: /Your call on/ })).toBeNull()
     fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }))
@@ -515,7 +515,7 @@ describe('BidsSubmittalsTab', () => {
     mount()
     await screen.findAllByTestId('submittal-row')
     const line = screen.getByTestId('reviewer-line').textContent ?? ''
-    expect(line).toContain('The GC’s page will read: “1 row needs a call” — 1 row match the plans and is marked approved. 1 differs — each says why.')
+    expect(line).toContain('The GC’s page will read: “1 product needs your answer” — 1 product matches the plans and is marked approved. 1 differs — each says why.')
     expect(line).toContain('The GC sees nothing until you share.')
   })
 

@@ -20,13 +20,13 @@ describe('describeForReviewer (v2.4174, #62 Layer 1)', () => {
       false,
     )
     expect(r.lead).toBe('The GC’s page will read:')
-    expect(r.line).toBe('“1 row needs a call” — 1 row match the plans and is marked approved. 1 differs — each says why. 1 has no product yet. 1 is accessory the plans leave to us.')
+    expect(r.line).toBe('“1 product needs your answer” — 1 product matches the plans and is marked approved. 1 differs — each says why. 1 has no product yet. 1 is accessory the plans leave to us.')
     expect(r.note).toBe('The GC sees nothing until you share.')
   })
   it('a shared revision reads as what the link shows now; a clean draft reads as matching', () => {
     const r = describeForReviewer([item({ id: 'a', tag: 'WC-1', status: 'as_specified' })], true)
     expect(r.lead).toBe('The GC’s page reads:')
-    expect(r.line).toBe('“Everything matches the plans” — 1 row match the plans and is marked approved.')
+    expect(r.line).toBe('“Everything matches the plans” — 1 product matches the plans and is marked approved.')
     expect(r.note).toBe('That is what the link shows now.')
     expect(describeForReviewer([], false).line).toBe('“Nothing to review yet”')
   })

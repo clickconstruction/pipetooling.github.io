@@ -17,7 +17,7 @@ export type DecisionKind = NonNullable<RoomRow['decision']>['kind']
 const DECISION_WORD: Record<DecisionKind, string> = { approved: 'Approved', revise: 'Revise', rejected: 'Rejected' }
 const DECISION_INK: Record<DecisionKind, string> = { approved: '#1f7a3a', revise: ROOM_COPPER, rejected: '#b42318' }
 
-/** "3 approved · 1 revise · 2 to go" over a card's parts, counting the calls not sent yet. */
+/** "3 parts · 3 approved · 1 revise · 2 to answer" over a card's parts, counting the calls not sent yet. */
 function partsSummary(parts: ReadonlyArray<RoomPart>, localParts: Record<string, DecisionKind | undefined>): string {
   const c = { approved: 0, revise: 0, rejected: 0, open: 0 }
   for (const p of parts) {
@@ -25,8 +25,8 @@ function partsSummary(parts: ReadonlyArray<RoomPart>, localParts: Record<string,
     if (k) c[k] += 1
     else c.open += 1
   }
-  const bits = [c.approved ? `${c.approved} approved` : '', c.revise ? `${c.revise} revise` : '', c.rejected ? `${c.rejected} rejected` : '', c.open ? `${c.open} to go` : ''].filter(Boolean)
-  return `${parts.length} parts${bits.length ? ` · ${bits.join(' · ')}` : ''}`
+  const bits = [c.approved ? `${c.approved} approved` : '', c.revise ? `${c.revise} revise` : '', c.rejected ? `${c.rejected} rejected` : '', c.open ? `${c.open} to answer` : ''].filter(Boolean)
+  return `${parts.length} part${parts.length === 1 ? '' : 's'}${bits.length ? ` · ${bits.join(' · ')}` : ''}`
 }
 
 const seg = (on: boolean, tone: 'g' | 'a' | 'r'): CSSProperties => ({
@@ -52,18 +52,19 @@ export function RoomRowCard({ row, local, localParts = {}, onDecide, readOnly = 
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline' }}>
         <b>{row.tag || 'Accessory'}</b>
         <span style={{ fontSize: '0.65rem', fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: tone }}>
-          {row.kind === 'differs' ? 'differs' : row.kind === 'proposed' ? 'proposed' : row.kind === 'added' ? 'added for the fixture' : row.kind === 'not_quoted' ? 'to follow' : 'as the plans specify'}
+          {row.kind === 'differs' ? 'differs' : row.kind === 'proposed' ? 'for your review' : row.kind === 'added' ? 'added for the fixture' : row.kind === 'not_quoted' ? 'to follow' : 'as the plans specify'}
         </span>
       </div>
       {row.plans ? (
-        <div style={{ ...roomQuiet, marginTop: 4 }}>
-          The plans: <b style={{ color: 'var(--text-strong)' }}>{row.plans}</b>
+        // 2026-10-03 · a row from the takeoff carries our own name for the fixture, not the plans' product: it reads as the fixture, with no "The plans:".
+        <div style={{ ...roomQuiet, marginTop: 4 }} data-testid="room-row-plans">
+          {row.kind === 'proposed' ? row.plans : <>The plans: <b style={{ color: 'var(--text-strong)' }}>{row.plans}</b></>}
         </div>
       ) : null}
       {parts.length > 0 ? (
         <div style={{ marginTop: 4 }} data-testid="room-parts">
           <div style={{ ...roomQuiet, display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
-            <span>{row.kind === 'matches' ? 'Submitted' : 'Proposed'}:</span>
+            <span>{row.kind === 'matches' ? 'Submitted' : row.kind === 'proposed' ? 'We intend to install' : 'Proposed'}:</span>
             <span data-testid="room-parts-summary">{partsSummary(parts, localParts)}</span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', marginTop: 2 }}>
@@ -99,7 +100,7 @@ export function RoomRowCard({ row, local, localParts = {}, onDecide, readOnly = 
         </div>
       ) : row.proposed ? (
         <div style={{ marginTop: 2, fontSize: '0.9rem' }}>
-          {row.kind === 'matches' ? 'Submitted' : 'Proposed'}: <b>{row.proposed}</b>
+          {row.kind === 'matches' ? 'Submitted' : row.kind === 'proposed' ? 'We intend to install' : 'Proposed'}: <b>{row.proposed}</b>
         </div>
       ) : null}
       {row.why ? <div style={{ ...roomQuiet, marginTop: 4 }}>{row.kind === 'differs' ? 'Why: ' : ''}{row.why}</div> : null}
