@@ -517,6 +517,10 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
     adds? Today a signed one's days add to the contract time (`contractDaysAdded`): the owner's
     portal says "Days your change orders add to the job: +5 days". The milestone on the schedule
     (the Building lane's) stays where it was. (Owner Billing lane, 2026-10-03.)
+29. Texts to trade partners: the portal's invitation, the start day and a few urgent notes go by
+    text as well as email (*Workflow steps not built yet*, the portal's events). The app sends
+    email through Resend and has no text sender. Add one before the real build, or send email only?
+    (Portal lane, 2026-10-03.)
 
 ## The schedule (proposed 2026-10-02, built 2026-10-03)
 
@@ -597,6 +601,27 @@ the bullets below are the shape they set.
   | A punch item added or sent back; an item fixed | The trade; the superintendent | The trade: email and text with the item. The superintendent: **To verify** and a text when an item is marked fixed |
   | A change order sent to sign (`sendTradeChange`) | The trade | Email with its portal link (the Portal lane's messages) |
   | Retainage can be paid (`tradeRetainageOpensOn`) | The office, the trade | Inbox on that day; the trade hears that its release is coming |
+
+  The trade portal's events, and where each would go (Portal lane, 2026-10-03). Every message goes
+  out in the company's language (`Partner.lang`, set by the company or the office) and carries its
+  one portal link (`portalLink`, no password). **Their messages** already shows each email as
+  written (`portalMessages`); nothing is sent. Email goes through Resend. A text needs a sender the
+  app does not have yet (question 29):
+
+  | Event | Who hears | Where |
+  |---|---|---|
+  | A new ask (`invite`) | The company's contact | Email and text the day we ask: the trade, the project, the day the number is due, what it should cover. Asked to bid on the home |
+  | A set that changed their trade (`issuePlanSet`) | Each company on the trade: every one bidding it while we bid, only the one on it once the job is ours | Email the day the set goes out, naming the changed sheets. A text too when they already sent a number, since it needs a second look. Needs you says "Confirm your number or change it" |
+  | A promise passed (`askPromise`) | The company; the project manager | The company: one email the next morning, in Needs you's words ("You told Click your number would come by …"), no text. The office: Follow up already lists it first; the project manager gets it in the morning email in the bid's last week |
+  | An answer to their question (`answerQuestion`) | Every company bidding the trade, or the one on it once the job is ours. Never who asked | Email the day it is answered, with the question, the answer and the set it rides in. Needs you for a week |
+  | A reminder the office sends (Follow up) | The company | Email and text, as the office chose |
+  | A bid tab shared | Each company that quoted | Email; Needs you until opened |
+  | The master agreement, a statement of work, or a change order to sign | The company | Email; Needs you until signed |
+  | The day work starts | Each company on the job | Email and text |
+  | A draw paid, or approved for less | The company | Email with the amount and the waiver it now asks for |
+  | Insurance running out (`COI_WARN_DAYS`) | The company | Email 30 days before; Needs you, red once it ran out |
+  | A bid we lost (`markLost`) | Each company still on a trade there | Email the day it is marked |
+  | Look-ahead marks due (`lookAheadOwed`) | Each company on a job being built | A text Friday morning, "Mark your week"; Needs you already says so |
 
 ## Where it plugs into the app that exists
 
