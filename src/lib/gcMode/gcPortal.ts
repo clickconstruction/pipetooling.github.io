@@ -5,20 +5,22 @@
  *
  * The words follow the plain-words rules at the top of `gcTour.ts`.
  */
-import type { BidAlternate, Draw, GcProject, GcState, Invite, LookAheadMark, Partner, PlanQuestion, PlanSet, ProjectContact, PromiseKind, ScopeItem, SubBid, TheirSovLine, TradePackage, TradePromise } from './gcTypes'
+import type { BidAlternate, Draw, GcProject, GcState, Invite, LookAheadMark, Partner, PlanQuestion, PlanSet, ProjectContact, PromiseKind, QuoteExclusion, ScopeItem, Sow, SubBid, TheirSovLine, TradePackage, TradePromise } from './gcTypes'
 import { daysUntil, money } from './gcWords'
 import { currentRev, partnerById } from './gcLookups'
 import { bareId, preBidInvited, questionState, questionsFor, sheetsGoneAtRev, type QuestionState } from './gcPlans'
 import { askPromise, OPEN_WITHIN_DAYS, type AskPromise } from './gcFollowUp'
 import { bidIsStale, quoteRanOut, sowMoney } from './gcBids'
 import { GC_COMPANY } from './gcFixture'
-import { pDate, pt, pTime, pWeekday, type PortalKey, type PortalLang } from './gcPortalI18n'
+import { pDate, pExclusion, pt, pTime, pWeekday, type PortalKey, type PortalLang } from './gcPortalI18n'
 import { inSentence, lineSheets, linesOnSpecs, specsAtRev, specsGoneAtRev, tradeSheets, tradesForSheets } from './gcNewProject'
 import { addDays, retainageHeldNow, sentBackOpen, sowContractSum, tradeChangesFor, tradeCloseout, workAllBilled } from './gcBuilding'
 import { lookAheadWeeks, markState, mondayOf, scheduleRows, type LookAheadState, type ScheduleRow } from './gcBuildingSchedule'
 import { onSite } from './gcBuildingLog'
 import { submittalRowsOn } from './gcBuildingSubmittals'
 import { SOV_STAGES, stageReached, theirSovGap } from './gcTheirSov'
+import { exclusionsFor } from './gcExclusions'
+import { scopeBookExclusions } from './gcScopeBook'
 import { vettingOf } from './gcVetting'
 import { INSURANCE_ASK_DAYS, PROMISE_WHAT, tradePromisesOf, tradePromiseState } from './gcPromises'
 import { punchItems, punchState } from './gcBuildingPunch'
@@ -214,6 +216,11 @@ export function portalClosedWords(project: GcProject, sentNumber: boolean, lang:
  * company sees it when it quotes (owner, 2026-10-04: on the bid form and the invitation). Empty on
  * older projects and on a trade with nothing listed. What the office typed stays as typed.
  */
+/** Who does excluded work, inside a sentence: Click for "us", "the owner", or a trade (lower case in English, HVAC kept; as typed in Spanish). */
+function exclusionWho(by: string, lang: PortalLang): string {
+  return by === 'us' ? GC_COMPANY.shortName : by === 'the owner' ? pt(lang, 'byOwner') : lang === 'es' ? by : inSentence(by)
+}
+
 export function portalLeavesOut(pkg: TradePackage, lang: PortalLang = 'en'): string[] {
   return (pkg.excludes ?? [])
     .filter((x) => x.label.trim() !== '')
@@ -221,9 +228,7 @@ export function portalLeavesOut(pkg: TradePackage, lang: PortalLang = 'en'): str
       const what = x.label.trim()
       const by = x.by.trim()
       if (!by) return what
-      // A trade's name stays as typed in Spanish; in an English sentence it reads lower case, HVAC kept.
-      const who = by === 'us' ? GC_COMPANY.shortName : by === 'the owner' ? pt(lang, 'byOwner') : lang === 'es' ? by : inSentence(by)
-      return pt(lang, 'leavesOutLine', { what, who })
+      return pt(lang, 'leavesOutLine', { what, who: exclusionWho(by, lang) })
     })
 }
 
@@ -481,6 +486,35 @@ export function portalPreBid(state: GcState, project: GcProject, partnerId: stri
     rule: pt(lang, m.mandatory ? 'pbRequired' : 'pbOptional'),
     after: !held ? pt(lang, 'pbBring') : came ? pt(lang, 'pbCame') : missed ? pt(lang, 'pbMissed') : pt(lang, 'pbMinutes'),
   }
+}
+
+// ---------------------------------------------------------------------------------------------
+// What a company's own quote leaves out (owner, 2026-10-04, exclusions by company)
+// ---------------------------------------------------------------------------------------------
+
+/** The exclusions a trade's quote form offers as ticks: the scope book's for the trade first, then its usual ones, then everyone's. */
+export function portalExclusionChoices(state: GcState, pkg: TradePackage): string[] {
+  return exclusionsFor(pkg.trade, scopeBookExclusions(state))
+}
+
+/** A quote's exclusions in a sentence's words: "rock excavation ($38 per cy if it comes up) and sales tax". */
+export function portalExclusionWords(list: QuoteExclusion[], lang: PortalLang = 'en'): string {
+  const words = list.map((e) => {
+    const name = pExclusion(lang, e.name)
+    const what = lang === 'es' ? name.charAt(0).toLowerCase() + name.slice(1) : inSentence(name)
+    return e.unitPrice ? pt(lang, 'exUnitWords', { what, amount: money(e.unitPrice.amount), unit: e.unitPrice.unit }) : what
+  })
+  if (words.length <= 1) return words[0] ?? ''
+  return `${words.slice(0, -1).join(', ')}${pt(lang, 'and')}${words[words.length - 1]}`
+}
+
+/** "What you will not do" on a statement of work: "Rock excavation, $38 per cy if it comes up", "Testing and inspections (the owner does it)". */
+export function portalSowExcluded(sow: Sow, lang: PortalLang = 'en'): string[] {
+  return (sow.excluded ?? []).map((x) => {
+    const what = pExclusion(lang, x.name)
+    if (x.unitPrice) return pt(lang, 'sowNotUnit', { what, amount: money(x.unitPrice.amount), unit: x.unitPrice.unit })
+    return x.by ? pt(lang, 'leavesOutLine', { what, who: exclusionWho(x.by, lang) }) : what
+  })
 }
 
 export function portalJobMoney(pkg: TradePackage): PortalJobMoney | null {

@@ -236,6 +236,7 @@ function FollowUpCard({
         <GcDeclineForm
           company={partner.company}
           why={declining}
+          context={`${project.name} · ${pkg.trade}`}
           onCancel={() => setDeclining(null)}
           onSave={(reason, note) => {
             dispatch({ type: 'officeDecline', ...ids, why: declining, reason, note })

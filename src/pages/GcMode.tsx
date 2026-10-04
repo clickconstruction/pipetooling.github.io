@@ -75,7 +75,7 @@ type BoardTab = 'projects' | 'followup' | 'partners' | 'money'
 type ProjectTab = 'packages' | 'plans' | 'number' | 'tabs' | 'contracts' | 'start' | 'draws' | 'owner' | 'closeout' | 'schedule' | 'log' | 'submittals'
 
 const STAGES: { key: GcStage; label: string; tone: Tone; blurb: string }[] = [
-  { key: 'pursuing', label: 'Bidding to the owner', tone: 'amber', blurb: 'Collect a number for every trade, then give the owner a price.' },
+  { key: 'pursuing', label: 'Bidding to the customer', tone: 'amber', blurb: 'Collect a number for every trade, then give the customer a price.' },
   { key: 'buyout', label: 'Buying out', tone: 'blue', blurb: 'We won. Award each trade, get everything signed, then start.' },
   { key: 'building', label: 'Building', tone: 'green', blurb: 'Trades report their work and ask for draws.' },
 ]
@@ -104,7 +104,7 @@ const BOARD_SECTIONS: {
   {
     key: 'closed',
     label: 'Closed',
-    blurb: 'Every trade closed out and the owner paid our last bill. Kept here for the record.',
+    blurb: 'Every trade closed out and the customer paid our last bill. Kept here for the record.',
     empty: 'None yet.',
     holds: (p: GcProject) => Boolean(p.closedOn),
     // Newest closed first.
@@ -115,7 +115,7 @@ const BOARD_SECTIONS: {
     // Bidding once lostOn is set, from We lost this on Our number.
     key: 'lost',
     label: 'Lost',
-    blurb: 'Bids the owner gave to another builder. Kept so we learn why.',
+    blurb: 'Bids the customer gave to another builder. Kept so we learn why.',
     empty: 'None yet.',
     holds: (p: GcProject) => Boolean(p.lostOn),
     order: (a: GcProject, b: GcProject) => (b.lostOn ?? '').localeCompare(a.lostOn ?? ''),
@@ -133,7 +133,7 @@ const PROJECT_TABS: { key: ProjectTab; label: string }[] = [
   { key: 'schedule', label: 'Schedule' },
   { key: 'log', label: 'Daily log' },
   { key: 'draws', label: 'Draws' },
-  { key: 'owner', label: 'Bill the owner' },
+  { key: 'owner', label: 'Bill the customer' },
   { key: 'closeout', label: 'Closeout' },
 ]
 
@@ -1035,7 +1035,7 @@ function ProjectHeader({
             }
           />
           <Stat
-            label={owner.signed ? 'Price to the owner, as signed' : totals.holes.length > 0 ? 'Price so far, with holes' : 'Price to the owner'}
+            label={owner.signed ? 'Price to the customer, as signed' : totals.holes.length > 0 ? 'Price so far, with holes' : 'Price to the customer'}
             value={owner.signed ? money(owner.price) : <>{money(totals.price)}<PlusUnknown words={proposalUncostedWords(project)} /></>}
           />
         </div>

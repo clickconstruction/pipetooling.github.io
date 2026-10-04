@@ -78,11 +78,26 @@ describe('a pay application as the AIA template', () => {
     const g702 = wb.getWorksheet('Page 1 G702')
     const g703 = wb.getWorksheet('Continuation Sheet G703')
     expect(g702?.getCell('D6').value).toBe('Cibolo Creek Partners')
+    expect(g702?.getCell('A5').value).toBe('TO CUSTOMER:')
+    expect(g702?.getCell('N8').value ?? null).toBeNull()
     expect(g702?.getCell('H40').value).toBe(Math.round(app.summary.previousCertificates * 100) / 100)
     expect(g703?.getCell('C13').value).toBe(app.lines[0]?.label)
     expect(g703?.getCell('D13').value).toBe(Math.round((app.lines[0]?.scheduled ?? 0) * 100) / 100)
     const after = PAY_APP_FIRST_ROW + app.lines.length
     expect([g703?.getCell(`C${after}`).value ?? null, g703?.getCell(`D${after}`).value]).toEqual([null, 0])
+  }, 20_000)
+
+  it('names the property’s owner when it is not the customer', async () => {
+    const template = readFileSync('public/templates/aia-g702-g703-mission-hills.xlsx')
+    const book = await payAppWorkbook(template.buffer.slice(template.byteOffset, template.byteOffset + template.byteLength), form().app, { ...parties, propertyOwner: 'Helotes Plaza LLC' })
+    const ExcelJS = await import('exceljs')
+    const wb = new ExcelJS.Workbook()
+    await wb.xlsx.load(book)
+    const g702 = wb.getWorksheet('Page 1 G702')
+    expect([g702?.getCell('L8').value, g702?.getCell('N8').value]).toEqual(['PROJECT OWNER:', 'Helotes Plaza LLC'])
+    const state = initialGcState()
+    const p = { ...fairOaks(state), propertyOwner: 'Helotes Plaza LLC' }
+    expect(ownerPayAppParties(state, p, form()).propertyOwner).toBe('Helotes Plaza LLC')
   }, 20_000)
 
   it('draws a PDF of the 702 and the 703', async () => {

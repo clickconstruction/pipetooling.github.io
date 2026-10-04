@@ -45,7 +45,8 @@ Use these so a company reads one word for one thing across the portal.
 | bid tab | tabla de precios |
 | trade (the work) | especialidad |
 | trade partner | subcontratista |
-| the owner (of the project) | el dueño |
+| the owner (of the property) | el dueño |
+| the customer (whoever hires and pays us; owner, 2026-10-04) | el cliente |
 | report your work, percent done | reporte su avance, % terminado |
 | sent back, approved, paid | devuelta, aprobada, pagada (a pay application is feminine) |
 | due | vence |
@@ -119,7 +120,7 @@ column headers are in one block at the end of `gcBuildingWords.ts`, for the nati
 
 ## For a native speaker to read
 
-Every Spanish string the trade's portal shows, 705 in all, drawn from the code on 2026-10-04.
+Every Spanish string the trade's portal shows, 760 in all, drawn from the code on 2026-10-04.
 They're grouped by screen, English on the left. Please mark anything that reads wrong, stiff or
 unclear, and write the better words beside it. The Portal lane makes the changes and passes the
 other lanes theirs.
@@ -182,7 +183,7 @@ they were written in. The portal does not translate them.
 | {trade} · result | {trade} · resultado |
 | This one went to another company. Thank you for your quote. | Este trabajo fue para otra empresa. Gracias por su cotización. |
 | {gc} did not win this project. | {gc} no ganó este proyecto. |
-| The owner stopped this project or put it on hold. | El dueño detuvo este proyecto o lo puso en pausa. |
+| The customer stopped this project or put it on hold. | El cliente detuvo este proyecto o lo puso en pausa. |
 | You do not need to send a quote. Thank you for your time. | No necesita enviar su cotización. Gracias por su tiempo. |
 | Thank you for your quote. | Gracias por su cotización. |
 | {trade} · invitation | {trade} · invitación |
@@ -233,6 +234,18 @@ they were written in. The portal does not translate them.
 
 | English | Español |
 |---|---|
+| What your quote leaves out | Lo que su cotización no incluye |
+| Tick what your quote leaves out. Anything left unticked is in your price. | Marque lo que su cotización no incluye. Lo que no marque está incluido en su precio. |
+| If it comes up: | Si se necesita: |
+| per | por |
+| Price per unit, if it comes up | Precio por unidad, si se necesita |
+| The unit, like cy | La unidad, por ejemplo yd3 |
+| Something else you exclude | Algo más que no incluye |
+| Your quote leaves out: {list}. | Su cotización no incluye: {list}. |
+| {what} ({amount} per {unit} if it comes up) | {what} ({amount} por {unit} si se necesita) |
+| What you will do | Lo que usted hará |
+| What you will not do | Lo que usted no hará |
+| {what}, {amount} per {unit} if it comes up | {what}, {amount} por {unit} si se necesita |
 | Your schedule of values | Su desglose por etapas |
 | How your quote splits by stage. It is optional. Rename, add or take out lines. They must add up to your quote. | Cómo se divide su cotización por etapa. Es opcional. Puede cambiar, agregar o quitar partidas. Deben sumar su cotización. |
 | How your price splits by stage, so {gc} reads your billing on your own lines. It must add up to {amount}. | Cómo se divide su precio por etapa, para que {gc} lea su cobro en sus propias partidas. Debe sumar {amount}. |
@@ -252,7 +265,7 @@ they were written in. The portal does not translate them.
 | Billed {amount} to date: {where}. | Cobrado {amount} a la fecha: {where}. |
 | through {list} | completo hasta {list} |
 | {pct}% into {label} | {pct}% de {label} |
-| Not in your scope | Fuera de su alcance |
+| Known exclusions | Exclusiones conocidas |
 | Leave these out of your quote. Someone else does them. | No los incluya en su cotización. Otra persona los hace. |
 | {what} ({who} does it) | {what} (lo hace {who}) |
 | the owner | el dueño |
@@ -321,7 +334,7 @@ they were written in. The portal does not translate them.
 | stopped or on hold | detenido o en pausa |
 | you passed | no cotizó |
 | {gc} won the job. {trade} is not picked yet. | {gc} ganó el proyecto. Todavía no se elige a nadie para {trade}. |
-| {gc} sent its bid {date}. The owner picks next. | {gc} envió su propuesta el {date}. Ahora decide el dueño. |
+| {gc} sent its bid {date}. The customer picks next. | {gc} envió su propuesta el {date}. Ahora decide el cliente. |
 | No due day yet. | Todavía no hay fecha límite. |
 | Was due {date}. | Venció el {date}. |
 | Due today, {date}. | Vence hoy, {date}. |
@@ -583,7 +596,7 @@ they were written in. The portal does not translate them.
 | payment was due {date} | el pago vencía el {date} |
 | paid back {date} | devuelto el {date} |
 | comes back {date} | se devuelve el {date} |
-| comes back after {gc} accepts your work and the owner pays {gc} | se devuelve después de que {gc} acepte su trabajo y el dueño le pague a {gc} |
+| comes back after {gc} accepts your work and the customer pays {gc} | se devuelve después de que {gc} acepte su trabajo y el cliente le pague a {gc} |
 | contract {contract} · paid {paid} · left to bill {left} | contrato {contract} · pagado {paid} · por facturar {left} |
 | No pay applications yet. | Todavía no hay solicitudes de pago. |
 
@@ -633,7 +646,7 @@ they were written in. The portal does not translate them.
 | We would like your quote for {trade} on {project}. | Nos gustaría recibir su cotización de {trade} para {project}. |
 | Your quote is due {date}. | Su cotización vence el {date}. |
 | Plans to price: {label}, issued {date}. | Planos para cotizar: {label}, emitidos el {date}. |
-| Leave these out. Someone else does them: | No incluya esto. Otra persona lo hace: |
+| Known exclusions. Leave these out, someone else does them: | Exclusiones conocidas. No las incluya, otra persona las hace: |
 | Your quote should cover these lines. | Su cotización debe incluir estas partidas. |
 |  by {date} |  a más tardar el {date} |
 | A reminder: {about} | Recordatorio: {about} |
@@ -757,6 +770,54 @@ they were written in. The portal does not translate them.
 | yesterday | ayer |
 | {n} days ago | hace {n} días |
 
+#### The usual exclusions, by name
+
+| English | Español |
+|---|---|
+| Permits and fees | Permisos y cuotas |
+| Bonds | Fianzas |
+| Sales tax | Impuesto sobre ventas |
+| Testing and inspections | Pruebas e inspecciones |
+| Night or weekend work | Trabajo de noche o en fin de semana |
+| Temporary power and water | Luz y agua provisionales |
+| Dewatering | Desagüe del terreno |
+| Rock excavation | Excavación en roca |
+| Haul off of bad soil | Retiro de tierra mala |
+| Erosion control and SWPPP | Control de erosión y SWPPP |
+| Rebar supply | Suministro de varilla |
+| Vapor barrier | Barrera de vapor |
+| Pump truck | Bomba de concreto |
+| Cold weather protection | Protección contra el frío |
+| Crane | Grúa |
+| Fireproofing | Protección contra fuego |
+| Touch-up paint | Retoque de pintura |
+| Roof curbs | Bases de techo para equipo |
+| Roof blocking | Madera de bloqueo en el techo |
+| Warranty past two years | Garantía de más de dos años |
+| Controls | Controles |
+| Test and balance | Prueba y balanceo |
+| Fire dampers | Compuertas cortafuego |
+| Fire alarm | Alarma contra incendio |
+| Low voltage | Bajo voltaje |
+| Utility company fees | Cuotas de la compañía de servicios |
+| Light fixtures supply | Suministro de lámparas |
+| Gas piping | Tubería de gas |
+| Fixtures supply | Suministro de muebles de baño |
+| Tap fees | Cuotas de conexión |
+| Water heater | Calentador de agua |
+| Fire alarm tie-in | Conexión a la alarma contra incendio |
+| Fire pump | Bomba contra incendio |
+| Backflow preventer | Válvula antirretorno |
+| Insulation | Aislamiento |
+| Blocking for others | Bloqueo para otros oficios |
+| Level 5 finish | Acabado nivel 5 |
+| Exterior paint | Pintura exterior |
+| Special coatings | Recubrimientos especiales |
+| Floor prep and leveling | Preparación y nivelación de piso |
+| Moisture testing | Prueba de humedad |
+| Irrigation sleeves under paving | Camisas para riego bajo pavimento |
+| Maintenance after planting | Mantenimiento después de plantar |
+
 #### Dates and the plans' disciplines
 
 | English | Español |
@@ -832,8 +893,8 @@ they were written in. The portal does not translate them.
 | It opens once {gc} accepts your work. | Se abre cuando {gc} acepte su trabajo. |
 | {gc} paid your retainage. | {gc} le pagó su retención. |
 | {gc} approved it. Payment is coming. | {gc} la aprobó. El pago viene en camino. |
-| {gc} pays your retainage {date}, {days} days after the owner paid {gc}. | {gc} le paga su retención el {date}, {days} días después de que el dueño le pagó a {gc}. |
-| {gc} pays your retainage {days} days after the owner pays {gc} its own. | {gc} le paga su retención {days} días después de que el dueño le pague a {gc} la suya. |
+| {gc} pays your retainage {date}, {days} days after the customer paid {gc}. | {gc} le paga su retención el {date}, {days} días después de que el cliente le pagó a {gc}. |
+| {gc} pays your retainage {days} days after the customer pays {gc} its own. | {gc} le paga su retención {days} días después de que el cliente le pague a {gc} la suya. |
 | Sign the unconditional final release of lien below. | Firme abajo su liberación final de gravamen incondicional. |
 | Last, you sign the unconditional final release of lien. | Al final, firme su liberación final de gravamen incondicional. |
 
@@ -1026,13 +1087,13 @@ they were written in. The portal does not translate them.
 
 | English | Español |
 |---|---|
-| Click sent its bid. The owner has not picked a builder yet. | Click envió su propuesta. El dueño todavía no elige constructor. |
-| Click sent its bid on Oct 2. The owner has not picked a builder yet. | Click envió su propuesta el 2 oct. El dueño todavía no elige constructor. |
+| Click sent its bid. The customer has not picked a builder yet. | Click envió su propuesta. El cliente todavía no elige constructor. |
+| Click sent its bid on Oct 2. The customer has not picked a builder yet. | Click envió su propuesta el 2 oct. El cliente todavía no elige constructor. |
 | Click won the project. This trade is not awarded yet. | Click ganó el proyecto. Esta especialidad todavía no se adjudica. |
 | Click won the project. This trade is yours. | Click ganó el proyecto. Esta especialidad es suya. |
 | Click won the project. This trade went to another company. | Click ganó el proyecto. Esta especialidad fue para otra empresa. |
 | Click did not win this project. Thank you for your quote. | Click no ganó este proyecto. Gracias por su cotización. |
-| The owner stopped this project or put it on hold. Thank you for your quote. | El dueño detuvo este proyecto o lo puso en pausa. Gracias por su cotización. |
+| The customer stopped this project or put it on hold. Thank you for your quote. | El cliente detuvo este proyecto o lo puso en pausa. Gracias por su cotización. |
 
 #### The table
 

@@ -179,10 +179,10 @@ describe('closeout: retainage release and the final releases of lien', () => {
     expect(closeout(ready())).toMatchObject({ canAskFinal: true, canPay: false })
   })
 
-  it('pays it 10 days after the owner pays us ours', () => {
+  it('pays it 10 days after the customer pays us ours', () => {
     const asked = play([{ type: 'tradeSendFinalPayApp', ...ids, ...typed }], ready())
     expect(closeout(asked).next?.key).toBe('ownerReleased')
-    // The owner paid us Sep 25: theirs can be paid Oct 5, after today (Oct 2).
+    // The customer paid us Sep 25: theirs can be paid Oct 5, after today (Oct 2).
     expect(closeout(ownerPaid(asked, '2026-09-25'))).toMatchObject({ canPay: false, opensOn: '2026-10-05' })
     // Paid Sep 20: Sep 30 has passed.
     const paid = ownerPaid(asked, '2026-09-20')
@@ -231,9 +231,9 @@ describe('closeout: retainage release and the final releases of lien', () => {
     expect(left.ready).toBe(false)
     expect(left.left).toContain('Plumbing: our own crew is 0% done.')
     expect(left.left).toContain('Framing and drywall: final pay application.')
-    expect(left.left).toContain('The owner has not paid our final pay application.')
+    expect(left.left).toContain('The customer has not paid our final pay application.')
     const paid = ownerPaid(ready(), '2026-09-20')
-    expect(jobCloseout(paid, helotes(paid)).left).not.toContain('The owner has not paid our final pay application.')
+    expect(jobCloseout(paid, helotes(paid)).left).not.toContain('The customer has not paid our final pay application.')
   })
 })
 

@@ -18,6 +18,9 @@ import {
   portalLeavesOut,
   portalLink,
   portalOnSite,
+  portalExclusionChoices,
+  portalExclusionWords,
+  portalSowExcluded,
   portalPreBid,
   portalSovCheck,
   portalSovReached,
@@ -671,7 +674,7 @@ describe('a project we lost', () => {
     ])
     expect(won?.lines.join(' ')).not.toMatch(/Hill Country|lower number/)
     const died = portalMessages(lost('project_died'), 'lonestar').find((m) => m.kind === 'closed')
-    expect(died?.lines.slice(2)).toEqual(['The owner stopped this project or put it on hold.', 'Thank you for your quote.'])
+    expect(died?.lines.slice(2)).toEqual(['The customer stopped this project or put it on hold.', 'Thank you for your quote.'])
   })
 
   it('emails each company still on a trade there the day it is marked, in its language, and not one that passed', () => {
@@ -1141,5 +1144,43 @@ describe('the pre-bid meeting in the portal', () => {
     // The Spanish time ends "m.": no sentence adds a second period after it.
     const es = [...portalTodos(set, 'lonestar', undefined, 'es').map((t) => t.text), ...(portalMessages(set, 'lonestar', 'es').find((x) => x.kind === 'preBid')?.lines ?? [])]
     expect(es.filter((x) => x.includes('m..'))).toEqual([])
+  })
+})
+
+describe('what a company’s quote leaves out', () => {
+  const boerne = (s: GcState) => s.projects.find((p) => p.id === 'boerne')!
+  const steel = (s: GcState) => boerne(s).packages.find((k) => k.id === 'steel')!
+
+  it('offers the trade’s usual exclusions first, then everyone’s', () => {
+    const choices = portalExclusionChoices(state, steel(state))
+    expect(choices.slice(0, 3)).toEqual(['Crane', 'Fireproofing', 'Touch-up paint'])
+    expect(choices).toContain('Sales tax')
+  })
+
+  it('says them in a sentence, with a unit price where one was given, in both languages', () => {
+    const list = [{ name: 'Rock excavation', unitPrice: { amount: 38, unit: 'cy' } }, { name: 'Sales tax' }]
+    expect(portalExclusionWords(list)).toBe('rock excavation ($38 per cy if it comes up) and sales tax')
+    expect(portalExclusionWords(list, 'es')).toBe('excavación en roca ($38 por cy si se necesita) y impuesto sobre ventas')
+  })
+
+  it('keeps what the quote left out and every tick answered, and the award carries it to the statement of work', () => {
+    const inv = steel(state).invites.find((i) => i.partnerId === 'bexar')!
+    const sent = gcReducer(state, {
+      type: 'tradeSubmitBid',
+      projectId: 'boerne',
+      packageId: 'steel',
+      inviteId: inv.id,
+      amount: 160_000,
+      includes: {},
+      note: '',
+      exclusions: [{ name: 'Crane' }, { name: 'Fireproofing', unitPrice: { amount: 4, unit: 'sf' } }],
+      exclusionsAnswered: ['Crane', 'Fireproofing', 'Touch-up paint', 'Sales tax'],
+    })
+    const bid = steel(sent).invites.find((i) => i.partnerId === 'bexar')!.bid!
+    expect(bid.exclusions?.map((e) => e.name)).toEqual(['Crane', 'Fireproofing'])
+    expect(bid.exclusionsAnswered).toContain('Sales tax')
+    const won = gcReducer(sent, { type: 'award', projectId: 'boerne', packageId: 'steel', inviteId: inv.id })
+    const sow = steel(won).sow
+    expect(sow && portalSowExcluded(sow)).toEqual(['Crane', 'Fireproofing, $4 per sf if it comes up'])
   })
 })

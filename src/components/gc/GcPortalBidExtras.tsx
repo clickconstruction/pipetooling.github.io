@@ -5,6 +5,7 @@ import {
   GC_COMPANY,
   GOOD_FOR_DAYS,
   money,
+  pExclusion,
   portalLeavesOut,
   portalSovCheck,
   portalSovReached,
@@ -278,6 +279,65 @@ export function TheirSovOnSow({ sow, onSend }: { sow: Sow; onSend: (lines: Their
         </Btn>
         <Btn kind="quiet" onClick={() => setOpen(false)}>
           {t('notNow')}
+        </Btn>
+      </div>
+    </div>
+  )
+}
+
+/** One exclusion as the company sets it: ticked or not, its own words when it typed it, and a unit price if it comes up. */
+export type ExclusionDraft = { name: string; said?: string; on: boolean; amount: string; unit: string }[]
+
+/**
+ * What the company's quote leaves out (owner, 2026-10-04, exclusions by company): a tick for each
+ * usual exclusion, a unit price under a ticked one, and anything else it typed. Every tick shown is
+ * an answer: unticked means it is in the price.
+ */
+export function ExclusionsEditor({ value, onChange }: { value: ExclusionDraft; onChange: (next: ExclusionDraft) => void }) {
+  const { lang, t } = usePortalLang()
+  const [other, setOther] = useState('')
+  const set = (i: number, patch: Partial<ExclusionDraft[number]>) => onChange(value.map((r, j) => (j === i ? { ...r, ...patch } : r)))
+  return (
+    <div style={{ display: 'grid', gap: '0.3rem', fontSize: '0.9rem', borderTop: `1px solid ${RULE}`, paddingTop: '0.5rem' }}>
+      <div>
+        <strong>{t('exTitle')}</strong> <span style={{ fontSize: '0.85rem', opacity: 0.8 }}>· {t('exHelp')}</span>
+      </div>
+      {value.map((r, i) => (
+        <div key={`${r.name}:${i}`} style={{ display: 'grid', gap: '0.2rem' }}>
+          <label style={{ display: 'flex', gap: '0.45rem', alignItems: 'center' }}>
+            <input type="checkbox" checked={r.on} onChange={(e) => set(i, { on: e.target.checked })} />
+            {r.said ?? pExclusion(lang, r.name)}
+          </label>
+          {r.on && (
+            <div style={{ display: 'flex', gap: '0.3rem', alignItems: 'center', flexWrap: 'wrap', paddingLeft: '1.45rem', fontSize: '0.85rem' }}>
+              <span style={{ opacity: 0.8 }}>{t('exIfComes')}</span>
+              <input
+                style={{ ...input, width: '6rem' }}
+                type="number"
+                min={0}
+                inputMode="decimal"
+                placeholder="$"
+                aria-label={t('exPriceAria')}
+                value={r.amount}
+                onChange={(e) => set(i, { amount: e.target.value })}
+              />
+              <span style={{ opacity: 0.8 }}>{t('exPer')}</span>
+              <input style={{ ...input, width: '4.5rem' }} placeholder="cy" aria-label={t('exUnitAria')} value={r.unit} onChange={(e) => set(i, { unit: e.target.value })} />
+            </div>
+          )}
+        </div>
+      ))}
+      <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        <input style={{ ...input, flex: '1 1 10rem', minWidth: 0 }} placeholder={t('exOther')} aria-label={t('exOther')} value={other} onChange={(e) => setOther(e.target.value)} />
+        <Btn
+          kind="quiet"
+          disabled={other.trim() === ''}
+          onClick={() => {
+            onChange([...value, { name: other.trim(), said: other.trim(), on: true, amount: '', unit: '' }])
+            setOther('')
+          }}
+        >
+          {t('addIt')}
         </Btn>
       </div>
     </div>

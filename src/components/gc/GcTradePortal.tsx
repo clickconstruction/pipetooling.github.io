@@ -17,6 +17,10 @@ import {
   portalClosedWords,
   portalInsurance,
   openPromiseFor,
+  exclusionName,
+  portalExclusionChoices,
+  portalExclusionWords,
+  portalSowExcluded,
   portalOnSite,
   portalSovCheck,
   portalSovStart,
@@ -35,6 +39,7 @@ import {
   type Invite,
   type Partner,
   type PlanSet,
+  type QuoteExclusion,
   type PortalLang,
   type TradePackage,
 } from '../../lib/gcMode/gcModel'
@@ -47,7 +52,7 @@ import { GcPortalPay } from './GcPortalPay'
 import { GcPortalPapers } from './GcPortalPapers'
 import { GcPortalPreBid } from './GcPortalPreBid'
 import { GcPortalLookAhead } from './GcPortalLookAhead'
-import { AlternatesEditor, AnswerLines, GoodForPicker, LeavesOut, QuoteFilePicker, SovEditor, TheirSovOnSow, type SovDraft } from './GcPortalBidExtras'
+import { AlternatesEditor, AnswerLines, ExclusionsEditor, GoodForPicker, LeavesOut, QuoteFilePicker, SovEditor, TheirSovOnSow, type ExclusionDraft, type SovDraft } from './GcPortalBidExtras'
 import { ChangedLines, LineSheets, LineSpecs, SheetChip, TakenOut } from './GcPortalLineSheets'
 import { GcPortalMessages } from './GcPortalMessages'
 import { GcPortalPaperwork } from './GcPortalPaperwork'
@@ -402,6 +407,7 @@ function PackageBlock({
           dispatch={dispatch}
           onOpenSheet={openPlans}
           notVetted={portalVetting(partner).state === 'send' || portalVetting(partner).state === 'checking'}
+          exclusionChoices={portalExclusionChoices(state, pkg)}
         />
       )}
     </>
@@ -416,6 +422,7 @@ function BidBlock({
   dispatch,
   onOpenSheet,
   notVetted = false,
+  exclusionChoices = [],
 }: {
   project: GcProject
   pkg: TradePackage
@@ -425,6 +432,8 @@ function BidBlock({
   onOpenSheet: (sheetId: string) => void
   /** A company the office has not approved yet: it can quote, and is told we pick only once it is approved. */
   notVetted?: boolean
+  /** The exclusions its form offers as ticks (portalExclusionChoices). */
+  exclusionChoices?: string[]
 }) {
   const { lang, t } = usePortalLang()
   const [promiseDay, setPromiseDay] = useState('')
@@ -451,6 +460,32 @@ function BidBlock({
     lang,
   )
   const sovBad = sovCheck.state === 'short' || sovCheck.state === 'over'
+  // What their own quote leaves out: every offered tick, ticked when their last quote left it out, then any they typed.
+  const [exRows, setExRows] = useState<ExclusionDraft>(() => {
+    const was = invite.bid?.exclusions ?? []
+    const rows: ExclusionDraft = exclusionChoices.map((name) => {
+      const e = was.find((x) => exclusionName(x.name) === name)
+      return { name, on: Boolean(e), amount: e?.unitPrice ? String(e.unitPrice.amount) : '', unit: e?.unitPrice?.unit ?? '' }
+    })
+    for (const e of was) {
+      if (!exclusionChoices.includes(exclusionName(e.name))) rows.push({ name: e.name, said: e.said ?? e.name, on: true, amount: e.unitPrice ? String(e.unitPrice.amount) : '', unit: e.unitPrice?.unit ?? '' })
+    }
+    return rows
+  })
+  const exclusionsToSend = (): { exclusions: QuoteExclusion[]; exclusionsAnswered: string[] } => ({
+    exclusions: exRows
+      .filter((r) => r.on)
+      .map((r) => {
+        const name = exclusionName(r.said ?? r.name)
+        const amt = Number(r.amount)
+        return {
+          name,
+          ...(r.said && r.said !== name ? { said: r.said } : {}),
+          ...(amt > 0 && r.unit.trim() !== '' ? { unitPrice: { amount: amt, unit: r.unit.trim() } } : {}),
+        }
+      }),
+    exclusionsAnswered: [...new Set(exRows.map((r) => exclusionName(r.said ?? r.name)))],
+  })
   const [answering, setAnswering] = useState(false)
   const ids = { projectId: project.id, packageId: pkg.id, inviteId: invite.id }
   const due = project.bidDue
@@ -487,6 +522,9 @@ function BidBlock({
             <div>
               <span style={{ opacity: 0.75 }}>{t('ownQuoteLabel')}</span> <Chip tone="grey">{invite.bid.quoteFile}</Chip>
             </div>
+          )}
+          {(invite.bid.exclusions ?? []).length > 0 && (
+            <div>{t('exSummary', { list: portalExclusionWords(invite.bid.exclusions ?? [], lang) })}</div>
           )}
           {(invite.bid.sov ?? []).length > 0 && (
             <div>
@@ -603,6 +641,7 @@ function BidBlock({
             </div>
           )}
           <LeavesOut pkg={pkg} />
+          <ExclusionsEditor value={exRows} onChange={setExRows} />
           <label style={{ fontSize: '0.9rem' }}>
             {t('yourNumber')}{' '}
             <input type="number" min={0} step={100} value={amount} onChange={(e) => setAmount(e.target.value)} style={{ ...input, width: '9rem' }} />
@@ -629,6 +668,7 @@ function BidBlock({
                   alternates,
                   ...(quoteFile ? { quoteFile } : {}),
                   ...(sovCheck.state === 'ok' ? { sov: sovCheck.lines } : {}),
+                  ...(exRows.length > 0 ? exclusionsToSend() : {}),
                 })
                 setEditing(false)
               }}
@@ -704,6 +744,9 @@ function SowBlock({
   const ids = { projectId: project.id, packageId: pkg.id }
   const m = sowMoney(sow)
   const onSiteLine = portalOnSite(project, pkg, today, lang)
+  // The scope lines their awarded quote covers, for "What you will do".
+  const awarded = pkg.invites.find((i) => i.id === pkg.awardedInviteId)
+  const willDo = pkg.scope.filter((item) => awarded?.bid?.includes[item.id] !== 'no').map((item) => item.label)
 
   if (sow.status === 'draft') {
     return <Block title={t('gotJobTitle', { trade: pkg.trade })}>{t('sowDraft', { gc: GC })}</Block>
@@ -717,6 +760,21 @@ function SowBlock({
             <strong>{money(sow.price)}</strong> · {t('sowLine', { pct: sow.retainagePct, plans: planLabel(project, sow.basedOnRev) })}
           </div>
           <div style={{ opacity: 0.8 }}>{sow.sov.map((l) => `${l.label} ${money(l.amount)}`).join(' · ')}</div>
+          {/* What the contract says they will and will not do (owner, 2026-10-04, exclusions by company). */}
+          {(sow.excluded ?? []).length > 0 && (
+            <div style={{ display: 'grid', gap: '0.2rem' }}>
+              <div>
+                <strong>{t('sowWillDo')}</strong>{' '}
+                <span style={{ opacity: 0.85 }}>{willDo.join(' · ')}</span>
+              </div>
+              <strong>{t('sowWillNot')}</strong>
+              <ul style={{ margin: 0, paddingLeft: '1.2rem', display: 'grid', gap: '0.1rem' }}>
+                {portalSowExcluded(sow, lang).map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
+            </div>
+          )}
           {sow.status === 'sent' ? (
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
               <Btn kind="primary" disabled={partner.msa !== 'signed'} onClick={() => dispatch({ type: 'tradeSignSow', ...ids })}>

@@ -295,13 +295,13 @@ export function bidTabResult(project: GcProject, pkg: TradePackage, partnerId: s
   if (project.lostOn) {
     const why =
       project.lostWhy === 'project_died'
-        ? es ? 'El dueño detuvo este proyecto o lo puso en pausa.' : 'The owner stopped this project or put it on hold.'
+        ? es ? 'El cliente detuvo este proyecto o lo puso en pausa.' : 'The customer stopped this project or put it on hold.'
         : es ? `${gc} no ganó este proyecto.` : `${gc} did not win this project.`
     return `${why} ${es ? 'Gracias por su cotización.' : 'Thank you for your quote.'}`
   }
   if (project.stage === 'pursuing') {
     const on = project.ourBidSentOn ? (es ? ` el ${pDate(lang, project.ourBidSentOn)}` : ` on ${shortDate(project.ourBidSentOn)}`) : ''
-    return es ? `${gc} envió su propuesta${on}. El dueño todavía no elige constructor.` : `${gc} sent its bid${on}. The owner has not picked a builder yet.`
+    return es ? `${gc} envió su propuesta${on}. El cliente todavía no elige constructor.` : `${gc} sent its bid${on}. The customer has not picked a builder yet.`
   }
   if (pkg.awardedInviteId === null) return es ? `${gc} ganó el proyecto. Esta especialidad todavía no se adjudica.` : `${gc} won the project. This trade is not awarded yet.`
   const winner = pkg.invites.find((i) => i.id === pkg.awardedInviteId)

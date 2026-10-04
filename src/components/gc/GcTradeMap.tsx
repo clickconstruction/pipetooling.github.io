@@ -428,6 +428,7 @@ function LineupItem({
           <GcDeclineForm
             company={partner.company}
             why={declining}
+            context={`${project.name} · ${pkg.trade}`}
             onCancel={() => setDeclining(null)}
             onSave={(reason, note) => {
               dispatch({ type: 'officeDecline', ...ids, inviteId: invite.id, why: declining, reason, note })

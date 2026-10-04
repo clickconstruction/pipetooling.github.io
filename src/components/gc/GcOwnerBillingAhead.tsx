@@ -83,8 +83,8 @@ export function GcOwnerBillingAhead({ state }: { state: GcState }) {
         ))}
         {(ownersHold > 0.005 || weHold > 0.005) && (
           <div>
-            Retainage has no day yet. Owners hold {money(ownersHold)} on us until the end. We hold {money(weHold)} for the trades and pay it 10
-            days after the owner pays our final.
+            Retainage has no day yet. Customers hold {money(ownersHold)} on us until the end. We hold {money(weHold)} for the trades and pay it 10
+            days after the customer pays our final.
           </div>
         )}
         {a.nextBills.jobs > 0 && (

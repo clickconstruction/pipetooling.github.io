@@ -43,7 +43,7 @@ const S = {
   resultTitle: { en: '{trade} · result', es: '{trade} · resultado' },
   wentElsewhere: { en: 'This one went to another company. Thank you for your quote.', es: 'Este trabajo fue para otra empresa. Gracias por su cotización.' },
   closedLost: { en: '{gc} did not win this project.', es: '{gc} no ganó este proyecto.' },
-  closedDied: { en: 'The owner stopped this project or put it on hold.', es: 'El dueño detuvo este proyecto o lo puso en pausa.' },
+  closedDied: { en: 'The customer stopped this project or put it on hold.', es: 'El cliente detuvo este proyecto o lo puso en pausa.' },
   closedNoNumber: { en: 'You do not need to send a quote. Thank you for your time.', es: 'No necesita enviar su cotización. Gracias por su tiempo.' },
   closedThanksQuote: { en: 'Thank you for your quote.', es: 'Gracias por su cotización.' },
   inviteTitle: { en: '{trade} · invitation', es: '{trade} · invitación' },
@@ -94,6 +94,18 @@ const S = {
   tellGc: { en: 'Tell {gc}', es: 'Avisar a {gc}' },
 
   // The bid form past the number
+  exTitle: { en: 'What your quote leaves out', es: 'Lo que su cotización no incluye' },
+  exHelp: { en: 'Tick what your quote leaves out. Anything left unticked is in your price.', es: 'Marque lo que su cotización no incluye. Lo que no marque está incluido en su precio.' },
+  exIfComes: { en: 'If it comes up:', es: 'Si se necesita:' },
+  exPer: { en: 'per', es: 'por' },
+  exPriceAria: { en: 'Price per unit, if it comes up', es: 'Precio por unidad, si se necesita' },
+  exUnitAria: { en: 'The unit, like cy', es: 'La unidad, por ejemplo yd3' },
+  exOther: { en: 'Something else you exclude', es: 'Algo más que no incluye' },
+  exSummary: { en: 'Your quote leaves out: {list}.', es: 'Su cotización no incluye: {list}.' },
+  exUnitWords: { en: '{what} ({amount} per {unit} if it comes up)', es: '{what} ({amount} por {unit} si se necesita)' },
+  sowWillDo: { en: 'What you will do', es: 'Lo que usted hará' },
+  sowWillNot: { en: 'What you will not do', es: 'Lo que usted no hará' },
+  sowNotUnit: { en: '{what}, {amount} per {unit} if it comes up', es: '{what}, {amount} por {unit} si se necesita' },
   sovTitle: { en: 'Your schedule of values', es: 'Su desglose por etapas' },
   sovHelp: {
     en: 'How your quote splits by stage. It is optional. Rename, add or take out lines. They must add up to your quote.',
@@ -119,7 +131,7 @@ const S = {
   sovBilled: { en: 'Billed {amount} to date: {where}.', es: 'Cobrado {amount} a la fecha: {where}.' },
   sovThrough: { en: 'through {list}', es: 'completo hasta {list}' },
   sovInto: { en: '{pct}% into {label}', es: '{pct}% de {label}' },
-  leavesOutTitle: { en: 'Not in your scope', es: 'Fuera de su alcance' },
+  leavesOutTitle: { en: 'Known exclusions', es: 'Exclusiones conocidas' },
   leavesOutHelp: { en: 'Leave these out of your quote. Someone else does them.', es: 'No los incluya en su cotización. Otra persona los hace.' },
   leavesOutLine: { en: '{what} ({who} does it)', es: '{what} (lo hace {who})' },
   byOwner: { en: 'the owner', es: 'el dueño' },
@@ -188,7 +200,7 @@ const S = {
   closedShortDied: { en: 'stopped or on hold', es: 'detenido o en pausa' },
   youPassedShort: { en: 'you passed', es: 'no cotizó' },
   whenWon: { en: '{gc} won the job. {trade} is not picked yet.', es: '{gc} ganó el proyecto. Todavía no se elige a nadie para {trade}.' },
-  whenSent: { en: '{gc} sent its bid {date}. The owner picks next.', es: '{gc} envió su propuesta el {date}. Ahora decide el dueño.' },
+  whenSent: { en: '{gc} sent its bid {date}. The customer picks next.', es: '{gc} envió su propuesta el {date}. Ahora decide el cliente.' },
   noDueDay: { en: 'No due day yet.', es: 'Todavía no hay fecha límite.' },
   wasDue: { en: 'Was due {date}.', es: 'Venció el {date}.' },
   dueToday: { en: 'Due today, {date}.', es: 'Vence hoy, {date}.' },
@@ -457,8 +469,8 @@ const S = {
   heldReturned: { en: 'paid back {date}', es: 'devuelto el {date}' },
   heldOn: { en: 'comes back {date}', es: 'se devuelve el {date}' },
   heldAfter: {
-    en: 'comes back after {gc} accepts your work and the owner pays {gc}',
-    es: 'se devuelve después de que {gc} acepte su trabajo y el dueño le pague a {gc}',
+    en: 'comes back after {gc} accepts your work and the customer pays {gc}',
+    es: 'se devuelve después de que {gc} acepte su trabajo y el cliente le pague a {gc}',
   },
   jobPayLine: { en: 'contract {contract} · paid {paid} · left to bill {left}', es: 'contrato {contract} · pagado {paid} · por facturar {left}' },
   noPayYet: { en: 'No pay applications yet.', es: 'Todavía no hay solicitudes de pago.' },
@@ -506,7 +518,7 @@ const S = {
   mInviteWant: { en: 'We would like your quote for {trade} on {project}.', es: 'Nos gustaría recibir su cotización de {trade} para {project}.' },
   mInviteDue: { en: 'Your quote is due {date}.', es: 'Su cotización vence el {date}.' },
   mInvitePlans: { en: 'Plans to price: {label}, issued {date}.', es: 'Planos para cotizar: {label}, emitidos el {date}.' },
-  mInviteLeavesOut: { en: 'Leave these out. Someone else does them:', es: 'No incluya esto. Otra persona lo hace:' },
+  mInviteLeavesOut: { en: 'Known exclusions. Leave these out, someone else does them:', es: 'Exclusiones conocidas. No las incluya, otra persona las hace:' },
   mInviteCover: { en: 'Your quote should cover these lines.', es: 'Su cotización debe incluir estas partidas.' },
   mBy: { en: ' by {date}', es: ' a más tardar el {date}' },
   mNudgeSubject: { en: 'A reminder: {about}', es: 'Recordatorio: {about}' },
@@ -700,6 +712,61 @@ export function pTime(lang: PortalLang, at: string): string {
   const h12 = h % 12 === 0 ? 12 : h % 12
   const half = lang === 'es' ? (h >= 12 ? 'p. m.' : 'a. m.') : h >= 12 ? 'PM' : 'AM'
   return mins === '00' ? `${h12} ${half}` : `${h12}:${mins} ${half}`
+}
+
+/**
+ * The Spanish for the usual exclusion names (the Board lane's `COMMON_EXCLUSIONS`, kept as English
+ * keys). A name not here (the scope book's, or one a company typed) reads as written.
+ */
+export const EXCLUSION_ES: Record<string, string> = {
+  'Permits and fees': 'Permisos y cuotas',
+  Bonds: 'Fianzas',
+  'Sales tax': 'Impuesto sobre ventas',
+  'Testing and inspections': 'Pruebas e inspecciones',
+  'Night or weekend work': 'Trabajo de noche o en fin de semana',
+  'Temporary power and water': 'Luz y agua provisionales',
+  Dewatering: 'Desagüe del terreno',
+  'Rock excavation': 'Excavación en roca',
+  'Haul off of bad soil': 'Retiro de tierra mala',
+  'Erosion control and SWPPP': 'Control de erosión y SWPPP',
+  'Rebar supply': 'Suministro de varilla',
+  'Vapor barrier': 'Barrera de vapor',
+  'Pump truck': 'Bomba de concreto',
+  'Cold weather protection': 'Protección contra el frío',
+  Crane: 'Grúa',
+  Fireproofing: 'Protección contra fuego',
+  'Touch-up paint': 'Retoque de pintura',
+  'Roof curbs': 'Bases de techo para equipo',
+  'Roof blocking': 'Madera de bloqueo en el techo',
+  'Warranty past two years': 'Garantía de más de dos años',
+  Controls: 'Controles',
+  'Test and balance': 'Prueba y balanceo',
+  'Fire dampers': 'Compuertas cortafuego',
+  'Fire alarm': 'Alarma contra incendio',
+  'Low voltage': 'Bajo voltaje',
+  'Utility company fees': 'Cuotas de la compañía de servicios',
+  'Light fixtures supply': 'Suministro de lámparas',
+  'Gas piping': 'Tubería de gas',
+  'Fixtures supply': 'Suministro de muebles de baño',
+  'Tap fees': 'Cuotas de conexión',
+  'Water heater': 'Calentador de agua',
+  'Fire alarm tie-in': 'Conexión a la alarma contra incendio',
+  'Fire pump': 'Bomba contra incendio',
+  'Backflow preventer': 'Válvula antirretorno',
+  Insulation: 'Aislamiento',
+  'Blocking for others': 'Bloqueo para otros oficios',
+  'Level 5 finish': 'Acabado nivel 5',
+  'Exterior paint': 'Pintura exterior',
+  'Special coatings': 'Recubrimientos especiales',
+  'Floor prep and leveling': 'Preparación y nivelación de piso',
+  'Moisture testing': 'Prueba de humedad',
+  'Irrigation sleeves under paving': 'Camisas para riego bajo pavimento',
+  'Maintenance after planting': 'Mantenimiento después de plantar',
+}
+
+/** An exclusion's name in the portal's language ("Rock excavation" / "Excavación en roca"). */
+export function pExclusion(lang: PortalLang, name: string): string {
+  return lang === 'es' ? (EXCLUSION_ES[name] ?? name) : name
 }
 
 /** A drawing discipline's name ("Mechanical" / "Mecánico"). */

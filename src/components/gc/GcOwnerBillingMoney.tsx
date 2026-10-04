@@ -25,7 +25,7 @@ export function GcOwnerBillingMoney({ state, onOpenBill }: { state: GcState; onO
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '1rem' }}>
       <Why>
-        Every job that is ours, side by side. What the owners paid us beside what we paid the trades, and who owes us. A late bill
+        Every job that is ours, side by side. What the customers paid us beside what we paid the trades, and who owes us. A late bill
         comes first. The next weeks show what comes in and goes out.
       </Why>
 
@@ -38,10 +38,10 @@ export function GcOwnerBillingMoney({ state, onOpenBill }: { state: GcState; onO
               : `Across ${jobs === 1 ? 'our 1 job' : `our ${jobs} jobs`} we are carrying ${money(-t.net)}.`}
         </div>
         <div style={{ display: 'flex', gap: '0.75rem 2rem', flexWrap: 'wrap' }}>
-          <Stat label="Paid in by owners" value={money(t.paidIn)} />
+          <Stat label="Paid in by customers" value={money(t.paidIn)} />
           <Stat label="Paid out to trades" value={money(t.paidOut)} />
-          <Stat label="Owners owe us now" value={money(t.owed)} tone={Math.round(t.owed) > 0 ? 'red' : undefined} />
-          <Stat label="Owners hold until the end" value={money(t.ownerHolds)} />
+          <Stat label="Customers owe us now" value={money(t.owed)} tone={Math.round(t.owed) > 0 ? 'red' : undefined} />
+          <Stat label="Customers hold until the end" value={money(t.ownerHolds)} />
           <Stat label="We hold until the end" value={money(t.weHold)} />
           <Stat label="Trades waiting on us" value={money(t.tradesWaiting)} />
           {late.length > 0 && <Stat label="At risk for finishing late" value={money(atRisk)} tone={atRisk > 0 ? 'red' : undefined} />}
@@ -79,7 +79,7 @@ export function GcOwnerBillingMoney({ state, onOpenBill }: { state: GcState; onO
                 <th style={{ ...th, textAlign: 'right' }}>Paid in</th>
                 <th style={{ ...th, textAlign: 'right' }}>Paid out</th>
                 <th style={{ ...th, textAlign: 'right' }}>Where we stand</th>
-                <th style={{ ...th, textAlign: 'right' }}>Owner owes us</th>
+                <th style={{ ...th, textAlign: 'right' }}>Customer owes us</th>
                 <th style={{ ...th, textAlign: 'right' }}>Trades waiting on us</th>
                 <th style={th} />
               </tr>
@@ -107,7 +107,7 @@ export function GcOwnerBillingMoney({ state, onOpenBill }: { state: GcState; onO
                     <td style={num}>{Math.round(tradesWaiting) === 0 ? '—' : money(tradesWaiting)}</td>
                     <td style={{ ...td, textAlign: 'right' }}>
                       <Btn kind="quiet" onClick={() => onOpenBill(project.id)}>
-                        Bill the owner
+                        Bill the customer
                       </Btn>
                     </td>
                   </tr>
@@ -143,13 +143,13 @@ function JobBlock({ job, late, onOpen }: { job: JobMoney; late: string | null; o
           {late && <Chip tone="red">{late}</Chip>}
         </div>
         <Btn kind="quiet" onClick={onOpen}>
-          Bill the owner
+          Bill the customer
         </Btn>
       </div>
       {row('Where we stand', up ? `${money(cash.net)} ahead` : `${money(-cash.net)} carrying`, up ? 'var(--text-green-700)' : 'var(--text-red-700)')}
       {row('Paid in', money(cash.in.paid))}
       {row('Paid out', money(cash.out.paid))}
-      {Math.round(cash.in.owed) !== 0 && row('Owner owes us', money(cash.in.owed))}
+      {Math.round(cash.in.owed) !== 0 && row('Customer owes us', money(cash.in.owed))}
       {Math.round(tradesWaiting) !== 0 && row('Trades waiting on us', money(tradesWaiting))}
     </div>
   )
@@ -190,7 +190,7 @@ function OwedRow({ state, bill, onOpen }: { state: GcState; bill: OwedBill; onOp
       <span style={{ flex: 1 }} />
       <strong style={{ fontVariantNumeric: 'tabular-nums' }}>{money(open)}</strong>
       <Btn kind="quiet" onClick={onOpen}>
-        Bill the owner
+        Bill the customer
       </Btn>
     </div>
   )
