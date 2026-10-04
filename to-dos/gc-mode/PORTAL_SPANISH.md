@@ -117,7 +117,7 @@ column headers are in one block at the end of `gcBuildingWords.ts`, for the nati
 
 ## For a native speaker to read
 
-Every Spanish string the trade's portal shows, 569 in all, drawn from the code on 2026-10-04.
+Every Spanish string the trade's portal shows, 589 in all, drawn from the code on 2026-10-04.
 They're grouped by screen, English on the left. Please mark anything that reads wrong, stiff or
 unclear, and write the better words beside it. The Portal lane makes the changes and passes the
 other lanes theirs.
@@ -333,6 +333,20 @@ they were written in. The portal does not translate them.
 
 | English | Español |
 |---|---|
+| Your company | Su empresa |
+| Tell us about your company | Cuéntenos de su empresa |
+| {gc} checks a company it has not worked with before. You can quote now. {gc} can pick your quote once you are approved. | {gc} revisa a las empresas con las que no ha trabajado. Ya puede cotizar. {gc} puede elegir su cotización cuando apruebe a su empresa. |
+| not sent yet | todavía no la envía |
+| {gc} is checking it · sent {date} | {gc} la está revisando · enviada el {date} |
+| approved | aprobada |
+| approved for jobs up to {amount} each | aprobada para trabajos de hasta {amount} cada uno |
+| {gc} cannot work with you right now | {gc} no puede trabajar con usted por ahora |
+| Your license: its kind and number | Su licencia: el tipo y el número |
+| Your insurance company and your limits | Su aseguradora y sus límites |
+| Years in business | Años en el negocio |
+| Two or three people we can call, with their phone numbers | Dos o tres personas a quienes podemos llamar, con sus teléfonos |
+| Jobs like this one you have done | Trabajos como este que ha hecho |
+| You can send your quote now. {gc} can pick it once your company is approved. | Ya puede enviar su cotización. {gc} puede elegirla cuando apruebe a su empresa. |
 | Your paperwork with {gc} | Sus documentos con {gc} |
 | Master agreement | Contrato maestro |
 | Read and sign | Leer y firmar |
@@ -577,6 +591,11 @@ they were written in. The portal does not translate them.
 | The insurance certificate {gc} has on file for you runs out {date}. | El certificado de seguro que {gc} tiene de usted vence el {date}. |
 | We cannot pay a draw without current insurance. | No podemos pagarle sin un seguro vigente. |
 | Send the new certificate in your portal. | Envíe el certificado nuevo en su portal. |
+| Your company is approved to work with {gc} | Su empresa está aprobada para trabajar con {gc} |
+| {gc} checked your company and approved it. | {gc} revisó su empresa y la aprobó. |
+| You can be picked for jobs up to {amount} each. | Lo pueden elegir para trabajos de hasta {amount} cada uno. |
+| About working with {gc} | Sobre trabajar con {gc} |
+| {gc} checked your company and cannot work with you right now. Thank you for your time. | {gc} revisó su empresa y por ahora no puede trabajar con usted. Gracias por su tiempo. |
 | {project}: {gc} is not building it | {project}: {gc} no lo va a construir |
 | This is about {trade} on {project}. | Le escribimos sobre {trade} en {project}. |
 | Pay application {n} on {project}: approved for less | Solicitud de pago {n} de {project}: aprobada por menos |
@@ -595,6 +614,7 @@ they were written in. The portal does not translate them.
 | Your insurance runs out {date}, in {n} days. Send a new certificate before then. | Su seguro vence el {date}, en {n} días. Envíe un certificado nuevo antes de esa fecha. |
 | Your insurance runs out tomorrow, {date}. Send a new certificate. | Su seguro vence mañana, {date}. Envíe un certificado nuevo. |
 | Your insurance runs out today, {date}. Send a new certificate. | Su seguro vence hoy, {date}. Envíe un certificado nuevo. |
+| Tell {gc} about your company. {gc} can pick your quote once you are approved. | Cuéntele a {gc} de su empresa. {gc} puede elegir su cotización cuando apruebe a su empresa. |
 | Fill in your W-9. | Llene su W-9. |
 | The plans changed for {trade} on {project}. Confirm your quote or change it. | Cambiaron los planos de {trade} en {project}. Confirme su cotización o cámbiela. |
 | Answer one line of your {trade} quote for {project}. | Conteste una partida de su cotización de {trade} para {project}. |
