@@ -1335,7 +1335,7 @@ export function initialGcState(): GcState {
       fairOaksLog('2026-09-29', 'clear', 89, 69, { fsteel: 4, froof: 5, felec: 2, fplumb: 3, fhvac: 3 }, 'Membrane started on the west half.', [
         { packageId: 'felec', reason: 'materials', note: 'Panel boards are two weeks out.' },
       ]),
-      fairOaksLog('2026-10-01', 'cloudy', 85, 70, { fsteel: 3, froof: 4, felec: 2, fplumb: 3, fhvac: 3 }, 'West half membrane half down. Ductwork in bay 4.', [], "Cibolo's owner rep walked bays 1 and 2."),
+      fairOaksLog('2026-10-01', 'cloudy', 85, 70, { fsteel: 3, froof: 4, felec: 2, fplumb: 3, fhvac: 3 }, 'West half membrane half down. Ductwork in bay 4.', [], "Cibolo's rep walked bays 1 and 2."),
     ],
     // Building lane (2026-10-04): the submittal register. The panelboards went back once and were
     // approved late (the electrician's materials delay); the fire alarm drawings are with the

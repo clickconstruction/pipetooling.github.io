@@ -1349,7 +1349,7 @@ export function GcDrawsTab({ state, project, dispatch }: GcPaneProps) {
         const m = sowMoney(sow)
         const blockers = partnerBlockers(partner, state.today)
         // A retainage release is paid 10 days after the owner pays us ours (owner, 2026-10-02).
-        const releaseWaits = tradeCloseout(sow, project, state.today).canPay ? [] : ['The owner has not paid us our retainage, or 10 days have not passed.']
+        const releaseWaits = tradeCloseout(sow, project, state.today).canPay ? [] : ['The customer has not paid us our retainage, or 10 days have not passed.']
         const ids = { projectId: project.id, packageId: pkg.id }
         return (
           <Card key={pkg.id}>
