@@ -12,8 +12,11 @@ import {
   linkNeverOpened,
   portalFirstVisit,
   portalHome,
+  onSite,
+  pWeekday,
   portalLeavesOut,
   portalLink,
+  portalOnSite,
   portalLines,
   portalLookAhead,
   portalMessages,
@@ -868,5 +871,30 @@ describe('a line’s spec sections on the bid form', () => {
     expect(r.lines[0]!.by).not.toContain('Addendum 2')
     expect(r.lines[2]!.specs).toEqual([])
     expect(r.lines[2]!.by).toContain('Addendum 2')
+  })
+})
+
+describe('days on site, from our daily log', () => {
+  const fair = state.projects.find((p) => p.id === 'fairoaksd')!
+  const pkg = (id: string) => fair.packages.find((k) => k.id === id)!
+
+  it('counts the days the log has Summit’s roofers there, and the last one', () => {
+    const first = (fair.dailyLogs ?? []).map((l) => l.date).sort()[0]!
+    const { days } = onSite(fair, 'froof', first, state.today)
+    expect(days.length).toBeGreaterThan(1)
+    expect(portalOnSite(fair, pkg('froof'), state.today)).toBe(
+      `Our daily log has you on site ${days.length} days since ${pWeekday('en', first)}, the last on ${pWeekday('en', days[days.length - 1]!)}.`,
+    )
+  })
+
+  it('names the log’s first day when it never had the company there, and says nothing on a job with no log', () => {
+    // Guadalupe's concrete was done before the made-up log begins: the line must not say it never came.
+    expect(portalOnSite(fair, pkg('fconc'), state.today)).toBe('Our daily log has not had you on site since Mon Sep 21.')
+    const helotes = state.projects.find((p) => p.id === 'helotes')!
+    expect(portalOnSite(helotes, helotes.packages[0]!, state.today)).toBeNull()
+  })
+
+  it('reads in Spanish', () => {
+    expect(portalOnSite(fair, pkg('froof'), state.today, 'es')).toMatch(/^Nuestro registro diario lo tiene en la obra \d+ días desde el lun 21 sep, el último el \S+ \d+ \S+\.$/)
   })
 })

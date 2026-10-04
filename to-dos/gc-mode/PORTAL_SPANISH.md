@@ -116,7 +116,7 @@ column headers are in one block at the end of `gcBuildingWords.ts`, for the nati
 
 ## For a native speaker to read
 
-Every Spanish string the trade's portal shows, 566 in all, drawn from the code on 2026-10-04.
+Every Spanish string the trade's portal shows, 569 in all, drawn from the code on 2026-10-04.
 They're grouped by screen, English on the left. Please mark anything that reads wrong, stiff or
 unclear, and write the better words beside it. The Portal lane makes the changes and passes the
 other lanes theirs.
@@ -128,7 +128,7 @@ other lanes theirs.
   `{address}` and `{phone}` are names, an address or a phone number.
 - `{label}`, `{set}`, `{sets}` and `{plans}` name a set of plans, such as "Addendum 1". `{id}` is a
   sheet number, such as "E-201". `{title}` is a sheet's old name, such as "Site plan".
-- `{date}`, `{by}`, `{start}`, `{finish}` and `{when}` are dates, such as "8 oct" or "jue 8 oct".
+- `{date}`, `{by}`, `{start}`, `{finish}`, `{when}` and `{since}` are dates, such as "8 oct" or "jue 8 oct".
   `{ago}` is how long ago, such as "hace 3 días".
 - `{amount}`, `{approved}`, `{asked}`, `{held}`, `{contract}`, `{paid}`, `{left}`, `{price}`, `{x}`
   and `{y}` are dollar amounts.
@@ -256,6 +256,9 @@ they were written in. The portal does not translate them.
 
 | English | Español |
 |---|---|
+| Our daily log has you on site 1 day since {since}, on {date}. | Nuestro registro diario lo tiene en la obra 1 día desde el {since}, el {date}. |
+| Our daily log has you on site {n} days since {since}, the last on {date}. | Nuestro registro diario lo tiene en la obra {n} días desde el {since}, el último el {date}. |
+| Our daily log has not had you on site since {since}. | Nuestro registro diario no lo ha tenido en la obra desde el {since}. |
 | {trade} · you got the job | {trade} · el trabajo es suyo |
 | {gc} picked your number. Your statement of work is being written. | {gc} eligió su precio. Estamos preparando su orden de trabajo. |
 | {trade} · statement of work | {trade} · orden de trabajo |

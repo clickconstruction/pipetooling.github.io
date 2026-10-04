@@ -120,6 +120,12 @@ const S = {
   altTakesOff: { en: '{label} takes off {amount}', es: '{label} resta {amount}' },
 
   // The statement of work and getting paid
+  onSite1: { en: 'Our daily log has you on site 1 day since {since}, on {date}.', es: 'Nuestro registro diario lo tiene en la obra 1 día desde el {since}, el {date}.' },
+  onSiteN: {
+    en: 'Our daily log has you on site {n} days since {since}, the last on {date}.',
+    es: 'Nuestro registro diario lo tiene en la obra {n} días desde el {since}, el último el {date}.',
+  },
+  onSiteNone: { en: 'Our daily log has not had you on site since {since}.', es: 'Nuestro registro diario no lo ha tenido en la obra desde el {since}.' },
   gotJobTitle: { en: '{trade} · you got the job', es: '{trade} · el trabajo es suyo' },
   sowDraft: { en: '{gc} picked your number. Your statement of work is being written.', es: '{gc} eligió su precio. Estamos preparando su orden de trabajo.' },
   sowTitle: { en: '{trade} · statement of work', es: '{trade} · orden de trabajo' },
