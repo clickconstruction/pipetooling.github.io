@@ -17,6 +17,7 @@ import { inSentence, lineSheets, linesOnSpecs, specsAtRev, specsGoneAtRev, trade
 import { addDays, retainageHeldNow, sentBackOpen, sowContractSum, tradeChangesFor, tradeCloseout, workAllBilled } from './gcBuilding'
 import { lookAheadWeeks, markState, mondayOf, scheduleRows, type LookAheadState, type ScheduleRow } from './gcBuildingSchedule'
 import { onSite } from './gcBuildingLog'
+import { vettingOf } from './gcVetting'
 import { punchItems, punchState } from './gcBuildingPunch'
 import { planLabel } from './gcLookups'
 
@@ -242,6 +243,24 @@ export function portalOnSite(project: GcProject, pkg: TradePackage, today: strin
   return pt(lang, days.length === 1 ? 'onSite1' : 'onSiteN', { n: days.length, since, date: pWeekday(lang, last) })
 }
 
+/**
+ * Where a company we did not know stands with us (owner, 2026-10-04, question 3): anyone can quote,
+ * and we pick a quote only once the office approves the company. `known`: a company with no
+ * vetting record, so the portal says nothing.
+ */
+export type PortalVettingState = 'known' | 'send' | 'checking' | 'approved' | 'declined'
+
+export function portalVetting(partner: Partner, lang: PortalLang = 'en'): { state: PortalVettingState; words: string | null } {
+  if (!partner.vetting) return { state: 'known', words: null }
+  const v = vettingOf(partner)
+  const gc = GC_COMPANY.shortName
+  if (v.status === 'new') {
+    return v.form ? { state: 'checking', words: pt(lang, 'vetChecking', { gc, date: pDate(lang, v.form.sentOn) }) } : { state: 'send', words: pt(lang, 'vetNotSent') }
+  }
+  if (v.status === 'declined') return { state: 'declined', words: pt(lang, 'vetDeclined', { gc }) }
+  return { state: 'approved', words: v.limit !== undefined ? pt(lang, 'vetApprovedUpTo', { amount: money(v.limit) }) : pt(lang, 'vetApproved') }
+}
+
 export function portalJobMoney(pkg: TradePackage): PortalJobMoney | null {
   const sow = pkg.sow
   if (!sow) return null
@@ -305,6 +324,8 @@ export function portalTodos(state: GcState, partnerId: string, asks: PortalAsk[]
     })
   }
   if (!partner.w9) todos.push({ key: 'w9', projectId: null, text: pt(lang, 'todoW9'), tone: 'amber', by: null })
+  // A company we do not know yet: its form first, so the office can approve it (question 3).
+  if (portalVetting(partner, lang).state === 'send') todos.push({ key: 'vet', projectId: null, text: pt(lang, 'todoVet', { gc }), tone: 'amber', by: null })
 
   for (const a of asks) {
     // A project we lost asks nothing more of anyone.
@@ -481,7 +502,7 @@ export function portalLink(partnerId: string): string {
 export interface PortalMessage {
   key: string
   on: string
-  kind: 'invite' | 'nudge' | 'plans' | 'bidTab' | 'msa' | 'sow' | 'start' | 'less' | 'change' | 'paid' | 'answer' | 'coi' | 'closed'
+  kind: 'invite' | 'nudge' | 'plans' | 'bidTab' | 'msa' | 'sow' | 'start' | 'less' | 'change' | 'paid' | 'answer' | 'coi' | 'closed' | 'vetted'
   /** Null: about the company, not one project (the master agreement). */
   projectId: string | null
   subject: string
@@ -493,7 +514,7 @@ export interface PortalMessage {
   leavesOut?: string[]
 }
 
-const KIND_ORDER: Record<PortalMessage['kind'], number> = { closed: -1, coi: 0, answer: 1, paid: 2, change: 3, less: 4, start: 5, sow: 6, msa: 7, bidTab: 8, plans: 9, nudge: 10, invite: 11 }
+const KIND_ORDER: Record<PortalMessage['kind'], number> = { vetted: -2, closed: -1, coi: 0, answer: 1, paid: 2, change: 3, less: 4, start: 5, sow: 6, msa: 7, bidTab: 8, plans: 9, nudge: 10, invite: 11 }
 
 function firstName(contact: string): string {
   return contact.split(' ')[0] ?? contact
@@ -533,6 +554,22 @@ export function portalMessages(state: GcState, partnerId: string, language?: Por
         lines: [hello, t('mCoiWhat', { gc, date }), t('mCoiWhy'), t('mCoiOpen')],
       })
     }
+  }
+
+  // The office decided on a company it did not know: approved, approved up to a limit, or declined.
+  const vet = partner.vetting
+  if (vet?.decidedOn && vet.status !== 'new') {
+    const approved = vet.status === 'approved'
+    out.push({
+      key: `vetted:${vet.decidedOn}`,
+      on: vet.decidedOn,
+      kind: 'vetted',
+      projectId: null,
+      subject: t(approved ? 'mVetApprovedSubject' : 'mVetDeclinedSubject', { gc: GC_COMPANY.shortName }),
+      lines: approved
+        ? [hello, t('mVetApproved', { gc: GC_COMPANY.shortName }), ...(vet.limit !== undefined ? [t('mVetUpTo', { amount: money(vet.limit) })] : [])]
+        : [hello, t('mVetDeclined', { gc: GC_COMPANY.shortName })],
+    })
   }
 
   if (partner.msaSentOn) {

@@ -401,6 +401,14 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   quote"; Spanish "su cotización" (it was "su precio"), its words agreeing with it ("Envíela",
   "válida"). The attached file reads "Your quote file". The bid tab keeps its name, and "Click sent
   its bid" stays: that bid is ours to the owner.
+- **A company we did not know fills in its form in its portal** (owner, 2026-10-04, question 3):
+  "Your company" at the top of Your paperwork, only for a company the office added as new. It reads
+  "not sent yet" with **Tell us about your company** (license, insurance, years in business,
+  references, past jobs, every line needed), then "Click is checking it · sent Oct 4", then
+  "approved", "approved for jobs up to $150,000 each" or "Click cannot work with you right now";
+  never the office's note. Needs you asks until the form is in; the bid form says Click can pick
+  the quote once the company is approved; an email goes out on the office's decision
+  (`portalVetting` in `gcPortal.ts`, on the Board lane's `gcVetting.ts`).
 - **A company sees its days on site by our daily log** (owner, 2026-10-04, on the Building lane's
   log): above the percents it reports, "Our daily log has you on site 6 days since Mon Sep 21, the
   last on Thu Oct 1." It names the log's first day, so it never says more than the log can
@@ -703,6 +711,7 @@ the bullets below are the shape they set.
   | Insurance running out (`COI_WARN_DAYS`) | The company | Email 30 days before; Needs you, red once it ran out |
   | A bid we lost (`markLost`) | Each company still on a trade there | Email the day it is marked |
   | Look-ahead marks due (`lookAheadOwed`) | Each company on a job being built | An email Friday morning, "Mark your week"; Needs you already says so |
+  | The office decided on a company it did not know (`vetPartner`) | That company | Email the day it is decided: approved, with its limit, or declined (Their messages already writes it) |
 
   Billing the owner's events, and where each would go (Owner Billing lane, 2026-10-03). Every one
   is an email, through Resend (question 29: email only for now). The owner and the architect get

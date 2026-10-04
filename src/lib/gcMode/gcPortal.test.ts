@@ -14,9 +14,11 @@ import {
   portalHome,
   onSite,
   pWeekday,
+  pDate,
   portalLeavesOut,
   portalLink,
   portalOnSite,
+  portalVetting,
   portalLines,
   portalLookAhead,
   portalMessages,
@@ -896,5 +898,41 @@ describe('days on site, from our daily log', () => {
 
   it('reads in Spanish', () => {
     expect(portalOnSite(fair, pkg('froof'), state.today, 'es')).toMatch(/^Nuestro registro diario lo tiene en la obra \d+ días desde el lun 21 sep, el último el \S+ \d+ \S+\.$/)
+  })
+})
+
+describe('a company we did not know', () => {
+  // The office adds a stranger and asks it to quote Boerne's steel (question 3).
+  const added = gcReducer(state, { type: 'addPartner', company: 'Brazos Steel', contact: 'Lupe Garza', trade: 'Structural steel', base: null, maxMiles: null, known: false })
+  const id = added.partners[added.partners.length - 1]!.id
+  const asked = gcReducer(added, { type: 'invite', projectId: 'boerne', packageId: 'steel', partnerId: id })
+  const sent = gcReducer(asked, {
+    type: 'tradeVettingForm',
+    partnerId: id,
+    form: { license: 'TX 12345', insurance: 'Lone Star Mutual, $1M / $2M', yearsInBusiness: 12, references: 'Ana Ruiz 210-555-0100', pastJobs: 'Two retail shells in Seguin' },
+  })
+  const partner = (s: GcState) => s.partners.find((p) => p.id === id)!
+
+  it('asks for its form first, and a known company is asked for nothing', () => {
+    expect(portalVetting(partner(asked))).toEqual({ state: 'send', words: 'not sent yet' })
+    expect(portalTodos(asked, id).find((t) => t.key === 'vet')).toMatchObject({ tone: 'amber', text: 'Tell Click about your company. Click can pick your quote once you are approved.' })
+    expect(portalVetting(state.partners.find((p) => p.id === 'lonestar')!).state).toBe('known')
+  })
+
+  it('says the office is checking it once the form is in, and stops asking', () => {
+    expect(portalVetting(partner(sent))).toEqual({ state: 'checking', words: `Click is checking it · sent ${pDate('en', state.today)}` })
+    expect(portalTodos(sent, id).some((t) => t.key === 'vet')).toBe(false)
+  })
+
+  it('shows an approval up to a limit, and emails it', () => {
+    const ok = gcReducer(sent, { type: 'vetPartner', partnerId: id, status: 'approved', limit: 150_000, by: 'Dana Whitaker' })
+    expect(portalVetting(partner(ok)).words).toBe('approved for jobs up to $150,000 each')
+    const m = portalMessages(ok, id).find((x) => x.kind === 'vetted')
+    expect(m?.subject).toBe('Your company is approved to work with Click')
+    expect(m?.lines.slice(1)).toEqual(['Click checked your company and approved it.', 'You can be picked for jobs up to $150,000 each.'])
+  })
+
+  it('reads in Spanish', () => {
+    expect(portalVetting(partner(sent), 'es').words).toBe(`Click la está revisando · enviada el ${pDate('es', state.today)}`)
   })
 })
