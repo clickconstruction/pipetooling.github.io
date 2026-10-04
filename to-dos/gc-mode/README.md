@@ -203,6 +203,22 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   that adds a typed trade the same way. Escape in an open picker closes only the picker. Step 2's
   set line is **Note to the trades (optional)**, with "Every company we ask sees this beside the
   set's name."
+- **The sheets as one list: a plan PDF, a paste or typing** (the owner, 2026-10-04: "build 1, 4
+  and 5 for the sheet index"): step 2 of New project and a whole set in **A new set of plans came
+  in** share one table (`GcNewProjectSheetIndex.tsx`). **Drop the plan PDF** reads each page's
+  title block with pdf.js: the biggest sheet number in the bottom right, and the title under its
+  label or above the number, across lines (`readTitleBlock`). Each row keeps its page ("p. 4"). A
+  page with no number becomes a row to fix ("Page 2: no sheet number found on it."), and the
+  window will not go on until it is fixed or taken out (`rowProblems`). **Read a made-up plan
+  PDF** draws one with jspdf (a title block on every sheet, a rendering with none as page 2) and
+  reads it back for real. **Paste a sheet list** takes any layout: the number first or last, dot
+  leaders, a list number or "Sheet" in front, a date after. Each line shows read, or skipped with
+  why (a heading, no number, already listed), and a line with no number can be fixed in place
+  (`readSheetLines`). Capitals read in sentence case. **+ Add sheet** fills in the next number
+  (A-101 then A-102, `nextSheetNumber`). Rows move up and down, come out with ×, and a sheet whose
+  letters say no discipline gets a picker (`PlanSheet.discipline`). The pick groups it on the right,
+  in the quick look, and brings its trades on step 3 (`disciplineOf`, `withPickedDisciplines`).
+  A sheet the PDF reads that is already listed only gets its page.
 - **New project, step 1 and 3 follow-ups** (the owner, 2026-10-04): no Town field; each company's
   drive is measured from the town in the address ("Drives are measured from Boerne"; the Board's
   `townFromAddress`), and a town picker shows only when the address names none. **Size** is square

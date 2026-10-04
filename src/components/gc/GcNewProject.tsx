@@ -7,8 +7,12 @@ import {
   TRADE_TEMPLATES,
   money,
   newProjectId,
-  sheetDiscipline,
   sheetIndexInText,
+  disciplineOf,
+  rowProblems,
+  sheetsOfRows,
+  withPickedDisciplines,
+  type SheetIndexRow,
   tradeOrder,
   tradesForPlans,
   specIndexInText,
@@ -57,6 +61,7 @@ import { useMatchMedia } from '../../hooks/useMatchMedia'
 import { Btn, Chip, input } from './gcUi'
 import { CustomerPicker, Picker } from './GcNewProjectPickers'
 import { FIELD_HEIGHT_PX, pickerFace, pickerGroup, pickerRow } from './GcNewProjectPickerRows'
+import { SheetIndexTable } from './GcNewProjectSheetIndex'
 
 /**
  * GC mode design spike: New Project. A project starts the day its plans come in. Four steps in
@@ -162,7 +167,8 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
   const [setLabel, setSetLabel] = useState('Bid set')
   const [issuedOn, setIssuedOn] = useState(state.today)
   const [setNote, setSetNote] = useState('')
-  const [indexText, setIndexText] = useState('')
+  /** The sheet list as a table: rows from the plan PDF, a paste or typing (the owner, 2026-10-04). */
+  const [sheetRows, setSheetRows] = useState<SheetIndexRow[]>([])
   const [specText, setSpecText] = useState('')
   /** The budgets the fill wrote, by trade, with where each rate came from. Shown while the budget is unchanged. */
   const [filled, setFilled] = useState<Record<string, { budget: string; words: string }>>({})
@@ -178,9 +184,15 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
   /** The companies ticked per trade. A trade left out follows the default: the most reliable in range. */
   const [asks, setAsks] = useState<Record<string, string[]>>({})
 
-  const reading = useMemo(() => sheetIndexInText(indexText), [indexText])
+  const reading = useMemo(() => ({ sheets: sheetsOfRows(sheetRows) }), [sheetRows])
+  const sheetRowsToFix = Object.keys(rowProblems(sheetRows)).length
   const specReading = useMemo(() => specIndexInText(specText), [specText])
-  const guesses = useMemo(() => tradesForPlans(reading.sheets, specReading.sections), [reading.sheets, specReading.sections])
+  const guesses = useMemo(
+    () => withPickedDisciplines(tradesForPlans(reading.sheets, specReading.sections), reading.sheets, (trade) => ({ trade, from: [], specs: [] })),
+    [reading.sheets, specReading.sections],
+  )
+  /** The made-up sheets drawn into the made-up plan PDF. */
+  const sampleSheets = useMemo(() => sheetIndexInText(SAMPLE_SHEET_INDEX).sheets, [])
 
   const rows: TradeRow[] = useMemo(() => {
     const names = [...guesses.map((g) => g.trade), ...added.filter((t) => !guesses.some((g) => g.trade === t))]
@@ -247,7 +259,8 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
   if (draft.town === '') missing.push('Add the town to the address, so drives can be measured.')
   if (ownerName === '') missing.push('Pick the owner.')
   if (archName === '') missing.push('Pick the architect.')
-  if (picked.length === 0) missing.push(reading.sheets.length === 0 ? 'Paste the sheet index or add a trade.' : 'Tick at least one trade.')
+  if (sheetRowsToFix > 0) missing.push(`Fix or take out the ${sheetRowsToFix === 1 ? 'sheet row' : `${sheetRowsToFix} sheet rows`} marked on step 2.`)
+  if (picked.length === 0) missing.push(reading.sheets.length === 0 ? 'Add the sheets or a trade.' : 'Tick at least one trade.')
 
   const scopeLines = picked.reduce((n, r) => n + r.scope.filter((l) => l.label.trim()).length, 0)
   const ours = picked.filter((r) => r.ours).length
@@ -291,7 +304,7 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
 
   const groups: { discipline: string; rows: PlanSheet[] }[] = []
   for (const s of reading.sheets) {
-    const discipline = sheetDiscipline(s.id)
+    const discipline = disciplineOf(s)
     const group = groups.find((g) => g.discipline === discipline)
     if (group) group.rows.push(s)
     else groups.push({ discipline, rows: [s] })
@@ -533,7 +546,7 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
 
           {step === 1 && (
             <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(19rem, 1fr))', alignItems: 'start' }}>
-              <div style={{ display: 'grid', gap: '0.8rem' }}>
+              <div style={{ display: 'grid', gap: '0.8rem', minWidth: 0 }}>
                 <Field label="What this set is called">
                   <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
                     {['Bid set', 'Pricing set', 'Permit set'].map((l) => (
@@ -566,20 +579,14 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
                     <input style={field} value={setNote} onChange={(e) => setSetNote(e.target.value)} placeholder="The set the owner sent out to bid." />
                   </Field>
                 </div>
-                <Field label="The sheet index" hint="Paste the sheet list from the cover sheet. Each line that starts with a sheet number becomes a sheet.">
-                  <textarea
-                    value={indexText}
-                    onChange={(e) => setIndexText(e.target.value)}
-                    rows={11}
-                    placeholder={'G-001  Cover sheet\nC-101  Site plan\nA-101  Floor plan\nA-201  Exterior elevations\nM-101  HVAC plan'}
-                    style={{ ...field, height: 'auto', fontFamily: 'inherit', resize: 'vertical' }}
-                  />
-                </Field>
-                {indexText.trim() === '' && (
-                  <div>
-                    <Btn kind="quiet" onClick={() => setIndexText(SAMPLE_SHEET_INDEX)}>Paste a made-up sheet index</Btn>
-                  </div>
-                )}
+                <SheetIndexTable
+                  rows={sheetRows}
+                  onRows={setSheetRows}
+                  sampleText={`${(draft.name || 'New project').toUpperCase()} · ${draft.setLabel.toUpperCase()}  09/30/2026\n${SAMPLE_SHEET_INDEX}`}
+                  sampleSheets={sampleSheets}
+                  projectName={draft.name}
+                  setLabel={draft.setLabel}
+                />
                 <Field
                   label="The project manual's table of contents"
                   hint="Paste the list of sections from the front of the specs. Each line that starts with a section number becomes a section. Leave it empty when no specs came in."
@@ -604,7 +611,7 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
                   {reading.sheets.length === 0 ? 'No sheets read yet' : `${reading.sheets.length} sheets read`}
                 </div>
                 {reading.sheets.length === 0 && (
-                  <div style={{ color: 'var(--text-muted)' }}>The sheets show here as you paste, grouped the way the plans window shows them.</div>
+                  <div style={{ color: 'var(--text-muted)' }}>The sheets show here as they are added, grouped the way the plans window shows them.</div>
                 )}
                 {groups.map((g) => (
                   <div key={g.discipline} style={{ marginBottom: '0.45rem' }}>
@@ -614,17 +621,15 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
                     {g.rows.map((s) => (
                       <div key={s.id} style={{ display: 'flex', gap: '0.45rem' }}>
                         <span style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums', minWidth: '3.6rem' }}>{s.id}</span>
-                        <span style={{ color: s.title ? 'var(--text-base)' : 'var(--text-muted)' }}>{s.title || 'no title'}</span>
+                        <span style={{ flex: 1, color: s.title ? 'var(--text-base)' : 'var(--text-muted)' }}>{s.title || 'no title'}</span>
+                        {s.page && <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontVariantNumeric: 'tabular-nums' }}>p. {s.page}</span>}
                       </div>
                     ))}
                   </div>
                 ))}
-                {reading.unread.length > 0 && (
+                {sheetRowsToFix > 0 && (
                   <div style={{ marginTop: '0.4rem', padding: '0.4rem 0.55rem', borderRadius: 6, background: 'var(--bg-amber-tint)' }}>
-                    These lines were not read as sheets. A sheet line starts with its number.
-                    {reading.unread.map((l) => (
-                      <div key={l} style={{ fontFamily: 'ui-monospace, monospace', fontSize: '0.8rem' }}>{l}</div>
-                    ))}
+                    {sheetRowsToFix === 1 ? 'One row in the list needs' : `${sheetRowsToFix} rows in the list need`} fixing before it counts.
                   </div>
                 )}
                 {(specReading.sections.length > 0 || specReading.unread.length > 0) && (

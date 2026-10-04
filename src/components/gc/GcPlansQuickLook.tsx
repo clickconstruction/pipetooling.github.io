@@ -11,7 +11,7 @@ import {
   setThatAddedLine,
   planLabel,
   plansReach,
-  sheetDiscipline,
+  disciplineOf,
   sheetsAtRev,
   sheetsGoneAtRev,
   specsGoneAtRev,
@@ -90,7 +90,7 @@ export function GcPlansQuickLook({ project, onClose, onSeeWhoHasIt }: Props) {
 
   const groups: { discipline: string; rows: SheetInSet[] }[] = []
   for (const s of sheets) {
-    const discipline = sheetDiscipline(s.id)
+    const discipline = disciplineOf(s)
     const group = groups.find((g) => g.discipline === discipline)
     if (group) group.rows.push(s)
     else groups.push({ discipline, rows: [s] })
@@ -533,7 +533,7 @@ function StandInSection({ project, spec, rev, goneBy }: { project: GcProject; sp
 
 /** A drawn stand-in for the sheet's page: a border, a title block and a mark where it changed. */
 function StandInSheet({ project, sheet, rev, goneBy }: { project: GcProject; sheet: SheetInSet; rev: number; goneBy?: string }) {
-  const discipline = sheetDiscipline(sheet.id)
+  const discipline = disciplineOf(sheet)
   const changedHere = sheet.changedInRev === rev && rev > 0
   const set = project.planSets.find((s) => s.rev === (sheet.changedInRev ?? 0))
   const isPlan = !['General', 'Civil'].includes(discipline)

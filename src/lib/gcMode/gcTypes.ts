@@ -47,6 +47,10 @@ export interface PlanSet {
 export interface PlanSheet {
   id: string
   title: string
+  /** The discipline the office picked, where the number's letters do not say it. Missing: read from the letters. */
+  discipline?: string
+  /** The page of the plan PDF the sheet was read from. Missing: typed or pasted. */
+  page?: number
 }
 
 /** Work a trade's quote leaves out, and who does it instead: another trade, "the owner" or "us". */

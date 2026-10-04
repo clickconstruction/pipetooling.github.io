@@ -39,6 +39,9 @@ import {
   sampleReissue,
   sampleReissueSpecs,
   sheetIndexInText,
+  rowProblems,
+  sheetsOfRows,
+  type SheetIndexRow,
   specIndexInText,
   takenOutInText,
   ourPeople,
@@ -62,6 +65,7 @@ import { GcNewProjectPreBid } from './GcNewProjectPreBid'
 import { Btn, Chip, input } from './gcUi'
 import { Picker } from './GcNewProjectPickers'
 import { FIELD_HEIGHT_PX, pickerFace, pickerGroup, pickerRow } from './GcNewProjectPickerRows'
+import { SheetIndexTable } from './GcNewProjectSheetIndex'
 
 /**
  * GC mode design spike: a new set of plans came in. Four steps on one page, each feeding the
@@ -182,8 +186,8 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
   /** The spec sections, the same way: null follows the notes, a string is the office's own list. */
   const [specText, setSpecText] = useState<string | null>(null)
   const [specTitles, setSpecTitles] = useState<Record<string, string>>({})
-  /** A whole new set: its sheet index and table of contents as pasted, compared with what we have. */
-  const [indexText, setIndexText] = useState('')
+  /** A whole new set: its sheets (from its PDF, a paste or typing) and table of contents as pasted, compared with what we have. */
+  const [indexRows, setIndexRows] = useState<SheetIndexRow[]>([])
   const [tocText, setTocText] = useState('')
   /** Sheets and sections the office marked taken out or kept, by number (a section as "spec:09 30 13"). */
   const [goneMarks, setGoneMarks] = useState<Record<string, boolean>>({})
@@ -215,10 +219,14 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
   const index = useMemo(() => sheetsAtRev(project, currentRev(project)), [project])
   const whole = !(SET_KINDS.find((k) => k.kind === kind)?.numbered ?? true)
   // A whole new set: the pasted index against ours. New, gone and renamed sheets join the ones the notes name.
-  const diff = useMemo(
-    () => (indexText.trim() === '' ? null : indexDiff(index, sheetIndexInText(indexText).sheets.map((x) => ({ ...x, id: sheetAsIndexed(project, x.id) })))),
-    [indexText, index, project],
-  )
+  const diff = useMemo(() => {
+    const listed = sheetsOfRows(indexRows)
+    return listed.length === 0 ? null : indexDiff(index, listed.map((x) => ({ ...x, id: sheetAsIndexed(project, x.id) })))
+  }, [indexRows, index, project])
+  const indexRowsToFix = Object.keys(rowProblems(indexRows)).length
+  /** The made-up new set, as a list to paste and as the sheets of its made-up PDF. */
+  const sampleIndex = useMemo(() => sampleReissue(index), [index])
+  const sampleIndexSheets = useMemo(() => sheetIndexInText(sampleIndex).sheets, [sampleIndex])
   const sheets = [...new Set([...noteSheets, ...(diff ? [...diff.added.map((x) => x.id), ...diff.renamed.map((x) => x.id), ...diff.gone.map((x) => x.id)] : [])])]
   const noteTakesOut = takenOutInText(note, (line) => sheetsInText(line).map((id) => sheetAsIndexed(project, id)))
   /** Sheets this set takes out: gone from the pasted index or said in the notes, unless the office kept them. */
@@ -228,7 +236,16 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
   const retitled: PlanSheet[] = (diff?.renamed ?? []).filter((r) => !goneSheets.includes(r.id)).map((r) => ({ id: r.id, title: r.to }))
   const added: PlanSheet[] = sheets
     .filter((id) => !index.some((s) => s.id === id))
-    .map((id) => ({ id, title: (titles[id] ?? diff?.added.find((x) => x.id === id)?.title ?? '').trim() }))
+    .map((id) => {
+      // A sheet from the new set's list keeps the discipline picked for it and its page of the PDF.
+      const listed = diff?.added.find((x) => x.id === id)
+      return {
+        id,
+        title: (titles[id] ?? listed?.title ?? '').trim(),
+        ...(listed?.discipline ? { discipline: listed.discipline } : {}),
+        ...(listed?.page ? { page: listed.page } : {}),
+      }
+    })
   const manual = useMemo(() => specsAtRev(project, currentRev(project)), [project])
   const noteSpecs = useMemo(
     () => (specText === null ? specsInText(note) : [...new Set(specText.split(',').flatMap((x) => specsInText(`section ${x.trim()}`)))]),
@@ -432,7 +449,15 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
   const compared = diff !== null || specDiff !== null
   const checkedBy = (checker === OTHER ? checkerTyped : checker).trim()
   const missing =
-    fullNote === '' && !compared ? 'Say what changed first.' : label === '' ? 'Give the set a name.' : checkedBy === '' ? 'Say who checked the set.' : null
+    fullNote === '' && !compared
+      ? 'Say what changed first.'
+      : indexRowsToFix > 0
+        ? `Fix or take out the ${indexRowsToFix === 1 ? 'sheet row' : `${indexRowsToFix} sheet rows`} marked in the new set's sheets.`
+        : label === ''
+          ? 'Give the set a name.'
+          : checkedBy === ''
+            ? 'Say who checked the set.'
+            : null
   const addLine = (packageId: string) => {
     const t = lineText.trim()
     if (t !== '') setNewLines((all) => ({ ...all, [packageId]: [...(all[packageId] ?? []), t] }))
@@ -575,23 +600,11 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
             />
             {whole && (
               <div style={{ marginTop: '0.6rem', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '0.4rem', fontSize: '0.875rem' }}>
-                <strong>The new set's sheet index</strong>
+                <strong>The new set's sheets</strong>
                 <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-                  A whole set comes with every sheet. Paste its index and it is compared with the sheets we have. You see what is new, what is gone and what is renamed.
+                  A whole set comes with every sheet. List them and they are compared with the sheets we have. You see what is new, what is gone and what is renamed.
                 </span>
-                <textarea
-                  value={indexText}
-                  onChange={(e) => setIndexText(e.target.value)}
-                  rows={4}
-                  aria-label="The new set's sheet index"
-                  placeholder={'C-101  SITE PLAN\nA-101  FLOOR PLAN'}
-                  style={{ ...input, width: '100%', boxSizing: 'border-box', fontFamily: 'inherit', resize: 'vertical' }}
-                />
-                {indexText.trim() === '' && (
-                  <div>
-                    <Btn kind="quiet" onClick={() => setIndexText(sampleReissue(index))}>Paste a made-up new index</Btn>
-                  </div>
-                )}
+                <SheetIndexTable rows={indexRows} onRows={setIndexRows} sampleText={sampleIndex} sampleSheets={sampleIndexSheets} projectName={project.name} setLabel={label || 'New set'} />
                 {manual.length > 0 && (
                   <>
                     <strong style={{ marginTop: '0.3rem' }}>The new table of contents</strong>

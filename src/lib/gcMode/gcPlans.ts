@@ -37,8 +37,15 @@ function walkSheets(project: GcProject, rev: number): { live: SheetInSet[]; gone
   for (const set of sets) {
     for (const id of set.changedSheets) {
       const known = out.get(id)
-      const title = set.addedSheets?.find((x) => x.id === id)?.title || gone.get(id)?.title || `Added by ${set.label}`
-      out.set(id, known ? { id: known.id, title: known.title, changedInRev: set.rev, added: known.added } : { id, title, changedInRev: set.rev, added: true })
+      const listed = set.addedSheets?.find((x) => x.id === id)
+      const title = listed?.title || gone.get(id)?.title || `Added by ${set.label}`
+      // A discipline the office picked stays with the sheet. A new sheet keeps its page of the set's PDF.
+      out.set(
+        id,
+        known
+          ? { id: known.id, title: known.title, ...(known.discipline ? { discipline: known.discipline } : {}), changedInRev: set.rev, added: known.added }
+          : { id, title, ...(listed?.discipline ? { discipline: listed.discipline } : {}), ...(listed?.page ? { page: listed.page } : {}), changedInRev: set.rev, added: true },
+      )
       gone.delete(id)
     }
     for (const x of set.retitledSheets ?? []) {
