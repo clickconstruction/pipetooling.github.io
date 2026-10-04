@@ -117,7 +117,7 @@ column headers are in one block at the end of `gcBuildingWords.ts`, for the nati
 
 ## For a native speaker to read
 
-Every Spanish string the trade's portal shows, 626 in all, drawn from the code on 2026-10-04.
+Every Spanish string the trade's portal shows, 632 in all, drawn from the code on 2026-10-04.
 They're grouped by screen, English on the left. Please mark anything that reads wrong, stiff or
 unclear, and write the better words beside it. The Portal lane makes the changes and passes the
 other lanes theirs.
@@ -651,6 +651,12 @@ they were written in. The portal does not translate them.
 | Your {trade} quote for {project} ran out {date}. Send it again to keep it good. | Su cotización de {trade} para {project} venció el {date}. Envíela de nuevo para que siga válida. |
 | You said your {trade} quote for {project} would come {date}. Send it or give a new day. | Usted dijo que su cotización de {trade} para {project} llegaría el {date}. Envíela o dé un nuevo día. |
 | Your {trade} quote for {project} was due {date}. | Su cotización de {trade} para {project} venció el {date}. |
+| 1 submittal to send for {trade} on {project}. | Tiene 1 documento para aprobación por enviar de {trade} para {project}. |
+| {n} submittals to send for {trade} on {project}. | Tiene {n} documentos para aprobación por enviar de {trade} para {project}. |
+| {gc} sent one back to revise. | {gc} le devolvió uno para corregir. |
+| {gc} sent {n} back to revise. | {gc} le devolvió {n} para corregir. |
+| One is late. | Uno está atrasado. |
+| {n} are late. | {n} están atrasados. |
 | 1 punch item to fix on {trade} for {project}. | Tiene 1 pendiente por arreglar en {trade} para {project}. |
 | {n} punch items to fix on {trade} for {project}. | Tiene {n} pendientes por arreglar en {trade} para {project}. |
 | {gc} checked one and it is not fixed yet. | {gc} revisó uno y todavía no está arreglado. |
@@ -934,8 +940,8 @@ they were written in. The portal does not translate them.
 | Click won the project. This trade is not awarded yet. | Click ganó el proyecto. Esta especialidad todavía no se adjudica. |
 | Click won the project. This trade is yours. | Click ganó el proyecto. Esta especialidad es suya. |
 | Click won the project. This trade went to another company. | Click ganó el proyecto. Esta especialidad fue para otra empresa. |
-| Click did not win this project. Thank you for your quote. | Click no ganó este proyecto. Gracias por su precio. |
-| The owner stopped this project or put it on hold. Thank you for your quote. | El dueño detuvo este proyecto o lo puso en pausa. Gracias por su precio. |
+| Click did not win this project. Thank you for your quote. | Click no ganó este proyecto. Gracias por su cotización. |
+| The owner stopped this project or put it on hold. Thank you for your quote. | El dueño detuvo este proyecto o lo puso en pausa. Gracias por su cotización. |
 
 #### The table
 
