@@ -11,7 +11,7 @@ import { awardedPartner, find, logged, mapInvite, mapPackage, mapProject, mapSow
 import { initialGcState } from './gcFixture'
 import { lostWhyLabel } from './gcLost'
 import { daysBetween, draftSchedule, scheduleLinesOf, withBaselineKept } from './gcBuildingSchedule'
-import { buildNewProject, packagesFromDrafts, pushSchedule, withNewLines, withRetiedLines, withTradesInOrder } from './gcNewProject'
+import { buildNewProject, packagesFromDrafts, pushSchedule, scheduleSetLines, withNewLines, withRetiedLines, withTradesInOrder } from './gcNewProject'
 import { nextPunchId, punchClear } from './gcBuildingPunch'
 import { addDays, changeOrderTradePct, crewPctFromStages, drawApprovedLess, finalPayApplication, jobCloseout, payApplication, timesSentBack, tradeCloseout, workAllBilled } from './gcBuilding'
 import { appClaimed, appOpen, changeOrderPrice, ownerCloseout, ownerFinalPayAppToSend, ownerPayApp, ownerPayAppHasWork, ownerPayAppToSend } from './gcOwnerBilling'
@@ -619,12 +619,22 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
       const brought = packagesFromDrafts(project.id, action.newTrades, project.packages.map((p) => p.id))
       const lined = withNewLines(withRetiedLines(project, action.retiedLines ?? []), rev, action.newLines ?? [])
       const pushes = Object.fromEntries(Object.entries(action.schedulePushes ?? {}).filter(([, d]) => d > 0).map(([id, d]) => [id, Math.round(d)]))
-      const kept = project.schedule && Object.keys(pushes).length > 0 ? withBaselineKept(project, project.schedule) : null
-      const push = kept ? pushSchedule(kept.activities, pushes) : null
+      // Work the set brings goes on a schedule already drawn: a new trade's lines and the lines it adds.
+      const packagesAfter = withTradesInOrder(lined.project.packages, brought)
+      const newWork = project.schedule
+        ? [
+            ...brought.flatMap((p) => p.scope.map((l) => ({ packageId: p.id, lineId: l.id, label: l.label }))),
+            ...lined.added.map((a) => ({ packageId: a.packageId, lineId: a.scopeId, label: packagesAfter.find((p) => p.id === a.packageId)?.scope.find((l) => l.id === a.scopeId)?.label ?? '' })),
+          ]
+        : []
+      const kept = project.schedule && (Object.keys(pushes).length > 0 || newWork.length > 0) ? withBaselineKept(project, project.schedule) : null
+      const placed = kept ? scheduleSetLines({ ...lined.project, packages: packagesAfter }, kept.activities, newWork, state.today) : null
+      const push = placed ? pushSchedule(placed, pushes) : null
+      const lastWas = kept ? kept.activities.reduce((m, a) => (a.finish > m ? a.finish : m), '') : ''
       const carried = new Set(action.questionIds ?? [])
       const withTrades = {
         ...lined.project,
-        packages: withTradesInOrder(lined.project.packages, brought),
+        packages: packagesAfter,
         ...(kept && push ? { schedule: { ...kept, activities: push.activities } } : {}),
         ...(carried.size > 0
           ? { questions: lined.project.questions.map((q) => (carried.has(q.id) && q.answer !== null && q.inSetRev === undefined ? { ...q, inSetRev: rev } : q)) }
@@ -643,7 +653,7 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
         sentTo,
         ...(action.addedSheets.length > 0 ? { addedSheets: action.addedSheets } : {}),
         ...(lined.added.length > 0 ? { addedLines: lined.added } : {}),
-        ...(push ? { pushed: Object.entries(pushes).map(([lineId, days]) => ({ lineId, days })) } : {}),
+        ...(push && Object.keys(pushes).length > 0 ? { pushed: Object.entries(pushes).map(([lineId, days]) => ({ lineId, days })) } : {}),
         ...(action.specs && action.specs.length > 0 ? { changedSpecs: action.specs } : {}),
         ...(action.addedSpecs && action.addedSpecs.length > 0 ? { addedSpecs: action.addedSpecs } : {}),
         ...(action.removedSheets && action.removedSheets.length > 0 ? { removedSheets: action.removedSheets } : {}),
@@ -653,8 +663,12 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
       }
       const next = mapProject(state, project.id, () => ({ ...withTrades, planSets: [...withTrades.planSets, set] }))
       const newLines = lined.added.length > 0 ? ` It adds ${lined.added.length} scope ${lined.added.length === 1 ? 'line' : 'lines'}.` : ''
-      const endDays = push ? daysUntil(push.lastAfter, push.lastBefore) : 0
-      const time = push ? (endDays > 0 ? ` It adds ${endDays} ${endDays === 1 ? 'day' : 'days'} to the job.` : ' The days it adds fit in the spare days.') : ''
+      const endDays = push ? daysUntil(push.lastAfter, lastWas) : 0
+      const time = push
+        ? `${newWork.length > 0 ? ` It puts ${newWork.length} new ${newWork.length === 1 ? 'activity' : 'activities'} on the schedule.` : ''}${
+            endDays > 0 ? ` It adds ${endDays} ${endDays === 1 ? 'day' : 'days'} to the job.` : Object.keys(pushes).length > 0 ? ' The days it adds fit in the spare days.' : ''
+          }`
+        : ''
       const outSheets = action.removedSheets?.length ?? 0
       const outSpecs = action.removedSpecs?.length ?? 0
       const takesOut = [
