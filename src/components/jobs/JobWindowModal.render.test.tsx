@@ -39,6 +39,11 @@ vi.mock('./JobHistoryLienTimeline', () => ({
   default: ({ job }: { job: { id: string } }) => <div data-testid="history-lien-timeline-stub">timeline for {job.id}</div>,
 }))
 
+// The Documents pane (v2.4491) has its own render test; here it is a stub that names its job.
+vi.mock('./JobWindowDocumentsTab', () => ({
+  JobWindowDocumentsTab: ({ job }: { job: { id: string } }) => <div data-testid="documents-tab-stub">documents for {job.id}</div>,
+}))
+
 beforeAll(() => {
   vi.stubGlobal('scrollTo', vi.fn())
 })
@@ -71,6 +76,22 @@ function renderWindow(onClose: () => void, initialTab: 'job' | 'edit' | 'bill' |
 const tab = (name: string) => screen.getByRole('tab', { name })
 
 describe('JobWindowModal', () => {
+  it('Documents is the last tab: it mounts on first visit, hides the form pane and stays mounted (v2.4491)', async () => {
+    await renderSettled(windowUi(vi.fn()), {
+      loaded: async () => {
+        await screen.findByRole('button', { name: 'Share with supply house' })
+        await screen.findByDisplayValue('Kitchen rough-in')
+      },
+    })
+    expect(screen.queryByTestId('documents-tab-stub')).toBeNull()
+    fireEvent.click(tab('Documents'))
+    await waitFor(() => expect(screen.getByTestId('documents-tab-stub').textContent).toBe('documents for job-1'))
+    expect(tab('Documents').getAttribute('aria-selected')).toBe('true')
+    expect(screen.getByRole('tabpanel', { name: 'Documents' })).toBeTruthy()
+    fireEvent.click(tab('Job'))
+    expect(screen.getByTestId('documents-tab-stub')).toBeTruthy()
+  })
+
   it('History is the fourth tab: it mounts the single-job day grid on first visit and hides the form pane (T5-05)', async () => {
     // Let the window finish its first load before touching the tabs (the other tests
     // here do the same): the Job pane's header icons and the form's name field both
@@ -99,8 +120,8 @@ describe('JobWindowModal', () => {
     expect(tab('Edit')).toBeTruthy()
     expect(tab('Bill')).toBeTruthy()
     expect(tab('Costs')).toBeTruthy()
-    // Job · Edit · Bill · Costs · History, in that order (v2.3182).
-    expect(within(screen.getByRole('tablist', { name: 'Job window tabs' })).getAllByRole('tab').map((t) => t.textContent)).toEqual(['Job', 'Edit', 'Bill', 'Costs', 'History'])
+    // Job · Edit · Bill · Costs · History · Documents, in that order (v2.3182, v2.4491).
+    expect(within(screen.getByRole('tablist', { name: 'Job window tabs' })).getAllByRole('tab').map((t) => t.textContent)).toEqual(['Job', 'Edit', 'Bill', 'Costs', 'History', 'Documents'])
     expect(screen.getByLabelText('Close job window')).toBeTruthy()
     // The panes' own close affordances are gone — one window, one ✕.
     expect(screen.queryByLabelText('Close job detail')).toBeNull()

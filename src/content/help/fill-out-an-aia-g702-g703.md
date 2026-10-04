@@ -81,6 +81,12 @@ Then paste the Google Drive link to the file under **LINK TO THE FILE YOU SENT**
 
 Press **Open** beside the link to see the file. Any saved application can carry a link.
 
+## See them on the job
+
+Open the job and press the **Documents** tab. Every saved application is listed with its number, its period and the payment due.
+
+Press **Open the file** to see the file you sent. Press **Open** to change the application. Press **New application** to start one from there.
+
 ## Take one off the job
 
 Open the saved application and press **Delete**. The window asks first. A later application keeps the amounts it was saved with.

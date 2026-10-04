@@ -133,11 +133,17 @@ export default function AiaG702G703Modal({
   onClose,
   job,
   hcpForFilename,
+  initialApplicationNumber = null,
+  zIndex = 1006,
 }: {
   open: boolean
   onClose: () => void
   job: JobWithDetails | LimitedJobDetailSnapshot | null
   hcpForFilename: string
+  /** Open on this saved application when the job has it; otherwise on a new one. */
+  initialApplicationNumber?: number | null
+  /** Above the window it is opened from (the job window sits at 1010). */
+  zIndex?: number
 }) {
   const { role: authRole } = useAuth()
   const { showToast } = useToastContext()
@@ -210,13 +216,15 @@ export default function AiaG702G703Modal({
       if (cancelled) return
       setFacts(loadedFacts)
       setSaved(list)
-      setOpenId(null)
-      loadForm(newApplicationValues(list, loadedFacts))
+      const first = initialApplicationNumber == null ? null : list.find((a) => a.applicationNumber === initialApplicationNumber) ?? null
+      setOpenId(first?.id ?? null)
+      if (first) loadForm(first.fields, first.link)
+      else loadForm(newApplicationValues(list, loadedFacts))
     })()
     return () => {
       cancelled = true
     }
-  }, [open, job, authRole, loadForm, newApplicationValues])
+  }, [open, job, authRole, loadForm, newApplicationValues, initialApplicationNumber])
 
   const titleId = 'aia-g702-g703-modal-title'
 
@@ -337,7 +345,7 @@ export default function AiaG702G703Modal({
       style={{
         position: 'fixed',
         inset: 0,
-        zIndex: 1006,
+        zIndex,
         background: 'rgba(0,0,0,0.45)',
         display: 'flex',
         alignItems: 'center',
