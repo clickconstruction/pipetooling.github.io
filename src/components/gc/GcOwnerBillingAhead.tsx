@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useMatchMedia } from '../../hooks/useMatchMedia'
 import { Card, num, td, th } from './gcUi'
 import { cashAhead, money, shortDate, type CashMove, type CashWeek, type GcState } from '../../lib/gcMode/gcModel'
 
@@ -9,6 +10,7 @@ import { cashAhead, money, shortDate, type CashMove, type CashWeek, type GcState
  */
 export function GcOwnerBillingAhead({ state }: { state: GcState }) {
   const [countLate, setCountLate] = useState(false)
+  const narrow = useMatchMedia('(max-width: 640px)')
   const a = cashAhead(state, { countLate })
   const lastWeek = a.weeks[a.weeks.length - 1]
   const lateTotal = a.late.reduce((t, m) => t + m.amount, 0)
@@ -35,24 +37,32 @@ export function GcOwnerBillingAhead({ state }: { state: GcState }) {
         <span style={{ color: 'var(--text-muted)' }}>We start from today, {standingWords(a.standingNow)}.</span>
       </div>
 
-      <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr>
-              <th style={th}>Week</th>
-              <th style={{ ...th, textAlign: 'right' }}>Coming in</th>
-              <th style={{ ...th, textAlign: 'right' }}>Going out</th>
-              <th style={{ ...th, textAlign: 'right' }}>Where we stand</th>
-              <th style={{ ...th, width: '28%' }} />
-            </tr>
-          </thead>
-          <tbody>
-            {a.weeks.map((week, i) => (
-              <WeekRows key={week.start} week={week} index={i} low={a.lowest?.start === week.start} scale={scale} />
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {narrow ? (
+        <div style={{ display: 'grid' }}>
+          {a.weeks.map((week, i) => (
+            <WeekBlock key={week.start} week={week} index={i} low={a.lowest?.start === week.start} scale={scale} />
+          ))}
+        </div>
+      ) : (
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                <th style={th}>Week</th>
+                <th style={{ ...th, textAlign: 'right' }}>Coming in</th>
+                <th style={{ ...th, textAlign: 'right' }}>Going out</th>
+                <th style={{ ...th, textAlign: 'right' }}>Where we stand</th>
+                <th style={{ ...th, width: '28%' }} />
+              </tr>
+            </thead>
+            <tbody>
+              {a.weeks.map((week, i) => (
+                <WeekRows key={week.start} week={week} index={i} low={a.lowest?.start === week.start} scale={scale} />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       <div style={{ padding: '0.6rem 1rem 0.85rem', display: 'grid', gap: '0.3rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
         {!countLate &&
@@ -114,7 +124,6 @@ function Headline({ weeks, lowest }: { weeks: CashWeek[]; lowest: CashWeek | nul
 
 function WeekRows({ week, index, low, scale }: { week: CashWeek; index: number; low: boolean; scale: number }) {
   const up = Math.round(week.standing) >= 0
-  const pct = Math.min(50, (Math.abs(week.standing) / scale) * 50)
   const rowTd = { ...td, borderBottom: week.moves.length > 0 ? 'none' : td.borderBottom }
   const rowNum = { ...num, borderBottom: week.moves.length > 0 ? 'none' : num.borderBottom }
   return (
@@ -130,20 +139,7 @@ function WeekRows({ week, index, low, scale }: { week: CashWeek; index: number; 
         <td style={{ ...rowNum, color: week.out > 0.005 ? 'var(--text-red-700)' : 'var(--text-muted)' }}>{week.out > 0.005 ? money(week.out) : '—'}</td>
         <td style={{ ...rowNum, fontWeight: 600, color: up ? 'var(--text-green-700)' : 'var(--text-red-700)' }}>{standingWords(week.standing)}</td>
         <td style={rowTd}>
-          <div style={{ position: 'relative', height: 10, background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 5 }}>
-            <div style={{ position: 'absolute', left: '50%', top: -2, bottom: -2, width: 1, background: 'var(--text-muted)' }} />
-            <div
-              style={{
-                position: 'absolute',
-                top: 0,
-                bottom: 0,
-                left: up ? '50%' : `${50 - pct}%`,
-                width: `${pct}%`,
-                background: up ? 'var(--text-green-700)' : 'var(--text-red-700)',
-                borderRadius: 5,
-              }}
-            />
-          </div>
+          <WeekBar standing={week.standing} scale={scale} />
         </td>
       </tr>
       {week.moves.length > 0 && (
@@ -158,6 +154,66 @@ function WeekRows({ week, index, low, scale }: { week: CashWeek; index: number; 
         </tr>
       )}
     </>
+  )
+}
+
+/** Where we stand as a bar from the middle: green to the right when ahead, red to the left when carrying. */
+function WeekBar({ standing, scale }: { standing: number; scale: number }) {
+  const up = Math.round(standing) >= 0
+  const pct = Math.min(50, (Math.abs(standing) / scale) * 50)
+  return (
+    <div style={{ position: 'relative', height: 10, background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 5 }}>
+      <div style={{ position: 'absolute', left: '50%', top: -2, bottom: -2, width: 1, background: 'var(--text-muted)' }} />
+      <div
+        style={{
+          position: 'absolute',
+          top: 0,
+          bottom: 0,
+          left: up ? '50%' : `${50 - pct}%`,
+          width: `${pct}%`,
+          background: up ? 'var(--text-green-700)' : 'var(--text-red-700)',
+          borderRadius: 5,
+        }}
+      />
+    </div>
+  )
+}
+
+/** A week on a phone: its name and days, where we stand, in and out, the bar, then what moves. */
+function WeekBlock({ week, index, low, scale }: { week: CashWeek; index: number; low: boolean; scale: number }) {
+  const up = Math.round(week.standing) >= 0
+  const amount = (n: number, color: string) => (
+    <span style={{ color: n > 0.005 ? color : 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{n > 0.005 ? money(n) : '—'}</span>
+  )
+  return (
+    <div style={{ borderTop: '1px solid var(--border)', padding: '0.55rem 1rem', display: 'grid', gap: '0.3rem', background: low ? 'var(--bg-subtle)' : undefined }}>
+      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
+        <strong>{weekName(week, index)}</strong>
+        <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+          {shortDate(week.start)} to {shortDate(week.end)}
+        </span>
+        <span style={{ flex: 1 }} />
+        <strong style={{ color: up ? 'var(--text-green-700)' : 'var(--text-red-700)', fontVariantNumeric: 'tabular-nums' }}>{standingWords(week.standing)}</strong>
+      </div>
+      <div style={{ display: 'flex', gap: '1rem', fontSize: '0.85rem' }}>
+        <span>
+          <span style={{ color: 'var(--text-muted)' }}>In </span>
+          {amount(week.in, 'var(--text-green-700)')}
+        </span>
+        <span>
+          <span style={{ color: 'var(--text-muted)' }}>Out </span>
+          {amount(week.out, 'var(--text-red-700)')}
+        </span>
+      </div>
+      <WeekBar standing={week.standing} scale={scale} />
+      {week.moves.length > 0 && (
+        <div style={{ display: 'grid', gap: '0.25rem', fontSize: '0.8rem', marginTop: '0.15rem' }}>
+          {week.moves.map((m) => (
+            <MoveLine key={`${m.dir}-${m.project.id}-${m.who}-${m.number ?? 'r'}`} move={m} />
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
 
