@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Exclusions by company</title>
+<style>
+  :root {
+    --bg: #f4f5f7; --surface: #fff; --sub: #f8fafc; --text: #1f2937; --muted: #6b7280; --border: #e5e7eb; --strong: #d1d5db;
+    --blue: #2563eb; --blue-tint: #eff6ff; --blue-fg: #1e40af;
+    --amber-tint: #fffbeb; --amber-border: #fcd34d; --amber-fg: #92400e;
+    --green-tint: #f0fdf4; --green-fg: #166534; --red-tint: #fef2f2; --red-fg: #b91c1c; --violet-tint: #f5f3ff; --violet-fg: #5b21b6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f172a; --surface: #111827; --sub: #0b1220; --text: #e5e7eb; --muted: #9ca3af; --border: #374151; --strong: #4b5563;
+      --blue: #60a5fa; --blue-tint: #172554; --blue-fg: #bfdbfe;
+      --amber-tint: #2a1d05; --amber-border: #92400e; --amber-fg: #fcd34d;
+      --green-tint: #052e16; --green-fg: #86efac; --red-tint: #2a0f0f; --red-fg: #fca5a5; --violet-tint: #1e1b4b; --violet-fg: #c4b5fd;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f172a; --surface: #111827; --sub: #0b1220; --text: #e5e7eb; --muted: #9ca3af; --border: #374151; --strong: #4b5563;
+    --blue: #60a5fa; --blue-tint: #172554; --blue-fg: #bfdbfe;
+    --amber-tint: #2a1d05; --amber-border: #92400e; --amber-fg: #fcd34d;
+    --green-tint: #052e16; --green-fg: #86efac; --red-tint: #2a0f0f; --red-fg: #fca5a5; --violet-tint: #1e1b4b; --violet-fg: #c4b5fd;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 20px 16px 48px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  h2 { font-size: 17px; margin: 28px 0 6px; }
+  h3 { font-size: 15px; margin: 0 0 6px; }
+  .lede { color: var(--muted); margin: 0 0 10px; max-width: 90ch; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+  .scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 640px; }
+  th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); border-bottom: 1px solid var(--border); padding: 7px 8px; }
+  td { border-bottom: 1px solid var(--border); padding: 8px; vertical-align: top; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .sec td { background: var(--sub); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+  .chip { display: inline-block; border-radius: 999px; padding: 1px 8px; font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+  .yes { background: var(--green-tint); color: var(--green-fg); }
+  .no { background: var(--red-tint); color: var(--red-fg); }
+  .unk { background: var(--amber-tint); color: var(--amber-fg); border: 1px solid var(--amber-border); }
+  .known { background: var(--violet-tint); color: var(--violet-fg); }
+  .grey { background: var(--sub); color: var(--muted); border: 1px solid var(--border); }
+  .cover { display: inline-flex; gap: 4px; align-items: center; margin-top: 4px; font-size: 12px; color: var(--muted); }
+  .cover span.box { border: 1px solid var(--strong); border-radius: 5px; padding: 1px 6px; background: var(--surface); color: var(--text); min-width: 64px; text-align: right; }
+  .muted { color: var(--muted); }
+  .small { font-size: 12px; }
+  .note { border: 1px dashed var(--strong); border-radius: 8px; padding: 8px 10px; color: var(--muted); font-size: 13px; background: var(--sub); }
+  .flip { border: 1px solid var(--amber-border); background: var(--amber-tint); border-radius: 8px; padding: 9px 11px; margin-bottom: 10px; }
+  .flip b { color: var(--amber-fg); }
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 12px; }
+  .btn { display: inline-block; border: 1px solid var(--strong); border-radius: 6px; padding: 3px 9px; background: var(--surface); font-size: 12.5px; }
+  .btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .link { color: var(--blue); }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 6px 0; }
+  .pick { border: 1px solid var(--strong); border-radius: 999px; padding: 2px 10px; font-size: 12.5px; background: var(--surface); }
+  .pick.on { background: var(--red-tint); color: var(--red-fg); border-color: var(--red-fg); }
+  .input { border: 1px solid var(--strong); border-radius: 6px; padding: 5px 8px; background: var(--surface); color: var(--muted); flex: 1 1 200px; }
+  ul.plan { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px 12px 32px; margin: 0; }
+  ul.plan li { margin: 6px 0; }
+  .who { font-size: 11px; font-weight: 700; color: var(--blue-fg); background: var(--blue-tint); border-radius: 4px; padding: 1px 6px; margin-right: 6px; }
+  .label { font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Exclusions, company by company</h1>
+  <p class="lede">The owner's ask (2026-10-04): "Sometimes when we collect bids, various groups will have different kinds of exclusions. We want to be able to track those exclusions on a per vendor basis." Made-up example: Sitework on Boerne Retail Shell, three companies quoting.</p>
+
+  <!-- ===================== BEFORE ===================== -->
+  <h2>Before: Compare quotes today</h2>
+  <p class="lede">Each company can only say yes or no to <b>our</b> scope lines. The trade has one list of <b>Known exclusions</b>, set by us. Anything else a company leaves out ends up in a free-text note that the totals never read.</p>
+  <div class="card">
+    <div class="small" style="margin-bottom:8px"><b>Known exclusions:</b> Testing and inspections (the owner).</div>
+    <div class="scroll">
+    <table>
+      <tr><th>Side by side</th><th>Lonestar Earthworks</th><th>Tri-County Site</th><th>Hillside Excavation</th></tr>
+      <tr><td>Their quote, as sent</td><td class="num">$178,400</td><td class="num">$191,000</td><td class="num">$186,500</td></tr>
+      <tr class="sec"><td colspan="4">Is it in their price?</td></tr>
+      <tr><td>Clearing and grading</td><td><span class="chip yes">✓ in their price</span></td><td><span class="chip yes">✓ in their price</span></td><td><span class="chip yes">✓ in their price</span></td></tr>
+      <tr><td>Utilities to 5 ft of the building</td><td><span class="chip yes">✓ in their price</span></td><td><span class="chip yes">✓ in their price</span></td><td><span class="chip yes">✓ in their price</span></td></tr>
+      <tr><td>Paving</td><td><span class="chip yes">✓ in their price</span></td><td><span class="chip yes">✓ in their price</span></td><td><span class="chip yes">✓ in their price</span></td></tr>
+      <tr><td>Striping and signs</td><td><span class="chip no">left out</span> <div class="cover">cost to cover it <span class="box">6,500</span></div></td><td><span class="chip yes">✓ in their price</span></td><td><span class="chip yes">✓ in their price</span></td></tr>
+      <tr><td><b>All in</b></td><td class="num"><b>$184,900</b> <span class="chip yes">lowest</span></td><td class="num">$191,000</td><td class="num">$186,500</td></tr>
+      <tr><td>Their note</td><td class="small muted">Excludes permits and fees, dewatering, and rock. Rock at $38/cy if found.</td><td class="small muted">Excludes rock excavation and testing.</td><td class="small muted">Excludes sales tax.</td></tr>
+    </table>
+    </div>
+  </div>
+  <div class="note" style="margin-top:8px">The problem: Lonestar looks lowest by $1,600. But its note leaves out permits, dewatering and rock, and nobody priced those. Hillside leaves out sales tax. None of it is counted, and none of it is remembered next time we ask Lonestar.</div>
+
+  <!-- ===================== AFTER ===================== -->
+  <h2>After: each company's exclusions, side by side and in the price</h2>
+  <p class="lede">Each quote carries its own list of exclusions. Every exclusion any company names gets a row, so everyone is compared on the same things. A company that left it out gets a cost to cover it, just like a scope line. A trade's <b>Known exclusions</b> show as <i>expected</i> and cost nothing.</p>
+  <div class="card">
+    <div class="flip"><b>With what each one leaves out covered, Tri-County is lowest, by $650.</b> <span class="muted small">Lonestar's quote is lowest as sent, by $8,100. What it leaves out adds $13,250.</span></div>
+    <div class="scroll">
+    <table>
+      <tr><th>Side by side</th><th>Lonestar Earthworks</th><th>Tri-County Site</th><th>Hillside Excavation</th></tr>
+      <tr><td>Their quote, as sent</td><td class="num">$178,400</td><td class="num">$191,000</td><td class="num">$186,500</td></tr>
+      <tr class="sec"><td colspan="4">Is it in their price? · our scope lines</td></tr>
+      <tr><td>Clearing and grading · Utilities · Paving</td><td><span class="chip yes">✓ all three</span></td><td><span class="chip yes">✓ all three</span></td><td><span class="chip yes">✓ all three</span></td></tr>
+      <tr><td>Striping and signs</td><td><span class="chip no">left out</span> <div class="cover">cover <span class="box">6,500</span></div></td><td><span class="chip yes">✓</span></td><td><span class="chip yes">✓</span></td></tr>
+      <tr class="sec"><td colspan="4">Their exclusions · what each company wrote it leaves out</td></tr>
+      <tr><td>Permits and fees</td><td><span class="chip no">excluded</span> <div class="cover">cover <span class="box">4,200</span></div></td><td><span class="chip yes">✓ included</span></td><td><span class="chip unk">not said</span> <div class="small link">Ask them</div></td></tr>
+      <tr><td>Dewatering</td><td><span class="chip no">excluded</span> <div class="cover">cover <span class="box">2,550</span></div></td><td><span class="chip yes">✓ included</span></td><td><span class="chip yes">✓ included</span></td></tr>
+      <tr><td>Rock excavation</td><td><span class="chip no">excluded</span> <div class="small muted">$38/cy if found</div></td><td><span class="chip no">excluded</span> <div class="small muted">no unit price</div></td><td><span class="chip yes">✓ included</span></td></tr>
+      <tr><td>Testing and inspections</td><td><span class="chip known">expected · the owner</span></td><td><span class="chip known">expected · the owner</span></td><td><span class="chip known">expected · the owner</span></td></tr>
+      <tr><td>Sales tax</td><td><span class="chip yes">✓ included</span></td><td><span class="chip yes">✓ included</span></td><td><span class="chip no">excluded</span> <div class="cover">cover <span class="box">6,000</span></div></td></tr>
+      <tr><td><b>All in</b> <div class="small muted">quote + what it leaves out</div></td><td class="num"><b>$191,650</b></td><td class="num"><b>$191,000</b> <span class="chip yes">lowest</span></td><td class="num"><b>$192,500</b> <span class="chip unk">+ ?</span></td></tr>
+      <tr><td>Rock, if we hit it</td><td class="small">$38/cy</td><td class="small" style="color:var(--red-fg)">not priced, ask</td><td class="small">in their price</td></tr>
+    </table>
+    </div>
+  </div>
+
+  <div class="grid2" style="margin-top:12px">
+    <div class="card">
+      <div class="label">Where exclusions come from: the trade's quote form, in its portal</div>
+      <h3>What your quote leaves out</h3>
+      <div class="muted small">Tick what you exclude. Add anything else. Leave nothing to a note.</div>
+      <div class="row">
+        <span class="pick on">Permits and fees ✓</span><span class="pick on">Dewatering ✓</span><span class="pick on">Rock excavation ✓</span><span class="pick">Testing</span><span class="pick">Sales tax</span><span class="pick">Bonds</span><span class="pick">Night work</span>
+      </div>
+      <div class="row"><span class="input">Rock excavation: unit price if found, $/cy</span><span class="input" style="flex:0 1 90px">38</span></div>
+      <div class="row"><span class="input">+ Something else you exclude</span></div>
+      <div class="small muted">The office can type the same list from an emailed quote: <span class="link">+ Exclusion from their quote</span>.</div>
+    </div>
+    <div class="card">
+      <div class="label">Tracked per company: Trade partners and the company's card</div>
+      <h3>Lonestar Earthworks <span class="chip grey">Sitework</span></h3>
+      <div class="small" style="margin:4px 0 8px">Usually excludes, across 6 quotes:</div>
+      <table style="min-width:0">
+        <tr><td>Permits and fees</td><td class="num">5 of 6</td><td><span class="chip no">almost always</span></td></tr>
+        <tr><td>Dewatering</td><td class="num">3 of 6</td><td><span class="chip unk">often</span></td></tr>
+        <tr><td>Rock excavation</td><td class="num">2 of 6</td><td class="small muted">gives a unit price</td></tr>
+      </table>
+      <div class="row" style="margin-top:8px"><span class="btn primary">Ask them to include permits</span><span class="small muted">goes in their next invitation</span></div>
+    </div>
+  </div>
+
+  <h2>How it works, in short</h2>
+  <ul class="plan">
+    <li><span class="who">Model</span>A quote gets a list of <b>exclusions</b>: a name from a shared list for the trade (or typed), and optionally a unit price ("rock at $38/cy"). The names are matched across companies, so "permits", "permit fees" and "Permits and fees" are one row.</li>
+    <li><span class="who">Compare quotes</span>A <b>Their exclusions</b> section, one row per exclusion any company named. Each cell says <i>excluded</i>, <i>included</i>, <i>not said</i>, or <i>expected</i> when it's one of the trade's Known exclusions. An excluded cell gets <b>cover</b>, a cost that goes into <b>All in</b> exactly as a left-out scope line does, so the lowest number reflects it. <i>not said</i> gets <b>Ask them</b>, which uses the ask thread. A warning names a flip, like "Tri-County is lowest once exclusions are covered".</li>
+    <li><span class="who">Portal</span>The quote form gets <b>What your quote leaves out</b>: the trade's common exclusions as ticks, plus typed ones, in both languages. The office can enter the same list from an emailed quote.</li>
+    <li><span class="who">Per company</span>Each company keeps a record across its quotes ("Permits and fees, 5 of 6"). It shows on Trade partners and the company's card, and can pre-ask "please include permits" in the next invitation.</li>
+    <li><span class="who">The book</span>The shared list of exclusion names grows from what companies write, beside the scope book, so a trade's ticks get better over time.</li>
+  </ul>
+</div>
+</body>
+</html>
