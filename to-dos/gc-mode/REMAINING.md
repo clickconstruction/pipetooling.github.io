@@ -165,8 +165,11 @@ first** (a partner's vetting, the promise record), so build on those once GC 0 s
 ### Owner Billing (GC 4)
 
 1. **Q12 the owner's pay application:** the notary block, materials stored on site, the Excel and
-   PDF downloads, on one builder with Building's.
-2. **Q6 words** on the owner side, where a trade's number shows.
+   PDF downloads, on one builder with Building's. Notary and downloads done 4011250e9 (`gcPayAppFile.ts`,
+   `GcPayAppNotary.tsx`; Building wires the trade's window). Stored materials wait on Building's
+   `stored` on the trade's pay application; then each trade's stored rolls into its line on ours.
+2. ~~**Q6 words** on the owner side, where a trade's number shows.~~ done: nothing to change. The
+   owner side shows no trade's number as a bid; "still bidding" is our bid to the owner and stays.
 
 ### Still the owner's
 
