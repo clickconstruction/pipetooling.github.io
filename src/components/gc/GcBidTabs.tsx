@@ -175,7 +175,9 @@ function TabCard({
               <tr key={r.partnerId}>
                 <td style={td}>{r.rank}</td>
                 <td style={td}>
-                  {r.company} {r.awarded && <Chip tone="green">awarded</Chip>}
+                  {r.company}{' '}
+                  {/* Our copy names the estimator who awarded it (question 7); the trades' copies say only "awarded". */}
+                  {r.awarded && <Chip tone="green">{pkg.awardedBy ? `awarded by ${pkg.awardedBy}` : 'awarded'}</Chip>}
                 </td>
                 <td style={num}>{money(r.amount)}</td>
                 <td style={num}>{r.rank === 1 ? 'low' : `${r.overLowPct}%`}</td>

@@ -1407,6 +1407,8 @@ export function initialGcState(): GcState {
 export const GC_COMPANY = {
   name: 'Click Construction',
   shortName: 'Click',
+  /** Our estimators: any of them can award a trade and mark it on the bid tab (the owner, 2026-10-04, question 7). Made up. */
+  estimators: ['Rosa Treviño', 'Ben Alvarez'],
   /** Who a trade calls about pay and paperwork. Made up: 555 numbers and an .example address. */
   pay: { name: 'Accounts payable', phone: '(210) 555-0104', email: 'pay@clickconstruction.example' },
 }

@@ -131,8 +131,8 @@ first** (a partner's vetting, the promise record), so build on those once GC 0 s
    $X* and *Decline* on Trade partners and Compare quotes.
 5. ~~**Q8 the Board's kinds:**~~ done dcf1d4ef5 (Follow up's *Insurance, papers and other promises*). insurance (the renewal: a Follow up row from 30 days before the
    certificate runs out), a W-9, a signed statement of work.
-6. **Q7 Bid tabs:** *Mark awarded*, set by any estimator on our team, shown on the tab with who set it.
-7. **Q7 Start anyway** on Get started: with a reason, logged; what was missing stays listed as owed.
+6. ~~**Q7 Bid tabs:**~~ done (this commit). *Mark awarded*, set by any estimator on our team, shown on the tab with who set it.
+7. ~~**Q7 Start anyway**~~ done (this commit) on Get started: with a reason, logged; what was missing stays listed as owed.
 
 ### Building (GC 1)
 
@@ -170,14 +170,45 @@ first** (a partner's vetting, the promise record), so build on those once GC 0 s
 
 ### Still the owner's
 
-- Q4: draws by stage or by percent with retainage.
-- Q7: the trade map's list, closest first or most reliable first.
-- Q9: should Actions for assistants also sit on the Project Board?
+- ~~Q4, Q7's map order, Q9~~: answered 2026-10-04, see Round 3.
+
+## Round 3: the owner's answers of 2026-10-04 (later)
+
+- **Q4:** draws by percent with retainage. Capture each trade's own first schedule of values
+  (rough-in, top out, trim, or its own lines) with its quote, and show it side by side with ours.
+- **Q7:** the trade map lists the most reliable company first.
+- **Q9:** "Assistants could follow up the same way estimators could": every Follow up move is
+  theirs too; Actions for assistants stays on Trade partners.
+
+### Board (GC 0)
+
+1. **Q4 types first:** the trade's schedule of values on its quote (`SubBid.sov`), carried onto
+   the statement of work at award (`Sow.theirSov`), and a kernel for where a draw stands against
+   it (claimed to date: through rough-in, into top out).
+2. **Q4 on the statement of work:** theirs beside ours on Contracts.
+3. **Q7 the map order:** most reliable first (`tradeLineup`), the shortest drive breaking a tie.
+4. **Q9:** no move is held back from an assistant in the prototype; say so in the walkthrough and
+   in *Access* for the real build.
+
+### Building (GC 1)
+
+1. **Q4 on each draw:** their schedule of values beside the draw (the Board's kernel: "claimed
+   $45,000 to date: through Rough-in, 40% into Top out").
+
+### Portal (GC 3)
+
+1. **Q4:** the quote form takes their schedule of values (Rough-in, Top out, Trim as a start; any
+   lines; it adds up to the quote), in both languages.
+
+### New Project (GC 2)
+
+1. **Q7:** Who to ask picks from `tradeLineup`, so its first picks follow the new order. Check
+   the words that say "closest".
 
 ## Owner (the decisions)
 
 11. ~~**A carried quote with a line that has no cost:** does it hold the ring open?~~ Answered 2026-10-03: yes, until every line has a cost. Built by the Board (this commit).
-12. **The golden walk's order:** draw Helotes's schedule before Start? (Building moves the step.)
+12. ~~**The golden walk's order:** draw Helotes's schedule before Start?~~ Answered: yes (Building item 3, done).
 13. ~~**Marsh & Vale's made-up questions:** were they sent to the architect?~~ Answered 2026-10-04: **already sent.** (New Project gives them a sent date.)
 14. **The open questions in `README.md`:** 2 (start at buyout?), 3 (vetting new trades), 4 (draws
     by stage or percent), 5 (where the plans live), 6 ("quote" or "bid"), 7 (mark who was awarded
