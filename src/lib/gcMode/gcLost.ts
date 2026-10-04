@@ -11,7 +11,7 @@ export const LOST_WHY: { key: GcLostWhy; label: string }[] = [
   { key: 'other_builder', label: 'Went with another builder' },
   { key: 'project_died', label: 'Project died or on hold' },
   { key: 'no_bid', label: 'We never finished our bid' },
-  { key: 'no_answer', label: 'No answer from the owner' },
+  { key: 'no_answer', label: 'No answer from the customer' },
 ]
 
 export function lostWhyLabel(why: GcLostWhy | null | undefined): string | null {

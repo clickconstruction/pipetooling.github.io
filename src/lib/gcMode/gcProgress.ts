@@ -158,8 +158,8 @@ function biddingProgress(state: GcState, project: GcProject): StageProgress {
   }
   const sent: ProgressGroup = {
     key: 'sent',
-    label: 'Our bid to the owner',
-    why: 'The last step here. Send our price to the owner.',
+    label: 'Our bid to the customer',
+    why: 'The last step here. Send our price to the customer.',
     items: [
       {
         label: project.ourBidSentOn ? 'Sent' : 'Not sent yet',
@@ -200,8 +200,8 @@ function buyoutProgress(state: GcState, project: GcProject): StageProgress {
   const list = startChecklist(state, project)
   const owner: ProgressGroup = {
     key: 'owner',
-    label: 'Our side with the owner',
-    why: 'The owner contract, the permit and a start date.',
+    label: 'Our side with the customer',
+    why: 'Our contract with the customer, the permit and a start date.',
     items: list.owner.map((c) => ({ label: c.label, detail: c.detail, done: c.done })),
   }
   const byStep: ProgressGroup[] = START_STEP_GROUPS.map((g) => ({
