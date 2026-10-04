@@ -41,12 +41,14 @@ export type AiaFieldKey =
   | 'g702_h50_this_month_change_order_deductions'
   | 'g702_c28_retainage_percent'
   | 'g702_c31_retainage_material_percent'
+  | 'g702_h40_less_previous_certificates'
   | 'g703_k2_project'
   | 'g703_k3_application_date'
   | 'g703_k4_period_to'
   | 'g703_k5_architect_project_no'
   | 'g703_c13_description'
   | 'g703_d13_scheduled_value'
+  | 'g703_e13_from_previous'
   | 'g703_f13_this_period'
   | 'g703_g13_materials_stored'
 
@@ -127,6 +129,13 @@ export const AIA_FIELD_DEFS: readonly AiaFieldDef[] = [
     sheetName: AIA_G702_SHEET,
     cellRef: 'C31',
   },
+  {
+    key: 'g702_h40_less_previous_certificates',
+    label: 'LESS PREVIOUS CERTIFICATES FOR PAYMENT',
+    kind: 'number',
+    sheetName: AIA_G702_SHEET,
+    cellRef: 'H40',
+  },
   { key: 'g703_k2_project', label: 'APPLICATION NUMBER', kind: 'text', sheetName: AIA_G703_SHEET, cellRef: 'K2' },
   { key: 'g703_k3_application_date', label: 'APPLICATION DATE', kind: 'text', sheetName: AIA_G703_SHEET, cellRef: 'K3' },
   { key: 'g703_k4_period_to', label: 'PERIOD TO:', kind: 'text', sheetName: AIA_G703_SHEET, cellRef: 'K4' },
@@ -138,6 +147,13 @@ export const AIA_FIELD_DEFS: readonly AiaFieldDef[] = [
     kind: 'number',
     sheetName: AIA_G703_SHEET,
     cellRef: 'D13',
+  },
+  {
+    key: 'g703_e13_from_previous',
+    label: 'WORK COMPLETED FROM PREVIOUS APPLICATION',
+    kind: 'number',
+    sheetName: AIA_G703_SHEET,
+    cellRef: 'E13',
   },
   {
     key: 'g703_f13_this_period',

@@ -17,6 +17,18 @@ import {
 import { fetchAndFillAiaTemplate } from '../../lib/fillAiaG702G703Workbook'
 import { buildAiaPreview } from '../../lib/aiaG702G703Preview'
 import { loadAiaPrefillFacts } from '../../lib/aiaG702G703PrefillIo'
+import {
+  type SavedPayApplication,
+  carryForwardPayApplication,
+  cleanPayApplicationLink,
+  nextApplicationNumber,
+  payApplicationLabel,
+  payApplicationWriteFromForm,
+  previousPayApplication,
+  sortPayApplications,
+} from '../../lib/aiaPayApplications'
+import { PayApplicationNumberTaken, deletePayApplication, loadPayApplications, savePayApplication } from '../../lib/aiaPayApplicationsIo'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import AiaG702G703Paper from './AiaG702G703Paper'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
@@ -40,6 +52,19 @@ function triggerDownloadArrayBuffer(ab: ArrayBuffer, filename: string): void {
 }
 
 const swatch: CSSProperties = { display: 'inline-block', width: 22, height: 12, borderRadius: 2 }
+
+function applicationChipStyle(on: boolean): CSSProperties {
+  return {
+    padding: '0.25rem 0.6rem',
+    fontSize: '0.8125rem',
+    borderRadius: 999,
+    cursor: 'pointer',
+    border: '1px solid var(--border-strong)',
+    background: on ? 'var(--text-strong)' : 'var(--surface)',
+    color: on ? 'var(--surface)' : 'var(--text-700)',
+    fontVariantNumeric: 'tabular-nums',
+  }
+}
 
 function emptyFormState(): Record<AiaFieldKey, string> {
   const o = {} as Record<AiaFieldKey, string>
@@ -72,6 +97,17 @@ function buildAiaModalFieldSegments(defs: readonly AiaFieldDef[]): AiaModalField
     }
   }
   return segments
+}
+
+/** Field values (a prefill, a saved application) as the form's strings. */
+function fieldValuesToFormState(values: AiaFieldValues): Record<AiaFieldKey, string> {
+  const next = emptyFormState()
+  for (const def of AIA_FIELD_DEFS) {
+    const v = values[def.key]
+    if (v === undefined || v === '') continue
+    next[def.key] = typeof v === 'number' ? String(v) : v
+  }
+  return next
 }
 
 function formStateToFieldValues(form: Record<AiaFieldKey, string>): AiaFieldValues {
@@ -127,42 +163,145 @@ export default function AiaG702G703Modal({
     }, 0)
   }, [])
 
-  // The payer's address and the signed contract's day, read once per opening. Reset from job reuses them.
+  // The payer's address and the signed contract's day, read once per opening. Reset reuses them.
   const [facts, setFacts] = useState<AiaPrefillFacts | null>(null)
+  // The job's saved applications, and which one is open (null = a new one, not saved yet).
+  const [saved, setSaved] = useState<SavedPayApplication[]>([])
+  const [openId, setOpenId] = useState<string | null>(null)
+  // The form as it was loaded or last saved: what "you typed something" is measured against.
+  const [baseline, setBaseline] = useState<Record<AiaFieldKey, string>>(emptyFormState)
+  // A link to the file that was sent (a Google Drive link), kept beside the application.
+  const [link, setLink] = useState('')
+  const [baselineLink, setBaselineLink] = useState('')
+  const [saving, setSaving] = useState(false)
+  const confirm = useConfirmDialog()
 
-  const applyPrefill = useCallback((withFacts: AiaPrefillFacts | null) => {
-    if (!job) return
-    const issuer = getPhysicalInvoiceIssuerDraft()
-    const pre = buildAiaPrefillFromJob(job, issuer, withFacts)
-    setForm(() => {
-      const next = emptyFormState()
-      for (const def of AIA_FIELD_DEFS) {
-        const v = pre[def.key]
-        if (v === undefined || v === '') continue
-        next[def.key] = typeof v === 'number' ? String(v) : v
-      }
-      return next
-    })
-  }, [job])
+  const openApp = saved.find((a) => a.id === openId) ?? null
+  const dirty = useMemo(() => link !== baselineLink || JSON.stringify(form) !== JSON.stringify(baseline), [form, baseline, link, baselineLink])
+
+  const loadForm = useCallback((values: AiaFieldValues, withLink = '') => {
+    const next = fieldValuesToFormState(values)
+    setForm(next)
+    setBaseline(next)
+    setLink(withLink)
+    setBaselineLink(withLink)
+  }, [])
+
+  /** A new application's starting form: the job today, carried on from the last saved application when there is one. */
+  const newApplicationValues = useCallback(
+    (list: ReadonlyArray<SavedPayApplication>, withFacts: AiaPrefillFacts | null): AiaFieldValues => {
+      if (!job) return {}
+      const jobPrefill = buildAiaPrefillFromJob(job, getPhysicalInvoiceIssuerDraft(), withFacts)
+      const last = previousPayApplication(list, nextApplicationNumber(list))
+      return last ? carryForwardPayApplication(last, jobPrefill) : jobPrefill
+    },
+    [job],
+  )
 
   useEffect(() => {
     if (!open || !job) return
     let cancelled = false
     void (async () => {
-      const [, loaded] = await Promise.all([
+      const [, loadedFacts, list] = await Promise.all([
         fetchPhysicalInvoiceIssuerFromAppSettings({ authRole }),
         loadAiaPrefillFacts(job.id).catch(() => null),
+        loadPayApplications(job.id).catch(() => [] as SavedPayApplication[]),
       ])
       if (cancelled) return
-      setFacts(loaded)
-      applyPrefill(loaded)
+      setFacts(loadedFacts)
+      setSaved(list)
+      setOpenId(null)
+      loadForm(newApplicationValues(list, loadedFacts))
     })()
     return () => {
       cancelled = true
     }
-  }, [open, job, authRole, applyPrefill])
+  }, [open, job, authRole, loadForm, newApplicationValues])
 
   const titleId = 'aia-g702-g703-modal-title'
+
+  /** True when nothing typed would be lost, or the person says to leave it. */
+  const mayLeave = async (): Promise<boolean> => {
+    if (!dirty) return true
+    return confirm({
+      title: 'Leave without saving?',
+      message: 'What you typed on this application is not saved on the job.',
+      confirmLabel: 'Leave',
+      cancelLabel: 'Stay',
+    })
+  }
+
+  const requestClose = async () => {
+    if (await mayLeave()) onClose()
+  }
+
+  const showApplication = async (app: SavedPayApplication | null) => {
+    if ((app?.id ?? null) === openId && !dirty) return
+    if (!(await mayLeave())) return
+    setOpenId(app?.id ?? null)
+    if (app) loadForm(app.fields, app.link)
+    else loadForm(newApplicationValues(saved, facts))
+  }
+
+  /** Back to where this application started: the saved one as saved, a new one as the job and the last one give it. */
+  const resetForm = () => (openApp ? loadForm(openApp.fields, openApp.link) : loadForm(newApplicationValues(saved, facts)))
+
+  type SaveOutcome = { saved: SavedPayApplication } | { notSaved: string }
+
+  /** Save the form on the job as its application number. Never throws: the reason comes back as words. */
+  const saveOnJob = async (values: AiaFieldValues): Promise<SaveOutcome> => {
+    if (!job) return { notSaved: 'No job is open.' }
+    const write = payApplicationWriteFromForm(job.id, values, link)
+    if (!write.ok) return { notSaved: write.reason }
+    try {
+      const row = await savePayApplication(write.row, openId)
+      setSaved((list) => sortPayApplications([...list.filter((a) => a.id !== row.id), row]))
+      setOpenId(row.id)
+      setBaseline(form)
+      setLink(row.link)
+      setBaselineLink(row.link)
+      return { saved: row }
+    } catch (e) {
+      if (e instanceof PayApplicationNumberTaken) {
+        return { notSaved: `Application ${e.applicationNumber} is already saved on this job. Open it from the list, or use another number.` }
+      }
+      console.error(e)
+      return { notSaved: 'The application could not be saved on the job.' }
+    }
+  }
+
+  const onSave = async () => {
+    setSaving(true)
+    try {
+      const outcome = await saveOnJob(formStateToFieldValues(form))
+      if ('saved' in outcome) showToast(`Application ${outcome.saved.applicationNumber} saved on the job.`, 'success')
+      else showToast(outcome.notSaved, 'error')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const onDelete = async () => {
+    if (!openApp) return
+    const ok = await confirm({
+      title: `Delete application ${openApp.applicationNumber}?`,
+      message: 'It comes off the job. A later application keeps the previous amounts it was saved with.',
+      confirmLabel: 'Delete',
+      danger: true,
+    })
+    if (!ok) return
+    try {
+      await deletePayApplication(openApp.id)
+      const rest = saved.filter((a) => a.id !== openApp.id)
+      setSaved(rest)
+      setOpenId(null)
+      loadForm(newApplicationValues(rest, facts))
+      showToast(`Application ${openApp.applicationNumber} deleted.`, 'success')
+    } catch (e) {
+      console.error(e)
+      showToast('The application could not be deleted.', 'error')
+    }
+  }
 
   const onGenerate = async () => {
     if (!job) return
@@ -172,7 +311,10 @@ export default function AiaG702G703Modal({
       const ab = await fetchAndFillAiaTemplate(AIA_TEMPLATE_PUBLIC_PATH, values)
       const jobNumber = effectiveJobLedgerNumber(hcpForFilename || job.hcp_number, 'click_number' in job ? job.click_number : null)
       triggerDownloadArrayBuffer(ab, aiaDownloadFilename(jobNumber || job.id, values.g702_n5_project))
-      showToast('AIA workbook downloaded.', 'success')
+      // What went out is kept on the job, so the next application can start from it.
+      const outcome = await saveOnJob(values)
+      if ('saved' in outcome) showToast(`Workbook downloaded. Application ${outcome.saved.applicationNumber} saved on the job.`, 'success')
+      else showToast(`Workbook downloaded. Not saved on the job: ${outcome.notSaved}`, 'warning')
     } catch (e) {
       console.error(e)
       showToast(e instanceof Error ? e.message : 'Could not generate workbook.', 'error')
@@ -202,9 +344,9 @@ export default function AiaG702G703Modal({
         justifyContent: 'center',
         padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
       }}
-      onClick={onClose}
+      onClick={() => void requestClose()}
       onKeyDown={(e) => {
-        if (e.key === 'Escape') onClose()
+        if (e.key === 'Escape') void requestClose()
       }}
     >
       <div
@@ -279,7 +421,7 @@ export default function AiaG702G703Modal({
           )}
           <button
             type="button"
-            onClick={onClose}
+            onClick={() => void requestClose()}
             aria-label="Close"
             style={{
               border: 'none',
@@ -353,6 +495,75 @@ export default function AiaG702G703Modal({
             ...(!wide && narrowView === 'preview' ? { display: 'none' } : {}),
           }}
         >
+          <div data-testid="aia-applications" style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '0.9rem' }}>
+            <span style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-muted)' }}>
+              APPLICATIONS ON THIS JOB
+            </span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
+              {saved.map((app) => (
+                <button
+                  key={app.id}
+                  type="button"
+                  aria-pressed={app.id === openId}
+                  onClick={() => void showApplication(app)}
+                  style={applicationChipStyle(app.id === openId)}
+                >
+                  {payApplicationLabel(app)}
+                </button>
+              ))}
+              <button
+                type="button"
+                aria-pressed={openId == null}
+                onClick={() => void showApplication(null)}
+                style={applicationChipStyle(openId == null)}
+              >
+                New · {nextApplicationNumber(saved)}
+              </button>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', fontSize: '0.8125rem', color: 'var(--text-600)' }}>
+              <span style={{ flex: 1 }}>
+                {openApp
+                  ? `Application ${openApp.applicationNumber} is saved on the job. You can change it and save it again.`
+                  : saved.length > 0
+                    ? `A new application. It starts from application ${saved[saved.length - 1]!.applicationNumber}: that work is now previous work.`
+                    : 'Nothing is saved on this job yet. Save keeps this application here, and the next one starts from it.'}
+              </span>
+              {openApp ? (
+                <button
+                  type="button"
+                  onClick={() => void onDelete()}
+                  style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', fontSize: '0.8125rem', color: 'var(--text-red-700)', textDecoration: 'underline' }}
+                >
+                  Delete
+                </button>
+              ) : null}
+            </div>
+          </div>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginBottom: '0.9rem' }}>
+            <span style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)' }}>
+              <span style={{ flex: 1 }}>LINK TO THE FILE YOU SENT</span>
+              {cleanPayApplicationLink(link) ? (
+                <a href={cleanPayApplicationLink(link)} target="_blank" rel="noopener noreferrer" style={{ fontWeight: 400 }}>
+                  Open
+                </a>
+              ) : null}
+            </span>
+            <input
+              type="url"
+              id="aia-application-link"
+              value={link}
+              onChange={(e) => setLink(e.target.value)}
+              placeholder="Paste the Google Drive link"
+              style={{
+                width: '100%',
+                boxSizing: 'border-box',
+                fontSize: '0.875rem',
+                padding: '0.5rem',
+                borderRadius: 4,
+                border: '1px solid var(--border-strong)',
+              }}
+            />
+          </label>
           <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-600)' }}>
             Values are written into the G702/G703 workbook. A field left empty is empty in the download. Adjust
             fields, then generate the workbook.
@@ -522,7 +733,7 @@ export default function AiaG702G703Modal({
         >
           <button
             type="button"
-            onClick={() => applyPrefill(facts)}
+            onClick={resetForm}
             disabled={!job}
             style={{
               padding: '0.5rem 1rem',
@@ -534,7 +745,25 @@ export default function AiaG702G703Modal({
               fontSize: '0.875rem',
             }}
           >
-            Reset from job
+            {openApp ? 'Reset to saved' : 'Reset from job'}
+          </button>
+          <button
+            type="button"
+            onClick={() => void onSave()}
+            disabled={saving || generating || !job}
+            style={{
+              padding: '0.5rem 1rem',
+              background: 'var(--surface)',
+              color: 'var(--text-strong)',
+              border: '1px solid var(--border-strong)',
+              borderRadius: 4,
+              cursor: saving || generating || !job ? 'not-allowed' : 'pointer',
+              fontSize: '0.875rem',
+              fontWeight: 600,
+              opacity: saving || generating || !job ? 0.7 : 1,
+            }}
+          >
+            {saving ? 'Saving…' : 'Save'}
           </button>
           <button
             type="button"

@@ -12,10 +12,6 @@ export type AiaPreviewSource = 'typed' | 'blank'
 
 export type AiaPreviewCell = { text: string; source: AiaPreviewSource }
 
-/** Two cells the sheet's math reads that the form has no box for. Both are 0 in the template. */
-export const AIA_TEMPLATE_FROM_PREVIOUS_APPLICATION = 0
-export const AIA_TEMPLATE_LESS_PREVIOUS_CERTIFICATES = 0
-
 /** A G703 header box that is a formula onto a G702 box. */
 const G703_FOLLOWS_G702: Readonly<Partial<Record<AiaFieldKey, AiaFieldKey>>> = {
   g703_k2_project: 'g702_n5_project',
@@ -112,7 +108,7 @@ export function buildAiaPreview(values: AiaFieldValues): AiaPreview {
   // G703 row 13: H = E + F + G, I = H / D, J = D − H, K = H × G702!C28. Row 49 sums a column;
   // every other row is 0, so the totals are this row.
   const scheduledValue = num.g703_d13_scheduled_value
-  const fromPrevious = AIA_TEMPLATE_FROM_PREVIOUS_APPLICATION
+  const fromPrevious = num.g703_e13_from_previous
   const thisPeriod = num.g703_f13_this_period
   const materialsStored = num.g703_g13_materials_stored
   const totalToDate = fromPrevious + thisPeriod + materialsStored
@@ -133,14 +129,14 @@ export function buildAiaPreview(values: AiaFieldValues): AiaPreview {
   const retainageOfCompletedWork = lineRetainage - retainageOfStoredMaterial
   const totalRetainage = retainageOfCompletedWork + retainageOfStoredMaterial
   const totalEarnedLessRetainage = totalToDate - totalRetainage
-  const lessPreviousCertificates = AIA_TEMPLATE_LESS_PREVIOUS_CERTIFICATES
+  const lessPreviousCertificates = num.g702_h40_less_previous_certificates
 
   return {
     cells,
     math: {
       line: {
         scheduledValue,
-        fromPrevious,
+        fromPrevious: round2(fromPrevious),
         thisPeriod,
         materialsStored,
         totalToDate: round2(totalToDate),
@@ -157,7 +153,7 @@ export function buildAiaPreview(values: AiaFieldValues): AiaPreview {
       retainageOfStoredMaterial: round2(retainageOfStoredMaterial),
       totalRetainage: round2(totalRetainage),
       totalEarnedLessRetainage: round2(totalEarnedLessRetainage),
-      lessPreviousCertificates,
+      lessPreviousCertificates: round2(lessPreviousCertificates),
       currentPaymentDue: round2(totalEarnedLessRetainage - lessPreviousCertificates),
       balanceToFinish: round2(contractSumToDate - totalEarnedLessRetainage),
     },
