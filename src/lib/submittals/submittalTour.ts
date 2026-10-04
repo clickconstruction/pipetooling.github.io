@@ -68,7 +68,7 @@ export const SUBMITTAL_TOUR_STEPS: SpotlightTourStep[] = [
   {
     anchor: 'submittals-package',
     title: 'Step 4. Build the package',
-    body: 'The package is one PDF for the GC. It has a cover table and every cut sheet. Tap Build package. It opens in a new tab so you can check it.',
+    body: 'The package is one PDF for the GC. It has a cover table and every cut sheet. Tap Build package. It opens in a new tab so you can check it. A row with no cut sheet yet reads cut sheet to follow on the cover.',
     missingBody: 'This button appears once the rows are in.',
   },
   {
@@ -145,7 +145,7 @@ export const SUBMITTAL_STAGE_ABOUT: Record<number, string> = {
   1: 'Pick where the rows come from. Each row is one product you will install.',
   2: 'Rev 1 is the first version of your submittal. A Rev 2 happens only when the GC sends rows back, or a product changes after you share.',
   3: 'Check each row and its parts. Is it the product the plans asked for? If not, say why. Add its cut sheet, the maker’s page for the product.',
-  4: 'One PDF for the GC: the cover table and every cut sheet.',
+  4: 'One PDF for the GC: the cover table and every cut sheet. A row with no cut sheet yet reads cut sheet to follow.',
   5: 'Get a link and paste it into your email to the GC.',
   6: 'The GC or the architect answers each row: Approve, Revise or Reject. If they answer by email, type it in with Their answer.',
   7: 'Rows the GC sent back come here. Start Rev 2 with them and the rows with no answer yet. Or carry every row when a product changed.',

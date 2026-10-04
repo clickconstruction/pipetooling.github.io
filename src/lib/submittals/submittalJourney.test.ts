@@ -105,7 +105,8 @@ describe('submittalJourney', () => {
 
   it('2026-10-03 · a draft with some rows approved and the rest still with the GC keeps its own next thing, with Their call waiting', () => {
     const some = { ...base, rev: draft({ number: 1, rows: 14, sheetsNeeded: 6 }), decisions: { decided: 5, approved: 5, open: 9, noAnswer: 9, sentBack: 0, byName: ['structura'] } }
-    expect(statuses(some)).toBe('done,done,current,later,later,waiting,later,current')
+    // Since 2026-10-04 the package pill is live too: no row owes a reason.
+    expect(statuses(some)).toBe('done,done,current,current,later,waiting,later,current')
     expect(submittalJourney(some).next).toMatchObject({ kind: 'next', action: 'drop_vendor_pdf', text: expect.stringMatching(/^6 rows still need a cut sheet/) })
   })
 
@@ -115,9 +116,9 @@ describe('submittalJourney', () => {
     expect(submittalJourney(all).next).toEqual({ kind: 'done', text: 'structura approved every row. Next is the order log, Step 8.', action: null, actionLabel: null })
   })
 
-  it('a draft nobody has answered reads as it always did', () => {
+  it('a draft nobody has answered lights nothing past its own steps', () => {
     const quiet = { ...base, rev: draft({ number: 1, rows: 14, sheetsNeeded: 6 }), decisions: { decided: 0, approved: 0, open: 13, noAnswer: 14, sentBack: 0, byName: [] } }
-    expect(statuses(quiet)).toBe('done,done,current,later,later,later,later,later')
+    expect(statuses(quiet)).toBe('done,done,current,current,later,later,later,later')
     expect(stageGate(submittalJourney(quiet).stages, 'resubmit').on).toBe(false)
   })
 
@@ -183,11 +184,48 @@ describe('the four words over the pills (v2.4126)', () => {
   })
 })
 
+describe('2026-10-04 · a cut sheet no longer holds the package', () => {
+  // BP375's shape before any answer: 14 rows, no reason owed, six small items with no page in the vendor's file.
+  const short = { ...base, rev: draft({ rows: 14, sheetsNeeded: 6 }) }
+
+  it('with only cut sheets missing, the rows and the package are both live, and the line says the package can go now', () => {
+    expect(statuses(short)).toBe('done,done,current,current,later,later,later,later')
+    expect(submittalJourney(short).next).toEqual({ kind: 'next', text: '6 rows still need a cut sheet. Tap Edit on a row to fill it in. Or drop the house’s PDF and put its pages on the rows. You can build the package now too. Those rows will read cut sheet to follow.', action: 'drop_vendor_pdf', actionLabel: 'Drop a vendor PDF' })
+    expect(stageGate(submittalJourney(short).stages, 'package')).toEqual({ on: true, why: null })
+    expect(stageGate(submittalJourney(short).stages, 'share').on).toBe(false)
+  })
+
+  it('built with cut sheets missing: Share is next, and the line says how many read to follow', () => {
+    const built = { ...base, rev: draft({ rows: 14, sheetsNeeded: 6, packageBuilt: true }) }
+    expect(statuses(built)).toBe('done,done,current,done,current,later,later,later')
+    expect(submittalJourney(built).next).toEqual({ kind: 'next', text: 'The package is built. 6 rows in it read cut sheet to follow. Tap Share to get a link for the GC.', action: 'share', actionLabel: 'Share' })
+    expect(submittalJourney({ ...base, rev: draft({ rows: 14, sheetsNeeded: 1, packageBuilt: true }) }).next.text).toBe('The package is built. 1 row in it reads cut sheet to follow. Tap Share to get a link for the GC.')
+  })
+
+  it('a reason still holds it, with or without cut sheets', () => {
+    const owes = { ...base, rev: draft({ rows: 14, owesReason: 2, sheetsNeeded: 6 }) }
+    expect(statuses(owes)).toBe('done,done,current,later,later,later,later,later')
+    expect(stageGate(submittalJourney(owes).stages, 'package')).toEqual({ on: false, why: 'Build package turns on when every row that owes a reason has one.' })
+  })
+
+  it('a draft answered by email leaves the Package pill unlit, and its buttons follow the draft’s own facts', () => {
+    const answered = { ...base, rev: draft({ rows: 14, sheetsNeeded: 6 }), decisions: { decided: 4, approved: 0, open: 9, noAnswer: 10, sentBack: 4, byName: ['structura'] } }
+    const stages = submittalJourney(answered).stages
+    expect(stages.find((st) => st.key === 'package')!.status).toBe('later')
+    expect(stageGate(stages, 'package').on).toBe(false)
+    expect(stageGate(stages, 'package', { rows: 14, owesReason: 0, packageBuilt: false }).on).toBe(true)
+    expect(stageGate(stages, 'share', { rows: 14, owesReason: 0, packageBuilt: false }).on).toBe(false)
+    expect(stageGate(stages, 'share', { rows: 14, owesReason: 0, packageBuilt: true }).on).toBe(true)
+    expect(stageGate(stages, 'package', { rows: 14, owesReason: 1, packageBuilt: false }).on).toBe(false)
+    expect(stageGate(stages, 'package', { rows: 0, owesReason: 0, packageBuilt: false }).on).toBe(false)
+  })
+})
+
 describe('stageGate (v2.4169)', () => {
   const gates = (i: SubmittalJourneyInput) => (['package', 'share', 'resubmit'] as const).map((k) => `${k}:${stageGate(submittalJourney(i).stages, k).on ? 'on' : 'held'}`).join(' ')
   it('a stage you have not reached holds its button, with the reason', () => {
     expect(gates({ ...base, rev: draft({ owesReason: 2 }) })).toBe('package:held share:held resubmit:held')
-    expect(stageGate(submittalJourney({ ...base, rev: draft({ owesReason: 2 }) }).stages, 'package').why).toBe('Build package turns on when every row has its reason and its cut sheet.')
+    expect(stageGate(submittalJourney({ ...base, rev: draft({ owesReason: 2 }) }).stages, 'package').why).toBe('Build package turns on when every row that owes a reason has one.')
     expect(gates({ ...base, rev: draft() })).toBe('package:on share:held resubmit:held')
     expect(gates({ ...base, rev: draft({ packageBuilt: true }) })).toBe('package:on share:on resubmit:on')
     const shared = draft({ number: 2, status: 'shared', packageBuilt: true })
