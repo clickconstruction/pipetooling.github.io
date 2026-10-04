@@ -10,6 +10,8 @@
  * already calls.
  */
 
+import { resubmitLabel } from './reviewDecisions'
+
 export type JourneyStageKey = 'picks' | 'build' | 'rows' | 'package' | 'share' | 'review' | 'resubmit' | 'procure'
 export type JourneyStageStatus = 'done' | 'current' | 'waiting' | 'later'
 export type JourneyAction = 'open_pricing' | 'plug_in_schedule' | 'ask_robot_schedule' | 'choose_from_takeoff' | 'build_rev1' | 'drop_vendor_pdf' | 'build_package' | 'share' | 'copy_room_link' | 'resubmit'
@@ -54,7 +56,7 @@ export type SubmittalJourneyInput = {
   /** The bid's review room once minted. */
   room: { status: string; opens: number; identified: string[] } | null
   /** The revision's reviewer decisions (`summarizeDecisions`). */
-  decisions: { decided: number; approved: number; open: number; sentBack: number; byName: string[] } | null
+  decisions: { decided: number; approved: number; open: number; sentBack: number; byName: string[]; /** rows with no answer at all: a resubmit carries them beside the rows sent back (2026-10-03) */ noAnswer?: number } | null
   /** The procurement log (v2.4083): rows released, ordered, delivered, late — null before any row is approved. */
   procurement?: { released: number; ordered: number; delivered: number; late: number } | null
 }
@@ -177,11 +179,14 @@ export function submittalJourney(input: SubmittalJourneyInput): SubmittalJourney
   const by = d.byName.length > 0 ? d.byName.join(', ') : 'The reviewer'
   if (d.sentBack > 0) {
     status.resubmit = 'current'
+    const waiting = d.noAnswer ?? 0
     return finish({
       kind: 'next',
-      text: `${by} approved ${d.approved} and sent ${d.sentBack} back. Fix ${d.sentBack === 1 ? 'that row' : 'those rows'}. Then tap the green button to start a new version with only ${d.sentBack === 1 ? 'that row' : 'those rows'}.`,
+      text: waiting > 0
+        ? `${by} approved ${d.approved} and sent ${d.sentBack} back. ${plural(waiting, 'row')} still ${waiting === 1 ? 'has' : 'have'} no answer. Fix what was sent back. Then tap the green button. The rows with no answer go on the new version too.`
+        : `${by} approved ${d.approved} and sent ${d.sentBack} back. Fix ${d.sentBack === 1 ? 'that row' : 'those rows'}. Then tap the green button to start a new version with only ${d.sentBack === 1 ? 'that row' : 'those rows'}.`,
       action: 'resubmit',
-      actionLabel: `Rev ${rev.number + 1} from the ${plural(d.sentBack, 'row')} sent back`,
+      actionLabel: resubmitLabel(rev.number + 1, d.sentBack, waiting),
     })
   }
   if (d.open > 0) {

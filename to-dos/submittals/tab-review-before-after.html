@@ -1,0 +1,558 @@
+<meta charset="utf-8">
+<title>Submittals Tab Review</title>
+<style>
+  /* Layout: a verdict, then the findings as a worklist in three bands. Each finding opens a window: the screen as it is on the left, what it could be on the right. Drawn in the app's own tokens so it reads like the screen. */
+  :root {
+    --page: #f0f2f5; --surface: #ffffff; --subtle: #f9fafb; --muted-bg: #f3f4f6; --bg-200: #e5e7eb;
+    --border: #cfd4db; --border-strong: #aab2bd;
+    --strong: #111827; --base: #1a1a1a; --muted: #6b7280; --faint: #8a93a1;
+    --link: #2563eb; --amber: #b45309; --red: #b91c1c; --green: #15803d;
+    --blue-tint: #eff6ff; --border-blue: #bfdbfe; --blue-700: #1d4ed8; --blue: #2563eb;
+    --green-tint: #f0fdf4; --amber-tint: #fffbeb; --red-tint: #fef2f2;
+    --save: #16a34a; --bar: #5f6b7a; --bar-after: #1d4ed8; --on-bar: #ffffff;
+    --scrim: rgba(17,24,39,0.55);
+    --shadow: 0 6px 18px rgba(0,0,0,0.10);
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    --page: #111827; --surface: #1f2937; --subtle: #18212f; --muted-bg: #374151; --bg-200: #4b5563;
+    --border: #374151; --border-strong: #56606f;
+    --strong: #f9fafb; --base: #f3f4f6; --muted: #9ca3af; --faint: #8892a3;
+    --link: #60a5fa; --amber: #fbbf24; --red: #f87171; --green: #4ade80;
+    --blue-tint: #1e3358; --border-blue: #1e40af; --blue-700: #93c5fd; --blue: #3b82f6;
+    --green-tint: #12301f; --amber-tint: #3a2a0c; --red-tint: #3b1414;
+    --save: #16a34a; --bar: #4b5563; --bar-after: #1e40af; --on-bar: #ffffff;
+    --scrim: rgba(0,0,0,0.65);
+    --shadow: 0 6px 18px rgba(0,0,0,0.45); color-scheme: dark;
+  } }
+  :root[data-theme="dark"] {
+    --page: #111827; --surface: #1f2937; --subtle: #18212f; --muted-bg: #374151; --bg-200: #4b5563;
+    --border: #374151; --border-strong: #56606f;
+    --strong: #f9fafb; --base: #f3f4f6; --muted: #9ca3af; --faint: #8892a3;
+    --link: #60a5fa; --amber: #fbbf24; --red: #f87171; --green: #4ade80;
+    --blue-tint: #1e3358; --border-blue: #1e40af; --blue-700: #93c5fd; --blue: #3b82f6;
+    --green-tint: #12301f; --amber-tint: #3a2a0c; --red-tint: #3b1414;
+    --save: #16a34a; --bar: #4b5563; --bar-after: #1e40af; --on-bar: #ffffff;
+    --scrim: rgba(0,0,0,0.65);
+    --shadow: 0 6px 18px rgba(0,0,0,0.45); color-scheme: dark;
+  }
+  body { background: var(--page); color: var(--base); font-family: var(--sans); font-size: 15px; line-height: 1.5; }
+  .wrap { max-width: 1000px; margin: 0 auto; padding-inline: 20px; padding-block: 32px 64px; display: flex; flex-direction: column; gap: 28px; }
+  .eyebrow { font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  h1 { margin: 0; font-size: 28px; line-height: 1.15; color: var(--strong); text-wrap: balance; }
+  h2 { margin: 0; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  p { margin: 0; }
+  .head { display: flex; flex-direction: column; gap: 8px; }
+  .verdict { font-size: 17px; color: var(--strong); font-weight: 600; max-width: 62ch; }
+  .lede { max-width: 70ch; color: var(--base); }
+  .muted { color: var(--muted); }
+  .band { display: flex; flex-direction: column; gap: 10px; }
+  .band-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .band-head span { color: var(--muted); font-size: 13.5px; }
+  .list { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .item { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 4px 12px; padding: 14px 16px; align-items: start; border-top: 1px solid var(--border); }
+  .item:first-child { border-top: none; }
+  .num { width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; background: var(--muted-bg); color: var(--strong); margin-top: 1px; }
+  .band.now .num { background: var(--red-tint); color: var(--red); }
+  .band.words .num { background: var(--amber-tint); color: var(--amber); }
+  .item h3 { margin: 0; font-size: 15.5px; color: var(--strong); line-height: 1.3; }
+  .item p { color: var(--base); font-size: 14px; max-width: 68ch; margin-top: 3px; }
+  .meta { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 7px; }
+  .tag { font-size: 11.5px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); background: var(--subtle); white-space: nowrap; }
+  .tag.live { border-color: var(--border-blue); color: var(--blue-700); background: var(--blue-tint); }
+  .open { font: inherit; font-size: 13px; font-weight: 600; padding: 7px 12px; border-radius: 6px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--strong); cursor: pointer; white-space: nowrap; }
+  .open:hover { border-color: var(--blue); color: var(--blue-700); }
+  .open:focus-visible, .nav button:focus-visible, .x:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+  .plan { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+  .plan ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; max-width: 72ch; }
+  .plan b { color: var(--strong); }
+  @media (max-width: 640px) { .item { grid-template-columns: 34px minmax(0, 1fr); } .item .open { grid-column: 2; justify-self: start; margin-top: 8px; } }
+
+  /* the window */
+  dialog { border: none; padding: 0; border-radius: 10px; background: var(--page); color: var(--base); width: min(1180px, calc(100vw - 24px)); max-height: calc(100vh - 24px); box-shadow: 0 20px 60px rgba(0,0,0,0.35); }
+  dialog::backdrop { background: var(--scrim); }
+  .dlg { display: flex; flex-direction: column; max-height: calc(100vh - 24px); }
+  .dlg-head { display: flex; align-items: flex-start; gap: 12px; padding: 14px 18px; background: var(--surface); border-bottom: 1px solid var(--border); }
+  .dlg-head div { flex: 1; min-width: 0; }
+  .dlg-head h3 { margin: 0; font-size: 17px; color: var(--strong); text-wrap: balance; }
+  .dlg-head p { font-size: 13px; color: var(--muted); margin-top: 2px; }
+  .x { font: inherit; font-size: 20px; line-height: 1; width: 32px; height: 32px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); cursor: pointer; flex-shrink: 0; }
+  .dlg-body { overflow-y: auto; padding: 16px 18px; display: flex; flex-direction: column; gap: 14px; }
+  .pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: start; }
+  @media (max-width: 860px) { .pair { grid-template-columns: minmax(0, 1fr); } }
+  .side { border-radius: 8px; overflow: hidden; background: var(--surface); border: 1px solid var(--border); min-width: 0; }
+  .bar { padding: 6px 14px; font-size: 11.5px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 700; color: var(--on-bar); background: var(--bar); }
+  .side.after .bar { background: var(--bar-after); }
+  .mock { padding: 14px; display: flex; flex-direction: column; gap: 10px; font-size: 13px; min-width: 0; }
+  .why { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; font-size: 14px; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; }
+  .why dt { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; padding-top: 2px; }
+  .why dd { margin: 0; max-width: 78ch; }
+  .dlg-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 18px; background: var(--surface); border-top: 1px solid var(--border); }
+  .nav { display: flex; gap: 8px; }
+  .nav button { font: inherit; font-size: 13px; font-weight: 600; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--strong); cursor: pointer; }
+  .count { font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  /* mock pieces, the app's own shapes */
+  .b { display: inline-block; font-size: 12.5px; padding: 5px 10px; border-radius: 4px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--strong); font-weight: 500; white-space: nowrap; }
+  .b.pri { background: var(--blue); border-color: var(--blue); color: #fff; font-weight: 600; }
+  .b.grn { background: var(--save); border-color: var(--save); color: #fff; font-weight: 600; }
+  .b.held { opacity: 0.45; }
+  .b.sm { font-size: 11.5px; padding: 2px 7px; }
+  .b.lit { background: var(--blue-tint); border-color: var(--blue); color: var(--blue-700); font-weight: 700; }
+  .seg { display: inline-flex; border: 1px solid var(--border-strong); border-radius: 5px; overflow: hidden; font-size: 11.5px; }
+  .seg span { padding: 3px 8px; border-left: 1px solid var(--border-strong); color: var(--muted); white-space: nowrap; }
+  .seg span:first-child { border-left: none; }
+  .seg .on { background: var(--blue); color: #fff; font-weight: 700; }
+  .seg .lock { background: var(--green-tint); color: var(--green); font-weight: 700; }
+  .rowf { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .between { display: flex; justify-content: space-between; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .small { font-size: 12px; color: var(--muted); }
+  .strong { color: var(--strong); font-weight: 600; }
+  .pills { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
+  .pill { font-size: 11.5px; padding: 2px 9px; border-radius: 999px; border: 1.5px solid var(--border-strong); color: var(--muted); white-space: nowrap; }
+  .pill.done { border-color: var(--green); color: var(--green); }
+  .pill.cur { border-color: var(--blue); color: var(--blue-700); background: var(--blue-tint); font-weight: 700; }
+  .pill.wait { border-color: var(--amber); color: var(--amber); background: var(--amber-tint); font-weight: 700; }
+  .step { border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; }
+  .step.gray > .t { color: var(--muted); }
+  .step .t { font-weight: 700; color: var(--strong); }
+  .bad { background: var(--red-tint); border-left: 3px solid var(--red); padding: 7px 10px; border-radius: 0 6px 6px 0; font-size: 12.5px; color: var(--base); }
+  .good { background: var(--green-tint); border-left: 3px solid var(--green); padding: 7px 10px; border-radius: 0 6px 6px 0; font-size: 12.5px; color: var(--base); }
+  .win { border: 1px solid var(--border-strong); border-radius: 8px; box-shadow: var(--shadow); padding: 12px; display: flex; flex-direction: column; gap: 8px; background: var(--surface); }
+  .win h4 { margin: 0; font-size: 14px; color: var(--strong); }
+  .field { border: 1px solid var(--border-strong); border-radius: 4px; padding: 4px 7px; font-size: 12px; color: var(--strong); background: var(--surface); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .lbl { font-size: 10.5px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
+  .scroll { overflow-x: auto; }
+  table.t { border-collapse: collapse; width: 100%; font-size: 12px; }
+  table.t th { text-align: left; font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); padding: 4px 6px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  table.t td { padding: 5px 6px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  table.t tr:last-child td { border-bottom: none; }
+  .dash { color: var(--faint); }
+  .chip { display: inline-block; font-size: 10.5px; font-weight: 700; padding: 1px 7px; border-radius: 999px; background: var(--blue-tint); color: var(--blue-700); white-space: nowrap; }
+  .red { color: var(--red); font-weight: 700; }
+  .amb { color: var(--amber); font-weight: 700; }
+  .grn { color: var(--green); font-weight: 700; }
+  .gc { border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; background: var(--subtle); }
+  .gc .kick { font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 700; color: var(--amber); }
+  .swap { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; padding: 7px 0; border-bottom: 1px solid var(--border); }
+  .swap:last-child { border-bottom: none; }
+  .swap .where { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+  .swap .says { color: var(--strong); }
+</style>
+
+<div class="wrap">
+  <header class="head">
+    <div class="eyebrow">Bids → Submittals · reviewed Oct 3, 2026</div>
+    <h1>Submittals tab: what to settle before Monday</h1>
+    <p class="verdict">The tab works when a submittal is shared from the app. The estimator emails hers and types the answers in, and on that road five things can lose work or mislead her.</p>
+    <p class="lede">I walked every step and every window on the live SpaceX bid (BP375, read only, nothing changed) and on the test bid (BP398). Each finding below opens a window. The left side is the screen as it is today. The right side is what it could be.</p>
+  </header>
+
+  <section class="band now">
+    <div class="band-head"><h2>Fix before Monday</h2><span>Each one can drop rows, lose typing or put approved work back in front of the GC.</span></div>
+    <div class="list">
+      <div class="item"><span class="num">1</span><div><h3>Resubmit drops the rows nobody has answered</h3><p>On BP375 the green button reads “Rev 2 from the 4 rows sent back”. Its confirm says the rest stand as approved. Nine rows have no answer at all. They would leave the draft, and their 44 lines would leave the order log.</p><div class="meta"><span class="tag live">BP375 live</span><span class="tag">small</span></div></div><button class="open" data-open="f1">Current → could be</button></div>
+      <div class="item"><span class="num">2</span><div><h3>The road does not see answers typed on a draft</h3><p>The strip says the next thing is six cut sheets. Four rows are already rejected. Their call and Resubmit are grey and read “later”, yet they hold the live work. An older revision reads “was shared” when it never was.</p><div class="meta"><span class="tag live">BP375 live</span><span class="tag">BP398 Rev 3</span><span class="tag">medium</span></div></div><button class="open" data-open="f2">Current → could be</button></div>
+      <div class="item"><span class="num">3</span><div><h3>Choose what the GC sees puts approved fixtures back</h3><p>On a resubmit draft the window opens with the fixtures approved on the last revision lit “GC sees it”. Update is live before anything is touched. One press asks the GC about them again. Under the rows they are counted as “left out · not ordered”.</p><div class="meta"><span class="tag">BP398 Rev 4</span><span class="tag">small</span></div></div><button class="open" data-open="f3">Current → could be</button></div>
+      <div class="item"><span class="num">4</span><div><h3>The Edit window loses typing on a stray click</h3><p>A click outside the window closes it and nothing asks. Esc does nothing. Save is not held while it saves, so a double press on a new row can add it twice. A fixture with eleven parts is a lot to type again.</p><div class="meta"><span class="tag">every bid</span><span class="tag">small</span></div></div><button class="open" data-open="f4">Current → could be</button></div>
+      <div class="item"><span class="num">5</span><div><h3>No package until every row has a cut sheet</h3><p>BP375 has six small items with no page in the vendor’s file: a cleanout, a drain, a hose bibb and three hammer arrestors. Build package and Share stay off until all six have one. This is why the package went out by email. Your call.</p><div class="meta"><span class="tag live">BP375 live</span><span class="tag">your call</span><span class="tag">small</span></div></div><button class="open" data-open="f5">Current → could be</button></div>
+    </div>
+  </section>
+
+  <section class="band words">
+    <div class="band-head"><h2>Words and flow that mislead</h2><span>Nothing breaks. She reads the wrong thing.</span></div>
+    <div class="list">
+      <div class="item"><span class="num">6</span><div><h3>The GC reads “the plans’ schedule was not on the bid”</h3><p>Every row built from the takeoff carries that sentence on the GC’s page. It reads like an admission. It is also untrue on a bid that has a schedule with other tags on it.</p><div class="meta"><span class="tag live">BP375 live</span><span class="tag">GC facing</span><span class="tag">small, one function to redeploy</span></div></div><button class="open" data-open="f6">Current → could be</button></div>
+      <div class="item"><span class="num">7</span><div><h3>A row says Rejected when one part of three was</h3><p>LAV-1 reads “Rejected” in red. One faucet was rejected. Two parts have no answer yet. The whole fixture looks dead.</p><div class="meta"><span class="tag live">BP375 live</span><span class="tag">small</span></div></div><button class="open" data-open="f7">Current → could be</button></div>
+      <div class="item"><span class="num">8</span><div><h3>Eight lines that say the wrong revision or the wrong fact</h3><p>“Build Rev 1” on Rev 4. “Start Rev 2” on Rev 4. “Rev 3 · superseded” on the revision that holds the approvals. “Room link · not opened yet” when no link was sent. “The room decided” when Wendi typed it.</p><div class="meta"><span class="tag live">BP375 live</span><span class="tag">BP398</span><span class="tag">small</span></div></div><button class="open" data-open="f8">Current → could be</button></div>
+      <div class="item"><span class="num">9</span><div><h3>The robot line never says the robot is not coming</h3><p>BP375 still reads “The robot is queued to read the fixture schedule”. It was already queued on Sep 29 and no robot has picked it up. The line gives no date and no way to know.</p><div class="meta"><span class="tag live">BP375 live</span><span class="tag">small</span></div></div><button class="open" data-open="f9">Current → could be</button></div>
+    </div>
+  </section>
+
+  <section class="band later">
+    <div class="band-head"><h2>Worth improving after her first week</h2><span>Bigger redraws. Let her use it first.</span></div>
+    <div class="list">
+      <div class="item"><span class="num">10</span><div><h3>The top says the same thing three times</h3><p>The cut sheet count is in the header, the Next line and step 3. The source line is in the header and step 1. There are three “Walk me through it” doors and a “?” on every step.</p><div class="meta"><span class="tag">every bid</span><span class="tag">medium</span></div></div><button class="open" data-open="f10">Current → could be</button></div>
+      <div class="item"><span class="num">11</span><div><h3>On a takeoff bid four columns of the rows table are empty</h3><p>Specified, Reason and Lead time are a dash on all 14 rows of BP375. Status is “Proposed” on 13. The product and the buttons are squeezed to make room. On a phone the table is 1,251 px wide on a 375 px screen.</p><div class="meta"><span class="tag live">BP375 live</span><span class="tag">medium</span></div></div><button class="open" data-open="f11">Current → could be</button></div>
+      <div class="item"><span class="num">12</span><div><h3>The Edit window has no labels and three lines per part</h3><p>The title says the tag twice. The tag box is unlabeled and clips. Each part takes three lines of unlabeled boxes. A Proposed row shows no status lit. A row added by hand opens titled “Accessory ·” with Missing lit.</p><div class="meta"><span class="tag">every bid</span><span class="tag">medium</span></div></div><button class="open" data-open="f12">Current → could be</button></div>
+    </div>
+  </section>
+
+  <section class="plan">
+    <h2>What I would do, in order</h2>
+    <ol>
+      <li><b>Today and tomorrow:</b> 1, 3 and 4. Each is a small change with a test, and each guards against lost work.</li>
+      <li><b>Then the words:</b> 8 and 9, then 6 and 7. All text and one small rule. Number 6 needs the room’s function redeployed.</li>
+      <li><b>Then 2,</b> so the strip follows a submittal that went out by email. It is the one that makes the page match how she really works.</li>
+      <li><b>Your call on 5.</b> Say which way and it is an hour of work.</li>
+      <li><b>10, 11 and 12 wait</b> until she has used it for a week. Her first week will tell us which one hurts most.</li>
+    </ol>
+    <p class="muted" style="font-size:13.5px; max-width:72ch">One note under the hood. The tab is a single file of 2,929 lines that holds 57 pieces of state, changed 58 times in 90 days. That is why small fixes here are slow and collide. It is not a Monday problem. After the first week it should be split along the eight steps. One small thing seen in the console: the strip’s pills mix a border shorthand with a border colour, which React warns can drop the border on a redraw.</p>
+  </section>
+</div>
+
+<!-- ───────── the windows ───────── -->
+
+<dialog id="f1"><div class="dlg">
+  <div class="dlg-head"><div><h3>1 · Resubmit keeps the rows nobody has answered</h3><p>BP375 SpaceX · Rev 1 · 14 rows · 4 sent back · 9 with no answer · 1 with no product</p></div><button class="x" data-close aria-label="Close">×</button></div>
+  <div class="dlg-body">
+    <div class="pair">
+      <div class="side"><div class="bar">Current</div><div class="mock">
+        <div class="step gray"><div class="between"><span class="t">7 · Resubmit</span><span class="small">4 rows sent back — start Rev 2 with just those rows</span></div>
+          <div class="rowf"><span class="b grn">Rev 2 from the 4 rows sent back</span><span class="b held">New revision</span></div></div>
+        <div class="win"><h4>Rev 2 from the 4 rows sent back</h4>
+          <span>Only the rows the reviewer marked Revise or Reject on Rev 1 carry into the new draft — 4 rows. The rest stand as approved on Rev 1 and stay on the procurement log.</span>
+          <div class="rowf" style="justify-content:flex-end"><span class="b">Cancel</span><span class="b pri">Build Rev 2</span></div></div>
+        <div class="bad">Nothing was approved. Nine rows have no answer. They leave the draft, Rev 1 reads superseded, and their 44 lines leave the order log. Nothing on the screen says so.</div>
+      </div></div>
+      <div class="side after"><div class="bar">Could be</div><div class="mock">
+        <div class="step"><div class="between"><span class="t">7 · Resubmit</span><span class="small">4 rows sent back · 9 still waiting for an answer</span></div>
+          <div class="rowf"><span class="b grn">Start Rev 2…</span></div></div>
+        <div class="win"><h4>Start Rev 2</h4>
+          <table class="t"><tr><td class="red">4</td><td><span class="strong">sent back.</span> They carry so you can fix them.</td></tr>
+            <tr><td class="amb">9</td><td><span class="strong">not answered yet.</span> They carry too and keep waiting.</td></tr>
+            <tr><td class="grn">0</td><td><span class="strong">approved.</span> Approved rows stay on Rev 1 and on the order log.</td></tr></table>
+          <span class="small">UTILITY SINK has no product yet. It carries as it is.</span>
+          <div class="rowf" style="justify-content:flex-end"><span class="b">Cancel</span><span class="b pri">Build Rev 2 with 14 rows</span></div></div>
+        <div class="good">A row leaves the draft only when the GC approved it. The confirm counts all three kinds, so the button can never say “approved” about a row with no answer.</div>
+      </div></div>
+    </div>
+    <dl class="why"><dt>What changes</dt><dd>The resubmit carries rows sent back and rows with no answer. The confirm lists the three counts. The button reads “Start Rev 2…”.</dd><dt>Size</dt><dd>Small. One handler, its confirm text, one test. No database change.</dd></dl>
+  </div>
+  <div class="dlg-foot"><span class="count"></span><div class="nav"><button data-prev>← Previous</button><button data-next>Next →</button></div></div>
+</div></dialog>
+
+<dialog id="f2"><div class="dlg">
+  <div class="dlg-head"><div><h3>2 · The road follows a submittal that went out by email</h3><p>BP375 SpaceX · Rev 1 is a draft · structura’s answers were typed in on Oct 2</p></div><button class="x" data-close aria-label="Close">×</button></div>
+  <div class="dlg-body">
+    <div class="pair">
+      <div class="side"><div class="bar">Current</div><div class="mock">
+        <div class="pills"><span class="pill done">✓ Sources</span><span class="pill done">✓ Build Rev 1</span><span class="pill cur">3 Reasons &amp; sheets</span><span class="pill">4 Package</span><span class="pill">5 Share</span><span class="pill">6 Their call</span><span class="pill">7 Resubmit</span><span class="pill">8 Procure</span></div>
+        <div class="rowf"><span><span class="strong">Next:</span> 6 rows still need a cut sheet. Tap Edit on a row to fill it in.</span><span class="b pri">Drop a vendor PDF</span></div>
+        <div class="step gray"><div class="between"><span class="t">5 · Share</span><span class="small">Room link · not opened yet</span></div></div>
+        <div class="step gray"><div class="between"><span class="t">6 · Their call on Rev 1</span><span class="small">4 rejected · by structura · 9 still open</span></div></div>
+        <div class="step gray"><div class="between"><span class="t">7 · Resubmit</span><span class="small">4 rows sent back — start Rev 2</span></div></div>
+        <div class="bad">The strip only reads answers on a shared revision. On a draft it points at cut sheets while the real work sits in two grey, folded steps.</div>
+      </div></div>
+      <div class="side after"><div class="bar">Could be</div><div class="mock">
+        <div class="pills"><span class="pill done">✓ Sources</span><span class="pill done">✓ Rev 1</span><span class="pill wait">3 Sheets · 6 open</span><span class="pill">4 Package</span><span class="pill done">✓ Sent by email</span><span class="pill wait">6 Their answer · 9 waiting</span><span class="pill cur">7 Resubmit</span><span class="pill">8 Order</span></div>
+        <div class="rowf"><span><span class="strong">Next:</span> structura sent 4 rows back. 9 rows have no answer yet. Fix the 4, then start Rev 2.</span><span class="b pri">Show the 4 rows</span></div>
+        <div class="step"><div class="between"><span class="t">5 · Share</span><span class="small">Sent outside the app · answers typed in Oct 2</span></div>
+          <span class="small">No link has gone out. <u>Make a link for the GC</u> if you want one.</span></div>
+        <div class="step"><div class="between"><span class="t">6 · Their answer on Rev 1</span><span class="small">4 sent back · 9 waiting</span></div></div>
+        <div class="step"><div class="between"><span class="t">7 · Resubmit</span><span class="small">ready when the 4 are fixed</span></div></div>
+        <div class="good">Answers on a draft mean it went out. The strip lights the steps that hold the work and the Next line names it.</div>
+      </div></div>
+    </div>
+    <dl class="why"><dt>What changes</dt><dd>The strip’s rule reads answers on a draft. Their answer and Resubmit open by themselves. Share says the submittal went out by email in place of “not opened yet”. An older draft with answers stops saying “was shared”.</dd><dt>Size</dt><dd>Medium. The rule is one pure file with tests, plus the steps’ lines. No database change.</dd></dl>
+  </div>
+  <div class="dlg-foot"><span class="count"></span><div class="nav"><button data-prev>← Previous</button><button data-next>Next →</button></div></div>
+</div></dialog>
+
+<dialog id="f3"><div class="dlg">
+  <div class="dlg-head"><div><h3>3 · Choose what the GC sees knows what is already approved</h3><p>BP398 test · Rev 4, built from the one row Rev 3 sent back · Kitchen sinks and Toilets were approved on Rev 3</p></div><button class="x" data-close aria-label="Close">×</button></div>
+  <div class="dlg-body">
+    <div class="pair">
+      <div class="side"><div class="bar">Current</div><div class="mock">
+        <div class="win"><h4>Choose from the takeoff</h4>
+          <div class="between"><span><span class="strong">Kitchen sinks</span> × 6</span><span class="seg"><span class="on">GC sees it</span><span>Order only</span><span>Left out</span></span></div>
+          <div class="between"><span><span class="strong">Shower/tub combos</span> × 3 <span class="small">· on Rev 4</span></span><span class="seg"><span class="on">GC sees it</span><span>Order only</span><span>Left out</span></span></div>
+          <div class="between"><span><span class="strong">Toilets</span> × 5</span><span class="seg"><span class="on">GC sees it</span><span>Order only</span><span>Left out</span></span></div>
+          <div class="between"><span class="small">2 rows go on Rev 4</span><span class="rowf"><span class="b">Cancel</span><span class="b pri">Update Rev 4</span></span></div></div>
+        <span><span class="strong">Left out</span> <span class="small">· 7 from the takeoff · not submitted, not ordered · <u>Show them</u></span></span>
+        <div class="bad">She opens the window to look and presses Update. Two approved fixtures go back to the GC for a second answer. The line under the rows calls them “not ordered” while both have orders on the log.</div>
+      </div></div>
+      <div class="side after"><div class="bar">Could be</div><div class="mock">
+        <div class="win"><h4>Choose from the takeoff</h4>
+          <div class="between"><span><span class="strong">Kitchen sinks</span> × 6</span><span class="rowf"><span class="seg"><span class="lock">✓ Approved on Rev 3</span></span><u class="small">Ask again…</u></span></div>
+          <div class="between"><span><span class="strong">Shower/tub combos</span> × 3 <span class="small">· on Rev 4</span></span><span class="seg"><span class="on">GC sees it</span><span>Order only</span><span>Left out</span></span></div>
+          <div class="between"><span><span class="strong">Toilets</span> × 5</span><span class="rowf"><span class="seg"><span class="lock">✓ Approved on Rev 3</span></span><u class="small">Ask again…</u></span></div>
+          <div class="between"><span class="small">Nothing changes yet.</span><span class="rowf"><span class="b">Cancel</span><span class="b pri held">Update Rev 4</span></span></div></div>
+        <span><span class="strong">Left out</span> <span class="small">· 5 from the takeoff · <u>Show them</u></span> &nbsp; <span class="grn">2 approved on Rev 3</span></span>
+        <div class="good">An approved fixture is its own state. It takes a deliberate “Ask again…” to put it back in front of the GC.</div>
+      </div></div>
+    </div>
+    <dl class="why"><dt>What changes</dt><dd>The window reads which fixtures stand approved on an earlier revision, the same list the order log already reads. Those open locked. The left out count leaves them out.</dd><dt>Size</dt><dd>Small. One more state in the window’s rule file, one line under the rows, tests.</dd></dl>
+  </div>
+  <div class="dlg-foot"><span class="count"></span><div class="nav"><button data-prev>← Previous</button><button data-next>Next →</button></div></div>
+</div></dialog>
+
+<dialog id="f4"><div class="dlg">
+  <div class="dlg-head"><div><h3>4 · The Edit window keeps your typing</h3><p>Every bid · Edit a row, Their answer, Choose from the takeoff</p></div><button class="x" data-close aria-label="Close">×</button></div>
+  <div class="dlg-body">
+    <div class="pair">
+      <div class="side"><div class="bar">Current</div><div class="mock">
+        <div class="win"><h4>WC-1, WC-2 · 5 parts</h4>
+          <div class="field">TOTO CT728CUVG#01 TORNADO FLUSH COMMERCIAL…</div>
+          <div class="field">TOTO TET2UA31#SS <span class="small">← just typed</span></div>
+          <div class="field">ZURN Z1201-NR4-CL12-RYK17 · lead 6 wk <span class="small">← just typed</span></div>
+          <div class="rowf" style="justify-content:flex-end"><span class="b">Cancel</span><span class="b grn">Save</span></div></div>
+        <div class="bad">One click on the grey outside closes the window. Nothing asks. Both edits are gone.</div>
+        <div class="bad">Esc does nothing in this window. It works in Assign pages.</div>
+        <div class="bad">Save stays live while it saves. Two quick presses on a new row can add the row twice.</div>
+      </div></div>
+      <div class="side after"><div class="bar">Could be</div><div class="mock">
+        <div class="win"><h4>WC-1, WC-2 · 5 parts</h4>
+          <div class="field">TOTO CT728CUVG#01 TORNADO FLUSH COMMERCIAL…</div>
+          <div class="field">TOTO TET2UA31#SS</div>
+          <div class="field">ZURN Z1201-NR4-CL12-RYK17 · lead 6 wk</div>
+          <div class="win" style="box-shadow:none; background:var(--amber-tint)"><span class="strong">Leave without saving?</span><span>You changed 2 parts on WC-1, WC-2.</span>
+            <div class="rowf" style="justify-content:flex-end"><span class="b">Leave</span><span class="b pri">Keep editing</span></div></div>
+          <div class="rowf" style="justify-content:flex-end"><span class="b">Cancel</span><span class="b grn held">Saving…</span></div></div>
+        <div class="good">A click outside, Esc and Cancel all ask once when something changed. With nothing changed they close at once. Save is held while it saves.</div>
+      </div></div>
+    </div>
+    <dl class="why"><dt>What changes</dt><dd>One shared “did anything change” check on the three windows where she types. Save reads “Saving…” until the row is written.</dd><dt>Size</dt><dd>Small. No database change.</dd></dl>
+  </div>
+  <div class="dlg-foot"><span class="count"></span><div class="nav"><button data-prev>← Previous</button><button data-next>Next →</button></div></div>
+</div></dialog>
+
+<dialog id="f5"><div class="dlg">
+  <div class="dlg-head"><div><h3>5 · A package without every cut sheet</h3><p>BP375 SpaceX · 7 of 13 sheets in · FCO, FD, HB-3, WHA-200, WHA-300, WHA-500 have no page in the 75 page vendor file</p></div><button class="x" data-close aria-label="Close">×</button></div>
+  <div class="dlg-body">
+    <div class="pair">
+      <div class="side"><div class="bar">Current</div><div class="mock">
+        <div class="step gray"><div class="between"><span class="t">4 · Package</span><span class="small">not built for this version yet</span></div>
+          <div class="rowf"><span class="b pri held">Build package</span><span class="small">Build package turns on when every row has its reason and its cut sheet.</span></div></div>
+        <div class="step gray"><div class="between"><span class="t">5 · Share</span><span class="small">Room link · not opened yet</span></div>
+          <div class="rowf"><span class="b pri held">Share</span><span class="small">Share turns on once the package is built.</span></div></div>
+        <div class="bad">Six small items lock the whole Send half. Her only ways through are to hunt down six pages or to mark the rows Order only, which hides them from the GC.</div>
+      </div></div>
+      <div class="side after"><div class="bar">Could be</div><div class="mock">
+        <div class="scroll"><table class="t"><tr><th>Tag</th><th>Product</th><th>Cut sheet</th></tr>
+          <tr><td class="strong">DWH-1</td><td>RHEEM PROPH40-T2…</td><td class="grn">✓ p.6–11, 13</td></tr>
+          <tr><td class="strong">FCO</td><td>ZURN ZN1400-2NL</td><td><span class="amb">sheet needed</span> · <u class="small">none for this row</u></td></tr>
+          <tr><td class="strong">WHA-200</td><td>ZURN Z1700-200-OV</td><td><span class="small">no sheet · your call</span> · <u class="small">undo</u></td></tr></table></div>
+        <div class="step"><div class="between"><span class="t">4 · Package</span><span class="small">7 sheets in · 5 rows still open · 1 with none</span></div>
+          <div class="rowf"><span class="b pri">Build package</span><span class="small">Rows with no sheet print on the cover as “cut sheet to follow”.</span></div></div>
+        <div class="good">She decides, row by row or all at once. The cover tells the GC which sheets are still coming, so nothing is hidden.</div>
+      </div></div>
+    </div>
+    <dl class="why"><dt>Your call</dt><dd>Either keep the lock as it is, or let the package build and say “cut sheet to follow” on the cover. A third way is the per row “none for this row”, which keeps the lock for rows she has not looked at.</dd><dt>Size</dt><dd>Small for the first two. The per row choice needs one new column.</dd></dl>
+  </div>
+  <div class="dlg-foot"><span class="count"></span><div class="nav"><button data-prev>← Previous</button><button data-next>Next →</button></div></div>
+</div></dialog>
+
+<dialog id="f6"><div class="dlg">
+  <div class="dlg-head"><div><h3>6 · What the GC reads on a submittal built from the takeoff</h3><p>BP375 SpaceX · the GC’s page as it would open today · 13 of 14 rows came from the takeoff</p></div><button class="x" data-close aria-label="Close">×</button></div>
+  <div class="dlg-body">
+    <div class="pair">
+      <div class="side"><div class="bar">Current · the GC’s page</div><div class="mock">
+        <div class="gc"><span class="kick">9 rows need a call</span><span>13 are proposed — the plans’ schedule was not on the bid. 1 has no product yet.</span></div>
+        <div class="gc"><div class="between"><span class="strong">DWH-1</span><span class="kick">Proposed</span></div>
+          <span class="small">The plans: <span class="strong">DWH1 &amp; ET</span></span>
+          <div class="between"><span class="small">Proposed:</span><span class="small">2 parts · 2 to go</span></div>
+          <span class="strong">RHEEM PROPH40-T2-RH400-SO</span><span class="strong">WATTS LFN36M1</span>
+          <span class="small">What we intend to install; the plans’ schedule was not on the bid to compare against.</span></div>
+        <div class="bad">The architect reads that we bid without the schedule, on every card. “The plans:” shows our takeoff’s own name for the fixture. “Needs a call” and “2 to go” are our words.</div>
+      </div></div>
+      <div class="side after"><div class="bar">Could be · the GC’s page</div><div class="mock">
+        <div class="gc"><span class="kick">9 products need your answer</span><span>These are the products we intend to install. 1 more is still being chosen.</span></div>
+        <div class="gc"><div class="between"><span class="strong">DWH-1</span><span class="kick">For your review</span></div>
+          <div class="between"><span class="small">We intend to install:</span><span class="small">2 products · none answered yet</span></div>
+          <span class="strong">RHEEM PROPH40-T2-RH400-SO</span><span class="strong">WATTS LFN36M1</span></div>
+        <div class="good">The page says what it is asking for and nothing about what the office did not have. On our side the row still reads Proposed, with the reason.</div>
+      </div></div>
+    </div>
+    <dl class="why"><dt>What changes</dt><dd>The GC’s wording for a proposed row, in the one file the room, the preview and the tab’s “The GC’s page will read” line all share.</dd><dt>Size</dt><dd>Small. Text and tests, then the room’s function is redeployed.</dd></dl>
+  </div>
+  <div class="dlg-foot"><span class="count"></span><div class="nav"><button data-prev>← Previous</button><button data-next>Next →</button></div></div>
+</div></dialog>
+
+<dialog id="f7"><div class="dlg">
+  <div class="dlg-head"><div><h3>7 · A row says what each part got</h3><p>BP375 SpaceX · LAV-1 · three parts the GC sees · one rejected on Oct 2</p></div><button class="x" data-close aria-label="Close">×</button></div>
+  <div class="dlg-body">
+    <div class="pair">
+      <div class="side"><div class="bar">Current</div><div class="mock">
+        <div class="scroll"><table class="t"><tr><th>Tag</th><th>Submitted</th><th>Their call</th></tr>
+          <tr><td class="strong">LAV-1</td><td><span class="strong">TSL.MON.B.38.2.PS1.BK</span><br><span class="strong">TOTO T25S51E#CP</span> <span class="red">rejected</span><br><span class="strong">BOBRICK B-8236</span></td>
+            <td><span class="red">Rejected</span><br><span class="small">1 rejected · 2 to go</span><br><span class="small">structura · entered by Wendi · Oct 2</span><br><span class="small">“TOTO T25S51E#CP: TEL145”</span></td></tr></table></div>
+        <div class="step gray"><div class="between"><span class="t">6 · Their call on Rev 1</span><span class="small">4 rejected · by structura · 9 still open</span></div></div>
+        <div class="bad">The big red word says the fixture was rejected. One faucet was. The step counts “4 rejected” rows, which reads as four fixtures gone.</div>
+      </div></div>
+      <div class="side after"><div class="bar">Could be</div><div class="mock">
+        <div class="scroll"><table class="t"><tr><th>Tag</th><th>Submitted</th><th>Their answer</th></tr>
+          <tr><td class="strong">LAV-1</td><td><span class="strong">TSL.MON.B.38.2.PS1.BK</span><br><span class="strong">TOTO T25S51E#CP</span><br><span class="strong">BOBRICK B-8236</span></td>
+            <td><span class="small">no answer yet</span><br><span class="red">Rejected</span> <span class="small">“TEL145”</span><br><span class="small">no answer yet</span><br><span class="small">structura · entered by Wendi · Oct 2</span></td></tr></table></div>
+        <div class="step"><div class="between"><span class="t">6 · Their answer on Rev 1</span><span class="small">4 parts rejected, on 4 fixtures · 9 fixtures with no answer</span></div></div>
+        <div class="good">Each answer sits beside its part. The row gets one word only when every part has the same answer.</div>
+      </div></div>
+    </div>
+    <dl class="why"><dt>What changes</dt><dd>The Their answer cell lines up with the parts. The step’s count says parts and fixtures.</dd><dt>Size</dt><dd>Small. One cell and one sentence.</dd></dl>
+  </div>
+  <div class="dlg-foot"><span class="count"></span><div class="nav"><button data-prev>← Previous</button><button data-next>Next →</button></div></div>
+</div></dialog>
+
+<dialog id="f8"><div class="dlg">
+  <div class="dlg-head"><div><h3>8 · Words that follow the revision and the facts</h3><p>BP398 test on Rev 4 · BP375 SpaceX on Rev 1</p></div><button class="x" data-close aria-label="Close">×</button></div>
+  <div class="dlg-body">
+    <div class="pair">
+      <div class="side"><div class="bar">Current</div><div class="mock">
+        <div class="swap"><span class="where">Strip, pill 2, on Rev 4</span><span class="says">✓ Build Rev 1</span></div>
+        <div class="swap"><span class="where">Step 2, on Rev 4</span><span class="says">Rev 1 is the first version of your submittal. A Rev 2 happens only when the GC sends rows back…</span></div>
+        <div class="swap"><span class="where">Step 7, on Rev 4</span><span class="says">Start Rev 2 with only those rows…</span></div>
+        <div class="swap"><span class="where">Revision chip</span><span class="says">Rev 3 · superseded · Sep 15 <span class="small">(it holds the GC’s answers, typed Oct 2)</span></span></div>
+        <div class="swap"><span class="where">Strip, looking at Rev 3</span><span class="says">Done: Rev 3 was shared. It is the record now. <span class="small">(it was never shared)</span></span></div>
+        <div class="swap"><span class="where">Step 5, BP375</span><span class="says">Room link · not opened yet <span class="small">(no link was ever sent)</span></span></div>
+        <div class="swap"><span class="where">Thread, BP375</span><span class="says">last: the room decided Oct 2 <span class="small">(Wendi typed it)</span></span></div>
+        <div class="swap"><span class="where">Step 6, with 4 rows rejected</span><span class="says"><span class="b">They approved all of it…</span></span></div>
+      </div></div>
+      <div class="side after"><div class="bar">Could be</div><div class="mock">
+        <div class="swap"><span class="where">Strip, pill 2, on Rev 4</span><span class="says">✓ Rev 4</span></div>
+        <div class="swap"><span class="where">Step 2, on Rev 4</span><span class="says">Rev 4 is the version you are working on. Rev 3 holds the answers the GC gave.</span></div>
+        <div class="swap"><span class="where">Step 7, on Rev 4</span><span class="says">Start Rev 5 with only those rows…</span></div>
+        <div class="swap"><span class="where">Revision chip</span><span class="says">Rev 3 · answered Oct 2</span></div>
+        <div class="swap"><span class="where">Strip, looking at Rev 3</span><span class="says">Rev 3 was answered by email. It is the record now.</span></div>
+        <div class="swap"><span class="where">Step 5, BP375</span><span class="says">Not shared from the app · answers typed in</span></div>
+        <div class="swap"><span class="where">Thread, BP375</span><span class="says">last: Wendi entered structura’s answers Oct 2</span></div>
+        <div class="swap"><span class="where">Step 6, with 4 rows rejected</span><span class="says"><span class="b">They approved the other 9…</span></span></div>
+      </div></div>
+    </div>
+    <dl class="why"><dt>What changes</dt><dd>Eight sentences take the revision’s number and its real state. “Superseded” is kept for a draft that was thrown away with nothing on it.</dd><dt>Size</dt><dd>Small. Text in the rule files, with their tests.</dd></dl>
+  </div>
+  <div class="dlg-foot"><span class="count"></span><div class="nav"><button data-prev>← Previous</button><button data-next>Next →</button></div></div>
+</div></dialog>
+
+<dialog id="f9"><div class="dlg">
+  <div class="dlg-head"><div><h3>9 · A robot that is not coming says so</h3><p>BP375 SpaceX · step 1 · the plans’ schedule card</p></div><button class="x" data-close aria-label="Close">×</button></div>
+  <div class="dlg-body">
+    <div class="pair">
+      <div class="side"><div class="bar">Current</div><div class="mock">
+        <div class="win"><span><span class="strong">The plans’ schedule</span> <span class="small">· none yet</span></span>
+          <span class="small">Optional. A tag is the plan’s name for a fixture, like WC-1.</span>
+          <div class="step" style="background:var(--muted-bg); border:none"><span class="strong">The robot is queued to read the fixture schedule off the plans.</span>
+            <div class="between"><span class="small"><i>robot · read the schedule · queued</i></span><u class="small">Cancel</u></div></div>
+          <div class="rowf"><span class="b">Type or paste the schedule</span></div></div>
+        <div class="bad">It was already queued on Sep 29 and no robot has picked it up. The line shows no date, so she cannot tell waiting from stuck.</div>
+      </div></div>
+      <div class="side after"><div class="bar">Could be</div><div class="mock">
+        <div class="win"><span><span class="strong">The plans’ schedule</span> <span class="small">· none yet</span></span>
+          <span class="small">Optional. A tag is the plan’s name for a fixture, like WC-1.</span>
+          <div class="step" style="background:var(--amber-tint); border:none"><span class="strong">You asked the robot on [the day]. No robot has run since.</span>
+            <div class="between"><span class="small">Nobody is reading the plans. Type the schedule yourself, or leave the ask in place.</span><u class="small">Take the ask back</u></div></div>
+          <div class="rowf"><span class="b pri">Type or paste the schedule</span></div></div>
+        <div class="good">The line gives the day it was asked and whether a robot is on shift. The tab already knows both.</div>
+      </div></div>
+    </div>
+    <dl class="why"><dt>What changes</dt><dd>A queued ask older than a day reads the robot seat’s last run and says so. The same line serves the cut sheet and redline asks.</dd><dt>Size</dt><dd>Small. One sentence builder and its test.</dd></dl>
+  </div>
+  <div class="dlg-foot"><span class="count"></span><div class="nav"><button data-prev>← Previous</button><button data-next>Next →</button></div></div>
+</div></dialog>
+
+<dialog id="f10"><div class="dlg">
+  <div class="dlg-head"><div><h3>10 · One header line, one help door</h3><p>BP375 SpaceX · the top of the tab</p></div><button class="x" data-close aria-label="Close">×</button></div>
+  <div class="dlg-body">
+    <div class="pair">
+      <div class="side"><div class="bar">Current</div><div class="mock">
+        <span class="strong" style="font-size:15px"><u>BP375</u> SPACEX BA-02N Architectural <span class="b sm">Mark</span> <span class="b sm">For someone…</span> <span class="b sm">?</span></span>
+        <span class="small">Submittals · plumbing fixtures &amp; equipment · 26 fixtures on the takeoff · no schedule yet · <u>choose from the takeoff</u></span>
+        <span class="small">Working on <span class="strong">Rev 1 · draft · Sep 29</span> · 14 rows · 13 proposed · 1 missing · 7 of 13 sheets in</span>
+        <div class="win"><div class="rowf" style="justify-content:flex-end"><span class="b sm">See what the GC sees</span><span class="b sm">Walk me through it ▶</span></div>
+          <div class="pills"><span class="pill done">✓ Sources</span><span class="pill done">✓ Build Rev 1</span><span class="pill cur">3 Reasons &amp; sheets</span><span class="pill">4…8</span></div>
+          <span><span class="strong">Next:</span> 6 rows still need a cut sheet…</span>
+          <div class="between" style="background:var(--blue-tint); padding:5px 8px; border-radius:5px"><span class="small"><span class="strong">New here?</span> Walk through how Submittals works…</span><span class="b pri sm">Walk me through it ▶</span></div></div>
+        <span class="small">1 · Where the rows come from — 26 on the takeoff · no schedule yet · <u>choose from the takeoff</u> <span class="b sm">?</span></span>
+        <span class="small">3 · Reasons &amp; cut sheets — 14 rows. 1 still needs a product. 6 still need a cut sheet. <span class="b sm">?</span></span>
+        <div class="bad">Cut sheets are counted three times and the source twice. There are eleven help doors on one screen.</div>
+      </div></div>
+      <div class="side after"><div class="bar">Could be</div><div class="mock">
+        <span class="strong" style="font-size:15px"><u>BP375</u> SPACEX BA-02N Architectural <span class="b sm">Mark</span> <span class="b sm">For someone…</span></span>
+        <span class="small"><span class="strong">Rev 1 · draft</span> · 14 rows from the takeoff</span>
+        <div class="win"><div class="between"><div class="pills"><span class="pill done">✓ Sources</span><span class="pill done">✓ Rev 1</span><span class="pill cur">3 Reasons &amp; sheets</span><span class="pill">4…8</span></div><span class="rowf"><span class="b sm">See what the GC sees</span><span class="b sm">? How this works</span></span></div>
+          <span><span class="strong">Next:</span> 6 rows still need a cut sheet. 1 row still needs a product.</span></div>
+        <span class="small">1 · Where the rows come from — the takeoff, 26 fixtures</span>
+        <span class="small">3 · Reasons &amp; cut sheets — 7 of 13 sheets in</span>
+        <div class="good">Each fact has one home. The walkthrough has one door, and it can still start at the step you are on.</div>
+      </div></div>
+    </div>
+    <dl class="why"><dt>What changes</dt><dd>The two header lines become one. The “New here?” bar shows only the first time. The step “?” marks fold into the one help button.</dd><dt>Size</dt><dd>Medium. Many small moves, and the walkthrough’s stops point at some of these lines.</dd></dl>
+  </div>
+  <div class="dlg-foot"><span class="count"></span><div class="nav"><button data-prev>← Previous</button><button data-next>Next →</button></div></div>
+</div></dialog>
+
+<dialog id="f11"><div class="dlg">
+  <div class="dlg-head"><div><h3>11 · A rows table that fits a takeoff bid</h3><p>BP375 SpaceX · step 3 · 14 rows, no schedule on the bid</p></div><button class="x" data-close aria-label="Close">×</button></div>
+  <div class="dlg-body">
+    <div class="pair">
+      <div class="side"><div class="bar">Current</div><div class="mock">
+        <div class="scroll"><table class="t"><tr><th>Tag</th><th>Specified</th><th>Submitted</th><th>Status</th><th>Reason</th><th>Lead time</th><th>Sheet</th><th>Their call</th><th></th></tr>
+          <tr><td class="strong">DWH-1</td><td><span class="dash">—</span><br><span class="small">DWH1 &amp; ET</span></td><td><span class="strong">RHEEM</span> PROPH40…<br><span class="strong">WATTS</span> LFN36M1</td><td><span class="chip">Proposed</span></td><td class="dash">—</td><td class="dash">—</td><td class="grn">✓ p.6–11</td><td class="dash">—</td><td><span class="b sm">Edit</span> <span class="b sm">Their answer</span> <span class="b sm">×</span></td></tr>
+          <tr><td class="strong">FCO</td><td><span class="dash">—</span><br><span class="small">FCO</span></td><td><span class="strong">ZURN</span> ZN1400-2NL</td><td><span class="chip">Proposed</span></td><td class="dash">—</td><td class="dash">—</td><td class="amb">sheet needed</td><td class="dash">—</td><td><span class="b sm">Edit</span> <span class="b sm">Their answer</span> <span class="b sm">×</span></td></tr>
+          <tr><td class="strong">LAV-1</td><td><span class="dash">—</span><br><span class="small">LAV 1</span></td><td><span class="strong">TSL.MON.B.38…</span><br><span class="strong">TOTO</span> T25S51E <span class="red">rejected</span></td><td><span class="chip">Proposed</span></td><td class="dash">—</td><td class="dash">—</td><td class="grn">✓ p.30–47</td><td class="red">Rejected</td><td><span class="b sm">Edit</span> <span class="b sm">Their answer</span> <span class="b sm">×</span></td></tr></table></div>
+        <div class="bad">42 dashes and 13 identical chips on the real bid. The lead time lives on the parts, so the row’s own column is always blank here. Nothing on a row lets her type what the plans specified.</div>
+      </div></div>
+      <div class="side after"><div class="bar">Could be</div><div class="mock">
+        <div class="between"><span class="small">13 rows are <span class="chip">Proposed</span> because this bid has no schedule. <u>Type the schedule</u> to check them against the plans.</span></div>
+        <div class="scroll"><table class="t"><tr><th>Fixture</th><th>Product and parts</th><th>Cut sheet</th><th>Their answer</th><th></th></tr>
+          <tr><td><span class="strong">DWH-1</span><br><span class="small">DWH1 &amp; ET</span></td><td><span class="strong">RHEEM</span> PROPH40-T2-RH400-SO<br><span class="strong">WATTS</span> LFN36M1 3/4 vacuum relief valve</td><td class="grn">✓ p.6–11, 13</td><td class="small">no answer yet</td><td><span class="b sm">Edit</span> <span class="b sm">⋯</span></td></tr>
+          <tr><td><span class="strong">FCO</span></td><td><span class="strong">ZURN</span> ZN1400-2NL 2" floor cleanout</td><td class="amb">sheet needed</td><td class="small">no answer yet</td><td><span class="b sm">Edit</span> <span class="b sm">⋯</span></td></tr>
+          <tr><td><span class="strong">LAV-1</span><br><span class="small">LAV 1</span></td><td><span class="strong">TSL.MON.B.38.2.PS1.BK</span><br><span class="strong">TOTO</span> T25S51E#CP<br><span class="strong">BOBRICK</span> B-8236</td><td class="grn">✓ p.30–47</td><td><span class="small">no answer yet</span><br><span class="red">Rejected</span><br><span class="small">no answer yet</span></td><td><span class="b sm">Edit</span> <span class="b sm">⋯</span></td></tr></table></div>
+        <div class="good">Five columns that all carry something. Specified, Status and Reason come back the moment the bid has a schedule. Their answer, Split, Part of and × sit under ⋯, and a click on the answer cell opens Their answer.</div>
+      </div></div>
+    </div>
+    <dl class="why"><dt>What changes</dt><dd>The table draws only the columns this bid uses. On a phone each row becomes a card.</dd><dt>Size</dt><dd>Medium. Best done after her first week tells us which columns she reads.</dd></dl>
+  </div>
+  <div class="dlg-foot"><span class="count"></span><div class="nav"><button data-prev>← Previous</button><button data-next>Next →</button></div></div>
+</div></dialog>
+
+<dialog id="f12"><div class="dlg">
+  <div class="dlg-head"><div><h3>12 · An Edit window with labels and one line per part</h3><p>BP398 test · Edit on a fixture with three parts</p></div><button class="x" data-close aria-label="Close">×</button></div>
+  <div class="dlg-body">
+    <div class="pair">
+      <div class="side"><div class="bar">Current</div><div class="mock">
+        <div class="win"><h4>Shower/tub combos · Shower/tub combos</h4>
+          <div class="field" style="width:6.5rem">Shower/tub con</div>
+          <span class="lbl">Parts · each one is bought on its own</span>
+          <div class="step"><div class="field">A0SMITH COMM ELEC NS 208V 6KW/6KW 3PH</div>
+            <div class="rowf"><span class="seg"><span class="on">GC sees it</span><span>Order only</span><span>Left out</span></span><span class="small">each fixture</span><span class="field">1</span><span class="field">Moore Supply ▾</span><span class="field">2 wk</span></div>
+            <div class="rowf"><span class="field">the fixture’s stage ▾</span></div></div>
+          <div class="step"><div class="field">WATTS 3/4 VAC RELIEF VLV LFN36M1…</div>
+            <div class="rowf"><span class="seg"><span class="on">GC sees it</span><span>Order only</span><span>Left out</span></span><span class="small">each fixture</span><span class="field">1</span><span class="field">Moore Supply ▾</span><span class="field">2 wk</span></div>
+            <div class="rowf"><span class="field">the fixture’s stage ▾</span></div></div>
+          <span class="lbl">Status</span>
+          <div class="pills"><span class="pill">As specified</span><span class="pill">Superseded</span><span class="pill">Equal</span><span class="pill">Alternate</span><span class="pill">Design change</span><span class="pill">Missing</span><span class="pill">Accessory</span></div></div>
+        <div class="bad">The title repeats the tag. The tag box has no label and clips. No box in a part has a heading. The row is Proposed and no status is lit. Eleven parts make thirty three lines.</div>
+      </div></div>
+      <div class="side after"><div class="bar">Could be</div><div class="mock">
+        <div class="win"><h4>Edit Shower/tub combos</h4>
+          <div class="rowf"><span class="lbl">Tag</span><span class="field" style="flex:1">Shower/tub combos</span></div>
+          <div class="scroll"><table class="t"><tr><th>Part</th><th>Each</th><th>Who sees it</th><th>House</th><th>Lead</th><th>Stage</th></tr>
+            <tr><td><span class="strong">A0SMITH</span> COMM ELEC NS 208V…</td><td>1</td><td><span class="b sm lit">GC ▾</span></td><td>Moore ▾</td><td>2 wk</td><td>fixture’s ▾</td></tr>
+            <tr><td><span class="strong">WATTS 3/4</span> VAC RELIEF VLV…</td><td>1</td><td><span class="b sm lit">GC ▾</span></td><td>Moore ▾</td><td>2 wk</td><td>fixture’s ▾</td></tr>
+            <tr><td><span class="strong">WATTS 0067370</span></td><td>1</td><td><span class="b sm lit">GC ▾</span></td><td class="amb">pick ▾</td><td class="amb">3 wk?</td><td>fixture’s ▾</td></tr></table></div>
+          <span class="lbl">Status</span>
+          <div class="pills"><span class="pill cur">Proposed</span><span class="pill">As specified</span><span class="pill">Superseded</span><span class="pill">Equal</span><span class="pill">Alternate</span><span class="pill">Design change</span><span class="pill">Missing</span></div></div>
+        <div class="good">One line per part under headings. What is missing shows in amber. The status the row has is lit. A row added by hand opens titled “Add a row” with no status picked.</div>
+      </div></div>
+    </div>
+    <dl class="why"><dt>What changes</dt><dd>The parts become a table. The tag gets a label. Proposed joins the status choices. A new hand row cannot be saved blank.</dd><dt>Size</dt><dd>Medium. The same parts editor is used in two windows.</dd></dl>
+  </div>
+  <div class="dlg-foot"><span class="count"></span><div class="nav"><button data-prev>← Previous</button><button data-next>Next →</button></div></div>
+</div></dialog>
+
+<script>
+  (function () {
+    var ids = ['f1','f2','f3','f4','f5','f6','f7','f8','f9','f10','f11','f12'];
+    function show(id) {
+      ids.forEach(function (x) { var d = document.getElementById(x); if (d.open) d.close(); });
+      var d = document.getElementById(id);
+      d.querySelector('.count').textContent = (ids.indexOf(id) + 1) + ' of ' + ids.length;
+      if (typeof d.showModal === 'function') d.showModal(); else d.setAttribute('open', '');
+      d.querySelector('.dlg-body').scrollTop = 0;
+    }
+    document.querySelectorAll('[data-open]').forEach(function (b) {
+      b.addEventListener('click', function () { show(b.getAttribute('data-open')); });
+    });
+    ids.forEach(function (id, i) {
+      var d = document.getElementById(id);
+      d.querySelector('[data-close]').addEventListener('click', function () { d.close(); });
+      d.querySelector('[data-prev]').addEventListener('click', function () { show(ids[(i + ids.length - 1) % ids.length]); });
+      d.querySelector('[data-next]').addEventListener('click', function () { show(ids[(i + 1) % ids.length]); });
+      d.addEventListener('click', function (e) { if (e.target === d) d.close(); });
+      d.addEventListener('keydown', function (e) {
+        if (e.key === 'ArrowRight') show(ids[(i + 1) % ids.length]);
+        if (e.key === 'ArrowLeft') show(ids[(i + ids.length - 1) % ids.length]);
+      });
+    });
+  })();
+</script>

@@ -75,6 +75,11 @@ describe('submittalJourney', () => {
     expect(submittalJourney(i).next).toEqual({ kind: 'next', text: 'Dana Whitfield approved 13 and sent 1 back. Fix that row. Then tap the green button to start a new version with only that row.', action: 'resubmit', actionLabel: 'Rev 3 from the 1 row sent back' })
   })
 
+  it('2026-10-03 · rows sent back while others have no answer: the button and the line say both go on', () => {
+    const i = { ...base, rev: draft({ number: 1, status: 'shared', packageBuilt: true }), room: { status: 'open', opens: 2, identified: ['structura'] }, decisions: { decided: 4, approved: 0, open: 9, noAnswer: 10, sentBack: 4, byName: ['structura'] } }
+    expect(submittalJourney(i).next).toEqual({ kind: 'next', text: 'structura approved 0 and sent 4 back. 10 rows still have no answer. Fix what was sent back. Then tap the green button. The rows with no answer go on the new version too.', action: 'resubmit', actionLabel: 'Rev 2 from the 4 rows sent back and the 10 with no answer' })
+  })
+
   it('every row approved → done; some still open → waiting', () => {
     const rev = draft({ number: 2, status: 'shared', packageBuilt: true })
     const all = submittalJourney({ ...base, rev, decisions: { decided: 14, approved: 14, open: 0, sentBack: 0, byName: ['Dana Whitfield'] } })
