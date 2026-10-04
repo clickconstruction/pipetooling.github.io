@@ -22,6 +22,8 @@ export const documentsQuietButton: CSSProperties = {
   background: 'var(--surface)',
   color: 'var(--text-700)',
 }
+/** A status chip after a row's name; the colours come from the row's own kernel. */
+export const documentsChip: CSSProperties = { marginLeft: '0.4rem', padding: '0.05rem 0.45rem', borderRadius: 999, fontSize: '0.75rem', fontWeight: 600, whiteSpace: 'nowrap' }
 /** A row's name as a link: it opens the thing. */
 export const documentsLinkButton: CSSProperties = {
   border: 'none',
