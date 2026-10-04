@@ -11,7 +11,7 @@ import { awardedPartner, find, logged, mapInvite, mapPackage, mapProject, mapSow
 import { initialGcState } from './gcFixture'
 import { lostWhyLabel } from './gcLost'
 import { daysBetween, draftSchedule, scheduleLinesOf, withBaselineKept } from './gcBuildingSchedule'
-import { buildNewProject, packagesFromDrafts, pushSchedule, scheduleSetLines, withNewLines, withRetiedLines, withTradesInOrder } from './gcNewProject'
+import { buildNewProject, dryInMilestoneFor, packagesFromDrafts, pushSchedule, scheduleSetLines, withNewLines, withRetiedLines, withTradesInOrder } from './gcNewProject'
 import { nextPunchId, punchClear } from './gcBuildingPunch'
 import { addDays, changeOrderTradePct, crewPctFromStages, drawApprovedLess, finalPayApplication, jobCloseout, payApplication, timesSentBack, tradeCloseout, workAllBilled } from './gcBuilding'
 import { appClaimed, appOpen, changeOrderPrice, ownerCloseout, ownerFinalPayAppToSend, ownerPayApp, ownerPayAppHasWork, ownerPayAppToSend } from './gcOwnerBilling'
@@ -635,7 +635,13 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
       const withTrades = {
         ...lined.project,
         packages: packagesAfter,
-        ...(kept && push ? { schedule: { ...kept, activities: push.activities } } : {}),
+        ...(kept && push
+          ? (() => {
+              // The job's first dry-in work brings the Dry-in milestone with it, as the first draft would.
+              const dryIn = dryInMilestoneFor({ ...lined.project, packages: packagesAfter }, push.activities, kept.milestones, newWork.map((w) => w.lineId))
+              return { schedule: { ...kept, activities: push.activities, ...(dryIn ? { milestones: [...kept.milestones, dryIn] } : {}) } }
+            })()
+          : {}),
         ...(carried.size > 0
           ? { questions: lined.project.questions.map((q) => (carried.has(q.id) && q.answer !== null && q.inSetRev === undefined ? { ...q, inSetRev: rev } : q)) }
           : {}),

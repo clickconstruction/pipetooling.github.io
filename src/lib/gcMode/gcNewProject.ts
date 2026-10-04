@@ -782,6 +782,31 @@ export function scheduleDraft(project: GcProject, start: string): ProjectSchedul
 // ---------------------------------------------------------------------------------------------
 
 /**
+ * The Dry-in milestone a set adds when it brings the job's first dry-in work onto a schedule that
+ * has none, on the last dry-in finish, the way the first draft makes it (`scheduleDraft`). Null
+ * when the schedule has one, or the set brought no dry-in work. The owner, 2026-10-04: "add the
+ * milestone".
+ */
+export function dryInMilestoneFor(
+  project: GcProject,
+  activities: ScheduleActivity[],
+  milestones: ScheduleMilestone[],
+  newLineIds: string[],
+): ScheduleMilestone | null {
+  if (milestones.some((m) => m.id === `${project.id}-dryin` || /^dry-?in$/i.test(m.label.trim()))) return null
+  const stageOf = (a: ScheduleActivity) => {
+    const pkg = project.packages.find((p) => p.id === a.packageId)
+    const label = pkg?.sow?.sov.find((l) => l.id === a.lineId)?.label ?? pkg?.scope.find((l) => l.id === a.lineId)?.label ?? ''
+    return pkg ? lineStage(pkg.trade, label) : null
+  }
+  const dry = activities.filter((a) => !a.inspection && stageOf(a) === 'dryIn')
+  if (!dry.some((a) => newLineIds.includes(a.lineId))) return null
+  const planned = dry.reduce((m, a) => (a.finish > m ? a.finish : m), '')
+  const roof = project.packages.find((k) => k.trade === 'Roofing') ?? null
+  return { id: `${project.id}-dryin`, label: 'Dry-in', planned, packageId: roof?.id ?? null, metOn: null }
+}
+
+/**
  * Work a set brings onto a schedule already drawn: a new trade's lines, or lines added to a trade.
  * Each is placed the way the first draft places it (`scheduleDraft`): in its stage, after what
  * that stage waits on (the rough-in inspection for anything after the rough-ins), and after the
