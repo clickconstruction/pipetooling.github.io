@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   allJobsMoney,
+  cashAhead,
   gcReducer,
   initialGcState,
   missingTradeWaivers,
@@ -711,6 +712,59 @@ describe('money across every job', () => {
     const m = allJobsMoney(state)
     expect(m.owed.map((b) => b.project.id)).toEqual(['helotes'])
     expect(r(m.totals.paidIn)).toBe(735_988 + 288_879)
+  })
+})
+
+describe('the next weeks of money across every job', () => {
+  const r = (n: number) => Math.round(n)
+  const line = (a: ReturnType<typeof cashAhead>) => a.weeks.map((w) => [w.start, r(w.in), r(w.out), r(w.standing)])
+
+  it('counts what is on the books: the two draws asked at Fair Oaks D take us to $39,272 carrying', () => {
+    const a = cashAhead(initialGcState())
+    expect(r(a.standingNow)).toBe(80_428)
+    expect(line(a)).toEqual([
+      ['2026-09-28', 0, 0, 80_428],
+      ['2026-10-05', 0, 0, 80_428],
+      ['2026-10-12', 0, 119_700, -39_272],
+      ['2026-10-19', 0, 0, -39_272],
+      ['2026-10-26', 0, 0, -39_272],
+      ['2026-11-02', 0, 0, -39_272],
+    ])
+    expect(a.lowest?.start).toBe('2026-10-12')
+    expect(a.weeks[2]?.moves.map((m) => [m.who, m.why, m.on])).toEqual([
+      ['Iron Horse Fabrication', 'ifApprovedToday', '2026-10-12'],
+      ['Pecan Valley Electric', 'ifApprovedToday', '2026-10-12'],
+    ])
+    expect(a.late.map((m) => [m.who, r(m.amount), m.on])).toEqual([['Cibolo Creek Partners', 288_879, '2026-09-30']])
+  })
+
+  it('counts the late bill this week only when asked, and then never drops below today', () => {
+    const a = cashAhead(initialGcState(), { countLate: true })
+    expect(line(a).map((w) => w[3])).toEqual([369_307, 369_307, 249_607, 249_607, 249_607, 249_607])
+    expect(a.lowest).toBeNull()
+  })
+
+  it('keeps retainage on both sides out of the weeks until it has a day, the same totals as the Money tab', () => {
+    const state = initialGcState()
+    const a = cashAhead(state)
+    const t = allJobsMoney(state).totals
+    const held = (dir: 'in' | 'out') => r(a.noDay.filter((m) => m.dir === dir).reduce((s, m) => s + m.amount, 0))
+    expect([held('in'), held('out')]).toEqual([r(t.ownerHolds), r(t.weHold)])
+    expect([a.nextBills.on, r(a.nextBills.amount), a.nextBills.jobs]).toEqual(['2026-10-25', 145_868, 2])
+  })
+
+  it('an approved draw counts on its pay-by day; a paid one leaves the weeks', () => {
+    const fresh = initialGcState()
+    const pkg = fresh.projects.find((p) => p.id === 'fairoaksd')?.packages.find((k) => k.sow?.draws.some((d) => d.status === 'requested' && d.net === 79_200))
+    const drawId = pkg?.sow?.draws.find((d) => d.status === 'requested')?.id ?? ''
+    const ids = { projectId: 'fairoaksd', packageId: pkg?.id ?? '', drawId }
+    let state = gcReducer(fresh, { type: 'approveDraw', ...ids })
+    const approved = cashAhead(state).weeks.flatMap((w) => w.moves).find((m) => m.who === 'Iron Horse Fabrication')
+    expect([approved?.why, approved?.on]).toEqual(['payBy', '2026-10-12'])
+    state = gcReducer(state, { type: 'payDraw', ...ids })
+    const a = cashAhead(state)
+    expect(a.weeks.flatMap((w) => w.moves).some((m) => m.who === 'Iron Horse Fabrication')).toBe(false)
+    expect(r(a.standingNow)).toBe(80_428 - 79_200)
   })
 })
 

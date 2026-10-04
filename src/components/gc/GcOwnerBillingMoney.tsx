@@ -1,3 +1,4 @@
+import { GcOwnerBillingAhead } from './GcOwnerBillingAhead'
 import { Btn, Card, Chip, Stat, Why, num, td, th } from './gcUi'
 import { allJobsMoney, money, shortDate, type GcState, type OwedBill } from '../../lib/gcMode/gcModel'
 
@@ -17,7 +18,7 @@ export function GcOwnerBillingMoney({ state, onOpenBill }: { state: GcState; onO
     <div style={{ display: 'grid', gap: '1rem' }}>
       <Why>
         Every job that is ours, side by side. What the owners paid us beside what we paid the trades, and who owes us. A late bill
-        comes first.
+        comes first. The next weeks show what comes in and goes out.
       </Why>
 
       <Card>
@@ -50,6 +51,8 @@ export function GcOwnerBillingMoney({ state, onOpenBill }: { state: GcState; onO
           </div>
         )}
       </Card>
+
+      <GcOwnerBillingAhead state={state} />
 
       <Card style={{ padding: 0, overflowX: 'auto' }}>
         <div style={{ padding: '0.75rem 1rem 0.4rem', fontWeight: 700, fontSize: '1rem' }}>Each job</div>

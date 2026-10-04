@@ -400,6 +400,13 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
   out or building) added up the way `projectCash` adds one ("Across our 3 jobs we are $80,428
   ahead"), then **Who owes us**, a late bill first and one waiting on the architect last, then each
   job on a row. **Bill the owner** on any row opens that job's tab.
+- The next weeks of money (`cashAhead`, `gcOwnerBillingAhead.ts`, `GcOwnerBillingAhead.tsx`, on the
+  Money tab): six weeks from this week's Monday, what comes in and goes out each week and where we
+  stand at its end, starting from today's. Only what is on the books counts: an owner's bill on
+  their promise or the day we expect it, an approved draw on its pay-by day, a draw asked for as if
+  we approve it today. Owner money already late counts this week only when the box is ticked.
+  Retainage on both sides waits until it has a day: a trade's is 10 days after the owner pays our
+  final. The bills we send on the 25th count once they go.
 - Insurance within 30 days of running out (`COI_WARN_DAYS`) turns its chip amber, asks under
   Needs you, and emails the company 30 days before the date.
 - A new insurance certificate counts the moment the company sends it; nobody in the office checks
@@ -614,7 +621,7 @@ imitates it.
 | `GcNewPlans.tsx` | The new-set-of-plans window: its name, the sheets and sections and their titles, a trade it brings, who hears, the email; and the Plans tab's two doors (`GcPlansDoors`), gone on a lost bid |
 | `GcNewProject.tsx` | The New project window and its **+ New project** button |
 | `GcBuildingPayApp.tsx` · `src/lib/gcMode/gcBuilding.ts` · `gcBuildingWords.ts` | The pay application window (progress and final), its door in the portal (which turns into the trade's closeout list) and its read-only view from Draws · the 702 and 703 numbers, the four steps, retainage held and each trade's closeout (tested in `gcBuilding.test.ts`) · its words in English and Spanish (tested in `gcBuildingWords.test.ts`) |
-| `GcOwnerBillingTab.tsx` · `GcOwnerBillingPortal.tsx` · `GcOwnerBillingArchitect.tsx` · `GcOwnerBillingChangeOrders.tsx` · `GcOwnerBillingPayApp.tsx` · `GcOwnerBillingCash.tsx` · `src/lib/gcMode/gcOwnerBilling.ts` | Bill the owner: the owner's lines, the draft pay application, the ones sent and paid · what the owner sees · the lines and the 702 math, `ownerAccount`, our waivers and the trades' (tested in `gcOwnerBilling.test.ts`) |
+| `GcOwnerBillingTab.tsx` · `GcOwnerBillingPortal.tsx` · `GcOwnerBillingArchitect.tsx` · `GcOwnerBillingChangeOrders.tsx` · `GcOwnerBillingPayApp.tsx` · `GcOwnerBillingCash.tsx` · `GcOwnerBillingMoney.tsx` · `GcOwnerBillingAhead.tsx` · `src/lib/gcMode/gcOwnerBilling.ts` · `src/lib/gcMode/gcOwnerBillingAhead.ts` | Bill the owner: the owner's lines, the draft pay application, the ones sent and paid · what the owner sees · the lines and the 702 math, `ownerAccount`, our waivers and the trades' (tested in `gcOwnerBilling.test.ts`) |
 | `GcCloseout.tsx` | The Closeout tab |
 | `GcBuildingPunch.tsx` · `src/lib/gcMode/gcBuildingPunch.ts` | The punch list on Closeout and in the trade's portal · its counts and states (tested in `gcBuildingPunch.test.ts`) |
 | `GcBuildingSchedule.tsx` · `src/lib/gcMode/gcBuildingSchedule.ts` | The Schedule tab · its rows, the four measures and the look-ahead (tested in `gcBuildingSchedule.test.ts`) |
