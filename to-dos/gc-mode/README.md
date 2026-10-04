@@ -171,6 +171,11 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   piping to HVAC). The gap check flags what nobody picks up: left to a trade not on the job, or to
   one whose scope has no line for it (`scopeGaps`, a shared word). **Add it to HVAC** or **Add
   HVAC** closes it. The package keeps the list (`TradePackage.excludes`, `projectScopeGaps`).
+- **A set says who checked it** (the owner, 2026-10-04: "plans live in google drive, uploaded by
+  someone who checks them"; "yes, add the checked by step"): step 1 of **A new set of plans came
+  in** asks **Checked by**, the job's own team first, then our other people, or someone typed
+  in (`ourPeople`). The set does not go out until someone is named. The set keeps the name
+  (`PlanSet.checkedBy`); the log and the plans window say "Checked by Dana Whitaker".
 - **A whole new set is compared with ours** (approved, 2026-10-03): a Revised, Permit or
   Construction set pastes its new sheet index and table of contents. Each is compared with what we
   have (`indexDiff`): new, gone, renamed (same number, new title) and the same. Any listed sheet or
