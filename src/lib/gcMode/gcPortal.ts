@@ -17,6 +17,7 @@ import { inSentence, lineSheets, linesOnSpecs, specsAtRev, specsGoneAtRev, trade
 import { addDays, retainageHeldNow, sentBackOpen, sowContractSum, tradeChangesFor, tradeCloseout, workAllBilled } from './gcBuilding'
 import { lookAheadWeeks, markState, mondayOf, scheduleRows, type LookAheadState, type ScheduleRow } from './gcBuildingSchedule'
 import { onSite } from './gcBuildingLog'
+import { submittalRowsOn } from './gcBuildingSubmittals'
 import { vettingOf } from './gcVetting'
 import { INSURANCE_ASK_DAYS, PROMISE_WHAT, tradePromisesOf, tradePromiseState } from './gcPromises'
 import { punchItems, punchState } from './gcBuildingPunch'
@@ -465,6 +466,27 @@ export function portalTodos(state: GcState, partnerId: string, asks: PortalAsk[]
           text: what + backWords,
           tone: back > 0 ? 'red' : 'amber',
           by: toFix.map((i) => i.sentBack?.on ?? i.addedOn).sort()[0] ?? null,
+          anchor: `report:${a.pkg.id}`,
+        })
+      }
+      // Submittals that are the company's move (Building lane): not sent yet, or sent back to revise.
+      // Red once one is late or came back; it lands on the block that holds them.
+      const subs = submittalRowsOn(a.project, today).filter((r) => r.pkg?.id === a.pkg.id && r.state === 'trade')
+      if (subs.length > 0) {
+        const n = subs.length
+        const back = subs.filter((r) => r.submittal.rounds.length > 0).length
+        const late = subs.filter((r) => r.daysLate > 0).length
+        const words = [
+          pt(lang, n === 1 ? 'todoSub1' : 'todoSubN', { n, trade, project }),
+          ...(back > 0 ? [pt(lang, back === 1 ? 'todoSubBack1' : 'todoSubBackN', { gc, n: back })] : []),
+          ...(late > 0 ? [pt(lang, late === 1 ? 'todoSubLate1' : 'todoSubLateN', { n: late })] : []),
+        ]
+        todos.push({
+          key: `${key}:submittals`,
+          projectId,
+          text: words.join(' '),
+          tone: back > 0 || late > 0 ? 'red' : 'amber',
+          by: subs.map((r) => r.neededBy).filter((d): d is string => d !== null).sort()[0] ?? null,
           anchor: `report:${a.pkg.id}`,
         })
       }
