@@ -1058,12 +1058,13 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
       const existing = project.changeOrders ?? []
       const number = existing.length + 1
       const price = Number.isFinite(action.price) && action.price !== 0 ? Math.round(action.price) : changeOrderPrice(project, action.cost)
+      const days = Number.isFinite(action.days) && (action.days ?? 0) > 0 ? Math.round(action.days ?? 0) : 0
       const co = {
         id: `co-${number}`,
         number,
         description,
         reason: action.reason,
-        schedule: action.schedule.trim() || 'none',
+        schedule: action.schedule.trim() || (days > 0 ? `+${days} ${days === 1 ? 'day' : 'days'}` : 'none'),
         packageId: action.packageId,
         cost: Math.round(action.cost),
         price,
@@ -1071,6 +1072,7 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
         sentOn: null,
         answeredOn: null,
         pctDone: 0,
+        ...(days > 0 ? { days } : {}),
       }
       const next = mapProject(state, project.id, (p) => ({ ...p, changeOrders: [...existing, co] }))
       return logged(next, 'office', `Drafted change order ${number} on ${project.name}: ${description}, ${money(price)}.`)

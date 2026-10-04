@@ -27,6 +27,7 @@ import { Btn, Card, Chip, PlusUnknown, Stat, type Tone } from '../components/gc/
 import { useMatchMedia } from '../hooks/useMatchMedia'
 import {
   carriedAmount,
+  carriedUncosted,
   isGuess,
   currentRev,
   daysUntil,
@@ -459,10 +460,13 @@ export default function GcMode() {
 
 /** A guess is not a number here: the chip counts real quotes and our own crew, and names the guesses. */
 function coverageWords(project: GcProject): string {
-  const real = project.packages.filter((p) => carriedAmount(p) !== null && !isGuess(p)).length
+  // The same rule as the ring's card: a guess, or a carried quote with a line that has no cost, is not a real number yet.
+  const missing = (p: GcProject['packages'][number]) => carriedUncosted(p).length > 0
+  const real = project.packages.filter((p) => carriedAmount(p) !== null && !isGuess(p) && !missing(p)).length
   const guessed = project.packages.filter(isGuess).length
+  const uncosted = project.packages.filter(missing).length
   const base = `${real} of ${project.packages.length} trades have a real number`
-  return guessed > 0 ? `${base} · ${guessed} on our guess` : base
+  return [base, guessed > 0 ? `${guessed} on our guess` : null, uncosted > 0 ? `${uncosted} missing a cost` : null].filter(Boolean).join(' · ')
 }
 
 function GcIcon({ d, size = 20 }: { d: string; size?: number }) {

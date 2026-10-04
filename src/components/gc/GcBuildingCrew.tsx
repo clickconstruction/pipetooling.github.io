@@ -16,11 +16,10 @@ export function GcBuildingCrewCard({ project, pkg, dispatch }: { project: GcProj
   const crew = ownCrewWork(pkg)
   if (!crew) return null
   const bar = (pct: number) => (
-    <span title={`${pct}% done`} style={{ position: 'relative', height: 10, borderRadius: 5, background: 'var(--bg-muted)', overflow: 'hidden' }}>
+    <span className="gcBar" title={`${pct}% done`} style={{ position: 'relative', height: 10, borderRadius: 5, background: 'var(--bg-muted)', overflow: 'hidden' }}>
       <span style={{ position: 'absolute', inset: 0, width: `${pct}%`, background: '#93c5fd' }} />
     </span>
   )
-  const row = { display: 'grid', gridTemplateColumns: 'minmax(8rem, 14rem) 1fr auto', gap: '0.6rem', alignItems: 'center', fontSize: '0.875rem' } as const
   return (
     <Card>
       <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
@@ -38,7 +37,7 @@ export function GcBuildingCrewCard({ project, pkg, dispatch }: { project: GcProj
       </div>
       <div style={{ display: 'grid', gap: '0.35rem', marginTop: '0.7rem' }}>
         {crew.stages.map((st) => (
-          <div key={st.lineId} style={row}>
+          <div key={st.lineId} className="gcBar-row">
             <span>
               {st.label} · {money((crew.worth * st.weight) / 100)}
             </span>
@@ -57,7 +56,7 @@ export function GcBuildingCrewCard({ project, pkg, dispatch }: { project: GcProj
             </select>
           </div>
         ))}
-        <div style={{ ...row, fontWeight: 600 }}>
+        <div className="gcBar-row" style={{ fontWeight: 600 }}>
           <span>The whole trade</span>
           {bar(crew.pct)}
           <span style={{ fontVariantNumeric: 'tabular-nums' }}>{crew.pct}% done</span>

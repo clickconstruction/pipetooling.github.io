@@ -1,4 +1,4 @@
-import { useMemo, useState, type CSSProperties, type Dispatch, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type Dispatch, type ReactNode } from 'react'
 import {
   activityName,
   addDays,
@@ -26,6 +26,7 @@ import {
 } from '../../lib/gcMode/gcModel'
 import type { GcPaneProps } from './GcOfficeTabs'
 import { Btn, Card, Chip, Why, input, type Tone } from './gcUi'
+import { BUILDING_CSS } from './gcBuildingCss'
 
 /**
  * GC mode design spike: the schedule (Building lane, owner's shape 2026-10-02). Each activity is a
@@ -36,7 +37,6 @@ import { Btn, Card, Chip, Why, input, type Tone } from './gcUi'
  */
 
 const DAY_PX = 6
-const LABEL_W = 260
 
 export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps) {
   const m = useMemo(() => scheduleMeasures(state, project), [state, project])
@@ -417,8 +417,6 @@ function ScheduleChart({
     position: 'sticky',
     left: 0,
     zIndex: 1,
-    width: LABEL_W,
-    minWidth: LABEL_W,
     background: 'var(--surface)',
     borderRight: '1px solid var(--border)',
     padding: '0.3rem 0.6rem',
@@ -426,12 +424,22 @@ function ScheduleChart({
     boxSizing: 'border-box',
   }
   const todayLine = <span aria-hidden style={{ position: 'absolute', top: 0, bottom: 0, left: x(today), width: 2, background: '#2563eb', opacity: 0.55 }} />
+  // Open on today, not on the first day drawn: on a phone only a few weeks fit beside the names.
+  const scroller = useRef<HTMLDivElement>(null)
+  const todayAt = x(today)
+  useEffect(() => {
+    const el = scroller.current
+    if (!el) return
+    const names = el.querySelector<HTMLElement>('.gcSched-label')?.offsetWidth ?? 0
+    el.scrollLeft = Math.max(0, todayAt - (el.clientWidth - names) / 3)
+  }, [todayAt])
 
   return (
-    <div style={{ overflowX: 'auto' }}>
-      <div style={{ width: LABEL_W + width, minWidth: '100%' }}>
+    <div ref={scroller} style={{ overflowX: 'auto' }}>
+      <style>{BUILDING_CSS}</style>
+      <div style={{ width: 'max-content', minWidth: '100%' }}>
         <div style={{ ...rowStyle, borderTop: 'none', background: 'var(--bg-subtle)' }}>
-          <div style={{ ...labelStyle, background: 'var(--bg-subtle)', fontWeight: 600 }}>Activity</div>
+          <div className="gcSched-label" style={{ ...labelStyle, background: 'var(--bg-subtle)', fontWeight: 600 }}>Activity</div>
           <div style={{ position: 'relative', width, fontSize: '0.72rem', color: 'var(--text-muted)' }}>
             {months.map((mo) => (
               <span key={mo.at} style={{ position: 'absolute', left: mo.at + 3, top: 8, borderLeft: '1px solid var(--border-strong)', paddingLeft: 3 }}>
@@ -442,7 +450,7 @@ function ScheduleChart({
           </div>
         </div>
         <div style={rowStyle}>
-          <div style={{ ...labelStyle, fontWeight: 600 }}>Milestones</div>
+          <div className="gcSched-label" style={{ ...labelStyle, fontWeight: 600 }}>Milestones</div>
           <div style={{ position: 'relative', width, height: 42 }}>
             {todayLine}
             {[...milestones]
@@ -470,7 +478,7 @@ function ScheduleChart({
           return (
             <div key={pkgId}>
               <div style={{ ...rowStyle, background: 'var(--bg-subtle)', minHeight: 24 }}>
-                <div style={{ ...labelStyle, background: 'var(--bg-subtle)', fontWeight: 700 }}>
+                <div className="gcSched-label" style={{ ...labelStyle, background: 'var(--bg-subtle)', fontWeight: 700 }}>
                   {head.trade} <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>· {head.company}</span>
                 </div>
                 <div style={{ position: 'relative', width }}>{todayLine}</div>
@@ -536,7 +544,7 @@ function ChartRow({
   const moved = row.baseline.start !== a.start || row.baseline.finish !== a.finish
   return (
     <div style={{ ...rowStyle, background: picked ? 'var(--bg-blue-tint)' : undefined }}>
-      <div style={{ ...labelStyle, background: picked ? 'var(--bg-blue-tint)' : labelStyle.background }}>
+      <div className="gcSched-label" style={{ ...labelStyle, background: picked ? 'var(--bg-blue-tint)' : labelStyle.background }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.4rem' }}>
           <button
             type="button"
