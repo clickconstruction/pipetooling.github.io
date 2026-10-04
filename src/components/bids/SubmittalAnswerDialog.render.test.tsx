@@ -154,4 +154,21 @@ describe('SubmittalAnswerDialog', () => {
       Element.prototype.scrollIntoView = real
     }
   })
+  it('2026-10-03 · an answer picked and not recorded: a click outside asks first; with nothing picked it closes at once', () => {
+    const onClose = vi.fn()
+    const { unmount } = renderWithProviders(<SubmittalAnswerDialog item={item()} parts={parts} sources={sources} revLabel="Rev 1" onSave={() => {}} onClose={onClose} />)
+    fireEvent.click(screen.getByRole('presentation'))
+    expect(onClose).toHaveBeenCalledTimes(1)
+    unmount()
+    renderWithProviders(<SubmittalAnswerDialog item={item()} parts={parts} sources={sources} revLabel="Rev 1" onSave={() => {}} onClose={onClose} />)
+    tap('TOTO TET2UB31#SS', 'Rejected')
+    fireEvent.click(screen.getByRole('presentation'))
+    expect(onClose).toHaveBeenCalledTimes(1)
+    expect(screen.getByTestId('leave-question').textContent).toContain('What you picked for WC-1, WC-2 is not recorded yet.')
+    fireEvent.click(screen.getByTestId('leave-keep'))
+    expect(line('TOTO TET2UB31#SS').querySelector('[aria-pressed="true"]')!.textContent).toBe('Rejected')
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    fireEvent.click(screen.getByTestId('leave-confirm'))
+    expect(onClose).toHaveBeenCalledTimes(2)
+  })
 })

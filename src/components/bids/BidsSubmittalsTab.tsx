@@ -1908,9 +1908,23 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     return { submitted_label: r.submitted_label, supply_house_id: r.supply_house_id, lead_time_days: r.lead_time_days }
   }
 
+  const savingItem = useRef(false)
   async function saveItem(patch: SubmittalItemPatch) {
     if (!editing || !selectedRev || !bidId) return
     const { thenAnswer, parts: partDrafts, ...rowPatch } = patch
+    // 2026-10-03 · one save at a time: the window reads Saving… and holds, so a second press cannot add the row twice.
+    if (savingItem.current) return
+    savingItem.current = true
+    setBusy(true)
+    try {
+      await saveItemWrites(thenAnswer, partDrafts, rowPatch)
+    } finally {
+      savingItem.current = false
+      setBusy(false)
+    }
+  }
+  async function saveItemWrites(thenAnswer: boolean | undefined, partDrafts: SubmittalItemPatch['parts'], rowPatch: Omit<SubmittalItemPatch, 'thenAnswer' | 'parts'>) {
+    if (!editing || !selectedRev || !bidId) return
     if (editing.id === NEW_ROW_ID) {
       // v2.4105 · the row by hand lands now, with what the editor holds; their answer goes on it once it exists.
       const { data: made, error } = await db.from('bid_submittal_items').insert({ submittal_id: selectedRev.id, sequence_order: editing.sequence_order, ...rowPatch, tag: rowPatch.tag ?? '', sheet_pages: rowPatch.sheet_pages ?? [] }).select('id').single()
@@ -2873,7 +2887,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
           onClose={() => setHouseFile(null)}
         />
       ) : null}
-      {editing ? <SubmittalItemEditDialog item={editing} sourceFiles={sourceFiles} houses={houses} parts={partsOf.get(editing.id) ?? []} canEnterDecision={editing.id !== NEW_ROW_ID} canEditProduct={isDraft && !standing.revOf.has(editing.id)} orderOnly={isOrderOnlyRow(editing)} boughtParts={editBought} focusPartId={editFocus?.itemId === editing.id ? editFocus.partId : null} focusHouse={editFocus?.itemId === editing.id && editFocus.house && editFocus.partId == null} onSave={(p) => void saveItem(p)} onClose={() => setEditing(null)} /> : null}
+      {editing ? <SubmittalItemEditDialog item={editing} sourceFiles={sourceFiles} houses={houses} parts={partsOf.get(editing.id) ?? []} canEnterDecision={editing.id !== NEW_ROW_ID} canEditProduct={isDraft && !standing.revOf.has(editing.id)} orderOnly={isOrderOnlyRow(editing)} boughtParts={editBought} focusPartId={editFocus?.itemId === editing.id ? editFocus.partId : null} focusHouse={editFocus?.itemId === editing.id && editFocus.house && editFocus.partId == null} busy={busy} onSave={(p) => void saveItem(p)} onClose={() => setEditing(null)} /> : null}
       {answering && selectedRev ? (
         <SubmittalAnswerDialog key={answering.id} item={answering} parts={partsOf.get(answering.id) ?? []} people={people} sources={reviewerSources} revLabel={`Rev ${selectedRev.rev_number}`} focusPartId={answerFocus?.itemId === answering.id ? answerFocus.partId : null} busy={busy} onSave={(a) => void saveAnswer(a)} onClose={() => setAnswering(null)} />
       ) : null}

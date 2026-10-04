@@ -302,10 +302,14 @@ describe('BidsSubmittalsTab', () => {
     fireEvent.change(within(dialog).getByLabelText('Tag'), { target: { value: 'gi-1' } })
     fireEvent.change(within(dialog).getByLabelText('Submitted product'), { target: { value: 'Schier GB-250 grease interceptor' } })
     fireEvent.click(within(dialog).getByRole('button', { name: '4+ wk' }))
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
+    // 2026-10-03 · two quick presses on Save add the row once: the first holds the window.
+    const saveButton = within(dialog).getByRole('button', { name: 'Save' })
+    fireEvent.click(saveButton)
+    fireEvent.click(saveButton)
     await waitFor(() => expect(state.writes.some((w) => w.op === 'insert' && w.table === 'bid_submittal_items')).toBe(true))
     expect(state.writes.find((w) => w.op === 'insert' && w.table === 'bid_submittal_items')!.payload).toMatchObject({ submittal_id: 'rev-1', sequence_order: 2, status: 'missing', tag: 'GI-1', submitted_label: 'Schier GB-250 grease interceptor', lead_time_days: 28 })
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(state.writes.filter((w) => w.op === 'insert' && w.table === 'bid_submittal_items')).toHaveLength(1)
   })
 
   it('v2.4067 · the journey strip says where the submittal is, the first open offers the walkthrough, and the tour keeps a stop for every stage — centered when its controls are not on the page', async () => {

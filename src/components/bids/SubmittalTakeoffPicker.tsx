@@ -1,6 +1,8 @@
 import { Fragment, useMemo, useState, type CSSProperties } from 'react'
 import { GROUP_LABELS, splitExplanation, type CandidateGroup, type ProductPiece, type TakeoffCandidate } from '../../lib/submittals/takeoffCandidates'
 import { PICK_LABELS, allPiecesOf, pickChangeWords, pickCounts, pickOf, piecePicksLine, piecePicksOf, planIsEmpty, planRowsAdded, planSummary, planTakeoffPicks, standsApproved, standsWords, withPiecePicks, type FixturePick, type PiecePick, type TakeoffPlan } from '../../lib/submittals/takeoffPicks'
+import { useLeaveGuard } from '../../hooks/useLeaveGuard'
+import { LeaveQuestion } from './SubmittalLeaveGuard'
 import { SplitRuleModal } from './SplitRuleModal'
 
 type Props = {
@@ -119,9 +121,12 @@ export function SubmittalTakeoffPicker({ mode, revLabel, candidates: given, boug
   })
   const nothing = mode === 'build' ? rowsAdded === 0 : planIsEmpty(plan)
   const confirm = () => onConfirm(plan, splits)
+  // 2026-10-03 · picks made and not written are typing: the backdrop, ×, Cancel and Esc ask before they lose them.
+  const touched = picks.size > 0 || piecePicks.size > 0 || candidates.some((c) => c.canSplit && (splits.get(c.countRowId) ?? c.split) !== c.split)
+  const guard = useLeaveGuard({ dirty: touched, onClose, busy, paused: ruleOpen })
 
   return (
-    <div role="presentation" onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 10060, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }}>
+    <div role="presentation" onClick={guard.requestClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 10060, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }}>
       <div role="dialog" aria-modal="true" aria-label="Choose from the takeoff" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: 8, maxWidth: 860, width: '100%', maxHeight: 'min(90vh, 100%)', display: 'flex', flexDirection: 'column', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}>
         <div style={{ padding: '1rem 1.25rem 0.5rem', display: 'flex', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'flex-start' }}>
           <div style={{ flex: '1 1 auto', minWidth: 0 }}>
@@ -133,7 +138,7 @@ export function SubmittalTakeoffPicker({ mode, revLabel, candidates: given, boug
               <span><b style={{ color: 'var(--text-strong)' }}>Left out</b> Not on the submittal and not ordered.</span>
             </p>
           </div>
-          <button type="button" onClick={onClose} aria-label="Close" style={{ ...btn, padding: '0.2rem 0.55rem', flexShrink: 0 }}>×</button>
+          <button type="button" onClick={guard.requestClose} aria-label="Close" style={{ ...btn, padding: '0.2rem 0.55rem', flexShrink: 0 }}>×</button>
         </div>
         <div style={{ overflowY: 'auto', padding: '0 1.25rem', flex: 1 }}>
           {groups.map(({ g, items }) => {
@@ -247,6 +252,7 @@ export function SubmittalTakeoffPicker({ mode, revLabel, candidates: given, boug
           })}
         </div>
         <div style={{ padding: '0.6rem 1.25rem 1rem', borderTop: '1px solid var(--border-strong)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          {guard.asking ? <LeaveQuestion what={`Your picks are not on ${revLabel} yet.`} onLeave={onClose} onKeep={guard.keep} /> : null}
           <span style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }} data-testid="takeoff-counts">
             <span style={{ ...countChip, background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)' }}>{counts.gc} the GC sees</span>
             <span style={{ ...countChip, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-700)' }}>{counts.order} order only</span>
@@ -257,9 +263,9 @@ export function SubmittalTakeoffPicker({ mode, revLabel, candidates: given, boug
             <span style={{ ...quiet, color: 'var(--text-strong)' }}><span data-testid="takeoff-bar">{summary || 'Nothing changes yet.'}</span> · <button type="button" onClick={() => setRuleOpen(true)} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--text-muted)', textDecoration: 'underline', cursor: 'pointer' }} data-testid="split-rule-link">when can a row split?</button></span>
             <span style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
               <button type="button" onClick={allWithProductToGc} disabled={busy} style={btn}>GC sees all with a product</button>
-              <button type="button" onClick={onClose} disabled={busy} style={btn}>Cancel</button>
+              <button type="button" onClick={guard.requestClose} disabled={busy} style={btn}>Cancel</button>
               <button type="button" onClick={confirm} disabled={busy || nothing} style={{ ...btnPrimary, opacity: nothing ? 0.6 : 1 }} data-testid="takeoff-confirm">
-                {mode === 'build' ? `Build ${revLabel} with ${rowsAdded} row${rowsAdded === 1 ? '' : 's'}` : `Update ${revLabel}`}
+                {busy ? 'Saving…' : mode === 'build' ? `Build ${revLabel} with ${rowsAdded} row${rowsAdded === 1 ? '' : 's'}` : `Update ${revLabel}`}
               </button>
             </span>
           </span>
