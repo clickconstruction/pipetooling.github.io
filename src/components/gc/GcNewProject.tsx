@@ -1286,7 +1286,8 @@ function Excludes({ trade, excludes, trades, onChange }: { trade: string; exclud
   const others = trades.filter((t) => t !== trade)
   return (
     <div style={{ display: 'grid', gap: '0.3rem', borderTop: '1px solid var(--border)', paddingTop: '0.5rem' }}>
-      <strong style={{ fontSize: '0.9rem' }}>Not in this trade</strong>
+      {/* The owner, 2026-10-04: "This should be phrased known exclusions instead." */}
+      <strong style={{ fontSize: '0.9rem' }}>Known exclusions</strong>
       <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
         Work this trade's quote leaves out, and who does it instead. Each company sees this list when it quotes.
       </span>
@@ -1297,7 +1298,7 @@ function Excludes({ trade, excludes, trades, onChange }: { trade: string; exclud
             value={x.label}
             onChange={(e) => set(i, { label: e.target.value })}
             placeholder="Gas piping"
-            aria-label={`What ${trade} leaves out`}
+            aria-label={`A known exclusion for ${trade}`}
           />
           <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>by</span>
           <div style={{ flex: '0 1 12rem', minWidth: 0 }}>
@@ -1329,7 +1330,7 @@ function Excludes({ trade, excludes, trades, onChange }: { trade: string; exclud
         </div>
       ))}
       <div>
-        <Btn kind="quiet" onClick={() => onChange([...excludes, { label: '', by: BY_NOT_A_TRADE[0] ?? 'the owner' }])}>+ Something it leaves out</Btn>
+        <Btn kind="quiet" onClick={() => onChange([...excludes, { label: '', by: BY_NOT_A_TRADE[0] ?? 'the owner' }])}>+ Add an exclusion</Btn>
       </div>
     </div>
   )

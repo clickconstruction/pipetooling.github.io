@@ -197,8 +197,8 @@ export function GcScopeBookWindow({
                             </>
                           )}
                           <span style={{ display: 'block', color: 'var(--text-muted)', fontSize: '0.78rem' }}>
-                            {[l.spec ? `Section ${l.spec}` : null, l.leavesOut ? `leaves out ${l.leavesOut.label}, done by ${l.leavesOut.by}` : null].filter(Boolean).join(' · ') ||
-                              'No section, leaves out nothing'}
+                            {[l.spec ? `Section ${l.spec}` : null, l.leavesOut ? `known exclusion: ${l.leavesOut.label}, done by ${l.leavesOut.by}` : null].filter(Boolean).join(' · ') ||
+                              'No section, no known exclusion'}
                           </span>
                         </span>
                         <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem', whiteSpace: 'nowrap' }}>{scopeBookUseWords(l)}</span>
@@ -268,7 +268,7 @@ export function GcScopeBookWindow({
   )
 }
 
-/** One line of the book being changed: its words, its section and what it leaves out. */
+/** One line of the book being changed: its words, its section and its known exclusion. */
 function LineEditor({
   line,
   trades,
@@ -297,8 +297,8 @@ function LineEditor({
           <input value={spec} onChange={(e) => setSpec(e.target.value)} placeholder="31 10 00" style={field} aria-label="The line's spec section" />
         </label>
         <label style={{ display: 'grid', gap: '0.2rem' }}>
-          <span style={{ fontWeight: 600 }}>Leaves out (optional)</span>
-          <input value={out} onChange={(e) => setOut(e.target.value)} placeholder="Building connections" style={field} aria-label="What a trade with this line leaves out" />
+          <span style={{ fontWeight: 600 }}>Known exclusion (optional)</span>
+          <input value={out} onChange={(e) => setOut(e.target.value)} placeholder="Building connections" style={field} aria-label="The known exclusion that comes with this line" />
         </label>
         <div style={{ display: 'grid', gap: '0.2rem' }}>
           <span style={{ fontWeight: 600 }}>Done by</span>
@@ -306,7 +306,7 @@ function LineEditor({
             value={by}
             onChange={setBy}
             placeholder="Who does it"
-            ariaLabel="Who does what it leaves out"
+            ariaLabel="Who does the exclusion"
             searchPlaceholder="Search the trades"
             options={[pickerGroup('trades', 'Trades'), ...others.map((t) => ({ value: t, label: t })), pickerGroup('not', 'Not a trade'), ...BY_NOT_A_TRADE.map((t) => ({ value: t, label: t }))]}
           />
@@ -321,7 +321,7 @@ function LineEditor({
           Save the line
         </Btn>
         <Btn kind="quiet" onClick={onCancel}>Cancel</Btn>
-        {out.trim() !== '' && by === '' && <span style={{ color: 'var(--text-amber-700)', fontSize: '0.78rem' }}>Say who does what it leaves out.</span>}
+        {out.trim() !== '' && by === '' && <span style={{ color: 'var(--text-amber-700)', fontSize: '0.78rem' }}>Say who does the exclusion.</span>}
       </div>
     </div>
   )
