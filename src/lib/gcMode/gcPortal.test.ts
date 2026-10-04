@@ -18,6 +18,7 @@ import {
   portalLeavesOut,
   portalLink,
   portalOnSite,
+  portalPapers,
   portalPromises,
   portalVetting,
   portalLines,
@@ -1004,5 +1005,39 @@ describe('submittals to send, on the home', () => {
     expect(portalTodos(state, 'coolbreeze', undefined, 'es').find((t) => t.key.endsWith(':submittals'))?.text).toMatch(
       /^Tiene 1 documento para aprobación por enviar de HVAC para Fair Oaks Shops, Building D\./,
     )
+  })
+})
+
+describe('Your papers', () => {
+  it('lists Guadalupe’s own papers, then its Fair Oaks job’s, newest first', () => {
+    const p = portalPapers(state, 'guadalupe')
+    expect(p.company.map((x) => x.title)).toEqual(['Master agreement', 'W-9', 'Insurance certificate'])
+    expect(p.company[0]).toMatchObject({ words: 'signed Jun 12', open: { kind: 'msa' } })
+    const job = p.jobs[0]!
+    expect(`${job.project.name} · ${job.trade}`).toBe('Fair Oaks Shops, Building D · Concrete')
+    expect(job.papers.map((x) => `${x.title} | ${x.words}`)).toEqual([
+      'Unconditional waiver, pay application 2 | signed after we paid Sep 7',
+      'Pay application 2 | sent Aug 29 · paid Sep 7',
+      'Conditional waiver, pay application 2 | signed Aug 29',
+      'Unconditional waiver, pay application 1 | signed after we paid Aug 9',
+      'Pay application 1 | sent Jul 31 · paid Aug 9',
+      'Conditional waiver, pay application 1 | signed Jul 31',
+      'Concrete statement of work | signed Jun 9',
+    ])
+    // A pay application and its waivers open the application; the statement of work opens the job.
+    expect(job.papers[1]!.open).toMatchObject({ kind: 'payApp', projectId: 'fairoaksd', packageId: 'fconc' })
+    expect(job.papers[6]!.open).toEqual({ kind: 'project', projectId: 'fairoaksd' })
+  })
+
+  it('has no job papers for a company whose statement of work is not signed yet', () => {
+    expect(portalPapers(state, 'brightline').jobs).toEqual([])
+  })
+
+  it('adds a new company’s form once it is sent, and reads in Spanish', () => {
+    const added = gcReducer(state, { type: 'addPartner', company: 'Brazos Steel', contact: 'Lupe Garza', trade: 'Structural steel', base: null, maxMiles: null, known: false })
+    const id = added.partners[added.partners.length - 1]!.id
+    const sent = gcReducer(added, { type: 'tradeVettingForm', partnerId: id, form: { license: 'TX 1', insurance: 'Mutual', yearsInBusiness: 3, references: 'Ana', pastJobs: 'Seguin' } })
+    expect(portalPapers(sent, id).company.map((x) => x.title)).toEqual(['Your company form'])
+    expect(portalPapers(state, 'guadalupe', 'es').jobs[0]!.papers[0]!.title).toBe('Renuncia incondicional, solicitud de pago 2')
   })
 })

@@ -582,6 +582,22 @@ const STEPS: Step[] = [
     label: 'Pad B: start anyway, before everything is in',
     action: { type: 'startProject', projectId: 'padb', anyway: { reason: 'The owner needs the pad graded before the rains.', by: 'Dana Whitaker' } },
   },
+  // Materials stored on site (Building lane, question 12): the rooftop units are on site, not set.
+  {
+    label: 'Cool Breeze asks for pay application 2, the rooftop units stored on site',
+    action: {
+      type: 'tradeSendPayApp',
+      projectId: 'fairoaksd',
+      packageId: 'fhvac',
+      toPct: { 'fhvac-2': 100 },
+      stored: { 'fhvac-1': 36_000 },
+      periodTo: '2026-10-02',
+      address: '1188 Culebra Rd, San Antonio, TX 78201',
+      license: '',
+      signedBy: 'Marco Ruiz',
+      signedTitle: 'Owner',
+    },
+  },
   // Question 4 (the owner, 2026-10-04): a trade's own schedule of values, beside ours.
   {
     label: 'Fair Oaks D: Cool Breeze sends its schedule of values',

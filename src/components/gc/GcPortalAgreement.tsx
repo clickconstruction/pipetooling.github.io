@@ -1,7 +1,8 @@
 import { useState, type Dispatch } from 'react'
-import { GC_COMPANY, type GcAction, type Partner, type PortalKey } from '../../lib/gcMode/gcModel'
+import { GC_COMPANY, pDate, type GcAction, type Partner, type PortalKey } from '../../lib/gcMode/gcModel'
 import { Btn, input } from './gcUi'
 import { PortalWindow } from './GcPortalUi'
+import { escapeHtml, printPortalHtml } from './gcPortalPrint'
 import { usePortalLang } from './gcPortalLang'
 
 /**
@@ -20,10 +21,21 @@ const TERMS: { title: PortalKey; body: PortalKey }[] = [
 ]
 
 export function GcPortalAgreement({ partner, onClose, dispatch }: { partner: Partner; onClose: () => void; dispatch: Dispatch<GcAction> }) {
-  const { t } = usePortalLang()
+  const { lang, t } = usePortalLang()
   const [name, setName] = useState('')
   const [agree, setAgree] = useState(false)
   const gc = GC_COMPANY.shortName
+  // Signed: read it, or print it from Your papers (owner, 2026-10-04).
+  const signed = partner.msa === 'signed'
+  const signedLine = t('msaSignedBy', { company: partner.company, date: pDate(lang, partner.msaSignedOn) })
+  const print = () =>
+    printPortalHtml(
+      `${t('agreementTitle')} · ${partner.company}`,
+      `<h1>${escapeHtml(t('agreementTitle'))}</h1><div class="muted">${escapeHtml(t('between', { company: partner.company, gc: GC_COMPANY.name }))}</div>` +
+        `<p>${escapeHtml(t('msaIntro', { gc }))}</p>` +
+        TERMS.map((term, i) => `<h2>${i + 1}. ${escapeHtml(t(term.title))}</h2><p>${escapeHtml(t(term.body, { gc }))}</p>`).join('') +
+        `<p class="muted">${escapeHtml(signedLine)}</p>`,
+    )
 
   return (
     <PortalWindow
@@ -32,6 +44,13 @@ export function GcPortalAgreement({ partner, onClose, dispatch }: { partner: Par
       onClose={onClose}
       width={620}
       footer={
+        signed ? (
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.9rem' }}>
+            <span style={{ flex: '1 1 12rem' }}>{signedLine}</span>
+            <Btn onClick={print}>{t('printWord')}</Btn>
+            <Btn kind="quiet" onClick={onClose}>{t('close')}</Btn>
+          </div>
+        ) : (
         <div style={{ display: 'grid', gap: '0.5rem', fontSize: '0.9rem' }}>
           <label style={{ display: 'grid', gap: '0.2rem' }}>
             {t('typeName')}
@@ -55,6 +74,7 @@ export function GcPortalAgreement({ partner, onClose, dispatch }: { partner: Par
             <Btn kind="quiet" onClick={onClose}>{t('notNow')}</Btn>
           </div>
         </div>
+        )
       }
     >
       <div style={{ padding: '0.9rem', display: 'grid', gap: '0.75rem', fontSize: '0.92rem', lineHeight: 1.45 }}>

@@ -117,7 +117,7 @@ column headers are in one block at the end of `gcBuildingWords.ts`, for the nati
 
 ## For a native speaker to read
 
-Every Spanish string the trade's portal shows, 632 in all, drawn from the code on 2026-10-04.
+Every Spanish string the trade's portal shows, 657 in all, drawn from the code on 2026-10-04.
 They're grouped by screen, English on the left. Please mark anything that reads wrong, stiff or
 unclear, and write the better words beside it. The Portal lane makes the changes and passes the
 other lanes theirs.
@@ -499,6 +499,32 @@ they were written in. The portal does not translate them.
 | Text | Mensaje |
 | Email | Correo |
 | Questions about pay: {name}, {phone}. | Preguntas sobre pagos: {name}, {phone}. |
+
+#### Your papers
+
+| English | Español |
+|---|---|
+| Your papers | Sus documentos |
+| See every paper | Ver todos los documentos |
+| Every paper you signed with {gc}, newest first. Open one to read it, or print the list. | Cada documento que firmó con {gc}, del más reciente al más antiguo. Abra uno para leerlo o imprima la lista. |
+| With {gc} | Con {gc} |
+| Nothing signed yet. | Todavía no hay nada firmado. |
+| Print this list | Imprimir la lista |
+| Printed {date} | Impreso el {date} |
+| Open | Abrir |
+| Your company form | El formulario de su empresa |
+| sent {date} | enviado el {date} |
+| {trade} statement of work | Orden de trabajo de {trade} |
+| Change order {n} | Orden de cambio {n} |
+| Pay application {n} | Solicitud de pago {n} |
+| Final pay application | Solicitud de pago final |
+| Conditional waiver, pay application {n} | Renuncia condicional, solicitud de pago {n} |
+| Unconditional waiver, pay application {n} | Renuncia incondicional, solicitud de pago {n} |
+| Conditional final release of lien | Liberación final de gravamen condicional |
+| Unconditional final release of lien | Liberación final de gravamen incondicional |
+| signed after we paid {date} | firmada después de que pagamos el {date} |
+| {company} signed it on {date}. | {company} lo firmó el {date}. |
+| Print | Imprimir |
 
 #### Your pay
 
@@ -907,6 +933,15 @@ they were written in. The portal does not translate them.
 | Waiting on {gc} to check it. | Esperando que {gc} lo revise. |
 | {gc} checked it {date}. It is not fixed yet. | {gc} lo revisó el {date}. Todavía no está arreglado. |
 | Checked by {gc}: {n}. | Revisados por {gc}: {n}. |
+
+#### Materials stored on site, on the pay application (2026-10-04, question 12)
+
+| English | Español |
+|---|---|
+| Materials stored on site, not yet in place | Materiales guardados en la obra, aún sin instalar |
+| In dollars, what is on site now. Once it is in place, raise the line and take it off here. | En dólares, lo que hay en la obra hoy. Cuando quede instalado, suba la partida y quítelo de aquí. |
+| Stored on site, {line} | Guardado en la obra, {line} |
+| Stored on site: | Guardado en la obra: |
 
 #### Submittals in the trade's portal (2026-10-04)
 

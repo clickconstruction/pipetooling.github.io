@@ -314,6 +314,88 @@ export function portalPromises(state: GcState, partnerId: string, lang: PortalLa
     })
 }
 
+// ---------------------------------------------------------------------------------------------
+// Your papers (owner, 2026-10-04): every paper a company signed with us, in one list
+// ---------------------------------------------------------------------------------------------
+
+/** Where a paper opens: the agreement read-only, a pay application's window, or the job page. */
+export type PortalPaperOpen = { kind: 'msa' } | { kind: 'payApp'; projectId: string; packageId: string; drawId: string } | { kind: 'project'; projectId: string }
+
+export interface PortalPaper {
+  key: string
+  title: string
+  /** "signed Jun 12", "sent Oct 2 · paid Oct 9". */
+  words: string
+  /** For the order, newest first. Null: no day kept (a W-9 on file). */
+  on: string | null
+  open: PortalPaperOpen | null
+}
+
+/** A company's papers with us: its own first (agreement, W-9, insurance, its form), then each job's, newest first. */
+export function portalPapers(state: GcState, partnerId: string, lang: PortalLang = 'en'): { company: PortalPaper[]; jobs: { project: GcProject; trade: string; papers: PortalPaper[] }[] } {
+  const partner = partnerById(state, partnerId)
+  if (!partner) return { company: [], jobs: [] }
+  const t = (key: PortalKey, vars?: Record<string, string | number>) => pt(lang, key, vars)
+  const d = (iso: string | null | undefined) => pDate(lang, iso ?? null)
+  const newestFirst = (a: PortalPaper, b: PortalPaper) => (b.on ?? '').localeCompare(a.on ?? '')
+  const company: PortalPaper[] = []
+  if (partner.msa === 'signed') {
+    company.push({ key: 'msa', title: t('masterAgreement'), words: t('signedOn', { date: d(partner.msaSignedOn) }), on: partner.msaSignedOn, open: { kind: 'msa' } })
+  }
+  if (partner.w9) company.push({ key: 'w9', title: t('w9'), words: t('onFile'), on: null, open: null })
+  if (partner.coiExpires) {
+    company.push({ key: 'coi', title: t('insuranceCert'), words: portalInsurance(partner, state.today, lang).words, on: null, open: null })
+  }
+  const form = partner.vetting?.form
+  if (form) company.push({ key: 'vet', title: t('paperVetForm'), words: t('paperSent', { date: d(form.sentOn) }), on: form.sentOn, open: null })
+
+  const jobs: { project: GcProject; trade: string; papers: PortalPaper[] }[] = []
+  for (const ask of portalAsks(state, partnerId)) {
+    if (ask.kind !== 'job' || !ask.pkg.sow) continue
+    const { project, pkg } = ask
+    const sow = ask.pkg.sow
+    const toJob: PortalPaperOpen = { kind: 'project', projectId: project.id }
+    const papers: PortalPaper[] = []
+    if (sow.status === 'signed') {
+      papers.push({ key: `${pkg.id}:sow`, title: t('paperSow', { trade: pkg.trade }), words: t('signedOn', { date: d(sow.signedOn) }), on: sow.signedOn, open: toJob })
+    }
+    for (const { co, state: where } of tradeChangesFor(project, pkg)) {
+      if (where !== 'signed' || !co.tradeChange?.signedOn) continue
+      papers.push({ key: `${co.id}:co`, title: t('paperChange', { n: co.number }), words: t('signedOn', { date: d(co.tradeChange.signedOn) }), on: co.tradeChange.signedOn, open: toJob })
+    }
+    for (const dr of sow.draws) {
+      const open: PortalPaperOpen = { kind: 'payApp', projectId: project.id, packageId: pkg.id, drawId: dr.id }
+      const name = dr.final ? t('paperPayAppFinal') : t('paperPayApp', { n: dr.number })
+      papers.push({
+        key: `${dr.id}:app`,
+        title: name,
+        words: [t('paperSent', { date: d(dr.requestedOn) }), ...(dr.paidOn ? [t('payPaidOn', { date: d(dr.paidOn) })] : [])].join(' · '),
+        on: dr.requestedOn,
+        open,
+      })
+      // The conditional waiver is signed with the application; the unconditional one after we pay.
+      papers.push({
+        key: `${dr.id}:cond`,
+        title: dr.final ? t('paperCondFinal') : t('paperCond', { n: dr.number }),
+        words: t('signedOn', { date: d(dr.requestedOn) }),
+        on: dr.requestedOn,
+        open,
+      })
+      if (dr.waiver === 'unconditional' && dr.paidOn) {
+        papers.push({
+          key: `${dr.id}:uncond`,
+          title: dr.final ? t('paperUncondFinal') : t('paperUncond', { n: dr.number }),
+          words: t('paperAfterPaid', { date: d(dr.paidOn) }),
+          on: dr.paidOn,
+          open,
+        })
+      }
+    }
+    if (papers.length > 0) jobs.push({ project, trade: pkg.trade, papers: papers.sort(newestFirst) })
+  }
+  return { company: company.sort(newestFirst), jobs }
+}
+
 export function portalJobMoney(pkg: TradePackage): PortalJobMoney | null {
   const sow = pkg.sow
   if (!sow) return null
