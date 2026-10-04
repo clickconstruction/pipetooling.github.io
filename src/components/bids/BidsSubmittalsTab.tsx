@@ -93,8 +93,7 @@ import { buildCoverModel, buildSubmittalPackage, packageFileName, packageSheets,
 import { cachedTestReportSettings, fetchTestReportSettings } from '../../lib/jobs/testReportSettings'
 import type { TestReportSettings } from '../../lib/jobs/testReport'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
-import { fixtureKey } from '../../lib/submittals/picksFromQuotes'
-import { loadPicksForBid, setSubmittalsNotNeeded } from '../../lib/submittals/firstRevisionClient'
+import { createFirstRevisionFromPicks, loadPicksForBid, overridesByTag as overridesByTagOf, setSubmittalsNotNeeded } from '../../lib/submittals/firstRevisionClient'
 import {
   asDecision,
   asReason,
@@ -567,14 +566,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     void fetchTestReportSettings().then(setReportSettings).catch(() => undefined)
   }, [])
   const prevById = useMemo(() => new Map(prevItems.map((p) => [p.id, p])), [prevItems])
-  const overridesByTag = useMemo(() => {
-    const out: Record<string, StatusOverride> = {}
-    for (const s of specified) {
-      const ov = overridesByFixture.get(fixtureKey(s.fixture))
-      if (ov) out[s.tag] = ov
-    }
-    return out
-  }, [specified, overridesByFixture])
+  const overridesByTag = useMemo(() => overridesByTagOf({ specified, overridesByFixture }), [specified, overridesByFixture])
 
   /** Build the rows for a revision from today's picks; `previous` carries sheets, reasons and the diff. */
   async function writeRows(revId: string, previous: SubmittalItemRow[]): Promise<number> {
@@ -603,10 +595,8 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     if (!bidId) return
     setBusy(true)
     try {
-      const { data, error } = await db.from('bid_submittals').insert({ bid_id: bidId, rev_number: 1, status: 'draft', created_by: user?.id ?? null }).select('id').single()
-      if (error) throw error
-      const revId = (data as { id: string }).id
-      const n = await writeRows(revId, [])
+      // The one way a Rev 1 is built from picks, shared with the won question (firstRevisionClient); the picks already on the page ride along.
+      const { revId, rows: n } = await createFirstRevisionFromPicks(db, { bidId, userId: user?.id ?? null, picks: { specified, picks, overridesByFixture } })
       setSelectedRevId(revId)
       await load(bidId)
       showToast(`Rev 1 built · ${n} row${n === 1 ? '' : 's'} from the picks.`, 'success')
