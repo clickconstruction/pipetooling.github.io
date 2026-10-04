@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { asDecision, asReason, asStatus, carriedRowInsert, rowsToCarry, describeRevision, describeRevisionChip, describeWhatIsLeft, draftToItemInsert, formatPages, itemToPrevious, needsSheet, parsePageRange, parseSourceFiles, revisionAnsweredAt, revisionTiles, serializeSourceFiles } from './submittalRevision'
+import { asDecision, asReason, asStatus, buildPackageLabel, rowsOwingSheet, sheetsToFollowConfirm, carriedRowInsert, rowsToCarry, describeRevision, describeRevisionChip, describeWhatIsLeft, draftToItemInsert, formatPages, itemToPrevious, needsSheet, parsePageRange, parseSourceFiles, revisionAnsweredAt, revisionTiles, serializeSourceFiles } from './submittalRevision'
 import type { SubmittalItemRow } from './submittalRevision'
 import type { SubmittalRowDraft } from './buildSubmittalRows'
 
@@ -181,5 +181,33 @@ describe('an order-only row keeps its state from revision to revision (2026-10-0
     const draft = { tag: 'WC-1', sequenceOrder: 1, specifiedManufacturer: null, specifiedModel: null, specifiedDescription: null, submittedManufacturer: null, submittedModel: null, submittedLabel: 'x', supplyHouseId: null, houseName: null, sourceQuoteLineId: null, status: 'as_specified', near: false, reasonKind: null, reasonNote: null, leadTimeDays: null, sheetFile: null, sheetPages: [], carriedFromItemId: 'i1', changed: false, changeNote: null } satisfies SubmittalRowDraft
     expect(draftToItemInsert({ ...draft, orderOnly: true }, 's2').order_only).toBe(true)
     expect('order_only' in draftToItemInsert(draft, 's2')).toBe(false)
+  })
+})
+
+describe('2026-10-04 · a package built with cut sheets still to follow', () => {
+  it('names the rows that want a cut sheet and have none; a row with no product is not one of them', () => {
+    const rows = [
+      item({ tag: 'DWH-1', status: 'proposed', sheet_pages: [6, 7] }),
+      item({ tag: 'FCO', status: 'proposed', sheet_pages: [] }),
+      item({ tag: 'UTILITY SINK', status: 'missing', sheet_pages: [] }),
+      item({ tag: '', status: 'accessory', sheet_pages: [] }),
+    ]
+    expect(rowsOwingSheet(rows)).toEqual(['FCO', 'accessory'])
+  })
+
+  it('the question names them, and says what the cover will read', () => {
+    expect(sheetsToFollowConfirm(['FCO', 'FD', 'HB-3', 'WHA-200', 'WHA-300', 'WHA-500'])).toEqual({
+      title: 'Build the package with 6 cut sheets to follow',
+      message: 'These rows have no cut sheet yet: FCO, FD, HB-3, WHA-200, WHA-300, WHA-500. The cover will read cut sheet to follow for them. The GC may hold their answer on those rows until the sheet arrives.',
+      confirmLabel: 'Build package',
+    })
+    expect(sheetsToFollowConfirm(['FCO']).message).toBe('This row has no cut sheet yet: FCO. The cover will read cut sheet to follow for it. The GC may hold their answer on that row until the sheet arrives.')
+    expect(sheetsToFollowConfirm(Array.from({ length: 15 }, (_, i) => `T-${i + 1}`)).message).toContain('T-12 and 3 more.')
+  })
+
+  it('the button counts them', () => {
+    expect(buildPackageLabel(false, 0)).toBe('Build package')
+    expect(buildPackageLabel(false, 6)).toBe('Build package · 6 cut sheets to follow')
+    expect(buildPackageLabel(true, 1)).toBe('Rebuild package · 1 cut sheet to follow')
   })
 })

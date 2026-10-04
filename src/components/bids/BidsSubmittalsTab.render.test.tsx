@@ -475,7 +475,7 @@ describe('BidsSubmittalsTab', () => {
     expect(screen.getByTestId('road-7').getAttribute('data-open')).toBe('true')
     fireEvent.click(screen.getByRole('button', { name: /^4 · Package/ }))
     expect((screen.getByTestId('build-package') as HTMLButtonElement).disabled).toBe(true)
-    expect(screen.getByTestId('package-caption').textContent).toBe('Build package turns on when every row has its reason and its cut sheet.')
+    expect(screen.getByTestId('package-caption').textContent).toBe('Build package turns on when every row that owes a reason has one.')
     fireEvent.click(screen.getByRole('button', { name: /^7 · Resubmit/ }))
     expect((screen.getByTestId('new-revision') as HTMLButtonElement).disabled).toBe(true)
     expect(screen.getByTestId('resubmit-caption').textContent).toBe('New revision turns on once the package is built.')
@@ -615,6 +615,49 @@ describe('BidsSubmittalsTab', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Open package' })).toBeTruthy())
     expect(screen.getByTestId('revision-line').textContent).toMatch(/package built/)
     open.mockRestore()
+  })
+
+  it('2026-10-04 · a row with no cut sheet no longer holds the package: the button counts it, a question names it, and the built package can be shared', async () => {
+    state.revisions = [{ id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'draft', title: 'Plumbing fixtures & equipment', note: null, package_path: null, source_files: [{ path: 'b398/rev-1/0.pdf', name: 'NWS.pdf', pages: 12, house_id: null, house_name: null, trimmed_at: null }], shared_at: null, created_at: '2026-09-29T00:00:00Z' }]
+    state.items = [
+      item({ id: 'it-1', tag: 'DWH-1', sequence_order: 1, submitted_label: 'RHEEM PROPH40-T2-RH400-SO', status: 'proposed', sheet_file: 0, sheet_pages: [6, 7] }),
+      item({ id: 'it-2', tag: 'FCO', sequence_order: 2, submitted_label: 'ZURN ZN1400-2NL', status: 'proposed' }),
+      item({ id: 'it-3', tag: 'UTILITY SINK', sequence_order: 3, submitted_label: null, status: 'missing' }),
+    ]
+    state.writes = []
+    state.storage = []
+    state.packageCalls = []
+    state.parts = []
+    state.tasks = []
+    state.noSources = true
+    const open = vi.spyOn(window, 'open').mockImplementation(() => null)
+    try {
+      mount()
+      const button = await screen.findByTestId('build-package')
+      expect(button.textContent).toBe('Build package · 1 cut sheet to follow')
+      expect((button as HTMLButtonElement).disabled).toBe(false)
+      expect(screen.getByTestId('package-caption').textContent).toBe('One PDF on our letterhead. 1 row has no cut sheet yet. The cover lists it as cut sheets to follow.')
+      expect(screen.getByTestId('submittal-journey').textContent).toContain('You can build the package now too. Those rows will read cut sheet to follow.')
+      // Share waits for the package, as before.
+      fireEvent.click(screen.getByRole('button', { name: /^5 · Share/ }))
+      expect((screen.getByTestId('share-button') as HTMLButtonElement).disabled).toBe(true)
+      // The question names the row; Cancel builds nothing.
+      fireEvent.click(button)
+      const ask = await screen.findByRole('alertdialog')
+      expect(ask.textContent).toContain('This row has no cut sheet yet: FCO. The cover will read cut sheet to follow for it.')
+      fireEvent.click(within(ask).getByRole('button', { name: 'Cancel' }))
+      expect(state.packageCalls).toEqual([])
+      fireEvent.click(screen.getByTestId('build-package'))
+      fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Build package' }))
+      await waitFor(() => expect(state.packageCalls).toEqual([{ files: 1, sheets: ['DWH-1'] }]))
+      // Built: Share is the next step, and its button is live.
+      await waitFor(() => expect((screen.getByTestId('share-button') as HTMLButtonElement).disabled).toBe(false))
+      expect(screen.getByTestId('submittal-journey').textContent).toContain('The package is built. 1 row in it reads cut sheet to follow. Tap Share to get a link for the GC.')
+      expect(screen.getByTestId('build-package').textContent).toBe('Rebuild package · 1 cut sheet to follow')
+    } finally {
+      open.mockRestore()
+      state.noSources = false
+    }
   })
 
   it('the sheet strip: Show the pages draws them, a tap on a page then a row writes the pages, Done trims the file and rewrites the rows', async () => {

@@ -99,8 +99,11 @@ import {
   asRevisionStatus,
   asStatus,
   describeRevision, describeWhatIsLeft,
+  buildPackageLabel,
   describeRevisionChip,
   revisionAnsweredAt,
+  rowsOwingSheet,
+  sheetsToFollowConfirm,
   draftToItemInsert,
   formatPages,
   formatShortDate,
@@ -1378,6 +1381,13 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   }
 
   /** The package (stage 2c): cover table + every row's sheet pages, stamped; stored at package-rev<N>.pdf and opened. */
+  /** The Build package button: with cut sheets still missing it names the rows first, then builds. */
+  async function askBuildPackage() {
+    const owing = rowsOwingSheet(gcItems)
+    if (owing.length > 0 && !(await confirm(sheetsToFollowConfirm(owing)))) return
+    await buildPackage()
+  }
+
   async function buildPackage(open = true) {
     if (!bidId || !selectedRev) return
     setBusy(true)
@@ -2005,7 +2015,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     else if (action === 'build_rev1') void createFirstRevision()
     else if (action === 'choose_from_takeoff') openTakeoffPicker()
     else if (action === 'drop_vendor_pdf') fileInput.current?.click()
-    else if (action === 'build_package') void buildPackage()
+    else if (action === 'build_package') void askBuildPackage()
     else if (action === 'share') setSharing(true)
     else if (action === 'copy_room_link' && room) void navigator.clipboard.writeText(roomLink(window.location.origin, room.token)).then(() => showToast('Link copied.', 'success'), () => showToast(roomLink(window.location.origin, room.token), 'info'))
     else if (action === 'resubmit') void newRevision(true)
@@ -2069,7 +2079,9 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   // The road (v2.4090): a done stage folds to its line; the current stage and the stage it reads from stay open;
   // "Open every stage" (remembered per device) and the walkthrough open everything.
   const stageStatus = (key: JourneyStageKey): RoadStatus => journey.stages.find((st) => st.key === key)?.status ?? 'later'
-  const gates = { package: stageGate(journey.stages, 'package'), share: stageGate(journey.stages, 'share'), resubmit: stageGate(journey.stages, 'resubmit') }
+  // 2026-10-04 · the newest draft's own facts: only a reason holds the package back, and a built package can be shared.
+  const draftFacts = isDraft && newestRev != null && selectedRev?.id === newestRev.id ? { rows: gcItems.length, owesReason: tiles.alternatesWithoutReason + tiles.designChangesWithoutReason, packageBuilt: !!selectedRev.package_path } : null
+  const gates = { package: stageGate(journey.stages, 'package', draftFacts), share: stageGate(journey.stages, 'share', draftFacts), resubmit: stageGate(journey.stages, 'resubmit') }
   // 2026-10-03 · every stage that is live, not the first alone: a draft answered by email has its rows, Their call and Resubmit live at once.
   const liveStageKeys = journey.stages.filter((st) => (st.status === 'current' || st.status === 'waiting') && st.key !== 'procure').map((st) => st.key)
   // What each stage reads from stays open beside it: the package reads the rows; their call and the resubmit land on the rows.
@@ -2592,9 +2604,9 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                 ) : items.length > 0 ? 'not built for this version yet' : 'appears once Rev 1 has rows'}>
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
                   {items.length > 0 ? (
-                    <button type="button" disabled={busy || !gates.package.on} onClick={() => void buildPackage()} style={{ ...(selectedRev.package_path ? btn : btnPrimary), opacity: gates.package.on ? 1 : 0.5 }} data-testid="build-package"
+                    <button type="button" disabled={busy || !gates.package.on} onClick={() => void askBuildPackage()} style={{ ...(selectedRev.package_path ? btn : btnPrimary), opacity: gates.package.on ? 1 : 0.5 }} data-testid="build-package"
  title="One PDF for the GC: the cover table, then every cut sheet stamped with its tag and status. Saved on this version and opened" data-tour="submittals-package">
-                      {selectedRev.package_path ? 'Rebuild package' : 'Build package'}
+                      {buildPackageLabel(!!selectedRev.package_path, isDraft ? tiles.sheetsNeeded : 0)}
                     </button>
                   ) : null}
                   {selectedRev.package_path ? (
@@ -2605,7 +2617,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                   {selectedRev.drive_file_url ? null : selectedRev.package_path && asRevisionStatus(selectedRev.status) !== 'draft' ? (
                     <button type="button" disabled={busy} onClick={() => void fileInDrive()} style={{ ...btnQuiet, textDecoration: 'underline dotted' }} title="Save this version's package PDF in the bid's job folder on Drive, under Submittals" data-testid="file-in-drive">File in Drive</button>
                   ) : null}
-                  <span style={smallMuted} data-testid="package-caption">{gates.package.on ? 'One PDF on our letterhead. The cover table first, then every cut sheet stamped with its tag and status.' : gates.package.why}</span>
+                  <span style={smallMuted} data-testid="package-caption">{gates.package.on ? (isDraft && tiles.sheetsNeeded > 0 ? `One PDF on our letterhead. ${tiles.sheetsNeeded} row${tiles.sheetsNeeded === 1 ? ' has' : 's have'} no cut sheet yet. The cover lists ${tiles.sheetsNeeded === 1 ? 'it' : 'them'} as cut sheets to follow.` : 'One PDF on our letterhead. The cover table first, then every cut sheet stamped with its tag and status.') : gates.package.why}</span>
                 </div>
               </RoadSection>
 

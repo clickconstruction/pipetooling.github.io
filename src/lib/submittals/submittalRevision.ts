@@ -171,6 +171,32 @@ export function needsSheet(item: Pick<SubmittalItemRow, 'status' | 'sheet_pages'
   return asStatus(item.status) !== 'missing' && (item.sheet_pages ?? []).length === 0
 }
 
+/** The tags of the rows that want a cut sheet and have none: what the cover lists as "to follow". An untagged row reads as an accessory. */
+export function rowsOwingSheet(items: ReadonlyArray<Pick<SubmittalItemRow, 'tag' | 'status' | 'sheet_pages'>>): string[] {
+  return items.filter(needsSheet).map((it) => it.tag.trim() || 'accessory')
+}
+
+/**
+ * The question before a package is built with cut sheets still missing (2026-10-04). The cover
+ * prints "to follow" for those rows and lists their tags; the question names them first, so a
+ * package that goes out short is a choice.
+ */
+export function sheetsToFollowConfirm(tags: ReadonlyArray<string>): { title: string; message: string; confirmLabel: string } {
+  const n = tags.length
+  const shown = tags.slice(0, 12).join(', ') + (n > 12 ? ` and ${n - 12} more` : '')
+  return {
+    title: `Build the package with ${n} cut sheet${n === 1 ? '' : 's'} to follow`,
+    message: `${n === 1 ? 'This row has' : 'These rows have'} no cut sheet yet: ${shown}. The cover will read cut sheet to follow for ${n === 1 ? 'it' : 'them'}. The GC may hold their answer on ${n === 1 ? 'that row' : 'those rows'} until the sheet arrives.`,
+    confirmLabel: 'Build package',
+  }
+}
+
+/** The Build package button: "Build package · 6 cut sheets to follow" while sheets are missing. */
+export function buildPackageLabel(built: boolean, sheetsNeeded: number): string {
+  const verb = built ? 'Rebuild package' : 'Build package'
+  return sheetsNeeded > 0 ? `${verb} · ${sheetsNeeded} cut sheet${sheetsNeeded === 1 ? '' : 's'} to follow` : verb
+}
+
 export type RevisionTiles = {
   rows: number
   tagged: number

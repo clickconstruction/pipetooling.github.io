@@ -168,22 +168,26 @@ export function submittalJourney(input: SubmittalJourneyInput): SubmittalJourney
       status.rows = 'current'
       return finish({ kind: 'next', text: 'This version has no rows. Pick a house for each part on Pricing. Then tap Rebuild rows from picks.', action: 'open_pricing', actionLabel: 'The picks on Pricing' })
     }
-    const owes = rev.owesReason + rev.sheetsNeeded
-    if (owes > 0) {
+    const sheets = rev.sheetsNeeded > 0 ? `${plural(rev.sheetsNeeded, 'row')} still ${rev.sheetsNeeded === 1 ? 'needs' : 'need'} a cut sheet` : ''
+    if (rev.owesReason > 0) {
       status.rows = 'current'
-      const parts: string[] = []
-      if (rev.owesReason > 0) parts.push(`${plural(rev.owesReason, 'row')} still ${rev.owesReason === 1 ? 'owes' : 'owe'} a reason`)
-      if (rev.sheetsNeeded > 0) parts.push(`${plural(rev.sheetsNeeded, 'row')} still ${rev.sheetsNeeded === 1 ? 'needs' : 'need'} a cut sheet`)
+      const parts = [`${plural(rev.owesReason, 'row')} still ${rev.owesReason === 1 ? 'owes' : 'owe'} a reason`]
+      if (sheets) parts.push(sheets)
       return finish({ kind: 'next', text: `${parts.join('. ')}. Tap Edit on a row to fill it in. Or drop the house’s PDF and put its pages on the rows.`, action: 'drop_vendor_pdf', actionLabel: 'Drop a vendor PDF' })
     }
-    status.rows = 'done'
+    // 2026-10-04 · a cut sheet no longer holds the package (the review's finding 5, the owner: "Build it"). BP375 has six
+    // small items with no page in the vendor's file, and the lock on them kept the whole Send half shut. The cover has
+    // always printed "to follow" for a row with no sheet; only a reason still holds the package back.
+    status.rows = sheets ? 'current' : 'done'
     if (!rev.packageBuilt) {
       status.package = 'current'
-      return finish({ kind: 'next', text: 'Every row has its reason and its cut sheet. Tap Build package to make the PDF for the GC.', action: 'build_package', actionLabel: 'Build package' })
+      return sheets
+        ? finish({ kind: 'next', text: `${sheets}. Tap Edit on a row to fill it in. Or drop the house’s PDF and put its pages on the rows. You can build the package now too. Those rows will read cut sheet to follow.`, action: 'drop_vendor_pdf', actionLabel: 'Drop a vendor PDF' })
+        : finish({ kind: 'next', text: 'Every row has its reason and its cut sheet. Tap Build package to make the PDF for the GC.', action: 'build_package', actionLabel: 'Build package' })
     }
     status.package = 'done'
     status.share = 'current'
-    return finish({ kind: 'next', text: 'The package is built. Tap Share to get a link for the GC.', action: 'share', actionLabel: 'Share' })
+    return finish({ kind: 'next', text: sheets ? `The package is built. ${plural(rev.sheetsNeeded, 'row')} in it ${rev.sheetsNeeded === 1 ? 'reads' : 'read'} cut sheet to follow. Tap Share to get a link for the GC.` : 'The package is built. Tap Share to get a link for the GC.', action: 'share', actionLabel: 'Share' })
   }
 
   // Shared (or any non-draft newest revision).
@@ -267,13 +271,18 @@ export function groupJourneyStages(stages: JourneyStage[]): JourneyGroup[] {
  */
 export type StageGate = { on: boolean; why: string | null }
 
-export function stageGate(stages: JourneyStage[], key: 'package' | 'share' | 'resubmit'): StageGate {
+/** What the newest draft holds, for the two buttons whose step the strip may leave unlit (a draft answered by email lights Their call and Resubmit instead). */
+export type DraftFacts = { rows: number; owesReason: number; packageBuilt: boolean }
+
+export function stageGate(stages: JourneyStage[], key: 'package' | 'share' | 'resubmit', /** the newest draft's facts; absent on a shared or older revision */ draft?: DraftFacts | null): StageGate {
   const status = (k: JourneyStageKey) => stages.find((s) => s.key === k)?.status ?? 'later'
+  // 2026-10-04 · only a reason holds the package back; a row with no cut sheet prints "to follow" on the cover.
+  const reasonsDone = draft != null && draft.rows > 0 && draft.owesReason === 0
   switch (key) {
     case 'package':
-      return status('package') !== 'later' ? { on: true, why: null } : { on: false, why: 'Build package turns on when every row has its reason and its cut sheet.' }
+      return status('package') !== 'later' || reasonsDone ? { on: true, why: null } : { on: false, why: 'Build package turns on when every row that owes a reason has one.' }
     case 'share':
-      return status('share') !== 'later' ? { on: true, why: null } : { on: false, why: 'Share turns on once the package is built.' }
+      return status('share') !== 'later' || (reasonsDone && draft.packageBuilt) ? { on: true, why: null } : { on: false, why: 'Share turns on once the package is built.' }
     case 'resubmit':
       // Past building: a shared revision, or a draft whose package is built (v2.4090's supersede-the-draft path stays reachable there).
       // 2026-10-03 · or a draft the GC has already answered by email: it is past building too.
