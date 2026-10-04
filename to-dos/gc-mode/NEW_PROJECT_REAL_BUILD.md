@@ -71,8 +71,11 @@ carries (in `src/lib/gcMode/gcTypes.ts`).
 **`gc_trade_packages`**, one row per trade on a project: `project_id`, `trade` (text), `position`
 (the trade list's order, `tradeOrder`), `budget` (numeric), `ours` (boolean, our own crew), and
 `own_bid_id` (FK `bids.id`, nullable: our own number lives in a Trades mode bid, and the trade
-counts as real once that bid is priced; `selfPerform.priced`). The Board's carried and awarded
-columns join this table in their own PR.
+counts as real once that bid is priced; `selfPerform.priced`). The Board adds its own columns in
+its own PR: `carried_invite_id` and `carried_plug`, `awarded_invite_id` and `awarded_by` (the taken
+alternates stay on the quote, `taken_alternates`). Vetting sits on the Board's company record
+(`gc_partners.vetting_*`), not per project, and promises in one `gc_trade_promises` table keyed to
+the company (Board lane, 2026-10-04).
 
 **`gc_scope_items`**, one row per scope line: `package_id`, `position`, `label`, `sheets` (text[],
 null = follow the guess; `ScopeItem.sheets`), `specs` (text[], null = follow the guess;
