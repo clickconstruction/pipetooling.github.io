@@ -4,6 +4,7 @@ import { readFileSync, unlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import ExcelJS from 'exceljs'
 import { describe, expect, it } from 'vitest'
 import { fillAiaG702G703Workbook } from './fillAiaG702G703Workbook'
 
@@ -245,5 +246,43 @@ describe('fillAiaG702G703Workbook', () => {
         /* ignore */
       }
     }
+  })
+
+  describe('the contractor block', () => {
+    const template = () => {
+      const fileBuf = readFileSync(templatePath)
+      return fileBuf.buffer.slice(fileBuf.byteOffset, fileBuf.byteOffset + fileBuf.byteLength)
+    }
+    const g702Of = async (values: Parameters<typeof fillAiaG702G703Workbook>[1]) => {
+      const wb = new ExcelJS.Workbook()
+      await wb.xlsx.load(await fillAiaG702G703Workbook(template(), values))
+      return wb.worksheets[0]!
+    }
+    const rowsOf = (ws: ExcelJS.Worksheet) => ['D9', 'D10', 'D11', 'D12', 'D13'].map((ref) => ws.getCell(ref).value ?? null)
+    const heights = (ws: ExcelJS.Worksheet) => [9, 10, 11, 12, 13, 14].map((r) => ws.getRow(r).height)
+
+    it('prints a two-line address on two rows under the name', async () => {
+      const ws = await g702Of({ g702_d10_contractor_name: 'Click Plumbing and Electrical', g702_d11_contractor_address: '5501 Balcones Dr A141\nAustin, TX 78731' })
+      expect(rowsOf(ws)).toEqual([null, 'Click Plumbing and Electrical', '5501 Balcones Dr A141', 'Austin, TX 78731', null])
+      expect(heights(ws)).toEqual([10.5, 14.25, 14.25, 14.25, 6.75, 6.75])
+    })
+
+    it('starts the block a row up when a license line makes four rows, dressed like the name row', async () => {
+      const ws = await g702Of({
+        g702_d10_contractor_name: 'Click Plumbing and Electrical',
+        g702_d11_contractor_address: '5501 Balcones Dr A141\nAustin, TX 78731',
+        g702_d12_contractor_license: 'RMP 999',
+      })
+      expect(rowsOf(ws)).toEqual(['Click Plumbing and Electrical', '5501 Balcones Dr A141', 'Austin, TX 78731', 'RMP 999', null])
+      expect(ws.getCell('D9').style.fill).toEqual(ws.getCell('D10').style.fill)
+      expect(ws.getCell('F9').style.fill).toEqual(ws.getCell('F10').style.fill)
+      // The page is the length it was: no row grew.
+      expect(heights(ws)).toEqual([10.5, 14.25, 14.25, 14.25, 6.75, 6.75])
+    })
+
+    it('prints a one-line address as before: name, address, then the license line', async () => {
+      const ws = await g702Of({ g702_d10_contractor_name: 'Click Plumbing', g702_d11_contractor_address: '5501 Balcones Dr A141, Austin, TX 78731', g702_d12_contractor_license: 'RMP 999' })
+      expect(rowsOf(ws)).toEqual([null, 'Click Plumbing', '5501 Balcones Dr A141, Austin, TX 78731', 'RMP 999', null])
+    })
   })
 })

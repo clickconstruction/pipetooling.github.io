@@ -17,6 +17,7 @@ The window has two sides. The paper is on the left. The form is on the right.
 The form starts with what the job already knows.
 
 - **TO OWNER** is who the bills go to. On a job that bills its GC, that is the GC. The address is the one on their customer page.
+- **FROM CONTRACTOR** is our company. The address comes from **Settings**. Each line typed there prints on its own row.
 - **PROJECT** is the job's name and address.
 - **PROJECT NO** is the job's number.
 - **CONTRACT DATE** is the day the job's contract was signed. It is empty when the job has no signed contract.
@@ -77,6 +78,12 @@ A change order is not a gap. Add it as its own line, and type it under **Change 
 ## How many lines fit
 
 The sheet holds 34 rows. The form shows how many you have used. You can save more than 34 lines. You cannot generate until some are grouped.
+
+## Our address on two lines
+
+**CONTRACTOR ADDRESS** takes more than one line. Press Enter in the box to start a new line. The sheet prints each line on its own row.
+
+To change the address for every job, open **Settings** and find the **Address** box under the company name. Type the street on the first line and the city on the second.
 
 ## Leave a field empty
 
