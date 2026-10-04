@@ -221,6 +221,13 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   letters say no discipline gets a picker (`PlanSheet.discipline`). The pick groups it on the right,
   in the quick look, and brings its trades on step 3 (`disciplineOf`, `withPickedDisciplines`).
   A sheet the PDF reads that is already listed only gets its page.
+- **What the kinds of plan sets are** (the owner, 2026-10-04: "I think it's important that we explain
+  to a user what these different kinds of plans are. Perhaps as a information icon to the right of
+  the three plan set choosers"): an **i** after Bid set, Pricing set and Permit set opens a card on
+  hover, focus or a click. Each kind says when it comes, who gets it, what is in it and what it is
+  for, in the owner's own facts made short (`SET_KIND_HELP`, `GcNewProjectSetKinds.tsx`). A test
+  holds the words to plain words. The new-set window's kinds (Addendum, Bulletin, Revised set,
+  Permit set, Construction set) have no card yet: his text covers only Permit set there.
 - **The budgets against the size** (the owner, 2026-10-04: "show the amount of square feet added at
   the prior page and then the cost per square foot, broken down by trade, and the total"): step 3
   closes with **The budgets**: the size from step 1, then each ticked trade with its budget and
