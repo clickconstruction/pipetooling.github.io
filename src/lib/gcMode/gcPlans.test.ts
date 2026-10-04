@@ -191,10 +191,10 @@ describe('a new set that adds scope lines', () => {
     expect(next.log[0]?.text).toBe('Issued Addendum 2 on Boerne Retail Shell and emailed 2 companies. 2 were told it changes their trade. It adds 1 scope line.')
   })
 
-  it('leaves the line unanswered on quotes already in, so Compare bids reads it as not clear', () => {
+  it('leaves the line unanswered on quotes already in, so Compare quotes reads it as not clear', () => {
     if (!boerne || !site) throw new Error('no Boerne sitework')
     const tri = compareBids(next, boerne, site).lines.find((l) => l.company === 'Tri-County Site')
-    expect(tri?.text).toMatch(/^Tri-County Site bid \$191,000 and is not clear about detention pond\. No cost is set for detention pond yet/)
+    expect(tri?.text).toMatch(/^Tri-County Site quoted \$191,000 and is not clear about detention pond\. No cost is set for detention pond yet/)
     expect(tri?.complete).toBe(false)
   })
 
