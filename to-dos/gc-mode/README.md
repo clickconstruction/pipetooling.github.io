@@ -62,6 +62,19 @@ of plans, split into trades, each trade offered to several trade partners. A tra
 ourselves (plumbing) is a row whose number comes from our own Trades-mode bid, which is the
 bridge between the two modes and the reason it is a switch on Bids and not a second app.
 
+## Words: customer and owner (the owner, 2026-10-04)
+
+"Sometimes we are working for the owner, sometimes we are working for another GC or an owner's rep
+who then works and bills the owner." So:
+
+- **Customer**: whoever hires us and pays us. That is the owner, another general contractor, or an
+  owner's rep. Every screen that means "who we bill" says customer: *Bidding to the customer*,
+  *Bill the customer*, *Price to the customer*, *the customer's portal*, *our contract with the
+  customer*. Spanish: *el cliente*.
+- **Owner**: only the property's owner, when it is not our customer (`propertyOwner`).
+- Code names stay as they are (`owner`, `ownerBilling`, `sendOwnerPayApp` …): only the words on screen
+  change.
+
 ## What the prototype has (walk it in this order)
 
 | Where | What it does |

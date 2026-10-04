@@ -275,6 +275,25 @@ do."
    (the usual ones, Known exclusions on jobs, quotes' own, folded by `exclusionName`), shown on the
    book's page beside the lines; `exclusionsFor(trade, book?)` puts the book's first.
 
+## Round 6: customer, not owner (the owner, 2026-10-04)
+
+The owner: "Sometimes we are working for the owner, sometimes we are working for another GC or an
+owner's rep who then works and bills the owner." He said ok to: (1) step 1 asks who we work for, (2)
+"owner" becomes "customer" everywhere it means who we bill, (3) pay applications go to the customer and
+show the property's owner when different. The words are in README.md, *Words: customer and owner*.
+**Each lane changes the words in its own files** (screens, walkthroughs, help, log lines, Spanish);
+code names stay. Golden moves on words are each lane's own, under its standing OK.
+
+- **Board (GC 0):** the stage names, Bill the customer's tab name, Our number, the ring's words, the
+  company window, Lost and Closed, Bid tabs, New here? and Walk me through this job.
+- **New Project (GC 2):** step 1's *We work for*: the owner, another general contractor, an owner's
+  rep (`GcProject.customerRole`); not the owner shows *Owner of the property* on its own. Then its own
+  words.
+- **Owner Billing (GC 4):** its tab and windows ("Bill the customer", the customer's portal, "the
+  customer pays"); the pay application goes to the customer and names the property's owner when
+  different. Then its words.
+- **Building (GC 1)** and **Portal (GC 3):** their own words where "owner" means who we bill.
+
 ## Owner (the decisions)
 
 11. ~~**A carried quote with a line that has no cost:** does it hold the ring open?~~ Answered 2026-10-03: yes, until every line has a cost. Built by the Board (this commit).
