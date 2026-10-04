@@ -53,8 +53,10 @@ import {
   type ScopeGap,
   type Partner,
   type TradePackage,
+  awardGate,
 } from '../../lib/gcMode/gcModel'
 import { linkNeverOpened } from '../../lib/gcMode/gcPortal'
+import { VettingChip } from './GcVetting'
 import { LinkNeverOpenedChip } from './GcPortalLinkChip'
 import { AskThread } from './GcAskThread'
 import { GcBuildingPayAppWindow } from './GcBuildingPayApp'
@@ -93,6 +95,11 @@ const INCLUDES_WORDS: Record<Includes, { tone: Tone; word: string }> = {
   unclear: { tone: 'amber', word: 'not clear' },
 }
 
+/** Why an award button is off: the company is not vetted, was declined, or is past its limit (question 3). */
+export function AwardBlocked({ why }: { why: string | null }) {
+  return why ? <div style={{ marginTop: '0.3rem', fontSize: '0.8rem', color: 'var(--text-amber-800)', maxWidth: '22rem' }}>{why}</div> : null
+}
+
 export function PaperworkChips({ partner, today }: { partner: Partner; today: string }) {
   const coiOk = partner.coiExpires !== null && daysUntil(partner.coiExpires, today) >= 0
   return (
@@ -104,6 +111,7 @@ export function PaperworkChips({ partner, today }: { partner: Partner; today: st
         {partner.coiExpires ? (coiOk ? `Insured to ${shortDate(partner.coiExpires)}` : `Insurance expired ${shortDate(partner.coiExpires)}`) : 'No insurance on file'}
       </Chip>
       <Chip tone={partner.w9 ? 'green' : 'red'}>{partner.w9 ? 'W-9' : 'No W-9'}</Chip>
+      <VettingChip partner={partner} />
     </span>
   )
 }
@@ -735,6 +743,8 @@ function LevelPanel({ state, project, pkg, dispatch, onSeePortal }: GcPaneProps 
                 {bidders.map((inv) => {
                   const carried = pkg.carried === inv.id
                   const awarded = pkg.awardedInviteId === inv.id
+                  // A company not vetted, or past its limit, waits for approval (question 3).
+                  const gate = awardGate(state, pkg, inv)
                   return (
                     <td key={inv.id} style={{ ...td, borderBottom: 'none' }}>
                       {awarded ? (
@@ -744,9 +754,12 @@ function LevelPanel({ state, project, pkg, dispatch, onSeePortal }: GcPaneProps 
                           {carried ? 'Carrying. Stop' : 'Carry this number'}
                         </Btn>
                       ) : (
-                        <Btn kind="primary" disabled={pkg.awardedInviteId !== null} onClick={() => dispatch({ type: 'award', ...ids, inviteId: inv.id })}>
-                          Award and draft the statement of work
-                        </Btn>
+                        <>
+                          <Btn kind="primary" disabled={pkg.awardedInviteId !== null || !gate.ok} title={gate.why ?? undefined} onClick={() => dispatch({ type: 'award', ...ids, inviteId: inv.id })}>
+                            Award and draft the statement of work
+                          </Btn>
+                          {!gate.ok && pkg.awardedInviteId === null && <AwardBlocked why={gate.why} />}
+                        </>
                       )}
                     </td>
                   )
@@ -1170,12 +1183,14 @@ export function GcContractsTab({ state, project, dispatch }: GcPaneProps) {
               <div style={{ marginTop: '0.6rem' }}>
                 <Btn
                   kind="primary"
-                  title={uncostedWords(uncostedLines(pkg, inv)) || undefined}
+                  disabled={!awardGate(state, pkg, inv).ok}
+                  title={awardGate(state, pkg, inv).why ?? (uncostedWords(uncostedLines(pkg, inv)) || undefined)}
                   onClick={() => dispatch({ type: 'award', ...ids, inviteId: inv.id })}
                 >
                   Award at {money(leveledTotal(pkg, inv) ?? 0)}
                   {uncostedLines(pkg, inv).length > 0 ? ' + ?' : ''} and draft the statement of work
                 </Btn>
+                {!awardGate(state, pkg, inv).ok && <AwardBlocked why={awardGate(state, pkg, inv).why} />}
               </div>
             )}
 
