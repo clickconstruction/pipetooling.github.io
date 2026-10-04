@@ -55,9 +55,14 @@ function fold(words: string): string {
   return words.toLowerCase().replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, ' ').trim()
 }
 
-/** The exclusions a trade's form offers: its own first, then the ones every trade may have, each once. */
-export function exclusionsFor(trade: string): string[] {
-  return [...new Set([...(COMMON_EXCLUSIONS.byTrade[trade] ?? []), ...COMMON_EXCLUSIONS.all])]
+/**
+ * The exclusions a trade's form offers: its own first, then the ones every trade may have, each
+ * once. With the scope book's exclusion names (`scopeBookExclusions`, New Project), the ones the
+ * book has for the trade lead, most named first: what our jobs and past quotes left out.
+ */
+export function exclusionsFor(trade: string, book?: { trade: string; name: string }[]): string[] {
+  const fromBook = (book ?? []).filter((x) => x.trade === trade).map((x) => x.name)
+  return [...new Set([...fromBook, ...(COMMON_EXCLUSIONS.byTrade[trade] ?? []), ...COMMON_EXCLUSIONS.all])]
 }
 
 /** The shared name for what someone wrote: "permits" and "Permit fees" are both "Permits and fees". */

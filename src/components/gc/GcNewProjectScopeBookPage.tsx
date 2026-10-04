@@ -5,6 +5,8 @@ import {
   TRADE_TEMPLATES,
   scopeBook,
   scopeBookDuplicates,
+  scopeBookExclusions,
+  scopeBookExclusionWords,
   scopeBookUseWords,
   scopeSetsFor,
   scopeWordKey,
@@ -45,6 +47,7 @@ export function GcScopeBookWindow({
   const roomy = useMatchMedia('(min-width: 900px)')
   const book = useMemo(() => scopeBook(state), [state])
   const dupes = useMemo(() => scopeBookDuplicates(book), [book])
+  const exclusions = useMemo(() => scopeBookExclusions(state), [state])
   const trades = useMemo(() => {
     const all = [...new Set([...TRADE_TEMPLATES.map((t) => t.trade), ...book.map((l) => l.trade)])]
     return all.sort((a, b) => tradeOrder(a) - tradeOrder(b) || a.localeCompare(b))
@@ -208,6 +211,7 @@ export function GcScopeBookWindow({
                   )}
                 </div>
                 <AddToBook trade={trade} onAdd={(words, spec) => dispatch({ type: 'saveToScopeBook', trade, words, ...(spec ? { spec } : {}) })} have={(words) => lines.some((l) => scopeWordKey(l.words) === scopeWordKey(words))} />
+                <TradeExclusions trade={trade} items={exclusions.filter((x) => x.trade === trade)} />
               </>
             )}
 
@@ -264,6 +268,31 @@ export function GcScopeBookWindow({
           </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+/**
+ * A trade's exclusions beside its lines (Round 5): its usual ones, the Known exclusions on our jobs
+ * and what companies' quotes left out, most named first. The quote form offers these as its ticks.
+ */
+function TradeExclusions({ trade, items }: { trade: string; items: ReturnType<typeof scopeBookExclusions> }) {
+  if (items.length === 0) return null
+  return (
+    <div style={{ display: 'grid', gap: '0.3rem', marginTop: '0.4rem', padding: '0.55rem 0.7rem', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-subtle)', fontSize: '0.85rem' }}>
+      <strong>Known exclusions for {trade}</strong>
+      <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>
+        What {trade} quotes leave out, from the usual list, our jobs and the quotes themselves. A company quoting {trade} ticks from these.
+      </span>
+      {items.map((x) => (
+        <div key={x.name} style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap', padding: '0.2rem 0', borderTop: '1px solid var(--border)' }}>
+          <span style={{ flex: '1 1 12rem', minWidth: 0 }}>
+            <strong>{x.name}</strong>
+            {x.by && <span style={{ color: 'var(--text-600)' }}>, done by {x.by}</span>}
+          </span>
+          <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', whiteSpace: 'nowrap' }}>{scopeBookExclusionWords(x)}</span>
+        </div>
+      ))}
     </div>
   )
 }

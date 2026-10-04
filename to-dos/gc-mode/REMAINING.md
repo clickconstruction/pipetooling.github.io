@@ -271,8 +271,9 @@ do."
 
 ### New Project (GC 2)
 
-1. **Exclusion names in the book**: let the scope book keep each trade's common exclusions beside
-   its lines, so `exclusionsFor` can read the book (later; `COMMON_EXCLUSIONS` serves until then).
+1. ~~**Exclusion names in the book**~~ done: `scopeBookExclusions` keeps each trade's exclusions
+   (the usual ones, Known exclusions on jobs, quotes' own, folded by `exclusionName`), shown on the
+   book's page beside the lines; `exclusionsFor(trade, book?)` puts the book's first.
 
 ## Owner (the decisions)
 

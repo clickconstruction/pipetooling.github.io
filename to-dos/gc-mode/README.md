@@ -275,7 +275,11 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   **+ Add to the book**, the sets with **Save this scope as a set**, and **Duplicates to merge**
   ("Site clearing and grading" looks the same as "Clearing and grading"; "site" counts for nothing
   only in Sitework). The same search adds a line a set brings in **A new set of plans came in**.
-  `GcScopeBookButton` opens the book from anywhere.
+  `GcScopeBookButton` opens the book from anywhere. Each trade also keeps its exclusions beside its
+  lines (Round 5, exclusions by company): the usual ones, every Known exclusion on our jobs and every
+  exclusion a quote named, each under its shared name (`scopeBookExclusions`, `exclusionName`), most
+  named first, shown as **Known exclusions for Plumbing** on the book's page. The quote form can
+  offer the book's names first: `exclusionsFor(trade, book)`.
 - **New project, step 1 and 3 follow-ups** (the owner, 2026-10-04): no Town field; each company's
   drive is measured from the town in the address ("Drives are measured from Boerne"; the Board's
   `townFromAddress`), and a town picker shows only when the address names none. **Size** is square

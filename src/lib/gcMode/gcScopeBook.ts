@@ -1,5 +1,6 @@
 import { TRADE_TEMPLATES, tradeOrder } from '../gc/plans'
 import type { GcState, ScopeBookStore, ScopeExclusion } from './gcTypes'
+import { COMMON_EXCLUSIONS, exclusionName } from './gcExclusions'
 
 /**
  * GC mode design spike: the scope book (the owner, 2026-10-04: "a scope book where the user can set
@@ -358,4 +359,70 @@ export function scopeBookUseWords(line: ScopeBookLine): string {
   if (line.usedOn.length === 0) return line.source === 'saved' ? 'saved by hand' : 'the usual lines'
   const jobs = `${line.usedOn.length} ${line.usedOn.length === 1 ? 'job' : 'jobs'}`
   return line.lastUsed ? `${jobs} · last ${shortDay(line.lastUsed)}` : jobs
+}
+
+// ---------------------------------------------------------------------------------------------
+// Each trade's exclusions, kept beside its lines (the owner approved exclusions by company,
+// 2026-10-04; REMAINING Round 5, New Project 1): the names the quote form offers come from here.
+// ---------------------------------------------------------------------------------------------
+
+/** One thing a trade's quotes leave out, with where the book has it from. */
+export interface ScopeBookExclusion {
+  trade: string
+  /** The shared name (`exclusionName`): "permits" and "Permit fees" are both "Permits and fees". */
+  name: string
+  /** One of the trade's usual exclusions: the quote form's ticks, or one its usual lines bring. */
+  usual: boolean
+  /** The jobs where it was a Known exclusion of this trade, by name. */
+  onJobs: string[]
+  /** How many quotes for this trade left it out. */
+  quotes: number
+  /** Who does it instead, when a job or the usual list said. */
+  by?: string
+}
+
+/**
+ * Each trade's exclusions: its usual ones, every Known exclusion on our jobs, and every exclusion a
+ * company's quote named, each folded onto its shared name. Most named first.
+ */
+export function scopeBookExclusions(state: GcState): ScopeBookExclusion[] {
+  const out = new Map<string, ScopeBookExclusion>()
+  const put = (trade: string, said: string, more: { usual?: boolean; job?: string; quote?: boolean; by?: string }) => {
+    const name = exclusionName(said)
+    if (name === '') return
+    const id = `${trade}|${scopeWordKey(name)}`
+    let x = out.get(id)
+    if (!x) {
+      x = { trade, name, usual: false, onJobs: [], quotes: 0 }
+      out.set(id, x)
+    }
+    if (more.usual) x.usual = true
+    if (more.job && !x.onJobs.includes(more.job)) x.onJobs.push(more.job)
+    if (more.quote) x.quotes += 1
+    if (more.by && !x.by) x.by = more.by
+  }
+  for (const [trade, names] of Object.entries(COMMON_EXCLUSIONS.byTrade)) for (const n of names) put(trade, n, { usual: true })
+  for (const t of TRADE_TEMPLATES) for (const e of t.excludes ?? []) put(t.trade, e.label, { usual: true, by: e.by })
+  for (const line of scopeBook(state)) if (line.leavesOut) put(line.trade, line.leavesOut.label, { usual: true, by: line.leavesOut.by })
+  for (const project of state.projects) {
+    for (const pkg of project.packages) {
+      for (const e of pkg.excludes ?? []) put(pkg.trade, e.label, { job: project.name, by: e.by })
+      for (const inv of pkg.invites) for (const e of inv.bid?.exclusions ?? []) put(pkg.trade, e.name, { quote: true })
+    }
+  }
+  const weight = (x: ScopeBookExclusion) => x.quotes + x.onJobs.length
+  return [...out.values()].sort(
+    (a, b) => tradeOrder(a.trade) - tradeOrder(b.trade) || a.trade.localeCompare(b.trade) || weight(b) - weight(a) || Number(b.usual) - Number(a.usual) || a.name.localeCompare(b.name),
+  )
+}
+
+/** Where the book has an exclusion from, in words: "usual · on 2 jobs · left out by 3 quotes". */
+export function scopeBookExclusionWords(x: ScopeBookExclusion): string {
+  return [
+    x.usual ? 'usual' : null,
+    x.onJobs.length > 0 ? `on ${x.onJobs.length} ${x.onJobs.length === 1 ? 'job' : 'jobs'}` : null,
+    x.quotes > 0 ? `left out by ${x.quotes} ${x.quotes === 1 ? 'quote' : 'quotes'}` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ')
 }
