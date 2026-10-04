@@ -94,10 +94,10 @@ makes; nobody builds it until he answers.
 4. ~~**"Left to bill" counts signed change orders** (`sowContractSum`).~~ done (the job block and Your pay both read `sowContractSum`)
 5. ~~**The Spanish list for a native speaker to read** before anything ships (question 25), and no
    "Click" written into the portal's words (Board item 7).~~ done 6225b3fb7 (the list in PORTAL_SPANISH.md; the portal's own words already read `GC_COMPANY`, the bid tab's since b6219f390)
-6. **A phone pass on the portal.** It is the screen trades use most on a phone.
-7. **Notifications for the portal** (a new ask, a set that changed their trade, a promise passed),
-   in the company's language.
-8. **Tidy your lines in `README.md`.**
+6. ~~**A phone pass on the portal.** It is the screen trades use most on a phone.~~ done 0f89c3048 (every company, both languages; the bid tab scrolls in its own box until its table fits a 283px block)
+7. ~~**Notifications for the portal** (a new ask, a set that changed their trade, a promise passed),
+   in the company's language.~~ done 59665d04d (README, the portal's events; question 29 on texts)
+8. ~~**Tidy your lines in `README.md`.**~~ done da16bfbda
 
 ## Owner Billing (GC 4)
 
@@ -118,7 +118,7 @@ makes; nobody builds it until he answers.
     (group the board by customer), 12 (pay application extras and its file), 14 (do alternates
     change our number; does a quote that ran out stop counting).
 15. **The Portal lane's lost-bid portal:** OK to commit?
-22. **The Spanish:** who reads it?
+22. ~~**The Spanish:** who reads it?~~ Answered 2026-10-03: someone the owner names reviews it when GC mode goes to production; nothing to do before then. The list is ready in `PORTAL_SPANISH.md` (*For a native speaker to read*).
 
 ## Everyone
 
