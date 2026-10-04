@@ -10657,6 +10657,91 @@ export type Database = {
           },
         ]
       }
+      job_pay_applications: {
+        Row: {
+          application_date: string | null
+          application_number: number
+          contract_sum_to_date: number
+          created_at: string
+          created_by: string | null
+          current_payment_due: number
+          fields: Json
+          files: Json
+          id: string
+          job_id: string
+          period_to: string | null
+          retainage_held: number
+          retainage_pct: number
+          source: string
+          total_completed_and_stored: number
+          total_earned_less_retainage: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          application_date?: string | null
+          application_number: number
+          contract_sum_to_date?: number
+          created_at?: string
+          created_by?: string | null
+          current_payment_due?: number
+          fields?: Json
+          files?: Json
+          id?: string
+          job_id: string
+          period_to?: string | null
+          retainage_held?: number
+          retainage_pct?: number
+          source?: string
+          total_completed_and_stored?: number
+          total_earned_less_retainage?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          application_date?: string | null
+          application_number?: number
+          contract_sum_to_date?: number
+          created_at?: string
+          created_by?: string | null
+          current_payment_due?: number
+          fields?: Json
+          files?: Json
+          id?: string
+          job_id?: string
+          period_to?: string | null
+          retainage_held?: number
+          retainage_pct?: number
+          source?: string
+          total_completed_and_stored?: number
+          total_earned_less_retainage?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_pay_applications_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_pay_applications_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_pay_applications_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_payment_chase_touches: {
         Row: {
           created_at: string
