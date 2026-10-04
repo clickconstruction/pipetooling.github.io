@@ -527,3 +527,66 @@ describe('a whole new set: what is new, gone and renamed', () => {
     expect(email.body).toContain('Taken out of the set: C-201 Grading and drainage plan.')
   })
 })
+
+describe('work a set brings goes on a schedule already drawn', () => {
+  const drawn = gcReducer(state, { type: 'draftSchedule', projectId: 'helotes', start: '2026-10-12' })
+  const helotesIn = (s: typeof state) => {
+    const p = s.projects.find((x) => x.id === 'helotes')
+    if (!p?.schedule) throw new Error('no Helotes schedule')
+    return { project: p, schedule: p.schedule }
+  }
+  const before = helotesIn(drawn).schedule
+  const next = gcReducer(drawn, {
+    type: 'issuePlanSet',
+    projectId: 'helotes',
+    label: 'Bulletin 9',
+    note: 'A storefront at the entry, and a sink in the break room.',
+    sheets: [],
+    addedSheets: [],
+    touches: ['dplumb'],
+    recipients: [],
+    newTrades: [{ trade: 'Glass and storefront', budget: 0, ours: false, scope: ['Storefront', 'Sealants'] }],
+    newLines: [{ packageId: 'dplumb', label: 'Break room sink rough', sheets: [] }],
+  })
+  const { project: after, schedule } = helotesIn(next)
+  const glass = after.packages.find((p) => p.trade === 'Glass and storefront')
+  if (!glass) throw new Error('no storefront trade')
+  const actOf = (id: string) => {
+    const a = schedule.activities.find((x) => x.lineId === id)
+    if (!a) throw new Error(`no activity ${id}`)
+    return a
+  }
+
+  it('puts a new trade’s lines and an added line on the schedule, each once', () => {
+    expect(schedule.activities).toHaveLength(before.activities.length + 3)
+    expect(glass.scope.map((l) => schedule.activities.some((a) => a.lineId === l.id))).toEqual([true, true])
+    const sink = after.packages.find((p) => p.id === 'dplumb')?.scope.find((l) => l.label === 'Break room sink rough')
+    expect(sink && schedule.activities.some((a) => a.lineId === sink.id)).toBe(true)
+    expect(next.log[0]?.text).toMatch(/It puts 3 new activities on the schedule\./)
+  })
+
+  it('places the storefront in dry-in: after the plumbing underground, never before today, and framing waits on it', () => {
+    const storefront = actOf(glass.scope[0]?.id ?? '')
+    const sealants = actOf(glass.scope[1]?.id ?? '')
+    expect(storefront.start >= next.today).toBe(true)
+    // Sealants follow the storefront: one crew does its lines one after another.
+    expect(sealants.after).toContain(storefront.lineId)
+    expect(sealants.start > storefront.finish).toBe(true)
+    // Framing waits on dry-in, so it waits on the storefront too and starts after it.
+    const framing = actOf('dry-1')
+    expect(framing.after).toContain(storefront.lineId)
+    expect(framing.start > storefront.finish).toBe(true)
+  })
+
+  it('puts the added rough-in line before the rough-in inspection', () => {
+    const sink = after.packages.find((p) => p.id === 'dplumb')?.scope.find((l) => l.label === 'Break room sink rough')
+    const inspection = actOf('helotes-insp-roughin')
+    expect(sink && inspection.after.includes(sink.id)).toBe(true)
+    expect(inspection.start > actOf(sink?.id ?? '').finish).toBe(true)
+  })
+
+  it('leaves a schedule alone when the set brings nothing new', () => {
+    const quiet = gcReducer(drawn, { type: 'issuePlanSet', projectId: 'helotes', label: 'Bulletin 9', note: 'Notes only.', sheets: [], addedSheets: [], touches: [], recipients: [], newTrades: [] })
+    expect(helotesIn(quiet).schedule).toEqual(before)
+  })
+})

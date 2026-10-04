@@ -40,6 +40,9 @@ import {
   sheetIndexInText,
   specIndexInText,
   takenOutInText,
+  scheduleSetLines,
+  withNewLines,
+  withTradesInOrder,
   type SpecSection,
   usualScope,
   type GcAction,
@@ -275,8 +278,35 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
       .map(([id, t]) => [id, Math.round(Number(t) || 0)] as const)
       .filter(([, d]) => d > 0),
   )
-  const push = schedule && Object.keys(pushes).length > 0 ? pushSchedule(schedule.activities, pushes) : null
-  const endDays = push ? Math.round((Date.parse(push.lastAfter) - Date.parse(push.lastBefore)) / 86_400_000) : 0
+  // Work the set brings goes on the schedule too, placed as issuePlanSet will place it: a new trade's lines and the lines it adds.
+  const workRev = currentRev(project) + 1
+  const workBrought = packagesFromDrafts(
+    project.id,
+    brought.map((b) => ({ trade: b.trade, budget: 0, ours: b.ours, scope: b.scope.map((l) => l.label) })),
+    project.packages.map((p) => p.id),
+  )
+  const workLined = withNewLines(
+    project,
+    workRev,
+    project.packages.filter((p) => touches.includes(p.id)).flatMap((p) => (newLines[p.id] ?? []).map((label) => ({ packageId: p.id, label, sheets: [] }))),
+  )
+  const workPackages = withTradesInOrder(workLined.project.packages, workBrought)
+  const newWork = schedule
+    ? [
+        ...workBrought.flatMap((p) => p.scope.map((l) => ({ packageId: p.id, lineId: l.id, label: l.label, trade: p.trade }))),
+        ...workLined.added.map((a) => {
+          const pkg = workPackages.find((p) => p.id === a.packageId)
+          return { packageId: a.packageId, lineId: a.scopeId, label: pkg?.scope.find((l) => l.id === a.scopeId)?.label ?? '', trade: pkg?.trade ?? '' }
+        }),
+      ]
+    : []
+  const placed =
+    schedule && (Object.keys(pushes).length > 0 || newWork.length > 0)
+      ? scheduleSetLines({ ...workLined.project, packages: workPackages }, schedule.activities, newWork, state.today)
+      : null
+  const push = placed ? pushSchedule(placed, pushes) : null
+  const lastWas = schedule ? schedule.activities.reduce((m, a) => (a.finish > m ? a.finish : m), '') : ''
+  const endDays = push ? Math.round((Date.parse(push.lastAfter) - Date.parse(lastWas)) / 86_400_000) : 0
   const substantial = schedule?.milestones.find((m) => /substantial/i.test(m.label)) ?? null
   const lineName = (packageId: string, lineId: string) => {
     // An inspection is no trade's line: it carries its own name.
@@ -774,11 +804,13 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
                   })}
                 </div>
               )}
-              {schedule && reached.length > 0 && (
+              {schedule && (reached.length > 0 || newWork.length > 0) && (
                 <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '0.3rem', borderTop: '1px solid var(--border)', paddingTop: '0.6rem' }}>
                   <span style={{ fontWeight: 600 }}>What it does to the schedule</span>
                   <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-                    Type the days the change adds to an activity. What waits on it moves out too. The plan at Start stays as the baseline.
+                    {reached.length > 0 && 'Type the days the change adds to an activity. What waits on it moves out too. '}
+                    {newWork.length > 0 && 'New work goes in its stage of the job, after what that stage waits on. '}
+                    The plan at Start stays as the baseline.
                   </span>
                   {reached.map((a) => {
                     const days = spare.get(a.lineId) ?? 0
@@ -808,13 +840,30 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
                       </div>
                     )
                   })}
+                  {newWork.map((w) => {
+                    const a = push?.activities.find((x) => x.lineId === w.lineId)
+                    return (
+                      <div key={w.lineId} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <span style={{ minWidth: '12rem' }}>
+                          {w.trade} · {w.label}
+                        </span>
+                        {a && (
+                          <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                            {weekdayDate(a.start)} to {weekdayDate(a.finish)}
+                          </span>
+                        )}
+                        <Chip tone="blue">new work</Chip>
+                      </div>
+                    )
+                  })}
                   {push && (
                     <div style={{ padding: '0.4rem 0.6rem', borderRadius: 6, background: endDays > 0 ? 'var(--bg-amber-tint)' : 'var(--bg-subtle)', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '0.15rem' }}>
                       <span>
-                        It moves {push.moved.length} {push.moved.length === 1 ? 'activity' : 'activities'}.{' '}
+                        {newWork.length > 0 && `It puts ${newWork.length} new ${newWork.length === 1 ? 'activity' : 'activities'} on the schedule. `}
+                        {push.moved.length > 0 && `It moves ${push.moved.length} ${push.moved.length === 1 ? 'activity' : 'activities'}. `}
                         {endDays > 0
-                          ? `The job's last day moves from ${weekdayDate(push.lastBefore)} to ${weekdayDate(push.lastAfter)}.`
-                          : `The days fit in the spare days. The job's last day stays ${weekdayDate(push.lastBefore)}.`}
+                          ? `The job's last day moves from ${weekdayDate(lastWas)} to ${weekdayDate(push.lastAfter)}.`
+                          : `${Object.keys(pushes).length > 0 ? 'The days fit in the spare days. ' : ''}The job's last day stays ${weekdayDate(lastWas)}.`}
                       </span>
                       {substantial &&
                         (push.lastAfter > substantial.planned ? (

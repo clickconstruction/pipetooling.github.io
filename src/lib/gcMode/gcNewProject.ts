@@ -644,6 +644,86 @@ export function scheduleDraft(project: GcProject, start: string): ProjectSchedul
 // ---------------------------------------------------------------------------------------------
 
 /**
+ * Work a set brings onto a schedule already drawn: a new trade's lines, or lines added to a trade.
+ * Each is placed the way the first draft places it (`scheduleDraft`): in its stage, after what
+ * that stage waits on (the rough-in inspection for anything after the rough-ins), and after the
+ * trade's own line before it; never before `today`. What waits on its stage then waits on it too,
+ * and so does the final inspection if nothing else does. A line already on the schedule stays.
+ * Nothing else moves here: `pushSchedule` then moves what must start later.
+ */
+export function scheduleSetLines(
+  project: GcProject,
+  activities: ScheduleActivity[],
+  lines: { packageId: string; lineId: string; label: string }[],
+  today: string,
+): ScheduleActivity[] {
+  const fresh = lines.filter((l) => !activities.some((a) => a.lineId === l.lineId))
+  if (fresh.length === 0) return activities
+  const order = new Map(SCHEDULE_STAGES.map((st, i) => [st.key, i]))
+  const tradeOf = (packageId: string) => project.packages.find((p) => p.id === packageId)?.trade ?? ''
+  const labelOf = (a: ScheduleActivity) => {
+    const pkg = project.packages.find((p) => p.id === a.packageId)
+    return pkg?.sow?.sov.find((l) => l.id === a.lineId)?.label ?? pkg?.scope.find((l) => l.id === a.lineId)?.label ?? ''
+  }
+  const out = activities.map((a) => ({ ...a, after: [...a.after] }))
+  const stageOf = new Map<string, string>()
+  for (const a of out) if (!a.inspection) stageOf.set(a.lineId, lineStage(tradeOf(a.packageId), labelOf(a)))
+  const roughInspection = out.find((a) => a.inspection && a.lineId === `${project.id}-insp-roughin`) ?? null
+  const finalInspection = out.find((a) => a.inspection && a.lineId === `${project.id}-insp-final`) ?? null
+  const inStage = (key: string) => out.filter((a) => stageOf.get(a.lineId) === key)
+  const gateOf = (key: string): string | null => {
+    let at = SCHEDULE_STAGES.find((st) => st.key === key)?.after ?? null
+    while (at && inStage(at).length === 0) at = SCHEDULE_STAGES.find((st) => st.key === at)?.after ?? null
+    return at
+  }
+  const placed = fresh
+    .map((l, index) => ({ ...l, stage: lineStage(tradeOf(l.packageId), l.label), index }))
+    .sort((a, b) => (order.get(a.stage) ?? 0) - (order.get(b.stage) ?? 0) || a.index - b.index)
+  for (const line of placed) {
+    const stage = SCHEDULE_STAGES.find((st) => st.key === line.stage)
+    const gate = gateOf(line.stage)
+    const gateActs = gate === 'roughIn' && roughInspection ? [roughInspection] : gate ? inStage(gate) : []
+    const gateDay = gateActs.reduce<string | null>((m, a) => (m === null || a.finish > m ? a.finish : m), null)
+    // The trade's own line before it, in stage order: a crew does its lines one after another.
+    const own = out
+      .filter((a) => a.packageId === line.packageId && !a.inspection && (order.get(stageOf.get(a.lineId) ?? '') ?? 0) <= (order.get(line.stage) ?? 0))
+      .sort((a, b) => (a.finish < b.finish ? -1 : a.finish > b.finish ? 1 : 0))
+    const prev = own[own.length - 1]
+    const from = [today, gateDay ? plusDays(gateDay, 1 + (stage?.lag ?? 0)) : today, prev ? plusDays(prev.finish, 1) : today].reduce((m, d) => (d > m ? d : m))
+    const shares = placed.filter((l) => l.packageId === line.packageId && l.stage === line.stage).length
+    const days = Math.max(2, Math.ceil((stage?.days ?? 5) / Math.max(1, shares)))
+    const a: ScheduleActivity = {
+      lineId: line.lineId,
+      packageId: line.packageId,
+      start: from,
+      finish: plusDays(from, days - 1),
+      after: [...new Set([...gateActs.map((g) => g.lineId), ...(prev ? [prev.lineId] : [])])],
+    }
+    out.push(a)
+    stageOf.set(a.lineId, line.stage)
+    // What waits on this stage waits on the new line too. A stage the job had no work in until now
+    // becomes the gate for the stage after it.
+    for (const b of out) {
+      if (b === a) continue
+      if (b.inspection) {
+        if (b === roughInspection && line.stage === 'roughIn') b.after.push(a.lineId)
+        continue
+      }
+      const bGate = gateOf(stageOf.get(b.lineId) ?? '')
+      if (bGate === line.stage && !(bGate === 'roughIn' && roughInspection) && !b.after.includes(a.lineId)) b.after.push(a.lineId)
+    }
+  }
+  // The final inspection waits on every line nothing else waits on.
+  if (finalInspection) {
+    for (const a of out) {
+      if (a === finalInspection || a.inspection) continue
+      if (!out.some((b) => b.after.includes(a.lineId)) && !finalInspection.after.includes(a.lineId)) finalInspection.after.push(a.lineId)
+    }
+  }
+  return out
+}
+
+/**
  * The scheduled activities a set's changed sheets and sections reach: the scope lines they touch,
  * found on the schedule by line id (a statement of work keeps its scope line ids). Empty with no
  * schedule. `addedSpecs`: sections the set adds to the manual, so a line's guess can read them.
