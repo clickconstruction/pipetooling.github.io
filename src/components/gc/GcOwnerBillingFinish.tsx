@@ -38,11 +38,7 @@ export function GcOwnerBillingFinish({ state, project, dispatch }: { state: GcSt
           </div>
         )}
         {f.schedule ? (
-          <div>
-            {f.schedule.from === 'pace'
-              ? `At today's pace the schedule finishes ${shortDate(f.schedule.on)}. The work runs ${days(f.schedule.behind)} behind the plan.`
-              : `The schedule finishes ${shortDate(f.schedule.on)}${f.schedule.behind > 0 ? `, with the work ${days(f.schedule.behind)} behind the plan` : ''}.`}
-          </div>
+          <div>{f.schedule.why}</div>
         ) : (
           <div style={{ color: 'var(--text-muted)' }}>No schedule is drawn yet, so there is no finish to compare.</div>
         )}

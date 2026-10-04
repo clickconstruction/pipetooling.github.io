@@ -361,11 +361,9 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
 - **A pay application we sent back bills what we see** (Owner Billing lane, 2026-10-02): until
   the trade resends it, the owner's bill uses our percent on the lines we doubt, not theirs.
 - **A late-finish warning** (owner, 2026-10-04): Bill the owner's **Finish date** compares the
-  contract's day (substantial completion with change orders' days) with the schedule's finish:
-  the later of the current plan's last finish and the baseline's moved by the days the work runs
-  behind. Past it, the days times the contract's late fee a day (liquidated damages, ours to enter
-  per job: `ownerLateFinish`) is what is at risk, also on Money. The schedule's finish is a stand-in
-  in `gcOwnerBillingFinish.ts` until the Building lane's `projectedFinish` lands.
+  contract's day (substantial completion with change orders' days) with the schedule's finish
+  (the Building lane's `projectedFinish`, with its sentence of why). Past it, the days times the contract's late fee a day (liquidated damages, ours to enter
+  per job: `ownerLateFinish`) is what is at risk, also on Money.
 - **Interest on late bills is ours to offer** (owner, 2026-10-04): off unless we set a rate on the
   job (1.5% a month to start, the rate the contract names). It runs on what the architect certified
   and is still open, from the first day the bill was due (the owner's first promise or the day we
