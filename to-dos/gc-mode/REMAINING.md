@@ -164,10 +164,10 @@ first** (a partner's vetting, the promise record), so build on those once GC 0 s
 
 ### Owner Billing (GC 4)
 
-1. **Q12 the owner's pay application:** the notary block, materials stored on site, the Excel and
+1. ~~**Q12 the owner's pay application:**~~ the notary block, materials stored on site, the Excel and
    PDF downloads, on one builder with Building's. Notary and downloads done 4011250e9 (`gcPayAppFile.ts`,
-   `GcPayAppNotary.tsx`; Building wires the trade's window). Stored materials wait on Building's
-   `stored` on the trade's pay application; then each trade's stored rolls into its line on ours.
+   `GcPayAppNotary.tsx`, Spanish too for the trade's window; Building wires it). Stored materials
+   done 964183cb0: each trade's newest stored rolls into its line on ours (column F, line 4, retainage).
 2. ~~**Q6 words** on the owner side, where a trade's number shows.~~ done: nothing to change. The
    owner side shows no trade's number as a bid; "still bidding" is our bid to the owner and stays.
 
@@ -206,8 +206,9 @@ first** (a partner's vetting, the promise record), so build on those once GC 0 s
 
 ### New Project (GC 2)
 
-1. **Q7:** Who to ask picks from `tradeLineup`, so its first picks follow the new order. Check
-   the words that say "closest".
+1. ~~**Q7:** Who to ask picks from `tradeLineup`, so its first picks follow the new order. Check
+   the words that say "closest".~~ done 0c94ed85d ("The most reliable companies in range are
+   ticked", "Tick the most reliable again").
 
 ## Owner (the decisions)
 
