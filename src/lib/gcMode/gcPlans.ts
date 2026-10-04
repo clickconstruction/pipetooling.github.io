@@ -34,21 +34,110 @@ export interface SheetInSet extends PlanSheet {
   changedInRev: number | null
   /** The sheet did not exist before an addendum named it. */
   added: boolean
+  /** The title before the newest set that renamed it. */
+  was?: string
 }
 
-/** The drawings as they stand at one set: the bid set's index plus what each addendum touched. */
-export function sheetsAtRev(project: GcProject, rev: number): SheetInSet[] {
+/** A sheet a set took out, as it was titled when it went. */
+export interface SheetGone extends PlanSheet {
+  goneInRev: number
+}
+
+function walkSheets(project: GcProject, rev: number): { live: SheetInSet[]; gone: SheetGone[] } {
   const out = new Map<string, SheetInSet>()
+  const gone = new Map<string, SheetGone>()
   for (const sheet of project.sheets) out.set(sheet.id, { ...sheet, changedInRev: null, added: false })
   const sets = project.planSets.filter((s) => s.rev <= rev).sort((a, b) => a.rev - b.rev)
   for (const set of sets) {
     for (const id of set.changedSheets) {
       const known = out.get(id)
-      const title = set.addedSheets?.find((x) => x.id === id)?.title || `Added by ${set.label}`
-      out.set(id, known ? { ...known, changedInRev: set.rev } : { id, title, changedInRev: set.rev, added: true })
+      const title = set.addedSheets?.find((x) => x.id === id)?.title || gone.get(id)?.title || `Added by ${set.label}`
+      out.set(id, known ? { id: known.id, title: known.title, changedInRev: set.rev, added: known.added } : { id, title, changedInRev: set.rev, added: true })
+      gone.delete(id)
+    }
+    for (const x of set.retitledSheets ?? []) {
+      const known = out.get(x.id)
+      if (known) out.set(x.id, { ...known, title: x.title, was: known.title, changedInRev: set.rev })
+    }
+    for (const id of set.removedSheets ?? []) {
+      const known = out.get(id)
+      if (!known) continue
+      out.delete(id)
+      gone.set(id, { id, title: known.was ?? known.title, goneInRev: set.rev })
     }
   }
-  return [...out.values()]
+  return { live: [...out.values()], gone: [...gone.values()] }
+}
+
+/**
+ * The drawings as they stand at one set: the bid set's index plus what each later set touched.
+ * A sheet a set took out is not in it (`sheetsGoneAtRev` lists those).
+ */
+export function sheetsAtRev(project: GcProject, rev: number): SheetInSet[] {
+  return walkSheets(project, rev).live
+}
+
+/** The sheets taken out by the sets up to this one, so a quote priced on them can still be read. */
+export function sheetsGoneAtRev(project: GcProject, rev: number): SheetGone[] {
+  return walkSheets(project, rev).gone
+}
+
+/** A sheet or section number with its dashes, dots and spaces dropped, so A101 meets A-101. */
+export function bareId(id: string): string {
+  return id.toUpperCase().replace(/[-.\s]/g, '')
+}
+
+/** What a pasted index does to the one we have: new, gone, renamed (same number, new title) and the same. */
+export interface IndexDiff<T extends { id: string; title: string }> {
+  added: T[]
+  gone: T[]
+  renamed: { id: string; from: string; to: string }[]
+  same: T[]
+}
+
+/**
+ * Compare a pasted index with the one we have. Numbers match without their dashes or dots, and a
+ * matched number keeps the way our index writes it. Titles match without minding capitals.
+ */
+export function indexDiff<T extends { id: string; title: string }>(have: T[], next: T[]): IndexDiff<T> {
+  const was = new Map(have.map((x) => [bareId(x.id), x]))
+  const now = new Set(next.map((x) => bareId(x.id)))
+  const plain = (t: string) => t.trim().replace(/\s+/g, ' ').toLowerCase()
+  const out: IndexDiff<T> = { added: [], gone: [], renamed: [], same: [] }
+  for (const x of next) {
+    const old = was.get(bareId(x.id))
+    if (!old) out.added.push(x)
+    else if (x.title.trim() !== '' && plain(old.title) !== plain(x.title)) out.renamed.push({ id: old.id, from: old.title, to: x.title })
+    else out.same.push(old)
+  }
+  for (const x of have) if (!now.has(bareId(x.id))) out.gone.push(x)
+  return out
+}
+
+/** "Delete sheet C-201", "C-201 is deleted", "Section 09 30 13 removed": the numbers a note takes out. */
+const TAKEN_OUT_BEFORE = /\b(?:delete[ds]?|remove[ds]?|void(?:ed)?|omit(?:s|ted)?|withdraw[ns]?)\s+(?:sheets?\s+|sections?\s+)?$/i
+const TAKEN_OUT_AFTER = /^\s*(?:is\s+|are\s+|has\s+been\s+|have\s+been\s+)?[:\-–—]?\s*(?:deleted|removed|voided|omitted|withdrawn|taken\s+out)\b/i
+
+/**
+ * The numbers in a note that it says are taken out: the word comes right before the number
+ * ("delete sheet C-201") or right after it ("C-201 is deleted"). "Delete the pond per C-201"
+ * takes nothing out. `found` gives the numbers in the note as the caller reads them.
+ */
+export function takenOutInText(text: string, found: (line: string) => string[]): string[] {
+  const out: string[] = []
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.replace(/\s+/g, ' ')
+    for (const id of found(line)) {
+      // The number as the note writes it: "09-30-13" and "093013" are both 09 30 13.
+      const loose = new RegExp(bareId(id).split('').map((c) => c.replace(/[^A-Z0-9]/g, '\\$&')).join('[-.\\s]?'), 'i')
+      const m = loose.exec(line)
+      if (!m) continue
+      const before = line.slice(0, m.index)
+      const after = line.slice(m.index + m[0].length)
+      if ((TAKEN_OUT_BEFORE.test(before) || TAKEN_OUT_AFTER.test(after)) && !out.includes(id)) out.push(id)
+    }
+  }
+  return out
 }
 
 /**
@@ -142,7 +231,8 @@ function andList(words: string[]): string {
  * The words a company reads when a new set goes out. Two versions: their trade changed, or it did
  * not. `lines`: the scope lines of their trade that read from a changed sheet, named in the email.
  * `adds`: scope lines the set adds to their trade. `moves`: sentences on their activities' new dates.
- * `specs`: the sections of the manual the set revises, with their titles.
+ * `specs`: the sections of the manual the set revises, with their titles. `gone`: the sheets and
+ * sections it takes out, each with its title.
  */
 export function planEmail(
   project: GcProject,
@@ -150,7 +240,7 @@ export function planEmail(
   note: string,
   sheets: string[],
   r: PlanRecipient | null,
-  more: { lines?: string[]; adds?: string[]; moves?: string[]; specs?: SpecSection[] } = {},
+  more: { lines?: string[]; adds?: string[]; moves?: string[]; specs?: SpecSection[]; gone?: string[] } = {},
 ): { subject: string; body: string[] } {
   const lines = more.lines ?? []
   const adds = more.adds ?? []
@@ -158,6 +248,7 @@ export function planEmail(
   const body = [`${label} for ${project.name} is out. Your portal now shows it.`, `What changed: ${note || 'see the sheets below.'}`]
   if (sheets.length > 0) body.push(`Sheets: ${sheets.join(', ')}.`)
   if (more.specs && more.specs.length > 0) body.push(`Spec sections: ${more.specs.map((x) => `${x.id} ${x.title}`.trim()).join(', ')}.`)
+  if (more.gone && more.gone.length > 0) body.push(`Taken out of the set: ${more.gone.join(', ')}.`)
   if (!r) return { subject: `${project.name}: ${label} is out`, body }
   const trade = r.pkg.trade.toLowerCase()
   const named = lines.map((l) => l.toLowerCase())

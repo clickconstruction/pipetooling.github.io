@@ -183,17 +183,18 @@ export function guessLineSheets(label: string, tradeSheets: PlanSheet[]): string
   return tradeSheets.filter((s) => stems(s.title).some((w) => want.has(w))).map((s) => s.id)
 }
 
-/** The sheets of the newest set that suggest a trade, with their titles. */
-export function tradeSheets(project: GcProject, trade: string): PlanSheet[] {
-  const index = sheetsAtRev(project, currentRev(project))
+/** The sheets of the newest set that suggest a trade, with their titles, and any a set is adding. */
+export function tradeSheets(project: GcProject, trade: string, added: PlanSheet[] = []): PlanSheet[] {
+  const live = sheetsAtRev(project, currentRev(project))
+  const index = [...live, ...added.filter((a) => !live.some((x) => x.id === a.id))]
   const from = tradesForSheets(index).find((g) => g.trade === trade)?.from ?? []
   return index.filter((s) => from.includes(s.id))
 }
 
 /** The sheets one scope line reads from: what the office said, or the guess when it said nothing. */
-export function lineSheets(project: GcProject, pkg: TradePackage, item: ScopeItem): { sheets: string[]; guessed: boolean } {
+export function lineSheets(project: GcProject, pkg: TradePackage, item: ScopeItem, added: PlanSheet[] = []): { sheets: string[]; guessed: boolean } {
   if (item.sheets) return { sheets: item.sheets, guessed: false }
-  return { sheets: guessLineSheets(item.label, tradeSheets(project, pkg.trade)), guessed: true }
+  return { sheets: guessLineSheets(item.label, tradeSheets(project, pkg.trade, added)), guessed: true }
 }
 
 /**
@@ -201,15 +202,23 @@ export function lineSheets(project: GcProject, pkg: TradePackage, item: ScopeIte
  * so it reads every sheet of its trade (`wholeTrade`). The owner, 2026-10-02: count those lines
  * as touched when any of the trade's sheets changes.
  */
-export function lineReads(project: GcProject, pkg: TradePackage, item: ScopeItem): { sheets: string[]; guessed: boolean; wholeTrade: boolean } {
-  const said = lineSheets(project, pkg, item)
+export function lineReads(
+  project: GcProject,
+  pkg: TradePackage,
+  item: ScopeItem,
+  added: PlanSheet[] = [],
+): { sheets: string[]; guessed: boolean; wholeTrade: boolean } {
+  const said = lineSheets(project, pkg, item, added)
   if (said.sheets.length > 0) return { ...said, wholeTrade: false }
-  return { sheets: tradeSheets(project, pkg.trade).map((s) => s.id), guessed: said.guessed, wholeTrade: true }
+  return { sheets: tradeSheets(project, pkg.trade, added).map((s) => s.id), guessed: said.guessed, wholeTrade: true }
 }
 
-/** The scope lines of a trade that read from any of these sheets, a line that names no sheet included. */
-export function linesOnSheets(project: GcProject, pkg: TradePackage, sheetIds: string[]): ScopeItem[] {
-  return pkg.scope.filter((item) => lineReads(project, pkg, item).sheets.some((id) => sheetIds.includes(id)))
+/**
+ * The scope lines of a trade that read from any of these sheets, a line that names no sheet
+ * included. `added`: sheets a set is adding, so a line's guess and its whole trade can read them.
+ */
+export function linesOnSheets(project: GcProject, pkg: TradePackage, sheetIds: string[], added: PlanSheet[] = []): ScopeItem[] {
+  return pkg.scope.filter((item) => lineReads(project, pkg, item, added).sheets.some((id) => sheetIds.includes(id)))
 }
 
 /** The usual scope for a trade. A trade not on the list starts empty. */
@@ -639,10 +648,16 @@ export function scheduleDraft(project: GcProject, start: string): ProjectSchedul
  * found on the schedule by line id (a statement of work keeps its scope line ids). Empty with no
  * schedule. `addedSpecs`: sections the set adds to the manual, so a line's guess can read them.
  */
-export function activitiesTouched(project: GcProject, sheetIds: string[], specIds: string[] = [], addedSpecs: SpecSection[] = []): ScheduleActivity[] {
+export function activitiesTouched(
+  project: GcProject,
+  sheetIds: string[],
+  specIds: string[] = [],
+  addedSpecs: SpecSection[] = [],
+  addedSheets: PlanSheet[] = [],
+): ScheduleActivity[] {
   const schedule = project.schedule
   if (!schedule || sheetIds.length + specIds.length === 0) return []
-  const ids = new Set(project.packages.flatMap((pkg) => linesOnPlans(project, pkg, sheetIds, specIds, addedSpecs).map((l) => l.id)))
+  const ids = new Set(project.packages.flatMap((pkg) => linesOnPlans(project, pkg, sheetIds, specIds, addedSpecs, addedSheets).map((l) => l.id)))
   return schedule.activities.filter((a) => ids.has(a.lineId))
 }
 
@@ -908,21 +923,140 @@ export interface SpecInSet extends SpecSection {
   changedInRev: number | null
   /** The manual did not have it before a set added it. */
   added: boolean
+  /** The title before the newest set that renamed it. */
+  was?: string
 }
 
-/** The manual as it stands at one set: the sections the project began with plus what each set revised or added, in number order. */
-export function specsAtRev(project: GcProject, rev: number): SpecInSet[] {
+/** A section a set took out, as it was titled when it went. */
+export interface SpecGone extends SpecSection {
+  goneInRev: number
+}
+
+function walkSpecs(project: GcProject, rev: number): { live: SpecInSet[]; gone: SpecGone[] } {
   const out = new Map<string, SpecInSet>()
+  const gone = new Map<string, SpecGone>()
   for (const spec of project.specs ?? []) out.set(spec.id, { ...spec, changedInRev: null, added: false })
   const sets = project.planSets.filter((x) => x.rev <= rev).sort((a, b) => a.rev - b.rev)
   for (const set of sets) {
     for (const id of set.changedSpecs ?? []) {
       const known = out.get(id)
-      const title = set.addedSpecs?.find((x) => x.id === id)?.title || `Added by ${set.label}`
-      out.set(id, known ? { ...known, changedInRev: set.rev } : { id, title, changedInRev: set.rev, added: true })
+      const title = set.addedSpecs?.find((x) => x.id === id)?.title || gone.get(id)?.title || `Added by ${set.label}`
+      out.set(id, known ? { id: known.id, title: known.title, changedInRev: set.rev, added: known.added } : { id, title, changedInRev: set.rev, added: true })
+      gone.delete(id)
+    }
+    for (const x of set.retitledSpecs ?? []) {
+      const known = out.get(x.id)
+      if (known) out.set(x.id, { ...known, title: x.title, was: known.title, changedInRev: set.rev })
+    }
+    for (const id of set.removedSpecs ?? []) {
+      const known = out.get(id)
+      if (!known) continue
+      out.delete(id)
+      gone.set(id, { id, title: known.was ?? known.title, goneInRev: set.rev })
     }
   }
-  return [...out.values()].sort((a, b) => a.id.localeCompare(b.id))
+  const byId = (a: { id: string }, b: { id: string }) => a.id.localeCompare(b.id)
+  return { live: [...out.values()].sort(byId), gone: [...gone.values()].sort(byId) }
+}
+
+/**
+ * The manual as it stands at one set: the sections the project began with plus what each set
+ * revised, renamed or added, in number order. A section a set took out is not in it.
+ */
+export function specsAtRev(project: GcProject, rev: number): SpecInSet[] {
+  return walkSpecs(project, rev).live
+}
+
+/** The sections taken out by the sets up to this one. */
+export function specsGoneAtRev(project: GcProject, rev: number): SpecGone[] {
+  return walkSpecs(project, rev).gone
+}
+
+/** A scope line a set leaves with nothing to read: every sheet it read, or every section, goes. */
+export interface LineLeftBehind {
+  packageId: string
+  item: ScopeItem
+  /** Its sheets all go. */
+  sheets: string[]
+  /** Its sections all go. */
+  specs: string[]
+}
+
+/**
+ * The scope lines a set leaves behind: lines that read from sheets or sections, and every one of
+ * them is taken out. A line that names none reads its trade as a whole, so it is never left.
+ */
+export function linesLeftBehind(project: GcProject, goneSheets: string[], goneSpecs: string[]): LineLeftBehind[] {
+  if (goneSheets.length + goneSpecs.length === 0) return []
+  const out: LineLeftBehind[] = []
+  for (const pkg of project.packages) {
+    for (const item of pkg.scope) {
+      const sheets = lineSheets(project, pkg, item).sheets
+      const specs = lineSpecs(project, pkg, item).specs
+      const noSheets = sheets.length > 0 && sheets.every((id) => goneSheets.includes(id))
+      const noSpecs = specs.length > 0 && specs.every((id) => goneSpecs.includes(id))
+      if (noSheets || noSpecs) out.push({ packageId: pkg.id, item, sheets: noSheets ? sheets : [], specs: noSpecs ? specs : [] })
+    }
+  }
+  return out
+}
+
+/** Scope lines a set ties to new sheets or sections, because what they read is gone. */
+export function withRetiedLines(
+  project: GcProject,
+  lines: { packageId: string; scopeId: string; sheets?: string[]; specs?: string[] }[],
+): GcProject {
+  if (lines.length === 0) return project
+  return {
+    ...project,
+    packages: project.packages.map((pkg) => {
+      const mine = lines.filter((l) => l.packageId === pkg.id)
+      if (mine.length === 0) return pkg
+      return {
+        ...pkg,
+        scope: pkg.scope.map((item) => {
+          const tie = mine.find((l) => l.scopeId === item.id)
+          if (!tie) return item
+          return { ...item, ...(tie.sheets ? { sheets: tie.sheets } : {}), ...(tie.specs ? { specs: tie.specs } : {}) }
+        }),
+      }
+    }),
+  }
+}
+
+/**
+ * A made-up reissued index for trying a whole new set on any project: the second sheet of the
+ * first discipline with two goes (folded into the first, which is renamed for it), and two
+ * sheets are new. Written as an index prints, in capitals.
+ */
+export function sampleReissue(sheets: PlanSheet[]): string {
+  const byDiscipline = new Map<string, PlanSheet[]>()
+  for (const x of sheets) byDiscipline.set(sheetDiscipline(x.id), [...(byDiscipline.get(sheetDiscipline(x.id)) ?? []), x])
+  const pair = [...byDiscipline.values()].find((list) => list.length >= 2)
+  const keep = pair?.[0]
+  const drop = pair?.[1]
+  const dashed = sheets.filter((x) => x.id.includes('-')).length >= sheets.length / 2
+  const id = (letters: string, n: number) => (dashed ? `${letters}-${n}` : `${letters}${n}`)
+  const free = (letters: string, from: number) => {
+    let n = from
+    while (sheets.some((x) => x.id.toUpperCase().replace(/[-.\s]/g, '') === `${letters}${n}`)) n += 1
+    return id(letters, n)
+  }
+  const lines = sheets
+    .filter((x) => x.id !== drop?.id)
+    .map((x) => `${x.id}  ${(x.id === keep?.id && drop ? `${x.title}, ${drop.title.charAt(0).toLowerCase()}${drop.title.slice(1)}` : x.title).toUpperCase()}`)
+  lines.push(`${free('A', 601)}  INTERIOR DETAILS`, `${free('E', 401)}  FIRE ALARM PLAN`)
+  return ['SHEET INDEX', ...lines].join('\n')
+}
+
+/** A made-up reissued table of contents: one section of the first division with two goes, and ceramic tiling comes in. */
+export function sampleReissueSpecs(specs: SpecSection[]): string {
+  const counts = new Map<string, number>()
+  for (const x of specs) counts.set(specDivision(x.id), (counts.get(specDivision(x.id)) ?? 0) + 1)
+  const drop = specs.filter((x) => !['00', '01'].includes(specDivision(x.id)) && (counts.get(specDivision(x.id)) ?? 0) >= 2).pop()
+  const lines = specs.filter((x) => x.id !== drop?.id).map((x) => `${x.id}  ${x.title.toUpperCase()}`)
+  if (!specs.some((x) => x.id === '09 30 13')) lines.push('09 30 13  CERAMIC TILING')
+  return ['TABLE OF CONTENTS', ...lines.sort()].join('\n')
 }
 
 /** The trades on a project that a set's sections change: each section's trade, read from its number. */
@@ -959,8 +1093,15 @@ export function linesOnSpecs(project: GcProject, pkg: TradePackage, specIds: str
 }
 
 /** The scope lines a set reaches through its sheets or its sections, in the scope's order. */
-export function linesOnPlans(project: GcProject, pkg: TradePackage, sheetIds: string[], specIds: string[], added: SpecSection[] = []): ScopeItem[] {
-  const onSheets = new Set(linesOnSheets(project, pkg, sheetIds).map((l) => l.id))
+export function linesOnPlans(
+  project: GcProject,
+  pkg: TradePackage,
+  sheetIds: string[],
+  specIds: string[],
+  added: SpecSection[] = [],
+  addedSheets: PlanSheet[] = [],
+): ScopeItem[] {
+  const onSheets = new Set(linesOnSheets(project, pkg, sheetIds, addedSheets).map((l) => l.id))
   const onSpecs = new Set(linesOnSpecs(project, pkg, specIds, added).map((l) => l.id))
   return pkg.scope.filter((item) => onSheets.has(item.id) || onSpecs.has(item.id))
 }

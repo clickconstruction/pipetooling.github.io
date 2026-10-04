@@ -2,6 +2,13 @@ import { describe, expect, it } from 'vitest'
 import {
   SAMPLE_SHEET_INDEX,
   SAMPLE_SPEC_INDEX,
+  currentRev,
+  indexDiff,
+  linesLeftBehind,
+  sampleReissue,
+  sampleReissueSpecs,
+  specsAtRev,
+  specsGoneAtRev,
   guessLineSpecs,
   specDivision,
   specIndexInText,
@@ -466,5 +473,72 @@ describe('the project manual', () => {
     const bare = buildNewProject(initialGcState(), draft()).project
     expect(bare.specs).toBeUndefined()
     expect(bare.packages[0]?.scope[0]?.specs).toBeUndefined()
+  })
+})
+
+describe('a whole new set on a project with a manual', () => {
+  const made = gcReducer(initialGcState(), { type: 'createProject', draft: draft({ specs: specIndexInText(SAMPLE_SPEC_INDEX).sections }) })
+  const id = 'leon-springs-urgent-care'
+  const project = () => {
+    const p = made.projects.find((x) => x.id === id)
+    if (!p) throw new Error('no Leon Springs')
+    return p
+  }
+
+  it('finds the lines a set leaves with nothing to read, and not the ones that read the trade as a whole', () => {
+    const p = project()
+    const site = p.packages.find((k) => k.trade === 'Sitework')
+    if (!site) throw new Error('no Sitework')
+    // Clearing and grading reads only C-201, the grading and drainage plan.
+    const grading = site.scope.find((l) => l.label === 'Clearing and grading')
+    expect(grading ? lineSheets(p, site, grading).sheets : null).toEqual(['C-201'])
+    const left = linesLeftBehind(p, ['C-201'], [])
+    expect(left.map((l) => l.item.label)).toEqual(['Clearing and grading'])
+    expect(left[0]?.sheets).toEqual(['C-201'])
+    expect(linesLeftBehind(p, [], [])).toEqual([])
+  })
+
+  it('takes a sheet and a section out, renames one, and ties the line left behind to a new sheet', () => {
+    const p = project()
+    const site = p.packages.find((k) => k.trade === 'Sitework')
+    const grading = site?.scope.find((l) => l.label === 'Clearing and grading')
+    if (!site || !grading) throw new Error('no grading line')
+    const next = gcReducer(made, {
+      type: 'issuePlanSet',
+      projectId: id,
+      label: 'Permit set',
+      note: '',
+      sheets: ['C-101', 'C-201'],
+      addedSheets: [],
+      touches: [site.id],
+      recipients: [],
+      newTrades: [],
+      removedSheets: ['C-201'],
+      retitledSheets: [{ id: 'C-101', title: 'Site, grading and drainage plan' }],
+      specs: ['09 51 13'],
+      removedSpecs: ['09 51 13'],
+      retiedLines: [{ packageId: site.id, scopeId: grading.id, sheets: ['C-101'] }],
+    })
+    const after = next.projects.find((x) => x.id === id)
+    if (!after) throw new Error('no Leon Springs after')
+    const set = after.planSets[after.planSets.length - 1]
+    expect(set).toMatchObject({ removedSheets: ['C-201'], retitledSheets: [{ id: 'C-101', title: 'Site, grading and drainage plan' }], removedSpecs: ['09 51 13'] })
+    expect(after.packages.find((k) => k.id === site.id)?.scope.find((l) => l.id === grading.id)?.sheets).toEqual(['C-101'])
+    expect(specsAtRev(after, currentRev(after)).some((x) => x.id === '09 51 13')).toBe(false)
+    expect(specsGoneAtRev(after, currentRev(after))).toEqual([{ id: '09 51 13', title: 'Acoustical panel ceilings', goneInRev: currentRev(after) }])
+    expect(next.log[0]?.text).toMatch(/It takes out 1 sheet and 1 spec section\.$/)
+  })
+
+  it('makes up a reissued index and table of contents to try it with', () => {
+    const sheets = sheetIndexInText(SAMPLE_SHEET_INDEX).sheets
+    const d = indexDiff(sheets, sheetIndexInText(sampleReissue(sheets)).sheets)
+    expect(d.gone.map((x) => x.id)).toEqual(['C-201'])
+    expect(d.renamed.map((x) => x.id)).toEqual(['C-101'])
+    expect(d.added.map((x) => x.id)).toEqual(['A-601', 'E-401'])
+    const manual = specIndexInText(SAMPLE_SPEC_INDEX).sections
+    const s = indexDiff(manual, specIndexInText(sampleReissueSpecs(manual)).sections)
+    expect(s.gone).toHaveLength(1)
+    expect(s.added.map((x) => x.id)).toEqual(['09 30 13'])
+    expect(s.renamed).toEqual([])
   })
 })

@@ -4,6 +4,9 @@ import {
   answeredNotInSet,
   changeOrderFromSet,
   currentRev,
+  indexDiff,
+  sheetsGoneAtRev,
+  takenOutInText,
   lineReadsSpec,
   linesOnPlans,
   linesOnSpecs,
@@ -30,6 +33,7 @@ import {
   setThatAddedLine,
   type GcAction,
   type GcProject,
+  type PlanSet,
 } from './gcModel'
 
 const state = initialGcState()
@@ -464,5 +468,62 @@ describe('a set that revises the project manual', () => {
     expect(reached.length).toBeGreaterThan(0)
     expect(reached.every((a) => helotes.packages.find((p) => p.id === a.packageId)?.trade === 'Electrical')).toBe(true)
     expect(activitiesTouched(helotes, [], [])).toEqual([])
+  })
+})
+
+describe('a whole new set: what is new, gone and renamed', () => {
+  const have = [
+    { id: 'C-101', title: 'Site plan' },
+    { id: 'C-201', title: 'Grading and drainage plan' },
+    { id: 'A-101', title: 'Floor plan' },
+  ]
+
+  it('compares a pasted index with ours, numbers without their dashes and titles without capitals', () => {
+    const d = indexDiff(have, [
+      { id: 'C101', title: 'Site, grading and drainage plan' },
+      { id: 'A-101', title: 'FLOOR PLAN' },
+      { id: 'A-601', title: 'Interior details' },
+    ])
+    expect(d.added).toEqual([{ id: 'A-601', title: 'Interior details' }])
+    expect(d.gone).toEqual([{ id: 'C-201', title: 'Grading and drainage plan' }])
+    expect(d.renamed).toEqual([{ id: 'C-101', from: 'Site plan', to: 'Site, grading and drainage plan' }])
+    expect(d.same).toEqual([{ id: 'A-101', title: 'Floor plan' }])
+  })
+
+  it('reads what a note takes out, and not a word that takes out work', () => {
+    const sheetsOf = (line: string) => sheetsInText(line)
+    expect(takenOutInText('Delete sheet C-201.\nA-101 is deleted.\nDelete the detention pond per C-101.\nE-201 removed', sheetsOf)).toEqual(['C-201', 'A-101', 'E-201'])
+    expect(takenOutInText('Section 09-30-13 removed. Revise section 09 91 23.', specsInText)).toEqual(['09 30 13'])
+  })
+
+  it('keeps a sheet a set took out apart from the rest, and a renamed one under its new title', () => {
+    const base = project('boerne')
+    const firstId = base.sheets[0]?.id ?? ''
+    const secondId = base.sheets[1]?.id ?? ''
+    const set: PlanSet = {
+      rev: currentRev(base) + 1,
+      label: 'Permit set',
+      issuedOn: '2026-10-03',
+      note: '',
+      changedSheets: [firstId, secondId],
+      touches: [],
+      removedSheets: [secondId],
+      retitledSheets: [{ id: firstId, title: 'A new title' }],
+    }
+    const p: GcProject = { ...base, planSets: [...base.planSets, set] }
+    const now = sheetsAtRev(p, set.rev)
+    expect(now.some((x) => x.id === secondId)).toBe(false)
+    expect(now.find((x) => x.id === firstId)).toMatchObject({ title: 'A new title', was: base.sheets[0]?.title, changedInRev: set.rev })
+    expect(sheetsGoneAtRev(p, set.rev)).toEqual([{ id: secondId, title: base.sheets[1]?.title, goneInRev: set.rev }])
+    // The set before still has it, and nothing was renamed there.
+    expect(sheetsAtRev(p, set.rev - 1).some((x) => x.id === secondId)).toBe(true)
+    expect(sheetsGoneAtRev(p, set.rev - 1)).toEqual([])
+    expect(sheetsAtRev(p, set.rev - 1).every((x) => x.was === undefined)).toBe(true)
+  })
+
+  it('says in the email what the set takes out', () => {
+    const boerne = project('boerne')
+    const email = planEmail(boerne, 'Permit set', '', [], null, { gone: ['C-201 Grading and drainage plan'] })
+    expect(email.body).toContain('Taken out of the set: C-201 Grading and drainage plan.')
   })
 })

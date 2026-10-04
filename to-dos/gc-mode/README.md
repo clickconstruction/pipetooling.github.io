@@ -66,7 +66,8 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
 
 | Where | What it does |
 |---|---|
-| **New here?** (top right) | An 11-stop spotlight walkthrough of the three stages on the Project Board: each stage's question, what you do in it, how it ends, then where to try it. Stops in `src/lib/gcMode/gcTour.ts`, on the app's `SpotlightTour`. |
+| **New here?** (top right) | A 13-stop spotlight walkthrough of the Project Board (the three stages, + New project, Closed and Lost): each stage's question, what you do in it, how it ends, then where to try it. Stops in `src/lib/gcMode/gcTour.ts`, on the app's `SpotlightTour`. |
+| **Walk me through this job** (a project's tab row) | A 12-stop walkthrough inside one project, a stop on each tab in the order a job goes (Trades, Plans, Our number, Bid tabs, Contracts, Get started, Schedule, Draws, Bill the owner, Closeout) and on See what the trade sees (`GC_PROJECT_TOUR_STEPS` in `gcTour.ts`). *New here?* opens itself on a first visit, once per browser. |
 | **+ ?** after a number | A quote that leaves out work with no cost set still counts that work as $0 in its all-in number, so every place that number shows says "+ ?": Trades' *Lowest, all in* and *We are carrying*, Compare bids' *All in*, the *Award at* buttons, Our number's *Carried*, *Trades* and the price, and the price on the board row and the project header. Hovering names the work ("1 line has no cost yet: roof curbs."). Against our budget reads "at least $X over" or "not known yet". Setting the cost in Compare bids clears it. `uncostedLines`, `carriedUncosted`, `proposalUncosted` in `gcBids.ts`; the totals themselves are unchanged. |
 | What changed under a quote | A quote priced on older plans says what each newer set changed, set by set, from the New Project lane's line sheets: "Addendum 1 changed panels and feeders, and the trade as a whole." · "Addendum 1 changed the HVAC sheets." · "Addendum 2 added detention pond." (`staleChange`, `staleWords` in `gcStale.ts`). On the ring's card, Compare bids' *Plans they priced* row and its *Ask them to confirm* message, and the hovers on Trades' *old plans* and the Plans tab's *needs confirming*. Compare bids' own sentence keeps "They priced an older set of plans". |
 | **Money** (board tab) | After Trade partners: the Owner Billing lane's `GcOwnerBillingMoney`, money across every job that is ours ("Across our 3 jobs we are $80,428 ahead", the totals, who owes us, each job with *Bill the owner*, which opens that project on its Bill the owner tab). In the real build, for the owner and the controller only. |
@@ -81,7 +82,7 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
 | **Trades** tab | One row per trade: who we asked with each bid in thousands, our budget, the lowest all in, what we carry. **Compare bids** opens the comparison. **On a map** opens the map. |
 | Compare bids | Sentences first ("Voltage Brothers bid $166,000 and left out fire alarm. Covering that adds $14,000, so they come to $180,000."), then the table behind them: is each piece of work in their price, a cost to cover what is not, the all-in total, who is lowest. |
 | On a map | The project in the middle, every company in the trade as a numbered pin (closest first), the same companies in a list beside it to work down. "Will not do it" / "Cannot do it" moves you to the next closest. |
-| **Plans** tab | **A new set of plans came in**: name the set (Addendum, Bulletin, Revised set, Permit set, Construction set, or typed; addenda and bulletins count apart), paste what changed, sheets are read out of the notes (A-401, A401, A1.01) and matched to the index, a sheet new to the set gets its title, trades guessed from the sheet letters and titles, spec sections read out of the notes the same way (a section new to the manual gets its title), a trade the job does not have yet can come with the set (its usual scope, a budget; nobody asked yet), the scope lines it touches per trade and **+ Add a line this set brings** for work the set adds to a trade, the list of who is emailed, the email preview (it names the lines it touches). Then a table: told, opened, their number (needs confirming or good). |
+| **Plans** tab | **A new set of plans came in**: name the set (Addendum, Bulletin, Revised set, Permit set, Construction set, or typed; addenda and bulletins count apart), paste what changed, sheets are read out of the notes (A-401, A401, A1.01) and matched to the index, a sheet new to the set gets its title, trades guessed from the sheet letters and titles, spec sections read out of the notes the same way (a section new to the manual gets its title), a whole set (Revised, Permit, Construction) pasting its new index and table of contents to see what is new, gone or renamed, **Take it out** / **Keep it** on any listed sheet or section, the lines left with nothing to read tied to another sheet, a trade the job does not have yet can come with the set (its usual scope, a budget; nobody asked yet), the scope lines it touches per trade and **+ Add a line this set brings** for work the set adds to a trade, the list of who is emailed, the email preview (it names the lines it touches). Then a table: told, opened, their number (needs confirming or good). |
 | **Our number** | Carried trades + general conditions + contingency + fee = the price to the owner. **We sent our bid**, **We won this**. |
 | **Bid tabs** | After our bid is in, each trade's quotes go back to the companies that quoted, low to high, their own row marked, names hidden unless ticked. |
 | **Contracts** | Per trade: paperwork chips, award, the statement of work drafted from the bid, send, sign. |
@@ -156,6 +157,15 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   that name the section or name none (`linesOnPlans`; the owner's whole-trade rule for sheets).
   The email lists "Spec sections:", a change order says "per" the sections too, and the plans
   window has a **Sheets · Specs** switch with "Scope that reads from 09 91 23" (2026-10-03).
+- **A whole new set is compared with ours** (approved, 2026-10-03): a Revised, Permit or
+  Construction set pastes its new sheet index and table of contents. Each is compared with what we
+  have (`indexDiff`): new, gone, renamed (same number, new title) and the same. Any listed sheet or
+  section can be taken out or kept, and a note that says "delete sheet C-201" or "C-201 is
+  deleted" marks it (`takenOutInText`). What goes is kept apart, crossed out in the plans window
+  (`sheetsGoneAtRev`, `specsGoneAtRev`), so a quote priced on it still reads. A scope line left
+  with nothing to read is listed and tied to another sheet or section, or to its trade as a whole
+  (`linesLeftBehind`, `retiedLines`). The email says "Taken out of the set:". A line's guess now
+  reads the sheets a set adds too, so a new fire alarm plan reaches Fire alarm.
 - **A new set can add work to a trade already out to bid** (approved as built, 2026-10-02): the
   line goes on the end of the trade's scope with the changed sheets it reads from, and the set
   remembers it (`issuePlanSet.newLines`, `PlanSet.addedLines`). A quote already in never answered
@@ -405,6 +415,13 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
   out or building) added up the way `projectCash` adds one ("Across our 3 jobs we are $80,428
   ahead"), then **Who owes us**, a late bill first and one waiting on the architect last, then each
   job on a row. **Bill the owner** on any row opens that job's tab.
+- The next weeks of money (`cashAhead`, `gcOwnerBillingAhead.ts`, `GcOwnerBillingAhead.tsx`, on the
+  Money tab): six weeks from this week's Monday, what comes in and goes out each week and where we
+  stand at its end, starting from today's. Only what is on the books counts: an owner's bill on
+  their promise or the day we expect it, an approved draw on its pay-by day, a draw asked for as if
+  we approve it today. Owner money already late counts this week only when the box is ticked.
+  Retainage on both sides waits until it has a day: a trade's is 10 days after the owner pays our
+  final. The bills we send on the 25th count once they go.
 - Insurance within 30 days of running out (`COI_WARN_DAYS`) turns its chip amber, asks under
   Needs you, and emails the company 30 days before the date.
 - A new insurance certificate counts the moment the company sends it; nobody in the office checks
@@ -545,10 +562,10 @@ the bullets below are the shape they set.
   drawn (the New Project lane's `issuePlanSet`, asked 2026-10-03; the golden walk's "Draw Helotes's
   schedule" moves before Start once it does, the owner's call). Days are calendar days for now.
 
-- New Project past its first form: a scope line tied to its spec section, exclusions, and a
-  budget from real costs, not a made-up rate per square foot. A line's sheets show in New Project, a new set,
-  the plans window and Compare bids (Board, 2026-10-03); the portal's bid form and Trades do not show them yet. A
-  later set cannot yet take a sheet out of the set.
+- New Project past its first form: exclusions, and a budget from real costs, not a made-up rate
+  per square foot. A line's sheets show in New Project, a new set, the plans window and Compare
+  bids (Board, 2026-10-03); its sections in New Project, a new set and the plans window. The
+  portal's bid form and Trades show neither yet.
 - Questions about the plans, the rest: a trade asks in its portal and sees the answers there (the
   Portal lane: the action `tradeAskQuestion` is ready). Today the office types a question that came
   in by phone or email. The window opens from **Questions about the plans** on the Plans tab and
@@ -603,10 +620,10 @@ imitates it.
 | `src/lib/gcMode/gcModel.ts` | The barrel: re-exports the model files below, so every import of `./gcModel` works. Add code to the file for its area, never here. |
 | `gcTypes.ts` · `gcWords.ts` | The record shapes, every action and the state (drawn the way the tables would be: the first schema sketch) · money and date words. Neither imports anything. |
 | `gcLookups.ts` | `planLabel`, `currentRev`, `partnerById`: the small lookups many areas read. |
-| `gcPlans.ts` · `gcStart.ts` · `gcProgress.ts` | Plans, sheets, what a later set is called and who hears about it (tested in `gcPlans.test.ts`) · the Get started checklist · the ring and its hover card. |
+| `gcPlans.ts` · `gcStart.ts` · `gcProgress.ts` | Plans, sheets (what each set took out, `sheetsGoneAtRev`; a pasted index against ours, `indexDiff`; what a note takes out, `takenOutInText`), what a later set is called and who hears about it (tested in `gcPlans.test.ts`) · the Get started checklist · the ring and its hover card. |
 | `gcBids.ts` · `gcCustomers.ts` · `gcMap.ts` | Compare all in, what we carry, our price, bid tabs, statement-of-work money · the company window's summaries · towns, the drive and the map's list. |
 | `gcFollowUp.ts` · `gcBench.ts` | Promised days, word records, who to call first · the bench by trade and Actions for assistants. |
-| `gcNewProject.ts` · `gcNewProject.test.ts` | New Project: the sheet index read from a paste, the trades guessed from the sheets (a later set uses the same guess, `packagesForSheets`), each trade's usual scope and each line's sheets (`guessLineSheets`, `lineSheets`, `linesOnSheets`), the project manual read from a paste with each section's trade and each line's sections (`specIndexInText`, `tradeForSpec`, `tradesForPlans`, `guessLineSpecs`), the sections a later set names and what they reach (`specsInText`, `specsAtRev`, `packagesForSpecs`, `linesOnPlans`), the project made from the draft (`createProject`), trades a later set brings · its kernel test. |
+| `gcNewProject.ts` · `gcNewProject.test.ts` | New Project: the sheet index read from a paste, the trades guessed from the sheets (a later set uses the same guess, `packagesForSheets`), each trade's usual scope and each line's sheets (`guessLineSheets`, `lineSheets`, `linesOnSheets`), the project manual read from a paste with each section's trade and each line's sections (`specIndexInText`, `tradeForSpec`, `tradesForPlans`, `guessLineSpecs`), the sections a later set names and what they reach (`specsInText`, `specsAtRev`, `packagesForSpecs`, `linesOnPlans`), what a whole new set leaves behind and the made-up reissues to try it (`linesLeftBehind`, `withRetiedLines`, `sampleReissue`, `sampleReissueSpecs`), the project made from the draft (`createProject`), trades a later set brings · its kernel test. |
 | `gcPortalI18n.ts` · `gcPortalI18n.test.ts` | Every word of the trade's portal in English and Spanish, the Spanish dates, and the test that both languages carry the same blanks |
 | `gcPortal.ts` · `gcPortal.test.ts` | What the portal tells one company: its home (every ask sorted into bidding, jobs and before, what needs it in order, its money), plan news for its trade, its promised day, its insurance, the lines the office could not read, each line's sheets and what a newer set changed (`portalLines`, on `lineReads`) · its kernel test. |
 | `gcReducer.ts` · `gcReducerHelpers.ts` · `gcFixture.ts` | Every action applied to the state · its small helpers (not in the barrel) · the made-up data (`initialGcState`). |
@@ -629,7 +646,7 @@ imitates it.
 | `GcNewPlans.tsx` | The new-set-of-plans window: its name, the sheets and sections and their titles, a trade it brings, who hears, the email; and the Plans tab's two doors (`GcPlansDoors`), gone on a lost bid |
 | `GcNewProject.tsx` | The New project window and its **+ New project** button |
 | `GcBuildingPayApp.tsx` · `src/lib/gcMode/gcBuilding.ts` · `gcBuildingWords.ts` | The pay application window (progress and final), its door in the portal (which turns into the trade's closeout list) and its read-only view from Draws · the 702 and 703 numbers, the four steps, retainage held and each trade's closeout (tested in `gcBuilding.test.ts`) · its words in English and Spanish (tested in `gcBuildingWords.test.ts`) |
-| `GcOwnerBillingTab.tsx` · `GcOwnerBillingPortal.tsx` · `GcOwnerBillingArchitect.tsx` · `GcOwnerBillingChangeOrders.tsx` · `GcOwnerBillingPayApp.tsx` · `GcOwnerBillingCash.tsx` · `src/lib/gcMode/gcOwnerBilling.ts` | Bill the owner: the owner's lines, the draft pay application, the ones sent and paid · what the owner sees · the lines and the 702 math, `ownerAccount`, our waivers and the trades' (tested in `gcOwnerBilling.test.ts`) |
+| `GcOwnerBillingTab.tsx` · `GcOwnerBillingPortal.tsx` · `GcOwnerBillingArchitect.tsx` · `GcOwnerBillingChangeOrders.tsx` · `GcOwnerBillingPayApp.tsx` · `GcOwnerBillingCash.tsx` · `GcOwnerBillingMoney.tsx` · `GcOwnerBillingAhead.tsx` · `src/lib/gcMode/gcOwnerBilling.ts` · `src/lib/gcMode/gcOwnerBillingAhead.ts` | Bill the owner: the owner's lines, the draft pay application, the ones sent and paid · what the owner sees · the lines and the 702 math, `ownerAccount`, our waivers and the trades' (tested in `gcOwnerBilling.test.ts`) |
 | `GcCloseout.tsx` | The Closeout tab |
 | `GcBuildingPunch.tsx` · `src/lib/gcMode/gcBuildingPunch.ts` | The punch list on Closeout and in the trade's portal · its counts and states (tested in `gcBuildingPunch.test.ts`) |
 | `GcBuildingSchedule.tsx` · `src/lib/gcMode/gcBuildingSchedule.ts` | The Schedule tab · its rows, the four measures and the look-ahead (tested in `gcBuildingSchedule.test.ts`) |
@@ -767,6 +784,11 @@ follow the plain-words rules; the prototype's own words were written to them as 
   Issue, open the plans, press **Specs**: 09 91 23 is stamped "Revised by Addendum 1", 09 30 13
   "Added by Addendum 1", and the Bid set shows 25 sections. Mark Pad B lost: its Plans tab says
   "We lost this bid. Nothing goes out."
+- **A whole new set**: on that project pick **Permit set**, press **Paste a made-up new index** and
+  **Paste a made-up new table of contents**: 2 new, 1 gone, 1 renamed; C-201 and 32 84 00 read
+  "taken out". Under Lines left with nothing to read, tie Clearing and grading to C-101. Issue with
+  no note. The plans window lists C-201 under Taken out, crossed out, and C-101 now carries
+  Clearing and grading.
 
 ## Where it stands
 
