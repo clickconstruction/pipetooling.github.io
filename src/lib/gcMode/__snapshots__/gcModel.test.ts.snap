@@ -8553,11 +8553,53 @@ exports[`GC mode golden walk > step 162: Cool Breeze asks for pay application 2,
 }
 `;
 
-exports[`GC mode golden walk > step 163: Fair Oaks D: Cool Breeze sends its schedule of values 1`] = `
+exports[`GC mode golden walk > step 163: Fair Oaks D: retainage drops to 5% on the work after half done 1`] = `
 {
   "changed": {
     "lastLog.id": 159,
+    "lastLog.text": "On Fair Oaks Shops, Building D, Cibolo Creek Partners now holds 10% until the work is half done, then 5% on the rest.",
+    "lastLog.who": "office",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 164: Fair Oaks D: Cibolo pays 1.5% a month on a late bill 1`] = `
+{
+  "changed": {
+    "lastLog.id": 160,
+    "lastLog.text": "On Fair Oaks Shops, Building D, Cibolo Creek Partners pays 1.5% a month on a late bill.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 165: Bill Cibolo the interest on pay application 3 1`] = `
+{
+  "changed": {
+    "lastLog.id": 161,
+    "lastLog.text": "Sent Cibolo Creek Partners interest bill 1 on Fair Oaks Shops, Building D: $285 on late bills.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 166: Cibolo pays the interest bill 1`] = `
+{
+  "changed": {
+    "lastLog.id": 162,
+    "lastLog.text": "Cibolo Creek Partners paid interest bill 1: $285.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 167: Fair Oaks D: Cool Breeze sends its schedule of values 1`] = `
+{
+  "changed": {
+    "lastLog.id": 163,
     "lastLog.text": "Cool Breeze Mechanical sent its schedule of values for HVAC on Fair Oaks Shops, Building D: 3 lines, $158,000.",
+    "lastLog.who": "trade",
   },
   "removed": [],
 }
@@ -8763,9 +8805,29 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
-      "id": 159,
+      "id": 163,
       "text": "Cool Breeze Mechanical sent its schedule of values for HVAC on Fair Oaks Shops, Building D: 3 lines, $158,000.",
       "who": "trade",
+    },
+    {
+      "id": 162,
+      "text": "Cibolo Creek Partners paid interest bill 1: $285.",
+      "who": "office",
+    },
+    {
+      "id": 161,
+      "text": "Sent Cibolo Creek Partners interest bill 1 on Fair Oaks Shops, Building D: $285 on late bills.",
+      "who": "office",
+    },
+    {
+      "id": 160,
+      "text": "On Fair Oaks Shops, Building D, Cibolo Creek Partners pays 1.5% a month on a late bill.",
+      "who": "office",
+    },
+    {
+      "id": 159,
+      "text": "On Fair Oaks Shops, Building D, Cibolo Creek Partners now holds 10% until the work is half done, then 5% on the rest.",
+      "who": "office",
     },
     {
       "id": 158,
@@ -8890,26 +8952,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
     {
       "id": 134,
       "text": "Issued Addendum 1 on Leon Springs Urgent Care and emailed 0 companies. 0 were told it changes their trade. It adds 1 scope line.",
-      "who": "office",
-    },
-    {
-      "id": 133,
-      "text": "Accepted the Concrete work from Guadalupe Flatwork. The punch list is done.",
-      "who": "office",
-    },
-    {
-      "id": 132,
-      "text": "Our superintendent checked a punch item on Concrete: Grind the trip edge at the sidewalk joint. It is fixed.",
-      "who": "office",
-    },
-    {
-      "id": 131,
-      "text": "Our superintendent checked a punch item on Concrete: Seal the control joints in the stockroom slab. It is fixed.",
-      "who": "office",
-    },
-    {
-      "id": 130,
-      "text": "Our superintendent checked a punch item on Concrete: Patch the spalled corner on the column footing. It is fixed.",
       "who": "office",
     },
   ],
@@ -12308,6 +12350,14 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "owner": "Cibolo Creek Partners",
       "ownerBilling": {
         "billed": 956327.91,
+        "interestBills": [
+          {
+            "amount": 284.92,
+            "number": 1,
+            "paidOn": "2026-10-02",
+            "sentOn": "2026-10-02",
+          },
+        ],
         "paid": 571816.61,
         "payApps": [
           {
@@ -12411,6 +12461,14 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
         "fsite": 168000,
         "fsteel": 186000,
         "gc": 96000,
+      },
+      "ownerLateInterest": {
+        "pctPerMonth": 1.5,
+      },
+      "ownerRetainageStep": {
+        "atPct": 50,
+        "toPct": 5,
+        "way": "after",
       },
       "packages": [
         {

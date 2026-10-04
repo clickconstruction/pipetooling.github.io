@@ -1,12 +1,15 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
+import { GcPayAppNotary } from './GcPayAppNotary'
 import {
   GC_COMPANY_NAME,
   money,
   ownerPayAppForm,
+  ownerPayAppParties,
   shortDate,
   type GcProject,
   type GcState,
 } from '../../lib/gcMode/gcModel'
+import { downloadPayAppExcel, downloadPayAppPdf } from '../../lib/gcMode/gcPayAppFile'
 
 /**
  * GC mode design spike: our pay application to the owner as the form they, their architect and a
@@ -61,6 +64,8 @@ export function OwnerPayAppWindow({
   onClose: () => void
 }) {
   const [page, setPage] = useState<Page>('g702')
+  const [saving, setSaving] = useState<'xlsx' | 'pdf' | null>(null)
+  const [saveError, setSaveError] = useState('')
   useEffect(() => {
     // Escape closes this window only. It can sit over another window (the owner's portal opened
     // from the company window), so it takes Escape first and stops it there.
@@ -80,6 +85,25 @@ export function OwnerPayAppWindow({
   const draft = form.sentOn === null
   const name = app.final ? 'Final pay application' : `Pay application ${app.number}`
   const waiver = app.final ? 'conditional waiver on final payment' : 'conditional waiver on progress payment'
+  const parties = ownerPayAppParties(state, project, form)
+  const download = (kind: 'xlsx' | 'pdf') => {
+    setSaving(kind)
+    setSaveError('')
+    ;(kind === 'xlsx' ? downloadPayAppExcel(app, parties) : downloadPayAppPdf(app, parties))
+      .catch((e: unknown) => setSaveError(e instanceof Error ? e.message : 'The file could not be made.'))
+      .finally(() => setSaving(null))
+  }
+  const fileButton = (kind: 'xlsx' | 'pdf', words: string) => (
+    <button
+      type="button"
+      onClick={() => download(kind)}
+      disabled={saving !== null}
+      title={kind === 'xlsx' ? 'The AIA template the Jobs Stages tab fills, with every line' : 'The 702 and 703 as a PDF, with the notary block'}
+      style={{ border: 'none', background: 'transparent', color: 'var(--text-link)', cursor: saving ? 'wait' : 'pointer', padding: '0.2rem 0.3rem', fontSize: '0.8rem', fontWeight: 600 }}
+    >
+      {saving === kind ? 'Making it…' : words}
+    </button>
+  )
 
   const tab = (p: Page, words: string) => (
     <button
@@ -136,6 +160,8 @@ export function OwnerPayAppWindow({
             {project.name} · {draft ? `a draft, for ${shortDate(form.periodTo)}` : `sent ${shortDate(form.sentOn)}`}
           </span>
           <span style={{ flex: 1 }} />
+          {fileButton('xlsx', '⤓ Excel')}
+          {fileButton('pdf', '⤓ PDF')}
           {tab('g702', 'Page 1 · 702')}
           {tab('g703', 'Page 2 · 703')}
           <button
@@ -147,6 +173,7 @@ export function OwnerPayAppWindow({
             ×
           </button>
         </div>
+        {saveError && <div style={{ color: 'var(--text-red-700)', fontSize: '0.8rem', marginBottom: '0.5rem' }}>{saveError}</div>}
 
         <div
           style={{
@@ -206,7 +233,7 @@ export function OwnerPayAppWindow({
               {line('2', 'Net change by change orders', money(s.changeOrders))}
               {line('3', 'Contract sum to date', money(s.sumToDate))}
               {line('4', 'Total completed and stored to date, from the 703', money(s.completedToDate))}
-              {line('5', app.final ? 'Retainage, released on this final application' : `Retainage, ${s.retainagePct}% of completed work`, money(s.retainage))}
+              {line('5', app.final ? 'Retainage, released on this final application' : form.retainageWords ? `Retainage, ${form.retainageWords}` : `Retainage, ${s.retainagePct}% of completed work`, money(s.retainage))}
               {line('6', 'Total earned less retainage', money(s.earnedLessRetainage))}
               {line('7', 'Less previous certificates for payment', money(s.previousCertificates))}
               {line('8', 'Current payment due', money(s.currentDue), true)}
@@ -234,6 +261,7 @@ export function OwnerPayAppWindow({
                 <div style={{ ...label, marginTop: '0.2rem' }}>
                   {draft ? 'Signed for the contractor when it goes' : `Signed for ${GC_COMPANY_NAME}`}
                 </div>
+                <GcPayAppNotary />
               </div>
 
               <div style={{ marginTop: '1rem', paddingTop: '0.6rem', borderTop: '1px solid var(--border-strong)' }}>

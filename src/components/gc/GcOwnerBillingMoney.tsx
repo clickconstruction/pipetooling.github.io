@@ -1,7 +1,7 @@
 import { useMatchMedia } from '../../hooks/useMatchMedia'
 import { GcOwnerBillingAhead } from './GcOwnerBillingAhead'
 import { Btn, Card, Chip, Stat, Why, num, td, th } from './gcUi'
-import { allJobsMoney, money, shortDate, type GcState, type JobMoney, type OwedBill } from '../../lib/gcMode/gcModel'
+import { allJobsMoney, money, ownerInterestOnBill, shortDate, type GcState, type JobMoney, type OwedBill } from '../../lib/gcMode/gcModel'
 
 /**
  * GC mode design spike: money across every job that is ours (buying out or building). What the
@@ -48,7 +48,7 @@ export function GcOwnerBillingMoney({ state, onOpenBill }: { state: GcState; onO
         ) : (
           <div style={{ display: 'grid' }}>
             {m.owed.map((b) => (
-              <OwedRow key={`${b.project.id}-${b.app.number}`} bill={b} onOpen={() => onOpenBill(b.project.id)} />
+              <OwedRow key={`${b.project.id}-${b.app.number}`} state={state} bill={b} onOpen={() => onOpenBill(b.project.id)} />
             ))}
           </div>
         )}
@@ -142,8 +142,10 @@ function JobBlock({ job, onOpen }: { job: JobMoney; onOpen: () => void }) {
   )
 }
 
-function OwedRow({ bill, onOpen }: { bill: OwedBill; onOpen: () => void }) {
+function OwedRow({ state, bill, onOpen }: { state: GcState; bill: OwedBill; onOpen: () => void }) {
   const { project, app, open, due } = bill
+  const pct = project.ownerLateInterest?.pctPerMonth
+  const interest = pct ? ownerInterestOnBill(state, project, app, pct) : null
   const status = bill.waitingOnArchitect
     ? { tone: 'amber' as const, words: `waiting on ${project.architect} to certify` }
     : due.daysLate > 0
@@ -171,6 +173,7 @@ function OwedRow({ bill, onOpen }: { bill: OwedBill; onOpen: () => void }) {
       </span>
       <Chip tone={status.tone}>{status.words}</Chip>
       {due.missed > 0 && <Chip tone="red">{due.missed === 1 ? 'missed a day before' : `missed ${due.missed} days before`}</Chip>}
+      {interest && Math.round(interest.amount) > 0 && <Chip tone="amber">{`+${money(interest.amount)} interest`}</Chip>}
       <span style={{ flex: 1 }} />
       <strong style={{ fontVariantNumeric: 'tabular-nums' }}>{money(open)}</strong>
       <Btn kind="quiet" onClick={onOpen}>

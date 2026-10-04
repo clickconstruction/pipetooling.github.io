@@ -6,11 +6,13 @@
  * The math is the AIA pay application's (G702 on top, G703 the lines), said in plain words: work
  * done so far, less what the owner holds, less what we billed before, is this bill.
  */
-import type { ChangeOrder, GcCustomer, GcProject, GcState, OwnerPayAppSent, TradePackage } from './gcTypes'
+import type { ChangeOrder, GcCustomer, GcProject, GcState, OwnerPayAppSent, OwnerRetainageStep, TradePackage } from './gcTypes'
 import { carriedAmount, proposalTotals } from './gcBids'
 import { partnerById } from './gcLookups'
 import { changeOrderTradePct, ownCrewWork, retainageHeldNow, tradeCloseout, type PayApplication, type PayAppLine } from './gcBuilding'
 import { daysUntil, money, shortDate } from './gcWords'
+import type { PayAppParties } from './gcPayAppFile'
+import { GC_COMPANY } from './gcFixture'
 
 /** We bill the owner once a month (the owner's call, 2026-10-02). The day of the month is my default. */
 export const OWNER_BILL_DAY = 25
@@ -59,9 +61,14 @@ export interface OwnerPayApp {
   doneToDate: number
   /** 0 to 1: the share of the trades' work done. Our own costs and fee follow it. */
   tradeShare: number
+  /** The owner's full percent. With a step, they hold less once the work is far enough along. */
   retainagePct: number
+  /** The step we chose for this job, if any. */
+  retainageStep?: OwnerRetainageStep
   /** What the owner holds back on the work done so far. */
   retainage: number
+  /** What they held after the last pay application: this bill's retainage less this is what it adds to the holding. */
+  retainageBefore: number
   /** What earlier pay applications asked the owner to pay, added up. */
   askedBefore: number
   /** What this bill asks the owner to pay now. */
@@ -237,7 +244,8 @@ export function ownerPayApp(state: GcState, project: GcProject): OwnerPayApp {
   const changeOrdersTotal = lines.filter((l) => l.kind === 'changeOrder').reduce((s, l) => s + l.worth, 0)
   const doneToDate = lines.reduce((s, l) => s + l.doneToDate, 0)
   const retainagePct = customer?.retainagePct ?? OWNER_RETAINAGE_DEFAULT_PCT
-  const retainage = (doneToDate * retainagePct) / 100
+  const retainageStep = project.ownerRetainageStep
+  const retainage = ownerRetainageOn(retainagePct, retainageStep, doneToDate, contract)
   // Earlier certificates, not what we asked: what the architect cut comes back on this bill.
   const askedBefore = sent.reduce((s, a) => s + appClaimed(a), 0)
   const billOn = last ? nextOwnerBillDay(addDays(last.periodTo, 1)) : nextOwnerBillDay(state.today)
@@ -252,7 +260,9 @@ export function ownerPayApp(state: GcState, project: GcProject): OwnerPayApp {
     doneToDate,
     tradeShare,
     retainagePct,
+    ...(retainageStep ? { retainageStep } : {}),
     retainage,
+    retainageBefore: last?.retainage ?? 0,
     askedBefore,
     due: doneToDate - retainage - askedBefore,
     leftToBill: contract - doneToDate + retainage,
@@ -260,10 +270,31 @@ export function ownerPayApp(state: GcState, project: GcProject): OwnerPayApp {
   }
 }
 
+/**
+ * What the owner holds on `done` of work against our price `contract`: their full percent, or with a
+ * step, the full percent until the work is that far along, then the lower one (on the rest, or on
+ * all of it).
+ */
+export function ownerRetainageOn(pct: number, step: OwnerRetainageStep | undefined, done: number, contract: number): number {
+  if (!step || contract <= 0) return (done * pct) / 100
+  const at = (contract * step.atPct) / 100
+  if (done <= at + 0.005) return (done * pct) / 100
+  return step.way === 'all' ? (done * step.toPct) / 100 : (at * pct) / 100 + ((done - at) * step.toPct) / 100
+}
+
+/** "10% until the end", or "10% until the work is 50% done, then 5% on the rest". */
+export function ownerRetainageWords(pct: number, step: OwnerRetainageStep | undefined): string {
+  if (!step) return `${pct}% of every bill until the end`
+  const at = step.atPct === 50 ? 'half done' : `${step.atPct}% done`
+  return `${pct}% until the work is ${at}, then ${step.toPct}% ${step.way === 'all' ? 'on all of it' : 'on the rest'}`
+}
+
 /** What a draft asks for beyond this month's work: what the architect left out of earlier certificates. */
 export function ownerCarriedForward(app: OwnerPayApp): number {
+  // This month's work, less what it adds to the holding (a drop in retainage gives some back):
+  // anything the bill asks beyond that is what the architect left out before.
   const thisMonth = app.lines.reduce((t, l) => t + l.thisMonth, 0)
-  const carried = app.due - (thisMonth * (100 - app.retainagePct)) / 100
+  const carried = app.due - (thisMonth - (app.retainage - app.retainageBefore))
   return carried > 0.5 ? carried : 0
 }
 
@@ -283,6 +314,7 @@ export function ownerPayAppToSend(app: OwnerPayApp, today: string): OwnerPayAppS
     workToDate: app.doneToDate,
     retainagePct: app.retainagePct,
     retainage: app.retainage,
+    ...(app.retainageStep ? { retainageStep: app.retainageStep } : {}),
     due: app.due,
     paidOn: null,
     certified: null,
@@ -790,6 +822,34 @@ export interface OwnerPayAppForm {
   changeOrders: { number: number; description: string; price: number }[]
   /** The architect's certificate: the amount, the day, why less. Null amount: not certified yet. */
   certificate: { amount: number | null; on: string | null; note: string }
+  /** Line 5's words when the retainage drops partway ("10% until the work is half done, then 5% on the rest"). Null: a plain percent. */
+  retainageWords: string | null
+}
+
+/**
+ * Who and what our pay application is for, beside its numbers: the owner, us, the architect, the
+ * dates, and the change orders on it with whether each was signed since the last bill. For the
+ * Excel and PDF (`gcPayAppFile.ts`, question 12).
+ */
+export function ownerPayAppParties(state: GcState, project: GcProject, form: OwnerPayAppForm): PayAppParties {
+  const customer = customerOf(state, project)
+  const before = ownerPayAppsSent(project)
+    .filter((a) => a.number < form.app.number)
+    .reduce((last, a) => (a.periodTo > last ? a.periodTo : last), '')
+  const thisPeriod = (on: string | null) => on !== null && on > before && on <= form.periodTo
+  const signed = new Map(signedChangeOrders(project).map((co) => [co.number, co]))
+  return {
+    project: project.name,
+    applicationNo: form.app.final ? `${form.app.number}, final` : String(form.app.number),
+    periodTo: form.periodTo,
+    sentOn: form.sentOn,
+    contractDate: form.contractDate,
+    to: { name: project.owner, address: customer?.address ?? '' },
+    from: { name: GC_COMPANY.name, address: GC_COMPANY.address },
+    architect: project.architect || null,
+    changeOrders: form.changeOrders.map((c) => ({ amount: c.price, thisPeriod: thisPeriod(signed.get(c.number)?.answeredOn ?? null) })),
+    retainageWords: form.retainageWords,
+  }
 }
 
 /** Our pay application number `which` as the form, or the next one as a draft. Null: no such bill. */
@@ -800,7 +860,11 @@ export function ownerPayAppForm(state: GcState, project: GcProject, which: numbe
   if (which !== 'draft' && !record) return null
   const final = record?.final === true
   const retainagePct = record ? record.retainagePct : draft.retainagePct
+  const step = record ? record.retainageStep : draft.retainageStep
   const rows = spreadMarkup(record ? sentPayAppLines(state, project, record.number) : draft.lines)
+  // With a step, each line holds its share of what the owner holds on the whole.
+  const work = rows.reduce((s, l) => s + l.doneToDate, 0)
+  const rate = step && work > 0 ? (record ? record.retainage : draft.retainage) / work : retainagePct / 100
   const lines: PayAppLine[] = rows.map((l, i) => ({
     item: i + 1,
     sovId: l.id,
@@ -813,7 +877,7 @@ export function ownerPayAppForm(state: GcState, project: GcProject, which: numbe
     pct: l.worth === 0 ? 0 : Math.round((l.doneToDate / l.worth) * 100),
     // A line done in full can land a hair under zero from the spread's arithmetic: it reads $0.
     balance: Math.abs(l.worth - l.doneToDate) < 0.005 ? 0 : l.worth - l.doneToDate,
-    retainage: final ? 0 : (l.doneToDate * retainagePct) / 100,
+    retainage: final ? 0 : step ? l.doneToDate * rate : (l.doneToDate * retainagePct) / 100,
   }))
   const sum = (key: 'scheduled' | 'fromPrevious' | 'thisPeriod' | 'toDate' | 'balance' | 'retainage') => lines.reduce((s, l) => s + l[key], 0)
   const scheduled = sum('scheduled')
@@ -859,6 +923,7 @@ export function ownerPayAppForm(state: GcState, project: GcProject, which: numbe
       on: record?.certifiedOn ?? null,
       note: record?.certifiedNote ?? '',
     },
+    retainageWords: step ? ownerRetainageWords(retainagePct, step) : null,
     changeOrders: lines
       .filter((l) => isChangeOrderLineId(l.sovId))
       .flatMap((l) => {
@@ -905,8 +970,9 @@ export interface ProjectCash {
 export function projectCash(state: GcState, project: GcProject): ProjectCash {
   const account = ownerAccount(project)
   const made = project.ownerBilling
+  const interestPaid = (made?.interestBills ?? []).filter((b) => b.paidOn !== null).reduce((t, b) => t + b.amount, 0)
   const owner = account
-    ? { paid: account.paid, owed: account.owed, held: account.retainageHeld, waitingOnArchitect: account.waitingOnArchitect }
+    ? { paid: account.paid + interestPaid, owed: account.owed, held: account.retainageHeld, waitingOnArchitect: account.waitingOnArchitect }
     : made
       ? { paid: made.paid, owed: made.billed - made.retainageHeld - made.paid, held: made.retainageHeld, waitingOnArchitect: 0 }
       : { paid: 0, owed: 0, held: 0, waitingOnArchitect: 0 }

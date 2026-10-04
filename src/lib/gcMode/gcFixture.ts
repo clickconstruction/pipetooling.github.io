@@ -1419,6 +1419,8 @@ export const GC_COMPANY = {
   shortName: 'Click',
   /** Our estimators: any of them can award a trade and mark it on the bid tab (the owner, 2026-10-04, question 7). Made up. */
   estimators: ['Rosa Treviño', 'Ben Alvarez'],
+  /** Made up, for the pay application's "from the contractor". */
+  address: '1200 Commerce St, San Antonio, TX 78205',
   /** Who a trade calls about pay and paperwork. Made up: 555 numbers and an .example address. */
   pay: { name: 'Accounts payable', phone: '(210) 555-0104', email: 'pay@clickconstruction.example' },
 }
