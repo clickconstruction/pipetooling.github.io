@@ -284,7 +284,7 @@ show the property's owner when different. The words are in README.md, *Words: cu
 **Each lane changes the words in its own files** (screens, walkthroughs, help, log lines, Spanish);
 code names stay. Golden moves on words are each lane's own, under its standing OK.
 
-- **Board (GC 0):** the stage names, Bill the customer's tab name, Our number, the ring's words, the
+- ~~**Board (GC 0):**~~ done b5c64d8bd. the stage names, Bill the customer's tab name, Our number, the ring's words, the
   company window, Lost and Closed, Bid tabs, New here? and Walk me through this job.
 - **New Project (GC 2):** step 1's *We work for*: the owner, another general contractor, an owner's
   rep (`GcProject.customerRole`); not the owner shows *Owner of the property* on its own. Then its own
