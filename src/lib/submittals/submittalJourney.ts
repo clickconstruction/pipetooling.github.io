@@ -142,6 +142,27 @@ export function submittalJourney(input: SubmittalJourneyInput): SubmittalJourney
   if (rev.status === 'draft') {
     // A built package is done whatever the rows still owe (v2.4169): the pill says so, and the New revision door reads it.
     if (rev.packageBuilt) status.package = 'done'
+    // 2026-10-03 · answers typed on a draft. The estimator emails the package and records what came back, so the
+    // revision never reads shared. The strip read answers only on a shared revision: on BP375 it pointed at six
+    // cut sheets while four rows were sent back, with Their call and Resubmit grey. Now the answers light those
+    // steps, and rows sent back are the next thing to do. Share stays as it is: nothing was shared from the app.
+    const typed = input.decisions && input.decisions.decided > 0 ? input.decisions : null
+    if (typed && rev.rows > 0) {
+      const stillOwes = rev.owesReason + rev.sheetsNeeded > 0
+      const waiting = typed.noAnswer ?? typed.open
+      status.review = waiting > 0 ? 'waiting' : 'done'
+      if (typed.sentBack > 0) {
+        status.rows = stillOwes ? 'current' : 'done'
+        status.resubmit = 'current'
+        return finish(sentBackNext(rev.number, typed))
+      }
+      if (waiting === 0) {
+        status.rows = stillOwes ? 'current' : 'done'
+        status.resubmit = 'done'
+        return finish({ kind: 'done', text: `${nameOf(typed)} approved every row. Next is the order log, Step 8.`, action: null, actionLabel: null })
+      }
+      // Some approved, the rest still with the GC: the draft's own next thing stands, with Their call lit as waiting.
+    }
     if (rev.rows === 0) {
       status.rows = 'current'
       return finish({ kind: 'next', text: 'This version has no rows. Pick a house for each part on Pricing. Then tap Rebuild rows from picks.', action: 'open_pricing', actionLabel: 'The picks on Pricing' })
@@ -182,18 +203,10 @@ export function submittalJourney(input: SubmittalJourneyInput): SubmittalJourney
     return finish({ kind: 'waiting', text: `Rev ${rev.number} is with the GC. The link was opened ${room.opens} time${room.opens === 1 ? '' : 's'}.${who} Their answers show up on the rows here.`, action: 'copy_room_link', actionLabel: 'Copy the room link' })
   }
   status.review = 'done'
-  const by = d.byName.length > 0 ? d.byName.join(', ') : 'The reviewer'
+  const by = nameOf(d)
   if (d.sentBack > 0) {
     status.resubmit = 'current'
-    const waiting = d.noAnswer ?? 0
-    return finish({
-      kind: 'next',
-      text: waiting > 0
-        ? `${by} approved ${d.approved} and sent ${d.sentBack} back. ${plural(waiting, 'row')} still ${waiting === 1 ? 'has' : 'have'} no answer. Fix what was sent back. Then tap the green button. The rows with no answer go on the new version too.`
-        : `${by} approved ${d.approved} and sent ${d.sentBack} back. Fix ${d.sentBack === 1 ? 'that row' : 'those rows'}. Then tap the green button to start a new version with only ${d.sentBack === 1 ? 'that row' : 'those rows'}.`,
-      action: 'resubmit',
-      actionLabel: resubmitLabel(rev.number + 1, d.sentBack, waiting),
-    })
+    return finish(sentBackNext(rev.number, d))
   }
   if (d.open > 0) {
     status.review = 'waiting'
@@ -201,6 +214,26 @@ export function submittalJourney(input: SubmittalJourneyInput): SubmittalJourney
   }
   status.resubmit = 'done'
   return finish({ kind: 'done', text: `${by} approved every row. Next is the order log, Step 8.`, action: null, actionLabel: null })
+}
+
+type Decisions = NonNullable<SubmittalJourneyInput['decisions']>
+
+const nameOf = (d: Decisions) => (d.byName.length > 0 ? d.byName.join(', ') : 'The reviewer')
+
+/** Rows came back marked Revise or Reject: fix them, then the green button. The same on a shared revision and on a draft answered by email. */
+function sentBackNext(revNumber: number, d: Decisions): JourneyNext {
+  const by = nameOf(d)
+  const waiting = d.noAnswer ?? 0
+  // "approved 0 and sent 4 back" read oddly: with nothing approved, say what came back.
+  const said = d.approved > 0 ? `${by} approved ${d.approved} and sent ${d.sentBack} back` : `${by} sent ${plural(d.sentBack, 'row')} back`
+  return {
+    kind: 'next',
+    text: waiting > 0
+      ? `${said}. ${plural(waiting, 'row')} still ${waiting === 1 ? 'has' : 'have'} no answer. Fix what was sent back. Then tap the green button. The rows with no answer go on the new version too.`
+      : `${said}. Fix ${d.sentBack === 1 ? 'that row' : 'those rows'}. Then tap the green button to start a new version with only ${d.sentBack === 1 ? 'that row' : 'those rows'}.`,
+    action: 'resubmit',
+    actionLabel: resubmitLabel(revNumber + 1, d.sentBack, waiting),
+  }
 }
 
 /**
@@ -242,6 +275,7 @@ export function stageGate(stages: JourneyStage[], key: 'package' | 'share' | 're
       return status('share') !== 'later' ? { on: true, why: null } : { on: false, why: 'Share turns on once the package is built.' }
     case 'resubmit':
       // Past building: a shared revision, or a draft whose package is built (v2.4090's supersede-the-draft path stays reachable there).
-      return status('share') === 'done' || status('package') === 'done' ? { on: true, why: null } : { on: false, why: 'New revision turns on once the package is built.' }
+      // 2026-10-03 · or a draft the GC has already answered by email: it is past building too.
+      return status('share') === 'done' || status('package') === 'done' || status('review') !== 'later' ? { on: true, why: null } : { on: false, why: 'New revision turns on once the package is built.' }
   }
 }
