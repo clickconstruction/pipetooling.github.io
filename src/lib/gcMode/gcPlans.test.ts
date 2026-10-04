@@ -6,6 +6,12 @@ import {
   currentRev,
   indexDiff,
   linesATradeHears,
+  missedMandatoryPreBid,
+  preBidInviteEmail,
+  preBidInvited,
+  preBidMinutesLine,
+  preBidWords,
+  timeWords,
   linesOnSheets,
   ourPeople,
   sheetsGoneAtRev,
@@ -652,5 +658,64 @@ describe('the lines a set names to a trade, read the way its portal reads them',
     const tied = { ...elec, scope: elec.scope.map((l) => (l.label === 'Lighting' ? { ...l, sheets: ['E-101'] } : l)) }
     expect(linesATradeHears(boerne, tied, ['E-201'], []).map((l) => l.label)).not.toContain('Lighting')
     expect(linesATradeHears(boerne, tied, ['E-101'], []).map((l) => l.label)).toContain('Lighting')
+  })
+})
+
+describe('the pre-bid meeting', () => {
+  const set = gcReducer(state, { type: 'schedulePreBid', projectId: 'boerne', on: '2026-10-04', at: '10:00', place: 'the site, 1420 River Rd, Boerne', host: 'architect', mandatory: true })
+  const boerne = () => {
+    const p = set.projects.find((x) => x.id === 'boerne')
+    if (!p) throw new Error('no Boerne')
+    return p
+  }
+
+  it('reads the time the way people say it', () => {
+    expect(timeWords('10:00')).toBe('10 AM')
+    expect(timeWords('14:30')).toBe('2:30 PM')
+    expect(timeWords('0:15')).toBe('12:15 AM')
+    expect(timeWords('noon')).toBe('noon')
+  })
+
+  it('sets the meeting while we bid, and says it in a line', () => {
+    expect(boerne().preBid).toEqual({ on: '2026-10-04', at: '10:00', place: 'the site, 1420 River Rd, Boerne', host: 'architect', mandatory: true, attended: null })
+    expect(preBidWords(boerne())).toBe('Marsh & Vale Architects\' pre-bid meeting Sun Oct 4 at 10 AM, at the site, 1420 River Rd, Boerne. Coming is required to quote.')
+    expect(set.log[0]?.text).toMatch(/^Set the pre-bid meeting on Boerne Retail Shell to Sun Oct 4 at 10 AM/)
+  })
+
+  it('refuses a meeting on a job we won or a bid we lost', () => {
+    expect(gcReducer(state, { type: 'schedulePreBid', projectId: 'helotes', on: '2026-10-04', at: '10:00', place: 'the site', host: 'us', mandatory: false })).toBe(state)
+    const lost = gcReducer(state, { type: 'markLost', projectId: 'boerne', why: 'price', wonBy: null, note: '' })
+    expect(gcReducer(lost, { type: 'schedulePreBid', projectId: 'boerne', on: '2026-10-04', at: '10:00', place: 'the site', host: 'us', mandatory: false })).toBe(lost)
+  })
+
+  it('invites every company still quoting, each once, and says what the invitation reads', () => {
+    const invited = preBidInvited(set, boerne())
+    expect(invited.length).toBeGreaterThan(3)
+    expect(new Set(invited.map((r) => r.partner.id)).size).toBe(invited.length)
+    const voltage = invited.find((r) => r.partner.id === 'voltage')
+    expect(voltage?.trades).toContain('Electrical')
+    const email = voltage ? preBidInviteEmail(boerne(), voltage.partner) : null
+    expect(email?.subject).toBe('Boerne Retail Shell: pre-bid meeting Sun Oct 4, required to quote')
+    expect(email?.body).toContain('Coming is required to quote this project.')
+  })
+
+  it('marks who came, flags who missed a meeting they had to come to, and writes the minutes once', () => {
+    const asked = gcReducer(set, { type: 'tradeAskQuestion', projectId: 'boerne', packageId: 'elec', partnerId: 'voltage', text: 'Is site lighting on the owner\'s meter?', sheets: ['E-101'], atPreBid: true })
+    expect(asked.projects.find((p) => p.id === 'boerne')?.questions.slice(-1)[0]?.atPreBid).toBe(true)
+    expect(preBidMinutesLine(asked, asked.projects.find((p) => p.id === 'boerne') ?? boerne())).toBeNull()
+    const held = gcReducer(asked, { type: 'recordPreBidAttendance', projectId: 'boerne', partnerIds: ['voltage', 'summit', 'voltage'] })
+    const p = held.projects.find((x) => x.id === 'boerne')
+    if (!p) throw new Error('no Boerne')
+    expect(p.preBid?.attended).toEqual(['voltage', 'summit'])
+    expect(missedMandatoryPreBid(held, p, 'voltage')).toBe(false)
+    expect(missedMandatoryPreBid(held, p, 'brightline')).toBe(true)
+    expect(preBidMinutesLine(held, p)).toBe(
+      'Pre-bid meeting minutes, Sun Oct 4 at 10 AM, the site, 1420 River Rd, Boerne: Voltage Brothers and Summit Roofing came. 1 question was raised. The answers are below.',
+    )
+    const carried = gcReducer(held, { type: 'issuePlanSet', projectId: 'boerne', label: 'Addendum 3', note: 'Minutes.', sheets: [], addedSheets: [], touches: [], recipients: [], newTrades: [], preBidMinutes: true })
+    const after = carried.projects.find((x) => x.id === 'boerne')
+    if (!after) throw new Error('no Boerne after')
+    expect(after.preBid?.minutesInSetRev).toBe(currentRev(after))
+    expect(preBidMinutesLine(carried, after)).toBeNull()
   })
 })

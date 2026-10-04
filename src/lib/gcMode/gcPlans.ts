@@ -269,3 +269,85 @@ export function plansReach(project: GcProject): { have: number; of: number } {
   const invites = project.packages.flatMap((p) => p.invites).filter((i) => i.status !== 'declined')
   return { have: invites.filter((i) => i.seenRev === rev).length, of: invites.length }
 }
+
+// ---------------------------------------------------------------------------------------------
+// The pre-bid meeting: who is invited, the meeting in words, who came, the minutes for the next set
+// ---------------------------------------------------------------------------------------------
+
+/** "10:00" reads "10 AM", "14:30" reads "2:30 PM". Anything else reads as typed. */
+export function timeWords(at: string): string {
+  const m = at.trim().match(/^(\d{1,2}):(\d{2})$/)
+  if (!m) return at.trim()
+  const h = Number(m[1])
+  const mins = m[2] ?? '00'
+  const half = h >= 12 ? 'PM' : 'AM'
+  const h12 = h % 12 === 0 ? 12 : h % 12
+  return mins === '00' ? `${h12} ${half}` : `${h12}:${mins} ${half}`
+}
+
+/** The companies asked to the pre-bid meeting: every company still quoting a trade, each once, with its trades. */
+export function preBidInvited(state: GcState, project: GcProject): { partner: Partner; trades: string[] }[] {
+  const out = new Map<string, { partner: Partner; trades: string[] }>()
+  for (const pkg of project.packages) {
+    if (pkg.selfPerform) continue
+    for (const inv of pkg.invites) {
+      if (inv.status === 'declined') continue
+      const partner = partnerById(state, inv.partnerId)
+      if (!partner) continue
+      const row = out.get(partner.id) ?? { partner, trades: [] }
+      if (!row.trades.includes(pkg.trade)) row.trades.push(pkg.trade)
+      out.set(partner.id, row)
+    }
+  }
+  return [...out.values()].sort((a, b) => a.partner.company.localeCompare(b.partner.company))
+}
+
+/** The meeting has been held: who came is recorded. */
+export function preBidHeld(project: GcProject): boolean {
+  return Boolean(project.preBid && project.preBid.attended !== null)
+}
+
+/** The meeting in a line: "Pre-bid meeting Tue Oct 6 at 10 AM, at the site. Coming is required to quote." */
+export function preBidWords(project: GcProject): string | null {
+  const m = project.preBid
+  if (!m) return null
+  const firm = project.architect.trim() || 'The architect'
+  const who = m.host === 'architect' ? `${firm}${firm.endsWith('s') ? "'" : "'s"} pre-bid meeting` : 'Our pre-bid walk'
+  return `${who} ${weekdayDate(m.on)} at ${timeWords(m.at)}, at ${m.place}.${m.mandatory ? ' Coming is required to quote.' : ''}`
+}
+
+/** A company that missed a pre-bid meeting it had to come to. Only once the meeting is held. */
+export function missedMandatoryPreBid(state: GcState, project: GcProject, partnerId: string): boolean {
+  const m = project.preBid
+  if (!m || !m.mandatory || m.attended === null || m.attended.includes(partnerId)) return false
+  return preBidInvited(state, project).some((r) => r.partner.id === partnerId)
+}
+
+/**
+ * The minutes the next set carries: when it was, who came, and how many questions were raised there.
+ * The answers themselves ride as every answer does (`answeredNotInSet`). Null until it is held, or
+ * once a set has carried them.
+ */
+export function preBidMinutesLine(state: GcState, project: GcProject): string | null {
+  const m = project.preBid
+  if (!m || m.attended === null || m.minutesInSetRev !== undefined) return null
+  const came = m.attended.map((id) => partnerById(state, id)?.company).filter((c): c is string => Boolean(c))
+  const raised = project.questions.filter((q) => q.atPreBid).length
+  const who = came.length === 0 ? 'No company came.' : `${andList(came)} came.`
+  const asked = raised === 0 ? '' : ` ${raised} ${raised === 1 ? 'question was' : 'questions were'} raised. The answers are below.`
+  return `Pre-bid meeting minutes, ${weekdayDate(m.on)} at ${timeWords(m.at)}, ${m.place}: ${who}${asked}`
+}
+
+/** The invitation a company gets: the day, the time, the place, and whether it has to come to quote. */
+export function preBidInviteEmail(project: GcProject, partner: Partner): { subject: string; body: string[] } {
+  const m = project.preBid
+  if (!m) return { subject: '', body: [] }
+  const body = [
+    `You are invited to the pre-bid meeting for ${project.name}.`,
+    `When: ${weekdayDate(m.on)} at ${timeWords(m.at)}.`,
+    `Where: ${m.place}.`,
+    m.mandatory ? 'Coming is required to quote this project.' : 'Coming is not required, but questions raised there are answered for every company quoting.',
+    `Bring your questions about the plans. ${partner.contact ? `See you there, ${partner.contact.split(' ')[0]}.` : ''}`.trim(),
+  ]
+  return { subject: `${project.name}: pre-bid meeting ${weekdayDate(m.on)}${m.mandatory ? ', required to quote' : ''}`, body }
+}

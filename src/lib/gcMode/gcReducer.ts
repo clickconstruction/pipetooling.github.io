@@ -5,7 +5,7 @@
 import type { AskContact, Draw, DrawSentBack, GcAction, GcState, SovLine, Invite, LookAheadMark, Partner, PlanQuestion, PlanSet, SubBid } from './gcTypes'
 import { money, shortDate, weekdayDate, daysUntil } from './gcWords'
 import { currentRev, partnerById, planLabel } from './gcLookups'
-import { planRecipients, questionRecipients, questionsOpen } from './gcPlans'
+import { planRecipients, questionRecipients, questionsOpen, timeWords } from './gcPlans'
 import { bidsIn } from './gcBids'
 import { awardedPartner, find, logged, mapInvite, mapPackage, mapProject, mapSow, sowFromBid } from './gcReducerHelpers'
 import { initialGcState } from './gcFixture'
@@ -671,6 +671,10 @@ function reduce(state: GcState, action: GcAction): GcState {
       const withTrades = {
         ...lined.project,
         packages: packagesAfter,
+        // A set can carry the pre-bid meeting's minutes, once, after the meeting is held.
+        ...(action.preBidMinutes && lined.project.preBid && lined.project.preBid.attended !== null && lined.project.preBid.minutesInSetRev === undefined
+          ? { preBid: { ...lined.project.preBid, minutesInSetRev: rev } }
+          : {}),
         ...(kept && push
           ? (() => {
               // The job's first dry-in work brings the Dry-in milestone with it, as the first draft would.
@@ -1333,9 +1337,14 @@ function reduce(state: GcState, action: GcAction): GcState {
         answeredOn: null,
         answer: null,
         ...(sheets.length > 0 ? { sheets } : {}),
+        ...(action.atPreBid ? { atPreBid: true } : {}),
       }
       const next = mapProject(state, project.id, (p) => ({ ...p, questions: [...p.questions, q] }))
-      return logged(next, 'trade', `${partner.company} asked about ${sheets.length > 0 ? sheets.join(', ') : `the ${pkg.trade.toLowerCase()} plans`}: ${text}`)
+      return logged(
+        next,
+        'trade',
+        `${partner.company} asked${action.atPreBid ? ' at the pre-bid meeting' : ''} about ${sheets.length > 0 ? sheets.join(', ') : `the ${pkg.trade.toLowerCase()} plans`}: ${text}`,
+      )
     }
 
     case 'sendQuestionToArchitect': {
@@ -1780,6 +1789,37 @@ function reduce(state: GcState, action: GcAction): GcState {
           ? `The contract with ${project.owner} has no late fee on ${project.name}.`
           : `The contract with ${project.owner} charges ${money(perDay)} a day for finishing ${project.name} late.`,
       )
+    }
+
+    case 'schedulePreBid': {
+      // The pre-bid meeting (the owner, 2026-10-04): set or moved while we bid, never on a bid we lost.
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const place = action.place.trim()
+      if (!project || project.stage !== 'pursuing' || project.lostOn || place === '' || !/^\d{4}-\d{2}-\d{2}$/.test(action.on) || action.at.trim() === '') return state
+      const was = project.preBid
+      const meeting = {
+        on: action.on,
+        at: action.at.trim(),
+        place,
+        host: action.host,
+        mandatory: action.mandatory,
+        attended: was?.attended ?? null,
+        ...(was?.minutesInSetRev !== undefined ? { minutesInSetRev: was.minutesInSetRev } : {}),
+      }
+      const next = mapProject(state, project.id, (p) => ({ ...p, preBid: meeting }))
+      return logged(
+        next,
+        'office',
+        `${was ? 'Moved' : 'Set'} the pre-bid meeting on ${project.name} to ${weekdayDate(action.on)} at ${timeWords(action.at)}, at ${place}.${action.mandatory ? ' Coming is required to quote.' : ''}`,
+      )
+    }
+
+    case 'recordPreBidAttendance': {
+      const project = state.projects.find((p) => p.id === action.projectId)
+      if (!project?.preBid) return state
+      const came = [...new Set(action.partnerIds)].filter((id) => partnerById(state, id))
+      const next = mapProject(state, project.id, (p) => (p.preBid ? { ...p, preBid: { ...p.preBid, attended: came } } : p))
+      return logged(next, 'office', `Recorded the pre-bid meeting on ${project.name}: ${came.length} ${came.length === 1 ? 'company' : 'companies'} came.`)
     }
   }
 }

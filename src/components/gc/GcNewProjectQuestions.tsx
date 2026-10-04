@@ -156,7 +156,7 @@ function QuestionCard({ state, project, q, children }: { state: GcState; project
       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
         <strong>{trade}</strong>
         <span style={{ color: 'var(--text-muted)' }}>
-          {asker} asked {shortDate(q.askedOn)}
+          {asker} asked {q.atPreBid ? 'at the pre-bid meeting, ' : ''}{shortDate(q.askedOn)}
           {q.answer === null && days > 0 ? `, ${days} ${days === 1 ? 'day' : 'days'} ago` : ''}
         </span>
         {(q.sheets ?? []).map((s) => (

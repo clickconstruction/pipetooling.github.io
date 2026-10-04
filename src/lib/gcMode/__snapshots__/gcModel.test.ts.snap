@@ -8745,6 +8745,97 @@ exports[`GC mode golden walk > step 174: Fair Oaks D: the contract charges $500 
 }
 `;
 
+exports[`GC mode golden walk > step 175: Leon Springs: ask Lonestar for Sitework 1`] = `
+{
+  "changed": {
+    "assistantRules[1].items[4].action.partnerIds[1]": "hillside",
+    "assistantRules[1].items[4].actionLabel": "Ask the 2 we have not asked",
+    "assistantRules[2].now": "10 of 10 asks are opened or still inside 3 days.",
+    "assistantRules[3].now": "9 of 10 companies we are asking have all three.",
+    "lastLog.id": 171,
+    "lastLog.text": "Invited Lonestar Earthworks to quote Sitework.",
+    "projects.leon-springs-urgent-care.planRecipients.allTouched[0].hasBid": false,
+    "projects.leon-springs-urgent-care.planRecipients.allTouched[0].invite": "«invite leon-springs-urgent-care-sitework-lonestar»",
+    "projects.leon-springs-urgent-care.planRecipients.allTouched[0].partner": "«partner lonestar»",
+    "projects.leon-springs-urgent-care.planRecipients.allTouched[0].pkg": "«package leon-springs-urgent-care-sitework»",
+    "projects.leon-springs-urgent-care.planRecipients.allTouched[0].touched": true,
+    "projects.leon-springs-urgent-care.planRecipients.noneTouched[0].hasBid": false,
+    "projects.leon-springs-urgent-care.planRecipients.noneTouched[0].invite": "«invite leon-springs-urgent-care-sitework-lonestar»",
+    "projects.leon-springs-urgent-care.planRecipients.noneTouched[0].partner": "«partner lonestar»",
+    "projects.leon-springs-urgent-care.planRecipients.noneTouched[0].pkg": "«package leon-springs-urgent-care-sitework»",
+    "projects.leon-springs-urgent-care.planRecipients.noneTouched[0].touched": false,
+    "projects.leon-springs-urgent-care.stageProgress.also[0]": "1 of 1 companies have not opened Permit set.",
+    "projects.leon-springs-urgent-care.stageProgress.groups[0].items[0].detail": "0 of 2 in. 1 still asked.",
+    "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-sitework.tradeLineup[0].invite": "«invite leon-springs-urgent-care-sitework-lonestar»",
+    "tradeBenches[2].needs[0].silent": 1,
+  },
+  "removed": [
+    "projects.leon-springs-urgent-care.stageProgress.also",
+    "projects.leon-springs-urgent-care.planRecipients.noneTouched",
+    "projects.leon-springs-urgent-care.planRecipients.allTouched",
+    "assistantRules[1].items[4].action.partnerIds[2]",
+  ],
+}
+`;
+
+exports[`GC mode golden walk > step 176: Leon Springs: the architect's pre-bid meeting, Thu Oct 8 at 10 AM, coming required 1`] = `
+{
+  "changed": {
+    "lastLog.id": 172,
+    "lastLog.text": "Set the pre-bid meeting on Leon Springs Urgent Care to Thu Oct 8 at 10 AM, at the site, 24165 IH-10 W, San Antonio. Coming is required to quote.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 177: Leon Springs: Lonestar asks at the meeting where the storm line ties in 1`] = `
+{
+  "changed": {
+    "customers.marshvale.notSent[0].days": 0,
+    "customers.marshvale.notSent[0].project": "«project leon-springs-urgent-care»",
+    "customers.marshvale.notSent[0].question.answer": null,
+    "customers.marshvale.notSent[0].question.answeredOn": null,
+    "customers.marshvale.notSent[0].question.askedOn": "2026-10-02",
+    "customers.marshvale.notSent[0].question.atPreBid": true,
+    "customers.marshvale.notSent[0].question.id": "leon-springs-urgent-care-q-1",
+    "customers.marshvale.notSent[0].question.packageId": "leon-springs-urgent-care-sitework",
+    "customers.marshvale.notSent[0].question.partnerId": "lonestar",
+    "customers.marshvale.notSent[0].question.sheets[0]": "C-101",
+    "customers.marshvale.notSent[0].question.text": "Where does the storm line tie in, the street or the pond?",
+    "lastLog.id": 173,
+    "lastLog.text": "Lonestar Earthworks asked at the pre-bid meeting about C-101: Where does the storm line tie in, the street or the pond?",
+    "lastLog.who": "trade",
+  },
+  "removed": [
+    "customers.marshvale.notSent",
+  ],
+}
+`;
+
+exports[`GC mode golden walk > step 178: Leon Springs: Lonestar came to the meeting 1`] = `
+{
+  "changed": {
+    "lastLog.id": 174,
+    "lastLog.text": "Recorded the pre-bid meeting on Leon Springs Urgent Care: 1 company came.",
+    "lastLog.who": "office",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 179: Leon Springs: Addendum 2 carries the pre-bid meeting's minutes 1`] = `
+{
+  "changed": {
+    "customers.marshvale.addenda": 7,
+    "customers.marshvale.sets": 11,
+    "lastLog.id": 175,
+    "lastLog.text": "Issued Addendum 2 on Leon Springs Urgent Care, checked by Dana Whitaker, and emailed 1 company. 0 were told it changes their trade.",
+    "projects.leon-springs-urgent-care.stageProgress.also[0]": "1 of 1 companies have not opened Addendum 2.",
+  },
+  "removed": [],
+}
+`;
+
 exports[`GC mode golden walk > the whole state at the end 1`] = `
 {
   "customers": [
@@ -8945,6 +9036,31 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
+      "id": 175,
+      "text": "Issued Addendum 2 on Leon Springs Urgent Care, checked by Dana Whitaker, and emailed 1 company. 0 were told it changes their trade.",
+      "who": "office",
+    },
+    {
+      "id": 174,
+      "text": "Recorded the pre-bid meeting on Leon Springs Urgent Care: 1 company came.",
+      "who": "office",
+    },
+    {
+      "id": 173,
+      "text": "Lonestar Earthworks asked at the pre-bid meeting about C-101: Where does the storm line tie in, the street or the pond?",
+      "who": "trade",
+    },
+    {
+      "id": 172,
+      "text": "Set the pre-bid meeting on Leon Springs Urgent Care to Thu Oct 8 at 10 AM, at the site, 24165 IH-10 W, San Antonio. Coming is required to quote.",
+      "who": "office",
+    },
+    {
+      "id": 171,
+      "text": "Invited Lonestar Earthworks to quote Sitework.",
+      "who": "office",
+    },
+    {
       "id": 170,
       "text": "The contract with Cibolo Creek Partners charges $500 a day for finishing Fair Oaks Shops, Building D late.",
       "who": "office",
@@ -9069,31 +9185,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "text": "Tejas Power promised a signed W-9 by Mon Oct 5.",
       "who": "trade",
     },
-    {
-      "id": 145,
-      "text": "Voltage Brothers sent a new insurance certificate, good to Sep 15.",
-      "who": "trade",
-    },
-    {
-      "id": 144,
-      "text": "Voltage Brothers moved the renewed insurance certificate from Tue Oct 6 to Fri Oct 9.",
-      "who": "trade",
-    },
-    {
-      "id": 143,
-      "text": "Voltage Brothers promised the renewed insurance certificate by Tue Oct 6.",
-      "who": "office",
-    },
-    {
-      "id": 142,
-      "text": "Dana Whitaker approved Brazos Glass up to $150,000 on one award. They can be awarded work now.",
-      "who": "office",
-    },
-    {
-      "id": 141,
-      "text": "Brazos Glass sent their company form for the office to check.",
-      "who": "trade",
-    },
   ],
   "partners": [
     {
@@ -9103,7 +9194,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "company": "Lonestar Earthworks",
       "contact": "Dale Whitfield",
       "id": "lonestar",
-      "invited": 7,
+      "invited": 8,
       "maxMiles": 75,
       "msa": "signed",
       "msaSignedOn": "2026-06-12",
@@ -15135,7 +15226,16 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
           "budget": 90000,
           "carried": null,
           "id": "leon-springs-urgent-care-sitework",
-          "invites": [],
+          "invites": [
+            {
+              "bid": null,
+              "id": "leon-springs-urgent-care-sitework-lonestar",
+              "invitedOn": "2026-10-02",
+              "partnerId": "lonestar",
+              "seenRev": null,
+              "status": "invited",
+            },
+          ],
           "scope": [
             {
               "id": "leon-springs-urgent-care-sitework-1",
@@ -15314,8 +15414,49 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
             "leon-springs-urgent-care-electrical",
           ],
         },
+        {
+          "changedSheets": [],
+          "checkedBy": "Dana Whitaker",
+          "issuedOn": "2026-10-02",
+          "label": "Addendum 2",
+          "note": "Pre-bid meeting minutes, Thu Oct 8 at 10 AM, the site, 24165 IH-10 W, San Antonio: Lonestar Earthworks came.",
+          "rev": 3,
+          "sentTo": [
+            {
+              "on": "2026-10-02",
+              "partnerId": "lonestar",
+              "touched": false,
+            },
+          ],
+          "touches": [],
+        },
       ],
-      "questions": [],
+      "preBid": {
+        "at": "10:00",
+        "attended": [
+          "lonestar",
+        ],
+        "host": "architect",
+        "mandatory": true,
+        "minutesInSetRev": 3,
+        "on": "2026-10-08",
+        "place": "the site, 24165 IH-10 W, San Antonio",
+      },
+      "questions": [
+        {
+          "answer": null,
+          "answeredOn": null,
+          "askedOn": "2026-10-02",
+          "atPreBid": true,
+          "id": "leon-springs-urgent-care-q-1",
+          "packageId": "leon-springs-urgent-care-sitework",
+          "partnerId": "lonestar",
+          "sheets": [
+            "C-101",
+          ],
+          "text": "Where does the storm line tie in, the street or the pond?",
+        },
+      ],
       "sheets": [
         {
           "id": "C-101",

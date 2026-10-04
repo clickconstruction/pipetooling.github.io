@@ -638,6 +638,41 @@ const STEPS: Step[] = [
   { label: 'The coping metal comes and the office marks it kept', action: { type: 'keepPromise', id: 'tp-5' } },
   // Finishing late (the owner, 2026-10-04): the owner contract's late fee, ours to enter.
   { label: 'Fair Oaks D: the contract charges $500 a day for finishing late', action: { type: 'setOwnerLateFinish', projectId: 'fairoaksd', perDay: 500 } },
+  // The pre-bid meeting (New Project lane, the owner 2026-10-04): set, a question raised there, who came, the minutes in a set.
+  { label: 'Leon Springs: ask Lonestar for Sitework', action: { type: 'invite', projectId: 'leon-springs-urgent-care', packageId: 'leon-springs-urgent-care-sitework', partnerId: 'lonestar' } },
+  {
+    label: 'Leon Springs: the architect\'s pre-bid meeting, Thu Oct 8 at 10 AM, coming required',
+    action: { type: 'schedulePreBid', projectId: 'leon-springs-urgent-care', on: '2026-10-08', at: '10:00', place: 'the site, 24165 IH-10 W, San Antonio', host: 'architect', mandatory: true },
+  },
+  {
+    label: 'Leon Springs: Lonestar asks at the meeting where the storm line ties in',
+    action: {
+      type: 'tradeAskQuestion',
+      projectId: 'leon-springs-urgent-care',
+      packageId: 'leon-springs-urgent-care-sitework',
+      partnerId: 'lonestar',
+      text: 'Where does the storm line tie in, the street or the pond?',
+      sheets: ['C-101'],
+      atPreBid: true,
+    },
+  },
+  { label: 'Leon Springs: Lonestar came to the meeting', action: { type: 'recordPreBidAttendance', projectId: 'leon-springs-urgent-care', partnerIds: ['lonestar'] } },
+  {
+    label: 'Leon Springs: Addendum 2 carries the pre-bid meeting\'s minutes',
+    action: {
+      type: 'issuePlanSet',
+      projectId: 'leon-springs-urgent-care',
+      label: 'Addendum 2',
+      note: 'Pre-bid meeting minutes, Thu Oct 8 at 10 AM, the site, 24165 IH-10 W, San Antonio: Lonestar Earthworks came.',
+      sheets: [],
+      addedSheets: [],
+      touches: [],
+      recipients: ['lonestar'],
+      newTrades: [],
+      checkedBy: 'Dana Whitaker',
+      preBidMinutes: true,
+    },
+  },
 ]
 
 const CUSTOMER_IDS = ['cibolo', 'raman']
@@ -797,6 +832,7 @@ describe('GC mode golden walk', () => {
       'setOwnerRetainageStep',
       'setOwnerLateInterest', 'sendOwnerInterestBill', 'ownerPaidInterest',
       'setOwnerLateFinish',
+      'schedulePreBid', 'recordPreBidAttendance',
       'tradeSendSov',
     ]
     expect(all.filter((t) => !used.has(t))).toEqual([])

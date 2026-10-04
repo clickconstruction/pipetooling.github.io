@@ -360,6 +360,8 @@ export interface PlanQuestion {
   answerSentTo?: { partnerId: string; on: string }[]
   /** The plan set that carried the answer. */
   inSetRev?: number
+  /** Asked at the pre-bid meeting, not by phone or email. */
+  atPreBid?: boolean
 }
 
 /** What we have billed the owner on a project we are building, and what they have paid. */
@@ -419,6 +421,26 @@ export interface ProjectContact {
   name: string
   phone: string
   email?: string
+}
+
+/**
+ * A pre-bid meeting or site walk before our bid is due (the owner, 2026-10-04: "Let's build the
+ * pre bid meeting into the prototype"). The companies quoting are invited; what they ask there
+ * goes the way of any question, and the minutes ride in the next set.
+ */
+export interface PreBidMeeting {
+  /** The day, YYYY-MM-DD, and the time, like "10:00". */
+  on: string
+  at: string
+  place: string
+  /** Who runs it: the architect's meeting, or our own walk with the trades. */
+  host: 'architect' | 'us'
+  /** A company has to come to quote. */
+  mandatory: boolean
+  /** The companies that came, by partner id. Null: not held yet. */
+  attended: string[] | null
+  /** The set that carried the minutes. Missing: not sent yet. */
+  minutesInSetRev?: number
 }
 
 export interface GcProject {
@@ -489,6 +511,8 @@ export interface GcProject {
   /** Who the owner picked, when we know. */
   wonBy?: string | null
   lostNote?: string | null
+  /** The pre-bid meeting, once one is set. Missing: none. */
+  preBid?: PreBidMeeting
   /** The punch list (Building lane, 2026-10-03): what is left to fix on each trade's work. Unset: none yet. */
   punch?: PunchItem[]
   /** The superintendent's daily log (Building lane, 2026-10-04): one per working day. Unset: none yet. */
@@ -726,6 +750,8 @@ export type GcAction =
       retiedLines?: { packageId: string; scopeId: string; sheets?: string[]; specs?: string[] }[]
       /** Who on our team checked the set's files before it went out. */
       checkedBy?: string
+      /** The set carries the pre-bid meeting's minutes. */
+      preBidMinutes?: boolean
     }
   | { type: 'acceptWork'; projectId: string; packageId: string }
   | { type: 'tradeSendWarranty'; projectId: string; packageId: string }
@@ -816,7 +842,7 @@ export type GcAction =
   /** Our superintendent records an inspection failed, today: what, whose work, and the re-inspection day. */
   | { type: 'failInspection'; projectId: string; lineId: string; note: string; packageIds: string[]; reinspectOn: string }
   /** A trade asks a question about the plans: in its portal, or by phone and the office types it. */
-  | { type: 'tradeAskQuestion'; projectId: string; packageId: string; partnerId: string; text: string; sheets: string[] }
+  | { type: 'tradeAskQuestion'; projectId: string; packageId: string; partnerId: string; text: string; sheets: string[]; atPreBid?: boolean }
   /** We send a trade's question to the architect. */
   | { type: 'sendQuestionToArchitect'; projectId: string; questionId: string }
   /** We record the architect's answer and send it to the companies on the trade. */
@@ -867,6 +893,10 @@ export type GcAction =
   | { type: 'ownerPaidInterest'; projectId: string; number: number }
   /** We enter the owner contract's late fee a day (null: the contract has none). */
   | { type: 'setOwnerLateFinish'; projectId: string; perDay: number | null }
+  /** We set the pre-bid meeting, or move it, while we bid. */
+  | { type: 'schedulePreBid'; projectId: string; on: string; at: string; place: string; host: 'architect' | 'us'; mandatory: boolean }
+  /** We record which companies came to the pre-bid meeting. */
+  | { type: 'recordPreBidAttendance'; projectId: string; partnerIds: string[] }
 
 /** One trade on a new project, as the office left it in the New project window. */
 export interface NewTradeDraft {

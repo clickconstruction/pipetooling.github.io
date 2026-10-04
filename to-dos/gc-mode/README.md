@@ -183,6 +183,17 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   piping to HVAC). The gap check flags what nobody picks up: left to a trade not on the job, or to
   one whose scope has no line for it (`scopeGaps`, a shared word). **Add it to HVAC** or **Add
   HVAC** closes it. The package keeps the list (`TradePackage.excludes`, `projectScopeGaps`).
+- **The pre-bid meeting** (the owner, 2026-10-04: "Let's build the pre bid meeting into the
+  prototype"): while we bid, the Plans tab has **Set a pre-bid meeting** (then **Pre-bid meeting ·
+  Sat Oct 3**). The window sets the day, the time, the place, who runs it (the architect, or our
+  own walk with the trades) and whether coming is required to quote (`schedulePreBid`). It lists
+  every company quoting with the invitation each gets (`preBidInvited`, `preBidInviteEmail`). At
+  the meeting the office ticks who came (`recordPreBidAttendance`); a company that missed a
+  required meeting is flagged (`missedMandatoryPreBid`). Each question raised there is a question
+  like any other, marked asked at the pre-bid meeting (`tradeAskQuestion` with `atPreBid`), so it
+  goes to the architect and its answer to every company quoting. The minutes (when, where, who
+  came, how many questions) ride in the next set, ticked beside the answers it carries
+  (`preBidMinutesLine`, `issuePlanSet.preBidMinutes`).
 - **Pickers with search in New project and a new set** (the owner, 2026-10-04: "I would like the
   dropdown to be more attractive, I would like for it to have search"): every dropdown in the New
   project, new-set and Questions windows is the app's SearchableSelect (`GcNewProjectPickers.tsx`).
@@ -860,6 +871,8 @@ the bullets below are the shape they set.
   | Questions close soon (`questionsCloseOn`) | Every company bidding; the project manager | The companies: email the day before questions close. The office: email that day with the questions still open |
   | An answer waits for a set (`answeredNotInSet`) | The project manager | The morning email after 2 days: "2 answers wait for the next set". *Default: 2 days* |
   | A gap between the trades (`projectScopeGaps`) while we bid | The project manager | The morning email until each gap is picked up. The Trades tab already shows it |
+  | A pre-bid meeting is set or moved (`schedulePreBid`) | Every company quoting | Email with the day, the time, the place and whether coming is required (`preBidInviteEmail`); a reminder the day before |
+  | The pre-bid meeting is held (`recordPreBidAttendance`) | The project manager | Email that day with who came and who missed a required meeting; the minutes ride in the next set |
 
 ## Where it plugs into the app that exists
 

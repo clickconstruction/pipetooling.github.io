@@ -42,6 +42,7 @@ import {
   specIndexInText,
   takenOutInText,
   ourPeople,
+  preBidMinutesLine,
   substantialCompletionOn,
   scheduleSetLines,
   withNewLines,
@@ -57,6 +58,7 @@ import {
 } from '../../lib/gcMode/gcModel'
 import { ScopeLines, type ScopeLineDraft } from './GcNewProject'
 import { GcNewProjectQuestions } from './GcNewProjectQuestions'
+import { GcNewProjectPreBid } from './GcNewProjectPreBid'
 import { Btn, Chip, input } from './gcUi'
 import { Picker } from './GcNewProjectPickers'
 import { pickerFace, pickerGroup, pickerRow } from './GcNewProjectPickerRows'
@@ -133,6 +135,7 @@ function pill(active: boolean) {
 export function GcPlansDoors({ state, project, dispatch }: Omit<Props, 'onClose'>) {
   const [adding, setAdding] = useState(false)
   const [asking, setAsking] = useState(false)
+  const [meeting, setMeeting] = useState(false)
   if (project.lostOn) {
     return (
       <div style={{ padding: '0.55rem 0.75rem', borderRadius: 8, background: 'var(--bg-muted)', color: 'var(--text-600)', fontSize: '0.9rem' }}>
@@ -146,9 +149,15 @@ export function GcPlansDoors({ state, project, dispatch }: Omit<Props, 'onClose'
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
         <Btn kind="primary" onClick={() => setAdding(true)}>A new set of plans came in</Btn>
         <Btn onClick={() => setAsking(true)}>Questions about the plans{open > 0 ? ` · ${open} open` : ''}</Btn>
+        {(project.stage === 'pursuing' || project.preBid) && (
+          <Btn onClick={() => setMeeting(true)}>
+            {project.preBid ? `Pre-bid meeting · ${weekdayDate(project.preBid.on)}` : 'Set a pre-bid meeting'}
+          </Btn>
+        )}
       </div>
       {adding && <GcNewPlansWindow state={state} project={project} dispatch={dispatch} onClose={() => setAdding(false)} />}
       {asking && <GcNewProjectQuestions state={state} project={project} dispatch={dispatch} onClose={() => setAsking(false)} />}
+      {meeting && <GcNewProjectPreBid state={state} project={project} dispatch={dispatch} onClose={() => setMeeting(false)} />}
     </>
   )
 }
@@ -382,8 +391,12 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
   const coDrafted = coRows.filter((r) => r.on && r.cost !== 0 && r.description.trim() !== '')
   const answers = answeredNotInSet(project)
   const carriedQs = answers.filter((q) => !skipQ.includes(q.id))
-  /** What the set says changed: the office's words, then each answer it carries. */
-  const fullNote = [note.trim(), ...carriedQs.map((q) => questionInNote(project, q))].filter(Boolean).join('\n')
+  /** The pre-bid meeting's minutes, once it is held and no set has carried them; ticked unless the office unticks them. */
+  const minutesLine = preBidMinutesLine(state, project)
+  const [skipMinutes, setSkipMinutes] = useState(false)
+  const carryMinutes = minutesLine !== null && !skipMinutes
+  /** What the set says changed: the office's words, the meeting's minutes, then each answer it carries. */
+  const fullNote = [note.trim(), ...(carryMinutes && minutesLine ? [minutesLine] : []), ...carriedQs.map((q) => questionInNote(project, q))].filter(Boolean).join('\n')
   const email = planEmail(project, label, fullNote, sheets, preview, {
     lines: preview?.touched ? linesATradeHears(project, preview.pkg, sheets, specIds, addedSpecs, added).map((l) => l.label) : [],
     adds: preview?.touched ? (newLines[preview.pkg.id] ?? []) : [],
@@ -608,6 +621,15 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
               </div>
             )}
             {askingOpen && <GcNewProjectQuestions state={state} project={project} dispatch={dispatch} onClose={() => setAskingOpen(false)} />}
+            {minutesLine && (
+              <label style={{ marginTop: '0.5rem', padding: '0.5rem 0.7rem', borderRadius: 8, border: '1px solid var(--border)', display: 'flex', gap: '0.5rem', alignItems: 'flex-start', cursor: 'pointer', fontSize: '0.875rem' }}>
+                <input type="checkbox" checked={!skipMinutes} onChange={(e) => setSkipMinutes(!e.target.checked)} style={{ marginTop: '0.2rem' }} />
+                <span style={{ display: 'grid', gap: '0.15rem' }}>
+                  <strong>The pre-bid meeting's minutes ride in this set</strong>
+                  <span>{minutesLine}</span>
+                </span>
+              </label>
+            )}
             {answers.length > 0 && (
               <div style={{ marginTop: '0.5rem', padding: '0.5rem 0.7rem', borderRadius: 8, border: '1px solid var(--border)', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '0.3rem', fontSize: '0.875rem' }}>
                 <strong>Answers to carry in this set</strong>
@@ -1213,6 +1235,7 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
                 retitledSpecs,
                 retiedLines,
                 checkedBy,
+                ...(carryMinutes ? { preBidMinutes: true } : {}),
               })
               // Each change order is Owner Billing's own draft, so it reads on Bill the owner as theirs do.
               for (const r of coDrafted) {
