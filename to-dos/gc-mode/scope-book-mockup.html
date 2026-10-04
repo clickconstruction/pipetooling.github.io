@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scope book</title>
+<style>
+  :root {
+    --bg: #f4f5f7; --surface: #fff; --sub: #f8fafc; --text: #1f2937; --muted: #6b7280; --border: #e5e7eb; --strong: #d1d5db;
+    --blue: #2563eb; --blue-tint: #eff6ff; --blue-fg: #1e40af;
+    --amber-tint: #fffbeb; --amber-border: #fcd34d; --amber-fg: #92400e;
+    --green-tint: #f0fdf4; --green-fg: #166534; --red-fg: #b91c1c; --violet-tint: #f5f3ff; --violet-fg: #5b21b6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f172a; --surface: #111827; --sub: #0b1220; --text: #e5e7eb; --muted: #9ca3af; --border: #374151; --strong: #4b5563;
+      --blue: #60a5fa; --blue-tint: #172554; --blue-fg: #bfdbfe;
+      --amber-tint: #2a1d05; --amber-border: #92400e; --amber-fg: #fcd34d;
+      --green-tint: #052e16; --green-fg: #86efac; --red-fg: #fca5a5; --violet-tint: #1e1b4b; --violet-fg: #c4b5fd;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f172a; --surface: #111827; --sub: #0b1220; --text: #e5e7eb; --muted: #9ca3af; --border: #374151; --strong: #4b5563;
+    --blue: #60a5fa; --blue-tint: #172554; --blue-fg: #bfdbfe;
+    --amber-tint: #2a1d05; --amber-border: #92400e; --amber-fg: #fcd34d;
+    --green-tint: #052e16; --green-fg: #86efac; --red-fg: #fca5a5; --violet-tint: #1e1b4b; --violet-fg: #c4b5fd;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 20px 16px 48px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  h2 { font-size: 17px; margin: 30px 0 6px; }
+  .lede { color: var(--muted); margin: 0 0 8px; max-width: 85ch; }
+  .tag { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; box-shadow: 0 8px 30px rgba(0,0,0,.08); }
+  .mhead { padding: 14px 18px; border-bottom: 1px solid var(--border); }
+  .mhead b { font-size: 17px; }
+  .mhead div { color: var(--muted); font-size: 13px; }
+  .steps { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 8px; padding: 10px 18px; background: var(--sub); border-bottom: 1px solid var(--border); }
+  .step { border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; background: var(--surface); font-size: 12px; color: var(--muted); }
+  .step b { display: block; color: var(--text); font-size: 13px; }
+  .step.on { border-color: var(--blue); background: var(--blue-tint); }
+  .body { display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 14px; padding: 14px 18px; }
+  .body.three { grid-template-columns: 170px minmax(0, 1fr) 320px; }
+  .trades div { padding: 7px 10px; border-radius: 6px; display: flex; justify-content: space-between; color: var(--muted); }
+  .trades div.on { background: var(--blue-tint); color: var(--text); font-weight: 600; }
+  .card { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; background: var(--surface); }
+  .card h3 { margin: 0 0 2px; font-size: 16px; }
+  .muted { color: var(--muted); }
+  .small { font-size: 12px; }
+  .line { display: grid; grid-template-columns: 22px minmax(0,1fr) 220px 18px; gap: 8px; align-items: center; margin: 6px 0; }
+  .line > span:nth-child(3) { text-align: right; }
+  .line .box { border: 1px solid var(--strong); border-radius: 6px; padding: 6px 9px; background: var(--surface); }
+  .x { color: var(--muted); text-align: center; }
+  .chip { display: inline-block; border-radius: 999px; padding: 1px 8px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+  .c-book { background: var(--violet-tint); color: var(--violet-fg); }
+  .c-amber { background: var(--amber-tint); color: var(--amber-fg); border: 1px solid var(--amber-border); }
+  .c-green { background: var(--green-tint); color: var(--green-fg); }
+  .c-grey { background: var(--sub); color: var(--muted); border: 1px solid var(--border); }
+  .btn { display: inline-block; border: 1px solid var(--strong); border-radius: 6px; padding: 5px 10px; background: var(--surface); font-size: 13px; }
+  .btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .link { color: var(--blue); }
+  .panel { border: 1px solid var(--border); border-radius: 10px; background: var(--sub); padding: 10px; }
+  .panel h4 { margin: 0 0 6px; font-size: 14px; }
+  .search { border: 1px solid var(--strong); border-radius: 6px; padding: 6px 9px; background: var(--surface); color: var(--muted); margin-bottom: 8px; }
+  .filters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+  .filters span { border: 1px solid var(--strong); border-radius: 999px; padding: 2px 9px; font-size: 12px; background: var(--surface); }
+  .filters span.on { background: var(--blue-tint); border-color: var(--blue); color: var(--blue-fg); }
+  .bookrow { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 7px 9px; margin-bottom: 6px; display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 4px 8px; align-items: center; }
+  .bookrow .meta { grid-column: 1; font-size: 11.5px; color: var(--muted); }
+  .bookrow .add { grid-column: 2; grid-row: 1 / span 2; }
+  .callout { border: 1px solid var(--amber-border); background: var(--amber-tint); border-radius: 8px; padding: 9px 11px; margin: 10px 0; }
+  .callout b { color: var(--amber-fg); }
+  .callout .row { display: flex; justify-content: space-between; gap: 10px; align-items: center; margin-top: 5px; }
+  .typeahead { position: relative; margin-top: 8px; }
+  .typeahead .input { border: 2px solid var(--blue); border-radius: 6px; padding: 6px 9px; background: var(--surface); }
+  .typeahead .list { border: 1px solid var(--border); border-radius: 8px; background: var(--surface); box-shadow: 0 6px 20px rgba(0,0,0,.12); margin-top: 4px; }
+  .typeahead .list div { padding: 7px 10px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; gap: 10px; }
+  .typeahead .list div:last-child { border-bottom: none; }
+  .typeahead .list .hi { background: var(--blue-tint); }
+  .sethead { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 8px 0 4px; padding: 8px 10px; border: 1px dashed var(--strong); border-radius: 8px; }
+  .select { border: 1px solid var(--strong); border-radius: 6px; padding: 5px 9px; background: var(--surface); min-width: 240px; display: inline-flex; justify-content: space-between; gap: 8px; }
+  .critique { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px; }
+  .critique div { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+  .critique b { display: block; margin-bottom: 3px; }
+  ol.plan { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px 12px 34px; margin: 0; }
+  ol.plan li { margin: 6px 0; }
+  .who { font-size: 11px; font-weight: 700; color: var(--blue-fg); background: var(--blue-tint); border-radius: 4px; padding: 1px 6px; margin-right: 6px; }
+  .bookpage { display: grid; grid-template-columns: 200px minmax(0,1fr); gap: 14px; padding: 14px 18px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); border-bottom: 1px solid var(--border); padding: 6px; }
+  td { border-bottom: 1px solid var(--border); padding: 7px 6px; vertical-align: top; }
+  @media (max-width: 900px) {
+    .steps { grid-template-columns: 1fr 1fr; }
+    .body, .body.three, .bookpage { grid-template-columns: minmax(0,1fr); }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>A scope book for step 4</h1>
+  <p class="lede">The owner's ask (2026-10-04): on New project's <b>Each scope</b> step, a scope book where you keep scope lines by trade, search it, and pull lines from it. Below: a first idea, then what is wrong with it, then a revised version and the plan.</p>
+
+  <!-- ===================== FIRST IDEA ===================== -->
+  <h2>1. First idea: a book panel beside the scope</h2>
+  <p class="lede">A third column on step 4. Pick a trade, search, and press <b>+ Add</b> on a line to put it in this trade's scope. A line you type yourself gets <b>Save to the book</b>.</p>
+  <div class="modal">
+    <div class="mhead"><b>A new project</b><div>It starts under Bidding to the owner. Nobody is asked to quote until you ask them.</div></div>
+    <div class="steps">
+      <div class="step"><b>1 The project</b>Leon Springs Urgent Care</div>
+      <div class="step"><b>2 The plans</b>Bid set · 21 sheets</div>
+      <div class="step"><b>3 The trades</b>13 trades</div>
+      <div class="step on"><b>4 Each scope</b>45 scope lines</div>
+      <div class="step"><b>5 Who to ask</b>16 companies asked</div>
+    </div>
+    <div class="body three">
+      <div class="trades">
+        <div class="on">Sitework <span>4</span></div><div>Concrete <span>4</span></div><div>Roofing <span>4</span></div><div>HVAC <span>4</span></div><div>Electrical <span>5</span></div>
+      </div>
+      <div class="card">
+        <h3>Sitework</h3>
+        <div class="muted small">Each line shows the sheets it reads from.</div>
+        <div class="line"><span class="muted">1</span><span class="box">Clearing and grading</span><span class="muted small">all sitework sheets</span><span class="x">×</span></div>
+        <div class="line"><span class="muted">2</span><span class="box">Utilities to 5 ft of the building</span><span class="muted small">C-301</span><span class="x">×</span></div>
+        <div class="line"><span class="muted">3</span><span class="box">Paving</span><span class="muted small">C-101</span><span class="x">×</span></div>
+        <div class="line"><span class="muted">4</span><span class="box">Striping and signs</span><span class="muted small">C-101</span><span class="x">×</span></div>
+        <div class="line"><span class="muted">5</span><span class="box">Dumpster enclosure pad</span><span class="link small">Save to the book</span><span class="x">×</span></div>
+        <span class="btn">Add a line</span>
+      </div>
+      <div class="panel">
+        <h4>Scope book</h4>
+        <div class="search">Search the book…</div>
+        <div class="filters"><span class="on">Sitework</span><span>All trades</span></div>
+        <div class="bookrow"><span>Erosion control and SWPPP</span><span class="btn add">+ Add</span></div>
+        <div class="bookrow"><span>Building pad to ±0.1 ft</span><span class="btn add">+ Add</span></div>
+        <div class="bookrow"><span>Curb and gutter</span><span class="btn add">+ Add</span></div>
+        <div class="bookrow"><span>Detention pond</span><span class="btn add">+ Add</span></div>
+        <div class="bookrow"><span>Landscape areas rough graded</span><span class="btn add">+ Add</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== CRITIQUE ===================== -->
+  <h2>2. Is this the best we can do? No. Here is why.</h2>
+  <div class="critique">
+    <div><b>One line at a time is slow.</b>A sitework scope is 8 to 15 lines. Pressing + Add fifteen times is worse than the paste it replaces. The book should hold <b>sets</b>, like "Sitework · retail pad", taken in one press and then trimmed.</div>
+    <div><b>The real value is what we missed.</b>A list of words saves typing. A book that remembers the lines we <b>added late</b> on past jobs (by a later set, a change order or a gap between trades) saves money. "Detention pond came in with Bulletin 1 on Boerne Retail Shell" should come to you, not wait to be found.</div>
+    <div><b>A third column crowds the step.</b>Step 4 already has the trade list, the lines and Not in this trade. The book belongs in the place you type a line: <b>Add a line</b> should search the book as you type, the way the new pickers do.</div>
+    <div><b>A line is more than words.</b>A book line should carry its spec section and its usual "leaves out, done by" partner, so pulling "Roof curbs" into HVAC also asks Roofing to leave them out. And it should know how often we used it and when it was last used, so the good lines rise.</div>
+    <div><b>It has to fill itself.</b>Nobody will type a book from nothing. It starts from every scope on our past jobs, and every line you type new offers to join it. Duplicates ("Clearing &amp; grading", "Clearing and grading") get merged on the book's own page.</div>
+    <div><b>Search across trades, honestly labeled.</b>"Fire caulking at penetrations" lives under Electrical, Plumbing and HVAC. Search shows which trade each hit comes from, so pulling it into another trade is a choice you see.</div>
+  </div>
+
+  <!-- ===================== REVISED ===================== -->
+  <h2>3. Revised: start from a set, get warned about misses, and search as you type</h2>
+  <p class="lede">The same step, two columns as today. The book shows up in three places: <b>Start from the book</b> at the top of a trade, <b>Often missed on Sitework</b> under it, and <b>Add a line</b>, which now searches the book. The full book has its own page for editing.</p>
+  <div class="modal">
+    <div class="mhead"><b>A new project</b><div>It starts under Bidding to the owner. Nobody is asked to quote until you ask them.</div></div>
+    <div class="steps">
+      <div class="step"><b>1 The project</b>Leon Springs Urgent Care</div>
+      <div class="step"><b>2 The plans</b>Bid set · 21 sheets</div>
+      <div class="step"><b>3 The trades</b>13 trades</div>
+      <div class="step on"><b>4 Each scope</b>52 scope lines</div>
+      <div class="step"><b>5 Who to ask</b>16 companies asked</div>
+    </div>
+    <div class="body">
+      <div class="trades">
+        <div class="on">Sitework <span>9</span></div><div>Concrete <span>4</span></div><div>Roofing <span>4</span></div><div>HVAC <span>5</span></div><div>Electrical <span>5</span></div>
+        <div style="margin-top:10px"><span class="link small">Open the scope book</span></div>
+      </div>
+      <div class="card">
+        <h3>Sitework <span class="muted small" style="font-weight:400">guessed from C-101, C-201, C-301</span></h3>
+        <div class="sethead">
+          <span class="small"><b>Start from the book</b></span>
+          <span class="select">Sitework · retail pad <span class="muted">9 lines · used on 4 jobs ▾</span></span>
+          <span class="btn primary">Use these lines</span>
+          <span class="muted small">Lines already here are kept. Untick or take out what this job does not need.</span>
+        </div>
+
+        <div class="callout">
+          <b>Often missed on Sitework</b> <span class="muted small">· lines we added late on past jobs</span>
+          <div class="row"><span><b style="color:inherit">Detention pond</b> <span class="muted small">came in with Bulletin 1 on Boerne Retail Shell. It cost a change order.</span></span><span class="btn">+ Add</span></div>
+          <div class="row"><span><b style="color:inherit">Erosion control and SWPPP</b> <span class="muted small">left out by 2 quotes on Fair Oaks Shops, Building D</span></span><span class="chip c-green">added</span></div>
+        </div>
+
+        <div class="line"><span class="muted">1</span><span class="box">Clearing and grading</span><span><span class="chip c-book">book</span> <span class="muted small">C-201</span></span><span class="x">×</span></div>
+        <div class="line"><span class="muted">2</span><span class="box">Erosion control and SWPPP</span><span><span class="chip c-book">book</span> <span class="muted small">C-201 · 31 25 00</span></span><span class="x">×</span></div>
+        <div class="line"><span class="muted">3</span><span class="box">Building pad to ±0.1 ft</span><span><span class="chip c-book">book</span> <span class="muted small">C-201</span></span><span class="x">×</span></div>
+        <div class="line"><span class="muted">4</span><span class="box">Utilities to 5 ft of the building</span><span><span class="chip c-book">book</span> <span class="muted small">C-301</span></span><span class="x">×</span></div>
+        <div class="line"><span class="muted">5</span><span class="box">Paving</span><span><span class="chip c-book">book</span> <span class="muted small">C-101 · 32 12 16</span></span><span class="x">×</span></div>
+        <div class="line"><span class="muted">6</span><span class="box">Curb and gutter</span><span><span class="chip c-book">book</span> <span class="muted small">C-101</span></span><span class="x">×</span></div>
+        <div class="line"><span class="muted">7</span><span class="box">Striping and signs</span><span><span class="chip c-book">book</span> <span class="muted small">C-101</span></span><span class="x">×</span></div>
+        <div class="line"><span class="muted">8</span><span class="box">Dumpster enclosure pad</span><span><span class="chip c-grey">new</span> <span class="link small">Save to the book</span></span><span class="x">×</span></div>
+
+        <div class="typeahead">
+          <div class="input">curb|</div>
+          <div class="list">
+            <div class="hi"><span><b>Curb</b> and gutter <span class="muted small">· Sitework</span></span><span class="muted small">already here</span></div>
+            <div><span><b>Curb</b> cuts and ramps (ADA) <span class="muted small">· Sitework · used on 3 jobs</span></span><span class="chip c-amber">missed once</span></div>
+            <div><span><b>Curb</b>s at landscape islands <span class="muted small">· from Concrete</span></span><span class="muted small">pulls it into Sitework</span></div>
+            <div><span class="link">+ Add "curb" as a new line</span><span class="muted small">Enter</span></div>
+          </div>
+        </div>
+
+        <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:8px">
+          <b>Not in this trade</b> <span class="muted small">· a book line can bring its own: "Irrigation sleeves under paving, by Sitework" comes with Landscaping's set.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="lede" style="margin-top:14px">And the book's own page, opened from <b>Open the scope book</b>, for keeping it clean:</p>
+  <div class="modal">
+    <div class="mhead"><b>The scope book</b><div>Every scope line we keep, by trade. It started from the scopes on our past jobs and grows each time a new line is saved.</div></div>
+    <div class="bookpage">
+      <div class="trades">
+        <div class="on">Sitework <span>23</span></div><div>Concrete <span>18</span></div><div>Roofing <span>14</span></div><div>HVAC <span>21</span></div><div>Electrical <span>26</span></div><div>Plumbing <span>19</span></div>
+      </div>
+      <div>
+        <div class="filters"><span class="on">Lines</span><span>Sets (3)</span><span>Duplicates to merge (2)</span></div>
+        <table>
+          <tr><th>Line</th><th>Spec</th><th>Leaves out, done by</th><th>Used</th><th></th></tr>
+          <tr><td>Clearing and grading</td><td class="muted">31 10 00</td><td class="muted">none</td><td>6 jobs · last Oct 2</td><td class="link small">Edit</td></tr>
+          <tr><td>Detention pond <span class="chip c-amber">missed on 1</span></td><td class="muted">33 40 00</td><td class="muted">none</td><td>2 jobs · last Sep 18</td><td class="link small">Edit</td></tr>
+          <tr><td>Utilities to 5 ft of the building</td><td class="muted">33 10 00</td><td>Building connections, by Plumbing</td><td>6 jobs · last Oct 2</td><td class="link small">Edit</td></tr>
+          <tr><td>Curb cuts and ramps (ADA) <span class="chip c-amber">missed on 1</span></td><td class="muted">32 16 00</td><td class="muted">none</td><td>3 jobs · last Aug 30</td><td class="link small">Edit</td></tr>
+          <tr><td>Clearing &amp; grading <span class="chip c-grey">same as Clearing and grading?</span></td><td class="muted"></td><td class="muted"></td><td>1 job</td><td class="link small">Merge</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== PLAN ===================== -->
+  <h2>4. The plan</h2>
+  <ol class="plan">
+    <li><span class="who">New Project</span><b>The book in the model</b> (<code>gcScopeBook.ts</code>, tested). A book line has the trade, the words, a spec section, an optional "leaves out, done by", the jobs it was used on, and the jobs where it came in late: added by a later set, a change order or a gap between trades. A set is a named list of lines for one trade. The book is <b>seeded from every scope on our made-up jobs</b> and the trade templates, so it is never empty. Readers: search (this trade first, then most used, a missed line flagged), sets for a trade, often missed for a trade (late lines not in this scope yet), duplicates.</li>
+    <li><span class="who">New Project</span><b>Step 4: Start from the book.</b> A set picker and Use these lines, which merges and keeps lines already there. Book lines carry a small "book" mark.</li>
+    <li><span class="who">New Project</span><b>Step 4: Often missed.</b> The amber callout under the set, with + Add on each. Hidden when there is nothing to warn about.</li>
+    <li><span class="who">New Project</span><b>Step 4: Add a line searches the book</b>, on the same searchable picker as the rest of the window. It shows this trade's lines first, then other trades labeled "from Concrete", and "+ Add as a new line" last. A new line offers Save to the book. A book line brings its spec section and its "leaves out, done by" with it.</li>
+    <li><span class="who">New Project</span><b>The book's page</b> (Open the scope book): lines and sets by trade, edit, save this project's scope as a set, and merge duplicates. The same search is in A new set of plans came in, where a later set adds lines.</li>
+    <li><span class="who">Board</span><b>Where it lives outside the window</b>: a door to the book from Trade partners, a "Walk me through this job" or New here? stop, and the README row. Golden steps for the new moves, at the end of the walk.</li>
+    <li><span class="who">The real build</span>A <code>gc_scope_book_lines</code> and <code>gc_scope_book_sets</code> pair of tables, company-wide. Late-line history comes from change orders and plan sets as they happen. Estimators edit; anyone writing a scope can pull from it.</li>
+  </ol>
+</div>
+</body>
+</html>
