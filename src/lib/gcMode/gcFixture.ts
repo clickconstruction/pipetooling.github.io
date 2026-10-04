@@ -2,7 +2,7 @@
  * GC mode — design spike. The made-up data the prototype starts from (Start over puts it back).
  * Split out of gcModel.ts verbatim; import from `./gcModel`, which re-exports every file.
  */
-import type { AskContact, DailyLog, GcCustomer, GcProject, GcState, Includes, Invite, InviteStatus, LookAheadReason, Partner, ProjectContact, ProjectSchedule, ScheduleActivity, ScopeItem, SubBid, TradePackage } from './gcTypes'
+import type { AskContact, DailyLog, Submittal, SubmittalRound, GcCustomer, GcProject, GcState, Includes, Invite, InviteStatus, LookAheadReason, Partner, ProjectContact, ProjectSchedule, ScheduleActivity, ScopeItem, SubBid, TradePackage } from './gcTypes'
 
 // ---------------------------------------------------------------------------------------------
 // Fixture
@@ -866,6 +866,26 @@ export function initialGcState(): GcState {
   // Roofing slipped a week since; dry-in is late; two weeks of verified look-ahead marks, and this
   // week's marks in from the trades and waiting on our superintendent.
   const act = (lineId: string, packageId: string, start: string, finish: string, after: string[] = []) => ({ lineId, packageId, start, finish, after })
+  const round = (
+    sentOn: string,
+    file: string,
+    note: string,
+    toArchitectOn: string | null,
+    answeredOn: string | null,
+    answer: SubmittalRound['answer'],
+    answerNote: string,
+  ): SubmittalRound => ({ sentOn, file, note, toArchitectOn, answeredOn, answer, answerNote })
+  const fairOaksSub = (
+    id: string,
+    number: string,
+    packageId: string,
+    title: string,
+    kind: Submittal['kind'],
+    lineIds: string[],
+    leadDays: number,
+    askedOn: string,
+    rounds: SubmittalRound[],
+  ): Submittal => ({ id, number, packageId, title, kind, specSection: number.slice(0, 8), lineIds, leadDays, askedOn, rounds })
   const fairOaksLog = (
     date: string,
     sky: DailyLog['sky'],
@@ -1306,6 +1326,29 @@ export function initialGcState(): GcState {
         { packageId: 'felec', reason: 'materials', note: 'Panel boards are two weeks out.' },
       ]),
       fairOaksLog('2026-10-01', 'cloudy', 85, 70, { fsteel: 3, froof: 4, felec: 2, fplumb: 3, fhvac: 3 }, 'West half membrane half down. Ductwork in bay 4.', [], "Cibolo's owner rep walked bays 1 and 2."),
+    ],
+    // Building lane (2026-10-04): the submittal register. The panelboards went back once and were
+    // approved late (the electrician's materials delay); the fire alarm drawings are with the
+    // architect; Summit's flashing drawings came in yesterday and are needed today; the controls
+    // are not sent yet.
+    submittals: [
+      fairOaksSub('fairoaksd-sub-1', '26 24 16-01', 'felec', 'Panelboards', 'product data', ['felec-2'], 21, '2026-08-03', [
+        round('2026-08-10', 'PVE-panelboards.pdf', '', '2026-08-11', '2026-08-18', 'revise', 'Show the 22kA rating on each panel.'),
+        round('2026-08-28', 'PVE-panelboards-r1.pdf', 'Ratings added.', '2026-08-29', '2026-09-08', 'approved as noted', 'Label the spare breakers.'),
+      ]),
+      fairOaksSub('fairoaksd-sub-2', '28 31 11-01', 'felec', 'Fire alarm', 'shop drawings', ['felec-4'], 14, '2026-09-01', [
+        round('2026-09-29', 'PVE-fire-alarm.pdf', 'Device layout and riser.', '2026-09-30', null, null, ''),
+      ]),
+      fairOaksSub('fairoaksd-sub-3', '23 81 19-01', 'fhvac', 'Rooftop units', 'product data', ['fhvac-1'], 30, '2026-08-03', [
+        round('2026-08-20', 'CBM-RTU-submittal.pdf', '', '2026-08-21', '2026-08-28', 'approved', ''),
+      ]),
+      fairOaksSub('fairoaksd-sub-4', '23 09 23-01', 'fhvac', 'Controls', 'shop drawings', ['fhvac-3'], 10, '2026-09-15', []),
+      fairOaksSub('fairoaksd-sub-5', '07 54 23-01', 'froof', 'TPO membrane', 'samples', ['froof-1'], 7, '2026-08-03', [
+        round('2026-08-25', 'Summit-TPO-samples', 'Two samples sent by courier.', '2026-08-26', '2026-09-01', 'approved', ''),
+      ]),
+      fairOaksSub('fairoaksd-sub-6', '07 62 00-01', 'froof', 'Sheet metal and flashing', 'shop drawings', ['froof-3'], 10, '2026-09-15', [
+        round('2026-10-01', 'Summit-flashing.pdf', 'Coping detail per A-501.', null, null, null, ''),
+      ]),
     ],
     // Building lane (2026-10-03): the concrete walked on Sep 28. One item to fix, one fixed and
     // waiting on our superintendent's check, one checked.

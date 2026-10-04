@@ -14,6 +14,7 @@ import { daysBetween, draftSchedule, scheduleLinesOf, withBaselineKept } from '.
 import { buildNewProject, dryInMilestoneFor, packagesFromDrafts, pushSchedule, scheduleSetLines, withNewLines, withRetiedLines, withTradesInOrder } from './gcNewProject'
 import { nextPunchId, punchClear } from './gcBuildingPunch'
 import { logTrades } from './gcBuildingLog'
+import { nextSubmittalId, nextSubmittalNumber, submittalState } from './gcBuildingSubmittals'
 import { addDays, changeOrderTradePct, crewPctFromStages, drawApprovedLess, finalPayApplication, jobCloseout, payApplication, timesSentBack, tradeCloseout, workAllBilled } from './gcBuilding'
 import { awardGate } from './gcVetting'
 import { keepPromisesOn, openPromiseFor, PROMISE_WHAT, promisesKeptBy, tradePromisesOf } from './gcPromises'
@@ -1612,6 +1613,64 @@ function reduce(state: GcState, action: GcAction): GcState {
         'office',
         `${partner.company}: ${promise.what} came. Marked kept.`,
       )
+    }
+
+    case 'addSubmittal': {
+      // Building lane (owner, 2026-10-04): the office adds what a trade sends for approval before its work.
+      const { project, pkg } = find(state, action.projectId, action.packageId)
+      const title = action.title.trim()
+      if (!project || !pkg || pkg.selfPerform || !pkg.awardedInviteId || !title) return state
+      const lines = new Set((project.schedule?.activities ?? []).map((a) => a.lineId).concat(pkg.sow?.sov.map((l) => l.id) ?? [], pkg.scope.map((l) => l.id)))
+      const section = action.specSection?.trim() || undefined
+      const submittal = {
+        id: nextSubmittalId(project),
+        number: nextSubmittalNumber(project, section),
+        packageId: pkg.id,
+        title,
+        kind: action.kind,
+        ...(section ? { specSection: section } : {}),
+        lineIds: [...new Set(action.lineIds)].filter((id) => lines.has(id)),
+        leadDays: Math.max(0, Math.round(action.leadDays)),
+        ...(action.neededBy ? { neededBy: action.neededBy } : {}),
+        askedOn: state.today,
+        rounds: [],
+      }
+      const next = mapProject(state, project.id, (p) => ({ ...p, submittals: [...(p.submittals ?? []), submittal] }))
+      return logged(next, 'office', `Added submittal ${submittal.number} on ${pkg.trade}: ${title}, ${action.kind}.`)
+    }
+
+    case 'tradeSendSubmittal': {
+      // The trade sends it from its portal, the first time or after a revise.
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const sub = project?.submittals?.find((x) => x.id === action.submittalId)
+      const pkg = sub ? project?.packages.find((k) => k.id === sub.packageId) : undefined
+      const partner = awardedPartner(state, pkg)
+      const file = action.file.trim()
+      if (!project || !sub || !pkg || !partner || !file || submittalState(sub) !== 'trade') return state
+      const round = { sentOn: state.today, file, note: action.note.trim(), toArchitectOn: null, answeredOn: null, answer: null, answerNote: '' }
+      const next = mapProject(state, project.id, (p) => ({ ...p, submittals: (p.submittals ?? []).map((x) => (x.id === sub.id ? { ...x, rounds: [...x.rounds, round] } : x)) }))
+      return logged(next, 'trade', `${partner.company} sent submittal ${sub.number}, ${sub.title}${sub.rounds.length > 0 ? `, round ${sub.rounds.length + 1}` : ''}.`)
+    }
+
+    case 'sendSubmittalToArchitect': {
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const sub = project?.submittals?.find((x) => x.id === action.submittalId)
+      if (!project || !sub || submittalState(sub) !== 'us') return state
+      const rounds = sub.rounds.map((r, i) => (i === sub.rounds.length - 1 ? { ...r, toArchitectOn: state.today } : r))
+      const next = mapProject(state, project.id, (p) => ({ ...p, submittals: (p.submittals ?? []).map((x) => (x.id === sub.id ? { ...x, rounds } : x)) }))
+      return logged(next, 'office', `Sent submittal ${sub.number}, ${sub.title}, to ${project.architect}.`)
+    }
+
+    case 'answerSubmittal': {
+      // We record the architect's answer. Revise sends it back to the trade for another round.
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const sub = project?.submittals?.find((x) => x.id === action.submittalId)
+      const note = action.note.trim()
+      if (!project || !sub || submittalState(sub) !== 'architect' || (action.answer === 'revise' && !note)) return state
+      const rounds = sub.rounds.map((r, i) => (i === sub.rounds.length - 1 ? { ...r, answeredOn: state.today, answer: action.answer, answerNote: note } : r))
+      const next = mapProject(state, project.id, (p) => ({ ...p, submittals: (p.submittals ?? []).map((x) => (x.id === sub.id ? { ...x, rounds } : x)) }))
+      const words = action.answer === 'revise' ? 'sent it back to revise' : action.answer === 'approved as noted' ? 'approved it as noted' : 'approved it'
+      return logged(next, 'office', `${project.architect} ${words}: submittal ${sub.number}, ${sub.title}.${note ? ` ${note.replace(/[.\s]+$/, '')}.` : ''}`)
     }
   }
 }

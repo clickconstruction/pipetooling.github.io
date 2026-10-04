@@ -16,12 +16,11 @@ describe('the daily log', () => {
     expect(workdaysBetween('2026-09-25', '2026-09-29')).toEqual(['2026-09-25', '2026-09-28', '2026-09-29'])
   })
 
-  it('says which working day this week has no log, on the ring card last', () => {
+  it('says which working day this week has no log, on the ring card', () => {
     const s = initialGcState()
     expect(missingLogs(fairOaks(s), s.today)).toEqual(['2026-09-30'])
     expect(missingLogsWords(['2026-09-30'])).toBe('No daily log for Wed Sep 30.')
-    const also = stageProgress(s, fairOaks(s)).also
-    expect(also[also.length - 1]).toBe('No daily log for Wed Sep 30.')
+    expect(stageProgress(s, fairOaks(s)).also).toContain('No daily log for Wed Sep 30.')
   })
 
   it('reads who was on site, for the look-ahead marks', () => {

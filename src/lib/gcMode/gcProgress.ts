@@ -16,6 +16,7 @@ import { drawPayDays } from './gcBuildingPay'
 import { staleChange, staleWords } from './gcStale'
 import { punchCounts } from './gcBuildingPunch'
 import { missingLogs, missingLogsWords } from './gcBuildingLog'
+import { submittalRows } from './gcBuildingSubmittals'
 
 /** The stage colors, saturated on purpose: the ring is a status mark, not a neutral surface. */
 export const RING_COLORS: Record<GcStage, string> = {
@@ -321,6 +322,17 @@ function buildingProgress(state: GcState, project: GcProject): StageProgress {
   // Only while work is still being reported: a job whose work is all in is closing out.
   const noLog = share < 1 ? missingLogsWords(missingLogs(project, state.today)) : null
   if (noLog) also.push(noLog)
+  // Submittals (owner, 2026-10-04): one late and not approved, or one waiting on us to send on.
+  for (const r of submittalRows(state, project)) {
+    if (r.state === 'approved') continue
+    const name = `Submittal ${r.submittal.number}, ${r.submittal.title}, from ${r.company}`
+    if (r.daysLate > 0) {
+      const whose = r.state === 'trade' ? 'They have not sent it yet.' : r.state === 'us' ? 'It waits on us.' : 'It is with the architect.'
+      also.push(`${name} is ${r.daysLate} ${r.daysLate === 1 ? 'day' : 'days'} late. ${whose}`)
+    } else if (r.state === 'us') {
+      also.push(`${name} waits on us.${r.neededBy === state.today ? ' It is needed today.' : r.neededBy ? ` It is needed by ${shortDate(r.neededBy)}.` : ''}`)
+    }
+  }
   if (share >= 1) {
     const signed = withSow.filter((p) => p.sow?.status === 'signed')
     const closed = signed.filter((p) => p.sow && tradeCloseout(p.sow, project, state.today).closed).length
