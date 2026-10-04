@@ -41,14 +41,14 @@ makes; nobody builds it until he answers.
    Bill the owner. A Screens row in `README.md`.
 2. ~~**The company window shows "waiting on the architect" and "certified, not paid"**~~ done a900e11dc (under They owe us now) from
    `ownerAccount` (`waitingOnArchitect`, `certifiedUnpaid`).
-3. ~~**Compare bids and Trades read what trades send now:**~~ done (shown, not counted: question 14 stays the owner's; this commit) alternates, an attached quote, and how
+3. ~~**Compare bids and Trades read what trades send now:**~~ done 54bfc2a63 (shown, not counted: question 14 stays the owner's) alternates, an attached quote, and how
    many days the number holds (question 14's built half).
 4. **Spec sections on the Plans tab:** each set card lists `set.changedSpecs` beside its sheets,
    and the "what changed" words (`staleWords`) name a revised section.
 5. **A line's sheets beside it in Compare bids** (the owner's option 1, the half not built).
-6. **A board-row chip for a pay application sent back twice** (`timesSentBack`, `sentBackOpen` in
+6. ~~**A board-row chip for a pay application sent back twice**~~ done ("Roofing: sent back 2 times", red; this commit) (`timesSentBack`, `sentBackOpen` in
    `gcBuilding.ts`; the Building lane offered it).
-7. **No "Click" written into the words:** `bidTabResult` and any other Board words read the
+7. ~~**No "Click" written into the words:**~~ done (bidTabResult reads `GC_COMPANY.shortName`; this commit) `bidTabResult` and any other Board words read the
    company's name from the model (`GC_COMPANY`), per question 1 (nothing Click-only).
 8. **A second walkthrough inside a project:** Trades, Our number, Get started, Draws. And
    *New here?* may open itself on a first visit.
