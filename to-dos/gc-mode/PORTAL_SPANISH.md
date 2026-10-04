@@ -119,7 +119,7 @@ column headers are in one block at the end of `gcBuildingWords.ts`, for the nati
 
 ## For a native speaker to read
 
-Every Spanish string the trade's portal shows, 705 in all, drawn from the code on 2026-10-04.
+Every Spanish string the trade's portal shows, 760 in all, drawn from the code on 2026-10-04.
 They're grouped by screen, English on the left. Please mark anything that reads wrong, stiff or
 unclear, and write the better words beside it. The Portal lane makes the changes and passes the
 other lanes theirs.
@@ -233,6 +233,18 @@ they were written in. The portal does not translate them.
 
 | English | Español |
 |---|---|
+| What your quote leaves out | Lo que su cotización no incluye |
+| Tick what your quote leaves out. Anything left unticked is in your price. | Marque lo que su cotización no incluye. Lo que no marque está incluido en su precio. |
+| If it comes up: | Si se necesita: |
+| per | por |
+| Price per unit, if it comes up | Precio por unidad, si se necesita |
+| The unit, like cy | La unidad, por ejemplo yd3 |
+| Something else you exclude | Algo más que no incluye |
+| Your quote leaves out: {list}. | Su cotización no incluye: {list}. |
+| {what} ({amount} per {unit} if it comes up) | {what} ({amount} por {unit} si se necesita) |
+| What you will do | Lo que usted hará |
+| What you will not do | Lo que usted no hará |
+| {what}, {amount} per {unit} if it comes up | {what}, {amount} por {unit} si se necesita |
 | Your schedule of values | Su desglose por etapas |
 | How your quote splits by stage. It is optional. Rename, add or take out lines. They must add up to your quote. | Cómo se divide su cotización por etapa. Es opcional. Puede cambiar, agregar o quitar partidas. Deben sumar su cotización. |
 | How your price splits by stage, so {gc} reads your billing on your own lines. It must add up to {amount}. | Cómo se divide su precio por etapa, para que {gc} lea su cobro en sus propias partidas. Debe sumar {amount}. |
@@ -756,6 +768,54 @@ they were written in. The portal does not translate them.
 | You told {gc} your quote would come by {date}. That day passed {ago}. Send your quote or give a new day. | Le dijo a {gc} que su cotización llegaría a más tardar el {date}. Esa fecha pasó {ago}. Envíe su cotización o dé un nuevo día. |
 | yesterday | ayer |
 | {n} days ago | hace {n} días |
+
+#### The usual exclusions, by name
+
+| English | Español |
+|---|---|
+| Permits and fees | Permisos y cuotas |
+| Bonds | Fianzas |
+| Sales tax | Impuesto sobre ventas |
+| Testing and inspections | Pruebas e inspecciones |
+| Night or weekend work | Trabajo de noche o en fin de semana |
+| Temporary power and water | Luz y agua provisionales |
+| Dewatering | Desagüe del terreno |
+| Rock excavation | Excavación en roca |
+| Haul off of bad soil | Retiro de tierra mala |
+| Erosion control and SWPPP | Control de erosión y SWPPP |
+| Rebar supply | Suministro de varilla |
+| Vapor barrier | Barrera de vapor |
+| Pump truck | Bomba de concreto |
+| Cold weather protection | Protección contra el frío |
+| Crane | Grúa |
+| Fireproofing | Protección contra fuego |
+| Touch-up paint | Retoque de pintura |
+| Roof curbs | Bases de techo para equipo |
+| Roof blocking | Madera de bloqueo en el techo |
+| Warranty past two years | Garantía de más de dos años |
+| Controls | Controles |
+| Test and balance | Prueba y balanceo |
+| Fire dampers | Compuertas cortafuego |
+| Fire alarm | Alarma contra incendio |
+| Low voltage | Bajo voltaje |
+| Utility company fees | Cuotas de la compañía de servicios |
+| Light fixtures supply | Suministro de lámparas |
+| Gas piping | Tubería de gas |
+| Fixtures supply | Suministro de muebles de baño |
+| Tap fees | Cuotas de conexión |
+| Water heater | Calentador de agua |
+| Fire alarm tie-in | Conexión a la alarma contra incendio |
+| Fire pump | Bomba contra incendio |
+| Backflow preventer | Válvula antirretorno |
+| Insulation | Aislamiento |
+| Blocking for others | Bloqueo para otros oficios |
+| Level 5 finish | Acabado nivel 5 |
+| Exterior paint | Pintura exterior |
+| Special coatings | Recubrimientos especiales |
+| Floor prep and leveling | Preparación y nivelación de piso |
+| Moisture testing | Prueba de humedad |
+| Irrigation sleeves under paving | Camisas para riego bajo pavimento |
+| Maintenance after planting | Mantenimiento después de plantar |
 
 #### Dates and the plans' disciplines
 
