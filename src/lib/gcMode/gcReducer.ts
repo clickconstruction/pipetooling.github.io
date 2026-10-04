@@ -15,7 +15,7 @@ import { buildNewProject, dryInMilestoneFor, packagesFromDrafts, pushSchedule, s
 import { nextPunchId, punchClear } from './gcBuildingPunch'
 import { logTrades } from './gcBuildingLog'
 import { addDays, changeOrderTradePct, crewPctFromStages, drawApprovedLess, finalPayApplication, jobCloseout, payApplication, timesSentBack, tradeCloseout, workAllBilled } from './gcBuilding'
-import { appClaimed, appOpen, changeOrderPrice, ownerCloseout, ownerContractWorthNow, ownerFinalPayAppToSend, ownerPayApp, ownerPayAppHasWork, ownerPayAppToSend } from './gcOwnerBilling'
+import { appClaimed, appOpen, changeOrderPrice, OWNER_RETAINAGE_DEFAULT_PCT, ownerCloseout, ownerContractWorthNow, ownerFinalPayAppToSend, ownerPayApp, ownerPayAppHasWork, ownerPayAppToSend, ownerRetainageWords } from './gcOwnerBilling'
 
 export function gcReducer(state: GcState, action: GcAction): GcState {
   switch (action.type) {
@@ -1518,6 +1518,24 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
         'office',
         `${known ? 'Changed' : 'Wrote'} the daily log for ${weekdayDate(log.date)} on ${project.name}: ${parts.join(', ')}.${log.date < state.today && !known ? ' Caught up after the day.' : ''}`,
       )
+    }
+
+    case 'setOwnerRetainageStep': {
+      // Owner Billing lane: whether the owner's retainage drops partway is ours to choose per job
+      // (the owner, 2026-10-04). Only on a job that is ours, and only ever lower than their percent.
+      const project = state.projects.find((p) => p.id === action.projectId)
+      if (!project || (project.stage !== 'buyout' && project.stage !== 'building')) return state
+      const full = state.customers.find((c) => c.id === project.customerId)?.retainagePct ?? OWNER_RETAINAGE_DEFAULT_PCT
+      const step = action.step
+      if (step && !(step.atPct > 0 && step.atPct < 100 && step.toPct >= 0 && step.toPct < full && (step.way === 'after' || step.way === 'all'))) return state
+      const kept = step ? { atPct: Math.round(step.atPct), toPct: Math.round(step.toPct * 10) / 10, way: step.way } : null
+      const same = JSON.stringify(project.ownerRetainageStep ?? null) === JSON.stringify(kept)
+      if (same) return state
+      const next = mapProject(state, project.id, (p) => {
+        const { ownerRetainageStep: _was, ...rest } = p
+        return kept ? { ...rest, ownerRetainageStep: kept } : rest
+      })
+      return logged(next, 'office', `On ${project.name}, ${project.owner} now holds ${ownerRetainageWords(full, kept ?? undefined)}.`)
     }
   }
 }

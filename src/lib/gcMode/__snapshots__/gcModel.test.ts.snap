@@ -7907,6 +7907,16 @@ exports[`GC mode golden walk > step 143: Fair Oaks D: catch up Wednesday's log 1
 }
 `;
 
+exports[`GC mode golden walk > step 144: Fair Oaks D: retainage drops to 5% on the work after half done 1`] = `
+{
+  "changed": {
+    "lastLog.id": 140,
+    "lastLog.text": "On Fair Oaks Shops, Building D, Cibolo Creek Partners now holds 10% until the work is half done, then 5% on the rest.",
+  },
+  "removed": [],
+}
+`;
+
 exports[`GC mode golden walk > the whole state at the end 1`] = `
 {
   "customers": [
@@ -8107,6 +8117,11 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
+      "id": 140,
+      "text": "On Fair Oaks Shops, Building D, Cibolo Creek Partners now holds 10% until the work is half done, then 5% on the rest.",
+      "who": "office",
+    },
+    {
       "id": 139,
       "text": "Wrote the daily log for Wed Sep 30 on Fair Oaks Shops, Building D: 17 workers from 5 trades on site, 1 delay. Caught up after the day.",
       "who": "office",
@@ -8250,11 +8265,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "id": 111,
       "text": "Cedar & Pine Millwork signed change order 3 into their Millwork statement of work: $2,400.",
       "who": "trade",
-    },
-    {
-      "id": 110,
-      "text": "Sent change order 3 to Cedar & Pine Millwork as a change to their Millwork statement of work: $2,400.",
-      "who": "office",
     },
   ],
   "partners": [
@@ -11679,6 +11689,11 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
         "fsite": 168000,
         "fsteel": 186000,
         "gc": 96000,
+      },
+      "ownerRetainageStep": {
+        "atPct": 50,
+        "toPct": 5,
+        "way": "after",
       },
       "packages": [
         {

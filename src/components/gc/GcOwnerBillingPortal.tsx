@@ -22,6 +22,7 @@ import {
   ownerAccount,
   ownerPayApp,
   ownerPayAppsSent,
+  ownerRetainageWords,
   projectChangeOrders,
   sentPayAppLines,
   shortDate,
@@ -100,6 +101,11 @@ export function GcOwnerBillingPortal({ state, project, dispatch }: { state: GcSt
             <span style={{ textAlign: 'right' }}>{money(account?.billed ?? 0)}</span>
             <span>You hold until the end</span>
             <span style={{ textAlign: 'right' }}>{money(account?.retainageHeld ?? 0)}</span>
+            {next.retainageStep && (
+              <span style={{ gridColumn: '1 / -1', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                You hold {ownerRetainageWords(next.retainagePct, next.retainageStep)}.
+              </span>
+            )}
             <span>You paid</span>
             <span style={{ textAlign: 'right' }}>{money(account?.paid ?? 0)}</span>
             <span>You owe now</span>

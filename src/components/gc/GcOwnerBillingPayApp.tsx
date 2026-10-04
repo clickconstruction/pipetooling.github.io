@@ -206,7 +206,7 @@ export function OwnerPayAppWindow({
               {line('2', 'Net change by change orders', money(s.changeOrders))}
               {line('3', 'Contract sum to date', money(s.sumToDate))}
               {line('4', 'Total completed and stored to date, from the 703', money(s.completedToDate))}
-              {line('5', app.final ? 'Retainage, released on this final application' : `Retainage, ${s.retainagePct}% of completed work`, money(s.retainage))}
+              {line('5', app.final ? 'Retainage, released on this final application' : form.retainageWords ? `Retainage, ${form.retainageWords}` : `Retainage, ${s.retainagePct}% of completed work`, money(s.retainage))}
               {line('6', 'Total earned less retainage', money(s.earnedLessRetainage))}
               {line('7', 'Less previous certificates for payment', money(s.previousCertificates))}
               {line('8', 'Current payment due', money(s.currentDue), true)}

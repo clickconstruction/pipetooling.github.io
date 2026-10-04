@@ -518,6 +518,7 @@ const STEPS: Step[] = [
       },
     },
   },
+  { label: 'Fair Oaks D: retainage drops to 5% on the work after half done', action: { type: 'setOwnerRetainageStep', projectId: 'fairoaksd', step: { atPct: 50, toPct: 5, way: 'after' } } },
 ]
 
 const CUSTOMER_IDS = ['cibolo', 'raman']
@@ -667,6 +668,7 @@ describe('GC mode golden walk', () => {
       'setPartnerLanguage',
       'markLost', 'reopenLost',
       'takeAlternate',
+      'setOwnerRetainageStep',
     ]
     expect(all.filter((t) => !used.has(t))).toEqual([])
   })

@@ -2,6 +2,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   allJobsMoney,
+  ownerRetainageOn,
+  ownerRetainageWords,
   substantialCompletionOn,
   priceToOwner,
   ownerContractPrice,
@@ -845,6 +847,62 @@ describe('the owner’s price stays what they signed', () => {
     const { mill: _gone, ...kept } = project.ownerContractWorth ?? {}
     const app = ownerPayApp(state, { ...project, ownerContractWorth: kept })
     expect([app.lines.find((l) => l.id === 'mill')?.worth, app.contract]).toEqual([0, 338_767 - 39_800])
+  })
+})
+
+describe('retainage that drops partway, ours to choose per job', () => {
+  const fairOaks = (state: GcState) => state.projects.find((p) => p.id === 'fairoaksd') as GcProject
+  const step = (way: 'after' | 'all') => ({ atPct: 50, toPct: 5, way })
+  const r = (n: number) => Math.round(n)
+
+  it('holds the full percent to the point, then the lower one on the rest or on all of it', () => {
+    expect(ownerRetainageOn(10, undefined, 640_000, 1_000_000)).toBe(64_000)
+    expect(ownerRetainageOn(10, step('after'), 640_000, 1_000_000)).toBe(57_000)
+    expect(ownerRetainageOn(10, step('all'), 640_000, 1_000_000)).toBe(32_000)
+    expect(ownerRetainageOn(10, step('all'), 400_000, 1_000_000)).toBe(40_000)
+    expect(ownerRetainageWords(10, undefined)).toBe('10% of every bill until the end')
+    expect(ownerRetainageWords(10, step('after'))).toBe('10% until the work is half done, then 5% on the rest')
+    expect(ownerRetainageWords(10, { atPct: 75, toPct: 0, way: 'all' })).toBe('10% until the work is 75% done, then 0% on all of it')
+  })
+
+  it('on Fair Oaks D, past half done, dropping on all of it puts what comes back on the next bill', () => {
+    const before = ownerPayApp(initialGcState(), fairOaks(initialGcState()))
+    const state = gcReducer(initialGcState(), { type: 'setOwnerRetainageStep', projectId: 'fairoaksd', step: step('all') })
+    const after = ownerPayApp(state, fairOaks(state))
+    expect(r(after.retainage)).toBe(r(after.doneToDate * 0.05))
+    expect(r(after.due - before.due)).toBe(r(before.retainage - after.retainage))
+    expect(ownerCarriedForward(after)).toBe(ownerCarriedForward(before))
+  })
+
+  it('goes out on the bill: the form says it and each line holds its share', () => {
+    let state = gcReducer(initialGcState(), { type: 'setOwnerRetainageStep', projectId: 'fairoaksd', step: step('after') })
+    state = gcReducer(state, { type: 'sendOwnerPayApp', projectId: 'fairoaksd' })
+    const lastOf = (st: GcState) => {
+      const apps = fairOaks(st).ownerBilling?.payApps ?? []
+      return apps[apps.length - 1]
+    }
+    const sent = lastOf(state)
+    expect(sent?.retainageStep).toEqual(step('after'))
+    const form = sent && ownerPayAppForm(state, fairOaks(state), sent.number)
+    expect(form?.retainageWords).toBe('10% until the work is half done, then 5% on the rest')
+    expect(r(form?.app.lines.reduce((t, l) => t + l.retainage, 0) ?? 0)).toBe(r(sent?.retainage ?? 0))
+    // Changing the step later leaves the bill that went as it went.
+    state = gcReducer(state, { type: 'setOwnerRetainageStep', projectId: 'fairoaksd', step: null })
+    expect(lastOf(state)?.retainageStep).toEqual(step('after'))
+    expect(fairOaks(state).ownerRetainageStep).toBeUndefined()
+  })
+
+  it('only on a job that is ours, and only ever lower than the owner’s percent', () => {
+    const fresh = initialGcState()
+    for (const bad of [
+      { projectId: 'fairoaksd', step: { atPct: 50, toPct: 10, way: 'after' as const } },
+      { projectId: 'fairoaksd', step: { atPct: 0, toPct: 5, way: 'after' as const } },
+      { projectId: 'fairoaksd', step: { atPct: 100, toPct: 5, way: 'all' as const } },
+      { projectId: 'boerne', step: step('after') },
+      { projectId: 'fairoaksd', step: null },
+    ]) {
+      expect(gcReducer(fresh, { type: 'setOwnerRetainageStep', ...bad })).toBe(fresh)
+    }
   })
 })
 

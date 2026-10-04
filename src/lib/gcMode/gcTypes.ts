@@ -354,6 +354,8 @@ export interface GcProject {
    * signed before it was kept, and the price follows what we carry (`ownerContractWorthNow`).
    */
   ownerContractWorth?: Record<string, number>
+  /** Retainage that drops once the work is far enough along, if we chose it for this job. Absent: held to the end. */
+  ownerRetainageStep?: OwnerRetainageStep
   permitOn: string | null
   startDate: string | null
   /** The day we pressed Start. The trades were told then. */
@@ -686,6 +688,8 @@ export type GcAction =
   | { type: 'takeAlternate'; projectId: string; packageId: string; inviteId: string; label: string; taken: boolean }
   /** Our superintendent writes the daily log for a day (today, or a day missed); it replaces that day's. */
   | { type: 'saveDailyLog'; projectId: string; log: Omit<DailyLog, 'writtenOn'> }
+  /** We choose, per job, whether the owner's retainage drops partway (null: held to the end). */
+  | { type: 'setOwnerRetainageStep'; projectId: string; step: OwnerRetainageStep | null }
 
 /** One trade on a new project, as the office left it in the New project window. */
 export interface NewTradeDraft {
@@ -738,6 +742,22 @@ export interface DrawPayApp {
 }
 
 /** One pay application we sent the owner, kept as it went. The next one starts from its lines. */
+/**
+ * Retainage the owner holds that drops partway (the owner, 2026-10-04: we may offer it and choose
+ * it per job). The owner holds their full percent until the work is `atPct` done, then `toPct`.
+ */
+export interface OwnerRetainageStep {
+  /** How far along the work is when it drops, in percent of our price: 50 is half done. */
+  atPct: number
+  /** What the owner holds after that, in percent. Below their full percent. */
+  toPct: number
+  /**
+   * 'after': the lower percent on the work past that point; what they held before stays held.
+   * 'all': the lower percent on all the work once it is that far along, so some of what they held comes back.
+   */
+  way: 'after' | 'all'
+}
+
 export interface OwnerPayAppSent {
   number: number
   /** The bill day it went for. One a month. */
@@ -772,6 +792,8 @@ export interface OwnerPayAppSent {
   payments?: { on: string; amount: number }[]
   /** The owner's word on when they will pay, oldest first. The newest counts; a passed one stays on the record. */
   promises?: { by: string; madeOn: string; note: string; who: 'office' | 'owner' }[]
+  /** The retainage step it went under, if the job had one then. */
+  retainageStep?: OwnerRetainageStep
 }
 
 /** A pay application the office sent back: the draw as the trade sent it, why, and what we see. */
