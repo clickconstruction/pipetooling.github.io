@@ -239,7 +239,7 @@ sheet index tools and the $/sq ft budget summary.
 
 ### Board (GC 0)
 
-1. A door to the book from Trade partners, a walkthrough stop, the README row, once GC 2's page lands.
+1. ~~A door to the book from Trade partners, a walkthrough stop, the README row, once GC 2's page lands.~~ done (this commit): *Scope book* on Trade partners (GC 2's `GcScopeBookButton`), New here?'s *Trade partners and the scope book* stop.
 
 ## Owner (the decisions)
 
