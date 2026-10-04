@@ -18,6 +18,10 @@ import {
   portalLeavesOut,
   portalLink,
   portalOnSite,
+  portalSovCheck,
+  portalSovReached,
+  portalSovStart,
+  claimedToDate,
   portalPapers,
   portalPromises,
   portalVetting,
@@ -1039,5 +1043,56 @@ describe('Your papers', () => {
     const sent = gcReducer(added, { type: 'tradeVettingForm', partnerId: id, form: { license: 'TX 1', insurance: 'Mutual', yearsInBusiness: 3, references: 'Ana', pastJobs: 'Seguin' } })
     expect(portalPapers(sent, id).company.map((x) => x.title)).toEqual(['Your company form'])
     expect(portalPapers(state, 'guadalupe', 'es').jobs[0]!.papers[0]!.title).toBe('Renuncia incondicional, solicitud de pago 2')
+  })
+})
+
+describe('the trade’s own schedule of values', () => {
+  it('starts with the three stages, in the portal’s language', () => {
+    expect(portalSovStart()).toEqual(['Rough-in', 'Top out', 'Trim'])
+    expect(portalSovStart('es')).toEqual(['Obra negra', 'Antes de cerrar muros', 'Acabados'])
+  })
+
+  it('sends none when nothing is typed, and says how far off the lines are', () => {
+    expect(portalSovCheck([{ label: 'Rough-in', amount: 0 }], 100_000).state).toBe('empty')
+    expect(portalSovCheck([{ label: 'Rough-in', amount: 40_000 }, { label: 'Trim', amount: 50_000 }], 100_000)).toMatchObject({
+      state: 'short',
+      words: 'Your lines add up to $90,000. That is $10,000 short.',
+    })
+    expect(portalSovCheck([{ label: 'Rough-in', amount: 60_000 }, { label: 'Trim', amount: 50_000 }], 100_000).state).toBe('over')
+    const ok = portalSovCheck([{ label: ' Rough-in ', amount: 60_000 }, { label: 'Trim', amount: 40_000 }, { label: '', amount: 5 }], 100_000)
+    expect(ok).toMatchObject({ state: 'ok', lines: [{ label: 'Rough-in', amount: 60_000 }, { label: 'Trim', amount: 40_000 }] })
+  })
+
+  it('says where Pecan Valley’s billing stands on its own lines', () => {
+    const pkg = state.projects.find((p) => p.id === 'fairoaksd')!.packages.find((k) => k.id === 'felec')!
+    const lines = pkg.sow!.theirSov!
+    const words = portalSovReached(lines, claimedToDate(pkg.sow!))
+    expect(words).toMatch(/^Billed \$[\d,]+ to date: /)
+    expect(portalSovReached(lines, 0)).toBe('Nothing billed yet.')
+    expect(portalSovReached([{ label: 'Rough-in', amount: 50_000 }, { label: 'Top out', amount: 50_000 }], 60_000, 'es')).toBe(
+      'Cobrado $60,000 a la fecha: completo hasta Rough-in, 20% de Top out.',
+    )
+  })
+
+  it('keeps the schedule the company sends with its quote', () => {
+    const inv = state.projects.find((p) => p.id === 'boerne')!.packages.find((k) => k.id === 'steel')!.invites.find((i) => i.partnerId === 'bexar')!
+    const sent = gcReducer(state, {
+      type: 'tradeSubmitBid',
+      projectId: 'boerne',
+      packageId: 'steel',
+      inviteId: inv.id,
+      amount: 150_000,
+      includes: {},
+      note: '',
+      sov: [
+        { label: 'Rough-in', amount: 100_000 },
+        { label: 'Trim', amount: 50_000 },
+      ],
+    })
+    const bid = sent.projects.find((p) => p.id === 'boerne')!.packages.find((k) => k.id === 'steel')!.invites.find((i) => i.partnerId === 'bexar')!.bid
+    expect(bid?.sov).toEqual([
+      { label: 'Rough-in', amount: 100_000 },
+      { label: 'Trim', amount: 50_000 },
+    ])
   })
 })

@@ -1,5 +1,21 @@
 import { useState } from 'react'
-import { alternateWords, GC_COMPANY, GOOD_FOR_DAYS, portalLeavesOut, type BidAlternate, type PortalLine, type ScopeItem, type TradePackage } from '../../lib/gcMode/gcModel'
+import {
+  alternateWords,
+  claimedToDate,
+  GC_COMPANY,
+  GOOD_FOR_DAYS,
+  money,
+  portalLeavesOut,
+  portalSovCheck,
+  portalSovReached,
+  portalSovStart,
+  type BidAlternate,
+  type PortalLine,
+  type ScopeItem,
+  type Sow,
+  type TheirSovLine,
+  type TradePackage,
+} from '../../lib/gcMode/gcModel'
 import { Btn, Chip, input } from './gcUi'
 import { LineSheets } from './GcPortalLineSheets'
 import { usePortalLang } from './gcPortalLang'
@@ -168,6 +184,102 @@ export function LeavesOut({ pkg }: { pkg: TradePackage }) {
           <li key={line}>{line}</li>
         ))}
       </ul>
+    </div>
+  )
+}
+
+/** A schedule of values as the company types it: a name and an amount, the amount still text. */
+export type SovDraft = { label: string; amount: string }[]
+
+/**
+ * The company's own schedule of values (owner, 2026-10-04, question 4): lines it can rename, add or
+ * take out, and where their total stands against the number they must add up to.
+ */
+export function SovEditor({ value, onChange, target, help }: { value: SovDraft; onChange: (next: SovDraft) => void; target: number; help: string }) {
+  const { lang, t } = usePortalLang()
+  const check = portalSovCheck(
+    value.map((l) => ({ label: l.label, amount: Number(l.amount) || 0 })),
+    target,
+    lang,
+  )
+  const set = (i: number, patch: Partial<SovDraft[number]>) => onChange(value.map((l, j) => (j === i ? { ...l, ...patch } : l)))
+  return (
+    <div style={{ display: 'grid', gap: '0.35rem', fontSize: '0.9rem', borderTop: `1px solid ${RULE}`, paddingTop: '0.5rem' }}>
+      <div>
+        <strong>{t('sovTitle')}</strong> <span style={{ fontSize: '0.85rem', opacity: 0.8 }}>· {help}</span>
+      </div>
+      {value.map((l, i) => (
+        <div key={i} style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <input style={{ ...input, flex: '1 1 9rem', minWidth: 0 }} value={l.label} aria-label={t('sovLineAria')} onChange={(e) => set(i, { label: e.target.value })} />
+          <input
+            style={{ ...input, width: '7.5rem' }}
+            type="number"
+            min={0}
+            step={100}
+            inputMode="numeric"
+            value={l.amount}
+            aria-label={t('sovAmountAria')}
+            onChange={(e) => set(i, { amount: e.target.value })}
+          />
+          <Btn kind="quiet" onClick={() => onChange(value.filter((_, j) => j !== i))}>
+            {t('remove')}
+          </Btn>
+        </div>
+      ))}
+      <div>
+        <Btn kind="quiet" onClick={() => onChange([...value, { label: '', amount: '' }])}>
+          {t('sovAdd')}
+        </Btn>
+      </div>
+      {check.words && (
+        <div style={{ fontSize: '0.85rem', fontWeight: check.state === 'ok' ? 400 : 600, color: check.state === 'ok' ? undefined : 'var(--text-red-700)' }}>{check.words}</div>
+      )}
+    </div>
+  )
+}
+
+/**
+ * On an awarded statement of work: the company's own schedule of values. None yet: Send your
+ * schedule of values, adding up to the price. Sent: its lines, and how far its billing reaches on
+ * them, so both sides read the same draw on their own lines (owner, 2026-10-04, question 4).
+ */
+export function TheirSovOnSow({ sow, onSend }: { sow: Sow; onSend: (lines: TheirSovLine[]) => void }) {
+  const { lang, t } = usePortalLang()
+  const [open, setOpen] = useState(false)
+  const [draft, setDraft] = useState<SovDraft>(() => portalSovStart(lang).map((label) => ({ label, amount: '' })))
+  const lines = sow.theirSov ?? []
+  if (lines.length > 0) {
+    return (
+      <div style={{ display: 'grid', gap: '0.15rem', borderTop: `1px solid ${RULE}`, paddingTop: '0.4rem' }}>
+        <strong>{t('sovTitle')}</strong>
+        <span style={{ opacity: 0.8 }}>{lines.map((l) => `${l.label} ${money(l.amount)}`).join(' · ')}</span>
+        <span style={{ fontSize: '0.85rem' }}>{portalSovReached(lines, claimedToDate(sow), lang)}</span>
+      </div>
+    )
+  }
+  if (!open) {
+    return (
+      <div>
+        <Btn onClick={() => setOpen(true)}>{t('sovSendBtn')}</Btn>
+      </div>
+    )
+  }
+  const check = portalSovCheck(
+    draft.map((l) => ({ label: l.label, amount: Number(l.amount) || 0 })),
+    sow.price,
+    lang,
+  )
+  return (
+    <div style={{ display: 'grid', gap: '0.4rem' }}>
+      <SovEditor value={draft} onChange={setDraft} target={sow.price} help={t('sovSowHelp', { gc: GC_COMPANY.shortName, amount: money(sow.price) })} />
+      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+        <Btn kind="primary" disabled={check.state !== 'ok'} onClick={() => onSend(check.lines)}>
+          {t('sendTo', { gc: GC_COMPANY.shortName })}
+        </Btn>
+        <Btn kind="quiet" onClick={() => setOpen(false)}>
+          {t('notNow')}
+        </Btn>
+      </div>
     </div>
   )
 }
