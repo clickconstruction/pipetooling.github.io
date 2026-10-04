@@ -15,6 +15,7 @@ import { openInspectionFailures, scheduleSummary, scheduleSummaryWords } from '.
 import { drawPayDays } from './gcBuildingPay'
 import { staleChange, staleWords } from './gcStale'
 import { punchCounts } from './gcBuildingPunch'
+import { missingLogs, missingLogsWords } from './gcBuildingLog'
 
 /** The stage colors, saturated on purpose: the ring is a status mark, not a neutral surface. */
 export const RING_COLORS: Record<GcStage, string> = {
@@ -316,6 +317,10 @@ function buildingProgress(state: GcState, project: GcProject): StageProgress {
   also.unshift(...failed, ...latePay)
   const sum = scheduleSummary(project, state.today)
   if (sum) also.unshift(scheduleSummaryWords(sum))
+  // The daily log (owner, 2026-10-04): a working day this week with no log, last in the card.
+  // Only while work is still being reported: a job whose work is all in is closing out.
+  const noLog = share < 1 ? missingLogsWords(missingLogs(project, state.today)) : null
+  if (noLog) also.push(noLog)
   if (share >= 1) {
     const signed = withSow.filter((p) => p.sow?.status === 'signed')
     const closed = signed.filter((p) => p.sow && tradeCloseout(p.sow, project, state.today).closed).length

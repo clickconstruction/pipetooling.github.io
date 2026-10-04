@@ -1672,6 +1672,7 @@ exports[`GC mode golden walk > before any step 1`] = `
           "Pecan Valley Electric owes the unconditional waiver on draw 1.",
           "Pecan Valley Electric asked for draw 2. Their insurance expired Sep 15. Approve it once that is fixed.",
           "Pay application 1 is back with Summit Roofing. Waiting on a fixed one.",
+          "No daily log for Wed Sep 30.",
         ],
         "center": "74%",
         "groups": [
@@ -7776,9 +7777,10 @@ exports[`GC mode golden walk > step 133: Guadalupe grinds the trip edge 1`] = `
     "projects.fairoaksd.stageProgress.also[4]": "Pecan Valley Electric owes the unconditional waiver on draw 1.",
     "projects.fairoaksd.stageProgress.also[5]": "Pecan Valley Electric asked for draw 2. Their insurance expired Sep 15. Approve it once that is fixed.",
     "projects.fairoaksd.stageProgress.also[6]": "Pay application 1 is back with Summit Roofing. Waiting on a fixed one.",
+    "projects.fairoaksd.stageProgress.also[7]": "No daily log for Wed Sep 30.",
   },
   "removed": [
-    "projects.fairoaksd.stageProgress.also[7]",
+    "projects.fairoaksd.stageProgress.also[8]",
   ],
 }
 `;
@@ -7826,9 +7828,10 @@ exports[`GC mode golden walk > step 137: Accept the concrete work on Fair Oaks D
     "projects.fairoaksd.stageProgress.also[3]": "Pecan Valley Electric owes the unconditional waiver on draw 1.",
     "projects.fairoaksd.stageProgress.also[4]": "Pecan Valley Electric asked for draw 2. Their insurance expired Sep 15. Approve it once that is fixed.",
     "projects.fairoaksd.stageProgress.also[5]": "Pay application 1 is back with Summit Roofing. Waiting on a fixed one.",
+    "projects.fairoaksd.stageProgress.also[6]": "No daily log for Wed Sep 30.",
   },
   "removed": [
-    "projects.fairoaksd.stageProgress.also[6]",
+    "projects.fairoaksd.stageProgress.also[7]",
   ],
 }
 `;
@@ -7877,6 +7880,28 @@ exports[`GC mode golden walk > step 141: Pad B: take Lonestar's asphalt alternat
     "projects.padb.trades.bsite.compareBids.lines[0].text": "Lonestar Earthworks bid $92,500 and covers everything. With the alternate we took, their number comes down $6,000.",
   },
   "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 142: Fair Oaks D: the superintendent writes today's log 1`] = `
+{
+  "changed": {
+    "lastLog.id": 138,
+    "lastLog.text": "Wrote the daily log for Fri Oct 2 on Fair Oaks Shops, Building D: 17 workers from 5 trades on site.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 143: Fair Oaks D: catch up Wednesday's log 1`] = `
+{
+  "changed": {
+    "lastLog.id": 139,
+    "lastLog.text": "Wrote the daily log for Wed Sep 30 on Fair Oaks Shops, Building D: 17 workers from 5 trades on site, 1 delay. Caught up after the day.",
+  },
+  "removed": [
+    "projects.fairoaksd.stageProgress.also[6]",
+  ],
 }
 `;
 
@@ -8080,6 +8105,16 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
+      "id": 139,
+      "text": "Wrote the daily log for Wed Sep 30 on Fair Oaks Shops, Building D: 17 workers from 5 trades on site, 1 delay. Caught up after the day.",
+      "who": "office",
+    },
+    {
+      "id": 138,
+      "text": "Wrote the daily log for Fri Oct 2 on Fair Oaks Shops, Building D: 17 workers from 5 trades on site.",
+      "who": "office",
+    },
+    {
       "id": 137,
       "text": "Took Lonestar Earthworks's alternate on Sitework for Boerne Retail Pad B: Asphalt paving in place of concrete. It takes off $6,000.",
       "who": "office",
@@ -8217,16 +8252,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
     {
       "id": 110,
       "text": "Sent change order 3 to Cedar & Pine Millwork as a change to their Millwork statement of work: $2,400.",
-      "who": "office",
-    },
-    {
-      "id": 109,
-      "text": "Dr. Priya Raman signed change order 3 in their portal. Their price goes up $2,640.",
-      "who": "office",
-    },
-    {
-      "id": 108,
-      "text": "Sent change order 3 to Dr. Priya Raman for signature: $2,640.",
       "who": "office",
     },
   ],
@@ -11203,6 +11228,344 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "closedOn": "2026-10-02",
       "contingencyPct": 3,
       "customerId": "cibolo",
+      "dailyLogs": [
+        {
+          "crews": [
+            {
+              "packageId": "fsteel",
+              "workers": 5,
+            },
+            {
+              "packageId": "froof",
+              "workers": 4,
+            },
+            {
+              "packageId": "felec",
+              "workers": 3,
+            },
+            {
+              "packageId": "fplumb",
+              "workers": 3,
+            },
+            {
+              "packageId": "fhvac",
+              "workers": 3,
+            },
+          ],
+          "date": "2026-09-21",
+          "delays": [],
+          "done": "Deck welded on the north half. Roofers set insulation on the east bays. Panels B and C hung.",
+          "high": 88,
+          "low": 68,
+          "sky": "clear",
+          "visitors": "",
+          "weatherStop": false,
+          "writtenOn": "2026-09-21",
+        },
+        {
+          "crews": [
+            {
+              "packageId": "fsteel",
+              "workers": 5,
+            },
+            {
+              "packageId": "froof",
+              "workers": 5,
+            },
+            {
+              "packageId": "felec",
+              "workers": 3,
+            },
+            {
+              "packageId": "fplumb",
+              "workers": 3,
+            },
+            {
+              "packageId": "fhvac",
+              "workers": 3,
+            },
+          ],
+          "date": "2026-09-22",
+          "delays": [],
+          "done": "Insulation down on all four bays. Duct mains run in bays 1 and 2.",
+          "high": 90,
+          "low": 70,
+          "sky": "clear",
+          "visitors": "",
+          "weatherStop": false,
+          "writtenOn": "2026-09-22",
+        },
+        {
+          "crews": [
+            {
+              "packageId": "fsteel",
+              "workers": 3,
+            },
+            {
+              "packageId": "froof",
+              "workers": 5,
+            },
+            {
+              "packageId": "felec",
+              "workers": 3,
+            },
+            {
+              "packageId": "fplumb",
+              "workers": 3,
+            },
+            {
+              "packageId": "fhvac",
+              "workers": 3,
+            },
+          ],
+          "date": "2026-09-23",
+          "delays": [
+            {
+              "note": "Iron Horse came with three ironworkers, not five.",
+              "packageId": "fsteel",
+              "reason": "crew",
+            },
+          ],
+          "done": "Membrane started on the east half.",
+          "high": 86,
+          "low": 71,
+          "sky": "cloudy",
+          "visitors": "",
+          "weatherStop": false,
+          "writtenOn": "2026-09-23",
+        },
+        {
+          "crews": [
+            {
+              "packageId": "felec",
+              "workers": 3,
+            },
+            {
+              "packageId": "fplumb",
+              "workers": 3,
+            },
+            {
+              "packageId": "fhvac",
+              "workers": 2,
+            },
+          ],
+          "date": "2026-09-24",
+          "delays": [
+            {
+              "note": "Rain all day. The membrane cannot go down wet.",
+              "packageId": "froof",
+              "reason": "weather",
+            },
+          ],
+          "done": "Inside work only. Feeders pulled in bay 3.",
+          "high": 78,
+          "low": 69,
+          "sky": "rain",
+          "visitors": "",
+          "weatherStop": false,
+          "writtenOn": "2026-09-24",
+        },
+        {
+          "crews": [
+            {
+              "packageId": "felec",
+              "workers": 2,
+            },
+          ],
+          "date": "2026-09-25",
+          "delays": [
+            {
+              "note": "Work stopped at 12:30 for lightning.",
+              "packageId": null,
+              "reason": "weather",
+            },
+          ],
+          "done": "Lightning by noon. Everyone off the site at 12:30.",
+          "high": 75,
+          "low": 66,
+          "sky": "storm",
+          "visitors": "",
+          "weatherStop": true,
+          "writtenOn": "2026-09-25",
+        },
+        {
+          "crews": [
+            {
+              "packageId": "fsteel",
+              "workers": 4,
+            },
+            {
+              "packageId": "froof",
+              "workers": 5,
+            },
+            {
+              "packageId": "felec",
+              "workers": 3,
+            },
+            {
+              "packageId": "fplumb",
+              "workers": 3,
+            },
+            {
+              "packageId": "fhvac",
+              "workers": 3,
+            },
+          ],
+          "date": "2026-09-28",
+          "delays": [],
+          "done": "Membrane down on the east half. Canopy steel set.",
+          "high": 87,
+          "low": 67,
+          "sky": "clear",
+          "visitors": "City inspector: the electrical service inspection failed, the bonding jumper is missing.",
+          "weatherStop": false,
+          "writtenOn": "2026-09-28",
+        },
+        {
+          "crews": [
+            {
+              "packageId": "fsteel",
+              "workers": 4,
+            },
+            {
+              "packageId": "froof",
+              "workers": 5,
+            },
+            {
+              "packageId": "felec",
+              "workers": 2,
+            },
+            {
+              "packageId": "fplumb",
+              "workers": 3,
+            },
+            {
+              "packageId": "fhvac",
+              "workers": 3,
+            },
+          ],
+          "date": "2026-09-29",
+          "delays": [
+            {
+              "note": "Panel boards are two weeks out.",
+              "packageId": "felec",
+              "reason": "materials",
+            },
+          ],
+          "done": "Membrane started on the west half.",
+          "high": 89,
+          "low": 69,
+          "sky": "clear",
+          "visitors": "",
+          "weatherStop": false,
+          "writtenOn": "2026-09-29",
+        },
+        {
+          "crews": [
+            {
+              "packageId": "fsteel",
+              "workers": 4,
+            },
+            {
+              "packageId": "froof",
+              "workers": 5,
+            },
+            {
+              "packageId": "felec",
+              "workers": 2,
+            },
+            {
+              "packageId": "fplumb",
+              "workers": 3,
+            },
+            {
+              "packageId": "fhvac",
+              "workers": 3,
+            },
+          ],
+          "date": "2026-09-30",
+          "delays": [
+            {
+              "note": "Iron Horse short two again.",
+              "packageId": "fsteel",
+              "reason": "crew",
+            },
+          ],
+          "done": "Membrane on the west half. Erection on the canopy.",
+          "high": 88,
+          "low": 69,
+          "sky": "clear",
+          "visitors": "",
+          "weatherStop": false,
+          "writtenOn": "2026-10-02",
+        },
+        {
+          "crews": [
+            {
+              "packageId": "fsteel",
+              "workers": 3,
+            },
+            {
+              "packageId": "froof",
+              "workers": 4,
+            },
+            {
+              "packageId": "felec",
+              "workers": 2,
+            },
+            {
+              "packageId": "fplumb",
+              "workers": 3,
+            },
+            {
+              "packageId": "fhvac",
+              "workers": 3,
+            },
+          ],
+          "date": "2026-10-01",
+          "delays": [],
+          "done": "West half membrane half down. Ductwork in bay 4.",
+          "high": 85,
+          "low": 70,
+          "sky": "cloudy",
+          "visitors": "Cibolo's owner rep walked bays 1 and 2.",
+          "weatherStop": false,
+          "writtenOn": "2026-10-01",
+        },
+        {
+          "crews": [
+            {
+              "packageId": "fsteel",
+              "workers": 3,
+            },
+            {
+              "packageId": "froof",
+              "workers": 5,
+            },
+            {
+              "packageId": "felec",
+              "workers": 3,
+            },
+            {
+              "packageId": "fplumb",
+              "workers": 3,
+            },
+            {
+              "packageId": "fhvac",
+              "workers": 3,
+            },
+          ],
+          "date": "2026-10-02",
+          "delays": [],
+          "done": "West half membrane down. Bonding jumper in at the service panel.",
+          "high": 86,
+          "low": 68,
+          "sky": "clear",
+          "visitors": "",
+          "weatherStop": false,
+          "writtenOn": "2026-10-02",
+        },
+      ],
       "feePct": 10,
       "generalConditions": 96000,
       "id": "fairoaksd",

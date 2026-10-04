@@ -97,6 +97,7 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
 | Pay application (from the portal) | **Fill out pay application N**: four steps on a rail like the Release of Lien window (Check your work, Fill in a few details, Sign it, Send it to Click) beside the 702 and 703, which fill in as the trade types and mark what each step fills. The app knows the job, the contract, the lines, what was billed and the retainage; the trade checks the percents, picks the period, types its address once, and signs. Closing the window keeps the draft. In a Spanish portal the door, the window and the 702 and 703 read in Spanish; the office's copy stays English. |
 | **Closeout** | Each trade's last six steps: every line billed, **Accept the work** once every punch item is checked fixed (each trade's **Punch list** under its steps: **Add an item** with where on the job, **Checked, it is fixed** or **Not fixed** with a note that sends it back; the trade marks each **It is fixed** in its portal), their final pay application for the retainage with a conditional final release of lien, the owner paying our final and 10 days passing, **Approve the release** and **Mark paid**, their unconditional final release of lien. Totals for held, paid back and trades closed out; the owner's retainage on us, read from Bill the owner; **Close the job** once every trade is closed out, with what is left until then. In the portal the same steps show as the trade's closeout list, ending "You are closed out on this job." |
 | **Schedule** | Each activity is a line of a trade's statement of work, or a stage our own crew runs, or an inspection (the job's own, no dollars: on the critical path, not in work done). Four measures on top: work done against the plan with days behind (by dollars), the critical path (no spare days), milestones hit within 3 days, and the look-ahead done as planned (verified marks, last 4 weeks). The chart: each trade's lines, the plan with percent done, the plan at Start under it where it moved, today, milestones. The look-ahead: this week and the next two, this week's marks with their state. In Buying out it is drawn here: **Draw a first draft** (every line of every trade, by phase), then pick any activity to set its dates and what it waits on, and add, move or take off milestones; the first change after Start keeps the plan at Start as the baseline. **To verify**: each trade mark waiting, with what they reported against the plan; **Right**, or corrected with a reason; our own crew marked here, verified at once; an inspection due this week takes **It passed today** (also in its editor), which meets the milestone of the same name, or **It failed**: what failed, whose work (the trades it inspects come ticked) and the re-inspection day; it moves to that day and what waits on it moves out, the chart and the look-ahead say failed and when again, the ring card says so, and the trade's portal shows it above its pay application. Fair Oaks D's electrical service inspection failed Sep 28 and is inspected again today. On the Project Board, a building job with a schedule shows days behind or ahead, milestones hit and the look-ahead in place of its start day; the ring's card leads with the same sentence. Fair Oaks D has one drawn; draw Helotes. |
+| **Daily log** | Our superintendent's log for each working day on a job being built: the weather (and whether work stopped for it), who was on site and how many, what got done, what held work up (the look-ahead's reasons), inspections and visitors. Today's log starts from the day before. A working day in the last week with no log shows with **Write** to catch it up. The week at a glance, then the days before. **To verify** on Schedule says what the log has each trade on site that week, and the ring card says when a working day has no log while work is still being reported. Fair Oaks D has logs from Sep 21; Sep 30 was missed. |
 
 ## Decided by the owner (2026-10-02)
 
@@ -281,6 +282,10 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   On the trade's home (owner, 2026-10-03, Portal lane): one Needs you line per trade, "2 punch
   items to fix on Concrete for …", amber, and red once we sent one back. It opens the job page on
   the block that holds the list (`portalTodos` in `gcPortal.ts`).
+- **A daily log for each working day** (approved as built, 2026-10-04, Building lane): the
+  superintendent writes the weather, who was on site and how many, what got done, what held work
+  up and who came by; a missed day can be written after (`saveDailyLog`, `gcBuildingLog.ts`).
+  It backs up the look-ahead marks on **To verify**.
 - **A trade's retainage is paid 10 days after the owner pays ours** (answered 2026-10-02, was
   open question 16): the trade's final pay application can go in once we accept the work (our own
   final to the owner waits for every trade's); we approve and pay it 10 days after the owner pays
@@ -420,6 +425,9 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
   the company), and a typed name and title with the waiver tick as the signature. A line can be
   lowered to what was billed before, never below. The 702's "To" line reads Click Construction,
   the name the portal already uses (`GC_COMPANY_NAME`).
+- The daily log looks back 5 working days for a missed log (`LOG_LOOKBACK_WORKDAYS`), Monday to
+  Friday, not before work started, and today is not late yet. The ring card asks for it only while
+  work is still being reported (a job whose work is all in is closing out).
 - The look-ahead's reliability is read over the
   last 4 weeks (`RELIABILITY_WEEKS`), this week counted once its marks are verified. A line we sent back counts at what we see on it. The first
   draft's stages and durations are the New Project lane's (`SCHEDULE_STAGES`).
@@ -768,6 +776,7 @@ imitates it.
 | `GcOwnerBillingTab.tsx` · `GcOwnerBillingPortal.tsx` · `GcOwnerBillingArchitect.tsx` · `GcOwnerBillingChangeOrders.tsx` · `GcOwnerBillingPayApp.tsx` · `GcOwnerBillingCash.tsx` · `GcOwnerBillingMoney.tsx` · `GcOwnerBillingAhead.tsx` · `src/lib/gcMode/gcOwnerBilling.ts` · `src/lib/gcMode/gcOwnerBillingAhead.ts` | Bill the owner: the draft pay application, the ones sent, certified and paid, closeout · what the owner sees · what the architect sees · change orders · the 702 and 703 window · money in and out on one job · Money across every job · the next six weeks · the model: the lines and the 702 math, `ownerAccount`, waivers, change orders, when the owner pays, `allJobsMoney` · `cashAhead` (both tested in `gcOwnerBilling.test.ts`) |
 | `GcCloseout.tsx` | The Closeout tab |
 | `GcBuildingPunch.tsx` · `src/lib/gcMode/gcBuildingPunch.ts` | The punch list on Closeout and in the trade's portal · its counts and states (tested in `gcBuildingPunch.test.ts`) |
+| `GcBuildingLog.tsx` · `src/lib/gcMode/gcBuildingLog.ts` | The Daily log tab · working days, missed logs, who was on site (tested in `gcBuildingLog.test.ts`) |
 | `GcBuildingSchedule.tsx` · `src/lib/gcMode/gcBuildingSchedule.ts` | The Schedule tab · its rows, the four measures and the look-ahead (tested in `gcBuildingSchedule.test.ts`) |
 | `GcBuildingSendBack.tsx` | The Send back form under a waiting draw, and the list of what went back |
 | `GcBuildingCrew.tsx` | The Our own crew card on Draws |
