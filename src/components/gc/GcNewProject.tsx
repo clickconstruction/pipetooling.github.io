@@ -608,8 +608,9 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
           <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '0.75rem' }}>{STEPS[step]?.hint}</div>
 
           {step === 0 && (
-            <div style={{ display: 'grid', gap: '0.8rem', gridTemplateColumns: 'repeat(auto-fit, minmax(16rem, 1fr))' }}>
-              <Field label="Project name" wide>
+            // Two columns: Project name | Address on one line (the owner, 2026-10-04: "the project name and address can be on the same line"), then Customer | Architect.
+            <div style={{ display: 'grid', gap: '0.8rem', gridTemplateColumns: narrow ? 'minmax(0, 1fr)' : 'repeat(2, minmax(0, 1fr))', alignItems: 'start' }}>
+              <Field label="Project name">
                 <input autoFocus style={field} value={name} onChange={(e) => setName(e.target.value)} placeholder="Leon Springs Urgent Care" />
               </Field>
               <Field label="Address">
