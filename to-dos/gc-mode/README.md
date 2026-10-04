@@ -212,7 +212,8 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   2026-10-03): **A new set of plans came in** lists the scheduled activities its changed sheets
   reach, each with its spare days, and takes the days the change adds to each. What waits on it
   moves out too, never earlier, and the plan at Start stays as the baseline. It says whether the
-  job's last day moves and whether substantial completion still holds; it never moves that
+  job's last day moves and whether substantial completion still holds, on its day with signed
+  change orders' days added (Building's `substantialCompletionOn`, question 28); it never moves that
   milestone, since more time is a change order. The set records the days (`PlanSet.pushed`), and
   each company's email names its new dates (`activitiesTouched`, `pushSchedule`,
   `issuePlanSet.schedulePushes`). Work a set brings onto a schedule already drawn (a new trade's
