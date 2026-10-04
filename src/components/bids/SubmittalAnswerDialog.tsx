@@ -18,6 +18,8 @@ import { initialReviewerPick, NO_REVIEWER_SOURCES, reviewerChoiceFrom, reviewerP
 import type { ReviewDecision, SubmittalItemRow } from '../../lib/submittals/submittalRevision'
 import type { SubmittalPersonRow } from '../../lib/submittals/submittalRoom'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { useLeaveGuard } from '../../hooks/useLeaveGuard'
+import { LeaveQuestion } from './SubmittalLeaveGuard'
 import { SubmittalReviewerPicker } from './SubmittalReviewerPicker'
 
 /** What Save hands the tab: who answered (none when answers are only taken back), the day when it is not today, and the lines that changed. */
@@ -61,6 +63,8 @@ export function SubmittalAnswerDialog({ item, parts = [], people = [], sources =
   const tag = item.tag.trim() || 'Accessory'
   const byParts = lines.some((l) => l.partId != null)
   const setNote = (key: string, note: string) => setDrafts((cur) => ({ ...cur, [key]: { decision: cur[key]?.decision ?? null, note } }))
+  // 2026-10-03 · answers picked and not recorded are typing: a stray click outside asks before it loses them.
+  const guard = useLeaveGuard({ dirty: writes.changed > 0, onClose, busy })
   const focusRef = useRef<HTMLDivElement | null>(null)
   useEffect(() => {
     const el = focusRef.current
@@ -73,7 +77,7 @@ export function SubmittalAnswerDialog({ item, parts = [], people = [], sources =
   }, [])
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: Z, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))' }} role="presentation" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: Z, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))' }} role="presentation" onClick={(e) => { if (e.target === e.currentTarget) guard.requestClose() }}>
       <div role="dialog" aria-modal="true" aria-label={`Their answer on ${tag}`} style={{ background: 'var(--surface)', borderRadius: 8, maxWidth: 720, width: '100%', maxHeight: '100%', minHeight: 0, boxShadow: '0 10px 40px rgba(0,0,0,0.2)', padding: '1.1rem 1.25rem 0.9rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }} onClick={(e) => e.stopPropagation()}>
         <div>
           <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: 'var(--text-strong)' }}>{tag} · what did they say?</h3>
@@ -142,13 +146,14 @@ export function SubmittalAnswerDialog({ item, parts = [], people = [], sources =
           </div>
         </div>
 
+        {guard.asking ? <LeaveQuestion what={`What you picked for ${tag} is not recorded yet.`} onLeave={onClose} onKeep={guard.keep} /> : null}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', borderTop: '1px solid var(--border)', paddingTop: '0.6rem', flexShrink: 0 }}>
           <span style={{ ...smallMuted, minWidth: 0 }} data-testid="answer-summary">
             {summary.words ? <b style={{ color: 'var(--text-strong)' }}>{summary.words}</b> : 'No answer picked yet.'}
             {summary.words ? (summary.open > 0 ? ` · ${summary.open} still open` : byParts ? ' · every part answered' : '') : byParts ? ' Tap an answer on a part.' : ' Tap their answer.'}
           </span>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <button type="button" onClick={onClose} style={{ padding: '0.45rem 0.85rem', background: 'var(--bg-muted)', color: 'var(--text-strong)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', font: 'inherit' }}>
+            <button type="button" disabled={busy} onClick={guard.requestClose} style={{ padding: '0.45rem 0.85rem', background: 'var(--bg-muted)', color: 'var(--text-strong)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', font: 'inherit' }}>
               Cancel
             </button>
             <button
@@ -158,7 +163,7 @@ export function SubmittalAnswerDialog({ item, parts = [], people = [], sources =
               onClick={() => onSave({ person: needsWho ? reviewerChoiceFrom(pick, sources) : null, ...(needsWho && on && on !== today ? { on } : {}), writes })}
               style={{ padding: '0.45rem 0.9rem', background: bad || busy ? 'var(--bg-200)' : '#16a34a', color: bad || busy ? 'var(--text-faint)' : 'white', border: 'none', borderRadius: 4, cursor: bad || busy ? 'not-allowed' : 'pointer', font: 'inherit', fontWeight: 600 }}
             >
-              {answerSaveLabel(writes)}
+              {busy ? 'Saving…' : answerSaveLabel(writes)}
             </button>
           </div>
         </div>

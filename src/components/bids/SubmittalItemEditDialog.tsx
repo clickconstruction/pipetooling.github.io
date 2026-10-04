@@ -25,6 +25,8 @@ import { asDecision, asReason, asStatus, formatPages, parsePageRange, type Sourc
 import { DECISION_LABELS } from '../../lib/submittals/reviewDecisions'
 import { enteredSuffix } from '../../lib/submittals/enteredDecisions'
 import { ProductStatusChip } from './ProductStatusChip'
+import { useLeaveGuard } from '../../hooks/useLeaveGuard'
+import { LeaveQuestion } from './SubmittalLeaveGuard'
 import { SubmittalPartsEditor } from './SubmittalPartsEditor'
 import { assemblyLine, keptPartDrafts, partCallsLine, partLeadTextsBad, partToDraft, rollUpFromParts, type PartDraft, type PartLeadTexts, type SubmittalPartRow } from '../../lib/submittals/itemParts'
 
@@ -74,7 +76,7 @@ const chipButton = (on: boolean): CSSProperties => ({
 const fieldLabel: CSSProperties = { fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-muted)' }
 const inputStyle: CSSProperties = { padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, font: 'inherit', fontSize: '0.8125rem', background: 'var(--surface)', color: 'var(--text-strong)' }
 
-export function SubmittalItemEditDialog({ item, sourceFiles, houses = [], parts = [], canEnterDecision = false, canEditProduct = false, orderOnly = false, boughtParts, focusPartId = null, focusHouse = false, onSave, onClose }: { /** by part id: "Ordered 09/23" when the log holds an order for the part, so it cannot be left out */ boughtParts?: ReadonlyMap<string, string>; /** 2026-10-02 · the row is order only: the GC never sees it, so no status, reason, note, cut sheet or call is asked */ orderOnly?: boolean; item: SubmittalItemRow; sourceFiles: SourceFile[]; /** the part a Procure line opened the window on (2026-10-02) */ focusPartId?: string | null; /** a Procure line opened the window on a row with no parts: its house box is scrolled to and ready */ focusHouse?: boolean; /** the row's parts (2026-10-01) */ parts?: ReadonlyArray<SubmittalPartRow>; /** the supply houses to pick from; none hides the picker */ houses?: ReadonlyArray<{ id: string; name: string }>; /** the row exists, so their answer can be recorded on it */ canEnterDecision?: boolean; /** a draft: the tag and the product can be typed (v2.4090) */ canEditProduct?: boolean; onSave: (patch: SubmittalItemPatch) => void; onClose: () => void }) {
+export function SubmittalItemEditDialog({ item, sourceFiles, houses = [], parts = [], canEnterDecision = false, canEditProduct = false, orderOnly = false, boughtParts, focusPartId = null, focusHouse = false, busy = false, onSave, onClose }: { /** the tab is saving this window: Save reads Saving… and the window holds (2026-10-03) */ busy?: boolean; /** by part id: "Ordered 09/23" when the log holds an order for the part, so it cannot be left out */ boughtParts?: ReadonlyMap<string, string>; /** 2026-10-02 · the row is order only: the GC never sees it, so no status, reason, note, cut sheet or call is asked */ orderOnly?: boolean; item: SubmittalItemRow; sourceFiles: SourceFile[]; /** the part a Procure line opened the window on (2026-10-02) */ focusPartId?: string | null; /** a Procure line opened the window on a row with no parts: its house box is scrolled to and ready */ focusHouse?: boolean; /** the row's parts (2026-10-01) */ parts?: ReadonlyArray<SubmittalPartRow>; /** the supply houses to pick from; none hides the picker */ houses?: ReadonlyArray<{ id: string; name: string }>; /** the row exists, so their answer can be recorded on it */ canEnterDecision?: boolean; /** a draft: the tag and the product can be typed (v2.4090) */ canEditProduct?: boolean; onSave: (patch: SubmittalItemPatch) => void; onClose: () => void }) {
   const [tagText, setTagText] = useState(item.tag)
   const [submittedText, setSubmittedText] = useState(item.submitted_label ?? [item.submitted_manufacturer, item.submitted_model].filter(Boolean).join(' '))
   const [houseId, setHouseId] = useState<string | null>(item.supply_house_id ?? null)
@@ -119,6 +121,10 @@ export function SubmittalItemEditDialog({ item, sourceFiles, houses = [], parts 
       ...(partDrafts != null ? { parts: partDrafts } : {}),
       ...(thenAnswer ? { thenAnswer: true } : {}),
     })
+  // 2026-10-03 · what the window opened with, read once: any difference is typing a stray click must not lose.
+  const typed = JSON.stringify([tagText, submittedText, houseId, partDrafts, partLeadTexts, status, reasonKind, note, leadDays, leadText, sheetFile, pagesText])
+  const opened = useRef(typed)
+  const guard = useLeaveGuard({ dirty: typed !== opened.current, onClose, busy })
   const houseRef = useRef<HTMLSelectElement | null>(null)
   // Read once, on open: the window keeps its own place after that.
   const focusHouseOnOpen = useRef(focusHouse)
@@ -130,7 +136,7 @@ export function SubmittalItemEditDialog({ item, sourceFiles, houses = [], parts 
   }, [])
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: Z, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))' }} role="presentation" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: Z, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))' }} role="presentation" onClick={(e) => { if (e.target === e.currentTarget) guard.requestClose() }}>
       <div role="dialog" aria-modal="true" aria-label={`Edit ${item.tag.trim() || 'accessory'}`} style={{ background: 'var(--surface)', borderRadius: 8, maxWidth: partDrafts != null ? 760 : 600, width: '100%', maxHeight: '100%', minHeight: 0, boxShadow: '0 10px 40px rgba(0,0,0,0.2)', padding: '1.1rem 1.25rem 0.9rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }} onMouseDown={(e) => e.stopPropagation()}>
         <div>
           <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: 'var(--text-strong)' }}>{title}</h3>
@@ -274,21 +280,22 @@ export function SubmittalItemEditDialog({ item, sourceFiles, houses = [], parts 
                 )}
               </span>
             </span>
-            <button type="button" disabled={saveBad} onClick={() => save(true)} title="Saves this window, then opens the one where you record what they said. Nobody is emailed." style={{ background: 'none', border: '1px dashed var(--border-strong)', borderRadius: 4, padding: '0.3rem 0.6rem', font: 'inherit', fontSize: '0.8125rem', color: saveBad ? 'var(--text-faint)' : 'var(--text-base)', cursor: saveBad ? 'not-allowed' : 'pointer' }} data-testid="their-answer-open">
+            <button type="button" disabled={saveBad || busy} onClick={() => save(true)} title="Saves this window, then opens the one where you record what they said. Nobody is emailed." style={{ background: 'none', border: '1px dashed var(--border-strong)', borderRadius: 4, padding: '0.3rem 0.6rem', font: 'inherit', fontSize: '0.8125rem', color: saveBad ? 'var(--text-faint)' : 'var(--text-base)', cursor: saveBad ? 'not-allowed' : 'pointer' }} data-testid="their-answer-open">
               Save and enter their answer…
             </button>
           </div>
         ) : null}
         </div>
 
+        {guard.asking ? <LeaveQuestion what={`Your changes to ${item.tag.trim() || 'this row'} are not saved yet.`} onLeave={onClose} onKeep={guard.keep} /> : null}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', borderTop: '1px solid var(--border)', paddingTop: '0.6rem', flexShrink: 0 }}>
           {orderOnly ? <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--text-amber-700)' }} data-testid="edit-order-only">Order only · the GC does not see it</span> : <ProductStatusChip status={status} size="md" />}
           <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <button type="button" onClick={onClose} style={{ padding: '0.45rem 0.85rem', background: 'var(--bg-muted)', color: 'var(--text-strong)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', font: 'inherit' }}>
+            <button type="button" disabled={busy} onClick={guard.requestClose} style={{ padding: '0.45rem 0.85rem', background: 'var(--bg-muted)', color: 'var(--text-strong)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: busy ? 'not-allowed' : 'pointer', font: 'inherit' }}>
               Cancel
             </button>
-            <button type="button" disabled={saveBad} onClick={() => save(false)} style={{ padding: '0.45rem 0.9rem', background: saveBad ? 'var(--bg-200)' : '#16a34a', color: saveBad ? 'var(--text-faint)' : 'white', border: 'none', borderRadius: 4, cursor: saveBad ? 'not-allowed' : 'pointer', font: 'inherit', fontWeight: 600 }}>
-              Save
+            <button type="button" disabled={saveBad || busy} onClick={() => save(false)} style={{ padding: '0.45rem 0.9rem', background: saveBad || busy ? 'var(--bg-200)' : '#16a34a', color: saveBad || busy ? 'var(--text-faint)' : 'white', border: 'none', borderRadius: 4, cursor: saveBad || busy ? 'not-allowed' : 'pointer', font: 'inherit', fontWeight: 600 }} data-testid="edit-row-save">
+              {busy ? 'Saving…' : 'Save'}
             </button>
           </div>
         </div>

@@ -223,3 +223,61 @@ describe('SubmittalItemEditDialog · parts, each bought on its own (2026-10-01)'
     expect(onSave.mock.calls[0]![0].parts).toEqual([{ label: 'TOTO CT728 kit', quantity: 1, on_submittal: true, supply_house_id: null, lead_time_days: 14, stage: null }])
   })
 })
+
+describe('SubmittalItemEditDialog · the window keeps what was typed (2026-10-03)', () => {
+  it('nothing typed: a click outside, Cancel and Esc each close at once', () => {
+    for (const leave of [() => fireEvent.click(screen.getByRole('presentation')), () => fireEvent.click(screen.getByRole('button', { name: 'Cancel' })), () => fireEvent.keyDown(document, { key: 'Escape' })]) {
+      const onClose = vi.fn()
+      const { unmount } = renderWithProviders(<SubmittalItemEditDialog item={item()} sourceFiles={[]} onSave={() => {}} onClose={onClose} />)
+      leave()
+      expect(onClose).toHaveBeenCalledTimes(1)
+      expect(screen.queryByTestId('leave-question')).toBeNull()
+      unmount()
+    }
+  })
+
+  it('something typed: a click outside asks, Keep editing keeps the typing, Esc asks again and answers it, Leave closes', () => {
+    const onClose = vi.fn()
+    renderWithProviders(<SubmittalItemEditDialog item={item()} sourceFiles={[]} onSave={() => {}} onClose={onClose} />)
+    fireEvent.change(screen.getByLabelText('Note'), { target: { value: 'elongated bowl' } })
+    fireEvent.click(screen.getByRole('presentation'))
+    expect(onClose).not.toHaveBeenCalled()
+    expect(screen.getByTestId('leave-question').textContent).toContain('Leave without saving? Your changes to WC-1 are not saved yet.')
+    fireEvent.click(screen.getByTestId('leave-keep'))
+    expect(screen.queryByTestId('leave-question')).toBeNull()
+    expect((screen.getByLabelText('Note') as HTMLTextAreaElement).value).toBe('elongated bowl')
+    // Esc asks; a second Esc is Keep editing.
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(screen.getByTestId('leave-question')).toBeTruthy()
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(screen.queryByTestId('leave-question')).toBeNull()
+    expect(onClose).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    fireEvent.click(screen.getByTestId('leave-confirm'))
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('typed and typed back reads as nothing typed', () => {
+    const onClose = vi.fn()
+    renderWithProviders(<SubmittalItemEditDialog item={item()} sourceFiles={[]} onSave={() => {}} onClose={onClose} />)
+    const was = (screen.getByLabelText('Note') as HTMLTextAreaElement).value
+    fireEvent.change(screen.getByLabelText('Note'), { target: { value: 'x' } })
+    fireEvent.change(screen.getByLabelText('Note'), { target: { value: was } })
+    fireEvent.click(screen.getByRole('presentation'))
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('while the tab saves, Save reads Saving… and the window holds', () => {
+    const onClose = vi.fn()
+    const onSave = vi.fn()
+    renderWithProviders(<SubmittalItemEditDialog item={item()} sourceFiles={[]} busy onSave={onSave} onClose={onClose} />)
+    const save = screen.getByTestId('edit-row-save') as HTMLButtonElement
+    expect(save.textContent).toBe('Saving…')
+    expect(save.disabled).toBe(true)
+    fireEvent.click(save)
+    fireEvent.click(screen.getByRole('presentation'))
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(onSave).not.toHaveBeenCalled()
+    expect(onClose).not.toHaveBeenCalled()
+  })
+})
