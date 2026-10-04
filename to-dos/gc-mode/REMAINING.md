@@ -99,7 +99,7 @@ makes; nobody builds it until he answers.
 
 1. ~~**The owner's change order reads the trade's percent on its line**~~ done f8b43ad59 (`changeOrderPct` reads `changeOrderTradePct` once the trade signs; the bill, the form and the owner's portal all go through it).
 2. ~~**Change orders carry the days a set added**~~ done c3b453453 (my half: `ChangeOrder.days`, `draftChangeOrder` takes `days`, signed ones add up in `contractDaysAdded` on Bill the owner and the owner's portal; New Project passes the set's days; moving substantial completion is open question 28).
-3. **A phone pass on Bill the owner, the owner's portal and Money.**
+3. ~~**A phone pass on Bill the owner, the owner's portal and Money.**~~ done 39ef92cc5 (all at 375 px with no sideways page scroll: Money's grid let its tables widen the page; the bill's lines, the weeks and the jobs now stack on a phone; the owner's and the architect's portals, the forms and the pay application window already fit, the 703 scrolls inside its sheet).
 4. **Notifications for the owner side** (a pay application to certify, a payment late).
 5. **Tidy your lines in `README.md`.**
 
