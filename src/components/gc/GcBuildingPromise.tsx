@@ -16,6 +16,9 @@ import {
 } from '../../lib/gcMode/gcModel'
 import { Btn, input } from './gcUi'
 
+/** The boxes at the height of the button beside them (the owner, 2026-10-04): a date input runs taller on its own. */
+const box = { ...input, height: 30, boxSizing: 'border-box', padding: '0 0.45rem' } as const
+
 /** A kept promise shows under the thing this many days, then only on the company's word record. */
 const KEPT_SHOWN_DAYS = 7
 
@@ -104,12 +107,12 @@ export function GcBuildingPromise({
               onChange={(e) => setThing(e.target.value)}
               placeholder="What is coming, like the rooftop units"
               aria-label="What is coming"
-              style={{ ...input, flex: '1 1 12rem' }}
+              style={{ ...box, flex: '1 1 12rem' }}
             />
           )}
           <label style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', color: 'var(--text-muted)' }}>
             {promise ? 'Their new day' : 'They said by'}
-            <input type="date" min={today} value={by} onChange={(e) => setBy(e.target.value)} style={input} />
+            <input type="date" min={today} value={by} onChange={(e) => setBy(e.target.value)} style={box} />
           </label>
           <Btn kind="primary" disabled={!by || by === promise?.by} onClick={save}>
             {promise ? 'Move it' : 'Write it down'}
