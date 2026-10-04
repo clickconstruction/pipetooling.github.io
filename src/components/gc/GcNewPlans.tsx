@@ -745,7 +745,7 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
                   <span style={{ fontWeight: 600 }}>The scope lines it touches</span>
                   {linesAdded > 0 && (
                     <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-                      A quote already in never answered a new line. Compare bids shows it as not clear until you set a cost to cover it.
+                      A quote already in never answered a new line. Compare quotes shows it as not clear until you set a cost to cover it.
                     </span>
                   )}
                   {project.packages
