@@ -367,6 +367,20 @@ const S = {
   alsoChanged: { en: 'Also changed', es: 'También cambió' },
   changedInSets: { en: 'Changed in {sets}', es: 'Cambió en {sets}' },
 
+  // The pre-bid meeting (New Project lane's, 2026-10-04)
+  pbTitle: { en: 'Pre-bid meeting', es: 'Reunión previa a la cotización' },
+  pbRunBy: { en: 'Run by {who}.', es: 'La dirige {who}.' },
+  pbWhen: { en: '{date} at {time}, at {place}.', es: '{date} a las {time}, en {place}.' },
+  pbRequired: { en: 'You have to come to quote this project.', es: 'Tiene que asistir para cotizar este proyecto.' },
+  pbOptional: {
+    en: 'Coming is not required. Questions raised there are answered for every company quoting.',
+    es: 'No es obligatorio asistir. Las preguntas que se hagan ahí se contestan a todas las empresas que cotizan.',
+  },
+  pbBring: { en: 'Bring your questions about the plans.', es: 'Traiga sus preguntas sobre los planos.' },
+  pbCame: { en: 'You came. Thank you.', es: 'Usted asistió. Gracias.' },
+  pbMissed: { en: 'You did not come. It was required to quote this project.', es: 'Usted no asistió. Era obligatorio para cotizar este proyecto.' },
+  pbMinutes: { en: 'The minutes come with the next set of plans.', es: 'El acta llega con el próximo juego de planos.' },
+  pbArchitect: { en: 'the architect', es: 'el arquitecto' },
   // Questions about the plans
   questionsTitle: { en: '{trade} · questions about the plans', es: '{trade} · preguntas sobre los planos' },
   askPrompt: { en: 'Ask about the plans. Every company on this trade gets the answer, without your name.', es: 'Pregunte sobre los planos. Todas las empresas de esta especialidad reciben la respuesta, sin su nombre.' },
@@ -544,6 +558,11 @@ const S = {
   mVetUpTo: { en: 'You can be picked for jobs up to {amount} each.', es: 'Lo pueden elegir para trabajos de hasta {amount} cada uno.' },
   mVetDeclinedSubject: { en: 'About working with {gc}', es: 'Sobre trabajar con {gc}' },
   mVetDeclined: { en: '{gc} checked your company and cannot work with you right now. Thank you for your time.', es: '{gc} revisó su empresa y por ahora no puede trabajar con usted. Gracias por su tiempo.' },
+  mPreBidSubject: { en: '{project}: pre-bid meeting {date}', es: '{project}: reunión previa el {date}' },
+  mPreBidSubjectReq: { en: '{project}: pre-bid meeting {date}, required to quote', es: '{project}: reunión previa el {date}, obligatoria para cotizar' },
+  mPreBidInvited: { en: 'You are invited to the pre-bid meeting for {project}.', es: 'Lo invitamos a la reunión previa a la cotización de {project}.' },
+  mPreBidWhen: { en: 'When: {date} at {time}.', es: 'Cuándo: el {date} a las {time}' },
+  mPreBidWhere: { en: 'Where: {place}.', es: 'Dónde: {place}.' },
   mClosedSubject: { en: '{project}: {gc} is not building it', es: '{project}: {gc} no lo va a construir' },
   mClosedAbout: { en: 'This is about {trade} on {project}.', es: 'Le escribimos sobre {trade} en {project}.' },
   mLessSubject: { en: 'Pay application {n} on {project}: approved for less', es: 'Solicitud de pago {n} de {project}: aprobada por menos' },
@@ -581,6 +600,9 @@ const S = {
   todoSubBackN: { en: '{gc} sent {n} back to revise.', es: '{gc} le devolvió {n} para corregir.' },
   todoSubLate1: { en: 'One is late.', es: 'Uno está atrasado.' },
   todoSubLateN: { en: '{n} are late.', es: '{n} están atrasados.' },
+  todoPreBidReq: { en: 'Come to the pre-bid meeting for {project}, {date} at {time}. It is required to quote.', es: 'Asista a la reunión previa de {project}. Es obligatoria para cotizar. Es el {date} a las {time}' },
+  todoPreBid: { en: 'Pre-bid meeting for {project}, {date} at {time}.', es: 'Reunión previa de {project}: el {date} a las {time}' },
+  todoPreBidMissed: { en: 'You missed the required pre-bid meeting for {project}. Call {gc}.', es: 'No asistió a la reunión previa obligatoria de {project}. Llame a {gc}.' },
   todoPunch1: { en: '1 punch item to fix on {trade} for {project}.', es: 'Tiene 1 pendiente por arreglar en {trade} para {project}.' },
   todoPunchN: { en: '{n} punch items to fix on {trade} for {project}.', es: 'Tiene {n} pendientes por arreglar en {trade} para {project}.' },
   todoPunchBack1: { en: '{gc} checked one and it is not fixed yet.', es: '{gc} revisó uno y todavía no está arreglado.' },
@@ -667,6 +689,17 @@ const DISCIPLINES_ES: Record<string, string> = {
   Landscape: 'Paisaje',
   Technology: 'Tecnología',
   Other: 'Otras',
+}
+
+/** "10:00" reads "10 AM" in English and "10 a. m." in Spanish; "14:30" reads "2:30 PM" / "2:30 p. m.". Anything else reads as typed. */
+export function pTime(lang: PortalLang, at: string): string {
+  const m = at.trim().match(/^(\d{1,2}):(\d{2})$/)
+  if (!m) return at.trim()
+  const h = Number(m[1])
+  const mins = m[2] ?? '00'
+  const h12 = h % 12 === 0 ? 12 : h % 12
+  const half = lang === 'es' ? (h >= 12 ? 'p. m.' : 'a. m.') : h >= 12 ? 'PM' : 'AM'
+  return mins === '00' ? `${h12} ${half}` : `${h12}:${mins} ${half}`
 }
 
 /** A drawing discipline's name ("Mechanical" / "Mecánico"). */

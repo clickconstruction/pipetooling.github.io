@@ -119,7 +119,7 @@ column headers are in one block at the end of `gcBuildingWords.ts`, for the nati
 
 ## For a native speaker to read
 
-Every Spanish string the trade's portal shows, 687 in all, drawn from the code on 2026-10-04.
+Every Spanish string the trade's portal shows, 705 in all, drawn from the code on 2026-10-04.
 They're grouped by screen, English on the left. Please mark anything that reads wrong, stiff or
 unclear, and write the better words beside it. The Portal lane makes the changes and passes the
 other lanes theirs.
@@ -131,7 +131,7 @@ other lanes theirs.
   `{address}` and `{phone}` are names, an address or a phone number.
 - `{label}`, `{set}`, `{sets}` and `{plans}` name a set of plans, such as "Addendum 1". `{id}` is a
   sheet number, such as "E-201". `{title}` is a sheet's old name, such as "Site plan".
-- `{date}`, `{by}`, `{start}`, `{finish}`, `{when}` and `{since}` are dates, such as "8 oct" or "jue 8 oct".
+- `{date}`, `{by}`, `{start}`, `{finish}`, `{when}` and `{since}` are dates, such as "8 oct" or "jue 8 oct". `{time}` is a time, such as "10 a. m.". `{place}` is where, as the office typed it.
   `{ago}` is how long ago, such as "hace 3 días".
 - `{amount}`, `{approved}`, `{asked}`, `{held}`, `{contract}`, `{paid}`, `{left}`, `{price}`, `{x}`
   and `{y}` are dollar amounts.
@@ -483,6 +483,21 @@ they were written in. The portal does not translate them.
 | Also changed | También cambió |
 | Changed in {sets} | Cambió en {sets} |
 
+#### The pre-bid meeting (New Project lane's, 2026-10-04)
+
+| English | Español |
+|---|---|
+| Pre-bid meeting | Reunión previa a la cotización |
+| Run by {who}. | La dirige {who}. |
+| {date} at {time}, at {place}. | {date} a las {time}, en {place}. |
+| You have to come to quote this project. | Tiene que asistir para cotizar este proyecto. |
+| Coming is not required. Questions raised there are answered for every company quoting. | No es obligatorio asistir. Las preguntas que se hagan ahí se contestan a todas las empresas que cotizan. |
+| Bring your questions about the plans. | Traiga sus preguntas sobre los planos. |
+| You came. Thank you. | Usted asistió. Gracias. |
+| You did not come. It was required to quote this project. | Usted no asistió. Era obligatorio para cotizar este proyecto. |
+| The minutes come with the next set of plans. | El acta llega con el próximo juego de planos. |
+| the architect | el arquitecto |
+
 #### Questions about the plans
 
 | English | Español |
@@ -670,6 +685,11 @@ they were written in. The portal does not translate them.
 | You can be picked for jobs up to {amount} each. | Lo pueden elegir para trabajos de hasta {amount} cada uno. |
 | About working with {gc} | Sobre trabajar con {gc} |
 | {gc} checked your company and cannot work with you right now. Thank you for your time. | {gc} revisó su empresa y por ahora no puede trabajar con usted. Gracias por su tiempo. |
+| {project}: pre-bid meeting {date} | {project}: reunión previa el {date} |
+| {project}: pre-bid meeting {date}, required to quote | {project}: reunión previa el {date}, obligatoria para cotizar |
+| You are invited to the pre-bid meeting for {project}. | Lo invitamos a la reunión previa a la cotización de {project}. |
+| When: {date} at {time}. | Cuándo: el {date} a las {time} |
+| Where: {place}. | Dónde: {place}. |
 | {project}: {gc} is not building it | {project}: {gc} no lo va a construir |
 | This is about {trade} on {project}. | Le escribimos sobre {trade} en {project}. |
 | Pay application {n} on {project}: approved for less | Solicitud de pago {n} de {project}: aprobada por menos |
@@ -704,6 +724,9 @@ they were written in. The portal does not translate them.
 | {gc} sent {n} back to revise. | {gc} le devolvió {n} para corregir. |
 | One is late. | Uno está atrasado. |
 | {n} are late. | {n} están atrasados. |
+| Come to the pre-bid meeting for {project}, {date} at {time}. It is required to quote. | Asista a la reunión previa de {project}. Es obligatoria para cotizar. Es el {date} a las {time} |
+| Pre-bid meeting for {project}, {date} at {time}. | Reunión previa de {project}: el {date} a las {time} |
+| You missed the required pre-bid meeting for {project}. Call {gc}. | No asistió a la reunión previa obligatoria de {project}. Llame a {gc}. |
 | 1 punch item to fix on {trade} for {project}. | Tiene 1 pendiente por arreglar en {trade} para {project}. |
 | {n} punch items to fix on {trade} for {project}. | Tiene {n} pendientes por arreglar en {trade} para {project}. |
 | {gc} checked one and it is not fixed yet. | {gc} revisó uno y todavía no está arreglado. |

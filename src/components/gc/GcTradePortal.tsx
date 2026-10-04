@@ -45,6 +45,7 @@ import { GcPortalContacts } from './GcPortalContacts'
 import { GcPortalHome } from './GcPortalHome'
 import { GcPortalPay } from './GcPortalPay'
 import { GcPortalPapers } from './GcPortalPapers'
+import { GcPortalPreBid } from './GcPortalPreBid'
 import { GcPortalLookAhead } from './GcPortalLookAhead'
 import { AlternatesEditor, AnswerLines, GoodForPicker, LeavesOut, QuoteFilePicker, SovEditor, TheirSovOnSow, type SovDraft } from './GcPortalBidExtras'
 import { ChangedLines, LineSheets, LineSpecs, SheetChip, TakenOut } from './GcPortalLineSheets'
@@ -264,6 +265,8 @@ function ProjectPage({
           promises={{ insurance: openPromiseFor(state, { partnerId: partner.id, kind: 'insurance' }), w9: openPromiseFor(state, { partnerId: partner.id, kind: 'w9' }) }}
         />
       )}
+
+      <GcPortalPreBid state={state} project={project} partner={partner} />
 
       <GcPortalLookAhead state={state} project={project} partner={partner} dispatch={dispatch} />
 
