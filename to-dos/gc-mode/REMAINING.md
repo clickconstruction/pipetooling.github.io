@@ -52,7 +52,7 @@ makes; nobody builds it until he answers.
    company's name from the model (`GC_COMPANY`), per question 1 (nothing Click-only).
 8. **A second walkthrough inside a project:** Trades, Our number, Get started, Draws. And
    *New here?* may open itself on a first visit.
-9. **A phone pass on the Board's project tabs:** Trades, Plans, Our number, Bid tabs, Contracts,
+9. ~~**A phone pass on the Board's project tabs:**~~ done (all at 375 px with no sideways page scroll; fixed the "+ ?" marker's hidden words widening Trades and Our number; this commit) Trades, Plans, Our number, Bid tabs, Contracts,
    Get started, Follow up, Trade partners.
 10. ~~**Tidy `README.md`:**~~ done for the Board's lines (this commit); each lane tidies its own. its *Workflow steps not built yet* still lists what is built (the Closed
     section, the owner window's money, the schedule's Board parts). Each lane tidies its own lines.
