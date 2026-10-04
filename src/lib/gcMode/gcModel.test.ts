@@ -582,6 +582,22 @@ const STEPS: Step[] = [
     label: 'Pad B: start anyway, before everything is in',
     action: { type: 'startProject', projectId: 'padb', anyway: { reason: 'The owner needs the pad graded before the rains.', by: 'Dana Whitaker' } },
   },
+  // Materials stored on site (Building lane, question 12): the rooftop units are on site, not set.
+  {
+    label: 'Cool Breeze asks for pay application 2, the rooftop units stored on site',
+    action: {
+      type: 'tradeSendPayApp',
+      projectId: 'fairoaksd',
+      packageId: 'fhvac',
+      toPct: { 'fhvac-2': 100 },
+      stored: { 'fhvac-1': 36_000 },
+      periodTo: '2026-10-02',
+      address: '1188 Culebra Rd, San Antonio, TX 78201',
+      license: '',
+      signedBy: 'Marco Ruiz',
+      signedTitle: 'Owner',
+    },
+  },
   { label: 'Fair Oaks D: retainage drops to 5% on the work after half done', action: { type: 'setOwnerRetainageStep', projectId: 'fairoaksd', step: { atPct: 50, toPct: 5, way: 'after' } } },
   // Interest on late bills (the owner, 2026-10-04): ours to choose per job, on a bill of its own.
   { label: 'Fair Oaks D: Cibolo pays 1.5% a month on a late bill', action: { type: 'setOwnerLateInterest', projectId: 'fairoaksd', pctPerMonth: 1.5 } },

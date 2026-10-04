@@ -207,6 +207,14 @@ const W = {
   punchWaiting: { en: 'Waiting on {gc} to check it.', es: 'Esperando que {gc} lo revise.' },
   punchBack: { en: '{gc} checked it {date}. It is not fixed yet.', es: '{gc} lo revisó el {date}. Todavía no está arreglado.' },
   punchChecked: { en: 'Checked by {gc}: {n}.', es: 'Revisados por {gc}: {n}.' },
+  // Materials stored on site, on the pay application (2026-10-04, question 12)
+  storedToggle: { en: 'Materials stored on site, not yet in place', es: 'Materiales guardados en la obra, aún sin instalar' },
+  storedNote: {
+    en: 'In dollars, what is on site now. Once it is in place, raise the line and take it off here.',
+    es: 'En dólares, lo que hay en la obra hoy. Cuando quede instalado, suba la partida y quítelo de aquí.',
+  },
+  storedAria: { en: 'Stored on site, {line}', es: 'Guardado en la obra, {line}' },
+  storedTotal: { en: 'Stored on site:', es: 'Guardado en la obra:' },
   // Submittals in the trade's portal (2026-10-04)
   subHead: { en: 'Submittals {gc} needs from you', es: 'Documentos para aprobación que {gc} necesita de usted' },
   subNeeded: { en: 'Needed by {date}.', es: 'Se necesita para el {date}.' },

@@ -127,7 +127,7 @@ export function GcBuildingPayAppDoor({
     which === 'final' ? 'final' : back ? `resend-${back.draw.number}-${timesSentBack(sow, back.draw.number)}` : 'new'
   const draft = held && held.key === keyFor('draft') ? held.input : null
   // What the draft asks for now, or what their reported work comes to before they open it.
-  const asks = payApplication(sow, sow.draws.length + 1, draft?.toPct ?? payAppDraftPcts(sow))
+  const asks = payApplication(sow, sow.draws.length + 1, draft?.toPct ?? payAppDraftPcts(sow), false, draft?.stored ?? {})
   const ready = asks.summary.currentDue
   const closing = workAllBilled(sow)
   const openWindow = (which: 'draft' | 'final') => {
@@ -385,6 +385,8 @@ export function GcBuildingPayAppWindow({
   const [focus, setFocus] = useState<PayAppStepKey | null>(null)
   // The page the trade turned to, and the step it was turned on. A new step turns the page again.
   const [pick, setPick] = useState<{ page: Page; at: PayAppStepKey | null } | null>(null)
+  // Materials stored on site (question 12): shown once asked for, or when some are already in.
+  const [showStored, setShowStored] = useState(() => Object.values(heldDraft?.stored ?? {}).some((v) => v > 0))
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -402,8 +404,8 @@ export function GcBuildingPayAppWindow({
   const app = useMemo(() => {
     if (!sow) return null
     if (draw) return payApplicationForDraw(sow, draw)
-    return finalProp ? finalPayApplication(sow) : payApplication(sow, sow.draws.length + 1, draft.toPct)
-  }, [sow, draw, finalProp, draft.toPct])
+    return finalProp ? finalPayApplication(sow) : payApplication(sow, sow.draws.length + 1, draft.toPct, false, draft.stored ?? {})
+  }, [sow, draw, finalProp, draft.toPct, draft.stored])
 
   const { steps, ready } = useMemo(
     () => (app ? payAppSteps(app, draft) : { steps: [], ready: false }),
@@ -430,7 +432,7 @@ export function GcBuildingPayAppWindow({
     if (!dispatch || !ready) return
     const typedIn = { periodTo: draft.periodTo, address: draft.address, license: draft.license, signedBy: draft.signedBy, signedTitle: draft.signedTitle }
     if (final) dispatch({ type: 'tradeSendFinalPayApp', projectId: project.id, packageId: pkg.id, ...typedIn })
-    else dispatch({ type: 'tradeSendPayApp', projectId: project.id, packageId: pkg.id, toPct: draft.toPct, ...typedIn })
+    else dispatch({ type: 'tradeSendPayApp', projectId: project.id, packageId: pkg.id, toPct: draft.toPct, stored: draft.stored ?? {}, ...typedIn })
     onSent?.()
     onClose()
   }
@@ -606,6 +608,39 @@ export function GcBuildingPayAppWindow({
                   {!final && (
                     <div style={{ color: 'var(--text-muted)' }}>
                       {w('workPeriod')} <strong style={{ color: 'var(--text-base)' }}>{money(app.totals.thisPeriod)}</strong>
+                    </div>
+                  )}
+                  {!final && (
+                    <div style={{ display: 'grid', gap: '0.3rem', paddingTop: '0.35rem', borderTop: '1px solid var(--border)' }}>
+                      <label style={{ display: 'flex', gap: '0.45rem', alignItems: 'center' }}>
+                        <input type="checkbox" checked={showStored} onChange={(e) => setShowStored(e.target.checked)} />
+                        <span>{w('storedToggle')}</span>
+                      </label>
+                      {showStored && (
+                        <>
+                          {app.lines
+                            .filter((l) => l.balance + l.stored > 0)
+                            .map((l) => (
+                              <label key={l.sovId} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 7rem', gap: '0.5rem', alignItems: 'center' }}>
+                                <span>{l.label}</span>
+                                <input
+                                  type="number"
+                                  min={0}
+                                  value={draft.stored?.[l.sovId] ?? 0}
+                                  onChange={(e) => set({ stored: { ...(draft.stored ?? {}), [l.sovId]: Math.max(0, Number(e.target.value) || 0) } })}
+                                  style={input_}
+                                  aria-label={w('storedAria', { line: l.label })}
+                                />
+                              </label>
+                            ))}
+                          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{w('storedNote')}</span>
+                          {app.totals.stored > 0 && (
+                            <div style={{ color: 'var(--text-muted)' }}>
+                              {w('storedTotal')} <strong style={{ color: 'var(--text-base)' }}>{money(app.totals.stored)}</strong>
+                            </div>
+                          )}
+                        </>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1021,7 +1056,7 @@ function PayAppPaper({
                           <Val>{money(l.toDate)}</Val>
                         </td>
                         <td>
-                          <Val>{`${l.pct}%`}</Val>
+                          <Val>{`${l.scheduled === 0 ? 0 : Math.round((l.toDate / l.scheduled) * 100)}%`}</Val>
                         </td>
                         <td>
                           <Val>{money(l.balance)}</Val>

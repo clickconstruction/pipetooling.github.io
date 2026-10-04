@@ -15,7 +15,7 @@ import { buildNewProject, dryInMilestoneFor, packagesFromDrafts, pushSchedule, s
 import { nextPunchId, punchClear } from './gcBuildingPunch'
 import { logTrades } from './gcBuildingLog'
 import { nextSubmittalId, nextSubmittalNumber, submittalState } from './gcBuildingSubmittals'
-import { addDays, changeOrderTradePct, crewPctFromStages, drawApprovedLess, finalPayApplication, jobCloseout, payApplication, timesSentBack, tradeCloseout, workAllBilled } from './gcBuilding'
+import { addDays, changeOrderTradePct, crewPctFromStages, drawLinesOf, drawMoney, drawApprovedLess, finalPayApplication, jobCloseout, payApplication, timesSentBack, tradeCloseout, workAllBilled } from './gcBuilding'
 import { awardGate } from './gcVetting'
 import { startChecklist } from './gcStart'
 import { keepPromisesOn, openPromiseFor, PROMISE_WHAT, promisesKeptBy, tradePromisesOf } from './gcPromises'
@@ -544,10 +544,10 @@ function reduce(state: GcState, action: GcAction): GcState {
       if (!pkg || !partner || !sow || sow.status !== 'signed') return state
       if (sow.draws.some((d) => d.status === 'requested')) return state
       const number = sow.draws.length + 1
-      const app = payApplication(sow, number, action.toPct)
-      const gross = app.totals.thisPeriod
+      // Materials stored on site count too (question 12): the work this period plus the change in what is stored.
+      const app = payApplication(sow, number, action.toPct, false, action.stored ?? {})
+      const { gross, retainage, net } = drawMoney(sow, app)
       if (gross <= 0) return state
-      const retainage = (gross * sow.retainagePct) / 100
       const address = action.address.trim()
       const license = action.license.trim()
       const draw: Draw = {
@@ -556,10 +556,10 @@ function reduce(state: GcState, action: GcAction): GcState {
         requestedOn: state.today,
         gross,
         retainage,
-        net: gross - retainage,
+        net,
         status: 'requested',
         waiver: 'conditional',
-        lines: app.lines.filter((l) => l.thisPeriod > 0).map((l) => ({ sovId: l.sovId, toPct: l.pct })),
+        lines: drawLinesOf(app),
         payApp: { periodTo: action.periodTo, address, license, signedBy: action.signedBy.trim(), signedTitle: action.signedTitle.trim(), signedOn: state.today },
       }
       const claimed = new Map(app.lines.map((l) => [l.sovId, l.pct]))
