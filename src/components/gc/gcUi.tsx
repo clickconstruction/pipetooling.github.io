@@ -98,7 +98,7 @@ export function PlusUnknown({ words }: { words: string }) {
   if (!words) return null
   return (
     <span
-      title={`${words} This number counts it as $0 until you set a cost in Compare bids.`}
+      title={`${words} This number counts it as $0 until you set a cost in Compare quotes.`}
       // position: relative holds the hidden screen-reader words inside the marker; without it they sat at
       // their static spot in a wide table and widened the page on a phone.
       style={{ position: 'relative', color: 'var(--text-amber-800)', fontWeight: 700, whiteSpace: 'nowrap', cursor: 'help' }}

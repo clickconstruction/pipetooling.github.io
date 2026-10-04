@@ -174,9 +174,9 @@ export function assistantRules(state: GcState): AssistantRule[] {
   const shortNeeds = needs.filter((n) => n.need.short > 0).sort((x, y) => (x.need.daysLeft ?? 999) - (y.need.daysLeft ?? 999) || x.need.bids - y.need.bids)
   const bids: AssistantRule = {
     key: 'bids',
-    title: `${BIDS_WANTED} bids on every trade we put out`,
-    ideal: `Every trade out to bid has ${BIDS_WANTED} bids before the due date. One company going quiet should not leave us with one number.`,
-    now: `${needs.length - shortNeeds.length} of ${plural(needs.length, 'open ask', 'open asks')} have ${BIDS_WANTED} bids.`,
+    title: `${BIDS_WANTED} quotes on every trade we put out`,
+    ideal: `Every trade out for quotes has ${BIDS_WANTED} quotes before the due date. One company going quiet should not leave us with one number.`,
+    now: `${needs.length - shortNeeds.length} of ${plural(needs.length, 'open ask', 'open asks')} have ${BIDS_WANTED} quotes.`,
     ok: shortNeeds.length === 0,
     items: shortNeeds.map(({ bench: b, need }) => {
       const asked = new Set(need.pkg.invites.map((i) => i.partnerId))
@@ -186,7 +186,7 @@ export function assistantRules(state: GcState): AssistantRule[] {
       const due = need.daysLeft === null ? '' : ` Due ${shortDate(need.project.bidDue)}, in ${plural(need.daysLeft, 'day', 'days')}.`
       return {
         id: `bids-${need.pkg.id}`,
-        text: `${need.project.name}, ${b.trade}: ${need.bids} of ${BIDS_WANTED} bids.${due}`,
+        text: `${need.project.name}, ${b.trade}: ${need.bids} of ${BIDS_WANTED} quotes.${due}`,
         action:
           notAsked.length > 0
             ? { kind: 'ask', projectId: need.project.id, packageId: need.pkg.id, partnerIds: notAsked }

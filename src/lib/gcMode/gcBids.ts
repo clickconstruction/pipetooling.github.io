@@ -119,7 +119,7 @@ export function compareBids(state: GcState, project: GcProject, pkg: TradePackag
     const alternates = takenAlternatesTotal(bid)
     const allIn = bid.amount + added + alternates
     const names = (items: ScopeItem[]) => listWords(items.map((i) => i.label.toLowerCase()))
-    let text = `${company} bid ${money(bid.amount)}`
+    let text = `${company} quoted ${money(bid.amount)}`
     if (gaps.length === 0) {
       text += ' and covers everything.'
     } else {
@@ -142,12 +142,12 @@ export function compareBids(state: GcState, project: GcProject, pkg: TradePackag
   const next = sorted[1]
   let conclusion = ''
   if (!low) conclusion = ''
-  else if (!next) conclusion = `One bid only. You want at least ${BIDS_WANTED} to compare.`
+  else if (!next) conclusion = `One quote only. You want at least ${BIDS_WANTED} to compare.`
   else if (!complete) conclusion = 'Set a cost for the work that is missing to see who is really lowest.'
   else {
     const lowestAsSent = [...bidsIn(pkg)].sort((a, b) => (a.bid?.amount ?? 0) - (b.bid?.amount ?? 0))[0]
     const flipped = lowestAsSent && lowestAsSent.id !== low.inviteId
-    conclusion = `${flipped ? 'The lowest bid is not the lowest cost. ' : ''}${low.company} is lowest for the same work, by ${money(next.allIn - low.allIn)}.`
+    conclusion = `${flipped ? 'The lowest quote is not the lowest cost. ' : ''}${low.company} is lowest for the same work, by ${money(next.allIn - low.allIn)}.`
   }
   return { lines, conclusion, complete }
 }
@@ -285,7 +285,7 @@ export function bidTabResult(project: GcProject, pkg: TradePackage, partnerId: s
       project.lostWhy === 'project_died'
         ? es ? 'El dueño detuvo este proyecto o lo puso en pausa.' : 'The owner stopped this project or put it on hold.'
         : es ? `${gc} no ganó este proyecto.` : `${gc} did not win this project.`
-    return `${why} ${es ? 'Gracias por su precio.' : 'Thank you for your quote.'}`
+    return `${why} ${es ? 'Gracias por su cotización.' : 'Thank you for your quote.'}`
   }
   if (project.stage === 'pursuing') {
     const on = project.ourBidSentOn ? (es ? ` el ${pDate(lang, project.ourBidSentOn)}` : ` on ${shortDate(project.ourBidSentOn)}`) : ''
