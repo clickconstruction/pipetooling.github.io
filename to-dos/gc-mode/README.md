@@ -519,10 +519,9 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
     adds? Today a signed one's days add to the contract time (`contractDaysAdded`): the owner's
     portal says "Days your change orders add to the job: +5 days". The milestone on the schedule
     (the Building lane's) stays where it was. (Owner Billing lane, 2026-10-03.)
-29. Texts to trade partners: the portal's invitation, the start day and a few urgent notes go by
-    text as well as email (*Workflow steps not built yet*, the portal's events). The app sends
-    email through Resend and has no text sender. Add one before the real build, or send email only?
-    (Portal lane, 2026-10-03.)
+29. ~~Texts to trade partners: add a text sender before the real build, or send email only?~~
+    Answered 2026-10-03: **email only for now** (through Resend, as the app sends today). Every
+    lane's notification table reads "by email"; a text sender is not part of the first real build.
 
 ## The schedule (proposed 2026-10-02, built 2026-10-03)
 

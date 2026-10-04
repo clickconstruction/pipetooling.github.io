@@ -122,7 +122,7 @@ makes; nobody builds it until he answers.
 
 ## Everyone
 
-21. **Notifications.** Nothing emails or notifies anyone yet. Each lane names its own events (in
+21. **Notifications.** Email only for now (the owner, 2026-10-03; question 29): no text sender. Nothing emails or notifies anyone yet. Each lane names its own events (in
     its section above); the real build sends them through Resend.
 
 ## The real build (not yet: only when the owner says the shape is settled)
