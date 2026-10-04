@@ -1041,7 +1041,7 @@ function PayAppPaper({
                 <div style={{ ...label, marginTop: '0.2rem' }}>
                   {withNode(w('byFor', { company: partner.company }), 'name', <Val>{typed.signedBy}</Val>)}
                 </div>
-                <GcPayAppNotary fontSize="0.72rem" />
+                <GcPayAppNotary fontSize="0.72rem" lang={lang} />
               </div>
             </Mark>
 
