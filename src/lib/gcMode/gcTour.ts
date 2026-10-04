@@ -85,3 +85,71 @@ export const GC_TOUR_STEPS: SpotlightTourStep[] = [
     body: 'Open Boerne Retail Shell and start on Trades. Tap See what the trade sees to watch the trade partner’s side. Tap Start over at any time to put the made-up projects back. Tap New here? to see this again.',
   },
 ]
+
+/**
+ * The walkthrough inside one project (the big list, Board item 8): a stop on each tab, in the
+ * order a job goes, from asking the trades to closing out. The anchors are the tab buttons
+ * (`gc-ptab-<key>`), so every stop is on the page whichever tab is open.
+ */
+export const GC_PROJECT_TOUR_STEPS: SpotlightTourStep[] = [
+  {
+    anchor: 'gc-project-header',
+    title: 'One project',
+    body: 'This is one job, from the first quote to the last payment. The tabs below follow it in order.',
+  },
+  {
+    anchor: 'gc-ptab-packages',
+    title: 'Trades',
+    body: 'One row for each trade. Ask companies to quote. Tap Compare bids to see their quotes side by side. Then carry one number.',
+  },
+  {
+    anchor: 'gc-ptab-plans',
+    title: 'Plans',
+    body: 'Every set of plans and who got it. When the architect sends a new set, tap A new set of plans came in.',
+  },
+  {
+    anchor: 'gc-ptab-number',
+    title: 'Our number',
+    body: 'The trades we carry, plus our costs and our fee, make our price. Tap We sent our bid. Then tap We won this or We lost this.',
+  },
+  {
+    anchor: 'gc-ptab-tabs',
+    title: 'Bid tabs',
+    body: 'Once our bid is in, each company that quoted sees where its quote stood. It is the thanks for bidding.',
+  },
+  {
+    anchor: 'gc-ptab-contracts',
+    title: 'Contracts',
+    body: 'After we win, award each trade to one company. Send the master agreement and the statement of work to sign.',
+  },
+  {
+    anchor: 'gc-ptab-start',
+    title: 'Get started',
+    body: 'Everything that must be done before work starts. Start stays shut until nothing is missing.',
+  },
+  {
+    anchor: 'gc-ptab-schedule',
+    title: 'Schedule',
+    body: 'The dates for each trade and what waits on what. Start locks it as the plan we measure against.',
+  },
+  {
+    anchor: 'gc-ptab-draws',
+    title: 'Draws',
+    body: 'Trades report their work and ask to be paid. You approve and pay. We hold back retainage until the end.',
+  },
+  {
+    anchor: 'gc-ptab-owner',
+    title: 'Bill the owner',
+    body: 'Our own pay applications to the owner. The architect certifies each one. Then the owner pays it.',
+  },
+  {
+    anchor: 'gc-ptab-closeout',
+    title: 'Closeout',
+    body: 'The last papers and the last payments. When everything is in, tap Close the job.',
+  },
+  {
+    anchor: 'gc-see-trade',
+    title: 'What the trade sees',
+    body: 'Tap here to watch a trade partner’s portal beside the office. A press on either side shows on the other.',
+  },
+]
