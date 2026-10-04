@@ -542,11 +542,11 @@ they point to, for the lanes to pick up.
 - A set's added days could also carry their time onto the change order it starts, beyond the
   "+N days" words (Owner Billing's change orders carry a schedule field).
 
-- The schedule, the rest: the other lanes' parts (*The schedule, proposed*): the Get started step, the lines on Trade partners, the trade's weekly marks in its portal, and the New Project lane's draft.
+- The schedule, the rest: the other lanes' parts (*The schedule, proposed*): the trade's weekly marks in its portal, and the New Project lane's draft. (The Board's Get started step and Trade partners lines are built.)
 
 - New Project past its first form: a scope line tied to its spec section, exclusions, and a
-  budget from real costs, not a made-up rate per square foot. A line's sheets show only in New Project, a new set
-  and the plans window; the portal's bid form, Trades and Compare bids do not show them yet. A
+  budget from real costs, not a made-up rate per square foot. A line's sheets show in New Project, a new set,
+  the plans window and Compare bids (Board, 2026-10-03); the portal's bid form and Trades do not show them yet. A
   later set cannot yet take a sheet out of the set.
 - Questions about the plans, the rest: a trade asks in its portal and sees the answers there (the
   Portal lane: the action `tradeAskQuestion` is ready). Today the office types a question that came
@@ -555,12 +555,11 @@ they point to, for the lanes to pick up.
 - Change orders to a trade, the rest: the owner's change order still reads its own percent done,
   not the trade's on its line (`changeOrderTradePct`, the Owner Billing lane's to read), and the
   portal's "left to bill" counts the original contract only (`sowContractSum`, the Portal lane's).
-- A closed job's own section on the board (answered yes, 2026-10-02): the Board lane reads
-  `closedOn`. Closing it on Closeout is built. Bill the owner's picker for our own crew still
-  sets one number; by stage it is set on Draws.
-- Our billing to the owner, the rest: the owner's window still shows billed and paid from the
-  fixture, not from the pay applications on **Bill the owner** (`ownerAccount` has the numbers);
-  our own crew's percent read from its Pipeline job (reported on **Draws** for now);
+- Bill the owner's picker for our own crew still sets one number; by stage it is set on Draws.
+  (The board's Closed section is built.)
+- Our billing to the owner, the rest: our own crew's percent read from its Pipeline job (reported
+  on **Draws** for now); (the company window reads the pay applications through `ownerMoney`,
+  with certified and waiting-on-the-architect beside what they owe: Board, 2026-10-03);
   a trade's retainage held until the owner has paid us ours (the Building lane's Closeout).
 - No email is sent and nothing notifies anyone when a promised day passes.
 

@@ -45,7 +45,7 @@ makes; nobody builds it until he answers.
    many days the number holds (question 14's built half).
 4. ~~**Spec sections on the Plans tab:**~~ done (set cards list "Sections revised"; a line tied to a revised section is named; 0ac0cd4be) each set card lists `set.changedSpecs` beside its sheets,
    and the "what changed" words (`staleWords`) name a revised section.
-5. ~~**A line's sheets beside it in Compare bids**~~ done ("E-301?" when matched from its words, "the electrical sheets as a whole" when it names none; this commit) (the owner's option 1, the half not built).
+5. ~~**A line's sheets beside it in Compare bids**~~ done ("E-301?" when matched from its words, "the electrical sheets as a whole" when it names none; 21be90ce6) (the owner's option 1, the half not built).
 6. ~~**A board-row chip for a pay application sent back twice**~~ done b6219f390 ("Roofing: sent back 2 times", red) (`timesSentBack`, `sentBackOpen` in
    `gcBuilding.ts`; the Building lane offered it).
 7. ~~**No "Click" written into the words:**~~ done b6219f390 (bidTabResult reads `GC_COMPANY.shortName`) `bidTabResult` and any other Board words read the
@@ -54,7 +54,7 @@ makes; nobody builds it until he answers.
    *New here?* may open itself on a first visit.
 9. **A phone pass on the Board's project tabs:** Trades, Plans, Our number, Bid tabs, Contracts,
    Get started, Follow up, Trade partners.
-10. **Tidy `README.md`:** its *Workflow steps not built yet* still lists what is built (the Closed
+10. ~~**Tidy `README.md`:**~~ done for the Board's lines (this commit); each lane tidies its own. its *Workflow steps not built yet* still lists what is built (the Closed
     section, the owner window's money, the schedule's Board parts). Each lane tidies its own lines.
 
 ## Building (GC 1)
