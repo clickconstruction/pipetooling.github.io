@@ -1350,6 +1350,29 @@ export function linesOnSpecs(project: GcProject, pkg: TradePackage, specIds: str
   return pkg.scope.filter((item) => specIds.some((id) => lineReadsSpec(project, pkg, item, id, added)))
 }
 
+/**
+ * The scope lines a set names to a trade, read the way the trade's portal reads them (the owner,
+ * 2026-10-03: a trade sees only the sheets the office set; 2026-10-04: the email follows the
+ * portal). A line whose sheets were only guessed reads its whole trade's sheets, so it is named
+ * when any of them changes. Sections read as `linesOnSpecs` does. The email and the window's list
+ * of lines a set touches use this; the schedule and the change orders keep the office's guess.
+ */
+export function linesATradeHears(
+  project: GcProject,
+  pkg: TradePackage,
+  sheetIds: string[],
+  specIds: string[],
+  addedSpecs: SpecSection[] = [],
+  addedSheets: PlanSheet[] = [],
+): ScopeItem[] {
+  const whole = tradeSheets(project, pkg.trade, addedSheets).map((x) => x.id)
+  const onSpecs = new Set(linesOnSpecs(project, pkg, specIds, addedSpecs).map((l) => l.id))
+  return pkg.scope.filter((item) => {
+    const reads = item.sheets && item.sheets.length > 0 ? item.sheets : whole
+    return reads.some((id) => sheetIds.includes(id)) || onSpecs.has(item.id)
+  })
+}
+
 /** The scope lines a set reaches through its sheets or its sections, in the scope's order. */
 export function linesOnPlans(
   project: GcProject,

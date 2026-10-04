@@ -147,7 +147,9 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   company's email names them. A line with no sheet stands for the trade as a whole, so it counts
   as touched whenever any of the trade's sheets changes (the owner's call, 2026-10-02:
   `lineReads`, `linesOnSheets`). Projects written before lines had sheets show the guess
-  (`lineSheets`).
+  (`lineSheets`). What a set names to a trade (its email, and the window's list of lines it
+  touches) reads a line whose sheets were only guessed as its whole trade, the way the trade's
+  portal reads it (the owner, 2026-10-04: `linesATradeHears`).
 - **The project manual sits beside the sheets** (approved as built, 2026-10-03): on **The plans**
   the office pastes the manual's table of contents (07 54 23, 075423, Section 09 91 23), read as
   sections by division (`specIndexInText`). A section's number names its trade (`tradeForSpec`:
@@ -231,7 +233,9 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   "plans"), to review and send on **Bill the owner**, with the days the set adds as a number
   (`ChangeOrder.days`; a signed one adds them to the contract time). The days ride on one change
   order only, the first going out whose trade caused them, so they are never counted twice
-  (`changeOrderTakingTheDays`). Once the owner signs, it goes on to the trade's statement of work
+  (`changeOrderTakingTheDays`). A trade the set brings bills the owner only through its change
+  order (Owner Billing: $0 on the owner's own lines), so its row warns while it is unticked or has
+  no cost (the owner, 2026-10-04). Once the owner signs, it goes on to the trade's statement of work
   through the Building lane's `sendTradeChange`.
 - **Questions about the plans** (approved as built, 2026-10-03): a trade asks about the plans
   (only a company asked to quote the trade can), we send it to the architect, we record the

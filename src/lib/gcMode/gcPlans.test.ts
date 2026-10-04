@@ -5,6 +5,8 @@ import {
   changeOrderFromSet,
   currentRev,
   indexDiff,
+  linesATradeHears,
+  linesOnSheets,
   ourPeople,
   sheetsGoneAtRev,
   takenOutInText,
@@ -632,5 +634,23 @@ describe('who checked a set before it went out', () => {
     expect(named.log[0]?.text).toMatch(/^Issued Addendum 3 on Boerne Retail Shell, checked by Dana Whitaker, and emailed 0 companies\./)
     const unnamed = gcReducer(state, { ...base, checkedBy: '  ' })
     expect(unnamed.projects.find((p) => p.id === 'boerne')?.planSets.slice(-1)[0]).not.toHaveProperty('checkedBy')
+  })
+})
+
+describe('the lines a set names to a trade, read the way its portal reads them', () => {
+  const boerne = project('boerne')
+  const elec = boerne.packages.find((p) => p.id === 'elec')
+  if (!elec) throw new Error('no Boerne electrical')
+
+  it('counts a line whose sheets were only guessed as its whole trade, as the portal does', () => {
+    // Lighting's sheet is only guessed (E-101), so the office's guess skips it for E-201; the trade's portal does not.
+    expect(linesOnSheets(boerne, elec, ['E-201']).map((l) => l.label)).not.toContain('Lighting')
+    expect(linesATradeHears(boerne, elec, ['E-201'], []).map((l) => l.label)).toContain('Lighting')
+  })
+
+  it('keeps a line the office tied to a sheet to that sheet', () => {
+    const tied = { ...elec, scope: elec.scope.map((l) => (l.label === 'Lighting' ? { ...l, sheets: ['E-101'] } : l)) }
+    expect(linesATradeHears(boerne, tied, ['E-201'], []).map((l) => l.label)).not.toContain('Lighting')
+    expect(linesATradeHears(boerne, tied, ['E-101'], []).map((l) => l.label)).toContain('Lighting')
   })
 })

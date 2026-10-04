@@ -73,7 +73,7 @@ export function GcNewProjectQuestions({ state, project, dispatch, onClose }: Pro
             <div style={{ fontWeight: 700, fontSize: '1.05rem' }}>{project.name} · questions about the plans</div>
             <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
               A trade asks. We send it to {project.architect}. The answer goes to{' '}
-              {project.stage === 'pursuing' ? 'every company bidding the trade.' : 'the company on the trade.'}
+              {project.stage === 'pursuing' ? 'every company quoting the trade.' : 'the company on the trade.'}
               {questionsCloseOn(project) &&
                 (questionsOpen(project, state.today)
                   ? ` Questions close ${weekdayDate(questionsCloseOn(project))}.`
