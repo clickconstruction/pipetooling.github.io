@@ -8,12 +8,12 @@
 import type { BidAlternate, Draw, GcProject, GcState, Invite, LookAheadMark, Partner, PlanQuestion, PlanSet, ProjectContact, ScopeItem, SubBid, TradePackage } from './gcTypes'
 import { daysUntil, money } from './gcWords'
 import { currentRev, partnerById } from './gcLookups'
-import { questionState, questionsFor, sheetsGoneAtRev, type QuestionState } from './gcPlans'
+import { bareId, questionState, questionsFor, sheetsGoneAtRev, type QuestionState } from './gcPlans'
 import { askPromise, OPEN_WITHIN_DAYS, type AskPromise } from './gcFollowUp'
 import { bidIsStale, quoteRanOut, sowMoney } from './gcBids'
 import { GC_COMPANY } from './gcFixture'
 import { pDate, pt, pWeekday, type PortalLang } from './gcPortalI18n'
-import { inSentence, lineSheets, tradeSheets, tradesForSheets } from './gcNewProject'
+import { inSentence, lineSheets, specsAtRev, specsGoneAtRev, tradeSheets, tradesForSheets } from './gcNewProject'
 import { addDays, retainageHeldNow, sentBackOpen, sowContractSum, tradeChangesFor, tradeCloseout, workAllBilled } from './gcBuilding'
 import { lookAheadWeeks, markState, mondayOf, scheduleRows, type LookAheadState, type ScheduleRow } from './gcBuildingSchedule'
 import { punchItems, punchState } from './gcBuildingPunch'
@@ -773,8 +773,21 @@ export interface PortalLine {
   changed: string[]
   /** The sheets it read that a newer set took out: shown struck through, never opened. */
   gone: string[]
+  /** The sections of the project manual the office set for the line, with their titles now. */
+  specs: PortalSpec[]
   /** Those sets, by name. */
   by: string[]
+}
+
+/** One section a line reads, as the company sees it beside the line (owner, 2026-10-04). */
+export interface PortalSpec {
+  id: string
+  /** Its title in the newest set, or as it was when a set took it out. Empty when the manual does not have it. */
+  title: string
+  /** A set newer than the company's number revised it. */
+  changed: boolean
+  /** A newer set took it out of the manual. */
+  gone: boolean
 }
 
 /**
@@ -793,14 +806,33 @@ export function portalLines(
   const sets = basis === null ? [] : project.planSets.filter((s) => s.rev > basis && s.touches.includes(pkg.id)).sort((a, b) => a.rev - b.rev)
   // A sheet a newer set took out is no longer a sheet to open (owner, 2026-10-04: say "taken out").
   const goneIds = new Set(sets.flatMap((set) => set.removedSheets ?? []))
+  // The manual as of the newest set: a later set adds or renames sections (New Project lane).
+  const now = currentRev(project)
+  const liveSpecs = specsAtRev(project, now)
+  const deadSpecs = specsGoneAtRev(project, now)
+  const same = (a: string) => (b: string) => bareId(a) === bareId(b)
   const lines = pkg.scope.map((item) => {
     const { sheets: said, guessed } = lineSheets(project, pkg, item)
     const wholeTrade = guessed || said.length === 0
     const reads = wholeTrade ? tradeSheets(project, pkg.trade).map((sh) => sh.id) : said
-    const by = sets.filter((set) => set.changedSheets.some((id) => reads.includes(id)))
+    // Only the sections the office set, as with sheets (owner, 2026-10-03); never the guess.
+    const specIds = item.specs ?? []
+    const by = sets.filter(
+      (set) => set.changedSheets.some((id) => reads.includes(id)) || (set.changedSpecs ?? []).some((id) => specIds.some(same(id))),
+    )
     const gone = reads.filter((id) => goneIds.has(id))
     const changed = reads.filter((id) => !goneIds.has(id) && by.some((set) => set.changedSheets.includes(id)))
-    return { item, sheets: wholeTrade ? [] : said, wholeTrade, changed, gone, by: by.map((set) => set.label) }
+    const specs = specIds.map((id) => {
+      const live = liveSpecs.find((x) => same(x.id)(id))
+      const dead = live ? undefined : deadSpecs.find((x) => same(x.id)(id))
+      return {
+        id,
+        title: live?.title ?? dead?.title ?? '',
+        changed: !!live && sets.some((set) => (set.changedSpecs ?? []).some(same(id))),
+        gone: !!dead,
+      }
+    })
+    return { item, sheets: wholeTrade ? [] : said, wholeTrade, changed, gone, specs, by: by.map((set) => set.label) }
   })
   const named = new Set(lines.flatMap((l) => [...l.changed, ...l.gone]))
   const own = new Set(tradeSheets(project, pkg.trade).map((sh) => sh.id))

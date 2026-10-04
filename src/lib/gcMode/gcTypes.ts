@@ -347,6 +347,13 @@ export interface GcProject {
   ourBidSentOn: string | null
   /** Going into the job: our contract with the owner, the permit, the day work starts. */
   ownerContractSignedOn: string | null
+  /**
+   * The owner's price as they signed it, by line: each trade by its package id, then 'gc',
+   * 'contingency' and 'fee' (owner, 2026-10-04). Bill the owner reads it, so buying a trade out for
+   * more or less never changes their price; only a change order does. Absent: not signed yet, or
+   * signed before it was kept, and the price follows what we carry (`ownerContractWorthNow`).
+   */
+  ownerContractWorth?: Record<string, number>
   permitOn: string | null
   startDate: string | null
   /** The day we pressed Start. The trades were told then. */

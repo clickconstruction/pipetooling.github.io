@@ -80,6 +80,11 @@ export const GC_TOUR_STEPS: SpotlightTourStep[] = [
     body: 'A bid we did not win moves down here. Each one says why we lost it and who won, if we know. Nobody is chased on it anymore. Tap Bring it back on Our number if the owner comes back to us.',
   },
   {
+    anchor: 'gc-group-switch',
+    title: 'By stage or by customer',
+    body: 'The board opens by stage. Tap By customer to group the jobs by who they are for. Each customer shows what we are bidding them and what they owe us. Tap By stage to go back.',
+  },
+  {
     anchor: 'gc-new-here',
     title: 'Try it',
     body: 'Open Boerne Retail Shell and start on Trades. Tap See what the trade sees to watch the trade partner’s side. Tap Start over at any time to put the made-up projects back. Tap New here? to see this again.',

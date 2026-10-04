@@ -121,7 +121,10 @@ makes; nobody builds it until he answers.
     by stage or percent), 5 (where the plans live), 6 ("quote" or "bid"), 7 (mark who was awarded
     on a bid tab; closest or most reliable first; "start anyway"), 8 (track other promises), 9
     (group the board by customer), 12 (pay application extras and its file), 14 (do alternates
-    change our number; does a quote that ran out stop counting).
+    change our number; does a quote that ran out stop counting). Answered 2026-10-04: 5 (Google
+    Drive, checked by someone), 7's first half (yes, set by the job's estimator), 9 (a By stage \|
+    By customer switch, stage by default; built by the Board), 14 (left to the Board: built
+    e04a397c4), 28 (yes, signed change-order days move substantial completion).
 15. **The Portal lane's lost-bid portal:** OK to commit?
 22. ~~**The Spanish:** who reads it?~~ Answered 2026-10-03: someone the owner names reviews it when GC mode goes to production; nothing to do before then. The list is ready in `PORTAL_SPANISH.md` (*For a native speaker to read*).
 
