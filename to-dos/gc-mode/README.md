@@ -203,7 +203,7 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   answers. The email says "It adds detention pond to your scope."
 - **New Project ends with Who to ask** (approved as built, 2026-10-02): the step ticks the
   companies in range in the map's own order (`tradeLineup`), up to `BENCH_WANTED`, so the map
-  and the step move together when question 7 is answered. A company missing its master
+  and the step move together: the most reliable first (question 7, 2026-10-04). A company missing its master
   agreement, insurance or W-9 is still ticked, with what is missing in a muted line: paperwork is
   fixed before award, not before a quote. Create sends the board's own invite to each. **+ Ask a
   company not on our list** adds one by name and email or phone (the owner, 2026-10-04, question
