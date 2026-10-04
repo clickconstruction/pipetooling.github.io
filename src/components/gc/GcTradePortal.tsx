@@ -18,6 +18,8 @@ import {
   portalInsurance,
   openPromiseFor,
   portalOnSite,
+  portalSovCheck,
+  portalSovStart,
   portalVetting,
   portalLines,
   portalPlanNews,
@@ -44,7 +46,7 @@ import { GcPortalHome } from './GcPortalHome'
 import { GcPortalPay } from './GcPortalPay'
 import { GcPortalPapers } from './GcPortalPapers'
 import { GcPortalLookAhead } from './GcPortalLookAhead'
-import { AlternatesEditor, AnswerLines, GoodForPicker, LeavesOut, QuoteFilePicker } from './GcPortalBidExtras'
+import { AlternatesEditor, AnswerLines, GoodForPicker, LeavesOut, QuoteFilePicker, SovEditor, TheirSovOnSow, type SovDraft } from './GcPortalBidExtras'
 import { ChangedLines, LineSheets, LineSpecs, SheetChip, TakenOut } from './GcPortalLineSheets'
 import { GcPortalMessages } from './GcPortalMessages'
 import { GcPortalPaperwork } from './GcPortalPaperwork'
@@ -436,6 +438,16 @@ function BidBlock({
   const [goodFor, setGoodFor] = useState(invite.bid?.goodForDays ?? 30)
   const [alternates, setAlternates] = useState<BidAlternate[]>(invite.bid?.alternates ?? [])
   const [quoteFile, setQuoteFile] = useState(invite.bid?.quoteFile ?? '')
+  // Their own schedule of values (question 4): the stages to start, or what they sent before.
+  const [sov, setSov] = useState<SovDraft>(
+    () => invite.bid?.sov?.map((l) => ({ label: l.label, amount: String(l.amount) })) ?? portalSovStart(lang).map((label) => ({ label, amount: '' })),
+  )
+  const sovCheck = portalSovCheck(
+    sov.map((l) => ({ label: l.label, amount: Number(l.amount) || 0 })),
+    Number(amount) || 0,
+    lang,
+  )
+  const sovBad = sovCheck.state === 'short' || sovCheck.state === 'over'
   const [answering, setAnswering] = useState(false)
   const ids = { projectId: project.id, packageId: pkg.id, inviteId: invite.id }
   const due = project.bidDue
@@ -471,6 +483,11 @@ function BidBlock({
           {invite.bid.quoteFile && (
             <div>
               <span style={{ opacity: 0.75 }}>{t('ownQuoteLabel')}</span> <Chip tone="grey">{invite.bid.quoteFile}</Chip>
+            </div>
+          )}
+          {(invite.bid.sov ?? []).length > 0 && (
+            <div>
+              <span style={{ opacity: 0.75 }}>{t('sovTitle')}:</span> {(invite.bid.sov ?? []).map((l) => `${l.label} ${money(l.amount)}`).join(' · ')}
             </div>
           )}
           {ranOut && goodUntil && (
@@ -589,14 +606,15 @@ function BidBlock({
           </label>
           <GoodForPicker value={goodFor} onChange={setGoodFor} />
           <input style={input} placeholder={t('anythingKnow')} value={note} onChange={(e) => setNote(e.target.value)} />
+          <SovEditor value={sov} onChange={setSov} target={Number(amount) || 0} help={t('sovHelp')} />
           <AlternatesEditor value={alternates} onChange={setAlternates} />
           <QuoteFilePicker value={quoteFile} onChange={setQuoteFile} />
           {notVetted && <div style={{ fontSize: '0.85rem', opacity: 0.85 }}>{t('vetBidNote', { gc: GC })}</div>}
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <Btn
               kind="primary"
-              disabled={invite.seenRev === null || !(Number(amount) > 0) || unanswered > 0}
-              title={invite.seenRev === null ? t('openFirst') : unanswered > 0 ? t('answerEach') : undefined}
+              disabled={invite.seenRev === null || !(Number(amount) > 0) || unanswered > 0 || sovBad}
+              title={invite.seenRev === null ? t('openFirst') : unanswered > 0 ? t('answerEach') : sovBad ? t('sovMustAdd') : undefined}
               onClick={() => {
                 dispatch({
                   type: 'tradeSubmitBid',
@@ -607,6 +625,7 @@ function BidBlock({
                   goodForDays: goodFor,
                   alternates,
                   ...(quoteFile ? { quoteFile } : {}),
+                  ...(sovCheck.state === 'ok' ? { sov: sovCheck.lines } : {}),
                 })
                 setEditing(false)
               }}
@@ -705,6 +724,7 @@ function SowBlock({
           ) : (
             <Chip tone="green">{t('signedOn', { date: pDate(lang, sow.signedOn) })}</Chip>
           )}
+          <TheirSovOnSow sow={sow} onSend={(lines) => dispatch({ type: 'tradeSendSov', ...ids, sov: lines })} />
         </div>
       </Block>
 

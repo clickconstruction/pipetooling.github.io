@@ -30,6 +30,8 @@ Use these so a company reads one word for one thing across the portal.
 | your quote (a trade's own number; owner, 2026-10-04) | su cotización (feminine: "Envíela", "válida") |
 | the quotes | las cotizaciones |
 | our bid (ours, to the owner) | nuestra propuesta |
+| schedule of values (the trade's own) | desglose por etapas |
+| Rough-in · Top out · Trim (its stages; please check) | Obra negra · Antes de cerrar muros · Acabados |
 | statement of work | orden de trabajo |
 | master agreement | contrato maestro |
 | change order | orden de cambio |
@@ -117,7 +119,7 @@ column headers are in one block at the end of `gcBuildingWords.ts`, for the nati
 
 ## For a native speaker to read
 
-Every Spanish string the trade's portal shows, 657 in all, drawn from the code on 2026-10-04.
+Every Spanish string the trade's portal shows, 687 in all, drawn from the code on 2026-10-04.
 They're grouped by screen, English on the left. Please mark anything that reads wrong, stiff or
 unclear, and write the better words beside it. The Portal lane makes the changes and passes the
 other lanes theirs.
@@ -231,6 +233,25 @@ they were written in. The portal does not translate them.
 
 | English | Español |
 |---|---|
+| Your schedule of values | Su desglose por etapas |
+| How your quote splits by stage. It is optional. Rename, add or take out lines. They must add up to your quote. | Cómo se divide su cotización por etapa. Es opcional. Puede cambiar, agregar o quitar partidas. Deben sumar su cotización. |
+| How your price splits by stage, so {gc} reads your billing on your own lines. It must add up to {amount}. | Cómo se divide su precio por etapa, para que {gc} lea su cobro en sus propias partidas. Debe sumar {amount}. |
+| Rough-in | Obra negra |
+| Top out | Antes de cerrar muros |
+| Trim | Acabados |
+| Stage name | Nombre de la etapa |
+| Amount for this stage | Monto de esta etapa |
+| Add a line | Agregar una partida |
+| Your lines add up. | Sus partidas suman bien. |
+| Your lines add up to {sum}. That is {gap} short. | Sus partidas suman {sum}. Faltan {gap}. |
+| Your lines add up to {sum}. That is {gap} too much. | Sus partidas suman {sum}. Sobran {gap}. |
+| Make your schedule of values add up, or clear its amounts. | Haga que su desglose sume bien, o borre los montos. |
+| Send your schedule of values | Enviar su desglose por etapas |
+| Nothing billed yet. | Todavía no hay nada cobrado. |
+| Billed {amount} to date: every line of your schedule. | Cobrado {amount} a la fecha: todas las partidas de su desglose. |
+| Billed {amount} to date: {where}. | Cobrado {amount} a la fecha: {where}. |
+| through {list} | completo hasta {list} |
+| {pct}% into {label} | {pct}% de {label} |
 | Not in your scope | Fuera de su alcance |
 | Leave these out of your quote. Someone else does them. | No los incluya en su cotización. Otra persona los hace. |
 | {what} ({who} does it) | {what} (lo hace {who}) |
@@ -964,6 +985,18 @@ they were written in. The portal does not translate them.
 | The re-inspection is {date}. Fix it before then. | La reinspección es el {date}. Arréglelo antes de esa fecha. |
 | Fix each one, then tell {gc} here. {gc} checks it on the job. Your work is accepted once every item is checked. | Arregle cada uno y avísele a {gc} aquí. {gc} lo revisa en la obra. Su trabajo se acepta cuando todos estén revisados. |
 
+#### The pay application as a file (2026-10-04, question 12): the AIA form, in English
+
+| English | Español |
+|---|---|
+| ⤓ Excel | ⤓ Excel |
+| ⤓ PDF | ⤓ PDF |
+| The AIA form in Excel, with every line | El formulario AIA en Excel, con cada partida |
+| The 702 and 703 as a PDF, with the notary block | El 702 y el 703 en PDF, con el bloque del notario |
+| Making it… | Preparándolo… |
+| The file could not be made. | No se pudo preparar el archivo. |
+| The file is the AIA form, in English. | El archivo es el formulario AIA, en inglés. |
+
 ### The bid tab (the Board lane's words, `bidTabResult` in `gcBids.ts` and the table in `GcBidTabs.tsx`)
 
 #### The line above the table, in each case
@@ -990,3 +1023,12 @@ they were written in. The portal does not translate them.
 | (you) | (usted) |
 | awarded | adjudicada |
 | Another company | Otra empresa |
+
+### The notary block on a pay application (the Owner Billing lane's words, `GcPayAppNotary.tsx`)
+
+| English | Español |
+|---|---|
+| State of Texas. County of ___. | Estado de Texas. Condado de ___. |
+| Subscribed and sworn to before me this ___ day of ___, 20___. | Suscrito y jurado ante mí este ___ día de ___ de 20___. |
+| Notary public: ___ | Notario público: ___ |
+| My commission expires: ___ | Mi comisión vence: ___ |

@@ -5,7 +5,7 @@
  *
  * The words follow the plain-words rules at the top of `gcTour.ts`.
  */
-import type { BidAlternate, Draw, GcProject, GcState, Invite, LookAheadMark, Partner, PlanQuestion, PlanSet, ProjectContact, PromiseKind, ScopeItem, SubBid, TradePackage, TradePromise } from './gcTypes'
+import type { BidAlternate, Draw, GcProject, GcState, Invite, LookAheadMark, Partner, PlanQuestion, PlanSet, ProjectContact, PromiseKind, ScopeItem, SubBid, TheirSovLine, TradePackage, TradePromise } from './gcTypes'
 import { daysUntil, money } from './gcWords'
 import { currentRev, partnerById } from './gcLookups'
 import { bareId, questionState, questionsFor, sheetsGoneAtRev, type QuestionState } from './gcPlans'
@@ -18,6 +18,7 @@ import { addDays, retainageHeldNow, sentBackOpen, sowContractSum, tradeChangesFo
 import { lookAheadWeeks, markState, mondayOf, scheduleRows, type LookAheadState, type ScheduleRow } from './gcBuildingSchedule'
 import { onSite } from './gcBuildingLog'
 import { submittalRowsOn } from './gcBuildingSubmittals'
+import { SOV_STAGES, stageReached, theirSovGap } from './gcTheirSov'
 import { vettingOf } from './gcVetting'
 import { INSURANCE_ASK_DAYS, PROMISE_WHAT, tradePromisesOf, tradePromiseState } from './gcPromises'
 import { punchItems, punchState } from './gcBuildingPunch'
@@ -394,6 +395,47 @@ export function portalPapers(state: GcState, partnerId: string, lang: PortalLang
     if (papers.length > 0) jobs.push({ project, trade: pkg.trade, papers: papers.sort(newestFirst) })
   }
   return { company: company.sort(newestFirst), jobs }
+}
+
+// ---------------------------------------------------------------------------------------------
+// The trade's own schedule of values (owner, 2026-10-04, question 4: draws by percent with
+// retainage, and their schedule of values beside ours, usually rough-in, top out, trim)
+// ---------------------------------------------------------------------------------------------
+
+const STAGE_WORDS: Record<string, PortalKey> = { 'Rough-in': 'sovRough', 'Top out': 'sovTop', Trim: 'sovTrim' }
+
+/** The lines a company's form starts with, in its language. Amounts are left for it to fill in. */
+export function portalSovStart(lang: PortalLang = 'en'): string[] {
+  return SOV_STAGES.map((s) => (STAGE_WORDS[s] ? pt(lang, STAGE_WORDS[s]) : s))
+}
+
+/**
+ * Where the company's lines stand against the number they must add up to: nothing typed yet (it
+ * sends none), short, over, or adding up. Lines with no name or no amount are left out.
+ */
+export function portalSovCheck(lines: TheirSovLine[], target: number, lang: PortalLang = 'en'): { state: 'empty' | 'short' | 'over' | 'ok'; words: string | null; lines: TheirSovLine[] } {
+  const kept = lines.filter((l) => l.label.trim() !== '' && l.amount > 0).map((l) => ({ label: l.label.trim(), amount: l.amount }))
+  if (kept.length === 0) return { state: 'empty', words: null, lines: [] }
+  const gap = theirSovGap(kept, target)
+  const sum = money(target + gap)
+  if (gap === 0) return { state: 'ok', words: pt(lang, 'sovAddsUp'), lines: kept }
+  return gap < 0
+    ? { state: 'short', words: pt(lang, 'sovShort', { sum, gap: money(-gap) }), lines: kept }
+    : { state: 'over', words: pt(lang, 'sovOver', { sum, gap: money(gap) }), lines: kept }
+}
+
+/** "Billed $89,000 to date: through Rough-in, 19% into Top out", on the company's own lines. */
+export function portalSovReached(lines: TheirSovLine[], claimed: number, lang: PortalLang = 'en'): string {
+  if (claimed <= 0) return pt(lang, 'sovBilledNone')
+  const r = stageReached(lines, claimed)
+  const amount = money(claimed)
+  const live = lines.filter((l) => l.amount > 0)
+  if (live.length > 0 && r.through.length === live.length) return pt(lang, 'sovBilledAll', { amount })
+  const parts = [
+    ...(r.through.length > 0 ? [pt(lang, 'sovThrough', { list: r.through.join(', ') })] : []),
+    ...(r.into ? [pt(lang, 'sovInto', { pct: r.into.pct, label: r.into.label })] : []),
+  ]
+  return pt(lang, 'sovBilled', { amount, where: parts.join(', ') })
 }
 
 export function portalJobMoney(pkg: TradePackage): PortalJobMoney | null {
