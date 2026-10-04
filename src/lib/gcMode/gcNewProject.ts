@@ -470,7 +470,7 @@ export function packagesFromDrafts(projectId: string, drafts: NewTradeDraft[], t
 
 /**
  * Scope lines a new set adds to trades already on the job, put at the end of each trade's scope.
- * A quote that came in before never answered them, so Compare bids reads them as not clear until
+ * A quote that came in before never answered them, so Compare quotes reads them as not clear until
  * a cost is set to cover them or the company answers.
  */
 export function withNewLines(
