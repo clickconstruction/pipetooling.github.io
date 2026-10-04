@@ -49,6 +49,8 @@ import { GcBuildingPromise } from './GcBuildingPromise'
  */
 
 const DAY_PX = 6
+/** A box at the height of the button beside it (the owner, 2026-10-04): a date input runs taller on its own. */
+const rowBox = { ...input, height: 30, boxSizing: 'border-box', padding: '0 0.45rem' } as const
 
 export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps) {
   const m = useMemo(() => scheduleMeasures(state, project), [state, project])
@@ -144,7 +146,7 @@ function DraftCard({ project, today, dispatch }: { project: GcProject; today: st
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <label style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
             <span style={{ color: 'var(--text-muted)' }}>Work starts</span>
-            <input type="date" value={start} onChange={(e) => setStart(e.target.value)} style={input} />
+            <input type="date" value={start} onChange={(e) => setStart(e.target.value)} style={rowBox} />
           </label>
           <Btn kind="primary" disabled={!start} onClick={() => dispatch({ type: 'draftSchedule', projectId: project.id, start })}>
             Draw a first draft
@@ -293,8 +295,8 @@ function MilestonesCard({ project, milestones, dispatch }: { project: GcProject;
           />
         ))}
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', paddingTop: '0.4rem', borderTop: '1px solid var(--border)' }}>
-          <input type="text" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="A new milestone" style={{ ...input, minWidth: '12rem' }} aria-label="New milestone" />
-          <input type="date" value={planned} onChange={(e) => setPlanned(e.target.value)} style={input} aria-label="New milestone's day" />
+          <input type="text" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="A new milestone" style={{ ...rowBox, minWidth: '12rem' }} aria-label="New milestone" />
+          <input type="date" value={planned} onChange={(e) => setPlanned(e.target.value)} style={rowBox} aria-label="New milestone's day" />
           <TradePick project={project} value={packageId} onChange={setPackageId} />
           <Btn
             disabled={!label.trim() || !planned}
@@ -332,7 +334,7 @@ function MilestoneLine({ project, milestone, onSave, onRemove }: { project: GcPr
           </span>
         )}
       </span>
-      <input type="date" value={planned} onChange={(e) => setPlanned(e.target.value)} style={input} aria-label={`${milestone.label} day`} />
+      <input type="date" value={planned} onChange={(e) => setPlanned(e.target.value)} style={rowBox} aria-label={`${milestone.label} day`} />
       <TradePick project={project} value={packageId} onChange={setPackageId} />
       <Btn disabled={!changed || !planned} onClick={() => onSave({ ...milestone, planned, packageId: packageId || null })}>
         Save
@@ -346,7 +348,7 @@ function MilestoneLine({ project, milestone, onSave, onRemove }: { project: GcPr
 
 function TradePick({ project, value, onChange }: { project: GcProject; value: string; onChange: (id: string) => void }) {
   return (
-    <select value={value} onChange={(e) => onChange(e.target.value)} style={input} aria-label="Whose milestone">
+    <select value={value} onChange={(e) => onChange(e.target.value)} style={rowBox} aria-label="Whose milestone">
       <option value="">The job's own</option>
       {project.packages.map((k) => (
         <option key={k.id} value={k.id}>
