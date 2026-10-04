@@ -563,6 +563,20 @@ they point to, for the lanes to pick up.
   our own crew's percent read from its Pipeline job (real build only; see *Where it plugs in*);
   a trade's retainage held until the owner has paid us ours (the Building lane's Closeout).
 - No email is sent and nothing notifies anyone when a promised day passes.
+  Building's events, and where each would go (Building lane, 2026-10-03; the real build sends
+  through Resend, the office's go to the app's Inbox):
+
+  | Event | Who hears | Where |
+  |---|---|---|
+  | A trade asks for a draw (`tradeSendPayApp`, `tradeSendFinalPayApp`) | The project manager | Inbox and an email, "approve it on Draws"; the ring card already says so |
+  | A draw sent back or approved for less | The trade | Email and text with our note; the portal already shows it, and its messages list has the approved-for-less note |
+  | An approved draw's pay-by day (`drawPayDays`) | The office | Inbox the day before; the ring card and **To pay** already flag it once late |
+  | Look-ahead marks to verify (`verifyList`) | The superintendent | A text Friday afternoon once the trades' marks are in, opening **To verify** |
+  | A milestone due inside its grace, or late (`milestoneRows`) | The project manager | The morning email; the board row and ring card already show it |
+  | An inspection failed (`failInspection`) | The named trades, the superintendent | The trades: email and text with what failed and the re-inspection day (the portal already shows it). The superintendent: a reminder the day before the re-inspection |
+  | A punch item added or sent back; an item fixed | The trade; the superintendent | The trade: email and text with the item. The superintendent: **To verify** and a text when an item is marked fixed |
+  | A change order sent to sign (`sendTradeChange`) | The trade | Email with its portal link (the Portal lane's messages) |
+  | Retainage can be paid (`tradeRetainageOpensOn`) | The office, the trade | Inbox on that day; the trade hears that its release is coming |
 
 ## Where it plugs into the app that exists
 
