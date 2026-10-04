@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { alternateWords, GC_COMPANY, GOOD_FOR_DAYS, type BidAlternate, type PortalLine, type ScopeItem } from '../../lib/gcMode/gcModel'
+import { alternateWords, GC_COMPANY, GOOD_FOR_DAYS, portalLeavesOut, type BidAlternate, type PortalLine, type ScopeItem, type TradePackage } from '../../lib/gcMode/gcModel'
 import { Btn, Chip, input } from './gcUi'
 import { LineSheets } from './GcPortalLineSheets'
 import { usePortalLang } from './gcPortalLang'
@@ -150,6 +150,24 @@ export function AnswerLines({
           {t('notNow')}
         </Btn>
       </div>
+    </div>
+  )
+}
+
+/** What the number leaves out and who does it instead, under the lines it covers. Nothing on older projects. */
+export function LeavesOut({ pkg }: { pkg: TradePackage }) {
+  const { lang, t } = usePortalLang()
+  const lines = portalLeavesOut(pkg, lang)
+  if (lines.length === 0) return null
+  return (
+    <div style={{ display: 'grid', gap: '0.25rem', fontSize: '0.9rem', borderTop: `1px solid ${RULE}`, paddingTop: '0.5rem' }}>
+      <strong>{t('leavesOutTitle')}</strong>
+      <span style={{ fontSize: '0.85rem', opacity: 0.8 }}>{t('leavesOutHelp')}</span>
+      <ul style={{ margin: 0, paddingLeft: '1.2rem', display: 'grid', gap: '0.1rem' }}>
+        {lines.map((line) => (
+          <li key={line}>{line}</li>
+        ))}
+      </ul>
     </div>
   )
 }

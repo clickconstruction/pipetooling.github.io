@@ -11,7 +11,7 @@ import { awardedPartner, find, logged, mapInvite, mapPackage, mapProject, mapSow
 import { initialGcState } from './gcFixture'
 import { lostWhyLabel } from './gcLost'
 import { daysBetween, draftSchedule, scheduleLinesOf, withBaselineKept } from './gcBuildingSchedule'
-import { buildNewProject, packagesFromDrafts, pushSchedule, scheduleSetLines, withNewLines, withRetiedLines, withTradesInOrder } from './gcNewProject'
+import { buildNewProject, dryInMilestoneFor, packagesFromDrafts, pushSchedule, scheduleSetLines, withNewLines, withRetiedLines, withTradesInOrder } from './gcNewProject'
 import { nextPunchId, punchClear } from './gcBuildingPunch'
 import { logTrades } from './gcBuildingLog'
 import { addDays, changeOrderTradePct, crewPctFromStages, drawApprovedLess, finalPayApplication, jobCloseout, payApplication, timesSentBack, tradeCloseout, workAllBilled } from './gcBuilding'
@@ -636,7 +636,13 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
       const withTrades = {
         ...lined.project,
         packages: packagesAfter,
-        ...(kept && push ? { schedule: { ...kept, activities: push.activities } } : {}),
+        ...(kept && push
+          ? (() => {
+              // The job's first dry-in work brings the Dry-in milestone with it, as the first draft would.
+              const dryIn = dryInMilestoneFor({ ...lined.project, packages: packagesAfter }, push.activities, kept.milestones, newWork.map((w) => w.lineId))
+              return { schedule: { ...kept, activities: push.activities, ...(dryIn ? { milestones: [...kept.milestones, dryIn] } : {}) } }
+            })()
+          : {}),
         ...(carried.size > 0
           ? { questions: lined.project.questions.map((q) => (carried.has(q.id) && q.answer !== null && q.inSetRev === undefined ? { ...q, inSetRev: rev } : q)) }
           : {}),
@@ -1436,6 +1442,29 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
         action.fixed
           ? `Our superintendent checked a punch item on ${pkg.trade}: ${what}. It is fixed.`
           : `Our superintendent sent a punch item back to ${partner.company}: ${what}.${note ? ` ${note.replace(/[.\s]+$/, '')}.` : ''}`,
+      )
+    }
+
+    case 'takeAlternate': {
+      // Question 14 (the Board lane's call, 2026-10-04): an alternate changes our number only when
+      // the office takes it. Taken or put back, by its label.
+      const { project, pkg, invite, partner } = find(state, action.projectId, action.packageId, action.inviteId)
+      const bid = invite?.bid
+      const alt = bid?.alternates?.find((a) => a.label === action.label)
+      if (!project || !pkg || !invite || !partner || !bid || !alt || pkg.sow) return state
+      const was = bid.takenAlternates ?? []
+      if (was.includes(alt.label) === action.taken) return state
+      const takenAlternates = action.taken ? [...was, alt.label] : was.filter((l) => l !== alt.label)
+      const next = mapProject(state, project.id, (p) =>
+        mapPackage(p, pkg.id, (k) => mapInvite(k, invite.id, (i) => ({ ...i, bid: i.bid ? { ...i.bid, takenAlternates } : i.bid }))),
+      )
+      const moves = `${alt.amount >= 0 ? 'adds' : 'takes off'} ${money(Math.abs(alt.amount))}`
+      return logged(
+        next,
+        'office',
+        action.taken
+          ? `Took ${partner.company}'s alternate on ${pkg.trade} for ${project.name}: ${alt.label}. It ${moves}.`
+          : `Put back ${partner.company}'s alternate on ${pkg.trade} for ${project.name}: ${alt.label}.`,
       )
     }
 

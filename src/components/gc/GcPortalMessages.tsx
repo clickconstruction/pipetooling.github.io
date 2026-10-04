@@ -78,6 +78,16 @@ function Message({ m, partner, onOpenPortal }: { m: PortalMessage; partner: Part
               ))}
             </ul>
           )}
+          {m.leavesOut && (
+            <>
+              <div>{t('mInviteLeavesOut')}</div>
+              <ul style={{ margin: 0, paddingLeft: '1.2rem', display: 'grid', gap: '0.15rem' }}>
+                {m.leavesOut.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </>
+          )}
           <div style={{ display: 'grid', gap: '0.25rem', justifyItems: 'start', marginTop: '0.2rem' }}>
             <Btn kind="primary" onClick={onOpenPortal}>
               {t('openPortal')}
@@ -94,25 +104,6 @@ function Message({ m, partner, onOpenPortal }: { m: PortalMessage; partner: Part
           </div>
         </div>
       </article>
-
-      {m.text && (
-        <div style={{ display: 'grid', gap: '0.25rem' }}>
-          <div style={{ fontSize: '0.72rem', letterSpacing: '0.06em', textTransform: 'uppercase', opacity: 0.7 }}>{t('byText')}</div>
-          <div
-            style={{
-              justifySelf: 'start',
-              maxWidth: '85%',
-              padding: '0.55rem 0.75rem',
-              borderRadius: '16px 16px 16px 4px',
-              background: 'var(--bg-muted)',
-              fontSize: '0.88rem',
-              lineHeight: 1.4,
-            }}
-          >
-            {m.text}
-          </div>
-        </div>
-      )}
     </div>
   )
 }

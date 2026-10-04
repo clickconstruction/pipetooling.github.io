@@ -29,6 +29,7 @@ import { useMatchMedia } from '../hooks/useMatchMedia'
 import {
   carriedAmount,
   carriedUncosted,
+  quoteRanOut,
   isGuess,
   currentRev,
   daysUntil,
@@ -462,14 +463,31 @@ export default function GcMode() {
 }
 
 /** A guess is not a number here: the chip counts real quotes and our own crew, and names the guesses. */
-function coverageWords(project: GcProject): string {
-  // The same rule as the ring's card: a guess, or a carried quote with a line that has no cost, is not a real number yet.
+/** The number we carry on a trade is a quote past its good-until day (question 14). */
+function carriedRanOut(pkg: GcProject['packages'][number], today: string): boolean {
+  if (pkg.sow) return false
+  const invite = pkg.invites.find((i) => i.id === (pkg.awardedInviteId ?? pkg.carried))
+  return !!invite?.bid && quoteRanOut(invite.bid, today)
+}
+
+function coverageWords(project: GcProject, today: string): string {
+  // The same rule as the ring's card: a guess, a carried quote with a line that has no cost, or one
+  // past its good-until day is not a real number yet.
   const missing = (p: GcProject['packages'][number]) => carriedUncosted(p).length > 0
-  const real = project.packages.filter((p) => carriedAmount(p) !== null && !isGuess(p) && !missing(p)).length
+  const ran = (p: GcProject['packages'][number]) => carriedRanOut(p, today)
+  const real = project.packages.filter((p) => carriedAmount(p) !== null && !isGuess(p) && !missing(p) && !ran(p)).length
   const guessed = project.packages.filter(isGuess).length
   const uncosted = project.packages.filter(missing).length
+  const ranOut = project.packages.filter(ran).length
   const base = `${real} of ${project.packages.length} trades have a real number`
-  return [base, guessed > 0 ? `${guessed} on our guess` : null, uncosted > 0 ? `${uncosted} missing a cost` : null].filter(Boolean).join(' · ')
+  return [
+    base,
+    guessed > 0 ? `${guessed} on our guess` : null,
+    uncosted > 0 ? `${uncosted} missing a cost` : null,
+    ranOut > 0 ? `${ranOut} ran out` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ')
 }
 
 function GcIcon({ d, size = 20 }: { d: string; size?: number }) {
@@ -724,7 +742,7 @@ function ProjectRow({
             </Chip>
           ) : null
         })}
-        <Chip tone={totals.holes.length > 0 ? 'red' : totals.plugged.length > 0 ? 'amber' : 'green'}>{coverageWords(project)}</Chip>
+        <Chip tone={totals.holes.length > 0 ? 'red' : totals.plugged.length > 0 ? 'amber' : 'green'}>{coverageWords(project, today)}</Chip>
         {chase > 0 && (
           <button
             type="button"

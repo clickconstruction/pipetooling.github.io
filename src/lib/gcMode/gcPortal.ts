@@ -13,7 +13,7 @@ import { askPromise, OPEN_WITHIN_DAYS, type AskPromise } from './gcFollowUp'
 import { bidIsStale, sowMoney } from './gcBids'
 import { GC_COMPANY } from './gcFixture'
 import { pDate, pt, pWeekday, type PortalLang } from './gcPortalI18n'
-import { lineSheets, tradeSheets } from './gcNewProject'
+import { inSentence, lineSheets, tradeSheets } from './gcNewProject'
 import { addDays, retainageHeldNow, sentBackOpen, sowContractSum, tradeChangesFor, tradeCloseout, workAllBilled } from './gcBuilding'
 import { lookAheadWeeks, markState, mondayOf, scheduleRows, type LookAheadState, type ScheduleRow } from './gcBuildingSchedule'
 import { punchItems, punchState } from './gcBuildingPunch'
@@ -201,6 +201,25 @@ export function portalClosedWords(project: GcProject, sentNumber: boolean, lang:
     why: pt(lang, project.lostWhy === 'project_died' ? 'closedDied' : 'closedLost', { gc }),
     next: pt(lang, sentNumber ? 'closedThanksQuote' : 'closedNoNumber'),
   }
+}
+
+/**
+ * What a trade's number leaves out, and who does it instead (the New Project lane's "Not in this
+ * trade" list, `TradePackage.excludes`): "Gas piping (HVAC does it)". The office promises each
+ * company sees it when it quotes (owner, 2026-10-04: on the bid form and the invitation). Empty on
+ * older projects and on a trade with nothing listed. What the office typed stays as typed.
+ */
+export function portalLeavesOut(pkg: TradePackage, lang: PortalLang = 'en'): string[] {
+  return (pkg.excludes ?? [])
+    .filter((x) => x.label.trim() !== '')
+    .map((x) => {
+      const what = x.label.trim()
+      const by = x.by.trim()
+      if (!by) return what
+      // A trade's name stays as typed in Spanish; in an English sentence it reads lower case, HVAC kept.
+      const who = by === 'us' ? GC_COMPANY.shortName : by === 'the owner' ? pt(lang, 'byOwner') : lang === 'es' ? by : inSentence(by)
+      return pt(lang, 'leavesOutLine', { what, who })
+    })
 }
 
 export function portalJobMoney(pkg: TradePackage): PortalJobMoney | null {
@@ -438,7 +457,7 @@ export function portalLink(partnerId: string): string {
   return `clicktooling.com/t/${token}`
 }
 
-/** One message we sent a company: an email, and for an invitation the same news by text. */
+/** One message we sent a company: an email (email only for now, owner 2026-10-03). */
 export interface PortalMessage {
   key: string
   on: string
@@ -450,8 +469,8 @@ export interface PortalMessage {
   lines: string[]
   /** What the number should cover, for an invitation. */
   scope?: string[]
-  /** The same news as a text message. */
-  text?: string
+  /** What the number leaves out and who does it, for an invitation. */
+  leavesOut?: string[]
 }
 
 const KIND_ORDER: Record<PortalMessage['kind'], number> = { closed: -1, coi: 0, answer: 1, paid: 2, change: 3, less: 4, start: 5, sow: 6, msa: 7, bidTab: 8, plans: 9, nudge: 10, invite: 11 }
@@ -478,7 +497,6 @@ export function portalMessages(state: GcState, partnerId: string, language?: Por
   const t = (key: Parameters<typeof pt>[1], vars?: Record<string, string | number>) => pt(lang, key, vars)
   const and = t('and')
   const hello = t('mHello', { first: firstName(partner.contact) })
-  const link = portalLink(partnerId)
   const out: PortalMessage[] = []
 
   // Insurance running out: the email goes out COI_WARN_DAYS before, once that day has come, while it still holds.
@@ -647,7 +665,6 @@ export function portalMessages(state: GcState, partnerId: string, language?: Por
           t('mStartPart', { trades }),
           t('mStartReport'),
         ],
-        text: t('mStartText', { gc, project: name, when: begins ? t('mWhen', { date: begins }) : t('mSoon'), trades, link }),
       })
     }
     for (const { pkg, invite } of mine) {
@@ -668,7 +685,7 @@ export function portalMessages(state: GcState, partnerId: string, language?: Por
           t('mInviteCover'),
         ],
         scope: pkg.scope.map((item) => item.label),
-        text: t('mInviteText', { gc, trade: pkg.trade, project: name, by: due ? t('mBy', { date: due }) : '', link }),
+        ...(portalLeavesOut(pkg, lang).length > 0 ? { leavesOut: portalLeavesOut(pkg, lang) } : {}),
       })
 
       for (const c of invite.contacts ?? []) {
