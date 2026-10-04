@@ -950,6 +950,8 @@ export interface OwnerPayAppSent {
   promises?: { by: string; madeOn: string; note: string; who: 'office' | 'owner' }[]
   /** The retainage step it went under, if the job had one then. */
   retainageStep?: OwnerRetainageStep
+  /** Materials stored on site, not yet in place, on each line when it went (column F). Absent: none. */
+  storedByLine?: Record<string, number>
 }
 
 /** A pay application the office sent back: the draw as the trade sent it, why, and what we see. */

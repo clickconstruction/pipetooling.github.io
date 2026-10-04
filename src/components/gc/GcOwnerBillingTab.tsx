@@ -203,6 +203,7 @@ function OfficeSide({
         </div>
         <div style={{ marginTop: '0.7rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
           After this bill, {money(app.leftToBill)} is left to bill. That counts the {money(app.retainage)} they hold.
+          {app.stored > 0.005 && ` The work done counts ${money(app.stored)} of materials stored on site, not in place yet.`}
           {ownerCarriedForward(app) > 0 &&
             ` It includes ${money(ownerCarriedForward(app))} that ${project.architect} did not certify on an earlier bill.`}
           {app.changeOrdersTotal !== 0 &&
