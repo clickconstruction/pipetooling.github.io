@@ -117,7 +117,7 @@ column headers are in one block at the end of `gcBuildingWords.ts`, for the nati
 
 ## For a native speaker to read
 
-Every Spanish string the trade's portal shows, 613 in all, drawn from the code on 2026-10-04.
+Every Spanish string the trade's portal shows, 626 in all, drawn from the code on 2026-10-04.
 They're grouped by screen, English on the left. Please mark anything that reads wrong, stiff or
 unclear, and write the better words beside it. The Portal lane makes the changes and passes the
 other lanes theirs.
@@ -901,6 +901,24 @@ they were written in. The portal does not translate them.
 | Waiting on {gc} to check it. | Esperando que {gc} lo revise. |
 | {gc} checked it {date}. It is not fixed yet. | {gc} lo revisó el {date}. Todavía no está arreglado. |
 | Checked by {gc}: {n}. | Revisados por {gc}: {n}. |
+
+#### Submittals in the trade's portal (2026-10-04)
+
+| English | Español |
+|---|---|
+| Submittals {gc} needs from you | Documentos para aprobación que {gc} necesita de usted |
+| Needed by {date}. | Se necesita para el {date}. |
+| {n} days late. | {n} días de retraso. |
+| The architect sent it back {date}. | El arquitecto lo devolvió el {date}. |
+| The file you send | El archivo que envía |
+| A note for {gc} | Una nota para {gc} |
+| Send it | Enviarlo |
+| With {gc}, sent {date}. | Con {gc}, enviado el {date}. |
+| With the architect since {date}. | Con el arquitecto desde el {date}. |
+| Approved: {n}. | Aprobados: {n}. |
+| product data | datos del producto |
+| shop drawings | planos de taller |
+| samples | muestras |
 | {label} failed on your work {date}. | {label} no pasó en su trabajo el {date}. |
 | The re-inspection is {date}. Fix it before then. | La reinspección es el {date}. Arréglelo antes de esa fecha. |
 | Fix each one, then tell {gc} here. {gc} checks it on the job. Your work is accepted once every item is checked. | Arregle cada uno y avísele a {gc} aquí. {gc} lo revisa en la obra. Su trabajo se acepta cuando todos estén revisados. |

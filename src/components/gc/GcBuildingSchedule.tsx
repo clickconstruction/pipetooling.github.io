@@ -15,6 +15,8 @@ import {
   scheduleSummaryWords,
   shortDate,
   substantialCompletionOn,
+  submittalHolding,
+  submittalNeededBy,
   verifyList,
   type GcAction,
   type GcProject,
@@ -91,7 +93,7 @@ export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps)
       )}
 
       <Card style={{ padding: 0, overflow: 'hidden' }}>
-        <ScheduleChart rows={m.items} float={m.float} milestones={m.milestones} today={state.today} building={building} picked={picked} onPick={setPicked} />
+        <ScheduleChart holds={holdsOf(project, state.today)} rows={m.items} float={m.float} milestones={m.milestones} today={state.today} building={building} picked={picked} onPick={setPicked} />
       </Card>
 
       <MilestonesCard project={project} milestones={schedule.milestones} dispatch={dispatch} />
@@ -393,7 +395,20 @@ function Measure({ label, value, tone, chip, children }: { label: string; value:
 
 const MS_COLORS: Record<MilestoneRow['state'], string> = { hit: '#16a34a', missed: '#dc2626', late: '#dc2626', due: 'var(--text-muted)' }
 
+/** The lines a submittal not yet approved holds (owner, 2026-10-04): its number, and whether it is late. */
+function holdsOf(project: GcProject, today: string): Map<string, { number: string; late: boolean }> {
+  const holds = new Map<string, { number: string; late: boolean }>()
+  for (const a of project.schedule?.activities ?? []) {
+    const s = submittalHolding(project, a.lineId)
+    if (!s) continue
+    const needed = submittalNeededBy(project, s)
+    holds.set(a.lineId, { number: s.number, late: needed !== null && needed < today })
+  }
+  return holds
+}
+
 function ScheduleChart({
+  holds,
   rows,
   float,
   milestones,
@@ -402,6 +417,8 @@ function ScheduleChart({
   picked,
   onPick,
 }: {
+  /** Lines a submittal not yet approved holds. */
+  holds: Map<string, { number: string; late: boolean }>
   rows: ScheduleItem[]
   float: Map<string, number>
   milestones: MilestoneRow[]
@@ -498,6 +515,7 @@ function ScheduleChart({
                 <ChartRow
                   key={r.activity.lineId}
                   row={r}
+                  hold={holds.get(r.activity.lineId) ?? null}
                   spare={float.get(r.activity.lineId) ?? 0}
                   x={x}
                   width={width}
@@ -519,6 +537,7 @@ function ScheduleChart({
 
 function ChartRow({
   row,
+  hold,
   spare,
   x,
   width,
@@ -530,6 +549,8 @@ function ChartRow({
   onPick,
 }: {
   row: ScheduleItem
+  /** A submittal not yet approved holds this line. */
+  hold: { number: string; late: boolean } | null
   spare: number
   x: (iso: string) => number
   width: number
@@ -584,6 +605,12 @@ function ChartRow({
             {critical ? 'critical · no spare days' : `${spare} spare ${spare === 1 ? 'day' : 'days'}`}
             {building && row.slipDays > 0 ? ` · ${row.slipDays} days later than planned at Start` : ''}
             {!building && a.after.length > 0 ? ` · waits on ${a.after.length}` : ''}
+          </div>
+        )}
+        {hold && !done && (
+          <div style={{ fontSize: '0.7rem', color: hold.late ? 'var(--text-red-700)' : 'var(--text-amber-800)' }}>
+            waits on submittal {hold.number}
+            {hold.late ? ', late' : ''}
           </div>
         )}
       </div>
