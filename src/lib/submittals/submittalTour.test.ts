@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { SUBMITTAL_STAGE_ABOUT, SUBMITTAL_TOUR_STEPS, stageAbout, tourStopForStage } from './submittalTour'
+import { SUBMITTAL_STAGE_ABOUT, SUBMITTAL_TOUR_STEPS, SUBMITTAL_WORDS, SUBMITTAL_WORDS_ONLY_STOP, SUBMITTAL_WORDS_STOP, stageAbout, tourStopForStage } from './submittalTour'
 import { PLAIN_WORDS_GLUE as GLUE, PLAIN_WORDS_MAX_SENTENCE_WORDS as MAX_WORDS, plainWordsSentences as sentences } from '../plainWords'
 
 /**
@@ -11,9 +11,30 @@ import { PLAIN_WORDS_GLUE as GLUE, PLAIN_WORDS_MAX_SENTENCE_WORDS as MAX_WORDS, 
  */
 
 describe('submittal walkthrough plain words', () => {
-  it('walks fourteen stops, each anchor once', () => {
-    expect(SUBMITTAL_TOUR_STEPS).toHaveLength(14)
-    expect(new Set(SUBMITTAL_TOUR_STEPS.map((s) => s.anchor)).size).toBe(14)
+  it('walks fifteen stops, each anchor once: the words first, then the strip', () => {
+    expect(SUBMITTAL_TOUR_STEPS).toHaveLength(15)
+    expect(new Set(SUBMITTAL_TOUR_STEPS.map((s) => s.anchor)).size).toBe(15)
+    expect(SUBMITTAL_TOUR_STEPS[0]).toBe(SUBMITTAL_WORDS_STOP)
+    expect(SUBMITTAL_TOUR_STEPS[1]!.title).toBe('Where you are')
+  })
+
+  it('2026-10-04 · the words page: a centred stop that names each word once and says what it means in plain sentences', () => {
+    expect(SUBMITTAL_WORDS_STOP).toMatchObject({ center: true, terms: SUBMITTAL_WORDS })
+    expect(SUBMITTAL_WORDS_STOP.missingBody).toBeUndefined()
+    const words = SUBMITTAL_WORDS.map((t) => t.word)
+    expect(new Set(words).size).toBe(words.length)
+    // The words the owner named, and the three picks the page asks for on every fixture.
+    for (const w of ['Cut sheet', 'Tag', 'Rev', 'Package', 'GC sees it', 'Order only', 'Left out', 'Their answer']) expect(words).toContain(w)
+    for (const t of SUBMITTAL_WORDS) {
+      expect(t.means, t.word).not.toMatch(GLUE)
+      expect(sentences(t.means).length, t.word).toBeLessThanOrEqual(2)
+      for (const s of sentences(t.means)) expect(s.split(/\s+/).length, s).toBeLessThanOrEqual(MAX_WORDS)
+    }
+    // Opened alone there is no next stop, so its line says Done.
+    expect(SUBMITTAL_WORDS_ONLY_STOP).toMatchObject({ center: true, terms: SUBMITTAL_WORDS, body: 'These are the words this page uses. Tap Done when you have read them.' })
+    // The page's own trade words keep their plain word here too.
+    expect(SUBMITTAL_WORDS.find((t) => t.word === 'Cut sheet')!.means).toMatch(/maker’s page/)
+    expect(SUBMITTAL_WORDS.find((t) => t.word === 'Rev')!.means).toMatch(/first version/)
   })
 
   it('v2.4366 · the catch-up stop shows only where the blue box is: it carries no missing words', () => {
@@ -36,7 +57,9 @@ describe('submittal walkthrough plain words', () => {
 
   it('every stop after the strip says what to do, with a verb the page carries', () => {
     const verbs = /\b(Tap|Tick|Type|Pick|Ask|Paste|Give|Repeat|Fix|type|tap)\b/
-    for (const step of SUBMITTAL_TOUR_STEPS.slice(1)) expect(step.body, step.title).toMatch(verbs)
+    // The words stop says Tap Next; the strip's stop is the one that only describes.
+    expect(SUBMITTAL_WORDS_STOP.body).toMatch(verbs)
+    for (const step of SUBMITTAL_TOUR_STEPS.slice(2)) expect(step.body, step.title).toMatch(verbs)
   })
 })
 

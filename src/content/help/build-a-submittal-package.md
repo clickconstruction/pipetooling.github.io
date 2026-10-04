@@ -8,6 +8,26 @@ A submittal is the list of products you will install. The GC approves it before 
 
 There is one row per tag on the plans' fixture schedule. Each row carries its cut sheet, the maker's page for the product. In PipeTooling you do not type the rows. The app builds them from what the bid already knows. That means the fixtures you counted, the picks you made on Pricing, or the plans' schedule. So the day you price a job, the submittal is half done.
 
+## The words on this page
+
+The page uses a few trade words. The walkthrough opens with this same list. On the tab, tap **Words on this page** beside the bid name to read it again.
+
+- **Submittal.** The list of products you plan to install. The GC approves it before you order.
+- **GC.** The general contractor. Their architect or designer may answer for them.
+- **Tag.** The plan's name for a fixture, like WC-1.
+- **Schedule.** The table on the plans. It lists each tag and the product the plans ask for.
+- **Cut sheet.** The maker's page for one product. It shows the model and its details.
+- **Vendor PDF.** The supply house's file of cut sheets.
+- **Rev.** A version of the submittal. Rev 1 is the first version.
+- **Package.** One PDF for the GC. It has a cover table, then the cut sheets.
+- **GC sees it.** The GC approves it. Then you order it.
+- **Order only.** You buy it. The GC never sees it.
+- **Left out.** Not on the submittal and not ordered.
+- **Proposed.** A row built from your takeoff. No schedule was there to check it against.
+- **Their answer.** What the GC said about a row: Approved, Revise or Rejected.
+- **Lead time.** How long the supply house needs to deliver.
+- **Order log.** The list of every part to buy, with its order date.
+
 ## Where it lives
 
 Open Bids and tap **Submittals**. It is the tab after Cover Letter. Office and estimator roles can use it. Pick a bid the way you do on Pricing. The tab shows the product decisions for that bid. For each row it shows the product the plans specified. It shows the product you are submitting. It shows the status against the schedule. It shows the reason and lead time you gave at the pick. And it shows the cut sheet pages.
