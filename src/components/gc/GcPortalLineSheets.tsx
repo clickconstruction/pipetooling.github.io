@@ -39,6 +39,18 @@ export function SheetChip({ id, changed, onOpen }: { id: string; changed: boolea
   )
 }
 
+/** A sheet a newer set took out: struck through, with nothing to open (owner, 2026-10-04). */
+export function GoneSheet({ id, word = true }: { id: string; word?: boolean }) {
+  const { t } = usePortalLang()
+  return (
+    <span style={{ display: 'inline-flex', gap: '0.25rem', alignItems: 'center', fontSize: '0.72rem' }}>
+      <span style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums', textDecoration: 'line-through', opacity: 0.7 }}>{id}</span>
+      {/* Under "Taken out in …" the words are said already. */}
+      {word && <span style={{ opacity: 0.8 }}>{t('takenOutWord')}</span>}
+    </span>
+  )
+}
+
 /**
  * A line's sheets, and "changed in …" when a newer set changed one of them. A line that stands
  * for the whole trade shows no sheets until one of its trade's sheets changes, then those.
@@ -50,9 +62,9 @@ export function LineSheets({ line, onOpen }: { line: PortalLine | undefined; onO
   if (shown.length === 0 && line.by.length === 0) return null
   return (
     <span style={{ display: 'inline-flex', gap: '0.25rem', alignItems: 'center', flexWrap: 'wrap' }}>
-      {shown.map((id) => (
-        <SheetChip key={id} id={id} changed={line.changed.includes(id)} onOpen={onOpen} />
-      ))}
+      {shown.map((id) =>
+        line.gone.includes(id) ? <GoneSheet key={id} id={id} /> : <SheetChip key={id} id={id} changed={line.changed.includes(id)} onOpen={onOpen} />,
+      )}
       {line.by.length > 0 && <Chip tone="amber">{t('changedIn', { set: line.by.join(t('and')) })}</Chip>}
     </span>
   )
@@ -63,12 +75,15 @@ export function ChangedLines({
   trade,
   lines,
   otherSheets,
+  goneSheets = [],
   setNames,
   onOpen,
 }: {
   trade: string
   lines: PortalLine[]
   otherSheets: string[]
+  /** The trade's sheets the newer sets took out that no line named. */
+  goneSheets?: string[]
   setNames: string[]
   onOpen: (sheetId: string) => void
 }) {
@@ -76,7 +91,7 @@ export function ChangedLines({
   const touched = lines.filter((l) => l.by.length > 0)
   const named = touched.filter((l) => !l.wholeTrade)
   const whole = touched.filter((l) => l.wholeTrade)
-  if (touched.length === 0 && otherSheets.length === 0) return null
+  if (touched.length === 0 && otherSheets.length === 0 && goneSheets.length === 0) return null
   const sets = setNames.join(t('and'))
   return (
     <div style={{ display: 'grid', gap: '0.3rem' }}>
@@ -86,6 +101,9 @@ export function ChangedLines({
           <strong>{l.item.label}</strong>
           {l.changed.map((id) => (
             <SheetChip key={id} id={id} changed onOpen={onOpen} />
+          ))}
+          {l.gone.map((id) => (
+            <GoneSheet key={id} id={id} />
           ))}
         </div>
       ))}
@@ -107,6 +125,20 @@ export function ChangedLines({
           ))}
         </div>
       )}
+      {goneSheets.length > 0 && <TakenOut ids={goneSheets} sets={sets} />}
+    </div>
+  )
+}
+
+/** "Taken out in Addendum 2: E-305", for the trade's sheets a set took out that no line named. */
+export function TakenOut({ ids, sets }: { ids: string[]; sets: string }) {
+  const { t } = usePortalLang()
+  return (
+    <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
+      <span>{t('takenOutIn', { sets })}</span>
+      {ids.map((id) => (
+        <GoneSheet key={id} id={id} word={false} />
+      ))}
     </div>
   )
 }
