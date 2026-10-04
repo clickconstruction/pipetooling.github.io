@@ -100,6 +100,16 @@ Saved applications sit at the top of the form, under **APPLICATIONS ON THIS JOB*
 
 The window asks before you lose what you typed. Press **Stay** to keep typing.
 
+## Name an application
+
+You can give a saved application a name of your own. Type it under **NAME**, then press {{button:outline|Save}}.
+
+The name shows in the list at the top of the form. It also shows on the job's **Documents** tab. It is never printed on the paper.
+
+To rename one, open it from the list. Type the new name and press {{button:outline|Save}}. Clear the box and save to take the name off.
+
+A new application starts with no name.
+
 ## Start the next application
 
 Open the window again next month. It opens on a new application. The number is one more than the last.

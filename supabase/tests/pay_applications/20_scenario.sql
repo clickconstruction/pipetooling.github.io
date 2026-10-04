@@ -95,6 +95,19 @@ UPDATE public.job_pay_applications SET current_payment_due = 16000, created_by =
   WHERE job_id = '00000000-0000-0000-0000-00000000c001' AND application_number = 1;
 UPDATE public.job_pay_applications SET lines = '[{"id":"a","label":"Top-out","scheduledValue":28800}]', split_labor_material = true WHERE job_id = '00000000-0000-0000-0000-00000000c001' AND application_number = 2;
 SELECT bedt.ok('the master saved lines and the split on application 2', (SELECT jsonb_array_length(lines) = 1 AND split_labor_material FROM public.job_pay_applications WHERE job_id = '00000000-0000-0000-0000-00000000c001' AND application_number = 2));
+
+-- ── A name for a saved application (v2.4508) ──
+SELECT bedt.ok('it starts with no name', (SELECT name = '' FROM public.job_pay_applications WHERE job_id = '00000000-0000-0000-0000-00000000c001' AND application_number = 2));
+UPDATE public.job_pay_applications SET name = 'Sent to the GC' WHERE job_id = '00000000-0000-0000-0000-00000000c001' AND application_number = 2;
+SELECT bedt.ok('the master named application 2', (SELECT name = 'Sent to the GC' FROM public.job_pay_applications WHERE job_id = '00000000-0000-0000-0000-00000000c001' AND application_number = 2));
+DO $$
+BEGIN
+  BEGIN
+    UPDATE public.job_pay_applications SET name = repeat('x', 81) WHERE job_id = '00000000-0000-0000-0000-00000000c001' AND application_number = 2;
+    RAISE EXCEPTION 'FAILED: a name past 80 characters was kept';
+  EXCEPTION WHEN check_violation THEN RAISE NOTICE 'ok: a name is at most 80 characters';
+  END;
+END $$;
 UPDATE public.job_pay_applications SET carry_reason = 'It went out this way.' WHERE job_id = '00000000-0000-0000-0000-00000000c001' AND application_number = 2;
 SELECT bedt.ok('the master wrote why application 2 stays as it is', (SELECT carry_reason = 'It went out this way.' FROM public.job_pay_applications WHERE job_id = '00000000-0000-0000-0000-00000000c001' AND application_number = 2));
 SELECT bedt.ok('the master changed it', (SELECT current_payment_due = 16000 FROM public.job_pay_applications WHERE job_id = '00000000-0000-0000-0000-00000000c001' AND application_number = 1));

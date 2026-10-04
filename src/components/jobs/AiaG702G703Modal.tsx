@@ -35,6 +35,7 @@ import {
   carryMismatch,
   cleanPayApplicationLink,
   nextApplicationNumber,
+  PAY_APPLICATION_NAME_MAX,
   payApplicationLabel,
   parseApplicationNumber,
   payApplicationWriteFromForm,
@@ -241,6 +242,9 @@ export default function AiaG702G703Modal({
   // Why this application keeps previous amounts that no longer match the one before it.
   const [carryReason, setCarryReason] = useState('')
   const [baselineReason, setBaselineReason] = useState('')
+  // The office's own name for the application, shown in the list. Not printed on the form.
+  const [name, setName] = useState('')
+  const [baselineName, setBaselineName] = useState('')
   const [saving, setSaving] = useState(false)
   const confirm = useConfirmDialog()
 
@@ -248,11 +252,12 @@ export default function AiaG702G703Modal({
   const dirty = useMemo(
     () =>
       link !== baselineLink ||
+      name !== baselineName ||
       carryReason !== baselineReason ||
       split !== baselineSplit ||
       JSON.stringify(form) !== JSON.stringify(baseline) ||
       JSON.stringify(lineForms) !== baselineLines,
-    [form, baseline, link, baselineLink, carryReason, baselineReason, split, baselineSplit, lineForms, baselineLines],
+    [form, baseline, link, baselineLink, name, baselineName, carryReason, baselineReason, split, baselineSplit, lineForms, baselineLines],
   )
   // Nothing locks a saved application, so the one before this may have changed since this went out.
   const mismatch = useMemo(
@@ -260,7 +265,7 @@ export default function AiaG702G703Modal({
     [appForm, form.g702_n5_project, saved, openId],
   )
 
-  const loadForm = useCallback((loaded: PayApplicationForm, withLink = '', withReason = '') => {
+  const loadForm = useCallback((loaded: PayApplicationForm, withLink = '', withReason = '', withName = '') => {
     const next = fieldValuesToFormState(loaded.values)
     const nextLines = loaded.lines.map(lineToForm)
     setForm(next)
@@ -274,6 +279,8 @@ export default function AiaG702G703Modal({
     setBaselineLink(withLink)
     setCarryReason(withReason)
     setBaselineReason(withReason)
+    setName(withName)
+    setBaselineName(withName)
   }, [])
 
   /** A new application's starting form: the job today, carried on from the last saved application when there is one. */
@@ -315,7 +322,7 @@ export default function AiaG702G703Modal({
       setSaved(list)
       const first = initialApplicationNumber == null ? null : list.find((a) => a.applicationNumber === initialApplicationNumber) ?? null
       setOpenId(first?.id ?? null)
-      if (first) loadForm({ values: first.fields, lines: first.lines, splitLaborMaterial: first.splitLaborMaterial }, first.link, first.carryReason)
+      if (first) loadForm({ values: first.fields, lines: first.lines, splitLaborMaterial: first.splitLaborMaterial }, first.link, first.carryReason, first.name)
       else loadForm(newApplicationValues(list, loadedFacts, schedule))
     })()
     return () => {
@@ -344,12 +351,12 @@ export default function AiaG702G703Modal({
     if ((app?.id ?? null) === openId && !dirty) return
     if (!(await mayLeave())) return
     setOpenId(app?.id ?? null)
-    if (app) loadForm(formOfSaved(app), app.link, app.carryReason)
+    if (app) loadForm(formOfSaved(app), app.link, app.carryReason, app.name)
     else loadForm(newApplicationValues(saved, facts, bidSchedule))
   }
 
   /** Back to where this application started: the saved one as saved, a new one as the job and the last one give it. */
-  const resetForm = () => (openApp ? loadForm(formOfSaved(openApp), openApp.link, openApp.carryReason) : loadForm(newApplicationValues(saved, facts, bidSchedule)))
+  const resetForm = () => (openApp ? loadForm(formOfSaved(openApp), openApp.link, openApp.carryReason, openApp.name) : loadForm(newApplicationValues(saved, facts, bidSchedule)))
 
   // The lines against the contract to date: the bid's total is not always the job's price.
   const gap = useMemo(() => scheduleGap(appForm.lines, preview.math.contractSumToDate), [appForm.lines, preview.math.contractSumToDate])
@@ -379,7 +386,8 @@ export default function AiaG702G703Modal({
     if (!job) return { notSaved: 'No job is open.' }
     // The reason goes with the row only when there is one to write or one to clear.
     const reason = mismatch ? carryReason : ''
-    const write = payApplicationWriteFromForm(job.id, toSave, link, reason || openApp?.carryReason ? reason : undefined)
+    // Like the reason, the name goes with the row only when there is one to write or one to clear.
+    const write = payApplicationWriteFromForm(job.id, toSave, link, reason || openApp?.carryReason ? reason : undefined, name.trim() || openApp?.name ? name : undefined)
     if (!write.ok) return { notSaved: write.reason }
     try {
       const row = await savePayApplication(write.row, openId)
@@ -390,6 +398,8 @@ export default function AiaG702G703Modal({
       setBaselineSplit(split)
       setLink(row.link)
       setBaselineLink(row.link)
+      setName(row.name)
+      setBaselineName(row.name)
       setCarryReason(row.carryReason)
       setBaselineReason(row.carryReason)
       return { saved: row }
@@ -741,6 +751,26 @@ export default function AiaG702G703Modal({
               </label>
             </div>
           ) : null}
+          <label style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginBottom: '0.9rem' }}>
+            <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)' }}>NAME</span>
+            <input
+              type="text"
+              id="aia-application-name"
+              value={name}
+              maxLength={PAY_APPLICATION_NAME_MAX}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="A name for your list, like Sent to the GC"
+              style={{
+                width: '100%',
+                boxSizing: 'border-box',
+                fontSize: '0.875rem',
+                padding: '0.5rem',
+                borderRadius: 4,
+                border: '1px solid var(--border-strong)',
+              }}
+            />
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Shows in the list above and on the job's Documents tab. It is not printed on the form.</span>
+          </label>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginBottom: '0.9rem' }}>
             <span style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)' }}>
               <span style={{ flex: 1 }}>LINK TO THE FILE YOU SENT</span>

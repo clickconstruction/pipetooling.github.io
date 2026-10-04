@@ -98,7 +98,10 @@ export function JobWindowDocumentsTab({ job, onOverlayOpenChange }: { job: JobWi
                     return (
                     <Fragment key={app.id}>
                     <tr data-testid="job-documents-pay-app">
-                      <td style={{ ...td, fontWeight: 700 }}>{app.applicationNumber}</td>
+                      <td style={{ ...td, fontWeight: 700 }}>
+                        {app.applicationNumber}
+                        {app.name ? <span data-testid="job-documents-pay-app-name" style={{ fontWeight: 400, color: 'var(--text-600)' }}> · {app.name}</span> : null}
+                      </td>
                       <td style={td}>{formatAiaDate(app.periodTo) || '—'}</td>
                       <td style={{ ...td, ...num }}>{formatAiaMoney(app.currentPaymentDue)}</td>
                       <td style={td}>
