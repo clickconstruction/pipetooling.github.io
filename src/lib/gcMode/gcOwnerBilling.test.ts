@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   allJobsMoney,
+  priceToOwner,
   ownerContractPrice,
   ownerContractWorthNow,
   cashAhead,
@@ -808,6 +809,16 @@ describe('the owner’s price stays what they signed', () => {
     const { ownerContractWorth: _kept, ...floating } = cheaper
     expect(Math.round(ownerPayApp(state, floating).contract)).toBeLessThan(338_767)
     expect(ownerContractWorthNow(floating).mill).toBe(30_000)
+  })
+
+  it('is the same price the Board shows (`priceToOwner`), change orders included', () => {
+    let state = gcReducer(initialGcState(), { type: 'draftChangeOrder', projectId: 'helotes', description: 'Add a sink', reason: 'owner', schedule: '', packageId: 'dry', cost: 4_800, price: 0 })
+    state = gcReducer(state, { type: 'sendChangeOrder', projectId: 'helotes', changeOrderId: 'co-1' })
+    state = gcReducer(state, { type: 'ownerSignChangeOrder', projectId: 'helotes', changeOrderId: 'co-1' })
+    const r = (n: number) => Math.round(n * 100) / 100
+    for (const project of state.projects.filter((p) => p.ownerContractSignedOn)) {
+      expect([project.id, r(ownerPayApp(state, project).contract)]).toEqual([project.id, r(priceToOwner(project).price)])
+    }
   })
 
   it('bills a trade its share done of what the owner signed for it', () => {
