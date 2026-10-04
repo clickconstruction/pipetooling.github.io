@@ -269,6 +269,11 @@ const S = {
 
   // The plans window and the sheet numbers
   takenOutWord: { en: 'taken out', es: 'se quitó' },
+  takenOutGroup: { en: 'Taken out', es: 'Se quitaron' },
+  takenOutInOne: { en: 'taken out in {set}', es: 'se quitó en {set}' },
+  takenOutStays: { en: 'Taken out. It stays here so you can read what you priced.', es: 'Se quitó. Sigue aquí para que pueda ver lo que cotizó.' },
+  sheetWas: { en: 'was {title}', es: 'antes {title}' },
+  chipRenamed: { en: 'renamed', es: 'cambió de nombre' },
   takenOutIn: { en: 'Taken out in {sets}:', es: 'Se quitó en {sets}:' },
   plansWindowTitle: { en: '{project} · plans', es: '{project} · planos' },
   drawnBy: { en: '{address} · drawn by {architect}', es: '{address} · dibujado por {architect}' },

@@ -116,7 +116,7 @@ column headers are in one block at the end of `gcBuildingWords.ts`, for the nati
 
 ## For a native speaker to read
 
-Every Spanish string the trade's portal shows, 560 in all, drawn from the code on 2026-10-04.
+Every Spanish string the trade's portal shows, 565 in all, drawn from the code on 2026-10-04.
 They're grouped by screen, English on the left. Please mark anything that reads wrong, stiff or
 unclear, and write the better words beside it. The Portal lane makes the changes and passes the
 other lanes theirs.
@@ -127,7 +127,7 @@ other lanes theirs.
 - `{project}`, `{trade}`, `{trades}`, `{company}`, `{contact}`, `{first}`, `{name}`, `{architect}`,
   `{address}` and `{phone}` are names, an address or a phone number.
 - `{label}`, `{set}`, `{sets}` and `{plans}` name a set of plans, such as "Addendum 1". `{id}` is a
-  sheet number, such as "E-201".
+  sheet number, such as "E-201". `{title}` is a sheet's old name, such as "Site plan".
 - `{date}`, `{by}`, `{start}`, `{finish}` and `{when}` are dates, such as "8 oct" or "jue 8 oct".
   `{ago}` is how long ago, such as "hace 3 días".
 - `{amount}`, `{approved}`, `{asked}`, `{held}`, `{contract}`, `{paid}`, `{left}`, `{price}`, `{x}`
@@ -390,6 +390,11 @@ they were written in. The portal does not translate them.
 | English | Español |
 |---|---|
 | taken out | se quitó |
+| Taken out | Se quitaron |
+| taken out in {set} | se quitó en {set} |
+| Taken out. It stays here so you can read what you priced. | Se quitó. Sigue aquí para que pueda ver lo que cotizó. |
+| was {title} | antes {title} |
+| renamed | cambió de nombre |
 | Taken out in {sets}: | Se quitó en {sets}: |
 | {project} · plans | {project} · planos |
 | {address} · drawn by {architect} | {address} · dibujado por {architect} |

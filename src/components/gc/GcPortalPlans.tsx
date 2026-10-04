@@ -6,6 +6,7 @@ import {
   planLabel,
   sheetDiscipline,
   sheetsAtRev,
+  sheetsGoneAtRev,
   type GcProject,
   type SheetInSet,
   type TradePackage,
@@ -39,8 +40,11 @@ export function GcPortalPlans({
   const [sheetId, setSheetId] = useState(
     () => sheets.find((s) => s.id === startSheet)?.id ?? sheets.find((s) => s.changedInRev === rev && rev > 0)?.id ?? sheets[0]?.id ?? '',
   )
+  // The sheets the sets up to this one took out, struck through at the end of the list (owner, 2026-10-04).
+  const goneSheets = useMemo(() => sheetsGoneAtRev(project, rev), [project, rev])
+  const goneSheet = sheets.some((s) => s.id === sheetId) ? null : (goneSheets.find((g) => g.id === sheetId) ?? null)
   const index = Math.max(0, sheets.findIndex((s) => s.id === sheetId))
-  const sheet = sheets[index]
+  const sheet = goneSheet ? undefined : sheets[index]
   const set = project.planSets.find((s) => s.rev === rev)
   const sets = [...project.planSets].sort((a, b) => b.rev - a.rev)
   const activeRef = useRef<HTMLButtonElement | null>(null)
@@ -154,20 +158,64 @@ export function GcPortalPlans({
                       }}
                     >
                       <span style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>{s.id}</span>
-                      <span style={{ flex: 1, minWidth: 0 }}>{s.title}</span>
-                      {s.changedInRev === rev && rev > 0 && <Chip tone="amber">{t(s.added ? 'chipNew' : 'chipChanged')}</Chip>}
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        {s.title}
+                        {s.was && <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{t('sheetWas', { title: s.was })}</span>}
+                      </span>
+                      {s.changedInRev === rev && rev > 0 && <Chip tone="amber">{t(s.added ? 'chipNew' : s.was ? 'chipRenamed' : 'chipChanged')}</Chip>}
                     </button>
                   )
                 })}
               </div>
             ))}
+            {goneSheets.length > 0 && (
+              <div style={{ marginBottom: '0.4rem' }}>
+                <div style={{ fontSize: '0.68rem', letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)', padding: '0.2rem 0.4rem' }}>
+                  {t('takenOutGroup')}
+                </div>
+                {goneSheets.map((g) => (
+                  <button
+                    key={g.id}
+                    type="button"
+                    onClick={() => setSheetId(g.id)}
+                    aria-current={g.id === goneSheet?.id}
+                    style={{
+                      display: 'flex',
+                      gap: '0.4rem',
+                      alignItems: 'baseline',
+                      width: '100%',
+                      textAlign: 'left',
+                      padding: '0.3rem 0.4rem',
+                      border: 'none',
+                      borderRadius: 5,
+                      background: g.id === goneSheet?.id ? 'var(--bg-blue-tint)' : 'transparent',
+                      color: 'var(--text-muted)',
+                      cursor: 'pointer',
+                      fontSize: '0.85rem',
+                    }}
+                  >
+                    <span style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums', flexShrink: 0, textDecoration: 'line-through' }}>{g.id}</span>
+                    <span style={{ flex: 1, minWidth: 0, textDecoration: 'line-through' }}>{g.title}</span>
+                    <Chip tone="red">{planLabel(project, g.goneInRev)}</Chip>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div style={{ flex: '3 1 20rem', minWidth: 0, display: 'grid', gap: '0.5rem' }}>
             {sheet && <StandIn project={project} sheet={sheet} setLabel={planLabel(project, rev)} />}
+            {goneSheet && (
+              <StandIn
+                project={project}
+                sheet={{ id: goneSheet.id, title: goneSheet.title, changedInRev: null, added: false }}
+                setLabel={planLabel(project, rev)}
+                goneIn={planLabel(project, goneSheet.goneInRev)}
+              />
+            )}
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', flexWrap: 'wrap' }}>
               <Btn disabled={index === 0} onClick={() => setSheetId(sheets[index - 1]?.id ?? sheetId)}>{t('back')}</Btn>
-              <span style={{ opacity: 0.75 }}>{t('sheetOf', { i: index + 1, n: sheets.length })}</span>
+              <span style={{ opacity: 0.75 }}>{goneSheet ? t('takenOutStays') : t('sheetOf', { i: index + 1, n: sheets.length })}</span>
               <Btn disabled={index >= sheets.length - 1} onClick={() => setSheetId(sheets[index + 1]?.id ?? sheetId)}>{t('next')}</Btn>
             </div>
           </div>
@@ -178,7 +226,18 @@ export function GcPortalPlans({
 }
 
 /** A stand-in drawing: a sheet border, a few lines, the title block. The real build shows the page. */
-function StandIn({ project, sheet, setLabel }: { project: GcProject; sheet: SheetInSet; setLabel: string }) {
+function StandIn({
+  project,
+  sheet,
+  setLabel,
+  goneIn,
+}: {
+  project: GcProject
+  sheet: Pick<SheetInSet, 'id' | 'title' | 'changedInRev' | 'added' | 'was'>
+  setLabel: string
+  /** The set that took this sheet out: drawn faded, with a red mark. */
+  goneIn?: string
+}) {
   const { t } = usePortalLang()
   return (
     <div
@@ -189,12 +248,18 @@ function StandIn({ project, sheet, setLabel }: { project: GcProject; sheet: Shee
         borderRadius: 2,
         position: 'relative',
         overflow: 'hidden',
+        opacity: goneIn ? 0.55 : 1,
       }}
     >
       <div style={{ position: 'absolute', inset: '8% 30% 22% 6%', border: '1px solid var(--border-strong)' }} />
       <div style={{ position: 'absolute', left: '14%', top: '20%', width: '40%', height: 1, background: 'var(--border-strong)' }} />
       <div style={{ position: 'absolute', left: '14%', top: '42%', width: '28%', height: 1, background: 'var(--border-strong)' }} />
       <div style={{ position: 'absolute', left: '36%', top: '14%', width: 1, height: '50%', background: 'var(--border-strong)' }} />
+      {goneIn && (
+        <div style={{ position: 'absolute', left: '40%', top: '30%' }}>
+          <Chip tone="red">{t('takenOutInOne', { set: goneIn })}</Chip>
+        </div>
+      )}
       {sheet.changedInRev !== null && (
         <div style={{ position: 'absolute', left: '40%', top: '30%' }}>
           <Chip tone="amber">
@@ -215,8 +280,9 @@ function StandIn({ project, sheet, setLabel }: { project: GcProject; sheet: Shee
           lineHeight: 1.3,
         }}
       >
-        <div style={{ fontWeight: 700, fontSize: '1rem' }}>{sheet.id}</div>
+        <div style={{ fontWeight: 700, fontSize: '1rem', textDecoration: goneIn ? 'line-through' : 'none' }}>{sheet.id}</div>
         <div>{sheet.title}</div>
+        {sheet.was && <div style={{ opacity: 0.7 }}>{t('sheetWas', { title: sheet.was })}</div>}
         <div style={{ opacity: 0.7 }}>{project.name}</div>
         <div style={{ opacity: 0.7 }}>{setLabel}</div>
       </div>
