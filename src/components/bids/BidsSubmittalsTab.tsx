@@ -72,7 +72,7 @@ import { APP_CALENDAR_TZ as ROOM_TZ, todayYmdInAppTz } from '../../utils/dateUti
 import { boughtWords, gcRows, isOrderOnlyRow, orderOnlyInsert, orderOnlyRows } from '../../lib/submittals/orderOnly'
 import { revisionWasRead, rowsThatStand } from '../../lib/submittals/standingRows'
 import { loadBidOrderFacts, loadPartOrderWords, loadRowOrderFacts, rememberLeftOutLines, writeRowOrderOnly } from '../../lib/submittals/orderOnlyIo'
-import { planRowsAdded, planSummary, type TakeoffPlan } from '../../lib/submittals/takeoffPicks'
+import { planRowsAdded, planSummary, standsLine, type TakeoffPlan } from '../../lib/submittals/takeoffPicks'
 import { SubmittalOrderOnlyRows } from './SubmittalOrderOnlyRows'
 import { SubmittalTakeOffDialog } from './SubmittalTakeOffDialog'
 import { DECISION_LABELS, decisionsAsText, describeDecisions, resubmitConfirm, resubmitLabel, resubmitSplit, summarizeDecisions } from '../../lib/submittals/reviewDecisions'
@@ -679,10 +679,20 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       const fromTakeoff = rowParts.filter((p) => p.source === 'takeoff' && partPieceKey(p))
       onParts.set(it.source_count_row_id, rowParts.length === 0 || rowParts.some((p) => p.source === 'file') || fromTakeoff.length === 0 ? null : fromTakeoff.map((p) => ({ key: partPieceKey(p)!, onSubmittal: p.on_submittal })))
     }
-    return takeoff.candidates.map((c) => ({ ...c, alreadyOn: on.has(c.countRowId), onAs: on.get(c.countRowId) ?? null, onParts: onParts.get(c.countRowId) ?? null }))
-  }, [takeoff, items, partsOf])
+    // 2026-10-03 · a fixture the GC approved on an earlier revision stands there: it is not on the draft, and it is not left out.
+    const standsOn = new Map<string, { rev: number; whole: boolean }>()
+    for (const it of standing.items) {
+      const rev = standing.revOf.get(it.id)
+      if (!it.source_count_row_id || rev == null) continue
+      const whole = asDecision(it.review_decision) === 'approved'
+      const was = standsOn.get(it.source_count_row_id)
+      standsOn.set(it.source_count_row_id, { rev: was ? Math.max(was.rev, rev) : rev, whole: (was?.whole ?? true) && whole })
+    }
+    return takeoff.candidates.map((c) => ({ ...c, alreadyOn: on.has(c.countRowId), onAs: on.get(c.countRowId) ?? null, onParts: onParts.get(c.countRowId) ?? null, standsOn: on.has(c.countRowId) ? null : standsOn.get(c.countRowId) ?? null }))
+  }, [takeoff, items, partsOf, standing])
   /** The takeoff's fixtures that are not on the draft: what the Left out line under the rows counts. */
-  const takeoffLeftOut = takeoffCandidatesForPicker.filter((c) => !c.onAs).length
+  const takeoffLeftOut = takeoffCandidatesForPicker.filter((c) => !c.onAs && !c.standsOn).length
+  const takeoffStandsLine = standsLine(takeoffCandidatesForPicker)
   function openTakeoffPicker() {
     if (takeoffFixtures === 0) return
     if (revisions.length === 0) setTakeoffPicker('build')
@@ -2445,9 +2455,10 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                     </tbody>
                   </table>
                 </div>
-                {isDraft && takeoffLeftOut > 0 ? (
+                {isDraft && (takeoffLeftOut > 0 || takeoffStandsLine) ? (
                   <div style={{ marginTop: '0.4rem', fontSize: '0.8125rem', display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap' }} data-testid="left-out-line">
-                    <span><b style={{ color: 'var(--text-base)' }}>Left out</b><span style={{ color: 'var(--text-muted)' }}> · {takeoffLeftOut} from the takeoff · not submitted, not ordered</span></span>
+                    {takeoffLeftOut > 0 ? <span><b style={{ color: 'var(--text-base)' }}>Left out</b><span style={{ color: 'var(--text-muted)' }}> · {takeoffLeftOut} from the takeoff · not submitted, not ordered</span></span> : null}
+                    {takeoffStandsLine ? <span style={{ color: 'var(--text-green-700)', fontWeight: 600 }} data-testid="stands-line" title="Approved on an earlier revision. They stay there and on the procurement log">{takeoffStandsLine}</span> : null}
                     <button type="button" disabled={busy} onClick={openTakeoffPicker} style={{ ...btnQuiet, color: 'var(--text-link)', textDecoration: 'underline' }}>Show them</button>
                   </div>
                 ) : null}

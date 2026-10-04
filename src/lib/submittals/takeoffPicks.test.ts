@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { TakeoffCandidate } from './takeoffCandidates'
-import { pickChangeWords, pickCounts, piecePicksLine, piecePicksOf, planIsEmpty, planRowsAdded, planSummary, planTakeoffPicks, startingPick, startingPiecePicks, withPiecePicks, type FixturePick, type PiecePick } from './takeoffPicks'
+import { pickChangeWords, pickCounts, standsApproved, standsLine, standsWords, piecePicksLine, piecePicksOf, planIsEmpty, planRowsAdded, planSummary, planTakeoffPicks, startingPick, startingPiecePicks, withPiecePicks, type FixturePick, type PiecePick } from './takeoffPicks'
 
 const cand = (id: string, o: Partial<TakeoffCandidate> = {}): TakeoffCandidate => ({
   countRowId: id, fixture: id.toUpperCase(), count: 2, tagText: id.toUpperCase(), tags: [id.toUpperCase()], product: 'a product', pieces: [], storedProductKeys: null, productKeys: [], partId: null,
@@ -38,7 +38,7 @@ describe('what the picks change on the draft', () => {
     expect(planSummary(plan, 'Rev 1')).toBe('')
     expect([...plan.ticks]).toEqual([['fco', true], ['fd', true], ['wha', true], ['hb', true], ['sink', false], ['wc', false], ['pipe', false]])
     expect([...plan.orderOnly].filter(([, v]) => v).map(([k]) => k)).toEqual(['wha'])
-    expect(pickCounts(cands, new Map())).toEqual({ gc: 3, order: 1, out: 3 })
+    expect(pickCounts(cands, new Map())).toEqual({ gc: 3, order: 1, out: 3, stands: 0 })
   })
 
   it('a row on the draft moves to order only, back to the GC, or off; a fixture off it comes on either way', () => {
@@ -54,7 +54,7 @@ describe('what the picks change on the draft', () => {
     expect(plan.ticks.get('hb')).toBe(false)
     expect(plan.orderOnly.get('fco')).toBe(true)
     expect(plan.orderOnly.get('wha')).toBe(false)
-    expect(pickCounts(cands, p)).toEqual({ gc: 3, order: 2, out: 2 })
+    expect(pickCounts(cands, p)).toEqual({ gc: 3, order: 2, out: 2, stands: 0 })
   })
 
   it('says what a click will do to a row already on the draft, and nothing for one that is not', () => {
@@ -112,5 +112,44 @@ describe('2026-10-02 · the parts of a fixture, each one of three', () => {
     expect(plan.productKeys.has('hb')).toBe(false)
     expect(planIsEmpty(plan)).toBe(false)
     expect(planSummary(plan, 'Rev 1')).toBe('1 row goes on Rev 1 · 1 comes off Rev 1 · parts change on 1 fixture')
+  })
+})
+
+describe('2026-10-03 · a fixture the GC approved on an earlier revision', () => {
+  // BP398 Rev 4, built from the one row Rev 3 sent back: the heater is on the draft, the sinks and the toilets stand approved on Rev 3.
+  const cands = [
+    cand('sinks', { standsOn: { rev: 3, whole: true } }),
+    cand('heater', { onAs: 'gc', alreadyOn: true }),
+    cand('toilets', { standsOn: { rev: 3, whole: false } }),
+    cand('wh', { ticked: false }),
+  ]
+
+  it('left alone it is none of the three picks: nothing goes on the draft, and what the bid remembers is not rewritten', () => {
+    const plan = planTakeoffPicks(cands, new Map())
+    expect(planIsEmpty(plan)).toBe(true)
+    expect(planSummary(plan, 'Rev 4')).toBe('')
+    expect([...plan.ticks.keys()]).toEqual(['heater', 'wh'])
+    expect(pickCounts(cands, new Map())).toEqual({ gc: 1, order: 0, out: 1, stands: 2 })
+    expect(standsApproved(cands[0]!, new Map())).toBe(true)
+    expect(standsWords(cands[0]!.standsOn!)).toBe('Approved on Rev 3')
+    expect(standsWords(cands[2]!.standsOn!)).toBe('Part approved on Rev 3')
+    expect(standsLine(cands)).toBe('2 approved on Rev 3')
+    expect(standsLine([cand('a', { standsOn: { rev: 1, whole: true } }), cand('b', { standsOn: { rev: 3, whole: true } })])).toBe('2 approved on earlier revisions')
+    expect(standsLine([cand('a')])).toBe('')
+  })
+
+  it('Ask again puts it on the draft, and the line under its name says the GC answers it again', () => {
+    const p = picks({ sinks: 'gc' })
+    expect(standsApproved(cands[0]!, p)).toBe(false)
+    const plan = planTakeoffPicks(cands, p)
+    expect(plan.add.map((a) => a.candidate.countRowId)).toEqual(['sinks'])
+    expect(planSummary(plan, 'Rev 4')).toBe('1 row goes on Rev 4')
+    expect(pickChangeWords(cands[0]!, 'gc', 'Rev 4')).toBe('Approved on Rev 3. It goes on Rev 4 and the GC is asked again.')
+    expect(pickChangeWords(cands[2]!, 'order', 'Rev 4')).toBe('Part approved on Rev 3. It goes on Rev 4 as order only.')
+    expect(pickCounts(cands, p)).toEqual({ gc: 2, order: 0, out: 1, stands: 1 })
+  })
+
+  it('a fixture on the draft is the draft’s, whatever stood before', () => {
+    expect(standsApproved({ countRowId: 'x', onAs: 'gc', standsOn: { rev: 3, whole: true } }, new Map())).toBe(false)
   })
 })
