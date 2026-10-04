@@ -9,6 +9,9 @@ import {
   currentRev,
   daysUntil,
   leveledTotal,
+  alternateWords,
+  bidGoodUntil,
+  bidRanOut,
   staleChange,
   staleWords,
   LOST_WHY,
@@ -194,6 +197,7 @@ export function GcPackagesTab({ state, project, dispatch, onSeePortal, onMap, op
                                   ) : (
                                   <Chip tone={stale ? 'amber' : words.tone} title={stale ? `Their bid is on an older set of plans. ${staleSentence(project, pkg, inv)}` : undefined}>
                                     {partner?.company} · {stale ? 'old plans' : words.word}
+                                    {inv.bid && bidRanOut(inv.bid, state.today) ? ' · ran out' : ''}
                                   </Chip>
                                   )}
                                 </span>
@@ -592,6 +596,50 @@ function LevelPanel({ state, project, pkg, dispatch, onSeePortal }: GcPaneProps 
                 <td style={td}>Their note</td>
                 {bidders.map((inv) => (
                   <td key={inv.id} style={{ ...td, maxWidth: '16rem', color: 'var(--text-600)' }}>{inv.bid?.note || 'None.'}</td>
+                ))}
+              </tr>
+              {/* What the trade sends with its number from the portal (the big list, Board item 3). What
+                  they do to our number is the owner's open question 14: shown here, not counted. */}
+              <tr>
+                <td style={td}>Their number holds</td>
+                {bidders.map((inv) => {
+                  const until = inv.bid ? bidGoodUntil(inv.bid) : null
+                  const ran = inv.bid ? bidRanOut(inv.bid, state.today) : false
+                  return (
+                    <td key={inv.id} style={td}>
+                      {until === null ? (
+                        <span style={{ color: 'var(--text-muted)' }}>they did not say</span>
+                      ) : ran ? (
+                        <Chip tone="red" title="Ask them whether it still holds.">ran out {shortDate(until)}</Chip>
+                      ) : (
+                        <span>until {shortDate(until)}</span>
+                      )}
+                    </td>
+                  )
+                })}
+              </tr>
+              <tr>
+                <td style={td}>Alternates</td>
+                {bidders.map((inv) => (
+                  <td key={inv.id} style={{ ...td, maxWidth: '16rem' }}>
+                    {(inv.bid?.alternates ?? []).length === 0 ? (
+                      <span style={{ color: 'var(--text-muted)' }}>None.</span>
+                    ) : (
+                      <span style={{ display: 'grid', gap: '0.15rem' }}>
+                        {(inv.bid?.alternates ?? []).map((alt) => (
+                          <span key={alt.label}>{alternateWords(alt)}</span>
+                        ))}
+                      </span>
+                    )}
+                  </td>
+                ))}
+              </tr>
+              <tr>
+                <td style={td}>Their quote</td>
+                {bidders.map((inv) => (
+                  <td key={inv.id} style={td}>
+                    {inv.bid?.quoteFile ? <Chip tone="blue">{inv.bid.quoteFile}</Chip> : <span style={{ color: 'var(--text-muted)' }}>not attached</span>}
+                  </td>
                 ))}
               </tr>
               <tr>

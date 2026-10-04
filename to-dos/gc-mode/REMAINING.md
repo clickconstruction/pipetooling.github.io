@@ -39,9 +39,9 @@ makes; nobody builds it until he answers.
 1. ~~**A "Money" board tab.**~~ done 0ecca9192. Place the Owner Billing lane's `GcOwnerBillingMoney` (built; the owner
    approved it) after Trade partners: `BoardTab` gets `'money'`, `onOpenBill` opens the project on
    Bill the owner. A Screens row in `README.md`.
-2. ~~**The company window shows "waiting on the architect" and "certified, not paid"**~~ done (under They owe us now; this commit) from
+2. ~~**The company window shows "waiting on the architect" and "certified, not paid"**~~ done a900e11dc (under They owe us now) from
    `ownerAccount` (`waitingOnArchitect`, `certifiedUnpaid`).
-3. **Compare bids and Trades read what trades send now:** alternates, an attached quote, and how
+3. ~~**Compare bids and Trades read what trades send now:**~~ done (shown, not counted: question 14 stays the owner's; this commit) alternates, an attached quote, and how
    many days the number holds (question 14's built half).
 4. **Spec sections on the Plans tab:** each set card lists `set.changedSpecs` beside its sheets,
    and the "what changed" words (`staleWords`) name a revised section.
