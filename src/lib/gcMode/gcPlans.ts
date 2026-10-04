@@ -163,6 +163,17 @@ export function sheetAsIndexed(project: GcProject, id: string): string {
   return dashed && !upper.includes('-') ? upper.replace(/^([A-Z]+)/, '$1-') : upper
 }
 
+/**
+ * The people on our team who can say they checked a set: the job's own team first (its project
+ * manager, then its superintendents), then everyone else on our other jobs, each once.
+ */
+export function ourPeople(state: GcState, project: GcProject): string[] {
+  const rank = (role: string) => (role === 'projectManager' ? 0 : 1)
+  const own = [...(project.team ?? [])].sort((a, b) => rank(a.role) - rank(b.role)).map((c) => c.name)
+  const rest = state.projects.flatMap((p) => p.team ?? []).sort((a, b) => rank(a.role) - rank(b.role)).map((c) => c.name)
+  return [...new Set([...own, ...rest])]
+}
+
 /** What a later set can be called. An addendum comes while we bid; a bulletin once the job is ours. */
 export const SET_KINDS: { kind: string; numbered: boolean }[] = [
   { kind: 'Addendum', numbered: true },

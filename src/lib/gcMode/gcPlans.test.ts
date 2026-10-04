@@ -5,6 +5,7 @@ import {
   changeOrderFromSet,
   currentRev,
   indexDiff,
+  ourPeople,
   sheetsGoneAtRev,
   takenOutInText,
   lineReadsSpec,
@@ -609,5 +610,27 @@ describe('work a set brings goes on a schedule already drawn', () => {
   it('leaves a schedule alone when the set brings nothing new', () => {
     const quiet = gcReducer(drawn, { type: 'issuePlanSet', projectId: 'helotes', label: 'Bulletin 9', note: 'Notes only.', sheets: [], addedSheets: [], touches: [], recipients: [], newTrades: [] })
     expect(helotesIn(quiet).schedule).toEqual(before)
+  })
+})
+
+describe('who checked a set before it went out', () => {
+  it('lists the job’s own team first, project manager then superintendents, then our other people, each once', () => {
+    const helotes = project('helotes')
+    const people = ourPeople(state, helotes)
+    const own = (helotes.team ?? []).map((c) => c.name)
+    expect(people.slice(0, own.length).sort()).toEqual([...own].sort())
+    expect(new Set(people).size).toBe(people.length)
+    expect(people).toEqual(expect.arrayContaining(['Dana Whitaker', 'Luis Ortega', 'Marcy Pruett']))
+    expect(ourPeople(state, { ...helotes, team: [] })[0]).toBe('Dana Whitaker')
+  })
+
+  it('keeps who checked it on the set and says so in the log, and leaves it off when nobody was named', () => {
+    const base = { type: 'issuePlanSet' as const, projectId: 'boerne', label: 'Addendum 3', note: 'E-101 revised.', sheets: ['E-101'], addedSheets: [], touches: ['elec'], recipients: [], newTrades: [] }
+    const named = gcReducer(state, { ...base, checkedBy: ' Dana Whitaker ' })
+    const set = named.projects.find((p) => p.id === 'boerne')?.planSets.slice(-1)[0]
+    expect(set?.checkedBy).toBe('Dana Whitaker')
+    expect(named.log[0]?.text).toMatch(/^Issued Addendum 3 on Boerne Retail Shell, checked by Dana Whitaker, and emailed 0 companies\./)
+    const unnamed = gcReducer(state, { ...base, checkedBy: '  ' })
+    expect(unnamed.projects.find((p) => p.id === 'boerne')?.planSets.slice(-1)[0]).not.toHaveProperty('checkedBy')
   })
 })
