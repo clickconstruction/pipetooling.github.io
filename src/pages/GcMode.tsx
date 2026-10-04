@@ -425,7 +425,7 @@ export default function GcMode() {
 
       {boardTab === 'projects' && project && (
         <div>
-          <ProjectHeader project={project} today={state.today} onBack={() => setProjectId(null)} onPlans={() => setPlansForId(project.id)} onCustomer={() => setCustomerId(project.customerId)} onArchitect={() => setCustomerId(project.architectId)} />
+          <ProjectHeader project={project} today={state.today} onBack={() => setProjectId(null)} onPlans={() => setPlansForId(project.id)} onCustomer={() => setCustomerId(project.customerId)} onArchitect={() => setCustomerId(project.architectId)} onCompany={setCustomerId} />
           <div style={{ display: 'flex', alignItems: 'center', borderBottom: '2px solid var(--border)', marginBottom: '1rem', flexWrap: 'wrap' }}>
             {PROJECT_TABS.map((t) => (
               <button key={t.key} type="button" style={tabButton(tab === t.key)} onClick={() => setTab(t.key)} data-tour={`gc-ptab-${t.key}`}>
@@ -965,6 +965,7 @@ function ProjectHeader({
   onPlans,
   onCustomer,
   onArchitect,
+  onCompany,
 }: {
   project: GcProject
   today: string
@@ -972,6 +973,8 @@ function ProjectHeader({
   onPlans: () => void
   onCustomer: () => void
   onArchitect: () => void
+  /** Any company's window by id: the property's owner when it differs from the customer. */
+  onCompany: (id: string) => void
 }) {
   const totals = proposalTotals(project)
   const owner = priceToOwner(project)
@@ -992,8 +995,16 @@ function ProjectHeader({
             )}
           </h2>
           <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-            {project.address} · {project.sizeNote} · Owner:{' '}
-            <button type="button" style={customerLink} onClick={onCustomer}>{project.owner}</button> · Architect:{' '}
+            {/* The owner, 2026-10-04: the one we bill is the customer; the property's owner shows when different. */}
+            {project.address} · {project.sizeNote} · Customer:{' '}
+            <button type="button" style={customerLink} onClick={onCustomer}>{project.owner}</button>
+            {project.propertyOwner && project.propertyOwnerId && (
+              <>
+                {' '}· Owner:{' '}
+                <button type="button" style={customerLink} onClick={() => onCompany(project.propertyOwnerId ?? '')}>{project.propertyOwner}</button>
+              </>
+            )}{' '}
+            · Architect:{' '}
             <button type="button" style={customerLink} onClick={onArchitect}>{project.architect}</button>
           </div>
         </div>
