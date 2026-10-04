@@ -84,8 +84,8 @@ makes; nobody builds it until he answers.
 2. ~~**The lost-bid portal (owner's OK to commit, item 15 in Owner).**~~ done 83dcdcd20, a018d96df (owner's OK in the Portal session)
 3. ~~**A trade asks a question in its portal and sees the answer there** (`tradeAskQuestion` is ready).~~ done c2a22ad26
 4. ~~**"Left to bill" counts signed change orders** (`sowContractSum`).~~ done (the job block and Your pay both read `sowContractSum`)
-5. **The Spanish list for a native speaker to read** before anything ships (question 25), and no
-   "Click" written into the portal's words (Board item 7).
+5. ~~**The Spanish list for a native speaker to read** before anything ships (question 25), and no
+   "Click" written into the portal's words (Board item 7).~~ done 6225b3fb7 (the list in PORTAL_SPANISH.md; the portal's own words already read `GC_COMPANY`, the bid tab's since b6219f390)
 6. **A phone pass on the portal.** It is the screen trades use most on a phone.
 7. **Notifications for the portal** (a new ask, a set that changed their trade, a promise passed),
    in the company's language.
