@@ -479,7 +479,8 @@ function LevelPanel({ state, project, pkg, dispatch, onSeePortal }: GcPaneProps 
     <div style={{ display: 'grid', gap: '0.9rem' }}>
       {excludes.length > 0 && (
         <div style={{ fontSize: '0.875rem' }}>
-          <strong>Not in this trade:</strong> {excludes.map((x) => `${x.label} (${x.by})`).join(', ')}.
+          {/* The owner, 2026-10-04: "known exclusions", not "Not in this trade". */}
+          <strong>Known exclusions:</strong> {excludes.map((x) => `${x.label} (${x.by})`).join(', ')}.
           {gaps.length > 0 && (
             <span style={{ color: 'var(--text-red-700)' }}>
               {' '}
