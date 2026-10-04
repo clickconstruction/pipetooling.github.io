@@ -85,8 +85,10 @@ makes; nobody builds it until he answers.
    done: New project's five steps are a row of numbers on a phone; the new-set window no longer
    scrolls sideways (0e8159e2d); Questions already fit; the plans window stacks the drawing over
    the list.
-5. **Notifications for New Project's events** (a set goes out, a question is answered).
-6. **Tidy your lines in `README.md`.**
+5. ~~**Notifications for New Project's events** (a set goes out, a question is answered).~~ done:
+   the table in README.md after Owner Billing's, every row by email (question 29).
+6. ~~**Tidy your lines in `README.md`.**~~ done: five steps, budgets from past jobs, the change
+   order going on to the trade, the not-built line untangled, the lane's preview port.
 
 ## Portal (GC 3)
 

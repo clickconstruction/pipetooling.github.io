@@ -127,11 +127,11 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   put their company in this app." Build for one company; name nothing Click-only, so a later
   company could be added the way the rest of the app allows.
 - **New Project starts with the plans** (approved as built, 2026-10-02): a **+ New project**
-  button beside *Bidding to the owner* opens four steps: the project, the plans, the trades,
-  each scope. The trades are a guess from the sheet index (discipline letters plus title words
-  like "roof" or "door", `TRADE_TEMPLATES` in `gcNewProject.ts`); each scope starts from the
-  trade's usual lines. Nobody is asked until the office asks on Trades. The company's own trades
-  (`OUR_TRADES`, plumbing) come in ticked as ours.
+  button beside *Bidding to the owner* opens five steps: the project, the plans, the trades, each
+  scope and who to ask (the last is below). The trades are a guess from the sheet index (discipline
+  letters plus title words like "roof" or "door", `TRADE_TEMPLATES` in `gcNewProject.ts`); each
+  scope starts from the trade's usual lines. The company's own trades (`OUR_TRADES`, plumbing) come
+  in ticked as ours.
 - **A later set says what it is** (approved as built, 2026-10-02): **A new set of plans came in**
   names the set (an addendum while we bid, a bulletin once the job is ours, or a whole revised,
   permit or construction set), gives a sheet new to the index its title, and can bring a trade
@@ -219,8 +219,8 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   "plans"), to review and send on **Bill the owner**, with the days the set adds as a number
   (`ChangeOrder.days`; a signed one adds them to the contract time). The days ride on one change
   order only, the first going out whose trade caused them, so they are never counted twice
-  (`changeOrderTakingTheDays`). The matching change to the trade's
-  statement of work is not built.
+  (`changeOrderTakingTheDays`). Once the owner signs, it goes on to the trade's statement of work
+  through the Building lane's `sendTradeChange`.
 - **Questions about the plans** (approved as built, 2026-10-03): a trade asks about the plans
   (only a company asked to quote the trade can), we send it to the architect, we record the
   answer, and it goes to every company bidding the trade while we bid, or only the company on it
@@ -377,9 +377,9 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
 - The schedule's "a few days" of grace on a milestone is 3 days (`MILESTONE_GRACE_DAYS`, not built
   yet).
 - A new project's budgets start blank. **Fill the empty budgets from the size** multiplies the
-  square feet in the size line by a rough cost per square foot for each trade
-  (`BUDGET_PER_SQ_FT`, made-up numbers, $3 for painting to $18 for steel and electrical),
-  rounded to $500. The owner left this call to the New Project lane.
+  square feet in the size line by each trade's middle cost per square foot on our past jobs, or by
+  a rough rate when we have none (`BUDGET_PER_SQ_FT`, made-up numbers, $3 for painting to $18 for
+  steel and electrical), rounded to $500. The owner left this call to the New Project lane.
 - A new set starts as an addendum while we bid and a bulletin once the job is ours. In pasted
   notes a sheet number without a dash needs three digits (A101, not R30), and a sheet the index
   lacks is written the way the index writes its others (S301 reads S-301).
@@ -587,10 +587,10 @@ the bullets below are the shape they set.
   Schedule. Days are calendar days for now.
 
 - New Project past its first form: the past jobs a budget reads are the prototype's own made-up
-  projects. The real build reads the company's closed jobs. What a trade leaves out shows in New
-  Project, the Trades tab and Compare bids; the portal's bid form does not show it yet. A line's sheets show in New Project, a new set, the plans window and Compare
-  bids (Board, 2026-10-03); its sections in New Project, a new set and the plans window. The
-  portal's bid form shows a line's sheets, not its sections; Trades shows neither yet.
+  projects; the real build reads the company's closed jobs. A line's sheets show in New Project, a
+  new set, the plans window, Compare bids (Board) and the portal's bid form; its sections only in
+  New Project, a new set and the plans window. What a trade leaves out shows in New Project, the
+  Trades tab and Compare bids, not yet in the portal's bid form.
 - Our billing to the owner, the rest: our own crew's percent read from its Pipeline job (real
   build only; see *Where it plugs in*). The company window reads the pay applications through
   `ownerMoney`, with certified and waiting-on-the-architect beside what they owe (Board, 2026-10-03).
@@ -652,6 +652,23 @@ the bullets below are the shape they set.
   | A change order to sign (`sendChangeOrder`) | The owner | Email with its price and the days it adds; Needs you in their portal until they sign or decline. The office hears either answer by email; a signed one goes on to the trade (Building's `sendTradeChange`) |
   | Every line is billed (`ownerAllBilled`) | The owner | Email asking them to walk the space and accept the work; the office hears by email when they press **Accept the work** |
   | The forecast dips below today (`cashAhead`'s lowest week) | The owner and the controller | The Monday morning email: "We go down to $39,272 carrying the week of Oct 12", with the late money not counted |
+
+  New Project's events, and where each would go (New Project lane, 2026-10-03). Every one is an
+  email through Resend (question 29: email only for now). What a trade hears is in the Portal
+  lane's table above; this one is the office's side and the architect's. The days marked *default*
+  are the lane's guess until the owner says otherwise:
+
+  | Event | Who hears | Where |
+  |---|---|---|
+  | A project is created (`createProject`) | The companies ticked on **Who to ask** | The board's ask, one per company (the Portal lane's "A new ask"). Nothing to the office, which just pressed the button |
+  | A set goes out (`issuePlanSet`) | The trades (the Portal lane's row); the project manager and the superintendent once the job is ours | The office: email the day it goes out, with what it changed, what it takes out, the activities it moves or adds and the job's last day before and after. A trade that is ours gets it too, to check our own bid against the set |
+  | A set changes a job we won | The owner | Only through the change order it starts (Owner Billing's "A change order to sign"), with the days it adds. Nothing more |
+  | A question comes in (`tradeAskQuestion`) | The project manager running the bid | Email the day it is asked, with the company, its words and the sheets. **Questions about the plans** already shows the count |
+  | A question goes to the architect (`sendQuestionToArchitect`) | The architect | Email with the question, the sheets and the day questions close. A reminder after 3 days without an answer. *Default: 3 days* |
+  | The architect answers (`answerQuestion`) | The trades (the Portal lane's row) | Nothing to the office, which typed it in |
+  | Questions close soon (`questionsCloseOn`) | Every company bidding; the project manager | The companies: email the day before questions close. The office: email that day with the questions still open |
+  | An answer waits for a set (`answeredNotInSet`) | The project manager | The morning email after 2 days: "2 answers wait for the next set". *Default: 2 days* |
+  | A gap between the trades (`projectScopeGaps`) while we bid | The project manager | The morning email until each gap is picked up. The Trades tab already shows it |
 
 ## Where it plugs into the app that exists
 
@@ -744,7 +761,7 @@ branch and a dev-server port of its own; `spike/gc-mode` is where the lanes meet
 | Board | `spike/gc-mode` (works on it directly) | 5237 | The Project Board and a project's office tabs: the row, the ring and its card, New here?, Trades and Compare bids, Our number, Bid tabs, Contracts, Get started, Follow up, Trade partners, the map, the company window | `src/pages/GcMode.tsx`; `src/components/gc/`: `GcOfficeTabs.tsx` (all but `GcDrawsTab`), `GcProgressRing.tsx`, `GcStart.tsx`, `GcBidTabs.tsx`, `GcAskThread.tsx`, `GcTradeBench.tsx`, `GcTradeMap.tsx`, `GcCustomerWindow.tsx`, `BidsModeToggle.tsx`, `gcUi.tsx`, `gcIcons.ts`; `src/lib/gcMode/`: `gcProgress.ts` (all but `buildingProgress`), `gcStart.ts`, `gcBids.ts`, `gcFollowUp.ts`, `gcBench.ts`, `gcMap.ts`, `gcCustomers.ts`, `gcTour.ts` |
 | Portal | `spike/gc-mode-portal` | 5241 | The trade partner's portal: everything a company sees and presses | `src/components/gc/GcTradePortal.tsx`; new files `src/components/gc/GcPortal*.tsx`, `src/lib/gcMode/gcPortal.ts` |
 | Building | `spike/gc-mode-building` | 5242 | Building and Closeout: reports, draws, retainage release, final waivers | `GcDrawsTab` inside `src/components/gc/GcOfficeTabs.tsx` (that function only); `buildingProgress` in `src/lib/gcMode/gcProgress.ts` (that function only); new files `src/components/gc/GcBuilding*.tsx` / `GcCloseout*.tsx`, `src/lib/gcMode/gcBuilding*.ts` |
-| New Project | `spike/gc-mode-new-project` | 5243 | New Project with the plans coming in, splitting the plans into trades, writing each scope; the plan sets that follow | `src/components/gc/GcNewPlans.tsx`, `GcPlansQuickLook.tsx`; `src/lib/gcMode/gcPlans.ts`; new files `src/components/gc/GcNewProject*.tsx`, `src/lib/gcMode/gcNewProject.ts` |
+| New Project | `spike/gc-mode-new-project` | 5243 (5245 while another account holds 5243) | New Project with the plans coming in, splitting the plans into trades, writing each scope; the plan sets that follow | `src/components/gc/GcNewPlans.tsx`, `GcPlansQuickLook.tsx`; `src/lib/gcMode/gcPlans.ts`; new files `src/components/gc/GcNewProject*.tsx`, `src/lib/gcMode/gcNewProject.ts` |
 | Owner Billing | `spike/gc-mode-owner-billing` | 5244 | Billing the owner: our pay applications from the work the trades report, the retainage the owner holds on us, what the owner has paid | new files `src/components/gc/GcOwnerBilling*.tsx`, `src/lib/gcMode/gcOwnerBilling*.ts`; the `OwnerBilling` record in `gcTypes.ts` (add fields only). It reads the trades' reported work (Building's) and never writes it; the owner window's billed and paid cells (`GcCustomerWindow.tsx`, `customerSummary`) stay the Board's to change |
 
 **Shared files** — every lane may *add* to them; nobody renames, reorders or rewords what is there:
