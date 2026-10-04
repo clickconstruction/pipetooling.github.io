@@ -18,6 +18,10 @@ import {
   sentBackOpen,
   timesSentBack,
   tradeCloseout,
+  tradePayAppParties,
+  drawOnTheirSov,
+  payAppClaimedToDate,
+  type ChangeOrder,
   type GcAction,
   type GcState,
   type PayAppInput,
@@ -473,5 +477,62 @@ describe('materials stored on site (question 12)', () => {
     const draw3 = drySow(next).draws[2]
     expect(draw3).toMatchObject({ gross: 2_500, retainage: 250, net: 2_250 })
     expect(payApplicationForDraw(drySow(next), draw3 as NonNullable<typeof draw3>).summary).toMatchObject({ completedToDate: 45_820, previousCertificates: 38_988, currentDue: 2_250 })
+  })
+})
+
+describe('the pay application as a file (question 12)', () => {
+  it("says who it is from and to, and which signed change orders are new since the last one", () => {
+    const state = initialGcState()
+    const helotes = state.projects.find((p) => p.id === 'helotes')
+    const partner = state.partners.find((p) => p.id === 'hillcountry')
+    if (!helotes || !partner) throw new Error('no Helotes')
+    // Two signed changes on drywall: one before draw 1 (Sep 19), one after it.
+    const co = (id: string, signedOn: string) => ({ id, tradeChange: { status: 'signed', sentOn: signedOn, signedOn, sovLineId: `dry-${id}` } }) as unknown as ChangeOrder
+    const base = drySow(state)
+    const sow: Sow = {
+      ...base,
+      sov: [
+        ...base.sov,
+        { ...base.sov[0]!, id: 'dry-co-8', label: 'Soffit', amount: 1_200, pctBilled: 0, pctReported: 0, changeOrderId: 'co-8' },
+        { ...base.sov[0]!, id: 'dry-co-9', label: 'Bulkhead', amount: -400, pctBilled: 0, pctReported: 0, changeOrderId: 'co-9' },
+      ],
+    }
+    const project = { ...helotes, changeOrders: [co('co-8', '2026-09-10'), co('co-9', '2026-09-28')] }
+    const app = payApplication(sow, 2, { 'dry-2': 60 })
+    const parties = tradePayAppParties(project, sow, partner, app, { periodTo: '2026-10-02', address: filled.address, license: '', signedOn: null })
+    expect(parties).toMatchObject({
+      project: 'Helotes Dental Office',
+      applicationNo: '2',
+      periodTo: '2026-10-02',
+      sentOn: null,
+      contractDate: '2026-08-29',
+      to: { name: 'Click Construction' },
+      from: { name: 'Hill Country Interiors', address: filled.address },
+      architect: 'Studio Ocotillo',
+      changeOrders: [
+        { amount: 1_200, thisPeriod: false },
+        { amount: -400, thisPeriod: true },
+      ],
+    })
+    expect(parties.from.license).toBeUndefined()
+  })
+})
+
+describe("each draw on the trade's own schedule of values (question 4)", () => {
+  it('reads where each draw landed, work in place on the original lines only', () => {
+    const sow = initialGcState().projects.find((p) => p.id === 'fairoaksd')?.packages.find((k) => k.id === 'felec')?.sow
+    if (!sow) throw new Error('no Pecan Valley statement of work')
+    const [one, two] = sow.draws
+    if (!one || !two) throw new Error('two draws expected')
+    expect(payAppClaimedToDate(sow, payApplicationForDraw(sow, one))).toBe(89_000)
+    expect(drawOnTheirSov(sow, one)).toBe('Their schedule: through Underground and gear, 19% into Rough-in.')
+    expect(drawOnTheirSov(sow, two)).toBe('Their schedule: through Underground and gear, 65% into Rough-in.')
+    expect(drawOnTheirSov({ ...sow, theirSov: [] }, one)).toBeNull()
+  })
+
+  it('leaves stored materials out of what is claimed', () => {
+    const app = payApplication(drySow(), 2, { 'dry-2': 60 }, false, { 'dry-3': 5_000 })
+    expect(app.summary.completedToDate).toBe(43_320)
+    expect(payAppClaimedToDate(drySow(), app)).toBe(38_320)
   })
 })

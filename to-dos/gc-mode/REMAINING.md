@@ -195,8 +195,9 @@ first** (a partner's vetting, the promise record), so build on those once GC 0 s
 
 ### Building (GC 1)
 
-1. **Q4 on each draw:** their schedule of values beside the draw (the Board's kernel: "claimed
-   $45,000 to date: through Rough-in, 40% into Top out").
+1. ~~**Q4 on each draw:** their schedule of values beside the draw (the Board's kernel: "claimed
+   $45,000 to date: through Rough-in, 40% into Top out").~~ done (Building, 2026-10-04): a line on
+   each draw on Draws, and the side by side in the office's pay application window.
 
 ### Portal (GC 3)
 

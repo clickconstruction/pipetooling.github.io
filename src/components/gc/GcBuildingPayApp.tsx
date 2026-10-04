@@ -10,6 +10,7 @@ import {
   newPayAppDraft,
   payApplication,
   payApplicationForDraw,
+  payAppClaimedToDate,
   payAppDraftPcts,
   payAppKnown,
   payAppSteps,
@@ -22,6 +23,7 @@ import {
   changeOrderLines,
   TRADE_RETAINAGE_WAIT_DAYS,
   tradeCloseout,
+  tradePayAppParties,
   workAllBilled,
   type BuildingWordKey,
   type Draw,
@@ -41,6 +43,9 @@ import { Btn, input as inputStyle } from './gcUi'
 import { usePortalLang } from './gcPortalLang'
 import { GcBuildingPunchForTrade } from './GcBuildingPunch'
 import { GcBuildingSubmittalsForTrade } from './GcBuildingSubmittals'
+import { GcPayAppNotary } from './GcPayAppNotary'
+import { GcSovSideBySide } from './GcSovSideBySide'
+import { downloadPayAppExcel, downloadPayAppPdf } from '../../lib/gcMode/gcPayAppFile'
 
 /**
  * GC mode design spike: the pay application a trade sends with each draw. The window is the
@@ -387,6 +392,9 @@ export function GcBuildingPayAppWindow({
   const [pick, setPick] = useState<{ page: Page; at: PayAppStepKey | null } | null>(null)
   // Materials stored on site (question 12): shown once asked for, or when some are already in.
   const [showStored, setShowStored] = useState(() => Object.values(heldDraft?.stored ?? {}).some((v) => v > 0))
+  // The AIA form as a file (question 12): which one is being made, and why it could not be.
+  const [saving, setSaving] = useState<'xlsx' | 'pdf' | null>(null)
+  const [saveError, setSaveError] = useState('')
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -443,6 +451,31 @@ export function GcBuildingPayAppWindow({
   const stepWords = lang === 'es' ? ({ '--gcStepDone': JSON.stringify(w('stepDone')), '--gcStepNow': JSON.stringify(w('stepNow')) } as CSSProperties) : undefined
   const waitWord = lang === 'es' ? w('stepWaiting') : undefined
   const titleId = 'gc-payapp-title'
+  // The Owner Billing lane's builder fills the AIA template and draws the PDF, in English (question 12).
+  const parties = tradePayAppParties(project, sow, partner, app, {
+    periodTo: typed.periodTo,
+    address: typed.address || known.address,
+    license: typed.license || known.license,
+    signedOn: draw ? (draw.payApp?.signedOn ?? draw.requestedOn) : null,
+  })
+  const download = (kind: 'xlsx' | 'pdf') => {
+    setSaving(kind)
+    setSaveError('')
+    ;(kind === 'xlsx' ? downloadPayAppExcel(app, parties) : downloadPayAppPdf(app, parties))
+      .catch(() => setSaveError(w('fileFailed')))
+      .finally(() => setSaving(null))
+  }
+  const fileButton = (kind: 'xlsx' | 'pdf') => (
+    <button
+      type="button"
+      onClick={() => download(kind)}
+      disabled={saving !== null}
+      title={w(kind === 'xlsx' ? 'fileExcelTitle' : 'filePdfTitle')}
+      style={{ border: 'none', background: 'transparent', color: 'var(--text-link)', cursor: saving ? 'wait' : 'pointer', padding: '0.2rem 0.3rem', fontSize: '0.8rem', fontWeight: 600, whiteSpace: 'nowrap' }}
+    >
+      {saving === kind ? w('fileMaking') : w(kind === 'xlsx' ? 'fileExcel' : 'filePdf')}
+    </button>
+  )
 
   const paper = (
     <PayAppPaper
@@ -501,14 +534,22 @@ export function GcBuildingPayAppWindow({
               {w('subtitle', { trade: pkg.trade, company: partner.company, project: project.name })}
             </p>
           </div>
-          <button
-            type="button"
-            aria-label={w('close')}
-            onClick={onClose}
-            style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '1.25rem', lineHeight: 1, cursor: 'pointer', padding: '0.1rem 0.35rem' }}
-          >
-            ✕
-          </button>
+          <div style={{ display: 'grid', justifyItems: 'end', gap: '0.15rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.1rem' }}>
+              {fileButton('xlsx')}
+              {fileButton('pdf')}
+              <button
+                type="button"
+                aria-label={w('close')}
+                onClick={onClose}
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '1.25rem', lineHeight: 1, cursor: 'pointer', padding: '0.1rem 0.35rem' }}
+              >
+                ✕
+              </button>
+            </div>
+            {lang === 'es' && <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textAlign: 'right' }}>{w('fileEnglish')}</span>}
+            {saveError && <span style={{ fontSize: '0.75rem', color: 'var(--text-red-700)', textAlign: 'right' }}>{saveError}</span>}
+          </div>
         </div>
 
         {draw ? (
@@ -545,6 +586,12 @@ export function GcBuildingPayAppWindow({
                 </>
               )}
             </div>
+            {viewer === 'office' && !final && (sow.theirSov ?? []).length > 0 && (
+              <div style={{ padding: '0.75rem 1.25rem 0', display: 'grid', gap: '0.35rem' }}>
+                <strong style={{ fontSize: '0.875rem' }}>Beside their own schedule of values</strong>
+                <GcSovSideBySide sow={sow} claimed={payAppClaimedToDate(sow, app)} />
+              </div>
+            )}
             <div data-theme="light" style={{ padding: '0.75rem 1.25rem 1.25rem' }}>
               {paper}
             </div>
@@ -994,6 +1041,7 @@ function PayAppPaper({
                 <div style={{ ...label, marginTop: '0.2rem' }}>
                   {withNode(w('byFor', { company: partner.company }), 'name', <Val>{typed.signedBy}</Val>)}
                 </div>
+                <GcPayAppNotary fontSize="0.72rem" />
               </div>
             </Mark>
 

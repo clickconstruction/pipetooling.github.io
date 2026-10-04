@@ -235,6 +235,14 @@ const W = {
     en: 'Fix each one, then tell {gc} here. {gc} checks it on the job. Your work is accepted once every item is checked.',
     es: 'Arregle cada uno y avísele a {gc} aquí. {gc} lo revisa en la obra. Su trabajo se acepta cuando todos estén revisados.',
   },
+  // The pay application as a file (2026-10-04, question 12): the AIA form, in English
+  fileExcel: { en: '⤓ Excel', es: '⤓ Excel' },
+  filePdf: { en: '⤓ PDF', es: '⤓ PDF' },
+  fileExcelTitle: { en: 'The AIA form in Excel, with every line', es: 'El formulario AIA en Excel, con cada partida' },
+  filePdfTitle: { en: 'The 702 and 703 as a PDF, with the notary block', es: 'El 702 y el 703 en PDF, con el bloque del notario' },
+  fileMaking: { en: 'Making it…', es: 'Preparándolo…' },
+  fileFailed: { en: 'The file could not be made.', es: 'No se pudo preparar el archivo.' },
+  fileEnglish: { en: 'The file is the AIA form, in English.', es: 'El archivo es el formulario AIA, en inglés.' },
 } satisfies Record<string, Record<PortalLang, string>>
 
 export type BuildingWordKey = keyof typeof W

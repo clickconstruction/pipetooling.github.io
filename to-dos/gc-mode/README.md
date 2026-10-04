@@ -590,6 +590,11 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
    2026-10-04: **by percent with retainage, as drawn.** "These usually match a schedule of values
    based on the rough in, top out, trim stage": **capture the trade's own first schedule of values**
    (with its quote) and show it **side by side** with ours on the statement of work and on each draw.
+   On each draw (Building lane, 2026-10-04): Draws says where the draw landed on theirs ("Their
+   schedule: through Underground and gear, 65% into Rough-in."), and the office's pay application
+   window shows the two side by side with what it claims to date (`drawOnTheirSov`,
+   `payAppClaimedToDate`: work in place on the original lines, without change orders or stored
+   materials).
 5. ~~Where do a GC project's plans live?~~ Answered 2026-10-04: **in Google Drive, uploaded by
    someone who checks them** before they go out. (Who opened which set is then read from the
    portal's link to the Drive file, not from Drive.)
@@ -634,7 +639,11 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
     on its pay application; it is column F and counts in G and line 4, with retainage held on it;
     the draw keeps it, and once it is built it moves from F into E and is never paid twice
     (`payApplication`'s `stored`, `drawMoney`). The Excel, the PDF and the notary block are one
-    shared builder (the Owner Billing lane's `gcPayAppFile.ts`).
+    shared builder (the Owner Billing lane's `gcPayAppFile.ts`). The trade's window (Building lane)
+    has **⤓ Excel** and **⤓ PDF** in its header, from the trade to us (`tradePayAppParties`, with
+    each signed change order marked new since the last application or not), and the notary block
+    under the trade's signature. In Spanish the files stay the AIA form in English, and the window
+    says so.
 13. ~~On the owner's bill, do our general conditions, contingency and fee show as lines of their
     own, or spread into each trade's line so the owner never sees the fee?~~ Answered: spread
     into the trades (see *Decided by the owner*).
