@@ -135,13 +135,13 @@ export function GcCustomerWindow({ state, customer, dispatch, onClose, onOpenPro
         <div style={{ padding: '0.8rem 1rem', borderBottom: '1px solid var(--border)', display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <div style={{ fontWeight: 700, fontSize: '1.15rem' }}>{customer.name}</div>
           <Chip tone="grey">{customer.kind}</Chip>
-          {owner.live.length > 0 && <Chip tone="amber">Owner on {projects(owner.live.length)}</Chip>}
+          {owner.live.length > 0 && <Chip tone="amber">Customer on {projects(owner.live.length)}</Chip>}
           {isArchitect && <Chip tone="violet">Architect on {projects(architect.live.length)}</Chip>}
           {isOwner && (
             <Chip tone={customer.portalOn ? 'green' : 'grey'}>
               {customer.portalOn
-                ? `Owner's portal on${customer.portalLastOpened ? ` · opened ${shortDate(customer.portalLastOpened)}` : ''}`
-                : "Owner's portal off"}
+                ? `Customer's portal on${customer.portalLastOpened ? ` · opened ${shortDate(customer.portalLastOpened)}` : ''}`
+                : "Customer's portal off"}
             </Chip>
           )}
           <span style={{ flex: 1 }} />
@@ -158,7 +158,7 @@ export function GcCustomerWindow({ state, customer, dispatch, onClose, onOpenPro
         <div style={{ padding: '0.9rem 1rem', display: 'grid', gap: '1rem' }}>
           {isOwner && (
             <div>
-              {both && <Heading>As the owner</Heading>}
+              {both && <Heading>As the customer</Heading>}
               <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
                 <Stat label="Live projects" value={owner.live.length} />
                 <Stat label="Priced, waiting on them" value={money(owner.inFront)} />
@@ -352,7 +352,7 @@ export function GcCustomerWindow({ state, customer, dispatch, onClose, onOpenPro
                   <thead>
                     <tr>
                       <th style={th}>Project</th>
-                      <th style={th}>Owner</th>
+                      <th style={th}>Customer</th>
                       <th style={th}>Newest set</th>
                       <th style={th}>Who has it</th>
                       <th style={th} />

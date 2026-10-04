@@ -22,15 +22,15 @@ export const GC_TOUR_STEPS: SpotlightTourStep[] = [
       { anchor: 'gc-stage-title-building', label: '3' },
     ],
     bullets: [
-      'Bidding to the owner: we price the job and try to win it.',
+      'Bidding to the customer: we price the job and try to win it.',
       'Buying out: we pick one company per trade and get it all signed.',
       'Building: the crews work, and we pay them as the work gets done.',
     ],
   },
   {
     anchor: 'gc-stage-pursuing',
-    title: 'Stage 1. Bidding to the owner',
-    body: 'The question here is: can we win this job? The owner is picking a builder. We are one of the builders giving a price. Nothing is ours yet.',
+    title: 'Stage 1. Bidding to the customer',
+    body: 'The question here is: can we win this job? The customer is picking a builder. We are one of the builders giving a price. Nothing is ours yet.',
   },
   {
     anchor: 'gc-new-project',
@@ -40,7 +40,7 @@ export const GC_TOUR_STEPS: SpotlightTourStep[] = [
   {
     anchor: 'gc-row-pursuing',
     title: 'What you do while bidding',
-    body: 'You ask companies to quote each trade. Get at least two quotes for every trade. You compare them and pick one number to carry. Our price to the owner adds up those numbers. Then it adds our costs and our fee.',
+    body: 'You ask companies to quote each trade. Get at least two quotes for every trade. You compare them and pick one number to carry. Our price to the customer adds up those numbers. Then it adds our costs and our fee.',
     missingBody: 'No project is bidding right now. A new one starts here.',
   },
   {
@@ -59,7 +59,7 @@ export const GC_TOUR_STEPS: SpotlightTourStep[] = [
   {
     anchor: 'gc-row-pursuing',
     title: 'How bidding ends',
-    body: 'Open the project and go to Our number. Tap We sent our bid when the price goes to the owner. When the owner picks us, tap We won this. The project moves down to Buying out. If the owner picks someone else, tap We lost this.',
+    body: 'Open the project and go to Our number. Tap We sent our bid when the price goes to the customer. When the customer picks us, tap We won this. The project moves down to Buying out. If the customer picks someone else, tap We lost this.',
     missingBody: 'No project is bidding right now.',
   },
   {
@@ -76,7 +76,7 @@ export const GC_TOUR_STEPS: SpotlightTourStep[] = [
   {
     anchor: 'gc-row-buyout',
     title: 'How buyout ends',
-    body: 'Open the project and go to Get started. It lists every step left before work starts. You need the owner contract, the permit, a start date and the schedule drawn. The ring on the row fills as these steps get done. The block beside it counts the days to the planned start. Start stays locked until nothing is missing. Tap Start and every trade hears that work has begun.',
+    body: 'Open the project and go to Get started. It lists every step left before work starts. You need the contract with the customer, the permit, a start date and the schedule drawn. The ring on the row fills as these steps get done. The block beside it counts the days to the planned start. Start stays locked until nothing is missing. Tap Start and every trade hears that work has begun.',
     missingBody: 'No project is in buyout right now.',
   },
   {
@@ -92,12 +92,12 @@ export const GC_TOUR_STEPS: SpotlightTourStep[] = [
   {
     anchor: 'gc-stage-closed',
     title: 'Closed',
-    body: 'A finished job moves down here. Close it on its Closeout tab with Close the job. That button comes once every trade is closed out and the owner paid our last bill. Closed jobs stay here for the record.',
+    body: 'A finished job moves down here. Close it on its Closeout tab with Close the job. That button comes once every trade is closed out and the customer paid our last bill. Closed jobs stay here for the record.',
   },
   {
     anchor: 'gc-stage-lost',
     title: 'Lost',
-    body: 'A bid we did not win moves down here. Each one says why we lost it and who won, if we know. Nobody is chased on it anymore. Tap Bring it back on Our number if the owner comes back to us.',
+    body: 'A bid we did not win moves down here. Each one says why we lost it and who won, if we know. Nobody is chased on it anymore. Tap Bring it back on Our number if the customer comes back to us.',
   },
   {
     anchor: 'gc-group-switch',
@@ -179,8 +179,8 @@ export const GC_PROJECT_TOUR_STEPS: SpotlightTourStep[] = [
   },
   {
     anchor: 'gc-ptab-owner',
-    title: 'Bill the owner',
-    body: 'Our own pay applications to the owner. The architect certifies each one. Then the owner pays it.',
+    title: 'Bill the customer',
+    body: 'Our own pay applications to the customer. The architect certifies each one. Then the customer pays it.',
   },
   {
     anchor: 'gc-ptab-closeout',

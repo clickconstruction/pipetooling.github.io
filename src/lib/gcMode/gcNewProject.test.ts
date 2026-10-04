@@ -862,3 +862,19 @@ describe('a customer, and an owner of the property when it is someone else', () 
     expect(p2?.propertyOwner).toBeUndefined()
   })
 })
+
+describe('who we work for', () => {
+  it('keeps another general contractor or an owner\'s rep, files someone new by it, and says nothing for the owner', () => {
+    const state = initialGcState()
+    const gc = gcReducer(state, {
+      type: 'createProject',
+      draft: draft({ customerId: null, ownerName: 'Alamo Builders', customerRole: 'gc', propertyOwnerId: null, propertyOwnerName: 'Helotes Plaza LLC' }),
+    })
+    const p = gc.projects[gc.projects.length - 1]
+    expect(p?.customerRole).toBe('gc')
+    expect(gc.customers.find((c) => c.id === p?.customerId)?.kind).toBe('General contractor')
+    expect(p?.propertyOwner).toBe('Helotes Plaza LLC')
+    const own = gcReducer(state, { type: 'createProject', draft: draft({ customerRole: 'owner' }) })
+    expect(own.projects[own.projects.length - 1]?.customerRole).toBeUndefined()
+  })
+})

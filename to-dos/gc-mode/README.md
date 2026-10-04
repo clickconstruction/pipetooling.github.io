@@ -259,8 +259,14 @@ who then works and bills the owner." So:
   one we bill"); it still sets `customerId` and `owner`. **+ Add an owner different from the
   customer** opens **Owner of the property** from the same list, with "Someone new" and × to take it
   off, for a landlord on a tenant finish-out. The project keeps it only when it differs from the
-  customer (`GcProject.propertyOwnerId`, `propertyOwner`). "Bill the owner" and the other places
-  that say owner wait for his answer.
+  customer (`GcProject.propertyOwnerId`, `propertyOwner`). Round 6: above it, **We work for**: the
+  owner, another general contractor or an owner's rep (`GcProject.customerRole`, kept only when not
+  the owner). The customer picker puts the ones that fit first and files someone new by it
+  (General contractor, Owner's rep). Not the owner shows **Owner of the property (optional)** on its
+  own: "The general contractor bills them, and we bill the general contractor." New Project's own
+  words say customer where they mean who we bill (*Bidding to the customer*, *Change orders to the
+  customer*, *Bill the customer*); the Kinds of plan sets card keeps "owner" for the building's
+  owner, and a Known exclusion's "by the owner" stays (`BY_NOT_A_TRADE`, in `src/lib/gc`).
 - **What the kinds of plan sets are** (the owner, 2026-10-04: "I think it's important that we explain
   to a user what these different kinds of plans are. Perhaps as a information icon to the right of
   the three plan set choosers"): an **i** after Bid set, Pricing set and Permit set opens a card on

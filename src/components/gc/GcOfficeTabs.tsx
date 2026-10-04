@@ -1129,7 +1129,7 @@ export function GcNumberTab({ state, project, dispatch }: GcPaneProps) {
             {project.lostNote && <span style={{ color: 'var(--text-muted)' }}>· {project.lostNote}</span>}
             <span style={{ flex: 1 }} />
             <Btn
-              title="The owner came back to us. It goes back under Bidding to the owner, as it stood."
+              title="The customer came back to us. It goes back under Bidding to the customer, as it stood."
               onClick={() => dispatch({ type: 'reopenLost', projectId: project.id })}
             >
               Bring it back
@@ -1189,11 +1189,11 @@ function LostForm({ project, dispatch, onDone }: { project: GcProject; dispatch:
       </span>
       <label style={{ display: 'grid', gap: '0.2rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
         Who won it, if we know
-        <input value={wonBy} onChange={(e) => setWonBy(e.target.value)} placeholder="the builder the owner picked" style={{ ...input, maxWidth: '22rem' }} />
+        <input value={wonBy} onChange={(e) => setWonBy(e.target.value)} placeholder="the builder the customer picked" style={{ ...input, maxWidth: '22rem' }} />
       </label>
       <label style={{ display: 'grid', gap: '0.2rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
         A note for next time
-        <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="what the owner said" style={input} />
+        <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="what the customer said" style={input} />
       </label>
       <span style={{ display: 'flex', gap: '0.4rem' }}>
         <Btn
@@ -1349,7 +1349,7 @@ export function GcDrawsTab({ state, project, dispatch }: GcPaneProps) {
         const m = sowMoney(sow)
         const blockers = partnerBlockers(partner, state.today)
         // A retainage release is paid 10 days after the owner pays us ours (owner, 2026-10-02).
-        const releaseWaits = tradeCloseout(sow, project, state.today).canPay ? [] : ['The owner has not paid us our retainage, or 10 days have not passed.']
+        const releaseWaits = tradeCloseout(sow, project, state.today).canPay ? [] : ['The customer has not paid us our retainage, or 10 days have not passed.']
         const ids = { projectId: project.id, packageId: pkg.id }
         return (
           <Card key={pkg.id}>
