@@ -97,8 +97,8 @@ makes; nobody builds it until he answers.
 
 ## Owner Billing (GC 4)
 
-1. **The owner's change order reads the trade's percent on its line** (`changeOrderTradePct`).
-2. **Change orders carry the days a set added** (with New Project, item 2).
+1. ~~**The owner's change order reads the trade's percent on its line**~~ done f8b43ad59 (`changeOrderPct` reads `changeOrderTradePct` once the trade signs; the bill, the form and the owner's portal all go through it).
+2. ~~**Change orders carry the days a set added**~~ done c3b453453 (my half: `ChangeOrder.days`, `draftChangeOrder` takes `days`, signed ones add up in `contractDaysAdded` on Bill the owner and the owner's portal; New Project passes the set's days; moving substantial completion is open question 28).
 3. **A phone pass on Bill the owner, the owner's portal and Money.**
 4. **Notifications for the owner side** (a pay application to certify, a payment late).
 5. **Tidy your lines in `README.md`.**

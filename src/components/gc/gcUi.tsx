@@ -57,12 +57,15 @@ export function Btn({
   kind = 'plain',
   disabled,
   title,
+  wrap,
 }: {
   children: ReactNode
   onClick: () => void
   kind?: 'primary' | 'plain' | 'quiet'
   disabled?: boolean
   title?: string
+  /** A long label (a Spanish one, say) may wrap instead of widening a phone page. Off by default. */
+  wrap?: boolean
 }) {
   const base: CSSProperties = {
     padding: '0.35rem 0.75rem',
@@ -70,7 +73,9 @@ export function Btn({
     fontSize: '0.85rem',
     cursor: disabled ? 'not-allowed' : 'pointer',
     opacity: disabled ? 0.5 : 1,
-    whiteSpace: 'nowrap',
+    whiteSpace: wrap ? 'normal' : 'nowrap',
+    textAlign: wrap ? 'left' : undefined,
+    maxWidth: wrap ? '100%' : undefined,
   }
   const kinds: Record<string, CSSProperties> = {
     primary: { background: '#2563eb', color: 'white', border: '1px solid #2563eb', fontWeight: 600 },

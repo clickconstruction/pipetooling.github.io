@@ -681,6 +681,28 @@ export function signedChangeOrders(project: GcProject): ChangeOrder[] {
   return projectChangeOrders(project).filter((co) => co.status === 'signed')
 }
 
+/** The days a change order adds to the job. 0: none, or only said in its schedule words. */
+export function changeOrderDays(co: ChangeOrder): number {
+  return co.days ?? 0
+}
+
+/** The days the owner's signed change orders add to the contract time, added up. */
+export function contractDaysAdded(project: GcProject): number {
+  return signedChangeOrders(project).reduce((t, co) => t + changeOrderDays(co), 0)
+}
+
+/** "1 day", "5 days". */
+export function daysWords(days: number): string {
+  return `${days} ${days === 1 ? 'day' : 'days'}`
+}
+
+/** What a change order does to the schedule, in words: "adds 5 days to the job", or its own words. */
+export function changeOrderScheduleWords(co: ChangeOrder): string {
+  const days = changeOrderDays(co)
+  if (days > 0) return `adds ${daysWords(days)} to the job`
+  return co.schedule === 'none' ? 'no days added' : `schedule: ${co.schedule}`
+}
+
 /** The price a change order starts at: what it costs us plus the job's fee, in whole dollars. */
 export function changeOrderPrice(project: GcProject, cost: number): number {
   return Math.round(cost * (1 + project.feePct / 100))

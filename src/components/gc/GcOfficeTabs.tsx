@@ -756,6 +756,25 @@ export function GcPlansTab({ state, project, dispatch }: GcPaneProps) {
                   </>
                 )}
                 {/* The project manual's sections the set revised (the New Project lane's specs; Board item 4). */}
+                {/* What the set took out or renamed (the New Project lane's removed/retitled fields). */}
+                {(s.removedSheets ?? []).length > 0 && (
+                  <>
+                    Taken out: {(s.removedSheets ?? []).join(', ')}
+                    <br />
+                  </>
+                )}
+                {(s.retitledSheets ?? []).length > 0 && (
+                  <>
+                    Renamed: {(s.retitledSheets ?? []).map((x) => `${x.id} is now ${x.title}`).join(', ')}
+                    <br />
+                  </>
+                )}
+                {(s.removedSpecs ?? []).length > 0 && (
+                  <>
+                    Sections taken out: {(s.removedSpecs ?? []).join(', ')}
+                    <br />
+                  </>
+                )}
                 {(s.changedSpecs ?? []).length > 0 && (
                   <>
                     Sections revised:{' '}

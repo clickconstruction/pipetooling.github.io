@@ -584,6 +584,8 @@ export type GcAction =
       packageId: string | null
       cost: number
       price: number
+      /** The days it adds to the job. Absent: none. */
+      days?: number
     }
   | { type: 'sendChangeOrder'; projectId: string; changeOrderId: string }
   /** The owner signs a change order in their portal. */
@@ -828,4 +830,9 @@ export interface ChangeOrder {
    * to its statement of work. Once they sign, it is a line of their statement of work (`sovLineId`).
    */
   tradeChange?: { status: 'sent' | 'signed'; sentOn: string; signedOn: string | null; sovLineId: string }
+  /**
+   * The days it adds to the job: the days a set of plans pushed the schedule out (New Project), or
+   * typed by the office. Absent or 0: none. A signed one adds them to the contract time.
+   */
+  days?: number
 }

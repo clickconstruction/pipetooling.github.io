@@ -34,10 +34,11 @@ export function BidTabTable({ rows, viewerId, showNames }: { rows: BidTabRow[]; 
     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
       <thead>
         <tr>
-          <th style={th}>{w.rank}</th>
-          <th style={th}>{w.company}</th>
-          <th style={{ ...th, textAlign: 'right' }}>{w.quote}</th>
-          <th style={{ ...th, textAlign: 'right' }}>{w.overLow}</th>
+          {/* Headers wrap so the table fits a phone, even in Spanish ("Arriba de la más baja"); the numbers stay on one line. */}
+          <th style={{ ...th, whiteSpace: 'normal' }}>{w.rank}</th>
+          <th style={{ ...th, whiteSpace: 'normal' }}>{w.company}</th>
+          <th style={{ ...th, whiteSpace: 'normal', textAlign: 'right' }}>{w.quote}</th>
+          <th style={{ ...th, whiteSpace: 'normal', textAlign: 'right' }}>{w.overLow}</th>
         </tr>
       </thead>
       <tbody>

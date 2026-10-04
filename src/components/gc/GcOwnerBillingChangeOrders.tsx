@@ -4,7 +4,10 @@ import {
   CHANGE_ORDER_REASON_WORDS,
   changeOrderPct,
   changeOrderPrice,
+  changeOrderScheduleWords,
   changeOrderWho,
+  contractDaysAdded,
+  daysWords,
   money,
   projectChangeOrders,
   shortDate,
@@ -27,12 +30,14 @@ export function GcOwnerBillingChangeOrders({ state, project, dispatch }: { state
   const all = projectChangeOrders(project)
   const signed = all.filter((co) => co.status === 'signed').reduce((s, co) => s + co.price, 0)
   const waiting = all.filter((co) => co.status === 'sent').length
+  const days = contractDaysAdded(project)
 
   return (
     <Card>
       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', marginBottom: '0.35rem' }}>
         <strong style={{ fontSize: '1.05rem' }}>Change orders</strong>
         {signed !== 0 && <Chip tone="green">{`${signed > 0 ? '+' : '−'}${money(Math.abs(signed))} signed`}</Chip>}
+        {days > 0 && <Chip tone="amber">{`+${daysWords(days)} to the job`}</Chip>}
         {waiting > 0 && <Chip tone="amber">{`${waiting} waiting on ${project.owner}`}</Chip>}
         <span style={{ flex: 1 }} />
         {!adding && <Btn onClick={() => setAdding(true)}>New change order</Btn>}
@@ -66,7 +71,7 @@ function ChangeOrderRow({ state, project, co, dispatch }: { state: GcState; proj
         <strong style={{ fontVariantNumeric: 'tabular-nums' }}>{`${credit ? '−' : '+'}${money(Math.abs(co.price))}`}</strong>
       </div>
       <div style={{ color: 'var(--text-muted)' }}>
-        {CHANGE_ORDER_REASON_WORDS[co.reason]} · {changeOrderWho(state, project, co)} · schedule: {co.schedule} · costs us{' '}
+        {CHANGE_ORDER_REASON_WORDS[co.reason]} · {changeOrderWho(state, project, co)} · {changeOrderScheduleWords(co)} · costs us{' '}
         {money(co.cost)}
       </div>
       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -115,7 +120,7 @@ function ChangeOrderRow({ state, project, co, dispatch }: { state: GcState; proj
 function NewChangeOrder({ project, dispatch, onDone }: { project: GcProject; dispatch: Dispatch<GcAction>; onDone: () => void }) {
   const [description, setDescription] = useState('')
   const [reason, setReason] = useState<ChangeOrderReason>('owner')
-  const [schedule, setSchedule] = useState('')
+  const [days, setDays] = useState('')
   const [packageId, setPackageId] = useState<string>(project.packages[0]?.id ?? '')
   const [credit, setCredit] = useState(false)
   const [cost, setCost] = useState('')
@@ -124,6 +129,7 @@ function NewChangeOrder({ project, dispatch, onDone }: { project: GcProject; dis
   const suggested = changeOrderPrice(project, costNum)
   const priceNum = price.trim() === '' ? suggested : Math.abs(Number(price) || 0) * (credit ? -1 : 1)
   const ready = description.trim() !== '' && costNum !== 0
+  const daysNum = Math.max(0, Math.round(Number(days) || 0))
   const label = { display: 'grid', gap: '0.2rem', fontSize: '0.85rem', color: 'var(--text-muted)' } as const
 
   return (
@@ -160,8 +166,8 @@ function NewChangeOrder({ project, dispatch, onDone }: { project: GcProject; dis
           </select>
         </label>
         <label style={label}>
-          Impact on schedule
-          <input style={{ ...input, width: '11rem' }} value={schedule} onChange={(e) => setSchedule(e.target.value)} placeholder="+2 working days, or none" />
+          Days it adds to the job
+          <input style={{ ...input, width: '6rem' }} type="number" min={0} value={days} onChange={(e) => setDays(e.target.value)} placeholder="0" />
         </label>
       </div>
       <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
@@ -202,10 +208,11 @@ function NewChangeOrder({ project, dispatch, onDone }: { project: GcProject; dis
               projectId: project.id,
               description,
               reason,
-              schedule,
+              schedule: '',
               packageId: packageId === '' ? null : packageId,
               cost: costNum,
               price: priceNum,
+              days: daysNum,
             })
             onDone()
           }}
