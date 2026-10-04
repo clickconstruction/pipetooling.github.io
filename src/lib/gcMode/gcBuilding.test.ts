@@ -430,3 +430,48 @@ describe("change orders, the trade's side", () => {
     expect(gcReducer(crew, { type: 'sendTradeChange', projectId: 'helotes', changeOrderId: 'co-1' })).toBe(crew)
   })
 })
+
+describe('materials stored on site (question 12)', () => {
+  const send = (toPct: Record<string, number>, stored: Record<string, number>): GcAction => ({
+    type: 'tradeSendPayApp',
+    projectId: 'helotes',
+    packageId: 'dry',
+    toPct,
+    stored,
+    periodTo: filled.periodTo,
+    address: filled.address,
+    license: '',
+    signedBy: filled.signedBy,
+    signedTitle: filled.signedTitle,
+  })
+
+  it('counts what is on site in column F and in line 4, and holds retainage on it', () => {
+    const app = payApplication(drySow(), 2, { 'dry-2': 60 }, false, { 'dry-3': 5_000 })
+    const ceilings = app.lines.find((l) => l.sovId === 'dry-3')
+    expect(ceilings).toMatchObject({ thisPeriod: 0, stored: 5_000, toDate: 5_000, pct: 0, balance: 10_000, retainage: 500 })
+    expect(app.totals.stored).toBe(5_000)
+    expect(app.summary).toMatchObject({ completedToDate: 43_320, retainage: 4_332, earnedLessRetainage: 38_988, previousCertificates: 19_800, currentDue: 19_188 })
+  })
+
+  it('never stores more than the line has left', () => {
+    const app = payApplication(drySow(), 2, { 'dry-2': 60 }, false, { 'dry-2': 50_000 })
+    expect(app.lines.find((l) => l.sovId === 'dry-2')?.stored).toBe(10_880)
+  })
+
+  it('keeps it on the draw, and once it is built it moves from F into E and is not paid twice', () => {
+    const asked = gcReducer(initialGcState(), send({ 'dry-2': 60 }, { 'dry-3': 5_000 }))
+    const draw2 = drySow(asked).draws[1]
+    expect(draw2).toMatchObject({ gross: 21_320, retainage: 2_132, net: 19_188 })
+    expect(draw2?.lines.find((l) => l.sovId === 'dry-3')).toEqual({ sovId: 'dry-3', toPct: 0, stored: 5_000 })
+    expect(payApplicationForDraw(drySow(asked), draw2 as NonNullable<typeof draw2>).totals.stored).toBe(5_000)
+    const paid = [
+      { type: 'approveDraw', projectId: 'helotes', packageId: 'dry', drawId: draw2?.id ?? '' } as GcAction,
+      { type: 'payDraw', projectId: 'helotes', packageId: 'dry', drawId: draw2?.id ?? '' } as GcAction,
+    ].reduce(gcReducer, asked)
+    // The grid is up: ceilings at 50%, nothing stored now.
+    const next = gcReducer(paid, send({ 'dry-3': 50 }, {}))
+    const draw3 = drySow(next).draws[2]
+    expect(draw3).toMatchObject({ gross: 2_500, retainage: 250, net: 2_250 })
+    expect(payApplicationForDraw(drySow(next), draw3 as NonNullable<typeof draw3>).summary).toMatchObject({ completedToDate: 45_820, previousCertificates: 38_988, currentDue: 2_250 })
+  })
+})

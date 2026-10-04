@@ -151,7 +151,8 @@ export interface Draw {
   net: number
   status: 'requested' | 'approved' | 'paid'
   waiver: 'conditional' | 'unconditional'
-  lines: { sovId: string; toPct: number }[]
+  /** What the draw claims per line: work in place, and materials stored on site in dollars (question 12). */
+  lines: { sovId: string; toPct: number; stored?: number }[]
   /** The G702/G703 the trade sent with this draw. Absent on a draw asked for without one. */
   payApp?: DrawPayApp
   /**
@@ -160,7 +161,7 @@ export interface Draw {
    */
   final?: boolean
   /** Approved for less than asked: what the trade asked for, why we approved less, and the day we did. */
-  asked?: { gross: number; retainage: number; net: number; lines: { sovId: string; toPct: number }[]; note: string; on: string }
+  asked?: { gross: number; retainage: number; net: number; lines: { sovId: string; toPct: number; stored?: number }[]; note: string; on: string }
   /** The day we approved it. Unset: not yet, or before the day was kept. */
   approvedOn?: string
   /** The day we paid it. Unset: not yet, or before the day was kept. */
@@ -633,6 +634,8 @@ export type GcAction =
       packageId: string
       /** Percent done per line, as the pay application claims it. */
       toPct: Record<string, number>
+      /** Materials stored on site per line, in dollars (question 12). Absent: none. */
+      stored?: Record<string, number>
       periodTo: string
       address: string
       license: string

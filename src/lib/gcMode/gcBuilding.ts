@@ -33,6 +33,11 @@ export interface PayAppInput {
   signedTitle: string
   /** The conditional lien waiver for this amount, signed with the application. */
   waiverSigned: boolean
+  /**
+   * Materials delivered and stored on site, not yet in place, per line, in dollars (owner,
+   * 2026-10-04, question 12): column F. What is on site now, not added up across applications.
+   */
+  stored?: Record<string, number>
 }
 
 /** One row of the G703. Letters are the AIA columns. */
@@ -46,11 +51,14 @@ export interface PayAppLine {
   fromPrevious: number
   /** E: work done this period. */
   thisPeriod: number
-  /** F: materials stored on site, not yet in place. Always 0 in the prototype. */
+  /** F: materials stored on site now, not yet in place (question 12). */
   stored: number
   /** G: D + E + F. */
   toDate: number
-  /** G ÷ C, as a percent. */
+  /**
+   * The work in place, as a percent of C: what the trade claims on the line. With nothing stored
+   * it is G ÷ C; with materials stored, the form's G ÷ C column is toDate ÷ scheduled.
+   */
   pct: number
   /** H: C − G. */
   balance: number
@@ -107,22 +115,26 @@ function pctBefore(sow: Sow, sovId: string, number: number): number {
  * from the draws before it; `toPct` is what this one claims per line (a past draw passes its own
  * lines, a new one passes the trade's draft). A line cannot go below what was billed before.
  * A final application releases the retainage: nothing is held, so line 8 is what was held before.
+ * `stored` is the materials on site per line, in dollars (column F), never more than the line
+ * has left once the work in place is counted. Retainage is held on G, completed and stored.
  */
-export function payApplication(sow: Sow, number: number, toPct: Record<string, number>, final = false): PayApplication {
+export function payApplication(sow: Sow, number: number, toPct: Record<string, number>, final = false, stored: Record<string, number> = {}): PayApplication {
   const rate = final ? 0 : sow.retainagePct / 100
   const lines: PayAppLine[] = sow.sov.map((l, i) => {
     const before = pctBefore(sow, l.id, number)
     const now = Math.max(before, Math.min(100, toPct[l.id] ?? before))
     const fromPrevious = (l.amount * before) / 100
-    const toDate = (l.amount * now) / 100
+    const work = (l.amount * now) / 100
+    const onSite = final ? 0 : Math.max(0, Math.min(l.amount - work, Math.round(stored[l.id] ?? 0)))
+    const toDate = work + onSite
     return {
       item: i + 1,
       sovId: l.id,
       label: l.label,
       scheduled: l.amount,
       fromPrevious,
-      thisPeriod: toDate - fromPrevious,
-      stored: 0,
+      thisPeriod: work - fromPrevious,
+      stored: onSite,
       toDate,
       pct: now,
       balance: l.amount - toDate,
@@ -176,7 +188,34 @@ export function payAppDraftPcts(sow: Sow): Record<string, number> {
 export function payApplicationForDraw(sow: Sow, draw: Draw): PayApplication {
   // The form is what the trade sent: a draw approved for less keeps what they asked in `asked`.
   const lines = draw.asked?.lines ?? draw.lines
-  return payApplication(sow, draw.number, Object.fromEntries(lines.map((l) => [l.sovId, l.toPct])), draw.final === true)
+  return payApplication(sow, draw.number, Object.fromEntries(lines.map((l) => [l.sovId, l.toPct])), draw.final === true, storedOf(lines))
+}
+
+/** A draw's stored materials by line. */
+export function storedOf(lines: { sovId: string; stored?: number }[]): Record<string, number> {
+  return Object.fromEntries(lines.filter((l) => (l.stored ?? 0) > 0).map((l) => [l.sovId, l.stored ?? 0]))
+}
+
+/** What was stored on site on the application before `number`: F is a balance, so only the last one counts. */
+export function storedBefore(sow: Sow, number: number): number {
+  const prev = [...sow.draws].filter((d) => d.number < number).sort((a, b) => b.number - a.number)[0]
+  return prev ? prev.lines.reduce((s, l) => s + (l.stored ?? 0), 0) : 0
+}
+
+/**
+ * A draw's money from its application: the work this period plus the change in what is stored
+ * on site, less retainage on it. Stored that gets built comes out of F as it goes into E, so it is
+ * never paid twice.
+ */
+export function drawMoney(sow: Sow, app: PayApplication): { gross: number; retainage: number; net: number } {
+  const gross = app.totals.thisPeriod + app.totals.stored - storedBefore(sow, app.number)
+  const retainage = (gross * sow.retainagePct) / 100
+  return { gross, retainage, net: gross - retainage }
+}
+
+/** The lines a draw keeps: each with work this period or materials stored. */
+export function drawLinesOf(app: PayApplication): { sovId: string; toPct: number; stored?: number }[] {
+  return app.lines.filter((l) => l.thisPeriod > 0 || l.stored > 0).map((l) => ({ sovId: l.sovId, toPct: l.pct, ...(l.stored > 0 ? { stored: l.stored } : {}) }))
 }
 
 /**
@@ -185,15 +224,9 @@ export function payApplicationForDraw(sow: Sow, draw: Draw): PayApplication {
  */
 export function drawApprovedLess(sow: Sow, draw: Draw, weApprove: Record<string, number>): Pick<Draw, 'lines' | 'gross' | 'retainage' | 'net'> {
   const toPct = Object.fromEntries(draw.lines.map((l) => [l.sovId, Math.min(l.toPct, weApprove[l.sovId] ?? l.toPct)]))
-  const app = payApplication(sow, draw.number, toPct)
-  const gross = app.totals.thisPeriod
-  const retainage = (gross * sow.retainagePct) / 100
-  return {
-    lines: app.lines.filter((l) => l.thisPeriod > 0).map((l) => ({ sovId: l.sovId, toPct: l.pct })),
-    gross,
-    retainage,
-    net: gross - retainage,
-  }
+  // Materials stored stay as asked (question 12's first cut); only the work is approved less.
+  const app = payApplication(sow, draw.number, toPct, false, storedOf(draw.lines))
+  return { lines: drawLinesOf(app), ...drawMoney(sow, app) }
 }
 
 /** The final pay application a trade can send now: the next number, every line at 100%. */
@@ -243,6 +276,7 @@ export function newPayAppDraft(sow: Sow, partner: Partner): PayAppInput {
     signedBy: known.signedBy,
     signedTitle: '',
     waiverSigned: false,
+    stored: {},
   }
 }
 
@@ -333,6 +367,7 @@ export function resendPayAppDraft(sow: Sow, partner: Partner, back: DrawSentBack
     signedBy: typed?.signedBy || known.signedBy,
     signedTitle: typed?.signedTitle ?? '',
     waiverSigned: false,
+    stored: storedOf(back.draw.lines),
   }
 }
 

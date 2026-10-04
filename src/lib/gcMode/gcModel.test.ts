@@ -575,6 +575,22 @@ const STEPS: Step[] = [
     label: 'Cool Breeze sends the controls drawings',
     action: { type: 'tradeSendSubmittal', projectId: 'fairoaksd', submittalId: 'fairoaksd-sub-4', file: 'CBM-controls.pdf', note: 'Sequence of operations included.' },
   },
+  // Materials stored on site (Building lane, question 12): the rooftop units are on site, not set.
+  {
+    label: 'Cool Breeze asks for pay application 2, the rooftop units stored on site',
+    action: {
+      type: 'tradeSendPayApp',
+      projectId: 'fairoaksd',
+      packageId: 'fhvac',
+      toPct: { 'fhvac-2': 100 },
+      stored: { 'fhvac-1': 36_000 },
+      periodTo: '2026-10-02',
+      address: '1188 Culebra Rd, San Antonio, TX 78201',
+      license: '',
+      signedBy: 'Marco Ruiz',
+      signedTitle: 'Owner',
+    },
+  },
 ]
 
 const CUSTOMER_IDS = ['cibolo', 'raman']

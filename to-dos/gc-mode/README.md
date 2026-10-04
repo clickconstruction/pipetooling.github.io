@@ -588,7 +588,12 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
 12. ~~The pay application leaves out the notary block and materials stored on site (column F
     reads $0). Which of these do our trades need? Should it download as the AIA Excel template or
     a PDF?~~ Answered 2026-10-04: **both the notary block and materials stored on site, and it
-    downloads as both** the AIA Excel template the Jobs Stages tab fills and a PDF.
+    downloads as both** the AIA Excel template the Jobs Stages tab fills and a PDF. Materials
+    stored on site are built (Building lane, 2026-10-04): the trade enters what is on site per line
+    on its pay application; it is column F and counts in G and line 4, with retainage held on it;
+    the draw keeps it, and once it is built it moves from F into E and is never paid twice
+    (`payApplication`'s `stored`, `drawMoney`). The Excel, the PDF and the notary block are one
+    shared builder (the Owner Billing lane's `gcPayAppFile.ts`).
 13. ~~On the owner's bill, do our general conditions, contingency and fee show as lines of their
     own, or spread into each trade's line so the owner never sees the fee?~~ Answered: spread
     into the trades (see *Decided by the owner*).

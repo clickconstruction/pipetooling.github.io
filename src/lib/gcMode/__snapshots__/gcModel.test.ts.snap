@@ -8187,6 +8187,24 @@ exports[`GC mode golden walk > step 158: Cool Breeze sends the controls drawings
 }
 `;
 
+exports[`GC mode golden walk > step 159: Cool Breeze asks for pay application 2, the rooftop units stored on site 1`] = `
+{
+  "changed": {
+    "lastLog.id": 155,
+    "lastLog.text": "Cool Breeze Mechanical sent pay application 2 on HVAC: $57,600, with a conditional waiver signed.",
+    "projects.fairoaksd.stageProgress.also[0]": "The schedule: 2 days behind the plan, 72% done where 76% was planned. Dry-in is 7 days late. Next: Substantial completion, Dec 11. 3 look-ahead marks wait on our superintendent.",
+    "projects.fairoaksd.stageProgress.also[6]": "Cool Breeze Mechanical asked for draw 2. Approve it.",
+    "projects.fairoaksd.stageProgress.also[7]": "Submittal 23 09 23-01, Controls, from Cool Breeze Mechanical waits on us. It is needed by Oct 23.",
+    "projects.fairoaksd.stageProgress.also[8]": "Submittal 26 56 00-01, Site lighting fixtures, from Pecan Valley Electric is 4 days late. They have not sent it yet.",
+    "projects.fairoaksd.stageProgress.center": "75%",
+    "projects.fairoaksd.stageProgress.groups[0].items[6].detail": "34% reported",
+    "projects.fairoaksd.stageProgress.headline": "75% of the work is done, by what the trades and our own crew have reported.",
+    "projects.fairoaksd.stageProgress.share": 0.7510673234811166,
+  },
+  "removed": [],
+}
+`;
+
 exports[`GC mode golden walk > the whole state at the end 1`] = `
 {
   "customers": [
@@ -8387,6 +8405,11 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
+      "id": 155,
+      "text": "Cool Breeze Mechanical sent pay application 2 on HVAC: $57,600, with a conditional waiver signed.",
+      "who": "trade",
+    },
+    {
       "id": 154,
       "text": "Cool Breeze Mechanical sent submittal 23 09 23-01, Controls.",
       "who": "trade",
@@ -8530,11 +8553,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "id": 126,
       "text": "Guadalupe Flatwork fixed a punch item on Concrete: Patch the spalled corner on the column footing.",
       "who": "trade",
-    },
-    {
-      "id": 125,
-      "text": "Punch list, Concrete: Grind the trip edge at the sidewalk joint, East entry. Guadalupe Flatwork fixes it in their portal.",
-      "who": "office",
     },
   ],
   "partners": [
@@ -12827,6 +12845,35 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
                 "status": "paid",
                 "waiver": "unconditional",
               },
+              {
+                "gross": 57600,
+                "id": "fhvac-draw-2",
+                "lines": [
+                  {
+                    "sovId": "fhvac-1",
+                    "stored": 36000,
+                    "toPct": 0,
+                  },
+                  {
+                    "sovId": "fhvac-2",
+                    "toPct": 100,
+                  },
+                ],
+                "net": 51840,
+                "number": 2,
+                "payApp": {
+                  "address": "1188 Culebra Rd, San Antonio, TX 78201",
+                  "license": "",
+                  "periodTo": "2026-10-02",
+                  "signedBy": "Marco Ruiz",
+                  "signedOn": "2026-10-02",
+                  "signedTitle": "Owner",
+                },
+                "requestedOn": "2026-10-02",
+                "retainage": 5760,
+                "status": "requested",
+                "waiver": "conditional",
+              },
             ],
             "price": 158000,
             "retainagePct": 10,
@@ -12844,7 +12891,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
                 "id": "fhvac-2",
                 "label": "Ductwork",
                 "pctBilled": 60,
-                "pctReported": 80,
+                "pctReported": 100,
               },
               {
                 "amount": 18000,
