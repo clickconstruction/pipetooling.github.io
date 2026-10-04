@@ -16,6 +16,12 @@ import {
   SAMPLE_SPEC_INDEX,
   SPEC_DIVISIONS,
   usualScope,
+  usualExcludes,
+  inSentence,
+  scopeGaps,
+  BY_NOT_A_TRADE,
+  type ScopeExclusion,
+  type ScopeGap,
   guessLineSheets,
   answerRecord,
   budgetFromSize,
@@ -71,6 +77,7 @@ interface TradeEdit {
   ours?: boolean
   budget?: string
   scope?: ScopeLineDraft[]
+  excludes?: ScopeExclusion[]
 }
 
 interface TradeRow {
@@ -84,6 +91,8 @@ interface TradeRow {
   budget: string
   scope: ScopeLineDraft[]
   scopeEdited: boolean
+  /** Work the trade's quote leaves out, and who does it instead. */
+  excludes: ScopeExclusion[]
 }
 
 function budgetNumber(text: string): number {
@@ -163,6 +172,7 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
           budget: e.budget ?? '',
           scope: e.scope ?? usualLines(trade),
           scopeEdited: e.scope !== undefined,
+          excludes: e.excludes ?? usualExcludes(trade),
         }
       })
       .sort((a, b) => tradeOrder(a.trade) - tradeOrder(b.trade))
@@ -201,9 +211,12 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
         scope: r.scope.map((l) => l.label),
         scopeSheets: r.scope.map((l) => l.sheets ?? guessLineSheets(l.label, own)),
         ...(specReading.sections.length > 0 ? { scopeSpecs: r.scope.map((l) => l.specs ?? guessLineSpecs(l.label, ownSpecs)) } : {}),
+        ...(r.excludes.some((x) => x.label.trim() !== '') ? { excludes: r.excludes } : {}),
       }
     }),
   }
+  /** What one trade leaves out that nobody picks up. */
+  const gaps = scopeGaps(picked.map((r) => ({ trade: r.trade, scope: r.scope.map((l) => l.label), excludes: r.excludes })))
 
   const missing: string[] = []
   if (draft.name === '') missing.push('Give the project a name.')
@@ -225,7 +238,7 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
       specReading.sections.length > 0 ? `, ${specReading.sections.length} ${specReading.sections.length === 1 ? 'section' : 'sections'}` : ''
     }`,
     `${picked.length} ${picked.length === 1 ? 'trade' : 'trades'}${ours > 0 ? `, ${ours} ours` : ''}`,
-    `${scopeLines} scope ${scopeLines === 1 ? 'line' : 'lines'}`,
+    `${scopeLines} scope ${scopeLines === 1 ? 'line' : 'lines'}${gaps.length > 0 ? `, ${gaps.length} ${gaps.length === 1 ? 'gap' : 'gaps'}` : ''}`,
     asked === 0 ? 'Nobody asked yet' : `${asked} ${asked === 1 ? 'company' : 'companies'} asked`,
   ]
 
@@ -674,6 +687,7 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
                           <span style={{ flex: roomy ? 1 : undefined, fontWeight: active ? 600 : 400 }}>{r.trade}</span>
                           {r.ours && <Chip tone="violet">ours</Chip>}
                           {r.scopeEdited && <Chip tone="blue">changed</Chip>}
+                          {gaps.some((g) => g.trade === r.trade || g.by === r.trade) && <Chip tone="amber">gap</Chip>}
                           <span style={{ color: n === 0 ? 'var(--text-red-700)' : 'var(--text-muted)', fontSize: '0.8rem', fontVariantNumeric: 'tabular-nums' }}>{n}</span>
                         </button>
                       )
@@ -687,6 +701,14 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
                       specs={specReading.sections}
                       onChange={(scope) => edit(shown.trade, { scope })}
                       onReset={() => edit(shown.trade, { scope: undefined })}
+                      trades={picked.map((r) => r.trade)}
+                      gaps={gaps.filter((g) => g.trade === shown.trade || g.by === shown.trade)}
+                      onExcludes={(excludes) => edit(shown.trade, { excludes })}
+                      onAddLine={(trade, label) => {
+                        const to = rows.find((r) => r.trade === trade)
+                        if (to) edit(trade, { scope: [...to.scope, { label, sheets: null }] })
+                      }}
+                      onAddTrade={addTrade}
                       next={picked[picked.indexOf(shown) + 1]?.trade ?? null}
                       onNext={setScopeFor}
                     />
@@ -729,7 +751,7 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
                     </div>
                     {lineup.length === 0 ? (
                       <div style={{ padding: '0.4rem 0.7rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                        No company in the directory does {pkg.trade.toLowerCase()} yet. Add one on Trade partners after you create the project.
+                        No company in the directory does {inSentence(pkg.trade)} yet. Add one on Trade partners after you create the project.
                       </div>
                     ) : (
                       lineup.map((row) => {
@@ -807,6 +829,11 @@ function ScopeEditor({
   onReset,
   next,
   onNext,
+  trades,
+  gaps,
+  onExcludes,
+  onAddLine,
+  onAddTrade,
 }: {
   row: TradeRow
   sheets: PlanSheet[]
@@ -815,6 +842,13 @@ function ScopeEditor({
   onReset: () => void
   next: string | null
   onNext: (trade: string) => void
+  /** The trades on the project, for who does what this one leaves out. */
+  trades: string[]
+  /** The gaps this trade is part of: what it leaves out that nobody picks up, and what others leave to it. */
+  gaps: ScopeGap[]
+  onExcludes: (excludes: ScopeExclusion[]) => void
+  onAddLine: (trade: string, label: string) => void
+  onAddTrade: (trade: string) => void
 }) {
   return (
     <div style={{ flex: '1 1 auto', border: '1px solid var(--border)', borderRadius: 8, padding: '0.7rem 0.8rem', display: 'grid', gap: '0.45rem', minWidth: 0 }}>
@@ -841,6 +875,78 @@ function ScopeEditor({
         <span style={{ flex: 1 }} />
         {next && <Btn kind="quiet" onClick={() => onNext(next)}>Next trade: {next} →</Btn>}
       </ScopeLines>
+      <Excludes trade={row.trade} excludes={row.excludes} trades={trades} onChange={onExcludes} />
+      {gaps.length > 0 && (
+        <div style={{ display: 'grid', gap: '0.35rem', padding: '0.5rem 0.65rem', borderRadius: 8, background: 'var(--bg-amber-tint)', fontSize: '0.85rem' }}>
+          <strong>Gaps between the trades</strong>
+          {gaps.map((g) => (
+            <div key={`${g.trade}-${g.label}`} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+              <span style={{ flex: '1 1 16rem', minWidth: 0 }}>
+                {g.problem === 'not on the job'
+                  ? `${g.trade} leaves out ${inSentence(g.label)} for ${g.by}. ${g.by} is not on this job.`
+                  : `${g.trade} leaves out ${inSentence(g.label)} for ${g.by}. The ${g.by} scope does not list it.`}
+              </span>
+              {g.problem === 'not on the job' ? (
+                <Btn kind="quiet" onClick={() => onAddTrade(g.by)}>Add {g.by}</Btn>
+              ) : (
+                <Btn kind="quiet" onClick={() => onAddLine(g.by, g.label)}>Add it to {g.by}</Btn>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/**
+ * What a trade's quote leaves out, each with who does it instead: another trade, the owner or us.
+ * The usual ones come in from the trade's list; the office changes them.
+ */
+function Excludes({ trade, excludes, trades, onChange }: { trade: string; excludes: ScopeExclusion[]; trades: string[]; onChange: (excludes: ScopeExclusion[]) => void }) {
+  const set = (i: number, patch: Partial<ScopeExclusion>) => onChange(excludes.map((x, j) => (j === i ? { ...x, ...patch } : x)))
+  const others = trades.filter((t) => t !== trade)
+  return (
+    <div style={{ display: 'grid', gap: '0.3rem', borderTop: '1px solid var(--border)', paddingTop: '0.5rem' }}>
+      <strong style={{ fontSize: '0.9rem' }}>Not in this trade</strong>
+      <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+        Work this trade's quote leaves out, and who does it instead. Each company sees this list when it quotes.
+      </span>
+      {excludes.map((x, i) => (
+        <div key={i} style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <input
+            style={{ ...input, flex: '1 1 12rem', minWidth: 0 }}
+            value={x.label}
+            onChange={(e) => set(i, { label: e.target.value })}
+            placeholder="Gas piping"
+            aria-label={`What ${trade} leaves out`}
+          />
+          <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>by</span>
+          <select style={{ ...input, flex: '0 1 12rem', minWidth: 0 }} value={x.by} onChange={(e) => set(i, { by: e.target.value })} aria-label={`Who does ${x.label || 'it'} instead`}>
+            {[...others, ...(others.includes(x.by) || BY_NOT_A_TRADE.includes(x.by) ? [] : [x.by])].map((t) => (
+              <option key={t} value={t}>
+                {others.includes(t) ? t : `${t} (not on this job)`}
+              </option>
+            ))}
+            {BY_NOT_A_TRADE.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={() => onChange(excludes.filter((_, j) => j !== i))}
+            aria-label={`Take ${x.label || 'this'} off the list`}
+            style={{ border: 'none', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1rem', padding: '0 0.3rem' }}
+          >
+            ×
+          </button>
+        </div>
+      ))}
+      <div>
+        <Btn kind="quiet" onClick={() => onChange([...excludes, { label: '', by: BY_NOT_A_TRADE[0] ?? 'the owner' }])}>+ Something it leaves out</Btn>
+      </div>
     </div>
   )
 }
@@ -918,7 +1024,7 @@ export function ScopeLines({
               aria-label={`${trade} line ${i + 1}`}
             />
             <span style={{ display: 'inline-flex', gap: '0.25rem', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', flex: '0 1 14rem' }}>
-              {on.length === 0 && <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>all {trade.toLowerCase()} sheets</span>}
+              {on.length === 0 && <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>all {inSentence(trade)} sheets</span>}
               {on.map((id) => (
                 <span
                   key={id}

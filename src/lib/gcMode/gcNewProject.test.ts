@@ -18,6 +18,9 @@ import {
   buildNewProject,
   changeOrderFromSet,
   changeOrderTakingTheDays,
+  projectScopeGaps,
+  scopeGaps,
+  usualExcludes,
   defaultAsks,
   lineStage,
   ownBidPriced,
@@ -564,5 +567,43 @@ describe('a whole new set on a project with a manual', () => {
     expect(s.gone).toHaveLength(1)
     expect(s.added.map((x) => x.id)).toEqual(['09 30 13'])
     expect(s.renamed).toEqual([])
+  })
+})
+
+describe('what a trade leaves out, and the gaps between the trades', () => {
+  const trades = ['Sitework', 'Roofing', 'Plumbing', 'HVAC', 'Electrical'].map((trade) => ({ trade, scope: usualScope(trade), excludes: usualExcludes(trade) }))
+
+  it('starts each trade from what its quote usually leaves out', () => {
+    expect(usualExcludes('Plumbing')).toEqual([
+      { label: 'Gas piping', by: 'HVAC' },
+      { label: 'Utilities past 5 ft of the building', by: 'Sitework' },
+    ])
+    expect(usualExcludes('Painting')).toEqual([])
+  })
+
+  it('finds what one trade leaves to another that the other does not list, and skips the owner and us', () => {
+    // Gas piping is left to HVAC, which does not list it. Power wiring is left to Electrical, which does not either.
+    // Utilities past 5 ft land on Sitework's utilities line, control wiring on HVAC's controls, low voltage on the owner.
+    expect(scopeGaps(trades)).toEqual([
+      { trade: 'Plumbing', label: 'Gas piping', by: 'HVAC', problem: 'not in their scope' },
+      { trade: 'HVAC', label: 'Power wiring to the units', by: 'Electrical', problem: 'not in their scope' },
+    ])
+  })
+
+  it('names a gap left to a trade the job does not have, and closes one once the line is added', () => {
+    const noRoof = trades.filter((t) => t.trade !== 'Roofing')
+    expect(scopeGaps(noRoof)).toContainEqual({ trade: 'HVAC', label: 'Flashing at the roof curbs', by: 'Roofing', problem: 'not on the job' })
+    const fixed = trades.map((t) => (t.trade === 'HVAC' ? { ...t, scope: [...t.scope, 'Gas piping'] } : t))
+    expect(scopeGaps(fixed).map((g) => g.label)).toEqual(['Power wiring to the units'])
+  })
+
+  it('keeps what each trade leaves out on its package, and reads the gaps back from the project', () => {
+    const { project } = buildNewProject(
+      initialGcState(),
+      draft({ trades: trades.map((t) => ({ trade: t.trade, budget: 0, ours: false, scope: t.scope, excludes: [...t.excludes, { label: '  ', by: 'the owner' }] })) }),
+    )
+    expect(project.packages.find((p) => p.trade === 'Plumbing')?.excludes).toEqual(usualExcludes('Plumbing'))
+    expect(project.packages.find((p) => p.trade === 'Sitework')?.excludes).toBeUndefined()
+    expect(projectScopeGaps(project)).toHaveLength(2)
   })
 })

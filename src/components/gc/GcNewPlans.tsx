@@ -46,6 +46,8 @@ import {
   withTradesInOrder,
   type SpecSection,
   usualScope,
+  usualExcludes,
+  inSentence,
   type GcAction,
   type GcProject,
   type GcState,
@@ -330,6 +332,7 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
     scope: b.scope.map((l) => l.label),
     scopeSheets: b.scope.map((l) => l.sheets ?? guessLineSheets(l.label, sheetsOfTrade(b.trade))),
     ...(specs.length > 0 ? { scopeSpecs: b.scope.map((l) => l.specs ?? guessLineSpecs(l.label, specsOfTrade(b.trade))) } : {}),
+    ...(usualExcludes(b.trade).length > 0 ? { excludes: usualExcludes(b.trade) } : {}),
   }))
   const coTrades =
     project.stage === 'pursuing'
@@ -726,7 +729,7 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
                           {adding.map((l, i) => (
                             <span
                               key={`${l}-${i}`}
-                              title={reads.length > 0 ? `Reads from ${reads.join(', ')}` : `Reads every ${p.trade.toLowerCase()} sheet`}
+                              title={reads.length > 0 ? `Reads from ${reads.join(', ')}` : `Reads every ${inSentence(p.trade)} sheet`}
                               style={{ display: 'inline-flex', alignItems: 'center', gap: '0.15rem', padding: '0.1rem 0.15rem 0.1rem 0.5rem', borderRadius: 999, background: 'var(--bg-blue-200)', color: 'var(--text-blue-800)', fontSize: '0.75rem', fontWeight: 600 }}
                             >
                               new: {l}
@@ -801,7 +804,7 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
                               style={{ ...input, flex: '1 1 12rem', minWidth: 0, maxWidth: '100%' }}
                             >
                               <option value="">Leave it as it is</option>
-                              <option value="whole">Every {trade.toLowerCase()} {kindOf === 'sheets' ? 'sheet' : 'section'}</option>
+                              <option value="whole">Every {inSentence(trade)} {kindOf === 'sheets' ? 'sheet' : 'section'}</option>
                               {choices.map((x) => (
                                 <option key={x.id} value={x.id}>
                                   {x.id} {x.title}
@@ -890,7 +893,7 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
               )}
               {ours.length > 0 && (
                 <div style={{ padding: '0.4rem 0.6rem', background: 'var(--bg-violet-100)', color: 'var(--text-violet-800)', borderRadius: 6 }}>
-                  This changes {ours.map((p) => p.trade.toLowerCase()).join(' and ')}, which is ours. Check {ours.map((p) => p.selfPerform?.ref).join(', ')} against the new set.
+                  This changes {ours.map((p) => inSentence(p.trade)).join(' and ')}, which is ours. Check {ours.map((p) => p.selfPerform?.ref).join(', ')} against the new set.
                 </div>
               )}
 
@@ -917,7 +920,7 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
                 </div>
                 {suggested.length > 0 && (
                   <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap', padding: '0.4rem 0.6rem', borderRadius: 6, background: 'var(--bg-blue-tint)' }}>
-                    The {specIds.length > 0 ? 'plans' : 'sheets'} point at {suggested.map((g) => g.trade.toLowerCase()).join(' and ')}, which the job does not have.
+                    The {specIds.length > 0 ? 'plans' : 'sheets'} point at {suggested.map((g) => inSentence(g.trade)).join(' and ')}, which the job does not have.
                     {suggested.map((g) => (
                       <Btn key={g.trade} kind="quiet" onClick={() => bring(g.trade)}>Add {g.trade}</Btn>
                     ))}
@@ -1024,7 +1027,7 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
             />
             {brought.length > 0 && (
               <div style={{ marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--text-600)' }}>
-                Nobody is asked to quote {brought.map((b) => b.trade.toLowerCase()).join(' or ')} yet. Ask companies on Trades after you issue the set.
+                Nobody is asked to quote {brought.map((b) => inSentence(b.trade)).join(' or ')} yet. Ask companies on Trades after you issue the set.
               </div>
             )}
             {everyone.length === 0 ? (

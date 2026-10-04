@@ -44,6 +44,12 @@ export interface PlanSheet {
   title: string
 }
 
+/** Work a trade's quote leaves out, and who does it instead: another trade, "the owner" or "us". */
+export interface ScopeExclusion {
+  label: string
+  by: string
+}
+
 /** One section of the project manual (the specs): its number, like "09 91 23", and its title. */
 export interface SpecSection {
   id: string
@@ -211,6 +217,8 @@ export interface TradePackage {
   carried: string | null
   awardedInviteId: string | null
   sow: Sow | null
+  /** Work this trade's quote leaves out, and who does it instead. Missing: none said. */
+  excludes?: ScopeExclusion[]
 }
 
 /** A place a company drives from, or a project sits in. The real build reads the app's geocoded addresses. */
@@ -640,6 +648,8 @@ export interface NewTradeDraft {
   scopeSheets?: string[][]
   /** The sections of the project manual each scope line reads from, in the order of `scope`. */
   scopeSpecs?: string[][]
+  /** Work the trade's quote leaves out, and who does it instead. */
+  excludes?: ScopeExclusion[]
 }
 
 /** What the office fills in before a project exists. The reducer makes the project from it. */

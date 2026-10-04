@@ -4,7 +4,7 @@
  * starts from its usual scope. A later set of plans uses the same guess, and can bring a trade
  * the job did not have. Every guess here is a starting point the office changes.
  */
-import type { GcCustomer, GcProject, GcState, NewProjectDraft, NewTradeDraft, PlanSheet, ProjectSchedule, ScheduleActivity, ScheduleMilestone, ScopeItem, SpecSection, TradePackage } from './gcTypes'
+import type { GcCustomer, GcProject, GcState, NewProjectDraft, NewTradeDraft, PlanSheet, ProjectSchedule, ScheduleActivity, ScheduleMilestone, ScopeExclusion, ScopeItem, SpecSection, TradePackage } from './gcTypes'
 import { sheetDiscipline, sheetsAtRev } from './gcPlans'
 import { currentRev } from './gcLookups'
 import { tradeLineup } from './gcMap'
@@ -22,11 +22,19 @@ export interface TradeTemplate {
   words: string[]
   /** The usual scope: the first draft of the trade's scope on every new project. */
   scope: string[]
+  /** What the trade's quote usually leaves out, and who usually does it instead. */
+  excludes?: ScopeExclusion[]
 }
 
 export const TRADE_TEMPLATES: TradeTemplate[] = [
   { trade: 'Sitework', disciplines: ['Civil'], words: [], scope: ['Clearing and grading', 'Utilities to 5 ft of the building', 'Paving', 'Striping and signs'] },
-  { trade: 'Landscaping', disciplines: ['Landscape'], words: ['landscape', 'irrigation'], scope: ['Planting', 'Irrigation', 'Sod and seed'] },
+  {
+    trade: 'Landscaping',
+    disciplines: ['Landscape'],
+    words: ['landscape', 'irrigation'],
+    scope: ['Planting', 'Irrigation', 'Sod and seed'],
+    excludes: [{ label: 'Irrigation sleeves under paving', by: 'Sitework' }],
+  },
   { trade: 'Concrete', disciplines: ['Structural'], words: ['foundation', 'slab'], scope: ['Foundations', 'Slab on grade', 'Sidewalks and curbs', 'Rebar supply'] },
   { trade: 'Masonry', disciplines: [], words: ['masonry', 'cmu', 'brick'], scope: ['Block walls', 'Brick veneer', 'Grout and reinforcing'] },
   { trade: 'Structural steel', disciplines: [], words: ['steel', 'framing plan', 'joist'], scope: ['Structural steel', 'Joists and deck', 'Erection'] },
@@ -37,10 +45,43 @@ export const TRADE_TEMPLATES: TradeTemplate[] = [
   { trade: 'Painting', disciplines: [], words: ['finish', 'paint'], scope: ['Interior paint', 'Exterior paint'] },
   { trade: 'Flooring', disciplines: [], words: ['finish', 'flooring'], scope: ['Tile', 'Carpet and vinyl plank', 'Base'] },
   { trade: 'Millwork', disciplines: [], words: ['millwork', 'casework', 'cabinet'], scope: ['Cabinets', 'Countertops', 'Install'] },
-  { trade: 'Fire sprinkler', disciplines: ['Fire protection'], words: ['sprinkler'], scope: ['Design and permit', 'Mains and branch lines', 'Heads and trim'] },
-  { trade: 'Plumbing', disciplines: ['Plumbing'], words: [], scope: ['Underground', 'Rough in', 'Top out', 'Trim'] },
-  { trade: 'HVAC', disciplines: ['Mechanical'], words: ['hvac'], scope: ['Equipment', 'Ductwork', 'Controls', 'Test and balance'] },
-  { trade: 'Electrical', disciplines: ['Electrical', 'Technology'], words: [], scope: ['Service and gear', 'Panels and feeders', 'Lighting', 'Devices', 'Fire alarm'] },
+  {
+    trade: 'Fire sprinkler',
+    disciplines: ['Fire protection'],
+    words: ['sprinkler'],
+    scope: ['Design and permit', 'Mains and branch lines', 'Heads and trim'],
+    excludes: [{ label: 'Fire alarm tie-in', by: 'Electrical' }],
+  },
+  {
+    trade: 'Plumbing',
+    disciplines: ['Plumbing'],
+    words: [],
+    scope: ['Underground', 'Rough in', 'Top out', 'Trim'],
+    excludes: [
+      { label: 'Gas piping', by: 'HVAC' },
+      { label: 'Utilities past 5 ft of the building', by: 'Sitework' },
+    ],
+  },
+  {
+    trade: 'HVAC',
+    disciplines: ['Mechanical'],
+    words: ['hvac'],
+    scope: ['Equipment', 'Ductwork', 'Controls', 'Test and balance'],
+    excludes: [
+      { label: 'Power wiring to the units', by: 'Electrical' },
+      { label: 'Flashing at the roof curbs', by: 'Roofing' },
+    ],
+  },
+  {
+    trade: 'Electrical',
+    disciplines: ['Electrical', 'Technology'],
+    words: [],
+    scope: ['Service and gear', 'Panels and feeders', 'Lighting', 'Devices', 'Fire alarm'],
+    excludes: [
+      { label: 'Low voltage cabling', by: 'the owner' },
+      { label: 'Control wiring', by: 'HVAC' },
+    ],
+  },
 ]
 
 /**
@@ -221,6 +262,51 @@ export function linesOnSheets(project: GcProject, pkg: TradePackage, sheetIds: s
   return pkg.scope.filter((item) => lineReads(project, pkg, item, added).sheets.some((id) => sheetIds.includes(id)))
 }
 
+/** A name inside a sentence: its first letter lowered, unless it starts in capitals (HVAC, RTU curbs). */
+export function inSentence(text: string): string {
+  const t = text.trim()
+  return /^[A-Z][A-Z0-9]/.test(t) ? t : t.charAt(0).toLowerCase() + t.slice(1)
+}
+
+/** Who does excluded work when it is no trade on the job: the owner, or our own people. */
+export const BY_NOT_A_TRADE = ['the owner', 'us']
+
+/** What a trade's quote usually leaves out, and who usually does it. A trade not on the list leaves out nothing. */
+export function usualExcludes(trade: string): ScopeExclusion[] {
+  return (TRADE_TEMPLATES.find((t) => t.trade === trade)?.excludes ?? []).map((x) => ({ ...x }))
+}
+
+/** Something one trade leaves out that nobody picks up: the trade it is left to is not on the job, or its scope does not list it. */
+export interface ScopeGap {
+  trade: string
+  label: string
+  by: string
+  problem: 'not on the job' | 'not in their scope'
+}
+
+/**
+ * The gaps between the trades: each thing a trade leaves out for another trade must be on that
+ * trade's scope (a line sharing a word with it). Left to the owner or to us, it is no gap.
+ */
+export function scopeGaps(trades: { trade: string; scope: string[]; excludes?: ScopeExclusion[] }[]): ScopeGap[] {
+  const out: ScopeGap[] = []
+  for (const t of trades) {
+    for (const x of t.excludes ?? []) {
+      if (x.label.trim() === '' || BY_NOT_A_TRADE.includes(x.by)) continue
+      const other = trades.find((o) => o.trade.toLowerCase() === x.by.toLowerCase())
+      const want = new Set(stems(x.label))
+      if (!other) out.push({ trade: t.trade, label: x.label.trim(), by: x.by, problem: 'not on the job' })
+      else if (!other.scope.some((line) => stems(line).some((w) => want.has(w)))) out.push({ trade: t.trade, label: x.label.trim(), by: x.by, problem: 'not in their scope' })
+    }
+  }
+  return out
+}
+
+/** The gaps between a project's trades, read from its packages. */
+export function projectScopeGaps(project: GcProject): ScopeGap[] {
+  return scopeGaps(project.packages.map((p) => ({ trade: p.trade, scope: p.scope.map((l) => l.label), excludes: p.excludes })))
+}
+
 /** The usual scope for a trade. A trade not on the list starts empty. */
 export function usualScope(trade: string): string[] {
   return TRADE_TEMPLATES.find((t) => t.trade === trade)?.scope ?? []
@@ -298,6 +384,9 @@ export function packagesFromDrafts(projectId: string, drafts: NewTradeDraft[], t
         carried: t.ours ? 'self' : null,
         awardedInviteId: null,
         sow: null,
+        ...(t.excludes && t.excludes.some((x) => x.label.trim() !== '')
+          ? { excludes: t.excludes.filter((x) => x.label.trim() !== '').map((x) => ({ label: x.label.trim(), by: x.by })) }
+          : {}),
       }
     })
 }
