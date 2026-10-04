@@ -3,12 +3,15 @@
  * Render smoke for the job window's Documents tab (v2.4491): the job's saved pay applications
  * with the link to each sent file, the row's Open handing the AIA window that application, New
  * application handing it none, the list reloading when the window closes, and the job's folders.
- * Since v2.4495 the tab also lists the job's bills and test reports.
+ * Since v2.4495 the tab also lists the job's bills and test reports, and since v2.4496 its
+ * contract and lien paper.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { makeInvoice, makeJob, renderWithProviders } from '../../test/renderSmokeMocks'
 import type { TestReportDocumentRow } from '../../lib/jobsDocuments/testReportDocumentRow'
+import type { JobContractRow } from '../../lib/jobs/jobContractLifecycle'
+import type { JobLienPaper } from '../../lib/jobs/jobLienPaperRows'
 import { JobWindowDocumentsTab } from './JobWindowDocumentsTab'
 import { payApplicationWriteFromForm, savedPayApplicationFromRow, type PayApplicationRow, type SavedPayApplication } from '../../lib/aiaPayApplications'
 
@@ -45,6 +48,46 @@ vi.mock('./BilledBillViewModal', () => ({
 vi.mock('./HostedStripeBillPanel', () => ({ billingTypeLabel: () => 'Stripe' }))
 const pdfSpy = vi.fn((_inv: { id: string; job_id: string }, _cb: unknown) => Promise.resolve(true))
 vi.mock('../../lib/openBilledInvoicePdf', () => ({ openBilledInvoicePdfInNewTab: (inv: { id: string; job_id: string }, cb: unknown) => pdfSpy(inv, cb) }))
+
+vi.mock('../../hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'u1', email: 'office@example.com' }, role: 'dev', profileName: 'Dana Office' }) }))
+
+// Contract and lien paper: the rows the tab is given; their windows are stubs that say what they were handed.
+let contracts: JobContractRow[] = []
+let lienPaper: JobLienPaper = { filings: [], letters: [], releases: [] }
+vi.mock('../../lib/jobs/jobLienPaperIo', () => ({
+  loadJobContractRows: () => Promise.resolve(contracts),
+  loadJobLienPaper: () => Promise.resolve(lienPaper),
+}))
+vi.mock('./JobContractModal', () => ({
+  default: ({ open, onClose, initialRecordId }: { open: boolean; onClose: () => void; initialRecordId?: string | null }) =>
+    open ? (
+      <div data-testid="contract-window-stub">
+        contract window on {initialRecordId ?? 'no record'}
+        <button type="button" onClick={onClose}>
+          close contract
+        </button>
+      </div>
+    ) : null,
+}))
+vi.mock('./JobContractRecordModal', () => ({ buildJobContractRecordHtml: (row: { id: string }) => `<p>contract ${row.id}</p>` }))
+vi.mock('./LienInstrumentsModal', () => ({
+  default: ({ open, onClose, initialTab, signerNameFallback, authEmail }: { open: boolean; onClose: () => void; initialTab?: string; signerNameFallback: string; authEmail: string }) =>
+    open ? (
+      <div data-testid="lien-window-stub">
+        lien window on {initialTab} for {signerNameFallback} {authEmail}
+        <button type="button" onClick={onClose}>
+          close lien
+        </button>
+      </div>
+    ) : null,
+}))
+const previewSpy = vi.fn((_html: string) => true)
+const whenReadySpy = vi.fn((_build: () => Promise<string>) => Promise.resolve(true))
+vi.mock('../../lib/jobsDocuments/printWindow', () => ({
+  openHtmlPreviewWindow: (html: string) => previewSpy(html),
+  openHtmlWindowWhenReady: (build: () => Promise<string>) => whenReadySpy(build),
+}))
+vi.mock('../../lib/jobs/lienReleaseInk', () => ({ lienReleaseRowSignatureWithInk: () => Promise.resolve(null) }))
 
 // The AIA window has its own render test; here it is a stub that says what it was handed.
 vi.mock('./AiaG702G703Modal', () => ({
@@ -84,6 +127,10 @@ const job = makeJob({ id: 'job-1', google_drive_link: 'https://drive.google.com/
 beforeEach(() => {
   onJob = []
   reports = []
+  contracts = []
+  lienPaper = { filings: [], letters: [], releases: [] }
+  previewSpy.mockClear()
+  whenReadySpy.mockClear()
   loadSpy.mockClear()
   signedUrlSpy.mockClear()
   externalSpy.mockClear()
@@ -200,5 +247,70 @@ describe('JobWindowDocumentsTab', () => {
   it('says so when the job has no test report', async () => {
     renderWithProviders(<JobWindowDocumentsTab job={job} />)
     expect(await screen.findByText('No test report is on this job.')).toBeTruthy()
+  })
+
+  it('lists the job\'s contracts: a signed one opens the Contract window on its record, one only sent opens the page', async () => {
+    contracts = [
+      { id: 'con-1', job_id: 'job-1', status: 'sent', revision: 1, template_name: 'Service Agreement', signed_at: null, last_sent_at: '2026-09-10T15:00:00Z', voided_at: null, signed_document_url: null },
+      { id: 'con-2', job_id: 'job-1', status: 'signed', revision: 2, template_name: 'Service Agreement', signed_at: '2026-09-12T15:00:00Z', signer_mode: 'type', signer_printed_name: 'Pat Heron', last_sent_at: '2026-09-11T15:00:00Z', voided_at: null, signed_document_url: 'drive.google.com/file/d/signed' },
+    ] as unknown as JobContractRow[]
+    const escSpy = vi.fn()
+    renderWithProviders(<JobWindowDocumentsTab job={job} onOverlayOpenChange={escSpy} />)
+    const rows = await screen.findAllByTestId('job-documents-contract-row')
+    expect(rows).toHaveLength(2)
+    expect(rows[0]!.textContent).toContain('Service Agreementrev 1')
+    expect(rows[1]!.textContent).toContain('Service Agreementrev 2')
+    expect((screen.getByRole('link', { name: 'Signed copy' }) as HTMLAnchorElement).href).toBe('https://drive.google.com/file/d/signed')
+
+    const names = screen.getAllByRole('button', { name: 'Service Agreement' })
+    fireEvent.click(names[0]!)
+    expect(previewSpy).toHaveBeenCalledWith('<p>contract con-1</p>')
+    expect(screen.queryByTestId('contract-window-stub')).toBeNull()
+
+    fireEvent.click(names[1]!)
+    expect(screen.getByTestId('contract-window-stub').textContent).toContain('contract window on con-2')
+    expect(escSpy).toHaveBeenLastCalledWith(true)
+    fireEvent.click(screen.getByRole('button', { name: 'close contract' }))
+    expect(escSpy).toHaveBeenLastCalledWith(false)
+
+    // The heading's button opens the window with no record picked.
+    fireEvent.click(screen.getByRole('button', { name: 'Contract window' }))
+    expect(screen.getByTestId('contract-window-stub').textContent).toContain('contract window on no record')
+  })
+
+  it('lists the job\'s lien paper: a filing or a letter opens the Lien window on its tab, a release opens its page', async () => {
+    lienPaper = {
+      filings: [{ id: 'f1', job_id: 'job-1', kind: 'notice_53_056', amount: 4200, months_covered: [], recording_number: '', document_url: 'drive.google.com/file/d/notice', filed_at: null, served_at: '2026-09-14T15:00:00Z', serve_due: null, voided_at: null, created_at: '2026-09-14T00:00:00Z' }],
+      letters: [{ id: 'l1', job_id: 'job-1', amount: 4200, sent_at: '2026-09-30T16:00:00Z', sent_method: 'certified_mail', deadline_date: '2026-10-14', voided_at: null, created_at: '2026-09-30T00:00:00Z' }],
+      releases: [{ id: 'r1', job_id: 'job-1', form_type: 'conditional_progress', status: 'signed', amount: 17460, voided_at: null, created_at: '2026-10-05T00:00:00Z', fields: {}, invoice_ids: [] }],
+    } as unknown as JobLienPaper
+    const escSpy = vi.fn()
+    renderWithProviders(<JobWindowDocumentsTab job={job} onOverlayOpenChange={escSpy} />)
+    const rows = await screen.findAllByTestId('job-documents-lien-row')
+    expect(rows[0]!.textContent).toBe('§ 53.056 noticeServed 09/14/2026Saved copy$4,200.00')
+    expect(rows[1]!.textContent).toBe('Demand letterSent 09/30/2026 by certified mail · reply by 10/14/2026$4,200.00')
+    expect(rows[2]!.textContent).toContain('Release of lien')
+    expect(rows[2]!.textContent).toContain('$17,460.00')
+    expect((screen.getByRole('link', { name: 'Saved copy' }) as HTMLAnchorElement).href).toBe('https://drive.google.com/file/d/notice')
+
+    fireEvent.click(screen.getByRole('button', { name: '§ 53.056 notice' }))
+    expect(screen.getByTestId('lien-window-stub').textContent).toContain('lien window on notice for Dana Office office@example.com')
+    expect(escSpy).toHaveBeenLastCalledWith(true)
+    fireEvent.click(screen.getByRole('button', { name: 'close lien' }))
+    expect(escSpy).toHaveBeenLastCalledWith(false)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Demand letter' }))
+    expect(screen.getByTestId('lien-window-stub').textContent).toContain('lien window on demand')
+    fireEvent.click(screen.getByRole('button', { name: 'close lien' }))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Release of lien' }))
+    expect(whenReadySpy).toHaveBeenCalledTimes(1)
+    expect(screen.queryByTestId('lien-window-stub')).toBeNull()
+  })
+
+  it('says so when the job has no contract and no lien paper', async () => {
+    renderWithProviders(<JobWindowDocumentsTab job={job} />)
+    expect(await screen.findByText('No contract has been sent or signed on this job.')).toBeTruthy()
+    expect(await screen.findByText('No lien notice, demand letter or release is on this job.')).toBeTruthy()
   })
 })

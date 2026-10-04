@@ -8,11 +8,14 @@ import { loadPayApplications } from '../../lib/aiaPayApplicationsIo'
 import { jobDocumentFolderLinks } from '../../lib/jobs/jobDocumentsTab'
 import AiaG702G703Modal from './AiaG702G703Modal'
 import { JobDocumentsBills } from './JobDocumentsBills'
+import { JobDocumentsContract } from './JobDocumentsContract'
+import { JobDocumentsLienPaper } from './JobDocumentsLienPaper'
 import { JobDocumentsTestReports } from './JobDocumentsTestReports'
 
 /**
  * The job window's Documents tab (v2.4491): the job's pay applications, each with the link to the
- * file that was sent, then its bills and test reports (v2.4495), then the job's folders. A row
+ * file that was sent, then its bills, contract, test reports and lien paper (v2.4495, v2.4496),
+ * then the job's folders. A row
  * opens the AIA G702-G703 window on that application; the window sits above the job window and
  * the list reloads when it closes.
  */
@@ -136,7 +139,11 @@ export function JobWindowDocumentsTab({ job, onOverlayOpenChange }: { job: JobWi
 
       <JobDocumentsBills job={job} onOverlayOpenChange={onOverlayOpenChange} />
 
+      <JobDocumentsContract job={job} onOverlayOpenChange={onOverlayOpenChange} />
+
       <JobDocumentsTestReports job={job} />
+
+      <JobDocumentsLienPaper job={job} onOverlayOpenChange={onOverlayOpenChange} />
 
       <section aria-labelledby="job-documents-folders" style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
         <h3 id="job-documents-folders" style={heading}>
