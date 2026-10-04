@@ -12,7 +12,7 @@ export const GC_TOUR_STEPS: SpotlightTourStep[] = [
   {
     anchor: 'gc-board',
     title: 'How a job moves',
-    body: 'In GC mode we build the whole job. We hire a company for each trade. Every project moves through three stages, top to bottom. Each stage answers one question.',
+    body: 'In GC mode we build the whole job. We hire a company for each trade. Every project moves through three stages, top to bottom: Bidding to the owner, Buying out and Building. Bidding to the owner is where we price the job and try to win it. Buying out is where we pick one company per trade and get it all signed. Building is where the crews work and we pay them as the work gets done.',
   },
   {
     anchor: 'gc-stage-pursuing',
