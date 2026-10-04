@@ -62,7 +62,7 @@ export function GcOwnerBillingTab({ state, project, dispatch }: { state: GcState
     <div style={{ display: 'grid', gap: '0.5rem' }}>
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', flexWrap: 'wrap' }}>
         <Btn kind="quiet" onClick={() => setTheirs(theirs === 'owner' ? null : 'owner')}>
-          {theirs === 'owner' ? 'Hide what the owner sees' : 'See what the owner sees'}
+          {theirs === 'owner' ? 'Hide what the customer sees' : 'See what the customer sees'}
         </Btn>
         <Btn kind="quiet" onClick={() => setTheirs(theirs === 'architect' ? null : 'architect')}>
           {theirs === 'architect' ? 'Hide what the architect sees' : 'See what the architect sees'}
@@ -544,7 +544,7 @@ function SentRow({
   )
 }
 
-const WHO_WORDS: Record<OwnerCloseout['steps'][number]['who'], string> = { office: 'us', trades: 'the trades', architect: 'the architect', owner: 'the owner' }
+const WHO_WORDS: Record<OwnerCloseout['steps'][number]['who'], string> = { office: 'us', trades: 'the trades', architect: 'the architect', owner: 'the customer' }
 
 /** Our closeout with the owner, once every line is billed: what is left before they release what they hold. */
 function CloseoutCard({ project, closeout, onSendFinal }: { project: GcProject; closeout: OwnerCloseout; onSendFinal: () => void }) {
@@ -596,7 +596,7 @@ function CloseoutCard({ project, closeout, onSendFinal }: { project: GcProject; 
                       <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
                         {closeout.tradesWaiting.length > 0
                           ? 'It waits for every trade’s final pay application.'
-                          : 'It waits for the owner to accept the work.'}
+                          : 'It waits for the customer to accept the work.'}
                       </span>
                     )}
                   </div>

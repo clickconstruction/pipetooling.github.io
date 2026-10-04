@@ -72,7 +72,7 @@ export function GcOwnerBillingPortal({ state, project, dispatch }: { state: GcSt
     <div data-theme="light" style={{ background: PAPER, color: INK, border: `1px solid ${INK}`, borderRadius: 10, overflow: 'hidden' }}>
       <div style={{ background: INK, color: PAPER, padding: '0.7rem 0.9rem' }}>
         <div style={{ fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', opacity: 0.8 }}>
-          What the owner sees · their portal
+          What the customer sees · their portal
         </div>
         <div style={{ fontWeight: 700, marginTop: '0.15rem' }}>{project.owner}</div>
       </div>

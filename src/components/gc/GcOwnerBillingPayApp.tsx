@@ -199,7 +199,7 @@ export function OwnerPayAppWindow({
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(13rem, 1fr))', gap: '0.6rem 1.25rem' }}>
                 <div style={{ display: 'grid', gap: '0.45rem' }}>
-                  <Box name="To the owner">
+                  <Box name="To the customer">
                     {project.owner}
                     {customer ? (
                       <>
@@ -208,6 +208,7 @@ export function OwnerPayAppWindow({
                       </>
                     ) : null}
                   </Box>
+                  {project.propertyOwner && <Box name="Project owner">{project.propertyOwner}</Box>}
                   <Box name="From the contractor">{GC_COMPANY_NAME}</Box>
                   <Box name="Contract for">General construction, the whole job</Box>
                 </div>

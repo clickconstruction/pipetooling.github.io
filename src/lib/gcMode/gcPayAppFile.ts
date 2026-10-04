@@ -24,8 +24,10 @@ export interface PayAppParties {
   /** The day it went. Null: a draft. */
   sentOn: string | null
   contractDate: string | null
-  /** Who it goes to: the owner on ours, us on a trade's. */
+  /** Who it goes to: our customer on ours, us on a trade's. */
   to: { name: string; address: string }
+  /** The property's owner, when it is not the customer (`GcProject.propertyOwner`). */
+  propertyOwner?: string | null
   /** Who sends it: us on ours, the trade's company on theirs. */
   from: { name: string; address: string; license?: string }
   architect: string | null
@@ -125,6 +127,13 @@ export async function payAppWorkbook(template: ArrayBuffer, app: PayApplication,
   const g703 = wb.getWorksheet(AIA_G703_SHEET)
   if (!g702 || !g703) throw new Error('The pay application template is missing a sheet.')
   g702.getCell('H40').value = cells.previousCertificates
+  // The template says "TO OWNER": ours goes to the customer, who may be a GC or an owner's rep. The
+  // property's owner, when someone else, goes in the empty row under the project's lines.
+  g702.getCell('A5').value = 'TO CUSTOMER:'
+  if (parties.propertyOwner) {
+    g702.getCell('L8').value = 'PROJECT OWNER:'
+    g702.getCell('N8').value = parties.propertyOwner
+  }
   for (let row = PAY_APP_FIRST_ROW; row <= PAY_APP_LAST_ROW; row++) {
     const line = cells.rows.find((r) => r.row === row)
     const r = g703.getRow(row)
@@ -187,7 +196,7 @@ export async function payAppPdf(app: PayApplication, parties: PayAppParties): Pr
     text(label.toUpperCase(), x, y, { size: 7 })
     text(value, x, y + 11)
   }
-  pair('To the owner', `${parties.to.name}, ${parties.to.address}`, M)
+  pair('To the customer', `${parties.to.name}${parties.to.address ? `, ${parties.to.address}` : ''}`, M)
   pair('Application no.', parties.applicationNo, W - M - 200)
   y += 26
   pair('From the contractor', `${parties.from.name}${parties.from.address ? `, ${parties.from.address}` : ''}`, M)
@@ -196,6 +205,10 @@ export async function payAppPdf(app: PayApplication, parties: PayAppParties): Pr
   pair('Project', parties.project, M)
   pair('Contract date', parties.contractDate ? shortDate(parties.contractDate) : '', W - M - 200)
   y += 26
+  if (parties.propertyOwner) {
+    pair('Project owner', parties.propertyOwner, M)
+    y += 26
+  }
   if (parties.architect) {
     pair('Via architect', parties.architect, M)
     y += 26

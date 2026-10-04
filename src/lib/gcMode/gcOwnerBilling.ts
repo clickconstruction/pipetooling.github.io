@@ -625,7 +625,7 @@ export function ownerCloseout(state: GcState, project: GcProject): OwnerCloseout
     },
     {
       key: 'accepted',
-      label: 'The owner accepts the work',
+      label: 'The customer accepts the work',
       who: 'owner',
       done: acceptedOn !== null,
       detail: acceptedOn ? `Accepted ${shortDate(acceptedOn)}.` : 'They walk it and accept it in their portal.',
@@ -742,7 +742,7 @@ export function markupOnTop(lines: { id: string; worth: number }[]): number {
 // ---------------------------------------------------------------------------------------------
 
 export const CHANGE_ORDER_REASON_WORDS: Record<ChangeOrder['reason'], string> = {
-  owner: 'Owner directive',
+  owner: 'Customer directive',
   field: 'Field condition',
   plans: 'Plan revision',
 }
@@ -867,6 +867,7 @@ export function ownerPayAppParties(state: GcState, project: GcProject, form: Own
     sentOn: form.sentOn,
     contractDate: form.contractDate,
     to: { name: project.owner, address: customer?.address ?? '' },
+    propertyOwner: project.propertyOwner ?? null,
     from: { name: GC_COMPANY.name, address: GC_COMPANY.address },
     architect: project.architect || null,
     changeOrders: form.changeOrders.map((c) => ({ amount: c.price, thisPeriod: thisPeriod(signed.get(c.number)?.answeredOn ?? null) })),
