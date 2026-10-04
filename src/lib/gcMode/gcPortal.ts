@@ -16,6 +16,7 @@ import { pDate, pt, pWeekday, type PortalLang } from './gcPortalI18n'
 import { lineSheets, tradeSheets } from './gcNewProject'
 import { addDays, retainageHeldNow, sentBackOpen, sowContractSum, tradeChangesFor, tradeCloseout, workAllBilled } from './gcBuilding'
 import { lookAheadWeeks, markState, mondayOf, scheduleRows, type LookAheadState, type ScheduleRow } from './gcBuildingSchedule'
+import { punchItems, punchState } from './gcBuildingPunch'
 import { planLabel } from './gcLookups'
 
 /** What the plans block tells one company on one ask. */
@@ -143,6 +144,8 @@ export interface PortalTodo {
   tone: 'red' | 'amber' | 'plain'
   /** The day it is due by, for the order. */
   by: string | null
+  /** Where on the project page it lands: a block's data-portal-anchor. None: the top. */
+  anchor?: string
 }
 
 export interface PortalHome {
@@ -324,6 +327,22 @@ export function portalTodos(state: GcState, partnerId: string, asks: PortalAsk[]
       }
       if (sow.status === 'sent') {
         todos.push({ key: `${key}:sow`, projectId, text: pt(lang, 'todoSow', { trade, project }), tone: 'amber', by: null })
+      }
+      // The punch list (Building lane): what is still to fix holds up our accepting the work. Red once we checked one and it was not fixed.
+      const toFix = punchItems(a.project, a.pkg.id).filter((i) => punchState(i) === 'open')
+      if (toFix.length > 0) {
+        const back = toFix.filter((i) => i.sentBack).length
+        const n = toFix.length
+        const what = pt(lang, n === 1 ? 'todoPunch1' : 'todoPunchN', { n, trade, project })
+        const backWords = back === 0 ? '' : ` ${pt(lang, back === 1 ? 'todoPunchBack1' : 'todoPunchBackN', { gc, n: back })}`
+        todos.push({
+          key: `${key}:punch`,
+          projectId,
+          text: what + backWords,
+          tone: back > 0 ? 'red' : 'amber',
+          by: toFix.map((i) => i.sentBack?.on ?? i.addedOn).sort()[0] ?? null,
+          anchor: `report:${a.pkg.id}`,
+        })
       }
       for (const d of sow.draws) {
         // Approved for less and not paid yet: say so until the money comes.

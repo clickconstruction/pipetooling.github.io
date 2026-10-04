@@ -39,11 +39,17 @@ export function staleChange(project: GcProject, pkg: TradePackage, invite: Invit
   return {
     sets: sets.map((set) => {
       const changed = new Set(set.changedSheets)
+      // A revised section of the project manual reaches the lines tied to it (Board item 4).
+      const revised = new Set(set.changedSpecs ?? [])
       const addedIds = new Set((set.addedLines ?? []).filter((l) => l.packageId === pkg.id).map((l) => l.scopeId))
       const named: ScopeItem[] = []
       let wholeTrade = false
       for (const item of pkg.scope) {
         if (addedIds.has(item.id)) continue
+        if ((item.specs ?? []).some((id) => revised.has(id))) {
+          named.push(item)
+          continue
+        }
         const reads = lineReads(project, pkg, item)
         if (!reads.sheets.some((id) => changed.has(id))) continue
         if (reads.wholeTrade) wholeTrade = true

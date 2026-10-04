@@ -362,8 +362,8 @@ describe('Needs you on a job being built', () => {
     expect(keys.some((k) => k.endsWith(':draw'))).toBe(false)
   })
 
-  it('asks Guadalupe for nothing while its closeout waits on us', () => {
-    expect(portalTodos(state, 'guadalupe')).toEqual([])
+  it('asks Guadalupe only for its punch item while its closeout waits on us', () => {
+    expect(portalTodos(state, 'guadalupe').map((t) => t.key)).toEqual(['fconc-guadalupe:punch'])
   })
 
   it('does not offer Pecan Valley a draw while its insurance has run out', () => {
@@ -673,5 +673,32 @@ describe('a project we lost', () => {
     const back = gcReducer(lost('price'), { type: 'reopenLost', projectId: 'boerne' })
     expect(home('hillside', back).bidding.some((a) => a.project.id === 'boerne')).toBe(true)
     expect(portalMessages(back, 'hillside').some((x) => x.kind === 'closed')).toBe(false)
+  })
+})
+
+describe('the punch list on the home', () => {
+  const punch = (s: GcState) => portalTodos(s, 'guadalupe').find((t) => t.key.endsWith(':punch'))
+
+  it('asks Guadalupe to fix the one open item on Fair Oaks D, amber', () => {
+    expect(punch(state)).toMatchObject({ projectId: 'fairoaksd', tone: 'amber', text: '1 punch item to fix on Concrete for Fair Oaks Shops, Building D.' })
+  })
+
+  it('turns red and says so when we checked one and it was not fixed', () => {
+    const back = gcReducer(state, { type: 'checkPunchItem', projectId: 'fairoaksd', itemId: 'fairoaksd-punch-2', fixed: false, note: 'Still cracked by the door.' })
+    expect(punch(back)).toMatchObject({
+      tone: 'red',
+      text: '2 punch items to fix on Concrete for Fair Oaks Shops, Building D. Click checked one and it is not fixed yet.',
+    })
+  })
+
+  it('goes away once every item is marked fixed', () => {
+    const fixed = gcReducer(state, { type: 'tradeFixPunchItem', projectId: 'fairoaksd', itemId: 'fairoaksd-punch-1' })
+    expect(punch(fixed)).toBeUndefined()
+  })
+
+  it('reads in Spanish with the Building lane’s word for a punch item', () => {
+    expect(portalTodos(state, 'guadalupe', undefined, 'es').find((t) => t.key.endsWith(':punch'))?.text).toBe(
+      'Tiene 1 pendiente por arreglar en Concrete para Fair Oaks Shops, Building D.',
+    )
   })
 })
