@@ -29,7 +29,7 @@ import {
   tradesForSheets,
   tradeForSpec,
   guessLineSpecs,
-  linesOnPlans,
+  linesATradeHears,
   packagesForSpecs,
   specsAtRev,
   specsInText,
@@ -384,7 +384,7 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
   /** What the set says changed: the office's words, then each answer it carries. */
   const fullNote = [note.trim(), ...carriedQs.map((q) => questionInNote(project, q))].filter(Boolean).join('\n')
   const email = planEmail(project, label, fullNote, sheets, preview, {
-    lines: preview?.touched ? linesOnPlans(project, preview.pkg, sheets, specIds, addedSpecs, added).map((l) => l.label) : [],
+    lines: preview?.touched ? linesATradeHears(project, preview.pkg, sheets, specIds, addedSpecs, added).map((l) => l.label) : [],
     adds: preview?.touched ? (newLines[preview.pkg.id] ?? []) : [],
     moves: preview?.touched ? movesFor(preview.pkg.id) : [],
     specs: specIds.filter((id) => !goneSpecs.includes(id)).map(specNamed),
@@ -751,7 +751,7 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
                   {project.packages
                     .filter((p) => touches.includes(p.id))
                     .map((p) => {
-                      const hit = linesOnPlans(project, p, sheets, specIds, addedSpecs, added)
+                      const hit = linesATradeHears(project, p, sheets, specIds, addedSpecs, added)
                       const adding = newLines[p.id] ?? []
                       const reads = [...newLineSheets(p.trade), ...newLineSpecs(p.trade)]
                       return (
@@ -977,7 +977,7 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
                         Ours
                       </label>
                       <label style={{ display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
-                        <span style={{ color: 'var(--text-muted)' }}>{b.ours ? 'Our bid' : 'Our budget'}</span>
+                        <span style={{ color: 'var(--text-muted)' }}>{b.ours ? 'Our guess' : 'Our budget'}</span>
                         <input
                           style={{ ...input, width: '7rem', textAlign: 'right' }}
                           inputMode="numeric"
@@ -1034,6 +1034,13 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
                         </label>
                       )}
                     </div>
+                    {r.brought && (!r.on || r.cost === 0 || r.description.trim() === '') && (
+                      // A trade a set brings after the owner signed is $0 on the owner's own lines (Owner Billing): only this change order bills it.
+                      <span style={{ color: 'var(--text-amber-700)', fontWeight: 600, fontSize: '0.8rem' }}>
+                        {r.trade} bills the owner only through this change order. Without one, its cost never reaches the owner.{' '}
+                        {!r.on ? 'Tick it and type our cost.' : r.cost === 0 ? 'Type our cost.' : 'Say what it is for.'}
+                      </span>
+                    )}
                     {r.on && (
                       <>
                         <input
@@ -1061,7 +1068,7 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
               title="Who hears about it"
               hint={
                 project.stage === 'pursuing'
-                  ? 'We are still bidding, so every company bidding gets it.'
+                  ? 'We are still bidding, so every company quoting gets it.'
                   : 'The job is ours, so only the company on each trade gets it.'
               }
             />
