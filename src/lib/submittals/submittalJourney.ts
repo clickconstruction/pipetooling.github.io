@@ -83,7 +83,8 @@ function stageAnchors(hasRevision: boolean): Record<JourneyStageKey, string> {
     rows: 'submittals-rows',
     package: 'submittals-package',
     share: 'submittals-share',
-    review: 'submittals-room',
+    // 2026-10-04 · the step itself: the pill used to ring the Share step's link box.
+    review: 'submittals-review',
     resubmit: 'submittals-resubmit',
     procure: 'submittals-procure',
   }

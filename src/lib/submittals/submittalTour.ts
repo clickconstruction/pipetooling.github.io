@@ -1,5 +1,5 @@
 /**
- * Bids → Submittals: the walkthrough's stops (v2.4067; the Procure stop v2.4088; reworded for the road, the takeoff and the row controls v2.4120; written in plain words v2.4123; the robot's stop only where its offer is on the page v2.4134; parts, the catch-up box, Read its parts and the per-part log v2.4366) and the first-open offer.
+ * Bids → Submittals: the walkthrough's stops (v2.4067; stops 6 and 7 follow answers typed in and the resubmit that carries unanswered rows v2.4485; the Procure stop v2.4088; reworded for the road, the takeoff and the row controls v2.4120; written in plain words v2.4123; the robot's stop only where its offer is on the page v2.4134; parts, the catch-up box, Read its parts and the per-part log v2.4366) and the first-open offer.
  *
  * The words follow the plain-words rules in `submittalTour.test.ts`: one idea per sentence,
  * you + a verb, the button's exact name, a trade word explained beside itself the first
@@ -78,15 +78,16 @@ export const SUBMITTAL_TOUR_STEPS: SpotlightTourStep[] = [
     missingBody: 'Share appears once the rows are in.',
   },
   {
-    anchor: 'submittals-room',
+    // 2026-10-04 · the step itself, not the Share step's link box: it holds the answers whichever way they came.
+    anchor: 'submittals-review',
     title: 'Step 6. Their answer',
-    body: 'The GC or the architect looks at each row. They tap Approve, Revise or Reject. On a row with parts, they answer each part. Their answers show up here, on your rows. Any question they ask lands in your inbox.',
-    missingBody: 'This appears after you share.',
+    body: 'The GC or the architect answers each row. On the link they tap Approve, Revise or Reject. Their answers show up on your rows. Did they answer by email instead? Tap Their answer on a row and type what they said. Nobody is emailed. Any question they ask on the link lands in your inbox.',
+    missingBody: 'This step fills in when they answer on the link, or when you type their answers on a row.',
   },
   {
     anchor: 'submittals-resubmit',
     title: 'Step 7. Resubmit',
-    body: 'Some rows may come back marked Revise or Reject. Tap the green button. It starts a new version with only those rows. Parts they already approved stay approved. Fix the rest, then share again. The GC’s link shows the new version.',
+    body: 'Some rows may come back marked Revise or Reject. Tap the green button. It starts a new version with those rows. Rows with no answer yet go on it too. Rows and parts they approved stay approved. Fix what came back, then send it again.',
     missingBody: 'The green button appears when rows come back.',
   },
   {
@@ -146,8 +147,8 @@ export const SUBMITTAL_STAGE_ABOUT: Record<number, string> = {
   3: 'Check each row and its parts. Is it the product the plans asked for? If not, say why. Add its cut sheet, the maker’s page for the product.',
   4: 'One PDF for the GC: the cover table and every cut sheet.',
   5: 'Get a link and paste it into your email to the GC.',
-  6: 'The GC or the architect answers each row: Approve, Revise or Reject.',
-  7: 'Rows the GC sent back come here. Start Rev 2 with only those rows, or with every row when a product changed.',
+  6: 'The GC or the architect answers each row: Approve, Revise or Reject. If they answer by email, type it in with Their answer.',
+  7: 'Rows the GC sent back come here. Start Rev 2 with them and the rows with no answer yet. Or carry every row when a product changed.',
   8: 'The order log the GC asks for, one line per part: order dates, PO numbers and what is running late.',
 }
 
@@ -158,7 +159,7 @@ export const SUBMITTAL_STAGE_ABOUT: Record<number, string> = {
  */
 export function stageAbout(stage: number, rev: { number: number; isNewest: boolean } | null): string {
   if (rev && stage === 2 && rev.number > 1) return rev.isNewest ? `Rev ${rev.number} is the version you are working on. Each earlier version stays as the record.` : `Rev ${rev.number} is an earlier version. It stays as the record.`
-  if (rev && stage === 7 && rev.number > 1) return `Rows the GC sent back come here. Start Rev ${rev.number + 1} with only those rows, or with every row when a product changed.`
+  if (rev && stage === 7 && rev.number > 1) return `Rows the GC sent back come here. Start Rev ${rev.number + 1} with them and the rows with no answer yet. Or carry every row when a product changed.`
   return SUBMITTAL_STAGE_ABOUT[stage] ?? ''
 }
 
@@ -168,7 +169,7 @@ const STAGE_STOP_ANCHORS: Record<number, string[]> = {
   3: ['submittals-rows', 'submittals-catch-up'],
   4: ['submittals-package'],
   5: ['submittals-share'],
-  6: ['submittals-room'],
+  6: ['submittals-review'],
   7: ['submittals-resubmit'],
   8: ['submittals-procure'],
 }
