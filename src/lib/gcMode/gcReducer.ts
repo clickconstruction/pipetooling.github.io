@@ -16,7 +16,7 @@ import { nextPunchId, punchClear } from './gcBuildingPunch'
 import { logTrades } from './gcBuildingLog'
 import { nextSubmittalId, nextSubmittalNumber, submittalState } from './gcBuildingSubmittals'
 import { addDays, changeOrderTradePct, crewPctFromStages, drawApprovedLess, finalPayApplication, jobCloseout, payApplication, timesSentBack, tradeCloseout, workAllBilled } from './gcBuilding'
-import { canAward } from './gcVetting'
+import { awardGate } from './gcVetting'
 import { keepPromisesOn, openPromiseFor, PROMISE_WHAT, promisesKeptBy, tradePromisesOf } from './gcPromises'
 import { appClaimed, appOpen, changeOrderPrice, ownerCloseout, ownerContractWorthNow, ownerFinalPayAppToSend, ownerPayApp, ownerPayAppHasWork, ownerPayAppToSend } from './gcOwnerBilling'
 
@@ -309,7 +309,7 @@ function reduce(state: GcState, action: GcAction): GcState {
       if (!project || !pkg || !invite || !partner) return state
       const sow = sowFromBid(project, pkg, invite)
       // A company we have not vetted, or past its limit, is not awarded (question 3).
-      if (!canAward(partner, sow.price).ok) return state
+      if (!awardGate(state, pkg, invite).ok) return state
       const next = mapProject(state, project.id, (p) =>
         mapPackage(p, pkg.id, (k) => ({ ...k, carried: invite.id, awardedInviteId: invite.id, sow })),
       )

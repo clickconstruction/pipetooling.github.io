@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import {
+  awardGate,
   leveledTotal,
   uncostedLines,
   uncostedWords,
@@ -10,7 +11,7 @@ import {
   weekdayDate,
   type StartTradeRow,
 } from '../../lib/gcMode/gcModel'
-import type { GcPaneProps } from './GcOfficeTabs'
+import { AwardBlocked, type GcPaneProps } from './GcOfficeTabs'
 import { Btn, Card, Chip, Why, input, td, th } from './gcUi'
 
 /**
@@ -151,7 +152,7 @@ export function GcStartTab({ state, project, dispatch, onSeePortal, onOpenSchedu
           </thead>
           <tbody>
             {list.trades.map((row) => (
-              <TradeLine key={row.pkg.id} row={row} project={project} dispatch={dispatch} onSeePortal={onSeePortal} locked={started} />
+              <TradeLine key={row.pkg.id} state={state} row={row} project={project} dispatch={dispatch} onSeePortal={onSeePortal} locked={started} />
             ))}
           </tbody>
         </table>
@@ -184,7 +185,7 @@ function Tick({ done }: { done: boolean }) {
   )
 }
 
-function TradeLine({ row, project, dispatch, onSeePortal, locked }: Omit<GcPaneProps, 'state'> & { row: StartTradeRow; locked: boolean }) {
+function TradeLine({ state, row, project, dispatch, onSeePortal, locked }: GcPaneProps & { row: StartTradeRow; locked: boolean }) {
   const { pkg, partner, invite, checks } = row
   const ids = { projectId: project.id, packageId: pkg.id }
   if (pkg.selfPerform) {
@@ -207,15 +208,20 @@ function TradeLine({ row, project, dispatch, onSeePortal, locked }: Omit<GcPaneP
   let action: ReactNode = null
   if (!locked && first) {
     if (first.key === 'awarded' && carried) {
+      const gate = awardGate(state, pkg, carried)
       action = (
-        <Btn
-          kind="primary"
-          title={uncostedWords(uncostedLines(pkg, carried)) || undefined}
-          onClick={() => dispatch({ type: 'award', ...ids, inviteId: carried.id })}
-        >
-          Award at {money(leveledTotal(pkg, carried) ?? 0)}
-          {uncostedLines(pkg, carried).length > 0 ? ' + ?' : ''}
-        </Btn>
+        <>
+          <Btn
+            kind="primary"
+            disabled={!gate.ok}
+            title={gate.why ?? (uncostedWords(uncostedLines(pkg, carried)) || undefined)}
+            onClick={() => dispatch({ type: 'award', ...ids, inviteId: carried.id })}
+          >
+            Award at {money(leveledTotal(pkg, carried) ?? 0)}
+            {uncostedLines(pkg, carried).length > 0 ? ' + ?' : ''}
+          </Btn>
+          {!gate.ok && <AwardBlocked why={gate.why} />}
+        </>
       )
     } else if (first.key === 'msa' && partner?.msa === 'none') {
       action = <Btn kind="primary" onClick={() => dispatch({ type: 'sendMsa', partnerId: partner.id })}>Send the master agreement</Btn>

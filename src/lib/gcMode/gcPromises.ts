@@ -150,3 +150,54 @@ export function keepPromisesOn(state: GcState, matches: ReturnType<typeof promis
 export function promisePartner(state: GcState, p: TradePromise): Partner | undefined {
   return partnerById(state, p.partnerId)
 }
+
+/**
+ * Papers the Board's kinds wait on (question 8): a company awarded on a live job with no W-9, and a
+ * statement of work sent and not signed. Each carries the date they gave, if they gave one.
+ */
+export interface PaperAsk {
+  kind: 'w9' | 'sow'
+  partner: Partner
+  projectId?: string
+  packageId?: string
+  /** "No W-9 on file." · "The HVAC statement of work on Helotes Dental Office is waiting on their signature." */
+  words: string
+  promise: TradePromise | undefined
+}
+
+export function paperAsks(state: GcState): PaperAsk[] {
+  const out: PaperAsk[] = []
+  const askedW9 = new Set<string>()
+  for (const project of state.projects) {
+    if (project.closedOn || project.lostOn) continue
+    for (const pkg of project.packages) {
+      const partnerId = pkg.invites.find((i) => i.id === pkg.awardedInviteId)?.partnerId
+      const partner = partnerId ? partnerById(state, partnerId) : undefined
+      if (!partner) continue
+      if (!partner.w9 && !askedW9.has(partner.id)) {
+        askedW9.add(partner.id)
+        out.push({ kind: 'w9', partner, words: 'No W-9 on file.', promise: openPromiseFor(state, { partnerId: partner.id, kind: 'w9' }) })
+      }
+      if (pkg.sow?.status === 'sent') {
+        const match = { partnerId: partner.id, kind: 'sow' as const, projectId: project.id, packageId: pkg.id }
+        out.push({
+          ...match,
+          partner,
+          words: `The ${pkg.trade} statement of work on ${project.name} is waiting on their signature.`,
+          promise: openPromiseFor(state, match),
+        })
+      }
+    }
+  }
+  return out
+}
+
+/** Open promises whose day came or passed, and lapsed insurance with no new date: the Follow up badge adds these. */
+export function promisesToChase(state: GcState): number {
+  const due = tradePromisesOf(state).filter((p) => {
+    const s = tradePromiseState(p, state.today).state
+    return s === 'passed' || s === 'today'
+  }).length
+  const lapsed = insuranceRenewals(state).filter((r) => r.days <= 0 && !r.promise).length
+  return due + lapsed
+}

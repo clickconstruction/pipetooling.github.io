@@ -43,6 +43,7 @@ import {
   lostWords,
   planLabel,
   priceToOwner,
+  promisesToChase,
   proposalUncostedWords,
   RING_COLORS,
   sentBackOpen,
@@ -184,6 +185,8 @@ export default function GcMode() {
   const customer = state.customers.find((c) => c.id === customerId) ?? null
   const mapProject = state.projects.find((p) => p.id === mapFor?.projectId) ?? null
   const toChase = followUps(state).filter((f) => f.why !== 'waiting')
+  // The badge also counts a promise whose day came and insurance that ran out (question 8).
+  const chaseCount = toChase.length + promisesToChase(state)
 
   return (
     <div className="pageWrap" style={{ maxWidth: 1500, margin: '0 auto' }}>
@@ -195,9 +198,9 @@ export default function GcMode() {
           </button>
           <button type="button" style={tabButton(boardTab === 'followup')} onClick={() => { setBoardTab('followup'); setProjectId(null) }}>
             Follow up{' '}
-            {toChase.length > 0 && (
+            {chaseCount > 0 && (
               <span style={{ background: '#dc2626', color: 'white', borderRadius: 999, padding: '0 0.4rem', fontSize: '0.72rem', fontWeight: 700 }}>
-                {toChase.length}
+                {chaseCount}
               </span>
             )}
           </button>

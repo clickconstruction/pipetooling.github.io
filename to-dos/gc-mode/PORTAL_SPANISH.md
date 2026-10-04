@@ -117,7 +117,7 @@ column headers are in one block at the end of `gcBuildingWords.ts`, for the nati
 
 ## For a native speaker to read
 
-Every Spanish string the trade's portal shows, 589 in all, drawn from the code on 2026-10-04.
+Every Spanish string the trade's portal shows, 613 in all, drawn from the code on 2026-10-04.
 They're grouped by screen, English on the left. Please mark anything that reads wrong, stiff or
 unclear, and write the better words beside it. The Portal lane makes the changes and passes the
 other lanes theirs.
@@ -333,6 +333,32 @@ they were written in. The portal does not translate them.
 
 | English | Español |
 |---|---|
+| Not ready? Tell {gc} the day it will come. | ¿Todavía no lo tiene? Dígale a {gc} qué día llegará. |
+| You said it will come by {date}. | Dijo que llegaría a más tardar el {date}. |
+| The day it will come | El día que llegará |
+
+#### The dates a company gave us (question 8)
+
+| English | Español |
+|---|---|
+| Dates you gave {gc} | Fechas que le dio a {gc} |
+| If a date changes, move it here. {gc} sees the new one. | Si una fecha cambia, muévala aquí. {gc} ve la nueva. |
+| Move the date | Cambiar la fecha |
+| Save the new date | Guardar la nueva fecha |
+| The new date | La nueva fecha |
+| by {date}, in 1 day | a más tardar el {date}, en 1 día |
+| by {date}, in {n} days | a más tardar el {date}, en {n} días |
+| due today | vence hoy |
+| by {date}. That day passed {ago}. | a más tardar el {date}. Esa fecha pasó {ago}. |
+| The renewed insurance certificate | El certificado de seguro renovado |
+| A signed W-9 | Un W-9 firmado |
+| The signed statement of work | La orden de trabajo firmada |
+| Your start day | Su día de inicio |
+| Your submittals | Sus documentos para aprobación |
+| The material delivery | La entrega de material |
+| The fixed pay application | La solicitud de pago corregida |
+| The punch items fixed | Los pendientes arreglados |
+| Your closeout papers | Sus documentos de cierre |
 | Your company | Su empresa |
 | Tell us about your company | Cuéntenos de su empresa |
 | {gc} checks a company it has not worked with before. You can quote now. {gc} can pick your quote once you are approved. | {gc} revisa a las empresas con las que no ha trabajado. Ya puede cotizar. {gc} puede elegir su cotización cuando apruebe a su empresa. |
@@ -591,6 +617,7 @@ they were written in. The portal does not translate them.
 | The insurance certificate {gc} has on file for you runs out {date}. | El certificado de seguro que {gc} tiene de usted vence el {date}. |
 | We cannot pay a draw without current insurance. | No podemos pagarle sin un seguro vigente. |
 | Send the new certificate in your portal. | Envíe el certificado nuevo en su portal. |
+| Not ready yet? Tell us the day it will come, in your portal. | ¿Todavía no lo tiene? Díganos en su portal qué día llegará. |
 | Your company is approved to work with {gc} | Su empresa está aprobada para trabajar con {gc} |
 | {gc} checked your company and approved it. | {gc} revisó su empresa y la aprobó. |
 | You can be picked for jobs up to {amount} each. | Lo pueden elegir para trabajos de hasta {amount} cada uno. |
@@ -614,6 +641,8 @@ they were written in. The portal does not translate them.
 | Your insurance runs out {date}, in {n} days. Send a new certificate before then. | Su seguro vence el {date}, en {n} días. Envíe un certificado nuevo antes de esa fecha. |
 | Your insurance runs out tomorrow, {date}. Send a new certificate. | Su seguro vence mañana, {date}. Envíe un certificado nuevo. |
 | Your insurance runs out today, {date}. Send a new certificate. | Su seguro vence hoy, {date}. Envíe un certificado nuevo. |
+| You told {gc} {what} would come by {date}. Send it or give a new day. | Le dijo a {gc} que {what} llegaría a más tardar el {date}. Envíe lo prometido o dé una nueva fecha. |
+| You told {gc} {what} would come by {date}. Send them or give a new day. | Le dijo a {gc} que {what} llegarían a más tardar el {date}. Envíe lo prometido o dé una nueva fecha. |
 | Tell {gc} about your company. {gc} can pick your quote once you are approved. | Cuéntele a {gc} de su empresa. {gc} puede elegir su cotización cuando apruebe a su empresa. |
 | Fill in your W-9. | Llene su W-9. |
 | The plans changed for {trade} on {project}. Confirm your quote or change it. | Cambiaron los planos de {trade} en {project}. Confirme su cotización o cámbiela. |

@@ -18,6 +18,9 @@ import {
   usualScope,
   usualExcludes,
   inSentence,
+  strangerActions,
+  vettingWords,
+  type StrangerAsk,
   scopeGaps,
   BY_NOT_A_TRADE,
   type ScopeExclusion,
@@ -150,6 +153,11 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
   const [specText, setSpecText] = useState('')
   /** The budgets the fill wrote, by trade, with where each rate came from. Shown while the budget is unchanged. */
   const [filled, setFilled] = useState<Record<string, { budget: string; words: string }>>({})
+  /** Companies new to us the office adds on Who to ask: asked to quote, not vetted (question 3). */
+  const [strangers, setStrangers] = useState<StrangerAsk[]>([])
+  const [strangerFor, setStrangerFor] = useState<string | null>(null)
+  const [strangerName, setStrangerName] = useState('')
+  const [strangerContact, setStrangerContact] = useState('')
 
   const [edits, setEdits] = useState<Record<string, TradeEdit>>({})
   const [added, setAdded] = useState<string[]>([])
@@ -235,7 +243,8 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
   /** The project as it will be made, so each trade's companies can be lined up before it exists. */
   const built = buildNewProject(state, draft).project
   const asksFor = (trade: string, pkg: (typeof built.packages)[number]) => asks[trade] ?? defaultAsks(state, built, pkg)
-  const asked = built.packages.reduce((n, pkg) => n + asksFor(pkg.trade, pkg).length, 0)
+  const strangersOn = strangers.filter((x) => built.packages.some((p) => p.trade === x.trade && !p.selfPerform))
+  const asked = built.packages.reduce((n, pkg) => n + asksFor(pkg.trade, pkg).length, 0) + strangersOn.length
   const summaries = [
     draft.name || 'No name yet',
     `${draft.setLabel} · ${reading.sheets.length} ${reading.sheets.length === 1 ? 'sheet' : 'sheets'}${
@@ -261,6 +270,8 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
     for (const pkg of built.packages) {
       for (const partnerId of asksFor(pkg.trade, pkg)) dispatch({ type: 'invite', projectId: id, packageId: pkg.id, partnerId })
     }
+    // Each company new to us comes in not vetted, then is asked like the rest.
+    for (const action of strangerActions(state, { ...built, id }, strangersOn)) dispatch(action)
     onCreated(id)
   }
 
@@ -784,7 +795,8 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
                   )
                 }
                 const lineup = tradeLineup(state, built, pkg)
-                const on = asksFor(pkg.trade, pkg)
+                const mine = strangers.filter((x) => x.trade === pkg.trade)
+                const on = [...asksFor(pkg.trade, pkg), ...mine.map((x) => `new:${x.company}`)]
                 return (
                   <div key={pkg.id} style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', padding: '0.4rem 0.7rem', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)', fontSize: '0.875rem' }}>
@@ -802,7 +814,7 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
                     </div>
                     {lineup.length === 0 ? (
                       <div style={{ padding: '0.4rem 0.7rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                        No company in the directory does {inSentence(pkg.trade)} yet. Add one on Trade partners after you create the project.
+                        No company in the directory does {inSentence(pkg.trade)} yet. Ask one below.
                       </div>
                     ) : (
                       lineup.map((row) => {
@@ -817,11 +829,15 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
                             <input
                               type="checkbox"
                               checked={ticked}
-                              onChange={(e) => setAsks((all) => ({ ...all, [pkg.trade]: e.target.checked ? [...on, row.partner.id] : on.filter((x) => x !== row.partner.id) }))}
+                              onChange={(e) => {
+                                const was = asksFor(pkg.trade, pkg)
+                                setAsks((all) => ({ ...all, [pkg.trade]: e.target.checked ? [...was, row.partner.id] : was.filter((x) => x !== row.partner.id) }))
+                              }}
                             />
                             <strong>{row.partner.company}</strong>
                             <span style={{ color: 'var(--text-muted)' }}>{miles || 'coverage not set'}</span>
                             <span style={{ flex: 1 }} />
+                            {vettingWords(row.partner) !== '' && <Chip tone="amber">{vettingWords(row.partner)}</Chip>}
                             <RecordChip record={answerRecord(row.partner)} />
                             {blockers.length > 0 && (
                               <span style={{ flexBasis: '100%', paddingLeft: '1.6rem', color: 'var(--text-muted)', fontSize: '0.78rem' }}>{blockers.join(' ')}</span>
@@ -829,6 +845,71 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
                           </label>
                         )
                       })
+                    )}
+                    {mine.map((x, i) => (
+                      <div key={`${x.company}-${i}`} style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)', fontSize: '0.875rem' }}>
+                        <input type="checkbox" checked readOnly aria-label={`${x.company} is asked`} />
+                        <strong>{x.company}</strong>
+                        <span style={{ color: 'var(--text-muted)' }}>{x.contact || 'no contact yet'}</span>
+                        <span style={{ flex: 1 }} />
+                        <Chip tone="amber">not vetted yet</Chip>
+                        <Chip tone="grey">new to us</Chip>
+                        <button
+                          type="button"
+                          onClick={() => setStrangers((all) => all.filter((y) => y !== x))}
+                          aria-label={`Do not ask ${x.company}`}
+                          style={{ border: 'none', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1rem', padding: '0 0.3rem' }}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                    {strangerFor === pkg.trade ? (
+                      <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap', padding: '0.45rem 0.7rem', fontSize: '0.875rem' }}>
+                        <input
+                          autoFocus
+                          style={{ ...field, flex: '1 1 12rem', minWidth: 0 }}
+                          value={strangerName}
+                          onChange={(e) => setStrangerName(e.target.value)}
+                          placeholder="The company's name"
+                          aria-label={`A company new to us for ${pkg.trade}`}
+                        />
+                        <input
+                          style={{ ...field, flex: '1 1 12rem', minWidth: 0 }}
+                          value={strangerContact}
+                          onChange={(e) => setStrangerContact(e.target.value)}
+                          placeholder="Their email or phone"
+                          aria-label={`How to reach the new company for ${pkg.trade}`}
+                        />
+                        <Btn
+                          disabled={strangerName.trim() === ''}
+                          onClick={() => {
+                            setStrangers((all) => [...all, { trade: pkg.trade, company: strangerName.trim(), contact: strangerContact.trim() }])
+                            setStrangerName('')
+                            setStrangerContact('')
+                            setStrangerFor(null)
+                          }}
+                        >
+                          Ask them
+                        </Btn>
+                        <Btn kind="quiet" onClick={() => setStrangerFor(null)}>Cancel</Btn>
+                        <span style={{ flexBasis: '100%', color: 'var(--text-muted)', fontSize: '0.78rem' }}>
+                          Anyone can quote. A company new to us comes in not vetted. Nothing is awarded to them until we approve them on Trade partners.
+                        </span>
+                      </div>
+                    ) : (
+                      <div style={{ padding: '0.35rem 0.7rem' }}>
+                        <Btn
+                          kind="quiet"
+                          onClick={() => {
+                            setStrangerFor(pkg.trade)
+                            setStrangerName('')
+                            setStrangerContact('')
+                          }}
+                        >
+                          + Ask a company not on our list
+                        </Btn>
+                      </div>
                     )}
                   </div>
                 )
@@ -843,7 +924,7 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
               ? missing[0]
               : `${draft.name} starts under Bidding to the owner with ${picked.length} ${picked.length === 1 ? 'trade' : 'trades'}. ${
                   asked === 0 ? 'Nobody is asked yet.' : `${asked} ${asked === 1 ? 'company is' : 'companies are'} asked to quote.`
-                }`}
+                }${strangersOn.length > 0 ? ` ${strangersOn.length} ${strangersOn.length === 1 ? 'is' : 'are'} new to us and not vetted yet.` : ''}`}
           </span>
           <Btn kind="quiet" onClick={onClose}>Cancel</Btn>
           {step > 0 && <Btn onClick={() => setStep(step - 1)}>← Back</Btn>}

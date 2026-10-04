@@ -74,6 +74,8 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
 | Alternates and numbers that ran out (question 14, the Board's call) | Compare bids' Alternates row has **Take it** / **Put it back** on each alternate (`takeAlternate`): a taken one moves that quote's all-in number (`takenAlternatesTotal` in `leveledTotal` and `compareBids`) and so what we carry; one not taken changes nothing. A quote past its good-until day (`quoteRanOut`) stops counting toward the two quotes and is not a real number to carry ("Their number ran out. Ask them to send it again."; the row's chip "· 1 ran out") until the trade sends it again from the portal. |
 | **By stage \| By customer** (top of the board) | Question 9. By stage is the board as it was, and it is what the board opens on every time (not remembered). By customer gives one section per customer we build for, soonest bid first: the name opens the company window, its kind and contact, and the window's money ("bidding $977,823 · under contract $1,488,762 · owes us $288,879", or "nothing billed yet"). Each row names its stage in a chip instead of the customer. Closed and lost jobs fold into one quiet "Also:" line under the customer. + New project sits beside the switch. `customerGroups`, `customerMoneyWords` in `gcBoardGroups.ts` (tested). |
 | The owner's price once signed | The owner, 2026-10-04 (Owner Billing): once our contract with the owner is marked signed on Get started, their price stays what they signed (`ownerContractWorth`, kept by `setStartItem` and dropped if it is marked not signed). The board row and the project header show that price plus their signed change orders, "as signed", with no "+ ?" or holes (`priceToOwner` in `gcCustomers.ts`, which the company window's and By customer's *under contract* read too). Our number keeps today's carried price (*At today's numbers*) and says "Dr. Priya Raman signed for $338,767. Their price stays that." with how far under or over it today's numbers are. |
+| Vetting a company new to us (question 3) | *Add a company* on Trade partners leaves *We have worked with them* off by default: the company comes in **not vetted yet** (`addPartner` with `known: false`). It can be asked and can quote; every award button (Compare quotes, Contracts, Get started) stays off and says why (`awardGate` in `gcVetting.ts`; the reducer refuses too). Trade partners opens with **New to us: approve before any award**: their portal form (license, insurance, years, references, jobs like ours, from the Portal lane), who is deciding (our team), and *Approve*, *Approve up to this* (a dollar limit on one award) or *Decline* (`vetPartner`). The chip ("not vetted yet", "approved up to $150,000", "declined") sits with each company's paperwork. |
+| Insurance, papers and other promises (question 8) | Follow up ends with **Insurance, papers and other promises**: a policy that runs out within 30 days or ran out (`insuranceRenewals`), a W-9 missing for a company we awarded, a statement of work waiting on its signature (`paperAsks`), then every open promise of any lane's kind. *They said by* + *Write it down* records the day (`recordPromise`); a new day moves it and the old one is kept. The portal's own move keeps it (`promisesKeptBy`: a new certificate, a signed W-9, a signed statement of work); *It came* marks the rest. Kept and broken promises count in the company's word record; the Follow up badge adds promises whose day came and lapsed insurance with no day given. `gcPromises.ts`. |
 | **Lost** (board section) | *We lost this* on Our number (beside *We won this*): why, in Trades mode's loss reasons in GC words (price, another builder, project died, we never finished, no answer), who won it if we know, a note. The bid keeps its stage ('pursuing'), leaves Bidding for **Lost** at the bottom of the board (newest first, "lost" and the day in the block, the reason and the winner as a chip), and nobody is chased on it (`packageIsOpen`, `partnerAsks`); the company window counts it in *They picked us* and drops it from *in front of them*; its bid tabs say the owner picked another builder. *Bring it back* returns it to Bidding. `markLost`, `reopenLost`; `gcLost.ts`. |
 | **Closed** (board section) | Under Building: a job whose `closedOn` is set (the Building lane's *Close the job* on Closeout, once every trade is closed out and the owner paid our last bill). Newest closed first; the block beside the ring reads "closed" and the day; the project header shows a grey Closed chip; *New here?* has a stop for it. The job keeps its stage ('building'). |
 | The schedule on Get started and Trade partners | Get started has a step of its own, *The schedule is drawn* ("19 activities, 2 milestones" once drawn; *Draw it on Schedule* opens the Schedule tab). It counts toward the ring and Start stays shut until it is done; the first change after Start keeps the plan at Start as the baseline (the Building lane's `withBaselineKept`). Trade partners shows each company's record on our jobs under how they answer: "On our jobs: 3 of 4 milestones on time · look-ahead 73%" (`partnerScheduleRecord` in `gcPartnerSchedule.ts`, from the Building lane's measures). |
@@ -200,7 +202,10 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   companies in range in the map's own order (`tradeLineup`), up to `BENCH_WANTED`, so the map
   and the step move together when question 7 is answered. A company missing its master
   agreement, insurance or W-9 is still ticked, with what is missing in a muted line: paperwork is
-  fixed before award, not before a quote. Create sends the board's own invite to each.
+  fixed before award, not before a quote. Create sends the board's own invite to each. **+ Ask a
+  company not on our list** adds one by name and email or phone (the owner, 2026-10-04, question
+  3: anyone can quote): it comes in not vetted, is asked like the rest, and nothing is awarded to
+  it until the office approves it (`strangerActions`, the Board's `addPartner` known false).
 - **Our own trade counts once our bid is priced** (answered 2026-10-02, was open question 10):
   ticking **Ours** on a new project starts our own bid in Trades mode (`selfPerform.priced:
   false`, our guess as its value). The trade becomes a real number when that bid is priced
@@ -418,6 +423,14 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   never the office's note. Needs you asks until the form is in; the bid form says Click can pick
   the quote once the company is approved; an email goes out on the office's decision
   (`portalVetting` in `gcPortal.ts`, on the Board lane's `gcVetting.ts`).
+- **A company sees every date it gave us, and gives or moves one** (owner, 2026-10-04, question 8,
+  on the Board lane's `gcPromises.ts`): "Dates you gave Click" on its home lists each open one,
+  given in the portal or written down by the office ("The renewed insurance certificate · by Fri
+  Oct 9, in 7 days"), with **Move the date**; Needs you turns it amber the day it is due and red once
+  it passes. Under the insurance and W-9 lines it owes: "Not ready? Tell Click the day it will
+  come." The insurance email 30 days before says so too (`COI_WARN_DAYS` is the Board's
+  `INSURANCE_ASK_DAYS`). A date is kept when the thing comes (`portalPromises` in `gcPortal.ts`,
+  `GcPortalDates.tsx`).
 - **A company sees its days on site by our daily log** (owner, 2026-10-04, on the Building lane's
   log): above the percents it reports, "Our daily log has you on site 6 days since Mon Sep 21, the
   last on Thu Oct 1." It names the log's first day, so it never says more than the log can
@@ -563,7 +576,7 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
    them**: an insurance certificate (above all, its renewal before the policy runs out), a W-9, a
    signed statement of work, a start or move-in day, submittals, a material delivery, a pay
    application fixed and sent again, punch items fixed, closeout papers and lien waivers. They
-   count in the company's word record like a quote date.
+   count in the company's word record like a quote date (the Board's default).
 9. ~~Should the Project Board also group by customer?~~ Answered 2026-10-04, after the before and
    after mock-up (`board-by-customer-before-after.html`): **a switch, By stage | By customer, with
    By stage selected every time the board opens.** Built (Board). Still open: should Actions for
@@ -710,7 +723,7 @@ the bullets below are the shape they set.
   |---|---|---|
   | A new ask (`invite`) | The company's contact | Email the day we ask: the trade, the project, the day the quote is due, what it should cover. Asked to quote on the home |
   | A set that changed their trade (`issuePlanSet`) | Each company on the trade: every one bidding it while we bid, only the one on it once the job is ours | Email the day the set goes out, naming the changed sheets. Needs you says "Confirm your number or change it" |
-  | A promise passed (`askPromise`) | The company; the project manager | The company: one email the next morning, in Needs you's words ("You told Click your number would come by …"). The office: Follow up already lists it first; the project manager gets it in the morning email in the bid's last week |
+  | A promise passed (`askPromise`, and every date in `tradePromises`) | The company; the project manager | The company: one email the next morning, in Needs you's words ("You told Click your number would come by …"). The office: Follow up already lists it first; the project manager gets it in the morning email in the bid's last week |
   | An answer to their question (`answerQuestion`) | Every company bidding the trade, or the one on it once the job is ours. Never who asked | Email the day it is answered, with the question, the answer and the set it rides in. Needs you for a week |
   | A reminder the office sends (Follow up) | The company | Email |
   | A bid tab shared | Each company that quoted | Email; Needs you until opened |

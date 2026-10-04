@@ -16,6 +16,7 @@ import {
   pWeekday,
   portalClosedWords,
   portalInsurance,
+  openPromiseFor,
   portalOnSite,
   portalVetting,
   portalLines,
@@ -243,7 +244,14 @@ function ProjectPage({
       </div>
 
       {/* A project we lost asks for nothing, paperwork included. */}
-      {paperworkMissing && !project.lostOn && <GcPortalPaperwork partner={partner} today={state.today} dispatch={dispatch} />}
+      {paperworkMissing && !project.lostOn && (
+        <GcPortalPaperwork
+          partner={partner}
+          today={state.today}
+          dispatch={dispatch}
+          promises={{ insurance: openPromiseFor(state, { partnerId: partner.id, kind: 'insurance' }), w9: openPromiseFor(state, { partnerId: partner.id, kind: 'w9' }) }}
+        />
+      )}
 
       <GcPortalLookAhead state={state} project={project} partner={partner} dispatch={dispatch} />
 
