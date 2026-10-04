@@ -3,6 +3,7 @@
  * Split out of gcModel.ts verbatim; import from `./gcModel`, which re-exports every file.
  */
 import type { GcProject, GcState, Invite, Partner, Town, TradePackage } from './gcTypes'
+import { compareReliability } from './gcReliability'
 
 export const TOWNS: Town[] = [
   { name: 'Austin', lat: 30.2672, lng: -97.7431 },
@@ -51,16 +52,19 @@ export function travelWords(travel: Travel, partner: Partner): string {
   return travel.inZone ? `${travel.miles} mi` : `${travel.miles} mi, past their ${partner.maxMiles}`
 }
 
-/** One company in the line for a trade on a project, nearest first. */
+/** One company in the line for a trade on a project, most reliable first. */
 export interface LineupRow {
   partner: Partner
   travel: Travel
   invite: Invite | null
-  /** 1 is the closest. Null: no coverage set, so not on the map. */
+  /** 1 is first in the line. Null: no coverage set, so not on the map. */
   rank: number | null
 }
 
-/** Every company that does this trade, in the order to work through them: the shortest drive first. */
+/**
+ * Every company that does this trade, in the order to work through them (the owner, 2026-10-04,
+ * question 7): the ones that go this far first, then the most reliable, the shorter drive breaking a tie.
+ */
 export function tradeLineup(state: GcState, project: GcProject, pkg: TradePackage): LineupRow[] {
   const rows = state.partners
     .filter((p) => p.trades.includes(pkg.trade))
@@ -69,12 +73,18 @@ export function tradeLineup(state: GcState, project: GcProject, pkg: TradePackag
       travel: travelFor(state, partner, project),
       invite: pkg.invites.find((i) => i.partnerId === partner.id) ?? null,
     }))
-    .sort((a, b) => (a.travel.miles ?? 9999) - (b.travel.miles ?? 9999) || a.partner.company.localeCompare(b.partner.company))
+    .sort(
+      (a, b) =>
+        Number(b.travel.inZone) - Number(a.travel.inZone) ||
+        compareReliability(state, a.partner, b.partner) ||
+        (a.travel.miles ?? 9999) - (b.travel.miles ?? 9999) ||
+        a.partner.company.localeCompare(b.partner.company),
+    )
   let rank = 0
   return rows.map((row) => ({ ...row, rank: row.travel.miles === null ? null : ++rank }))
 }
 
-/** The next company to offer the trade to: the closest one in range we have not asked. */
+/** The next company to offer the trade to: the first in the line, in range, we have not asked. */
 export function nextToAsk(rows: LineupRow[]): LineupRow | null {
   return rows.find((r) => r.invite === null && r.travel.inZone) ?? null
 }

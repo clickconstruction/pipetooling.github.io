@@ -7,6 +7,7 @@ import { daysUntil, shortDate } from './gcWords'
 import { partnerById } from './gcLookups'
 import { BIDS_WANTED, bidTabsOpen, bidsIn, packageHasTab } from './gcBids'
 import { travelFor } from './gcMap'
+import { answerRecord } from './gcReliability'
 import { OPEN_WITHIN_DAYS, followUps, packageIsOpen } from './gcFollowUp'
 
 /** One project's open ask for one trade: who we asked, who answered, how short we are. */
@@ -43,14 +44,7 @@ export interface TradeBench {
   dependable: number
 }
 
-export type AnswerRecord = 'new' | 'reliable' | 'mixed' | 'silent'
-
-/** How a company has answered our asks so far. Two asks is the least we judge on. */
-export function answerRecord(partner: Partner): AnswerRecord {
-  if (partner.invited < 2) return 'new'
-  const rate = partner.bids / partner.invited
-  return rate >= 0.75 ? 'reliable' : rate >= 0.4 ? 'mixed' : 'silent'
-}
+// answerRecord moved to gcReliability.ts (question 7: the map's list reads it, and gcMap cannot import this file).
 
 export function partnerAsks(state: GcState, partnerId: string, trade: string): PartnerAsk[] {
   const out: PartnerAsk[] = []

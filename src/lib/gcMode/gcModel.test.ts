@@ -582,6 +582,20 @@ const STEPS: Step[] = [
     label: 'Pad B: start anyway, before everything is in',
     action: { type: 'startProject', projectId: 'padb', anyway: { reason: 'The owner needs the pad graded before the rains.', by: 'Dana Whitaker' } },
   },
+  // Question 4 (the owner, 2026-10-04): a trade's own schedule of values, beside ours.
+  {
+    label: 'Fair Oaks D: Cool Breeze sends its schedule of values',
+    action: {
+      type: 'tradeSendSov',
+      projectId: 'fairoaksd',
+      packageId: 'fhvac',
+      sov: [
+        { label: 'Rough-in: ductwork', amount: 70_000 },
+        { label: 'Set the units', amount: 60_000 },
+        { label: 'Trim and start-up', amount: 28_000 },
+      ],
+    },
+  },
 ]
 
 const CUSTOMER_IDS = ['cibolo', 'raman']
@@ -738,6 +752,7 @@ describe('GC mode golden walk', () => {
       'markLost', 'reopenLost',
       'takeAlternate',
       'vetPartner', 'tradeVettingForm', 'recordPromise', 'keepPromise',
+      'tradeSendSov',
     ]
     expect(all.filter((t) => !used.has(t))).toEqual([])
   })

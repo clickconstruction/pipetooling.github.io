@@ -55,5 +55,16 @@ export function sowFromBid(project: GcProject, pkg: TradePackage, invite: Invite
     pctReported: 0,
     pctBilled: 0,
   }))
-  return { status: 'draft', price, retainagePct: 10, basedOnRev: currentRev(project), sov, signedOn: null, draws: [] }
+  // Their own schedule of values rides onto the statement of work (question 4), beside ours.
+  const theirs = invite.bid?.sov
+  return {
+    status: 'draft',
+    price,
+    retainagePct: 10,
+    basedOnRev: currentRev(project),
+    sov,
+    signedOn: null,
+    draws: [],
+    ...(theirs && theirs.length > 0 ? { theirSov: theirs } : {}),
+  }
 }

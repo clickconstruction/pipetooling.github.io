@@ -92,6 +92,14 @@ export interface SubBid {
    * alternate moves the all-in number and what we carry; one not taken changes nothing.
    */
   takenAlternates?: string[]
+  /** The company's own schedule of values, sent with its quote (question 4): "Rough-in", $98,000. Unset: not sent. */
+  sov?: TheirSovLine[]
+}
+
+/** A line of a trade's own schedule of values, as it wrote it (question 4): often rough-in, top out, trim. */
+export interface TheirSovLine {
+  label: string
+  amount: number
 }
 
 export interface BidAlternate {
@@ -183,6 +191,11 @@ export interface Sow {
   sentBack?: DrawSentBack[]
   /** The day we sent it to the trade to sign. Unset: not sent, or before the day was kept. */
   sentOn?: string
+  /**
+   * The trade's own first schedule of values (the owner, 2026-10-04, question 4), from its quote at
+   * award or sent later from its portal. Shown beside ours; draws stay by percent on ours.
+   */
+  theirSov?: TheirSovLine[]
 }
 
 /**
@@ -606,7 +619,11 @@ export type GcAction =
       goodForDays?: number
       alternates?: BidAlternate[]
       quoteFile?: string
+      /** Their schedule of values (question 4). It should add up to the amount; the portal checks. */
+      sov?: TheirSovLine[]
     }
+  /** The trade sends its schedule of values for a statement of work that has none yet (question 4). */
+  | { type: 'tradeSendSov'; projectId: string; packageId: string; sov: TheirSovLine[] }
   | { type: 'tradeDecline'; projectId: string; packageId: string; inviteId: string }
   | { type: 'officeDecline'; projectId: string; packageId: string; inviteId: string; why: 'wont' | 'cant' }
   | { type: 'setPlug'; projectId: string; packageId: string; inviteId: string; scopeId: string; amount: number }

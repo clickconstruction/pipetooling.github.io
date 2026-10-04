@@ -58,6 +58,7 @@ import {
 } from '../../lib/gcMode/gcModel'
 import { linkNeverOpened } from '../../lib/gcMode/gcPortal'
 import { VettingChip } from './GcVetting'
+import { GcSovSideBySide } from './GcSovSideBySide'
 import { LinkNeverOpenedChip } from './GcPortalLinkChip'
 import { AskThread } from './GcAskThread'
 import { GcBuildingPayAppWindow } from './GcBuildingPayApp'
@@ -1236,10 +1237,8 @@ export function GcContractsTab({ state, project, dispatch }: GcPaneProps) {
                   <Stat label="Retainage" value={`${sow.retainagePct}%`} />
                   <Stat label="Based on" value={planLabel(project, sow.basedOnRev)} />
                 </div>
-                <div style={{ fontSize: '0.875rem' }}>
-                  <span style={{ color: 'var(--text-muted)' }}>Schedule of values: </span>
-                  {sow.sov.map((l) => `${l.label} ${money(l.amount)}`).join(' · ')}
-                </div>
+                {/* Ours beside the trade's own (question 4): draws bill by percent on ours. */}
+                <GcSovSideBySide sow={sow} />
                 {sow.status === 'draft' && (
                   <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                     {partner.msa === 'none' && (

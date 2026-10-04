@@ -12,6 +12,14 @@ function scope(prefix: string, labels: string[]): ScopeItem[] {
   return labels.map((label, i) => ({ id: `${prefix}-${i + 1}`, label }))
 }
 
+/** Pecan Valley's own schedule of values on Fair Oaks D, by stage (question 4). Adds up to its $248,000. */
+const PECAN_VALLEY_SOV = [
+  { label: 'Underground and gear', amount: 70_000 },
+  { label: 'Rough-in', amount: 98_000 },
+  { label: 'Trim', amount: 56_000 },
+  { label: 'Site lighting', amount: 24_000 },
+]
+
 function bid(
   items: ScopeItem[],
   amount: number,
@@ -1197,7 +1205,8 @@ export function initialGcState(): GcState {
         },
       }),
       pkg('felec', 'Electrical', fElec, 252_000, [
-        asked('felec', 'pecanvalley', bid(fElec, 248_000, 0, '2026-05-12')),
+        // Question 4: Pecan Valley sent its own schedule of values by stage with the quote.
+        asked('felec', 'pecanvalley', { ...bid(fElec, 248_000, 0, '2026-05-12'), sov: PECAN_VALLEY_SOV }),
       ], {
         carried: 'felec-pecanvalley',
         awardedInviteId: 'felec-pecanvalley',
@@ -1209,6 +1218,7 @@ export function initialGcState(): GcState {
           retainagePct: 10,
           basedOnRev: 0,
           signedOn: '2026-06-12',
+          theirSov: PECAN_VALLEY_SOV,
           sov: [
             { id: 'felec-1', label: 'Service and gear', amount: 62_000, pctReported: 100, pctBilled: 100 },
             { id: 'felec-2', label: 'Panels and feeders', amount: 54_000, pctReported: 80, pctBilled: 50 },
