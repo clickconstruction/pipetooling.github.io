@@ -20,7 +20,7 @@
 import { Children, Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { SpotlightTour, spotlightTourStepsPresent, type SpotlightTourStep } from '../SpotlightTour'
 import { RobotOffer } from './RobotOffer'
-import { robotSeatState, type RobotSeatRow, type RobotSeatState } from '../../lib/submittals/robotOffer'
+import { robotSeatState, staleAsk, type RobotSeatRow, type RobotSeatState } from '../../lib/submittals/robotOffer'
 import { SeeWhatTheGcSees } from './SeeWhatTheGcSees'
 import { describeForReviewer } from '../../lib/submittals/seeWhatTheySee'
 import { SubmittalJourneyStrip } from './SubmittalJourneyStrip'
@@ -2207,24 +2207,26 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                 const t = liveTask(tasks, 'read_schedule')
                 const st = t ? taskStatus(t) : null
                 const conf = t ? scheduleToConfirm(t) : null
+                // 2026-10-03 · a queued ask nobody is coming for says the day it was asked and that no robot is on shift.
+                const stale = t && st === 'queued' ? staleAsk('read_schedule', t.requested_at, robotSeat, Date.now(), formatShortDate) : null
                 return (
                   <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem 0.75rem', background: 'var(--surface)', display: 'flex', flexDirection: 'column', gap: '0.4rem' }} data-testid="source-schedule">
                     <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)' }}>The plans’ schedule <span style={{ ...smallMuted, fontWeight: 400 }}>· {specified.length === 0 ? 'none yet' : `${specified.length} tag${specified.length === 1 ? '' : 's'}`}</span></div>
                     <span style={smallMuted}>{specified.length === 0 ? 'Optional. A tag is the plan’s name for a fixture, like WC-1. With the schedule, the app checks each row against the plans.' : 'Every tag here becomes a row. A row with no pick gets its product typed with Edit.'}</span>
                     {t ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem', background: 'var(--bg-muted)', borderRadius: 6, padding: '0.3rem 0.55rem', fontSize: '0.8rem' }} data-testid="robot-schedule" data-tour="submittals-robot">
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem', background: stale ? 'var(--bg-amber-tint)' : 'var(--bg-muted)', borderRadius: 6, padding: '0.3rem 0.55rem', fontSize: '0.8rem' }} data-testid="robot-schedule" data-stale={stale ? 'true' : undefined} data-tour="submittals-robot">
                         <span style={{ color: 'var(--text-strong)' }}>
-                          {st === 'ready' ? (conf ? 'The robot read the schedule. Confirm the tags below.' : 'The robot read the schedule and found no tags.') : st === 'blocked' ? (t.summary || 'The robot could not read the plans.') : st === 'working' ? 'The robot is reading the fixture schedule off the plans.' : 'The robot is queued to read the fixture schedule off the plans.'}
+                          {stale ? stale.head : st === 'ready' ? (conf ? 'The robot read the schedule. Confirm the tags below.' : 'The robot read the schedule and found no tags.') : st === 'blocked' ? (t.summary || 'The robot could not read the plans.') : st === 'working' ? 'The robot is reading the fixture schedule off the plans.' : 'The robot is queued to read the fixture schedule off the plans.'}
                         </span>
                         <span style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', alignItems: 'baseline' }}>
-                          <span style={{ ...smallMuted, fontStyle: 'italic' }} data-testid="robot-line">{describeTask(t)}</span>
+                          <span style={{ ...smallMuted, fontStyle: stale ? 'normal' : 'italic' }} data-testid="robot-line">{stale ? stale.detail : describeTask(t)}</span>
                           {st === 'blocked' || st === 'queued' ? (
-                            <button type="button" disabled={busy} onClick={() => void markTask(t.id, 'cancelled').then(() => loadTasks(bidId as string))} style={{ ...btnQuiet, textDecoration: 'underline', fontSize: '0.78rem', flexShrink: 0 }}>{st === 'blocked' ? 'Dismiss' : 'Cancel'}</button>
+                            <button type="button" disabled={busy} onClick={() => void markTask(t.id, 'cancelled').then(() => loadTasks(bidId as string))} style={{ ...btnQuiet, textDecoration: 'underline', fontSize: '0.78rem', flexShrink: 0 }}>{st === 'blocked' ? 'Dismiss' : stale ? 'Take the ask back' : 'Cancel'}</button>
                           ) : null}
                         </span>
                       </div>
                     ) : null}
-                    <button type="button" disabled={busy} onClick={() => setPlugInOpen(true)} style={{ ...(specified.length === 0 && takeoffFixtures === 0 ? btnPrimary : btn), alignSelf: 'flex-start' }} title="Type or paste the tags from the plans, one per line" data-testid="plug-in-schedule" data-tour="submittals-plug-in">
+                    <button type="button" disabled={busy} onClick={() => setPlugInOpen(true)} style={{ ...((specified.length === 0 && takeoffFixtures === 0) || stale ? btnPrimary : btn), alignSelf: 'flex-start' }} title="Type or paste the tags from the plans, one per line" data-testid="plug-in-schedule" data-tour="submittals-plug-in">
                       {specified.length === 0 ? 'Type or paste the schedule' : 'Add to the schedule'}
                     </button>
                     {!t && specified.length === 0 ? <RobotOffer kind="read_schedule" seat={robotSeat} hasPlans={Boolean(selectedBid?.plans_link)} busy={busy} onAsk={() => void askRobot('read_schedule', {}, null)} testId="ask-robot-schedule" tour="submittals-robot" /> : null}
@@ -2565,7 +2567,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                     onDone={(i) => void doneWithFile(i)}
                     onRemove={(i) => void removeFile(i)}
                     guesses={Object.fromEntries(sourceFiles.map((f, i) => { const t = liveTask(tasks, 'file_cut_sheets', (inp) => inp.file_index === i && (!inp.path || inp.path === f.path)); const g = t ? sheetGuessesToConfirm(t, f.pages) : null; return [i, g ? guessByPage(g) : new Map()] }))}
-                    robotLines={Object.fromEntries(sourceFiles.map((f, i) => { const t = liveTask(tasks, 'file_cut_sheets', (inp) => inp.file_index === i && (!inp.path || inp.path === f.path)); return [i, t ? describeTask(t, f.pages) : ''] }))}
+                    robotLines={Object.fromEntries(sourceFiles.map((f, i) => { const t = liveTask(tasks, 'file_cut_sheets', (inp) => inp.file_index === i && (!inp.path || inp.path === f.path)); const stale = t && taskStatus(t) === 'queued' ? staleAsk('file_cut_sheets', t.requested_at, robotSeat, Date.now(), formatShortDate) : null; return [i, t ? `${describeTask(t, f.pages)}${stale ? ` · ${stale.suffix}` : ''}` : ''] }))}
                     confirmLabels={Object.fromEntries(sourceFiles.map((f, i) => { const t = liveTask(tasks, 'file_cut_sheets', (inp) => inp.file_index === i && (!inp.path || inp.path === f.path)); const g = t ? sheetGuessesToConfirm(t, f.pages) : null; return [i, g ? confirmLabel(g.sure.length, g.unsure.length) : ''] }))}
                     robotSeat={robotSeat}
                     onAskRobot={(i) => void askRobot('file_cut_sheets', { file_index: i, path: sourceFiles[i]?.path, name: sourceFiles[i]?.name, pages: sourceFiles[i]?.pages }, selectedRev.id)}
@@ -2730,7 +2732,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                           </div>
                           {t ? (
                             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                              <span style={{ ...smallMuted, fontStyle: 'italic' }} data-testid="robot-line">{describeTask(t)}</span>
+                              <span style={{ ...smallMuted, fontStyle: 'italic' }} data-testid="robot-line">{describeTask(t)}{(() => { const stale = st === 'queued' ? staleAsk('read_redlines', t.requested_at, robotSeat, Date.now(), formatShortDate) : null; return stale ? ` · ${stale.suffix}` : '' })()}</span>
                               {st === 'blocked' || st === 'queued' ? <button type="button" disabled={busy} onClick={() => void markTask(t.id, 'cancelled').then(() => loadTasks(bidId as string))} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{st === 'blocked' ? 'Dismiss' : 'Cancel'}</button> : null}
                             </div>
                           ) : null}

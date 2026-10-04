@@ -380,6 +380,30 @@ describe('BidsSubmittalsTab', () => {
     expect(screen.getByRole('dialog').getAttribute('aria-label')).toMatch(/Where the rows come from/)
   })
 
+  it('2026-10-03 · a queued ask nobody is coming for says the day it was asked and that no robot is on shift; a fresh one with a robot awake reads as before', async () => {
+    state.revisions = []
+    state.items = []
+    const task = { id: 'task-q', bid_id: 'b398', submittal_id: null, kind: 'read_schedule', input: {}, result: null, status: 'queued', claimed_at: null, finished_at: null, reviewed_at: null, summary: null }
+    // BP375: asked on Sep 29, and no seat has been used since.
+    state.tasks = [{ ...task, requested_at: '2026-09-29T15:00:00Z' }]
+    state.seat = { unrevoked_seats: 1, last_used_at: '2026-09-21T15:00:00Z' }
+    const { unmount } = mount()
+    const card = await screen.findByTestId('robot-schedule')
+    await waitFor(() => expect(card.getAttribute('data-stale')).toBe('true'))
+    expect(card.textContent).toMatch(/^You asked the robot on Sep 29\. No robot has run in \d+ days\./)
+    expect(within(card).getByTestId('robot-line').textContent).toBe('Nobody is reading the plans. Type the schedule yourself, or leave the ask in place.')
+    expect(within(card).getByRole('button', { name: 'Take the ask back' })).toBeTruthy()
+    unmount()
+    state.tasks = [{ ...task, requested_at: new Date().toISOString() }]
+    state.seat = { unrevoked_seats: 1, last_used_at: new Date().toISOString() }
+    mount()
+    const fresh = await screen.findByTestId('robot-schedule')
+    expect(fresh.getAttribute('data-stale')).toBeNull()
+    expect(fresh.textContent).toContain('The robot is queued to read the fixture schedule off the plans.')
+    expect(within(fresh).getByRole('button', { name: 'Cancel' })).toBeTruthy()
+    state.tasks = []
+  })
+
   it('v2.4136 · no robot offer anywhere while no seat is live; a live seat on a bid with no plans keeps the offer but holds the button', async () => {
     state.revisions = []
     state.items = []
