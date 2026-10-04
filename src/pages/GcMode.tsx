@@ -386,7 +386,8 @@ export default function GcMode() {
             return (
               <section key={stage.key} data-tour={`gc-stage-${stage.key}`}>
                 <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', marginBottom: '0.4rem' }}>
-                  <h3 style={{ margin: 0, fontSize: '1rem' }}>{stage.label} ({rows.length})</h3>
+                  {/* New here?'s first stop numbers the three stage titles 1, 2, 3 (the owner, 2026-10-04). */}
+                  <h3 data-tour={`gc-stage-title-${stage.key}`} style={{ margin: 0, fontSize: '1rem' }}>{stage.label} ({rows.length})</h3>
                   <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{stage.blurb}</span>
                   {stage.key === 'pursuing' && <span style={{ marginLeft: 'auto' }} data-tour="gc-new-project"><GcNewProjectButton state={state} dispatch={dispatch} onCreated={(id) => { setProjectId(id); setTab('packages') }} /></span>}
                 </div>

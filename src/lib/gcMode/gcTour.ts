@@ -13,8 +13,14 @@ export const GC_TOUR_STEPS: SpotlightTourStep[] = [
     anchor: 'gc-board',
     title: 'How a job moves',
     body: 'In GC mode we build the whole job. We hire a company for each trade. Every project moves through three stages, top to bottom:',
-    // The owner, 2026-10-04: the three stages as a list, numbered, each stage's name in bold.
+    // The owner, 2026-10-04: the three stages as a list, numbered, each stage's name in bold, and the
+    // same three titles on the board highlighted with 1, 2 and 3.
     numbered: true,
+    marks: [
+      { anchor: 'gc-stage-title-pursuing', label: '1' },
+      { anchor: 'gc-stage-title-buyout', label: '2' },
+      { anchor: 'gc-stage-title-building', label: '3' },
+    ],
     bullets: [
       'Bidding to the owner: we price the job and try to win it.',
       'Buying out: we pick one company per trade and get it all signed.',

@@ -21,6 +21,11 @@ export type SpotlightTourStep = {
   bullets?: string[]
   /** Number the bullets 1, 2, 3 instead of dots: for things that come in order. */
   numbered?: boolean
+  /**
+   * Other parts of the page to mark while this step shows: each gets a highlight and its label
+   * ("1", "2", "3") in a badge, so a numbered list in the card points at what it names.
+   */
+  marks?: { anchor: string; label: string }[]
 }
 
 /** A step's list: numbered or dotted, with a leading "Label:" in bold. */
@@ -44,6 +49,75 @@ function TourBullets({ lines, numbered }: { lines: string[]; numbered: boolean }
         )
       })}
     </List>
+  )
+}
+
+/** A step's marks: a highlight and a numbered badge on each anchor, following it as the page moves. */
+function TourMarks({ marks }: { marks: { anchor: string; label: string }[] }) {
+  const [rects, setRects] = useState<(TourRect | null)[]>([])
+  useEffect(() => {
+    const measure = () => {
+      const next = marks.map((m) => {
+        const el = document.querySelector(`[data-tour="${m.anchor}"]`)
+        if (!(el instanceof HTMLElement)) return null
+        const r = el.getBoundingClientRect()
+        return { top: r.top, left: r.left, width: r.width, height: r.height }
+      })
+      setRects((prev) => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next))
+    }
+    measure()
+    const interval = window.setInterval(measure, 120)
+    window.addEventListener('resize', measure)
+    return () => {
+      window.clearInterval(interval)
+      window.removeEventListener('resize', measure)
+    }
+  }, [marks])
+  return (
+    <>
+      {marks.map((m, i) => {
+        const r = rects[i]
+        if (!r) return null
+        return (
+          <div
+            key={m.anchor}
+            data-testid="tour-mark"
+            style={{
+              position: 'fixed',
+              top: r.top - 4,
+              left: r.left - 6,
+              width: r.width + 12,
+              height: r.height + 8,
+              borderRadius: 8,
+              border: '2px solid #f59e0b',
+              background: 'rgba(250, 204, 21, 0.18)',
+              pointerEvents: 'none',
+            }}
+          >
+            <span
+              style={{
+                position: 'absolute',
+                top: -11,
+                left: -11,
+                width: 22,
+                height: 22,
+                borderRadius: 999,
+                background: '#f59e0b',
+                color: 'white',
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+              }}
+            >
+              {m.label}
+            </span>
+          </div>
+        )
+      })}
+    </>
   )
 }
 
@@ -94,12 +168,16 @@ export function SpotlightTour({ steps, onClose, guideHref, guideLabel, startInde
     }
     setAnchorMissing(false)
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    el.scrollIntoView({ block: 'center', behavior: reduced ? 'auto' : 'smooth' })
+    // An anchor taller than the screen (a whole board) lines up at its top: centered, its top,
+    // where the stop starts, would be scrolled out of sight.
+    const block: ScrollLogicalPosition = el.getBoundingClientRect().height > window.innerHeight * 0.8 ? 'start' : 'center'
+    el.scrollIntoView({ block, behavior: reduced ? 'auto' : 'smooth' })
     // Smooth scrolling rides requestAnimationFrame, which never fires in a
     // hidden/backgrounded tab — if the anchor hasn't arrived shortly, jump.
     const settle = window.setTimeout(() => {
       const r = el.getBoundingClientRect()
-      if (r.top < 0 || r.bottom > window.innerHeight) el.scrollIntoView({ block: 'center', behavior: 'auto' })
+      const off = block === 'start' ? Math.abs(r.top) > 80 : r.top < 0 || r.bottom > window.innerHeight
+      if (off) el.scrollIntoView({ block, behavior: 'auto' })
     }, 700)
     const measure = () => {
       const r = el.getBoundingClientRect()
@@ -182,6 +260,7 @@ export function SpotlightTour({ steps, onClose, guideHref, guideLabel, startInde
       ) : (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)' }} />
       )}
+      {step.marks && step.marks.length > 0 ? <TourMarks marks={step.marks} /> : null}
       <div
         ref={cardRef}
         role="dialog"
