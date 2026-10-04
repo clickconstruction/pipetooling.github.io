@@ -29,7 +29,7 @@ import { PlugInScheduleModal } from './PlugInScheduleModal'
 import { SubmittalTakeoffPicker } from './SubmittalTakeoffPicker'
 import { loadTakeoffCandidates, saveTakeoffChoices, type TakeoffCandidatesLoad } from '../../lib/submittals/takeoffCandidatesIo'
 import { candidateToItemInserts, rowSplitTags, splitExplanation, type TakeoffCandidate } from '../../lib/submittals/takeoffCandidates'
-import { carryPartInsert, copyPartInsert, formatPartQty, leftOutPieceKeys, partCallsLine, partPieceKey, partsByItem, partsFromPieces, rollUpFromParts, submittedParts, type PartDraft, type SubmittalPartInsert, type SubmittalPartRow } from '../../lib/submittals/itemParts'
+import { carryPartInsert, copyPartInsert, formatPartQty, leftOutPieceKeys, partPieceKey, partsByItem, partsFromPieces, rollUpFromParts, submittedParts, type PartDraft, type SubmittalPartInsert, type SubmittalPartRow } from '../../lib/submittals/itemParts'
 import { applyPartWrites, clearEnteredCallsOnParts, enterCallOnParts, insertItemParts, loadItemParts, moveProcurementLines, saveItemParts, writeRowCallFromParts } from '../../lib/submittals/itemPartsIo'
 import { foldSuggestions, foldWrites, planTakeoffRefresh, takeoffRefreshWrites } from '../../lib/submittals/refreshFromTakeoff'
 import { SplitRuleModal } from './SplitRuleModal'
@@ -75,7 +75,7 @@ import { loadBidOrderFacts, loadPartOrderWords, loadRowOrderFacts, rememberLeftO
 import { planRowsAdded, planSummary, standsLine, type TakeoffPlan } from '../../lib/submittals/takeoffPicks'
 import { SubmittalOrderOnlyRows } from './SubmittalOrderOnlyRows'
 import { SubmittalTakeOffDialog } from './SubmittalTakeOffDialog'
-import { DECISION_LABELS, decisionsAsText, describeDecisions, resubmitConfirm, resubmitLabel, resubmitSplit, summarizeDecisions } from '../../lib/submittals/reviewDecisions'
+import { DECISION_LABELS, decisionsAsText, describeDecisions, resubmitConfirm, resubmitLabel, resubmitSplit, rowCallWords, summarizeDecisions } from '../../lib/submittals/reviewDecisions'
 import { describeEnteredCount, describeReviewerFile, parseReviewerFiles, reviewerFileKind, reviewerFilePath, serializeReviewerFiles, type ReviewerFile } from '../../lib/submittals/reviewerFiles'
 import { CLEAR_DECISION_PATCH, enteredDecisionAt, enteredDecisionPatch, enteredEntryBody, enteredSuffix, rowsToApproveAll } from '../../lib/submittals/enteredDecisions'
 import { matchRoomPerson, type ReviewerChoice, type ReviewerSources } from '../../lib/submittals/reviewerPick'
@@ -566,7 +566,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     // The window's row decides; its parts are read as they stood when it opened.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editing?.id, bidId, selectedRev?.id, selectedRev?.status])
-  const decisions = useMemo(() => summarizeDecisions(gcItems), [gcItems])
+  const decisions = useMemo(() => summarizeDecisions(gcItems, partsOf), [gcItems, partsOf])
   // Rows one "they approved all of it" entry would cover: no call yet, and a product to approve.
   const approvableRows = useMemo(() => rowsToApproveAll(gcItems), [gcItems])
   // 2026-10-02 · "Rev N+1 from the rows sent back" leaves the approved rows on Rev N. They are released and
@@ -2425,13 +2425,14 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                               <td style={td} data-testid="their-call">
                                 {(() => {
                                   const d = asDecision(it.review_decision)
-                                  const byPart = partCallsLine(partsOf.get(it.id) ?? [])
-                                  if (!d) return byPart ? <span style={{ color: 'var(--text-muted)', fontWeight: 600 }} data-testid="their-call-parts">{byPart}</span> : <span style={{ color: 'var(--text-faint)' }}>—</span>
-                                  const color = d === 'approved' ? 'var(--text-green-700)' : d === 'revise' ? 'var(--text-amber-700)' : 'var(--text-red-700)'
+                                  // 2026-10-03 · one word only when every part got the same answer; otherwise the cell counts ("1 of 3 rejected · 2 with no answer yet").
+                                  const w = rowCallWords(d, partsOf.get(it.id) ?? [])
+                                  if (!w) return <span style={{ color: 'var(--text-faint)' }}>—</span>
+                                  const color = w.tone === 'approved' ? 'var(--text-green-700)' : w.tone === 'revise' ? 'var(--text-amber-700)' : w.tone === 'rejected' ? 'var(--text-red-700)' : 'var(--text-muted)'
                                   return (
                                     <span style={{ color, fontWeight: 600 }}>
-                                      {DECISION_LABELS[d]}
-                                      {byPart ? <span style={sub} data-testid="their-call-parts">{byPart}</span> : null}
+                                      <span data-testid="their-call-head">{w.head}</span>
+                                      {w.rest ? <span style={sub} data-testid="their-call-parts">{w.rest}</span> : null}
                                       <span style={sub}>{[it.reviewed_by_name, enteredSuffix(it), formatShortDate(it.reviewed_at)].filter(Boolean).join(' · ')}</span>
                                       {it.review_note ? <span style={sub}>“{it.review_note}”</span> : null}
                                     </span>

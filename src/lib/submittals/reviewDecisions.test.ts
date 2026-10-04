@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 
-import { decisionsAsText, describeDecisions, itemsSentBack, resubmitConfirm, resubmitLabel, resubmitSplit, summarizeDecisions } from './reviewDecisions'
+import { decisionsAsText, describeDecisions, itemsSentBack, resubmitConfirm, resubmitLabel, resubmitSplit, rowCallWords, summarizeDecisions } from './reviewDecisions'
 
 const it_ = (o: Record<string, unknown>) => ({ tag: 'X-1', status: 'alternate', submitted_label: 'THING', submitted_model: null, review_decision: null, review_note: null, reviewed_by_name: null, reviewed_at: null, ...o })
 
@@ -61,5 +61,39 @@ describe('reviewDecisions', () => {
       confirmLabel: 'Build Rev 3 with 2 rows',
     })
     expect(resubmitConfirm(1, { sentBack: 1, noAnswer: 1, approved: 1, total: 2 }).message).toBe('1 row was sent back. It goes on Rev 2 so you can fix it. 1 row has no answer yet. It goes on Rev 2 too and keeps waiting. 1 row was approved. It stays on Rev 1 and on the procurement log.')
+  })
+  it('2026-10-03 · a row says what each part got: one word only when every part the GC sees has the same answer', () => {
+    const part = (review_decision: string | null, on_submittal = true) => ({ on_submittal, review_decision })
+    // BP375's LAV-1: one faucet rejected, the sink and the grid drain not answered.
+    expect(rowCallWords('rejected', [part(null), part('rejected'), part(null)])).toEqual({ head: '1 of 3 rejected', tone: 'rejected', rest: '2 with no answer yet' })
+    expect(rowCallWords('rejected', [part('rejected'), part('rejected')])).toEqual({ head: 'Rejected', tone: 'rejected', rest: '' })
+    expect(rowCallWords('revise', [part('approved'), part('revise'), part('approved'), part(null)])).toEqual({ head: '1 of 4 to revise', tone: 'revise', rest: '2 approved · 1 with no answer yet' })
+    expect(rowCallWords('rejected', [part('approved'), part('revise'), part('rejected')])).toEqual({ head: '1 of 3 rejected', tone: 'rejected', rest: '1 approved · 1 to revise' })
+    // Some approved and the rest open: the row itself has no call yet.
+    expect(rowCallWords(null, [part('approved'), part(null)])).toEqual({ head: '1 of 2 approved', tone: 'approved', rest: '1 with no answer yet' })
+    expect(rowCallWords('approved', [part('approved'), part('approved'), part(null, false)])).toEqual({ head: 'Approved', tone: 'approved', rest: '' })
+    // No parts the GC sees: the row's own word. Nothing answered: nothing to say.
+    expect(rowCallWords('revise')).toEqual({ head: 'Revise', tone: 'revise', rest: '' })
+    expect(rowCallWords(null, [part(null), part(null)])).toBeNull()
+    expect(rowCallWords(null)).toBeNull()
+  })
+
+  it('2026-10-03 · the summary counts a row sent back for one part apart from a row sent back whole', () => {
+    const rows = [
+      it_({ id: 'lav', tag: 'LAV-1', review_decision: 'rejected', reviewed_by_name: 'structura' }),
+      it_({ id: 'mop', tag: 'MOP', review_decision: 'rejected', reviewed_by_name: 'structura' }),
+      it_({ id: 'wc', tag: 'WC-1', review_decision: 'revise', reviewed_by_name: 'structura' }),
+      it_({ id: 'fd', tag: 'FD' }),
+    ]
+    const parts = new Map([
+      ['lav', [{ on_submittal: true, review_decision: null }, { on_submittal: true, review_decision: 'rejected' }]],
+      ['mop', [{ on_submittal: true, review_decision: 'rejected' }, { on_submittal: false, review_decision: null }]],
+      ['wc', [{ on_submittal: true, review_decision: 'revise' }, { on_submittal: true, review_decision: 'approved' }]],
+    ])
+    const s = summarizeDecisions(rows, parts)
+    expect(s).toMatchObject({ rejected: 2, revise: 1, sentBack: 3, rejectedInPart: 1, reviseInPart: 1 })
+    expect(describeDecisions(s)).toBe('1 with a part to revise · 1 rejected · 1 with a part rejected · by structura')
+    // With no parts given the words are what they were.
+    expect(describeDecisions(summarizeDecisions(rows))).toBe('1 revise · 2 rejected · by structura')
   })
 })
