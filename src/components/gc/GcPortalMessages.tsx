@@ -78,6 +78,16 @@ function Message({ m, partner, onOpenPortal }: { m: PortalMessage; partner: Part
               ))}
             </ul>
           )}
+          {m.leavesOut && (
+            <>
+              <div>{t('mInviteLeavesOut')}</div>
+              <ul style={{ margin: 0, paddingLeft: '1.2rem', display: 'grid', gap: '0.15rem' }}>
+                {m.leavesOut.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </>
+          )}
           <div style={{ display: 'grid', gap: '0.25rem', justifyItems: 'start', marginTop: '0.2rem' }}>
             <Btn kind="primary" onClick={onOpenPortal}>
               {t('openPortal')}

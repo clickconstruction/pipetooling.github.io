@@ -12,6 +12,7 @@ import {
   linkNeverOpened,
   portalFirstVisit,
   portalHome,
+  portalLeavesOut,
   portalLink,
   portalLines,
   portalLookAhead,
@@ -700,5 +701,99 @@ describe('the punch list on the home', () => {
     expect(portalTodos(state, 'guadalupe', undefined, 'es').find((t) => t.key.endsWith(':punch'))?.text).toBe(
       'Tiene 1 pendiente por arreglar en Concrete para Fair Oaks Shops, Building D.',
     )
+  })
+})
+
+describe('not in your scope', () => {
+  // The made-up projects carry no list; New Project fills one from the trade's usual list.
+  const withList = (excludes: { label: string; by: string }[]): GcState => ({
+    ...state,
+    projects: state.projects.map((p) =>
+      p.id !== 'boerne' ? p : { ...p, packages: p.packages.map((k) => (k.id === 'elec' ? { ...k, excludes } : k)) },
+    ),
+  })
+  const list = [
+    { label: 'Gas piping', by: 'HVAC' },
+    { label: 'Fire caulking', by: 'Fire sprinkler' },
+    { label: 'Temporary power', by: 'us' },
+    { label: 'Utility company fees', by: 'the owner' },
+    { label: '  ', by: 'HVAC' },
+    { label: 'Trenching', by: '' },
+  ]
+  const elec = (s: GcState) => s.projects.find((p) => p.id === 'boerne')!.packages.find((k) => k.id === 'elec')!
+
+  it('says what the number leaves out and who does it, a trade in lower case with HVAC kept', () => {
+    expect(portalLeavesOut(elec(withList(list)))).toEqual([
+      'Gas piping (HVAC does it)',
+      'Fire caulking (fire sprinkler does it)',
+      'Temporary power (Click does it)',
+      'Utility company fees (the owner does it)',
+      'Trenching',
+    ])
+  })
+
+  it('reads in Spanish with the trade as typed', () => {
+    expect(portalLeavesOut(elec(withList(list)), 'es').slice(0, 4)).toEqual([
+      'Gas piping (lo hace HVAC)',
+      'Fire caulking (lo hace Fire sprinkler)',
+      'Temporary power (lo hace Click)',
+      'Utility company fees (lo hace el dueño)',
+    ])
+  })
+
+  it('rides in the invitation, and an older project without a list says nothing', () => {
+    const invite = (s: GcState) => portalMessages(s, 'voltage').find((m) => m.kind === 'invite' && m.projectId === 'boerne')
+    expect(invite(withList(list))?.leavesOut?.[0]).toBe('Gas piping (HVAC does it)')
+    expect(invite(state)).not.toHaveProperty('leavesOut')
+    expect(portalLeavesOut(elec(state))).toEqual([])
+  })
+})
+
+describe('a sheet a newer set took out', () => {
+  // Addendum 2 on Boerne takes E-301 out. Voltage priced Electrical on the Bid set.
+  const takeOut = (s: GcState): GcState =>
+    gcReducer(s, {
+      type: 'issuePlanSet',
+      projectId: 'boerne',
+      label: 'Addendum 2',
+      note: 'The panel schedules move onto E-201.',
+      sheets: ['E-201', 'E-301'],
+      addedSheets: [],
+      touches: ['elec'],
+      recipients: [],
+      newTrades: [],
+      removedSheets: ['E-301'],
+    })
+  const withSheets = (s: GcState): GcState => ({
+    ...s,
+    projects: s.projects.map((p) =>
+      p.id !== 'boerne'
+        ? p
+        : { ...p, packages: p.packages.map((k) => (k.id !== 'elec' ? k : { ...k, scope: k.scope.map((it, i) => (i === 1 ? { ...it, sheets: ['E-301'] } : it)) })) },
+    ),
+  })
+  const read = (s: GcState) => {
+    const project = s.projects.find((p) => p.id === 'boerne')!
+    const pkg = project.packages.find((k) => k.id === 'elec')!
+    return portalLines(project, pkg, pkg.invites.find((i) => i.partnerId === 'voltage')!)
+  }
+
+  it('is no changed sheet to open: a line that named it shows it taken out', () => {
+    const r = read(takeOut(withSheets(state)))
+    const line = r.lines[1]!
+    expect(line.gone).toEqual(['E-301'])
+    expect(line.changed).not.toContain('E-301')
+    expect(r.otherSheets).not.toContain('E-301')
+  })
+
+  it('is listed once as the trade’s, when no line named it', () => {
+    const r = read(takeOut(state))
+    expect(r.goneSheets).toEqual(['E-301'])
+    expect(r.lines.every((l) => l.gone.length === 0)).toBe(true)
+    expect(r.otherSheets).not.toContain('E-301')
+  })
+
+  it('has nothing taken out before the set goes out', () => {
+    expect(read(state).goneSheets).toEqual([])
   })
 })

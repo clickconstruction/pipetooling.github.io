@@ -30,6 +30,7 @@ const S = {
   latestSet: { en: 'you have the latest set', es: 'tiene el juego más reciente' },
   lookPlans: { en: 'Look at the plans', es: 'Ver los planos' },
   newForTrade: { en: 'New for {trade} since you last looked', es: 'Nuevo para {trade} desde la última vez que entró' },
+  sheetsTakenOut: { en: 'Taken out: {list}.', es: 'Se quitaron: {list}.' },
   sheetsList: { en: 'Sheets {list}.', es: 'Hojas {list}.' },
   setNoChange: {
     en: '{label} does not change {trade}. Open it so you price on the newest set.',
@@ -93,6 +94,10 @@ const S = {
   tellGc: { en: 'Tell {gc}', es: 'Avisar a {gc}' },
 
   // The bid form past the number
+  leavesOutTitle: { en: 'Not in your scope', es: 'Fuera de su alcance' },
+  leavesOutHelp: { en: 'Leave these out of your number. Someone else does them.', es: 'No los incluya en su precio. Otra persona los hace.' },
+  leavesOutLine: { en: '{what} ({who} does it)', es: '{what} (lo hace {who})' },
+  byOwner: { en: 'the owner', es: 'el dueño' },
   goodFor: { en: 'Your number is good for', es: 'Su precio es válido por' },
   alternatesTitle: { en: 'Alternates', es: 'Alternativas' },
   alternatesHelp: {
@@ -263,6 +268,13 @@ const S = {
   },
 
   // The plans window and the sheet numbers
+  takenOutWord: { en: 'taken out', es: 'se quitó' },
+  takenOutGroup: { en: 'Taken out', es: 'Se quitaron' },
+  takenOutInOne: { en: 'taken out in {set}', es: 'se quitó en {set}' },
+  takenOutStays: { en: 'Taken out. It stays here so you can read what you priced.', es: 'Se quitó. Sigue aquí para que pueda ver lo que cotizó.' },
+  sheetWas: { en: 'was {title}', es: 'antes {title}' },
+  chipRenamed: { en: 'renamed', es: 'cambió de nombre' },
+  takenOutIn: { en: 'Taken out in {sets}:', es: 'Se quitó en {sets}:' },
   plansWindowTitle: { en: '{project} · plans', es: '{project} · planos' },
   drawnBy: { en: '{address} · drawn by {architect}', es: '{address} · dibujado por {architect}' },
   newest: { en: 'newest', es: 'más reciente' },
@@ -387,6 +399,7 @@ const S = {
   mInviteWant: { en: 'We would like your number for {trade} on {project}.', es: 'Nos gustaría recibir su precio de {trade} para {project}.' },
   mInviteDue: { en: 'Your number is due {date}.', es: 'Su precio vence el {date}.' },
   mInvitePlans: { en: 'Plans to price: {label}, issued {date}.', es: 'Planos para cotizar: {label}, emitidos el {date}.' },
+  mInviteLeavesOut: { en: 'Leave these out. Someone else does them:', es: 'No incluya esto. Otra persona lo hace:' },
   mInviteCover: { en: 'Your number should cover these lines.', es: 'Su precio debe incluir estas partidas.' },
   mBy: { en: ' by {date}', es: ' a más tardar el {date}' },
   mNudgeSubject: { en: 'A reminder: {about}', es: 'Recordatorio: {about}' },

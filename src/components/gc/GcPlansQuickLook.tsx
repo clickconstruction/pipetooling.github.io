@@ -213,6 +213,7 @@ export function GcPlansQuickLook({ project, onClose, onSeeWhoHasIt }: Props) {
           >
             {rev < newest && <strong>An older set. {planLabel(project, newest)} replaced it. </strong>}
             {set.note}
+            {set.checkedBy && <> Checked by {set.checkedBy}.</>}
             {changedCount > 0 && <> {changedCount} {changedCount === 1 ? 'sheet' : 'sheets'} changed in this set.</>}
             {sheetsOut > 0 && <> {sheetsOut} {sheetsOut === 1 ? 'sheet' : 'sheets'} taken out.</>}
             {revisedSpecs > 0 && <> {revisedSpecs} spec {revisedSpecs === 1 ? 'section' : 'sections'} revised.</>}

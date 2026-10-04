@@ -8,12 +8,12 @@
 import type { BidAlternate, Draw, GcProject, GcState, Invite, LookAheadMark, Partner, PlanQuestion, PlanSet, ProjectContact, ScopeItem, SubBid, TradePackage } from './gcTypes'
 import { daysUntil, money } from './gcWords'
 import { currentRev, partnerById } from './gcLookups'
-import { questionState, questionsFor, type QuestionState } from './gcPlans'
+import { questionState, questionsFor, sheetsGoneAtRev, type QuestionState } from './gcPlans'
 import { askPromise, OPEN_WITHIN_DAYS, type AskPromise } from './gcFollowUp'
-import { bidIsStale, sowMoney } from './gcBids'
+import { bidIsStale, quoteRanOut, sowMoney } from './gcBids'
 import { GC_COMPANY } from './gcFixture'
 import { pDate, pt, pWeekday, type PortalLang } from './gcPortalI18n'
-import { lineSheets, tradeSheets } from './gcNewProject'
+import { inSentence, lineSheets, tradeSheets, tradesForSheets } from './gcNewProject'
 import { addDays, retainageHeldNow, sentBackOpen, sowContractSum, tradeChangesFor, tradeCloseout, workAllBilled } from './gcBuilding'
 import { lookAheadWeeks, markState, mondayOf, scheduleRows, type LookAheadState, type ScheduleRow } from './gcBuildingSchedule'
 import { punchItems, punchState } from './gcBuildingPunch'
@@ -201,6 +201,25 @@ export function portalClosedWords(project: GcProject, sentNumber: boolean, lang:
     why: pt(lang, project.lostWhy === 'project_died' ? 'closedDied' : 'closedLost', { gc }),
     next: pt(lang, sentNumber ? 'closedThanksQuote' : 'closedNoNumber'),
   }
+}
+
+/**
+ * What a trade's number leaves out, and who does it instead (the New Project lane's "Not in this
+ * trade" list, `TradePackage.excludes`): "Gas piping (HVAC does it)". The office promises each
+ * company sees it when it quotes (owner, 2026-10-04: on the bid form and the invitation). Empty on
+ * older projects and on a trade with nothing listed. What the office typed stays as typed.
+ */
+export function portalLeavesOut(pkg: TradePackage, lang: PortalLang = 'en'): string[] {
+  return (pkg.excludes ?? [])
+    .filter((x) => x.label.trim() !== '')
+    .map((x) => {
+      const what = x.label.trim()
+      const by = x.by.trim()
+      if (!by) return what
+      // A trade's name stays as typed in Spanish; in an English sentence it reads lower case, HVAC kept.
+      const who = by === 'us' ? GC_COMPANY.shortName : by === 'the owner' ? pt(lang, 'byOwner') : lang === 'es' ? by : inSentence(by)
+      return pt(lang, 'leavesOutLine', { what, who })
+    })
 }
 
 export function portalJobMoney(pkg: TradePackage): PortalJobMoney | null {
@@ -450,6 +469,8 @@ export interface PortalMessage {
   lines: string[]
   /** What the number should cover, for an invitation. */
   scope?: string[]
+  /** What the number leaves out and who does it, for an invitation. */
+  leavesOut?: string[]
 }
 
 const KIND_ORDER: Record<PortalMessage['kind'], number> = { closed: -1, coi: 0, answer: 1, paid: 2, change: 3, less: 4, start: 5, sow: 6, msa: 7, bidTab: 8, plans: 9, nudge: 10, invite: 11 }
@@ -664,6 +685,7 @@ export function portalMessages(state: GcState, partnerId: string, language?: Por
           t('mInviteCover'),
         ],
         scope: pkg.scope.map((item) => item.label),
+        ...(portalLeavesOut(pkg, lang).length > 0 ? { leavesOut: portalLeavesOut(pkg, lang) } : {}),
       })
 
       for (const c of invite.contacts ?? []) {
@@ -749,6 +771,8 @@ export interface PortalLine {
   wholeTrade: boolean
   /** The sheets it reads that a set newer than the company's number changed. */
   changed: string[]
+  /** The sheets it read that a newer set took out: shown struck through, never opened. */
+  gone: string[]
   /** Those sets, by name. */
   by: string[]
 }
@@ -760,21 +784,31 @@ export interface PortalLine {
  * touched by any change to its trade's sheets. `otherSheets` are the trade's changed sheets that
  * no touched line reads.
  */
-export function portalLines(project: GcProject, pkg: TradePackage, invite: Invite): { lines: PortalLine[]; sets: PlanSet[]; otherSheets: string[] } {
+export function portalLines(
+  project: GcProject,
+  pkg: TradePackage,
+  invite: Invite,
+): { lines: PortalLine[]; sets: PlanSet[]; otherSheets: string[]; goneSheets: string[] } {
   const basis = invite.bid?.basedOnRev ?? invite.seenRev
   const sets = basis === null ? [] : project.planSets.filter((s) => s.rev > basis && s.touches.includes(pkg.id)).sort((a, b) => a.rev - b.rev)
+  // A sheet a newer set took out is no longer a sheet to open (owner, 2026-10-04: say "taken out").
+  const goneIds = new Set(sets.flatMap((set) => set.removedSheets ?? []))
   const lines = pkg.scope.map((item) => {
     const { sheets: said, guessed } = lineSheets(project, pkg, item)
     const wholeTrade = guessed || said.length === 0
     const reads = wholeTrade ? tradeSheets(project, pkg.trade).map((sh) => sh.id) : said
     const by = sets.filter((set) => set.changedSheets.some((id) => reads.includes(id)))
-    const changed = reads.filter((id) => by.some((set) => set.changedSheets.includes(id)))
-    return { item, sheets: wholeTrade ? [] : said, wholeTrade, changed, by: by.map((set) => set.label) }
+    const gone = reads.filter((id) => goneIds.has(id))
+    const changed = reads.filter((id) => !goneIds.has(id) && by.some((set) => set.changedSheets.includes(id)))
+    return { item, sheets: wholeTrade ? [] : said, wholeTrade, changed, gone, by: by.map((set) => set.label) }
   })
-  const named = new Set(lines.flatMap((l) => l.changed))
+  const named = new Set(lines.flatMap((l) => [...l.changed, ...l.gone]))
   const own = new Set(tradeSheets(project, pkg.trade).map((sh) => sh.id))
-  const otherSheets = [...new Set(sets.flatMap((set) => set.changedSheets))].filter((id) => own.has(id) && !named.has(id))
-  return { lines, sets, otherSheets }
+  const otherSheets = [...new Set(sets.flatMap((set) => set.changedSheets))].filter((id) => own.has(id) && !goneIds.has(id) && !named.has(id))
+  // The trade's sheets the sets took out that no line named: matched to the trade the way a live sheet is.
+  const wasOwn = new Set(tradesForSheets(sheetsGoneAtRev(project, currentRev(project))).find((g) => g.trade === pkg.trade)?.from ?? [])
+  const goneSheets = [...goneIds].filter((id) => wasOwn.has(id) && !named.has(id))
+  return { lines, sets, otherSheets, goneSheets }
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -789,10 +823,9 @@ export function bidGoodUntil(bid: SubBid): string | null {
   return bid.goodForDays ? addDays(bid.submittedOn, bid.goodForDays) : null
 }
 
-/** The number passed its last good day. */
+/** The number passed its last good day: the Board lane's rule (`quoteRanOut`, question 14), so the portal and Compare bids agree. */
 export function bidRanOut(bid: SubBid, today: string): boolean {
-  const until = bidGoodUntil(bid)
-  return until !== null && until < today
+  return quoteRanOut(bid, today)
 }
 
 /** "LED high bays adds $4,200", "Owner buys the fixtures takes off $12,000". */

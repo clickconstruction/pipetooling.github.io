@@ -41,6 +41,7 @@ import {
   sheetIndexInText,
   specIndexInText,
   takenOutInText,
+  ourPeople,
   scheduleSetLines,
   withNewLines,
   withTradesInOrder,
@@ -72,6 +73,9 @@ interface Props {
   dispatch: Dispatch<GcAction>
   onClose: () => void
 }
+
+/** The checker list's last choice: someone not on it, typed in. */
+const OTHER = '__other'
 
 /** A trade the set brings, as the office is filling it in. */
 interface BroughtTrade {
@@ -152,6 +156,9 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
   const [labelText, setLabelText] = useState<string | null>(null)
   const label = (labelText ?? nextSetLabel(project, kind)).trim()
   const [note, setNote] = useState('')
+  /** Who on our team checked the files: a name from the list, OTHER and a typed name, or none yet. */
+  const [checker, setChecker] = useState('')
+  const [checkerTyped, setCheckerTyped] = useState('')
   // The notes box takes the cursor without scrolling, so the set's name stays in view on a short screen.
   const noteBox = useRef<HTMLTextAreaElement>(null)
   useEffect(() => {
@@ -402,7 +409,9 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
   }, [onClose, askingOpen])
 
   const compared = diff !== null || specDiff !== null
-  const missing = fullNote === '' && !compared ? 'Say what changed first.' : label === '' ? 'Give the set a name.' : null
+  const checkedBy = (checker === OTHER ? checkerTyped : checker).trim()
+  const missing =
+    fullNote === '' && !compared ? 'Say what changed first.' : label === '' ? 'Give the set a name.' : checkedBy === '' ? 'Say who checked the set.' : null
   const addLine = (packageId: string) => {
     const t = lineText.trim()
     if (t !== '') setNewLines((all) => ({ ...all, [packageId]: [...(all[packageId] ?? []), t] }))
@@ -483,6 +492,30 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
               </div>
               <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
                 An addendum comes while we bid. A bulletin comes once the job is ours. Each one counts on its own.
+              </span>
+              <div style={{ display: 'flex', gap: '0.45rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                <label htmlFor="gc-set-checker" style={{ fontWeight: 600 }}>Checked by</label>
+                <select id="gc-set-checker" style={{ ...input, flex: '0 1 14rem', minWidth: 0 }} value={checker} onChange={(e) => setChecker(e.target.value)}>
+                  <option value="">Pick who checked it</option>
+                  {ourPeople(state, project).map((name) => (
+                    <option key={name} value={name}>
+                      {name}
+                    </option>
+                  ))}
+                  <option value={OTHER}>Someone else</option>
+                </select>
+                {checker === OTHER && (
+                  <input
+                    style={{ ...input, flex: '1 1 10rem', minWidth: 0 }}
+                    value={checkerTyped}
+                    onChange={(e) => setCheckerTyped(e.target.value)}
+                    placeholder="Their name"
+                    aria-label="Who checked the set"
+                  />
+                )}
+              </div>
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                The files are in the job's Google Drive folder. Someone on our team checks them against the notes before the set goes out.
               </span>
             </div>
             <textarea
@@ -1113,6 +1146,7 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
             {brought.length > 0 && ` It adds ${brought.length === 1 ? 'a trade' : `${brought.length} trades`}.`}
           </span>
           <span style={{ flex: 1 }} />
+          {missing && <span style={{ fontSize: '0.85rem', color: 'var(--text-amber-700)', fontWeight: 600 }}>{missing}</span>}
           <Btn kind="quiet" onClick={onClose}>Cancel</Btn>
           <Btn
             kind="primary"
@@ -1141,6 +1175,7 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
                 removedSpecs: goneSpecs,
                 retitledSpecs,
                 retiedLines,
+                checkedBy,
               })
               // Each change order is Owner Billing's own draft, so it reads on Bill the owner as theirs do.
               for (const r of coDrafted) {
