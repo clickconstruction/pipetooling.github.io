@@ -18,6 +18,7 @@ import {
   portalLeavesOut,
   portalLink,
   portalOnSite,
+  portalPreBid,
   portalSovCheck,
   portalSovReached,
   portalSovStart,
@@ -1094,5 +1095,47 @@ describe('the trade’s own schedule of values', () => {
       { label: 'Rough-in', amount: 100_000 },
       { label: 'Trim', amount: 50_000 },
     ])
+  })
+})
+
+describe('the pre-bid meeting in the portal', () => {
+  const set = gcReducer(state, { type: 'schedulePreBid', projectId: 'boerne', on: '2026-10-06', at: '10:00', place: 'the site', host: 'architect', mandatory: true })
+  const boerne = (s: GcState) => s.projects.find((p) => p.id === 'boerne')!
+
+  it('tells a company still quoting when and where, and that it is required', () => {
+    expect(portalPreBid(set, boerne(set), 'lonestar')).toMatchObject({
+      when: 'Tue Oct 6 at 10 AM, at the site.',
+      host: 'Run by Marsh & Vale Architects.',
+      rule: 'You have to come to quote this project.',
+      after: 'Bring your questions about the plans.',
+    })
+    // Comal passed on its trade: it is not asked.
+    expect(portalPreBid(set, boerne(set), 'comal')).toBeNull()
+    expect(portalPreBid(state, boerne(state), 'lonestar')).toBeNull()
+  })
+
+  it('asks under Needs you before it, and emails the invitation', () => {
+    expect(portalTodos(set, 'lonestar').find((t) => t.key === 'prebid:boerne')).toMatchObject({
+      tone: 'amber',
+      text: 'Come to the pre-bid meeting for Boerne Retail Shell, Tue Oct 6 at 10 AM. It is required to quote.',
+    })
+    const m = portalMessages(set, 'lonestar').find((x) => x.kind === 'preBid')
+    expect(m?.subject).toBe('Boerne Retail Shell: pre-bid meeting Tue Oct 6, required to quote')
+    expect(m?.lines.slice(1, 4)).toEqual(['You are invited to the pre-bid meeting for Boerne Retail Shell.', 'When: Tue Oct 6 at 10 AM.', 'Where: the site.'])
+  })
+
+  it('says who came once it is held, and flags a required one missed in red', () => {
+    const held = gcReducer(set, { type: 'recordPreBidAttendance', projectId: 'boerne', partnerIds: ['lonestar'] })
+    expect(portalPreBid(held, boerne(held), 'lonestar')?.after).toBe('You came. Thank you.')
+    expect(portalPreBid(held, boerne(held), 'tricounty')?.missed).toBe(true)
+    expect(portalTodos(held, 'tricounty').find((t) => t.key === 'prebid:boerne')).toMatchObject({ tone: 'red', text: 'You missed the required pre-bid meeting for Boerne Retail Shell. Call Click.' })
+    expect(portalTodos(held, 'lonestar').some((t) => t.key === 'prebid:boerne')).toBe(false)
+  })
+
+  it('reads in Spanish, the time in Spanish too', () => {
+    expect(portalPreBid(set, boerne(set), 'lonestar', 'es')?.when).toBe('mar 6 oct a las 10 a. m., en the site.')
+    // The Spanish time ends "m.": no sentence adds a second period after it.
+    const es = [...portalTodos(set, 'lonestar', undefined, 'es').map((t) => t.text), ...(portalMessages(set, 'lonestar', 'es').find((x) => x.kind === 'preBid')?.lines ?? [])]
+    expect(es.filter((x) => x.includes('m..'))).toEqual([])
   })
 })

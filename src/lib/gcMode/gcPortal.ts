@@ -8,11 +8,11 @@
 import type { BidAlternate, Draw, GcProject, GcState, Invite, LookAheadMark, Partner, PlanQuestion, PlanSet, ProjectContact, PromiseKind, ScopeItem, SubBid, TheirSovLine, TradePackage, TradePromise } from './gcTypes'
 import { daysUntil, money } from './gcWords'
 import { currentRev, partnerById } from './gcLookups'
-import { bareId, questionState, questionsFor, sheetsGoneAtRev, type QuestionState } from './gcPlans'
+import { bareId, preBidInvited, questionState, questionsFor, sheetsGoneAtRev, type QuestionState } from './gcPlans'
 import { askPromise, OPEN_WITHIN_DAYS, type AskPromise } from './gcFollowUp'
 import { bidIsStale, quoteRanOut, sowMoney } from './gcBids'
 import { GC_COMPANY } from './gcFixture'
-import { pDate, pt, pWeekday, type PortalKey, type PortalLang } from './gcPortalI18n'
+import { pDate, pt, pTime, pWeekday, type PortalKey, type PortalLang } from './gcPortalI18n'
 import { inSentence, lineSheets, linesOnSpecs, specsAtRev, specsGoneAtRev, tradeSheets, tradesForSheets } from './gcNewProject'
 import { addDays, retainageHeldNow, sentBackOpen, sowContractSum, tradeChangesFor, tradeCloseout, workAllBilled } from './gcBuilding'
 import { lookAheadWeeks, markState, mondayOf, scheduleRows, type LookAheadState, type ScheduleRow } from './gcBuildingSchedule'
@@ -438,6 +438,51 @@ export function portalSovReached(lines: TheirSovLine[], claimed: number, lang: P
   return pt(lang, 'sovBilled', { amount, where: parts.join(', ') })
 }
 
+// ---------------------------------------------------------------------------------------------
+// The pre-bid meeting (the New Project lane's, 2026-10-04), as an invited company reads it
+// ---------------------------------------------------------------------------------------------
+
+export interface PortalPreBid {
+  on: string
+  at: string
+  mandatory: boolean
+  /** Who came is recorded. */
+  held: boolean
+  came: boolean
+  /** Held, required, and the company did not come. */
+  missed: boolean
+  /** "Run by Marsh & Vale Architects." */
+  host: string
+  /** "Tue Oct 6 at 10 AM, at the site." */
+  when: string
+  /** Whether coming is required to quote. */
+  rule: string
+  /** Before: bring your questions. After: you came, you missed a required one, or the minutes are coming. */
+  after: string
+}
+
+/** The meeting for a company asked to it: every company still quoting a trade there. Null: none, not asked, or a bid we lost. */
+export function portalPreBid(state: GcState, project: GcProject, partnerId: string, lang: PortalLang = 'en'): PortalPreBid | null {
+  const m = project.preBid
+  if (!m || project.lostOn || !preBidInvited(state, project).some((r) => r.partner.id === partnerId)) return null
+  const who = m.host === 'architect' ? project.architect.trim() || pt(lang, 'pbArchitect') : GC_COMPANY.shortName
+  const held = m.attended !== null
+  const came = held && (m.attended ?? []).includes(partnerId)
+  const missed = held && !came && m.mandatory
+  return {
+    on: m.on,
+    at: m.at,
+    mandatory: m.mandatory,
+    held,
+    came,
+    missed,
+    host: pt(lang, 'pbRunBy', { who }),
+    when: pt(lang, 'pbWhen', { date: pWeekday(lang, m.on), time: pTime(lang, m.at), place: m.place }),
+    rule: pt(lang, m.mandatory ? 'pbRequired' : 'pbOptional'),
+    after: !held ? pt(lang, 'pbBring') : came ? pt(lang, 'pbCame') : missed ? pt(lang, 'pbMissed') : pt(lang, 'pbMinutes'),
+  }
+}
+
 export function portalJobMoney(pkg: TradePackage): PortalJobMoney | null {
   const sow = pkg.sow
   if (!sow) return null
@@ -512,6 +557,17 @@ export function portalTodos(state: GcState, partnerId: string, asks: PortalAsk[]
       tone: row.tone,
       by: row.p.by,
     })
+  }
+  // A pre-bid meeting the company is asked to, once per project: before it, or a required one it missed.
+  for (const project of state.projects) {
+    const pb = portalPreBid(state, project, partnerId, lang)
+    if (!pb) continue
+    const vars = { project: project.name, date: pWeekday(lang, pb.on), time: pTime(lang, pb.at), gc }
+    if (!pb.held) {
+      todos.push({ key: `prebid:${project.id}`, projectId: project.id, text: pt(lang, pb.mandatory ? 'todoPreBidReq' : 'todoPreBid', vars), tone: pb.mandatory ? 'amber' : 'plain', by: pb.on })
+    } else if (pb.missed) {
+      todos.push({ key: `prebid:${project.id}`, projectId: project.id, text: pt(lang, 'todoPreBidMissed', vars), tone: 'red', by: pb.on })
+    }
   }
   // A company we do not know yet: its form first, so the office can approve it (question 3).
   if (portalVetting(partner, lang).state === 'send') todos.push({ key: 'vet', projectId: null, text: pt(lang, 'todoVet', { gc }), tone: 'amber', by: null })
@@ -712,7 +768,7 @@ export function portalLink(partnerId: string): string {
 export interface PortalMessage {
   key: string
   on: string
-  kind: 'invite' | 'nudge' | 'plans' | 'bidTab' | 'msa' | 'sow' | 'start' | 'less' | 'change' | 'paid' | 'answer' | 'coi' | 'closed' | 'vetted'
+  kind: 'invite' | 'nudge' | 'plans' | 'bidTab' | 'msa' | 'sow' | 'start' | 'less' | 'change' | 'paid' | 'answer' | 'coi' | 'closed' | 'vetted' | 'preBid'
   /** Null: about the company, not one project (the master agreement). */
   projectId: string | null
   subject: string
@@ -724,7 +780,7 @@ export interface PortalMessage {
   leavesOut?: string[]
 }
 
-const KIND_ORDER: Record<PortalMessage['kind'], number> = { vetted: -2, closed: -1, coi: 0, answer: 1, paid: 2, change: 3, less: 4, start: 5, sow: 6, msa: 7, bidTab: 8, plans: 9, nudge: 10, invite: 11 }
+const KIND_ORDER: Record<PortalMessage['kind'], number> = { vetted: -2, closed: -1, preBid: -0.5, coi: 0, answer: 1, paid: 2, change: 3, less: 4, start: 5, sow: 6, msa: 7, bidTab: 8, plans: 9, nudge: 10, invite: 11 }
 
 function firstName(contact: string): string {
   return contact.split(' ')[0] ?? contact
@@ -797,6 +853,20 @@ export function portalMessages(state: GcState, partnerId: string, language?: Por
     const mine = project.packages.flatMap((pkg) => pkg.invites.filter((i) => i.partnerId === partnerId).map((invite) => ({ pkg, invite })))
     const won = mine.filter(({ pkg, invite }) => pkg.awardedInviteId === invite.id)
     const name = project.name
+
+    // The pre-bid meeting's invitation. The meeting keeps no day it was set, so it reads as today's until it does.
+    const pb = portalPreBid(state, project, partnerId, lang)
+    if (pb && project.preBid) {
+      const date = pWeekday(lang, pb.on)
+      out.push({
+        key: `${project.id}:prebid`,
+        on: state.today,
+        kind: 'preBid',
+        projectId: project.id,
+        subject: t(pb.mandatory ? 'mPreBidSubjectReq' : 'mPreBidSubject', { project: name, date }),
+        lines: [hello, t('mPreBidInvited', { project: name }), t('mPreBidWhen', { date, time: pTime(lang, pb.at) }), t('mPreBidWhere', { place: project.preBid.place }), pb.rule, t('pbBring')],
+      })
+    }
 
     // We lost the project: one email the day it is marked, to a company still on a trade there.
     const still = mine.filter(({ invite }) => invite.status !== 'declined')
