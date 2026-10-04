@@ -6,6 +6,7 @@ import type { GcProject, GcState, Invite, ScopeItem, Sow, TradePackage } from '.
 import { money, shortDate } from './gcWords'
 import { ownBidPriced, partnerById } from './gcLookups'
 import { pDate, type PortalLang } from './gcPortalI18n'
+import { GC_COMPANY } from './gcFixture'
 
 /** The bid plus the office's plug for every scope item it does not clearly include. */
 export function leveledTotal(pkg: TradePackage, invite: Invite): number | null {
@@ -259,22 +260,24 @@ export function packageHasTab(pkg: TradePackage): boolean {
  */
 export function bidTabResult(project: GcProject, pkg: TradePackage, partnerId: string, lang: PortalLang = 'en'): string {
   const es = lang === 'es'
+  // The builder's name from the model (question 1: no words written for one company only).
+  const gc = GC_COMPANY.shortName
   // A lost bid (owner, 2026-10-03), the portal's words: never the price, never who won.
   if (project.lostOn) {
     const why =
       project.lostWhy === 'project_died'
         ? es ? 'El dueño detuvo este proyecto o lo puso en pausa.' : 'The owner stopped this project or put it on hold.'
-        : es ? 'Click no ganó este proyecto.' : 'Click did not win this project.'
+        : es ? `${gc} no ganó este proyecto.` : `${gc} did not win this project.`
     return `${why} ${es ? 'Gracias por su precio.' : 'Thank you for your quote.'}`
   }
   if (project.stage === 'pursuing') {
     const on = project.ourBidSentOn ? (es ? ` el ${pDate(lang, project.ourBidSentOn)}` : ` on ${shortDate(project.ourBidSentOn)}`) : ''
-    return es ? `Click envió su propuesta${on}. El dueño todavía no elige constructor.` : `Click sent its bid${on}. The owner has not picked a builder yet.`
+    return es ? `${gc} envió su propuesta${on}. El dueño todavía no elige constructor.` : `${gc} sent its bid${on}. The owner has not picked a builder yet.`
   }
-  if (pkg.awardedInviteId === null) return es ? 'Click ganó el proyecto. Esta especialidad todavía no se adjudica.' : 'Click won the project. This trade is not awarded yet.'
+  if (pkg.awardedInviteId === null) return es ? `${gc} ganó el proyecto. Esta especialidad todavía no se adjudica.` : `${gc} won the project. This trade is not awarded yet.`
   const winner = pkg.invites.find((i) => i.id === pkg.awardedInviteId)
-  if (winner?.partnerId === partnerId) return es ? 'Click ganó el proyecto. Esta especialidad es suya.' : 'Click won the project. This trade is yours.'
-  return es ? 'Click ganó el proyecto. Esta especialidad fue para otra empresa.' : 'Click won the project. This trade went to another company.'
+  if (winner?.partnerId === partnerId) return es ? `${gc} ganó el proyecto. Esta especialidad es suya.` : `${gc} won the project. This trade is yours.`
+  return es ? `${gc} ganó el proyecto. Esta especialidad fue para otra empresa.` : `${gc} won the project. This trade went to another company.`
 }
 
 /** The least quotes we want on a trade, from different companies, before we trust the number. */

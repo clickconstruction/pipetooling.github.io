@@ -54,6 +54,8 @@ describe('when we pay a draw', () => {
     const later: GcState = { ...approved, today: '2026-10-15' }
     const also = stageProgress(later, fairOaks(later)).also
     expect(also[0]).toMatch(/^The schedule:/)
-    expect(also[1]).toBe('Draw 2 for Iron Horse Fabrication is 3 days late to pay. It was due Oct 12.')
+    // After the schedule and the inspection that failed, before the rest.
+    expect(also[1]).toMatch(/^The electrical service inspection failed/)
+    expect(also[2]).toBe('Draw 2 for Iron Horse Fabrication is 3 days late to pay. It was due Oct 12.')
   })
 })

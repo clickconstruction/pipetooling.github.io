@@ -10,7 +10,7 @@
  *
  * Days are calendar days in the prototype. Import from `./gcModel`, which re-exports this file.
  */
-import type { GcProject, GcState, LookAheadMark, LookAheadReason, ProjectSchedule, ScheduleActivity, ScheduleMilestone, TradePackage } from './gcTypes'
+import type { GcProject, GcState, InspectionFailure, LookAheadMark, LookAheadReason, ProjectSchedule, ScheduleActivity, ScheduleMilestone, TradePackage } from './gcTypes'
 import { carriedAmount } from './gcBids'
 import { scheduleDraft } from './gcNewProject'
 import { partnerById } from './gcLookups'
@@ -198,6 +198,36 @@ export function scheduleItems(state: GcState, project: GcProject): ScheduleItem[
     const item = activity.inspection ? inspectionOf(schedule, activity, state.today) : rowOf(state, project, schedule, activity)
     return item ? [item] : []
   })
+}
+
+export interface OpenFailure {
+  activity: ScheduleActivity
+  label: string
+  /** The last time it failed. */
+  failure: InspectionFailure
+  /** How many times it has failed. */
+  times: number
+}
+
+/**
+ * Inspections that failed and have not passed since (owner, 2026-10-03), with the last failure.
+ * With a trade: only those whose last failure names its work.
+ */
+export function openInspectionFailures(project: GcProject, packageId?: string): OpenFailure[] {
+  return (project.schedule?.activities ?? []).flatMap((activity) => {
+    const inspection = activity.inspection
+    const failed = inspection?.failed ?? []
+    const failure = failed[failed.length - 1]
+    if (!inspection || inspection.passedOn || !failure) return []
+    if (packageId && !failure.packageIds.includes(packageId)) return []
+    return [{ activity, label: inspection.label, failure, times: failed.length }]
+  })
+}
+
+/** The trades an inspection waits on, the ones whose work it inspects: the first to name when it fails. */
+export function inspectedTrades(project: GcProject, activity: ScheduleActivity): TradePackage[] {
+  const ids = new Set((project.schedule?.activities ?? []).filter((a) => activity.after.includes(a.lineId)).map((a) => a.packageId))
+  return project.packages.filter((k) => ids.has(k.id))
 }
 
 /** The inspections on the schedule, in the order drawn. */
