@@ -272,6 +272,7 @@ const S = {
   takenOutGroup: { en: 'Taken out', es: 'Se quitaron' },
   takenOutInOne: { en: 'taken out in {set}', es: 'se quitó en {set}' },
   takenOutStays: { en: 'Taken out. It stays here so you can read what you priced.', es: 'Se quitó. Sigue aquí para que pueda ver lo que cotizó.' },
+  specChanged: { en: 'A newer set revised this section', es: 'Un juego más reciente revisó esta sección' },
   sheetWas: { en: 'was {title}', es: 'antes {title}' },
   chipRenamed: { en: 'renamed', es: 'cambió de nombre' },
   takenOutIn: { en: 'Taken out in {sets}:', es: 'Se quitó en {sets}:' },

@@ -469,6 +469,55 @@ const STEPS: Step[] = [
     label: "Pad B: take Lonestar's asphalt alternate",
     action: { type: 'takeAlternate', projectId: 'padb', packageId: 'bsite', inviteId: 'bsite-lonestar', label: 'Asphalt paving in place of concrete', taken: true },
   },
+  // The daily log (Building lane): today's on Fair Oaks D, then Wednesday's caught up.
+  {
+    label: "Fair Oaks D: the superintendent writes today's log",
+    action: {
+      type: 'saveDailyLog',
+      projectId: 'fairoaksd',
+      log: {
+        date: '2026-10-02',
+        sky: 'clear',
+        high: 86,
+        low: 68,
+        weatherStop: false,
+        crews: [
+          { packageId: 'fsteel', workers: 3 },
+          { packageId: 'froof', workers: 5 },
+          { packageId: 'felec', workers: 3 },
+          { packageId: 'fplumb', workers: 3 },
+          { packageId: 'fhvac', workers: 3 },
+        ],
+        done: 'West half membrane down. Bonding jumper in at the service panel.',
+        delays: [],
+        visitors: '',
+      },
+    },
+  },
+  {
+    label: "Fair Oaks D: catch up Wednesday's log",
+    action: {
+      type: 'saveDailyLog',
+      projectId: 'fairoaksd',
+      log: {
+        date: '2026-09-30',
+        sky: 'clear',
+        high: 88,
+        low: 69,
+        weatherStop: false,
+        crews: [
+          { packageId: 'fsteel', workers: 4 },
+          { packageId: 'froof', workers: 5 },
+          { packageId: 'felec', workers: 2 },
+          { packageId: 'fplumb', workers: 3 },
+          { packageId: 'fhvac', workers: 3 },
+        ],
+        done: 'Membrane on the west half. Erection on the canopy.',
+        delays: [{ packageId: 'fsteel', reason: 'crew', note: 'Iron Horse short two again.' }],
+        visitors: '',
+      },
+    },
+  },
 ]
 
 const CUSTOMER_IDS = ['cibolo', 'raman']
@@ -608,6 +657,7 @@ describe('GC mode golden walk', () => {
       'passInspection',
       'addPunchItem', 'tradeFixPunchItem', 'checkPunchItem',
       'failInspection',
+      'saveDailyLog',
       'tradeOpenPortal',
       'tradeAnswerLines',
       'priceOwnBid',

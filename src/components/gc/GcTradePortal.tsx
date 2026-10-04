@@ -41,7 +41,7 @@ import { GcPortalHome } from './GcPortalHome'
 import { GcPortalPay } from './GcPortalPay'
 import { GcPortalLookAhead } from './GcPortalLookAhead'
 import { AlternatesEditor, AnswerLines, GoodForPicker, LeavesOut, QuoteFilePicker } from './GcPortalBidExtras'
-import { ChangedLines, LineSheets, SheetChip, TakenOut } from './GcPortalLineSheets'
+import { ChangedLines, LineSheets, LineSpecs, SheetChip, TakenOut } from './GcPortalLineSheets'
 import { GcPortalMessages } from './GcPortalMessages'
 import { GcPortalPaperwork } from './GcPortalPaperwork'
 import { GcPortalPlans } from './GcPortalPlans'
@@ -518,6 +518,7 @@ function BidBlock({
                     <strong>{item.label}.</strong> {t('unclearLine', { gc: GC })}
                   </span>
                   <LineSheets line={lineOf(item.id)} onOpen={onOpenSheet} />
+                  <LineSpecs line={lineOf(item.id)} />
                 </div>
                 <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
                   <Btn onClick={() => setIncludes({ ...includes, [item.id]: 'yes' })}>{t('inMyNumber')}</Btn>
@@ -533,6 +534,7 @@ function BidBlock({
                 />
                 {item.label}
                 <LineSheets line={lineOf(item.id)} onOpen={onOpenSheet} />
+                <LineSpecs line={lineOf(item.id)} />
               </label>
             ),
           )}

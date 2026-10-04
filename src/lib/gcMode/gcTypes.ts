@@ -399,6 +399,35 @@ export interface GcProject {
   lostNote?: string | null
   /** The punch list (Building lane, 2026-10-03): what is left to fix on each trade's work. Unset: none yet. */
   punch?: PunchItem[]
+  /** The superintendent's daily log (Building lane, 2026-10-04): one per working day. Unset: none yet. */
+  dailyLogs?: DailyLog[]
+}
+
+export type WeatherSky = 'clear' | 'cloudy' | 'rain' | 'storm' | 'wind'
+
+/**
+ * The superintendent's daily log for one day on the job (owner, 2026-10-04): the weather, who
+ * was on site and how many, what got done, what held work up, and who came by.
+ */
+export interface DailyLog {
+  /** The day it is for, YYYY-MM-DD. */
+  date: string
+  sky: WeatherSky
+  /** Degrees Fahrenheit. */
+  high: number
+  low: number
+  /** Work stopped for the weather. */
+  weatherStop: boolean
+  /** Each trade on site that day and how many workers. A trade not listed was not there. */
+  crews: { packageId: string; workers: number }[]
+  /** What got done, in the superintendent's words. */
+  done: string
+  /** What held work up: whose (null: the job's own), why, and a note. */
+  delays: { packageId: string | null; reason: LookAheadReason; note: string }[]
+  /** Inspections and visitors: the inspector, the owner's walk, the architect. */
+  visitors: string
+  /** The day it was written. Later than `date`: caught up after the day. */
+  writtenOn: string
 }
 
 /**
@@ -655,6 +684,8 @@ export type GcAction =
   | { type: 'checkPunchItem'; projectId: string; itemId: string; fixed: boolean; note?: string }
   /** The office takes (or puts back) one of a quote's alternates on Compare bids (question 14). */
   | { type: 'takeAlternate'; projectId: string; packageId: string; inviteId: string; label: string; taken: boolean }
+  /** Our superintendent writes the daily log for a day (today, or a day missed); it replaces that day's. */
+  | { type: 'saveDailyLog'; projectId: string; log: Omit<DailyLog, 'writtenOn'> }
 
 /** One trade on a new project, as the office left it in the New project window. */
 export interface NewTradeDraft {

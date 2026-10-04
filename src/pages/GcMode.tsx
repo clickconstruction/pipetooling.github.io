@@ -12,6 +12,7 @@ import { GcFollowUpTab } from '../components/gc/GcAskThread'
 import { GcOwnerBillingTab } from '../components/gc/GcOwnerBillingTab'
 import { GcCloseoutTab } from '../components/gc/GcCloseout'
 import { GcBuildingScheduleBlock, GcBuildingScheduleTab } from '../components/gc/GcBuildingSchedule'
+import { GcBuildingLogTab } from '../components/gc/GcBuildingLog'
 import { GcBidTabsTab } from '../components/gc/GcBidTabs'
 import { GcCustomerWindow } from '../components/gc/GcCustomerWindow'
 import { GcPlansQuickLook } from '../components/gc/GcPlansQuickLook'
@@ -67,7 +68,7 @@ import { GC_PROJECT_TOUR_STEPS, GC_TOUR_STEPS } from '../lib/gcMode/gcTour'
 const NEW_HERE_SEEN_KEY = 'gc-mode:new-here-seen'
 
 type BoardTab = 'projects' | 'followup' | 'partners' | 'money'
-type ProjectTab = 'packages' | 'plans' | 'number' | 'tabs' | 'contracts' | 'start' | 'draws' | 'owner' | 'closeout' | 'schedule'
+type ProjectTab = 'packages' | 'plans' | 'number' | 'tabs' | 'contracts' | 'start' | 'draws' | 'owner' | 'closeout' | 'schedule' | 'log'
 
 const STAGES: { key: GcStage; label: string; tone: Tone; blurb: string }[] = [
   { key: 'pursuing', label: 'Bidding to the owner', tone: 'amber', blurb: 'Collect a number for every trade, then give the owner a price.' },
@@ -125,6 +126,7 @@ const PROJECT_TABS: { key: ProjectTab; label: string }[] = [
   { key: 'contracts', label: 'Contracts' },
   { key: 'start', label: 'Get started' },
   { key: 'schedule', label: 'Schedule' },
+  { key: 'log', label: 'Daily log' },
   { key: 'draws', label: 'Draws' },
   { key: 'owner', label: 'Bill the owner' },
   { key: 'closeout', label: 'Closeout' },
@@ -481,6 +483,7 @@ export default function GcMode() {
               {tab === 'draws' && <GcDrawsTab state={state} project={project} dispatch={dispatch} />}
               {tab === 'owner' && <GcOwnerBillingTab state={state} project={project} dispatch={dispatch} />}
               {tab === 'schedule' && <GcBuildingScheduleTab state={state} project={project} dispatch={dispatch} />}
+              {tab === 'log' && <GcBuildingLogTab state={state} project={project} dispatch={dispatch} />}
               {tab === 'closeout' && (
                 <GcCloseoutTab
                   state={state}

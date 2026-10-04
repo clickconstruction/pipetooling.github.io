@@ -116,7 +116,7 @@ column headers are in one block at the end of `gcBuildingWords.ts`, for the nati
 
 ## For a native speaker to read
 
-Every Spanish string the trade's portal shows, 565 in all, drawn from the code on 2026-10-04.
+Every Spanish string the trade's portal shows, 566 in all, drawn from the code on 2026-10-04.
 They're grouped by screen, English on the left. Please mark anything that reads wrong, stiff or
 unclear, and write the better words beside it. The Portal lane makes the changes and passes the
 other lanes theirs.
@@ -393,6 +393,7 @@ they were written in. The portal does not translate them.
 | Taken out | Se quitaron |
 | taken out in {set} | se quitó en {set} |
 | Taken out. It stays here so you can read what you priced. | Se quitó. Sigue aquí para que pueda ver lo que cotizó. |
+| A newer set revised this section | Un juego más reciente revisó esta sección |
 | was {title} | antes {title} |
 | renamed | cambió de nombre |
 | Taken out in {sets}: | Se quitó en {sets}: |
