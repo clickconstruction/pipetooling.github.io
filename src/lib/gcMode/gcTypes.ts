@@ -540,6 +540,12 @@ export interface GcProject {
    */
   propertyOwnerId?: string
   propertyOwner?: string
+  /**
+   * Who our customer is to the job (the owner, 2026-10-04: "Sometimes we are working for the owner,
+   * sometimes we are working for another GC or an owner's rep who then works and bills the owner"):
+   * another general contractor or an owner's rep. Missing: the owner.
+   */
+  customerRole?: CustomerRole
   ownerBilling: OwnerBilling | null
   /** Changes to our contract with the owner, oldest first. Absent: none yet. */
   changeOrders?: ChangeOrder[]
@@ -1071,7 +1077,12 @@ export interface NewProjectDraft {
   /** The owner of the property when it is not the customer: a record, or null with a name for someone new. */
   propertyOwnerId?: string | null
   propertyOwnerName?: string
+  /** Who we work for. Missing: the owner. */
+  customerRole?: CustomerRole
 }
+
+/** Who our customer is to the job: the owner, another general contractor, or an owner's rep. */
+export type CustomerRole = 'owner' | 'gc' | 'ownersRep'
 
 /** What the trade typed on a draw's pay application. The numbers are rebuilt from the draws (`payApplicationForDraw`). */
 export interface DrawPayApp {

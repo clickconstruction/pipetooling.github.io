@@ -208,7 +208,7 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
   const [askingOpen, setAskingOpen] = useState(false)
   /** Answered questions kept out of this set's note, by id. The rest ride in it. */
   const [skipQ, setSkipQ] = useState<string[]>([])
-  /** Change orders to the owner this set starts, by package id: ticked or not, the cost, the words. */
+  /** Change orders to the customer this set starts, by package id: ticked or not, the cost, the words. */
   const [coOn, setCoOn] = useState<Record<string, boolean>>({})
   const [coCost, setCoCost] = useState<Record<string, string>>({})
   const [coText, setCoText] = useState<Record<string, string>>({})
@@ -1078,10 +1078,10 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
 
           {coRows.length > 0 && (
             <section>
-              <StepHeading n={3} title="Change orders to the owner" hint="The job is ours, so a change to the work is a change to our price." />
+              <StepHeading n={3} title="Change orders to the customer" hint="The job is ours, so a change to the work is a change to our price." />
               <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '0.5rem', fontSize: '0.875rem' }}>
                 <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-                  Tick a trade to start a change order for it. Type what the change costs us. Our fee is added for the price. Each one is drafted on Bill the owner, for you to review and send.
+                  Tick a trade to start a change order for it. Type what the change costs us. Our fee is added for the price. Each one is drafted on Bill the customer, for you to review and send.
                 </span>
                 {coRows.map((r) => (
                   <div key={r.id} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.7rem', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '0.35rem', opacity: r.on ? 1 : 0.6 }}>
@@ -1110,7 +1110,7 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
                     {r.brought && (!r.on || r.cost === 0 || r.description.trim() === '') && (
                       // A trade a set brings after the owner signed is $0 on the owner's own lines (Owner Billing): only this change order bills it.
                       <span style={{ color: 'var(--text-amber-700)', fontWeight: 600, fontSize: '0.8rem' }}>
-                        {r.trade} bills the owner only through this change order. Without one, its cost never reaches the owner.{' '}
+                        {r.trade} reaches the customer's bill only through this change order. Without one, its cost never reaches the customer.{' '}
                         {!r.on ? 'Tick it and type our cost.' : r.cost === 0 ? 'Type our cost.' : 'Say what it is for.'}
                       </span>
                     )}
@@ -1120,12 +1120,12 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
                           style={{ ...input, width: '100%', boxSizing: 'border-box' }}
                           value={r.description}
                           onChange={(e) => setCoText((all) => ({ ...all, [r.id]: e.target.value }))}
-                          aria-label={`What the change order to the owner says for ${r.trade}`}
+                          aria-label={`What the change order to the customer says for ${r.trade}`}
                         />
                         <span style={{ color: r.cost === 0 ? 'var(--text-muted)' : 'var(--text-600)', fontSize: '0.8rem' }}>
                           {r.cost === 0
                             ? 'Type a cost to draft it. A credit is a cost below zero.'
-                            : `The price to the owner is ${money(r.price)}, our cost plus our fee.`}
+                            : `The price to the customer is ${money(r.price)}, our cost plus our fee.`}
                         </span>
                       </>
                     )}
@@ -1229,7 +1229,7 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
                 } told it changes their trade.`}
             {linesAdded > 0 && ` It adds ${linesAdded} scope ${linesAdded === 1 ? 'line' : 'lines'}.`}
             {endDays > 0 && ` It adds ${endDays} ${endDays === 1 ? 'day' : 'days'} to the job.`}
-            {coDrafted.length > 0 && ` It drafts ${coDrafted.length} ${coDrafted.length === 1 ? 'change order' : 'change orders'} to the owner.`}
+            {coDrafted.length > 0 && ` It drafts ${coDrafted.length} ${coDrafted.length === 1 ? 'change order' : 'change orders'} to the customer.`}
             {brought.length > 0 && ` It adds ${brought.length === 1 ? 'a trade' : `${brought.length} trades`}.`}
           </span>
           <span style={{ flex: 1 }} />
