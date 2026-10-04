@@ -246,6 +246,39 @@ export function carryForwardPayApplication(last: SavedPayApplication, jobPrefill
   return out
 }
 
+/** The owner, 2026-10-04: retainage "is usually 10% but can sometimes go to 5% after 50% complete", and at 5% "it covers everything to date". */
+export const AIA_RETAINAGE_DROP_AFTER = 0.5
+export const AIA_REDUCED_RETAINAGE_PERCENT = 5
+
+export type RetainageDropOffer = {
+  /** How far along the job is: total completed and stored over the scheduled value. */
+  pctComplete: number
+  /** Retainage held at the form's percent, and at the reduced one over everything to date. */
+  heldNow: number
+  heldAtReduced: number
+  /** What the payment due gains when the percent drops: the retainage let go. */
+  moreDue: number
+}
+
+/**
+ * The offer to drop retainage: made once the job is past halfway while the form still holds more
+ * than the reduced percent. It is an offer, not a rule: not every contract drops it.
+ */
+export function retainageDropOffer(values: AiaFieldValues): RetainageDropOffer | null {
+  const pct = num(values.g702_c28_retainage_percent)
+  if (pct <= AIA_REDUCED_RETAINAGE_PERCENT) return null
+  const now = buildAiaPreview(values).math
+  const pctComplete = now.line.pctComplete
+  if (pctComplete == null || pctComplete <= AIA_RETAINAGE_DROP_AFTER) return null
+  const reduced = buildAiaPreview({ ...values, g702_c28_retainage_percent: AIA_REDUCED_RETAINAGE_PERCENT }).math
+  return {
+    pctComplete,
+    heldNow: now.totalRetainage,
+    heldAtReduced: reduced.totalRetainage,
+    moreDue: Math.round((reduced.currentPaymentDue - now.currentPaymentDue) * 100) / 100,
+  }
+}
+
 /** One line for the window's list: `2 · 09/30/2026 · $17,280.00 due`. */
 export function payApplicationLabel(app: SavedPayApplication): string {
   const due = `$${app.currentPaymentDue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} due`

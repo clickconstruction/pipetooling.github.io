@@ -222,6 +222,29 @@ describe('AiaG702G703Modal', () => {
     expect(screen.getByLabelText('G702 page').textContent).toContain('CURRENT PAYMENT DUE$17,460.00')
   })
 
+  it('offers 5% retainage once the job is past halfway, and Use 5% takes it', async () => {
+    setWide(true)
+    onJob = [savedOne()]
+    // 60% of 48,500 created: application 2 opens with 19,400 before and 9,700 now.
+    renderWithProviders(<AiaG702G703Modal open onClose={() => undefined} job={{ ...job, pct_complete: 60 }} hcpForFilename="1023" />)
+    await waitFor(() => expect(field('g702_n5_project').value).toBe('2'))
+
+    const offer = screen.getByTestId('aia-retainage-drop')
+    expect(offer.textContent).toContain('This job is 60% complete.')
+    expect(offer.textContent).toContain('Held would go from $2,910.00 to $1,455.00, and $1,455.00 more would be due.')
+    fireEvent.click(screen.getByRole('button', { name: 'Use 5%' }))
+    expect(field('g702_c28_retainage_percent').value).toBe('5')
+    expect(screen.queryByTestId('aia-retainage-drop')).toBeNull()
+    // 29,100 at 5% leaves 27,645 earned; 17,460 was certified before.
+    expect(screen.getByLabelText('G702 page').textContent).toContain('CURRENT PAYMENT DUE$10,185.00')
+
+    // Application 1 was 40% complete: no offer there.
+    fireEvent.click(screen.getByRole('button', { name: /^1 · 09\/30\/2026/ }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Leave' }))
+    await waitFor(() => expect(field('g702_n5_project').value).toBe('1'))
+    expect(screen.queryByTestId('aia-retainage-drop')).toBeNull()
+  })
+
   it('asks before typed work is lost, and keeps it on Stay', async () => {
     setWide(true)
     onJob = [savedOne()]

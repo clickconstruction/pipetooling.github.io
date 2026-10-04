@@ -15,7 +15,7 @@ import {
   buildAiaPrefillFromJob,
 } from '../../lib/aiaG702G703Template'
 import { fetchAndFillAiaTemplate } from '../../lib/fillAiaG702G703Workbook'
-import { buildAiaPreview } from '../../lib/aiaG702G703Preview'
+import { buildAiaPreview, formatAiaMoney } from '../../lib/aiaG702G703Preview'
 import { loadAiaPrefillFacts } from '../../lib/aiaG702G703PrefillIo'
 import {
   type SavedPayApplication,
@@ -25,6 +25,7 @@ import {
   payApplicationLabel,
   payApplicationWriteFromForm,
   previousPayApplication,
+  retainageDropOffer,
   sortPayApplications,
 } from '../../lib/aiaPayApplications'
 import { PayApplicationNumberTaken, deletePayApplication, loadPayApplications, savePayApplication } from '../../lib/aiaPayApplicationsIo'
@@ -155,6 +156,8 @@ export default function AiaG702G703Modal({
   const [activeKey, setActiveKey] = useState<AiaFieldKey | null>(null)
   const [changeOrdersOpen, setChangeOrdersOpen] = useState(false)
   const preview = useMemo(() => buildAiaPreview(formStateToFieldValues(form)), [form])
+  // Past halfway with more than 5% held: the contract may let retainage drop.
+  const dropOffer = useMemo(() => retainageDropOffer(formStateToFieldValues(form)), [form])
 
   /** A box pressed on the paper: put the cursor in its field. */
   const pickField = useCallback((key: AiaFieldKey) => {
@@ -650,6 +653,45 @@ export default function AiaG702G703Modal({
                       />
                     )}
                   </label>
+                  {seg.def.key === 'g702_c28_retainage_percent' && dropOffer ? (
+                    <div
+                      data-testid="aia-retainage-drop"
+                      style={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        alignItems: 'center',
+                        gap: '0.4rem 0.6rem',
+                        padding: '0.5rem 0.6rem',
+                        borderRadius: 4,
+                        fontSize: '0.8125rem',
+                        background: 'var(--bg-amber-100)',
+                        color: 'var(--text-amber-900)',
+                        border: '1px solid var(--border-amber)',
+                      }}
+                    >
+                      <span style={{ flex: '1 1 14rem' }}>
+                        This job is {Math.round(dropOffer.pctComplete * 100)}% complete. Past 50% the contract may drop retainage to 5% of
+                        everything to date. Held would go from {formatAiaMoney(dropOffer.heldNow)} to {formatAiaMoney(dropOffer.heldAtReduced)},
+                        and {formatAiaMoney(dropOffer.moreDue)} more would be due.
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setForm((f) => ({ ...f, g702_c28_retainage_percent: '5' }))}
+                        style={{
+                          padding: '0.25rem 0.7rem',
+                          fontSize: '0.8125rem',
+                          fontWeight: 600,
+                          borderRadius: 4,
+                          cursor: 'pointer',
+                          border: '1px solid currentColor',
+                          background: 'none',
+                          color: 'inherit',
+                        }}
+                      >
+                        Use 5%
+                      </button>
+                    </div>
+                  ) : null}
                 </Fragment>
               ) : (
                 <details
