@@ -201,7 +201,10 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   companies in range in the map's own order (`tradeLineup`), up to `BENCH_WANTED`, so the map
   and the step move together when question 7 is answered. A company missing its master
   agreement, insurance or W-9 is still ticked, with what is missing in a muted line: paperwork is
-  fixed before award, not before a quote. Create sends the board's own invite to each.
+  fixed before award, not before a quote. Create sends the board's own invite to each. **+ Ask a
+  company not on our list** adds one by name and email or phone (the owner, 2026-10-04, question
+  3: anyone can quote): it comes in not vetted, is asked like the rest, and nothing is awarded to
+  it until the office approves it (`strangerActions`, the Board's `addPartner` known false).
 - **Our own trade counts once our bid is priced** (answered 2026-10-02, was open question 10):
   ticking **Ours** on a new project starts our own bid in Trades mode (`selfPerform.priced:
   false`, our guess as its value). The trade becomes a real number when that bid is priced
