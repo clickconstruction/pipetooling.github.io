@@ -183,9 +183,10 @@ export function GcPackagesTab({ state, project, dispatch, onSeePortal, onMap, op
   return (
     <div>
       <Why>
-        One row for each trade on the job. Invite trade partners, watch their bids come in from their portals, then
-        compare the bids and carry a number. Of {project.packages.length} trades, {counts.carried} carry a number,{' '}
-        {counts.toLevel} have bids to compare, {counts.waiting} are waiting on bids and {counts.empty} have no one
+        One row for each trade on the job. Invite trade partners, watch their quotes come in from their portals, then
+        compare the quotes and carry a number. Of {project.packages.length} trades, {counts.carried} carry a number,{' '}
+        {counts.toLevel} {counts.toLevel === 1 ? 'has quotes' : 'have quotes'} to compare, {counts.waiting}{' '}
+        {counts.waiting === 1 ? 'is' : 'are'} waiting on quotes and {counts.empty} {counts.empty === 1 ? 'has' : 'have'} no one
         invited.
         {counts.ours > 0 && ` ${counts.ours === 1 ? 'One is' : `${counts.ours} are`} our own bid, not priced yet.`}
       </Why>
@@ -533,16 +534,16 @@ function LevelPanel({ state, project, pkg, dispatch, onSeePortal }: GcPaneProps 
 
       {bidders.length === 0 ? (
         <div style={{ color: 'var(--text-muted)' }}>
-          No bids yet. Open the trade&rsquo;s portal and submit one as them to see the comparison fill in.
+          No quotes yet. Open the trade&rsquo;s portal and send one as them to see the comparison fill in.
         </div>
       ) : (
         <>
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.7rem 0.9rem', display: 'grid', gap: '0.35rem' }}>
           <div style={{ fontSize: '0.72rem', letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
-            What these bids really cost
+            What these quotes really cost
           </div>
           <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-            A bid that leaves work out is not the low bid. Put a cost on the missing work and compare the totals.
+            A quote that leaves work out is not the low quote. Put a cost on the missing work and compare the totals.
           </div>
           {comparison.lines.map((line) => (
             <div key={line.inviteId} style={{ fontSize: '0.9rem' }}>
