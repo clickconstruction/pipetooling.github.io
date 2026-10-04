@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { FileSpreadsheet } from 'lucide-react'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { LimitedJobDetailSnapshot } from '../../types/limitedJobDetailSnapshot'
@@ -14,6 +14,9 @@ import {
   buildAiaPrefillFromJob,
 } from '../../lib/aiaG702G703Template'
 import { fetchAndFillAiaTemplate } from '../../lib/fillAiaG702G703Workbook'
+import { buildAiaPreview } from '../../lib/aiaG702G703Preview'
+import AiaG702G703Paper from './AiaG702G703Paper'
+import { useMatchMedia } from '../../hooks/useMatchMedia'
 import { fetchPhysicalInvoiceIssuerFromAppSettings, getPhysicalInvoiceIssuerDraft } from '../../lib/physicalInvoiceIssuer'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
@@ -32,6 +35,8 @@ function triggerDownloadArrayBuffer(ab: ArrayBuffer, filename: string): void {
   a.remove()
   URL.revokeObjectURL(url)
 }
+
+const swatch: CSSProperties = { display: 'inline-block', width: 22, height: 12, borderRadius: 2 }
 
 function emptyFormState(): Record<AiaFieldKey, string> {
   const o = {} as Record<AiaFieldKey, string>
@@ -99,6 +104,25 @@ export default function AiaG702G703Modal({
   const { showToast } = useToastContext()
   const [form, setForm] = useState<Record<AiaFieldKey, string>>(emptyFormState)
   const [generating, setGenerating] = useState(false)
+  // Side by side from 1000px: the paper on the left, the form on the right. Under that, one at a time.
+  const wide = useMatchMedia('(min-width: 1000px)')
+  const [narrowView, setNarrowView] = useState<'form' | 'preview'>('form')
+  const [activeKey, setActiveKey] = useState<AiaFieldKey | null>(null)
+  const [changeOrdersOpen, setChangeOrdersOpen] = useState(false)
+  const preview = useMemo(() => buildAiaPreview(formStateToFieldValues(form)), [form])
+
+  /** A box pressed on the paper: put the cursor in its field. */
+  const pickField = useCallback((key: AiaFieldKey) => {
+    setActiveKey(key)
+    setNarrowView('form')
+    if (AIA_FIELD_DEFS.find((d) => d.key === key)?.detailsGroupId) setChangeOrdersOpen(true)
+    window.setTimeout(() => {
+      const input = document.getElementById(`aia-field-${key}`)
+      if (!input) return
+      input.focus()
+      if (typeof input.scrollIntoView === 'function') input.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    }, 0)
+  }, [])
 
   const applyPrefill = useCallback(() => {
     if (!job) return
@@ -148,6 +172,8 @@ export default function AiaG702G703Modal({
 
   const fieldSegments = useMemo(() => buildAiaModalFieldSegments(AIA_FIELD_DEFS), [])
 
+  const showPaper = wide || narrowView === 'preview'
+
   if (!open) return null
 
   return (
@@ -174,11 +200,13 @@ export default function AiaG702G703Modal({
         style={{
           background: 'var(--surface)',
           borderRadius: 8,
-          maxWidth: 560,
+          maxWidth: wide ? 1360 : 560,
           width: '100%',
           maxHeight: 'min(90vh, 100%)',
-          overflow: 'auto',
           boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
+          ...(wide
+            ? { height: 'min(92vh, 940px)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }
+            : { overflow: 'auto' }),
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -214,6 +242,30 @@ export default function AiaG702G703Modal({
           <h2 id={titleId} style={{ margin: 0, fontSize: '1.125rem', flex: 1 }}>
             AIA G702-G703
           </h2>
+          {wide ? null : (
+            <div role="group" aria-label="Form or preview" style={{ display: 'flex' }}>
+              {(['form', 'preview'] as const).map((view, i) => (
+                <button
+                  key={view}
+                  type="button"
+                  aria-pressed={narrowView === view}
+                  onClick={() => setNarrowView(view)}
+                  style={{
+                    padding: '0.3rem 0.7rem',
+                    fontSize: '0.8125rem',
+                    cursor: 'pointer',
+                    border: '1px solid var(--border-strong)',
+                    borderLeft: i === 0 ? '1px solid var(--border-strong)' : 'none',
+                    borderRadius: i === 0 ? '4px 0 0 4px' : '0 4px 4px 0',
+                    background: narrowView === view ? 'var(--text-strong)' : 'var(--surface)',
+                    color: narrowView === view ? 'var(--surface)' : 'var(--text-700)',
+                  }}
+                >
+                  {view === 'form' ? 'Form' : 'Preview'}
+                </button>
+              ))}
+            </div>
+          )}
           <button
             type="button"
             onClick={onClose}
@@ -232,10 +284,67 @@ export default function AiaG702G703Modal({
           </button>
         </div>
 
-        <div style={{ padding: '1rem 1.25rem' }}>
+        <div style={wide ? { display: 'flex', flex: 1, minHeight: 0 } : undefined}>
+        {showPaper ? (
+          <div
+            data-testid="aia-preview-pane"
+            style={{
+              background: 'var(--bg-muted)',
+              ...(wide ? { flex: 1, minWidth: 0, overflow: 'auto' } : {}),
+            }}
+          >
+            <div
+              style={{
+                position: 'sticky',
+                top: 0,
+                zIndex: 1,
+                display: 'flex',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                gap: '0.35rem 0.9rem',
+                padding: '0.5rem 1rem',
+                fontSize: '0.8125rem',
+                color: 'var(--text-700)',
+                background: 'var(--bg-muted)',
+                borderBottom: '1px solid var(--border)',
+              }}
+            >
+              <strong>Preview of the download</strong>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ ...swatch, background: 'var(--bg-blue-tint)', borderBottom: '1px solid var(--border-blue)' }} />
+                From the form
+              </span>
+              <span>Plain numbers are the sheet&apos;s math</span>
+            </div>
+            <div style={{ padding: '1rem' }}>
+              <AiaG702G703Paper preview={preview} activeKey={activeKey} onPick={pickField} />
+            </div>
+          </div>
+        ) : null}
+        <div
+          style={
+            wide
+              ? {
+                  width: 400,
+                  flexShrink: 0,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  minHeight: 0,
+                  borderLeft: '1px solid var(--border)',
+                }
+              : undefined
+          }
+        >
+        <div
+          style={{
+            padding: '1rem 1.25rem',
+            ...(wide ? { flex: 1, minHeight: 0, overflow: 'auto' } : {}),
+            ...(!wide && narrowView === 'preview' ? { display: 'none' } : {}),
+          }}
+        >
           <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-600)' }}>
-            Values are written into the Mission Hills G702/G703 template. Adjust fields, then generate the
-            workbook.
+            Values are written into the G702/G703 workbook. A field left empty is empty in the download. Adjust
+            fields, then generate the workbook.
           </p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -276,6 +385,8 @@ export default function AiaG702G703Modal({
                     <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)' }}>{seg.def.label}</span>
                     {seg.def.kind === 'textarea' ? (
                       <textarea
+                        id={`aia-field-${seg.def.key}`}
+                        onFocus={() => setActiveKey(seg.def.key)}
                         value={form[seg.def.key]}
                         onChange={(e) => setForm((f) => ({ ...f, [seg.def.key]: e.target.value }))}
                         rows={3}
@@ -294,6 +405,8 @@ export default function AiaG702G703Modal({
                         inputMode={
                           seg.def.kind === 'number' || seg.def.kind === 'percent' ? 'decimal' : undefined
                         }
+                        id={`aia-field-${seg.def.key}`}
+                        onFocus={() => setActiveKey(seg.def.key)}
                         value={form[seg.def.key]}
                         onChange={(e) => setForm((f) => ({ ...f, [seg.def.key]: e.target.value }))}
                         style={{
@@ -312,6 +425,8 @@ export default function AiaG702G703Modal({
                 <details
                   key={seg.groupId}
                   className="aia-g702-details-wrap"
+                  open={changeOrdersOpen}
+                  onToggle={(e) => setChangeOrdersOpen(e.currentTarget.open)}
                   style={{
                     border: '1px solid var(--border)',
                     borderRadius: 6,
@@ -361,6 +476,8 @@ export default function AiaG702G703Modal({
                         <input
                           type="text"
                           inputMode="decimal"
+                          id={`aia-field-${def.key}`}
+                          onFocus={() => setActiveKey(def.key)}
                           value={form[def.key]}
                           onChange={(e) => setForm((f) => ({ ...f, [def.key]: e.target.value }))}
                           style={{
@@ -425,6 +542,8 @@ export default function AiaG702G703Modal({
           >
             {generating ? 'Generating…' : 'Generate'}
           </button>
+        </div>
+        </div>
         </div>
       </div>
     </div>
