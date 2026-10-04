@@ -343,14 +343,14 @@ describe('when the job will finish (for the late-finish warning on Bill the owne
       if (!a) throw new Error(`no ${lineId}`)
       return { ...a, start, finish, after }
     }
-    const schedule = p.schedule
-    if (!schedule) throw new Error('no schedule')
+    if (!p.schedule) throw new Error('no schedule')
+    // No baseline: the plan as drawn is the one measured against.
+    const { baseline: _locked, ...schedule } = p.schedule
     // The ductwork (80%) is ahead; the rooftop units, due Sep 30, have not started; controls wait on them.
     const chain = {
       ...p,
       schedule: {
         ...schedule,
-        baseline: undefined,
         activities: [act('fhvac-2', '2026-09-28', '2026-10-16', []), act('fhvac-1', '2026-09-28', '2026-09-30', []), act('fhvac-3', '2026-10-01', '2026-10-16', ['fhvac-1'])],
       },
     }
