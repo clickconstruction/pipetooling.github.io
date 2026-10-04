@@ -163,8 +163,8 @@ export default function AiaG702G703Paper({
             <span style={small}>AIA DOCUMENT G702</span>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1.15fr 1.2fr 0.55fr', columnGap: 22, marginTop: 12 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '96px 1fr', columnGap: 6, rowGap: 2, alignContent: 'start' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.95fr 1.05fr 0.5fr', columnGap: 18, marginTop: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '82px 1fr', columnGap: 6, rowGap: 2, alignContent: 'start' }}>
               <span style={small}>TO OWNER:</span>
               {box('g702_d6_owner_name')}
               <span />
@@ -182,7 +182,13 @@ export default function AiaG702G703Paper({
               <span />
               {box('g702_d12_contractor_license')}
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '132px 1fr', columnGap: 6, rowGap: 2, alignContent: 'start' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <span style={small}>PROJECT:</span>
+              {box('g702_h6_project_name')}
+              {box('g702_h7_project_address')}
+              {box('g702_h8_project_city_state_zip')}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '124px 1fr', columnGap: 6, rowGap: 2, alignContent: 'start' }}>
               <span style={small}>APPLICATION NUMBER:</span>
               {box('g702_n5_project')}
               <span style={small}>PERIOD TO:</span>

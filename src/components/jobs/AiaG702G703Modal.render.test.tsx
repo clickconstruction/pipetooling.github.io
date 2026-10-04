@@ -22,6 +22,11 @@ vi.mock('../../lib/physicalInvoiceIssuer', () => ({
   }),
 }))
 
+vi.mock('../../lib/aiaG702G703PrefillIo', () => ({
+  loadAiaPrefillFacts: () =>
+    Promise.resolve({ ownerName: 'Heron Construction Group', ownerAddress: '900 Broadway St, San Antonio, TX 78215', contractSignedOn: '2026-07-14' }),
+}))
+
 function setWide(wide: boolean) {
   window.matchMedia = ((query: string) => ({
     matches: wide,
@@ -53,6 +58,13 @@ describe('AiaG702G703Modal', () => {
     expect(screen.getByTestId('aia-preview-pane')).toBeTruthy()
     expect(cell('g702_h18_original_contract_sum').textContent).toBe('$48,500.00')
     expect(cell('g702_h18_original_contract_sum').dataset.aiaSource).toBe('typed')
+    // The job is the project; the payer read beside it is the owner; the number waits to be typed.
+    expect(cell('g702_h6_project_name').textContent).toBe('Water Sample Test')
+    expect(cell('g702_d6_owner_name').textContent).toBe('Heron Construction Group')
+    expect(cell('g702_d7_owner_address').textContent).toBe('900 Broadway St')
+    expect(cell('g702_n9_contract_date').textContent).toBe('07/14/2026')
+    expect(cell('g702_n5_project').dataset.aiaSource).toBe('blank')
+    expect(field('g702_c28_retainage_percent').value).toBe('10')
     // Nothing typed for the period: the box is empty, on the paper and in the download.
     expect(cell('g702_n6_period_to').textContent?.trim()).toBe('')
     expect(cell('g702_n6_period_to').dataset.aiaSource).toBe('blank')
@@ -61,8 +73,7 @@ describe('AiaG702G703Modal', () => {
     expect(cell('g702_n6_period_to').textContent).toBe('October 31, 2026')
     expect(cell('g703_k4_period_to').textContent).toBe('October 31, 2026')
 
-    fireEvent.change(field('g702_c28_retainage_percent'), { target: { value: '10' } })
-    // 40% of 48,500 = 19,400 this period, less 10% retainage.
+    // 40% of 48,500 = 19,400 this period, less the 10% retainage the form starts with.
     expect(screen.getByLabelText('G702 page').textContent).toContain('CURRENT PAYMENT DUE$17,460.00')
   })
 
