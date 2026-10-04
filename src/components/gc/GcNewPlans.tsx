@@ -42,6 +42,7 @@ import {
   specIndexInText,
   takenOutInText,
   ourPeople,
+  substantialCompletionOn,
   scheduleSetLines,
   withNewLines,
   withTradesInOrder,
@@ -317,7 +318,13 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
   const push = placed ? pushSchedule(placed, pushes) : null
   const lastWas = schedule ? schedule.activities.reduce((m, a) => (a.finish > m ? a.finish : m), '') : ''
   const endDays = push ? Math.round((Date.parse(push.lastAfter) - Date.parse(lastWas)) / 86_400_000) : 0
-  const substantial = schedule?.milestones.find((m) => /substantial/i.test(m.label)) ?? null
+  // Substantial completion as the contract has it now: the drawn day plus the days signed change orders add (Building's, question 28).
+  const substantial = substantialCompletionOn(project)
+  const substantialWords = substantial
+    ? substantial.days > 0
+      ? `now ${weekdayDate(substantial.on)} after signed change orders`
+      : `planned ${weekdayDate(substantial.planned)}`
+    : ''
   const lineName = (packageId: string, lineId: string) => {
     // An inspection is no trade's line: it carries its own name.
     const inspection = schedule?.activities.find((a) => a.lineId === lineId)?.inspection
@@ -912,13 +919,13 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
                           : `${Object.keys(pushes).length > 0 ? 'The days fit in the spare days. ' : ''}The job's last day stays ${weekdayDate(lastWas)}.`}
                       </span>
                       {substantial &&
-                        (push.lastAfter > substantial.planned ? (
+                        (push.lastAfter > substantial.on ? (
                           <strong style={{ color: 'var(--text-red-700)' }}>
-                            Substantial completion, planned {weekdayDate(substantial.planned)}, would be missed by{' '}
-                            {Math.round((Date.parse(push.lastAfter) - Date.parse(substantial.planned)) / 86_400_000)} days.
+                            Substantial completion, {substantialWords}, would be missed by{' '}
+                            {Math.round((Date.parse(push.lastAfter) - Date.parse(substantial.on)) / 86_400_000)} days.
                           </strong>
                         ) : (
-                          <span>Substantial completion, planned {weekdayDate(substantial.planned)}, still holds.</span>
+                          <span>Substantial completion, {substantialWords}, still holds.</span>
                         ))}
                     </div>
                   )}
