@@ -156,7 +156,7 @@ first** (a partner's vetting, the promise record), so build on those once GC 0 s
 
 1. ~~**Q6 words:** the portal says quote, in English and Spanish; redraw `PORTAL_SPANISH.md`.~~ done d716ce4e0
 2. ~~**Q3 the new company's form:** license, insurance, years in business, references, past jobs, in
-   both languages, and where it stands (being checked, approved, approved up to $X).~~ done 799694a69 (a render test walks it until the office can add a stranger)
+   both languages, and where it stands (being checked, approved, approved up to $X).~~ done 799694a69 (walked in the browser with a stranger added on Trade partners: form, checking, approved up to $150,000 and its email)
 3. ~~**Q8:** the trade sees its open promises and can give or move a date; a reminder 30 days before
    its insurance runs out, with sending the new certificate.~~ done 75200a585 (the 30-day reminder was already built; COI_WARN_DAYS now reads INSURANCE_ASK_DAYS)
 
