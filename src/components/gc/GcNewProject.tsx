@@ -583,7 +583,7 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
           {step === 2 && (
             <div style={{ display: 'grid', gap: '0.75rem' }}>
               <div style={{ fontSize: '0.875rem' }}>
-                The trades are a guess from the sheets and the specs. Untick a trade we do not need. Tick <strong>Ours</strong> when our own crew does it. That starts our own bid in Trades mode. The trade counts as a real number once that bid is priced. Until then its budget is our guess.
+                The trades are a guess from the sheets and the specs. Untick a trade we do not need. Tick <strong>Ours</strong> when our own crew does it. We then price it ourselves in Trades mode. The trade counts as a real number once we price it there. Until then its budget is our guess.
               </div>
               {rows.length === 0 ? (
                 <div style={{ color: 'var(--text-muted)' }}>No trades yet. Paste the sheet index on step 2, or add a trade below.</div>
@@ -907,7 +907,7 @@ function ScopeEditor({
         <strong>{row.trade}</strong>
         <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
           {row.ours
-            ? 'Ours. This is the scope of our own bid.'
+            ? 'Ours. This is the scope we price ourselves.'
             : row.from.length > 0 || row.specs.length > 0
               ? `Reads from ${sheetsWords([...row.from, ...row.specs])}.`
               : 'You added this trade.'}
