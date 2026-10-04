@@ -4,7 +4,7 @@
  * starts from its usual scope. A later set of plans uses the same guess, and can bring a trade
  * the job did not have. Every guess here is a starting point the office changes.
  */
-import type { GcCustomer, GcProject, GcState, NewProjectDraft, NewTradeDraft, PlanSheet, ProjectSchedule, ScheduleActivity, ScheduleMilestone, ScopeExclusion, ScopeItem, SpecSection, TradePackage } from './gcTypes'
+import type { GcAction, GcCustomer, GcProject, GcState, NewProjectDraft, NewTradeDraft, PlanSheet, ProjectSchedule, ScheduleActivity, ScheduleMilestone, ScopeExclusion, ScopeItem, SpecSection, TradePackage } from './gcTypes'
 import { sheetDiscipline, sheetsAtRev } from './gcPlans'
 import { currentRev } from './gcLookups'
 import { tradeLineup } from './gcMap'
@@ -167,6 +167,34 @@ export function budgetForSize(state: GcState, trade: string, sqFt: number): Size
   const perSqFt = middle ?? BUDGET_PER_SQ_FT[trade] ?? null
   if (perSqFt === null) return null
   return { amount: Math.round((perSqFt * sqFt) / 500) * 500, perSqFt, jobs: rates.length }
+}
+
+/** A company new to us, added on Who to ask (the owner, 2026-10-04, question 3): anyone can quote. */
+export interface StrangerAsk {
+  trade: string
+  company: string
+  /** How to reach them: an email or a phone, as the office has it. */
+  contact: string
+}
+
+/**
+ * The actions that add each company new to us and ask it to quote, in order: the Board's
+ * addPartner with known false (so it comes in not vetted, and award waits for the office's
+ * approval), then the board's invite. Each id is the one addPartner gives the next company,
+ * `new-` and the count of companies after it. A trade that is ours, or not on the project, is skipped.
+ */
+export function strangerActions(state: GcState, project: GcProject, strangers: StrangerAsk[]): GcAction[] {
+  const out: GcAction[] = []
+  let count = state.partners.length
+  for (const s of strangers) {
+    const company = s.company.trim()
+    const pkg = project.packages.find((p) => p.trade === s.trade && !p.selfPerform)
+    if (company === '' || !pkg) continue
+    count += 1
+    out.push({ type: 'addPartner', company, contact: s.contact.trim(), trade: s.trade, base: null, maxMiles: null, known: false })
+    out.push({ type: 'invite', projectId: project.id, packageId: pkg.id, partnerId: `new-${count}` })
+  }
+  return out
 }
 
 /** The trades the company does with its own crews. Their number comes from our own bid in Trades mode. */

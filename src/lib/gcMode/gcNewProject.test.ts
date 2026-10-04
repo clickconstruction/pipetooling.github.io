@@ -20,6 +20,8 @@ import {
   buildNewProject,
   changeOrderFromSet,
   changeOrderTakingTheDays,
+  strangerActions,
+  canAward,
   projectScopeGaps,
   scopeGaps,
   usualExcludes,
@@ -636,5 +638,25 @@ describe('budgets from what each trade cost on our past jobs', () => {
     const none = { ...state, projects: [] }
     expect(budgetForSize(none, 'Electrical', 6800)).toEqual({ amount: 122_500, perSqFt: 18, jobs: 0 })
     expect(budgetForSize(state, 'Elevator', 6800)).toBeNull()
+  })
+})
+
+describe('a company new to us, asked from Who to ask', () => {
+  it('comes in not vetted and is asked to quote, each one once, and nothing is asked for a trade that is ours', () => {
+    const made = gcReducer(initialGcState(), { type: 'createProject', draft: draft() })
+    const project = made.projects.find((p) => p.id === 'leon-springs-urgent-care')
+    if (!project) throw new Error('no Leon Springs')
+    const actions = strangerActions(made, project, [
+      { trade: 'Sitework', company: ' Brazos Dirt Works ', contact: 'bids@brazosdirt.example' },
+      { trade: 'Sitework', company: '  ', contact: '' },
+      { trade: 'Plumbing', company: 'Somebody Plumbing', contact: '' },
+    ])
+    expect(actions.map((a) => a.type)).toEqual(['addPartner', 'invite'])
+    const after = actions.reduce(gcReducer, made)
+    const added = after.partners[after.partners.length - 1]
+    expect(added).toMatchObject({ company: 'Brazos Dirt Works', contact: 'bids@brazosdirt.example', trades: ['Sitework'], vetting: { status: 'new' } })
+    const site = after.projects.find((p) => p.id === project.id)?.packages.find((k) => k.trade === 'Sitework')
+    expect(site?.invites.map((i) => i.partnerId)).toContain(added?.id)
+    expect(added && canAward(added, 1_000).ok).toBe(false)
   })
 })

@@ -5,19 +5,20 @@
  *
  * The words follow the plain-words rules at the top of `gcTour.ts`.
  */
-import type { BidAlternate, Draw, GcProject, GcState, Invite, LookAheadMark, Partner, PlanQuestion, PlanSet, ProjectContact, ScopeItem, SubBid, TradePackage } from './gcTypes'
+import type { BidAlternate, Draw, GcProject, GcState, Invite, LookAheadMark, Partner, PlanQuestion, PlanSet, ProjectContact, PromiseKind, ScopeItem, SubBid, TradePackage, TradePromise } from './gcTypes'
 import { daysUntil, money } from './gcWords'
 import { currentRev, partnerById } from './gcLookups'
 import { bareId, questionState, questionsFor, sheetsGoneAtRev, type QuestionState } from './gcPlans'
 import { askPromise, OPEN_WITHIN_DAYS, type AskPromise } from './gcFollowUp'
 import { bidIsStale, quoteRanOut, sowMoney } from './gcBids'
 import { GC_COMPANY } from './gcFixture'
-import { pDate, pt, pWeekday, type PortalLang } from './gcPortalI18n'
+import { pDate, pt, pWeekday, type PortalKey, type PortalLang } from './gcPortalI18n'
 import { inSentence, lineSheets, linesOnSpecs, specsAtRev, specsGoneAtRev, tradeSheets, tradesForSheets } from './gcNewProject'
 import { addDays, retainageHeldNow, sentBackOpen, sowContractSum, tradeChangesFor, tradeCloseout, workAllBilled } from './gcBuilding'
 import { lookAheadWeeks, markState, mondayOf, scheduleRows, type LookAheadState, type ScheduleRow } from './gcBuildingSchedule'
 import { onSite } from './gcBuildingLog'
 import { vettingOf } from './gcVetting'
+import { INSURANCE_ASK_DAYS, PROMISE_WHAT, tradePromisesOf, tradePromiseState } from './gcPromises'
 import { punchItems, punchState } from './gcBuildingPunch'
 import { planLabel } from './gcLookups'
 
@@ -66,7 +67,7 @@ export interface PortalPaperLine {
 }
 
 /** Insurance this close to running out gets a warning: the chip turns amber, Needs you asks, an email goes out. */
-export const COI_WARN_DAYS = 30
+export const COI_WARN_DAYS = INSURANCE_ASK_DAYS
 
 export function portalInsurance(
   partner: Partner,
@@ -261,6 +262,57 @@ export function portalVetting(partner: Partner, lang: PortalLang = 'en'): { stat
   return { state: 'approved', words: v.limit !== undefined ? pt(lang, 'vetApprovedUpTo', { amount: money(v.limit) }) : pt(lang, 'vetApproved') }
 }
 
+// ---------------------------------------------------------------------------------------------
+// The dates a company gave us for things other than a quote (owner, 2026-10-04, question 8)
+// ---------------------------------------------------------------------------------------------
+
+const PROMISE_WORDS: Record<PromiseKind, { key: PortalKey; plural: boolean }> = {
+  insurance: { key: 'pwInsurance', plural: false },
+  w9: { key: 'pwW9', plural: false },
+  sow: { key: 'pwSow', plural: false },
+  start: { key: 'pwStart', plural: false },
+  submittals: { key: 'pwSubmittals', plural: true },
+  delivery: { key: 'pwDelivery', plural: false },
+  payApp: { key: 'pwPayApp', plural: false },
+  punch: { key: 'pwPunch', plural: true },
+  closeout: { key: 'pwCloseout', plural: true },
+}
+
+/** One date a company gave us, as its portal shows it, with what it is for and where it stands. */
+export interface PortalPromiseRow {
+  p: TradePromise
+  /** What it is, in the portal's language: "The renewed insurance certificate". What the office typed stays as typed. */
+  what: string
+  /** The job and trade it is for. Null: about the company itself. */
+  where: string | null
+  words: string
+  tone: 'red' | 'amber' | 'plain'
+  plural: boolean
+}
+
+/** A company's open dates, soonest first: the ones it gave in its portal and the ones the office wrote down for it. */
+export function portalPromises(state: GcState, partnerId: string, lang: PortalLang = 'en'): PortalPromiseRow[] {
+  return tradePromisesOf(state)
+    .filter((p) => p.partnerId === partnerId && !p.keptOn)
+    .sort((a, b) => a.by.localeCompare(b.by))
+    .map((p) => {
+      const k = PROMISE_WORDS[p.kind]
+      const what = p.what === PROMISE_WHAT[p.kind] ? pt(lang, k.key) : p.what.charAt(0).toUpperCase() + p.what.slice(1)
+      const project = p.projectId ? state.projects.find((x) => x.id === p.projectId) : undefined
+      const trade = project && p.packageId ? project.packages.find((x) => x.id === p.packageId)?.trade : undefined
+      const where = project ? (trade ? `${project.name} · ${trade}` : project.name) : null
+      const { state: st, days } = tradePromiseState(p, state.today)
+      const date = pWeekday(lang, p.by)
+      const words =
+        st === 'today'
+          ? pt(lang, 'pDueToday')
+          : st === 'passed'
+            ? pt(lang, 'pPassed', { date, ago: days === 1 ? pt(lang, 'agoYesterday') : pt(lang, 'agoN', { n: days }) })
+            : pt(lang, days === 1 ? 'pIn1' : 'pInN', { date, n: days })
+      return { p, what, where, words, tone: st === 'passed' ? 'red' : st === 'today' ? 'amber' : 'plain', plural: k.plural }
+    })
+}
+
 export function portalJobMoney(pkg: TradePackage): PortalJobMoney | null {
   const sow = pkg.sow
   if (!sow) return null
@@ -324,6 +376,18 @@ export function portalTodos(state: GcState, partnerId: string, asks: PortalAsk[]
     })
   }
   if (!partner.w9) todos.push({ key: 'w9', projectId: null, text: pt(lang, 'todoW9'), tone: 'amber', by: null })
+  // A date the company gave us that came due or passed with nothing yet (question 8).
+  for (const row of portalPromises(state, partnerId, lang)) {
+    if (row.tone === 'plain') continue
+    const what = lang === 'es' ? row.what.charAt(0).toLowerCase() + row.what.slice(1) : inSentence(row.what)
+    todos.push({
+      key: `promise:${row.p.id}`,
+      projectId: row.p.projectId ?? null,
+      text: pt(lang, row.plural ? 'todoPromisePl' : 'todoPromise', { gc, what, date: pWeekday(lang, row.p.by) }),
+      tone: row.tone,
+      by: row.p.by,
+    })
+  }
   // A company we do not know yet: its form first, so the office can approve it (question 3).
   if (portalVetting(partner, lang).state === 'send') todos.push({ key: 'vet', projectId: null, text: pt(lang, 'todoVet', { gc }), tone: 'amber', by: null })
 
@@ -551,7 +615,7 @@ export function portalMessages(state: GcState, partnerId: string, language?: Por
         kind: 'coi',
         projectId: null,
         subject: t('mCoiSubject', { date }),
-        lines: [hello, t('mCoiWhat', { gc, date }), t('mCoiWhy'), t('mCoiOpen')],
+        lines: [hello, t('mCoiWhat', { gc, date }), t('mCoiWhy'), t('mCoiOpen'), t('mCoiPromise')],
       })
     }
   }
