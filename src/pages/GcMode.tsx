@@ -43,6 +43,8 @@ import {
   lostWords,
   planLabel,
   priceToOwner,
+  preBidMinutesLine,
+  preBidWords,
   promisesToChase,
   proposalUncostedWords,
   RING_COLORS,
@@ -354,6 +356,7 @@ export default function GcMode() {
                         key={p.id}
                         project={p}
                         byCustomer
+                        preBidMinutes={preBidMinutesLine(state, p)}
                         progress={stageProgress(state, p)}
                         today={state.today}
                         onOpen={() => { setProjectId(p.id); setTab('packages') }}
@@ -400,6 +403,7 @@ export default function GcMode() {
                       <ProjectRow
                         project={p}
                         tourKey={i === 0 ? stage.key : undefined}
+                        preBidMinutes={preBidMinutesLine(state, p)}
                         progress={stageProgress(state, p)}
                         today={state.today}
                         onOpen={() => { setProjectId(p.id); setTab('packages') }}
@@ -755,6 +759,7 @@ function GroupSwitch({ value, onChange }: { value: BoardGroupBy; onChange: (v: B
 function ProjectRow({
   project,
   tourKey,
+  preBidMinutes = null,
   byCustomer = false,
   progress,
   today,
@@ -768,6 +773,8 @@ function ProjectRow({
   project: GcProject
   /** The first row of a board section: its ring and its block carry walkthrough anchors (gc-ring-…, gc-due-…). */
   tourKey?: string
+  /** The pre-bid meeting's minutes, held and not sent with a set yet (`preBidMinutesLine`). */
+  preBidMinutes?: string | null
   /** On the board by customer: the section names the customer, so the row names its stage instead. */
   byCustomer?: boolean
   /** How far through its stage the project is: the ring at the head of the row. */
@@ -866,6 +873,18 @@ function ProjectRow({
       </span>
       <span style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', ...under }}>
         {project.lostOn && <Chip tone="grey" title={project.lostNote ?? undefined}>{lostWords(project)}</Chip>}
+        {/* New Project's pre-bid meeting (the owner, 2026-10-04): coming up while bidding, then its minutes to send. */}
+        {project.stage === 'pursuing' && !project.lostOn && project.preBid && project.preBid.attended === null && (
+          <Chip tone={project.preBid.mandatory ? 'amber' : 'blue'} title={preBidWords(project) ?? undefined}>
+            pre-bid {weekdayDate(project.preBid.on)}
+            {project.preBid.mandatory ? ' · required' : ''}
+          </Chip>
+        )}
+        {project.stage === 'pursuing' && !project.lostOn && preBidMinutes && (
+          <Chip tone="amber" title={`${preBidMinutes} They go out with the next set of plans.`}>
+            pre-bid minutes not sent yet
+          </Chip>
+        )}
         {/* A pay application sent back twice or more (the owner's yes, 2026-10-02; Board item 6): someone calls them. */}
         {project.packages.map((pkg) => {
           const back = pkg.sow ? sentBackOpen(pkg.sow) : null

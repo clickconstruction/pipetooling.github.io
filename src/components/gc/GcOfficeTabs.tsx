@@ -56,6 +56,7 @@ import {
   type TradePackage,
   awardGate,
   GC_COMPANY,
+  missedMandatoryPreBid,
 } from '../../lib/gcMode/gcModel'
 import { linkNeverOpened } from '../../lib/gcMode/gcPortal'
 import { VettingChip } from './GcVetting'
@@ -275,6 +276,15 @@ export function GcPackagesTab({ state, project, dispatch, onSeePortal, onMap, op
                                     {partner?.company} · {stale ? 'old plans' : words.word}
                                     {inv.bid && bidRanOut(inv.bid, state.today) ? ' · ran out' : ''}
                                   </Chip>
+                                  )}
+                                  {/* New Project's pre-bid meeting (the owner, 2026-10-04): coming was required, and they did not. */}
+                                  {missedMandatoryPreBid(state, project, inv.partnerId) && (
+                                    <>
+                                      {' '}
+                                      <Chip tone="red" title="The pre-bid meeting was required to quote, and they did not come.">
+                                        missed the pre-bid
+                                      </Chip>
+                                    </>
                                   )}
                                 </span>
                               </Fragment>
