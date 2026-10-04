@@ -217,8 +217,7 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   inside GC mode for now, not on the app's Schedule page. A milestone counts as hit within a few
   days of its planned day. The look-ahead shows three weeks. Each week the trade marks its
   look-ahead activities done or not in its portal, and our superintendent verifies them; only a
-  verified mark counts. The proposal is
-  under *The schedule (proposed)*.
+  verified mark counts. How it works is under *The schedule*.
 - **Each draw comes with a 702 and 703** (2026-10-02, Building lane): the trade fills the pay
   application in its portal and watches the form fill, typing only what the app cannot know. Most
   of it comes from the job and from the work they reported (`gcBuilding.ts`, `GcBuildingPayApp.tsx`).
@@ -510,10 +509,17 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
     (`GcPlansDoors` in `GcNewPlans.tsx`). `issuePlanSet` refuses a lost bid and `questionsOpen` is
     false on one, so a portal cannot ask either. Reopen it and both come back.
 
-## The schedule (proposed, 2026-10-02)
+## The schedule (proposed 2026-10-02, built 2026-10-03)
 
-Built so far (Building lane, 2026-10-03): the **Schedule** tab, its four measures and the look-ahead on Fair Oaks D, drawing it in Buying out with Start keeping the baseline, and the superintendent's verify list (`gcBuildingSchedule.ts`, `GcBuildingSchedule.tsx`), and the measures on a building job's board row and ring card (`scheduleSummary`). The trade's weekly done or not in its portal is the Portal lane's (`LookAheadMark`; the verify list reads every mark not verified). **Draw a first draft** uses the New Project lane's draft by stage of the job (`scheduleDraft`). Inspections are activities of their own (2026-10-03): the draft draws them (the New Project lane); the chart, the editor, the look-ahead and the verify list take them, and our superintendent records the pass (`scheduleItems`, `inspectionItems`, `passInspection`). The owner's answers are under *Decided by the owner*; this is the shape
-they point to, for the lanes to pick up.
+Built 2026-10-03 by every lane. The Building lane: the **Schedule** tab with its four measures,
+the chart and the look-ahead; drawing it in Buying out, with Start keeping the baseline; the
+superintendent's verify list; inspections that pass or fail (`gcBuildingSchedule.ts`,
+`GcBuildingSchedule.tsx`); the measures on a building job's board row and ring card
+(`scheduleSummary`, `GcBuildingScheduleBlock`). The New Project lane: the first draft by stage of
+the job, inspections included (`scheduleDraft`). The Portal lane: the trade's weekly done or not
+(`tradeMarkLookAhead`, `GcPortalLookAhead.tsx`). The Board lane: the Get started step and the lines
+on Trade partners (`gcPartnerSchedule.ts`). The owner's answers are under *Decided by the owner*;
+the bullets below are the shape they set.
 
 - **The activities are the statement of work lines**: the same schedule-of-values lines a trade
   reports its percent on and draws against. Our own crew has no statement of work; its activities
@@ -546,20 +552,15 @@ they point to, for the lanes to pick up.
   ring's card; milestone hit rate and look-ahead reliability on Trade partners, beside "answers
   when asked"; the weekly done or not in the trade's portal; the superintendent's verify list in
   Building.
-- **Who builds what**: the Building lane, the schedule view and the four measures; the Board
-  lane, the Get started step and the lines on Trade partners (the board row's measures were built
-  by the Building lane in the row's days block, 2026-10-03, `GcBuildingScheduleBlock`); the Portal
-  lane, the trade's weekly done or not (built 2026-10-03: `tradeMarkLookAhead`,
-  `portalLookAhead` in `gcPortal.ts`, `GcPortalLookAhead.tsx`); the Building lane also, the
-  superintendent's verify; the New Project lane, the first draft of the links from the stages of
-  the job, and a set issued after Start saying which activities it moves.
 
 ## Workflow steps not built yet
 
 - A set's added days could also carry their time onto the change order it starts, beyond the
   "+N days" words (Owner Billing's change orders carry a schedule field).
 
-- The schedule, the rest: the other lanes' parts (*The schedule, proposed*): the trade's weekly marks in its portal, and the New Project lane's draft. (The Board's Get started step and Trade partners lines are built.)
+- The schedule, the rest: a trade or a line a later set brings in does not join a schedule already
+  drawn (the New Project lane's `issuePlanSet`, asked 2026-10-03; the golden walk's "Draw Helotes's
+  schedule" moves before Start once it does, the owner's call). Days are calendar days for now.
 
 - New Project past its first form: exclusions, and a budget from real costs, not a made-up rate
   per square foot. A line's sheets show in New Project, a new set, the plans window and Compare
@@ -569,16 +570,24 @@ they point to, for the lanes to pick up.
   Portal lane: the action `tradeAskQuestion` is ready). Today the office types a question that came
   in by phone or email. The window opens from **Questions about the plans** on the Plans tab and
   from A new set of plans came in.
-- Change orders to a trade, the rest: the owner's change order still reads its own percent done,
-  not the trade's on its line (`changeOrderTradePct`, the Owner Billing lane's to read), and the
-  portal's "left to bill" counts the original contract only (`sowContractSum`, the Portal lane's).
-- Bill the owner's picker for our own crew still sets one number; by stage it is set on Draws.
-  (The board's Closed section is built.)
-- Our billing to the owner, the rest: our own crew's percent read from its Pipeline job (reported
-  on **Draws** for now); (the company window reads the pay applications through `ownerMoney`,
-  with certified and waiting-on-the-architect beside what they owe: Board, 2026-10-03);
-  a trade's retainage held until the owner has paid us ours (the Building lane's Closeout).
+- Our billing to the owner, the rest: our own crew's percent read from its Pipeline job (real
+  build only; see *Where it plugs in*). The company window reads the pay applications through
+  `ownerMoney`, with certified and waiting-on-the-architect beside what they owe (Board, 2026-10-03).
 - No email is sent and nothing notifies anyone when a promised day passes.
+  Building's events, and where each would go (Building lane, 2026-10-03; the real build sends
+  through Resend, the office's go to the app's Inbox):
+
+  | Event | Who hears | Where |
+  |---|---|---|
+  | A trade asks for a draw (`tradeSendPayApp`, `tradeSendFinalPayApp`) | The project manager | Inbox and an email, "approve it on Draws"; the ring card already says so |
+  | A draw sent back or approved for less | The trade | Email and text with our note; the portal already shows it, and its messages list has the approved-for-less note |
+  | An approved draw's pay-by day (`drawPayDays`) | The office | Inbox the day before; the ring card and **To pay** already flag it once late |
+  | Look-ahead marks to verify (`verifyList`) | The superintendent | A text Friday afternoon once the trades' marks are in, opening **To verify** |
+  | A milestone due inside its grace, or late (`milestoneRows`) | The project manager | The morning email; the board row and ring card already show it |
+  | An inspection failed (`failInspection`) | The named trades, the superintendent | The trades: email and text with what failed and the re-inspection day (the portal already shows it). The superintendent: a reminder the day before the re-inspection |
+  | A punch item added or sent back; an item fixed | The trade; the superintendent | The trade: email and text with the item. The superintendent: **To verify** and a text when an item is marked fixed |
+  | A change order sent to sign (`sendTradeChange`) | The trade | Email with its portal link (the Portal lane's messages) |
+  | Retainage can be paid (`tradeRetainageOpensOn`) | The office, the trade | Inbox on that day; the trade hears that its release is coming |
 
 ## Where it plugs into the app that exists
 
@@ -597,6 +606,7 @@ imitates it.
 | Waivers on a draw | The lien waiver train (v2.4274 to v2.4335), pointed the other way. Its four forms are the ones GC mode uses: conditional and unconditional, on progress and on final payment (`LienWaiverFormType`). |
 | The map | The Bid Board's map and the app's geocoded addresses. The prototype draws its own from a short list of towns. |
 | The pay application (702 and 703) | The Jobs Stages tab's AIA G702-G703 window: `aiaG702G703Template.ts` (fields and cells) and `fillAiaG702G703Workbook.ts` (fills the bundled xlsx). The prototype draws the form on screen; the real build fills that template. |
+| Our own crew's percent done | The Pipeline job's percent reports, newest wins: `currentReportPctByJobId` (`jobSummaryPercentComplete.ts`) and `newestPercentEvent` (`jobChargesTimeline.ts`). In the real build our own trade names its Pipeline job (`selfPerform.ref`), each stage reads that job's newest report, and Draws shows the stages read-only with the day reported. The prototype has the stages set by hand on Draws. Building lane, real build only. |
 | "See what the trade sees" | Punch list #62, the same idea for the GC's room. |
 | Email | Resend through the existing edge functions. |
 
