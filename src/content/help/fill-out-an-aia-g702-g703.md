@@ -51,6 +51,31 @@ A line has these boxes.
 
 Press **Add a line** to add a row. A change order can be its own line. Press **Remove** on a line to take it off.
 
+## Lines from the bid
+
+A job that came from a bid starts with the bid's schedule of values. Those are the lines the GC already saw.
+
+- A bid with its own lines brings them over as written.
+- A bid left on the three stages brings three lines. They are Rough In, Top Out and Trim Set.
+- A bid with fewer than two stages filled in brings nothing. The job starts with one line.
+- A job with no bid starts with one line.
+
+The bid is only the start. Once you save application 1, the lines belong to the job. You can rename them, add to them and take them off.
+
+The bid may print labor and material apart. Then **Labor and material on their own rows** starts ticked. Each line prints as two rows. Untick it to print one row per line.
+
+## The crew's percent
+
+A line that belongs to a stage shows what the crew reported for that stage. It reads *The crew reported Top Out at 90%.* Press **Use 90%** to take it. Nothing changes until you press it.
+
+## When the lines do not add to the contract
+
+The bid's total is not always the job's price. The form says how far the lines are from the contract to date. Press **Scale the lines to** the amount shown. Every line moves by the same share, to the cent.
+
+A change order is not a gap. Add it as its own line, and type it under **Change Orders**.
+
+## How many lines fit
+
 The sheet holds 34 rows. The form shows how many you have used. You can save more than 34 lines. You cannot generate until some are grouped.
 
 ## Leave a field empty

@@ -45,6 +45,8 @@ import {
 } from '../../lib/aiaPayApplications'
 import { PayApplicationLinesNotReady, PayApplicationNumberTaken, deletePayApplication, loadPayApplications, savePayApplication } from '../../lib/aiaPayApplicationsIo'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
+import { BID_STAGE_NAMES, type BidSchedule, crewOfferForLine, crewPercentByStage, scaleLinesToAmount, scheduleGap } from '../../lib/aiaBidSchedule'
+import { loadBidScheduleForJob } from '../../lib/aiaBidScheduleIo'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import AiaG702G703Paper from './AiaG702G703Paper'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
@@ -225,6 +227,10 @@ export default function AiaG702G703Modal({
   // The job's saved applications, and which one is open (null = a new one, not saved yet).
   const [saved, setSaved] = useState<SavedPayApplication[]>([])
   const [openId, setOpenId] = useState<string | null>(null)
+  // The bid's schedule of values, read when the job has a bid and nothing saved: application 1's lines.
+  const [bidSchedule, setBidSchedule] = useState<BidSchedule | null>(null)
+  // What the crew reported per stage, from the job's own stage lines.
+  const crew = useMemo(() => (job && 'fixtures' in job ? crewPercentByStage(job.fixtures ?? []) : {}), [job])
   // The form as it was loaded or last saved: what "you typed something" is measured against.
   const [baseline, setBaseline] = useState<Record<AiaFieldKey, string>>(emptyFormState)
   const [baselineLines, setBaselineLines] = useState('[]')
@@ -272,11 +278,13 @@ export default function AiaG702G703Modal({
 
   /** A new application's starting form: the job today, carried on from the last saved application when there is one. */
   const newApplicationValues = useCallback(
-    (list: ReadonlyArray<SavedPayApplication>, withFacts: AiaPrefillFacts | null): PayApplicationForm => {
+    (list: ReadonlyArray<SavedPayApplication>, withFacts: AiaPrefillFacts | null, schedule: BidSchedule | null): PayApplicationForm => {
       if (!job) return { values: {}, lines: [emptyLine()], splitLaborMaterial: false }
       const jobPrefill = buildAiaPrefillFromJob(job, getPhysicalInvoiceIssuerDraft(), withFacts)
       const last = previousPayApplication(list, nextApplicationNumber(list))
       if (last) return carryForwardPayApplication(last, jobPrefill, jobValueCreated(job))
+      // Application 1: the bid's schedule when the job has one, else one line for the whole contract.
+      if (schedule) return { values: jobPrefill, lines: schedule.lines, splitLaborMaterial: schedule.splitLaborMaterial }
       return { values: jobPrefill, lines: buildAiaPrefillLinesFromJob(job), splitLaborMaterial: false }
     },
     [job],
@@ -297,12 +305,18 @@ export default function AiaG702G703Modal({
         loadPayApplications(job.id).catch(() => [] as SavedPayApplication[]),
       ])
       if (cancelled) return
+      // The bid's schedule is only application 1's start: once something is saved, the job's own lines carry.
+      const bidId = 'bid_id' in job ? job.bid_id : null
+      const price = 'revenue' in job ? Number(job.revenue) || 0 : 0
+      const schedule = list.length === 0 && bidId ? await loadBidScheduleForJob(bidId, price) : null
+      if (cancelled) return
+      setBidSchedule(schedule)
       setFacts(loadedFacts)
       setSaved(list)
       const first = initialApplicationNumber == null ? null : list.find((a) => a.applicationNumber === initialApplicationNumber) ?? null
       setOpenId(first?.id ?? null)
       if (first) loadForm({ values: first.fields, lines: first.lines, splitLaborMaterial: first.splitLaborMaterial }, first.link, first.carryReason)
-      else loadForm(newApplicationValues(list, loadedFacts))
+      else loadForm(newApplicationValues(list, loadedFacts, schedule))
     })()
     return () => {
       cancelled = true
@@ -331,11 +345,20 @@ export default function AiaG702G703Modal({
     if (!(await mayLeave())) return
     setOpenId(app?.id ?? null)
     if (app) loadForm(formOfSaved(app), app.link, app.carryReason)
-    else loadForm(newApplicationValues(saved, facts))
+    else loadForm(newApplicationValues(saved, facts, bidSchedule))
   }
 
   /** Back to where this application started: the saved one as saved, a new one as the job and the last one give it. */
-  const resetForm = () => (openApp ? loadForm(formOfSaved(openApp), openApp.link, openApp.carryReason) : loadForm(newApplicationValues(saved, facts)))
+  const resetForm = () => (openApp ? loadForm(formOfSaved(openApp), openApp.link, openApp.carryReason) : loadForm(newApplicationValues(saved, facts, bidSchedule)))
+
+  // The lines against the contract to date: the bid's total is not always the job's price.
+  const gap = useMemo(() => scheduleGap(appForm.lines, preview.math.contractSumToDate), [appForm.lines, preview.math.contractSumToDate])
+  const scaleLines = () => {
+    const scaled = scaleLinesToAmount(appForm.lines, preview.math.contractSumToDate)
+    if (!scaled) return
+    setLineForms(scaled.map(lineToForm))
+    setPctDraft({})
+  }
 
   /** Take the amounts the application before this one gives today; the reason is then moot. */
   const takeCarriedAmounts = () => {
@@ -405,7 +428,7 @@ export default function AiaG702G703Modal({
       const rest = saved.filter((a) => a.id !== openApp.id)
       setSaved(rest)
       setOpenId(null)
-      loadForm(newApplicationValues(rest, facts))
+      loadForm(newApplicationValues(rest, facts, rest.length === 0 ? bidSchedule : null))
       showToast(`Application ${openApp.applicationNumber} deleted.`, 'success')
     } catch (e) {
       console.error(e)
@@ -638,7 +661,9 @@ export default function AiaG702G703Modal({
                   ? `Application ${openApp.applicationNumber} is saved on the job. You can change it and save it again.`
                   : saved.length > 0
                     ? `A new application. It starts from application ${saved[saved.length - 1]!.applicationNumber}: that work is now previous work.`
-                    : 'Nothing is saved on this job yet. Save keeps this application here, and the next one starts from it.'}
+                    : bidSchedule
+                      ? `Nothing is saved on this job yet. The lines come from the bid's schedule of values. Save keeps this application here.`
+                      : 'Nothing is saved on this job yet. Save keeps this application here, and the next one starts from it.'}
               </span>
               {openApp ? (
                 <button
@@ -956,9 +981,28 @@ export default function AiaG702G703Modal({
                   The continuation sheet holds {AIA_G703_MAX_ROWS} rows and this application has {printedRows}. You can save it. Group some lines to generate it.
                 </div>
               ) : null}
+              {Math.abs(gap.gap) >= 0.01 && preview.math.contractSumToDate > 0 && gap.total > 0 ? (
+                <div
+                  data-testid="aia-lines-gap"
+                  style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.4rem 0.6rem', padding: '0.5rem 0.6rem', borderRadius: 4, fontSize: '0.8125rem', background: 'var(--bg-amber-100)', color: 'var(--text-amber-900)', border: '1px solid var(--border-amber)' }}
+                >
+                  <span style={{ flex: '1 1 14rem' }}>
+                    The lines add to {formatAiaMoney(gap.total)}. The contract to date is {formatAiaMoney(preview.math.contractSumToDate)}. They are{' '}
+                    {formatAiaMoney(Math.abs(gap.gap))} {gap.gap > 0 ? 'short' : 'over'}.
+                  </span>
+                  <button
+                    type="button"
+                    onClick={scaleLines}
+                    style={{ padding: '0.25rem 0.7rem', fontSize: '0.8125rem', fontWeight: 600, borderRadius: 4, cursor: 'pointer', border: '1px solid currentColor', background: 'none', color: 'inherit' }}
+                  >
+                    Scale the lines to {formatAiaMoney(preview.math.contractSumToDate)}
+                  </button>
+                </div>
+              ) : null}
               {lineForms.map((lf, i) => {
                 const line = formToLine(lf)
                 const pct = linePercentDone(line)
+                const offer = crewOfferForLine(line, crew)
                 const no = String(i + 1).padStart(3, '0')
                 const focus = (col: string) => () => setActiveKey(`line:${lf.id}:${col}`)
                 return (
@@ -1021,6 +1065,23 @@ export default function AiaG702G703Modal({
                         <input type="text" inputMode="decimal" id={`aia-line-${lf.id}-stored`} value={lf.stored} onFocus={focus('stored')} onChange={(e) => setLine(lf.id, { stored: e.target.value })} style={lineInputStyle} />
                       </label>
                     </div>
+                    {offer != null && lf.stage ? (
+                      <div data-testid="aia-line-offer" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.3rem 0.5rem', fontSize: '0.8125rem', color: 'var(--text-amber-800)' }}>
+                        <span>
+                          The crew reported {BID_STAGE_NAMES[lf.stage]} at {offer}%.
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPctDraft(({ [lf.id]: _left, ...rest }) => rest)
+                            setLine(lf.id, { thisPeriod: amountText(thisPeriodForPercent(line, offer)) })
+                          }}
+                          style={{ padding: '0.1rem 0.5rem', fontSize: '0.75rem', fontWeight: 600, borderRadius: 4, cursor: 'pointer', border: '1px solid currentColor', background: 'none', color: 'inherit' }}
+                        >
+                          Use {offer}%
+                        </button>
+                      </div>
+                    ) : null}
                   </div>
                 )
               })}
