@@ -267,6 +267,64 @@ export interface Partner {
   msaSentOn?: string
   /** The language the company chose in its portal; its messages go out in it too. Unset: English. */
   lang?: 'en' | 'es'
+  /** Whether we have checked them (question 3). Unset: a company we know, approved. */
+  vetting?: PartnerVetting
+}
+
+/** What a new company tells us about itself in its portal (question 3). */
+export interface PartnerVettingForm {
+  license: string
+  /** Their insurance company and the policy's limits, as they wrote it. */
+  insurance: string
+  yearsInBusiness: number
+  /** Two or three people we can call, as they wrote them. */
+  references: string
+  /** Jobs like ours they did, as they wrote them. */
+  pastJobs: string
+  sentOn: string
+}
+
+/**
+ * Where a company stands with us (the owner, 2026-10-04, question 3): anyone can quote, and award
+ * stays locked until the office approves them. A known company has no record and counts as approved.
+ */
+export interface PartnerVetting {
+  status: 'new' | 'approved' | 'declined'
+  /** Approved up to this many dollars on one award. Unset: no limit. */
+  limit?: number
+  /** The day the office decided, and who. */
+  decidedOn?: string
+  decidedBy?: string
+  /** Why we declined, or a note on the approval. */
+  note?: string
+  /** Their form. Unset: not sent yet. */
+  form?: PartnerVettingForm
+}
+
+/** Promises other than a quote date (question 8). Each lane keeps its own kinds; see gcPromises.ts. */
+export type PromiseKind = 'insurance' | 'w9' | 'sow' | 'start' | 'submittals' | 'delivery' | 'payApp' | 'punch' | 'closeout'
+
+/**
+ * A date a company gave us for something other than a quote (the owner, 2026-10-04, question 8).
+ * It is kept when the thing happens (`promisesKeptBy` in gcPromises.ts) or when the office marks it.
+ */
+export interface TradePromise {
+  id: string
+  partnerId: string
+  kind: PromiseKind
+  /** The job and trade it is for. Unset: about the company itself (insurance, a W-9). */
+  projectId?: string
+  packageId?: string
+  /** What they promised, in a few words: "the renewed insurance certificate". */
+  what: string
+  by: string
+  madeOn: string
+  /** Who wrote it down: the office (they said it on the phone) or the trade (in its portal). */
+  from: 'office' | 'trade'
+  /** Earlier dates they gave for the same thing, newest first: a day that passed before it moved counts against them. */
+  moved?: { by: string; on: string }[]
+  /** The day it came. Unset: not yet. */
+  keptOn?: string
 }
 
 /** A question a trade asked about the plans. The architect answers; every bidder on the trade gets it. */
@@ -466,6 +524,8 @@ export interface GcState {
   projects: GcProject[]
   partners: Partner[]
   log: LogEntry[]
+  /** Promises other than a quote date (question 8). Unset: none yet. */
+  tradePromises?: TradePromise[]
 }
 
 export type GcAction =
@@ -520,7 +580,8 @@ export type GcAction =
   | { type: 'tradeSignUnconditional'; projectId: string; packageId: string; drawId: string }
   | { type: 'setMarkup'; projectId: string; field: 'generalConditions' | 'contingencyPct' | 'feePct'; value: number }
   | { type: 'logCustomerContact'; customerId: string; note: string }
-  | { type: 'addPartner'; company: string; contact: string; trade: string; base: string | null; maxMiles: number | null }
+  /** `known: false`: a company new to us, not vetted yet (question 3). Unset: one we know. */
+  | { type: 'addPartner'; company: string; contact: string; trade: string; base: string | null; maxMiles: number | null; known?: boolean }
   | { type: 'setCoverage'; partnerId: string; base: string | null; maxMiles: number | null }
   | { type: 'reset' }
   | { type: 'createProject'; draft: NewProjectDraft }
@@ -540,6 +601,14 @@ export type GcAction =
   | { type: 'tradeUploadCoi'; partnerId: string; expires: string }
   /** The trade fills in and signs a W-9 in its portal. */
   | { type: 'tradeSignW9'; partnerId: string }
+  /** The office decides on a company (question 3): approve, approve up to a limit, or decline. */
+  | { type: 'vetPartner'; partnerId: string; status: 'approved' | 'declined'; limit?: number; note?: string; by: string }
+  /** A new company sends its form from its portal (question 3). */
+  | { type: 'tradeVettingForm'; partnerId: string; form: Omit<PartnerVettingForm, 'sentOn'> }
+  /** A date a company gave for something other than a quote (question 8). A new date on an open one moves it. */
+  | { type: 'recordPromise'; partnerId: string; kind: PromiseKind; projectId?: string; packageId?: string; by: string; from: 'office' | 'trade'; what?: string }
+  /** It came: the office marks an open promise kept, for a kind the app does not see happen. */
+  | { type: 'keepPromise'; id: string }
   | { type: 'sendOwnerPayApp'; projectId: string }
   | { type: 'ownerPaid'; projectId: string; number: number }
   | {
