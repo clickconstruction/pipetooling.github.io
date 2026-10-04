@@ -130,7 +130,12 @@ export const GC_PROJECT_TOUR_STEPS: SpotlightTourStep[] = [
   {
     anchor: 'gc-ptab-start',
     title: 'Get started',
-    body: 'Everything that must be done before work starts. Start stays shut until nothing is missing.',
+    body: 'Everything that must be done before work starts. Start waits until nothing is missing. If the job cannot wait, tap Start anyway and say why. What is missing stays here as owed.',
+  },
+  {
+    anchor: 'gc-ptab-submittals',
+    title: 'Submittals',
+    body: 'Each trade sends what it will put in: product data, shop drawings or samples. We look and send them to the architect. The architect approves them or sends them back. A trade cannot start that work until it is approved.',
   },
   {
     anchor: 'gc-ptab-schedule',
