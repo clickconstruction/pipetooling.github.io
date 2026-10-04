@@ -67,7 +67,15 @@ The new one starts from the last one saved.
 - **WORK COMPLETED FROM PREVIOUS APPLICATION** is the work you asked for before.
 - **LESS PREVIOUS CERTIFICATES FOR PAYMENT** is what the last application had earned, less retainage.
 - Last month's change orders move to the previous months.
-- **Retainage %** stays what it was. Type 5 when the contract drops it.
+- **Retainage %** stays what it was.
+
+## When retainage drops to 5%
+
+Some contracts drop retainage to 5% once the job is past 50% complete. The window tells you when the job is past that point. It shows what is held now and what would be held at 5%.
+
+Press **Use 5%** when the contract allows it. The 5% covers everything to date. The retainage let go is added to the payment due.
+
+Leave it alone when the contract keeps the retainage. Nothing changes until you press the button.
 
 :::example the second application
 Application 1 asked for $19,400.00 of work at 10% retainage, so $17,460.00 was due. A month later the job is at $29,100.00. Application 2 opens with 19,400 as previous work and 9,700 this period. **CURRENT PAYMENT DUE** reads $8,730.00.

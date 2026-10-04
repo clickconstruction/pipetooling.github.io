@@ -9,6 +9,7 @@ import {
   payApplicationLabel,
   payApplicationWriteFromForm,
   previousPayApplication,
+  retainageDropOffer,
   savedPayApplicationFromRow,
   sortPayApplications,
   type PayApplicationRow,
@@ -200,6 +201,34 @@ describe('the list', () => {
   it('labels a saved application with its number, period and amount due', () => {
     expect(payApplicationLabel(a)).toBe('1 · 09/30/2026 · $18,360.00 due')
     expect(payApplicationLabel(saved({ ...APP_1, g702_n6_period_to: '' }))).toBe('1 · $18,360.00 due')
+  })
+})
+
+describe('retainageDropOffer', () => {
+  // Application 2 of a 48,500 contract: 19,400 before, 9,700 now = 60% complete; 17,460 certified before.
+  const sixty: AiaFieldValues = {
+    g702_h18_original_contract_sum: 48500,
+    g702_c28_retainage_percent: 10,
+    g702_h40_less_previous_certificates: 17460,
+    g703_d13_scheduled_value: 48500,
+    g703_e13_from_previous: 19400,
+    g703_f13_this_period: 9700,
+  }
+
+  it('offers 5% over everything to date once the job is past halfway', () => {
+    const offer = retainageDropOffer(sixty)
+    expect(offer).not.toBeNull()
+    expect(offer!.pctComplete).toBeCloseTo(0.6, 9)
+    // 29,100 to date: 2,910 held at 10%, 1,455 at 5%; the 1,455 let go is due.
+    expect(offer).toMatchObject({ heldNow: 2910, heldAtReduced: 1455, moreDue: 1455 })
+  })
+
+  it('makes no offer at or under halfway, at 5% or less, or with no scheduled value', () => {
+    expect(retainageDropOffer({ ...sixty, g703_f13_this_period: 4850 })).toBeNull() // exactly 50%
+    expect(retainageDropOffer({ ...sixty, g703_e13_from_previous: 0 })).toBeNull() // 20%
+    expect(retainageDropOffer({ ...sixty, g702_c28_retainage_percent: 5 })).toBeNull()
+    expect(retainageDropOffer({ ...sixty, g702_c28_retainage_percent: 0 })).toBeNull()
+    expect(retainageDropOffer({ ...sixty, g703_d13_scheduled_value: 0 })).toBeNull()
   })
 })
 
