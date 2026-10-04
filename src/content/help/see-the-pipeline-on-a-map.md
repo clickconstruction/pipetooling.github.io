@@ -83,7 +83,7 @@ Around Austin and San Antonio the pins sit on top of each other. **Cluster** gro
 
 The map opens on the 50-mile ring. So one job in another state does not zoom it out to the whole country. **Fit all** frames every pin and the office.
 
-On a desktop the mouse wheel scrolls the page when the pointer crosses the map. So you can scroll down to the board without the map zooming out. You **click the map once** and the wheel zooms it from then on. The **+** and **−** buttons, dragging and the pins work from the start. **Hide map** collapses the card to its title line. That choice is remembered on that device. **Show map** or tapping the title brings it back.
+On a desktop the mouse wheel scrolls the page when the pointer crosses the map. So you can scroll down to the board without the map zooming out. You **click the map once** and the wheel zooms it from then on. The **+** and **−** buttons, dragging and the pins work from the start. **Hide map** sits in the top right corner of the card. It collapses the card to its title line. That choice is remembered on that device. **Show map** or tapping the title brings it back.
 
 ## A job with no map location yet
 
