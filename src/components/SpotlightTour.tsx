@@ -14,8 +14,37 @@ export type SpotlightTourStep = {
    * it the caller should drop absent steps with `spotlightTourStepsPresent`.
    */
   missingBody?: string
-  /** Short lines shown as a list under the body, one idea each: a stop that names several things. */
+  /**
+   * Short lines shown as a list under the body, one idea each: a stop that names several things.
+   * A line that starts with a label and a colon ("Building: the crews work") shows the label in bold.
+   */
   bullets?: string[]
+  /** Number the bullets 1, 2, 3 instead of dots: for things that come in order. */
+  numbered?: boolean
+}
+
+/** A step's list: numbered or dotted, with a leading "Label:" in bold. */
+function TourBullets({ lines, numbered }: { lines: string[]; numbered: boolean }) {
+  const List = numbered ? 'ol' : 'ul'
+  return (
+    <List style={{ margin: '0.4rem 0 0', paddingLeft: '1.2rem', display: 'grid', gap: '0.2rem' }}>
+      {lines.map((line) => {
+        const colon = line.indexOf(': ')
+        return (
+          <li key={line}>
+            {colon > 0 ? (
+              <>
+                <strong>{line.slice(0, colon)}</strong>
+                {line.slice(colon)}
+              </>
+            ) : (
+              line
+            )}
+          </li>
+        )
+      })}
+    </List>
+  )
 }
 
 type SpotlightTourProps = {
@@ -183,13 +212,7 @@ export function SpotlightTour({ steps, onClose, guideHref, guideLabel, startInde
         </div>
         <div style={{ fontSize: '0.82rem', color: 'var(--text-700)', margin: '0.35rem 0 0.7rem' }}>
           {step.body}
-          {step.bullets && step.bullets.length > 0 ? (
-            <ul style={{ margin: '0.4rem 0 0', paddingLeft: '1.1rem', display: 'grid', gap: '0.2rem' }}>
-              {step.bullets.map((line) => (
-                <li key={line}>{line}</li>
-              ))}
-            </ul>
-          ) : null}
+          {step.bullets && step.bullets.length > 0 ? <TourBullets lines={step.bullets} numbered={step.numbered ?? false} /> : null}
           {anchorMissing && step.missingBody ? (
             <div data-testid="tour-missing" style={{ marginTop: '0.4rem', fontSize: '0.76rem', color: 'var(--text-muted)', borderLeft: '2px solid var(--border-strong)', paddingLeft: '0.5rem' }}>
               {step.missingBody}
