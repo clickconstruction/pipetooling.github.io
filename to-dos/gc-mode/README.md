@@ -194,7 +194,10 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   job's last day moves and whether substantial completion still holds; it never moves that
   milestone, since more time is a change order. The set records the days (`PlanSet.pushed`), and
   each company's email names its new dates (`activitiesTouched`, `pushSchedule`,
-  `issuePlanSet.schedulePushes`).
+  `issuePlanSet.schedulePushes`). Work a set brings onto a schedule already drawn (a new trade's
+  lines, a line it adds) gets activities placed as the first draft places them, after what its
+  stage waits on and never before today, and what waits on that stage waits on them too
+  (`scheduleSetLines`; the owner, in the Building lane, 2026-10-03: "fix the gap").
 - **A set that changes a job we have won starts its change orders to the owner** (approved as
   built, 2026-10-03): **A new set of plans came in** gains **Change orders to the owner**, one row
   per trade the set touches or brings, ticked when it adds lines or days. Each is prefilled
