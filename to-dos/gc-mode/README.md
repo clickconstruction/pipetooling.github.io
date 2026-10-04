@@ -757,7 +757,9 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
     forecasts (`projectedFinish`, Building, 2026-10-04, for Owner Billing's late-finish warning):
     the later of the plan worked through what waits on what, where nothing unfinished finishes
     before today, and the baseline's finish moved by how far the work runs behind. It comes with
-    a sentence of why. Fair Oaks D: Dec 11, 3 days behind.
+    a sentence of why. Fair Oaks D: Dec 11, 3 days behind. Schedule's measures card shows it as
+    **Projected finish** with days past the contract, no days to spare, or days to spare (the late
+    fee in dollars stays on Bill the owner).
 29. ~~Texts to trade partners: add a text sender before the real build, or send email only?~~
     Answered 2026-10-03: **email only for now** (through Resend, as the app sends today). Every
     lane's notification table reads "by email"; a text sender is not part of the first real build.
