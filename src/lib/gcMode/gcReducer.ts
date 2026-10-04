@@ -15,7 +15,7 @@ import { buildNewProject, dryInMilestoneFor, packagesFromDrafts, pushSchedule, s
 import { nextPunchId, punchClear } from './gcBuildingPunch'
 import { logTrades } from './gcBuildingLog'
 import { addDays, changeOrderTradePct, crewPctFromStages, drawApprovedLess, finalPayApplication, jobCloseout, payApplication, timesSentBack, tradeCloseout, workAllBilled } from './gcBuilding'
-import { appClaimed, appOpen, changeOrderPrice, ownerCloseout, ownerFinalPayAppToSend, ownerPayApp, ownerPayAppHasWork, ownerPayAppToSend } from './gcOwnerBilling'
+import { appClaimed, appOpen, changeOrderPrice, ownerCloseout, ownerContractWorthNow, ownerFinalPayAppToSend, ownerPayApp, ownerPayAppHasWork, ownerPayAppToSend } from './gcOwnerBilling'
 
 export function gcReducer(state: GcState, action: GcAction): GcState {
   switch (action.type) {
@@ -178,7 +178,16 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
       const project = state.projects.find((p) => p.id === action.projectId)
       if (!project) return state
       const on = action.done ? state.today : null
-      const next = mapProject(state, project.id, (p) => (action.item === 'ownerContract' ? { ...p, ownerContractSignedOn: on } : { ...p, permitOn: on }))
+      const next = mapProject(state, project.id, (p) => {
+        if (action.item !== 'ownerContract') return { ...p, permitOn: on }
+        // The owner's price stays what they signed (the owner, 2026-10-04, in Owner Billing): kept
+        // from the first signing, dropped when the contract is marked not signed.
+        if (!action.done) {
+          const { ownerContractWorth: _unsigned, ...rest } = p
+          return { ...rest, ownerContractSignedOn: null }
+        }
+        return { ...p, ownerContractSignedOn: on, ownerContractWorth: p.ownerContractWorth ?? ownerContractWorthNow(p) }
+      })
       const what = action.item === 'ownerContract' ? `Our contract with ${project.owner}` : 'The permit'
       return logged(next, 'office', action.done ? `${what} is marked done on ${project.name}.` : `${what} is marked not done on ${project.name}.`)
     }

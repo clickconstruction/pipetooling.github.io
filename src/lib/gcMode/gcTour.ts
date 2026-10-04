@@ -138,6 +138,11 @@ export const GC_PROJECT_TOUR_STEPS: SpotlightTourStep[] = [
     body: 'The dates for each trade and what waits on what. Start locks it as the plan we measure against.',
   },
   {
+    anchor: 'gc-ptab-log',
+    title: 'Daily log',
+    body: 'The superintendent writes one log each work day. It says the weather, which trades were on site and how many workers. It also says what got done and what held work up. A day with no log shows on the ring.',
+  },
+  {
     anchor: 'gc-ptab-draws',
     title: 'Draws',
     body: 'Trades report their work and ask to be paid. You approve and pay. We hold back retainage until the end.',

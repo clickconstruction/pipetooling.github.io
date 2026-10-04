@@ -41,6 +41,7 @@ import {
   money,
   lostWords,
   planLabel,
+  priceToOwner,
   proposalUncostedWords,
   RING_COLORS,
   sentBackOpen,
@@ -770,6 +771,7 @@ function ProjectRow({
   onChase: () => void
 }) {
   const totals = proposalTotals(project)
+  const owner = priceToOwner(project)
   const signed = project.packages.filter((p) => p.sow?.status === 'signed').length
   const subs = project.packages.filter((p) => !p.selfPerform).length
   const reach = plansReach(project)
@@ -895,9 +897,21 @@ function ProjectRow({
         </button>
       </span>
       <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', fontSize: '1.05rem', textAlign: 'right', ...(narrow ? { gridColumn: '3 / -1' } : null) }}>
-        {money(totals.price)}
-        <PlusUnknown words={proposalUncostedWords(project)} />
-        {totals.holes.length > 0 ? (
+        {owner.signed ? (
+          // The owner's price stays what they signed (Owner Billing, 2026-10-04): no "+ ?", no holes.
+          <>
+            {money(owner.price)}
+            <span style={{ display: 'block', fontWeight: 400, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              as signed{owner.changeOrders > 0 ? `, with ${owner.changeOrders} change ${owner.changeOrders === 1 ? 'order' : 'orders'}` : ''}
+            </span>
+          </>
+        ) : (
+          <>
+            {money(totals.price)}
+            <PlusUnknown words={proposalUncostedWords(project)} />
+          </>
+        )}
+        {owner.signed ? null : totals.holes.length > 0 ? (
           <span style={{ display: 'block', fontWeight: 400, fontSize: '0.75rem', color: 'var(--text-red-700)' }}>so far, with holes</span>
         ) : (
           totals.plugged.length > 0 && (
@@ -925,6 +939,7 @@ function ProjectHeader({
   onArchitect: () => void
 }) {
   const totals = proposalTotals(project)
+  const owner = priceToOwner(project)
   const stage = STAGES.find((s) => s.key === project.stage)
   return (
     <Card style={{ marginBottom: '0.75rem' }} dataTour="gc-project-header">
@@ -974,8 +989,8 @@ function ProjectHeader({
             }
           />
           <Stat
-            label={totals.holes.length > 0 ? 'Price so far, with holes' : 'Price to the owner'}
-            value={<>{money(totals.price)}<PlusUnknown words={proposalUncostedWords(project)} /></>}
+            label={owner.signed ? 'Price to the owner, as signed' : totals.holes.length > 0 ? 'Price so far, with holes' : 'Price to the owner'}
+            value={owner.signed ? money(owner.price) : <>{money(totals.price)}<PlusUnknown words={proposalUncostedWords(project)} /></>}
           />
         </div>
       </div>

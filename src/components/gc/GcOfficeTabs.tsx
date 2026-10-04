@@ -18,6 +18,7 @@ import {
   staleWords,
   LOST_WHY,
   lostWords,
+  priceToOwner,
   proposalUncosted,
   proposalUncostedWords,
   uncostedLines,
@@ -796,6 +797,8 @@ export function GcPlansTab({ state, project, dispatch }: GcPaneProps) {
             </div>
             <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
               Issued {shortDate(s.issuedOn)}
+              {/* Who checked the files before they went out (the New Project lane's checkedBy; the owner, 2026-10-04). */}
+              {s.checkedBy ? ` · checked by ${s.checkedBy}` : ''}
               {s.sentTo && s.sentTo.length > 0
                 ? ` · emailed to ${s.sentTo.length} ${s.sentTo.length === 1 ? 'company' : 'companies'}, ${s.sentTo.filter((x) => x.touched).length} told it changes their trade`
                 : ''}
@@ -940,6 +943,7 @@ export function GcPlansTab({ state, project, dispatch }: GcPaneProps) {
 
 export function GcNumberTab({ state, project, dispatch }: GcPaneProps) {
   const totals = proposalTotals(project)
+  const signedFor = priceToOwner(project)
   const [losing, setLosing] = useState(false)
   const field = (label: string, key: 'generalConditions' | 'contingencyPct' | 'feePct', suffix: string) => (
     <label style={{ display: 'grid', gap: '0.2rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
@@ -971,11 +975,26 @@ export function GcNumberTab({ state, project, dispatch }: GcPaneProps) {
           <Stat label={`Contingency ${project.contingencyPct}%`} value={money(totals.contingency)} />
           <Stat label={`Fee ${project.feePct}%`} value={money(totals.fee)} />
           <Stat
-            label={`Price to ${project.owner}`}
+            label={signedFor.signed ? 'At today’s numbers' : `Price to ${project.owner}`}
             value={<>{money(totals.price)}<PlusUnknown words={proposalUncostedWords(project)} /></>}
             tone={totals.holes.length > 0 ? 'red' : proposalUncosted(project).length > 0 ? undefined : 'green'}
           />
         </div>
+        {/* Once signed, the owner's price stays put (Owner Billing, 2026-10-04); this is the gap buying out makes. */}
+        {signedFor.signed && (
+          <div style={{ marginTop: '0.6rem', fontSize: '0.9rem' }}>
+            {project.owner} signed for {money(signedFor.price)}
+            {signedFor.changeOrders > 0 ? `, with ${signedFor.changeOrders} change ${signedFor.changeOrders === 1 ? 'order' : 'orders'}` : ''}. Their price
+            stays that.{' '}
+            {Math.round(totals.price) === Math.round(signedFor.price) ? (
+              'Today’s numbers match it.'
+            ) : totals.price < signedFor.price ? (
+              <span style={{ color: 'var(--text-green-700)' }}>At today’s numbers we are {money(signedFor.price - totals.price)} under it.</span>
+            ) : (
+              <span style={{ color: 'var(--text-red-700)' }}>At today’s numbers we are {money(totals.price - signedFor.price)} over it.</span>
+            )}
+          </div>
+        )}
         {(totals.holes.length > 0 || totals.plugged.length > 0) && (
           <div style={{ marginTop: '0.7rem', display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
             {totals.holes.map((p) => (

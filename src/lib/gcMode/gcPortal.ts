@@ -13,7 +13,7 @@ import { askPromise, OPEN_WITHIN_DAYS, type AskPromise } from './gcFollowUp'
 import { bidIsStale, quoteRanOut, sowMoney } from './gcBids'
 import { GC_COMPANY } from './gcFixture'
 import { pDate, pt, pWeekday, type PortalLang } from './gcPortalI18n'
-import { inSentence, lineSheets, specsAtRev, specsGoneAtRev, tradeSheets, tradesForSheets } from './gcNewProject'
+import { inSentence, lineSheets, linesOnSpecs, specsAtRev, specsGoneAtRev, tradeSheets, tradesForSheets } from './gcNewProject'
 import { addDays, retainageHeldNow, sentBackOpen, sowContractSum, tradeChangesFor, tradeCloseout, workAllBilled } from './gcBuilding'
 import { lookAheadWeeks, markState, mondayOf, scheduleRows, type LookAheadState, type ScheduleRow } from './gcBuildingSchedule'
 import { punchItems, punchState } from './gcBuildingPunch'
@@ -811,15 +811,16 @@ export function portalLines(
   const liveSpecs = specsAtRev(project, now)
   const deadSpecs = specsGoneAtRev(project, now)
   const same = (a: string) => (b: string) => bareId(a) === bareId(b)
+  // The lines each set reaches through the sections it revised, the office's own rule (a line naming
+  // no section reads its whole trade's), so the portal flags the lines the set's email names.
+  const onSpecs = new Map(sets.map((set) => [set.rev, new Set(linesOnSpecs(project, pkg, set.changedSpecs ?? []).map((l) => l.id))]))
   const lines = pkg.scope.map((item) => {
     const { sheets: said, guessed } = lineSheets(project, pkg, item)
     const wholeTrade = guessed || said.length === 0
     const reads = wholeTrade ? tradeSheets(project, pkg.trade).map((sh) => sh.id) : said
     // Only the sections the office set, as with sheets (owner, 2026-10-03); never the guess.
     const specIds = item.specs ?? []
-    const by = sets.filter(
-      (set) => set.changedSheets.some((id) => reads.includes(id)) || (set.changedSpecs ?? []).some((id) => specIds.some(same(id))),
-    )
+    const by = sets.filter((set) => set.changedSheets.some((id) => reads.includes(id)) || onSpecs.get(set.rev)?.has(item.id))
     const gone = reads.filter((id) => goneIds.has(id))
     const changed = reads.filter((id) => !goneIds.has(id) && by.some((set) => set.changedSheets.includes(id)))
     const specs = specIds.map((id) => {
