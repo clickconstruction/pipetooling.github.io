@@ -16,6 +16,7 @@ import { pDate, pt, pWeekday, type PortalLang } from './gcPortalI18n'
 import { inSentence, lineSheets, linesOnSpecs, specsAtRev, specsGoneAtRev, tradeSheets, tradesForSheets } from './gcNewProject'
 import { addDays, retainageHeldNow, sentBackOpen, sowContractSum, tradeChangesFor, tradeCloseout, workAllBilled } from './gcBuilding'
 import { lookAheadWeeks, markState, mondayOf, scheduleRows, type LookAheadState, type ScheduleRow } from './gcBuildingSchedule'
+import { onSite } from './gcBuildingLog'
 import { punchItems, punchState } from './gcBuildingPunch'
 import { planLabel } from './gcLookups'
 
@@ -220,6 +221,25 @@ export function portalLeavesOut(pkg: TradePackage, lang: PortalLang = 'en'): str
       const who = by === 'us' ? GC_COMPANY.shortName : by === 'the owner' ? pt(lang, 'byOwner') : lang === 'es' ? by : inSentence(by)
       return pt(lang, 'leavesOutLine', { what, who })
     })
+}
+
+/**
+ * The days our superintendent's daily log has the company on site for this job (owner, 2026-10-04;
+ * the Building lane's `onSite`), counted from the log's first day, which the line names so it is
+ * never more than the log can say: "Our daily log has you on site 6 days since Mon Sep 21, the
+ * last on Thu Oct 1." Null on a job with no log yet, so nothing shows.
+ */
+export function portalOnSite(project: GcProject, pkg: TradePackage, today: string, lang: PortalLang = 'en'): string | null {
+  const first = (project.dailyLogs ?? [])
+    .map((l) => l.date)
+    .filter((d) => d <= today)
+    .sort()[0]
+  if (!first) return null
+  const { days } = onSite(project, pkg.id, first, today)
+  const since = pWeekday(lang, first)
+  const last = days[days.length - 1]
+  if (!last) return pt(lang, 'onSiteNone', { since })
+  return pt(lang, days.length === 1 ? 'onSite1' : 'onSiteN', { n: days.length, since, date: pWeekday(lang, last) })
 }
 
 export function portalJobMoney(pkg: TradePackage): PortalJobMoney | null {

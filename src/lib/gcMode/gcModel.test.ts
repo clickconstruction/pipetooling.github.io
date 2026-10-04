@@ -23,6 +23,11 @@ import {
   followUps,
   gcReducer,
   initialGcState,
+  insuranceRenewals,
+  partnersToVet,
+  tradePromisesOf,
+  tradePromiseWords,
+  vettingWords,
   planRecipients,
   proposalTotals,
   stageProgress,
@@ -37,6 +42,9 @@ type Step = { label: string; action: GcAction }
 
 /** What Cedar & Pine types on its pay applications in the walk. */
 const CEDAR_TYPED = { periodTo: '2026-10-02', address: '77 Main St, Fredericksburg, TX 78624', license: '', signedBy: 'Owen Blake', signedTitle: 'Owner' }
+
+/** The company the walk adds as new to us: the fixture's partners, then Pecos Steel, then this one. */
+const STRANGER = `new-${initialGcState().partners.length + 2}`
 
 const STEPS: Step[] = [
   // Boerne Retail Shell, bidding: compare, chase, quote, carry.
@@ -518,6 +526,32 @@ const STEPS: Step[] = [
       },
     },
   },
+  // Question 3 (the owner, 2026-10-04): a company new to us quotes, and is approved before any award.
+  {
+    label: 'Add a glass company we do not know',
+    action: { type: 'addPartner', company: 'Brazos Glass', contact: 'Lupe Garza', trade: 'Storefront and glass', base: 'New Braunfels', maxMiles: 60, known: false },
+  },
+  {
+    label: 'Brazos Glass sends its company form',
+    action: {
+      type: 'tradeVettingForm',
+      partnerId: STRANGER,
+      form: {
+        license: 'TX glazing contractor 48213',
+        insurance: 'Texas Mutual, $1M per claim, $2M total',
+        yearsInBusiness: 9,
+        references: 'Rosa Lin, Alamo Builders, (210) 555-0190. Tom Beck, Hill Country GC, (830) 555-0144.',
+        pastJobs: 'Storefronts at Bulverde Crossing and the Gruene dental office.',
+      },
+    },
+  },
+  { label: 'Dana approves Brazos Glass up to $150,000', action: { type: 'vetPartner', partnerId: STRANGER, status: 'approved', limit: 150_000, by: 'Dana Whitaker' } },
+  // Question 8 (the owner, 2026-10-04): promises other than a quote date, insurance first.
+  { label: 'Voltage Brothers promise the renewed insurance by Tue Oct 6', action: { type: 'recordPromise', partnerId: 'voltage', kind: 'insurance', by: '2026-10-06', from: 'office' } },
+  { label: 'Voltage Brothers move it to Fri Oct 9', action: { type: 'recordPromise', partnerId: 'voltage', kind: 'insurance', by: '2026-10-09', from: 'trade' } },
+  { label: 'Voltage Brothers send the new certificate, which keeps the promise', action: { type: 'tradeUploadCoi', partnerId: 'voltage', expires: '2027-09-15' } },
+  { label: 'Tejas Power promises a signed W-9 by Mon Oct 5', action: { type: 'recordPromise', partnerId: 'tejas', kind: 'w9', by: '2026-10-05', from: 'trade' } },
+  { label: "The office marks Tejas's W-9 kept", action: { type: 'keepPromise', id: 'tp-2' } },
   // Submittals (Building lane): Summit's flashing drawings, a revise round, approved; a new one asked; the controls sent.
   { label: "Fair Oaks D: send Summit's flashing drawings to the architect", action: { type: 'sendSubmittalToArchitect', projectId: 'fairoaksd', submittalId: 'fairoaksd-sub-6' } },
   {
@@ -611,6 +645,11 @@ function readings(state: GcState) {
     followUps: followUps(state),
     tradeBenches: tradeBenches(state),
     assistantRules: assistantRules(state),
+    // Question 3 and question 8 (the owner, 2026-10-04): who waits on vetting, whose insurance to chase,
+    // and every promise other than a quote date with where it stands.
+    toVet: partnersToVet(state).map((p) => ({ id: p.id, words: vettingWords(p) })),
+    insuranceRenewals: insuranceRenewals(state).map((r) => ({ id: r.partner.id, days: r.days, promise: r.promise?.id ?? null })),
+    tradePromises: tradePromisesOf(state).map((p) => ({ id: p.id, words: tradePromiseWords(p, state.today) })),
     lastLog: state.log[0] ?? null,
   })
 }
@@ -691,6 +730,7 @@ describe('GC mode golden walk', () => {
       'setPartnerLanguage',
       'markLost', 'reopenLost',
       'takeAlternate',
+      'vetPartner', 'tradeVettingForm', 'recordPromise', 'keepPromise',
     ]
     expect(all.filter((t) => !used.has(t))).toEqual([])
   })

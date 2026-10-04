@@ -112,6 +112,66 @@ makes; nobody builds it until he answers.
 4. ~~**Notifications for the owner side**~~ done f30582691: the table under *Workflow steps not built yet*, every one by email (question 29).
 5. ~~**Tidy your lines in `README.md`.**~~ done f30582691 (the files and lanes rows, Money's row and a try-it line).
 
+## Round 2: the owner's answers of 2026-10-04
+
+The owner answered questions 2, 3, 6, 7, 8 and 12 (`README.md`, *Open questions*). Same rules as
+above: your section, in order, tested, marked here when shared. **The Board pushes the shared types
+first** (a partner's vetting, the promise record), so build on those once GC 0 says they landed.
+
+### Board (GC 0)
+
+1. **Q6 words:** *Compare bids* becomes *Compare quotes*; a trade's number is a quote across the
+   Board's screens, the walkthroughs and the Board's log lines. Our number to the owner stays *our bid*.
+2. **Q3 types first:** `Partner.vetting` (not vetted, approved, approved up to $X, declined). A
+   known company with no record is approved.
+3. **Q8 types first:** the promise record (`gcPromises.ts`): one shape for every kind, kept when
+   the thing happens, listed in Follow up, counted in the company's word record.
+4. **Q3 the office side:** a quote from a company not vetted shows "not vetted yet"; *Award at*
+   stays locked until it is approved (or the number is over its limit); *Approve*, *Approve up to
+   $X* and *Decline* on Trade partners and Compare quotes.
+5. **Q8 the Board's kinds:** insurance (the renewal: a Follow up row from 30 days before the
+   certificate runs out), a W-9, a signed statement of work.
+6. **Q7 Bid tabs:** *Mark awarded*, set by any estimator on our team, shown on the tab with who set it.
+7. **Q7 Start anyway** on Get started: with a reason, logged; what was missing stays listed as owed.
+
+### Building (GC 1)
+
+1. **Q12 the trade's pay application:** the notary block; materials stored on site (column F, into
+   G); downloads as the AIA Excel template the Jobs Stages tab fills and as a PDF. One builder with
+   Owner Billing's.
+2. **Q8 Building's kinds** on the Board's promise record: a start or move-in day, submittals, a
+   material delivery, a pay application fixed and sent again, punch items fixed, closeout papers
+   and lien waivers.
+3. **Q6 words** on Building's screens.
+
+### New Project (GC 2)
+
+1. **Q3:** *Who to ask* can add a company not on the bench; it comes in not vetted.
+2. ~~**Q6 words** on New Project's screens.~~ done: a trade's number reads as a quote or as what we
+   price ourselves ("every company quoting", "Our guess", "the scope we price ourselves"); "bid"
+   stays for our bid to the owner and the Trades mode record. "Compare bids" stays while the
+   Board's button is named so.
+
+### Portal (GC 3)
+
+1. ~~**Q6 words:** the portal says quote, in English and Spanish; redraw `PORTAL_SPANISH.md`.~~ done d716ce4e0
+2. **Q3 the new company's form:** license, insurance, years in business, references, past jobs, in
+   both languages, and where it stands (being checked, approved, approved up to $X).
+3. **Q8:** the trade sees its open promises and can give or move a date; a reminder 30 days before
+   its insurance runs out, with sending the new certificate.
+
+### Owner Billing (GC 4)
+
+1. **Q12 the owner's pay application:** the notary block, materials stored on site, the Excel and
+   PDF downloads, on one builder with Building's.
+2. **Q6 words** on the owner side, where a trade's number shows.
+
+### Still the owner's
+
+- Q4: draws by stage or by percent with retainage.
+- Q7: the trade map's list, closest first or most reliable first.
+- Q9: should Actions for assistants also sit on the Project Board?
+
 ## Owner (the decisions)
 
 11. ~~**A carried quote with a line that has no cost:** does it hold the ring open?~~ Answered 2026-10-03: yes, until every line has a cost. Built by the Board (this commit).
@@ -121,11 +181,14 @@ makes; nobody builds it until he answers.
     by stage or percent), 5 (where the plans live), 6 ("quote" or "bid"), 7 (mark who was awarded
     on a bid tab; closest or most reliable first; "start anyway"), 8 (track other promises), 9
     (group the board by customer), 12 (pay application extras and its file), 14 (do alternates
-    change our number; does a quote that ran out stop counting). Answered 2026-10-04: 5 (Google
+    change our number; does a quote that ran out stop counting). Answered 2026-10-04: 2 (start
+    with bidding), 3 (vet strangers: quote yes, award after approval), 6 (quotes from trades, our
+    bid to the owner), 7 (any estimator marks awarded; start anyway yes), 8 (track every kind), 12
+    (notary, stored materials, Excel and PDF); 5 (Google
     Drive, checked by someone), 7's first half (yes, set by the job's estimator), 9 (a By stage \|
     By customer switch, stage by default; built by the Board), 14 (left to the Board: built
     e04a397c4), 28 (yes, signed change-order days move substantial completion).
-15. **The Portal lane's lost-bid portal:** OK to commit?
+15. ~~**The Portal lane's lost-bid portal:** OK to commit?~~ Answered 2026-10-03 in the Portal session: yes; shared at 83dcdcd20 and a018d96df.
 22. ~~**The Spanish:** who reads it?~~ Answered 2026-10-03: someone the owner names reviews it when GC mode goes to production; nothing to do before then. The list is ready in `PORTAL_SPANISH.md` (*For a native speaker to read*).
 
 ## Everyone

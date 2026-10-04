@@ -12,8 +12,11 @@ import {
   linkNeverOpened,
   portalFirstVisit,
   portalHome,
+  onSite,
+  pWeekday,
   portalLeavesOut,
   portalLink,
+  portalOnSite,
   portalLines,
   portalLookAhead,
   portalMessages,
@@ -74,7 +77,7 @@ describe('the company home', () => {
   it('tells Hillside its promised day passed, in red, above its paperwork', () => {
     const todos = home('hillside').todos
     expect(todos[0]).toMatchObject({ tone: 'red', key: 'site-hillside:late', projectId: 'boerne' })
-    expect(todos[0]?.text).toBe('You said your Sitework number for Boerne Retail Shell would come Wed Sep 30. Send it or give a new day.')
+    expect(todos[0]?.text).toBe('You said your Sitework quote for Boerne Retail Shell would come Wed Sep 30. Send it or give a new day.')
     expect(todos.slice(1).map((t) => t.key)).toEqual(['coi', 'w9'])
   })
 
@@ -86,12 +89,12 @@ describe('the company home', () => {
   })
 
   it('asks Alamo to answer the rebar line the office could not read', () => {
-    expect(home('alamo').todos.map((t) => t.text)).toEqual(['Answer one line of your Concrete number for Boerne Retail Shell.'])
+    expect(home('alamo').todos.map((t) => t.text)).toEqual(['Answer one line of your Concrete quote for Boerne Retail Shell.'])
   })
 
   it('asks a company that never opened the plans to open them and send its number', () => {
     // Bexar Steel Erectors was asked on Boerne structural steel and has not opened the plans.
-    expect(home('bexar').todos.map((t) => t.text)).toEqual(['Open the plans and send your Structural steel number for Boerne Retail Shell by Thu Oct 8.'])
+    expect(home('bexar').todos.map((t) => t.text)).toEqual(['Open the plans and send your Structural steel quote for Boerne Retail Shell by Thu Oct 8.'])
   })
 
   it('has no money strip until a dollar moves, and adds it up once one has', () => {
@@ -133,7 +136,7 @@ describe('plan news and promises', () => {
   it('reads a passed promise as late', () => {
     const { invite } = ask(state, 'boerne', 'site', 'hillside')
     expect(portalPromiseLine(invite, state.today, 'Click')).toEqual({
-      text: 'You told Click your number would come by Wed Sep 30. That day passed 2 days ago. Send your number or give a new day.',
+      text: 'You told Click your quote would come by Wed Sep 30. That day passed 2 days ago. Send your quote or give a new day.',
       late: true,
     })
   })
@@ -158,8 +161,8 @@ describe('how a company arrives', () => {
 
   it('writes the invitation as an email (email only for now)', () => {
     const invite = portalMessages(state, 'voltage').find((m) => m.kind === 'invite' && m.projectId === 'boerne')
-    expect(invite?.subject).toBe('Click Construction asks you to bid Electrical on Boerne Retail Shell')
-    expect(invite?.lines).toContain('Your number is due Thu Oct 8.')
+    expect(invite?.subject).toBe('Click Construction asks you to quote Electrical on Boerne Retail Shell')
+    expect(invite?.lines).toContain('Your quote is due Thu Oct 8.')
     expect(invite?.scope?.length).toBeGreaterThan(0)
     expect(invite).not.toHaveProperty('text')
   })
@@ -170,7 +173,7 @@ describe('how a company arrives', () => {
       return lines[lines.length - 1]
     }
     expect(plans('hillside')).toBe('It does not change Sitework. Open it so you price on the newest set.')
-    expect(plans('voltage')).toBe('It changes Electrical. Open it, then confirm your number or change it.')
+    expect(plans('voltage')).toBe('It changes Electrical. Open it, then confirm your quote or change it.')
   })
 
   it('welcomes a company the first time it opens its link, and not after Got it', () => {
@@ -301,7 +304,7 @@ describe('the bid form', () => {
     expect(bidRanOut(bid, '2026-10-18')).toBe(true)
     const later = { ...s, today: '2026-10-18' }
     expect(portalTodos(later, 'lonestar').find((t) => t.key === 'bsite-lonestar:ranout')?.text).toBe(
-      'Your Sitework number for Boerne Retail Pad B ran out Sat Oct 17. Send it again to keep it good.',
+      'Your Sitework quote for Boerne Retail Pad B ran out Sat Oct 17. Send it again to keep it good.',
     )
   })
 
@@ -655,11 +658,11 @@ describe('a project we lost', () => {
     expect(won?.lines.slice(1)).toEqual([
       'This is about Sitework on Boerne Retail Shell.',
       'Click did not win this project.',
-      'You do not need to send a number. Thank you for your time.',
+      'You do not need to send a quote. Thank you for your time.',
     ])
     expect(won?.lines.join(' ')).not.toMatch(/Hill Country|lower number/)
     const died = portalMessages(lost('project_died'), 'lonestar').find((m) => m.kind === 'closed')
-    expect(died?.lines.slice(2)).toEqual(['The owner stopped this project or put it on hold.', 'Thank you for your number.'])
+    expect(died?.lines.slice(2)).toEqual(['The owner stopped this project or put it on hold.', 'Thank you for your quote.'])
   })
 
   it('emails each company still on a trade there the day it is marked, in its language, and not one that passed', () => {
@@ -868,5 +871,30 @@ describe('a line’s spec sections on the bid form', () => {
     expect(r.lines[0]!.by).not.toContain('Addendum 2')
     expect(r.lines[2]!.specs).toEqual([])
     expect(r.lines[2]!.by).toContain('Addendum 2')
+  })
+})
+
+describe('days on site, from our daily log', () => {
+  const fair = state.projects.find((p) => p.id === 'fairoaksd')!
+  const pkg = (id: string) => fair.packages.find((k) => k.id === id)!
+
+  it('counts the days the log has Summit’s roofers there, and the last one', () => {
+    const first = (fair.dailyLogs ?? []).map((l) => l.date).sort()[0]!
+    const { days } = onSite(fair, 'froof', first, state.today)
+    expect(days.length).toBeGreaterThan(1)
+    expect(portalOnSite(fair, pkg('froof'), state.today)).toBe(
+      `Our daily log has you on site ${days.length} days since ${pWeekday('en', first)}, the last on ${pWeekday('en', days[days.length - 1]!)}.`,
+    )
+  })
+
+  it('names the log’s first day when it never had the company there, and says nothing on a job with no log', () => {
+    // Guadalupe's concrete was done before the made-up log begins: the line must not say it never came.
+    expect(portalOnSite(fair, pkg('fconc'), state.today)).toBe('Our daily log has not had you on site since Mon Sep 21.')
+    const helotes = state.projects.find((p) => p.id === 'helotes')!
+    expect(portalOnSite(helotes, helotes.packages[0]!, state.today)).toBeNull()
+  })
+
+  it('reads in Spanish', () => {
+    expect(portalOnSite(fair, pkg('froof'), state.today, 'es')).toMatch(/^Nuestro registro diario lo tiene en la obra \d+ días desde el lun 21 sep, el último el \S+ \d+ \S+\.$/)
   })
 })

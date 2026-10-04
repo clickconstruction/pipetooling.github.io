@@ -16,6 +16,7 @@ import {
   pWeekday,
   portalClosedWords,
   portalInsurance,
+  portalOnSite,
   portalLines,
   portalPlanNews,
   portalPromiseLine,
@@ -649,6 +650,7 @@ function SowBlock({
   if (!sow) return null
   const ids = { projectId: project.id, packageId: pkg.id }
   const m = sowMoney(sow)
+  const onSiteLine = portalOnSite(project, pkg, today, lang)
 
   if (sow.status === 'draft') {
     return <Block title={t('gotJobTitle', { trade: pkg.trade })}>{t('sowDraft', { gc: GC })}</Block>
@@ -680,6 +682,8 @@ function SowBlock({
         <div data-portal-anchor={`report:${pkg.id}`} style={{ scrollMarginTop: '0.5rem' }}>
           <Block title={t('reportTitle', { trade: pkg.trade })}>
             <div style={{ display: 'grid', gap: '0.45rem', fontSize: '0.9rem' }}>
+              {/* The days our superintendent's log has them on site, beside the percents they report. */}
+              {onSiteLine && <div style={{ fontSize: '0.85rem', opacity: 0.8 }}>{onSiteLine}</div>}
               {sow.sov.map((l) => (
                 <label key={l.id} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '0.5rem', alignItems: 'center' }}>
                   <span>

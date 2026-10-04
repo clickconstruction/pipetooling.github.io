@@ -5,6 +5,7 @@
 import type { GcProject, GcState, Invite, Partner, TradePackage } from './gcTypes'
 import { daysUntil, weekdayDate } from './gcWords'
 import { partnerById } from './gcLookups'
+import { tradePromiseRecord } from './gcPromises'
 
 /**
  * Where a company's word stands on one ask. kept: the quote came by the day. late: it came after.
@@ -73,7 +74,9 @@ export function wordRecord(state: GcState, partner: Partner): { made: number; ke
       })
     }
   }
-  return { made, kept }
+  // Promises other than a quote date count the same way (question 8).
+  const other = tradePromiseRecord(state, partner)
+  return { made: made + other.made, kept: kept + other.kept }
 }
 
 export type FollowUpWhy = 'passed' | 'today' | 'silent' | 'nodate' | 'waiting'
