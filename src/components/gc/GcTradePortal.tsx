@@ -29,6 +29,7 @@ import {
   type BidAlternate,
   type Invite,
   type Partner,
+  type PlanSet,
   type PortalLang,
   type TradePackage,
 } from '../../lib/gcMode/gcModel'
@@ -39,8 +40,8 @@ import { GcPortalContacts } from './GcPortalContacts'
 import { GcPortalHome } from './GcPortalHome'
 import { GcPortalPay } from './GcPortalPay'
 import { GcPortalLookAhead } from './GcPortalLookAhead'
-import { AlternatesEditor, AnswerLines, GoodForPicker, QuoteFilePicker } from './GcPortalBidExtras'
-import { ChangedLines, LineSheets, SheetChip } from './GcPortalLineSheets'
+import { AlternatesEditor, AnswerLines, GoodForPicker, LeavesOut, QuoteFilePicker } from './GcPortalBidExtras'
+import { ChangedLines, LineSheets, SheetChip, TakenOut } from './GcPortalLineSheets'
 import { GcPortalMessages } from './GcPortalMessages'
 import { GcPortalPaperwork } from './GcPortalPaperwork'
 import { GcPortalPlans } from './GcPortalPlans'
@@ -199,6 +200,11 @@ export function GcTradePortal({ state, project, partnerId, onPickPartner, dispat
   )
 }
 
+/** A set's changed sheets less the ones it took out, which are said apart ("Taken out: E-305."). */
+function changedNotGone(set: PlanSet): string[] {
+  return set.changedSheets.filter((id) => !(set.removedSheets ?? []).includes(id))
+}
+
 /** One project's page: the company's asks on it. Paperwork shows here only while something is missing. */
 function ProjectPage({
   state,
@@ -307,7 +313,8 @@ function PackageBlock({
               {news.forTrade.map((set) => (
                 <div key={set.rev}>
                   {set.label}: {set.note}
-                  {set.changedSheets.length > 0 && <> {t('sheetsList', { list: set.changedSheets.join(', ') })}</>}
+                  {changedNotGone(set).length > 0 && <> {t('sheetsList', { list: changedNotGone(set).join(', ') })}</>}
+                  {(set.removedSheets ?? []).length > 0 && <> {t('sheetsTakenOut', { list: (set.removedSheets ?? []).join(', ') })}</>}
                 </div>
               ))}
             </PortalNote>
@@ -448,7 +455,14 @@ function BidBlock({
               <div>
                 {t('staleNote')} {t(openedNewest ? 'staleOpened' : 'staleNotOpened')}
               </div>
-              <ChangedLines trade={pkg.trade} lines={sheets.lines} otherSheets={sheets.otherSheets} setNames={sheets.sets.map((x) => x.label)} onOpen={onOpenSheet} />
+              <ChangedLines
+                trade={pkg.trade}
+                lines={sheets.lines}
+                otherSheets={sheets.otherSheets}
+                goneSheets={sheets.goneSheets}
+                setNames={sheets.sets.map((x) => x.label)}
+                onOpen={onOpenSheet}
+              />
             </PortalNote>
           )}
           {unclear.length > 0 && (
@@ -530,6 +544,12 @@ function BidBlock({
               ))}
             </div>
           )}
+          {sheets.goneSheets.length > 0 && (
+            <div style={{ fontSize: '0.85rem' }}>
+              <TakenOut ids={sheets.goneSheets} sets={sheets.sets.map((x) => x.label).join(t('and'))} />
+            </div>
+          )}
+          <LeavesOut pkg={pkg} />
           <label style={{ fontSize: '0.9rem' }}>
             {t('yourNumber')}{' '}
             <input type="number" min={0} step={100} value={amount} onChange={(e) => setAmount(e.target.value)} style={{ ...input, width: '9rem' }} />

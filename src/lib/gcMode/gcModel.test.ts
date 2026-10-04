@@ -461,6 +461,7 @@ const STEPS: Step[] = [
       removedSheets: ['E-101'],
       retitledSheets: [{ id: 'A-501', title: 'Roof plan, details and walk pads' }],
       retiedLines: [{ packageId: 'leon-springs-urgent-care-electrical', scopeId: 'leon-springs-urgent-care-electrical-2', sheets: ['E-102'] }],
+      checkedBy: 'Dana Whitaker',
     },
   },
   // Question 14 (the Board lane's call, 2026-10-04): an alternate moves our number only when taken.
