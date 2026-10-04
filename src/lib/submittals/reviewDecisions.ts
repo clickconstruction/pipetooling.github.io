@@ -8,17 +8,51 @@ import { asDecision, formatShortDate, type ReviewDecision } from './submittalRev
 
 export const DECISION_LABELS: Record<ReviewDecision, string> = { approved: 'Approved', revise: 'Revise', rejected: 'Rejected' }
 
-export type DecisionSummary = { decided: number; approved: number; revise: number; rejected: number; open: number; /** rows with no answer at all, whatever their status: what a resubmit carries beside the rows sent back */ noAnswer: number; sentBack: number; byName: string[]; /** rows the office entered on a reviewer's behalf (5b) */ entered: number; enteredBy: string[] }
+export type DecisionSummary = { decided: number; approved: number; revise: number; rejected: number; open: number; /** rows with no answer at all, whatever their status: what a resubmit carries beside the rows sent back */ noAnswer: number; sentBack: number; byName: string[]; /** rows the office entered on a reviewer's behalf (5b) */ entered: number; enteredBy: string[]; /** of `rejected` / `revise`: rows where only some of the parts the GC sees got that answer (2026-10-03) */ rejectedInPart?: number; reviseInPart?: number }
+
+/** A part as the answer words need it. */
+export type PartCall = { on_submittal: boolean; review_decision?: string | null }
+
+/**
+ * A row's answer as the office reads it in the Their call cell (2026-10-03). A row's own call is
+ * the roll-up of its parts, and one part sent back sends the row back: LAV-1 read "Rejected" in
+ * red when one faucet of three was rejected and two parts had no answer. With parts, the cell
+ * gets one word only when every part the GC sees has the same answer; otherwise it counts.
+ * null when nothing is answered.
+ */
+export type RowCallWords = { head: string; tone: ReviewDecision | 'open'; rest: string }
+
+export function rowCallWords(decision: ReviewDecision | null, parts: ReadonlyArray<PartCall> = []): RowCallWords | null {
+  const gc = parts.filter((p) => p.on_submittal)
+  if (gc.length === 0) return decision ? { head: DECISION_LABELS[decision], tone: decision, rest: '' } : null
+  const c = { approved: 0, revise: 0, rejected: 0, open: 0 }
+  for (const p of gc) c[asDecision(p.review_decision) ?? 'open'] += 1
+  const n = gc.length
+  if (c.open === n) return decision ? { head: DECISION_LABELS[decision], tone: decision, rest: '' } : null
+  for (const k of ['rejected', 'revise', 'approved'] as const) if (c[k] === n) return { head: DECISION_LABELS[k], tone: k, rest: '' }
+  const tone: ReviewDecision = c.rejected > 0 ? 'rejected' : c.revise > 0 ? 'revise' : 'approved'
+  const word = { approved: 'approved', revise: 'to revise', rejected: 'rejected' } as const
+  const rest = (['approved', 'revise', 'rejected'] as const).filter((k) => k !== tone && c[k] > 0).map((k) => `${c[k]} ${word[k]}`)
+  if (c.open > 0) rest.push(`${c.open} with no answer yet`)
+  return { head: `${c[tone]} of ${n} ${word[tone]}`, tone, rest: rest.join(' · ') }
+}
 
 /** Open counts the rows that differ from the schedule and carry no decision — the ones a reviewer is asked about. */
-export function summarizeDecisions(items: ReadonlyArray<Pick<SubmittalItemRow, 'status' | 'review_decision' | 'reviewed_by_name'> & { decision_source?: string | null; decision_entered_by_name?: string | null }>): DecisionSummary {
+export function summarizeDecisions(items: ReadonlyArray<Pick<SubmittalItemRow, 'status' | 'review_decision' | 'reviewed_by_name'> & { id?: string; decision_source?: string | null; decision_entered_by_name?: string | null }>, /** the rows' parts, so a row sent back for one part of three is counted as in part */ partsByItem?: ReadonlyMap<string, ReadonlyArray<PartCall>>): DecisionSummary {
   const s: DecisionSummary = { decided: 0, approved: 0, revise: 0, rejected: 0, open: 0, noAnswer: 0, sentBack: 0, byName: [], entered: 0, enteredBy: [] }
   for (const it of items) {
     const d = asDecision(it.review_decision)
     if (d) {
       s.decided += 1
       s[d] += 1
-      if (d !== 'approved') s.sentBack += 1
+      if (d !== 'approved') {
+        s.sentBack += 1
+        const gc = (it.id ? partsByItem?.get(it.id) ?? [] : []).filter((p) => p.on_submittal)
+        if (gc.length > 0 && gc.some((p) => asDecision(p.review_decision) !== d)) {
+          if (d === 'rejected') s.rejectedInPart = (s.rejectedInPart ?? 0) + 1
+          else s.reviseInPart = (s.reviseInPart ?? 0) + 1
+        }
+      }
       const n = (it.reviewed_by_name ?? '').trim()
       if (n && !s.byName.includes(n)) s.byName.push(n)
       if (it.decision_source === 'entered' || it.decision_source === 'robot') {
@@ -39,8 +73,13 @@ export function describeDecisions(s: DecisionSummary): string {
   if (s.decided === 0) return ''
   const parts: string[] = []
   if (s.approved) parts.push(`${s.approved} approved`)
-  if (s.revise) parts.push(`${s.revise} revise`)
-  if (s.rejected) parts.push(`${s.rejected} rejected`)
+  // 2026-10-03 · a row sent back for one part of three is not a rejected fixture: it is counted apart, in words that say so.
+  const reviseWhole = s.revise - (s.reviseInPart ?? 0)
+  const rejectedWhole = s.rejected - (s.rejectedInPart ?? 0)
+  if (reviseWhole) parts.push(`${reviseWhole} revise`)
+  if (s.reviseInPart) parts.push(`${s.reviseInPart} with a part to revise`)
+  if (rejectedWhole) parts.push(`${rejectedWhole} rejected`)
+  if (s.rejectedInPart) parts.push(`${s.rejectedInPart} with a part rejected`)
   if (s.byName.length) parts.push(`by ${s.byName.join(', ')}`)
   if (s.entered > 0) parts.push(`${s.entered} entered by ${s.enteredBy.join(', ')}`)
   return parts.join(' · ')

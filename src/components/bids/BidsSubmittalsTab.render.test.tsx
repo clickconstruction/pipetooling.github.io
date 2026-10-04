@@ -792,7 +792,9 @@ describe('BidsSubmittalsTab', () => {
       await screen.findAllByTestId('submittal-row')
       // The row with parts shows each part's call, and the count of calls over its parts.
       await waitFor(() => expect(screen.getAllByTestId('row-part-call').map((e) => e.textContent)).toEqual(['✓ approved']))
-      expect(screen.getAllByTestId('their-call-parts')[0]!.textContent).toBe('1 approved · 1 to go')
+      // 2026-10-03 · the cell counts in the office's words: one of two approved, one with no answer yet.
+      expect(screen.getAllByTestId('their-call-head')[0]!.textContent).toBe('1 of 2 approved')
+      expect(screen.getAllByTestId('their-call-parts')[0]!.textContent).toBe('1 with no answer yet')
       fireEvent.click(screen.getByTestId('approve-all-open'))
       const dialog = await screen.findByRole('dialog', { name: 'They approved Rev 1' })
       fireEvent.change(within(dialog).getByLabelText('Reviewer name'), { target: { value: 'Dana Whitfield' } })
@@ -1421,6 +1423,27 @@ describe('BidsSubmittalsTab', () => {
       expect((within(dialog).getByTestId('takeoff-confirm') as HTMLButtonElement).disabled).toBe(true)
     } finally {
       state.takeoff = false
+    }
+  })
+  it('2026-10-03 · a row sent back for one part of three says so: the cell counts the parts, and the step counts it apart from a row rejected whole', async () => {
+    state.revisions = [{ id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'draft', title: 'Plumbing fixtures & equipment', note: null, package_path: null, source_files: [], shared_at: null, created_at: '2026-09-29T00:00:00Z' }]
+    state.items = [
+      item({ id: 'lav', tag: 'LAV-1', sequence_order: 1, submitted_label: 'TSL.MON.B.38.2.PS1.BK + TOTO T25S51E#CP + BOBRICK B-8236', status: 'proposed', review_decision: 'rejected', review_note: 'TOTO T25S51E#CP: TEL145', reviewed_at: '2026-10-02T15:00:00Z', reviewed_by_name: 'structura', decision_source: 'entered', decision_entered_by_name: 'Wendi' }),
+      item({ id: 'fd', tag: 'FD', sequence_order: 2, submitted_label: 'JRSMITH 2005LXH03', status: 'proposed', review_decision: 'rejected', reviewed_at: '2026-10-02T15:00:00Z', reviewed_by_name: 'structura', decision_source: 'entered', decision_entered_by_name: 'Wendi' }),
+    ]
+    const p = (id: string, seq: number, label: string, review_decision: string | null) => ({ id, item_id: 'lav', bid_id: 'b398', sequence_order: seq, label, quantity: 1, on_submittal: true, source: 'takeoff', source_line_id: null, source_template_item_id: null, sheet_pages: [], procure_key: `k-${id}`, decision_source: 'entered', review_decision })
+    state.parts = [p('sink', 1, 'TSL.MON.B.38.2.PS1.BK', null), p('faucet', 2, 'TOTO T25S51E#CP', 'rejected'), p('drain', 3, 'BOBRICK B-8236', null)]
+    state.tasks = []
+    state.noSources = true
+    try {
+      mount()
+      await waitFor(() => expect(screen.getAllByTestId('their-call-head').map((e) => e.textContent)).toEqual(['1 of 3 rejected', 'Rejected']))
+      expect(screen.getAllByTestId('their-call-parts').map((e) => e.textContent)).toEqual(['2 with no answer yet'])
+      fireEvent.click(screen.getByRole('button', { name: 'Unfold step 6' }))
+      expect((await screen.findByTestId('decisions-line')).textContent).toContain('Their call: 1 rejected · 1 with a part rejected · by structura · 2 entered by Wendi')
+    } finally {
+      state.parts = []
+      state.noSources = false
     }
   })
 })
