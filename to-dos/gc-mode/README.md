@@ -565,7 +565,10 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
    the office approves them.** A new company fills a short form in its portal (license, insurance,
    years in business, references, past jobs); the office picks *Approve*, *Approve up to $X* or
    *Decline*. Their quote shows with a "not vetted yet" chip until then.
-4. Draws by stage (rough, top out, trim) or by percent with retainage, as drawn?
+4. ~~Draws by stage (rough, top out, trim) or by percent with retainage, as drawn?~~ Answered
+   2026-10-04: **by percent with retainage, as drawn.** "These usually match a schedule of values
+   based on the rough in, top out, trim stage": **capture the trade's own first schedule of values**
+   (with its quote) and show it **side by side** with ours on the statement of work and on each draw.
 5. ~~Where do a GC project's plans live?~~ Answered 2026-10-04: **in Google Drive, uploaded by
    someone who checks them** before they go out. (Who opened which set is then read from the
    portal's link to the Drive file, not from Drive.)
@@ -574,8 +577,9 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
    its name (the trade's own word for the list of everyone's numbers). Each lane changes its own
    words, the portal's Spanish too.
 7. ~~Should a bid tab mark who was awarded?~~ Answered 2026-10-04: **yes, set by any estimator
-   on our team.** ~~Should Start allow a "start anyway"?~~ Answered 2026-10-04: **yes.** Still
-   open: should the map list run closest first or most reliable first?
+   on our team.** ~~Should Start allow a "start anyway"?~~ Answered 2026-10-04: **yes.** ~~Should
+   the map list run closest first or most reliable first?~~ Answered 2026-10-04: **most reliable
+   first.**
 8. ~~Should promises other than a quote date be tracked?~~ Answered 2026-10-04: **yes, all of
    them**: an insurance certificate (above all, its renewal before the policy runs out), a W-9, a
    signed statement of work, a start or move-in day, submittals, a material delivery, a pay
@@ -583,8 +587,10 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
    count in the company's word record like a quote date (the Board's default).
 9. ~~Should the Project Board also group by customer?~~ Answered 2026-10-04, after the before and
    after mock-up (`board-by-customer-before-after.html`): **a switch, By stage | By customer, with
-   By stage selected every time the board opens.** Built (Board). Still open: should Actions for
-   assistants also sit on the Project Board?
+   By stage selected every time the board opens.** Built (Board). ~~Should Actions for assistants
+   also sit on the Project Board?~~ Answered 2026-10-04: **"Assistants could follow up the same way
+   estimators could."** Read as: an assistant has every Follow up move an estimator has (calls,
+   dates, nudges, promises, Who else?); *Actions for assistants* stays on Trade partners.
 10. ~~Should ticking **Ours** start our own bid in Trades mode, and count only once that bid is
     priced?~~ Answered 2026-10-02: yes (see *Decided by the owner*).
 11. ~~Should a budget come from the size?~~ Left to the New Project lane, 2026-10-02: budgets
