@@ -8605,6 +8605,136 @@ exports[`GC mode golden walk > step 167: Fair Oaks D: Cool Breeze sends its sche
 }
 `;
 
+exports[`GC mode golden walk > step 168: Pecan Valley promises the site lighting submittal by Tue Oct 6 1`] = `
+{
+  "changed": {
+    "lastLog.id": 164,
+    "lastLog.text": "Pecan Valley Electric promised their submittals on Fair Oaks Shops, Building D by Tue Oct 6.",
+    "lastLog.who": "office",
+    "tradePromises[2].id": "tp-3",
+    "tradePromises[2].words": "Promised their submittals by Tue Oct 6, in 4 days.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 169: Pecan Valley sends the site lighting fixtures, which keeps it 1`] = `
+{
+  "changed": {
+    "lastLog.id": 165,
+    "lastLog.text": "Pecan Valley Electric sent submittal 26 56 00-01, Site lighting fixtures.",
+    "lastLog.who": "trade",
+    "projects.boerne.trades.elec.tradeLineup[1].invite": null,
+    "projects.boerne.trades.elec.tradeLineup[1].partner": "«partner pecanvalley»",
+    "projects.boerne.trades.elec.tradeLineup[1].rank": null,
+    "projects.boerne.trades.elec.tradeLineup[1].travel.miles": null,
+    "projects.boerne.trades.elec.tradeLineup[2].invite": "«invite elec-voltage»",
+    "projects.boerne.trades.elec.tradeLineup[2].partner": "«partner voltage»",
+    "projects.boerne.trades.elec.tradeLineup[2].rank": 2,
+    "projects.boerne.trades.elec.tradeLineup[3].partner": "«partner westside»",
+    "projects.boerne.trades.elec.tradeLineup[3].rank": 3,
+    "projects.boerne.trades.elec.tradeLineup[3].travel.miles": 35,
+    "projects.fairoaksd.stageProgress.also[8]": "Submittal 26 56 00-01, Site lighting fixtures, from Pecan Valley Electric is 4 days late. It waits on us.",
+    "projects.fairoaksd.trades.felec.tradeLineup[1].invite": "«invite felec-pecanvalley»",
+    "projects.fairoaksd.trades.felec.tradeLineup[1].partner": "«partner pecanvalley»",
+    "projects.fairoaksd.trades.felec.tradeLineup[1].rank": null,
+    "projects.fairoaksd.trades.felec.tradeLineup[1].travel.miles": null,
+    "projects.fairoaksd.trades.felec.tradeLineup[2].partner": "«partner voltage»",
+    "projects.fairoaksd.trades.felec.tradeLineup[2].rank": 2,
+    "projects.fairoaksd.trades.felec.tradeLineup[3].invite": null,
+    "projects.fairoaksd.trades.felec.tradeLineup[3].partner": "«partner westside»",
+    "projects.fairoaksd.trades.felec.tradeLineup[3].rank": 3,
+    "projects.fairoaksd.trades.felec.tradeLineup[3].travel.miles": 35,
+    "projects.helotes.trades.delec.tradeLineup[1].invite": null,
+    "projects.helotes.trades.delec.tradeLineup[1].partner": "«partner pecanvalley»",
+    "projects.helotes.trades.delec.tradeLineup[1].rank": null,
+    "projects.helotes.trades.delec.tradeLineup[1].travel.miles": null,
+    "projects.helotes.trades.delec.tradeLineup[2].invite": "«invite delec-voltage»",
+    "projects.helotes.trades.delec.tradeLineup[2].partner": "«partner voltage»",
+    "projects.helotes.trades.delec.tradeLineup[2].rank": 2,
+    "projects.helotes.trades.delec.tradeLineup[3].partner": "«partner westside»",
+    "projects.helotes.trades.delec.tradeLineup[3].rank": 3,
+    "projects.helotes.trades.delec.tradeLineup[3].travel.miles": 19,
+    "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-electrical.tradeLineup[1].partner": "«partner pecanvalley»",
+    "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-electrical.tradeLineup[1].rank": null,
+    "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-electrical.tradeLineup[1].travel.miles": null,
+    "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-electrical.tradeLineup[2].partner": "«partner voltage»",
+    "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-electrical.tradeLineup[2].rank": 2,
+    "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-electrical.tradeLineup[3].partner": "«partner westside»",
+    "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-electrical.tradeLineup[3].rank": 3,
+    "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-electrical.tradeLineup[3].travel.miles": 0,
+    "projects.stoneoak.trades.selec.tradeLineup[1].partner": "«partner pecanvalley»",
+    "projects.stoneoak.trades.selec.tradeLineup[1].rank": null,
+    "projects.stoneoak.trades.selec.tradeLineup[1].travel.miles": null,
+    "projects.stoneoak.trades.selec.tradeLineup[2].invite": null,
+    "projects.stoneoak.trades.selec.tradeLineup[2].partner": "«partner voltage»",
+    "projects.stoneoak.trades.selec.tradeLineup[2].rank": 2,
+    "projects.stoneoak.trades.selec.tradeLineup[3].invite": "«invite selec-westside»",
+    "projects.stoneoak.trades.selec.tradeLineup[3].partner": "«partner westside»",
+    "projects.stoneoak.trades.selec.tradeLineup[3].rank": 3,
+    "projects.stoneoak.trades.selec.tradeLineup[3].travel.miles": 0,
+    "tradePromises[2].words": "Kept their word: their submittals came by Tue Oct 6.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 170: Pecan Valley promises the unconditional waiver on draw 1 by Wed Oct 7 1`] = `
+{
+  "changed": {
+    "lastLog.id": 166,
+    "lastLog.text": "Pecan Valley Electric promised the unconditional waiver on draw 1 on Fair Oaks Shops, Building D by Wed Oct 7.",
+    "lastLog.who": "office",
+    "tradePromises[3].id": "tp-4",
+    "tradePromises[3].words": "Promised the unconditional waiver on draw 1 by Wed Oct 7, in 5 days.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 171: Pecan Valley signs it, which keeps it 1`] = `
+{
+  "changed": {
+    "lastLog.id": 167,
+    "lastLog.text": "Pecan Valley Electric signed the unconditional waiver for draw 1.",
+    "lastLog.who": "trade",
+    "projects.fairoaksd.stageProgress.also[3]": "Pecan Valley Electric asked for draw 2. Their insurance expired Sep 15. Approve it once that is fixed.",
+    "projects.fairoaksd.stageProgress.also[4]": "Pay application 1 is back with Summit Roofing. Waiting on a fixed one.",
+    "projects.fairoaksd.stageProgress.also[5]": "Cool Breeze Mechanical asked for draw 2. Approve it.",
+    "projects.fairoaksd.stageProgress.also[6]": "Submittal 23 09 23-01, Controls, from Cool Breeze Mechanical waits on us. It is needed by Oct 23.",
+    "projects.fairoaksd.stageProgress.also[7]": "Submittal 26 56 00-01, Site lighting fixtures, from Pecan Valley Electric is 4 days late. It waits on us.",
+    "tradePromises[3].words": "Kept their word: the unconditional waiver on draw 1 came by Wed Oct 7.",
+  },
+  "removed": [
+    "projects.fairoaksd.stageProgress.also[8]",
+  ],
+}
+`;
+
+exports[`GC mode golden walk > step 172: Summit promises the coping metal by Thu Oct 8 1`] = `
+{
+  "changed": {
+    "lastLog.id": 168,
+    "lastLog.text": "Summit Roofing promised the coping metal on Fair Oaks Shops, Building D by Thu Oct 8.",
+    "lastLog.who": "office",
+    "tradePromises[4].id": "tp-5",
+    "tradePromises[4].words": "Promised the coping metal by Thu Oct 8, in 6 days.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 173: The coping metal comes and the office marks it kept 1`] = `
+{
+  "changed": {
+    "lastLog.id": 169,
+    "lastLog.text": "Summit Roofing: the coping metal came. Marked kept.",
+    "tradePromises[4].words": "Kept their word: the coping metal came by Thu Oct 8.",
+  },
+  "removed": [],
+}
+`;
+
 exports[`GC mode golden walk > the whole state at the end 1`] = `
 {
   "customers": [
@@ -8805,6 +8935,36 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
+      "id": 169,
+      "text": "Summit Roofing: the coping metal came. Marked kept.",
+      "who": "office",
+    },
+    {
+      "id": 168,
+      "text": "Summit Roofing promised the coping metal on Fair Oaks Shops, Building D by Thu Oct 8.",
+      "who": "office",
+    },
+    {
+      "id": 167,
+      "text": "Pecan Valley Electric signed the unconditional waiver for draw 1.",
+      "who": "trade",
+    },
+    {
+      "id": 166,
+      "text": "Pecan Valley Electric promised the unconditional waiver on draw 1 on Fair Oaks Shops, Building D by Wed Oct 7.",
+      "who": "office",
+    },
+    {
+      "id": 165,
+      "text": "Pecan Valley Electric sent submittal 26 56 00-01, Site lighting fixtures.",
+      "who": "trade",
+    },
+    {
+      "id": 164,
+      "text": "Pecan Valley Electric promised their submittals on Fair Oaks Shops, Building D by Tue Oct 6.",
+      "who": "office",
+    },
+    {
       "id": 163,
       "text": "Cool Breeze Mechanical sent its schedule of values for HVAC on Fair Oaks Shops, Building D: 3 lines, $158,000.",
       "who": "trade",
@@ -8922,36 +9082,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
     {
       "id": 140,
       "text": "Added Brazos Glass to Storefront and glass. They can quote. Nothing is awarded to them until we approve them.",
-      "who": "office",
-    },
-    {
-      "id": 139,
-      "text": "Wrote the daily log for Wed Sep 30 on Fair Oaks Shops, Building D: 17 workers from 5 trades on site, 1 delay. Caught up after the day.",
-      "who": "office",
-    },
-    {
-      "id": 138,
-      "text": "Wrote the daily log for Fri Oct 2 on Fair Oaks Shops, Building D: 17 workers from 5 trades on site.",
-      "who": "office",
-    },
-    {
-      "id": 137,
-      "text": "Took Lonestar Earthworks's alternate on Sitework for Boerne Retail Pad B: Asphalt paving in place of concrete. It takes off $6,000.",
-      "who": "office",
-    },
-    {
-      "id": 136,
-      "text": "Issued Permit set on Leon Springs Urgent Care, checked by Dana Whitaker, and emailed 0 companies. 0 were told it changes their trade. It takes out 1 sheet.",
-      "who": "office",
-    },
-    {
-      "id": 135,
-      "text": "The electrical service inspection failed on Fair Oaks Shops, Building D: The jumper is in. The service disconnect label is still missing. It was Electrical's work. Re-inspection Tue Oct 6.",
-      "who": "office",
-    },
-    {
-      "id": 134,
-      "text": "Issued Addendum 1 on Leon Springs Urgent Care and emailed 0 companies. 0 were told it changes their trade. It adds 1 scope line.",
       "who": "office",
     },
   ],
@@ -12984,7 +13114,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
                 "requestedOn": "2026-08-20",
                 "retainage": 8900,
                 "status": "paid",
-                "waiver": "conditional",
+                "waiver": "unconditional",
               },
               {
                 "gross": 45000,
@@ -14307,7 +14437,17 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
           ],
           "number": "26 56 00-01",
           "packageId": "felec",
-          "rounds": [],
+          "rounds": [
+            {
+              "answer": null,
+              "answerNote": "",
+              "answeredOn": null,
+              "file": "PVE-site-lighting.pdf",
+              "note": "",
+              "sentOn": "2026-10-02",
+              "toArchitectOn": null,
+            },
+          ],
           "specSection": "26 56 00",
           "title": "Site lighting fixtures",
         },
@@ -15219,6 +15359,42 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "madeOn": "2026-10-02",
       "partnerId": "tejas",
       "what": "a signed W-9",
+    },
+    {
+      "by": "2026-10-06",
+      "from": "office",
+      "id": "tp-3",
+      "keptOn": "2026-10-02",
+      "kind": "submittals",
+      "madeOn": "2026-10-02",
+      "packageId": "felec",
+      "partnerId": "pecanvalley",
+      "projectId": "fairoaksd",
+      "what": "their submittals",
+    },
+    {
+      "by": "2026-10-07",
+      "from": "office",
+      "id": "tp-4",
+      "keptOn": "2026-10-02",
+      "kind": "closeout",
+      "madeOn": "2026-10-02",
+      "packageId": "felec",
+      "partnerId": "pecanvalley",
+      "projectId": "fairoaksd",
+      "what": "the unconditional waiver on draw 1",
+    },
+    {
+      "by": "2026-10-08",
+      "from": "office",
+      "id": "tp-5",
+      "keptOn": "2026-10-02",
+      "kind": "delivery",
+      "madeOn": "2026-10-02",
+      "packageId": "froof",
+      "partnerId": "summit",
+      "projectId": "fairoaksd",
+      "what": "the coping metal",
     },
   ],
 }

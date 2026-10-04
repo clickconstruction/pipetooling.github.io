@@ -9,17 +9,22 @@ import {
   MILESTONE_GRACE_DAYS,
   mondayOf,
   onSiteWords,
+  partnerById,
   RELIABILITY_WEEKS,
   scheduleMeasures,
   scheduleSummary,
   scheduleSummaryWords,
   shortDate,
+  startsToPromise,
   substantialCompletionOn,
   submittalHolding,
   submittalNeededBy,
+  tradePromisesOf,
   verifyList,
+  weekdayDate,
   type GcAction,
   type GcProject,
+  type GcState,
   type LookAheadReason,
   type LookAheadState,
   type MilestoneRow,
@@ -31,6 +36,7 @@ import {
 import type { GcPaneProps } from './GcOfficeTabs'
 import { Btn, Card, Chip, Why, input, type Tone } from './gcUi'
 import { BUILDING_CSS } from './gcBuildingCss'
+import { GcBuildingPromise } from './GcBuildingPromise'
 
 /**
  * GC mode design spike: the schedule (Building lane, owner's shape 2026-10-02). Each activity is a
@@ -99,6 +105,8 @@ export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps)
       <MilestonesCard project={project} milestones={schedule.milestones} dispatch={dispatch} />
 
       {building && <VerifyCard project={project} rows={m.rows} today={state.today} dispatch={dispatch} />}
+
+      {building && <StartsCard state={state} project={project} dispatch={dispatch} />}
 
       {building && <LookAhead weeks={m.lookAhead} />}
     </div>
@@ -854,6 +862,56 @@ function VerifyLine({
         )}
       </div>
     </div>
+  )
+}
+
+// ---------------------------------------------------------------------------------------------
+// Starting soon: the day a trade says its crew will be on site (owner, 2026-10-04, question 8)
+// ---------------------------------------------------------------------------------------------
+
+/** Trades due on the job within two weeks, or overdue, and not on it yet. The first day the daily log has their crew keeps the day they gave. */
+function StartsCard({ state, project, dispatch }: { state: GcState; project: GcProject; dispatch: Dispatch<GcAction> }) {
+  const starts = startsToPromise(project, state.today, tradePromisesOf(state))
+  if (starts.length === 0) return null
+  return (
+    <Card>
+      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap', marginBottom: '0.15rem' }}>
+        <strong>Starting soon</strong>
+        <Chip tone="blue">
+          {starts.length} {starts.length === 1 ? 'trade' : 'trades'}
+        </Chip>
+      </div>
+      <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
+        Ask each when their crew will be on site. The first day the daily log has them keeps it.
+      </div>
+      <div style={{ display: 'grid', gap: '0.6rem' }}>
+        {starts.map((x) => (
+          <div key={x.pkg.id} style={{ display: 'grid', gap: '0.25rem', fontSize: '0.85rem', paddingTop: '0.5rem', borderTop: '1px solid var(--border)' }}>
+            <div>
+              <strong>{x.pkg.trade}</strong>{' '}
+              <span style={{ color: x.start < state.today ? 'var(--text-red-700)' : 'var(--text-muted)' }}>
+                · {partnerById(state, x.partnerId)?.company ?? 'A trade'} ·{' '}
+                {x.start < state.today ? `planned to start ${shortDate(x.start)}. Not on the daily log yet.` : `planned to start ${weekdayDate(x.start)}.`}
+              </span>
+            </div>
+            <GcBuildingPromise
+              state={state}
+              project={project}
+              pkg={x.pkg}
+              kind="start"
+              note={
+                x.promisedBy && x.promisedBy > x.start ? (
+                  <div style={{ color: 'var(--text-amber-800)' }}>
+                    That is {daysBetween(x.start, x.promisedBy)} {daysBetween(x.start, x.promisedBy) === 1 ? 'day' : 'days'} after the schedule's start.
+                  </div>
+                ) : undefined
+              }
+              dispatch={dispatch}
+            />
+          </div>
+        ))}
+      </div>
+    </Card>
   )
 }
 

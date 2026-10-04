@@ -65,6 +65,7 @@ import { GcBuildingPayAppWindow } from './GcBuildingPayApp'
 import { GcBuildingSendBackForm, GcBuildingSentBackList } from './GcBuildingSendBack'
 import { GcBuildingTradeChanges } from './GcBuildingChanges'
 import { GcBuildingDrawDays, GcBuildingToPay } from './GcBuildingPayDays'
+import { GcBuildingPapersOwed, GcBuildingPromise } from './GcBuildingPromise'
 import { BUILDING_CSS } from './gcBuildingCss'
 import { GcBuildingCrewCard } from './GcBuildingCrew'
 import { GcPlansDoors } from './GcNewPlans'
@@ -1416,6 +1417,8 @@ export function GcDrawsTab({ state, project, dispatch }: GcPaneProps) {
                 </div>
               ))}
               <GcBuildingSentBackList sow={sow} onLook={(draw) => setLooking({ packageId: pkg.id, draw })} />
+              <GcBuildingPromise state={state} project={project} pkg={pkg} kind="payApp" ask={sentBackOpen(sow) !== null} dispatch={dispatch} />
+              <GcBuildingPapersOwed state={state} project={project} pkg={pkg} dispatch={dispatch} />
               <GcBuildingTradeChanges
                 changes={tradeChangesFor(project, pkg)}
                 company={partner.company}

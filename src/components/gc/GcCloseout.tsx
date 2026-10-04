@@ -14,6 +14,7 @@ import {
   type Draw,
 } from '../../lib/gcMode/gcModel'
 import { GcBuildingPayAppWindow } from './GcBuildingPayApp'
+import { GcBuildingPapersOwed } from './GcBuildingPromise'
 import { GcBuildingPunchList } from './GcBuildingPunch'
 import type { GcPaneProps } from './GcOfficeTabs'
 import { Btn, Card, Chip, Stat, Why } from './gcUi'
@@ -77,12 +78,16 @@ export function GcCloseoutTab({ state, project, dispatch, onSeePortal }: GcPaneP
             onSeePortal={onSeePortal}
           >
             <GcBuildingPunchList
+              state={state}
               project={project}
               pkg={row.pkg}
               company={row.partner?.company ?? row.pkg.trade}
               canAdd={project.stage === 'building' && !row.pkg.sow?.acceptedOn}
               dispatch={dispatch}
             />
+            <div style={{ marginTop: '0.6rem' }}>
+              <GcBuildingPapersOwed state={state} project={project} pkg={row.pkg} dispatch={dispatch} />
+            </div>
           </TradeCloseoutCard>
         )
       })}
