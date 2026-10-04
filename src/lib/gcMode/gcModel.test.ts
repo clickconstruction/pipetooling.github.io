@@ -575,6 +575,13 @@ const STEPS: Step[] = [
     label: 'Cool Breeze sends the controls drawings',
     action: { type: 'tradeSendSubmittal', projectId: 'fairoaksd', submittalId: 'fairoaksd-sub-4', file: 'CBM-controls.pdf', note: 'Sequence of operations included.' },
   },
+  // Question 7 (the owner, 2026-10-04): any estimator awards and the bid tab names them; Start anyway.
+  { label: 'We won Pad B', action: { type: 'markWon', projectId: 'padb' } },
+  { label: 'Pad B: Rosa awards Sitework to Lonestar', action: { type: 'award', projectId: 'padb', packageId: 'bsite', inviteId: 'bsite-lonestar', by: 'Rosa Treviño' } },
+  {
+    label: 'Pad B: start anyway, before everything is in',
+    action: { type: 'startProject', projectId: 'padb', anyway: { reason: 'The owner needs the pad graded before the rains.', by: 'Dana Whitaker' } },
+  },
   { label: 'Fair Oaks D: retainage drops to 5% on the work after half done', action: { type: 'setOwnerRetainageStep', projectId: 'fairoaksd', step: { atPct: 50, toPct: 5, way: 'after' } } },
 ]
 

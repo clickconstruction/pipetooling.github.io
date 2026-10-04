@@ -1,6 +1,7 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import {
   awardGate,
+  ourTeam,
   leveledTotal,
   uncostedLines,
   uncostedWords,
@@ -11,7 +12,7 @@ import {
   weekdayDate,
   type StartTradeRow,
 } from '../../lib/gcMode/gcModel'
-import { AwardBlocked, type GcPaneProps } from './GcOfficeTabs'
+import { AwardBlocked, AwardButton, type GcPaneProps } from './GcOfficeTabs'
 import { Btn, Card, Chip, Why, input, td, th } from './gcUi'
 
 /**
@@ -24,6 +25,11 @@ import { Btn, Card, Chip, Why, input, td, th } from './gcUi'
 export function GcStartTab({ state, project, dispatch, onSeePortal, onOpenSchedule }: GcPaneProps & { onOpenSchedule?: () => void }) {
   const list = startChecklist(state, project)
   const started = project.startedOn !== null
+  // Started anyway (question 7): the steps stay open to finish after the start.
+  const owed = started && Boolean(project.startedAnyway)
+  const team = ourTeam(state)
+  const [anywayBy, setAnywayBy] = useState(team[0] ?? '')
+  const [anywayWhy, setAnywayWhy] = useState('')
   const onJob = planRecipients(state, { ...project, stage: 'building' }, []).length
 
   if (project.stage === 'pursuing') {
@@ -71,12 +77,47 @@ export function GcStartTab({ state, project, dispatch, onSeePortal, onOpenSchedu
           )}
           {started && <Chip tone="green">the {onJob} companies on the job were told</Chip>}
         </div>
+        {(!started || owed) && !list.ready && (
+          <>
+            {owed && project.startedAnyway && (
+              <div style={{ marginTop: '0.6rem', fontSize: '0.9rem', color: 'var(--text-amber-800)' }}>
+                {project.startedAnyway.by} started it before everything was in
+                {project.startedAnyway.reason ? `: ${project.startedAnyway.reason}` : ''}. Still owed:
+              </div>
+            )}
+            <ul style={{ margin: '0.6rem 0 0', paddingLeft: '1.1rem', fontSize: '0.9rem', display: 'grid', gap: '0.15rem' }}>
+              {list.missing.map((m) => (
+                <li key={m}>{m}</li>
+              ))}
+            </ul>
+          </>
+        )}
+        {owed && list.ready && <div style={{ marginTop: '0.6rem', fontSize: '0.9rem', color: 'var(--text-green-700)' }}>Started anyway, and everything owed is in now.</div>}
+        {/* Start anyway (the owner, 2026-10-04, question 7): say why and who; what is missing stays listed as owed. */}
         {!started && !list.ready && (
-          <ul style={{ margin: '0.6rem 0 0', paddingLeft: '1.1rem', fontSize: '0.9rem', display: 'grid', gap: '0.15rem' }}>
-            {list.missing.map((m) => (
-              <li key={m}>{m}</li>
-            ))}
-          </ul>
+          <div style={{ marginTop: '0.75rem', paddingTop: '0.6rem', borderTop: '1px solid var(--border)', display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            <input
+              style={{ ...input, flex: '1 1 16rem' }}
+              placeholder="Why start before everything is in?"
+              value={anywayWhy}
+              onChange={(e) => setAnywayWhy(e.target.value)}
+              aria-label="Why start anyway"
+            />
+            <select style={input} value={anywayBy} onChange={(e) => setAnywayBy(e.target.value)} aria-label="Who is starting it">
+              {team.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+            <Btn
+              disabled={!anywayBy || anywayWhy.trim() === ''}
+              title="Starts the job now. What is missing stays on this tab as owed."
+              onClick={() => dispatch({ type: 'startProject', projectId: project.id, anyway: { reason: anywayWhy.trim(), by: anywayBy } })}
+            >
+              Start anyway
+            </Btn>
+          </div>
         )}
       </Card>
 
@@ -101,7 +142,7 @@ export function GcStartTab({ state, project, dispatch, onSeePortal, onOpenSchedu
                   aria-label="The day work starts"
                 />
               ) : (
-                !started && (
+                (!started || owed) && (
                   <Btn
                     kind={c.done ? 'quiet' : 'plain'}
                     onClick={() => dispatch({ type: 'setStartItem', projectId: project.id, item: c.key === 'permit' ? 'permit' : 'ownerContract', done: !c.done })}
@@ -152,7 +193,7 @@ export function GcStartTab({ state, project, dispatch, onSeePortal, onOpenSchedu
           </thead>
           <tbody>
             {list.trades.map((row) => (
-              <TradeLine key={row.pkg.id} state={state} row={row} project={project} dispatch={dispatch} onSeePortal={onSeePortal} locked={started} />
+              <TradeLine key={row.pkg.id} state={state} row={row} project={project} dispatch={dispatch} onSeePortal={onSeePortal} locked={started && !owed} />
             ))}
           </tbody>
         </table>
@@ -211,15 +252,14 @@ function TradeLine({ state, row, project, dispatch, onSeePortal, locked }: GcPan
       const gate = awardGate(state, pkg, carried)
       action = (
         <>
-          <Btn
-            kind="primary"
+          <AwardButton
             disabled={!gate.ok}
             title={gate.why ?? (uncostedWords(uncostedLines(pkg, carried)) || undefined)}
-            onClick={() => dispatch({ type: 'award', ...ids, inviteId: carried.id })}
+            onAward={(by) => dispatch({ type: 'award', ...ids, inviteId: carried.id, by })}
           >
             Award at {money(leveledTotal(pkg, carried) ?? 0)}
             {uncostedLines(pkg, carried).length > 0 ? ' + ?' : ''}
-          </Btn>
+          </AwardButton>
           {!gate.ok && <AwardBlocked why={gate.why} />}
         </>
       )
