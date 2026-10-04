@@ -1,4 +1,4 @@
-import { useReducer, useState, type CSSProperties } from 'react'
+import { useEffect, useReducer, useState, type CSSProperties } from 'react'
 import { SpotlightTour } from '../components/SpotlightTour'
 import { BidsModeToggle } from '../components/gc/BidsModeToggle'
 import {
@@ -49,13 +49,16 @@ import {
   type GcProject,
   type GcStage,
 } from '../lib/gcMode/gcModel'
-import { GC_TOUR_STEPS } from '../lib/gcMode/gcTour'
+import { GC_PROJECT_TOUR_STEPS, GC_TOUR_STEPS } from '../lib/gcMode/gcTour'
 
 /**
  * GC mode — design spike (2026-10-02). Bids, mirrored: we are the general contractor, the plans
  * come in once, each trade is a package offered to several trade partners, and their bids,
  * contracts and draws come back through a portal. Runs on a fixture; nothing is saved.
  */
+
+/** Set once New here? has opened itself, so it does so on a first visit only (per browser). */
+const NEW_HERE_SEEN_KEY = 'gc-mode:new-here-seen'
 
 type BoardTab = 'projects' | 'followup' | 'partners' | 'money'
 type ProjectTab = 'packages' | 'plans' | 'number' | 'tabs' | 'contracts' | 'start' | 'draws' | 'owner' | 'closeout' | 'schedule'
@@ -145,7 +148,24 @@ export default function GcMode() {
   const [customerId, setCustomerId] = useState<string | null>(null)
   const [mapFor, setMapFor] = useState<{ projectId: string; packageId: string } | null>(null)
   const [levelPackageId, setLevelPackageId] = useState<string | null>(null)
-  const [tourOpen, setTourOpen] = useState(false)
+  // New here? opens itself on a first visit (the big list, Board item 8), once per browser.
+  const [tourOpen, setTourOpen] = useState(() => {
+    try {
+      return !window.localStorage.getItem(NEW_HERE_SEEN_KEY)
+    } catch {
+      return false
+    }
+  })
+  // Remember it once it has shown; set here, not in the initializer, which React may run twice.
+  useEffect(() => {
+    if (!tourOpen) return
+    try {
+      window.localStorage.setItem(NEW_HERE_SEEN_KEY, '1')
+    } catch {
+      /* private window: it opens again next visit */
+    }
+  }, [tourOpen])
+  const [projectTourOpen, setProjectTourOpen] = useState(false)
   const wide = useMatchMedia('(min-width: 1560px)')
   const project = state.projects.find((p) => p.id === projectId) ?? null
   const plansFor = state.projects.find((p) => p.id === plansForId) ?? null
@@ -198,6 +218,7 @@ export default function GcMode() {
       </div>
 
       {tourOpen && <SpotlightTour steps={GC_TOUR_STEPS} onClose={() => setTourOpen(false)} />}
+      {projectTourOpen && <SpotlightTour steps={GC_PROJECT_TOUR_STEPS} onClose={() => setProjectTourOpen(false)} />}
 
       {customer && !plansFor && (
         <GcCustomerWindow
@@ -321,14 +342,19 @@ export default function GcMode() {
           <ProjectHeader project={project} today={state.today} onBack={() => setProjectId(null)} onPlans={() => setPlansForId(project.id)} onCustomer={() => setCustomerId(project.customerId)} onArchitect={() => setCustomerId(project.architectId)} />
           <div style={{ display: 'flex', alignItems: 'center', borderBottom: '2px solid var(--border)', marginBottom: '1rem', flexWrap: 'wrap' }}>
             {PROJECT_TABS.map((t) => (
-              <button key={t.key} type="button" style={tabButton(tab === t.key)} onClick={() => setTab(t.key)}>
+              <button key={t.key} type="button" style={tabButton(tab === t.key)} onClick={() => setTab(t.key)} data-tour={`gc-ptab-${t.key}`}>
                 {t.label}
               </button>
             ))}
             <span style={{ flex: 1 }} />
-            <Btn kind="quiet" onClick={() => setPortalOpen(!portalOpen)}>
-              {portalOpen ? 'Hide what the trade sees' : 'See what the trade sees'}
+            <Btn kind="quiet" onClick={() => setProjectTourOpen(true)} title="A walk through this job's tabs, in the order a job goes.">
+              Walk me through this job
             </Btn>
+            <span data-tour="gc-see-trade">
+              <Btn kind="quiet" onClick={() => setPortalOpen(!portalOpen)}>
+                {portalOpen ? 'Hide what the trade sees' : 'See what the trade sees'}
+              </Btn>
+            </span>
           </div>
           <div
             style={{
@@ -760,7 +786,7 @@ function ProjectHeader({
   const totals = proposalTotals(project)
   const stage = STAGES.find((s) => s.key === project.stage)
   return (
-    <Card style={{ marginBottom: '0.75rem' }}>
+    <Card style={{ marginBottom: '0.75rem' }} dataTour="gc-project-header">
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-start' }}>
         <div>
           <Btn kind="quiet" onClick={onBack}>← Project Board</Btn>
