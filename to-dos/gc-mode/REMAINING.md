@@ -94,7 +94,7 @@ makes; nobody builds it until he answers.
 4. ~~**"Left to bill" counts signed change orders** (`sowContractSum`).~~ done (the job block and Your pay both read `sowContractSum`)
 5. ~~**The Spanish list for a native speaker to read** before anything ships (question 25), and no
    "Click" written into the portal's words (Board item 7).~~ done 6225b3fb7 (the list in PORTAL_SPANISH.md; the portal's own words already read `GC_COMPANY`, the bid tab's since b6219f390)
-6. ~~**A phone pass on the portal.** It is the screen trades use most on a phone.~~ done 0f89c3048 (every company, both languages; the bid tab scrolls in its own box until its table fits a 283px block)
+6. ~~**A phone pass on the portal.** It is the screen trades use most on a phone.~~ done 0f89c3048 (every company, both languages; the bid tab fits its 283px block since the Board lane's bea149e4e)
 7. ~~**Notifications for the portal** (a new ask, a set that changed their trade, a promise passed),
    in the company's language.~~ done 59665d04d (README, the portal's events; question 29 on texts)
 8. ~~**Tidy your lines in `README.md`.**~~ done da16bfbda
@@ -103,9 +103,9 @@ makes; nobody builds it until he answers.
 
 1. ~~**The owner's change order reads the trade's percent on its line**~~ done f8b43ad59 (`changeOrderPct` reads `changeOrderTradePct` once the trade signs; the bill, the form and the owner's portal all go through it).
 2. ~~**Change orders carry the days a set added**~~ done c3b453453 (my half: `ChangeOrder.days`, `draftChangeOrder` takes `days`, signed ones add up in `contractDaysAdded` on Bill the owner and the owner's portal; New Project passes the set's days; moving substantial completion is open question 28).
-3. **A phone pass on Bill the owner, the owner's portal and Money.**
-4. **Notifications for the owner side** (a pay application to certify, a payment late).
-5. **Tidy your lines in `README.md`.**
+3. ~~**A phone pass on Bill the owner, the owner's portal and Money.**~~ done 39ef92cc5 (all at 375 px with no sideways page scroll: Money's grid let its tables widen the page; the bill's lines, the weeks and the jobs now stack on a phone; the owner's and the architect's portals, the forms and the pay application window already fit, the 703 scrolls inside its sheet).
+4. ~~**Notifications for the owner side**~~ done f30582691: the table under *Workflow steps not built yet*, every one by email (question 29).
+5. ~~**Tidy your lines in `README.md`.**~~ done f30582691 (the files and lanes rows, Money's row and a try-it line).
 
 ## Owner (the decisions)
 
@@ -122,7 +122,7 @@ makes; nobody builds it until he answers.
 
 ## Everyone
 
-21. **Notifications.** Nothing emails or notifies anyone yet. Each lane names its own events (in
+21. **Notifications.** Email only for now (the owner, 2026-10-03; question 29): no text sender. Nothing emails or notifies anyone yet. Each lane names its own events (in
     its section above); the real build sends them through Resend.
 
 ## The real build (not yet: only when the owner says the shape is settled)

@@ -25,7 +25,8 @@ const W = {
   fixIt: { en: 'Fix it and send it again.', es: 'Corríjala y envíela de nuevo.' },
   seesLine: { en: '{line}: {gc} sees {n}%. You asked for {m}%.', es: '{line}: {gc} ve {n}%. Usted pidió {m}%.' },
   goOn: { en: 'Go on with pay application {n}', es: 'Seguir con la solicitud de pago {n}' },
-  fixResend: { en: 'Fix and resend pay application {n}', es: 'Corregir y reenviar la solicitud de pago {n}' },
+  // Short in Spanish: the long form is too wide for a button on a phone (Portal lane, 2026-10-03).
+  fixResend: { en: 'Fix and resend pay application {n}', es: 'Corregir y reenviar la solicitud {n}' },
   fillOut: { en: 'Fill out pay application {n}', es: 'Llenar la solicitud de pago {n}' },
   lessNote: {
     en: '{gc} approved {x} of the {y} you asked for on pay application {n}. {note} The rest is still yours to ask for.',

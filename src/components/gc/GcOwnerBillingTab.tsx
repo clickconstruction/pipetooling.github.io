@@ -94,6 +94,7 @@ function OfficeSide({
   onSeeArchitect: () => void
 }) {
   const [formFor, setFormFor] = useState<number | 'draft' | null>(null)
+  const narrow = useMatchMedia('(max-width: 640px)')
   const app = ownerPayApp(state, project)
   const late = ownerLateBills(state, project)
   const customer = state.customers.find((c) => c.id === project.customerId)
@@ -108,6 +109,10 @@ function OfficeSide({
   const missing = missingTradeWaivers(checks)
   const owing = tradesOwingUnconditional(checks)
   const closeout = ownerCloseout(state, project)
+  const spreadWordsOf = (l: (typeof shownTrades)[number]) =>
+    l.kind === 'changeOrder'
+      ? undefined
+      : `${l.kind === 'self' ? 'Our crew’s price' : 'Their price'} ${money(l.tradeWorth)} plus ${money(l.ourShare)} of our costs and fee.`
 
   return (
     <div style={{ display: 'grid', gap: '1rem' }}>
@@ -128,7 +133,7 @@ function OfficeSide({
       {account && (
         <Card>
           <strong style={{ fontSize: '1.05rem' }}>So far with {project.owner}</strong>
-          <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', margin: '0.6rem 0 0.8rem' }}>
+          <div style={{ display: 'flex', gap: '0.75rem 2rem', flexWrap: 'wrap', margin: '0.6rem 0 0.8rem' }}>
             <Stat label="Work billed" value={money(account.billed)} />
             <Stat label="They hold" value={money(account.retainageHeld)} />
             <Stat label="Asked for" value={money(account.asked)} />
@@ -183,7 +188,7 @@ function OfficeSide({
             ? `${project.owner} has not paid us a bill yet.`
             : `They pay in about ${customer.payDays} days. The money should come about ${shortDate(app.expectPaidOn)}.`}
         </div>
-        <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '0.75rem 2rem', flexWrap: 'wrap' }}>
           <Stat label="Our price" value={money(app.contract)} />
           <Stat label={`Done so far · ${donePct}%`} value={money(app.doneToDate)} />
           <Stat label={`They hold ${app.retainagePct}%`} value={money(app.retainage)} />
@@ -260,42 +265,50 @@ function OfficeSide({
       <GcOwnerBillingChangeOrders state={state} project={project} dispatch={dispatch} />
 
       <Card style={{ padding: 0, overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr>
-              <th style={th}>Line</th>
-              <th style={th}>Where it comes from</th>
-              <th style={{ ...th, textAlign: 'right' }}>Worth</th>
-              <th style={{ ...th, textAlign: 'right' }}>Done before</th>
-              <th style={{ ...th, textAlign: 'right' }}>This month</th>
-              <th style={{ ...th, textAlign: 'right' }}>Done so far</th>
-              <th style={{ ...th, textAlign: 'right' }}>%</th>
-            </tr>
-          </thead>
-          <tbody>
+        {narrow ? (
+          <div style={{ display: 'grid' }}>
             {shownTrades.map((l) => (
-              <LineRow
-                key={l.id}
-                line={l}
-                spreadWords={
-                  l.kind === 'changeOrder'
-                    ? undefined
-                    : `${l.kind === 'self' ? 'Our crew’s price' : 'Their price'} ${money(l.tradeWorth)} plus ${money(l.ourShare)} of our costs and fee.`
-                }
-                pipelineRef={project.packages.find((p) => p.id === l.id)?.selfPerform?.ref}
-              />
+              <LineBlock key={l.id} line={l} spreadWords={spreadWordsOf(l)} />
             ))}
-            <tr>
-              <td style={{ ...td, fontWeight: 700 }}>Total</td>
-              <td style={td} />
-              <td style={{ ...num, fontWeight: 700 }}>{money(app.contract)}</td>
-              <td style={{ ...num, fontWeight: 700 }}>{money(doneBefore)}</td>
-              <td style={{ ...num, fontWeight: 700 }}>{money(app.doneToDate - doneBefore)}</td>
-              <td style={{ ...num, fontWeight: 700 }}>{money(app.doneToDate)}</td>
-              <td style={{ ...num, fontWeight: 700 }}>{donePct}%</td>
-            </tr>
-          </tbody>
-        </table>
+            <div style={{ padding: '0.55rem 1rem', display: 'flex', justifyContent: 'space-between', fontWeight: 700, borderTop: '1px solid var(--border)' }}>
+              <span>Total done so far · {donePct}%</span>
+              <span style={{ fontVariantNumeric: 'tabular-nums' }}>{money(app.doneToDate)}</span>
+            </div>
+          </div>
+        ) : (
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                <th style={th}>Line</th>
+                <th style={th}>Where it comes from</th>
+                <th style={{ ...th, textAlign: 'right' }}>Worth</th>
+                <th style={{ ...th, textAlign: 'right' }}>Done before</th>
+                <th style={{ ...th, textAlign: 'right' }}>This month</th>
+                <th style={{ ...th, textAlign: 'right' }}>Done so far</th>
+                <th style={{ ...th, textAlign: 'right' }}>%</th>
+              </tr>
+            </thead>
+            <tbody>
+              {shownTrades.map((l) => (
+                <LineRow
+                  key={l.id}
+                  line={l}
+                  spreadWords={spreadWordsOf(l)}
+                  pipelineRef={project.packages.find((p) => p.id === l.id)?.selfPerform?.ref}
+                />
+              ))}
+              <tr>
+                <td style={{ ...td, fontWeight: 700 }}>Total</td>
+                <td style={td} />
+                <td style={{ ...num, fontWeight: 700 }}>{money(app.contract)}</td>
+                <td style={{ ...num, fontWeight: 700 }}>{money(doneBefore)}</td>
+                <td style={{ ...num, fontWeight: 700 }}>{money(app.doneToDate - doneBefore)}</td>
+                <td style={{ ...num, fontWeight: 700 }}>{money(app.doneToDate)}</td>
+                <td style={{ ...num, fontWeight: 700 }}>{donePct}%</td>
+              </tr>
+            </tbody>
+          </table>
+        )}
       </Card>
     </div>
   )
@@ -338,6 +351,39 @@ function LineRow({
       <td style={num}>{quiet ? '—' : money(line.doneToDate)}</td>
       <td style={num}>{pct === null ? '—' : `${pct}%`}</td>
     </tr>
+  )
+}
+
+/** A line on a phone: its name and done so far, where it comes from, then this month and before. */
+function LineBlock({ line, spreadWords }: { line: OwnerLine; spreadWords?: string }) {
+  const pct = line.worth === 0 ? null : Math.round((line.doneToDate / line.worth) * 100)
+  const quiet = line.doneToDate === 0
+  const muted = { color: 'var(--text-muted)', fontSize: '0.8rem' } as const
+  return (
+    <div style={{ borderTop: '1px solid var(--border)', padding: '0.55rem 1rem', display: 'grid', gap: '0.2rem', fontSize: '0.875rem' }}>
+      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline' }}>
+        <strong style={{ flex: 1, minWidth: 0 }}>{line.label}</strong>
+        <span style={{ fontVariantNumeric: 'tabular-nums', color: quiet ? 'var(--text-muted)' : undefined }}>
+          {quiet ? '—' : money(line.doneToDate)} of {money(line.worth)}
+          {pct === null ? '' : ` · ${pct}%`}
+        </span>
+      </div>
+      <div style={{ color: quiet ? 'var(--text-muted)' : undefined }}>{line.source}</div>
+      {spreadWords && <div style={muted}>{spreadWords}</div>}
+      {line.detail.length > 0 && (
+        <div style={muted}>
+          {line.detail.map((d) => (d.theySay === undefined ? `${d.label} ${d.pct}%` : `${d.label} ${d.pct}%, they say ${d.theySay}%`)).join(' · ')}
+        </div>
+      )}
+      {line.kind === 'self' && <div style={muted}>Our crew reports it on Draws, under Our own crew.</div>}
+      {(line.thisMonth !== 0 || line.doneBefore !== 0) && (
+        <div style={{ ...muted, fontVariantNumeric: 'tabular-nums' }}>
+          {line.thisMonth !== 0 && <strong>{money(line.thisMonth)} this month</strong>}
+          {line.thisMonth !== 0 && line.doneBefore !== 0 && ' · '}
+          {line.doneBefore !== 0 && `${money(line.doneBefore)} before`}
+        </div>
+      )}
+    </div>
   )
 }
 
