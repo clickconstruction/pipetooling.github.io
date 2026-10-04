@@ -570,9 +570,9 @@ the bullets below are the shape they set.
 ## Workflow steps not built yet
 
 
-- The schedule, the rest: a trade or a line a later set brings in does not join a schedule already
-  drawn (the New Project lane's `issuePlanSet`, asked 2026-10-03; the golden walk's "Draw Helotes's
-  schedule" moves before Start once it does, the owner's call). Days are calendar days for now.
+- The schedule, the rest: a set that brings a stage's first work (Helotes' storefront, the first
+  dry-in work) adds its activities but not that stage's milestone (Dry-in); the office adds it on
+  Schedule. Days are calendar days for now.
 
 - New Project past its first form: exclusions, and a budget from real costs, not a made-up rate
   per square foot. A line's sheets show in New Project, a new set, the plans window and Compare
@@ -582,18 +582,18 @@ the bullets below are the shape they set.
   build only; see *Where it plugs in*). The company window reads the pay applications through
   `ownerMoney`, with certified and waiting-on-the-architect beside what they owe (Board, 2026-10-03).
 - No email is sent and nothing notifies anyone when a promised day passes.
-  Building's events, and where each would go (Building lane, 2026-10-03; the real build sends
-  through Resend, the office's go to the app's Inbox):
+  Building's events, and where each would go (Building lane, 2026-10-03; email only for now, the
+  owner's answer to question 29, sent through Resend; the office's go to the app's Inbox too):
 
   | Event | Who hears | Where |
   |---|---|---|
   | A trade asks for a draw (`tradeSendPayApp`, `tradeSendFinalPayApp`) | The project manager | Inbox and an email, "approve it on Draws"; the ring card already says so |
-  | A draw sent back or approved for less | The trade | Email and text with our note; the portal already shows it, and its messages list has the approved-for-less note |
+  | A draw sent back or approved for less | The trade | Email with our note; the portal already shows it, and its messages list has the approved-for-less note |
   | An approved draw's pay-by day (`drawPayDays`) | The office | Inbox the day before; the ring card and **To pay** already flag it once late |
-  | Look-ahead marks to verify (`verifyList`) | The superintendent | A text Friday afternoon once the trades' marks are in, opening **To verify** |
+  | Look-ahead marks to verify (`verifyList`) | The superintendent | An email Friday afternoon once the trades' marks are in, opening **To verify** |
   | A milestone due inside its grace, or late (`milestoneRows`) | The project manager | The morning email; the board row and ring card already show it |
-  | An inspection failed (`failInspection`) | The named trades, the superintendent | The trades: email and text with what failed and the re-inspection day (the portal already shows it). The superintendent: a reminder the day before the re-inspection |
-  | A punch item added or sent back; an item fixed | The trade; the superintendent | The trade: email and text with the item. The superintendent: **To verify** and a text when an item is marked fixed |
+  | An inspection failed (`failInspection`) | The named trades, the superintendent | The trades: email with what failed and the re-inspection day (the portal already shows it). The superintendent: a reminder the day before the re-inspection |
+  | A punch item added or sent back; an item fixed | The trade; the superintendent | The trade: email with the item. The superintendent: **To verify** and an email when an item is marked fixed |
   | A change order sent to sign (`sendTradeChange`) | The trade | Email with its portal link (the Portal lane's messages) |
   | Retainage can be paid (`tradeRetainageOpensOn`) | The office, the trade | Inbox on that day; the trade hears that its release is coming |
 
