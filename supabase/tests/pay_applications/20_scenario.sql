@@ -46,6 +46,7 @@ SELECT bedt.ok('the assistant reads the application', (SELECT count(*) = 1 FROM 
 SELECT bedt.ok('created_by is the caller, not what was sent', (SELECT created_by = '00000000-0000-0000-0000-0000000000a1' FROM public.job_pay_applications));
 SELECT bedt.ok('created_at is now, not what was sent', (SELECT created_at > now() - interval '1 hour' FROM public.job_pay_applications));
 SELECT bedt.ok('it starts as made in the window, with no files', (SELECT source = 'window' AND files = '[]'::jsonb FROM public.job_pay_applications));
+SELECT bedt.ok('it starts with no reason for keeping old amounts', (SELECT carry_reason = '' FROM public.job_pay_applications));
 
 -- 2 · a job holds one application per number; another job may use the same number.
 DO $$
@@ -86,6 +87,8 @@ SELECT bedt.as_user('00000000-0000-0000-0000-0000000000a4');
 SET LOCAL ROLE authenticated;
 UPDATE public.job_pay_applications SET current_payment_due = 16000, created_by = '00000000-0000-0000-0000-0000000000a4'
   WHERE job_id = '00000000-0000-0000-0000-00000000c001' AND application_number = 1;
+UPDATE public.job_pay_applications SET carry_reason = 'It went out this way.' WHERE job_id = '00000000-0000-0000-0000-00000000c001' AND application_number = 2;
+SELECT bedt.ok('the master wrote why application 2 stays as it is', (SELECT carry_reason = 'It went out this way.' FROM public.job_pay_applications WHERE job_id = '00000000-0000-0000-0000-00000000c001' AND application_number = 2));
 SELECT bedt.ok('the master changed it', (SELECT current_payment_due = 16000 FROM public.job_pay_applications WHERE job_id = '00000000-0000-0000-0000-00000000c001' AND application_number = 1));
 SELECT bedt.ok('updated_by is the master', (SELECT updated_by = '00000000-0000-0000-0000-0000000000a4' FROM public.job_pay_applications WHERE job_id = '00000000-0000-0000-0000-00000000c001' AND application_number = 1));
 SELECT bedt.ok('created_by is still the assistant', (SELECT created_by = '00000000-0000-0000-0000-0000000000a1' FROM public.job_pay_applications WHERE job_id = '00000000-0000-0000-0000-00000000c001' AND application_number = 1));

@@ -20,13 +20,16 @@ import { loadAiaPrefillFacts } from '../../lib/aiaG702G703PrefillIo'
 import {
   type SavedPayApplication,
   carryForwardPayApplication,
+  carryMismatch,
   cleanPayApplicationLink,
   nextApplicationNumber,
   payApplicationLabel,
+  parseApplicationNumber,
   payApplicationWriteFromForm,
   previousPayApplication,
   retainageDropOffer,
   sortPayApplications,
+  withCarriedAmounts,
 } from '../../lib/aiaPayApplications'
 import { PayApplicationNumberTaken, deletePayApplication, loadPayApplications, savePayApplication } from '../../lib/aiaPayApplicationsIo'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
@@ -182,18 +185,31 @@ export default function AiaG702G703Modal({
   // A link to the file that was sent (a Google Drive link), kept beside the application.
   const [link, setLink] = useState('')
   const [baselineLink, setBaselineLink] = useState('')
+  // Why this application keeps previous amounts that no longer match the one before it.
+  const [carryReason, setCarryReason] = useState('')
+  const [baselineReason, setBaselineReason] = useState('')
   const [saving, setSaving] = useState(false)
   const confirm = useConfirmDialog()
 
   const openApp = saved.find((a) => a.id === openId) ?? null
-  const dirty = useMemo(() => link !== baselineLink || JSON.stringify(form) !== JSON.stringify(baseline), [form, baseline, link, baselineLink])
+  const dirty = useMemo(
+    () => link !== baselineLink || carryReason !== baselineReason || JSON.stringify(form) !== JSON.stringify(baseline),
+    [form, baseline, link, baselineLink, carryReason, baselineReason],
+  )
+  // Nothing locks a saved application, so the one before this may have changed since this went out.
+  const mismatch = useMemo(
+    () => carryMismatch(formStateToFieldValues(form), parseApplicationNumber(form.g702_n5_project), saved.filter((a) => a.id !== openId)),
+    [form, saved, openId],
+  )
 
-  const loadForm = useCallback((values: AiaFieldValues, withLink = '') => {
+  const loadForm = useCallback((values: AiaFieldValues, withLink = '', withReason = '') => {
     const next = fieldValuesToFormState(values)
     setForm(next)
     setBaseline(next)
     setLink(withLink)
     setBaselineLink(withLink)
+    setCarryReason(withReason)
+    setBaselineReason(withReason)
   }, [])
 
   /** A new application's starting form: the job today, carried on from the last saved application when there is one. */
@@ -221,7 +237,7 @@ export default function AiaG702G703Modal({
       setSaved(list)
       const first = initialApplicationNumber == null ? null : list.find((a) => a.applicationNumber === initialApplicationNumber) ?? null
       setOpenId(first?.id ?? null)
-      if (first) loadForm(first.fields, first.link)
+      if (first) loadForm(first.fields, first.link, first.carryReason)
       else loadForm(newApplicationValues(list, loadedFacts))
     })()
     return () => {
@@ -250,19 +266,30 @@ export default function AiaG702G703Modal({
     if ((app?.id ?? null) === openId && !dirty) return
     if (!(await mayLeave())) return
     setOpenId(app?.id ?? null)
-    if (app) loadForm(app.fields, app.link)
+    if (app) loadForm(app.fields, app.link, app.carryReason)
     else loadForm(newApplicationValues(saved, facts))
   }
 
   /** Back to where this application started: the saved one as saved, a new one as the job and the last one give it. */
-  const resetForm = () => (openApp ? loadForm(openApp.fields, openApp.link) : loadForm(newApplicationValues(saved, facts)))
+  const resetForm = () => (openApp ? loadForm(openApp.fields, openApp.link, openApp.carryReason) : loadForm(newApplicationValues(saved, facts)))
+
+  /** Take the amounts the application before this one gives today; the reason is then moot. */
+  const takeCarriedAmounts = () => {
+    if (!mismatch) return
+    const previous = saved.find((a) => a.id !== openId && a.applicationNumber === mismatch.previousNumber)
+    if (!previous) return
+    setForm(fieldValuesToFormState(withCarriedAmounts(formStateToFieldValues(form), previous)))
+    setCarryReason('')
+  }
 
   type SaveOutcome = { saved: SavedPayApplication } | { notSaved: string }
 
   /** Save the form on the job as its application number. Never throws: the reason comes back as words. */
   const saveOnJob = async (values: AiaFieldValues): Promise<SaveOutcome> => {
     if (!job) return { notSaved: 'No job is open.' }
-    const write = payApplicationWriteFromForm(job.id, values, link)
+    // The reason goes with the row only when there is one to write or one to clear.
+    const reason = mismatch ? carryReason : ''
+    const write = payApplicationWriteFromForm(job.id, values, link, reason || openApp?.carryReason ? reason : undefined)
     if (!write.ok) return { notSaved: write.reason }
     try {
       const row = await savePayApplication(write.row, openId)
@@ -271,6 +298,8 @@ export default function AiaG702G703Modal({
       setBaseline(form)
       setLink(row.link)
       setBaselineLink(row.link)
+      setCarryReason(row.carryReason)
+      setBaselineReason(row.carryReason)
       return { saved: row }
     } catch (e) {
       if (e instanceof PayApplicationNumberTaken) {
@@ -518,7 +547,9 @@ export default function AiaG702G703Modal({
                   aria-pressed={app.id === openId}
                   onClick={() => void showApplication(app)}
                   style={applicationChipStyle(app.id === openId)}
+                  title={carryMismatch(app.fields, app.applicationNumber, saved) ? 'Its previous amounts no longer match the application before it.' : undefined}
                 >
+                  {carryMismatch(app.fields, app.applicationNumber, saved) ? '⚠ ' : ''}
                   {payApplicationLabel(app)}
                 </button>
               ))}
@@ -550,6 +581,71 @@ export default function AiaG702G703Modal({
               ) : null}
             </div>
           </div>
+          {mismatch ? (
+            <div
+              data-testid="aia-carry-mismatch"
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.45rem',
+                marginBottom: '0.9rem',
+                padding: '0.6rem 0.7rem',
+                borderRadius: 4,
+                fontSize: '0.8125rem',
+                background: 'var(--bg-amber-100)',
+                color: 'var(--text-amber-900)',
+                border: '1px solid var(--border-amber)',
+              }}
+            >
+              <strong>This application does not match application {mismatch.previousNumber}.</strong>
+              <ul style={{ margin: 0, paddingLeft: '1.1rem' }}>
+                {mismatch.differences.map((d) => (
+                  <li key={d.key}>
+                    {d.label}: {formatAiaMoney(d.here)} here, {formatAiaMoney(d.fromPrevious)} from application {mismatch.previousNumber}.
+                  </li>
+                ))}
+              </ul>
+              <span>You can still save it and generate it. Take the new amounts, or keep it as it is and say why.</span>
+              <div>
+                <button
+                  type="button"
+                  onClick={takeCarriedAmounts}
+                  style={{
+                    padding: '0.25rem 0.7rem',
+                    fontSize: '0.8125rem',
+                    fontWeight: 600,
+                    borderRadius: 4,
+                    cursor: 'pointer',
+                    border: '1px solid currentColor',
+                    background: 'none',
+                    color: 'inherit',
+                  }}
+                >
+                  Use application {mismatch.previousNumber}&apos;s amounts
+                </button>
+              </div>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                <span style={{ fontWeight: 600 }}>WHY IT STAYS AS IT IS</span>
+                <input
+                  type="text"
+                  id="aia-carry-reason"
+                  value={carryReason}
+                  onChange={(e) => setCarryReason(e.target.value)}
+                  placeholder="It already went out this way"
+                  style={{
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    fontSize: '0.875rem',
+                    padding: '0.4rem 0.5rem',
+                    borderRadius: 4,
+                    border: '1px solid var(--border-amber)',
+                    background: 'var(--surface)',
+                    color: 'var(--text-strong)',
+                  }}
+                />
+              </label>
+            </div>
+          ) : null}
           <label style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginBottom: '0.9rem' }}>
             <span style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)' }}>
               <span style={{ flex: 1 }}>LINK TO THE FILE YOU SENT</span>

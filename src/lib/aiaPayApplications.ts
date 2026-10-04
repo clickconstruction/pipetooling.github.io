@@ -24,6 +24,8 @@ export type SavedPayApplication = {
   currentPaymentDue: number
   /** A link to the file that was sent (a Google Drive or Docs link), or ''. */
   link: string
+  /** Why it keeps previous amounts that no longer match the application before it, or ''. */
+  carryReason: string
   updatedAt: string | null
 }
 
@@ -45,6 +47,7 @@ export type PayApplicationRow = {
   total_earned_less_retainage: number | string
   current_payment_due: number | string
   files?: unknown
+  carry_reason?: string | null
   updated_at: string | null
 }
 
@@ -102,6 +105,7 @@ export function savedPayApplicationFromRow(row: PayApplicationRow): SavedPayAppl
     totalEarnedLessRetainage: Number(row.total_earned_less_retainage) || 0,
     currentPaymentDue: Number(row.current_payment_due) || 0,
     link: linkFromFiles(row.files),
+    carryReason: (row.carry_reason ?? '').trim(),
     updatedAt: row.updated_at,
   }
 }
@@ -128,8 +132,11 @@ export function parseAiaDate(raw: string | number | null | undefined): string | 
 
 export type PayApplicationWriteResult = { ok: true; row: PayApplicationWrite } | { ok: false; reason: string }
 
-/** The row a save writes for this form and its link, or why it cannot be saved. */
-export function payApplicationWriteFromForm(jobId: string, values: AiaFieldValues, link = ''): PayApplicationWriteResult {
+/**
+ * The row a save writes for this form and its link, or why it cannot be saved. `carryReason` is
+ * written only when it is passed: a save that has nothing to say about it leaves the column alone.
+ */
+export function payApplicationWriteFromForm(jobId: string, values: AiaFieldValues, link = '', carryReason?: string): PayApplicationWriteResult {
   const number = parseApplicationNumber(values.g702_n5_project)
   if (number == null) return { ok: false, reason: 'Type the application number as a whole number, like 1, to save it on the job.' }
   const url = cleanPayApplicationLink(link)
@@ -151,6 +158,7 @@ export function payApplicationWriteFromForm(jobId: string, values: AiaFieldValue
       total_earned_less_retainage: math.totalEarnedLessRetainage,
       current_payment_due: math.currentPaymentDue,
       files,
+      ...(carryReason === undefined ? {} : { carry_reason: carryReason.trim() }),
     },
   }
 }
@@ -174,6 +182,35 @@ export function previousPayApplication(list: ReadonlyArray<SavedPayApplication>,
 const num = (v: string | number | undefined): number => {
   const n = typeof v === 'number' ? v : Number(String(v ?? '').replace(/,/g, ''))
   return Number.isFinite(n) ? n : 0
+}
+
+const cents = (n: number): number => Math.round((n + Number.EPSILON) * 100) / 100
+
+/** The four amounts a later application takes from the one before it. */
+export const CARRIED_AMOUNT_KEYS = [
+  'g703_e13_from_previous',
+  'g702_h40_less_previous_certificates',
+  'g702_f49_previous_month_change_order_additions',
+  'g702_h49_previous_month_change_order_deductions',
+] as const satisfies readonly AiaFieldKey[]
+export type CarriedAmountKey = (typeof CARRIED_AMOUNT_KEYS)[number]
+
+/**
+ * What an application gives the next one: its work to date becomes previous work, its line 6
+ * becomes previous certificates, and its change orders join the previous months.
+ */
+export function carriedAmountsFrom(previous: SavedPayApplication): Record<CarriedAmountKey, number> {
+  const f = previous.fields
+  return {
+    g703_e13_from_previous: cents(num(f.g703_e13_from_previous) + num(f.g703_f13_this_period)),
+    g702_h40_less_previous_certificates: cents(previous.totalEarnedLessRetainage),
+    g702_f49_previous_month_change_order_additions: cents(
+      num(f.g702_f49_previous_month_change_order_additions) + num(f.g702_f50_this_month_change_order_additions),
+    ),
+    g702_h49_previous_month_change_order_deductions: cents(
+      num(f.g702_h49_previous_month_change_order_deductions) + num(f.g702_h50_this_month_change_order_deductions),
+    ),
+  }
 }
 
 /** What carries from one application to the next unchanged: who, what, the contract, the rates, the line's name and value. */
@@ -222,18 +259,12 @@ export function carryForwardPayApplication(last: SavedPayApplication, jobPrefill
   out.g703_k2_project = ''
   out.g703_k4_period_to = ''
 
-  const workBefore = num(f.g703_e13_from_previous) + num(f.g703_f13_this_period)
-  if (workBefore !== 0) out.g703_e13_from_previous = workBefore
-  else delete out.g703_e13_from_previous
-  if (last.totalEarnedLessRetainage !== 0) out.g702_h40_less_previous_certificates = last.totalEarnedLessRetainage
-  else delete out.g702_h40_less_previous_certificates
-
-  const additions = num(f.g702_f49_previous_month_change_order_additions) + num(f.g702_f50_this_month_change_order_additions)
-  const deductions = num(f.g702_h49_previous_month_change_order_deductions) + num(f.g702_h50_this_month_change_order_deductions)
-  if (additions !== 0) out.g702_f49_previous_month_change_order_additions = additions
-  else delete out.g702_f49_previous_month_change_order_additions
-  if (deductions !== 0) out.g702_h49_previous_month_change_order_deductions = deductions
-  else delete out.g702_h49_previous_month_change_order_deductions
+  const carried = carriedAmountsFrom(last)
+  for (const key of CARRIED_AMOUNT_KEYS) {
+    if (carried[key] !== 0) out[key] = carried[key]
+    else delete out[key]
+  }
+  const workBefore = carried.g703_e13_from_previous
   delete out.g702_f50_this_month_change_order_additions
   delete out.g702_h50_this_month_change_order_deductions
 
@@ -243,6 +274,44 @@ export function carryForwardPayApplication(last: SavedPayApplication, jobPrefill
   if (valueCreated > 0 && offered > 0) out.g703_f13_this_period = offered
   else delete out.g703_f13_this_period
 
+  return out
+}
+
+export type CarryDifference = { key: CarriedAmountKey; label: string; here: number; fromPrevious: number }
+export type CarryMismatch = { previousNumber: number; differences: CarryDifference[] }
+
+const LABEL_BY_KEY = Object.fromEntries(AIA_FIELD_DEFS.map((d) => [d.key, d.label])) as Record<AiaFieldKey, string>
+
+/**
+ * Where an application's previous amounts differ from what the application before it gives today.
+ * Nothing locks a saved application, so an earlier one can change after a later one went out; the
+ * later one is flagged, not blocked. null when it has no application before it, or they agree.
+ */
+export function carryMismatch(
+  values: AiaFieldValues,
+  applicationNumber: number | null,
+  list: ReadonlyArray<SavedPayApplication>,
+): CarryMismatch | null {
+  if (applicationNumber == null) return null
+  const previous = previousPayApplication(list, applicationNumber)
+  if (!previous) return null
+  const carried = carriedAmountsFrom(previous)
+  const differences: CarryDifference[] = []
+  for (const key of CARRIED_AMOUNT_KEYS) {
+    const here = cents(num(values[key]))
+    if (here !== carried[key]) differences.push({ key, label: LABEL_BY_KEY[key], here, fromPrevious: carried[key] })
+  }
+  return differences.length > 0 ? { previousNumber: previous.applicationNumber, differences } : null
+}
+
+/** The form with the previous application's amounts as it gives them today. */
+export function withCarriedAmounts(values: AiaFieldValues, previous: SavedPayApplication): AiaFieldValues {
+  const out: AiaFieldValues = { ...values }
+  const carried = carriedAmountsFrom(previous)
+  for (const key of CARRIED_AMOUNT_KEYS) {
+    if (carried[key] !== 0) out[key] = carried[key]
+    else delete out[key]
+  }
   return out
 }
 
