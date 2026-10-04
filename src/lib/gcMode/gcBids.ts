@@ -137,7 +137,7 @@ export function compareBids(state: GcState, project: GcProject, pkg: TradePackag
       text +=
         uncosted.length > 0
           ? ` No cost is set for ${names(uncosted)} yet, so their real number is not known.`
-          : ` Covering that adds ${money(added)}, so they come to ${money(allIn)}.`
+          : ` Covering that adds ${money(added)}, so they come to ${money(allIn - exCovered)}.`
     }
     if (excluded.length > 0) {
       text += ` Their quote excludes ${exclusionListWords(excluded)}.`

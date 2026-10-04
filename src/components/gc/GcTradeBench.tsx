@@ -9,6 +9,7 @@ import {
   declinedTitle,
   declinedWords,
   partnerAsks,
+  partnerExclusionHabits,
   partnerScheduleRecord,
   partnerScheduleWords,
   promiseWords,
@@ -436,6 +437,7 @@ function PartnerLine({ state, partner, bench, dispatch }: { state: GcState; part
   const record = RECORD_WORDS[answerRecord(partner)]
   // The schedule plan (owner, 2026-10-02): how they keep our dates, beside how they answer.
   const schedule = partnerScheduleRecord(state, partner)
+  const habits = partnerExclusionHabits(state, partner)
   const asks = partnerAsks(state, partner.id, bench.trade)
   const askedOn = new Set(asks.map((a) => a.pkg.id))
   const open = bench.needs.filter((n) => n.short > 0 && !askedOn.has(n.pkg.id))
@@ -497,6 +499,13 @@ function PartnerLine({ state, partner, bench, dispatch }: { state: GcState; part
         {schedule && (
           <div style={{ color: 'var(--text-600)', fontSize: '0.8rem', marginTop: '0.2rem' }} title={PARTNER_SCHEDULE_WHY}>
             On our jobs: {partnerScheduleWords(schedule)}
+          </div>
+        )}
+        {/* What this company usually leaves out of its quotes (the owner, 2026-10-04: exclusions per company). */}
+        {habits.length > 0 && (
+          <div style={{ color: 'var(--text-600)', fontSize: '0.8rem', marginTop: '0.2rem' }}>
+            Usually excludes: {habits.slice(0, 3).map((h) => `${h.name.toLowerCase()} (${h.excluded} of ${h.of})`).join(', ')}
+            {habits.length > 3 ? ` and ${habits.length - 3} more` : ''}
           </div>
         )}
       </td>

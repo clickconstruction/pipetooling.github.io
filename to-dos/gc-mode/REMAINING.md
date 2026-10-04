@@ -256,11 +256,11 @@ do."
    `exclusionCoversTotal` in `leveledTotal`, `uncoveredExclusions`, `partnerExclusionHabits`,
    `sowExcluded`); `setQuoteExclusion`, `setExclusionCover`; `tradeSubmitBid` takes the lists;
    award copies them onto the statement of work.
-2. **Compare quotes: Their exclusions**, one row per exclusion any company names: excluded (with
+2. ~~**Compare quotes: Their exclusions**~~ done (this commit)., one row per exclusion any company names: excluded (with
    cover), included, not said (Ask them), expected (a Known exclusion); + Exclusion from their
    quote for an emailed one; the flip warning.
-3. **Contracts: the statement of work says what they will not do** (and who does it instead).
-4. **Trade partners: what a company usually leaves out** ("Permits and fees, 5 of 6").
+3. ~~**Contracts: the statement of work says what they will not do**~~ done (this commit). (and who does it instead).
+4. ~~**Trade partners: what a company usually leaves out**~~ done (this commit). ("Permits and fees, 5 of 6").
 
 ### Portal (GC 3)
 
