@@ -8735,6 +8735,16 @@ exports[`GC mode golden walk > step 173: The coping metal comes and the office m
 }
 `;
 
+exports[`GC mode golden walk > step 174: Fair Oaks D: the contract charges $500 a day for finishing late 1`] = `
+{
+  "changed": {
+    "lastLog.id": 170,
+    "lastLog.text": "The contract with Cibolo Creek Partners charges $500 a day for finishing Fair Oaks Shops, Building D late.",
+  },
+  "removed": [],
+}
+`;
+
 exports[`GC mode golden walk > the whole state at the end 1`] = `
 {
   "customers": [
@@ -8935,6 +8945,11 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
+      "id": 170,
+      "text": "The contract with Cibolo Creek Partners charges $500 a day for finishing Fair Oaks Shops, Building D late.",
+      "who": "office",
+    },
+    {
       "id": 169,
       "text": "Summit Roofing: the coping metal came. Marked kept.",
       "who": "office",
@@ -9078,11 +9093,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "id": 141,
       "text": "Brazos Glass sent their company form for the office to check.",
       "who": "trade",
-    },
-    {
-      "id": 140,
-      "text": "Added Brazos Glass to Storefront and glass. They can quote. Nothing is awarded to them until we approve them.",
-      "who": "office",
     },
   ],
   "partners": [
@@ -12591,6 +12601,9 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
         "fsite": 168000,
         "fsteel": 186000,
         "gc": 96000,
+      },
+      "ownerLateFinish": {
+        "perDay": 500,
       },
       "ownerLateInterest": {
         "pctPerMonth": 1.5,

@@ -1754,5 +1754,26 @@ function reduce(state: GcState, action: GcAction): GcState {
       )
       return logged(next, 'office', `${project.owner} paid interest bill ${bill.number}: ${money(bill.amount)}.`)
     }
+
+    case 'setOwnerLateFinish': {
+      // Owner Billing lane: the owner contract's late fee a day, ours to enter per job (the owner,
+      // 2026-10-04). Whole dollars, or null when the contract has none.
+      const project = state.projects.find((p) => p.id === action.projectId)
+      if (!project || (project.stage !== 'buyout' && project.stage !== 'building')) return state
+      const perDay = action.perDay === null ? null : Math.round(action.perDay)
+      if (perDay !== null && !(perDay > 0)) return state
+      if ((project.ownerLateFinish?.perDay ?? null) === perDay) return state
+      const next = mapProject(state, project.id, (p) => {
+        const { ownerLateFinish: _was, ...rest } = p
+        return perDay === null ? rest : { ...rest, ownerLateFinish: { perDay } }
+      })
+      return logged(
+        next,
+        'office',
+        perDay === null
+          ? `The contract with ${project.owner} has no late fee on ${project.name}.`
+          : `The contract with ${project.owner} charges ${money(perDay)} a day for finishing ${project.name} late.`,
+      )
+    }
   }
 }

@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   allJobsMoney,
+  ownerFinishRisk,
   ownerInterest,
   ownerInterestFrom,
   ownerRetainageOn,
@@ -1010,6 +1011,51 @@ describe('materials stored on site, from the trades’ pay applications (questio
     const form = sent && ownerPayAppForm(state, fairOaks(state), sent.number)
     expect(r(form?.app.totals.stored ?? 0)).toBe(36_000)
     expect(r(sent?.workToDate ?? 0)).toBe(r(form?.app.totals.toDate ?? 0))
+  })
+})
+
+describe('finishing late against the owner contract', () => {
+  const fairOaks = (state: GcState) => state.projects.find((p) => p.id === 'fairoaksd') as GcProject
+  const pushedOut = (project: GcProject, days: number): GcProject => {
+    const acts = project.schedule?.activities ?? []
+    const lastFinish = acts.reduce((m, a) => (a.finish > m ? a.finish : m), '')
+    const moved = (iso: string) => new Date(Date.parse(iso) + days * 86_400_000).toISOString().slice(0, 10)
+    return project.schedule
+      ? { ...project, schedule: { ...project.schedule, activities: acts.map((a) => (a.finish === lastFinish ? { ...a, finish: moved(a.finish) } : a)) } }
+      : project
+  }
+
+  it('Fair Oaks D finishes on the contract day at today’s pace: three days behind, none to spare', () => {
+    const state = initialGcState()
+    const f = ownerFinishRisk(state, fairOaks(state))
+    expect([f.contract?.on, f.schedule?.on, f.schedule?.from, f.schedule?.behind, f.past, f.atRisk]).toEqual(['2026-12-11', '2026-12-11', 'pace', 3, 0, 0])
+  })
+
+  it('a signed change order with days gives days to spare', () => {
+    let state = gcReducer(initialGcState(), { type: 'draftChangeOrder', projectId: 'fairoaksd', description: 'A second drive-through lane', reason: 'owner', schedule: '', packageId: 'fsite', cost: 12_000, price: 0, days: 5 })
+    state = gcReducer(state, { type: 'sendChangeOrder', projectId: 'fairoaksd', changeOrderId: 'co-1' })
+    state = gcReducer(state, { type: 'ownerSignChangeOrder', projectId: 'fairoaksd', changeOrderId: 'co-1' })
+    expect(ownerFinishRisk(state, fairOaks(state)).past).toBe(-5)
+  })
+
+  it('a plan past the contract day costs the contract’s late fee a day', () => {
+    const state = gcReducer(initialGcState(), { type: 'setOwnerLateFinish', projectId: 'fairoaksd', perDay: 500 })
+    const f = ownerFinishRisk(state, pushedOut(fairOaks(state), 9))
+    expect([f.schedule?.on, f.schedule?.from, f.past, f.perDay, f.atRisk]).toEqual(['2026-12-17', 'plan', 6, 500, 3_000])
+  })
+
+  it('the fee is ours to enter: whole dollars above zero, or none, on a job that is ours', () => {
+    const fresh = initialGcState()
+    for (const bad of [
+      { projectId: 'fairoaksd', perDay: 0 },
+      { projectId: 'boerne', perDay: 500 },
+      { projectId: 'fairoaksd', perDay: null },
+    ]) {
+      expect(gcReducer(fresh, { type: 'setOwnerLateFinish', ...bad })).toBe(fresh)
+    }
+    const state = gcReducer(gcReducer(fresh, { type: 'setOwnerLateFinish', projectId: 'fairoaksd', perDay: 499.6 }), { type: 'setOwnerLateFinish', projectId: 'fairoaksd', perDay: null })
+    expect(fairOaks(state).ownerLateFinish).toBeUndefined()
+    expect(fairOaks(gcReducer(fresh, { type: 'setOwnerLateFinish', projectId: 'fairoaksd', perDay: 499.6 })).ownerLateFinish).toEqual({ perDay: 500 })
   })
 })
 

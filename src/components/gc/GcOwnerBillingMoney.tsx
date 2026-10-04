@@ -1,7 +1,7 @@
 import { useMatchMedia } from '../../hooks/useMatchMedia'
 import { GcOwnerBillingAhead } from './GcOwnerBillingAhead'
 import { Btn, Card, Chip, Stat, Why, num, td, th } from './gcUi'
-import { allJobsMoney, money, ownerInterestOnBill, shortDate, type GcState, type JobMoney, type OwedBill } from '../../lib/gcMode/gcModel'
+import { allJobsMoney, money, ownerFinishRisk, ownerInterestOnBill, shortDate, type GcState, type JobMoney, type OwedBill } from '../../lib/gcMode/gcModel'
 
 /**
  * GC mode design spike: money across every job that is ours (buying out or building). What the
@@ -12,6 +12,12 @@ import { allJobsMoney, money, ownerInterestOnBill, shortDate, type GcState, type
 export function GcOwnerBillingMoney({ state, onOpenBill }: { state: GcState; onOpenBill: (projectId: string) => void }) {
   const m = allJobsMoney(state)
   const narrow = useMatchMedia('(max-width: 640px)')
+  const late = m.jobs.map((j) => ({ project: j.project, risk: ownerFinishRisk(state, j.project) })).filter((x) => x.risk.past !== null && x.risk.past > 0)
+  const atRisk = late.reduce((t, x) => t + x.risk.atRisk, 0)
+  const lateWords = (id: string) => {
+    const r = late.find((x) => x.project.id === id)?.risk
+    return r && r.past ? `finishes ${r.past === 1 ? '1 day' : `${r.past} days`} late${r.atRisk > 0 ? `, ${money(r.atRisk)} at risk` : ''}` : null
+  }
   const t = m.totals
   const ahead = Math.round(t.net) >= 0
   const jobs = m.jobs.length
@@ -38,6 +44,7 @@ export function GcOwnerBillingMoney({ state, onOpenBill }: { state: GcState; onO
           <Stat label="Owners hold until the end" value={money(t.ownerHolds)} />
           <Stat label="We hold until the end" value={money(t.weHold)} />
           <Stat label="Trades waiting on us" value={money(t.tradesWaiting)} />
+          {late.length > 0 && <Stat label="At risk for finishing late" value={money(atRisk)} tone={atRisk > 0 ? 'red' : undefined} />}
         </div>
       </Card>
 
@@ -61,7 +68,7 @@ export function GcOwnerBillingMoney({ state, onOpenBill }: { state: GcState; onO
         {narrow ? (
           <div style={{ display: 'grid' }}>
             {m.jobs.map((job) => (
-              <JobBlock key={job.project.id} job={job} onOpen={() => onOpenBill(job.project.id)} />
+              <JobBlock key={job.project.id} job={job} late={lateWords(job.project.id)} onOpen={() => onOpenBill(job.project.id)} />
             ))}
           </div>
         ) : (
@@ -84,6 +91,11 @@ export function GcOwnerBillingMoney({ state, onOpenBill }: { state: GcState; onO
                   <tr key={project.id}>
                     <td style={td}>
                       <strong>{project.name}</strong>
+                      {lateWords(project.id) && (
+                        <div>
+                          <Chip tone="red">{lateWords(project.id)}</Chip>
+                        </div>
+                      )}
                       <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{project.owner}</div>
                     </td>
                     <td style={num}>{money(cash.in.paid)}</td>
@@ -113,7 +125,7 @@ export function GcOwnerBillingMoney({ state, onOpenBill }: { state: GcState; onO
 }
 
 /** A job on a phone: its name and owner with Bill the owner, then each number on a line of its own. */
-function JobBlock({ job, onOpen }: { job: JobMoney; onOpen: () => void }) {
+function JobBlock({ job, late, onOpen }: { job: JobMoney; late: string | null; onOpen: () => void }) {
   const { project, cash, tradesWaiting } = job
   const up = Math.round(cash.net) >= 0
   const row = (label: string, value: string, color?: string) => (
@@ -128,6 +140,7 @@ function JobBlock({ job, onOpen }: { job: JobMoney; onOpen: () => void }) {
         <div style={{ flex: 1, minWidth: 0 }}>
           <strong>{project.name}</strong>
           <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{project.owner}</div>
+          {late && <Chip tone="red">{late}</Chip>}
         </div>
         <Btn kind="quiet" onClick={onOpen}>
           Bill the owner

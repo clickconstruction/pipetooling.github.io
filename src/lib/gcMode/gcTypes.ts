@@ -442,6 +442,8 @@ export interface GcProject {
   ownerRetainageStep?: OwnerRetainageStep
   /** Interest on the owner's late bills, if we chose to charge it on this job: a percent a month. Absent: none. */
   ownerLateInterest?: { pctPerMonth: number }
+  /** The owner contract's fee a day for finishing past substantial completion (liquidated damages), as we entered it. Absent: none. */
+  ownerLateFinish?: { perDay: number }
   permitOn: string | null
   startDate: string | null
   /** The day we pressed Start. The trades were told then. */
@@ -863,6 +865,8 @@ export type GcAction =
   | { type: 'sendOwnerInterestBill'; projectId: string }
   /** The owner pays an interest bill (in their portal, or the office marks it). */
   | { type: 'ownerPaidInterest'; projectId: string; number: number }
+  /** We enter the owner contract's late fee a day (null: the contract has none). */
+  | { type: 'setOwnerLateFinish'; projectId: string; perDay: number | null }
 
 /** One trade on a new project, as the office left it in the New project window. */
 export interface NewTradeDraft {

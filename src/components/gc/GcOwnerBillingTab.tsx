@@ -7,6 +7,7 @@ import { GcOwnerBillingArchitectPortal } from './GcOwnerBillingArchitect'
 import { GcOwnerBillingPortal } from './GcOwnerBillingPortal'
 import { GcOwnerBillingRetainage } from './GcOwnerBillingRetainage'
 import { GcOwnerBillingInterest } from './GcOwnerBillingInterest'
+import { GcOwnerBillingFinish } from './GcOwnerBillingFinish'
 import { Btn, Card, Chip, Stat, Why, input, num, td, th } from './gcUi'
 import {
   appCertified,
@@ -268,6 +269,8 @@ function OfficeSide({
         </div>
       </Card>
       )}
+
+      <GcOwnerBillingFinish state={state} project={project} dispatch={dispatch} />
 
       <GcOwnerBillingRetainage state={state} project={project} dispatch={dispatch} />
 

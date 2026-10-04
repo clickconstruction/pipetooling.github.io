@@ -636,6 +636,8 @@ const STEPS: Step[] = [
     action: { type: 'recordPromise', partnerId: 'summit', kind: 'delivery', projectId: 'fairoaksd', packageId: 'froof', by: '2026-10-08', from: 'office', what: 'the coping metal' },
   },
   { label: 'The coping metal comes and the office marks it kept', action: { type: 'keepPromise', id: 'tp-5' } },
+  // Finishing late (the owner, 2026-10-04): the owner contract's late fee, ours to enter.
+  { label: 'Fair Oaks D: the contract charges $500 a day for finishing late', action: { type: 'setOwnerLateFinish', projectId: 'fairoaksd', perDay: 500 } },
 ]
 
 const CUSTOMER_IDS = ['cibolo', 'raman']
@@ -794,6 +796,7 @@ describe('GC mode golden walk', () => {
       'vetPartner', 'tradeVettingForm', 'recordPromise', 'keepPromise',
       'setOwnerRetainageStep',
       'setOwnerLateInterest', 'sendOwnerInterestBill', 'ownerPaidInterest',
+      'setOwnerLateFinish',
       'tradeSendSov',
     ]
     expect(all.filter((t) => !used.has(t))).toEqual([])
