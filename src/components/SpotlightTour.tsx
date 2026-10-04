@@ -14,6 +14,8 @@ export type SpotlightTourStep = {
    * it the caller should drop absent steps with `spotlightTourStepsPresent`.
    */
   missingBody?: string
+  /** Short lines shown as a list under the body, one idea each: a stop that names several things. */
+  bullets?: string[]
 }
 
 type SpotlightTourProps = {
@@ -181,6 +183,13 @@ export function SpotlightTour({ steps, onClose, guideHref, guideLabel, startInde
         </div>
         <div style={{ fontSize: '0.82rem', color: 'var(--text-700)', margin: '0.35rem 0 0.7rem' }}>
           {step.body}
+          {step.bullets && step.bullets.length > 0 ? (
+            <ul style={{ margin: '0.4rem 0 0', paddingLeft: '1.1rem', display: 'grid', gap: '0.2rem' }}>
+              {step.bullets.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          ) : null}
           {anchorMissing && step.missingBody ? (
             <div data-testid="tour-missing" style={{ marginTop: '0.4rem', fontSize: '0.76rem', color: 'var(--text-muted)', borderLeft: '2px solid var(--border-strong)', paddingLeft: '0.5rem' }}>
               {step.missingBody}
