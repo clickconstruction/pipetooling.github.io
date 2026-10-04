@@ -42,6 +42,7 @@ import { Btn, Chip, input } from './gcUi'
 import { GcPortalContacts } from './GcPortalContacts'
 import { GcPortalHome } from './GcPortalHome'
 import { GcPortalPay } from './GcPortalPay'
+import { GcPortalPapers } from './GcPortalPapers'
 import { GcPortalLookAhead } from './GcPortalLookAhead'
 import { AlternatesEditor, AnswerLines, GoodForPicker, LeavesOut, QuoteFilePicker } from './GcPortalBidExtras'
 import { ChangedLines, LineSheets, LineSpecs, SheetChip, TakenOut } from './GcPortalLineSheets'
@@ -81,6 +82,8 @@ export function GcTradePortal({ state, project, partnerId, onPickPartner, dispat
   const [screen, setScreen] = useState<'portal' | 'messages'>('portal')
   /** The Your pay page, over the home. */
   const [payOpen, setPayOpen] = useState(false)
+  /** The Your papers page, over the home. */
+  const [papersOpen, setPapersOpen] = useState(false)
   /** The company's language, kept on its record (owner, 2026-10-03): its messages go out in it too. */
   const lang: PortalLang = partner?.lang ?? 'en'
   const shown = viewId === null ? null : (state.projects.find((p) => p.id === viewId) ?? null)
@@ -95,6 +98,7 @@ export function GcTradePortal({ state, project, partnerId, onPickPartner, dispat
   const go = (id: string | null) => {
     setViewId(id)
     setPayOpen(false)
+    setPapersOpen(false)
     setScreen('portal')
     const box = top.current?.getBoundingClientRect()
     if (box && box.top < 0) top.current?.scrollIntoView({ block: 'start' })
@@ -179,6 +183,8 @@ export function GcTradePortal({ state, project, partnerId, onPickPartner, dispat
         </div>
       ) : payOpen ? (
         <GcPortalPay state={state} partner={partner} onHome={() => go(null)} />
+      ) : papersOpen ? (
+        <GcPortalPapers state={state} partner={partner} dispatch={dispatch} onHome={() => go(null)} onOpenProject={(id) => go(id)} />
       ) : shown ? (
         <ProjectPage state={state} project={shown} partner={partner} dispatch={dispatch} onHome={() => go(null)} />
       ) : (
@@ -194,6 +200,10 @@ export function GcTradePortal({ state, project, partnerId, onPickPartner, dispat
             onOpenPay={() => {
               go(null)
               setPayOpen(true)
+            }}
+            onOpenPapers={() => {
+              go(null)
+              setPapersOpen(true)
             }}
           />
         </div>

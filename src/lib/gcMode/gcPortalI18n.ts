@@ -374,6 +374,28 @@ const S = {
   emailLink: { en: 'Email', es: 'Correo' },
   payQuestions: { en: 'Questions about pay: {name}, {phone}.', es: 'Preguntas sobre pagos: {name}, {phone}.' },
 
+  // Your papers
+  papersTitle: { en: 'Your papers', es: 'Sus documentos' },
+  papersLink: { en: 'See every paper', es: 'Ver todos los documentos' },
+  papersIntro: { en: 'Every paper you signed with {gc}, newest first. Open one to read it, or print the list.', es: 'Cada documento que firmó con {gc}, del más reciente al más antiguo. Abra uno para leerlo o imprima la lista.' },
+  papersCompany: { en: 'With {gc}', es: 'Con {gc}' },
+  papersNone: { en: 'Nothing signed yet.', es: 'Todavía no hay nada firmado.' },
+  papersPrint: { en: 'Print this list', es: 'Imprimir la lista' },
+  papersPrinted: { en: 'Printed {date}', es: 'Impreso el {date}' },
+  paperOpen: { en: 'Open', es: 'Abrir' },
+  paperVetForm: { en: 'Your company form', es: 'El formulario de su empresa' },
+  paperSent: { en: 'sent {date}', es: 'enviado el {date}' },
+  paperSow: { en: '{trade} statement of work', es: 'Orden de trabajo de {trade}' },
+  paperChange: { en: 'Change order {n}', es: 'Orden de cambio {n}' },
+  paperPayApp: { en: 'Pay application {n}', es: 'Solicitud de pago {n}' },
+  paperPayAppFinal: { en: 'Final pay application', es: 'Solicitud de pago final' },
+  paperCond: { en: 'Conditional waiver, pay application {n}', es: 'Renuncia condicional, solicitud de pago {n}' },
+  paperUncond: { en: 'Unconditional waiver, pay application {n}', es: 'Renuncia incondicional, solicitud de pago {n}' },
+  paperCondFinal: { en: 'Conditional final release of lien', es: 'Liberación final de gravamen condicional' },
+  paperUncondFinal: { en: 'Unconditional final release of lien', es: 'Liberación final de gravamen incondicional' },
+  paperAfterPaid: { en: 'signed after we paid {date}', es: 'firmada después de que pagamos el {date}' },
+  msaSignedBy: { en: '{company} signed it on {date}.', es: '{company} lo firmó el {date}.' },
+  printWord: { en: 'Print', es: 'Imprimir' },
   // Your pay
   payTitle: { en: 'Your pay', es: 'Sus pagos' },
   payIntro: {
