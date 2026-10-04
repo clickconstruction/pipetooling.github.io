@@ -59,6 +59,17 @@ describe('payApplicationWriteFromForm', () => {
     expect(w.row.fields).toEqual(APP_1)
   })
 
+  it('keeps a pasted link beside the application, and refuses one that is not a web address', () => {
+    const link = '  https://docs.google.com/spreadsheets/d/abc123/edit  '
+    const w = payApplicationWriteFromForm('job-1', APP_1, link)
+    expect(w.ok && w.row.files).toEqual([{ kind: 'link', url: 'https://docs.google.com/spreadsheets/d/abc123/edit' }])
+    expect(payApplicationWriteFromForm('job-1', APP_1).ok && (payApplicationWriteFromForm('job-1', APP_1) as { row: { files: unknown } }).row.files).toEqual([])
+    const bad = payApplicationWriteFromForm('job-1', APP_1, 'my drive folder')
+    expect(bad.ok).toBe(false)
+    expect(!bad.ok && bad.reason).toMatch(/not a web address/)
+    expect(payApplicationWriteFromForm('job-1', APP_1, 'javascript:alert(1)').ok).toBe(false)
+  })
+
   it('will not save without a whole application number', () => {
     for (const bad of ['', 'Water Sample Test', '0', '1.5', '-2', '12345']) {
       const w = payApplicationWriteFromForm('job-1', { ...APP_1, g702_n5_project: bad })
@@ -93,6 +104,14 @@ describe('savedPayApplicationFromRow', () => {
     expect(app.fields).toEqual({ g702_n5_project: '2', g703_f13_this_period: 9700 })
     expect(app.totalEarnedLessRetainage).toBe(26190)
     expect(app.retainagePct).toBe(10)
+    expect(app.link).toBe('')
+  })
+
+  it('reads the first web link kept beside the row, and nothing else', () => {
+    const row = { id: 'x', job_id: 'j', application_number: 1, period_to: null, application_date: null, fields: {}, contract_sum_to_date: 0, total_completed_and_stored: 0, retainage_pct: 0, retainage_held: 0, total_earned_less_retainage: 0, current_payment_due: 0, updated_at: null }
+    expect(savedPayApplicationFromRow({ ...row, files: [{ kind: 'link', url: 'javascript:alert(1)' }, { kind: 'link', url: 'https://drive.google.com/file/d/xyz/view' }] }).link).toBe('https://drive.google.com/file/d/xyz/view')
+    expect(savedPayApplicationFromRow({ ...row, files: 'nope' }).link).toBe('')
+    expect(savedPayApplicationFromRow({ ...row, files: [] }).link).toBe('')
   })
 
   it('reads fields that are not an object as an empty form', () => {

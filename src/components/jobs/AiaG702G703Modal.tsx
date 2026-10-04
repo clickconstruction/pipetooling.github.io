@@ -20,6 +20,7 @@ import { loadAiaPrefillFacts } from '../../lib/aiaG702G703PrefillIo'
 import {
   type SavedPayApplication,
   carryForwardPayApplication,
+  cleanPayApplicationLink,
   nextApplicationNumber,
   payApplicationLabel,
   payApplicationWriteFromForm,
@@ -169,16 +170,21 @@ export default function AiaG702G703Modal({
   const [openId, setOpenId] = useState<string | null>(null)
   // The form as it was loaded or last saved: what "you typed something" is measured against.
   const [baseline, setBaseline] = useState<Record<AiaFieldKey, string>>(emptyFormState)
+  // A link to the file that was sent (a Google Drive link), kept beside the application.
+  const [link, setLink] = useState('')
+  const [baselineLink, setBaselineLink] = useState('')
   const [saving, setSaving] = useState(false)
   const confirm = useConfirmDialog()
 
   const openApp = saved.find((a) => a.id === openId) ?? null
-  const dirty = useMemo(() => JSON.stringify(form) !== JSON.stringify(baseline), [form, baseline])
+  const dirty = useMemo(() => link !== baselineLink || JSON.stringify(form) !== JSON.stringify(baseline), [form, baseline, link, baselineLink])
 
-  const loadForm = useCallback((values: AiaFieldValues) => {
+  const loadForm = useCallback((values: AiaFieldValues, withLink = '') => {
     const next = fieldValuesToFormState(values)
     setForm(next)
     setBaseline(next)
+    setLink(withLink)
+    setBaselineLink(withLink)
   }, [])
 
   /** A new application's starting form: the job today, carried on from the last saved application when there is one. */
@@ -233,24 +239,27 @@ export default function AiaG702G703Modal({
     if ((app?.id ?? null) === openId && !dirty) return
     if (!(await mayLeave())) return
     setOpenId(app?.id ?? null)
-    loadForm(app ? app.fields : newApplicationValues(saved, facts))
+    if (app) loadForm(app.fields, app.link)
+    else loadForm(newApplicationValues(saved, facts))
   }
 
   /** Back to where this application started: the saved one as saved, a new one as the job and the last one give it. */
-  const resetForm = () => loadForm(openApp ? openApp.fields : newApplicationValues(saved, facts))
+  const resetForm = () => (openApp ? loadForm(openApp.fields, openApp.link) : loadForm(newApplicationValues(saved, facts)))
 
   type SaveOutcome = { saved: SavedPayApplication } | { notSaved: string }
 
   /** Save the form on the job as its application number. Never throws: the reason comes back as words. */
   const saveOnJob = async (values: AiaFieldValues): Promise<SaveOutcome> => {
     if (!job) return { notSaved: 'No job is open.' }
-    const write = payApplicationWriteFromForm(job.id, values)
+    const write = payApplicationWriteFromForm(job.id, values, link)
     if (!write.ok) return { notSaved: write.reason }
     try {
       const row = await savePayApplication(write.row, openId)
       setSaved((list) => sortPayApplications([...list.filter((a) => a.id !== row.id), row]))
       setOpenId(row.id)
       setBaseline(form)
+      setLink(row.link)
+      setBaselineLink(row.link)
       return { saved: row }
     } catch (e) {
       if (e instanceof PayApplicationNumberTaken) {
@@ -530,6 +539,31 @@ export default function AiaG702G703Modal({
               ) : null}
             </div>
           </div>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginBottom: '0.9rem' }}>
+            <span style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)' }}>
+              <span style={{ flex: 1 }}>LINK TO THE FILE YOU SENT</span>
+              {cleanPayApplicationLink(link) ? (
+                <a href={cleanPayApplicationLink(link)} target="_blank" rel="noopener noreferrer" style={{ fontWeight: 400 }}>
+                  Open
+                </a>
+              ) : null}
+            </span>
+            <input
+              type="url"
+              id="aia-application-link"
+              value={link}
+              onChange={(e) => setLink(e.target.value)}
+              placeholder="Paste the Google Drive link"
+              style={{
+                width: '100%',
+                boxSizing: 'border-box',
+                fontSize: '0.875rem',
+                padding: '0.5rem',
+                borderRadius: 4,
+                border: '1px solid var(--border-strong)',
+              }}
+            />
+          </label>
           <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-600)' }}>
             Values are written into the G702/G703 workbook. A field left empty is empty in the download. Adjust
             fields, then generate the workbook.

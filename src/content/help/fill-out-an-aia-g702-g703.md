@@ -75,7 +75,11 @@ Application 1 asked for $19,400.00 of work at 10% retainage, so $17,460.00 was d
 
 ## An application sent before today
 
-Type it in as its own application. Type its **APPLICATION NUMBER** and its amounts, then press {{button:outline|Save}}. The next application starts from it.
+Type it in as its own application. Type its **APPLICATION NUMBER** and its amounts.
+
+Then paste the Google Drive link to the file under **LINK TO THE FILE YOU SENT**. Press {{button:outline|Save}}. The next application starts from it.
+
+Press **Open** beside the link to see the file. Any saved application can carry a link.
 
 ## Take one off the job
 

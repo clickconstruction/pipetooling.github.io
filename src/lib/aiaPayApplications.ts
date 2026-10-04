@@ -22,8 +22,13 @@ export type SavedPayApplication = {
   retainageHeld: number
   totalEarnedLessRetainage: number
   currentPaymentDue: number
+  /** A link to the file that was sent (a Google Drive or Docs link), or ''. */
+  link: string
   updatedAt: string | null
 }
+
+/** One kept file beside an application. Today that is a pasted link. */
+export type PayApplicationFile = { kind: 'link'; url: string }
 
 /** The row as the table holds it. */
 export type PayApplicationRow = {
@@ -39,6 +44,7 @@ export type PayApplicationRow = {
   retainage_held: number | string
   total_earned_less_retainage: number | string
   current_payment_due: number | string
+  files?: unknown
   updated_at: string | null
 }
 
@@ -58,6 +64,29 @@ function fieldsFromJson(raw: unknown): AiaFieldValues {
   return out
 }
 
+/** A pasted link as it is kept: trimmed, and only when it is a web address. Anything else → ''. */
+export function cleanPayApplicationLink(raw: string | null | undefined): string {
+  const s = (raw ?? '').trim()
+  if (!/^https?:\/\/\S+$/i.test(s)) return ''
+  try {
+    return new URL(s).toString()
+  } catch {
+    return ''
+  }
+}
+
+/** The first link kept beside the row. */
+function linkFromFiles(raw: unknown): string {
+  if (!Array.isArray(raw)) return ''
+  for (const f of raw) {
+    if (f && typeof f === 'object' && (f as { kind?: unknown }).kind === 'link') {
+      const url = cleanPayApplicationLink(String((f as { url?: unknown }).url ?? ''))
+      if (url) return url
+    }
+  }
+  return ''
+}
+
 export function savedPayApplicationFromRow(row: PayApplicationRow): SavedPayApplication {
   return {
     id: row.id,
@@ -72,6 +101,7 @@ export function savedPayApplicationFromRow(row: PayApplicationRow): SavedPayAppl
     retainageHeld: Number(row.retainage_held) || 0,
     totalEarnedLessRetainage: Number(row.total_earned_less_retainage) || 0,
     currentPaymentDue: Number(row.current_payment_due) || 0,
+    link: linkFromFiles(row.files),
     updatedAt: row.updated_at,
   }
 }
@@ -98,10 +128,13 @@ export function parseAiaDate(raw: string | number | null | undefined): string | 
 
 export type PayApplicationWriteResult = { ok: true; row: PayApplicationWrite } | { ok: false; reason: string }
 
-/** The row a save writes for this form, or why it cannot be saved. */
-export function payApplicationWriteFromForm(jobId: string, values: AiaFieldValues): PayApplicationWriteResult {
+/** The row a save writes for this form and its link, or why it cannot be saved. */
+export function payApplicationWriteFromForm(jobId: string, values: AiaFieldValues, link = ''): PayApplicationWriteResult {
   const number = parseApplicationNumber(values.g702_n5_project)
   if (number == null) return { ok: false, reason: 'Type the application number as a whole number, like 1, to save it on the job.' }
+  const url = cleanPayApplicationLink(link)
+  if (link.trim() && !url) return { ok: false, reason: 'The link to the file is not a web address. Paste the whole link, starting with https.' }
+  const files: PayApplicationFile[] = url ? [{ kind: 'link', url }] : []
   const { math } = buildAiaPreview(values)
   return {
     ok: true,
@@ -117,6 +150,7 @@ export function payApplicationWriteFromForm(jobId: string, values: AiaFieldValue
       retainage_held: math.totalRetainage,
       total_earned_less_retainage: math.totalEarnedLessRetainage,
       current_payment_due: math.currentPaymentDue,
+      files,
     },
   }
 }

@@ -180,6 +180,27 @@ describe('AiaG702G703Modal', () => {
     expect(saveSpy.mock.calls[1]![0].period_to).toBe('2026-10-31')
   })
 
+  it('keeps a pasted link beside the application and offers to open it', async () => {
+    setWide(true)
+    renderWithProviders(<AiaG702G703Modal open onClose={() => undefined} job={job} hcpForFilename="1023" />)
+    await waitFor(() => expect(field('g702_h18_original_contract_sum').value).toBe('48500'))
+    const linkBox = screen.getByLabelText(/LINK TO THE FILE YOU SENT/) as HTMLInputElement
+
+    fireEvent.change(field('g702_n5_project'), { target: { value: '1' } })
+    fireEvent.change(linkBox, { target: { value: 'my drive' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    expect(await screen.findByText(/The link to the file is not a web address/)).toBeTruthy()
+    expect(saveSpy).not.toHaveBeenCalled()
+
+    fireEvent.change(linkBox, { target: { value: 'https://docs.google.com/spreadsheets/d/abc123/edit' } })
+    expect((screen.getByRole('link', { name: 'Open' }) as HTMLAnchorElement).href).toBe('https://docs.google.com/spreadsheets/d/abc123/edit')
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(saveSpy).toHaveBeenCalledTimes(1))
+    expect(saveSpy.mock.calls[0]![0].files).toEqual([{ kind: 'link', url: 'https://docs.google.com/spreadsheets/d/abc123/edit' }])
+    // Saved, the link is still in its box.
+    await waitFor(() => expect(linkBox.value).toBe('https://docs.google.com/spreadsheets/d/abc123/edit'))
+  })
+
   it('starts the next application from the last one saved', async () => {
     setWide(true)
     onJob = [savedOne()]

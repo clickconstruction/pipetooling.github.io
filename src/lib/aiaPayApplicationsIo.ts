@@ -14,7 +14,7 @@ import {
  */
 
 const COLS =
-  'id, job_id, application_number, period_to, application_date, fields, contract_sum_to_date, total_completed_and_stored, retainage_pct, retainage_held, total_earned_less_retainage, current_payment_due, updated_at'
+  'id, job_id, application_number, period_to, application_date, fields, contract_sum_to_date, total_completed_and_stored, retainage_pct, retainage_held, total_earned_less_retainage, current_payment_due, files, updated_at'
 
 /** The number is already taken on this job (the table's unique rule). */
 export class PayApplicationNumberTaken extends Error {
