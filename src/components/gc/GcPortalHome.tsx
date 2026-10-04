@@ -65,7 +65,7 @@ export function GcPortalHome({
       onOpenProject(t.projectId, t.anchor)
       return
     }
-    if (t.key === 'msa' || t.key === 'coi' || t.key === 'w9') setPaperAsk({ line: t.key, n: (paperAsk?.n ?? 0) + 1 })
+    if (t.key === 'msa' || t.key === 'coi' || t.key === 'w9' || t.key === 'vet') setPaperAsk({ line: t.key, n: (paperAsk?.n ?? 0) + 1 })
     paperRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 

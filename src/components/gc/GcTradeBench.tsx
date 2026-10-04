@@ -27,6 +27,7 @@ import {
 import { CompanyLanguagePick } from './GcPortalLanguagePick'
 import { GcPartnersTab, PaperworkChips } from './GcOfficeTabs'
 import { Btn, Card, Chip, input, td, th, type Tone } from './gcUi'
+import { GcVetQueue, VettingChip } from './GcVetting'
 
 /**
  * GC mode design spike: trade partners grouped by trade. The question this answers is "if one
@@ -82,6 +83,8 @@ export function GcPartnersBoard(props: Props) {
   }
   return (
     <div>
+      {/* Companies new to us wait here for a decision before any award (question 3). */}
+      <GcVetQueue state={props.state} dispatch={props.dispatch} />
       <div role="group" aria-label="Group trade partners" style={{ display: 'flex', gap: '0.35rem', marginBottom: '0.6rem' }}>
         {pill('trade', 'By trade')}
         {pill('all', 'All companies')}
@@ -212,6 +215,8 @@ function BenchCard({
   const [contact, setContact] = useState('')
   const [base, setBase] = useState('')
   const [maxMiles, setMaxMiles] = useState('')
+  // A company we add is new to us unless we say we know them (question 3): it quotes, then waits for approval.
+  const [knownToUs, setKnownToUs] = useState(false)
   const setAdding = onAdding
 
   return (
@@ -238,6 +243,10 @@ function BenchCard({
           <input autoFocus style={{ ...input, flex: '1 1 14rem' }} placeholder="Company name" value={company} onChange={(e) => setCompany(e.target.value)} />
           <input style={{ ...input, flex: '1 1 12rem' }} placeholder="Who to call" value={contact} onChange={(e) => setContact(e.target.value)} />
           <CoverageFields base={base} maxMiles={maxMiles} onBase={setBase} onMaxMiles={setMaxMiles} />
+          <label style={{ fontSize: '0.85rem', display: 'inline-flex', gap: '0.3rem', alignItems: 'center' }} title="Leave it off for a company new to us. They can quote, and nothing is awarded to them until we approve them.">
+            <input type="checkbox" checked={knownToUs} onChange={(e) => setKnownToUs(e.target.checked)} />
+            We have worked with them
+          </label>
           <Btn
             kind="primary"
             disabled={company.trim() === ''}
@@ -249,7 +258,9 @@ function BenchCard({
                 trade: bench.trade,
                 base: base || null,
                 maxMiles: Number(maxMiles) > 0 ? Number(maxMiles) : null,
+                known: knownToUs,
               })
+              setKnownToUs(false)
               setCompany('')
               setContact('')
               setBase('')
@@ -425,7 +436,7 @@ function PartnerLine({ state, partner, bench, dispatch }: { state: GcState; part
   return (
     <tr>
       <td style={{ ...td, minWidth: '14rem' }}>
-        <strong>{partner.company}</strong>
+        <strong>{partner.company}</strong> <VettingChip partner={partner} />
         <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{partner.contact || 'no contact yet'}</div>
         {/* Portal lane: the company's language, for its portal and messages. */}
         <div>
