@@ -967,6 +967,52 @@ describe('interest on late bills, ours to choose per job', () => {
   })
 })
 
+describe('materials stored on site, from the trades’ pay applications (question 12)', () => {
+  const fairOaks = (state: GcState) => state.projects.find((p) => p.id === 'fairoaksd') as GcProject
+  const stored = () =>
+    gcReducer(initialGcState(), {
+      type: 'tradeSendPayApp',
+      projectId: 'fairoaksd',
+      packageId: 'fhvac',
+      toPct: { 'fhvac-2': 100 },
+      stored: { 'fhvac-1': 36_000 },
+      periodTo: '2026-10-02',
+      address: '1188 Culebra Rd, San Antonio, TX 78201',
+      license: '',
+      signedBy: 'Marco Ruiz',
+      signedTitle: 'Owner',
+    })
+  const r = (n: number) => Math.round(n)
+
+  it('rolls Cool Breeze’s stored rooftop units into its line, and the bill holds and asks on them', () => {
+    const before = ownerPayApp(initialGcState(), fairOaks(initialGcState()))
+    const state = stored()
+    const app = ownerPayApp(state, fairOaks(state))
+    const hvac = app.lines.find((l) => l.id === 'fhvac')
+    expect(r(hvac?.stored ?? 0)).toBe(36_000)
+    expect(r(app.stored)).toBe(36_000)
+    // Line 4 counts it, the owner holds 10% of it, and the rest is on this bill.
+    expect(r(app.retainage - before.retainage - (app.doneToDate - before.doneToDate) * 0.1)).toBe(3_600)
+    expect(ownerCarriedForward(app)).toBe(ownerCarriedForward(before))
+  })
+
+  it('goes on the 703 in column F, and the bill keeps it once sent', () => {
+    let state = stored()
+    const draft = ownerPayAppForm(state, fairOaks(state), 'draft')
+    const hvacRow = draft?.app.lines.find((l) => l.sovId === 'fhvac')
+    expect(r(hvacRow?.stored ?? 0)).toBe(r(ownerPayApp(state, fairOaks(state)).lines.find((l) => l.id === 'fhvac')?.stored ?? 0))
+    expect(r(draft?.app.totals.stored ?? 0)).toBe(36_000)
+    expect(r(draft?.app.summary.completedToDate ?? 0)).toBe(r(draft?.app.totals.toDate ?? 0))
+    state = gcReducer(state, { type: 'sendOwnerPayApp', projectId: 'fairoaksd' })
+    const apps = fairOaks(state).ownerBilling?.payApps ?? []
+    const sent = apps[apps.length - 1]
+    expect(r(sent?.storedByLine?.fhvac ?? 0)).toBe(36_000)
+    const form = sent && ownerPayAppForm(state, fairOaks(state), sent.number)
+    expect(r(form?.app.totals.stored ?? 0)).toBe(36_000)
+    expect(r(sent?.workToDate ?? 0)).toBe(r(form?.app.totals.toDate ?? 0))
+  })
+})
+
 describe('nextOwnerBillDay', () => {
   it('is the 25th of this month until it passes, then next month’s', () => {
     expect(nextOwnerBillDay('2026-10-02')).toBe('2026-10-25')
