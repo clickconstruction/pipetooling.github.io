@@ -46,6 +46,7 @@ import SettingsCompanyDocumentsSection from '../components/settings/SettingsComp
 import { useTestReportModalOptional } from '../contexts/TestReportModalContext'
 import { fetchJobWithDetailsById } from '../lib/fetchJobWithDetailsById'
 import { testReportDocumentChipColors, testReportDocumentRow, type TestReportDocumentRow, type TestReportDocumentRowSource } from '../lib/jobsDocuments/testReportDocumentRow'
+import { testReportPdfSignedUrl } from '../lib/jobs/testReportDocumentOpen'
 import { supplyInvoicePaidWordMatches } from '../lib/supplyInvoicePaidSearch'
 
 type LedgerEstimateRow = Tables<'estimates'> & {
@@ -506,8 +507,6 @@ type LedgerJobRow = Pick<
 }
 
 type DocumentsJobLedgerInvoiceRow = Tables<'jobs_ledger_invoices'>
-/** The private bucket the send function files test-report PDFs in (v2.3331: office reads via a storage policy). */
-const TEST_REPORT_BUCKET = 'job-test-reports'
 
 function jobLedgerCustomerLines(r: LedgerJobRow): { primary: string; secondary: string | null } {
   const cust = r.customers
@@ -820,9 +819,7 @@ function DocumentsJobsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
   const openTestReportDocument = async (jobId: string, tr: TestReportDocumentRow) => {
     if (tr.door.kind === 'pdf') {
       try {
-        const { data, error } = await supabase.storage.from(TEST_REPORT_BUCKET).createSignedUrl(tr.door.path, 300)
-        if (error || !data?.signedUrl) throw error ?? new Error('No link')
-        openInExternalBrowser(data.signedUrl)
+        openInExternalBrowser(await testReportPdfSignedUrl(tr.door.path))
       } catch (e) {
         showToast(formatErrorMessage(e, 'Could not open the report PDF'), 'error')
       }

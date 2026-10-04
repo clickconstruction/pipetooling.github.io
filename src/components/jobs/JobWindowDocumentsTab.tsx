@@ -7,11 +7,14 @@ import { type SavedPayApplication, carryMismatch } from '../../lib/aiaPayApplica
 import { loadPayApplications } from '../../lib/aiaPayApplicationsIo'
 import { jobDocumentFolderLinks } from '../../lib/jobs/jobDocumentsTab'
 import AiaG702G703Modal from './AiaG702G703Modal'
+import { JobDocumentsBills } from './JobDocumentsBills'
+import { JobDocumentsTestReports } from './JobDocumentsTestReports'
 
 /**
  * The job window's Documents tab (v2.4491): the job's pay applications, each with the link to the
- * file that was sent, and the job's folders. A row opens the AIA G702-G703 window on that
- * application; the window sits above the job window and the list reloads when it closes.
+ * file that was sent, then its bills and test reports (v2.4495), then the job's folders. A row
+ * opens the AIA G702-G703 window on that application; the window sits above the job window and
+ * the list reloads when it closes.
  */
 
 /** One step above the job window's overlay (1010) and its form's nested overlays. */
@@ -23,7 +26,7 @@ const num: CSSProperties = { textAlign: 'right', fontVariantNumeric: 'tabular-nu
 const heading: CSSProperties = { margin: 0, fontSize: '0.9375rem', fontWeight: 700, color: 'var(--text-strong)' }
 const quietButton: CSSProperties = { padding: '0.3rem 0.7rem', fontSize: '0.8125rem', borderRadius: 4, cursor: 'pointer', border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)' }
 
-export function JobWindowDocumentsTab({ job, onAiaOpenChange }: { job: JobWithDetails; onAiaOpenChange?: (open: boolean) => void }) {
+export function JobWindowDocumentsTab({ job, onOverlayOpenChange }: { job: JobWithDetails; onOverlayOpenChange?: (open: boolean) => void }) {
   const [apps, setApps] = useState<SavedPayApplication[] | null>(null)
   // null = closed; 'new' = a new application; a number = that saved application.
   const [aia, setAia] = useState<number | 'new' | null>(null)
@@ -44,11 +47,11 @@ export function JobWindowDocumentsTab({ job, onAiaOpenChange }: { job: JobWithDe
 
   const openAia = (which: number | 'new') => {
     setAia(which)
-    onAiaOpenChange?.(true)
+    onOverlayOpenChange?.(true)
   }
   const closeAia = () => {
     setAia(null)
-    onAiaOpenChange?.(false)
+    onOverlayOpenChange?.(false)
     reload()
   }
 
@@ -130,6 +133,10 @@ export function JobWindowDocumentsTab({ job, onAiaOpenChange }: { job: JobWithDe
           </>
         )}
       </section>
+
+      <JobDocumentsBills job={job} onOverlayOpenChange={onOverlayOpenChange} />
+
+      <JobDocumentsTestReports job={job} />
 
       <section aria-labelledby="job-documents-folders" style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
         <h3 id="job-documents-folders" style={heading}>
