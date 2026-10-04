@@ -1122,6 +1122,10 @@ describe('the pre-bid meeting in the portal', () => {
     const m = portalMessages(set, 'lonestar').find((x) => x.kind === 'preBid')
     expect(m?.subject).toBe('Boerne Retail Shell: pre-bid meeting Tue Oct 6, required to quote')
     expect(m?.lines.slice(1, 4)).toEqual(['You are invited to the pre-bid meeting for Boerne Retail Shell.', 'When: Tue Oct 6 at 10 AM.', 'Where: the site.'])
+    expect(m?.on).toBe(state.today)
+    // Moved a day later: the invitation is dated the day it moved.
+    const moved = gcReducer({ ...set, today: '2026-10-03' }, { type: 'schedulePreBid', projectId: 'boerne', on: '2026-10-07', at: '10:00', place: 'the site', host: 'architect', mandatory: true })
+    expect(portalMessages(moved, 'lonestar').find((x) => x.kind === 'preBid')?.on).toBe('2026-10-03')
   })
 
   it('says who came once it is held, and flags a required one missed in red', () => {

@@ -530,8 +530,8 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   Project lane's `preBid`): a block on the project page (when and where, who runs it, whether coming
   is required to quote, then "You came" or "You did not come"), Needs you before it (amber if
   required) and red after a required one it missed, and the invitation in Their messages, all in
-  the company's language ("10 a. m." in Spanish). The invitation reads as today's until the meeting
-  keeps the day it was set (`portalPreBid` in `gcPortal.ts`, `GcPortalPreBid.tsx`).
+  the company's language ("10 a. m." in Spanish). The invitation is dated the day the meeting was
+  set or last moved (`setOn`) (`portalPreBid` in `gcPortal.ts`, `GcPortalPreBid.tsx`).
 - **A trade sends its own schedule of values** (owner, 2026-10-04, question 4, on the Board lane's
   `gcTheirSov.ts`): the quote form's optional **Your schedule of values** starts as Rough-in, Top
   out, Trim (Spanish "Obra negra", "Antes de cerrar muros", "Acabados", for the native reader to

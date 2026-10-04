@@ -854,13 +854,13 @@ export function portalMessages(state: GcState, partnerId: string, language?: Por
     const won = mine.filter(({ pkg, invite }) => pkg.awardedInviteId === invite.id)
     const name = project.name
 
-    // The pre-bid meeting's invitation. The meeting keeps no day it was set, so it reads as today's until it does.
+    // The pre-bid meeting's invitation, dated the day the meeting was set or last moved (a move sends a new one).
     const pb = portalPreBid(state, project, partnerId, lang)
     if (pb && project.preBid) {
       const date = pWeekday(lang, pb.on)
       out.push({
         key: `${project.id}:prebid`,
-        on: state.today,
+        on: project.preBid.setOn ?? state.today,
         kind: 'preBid',
         projectId: project.id,
         subject: t(pb.mandatory ? 'mPreBidSubjectReq' : 'mPreBidSubject', { project: name, date }),
