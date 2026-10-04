@@ -93,7 +93,7 @@ makes; nobody builds it until he answers.
 6. ~~**A phone pass on the portal.** It is the screen trades use most on a phone.~~ done 0f89c3048 (every company, both languages; the bid tab scrolls in its own box until its table fits a 283px block)
 7. ~~**Notifications for the portal** (a new ask, a set that changed their trade, a promise passed),
    in the company's language.~~ done 59665d04d (README, the portal's events; question 29 on texts)
-8. **Tidy your lines in `README.md`.**
+8. ~~**Tidy your lines in `README.md`.**~~ done da16bfbda
 
 ## Owner Billing (GC 4)
 
