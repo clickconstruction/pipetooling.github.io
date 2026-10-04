@@ -1673,6 +1673,7 @@ exports[`GC mode golden walk > before any step 1`] = `
           "Pecan Valley Electric asked for draw 2. Their insurance expired Sep 15. Approve it once that is fixed.",
           "Pay application 1 is back with Summit Roofing. Waiting on a fixed one.",
           "No daily log for Wed Sep 30.",
+          "Submittal 07 62 00-01, Sheet metal and flashing, from Summit Roofing waits on us. It is needed today.",
         ],
         "center": "74%",
         "groups": [
@@ -7780,9 +7781,10 @@ exports[`GC mode golden walk > step 133: Guadalupe grinds the trip edge 1`] = `
     "projects.fairoaksd.stageProgress.also[5]": "Pecan Valley Electric asked for draw 2. Their insurance expired Sep 15. Approve it once that is fixed.",
     "projects.fairoaksd.stageProgress.also[6]": "Pay application 1 is back with Summit Roofing. Waiting on a fixed one.",
     "projects.fairoaksd.stageProgress.also[7]": "No daily log for Wed Sep 30.",
+    "projects.fairoaksd.stageProgress.also[8]": "Submittal 07 62 00-01, Sheet metal and flashing, from Summit Roofing waits on us. It is needed today.",
   },
   "removed": [
-    "projects.fairoaksd.stageProgress.also[8]",
+    "projects.fairoaksd.stageProgress.also[9]",
   ],
 }
 `;
@@ -7831,9 +7833,10 @@ exports[`GC mode golden walk > step 137: Accept the concrete work on Fair Oaks D
     "projects.fairoaksd.stageProgress.also[4]": "Pecan Valley Electric asked for draw 2. Their insurance expired Sep 15. Approve it once that is fixed.",
     "projects.fairoaksd.stageProgress.also[5]": "Pay application 1 is back with Summit Roofing. Waiting on a fixed one.",
     "projects.fairoaksd.stageProgress.also[6]": "No daily log for Wed Sep 30.",
+    "projects.fairoaksd.stageProgress.also[7]": "Submittal 07 62 00-01, Sheet metal and flashing, from Summit Roofing waits on us. It is needed today.",
   },
   "removed": [
-    "projects.fairoaksd.stageProgress.also[7]",
+    "projects.fairoaksd.stageProgress.also[8]",
   ],
 }
 `;
@@ -7900,10 +7903,92 @@ exports[`GC mode golden walk > step 143: Fair Oaks D: catch up Wednesday's log 1
   "changed": {
     "lastLog.id": 139,
     "lastLog.text": "Wrote the daily log for Wed Sep 30 on Fair Oaks Shops, Building D: 17 workers from 5 trades on site, 1 delay. Caught up after the day.",
+    "projects.fairoaksd.stageProgress.also[6]": "Submittal 07 62 00-01, Sheet metal and flashing, from Summit Roofing waits on us. It is needed today.",
+  },
+  "removed": [
+    "projects.fairoaksd.stageProgress.also[7]",
+  ],
+}
+`;
+
+exports[`GC mode golden walk > step 144: Fair Oaks D: send Summit's flashing drawings to the architect 1`] = `
+{
+  "changed": {
+    "lastLog.id": 140,
+    "lastLog.text": "Sent submittal 07 62 00-01, Sheet metal and flashing, to Marsh & Vale Architects.",
   },
   "removed": [
     "projects.fairoaksd.stageProgress.also[6]",
   ],
+}
+`;
+
+exports[`GC mode golden walk > step 145: The architect sends the flashing drawings back to revise 1`] = `
+{
+  "changed": {
+    "lastLog.id": 141,
+    "lastLog.text": "Marsh & Vale Architects sent it back to revise: submittal 07 62 00-01, Sheet metal and flashing. Show the cleat spacing at the coping.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 146: Summit sends the flashing drawings again 1`] = `
+{
+  "changed": {
+    "lastLog.id": 142,
+    "lastLog.text": "Summit Roofing sent submittal 07 62 00-01, Sheet metal and flashing, round 2.",
+    "lastLog.who": "trade",
+    "projects.fairoaksd.stageProgress.also[6]": "Submittal 07 62 00-01, Sheet metal and flashing, from Summit Roofing waits on us. It is needed today.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 147: Send the flashing drawings to the architect again 1`] = `
+{
+  "changed": {
+    "lastLog.id": 143,
+    "lastLog.text": "Sent submittal 07 62 00-01, Sheet metal and flashing, to Marsh & Vale Architects.",
+    "lastLog.who": "office",
+  },
+  "removed": [
+    "projects.fairoaksd.stageProgress.also[6]",
+  ],
+}
+`;
+
+exports[`GC mode golden walk > step 148: The architect approves the flashing drawings as noted 1`] = `
+{
+  "changed": {
+    "lastLog.id": 144,
+    "lastLog.text": "Marsh & Vale Architects approved it as noted: submittal 07 62 00-01, Sheet metal and flashing. Use 24 gauge at the corners.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 149: Fair Oaks D: ask Pecan Valley for the site lighting fixtures 1`] = `
+{
+  "changed": {
+    "lastLog.id": 145,
+    "lastLog.text": "Added submittal 26 56 00-01 on Electrical: Site lighting fixtures, product data.",
+    "projects.fairoaksd.stageProgress.also[6]": "Submittal 26 56 00-01, Site lighting fixtures, from Pecan Valley Electric is 4 days late. They have not sent it yet.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 150: Cool Breeze sends the controls drawings 1`] = `
+{
+  "changed": {
+    "lastLog.id": 146,
+    "lastLog.text": "Cool Breeze Mechanical sent submittal 23 09 23-01, Controls.",
+    "lastLog.who": "trade",
+    "projects.fairoaksd.stageProgress.also[6]": "Submittal 23 09 23-01, Controls, from Cool Breeze Mechanical waits on us. It is needed by Oct 23.",
+    "projects.fairoaksd.stageProgress.also[7]": "Submittal 26 56 00-01, Site lighting fixtures, from Pecan Valley Electric is 4 days late. They have not sent it yet.",
+  },
+  "removed": [],
 }
 `;
 
@@ -8107,6 +8192,41 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
+      "id": 146,
+      "text": "Cool Breeze Mechanical sent submittal 23 09 23-01, Controls.",
+      "who": "trade",
+    },
+    {
+      "id": 145,
+      "text": "Added submittal 26 56 00-01 on Electrical: Site lighting fixtures, product data.",
+      "who": "office",
+    },
+    {
+      "id": 144,
+      "text": "Marsh & Vale Architects approved it as noted: submittal 07 62 00-01, Sheet metal and flashing. Use 24 gauge at the corners.",
+      "who": "office",
+    },
+    {
+      "id": 143,
+      "text": "Sent submittal 07 62 00-01, Sheet metal and flashing, to Marsh & Vale Architects.",
+      "who": "office",
+    },
+    {
+      "id": 142,
+      "text": "Summit Roofing sent submittal 07 62 00-01, Sheet metal and flashing, round 2.",
+      "who": "trade",
+    },
+    {
+      "id": 141,
+      "text": "Marsh & Vale Architects sent it back to revise: submittal 07 62 00-01, Sheet metal and flashing. Show the cleat spacing at the coping.",
+      "who": "office",
+    },
+    {
+      "id": 140,
+      "text": "Sent submittal 07 62 00-01, Sheet metal and flashing, to Marsh & Vale Architects.",
+      "who": "office",
+    },
+    {
       "id": 139,
       "text": "Wrote the daily log for Wed Sep 30 on Fair Oaks Shops, Building D: 17 workers from 5 trades on site, 1 delay. Caught up after the day.",
       "who": "office",
@@ -8220,41 +8340,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "id": 117,
       "text": "Lonestar Earthworks asked about C-101: Is the drive-through lane concrete or asphalt?",
       "who": "trade",
-    },
-    {
-      "id": 116,
-      "text": "The rough-in inspection passed on Fair Oaks Shops, Building D. The Rough-in inspection milestone is met.",
-      "who": "office",
-    },
-    {
-      "id": 115,
-      "text": "Dr. Priya Raman paid pay application 2: $54,302.",
-      "who": "office",
-    },
-    {
-      "id": 114,
-      "text": "Studio Ocotillo certified pay application 2 for $54,302, $2,000 less than asked: Two operatory cabinets are not set yet.",
-      "who": "office",
-    },
-    {
-      "id": 113,
-      "text": "Sent pay application 2 to Dr. Priya Raman: $56,302 to pay, $15,061 held.",
-      "who": "office",
-    },
-    {
-      "id": 112,
-      "text": "Cedar & Pine Millwork reported Change order 3: Add a coffee bar cabinet in the break room, per A-501 at 50%.",
-      "who": "trade",
-    },
-    {
-      "id": 111,
-      "text": "Cedar & Pine Millwork signed change order 3 into their Millwork statement of work: $2,400.",
-      "who": "trade",
-    },
-    {
-      "id": 110,
-      "text": "Sent change order 3 to Cedar & Pine Millwork as a change to their Millwork statement of work: $2,400.",
-      "who": "office",
     },
   ],
   "partners": [
@@ -13265,6 +13350,184 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "stage": "building",
       "startDate": "2026-07-06",
       "startedOn": "2026-07-01",
+      "submittals": [
+        {
+          "askedOn": "2026-08-03",
+          "id": "fairoaksd-sub-1",
+          "kind": "product data",
+          "leadDays": 21,
+          "lineIds": [
+            "felec-2",
+          ],
+          "number": "26 24 16-01",
+          "packageId": "felec",
+          "rounds": [
+            {
+              "answer": "revise",
+              "answerNote": "Show the 22kA rating on each panel.",
+              "answeredOn": "2026-08-18",
+              "file": "PVE-panelboards.pdf",
+              "note": "",
+              "sentOn": "2026-08-10",
+              "toArchitectOn": "2026-08-11",
+            },
+            {
+              "answer": "approved as noted",
+              "answerNote": "Label the spare breakers.",
+              "answeredOn": "2026-09-08",
+              "file": "PVE-panelboards-r1.pdf",
+              "note": "Ratings added.",
+              "sentOn": "2026-08-28",
+              "toArchitectOn": "2026-08-29",
+            },
+          ],
+          "specSection": "26 24 16",
+          "title": "Panelboards",
+        },
+        {
+          "askedOn": "2026-09-01",
+          "id": "fairoaksd-sub-2",
+          "kind": "shop drawings",
+          "leadDays": 14,
+          "lineIds": [
+            "felec-4",
+          ],
+          "number": "28 31 11-01",
+          "packageId": "felec",
+          "rounds": [
+            {
+              "answer": null,
+              "answerNote": "",
+              "answeredOn": null,
+              "file": "PVE-fire-alarm.pdf",
+              "note": "Device layout and riser.",
+              "sentOn": "2026-09-29",
+              "toArchitectOn": "2026-09-30",
+            },
+          ],
+          "specSection": "28 31 11",
+          "title": "Fire alarm",
+        },
+        {
+          "askedOn": "2026-08-03",
+          "id": "fairoaksd-sub-3",
+          "kind": "product data",
+          "leadDays": 30,
+          "lineIds": [
+            "fhvac-1",
+          ],
+          "number": "23 81 19-01",
+          "packageId": "fhvac",
+          "rounds": [
+            {
+              "answer": "approved",
+              "answerNote": "",
+              "answeredOn": "2026-08-28",
+              "file": "CBM-RTU-submittal.pdf",
+              "note": "",
+              "sentOn": "2026-08-20",
+              "toArchitectOn": "2026-08-21",
+            },
+          ],
+          "specSection": "23 81 19",
+          "title": "Rooftop units",
+        },
+        {
+          "askedOn": "2026-09-15",
+          "id": "fairoaksd-sub-4",
+          "kind": "shop drawings",
+          "leadDays": 10,
+          "lineIds": [
+            "fhvac-3",
+          ],
+          "number": "23 09 23-01",
+          "packageId": "fhvac",
+          "rounds": [
+            {
+              "answer": null,
+              "answerNote": "",
+              "answeredOn": null,
+              "file": "CBM-controls.pdf",
+              "note": "Sequence of operations included.",
+              "sentOn": "2026-10-02",
+              "toArchitectOn": null,
+            },
+          ],
+          "specSection": "23 09 23",
+          "title": "Controls",
+        },
+        {
+          "askedOn": "2026-08-03",
+          "id": "fairoaksd-sub-5",
+          "kind": "samples",
+          "leadDays": 7,
+          "lineIds": [
+            "froof-1",
+          ],
+          "number": "07 54 23-01",
+          "packageId": "froof",
+          "rounds": [
+            {
+              "answer": "approved",
+              "answerNote": "",
+              "answeredOn": "2026-09-01",
+              "file": "Summit-TPO-samples",
+              "note": "Two samples sent by courier.",
+              "sentOn": "2026-08-25",
+              "toArchitectOn": "2026-08-26",
+            },
+          ],
+          "specSection": "07 54 23",
+          "title": "TPO membrane",
+        },
+        {
+          "askedOn": "2026-09-15",
+          "id": "fairoaksd-sub-6",
+          "kind": "shop drawings",
+          "leadDays": 10,
+          "lineIds": [
+            "froof-3",
+          ],
+          "number": "07 62 00-01",
+          "packageId": "froof",
+          "rounds": [
+            {
+              "answer": "revise",
+              "answerNote": "Show the cleat spacing at the coping.",
+              "answeredOn": "2026-10-02",
+              "file": "Summit-flashing.pdf",
+              "note": "Coping detail per A-501.",
+              "sentOn": "2026-10-01",
+              "toArchitectOn": "2026-10-02",
+            },
+            {
+              "answer": "approved as noted",
+              "answerNote": "Use 24 gauge at the corners.",
+              "answeredOn": "2026-10-02",
+              "file": "Summit-flashing-r1.pdf",
+              "note": "Cleat spacing added.",
+              "sentOn": "2026-10-02",
+              "toArchitectOn": "2026-10-02",
+            },
+          ],
+          "specSection": "07 62 00",
+          "title": "Sheet metal and flashing",
+        },
+        {
+          "askedOn": "2026-10-02",
+          "id": "fairoaksd-sub-7",
+          "kind": "product data",
+          "leadDays": 21,
+          "lineIds": [
+            "felec-5",
+          ],
+          "number": "26 56 00-01",
+          "packageId": "felec",
+          "rounds": [],
+          "specSection": "26 56 00",
+          "title": "Site lighting fixtures",
+        },
+      ],
       "team": [
         {
           "name": "Luis Ortega",

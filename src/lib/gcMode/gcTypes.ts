@@ -401,9 +401,51 @@ export interface GcProject {
   punch?: PunchItem[]
   /** The superintendent's daily log (Building lane, 2026-10-04): one per working day. Unset: none yet. */
   dailyLogs?: DailyLog[]
+  /** The submittal register (Building lane, 2026-10-04): what each trade sends for approval before its work. Unset: none yet. */
+  submittals?: Submittal[]
 }
 
 export type WeatherSky = 'clear' | 'cloudy' | 'rain' | 'storm' | 'wind'
+
+export type SubmittalKind = 'product data' | 'shop drawings' | 'samples'
+export type SubmittalAnswer = 'approved' | 'approved as noted' | 'revise'
+
+/** One time a trade sent a submittal, and what came of it. */
+export interface SubmittalRound {
+  sentOn: string
+  /** The file it sent, by name (the prototype keeps no files). */
+  file: string
+  note: string
+  /** The day we sent it to the architect. Null: with us. */
+  toArchitectOn: string | null
+  /** The day the architect answered. Null: not yet. */
+  answeredOn: string | null
+  answer: SubmittalAnswer | null
+  answerNote: string
+}
+
+/**
+ * A submittal (owner, 2026-10-04): product data, shop drawings or samples a trade sends for the
+ * architect's approval before its work. It holds the schedule lines it covers until approved, and
+ * is needed by the first of their starts less the days to get it on site.
+ */
+export interface Submittal {
+  id: string
+  /** Its number in the register: the spec section and a count, "26 24 16-01". */
+  number: string
+  packageId: string
+  title: string
+  kind: SubmittalKind
+  specSection?: string
+  /** The schedule lines (activities) it holds until approved. */
+  lineIds: string[]
+  /** Days from approval to the material on site: ordering, making, shipping. */
+  leadDays: number
+  /** When no line it holds is on the schedule: the day it is needed approved by. */
+  neededBy?: string
+  askedOn: string
+  rounds: SubmittalRound[]
+}
 
 /**
  * The superintendent's daily log for one day on the job (owner, 2026-10-04): the weather, who
@@ -686,6 +728,24 @@ export type GcAction =
   | { type: 'takeAlternate'; projectId: string; packageId: string; inviteId: string; label: string; taken: boolean }
   /** Our superintendent writes the daily log for a day (today, or a day missed); it replaces that day's. */
   | { type: 'saveDailyLog'; projectId: string; log: Omit<DailyLog, 'writtenOn'> }
+  /** The office adds a submittal to a trade's register. */
+  | {
+      type: 'addSubmittal'
+      projectId: string
+      packageId: string
+      title: string
+      kind: SubmittalKind
+      specSection?: string
+      lineIds: string[]
+      leadDays: number
+      neededBy?: string
+    }
+  /** The trade sends a submittal from its portal (or again, after a revise). */
+  | { type: 'tradeSendSubmittal'; projectId: string; submittalId: string; file: string; note: string }
+  /** We have looked at it and send it to the architect. */
+  | { type: 'sendSubmittalToArchitect'; projectId: string; submittalId: string }
+  /** We record the architect's answer: approved, approved as noted, or revise and resubmit. */
+  | { type: 'answerSubmittal'; projectId: string; submittalId: string; answer: SubmittalAnswer; note: string }
 
 /** One trade on a new project, as the office left it in the New project window. */
 export interface NewTradeDraft {

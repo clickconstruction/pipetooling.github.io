@@ -518,6 +518,29 @@ const STEPS: Step[] = [
       },
     },
   },
+  // Submittals (Building lane): Summit's flashing drawings, a revise round, approved; a new one asked; the controls sent.
+  { label: "Fair Oaks D: send Summit's flashing drawings to the architect", action: { type: 'sendSubmittalToArchitect', projectId: 'fairoaksd', submittalId: 'fairoaksd-sub-6' } },
+  {
+    label: 'The architect sends the flashing drawings back to revise',
+    action: { type: 'answerSubmittal', projectId: 'fairoaksd', submittalId: 'fairoaksd-sub-6', answer: 'revise', note: 'Show the cleat spacing at the coping.' },
+  },
+  {
+    label: 'Summit sends the flashing drawings again',
+    action: { type: 'tradeSendSubmittal', projectId: 'fairoaksd', submittalId: 'fairoaksd-sub-6', file: 'Summit-flashing-r1.pdf', note: 'Cleat spacing added.' },
+  },
+  { label: 'Send the flashing drawings to the architect again', action: { type: 'sendSubmittalToArchitect', projectId: 'fairoaksd', submittalId: 'fairoaksd-sub-6' } },
+  {
+    label: 'The architect approves the flashing drawings as noted',
+    action: { type: 'answerSubmittal', projectId: 'fairoaksd', submittalId: 'fairoaksd-sub-6', answer: 'approved as noted', note: 'Use 24 gauge at the corners.' },
+  },
+  {
+    label: 'Fair Oaks D: ask Pecan Valley for the site lighting fixtures',
+    action: { type: 'addSubmittal', projectId: 'fairoaksd', packageId: 'felec', title: 'Site lighting fixtures', kind: 'product data', specSection: '26 56 00', lineIds: ['felec-5'], leadDays: 21 },
+  },
+  {
+    label: 'Cool Breeze sends the controls drawings',
+    action: { type: 'tradeSendSubmittal', projectId: 'fairoaksd', submittalId: 'fairoaksd-sub-4', file: 'CBM-controls.pdf', note: 'Sequence of operations included.' },
+  },
 ]
 
 const CUSTOMER_IDS = ['cibolo', 'raman']
@@ -658,6 +681,7 @@ describe('GC mode golden walk', () => {
       'addPunchItem', 'tradeFixPunchItem', 'checkPunchItem',
       'failInspection',
       'saveDailyLog',
+      'addSubmittal', 'tradeSendSubmittal', 'sendSubmittalToArchitect', 'answerSubmittal',
       'tradeOpenPortal',
       'tradeAnswerLines',
       'priceOwnBid',
