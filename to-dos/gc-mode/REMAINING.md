@@ -114,7 +114,7 @@ makes; nobody builds it until he answers.
     (group the board by customer), 12 (pay application extras and its file), 14 (do alternates
     change our number; does a quote that ran out stop counting).
 15. **The Portal lane's lost-bid portal:** OK to commit?
-22. **The Spanish:** who reads it?
+22. ~~**The Spanish:** who reads it?~~ Answered 2026-10-03: someone the owner names reviews it when GC mode goes to production; nothing to do before then. The list is ready in `PORTAL_SPANISH.md` (*For a native speaker to read*).
 
 ## Everyone
 
