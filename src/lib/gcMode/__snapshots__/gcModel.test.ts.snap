@@ -8541,6 +8541,88 @@ exports[`GC mode golden walk > step 162: Cool Breeze asks for pay application 2,
 }
 `;
 
+exports[`GC mode golden walk > step 163: Pecan Valley promises the site lighting submittal by Tue Oct 6 1`] = `
+{
+  "changed": {
+    "lastLog.id": 159,
+    "lastLog.text": "Pecan Valley Electric promised their submittals on Fair Oaks Shops, Building D by Tue Oct 6.",
+    "lastLog.who": "office",
+    "tradePromises[2].id": "tp-3",
+    "tradePromises[2].words": "Promised their submittals by Tue Oct 6, in 4 days.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 164: Pecan Valley sends the site lighting fixtures, which keeps it 1`] = `
+{
+  "changed": {
+    "lastLog.id": 160,
+    "lastLog.text": "Pecan Valley Electric sent submittal 26 56 00-01, Site lighting fixtures.",
+    "lastLog.who": "trade",
+    "projects.fairoaksd.stageProgress.also[8]": "Submittal 26 56 00-01, Site lighting fixtures, from Pecan Valley Electric is 4 days late. It waits on us.",
+    "tradePromises[2].words": "Kept their word: their submittals came by Tue Oct 6.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 165: Pecan Valley promises the unconditional waiver on draw 1 by Wed Oct 7 1`] = `
+{
+  "changed": {
+    "lastLog.id": 161,
+    "lastLog.text": "Pecan Valley Electric promised the unconditional waiver on draw 1 on Fair Oaks Shops, Building D by Wed Oct 7.",
+    "lastLog.who": "office",
+    "tradePromises[3].id": "tp-4",
+    "tradePromises[3].words": "Promised the unconditional waiver on draw 1 by Wed Oct 7, in 5 days.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 166: Pecan Valley signs it, which keeps it 1`] = `
+{
+  "changed": {
+    "lastLog.id": 162,
+    "lastLog.text": "Pecan Valley Electric signed the unconditional waiver for draw 1.",
+    "lastLog.who": "trade",
+    "projects.fairoaksd.stageProgress.also[3]": "Pecan Valley Electric asked for draw 2. Their insurance expired Sep 15. Approve it once that is fixed.",
+    "projects.fairoaksd.stageProgress.also[4]": "Pay application 1 is back with Summit Roofing. Waiting on a fixed one.",
+    "projects.fairoaksd.stageProgress.also[5]": "Cool Breeze Mechanical asked for draw 2. Approve it.",
+    "projects.fairoaksd.stageProgress.also[6]": "Submittal 23 09 23-01, Controls, from Cool Breeze Mechanical waits on us. It is needed by Oct 23.",
+    "projects.fairoaksd.stageProgress.also[7]": "Submittal 26 56 00-01, Site lighting fixtures, from Pecan Valley Electric is 4 days late. It waits on us.",
+    "tradePromises[3].words": "Kept their word: the unconditional waiver on draw 1 came by Wed Oct 7.",
+  },
+  "removed": [
+    "projects.fairoaksd.stageProgress.also[8]",
+  ],
+}
+`;
+
+exports[`GC mode golden walk > step 167: Summit promises the coping metal by Thu Oct 8 1`] = `
+{
+  "changed": {
+    "lastLog.id": 163,
+    "lastLog.text": "Summit Roofing promised the coping metal on Fair Oaks Shops, Building D by Thu Oct 8.",
+    "lastLog.who": "office",
+    "tradePromises[4].id": "tp-5",
+    "tradePromises[4].words": "Promised the coping metal by Thu Oct 8, in 6 days.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 168: The coping metal comes and the office marks it kept 1`] = `
+{
+  "changed": {
+    "lastLog.id": 164,
+    "lastLog.text": "Summit Roofing: the coping metal came. Marked kept.",
+    "tradePromises[4].words": "Kept their word: the coping metal came by Thu Oct 8.",
+  },
+  "removed": [],
+}
+`;
+
 exports[`GC mode golden walk > the whole state at the end 1`] = `
 {
   "customers": [
@@ -8741,6 +8823,36 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
+      "id": 164,
+      "text": "Summit Roofing: the coping metal came. Marked kept.",
+      "who": "office",
+    },
+    {
+      "id": 163,
+      "text": "Summit Roofing promised the coping metal on Fair Oaks Shops, Building D by Thu Oct 8.",
+      "who": "office",
+    },
+    {
+      "id": 162,
+      "text": "Pecan Valley Electric signed the unconditional waiver for draw 1.",
+      "who": "trade",
+    },
+    {
+      "id": 161,
+      "text": "Pecan Valley Electric promised the unconditional waiver on draw 1 on Fair Oaks Shops, Building D by Wed Oct 7.",
+      "who": "office",
+    },
+    {
+      "id": 160,
+      "text": "Pecan Valley Electric sent submittal 26 56 00-01, Site lighting fixtures.",
+      "who": "trade",
+    },
+    {
+      "id": 159,
+      "text": "Pecan Valley Electric promised their submittals on Fair Oaks Shops, Building D by Tue Oct 6.",
+      "who": "office",
+    },
+    {
       "id": 158,
       "text": "Cool Breeze Mechanical sent pay application 2 on HVAC: $57,600, with a conditional waiver signed.",
       "who": "trade",
@@ -8859,36 +8971,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "id": 135,
       "text": "The electrical service inspection failed on Fair Oaks Shops, Building D: The jumper is in. The service disconnect label is still missing. It was Electrical's work. Re-inspection Tue Oct 6.",
       "who": "office",
-    },
-    {
-      "id": 134,
-      "text": "Issued Addendum 1 on Leon Springs Urgent Care and emailed 0 companies. 0 were told it changes their trade. It adds 1 scope line.",
-      "who": "office",
-    },
-    {
-      "id": 133,
-      "text": "Accepted the Concrete work from Guadalupe Flatwork. The punch list is done.",
-      "who": "office",
-    },
-    {
-      "id": 132,
-      "text": "Our superintendent checked a punch item on Concrete: Grind the trip edge at the sidewalk joint. It is fixed.",
-      "who": "office",
-    },
-    {
-      "id": 131,
-      "text": "Our superintendent checked a punch item on Concrete: Seal the control joints in the stockroom slab. It is fixed.",
-      "who": "office",
-    },
-    {
-      "id": 130,
-      "text": "Our superintendent checked a punch item on Concrete: Patch the spalled corner on the column footing. It is fixed.",
-      "who": "office",
-    },
-    {
-      "id": 129,
-      "text": "Guadalupe Flatwork fixed a punch item on Concrete: Grind the trip edge at the sidewalk joint.",
-      "who": "trade",
     },
   ],
   "partners": [
@@ -12886,7 +12968,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
                 "requestedOn": "2026-08-20",
                 "retainage": 8900,
                 "status": "paid",
-                "waiver": "conditional",
+                "waiver": "unconditional",
               },
               {
                 "gross": 45000,
@@ -14177,7 +14259,17 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
           ],
           "number": "26 56 00-01",
           "packageId": "felec",
-          "rounds": [],
+          "rounds": [
+            {
+              "answer": null,
+              "answerNote": "",
+              "answeredOn": null,
+              "file": "PVE-site-lighting.pdf",
+              "note": "",
+              "sentOn": "2026-10-02",
+              "toArchitectOn": null,
+            },
+          ],
           "specSection": "26 56 00",
           "title": "Site lighting fixtures",
         },
@@ -15089,6 +15181,42 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "madeOn": "2026-10-02",
       "partnerId": "tejas",
       "what": "a signed W-9",
+    },
+    {
+      "by": "2026-10-06",
+      "from": "office",
+      "id": "tp-3",
+      "keptOn": "2026-10-02",
+      "kind": "submittals",
+      "madeOn": "2026-10-02",
+      "packageId": "felec",
+      "partnerId": "pecanvalley",
+      "projectId": "fairoaksd",
+      "what": "their submittals",
+    },
+    {
+      "by": "2026-10-07",
+      "from": "office",
+      "id": "tp-4",
+      "keptOn": "2026-10-02",
+      "kind": "closeout",
+      "madeOn": "2026-10-02",
+      "packageId": "felec",
+      "partnerId": "pecanvalley",
+      "projectId": "fairoaksd",
+      "what": "the unconditional waiver on draw 1",
+    },
+    {
+      "by": "2026-10-08",
+      "from": "office",
+      "id": "tp-5",
+      "keptOn": "2026-10-02",
+      "kind": "delivery",
+      "madeOn": "2026-10-02",
+      "packageId": "froof",
+      "partnerId": "summit",
+      "projectId": "fairoaksd",
+      "what": "the coping metal",
     },
   ],
 }

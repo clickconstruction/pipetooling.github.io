@@ -598,6 +598,25 @@ const STEPS: Step[] = [
       signedTitle: 'Owner',
     },
   },
+  // Building's promises (question 8): each kept by the trade's own move; a delivery the office marks.
+  {
+    label: 'Pecan Valley promises the site lighting submittal by Tue Oct 6',
+    action: { type: 'recordPromise', partnerId: 'pecanvalley', kind: 'submittals', projectId: 'fairoaksd', packageId: 'felec', by: '2026-10-06', from: 'office' },
+  },
+  {
+    label: 'Pecan Valley sends the site lighting fixtures, which keeps it',
+    action: { type: 'tradeSendSubmittal', projectId: 'fairoaksd', submittalId: 'fairoaksd-sub-7', file: 'PVE-site-lighting.pdf', note: '' },
+  },
+  {
+    label: 'Pecan Valley promises the unconditional waiver on draw 1 by Wed Oct 7',
+    action: { type: 'recordPromise', partnerId: 'pecanvalley', kind: 'closeout', projectId: 'fairoaksd', packageId: 'felec', by: '2026-10-07', from: 'office', what: 'the unconditional waiver on draw 1' },
+  },
+  { label: 'Pecan Valley signs it, which keeps it', action: { type: 'tradeSignUnconditional', projectId: 'fairoaksd', packageId: 'felec', drawId: 'felec-draw-1' } },
+  {
+    label: 'Summit promises the coping metal by Thu Oct 8',
+    action: { type: 'recordPromise', partnerId: 'summit', kind: 'delivery', projectId: 'fairoaksd', packageId: 'froof', by: '2026-10-08', from: 'office', what: 'the coping metal' },
+  },
+  { label: 'The coping metal comes and the office marks it kept', action: { type: 'keepPromise', id: 'tp-5' } },
 ]
 
 const CUSTOMER_IDS = ['cibolo', 'raman']
