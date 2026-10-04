@@ -8,6 +8,7 @@ import {
   answeredNotInSet,
   openQuestions,
   changeOrderFromSet,
+  changeOrderTakingTheDays,
   changeOrderPrice,
   defaultSetKind,
   guessLineSheets,
@@ -337,19 +338,28 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
           ...project.packages.filter((p) => touches.includes(p.id)).map((p) => ({ id: p.id, trade: p.trade, brought: false })),
           ...packagesFromDrafts(project.id, broughtDrafts, project.packages.map((p) => p.id)).map((p) => ({ id: p.id, trade: p.trade, brought: true })),
         ]
-  const coRows = coTrades.map((t) => {
+  const coBase = coTrades.map((t) => {
     const lines = newLines[t.id] ?? []
     const pushed = reached.some((a) => a.packageId === t.id && (pushes[a.lineId] ?? 0) > 0)
-    const start = changeOrderFromSet({ label, note, sheets, specs: specIds }, t.trade, t.brought ? [t.trade] : lines, pushed ? endDays : 0)
     const cost = Math.round(Number((coCost[t.id] ?? '').replace(/[^0-9.-]/g, '')) || 0)
+    const start = changeOrderFromSet({ label, note, sheets, specs: specIds }, t.trade, t.brought ? [t.trade] : lines, 0)
     return {
       ...t,
+      lines,
+      // The trade's own work is why the job takes longer: a pushed activity, or new work on the schedule.
+      cause: pushed || (schedule !== null && (t.brought || lines.length > 0)),
       on: coOn[t.id] ?? (t.brought || lines.length > 0 || pushed),
       description: coText[t.id] ?? start.description,
-      schedule: start.schedule,
       cost,
       price: cost !== 0 ? changeOrderPrice(project, cost) : 0,
     }
+  })
+  // The days the set adds ride on one change order, the first one going out whose trade caused them,
+  // so the signed change orders' days add up to the job's (Owner Billing sums them).
+  const timeOn = changeOrderTakingTheDays(coBase, endDays)
+  const coRows = coBase.map((r) => {
+    const time = changeOrderFromSet({ label, note, sheets, specs: specIds }, r.trade, r.brought ? [r.trade] : r.lines, r.id === timeOn ? endDays : 0)
+    return { ...r, schedule: time.schedule, days: time.days }
   })
   const coDrafted = coRows.filter((r) => r.on && r.cost !== 0 && r.description.trim() !== '')
   const answers = answeredNotInSet(project)
@@ -1131,7 +1141,17 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
               })
               // Each change order is Owner Billing's own draft, so it reads on Bill the owner as theirs do.
               for (const r of coDrafted) {
-                dispatch({ type: 'draftChangeOrder', projectId: project.id, description: r.description.trim(), reason: 'plans', schedule: r.schedule, packageId: r.id, cost: r.cost, price: 0 })
+                dispatch({
+                  type: 'draftChangeOrder',
+                  projectId: project.id,
+                  description: r.description.trim(),
+                  reason: 'plans',
+                  schedule: r.schedule,
+                  packageId: r.id,
+                  cost: r.cost,
+                  price: 0,
+                  ...(r.days > 0 ? { days: r.days } : {}),
+                })
               }
               onClose()
             }}

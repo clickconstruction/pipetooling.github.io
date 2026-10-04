@@ -17,6 +17,7 @@ import {
   budgetFromSize,
   buildNewProject,
   changeOrderFromSet,
+  changeOrderTakingTheDays,
   defaultAsks,
   lineStage,
   ownBidPriced,
@@ -372,6 +373,27 @@ describe('the schedule\'s first draft', () => {
   })
 })
 
+describe('changeOrderTakingTheDays', () => {
+  const row = (id: string, over: Partial<{ on: boolean; cost: number; description: string; cause: boolean }> = {}) => ({
+    id,
+    on: true,
+    cost: 4_000,
+    description: 'Bulletin 2, Electrical: data drops',
+    cause: true,
+    ...over,
+  })
+
+  it('puts the days on one change order, the first going out whose trade caused them', () => {
+    expect(changeOrderTakingTheDays([row('a', { cause: false }), row('b'), row('c')], 5)).toBe('b')
+    expect(changeOrderTakingTheDays([row('a', { cost: 0 }), row('b', { on: false }), row('c')], 5)).toBe('c')
+  })
+
+  it('puts them on none when the set adds no days, or nothing caused by it goes out', () => {
+    expect(changeOrderTakingTheDays([row('a')], 0)).toBeNull()
+    expect(changeOrderTakingTheDays([row('a', { cause: false }), row('b', { description: '  ' })], 5)).toBeNull()
+  })
+})
+
 describe('changeOrderFromSet', () => {
   const set = { label: 'Bulletin 2', note: 'Data drops added at each operatory. E-102 changed.', sheets: ['E-102'] }
 
@@ -379,6 +401,7 @@ describe('changeOrderFromSet', () => {
     expect(changeOrderFromSet(set, 'Electrical', [], 3)).toEqual({
       description: 'Bulletin 2, Electrical: data drops added at each operatory, per E-102',
       schedule: '+3 days',
+      days: 3,
     })
   })
 
@@ -386,6 +409,7 @@ describe('changeOrderFromSet', () => {
     expect(changeOrderFromSet({ ...set, sheets: ['C-101', 'C-201'] }, 'Sitework', ['Detention pond', 'Riprap'], 0)).toEqual({
       description: 'Bulletin 2, Sitework: adds detention pond and riprap, per C-101 and C-201',
       schedule: 'none',
+      days: 0,
     })
     expect(changeOrderFromSet(set, 'Electrical', [], 1).schedule).toBe('+1 day')
   })

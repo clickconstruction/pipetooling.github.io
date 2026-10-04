@@ -806,14 +806,15 @@ function wordsAnd(words: string[]): string {
  * The words a change order to the owner starts with when a set of plans changes a trade on a job
  * we have won: what the set does to the trade, "per" its sheets, and the time it adds to the job.
  * No closing full stop: Owner Billing adds it. The office types the cost; Owner Billing's draft
- * adds our fee for the price (reason 'plans', price 0, its `changeOrderPrice`).
+ * adds our fee for the price (reason 'plans', price 0, its `changeOrderPrice`). `days`: the time as
+ * a number, for draftChangeOrder's `days`, so signed change orders add up.
  */
 export function changeOrderFromSet(
   set: { label: string; note: string; sheets: string[]; specs?: string[] },
   trade: string,
   addedLines: string[],
   jobDays: number,
-): { description: string; schedule: string } {
+): { description: string; schedule: string; days: number } {
   // The note's first sentence, without a sheet number at its head ("E-201: the tenant…"): "per" names the sheets.
   const firstSentence = (set.note.trim().split(/(?<=[.!?])\s+/)[0] ?? '')
     .replace(/[.!?]+$/, '')
@@ -828,7 +829,21 @@ export function changeOrderFromSet(
   return {
     description: `${set.label}, ${trade}: ${what || 'the changes in the set'}${sheets}`,
     schedule: jobDays > 0 ? `+${jobDays} ${jobDays === 1 ? 'day' : 'days'}` : 'none',
+    days: jobDays > 0 ? Math.round(jobDays) : 0,
   }
+}
+
+/**
+ * Which of a set's change orders carries the days it adds to the job: the first one going out
+ * (ticked, with a cost and words) whose trade caused them. One only, so the signed change orders'
+ * days add up to the job's. Null: no days, or no change order to carry them.
+ */
+export function changeOrderTakingTheDays(
+  rows: { id: string; on: boolean; cost: number; description: string; cause: boolean }[],
+  jobDays: number,
+): string | null {
+  if (jobDays <= 0) return null
+  return rows.find((r) => r.on && r.cost !== 0 && r.description.trim() !== '' && r.cause)?.id ?? null
 }
 
 // ---------------------------------------------------------------------------------------------
