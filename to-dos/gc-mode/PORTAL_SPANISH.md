@@ -252,7 +252,7 @@ they were written in. The portal does not translate them.
 | Billed {amount} to date: {where}. | Cobrado {amount} a la fecha: {where}. |
 | through {list} | completo hasta {list} |
 | {pct}% into {label} | {pct}% de {label} |
-| Not in your scope | Fuera de su alcance |
+| Known exclusions | Exclusiones conocidas |
 | Leave these out of your quote. Someone else does them. | No los incluya en su cotización. Otra persona los hace. |
 | {what} ({who} does it) | {what} (lo hace {who}) |
 | the owner | el dueño |
@@ -633,7 +633,7 @@ they were written in. The portal does not translate them.
 | We would like your quote for {trade} on {project}. | Nos gustaría recibir su cotización de {trade} para {project}. |
 | Your quote is due {date}. | Su cotización vence el {date}. |
 | Plans to price: {label}, issued {date}. | Planos para cotizar: {label}, emitidos el {date}. |
-| Leave these out. Someone else does them: | No incluya esto. Otra persona lo hace: |
+| Known exclusions. Leave these out, someone else does them: | Exclusiones conocidas. No las incluya, otra persona las hace: |
 | Your quote should cover these lines. | Su cotización debe incluir estas partidas. |
 |  by {date} |  a más tardar el {date} |
 | A reminder: {about} | Recordatorio: {about} |
@@ -832,8 +832,8 @@ they were written in. The portal does not translate them.
 | It opens once {gc} accepts your work. | Se abre cuando {gc} acepte su trabajo. |
 | {gc} paid your retainage. | {gc} le pagó su retención. |
 | {gc} approved it. Payment is coming. | {gc} la aprobó. El pago viene en camino. |
-| {gc} pays your retainage {date}, {days} days after the owner paid {gc}. | {gc} le paga su retención el {date}, {days} días después de que el dueño le pagó a {gc}. |
-| {gc} pays your retainage {days} days after the owner pays {gc} its own. | {gc} le paga su retención {days} días después de que el dueño le pague a {gc} la suya. |
+| {gc} pays your retainage {date}, {days} days after the customer paid {gc}. | {gc} le paga su retención el {date}, {days} días después de que el cliente le pagó a {gc}. |
+| {gc} pays your retainage {days} days after the customer pays {gc} its own. | {gc} le paga su retención {days} días después de que el cliente le pague a {gc} la suya. |
 | Sign the unconditional final release of lien below. | Firme abajo su liberación final de gravamen incondicional. |
 | Last, you sign the unconditional final release of lien. | Al final, firme su liberación final de gravamen incondicional. |
 
@@ -1026,13 +1026,13 @@ they were written in. The portal does not translate them.
 
 | English | Español |
 |---|---|
-| Click sent its bid. The owner has not picked a builder yet. | Click envió su propuesta. El dueño todavía no elige constructor. |
-| Click sent its bid on Oct 2. The owner has not picked a builder yet. | Click envió su propuesta el 2 oct. El dueño todavía no elige constructor. |
+| Click sent its bid. The customer has not picked a builder yet. | Click envió su propuesta. El cliente todavía no elige constructor. |
+| Click sent its bid on Oct 2. The customer has not picked a builder yet. | Click envió su propuesta el 2 oct. El cliente todavía no elige constructor. |
 | Click won the project. This trade is not awarded yet. | Click ganó el proyecto. Esta especialidad todavía no se adjudica. |
 | Click won the project. This trade is yours. | Click ganó el proyecto. Esta especialidad es suya. |
 | Click won the project. This trade went to another company. | Click ganó el proyecto. Esta especialidad fue para otra empresa. |
 | Click did not win this project. Thank you for your quote. | Click no ganó este proyecto. Gracias por su cotización. |
-| The owner stopped this project or put it on hold. Thank you for your quote. | El dueño detuvo este proyecto o lo puso en pausa. Gracias por su cotización. |
+| The customer stopped this project or put it on hold. Thank you for your quote. | El cliente detuvo este proyecto o lo puso en pausa. Gracias por su cotización. |
 
 #### The table
 
