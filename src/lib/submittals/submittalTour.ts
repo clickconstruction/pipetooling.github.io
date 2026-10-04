@@ -15,7 +15,44 @@ import type { SpotlightTourStep } from '../../components/SpotlightTour'
 
 export const SUBMITTAL_GUIDE_HREF = '/help?g=build-a-submittal-package'
 
+/**
+ * The words this page uses (2026-10-04, the owner: "a terminology page at the start … where we
+ * explain what cut sheets and other representative words are"). The walkthrough opens on it, and
+ * *Words on this page* beside the title's ? opens it alone. Each meaning is one or two plain
+ * sentences; the stops after it still explain a trade word the first time they use it.
+ */
+export const SUBMITTAL_WORDS: ReadonlyArray<{ word: string; means: string }> = [
+  { word: 'Submittal', means: 'The list of products you plan to install. The GC approves it before you order.' },
+  { word: 'GC', means: 'The general contractor. Their architect or designer may answer for them.' },
+  { word: 'Tag', means: 'The plan’s name for a fixture, like WC-1.' },
+  { word: 'Schedule', means: 'The table on the plans. It lists each tag and the product the plans ask for.' },
+  { word: 'Cut sheet', means: 'The maker’s page for one product. It shows the model and its details.' },
+  { word: 'Vendor PDF', means: 'The supply house’s file of cut sheets.' },
+  { word: 'Rev', means: 'A version of the submittal. Rev 1 is the first version.' },
+  { word: 'Package', means: 'One PDF for the GC. It has a cover table, then the cut sheets.' },
+  { word: 'GC sees it', means: 'The GC approves it. Then you order it.' },
+  { word: 'Order only', means: 'You buy it. The GC never sees it.' },
+  { word: 'Left out', means: 'Not on the submittal and not ordered.' },
+  { word: 'Proposed', means: 'A row built from your takeoff. No schedule was there to check it against.' },
+  { word: 'Their answer', means: 'What the GC said about a row: Approved, Revise or Rejected.' },
+  { word: 'Lead time', means: 'How long the supply house needs to deliver.' },
+  { word: 'Order log', means: 'The list of every part to buy, with its order date.' },
+]
+
+/** The terms page: the walkthrough's first stop, and the whole of *Words on this page*. */
+export const SUBMITTAL_WORDS_STOP: SpotlightTourStep = {
+  anchor: 'submittals-words',
+  title: 'The words on this page',
+  body: 'These are the words this page uses. Read them once. Tap Next to see the steps.',
+  center: true,
+  terms: SUBMITTAL_WORDS,
+}
+
+/** The same page opened alone from *Words on this page*: there is no next stop to point at. */
+export const SUBMITTAL_WORDS_ONLY_STOP: SpotlightTourStep = { ...SUBMITTAL_WORDS_STOP, body: 'These are the words this page uses. Tap Done when you have read them.' }
+
 export const SUBMITTAL_TOUR_STEPS: SpotlightTourStep[] = [
+  SUBMITTAL_WORDS_STOP,
   {
     anchor: 'submittals-journey',
     title: 'Where you are',

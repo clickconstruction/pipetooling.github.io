@@ -37,7 +37,7 @@ import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling
 import { procurementItemsFrom } from '../../lib/submittals/procurementLogIo'
 import type { ProcurementItemSource } from '../../lib/submittals/procurementLog'
 import { submittalJourney, type JourneyAction, type JourneyStage, type JourneyStageKey, stageGate } from '../../lib/submittals/submittalJourney'
-import { SUBMITTAL_GUIDE_HREF, SUBMITTAL_STAGE_ABOUT, SUBMITTAL_TOUR_STEPS, stageAbout, hasOpenEveryStage, tourStopForStage, hasSeenSubmittalWalkthrough, markSubmittalWalkthroughSeen, rememberOpenEveryStage } from '../../lib/submittals/submittalTour'
+import { SUBMITTAL_GUIDE_HREF, SUBMITTAL_STAGE_ABOUT, SUBMITTAL_TOUR_STEPS, SUBMITTAL_WORDS_ONLY_STOP, stageAbout, hasOpenEveryStage, tourStopForStage, hasSeenSubmittalWalkthrough, markSubmittalWalkthroughSeen, rememberOpenEveryStage } from '../../lib/submittals/submittalTour'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 import { supabase } from '../../lib/supabase'
@@ -2054,6 +2054,13 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     setTourSteps(null)
     setTourOpen(true)
   }
+  /** Words on this page (2026-10-04): the walkthrough's terms stop alone, any time, with the page left as it is behind it. */
+  function startWords() {
+    setTourStage(null)
+    setTourSteps([SUBMITTAL_WORDS_ONLY_STOP])
+    setTourOpen(true)
+  }
+  const tourWordsOnly = tourOpen && tourSteps?.length === 1 && tourSteps[0] === SUBMITTAL_WORDS_ONLY_STOP
 
   const visibleBids = (onlyMyBids ? bids.filter(isMyBid) : bids).filter((b) => {
     const q = query.toLowerCase()
@@ -2090,7 +2097,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   function sectionOpen(key: JourneyStageKey): boolean {
     const toggled = sectionToggles[key]
     if (toggled != null) return toggled
-    if (openAllStages || tourOpen) return true
+    if (openAllStages || (tourOpen && !tourWordsOnly)) return true
     if (key === 'picks' && scheduleReadLive) return true
     // v2.4169 · a stage you have not reached folds to its sentence; its controls draw only when you open it, and then held.
     if (key === 'build' && revisions.length === 0) return true
@@ -2129,6 +2136,9 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
               style={{ font: 'inherit', flexShrink: 0, width: 20, height: 20, borderRadius: '50%', border: '1.5px solid #3b82f6', color: 'var(--text-blue-500)', background: 'var(--surface)', fontSize: '0.72rem', fontWeight: 700, lineHeight: 1, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
             >
               ?
+            </button>
+            <button type="button" onClick={startWords} title="What cut sheet, tag, Rev and the other words on this page mean" style={{ ...btnQuiet, fontSize: '0.78rem', textDecoration: 'underline', flexShrink: 0 }} data-testid="submittal-words">
+              Words on this page
             </button>
           </div>
           <p style={{ margin: '0.2rem 0 0', ...smallMuted }} data-tour="submittals-source">

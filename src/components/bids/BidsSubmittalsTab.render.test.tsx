@@ -332,9 +332,14 @@ describe('BidsSubmittalsTab', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Walk me through it ▶' })[0] as HTMLElement)
     expect(screen.queryByTestId('journey-offer')).toBeNull()
     expect(window.localStorage.getItem('pt.submittals.walkthrough.seen')).toBeTruthy()
-    expect(screen.getByRole('dialog', { name: 'Where you are' })).toBeTruthy()
     const titles: string[] = []
     const missing: string[] = []
+    // 2026-10-04 · the walkthrough opens on the words this page uses: a centred card listing each term, with nothing "missing".
+    const words = screen.getByRole('dialog', { name: 'The words on this page' })
+    expect(within(words).getByTestId('tour-terms').textContent).toContain('Cut sheetThe maker’s page for one product. It shows the model and its details.')
+    expect(within(words).queryByTestId('tour-missing')).toBeNull()
+    fireEvent.click(within(words).getByRole('button', { name: 'Next →' }))
+    expect(screen.getByRole('dialog', { name: 'Where you are' })).toBeTruthy()
     for (let i = 0; i < 12; i++) {
       const dialog = screen.getByRole('dialog')
       titles.push(dialog.getAttribute('aria-label') ?? '')
@@ -363,6 +368,27 @@ describe('BidsSubmittalsTab', () => {
     expect(within(screen.getByTestId('road-8-body')).getByText(/No rows yet/)).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Read the full guide: build a submittal package →' }).getAttribute('href')).toBe('/help?g=build-a-submittal-package')
     fireEvent.click(screen.getByRole('button', { name: 'Done' }))
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('2026-10-04 · Words on this page opens the terms alone: one card, Done, and the steps stay folded as they were', async () => {
+    state.revisions = [{ id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'draft', title: 'Plumbing fixtures & equipment', note: null, package_path: null, source_files: [], created_at: '2026-09-15T00:00:00Z', shared_at: null }]
+    state.items = [item({ id: 'it-1', tag: 'WC-1', sequence_order: 1, specified_manufacturer: 'TOTO', specified_model: 'CT708UVG', submitted_label: 'TOTO CT708UVG#01', status: 'as_specified' })]
+    if (typeof window.matchMedia !== 'function') window.matchMedia = (() => ({ matches: false, addEventListener: () => {}, removeEventListener: () => {} })) as unknown as typeof window.matchMedia
+    Element.prototype.scrollIntoView = () => {}
+    mount()
+    const link = await screen.findByTestId('submittal-words')
+    expect(link.textContent).toBe('Words on this page')
+    const folded = screen.getByTestId('road-5').getAttribute('data-open')
+    expect(folded).toBe('false')
+    fireEvent.click(link)
+    const card = screen.getByRole('dialog', { name: 'The words on this page' })
+    expect(card.textContent).toContain('1 of 1')
+    expect(within(card).getByTestId('tour-terms').textContent).toContain('TagThe plan’s name for a fixture, like WC-1.')
+    expect(within(card).queryByRole('button', { name: 'Next →' })).toBeNull()
+    // The whole walkthrough unfolds every step; the words alone leave the page as it is.
+    expect(screen.getByTestId('road-5').getAttribute('data-open')).toBe(folded)
+    fireEvent.click(within(card).getByRole('button', { name: 'Done' }))
     expect(screen.queryByRole('dialog')).toBeNull()
   })
 
