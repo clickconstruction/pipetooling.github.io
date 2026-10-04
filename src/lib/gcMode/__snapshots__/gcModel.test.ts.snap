@@ -7812,6 +7812,18 @@ exports[`GC mode golden walk > step 138: Leon Springs: Addendum 1 revises the ro
 }
 `;
 
+exports[`GC mode golden walk > step 139: Leon Springs: the permit set takes E-101 out, adds E-102 and renames A-501 1`] = `
+{
+  "changed": {
+    "customers.marshvale.addenda": 6,
+    "customers.marshvale.sets": 10,
+    "lastLog.id": 135,
+    "lastLog.text": "Issued Permit set on Leon Springs Urgent Care and emailed 0 companies. 0 were told it changes their trade. It takes out 1 sheet.",
+  },
+  "removed": [],
+}
+`;
+
 exports[`GC mode golden walk > the whole state at the end 1`] = `
 {
   "customers": [
@@ -8012,6 +8024,11 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
+      "id": 135,
+      "text": "Issued Permit set on Leon Springs Urgent Care and emailed 0 companies. 0 were told it changes their trade. It takes out 1 sheet.",
+      "who": "office",
+    },
+    {
       "id": 134,
       "text": "Issued Addendum 1 on Leon Springs Urgent Care and emailed 0 companies. 0 were told it changes their trade. It adds 1 scope line.",
       "who": "office",
@@ -8154,11 +8171,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
     {
       "id": 106,
       "text": "Set Comal Iron's language to Spanish: its portal and messages.",
-      "who": "office",
-    },
-    {
-      "id": 105,
-      "text": "Issued Bulletin 2 on Helotes Dental Office and emailed 1 company. 1 was told it changes their trade. It adds 38 days to the job.",
       "who": "office",
     },
   ],
@@ -13536,6 +13548,9 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
             {
               "id": "leon-springs-urgent-care-electrical-2",
               "label": "Lighting",
+              "sheets": [
+                "E-102",
+              ],
             },
             {
               "id": "leon-springs-urgent-care-electrical-3",
@@ -13581,6 +13596,37 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
           "sentTo": [],
           "touches": [
             "leon-springs-urgent-care-roofing",
+          ],
+        },
+        {
+          "addedSheets": [
+            {
+              "id": "E-102",
+              "title": "Lighting and power plan",
+            },
+          ],
+          "changedSheets": [
+            "A-501",
+            "E-101",
+            "E-102",
+          ],
+          "issuedOn": "2026-10-02",
+          "label": "Permit set",
+          "note": "The lighting plan is folded into a new lighting and power plan. The roof plan now shows the walk pads.",
+          "removedSheets": [
+            "E-101",
+          ],
+          "retitledSheets": [
+            {
+              "id": "A-501",
+              "title": "Roof plan, details and walk pads",
+            },
+          ],
+          "rev": 2,
+          "sentTo": [],
+          "touches": [
+            "leon-springs-urgent-care-roofing",
+            "leon-springs-urgent-care-electrical",
           ],
         },
       ],

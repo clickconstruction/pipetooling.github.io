@@ -33,6 +33,13 @@ import {
   specsAtRev,
   specsInText,
   tradesForPlans,
+  indexDiff,
+  linesLeftBehind,
+  sampleReissue,
+  sampleReissueSpecs,
+  sheetIndexInText,
+  specIndexInText,
+  takenOutInText,
   type SpecSection,
   usualScope,
   type GcAction,
@@ -150,6 +157,13 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
   /** The spec sections, the same way: null follows the notes, a string is the office's own list. */
   const [specText, setSpecText] = useState<string | null>(null)
   const [specTitles, setSpecTitles] = useState<Record<string, string>>({})
+  /** A whole new set: its sheet index and table of contents as pasted, compared with what we have. */
+  const [indexText, setIndexText] = useState('')
+  const [tocText, setTocText] = useState('')
+  /** Sheets and sections the office marked taken out or kept, by number (a section as "spec:09 30 13"). */
+  const [goneMarks, setGoneMarks] = useState<Record<string, boolean>>({})
+  /** What a line left with nothing to read reads now, by "line id|sheets" or "line id|specs": 'whole' or a number. */
+  const [retie, setRetie] = useState<Record<string, string>>({})
   const [touchOverride, setTouchOverride] = useState<string[] | null>(null)
   const [brought, setBrought] = useState<BroughtTrade[]>([])
   /** Scope lines this set adds, by trade (package id). */
@@ -170,32 +184,82 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
   const [skipped, setSkipped] = useState<string[]>([])
   const [previewId, setPreviewId] = useState<string | null>(null)
 
-  const sheets = useMemo(() => {
+  const noteSheets = useMemo(() => {
     const raw = sheetText === null ? sheetsInText(note) : sheetText.split(',').map((x) => x.trim()).filter(Boolean)
     return [...new Set(raw.map((id) => sheetAsIndexed(project, id)))]
   }, [note, sheetText, project])
   const index = useMemo(() => sheetsAtRev(project, currentRev(project)), [project])
-  const added: PlanSheet[] = sheets.filter((id) => !index.some((s) => s.id === id)).map((id) => ({ id, title: (titles[id] ?? '').trim() }))
+  const whole = !(SET_KINDS.find((k) => k.kind === kind)?.numbered ?? true)
+  // A whole new set: the pasted index against ours. New, gone and renamed sheets join the ones the notes name.
+  const diff = useMemo(
+    () => (indexText.trim() === '' ? null : indexDiff(index, sheetIndexInText(indexText).sheets.map((x) => ({ ...x, id: sheetAsIndexed(project, x.id) })))),
+    [indexText, index, project],
+  )
+  const sheets = [...new Set([...noteSheets, ...(diff ? [...diff.added.map((x) => x.id), ...diff.renamed.map((x) => x.id), ...diff.gone.map((x) => x.id)] : [])])]
+  const noteTakesOut = takenOutInText(note, (line) => sheetsInText(line).map((id) => sheetAsIndexed(project, id)))
+  /** Sheets this set takes out: gone from the pasted index or said in the notes, unless the office kept them. */
+  const goneSheets = sheets.filter(
+    (id) => index.some((x) => x.id === id) && (goneMarks[id] ?? (Boolean(diff?.gone.some((g) => g.id === id)) || noteTakesOut.includes(id))),
+  )
+  const retitled: PlanSheet[] = (diff?.renamed ?? []).filter((r) => !goneSheets.includes(r.id)).map((r) => ({ id: r.id, title: r.to }))
+  const added: PlanSheet[] = sheets
+    .filter((id) => !index.some((s) => s.id === id))
+    .map((id) => ({ id, title: (titles[id] ?? diff?.added.find((x) => x.id === id)?.title ?? '').trim() }))
   const manual = useMemo(() => specsAtRev(project, currentRev(project)), [project])
-  const specIds = useMemo(
+  const noteSpecs = useMemo(
     () => (specText === null ? specsInText(note) : [...new Set(specText.split(',').flatMap((x) => specsInText(`section ${x.trim()}`)))]),
     [note, specText],
   )
+  const specDiff = useMemo(() => (tocText.trim() === '' ? null : indexDiff(manual, specIndexInText(tocText).sections)), [tocText, manual])
+  const specIds = [
+    ...new Set([...noteSpecs, ...(specDiff ? [...specDiff.added.map((x) => x.id), ...specDiff.renamed.map((x) => x.id), ...specDiff.gone.map((x) => x.id)] : [])]),
+  ]
+  const noteTakesOutSpecs = takenOutInText(note, specsInText)
+  const goneSpecs = specIds.filter(
+    (id) => manual.some((x) => x.id === id) && (goneMarks[`spec:${id}`] ?? (Boolean(specDiff?.gone.some((g) => g.id === id)) || noteTakesOutSpecs.includes(id))),
+  )
+  const retitledSpecs: SpecSection[] = (specDiff?.renamed ?? []).filter((r) => !goneSpecs.includes(r.id)).map((r) => ({ id: r.id, title: r.to }))
   /** Sections this set names that the manual does not have yet, with the titles the office gives them. */
-  const addedSpecs: SpecSection[] = specIds.filter((id) => !manual.some((x) => x.id === id)).map((id) => ({ id, title: (specTitles[id] ?? '').trim() }))
+  const addedSpecs: SpecSection[] = specIds
+    .filter((id) => !manual.some((x) => x.id === id))
+    .map((id) => ({ id, title: (specTitles[id] ?? specDiff?.added.find((x) => x.id === id)?.title ?? '').trim() }))
   const bySheets = packagesForSheets(project, sheets, added)
   const bySpecs = packagesForSpecs(project, specIds)
   const touches = touchOverride ?? project.packages.filter((p) => bySheets.includes(p.id) || bySpecs.includes(p.id)).map((p) => p.id)
-  /** Every sheet once the set is in: the index and the ones this set adds. */
-  const allSheets = [...index, ...added.filter((a) => !index.some((s) => s.id === a.id))]
+  /** Every sheet once the set is in: the index without what it takes out, renamed as it says, and the ones it adds. */
+  const allSheets = [
+    ...index.filter((x) => !goneSheets.includes(x.id)).map((x) => ({ ...x, title: retitled.find((r) => r.id === x.id)?.title ?? x.title })),
+    ...added.filter((a) => !index.some((s) => s.id === a.id)),
+  ]
   const sheetsOfTrade = (trade: string) => {
     const from = tradesForSheets(allSheets).find((g) => g.trade === trade)?.from ?? []
     return allSheets.filter((s) => from.includes(s.id))
   }
-  /** Every section once the set is in: the manual and the ones this set adds, and the ones that point at a trade. */
-  const specs = [...manual, ...addedSpecs]
+  /** Every section once the set is in: the manual without what it takes out, and the ones it adds; and the ones that point at a trade. */
+  const specs = [
+    ...manual.filter((x) => !goneSpecs.includes(x.id)).map((x) => ({ ...x, title: retitledSpecs.find((r) => r.id === x.id)?.title ?? x.title })),
+    ...addedSpecs,
+  ]
   const specsOfTrade = (trade: string) => specs.filter((x) => tradeForSpec(x.id) === trade)
-  const specNamed = (id: string): SpecSection => specs.find((x) => x.id === id) ?? { id, title: '' }
+  const specNamed = (id: string): SpecSection => specs.find((x) => x.id === id) ?? manual.find((x) => x.id === id) ?? { id, title: '' }
+  /** Lines whose sheets or sections all go, and what the office ties each to instead. */
+  const left = linesLeftBehind(project, goneSheets, goneSpecs)
+  const retiedLines = left
+    .map((l) => {
+      const bySheets = retie[`${l.item.id}|sheets`]
+      const bySpecs = retie[`${l.item.id}|specs`]
+      return {
+        packageId: l.packageId,
+        scopeId: l.item.id,
+        ...(l.sheets.length > 0 && bySheets ? { sheets: bySheets === 'whole' ? [] : [bySheets] } : {}),
+        ...(l.specs.length > 0 && bySpecs ? { specs: bySpecs === 'whole' ? [] : [bySpecs] } : {}),
+      }
+    })
+    .filter((l) => l.sheets || l.specs)
+  const goneWords = [
+    ...goneSheets.map((id) => `${id} ${index.find((x) => x.id === id)?.title ?? ''}`.trim()),
+    ...goneSpecs.map((id) => `${id} ${manual.find((x) => x.id === id)?.title ?? ''}`.trim()),
+  ]
   const everyone = planRecipients(state, project, touches)
   const going = everyone.filter((r) => !skipped.includes(r.partner.id))
   const companies = new Set(going.map((r) => r.partner.id)).size
@@ -203,7 +267,7 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
   const preview = going.find((r) => r.partner.id === previewId) ?? going.find((r) => r.touched) ?? going[0] ?? null
   // The schedule: the activities this set reaches, the days typed against them, and what that moves.
   const schedule = project.schedule ?? null
-  const reached = activitiesTouched(project, sheets, specIds, addedSpecs).filter((a) => touches.includes(a.packageId))
+  const reached = activitiesTouched(project, sheets, specIds, addedSpecs, added).filter((a) => touches.includes(a.packageId))
   const spare = schedule ? scheduleFloat(schedule.activities) : new Map<string, number>()
   const pushes = Object.fromEntries(
     Object.entries(pushDays)
@@ -263,10 +327,11 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
   /** What the set says changed: the office's words, then each answer it carries. */
   const fullNote = [note.trim(), ...carriedQs.map((q) => questionInNote(project, q))].filter(Boolean).join('\n')
   const email = planEmail(project, label, fullNote, sheets, preview, {
-    lines: preview?.touched ? linesOnPlans(project, preview.pkg, sheets, specIds, addedSpecs).map((l) => l.label) : [],
+    lines: preview?.touched ? linesOnPlans(project, preview.pkg, sheets, specIds, addedSpecs, added).map((l) => l.label) : [],
     adds: preview?.touched ? (newLines[preview.pkg.id] ?? []) : [],
     moves: preview?.touched ? movesFor(preview.pkg.id) : [],
-    specs: specIds.map(specNamed),
+    specs: specIds.filter((id) => !goneSpecs.includes(id)).map(specNamed),
+    gone: goneWords,
   })
 
   const onJob = (trade: string) =>
@@ -293,7 +358,8 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
     return () => document.removeEventListener('keydown', onKey)
   }, [onClose, askingOpen])
 
-  const missing = fullNote === '' ? 'Say what changed first.' : label === '' ? 'Give the set a name.' : null
+  const compared = diff !== null || specDiff !== null
+  const missing = fullNote === '' && !compared ? 'Say what changed first.' : label === '' ? 'Give the set a name.' : null
   const addLine = (packageId: string) => {
     const t = lineText.trim()
     if (t !== '') setNewLines((all) => ({ ...all, [packageId]: [...(all[packageId] ?? []), t] }))
@@ -302,8 +368,8 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
   }
   /** A new line reads from the changed sheets that belong to its trade. None: the trade as a whole. */
   const newLineSheets = (trade: string) => sheetsOfTrade(trade).map((x) => x.id).filter((id) => sheets.includes(id))
-  /** And from the changed sections that belong to its trade. */
-  const newLineSpecs = (trade: string) => specIds.filter((id) => tradeForSpec(id) === trade)
+  /** And from the changed sections that belong to its trade, never one the set takes out. */
+  const newLineSpecs = (trade: string) => specIds.filter((id) => tradeForSpec(id) === trade && !goneSpecs.includes(id))
   const linesAdded = project.packages.filter((p) => touches.includes(p.id)).reduce((n, p) => n + (newLines[p.id]?.length ?? 0), 0)
 
   return (
@@ -346,10 +412,10 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
           </button>
         </div>
 
-        <div style={{ padding: '0.9rem 1rem', overflowY: 'auto', display: 'grid', gap: '1.1rem' }}>
+        <div style={{ padding: '0.9rem 1rem', overflowY: 'auto', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '1.1rem' }}>
           <section>
             <StepHeading n={1} title="What came in" hint="Name the set. Then paste or type what is different." />
-            <div style={{ display: 'grid', gap: '0.45rem', marginBottom: '0.6rem', fontSize: '0.875rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '0.45rem', marginBottom: '0.6rem', fontSize: '0.875rem' }}>
               <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap' }}>
                 {SET_KINDS.map((k) => (
                   <button
@@ -384,6 +450,45 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
               placeholder={'For example:\nE-201: two more floor boxes in bay 2.\nM-101: RTU-3 moved 6 ft north. Curb detail changed on A-401.\nSection 09 91 23: low-VOC paint throughout.'}
               style={{ ...input, width: '100%', boxSizing: 'border-box', fontFamily: 'inherit', resize: 'vertical' }}
             />
+            {whole && (
+              <div style={{ marginTop: '0.6rem', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '0.4rem', fontSize: '0.875rem' }}>
+                <strong>The new set's sheet index</strong>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                  A whole set comes with every sheet. Paste its index and it is compared with the sheets we have. You see what is new, what is gone and what is renamed.
+                </span>
+                <textarea
+                  value={indexText}
+                  onChange={(e) => setIndexText(e.target.value)}
+                  rows={4}
+                  aria-label="The new set's sheet index"
+                  placeholder={'C-101  SITE PLAN\nA-101  FLOOR PLAN'}
+                  style={{ ...input, width: '100%', boxSizing: 'border-box', fontFamily: 'inherit', resize: 'vertical' }}
+                />
+                {indexText.trim() === '' && (
+                  <div>
+                    <Btn kind="quiet" onClick={() => setIndexText(sampleReissue(index))}>Paste a made-up new index</Btn>
+                  </div>
+                )}
+                {manual.length > 0 && (
+                  <>
+                    <strong style={{ marginTop: '0.3rem' }}>The new table of contents</strong>
+                    <textarea
+                      value={tocText}
+                      onChange={(e) => setTocText(e.target.value)}
+                      rows={3}
+                      aria-label="The new table of contents"
+                      placeholder={'09 29 00  GYPSUM BOARD\n09 91 23  INTERIOR PAINTING'}
+                      style={{ ...input, width: '100%', boxSizing: 'border-box', fontFamily: 'inherit', resize: 'vertical' }}
+                    />
+                    {tocText.trim() === '' && (
+                      <div>
+                        <Btn kind="quiet" onClick={() => setTocText(sampleReissueSpecs(manual))}>Paste a made-up new table of contents</Btn>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
             {openQuestions(project).length > 0 && (
               <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.875rem' }}>
                 <span style={{ color: 'var(--text-600)' }}>
@@ -394,7 +499,7 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
             )}
             {askingOpen && <GcNewProjectQuestions state={state} project={project} dispatch={dispatch} onClose={() => setAskingOpen(false)} />}
             {answers.length > 0 && (
-              <div style={{ marginTop: '0.5rem', padding: '0.5rem 0.7rem', borderRadius: 8, border: '1px solid var(--border)', display: 'grid', gap: '0.3rem', fontSize: '0.875rem' }}>
+              <div style={{ marginTop: '0.5rem', padding: '0.5rem 0.7rem', borderRadius: 8, border: '1px solid var(--border)', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '0.3rem', fontSize: '0.875rem' }}>
                 <strong>Answers to carry in this set</strong>
                 <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
                   An answered question goes out with the next set, in its note. Untick one to keep it out.
@@ -416,34 +521,50 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
 
           <section>
             <StepHeading n={2} title="What it changes" hint="Read from the notes. Fix anything that is wrong." />
-            <div style={{ display: 'grid', gap: '0.6rem', fontSize: '0.875rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '0.6rem', fontSize: '0.875rem' }}>
               <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                 Sheets that changed
                 <input
                   style={{ ...input, flex: '1 1 14rem' }}
-                  value={sheetText ?? sheets.join(', ')}
+                  value={sheetText ?? noteSheets.join(', ')}
                   onChange={(e) => setSheetText(e.target.value)}
                   placeholder="None found yet. Type them, like A-201, S-101"
                 />
                 {sheetText !== null && <Btn kind="quiet" onClick={() => setSheetText(null)}>Read them from the notes again</Btn>}
               </label>
+              {diff && (
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                  The new index against ours: {diff.added.length} new, {diff.gone.length} gone, {diff.renamed.length} renamed, {diff.same.length} the same.
+                </span>
+              )}
               {sheets.length > 0 && (
                 <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
                   {sheets.map((id) => {
                     const known = index.find((s) => s.id === id)
+                    const out = goneSheets.includes(id)
+                    const renamedTo = retitled.find((r) => r.id === id)?.title
                     return (
                       <div key={id} style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', padding: '0.3rem 0.7rem', borderBottom: '1px solid var(--border)' }}>
-                        <span style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums', minWidth: '4rem' }}>{id}</span>
+                        <span style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums', minWidth: '4rem', textDecoration: out ? 'line-through' : 'none' }}>{id}</span>
                         {known ? (
                           <>
-                            <span style={{ color: 'var(--text-600)', flex: 1, minWidth: 0 }}>{known.title}</span>
-                            <Chip tone="amber">changed</Chip>
+                            <span style={{ color: 'var(--text-600)', flex: '1 1 12rem', minWidth: 0, textDecoration: out ? 'line-through' : 'none' }}>
+                              {renamedTo ? `${known.title} → ${renamedTo}` : known.title}
+                            </span>
+                            {out ? <Chip tone="red">taken out</Chip> : renamedTo ? <Chip tone="violet">renamed</Chip> : <Chip tone="amber">changed</Chip>}
+                            <button
+                              type="button"
+                              onClick={() => setGoneMarks((m) => ({ ...m, [id]: !out }))}
+                              style={{ border: 'none', background: 'transparent', color: 'var(--text-blue-500)', cursor: 'pointer', fontSize: '0.8rem', padding: 0 }}
+                            >
+                              {out ? 'Keep it' : 'Take it out'}
+                            </button>
                           </>
                         ) : (
                           <>
                             <input
                               style={{ ...input, flex: '1 1 14rem' }}
-                              value={titles[id] ?? ''}
+                              value={titles[id] ?? diff?.added.find((x) => x.id === id)?.title ?? ''}
                               onChange={(e) => setTitles((t) => ({ ...t, [id]: e.target.value }))}
                               placeholder="Its title, as the sheet says it"
                               aria-label={`Title of ${id}`}
@@ -456,12 +577,18 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
                   })}
                 </div>
               )}
+              {specDiff && (
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                  The new table of contents against ours: {specDiff.added.length} new, {specDiff.gone.length} gone, {specDiff.renamed.length} renamed,{' '}
+                  {specDiff.same.length} the same.
+                </span>
+              )}
               {(manual.length > 0 || specIds.length > 0 || specText !== null) && (
                 <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                   Spec sections that changed
                   <input
                     style={{ ...input, flex: '1 1 14rem' }}
-                    value={specText ?? specIds.join(', ')}
+                    value={specText ?? noteSpecs.join(', ')}
                     onChange={(e) => setSpecText(e.target.value)}
                     placeholder="None found yet. Type them, like 09 91 23, 22 40 00"
                   />
@@ -472,19 +599,30 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
                 <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
                   {specIds.map((id) => {
                     const known = manual.find((x) => x.id === id)
+                    const out = goneSpecs.includes(id)
+                    const renamedTo = retitledSpecs.find((r) => r.id === id)?.title
                     return (
                       <div key={id} style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', padding: '0.3rem 0.7rem', borderBottom: '1px solid var(--border)' }}>
-                        <span style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums', minWidth: '4.6rem' }}>{id}</span>
+                        <span style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums', minWidth: '4.6rem', textDecoration: out ? 'line-through' : 'none' }}>{id}</span>
                         {known ? (
                           <>
-                            <span style={{ color: 'var(--text-600)', flex: 1, minWidth: 0 }}>{known.title}</span>
-                            <Chip tone="violet">revised</Chip>
+                            <span style={{ color: 'var(--text-600)', flex: '1 1 12rem', minWidth: 0, textDecoration: out ? 'line-through' : 'none' }}>
+                              {renamedTo ? `${known.title} → ${renamedTo}` : known.title}
+                            </span>
+                            {out ? <Chip tone="red">taken out</Chip> : <Chip tone="violet">{renamedTo ? 'renamed' : 'revised'}</Chip>}
+                            <button
+                              type="button"
+                              onClick={() => setGoneMarks((m) => ({ ...m, [`spec:${id}`]: !out }))}
+                              style={{ border: 'none', background: 'transparent', color: 'var(--text-blue-500)', cursor: 'pointer', fontSize: '0.8rem', padding: 0 }}
+                            >
+                              {out ? 'Keep it' : 'Take it out'}
+                            </button>
                           </>
                         ) : (
                           <>
                             <input
                               style={{ ...input, flex: '1 1 14rem' }}
-                              value={specTitles[id] ?? ''}
+                              value={specTitles[id] ?? specDiff?.added.find((x) => x.id === id)?.title ?? ''}
                               onChange={(e) => setSpecTitles((t) => ({ ...t, [id]: e.target.value }))}
                               placeholder="Its title, as the manual says it"
                               aria-label={`Title of section ${id}`}
@@ -520,7 +658,7 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
                 </span>
               )}
               {touches.length > 0 && (
-                <div style={{ display: 'grid', gap: '0.2rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '0.2rem' }}>
                   <span style={{ fontWeight: 600 }}>The scope lines it touches</span>
                   {linesAdded > 0 && (
                     <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
@@ -530,7 +668,7 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
                   {project.packages
                     .filter((p) => touches.includes(p.id))
                     .map((p) => {
-                      const hit = linesOnPlans(project, p, sheets, specIds, addedSpecs)
+                      const hit = linesOnPlans(project, p, sheets, specIds, addedSpecs, added)
                       const adding = newLines[p.id] ?? []
                       const reads = [...newLineSheets(p.trade), ...newLineSpecs(p.trade)]
                       return (
@@ -597,8 +735,47 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
                     })}
                 </div>
               )}
+              {left.length > 0 && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '0.35rem', padding: '0.5rem 0.7rem', borderRadius: 8, background: 'var(--bg-amber-tint)' }}>
+                  <span style={{ fontWeight: 600 }}>Lines left with nothing to read</span>
+                  <span style={{ color: 'var(--text-600)', fontSize: '0.8rem' }}>
+                    Everything these lines read from is taken out. Pick what each one reads now, or leave it as it is.
+                  </span>
+                  {left.map((l) => {
+                    const pkg = project.packages.find((p) => p.id === l.packageId)
+                    const trade = pkg?.trade ?? ''
+                    return (['sheets', 'specs'] as const)
+                      .filter((kindOf) => l[kindOf].length > 0)
+                      .map((kindOf) => {
+                        const key = `${l.item.id}|${kindOf}`
+                        const choices = kindOf === 'sheets' ? sheetsOfTrade(trade) : specsOfTrade(trade)
+                        return (
+                          <div key={key} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                            <span style={{ flex: '1 1 16rem', minWidth: 0 }}>
+                              {trade} · {l.item.label} read only {l[kindOf].join(' and ')}.
+                            </span>
+                            <select
+                              value={retie[key] ?? ''}
+                              onChange={(e) => setRetie((r) => ({ ...r, [key]: e.target.value }))}
+                              aria-label={`What ${l.item.label} reads now`}
+                              style={{ ...input, flex: '1 1 12rem', minWidth: 0, maxWidth: '100%' }}
+                            >
+                              <option value="">Leave it as it is</option>
+                              <option value="whole">Every {trade.toLowerCase()} {kindOf === 'sheets' ? 'sheet' : 'section'}</option>
+                              {choices.map((x) => (
+                                <option key={x.id} value={x.id}>
+                                  {x.id} {x.title}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        )
+                      })
+                  })}
+                </div>
+              )}
               {schedule && reached.length > 0 && (
-                <div style={{ display: 'grid', gap: '0.3rem', borderTop: '1px solid var(--border)', paddingTop: '0.6rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '0.3rem', borderTop: '1px solid var(--border)', paddingTop: '0.6rem' }}>
                   <span style={{ fontWeight: 600 }}>What it does to the schedule</span>
                   <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
                     Type the days the change adds to an activity. What waits on it moves out too. The plan at Start stays as the baseline.
@@ -632,7 +809,7 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
                     )
                   })}
                   {push && (
-                    <div style={{ padding: '0.4rem 0.6rem', borderRadius: 6, background: endDays > 0 ? 'var(--bg-amber-tint)' : 'var(--bg-subtle)', display: 'grid', gap: '0.15rem' }}>
+                    <div style={{ padding: '0.4rem 0.6rem', borderRadius: 6, background: endDays > 0 ? 'var(--bg-amber-tint)' : 'var(--bg-subtle)', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '0.15rem' }}>
                       <span>
                         It moves {push.moved.length} {push.moved.length === 1 ? 'activity' : 'activities'}.{' '}
                         {endDays > 0
@@ -658,7 +835,7 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
                 </div>
               )}
 
-              <div style={{ borderTop: '1px solid var(--border)', paddingTop: '0.6rem', display: 'grid', gap: '0.5rem' }}>
+              <div style={{ borderTop: '1px solid var(--border)', paddingTop: '0.6rem', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '0.5rem' }}>
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                   <strong>A trade the job does not have yet</strong>
                   <select style={input} value="" onChange={(e) => bring(e.target.value)} aria-label="Add a trade from the usual list">
@@ -688,7 +865,7 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
                   </div>
                 )}
                 {brought.map((b, i) => (
-                  <div key={b.trade} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem 0.75rem', display: 'grid', gap: '0.45rem' }}>
+                  <div key={b.trade} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem 0.75rem', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '0.45rem' }}>
                     <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
                       <strong>{b.trade}</strong>
                       <Chip tone="blue">a new trade</Chip>
@@ -727,12 +904,12 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
           {coRows.length > 0 && (
             <section>
               <StepHeading n={3} title="Change orders to the owner" hint="The job is ours, so a change to the work is a change to our price." />
-              <div style={{ display: 'grid', gap: '0.5rem', fontSize: '0.875rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '0.5rem', fontSize: '0.875rem' }}>
                 <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
                   Tick a trade to start a change order for it. Type what the change costs us. Our fee is added for the price. Each one is drafted on Bill the owner, for you to review and send.
                 </span>
                 {coRows.map((r) => (
-                  <div key={r.id} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.7rem', display: 'grid', gap: '0.35rem', opacity: r.on ? 1 : 0.6 }}>
+                  <div key={r.id} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.7rem', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '0.35rem', opacity: r.on ? 1 : 0.6 }}>
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                       <label style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', cursor: 'pointer' }}>
                         <input type="checkbox" checked={r.on} onChange={(e) => setCoOn((all) => ({ ...all, [r.id]: e.target.checked }))} />
@@ -897,6 +1074,11 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
                 newTrades: broughtDrafts,
                 specs: specIds,
                 addedSpecs,
+                removedSheets: goneSheets,
+                retitledSheets: retitled,
+                removedSpecs: goneSpecs,
+                retitledSpecs,
+                retiedLines,
               })
               // Each change order is Owner Billing's own draft, so it reads on Bill the owner as theirs do.
               for (const r of coDrafted) {

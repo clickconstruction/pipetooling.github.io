@@ -432,6 +432,24 @@ const STEPS: Step[] = [
       addedSpecs: [{ id: '07 54 23', title: 'Thermoplastic polyolefin roofing' }],
     },
   },
+  // A whole new set (New Project lane, 2026-10-03): a sheet goes, one comes, one is renamed, and the line left behind is tied to the new one.
+  {
+    label: 'Leon Springs: the permit set takes E-101 out, adds E-102 and renames A-501',
+    action: {
+      type: 'issuePlanSet',
+      projectId: 'leon-springs-urgent-care',
+      label: 'Permit set',
+      note: 'The lighting plan is folded into a new lighting and power plan. The roof plan now shows the walk pads.',
+      sheets: ['A-501', 'E-101', 'E-102'],
+      addedSheets: [{ id: 'E-102', title: 'Lighting and power plan' }],
+      touches: ['leon-springs-urgent-care-roofing', 'leon-springs-urgent-care-electrical'],
+      recipients: [],
+      newTrades: [],
+      removedSheets: ['E-101'],
+      retitledSheets: [{ id: 'A-501', title: 'Roof plan, details and walk pads' }],
+      retiedLines: [{ packageId: 'leon-springs-urgent-care-electrical', scopeId: 'leon-springs-urgent-care-electrical-2', sheets: ['E-102'] }],
+    },
+  },
 ]
 
 const CUSTOMER_IDS = ['cibolo', 'raman']

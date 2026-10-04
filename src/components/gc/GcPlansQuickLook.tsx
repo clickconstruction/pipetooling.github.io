@@ -12,6 +12,8 @@ import {
   plansReach,
   sheetDiscipline,
   sheetsAtRev,
+  sheetsGoneAtRev,
+  specsGoneAtRev,
   shortDate,
   type GcProject,
   type SheetInSet,
@@ -39,8 +41,11 @@ export function GcPlansQuickLook({ project, onClose, onSeeWhoHasIt }: Props) {
   const sheets = useMemo(() => sheetsAtRev(project, rev), [project, rev])
   const firstChanged = sheets.find((s) => s.changedInRev === rev)
   const [sheetId, setSheetId] = useState(firstChanged?.id ?? sheets[0]?.id ?? '')
+  // A sheet a set took out stays to read, crossed out, so a quote priced on it still makes sense.
+  const goneSheets = useMemo(() => sheetsGoneAtRev(project, rev), [project, rev])
+  const goneSheet = sheets.some((s) => s.id === sheetId) ? null : (goneSheets.find((g) => g.id === sheetId) ?? null)
   const index = Math.max(0, sheets.findIndex((s) => s.id === sheetId))
-  const sheet = sheets[index]
+  const sheet = goneSheet ? undefined : sheets[index]
   const set = project.planSets.find((s) => s.rev === rev)
   const reach = plansReach(project)
   const sets = [...project.planSets].sort((a, b) => b.rev - a.rev)
@@ -49,8 +54,12 @@ export function GcPlansQuickLook({ project, onClose, onSeeWhoHasIt }: Props) {
   const [view, setView] = useState<'sheets' | 'specs'>('sheets')
   const showSpecs = view === 'specs' && specs.length > 0
   const [specId, setSpecId] = useState(specs.find((x) => x.changedInRev === rev)?.id ?? specs[0]?.id ?? '')
+  const goneSpecs = useMemo(() => specsGoneAtRev(project, rev), [project, rev])
+  const goneSpec = specs.some((x) => x.id === specId) ? null : (goneSpecs.find((g) => g.id === specId) ?? null)
   const specIndex = Math.max(0, specs.findIndex((x) => x.id === specId))
-  const spec = specs[specIndex]
+  const spec = goneSpec ? undefined : specs[specIndex]
+  const sheetOnScreen = goneSheet?.id ?? sheet?.id ?? ''
+  const specOnScreen = goneSpec?.id ?? spec?.id ?? ''
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -78,10 +87,12 @@ export function GcPlansQuickLook({ project, onClose, onSeeWhoHasIt }: Props) {
     else groups.push({ discipline, rows: [s] })
   }
   const changedCount = sheets.filter((s) => s.changedInRev === rev).length
+  const sheetsOut = goneSheets.filter((g) => g.goneInRev === rev).length
+  const specsOut = goneSpecs.filter((g) => g.goneInRev === rev).length
   /** The scope lines that read from the sheet on screen, trade by trade. */
-  const onSheet = sheet
+  const onSheet = sheetOnScreen
     ? project.packages
-        .map((pkg) => ({ pkg, lines: pkg.scope.map((item) => ({ item, ...lineReads(project, pkg, item) })).filter((l) => l.sheets.includes(sheet.id)) }))
+        .map((pkg) => ({ pkg, lines: pkg.scope.map((item) => ({ item, ...lineReads(project, pkg, item) })).filter((l) => l.sheets.includes(sheetOnScreen)) }))
         .filter((t) => t.lines.length > 0)
     : []
   const revisedSpecs = specs.filter((x) => x.changedInRev === rev && !x.added).length
@@ -94,12 +105,12 @@ export function GcPlansQuickLook({ project, onClose, onSeeWhoHasIt }: Props) {
     else specGroups.push({ division, rows: [x] })
   }
   /** The scope lines that read from the section on screen, trade by trade. */
-  const onSpec = spec
+  const onSpec = specOnScreen
     ? project.packages
         .map((pkg) => ({
           pkg,
           lines: pkg.scope
-            .filter((item) => lineReadsSpec(project, pkg, item, spec.id))
+            .filter((item) => lineReadsSpec(project, pkg, item, specOnScreen))
             .map((item) => {
               const said = lineSpecs(project, pkg, item)
               return { item, guessed: said.guessed, wholeTrade: said.specs.length === 0 }
@@ -108,8 +119,8 @@ export function GcPlansQuickLook({ project, onClose, onSeeWhoHasIt }: Props) {
         .filter((t) => t.lines.length > 0)
     : []
   const here = showSpecs
-    ? { id: spec?.id ?? '', trades: onSpec, kind: 'section' }
-    : { id: sheet?.id ?? '', trades: onSheet.map((t) => ({ pkg: t.pkg, lines: t.lines.map((l) => ({ item: l.item, guessed: l.guessed, wholeTrade: l.wholeTrade })) })), kind: 'sheet' }
+    ? { id: specOnScreen, trades: onSpec, kind: 'section' }
+    : { id: sheetOnScreen, trades: onSheet.map((t) => ({ pkg: t.pkg, lines: t.lines.map((l) => ({ item: l.item, guessed: l.guessed, wholeTrade: l.wholeTrade })) })), kind: 'sheet' }
   const guessedOn = here.trades.some((t) => t.lines.some((l) => l.guessed && !l.wholeTrade))
   const wholeOn = here.trades.some((t) => t.lines.some((l) => l.wholeTrade))
 
@@ -194,8 +205,10 @@ export function GcPlansQuickLook({ project, onClose, onSeeWhoHasIt }: Props) {
             {rev < newest && <strong>An older set. {planLabel(project, newest)} replaced it. </strong>}
             {set.note}
             {changedCount > 0 && <> {changedCount} {changedCount === 1 ? 'sheet' : 'sheets'} changed in this set.</>}
+            {sheetsOut > 0 && <> {sheetsOut} {sheetsOut === 1 ? 'sheet' : 'sheets'} taken out.</>}
             {revisedSpecs > 0 && <> {revisedSpecs} spec {revisedSpecs === 1 ? 'section' : 'sections'} revised.</>}
             {addedSpecs > 0 && <> {addedSpecs} spec {addedSpecs === 1 ? 'section' : 'sections'} new to the manual.</>}
+            {specsOut > 0 && <> {specsOut} spec {specsOut === 1 ? 'section' : 'sections'} taken out.</>}
           </div>
         )}
 
@@ -260,13 +273,20 @@ export function GcPlansQuickLook({ project, onClose, onSeeWhoHasIt }: Props) {
                       >
                         <span style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>{x.id}</span>
                         <span style={{ flex: 1, minWidth: 0 }}>{x.title}</span>
-                        {x.changedInRev === rev && rev > 0 && <Chip tone="violet">{x.added ? 'new' : 'revised'}</Chip>}
+                        {x.changedInRev === rev && rev > 0 && (
+                          <Chip tone="violet" title={x.was ? `Was: ${x.was}` : undefined}>
+                            {x.added ? 'new' : x.was ? 'renamed' : 'revised'}
+                          </Chip>
+                        )}
                         {x.changedInRev !== null && x.changedInRev < rev && <Chip tone="grey">{planLabel(project, x.changedInRev)}</Chip>}
                       </button>
                     )
                   })}
                 </div>
               ))}
+            {showSpecs && goneSpecs.length > 0 && (
+              <GoneGroup project={project} rows={goneSpecs} active={goneSpec?.id ?? null} onPick={setSpecId} />
+            )}
             {!showSpecs && groups.map((g) => (
               <div key={g.discipline} style={{ marginBottom: '0.5rem' }}>
                 <div style={{ fontSize: '0.68rem', letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)', padding: '0.2rem 0.4rem' }}>
@@ -297,23 +317,38 @@ export function GcPlansQuickLook({ project, onClose, onSeeWhoHasIt }: Props) {
                     >
                       <span style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>{s.id}</span>
                       <span style={{ flex: 1, minWidth: 0 }}>{s.title}</span>
-                      {s.changedInRev === rev && rev > 0 && <Chip tone="amber">{s.added ? 'new' : 'changed'}</Chip>}
+                      {s.changedInRev === rev && rev > 0 && (
+                        <Chip tone="amber" title={s.was ? `Was: ${s.was}` : undefined}>
+                          {s.added ? 'new' : s.was ? 'renamed' : 'changed'}
+                        </Chip>
+                      )}
                       {s.changedInRev !== null && s.changedInRev < rev && <Chip tone="grey">{planLabel(project, s.changedInRev)}</Chip>}
                     </button>
                   )
                 })}
               </div>
             ))}
+            {!showSpecs && goneSheets.length > 0 && (
+              <GoneGroup project={project} rows={goneSheets} active={goneSheet?.id ?? null} onPick={setSheetId} />
+            )}
           </div>
 
           <div style={{ padding: '0.75rem', overflow: 'auto', background: 'var(--bg-muted)' }}>
             {showSpecs ? (
               <>
                 {spec && <StandInSection project={project} spec={spec} rev={rev} />}
+                {goneSpec && (
+                  <StandInSection
+                    project={project}
+                    spec={{ id: goneSpec.id, title: goneSpec.title, changedInRev: goneSpec.goneInRev, added: false }}
+                    rev={rev}
+                    goneBy={planLabel(project, goneSpec.goneInRev)}
+                  />
+                )}
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: 'center', marginTop: '0.5rem', fontSize: '0.85rem' }}>
                   <Btn disabled={specIndex === 0} onClick={() => setSpecId(specs[specIndex - 1]?.id ?? specId)}>← Back</Btn>
                   <span style={{ color: 'var(--text-muted)' }}>
-                    Section {specIndex + 1} of {specs.length}. The arrow keys flip sections.
+                    {goneSpec ? 'Taken out. It stays here so a quote priced on it can still be read.' : `Section ${specIndex + 1} of ${specs.length}. The arrow keys flip sections.`}
                   </span>
                   <Btn disabled={specIndex >= specs.length - 1} onClick={() => setSpecId(specs[specIndex + 1]?.id ?? specId)}>Next →</Btn>
                 </div>
@@ -321,10 +356,18 @@ export function GcPlansQuickLook({ project, onClose, onSeeWhoHasIt }: Props) {
             ) : (
               <>
                 {sheet && <StandInSheet project={project} sheet={sheet} rev={rev} />}
+                {goneSheet && (
+                  <StandInSheet
+                    project={project}
+                    sheet={{ id: goneSheet.id, title: goneSheet.title, changedInRev: null, added: false }}
+                    rev={rev}
+                    goneBy={planLabel(project, goneSheet.goneInRev)}
+                  />
+                )}
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: 'center', marginTop: '0.5rem', fontSize: '0.85rem' }}>
                   <Btn disabled={index === 0} onClick={() => setSheetId(sheets[index - 1]?.id ?? sheetId)}>← Back</Btn>
                   <span style={{ color: 'var(--text-muted)' }}>
-                    Sheet {index + 1} of {sheets.length}. The arrow keys flip sheets.
+                    {goneSheet ? 'Taken out. It stays here so a quote priced on it can still be read.' : `Sheet ${index + 1} of ${sheets.length}. The arrow keys flip sheets.`}
                   </span>
                   <Btn disabled={index >= sheets.length - 1} onClick={() => setSheetId(sheets[index + 1]?.id ?? sheetId)}>Next →</Btn>
                 </div>
@@ -384,9 +427,54 @@ export function GcPlansQuickLook({ project, onClose, onSeeWhoHasIt }: Props) {
   )
 }
 
+/** The sheets or sections the sets took out, crossed out under the rest, each still there to open. */
+function GoneGroup({
+  project,
+  rows,
+  active,
+  onPick,
+}: {
+  project: GcProject
+  rows: { id: string; title: string; goneInRev: number }[]
+  active: string | null
+  onPick: (id: string) => void
+}) {
+  return (
+    <div style={{ marginBottom: '0.5rem' }}>
+      <div style={{ fontSize: '0.68rem', letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)', padding: '0.2rem 0.4rem' }}>Taken out</div>
+      {rows.map((g) => (
+        <button
+          key={g.id}
+          type="button"
+          onClick={() => onPick(g.id)}
+          aria-current={g.id === active}
+          style={{
+            display: 'flex',
+            gap: '0.4rem',
+            alignItems: 'baseline',
+            width: '100%',
+            textAlign: 'left',
+            padding: '0.3rem 0.4rem',
+            border: 'none',
+            borderRadius: 5,
+            background: g.id === active ? 'var(--bg-blue-tint)' : 'transparent',
+            color: 'var(--text-muted)',
+            cursor: 'pointer',
+            fontSize: '0.85rem',
+          }}
+        >
+          <span style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums', flexShrink: 0, textDecoration: 'line-through' }}>{g.id}</span>
+          <span style={{ flex: 1, minWidth: 0, textDecoration: 'line-through' }}>{g.title}</span>
+          <Chip tone="red">{planLabel(project, g.goneInRev)}</Chip>
+        </button>
+      ))}
+    </div>
+  )
+}
+
 /** A stand-in for a section's first page: its number and title, the three parts every section has, and a mark where a set revised it. */
-function StandInSection({ project, spec, rev }: { project: GcProject; spec: SpecInSet; rev: number }) {
-  const revisedHere = spec.changedInRev === rev && rev > 0
+function StandInSection({ project, spec, rev, goneBy }: { project: GcProject; spec: SpecInSet; rev: number; goneBy?: string }) {
+  const revisedHere = !goneBy && spec.changedInRev === rev && rev > 0
   const by = spec.changedInRev !== null ? planLabel(project, spec.changedInRev) : null
   const parts = ['PART 1  GENERAL', 'PART 2  PRODUCTS', 'PART 3  EXECUTION']
   return (
@@ -394,6 +482,11 @@ function StandInSection({ project, spec, rev }: { project: GcProject; spec: Spec
       data-theme="light"
       style={{ background: 'var(--surface)', color: 'var(--text-slate-900)', border: '1px solid var(--border-strong)', borderRadius: 4, padding: '1.4rem 1.6rem', minHeight: '22rem', display: 'grid', alignContent: 'start', gap: '0.9rem' }}
     >
+      {goneBy && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <span style={{ border: '2px solid #dc2626', color: 'var(--text-red-600)', borderRadius: 6, padding: '0.15rem 0.5rem', fontWeight: 700, fontSize: '0.8rem' }}>Taken out by {goneBy}</span>
+        </div>
+      )}
       {revisedHere && (
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
           <span style={{ border: '2px dashed #d97706', color: '#d97706', borderRadius: 6, padding: '0.15rem 0.5rem', fontWeight: 700, fontSize: '0.8rem' }}>
@@ -420,7 +513,7 @@ function StandInSection({ project, spec, rev }: { project: GcProject; spec: Spec
 }
 
 /** A drawn stand-in for the sheet's page: a border, a title block and a mark where it changed. */
-function StandInSheet({ project, sheet, rev }: { project: GcProject; sheet: SheetInSet; rev: number }) {
+function StandInSheet({ project, sheet, rev, goneBy }: { project: GcProject; sheet: SheetInSet; rev: number; goneBy?: string }) {
   const discipline = sheetDiscipline(sheet.id)
   const changedHere = sheet.changedInRev === rev && rev > 0
   const set = project.planSets.find((s) => s.rev === (sheet.changedInRev ?? 0))
@@ -513,6 +606,16 @@ function StandInSheet({ project, sheet, rev }: { project: GcProject; sheet: Shee
           </g>
         )}
 
+        {goneBy && (
+          <g stroke="#dc2626" strokeWidth="4" opacity="0.8">
+            <line x1="40" y1="40" x2="660" y2="510" />
+            <line x1="660" y1="40" x2="40" y2="510" />
+            <rect x="170" y="240" width="360" height="62" stroke="#dc2626" strokeWidth="3" style={{ fill: 'var(--surface)' }} />
+            <text x="350" y="282" textAnchor="middle" fontSize="24" fontWeight="700" fill="#dc2626" stroke="none">
+              Taken out by {goneBy}
+            </text>
+          </g>
+        )}
         {changedHere && (
           <g>
             <ellipse cx="560" cy="255" rx="95" ry="70" fill="none" stroke="#d97706" strokeWidth="3" strokeDasharray="14 7" />
