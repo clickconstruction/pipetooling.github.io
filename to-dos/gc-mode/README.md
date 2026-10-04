@@ -914,7 +914,9 @@ Never start another lane's port.
    comparing bids, who is emailed, the follow-up order, the start checklist.
 3. **The board and one project, read-only**, on real data, behind the dev gate.
 4. **Invitations and the company portal** (the sub portal's pattern, keyed to a company).
-5. **Plans: sets, the email, who opened it.**
+5. **Plans: sets, the email, who opened it.** New Project's part of steps 1 to 5 in detail (the
+   tables, what it reuses, the kernels, nine PRs and the owner's five decisions first):
+   `NEW_PROJECT_REAL_BUILD.md` (New Project lane, 2026-10-04).
 6. **Compare, carry, our number.**
 7. **Award, master agreement, statement of work, Get started.**
 8. **Draws and waivers.**

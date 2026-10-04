@@ -711,7 +711,7 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
           {step === 3 && (
             <div style={{ display: 'grid', gap: '0.75rem' }}>
               <div style={{ fontSize: '0.875rem' }}>
-                Each line is one piece of work. A company says yes or no to every line when it quotes. Compare bids reads them line by line.
+                Each line is one piece of work. A company says yes or no to every line when it quotes. Compare quotes reads them line by line.
               </div>
               {picked.length === 0 ? (
                 <div style={{ color: 'var(--text-muted)' }}>No trades are ticked yet. Pick them on step 3.</div>
