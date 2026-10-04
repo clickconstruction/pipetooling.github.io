@@ -1,7 +1,7 @@
 ---
 name: "GC mode, New Project: the real build plan"
 parent: to-dos/gc-mode/README.md (punch list #81)
-status: planned 2026-10-04 by the New Project lane at the owner's ask ("yes, write the real build plan") · nothing built · nothing touches the database until the owner approves a step
+status: planned 2026-10-04 by the New Project lane at the owner's ask ("yes, write the real build plan") · the owner took the five defaults the same day · PR 1 (the pure kernels in src/lib/gc/) in · nothing touches the database until the owner approves a step
 summary: >
   How New Project, the plan sets and the questions about the plans move from the prototype
   (made-up data on branch spike/gc-mode) into the real app: the tables, what the app already has
@@ -30,7 +30,8 @@ says so.
 
 ## Decisions before the first migration
 
-Each has a default the plan is written to. The owner changes any of them by saying so.
+Each has a default the plan is written to. **The owner took all five defaults on 2026-10-04**
+("yes to the defaults"). He changes any of them by saying so.
 
 1. **Where a GC project lives.** *Default:* a row in `projects` (it already has the owner as
    `customer_id`, the address, a `plans_link` and a `project_number` from its sequence) plus a
@@ -220,4 +221,10 @@ question about the plans" (PR 8).
 
 ## Status
 
-Planned 2026-10-04. Next: the owner's answers to the five decisions, then PR 1.
+Planned 2026-10-04. The owner said yes to the five defaults the same day ("yes to the defaults,
+start the first PR"). PR 1 is in: the pure kernels at `src/lib/gc/plans.ts` with
+`src/lib/gc/plans.test.ts`, on main through branch `claude/gc-real-kernels` (clickconstruction/pipetooling.github.io#4448), and on this branch,
+where `gcNewProject.ts` and `gcPlans.ts` now import and re-export them (one copy). The kernels that
+need a whole project (a line's reach, a set's fold, the set email, the questions) move with PR 4,
+beside the real types and the row mapper. Nothing builds the tables (PRs 2 and 3) until the owner
+says the shape is settled.

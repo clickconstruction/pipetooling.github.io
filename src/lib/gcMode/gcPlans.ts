@@ -6,28 +6,14 @@ import type { GcProject, GcState, Invite, Partner, PlanQuestion, PlanSheet, Spec
 import { weekdayDate } from './gcWords'
 import { currentRev, partnerById } from './gcLookups'
 
+// The pure sheet kernels live in the real build's library now (NEW_PROJECT_REAL_BUILD.md, PR 1).
+export { bareId, indexDiff, sheetDiscipline, sheetsInText, takenOutInText } from '../gc/plans'
+export type { IndexDiff } from '../gc/plans'
+
 // ---------------------------------------------------------------------------------------------
 // Selectors
 // ---------------------------------------------------------------------------------------------
 
-const DISCIPLINES: Record<string, string> = {
-  G: 'General',
-  C: 'Civil',
-  A: 'Architectural',
-  ID: 'Interiors',
-  S: 'Structural',
-  M: 'Mechanical',
-  E: 'Electrical',
-  P: 'Plumbing',
-  FP: 'Fire protection',
-  L: 'Landscape',
-  T: 'Technology',
-}
-
-export function sheetDiscipline(sheetId: string): string {
-  const letters = sheetId.match(/^[A-Za-z]+/)?.[0].toUpperCase() ?? ''
-  return DISCIPLINES[letters] ?? 'Other'
-}
 
 export interface SheetInSet extends PlanSheet {
   /** The newest set, up to the one being read, that changed this sheet. Null: as first issued. */
@@ -82,73 +68,6 @@ export function sheetsGoneAtRev(project: GcProject, rev: number): SheetGone[] {
   return walkSheets(project, rev).gone
 }
 
-/** A sheet or section number with its dashes, dots and spaces dropped, so A101 meets A-101. */
-export function bareId(id: string): string {
-  return id.toUpperCase().replace(/[-.\s]/g, '')
-}
-
-/** What a pasted index does to the one we have: new, gone, renamed (same number, new title) and the same. */
-export interface IndexDiff<T extends { id: string; title: string }> {
-  added: T[]
-  gone: T[]
-  renamed: { id: string; from: string; to: string }[]
-  same: T[]
-}
-
-/**
- * Compare a pasted index with the one we have. Numbers match without their dashes or dots, and a
- * matched number keeps the way our index writes it. Titles match without minding capitals.
- */
-export function indexDiff<T extends { id: string; title: string }>(have: T[], next: T[]): IndexDiff<T> {
-  const was = new Map(have.map((x) => [bareId(x.id), x]))
-  const now = new Set(next.map((x) => bareId(x.id)))
-  const plain = (t: string) => t.trim().replace(/\s+/g, ' ').toLowerCase()
-  const out: IndexDiff<T> = { added: [], gone: [], renamed: [], same: [] }
-  for (const x of next) {
-    const old = was.get(bareId(x.id))
-    if (!old) out.added.push(x)
-    else if (x.title.trim() !== '' && plain(old.title) !== plain(x.title)) out.renamed.push({ id: old.id, from: old.title, to: x.title })
-    else out.same.push(old)
-  }
-  for (const x of have) if (!now.has(bareId(x.id))) out.gone.push(x)
-  return out
-}
-
-/** "Delete sheet C-201", "C-201 is deleted", "Section 09 30 13 removed": the numbers a note takes out. */
-const TAKEN_OUT_BEFORE = /\b(?:delete[ds]?|remove[ds]?|void(?:ed)?|omit(?:s|ted)?|withdraw[ns]?)\s+(?:sheets?\s+|sections?\s+)?$/i
-const TAKEN_OUT_AFTER = /^\s*(?:is\s+|are\s+|has\s+been\s+|have\s+been\s+)?[:\-–—]?\s*(?:deleted|removed|voided|omitted|withdrawn|taken\s+out)\b/i
-
-/**
- * The numbers in a note that it says are taken out: the word comes right before the number
- * ("delete sheet C-201") or right after it ("C-201 is deleted"). "Delete the pond per C-201"
- * takes nothing out. `found` gives the numbers in the note as the caller reads them.
- */
-export function takenOutInText(text: string, found: (line: string) => string[]): string[] {
-  const out: string[] = []
-  for (const raw of text.split(/\r?\n/)) {
-    const line = raw.replace(/\s+/g, ' ')
-    for (const id of found(line)) {
-      // The number as the note writes it: "09-30-13" and "093013" are both 09 30 13.
-      const loose = new RegExp(bareId(id).split('').map((c) => c.replace(/[^A-Z0-9]/g, '\\$&')).join('[-.\\s]?'), 'i')
-      const m = loose.exec(line)
-      if (!m) continue
-      const before = line.slice(0, m.index)
-      const after = line.slice(m.index + m[0].length)
-      if ((TAKEN_OUT_BEFORE.test(before) || TAKEN_OUT_AFTER.test(after)) && !out.includes(id)) out.push(id)
-    }
-  }
-  return out
-}
-
-/**
- * Sheet numbers found in pasted notes, each once, in the order they appear. With a dash: "E-201",
- * "FP-101", "A-1.01". Without one, only a full number reads as a sheet ("A101", "A1.01"), so a
- * word like R30 or T24 in the notes is not taken for a drawing.
- */
-export function sheetsInText(text: string): string[] {
-  const found = text.toUpperCase().match(/\b[A-Z]{1,2}(?:-\d{2,3}|-?\d\.\d{2}|\d{3})[A-Z]?\b/g) ?? []
-  return [...new Set(found)]
-}
 
 /**
  * A sheet number as the project's index writes it: "A101" in the notes is "A-101" in a set that
@@ -270,8 +189,8 @@ export function planEmail(
   if (r.touched && project.stage === 'pursuing') {
     body.push(
       r.hasBid
-        ? `This changes ${trade}.${touches} Please open the plans and confirm your number, or send a new one${project.bidDue ? `, by ${weekdayDate(project.bidDue)}` : ''}.`
-        : `This changes ${trade}.${touches} Please price the new set${project.bidDue ? `. Your number is due ${weekdayDate(project.bidDue)}` : ''}.`,
+        ? `This changes ${trade}.${touches} Please open the plans and confirm your quote, or send a new one${project.bidDue ? `, by ${weekdayDate(project.bidDue)}` : ''}.`
+        : `This changes ${trade}.${touches} Please price the new set${project.bidDue ? `. Your quote is due ${weekdayDate(project.bidDue)}` : ''}.`,
     )
   } else if (r.touched) {
     body.push(`This changes ${trade}.${touches}${moves} Build from this set. If it changes your price, tell us before you do the work.`)

@@ -1,0 +1,523 @@
+/**
+ * GC mode, the real build, step 1: the pure plan kernels, moved word for word from the GC mode
+ * prototype (branch spike/gc-mode: `gcNewProject.ts`, `gcPlans.ts`), where the owner decided each
+ * rule by using it. They read what the office pastes (a sheet index, a table of contents, a set's
+ * notes), split the plans into trades, guess which sheets and sections a scope line reads, compare
+ * a reissued index with ours, and find the gaps between the trades. No database and no screen
+ * reads them yet; New project on real data does (PR 4 of to-dos/gc-mode/NEW_PROJECT_REAL_BUILD.md,
+ * on branch spike/gc-mode).
+ */
+import type { PlanSheet, ScopeExclusion, SpecSection } from './types'
+
+// ---------------------------------------------------------------------------------------------
+// The trades: the list, its usual scope and what each usually leaves out, budgets by size
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * One trade the office may buy. The list runs in the order the specs list trades (by division),
+ * not the order the work goes in: the schedule's first draft reads the stages of the job instead.
+ */
+export interface TradeTemplate {
+  trade: string
+  /** A sheet of one of these disciplines suggests the trade. */
+  disciplines: string[]
+  /** A sheet whose title holds one of these words suggests it too. */
+  words: string[]
+  /** The usual scope: the first draft of the trade's scope on every new project. */
+  scope: string[]
+  /** What the trade's quote usually leaves out, and who usually does it instead. */
+  excludes?: ScopeExclusion[]
+}
+
+export const TRADE_TEMPLATES: TradeTemplate[] = [
+  { trade: 'Sitework', disciplines: ['Civil'], words: [], scope: ['Clearing and grading', 'Utilities to 5 ft of the building', 'Paving', 'Striping and signs'] },
+  {
+    trade: 'Landscaping',
+    disciplines: ['Landscape'],
+    words: ['landscape', 'irrigation'],
+    scope: ['Planting', 'Irrigation', 'Sod and seed'],
+    excludes: [{ label: 'Irrigation sleeves under paving', by: 'Sitework' }],
+  },
+  { trade: 'Concrete', disciplines: ['Structural'], words: ['foundation', 'slab'], scope: ['Foundations', 'Slab on grade', 'Sidewalks and curbs', 'Rebar supply'] },
+  { trade: 'Masonry', disciplines: [], words: ['masonry', 'cmu', 'brick'], scope: ['Block walls', 'Brick veneer', 'Grout and reinforcing'] },
+  { trade: 'Structural steel', disciplines: [], words: ['steel', 'framing plan', 'joist'], scope: ['Structural steel', 'Joists and deck', 'Erection'] },
+  { trade: 'Framing and drywall', disciplines: ['Interiors'], words: ['ceiling', 'partition', 'wall type', 'interior elevation'], scope: ['Framing', 'Hang and tape', 'Ceilings'] },
+  { trade: 'Roofing', disciplines: [], words: ['roof'], scope: ['Roof membrane', 'Insulation', 'Sheet metal and flashing', 'Roof curbs'] },
+  { trade: 'Doors and hardware', disciplines: [], words: ['door', 'hardware'], scope: ['Frames', 'Doors', 'Hardware'] },
+  { trade: 'Glass and storefront', disciplines: [], words: ['storefront', 'glazing', 'window'], scope: ['Storefront', 'Glass', 'Sealants'] },
+  { trade: 'Painting', disciplines: [], words: ['finish', 'paint'], scope: ['Interior paint', 'Exterior paint'] },
+  { trade: 'Flooring', disciplines: [], words: ['finish', 'flooring'], scope: ['Tile', 'Carpet and vinyl plank', 'Base'] },
+  { trade: 'Millwork', disciplines: [], words: ['millwork', 'casework', 'cabinet'], scope: ['Cabinets', 'Countertops', 'Install'] },
+  {
+    trade: 'Fire sprinkler',
+    disciplines: ['Fire protection'],
+    words: ['sprinkler'],
+    scope: ['Design and permit', 'Mains and branch lines', 'Heads and trim'],
+    excludes: [{ label: 'Fire alarm tie-in', by: 'Electrical' }],
+  },
+  {
+    trade: 'Plumbing',
+    disciplines: ['Plumbing'],
+    words: [],
+    scope: ['Underground', 'Rough in', 'Top out', 'Trim'],
+    excludes: [
+      { label: 'Gas piping', by: 'HVAC' },
+      { label: 'Utilities past 5 ft of the building', by: 'Sitework' },
+    ],
+  },
+  {
+    trade: 'HVAC',
+    disciplines: ['Mechanical'],
+    words: ['hvac'],
+    scope: ['Equipment', 'Ductwork', 'Controls', 'Test and balance'],
+    excludes: [
+      { label: 'Power wiring to the units', by: 'Electrical' },
+      { label: 'Flashing at the roof curbs', by: 'Roofing' },
+    ],
+  },
+  {
+    trade: 'Electrical',
+    disciplines: ['Electrical', 'Technology'],
+    words: [],
+    scope: ['Service and gear', 'Panels and feeders', 'Lighting', 'Devices', 'Fire alarm'],
+    excludes: [
+      { label: 'Low voltage cabling', by: 'the owner' },
+      { label: 'Control wiring', by: 'HVAC' },
+    ],
+  },
+]
+
+/**
+ * A rough cost per square foot for each trade on a small commercial building: made-up numbers to
+ * start a budget from, never a price. The office changes any of them line by line.
+ */
+export const BUDGET_PER_SQ_FT: Record<string, number> = {
+  Sitework: 12,
+  Landscaping: 3,
+  Concrete: 14,
+  Masonry: 8,
+  'Structural steel': 18,
+  'Framing and drywall': 12,
+  Roofing: 9,
+  'Doors and hardware': 4,
+  'Glass and storefront': 6,
+  Painting: 3,
+  Flooring: 5,
+  Millwork: 6,
+  'Fire sprinkler': 4.5,
+  Plumbing: 10,
+  HVAC: 16,
+  Electrical: 18,
+}
+
+/** The square feet in a size line: "6,800 sq ft clinic" reads 6800. Null when it names none. */
+export function sqFtInText(text: string): number | null {
+  const m = text.match(/([\d,]+(?:\.\d+)?)\s*(?:sq\.?\s*ft|sf|square\s+feet)\b/i)
+  const n = m?.[1] ? Number(m[1].replace(/,/g, '')) : NaN
+  return Number.isFinite(n) && n > 0 ? n : null
+}
+
+/** A trade's rough budget from the size, to the nearest $500. Null for a trade with no rate. */
+export function budgetFromSize(trade: string, sqFt: number): number | null {
+  const rate = BUDGET_PER_SQ_FT[trade]
+  return rate === undefined ? null : Math.round((rate * sqFt) / 500) * 500
+}
+
+// ---------------------------------------------------------------------------------------------
+// Sheets: the discipline from the number, an index read from a paste, the trades the sheets suggest
+// ---------------------------------------------------------------------------------------------
+
+const DISCIPLINES: Record<string, string> = {
+  G: 'General',
+  C: 'Civil',
+  A: 'Architectural',
+  ID: 'Interiors',
+  S: 'Structural',
+  M: 'Mechanical',
+  E: 'Electrical',
+  P: 'Plumbing',
+  FP: 'Fire protection',
+  L: 'Landscape',
+  T: 'Technology',
+}
+
+export function sheetDiscipline(sheetId: string): string {
+  const letters = sheetId.match(/^[A-Za-z]+/)?.[0].toUpperCase() ?? ''
+  return DISCIPLINES[letters] ?? 'Other'
+}
+
+/** What a pasted sheet index reads as: the sheets, and the lines with a number that were not read. */
+export interface SheetIndexReading {
+  sheets: PlanSheet[]
+  unread: string[]
+}
+
+/** "A-101", "A101", "A1.01", "FP-101", "A-101A" at the head of a line, then the title. */
+const SHEET_LINE = /^\s*([A-Za-z]{1,2})([-.\s]?)(\d{1,3}(?:\.\d{1,3})?[A-Za-z]?)\b[\s\-–—:.,]*(.*)$/
+
+/** Short words a drawing title keeps in capitals. */
+const KEEP_CAPS = new Set(['HVAC', 'MEP', 'ADA', 'CMU', 'RCP', 'TPO', 'RTU', 'LV', 'FFE', 'II', 'III', 'IV'])
+
+/** A title typed in capitals reads in sentence case: "FLOOR PLAN" reads "Floor plan", "HVAC PLAN" reads "HVAC plan". */
+function titleWords(raw: string): string {
+  const t = raw.trim().replace(/\s+/g, ' ')
+  if (t === '' || t !== t.toUpperCase()) return t
+  const words = t.split(' ').map((w) => (KEEP_CAPS.has(w.replace(/[^A-Z]/g, '')) ? w : w.toLowerCase()))
+  const out = words.join(' ')
+  return out.charAt(0).toUpperCase() + out.slice(1)
+}
+
+/**
+ * The sheets in a pasted sheet index, one a line, in the order they appear, each once. A line
+ * with no digit is a heading ("ARCHITECTURAL") and is passed over. A line with a digit that does
+ * not start with a sheet number is kept in `unread`, so nothing pasted goes missing unsaid.
+ */
+export function sheetIndexInText(text: string): SheetIndexReading {
+  const sheets: PlanSheet[] = []
+  const unread: string[] = []
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim()
+    if (line === '' || !/\d/.test(line)) continue
+    const m = line.match(SHEET_LINE)
+    if (!m) {
+      unread.push(line)
+      continue
+    }
+    const sep = m[2] === '' ? '' : m[2] === '.' ? '.' : '-'
+    const id = `${m[1]}${sep}${m[3]}`.toUpperCase()
+    if (sheets.some((s) => s.id === id)) continue
+    sheets.push({ id, title: titleWords(m[4] ?? '') })
+  }
+  return { sheets, unread }
+}
+
+/** One trade the sheets suggest, and the sheets that suggest it. */
+export interface TradeGuess {
+  trade: string
+  from: string[]
+}
+
+/** The trades a set of sheets suggests, in the list's order. A guess to start from, never the last word. */
+export function tradesForSheets(sheets: PlanSheet[]): TradeGuess[] {
+  const out: TradeGuess[] = []
+  for (const t of TRADE_TEMPLATES) {
+    const from = sheets
+      .filter((s) => t.disciplines.includes(sheetDiscipline(s.id)) || t.words.some((w) => s.title.toLowerCase().includes(w)))
+      .map((s) => s.id)
+    if (from.length > 0) out.push({ trade: t.trade, from })
+  }
+  return out
+}
+
+/** Words too common in drawing titles and scope lines to tie one to the other. */
+const LINE_STOP = new Set(['and', 'the', 'with', 'from', 'plan', 'plans', 'detail', 'details', 'sheet', 'sheets', 'schedule', 'schedules', 'section', 'sections', 'building', 'supply'])
+
+/** The words of a title or a line, cut to their first four letters, so "utilities" meets "utility". */
+function stems(text: string): string[] {
+  return text
+    .toLowerCase()
+    .split(/[^a-z]+/)
+    .filter((w) => w.length >= 4 && !LINE_STOP.has(w))
+    .map((w) => w.slice(0, 4))
+}
+
+/**
+ * The sheets a scope line most likely reads from: the trade's sheets whose titles share a word
+ * with the line. "Lighting" reads from the lighting plan. A line that meets no title gets none,
+ * which means the trade's sheets as a whole.
+ */
+export function guessLineSheets(label: string, tradeSheets: PlanSheet[]): string[] {
+  const want = new Set(stems(label))
+  if (want.size === 0) return []
+  return tradeSheets.filter((s) => stems(s.title).some((w) => want.has(w))).map((s) => s.id)
+}
+
+/** A name inside a sentence: its first letter lowered, unless it starts in capitals (HVAC, RTU curbs). */
+export function inSentence(text: string): string {
+  const t = text.trim()
+  return /^[A-Z][A-Z0-9]/.test(t) ? t : t.charAt(0).toLowerCase() + t.slice(1)
+}
+
+/** Who does excluded work when it is no trade on the job: the owner, or our own people. */
+export const BY_NOT_A_TRADE = ['the owner', 'us']
+
+/** What a trade's quote usually leaves out, and who usually does it. A trade not on the list leaves out nothing. */
+export function usualExcludes(trade: string): ScopeExclusion[] {
+  return (TRADE_TEMPLATES.find((t) => t.trade === trade)?.excludes ?? []).map((x) => ({ ...x }))
+}
+
+/** Something one trade leaves out that nobody picks up: the trade it is left to is not on the job, or its scope does not list it. */
+export interface ScopeGap {
+  trade: string
+  label: string
+  by: string
+  problem: 'not on the job' | 'not in their scope'
+}
+
+/**
+ * The gaps between the trades: each thing a trade leaves out for another trade must be on that
+ * trade's scope (a line sharing a word with it). Left to the owner or to us, it is no gap.
+ */
+export function scopeGaps(trades: { trade: string; scope: string[]; excludes?: ScopeExclusion[] }[]): ScopeGap[] {
+  const out: ScopeGap[] = []
+  for (const t of trades) {
+    for (const x of t.excludes ?? []) {
+      if (x.label.trim() === '' || BY_NOT_A_TRADE.includes(x.by)) continue
+      const other = trades.find((o) => o.trade.toLowerCase() === x.by.toLowerCase())
+      const want = new Set(stems(x.label))
+      if (!other) out.push({ trade: t.trade, label: x.label.trim(), by: x.by, problem: 'not on the job' })
+      else if (!other.scope.some((line) => stems(line).some((w) => want.has(w)))) out.push({ trade: t.trade, label: x.label.trim(), by: x.by, problem: 'not in their scope' })
+    }
+  }
+  return out
+}
+
+/** The usual scope for a trade. A trade not on the list starts empty. */
+export function usualScope(trade: string): string[] {
+  return TRADE_TEMPLATES.find((t) => t.trade === trade)?.scope ?? []
+}
+
+/** Where a trade sits in the list (the order the specs list trades). A trade not on the list goes last. */
+export function tradeOrder(trade: string): number {
+  const i = TRADE_TEMPLATES.findIndex((t) => t.trade === trade)
+  return i === -1 ? TRADE_TEMPLATES.length : i
+}
+
+// ---------------------------------------------------------------------------------------------
+// A later set: numbers in its notes, what it takes out, a reissued index against ours
+// ---------------------------------------------------------------------------------------------
+
+/** A sheet or section number with its dashes, dots and spaces dropped, so A101 meets A-101. */
+export function bareId(id: string): string {
+  return id.toUpperCase().replace(/[-.\s]/g, '')
+}
+
+/** What a pasted index does to the one we have: new, gone, renamed (same number, new title) and the same. */
+export interface IndexDiff<T extends { id: string; title: string }> {
+  added: T[]
+  gone: T[]
+  renamed: { id: string; from: string; to: string }[]
+  same: T[]
+}
+
+/**
+ * Compare a pasted index with the one we have. Numbers match without their dashes or dots, and a
+ * matched number keeps the way our index writes it. Titles match without minding capitals.
+ */
+export function indexDiff<T extends { id: string; title: string }>(have: T[], next: T[]): IndexDiff<T> {
+  const was = new Map(have.map((x) => [bareId(x.id), x]))
+  const now = new Set(next.map((x) => bareId(x.id)))
+  const plain = (t: string) => t.trim().replace(/\s+/g, ' ').toLowerCase()
+  const out: IndexDiff<T> = { added: [], gone: [], renamed: [], same: [] }
+  for (const x of next) {
+    const old = was.get(bareId(x.id))
+    if (!old) out.added.push(x)
+    else if (x.title.trim() !== '' && plain(old.title) !== plain(x.title)) out.renamed.push({ id: old.id, from: old.title, to: x.title })
+    else out.same.push(old)
+  }
+  for (const x of have) if (!now.has(bareId(x.id))) out.gone.push(x)
+  return out
+}
+
+/** "Delete sheet C-201", "C-201 is deleted", "Section 09 30 13 removed": the numbers a note takes out. */
+const TAKEN_OUT_BEFORE = /\b(?:delete[ds]?|remove[ds]?|void(?:ed)?|omit(?:s|ted)?|withdraw[ns]?)\s+(?:sheets?\s+|sections?\s+)?$/i
+const TAKEN_OUT_AFTER = /^\s*(?:is\s+|are\s+|has\s+been\s+|have\s+been\s+)?[:\-–—]?\s*(?:deleted|removed|voided|omitted|withdrawn|taken\s+out)\b/i
+
+/**
+ * The numbers in a note that it says are taken out: the word comes right before the number
+ * ("delete sheet C-201") or right after it ("C-201 is deleted"). "Delete the pond per C-201"
+ * takes nothing out. `found` gives the numbers in the note as the caller reads them.
+ */
+export function takenOutInText(text: string, found: (line: string) => string[]): string[] {
+  const out: string[] = []
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.replace(/\s+/g, ' ')
+    for (const id of found(line)) {
+      // The number as the note writes it: "09-30-13" and "093013" are both 09 30 13.
+      const loose = new RegExp(bareId(id).split('').map((c) => c.replace(/[^A-Z0-9]/g, '\\$&')).join('[-.\\s]?'), 'i')
+      const m = loose.exec(line)
+      if (!m) continue
+      const before = line.slice(0, m.index)
+      const after = line.slice(m.index + m[0].length)
+      if ((TAKEN_OUT_BEFORE.test(before) || TAKEN_OUT_AFTER.test(after)) && !out.includes(id)) out.push(id)
+    }
+  }
+  return out
+}
+
+/**
+ * Sheet numbers found in pasted notes, each once, in the order they appear. With a dash: "E-201",
+ * "FP-101", "A-1.01". Without one, only a full number reads as a sheet ("A101", "A1.01"), so a
+ * word like R30 or T24 in the notes is not taken for a drawing.
+ */
+export function sheetsInText(text: string): string[] {
+  const found = text.toUpperCase().match(/\b[A-Z]{1,2}(?:-\d{2,3}|-?\d\.\d{2}|\d{3})[A-Z]?\b/g) ?? []
+  return [...new Set(found)]
+}
+
+// ---------------------------------------------------------------------------------------------
+// The specs: the project manual's sections and the trades they point at
+// ---------------------------------------------------------------------------------------------
+
+/** The divisions of the project manual, by their two-digit number. */
+export const SPEC_DIVISIONS: Record<string, string> = {
+  '00': 'Procurement and contracting',
+  '01': 'General requirements',
+  '02': 'Existing conditions',
+  '03': 'Concrete',
+  '04': 'Masonry',
+  '05': 'Metals',
+  '06': 'Wood, plastics and composites',
+  '07': 'Thermal and moisture protection',
+  '08': 'Openings',
+  '09': 'Finishes',
+  '10': 'Specialties',
+  '11': 'Equipment',
+  '12': 'Furnishings',
+  '13': 'Special construction',
+  '14': 'Conveying equipment',
+  '21': 'Fire suppression',
+  '22': 'Plumbing',
+  '23': 'HVAC',
+  '25': 'Integrated automation',
+  '26': 'Electrical',
+  '27': 'Communications',
+  '28': 'Electronic safety and security',
+  '31': 'Earthwork',
+  '32': 'Exterior improvements',
+  '33': 'Utilities',
+}
+
+/** A section's division: its first two digits. */
+export function specDivision(id: string): string {
+  return id.replace(/\D/g, '').slice(0, 2)
+}
+
+/**
+ * Which trade a section belongs to, by the start of its number: the longest match wins, so
+ * "09 91" is painting while "09 2" is drywall. Divisions 00 and 01 belong to no trade.
+ */
+const SPEC_TRADES: [string, string][] = [
+  ['0241', 'Sitework'],
+  ['03', 'Concrete'],
+  ['04', 'Masonry'],
+  ['051', 'Structural steel'],
+  ['052', 'Structural steel'],
+  ['053', 'Structural steel'],
+  ['055', 'Structural steel'],
+  ['061', 'Framing and drywall'],
+  ['064', 'Millwork'],
+  ['075', 'Roofing'],
+  ['076', 'Roofing'],
+  ['077', 'Roofing'],
+  ['081', 'Doors and hardware'],
+  ['087', 'Doors and hardware'],
+  ['084', 'Glass and storefront'],
+  ['088', 'Glass and storefront'],
+  ['092', 'Framing and drywall'],
+  ['095', 'Framing and drywall'],
+  ['093', 'Flooring'],
+  ['096', 'Flooring'],
+  ['099', 'Painting'],
+  ['123', 'Millwork'],
+  ['21', 'Fire sprinkler'],
+  ['22', 'Plumbing'],
+  ['23', 'HVAC'],
+  ['26', 'Electrical'],
+  ['27', 'Electrical'],
+  ['28', 'Electrical'],
+  ['31', 'Sitework'],
+  ['321', 'Sitework'],
+  ['328', 'Landscaping'],
+  ['329', 'Landscaping'],
+  ['33', 'Sitework'],
+]
+
+/** The trade a section most likely belongs to. Null: none, like the general requirements. */
+export function tradeForSpec(id: string): string | null {
+  const digits = id.replace(/\D/g, '')
+  let best: [string, string] | null = null
+  for (const rule of SPEC_TRADES) if (digits.startsWith(rule[0]) && (!best || rule[0].length > best[0].length)) best = rule
+  return best?.[1] ?? null
+}
+
+/** What a pasted table of contents reads as: the sections, and the lines with numbers that were not read. */
+export interface SpecIndexReading {
+  sections: SpecSection[]
+  unread: string[]
+}
+
+/** "07 54 23", "075423", "07-54-23", "Section 09 91 23" at the head of a line, then the title. */
+const SPEC_LINE = /^\s*(?:section\s+)?(\d{2})[\s.-]?(\d{2})[\s.-]?(\d{2})(?:\.\d+)?\b[\s\-–—:.,]*(.*)$/i
+
+/**
+ * The sections in a pasted table of contents, one a line, each once, in the order they appear.
+ * A division heading ("DIVISION 09 - FINISHES") and a line with no digit are passed over. A line
+ * with digits that does not start with a section number is kept in `unread`.
+ */
+export function specIndexInText(text: string): SpecIndexReading {
+  const sections: SpecSection[] = []
+  const unread: string[] = []
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim()
+    if (line === '' || !/\d/.test(line) || /^division\b/i.test(line)) continue
+    const m = line.match(SPEC_LINE)
+    if (!m) {
+      unread.push(line)
+      continue
+    }
+    const id = `${m[1]} ${m[2]} ${m[3]}`
+    if (sections.some((s) => s.id === id)) continue
+    sections.push({ id, title: titleWords(m[4] ?? '') })
+  }
+  return { sections, unread }
+}
+
+/** One trade the plans suggest: the sheets and the sections behind the guess. */
+export interface PlansTradeGuess {
+  trade: string
+  from: string[]
+  specs: string[]
+}
+
+/** The trades the sheets and the sections suggest together, in the list's order. */
+export function tradesForPlans(sheets: PlanSheet[], specs: SpecSection[]): PlansTradeGuess[] {
+  const out = new Map<string, PlansTradeGuess>()
+  for (const g of tradesForSheets(sheets)) out.set(g.trade, { trade: g.trade, from: g.from, specs: [] })
+  for (const s of specs) {
+    const trade = tradeForSpec(s.id)
+    if (!trade) continue
+    const g = out.get(trade) ?? { trade, from: [], specs: [] }
+    g.specs.push(s.id)
+    out.set(trade, g)
+  }
+  return [...out.values()].sort((a, b) => tradeOrder(a.trade) - tradeOrder(b.trade))
+}
+
+/** The sections a scope line most likely reads from: the trade's sections whose titles share a word with it. */
+export function guessLineSpecs(label: string, tradeSpecs: SpecSection[]): string[] {
+  const want = new Set(stems(label))
+  if (want.size === 0) return []
+  return tradeSpecs.filter((s) => stems(s.title).some((w) => want.has(w))).map((s) => s.id)
+}
+
+/**
+ * Section numbers found in a set's notes, each once, in the order they appear, written the way
+ * the manual writes them ("09 91 23"). Spaced, dotted or dashed numbers read anywhere; six bare
+ * digits read only after the word section, so an amount like 120000 is not taken for one.
+ */
+export function specsInText(text: string): string[] {
+  const found: string[] = []
+  const add = (a: string, b: string, c: string) => {
+    if (SPEC_DIVISIONS[a] === undefined) return
+    const id = `${a} ${b} ${c}`
+    if (!found.includes(id)) found.push(id)
+  }
+  const pattern = /\bsection\s+(\d{2})[ .-]?(\d{2})[ .-]?(\d{2})\b|\b(\d{2})([ .-])(\d{2})\5(\d{2})\b/gi
+  for (const m of text.matchAll(pattern)) {
+    if (m[1] && m[2] && m[3]) add(m[1], m[2], m[3])
+    else if (m[4] && m[6] && m[7]) add(m[4], m[6], m[7])
+  }
+  return found
+}
+
