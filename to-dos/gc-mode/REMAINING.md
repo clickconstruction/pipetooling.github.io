@@ -36,7 +36,7 @@ makes; nobody builds it until he answers.
 
 ## Board (GC 0)
 
-**Done 2026-10-03: items 1-10.** Left for the Board: item 11 (the ring), once the owner decides. The owner gave the Board lane a standing OK (2026-10-03): it commits, moves its own golden snapshots, shares and tells the lanes without asking him, naming every move in the commit.
+**Done 2026-10-03: items 1-10.** Item 11 (the ring) built too, on the owner's yes. The owner gave the Board lane a standing OK (2026-10-03): it commits, moves its own golden snapshots, shares and tells the lanes without asking him, naming every move in the commit.
 
 
 1. ~~**A "Money" board tab.**~~ done 0ecca9192. Place the Owner Billing lane's `GcOwnerBillingMoney` (built; the owner
@@ -105,7 +105,7 @@ makes; nobody builds it until he answers.
 
 ## Owner (the decisions)
 
-11. **A carried quote with a line that has no cost:** does it hold the ring open? (Board builds it.)
+11. ~~**A carried quote with a line that has no cost:** does it hold the ring open?~~ Answered 2026-10-03: yes, until every line has a cost. Built by the Board (this commit).
 12. **The golden walk's order:** draw Helotes's schedule before Start? (Building moves the step.)
 13. **Marsh & Vale's made-up questions:** were they sent to the architect? (New Project.)
 14. **The open questions in `README.md`:** 2 (start at buyout?), 3 (vetting new trades), 4 (draws
