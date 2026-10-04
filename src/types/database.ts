@@ -10670,10 +10670,12 @@ export type Database = {
           files: Json
           id: string
           job_id: string
+          lines: Json
           period_to: string | null
           retainage_held: number
           retainage_pct: number
           source: string
+          split_labor_material: boolean
           total_completed_and_stored: number
           total_earned_less_retainage: number
           updated_at: string
@@ -10691,10 +10693,12 @@ export type Database = {
           files?: Json
           id?: string
           job_id: string
+          lines?: Json
           period_to?: string | null
           retainage_held?: number
           retainage_pct?: number
           source?: string
+          split_labor_material?: boolean
           total_completed_and_stored?: number
           total_earned_less_retainage?: number
           updated_at?: string
@@ -10712,10 +10716,12 @@ export type Database = {
           files?: Json
           id?: string
           job_id?: string
+          lines?: Json
           period_to?: string | null
           retainage_held?: number
           retainage_pct?: number
           source?: string
+          split_labor_material?: boolean
           total_completed_and_stored?: number
           total_earned_less_retainage?: number
           updated_at?: string
