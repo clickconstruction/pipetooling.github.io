@@ -117,7 +117,7 @@ column headers are in one block at the end of `gcBuildingWords.ts`, for the nati
 
 ## For a native speaker to read
 
-Every Spanish string the trade's portal shows, 653 in all, drawn from the code on 2026-10-04.
+Every Spanish string the trade's portal shows, 657 in all, drawn from the code on 2026-10-04.
 They're grouped by screen, English on the left. Please mark anything that reads wrong, stiff or
 unclear, and write the better words beside it. The Portal lane makes the changes and passes the
 other lanes theirs.
@@ -933,6 +933,15 @@ they were written in. The portal does not translate them.
 | Waiting on {gc} to check it. | Esperando que {gc} lo revise. |
 | {gc} checked it {date}. It is not fixed yet. | {gc} lo revisó el {date}. Todavía no está arreglado. |
 | Checked by {gc}: {n}. | Revisados por {gc}: {n}. |
+
+#### Materials stored on site, on the pay application (2026-10-04, question 12)
+
+| English | Español |
+|---|---|
+| Materials stored on site, not yet in place | Materiales guardados en la obra, aún sin instalar |
+| In dollars, what is on site now. Once it is in place, raise the line and take it off here. | En dólares, lo que hay en la obra hoy. Cuando quede instalado, suba la partida y quítelo de aquí. |
+| Stored on site, {line} | Guardado en la obra, {line} |
+| Stored on site: | Guardado en la obra: |
 
 #### Submittals in the trade's portal (2026-10-04)
 
