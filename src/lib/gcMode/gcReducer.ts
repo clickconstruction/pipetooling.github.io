@@ -1815,6 +1815,8 @@ function reduce(state: GcState, action: GcAction): GcState {
         mandatory: action.mandatory,
         attended: was?.attended ?? null,
         ...(was?.minutesInSetRev !== undefined ? { minutesInSetRev: was.minutesInSetRev } : {}),
+        // A move sends a new invitation, so the day is the move's.
+        setOn: state.today,
       }
       const next = mapProject(state, project.id, (p) => ({ ...p, preBid: meeting }))
       return logged(

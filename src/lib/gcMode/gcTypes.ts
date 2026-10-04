@@ -457,6 +457,11 @@ export interface PreBidMeeting {
   attended: string[] | null
   /** The set that carried the minutes. Missing: not sent yet. */
   minutesInSetRev?: number
+  /**
+   * The day it was set, or last moved: the day of the invitation every company got. A move sends a
+   * new one. Missing: set before the prototype kept it.
+   */
+  setOn?: string
 }
 
 export interface GcProject {
