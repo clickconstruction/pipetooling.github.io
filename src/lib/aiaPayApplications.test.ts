@@ -3,6 +3,9 @@ import { buildAiaPreview } from './aiaG702G703Preview'
 import type { AiaFieldValues } from './aiaG702G703Template'
 import {
   carryForwardPayApplication,
+  carryMismatch,
+  carriedAmountsFrom,
+  withCarriedAmounts,
   nextApplicationNumber,
   parseAiaDate,
   parseApplicationNumber,
@@ -201,6 +204,54 @@ describe('the list', () => {
   it('labels a saved application with its number, period and amount due', () => {
     expect(payApplicationLabel(a)).toBe('1 · 09/30/2026 · $18,360.00 due')
     expect(payApplicationLabel(saved({ ...APP_1, g702_n6_period_to: '' }))).toBe('1 · $18,360.00 due')
+  })
+})
+
+describe('carryMismatch', () => {
+  const jobToday: AiaFieldValues = { g703_k3_application_date: '11/03/2026', g703_f13_this_period: 29100 }
+  const one = saved(APP_1, 'a1')
+  const twoValues = { ...carryForwardPayApplication(one, jobToday), g702_n6_period_to: '10/31/2026' }
+  const two = saved(twoValues, 'a2')
+
+  it('says nothing while an application still matches the one before it', () => {
+    expect(carryMismatch(two.fields, 2, [one, two])).toBeNull()
+    // The first application has nothing before it.
+    expect(carryMismatch(one.fields, 1, [one, two])).toBeNull()
+    expect(carryMismatch(two.fields, null, [one, two])).toBeNull()
+  })
+
+  it('names what differs after the earlier one changes', () => {
+    // Application 1 is reopened: 21,000 of work, not 19,400.
+    const oneChanged = saved({ ...APP_1, g703_f13_this_period: 21000 }, 'a1')
+    const m = carryMismatch(two.fields, 2, [oneChanged, two])
+    expect(m?.previousNumber).toBe(1)
+    expect(m?.differences).toEqual([
+      { key: 'g703_e13_from_previous', label: 'WORK COMPLETED FROM PREVIOUS APPLICATION', here: 19400, fromPrevious: 21000 },
+      // (21,000 + 1,000 stored) less 10%.
+      { key: 'g702_h40_less_previous_certificates', label: 'LESS PREVIOUS CERTIFICATES FOR PAYMENT', here: 18360, fromPrevious: 19800 },
+    ])
+    // Taking the new amounts ends the mismatch and touches nothing else.
+    const taken = withCarriedAmounts(two.fields, oneChanged)
+    expect(carryMismatch(taken, 2, [oneChanged, two])).toBeNull()
+    expect(taken.g703_f13_this_period).toBe(two.fields.g703_f13_this_period)
+    expect(taken.g702_n6_period_to).toBe('10/31/2026')
+  })
+
+  it('sees a change order that moved', () => {
+    const oneChanged = saved({ ...APP_1, g702_f50_this_month_change_order_additions: 2500 }, 'a1')
+    expect(carryMismatch(two.fields, 2, [oneChanged, two])?.differences.map((d) => d.key)).toEqual(['g702_f49_previous_month_change_order_additions'])
+    expect(carriedAmountsFrom(oneChanged).g702_f49_previous_month_change_order_additions).toBe(2500)
+  })
+
+  it('writes the reason only when it is passed, and reads it back', () => {
+    const without = payApplicationWriteFromForm('job-1', two.fields)
+    expect(without.ok && 'carry_reason' in without.row).toBe(false)
+    const withReason = payApplicationWriteFromForm('job-1', two.fields, '', '  It went out this way on Oct 2.  ')
+    expect(withReason.ok && withReason.row.carry_reason).toBe('It went out this way on Oct 2.')
+    const cleared = payApplicationWriteFromForm('job-1', two.fields, '', '')
+    expect(cleared.ok && cleared.row.carry_reason).toBe('')
+    expect(saved(two.fields).carryReason).toBe('')
+    expect(savedPayApplicationFromRow({ ...(withReason.ok ? withReason.row : {}), id: 'x', updated_at: null } as PayApplicationRow).carryReason).toBe('It went out this way on Oct 2.')
   })
 })
 

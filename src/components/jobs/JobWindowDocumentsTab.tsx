@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useState, type CSSProperties } from 'react'
+import { Fragment, useCallback, useEffect, useState, type CSSProperties } from 'react'
 import { FileSpreadsheet } from 'lucide-react'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { formatAiaDate } from '../../lib/aiaG702G703Template'
 import { formatAiaMoney } from '../../lib/aiaG702G703Preview'
-import type { SavedPayApplication } from '../../lib/aiaPayApplications'
+import { type SavedPayApplication, carryMismatch } from '../../lib/aiaPayApplications'
 import { loadPayApplications } from '../../lib/aiaPayApplicationsIo'
 import { jobDocumentFolderLinks } from '../../lib/jobs/jobDocumentsTab'
 import AiaG702G703Modal from './AiaG702G703Modal'
@@ -87,8 +87,11 @@ export function JobWindowDocumentsTab({ job, onAiaOpenChange }: { job: JobWithDe
                   </tr>
                 </thead>
                 <tbody>
-                  {apps.map((app) => (
-                    <tr key={app.id} data-testid="job-documents-pay-app">
+                  {apps.map((app) => {
+                    const mismatch = carryMismatch(app.fields, app.applicationNumber, apps)
+                    return (
+                    <Fragment key={app.id}>
+                    <tr data-testid="job-documents-pay-app">
                       <td style={{ ...td, fontWeight: 700 }}>{app.applicationNumber}</td>
                       <td style={td}>{formatAiaDate(app.periodTo) || '—'}</td>
                       <td style={{ ...td, ...num }}>{formatAiaMoney(app.currentPaymentDue)}</td>
@@ -107,7 +110,17 @@ export function JobWindowDocumentsTab({ job, onAiaOpenChange }: { job: JobWithDe
                         </button>
                       </td>
                     </tr>
-                  ))}
+                    {mismatch ? (
+                      <tr data-testid="job-documents-pay-app-flag">
+                        <td colSpan={5} style={{ ...td, paddingTop: 0, fontSize: '0.8125rem', color: 'var(--text-amber-800)' }}>
+                          ⚠ No longer matches application {mismatch.previousNumber}.{' '}
+                          {app.carryReason ? `Kept as it is: ${app.carryReason}` : 'No reason given yet.'}
+                        </td>
+                      </tr>
+                    ) : null}
+                    </Fragment>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>

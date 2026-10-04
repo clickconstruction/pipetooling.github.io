@@ -27,7 +27,7 @@ vi.mock('./AiaG702G703Modal', () => ({
     ) : null,
 }))
 
-function app(no: number, thisPeriod: number, previous: number, certified: number, link = ''): SavedPayApplication {
+function app(no: number, thisPeriod: number, previous: number, certified: number, link = '', reason?: string): SavedPayApplication {
   const w = payApplicationWriteFromForm(
     'job-1',
     {
@@ -41,6 +41,7 @@ function app(no: number, thisPeriod: number, previous: number, certified: number
       g703_f13_this_period: thisPeriod,
     },
     link,
+    reason,
   )
   if (!w.ok) throw new Error(w.reason)
   return savedPayApplicationFromRow({ id: `app-${no}`, updated_at: null, ...w.row } as PayApplicationRow)
@@ -75,6 +76,16 @@ describe('JobWindowDocumentsTab', () => {
     expect(escSpy).toHaveBeenLastCalledWith(false)
     await waitFor(() => expect(screen.getAllByTestId('job-documents-pay-app')).toHaveLength(3))
     expect(loadSpy).toHaveBeenCalledTimes(2)
+  })
+
+  it('marks an application that no longer matches the one before it, with its reason', async () => {
+    // Application 1 now reads 21,000 of work; 2 and 3 went out on 19,400.
+    onJob = [app(1, 21000, 0, 0), app(2, 9700, 19400, 17460, '', 'It went out this way on Nov 2.'), app(3, 4850, 29100, 26190)]
+    renderWithProviders(<JobWindowDocumentsTab job={job} />)
+    await screen.findAllByTestId('job-documents-pay-app')
+    const flags = screen.getAllByTestId('job-documents-pay-app-flag')
+    // 2 differs from 1; 3 still follows 2 as 2 was saved.
+    expect(flags.map((f) => f.textContent)).toEqual(['⚠ No longer matches application 1. Kept as it is: It went out this way on Nov 2.'])
   })
 
   it('says so when nothing is saved, and New application opens the window on a new one', async () => {

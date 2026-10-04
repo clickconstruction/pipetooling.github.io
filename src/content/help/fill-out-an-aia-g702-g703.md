@@ -81,6 +81,17 @@ Leave it alone when the contract keeps the retainage. Nothing changes until you 
 Application 1 asked for $19,400.00 of work at 10% retainage, so $17,460.00 was due. A month later the job is at $29,100.00. Application 2 opens with 19,400 as previous work and 9,700 this period. **CURRENT PAYMENT DUE** reads $8,730.00.
 :::
 
+## When an earlier application changes
+
+Nothing locks, so an earlier application can change after a later one went out. The later one then shows a warning. It lists each amount that no longer matches.
+
+You can still save and generate it. You have two choices.
+
+- Press **Use application 1's amounts** to take the new amounts. The number in the button is the earlier application.
+- Or keep it as it went out. Type the reason under **WHY IT STAYS AS IT IS** and press {{button:outline|Save}}.
+
+The warning also shows on the job's **Documents** tab, with the reason.
+
 ## An application sent before today
 
 Type it in as its own application. Type its **APPLICATION NUMBER** and its amounts.

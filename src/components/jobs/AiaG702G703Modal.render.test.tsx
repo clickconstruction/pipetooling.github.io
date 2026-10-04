@@ -69,6 +69,35 @@ function savedOne(): SavedPayApplication {
   return savedPayApplicationFromRow({ id: 'app-1', updated_at: '2026-10-02T15:00:00Z', ...w.row } as PayApplicationRow)
 }
 
+/** Application 2 as it went out after application 1: 19,400 before, 9,700 that period. */
+function savedTwo(reason?: string): SavedPayApplication {
+  const w = payApplicationWriteFromForm(
+    'job-x',
+    {
+      g702_n5_project: '2',
+      g702_n6_period_to: '10/31/2026',
+      g702_h18_original_contract_sum: 48500,
+      g702_c28_retainage_percent: 10,
+      g702_h40_less_previous_certificates: 17460,
+      g703_d13_scheduled_value: 48500,
+      g703_e13_from_previous: 19400,
+      g703_f13_this_period: 9700,
+    },
+    '',
+    reason,
+  )
+  if (!w.ok) throw new Error(w.reason)
+  return savedPayApplicationFromRow({ id: 'app-2', updated_at: '2026-11-02T15:00:00Z', ...w.row } as PayApplicationRow)
+}
+
+/** Application 1 after someone reopened it: 21,000 of work, not 19,400. */
+function savedOneChanged(): SavedPayApplication {
+  const one = savedOne()
+  const w = payApplicationWriteFromForm('job-x', { ...one.fields, g703_f13_this_period: 21000 })
+  if (!w.ok) throw new Error(w.reason)
+  return savedPayApplicationFromRow({ id: 'app-1', updated_at: '2026-11-05T15:00:00Z', ...w.row } as PayApplicationRow)
+}
+
 function setWide(wide: boolean) {
   window.matchMedia = ((query: string) => ({
     matches: wide,
@@ -243,6 +272,60 @@ describe('AiaG702G703Modal', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Leave' }))
     await waitFor(() => expect(field('g702_n5_project').value).toBe('1'))
     expect(screen.queryByTestId('aia-retainage-drop')).toBeNull()
+  })
+
+  it('flags an application that no longer matches the one before it, and saves it with a reason', async () => {
+    setWide(true)
+    onJob = [savedOneChanged(), savedTwo()]
+    renderWithProviders(<AiaG702G703Modal open onClose={() => undefined} job={job} hcpForFilename="1023" initialApplicationNumber={2} />)
+    await waitFor(() => expect(field('g702_n5_project').value).toBe('2'))
+
+    const flag = screen.getByTestId('aia-carry-mismatch')
+    expect(flag.textContent).toContain('This application does not match application 1.')
+    expect(flag.textContent).toContain('WORK COMPLETED FROM PREVIOUS APPLICATION: $19,400.00 here, $21,000.00 from application 1.')
+    expect(flag.textContent).toContain('LESS PREVIOUS CERTIFICATES FOR PAYMENT: $17,460.00 here, $18,900.00 from application 1.')
+    // Its chip carries the mark; application 1's does not.
+    expect(screen.getByRole('button', { name: /^⚠ 2 · 10\/31\/2026/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /^1 · 09\/30\/2026/ })).toBeTruthy()
+
+    // It is not blocked: a reason is typed and it saves as it is.
+    fireEvent.change(screen.getByLabelText('WHY IT STAYS AS IT IS'), { target: { value: 'It went out this way on Nov 2.' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(saveSpy).toHaveBeenCalledTimes(1))
+    expect(saveSpy.mock.calls[0]![1]).toBe('app-2')
+    expect(saveSpy.mock.calls[0]![0].carry_reason).toBe('It went out this way on Nov 2.')
+    expect(saveSpy.mock.calls[0]![0].total_earned_less_retainage).toBe(26190)
+  })
+
+  it('takes the earlier application\'s amounts on request, which clears the flag and the reason', async () => {
+    setWide(true)
+    onJob = [savedOneChanged(), savedTwo('It went out this way on Nov 2.')]
+    renderWithProviders(<AiaG702G703Modal open onClose={() => undefined} job={job} hcpForFilename="1023" initialApplicationNumber={2} />)
+    await waitFor(() => expect(field('g702_n5_project').value).toBe('2'))
+    expect((screen.getByLabelText('WHY IT STAYS AS IT IS') as HTMLInputElement).value).toBe('It went out this way on Nov 2.')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Use application 1\'s amounts' }))
+    expect(field('g703_e13_from_previous').value).toBe('21000')
+    expect(field('g702_h40_less_previous_certificates').value).toBe('18900')
+    expect(screen.queryByTestId('aia-carry-mismatch')).toBeNull()
+    // 30,700 to date less 10% is 27,630 earned; 18,900 was certified before.
+    expect(screen.getByLabelText('G702 page').textContent).toContain('CURRENT PAYMENT DUE$8,730.00')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(saveSpy).toHaveBeenCalledTimes(1))
+    // The reason it had is cleared with the mismatch.
+    expect(saveSpy.mock.calls[0]![0].carry_reason).toBe('')
+  })
+
+  it('leaves the reason column alone on an application that matches', async () => {
+    setWide(true)
+    onJob = [savedOne(), savedTwo()]
+    renderWithProviders(<AiaG702G703Modal open onClose={() => undefined} job={job} hcpForFilename="1023" initialApplicationNumber={2} />)
+    await waitFor(() => expect(field('g702_n5_project').value).toBe('2'))
+    expect(screen.queryByTestId('aia-carry-mismatch')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(saveSpy).toHaveBeenCalledTimes(1))
+    expect('carry_reason' in saveSpy.mock.calls[0]![0]).toBe(false)
   })
 
   it('asks before typed work is lost, and keeps it on Stay', async () => {
