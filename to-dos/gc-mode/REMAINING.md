@@ -222,19 +222,19 @@ sheet index tools and the $/sq ft budget summary.
 
 ### New Project (GC 2)
 
-1. **The book in the model** (`gcScopeBook.ts`, tested). A line has its trade, words, spec section,
+1. ~~**The book in the model**~~ done (`gcScopeBook.ts`, tested). A line has its trade, words, spec section,
    an optional "leaves out, done by", the jobs it was used on, and the jobs where it came in late
    (a later set, a change order, a gap between trades). A set is a named list of one trade's lines.
    Seeded from every scope on the made-up jobs and `TRADE_TEMPLATES`. Readers: search (this trade
    first, most used, missed flagged), sets for a trade, often missed (late lines not in this
    scope), duplicates.
-2. **Step 4: Start from the book.** A set picker and *Use these lines*, which merges and keeps the
+2. ~~**Step 4: Start from the book.**~~ done. A set picker and *Use these lines*, which merges and keeps the
    lines already there. Book lines carry a "book" mark.
-3. **Step 4: Often missed on <trade>.** An amber callout with *+ Add* on each; hidden when empty.
-4. **Step 4: Add a line searches the book**, on the window's searchable picker: this trade first,
+3. ~~**Step 4: Often missed on <trade>.**~~ done. An amber callout with *+ Add* on each; hidden when empty.
+4. ~~**Step 4: Add a line searches the book**~~ done, on the window's searchable picker: this trade first,
    then other trades ("from Concrete"), then "+ Add as a new line". A new line offers *Save to the
    book*. A book line brings its spec section and its "leaves out, done by".
-5. **The book's page** (*Open the scope book*): lines and sets by trade, edit, save this project's
+5. ~~**The book's page**~~ done (*Open the scope book*, `GcScopeBookWindow`; `GcScopeBookButton` for a door): lines and sets by trade, edit, save this project's
    scope as a set, merge duplicates. The same search in *A new set of plans came in*.
 
 ### Board (GC 0)

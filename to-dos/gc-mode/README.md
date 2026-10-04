@@ -226,6 +226,27 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   `perSqFtWords`). A trade that is ours shows its guess the same way. Without a size it says "Give
   the size on step 1 to see the cost per square foot." Each budget box shows its own rate as it is
   typed.
+- **The scope book** (the owner, 2026-10-04: "a scope book where the user can set a trade and set
+  scope that they can search in that book and pull from"; he picked the revised design in
+  `scope-book-mockup.html`): the book is read, not typed (`gcScopeBook.ts`). It holds every scope
+  line on the jobs, the usual lines, and two finished jobs (Fair Oaks Shops, Buildings A and C)
+  with the lines that came in late on them. A line remembers its spec section, what a trade with
+  it leaves out and who does that, the jobs it was on, and each time it came in late: added by a
+  later set, at the cost of a change order, or left out by quotes (`scopeBook`). The office's own
+  changes sit on top (`GcState.scopeBook`: `saveToScopeBook`, `editScopeBookLine`,
+  `mergeScopeBookLines`, `saveScopeSet`). On step 4 each trade has **Start from the book**: a set
+  (one saved by hand, the trade's scope on another job, or the usual lines) and **Use these
+  lines**, which keeps what is there (`scopeSetsFor`, `linesToAdd`). The set that adds the most
+  comes up first. **Often missed on Sitework** lists the lines we added late before, each with
+  why and **+ Add** (`oftenMissed`, `lateWords`). **Add a line** searches the book as you type:
+  this trade's lines first, the ones already here greyed, other trades' lines "from Concrete",
+  then **+ Add "…" as a new line** (`searchScopeBook`). A book line brings its section (when the
+  job's manual has it) and its "leaves out". Each line shows **book**, or **Save to the book**.
+  **Open the scope book** is the book's page (`GcScopeBookWindow`): lines by trade with **Edit**,
+  **+ Add to the book**, the sets with **Save this scope as a set**, and **Duplicates to merge**
+  ("Site clearing and grading" looks the same as "Clearing and grading"; "site" counts for nothing
+  only in Sitework). The same search adds a line a set brings in **A new set of plans came in**.
+  `GcScopeBookButton` opens the book from anywhere.
 - **New project, step 1 and 3 follow-ups** (the owner, 2026-10-04): no Town field; each company's
   drive is measured from the town in the address ("Drives are measured from Boerne"; the Board's
   `townFromAddress`), and a town picker shows only when the address names none. **Size** is square

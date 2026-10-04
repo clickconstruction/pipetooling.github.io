@@ -40,6 +40,7 @@ import {
   sampleReissueSpecs,
   sheetIndexInText,
   rowProblems,
+  scopeBook,
   sheetsOfRows,
   type SheetIndexRow,
   specIndexInText,
@@ -66,6 +67,7 @@ import { Btn, Chip, input } from './gcUi'
 import { Picker } from './GcNewProjectPickers'
 import { FIELD_HEIGHT_PX, pickerFace, pickerGroup, pickerRow } from './GcNewProjectPickerRows'
 import { SheetIndexTable } from './GcNewProjectSheetIndex'
+import { BookLineSearch } from './GcNewProjectScopeBook'
 
 /**
  * GC mode design spike: a new set of plans came in. Four steps on one page, each feeding the
@@ -208,7 +210,8 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
   const [pushDays, setPushDays] = useState<Record<string, string>>({})
   /** The trade whose Add a line box is open, and what is typed in it. */
   const [lineFor, setLineFor] = useState<string | null>(null)
-  const [lineText, setLineText] = useState('')
+  /** The scope book, searched when a set brings a line. */
+  const book = useMemo(() => scopeBook(state), [state])
   const [skipped, setSkipped] = useState<string[]>([])
   const [previewId, setPreviewId] = useState<string | null>(null)
 
@@ -458,11 +461,10 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
           : checkedBy === ''
             ? 'Say who checked the set.'
             : null
-  const addLine = (packageId: string) => {
-    const t = lineText.trim()
+  /** A line the set brings to a trade, from the scope book or typed. The box stays open for the next one. */
+  const addLine = (packageId: string, words: string) => {
+    const t = words.trim()
     if (t !== '') setNewLines((all) => ({ ...all, [packageId]: [...(all[packageId] ?? []), t] }))
-    setLineText('')
-    setLineFor(null)
   }
   /** A new line reads from the changed sheets that belong to its trade. None: the trade as a whole. */
   const newLineSheets = (trade: string) => sheetsOfTrade(trade).map((x) => x.id).filter((id) => sheets.includes(id))
@@ -847,29 +849,23 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
                           ))}
                           {lineFor === p.id ? (
                             <>
-                              <input
+                              {/* The scope book's search (the owner, 2026-10-04): a line the set brings can come from the book. */}
+                              <BookLineSearch
+                                trade={p.trade}
+                                book={book}
+                                here={[...p.scope.map((x) => x.label), ...adding]}
+                                onPick={(line) => addLine(p.id, line.words)}
+                                onNew={(words) => addLine(p.id, words)}
                                 autoFocus
-                                style={{ ...input, flex: '0 1 14rem' }}
-                                value={lineText}
-                                onChange={(e) => setLineText(e.target.value)}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') addLine(p.id)
-                                  if (e.key === 'Escape') {
-                                    e.stopPropagation()
-                                    setLineFor(null)
-                                  }
-                                }}
-                                placeholder="Detention pond"
-                                aria-label={`A line this set adds to ${p.trade}`}
+                                onEscape={() => setLineFor(null)}
                               />
-                              <Btn onClick={() => addLine(p.id)}>Add</Btn>
+                              <Btn kind="quiet" onClick={() => setLineFor(null)}>Done</Btn>
                             </>
                           ) : (
                             <Btn
                               kind="quiet"
                               onClick={() => {
                                 setLineFor(p.id)
-                                setLineText('')
                               }}
                             >
                               + Add a line this set brings

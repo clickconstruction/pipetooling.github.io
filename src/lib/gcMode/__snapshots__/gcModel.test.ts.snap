@@ -8836,6 +8836,46 @@ exports[`GC mode golden walk > step 179: Leon Springs: Addendum 2 carries the pr
 }
 `;
 
+exports[`GC mode golden walk > step 180: The scope book: save "Dumpster enclosure gates" under Sitework 1`] = `
+{
+  "changed": {
+    "lastLog.id": 176,
+    "lastLog.text": "Saved "Dumpster enclosure gates" to the scope book under Sitework.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 181: The scope book: Paving reads Asphalt paving, with its section 1`] = `
+{
+  "changed": {
+    "lastLog.id": 177,
+    "lastLog.text": "Changed the scope book's Sitework line "Paving".",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 182: The scope book: fold "Site clearing and grading" into "Clearing and grading" 1`] = `
+{
+  "changed": {
+    "lastLog.id": 178,
+    "lastLog.text": "Folded "Site clearing and grading" into "Clearing and grading" in the scope book.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 183: The scope book: save Leon Springs's Sitework as a set 1`] = `
+{
+  "changed": {
+    "lastLog.id": 179,
+    "lastLog.text": "Saved the set "Sitework for a clinic pad" to the scope book: 4 Sitework lines.",
+  },
+  "removed": [],
+}
+`;
+
 exports[`GC mode golden walk > the whole state at the end 1`] = `
 {
   "customers": [
@@ -9036,6 +9076,26 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
+      "id": 179,
+      "text": "Saved the set "Sitework for a clinic pad" to the scope book: 4 Sitework lines.",
+      "who": "office",
+    },
+    {
+      "id": 178,
+      "text": "Folded "Site clearing and grading" into "Clearing and grading" in the scope book.",
+      "who": "office",
+    },
+    {
+      "id": 177,
+      "text": "Changed the scope book's Sitework line "Paving".",
+      "who": "office",
+    },
+    {
+      "id": 176,
+      "text": "Saved "Dumpster enclosure gates" to the scope book under Sitework.",
+      "who": "office",
+    },
+    {
       "id": 175,
       "text": "Issued Addendum 2 on Leon Springs Urgent Care, checked by Dana Whitaker, and emailed 1 company. 0 were told it changes their trade.",
       "who": "office",
@@ -9163,26 +9223,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
     {
       "id": 150,
       "text": "Summit Roofing sent submittal 07 62 00-01, Sheet metal and flashing, round 2.",
-      "who": "trade",
-    },
-    {
-      "id": 149,
-      "text": "Marsh & Vale Architects sent it back to revise: submittal 07 62 00-01, Sheet metal and flashing. Show the cleat spacing at the coping.",
-      "who": "office",
-    },
-    {
-      "id": 148,
-      "text": "Sent submittal 07 62 00-01, Sheet metal and flashing, to Marsh & Vale Architects.",
-      "who": "office",
-    },
-    {
-      "id": 147,
-      "text": "Tejas Power: a signed W-9 came. Marked kept.",
-      "who": "office",
-    },
-    {
-      "id": 146,
-      "text": "Tejas Power promised a signed W-9 by Mon Oct 5.",
       "who": "trade",
     },
   ],
@@ -15486,6 +15526,48 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "town": "San Antonio",
     },
   ],
+  "scopeBook": {
+    "edits": [
+      {
+        "to": {
+          "spec": "32 12 16",
+          "words": "Asphalt paving",
+        },
+        "trade": "Sitework",
+        "words": "Paving",
+      },
+    ],
+    "merges": [
+      {
+        "from": "Site clearing and grading",
+        "into": "Clearing and grading",
+        "trade": "Sitework",
+      },
+    ],
+    "saved": [
+      {
+        "savedOn": "2026-10-02",
+        "spec": "32 31 13",
+        "trade": "Sitework",
+        "words": "Dumpster enclosure gates",
+      },
+    ],
+    "sets": [
+      {
+        "fromProjectId": "leon-springs-urgent-care",
+        "id": "set-1",
+        "lines": [
+          "Clearing and grading",
+          "Utilities to 5 ft of the building",
+          "Asphalt paving",
+          "Detention pond",
+        ],
+        "name": "Sitework for a clinic pad",
+        "savedOn": "2026-10-02",
+        "trade": "Sitework",
+      },
+    ],
+  },
   "today": "2026-10-02",
   "tradePromises": [
     {

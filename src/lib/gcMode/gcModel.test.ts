@@ -673,6 +673,26 @@ const STEPS: Step[] = [
       preBidMinutes: true,
     },
   },
+  // The scope book (the owner, 2026-10-04): a line saved by hand, a line changed, two lines folded, a set saved.
+  { label: 'The scope book: save "Dumpster enclosure gates" under Sitework', action: { type: 'saveToScopeBook', trade: 'Sitework', words: 'Dumpster enclosure gates', spec: '32 31 13' } },
+  {
+    label: 'The scope book: Paving reads Asphalt paving, with its section',
+    action: { type: 'editScopeBookLine', trade: 'Sitework', words: 'Paving', to: { words: 'Asphalt paving', spec: '32 12 16' } },
+  },
+  {
+    label: 'The scope book: fold "Site clearing and grading" into "Clearing and grading"',
+    action: { type: 'mergeScopeBookLines', trade: 'Sitework', from: 'Site clearing and grading', into: 'Clearing and grading' },
+  },
+  {
+    label: 'The scope book: save Leon Springs\'s Sitework as a set',
+    action: {
+      type: 'saveScopeSet',
+      trade: 'Sitework',
+      name: 'Sitework for a clinic pad',
+      lines: ['Clearing and grading', 'Utilities to 5 ft of the building', 'Asphalt paving', 'Detention pond'],
+      fromProjectId: 'leon-springs-urgent-care',
+    },
+  },
 ]
 
 const CUSTOMER_IDS = ['cibolo', 'raman']
@@ -833,6 +853,7 @@ describe('GC mode golden walk', () => {
       'setOwnerLateInterest', 'sendOwnerInterestBill', 'ownerPaidInterest',
       'setOwnerLateFinish',
       'schedulePreBid', 'recordPreBidAttendance',
+      'saveToScopeBook', 'editScopeBookLine', 'mergeScopeBookLines', 'saveScopeSet',
       'tradeSendSov',
     ]
     expect(all.filter((t) => !used.has(t))).toEqual([])

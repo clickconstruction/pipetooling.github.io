@@ -13,6 +13,13 @@ import {
   sheetsOfRows,
   withPickedDisciplines,
   type SheetIndexRow,
+  inScopeBook,
+  linesToAdd,
+  scopeBook,
+  scopeSetsFor,
+  scopeWordKey,
+  type ScopeBookLine,
+  type ScopeSetChoice,
   tradeOrder,
   tradesForPlans,
   specIndexInText,
@@ -64,6 +71,8 @@ import { Btn, Chip, input, num, td, th } from './gcUi'
 import { CustomerPicker, Picker } from './GcNewProjectPickers'
 import { FIELD_HEIGHT_PX, pickerFace, pickerGroup, pickerRow } from './GcNewProjectPickerRows'
 import { SheetIndexTable } from './GcNewProjectSheetIndex'
+import { BookLineSearch, OftenMissed, StartFromBook } from './GcNewProjectScopeBook'
+import { GcScopeBookWindow } from './GcNewProjectScopeBookPage'
 
 /**
  * GC mode design spike: New Project. A project starts the day its plans come in. Four steps in
@@ -234,6 +243,9 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
   const [strangerContact, setStrangerContact] = useState('')
 
   const [edits, setEdits] = useState<Record<string, TradeEdit>>({})
+  /** The scope book (the owner, 2026-10-04): read from every scope on our jobs, with the office's changes. */
+  const book = useMemo(() => scopeBook(state), [state])
+  const [bookOpen, setBookOpen] = useState(false)
   const [added, setAdded] = useState<string[]>([])
   const [scopeFor, setScopeFor] = useState<string | null>(null)
   /** The companies ticked per trade. A trade left out follows the default: the most reliable in range. */
@@ -339,11 +351,12 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       // An open picker takes Escape for itself; only an Escape nothing else used closes the window.
-      if (e.key === 'Escape' && !e.defaultPrevented && !document.querySelector('[role="listbox"]')) onClose()
+      // The scope book's window, open over this one, takes Escape for itself.
+      if (e.key === 'Escape' && !bookOpen && !e.defaultPrevented && !document.querySelector('[role="listbox"]')) onClose()
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [onClose])
+  }, [onClose, bookOpen])
 
   const create = () => {
     const id = newProjectId(state, draft)
@@ -833,8 +846,11 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
 
           {step === 3 && (
             <div style={{ display: 'grid', gap: '0.75rem' }}>
-              <div style={{ fontSize: '0.875rem' }}>
-                Each line is one piece of work. A company says yes or no to every line when it quotes. Compare quotes reads them line by line.
+              <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', flexWrap: 'wrap', fontSize: '0.875rem' }}>
+                <span style={{ flex: '1 1 20rem' }}>
+                  Each line is one piece of work. A company says yes or no to every line when it quotes. Compare quotes reads them line by line.
+                </span>
+                <Btn kind="quiet" onClick={() => setBookOpen(true)}>Open the scope book</Btn>
               </div>
               {picked.length === 0 ? (
                 <div style={{ color: 'var(--text-muted)' }}>No trades are ticked yet. Pick them on step 3.</div>
@@ -896,6 +912,11 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
                       onAddTrade={addTrade}
                       next={picked[picked.indexOf(shown) + 1]?.trade ?? null}
                       onNext={setScopeFor}
+                      book={book}
+                      sets={scopeSetsFor(state, shown.trade)}
+                      onSaveToBook={(line) =>
+                        dispatch({ type: 'saveToScopeBook', trade: shown.trade, words: line.label.trim(), ...(line.specs?.[0] ? { spec: line.specs[0] } : {}) })
+                      }
                     />
                   )}
                 </div>
@@ -1060,6 +1081,15 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
           )}
         </div>
       </div>
+      {bookOpen && (
+        <GcScopeBookWindow
+          state={state}
+          dispatch={dispatch}
+          onClose={() => setBookOpen(false)}
+          {...(shown ? { startTrade: shown.trade } : {})}
+          current={shown ? { trade: shown.trade, lines: shown.scope.map((l) => l.label.trim()).filter(Boolean), projectName: draft.name } : null}
+        />
+      )}
     </div>
   )
 }
@@ -1089,6 +1119,9 @@ function ScopeEditor({
   onExcludes,
   onAddLine,
   onAddTrade,
+  book,
+  sets,
+  onSaveToBook,
 }: {
   row: TradeRow
   sheets: PlanSheet[]
@@ -1104,7 +1137,37 @@ function ScopeEditor({
   onExcludes: (excludes: ScopeExclusion[]) => void
   onAddLine: (trade: string, label: string) => void
   onAddTrade: (trade: string) => void
+  /** The scope book: its lines, this trade's sets, and saving a line typed here. */
+  book: ScopeBookLine[]
+  sets: ScopeSetChoice[]
+  onSaveToBook: (line: ScopeLineDraft) => void
 }) {
+  const here = useMemo(() => row.scope.map((l) => l.label).filter((l) => l.trim() !== ''), [row.scope])
+  const kept = row.scope.filter((l) => l.label.trim() !== '')
+  /** A book line comes with its spec section (when this job's manual has it) and what it leaves out. */
+  const pull = (line: ScopeBookLine) => {
+    const spec = line.spec && specs.some((x) => x.id === line.spec) ? [line.spec] : null
+    onChange([...kept, { label: line.words, sheets: null, ...(spec ? { specs: spec } : {}) }])
+    const out = line.leavesOut
+    if (out && !row.excludes.some((x) => scopeWordKey(x.label) === scopeWordKey(out.label))) onExcludes([...row.excludes, out])
+  }
+  const useSet = (set: ScopeSetChoice) => {
+    const add = linesToAdd(here, set.lines)
+    if (add.length > 0) {
+      onChange([
+        ...kept,
+        ...add.map((words) => {
+          const line = inScopeBook(book, row.trade, words)
+          const spec = line?.spec && specs.some((x) => x.id === line.spec) ? [line.spec] : null
+          return { label: words, sheets: null, ...(spec ? { specs: spec } : {}) }
+        }),
+      ])
+      const outs = add.flatMap((words) => inScopeBook(book, row.trade, words)?.leavesOut ?? [])
+      const newOuts = outs.filter((o, i) => !row.excludes.some((x) => scopeWordKey(x.label) === scopeWordKey(o.label)) && outs.findIndex((p) => scopeWordKey(p.label) === scopeWordKey(o.label)) === i)
+      if (newOuts.length > 0) onExcludes([...row.excludes, ...newOuts])
+    }
+    return add.length
+  }
   return (
     <div style={{ flex: '1 1 auto', border: '1px solid var(--border)', borderRadius: 8, padding: '0.7rem 0.8rem', display: 'grid', gap: '0.45rem', minWidth: 0 }}>
       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
@@ -1117,6 +1180,8 @@ function ScopeEditor({
               : 'You added this trade.'}
         </span>
       </div>
+      <StartFromBook key={row.trade} trade={row.trade} sets={sets} here={here} onUse={useSet} />
+      <OftenMissed trade={row.trade} book={book} here={here} onAdd={pull} />
       <ScopeLines
         trade={row.trade}
         lines={row.scope}
@@ -1125,6 +1190,17 @@ function ScopeEditor({
         tradeSheets={sheets.filter((x) => row.from.includes(x.id))}
         specs={specs}
         tradeSpecs={specs.filter((x) => row.specs.includes(x.id))}
+        inBook={(words) => Boolean(inScopeBook(book, row.trade, words))}
+        onSaveToBook={onSaveToBook}
+        addLine={
+          <BookLineSearch
+            trade={row.trade}
+            book={book}
+            here={here}
+            onPick={pull}
+            onNew={(words) => onChange([...kept, { label: words, sheets: null }])}
+          />
+        }
       >
         {row.scopeEdited && usualScope(row.trade).length > 0 && <Btn kind="quiet" onClick={onReset}>Put back the usual lines</Btn>}
         <span style={{ flex: 1 }} />
@@ -1227,6 +1303,9 @@ export function ScopeLines({
   specs = [],
   tradeSpecs = [],
   children,
+  inBook,
+  onSaveToBook,
+  addLine,
 }: {
   trade: string
   lines: ScopeLineDraft[]
@@ -1241,6 +1320,11 @@ export function ScopeLines({
   tradeSpecs?: SpecSection[]
   /** More buttons on the line under the boxes. */
   children?: ReactNode
+  /** The scope book: whether it has a line (a "book" mark), and saving one it does not have. */
+  inBook?: (words: string) => boolean
+  onSaveToBook?: (line: ScopeLineDraft) => void
+  /** In place of the Add a line button: the scope book's search. */
+  addLine?: ReactNode
 }) {
   const boxes = useRef<(HTMLInputElement | null)[]>([])
   const [focusAt, setFocusAt] = useState<number | null>(null)
@@ -1347,6 +1431,23 @@ export function ScopeLines({
                 </span>
               )}
             </span>
+            {inBook &&
+              line.label.trim() !== '' &&
+              (inBook(line.label) ? (
+                <span title="This line is in the scope book" style={{ fontSize: '0.7rem', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 999, padding: '0 0.4rem' }}>
+                  book
+                </span>
+              ) : (
+                onSaveToBook && (
+                  <button
+                    type="button"
+                    onClick={() => onSaveToBook(line)}
+                    style={{ border: '1px solid var(--text-blue-500)', borderRadius: 999, background: 'transparent', color: 'var(--text-blue-500)', fontSize: '0.72rem', padding: '0.05rem 0.45rem', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                  >
+                    Save to the book
+                  </button>
+                )
+              ))}
             <button
               type="button"
               onClick={() => onChange(lines.filter((_, j) => j !== i))}
@@ -1359,8 +1460,12 @@ export function ScopeLines({
         )
       })}
       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-        <Btn onClick={() => addAfter(lines.length - 1)}>Add a line</Btn>
-        <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>Enter in a line starts the next one.</span>
+        {addLine ?? (
+          <>
+            <Btn onClick={() => addAfter(lines.length - 1)}>Add a line</Btn>
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>Enter in a line starts the next one.</span>
+          </>
+        )}
         {children}
       </div>
     </>
