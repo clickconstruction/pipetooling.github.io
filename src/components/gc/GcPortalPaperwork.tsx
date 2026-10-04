@@ -1,5 +1,5 @@
 import { useState, type Dispatch, type ReactNode } from 'react'
-import { aYearFrom, GC_COMPANY, pDate, portalInsurance, portalVetting, type GcAction, type Partner, type PortalKey } from '../../lib/gcMode/gcModel'
+import { aYearFrom, GC_COMPANY, pDate, portalInsurance, portalVetting, pWeekday, type GcAction, type Partner, type PortalKey, type PromiseKind, type TradePromise } from '../../lib/gcMode/gcModel'
 import { Btn, Chip, input } from './gcUi'
 import { GcPortalAgreement } from './GcPortalAgreement'
 import { PortalBlock, PortalNote, PortalTag } from './GcPortalUi'
@@ -18,12 +18,15 @@ export function GcPortalPaperwork({
   today,
   dispatch,
   startOpen = null,
+  promises = {},
 }: {
   partner: Partner
   today: string
   dispatch: Dispatch<GcAction>
   /** Open on one line's form or agreement, when the company came here from "Needs you". */
   startOpen?: PaperworkLine | null
+  /** The open dates the company gave for its certificate and W-9 (question 8). */
+  promises?: { insurance?: TradePromise; w9?: TradePromise }
 }) {
   const { lang, t } = usePortalLang()
   const [open, setOpen] = useState<PaperworkLine | null>(startOpen)
@@ -68,6 +71,9 @@ export function GcPortalPaperwork({
           )}
         </Line>
         {open === 'coi' && <CoiForm partner={partner} today={today} dispatch={dispatch} onDone={() => setOpen(null)} />}
+        {open !== 'coi' && (!coi.done || coi.soon) && (
+          <GiveDate kind="insurance" partner={partner} today={today} promise={promises.insurance} dispatch={dispatch} />
+        )}
 
         <Line label={t('w9')}>
           <Chip tone={partner.w9 ? 'green' : 'red'}>{t(partner.w9 ? 'onFile' : 'noneOnFile')}</Chip>
@@ -78,6 +84,7 @@ export function GcPortalPaperwork({
           )}
         </Line>
         {open === 'w9' && <W9Form partner={partner} dispatch={dispatch} onDone={() => setOpen(null)} />}
+        {open !== 'w9' && !partner.w9 && <GiveDate kind="w9" partner={partner} today={today} promise={promises.w9} dispatch={dispatch} />}
 
         <div style={{ fontSize: '0.8rem', opacity: 0.75 }}>
           {t('msaOnce')}
@@ -137,6 +144,44 @@ function CoiForm({ partner, today, dispatch, onDone }: { partner: Partner; today
 }
 
 const TAX_CLASSES: PortalKey[] = ['taxLlc', 'taxCorp', 'taxSole', 'taxPartner']
+
+/**
+ * "Not ready? Tell Click the day it will come." under a paperwork line the company owes (owner,
+ * 2026-10-04, question 8). Once a day is given it says so; the home's dates block moves it.
+ */
+function GiveDate({
+  kind,
+  partner,
+  today,
+  promise,
+  dispatch,
+}: {
+  kind: PromiseKind
+  partner: Partner
+  today: string
+  promise: TradePromise | undefined
+  dispatch: Dispatch<GcAction>
+}) {
+  const { lang, t } = usePortalLang()
+  const [day, setDay] = useState('')
+  const gc = GC_COMPANY.shortName
+  if (promise) return <div style={{ fontSize: '0.8rem', opacity: 0.8, paddingLeft: '0.1rem' }}>{t('promiseSaid', { date: pWeekday(lang, promise.by) })}</div>
+  return (
+    <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.8rem' }}>
+      <span style={{ opacity: 0.8 }}>{t('promiseNotReady', { gc })}</span>
+      <input type="date" min={today} value={day} onChange={(e) => setDay(e.target.value)} aria-label={t('promiseDayAria')} style={{ ...input, fontSize: '0.8rem' }} />
+      <Btn
+        disabled={day === ''}
+        onClick={() => {
+          dispatch({ type: 'recordPromise', partnerId: partner.id, kind, by: day, from: 'trade' })
+          setDay('')
+        }}
+      >
+        {t('tellGc', { gc })}
+      </Btn>
+    </div>
+  )
+}
 
 /** What a new company tells us about itself, as it writes it. Every line is needed. */
 function VettingForm({ partner, dispatch, onDone }: { partner: Partner; dispatch: Dispatch<GcAction>; onDone: () => void }) {

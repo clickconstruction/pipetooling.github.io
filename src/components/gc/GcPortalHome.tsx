@@ -18,9 +18,11 @@ import {
   type PortalJobMoney,
   type PortalLang,
   type PortalTodo,
+  openPromiseFor,
 } from '../../lib/gcMode/gcModel'
 import { Btn, Chip, type Tone } from './gcUi'
 import { GcPortalPaperwork, type PaperworkLine } from './GcPortalPaperwork'
+import { GcPortalDates } from './GcPortalDates'
 import { PortalBlock } from './GcPortalUi'
 import { usePortalLang } from './gcPortalLang'
 
@@ -154,8 +156,17 @@ export function GcPortalHome({
         </PortalBlock>
       )}
 
+      <GcPortalDates state={state} partner={partner} dispatch={dispatch} />
+
       <div ref={paperRef} style={{ scrollMarginTop: '0.5rem' }}>
-        <GcPortalPaperwork key={paperAsk?.n ?? 0} partner={partner} today={state.today} dispatch={dispatch} startOpen={paperAsk?.line ?? null} />
+        <GcPortalPaperwork
+          key={paperAsk?.n ?? 0}
+          partner={partner}
+          today={state.today}
+          dispatch={dispatch}
+          startOpen={paperAsk?.line ?? null}
+          promises={{ insurance: openPromiseFor(state, { partnerId: partner.id, kind: 'insurance' }), w9: openPromiseFor(state, { partnerId: partner.id, kind: 'w9' }) }}
+        />
       </div>
 
       {home.past.length > 0 && (

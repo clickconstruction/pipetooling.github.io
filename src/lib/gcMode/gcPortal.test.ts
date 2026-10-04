@@ -18,6 +18,7 @@ import {
   portalLeavesOut,
   portalLink,
   portalOnSite,
+  portalPromises,
   portalVetting,
   portalLines,
   portalLookAhead,
@@ -934,5 +935,37 @@ describe('a company we did not know', () => {
 
   it('reads in Spanish', () => {
     expect(portalVetting(partner(sent), 'es').words).toBe(`Click la está revisando · enviada el ${pDate('es', state.today)}`)
+  })
+})
+
+describe('the dates a company gave us', () => {
+  // Voltage's insurance ran out Sep 15; it says the new certificate comes Oct 9 (question 8).
+  const gave = gcReducer(state, { type: 'recordPromise', partnerId: 'voltage', kind: 'insurance', by: '2026-10-09', from: 'trade' })
+
+  it('lists an open date with what it is for and how far off it is', () => {
+    expect(portalPromises(gave, 'voltage').map((r) => [r.what, r.words, r.tone])).toEqual([
+      ['The renewed insurance certificate', 'by Fri Oct 9, in 7 days', 'plain'],
+    ])
+    expect(portalPromises(state, 'voltage')).toEqual([])
+  })
+
+  it('turns red under Needs you once the day passes, and goes when it is kept', () => {
+    const later = { ...gave, today: '2026-10-11' }
+    expect(portalPromises(later, 'voltage')[0]?.words).toBe('by Fri Oct 9. That day passed 2 days ago.')
+    expect(portalTodos(later, 'voltage').find((t) => t.key.startsWith('promise:'))).toMatchObject({
+      tone: 'red',
+      text: 'You told Click the renewed insurance certificate would come by Fri Oct 9. Send it or give a new day.',
+    })
+    const kept = gcReducer(later, { type: 'tradeUploadCoi', partnerId: 'voltage', expires: '2027-10-01' })
+    expect(portalPromises(kept, 'voltage')).toEqual([])
+  })
+
+  it('moves to the new day the company gives', () => {
+    const moved = gcReducer(gave, { type: 'recordPromise', partnerId: 'voltage', kind: 'insurance', by: '2026-10-16', from: 'trade' })
+    expect(portalPromises(moved, 'voltage').map((r) => r.p.by)).toEqual(['2026-10-16'])
+  })
+
+  it('reads in Spanish', () => {
+    expect(portalPromises(gave, 'voltage', 'es')[0]).toMatchObject({ what: 'El certificado de seguro renovado', words: 'a más tardar el vie 9 oct, en 7 días' })
   })
 })

@@ -418,6 +418,14 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   never the office's note. Needs you asks until the form is in; the bid form says Click can pick
   the quote once the company is approved; an email goes out on the office's decision
   (`portalVetting` in `gcPortal.ts`, on the Board lane's `gcVetting.ts`).
+- **A company sees every date it gave us, and gives or moves one** (owner, 2026-10-04, question 8,
+  on the Board lane's `gcPromises.ts`): "Dates you gave Click" on its home lists each open one,
+  given in the portal or written down by the office ("The renewed insurance certificate · by Fri
+  Oct 9, in 7 days"), with **Move the date**; Needs you turns it amber the day it is due and red once
+  it passes. Under the insurance and W-9 lines it owes: "Not ready? Tell Click the day it will
+  come." The insurance email 30 days before says so too (`COI_WARN_DAYS` is the Board's
+  `INSURANCE_ASK_DAYS`). A date is kept when the thing comes (`portalPromises` in `gcPortal.ts`,
+  `GcPortalDates.tsx`).
 - **A company sees its days on site by our daily log** (owner, 2026-10-04, on the Building lane's
   log): above the percents it reports, "Our daily log has you on site 6 days since Mon Sep 21, the
   last on Thu Oct 1." It names the log's first day, so it never says more than the log can
@@ -710,7 +718,7 @@ the bullets below are the shape they set.
   |---|---|---|
   | A new ask (`invite`) | The company's contact | Email the day we ask: the trade, the project, the day the quote is due, what it should cover. Asked to quote on the home |
   | A set that changed their trade (`issuePlanSet`) | Each company on the trade: every one bidding it while we bid, only the one on it once the job is ours | Email the day the set goes out, naming the changed sheets. Needs you says "Confirm your number or change it" |
-  | A promise passed (`askPromise`) | The company; the project manager | The company: one email the next morning, in Needs you's words ("You told Click your number would come by …"). The office: Follow up already lists it first; the project manager gets it in the morning email in the bid's last week |
+  | A promise passed (`askPromise`, and every date in `tradePromises`) | The company; the project manager | The company: one email the next morning, in Needs you's words ("You told Click your number would come by …"). The office: Follow up already lists it first; the project manager gets it in the morning email in the bid's last week |
   | An answer to their question (`answerQuestion`) | Every company bidding the trade, or the one on it once the job is ours. Never who asked | Email the day it is answered, with the question, the answer and the set it rides in. Needs you for a week |
   | A reminder the office sends (Follow up) | The company | Email |
   | A bid tab shared | Each company that quoted | Email; Needs you until opened |
