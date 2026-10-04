@@ -154,7 +154,7 @@ first** (a partner's vetting, the promise record), so build on those once GC 0 s
 
 ### Portal (GC 3)
 
-1. **Q6 words:** the portal says quote, in English and Spanish; redraw `PORTAL_SPANISH.md`.
+1. ~~**Q6 words:** the portal says quote, in English and Spanish; redraw `PORTAL_SPANISH.md`.~~ done d716ce4e0
 2. **Q3 the new company's form:** license, insurance, years in business, references, past jobs, in
    both languages, and where it stands (being checked, approved, approved up to $X).
 3. **Q8:** the trade sees its open promises and can give or move a date; a reminder 30 days before
@@ -188,7 +188,7 @@ first** (a partner's vetting, the promise record), so build on those once GC 0 s
     Drive, checked by someone), 7's first half (yes, set by the job's estimator), 9 (a By stage \|
     By customer switch, stage by default; built by the Board), 14 (left to the Board: built
     e04a397c4), 28 (yes, signed change-order days move substantial completion).
-15. **The Portal lane's lost-bid portal:** OK to commit?
+15. ~~**The Portal lane's lost-bid portal:** OK to commit?~~ Answered 2026-10-03 in the Portal session: yes; shared at 83dcdcd20 and a018d96df.
 22. ~~**The Spanish:** who reads it?~~ Answered 2026-10-03: someone the owner names reviews it when GC mode goes to production; nothing to do before then. The list is ready in `PORTAL_SPANISH.md` (*For a native speaker to read*).
 
 ## Everyone

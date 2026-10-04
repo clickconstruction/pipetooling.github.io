@@ -54,7 +54,7 @@ describe('the portal in two languages', () => {
 
   it('tells Voltage what needs it in Spanish', () => {
     expect(portalHome(state, 'voltage', 'es').todos.map((t) => t.text)).toEqual([
-      'Cambiaron los planos de Electrical en Boerne Retail Shell. Confirme su precio o cámbielo.',
+      'Cambiaron los planos de Electrical en Boerne Retail Shell. Confirme su cotización o cámbiela.',
       'Su seguro venció el 15 sep. Envíe un certificado nuevo.',
     ])
   })
@@ -62,14 +62,14 @@ describe('the portal in two languages', () => {
   it('writes the invitation in Spanish, by email', () => {
     const invite = portalMessages(state, 'voltage', 'es').find((m) => m.kind === 'invite' && m.projectId === 'boerne')
     expect(invite?.subject).toBe('Click Construction lo invita a cotizar Electrical en Boerne Retail Shell')
-    expect(invite?.lines).toContain('Su precio vence el jue 8 oct.')
+    expect(invite?.lines).toContain('Su cotización vence el jue 8 oct.')
   })
 
   it('reads a passed promise in Spanish', () => {
     const invite = state.projects.find((p) => p.id === 'boerne')?.packages.find((k) => k.id === 'site')?.invites.find((i) => i.partnerId === 'hillside')
     if (!invite) throw new Error('no ask')
     expect(portalPromiseLine(invite, state.today, 'Click', 'es')?.text).toBe(
-      'Le dijo a Click que su precio llegaría a más tardar el mié 30 sep. Esa fecha pasó hace 2 días. Envíe su precio o dé un nuevo día.',
+      'Le dijo a Click que su cotización llegaría a más tardar el mié 30 sep. Esa fecha pasó hace 2 días. Envíe su cotización o dé un nuevo día.',
     )
   })
 

@@ -15,9 +15,17 @@ import { buildNewProject, dryInMilestoneFor, packagesFromDrafts, pushSchedule, s
 import { nextPunchId, punchClear } from './gcBuildingPunch'
 import { logTrades } from './gcBuildingLog'
 import { addDays, changeOrderTradePct, crewPctFromStages, drawApprovedLess, finalPayApplication, jobCloseout, payApplication, timesSentBack, tradeCloseout, workAllBilled } from './gcBuilding'
+import { canAward } from './gcVetting'
+import { keepPromisesOn, openPromiseFor, PROMISE_WHAT, promisesKeptBy, tradePromisesOf } from './gcPromises'
 import { appClaimed, appOpen, changeOrderPrice, ownerCloseout, ownerContractWorthNow, ownerFinalPayAppToSend, ownerPayApp, ownerPayAppHasWork, ownerPayAppToSend } from './gcOwnerBilling'
 
 export function gcReducer(state: GcState, action: GcAction): GcState {
+  const next = reduce(state, action)
+  // A promise is kept when the thing happens (question 8): gcPromises says which moves keep which.
+  return next === state ? next : keepPromisesOn(next, promisesKeptBy(state, action))
+}
+
+function reduce(state: GcState, action: GcAction): GcState {
   switch (action.type) {
     case 'reset':
       return initialGcState()
@@ -299,6 +307,8 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
       const { project, pkg, invite, partner } = find(state, action.projectId, action.packageId, action.inviteId)
       if (!project || !pkg || !invite || !partner) return state
       const sow = sowFromBid(project, pkg, invite)
+      // A company we have not vetted, or past its limit, is not awarded (question 3).
+      if (!canAward(partner, sow.price).ok) return state
       const next = mapProject(state, project.id, (p) =>
         mapPackage(p, pkg.id, (k) => ({ ...k, carried: invite.id, awardedInviteId: invite.id, sow })),
       )
@@ -480,8 +490,14 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
         won: 0,
         promisesMade: 0,
         promisesKept: 0,
+        // A company new to us quotes, and waits for the office's approval before any award (question 3).
+        ...(action.known === false ? { vetting: { status: 'new' as const } } : {}),
       }
-      return logged({ ...state, partners: [...state.partners, partner] }, 'office', `Added ${action.company} to ${action.trade}.`)
+      return logged(
+        { ...state, partners: [...state.partners, partner] },
+        'office',
+        `Added ${action.company} to ${action.trade}.${action.known === false ? ' They can quote. Nothing is awarded to them until we approve them.' : ''}`,
+      )
     }
 
     case 'setCoverage': {
@@ -1517,6 +1533,84 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
         next,
         'office',
         `${known ? 'Changed' : 'Wrote'} the daily log for ${weekdayDate(log.date)} on ${project.name}: ${parts.join(', ')}.${log.date < state.today && !known ? ' Caught up after the day.' : ''}`,
+      )
+    }
+
+    case 'vetPartner': {
+      // The office decides on a company we did not know (the owner, 2026-10-04, question 3).
+      const partner = partnerById(state, action.partnerId)
+      if (!partner) return state
+      const form = partner.vetting?.form
+      const vetting = {
+        status: action.status,
+        decidedOn: state.today,
+        decidedBy: action.by,
+        ...(action.status === 'approved' && action.limit !== undefined ? { limit: action.limit } : {}),
+        ...(action.note ? { note: action.note } : {}),
+        ...(form ? { form } : {}),
+      }
+      const words =
+        action.status === 'approved'
+          ? `${action.by} approved ${partner.company}${vetting.limit !== undefined ? ` up to ${money(vetting.limit)} on one award` : ''}. They can be awarded work now.`
+          : `${action.by} declined ${partner.company}${action.note ? `: ${action.note}` : ''}. Nothing is awarded to them.`
+      return logged({ ...state, partners: state.partners.map((p) => (p.id === partner.id ? { ...p, vetting } : p)) }, 'office', words)
+    }
+
+    case 'tradeVettingForm': {
+      const partner = partnerById(state, action.partnerId)
+      if (!partner || partner.vetting?.status !== 'new') return state
+      const vetting = { ...partner.vetting, form: { ...action.form, sentOn: state.today } }
+      return logged(
+        { ...state, partners: state.partners.map((p) => (p.id === partner.id ? { ...p, vetting } : p)) },
+        'trade',
+        `${partner.company} sent their company form for the office to check.`,
+      )
+    }
+
+    case 'recordPromise': {
+      // A date for something other than a quote (the owner, 2026-10-04, question 8).
+      const partner = partnerById(state, action.partnerId)
+      if (!partner || !action.by) return state
+      const match = { partnerId: partner.id, kind: action.kind, projectId: action.projectId, packageId: action.packageId }
+      const open = openPromiseFor(state, match)
+      if (open && open.by === action.by) return state
+      const list = tradePromisesOf(state)
+      const what = action.what?.trim() || open?.what || PROMISE_WHAT[action.kind]
+      const project = action.projectId ? state.projects.find((p) => p.id === action.projectId) : undefined
+      const on = project ? ` on ${project.name}` : ''
+      const tradePromises = open
+        ? list.map((p) => (p.id === open.id ? { ...p, by: action.by, what, moved: [{ by: open.by, on: state.today }, ...(p.moved ?? [])] } : p))
+        : [
+            ...list,
+            {
+              id: `tp-${list.length + 1}`,
+              partnerId: partner.id,
+              kind: action.kind,
+              ...(action.projectId ? { projectId: action.projectId } : {}),
+              ...(action.packageId ? { packageId: action.packageId } : {}),
+              what,
+              by: action.by,
+              madeOn: state.today,
+              from: action.from,
+            },
+          ]
+      return logged(
+        { ...state, tradePromises },
+        action.from,
+        open
+          ? `${partner.company} moved ${what}${on} from ${weekdayDate(open.by)} to ${weekdayDate(action.by)}.`
+          : `${partner.company} promised ${what}${on} by ${weekdayDate(action.by)}.`,
+      )
+    }
+
+    case 'keepPromise': {
+      const promise = tradePromisesOf(state).find((p) => p.id === action.id && !p.keptOn)
+      const partner = promise ? partnerById(state, promise.partnerId) : undefined
+      if (!promise || !partner) return state
+      return logged(
+        { ...state, tradePromises: tradePromisesOf(state).map((p) => (p.id === promise.id ? { ...p, keptOn: state.today } : p)) },
+        'office',
+        `${partner.company}: ${promise.what} came. Marked kept.`,
       )
     }
   }

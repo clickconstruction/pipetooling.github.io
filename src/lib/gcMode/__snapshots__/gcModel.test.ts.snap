@@ -458,6 +458,18 @@ exports[`GC mode golden walk > before any step 1`] = `
       "words": "Promised a quote by Mon Oct 5, in 3 days.",
     },
   ],
+  "insuranceRenewals": [
+    {
+      "days": -17,
+      "id": "voltage",
+      "promise": null,
+    },
+    {
+      "days": -17,
+      "id": "pecanvalley",
+      "promise": null,
+    },
+  ],
   "lastLog": null,
   "projects": {
     "boerne": {
@@ -3794,6 +3806,7 @@ exports[`GC mode golden walk > before any step 1`] = `
       },
     },
   },
+  "toVet": [],
   "tradeBenches": [
     {
       "dependable": 1,
@@ -4008,6 +4021,7 @@ exports[`GC mode golden walk > before any step 1`] = `
       "urgency": 0,
     },
   ],
+  "tradePromises": [],
 }
 `;
 
@@ -7907,6 +7921,187 @@ exports[`GC mode golden walk > step 143: Fair Oaks D: catch up Wednesday's log 1
 }
 `;
 
+exports[`GC mode golden walk > step 144: Add a glass company we do not know 1`] = `
+{
+  "changed": {
+    "assistantRules[0].items[0].action.trade": "Storefront and glass",
+    "assistantRules[0].items[0].id": "bench-Storefront and glass",
+    "assistantRules[0].items[0].text": "Storefront and glass has 1. Find 2 more.",
+    "assistantRules[0].items[1].action.trade": "Roofing",
+    "assistantRules[0].items[1].id": "bench-Roofing",
+    "assistantRules[0].items[1].text": "Roofing has 2. Find 1 more.",
+    "assistantRules[0].items[2].action.trade": "Fire sprinkler",
+    "assistantRules[0].items[2].id": "bench-Fire sprinkler",
+    "assistantRules[0].items[2].text": "Fire sprinkler has 2. Find 1 more.",
+    "assistantRules[0].items[3].action.trade": "Sitework",
+    "assistantRules[0].items[3].id": "bench-Sitework",
+    "assistantRules[0].items[3].text": "Sitework has 2. Find 1 more.",
+    "assistantRules[0].items[4].action.trade": "Concrete",
+    "assistantRules[0].items[4].id": "bench-Concrete",
+    "assistantRules[0].items[4].text": "Concrete has 2. Find 1 more.",
+    "assistantRules[0].items[5].action.trade": "Structural steel",
+    "assistantRules[0].items[5].id": "bench-Structural steel",
+    "assistantRules[0].items[5].text": "Structural steel has 2. Find 1 more.",
+    "assistantRules[0].items[6].action.trade": "Framing and drywall",
+    "assistantRules[0].items[6].id": "bench-Framing and drywall",
+    "assistantRules[0].items[6].text": "Framing and drywall has 2. Find 1 more.",
+    "assistantRules[0].items[7].action.trade": "HVAC",
+    "assistantRules[0].items[7].id": "bench-HVAC",
+    "assistantRules[0].items[7].text": "HVAC has 2. Find 1 more.",
+    "assistantRules[0].items[8].action.kind": "add",
+    "assistantRules[0].items[8].action.trade": "Millwork",
+    "assistantRules[0].items[8].actionLabel": "Add a company",
+    "assistantRules[0].items[8].doneNote": null,
+    "assistantRules[0].items[8].id": "bench-Millwork",
+    "assistantRules[0].items[8].text": "Millwork has 2. Find 1 more.",
+    "assistantRules[0].now": "1 of 10 trades have 3.",
+    "lastLog.id": 140,
+    "lastLog.text": "Added Brazos Glass to Storefront and glass. They can quote. Nothing is awarded to them until we approve them.",
+    "toVet[0].id": "new-25",
+    "toVet[0].words": "not vetted yet",
+    "tradeBenches[6].dependable": 1,
+    "tradeBenches[6].partners[0]": "«partner new-25»",
+    "tradeBenches[6].trade": "Storefront and glass",
+    "tradeBenches[7].needs": "[]",
+    "tradeBenches[7].partners[0]": "«partner hillcountry»",
+    "tradeBenches[7].partners[1]": "«partner liveoak»",
+    "tradeBenches[7].trade": "Framing and drywall",
+    "tradeBenches[8].needs[0].bids": 2,
+    "tradeBenches[8].needs[0].daysLeft": 6,
+    "tradeBenches[8].needs[0].looking": 0,
+    "tradeBenches[8].needs[0].passed": 0,
+    "tradeBenches[8].needs[0].pkg": "«package hvac»",
+    "tradeBenches[8].needs[0].project": "«project boerne»",
+    "tradeBenches[8].needs[0].short": 0,
+    "tradeBenches[8].needs[0].silent": 0,
+    "tradeBenches[8].partners[0]": "«partner kendall»",
+    "tradeBenches[8].partners[1]": "«partner coolbreeze»",
+    "tradeBenches[8].trade": "HVAC",
+    "tradeBenches[9].dependable": 2,
+    "tradeBenches[9].needs": "[]",
+    "tradeBenches[9].partners[0]": "«partner cedar»",
+    "tradeBenches[9].partners[1]": "«partner sawtooth»",
+    "tradeBenches[9].short": 0,
+    "tradeBenches[9].trade": "Millwork",
+    "tradeBenches[9].urgency": 0,
+  },
+  "removed": [
+    "tradeBenches[6].partners[1]",
+    "tradeBenches[7].needs[0].project",
+    "tradeBenches[7].needs[0].pkg",
+    "tradeBenches[7].needs[0].bids",
+    "tradeBenches[7].needs[0].looking",
+    "tradeBenches[7].needs[0].silent",
+    "tradeBenches[7].needs[0].passed",
+    "tradeBenches[7].needs[0].short",
+    "tradeBenches[7].needs[0].daysLeft",
+    "tradeBenches[8].needs",
+    "toVet",
+  ],
+}
+`;
+
+exports[`GC mode golden walk > step 145: Brazos Glass sends its company form 1`] = `
+{
+  "changed": {
+    "lastLog.id": 141,
+    "lastLog.text": "Brazos Glass sent their company form for the office to check.",
+    "lastLog.who": "trade",
+    "toVet[0].words": "not vetted yet · form in",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 146: Dana approves Brazos Glass up to $150,000 1`] = `
+{
+  "changed": {
+    "lastLog.id": 142,
+    "lastLog.text": "Dana Whitaker approved Brazos Glass up to $150,000 on one award. They can be awarded work now.",
+    "lastLog.who": "office",
+    "toVet": "[]",
+  },
+  "removed": [
+    "toVet[0].id",
+    "toVet[0].words",
+  ],
+}
+`;
+
+exports[`GC mode golden walk > step 147: Voltage Brothers promise the renewed insurance by Tue Oct 6 1`] = `
+{
+  "changed": {
+    "insuranceRenewals[0].promise": "tp-1",
+    "lastLog.id": 143,
+    "lastLog.text": "Voltage Brothers promised the renewed insurance certificate by Tue Oct 6.",
+    "tradePromises[0].id": "tp-1",
+    "tradePromises[0].words": "Promised the renewed insurance certificate by Tue Oct 6, in 4 days.",
+  },
+  "removed": [
+    "tradePromises",
+  ],
+}
+`;
+
+exports[`GC mode golden walk > step 148: Voltage Brothers move it to Fri Oct 9 1`] = `
+{
+  "changed": {
+    "lastLog.id": 144,
+    "lastLog.text": "Voltage Brothers moved the renewed insurance certificate from Tue Oct 6 to Fri Oct 9.",
+    "lastLog.who": "trade",
+    "tradePromises[0].words": "Promised the renewed insurance certificate by Fri Oct 9, in 7 days.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 149: Voltage Brothers send the new certificate, which keeps the promise 1`] = `
+{
+  "changed": {
+    "assistantRules[3].now": "9 of 10 companies we are asking have all three.",
+    "insuranceRenewals[0].id": "pecanvalley",
+    "insuranceRenewals[0].promise": null,
+    "lastLog.id": 145,
+    "lastLog.text": "Voltage Brothers sent a new insurance certificate, good to Sep 15.",
+    "tradePromises[0].words": "Kept their word: the renewed insurance certificate came by Fri Oct 9.",
+  },
+  "removed": [
+    "assistantRules[3].items[1].id",
+    "assistantRules[3].items[1].text",
+    "assistantRules[3].items[1].action",
+    "assistantRules[3].items[1].actionLabel",
+    "assistantRules[3].items[1].doneNote",
+    "insuranceRenewals[1].id",
+    "insuranceRenewals[1].days",
+    "insuranceRenewals[1].promise",
+  ],
+}
+`;
+
+exports[`GC mode golden walk > step 150: Tejas Power promises a signed W-9 by Mon Oct 5 1`] = `
+{
+  "changed": {
+    "lastLog.id": 146,
+    "lastLog.text": "Tejas Power promised a signed W-9 by Mon Oct 5.",
+    "tradePromises[1].id": "tp-2",
+    "tradePromises[1].words": "Promised a signed W-9 by Mon Oct 5, in 3 days.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 151: The office marks Tejas's W-9 kept 1`] = `
+{
+  "changed": {
+    "lastLog.id": 147,
+    "lastLog.text": "Tejas Power: a signed W-9 came. Marked kept.",
+    "lastLog.who": "office",
+    "tradePromises[1].words": "Kept their word: a signed W-9 came by Mon Oct 5.",
+  },
+  "removed": [],
+}
+`;
+
 exports[`GC mode golden walk > the whole state at the end 1`] = `
 {
   "customers": [
@@ -8107,6 +8302,46 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
+      "id": 147,
+      "text": "Tejas Power: a signed W-9 came. Marked kept.",
+      "who": "office",
+    },
+    {
+      "id": 146,
+      "text": "Tejas Power promised a signed W-9 by Mon Oct 5.",
+      "who": "trade",
+    },
+    {
+      "id": 145,
+      "text": "Voltage Brothers sent a new insurance certificate, good to Sep 15.",
+      "who": "trade",
+    },
+    {
+      "id": 144,
+      "text": "Voltage Brothers moved the renewed insurance certificate from Tue Oct 6 to Fri Oct 9.",
+      "who": "trade",
+    },
+    {
+      "id": 143,
+      "text": "Voltage Brothers promised the renewed insurance certificate by Tue Oct 6.",
+      "who": "office",
+    },
+    {
+      "id": 142,
+      "text": "Dana Whitaker approved Brazos Glass up to $150,000 on one award. They can be awarded work now.",
+      "who": "office",
+    },
+    {
+      "id": 141,
+      "text": "Brazos Glass sent their company form for the office to check.",
+      "who": "trade",
+    },
+    {
+      "id": 140,
+      "text": "Added Brazos Glass to Storefront and glass. They can quote. Nothing is awarded to them until we approve them.",
+      "who": "office",
+    },
+    {
       "id": 139,
       "text": "Wrote the daily log for Wed Sep 30 on Fair Oaks Shops, Building D: 17 workers from 5 trades on site, 1 delay. Caught up after the day.",
       "who": "office",
@@ -8214,46 +8449,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
     {
       "id": 118,
       "text": "Sent Lonestar Earthworks's question to Marsh & Vale Architects.",
-      "who": "office",
-    },
-    {
-      "id": 117,
-      "text": "Lonestar Earthworks asked about C-101: Is the drive-through lane concrete or asphalt?",
-      "who": "trade",
-    },
-    {
-      "id": 116,
-      "text": "The rough-in inspection passed on Fair Oaks Shops, Building D. The Rough-in inspection milestone is met.",
-      "who": "office",
-    },
-    {
-      "id": 115,
-      "text": "Dr. Priya Raman paid pay application 2: $54,302.",
-      "who": "office",
-    },
-    {
-      "id": 114,
-      "text": "Studio Ocotillo certified pay application 2 for $54,302, $2,000 less than asked: Two operatory cabinets are not set yet.",
-      "who": "office",
-    },
-    {
-      "id": 113,
-      "text": "Sent pay application 2 to Dr. Priya Raman: $56,302 to pay, $15,061 held.",
-      "who": "office",
-    },
-    {
-      "id": 112,
-      "text": "Cedar & Pine Millwork reported Change order 3: Add a coffee bar cabinet in the break room, per A-501 at 50%.",
-      "who": "trade",
-    },
-    {
-      "id": 111,
-      "text": "Cedar & Pine Millwork signed change order 3 into their Millwork statement of work: $2,400.",
-      "who": "trade",
-    },
-    {
-      "id": 110,
-      "text": "Sent change order 3 to Cedar & Pine Millwork as a change to their Millwork statement of work: $2,400.",
       "who": "office",
     },
   ],
@@ -8495,7 +8690,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
     {
       "base": "San Antonio",
       "bids": 7,
-      "coiExpires": "2026-09-15",
+      "coiExpires": "2027-09-15",
       "company": "Voltage Brothers",
       "contact": "Sam Okafor",
       "id": "voltage",
@@ -8721,6 +8916,39 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "trades": [
         "Structural steel",
       ],
+      "w9": false,
+      "won": 0,
+    },
+    {
+      "base": "New Braunfels",
+      "bids": 0,
+      "coiExpires": null,
+      "company": "Brazos Glass",
+      "contact": "Lupe Garza",
+      "id": "new-25",
+      "invited": 0,
+      "maxMiles": 60,
+      "msa": "none",
+      "msaSignedOn": null,
+      "promisesKept": 0,
+      "promisesMade": 0,
+      "trades": [
+        "Storefront and glass",
+      ],
+      "vetting": {
+        "decidedBy": "Dana Whitaker",
+        "decidedOn": "2026-10-02",
+        "form": {
+          "insurance": "Texas Mutual, $1M per claim, $2M total",
+          "license": "TX glazing contractor 48213",
+          "pastJobs": "Storefronts at Bulverde Crossing and the Gruene dental office.",
+          "references": "Rosa Lin, Alamo Builders, (210) 555-0190. Tom Beck, Hill Country GC, (830) 555-0144.",
+          "sentOn": "2026-10-02",
+          "yearsInBusiness": 9,
+        },
+        "limit": 150000,
+        "status": "approved",
+      },
       "w9": false,
       "won": 0,
     },
@@ -14146,5 +14374,33 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
     },
   ],
   "today": "2026-10-02",
+  "tradePromises": [
+    {
+      "by": "2026-10-09",
+      "from": "office",
+      "id": "tp-1",
+      "keptOn": "2026-10-02",
+      "kind": "insurance",
+      "madeOn": "2026-10-02",
+      "moved": [
+        {
+          "by": "2026-10-06",
+          "on": "2026-10-02",
+        },
+      ],
+      "partnerId": "voltage",
+      "what": "the renewed insurance certificate",
+    },
+    {
+      "by": "2026-10-05",
+      "from": "trade",
+      "id": "tp-2",
+      "keptOn": "2026-10-02",
+      "kind": "w9",
+      "madeOn": "2026-10-02",
+      "partnerId": "tejas",
+      "what": "a signed W-9",
+    },
+  ],
 }
 `;
