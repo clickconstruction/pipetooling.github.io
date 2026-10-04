@@ -1407,6 +1407,8 @@ export function initialGcState(): GcState {
 export const GC_COMPANY = {
   name: 'Click Construction',
   shortName: 'Click',
+  /** Made up, for the pay application's "from the contractor". */
+  address: '1200 Commerce St, San Antonio, TX 78205',
   /** Who a trade calls about pay and paperwork. Made up: 555 numbers and an .example address. */
   pay: { name: 'Accounts payable', phone: '(210) 555-0104', email: 'pay@clickconstruction.example' },
 }

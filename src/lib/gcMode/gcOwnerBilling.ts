@@ -11,6 +11,8 @@ import { carriedAmount, proposalTotals } from './gcBids'
 import { partnerById } from './gcLookups'
 import { changeOrderTradePct, ownCrewWork, retainageHeldNow, tradeCloseout, type PayApplication, type PayAppLine } from './gcBuilding'
 import { daysUntil, money, shortDate } from './gcWords'
+import type { PayAppParties } from './gcPayAppFile'
+import { GC_COMPANY } from './gcFixture'
 
 /** We bill the owner once a month (the owner's call, 2026-10-02). The day of the month is my default. */
 export const OWNER_BILL_DAY = 25
@@ -822,6 +824,32 @@ export interface OwnerPayAppForm {
   certificate: { amount: number | null; on: string | null; note: string }
   /** Line 5's words when the retainage drops partway ("10% until the work is half done, then 5% on the rest"). Null: a plain percent. */
   retainageWords: string | null
+}
+
+/**
+ * Who and what our pay application is for, beside its numbers: the owner, us, the architect, the
+ * dates, and the change orders on it with whether each was signed since the last bill. For the
+ * Excel and PDF (`gcPayAppFile.ts`, question 12).
+ */
+export function ownerPayAppParties(state: GcState, project: GcProject, form: OwnerPayAppForm): PayAppParties {
+  const customer = customerOf(state, project)
+  const before = ownerPayAppsSent(project)
+    .filter((a) => a.number < form.app.number)
+    .reduce((last, a) => (a.periodTo > last ? a.periodTo : last), '')
+  const thisPeriod = (on: string | null) => on !== null && on > before && on <= form.periodTo
+  const signed = new Map(signedChangeOrders(project).map((co) => [co.number, co]))
+  return {
+    project: project.name,
+    applicationNo: form.app.final ? `${form.app.number}, final` : String(form.app.number),
+    periodTo: form.periodTo,
+    sentOn: form.sentOn,
+    contractDate: form.contractDate,
+    to: { name: project.owner, address: customer?.address ?? '' },
+    from: { name: GC_COMPANY.name, address: GC_COMPANY.address },
+    architect: project.architect || null,
+    changeOrders: form.changeOrders.map((c) => ({ amount: c.price, thisPeriod: thisPeriod(signed.get(c.number)?.answeredOn ?? null) })),
+    retainageWords: form.retainageWords,
+  }
 }
 
 /** Our pay application number `which` as the form, or the next one as a draft. Null: no such bill. */
