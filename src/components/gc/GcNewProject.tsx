@@ -3,6 +3,7 @@ import {
   OUR_TRADES,
   SAMPLE_SHEET_INDEX,
   TOWNS,
+  townFromAddress,
   TRADE_TEMPLATES,
   money,
   newProjectId,
@@ -29,7 +30,6 @@ import {
   answerRecord,
   budgetForSize,
   buildNewProject,
-  sqFtInText,
   partnerBlockers,
   defaultAsks,
   tradeLineup,
@@ -140,13 +140,23 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
 
   const [name, setName] = useState('')
   const [address, setAddress] = useState('')
-  const [town, setTown] = useState('San Antonio')
+  const townRead = townFromAddress(address)
+  /** The town is read from the address (the owner, 2026-10-04: "the drive is pulled from the address"); a pick only when it cannot be. */
+  const [townPick, setTownPick] = useState('')
+  const town = townRead ?? townPick
   const [ownerPick, setOwnerPick] = useState('')
   const [ownerNew, setOwnerNew] = useState('')
   const [archPick, setArchPick] = useState('')
   const [archNew, setArchNew] = useState('')
   const [bidDue, setBidDue] = useState('')
-  const [sizeNote, setSizeNote] = useState('')
+  /** The size in square feet only, and any words about it in their own box (the owner, 2026-10-04). */
+  const [sqFtText, setSqFtText] = useState('')
+  const [sizeWords, setSizeWords] = useState('')
+  const sqFtNumber = Number(sqFtText.replace(/[^0-9]/g, '')) || 0
+  /** The one display line the board, the header and the portals read: "6,800 sq ft clinic, one story". */
+  const sizeNote = [sqFtNumber > 0 ? `${sqFtNumber.toLocaleString('en-US')} sq ft` : '', sqFtNumber > 0 ? inSentence(sizeWords) : sizeWords.trim()]
+    .filter(Boolean)
+    .join(' ')
 
   const [setLabel, setSetLabel] = useState('Bid set')
   const [issuedOn, setIssuedOn] = useState(state.today)
@@ -208,7 +218,7 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
     architectId: archPick && archPick !== NEW ? archPick : null,
     architectName: archName,
     bidDue: bidDue || null,
-    sizeNote: sizeNote.trim(),
+    sizeNote,
     setLabel: setLabel.trim() || 'Bid set',
     issuedOn,
     setNote: setNote.trim(),
@@ -233,6 +243,7 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
 
   const missing: string[] = []
   if (draft.name === '') missing.push('Give the project a name.')
+  if (draft.town === '') missing.push('Add the town to the address, so drives can be measured.')
   if (ownerName === '') missing.push('Pick the owner.')
   if (archName === '') missing.push('Pick the architect.')
   if (picked.length === 0) missing.push(reading.sheets.length === 0 ? 'Paste the sheet index or add a trade.' : 'Tick at least one trade.')
@@ -240,7 +251,7 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
   const scopeLines = picked.reduce((n, r) => n + r.scope.filter((l) => l.label.trim()).length, 0)
   const ours = picked.filter((r) => r.ours).length
   const budgets = picked.reduce((n, r) => n + budgetNumber(r.budget), 0)
-  const sqFt = sqFtInText(sizeNote)
+  const sqFt = sqFtNumber > 0 ? sqFtNumber : null
   /** The project as it will be made, so each trade's companies can be lined up before it exists. */
   const built = buildNewProject(state, draft).project
   const asksFor = (trade: string, pkg: (typeof built.packages)[number]) => asks[trade] ?? defaultAsks(state, built, pkg)
@@ -286,6 +297,29 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
   }
 
   const notListed = TRADE_TEMPLATES.filter((t) => !rows.some((r) => r.trade === t.trade))
+  /**
+   * Take a trade the office added out of the draft altogether (the owner, 2026-10-04: "If I add a
+   * trade by accident here, I can't remove it"): its row, its scope, its picks on Who to ask and any
+   * company new to us asked for it. Adding it again starts fresh. A trade the sheets suggest is only
+   * unticked, since the sheets would bring it back.
+   */
+  const removeTrade = (trade: string) => {
+    setAdded((a) => a.filter((t) => t !== trade))
+    setEdits((all) => Object.fromEntries(Object.entries(all).filter(([t]) => t !== trade)))
+    setAsks((all) => Object.fromEntries(Object.entries(all).filter(([t]) => t !== trade)))
+    setStrangers((all) => all.filter((x) => x.trade !== trade))
+    setFilled((all) => Object.fromEntries(Object.entries(all).filter(([t]) => t !== trade)))
+  }
+  /** What goes with a removed trade, said on its button. */
+  const removeWords = (r: TradeRow) => {
+    const lines = r.scope.filter((l) => l.label.trim()).length
+    const asked = (asks[r.trade]?.length ?? 0) + strangers.filter((x) => x.trade === r.trade).length
+    const goes = [
+      lines > 0 ? `its ${lines} scope ${lines === 1 ? 'line' : 'lines'}` : '',
+      asked > 0 ? `the ${asked} ${asked === 1 ? 'company' : 'companies'} you picked` : '',
+    ].filter(Boolean)
+    return goes.length > 0 ? `Take ${r.trade} off this project, with ${goes.join(' and ')}.` : `Take ${r.trade} off this project.`
+  }
   const addTrade = (trade: string) => {
     const t = trade.trim()
     if (t === '' || rows.some((r) => r.trade.toLowerCase() === t.toLowerCase())) return
@@ -427,16 +461,25 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
               </Field>
               <Field label="Address">
                 <input style={field} value={address} onChange={(e) => setAddress(e.target.value)} placeholder="24165 IH-10 W, San Antonio" />
-              </Field>
-              <Field label="Town" hint="Each company's drive is measured from here.">
-                <Picker
-                  value={town}
-                  onChange={setTown}
-                  options={TOWNS.map((t) => ({ value: t.name, label: t.name }))}
-                  placeholder="Pick the town"
-                  ariaLabel="Towns"
-                  searchPlaceholder="Search towns"
-                />
+                {townRead ? (
+                  <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>Drives are measured from {townRead}.</span>
+                ) : address.trim() === '' ? (
+                  <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>The street and the town. Each company's drive is measured from the town.</span>
+                ) : (
+                  <span style={{ display: 'grid', gap: '0.3rem' }}>
+                    <span style={{ color: 'var(--text-amber-700)', fontSize: '0.78rem', fontWeight: 600 }}>
+                      No town we know is in the address. Add it after a comma, like ", San Antonio", or pick it here.
+                    </span>
+                    <Picker
+                      value={townPick}
+                      onChange={setTownPick}
+                      options={TOWNS.map((t) => ({ value: t.name, label: t.name }))}
+                      placeholder="Pick the town"
+                      ariaLabel="Towns"
+                      searchPlaceholder="Search towns"
+                    />
+                  </span>
+                )}
               </Field>
               <Field label="Owner" hint="The company we build it for. It comes from the customer list.">
                 <CustomerPicker
@@ -465,8 +508,24 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
               <Field label="Our bid is due" hint="The days-left block on the board counts down to it.">
                 <input type="date" style={field} value={bidDue} onChange={(e) => setBidDue(e.target.value)} />
               </Field>
-              <Field label="Size" hint="One line, as you would say it.">
-                <input style={field} value={sizeNote} onChange={(e) => setSizeNote(e.target.value)} placeholder="6,800 sq ft clinic, one story" />
+              <Field label="Size" hint="Square feet. The budgets on step 3 can be filled from it.">
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <input
+                    style={{ ...field, textAlign: 'right' }}
+                    inputMode="numeric"
+                    value={sqFtText}
+                    onChange={(e) => {
+                      const n = Number(e.target.value.replace(/[^0-9]/g, ''))
+                      setSqFtText(n > 0 ? n.toLocaleString('en-US') : '')
+                    }}
+                    placeholder="6,800"
+                    aria-label="Size in square feet"
+                  />
+                  <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>sq ft</span>
+                </span>
+              </Field>
+              <Field label="Size note (optional)" hint="What it is, in a few words. It reads after the size.">
+                <input style={field} value={sizeWords} onChange={(e) => setSizeWords(e.target.value)} placeholder="Clinic, one story" />
               </Field>
             </div>
           )}
@@ -649,6 +708,11 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
                             <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem', whiteSpace: 'nowrap' }}>{filled[r.trade]?.words}</span>
                           )}
                         </>
+                      )}
+                      {r.from.length === 0 && r.specs.length === 0 && (
+                        <Btn kind="quiet" onClick={() => removeTrade(r.trade)} title={removeWords(r)}>
+                          Remove
+                        </Btn>
                       )}
                     </div>
                   ))}

@@ -192,6 +192,12 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   that adds a typed trade the same way. Escape in an open picker closes only the picker. Step 2's
   set line is **Note to the trades (optional)**, with "Every company we ask sees this beside the
   set's name."
+- **New project, step 1 and 3 follow-ups** (the owner, 2026-10-04): no Town field; each company's
+  drive is measured from the town in the address ("Drives are measured from Boerne"; the Board's
+  `townFromAddress`), and a town picker shows only when the address names none. **Size** is square
+  feet only, with **Size note (optional)** for the words; the project keeps one line ("6,800 sq ft
+  clinic, one story") that every screen reads. A trade the office added on step 3 has **Remove**,
+  which takes it off the draft with its scope and its picks.
 - **A set says who checked it** (the owner, 2026-10-04: "plans live in google drive, uploaded by
   someone who checks them"; "yes, add the checked by step"): step 1 of **A new set of plans came
   in** asks **Checked by**, the job's own team first, then our other people, or someone typed

@@ -46,7 +46,7 @@ export {
 } from '../gc/plans'
 export type { TradeTemplate, SheetIndexReading, TradeGuess, ScopeGap, SpecIndexReading, PlansTradeGuess } from '../gc/plans'
 import { currentRev } from './gcLookups'
-import { tradeLineup } from './gcMap'
+import { townFromAddress, tradeLineup } from './gcMap'
 import { BENCH_WANTED } from './gcBench'
 import { carriedAmount, isGuess } from './gcBids'
 
@@ -354,7 +354,8 @@ export function buildNewProject(state: GcState, draft: NewProjectDraft): { proje
     id,
     name: draft.name.trim(),
     address: draft.address.trim(),
-    town: draft.town,
+    // The town comes from the address when it names one we know (the owner, 2026-10-04); else the draft's pick.
+    town: townFromAddress(draft.address) ?? draft.town,
     ourBidSentOn: null,
     ownerContractSignedOn: null,
     permitOn: null,

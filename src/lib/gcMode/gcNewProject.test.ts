@@ -660,3 +660,10 @@ describe('a company new to us, asked from Who to ask', () => {
     expect(added && canAward(added, 1_000).ok).toBe(false)
   })
 })
+
+describe('a new project measures drives from its address', () => {
+  it('takes the town written in the address, and the draft\'s pick only when the address names none', () => {
+    expect(buildNewProject(initialGcState(), draft({ address: '1436 River Rd, Boerne', town: 'San Antonio' })).project.town).toBe('Boerne')
+    expect(buildNewProject(initialGcState(), draft({ address: '12 Main St', town: 'Bandera' })).project.town).toBe('Bandera')
+  })
+})
