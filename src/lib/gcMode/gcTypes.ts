@@ -29,6 +29,13 @@ export interface PlanSet {
   changedSpecs?: string[]
   /** Sections this set adds to the manual, with the titles the office gave them. */
   addedSpecs?: SpecSection[]
+  /** Sheets this set takes out of the set. Each is in `changedSheets` too, so a reader of what changed sees it. */
+  removedSheets?: string[]
+  /** Sheets this set renames: the number stays, the title changes. Each is in `changedSheets` too. */
+  retitledSheets?: PlanSheet[]
+  /** Sections this set takes out of the manual, and the ones it renames. Each is in `changedSpecs` too. */
+  removedSpecs?: string[]
+  retitledSpecs?: SpecSection[]
 }
 
 /** One drawing in the set. The discipline is read from the number's letters (E-201 → Electrical). */
@@ -503,6 +510,13 @@ export type GcAction =
       /** Sections of the manual this set revises, and the ones in that list new to the manual with their titles. */
       specs?: string[]
       addedSpecs?: SpecSection[]
+      /** Sheets and sections this set takes out or renames. Each is also in `sheets` or `specs`. */
+      removedSheets?: string[]
+      retitledSheets?: PlanSheet[]
+      removedSpecs?: string[]
+      retitledSpecs?: SpecSection[]
+      /** Scope lines whose sheets or sections all go, tied to new ones. An empty list: the trade as a whole. */
+      retiedLines?: { packageId: string; scopeId: string; sheets?: string[]; specs?: string[] }[]
     }
   | { type: 'acceptWork'; projectId: string; packageId: string }
   | { type: 'tradeSendWarranty'; projectId: string; packageId: string }

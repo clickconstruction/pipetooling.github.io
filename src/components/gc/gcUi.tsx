@@ -34,9 +34,10 @@ export function Chip({ tone, children, title }: { tone: Tone; children: ReactNod
   )
 }
 
-export function Card({ children, style }: { children: ReactNode; style?: CSSProperties }) {
+export function Card({ children, style, dataTour }: { children: ReactNode; style?: CSSProperties; dataTour?: string }) {
   return (
     <div
+      data-tour={dataTour}
       style={{
         background: 'var(--surface)',
         border: '1px solid var(--border)',
