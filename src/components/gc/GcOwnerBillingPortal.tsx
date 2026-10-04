@@ -6,6 +6,7 @@ import {
   GC_COMPANY_NAME,
   CHANGE_ORDER_REASON_WORDS,
   GC_COMPANY,
+  addDays,
   appCertified,
   appOpen,
   appPaid,
@@ -25,6 +26,7 @@ import {
   sentPayAppLines,
   shortDate,
   spreadMarkup,
+  substantialCompletionOn,
   tradeWaiverChecks,
   weekdayDate,
   type GcAction,
@@ -53,6 +55,7 @@ export function GcOwnerBillingPortal({ state, project, dispatch }: { state: GcSt
   const last = sent[sent.length - 1]
   const account = ownerAccount(project)
   const next = ownerPayApp(state, project)
+  const finish = substantialCompletionOn(project)
   const ours = ourOwnerWaivers(project)
   const trades = last ? tradeWaiverChecks(state, project, last.doneToDate) : []
   const billedPct = last && next.contract > 0 ? Math.round((last.workToDate / next.contract) * 100) : 0
@@ -101,11 +104,23 @@ export function GcOwnerBillingPortal({ state, project, dispatch }: { state: GcSt
             <span style={{ textAlign: 'right' }}>{money(account?.paid ?? 0)}</span>
             <span>You owe now</span>
             <strong style={{ textAlign: 'right' }}>{money(account?.owed ?? 0)}</strong>
-            {contractDaysAdded(project) > 0 && (
+            {finish ? (
               <>
-                <span>Days your change orders add to the job</span>
-                <span style={{ textAlign: 'right' }}>+{daysWords(contractDaysAdded(project))}</span>
+                <span>Substantial completion</span>
+                <strong style={{ textAlign: 'right' }}>{shortDate(finish.on)}</strong>
+                {finish.days > 0 && (
+                  <span style={{ gridColumn: '1 / -1', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                    {shortDate(finish.planned)} in the contract, plus {daysWords(finish.days)} by the change orders you signed.
+                  </span>
+                )}
               </>
+            ) : (
+              contractDaysAdded(project) > 0 && (
+                <>
+                  <span>Days your change orders add to the job</span>
+                  <span style={{ textAlign: 'right' }}>+{daysWords(contractDaysAdded(project))}</span>
+                </>
+              )
             )}
           </div>
         </PortalBlock>
@@ -160,6 +175,7 @@ export function GcOwnerBillingPortal({ state, project, dispatch }: { state: GcSt
                       <span style={{ color: 'var(--text-muted)' }}>
                         {co.price < 0 ? 'It takes' : 'It adds'} {money(Math.abs(co.price))} {co.price < 0 ? 'off' : 'to'} your price.
                         {changeOrderDays(co) > 0 && ` It adds ${daysWords(changeOrderDays(co))} to the job.`}
+                        {changeOrderDays(co) > 0 && finish && ` Substantial completion moves to ${shortDate(addDays(finish.on, changeOrderDays(co)))}.`}
                       </span>
                     </div>
                   )}

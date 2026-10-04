@@ -11,6 +11,7 @@ import {
   money,
   projectChangeOrders,
   shortDate,
+  substantialCompletionOn,
   type ChangeOrder,
   type ChangeOrderReason,
   type GcAction,
@@ -31,13 +32,16 @@ export function GcOwnerBillingChangeOrders({ state, project, dispatch }: { state
   const signed = all.filter((co) => co.status === 'signed').reduce((s, co) => s + co.price, 0)
   const waiting = all.filter((co) => co.status === 'sent').length
   const days = contractDaysAdded(project)
+  const finish = substantialCompletionOn(project)
 
   return (
     <Card>
       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', marginBottom: '0.35rem' }}>
         <strong style={{ fontSize: '1.05rem' }}>Change orders</strong>
         {signed !== 0 && <Chip tone="green">{`${signed > 0 ? '+' : '−'}${money(Math.abs(signed))} signed`}</Chip>}
-        {days > 0 && <Chip tone="amber">{`+${daysWords(days)} to the job`}</Chip>}
+        {days > 0 && (
+          <Chip tone="amber">{finish ? `+${daysWords(days)}: substantial completion ${shortDate(finish.on)}` : `+${daysWords(days)} to the job`}</Chip>
+        )}
         {waiting > 0 && <Chip tone="amber">{`${waiting} waiting on ${project.owner}`}</Chip>}
         <span style={{ flex: 1 }} />
         {!adding && <Btn onClick={() => setAdding(true)}>New change order</Btn>}

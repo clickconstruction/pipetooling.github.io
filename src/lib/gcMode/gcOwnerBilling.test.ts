@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   allJobsMoney,
+  substantialCompletionOn,
   priceToOwner,
   ownerContractPrice,
   ownerContractWorthNow,
@@ -454,6 +455,15 @@ describe('change orders to the owner', () => {
     }
     const said = helotesOf(draft(initialGcState(), 4_800)).changeOrders?.[0]
     expect(said && changeOrderScheduleWords(said)).toBe('schedule: +1 working day')
+  })
+
+  it('a signed one pushes back substantial completion by its days (question 28)', () => {
+    const fairOaks = (state: GcState) => state.projects.find((p) => p.id === 'fairoaksd') as GcProject
+    let state = gcReducer(initialGcState(), { type: 'draftChangeOrder', projectId: 'fairoaksd', description: 'A second drive-through lane', reason: 'owner', schedule: '', packageId: 'fsite', cost: 12_000, price: 0, days: 5 })
+    state = gcReducer(state, { type: 'sendChangeOrder', projectId: 'fairoaksd', changeOrderId: 'co-1' })
+    expect(substantialCompletionOn(fairOaks(state))).toEqual({ planned: '2026-12-11', days: 0, on: '2026-12-11' })
+    state = gcReducer(state, { type: 'ownerSignChangeOrder', projectId: 'fairoaksd', changeOrderId: 'co-1' })
+    expect(substantialCompletionOn(fairOaks(state))).toEqual({ planned: '2026-12-11', days: 5, on: '2026-12-16' })
   })
 
   it('prices at the cost plus the job fee, unless typed', () => {
