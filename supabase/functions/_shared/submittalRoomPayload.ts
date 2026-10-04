@@ -251,7 +251,7 @@ export function roomRowFrom(item: RoomItemSource, parts: ReadonlyArray<RoomPartS
     kind,
     plans,
     proposed,
-    why: kind === 'differs' ? whySentence(item) : kind === 'added' ? 'Required by the fixture; the plans leave it to the contractor.' : kind === 'not_quoted' ? 'No product yet — to follow.' : kind === 'proposed' ? 'What we intend to install; the plans’ schedule was not on the bid to compare against.' : '',
+    why: kind === 'differs' ? whySentence(item) : kind === 'added' ? 'Required by the fixture; the plans leave it to the contractor.' : kind === 'not_quoted' ? 'No product yet — to follow.' : kind === 'proposed' ? 'This is the product we intend to install.' : '',
     performanceChange: item.status === 'design_change',
     sheetPages: (item.sheet_pages ?? []).length,
     decision,
@@ -307,21 +307,25 @@ export function roomRowsFrom(items: ReadonlyArray<RoomItemSource>, partsByItem: 
   return rows.map((r, i) => ({ r, i })).sort((a, b) => order[a.r.kind] - order[b.r.kind] || a.i - b.i).map((x) => x.r)
 }
 
-/** "3 rows need a call" · "Everything matches the plans" · "2 to go". */
+/**
+ * "3 products need your answer" · "Everything matches the plans" · "All 3 decided — thank you".
+ * The GC reads this (2026-10-03): it asks in their words, and "call" was ours.
+ */
 export function roomHeadline(c: RoomRevision['counts']): string {
   if (c.total === 0) return 'Nothing to review yet'
   const asks = c.differs + (c.proposed ?? 0)
   if (asks === 0) return c.notQuoted > 0 ? 'Everything quoted matches the plans' : 'Everything matches the plans'
   if (c.open === 0) return `All ${asks} decided — thank you`
-  return `${c.open} row${c.open === 1 ? '' : 's'} need${c.open === 1 ? 's' : ''} a call`
+  return `${c.open} product${c.open === 1 ? '' : 's'} need${c.open === 1 ? 's' : ''} your answer`
 }
 
 /** The sentence under the headline. */
 export function roomSubline(c: RoomRevision['counts']): string {
   const parts: string[] = []
-  if (c.matches > 0) parts.push(`${c.matches} row${c.matches === 1 ? '' : 's'} match the plans and ${c.matches === 1 ? 'is' : 'are'} marked approved`)
+  if (c.matches > 0) parts.push(`${c.matches} product${c.matches === 1 ? ' matches' : 's match'} the plans and ${c.matches === 1 ? 'is' : 'are'} marked approved`)
   if (c.differs > 0) parts.push(`${c.differs} differ${c.differs === 1 ? 's' : ''} — each says why`)
-  if ((c.proposed ?? 0) > 0) parts.push(`${c.proposed} ${c.proposed === 1 ? 'is' : 'are'} proposed — the plans’ schedule was not on the bid`)
+  // 2026-10-03 · a row built from the takeoff: say what it is. "The plans' schedule was not on the bid" read as an admission, on every card, and was untrue on a bid whose schedule simply lacked the tag.
+  if ((c.proposed ?? 0) > 0) parts.push(`${c.proposed} ${c.proposed === 1 ? 'is a product' : 'are products'} we intend to install`)
   if (c.notQuoted > 0) parts.push(`${c.notQuoted} ${c.notQuoted === 1 ? 'has' : 'have'} no product yet`)
   if (c.added > 0) parts.push(`${c.added} ${c.added === 1 ? 'is' : 'are'} accessor${c.added === 1 ? 'y' : 'ies'} the plans leave to us`)
   return parts.length ? `${parts.join('. ')}.` : ''

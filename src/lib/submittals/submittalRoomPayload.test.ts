@@ -51,11 +51,26 @@ describe('the room\'s rows, counts and headline', () => {
   it('counts and words the headline', () => {
     const c = roomCounts(roomRowsFrom(items))
     expect(c).toEqual({ total: 5, matches: 1, differs: 2, notQuoted: 1, added: 1, proposed: 0, decided: 1, open: 1 })
-    expect(roomHeadline(c)).toBe('1 row needs a call')
-    expect(roomSubline(c)).toBe('1 row match the plans and is marked approved. 2 differ — each says why. 1 has no product yet. 1 is accessory the plans leave to us.')
+    expect(roomHeadline(c)).toBe('1 product needs your answer')
+    expect(roomSubline(c)).toBe('1 product matches the plans and is marked approved. 2 differ — each says why. 1 has no product yet. 1 is accessory the plans leave to us.')
     expect(roomHeadline({ ...c, open: 0 })).toBe('All 2 decided — thank you')
     expect(roomHeadline({ total: 3, matches: 3, differs: 0, notQuoted: 0, added: 0, decided: 0, open: 0 })).toBe('Everything matches the plans')
     expect(roomHeadline({ total: 0, matches: 0, differs: 0, notQuoted: 0, added: 0, decided: 0, open: 0 })).toBe('Nothing to review yet')
+  })
+  it('2026-10-03 · a row built from the takeoff reads as what we intend to install; nothing tells the GC the schedule was not on the bid', () => {
+    // BP375: thirteen rows from the takeoff, four of them answered, one with no product.
+    const takeoff = [
+      item({ id: 't1', tag: 'DWH-1', sequence_order: 1, status: 'proposed', specified_description: 'DWH1 & ET', submitted_label: 'RHEEM PROPH40-T2-RH400-SO' }),
+      item({ id: 't2', tag: 'FCO', sequence_order: 2, status: 'proposed', submitted_label: 'ZURN ZN1400-2NL' }),
+      item({ id: 't3', tag: 'UTILITY SINK', sequence_order: 3, status: 'missing' }),
+    ]
+    const rows = roomRowsFrom(takeoff)
+    expect(rows[0]).toMatchObject({ kind: 'proposed', plans: 'DWH1 & ET', why: 'This is the product we intend to install.' })
+    const c = roomCounts(rows)
+    expect(roomHeadline(c)).toBe('2 products need your answer')
+    expect(roomSubline(c)).toBe('2 are products we intend to install. 1 has no product yet.')
+    expect(roomSubline(roomCounts(roomRowsFrom(takeoff.slice(0, 1))))).toBe('1 is a product we intend to install.')
+    for (const r of rows) expect(`${r.why} ${roomSubline(c)}`).not.toMatch(/schedule/)
   })
   it('roles fall back to other', () => {
     expect(asRoomRole('architect')).toBe('architect')
