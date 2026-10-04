@@ -146,7 +146,9 @@ first** (a partner's vetting, the promise record), so build on those once GC 0 s
 
 ### New Project (GC 2)
 
-1. **Q3:** *Who to ask* can add a company not on the bench; it comes in not vetted.
+1. ~~**Q3:** *Who to ask* can add a company not on the bench; it comes in not vetted.~~ done:
+   **+ Ask a company not on our list** on each trade (`strangerActions`); a company the Board flags
+   shows its vetting chip there too.
 2. ~~**Q6 words** on New Project's screens.~~ done: a trade's number reads as a quote or as what we
    price ourselves ("every company quoting", "Our guess", "the scope we price ourselves"); "bid"
    stays for our bid to the owner and the Trades mode record. "Compare bids" stays while the
