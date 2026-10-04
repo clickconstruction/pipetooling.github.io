@@ -725,10 +725,27 @@ export function GcPlansTab({ state, project, dispatch }: GcPaneProps) {
                 : ''}
             </div>
             <p style={{ margin: '0.5rem 0 0', whiteSpace: 'pre-wrap' }}>{s.note}</p>
-            {s.changedSheets.length > 0 && (
+            {(s.changedSheets.length > 0 || (s.changedSpecs ?? []).length > 0) && (
               <div style={{ marginTop: '0.4rem', fontSize: '0.85rem' }}>
-                Sheets changed: {s.changedSheets.join(', ')}
-                <br />
+                {s.changedSheets.length > 0 && (
+                  <>
+                    Sheets changed: {s.changedSheets.join(', ')}
+                    <br />
+                  </>
+                )}
+                {/* The project manual's sections the set revised (the New Project lane's specs; Board item 4). */}
+                {(s.changedSpecs ?? []).length > 0 && (
+                  <>
+                    Sections revised:{' '}
+                    {(s.changedSpecs ?? [])
+                      .map((id) => {
+                        const title = project.specs?.find((x) => x.id === id)?.title ?? s.addedSpecs?.find((x) => x.id === id)?.title
+                        return title ? `${id} ${title}` : id
+                      })
+                      .join(', ')}
+                    <br />
+                  </>
+                )}
                 Trades it changes:{' '}
                 {s.touches.map((id) => project.packages.find((p) => p.id === id)?.trade ?? id).join(', ') || 'none named'}
               </div>
