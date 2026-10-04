@@ -126,6 +126,8 @@ interface WindowProps {
 export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: WindowProps) {
   const [step, setStep] = useState(0)
   const roomy = useMatchMedia('(min-width: 900px)')
+  // On a phone the five steps are a row of numbers, with the open step's name beside them.
+  const narrow = useMatchMedia('(max-width: 599px)')
   const body = useRef<HTMLDivElement>(null)
   useEffect(() => {
     body.current?.scrollTo({ top: 0 })
@@ -313,6 +315,43 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
           </button>
         </div>
 
+        {narrow ? (
+          <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', padding: '0.5rem 1rem', borderBottom: '1px solid var(--border)', background: 'var(--bg-subtle)' }}>
+            <div role="tablist" aria-label="Steps" style={{ display: 'flex', gap: '0.3rem', flexShrink: 0 }}>
+              {STEPS.map((s, i) => {
+                const active = i === step
+                return (
+                  <button
+                    key={s.title}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    aria-label={`${i + 1}. ${s.title}: ${summaries[i]}`}
+                    onClick={() => setStep(i)}
+                    style={{
+                      width: '1.9rem',
+                      height: '1.9rem',
+                      borderRadius: '50%',
+                      border: `1px solid ${active ? 'var(--text-blue-500)' : 'var(--border-strong)'}`,
+                      background: active ? '#2563eb' : 'var(--surface)',
+                      color: active ? 'white' : 'var(--text-600)',
+                      fontWeight: 700,
+                      fontSize: '0.85rem',
+                      cursor: 'pointer',
+                      padding: 0,
+                    }}
+                  >
+                    {i + 1}
+                  </button>
+                )
+              })}
+            </div>
+            <span style={{ minWidth: 0 }}>
+              <span style={{ display: 'block', fontWeight: 600, fontSize: '0.875rem' }}>{STEPS[step]?.title}</span>
+              <span style={{ display: 'block', color: 'var(--text-muted)', fontSize: '0.75rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{summaries[step]}</span>
+            </span>
+          </div>
+        ) : (
         <div role="tablist" aria-label="Steps" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(10rem, 1fr))', gap: '0.4rem', padding: '0.6rem 1rem', borderBottom: '1px solid var(--border)', background: 'var(--bg-subtle)' }}>
           {STEPS.map((s, i) => {
             const active = i === step
@@ -364,6 +403,7 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
             )
           })}
         </div>
+        )}
 
         <div ref={body} style={{ padding: '0.9rem 1rem', overflowY: 'auto', flex: 1, minHeight: 0 }}>
           <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '0.75rem' }}>{STEPS[step]?.hint}</div>

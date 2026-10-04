@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMatchMedia } from '../../hooks/useMatchMedia'
 import {
   SPEC_DIVISIONS,
   currentRev,
@@ -37,6 +38,14 @@ interface Props {
 
 export function GcPlansQuickLook({ project, onClose, onSeeWhoHasIt }: Props) {
   const newest = currentRev(project)
+  // On a phone the drawing comes first and the list of sheets follows it, one column that scrolls as one.
+  const narrow = useMatchMedia('(max-width: 699px)')
+  const scroller = useRef<HTMLDivElement>(null)
+  /** Open a sheet or a section from the list. On a phone the list is below the drawing, so go back up to it. */
+  const showFromList = (open: (id: string) => void) => (id: string) => {
+    open(id)
+    if (narrow) scroller.current?.scrollTo({ top: 0 })
+  }
   const [rev, setRev] = useState(newest)
   const sheets = useMemo(() => sheetsAtRev(project, rev), [project, rev])
   const firstChanged = sheets.find((s) => s.changedInRev === rev)
@@ -212,8 +221,17 @@ export function GcPlansQuickLook({ project, onClose, onSeeWhoHasIt }: Props) {
           </div>
         )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(11rem, 17rem) minmax(0, 1fr)', minHeight: 0, flex: 1 }}>
-          <div style={{ overflowY: 'auto', borderRight: '1px solid var(--border)', padding: '0.5rem' }}>
+        <div
+          ref={scroller}
+          style={{
+            display: 'grid',
+            gridTemplateColumns: narrow ? 'minmax(0, 1fr)' : 'minmax(11rem, 17rem) minmax(0, 1fr)',
+            minHeight: 0,
+            flex: 1,
+            overflowY: narrow ? 'auto' : undefined,
+          }}
+        >
+          <div style={narrow ? { order: 2, padding: '0.5rem', borderTop: '1px solid var(--border)' } : { overflowY: 'auto', borderRight: '1px solid var(--border)', padding: '0.5rem' }}>
             {specs.length > 0 && (
               <div role="group" aria-label="Sheets or specs" style={{ display: 'flex', gap: '0.3rem', padding: '0.1rem 0.2rem 0.5rem' }}>
                 {(['sheets', 'specs'] as const).map((v) => {
@@ -254,7 +272,7 @@ export function GcPlansQuickLook({ project, onClose, onSeeWhoHasIt }: Props) {
                       <button
                         key={x.id}
                         type="button"
-                        onClick={() => setSpecId(x.id)}
+                        onClick={() => showFromList(setSpecId)(x.id)}
                         aria-current={active}
                         style={{
                           display: 'flex',
@@ -285,7 +303,7 @@ export function GcPlansQuickLook({ project, onClose, onSeeWhoHasIt }: Props) {
                 </div>
               ))}
             {showSpecs && goneSpecs.length > 0 && (
-              <GoneGroup project={project} rows={goneSpecs} active={goneSpec?.id ?? null} onPick={setSpecId} />
+              <GoneGroup project={project} rows={goneSpecs} active={goneSpec?.id ?? null} onPick={showFromList(setSpecId)} />
             )}
             {!showSpecs && groups.map((g) => (
               <div key={g.discipline} style={{ marginBottom: '0.5rem' }}>
@@ -298,7 +316,7 @@ export function GcPlansQuickLook({ project, onClose, onSeeWhoHasIt }: Props) {
                     <button
                       key={s.id}
                       type="button"
-                      onClick={() => setSheetId(s.id)}
+                      onClick={() => showFromList(setSheetId)(s.id)}
                       aria-current={active}
                       style={{
                         display: 'flex',
@@ -329,11 +347,11 @@ export function GcPlansQuickLook({ project, onClose, onSeeWhoHasIt }: Props) {
               </div>
             ))}
             {!showSpecs && goneSheets.length > 0 && (
-              <GoneGroup project={project} rows={goneSheets} active={goneSheet?.id ?? null} onPick={setSheetId} />
+              <GoneGroup project={project} rows={goneSheets} active={goneSheet?.id ?? null} onPick={showFromList(setSheetId)} />
             )}
           </div>
 
-          <div style={{ padding: '0.75rem', overflow: 'auto', background: 'var(--bg-muted)' }}>
+          <div style={{ padding: '0.75rem', overflow: narrow ? undefined : 'auto', background: 'var(--bg-muted)', order: narrow ? 1 : undefined }}>
             {showSpecs ? (
               <>
                 {spec && <StandInSection project={project} spec={spec} rev={rev} />}

@@ -81,7 +81,10 @@ makes; nobody builds it until he answers.
    (`changeOrderTakingTheDays`), so the signed ones add up.
 3. **The made-up questions (owner first, item 13 in Owner):** if he says they were sent, give Marsh &
    Vale's two Boerne questions a `sentToArchitectOn`, so they count against the architect again.
-4. **A phone pass on New project, A new set of plans came in, and Questions about the plans.**
+4. ~~**A phone pass on New project, A new set of plans came in, and Questions about the plans.**~~
+   done: New project's five steps are a row of numbers on a phone; the new-set window no longer
+   scrolls sideways (0e8159e2d); Questions already fit; the plans window stacks the drawing over
+   the list.
 5. **Notifications for New Project's events** (a set goes out, a question is answered).
 6. **Tidy your lines in `README.md`.**
 
