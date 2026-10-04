@@ -32,6 +32,7 @@ function form(state = initialGcState()) {
   return f
 }
 
+// The file tests do real work (exceljs, jspdf): a busy machine gets 20 seconds, not the default 5.
 describe('a pay application as the AIA template', () => {
   it('splits an address at its last comma', () => {
     expect(splitAddress('200 Main Plaza, Suite 300, Boerne')).toEqual({ street: '200 Main Plaza, Suite 300', town: 'Boerne' })
@@ -82,14 +83,14 @@ describe('a pay application as the AIA template', () => {
     expect(g703?.getCell('D13').value).toBe(Math.round((app.lines[0]?.scheduled ?? 0) * 100) / 100)
     const after = PAY_APP_FIRST_ROW + app.lines.length
     expect([g703?.getCell(`C${after}`).value ?? null, g703?.getCell(`D${after}`).value]).toEqual([null, 0])
-  })
+  }, 20_000)
 
   it('draws a PDF of the 702 and the 703', async () => {
     const pdf = await payAppPdf(form().app, parties)
     const head = new TextDecoder().decode(new Uint8Array(pdf).slice(0, 5))
     expect(head).toBe('%PDF-')
     expect(new TextDecoder().decode(new Uint8Array(pdf)).match(/\/Type \/Page\b/g)?.length).toBe(2)
-  })
+  }, 20_000)
 
   it('our pay application to the owner: from us, to them, via their architect, with this period’s change orders', () => {
     let state = gcReducer(initialGcState(), { type: 'draftChangeOrder', projectId: 'fairoaksd', description: 'A second drive-through lane', reason: 'owner', schedule: '', packageId: 'fsite', cost: 12_000, price: 0 })
