@@ -60,6 +60,12 @@
   .meta { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 7px; }
   .tag { font-size: 11.5px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); background: var(--subtle); white-space: nowrap; }
   .tag.live { border-color: var(--border-blue); color: var(--blue-700); background: var(--blue-tint); }
+  .tag.shipped { border-color: var(--green); color: var(--green); background: var(--green-tint); font-weight: 600; }
+  .tag.open { border-color: var(--border-strong); color: var(--muted); background: var(--muted-bg); font-weight: 600; }
+  .status { background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--green); border-radius: 8px; padding: 14px 18px; display: flex; flex-direction: column; gap: 6px; }
+  .status b { color: var(--strong); }
+  .status p { max-width: 72ch; }
+  .why dt.ship { color: var(--green); }
   .open { font: inherit; font-size: 13px; font-weight: 600; padding: 7px 12px; border-radius: 6px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--strong); cursor: pointer; white-space: nowrap; }
   .open:hover { border-color: var(--blue); color: var(--blue-700); }
   .open:focus-visible, .nav button:focus-visible, .x:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
@@ -142,52 +148,59 @@
 
 <div class="wrap">
   <header class="head">
-    <div class="eyebrow">Bids → Submittals · reviewed Oct 3, 2026</div>
+    <div class="eyebrow">Bids → Submittals · reviewed Oct 3, 2026 · marked up Oct 4 with what shipped</div>
     <h1>Submittals tab: what to settle before Monday</h1>
     <p class="verdict">The tab works when a submittal is shared from the app. The estimator emails hers and types the answers in, and on that road five things can lose work or mislead her.</p>
     <p class="lede">I walked every step and every window on the live SpaceX bid (BP375, read only, nothing changed) and on the test bid (BP398). Each finding below opens a window. The left side is the screen as it is today. The right side is what it could be.</p>
   </header>
 
+  <section class="status">
+    <p><b>Where this stands, Oct 4.</b> Nine of the twelve findings are live: 1 to 9, as v2.4477 to v2.4486. Three follow-ons shipped after them. Findings 10, 11 and 12 are not built. They wait until the estimator has used the tab for a week.</p>
+    <p class="muted" style="font-size:13.5px">Each finding below carries its version. Its window says where the build differs from the drawing. The drawings are left as they were on Oct 3.</p>
+  </section>
+
   <section class="band now">
     <div class="band-head"><h2>Fix before Monday</h2><span>Each one can drop rows, lose typing or put approved work back in front of the GC.</span></div>
     <div class="list">
-      <div class="item"><span class="num">1</span><div><h3>Resubmit drops the rows nobody has answered</h3><p>On BP375 the green button reads “Rev 2 from the 4 rows sent back”. Its confirm says the rest stand as approved. Nine rows have no answer at all. They would leave the draft, and their 44 lines would leave the order log.</p><div class="meta"><span class="tag live">BP375 live</span><span class="tag">small</span></div></div><button class="open" data-open="f1">Current → could be</button></div>
-      <div class="item"><span class="num">2</span><div><h3>The road does not see answers typed on a draft</h3><p>The strip says the next thing is six cut sheets. Four rows are already rejected. Their call and Resubmit are grey and read “later”, yet they hold the live work. An older revision reads “was shared” when it never was.</p><div class="meta"><span class="tag live">BP375 live</span><span class="tag">BP398 Rev 3</span><span class="tag">medium</span></div></div><button class="open" data-open="f2">Current → could be</button></div>
-      <div class="item"><span class="num">3</span><div><h3>Choose what the GC sees puts approved fixtures back</h3><p>On a resubmit draft the window opens with the fixtures approved on the last revision lit “GC sees it”. Update is live before anything is touched. One press asks the GC about them again. Under the rows they are counted as “left out · not ordered”.</p><div class="meta"><span class="tag">BP398 Rev 4</span><span class="tag">small</span></div></div><button class="open" data-open="f3">Current → could be</button></div>
-      <div class="item"><span class="num">4</span><div><h3>The Edit window loses typing on a stray click</h3><p>A click outside the window closes it and nothing asks. Esc does nothing. Save is not held while it saves, so a double press on a new row can add it twice. A fixture with eleven parts is a lot to type again.</p><div class="meta"><span class="tag">every bid</span><span class="tag">small</span></div></div><button class="open" data-open="f4">Current → could be</button></div>
-      <div class="item"><span class="num">5</span><div><h3>No package until every row has a cut sheet</h3><p>BP375 has six small items with no page in the vendor’s file: a cleanout, a drain, a hose bibb and three hammer arrestors. Build package and Share stay off until all six have one. This is why the package went out by email. Your call.</p><div class="meta"><span class="tag live">BP375 live</span><span class="tag">your call</span><span class="tag">small</span></div></div><button class="open" data-open="f5">Current → could be</button></div>
+      <div class="item"><span class="num">1</span><div><h3>Resubmit drops the rows nobody has answered</h3><p>On BP375 the green button reads “Rev 2 from the 4 rows sent back”. Its confirm says the rest stand as approved. Nine rows have no answer at all. They would leave the draft, and their 44 lines would leave the order log.</p><div class="meta"><span class="tag shipped">Shipped · v2.4477</span><span class="tag live">BP375 live</span><span class="tag">small</span></div></div><button class="open" data-open="f1">Current → could be</button></div>
+      <div class="item"><span class="num">2</span><div><h3>The road does not see answers typed on a draft</h3><p>The strip says the next thing is six cut sheets. Four rows are already rejected. Their call and Resubmit are grey and read “later”, yet they hold the live work. An older revision reads “was shared” when it never was.</p><div class="meta"><span class="tag shipped">Shipped · v2.4484</span><span class="tag live">BP375 live</span><span class="tag">BP398 Rev 3</span><span class="tag">medium</span></div></div><button class="open" data-open="f2">Current → could be</button></div>
+      <div class="item"><span class="num">3</span><div><h3>Choose what the GC sees puts approved fixtures back</h3><p>On a resubmit draft the window opens with the fixtures approved on the last revision lit “GC sees it”. Update is live before anything is touched. One press asks the GC about them again. Under the rows they are counted as “left out · not ordered”.</p><div class="meta"><span class="tag shipped">Shipped · v2.4478</span><span class="tag">BP398 Rev 4</span><span class="tag">small</span></div></div><button class="open" data-open="f3">Current → could be</button></div>
+      <div class="item"><span class="num">4</span><div><h3>The Edit window loses typing on a stray click</h3><p>A click outside the window closes it and nothing asks. Esc does nothing. Save is not held while it saves, so a double press on a new row can add it twice. A fixture with eleven parts is a lot to type again.</p><div class="meta"><span class="tag shipped">Shipped · v2.4479</span><span class="tag">every bid</span><span class="tag">small</span></div></div><button class="open" data-open="f4">Current → could be</button></div>
+      <div class="item"><span class="num">5</span><div><h3>No package until every row has a cut sheet</h3><p>BP375 has six small items with no page in the vendor’s file: a cleanout, a drain, a hose bibb and three hammer arrestors. Build package and Share stay off until all six have one. This is why the package went out by email. Your call.</p><div class="meta"><span class="tag shipped">Shipped · v2.4486</span><span class="tag live">BP375 live</span><span class="tag">your call</span><span class="tag">small</span></div></div><button class="open" data-open="f5">Current → could be</button></div>
     </div>
   </section>
 
   <section class="band words">
     <div class="band-head"><h2>Words and flow that mislead</h2><span>Nothing breaks. She reads the wrong thing.</span></div>
     <div class="list">
-      <div class="item"><span class="num">6</span><div><h3>The GC reads “the plans’ schedule was not on the bid”</h3><p>Every row built from the takeoff carries that sentence on the GC’s page. It reads like an admission. It is also untrue on a bid that has a schedule with other tags on it.</p><div class="meta"><span class="tag live">BP375 live</span><span class="tag">GC facing</span><span class="tag">small, one function to redeploy</span></div></div><button class="open" data-open="f6">Current → could be</button></div>
-      <div class="item"><span class="num">7</span><div><h3>A row says Rejected when one part of three was</h3><p>LAV-1 reads “Rejected” in red. One faucet was rejected. Two parts have no answer yet. The whole fixture looks dead.</p><div class="meta"><span class="tag live">BP375 live</span><span class="tag">small</span></div></div><button class="open" data-open="f7">Current → could be</button></div>
-      <div class="item"><span class="num">8</span><div><h3>Eight lines that say the wrong revision or the wrong fact</h3><p>“Build Rev 1” on Rev 4. “Start Rev 2” on Rev 4. “Rev 3 · superseded” on the revision that holds the approvals. “Room link · not opened yet” when no link was sent. “The room decided” when Wendi typed it.</p><div class="meta"><span class="tag live">BP375 live</span><span class="tag">BP398</span><span class="tag">small</span></div></div><button class="open" data-open="f8">Current → could be</button></div>
-      <div class="item"><span class="num">9</span><div><h3>The robot line never says the robot is not coming</h3><p>BP375 still reads “The robot is queued to read the fixture schedule”. It was already queued on Sep 29 and no robot has picked it up. The line gives no date and no way to know.</p><div class="meta"><span class="tag live">BP375 live</span><span class="tag">small</span></div></div><button class="open" data-open="f9">Current → could be</button></div>
+      <div class="item"><span class="num">6</span><div><h3>The GC reads “the plans’ schedule was not on the bid”</h3><p>Every row built from the takeoff carries that sentence on the GC’s page. It reads like an admission. It is also untrue on a bid that has a schedule with other tags on it.</p><div class="meta"><span class="tag shipped">Shipped · v2.4482</span><span class="tag live">BP375 live</span><span class="tag">GC facing</span><span class="tag">small, one function to redeploy</span></div></div><button class="open" data-open="f6">Current → could be</button></div>
+      <div class="item"><span class="num">7</span><div><h3>A row says Rejected when one part of three was</h3><p>LAV-1 reads “Rejected” in red. One faucet was rejected. Two parts have no answer yet. The whole fixture looks dead.</p><div class="meta"><span class="tag shipped">Shipped · v2.4483</span><span class="tag live">BP375 live</span><span class="tag">small</span></div></div><button class="open" data-open="f7">Current → could be</button></div>
+      <div class="item"><span class="num">8</span><div><h3>Eight lines that say the wrong revision or the wrong fact</h3><p>“Build Rev 1” on Rev 4. “Start Rev 2” on Rev 4. “Rev 3 · superseded” on the revision that holds the approvals. “Room link · not opened yet” when no link was sent. “The room decided” when Wendi typed it.</p><div class="meta"><span class="tag shipped">Shipped · v2.4480</span><span class="tag live">BP375 live</span><span class="tag">BP398</span><span class="tag">small</span></div></div><button class="open" data-open="f8">Current → could be</button></div>
+      <div class="item"><span class="num">9</span><div><h3>The robot line never says the robot is not coming</h3><p>BP375 still reads “The robot is queued to read the fixture schedule”. It was already queued on Sep 29 and no robot has picked it up. The line gives no date and no way to know.</p><div class="meta"><span class="tag shipped">Shipped · v2.4481</span><span class="tag live">BP375 live</span><span class="tag">small</span></div></div><button class="open" data-open="f9">Current → could be</button></div>
     </div>
   </section>
 
   <section class="band later">
     <div class="band-head"><h2>Worth improving after her first week</h2><span>Bigger redraws. Let her use it first.</span></div>
     <div class="list">
-      <div class="item"><span class="num">10</span><div><h3>The top says the same thing three times</h3><p>The cut sheet count is in the header, the Next line and step 3. The source line is in the header and step 1. There are three “Walk me through it” doors and a “?” on every step.</p><div class="meta"><span class="tag">every bid</span><span class="tag">medium</span></div></div><button class="open" data-open="f10">Current → could be</button></div>
-      <div class="item"><span class="num">11</span><div><h3>On a takeoff bid four columns of the rows table are empty</h3><p>Specified, Reason and Lead time are a dash on all 14 rows of BP375. Status is “Proposed” on 13. The product and the buttons are squeezed to make room. On a phone the table is 1,251 px wide on a 375 px screen.</p><div class="meta"><span class="tag live">BP375 live</span><span class="tag">medium</span></div></div><button class="open" data-open="f11">Current → could be</button></div>
-      <div class="item"><span class="num">12</span><div><h3>The Edit window has no labels and three lines per part</h3><p>The title says the tag twice. The tag box is unlabeled and clips. Each part takes three lines of unlabeled boxes. A Proposed row shows no status lit. A row added by hand opens titled “Accessory ·” with Missing lit.</p><div class="meta"><span class="tag">every bid</span><span class="tag">medium</span></div></div><button class="open" data-open="f12">Current → could be</button></div>
+      <div class="item"><span class="num">10</span><div><h3>The top says the same thing three times</h3><p>The cut sheet count is in the header, the Next line and step 3. The source line is in the header and step 1. There are three “Walk me through it” doors and a “?” on every step.</p><div class="meta"><span class="tag open">Not built</span><span class="tag">every bid</span><span class="tag">medium</span></div></div><button class="open" data-open="f10">Current → could be</button></div>
+      <div class="item"><span class="num">11</span><div><h3>On a takeoff bid four columns of the rows table are empty</h3><p>Specified, Reason and Lead time are a dash on all 14 rows of BP375. Status is “Proposed” on 13. The product and the buttons are squeezed to make room. On a phone the table is 1,251 px wide on a 375 px screen.</p><div class="meta"><span class="tag open">Not built</span><span class="tag live">BP375 live</span><span class="tag">medium</span></div></div><button class="open" data-open="f11">Current → could be</button></div>
+      <div class="item"><span class="num">12</span><div><h3>The Edit window has no labels and three lines per part</h3><p>The title says the tag twice. The tag box is unlabeled and clips. Each part takes three lines of unlabeled boxes. A Proposed row shows no status lit. A row added by hand opens titled “Accessory ·” with Missing lit.</p><div class="meta"><span class="tag open">Not built</span><span class="tag">every bid</span><span class="tag">medium</span></div></div><button class="open" data-open="f12">Current → could be</button></div>
     </div>
   </section>
 
   <section class="plan">
-    <h2>What I would do, in order</h2>
+    <h2>What was built, in order</h2>
     <ol>
-      <li><b>Today and tomorrow:</b> 1, 3 and 4. Each is a small change with a test, and each guards against lost work.</li>
-      <li><b>Then the words:</b> 8 and 9, then 6 and 7. All text and one small rule. Number 6 needs the room’s function redeployed.</li>
-      <li><b>Then 2,</b> so the strip follows a submittal that went out by email. It is the one that makes the page match how she really works.</li>
-      <li><b>Your call on 5.</b> Say which way and it is an hour of work.</li>
-      <li><b>10, 11 and 12 wait</b> until she has used it for a week. Her first week will tell us which one hurts most.</li>
+      <li><b>Oct 3 and overnight:</b> findings 1, 3, 4, then 8 and 9, then 6 and 7 with the two room functions redeployed, then 2. Versions v2.4477 to v2.4484.</li>
+      <li><b>Oct 4, the walkthrough caught up:</b> stops 6 and 7 still described the page before fixes 1 and 2. v2.4485.</li>
+      <li><b>Oct 4, finding 5:</b> the owner’s call, built as “cut sheet to follow” on the cover. v2.4486.</li>
+      <li><b>Oct 4, a page of words:</b> the walkthrough opens with fifteen words and what each means. “Words on this page” opens it alone. v2.4488.</li>
+      <li><b>Oct 4, the other windows:</b> the schedule window, Share, They approved all of it and the house file window ask before they close. v2.4492.</li>
+      <li><b>Oct 4, the pill outline:</b> the console warning noted below was a real fault. A pill going back to grey lost its outline colour. v2.4497.</li>
     </ol>
-    <p class="muted" style="font-size:13.5px; max-width:72ch">One note under the hood. The tab is a single file of 2,929 lines that holds 57 pieces of state, changed 58 times in 90 days. That is why small fixes here are slow and collide. It is not a Monday problem. After the first week it should be split along the eight steps. One small thing seen in the console: the strip’s pills mix a border shorthand with a border colour, which React warns can drop the border on a redraw.</p>
+    <p><b>Still open.</b> Findings 10, 11 and 12. The tab is still one file of about 3,000 lines. Splitting it along the eight steps is the next piece of housekeeping, after the first week of use and before 10 to 12.</p>
+    <p class="muted" style="font-size:13.5px; max-width:72ch">The note from Oct 3, kept: the tab is a single file of 2,929 lines that holds 57 pieces of state, changed 58 times in 90 days. That is why small fixes here are slow and collide.</p>
   </section>
 </div>
 
@@ -217,7 +230,7 @@
         <div class="good">A row leaves the draft only when the GC approved it. The confirm counts all three kinds, so the button can never say “approved” about a row with no answer.</div>
       </div></div>
     </div>
-    <dl class="why"><dt>What changes</dt><dd>The resubmit carries rows sent back and rows with no answer. The confirm lists the three counts. The button reads “Start Rev 2…”.</dd><dt>Size</dt><dd>Small. One handler, its confirm text, one test. No database change.</dd></dl>
+    <dl class="why"><dt>What changes</dt><dd>The resubmit carries rows sent back and rows with no answer. The confirm lists the three counts. The button reads “Start Rev 2…”.</dd><dt>Size</dt><dd>Small. One handler, its confirm text, one test. No database change.</dd><dt class="ship">Shipped</dt><dd>v2.4477, PR 4438. As drawn, with one difference. The button keeps its words and adds the count: “Rev 2 from the 4 rows sent back and the 10 with no answer”. It does not read “Start Rev 2…”. Every row the GC has not approved goes on, the row with no product too.</dd></dl>
   </div>
   <div class="dlg-foot"><span class="count"></span><div class="nav"><button data-prev>← Previous</button><button data-next>Next →</button></div></div>
 </div></dialog>
@@ -244,7 +257,7 @@
         <div class="good">Answers on a draft mean it went out. The strip lights the steps that hold the work and the Next line names it.</div>
       </div></div>
     </div>
-    <dl class="why"><dt>What changes</dt><dd>The strip’s rule reads answers on a draft. Their answer and Resubmit open by themselves. Share says the submittal went out by email in place of “not opened yet”. An older draft with answers stops saying “was shared”.</dd><dt>Size</dt><dd>Medium. The rule is one pure file with tests, plus the steps’ lines. No database change.</dd></dl>
+    <dl class="why"><dt>What changes</dt><dd>The strip’s rule reads answers on a draft. Their answer and Resubmit open by themselves. Share says the submittal went out by email in place of “not opened yet”. An older draft with answers stops saying “was shared”.</dd><dt>Size</dt><dd>Medium. The rule is one pure file with tests, plus the steps’ lines. No database change.</dd><dt class="ship">Shipped</dt><dd>v2.4484, PR 4445. The steps light and the Next line names the rows sent back, as drawn. Pill 5 does not read “Sent by email”. The app only knows answers were typed, and a done Share would have turned its button on with no package. Step 5 reads “Not shared from the app · answers typed in”.</dd></dl>
   </div>
   <div class="dlg-foot"><span class="count"></span><div class="nav"><button data-prev>← Previous</button><button data-next>Next →</button></div></div>
 </div></dialog>
@@ -272,7 +285,7 @@
         <div class="good">An approved fixture is its own state. It takes a deliberate “Ask again…” to put it back in front of the GC.</div>
       </div></div>
     </div>
-    <dl class="why"><dt>What changes</dt><dd>The window reads which fixtures stand approved on an earlier revision, the same list the order log already reads. Those open locked. The left out count leaves them out.</dd><dt>Size</dt><dd>Small. One more state in the window’s rule file, one line under the rows, tests.</dd></dl>
+    <dl class="why"><dt>What changes</dt><dd>The window reads which fixtures stand approved on an earlier revision, the same list the order log already reads. Those open locked. The left out count leaves them out.</dd><dt>Size</dt><dd>Small. One more state in the window’s rule file, one line under the rows, tests.</dd><dt class="ship">Shipped</dt><dd>v2.4478, PR 4439. As drawn. A fixture with only some parts approved reads “Part approved on Rev 3”. “Keep the approval” undoes Ask again.</dd></dl>
   </div>
   <div class="dlg-foot"><span class="count"></span><div class="nav"><button data-prev>← Previous</button><button data-next>Next →</button></div></div>
 </div></dialog>
@@ -302,7 +315,7 @@
         <div class="good">A click outside, Esc and Cancel all ask once when something changed. With nothing changed they close at once. Save is held while it saves.</div>
       </div></div>
     </div>
-    <dl class="why"><dt>What changes</dt><dd>One shared “did anything change” check on the three windows where she types. Save reads “Saving…” until the row is written.</dd><dt>Size</dt><dd>Small. No database change.</dd></dl>
+    <dl class="why"><dt>What changes</dt><dd>One shared “did anything change” check on the three windows where she types. Save reads “Saving…” until the row is written.</dd><dt>Size</dt><dd>Small. No database change.</dd><dt class="ship">Shipped</dt><dd>v2.4479, PR 4440. As drawn, for the Edit window, Their answer and Choose from the takeoff. The schedule window, Share, They approved all of it and the house file window followed as v2.4492.</dd></dl>
   </div>
   <div class="dlg-foot"><span class="count"></span><div class="nav"><button data-prev>← Previous</button><button data-next>Next →</button></div></div>
 </div></dialog>
@@ -328,7 +341,7 @@
         <div class="good">She decides, row by row or all at once. The cover tells the GC which sheets are still coming, so nothing is hidden.</div>
       </div></div>
     </div>
-    <dl class="why"><dt>Your call</dt><dd>Either keep the lock as it is, or let the package build and say “cut sheet to follow” on the cover. A third way is the per row “none for this row”, which keeps the lock for rows she has not looked at.</dd><dt>Size</dt><dd>Small for the first two. The per row choice needs one new column.</dd></dl>
+    <dl class="why"><dt>Your call</dt><dd>Either keep the lock as it is, or let the package build and say “cut sheet to follow” on the cover. A third way is the per row “none for this row”, which keeps the lock for rows she has not looked at.</dd><dt>Size</dt><dd>Small for the first two. The per row choice needs one new column.</dd><dt class="ship">Shipped</dt><dd>v2.4486, PR 4449. The owner picked “cut sheet to follow” on the cover. The button reads “Build package · 6 cut sheets to follow”, and a question names the rows before it builds. A row that owes a reason still holds the button. The per row “none for this row” was not built.</dd></dl>
   </div>
   <div class="dlg-foot"><span class="count"></span><div class="nav"><button data-prev>← Previous</button><button data-next>Next →</button></div></div>
 </div></dialog>
@@ -354,7 +367,7 @@
         <div class="good">The page says what it is asking for and nothing about what the office did not have. On our side the row still reads Proposed, with the reason.</div>
       </div></div>
     </div>
-    <dl class="why"><dt>What changes</dt><dd>The GC’s wording for a proposed row, in the one file the room, the preview and the tab’s “The GC’s page will read” line all share.</dd><dt>Size</dt><dd>Small. Text and tests, then the room’s function is redeployed.</dd></dl>
+    <dl class="why"><dt>What changes</dt><dd>The GC’s wording for a proposed row, in the one file the room, the preview and the tab’s “The GC’s page will read” line all share.</dd><dt>Size</dt><dd>Small. Text and tests, then the room’s function is redeployed.</dd><dt class="ship">Shipped</dt><dd>v2.4482, PR 4443. The sentence about the schedule is gone, as drawn. The headline reads “9 products need your answer”. A takeoff row’s card reads “for your review” and “We intend to install”. Its fixture name still shows, without “The plans:”. The two room functions were redeployed.</dd></dl>
   </div>
   <div class="dlg-foot"><span class="count"></span><div class="nav"><button data-prev>← Previous</button><button data-next>Next →</button></div></div>
 </div></dialog>
@@ -378,7 +391,7 @@
         <div class="good">Each answer sits beside its part. The row gets one word only when every part has the same answer.</div>
       </div></div>
     </div>
-    <dl class="why"><dt>What changes</dt><dd>The Their answer cell lines up with the parts. The step’s count says parts and fixtures.</dd><dt>Size</dt><dd>Small. One cell and one sentence.</dd></dl>
+    <dl class="why"><dt>What changes</dt><dd>The Their answer cell lines up with the parts. The step’s count says parts and fixtures.</dd><dt>Size</dt><dd>Small. One cell and one sentence.</dd><dt class="ship">Shipped</dt><dd>v2.4483, PR 4444. The cell reads “1 of 3 rejected · 2 with no answer yet”. It does not line each answer up beside its part as drawn. The parts already show their own answer in the Submitted column. The step reads “4 with a part rejected”.</dd></dl>
   </div>
   <div class="dlg-foot"><span class="count"></span><div class="nav"><button data-prev>← Previous</button><button data-next>Next →</button></div></div>
 </div></dialog>
@@ -408,7 +421,7 @@
         <div class="swap"><span class="where">Step 6, with 4 rows rejected</span><span class="says"><span class="b">They approved the other 9…</span></span></div>
       </div></div>
     </div>
-    <dl class="why"><dt>What changes</dt><dd>Eight sentences take the revision’s number and its real state. “Superseded” is kept for a draft that was thrown away with nothing on it.</dd><dt>Size</dt><dd>Small. Text in the rule files, with their tests.</dd></dl>
+    <dl class="why"><dt>What changes</dt><dd>Eight sentences take the revision’s number and its real state. “Superseded” is kept for a draft that was thrown away with nothing on it.</dd><dt>Size</dt><dd>Small. Text in the rule files, with their tests.</dd><dt class="ship">Shipped</dt><dd>v2.4480, PR 4441. All eight lines changed. Two read a little differently from the drawing. Step 2 reads “Each earlier version stays as the record.” The thread reads “the office entered their answers”.</dd></dl>
   </div>
   <div class="dlg-foot"><span class="count"></span><div class="nav"><button data-prev>← Previous</button><button data-next>Next →</button></div></div>
 </div></dialog>
@@ -434,7 +447,7 @@
         <div class="good">The line gives the day it was asked and whether a robot is on shift. The tab already knows both.</div>
       </div></div>
     </div>
-    <dl class="why"><dt>What changes</dt><dd>A queued ask older than a day reads the robot seat’s last run and says so. The same line serves the cut sheet and redline asks.</dd><dt>Size</dt><dd>Small. One sentence builder and its test.</dd></dl>
+    <dl class="why"><dt>What changes</dt><dd>A queued ask older than a day reads the robot seat’s last run and says so. The same line serves the cut sheet and redline asks.</dd><dt>Size</dt><dd>Small. One sentence builder and its test.</dd><dt class="ship">Shipped</dt><dd>v2.4481, PR 4442. As drawn. On the SpaceX bid it reads “You asked the robot on Sep 28. A robot last ran 4 days ago. It has not picked this up.” The button reads “Take the ask back”.</dd></dl>
   </div>
   <div class="dlg-foot"><span class="count"></span><div class="nav"><button data-prev>← Previous</button><button data-next>Next →</button></div></div>
 </div></dialog>
@@ -465,7 +478,7 @@
         <div class="good">Each fact has one home. The walkthrough has one door, and it can still start at the step you are on.</div>
       </div></div>
     </div>
-    <dl class="why"><dt>What changes</dt><dd>The two header lines become one. The “New here?” bar shows only the first time. The step “?” marks fold into the one help button.</dd><dt>Size</dt><dd>Medium. Many small moves, and the walkthrough’s stops point at some of these lines.</dd></dl>
+    <dl class="why"><dt>What changes</dt><dd>The two header lines become one. The “New here?” bar shows only the first time. The step “?” marks fold into the one help button.</dd><dt>Size</dt><dd>Medium. Many small moves, and the walkthrough’s stops point at some of these lines.</dd><dt>Status</dt><dd>Not built. It waits until the estimator has used the tab for a week.</dd></dl>
   </div>
   <div class="dlg-foot"><span class="count"></span><div class="nav"><button data-prev>← Previous</button><button data-next>Next →</button></div></div>
 </div></dialog>
@@ -490,7 +503,7 @@
         <div class="good">Five columns that all carry something. Specified, Status and Reason come back the moment the bid has a schedule. Their answer, Split, Part of and × sit under ⋯, and a click on the answer cell opens Their answer.</div>
       </div></div>
     </div>
-    <dl class="why"><dt>What changes</dt><dd>The table draws only the columns this bid uses. On a phone each row becomes a card.</dd><dt>Size</dt><dd>Medium. Best done after her first week tells us which columns she reads.</dd></dl>
+    <dl class="why"><dt>What changes</dt><dd>The table draws only the columns this bid uses. On a phone each row becomes a card.</dd><dt>Size</dt><dd>Medium. Best done after her first week tells us which columns she reads.</dd><dt>Status</dt><dd>Not built. It waits until the estimator has used the tab for a week.</dd></dl>
   </div>
   <div class="dlg-foot"><span class="count"></span><div class="nav"><button data-prev>← Previous</button><button data-next>Next →</button></div></div>
 </div></dialog>
@@ -525,7 +538,7 @@
         <div class="good">One line per part under headings. What is missing shows in amber. The status the row has is lit. A row added by hand opens titled “Add a row” with no status picked.</div>
       </div></div>
     </div>
-    <dl class="why"><dt>What changes</dt><dd>The parts become a table. The tag gets a label. Proposed joins the status choices. A new hand row cannot be saved blank.</dd><dt>Size</dt><dd>Medium. The same parts editor is used in two windows.</dd></dl>
+    <dl class="why"><dt>What changes</dt><dd>The parts become a table. The tag gets a label. Proposed joins the status choices. A new hand row cannot be saved blank.</dd><dt>Size</dt><dd>Medium. The same parts editor is used in two windows.</dd><dt>Status</dt><dd>Not built. It waits until the estimator has used the tab for a week.</dd></dl>
   </div>
   <div class="dlg-foot"><span class="count"></span><div class="nav"><button data-prev>← Previous</button><button data-next>Next →</button></div></div>
 </div></dialog>
