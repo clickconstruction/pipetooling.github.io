@@ -10,6 +10,7 @@ import { makeJob, renderWithProviders, settle } from '../../test/renderSmokeMock
 import AiaG702G703Modal from './AiaG702G703Modal'
 import { payApplicationWriteFromForm, savedPayApplicationFromRow, type PayApplicationRow, type PayApplicationWrite, type SavedPayApplication } from '../../lib/aiaPayApplications'
 import type { PayApplicationLine } from '../../lib/aiaPayApplicationLines'
+import type { BidSchedule } from '../../lib/aiaBidSchedule'
 
 vi.mock('../../hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'u1' }, role: 'dev' }) }))
 vi.mock('../../lib/physicalInvoiceIssuer', () => ({
@@ -28,6 +29,11 @@ vi.mock('../../lib/aiaG702G703PrefillIo', () => ({
   loadAiaPrefillFacts: () =>
     Promise.resolve({ ownerName: 'Heron Construction Group', ownerAddress: '900 Broadway St, San Antonio, TX 78215', contractSignedOn: '2026-07-14' }),
 }))
+
+// The bid's schedule of values, when a test gives the job one.
+let schedule: BidSchedule | null = null
+const scheduleSpy = vi.fn((_bidId: string, _price: number) => Promise.resolve(schedule))
+vi.mock('../../lib/aiaBidScheduleIo', () => ({ loadBidScheduleForJob: (bidId: string, price: number) => scheduleSpy(bidId, price) }))
 
 // The job's saved applications: a list the tests set, and the writes they watch.
 const { TakenError } = vi.hoisted(() => ({
@@ -128,6 +134,8 @@ const lineField = (column: string, id = 'line-1') => document.getElementById(`ai
 
 beforeEach(() => {
   onJob = []
+  schedule = null
+  scheduleSpy.mockClear()
   saveSpy.mockClear()
   deleteSpy.mockClear()
   fillSpy.mockClear()
@@ -508,5 +516,88 @@ describe('AiaG702G703Modal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
     await waitFor(() => expect(saveSpy).toHaveBeenCalledTimes(1))
     expect(saveSpy.mock.calls[0]![0].split_labor_material).toBe(true)
+  })
+
+  /** A bid left on the three stages, spread over a 96,000 job, with labor and material apart. */
+  const stageSchedule = (): BidSchedule => ({
+    shape: 'stage',
+    splitLaborMaterial: true,
+    lines: [
+      { id: 'stage-rough_in', label: 'Rough In', scheduledValue: 33600, labor: 15120, stage: 'rough_in', fromPrevious: 0, thisPeriod: 0, stored: 0 },
+      { id: 'stage-top_out', label: 'Top Out', scheduledValue: 38400, labor: 17280, stage: 'top_out', fromPrevious: 0, thisPeriod: 0, stored: 0 },
+      { id: 'stage-trim_set', label: 'Trim Set', scheduledValue: 24000, labor: 10800, stage: 'trim_set', fromPrevious: 0, thisPeriod: 0, stored: 0 },
+    ],
+  })
+  /** The job of that bid: its own stage lines carry what the crew reported. */
+  const bidJob = (revenue = 96000) =>
+    makeJob({
+      job_name: 'Cedar Ridge Clubhouse',
+      bid_id: 'bid-9',
+      revenue,
+      fixtures: [
+        { id: 'f1', name: 'Rough In', count: 1, line_unit_price: 33600, progress_pct: 100 },
+        { id: 'f2', name: 'Top Out', count: 1, line_unit_price: 38400, progress_pct: 90 },
+        { id: 'f3', name: 'Trim Set', count: 1, line_unit_price: 24000, progress_pct: null },
+      ],
+    })
+
+  it('starts application 1 from the bid\'s schedule of values, split as the bid prints it', async () => {
+    setWide(true)
+    schedule = stageSchedule()
+    renderWithProviders(<AiaG702G703Modal open onClose={() => undefined} job={bidJob()} hcpForFilename="1041" />)
+    await waitFor(() => expect(screen.getAllByTestId('aia-line')).toHaveLength(3))
+    expect(scheduleSpy).toHaveBeenCalledWith('bid-9', 96000)
+    expect(screen.getByTestId('aia-applications').textContent).toContain("The lines come from the bid's schedule of values.")
+    expect(lineField('label', 'stage-top_out').value).toBe('Top Out')
+    expect(lineField('scheduled', 'stage-top_out').value).toBe('38400')
+    // The bid prints labor and material apart, so the job starts that way: six rows.
+    expect((screen.getByLabelText('Labor and material on their own rows') as HTMLInputElement).checked).toBe(true)
+    expect(screen.getByLabelText('G703 continuation sheet').querySelectorAll('[data-aia-row]')).toHaveLength(6)
+    // The lines add to the job's price: nothing to scale.
+    expect(screen.queryByTestId('aia-lines-gap')).toBeNull()
+  })
+
+  it('offers the crew\'s percent on a line of its stage, and Use takes it', async () => {
+    setWide(true)
+    schedule = stageSchedule()
+    renderWithProviders(<AiaG702G703Modal open onClose={() => undefined} job={bidJob()} hcpForFilename="1041" />)
+    await waitFor(() => expect(screen.getAllByTestId('aia-line')).toHaveLength(3))
+
+    // Rough In at 100% and Top Out at 90% were reported; Trim Set has no report.
+    expect(screen.getAllByTestId('aia-line-offer').map((o) => o.textContent)).toEqual(['The crew reported Rough In at 100%.Use 100%', 'The crew reported Top Out at 90%.Use 90%'])
+    fireEvent.click(screen.getByRole('button', { name: 'Use 90%' }))
+    // 90% of 38,400.
+    expect(lineField('this', 'stage-top_out').value).toBe('34560')
+    expect(lineField('pct', 'stage-top_out').value).toBe('90')
+    fireEvent.click(screen.getByRole('button', { name: 'Use 100%' }))
+    expect(screen.queryByTestId('aia-line-offer')).toBeNull()
+    // 33,600 + 34,560 = 68,160, less 10%.
+    expect(screen.getByLabelText('G702 page').textContent).toContain('CURRENT PAYMENT DUE$61,344.00')
+  })
+
+  it('says when the lines do not add to the contract, and scales them to it', async () => {
+    setWide(true)
+    schedule = stageSchedule()
+    // The job was sold at 99,200; the lines add to 96,000.
+    renderWithProviders(<AiaG702G703Modal open onClose={() => undefined} job={bidJob(99200)} hcpForFilename="1041" />)
+    await waitFor(() => expect(screen.getAllByTestId('aia-line')).toHaveLength(3))
+    const gap = screen.getByTestId('aia-lines-gap')
+    expect(gap.textContent).toContain('The lines add to $96,000.00. The contract to date is $99,200.00. They are $3,200.00 short.')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Scale the lines to $99,200.00' }))
+    expect(screen.queryByTestId('aia-lines-gap')).toBeNull()
+    expect(['stage-rough_in', 'stage-top_out', 'stage-trim_set'].map((id) => lineField('scheduled', id).value)).toEqual(['34720', '39680', '24800'])
+  })
+
+  it('does not go back to the bid once the job has a saved application', async () => {
+    setWide(true)
+    schedule = stageSchedule()
+    onJob = [savedOne()]
+    renderWithProviders(<AiaG702G703Modal open onClose={() => undefined} job={bidJob()} hcpForFilename="1041" />)
+    await waitFor(() => expect(field('g702_n5_project').value).toBe('2'))
+    expect(scheduleSpy).not.toHaveBeenCalled()
+    // Application 2 carries application 1's one line.
+    expect(screen.getAllByTestId('aia-line')).toHaveLength(1)
+    expect(lineField('from').value).toBe('19400')
   })
 })
