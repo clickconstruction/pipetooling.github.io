@@ -667,6 +667,7 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
         ...(action.retitledSheets && action.retitledSheets.length > 0 ? { retitledSheets: action.retitledSheets } : {}),
         ...(action.removedSpecs && action.removedSpecs.length > 0 ? { removedSpecs: action.removedSpecs } : {}),
         ...(action.retitledSpecs && action.retitledSpecs.length > 0 ? { retitledSpecs: action.retitledSpecs } : {}),
+        ...(action.checkedBy && action.checkedBy.trim() !== '' ? { checkedBy: action.checkedBy.trim() } : {}),
       }
       const next = mapProject(state, project.id, () => ({ ...withTrades, planSets: [...withTrades.planSets, set] }))
       const newLines = lined.added.length > 0 ? ` It adds ${lined.added.length} scope ${lined.added.length === 1 ? 'line' : 'lines'}.` : ''
@@ -689,7 +690,7 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
       return logged(
         next,
         'office',
-        `Issued ${set.label} on ${project.name} and emailed ${sentTo.length} ${sentTo.length === 1 ? 'company' : 'companies'}. ${told} ${told === 1 ? 'was' : 'were'} told it changes their trade.${adds}`,
+        `Issued ${set.label} on ${project.name}${set.checkedBy ? `, checked by ${set.checkedBy},` : ''} and emailed ${sentTo.length} ${sentTo.length === 1 ? 'company' : 'companies'}. ${told} ${told === 1 ? 'was' : 'were'} told it changes their trade.${adds}`,
       )
     }
 

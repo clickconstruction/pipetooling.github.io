@@ -7865,7 +7865,7 @@ exports[`GC mode golden walk > step 140: Leon Springs: the permit set takes E-10
     "customers.marshvale.addenda": 6,
     "customers.marshvale.sets": 10,
     "lastLog.id": 136,
-    "lastLog.text": "Issued Permit set on Leon Springs Urgent Care and emailed 0 companies. 0 were told it changes their trade. It takes out 1 sheet.",
+    "lastLog.text": "Issued Permit set on Leon Springs Urgent Care, checked by Dana Whitaker, and emailed 0 companies. 0 were told it changes their trade. It takes out 1 sheet.",
   },
   "removed": [],
 }
@@ -8121,7 +8121,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
     },
     {
       "id": 136,
-      "text": "Issued Permit set on Leon Springs Urgent Care and emailed 0 companies. 0 were told it changes their trade. It takes out 1 sheet.",
+      "text": "Issued Permit set on Leon Springs Urgent Care, checked by Dana Whitaker, and emailed 0 companies. 0 were told it changes their trade. It takes out 1 sheet.",
       "who": "office",
     },
     {
@@ -14061,6 +14061,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
             "E-101",
             "E-102",
           ],
+          "checkedBy": "Dana Whitaker",
           "issuedOn": "2026-10-02",
           "label": "Permit set",
           "note": "The lighting plan is folded into a new lighting and power plan. The roof plan now shows the walk pads.",
