@@ -74,8 +74,12 @@ makes; nobody builds it until he answers.
 ## New Project (GC 2)
 
 1. **A scope line tied to its spec section, exclusions, budgets from real costs, and taking a sheet
-   out of the set in a later set** (README, *New Project past its first form*).
-2. **The days a set adds to the schedule carry onto the change order they start** (with Owner Billing).
+   out of the set in a later set** (README, *New Project past its first form*). Spec sections done
+   742e4b567; taking a sheet out done 0e8159e2d (a whole new set). Open: exclusions, budgets from
+   real costs.
+2. ~~**The days a set adds to the schedule carry onto the change order they start** (with Owner Billing).~~
+   done: Owner Billing's `days` c3b453453, and the set's days ride on one change order
+   (`changeOrderTakingTheDays`), so the signed ones add up.
 3. **The made-up questions (owner first, item 13 in Owner):** if he says they were sent, give Marsh &
    Vale's two Boerne questions a `sentToArchitectOn`, so they count against the architect again.
 4. **A phone pass on New project, A new set of plans came in, and Questions about the plans.**
@@ -90,7 +94,7 @@ makes; nobody builds it until he answers.
 4. ~~**"Left to bill" counts signed change orders** (`sowContractSum`).~~ done (the job block and Your pay both read `sowContractSum`)
 5. ~~**The Spanish list for a native speaker to read** before anything ships (question 25), and no
    "Click" written into the portal's words (Board item 7).~~ done 6225b3fb7 (the list in PORTAL_SPANISH.md; the portal's own words already read `GC_COMPANY`, the bid tab's since b6219f390)
-6. ~~**A phone pass on the portal.** It is the screen trades use most on a phone.~~ done 0f89c3048 (every company, both languages; the bid tab scrolls in its own box until its table fits a 283px block)
+6. ~~**A phone pass on the portal.** It is the screen trades use most on a phone.~~ done 0f89c3048 (every company, both languages; the bid tab fits its 283px block since the Board lane's bea149e4e)
 7. ~~**Notifications for the portal** (a new ask, a set that changed their trade, a promise passed),
    in the company's language.~~ done 59665d04d (README, the portal's events; question 29 on texts)
 8. ~~**Tidy your lines in `README.md`.**~~ done da16bfbda
@@ -118,7 +122,7 @@ makes; nobody builds it until he answers.
 
 ## Everyone
 
-21. **Notifications.** Nothing emails or notifies anyone yet. Each lane names its own events (in
+21. **Notifications.** Email only for now (the owner, 2026-10-03; question 29): no text sender. Nothing emails or notifies anyone yet. Each lane names its own events (in
     its section above); the real build sends them through Resend.
 
 ## The real build (not yet: only when the owner says the shape is settled)
