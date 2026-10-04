@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Company window</title>
+<style>
+  :root {
+    --bg: #f4f5f7; --surface: #fff; --sub: #f8fafc; --text: #1f2937; --muted: #6b7280; --border: #e5e7eb; --strong: #d1d5db;
+    --blue: #2563eb; --blue-tint: #eff6ff; --blue-fg: #1e40af;
+    --amber-tint: #fffbeb; --amber-border: #fcd34d; --amber-fg: #92400e;
+    --green-tint: #f0fdf4; --green-fg: #166534; --red-tint: #fef2f2; --red-fg: #b91c1c; --violet-tint: #f5f3ff; --violet-fg: #5b21b6;
+    --shade: rgba(15, 23, 42, .45);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f172a; --surface: #111827; --sub: #0b1220; --text: #e5e7eb; --muted: #9ca3af; --border: #374151; --strong: #4b5563;
+      --blue: #60a5fa; --blue-tint: #172554; --blue-fg: #bfdbfe;
+      --amber-tint: #2a1d05; --amber-border: #92400e; --amber-fg: #fcd34d;
+      --green-tint: #052e16; --green-fg: #86efac; --red-tint: #2a0f0f; --red-fg: #fca5a5; --violet-tint: #1e1b4b; --violet-fg: #c4b5fd;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f172a; --surface: #111827; --sub: #0b1220; --text: #e5e7eb; --muted: #9ca3af; --border: #374151; --strong: #4b5563;
+    --blue: #60a5fa; --blue-tint: #172554; --blue-fg: #bfdbfe;
+    --amber-tint: #2a1d05; --amber-border: #92400e; --amber-fg: #fcd34d;
+    --green-tint: #052e16; --green-fg: #86efac; --red-tint: #2a0f0f; --red-fg: #fca5a5; --violet-tint: #1e1b4b; --violet-fg: #c4b5fd;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 20px 16px 48px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  h2 { font-size: 17px; margin: 28px 0 6px; }
+  .lede { color: var(--muted); margin: 0 0 10px; max-width: 90ch; }
+  .stage { background: var(--shade); border-radius: 12px; padding: 18px; }
+  .win { background: var(--surface); border: 1px solid var(--strong); border-radius: 10px; overflow: hidden; max-width: 980px; margin: 0 auto; }
+  .whead { padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .whead b { font-size: 18px; }
+  .tabs { display: flex; gap: 2px; padding: 0 12px; border-bottom: 1px solid var(--border); background: var(--sub); }
+  .tabs span { padding: 9px 12px; color: var(--muted); border-bottom: 2px solid transparent; }
+  .tabs span.on { color: var(--blue); border-color: var(--blue); font-weight: 600; }
+  .wbody { padding: 12px 16px; }
+  .chip { display: inline-block; border-radius: 999px; padding: 1px 8px; font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+  .g { background: var(--green-tint); color: var(--green-fg); }
+  .a { background: var(--amber-tint); color: var(--amber-fg); border: 1px solid var(--amber-border); }
+  .r { background: var(--red-tint); color: var(--red-fg); }
+  .v { background: var(--violet-tint); color: var(--violet-fg); }
+  .n { background: var(--sub); color: var(--muted); border: 1px solid var(--border); }
+  .muted { color: var(--muted); }
+  .small { font-size: 12px; }
+  .link { color: var(--blue); }
+  .btn { display: inline-block; border: 1px solid var(--strong); border-radius: 6px; padding: 3px 9px; background: var(--surface); font-size: 12.5px; white-space: nowrap; }
+  .btn.p { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .filelist div { display: flex; justify-content: space-between; border-bottom: 1px solid var(--border); padding: 8px 2px; }
+  .split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 14px; }
+  .group { margin-bottom: 12px; }
+  .group h4 { margin: 0 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+  .doc { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 2px 8px; padding: 7px 9px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 6px; background: var(--surface); }
+  .doc.sel { border-color: var(--blue); box-shadow: 0 0 0 2px var(--blue-tint); }
+  .doc .meta { font-size: 12px; color: var(--muted); grid-column: 1; }
+  .doc .act { grid-column: 2; grid-row: 1 / span 2; align-self: center; }
+  .preview { border: 1px solid var(--border); border-radius: 8px; background: var(--sub); padding: 12px; }
+  .cert { background: #fff; color: #111827; border: 1px solid #cbd5e1; border-radius: 4px; padding: 12px; font-size: 12px; }
+  .cert h5 { margin: 0 0 6px; font-size: 13px; letter-spacing: .03em; }
+  .cert table { width: 100%; border-collapse: collapse; }
+  .cert td { border: 1px solid #e2e8f0; padding: 4px 6px; vertical-align: top; }
+  .tl { border-left: 2px solid var(--border); margin-left: 6px; padding-left: 12px; }
+  .ev { position: relative; padding: 4px 0 8px; }
+  .ev:before { content: ""; position: absolute; left: -18px; top: 9px; width: 10px; height: 10px; border-radius: 50%; background: var(--surface); border: 2px solid var(--strong); }
+  .ev .when { font-size: 12px; color: var(--muted); }
+  .filters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+  .filters span { border: 1px solid var(--strong); border-radius: 999px; padding: 2px 9px; font-size: 12px; background: var(--surface); }
+  .filters span.on { background: var(--blue-tint); color: var(--blue-fg); border-color: var(--blue); }
+  .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; }
+  .fact { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; background: var(--surface); }
+  .fact .k { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+  .critique { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 10px; }
+  .critique div { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+  .critique b { display: block; margin-bottom: 3px; }
+  ul.plan { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px 12px 30px; margin: 0; }
+  ul.plan li { margin: 6px 0; }
+  @media (max-width: 760px) { .split { grid-template-columns: minmax(0,1fr); } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>A window for every company</h1>
+  <p class="lede">The owner's ask (2026-10-04), from Trade partners: "I would like to be able to click on any of the paperwork buttons and have that paperwork appear … information about the customer in one tab, a ledger of interactions in a second tab, and documents in a third tab." Made-up example: Iron Horse Fabrication, a steel company we use.</p>
+
+  <h2>1. First idea: a modal with three tabs</h2>
+  <p class="lede">Click a company or a paperwork chip and a modal opens with Info, Ledger and Documents. Documents lists the files.</p>
+  <div class="stage">
+    <div class="win">
+      <div class="whead"><b>Iron Horse Fabrication</b><span class="muted">Structural steel · Luz Carrasco</span></div>
+      <div class="tabs"><span>Info</span><span>Ledger</span><span class="on">Documents</span></div>
+      <div class="wbody filelist">
+        <div><span>Master agreement.pdf</span><span class="link">Open</span></div>
+        <div><span>Insurance certificate.pdf</span><span class="link">Open</span></div>
+        <div><span>W-9.pdf</span><span class="link">Open</span></div>
+        <div><span>Fair Oaks D statement of work.pdf</span><span class="link">Open</span></div>
+      </div>
+    </div>
+  </div>
+
+  <h2>2. Is this the best we can do? Not quite.</h2>
+  <div class="critique">
+    <div><b>It is one window for every company, not a customer window.</b>These chips are on Trade partners, so this company is a trade. GC mode already has a company window for customers and architects (click Cibolo anywhere). A second window for trades would split one company's record in two. Build one window that knows what each company is to us: customer, architect, trade, or more than one.</div>
+    <div><b>A file list hides what matters.</b>The question is never "which PDFs do we have". It is "what is missing, what runs out soon, and what does that hold up". Documents should lead with status: insurance runs out May 5, the master agreement covers every job, one lien waiver is owed on Fair Oaks D. A missing paper gets <i>Ask for it</i>, which becomes a promise.</div>
+    <div><b>The ledger mostly exists already, in pieces.</b>Calls and texts on each ask, promises, quotes, declines with reasons, awards, draws, pay apps sent back. Activity should merge them into one timeline, newest first, with filters (calls and notes, quotes, paperwork, money), each line linked to its job. <i>Log a contact</i> lives at the top.</div>
+    <div><b>Open where you clicked.</b>A paperwork chip should open Documents with that paper showing. A promise opens Activity at it. The name opens About. One click from any chip to the answer.</div>
+    <div><b>Show the paper, not a link to it.</b>Picking a paper shows it beside the list: the certificate's insurer, limits and dates; the master agreement's version and who signed; a statement of work's price and what they will not do. In the real build, the real file opens there.</div>
+    <div><b>About is the decision page.</b>The facts that decide whether to ask or award: trades and coverage, vetting, how they answer, how often their word holds, their schedule record, what they usually exclude, and the money (jobs with us, paid, owed, held).</div>
+  </div>
+
+  <h2>3. Revised: About, Activity, Documents, opened where you clicked</h2>
+  <p class="lede">The same modal, wider. Here it was opened from the <b>Insured to May 5</b> chip, so it is on Documents with the certificate showing.</p>
+  <div class="stage">
+    <div class="win">
+      <div class="whead">
+        <b>Iron Horse Fabrication</b><span class="muted">Luz Carrasco · (210) 555-0161 · from Austin, goes 150 mi</span>
+        <span class="chip n">Structural steel</span><span class="chip n">new to us</span><span class="chip g">kept 1 of 1 promises</span>
+      </div>
+      <div class="tabs"><span>About</span><span>Activity (9)</span><span class="on">Documents · 1 to get</span></div>
+      <div class="wbody">
+        <div class="split">
+          <div>
+            <div class="group"><h4>Their company papers</h4>
+              <div class="doc"><span><b>Master agreement</b> <span class="chip g">signed</span></span><div class="act"><span class="link small">Open</span></div><span class="meta">Signed Jun 2 by Luz Carrasco · version 3 · covers every job</span></div>
+              <div class="doc sel"><span><b>Insurance certificate</b> <span class="chip g">good to May 5</span></span><div class="act"><span class="link small">Showing</span></div><span class="meta">Sent from their portal Sep 18 · runs out in 213 days</span></div>
+              <div class="doc"><span><b>W-9</b> <span class="chip g">on file</span></span><div class="act"><span class="link small">Open</span></div><span class="meta">Signed in their portal Jun 2 · the tax number is never shown here</span></div>
+            </div>
+            <div class="group"><h4>Fair Oaks Shops, Building D · Structural steel</h4>
+              <div class="doc"><span><b>Statement of work</b> <span class="chip g">signed</span></span><div class="act"><span class="link small">Open</span></div><span class="meta">$186,000 · signed Jun 11 · what they will not do: crane, fireproofing</span></div>
+              <div class="doc"><span><b>Pay applications</b> <span class="chip n">2</span></span><div class="act"><span class="link small">Open</span></div><span class="meta">Draw 1 paid Aug 29 · draw 2 approved Oct 1</span></div>
+              <div class="doc"><span><b>Lien waivers</b> <span class="chip a">1 owed</span></span><div class="act"><span class="btn p">Ask for it</span></div><span class="meta">Draw 1: conditional in, unconditional owed since Aug 29</span></div>
+            </div>
+            <div class="group"><h4>Quotes</h4>
+              <div class="doc"><span><b>Their quote, Boerne Retail Shell</b> <span class="chip n">not quoted yet</span></span><div class="act"><span class="link small">Ask on it</span></div><span class="meta">Never asked: 81 mi, past their usual reach</span></div>
+            </div>
+          </div>
+          <div class="preview">
+            <div class="cert">
+              <h5>CERTIFICATE OF LIABILITY INSURANCE · made-up</h5>
+              <table>
+                <tr><td>Insured</td><td>Iron Horse Fabrication, Austin TX</td></tr>
+                <tr><td>Insurer</td><td>Texas Mutual Insurance Co.</td></tr>
+                <tr><td>General liability</td><td>$1,000,000 each occurrence · $2,000,000 aggregate</td></tr>
+                <tr><td>Auto</td><td>$1,000,000 combined single limit</td></tr>
+                <tr><td>Workers' comp</td><td>Statutory · employer's liability $1,000,000</td></tr>
+                <tr><td>Policy period</td><td>May 5, 2026 to May 5, 2027</td></tr>
+                <tr><td>Certificate holder</td><td>Click Construction · additional insured</td></tr>
+              </table>
+            </div>
+            <div class="small muted" style="margin-top:8px">In the real build, the certificate file itself opens here. <span class="link">Download</span> · <span class="link">Ask for a new one</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="lede" style="margin-top:14px">The same window on <b>Activity</b>: everything that happened with them, newest first, each line linked to its job.</p>
+  <div class="stage">
+    <div class="win">
+      <div class="whead"><b>Iron Horse Fabrication</b></div>
+      <div class="tabs"><span>About</span><span class="on">Activity (9)</span><span>Documents · 1 to get</span></div>
+      <div class="wbody">
+        <div class="filters"><span class="on">Everything</span><span>Calls and notes</span><span>Quotes</span><span>Paperwork</span><span>Money</span><span class="btn" style="margin-left:auto">Log a contact</span></div>
+        <div class="tl">
+          <div class="ev"><div class="when">Oct 1 · Fair Oaks D</div>Draw 2 approved, $40,500 less retainage.</div>
+          <div class="ev"><div class="when">Sep 30 · Fair Oaks D · daily log</div>Iron Horse short two again. <span class="chip a">delay</span></div>
+          <div class="ev"><div class="when">Sep 18 · their portal</div>Sent a new insurance certificate, good to May 5.</div>
+          <div class="ev"><div class="when">Aug 29 · Fair Oaks D</div>Draw 1 paid. Unconditional waiver still owed.</div>
+          <div class="ev"><div class="when">Jun 11 · Fair Oaks D</div>Signed the statement of work, $186,000.</div>
+          <div class="ev"><div class="when">May 14 · Fair Oaks D · call, Robert</div>"Luz will have it by Friday." <span class="chip g">kept: quote came May 16</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h2>4. The plan</h2>
+  <ul class="plan">
+    <li><b>One company window</b> for every company, opened from any company's name and from every paperwork chip. Customers and architects keep everything they have today, under About.</li>
+    <li><b>About</b>: contact, coverage, trades, vetting, how they answer, word kept, schedule record, usual exclusions, and the money with us. For a customer, today's window: what they owe, how they pay, their projects.</li>
+    <li><b>Activity</b>: one timeline merged from what the model already keeps: ask contacts, promises, quotes, declines and reasons, awards, statements of work, draws and pay apps, daily-log mentions, change orders. Filters, a link to each job, and <i>Log a contact</i>.</li>
+    <li><b>Documents</b>, status first. Company papers (master agreement, insurance, W-9, the vetting form) and papers by job (statement of work, pay applications, lien waivers, quotes). Missing or running out gets <i>Ask for it</i>, which writes a promise. Picking one shows it beside the list. The prototype draws a made-up paper; the real build opens the file. A W-9's tax number is never shown.</li>
+    <li><b>Opened where you clicked</b>: a paperwork chip opens Documents at that paper.</li>
+  </ul>
+</div>
+</body>
+</html>
