@@ -36,25 +36,25 @@ makes; nobody builds it until he answers.
 
 ## Board (GC 0)
 
-1. ~~**A "Money" board tab.**~~ done (this commit; see the merge log). Place the Owner Billing lane's `GcOwnerBillingMoney` (built; the owner
+1. ~~**A "Money" board tab.**~~ done 0ecca9192. Place the Owner Billing lane's `GcOwnerBillingMoney` (built; the owner
    approved it) after Trade partners: `BoardTab` gets `'money'`, `onOpenBill` opens the project on
    Bill the owner. A Screens row in `README.md`.
-2. **The company window shows "waiting on the architect" and "certified, not paid"** from
+2. ~~**The company window shows "waiting on the architect" and "certified, not paid"**~~ done a900e11dc (under They owe us now) from
    `ownerAccount` (`waitingOnArchitect`, `certifiedUnpaid`).
-3. **Compare bids and Trades read what trades send now:** alternates, an attached quote, and how
+3. ~~**Compare bids and Trades read what trades send now:**~~ done 54bfc2a63 (shown, not counted: question 14 stays the owner's) alternates, an attached quote, and how
    many days the number holds (question 14's built half).
-4. **Spec sections on the Plans tab:** each set card lists `set.changedSpecs` beside its sheets,
+4. ~~**Spec sections on the Plans tab:**~~ done (set cards list "Sections revised"; a line tied to a revised section is named; 0ac0cd4be) each set card lists `set.changedSpecs` beside its sheets,
    and the "what changed" words (`staleWords`) name a revised section.
-5. **A line's sheets beside it in Compare bids** (the owner's option 1, the half not built).
-6. **A board-row chip for a pay application sent back twice** (`timesSentBack`, `sentBackOpen` in
+5. ~~**A line's sheets beside it in Compare bids**~~ done ("E-301?" when matched from its words, "the electrical sheets as a whole" when it names none; 21be90ce6) (the owner's option 1, the half not built).
+6. ~~**A board-row chip for a pay application sent back twice**~~ done b6219f390 ("Roofing: sent back 2 times", red) (`timesSentBack`, `sentBackOpen` in
    `gcBuilding.ts`; the Building lane offered it).
-7. **No "Click" written into the words:** `bidTabResult` and any other Board words read the
+7. ~~**No "Click" written into the words:**~~ done b6219f390 (bidTabResult reads `GC_COMPANY.shortName`) `bidTabResult` and any other Board words read the
    company's name from the model (`GC_COMPANY`), per question 1 (nothing Click-only).
 8. **A second walkthrough inside a project:** Trades, Our number, Get started, Draws. And
    *New here?* may open itself on a first visit.
-9. **A phone pass on the Board's project tabs:** Trades, Plans, Our number, Bid tabs, Contracts,
+9. ~~**A phone pass on the Board's project tabs:**~~ done (all at 375 px with no sideways page scroll; fixed the "+ ?" marker's hidden words widening Trades and Our number; this commit) Trades, Plans, Our number, Bid tabs, Contracts,
    Get started, Follow up, Trade partners.
-10. **Tidy `README.md`:** its *Workflow steps not built yet* still lists what is built (the Closed
+10. ~~**Tidy `README.md`:**~~ done for the Board's lines (this commit); each lane tidies its own. its *Workflow steps not built yet* still lists what is built (the Closed
     section, the owner window's money, the schedule's Board parts). Each lane tidies its own lines.
 
 ## Building (GC 1)

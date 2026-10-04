@@ -3,6 +3,7 @@ import {
   architectSummary,
   currentRev,
   customerSummary,
+  ownerAccount,
   ownerMoney,
   daysUntil,
   lostWords,
@@ -73,6 +74,14 @@ export function GcCustomerWindow({ state, customer, dispatch, onClose, onOpenPro
   const isOwner = owner.live.length > 0 || customer.past.length > 0
   const isArchitect = architect.live.length > 0
   const both = isOwner && isArchitect
+  // What they owe, split by where it stands with the architect: our sent pay applications only.
+  const owedSplit = owner.live.reduce(
+    (sum, p) => {
+      const account = ownerAccount(p)
+      return account ? { certified: sum.certified + account.certifiedUnpaid, architect: sum.architect + account.waitingOnArchitect } : sum
+    },
+    { certified: 0, architect: 0 },
+  )
   // A live bid we lost (owner, 2026-10-03) counts as decided, like a lost one in their history.
   const decided = owner.won + customer.past.filter((p) => p.outcome === 'lost').length + owner.live.filter((p) => p.lostOn).length
   const oldest = architect.waiting[0]?.days ?? 0
@@ -145,7 +154,20 @@ export function GcCustomerWindow({ state, customer, dispatch, onClose, onOpenPro
                 <Stat label="Live projects" value={owner.live.length} />
                 <Stat label="Priced, waiting on them" value={money(owner.inFront)} />
                 <Stat label="Under contract" value={money(owner.underContract)} />
-                <Stat label="They owe us now" value={money(owner.owed)} tone={owner.owed > 0 ? 'red' : undefined} />
+                <div style={{ display: 'grid', gap: '0.15rem' }}>
+                  <Stat label="They owe us now" value={money(owner.owed)} tone={owner.owed > 0 ? 'red' : undefined} />
+                  {/* Of what they owe, where it stands with the architect (the big list, Board item 2). */}
+                  {(owedSplit.certified > 0 || owedSplit.architect > 0) && (
+                    <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                      {[
+                        owedSplit.certified > 0 ? `${money(owedSplit.certified)} certified, not paid` : null,
+                        owedSplit.architect > 0 ? `${money(owedSplit.architect)} waiting on the architect` : null,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </span>
+                  )}
+                </div>
                 <Stat label="They are holding" value={money(owner.retainageHeld)} />
                 <Stat label="They picked us" value={decided > 0 ? `${owner.won} of ${decided}` : 'first job'} />
               </div>

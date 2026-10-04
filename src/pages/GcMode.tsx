@@ -38,6 +38,8 @@ import {
   planLabel,
   proposalUncostedWords,
   RING_COLORS,
+  sentBackOpen,
+  timesSentBack,
   plansReach,
   proposalTotals,
   shortDate,
@@ -679,6 +681,16 @@ function ProjectRow({
       </span>
       <span style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', ...under }}>
         {project.lostOn && <Chip tone="grey" title={project.lostNote ?? undefined}>{lostWords(project)}</Chip>}
+        {/* A pay application sent back twice or more (the owner's yes, 2026-10-02; Board item 6): someone calls them. */}
+        {project.packages.map((pkg) => {
+          const back = pkg.sow ? sentBackOpen(pkg.sow) : null
+          const times = pkg.sow && back ? timesSentBack(pkg.sow, back.draw.number) : 0
+          return times >= 2 ? (
+            <Chip key={`back-${pkg.id}`} tone="red" title={`Pay application ${back?.draw.number} on ${pkg.trade} went back ${times} times. Call them.`}>
+              {pkg.trade}: sent back {times} times
+            </Chip>
+          ) : null
+        })}
         <Chip tone={totals.holes.length > 0 ? 'red' : totals.plugged.length > 0 ? 'amber' : 'green'}>{coverageWords(project)}</Chip>
         {chase > 0 && (
           <button

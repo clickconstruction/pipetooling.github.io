@@ -546,16 +546,16 @@ the bullets below are the shape they set.
   schedule" moves before Start once it does, the owner's call). Days are calendar days for now.
 
 - New Project past its first form: a scope line tied to its spec section, exclusions, and a
-  budget from real costs, not a made-up rate per square foot. A line's sheets show only in New Project, a new set
-  and the plans window; the portal's bid form, Trades and Compare bids do not show them yet. A
+  budget from real costs, not a made-up rate per square foot. A line's sheets show in New Project, a new set,
+  the plans window and Compare bids (Board, 2026-10-03); the portal's bid form and Trades do not show them yet. A
   later set cannot yet take a sheet out of the set.
 - Questions about the plans, the rest: a trade asks in its portal and sees the answers there (the
   Portal lane: the action `tradeAskQuestion` is ready). Today the office types a question that came
   in by phone or email. The window opens from **Questions about the plans** on the Plans tab and
   from A new set of plans came in.
-- Our billing to the owner, the rest: the owner's window still shows billed and paid from the
-  fixture, not from the pay applications on **Bill the owner** (`ownerAccount` has the numbers);
-  our own crew's percent read from its Pipeline job (real build only; see *Where it plugs in*).
+- Our billing to the owner, the rest: our own crew's percent read from its Pipeline job (real
+  build only; see *Where it plugs in*). The company window reads the pay applications through
+  `ownerMoney`, with certified and waiting-on-the-architect beside what they owe (Board, 2026-10-03).
 - No email is sent and nothing notifies anyone when a promised day passes.
   Building's events, and where each would go (Building lane, 2026-10-03; the real build sends
   through Resend, the office's go to the app's Inbox):
