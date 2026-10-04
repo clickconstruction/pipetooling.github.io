@@ -60,12 +60,12 @@ const W = {
   retPaid: { en: '{gc} paid your retainage.', es: '{gc} le pagó su retención.' },
   retApproved: { en: '{gc} approved it. Payment is coming.', es: '{gc} la aprobó. El pago viene en camino.' },
   retOn: {
-    en: '{gc} pays your retainage {date}, {days} days after the owner paid {gc}.',
-    es: '{gc} le paga su retención el {date}, {days} días después de que el dueño le pagó a {gc}.',
+    en: '{gc} pays your retainage {date}, {days} days after the customer paid {gc}.',
+    es: '{gc} le paga su retención el {date}, {days} días después de que el cliente le pagó a {gc}.',
   },
   retAfter: {
-    en: '{gc} pays your retainage {days} days after the owner pays {gc} its own.',
-    es: '{gc} le paga su retención {days} días después de que el dueño le pague a {gc} la suya.',
+    en: '{gc} pays your retainage {days} days after the customer pays {gc} its own.',
+    es: '{gc} le paga su retención {days} días después de que el cliente le pague a {gc} la suya.',
   },
   signFinalBelow: { en: 'Sign the unconditional final release of lien below.', es: 'Firme abajo su liberación final de gravamen incondicional.' },
   signFinalLast: { en: 'Last, you sign the unconditional final release of lien.', es: 'Al final, firme su liberación final de gravamen incondicional.' },

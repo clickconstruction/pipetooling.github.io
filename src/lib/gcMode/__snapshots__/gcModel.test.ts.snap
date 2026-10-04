@@ -12757,7 +12757,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
           "high": 85,
           "low": 70,
           "sky": "cloudy",
-          "visitors": "Cibolo's owner rep walked bays 1 and 2.",
+          "visitors": "Cibolo's rep walked bays 1 and 2.",
           "weatherStop": false,
           "writtenOn": "2026-10-01",
         },

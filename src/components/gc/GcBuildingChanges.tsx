@@ -9,7 +9,7 @@ import { Btn, Chip, type Tone } from './gcUi'
 
 const STATE_WORDS: Record<TradeChange['state'], { tone: Tone; word: string }> = {
   owner: { tone: 'grey', word: 'waiting on the owner' },
-  toSend: { tone: 'amber', word: 'signed by the owner' },
+  toSend: { tone: 'amber', word: 'signed by the customer' },
   sent: { tone: 'blue', word: 'waiting on their signature' },
   signed: { tone: 'green', word: 'on their statement of work' },
 }

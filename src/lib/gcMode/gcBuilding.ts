@@ -498,14 +498,14 @@ export function tradeCloseout(sow: Sow, project?: GcProject, today?: string): Tr
     },
     {
       key: 'ownerReleased',
-      label: 'The owner pays us ours',
+      label: 'The customer pays us ours',
       who: 'owner',
       done: waited,
       detail: waited
-        ? `The owner paid us our retainage ${shortDate(paidOn)}.`
+        ? `The customer paid us our retainage ${shortDate(paidOn)}.`
         : paidOn
-          ? `The owner paid us ours ${shortDate(paidOn)}. Theirs can be paid ${shortDate(opensOn)}.`
-          : `Theirs is paid ${TRADE_RETAINAGE_WAIT_DAYS} days after the owner pays our final pay application on Bill the owner.`,
+          ? `The customer paid us ours ${shortDate(paidOn)}. Theirs can be paid ${shortDate(opensOn)}.`
+          : `Theirs is paid ${TRADE_RETAINAGE_WAIT_DAYS} days after the customer pays our final pay application on Bill the customer.`,
     },
     {
       key: 'released',
@@ -519,7 +519,7 @@ export function tradeCloseout(sow: Sow, project?: GcProject, today?: string): Tr
           : finalDraw
             ? waited
               ? 'Check the final pay application and approve it.'
-              : 'Approve it once the owner has paid us and 10 days have passed.'
+              : 'Approve it once the customer has paid us and 10 days have passed.'
             : 'Waits for the final pay application.',
     },
     {
@@ -592,7 +592,7 @@ export function jobCloseout(state: GcState, project: GcProject): { ready: boolea
     const c = tradeCloseout(pkg.sow, project, state.today)
     if (!c.closed) left.push(`${pkg.trade}: ${c.next?.label.toLowerCase() ?? 'not closed out'}.`)
   }
-  if (!ownerRetainagePaidOn(project)) left.push('The owner has not paid our final pay application.')
+  if (!ownerRetainagePaidOn(project)) left.push('The customer has not paid our final pay application.')
   return { ready: left.length === 0 && !project.closedOn, left, closedOn: project.closedOn ?? null }
 }
 

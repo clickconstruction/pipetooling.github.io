@@ -65,7 +65,7 @@ export function GcBuildingCrewCard({ project, pkg, dispatch }: { project: GcProj
       <div style={{ marginTop: '0.6rem', fontSize: '0.85rem', color: 'var(--text-muted)', display: 'grid', gap: '0.2rem' }}>
         <span>
           {crew.byStage
-            ? 'The whole trade follows from the stages. It is the number that bills the owner on Bill the owner.'
+            ? 'The whole trade follows from the stages. It is the number that bills the customer on Bill the customer.'
             : `Reported as one number so far. Reporting a stage here replaces it.`}
         </span>
         <span>The real build reads the stages from Pipeline job {crew.ref}.</span>

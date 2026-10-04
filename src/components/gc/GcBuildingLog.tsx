@@ -274,7 +274,7 @@ function LogForm({
 
         <label style={{ display: 'grid', gap: '0.2rem' }}>
           <span style={label}>Inspections and visitors</span>
-          <input value={d.visitors} onChange={(e) => set({ visitors: e.target.value })} placeholder="The city inspector, the owner's walk" style={input} />
+          <input value={d.visitors} onChange={(e) => set({ visitors: e.target.value })} placeholder="The city inspector, the customer's walk" style={input} />
         </label>
 
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
