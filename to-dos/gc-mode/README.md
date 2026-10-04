@@ -514,17 +514,30 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
 
 1. ~~Is this for Click taking GC work itself, or a product other GCs use?~~ Answered: Click
    itself, built so a later company could be added (see *Decided by the owner*).
-2. Does the first real version need the price-to-the-owner side, or does it start at buyout?
-3. Are trade partners mostly known companies, or do strangers get invited and need vetting?
+2. ~~Does the first real version need the price-to-the-owner side, or does it start at buyout?~~
+   Answered 2026-10-04: **start with bidding**, the order *The plan* below already runs (buyout's
+   award picks from the quotes gathered while bidding).
+3. ~~Are trade partners mostly known companies, or do strangers get invited and need vetting?~~
+   Answered 2026-10-04: **strangers need vetting: anyone can quote, and award stays locked until
+   the office approves them.** A new company fills a short form in its portal (license, insurance,
+   years in business, references, past jobs); the office picks *Approve*, *Approve up to $X* or
+   *Decline*. Their quote shows with a "not vetted yet" chip until then.
 4. Draws by stage (rough, top out, trim) or by percent with retainage, as drawn?
 5. ~~Where do a GC project's plans live?~~ Answered 2026-10-04: **in Google Drive, uploaded by
    someone who checks them** before they go out. (Who opened which set is then read from the
    portal's link to the Drive file, not from Drive.)
-6. "Quote" or "bid" for a trade partner's number? He said quote; the older screens say bid.
-7. ~~Should a bid tab mark who was awarded?~~ Answered 2026-10-04: **yes, set by the estimator
-   on our team who manages the job.** Still open: should the map list run closest first or most
-   reliable first? Should Start allow a "start anyway"?
-8. Should promises other than a quote date be tracked (insurance by Friday, a start date)?
+6. ~~"Quote" or "bid" for a trade partner's number?~~ Answered 2026-10-04: **trades give us
+   quotes; we give the owner our bid.** *Compare bids* becomes *Compare quotes*; *Bid tabs* keeps
+   its name (the trade's own word for the list of everyone's numbers). Each lane changes its own
+   words, the portal's Spanish too.
+7. ~~Should a bid tab mark who was awarded?~~ Answered 2026-10-04: **yes, set by any estimator
+   on our team.** ~~Should Start allow a "start anyway"?~~ Answered 2026-10-04: **yes.** Still
+   open: should the map list run closest first or most reliable first?
+8. ~~Should promises other than a quote date be tracked?~~ Answered 2026-10-04: **yes, all of
+   them**: an insurance certificate (above all, its renewal before the policy runs out), a W-9, a
+   signed statement of work, a start or move-in day, submittals, a material delivery, a pay
+   application fixed and sent again, punch items fixed, closeout papers and lien waivers. They
+   count in the company's word record like a quote date.
 9. ~~Should the Project Board also group by customer?~~ Answered 2026-10-04, after the before and
    after mock-up (`board-by-customer-before-after.html`): **a switch, By stage | By customer, with
    By stage selected every time the board opens.** Built (Board). Still open: should Actions for
@@ -533,9 +546,10 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
     priced?~~ Answered 2026-10-02: yes (see *Decided by the owner*).
 11. ~~Should a budget come from the size?~~ Left to the New Project lane, 2026-10-02: budgets
     start blank and **Fill the empty budgets from the size** fills them (see *My defaults*).
-12. The pay application leaves out the notary block and materials stored on site (column F reads
-    $0); change orders fill line 2 since 2026-10-03. Which of these do our trades need? Should it also
-    download as the AIA Excel template the Jobs Stages tab fills, or as a PDF?
+12. ~~The pay application leaves out the notary block and materials stored on site (column F
+    reads $0). Which of these do our trades need? Should it download as the AIA Excel template or
+    a PDF?~~ Answered 2026-10-04: **both the notary block and materials stored on site, and it
+    downloads as both** the AIA Excel template the Jobs Stages tab fills and a PDF.
 13. ~~On the owner's bill, do our general conditions, contingency and fee show as lines of their
     own, or spread into each trade's line so the owner never sees the fee?~~ Answered: spread
     into the trades (see *Decided by the owner*).
