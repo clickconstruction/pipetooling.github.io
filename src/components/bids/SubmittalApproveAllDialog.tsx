@@ -6,7 +6,9 @@
  * to the tab, which writes the rows. The window is held to the screen's height: the title
  * and the buttons are pinned and the fields between them scroll.
  */
-import { useState, type CSSProperties } from 'react'
+import { useRef, useState, type CSSProperties } from 'react'
+import { useLeaveGuard } from '../../hooks/useLeaveGuard'
+import { LeaveQuestion } from './SubmittalLeaveGuard'
 
 import { ENTERED_ON_MIN, enteredOnProblem } from '../../lib/submittals/enteredDecisions'
 import { initialReviewerPick, NO_REVIEWER_SOURCES, reviewerChoiceFrom, reviewerPickBad, type ReviewerChoice, type ReviewerPick, type ReviewerSources } from '../../lib/submittals/reviewerPick'
@@ -46,13 +48,17 @@ export function SubmittalApproveAllDialog({ revLabel, rows, alreadyDecided, miss
   const [pick, setPick] = useState<ReviewerPick>(() => initialReviewerPick(people, sources))
   const [on, setOn] = useState(today)
   const [note, setNote] = useState('')
+  // 2026-10-04 · who, the day or the note changed and not recorded: a stray click outside asks before it loses them.
+  const typed = JSON.stringify([pick, on, note])
+  const opened = useRef(typed)
+  const guard = useLeaveGuard({ dirty: typed !== opened.current, onClose, busy })
   const pickBad = reviewerPickBad(pick)
   const onProblem = enteredOnProblem(on, today)
   const bad = rows === 0 || pickBad || onProblem != null
   const kept = [alreadyDecided > 0 ? `${alreadyDecided} ${alreadyDecided === 1 ? 'row already has a call and keeps it' : 'rows already have a call and keep it'}` : '', missing > 0 ? `${missing} ${missing === 1 ? 'row has no product and is left out' : 'rows have no product and are left out'}` : ''].filter(Boolean)
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: Z, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))' }} role="presentation" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: Z, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))' }} role="presentation" onClick={(e) => { if (e.target === e.currentTarget) guard.requestClose() }}>
       <div role="dialog" aria-modal="true" aria-label={`They approved ${revLabel}`} style={{ background: 'var(--surface)', borderRadius: 8, maxWidth: 560, width: '100%', maxHeight: '100%', minHeight: 0, boxShadow: '0 10px 40px rgba(0,0,0,0.2)', padding: '1.1rem 1.25rem 0.9rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }} onMouseDown={(e) => e.stopPropagation()}>
         <div>
           <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: 'var(--text-strong)' }}>They approved {revLabel}</h3>
@@ -83,8 +89,9 @@ export function SubmittalApproveAllDialog({ revLabel, rows, alreadyDecided, miss
         <span style={smallMuted}>The day you pick is the Released date on the procurement log. Each row reads entered by you. To take one back, tap Edit on the row and clear it.</span>
         </div>
 
+        {guard.asking ? <LeaveQuestion what="Their approval is not recorded yet." onLeave={onClose} onKeep={guard.keep} /> : null}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', borderTop: '1px solid var(--border)', paddingTop: '0.6rem' }}>
-          <button type="button" onClick={onClose} style={{ padding: '0.45rem 0.85rem', background: 'var(--bg-muted)', color: 'var(--text-strong)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', font: 'inherit' }}>
+          <button type="button" disabled={busy} onClick={guard.requestClose} style={{ padding: '0.45rem 0.85rem', background: 'var(--bg-muted)', color: 'var(--text-strong)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', font: 'inherit' }}>
             Cancel
           </button>
           <button

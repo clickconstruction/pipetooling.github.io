@@ -5,6 +5,7 @@
  * Josam carriers) into that row as a part. Both hand the choice back; the tab writes it.
  */
 import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { useLeaveGuard } from '../../hooks/useLeaveGuard'
 import { foldReplaceSuggestion, foldWrites, type RefreshPlanRow, type RefreshSkip } from '../../lib/submittals/refreshFromTakeoff'
 import { splitPartLabel, type SubmittalPartRow } from '../../lib/submittals/itemParts'
 import type { SubmittalItemRow } from '../../lib/submittals/submittalRevision'
@@ -15,6 +16,8 @@ const btnPrimary: CSSProperties = { ...btn, background: '#2563eb', borderColor: 
 const select: CSSProperties = { padding: '0.4rem 0.5rem', minHeight: 36, border: '1px solid var(--border-strong)', borderRadius: 6, font: 'inherit', fontSize: '0.8125rem', background: 'var(--surface)', color: 'var(--text-strong)', width: '100%', minWidth: 0 }
 
 function Shell({ label, busy, onClose, children, footer, maxWidth }: { label: string; busy: boolean; onClose: () => void; children: ReactNode; footer: ReactNode; maxWidth: number }) {
+  // 2026-10-04 · nothing is typed here, so there is nothing to ask about: Esc closes it like the ×.
+  useLeaveGuard({ dirty: false, onClose, busy })
   return (
     <div role="presentation" onClick={(e) => { if (e.target === e.currentTarget && !busy) onClose() }} style={{ position: 'fixed', inset: 0, zIndex: 10060, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: 'calc(1rem + var(--app-top-chrome, 0px)) 0.6rem 1rem', overflowY: 'auto' }}>
       <div role="dialog" aria-modal="true" aria-label={label} style={{ background: 'var(--surface)', borderRadius: 10, width: '100%', maxWidth, boxShadow: '0 10px 40px rgba(0,0,0,0.25)', display: 'flex', flexDirection: 'column', maxHeight: 'min(calc(100vh - 2rem), 100%)' }} onMouseDown={(e) => e.stopPropagation()}>
