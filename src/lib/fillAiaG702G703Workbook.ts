@@ -67,6 +67,26 @@ function applyG702LayoutTweaks(wb: Workbook): void {
   }
 }
 
+/**
+ * The template prints PROJECT: in a column ten characters wide with nothing under it (its own job's
+ * name sat in the application number box). Move the label left to H5, where four empty columns run
+ * to the application block, and dress H6:K8 like the owner's boxes so the project's name and
+ * address have a home.
+ */
+function placeProjectBlock(wb: Workbook): void {
+  const ws = wb.getWorksheet(AIA_G702_SHEET)
+  if (!ws) return
+  const oldLabel = ws.getCell('J5')
+  const label = ws.getCell('H5')
+  label.value = 'PROJECT:'
+  label.style = { ...oldLabel.style }
+  oldLabel.value = null
+  for (const row of [6, 7, 8]) {
+    const like = ws.getCell(`D${row}`).style
+    for (const col of ['H', 'I', 'J', 'K']) ws.getCell(`${col}${row}`).style = { ...like }
+  }
+}
+
 function materializeG703Mirrors(wb: Workbook): void {
   const g703 = wb.getWorksheet(AIA_G703_SHEET)
   const g702 = wb.getWorksheet(AIA_G702_SHEET)
@@ -160,6 +180,7 @@ export async function fillAiaG702G703Workbook(
   const wb = new ExcelJS.Workbook()
   await wb.xlsx.load(templateArrayBuffer)
   applyG702LayoutTweaks(wb)
+  placeProjectBlock(wb)
 
   for (const def of AIA_FIELD_DEFS) {
     const ws = wb.getWorksheet(def.sheetName)

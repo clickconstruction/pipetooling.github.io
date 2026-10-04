@@ -90,6 +90,7 @@ describe('buildAiaPreview', () => {
   it('reads a typed box as typed, an empty one as empty, and the download agrees', async () => {
     const typed = {
       g702_n5_project: 'Water Sample Test',
+      g702_h6_project_name: 'Cedar Ridge Clubhouse',
       g702_h18_original_contract_sum: 48500,
       g702_c28_retainage_percent: 10,
       g703_d13_scheduled_value: 48500,
@@ -105,6 +106,11 @@ describe('buildAiaPreview', () => {
     const out = await loadWorkbook(await fillAiaG702G703Workbook(templateArrayBuffer(), typed))
     expect(held(out, AIA_G702_SHEET, 'N5')).toBe('Water Sample Test')
     expect(held(out, AIA_G703_SHEET, 'K2')).toBe('Water Sample Test')
+    // The project block: the label moved off its ten-character column, the name under it.
+    expect(held(out, AIA_G702_SHEET, 'H5')).toBe('PROJECT:')
+    expect(held(out, AIA_G702_SHEET, 'J5')).toBeNull()
+    expect(held(out, AIA_G702_SHEET, 'H6')).toBe('Cedar Ridge Clubhouse')
+    expect(out.getWorksheet(AIA_G702_SHEET)!.getCell('K6').style.fill).toEqual(out.getWorksheet(AIA_G702_SHEET)!.getCell('D6').style.fill)
     expect(held(out, AIA_G702_SHEET, 'H18')).toBe(48500)
     expect(held(out, AIA_G702_SHEET, 'N7')).toBeNull()
     expect(held(out, AIA_G703_SHEET, 'G13')).toBeNull()

@@ -14,12 +14,21 @@ The window has two sides. The paper is on the left. The form is on the right.
 
 ## Fill the form
 
-The form starts with what the job already knows. That is the job's name, the customer, the address and our company.
+The form starts with what the job already knows.
+
+- **TO OWNER** is who the bills go to. On a job that bills its GC, that is the GC. The address is the one on their customer page.
+- **PROJECT** is the job's name and address.
+- **PROJECT NO** is the job's number.
+- **CONTRACT DATE** is the day the job's contract was signed. It is empty when the job has no signed contract.
+- **Retainage %** starts at 10.
+- **APPLICATION DATE** is today.
+
+You type **APPLICATION NUMBER** and **Period to** yourself. The window does not count applications yet.
 
 1. Type in a field on the right. The paper on the left changes as you type.
 2. Press a box on the paper to jump to its field.
 3. Open **Change Orders** to type additions and deductions.
-4. Type **Retainage %** as a plain number. Type 10 for ten percent.
+4. Type **Retainage %** as a plain number. Type 5 for five percent.
 
 A blue box on the paper holds something from the form. A plain number is the sheet's own math. You never type the nine lines of the G702. The sheet works them out.
 
@@ -33,7 +42,7 @@ A field you leave empty is empty in the download. Nothing is filled in for you a
 
 ## Download it
 
-Press {{button:green|Generate}}. The workbook downloads to your computer. Send it to the general contractor the way they ask for it.
+Press {{button:green|Generate}}. The workbook downloads to your computer. Its name carries the job's number and the application number. Send it to the general contractor the way they ask for it.
 
 Press {{button:outline|Reset from job}} to start again from what the job knows.
 

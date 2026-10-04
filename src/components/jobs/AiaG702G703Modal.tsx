@@ -10,11 +10,14 @@ import {
   type AiaFieldKey,
   type AiaFieldValues,
   type AiaModalDetailsGroupId,
+  type AiaPrefillFacts,
   aiaDownloadFilename,
   buildAiaPrefillFromJob,
 } from '../../lib/aiaG702G703Template'
 import { fetchAndFillAiaTemplate } from '../../lib/fillAiaG702G703Workbook'
 import { buildAiaPreview } from '../../lib/aiaG702G703Preview'
+import { loadAiaPrefillFacts } from '../../lib/aiaG702G703PrefillIo'
+import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import AiaG702G703Paper from './AiaG702G703Paper'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
 import { fetchPhysicalInvoiceIssuerFromAppSettings, getPhysicalInvoiceIssuerDraft } from '../../lib/physicalInvoiceIssuer'
@@ -124,10 +127,13 @@ export default function AiaG702G703Modal({
     }, 0)
   }, [])
 
-  const applyPrefill = useCallback(() => {
+  // The payer's address and the signed contract's day, read once per opening. Reset from job reuses them.
+  const [facts, setFacts] = useState<AiaPrefillFacts | null>(null)
+
+  const applyPrefill = useCallback((withFacts: AiaPrefillFacts | null) => {
     if (!job) return
     const issuer = getPhysicalInvoiceIssuerDraft()
-    const pre = buildAiaPrefillFromJob(job, issuer)
+    const pre = buildAiaPrefillFromJob(job, issuer, withFacts)
     setForm(() => {
       const next = emptyFormState()
       for (const def of AIA_FIELD_DEFS) {
@@ -143,9 +149,13 @@ export default function AiaG702G703Modal({
     if (!open || !job) return
     let cancelled = false
     void (async () => {
-      await fetchPhysicalInvoiceIssuerFromAppSettings({ authRole })
+      const [, loaded] = await Promise.all([
+        fetchPhysicalInvoiceIssuerFromAppSettings({ authRole }),
+        loadAiaPrefillFacts(job.id).catch(() => null),
+      ])
       if (cancelled) return
-      applyPrefill()
+      setFacts(loaded)
+      applyPrefill(loaded)
     })()
     return () => {
       cancelled = true
@@ -160,7 +170,8 @@ export default function AiaG702G703Modal({
     try {
       const values = formStateToFieldValues(form)
       const ab = await fetchAndFillAiaTemplate(AIA_TEMPLATE_PUBLIC_PATH, values)
-      triggerDownloadArrayBuffer(ab, aiaDownloadFilename(hcpForFilename || job.hcp_number || job.id))
+      const jobNumber = effectiveJobLedgerNumber(hcpForFilename || job.hcp_number, 'click_number' in job ? job.click_number : null)
+      triggerDownloadArrayBuffer(ab, aiaDownloadFilename(jobNumber || job.id, values.g702_n5_project))
       showToast('AIA workbook downloaded.', 'success')
     } catch (e) {
       console.error(e)
@@ -511,7 +522,7 @@ export default function AiaG702G703Modal({
         >
           <button
             type="button"
-            onClick={applyPrefill}
+            onClick={() => applyPrefill(facts)}
             disabled={!job}
             style={{
               padding: '0.5rem 1rem',
