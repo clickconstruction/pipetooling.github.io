@@ -105,7 +105,7 @@ export const GC_PROJECT_TOUR_STEPS: SpotlightTourStep[] = [
   {
     anchor: 'gc-ptab-packages',
     title: 'Trades',
-    body: 'One row for each trade. Ask companies to quote. Tap Compare bids to see their quotes side by side. Then carry one number.',
+    body: 'One row for each trade. Ask companies to quote. Tap Compare quotes to see them side by side. Then carry one number.',
   },
   {
     anchor: 'gc-ptab-plans',
@@ -120,7 +120,7 @@ export const GC_PROJECT_TOUR_STEPS: SpotlightTourStep[] = [
   {
     anchor: 'gc-ptab-tabs',
     title: 'Bid tabs',
-    body: 'Once our bid is in, each company that quoted sees where its quote stood. It is the thanks for bidding.',
+    body: 'Once our bid is in, each company that quoted sees where its quote stood. It is the thanks for quoting.',
   },
   {
     anchor: 'gc-ptab-contracts',

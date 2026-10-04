@@ -130,7 +130,7 @@ function biddingProgress(state: GcState, project: GcProject): StageProgress {
                 : ranOut
                   ? `${who ?? 'Carried'}, ${thousands(amount)}K. Their number ran out. Ask them to send it again.`
                   : uncosted.length > 0
-                    ? `${who ?? 'Carried'}, ${thousands(amount)}K + ?. ${uncostedWords(uncosted)} Set it in Compare bids.`
+                    ? `${who ?? 'Carried'}, ${thousands(amount)}K + ?. ${uncostedWords(uncosted)} Set it in Compare quotes.`
                     : `${who ?? 'Carried'}, ${thousands(amount)}K`,
       }
     }),

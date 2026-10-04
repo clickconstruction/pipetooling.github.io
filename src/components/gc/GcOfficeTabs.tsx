@@ -85,7 +85,7 @@ export interface GcPaneProps {
 const INVITE_WORDS: Record<Invite['status'], { tone: Tone; word: string }> = {
   invited: { tone: 'grey', word: 'not opened' },
   opened: { tone: 'blue', word: 'looking' },
-  bid: { tone: 'green', word: 'bid in' },
+  bid: { tone: 'green', word: 'quote in' },
   declined: { tone: 'red', word: 'passed' },
 }
 
@@ -170,7 +170,7 @@ export function GcPackagesTab({ state, project, dispatch, onSeePortal, onMap, op
               <th style={th}>Trade</th>
               <th style={th}>Who we asked</th>
               <th style={{ ...th, textAlign: 'right' }}>Our budget</th>
-              <th style={{ ...th, textAlign: 'right' }} title="The lowest bid once each bid covers the same work: the bid plus the cost of anything it leaves out.">
+              <th style={{ ...th, textAlign: 'right' }} title="The lowest quote once each quote covers the same work: the quote plus the cost of anything it leaves out.">
                 Lowest, all in
               </th>
               <th style={th}>We are carrying</th>
@@ -202,11 +202,11 @@ export function GcPackagesTab({ state, project, dispatch, onSeePortal, onMap, op
                                 <span
                                   title={
                                     inv.bid && uncostedLines(pkg, inv).length > 0
-                                      ? `Their bid as sent: ${money(inv.bid.amount)}. ${uncostedWords(uncostedLines(pkg, inv))} So their all-in number is not known yet.`
+                                      ? `Their quote as sent: ${money(inv.bid.amount)}. ${uncostedWords(uncostedLines(pkg, inv))} So their all-in number is not known yet.`
                                       : inv.bid && leveled !== null && leveled !== inv.bid.amount
-                                      ? `Their bid as sent: ${money(inv.bid.amount)}. With what it leaves out added, it is ${money(leveled)}.`
+                                      ? `Their quote as sent: ${money(inv.bid.amount)}. With what it leaves out added, it is ${money(leveled)}.`
                                       : inv.bid
-                                        ? `Their bid as sent: ${money(inv.bid.amount)}.`
+                                        ? `Their quote as sent: ${money(inv.bid.amount)}.`
                                         : undefined
                                   }
                                   style={{
@@ -231,7 +231,7 @@ export function GcPackagesTab({ state, project, dispatch, onSeePortal, onMap, op
                                   {inv.status === 'invited' && linkNeverOpened(state, inv.partnerId) ? (
                                     <LinkNeverOpenedChip state={state} partnerId={inv.partnerId} company={partner?.company} />
                                   ) : (
-                                  <Chip tone={stale ? 'amber' : words.tone} title={stale ? `Their bid is on an older set of plans. ${staleSentence(project, pkg, inv)}` : undefined}>
+                                  <Chip tone={stale ? 'amber' : words.tone} title={stale ? `Their quote is on an older set of plans. ${staleSentence(project, pkg, inv)}` : undefined}>
                                     {partner?.company} · {stale ? 'old plans' : words.word}
                                     {inv.bid && bidRanOut(inv.bid, state.today) ? ' · ran out' : ''}
                                   </Chip>
@@ -275,7 +275,7 @@ export function GcPackagesTab({ state, project, dispatch, onSeePortal, onMap, op
                       ) : (
                         <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', whiteSpace: 'nowrap' }}>
                           <Btn kind={open ? 'plain' : 'primary'} onClick={() => setOpenId(open ? null : pkg.id)}>
-                            {open ? 'Close' : bidsIn(pkg).length > 0 ? 'Compare bids' : 'Invite'}
+                            {open ? 'Close' : bidsIn(pkg).length > 0 ? 'Compare quotes' : 'Invite'}
                           </Btn>
                           {onMap && <Btn kind="quiet" onClick={() => onMap(pkg.id)} title="See the companies in this trade on a map, closest first.">On a map</Btn>}
                         </span>
@@ -304,7 +304,7 @@ export function GcPackagesTab({ state, project, dispatch, onSeePortal, onMap, op
 }
 
 /**
- * The sheets a scope line reads from, under its name in Compare bids (the owner's option 1; Board
+ * The sheets a scope line reads from, under its name in Compare quotes (the owner's option 1; Board
  * item 5). The office's own picks show plain; a sheet matched from the line's words shows with a
  * "?"; a line that names no sheet reads the trade as a whole. The New Project lane's lineReads.
  */
@@ -340,7 +340,7 @@ function CarriedWords({
   if (pkg.selfPerform && !ownBidPriced(pkg)) return <PriceOwnBid project={project} pkg={pkg} dispatch={dispatch} />
   if (pkg.selfPerform) return <span>{money(pkg.selfPerform.value)} · our own bid {pkg.selfPerform.ref}</span>
   if (amount === null) return <Chip tone="red">Nothing. A hole in our number.</Chip>
-  if (pkg.carried === 'plug') return <span>{money(amount)} · <Chip tone="amber">our budget, no bid</Chip></span>
+  if (pkg.carried === 'plug') return <span>{money(amount)} · <Chip tone="amber">our budget, no quote</Chip></span>
   const invite = pkg.invites.find((i) => i.id === (pkg.awardedInviteId ?? pkg.carried))
   const partner = invite ? partnerById(state, invite.partnerId) : undefined
   return (
@@ -531,7 +531,7 @@ function LevelPanel({ state, project, pkg, dispatch, onSeePortal }: GcPaneProps 
             </thead>
             <tbody>
               <tr>
-                <td style={td}>Their bid, as sent</td>
+                <td style={td}>Their quote, as sent</td>
                 {bidders.map((inv) => (
                   <td key={inv.id} style={num}>{money(inv.bid?.amount ?? 0)}</td>
                 ))}
@@ -581,7 +581,7 @@ function LevelPanel({ state, project, pkg, dispatch, onSeePortal }: GcPaneProps 
               <tr>
                 <td style={{ ...td, fontWeight: 700 }}>
                   All in
-                  <div style={{ fontWeight: 400, fontSize: '0.8rem', color: 'var(--text-muted)' }}>their bid plus the missing work</div>
+                  <div style={{ fontWeight: 400, fontSize: '0.8rem', color: 'var(--text-muted)' }}>their quote plus the missing work</div>
                 </td>
                 {bidders.map((inv) => {
                   const total = leveledTotal(pkg, inv) ?? 0
@@ -912,7 +912,7 @@ export function GcPlansTab({ state, project, dispatch }: GcPaneProps) {
                     </td>
                     <td style={td}>
                       {!inv.bid ? (
-                        <span style={{ color: 'var(--text-muted)' }}>no bid yet</span>
+                        <span style={{ color: 'var(--text-muted)' }}>no quote yet</span>
                       ) : stale ? (
                         <Chip tone="amber" title={staleSentence(project, pkg, inv) || undefined}>{money(inv.bid.amount)} · priced on {planLabel(project, inv.bid.basedOnRev)} · needs confirming</Chip>
                       ) : (
@@ -1014,7 +1014,7 @@ export function GcNumberTab({ state, project, dispatch }: GcPaneProps) {
               <Chip key={p.id} tone="red">{p.trade}: no number</Chip>
             ))}
             {totals.plugged.map((p) => (
-              <Chip key={p.id} tone="amber">{p.trade}: our budget, no bid</Chip>
+              <Chip key={p.id} tone="amber">{p.trade}: our budget, no quote</Chip>
             ))}
           </div>
         )}
@@ -1428,7 +1428,7 @@ export function GcPartnersTab({ state, dispatch }: { state: GcState; dispatch: D
               <th style={th}>Contact</th>
               <th style={th}>Paperwork</th>
               <th style={{ ...th, textAlign: 'right' }}>Asked</th>
-              <th style={{ ...th, textAlign: 'right' }}>Bid</th>
+              <th style={{ ...th, textAlign: 'right' }}>Quoted</th>
               <th style={{ ...th, textAlign: 'right' }}>Won</th>
               <th style={th} />
             </tr>
