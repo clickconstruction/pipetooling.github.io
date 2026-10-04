@@ -73,6 +73,7 @@ import { FIELD_HEIGHT_PX, pickerFace, pickerGroup, pickerRow } from './GcNewProj
 import { SheetIndexTable } from './GcNewProjectSheetIndex'
 import { BookLineSearch, OftenMissed, StartFromBook } from './GcNewProjectScopeBook'
 import { GcScopeBookWindow } from './GcNewProjectScopeBookPage'
+import { SetKindsInfo } from './GcNewProjectSetKinds'
 
 /**
  * GC mode design spike: New Project. A project starts the day its plans come in. Four steps in
@@ -627,7 +628,7 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
             <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(19rem, 1fr))', alignItems: 'start' }}>
               <div style={{ display: 'grid', gap: '0.8rem', minWidth: 0 }}>
                 <Field label="What this set is called">
-                  <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'center' }}>
                     {['Bid set', 'Pricing set', 'Permit set'].map((l) => (
                       <button
                         key={l}
@@ -647,6 +648,7 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
                         {l}
                       </button>
                     ))}
+                    <SetKindsInfo />
                   </div>
                   <input style={field} value={setLabel} onChange={(e) => setSetLabel(e.target.value)} />
                 </Field>
