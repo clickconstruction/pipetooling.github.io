@@ -187,7 +187,8 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
 - **The pre-bid meeting** (the owner, 2026-10-04: "Let's build the pre bid meeting into the
   prototype"): while we bid, the Plans tab has **Set a pre-bid meeting** (then **Pre-bid meeting ·
   Sat Oct 3**). The window sets the day, the time, the place, who runs it (the architect, or our
-  own walk with the trades) and whether coming is required to quote (`schedulePreBid`). It lists
+  own walk with the trades) and whether coming is required to quote (`schedulePreBid`). It keeps
+  the day it was set, or last moved, since a move sends a new invitation (`setOn`). It lists
   every company quoting with the invitation each gets (`preBidInvited`, `preBidInviteEmail`). At
   the meeting the office ticks who came (`recordPreBidAttendance`); a company that missed a
   required meeting is flagged (`missedMandatoryPreBid`). Each question raised there is a question

@@ -15518,6 +15518,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
         "minutesInSetRev": 3,
         "on": "2026-10-08",
         "place": "the site, 24165 IH-10 W, San Antonio",
+        "setOn": "2026-10-02",
       },
       "questions": [
         {

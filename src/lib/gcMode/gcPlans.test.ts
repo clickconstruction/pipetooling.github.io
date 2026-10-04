@@ -677,9 +677,16 @@ describe('the pre-bid meeting', () => {
   })
 
   it('sets the meeting while we bid, and says it in a line', () => {
-    expect(boerne().preBid).toEqual({ on: '2026-10-04', at: '10:00', place: 'the site, 1420 River Rd, Boerne', host: 'architect', mandatory: true, attended: null })
+    expect(boerne().preBid).toEqual({ on: '2026-10-04', at: '10:00', place: 'the site, 1420 River Rd, Boerne', host: 'architect', mandatory: true, attended: null, setOn: state.today })
     expect(preBidWords(boerne())).toBe('Marsh & Vale Architects\' pre-bid meeting Sun Oct 4 at 10 AM, at the site, 1420 River Rd, Boerne. Coming is required to quote.')
     expect(set.log[0]?.text).toMatch(/^Set the pre-bid meeting on Boerne Retail Shell to Sun Oct 4 at 10 AM/)
+  })
+
+  it('keeps the day it was set, and a move takes the day of the move, since it sends a new invitation', () => {
+    const later = { ...set, today: '2026-10-06' }
+    const moved = gcReducer(later, { type: 'schedulePreBid', projectId: 'boerne', on: '2026-10-09', at: '09:00', place: 'the site, 1420 River Rd, Boerne', host: 'architect', mandatory: true })
+    expect(moved.projects.find((p) => p.id === 'boerne')?.preBid?.setOn).toBe('2026-10-06')
+    expect(moved.log[0]?.text).toMatch(/^Moved the pre-bid meeting/)
   })
 
   it('refuses a meeting on a job we won or a bid we lost', () => {

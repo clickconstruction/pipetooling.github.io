@@ -587,28 +587,39 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
                 />
                 {archPick === NEW && <input style={field} value={archNew} onChange={(e) => setArchNew(e.target.value)} placeholder="The firm's name" aria-label="The new architect's name" />}
               </Field>
-              <Field label="Our bid is due" hint="The days-left block on the board counts down to it.">
-                <input type="date" style={field} value={bidDue} onChange={(e) => setBidDue(e.target.value)} />
-              </Field>
-              <Field label="Size" hint="Square feet. The budgets on step 3 can be filled from it.">
-                <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  <input
-                    style={{ ...field, textAlign: 'right' }}
-                    inputMode="numeric"
-                    value={sqFtText}
-                    onChange={(e) => {
-                      const n = Number(e.target.value.replace(/[^0-9]/g, ''))
-                      setSqFtText(n > 0 ? n.toLocaleString('en-US') : '')
-                    }}
-                    placeholder="6,800"
-                    aria-label="Size in square feet"
-                  />
-                  <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>sq ft</span>
-                </span>
-              </Field>
-              <Field label="Size note (optional)" hint="What it is, in a few words. It reads after the size.">
-                <input style={field} value={sizeWords} onChange={(e) => setSizeWords(e.target.value)} placeholder="Clinic, one story" />
-              </Field>
+              {/* The owner, 2026-10-04: "the size entry field can be much smaller and the note can be much bigger." */}
+              <div
+                style={{
+                  gridColumn: '1 / -1',
+                  display: 'grid',
+                  gap: '0.8rem',
+                  gridTemplateColumns: narrow ? 'minmax(0, 1fr)' : 'minmax(10rem, 1fr) 10.5rem minmax(12rem, 2fr)',
+                  alignItems: 'start',
+                }}
+              >
+                <Field label="Our bid is due" hint="The days-left block on the board counts down to it.">
+                  <input type="date" style={field} value={bidDue} onChange={(e) => setBidDue(e.target.value)} />
+                </Field>
+                <Field label="Size" hint="Fills the budgets on step 3.">
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <input
+                      style={{ ...field, textAlign: 'right', width: '7.5rem', flex: '0 0 7.5rem' }}
+                      inputMode="numeric"
+                      value={sqFtText}
+                      onChange={(e) => {
+                        const n = Number(e.target.value.replace(/[^0-9]/g, ''))
+                        setSqFtText(n > 0 ? n.toLocaleString('en-US') : '')
+                      }}
+                      placeholder="6,800"
+                      aria-label="Size in square feet"
+                    />
+                    <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>sq ft</span>
+                  </span>
+                </Field>
+                <Field label="Size note (optional)" hint="What it is, in a few words. It reads after the size.">
+                  <input style={field} value={sizeWords} onChange={(e) => setSizeWords(e.target.value)} placeholder="Clinic, one story, slab on grade" />
+                </Field>
+              </div>
             </div>
           )}
 
