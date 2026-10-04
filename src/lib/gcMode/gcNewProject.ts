@@ -309,9 +309,9 @@ export function withTradesInOrder(existing: TradePackage[], added: TradePackage[
 
 /**
  * Who to ask first on a new project's trade: the companies in range in the map's own order
- * (`tradeLineup`, closest first), up to a deep bench (BENCH_WANTED), so at least two quotes come
- * back. The owner, 2026-10-02: keep the map's order, so his answer to closest first or most
- * reliable first (open question 7) moves both. A company with no coverage set is in range, after
+ * (`tradeLineup`: the most reliable first, then the shorter drive), up to a deep bench
+ * (BENCH_WANTED), so at least two quotes come back. The owner, 2026-10-02: keep the map's order;
+ * his answer to question 7, most reliable first, moved both. A company with no coverage set is in range, after
  * the ones whose drive is known. Our own trade asks nobody.
  */
 export function defaultAsks(state: GcState, project: GcProject, pkg: TradePackage): string[] {

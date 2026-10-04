@@ -163,7 +163,7 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
   const [added, setAdded] = useState<string[]>([])
   const [addText, setAddText] = useState('')
   const [scopeFor, setScopeFor] = useState<string | null>(null)
-  /** The companies ticked per trade. A trade left out follows the default: the closest in range. */
+  /** The companies ticked per trade. A trade left out follows the default: the most reliable in range. */
   const [asks, setAsks] = useState<Record<string, string[]>>({})
 
   const reading = useMemo(() => sheetIndexInText(indexText), [indexText])
@@ -783,7 +783,7 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
           {step === 4 && (
             <div style={{ display: 'grid', gap: '0.8rem' }}>
               <div style={{ fontSize: '0.875rem' }}>
-                The closest companies in range are ticked, up to three a trade, so at least two quotes come back. Each one gets a portal link with the plans, its trade&apos;s scope and the due date. Missing paperwork does not stop a quote. It shows under the company, to fix before you award.
+                The most reliable companies in range are ticked, up to three a trade, so at least two quotes come back. Each one gets a portal link with the plans, its trade&apos;s scope and the due date. Missing paperwork does not stop a quote. It shows under the company, to fix before you award.
               </div>
               {built.packages.length === 0 && <div style={{ color: 'var(--text-muted)' }}>No trades are ticked yet. Pick them on step 3.</div>}
               {built.packages.map((pkg) => {
@@ -808,7 +808,7 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
                       <span style={{ flex: 1 }} />
                       {asks[pkg.trade] && (
                         <Btn kind="quiet" onClick={() => setAsks((all) => Object.fromEntries(Object.entries(all).filter(([t]) => t !== pkg.trade)))}>
-                          Tick the closest again
+                          Tick the most reliable again
                         </Btn>
                       )}
                     </div>

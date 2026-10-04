@@ -22,9 +22,9 @@ import { Btn, Chip, type Tone } from './gcUi'
 
 /**
  * GC mode design spike: line up quotes for one trade on one project. The map shows the project
- * and every company in the trade, numbered nearest first, with a ring every 50 miles. The
- * column beside it is the same companies in the same order, to work down: ask the closest, and
- * when one says no, offer it to the next. The map is drawn from town positions as a stand-in. The
+ * and every company in the trade, numbered in the line's order (most reliable first, question 7),
+ * with a ring every 50 miles. The column beside it is the same companies in the same order, to work
+ * down: ask the first, and when one says no, offer it to the next. The map is drawn from town positions as a stand-in. The
  * real build puts the same pins on the app's own map.
  */
 
@@ -180,7 +180,7 @@ export function GcTradeMap({ state, project, packageId, dispatch, onPickPackage,
           ) : next ? (
             <>
               <span>
-                Next closest we have not asked: <strong>{next.partner.company}</strong>
+                Next in line we have not asked: <strong>{next.partner.company}</strong>
                 {travelWords(next.travel, next.partner) ? `, ${travelWords(next.travel, next.partner)}` : ''}.
               </span>
               <Btn kind="primary" onClick={() => ask(next.partner.id)}>Ask {next.partner.company}</Btn>
@@ -204,7 +204,7 @@ export function GcTradeMap({ state, project, packageId, dispatch, onPickPackage,
                   {PIN[k].word}
                 </span>
               ))}
-              <span>Rings are drive miles from the project. Numbers match the list, closest first.</span>
+              <span>Rings are drive miles from the project. Numbers match the list, most reliable first.</span>
             </div>
           </div>
 

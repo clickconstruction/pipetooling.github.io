@@ -159,6 +159,7 @@ function reduce(state: GcState, action: GcAction): GcState {
         ...(action.goodForDays ? { goodForDays: action.goodForDays } : {}),
         ...(action.alternates && action.alternates.length > 0 ? { alternates: action.alternates } : {}),
         ...(action.quoteFile ? { quoteFile: action.quoteFile } : {}),
+        ...(action.sov && action.sov.length > 0 ? { sov: action.sov } : {}),
       }
       const next = mapProject(state, project.id, (p) =>
         mapPackage(p, pkg.id, (k) =>
@@ -1610,6 +1611,17 @@ function reduce(state: GcState, action: GcAction): GcState {
           ? `${partner.company} moved ${what}${on} from ${weekdayDate(open.by)} to ${weekdayDate(action.by)}.`
           : `${partner.company} promised ${what}${on} by ${weekdayDate(action.by)}.`,
       )
+    }
+
+    case 'tradeSendSov': {
+      // Their own schedule of values, for a statement of work that has none yet (question 4).
+      const { project, pkg } = find(state, action.projectId, action.packageId)
+      const partner = awardedPartner(state, pkg)
+      const lines = action.sov.filter((l) => l.label.trim() !== '' && l.amount > 0)
+      if (!project || !pkg?.sow || !partner || lines.length === 0 || (pkg.sow.theirSov ?? []).length > 0) return state
+      const next = mapProject(state, project.id, (p) => mapPackage(p, pkg.id, (k) => mapSow(k, (s) => ({ ...s, theirSov: lines }))))
+      const total = lines.reduce((t, l) => t + l.amount, 0)
+      return logged(next, 'trade', `${partner.company} sent its schedule of values for ${pkg.trade} on ${project.name}: ${lines.length} lines, ${money(total)}.`)
     }
 
     case 'keepPromise': {

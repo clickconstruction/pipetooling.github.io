@@ -1277,9 +1277,18 @@ exports[`GC mode golden walk > before any step 1`] = `
           },
           "tradeLineup": [
             {
+              "invite": "«invite elec-brightline»",
+              "partner": "«partner brightline»",
+              "rank": 1,
+              "travel": {
+                "inZone": true,
+                "miles": 57,
+              },
+            },
+            {
               "invite": "«invite elec-voltage»",
               "partner": "«partner voltage»",
-              "rank": 1,
+              "rank": 2,
               "travel": {
                 "inZone": true,
                 "miles": 35,
@@ -1288,28 +1297,10 @@ exports[`GC mode golden walk > before any step 1`] = `
             {
               "invite": null,
               "partner": "«partner westside»",
-              "rank": 2,
-              "travel": {
-                "inZone": true,
-                "miles": 35,
-              },
-            },
-            {
-              "invite": "«invite elec-brightline»",
-              "partner": "«partner brightline»",
               "rank": 3,
               "travel": {
                 "inZone": true,
-                "miles": 57,
-              },
-            },
-            {
-              "invite": "«invite elec-tejas»",
-              "partner": "«partner tejas»",
-              "rank": 4,
-              "travel": {
-                "inZone": true,
-                "miles": 195,
+                "miles": 35,
               },
             },
             {
@@ -1319,6 +1310,15 @@ exports[`GC mode golden walk > before any step 1`] = `
               "travel": {
                 "inZone": true,
                 "miles": null,
+              },
+            },
+            {
+              "invite": "«invite elec-tejas»",
+              "partner": "«partner tejas»",
+              "rank": 4,
+              "travel": {
+                "inZone": true,
+                "miles": 195,
               },
             },
           ],
@@ -1515,21 +1515,21 @@ exports[`GC mode golden walk > before any step 1`] = `
               },
             },
             {
-              "invite": "«invite site-hillside»",
-              "partner": "«partner hillside»",
+              "invite": "«invite site-tricounty»",
+              "partner": "«partner tricounty»",
               "rank": 2,
               "travel": {
                 "inZone": true,
-                "miles": 36,
+                "miles": 44,
               },
             },
             {
-              "invite": "«invite site-tricounty»",
-              "partner": "«partner tricounty»",
+              "invite": "«invite site-hillside»",
+              "partner": "«partner hillside»",
               "rank": 3,
               "travel": {
                 "inZone": true,
-                "miles": 44,
+                "miles": 36,
               },
             },
           ],
@@ -1543,9 +1543,18 @@ exports[`GC mode golden walk > before any step 1`] = `
           },
           "tradeLineup": [
             {
+              "invite": null,
+              "partner": "«partner ironhorse»",
+              "rank": 1,
+              "travel": {
+                "inZone": true,
+                "miles": 81,
+              },
+            },
+            {
               "invite": "«invite steel-bexar»",
               "partner": "«partner bexar»",
-              "rank": 1,
+              "rank": 2,
               "travel": {
                 "inZone": true,
                 "miles": 35,
@@ -1554,19 +1563,10 @@ exports[`GC mode golden walk > before any step 1`] = `
             {
               "invite": "«invite steel-comal»",
               "partner": "«partner comal»",
-              "rank": 2,
-              "travel": {
-                "inZone": true,
-                "miles": 44,
-              },
-            },
-            {
-              "invite": null,
-              "partner": "«partner ironhorse»",
               "rank": 3,
               "travel": {
                 "inZone": true,
-                "miles": 81,
+                "miles": 44,
               },
             },
           ],
@@ -2093,16 +2093,16 @@ exports[`GC mode golden walk > before any step 1`] = `
           "tradeLineup": [
             {
               "invite": null,
-              "partner": "«partner voltage»",
+              "partner": "«partner brightline»",
               "rank": 1,
               "travel": {
                 "inZone": true,
-                "miles": 35,
+                "miles": 57,
               },
             },
             {
               "invite": null,
-              "partner": "«partner westside»",
+              "partner": "«partner voltage»",
               "rank": 2,
               "travel": {
                 "inZone": true,
@@ -2111,20 +2111,11 @@ exports[`GC mode golden walk > before any step 1`] = `
             },
             {
               "invite": null,
-              "partner": "«partner brightline»",
+              "partner": "«partner westside»",
               "rank": 3,
               "travel": {
                 "inZone": true,
-                "miles": 57,
-              },
-            },
-            {
-              "invite": null,
-              "partner": "«partner tejas»",
-              "rank": 4,
-              "travel": {
-                "inZone": true,
-                "miles": 195,
+                "miles": 35,
               },
             },
             {
@@ -2134,6 +2125,15 @@ exports[`GC mode golden walk > before any step 1`] = `
               "travel": {
                 "inZone": true,
                 "miles": null,
+              },
+            },
+            {
+              "invite": null,
+              "partner": "«partner tejas»",
+              "rank": 4,
+              "travel": {
+                "inZone": true,
+                "miles": 195,
               },
             },
           ],
@@ -2287,21 +2287,21 @@ exports[`GC mode golden walk > before any step 1`] = `
               },
             },
             {
-              "invite": null,
-              "partner": "«partner hillside»",
+              "invite": "«invite fsite-tricounty»",
+              "partner": "«partner tricounty»",
               "rank": 2,
               "travel": {
                 "inZone": true,
-                "miles": 36,
+                "miles": 44,
               },
             },
             {
-              "invite": "«invite fsite-tricounty»",
-              "partner": "«partner tricounty»",
+              "invite": null,
+              "partner": "«partner hillside»",
               "rank": 3,
               "travel": {
                 "inZone": true,
-                "miles": 44,
+                "miles": 36,
               },
             },
           ],
@@ -2332,9 +2332,18 @@ exports[`GC mode golden walk > before any step 1`] = `
           },
           "tradeLineup": [
             {
+              "invite": "«invite fsteel-ironhorse»",
+              "partner": "«partner ironhorse»",
+              "rank": 1,
+              "travel": {
+                "inZone": true,
+                "miles": 81,
+              },
+            },
+            {
               "invite": null,
               "partner": "«partner bexar»",
-              "rank": 1,
+              "rank": 2,
               "travel": {
                 "inZone": true,
                 "miles": 35,
@@ -2343,19 +2352,10 @@ exports[`GC mode golden walk > before any step 1`] = `
             {
               "invite": null,
               "partner": "«partner comal»",
-              "rank": 2,
-              "travel": {
-                "inZone": true,
-                "miles": 44,
-              },
-            },
-            {
-              "invite": "«invite fsteel-ironhorse»",
-              "partner": "«partner ironhorse»",
               "rank": 3,
               "travel": {
                 "inZone": true,
-                "miles": 81,
+                "miles": 44,
               },
             },
           ],
@@ -2871,9 +2871,18 @@ exports[`GC mode golden walk > before any step 1`] = `
           },
           "tradeLineup": [
             {
+              "invite": "«invite delec-brightline»",
+              "partner": "«partner brightline»",
+              "rank": 1,
+              "travel": {
+                "inZone": true,
+                "miles": 60,
+              },
+            },
+            {
               "invite": "«invite delec-voltage»",
               "partner": "«partner voltage»",
-              "rank": 1,
+              "rank": 2,
               "travel": {
                 "inZone": true,
                 "miles": 19,
@@ -2882,28 +2891,10 @@ exports[`GC mode golden walk > before any step 1`] = `
             {
               "invite": null,
               "partner": "«partner westside»",
-              "rank": 2,
-              "travel": {
-                "inZone": true,
-                "miles": 19,
-              },
-            },
-            {
-              "invite": "«invite delec-brightline»",
-              "partner": "«partner brightline»",
               "rank": 3,
               "travel": {
                 "inZone": true,
-                "miles": 60,
-              },
-            },
-            {
-              "invite": null,
-              "partner": "«partner tejas»",
-              "rank": 4,
-              "travel": {
-                "inZone": true,
-                "miles": 179,
+                "miles": 19,
               },
             },
             {
@@ -2913,6 +2904,15 @@ exports[`GC mode golden walk > before any step 1`] = `
               "travel": {
                 "inZone": true,
                 "miles": null,
+              },
+            },
+            {
+              "invite": null,
+              "partner": "«partner tejas»",
+              "rank": 4,
+              "travel": {
+                "inZone": true,
+                "miles": 179,
               },
             },
           ],
@@ -3346,20 +3346,20 @@ exports[`GC mode golden walk > before any step 1`] = `
             },
             {
               "invite": null,
-              "partner": "«partner hillside»",
+              "partner": "«partner tricounty»",
               "rank": 2,
               "travel": {
                 "inZone": true,
-                "miles": 36,
+                "miles": 44,
               },
             },
             {
               "invite": null,
-              "partner": "«partner tricounty»",
+              "partner": "«partner hillside»",
               "rank": 3,
               "travel": {
                 "inZone": true,
-                "miles": 44,
+                "miles": 36,
               },
             },
           ],
@@ -3705,8 +3705,17 @@ exports[`GC mode golden walk > before any step 1`] = `
           "tradeLineup": [
             {
               "invite": null,
-              "partner": "«partner voltage»",
+              "partner": "«partner brightline»",
               "rank": 1,
+              "travel": {
+                "inZone": true,
+                "miles": 55,
+              },
+            },
+            {
+              "invite": null,
+              "partner": "«partner voltage»",
+              "rank": 2,
               "travel": {
                 "inZone": true,
                 "miles": 0,
@@ -3715,28 +3724,10 @@ exports[`GC mode golden walk > before any step 1`] = `
             {
               "invite": "«invite selec-westside»",
               "partner": "«partner westside»",
-              "rank": 2,
-              "travel": {
-                "inZone": true,
-                "miles": 0,
-              },
-            },
-            {
-              "invite": null,
-              "partner": "«partner brightline»",
               "rank": 3,
               "travel": {
                 "inZone": true,
-                "miles": 55,
-              },
-            },
-            {
-              "invite": null,
-              "partner": "«partner tejas»",
-              "rank": 4,
-              "travel": {
-                "inZone": true,
-                "miles": 173,
+                "miles": 0,
               },
             },
             {
@@ -3746,6 +3737,15 @@ exports[`GC mode golden walk > before any step 1`] = `
               "travel": {
                 "inZone": true,
                 "miles": null,
+              },
+            },
+            {
+              "invite": null,
+              "partner": "«partner tejas»",
+              "rank": 4,
+              "travel": {
+                "inZone": true,
+                "miles": 173,
               },
             },
           ],
@@ -4199,7 +4199,7 @@ exports[`GC mode golden walk > step 03: Structural steel: ask Iron Horse 1`] = `
     "projects.boerne.planRecipients.noneTouched[9].pkg": "«package hvac»",
     "projects.boerne.stageProgress.also[1]": "5 of 13 companies have not opened Addendum 1.",
     "projects.boerne.stageProgress.groups[0].items[2].detail": "0 of 2 in. 1 still asked.",
-    "projects.boerne.trades.steel.tradeLineup[2].invite": "«invite steel-ironhorse»",
+    "projects.boerne.trades.steel.tradeLineup[0].invite": "«invite steel-ironhorse»",
     "tradeBenches[0].needs[0].silent": 1,
   },
   "removed": [
@@ -5215,20 +5215,9 @@ exports[`GC mode golden walk > step 29: Hillside’s coverage 1`] = `
     "lastLog.id": 26,
     "lastLog.text": "Hillside Excavation coverage: from Boerne, goes 60 miles.",
     "lastLog.who": "office",
-    "projects.boerne.trades.site.tradeLineup[0].invite": "«invite site-hillside»",
-    "projects.boerne.trades.site.tradeLineup[0].partner": "«partner hillside»",
-    "projects.boerne.trades.site.tradeLineup[0].travel.miles": 0,
-    "projects.boerne.trades.site.tradeLineup[1].invite": "«invite site-lonestar»",
-    "projects.boerne.trades.site.tradeLineup[1].partner": "«partner lonestar»",
-    "projects.boerne.trades.site.tradeLineup[1].travel.miles": 35,
-    "projects.fairoaksd.trades.fsite.tradeLineup[0].partner": "«partner hillside»",
-    "projects.fairoaksd.trades.fsite.tradeLineup[0].travel.miles": 0,
-    "projects.fairoaksd.trades.fsite.tradeLineup[1].partner": "«partner lonestar»",
-    "projects.fairoaksd.trades.fsite.tradeLineup[1].travel.miles": 35,
-    "projects.padb.trades.bsite.tradeLineup[0].partner": "«partner hillside»",
-    "projects.padb.trades.bsite.tradeLineup[0].travel.miles": 0,
-    "projects.padb.trades.bsite.tradeLineup[1].partner": "«partner lonestar»",
-    "projects.padb.trades.bsite.tradeLineup[1].travel.miles": 35,
+    "projects.boerne.trades.site.tradeLineup[2].travel.miles": 0,
+    "projects.fairoaksd.trades.fsite.tradeLineup[2].travel.miles": 0,
+    "projects.padb.trades.bsite.tradeLineup[2].travel.miles": 0,
   },
   "removed": [],
 }
@@ -5239,26 +5228,14 @@ exports[`GC mode golden walk > step 30: Tejas’s coverage cleared 1`] = `
   "changed": {
     "lastLog.id": 27,
     "lastLog.text": "Tejas Power coverage: not set.",
-    "projects.boerne.trades.elec.tradeLineup[3].invite": null,
-    "projects.boerne.trades.elec.tradeLineup[3].partner": "«partner pecanvalley»",
-    "projects.boerne.trades.elec.tradeLineup[3].rank": null,
-    "projects.boerne.trades.elec.tradeLineup[3].travel.miles": null,
-    "projects.boerne.trades.elec.tradeLineup[4].invite": "«invite elec-tejas»",
-    "projects.boerne.trades.elec.tradeLineup[4].partner": "«partner tejas»",
-    "projects.fairoaksd.trades.felec.tradeLineup[3].invite": "«invite felec-pecanvalley»",
-    "projects.fairoaksd.trades.felec.tradeLineup[3].partner": "«partner pecanvalley»",
-    "projects.fairoaksd.trades.felec.tradeLineup[3].rank": null,
-    "projects.fairoaksd.trades.felec.tradeLineup[3].travel.miles": null,
-    "projects.fairoaksd.trades.felec.tradeLineup[4].invite": null,
-    "projects.fairoaksd.trades.felec.tradeLineup[4].partner": "«partner tejas»",
-    "projects.helotes.trades.delec.tradeLineup[3].partner": "«partner pecanvalley»",
-    "projects.helotes.trades.delec.tradeLineup[3].rank": null,
-    "projects.helotes.trades.delec.tradeLineup[3].travel.miles": null,
-    "projects.helotes.trades.delec.tradeLineup[4].partner": "«partner tejas»",
-    "projects.stoneoak.trades.selec.tradeLineup[3].partner": "«partner pecanvalley»",
-    "projects.stoneoak.trades.selec.tradeLineup[3].rank": null,
-    "projects.stoneoak.trades.selec.tradeLineup[3].travel.miles": null,
-    "projects.stoneoak.trades.selec.tradeLineup[4].partner": "«partner tejas»",
+    "projects.boerne.trades.elec.tradeLineup[4].rank": null,
+    "projects.boerne.trades.elec.tradeLineup[4].travel.miles": null,
+    "projects.fairoaksd.trades.felec.tradeLineup[4].rank": null,
+    "projects.fairoaksd.trades.felec.tradeLineup[4].travel.miles": null,
+    "projects.helotes.trades.delec.tradeLineup[4].rank": null,
+    "projects.helotes.trades.delec.tradeLineup[4].travel.miles": null,
+    "projects.stoneoak.trades.selec.tradeLineup[4].rank": null,
+    "projects.stoneoak.trades.selec.tradeLineup[4].travel.miles": null,
   },
   "removed": [],
 }
@@ -5296,25 +5273,22 @@ exports[`GC mode golden walk > step 31: Add a steel company 1`] = `
     "lastLog.text": "Added Pecos Steel to Structural steel.",
     "projects.boerne.trades.steel.tradeLineup[1].invite": null,
     "projects.boerne.trades.steel.tradeLineup[1].partner": "«partner new-24»",
-    "projects.boerne.trades.steel.tradeLineup[1].travel.miles": 35,
-    "projects.boerne.trades.steel.tradeLineup[2].invite": "«invite steel-comal»",
-    "projects.boerne.trades.steel.tradeLineup[2].partner": "«partner comal»",
-    "projects.boerne.trades.steel.tradeLineup[2].travel.miles": 44,
-    "projects.boerne.trades.steel.tradeLineup[3].invite": "«invite steel-ironhorse»",
-    "projects.boerne.trades.steel.tradeLineup[3].partner": "«partner ironhorse»",
+    "projects.boerne.trades.steel.tradeLineup[2].invite": "«invite steel-bexar»",
+    "projects.boerne.trades.steel.tradeLineup[2].partner": "«partner bexar»",
+    "projects.boerne.trades.steel.tradeLineup[2].travel.miles": 35,
+    "projects.boerne.trades.steel.tradeLineup[3].invite": "«invite steel-comal»",
+    "projects.boerne.trades.steel.tradeLineup[3].partner": "«partner comal»",
     "projects.boerne.trades.steel.tradeLineup[3].rank": 4,
     "projects.boerne.trades.steel.tradeLineup[3].travel.inZone": true,
-    "projects.boerne.trades.steel.tradeLineup[3].travel.miles": 81,
+    "projects.boerne.trades.steel.tradeLineup[3].travel.miles": 44,
     "projects.fairoaksd.trades.fsteel.tradeLineup[1].partner": "«partner new-24»",
-    "projects.fairoaksd.trades.fsteel.tradeLineup[1].travel.miles": 35,
-    "projects.fairoaksd.trades.fsteel.tradeLineup[2].invite": null,
-    "projects.fairoaksd.trades.fsteel.tradeLineup[2].partner": "«partner comal»",
-    "projects.fairoaksd.trades.fsteel.tradeLineup[2].travel.miles": 44,
-    "projects.fairoaksd.trades.fsteel.tradeLineup[3].invite": "«invite fsteel-ironhorse»",
-    "projects.fairoaksd.trades.fsteel.tradeLineup[3].partner": "«partner ironhorse»",
+    "projects.fairoaksd.trades.fsteel.tradeLineup[2].partner": "«partner bexar»",
+    "projects.fairoaksd.trades.fsteel.tradeLineup[2].travel.miles": 35,
+    "projects.fairoaksd.trades.fsteel.tradeLineup[3].invite": null,
+    "projects.fairoaksd.trades.fsteel.tradeLineup[3].partner": "«partner comal»",
     "projects.fairoaksd.trades.fsteel.tradeLineup[3].rank": 4,
     "projects.fairoaksd.trades.fsteel.tradeLineup[3].travel.inZone": true,
-    "projects.fairoaksd.trades.fsteel.tradeLineup[3].travel.miles": 81,
+    "projects.fairoaksd.trades.fsteel.tradeLineup[3].travel.miles": 44,
     "tradeBenches[3].dependable": 2,
     "tradeBenches[3].needs[0].looking": 1,
     "tradeBenches[3].needs[0].passed": 0,
@@ -5945,6 +5919,18 @@ exports[`GC mode golden walk > step 56: Pad B: ask Lonestar for Sitework 1`] = `
     "assistantRules[3].now": "8 of 10 companies we are asking have all three.",
     "lastLog.id": 52,
     "lastLog.text": "Invited Lonestar Earthworks to quote Sitework.",
+    "projects.boerne.trades.site.tradeLineup[0].invite": "«invite site-tricounty»",
+    "projects.boerne.trades.site.tradeLineup[0].partner": "«partner tricounty»",
+    "projects.boerne.trades.site.tradeLineup[0].travel.miles": 44,
+    "projects.boerne.trades.site.tradeLineup[1].invite": "«invite site-lonestar»",
+    "projects.boerne.trades.site.tradeLineup[1].partner": "«partner lonestar»",
+    "projects.boerne.trades.site.tradeLineup[1].travel.miles": 35,
+    "projects.fairoaksd.trades.fsite.tradeLineup[0].invite": "«invite fsite-tricounty»",
+    "projects.fairoaksd.trades.fsite.tradeLineup[0].partner": "«partner tricounty»",
+    "projects.fairoaksd.trades.fsite.tradeLineup[0].travel.miles": 44,
+    "projects.fairoaksd.trades.fsite.tradeLineup[1].invite": null,
+    "projects.fairoaksd.trades.fsite.tradeLineup[1].partner": "«partner lonestar»",
+    "projects.fairoaksd.trades.fsite.tradeLineup[1].travel.miles": 35,
     "projects.padb.planRecipients.allTouched[0].hasBid": false,
     "projects.padb.planRecipients.allTouched[0].invite": "«invite bsite-lonestar»",
     "projects.padb.planRecipients.allTouched[0].partner": "«partner lonestar»",
@@ -5957,7 +5943,11 @@ exports[`GC mode golden walk > step 56: Pad B: ask Lonestar for Sitework 1`] = `
     "projects.padb.planRecipients.noneTouched[0].touched": false,
     "projects.padb.stageProgress.also[0]": "1 of 1 companies have not opened Pricing set.",
     "projects.padb.stageProgress.groups[0].items[0].detail": "0 of 2 in. 1 still asked.",
+    "projects.padb.trades.bsite.tradeLineup[0].partner": "«partner tricounty»",
+    "projects.padb.trades.bsite.tradeLineup[0].travel.miles": 44,
     "projects.padb.trades.bsite.tradeLineup[1].invite": "«invite bsite-lonestar»",
+    "projects.padb.trades.bsite.tradeLineup[1].partner": "«partner lonestar»",
+    "projects.padb.trades.bsite.tradeLineup[1].travel.miles": 35,
     "tradeBenches[2].needs[0].silent": 1,
   },
   "removed": [
@@ -6226,20 +6216,20 @@ exports[`GC mode golden walk > step 58: A new project: Leon Springs Urgent Care 
     "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-electrical.compareBids.conclusion": "",
     "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-electrical.compareBids.lines": "[]",
     "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-electrical.tradeLineup[0].invite": null,
-    "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-electrical.tradeLineup[0].partner": "«partner voltage»",
+    "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-electrical.tradeLineup[0].partner": "«partner brightline»",
     "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-electrical.tradeLineup[0].rank": 1,
     "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-electrical.tradeLineup[0].travel.inZone": true,
-    "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-electrical.tradeLineup[0].travel.miles": 0,
+    "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-electrical.tradeLineup[0].travel.miles": 55,
     "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-electrical.tradeLineup[1].invite": null,
-    "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-electrical.tradeLineup[1].partner": "«partner westside»",
+    "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-electrical.tradeLineup[1].partner": "«partner voltage»",
     "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-electrical.tradeLineup[1].rank": 2,
     "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-electrical.tradeLineup[1].travel.inZone": true,
     "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-electrical.tradeLineup[1].travel.miles": 0,
     "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-electrical.tradeLineup[2].invite": null,
-    "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-electrical.tradeLineup[2].partner": "«partner brightline»",
+    "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-electrical.tradeLineup[2].partner": "«partner westside»",
     "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-electrical.tradeLineup[2].rank": 3,
     "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-electrical.tradeLineup[2].travel.inZone": true,
-    "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-electrical.tradeLineup[2].travel.miles": 55,
+    "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-electrical.tradeLineup[2].travel.miles": 0,
     "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-electrical.tradeLineup[3].invite": null,
     "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-electrical.tradeLineup[3].partner": "«partner pecanvalley»",
     "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-electrical.tradeLineup[3].rank": null,
@@ -6274,17 +6264,17 @@ exports[`GC mode golden walk > step 58: A new project: Leon Springs Urgent Care 
     "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-sitework.compareBids.conclusion": "",
     "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-sitework.compareBids.lines": "[]",
     "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-sitework.tradeLineup[0].invite": null,
-    "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-sitework.tradeLineup[0].partner": "«partner lonestar»",
+    "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-sitework.tradeLineup[0].partner": "«partner tricounty»",
     "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-sitework.tradeLineup[0].rank": 1,
     "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-sitework.tradeLineup[0].travel.inZone": true,
-    "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-sitework.tradeLineup[0].travel.miles": 0,
+    "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-sitework.tradeLineup[0].travel.miles": 35,
     "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-sitework.tradeLineup[1].invite": null,
-    "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-sitework.tradeLineup[1].partner": "«partner hillside»",
+    "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-sitework.tradeLineup[1].partner": "«partner lonestar»",
     "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-sitework.tradeLineup[1].rank": 2,
     "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-sitework.tradeLineup[1].travel.inZone": true,
-    "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-sitework.tradeLineup[1].travel.miles": 35,
+    "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-sitework.tradeLineup[1].travel.miles": 0,
     "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-sitework.tradeLineup[2].invite": null,
-    "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-sitework.tradeLineup[2].partner": "«partner tricounty»",
+    "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-sitework.tradeLineup[2].partner": "«partner hillside»",
     "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-sitework.tradeLineup[2].rank": 3,
     "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-sitework.tradeLineup[2].travel.inZone": true,
     "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-sitework.tradeLineup[2].travel.miles": 35,
@@ -6891,6 +6881,22 @@ exports[`GC mode golden walk > step 82: Pad B: Lonestar bids, good for 30 days, 
     "followUps[0].words": "Promised a quote by Tue Oct 6, in 4 days.",
     "lastLog.id": 78,
     "lastLog.text": "Lonestar Earthworks quoted $92,500 on Sitework.",
+    "projects.boerne.trades.site.tradeLineup[0].invite": "«invite site-lonestar»",
+    "projects.boerne.trades.site.tradeLineup[0].partner": "«partner lonestar»",
+    "projects.boerne.trades.site.tradeLineup[0].travel.miles": 35,
+    "projects.boerne.trades.site.tradeLineup[1].invite": "«invite site-tricounty»",
+    "projects.boerne.trades.site.tradeLineup[1].partner": "«partner tricounty»",
+    "projects.boerne.trades.site.tradeLineup[1].travel.miles": 44,
+    "projects.fairoaksd.trades.fsite.tradeLineup[0].invite": null,
+    "projects.fairoaksd.trades.fsite.tradeLineup[0].partner": "«partner lonestar»",
+    "projects.fairoaksd.trades.fsite.tradeLineup[0].travel.miles": 35,
+    "projects.fairoaksd.trades.fsite.tradeLineup[1].invite": "«invite fsite-tricounty»",
+    "projects.fairoaksd.trades.fsite.tradeLineup[1].partner": "«partner tricounty»",
+    "projects.fairoaksd.trades.fsite.tradeLineup[1].travel.miles": 44,
+    "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-sitework.tradeLineup[0].partner": "«partner lonestar»",
+    "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-sitework.tradeLineup[0].travel.miles": 0,
+    "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-sitework.tradeLineup[1].partner": "«partner tricounty»",
+    "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-sitework.tradeLineup[1].travel.miles": 35,
     "projects.padb.planRecipients.allTouched[0].hasBid": true,
     "projects.padb.planRecipients.noneTouched[0].hasBid": true,
     "projects.padb.stageProgress.also[0]": "1 of 2 companies have not opened Pricing set.",
@@ -6924,6 +6930,12 @@ exports[`GC mode golden walk > step 82: Pad B: Lonestar bids, good for 30 days, 
     "projects.padb.trades.bsite.compareBids.lines[0].complete": true,
     "projects.padb.trades.bsite.compareBids.lines[0].inviteId": "bsite-lonestar",
     "projects.padb.trades.bsite.compareBids.lines[0].text": "Lonestar Earthworks quoted $92,500 and covers everything.",
+    "projects.padb.trades.bsite.tradeLineup[0].invite": "«invite bsite-lonestar»",
+    "projects.padb.trades.bsite.tradeLineup[0].partner": "«partner lonestar»",
+    "projects.padb.trades.bsite.tradeLineup[0].travel.miles": 35,
+    "projects.padb.trades.bsite.tradeLineup[1].invite": null,
+    "projects.padb.trades.bsite.tradeLineup[1].partner": "«partner tricounty»",
+    "projects.padb.trades.bsite.tradeLineup[1].travel.miles": 44,
     "tradeBenches[0].needs[0].bids": 1,
     "tradeBenches[0].needs[0].daysLeft": 6,
     "tradeBenches[0].needs[0].looking": 1,
@@ -8582,6 +8594,17 @@ exports[`GC mode golden walk > step 166: Cibolo pays the interest bill 1`] = `
 }
 `;
 
+exports[`GC mode golden walk > step 167: Fair Oaks D: Cool Breeze sends its schedule of values 1`] = `
+{
+  "changed": {
+    "lastLog.id": 163,
+    "lastLog.text": "Cool Breeze Mechanical sent its schedule of values for HVAC on Fair Oaks Shops, Building D: 3 lines, $158,000.",
+    "lastLog.who": "trade",
+  },
+  "removed": [],
+}
+`;
+
 exports[`GC mode golden walk > the whole state at the end 1`] = `
 {
   "customers": [
@@ -8782,6 +8805,11 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
+      "id": 163,
+      "text": "Cool Breeze Mechanical sent its schedule of values for HVAC on Fair Oaks Shops, Building D: 3 lines, $158,000.",
+      "who": "trade",
+    },
+    {
       "id": 162,
       "text": "Cibolo Creek Partners paid interest bill 1: $285.",
       "who": "office",
@@ -8924,11 +8952,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
     {
       "id": 134,
       "text": "Issued Addendum 1 on Leon Springs Urgent Care and emailed 0 companies. 0 were told it changes their trade. It adds 1 scope line.",
-      "who": "office",
-    },
-    {
-      "id": 133,
-      "text": "Accepted the Concrete work from Guadalupe Flatwork. The punch list is done.",
       "who": "office",
     },
   ],
@@ -12880,6 +12903,24 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
                 },
                 "note": "",
                 "plugs": {},
+                "sov": [
+                  {
+                    "amount": 70000,
+                    "label": "Underground and gear",
+                  },
+                  {
+                    "amount": 98000,
+                    "label": "Rough-in",
+                  },
+                  {
+                    "amount": 56000,
+                    "label": "Trim",
+                  },
+                  {
+                    "amount": 24000,
+                    "label": "Site lighting",
+                  },
+                ],
                 "submittedOn": "2026-05-12",
               },
               "id": "felec-pecanvalley",
@@ -13015,6 +13056,24 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
               },
             ],
             "status": "signed",
+            "theirSov": [
+              {
+                "amount": 70000,
+                "label": "Underground and gear",
+              },
+              {
+                "amount": 98000,
+                "label": "Rough-in",
+              },
+              {
+                "amount": 56000,
+                "label": "Trim",
+              },
+              {
+                "amount": 24000,
+                "label": "Site lighting",
+              },
+            ],
           },
           "trade": "Electrical",
         },
@@ -13345,6 +13404,20 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
               },
             ],
             "status": "signed",
+            "theirSov": [
+              {
+                "amount": 70000,
+                "label": "Rough-in: ductwork",
+              },
+              {
+                "amount": 60000,
+                "label": "Set the units",
+              },
+              {
+                "amount": 28000,
+                "label": "Trim and start-up",
+              },
+            ],
           },
           "trade": "HVAC",
         },

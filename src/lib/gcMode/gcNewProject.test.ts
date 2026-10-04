@@ -256,9 +256,9 @@ describe('defaultAsks', () => {
     expect(defaultAsks(state, project, pkg('Sitework'))).toEqual(['lonestar', 'tricounty'])
   })
 
-  it('ticks in the map\'s order, closest first, whatever the record, up to three', () => {
-    // Bexar and Comal answer under 40% of asks, but they are closest; Iron Horse is new to us.
-    expect(defaultAsks(state, project, pkg('Structural steel'))).toEqual(['bexar', 'comal', 'ironhorse'])
+  it('ticks in the map\'s order, most reliable first (question 7), up to three', () => {
+    // Iron Horse is new to us, not judged yet; Bexar and Comal answer under 40% of asks, so they follow, closest first.
+    expect(defaultAsks(state, project, pkg('Structural steel'))).toEqual(['ironhorse', 'bexar', 'comal'])
   })
 
   it('asks nobody on our own trade, or where no company does the trade', () => {

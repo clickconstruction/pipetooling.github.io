@@ -603,6 +603,20 @@ const STEPS: Step[] = [
   { label: 'Fair Oaks D: Cibolo pays 1.5% a month on a late bill', action: { type: 'setOwnerLateInterest', projectId: 'fairoaksd', pctPerMonth: 1.5 } },
   { label: 'Bill Cibolo the interest on pay application 3', action: { type: 'sendOwnerInterestBill', projectId: 'fairoaksd' } },
   { label: 'Cibolo pays the interest bill', action: { type: 'ownerPaidInterest', projectId: 'fairoaksd', number: 1 } },
+  // Question 4 (the owner, 2026-10-04): a trade's own schedule of values, beside ours.
+  {
+    label: 'Fair Oaks D: Cool Breeze sends its schedule of values',
+    action: {
+      type: 'tradeSendSov',
+      projectId: 'fairoaksd',
+      packageId: 'fhvac',
+      sov: [
+        { label: 'Rough-in: ductwork', amount: 70_000 },
+        { label: 'Set the units', amount: 60_000 },
+        { label: 'Trim and start-up', amount: 28_000 },
+      ],
+    },
+  },
 ]
 
 const CUSTOMER_IDS = ['cibolo', 'raman']
@@ -761,6 +775,7 @@ describe('GC mode golden walk', () => {
       'vetPartner', 'tradeVettingForm', 'recordPromise', 'keepPromise',
       'setOwnerRetainageStep',
       'setOwnerLateInterest', 'sendOwnerInterestBill', 'ownerPaidInterest',
+      'tradeSendSov',
     ]
     expect(all.filter((t) => !used.has(t))).toEqual([])
   })

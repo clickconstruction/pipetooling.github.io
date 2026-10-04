@@ -185,13 +185,13 @@ first** (a partner's vetting, the promise record), so build on those once GC 0 s
 
 ### Board (GC 0)
 
-1. **Q4 types first:** the trade's schedule of values on its quote (`SubBid.sov`), carried onto
+1. ~~**Q4 types first:**~~ done (this commit). the trade's schedule of values on its quote (`SubBid.sov`), carried onto
    the statement of work at award (`Sow.theirSov`), and a kernel for where a draw stands against
    it (claimed to date: through rough-in, into top out).
-2. **Q4 on the statement of work:** theirs beside ours on Contracts.
-3. **Q7 the map order:** most reliable first (`tradeLineup`), the shortest drive breaking a tie.
-4. **Q9:** no move is held back from an assistant in the prototype; say so in the walkthrough and
-   in *Access* for the real build.
+2. ~~**Q4 on the statement of work:** theirs beside ours on Contracts.~~ done (this commit).
+3. ~~**Q7 the map order:** most reliable first (`tradeLineup`), the shortest drive breaking a tie.~~ done (this commit).
+4. ~~**Q9:** no move is held back from an assistant in the prototype; say so in *Access* for the
+   real build.~~ done (this commit; README, *The plan*).
 
 ### Building (GC 1)
 
