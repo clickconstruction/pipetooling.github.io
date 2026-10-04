@@ -117,6 +117,7 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
 - **A new set of plans emails the right people**: every company bidding while we bid; once the
   job is ours, only the company on each trade.
 - **Communication is tracked per ask**, and a promised quote date is watched.
+- **A quote missing a cost does not close a trade either** (2026-10-03): a carried quote with a line that has no cost holds the ring open until every line has one; the card says "Summit Roofing, 112K + ?. 1 line has no cost yet: roof curbs." and the row's chip "· 1 missing a cost".
 - **A guess never closes a trade.** Our own budget carried as a trade's number fills the price,
   but the ring and the board's chip count only a real quote (or our own crew's number from a
   Trades mode bid). The chip names the guesses ("· 1 on our guess"); the card says "Carry one to
