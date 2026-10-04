@@ -7868,6 +7868,18 @@ exports[`GC mode golden walk > step 140: Leon Springs: the permit set takes E-10
 }
 `;
 
+exports[`GC mode golden walk > step 141: Pad B: take Lonestar's asphalt alternate 1`] = `
+{
+  "changed": {
+    "lastLog.id": 137,
+    "lastLog.text": "Took Lonestar Earthworks's alternate on Sitework for Boerne Retail Pad B: Asphalt paving in place of concrete. It takes off $6,000.",
+    "projects.padb.trades.bsite.compareBids.lines[0].allIn": 86500,
+    "projects.padb.trades.bsite.compareBids.lines[0].text": "Lonestar Earthworks bid $92,500 and covers everything. With the alternate we took, their number comes down $6,000.",
+  },
+  "removed": [],
+}
+`;
+
 exports[`GC mode golden walk > the whole state at the end 1`] = `
 {
   "customers": [
@@ -8068,6 +8080,11 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
+      "id": 137,
+      "text": "Took Lonestar Earthworks's alternate on Sitework for Boerne Retail Pad B: Asphalt paving in place of concrete. It takes off $6,000.",
+      "who": "office",
+    },
+    {
       "id": 136,
       "text": "Issued Permit set on Leon Springs Urgent Care and emailed 0 companies. 0 were told it changes their trade. It takes out 1 sheet.",
       "who": "office",
@@ -8210,11 +8227,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
     {
       "id": 108,
       "text": "Sent change order 3 to Dr. Priya Raman for signature: $2,640.",
-      "who": "office",
-    },
-    {
-      "id": 107,
-      "text": "Drafted change order 3 on Helotes Dental Office: Add a coffee bar cabinet in the break room, per A-501, $2,640.",
       "who": "office",
     },
   ],
@@ -9676,6 +9688,9 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
                 "plugs": {},
                 "quoteFile": "lonestar-pad-b.pdf",
                 "submittedOn": "2026-10-02",
+                "takenAlternates": [
+                  "Asphalt paving in place of concrete",
+                ],
               },
               "id": "bsite-lonestar",
               "invitedOn": "2026-10-02",

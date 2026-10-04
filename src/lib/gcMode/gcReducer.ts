@@ -1443,5 +1443,28 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
           : `Our superintendent sent a punch item back to ${partner.company}: ${what}.${note ? ` ${note.replace(/[.\s]+$/, '')}.` : ''}`,
       )
     }
+
+    case 'takeAlternate': {
+      // Question 14 (the Board lane's call, 2026-10-04): an alternate changes our number only when
+      // the office takes it. Taken or put back, by its label.
+      const { project, pkg, invite, partner } = find(state, action.projectId, action.packageId, action.inviteId)
+      const bid = invite?.bid
+      const alt = bid?.alternates?.find((a) => a.label === action.label)
+      if (!project || !pkg || !invite || !partner || !bid || !alt || pkg.sow) return state
+      const was = bid.takenAlternates ?? []
+      if (was.includes(alt.label) === action.taken) return state
+      const takenAlternates = action.taken ? [...was, alt.label] : was.filter((l) => l !== alt.label)
+      const next = mapProject(state, project.id, (p) =>
+        mapPackage(p, pkg.id, (k) => mapInvite(k, invite.id, (i) => ({ ...i, bid: i.bid ? { ...i.bid, takenAlternates } : i.bid }))),
+      )
+      const moves = `${alt.amount >= 0 ? 'adds' : 'takes off'} ${money(Math.abs(alt.amount))}`
+      return logged(
+        next,
+        'office',
+        action.taken
+          ? `Took ${partner.company}'s alternate on ${pkg.trade} for ${project.name}: ${alt.label}. It ${moves}.`
+          : `Put back ${partner.company}'s alternate on ${pkg.trade} for ${project.name}: ${alt.label}.`,
+      )
+    }
   }
 }

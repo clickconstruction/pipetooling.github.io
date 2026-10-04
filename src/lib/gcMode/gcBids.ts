@@ -2,20 +2,35 @@
  * GC mode — design spike. Bids: comparing quotes all in, what we carry, our price to the owner, bid tabs, statement-of-work money.
  * Split out of gcModel.ts verbatim; import from `./gcModel`, which re-exports every file.
  */
-import type { GcProject, GcState, Invite, ScopeItem, Sow, TradePackage } from './gcTypes'
-import { money, shortDate } from './gcWords'
+import type { GcProject, GcState, Invite, ScopeItem, Sow, SubBid, TradePackage } from './gcTypes'
+import { daysUntil, money, shortDate } from './gcWords'
 import { ownBidPriced, partnerById } from './gcLookups'
 import { pDate, type PortalLang } from './gcPortalI18n'
 import { GC_COMPANY } from './gcFixture'
 
-/** The bid plus the office's plug for every scope item it does not clearly include. */
+/** What the alternates the office took add to the number (negative: take off). 0 when none. */
+export function takenAlternatesTotal(bid: SubBid): number {
+  const taken = new Set(bid.takenAlternates ?? [])
+  return (bid.alternates ?? []).filter((a) => taken.has(a.label)).reduce((sum, a) => sum + a.amount, 0)
+}
+
+/**
+ * A number past the day it holds to (question 14, the Board lane's call, 2026-10-04): it stops
+ * counting toward the two quotes and is not a real number to carry until the trade sends it again.
+ * The same day rule as the portal's bidRanOut (good until = sent + goodForDays).
+ */
+export function quoteRanOut(bid: SubBid, today: string): boolean {
+  return bid.goodForDays !== undefined && bid.goodForDays > 0 && daysUntil(today, bid.submittedOn) > bid.goodForDays
+}
+
+/** The bid plus the office's plug for every scope item it does not clearly include, and any alternate it took. */
 export function leveledTotal(pkg: TradePackage, invite: Invite): number | null {
   const bid = invite.bid
   if (!bid) return null
   const plugs = pkg.scope.reduce((sum, item) => {
     return bid.includes[item.id] === 'yes' ? sum : sum + (bid.plugs[item.id] ?? 0)
   }, 0)
-  return bid.amount + plugs
+  return bid.amount + plugs + takenAlternatesTotal(bid)
 }
 
 /**
@@ -101,7 +116,8 @@ export function compareBids(state: GcState, project: GcProject, pkg: TradePackag
     const gaps = [...out, ...unclear]
     const uncosted = gaps.filter((i) => !((bid.plugs[i.id] ?? 0) > 0))
     const added = gaps.reduce((sum, i) => sum + (bid.plugs[i.id] ?? 0), 0)
-    const allIn = bid.amount + added
+    const alternates = takenAlternatesTotal(bid)
+    const allIn = bid.amount + added + alternates
     const names = (items: ScopeItem[]) => listWords(items.map((i) => i.label.toLowerCase()))
     let text = `${company} bid ${money(bid.amount)}`
     if (gaps.length === 0) {
@@ -116,6 +132,7 @@ export function compareBids(state: GcState, project: GcProject, pkg: TradePackag
           ? ` No cost is set for ${names(uncosted)} yet, so their real number is not known.`
           : ` Covering that adds ${money(added)}, so they come to ${money(allIn)}.`
     }
+    if (alternates !== 0) text += ` With the alternate we took, their number ${alternates > 0 ? 'goes up' : 'comes down'} ${money(Math.abs(alternates))}.`
     if (bidIsStale(project, pkg, invite)) text += ' They priced an older set of plans, so ask them to confirm.'
     return { inviteId: invite.id, company, text, allIn, complete: uncosted.length === 0 }
   })

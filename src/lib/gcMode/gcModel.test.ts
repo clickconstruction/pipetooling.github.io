@@ -463,6 +463,11 @@ const STEPS: Step[] = [
       retiedLines: [{ packageId: 'leon-springs-urgent-care-electrical', scopeId: 'leon-springs-urgent-care-electrical-2', sheets: ['E-102'] }],
     },
   },
+  // Question 14 (the Board lane's call, 2026-10-04): an alternate moves our number only when taken.
+  {
+    label: "Pad B: take Lonestar's asphalt alternate",
+    action: { type: 'takeAlternate', projectId: 'padb', packageId: 'bsite', inviteId: 'bsite-lonestar', label: 'Asphalt paving in place of concrete', taken: true },
+  },
 ]
 
 const CUSTOMER_IDS = ['cibolo', 'raman']
@@ -610,6 +615,7 @@ describe('GC mode golden walk', () => {
       'tradeSetLanguage',
       'setPartnerLanguage',
       'markLost', 'reopenLost',
+      'takeAlternate',
     ]
     expect(all.filter((t) => !used.has(t))).toEqual([])
   })
