@@ -72,7 +72,7 @@ function reduce(state: GcState, action: GcAction): GcState {
       return logged(
         { ...next, partners: next.partners.map((p) => (p.id === partner.id ? { ...p, invited: p.invited + 1 } : p)) },
         'office',
-        `Invited ${partner.company} to bid ${pkg.trade}.`,
+        `Invited ${partner.company} to quote ${pkg.trade}.`,
       )
     }
 
@@ -168,7 +168,7 @@ function reduce(state: GcState, action: GcAction): GcState {
           partners: next.partners.map((p) => (p.id === partner.id && !revised ? { ...p, bids: p.bids + 1 } : p)),
         },
         'trade',
-        `${partner.company} ${revised ? 'revised their bid to' : 'bid'} ${money(action.amount)} on ${pkg.trade}.`,
+        `${partner.company} ${revised ? 'revised their quote to' : 'quoted'} ${money(action.amount)} on ${pkg.trade}.`,
       )
     }
 
@@ -292,7 +292,7 @@ function reduce(state: GcState, action: GcAction): GcState {
           ? `Stopped carrying a number for ${pkg.trade}.`
           : action.carried === 'plug'
             ? `Carrying our budget of ${money(pkg.budget)} for ${pkg.trade}.`
-            : `Carrying ${partner?.company ?? 'a bid'} for ${pkg.trade}.`
+            : `Carrying ${partner?.company ?? 'a quote'} for ${pkg.trade}.`
       return logged(next, 'office', words)
     }
 
@@ -315,7 +315,7 @@ function reduce(state: GcState, action: GcAction): GcState {
       return logged(
         { ...next, partners: next.partners.map((p) => (p.id === partner.id ? { ...p, won: p.won + 1 } : p)) },
         'office',
-        `Awarded ${pkg.trade} to ${partner.company}. A statement of work is drafted from their bid.`,
+        `Awarded ${pkg.trade} to ${partner.company}. A statement of work is drafted from their quote.`,
       )
     }
 

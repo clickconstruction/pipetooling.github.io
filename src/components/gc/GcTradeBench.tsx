@@ -53,7 +53,7 @@ const RECORD_WORDS: Record<AnswerRecord, { tone: Tone; word: string }> = {
 const ASK_WORDS: Record<Invite['status'], { tone: Tone; word: string }> = {
   invited: { tone: 'red', word: 'has not opened it' },
   opened: { tone: 'blue', word: 'looking' },
-  bid: { tone: 'green', word: 'bid in' },
+  bid: { tone: 'green', word: 'quote in' },
   declined: { tone: 'grey', word: 'passed' },
 }
 
@@ -228,11 +228,11 @@ function BenchCard({
           {bench.partners.length} {bench.partners.length === 1 ? 'company' : 'companies'}
         </span>
         {bench.short > 0 ? (
-          <Chip tone="red">short {bench.short} {bench.short === 1 ? 'bid' : 'bids'}</Chip>
+          <Chip tone="red">short {bench.short} {bench.short === 1 ? 'quote' : 'quotes'}</Chip>
         ) : bench.needs.length > 0 ? (
-          <Chip tone="green">bids are in</Chip>
+          <Chip tone="green">quotes are in</Chip>
         ) : (
-          <Chip tone="grey">nothing out to bid</Chip>
+          <Chip tone="grey">nothing out for quotes</Chip>
         )}
         <span style={{ flex: 1 }} />
         <Btn kind="quiet" onClick={() => setAdding(!adding)}>{adding ? 'Cancel' : 'Add a company'}</Btn>
@@ -377,7 +377,7 @@ function NeedLine({
         {need.project.name}
       </button>
       <Chip tone={need.short === 0 ? 'green' : need.bids === 0 ? 'red' : 'amber'}>
-        {need.bids} of {BIDS_WANTED} bids
+        {need.bids} of {BIDS_WANTED} quotes
       </Chip>
       {parts.length > 0 && <span style={{ color: 'var(--text-600)' }}>{parts.join(' · ')}</span>}
       {need.daysLeft !== null && (
@@ -483,7 +483,7 @@ function PartnerLine({ state, partner, bench, dispatch }: { state: GcState; part
       <td style={{ ...td, whiteSpace: 'nowrap' }}>
         <Chip tone={record.tone}>{record.word}</Chip>{' '}
         <span style={{ color: 'var(--text-600)', fontSize: '0.85rem' }}>
-          {partner.invited === 0 ? 'never asked' : `bid ${partner.bids} of ${partner.invited} asks`}
+          {partner.invited === 0 ? 'never asked' : `quoted ${partner.bids} of ${partner.invited} asks`}
         </span>
         {schedule && (
           <div style={{ color: 'var(--text-600)', fontSize: '0.8rem', marginTop: '0.2rem' }} title={PARTNER_SCHEDULE_WHY}>
@@ -517,7 +517,7 @@ function PartnerLine({ state, partner, bench, dispatch }: { state: GcState; part
             const far = travelWords(travel, partner)
             const ask = () => dispatch({ type: 'invite', projectId: n.project.id, packageId: n.pkg.id, partnerId: partner.id })
             return travel.inZone ? (
-              <button key={n.pkg.id} type="button" onClick={ask} style={askPill} title={`Ask ${partner.company} to bid ${bench.trade.toLowerCase()} on ${n.project.name}.`}>
+              <button key={n.pkg.id} type="button" onClick={ask} style={askPill} title={`Ask ${partner.company} to quote ${bench.trade.toLowerCase()} on ${n.project.name}.`}>
                 + Ask on {n.project.name}
                 {far ? ` · ${far}` : ''}
               </button>

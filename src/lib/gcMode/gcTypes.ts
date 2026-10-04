@@ -751,7 +751,7 @@ export type GcAction =
   | { type: 'tradeFixPunchItem'; projectId: string; itemId: string }
   /** Our superintendent checks a fixed item: fixed, or sent back with a note. */
   | { type: 'checkPunchItem'; projectId: string; itemId: string; fixed: boolean; note?: string }
-  /** The office takes (or puts back) one of a quote's alternates on Compare bids (question 14). */
+  /** The office takes (or puts back) one of a quote's alternates on Compare quotes (question 14). */
   | { type: 'takeAlternate'; projectId: string; packageId: string; inviteId: string; label: string; taken: boolean }
   /** Our superintendent writes the daily log for a day (today, or a day missed); it replaces that day's. */
   | { type: 'saveDailyLog'; projectId: string; log: Omit<DailyLog, 'writtenOn'> }

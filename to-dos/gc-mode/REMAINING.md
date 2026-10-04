@@ -120,16 +120,16 @@ first** (a partner's vetting, the promise record), so build on those once GC 0 s
 
 ### Board (GC 0)
 
-1. **Q6 words:** *Compare bids* becomes *Compare quotes*; a trade's number is a quote across the
+1. ~~**Q6 words:**~~ done (this commit). *Compare bids* becomes *Compare quotes*; a trade's number is a quote across the
    Board's screens, the walkthroughs and the Board's log lines. Our number to the owner stays *our bid*.
-2. **Q3 types first:** `Partner.vetting` (not vetted, approved, approved up to $X, declined). A
+2. ~~**Q3 types first:**~~ done 90df3d85a. `Partner.vetting` (not vetted, approved, approved up to $X, declined). A
    known company with no record is approved.
-3. **Q8 types first:** the promise record (`gcPromises.ts`): one shape for every kind, kept when
+3. ~~**Q8 types first:**~~ done 90df3d85a. the promise record (`gcPromises.ts`): one shape for every kind, kept when
    the thing happens, listed in Follow up, counted in the company's word record.
-4. **Q3 the office side:** a quote from a company not vetted shows "not vetted yet"; *Award at*
+4. ~~**Q3 the office side:**~~ done dcf1d4ef5. a quote from a company not vetted shows "not vetted yet"; *Award at*
    stays locked until it is approved (or the number is over its limit); *Approve*, *Approve up to
    $X* and *Decline* on Trade partners and Compare quotes.
-5. **Q8 the Board's kinds:** insurance (the renewal: a Follow up row from 30 days before the
+5. ~~**Q8 the Board's kinds:**~~ done dcf1d4ef5 (Follow up's *Insurance, papers and other promises*). insurance (the renewal: a Follow up row from 30 days before the
    certificate runs out), a W-9, a signed statement of work.
 6. **Q7 Bid tabs:** *Mark awarded*, set by any estimator on our team, shown on the tab with who set it.
 7. **Q7 Start anyway** on Get started: with a reason, logged; what was missing stays listed as owed.
