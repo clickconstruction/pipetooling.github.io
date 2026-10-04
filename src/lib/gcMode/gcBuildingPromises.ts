@@ -96,7 +96,7 @@ export function papersOwedWords(owed: PapersOwed): string | null {
   if (others.length > 1) parts.push(`the unconditional waivers on draws ${others.slice(0, -1).join(', ')} and ${others[others.length - 1]}`)
   if (final) parts.push('the unconditional final release of lien')
   if (parts.length === 0) return null
-  return parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`
+  return parts.length === 1 ? (parts[0] ?? null) : `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`
 }
 
 /**
