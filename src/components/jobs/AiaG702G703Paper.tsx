@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { AIA_FIELD_DEFS, type AiaFieldKey } from '../../lib/aiaG702G703Template'
-import { type AiaPreview, formatAiaMoney, formatAiaPercent } from '../../lib/aiaG702G703Preview'
+import { type AiaPreview, type AiaPreviewRow, formatAiaMoney, formatAiaPercent } from '../../lib/aiaG702G703Preview'
+import { AIA_G703_MAX_ROWS } from '../../lib/aiaPayApplicationLines'
 
 /**
  * The AIA window's left side: both pages of the workbook drawn as paper, read from
@@ -65,8 +66,9 @@ export default function AiaG702G703Paper({
   onPick,
 }: {
   preview: AiaPreview
-  activeKey: AiaFieldKey | null
-  onPick: (key: AiaFieldKey) => void
+  /** A form field's key, or `line:<id>:<column>` for a box on a row of the G703. */
+  activeKey: string | null
+  onPick: (key: string) => void
 }) {
   const paneRef = useRef<HTMLDivElement>(null)
   const [zoom, setZoom] = useState(1)
@@ -128,6 +130,54 @@ export default function AiaG702G703Paper({
   }
 
   const moneyBox = (key: AiaFieldKey) => box(key, { textAlign: 'right', fontVariantNumeric: 'tabular-nums' })
+
+  /** A box on a row of the G703: pressing it puts the cursor in that line's field. */
+  const lineBox = (row: AiaPreviewRow, column: 'label' | 'scheduled' | 'from' | 'this' | 'stored', text: string, filled: boolean, money = false) => {
+    const key = `line:${row.lineId}:${column}`
+    const active = activeKey === key
+    return (
+      <button
+        type="button"
+        data-aia-cell={`line:${row.id}:${column}`}
+        data-aia-source={filled ? 'typed' : 'blank'}
+        onClick={() => onPick(key)}
+        style={{
+          font: 'inherit',
+          color: 'var(--text-strong)',
+          display: 'block',
+          width: '100%',
+          minHeight: 18,
+          boxSizing: 'border-box',
+          padding: '1px 4px',
+          margin: 0,
+          cursor: 'pointer',
+          borderRadius: 2,
+          border: 'none',
+          borderBottom: filled ? '1px solid var(--border-blue)' : '1px dotted var(--border-strong)',
+          background: active ? 'var(--bg-yellow-200)' : filled ? 'var(--bg-blue-tint)' : 'transparent',
+          outline: active ? '2px solid #2563eb' : 'none',
+          outlineOffset: 1,
+          whiteSpace: 'pre-wrap',
+          overflowWrap: 'anywhere',
+          textAlign: money ? 'right' : 'left',
+          fontVariantNumeric: money ? 'tabular-nums' : undefined,
+        }}
+      >
+        {text || '\u00a0'}
+      </button>
+    )
+  }
+
+  // Up to two of the sheet's unused rows are drawn as the workbook shows them; the rest are one line of words.
+  const used = math.rows.length
+  const emptyRowNumbers = Array.from({ length: Math.max(0, Math.min(2, AIA_G703_MAX_ROWS - used)) }, (_, i) => String(used + i + 1).padStart(3, '0'))
+  const firstUnshown = used + emptyRowNumbers.length + 1
+  const restNote =
+    used > AIA_G703_MAX_ROWS
+      ? `The workbook's sheet holds ${AIA_G703_MAX_ROWS} rows. This application has ${used}.`
+      : firstUnshown <= AIA_G703_MAX_ROWS
+        ? `Lines ${String(firstUnshown).padStart(3, '0')} to ${String(AIA_G703_MAX_ROWS).padStart(3, '0')} read the same in the workbook.`
+        : ''
 
   const line = (no: string, label: ReactNode, value: ReactNode, opts?: { strong?: boolean; note?: string }) => (
     <div style={{ display: 'grid', gridTemplateColumns: '22px 1fr 130px', alignItems: 'end', columnGap: 4, marginTop: 7 }}>
@@ -392,21 +442,25 @@ export default function AiaG702G703Paper({
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td style={{ ...td, textAlign: 'center', padding: '3px 3px' }}>001</td>
-                <td style={td}>{box('g703_c13_description')}</td>
-                <td style={td}>{moneyBox('g703_d13_scheduled_value')}</td>
-                <td style={td}>{moneyBox('g703_e13_from_previous')}</td>
-                <td style={td}>{moneyBox('g703_f13_this_period')}</td>
-                <td style={td}>{moneyBox('g703_g13_materials_stored')}</td>
-                <td style={tdMath}>{formatAiaMoney(math.line.totalToDate)}</td>
-                <td style={tdMath}>
-                  {math.line.pctComplete == null ? '#DIV/0!' : formatAiaPercent(math.line.pctComplete)}
-                </td>
-                <td style={tdMath}>{formatAiaMoney(math.line.balanceToFinish)}</td>
-                <td style={tdMath}>{formatAiaMoney(math.line.retainage)}</td>
-              </tr>
-              {['002', '003'].map((no) => (
+              {math.rows.map((row, i) => {
+                const no = String(i + 1).padStart(3, '0')
+                const pct = row.pctComplete == null ? '#DIV/0!' : formatAiaPercent(row.pctComplete)
+                return (
+                  <tr key={row.id} data-aia-row={row.id}>
+                    <td style={{ ...td, textAlign: 'center', padding: '3px 3px' }}>{no}</td>
+                    <td style={td}>{lineBox(row, 'label', row.label, row.label.trim() !== '')}</td>
+                    <td style={td}>{lineBox(row, 'scheduled', formatAiaMoney(row.scheduledValue), row.scheduledValue !== 0, true)}</td>
+                    <td style={td}>{lineBox(row, 'from', formatAiaMoney(row.fromPrevious), row.fromPrevious !== 0, true)}</td>
+                    <td style={td}>{lineBox(row, 'this', formatAiaMoney(row.thisPeriod), row.thisPeriod !== 0, true)}</td>
+                    <td style={td}>{lineBox(row, 'stored', formatAiaMoney(row.stored), row.stored !== 0, true)}</td>
+                    <td style={tdMath}>{formatAiaMoney(row.totalToDate)}</td>
+                    <td style={tdMath}>{pct}</td>
+                    <td style={tdMath}>{formatAiaMoney(row.balanceToFinish)}</td>
+                    <td style={tdMath}>{formatAiaMoney(row.retainage)}</td>
+                  </tr>
+                )
+              })}
+              {emptyRowNumbers.map((no) => (
                 <tr key={no}>
                   <td style={{ ...tdFaint, textAlign: 'center' }}>{no}</td>
                   <td style={td} />
@@ -420,11 +474,13 @@ export default function AiaG702G703Paper({
                   <td style={tdFaint}>$0.00</td>
                 </tr>
               ))}
-              <tr>
-                <td style={{ ...td, ...small, textAlign: 'center', color: 'var(--text-muted)' }} colSpan={10}>
-                  Lines 004 to 036 read the same in the workbook.
-                </td>
-              </tr>
+              {restNote ? (
+                <tr>
+                  <td style={{ ...td, ...small, textAlign: 'center', color: 'var(--text-muted)' }} colSpan={10}>
+                    {restNote}
+                  </td>
+                </tr>
+              ) : null}
               <tr style={{ fontWeight: 700 }}>
                 <td style={td} colSpan={2}>
                   TOTALS

@@ -94,7 +94,7 @@ export function JobWindowDocumentsTab({ job, onOverlayOpenChange }: { job: JobWi
                 </thead>
                 <tbody>
                   {apps.map((app) => {
-                    const mismatch = carryMismatch(app.fields, app.applicationNumber, apps)
+                    const mismatch = carryMismatch({ values: app.fields, lines: app.lines }, app.applicationNumber, apps)
                     return (
                     <Fragment key={app.id}>
                     <tr data-testid="job-documents-pay-app">

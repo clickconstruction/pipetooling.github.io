@@ -106,14 +106,15 @@ function app(no: number, thisPeriod: number, previous: number, certified: number
   const w = payApplicationWriteFromForm(
     'job-1',
     {
-      g702_n5_project: String(no),
-      g702_n6_period_to: no === 1 ? '09/30/2026' : '10/31/2026',
-      g702_h18_original_contract_sum: 48500,
-      g702_c28_retainage_percent: 10,
-      g702_h40_less_previous_certificates: certified,
-      g703_d13_scheduled_value: 48500,
-      g703_e13_from_previous: previous,
-      g703_f13_this_period: thisPeriod,
+      values: {
+        g702_n5_project: String(no),
+        g702_n6_period_to: no === 1 ? '09/30/2026' : '10/31/2026',
+        g702_h18_original_contract_sum: 48500,
+        g702_c28_retainage_percent: 10,
+        g702_h40_less_previous_certificates: certified,
+      },
+      lines: [{ id: 'line-1', label: 'Plumbing', scheduledValue: 48500, labor: null, stage: null, fromPrevious: previous, thisPeriod, stored: 0 }],
+      splitLaborMaterial: false,
     },
     link,
     reason,

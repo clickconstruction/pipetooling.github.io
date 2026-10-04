@@ -1,10 +1,10 @@
 import type { Cell, CellValue, Workbook } from 'exceljs'
 import { type AiaPreviewMath, buildAiaPreview } from './aiaG702G703Preview'
+import { AIA_G703_FIRST_ROW, AIA_G703_MAX_ROWS, type PayApplicationLine, printRowsOf } from './aiaPayApplicationLines'
 import {
   AIA_FIELD_DEFS,
   AIA_G702_SHEET,
   AIA_G703_G702_MIRROR_CELLS,
-  AIA_G703_MATERIALIZE_IF_FORMULA_REFS,
   AIA_G703_SHEET,
   type AiaFieldValues,
 } from './aiaG702G703Template'
@@ -106,16 +106,6 @@ function materializeG703Mirrors(wb: Workbook): void {
   }
 }
 
-function materializeG703FormulaCells(wb: Workbook): void {
-  const g703 = wb.getWorksheet(AIA_G703_SHEET)
-  if (!g703) return
-  for (const ref of AIA_G703_MATERIALIZE_IF_FORMULA_REFS) {
-    const cell = g703.getCell(ref)
-    if (!cellHasFormula(cell)) continue
-    cell.value = toWritableValueFromCell(cell)
-  }
-}
-
 /** G703 header boxes that are formulas onto the G702 page: left empty they keep the formula, and `materializeG703Mirrors` copies the G702 box. */
 const G703_FOLLOWS_G702_REFS: ReadonlySet<string> = new Set(
   AIA_G703_G702_MIRROR_CELLS.filter((m) => m.kind === 'g702_cell').map((m) => m.destRef),
@@ -151,30 +141,72 @@ function stampFormulaResults(wb: Workbook, math: AiaPreviewMath): void {
     H52: math.changeOrders.net,
   }
   for (const [ref, n] of Object.entries(g702)) stamp(AIA_G702_SHEET, ref, n)
-  const { line } = math
-  // Row 13 is the one line the form fills; row 49 sums the column, and every other row is 0.
-  for (const row of [13, 49]) {
-    if (row === 49) {
-      stamp(AIA_G703_SHEET, 'D49', line.scheduledValue)
-      stamp(AIA_G703_SHEET, 'E49', line.fromPrevious)
-      stamp(AIA_G703_SHEET, 'F49', line.thisPeriod)
-      stamp(AIA_G703_SHEET, 'G49', line.materialsStored)
-    }
-    stamp(AIA_G703_SHEET, `H${row}`, line.totalToDate)
-    stamp(AIA_G703_SHEET, `I${row}`, line.pctComplete)
-    stamp(AIA_G703_SHEET, `J${row}`, line.balanceToFinish)
-    stamp(AIA_G703_SHEET, `K${row}`, line.retainage)
+  // The item rows: a printed row's own results, and nothing (0, no percent) on the rows left empty.
+  for (let i = 0; i < AIA_G703_MAX_ROWS; i++) {
+    const row = AIA_G703_FIRST_ROW + i
+    const r = math.rows[i]
+    stamp(AIA_G703_SHEET, `H${row}`, r ? r.totalToDate : 0)
+    stamp(AIA_G703_SHEET, `I${row}`, r ? r.pctComplete : null)
+    stamp(AIA_G703_SHEET, `J${row}`, r ? r.balanceToFinish : 0)
+    stamp(AIA_G703_SHEET, `K${row}`, r ? r.retainage : 0)
   }
+  // Row 49 sums each column.
+  const { line } = math
+  stamp(AIA_G703_SHEET, 'D49', line.scheduledValue)
+  stamp(AIA_G703_SHEET, 'E49', line.fromPrevious)
+  stamp(AIA_G703_SHEET, 'F49', line.thisPeriod)
+  stamp(AIA_G703_SHEET, 'G49', line.materialsStored)
+  stamp(AIA_G703_SHEET, 'H49', line.totalToDate)
+  stamp(AIA_G703_SHEET, 'I49', line.pctComplete)
+  stamp(AIA_G703_SHEET, 'J49', line.balanceToFinish)
+  stamp(AIA_G703_SHEET, 'K49', line.retainage)
   wb.calcProperties.fullCalcOnLoad = true
 }
 
 /**
- * Write the form onto the bundled workbook. A box the form leaves empty is cleared: the template
- * was saved from a real job, and none of that job's values may reach another job's download.
+ * The application has more printed rows than the sheet has item rows. Nothing is written: a
+ * download that silently dropped lines would ask the GC for the wrong amount.
+ */
+export class AiaTooManyRows extends Error {
+  constructor(public readonly rows: number) {
+    super(`The continuation sheet holds ${AIA_G703_MAX_ROWS} rows and this application has ${rows}. Group some lines to generate it.`)
+    this.name = 'AiaTooManyRows'
+  }
+}
+
+export type AiaFillOptions = { splitLaborMaterial?: boolean }
+
+/**
+ * The application's lines onto the G703's item rows (13–46): description, scheduled value, work
+ * from previous applications, work this period, material stored. Every item row is written, a
+ * row with no line as blank: the template's own first row was saved from a real job.
+ */
+function writeLines(wb: Workbook, lines: ReadonlyArray<PayApplicationLine>, split: boolean): void {
+  const ws = wb.getWorksheet(AIA_G703_SHEET)
+  if (!ws) return
+  const rows = printRowsOf(lines, split)
+  if (rows.length > AIA_G703_MAX_ROWS) throw new AiaTooManyRows(rows.length)
+  for (let i = 0; i < AIA_G703_MAX_ROWS; i++) {
+    const n = AIA_G703_FIRST_ROW + i
+    const r = rows[i]
+    ws.getCell(`C${n}`).value = r && r.label.trim() ? r.label : null
+    ws.getCell(`D${n}`).value = r ? r.scheduledValue : 0
+    ws.getCell(`E${n}`).value = r ? r.fromPrevious : 0
+    ws.getCell(`F${n}`).value = r ? r.thisPeriod : 0
+    ws.getCell(`G${n}`).value = r ? r.stored : 0
+  }
+}
+
+/**
+ * Write the form and the lines onto the bundled workbook. A box the form leaves empty is cleared:
+ * the template was saved from a real job, and none of that job's values may reach another job's
+ * download.
  */
 export async function fillAiaG702G703Workbook(
   templateArrayBuffer: ArrayBuffer,
   values: AiaFieldValues,
+  lines: ReadonlyArray<PayApplicationLine> = [],
+  options: AiaFillOptions = {},
 ): Promise<ArrayBuffer> {
   const ExcelJS = await import('exceljs')
   const wb = new ExcelJS.Workbook()
@@ -201,9 +233,9 @@ export async function fillAiaG702G703Workbook(
     }
   }
 
+  writeLines(wb, lines, options.splitLaborMaterial === true)
   materializeG703Mirrors(wb)
-  materializeG703FormulaCells(wb)
-  stampFormulaResults(wb, buildAiaPreview(values).math)
+  stampFormulaResults(wb, buildAiaPreview(values, lines, options).math)
 
   const wbout = (await wb.xlsx.writeBuffer()) as unknown as ArrayBuffer | Uint8Array
   if (wbout instanceof ArrayBuffer) return wbout.slice(0)
@@ -212,11 +244,16 @@ export async function fillAiaG702G703Workbook(
   return ab
 }
 
-export async function fetchAndFillAiaTemplate(templateUrl: string, values: AiaFieldValues): Promise<ArrayBuffer> {
+export async function fetchAndFillAiaTemplate(
+  templateUrl: string,
+  values: AiaFieldValues,
+  lines: ReadonlyArray<PayApplicationLine> = [],
+  options: AiaFillOptions = {},
+): Promise<ArrayBuffer> {
   const res = await fetch(templateUrl)
   if (!res.ok) {
     throw new Error(`Could not load AIA template (${res.status})`)
   }
   const ab = await res.arrayBuffer()
-  return fillAiaG702G703Workbook(ab, values)
+  return fillAiaG702G703Workbook(ab, values, lines, options)
 }

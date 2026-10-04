@@ -17,11 +17,22 @@ type PayApplicationInsert = Database['public']['Tables']['job_pay_applications']
 
 const BASE_COLS =
   'id, job_id, application_number, period_to, application_date, fields, contract_sum_to_date, total_completed_and_stored, retainage_pct, retainage_held, total_earned_less_retainage, current_payment_due, files, updated_at'
-// `carry_reason` came with a later migration (v2.4494). A database that does not have it yet
-// answers 42703 (undefined column); the read and the write then go again without it, so the
-// window works on either side of the push.
-const COLS = `${BASE_COLS}, carry_reason`
-const UNDEFINED_COLUMN = '42703'
+// Two later migrations added columns: `carry_reason` (v2.4494), then `lines` and
+// `split_labor_material` (v2.4498). A database that does not have one yet answers 42703 (a
+// selected column is unknown) or PGRST204 (a written one is). The read then goes again with the
+// columns it had before; the write does too, unless that would drop lines it cannot keep.
+const COLS_WITH_REASON = `${BASE_COLS}, carry_reason`
+const COLS = `${COLS_WITH_REASON}, lines, split_labor_material`
+const COLUMN_SETS = [COLS, COLS_WITH_REASON, BASE_COLS] as const
+const isUnknownColumn = (code: string | undefined): boolean => code === '42703' || code === 'PGRST204'
+
+/** The database cannot keep this application's lines yet (the lines migration is not applied). */
+export class PayApplicationLinesNotReady extends Error {
+  constructor() {
+    super('The database is being updated to keep more than one line. Try again in a few minutes.')
+    this.name = 'PayApplicationLinesNotReady'
+  }
+}
 
 /** The number is already taken on this job (the table's unique rule). */
 export class PayApplicationNumberTaken extends Error {
@@ -34,33 +45,46 @@ export class PayApplicationNumberTaken extends Error {
 /** The job's saved applications in number order. A read that fails (the table not there yet) is no applications. */
 export async function loadPayApplications(jobId: string): Promise<SavedPayApplication[]> {
   const read = (cols: string) => supabase.from('job_pay_applications').select(cols).eq('job_id', jobId).order('application_number').limit(500)
-  let { data, error } = await read(COLS)
-  if (error?.code === UNDEFINED_COLUMN) ({ data, error } = await read(BASE_COLS))
-  if (error) return []
-  return sortPayApplications(((data ?? []) as unknown as PayApplicationRow[]).map(savedPayApplicationFromRow))
+  for (const cols of COLUMN_SETS) {
+    const { data, error } = await read(cols)
+    if (error && isUnknownColumn(error.code)) continue
+    if (error) return []
+    return sortPayApplications(((data ?? []) as unknown as PayApplicationRow[]).map(savedPayApplicationFromRow))
+  }
+  return []
 }
 
 /**
  * Save one application: a new row, or the row already open (`id`), which may change its number.
- * Throws `PayApplicationNumberTaken` when another row on the job holds the number.
+ * Throws `PayApplicationNumberTaken` when another row on the job holds the number, and
+ * `PayApplicationLinesNotReady` when the database cannot keep its lines yet.
  */
 export async function savePayApplication(write: PayApplicationWrite, id: string | null): Promise<SavedPayApplication> {
-  const send = (payload: PayApplicationWrite, cols: string) => {
-    // The form (`fields`) and the kept links (`files`) are plain JSON; the kernel types them as its own shapes.
+  const send = (payload: Record<string, unknown>, cols: string) => {
+    // The form (`fields`), the lines and the kept links (`files`) are plain JSON; the kernel types them as its own shapes.
     const row = payload as unknown as PayApplicationInsert
     const table = supabase.from('job_pay_applications')
     return id ? table.update(row).eq('id', id).select(cols).single() : table.insert(row).select(cols).single()
   }
-  let { data, error } = await send(write, COLS)
-  if (error?.code === UNDEFINED_COLUMN) {
-    const { carry_reason: _reason, ...withoutReason } = write
-    ;({ data, error } = await send(withoutReason, BASE_COLS))
+  const { lines, split_labor_material, carry_reason, ...base } = write
+  // One line also lives in `fields`, so an older database keeps it; more than one, or split rows, it cannot.
+  const needsLines = (Array.isArray(lines) && lines.length > 1) || split_labor_material === true
+  const attempts: Array<[Record<string, unknown>, string]> = [
+    [write, COLS],
+    [carry_reason === undefined ? base : { ...base, carry_reason }, COLS_WITH_REASON],
+    [base, BASE_COLS],
+  ]
+  for (const [i, [payload, cols]] of attempts.entries()) {
+    if (i > 0 && needsLines) throw new PayApplicationLinesNotReady()
+    const { data, error } = await send(payload, cols)
+    if (error && isUnknownColumn(error.code) && i < attempts.length - 1) continue
+    if (error) {
+      if (error.code === '23505') throw new PayApplicationNumberTaken(write.application_number)
+      throw error
+    }
+    return savedPayApplicationFromRow(data as unknown as PayApplicationRow)
   }
-  if (error) {
-    if (error.code === '23505') throw new PayApplicationNumberTaken(write.application_number)
-    throw error
-  }
-  return savedPayApplicationFromRow(data as unknown as PayApplicationRow)
+  throw new Error('The application could not be saved.')
 }
 
 export async function deletePayApplication(id: string): Promise<void> {

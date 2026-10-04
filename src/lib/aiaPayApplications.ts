@@ -1,5 +1,13 @@
 import { AIA_FIELD_DEFS, type AiaFieldKey, type AiaFieldValues, formatAiaDate } from './aiaG702G703Template'
 import { buildAiaPreview } from './aiaG702G703Preview'
+import {
+  type PayApplicationLine,
+  carriedWorkByLineId,
+  carryForwardLines,
+  cents,
+  legacyFieldsFromLine,
+  linesOfApplication,
+} from './aiaPayApplicationLines'
 
 /**
  * Pay applications the job remembers (the AIA window's saved rows, `job_pay_applications`).
@@ -16,6 +24,10 @@ export type SavedPayApplication = {
   periodTo: string | null
   applicationDate: string | null
   fields: AiaFieldValues
+  /** The G703's lines. Never empty: an application saved before lines reads as its one line. */
+  lines: PayApplicationLine[]
+  /** Print each line as a labor row and a material row. */
+  splitLaborMaterial: boolean
   contractSumToDate: number
   totalCompletedAndStored: number
   retainagePct: number
@@ -48,8 +60,13 @@ export type PayApplicationRow = {
   current_payment_due: number | string
   files?: unknown
   carry_reason?: string | null
+  lines?: unknown
+  split_labor_material?: boolean | null
   updated_at: string | null
 }
+
+/** What the window holds for one application: the header boxes, the lines, and how the lines print. */
+export type PayApplicationForm = { values: AiaFieldValues; lines: PayApplicationLine[]; splitLaborMaterial: boolean }
 
 /** What a save writes: everything but the id and the server's stamps. */
 export type PayApplicationWrite = Omit<PayApplicationRow, 'id' | 'updated_at'>
@@ -98,6 +115,8 @@ export function savedPayApplicationFromRow(row: PayApplicationRow): SavedPayAppl
     periodTo: row.period_to,
     applicationDate: row.application_date,
     fields: fieldsFromJson(row.fields),
+    lines: linesOfApplication(row.lines, row.fields),
+    splitLaborMaterial: row.split_labor_material === true,
     contractSumToDate: Number(row.contract_sum_to_date) || 0,
     totalCompletedAndStored: Number(row.total_completed_and_stored) || 0,
     retainagePct: Number(row.retainage_pct) || 0,
@@ -135,14 +154,17 @@ export type PayApplicationWriteResult = { ok: true; row: PayApplicationWrite } |
 /**
  * The row a save writes for this form and its link, or why it cannot be saved. `carryReason` is
  * written only when it is passed: a save that has nothing to say about it leaves the column alone.
+ * A one-line application also writes its line into the form fields it used to live in, so a
+ * client from before lines still reads it.
  */
-export function payApplicationWriteFromForm(jobId: string, values: AiaFieldValues, link = '', carryReason?: string): PayApplicationWriteResult {
+export function payApplicationWriteFromForm(jobId: string, form: PayApplicationForm, link = '', carryReason?: string): PayApplicationWriteResult {
+  const { values, lines, splitLaborMaterial } = form
   const number = parseApplicationNumber(values.g702_n5_project)
   if (number == null) return { ok: false, reason: 'Type the application number as a whole number, like 1, to save it on the job.' }
   const url = cleanPayApplicationLink(link)
   if (link.trim() && !url) return { ok: false, reason: 'The link to the file is not a web address. Paste the whole link, starting with https.' }
   const files: PayApplicationFile[] = url ? [{ kind: 'link', url }] : []
-  const { math } = buildAiaPreview(values)
+  const { math } = buildAiaPreview(values, lines, { splitLaborMaterial })
   return {
     ok: true,
     row: {
@@ -150,7 +172,9 @@ export function payApplicationWriteFromForm(jobId: string, values: AiaFieldValue
       application_number: number,
       period_to: parseAiaDate(values.g702_n6_period_to),
       application_date: parseAiaDate(values.g703_k3_application_date),
-      fields: values,
+      fields: lines.length === 1 ? { ...values, ...legacyFieldsFromLine(lines[0]!) } : values,
+      lines,
+      split_labor_material: splitLaborMaterial,
       contract_sum_to_date: math.contractSumToDate,
       total_completed_and_stored: math.totalCompletedAndStored,
       retainage_pct: Number(values.g702_c28_retainage_percent) || 0,
@@ -184,11 +208,8 @@ const num = (v: string | number | undefined): number => {
   return Number.isFinite(n) ? n : 0
 }
 
-const cents = (n: number): number => Math.round((n + Number.EPSILON) * 100) / 100
-
-/** The four amounts a later application takes from the one before it. */
+/** The three header amounts a later application takes from the one before it (its lines carry their own work). */
 export const CARRIED_AMOUNT_KEYS = [
-  'g703_e13_from_previous',
   'g702_h40_less_previous_certificates',
   'g702_f49_previous_month_change_order_additions',
   'g702_h49_previous_month_change_order_deductions',
@@ -196,13 +217,12 @@ export const CARRIED_AMOUNT_KEYS = [
 export type CarriedAmountKey = (typeof CARRIED_AMOUNT_KEYS)[number]
 
 /**
- * What an application gives the next one: its work to date becomes previous work, its line 6
- * becomes previous certificates, and its change orders join the previous months.
+ * What an application gives the next one on the G702: its line 6 becomes previous certificates,
+ * and its change orders join the previous months.
  */
 export function carriedAmountsFrom(previous: SavedPayApplication): Record<CarriedAmountKey, number> {
   const f = previous.fields
   return {
-    g703_e13_from_previous: cents(num(f.g703_e13_from_previous) + num(f.g703_f13_this_period)),
     g702_h40_less_previous_certificates: cents(previous.totalEarnedLessRetainage),
     g702_f49_previous_month_change_order_additions: cents(
       num(f.g702_f49_previous_month_change_order_additions) + num(f.g702_f50_this_month_change_order_additions),
@@ -213,7 +233,7 @@ export function carriedAmountsFrom(previous: SavedPayApplication): Record<Carrie
   }
 }
 
-/** What carries from one application to the next unchanged: who, what, the contract, the rates, the line's name and value. */
+/** What carries from one application to the next unchanged: who, what, the contract, the rates. */
 const CARRIED_AS_IS: readonly AiaFieldKey[] = [
   'g702_n7_project_no',
   'g702_n9_contract_date',
@@ -230,89 +250,106 @@ const CARRIED_AS_IS: readonly AiaFieldKey[] = [
   'g702_c28_retainage_percent',
   'g702_c31_retainage_material_percent',
   'g703_k5_architect_project_no',
-  'g703_c13_description',
-  'g703_d13_scheduled_value',
-  'g703_g13_materials_stored',
 ]
 
 /**
  * A new application's starting form, from the one before it and the job as it stands today.
  *
  * - The number is one past the last. The application date is today's (from `jobPrefill`); the period is typed.
- * - Work from previous application = the last one's previous work + its work that period. Stored
- *   material carries as it was: it is still on site until someone says otherwise.
+ * - Each line keeps its name and value; its work to date becomes its previous work, and its
+ *   stored material stays on site until someone says otherwise.
  * - Less previous certificates = the last one's total earned less retainage (its line 6).
  * - Last period's change orders join the previous months; this month starts empty.
- * - Work this period is offered as the job's value created today less everything already claimed,
- *   and left empty when that is not above zero.
+ * - On a one-line application, work this period is offered as the job's value created today
+ *   less everything already claimed, and left empty when that is not above zero.
  */
-export function carryForwardPayApplication(last: SavedPayApplication, jobPrefill: AiaFieldValues): AiaFieldValues {
+export function carryForwardPayApplication(last: SavedPayApplication, jobPrefill: AiaFieldValues, valueCreated = 0): PayApplicationForm {
   const f = last.fields
-  const out: AiaFieldValues = { ...jobPrefill }
+  const values: AiaFieldValues = { ...jobPrefill }
   for (const key of CARRIED_AS_IS) {
     const v = f[key]
-    if (v !== undefined && v !== '') out[key] = v
-    else delete out[key]
+    if (v !== undefined && v !== '') values[key] = v
+    else delete values[key]
   }
-  out.g702_n5_project = String(last.applicationNumber + 1)
-  out.g702_n6_period_to = ''
-  out.g703_k2_project = ''
-  out.g703_k4_period_to = ''
+  values.g702_n5_project = String(last.applicationNumber + 1)
+  values.g702_n6_period_to = ''
+  values.g703_k2_project = ''
+  values.g703_k4_period_to = ''
 
   const carried = carriedAmountsFrom(last)
   for (const key of CARRIED_AMOUNT_KEYS) {
-    if (carried[key] !== 0) out[key] = carried[key]
-    else delete out[key]
+    if (carried[key] !== 0) values[key] = carried[key]
+    else delete values[key]
   }
-  const workBefore = carried.g703_e13_from_previous
-  delete out.g702_f50_this_month_change_order_additions
-  delete out.g702_h50_this_month_change_order_deductions
+  delete values.g702_f50_this_month_change_order_additions
+  delete values.g702_h50_this_month_change_order_deductions
 
-  // `jobPrefill` offers the job's value created to date as this period's work; take off what earlier applications claimed.
-  const valueCreated = num(jobPrefill.g703_f13_this_period)
-  const offered = Math.round((valueCreated - workBefore - num(out.g703_g13_materials_stored)) * 100) / 100
-  if (valueCreated > 0 && offered > 0) out.g703_f13_this_period = offered
-  else delete out.g703_f13_this_period
-
-  return out
+  const lines = carryForwardLines(last.lines)
+  if (lines.length === 1) {
+    const only = lines[0]!
+    const offered = cents(valueCreated - only.fromPrevious - only.stored)
+    if (valueCreated > 0 && offered > 0) only.thisPeriod = offered
+  }
+  return { values, lines, splitLaborMaterial: last.splitLaborMaterial }
 }
 
-export type CarryDifference = { key: CarriedAmountKey; label: string; here: number; fromPrevious: number }
+export type CarryDifference = { key: string; label: string; here: number; fromPrevious: number }
 export type CarryMismatch = { previousNumber: number; differences: CarryDifference[] }
 
 const LABEL_BY_KEY = Object.fromEntries(AIA_FIELD_DEFS.map((d) => [d.key, d.label])) as Record<AiaFieldKey, string>
 
 /**
- * Where an application's previous amounts differ from what the application before it gives today.
+ * Where an application's previous amounts differ from what the application before it gives today:
+ * each line's previous work, then the G702's previous certificates and change orders.
  * Nothing locks a saved application, so an earlier one can change after a later one went out; the
  * later one is flagged, not blocked. null when it has no application before it, or they agree.
  */
 export function carryMismatch(
-  values: AiaFieldValues,
+  form: Pick<PayApplicationForm, 'values' | 'lines'>,
   applicationNumber: number | null,
   list: ReadonlyArray<SavedPayApplication>,
 ): CarryMismatch | null {
   if (applicationNumber == null) return null
   const previous = previousPayApplication(list, applicationNumber)
   if (!previous) return null
-  const carried = carriedAmountsFrom(previous)
   const differences: CarryDifference[] = []
+
+  const given = carriedWorkByLineId(previous.lines)
+  const hereById = new Map(form.lines.map((l) => [l.id, l]))
+  const name = (l: PayApplicationLine | undefined) => (l && l.label.trim() ? l.label.trim() : 'A line')
+  // A line the earlier application has: its work to date should be this line's previous work.
+  for (const p of previous.lines) {
+    const mine = hereById.get(p.id)
+    const here = cents(mine ? mine.fromPrevious : 0)
+    const fromPrevious = given.get(p.id) ?? 0
+    if (here !== fromPrevious) differences.push({ key: `line:${p.id}`, label: `${name(mine ?? p)}, work from previous application`, here, fromPrevious })
+  }
+  // A line only this application has claims no previous work from the earlier one.
+  for (const l of form.lines) {
+    if (given.has(l.id)) continue
+    const here = cents(l.fromPrevious)
+    if (here !== 0) differences.push({ key: `line:${l.id}`, label: `${name(l)}, work from previous application`, here, fromPrevious: 0 })
+  }
+
+  const carried = carriedAmountsFrom(previous)
   for (const key of CARRIED_AMOUNT_KEYS) {
-    const here = cents(num(values[key]))
+    const here = cents(num(form.values[key]))
     if (here !== carried[key]) differences.push({ key, label: LABEL_BY_KEY[key], here, fromPrevious: carried[key] })
   }
   return differences.length > 0 ? { previousNumber: previous.applicationNumber, differences } : null
 }
 
-/** The form with the previous application's amounts as it gives them today. */
-export function withCarriedAmounts(values: AiaFieldValues, previous: SavedPayApplication): AiaFieldValues {
-  const out: AiaFieldValues = { ...values }
+/** The form with the previous application's amounts as it gives them today: on each line, and on the G702. */
+export function withCarriedAmounts<T extends Pick<PayApplicationForm, 'values' | 'lines'>>(form: T, previous: SavedPayApplication): T {
+  const values: AiaFieldValues = { ...form.values }
   const carried = carriedAmountsFrom(previous)
   for (const key of CARRIED_AMOUNT_KEYS) {
-    if (carried[key] !== 0) out[key] = carried[key]
-    else delete out[key]
+    if (carried[key] !== 0) values[key] = carried[key]
+    else delete values[key]
   }
-  return out
+  const given = carriedWorkByLineId(previous.lines)
+  const lines = form.lines.map((l) => ({ ...l, fromPrevious: given.get(l.id) ?? 0 }))
+  return { ...form, values, lines }
 }
 
 /** The owner, 2026-10-04: retainage "is usually 10% but can sometimes go to 5% after 50% complete", and at 5% "it covers everything to date". */
@@ -333,13 +370,14 @@ export type RetainageDropOffer = {
  * The offer to drop retainage: made once the job is past halfway while the form still holds more
  * than the reduced percent. It is an offer, not a rule: not every contract drops it.
  */
-export function retainageDropOffer(values: AiaFieldValues): RetainageDropOffer | null {
+export function retainageDropOffer(form: PayApplicationForm): RetainageDropOffer | null {
+  const { values, lines, splitLaborMaterial } = form
   const pct = num(values.g702_c28_retainage_percent)
   if (pct <= AIA_REDUCED_RETAINAGE_PERCENT) return null
-  const now = buildAiaPreview(values).math
+  const now = buildAiaPreview(values, lines, { splitLaborMaterial }).math
   const pctComplete = now.line.pctComplete
   if (pctComplete == null || pctComplete <= AIA_RETAINAGE_DROP_AFTER) return null
-  const reduced = buildAiaPreview({ ...values, g702_c28_retainage_percent: AIA_REDUCED_RETAINAGE_PERCENT }).math
+  const reduced = buildAiaPreview({ ...values, g702_c28_retainage_percent: AIA_REDUCED_RETAINAGE_PERCENT }, lines, { splitLaborMaterial }).math
   return {
     pctComplete,
     heldNow: now.totalRetainage,
