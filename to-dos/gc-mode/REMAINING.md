@@ -64,10 +64,9 @@ makes; nobody builds it until he answers.
 
 1. ~~**Our own crew's percent from its Pipeline job**~~ done c0a4c6c61: real build only, how it plugs in is in the README.
 2. ~~**A phone pass on Building's tabs:** Draws, Schedule, Closeout.~~ done 248c99720
-3. **The walk's order (owner first, item 12 in Owner):** if he says yes, move "Draw Helotes's
-   schedule" before Start in the golden walk, since Start is shut until the schedule is drawn.
-   The owner said yes, and to fix a gap first (2026-10-03): a trade a later set brings in does
-   not join a drawn schedule. Waiting on the New Project lane's `issuePlanSet`.
+3. ~~**The walk's order (owner first, item 12 in Owner):** move "Draw Helotes's schedule" before Start.~~
+   done (this commit): the owner said yes and to fix the gap first; New Project's `issuePlanSet`
+   now puts a set's new work on a drawn schedule (4241d807b), so the storefront stays on it.
 4. ~~**Notifications for Building's events**~~ done ac44df256: the table under *Workflow steps not built yet*.
 5. ~~**Tidy your lines in `README.md`.**~~ done c3de80230
 

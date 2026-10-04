@@ -87,6 +87,8 @@ const STEPS: Step[] = [
   { label: 'Permit taken back', action: { type: 'setStartItem', projectId: 'helotes', item: 'permit', done: false } },
   { label: 'Permit in hand again', action: { type: 'setStartItem', projectId: 'helotes', item: 'permit', done: true } },
   { label: 'Start date', action: { type: 'setStartDate', projectId: 'helotes', date: '2026-10-12' } },
+  // Start waits on the schedule (the Board lane's Get started step), so it is drawn first (owner, 2026-10-03).
+  { label: 'Draw Helotes’s schedule from Oct 12', action: { type: 'draftSchedule', projectId: 'helotes', start: '2026-10-12' } },
   { label: 'Start', action: { type: 'startProject', projectId: 'helotes' } },
   // Helotes, building: report, draw, pay, waive.
   { label: 'Hill Country reports hang and tape done', action: { type: 'tradeReport', projectId: 'helotes', packageId: 'dry', sovId: 'dry-2', pct: 100 } },
@@ -292,8 +294,7 @@ const STEPS: Step[] = [
     label: 'Leon Springs: we price our own plumbing bid',
     action: { type: 'priceOwnBid', projectId: 'leon-springs-urgent-care', packageId: 'leon-springs-urgent-care-plumbing', value: 68_000 },
   },
-  // The schedule, drawn (Building lane): a first draft on Helotes, an activity moved, milestones.
-  { label: 'Draw Helotes’s schedule from Oct 12', action: { type: 'draftSchedule', projectId: 'helotes', start: '2026-10-12' } },
+  // The schedule, drawn (Building lane): an activity moved on Helotes, milestones. Its first draft is drawn before Start.
   {
     label: 'Framing waits on electrical: Nov 16 to 25',
     action: { type: 'setScheduleActivity', projectId: 'helotes', lineId: 'dry-1', start: '2026-11-16', finish: '2026-11-25', after: ['delec-1'] },

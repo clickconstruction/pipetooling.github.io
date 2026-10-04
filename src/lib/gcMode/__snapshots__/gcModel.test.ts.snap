@@ -5650,12 +5650,37 @@ exports[`GC mode golden walk > step 45: Start date 1`] = `
 }
 `;
 
-exports[`GC mode golden walk > step 46: Start 1`] = `
+exports[`GC mode golden walk > step 46: Draw Helotes’s schedule from Oct 12 1`] = `
 {
   "changed": {
     "lastLog.id": 42,
+    "lastLog.text": "Drew a first draft of the schedule on Helotes Dental Office: 19 activities from Mon Oct 12.",
+    "projects.helotes.stageProgress.also[0]": "Everything is in. Open Get started and tap Start.",
+    "projects.helotes.stageProgress.center": "25/25",
+    "projects.helotes.stageProgress.groups[1].items[0].detail": "19 activities, 2 milestones",
+    "projects.helotes.stageProgress.groups[1].items[0].done": true,
+    "projects.helotes.stageProgress.headline": "25 of 25 steps done before work can start.",
+    "projects.helotes.stageProgress.share": 1,
+    "projects.helotes.startChecklist.done": 25,
+    "projects.helotes.startChecklist.missing": "[]",
+    "projects.helotes.startChecklist.ready": true,
+    "projects.helotes.startChecklist.schedule.detail": "19 activities, 2 milestones",
+    "projects.helotes.startChecklist.schedule.done": true,
+  },
+  "removed": [
+    "projects.helotes.stageProgress.also",
+    "projects.helotes.startChecklist.missing[0]",
+  ],
+}
+`;
+
+exports[`GC mode golden walk > step 47: Start 1`] = `
+{
+  "changed": {
+    "lastLog.id": 43,
     "lastLog.text": "Helotes Dental Office is started. Work begins Mon Oct 12. Emailed the 4 companies on the job.",
     "projects.helotes.stage": "building",
+    "projects.helotes.stageProgress.also[0]": "The schedule: 26 days ahead of the plan, 16% done where 0% was planned. Next: Rough-in inspection, Nov 13.",
     "projects.helotes.stageProgress.center": "16%",
     "projects.helotes.stageProgress.groups[0].items[0].detail": "60% reported",
     "projects.helotes.stageProgress.groups[0].items[0].done": false,
@@ -5767,12 +5792,13 @@ exports[`GC mode golden walk > step 46: Start 1`] = `
 }
 `;
 
-exports[`GC mode golden walk > step 47: Hill Country reports hang and tape done 1`] = `
+exports[`GC mode golden walk > step 48: Hill Country reports hang and tape done 1`] = `
 {
   "changed": {
-    "lastLog.id": 43,
+    "lastLog.id": 44,
     "lastLog.text": "Hill Country Interiors reported Hang and tape at 100%.",
     "lastLog.who": "trade",
+    "projects.helotes.stageProgress.also[0]": "The schedule: 28 days ahead of the plan, 20% done where 0% was planned. Next: Rough-in inspection, Nov 13.",
     "projects.helotes.stageProgress.center": "20%",
     "projects.helotes.stageProgress.groups[0].items[0].detail": "77% reported",
     "projects.helotes.stageProgress.headline": "20% of the work is done, by what the trades and our own crew have reported.",
@@ -5782,11 +5808,12 @@ exports[`GC mode golden walk > step 47: Hill Country reports hang and tape done 
 }
 `;
 
-exports[`GC mode golden walk > step 48: Hill Country reports ceilings half done 1`] = `
+exports[`GC mode golden walk > step 49: Hill Country reports ceilings half done 1`] = `
 {
   "changed": {
-    "lastLog.id": 44,
+    "lastLog.id": 45,
     "lastLog.text": "Hill Country Interiors reported Ceilings at 50%.",
+    "projects.helotes.stageProgress.also[0]": "The schedule: 29 days ahead of the plan, 23% done where 0% was planned. Next: Rough-in inspection, Nov 13.",
     "projects.helotes.stageProgress.center": "23%",
     "projects.helotes.stageProgress.groups[0].items[0].detail": "88% reported",
     "projects.helotes.stageProgress.headline": "23% of the work is done, by what the trades and our own crew have reported.",
@@ -5796,69 +5823,67 @@ exports[`GC mode golden walk > step 48: Hill Country reports ceilings half done 
 }
 `;
 
-exports[`GC mode golden walk > step 49: Hill Country asks for draw 2 1`] = `
-{
-  "changed": {
-    "lastLog.id": 45,
-    "lastLog.text": "Hill Country Interiors asked for draw 2 on Framing and drywall: $34,700, with a conditional waiver signed.",
-    "projects.helotes.stageProgress.also[0]": "Hill Country Interiors asked for draw 2. Approve it.",
-  },
-  "removed": [
-    "projects.helotes.stageProgress.also",
-  ],
-}
-`;
-
-exports[`GC mode golden walk > step 50: Approve draw 2 1`] = `
+exports[`GC mode golden walk > step 50: Hill Country asks for draw 2 1`] = `
 {
   "changed": {
     "lastLog.id": 46,
-    "lastLog.text": "Approved draw 2 on Framing and drywall. $31,230 to pay, $3,470 held.",
-    "lastLog.who": "office",
-    "projects.helotes.stageProgress.also[0]": "Draw 2 for Hill Country Interiors is approved. Pay it by Oct 12.",
+    "lastLog.text": "Hill Country Interiors asked for draw 2 on Framing and drywall: $34,700, with a conditional waiver signed.",
+    "projects.helotes.stageProgress.also[1]": "Hill Country Interiors asked for draw 2. Approve it.",
   },
   "removed": [],
 }
 `;
 
-exports[`GC mode golden walk > step 51: Pay draw 2 1`] = `
+exports[`GC mode golden walk > step 51: Approve draw 2 1`] = `
 {
   "changed": {
     "lastLog.id": 47,
-    "lastLog.text": "Paid draw 2 on Framing and drywall: $31,230.",
-    "projects.helotes.stageProgress.also[0]": "Hill Country Interiors owes the unconditional waiver on draw 2.",
+    "lastLog.text": "Approved draw 2 on Framing and drywall. $31,230 to pay, $3,470 held.",
+    "lastLog.who": "office",
+    "projects.helotes.stageProgress.also[1]": "Draw 2 for Hill Country Interiors is approved. Pay it by Oct 12.",
   },
   "removed": [],
 }
 `;
 
-exports[`GC mode golden walk > step 52: Hill Country signs the unconditional waiver 1`] = `
+exports[`GC mode golden walk > step 52: Pay draw 2 1`] = `
 {
   "changed": {
     "lastLog.id": 48,
+    "lastLog.text": "Paid draw 2 on Framing and drywall: $31,230.",
+    "projects.helotes.stageProgress.also[1]": "Hill Country Interiors owes the unconditional waiver on draw 2.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 53: Hill Country signs the unconditional waiver 1`] = `
+{
+  "changed": {
+    "lastLog.id": 49,
     "lastLog.text": "Hill Country Interiors signed the unconditional waiver for draw 2.",
     "lastLog.who": "trade",
-    "projects.helotes.stageProgress.also": "[]",
   },
   "removed": [
-    "projects.helotes.stageProgress.also[0]",
+    "projects.helotes.stageProgress.also[1]",
   ],
 }
 `;
 
-exports[`GC mode golden walk > step 53: A new set of plans after Start 1`] = `
+exports[`GC mode golden walk > step 54: A new set of plans after Start 1`] = `
 {
   "changed": {
     "customers.ocotillo.addenda": 1,
     "customers.ocotillo.sets": 2,
-    "lastLog.id": 49,
+    "lastLog.id": 50,
     "lastLog.text": "Issued Addendum 1 on Helotes Dental Office and emailed 4 companies. 1 were told it changes their trade.",
     "lastLog.who": "office",
-    "projects.helotes.startChecklist.done": 20,
-    "projects.helotes.startChecklist.missing[1]": "Framing and drywall: The plans changed after they signed. Send a new statement of work.",
-    "projects.helotes.startChecklist.missing[2]": "Electrical: The plans changed after they signed. Send a new statement of work.",
-    "projects.helotes.startChecklist.missing[3]": "HVAC: The plans changed after they signed. Send a new statement of work.",
-    "projects.helotes.startChecklist.missing[4]": "Millwork: The plans changed after they signed. Send a new statement of work.",
+    "projects.helotes.startChecklist.done": 21,
+    "projects.helotes.startChecklist.missing[0]": "Framing and drywall: The plans changed after they signed. Send a new statement of work.",
+    "projects.helotes.startChecklist.missing[1]": "Electrical: The plans changed after they signed. Send a new statement of work.",
+    "projects.helotes.startChecklist.missing[2]": "HVAC: The plans changed after they signed. Send a new statement of work.",
+    "projects.helotes.startChecklist.missing[3]": "Millwork: The plans changed after they signed. Send a new statement of work.",
+    "projects.helotes.startChecklist.ready": false,
     "projects.helotes.startChecklist.trades[0].checks[4].detail": "signed on Permit set, older than the plans",
     "projects.helotes.startChecklist.trades[0].checks[4].done": false,
     "projects.helotes.startChecklist.trades[0].next": "The plans changed after they signed. Send a new statement of work.",
@@ -5877,28 +5902,30 @@ exports[`GC mode golden walk > step 53: A new set of plans after Start 1`] = `
     "projects.helotes.startChecklist.trades[4].ready": false,
     "projects.helotes.trades.dry.compareBids.lines[0].text": "Hill Country Interiors bid $64,200 and covers everything. They priced an older set of plans, so ask them to confirm.",
   },
-  "removed": [],
+  "removed": [
+    "projects.helotes.startChecklist.missing",
+  ],
 }
 `;
 
-exports[`GC mode golden walk > step 54: A call with Cibolo Creek Partners 1`] = `
+exports[`GC mode golden walk > step 55: A call with Cibolo Creek Partners 1`] = `
 {
   "changed": {
-    "lastLog.id": 50,
+    "lastLog.id": 51,
     "lastLog.text": "Logged a contact with Cibolo Creek Partners.",
   },
   "removed": [],
 }
 `;
 
-exports[`GC mode golden walk > step 55: Pad B: ask Lonestar for Sitework 1`] = `
+exports[`GC mode golden walk > step 56: Pad B: ask Lonestar for Sitework 1`] = `
 {
   "changed": {
     "assistantRules[1].items[4].action.partnerIds[1]": "hillside",
     "assistantRules[1].items[4].actionLabel": "Ask the 2 we have not asked",
     "assistantRules[2].now": "10 of 10 asks are opened or still inside 3 days.",
     "assistantRules[3].now": "8 of 10 companies we are asking have all three.",
-    "lastLog.id": 51,
+    "lastLog.id": 52,
     "lastLog.text": "Invited Lonestar Earthworks to bid Sitework.",
     "projects.padb.planRecipients.allTouched[0].hasBid": false,
     "projects.padb.planRecipients.allTouched[0].invite": "«invite bsite-lonestar»",
@@ -5924,12 +5951,12 @@ exports[`GC mode golden walk > step 55: Pad B: ask Lonestar for Sitework 1`] = `
 }
 `;
 
-exports[`GC mode golden walk > step 56: Pad B: ask Alamo for Concrete 1`] = `
+exports[`GC mode golden walk > step 57: Pad B: ask Alamo for Concrete 1`] = `
 {
   "changed": {
     "assistantRules[1].items[3].actionLabel": "Ask the 1 we have not asked",
     "assistantRules[2].now": "11 of 11 asks are opened or still inside 3 days.",
-    "lastLog.id": 52,
+    "lastLog.id": 53,
     "lastLog.text": "Invited Alamo Concrete to bid Concrete.",
     "projects.padb.planRecipients.allTouched[1].hasBid": false,
     "projects.padb.planRecipients.allTouched[1].invite": "«invite bconc-alamo»",
@@ -5952,7 +5979,7 @@ exports[`GC mode golden walk > step 56: Pad B: ask Alamo for Concrete 1`] = `
 }
 `;
 
-exports[`GC mode golden walk > step 57: A new project: Leon Springs Urgent Care 1`] = `
+exports[`GC mode golden walk > step 58: A new project: Leon Springs Urgent Care 1`] = `
 {
   "changed": {
     "assistantRules[0].items[0].action.trade": "Sitework",
@@ -6013,7 +6040,7 @@ exports[`GC mode golden walk > step 57: A new project: Leon Springs Urgent Care 
     "assistantRules[1].now": "3 of 11 open asks have 2 bids.",
     "customers.marshvale.live[3]": "«project leon-springs-urgent-care»",
     "customers.marshvale.sets": 6,
-    "lastLog.id": 53,
+    "lastLog.id": 54,
     "lastLog.text": "Started Leon Springs Urgent Care. The bid set has 5 sheets, split into 4 trades.",
     "projects.leon-springs-urgent-care.planRecipients.allTouched": "[]",
     "projects.leon-springs-urgent-care.planRecipients.noneTouched": "[]",
@@ -6386,52 +6413,51 @@ exports[`GC mode golden walk > step 57: A new project: Leon Springs Urgent Care 
 }
 `;
 
-exports[`GC mode golden walk > step 58: Hill Country sends pay application 3 (ceilings done) 1`] = `
+exports[`GC mode golden walk > step 59: Hill Country sends pay application 3 (ceilings done) 1`] = `
 {
   "changed": {
-    "lastLog.id": 54,
+    "lastLog.id": 55,
     "lastLog.text": "Hill Country Interiors sent pay application 3 on Framing and drywall: $7,500, with a conditional waiver signed.",
     "lastLog.who": "trade",
-    "projects.helotes.stageProgress.also[0]": "Hill Country Interiors asked for draw 3. Approve it.",
+    "projects.helotes.stageProgress.also[0]": "The schedule: 31 days ahead of the plan, 26% done where 0% was planned. Next: Rough-in inspection, Nov 13.",
+    "projects.helotes.stageProgress.also[1]": "Hill Country Interiors asked for draw 3. Approve it.",
     "projects.helotes.stageProgress.center": "26%",
     "projects.helotes.stageProgress.groups[0].items[0].detail": "100% reported",
     "projects.helotes.stageProgress.groups[0].items[0].done": true,
     "projects.helotes.stageProgress.headline": "26% of the work is done, by what the trades and our own crew have reported.",
     "projects.helotes.stageProgress.share": 0.25991902834008096,
   },
-  "removed": [
-    "projects.helotes.stageProgress.also",
-  ],
+  "removed": [],
 }
 `;
 
-exports[`GC mode golden walk > step 59: Hillside sends an insurance certificate 1`] = `
+exports[`GC mode golden walk > step 60: Hillside sends an insurance certificate 1`] = `
 {
   "changed": {
-    "lastLog.id": 55,
+    "lastLog.id": 56,
     "lastLog.text": "Hillside Excavation sent a new insurance certificate, good to Oct 2.",
   },
   "removed": [],
 }
 `;
 
-exports[`GC mode golden walk > step 60: Hillside signs a W-9 1`] = `
+exports[`GC mode golden walk > step 61: Hillside signs a W-9 1`] = `
 {
   "changed": {
-    "lastLog.id": 56,
+    "lastLog.id": 57,
     "lastLog.text": "Hillside Excavation filled in and signed a W-9.",
   },
   "removed": [],
 }
 `;
 
-exports[`GC mode golden walk > step 61: Send Dr. Raman pay application 1 1`] = `
+exports[`GC mode golden walk > step 62: Send Dr. Raman pay application 1 1`] = `
 {
   "changed": {
     "customers.raman.billed": 88051.98947368421,
     "customers.raman.owed": 79246.79052631579,
     "customers.raman.retainageHeld": 8805.19894736842,
-    "lastLog.id": 57,
+    "lastLog.id": 58,
     "lastLog.text": "Sent pay application 1 to Dr. Priya Raman: $79,247 to pay, $8,805 held.",
     "lastLog.who": "office",
   },
@@ -6439,30 +6465,32 @@ exports[`GC mode golden walk > step 61: Send Dr. Raman pay application 1 1`] = `
 }
 `;
 
-exports[`GC mode golden walk > step 62: Dr. Raman pays pay application 1 1`] = `
+exports[`GC mode golden walk > step 63: Dr. Raman pays pay application 1 1`] = `
 {
   "changed": {
     "customers.raman.owed": 0,
     "customers.raman.paid": 79246.79052631579,
-    "lastLog.id": 58,
+    "lastLog.id": 59,
     "lastLog.text": "Dr. Priya Raman paid pay application 1: $79,247.",
   },
   "removed": [],
 }
 `;
 
-exports[`GC mode golden walk > step 63: Helotes: Bulletin 1 adds a storefront and its trade 1`] = `
+exports[`GC mode golden walk > step 64: Helotes: Bulletin 1 adds a storefront and its trade 1`] = `
 {
   "changed": {
     "customers.ocotillo.addenda": 2,
     "customers.ocotillo.sets": 3,
-    "lastLog.id": 59,
-    "lastLog.text": "Issued Bulletin 1 on Helotes Dental Office and emailed 1 company. 1 was told it changes their trade. It adds glass and storefront. Nobody is asked yet.",
+    "lastLog.id": 60,
+    "lastLog.text": "Issued Bulletin 1 on Helotes Dental Office and emailed 1 company. 1 was told it changes their trade. It puts 2 new activities on the schedule. It adds 10 days to the job. It adds glass and storefront. Nobody is asked yet.",
     "projects.helotes.proposalTotals.holes[0]": "«package helotes-glass-and-storefront»",
-    "projects.helotes.startChecklist.missing[2]": "Glass and storefront: Pick a company and award the trade.",
-    "projects.helotes.startChecklist.missing[3]": "Electrical: The plans changed after they signed. Send a new statement of work.",
-    "projects.helotes.startChecklist.missing[4]": "HVAC: The plans changed after they signed. Send a new statement of work.",
-    "projects.helotes.startChecklist.missing[5]": "Millwork: The plans changed after they signed. Send a new statement of work.",
+    "projects.helotes.stageProgress.also[0]": "The schedule: 28 days ahead of the plan, 24% done where 0% was planned. Next: Rough-in inspection, Nov 13.",
+    "projects.helotes.startChecklist.missing[1]": "Glass and storefront: Pick a company and award the trade.",
+    "projects.helotes.startChecklist.missing[2]": "Electrical: The plans changed after they signed. Send a new statement of work.",
+    "projects.helotes.startChecklist.missing[3]": "HVAC: The plans changed after they signed. Send a new statement of work.",
+    "projects.helotes.startChecklist.missing[4]": "Millwork: The plans changed after they signed. Send a new statement of work.",
+    "projects.helotes.startChecklist.schedule.detail": "21 activities, 2 milestones",
     "projects.helotes.startChecklist.total": 30,
     "projects.helotes.startChecklist.trades[1].checks[0].detail": "no company picked",
     "projects.helotes.startChecklist.trades[1].checks[0].done": false,
@@ -6567,36 +6595,49 @@ exports[`GC mode golden walk > step 63: Helotes: Bulletin 1 adds a storefront an
 }
 `;
 
-exports[`GC mode golden walk > step 64: Approve draw 3 1`] = `
-{
-  "changed": {
-    "lastLog.id": 60,
-    "lastLog.text": "Approved draw 3 on Framing and drywall. $6,750 to pay, $750 held.",
-    "projects.helotes.stageProgress.also[0]": "Draw 3 for Hill Country Interiors is approved. Pay it by Oct 12.",
-    "projects.helotes.stageProgress.also[1]": "Framing and drywall is all billed. Walk it, then accept the work on Closeout.",
-  },
-  "removed": [],
-}
-`;
-
-exports[`GC mode golden walk > step 65: Pay draw 3 1`] = `
+exports[`GC mode golden walk > step 65: Approve draw 3 1`] = `
 {
   "changed": {
     "lastLog.id": 61,
-    "lastLog.text": "Paid draw 3 on Framing and drywall: $6,750.",
-    "projects.helotes.stageProgress.also[0]": "Hill Country Interiors owes the unconditional waiver on draw 3.",
+    "lastLog.text": "Approved draw 3 on Framing and drywall. $6,750 to pay, $750 held.",
+    "projects.helotes.stageProgress.also[1]": "Draw 3 for Hill Country Interiors is approved. Pay it by Oct 12.",
+    "projects.helotes.stageProgress.also[2]": "Framing and drywall is all billed. Walk it, then accept the work on Closeout.",
   },
   "removed": [],
 }
 `;
 
-exports[`GC mode golden walk > step 66: Hill Country signs the unconditional waiver on draw 3 1`] = `
+exports[`GC mode golden walk > step 66: Pay draw 3 1`] = `
 {
   "changed": {
     "lastLog.id": 62,
+    "lastLog.text": "Paid draw 3 on Framing and drywall: $6,750.",
+    "projects.helotes.stageProgress.also[1]": "Hill Country Interiors owes the unconditional waiver on draw 3.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 67: Hill Country signs the unconditional waiver on draw 3 1`] = `
+{
+  "changed": {
+    "lastLog.id": 63,
     "lastLog.text": "Hill Country Interiors signed the unconditional waiver for draw 3.",
     "lastLog.who": "trade",
-    "projects.helotes.stageProgress.also[0]": "Framing and drywall is all billed. Walk it, then accept the work on Closeout.",
+    "projects.helotes.stageProgress.also[1]": "Framing and drywall is all billed. Walk it, then accept the work on Closeout.",
+  },
+  "removed": [
+    "projects.helotes.stageProgress.also[2]",
+  ],
+}
+`;
+
+exports[`GC mode golden walk > step 68: Accept the drywall work 1`] = `
+{
+  "changed": {
+    "lastLog.id": 64,
+    "lastLog.text": "Accepted the Framing and drywall work from Hill Country Interiors. The punch list is done.",
+    "lastLog.who": "office",
   },
   "removed": [
     "projects.helotes.stageProgress.also[1]",
@@ -6604,24 +6645,10 @@ exports[`GC mode golden walk > step 66: Hill Country signs the unconditional wai
 }
 `;
 
-exports[`GC mode golden walk > step 67: Accept the drywall work 1`] = `
+exports[`GC mode golden walk > step 69: Hill Country sends the warranty letter 1`] = `
 {
   "changed": {
-    "lastLog.id": 63,
-    "lastLog.text": "Accepted the Framing and drywall work from Hill Country Interiors. The punch list is done.",
-    "lastLog.who": "office",
-    "projects.helotes.stageProgress.also": "[]",
-  },
-  "removed": [
-    "projects.helotes.stageProgress.also[0]",
-  ],
-}
-`;
-
-exports[`GC mode golden walk > step 68: Hill Country sends the warranty letter 1`] = `
-{
-  "changed": {
-    "lastLog.id": 64,
+    "lastLog.id": 65,
     "lastLog.text": "Hill Country Interiors sent the warranty letter for Framing and drywall.",
     "lastLog.who": "trade",
   },
@@ -6629,62 +6656,60 @@ exports[`GC mode golden walk > step 68: Hill Country sends the warranty letter 1
 }
 `;
 
-exports[`GC mode golden walk > step 69: Hill Country sends the final pay application 1`] = `
-{
-  "changed": {
-    "lastLog.id": 65,
-    "lastLog.text": "Hill Country Interiors sent the final pay application on Framing and drywall: $6,420 of retainage, with a conditional final release of lien.",
-    "projects.helotes.stageProgress.also[0]": "Hill Country Interiors asked for its retainage back. Approve it on Closeout.",
-  },
-  "removed": [
-    "projects.helotes.stageProgress.also",
-  ],
-}
-`;
-
-exports[`GC mode golden walk > step 70: Approve the retainage release 1`] = `
+exports[`GC mode golden walk > step 70: Hill Country sends the final pay application 1`] = `
 {
   "changed": {
     "lastLog.id": 66,
-    "lastLog.text": "Approved the retainage release on Framing and drywall: $6,420 to pay.",
-    "lastLog.who": "office",
-    "projects.helotes.stageProgress.also[0]": "The retainage release for Hill Country Interiors is approved. Pay it by Oct 12.",
+    "lastLog.text": "Hill Country Interiors sent the final pay application on Framing and drywall: $6,420 of retainage, with a conditional final release of lien.",
+    "projects.helotes.stageProgress.also[1]": "Hill Country Interiors asked for its retainage back. Approve it on Closeout.",
   },
   "removed": [],
 }
 `;
 
-exports[`GC mode golden walk > step 71: Pay the retainage 1`] = `
+exports[`GC mode golden walk > step 71: Approve the retainage release 1`] = `
 {
   "changed": {
     "lastLog.id": 67,
-    "lastLog.text": "Paid draw 4 on Framing and drywall: $6,420.",
-    "projects.helotes.stageProgress.also[0]": "Hill Country Interiors owes the unconditional final release of lien.",
+    "lastLog.text": "Approved the retainage release on Framing and drywall: $6,420 to pay.",
+    "lastLog.who": "office",
+    "projects.helotes.stageProgress.also[1]": "The retainage release for Hill Country Interiors is approved. Pay it by Oct 12.",
   },
   "removed": [],
 }
 `;
 
-exports[`GC mode golden walk > step 72: Hill Country signs the unconditional waiver on final payment 1`] = `
+exports[`GC mode golden walk > step 72: Pay the retainage 1`] = `
 {
   "changed": {
     "lastLog.id": 68,
+    "lastLog.text": "Paid draw 4 on Framing and drywall: $6,420.",
+    "projects.helotes.stageProgress.also[1]": "Hill Country Interiors owes the unconditional final release of lien.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 73: Hill Country signs the unconditional waiver on final payment 1`] = `
+{
+  "changed": {
+    "lastLog.id": 69,
     "lastLog.text": "Hill Country Interiors signed the unconditional waiver for draw 4.",
     "lastLog.who": "trade",
-    "projects.helotes.stageProgress.also": "[]",
   },
   "removed": [
-    "projects.helotes.stageProgress.also[0]",
+    "projects.helotes.stageProgress.also[1]",
   ],
 }
 `;
 
-exports[`GC mode golden walk > step 73: Our crew reports plumbing at 50% 1`] = `
+exports[`GC mode golden walk > step 74: Our crew reports plumbing at 50% 1`] = `
 {
   "changed": {
-    "lastLog.id": 69,
+    "lastLog.id": 70,
     "lastLog.text": "Our own crew reported Plumbing at 50%.",
     "lastLog.who": "office",
+    "projects.helotes.stageProgress.also[0]": "The schedule: 31 days ahead of the plan, 31% done where 0% was planned. Next: Rough-in inspection, Nov 13.",
     "projects.helotes.stageProgress.center": "34%",
     "projects.helotes.stageProgress.groups[0].items[3].detail": "Our own crew, 50% done",
     "projects.helotes.stageProgress.headline": "34% of the work is done, by what the trades and our own crew have reported.",
@@ -6694,43 +6719,43 @@ exports[`GC mode golden walk > step 73: Our crew reports plumbing at 50% 1`] = `
 }
 `;
 
-exports[`GC mode golden walk > step 74: Cedar & Pine sends pay application 1 1`] = `
+exports[`GC mode golden walk > step 75: Cedar & Pine sends pay application 1 1`] = `
 {
   "changed": {
-    "lastLog.id": 70,
+    "lastLog.id": 71,
     "lastLog.text": "Cedar & Pine Millwork sent pay application 1 on Millwork: $19,800, with a conditional waiver signed.",
     "lastLog.who": "trade",
-    "projects.helotes.stageProgress.also[0]": "Cedar & Pine Millwork asked for draw 1. Approve it.",
+    "projects.helotes.stageProgress.also[0]": "The schedule: 35 days ahead of the plan, 39% done where 0% was planned. Next: Rough-in inspection, Nov 13.",
+    "projects.helotes.stageProgress.also[1]": "Cedar & Pine Millwork asked for draw 1. Approve it.",
     "projects.helotes.stageProgress.center": "42%",
     "projects.helotes.stageProgress.groups[0].items[4].detail": "50% reported",
     "projects.helotes.stageProgress.headline": "42% of the work is done, by what the trades and our own crew have reported.",
     "projects.helotes.stageProgress.share": 0.4180161943319838,
   },
-  "removed": [
-    "projects.helotes.stageProgress.also",
-  ],
+  "removed": [],
 }
 `;
 
-exports[`GC mode golden walk > step 75: Send it back: we see the cabinets at 30% 1`] = `
+exports[`GC mode golden walk > step 76: Send it back: we see the cabinets at 30% 1`] = `
 {
   "changed": {
-    "lastLog.id": 71,
+    "lastLog.id": 72,
     "lastLog.text": "Sent pay application 1 on Millwork back to Cedar & Pine Millwork. Four of the twelve operatory cabinets are set, not half.",
     "lastLog.who": "office",
-    "projects.helotes.stageProgress.also[0]": "Pay application 1 is back with Cedar & Pine Millwork. Waiting on a fixed one.",
+    "projects.helotes.stageProgress.also[0]": "The schedule: 34 days ahead of the plan, 38% done where 0% was planned. Next: Rough-in inspection, Nov 13.",
+    "projects.helotes.stageProgress.also[1]": "Pay application 1 is back with Cedar & Pine Millwork. Waiting on a fixed one.",
   },
   "removed": [],
 }
 `;
 
-exports[`GC mode golden walk > step 76: Cedar & Pine sends pay application 1 again, fixed 1`] = `
+exports[`GC mode golden walk > step 77: Cedar & Pine sends pay application 1 again, fixed 1`] = `
 {
   "changed": {
-    "lastLog.id": 72,
+    "lastLog.id": 73,
     "lastLog.text": "Cedar & Pine Millwork sent pay application 1 on Millwork again, fixed: $17,160, with a conditional waiver signed.",
     "lastLog.who": "trade",
-    "projects.helotes.stageProgress.also[0]": "Cedar & Pine Millwork asked for draw 1. Approve it.",
+    "projects.helotes.stageProgress.also[1]": "Cedar & Pine Millwork asked for draw 1. Approve it.",
     "projects.helotes.stageProgress.center": "41%",
     "projects.helotes.stageProgress.groups[0].items[4].detail": "43% reported",
     "projects.helotes.stageProgress.headline": "41% of the work is done, by what the trades and our own crew have reported.",
@@ -6740,22 +6765,22 @@ exports[`GC mode golden walk > step 76: Cedar & Pine sends pay application 1 aga
 }
 `;
 
-exports[`GC mode golden walk > step 77: Approve the fixed pay application 1 1`] = `
+exports[`GC mode golden walk > step 78: Approve the fixed pay application 1 1`] = `
 {
   "changed": {
-    "lastLog.id": 73,
+    "lastLog.id": 74,
     "lastLog.text": "Approved draw 1 on Millwork. $15,444 to pay, $1,716 held.",
     "lastLog.who": "office",
-    "projects.helotes.stageProgress.also[0]": "Draw 1 for Cedar & Pine Millwork is approved. Pay it by Oct 12.",
+    "projects.helotes.stageProgress.also[1]": "Draw 1 for Cedar & Pine Millwork is approved. Pay it by Oct 12.",
   },
   "removed": [],
 }
 `;
 
-exports[`GC mode golden walk > step 78: AquaShield opens its portal for the first time 1`] = `
+exports[`GC mode golden walk > step 79: AquaShield opens its portal for the first time 1`] = `
 {
   "changed": {
-    "lastLog.id": 74,
+    "lastLog.id": 75,
     "lastLog.text": "AquaShield Sprinkler opened their portal for the first time.",
     "lastLog.who": "trade",
   },
@@ -6763,10 +6788,10 @@ exports[`GC mode golden walk > step 78: AquaShield opens its portal for the firs
 }
 `;
 
-exports[`GC mode golden walk > step 79: Alamo answers: the rebar is in its number 1`] = `
+exports[`GC mode golden walk > step 80: Alamo answers: the rebar is in its number 1`] = `
 {
   "changed": {
-    "lastLog.id": 75,
+    "lastLog.id": 76,
     "lastLog.text": "Alamo Concrete answered on Concrete: Rebar supply is in their number.",
     "projects.boerne.trades.conc.compareBids.conclusion": "Alamo Concrete is lowest for the same work, by $14,300.",
     "projects.boerne.trades.conc.compareBids.lines[0].allIn": 205500,
@@ -6776,7 +6801,7 @@ exports[`GC mode golden walk > step 79: Alamo answers: the rebar is in its numbe
 }
 `;
 
-exports[`GC mode golden walk > step 80: Pad B: Lonestar opens the plans 1`] = `
+exports[`GC mode golden walk > step 81: Pad B: Lonestar opens the plans 1`] = `
 {
   "changed": {
     "followUps[0].invite": "«invite bsite-lonestar»",
@@ -6793,7 +6818,7 @@ exports[`GC mode golden walk > step 80: Pad B: Lonestar opens the plans 1`] = `
     "followUps[1].project": "«project boerne»",
     "followUps[1].why": "waiting",
     "followUps[1].words": "Promised a quote by Tue Oct 6, in 4 days.",
-    "lastLog.id": 76,
+    "lastLog.id": 77,
     "lastLog.text": "Lonestar Earthworks opened Pricing set.",
     "projects.padb.stageProgress.also[0]": "1 company needs a call. See Follow up.",
     "projects.padb.stageProgress.also[1]": "1 of 2 companies have not opened Pricing set.",
@@ -6804,7 +6829,7 @@ exports[`GC mode golden walk > step 80: Pad B: Lonestar opens the plans 1`] = `
 }
 `;
 
-exports[`GC mode golden walk > step 81: Pad B: Lonestar bids, good for 30 days, with an alternate and its own quote 1`] = `
+exports[`GC mode golden walk > step 82: Pad B: Lonestar bids, good for 30 days, with an alternate and its own quote 1`] = `
 {
   "changed": {
     "assistantRules[0].items[0].action.trade": "Roofing",
@@ -6846,7 +6871,7 @@ exports[`GC mode golden walk > step 81: Pad B: Lonestar bids, good for 30 days, 
     "followUps[0].project": "«project boerne»",
     "followUps[0].why": "waiting",
     "followUps[0].words": "Promised a quote by Tue Oct 6, in 4 days.",
-    "lastLog.id": 77,
+    "lastLog.id": 78,
     "lastLog.text": "Lonestar Earthworks bid $92,500 on Sitework.",
     "projects.padb.planRecipients.allTouched[0].hasBid": true,
     "projects.padb.planRecipients.noneTouched[0].hasBid": true,
@@ -6950,12 +6975,12 @@ exports[`GC mode golden walk > step 81: Pad B: Lonestar bids, good for 30 days, 
 }
 `;
 
-exports[`GC mode golden walk > step 82: Boerne: Bulletin 1 adds a detention pond to Sitework 1`] = `
+exports[`GC mode golden walk > step 83: Boerne: Bulletin 1 adds a detention pond to Sitework 1`] = `
 {
   "changed": {
     "customers.marshvale.addenda": 3,
     "customers.marshvale.sets": 7,
-    "lastLog.id": 78,
+    "lastLog.id": 79,
     "lastLog.text": "Issued Bulletin 1 on Boerne Retail Shell and emailed 1 company. 1 was told it changes their trade. It adds 1 scope line.",
     "lastLog.who": "office",
     "projects.boerne.trades.site.compareBids.complete": false,
@@ -6969,10 +6994,10 @@ exports[`GC mode golden walk > step 82: Boerne: Bulletin 1 adds a detention pond
 }
 `;
 
-exports[`GC mode golden walk > step 83: Cool Breeze sends the warranty letter 1`] = `
+exports[`GC mode golden walk > step 84: Cool Breeze sends the warranty letter 1`] = `
 {
   "changed": {
-    "lastLog.id": 79,
+    "lastLog.id": 80,
     "lastLog.text": "Cool Breeze Mechanical sent the warranty letter for HVAC.",
     "lastLog.who": "trade",
   },
@@ -6980,10 +7005,10 @@ exports[`GC mode golden walk > step 83: Cool Breeze sends the warranty letter 1`
 }
 `;
 
-exports[`GC mode golden walk > step 84: Cool Breeze sends the final pay application 1`] = `
+exports[`GC mode golden walk > step 85: Cool Breeze sends the final pay application 1`] = `
 {
   "changed": {
-    "lastLog.id": 80,
+    "lastLog.id": 81,
     "lastLog.text": "Cool Breeze Mechanical sent the final pay application on HVAC: $3,100 of retainage, with a conditional final release of lien.",
     "projects.stoneoak.stageProgress.also[2]": "Cool Breeze Mechanical asked for its retainage back. Approve it on Closeout.",
     "projects.stoneoak.stageProgress.also[3]": "All the work is reported. 0 of 3 trades are closed out. See Closeout.",
@@ -6992,10 +7017,10 @@ exports[`GC mode golden walk > step 84: Cool Breeze sends the final pay applicat
 }
 `;
 
-exports[`GC mode golden walk > step 85: Hollis accepts the work 1`] = `
+exports[`GC mode golden walk > step 86: Hollis accepts the work 1`] = `
 {
   "changed": {
-    "lastLog.id": 81,
+    "lastLog.id": 82,
     "lastLog.text": "Hollis Family Pharmacy accepted the work on Stone Oak Pharmacy in their portal.",
     "lastLog.who": "office",
   },
@@ -7003,33 +7028,34 @@ exports[`GC mode golden walk > step 85: Hollis accepts the work 1`] = `
 }
 `;
 
-exports[`GC mode golden walk > step 86: Send Hollis the final pay application 1`] = `
+exports[`GC mode golden walk > step 87: Send Hollis the final pay application 1`] = `
 {
   "changed": {
-    "lastLog.id": 82,
+    "lastLog.id": 83,
     "lastLog.text": "Sent the final pay application to Hollis Family Pharmacy: $18,241 of retainage, with our conditional waiver on final payment.",
   },
   "removed": [],
 }
 `;
 
-exports[`GC mode golden walk > step 87: Hollis pays the final pay application 1`] = `
+exports[`GC mode golden walk > step 88: Hollis pays the final pay application 1`] = `
 {
   "changed": {
-    "lastLog.id": 83,
+    "lastLog.id": 84,
     "lastLog.text": "Hollis Family Pharmacy paid pay application 4: $18,241.",
   },
   "removed": [],
 }
 `;
 
-exports[`GC mode golden walk > step 88: Cedar & Pine sends pay application 2 1`] = `
+exports[`GC mode golden walk > step 89: Cedar & Pine sends pay application 2 1`] = `
 {
   "changed": {
-    "lastLog.id": 84,
+    "lastLog.id": 85,
     "lastLog.text": "Cedar & Pine Millwork sent pay application 2 on Millwork: $15,940, with a conditional waiver signed.",
     "lastLog.who": "trade",
-    "projects.helotes.stageProgress.also[1]": "Cedar & Pine Millwork asked for draw 2. Approve it.",
+    "projects.helotes.stageProgress.also[0]": "The schedule: 38 days ahead of the plan, 44% done where 0% was planned. Next: Rough-in inspection, Nov 13.",
+    "projects.helotes.stageProgress.also[2]": "Cedar & Pine Millwork asked for draw 2. Approve it.",
     "projects.helotes.stageProgress.center": "47%",
     "projects.helotes.stageProgress.groups[0].items[4].detail": "83% reported",
     "projects.helotes.stageProgress.headline": "47% of the work is done, by what the trades and our own crew have reported.",
@@ -7039,23 +7065,24 @@ exports[`GC mode golden walk > step 88: Cedar & Pine sends pay application 2 1`]
 }
 `;
 
-exports[`GC mode golden walk > step 89: Approve less: the cabinets at 80% 1`] = `
+exports[`GC mode golden walk > step 90: Approve less: the cabinets at 80% 1`] = `
 {
   "changed": {
-    "lastLog.id": 85,
+    "lastLog.id": 86,
     "lastLog.text": "Approved $11,970 of draw 2 on Millwork, less than the $14,346 asked. Two operatory cabinets are still on order.",
     "lastLog.who": "office",
-    "projects.helotes.stageProgress.also[1]": "Draw 2 for Cedar & Pine Millwork is approved. Pay it by Oct 12.",
+    "projects.helotes.stageProgress.also[2]": "Draw 2 for Cedar & Pine Millwork is approved. Pay it by Oct 12.",
   },
   "removed": [],
 }
 `;
 
-exports[`GC mode golden walk > step 90: Our crew reports underground done 1`] = `
+exports[`GC mode golden walk > step 91: Our crew reports underground done 1`] = `
 {
   "changed": {
-    "lastLog.id": 86,
+    "lastLog.id": 87,
     "lastLog.text": "Our own crew reported Underground on Plumbing at 100%. The whole trade is 20% done.",
+    "projects.helotes.stageProgress.also[0]": "The schedule: 35 days ahead of the plan, 40% done where 0% was planned. Next: Rough-in inspection, Nov 13.",
     "projects.helotes.stageProgress.center": "43%",
     "projects.helotes.stageProgress.groups[0].items[3].detail": "Our own crew, 20% done",
     "projects.helotes.stageProgress.headline": "43% of the work is done, by what the trades and our own crew have reported.",
@@ -7065,20 +7092,20 @@ exports[`GC mode golden walk > step 90: Our crew reports underground done 1`] = 
 }
 `;
 
-exports[`GC mode golden walk > step 91: Close Fair Oaks D with work still open (the screen would not offer it) 1`] = `
+exports[`GC mode golden walk > step 92: Close Fair Oaks D with work still open (the screen would not offer it) 1`] = `
 {
   "changed": {
-    "lastLog.id": 87,
+    "lastLog.id": 88,
     "lastLog.text": "Closed Fair Oaks Shops, Building D. 8 things were still open.",
   },
   "removed": [],
 }
 `;
 
-exports[`GC mode golden walk > step 92: Leon Springs: we price our own plumbing bid 1`] = `
+exports[`GC mode golden walk > step 93: Leon Springs: we price our own plumbing bid 1`] = `
 {
   "changed": {
-    "lastLog.id": 88,
+    "lastLog.id": 89,
     "lastLog.text": "Priced our own bid on Plumbing for Leon Springs Urgent Care: $68,000.",
     "projects.leon-springs-urgent-care.proposalTotals.contingency": 2040,
     "projects.leon-springs-urgent-care.proposalTotals.fee": 5603.2,
@@ -7104,29 +7131,6 @@ exports[`GC mode golden walk > step 92: Leon Springs: we price our own plumbing 
 }
 `;
 
-exports[`GC mode golden walk > step 93: Draw Helotes’s schedule from Oct 12 1`] = `
-{
-  "changed": {
-    "lastLog.id": 89,
-    "lastLog.text": "Drew a first draft of the schedule on Helotes Dental Office: 21 activities from Mon Oct 12.",
-    "projects.helotes.stageProgress.also[0]": "The schedule: 45 days ahead of the plan, 40% done where 0% was planned. Next: Dry-in, Oct 26.",
-    "projects.helotes.stageProgress.also[1]": "Draw 1 for Cedar & Pine Millwork is approved. Pay it by Oct 12.",
-    "projects.helotes.stageProgress.also[2]": "Draw 2 for Cedar & Pine Millwork is approved. Pay it by Oct 12.",
-    "projects.helotes.startChecklist.done": 21,
-    "projects.helotes.startChecklist.missing[0]": "Framing and drywall: The plans changed after they signed. Send a new statement of work.",
-    "projects.helotes.startChecklist.missing[1]": "Glass and storefront: Pick a company and award the trade.",
-    "projects.helotes.startChecklist.missing[2]": "Electrical: The plans changed after they signed. Send a new statement of work.",
-    "projects.helotes.startChecklist.missing[3]": "HVAC: The plans changed after they signed. Send a new statement of work.",
-    "projects.helotes.startChecklist.missing[4]": "Millwork: The plans changed after they signed. Send a new statement of work.",
-    "projects.helotes.startChecklist.schedule.detail": "21 activities, 3 milestones",
-    "projects.helotes.startChecklist.schedule.done": true,
-  },
-  "removed": [
-    "projects.helotes.startChecklist.missing[5]",
-  ],
-}
-`;
-
 exports[`GC mode golden walk > step 94: Framing waits on electrical: Nov 16 to 25 1`] = `
 {
   "changed": {
@@ -7142,7 +7146,7 @@ exports[`GC mode golden walk > step 95: A milestone: cabinets set 1`] = `
   "changed": {
     "lastLog.id": 91,
     "lastLog.text": "Cabinets set on Helotes Dental Office is planned for Fri Dec 18.",
-    "projects.helotes.startChecklist.schedule.detail": "21 activities, 4 milestones",
+    "projects.helotes.startChecklist.schedule.detail": "21 activities, 3 milestones",
   },
   "removed": [],
 }
@@ -7153,7 +7157,8 @@ exports[`GC mode golden walk > step 96: Take the rough-in inspection off 1`] = `
   "changed": {
     "lastLog.id": 92,
     "lastLog.text": "Took Rough-in inspection off the schedule on Helotes Dental Office.",
-    "projects.helotes.startChecklist.schedule.detail": "21 activities, 3 milestones",
+    "projects.helotes.stageProgress.also[0]": "The schedule: 35 days ahead of the plan, 40% done where 0% was planned. Next: Substantial completion, Dec 18.",
+    "projects.helotes.startChecklist.schedule.detail": "21 activities, 2 milestones",
   },
   "removed": [],
 }
@@ -10770,25 +10775,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
           },
           {
             "after": [
-              "dplumb-1",
-            ],
-            "finish": "2026-10-21",
-            "lineId": "helotes-glass-and-storefront-1",
-            "packageId": "helotes-glass-and-storefront",
-            "start": "2026-10-17",
-          },
-          {
-            "after": [
-              "dplumb-1",
-              "helotes-glass-and-storefront-1",
-            ],
-            "finish": "2026-10-26",
-            "lineId": "helotes-glass-and-storefront-2",
-            "packageId": "helotes-glass-and-storefront",
-            "start": "2026-10-22",
-          },
-          {
-            "after": [
               "delec-1",
             ],
             "finish": "2026-12-13",
@@ -10985,92 +10971,103 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
             "packageId": "",
             "start": "2027-01-31",
           },
+          {
+            "after": [
+              "dplumb-1",
+            ],
+            "finish": "2026-10-21",
+            "lineId": "helotes-glass-and-storefront-1",
+            "packageId": "helotes-glass-and-storefront",
+            "start": "2026-10-17",
+          },
+          {
+            "after": [
+              "dplumb-1",
+              "helotes-glass-and-storefront-1",
+            ],
+            "finish": "2026-10-26",
+            "lineId": "helotes-glass-and-storefront-2",
+            "packageId": "helotes-glass-and-storefront",
+            "start": "2026-10-22",
+          },
         ],
         "baseline": {
           "activities": {
             "delec-1": {
-              "finish": "2026-11-13",
-              "start": "2026-11-06",
+              "finish": "2026-11-03",
+              "start": "2026-10-27",
             },
             "delec-2": {
-              "finish": "2026-12-19",
-              "start": "2026-12-16",
+              "finish": "2026-12-09",
+              "start": "2026-12-06",
             },
             "delec-3": {
-              "finish": "2026-12-23",
-              "start": "2026-12-20",
+              "finish": "2026-12-13",
+              "start": "2026-12-10",
             },
             "delec-4": {
-              "finish": "2026-11-21",
-              "start": "2026-11-14",
+              "finish": "2026-11-11",
+              "start": "2026-11-04",
             },
             "dhvac-1": {
-              "finish": "2026-11-13",
-              "start": "2026-11-06",
+              "finish": "2026-11-03",
+              "start": "2026-10-27",
             },
             "dhvac-2": {
-              "finish": "2026-11-21",
-              "start": "2026-11-14",
+              "finish": "2026-11-11",
+              "start": "2026-11-04",
             },
             "dhvac-3": {
-              "finish": "2026-12-22",
-              "start": "2026-12-16",
+              "finish": "2026-12-12",
+              "start": "2026-12-06",
             },
             "dplumb-1": {
               "finish": "2026-10-16",
               "start": "2026-10-12",
             },
             "dplumb-2": {
-              "finish": "2026-11-13",
-              "start": "2026-11-06",
-            },
-            "dplumb-3": {
-              "finish": "2026-11-21",
-              "start": "2026-11-14",
-            },
-            "dplumb-4": {
-              "finish": "2026-12-22",
-              "start": "2026-12-16",
-            },
-            "dry-1": {
-              "finish": "2026-11-05",
+              "finish": "2026-11-03",
               "start": "2026-10-27",
             },
-            "dry-2": {
-              "finish": "2026-11-28",
-              "start": "2026-11-24",
+            "dplumb-3": {
+              "finish": "2026-11-11",
+              "start": "2026-11-04",
             },
-            "dry-3": {
-              "finish": "2026-12-03",
-              "start": "2026-11-29",
+            "dplumb-4": {
+              "finish": "2026-12-12",
+              "start": "2026-12-06",
             },
-            "helotes-glass-and-storefront-1": {
-              "finish": "2026-10-21",
+            "dry-1": {
+              "finish": "2026-10-26",
               "start": "2026-10-17",
             },
-            "helotes-glass-and-storefront-2": {
-              "finish": "2026-10-26",
-              "start": "2026-10-22",
+            "dry-2": {
+              "finish": "2026-11-18",
+              "start": "2026-11-14",
+            },
+            "dry-3": {
+              "finish": "2026-11-23",
+              "start": "2026-11-19",
             },
             "helotes-insp-final": {
-              "finish": "2026-12-25",
-              "start": "2026-12-24",
+              "finish": "2026-12-15",
+              "start": "2026-12-14",
             },
             "helotes-insp-roughin": {
-              "finish": "2026-11-23",
-              "start": "2026-11-22",
+              "finish": "2026-11-13",
+              "start": "2026-11-12",
             },
             "mill-1": {
-              "finish": "2026-12-07",
-              "start": "2026-12-04",
+              "finish": "2026-11-27",
+              "start": "2026-11-24",
             },
             "mill-2": {
-              "finish": "2026-12-11",
-              "start": "2026-12-08",
+              "finish": "2026-12-01",
+              "start": "2026-11-28",
             },
             "mill-3": {
-              "finish": "2026-12-15",
-              "start": "2026-12-12",
+              "finish": "2026-12-05",
+              "start": "2026-12-02",
             },
           },
           "lockedOn": "2026-10-02",
@@ -11078,18 +11075,11 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
         "lookAhead": [],
         "milestones": [
           {
-            "id": "helotes-dryin",
-            "label": "Dry-in",
-            "metOn": null,
-            "packageId": null,
-            "planned": "2026-10-26",
-          },
-          {
             "id": "helotes-substantial",
             "label": "Substantial completion",
             "metOn": null,
             "packageId": null,
-            "planned": "2026-12-28",
+            "planned": "2026-12-18",
           },
           {
             "id": "helotes-ms-cabinets",
