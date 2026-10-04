@@ -93,7 +93,14 @@ export function QuoteFilePicker({ value, onChange }: { value: string; onChange: 
           </Btn>
         </div>
       ) : (
-        <input type="file" accept="application/pdf,image/*" aria-label={t('ownQuoteTitle')} onChange={(e) => onChange(e.target.files?.[0]?.name ?? '')} />
+        // A bare file input will not shrink below about 300px, wider than a phone's form.
+        <input
+          type="file"
+          accept="application/pdf,image/*"
+          aria-label={t('ownQuoteTitle')}
+          onChange={(e) => onChange(e.target.files?.[0]?.name ?? '')}
+          style={{ width: '100%', minWidth: 0, fontSize: '0.85rem' }}
+        />
       )}
     </div>
   )

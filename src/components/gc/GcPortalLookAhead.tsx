@@ -12,8 +12,8 @@ import {
   type PortalLookAheadItem,
   type PortalWeekWhen,
 } from '../../lib/gcMode/gcModel'
-import { Btn, Chip, input } from './gcUi'
-import { PortalBlock } from './GcPortalUi'
+import { Btn, input } from './gcUi'
+import { PortalBlock, PortalTag } from './GcPortalUi'
 import { usePortalLang } from './gcPortalLang'
 
 /**
@@ -117,13 +117,13 @@ function Item({
 
       {verified && mark && (
         <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <Chip tone={counted ? 'green' : 'red'}>
+          <PortalTag tone={counted ? 'green' : 'red'}>
             {counted
               ? t('checkedDone', { gc: GC })
               : (mark.verifiedReason ?? mark.reason)
                 ? t('checkedNotWhy', { gc: GC, reason: t(REASON_WORDS[mark.verifiedReason ?? mark.reason ?? 'other']) })
                 : t('checkedNot', { gc: GC })}
-          </Chip>
+          </PortalTag>
           {mark.verifiedDone !== undefined && mark.verifiedDone !== mark.done && (
             <span style={{ fontSize: '0.8rem', opacity: 0.75 }}>{t('checkedDiffers', { mark: t(mark.done ? 'markWordDone' : 'markWordNot') })}</span>
           )}
@@ -132,9 +132,9 @@ function Item({
 
       {!verified && mark && !asking && (
         <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <Chip tone="grey">
+          <PortalTag tone="grey">
             {mark.done ? t('youMarkedDone', { gc: GC }) : t('youMarkedNot', { gc: GC, reason: t(REASON_WORDS[mark.reason ?? 'other']) })}
-          </Chip>
+          </PortalTag>
           {item.canMark && (
             <Btn kind="quiet" onClick={() => setEditing(true)}>
               {t('changeMark')}

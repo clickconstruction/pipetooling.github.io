@@ -203,7 +203,7 @@ they were written in. The portal does not translate them.
 | Open the plans above, then confirm your number or change it. | Abra los planos de arriba y luego confirme su precio o cámbielo. |
 | {gc} cannot tell if your number covers {items}. Answer it so your number compares fairly. | {gc} no sabe si su precio incluye {items}. Contéstelo para que su precio se compare de forma justa. |
 | Answer it | Contestar |
-| My number stands on the new plans | Mi precio se mantiene con los planos nuevos |
+| My number stands on the new plans | Mantengo mi precio |
 | Open the plans first. | Primero abra los planos. |
 | Change my bid | Cambiar mi precio |
 | Tick what your number covers. Untick what it leaves out. Tap a sheet number to open it. | Marque lo que incluye su precio. Desmarque lo que no incluye. Toque un número de hoja para abrirla. |
