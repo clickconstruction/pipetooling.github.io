@@ -206,7 +206,7 @@ export default function GcMode() {
               </span>
             )}
           </button>
-          <button type="button" style={tabButton(boardTab === 'partners')} onClick={() => { setBoardTab('partners'); setProjectId(null) }}>
+          <button type="button" data-tour="gc-tab-partners" style={tabButton(boardTab === 'partners')} onClick={() => { setBoardTab('partners'); setProjectId(null) }}>
             Trade partners
           </button>
           {/* Money across every job that is ours (the Owner Billing lane's; the owner, 2026-10-03). In the real build: the owner and the controller only. */}

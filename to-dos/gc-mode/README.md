@@ -66,7 +66,7 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
 
 | Where | What it does |
 |---|---|
-| **New here?** (top right) | A 16-stop spotlight walkthrough of the Project Board (the three stages as a numbered list, the ring and the days left each lit on their own, + New project, Closed and Lost, By stage or by customer): each stage's question, what you do in it, how it ends, then where to try it. Stops in `src/lib/gcMode/gcTour.ts`, on the app's `SpotlightTour`. |
+| **New here?** (top right) | A 17-stop spotlight walkthrough of the Project Board (the three stages as a numbered list with the board's titles marked 1, 2, 3, the ring and the days left each lit on their own, + New project, Closed and Lost, By stage or by customer, Trade partners and the scope book): each stage's question, what you do in it, how it ends, then where to try it. Stops in `src/lib/gcMode/gcTour.ts`, on the app's `SpotlightTour`. |
 | **Walk me through this job** (a project's tab row) | A 14-stop walkthrough inside one project, a stop on each tab in the order a job goes (Trades, Plans, Our number, Bid tabs, Contracts, Get started, Submittals, Schedule, Daily log, Draws, Bill the owner, Closeout) and on See what the trade sees (`GC_PROJECT_TOUR_STEPS` in `gcTour.ts`). *New here?* opens itself on a first visit, once per browser. |
 | **+ ?** after a number | A quote that leaves out work with no cost set still counts that work as $0 in its all-in number, so every place that number shows says "+ ?": Trades' *Lowest, all in* and *We are carrying*, Compare bids' *All in*, the *Award at* buttons, Our number's *Carried*, *Trades* and the price, and the price on the board row and the project header. Hovering names the work ("1 line has no cost yet: roof curbs."). Against our budget reads "at least $X over" or "not known yet". Setting the cost in Compare bids clears it. `uncostedLines`, `carriedUncosted`, `proposalUncosted` in `gcBids.ts`; the totals themselves are unchanged. |
 | What changed under a quote | A quote priced on older plans says what each newer set changed, set by set, from the New Project lane's line sheets: "Addendum 1 changed panels and feeders, and the trade as a whole." · "Addendum 1 changed the HVAC sheets." · "Addendum 2 added detention pond." (`staleChange`, `staleWords` in `gcStale.ts`). On the ring's card, Compare bids' *Plans they priced* row and its *Ask them to confirm* message, and the hovers on Trades' *old plans* and the Plans tab's *needs confirming*. Compare bids' own sentence keeps "They priced an older set of plans". |
@@ -227,6 +227,27 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   `perSqFtWords`). A trade that is ours shows its guess the same way. Without a size it says "Give
   the size on step 1 to see the cost per square foot." Each budget box shows its own rate as it is
   typed.
+- **The scope book** (the owner, 2026-10-04: "a scope book where the user can set a trade and set
+  scope that they can search in that book and pull from"; he picked the revised design in
+  `scope-book-mockup.html`): the book is read, not typed (`gcScopeBook.ts`). It holds every scope
+  line on the jobs, the usual lines, and two finished jobs (Fair Oaks Shops, Buildings A and C)
+  with the lines that came in late on them. A line remembers its spec section, what a trade with
+  it leaves out and who does that, the jobs it was on, and each time it came in late: added by a
+  later set, at the cost of a change order, or left out by quotes (`scopeBook`). The office's own
+  changes sit on top (`GcState.scopeBook`: `saveToScopeBook`, `editScopeBookLine`,
+  `mergeScopeBookLines`, `saveScopeSet`). On step 4 each trade has **Start from the book**: a set
+  (one saved by hand, the trade's scope on another job, or the usual lines) and **Use these
+  lines**, which keeps what is there (`scopeSetsFor`, `linesToAdd`). The set that adds the most
+  comes up first. **Often missed on Sitework** lists the lines we added late before, each with
+  why and **+ Add** (`oftenMissed`, `lateWords`). **Add a line** searches the book as you type:
+  this trade's lines first, the ones already here greyed, other trades' lines "from Concrete",
+  then **+ Add "…" as a new line** (`searchScopeBook`). A book line brings its section (when the
+  job's manual has it) and its "leaves out". Each line shows **book**, or **Save to the book**.
+  **Open the scope book** is the book's page (`GcScopeBookWindow`): lines by trade with **Edit**,
+  **+ Add to the book**, the sets with **Save this scope as a set**, and **Duplicates to merge**
+  ("Site clearing and grading" looks the same as "Clearing and grading"; "site" counts for nothing
+  only in Sitework). The same search adds a line a set brings in **A new set of plans came in**.
+  `GcScopeBookButton` opens the book from anywhere.
 - **New project, step 1 and 3 follow-ups** (the owner, 2026-10-04): no Town field; each company's
   drive is measured from the town in the address ("Drives are measured from Boerne"; the Board's
   `townFromAddress`), and a town picker shows only when the address names none. **Size** is square

@@ -105,6 +105,11 @@ export const GC_TOUR_STEPS: SpotlightTourStep[] = [
     body: 'The board opens by stage. Tap By customer to group the jobs by who they are for. Each customer shows what we are bidding them and what they owe us. Tap By stage to go back.',
   },
   {
+    anchor: 'gc-tab-partners',
+    title: 'Trade partners and the scope book',
+    body: 'Trade partners lists every company we use, by trade. It also holds the scope book. The book keeps the scope lines we use for each trade. On step 4 of a new project, you pull lines from it. It warns you about lines we missed on past jobs.',
+  },
+  {
     anchor: 'gc-new-here',
     title: 'Try it',
     body: 'Open Boerne Retail Shell and start on Trades. Tap See what the trade sees to watch the trade partner’s side. Tap Start over at any time to put the made-up projects back. Tap New here? to see this again.',

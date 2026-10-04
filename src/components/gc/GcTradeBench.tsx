@@ -30,6 +30,7 @@ import { CompanyLanguagePick } from './GcPortalLanguagePick'
 import { GcPartnersTab, PaperworkChips } from './GcOfficeTabs'
 import { Btn, Card, Chip, input, td, th, type Tone } from './gcUi'
 import { GcVetQueue, VettingChip } from './GcVetting'
+import { GcScopeBookButton } from './GcNewProjectScopeBookPage'
 
 /**
  * GC mode design spike: trade partners grouped by trade. The question this answers is "if one
@@ -87,9 +88,15 @@ export function GcPartnersBoard(props: Props) {
     <div>
       {/* Companies new to us wait here for a decision before any award (question 3). */}
       <GcVetQueue state={props.state} dispatch={props.dispatch} />
-      <div role="group" aria-label="Group trade partners" style={{ display: 'flex', gap: '0.35rem', marginBottom: '0.6rem' }}>
-        {pill('trade', 'By trade')}
-        {pill('all', 'All companies')}
+      <div style={{ display: 'flex', gap: '0.35rem', marginBottom: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        <div role="group" aria-label="Group trade partners" style={{ display: 'flex', gap: '0.35rem' }}>
+          {pill('trade', 'By trade')}
+          {pill('all', 'All companies')}
+        </div>
+        {/* The scope book (the owner, 2026-10-04; New Project's window): the lines we keep for each trade. */}
+        <span style={{ marginLeft: 'auto' }} data-tour="gc-scope-book">
+          <GcScopeBookButton state={props.state} dispatch={props.dispatch} label="Scope book" />
+        </span>
       </div>
       {view === 'trade' ? <GcTradeBenchView {...props} /> : <GcPartnersTab state={props.state} dispatch={props.dispatch} />}
     </div>

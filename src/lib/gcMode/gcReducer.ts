@@ -8,6 +8,7 @@ import { currentRev, partnerById, planLabel } from './gcLookups'
 import { planRecipients, questionRecipients, questionsOpen, timeWords } from './gcPlans'
 import { bidsIn } from './gcBids'
 import { awardedPartner, find, logged, mapInvite, mapPackage, mapProject, mapSow, sowFromBid } from './gcReducerHelpers'
+import { EMPTY_SCOPE_BOOK, inScopeBook, linesToAdd, scopeBook, scopeWordKey } from './gcScopeBook'
 import { initialGcState } from './gcFixture'
 import { lostWhyLabel } from './gcLost'
 import { daysBetween, draftSchedule, pushAfter, pushedAfterWords, scheduleLinesOf, withBaselineKept } from './gcBuildingSchedule'
@@ -1829,6 +1830,52 @@ function reduce(state: GcState, action: GcAction): GcState {
       const came = [...new Set(action.partnerIds)].filter((id) => partnerById(state, id))
       const next = mapProject(state, project.id, (p) => (p.preBid ? { ...p, preBid: { ...p.preBid, attended: came } } : p))
       return logged(next, 'office', `Recorded the pre-bid meeting on ${project.name}: ${came.length} ${came.length === 1 ? 'company' : 'companies'} came.`)
+    }
+    // The scope book (the owner, 2026-10-04). The book is read from the jobs; these keep the hand-made part.
+    case 'saveToScopeBook': {
+      const words = action.words.trim()
+      if (words === '' || inScopeBook(scopeBook(state), action.trade, words)) return state
+      const book = state.scopeBook ?? EMPTY_SCOPE_BOOK
+      const saved = {
+        trade: action.trade,
+        words,
+        savedOn: state.today,
+        ...(action.spec ? { spec: action.spec } : {}),
+        ...(action.leavesOut ? { leavesOut: action.leavesOut } : {}),
+      }
+      return logged({ ...state, scopeBook: { ...book, saved: [...book.saved, saved] } }, 'office', `Saved "${words}" to the scope book under ${action.trade}.`)
+    }
+    case 'editScopeBookLine': {
+      const to = { ...action.to, words: action.to.words.trim() }
+      if (to.words === '' || !inScopeBook(scopeBook(state), action.trade, action.words)) return state
+      const book = state.scopeBook ?? EMPTY_SCOPE_BOOK
+      const key = scopeWordKey(action.words)
+      const edits = [...book.edits.filter((e) => !(e.trade === action.trade && scopeWordKey(e.words) === key)), { trade: action.trade, words: action.words, to }]
+      return logged({ ...state, scopeBook: { ...book, edits } }, 'office', `Changed the scope book's ${action.trade} line "${action.words}".`)
+    }
+    case 'mergeScopeBookLines': {
+      const lines = scopeBook(state)
+      const from = inScopeBook(lines, action.trade, action.from)
+      const into = inScopeBook(lines, action.trade, action.into)
+      if (!from || !into || from.id === into.id) return state
+      const book = state.scopeBook ?? EMPTY_SCOPE_BOOK
+      const merges = [...book.merges, { trade: action.trade, from: from.words, into: into.words }]
+      return logged({ ...state, scopeBook: { ...book, merges } }, 'office', `Folded "${from.words}" into "${into.words}" in the scope book.`)
+    }
+    case 'saveScopeSet': {
+      const name = action.name.trim()
+      const lines = linesToAdd([], action.lines)
+      if (name === '' || lines.length === 0) return state
+      const book = state.scopeBook ?? EMPTY_SCOPE_BOOK
+      const set = {
+        id: `set-${book.sets.length + 1}`,
+        trade: action.trade,
+        name,
+        lines,
+        savedOn: state.today,
+        ...(action.fromProjectId ? { fromProjectId: action.fromProjectId } : {}),
+      }
+      return logged({ ...state, scopeBook: { ...book, sets: [...book.sets, set] } }, 'office', `Saved the set "${name}" to the scope book: ${lines.length} ${action.trade} ${lines.length === 1 ? 'line' : 'lines'}.`)
     }
   }
 }

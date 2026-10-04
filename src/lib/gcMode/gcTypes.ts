@@ -634,6 +634,52 @@ export interface LogEntry {
   text: string
 }
 
+/** A line the office saved to the scope book by hand. */
+export interface ScopeBookSaved {
+  trade: string
+  words: string
+  spec?: string
+  leavesOut?: ScopeExclusion
+  savedOn: string
+}
+
+/** A change to a line of the scope book. A null spec or "leaves out" clears it. */
+export interface ScopeBookEdit {
+  trade: string
+  /** The line as the book had it. */
+  words: string
+  to: { words: string; spec?: string | null; leavesOut?: ScopeExclusion | null }
+}
+
+/** Two lines of one trade that say the same thing: `from` folds into `into`. */
+export interface ScopeBookMerge {
+  trade: string
+  from: string
+  into: string
+}
+
+/** A named list of one trade's lines, taken into a scope in one press. */
+export interface ScopeBookSet {
+  id: string
+  trade: string
+  name: string
+  lines: string[]
+  savedOn: string
+  /** The project whose scope it was saved from. */
+  fromProjectId?: string
+}
+
+/**
+ * What the office changed in the scope book (the owner, 2026-10-04). The book itself is read from
+ * every scope on our jobs and the usual lines (`scopeBook`); this holds only the hand-made part.
+ */
+export interface ScopeBookStore {
+  saved: ScopeBookSaved[]
+  edits: ScopeBookEdit[]
+  merges: ScopeBookMerge[]
+  sets: ScopeBookSet[]
+}
+
 export interface GcState {
   today: string
   customers: GcCustomer[]
@@ -642,6 +688,8 @@ export interface GcState {
   log: LogEntry[]
   /** Promises other than a quote date (question 8). Unset: none yet. */
   tradePromises?: TradePromise[]
+  /** The office's changes to the scope book. Unset: nothing changed yet. */
+  scopeBook?: ScopeBookStore
 }
 
 export type GcAction =
@@ -914,6 +962,11 @@ export type GcAction =
   | { type: 'schedulePreBid'; projectId: string; on: string; at: string; place: string; host: 'architect' | 'us'; mandatory: boolean }
   /** We record which companies came to the pre-bid meeting. */
   | { type: 'recordPreBidAttendance'; projectId: string; partnerIds: string[] }
+  /** The scope book (the owner, 2026-10-04): a line saved by hand, a line changed, two lines folded into one, a set saved. */
+  | { type: 'saveToScopeBook'; trade: string; words: string; spec?: string; leavesOut?: ScopeExclusion }
+  | { type: 'editScopeBookLine'; trade: string; words: string; to: ScopeBookEdit['to'] }
+  | { type: 'mergeScopeBookLines'; trade: string; from: string; into: string }
+  | { type: 'saveScopeSet'; trade: string; name: string; lines: string[]; fromProjectId?: string }
 
 /** One trade on a new project, as the office left it in the New project window. */
 export interface NewTradeDraft {
