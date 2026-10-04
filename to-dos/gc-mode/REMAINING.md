@@ -79,8 +79,9 @@ makes; nobody builds it until he answers.
 2. ~~**The days a set adds to the schedule carry onto the change order they start** (with Owner Billing).~~
    done: Owner Billing's `days` c3b453453, and the set's days ride on one change order
    (`changeOrderTakingTheDays`), so the signed ones add up.
-3. **The made-up questions (owner first, item 13 in Owner):** if he says they were sent, give Marsh &
-   Vale's two Boerne questions a `sentToArchitectOn`, so they count against the architect again.
+3. ~~**The made-up questions (owner first, item 13 in Owner):** if he says they were sent, give Marsh &
+   Vale's two Boerne questions a `sentToArchitectOn`, so they count against the architect again.~~ done: the owner, 2026-10-04,
+   "yes they were sent": both carry `sentToArchitectOn` (the day each was asked).
 4. ~~**A phone pass on New project, A new set of plans came in, and Questions about the plans.**~~
    done: New project's five steps are a row of numbers on a phone; the new-set window no longer
    scrolls sideways (0e8159e2d); Questions already fit; the plans window stacks the drawing over

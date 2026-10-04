@@ -209,7 +209,9 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   `issuePlanSet.schedulePushes`). Work a set brings onto a schedule already drawn (a new trade's
   lines, a line it adds) gets activities placed as the first draft places them, after what its
   stage waits on and never before today, and what waits on that stage waits on them too
-  (`scheduleSetLines`; the owner, in the Building lane, 2026-10-03: "fix the gap").
+  (`scheduleSetLines`; the owner, in the Building lane, 2026-10-03: "fix the gap"). A set that
+  brings the job's first dry-in work (Helotes' storefront) adds the Dry-in milestone on its last
+  finish, as the first draft would (`dryInMilestoneFor`; the owner, 2026-10-04: "add the milestone").
 - **A set that changes a job we have won starts its change orders to the owner** (approved as
   built, 2026-10-03): **A new set of plans came in** gains **Change orders to the owner**, one row
   per trade the set touches or brings, ticked when it adds lines or days. Each is prefilled
@@ -587,9 +589,7 @@ the bullets below are the shape they set.
 ## Workflow steps not built yet
 
 
-- The schedule, the rest: a set that brings a stage's first work (Helotes' storefront, the first
-  dry-in work) adds its activities but not that stage's milestone (Dry-in); the office adds it on
-  Schedule. Days are calendar days for now.
+- The schedule, the rest: days are calendar days for now.
 
 - New Project past its first form: the past jobs a budget reads are the prototype's own made-up
   projects; the real build reads the company's closed jobs. A line's sheets show in New Project, a
