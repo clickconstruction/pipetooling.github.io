@@ -119,7 +119,7 @@ column headers are in one block at the end of `gcBuildingWords.ts`, for the nati
 
 ## For a native speaker to read
 
-Every Spanish string the trade's portal shows, 676 in all, drawn from the code on 2026-10-04.
+Every Spanish string the trade's portal shows, 687 in all, drawn from the code on 2026-10-04.
 They're grouped by screen, English on the left. Please mark anything that reads wrong, stiff or
 unclear, and write the better words beside it. The Portal lane makes the changes and passes the
 other lanes theirs.
@@ -985,6 +985,18 @@ they were written in. The portal does not translate them.
 | The re-inspection is {date}. Fix it before then. | La reinspección es el {date}. Arréglelo antes de esa fecha. |
 | Fix each one, then tell {gc} here. {gc} checks it on the job. Your work is accepted once every item is checked. | Arregle cada uno y avísele a {gc} aquí. {gc} lo revisa en la obra. Su trabajo se acepta cuando todos estén revisados. |
 
+#### The pay application as a file (2026-10-04, question 12): the AIA form, in English
+
+| English | Español |
+|---|---|
+| ⤓ Excel | ⤓ Excel |
+| ⤓ PDF | ⤓ PDF |
+| The AIA form in Excel, with every line | El formulario AIA en Excel, con cada partida |
+| The 702 and 703 as a PDF, with the notary block | El 702 y el 703 en PDF, con el bloque del notario |
+| Making it… | Preparándolo… |
+| The file could not be made. | No se pudo preparar el archivo. |
+| The file is the AIA form, in English. | El archivo es el formulario AIA, en inglés. |
+
 ### The bid tab (the Board lane's words, `bidTabResult` in `gcBids.ts` and the table in `GcBidTabs.tsx`)
 
 #### The line above the table, in each case
@@ -1011,3 +1023,12 @@ they were written in. The portal does not translate them.
 | (you) | (usted) |
 | awarded | adjudicada |
 | Another company | Otra empresa |
+
+### The notary block on a pay application (the Owner Billing lane's words, `GcPayAppNotary.tsx`)
+
+| English | Español |
+|---|---|
+| State of Texas. County of ___. | Estado de Texas. Condado de ___. |
+| Subscribed and sworn to before me this ___ day of ___, 20___. | Suscrito y jurado ante mí este ___ día de ___ de 20___. |
+| Notary public: ___ | Notario público: ___ |
+| My commission expires: ___ | Mi comisión vence: ___ |
