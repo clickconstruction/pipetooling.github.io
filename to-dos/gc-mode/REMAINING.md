@@ -241,6 +241,39 @@ sheet index tools and the $/sq ft budget summary.
 
 1. ~~A door to the book from Trade partners, a walkthrough stop, the README row, once GC 2's page lands.~~ done (this commit): *Scope book* on Trade partners (GC 2's `GcScopeBookButton`), New here?'s *Trade partners and the scope book* stop.
 
+## Round 5: exclusions by company (the owner, 2026-10-04)
+
+The owner, after `vendor-exclusions-before-after.html`: "I like this idea. We need to also figure
+out the intake where when someone goes and applies, we can record the exclusions they detailed in
+their bid. And then once we've got the job, we send them a contract specifying what they're going to
+do."
+
+### Board (GC 0)
+
+1. ~~**Types and the kernel**~~ done (this commit): `SubBid.exclusions` / `exclusionsAnswered` /
+   `exclusionCovers`, `Sow.excluded`; `gcExclusions.ts` (`COMMON_EXCLUSIONS`, `exclusionsFor`,
+   `exclusionName` folds "permits" and "Permit fees" onto "Permits and fees", `exclusionRows`,
+   `exclusionCoversTotal` in `leveledTotal`, `uncoveredExclusions`, `partnerExclusionHabits`,
+   `sowExcluded`); `setQuoteExclusion`, `setExclusionCover`; `tradeSubmitBid` takes the lists;
+   award copies them onto the statement of work.
+2. **Compare quotes: Their exclusions**, one row per exclusion any company names: excluded (with
+   cover), included, not said (Ask them), expected (a Known exclusion); + Exclusion from their
+   quote for an emailed one; the flip warning.
+3. **Contracts: the statement of work says what they will not do** (and who does it instead).
+4. **Trade partners: what a company usually leaves out** ("Permits and fees, 5 of 6").
+
+### Portal (GC 3)
+
+1. **The quote form: What your quote leaves out**: `exclusionsFor(trade)` as ticks, typed ones,
+   a unit price where it fits; sends `exclusions` and `exclusionsAnswered` (every tick offered) on
+   `tradeSubmitBid`. Both languages.
+2. **The statement of work in the portal** shows "What you will not do" from `Sow.excluded`.
+
+### New Project (GC 2)
+
+1. **Exclusion names in the book**: let the scope book keep each trade's common exclusions beside
+   its lines, so `exclusionsFor` can read the book (later; `COMMON_EXCLUSIONS` serves until then).
+
 ## Owner (the decisions)
 
 11. ~~**A carried quote with a line that has no cost:** does it hold the ring open?~~ Answered 2026-10-03: yes, until every line has a cost. Built by the Board (this commit).

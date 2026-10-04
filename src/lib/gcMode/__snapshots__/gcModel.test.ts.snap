@@ -8930,6 +8930,89 @@ exports[`GC mode golden walk > step 186: Leon Springs: Check again finds Addendu
 }
 `;
 
+exports[`GC mode golden walk > step 187: Hillside quotes Sitework on Boerne, leaving out permits and dewatering 1`] = `
+{
+  "changed": {
+    "assistantRules[0].items[3].action.trade": "Structural steel",
+    "assistantRules[0].items[3].id": "bench-Structural steel",
+    "assistantRules[0].items[3].text": "Structural steel has 2. Find 1 more.",
+    "assistantRules[0].items[4].action.trade": "Concrete",
+    "assistantRules[0].items[4].id": "bench-Concrete",
+    "assistantRules[0].items[4].text": "Concrete has 2. Find 1 more.",
+    "assistantRules[0].items[5].action.trade": "Framing and drywall",
+    "assistantRules[0].items[5].id": "bench-Framing and drywall",
+    "assistantRules[0].items[5].text": "Framing and drywall has 2. Find 1 more.",
+    "assistantRules[0].items[6].action.trade": "HVAC",
+    "assistantRules[0].items[6].id": "bench-HVAC",
+    "assistantRules[0].items[6].text": "HVAC has 2. Find 1 more.",
+    "assistantRules[0].items[7].action.trade": "Millwork",
+    "assistantRules[0].items[7].id": "bench-Millwork",
+    "assistantRules[0].items[7].text": "Millwork has 2. Find 1 more.",
+    "assistantRules[0].now": "2 of 10 trades have 3.",
+    "lastLog.id": 183,
+    "lastLog.text": "Hillside Excavation quoted $186,500 on Sitework.",
+    "lastLog.who": "trade",
+    "projects.boerne.trades.site.bidTabRows[1].amount": 186500,
+    "projects.boerne.trades.site.bidTabRows[1].company": "Hillside Excavation",
+    "projects.boerne.trades.site.bidTabRows[1].overLowPct": 4.5,
+    "projects.boerne.trades.site.bidTabRows[1].partnerId": "hillside",
+    "projects.boerne.trades.site.bidTabRows[2].amount": 191000,
+    "projects.boerne.trades.site.bidTabRows[2].awarded": false,
+    "projects.boerne.trades.site.bidTabRows[2].company": "Tri-County Site",
+    "projects.boerne.trades.site.bidTabRows[2].overLowPct": 7.1,
+    "projects.boerne.trades.site.bidTabRows[2].partnerId": "tricounty",
+    "projects.boerne.trades.site.bidTabRows[2].rank": 3,
+    "projects.boerne.trades.site.compareBids.lines[2].allIn": 186500,
+    "projects.boerne.trades.site.compareBids.lines[2].company": "Hillside Excavation",
+    "projects.boerne.trades.site.compareBids.lines[2].complete": false,
+    "projects.boerne.trades.site.compareBids.lines[2].inviteId": "site-hillside",
+    "projects.boerne.trades.site.compareBids.lines[2].text": "Hillside Excavation quoted $186,500 and is not clear about detention pond. No cost is set for detention pond yet, so their real number is not known. Their quote excludes permits and fees and dewatering. No cost is set for permits and fees and dewatering yet. They priced an older set of plans, so ask them to confirm.",
+    "tradeBenches[2].dependable": 3,
+  },
+  "removed": [
+    "assistantRules[0].items[8].id",
+    "assistantRules[0].items[8].text",
+    "assistantRules[0].items[8].action.kind",
+    "assistantRules[0].items[8].action.trade",
+    "assistantRules[0].items[8].actionLabel",
+    "assistantRules[0].items[8].doneNote",
+  ],
+}
+`;
+
+exports[`GC mode golden walk > step 188: Cover Hillside's permits at $4,200 1`] = `
+{
+  "changed": {
+    "projects.boerne.trades.site.compareBids.lines[2].allIn": 190700,
+    "projects.boerne.trades.site.compareBids.lines[2].text": "Hillside Excavation quoted $186,500 and is not clear about detention pond. No cost is set for detention pond yet, so their real number is not known. Their quote excludes permits and fees and dewatering. No cost is set for dewatering yet. They priced an older set of plans, so ask them to confirm.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 189: Lonestar's emailed quote leaves out rock, at $38 per cy if found 1`] = `
+{
+  "changed": {
+    "lastLog.id": 184,
+    "lastLog.text": "Lonestar Earthworks' Sitework quote leaves out rock excavation ($38 per cy if it comes up).",
+    "lastLog.who": "office",
+    "projects.boerne.trades.site.compareBids.lines[0].text": "Lonestar Earthworks quoted $178,400 and left out striping and signs and is not clear about detention pond. No cost is set for detention pond yet, so their real number is not known. Their quote excludes rock excavation ($38 per cy if it comes up). They priced an older set of plans, so ask them to confirm.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 190: Hillside now includes dewatering 1`] = `
+{
+  "changed": {
+    "lastLog.id": 185,
+    "lastLog.text": "Hillside Excavation now includes dewatering in its Sitework quote.",
+    "projects.boerne.trades.site.compareBids.lines[2].text": "Hillside Excavation quoted $186,500 and is not clear about detention pond. No cost is set for detention pond yet, so their real number is not known. Their quote excludes permits and fees. Covering those adds $4,200, so they come to $190,700 all in. They priced an older set of plans, so ask them to confirm.",
+  },
+  "removed": [],
+}
+`;
+
 exports[`GC mode golden walk > the whole state at the end 1`] = `
 {
   "customers": [
@@ -9130,6 +9213,21 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
+      "id": 185,
+      "text": "Hillside Excavation now includes dewatering in its Sitework quote.",
+      "who": "office",
+    },
+    {
+      "id": 184,
+      "text": "Lonestar Earthworks' Sitework quote leaves out rock excavation ($38 per cy if it comes up).",
+      "who": "office",
+    },
+    {
+      "id": 183,
+      "text": "Hillside Excavation quoted $186,500 on Sitework.",
+      "who": "trade",
+    },
+    {
       "id": 182,
       "text": "Checked the Google Drive link for Addendum 3 on Leon Springs Urgent Care: anyone with the link can open it.",
       "who": "office",
@@ -9264,21 +9362,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "text": "Rosa Treviño awarded Sitework to Lonestar Earthworks. A statement of work is drafted from their quote.",
       "who": "office",
     },
-    {
-      "id": 155,
-      "text": "We won Boerne Retail Pad B. Buyout starts: award each trade.",
-      "who": "office",
-    },
-    {
-      "id": 154,
-      "text": "Cool Breeze Mechanical sent submittal 23 09 23-01, Controls.",
-      "who": "trade",
-    },
-    {
-      "id": 153,
-      "text": "Added submittal 26 56 00-01 on Electrical: Site lighting fixtures, product data.",
-      "who": "office",
-    },
   ],
   "partners": [
     {
@@ -9321,7 +9404,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
     },
     {
       "base": "Boerne",
-      "bids": 0,
+      "bids": 1,
       "coiExpires": "2027-10-02",
       "company": "Hillside Excavation",
       "contact": "Greg Paulk",
@@ -9815,6 +9898,19 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
               "bid": {
                 "amount": 178400,
                 "basedOnRev": 1,
+                "exclusions": [
+                  {
+                    "name": "Rock excavation",
+                    "said": "Rock excavation if encountered",
+                    "unitPrice": {
+                      "amount": 38,
+                      "unit": "cy",
+                    },
+                  },
+                ],
+                "exclusionsAnswered": [
+                  "Rock excavation",
+                ],
                 "includes": {
                   "site-1": "yes",
                   "site-2": "yes",
@@ -9854,7 +9950,33 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
               "status": "bid",
             },
             {
-              "bid": null,
+              "bid": {
+                "amount": 186500,
+                "basedOnRev": 0,
+                "exclusionCovers": {
+                  "Permits and fees": 4200,
+                },
+                "exclusions": [
+                  {
+                    "name": "Permits and fees",
+                  },
+                ],
+                "exclusionsAnswered": [
+                  "Permits and fees",
+                  "Dewatering",
+                  "Rock excavation",
+                  "Sales tax",
+                ],
+                "includes": {
+                  "site-1": "yes",
+                  "site-2": "yes",
+                  "site-3": "yes",
+                  "site-4": "yes",
+                },
+                "note": "",
+                "plugs": {},
+                "submittedOn": "2026-10-02",
+              },
               "contacts": [
                 {
                   "by": "You",
@@ -9881,7 +10003,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
               "invitedOn": "2026-09-19",
               "partnerId": "hillside",
               "seenRev": 0,
-              "status": "opened",
+              "status": "bid",
             },
           ],
           "scope": [

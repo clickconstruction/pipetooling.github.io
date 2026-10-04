@@ -19,6 +19,7 @@ import { nextSubmittalId, nextSubmittalNumber, submittalState } from './gcBuildi
 import { addDays, changeOrderTradePct, crewPctFromStages, drawLinesOf, drawMoney, drawApprovedLess, finalPayApplication, jobCloseout, payApplication, timesSentBack, tradeCloseout, workAllBilled } from './gcBuilding'
 import { awardGate } from './gcVetting'
 import { declineLogWords } from './gcDecline'
+import { exclusionName, unitPriceWords } from './gcExclusions'
 import { startChecklist } from './gcStart'
 import { keepPromisesOn, openPromiseFor, PROMISE_WHAT, promisesKeptBy, tradePromisesOf } from './gcPromises'
 import { ownerInterest } from './gcOwnerBillingInterest'
@@ -162,6 +163,10 @@ function reduce(state: GcState, action: GcAction): GcState {
         ...(action.alternates && action.alternates.length > 0 ? { alternates: action.alternates } : {}),
         ...(action.quoteFile ? { quoteFile: action.quoteFile } : {}),
         ...(action.sov && action.sov.length > 0 ? { sov: action.sov } : {}),
+        // What their quote leaves out (the owner, 2026-10-04); the office's covers carry over a revision.
+        ...(action.exclusions && action.exclusions.length > 0 ? { exclusions: action.exclusions.map((e) => ({ ...e, name: exclusionName(e.name) })) } : {}),
+        ...(action.exclusionsAnswered ? { exclusionsAnswered: action.exclusionsAnswered.map(exclusionName) } : {}),
+        ...(invite.bid?.exclusionCovers ? { exclusionCovers: invite.bid.exclusionCovers } : {}),
       }
       const next = mapProject(state, project.id, (p) =>
         mapPackage(p, pkg.id, (k) =>
@@ -1648,6 +1653,46 @@ function reduce(state: GcState, action: GcAction): GcState {
       const next = mapProject(state, project.id, (p) => mapPackage(p, pkg.id, (k) => mapSow(k, (s) => ({ ...s, theirSov: lines }))))
       const total = lines.reduce((t, l) => t + l.amount, 0)
       return logged(next, 'trade', `${partner.company} sent its schedule of values for ${pkg.trade} on ${project.name}: ${lines.length} lines, ${money(total)}.`)
+    }
+
+    case 'setQuoteExclusion': {
+      // From an emailed quote, or after asking them (the owner, 2026-10-04: exclusions per company).
+      const { pkg, invite, partner } = find(state, action.projectId, action.packageId, action.inviteId)
+      const name = exclusionName(action.name)
+      if (!pkg || !invite?.bid || !partner || !name) return state
+      const bid = invite.bid
+      const has = (bid.exclusions ?? []).some((e) => e.name.toLowerCase() === name.toLowerCase())
+      const said_ = (bid.exclusionsAnswered ?? []).some((n) => n.toLowerCase() === name.toLowerCase())
+      // Nothing new: already left out with nothing more to add, or already said to be in their price.
+      if (action.excluded && has && !action.said && !action.unitPrice) return state
+      if (!action.excluded && !has && said_) return state
+      const rest = (bid.exclusions ?? []).filter((e) => e.name.toLowerCase() !== name.toLowerCase())
+      const said = action.said?.trim()
+      const exclusions = action.excluded
+        ? [...rest, { name, ...(said && said.toLowerCase() !== name.toLowerCase() ? { said } : {}), ...(action.unitPrice ? { unitPrice: action.unitPrice } : {}) }]
+        : rest
+      const answered = [...new Set([...(bid.exclusionsAnswered ?? []), name])]
+      const next = mapProject(state, action.projectId, (p) =>
+        mapPackage(p, pkg.id, (k) => mapInvite(k, invite.id, (i) => ({ ...i, bid: i.bid ? { ...i.bid, exclusions, exclusionsAnswered: answered } : i.bid }))),
+      )
+      return logged(
+        next,
+        'office',
+        action.excluded
+          ? `${partner.company}${partner.company.endsWith('s') ? "'" : "'s"} ${pkg.trade} quote leaves out ${name.toLowerCase()}${action.unitPrice ? ` (${unitPriceWords(action.unitPrice)} if it comes up)` : ''}.`
+          : `${partner.company} ${has ? 'now includes' : 'includes'} ${name.toLowerCase()} in its ${pkg.trade} quote.`,
+      )
+    }
+
+    case 'setExclusionCover': {
+      const { pkg, invite } = find(state, action.projectId, action.packageId, action.inviteId)
+      if (!pkg || !invite?.bid) return state
+      const covers = { ...(invite.bid.exclusionCovers ?? {}) }
+      if (action.amount > 0) covers[action.name] = action.amount
+      else delete covers[action.name]
+      return mapProject(state, action.projectId, (p) =>
+        mapPackage(p, pkg.id, (k) => mapInvite(k, invite.id, (i) => ({ ...i, bid: i.bid ? { ...i.bid, exclusionCovers: covers } : i.bid }))),
+      )
     }
 
     case 'keepPromise': {

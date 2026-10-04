@@ -716,6 +716,27 @@ const STEPS: Step[] = [
     },
   },
   { label: 'Leon Springs: Check again finds Addendum 3\'s link open', action: { type: 'checkPlanSetDrive', projectId: 'leon-springs-urgent-care', rev: 4, access: 'anyone' } },
+  // Each company's exclusions (the owner, 2026-10-04): recorded from the quote, covered, tracked.
+  {
+    label: 'Hillside quotes Sitework on Boerne, leaving out permits and dewatering',
+    action: {
+      type: 'tradeSubmitBid',
+      projectId: 'boerne',
+      packageId: 'site',
+      inviteId: 'site-hillside',
+      amount: 186_500,
+      includes: { 'site-1': 'yes', 'site-2': 'yes', 'site-3': 'yes', 'site-4': 'yes' },
+      note: '',
+      exclusions: [{ name: 'permits' }, { name: 'Dewatering' }],
+      exclusionsAnswered: ['Permits and fees', 'Dewatering', 'Rock excavation', 'Sales tax'],
+    },
+  },
+  { label: "Cover Hillside's permits at $4,200", action: { type: 'setExclusionCover', projectId: 'boerne', packageId: 'site', inviteId: 'site-hillside', name: 'Permits and fees', amount: 4_200 } },
+  {
+    label: "Lonestar's emailed quote leaves out rock, at $38 per cy if found",
+    action: { type: 'setQuoteExclusion', projectId: 'boerne', packageId: 'site', inviteId: 'site-lonestar', name: 'rock', excluded: true, said: 'Rock excavation if encountered', unitPrice: { amount: 38, unit: 'cy' } },
+  },
+  { label: 'Hillside now includes dewatering', action: { type: 'setQuoteExclusion', projectId: 'boerne', packageId: 'site', inviteId: 'site-hillside', name: 'Dewatering', excluded: false } },
 ]
 
 const CUSTOMER_IDS = ['cibolo', 'raman']
@@ -879,6 +900,7 @@ describe('GC mode golden walk', () => {
       'saveToScopeBook', 'editScopeBookLine', 'mergeScopeBookLines', 'saveScopeSet',
       'checkPlanSetDrive',
       'tradeSendSov',
+      'setQuoteExclusion', 'setExclusionCover',
     ]
     expect(all.filter((t) => !used.has(t))).toEqual([])
   })

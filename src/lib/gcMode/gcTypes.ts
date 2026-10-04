@@ -110,6 +110,24 @@ export interface SubBid {
   takenAlternates?: string[]
   /** The company's own schedule of values, sent with its quote (question 4): "Rough-in", $98,000. Unset: not sent. */
   sov?: TheirSovLine[]
+  /**
+   * What their quote leaves out, as they listed it (the owner, 2026-10-04: track exclusions per
+   * company). From the portal's quote form or typed by the office from an emailed quote.
+   */
+  exclusions?: QuoteExclusion[]
+  /** Exclusion names they answered about: in `exclusions` means left out, otherwise it is in their price. */
+  exclusionsAnswered?: string[]
+  /** The office's cost to cover each exclusion, by name, so the all-in number compares like with like. */
+  exclusionCovers?: Record<string, number>
+}
+
+/** One thing a quote leaves out: the shared name ("Permits and fees"), their words, a unit price if it comes up. */
+export interface QuoteExclusion {
+  name: string
+  /** Their own words, when they differ from the name. */
+  said?: string
+  /** "$38 per cy": what it costs if it comes up, for things like rock. */
+  unitPrice?: { amount: number; unit: string }
 }
 
 /** A line of a trade's own schedule of values, as it wrote it (question 4): often rough-in, top out, trim. */
@@ -225,6 +243,12 @@ export interface Sow {
    * award or sent later from its portal. Shown beside ours; draws stay by percent on ours.
    */
   theirSov?: TheirSovLine[]
+  /**
+   * What the contract says they will not do (the owner, 2026-10-04: "once we've got the job, we send
+   * them a contract specifying what they're going to do"): their exclusions, each with who does it
+   * instead when we know. Set at award from their quote.
+   */
+  excluded?: { name: string; by: string | null; unitPrice?: { amount: number; unit: string } }[]
 }
 
 /**
@@ -743,7 +767,14 @@ export type GcAction =
       quoteFile?: string
       /** Their schedule of values (question 4). It should add up to the amount; the portal checks. */
       sov?: TheirSovLine[]
+      /** What their quote leaves out, and the exclusion names they answered about (the portal's form). */
+      exclusions?: QuoteExclusion[]
+      exclusionsAnswered?: string[]
     }
+  /** The office records an exclusion from an emailed quote, or that they now include one (excluded: false). */
+  | { type: 'setQuoteExclusion'; projectId: string; packageId: string; inviteId: string; name: string; excluded: boolean; said?: string; unitPrice?: { amount: number; unit: string } }
+  /** The office's cost to cover an exclusion on one quote. 0 clears it. */
+  | { type: 'setExclusionCover'; projectId: string; packageId: string; inviteId: string; name: string; amount: number }
   /** The trade sends its schedule of values for a statement of work that has none yet (question 4). */
   | { type: 'tradeSendSov'; projectId: string; packageId: string; sov: TheirSovLine[] }
   | { type: 'tradeDecline'; projectId: string; packageId: string; inviteId: string }

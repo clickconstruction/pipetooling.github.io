@@ -5,6 +5,7 @@
 import type { GcProject, GcState, Invite, LogEntry, Partner, Sow, TradePackage } from './gcTypes'
 import { currentRev, partnerById } from './gcLookups'
 import { leveledTotal } from './gcBids'
+import { sowExcluded } from './gcExclusions'
 
 // ---------------------------------------------------------------------------------------------
 // Reducer
@@ -66,5 +67,7 @@ export function sowFromBid(project: GcProject, pkg: TradePackage, invite: Invite
     signedOn: null,
     draws: [],
     ...(theirs && theirs.length > 0 ? { theirSov: theirs } : {}),
+    // What the contract says they will not do (the owner, 2026-10-04), from the quote awarded.
+    ...(invite.bid?.exclusions && invite.bid.exclusions.length > 0 ? { excluded: sowExcluded(pkg, invite.bid) } : {}),
   }
 }
