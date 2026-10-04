@@ -16,6 +16,7 @@ import DetailJobModal, {
 } from './DetailJobModal'
 import JobFormModal from './JobFormModal'
 import JobHistoryLienTimeline from './JobHistoryLienTimeline'
+import { JobWindowDocumentsTab } from './JobWindowDocumentsTab'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 
 /**
@@ -110,6 +111,10 @@ export function JobWindowModal({
 }: Props) {
   const [tab, setTab] = useState<JobWindowTab>(initialTab)
   const [historyMounted, setHistoryMounted] = useState(initialTab === 'history')
+  // The Documents pane reads the job's pay applications on first visit; while its AIA window is
+  // open, Escape belongs to that window.
+  const [documentsMounted, setDocumentsMounted] = useState(initialTab === 'documents')
+  const [documentsEscBlocked, setDocumentsEscBlocked] = useState(false)
   // The Job pane reloads when this bumps — form saves must never leave the
   // read view stale behind a tab switch.
   const [detailRefreshKey, setDetailRefreshKey] = useState(0)
@@ -258,6 +263,7 @@ export function JobWindowModal({
               onClick={() => {
                 setTab(t)
                 if (t === 'history') setHistoryMounted(true)
+                if (t === 'documents') setDocumentsMounted(true)
               }}
               style={tabButtonStyle(tab === t)}
             >
@@ -352,7 +358,7 @@ export function JobWindowModal({
               registerRequestClose={(fn) => {
                 formCloseRef.current = fn
               }}
-              externalEscBlocked={detailEscBlocked}
+              externalEscBlocked={detailEscBlocked || documentsEscBlocked}
             />
           </div>
           {/* History pane (T5-05 / J31-adj3): the Projects day-grid for THIS job — every job, any status. */}
@@ -363,6 +369,12 @@ export function JobWindowModal({
               <Suspense fallback={<p style={{ color: 'var(--text-muted)' }}>Loading…</p>}>
                 <ProjectsJobHistoryTabLazy customerId={null} jobId={jobId} />
               </Suspense>
+            </div>
+          ) : null}
+          {/* Documents pane (v2.4491): the job's pay applications, the files behind them, the job's folders. */}
+          {documentsMounted && fullJob ? (
+            <div style={tab !== 'documents' ? { display: 'none' } : undefined} role="tabpanel" aria-label="Documents">
+              <JobWindowDocumentsTab job={fullJob} onAiaOpenChange={setDocumentsEscBlocked} />
             </div>
           ) : null}
         </div>
