@@ -84,6 +84,23 @@ export function lienWaiverWhy(formType: LienWaiverFormType, payorName: string): 
   }
 }
 
+/**
+ * What the Release of Lien window asks before the form goes from Conditional to Unconditional
+ * (v2.4507, the owner's words). The safe answer is to stay, so that button is the blue one.
+ */
+export const UNCONDITIONAL_WAIVER_WARNING = {
+  title: 'Are you sure you meant to choose Unconditional?',
+  message: [
+    'Have you spoken to your master plumber?',
+    'Most GCs will accept a conditional waiver, even when they ask for an unconditional one.',
+    'Signing an unconditional waiver gives up all your rights. It is usually only done at the very end of a job, after you have received 100% of what you asked for.',
+  ].join('\n\n'),
+  confirmLabel: 'Acknowledge and choose Unconditional',
+  cancelLabel: 'Stay conditional',
+  danger: true,
+  cancelIsSafe: true,
+} as const
+
 export function lienWaiverTitle(formType: LienWaiverFormType): string {
   switch (formType) {
     case 'conditional_progress':
