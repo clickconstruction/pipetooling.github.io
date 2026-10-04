@@ -223,7 +223,7 @@ describe('fillAiaG702G703Workbook', () => {
     }
   })
 
-  it('materializes G13 to a plain value when g703_g13_materials_stored is omitted (template has formula)', async () => {
+  it('clears G13 when g703_g13_materials_stored is omitted (the template holds a formula from its own job)', async () => {
     const fileBuf = readFileSync(templatePath)
     const templateAb = fileBuf.buffer.slice(fileBuf.byteOffset, fileBuf.byteOffset + fileBuf.byteLength)
 
@@ -240,7 +240,8 @@ describe('fillAiaG702G703Workbook', () => {
     try {
       const sheet2 = execFileSync('unzip', ['-p', tmp, 'xl/worksheets/sheet2.xml'], { encoding: 'utf8' })
       expect(sheet2).not.toMatch(/<v>NaN<\/v>/)
-      expect(sheet2).toMatch(/<c r="G13"[^>]*>\s*<v>18228(\.0)?<\/v>\s*<\/c>/)
+      expect(sheet2).not.toMatch(/18228/)
+      expect(sheet2).not.toMatch(/<c r="G13"[^>]*>\s*<f>/)
     } finally {
       try {
         unlinkSync(tmp)
