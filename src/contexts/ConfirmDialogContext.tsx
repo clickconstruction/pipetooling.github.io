@@ -33,6 +33,8 @@ export type ConfirmDialogOptions = {
   cancelLabel?: string
   /** Red confirm button for destructive actions. */
   danger?: boolean
+  /** The cancel button is the safe answer: it is the blue one and takes the focus, so Enter stays put. */
+  cancelIsSafe?: boolean
 }
 
 export type PromptDialogOptions = {
@@ -79,6 +81,7 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
   const [pending, setPending] = useState<PendingDialog | null>(null)
   const pendingRef = useRef<PendingDialog | null>(null)
   const confirmButtonRef = useRef<HTMLButtonElement>(null)
+  const cancelButtonRef = useRef<HTMLButtonElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const [inputValue, setInputValue] = useState('')
 
@@ -121,6 +124,7 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!pending) return
     if (pending.kind === 'prompt') inputRef.current?.focus()
+    else if (pending.options.cancelIsSafe) cancelButtonRef.current?.focus()
     else confirmButtonRef.current?.focus()
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') {
@@ -131,6 +135,8 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
     document.addEventListener('keydown', onKeyDown, true)
     return () => document.removeEventListener('keydown', onKeyDown, true)
   }, [pending, settleCancel])
+
+  const safeCancel = pending?.kind === 'confirm' && pending.options.cancelIsSafe === true
 
   return (
     <ConfirmDialogContext.Provider value={confirm}>
@@ -201,17 +207,18 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
                   }}
                 />
               ) : null}
-              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '1.1rem' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '1.1rem' }}>
                 <button
+                  ref={cancelButtonRef}
                   type="button"
                   onClick={settleCancel}
                   style={{
                     padding: '0.5rem 1rem',
-                    background: 'var(--bg-muted)',
-                    border: '1px solid var(--border-strong)',
+                    background: safeCancel ? '#3b82f6' : 'var(--bg-muted)',
+                    border: safeCancel ? '1px solid #3b82f6' : '1px solid var(--border-strong)',
                     borderRadius: 6,
-                    color: 'var(--text-700)',
-                    fontWeight: 500,
+                    color: safeCancel ? 'white' : 'var(--text-700)',
+                    fontWeight: safeCancel ? 600 : 500,
                     fontSize: '0.875rem',
                     cursor: 'pointer',
                   }}

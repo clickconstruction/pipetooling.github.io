@@ -102,6 +102,8 @@ Two switches in step 2 pick the form. The app sets both from the bill.
 
 The line under the switches says why. It also shows the two facts it read from the bill. Change a switch if the bill has it wrong.
 
+Clicking **Unconditional** asks first. A window says an unconditional waiver gives up all your rights. It says most GCs will accept a conditional one, even when they ask for the other. Speak to your master plumber before you go on. {{button:blue|Stay conditional}} changes nothing. {{button:red|Acknowledge and choose Unconditional}} switches the form.
+
 {{gif:send-a-gc-our-lien-waiver-window.gif|The Release of Lien window: the six steps down the left and the page beside them}}
 
 :::example The four forms

@@ -107,8 +107,39 @@ describe('LienReleaseModal — our waiver to the GC (v2.4274)', () => {
     expect(screen.getByText('Conditional Waiver and Release on Final Payment')).toBeTruthy()
     expect(form.textContent).toContain('§ 53.284(d)')
     fireEvent.click(within(form).getByRole('button', { name: 'Unconditional' }))
-    expect(screen.getByText('Unconditional Waiver and Release on Final Payment')).toBeTruthy()
+    fireEvent.click(await screen.findByRole('button', { name: 'Acknowledge and choose Unconditional' }))
+    expect(await screen.findByText('Unconditional Waiver and Release on Final Payment')).toBeTruthy()
     expect(screen.getByTestId('lien-waiver-why').textContent).toContain('Only after the last payment has settled')
+  })
+
+  it('Unconditional asks first: Stay conditional changes nothing, Acknowledge switches the form (v2.4507)', async () => {
+    renderWithProviders(<LienReleaseModal open onClose={() => undefined} job={job} invoice={inv2} signerNameFallback="Malachi Reyes" />)
+    const form = await screen.findByTestId('lien-waiver-form')
+    await settle()
+    const unconditional = () => within(form).getByRole('button', { name: 'Unconditional' })
+    fireEvent.click(unconditional())
+    const ask = await screen.findByRole('alertdialog', { name: 'Are you sure you meant to choose Unconditional?' })
+    expect(ask.textContent).toContain('Have you spoken to your master plumber?')
+    expect(ask.textContent).toContain('Most GCs will accept a conditional waiver, even when they ask for an unconditional one.')
+    expect(ask.textContent).toContain('Signing an unconditional waiver gives up all your rights.')
+    // Nothing moved yet, and the safe button holds the focus.
+    expect(unconditional().getAttribute('aria-pressed')).toBe('false')
+    const stay = within(ask).getByRole('button', { name: 'Stay conditional' })
+    expect(document.activeElement).toBe(stay)
+    fireEvent.click(stay)
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull())
+    expect(unconditional().getAttribute('aria-pressed')).toBe('false')
+    expect(screen.getByText('Conditional Waiver and Release on Progress Payment')).toBeTruthy()
+
+    fireEvent.click(unconditional())
+    fireEvent.click(await screen.findByRole('button', { name: 'Acknowledge and choose Unconditional' }))
+    await waitFor(() => expect(unconditional().getAttribute('aria-pressed')).toBe('true'))
+    expect(screen.getByText('Unconditional Waiver and Release on Progress Payment')).toBeTruthy()
+    // Already unconditional: the button is a no-op, and Progress or Final never asks.
+    fireEvent.click(unconditional())
+    fireEvent.click(within(form).getByRole('button', { name: 'Final' }))
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    expect(screen.getByText('Unconditional Waiver and Release on Final Payment')).toBeTruthy()
   })
 
   it('the signer block names the job’s leader; He signs now mints the row for him and opens the pad — his name, draw only', async () => {

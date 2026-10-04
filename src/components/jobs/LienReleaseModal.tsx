@@ -3,6 +3,7 @@ import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import {
   LIEN_WAIVER_FORM_CITES,
+  UNCONDITIONAL_WAIVER_WARNING,
   buildLienWaiverParagraphs,
   buildLienWaiverPdfBlob,
   buildLienWaiverPrefill,
@@ -67,6 +68,7 @@ import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { useNavigate } from 'react-router-dom'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { useAuth } from '../../hooks/useAuth'
@@ -183,6 +185,7 @@ export default function LienReleaseModal({
 }) {
   const { role: authRole, user: authUser, profileName } = useAuth()
   const { showToast } = useToastContext()
+  const confirmDialog = useConfirmDialog()
   const [formType, setFormType] = useState<LienWaiverFormType>('conditional_progress')
   // v2.4274: the leaders who can sign (the job's master first), the one standing here, and the GC's email.
   const [masters, setMasters] = useState<MasterOption[]>([])
@@ -1193,6 +1196,13 @@ export default function LienReleaseModal({
                     setFormType(nextForm)
                     refillFromSelection(nextForm, selectedInvoiceIds)
                   }
+                  // v2.4507: the Unconditional button asks first; staying conditional changes nothing.
+                  const pickUnconditional = () => {
+                    if (!t.conditional) return
+                    void (async () => {
+                      if (await confirmDialog(UNCONDITIONAL_WAIVER_WARNING)) pick({ conditional: false })
+                    })()
+                  }
                   const picked = selectedInvoices.length === 1 ? pickLienWaiverForBill(job, selectedInvoices[0]!) : null
                   return (
                     <>
@@ -1200,7 +1210,7 @@ export default function LienReleaseModal({
                         <button type="button" disabled={!editable} aria-pressed={t.conditional} onClick={() => pick({ conditional: true })} style={seg(t.conditional, !editable)}>
                           Conditional
                         </button>
-                        <button type="button" disabled={!editable} aria-pressed={!t.conditional} onClick={() => pick({ conditional: false })} style={seg(!t.conditional, !editable)}>
+                        <button type="button" disabled={!editable} aria-pressed={!t.conditional} onClick={pickUnconditional} style={seg(!t.conditional, !editable)}>
                           Unconditional
                         </button>
                       </div>
