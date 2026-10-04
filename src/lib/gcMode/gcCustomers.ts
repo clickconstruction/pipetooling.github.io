@@ -5,7 +5,7 @@
 import type { GcCustomer, GcProject, GcState, PlanQuestion } from './gcTypes'
 import { daysUntil } from './gcWords'
 import { proposalTotals } from './gcBids'
-import { ownerAccount } from './gcOwnerBilling'
+import { ownerAccount, ownerContractPrice, signedChangeOrders } from './gcOwnerBilling'
 
 export interface CustomerSummary {
   live: GcProject[]
@@ -37,6 +37,17 @@ export function ownerMoney(project: GcProject): { billed: number; paid: number; 
     : null
 }
 
+/**
+ * What the owner pays us for the job. Once our contract with them is signed: the price they signed
+ * plus their signed change orders (the owner, 2026-10-04, in Owner Billing), so buying a trade out
+ * cheaper or dearer moves our margin, not their price. Before that: the price we carry today.
+ */
+export function priceToOwner(project: GcProject): { price: number; signed: boolean; changeOrders: number } {
+  if (!project.ownerContractSignedOn) return { price: proposalTotals(project).price, signed: false, changeOrders: 0 }
+  const signed = signedChangeOrders(project)
+  return { price: ownerContractPrice(project) + signed.reduce((t, co) => t + co.price, 0), signed: true, changeOrders: signed.length }
+}
+
 /** One customer across every project: what is live, what is owed, how often they pick us. */
 export function customerSummary(state: GcState, customer: GcCustomer): CustomerSummary {
   const live = state.projects.filter((p) => p.customerId === customer.id)
@@ -52,7 +63,7 @@ export function customerSummary(state: GcState, customer: GcCustomer): CustomerS
     won: customer.past.filter((p) => p.outcome === 'built').length,
   }
   for (const project of live) {
-    const price = proposalTotals(project).price
+    const price = priceToOwner(project).price
     // A lost bid is no longer in front of them (owner, 2026-10-03); the window counts it as a loss.
     if (project.lostOn) continue
     if (project.stage === 'pursuing') sum.inFront += price

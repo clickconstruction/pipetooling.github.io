@@ -7243,6 +7243,7 @@ exports[`GC mode golden walk > step 103: Send change order 1 to Dr. Raman 1`] = 
 exports[`GC mode golden walk > step 104: Dr. Raman signs change order 1 1`] = `
 {
   "changed": {
+    "customers.raman.underContract": 344047,
     "lastLog.id": 100,
     "lastLog.text": "Dr. Priya Raman signed change order 1 in their portal. Their price goes up $5,280.",
   },
@@ -7337,6 +7338,7 @@ exports[`GC mode golden walk > step 112: Send change order 3 to Dr. Raman 1`] = 
 exports[`GC mode golden walk > step 113: Dr. Raman signs change order 3 1`] = `
 {
   "changed": {
+    "customers.raman.underContract": 346687,
     "lastLog.id": 109,
     "lastLog.text": "Dr. Priya Raman signed change order 3 in their portal. Their price goes up $2,640.",
   },
