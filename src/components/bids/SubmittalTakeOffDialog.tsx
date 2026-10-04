@@ -4,6 +4,7 @@
  * out takes it off both. A fixture the log already holds an order for cannot be left out: its
  * order would leave the log with it.
  */
+import { useLeaveGuard } from '../../hooks/useLeaveGuard'
 import type { CSSProperties } from 'react'
 
 const Z = 10060
@@ -23,6 +24,8 @@ export function SubmittalTakeOffDialog({ tag, bought, busy = false, onOrderOnly,
 }) {
   const name = tag.trim() || 'this row'
   const locked = bought !== ''
+  // 2026-10-04 · a choice, nothing typed: Esc closes it like Cancel.
+  useLeaveGuard({ dirty: false, onClose, busy })
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: Z, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))' }} role="presentation" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
       <div role="dialog" aria-modal="true" aria-label={`Take ${name} off the submittal`} style={{ background: 'var(--surface)', borderRadius: 8, maxWidth: 440, width: '100%', maxHeight: '100%', overflowY: 'auto', boxShadow: '0 10px 40px rgba(0,0,0,0.2)', padding: '1.1rem 1.25rem 0.9rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }} onClick={(e) => e.stopPropagation()}>

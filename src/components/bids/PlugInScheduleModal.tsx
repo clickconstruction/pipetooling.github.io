@@ -9,6 +9,8 @@
  */
 import { createPortal } from 'react-dom'
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useLeaveGuard } from '../../hooks/useLeaveGuard'
+import { LeaveQuestion } from './SubmittalLeaveGuard'
 
 import { parseFixtureSchedule, type ParsedScheduleLine } from '../../lib/submittals/parseFixtureSchedule'
 import { supabase } from '../../lib/supabase'
@@ -129,6 +131,8 @@ export function PlugInScheduleModal({
    * off: a save upserts on (bid, tag), so it could replace rows the estimator never saw.
    */
   const [loadError, setLoadError] = useState<string | null>(null)
+  // 2026-10-04 · a tag typed, pasted, changed or removed and not saved: a stray click outside asks before it loses it.
+  const [touched, setTouched] = useState(false)
 
   const fixtures = useMemo(() => rows.map((r) => ({ id: r.id, fixture: r.fixture })), [rows])
 
@@ -156,6 +160,7 @@ export function PlugInScheduleModal({
     if (!open) return
     setRaw('')
     setSkipped([])
+    setTouched(false)
     void loadExisting()
   }, [open, loadExisting])
 
@@ -166,11 +171,12 @@ export function PlugInScheduleModal({
     const pastedTags = new Set(fresh.map((d) => d.tag.toUpperCase()))
     setDrafts((cur) => [...fresh, ...cur.filter((d) => d.confidence === 'saved' && !pastedTags.has(d.tag.toUpperCase()))])
     setSkipped(parsed.skipped)
+    if (fresh.length > 0) setTouched(true)
     if (fresh.length === 0) showToast('No tags found — a line should start with the schedule mark, like WC-1 or LAV-2.', 'error')
   }
 
-  const update = (key: string, patch: Partial<DraftRow>) => setDrafts((cur) => cur.map((d) => (d.key === key ? { ...d, ...patch } : d)))
-  const remove = (key: string) => setDrafts((cur) => cur.filter((d) => d.key !== key))
+  const update = (key: string, patch: Partial<DraftRow>) => { setTouched(true); setDrafts((cur) => cur.map((d) => (d.key === key ? { ...d, ...patch } : d))) }
+  const remove = (key: string) => { setTouched(true); setDrafts((cur) => cur.filter((d) => d.key !== key)) }
   const addBlank = () => setDrafts((cur) => [...cur, { key: `t-${Date.now()}`, tag: '', manufacturer: '', model: '', description: '', fixture: '', confidence: 'none', raw: null }])
 
   const save = async () => {
@@ -215,12 +221,14 @@ export function PlugInScheduleModal({
     }
   }
 
+  const guard = useLeaveGuard({ dirty: touched || raw.trim() !== '', onClose, busy: saving, paused: !open })
+
   if (!open) return null
 
   const unmatched = drafts.filter((d) => d.tag && !d.fixture).length
 
   return createPortal(
-    <div style={overlay} role="presentation" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
+    <div style={overlay} role="presentation" onClick={(e) => { if (e.target === e.currentTarget) guard.requestClose() }}>
       <div role="dialog" aria-modal="true" aria-label="Plug in the fixture schedule" style={panel} onMouseDown={(e) => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
           <div>
@@ -230,7 +238,7 @@ export function PlugInScheduleModal({
               {existingCount > 0 ? ` ${existingCount} already on the bid — a pasted tag replaces its row.` : ''}
             </p>
           </div>
-          <button type="button" onClick={onClose} aria-label="Close" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.1rem', color: 'var(--text-muted)', padding: '0 0.25rem' }}>×</button>
+          <button type="button" onClick={guard.requestClose} aria-label="Close" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.1rem', color: 'var(--text-muted)', padding: '0 0.25rem' }}>×</button>
         </div>
 
         <textarea
@@ -290,13 +298,14 @@ export function PlugInScheduleModal({
           <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.8125rem' }}>Nothing on the bid yet — paste the schedule and tap Match to tags, or add a tag by hand.</p>
         )}
 
+        {guard.asking ? <LeaveQuestion what="The schedule you typed is not saved yet." onLeave={onClose} onKeep={guard.keep} /> : null}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', borderTop: '1px solid var(--border)', paddingTop: '0.6rem' }}>
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
             {drafts.filter((d) => d.tag).length} tag{drafts.filter((d) => d.tag).length === 1 ? '' : 's'}
             {unmatched > 0 ? ` · ${unmatched} not on a count row (saved anyway; the compare shows only rows the quotes name)` : ''}
           </span>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <button type="button" onClick={onClose} style={{ padding: '0.4rem 0.85rem', background: 'var(--surface)', color: 'var(--text-base)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', font: 'inherit', fontSize: '0.8125rem' }}>Cancel</button>
+            <button type="button" disabled={saving} onClick={guard.requestClose} style={{ padding: '0.4rem 0.85rem', background: 'var(--surface)', color: 'var(--text-base)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', font: 'inherit', fontSize: '0.8125rem' }}>Cancel</button>
             <button type="button" onClick={() => void save()} disabled={saving || drafts.length === 0 || loading || loadError != null} style={{ padding: '0.4rem 0.85rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: saving ? 'default' : 'pointer', font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, opacity: saving || drafts.length === 0 ? 0.6 : 1 }}>
               {saving ? 'Saving…' : `Save ${drafts.filter((d) => d.tag).length} specified products`}
             </button>

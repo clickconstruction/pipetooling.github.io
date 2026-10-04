@@ -11,7 +11,7 @@
  * onClose; a refused save says why and reports neither.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 
 import { renderSettled, renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import { PlugInScheduleModal } from './PlugInScheduleModal'
@@ -246,5 +246,26 @@ describe('PlugInScheduleModal', () => {
     expect(onClose).toHaveBeenCalledTimes(3)
     expect(onSaved).not.toHaveBeenCalled()
     expect(state.upserts).toHaveLength(0)
+  })
+  it('2026-10-04 · the window keeps what was typed: nothing typed closes at once; a pasted schedule asks before it leaves, by the backdrop, the × and Esc', async () => {
+    const clean = await openModal()
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(clean.onClose).toHaveBeenCalledTimes(1)
+    cleanup()
+    state.reads = []
+    const { onClose } = await openModal()
+    paste(SCHEDULE)
+    fireEvent.click(screen.getByRole('presentation'))
+    expect(onClose).not.toHaveBeenCalled()
+    expect(screen.getByTestId('leave-question').textContent).toContain('Leave without saving? The schedule you typed is not saved yet.')
+    fireEvent.click(screen.getByTestId('leave-keep'))
+    expect(valuesOf('Tag')).toContain('WC-1')
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+    expect(screen.getByTestId('leave-question')).toBeTruthy()
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(screen.queryByTestId('leave-question')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    fireEvent.click(screen.getByTestId('leave-confirm'))
+    expect(onClose).toHaveBeenCalledTimes(1)
   })
 })

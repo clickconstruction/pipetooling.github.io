@@ -1,3 +1,4 @@
+import { useLeaveGuard } from '../../hooks/useLeaveGuard'
 import type { CSSProperties } from 'react'
 import type { SplitExample } from '../../lib/submittals/takeoffCandidates'
 
@@ -12,6 +13,8 @@ const td: CSSProperties = { padding: '0.3rem 0.5rem', borderBottom: '1px solid v
  */
 export function SplitRuleModal({ examples, onClose }: { examples: ReadonlyArray<SplitExample>; onClose: () => void }) {
   const shown = examples.slice(0, 40)
+  // 2026-10-04 · a page to read: Esc closes it like Close.
+  useLeaveGuard({ dirty: false, onClose })
   return (
     <div role="presentation" onClick={(e) => { e.stopPropagation(); onClose() }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }}>
       <div role="dialog" aria-modal="true" aria-label="When a row can split" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: 8, maxWidth: 600, width: '100%', maxHeight: 'min(85vh, 100%)', display: 'flex', flexDirection: 'column', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}>
