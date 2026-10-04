@@ -6,6 +6,8 @@ import {
   answerRecord,
   askPromise,
   assistantRules,
+  declinedTitle,
+  declinedWords,
   partnerAsks,
   partnerScheduleRecord,
   partnerScheduleWords,
@@ -504,9 +506,10 @@ function PartnerLine({ state, partner, bench, dispatch }: { state: GcState; part
               <Chip
                 key={a.invite.id}
                 tone={promise?.state === 'passed' ? 'red' : travel.inZone ? words.tone : 'amber'}
-                title={travel.inZone ? undefined : 'This project is farther than they said they go.'}
+                title={a.invite.status === 'declined' ? declinedTitle(a.invite) : travel.inZone ? undefined : 'This project is farther than they said they go.'}
               >
-                {a.project.name} · {promise ? promiseWords(promise) : words.word}
+                {/* The reason they are out stays with the company too (the owner, 2026-10-04). */}
+                {a.project.name} · {promise ? promiseWords(promise) : a.invite.status === 'declined' ? declinedWords(a.invite) : words.word}
                 {quiet ? (a.waited === 0 ? ' · asked today' : ` · asked ${a.waited} ${a.waited === 1 ? 'day' : 'days'} ago`) : ''}
                 {far ? ` · ${far}` : ''}
               </Chip>

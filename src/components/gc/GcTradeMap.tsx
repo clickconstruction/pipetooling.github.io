@@ -5,6 +5,8 @@ import {
   answerRecord,
   bidsIn,
   daysUntil,
+  declinedTitle,
+  declinedWords,
   money,
   nextToAsk,
   partnerBlockers,
@@ -19,6 +21,7 @@ import {
 } from '../../lib/gcMode/gcModel'
 import { AskThread, PromiseChip } from './GcAskThread'
 import { Btn, Chip, type Tone } from './gcUi'
+import { GcDeclineForm } from './GcDeclineForm'
 
 /**
  * GC mode design spike: line up quotes for one trade on one project. The map shows the project
@@ -355,6 +358,7 @@ function LineupItem({
   const record = RECORD[answerRecord(partner)]
   const blockers = partnerBlockers(partner, state.today)
   const ids = { projectId: project.id, packageId: pkg.id }
+  const [declining, setDeclining] = useState<'wont' | 'cant' | null>(null)
   const waited = invite ? daysUntil(state.today, invite.invitedOn) : 0
   const far = travelWords(travel, partner)
 
@@ -402,8 +406,9 @@ function LineupItem({
           </div>
         )}
         {invite?.status === 'declined' && (
-          <div style={{ color: 'var(--text-600)' }}>
-            Said no{invite.declinedWhy === 'wont' ? ': will not do it' : invite.declinedWhy === 'cant' ? ': cannot do it' : ''}.
+          <div style={{ color: 'var(--text-600)' }} title={declinedTitle(invite)}>
+            Said no: {declinedWords(invite)}
+            {invite.declineReason?.note ? `. "${invite.declineReason.note}"` : ''}.
           </div>
         )}
         {invite && (invite.status === 'invited' || invite.status === 'opened') && (
@@ -415,9 +420,20 @@ function LineupItem({
             <Btn kind="quiet" onClick={() => dispatch({ type: 'nudge', ...ids, inviteId: invite.id, about: `are you quoting ${pkg.trade.toLowerCase()} on ${project.name}?` })}>
               Nudge
             </Btn>
-            <Btn onClick={() => dispatch({ type: 'officeDecline', ...ids, inviteId: invite.id, why: 'wont' })}>Will not do it</Btn>
-            <Btn onClick={() => dispatch({ type: 'officeDecline', ...ids, inviteId: invite.id, why: 'cant' })}>Cannot do it</Btn>
+            <Btn onClick={() => setDeclining('wont')}>Will not do it</Btn>
+            <Btn onClick={() => setDeclining('cant')}>Cannot do it</Btn>
           </div>
+        )}
+        {invite && declining && (invite.status === 'invited' || invite.status === 'opened') && (
+          <GcDeclineForm
+            company={partner.company}
+            why={declining}
+            onCancel={() => setDeclining(null)}
+            onSave={(reason, note) => {
+              dispatch({ type: 'officeDecline', ...ids, inviteId: invite.id, why: declining, reason, note })
+              setDeclining(null)
+            }}
+          />
         )}
         {invite && (invite.status === 'invited' || invite.status === 'opened') && (
           <AskThread state={state} project={project} pkg={pkg} invite={invite} partner={partner} dispatch={dispatch} />

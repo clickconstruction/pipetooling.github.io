@@ -673,6 +673,11 @@ const STEPS: Step[] = [
       preBidMinutes: true,
     },
   },
+  // Why a company is out, kept with the job and the company (the owner, 2026-10-04).
+  {
+    label: 'Bluebonnet will not do Roofing on Boerne: too busy',
+    action: { type: 'officeDecline', projectId: 'boerne', packageId: 'roof', inviteId: 'roof-bluebonnet', why: 'wont', reason: 'busy', note: 'Wes says both crews are on a school job through November' },
+  },
   // The scope book (the owner, 2026-10-04): a line saved by hand, a line changed, two lines folded, a set saved.
   { label: 'The scope book: save "Dumpster enclosure gates" under Sitework', action: { type: 'saveToScopeBook', trade: 'Sitework', words: 'Dumpster enclosure gates', spec: '32 31 13' } },
   {

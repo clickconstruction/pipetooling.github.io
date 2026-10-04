@@ -8836,40 +8836,71 @@ exports[`GC mode golden walk > step 179: Leon Springs: Addendum 2 carries the pr
 }
 `;
 
-exports[`GC mode golden walk > step 180: The scope book: save "Dumpster enclosure gates" under Sitework 1`] = `
+exports[`GC mode golden walk > step 180: Bluebonnet will not do Roofing on Boerne: too busy 1`] = `
 {
   "changed": {
+    "assistantRules[2].now": "9 of 9 asks are opened or still inside 3 days.",
+    "assistantRules[3].items": "[]",
+    "assistantRules[3].now": "9 of 9 companies we are asking have all three.",
+    "assistantRules[3].ok": true,
+    "assistantRules[5].now": "0 of 0 promises on live asks are still good.",
+    "followUps": "[]",
     "lastLog.id": 176,
+    "lastLog.text": "Bluebonnet Roofing will not do Roofing. Why: too busy, "Wes says both crews are on a school job through November". Offer it to the next company.",
+    "tradeBenches[0].needs[0].looking": 0,
+    "tradeBenches[0].needs[0].passed": 1,
+  },
+  "removed": [
+    "followUps[0].project",
+    "followUps[0].pkg",
+    "followUps[0].invite",
+    "followUps[0].partner",
+    "followUps[0].why",
+    "followUps[0].order",
+    "followUps[0].words",
+    "assistantRules[3].items[0].id",
+    "assistantRules[3].items[0].text",
+    "assistantRules[3].items[0].action",
+    "assistantRules[3].items[0].actionLabel",
+    "assistantRules[3].items[0].doneNote",
+  ],
+}
+`;
+
+exports[`GC mode golden walk > step 181: The scope book: save "Dumpster enclosure gates" under Sitework 1`] = `
+{
+  "changed": {
+    "lastLog.id": 177,
     "lastLog.text": "Saved "Dumpster enclosure gates" to the scope book under Sitework.",
   },
   "removed": [],
 }
 `;
 
-exports[`GC mode golden walk > step 181: The scope book: Paving reads Asphalt paving, with its section 1`] = `
+exports[`GC mode golden walk > step 182: The scope book: Paving reads Asphalt paving, with its section 1`] = `
 {
   "changed": {
-    "lastLog.id": 177,
+    "lastLog.id": 178,
     "lastLog.text": "Changed the scope book's Sitework line "Paving".",
   },
   "removed": [],
 }
 `;
 
-exports[`GC mode golden walk > step 182: The scope book: fold "Site clearing and grading" into "Clearing and grading" 1`] = `
+exports[`GC mode golden walk > step 183: The scope book: fold "Site clearing and grading" into "Clearing and grading" 1`] = `
 {
   "changed": {
-    "lastLog.id": 178,
+    "lastLog.id": 179,
     "lastLog.text": "Folded "Site clearing and grading" into "Clearing and grading" in the scope book.",
   },
   "removed": [],
 }
 `;
 
-exports[`GC mode golden walk > step 183: The scope book: save Leon Springs's Sitework as a set 1`] = `
+exports[`GC mode golden walk > step 184: The scope book: save Leon Springs's Sitework as a set 1`] = `
 {
   "changed": {
-    "lastLog.id": 179,
+    "lastLog.id": 180,
     "lastLog.text": "Saved the set "Sitework for a clinic pad" to the scope book: 4 Sitework lines.",
   },
   "removed": [],
@@ -9076,23 +9107,28 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
-      "id": 179,
+      "id": 180,
       "text": "Saved the set "Sitework for a clinic pad" to the scope book: 4 Sitework lines.",
       "who": "office",
     },
     {
-      "id": 178,
+      "id": 179,
       "text": "Folded "Site clearing and grading" into "Clearing and grading" in the scope book.",
       "who": "office",
     },
     {
-      "id": 177,
+      "id": 178,
       "text": "Changed the scope book's Sitework line "Paving".",
       "who": "office",
     },
     {
-      "id": 176,
+      "id": 177,
       "text": "Saved "Dumpster enclosure gates" to the scope book under Sitework.",
+      "who": "office",
+    },
+    {
+      "id": 176,
+      "text": "Bluebonnet Roofing will not do Roofing. Why: too busy, "Wes says both crews are on a school job through November". Offer it to the next company.",
       "who": "office",
     },
     {
@@ -9219,11 +9255,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "id": 151,
       "text": "Sent submittal 07 62 00-01, Sheet metal and flashing, to Marsh & Vale Architects.",
       "who": "office",
-    },
-    {
-      "id": 150,
-      "text": "Summit Roofing sent submittal 07 62 00-01, Sheet metal and flashing, round 2.",
-      "who": "trade",
     },
   ],
   "partners": [
@@ -10090,11 +10121,17 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
                   "on": "2026-09-24",
                 },
               ],
+              "declineReason": {
+                "note": "Wes says both crews are on a school job through November",
+                "on": "2026-10-02",
+                "reason": "busy",
+              },
+              "declinedWhy": "wont",
               "id": "roof-bluebonnet",
               "invitedOn": "2026-09-19",
               "partnerId": "bluebonnet",
               "seenRev": 1,
-              "status": "opened",
+              "status": "declined",
             },
           ],
           "scope": [
