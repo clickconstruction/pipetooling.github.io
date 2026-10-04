@@ -30,6 +30,7 @@ const S = {
   latestSet: { en: 'you have the latest set', es: 'tiene el juego más reciente' },
   lookPlans: { en: 'Look at the plans', es: 'Ver los planos' },
   newForTrade: { en: 'New for {trade} since you last looked', es: 'Nuevo para {trade} desde la última vez que entró' },
+  sheetsTakenOut: { en: 'Taken out: {list}.', es: 'Se quitaron: {list}.' },
   sheetsList: { en: 'Sheets {list}.', es: 'Hojas {list}.' },
   setNoChange: {
     en: '{label} does not change {trade}. Open it so you price on the newest set.',
@@ -267,6 +268,8 @@ const S = {
   },
 
   // The plans window and the sheet numbers
+  takenOutWord: { en: 'taken out', es: 'se quitó' },
+  takenOutIn: { en: 'Taken out in {sets}:', es: 'Se quitó en {sets}:' },
   plansWindowTitle: { en: '{project} · plans', es: '{project} · planos' },
   drawnBy: { en: '{address} · drawn by {architect}', es: '{address} · dibujado por {architect}' },
   newest: { en: 'newest', es: 'más reciente' },

@@ -116,7 +116,7 @@ column headers are in one block at the end of `gcBuildingWords.ts`, for the nati
 
 ## For a native speaker to read
 
-Every Spanish string the trade's portal shows, 557 in all, drawn from the code on 2026-10-04.
+Every Spanish string the trade's portal shows, 560 in all, drawn from the code on 2026-10-04.
 They're grouped by screen, English on the left. Please mark anything that reads wrong, stiff or
 unclear, and write the better words beside it. The Portal lane makes the changes and passes the
 other lanes theirs.
@@ -169,6 +169,7 @@ they were written in. The portal does not translate them.
 | you have the latest set | tiene el juego más reciente |
 | Look at the plans | Ver los planos |
 | New for {trade} since you last looked | Nuevo para {trade} desde la última vez que entró |
+| Taken out: {list}. | Se quitaron: {list}. |
 | Sheets {list}. | Hojas {list}. |
 | {label} does not change {trade}. Open it so you price on the newest set. | {label} no cambia {trade}. Ábralo para cotizar con el juego más reciente. |
 | {trade} · bid tab | {trade} · tabla de precios |
@@ -388,6 +389,8 @@ they were written in. The portal does not translate them.
 
 | English | Español |
 |---|---|
+| taken out | se quitó |
+| Taken out in {sets}: | Se quitó en {sets}: |
 | {project} · plans | {project} · planos |
 | {address} · drawn by {architect} | {address} · dibujado por {architect} |
 | newest | más reciente |
