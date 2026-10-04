@@ -940,8 +940,8 @@ they were written in. The portal does not translate them.
 | Click won the project. This trade is not awarded yet. | Click ganó el proyecto. Esta especialidad todavía no se adjudica. |
 | Click won the project. This trade is yours. | Click ganó el proyecto. Esta especialidad es suya. |
 | Click won the project. This trade went to another company. | Click ganó el proyecto. Esta especialidad fue para otra empresa. |
-| Click did not win this project. Thank you for your quote. | Click no ganó este proyecto. Gracias por su precio. |
-| The owner stopped this project or put it on hold. Thank you for your quote. | El dueño detuvo este proyecto o lo puso en pausa. Gracias por su precio. |
+| Click did not win this project. Thank you for your quote. | Click no ganó este proyecto. Gracias por su cotización. |
+| The owner stopped this project or put it on hold. Thank you for your quote. | El dueño detuvo este proyecto o lo puso en pausa. Gracias por su cotización. |
 
 #### The table
 
