@@ -275,10 +275,22 @@ export function asRevisionStatus(v: string | null | undefined): RevisionStatus {
 }
 
 /** "Rev 3 · draft · Sep 15" (shared revisions date their share, drafts their creation). */
-export function describeRevisionChip(rev: Pick<SubmittalRevisionRow, 'rev_number' | 'status' | 'created_at' | 'shared_at'>): string {
+export function describeRevisionChip(rev: Pick<SubmittalRevisionRow, 'rev_number' | 'status' | 'created_at' | 'shared_at'>, /** the newest answer on its rows, when it has one (2026-10-03) */ answeredAt?: string | null): string {
   const status = asRevisionStatus(rev.status)
+  // A draft answered by email and then replaced holds the GC's answers: "superseded · the day it was made" hid both facts.
+  if (status === 'superseded' && answeredAt) return [`Rev ${rev.rev_number}`, `answered ${formatShortDate(answeredAt)}`].join(' · ')
   const when = formatShortDate(status === 'draft' ? rev.created_at : rev.shared_at ?? rev.created_at)
   return [`Rev ${rev.rev_number}`, REVISION_STATUS_LABELS[status], when].filter(Boolean).join(' · ')
+}
+
+/** The newest answer on a revision's rows and parts, or null when nobody answered. */
+export function revisionAnsweredAt(rows: ReadonlyArray<{ review_decision?: string | null; reviewed_at?: string | null }>, parts: ReadonlyArray<{ review_decision?: string | null; reviewed_at?: string | null }> = []): string | null {
+  let newest: string | null = null
+  for (const r of [...rows, ...parts]) {
+    if (!asDecision(r.review_decision) || !r.reviewed_at) continue
+    if (newest == null || new Date(r.reviewed_at).getTime() > new Date(newest).getTime()) newest = r.reviewed_at
+  }
+  return newest
 }
 
 /**

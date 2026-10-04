@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { asDecision, asReason, asStatus, carriedRowInsert, rowsToCarry, describeRevision, describeRevisionChip, describeWhatIsLeft, draftToItemInsert, formatPages, itemToPrevious, needsSheet, parsePageRange, parseSourceFiles, revisionTiles, serializeSourceFiles } from './submittalRevision'
+import { asDecision, asReason, asStatus, carriedRowInsert, rowsToCarry, describeRevision, describeRevisionChip, describeWhatIsLeft, draftToItemInsert, formatPages, itemToPrevious, needsSheet, parsePageRange, parseSourceFiles, revisionAnsweredAt, revisionTiles, serializeSourceFiles } from './submittalRevision'
 import type { SubmittalItemRow } from './submittalRevision'
 import type { SubmittalRowDraft } from './buildSubmittalRows'
 
@@ -123,6 +123,15 @@ describe('the revision chip', () => {
     expect(describeRevisionChip({ rev_number: 3, status: 'draft', created_at: '2026-09-15T20:00:00Z', shared_at: null })).toBe('Rev 3 · draft · Sep 15')
     expect(describeRevisionChip({ rev_number: 2, status: 'shared', created_at: '2026-09-10T20:00:00Z', shared_at: '2026-09-12T20:00:00Z' })).toBe('Rev 2 · shared · Sep 12')
     expect(describeRevisionChip({ rev_number: 1, status: 'nonsense', created_at: '', shared_at: null })).toBe('Rev 1 · draft')
+  })
+  it('2026-10-03 · a replaced draft that holds answers reads answered, with the day of the newest one', () => {
+    const rev = { rev_number: 3, status: 'superseded', created_at: '2026-09-15T20:00:00Z', shared_at: null }
+    expect(describeRevisionChip(rev)).toBe('Rev 3 · superseded · Sep 15')
+    expect(describeRevisionChip(rev, '2026-10-02T17:00:00Z')).toBe('Rev 3 · answered Oct 2')
+    // A draft or a shared revision keeps its own words whatever it holds.
+    expect(describeRevisionChip({ ...rev, status: 'draft' }, '2026-10-02T17:00:00Z')).toBe('Rev 3 · draft · Sep 15')
+    expect(revisionAnsweredAt([{ review_decision: 'approved', reviewed_at: '2026-09-17T12:00:00Z' }, { review_decision: null, reviewed_at: null }], [{ review_decision: 'rejected', reviewed_at: '2026-10-02T17:00:00Z' }])).toBe('2026-10-02T17:00:00Z')
+    expect(revisionAnsweredAt([{ review_decision: null, reviewed_at: '2026-10-02T17:00:00Z' }])).toBeNull()
   })
 })
 

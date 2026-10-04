@@ -98,7 +98,8 @@ export function submittalJourney(input: SubmittalJourneyInput): SubmittalJourney
   else if (!pr && (input.decisions?.approved ?? 0) > 0) status.procure = 'current'
   const anchors = stageAnchors(input.rev != null)
   const finish = (next: JourneyNext): SubmittalJourney => ({
-    stages: ORDER.map((key, i) => ({ key, number: i + 1, label: LABELS[key], status: status[key], anchor: anchors[key] })),
+    // 2026-10-03 · once a revision exists, pill 2 names it: "Build Rev 1" on Rev 4 was the wrong number.
+    stages: ORDER.map((key, i) => ({ key, number: i + 1, label: key === 'build' && input.rev ? `Rev ${input.rev.number}` : LABELS[key], status: status[key], anchor: anchors[key] })),
     next,
   })
 
@@ -129,8 +130,13 @@ export function submittalJourney(input: SubmittalJourneyInput): SubmittalJourney
     // An older revision is the record; the pills say how far the work got, the line says where it is.
     status.rows = 'done'
     status.package = rev.packageBuilt ? 'done' : 'later'
-    status.share = rev.status === 'draft' ? 'later' : 'done'
-    return finish({ kind: 'done', text: `Rev ${rev.number} was shared. It is the record now. Pick the newest version above to keep working.`, action: null, actionLabel: null })
+    // 2026-10-03 · a draft replaced by a newer one reads superseded: it was never shared, and the line must not say it was.
+    const wasShared = rev.status === 'shared' || rev.status === 'reviewed'
+    const answered = (input.decisions?.decided ?? 0) > 0
+    status.share = wasShared ? 'done' : 'later'
+    if (answered) status.review = 'done'
+    const what = wasShared ? `Rev ${rev.number} was shared.` : answered ? `Rev ${rev.number} was not shared from the app. Its answers were typed in.` : `Rev ${rev.number} was replaced before it was shared.`
+    return finish({ kind: 'done', text: `${what} It is the record now. Pick the newest version above to keep working.`, action: null, actionLabel: null })
   }
 
   if (rev.status === 'draft') {

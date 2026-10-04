@@ -94,6 +94,19 @@ describe('submittalJourney', () => {
     const j = submittalJourney({ ...base, rev: draft({ number: 1, status: 'shared', isNewest: false, packageBuilt: true }) })
     expect(j.next).toMatchObject({ kind: 'done', action: null, text: expect.stringMatching(/^Rev 1 was shared\. It is the record now/) })
   })
+
+  it('2026-10-03 · pill 2 names the revision once there is one, and a replaced draft never reads as shared', () => {
+    expect(submittalJourney(base).stages[1]!.label).toBe('Build Rev 1')
+    expect(submittalJourney({ ...base, rev: draft({ number: 4 }) }).stages[1]!.label).toBe('Rev 4')
+    // BP398 Rev 3: a draft answered by email, then replaced by Rev 4.
+    const answered = { ...base, rev: draft({ number: 3, status: 'superseded', isNewest: false }), decisions: { decided: 3, approved: 2, open: 1, sentBack: 1, byName: ['ZZ Test GC'] } }
+    expect(submittalJourney(answered).next.text).toBe('Rev 3 was not shared from the app. Its answers were typed in. It is the record now. Pick the newest version above to keep working.')
+    // Procure lights on its own: two rows were approved.
+    expect(statuses(answered)).toBe('done,done,done,later,later,done,later,current')
+    const dropped = { ...base, rev: draft({ number: 1, status: 'superseded', isNewest: false }) }
+    expect(submittalJourney(dropped).next.text).toBe('Rev 1 was replaced before it was shared. It is the record now. Pick the newest version above to keep working.')
+    expect(statuses(dropped)).toBe('done,done,done,later,later,later,later,later')
+  })
 })
 
 describe('plain words on the Next line (v2.4124)', () => {

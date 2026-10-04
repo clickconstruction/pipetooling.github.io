@@ -661,7 +661,8 @@ describe('BidsSubmittalsTab', () => {
     expect(door.textContent).toContain('2 rows have no call from the reviewer yet, so they are not released. Approved outside the app?')
     // The same door sits under Their call, a step a draft has not reached: its title opens it.
     fireEvent.click(screen.getByRole('button', { name: /6 · Their call/ }))
-    expect(screen.getByTestId('approve-all-open').textContent).toBe('They approved all of it…')
+    // 2026-10-03 · one row already has an answer, so the entry is for the others.
+    expect(screen.getByTestId('approve-all-open').textContent).toBe('They approved the other 2…')
     fireEvent.click(within(door).getByRole('button', { name: 'Enter their approval…' }))
     const dialog = await screen.findByRole('dialog', { name: 'They approved Rev 1' })
     expect(within(dialog).getByTestId('approve-all-scope').textContent).toBe('This marks 2 rows Approved in one entry. 1 row already has a call and keeps it. 1 row has no product and is left out.')
@@ -1358,6 +1359,11 @@ describe('BidsSubmittalsTab', () => {
       fireEvent.click(within(confirmDialog).getByRole('button', { name: 'Build Rev 2 with 3 rows' }))
       await waitFor(() => expect(screen.getAllByTestId('revision-chip')).toHaveLength(2))
       expect(state.items.filter((r) => r.submittal_id === 'rev-2').map((r) => r.tag)).toEqual(['LAV-1', 'FCO', 'UTILITY SINK'])
+      // 2026-10-03 · the words follow the revision: pill 2 and steps 2 and 7 say Rev 2 and Rev 3, and the replaced draft reads answered, not superseded.
+      await waitFor(() => expect(screen.getByRole('button', { name: /^2 Rev 2 · / })).toBeTruthy())
+      expect(screen.getByTestId('road-2-about').textContent).toContain('Rev 2 is the version you are working on.')
+      expect(screen.getByTestId('road-7-about').textContent).toContain('Start Rev 3 with only those rows')
+      await waitFor(() => expect(screen.getAllByTestId('revision-chip').map((c) => c.textContent)).toEqual([expect.stringMatching(/^Rev 2 · draft · /), 'Rev 1 · answered Oct 2']))
     } finally {
       state.noSources = false
     }

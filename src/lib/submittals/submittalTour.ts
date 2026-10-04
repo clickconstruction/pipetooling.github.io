@@ -151,6 +151,17 @@ export const SUBMITTAL_STAGE_ABOUT: Record<number, string> = {
   8: 'The order log the GC asks for, one line per part: order dates, PO numbers and what is running late.',
 }
 
+/**
+ * The sentence under a stage's title for the revision on screen (2026-10-03). Two of them named
+ * a number: step 2 read "Rev 1 is the first version" on Rev 4, and step 7 read "Start Rev 2" on
+ * Rev 4. With no revision, or on Rev 1, they read as `SUBMITTAL_STAGE_ABOUT` does.
+ */
+export function stageAbout(stage: number, rev: { number: number; isNewest: boolean } | null): string {
+  if (rev && stage === 2 && rev.number > 1) return rev.isNewest ? `Rev ${rev.number} is the version you are working on. Each earlier version stays as the record.` : `Rev ${rev.number} is an earlier version. It stays as the record.`
+  if (rev && stage === 7 && rev.number > 1) return `Rows the GC sent back come here. Start Rev ${rev.number + 1} with only those rows, or with every row when a product changed.`
+  return SUBMITTAL_STAGE_ABOUT[stage] ?? ''
+}
+
 const STAGE_STOP_ANCHORS: Record<number, string[]> = {
   1: ['submittals-schedule', 'submittals-source'],
   2: ['submittals-build'],
