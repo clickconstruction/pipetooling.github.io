@@ -797,3 +797,56 @@ describe('a sheet a newer set took out', () => {
     expect(read(state).goneSheets).toEqual([])
   })
 })
+
+describe('a line’s spec sections on the bid form', () => {
+  // The made-up projects have no manual: give Boerne one, and two Electrical lines a section each.
+  const withManual: GcState = {
+    ...state,
+    projects: state.projects.map((p) =>
+      p.id !== 'boerne'
+        ? p
+        : {
+            ...p,
+            specs: [
+              { id: '26 05 19', title: 'Low-voltage wire' },
+              { id: '26 24 16', title: 'Panelboards' },
+            ],
+            packages: p.packages.map((k) =>
+              k.id !== 'elec' ? k : { ...k, scope: k.scope.map((it, i) => (i === 0 ? { ...it, specs: ['26 05 19'] } : i === 1 ? { ...it, specs: ['26 24 16'] } : it)) },
+            ),
+          },
+    ),
+  }
+  const read = (s: GcState) => {
+    const project = s.projects.find((p) => p.id === 'boerne')!
+    const pkg = project.packages.find((k) => k.id === 'elec')!
+    return portalLines(project, pkg, pkg.invites.find((i) => i.partnerId === 'voltage')!)
+  }
+
+  it('shows the sections the office set, with their titles, and none on a line without', () => {
+    const r = read(withManual)
+    expect(r.lines[1]!.specs).toEqual([{ id: '26 24 16', title: 'Panelboards', changed: false, gone: false }])
+    expect(r.lines[2]!.specs).toEqual([])
+  })
+
+  it('reads a renamed section’s new title, marks it revised, and the line as touched', () => {
+    const later = gcReducer(withManual, {
+      type: 'issuePlanSet',
+      projectId: 'boerne',
+      label: 'Addendum 2',
+      note: 'Switchboard added.',
+      sheets: [],
+      addedSheets: [],
+      touches: ['elec'],
+      recipients: [],
+      newTrades: [],
+      specs: ['26 24 16', '26 05 19'],
+      retitledSpecs: [{ id: '26 24 16', title: 'Panelboards and switchboards' }],
+      removedSpecs: ['26 05 19'],
+    })
+    const r = read(later)
+    expect(r.lines[1]!.specs).toEqual([{ id: '26 24 16', title: 'Panelboards and switchboards', changed: true, gone: false }])
+    expect(r.lines[1]!.by).toContain('Addendum 2')
+    expect(r.lines[0]!.specs).toEqual([{ id: '26 05 19', title: 'Low-voltage wire', changed: false, gone: true }])
+  })
+})

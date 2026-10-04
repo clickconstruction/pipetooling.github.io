@@ -70,6 +70,37 @@ export function LineSheets({ line, onOpen }: { line: PortalLine | undefined; onO
   )
 }
 
+/**
+ * The sections of the project manual a line reads, under it: "07 54 23 · Thermoplastic roofing"
+ * (owner, 2026-10-04). Only the ones the office set. Amber: a newer set revised it. Struck: a
+ * newer set took it out. Titles stay as the office pasted them.
+ */
+export function LineSpecs({ line }: { line: PortalLine | undefined }) {
+  const { t } = usePortalLang()
+  if (!line || line.specs.length === 0) return null
+  return (
+    <span style={{ flexBasis: '100%', display: 'flex', flexWrap: 'wrap', gap: '0.2rem 0.5rem', paddingLeft: '1.45rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+      {line.specs.map((x) => (
+        <span
+          key={x.id}
+          title={x.changed ? t('specChanged') : undefined}
+          style={{
+            fontVariantNumeric: 'tabular-nums',
+            textDecoration: x.gone ? 'line-through' : 'none',
+            background: x.changed ? 'var(--bg-amber-100)' : 'transparent',
+            color: x.changed ? 'var(--text-amber-800)' : undefined,
+            borderRadius: 3,
+            padding: x.changed ? '0 0.25rem' : 0,
+          }}
+        >
+          {x.title ? `${x.id} · ${x.title}` : x.id}
+          {x.gone && <> {t('takenOutWord')}</>}
+        </span>
+      ))}
+    </span>
+  )
+}
+
 /** For a number on older plans: the lines the newer sets touch, and the trade's changed sheets no line names. */
 export function ChangedLines({
   trade,
@@ -105,6 +136,13 @@ export function ChangedLines({
           {l.gone.map((id) => (
             <GoneSheet key={id} id={id} />
           ))}
+          {l.specs
+            .filter((x) => x.changed || x.gone)
+            .map((x) => (
+              <span key={x.id} style={{ fontSize: '0.75rem', fontVariantNumeric: 'tabular-nums', textDecoration: x.gone ? 'line-through' : 'none' }}>
+                {x.id}
+              </span>
+            ))}
         </div>
       ))}
       {whole.length > 0 && (
