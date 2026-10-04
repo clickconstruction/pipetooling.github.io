@@ -28,6 +28,8 @@ import { useMatchMedia } from '../hooks/useMatchMedia'
 import {
   carriedAmount,
   carriedUncosted,
+  customerGroups,
+  customerMoneyWords,
   quoteRanOut,
   isGuess,
   currentRev,
@@ -47,6 +49,7 @@ import {
   shortDate,
   stageProgress,
   weekdayDate,
+  type BoardGroupBy,
   type StageProgress,
   type GcProject,
   type GcStage,
@@ -142,6 +145,8 @@ function tabButton(active: boolean) {
 export default function GcMode() {
   const [state, dispatch] = useReducer(gcReducer, undefined, initialGcState)
   const [boardTab, setBoardTab] = useState<BoardTab>('projects')
+  // By stage every time the board opens (the owner, 2026-10-04, question 9): not remembered.
+  const [boardGroup, setBoardGroup] = useState<BoardGroupBy>('stage')
   const [projectId, setProjectId] = useState<string | null>(null)
   const [tab, setTab] = useState<ProjectTab>('packages')
   const [portalOpen, setPortalOpen] = useState(true)
@@ -207,6 +212,7 @@ export default function GcMode() {
             title="A walk through the three stages a project moves through"
             onClick={() => {
               setBoardTab('projects')
+              setBoardGroup('stage')
               setProjectId(null)
               setCustomerId(null)
               setPlansForId(null)
@@ -303,7 +309,71 @@ export default function GcMode() {
 
       {boardTab === 'projects' && !project && (
         <div style={{ display: 'grid', gap: '1.1rem' }} data-tour="gc-board">
-          {BOARD_SECTIONS.map((stage) => {
+          <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', marginBottom: '-0.4rem' }}>
+            <GroupSwitch value={boardGroup} onChange={setBoardGroup} />
+            {boardGroup === 'customer' && (
+              <span style={{ marginLeft: 'auto' }} data-tour="gc-new-project">
+                <GcNewProjectButton state={state} dispatch={dispatch} onCreated={(id) => { setProjectId(id); setTab('packages') }} />
+              </span>
+            )}
+          </div>
+          {boardGroup === 'customer' && customerGroups(state).map((group) => {
+            const words = customerMoneyWords(group.summary)
+            const folded = [...group.closed.map((p) => ({ p, word: `closed ${shortDate(p.closedOn ?? '')}` })), ...group.lost.map((p) => ({ p, word: 'lost' }))]
+            return (
+              <section key={group.customer.id}>
+                <div style={{ display: 'flex', gap: '0.25rem 0.6rem', alignItems: 'baseline', marginBottom: '0.4rem', flexWrap: 'wrap' }}>
+                  <h3 style={{ margin: 0, fontSize: '1rem' }}>
+                    <button
+                      type="button"
+                      style={{ ...customerLink, fontWeight: 700 }}
+                      title={`See ${group.customer.name}: every project, what they owe, who to call`}
+                      onClick={() => setCustomerId(group.customer.id)}
+                    >
+                      {group.customer.name}
+                    </button>{' '}
+                    ({group.open.length})
+                  </h3>
+                  <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{group.customer.kind} · {group.customer.contact}</span>
+                  {words && <span style={{ marginLeft: 'auto', color: 'var(--text-muted)', fontSize: '0.85rem', fontVariantNumeric: 'tabular-nums' }}>{words}</span>}
+                </div>
+                {group.open.length === 0 ? (
+                  <Card style={{ color: 'var(--text-muted)' }}>Nothing open with them right now.</Card>
+                ) : (
+                  <div style={{ display: 'grid', gap: '0.5rem' }}>
+                    {group.open.map((p) => (
+                      <ProjectRow
+                        key={p.id}
+                        project={p}
+                        byCustomer
+                        progress={stageProgress(state, p)}
+                        today={state.today}
+                        onOpen={() => { setProjectId(p.id); setTab('packages') }}
+                        onPlans={() => setPlansForId(p.id)}
+                        onCustomer={() => setCustomerId(p.customerId)}
+                        onArchitect={() => setCustomerId(p.architectId)}
+                        chase={toChase.filter((f) => f.project.id === p.id).length}
+                        onChase={() => setBoardTab('followup')}
+                      />
+                    ))}
+                  </div>
+                )}
+                {/* Closed and lost jobs fold into one quiet line under the customer (the mock-up's rule). */}
+                {folded.length > 0 && (
+                  <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '0.35rem' }}>
+                    Also:{' '}
+                    {folded.map(({ p, word }, i) => (
+                      <span key={p.id}>
+                        {i > 0 && ' · '}
+                        <button type="button" style={customerLink} onClick={() => { setProjectId(p.id); setTab('packages') }}>{p.name}</button>, {word}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </section>
+            )
+          })}
+          {boardGroup === 'stage' && BOARD_SECTIONS.map((stage) => {
             const rows = state.projects.filter(stage.holds).sort(stage.order)
             return (
               <section key={stage.key} data-tour={`gc-stage-${stage.key}`}>
@@ -639,8 +709,40 @@ function StartBlock({ project, today, box }: { project: GcProject; today: string
   )
 }
 
+/** By stage | By customer at the top of the board (question 9). By stage is the board's own order. */
+function GroupSwitch({ value, onChange }: { value: BoardGroupBy; onChange: (v: BoardGroupBy) => void }) {
+  const options: { key: BoardGroupBy; label: string }[] = [
+    { key: 'stage', label: 'By stage' },
+    { key: 'customer', label: 'By customer' },
+  ]
+  return (
+    <span role="group" aria-label="Group the board" data-tour="gc-group-switch" style={{ display: 'inline-flex', border: '1px solid var(--border)', borderRadius: 999, overflow: 'hidden' }}>
+      {options.map((o) => (
+        <button
+          key={o.key}
+          type="button"
+          aria-pressed={value === o.key}
+          onClick={() => onChange(o.key)}
+          style={{
+            border: 'none',
+            padding: '0.25rem 0.8rem',
+            fontSize: '0.8rem',
+            fontWeight: value === o.key ? 600 : 400,
+            cursor: 'pointer',
+            background: value === o.key ? 'var(--bg-blue-50)' : 'transparent',
+            color: value === o.key ? 'var(--text-blue-800)' : 'var(--text-muted)',
+          }}
+        >
+          {o.label}
+        </button>
+      ))}
+    </span>
+  )
+}
+
 function ProjectRow({
   project,
+  byCustomer = false,
   progress,
   today,
   onOpen,
@@ -651,6 +753,8 @@ function ProjectRow({
   onChase,
 }: {
   project: GcProject
+  /** On the board by customer: the section names the customer, so the row names its stage instead. */
+  byCustomer?: boolean
   /** How far through its stage the project is: the ring at the head of the row. */
   progress: StageProgress
   today: string
@@ -667,6 +771,7 @@ function ProjectRow({
   const subs = project.packages.filter((p) => !p.selfPerform).length
   const reach = plansReach(project)
   const newest = planLabel(project, currentRev(project))
+  const stage = STAGES.find((st) => st.key === project.stage)
   // A phone or a narrow pane: the ring, the days and the name on top, the rest on the lines under.
   const narrow = useMatchMedia('(max-width: 760px)')
   // Six columns side by side need about 1,060 px: the widest chip is about 260 px and the name
@@ -695,7 +800,7 @@ function ProjectRow({
         alignItems: 'center',
       }}
     >
-      <GcProgressRing progress={progress} color={RING_COLORS[project.stage]} stageLabel={project.lostOn ? 'Lost' : project.closedOn ? 'Closed' : (STAGES.find((st) => st.key === project.stage)?.label ?? '')} />
+      <GcProgressRing progress={progress} color={RING_COLORS[project.stage]} stageLabel={project.lostOn ? 'Lost' : project.closedOn ? 'Closed' : (stage?.label ?? '')} />
       <DueBlock project={project} today={today} />
       <span>
         <button
@@ -705,17 +810,28 @@ function ProjectRow({
         >
           {project.name}
         </button>
+        {byCustomer && stage && (
+          <>
+            {' '}
+            <Chip tone={stage.tone}>{stage.label}</Chip>
+          </>
+        )}
         <br />
         <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-          <button
-            type="button"
-            style={customerLink}
-            title={`See ${project.owner}: every project, what they owe, who to call`}
-            onClick={(e) => { e.stopPropagation(); onCustomer() }}
-          >
-            {project.owner}
-          </button>{' '}
-          · drawn by{' '}
+          {!byCustomer && (
+            <>
+              <button
+                type="button"
+                style={customerLink}
+                title={`See ${project.owner}: every project, what they owe, who to call`}
+                onClick={(e) => { e.stopPropagation(); onCustomer() }}
+              >
+                {project.owner}
+              </button>{' '}
+              ·{' '}
+            </>
+          )}
+          drawn by{' '}
           <button
             type="button"
             style={customerLink}
