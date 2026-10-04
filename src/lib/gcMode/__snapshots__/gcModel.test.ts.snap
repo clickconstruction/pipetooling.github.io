@@ -10043,6 +10043,16 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
         "retainageHeld": 0,
       },
       "ownerContractSignedOn": "2026-10-02",
+      "ownerContractWorth": {
+        "contingency": 8970,
+        "delec": 56900,
+        "dhvac": 47600,
+        "dplumb": 38500,
+        "dry": 64200,
+        "fee": 30797,
+        "gc": 52000,
+        "mill": 39800,
+      },
       "packages": [
         {
           "awardedInviteId": "dry-hillcountry",
@@ -11293,6 +11303,18 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
         "retainageHeld": 95632.79,
       },
       "ownerContractSignedOn": "2026-06-02",
+      "ownerContractWorth": {
+        "contingency": 39420,
+        "fconc": 214000,
+        "fee": 135342,
+        "felec": 248000,
+        "fhvac": 158000,
+        "fplumb": 112000,
+        "froof": 132000,
+        "fsite": 168000,
+        "fsteel": 186000,
+        "gc": 96000,
+      },
       "packages": [
         {
           "awardedInviteId": "fsite-tricounty",
@@ -13010,6 +13032,15 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
         "retainageHeld": 18241.3,
       },
       "ownerContractSignedOn": "2026-05-29",
+      "ownerContractWorth": {
+        "contingency": 4830,
+        "fee": 16583,
+        "gc": 24000,
+        "sdry": 42000,
+        "selec": 38000,
+        "shvac": 31000,
+        "splumb": 26000,
+      },
       "packages": [
         {
           "awardedInviteId": "sdry-liveoak",
