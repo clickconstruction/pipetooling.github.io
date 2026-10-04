@@ -7,6 +7,7 @@ import {
   AIA_G703_G702_MIRROR_CELLS,
   AIA_G703_SHEET,
   type AiaFieldValues,
+  aiaContractorBlockRows,
 } from './aiaG702G703Template'
 
 function cellHasFormula(cell: Cell): boolean {
@@ -84,6 +85,25 @@ function placeProjectBlock(wb: Workbook): void {
   for (const row of [6, 7, 8]) {
     const like = ws.getCell(`D${row}`).style
     for (const col of ['H', 'I', 'J', 'K']) ws.getCell(`${col}${row}`).style = { ...like }
+  }
+}
+
+/**
+ * The contractor block (v2.4506): the name, the address a line per row as Settings holds it, then
+ * the license line. Three rows sit where the template has them (D10:D12). A fourth has no row
+ * below (13 is the ruled line), so the block starts one row up, beside FROM, dressed like row 10.
+ */
+function placeContractorBlock(wb: Workbook, values: AiaFieldValues): void {
+  const ws = wb.getWorksheet(AIA_G702_SHEET)
+  if (!ws) return
+  const name = String(values.g702_d10_contractor_name ?? '').trim()
+  const under = aiaContractorBlockRows(String(values.g702_d11_contractor_address ?? ''), String(values.g702_d12_contractor_license ?? ''))
+  const rows = [name, ...under]
+  const firstRow = rows.length > 3 ? 9 : 10
+  if (firstRow === 9) for (const col of ['D', 'E', 'F']) ws.getCell(`${col}9`).style = { ...ws.getCell(`${col}10`).style }
+  for (let row = firstRow; row <= 12; row++) {
+    const text = rows[row - firstRow] ?? ''
+    ws.getCell(`D${row}`).value = text === '' ? null : text
   }
 }
 
@@ -233,6 +253,7 @@ export async function fillAiaG702G703Workbook(
     }
   }
 
+  placeContractorBlock(wb, values)
   writeLines(wb, lines, options.splitLaborMaterial === true)
   materializeG703Mirrors(wb)
   stampFormulaResults(wb, buildAiaPreview(values, lines, options).math)

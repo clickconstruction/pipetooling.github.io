@@ -200,9 +200,25 @@ function cityStateZip(addr: { city: string; state: string; zip: string }): strin
   return [addr.city, [addr.state, addr.zip].filter(Boolean).join(' ')].filter(Boolean).join(', ').trim()
 }
 
-function issuerAddressOneLine(issuer: PhysicalInvoiceIssuer): string {
-  const lines = (issuer.addressText ?? '').split(/\r?\n/).map((l) => l.trim()).filter(Boolean)
-  return lines.join(', ')
+/** Our address as Settings holds it: each line typed there is a line on the form and on the sheet. */
+function issuerAddressLines(issuer: PhysicalInvoiceIssuer): string {
+  return (issuer.addressText ?? '').split(/\r?\n/).map((l) => l.trim()).filter(Boolean).join('\n')
+}
+
+/** The contractor block has room for two address rows; a third line and on folds onto the second. */
+export const AIA_CONTRACTOR_ADDRESS_ROWS = 2
+
+/**
+ * The rows under the contractor's name (D11 down): the address's lines as typed, then the
+ * license line. One address line is the sheet as it always printed (address, then license);
+ * a second line takes the license's row and the license moves down one.
+ */
+export function aiaContractorBlockRows(address: string, license: string): string[] {
+  const typed = address.split(/\r?\n/).map((l) => l.trim()).filter(Boolean)
+  const lines = typed.length > AIA_CONTRACTOR_ADDRESS_ROWS ? [typed[0]!, typed.slice(1).join(', ')] : typed
+  const rows = lines.length > 0 ? lines : ['']
+  const licenseLine = license.trim()
+  return licenseLine ? [...rows, licenseLine] : rows
 }
 
 function firstFixtureDescription(job: JobWithDetails): string {
@@ -238,7 +254,7 @@ export function buildAiaPrefillFromJob(
   const jobNumber = effectiveJobLedgerNumber(job.hcp_number, 'click_number' in job ? job.click_number : null)
 
   const contractorName = issuer?.companyName?.trim() ?? ''
-  const contractorAddr = issuer ? issuerAddressOneLine(issuer) : ''
+  const contractorAddr = issuer ? issuerAddressLines(issuer) : ''
   const contractorLicense = issuer?.licenseLine?.trim() ?? ''
 
   const out: AiaFieldValues = {

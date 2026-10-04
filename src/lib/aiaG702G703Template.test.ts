@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  aiaContractorBlockRows,
   AIA_FIELD_DEFS,
   aiaContractSignedOn,
   aiaDownloadFilename,
@@ -69,6 +70,8 @@ describe('buildAiaPrefillFromJob', () => {
     expect(pre.g702_c28_retainage_percent).toBe(10)
     expect(pre.g702_c31_retainage_material_percent).toBeUndefined()
     expect(pre.g702_d10_contractor_name).toBe('Click Plumbing')
+    // Our address keeps the lines Settings holds it on (it was joined with a comma before v2.4506).
+    expect(pre.g702_d11_contractor_address).toBe('5501 Balcones Dr\nAustin TX 78731')
     expect(pre.g702_d12_contractor_license).toBe('RMP 999')
   })
 
@@ -176,6 +179,23 @@ describe('buildAiaPrefillFromJob', () => {
       expect(keys.has(def.key)).toBe(false)
       keys.add(def.key)
     }
+  })
+})
+
+describe('aiaContractorBlockRows', () => {
+  it('gives each address line its own row, then the license line', () => {
+    expect(aiaContractorBlockRows('5501 Balcones Dr A141\nAustin, TX 78731', '')).toEqual(['5501 Balcones Dr A141', 'Austin, TX 78731'])
+    expect(aiaContractorBlockRows('5501 Balcones Dr A141\nAustin, TX 78731', 'RMP 999')).toEqual(['5501 Balcones Dr A141', 'Austin, TX 78731', 'RMP 999'])
+  })
+
+  it('leaves a one-line address as the sheet always printed it: address, then license', () => {
+    expect(aiaContractorBlockRows('5501 Balcones Dr A141, Austin, TX 78731', 'RMP 999')).toEqual(['5501 Balcones Dr A141, Austin, TX 78731', 'RMP 999'])
+    expect(aiaContractorBlockRows('', 'RMP 999')).toEqual(['', 'RMP 999'])
+    expect(aiaContractorBlockRows('', '')).toEqual([''])
+  })
+
+  it('folds a third line and on onto the second, and drops blank lines', () => {
+    expect(aiaContractorBlockRows('Suite A141\n\n5501 Balcones Dr\r\nAustin, TX 78731', '')).toEqual(['Suite A141', '5501 Balcones Dr, Austin, TX 78731'])
   })
 })
 
