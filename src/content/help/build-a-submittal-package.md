@@ -68,7 +68,7 @@ Order-only fixtures sit under the rows in a group of their own. Tap {{button:out
 
 On the procurement log an order-only fixture does not wait on the GC. It reads *Ready to order* right away. The GC's copy of the log leaves it out.
 
-To set many fixtures at once, tap {{button:outline|Choose what the GC sees…}} over the rows. The same window opens with every fixture on the takeoff. The fixtures already on the draft are there too. Change any of them, then tap {{button:blue|Update Rev 1}}. Open a fixture's parts there to change one part. A fixture set to Order only keeps your picks for its parts. They come back when you set it to GC sees it. Nothing changes until you do. Under the rows, **Left out** counts the fixtures that are not on the draft. Tap **Show them** to bring one back.
+To set many fixtures at once, tap {{button:outline|Choose what the GC sees…}} over the rows. The same window opens with every fixture on the takeoff. The fixtures already on the draft are there too. Change any of them, then tap {{button:blue|Update Rev 1}}. Open a fixture's parts there to change one part. A fixture set to Order only keeps your picks for its parts. They come back when you set it to GC sees it. Nothing changes until you do. Under the rows, **Left out** counts the fixtures that are not on the draft. Tap **Show them** to bring one back. On a later revision, a fixture the GC already approved shows as *Approved on Rev 1* with no buttons. It stays approved and stays on the procurement log. Tap **Ask again…** only when you want the GC to answer it a second time.
 
 ## Catch a draft up
 

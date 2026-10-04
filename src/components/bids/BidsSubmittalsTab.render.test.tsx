@@ -1358,4 +1358,35 @@ describe('BidsSubmittalsTab', () => {
       state.noSources = false
     }
   })
+  it('2026-10-03 · on a resubmit draft a fixture approved on the revision before is not counted as left out, and the takeoff window opens it locked', async () => {
+    // Rev 1 was answered: the water closets approved, the heater sent back. Rev 2 is the draft that carries the heater alone.
+    state.revisions = [
+      { id: 'rev-2', bid_id: 'b398', rev_number: 2, status: 'draft', title: 'Plumbing fixtures & equipment', note: null, package_path: null, source_files: [], shared_at: null, created_at: '2026-10-02T00:00:00Z' },
+      { id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'shared', title: 'Plumbing fixtures & equipment', note: null, package_path: null, source_files: [], shared_at: '2026-09-16T00:00:00Z', created_at: '2026-09-15T00:00:00Z' },
+    ]
+    state.items = [
+      item({ id: 'r1-wc', submittal_id: 'rev-1', tag: 'WC-1, WC-2', sequence_order: 1, submitted_label: 'TOTO CT708UVG#01 WALL HUNG BOWL', status: 'proposed', source_count_row_id: 'c-wc', review_decision: 'approved', reviewed_at: '2026-09-20T15:00:00Z', reviewed_by_name: 'Dana Whitfield' }),
+      item({ id: 'r1-wh', submittal_id: 'rev-1', tag: 'DWH-1, ET', sequence_order: 2, submitted_label: 'A.O. Smith BTH-199 WATER HEATER', status: 'proposed', source_count_row_id: 'c-wh', review_decision: 'rejected', reviewed_at: '2026-09-20T15:00:00Z', reviewed_by_name: 'Dana Whitfield' }),
+      item({ id: 'r2-wh', submittal_id: 'rev-2', tag: 'DWH-1, ET', sequence_order: 1, submitted_label: 'A.O. Smith BTH-199 WATER HEATER', status: 'proposed', source_count_row_id: 'c-wh', carried_from_item_id: 'r1-wh' }),
+    ]
+    state.parts = []
+    state.tasks = []
+    state.writes = []
+    state.takeoff = true
+    try {
+      mount()
+      // Four fixtures on the takeoff: the heater is on the draft, the closets stand approved, two are left out.
+      await waitFor(() => expect(screen.getByTestId('left-out-line').textContent).toContain('Left out · 2 from the takeoff'))
+      expect(screen.getByTestId('stands-line').textContent).toBe('1 approved on Rev 1')
+      fireEvent.click(screen.getByTestId('add-from-takeoff'))
+      const dialog = await screen.findByRole('dialog', { name: 'Choose from the takeoff' })
+      const wc = within(dialog).getAllByTestId('takeoff-candidate').find((r) => r.textContent?.includes('WC-1, WC-2'))!
+      expect(wc.getAttribute('data-pick')).toBe('stands')
+      expect(within(wc).getByTestId('takeoff-stands').textContent).toContain('Approved on Rev 1')
+      expect(within(dialog).getByTestId('takeoff-bar').textContent).toBe('Nothing changes yet.')
+      expect((within(dialog).getByTestId('takeoff-confirm') as HTMLButtonElement).disabled).toBe(true)
+    } finally {
+      state.takeoff = false
+    }
+  })
 })

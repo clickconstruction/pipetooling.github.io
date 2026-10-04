@@ -1,6 +1,6 @@
 import { Fragment, useMemo, useState, type CSSProperties } from 'react'
 import { GROUP_LABELS, splitExplanation, type CandidateGroup, type ProductPiece, type TakeoffCandidate } from '../../lib/submittals/takeoffCandidates'
-import { PICK_LABELS, allPiecesOf, pickChangeWords, pickCounts, pickOf, piecePicksLine, piecePicksOf, planIsEmpty, planRowsAdded, planSummary, planTakeoffPicks, withPiecePicks, type FixturePick, type PiecePick, type TakeoffPlan } from '../../lib/submittals/takeoffPicks'
+import { PICK_LABELS, allPiecesOf, pickChangeWords, pickCounts, pickOf, piecePicksLine, piecePicksOf, planIsEmpty, planRowsAdded, planSummary, planTakeoffPicks, standsApproved, standsWords, withPiecePicks, type FixturePick, type PiecePick, type TakeoffPlan } from '../../lib/submittals/takeoffPicks'
 import { SplitRuleModal } from './SplitRuleModal'
 
 type Props = {
@@ -113,7 +113,8 @@ export function SubmittalTakeoffPicker({ mode, revLabel, candidates: given, boug
   const setPick = (id: string, p: FixturePick) => setPicks((m) => new Map(m).set(id, p))
   const allWithProductToGc = () => setPicks((m) => {
     const next = new Map(m)
-    for (const c of candidates) if (c.product && !c.onAs) next.set(c.countRowId, 'gc')
+    // A fixture approved on an earlier revision is not asked again by a sweep: only its own Ask again does that.
+    for (const c of candidates) if (c.product && !c.onAs && !standsApproved(c, m)) next.set(c.countRowId, 'gc')
     return next
   })
   const nothing = mode === 'build' ? rowsAdded === 0 : planIsEmpty(plan)
@@ -136,33 +137,37 @@ export function SubmittalTakeoffPicker({ mode, revLabel, candidates: given, boug
         </div>
         <div style={{ overflowY: 'auto', padding: '0 1.25rem', flex: 1 }}>
           {groups.map(({ g, items }) => {
-            const gc = items.filter((c) => now(c) === 'gc').length
-            const order = items.filter((c) => now(c) === 'order').length
+            const live = items.filter((c) => !standsApproved(c, picks))
+            const gc = live.filter((c) => now(c) === 'gc').length
+            const order = live.filter((c) => now(c) === 'order').length
+            const stands = items.length - live.length
             return (
               <div key={g} data-testid={`takeoff-group-${g}`} style={{ marginTop: '0.75rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'baseline', borderBottom: '1px solid var(--border)', paddingBottom: 3, fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', fontWeight: 600 }}>
-                  <span>{GROUP_LABELS[g]} · {gc} the GC sees{order > 0 ? ` · ${order} order only` : ''}{items.length - gc - order > 0 ? ` · ${items.length - gc - order} left out` : ''}</span>
+                  <span>{GROUP_LABELS[g]} · {gc} the GC sees{order > 0 ? ` · ${order} order only` : ''}{live.length - gc - order > 0 ? ` · ${live.length - gc - order} left out` : ''}{stands > 0 ? ` · ${stands} approved earlier` : ''}</span>
                   <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 400 }}>{GROUP_HINT[g]}</span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', fontSize: '0.8125rem' }}>
                   {items.map((c) => {
                     const pick = now(c)
                     const name = c.tagText || c.fixture
-                    const coming = !c.onAs && pick !== 'out'
-                    const change = pickChangeWords(c, pick, revLabel)
+                    // 2026-10-03 · approved on an earlier revision and left alone: locked, with its own Ask again.
+                    const stands = standsApproved(c, picks)
+                    const coming = !c.onAs && !stands && pick !== 'out'
+                    const change = stands ? '' : pickChangeWords(c, pick, revLabel)
                     const held = c.onAs ? bought?.get(c.countRowId) ?? '' : ''
                     // The parts as picked: the product line and the counts read them; the list shows when the fixture is opened.
                     const all = allPiecesOf(c)
                     const pp = piecePicksOf(c, piecePicks.get(c.countRowId))
                     const shown = piecePicks.has(c.countRowId) ? withPiecePicks(c, pp) : c
                     const partsSetInEdit = !!c.onAs && c.onParts == null
-                    const hasParts = c.group !== 'pipe_allowance' && !partsSetInEdit && (all.length > 1 || all.some((p) => p.assembly))
+                    const hasParts = c.group !== 'pipe_allowance' && !partsSetInEdit && !stands && (all.length > 1 || all.some((p) => p.assembly))
                     const open = hasParts && openParts.has(c.countRowId)
                     const ruled = pick !== 'gc'
                     return (
                       <Fragment key={c.countRowId}>
-                        <div style={{ display: 'flex', gap: '0.4rem 0.75rem', flexWrap: 'wrap', alignItems: 'flex-start', padding: '0.4rem 0', borderBottom: '1px solid var(--bg-muted)' }} data-testid="takeoff-candidate" data-group={c.group} data-pick={pick}>
-                          <span style={{ flex: '1 1 16rem', minWidth: 0, color: pick === 'out' ? 'var(--text-muted)' : 'var(--text-strong)' }}>
+                        <div style={{ display: 'flex', gap: '0.4rem 0.75rem', flexWrap: 'wrap', alignItems: 'flex-start', padding: '0.4rem 0', borderBottom: '1px solid var(--bg-muted)' }} data-testid="takeoff-candidate" data-group={c.group} data-pick={stands ? 'stands' : pick}>
+                          <span style={{ flex: '1 1 16rem', minWidth: 0, color: pick === 'out' && !stands ? 'var(--text-muted)' : 'var(--text-strong)' }}>
                             <b>{name}</b>
                             {c.tagText ? <span style={quiet}> · {c.fixture}</span> : null}
                             <span style={quiet}> × {c.count}</span>
@@ -178,7 +183,13 @@ export function SubmittalTakeoffPicker({ mode, revLabel, candidates: given, boug
                             ) : partsSetInEdit && c.group !== 'pipe_allowance' ? (
                               <span style={{ ...quiet, display: 'block' }} data-testid="takeoff-parts-in-edit">Its parts are set with Edit on its row.</span>
                             ) : null}
-                            {change ? <span style={{ ...quiet, display: 'block', color: 'var(--text-amber-700)' }} data-testid="takeoff-change">{change}</span> : null}
+                            {change ? (
+                              <span style={{ ...quiet, display: 'block', color: 'var(--text-amber-700)' }} data-testid="takeoff-change">
+                                {change}
+                                {!c.onAs && c.standsOn ? <> <button type="button" disabled={busy} onClick={() => setPicks((m) => { const next = new Map(m); next.delete(c.countRowId); return next })} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer' }} data-testid="takeoff-keep-approval">Keep the approval</button></> : null}
+                              </span>
+                            ) : null}
+                            {stands && c.standsOn ? <span style={{ ...quiet, display: 'block' }} data-testid="takeoff-stands-line">It stays on Rev {c.standsOn.rev} and on the procurement log. It is not on {revLabel}.</span> : null}
                             {held && pick !== 'out' ? <span style={{ ...quiet, display: 'block' }} data-testid="takeoff-bought">{held}. It cannot be left out.</span> : null}
                           </span>
                           <span style={{ display: 'inline-flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', marginLeft: 'auto' }}>
@@ -188,7 +199,14 @@ export function SubmittalTakeoffPicker({ mode, revLabel, candidates: given, boug
                                 Split
                               </label>
                             ) : null}
-                            <PickButtons name={name} value={pick} lockedOut={held} disabled={busy} onPick={(p) => setPick(c.countRowId, p)} />
+                            {stands && c.standsOn ? (
+                              <span style={{ display: 'inline-flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }} data-testid="takeoff-stands">
+                                <span style={{ padding: '0.35rem 0.65rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--bg-green-tint)', color: 'var(--text-green-700)', fontSize: '0.78rem', fontWeight: 700, whiteSpace: 'nowrap' }}>✓ {standsWords(c.standsOn)}</span>
+                                <button type="button" disabled={busy} onClick={() => setPick(c.countRowId, 'gc')} title={`Put ${name} on ${revLabel}. The GC answers it again`} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', fontSize: '0.78rem', color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer' }} data-testid="takeoff-ask-again">Ask again…</button>
+                              </span>
+                            ) : (
+                              <PickButtons name={name} value={pick} lockedOut={held} disabled={busy} onPick={(p) => setPick(c.countRowId, p)} />
+                            )}
                           </span>
                         </div>
                         {open ? (
@@ -233,6 +251,7 @@ export function SubmittalTakeoffPicker({ mode, revLabel, candidates: given, boug
             <span style={{ ...countChip, background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)' }}>{counts.gc} the GC sees</span>
             <span style={{ ...countChip, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-700)' }}>{counts.order} order only</span>
             <span style={{ ...countChip, background: 'var(--bg-muted)', color: 'var(--text-strong)' }}>{counts.out} left out</span>
+            {counts.stands > 0 ? <span style={{ ...countChip, background: 'var(--bg-green-tint)', color: 'var(--text-green-700)' }} data-testid="takeoff-count-stands">{counts.stands} approved earlier</span> : null}
           </span>
           <span style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <span style={{ ...quiet, color: 'var(--text-strong)' }}><span data-testid="takeoff-bar">{summary || 'Nothing changes yet.'}</span> · <button type="button" onClick={() => setRuleOpen(true)} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--text-muted)', textDecoration: 'underline', cursor: 'pointer' }} data-testid="split-rule-link">when can a row split?</button></span>

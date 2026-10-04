@@ -186,4 +186,38 @@ describe('SubmittalTakeoffPicker', () => {
     expect(onClose).not.toHaveBeenCalled()
     expect(screen.getByRole('dialog', { name: 'Choose from the takeoff' })).toBeTruthy()
   })
+  it('2026-10-03 · a fixture approved on an earlier revision opens locked: Update is held until something is picked, and only Ask again puts it back on the draft', () => {
+    const onConfirm = vi.fn()
+    const after = [
+      cand({ countRowId: 'c-wc', fixture: 'WC 1&2', tagText: 'WC-1, WC-2', tags: ['WC-1', 'WC-2'], group: 'fixtures', product: 'TOTO wall-hung bowl', standsOn: { rev: 3, whole: true } }),
+      cand({ countRowId: 'c-lav', fixture: 'LAV 1', tagText: 'LAV-1', tags: ['LAV-1'], group: 'fixtures', product: 'Kohler lav', alreadyOn: true, onAs: 'gc' }),
+      cand({ countRowId: 'c-us', fixture: 'UTILITY SINK', group: 'no_part' }),
+    ]
+    render(<SubmittalTakeoffPicker mode="add" revLabel="Rev 4" candidates={after} onConfirm={onConfirm} onClose={() => {}} />)
+    const row = screen.getAllByTestId('takeoff-candidate')[0]!
+    expect(row.getAttribute('data-pick')).toBe('stands')
+    expect(within(row).getByTestId('takeoff-stands').textContent).toBe('✓ Approved on Rev 3Ask again…')
+    expect(within(row).getByTestId('takeoff-stands-line').textContent).toBe('It stays on Rev 3 and on the procurement log. It is not on Rev 4.')
+    expect(within(row).queryByRole('group')).toBeNull()
+    // Left alone, nothing says it will move.
+    expect(within(row).queryByTestId('takeoff-change')).toBeNull()
+    expect(screen.getByTestId('takeoff-group-fixtures').textContent).toContain('1 the GC sees · 1 approved earlier')
+    expect(screen.getByTestId('takeoff-counts').textContent).toBe('1 the GC sees0 order only1 left out1 approved earlier')
+    // Nothing touched: nothing to write.
+    expect(screen.getByTestId('takeoff-bar').textContent).toBe('Nothing changes yet.')
+    expect((screen.getByTestId('takeoff-confirm') as HTMLButtonElement).disabled).toBe(true)
+    // The sweep leaves it alone too.
+    fireEvent.click(screen.getByRole('button', { name: 'GC sees all with a product' }))
+    expect((screen.getByTestId('takeoff-confirm') as HTMLButtonElement).disabled).toBe(true)
+    // Ask again: now it is a row coming on, and the line says the GC answers it again.
+    fireEvent.click(within(row).getByTestId('takeoff-ask-again'))
+    expect(picked('WC-1, WC-2')).toBe('GC sees it')
+    expect(within(row).getByTestId('takeoff-change').textContent).toContain('Approved on Rev 3. It goes on Rev 4 and the GC is asked again.')
+    expect(screen.getByTestId('takeoff-bar').textContent).toBe('1 row goes on Rev 4')
+    // Keep the approval: back to locked, nothing to write.
+    fireEvent.click(within(row).getByTestId('takeoff-keep-approval'))
+    expect(within(row).getByTestId('takeoff-stands')).toBeTruthy()
+    expect((screen.getByTestId('takeoff-confirm') as HTMLButtonElement).disabled).toBe(true)
+    expect(onConfirm).not.toHaveBeenCalled()
+  })
 })

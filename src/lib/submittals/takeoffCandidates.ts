@@ -66,6 +66,8 @@ export type TakeoffCandidate = {
   onAs?: 'gc' | 'order' | null
   /** 2026-10-02 · the bid remembers the fixture as order only: it comes on as a row the GC never sees. */
   storedOrderOnly?: boolean
+  /** 2026-10-03 · not on the draft because the GC approved it on an earlier revision, where its row stands (`rowsThatStand`). `whole` is false when only some of its parts were approved. */
+  standsOn?: { rev: number; whole: boolean } | null
   /** 2026-10-02 · the lines left off the fixture: not in `pieces`, so no row, refresh or count reads them; kept here to bring one back. */
   leftOutPieces?: ProductPiece[]
   /** Every line under the fixture in takeoff order, the left-off ones included; absent = `pieces`. */

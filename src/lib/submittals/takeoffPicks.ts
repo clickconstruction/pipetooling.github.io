@@ -16,6 +16,17 @@ export function startingPick(c: Pick<TakeoffCandidate, 'onAs' | 'ticked' | 'stor
   return c.ticked ? (c.storedOrderOnly ? 'order' : 'gc') : 'out'
 }
 
+/**
+ * Approved on an earlier revision and left alone here (2026-10-03). After a resubmit the draft
+ * holds only the rows that went on; a fixture the GC approved stands on its revision and on the
+ * procurement log. It is not one of the three picks: the window shows it locked, and only a click
+ * on its Ask again puts it back in front of the GC. Before this it opened lit "GC sees it" with
+ * Update live, so one press asked the GC about an approved fixture a second time.
+ */
+export function standsApproved(c: Pick<TakeoffCandidate, 'onAs' | 'standsOn' | 'countRowId'>, picks: ReadonlyMap<string, FixturePick>): boolean {
+  return !c.onAs && c.standsOn != null && !picks.has(c.countRowId)
+}
+
 export function pickOf(c: TakeoffCandidate, picks: ReadonlyMap<string, FixturePick>): FixturePick {
   return picks.get(c.countRowId) ?? startingPick(c)
 }
@@ -95,6 +106,8 @@ export type TakeoffPlan = {
 export function planTakeoffPicks(cands: ReadonlyArray<TakeoffCandidate>, picks: ReadonlyMap<string, FixturePick>, splits?: ReadonlyMap<string, boolean>, piecePicks?: ReadonlyMap<string, ReadonlyMap<string, PiecePick>>): TakeoffPlan {
   const plan: TakeoffPlan = { add: [], toOrderOnly: [], toGc: [], remove: [], ticks: new Map(), orderOnly: new Map(), parts: [], productKeys: new Map(), leftOut: new Map() }
   for (const given of cands) {
+    // Approved on an earlier revision and not touched: no row, and what the bid remembers stays as it is.
+    if (standsApproved(given, picks)) continue
     const now = pickOf(given, picks)
     // The parts as picked: a fixture nobody opened reads as it stood.
     const clicked = piecePicks?.get(given.countRowId)
@@ -127,13 +140,28 @@ export function planIsEmpty(plan: TakeoffPlan): boolean {
   return plan.add.length === 0 && plan.toOrderOnly.length === 0 && plan.toGc.length === 0 && plan.remove.length === 0 && plan.parts.length === 0 && plan.leftOut.size === 0
 }
 
-export type PickCounts = { gc: number; order: number; out: number }
+export type PickCounts = { gc: number; order: number; out: number; /** approved on an earlier revision, left alone */ stands: number }
 
-/** How many fixtures stand in each of the three, as picked. */
+/** How many fixtures stand in each of the three, as picked, and how many stand approved on an earlier revision. */
 export function pickCounts(cands: ReadonlyArray<TakeoffCandidate>, picks: ReadonlyMap<string, FixturePick>): PickCounts {
-  const n: PickCounts = { gc: 0, order: 0, out: 0 }
-  for (const c of cands) n[pickOf(c, picks)] += 1
+  const n: PickCounts = { gc: 0, order: 0, out: 0, stands: 0 }
+  for (const c of cands) {
+    if (standsApproved(c, picks)) n.stands += 1
+    else n[pickOf(c, picks)] += 1
+  }
   return n
+}
+
+/** "Approved on Rev 3" · "Part approved on Rev 3": the locked line on a fixture that stands. */
+export function standsWords(standsOn: { rev: number; whole: boolean }): string {
+  return `${standsOn.whole ? 'Approved' : 'Part approved'} on Rev ${standsOn.rev}`
+}
+
+/** "2 approved on Rev 3" · "3 approved on earlier revisions" under the rows, beside the Left out line; '' when none stand. */
+export function standsLine(cands: ReadonlyArray<Pick<TakeoffCandidate, 'onAs' | 'standsOn'>>): string {
+  const revs = cands.filter((c) => !c.onAs && c.standsOn != null).map((c) => c.standsOn!.rev)
+  if (revs.length === 0) return ''
+  return revs.every((r) => r === revs[0]) ? `${revs.length} approved on Rev ${revs[0]}` : `${revs.length} approved on earlier revisions`
 }
 
 const many = (n: number, one: string, more: string) => `${n} ${n === 1 ? one : more}`
@@ -155,8 +183,10 @@ export function planSummary(plan: TakeoffPlan, revLabel: string): string {
 }
 
 /** One fixture's line under its name when its pick moved it: what the click will do on the draft. */
-export function pickChangeWords(c: Pick<TakeoffCandidate, 'onAs'>, now: FixturePick, revLabel: string): string {
+export function pickChangeWords(c: Pick<TakeoffCandidate, 'onAs' | 'standsOn'>, now: FixturePick, revLabel: string): string {
   const on = c.onAs ?? null
+  // Asked again: an approved fixture going back on the draft.
+  if (on == null && c.standsOn != null && now !== 'out') return now === 'gc' ? `${standsWords(c.standsOn)}. It goes on ${revLabel} and the GC is asked again.` : `${standsWords(c.standsOn)}. It goes on ${revLabel} as order only.`
   if (on == null || on === now) return ''
   if (now === 'out') return `On ${revLabel} now. It comes off ${revLabel} and off the procurement log.`
   return now === 'order' ? `On ${revLabel} now. It moves to order only: off the GC’s list, still on the log.` : `Order only now. It goes back on the GC’s list.`
