@@ -14,9 +14,11 @@ import {
   portalHome,
   onSite,
   pWeekday,
+  pDate,
   portalLeavesOut,
   portalLink,
   portalOnSite,
+  portalVetting,
   portalLines,
   portalLookAhead,
   portalMessages,
@@ -77,7 +79,7 @@ describe('the company home', () => {
   it('tells Hillside its promised day passed, in red, above its paperwork', () => {
     const todos = home('hillside').todos
     expect(todos[0]).toMatchObject({ tone: 'red', key: 'site-hillside:late', projectId: 'boerne' })
-    expect(todos[0]?.text).toBe('You said your Sitework number for Boerne Retail Shell would come Wed Sep 30. Send it or give a new day.')
+    expect(todos[0]?.text).toBe('You said your Sitework quote for Boerne Retail Shell would come Wed Sep 30. Send it or give a new day.')
     expect(todos.slice(1).map((t) => t.key)).toEqual(['coi', 'w9'])
   })
 
@@ -89,12 +91,12 @@ describe('the company home', () => {
   })
 
   it('asks Alamo to answer the rebar line the office could not read', () => {
-    expect(home('alamo').todos.map((t) => t.text)).toEqual(['Answer one line of your Concrete number for Boerne Retail Shell.'])
+    expect(home('alamo').todos.map((t) => t.text)).toEqual(['Answer one line of your Concrete quote for Boerne Retail Shell.'])
   })
 
   it('asks a company that never opened the plans to open them and send its number', () => {
     // Bexar Steel Erectors was asked on Boerne structural steel and has not opened the plans.
-    expect(home('bexar').todos.map((t) => t.text)).toEqual(['Open the plans and send your Structural steel number for Boerne Retail Shell by Thu Oct 8.'])
+    expect(home('bexar').todos.map((t) => t.text)).toEqual(['Open the plans and send your Structural steel quote for Boerne Retail Shell by Thu Oct 8.'])
   })
 
   it('has no money strip until a dollar moves, and adds it up once one has', () => {
@@ -136,7 +138,7 @@ describe('plan news and promises', () => {
   it('reads a passed promise as late', () => {
     const { invite } = ask(state, 'boerne', 'site', 'hillside')
     expect(portalPromiseLine(invite, state.today, 'Click')).toEqual({
-      text: 'You told Click your number would come by Wed Sep 30. That day passed 2 days ago. Send your number or give a new day.',
+      text: 'You told Click your quote would come by Wed Sep 30. That day passed 2 days ago. Send your quote or give a new day.',
       late: true,
     })
   })
@@ -161,8 +163,8 @@ describe('how a company arrives', () => {
 
   it('writes the invitation as an email (email only for now)', () => {
     const invite = portalMessages(state, 'voltage').find((m) => m.kind === 'invite' && m.projectId === 'boerne')
-    expect(invite?.subject).toBe('Click Construction asks you to bid Electrical on Boerne Retail Shell')
-    expect(invite?.lines).toContain('Your number is due Thu Oct 8.')
+    expect(invite?.subject).toBe('Click Construction asks you to quote Electrical on Boerne Retail Shell')
+    expect(invite?.lines).toContain('Your quote is due Thu Oct 8.')
     expect(invite?.scope?.length).toBeGreaterThan(0)
     expect(invite).not.toHaveProperty('text')
   })
@@ -173,7 +175,7 @@ describe('how a company arrives', () => {
       return lines[lines.length - 1]
     }
     expect(plans('hillside')).toBe('It does not change Sitework. Open it so you price on the newest set.')
-    expect(plans('voltage')).toBe('It changes Electrical. Open it, then confirm your number or change it.')
+    expect(plans('voltage')).toBe('It changes Electrical. Open it, then confirm your quote or change it.')
   })
 
   it('welcomes a company the first time it opens its link, and not after Got it', () => {
@@ -304,7 +306,7 @@ describe('the bid form', () => {
     expect(bidRanOut(bid, '2026-10-18')).toBe(true)
     const later = { ...s, today: '2026-10-18' }
     expect(portalTodos(later, 'lonestar').find((t) => t.key === 'bsite-lonestar:ranout')?.text).toBe(
-      'Your Sitework number for Boerne Retail Pad B ran out Sat Oct 17. Send it again to keep it good.',
+      'Your Sitework quote for Boerne Retail Pad B ran out Sat Oct 17. Send it again to keep it good.',
     )
   })
 
@@ -658,11 +660,11 @@ describe('a project we lost', () => {
     expect(won?.lines.slice(1)).toEqual([
       'This is about Sitework on Boerne Retail Shell.',
       'Click did not win this project.',
-      'You do not need to send a number. Thank you for your time.',
+      'You do not need to send a quote. Thank you for your time.',
     ])
     expect(won?.lines.join(' ')).not.toMatch(/Hill Country|lower number/)
     const died = portalMessages(lost('project_died'), 'lonestar').find((m) => m.kind === 'closed')
-    expect(died?.lines.slice(2)).toEqual(['The owner stopped this project or put it on hold.', 'Thank you for your number.'])
+    expect(died?.lines.slice(2)).toEqual(['The owner stopped this project or put it on hold.', 'Thank you for your quote.'])
   })
 
   it('emails each company still on a trade there the day it is marked, in its language, and not one that passed', () => {
@@ -896,5 +898,41 @@ describe('days on site, from our daily log', () => {
 
   it('reads in Spanish', () => {
     expect(portalOnSite(fair, pkg('froof'), state.today, 'es')).toMatch(/^Nuestro registro diario lo tiene en la obra \d+ días desde el lun 21 sep, el último el \S+ \d+ \S+\.$/)
+  })
+})
+
+describe('a company we did not know', () => {
+  // The office adds a stranger and asks it to quote Boerne's steel (question 3).
+  const added = gcReducer(state, { type: 'addPartner', company: 'Brazos Steel', contact: 'Lupe Garza', trade: 'Structural steel', base: null, maxMiles: null, known: false })
+  const id = added.partners[added.partners.length - 1]!.id
+  const asked = gcReducer(added, { type: 'invite', projectId: 'boerne', packageId: 'steel', partnerId: id })
+  const sent = gcReducer(asked, {
+    type: 'tradeVettingForm',
+    partnerId: id,
+    form: { license: 'TX 12345', insurance: 'Lone Star Mutual, $1M / $2M', yearsInBusiness: 12, references: 'Ana Ruiz 210-555-0100', pastJobs: 'Two retail shells in Seguin' },
+  })
+  const partner = (s: GcState) => s.partners.find((p) => p.id === id)!
+
+  it('asks for its form first, and a known company is asked for nothing', () => {
+    expect(portalVetting(partner(asked))).toEqual({ state: 'send', words: 'not sent yet' })
+    expect(portalTodos(asked, id).find((t) => t.key === 'vet')).toMatchObject({ tone: 'amber', text: 'Tell Click about your company. Click can pick your quote once you are approved.' })
+    expect(portalVetting(state.partners.find((p) => p.id === 'lonestar')!).state).toBe('known')
+  })
+
+  it('says the office is checking it once the form is in, and stops asking', () => {
+    expect(portalVetting(partner(sent))).toEqual({ state: 'checking', words: `Click is checking it · sent ${pDate('en', state.today)}` })
+    expect(portalTodos(sent, id).some((t) => t.key === 'vet')).toBe(false)
+  })
+
+  it('shows an approval up to a limit, and emails it', () => {
+    const ok = gcReducer(sent, { type: 'vetPartner', partnerId: id, status: 'approved', limit: 150_000, by: 'Dana Whitaker' })
+    expect(portalVetting(partner(ok)).words).toBe('approved for jobs up to $150,000 each')
+    const m = portalMessages(ok, id).find((x) => x.kind === 'vetted')
+    expect(m?.subject).toBe('Your company is approved to work with Click')
+    expect(m?.lines.slice(1)).toEqual(['Click checked your company and approved it.', 'You can be picked for jobs up to $150,000 each.'])
+  })
+
+  it('reads in Spanish', () => {
+    expect(portalVetting(partner(sent), 'es').words).toBe(`Click la está revisando · enviada el ${pDate('es', state.today)}`)
   })
 })

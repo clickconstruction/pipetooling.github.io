@@ -27,8 +27,9 @@ Use these so a company reads one word for one thing across the portal.
 
 | English | Spanish |
 |---|---|
-| your number, your bid | su precio |
-| quote, the quotes | cotización, las cotizaciones |
+| your quote (a trade's own number; owner, 2026-10-04) | su cotización (feminine: "Envíela", "válida") |
+| the quotes | las cotizaciones |
+| our bid (ours, to the owner) | nuestra propuesta |
 | statement of work | orden de trabajo |
 | master agreement | contrato maestro |
 | change order | orden de cambio |
@@ -116,7 +117,7 @@ column headers are in one block at the end of `gcBuildingWords.ts`, for the nati
 
 ## For a native speaker to read
 
-Every Spanish string the trade's portal shows, 569 in all, drawn from the code on 2026-10-04.
+Every Spanish string the trade's portal shows, 589 in all, drawn from the code on 2026-10-04.
 They're grouped by screen, English on the left. Please mark anything that reads wrong, stiff or
 unclear, and write the better words beside it. The Portal lane makes the changes and passes the
 other lanes theirs.
@@ -173,15 +174,15 @@ they were written in. The portal does not translate them.
 | Sheets {list}. | Hojas {list}. |
 | {label} does not change {trade}. Open it so you price on the newest set. | {label} no cambia {trade}. Ábralo para cotizar con el juego más reciente. |
 | {trade} · bid tab | {trade} · tabla de precios |
-| Thank you for your number. This is how the quotes came in. | Gracias por su precio. Así llegaron las cotizaciones. |
+| Thank you for your quote. This is how the quotes came in. | Gracias por su cotización. Así llegaron las cotizaciones. |
 | {gc} shared how the quotes came in on {date}. | {gc} compartió cómo llegaron las cotizaciones el {date}. |
 | See the bid tab | Ver la tabla de precios |
 | {trade} · result | {trade} · resultado |
-| This one went to another company. Thank you for your number. | Este trabajo fue para otra empresa. Gracias por su precio. |
+| This one went to another company. Thank you for your quote. | Este trabajo fue para otra empresa. Gracias por su cotización. |
 | {gc} did not win this project. | {gc} no ganó este proyecto. |
 | The owner stopped this project or put it on hold. | El dueño detuvo este proyecto o lo puso en pausa. |
-| You do not need to send a number. Thank you for your time. | No necesita enviar su precio. Gracias por su tiempo. |
-| Thank you for your number. | Gracias por su precio. |
+| You do not need to send a quote. Thank you for your time. | No necesita enviar su cotización. Gracias por su tiempo. |
+| Thank you for your quote. | Gracias por su cotización. |
 | {trade} · invitation | {trade} · invitación |
 | You passed on this one. | Usted no cotizó este. |
 
@@ -189,39 +190,39 @@ they were written in. The portal does not translate them.
 
 | English | Español |
 |---|---|
-| {trade} · invitation to bid | {trade} · invitación a cotizar |
-| Your number is due | Su precio vence el |
+| {trade} · invitation to quote | {trade} · invitación a cotizar |
+| Your quote is due | Su cotización vence el |
 | {n} days | {n} días |
 | past due | vencido |
-| Your bid: | Su precio: |
+| Your quote: | Su cotización: |
 | on {plans}, sent {date}. | con {plans}, enviado el {date}. |
 | Good until {date}. | Válido hasta el {date}. |
 | Alternates: | Alternativas: |
-| Your own quote: | Su propia cotización: |
-| Your number ran out {date}. Send it again to keep it good. | Su precio venció el {date}. Envíelo de nuevo para que siga válido. |
+| Your quote file: | Archivo de su cotización: |
+| Your quote ran out {date}. Send it again to keep it good. | Su cotización venció el {date}. Envíela de nuevo para que siga válida. |
 | Send it again | Enviarlo de nuevo |
-| The plans changed for your trade after you bid. | Los planos de su especialidad cambiaron después de que cotizó. |
-| Confirm your number or change it. | Confirme su precio o cámbielo. |
-| Open the plans above, then confirm your number or change it. | Abra los planos de arriba y luego confirme su precio o cámbielo. |
-| {gc} cannot tell if your number covers {items}. Answer it so your number compares fairly. | {gc} no sabe si su precio incluye {items}. Contéstelo para que su precio se compare de forma justa. |
+| The plans changed for your trade after you quoted. | Los planos de su especialidad cambiaron después de que cotizó. |
+| Confirm your quote or change it. | Confirme su cotización o cámbiela. |
+| Open the plans above, then confirm your quote or change it. | Abra los planos de arriba y luego confirme su cotización o cámbiela. |
+| {gc} cannot tell if your quote covers {items}. Answer it so your quote compares fairly. | {gc} no sabe si su cotización incluye {items}. Contéstelo para que su cotización se compare de forma justa. |
 | Answer it | Contestar |
-| My number stands on the new plans | Mantengo mi precio |
+| My quote stands on the new plans | Mantengo mi cotización |
 | Open the plans first. | Primero abra los planos. |
-| Change my bid | Cambiar mi precio |
-| Tick what your number covers. Untick what it leaves out. Tap a sheet number to open it. | Marque lo que incluye su precio. Desmarque lo que no incluye. Toque un número de hoja para abrirla. |
-| {gc} cannot tell if your number covers it. | {gc} no sabe si su precio lo incluye. |
-| It is in my number | Está incluido en mi precio |
+| Change my quote | Cambiar mi cotización |
+| Tick what your quote covers. Untick what it leaves out. Tap a sheet number to open it. | Marque lo que incluye su cotización. Desmarque lo que no incluye. Toque un número de hoja para abrirla. |
+| {gc} cannot tell if your quote covers it. | {gc} no sabe si su cotización lo incluye. |
+| It is in my quote | Está incluido en mi cotización |
 | It is left out | No está incluido |
 | Also changed in {sets} | También cambió en {sets} |
-| Your number | Su precio |
+| Your quote | Su cotización |
 | Anything we should know | Algo que debamos saber |
-| Send my new number | Enviar mi nuevo precio |
-| Send my bid | Enviar mi precio |
+| Send my new quote | Enviar mi nueva cotización |
+| Send my quote | Enviar mi cotización |
 | Pass on this one | No cotizar este |
-| Keep my bid as it is | Dejar mi precio como está |
+| Keep my quote as it is | Dejar mi cotización como está |
 | Answer each line first. | Primero conteste cada partida. |
-| Not ready yet? Tell {gc} when your number will come. | ¿Todavía no está listo? Dígale a {gc} cuándo llegará su precio. |
-| The day your number will come | El día que llegará su precio |
+| Not ready yet? Tell {gc} when your quote will come. | ¿Todavía no está listo? Dígale a {gc} cuándo llegará su cotización. |
+| The day your quote will come | El día que llegará su cotización |
 | Give a new day | Dar un nuevo día |
 | Change the day | Cambiar el día |
 | Tell {gc} | Avisar a {gc} |
@@ -231,10 +232,10 @@ they were written in. The portal does not translate them.
 | English | Español |
 |---|---|
 | Not in your scope | Fuera de su alcance |
-| Leave these out of your number. Someone else does them. | No los incluya en su precio. Otra persona los hace. |
+| Leave these out of your quote. Someone else does them. | No los incluya en su cotización. Otra persona los hace. |
 | {what} ({who} does it) | {what} (lo hace {who}) |
 | the owner | el dueño |
-| Your number is good for | Su precio es válido por |
+| Your quote is good for | Su cotización es válida por |
 | Alternates | Alternativas |
 | · another way to do the work, at a different price. You do not have to give one. | · otra forma de hacer el trabajo, a otro precio. No es obligatorio. |
 | Remove | Quitar |
@@ -245,9 +246,9 @@ they were written in. The portal does not translate them.
 | Adds or takes off | Suma o resta |
 | How much | Cuánto |
 | Add it | Agregar |
-| Your own quote | Su propia cotización |
-| · attach it if you have one. Your number above is the one that counts. | · adjúntela si tiene una. El precio de arriba es el que cuenta. |
-| {gc} cannot tell if your number covers these. Your number stays as you sent it. | {gc} no sabe si su precio incluye esto. Su precio se queda como lo envió. |
+| Your quote file | El archivo de su cotización |
+| · attach it if you have one. The amount above is the one that counts. | · adjúntelo si tiene uno. El monto de arriba es el que cuenta. |
+| {gc} cannot tell if your quote covers these. Your quote stays as you sent it. | {gc} no sabe si su cotización incluye esto. Su cotización se queda como la envió. |
 | Send my answer | Enviar mi respuesta |
 | {label} adds {amount} | {label} suma {amount} |
 | {label} takes off {amount} | {label} resta {amount} |
@@ -260,7 +261,7 @@ they were written in. The portal does not translate them.
 | Our daily log has you on site {n} days since {since}, the last on {date}. | Nuestro registro diario lo tiene en la obra {n} días desde el {since}, el último el {date}. |
 | Our daily log has not had you on site since {since}. | Nuestro registro diario no lo ha tenido en la obra desde el {since}. |
 | {trade} · you got the job | {trade} · el trabajo es suyo |
-| {gc} picked your number. Your statement of work is being written. | {gc} eligió su precio. Estamos preparando su orden de trabajo. |
+| {gc} picked your quote. Your statement of work is being written. | {gc} eligió su cotización. Estamos preparando su orden de trabajo. |
 | {trade} · statement of work | {trade} · orden de trabajo |
 | {pct}% held until the end · based on {plans} | {pct}% retenido hasta el final · con base en {plans} |
 | Sign the statement of work | Firmar la orden de trabajo |
@@ -292,7 +293,7 @@ they were written in. The portal does not translate them.
 | Approved, on the way | Aprobado, en camino |
 | {gc} is looking at | {gc} está revisando |
 | Your jobs | Sus trabajos |
-| Asked to bid | Invitado a cotizar |
+| Asked to quote | Invitado a cotizar |
 | Before | Anteriores |
 | went to another company | fue para otra empresa |
 | {gc} did not win it | {gc} no lo ganó |
@@ -305,10 +306,10 @@ they were written in. The portal does not translate them.
 | Due today, {date}. | Vence hoy, {date}. |
 | Due {date}, 1 day left. | Vence el {date}, falta 1 día. |
 | Due {date}, {n} days left. | Vence el {date}, faltan {n} días. |
-| your number {amount} | su precio {amount} |
+| your quote {amount} | su cotización {amount} |
 | your day passed | ya pasó su fecha |
-| no number yet | sin precio todavía |
-| your number ran out | su precio venció |
+| no quote yet | sin cotización todavía |
+| your quote ran out | su cotización venció |
 | plans changed | cambiaron los planos |
 | a line to answer | una partida por contestar |
 | statement of work being written | preparando la orden de trabajo |
@@ -319,12 +320,12 @@ they were written in. The portal does not translate them.
 | Work {pct}% done · paid {paid} · held {held} | Avance {pct}% · pagado {paid} · retenido {held} |
 | Welcome | Bienvenida |
 | Welcome, {name}. | Le damos la bienvenida, {name}. |
-| {gc} asked {company} to bid {trade} on {project}. | {gc} invitó a {company} a cotizar {trade} en {project}. |
+| {gc} asked {company} to quote {trade} on {project}. | {gc} invitó a {company} a cotizar {trade} en {project}. |
 | {gc} added {company} to its trade partners. | {gc} agregó a {company} a sus subcontratistas. |
 | This portal is where you work with us. | En este portal trabaja con nosotros. |
 | It holds every job, the plans, your paperwork and your pay. There is no password. The link is yours, so keep it. | Aquí están todos sus trabajos, los planos, sus documentos y sus pagos. No hay contraseña. El enlace es suyo, así que guárdelo. |
 | Open the plans before you price. | Abra los planos antes de cotizar. |
-| Send your number by the day it is due. Not for you? Press Pass on this one. | Envíe su precio antes de la fecha límite. ¿No le interesa? Toque No cotizar este. |
+| Send your quote by the day it is due. Not for you? Press Pass on this one. | Envíe su cotización antes de la fecha límite. ¿No le interesa? Toque No cotizar este. |
 | Send your insurance and W-9 when you can. We need them before any work starts. | Envíe su seguro y su W-9 cuando pueda. Los necesitamos antes de empezar cualquier trabajo. |
 | Got it | Entendido |
 
@@ -332,10 +333,24 @@ they were written in. The portal does not translate them.
 
 | English | Español |
 |---|---|
+| Your company | Su empresa |
+| Tell us about your company | Cuéntenos de su empresa |
+| {gc} checks a company it has not worked with before. You can quote now. {gc} can pick your quote once you are approved. | {gc} revisa a las empresas con las que no ha trabajado. Ya puede cotizar. {gc} puede elegir su cotización cuando apruebe a su empresa. |
+| not sent yet | todavía no la envía |
+| {gc} is checking it · sent {date} | {gc} la está revisando · enviada el {date} |
+| approved | aprobada |
+| approved for jobs up to {amount} each | aprobada para trabajos de hasta {amount} cada uno |
+| {gc} cannot work with you right now | {gc} no puede trabajar con usted por ahora |
+| Your license: its kind and number | Su licencia: el tipo y el número |
+| Your insurance company and your limits | Su aseguradora y sus límites |
+| Years in business | Años en el negocio |
+| Two or three people we can call, with their phone numbers | Dos o tres personas a quienes podemos llamar, con sus teléfonos |
+| Jobs like this one you have done | Trabajos como este que ha hecho |
+| You can send your quote now. {gc} can pick it once your company is approved. | Ya puede enviar su cotización. {gc} puede elegirla cuando apruebe a su empresa. |
 | Your paperwork with {gc} | Sus documentos con {gc} |
 | Master agreement | Contrato maestro |
 | Read and sign | Leer y firmar |
-| {gc} sends it when they pick your number | {gc} lo envía cuando elige su precio |
+| {gc} sends it when they pick your quote | {gc} lo envía cuando elige su cotización |
 | Insurance certificate | Certificado de seguro |
 | Send a newer one | Enviar uno más reciente |
 | Send your certificate | Enviar su certificado |
@@ -377,7 +392,7 @@ they were written in. The portal does not translate them.
 | Each job | Cada trabajo |
 | A job starts with a statement of work. You sign it in this portal. It says the work, the price and the plans it is based on. Nothing is owed on a job without one. | Cada trabajo empieza con una orden de trabajo. Usted la firma en este portal. Dice el trabajo, el precio y los planos en que se basa. Sin orden de trabajo no se debe nada. |
 | The plans | Los planos |
-| Your price is based on one set of plans. When a new set changes your trade, {gc} tells you. You confirm your number or send a new one. | Su precio se basa en un juego de planos. Cuando un juego nuevo cambia su especialidad, {gc} le avisa. Usted confirma su precio o manda uno nuevo. |
+| Your quote is based on one set of plans. When a new set changes your trade, {gc} tells you. You confirm your quote or send a new one. | Su cotización se basa en un juego de planos. Cuando un juego nuevo cambia su especialidad, {gc} le avisa. Usted confirma su cotización o manda una nueva. |
 | Changes | Cambios |
 | Work outside the statement of work needs a change in writing first. {gc} adds it to the statement of work before you start it. | El trabajo fuera de la orden de trabajo necesita primero un cambio por escrito. {gc} lo agrega a la orden de trabajo antes de que usted empiece. |
 | Your paperwork | Sus documentos |
@@ -415,7 +430,7 @@ they were written in. The portal does not translate them.
 | Sheet {i} of {n} | Hoja {i} de {n} |
 | Plan set | Juego de planos |
 | Open {id} | Abrir {id} |
-| {sets} touches these lines of your number. | {sets} toca estas partidas de su precio. |
+| {sets} touches these lines of your quote. | {sets} toca estas partidas de su cotización. |
 | reads every {trade} sheet | usa todas las hojas de {trade} |
 | read every {trade} sheet | usan todas las hojas de {trade} |
 | Also changed | También cambió |
@@ -428,7 +443,7 @@ they were written in. The portal does not translate them.
 | {trade} · questions about the plans | {trade} · preguntas sobre los planos |
 | Ask about the plans. Every company on this trade gets the answer, without your name. | Pregunte sobre los planos. Todas las empresas de esta especialidad reciben la respuesta, sin su nombre. |
 | Ask before {date}. Questions close that day. | Pregunte antes del {date}. Ese día se cierran las preguntas. |
-| Questions closed {date}, three days before the bid is due. | Las preguntas se cerraron el {date}, tres días antes de la fecha de entrega. |
+| Questions closed {date}, three days before quotes are due. | Las preguntas se cerraron el {date}, tres días antes de la fecha de entrega. |
 | Your question | Su pregunta |
 | Sheets it is about, if any (like E-301) | Hojas a las que se refiere, si aplica (como E-301) |
 | Send the question | Enviar la pregunta |
@@ -452,7 +467,7 @@ they were written in. The portal does not translate them.
 | Who to call | A quién llamar |
 | superintendent, on site | superintendente en obra |
 | project manager | gerente de proyecto |
-| project manager, for this bid | gerente de proyecto, para esta cotización |
+| project manager, while we bid this job | gerente de proyecto, mientras preparamos nuestra propuesta |
 | pay and paperwork | pagos y documentos |
 | Call | Llamar |
 | Text | Mensaje |
@@ -526,30 +541,30 @@ they were written in. The portal does not translate them.
 | This link is yours. It holds every job you have with us. There is no password. | Este enlace es suyo. Aquí están todos sus trabajos con nosotros. No hay contraseña. |
 | Thank you, | Gracias, |
 | Hello {first}, | Hola {first}: |
-| {gc} asks you to bid {trade} on {project} | {gc} lo invita a cotizar {trade} en {project} |
-| We would like your number for {trade} on {project}. | Nos gustaría recibir su precio de {trade} para {project}. |
-| Your number is due {date}. | Su precio vence el {date}. |
+| {gc} asks you to quote {trade} on {project} | {gc} lo invita a cotizar {trade} en {project} |
+| We would like your quote for {trade} on {project}. | Nos gustaría recibir su cotización de {trade} para {project}. |
+| Your quote is due {date}. | Su cotización vence el {date}. |
 | Plans to price: {label}, issued {date}. | Planos para cotizar: {label}, emitidos el {date}. |
 | Leave these out. Someone else does them: | No incluya esto. Otra persona lo hace: |
-| Your number should cover these lines. | Su precio debe incluir estas partidas. |
+| Your quote should cover these lines. | Su cotización debe incluir estas partidas. |
 |  by {date} |  a más tardar el {date} |
 | A reminder: {about} | Recordatorio: {about} |
-| A reminder about your {trade} number for {project}. | Le recordamos su precio de {trade} para {project}. |
+| A reminder about your {trade} quote for {project}. | Le recordamos su cotización de {trade} para {project}. |
 | It is due {date}. | Vence el {date}. |
 | Open your portal to send it. Not ready? Tell us the day it will come. | Abra su portal para enviarlo. ¿No está listo? Díganos qué día llegará. |
 | How the {trade} quotes came in on {project} | Cómo llegaron las cotizaciones de {trade} en {project} |
-| Thank you for your number. We share every bid tab with the companies that quoted. | Gracias por su precio. Compartimos cada tabla de precios con las empresas que cotizaron. |
+| Thank you for your quote. We share every bid tab with the companies that quoted. | Gracias por su cotización. Compartimos cada tabla de precios con las empresas que cotizaron. |
 | Open your portal to see where you stood. | Abra su portal para ver en qué lugar quedó. |
 | {label} for {project} | {label} de {project} |
 | {label} for {project} is out. {note} | Ya salió {label} de {project}. {note} |
-| It changes {trades}. Open it, then confirm your number or change it. | Cambia {trades}. Ábralo y luego confirme su precio o cámbielo. |
+| It changes {trades}. Open it, then confirm your quote or change it. | Cambia {trades}. Ábralo y luego confirme su cotización o cámbiela. |
 | It does not change {trades}. Open it so you price on the newest set. | No cambia {trades}. Ábralo para cotizar con el juego más reciente. |
 | Your master agreement with {gc} | Su contrato maestro con {gc} |
 | Here is our master agreement. You sign it once, and it covers every job you do for us. | Aquí está nuestro contrato maestro. Se firma una sola vez y cubre todos los trabajos que haga para nosotros. |
 | After that, each job is a short statement of work. | Después, cada trabajo es una orden de trabajo corta. |
 | Open your portal to read it and sign it. | Abra su portal para leerlo y firmarlo. |
 | Your statement of work for {trade} on {project} | Su orden de trabajo de {trade} para {project} |
-| We picked your number for {trade} on {project}. Thank you. | Elegimos su precio de {trade} para {project}. Gracias. |
+| We picked your quote for {trade} on {project}. Thank you. | Elegimos su cotización de {trade} para {project}. Gracias. |
 | Your statement of work is ready: {price}, based on the {plans}. | Su orden de trabajo está lista: {price}, con base en {plans}. |
 | We hold back {pct}% of each draw until the job is done. | Retenemos el {pct}% de cada pago hasta que termine el trabajo. |
 | Open your portal to read it and sign it. | Abra su portal para leerla y firmarla. |
@@ -576,6 +591,11 @@ they were written in. The portal does not translate them.
 | The insurance certificate {gc} has on file for you runs out {date}. | El certificado de seguro que {gc} tiene de usted vence el {date}. |
 | We cannot pay a draw without current insurance. | No podemos pagarle sin un seguro vigente. |
 | Send the new certificate in your portal. | Envíe el certificado nuevo en su portal. |
+| Your company is approved to work with {gc} | Su empresa está aprobada para trabajar con {gc} |
+| {gc} checked your company and approved it. | {gc} revisó su empresa y la aprobó. |
+| You can be picked for jobs up to {amount} each. | Lo pueden elegir para trabajos de hasta {amount} cada uno. |
+| About working with {gc} | Sobre trabajar con {gc} |
+| {gc} checked your company and cannot work with you right now. Thank you for your time. | {gc} revisó su empresa y por ahora no puede trabajar con usted. Gracias por su tiempo. |
 | {project}: {gc} is not building it | {project}: {gc} no lo va a construir |
 | This is about {trade} on {project}. | Le escribimos sobre {trade} en {project}. |
 | Pay application {n} on {project}: approved for less | Solicitud de pago {n} de {project}: aprobada por menos |
@@ -594,19 +614,20 @@ they were written in. The portal does not translate them.
 | Your insurance runs out {date}, in {n} days. Send a new certificate before then. | Su seguro vence el {date}, en {n} días. Envíe un certificado nuevo antes de esa fecha. |
 | Your insurance runs out tomorrow, {date}. Send a new certificate. | Su seguro vence mañana, {date}. Envíe un certificado nuevo. |
 | Your insurance runs out today, {date}. Send a new certificate. | Su seguro vence hoy, {date}. Envíe un certificado nuevo. |
+| Tell {gc} about your company. {gc} can pick your quote once you are approved. | Cuéntele a {gc} de su empresa. {gc} puede elegir su cotización cuando apruebe a su empresa. |
 | Fill in your W-9. | Llene su W-9. |
-| The plans changed for {trade} on {project}. Confirm your number or change it. | Cambiaron los planos de {trade} en {project}. Confirme su precio o cámbielo. |
-| Answer one line of your {trade} number for {project}. | Conteste una partida de su precio de {trade} para {project}. |
-| Answer {n} lines of your {trade} number for {project}. | Conteste {n} partidas de su precio de {trade} para {project}. |
-| Your {trade} number for {project} ran out {date}. Send it again to keep it good. | Su precio de {trade} para {project} venció el {date}. Envíelo de nuevo para que siga válido. |
-| You said your {trade} number for {project} would come {date}. Send it or give a new day. | Usted dijo que su precio de {trade} para {project} llegaría el {date}. Envíelo o dé un nuevo día. |
-| Your {trade} number for {project} was due {date}. | Su precio de {trade} para {project} venció el {date}. |
+| The plans changed for {trade} on {project}. Confirm your quote or change it. | Cambiaron los planos de {trade} en {project}. Confirme su cotización o cámbiela. |
+| Answer one line of your {trade} quote for {project}. | Conteste una partida de su cotización de {trade} para {project}. |
+| Answer {n} lines of your {trade} quote for {project}. | Conteste {n} partidas de su cotización de {trade} para {project}. |
+| Your {trade} quote for {project} ran out {date}. Send it again to keep it good. | Su cotización de {trade} para {project} venció el {date}. Envíela de nuevo para que siga válida. |
+| You said your {trade} quote for {project} would come {date}. Send it or give a new day. | Usted dijo que su cotización de {trade} para {project} llegaría el {date}. Envíela o dé un nuevo día. |
+| Your {trade} quote for {project} was due {date}. | Su cotización de {trade} para {project} venció el {date}. |
 | 1 punch item to fix on {trade} for {project}. | Tiene 1 pendiente por arreglar en {trade} para {project}. |
 | {n} punch items to fix on {trade} for {project}. | Tiene {n} pendientes por arreglar en {trade} para {project}. |
 | {gc} checked one and it is not fixed yet. | {gc} revisó uno y todavía no está arreglado. |
 | {gc} checked {n} and they are not fixed yet. | {gc} revisó {n} y todavía no están arreglados. |
-| Send your {trade} number for {project} by {date}. | Envíe su precio de {trade} para {project} a más tardar el {date}. |
-| Open the plans and send your {trade} number for {project} by {date}. | Abra los planos y envíe su precio de {trade} para {project} a más tardar el {date}. |
+| Send your {trade} quote for {project} by {date}. | Envíe su cotización de {trade} para {project} a más tardar el {date}. |
+| Open the plans and send your {trade} quote for {project} by {date}. | Abra los planos y envíe su cotización de {trade} para {project} a más tardar el {date}. |
 | Open {label} on {project}. It does not change {trade}. | Abra {label} de {project}. No cambia {trade}. |
 | See how the {trade} quotes came in on {project}. | Vea cómo llegaron las cotizaciones de {trade} en {project}. |
 | Sign your {trade} statement of work for {project}. | Firme su orden de trabajo de {trade} para {project}. |
@@ -625,9 +646,9 @@ they were written in. The portal does not translate them.
 
 | English | Español |
 |---|---|
-| You told {gc} your number will come by {date}. | Le dijo a {gc} que su precio llegaría a más tardar el {date}. |
-| You told {gc} your number will come today. | Le dijo a {gc} que su precio llegaría hoy. |
-| You told {gc} your number would come by {date}. That day passed {ago}. Send your number or give a new day. | Le dijo a {gc} que su precio llegaría a más tardar el {date}. Esa fecha pasó {ago}. Envíe su precio o dé un nuevo día. |
+| You told {gc} your quote will come by {date}. | Le dijo a {gc} que su cotización llegaría a más tardar el {date}. |
+| You told {gc} your quote will come today. | Le dijo a {gc} que su cotización llegaría hoy. |
+| You told {gc} your quote would come by {date}. That day passed {ago}. Send your quote or give a new day. | Le dijo a {gc} que su cotización llegaría a más tardar el {date}. Esa fecha pasó {ago}. Envíe su cotización o dé un nuevo día. |
 | yesterday | ayer |
 | {n} days ago | hace {n} días |
 

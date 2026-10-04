@@ -1,8 +1,8 @@
 import { useState, type Dispatch, type ReactNode } from 'react'
-import { aYearFrom, GC_COMPANY, pDate, portalInsurance, type GcAction, type Partner, type PortalKey } from '../../lib/gcMode/gcModel'
+import { aYearFrom, GC_COMPANY, pDate, portalInsurance, portalVetting, type GcAction, type Partner, type PortalKey } from '../../lib/gcMode/gcModel'
 import { Btn, Chip, input } from './gcUi'
 import { GcPortalAgreement } from './GcPortalAgreement'
-import { PortalBlock, PortalNote } from './GcPortalUi'
+import { PortalBlock, PortalNote, PortalTag } from './GcPortalUi'
 import { usePortalLang } from './gcPortalLang'
 
 /**
@@ -11,7 +11,7 @@ import { usePortalLang } from './gcPortalLang'
  * office for them: Get started waits on all three.
  */
 
-export type PaperworkLine = 'msa' | 'coi' | 'w9'
+export type PaperworkLine = 'msa' | 'coi' | 'w9' | 'vet'
 
 export function GcPortalPaperwork({
   partner,
@@ -28,11 +28,27 @@ export function GcPortalPaperwork({
   const { lang, t } = usePortalLang()
   const [open, setOpen] = useState<PaperworkLine | null>(startOpen)
   const coi = portalInsurance(partner, today, lang)
+  const vet = portalVetting(partner, lang)
   const gc = GC_COMPANY.shortName
 
   return (
     <PortalBlock title={t('paperTitle', { gc })}>
       <div style={{ display: 'grid', gap: '0.5rem', fontSize: '0.9rem' }}>
+        {/* A company we did not know: its form, and where the office's check stands (question 3). */}
+        {vet.state !== 'known' && (
+          <>
+            <Line label={t('vetLine')}>
+              <PortalTag tone={vet.state === 'approved' ? 'green' : vet.state === 'declined' ? 'red' : 'grey'}>{vet.words}</PortalTag>
+              {vet.state === 'send' && open !== 'vet' && (
+                <Btn kind="primary" onClick={() => setOpen('vet')}>
+                  {t('vetFormBtn')}
+                </Btn>
+              )}
+            </Line>
+            {(vet.state === 'send' || vet.state === 'checking') && <div style={{ fontSize: '0.8rem', opacity: 0.8 }}>{t('vetWhy', { gc })}</div>}
+            {open === 'vet' && vet.state === 'send' && <VettingForm partner={partner} dispatch={dispatch} onDone={() => setOpen(null)} />}
+          </>
+        )}
         <Line label={t('masterAgreement')}>
           {partner.msa === 'signed' && <Chip tone="green">{t('signedOn', { date: pDate(lang, partner.msaSignedOn) })}</Chip>}
           {partner.msa === 'sent' && (
@@ -121,6 +137,60 @@ function CoiForm({ partner, today, dispatch, onDone }: { partner: Partner; today
 }
 
 const TAX_CLASSES: PortalKey[] = ['taxLlc', 'taxCorp', 'taxSole', 'taxPartner']
+
+/** What a new company tells us about itself, as it writes it. Every line is needed. */
+function VettingForm({ partner, dispatch, onDone }: { partner: Partner; dispatch: Dispatch<GcAction>; onDone: () => void }) {
+  const { t } = usePortalLang()
+  const gc = GC_COMPANY.shortName
+  const [license, setLicense] = useState('')
+  const [insurance, setInsurance] = useState('')
+  const [years, setYears] = useState('')
+  const [references, setReferences] = useState('')
+  const [pastJobs, setPastJobs] = useState('')
+  const ready = [license, insurance, references, pastJobs].every((x) => x.trim() !== '') && Number(years) >= 0 && years.trim() !== ''
+  const area = { ...input, width: '100%', resize: 'vertical' as const, fontFamily: 'inherit' }
+  return (
+    <PortalNote tone="paper">
+      <label style={{ display: 'grid', gap: '0.2rem' }}>
+        {t('vetLicense')}
+        <input style={input} value={license} onChange={(e) => setLicense(e.target.value)} />
+      </label>
+      <label style={{ display: 'grid', gap: '0.2rem' }}>
+        {t('vetInsurance')}
+        <input style={input} value={insurance} onChange={(e) => setInsurance(e.target.value)} />
+      </label>
+      <label style={{ display: 'grid', gap: '0.2rem' }}>
+        {t('vetYears')}
+        <input style={{ ...input, width: '6rem' }} type="number" min={0} inputMode="numeric" value={years} onChange={(e) => setYears(e.target.value)} />
+      </label>
+      <label style={{ display: 'grid', gap: '0.2rem' }}>
+        {t('vetReferences')}
+        <textarea style={area} rows={3} value={references} onChange={(e) => setReferences(e.target.value)} />
+      </label>
+      <label style={{ display: 'grid', gap: '0.2rem' }}>
+        {t('vetPastJobs')}
+        <textarea style={area} rows={3} value={pastJobs} onChange={(e) => setPastJobs(e.target.value)} />
+      </label>
+      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+        <Btn
+          kind="primary"
+          disabled={!ready}
+          onClick={() => {
+            dispatch({
+              type: 'tradeVettingForm',
+              partnerId: partner.id,
+              form: { license: license.trim(), insurance: insurance.trim(), yearsInBusiness: Number(years), references: references.trim(), pastJobs: pastJobs.trim() },
+            })
+            onDone()
+          }}
+        >
+          {t('sendTo', { gc })}
+        </Btn>
+        <Btn kind="quiet" onClick={onDone}>{t('notNow')}</Btn>
+      </div>
+    </PortalNote>
+  )
+}
 
 function W9Form({ partner, dispatch, onDone }: { partner: Partner; dispatch: Dispatch<GcAction>; onDone: () => void }) {
   const { t } = usePortalLang()

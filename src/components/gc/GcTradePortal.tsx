@@ -17,6 +17,7 @@ import {
   portalClosedWords,
   portalInsurance,
   portalOnSite,
+  portalVetting,
   portalLines,
   portalPlanNews,
   portalPromiseLine,
@@ -222,7 +223,7 @@ function ProjectPage({
 }) {
   const { t } = usePortalLang()
   const mine = project.packages.flatMap((pkg) => pkg.invites.filter((i) => i.partnerId === partner.id).map((invite) => ({ pkg, invite })))
-  const paperworkMissing = partner.msa === 'sent' || !portalInsurance(partner, state.today).done || !partner.w9
+  const paperworkMissing = partner.msa === 'sent' || !portalInsurance(partner, state.today).done || !partner.w9 || portalVetting(partner).state === 'send'
   return (
     <div style={{ padding: '0.9rem', display: 'grid', gap: '0.9rem' }}>
       <div>
@@ -370,7 +371,15 @@ function PackageBlock({
       ) : invite.status === 'declined' ? (
         <Block title={t('inviteTitle', { trade: pkg.trade })}>{t('youPassed')}</Block>
       ) : (
-        <BidBlock project={project} pkg={pkg} invite={invite} today={state.today} dispatch={dispatch} onOpenSheet={openPlans} />
+        <BidBlock
+          project={project}
+          pkg={pkg}
+          invite={invite}
+          today={state.today}
+          dispatch={dispatch}
+          onOpenSheet={openPlans}
+          notVetted={portalVetting(partner).state === 'send' || portalVetting(partner).state === 'checking'}
+        />
       )}
     </>
   )
@@ -383,6 +392,7 @@ function BidBlock({
   today,
   dispatch,
   onOpenSheet,
+  notVetted = false,
 }: {
   project: GcProject
   pkg: TradePackage
@@ -390,6 +400,8 @@ function BidBlock({
   today: string
   dispatch: Dispatch<GcAction>
   onOpenSheet: (sheetId: string) => void
+  /** A company the office has not approved yet: it can quote, and is told we pick only once it is approved. */
+  notVetted?: boolean
 }) {
   const { lang, t } = usePortalLang()
   const [promiseDay, setPromiseDay] = useState('')
@@ -561,6 +573,7 @@ function BidBlock({
           <input style={input} placeholder={t('anythingKnow')} value={note} onChange={(e) => setNote(e.target.value)} />
           <AlternatesEditor value={alternates} onChange={setAlternates} />
           <QuoteFilePicker value={quoteFile} onChange={setQuoteFile} />
+          {notVetted && <div style={{ fontSize: '0.85rem', opacity: 0.85 }}>{t('vetBidNote', { gc: GC })}</div>}
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <Btn
               kind="primary"
