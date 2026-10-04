@@ -301,7 +301,10 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
 - **Submittals hold the work they cover** (approved as built, 2026-10-04, Building lane): a trade
   sends each for the architect's approval; we send it on and record the answer; revise sends it
   back for another round. It is needed by the first start of the work it holds, less its lead
-  days (`gcBuildingSubmittals.ts`, `GcBuildingSubmittals.tsx`).
+  days (`gcBuildingSubmittals.ts`, `GcBuildingSubmittals.tsx`). On the trade's home (owner,
+  2026-10-04, Portal lane): one Needs you line per trade, "1 submittal to send for HVAC on …",
+  amber, red once one is late or came back to revise ("Click sent one back to revise."). It opens
+  the job page on the block that holds them (`portalTodos` in `gcPortal.ts`).
 - **A trade's retainage is paid 10 days after the owner pays ours** (answered 2026-10-02, was
   open question 16): the trade's final pay application can go in once we accept the work (our own
   final to the owner waits for every trade's); we approve and pay it 10 days after the owner pays

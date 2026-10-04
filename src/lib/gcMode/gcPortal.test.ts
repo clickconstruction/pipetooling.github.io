@@ -969,3 +969,40 @@ describe('the dates a company gave us', () => {
     expect(portalPromises(gave, 'voltage', 'es')[0]).toMatchObject({ what: 'El certificado de seguro renovado', words: 'a más tardar el vie 9 oct, en 7 días' })
   })
 })
+
+describe('submittals to send, on the home', () => {
+  const sub = (s: GcState) => portalTodos(s, 'coolbreeze').find((t) => t.key.endsWith(':submittals'))
+
+  it('asks Cool Breeze for its controls shop drawings, landing on the block that holds them', () => {
+    const t = sub(state)
+    expect(t).toMatchObject({ projectId: 'fairoaksd', anchor: 'report:fhvac' })
+    expect(t?.text.startsWith('1 submittal to send for HVAC on Fair Oaks Shops, Building D.')).toBe(true)
+  })
+
+  it('turns red and says so when the architect sent one back to revise', () => {
+    // Its rooftop units come back to revise.
+    const back: GcState = {
+      ...state,
+      projects: state.projects.map((p) =>
+        p.id !== 'fairoaksd'
+          ? p
+          : {
+              ...p,
+              submittals: (p.submittals ?? []).map((x) =>
+                x.id !== 'fairoaksd-sub-3' ? x : { ...x, rounds: x.rounds.map((r) => ({ ...r, answer: 'revise' as const, answerNote: 'Show the curb detail.' })) },
+              ),
+            },
+      ),
+    }
+    const t = sub(back)
+    expect(t?.tone).toBe('red')
+    expect(t?.text).toContain('2 submittals to send for HVAC on Fair Oaks Shops, Building D. Click sent one back to revise.')
+  })
+
+  it('says nothing to a company with none to send, and reads in Spanish', () => {
+    expect(portalTodos(state, 'summit').some((t) => t.key.endsWith(':submittals'))).toBe(false)
+    expect(portalTodos(state, 'coolbreeze', undefined, 'es').find((t) => t.key.endsWith(':submittals'))?.text).toMatch(
+      /^Tiene 1 documento para aprobación por enviar de HVAC para Fair Oaks Shops, Building D\./,
+    )
+  })
+})
