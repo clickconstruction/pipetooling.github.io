@@ -57,6 +57,7 @@ import {
   awardGate,
   GC_COMPANY,
   missedMandatoryPreBid,
+  unitPriceWords,
   declinedTitle,
   declinedWords,
 } from '../../lib/gcMode/gcModel'
@@ -64,6 +65,7 @@ import { linkNeverOpened } from '../../lib/gcMode/gcPortal'
 import { VettingChip } from './GcVetting'
 import { GcSovSideBySide } from './GcSovSideBySide'
 import { PlanSetDriveLine } from './GcNewProjectDriveLink'
+import { GcExclusionRows } from './GcExclusionRows'
 import { LinkNeverOpenedChip } from './GcPortalLinkChip'
 import { AskThread } from './GcAskThread'
 import { GcBuildingPayAppWindow } from './GcBuildingPayApp'
@@ -135,6 +137,24 @@ export function AwardButton({
         {children}
       </Btn>
     </span>
+  )
+}
+
+/**
+ * What the statement of work says they will not do (the owner, 2026-10-04: "once we've got the
+ * job, we send them a contract specifying what they're going to do"). Each exclusion from the quote
+ * awarded, with who does it instead when it is a Known exclusion, or its unit price.
+ */
+function SowExcludedBlock({ excluded }: { excluded: { name: string; by: string | null; unitPrice?: { amount: number; unit: string } }[] }) {
+  return (
+    <div style={{ fontSize: '0.875rem' }}>
+      <span style={{ color: 'var(--text-muted)' }}>What they will not do: </span>
+      {excluded.length === 0
+        ? 'nothing listed. Their quote named no exclusions.'
+        : excluded
+            .map((x) => `${x.name}${x.unitPrice ? ` (${unitPriceWords(x.unitPrice)} if it comes up)` : x.by ? ` (${x.by} does it)` : ''}`)
+            .join(' · ')}
+    </div>
   )
 }
 
@@ -638,10 +658,12 @@ function LevelPanel({ state, project, pkg, dispatch, onSeePortal }: GcPaneProps 
                   })}
                 </tr>
               ))}
+              {/* Each company's exclusions (the owner, 2026-10-04): their answers side by side, covers in All in. */}
+              <GcExclusionRows pkg={pkg} bidders={bidders} ids={ids} dispatch={dispatch} />
               <tr>
                 <td style={{ ...td, fontWeight: 700 }}>
                   All in
-                  <div style={{ fontWeight: 400, fontSize: '0.8rem', color: 'var(--text-muted)' }}>their quote plus the missing work</div>
+                  <div style={{ fontWeight: 400, fontSize: '0.8rem', color: 'var(--text-muted)' }}>their quote plus the missing work and what it excludes</div>
                 </td>
                 {bidders.map((inv) => {
                   const total = leveledTotal(pkg, inv) ?? 0
@@ -1266,6 +1288,8 @@ export function GcContractsTab({ state, project, dispatch }: GcPaneProps) {
                 </div>
                 {/* Ours beside the trade's own (question 4): draws bill by percent on ours. */}
                 <GcSovSideBySide sow={sow} />
+                {/* The contract says what they will not do (the owner, 2026-10-04): their exclusions, from the quote awarded. */}
+                <SowExcludedBlock excluded={sow.excluded ?? []} />
                 {sow.status === 'draft' && (
                   <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                     {partner.msa === 'none' && (
