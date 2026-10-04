@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest'
 import {
   allJobsMoney,
   cashAhead,
+  changeOrderScheduleWords,
+  contractDaysAdded,
   gcReducer,
   initialGcState,
   missingTradeWaivers,
@@ -430,6 +432,25 @@ describe('change orders to the owner', () => {
     state = gcReducer(state, { type: 'sendChangeOrder', projectId: 'helotes', changeOrderId: 'co-1' })
     return gcReducer(state, { type: 'ownerSignChangeOrder', projectId: 'helotes', changeOrderId: 'co-1' })
   }
+
+  it('carries the days it adds; only signed ones add to the contract time', () => {
+    const withDays = (days?: number) =>
+      gcReducer(initialGcState(), { type: 'draftChangeOrder', projectId: 'helotes', description: 'Bulletin 1, Drywall: rated wall at the X-ray room', reason: 'plans', schedule: '', packageId: 'dry', cost: 4_800, price: 0, days })
+    let state = withDays(5)
+    const co = helotesOf(state).changeOrders?.[0]
+    expect([co?.days, co?.schedule, co && changeOrderScheduleWords(co)]).toEqual([5, '+5 days', 'adds 5 days to the job'])
+    expect(contractDaysAdded(helotesOf(state))).toBe(0)
+    state = gcReducer(state, { type: 'sendChangeOrder', projectId: 'helotes', changeOrderId: 'co-1' })
+    expect(contractDaysAdded(helotesOf(state))).toBe(0)
+    state = gcReducer(state, { type: 'ownerSignChangeOrder', projectId: 'helotes', changeOrderId: 'co-1' })
+    expect(contractDaysAdded(helotesOf(state))).toBe(5)
+    for (const none of [undefined, 0, -3]) {
+      const c = helotesOf(withDays(none)).changeOrders?.[0]
+      expect([c && 'days' in c, c?.schedule, c && changeOrderScheduleWords(c)]).toEqual([false, 'none', 'no days added'])
+    }
+    const said = helotesOf(draft(initialGcState(), 4_800)).changeOrders?.[0]
+    expect(said && changeOrderScheduleWords(said)).toBe('schedule: +1 working day')
+  })
 
   it('prices at the cost plus the job fee, unless typed', () => {
     expect(changeOrderPrice(helotesOf(initialGcState()), 4_800)).toBe(5_280)

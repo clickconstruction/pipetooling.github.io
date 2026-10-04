@@ -9,6 +9,10 @@ import {
   appCertified,
   appOpen,
   appPaid,
+  changeOrderDays,
+  changeOrderScheduleWords,
+  contractDaysAdded,
+  daysWords,
   ownerPayDue,
   money,
   ourOwnerWaivers,
@@ -97,6 +101,12 @@ export function GcOwnerBillingPortal({ state, project, dispatch }: { state: GcSt
             <span style={{ textAlign: 'right' }}>{money(account?.paid ?? 0)}</span>
             <span>You owe now</span>
             <strong style={{ textAlign: 'right' }}>{money(account?.owed ?? 0)}</strong>
+            {contractDaysAdded(project) > 0 && (
+              <>
+                <span>Days your change orders add to the job</span>
+                <span style={{ textAlign: 'right' }}>+{daysWords(contractDaysAdded(project))}</span>
+              </>
+            )}
           </div>
         </PortalBlock>
 
@@ -139,7 +149,7 @@ export function GcOwnerBillingPortal({ state, project, dispatch }: { state: GcSt
                   </div>
                   <div>{co.description}</div>
                   <div style={{ color: 'var(--text-muted)' }}>
-                    {CHANGE_ORDER_REASON_WORDS[co.reason]} · schedule: {co.schedule}
+                    {CHANGE_ORDER_REASON_WORDS[co.reason]} · {changeOrderScheduleWords(co)}
                   </div>
                   {co.status === 'sent' && (
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -149,6 +159,7 @@ export function GcOwnerBillingPortal({ state, project, dispatch }: { state: GcSt
                       <Btn onClick={() => dispatch({ type: 'ownerDeclineChangeOrder', projectId: project.id, changeOrderId: co.id })}>Decline</Btn>
                       <span style={{ color: 'var(--text-muted)' }}>
                         {co.price < 0 ? 'It takes' : 'It adds'} {money(Math.abs(co.price))} {co.price < 0 ? 'off' : 'to'} your price.
+                        {changeOrderDays(co) > 0 && ` It adds ${daysWords(changeOrderDays(co))} to the job.`}
                       </span>
                     </div>
                   )}
