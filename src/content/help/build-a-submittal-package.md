@@ -119,7 +119,7 @@ The dropped PDF is a working file, not a record. The record is the pages on rows
 ## Rebuild, or start a new revision
 
 - {{button:outline|Rebuild rows from picks}} is for a draft. Use it when you changed picks on the compare, or added a tag to the schedule. Rows are rebuilt from today's picks. Sheets, reasons and lead times carry wherever the product is unchanged. A supply house you set on a row stays while its pick is the same.
-- {{button:green|New revision}} is for after a share. Use it when the GC sent rows back, or the products changed. Every row carries into the new draft. A row from the takeoff or typed by hand carries as it stands, with its parts. A **Since Rev N** column says what changed. It reads *product changed*, *status changed*, *reason added*, *now missing*, *new row* or *carried*. An unshared draft you revise reads *superseded*. Only the newest revision can be revised. Older ones stay as the record.
+- {{button:green|New revision}} is for after the GC has seen it. It turns on once the package is built, or once an answer is on a row. Use it when the GC sent rows back, or the products changed. Every row carries into the new draft. A row from the takeoff or typed by hand carries as it stands, with its parts. A **Since Rev N** column says what changed. It reads *product changed*, *status changed*, *reason added*, *now missing*, *new row* or *carried*. An unshared draft you revise reads *superseded*. Only the newest revision can be revised. Older ones stay as the record.
 
 ## Build the package
 

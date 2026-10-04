@@ -1391,7 +1391,7 @@ describe('BidsSubmittalsTab', () => {
       // 2026-10-03 · the words follow the revision: pill 2 and steps 2 and 7 say Rev 2 and Rev 3, and the replaced draft reads answered, not superseded.
       await waitFor(() => expect(screen.getByRole('button', { name: /^2 Rev 2 · / })).toBeTruthy())
       expect(screen.getByTestId('road-2-about').textContent).toContain('Rev 2 is the version you are working on.')
-      expect(screen.getByTestId('road-7-about').textContent).toContain('Start Rev 3 with only those rows')
+      expect(screen.getByTestId('road-7-about').textContent).toContain('Start Rev 3 with them and the rows with no answer yet.')
       await waitFor(() => expect(screen.getAllByTestId('revision-chip').map((c) => c.textContent)).toEqual([expect.stringMatching(/^Rev 2 · draft · /), 'Rev 1 · answered Oct 2']))
     } finally {
       state.noSources = false
