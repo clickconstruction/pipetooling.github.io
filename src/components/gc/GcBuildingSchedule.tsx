@@ -30,6 +30,7 @@ import {
   type LookAheadReason,
   type LookAheadState,
   type MilestoneRow,
+  type ProjectedFinish,
   type ScheduleActivity,
   type ScheduleItem,
   type ScheduleMilestone,
@@ -398,7 +399,36 @@ function Measures({ m }: { m: ReturnType<typeof scheduleMeasures> }) {
       >
         {rel.done} of {rel.of} verified marks were done. {rel.waiting > 0 ? `${rel.waiting} ${rel.waiting === 1 ? 'mark waits' : 'marks wait'} on our superintendent.` : ''}
       </Measure>
+      {m.finish && <FinishMeasure finish={m.finish} contract={m.contract} />}
     </div>
+  )
+}
+
+/**
+ * When the job finishes as the schedule stands today (owner, 2026-10-04), against substantial
+ * completion in the contract, in days. The late fee in dollars stays on Bill the owner.
+ */
+function FinishMeasure({ finish, contract }: { finish: ProjectedFinish; contract: ReturnType<typeof substantialCompletionOn> }) {
+  const days = (n: number) => `${n} ${n === 1 ? 'day' : 'days'}`
+  const past = contract ? daysBetween(contract.on, finish.on) : null
+  const chip =
+    past === null
+      ? finish.behind > 0
+        ? `${days(finish.behind)} past the plan at Start`
+        : 'on the plan'
+      : past > 0
+        ? `${days(past)} past the contract`
+        : past === 0
+          ? 'no days to spare'
+          : `${days(-past)} to spare`
+  const tone: Tone = past === null ? (finish.behind > 0 ? 'amber' : 'green') : past > 0 ? 'red' : past === 0 ? 'amber' : 'green'
+  return (
+    <Measure label="Projected finish" value={weekdayDate(finish.on)} tone={tone} chip={chip}>
+      {finish.why}{' '}
+      {contract
+        ? `The contract says substantial completion by ${shortDate(contract.on)}${contract.days > 0 ? `, with ${days(contract.days)} by change order` : ''}.`
+        : 'No substantial completion milestone to measure against.'}
+    </Measure>
   )
 }
 

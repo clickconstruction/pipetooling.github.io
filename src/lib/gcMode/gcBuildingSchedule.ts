@@ -680,6 +680,9 @@ export function scheduleMeasures(state: GcState, project: GcProject) {
     hitRate: milestoneHitRate(milestones),
     lookAhead: lookAheadWeeks(project, rows, state.today),
     reliability: lookAheadReliability(state, project),
+    /** When the job finishes as the schedule stands today, against the contract's day. */
+    finish: projectedFinish(project, state.today),
+    contract: substantialCompletionOn(project),
   }
 }
 

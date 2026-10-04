@@ -334,6 +334,9 @@ describe('when the job will finish (for the late-finish warning on Bill the owne
       why: 'The work runs 3 days behind the plan. At that pace it finishes Fri Dec 11.',
     })
     expect(projectedFinish({ ...fairOaks(s), schedule: undefined }, s.today)).toBeNull()
+    // The Schedule tab's measures card carries it beside the contract's day.
+    const m = scheduleMeasures(s, fairOaks(s))
+    expect([m.finish?.on, m.contract?.on]).toEqual(['2026-12-11', '2026-12-11'])
   })
 
   it('work not started past its finish needs its days from today, and pushes what waits on it', () => {
