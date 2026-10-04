@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import {
   SHEET_DISCIPLINES,
   nextSheetNumber,
@@ -12,15 +12,15 @@ import {
 } from '../../lib/gcMode/gcModel'
 import { getPdfLoadingTask } from '../../lib/pdfjsDocument'
 import { loadJsPDF } from '../../lib/loadJsPDF'
-import { Btn, input } from './gcUi'
+import { Btn, Chip, input } from './gcUi'
 import { Picker } from './GcNewProjectPickers'
 import { FIELD_HEIGHT_PX } from './GcNewProjectPickerRows'
 
 /**
  * GC mode design spike: the sheet index as one table (the owner, 2026-10-04: "build 1, 4 and 5 for
- * the sheet index"). Three ways in, all landing as rows of the one table: drop the plan PDF and
- * each page's title block is read, keeping its page number (a page with no number becomes a row to
- * fix); paste a sheet list in any layout and see each line read or skipped with why; or type them,
+ * the sheet index"). Three ways in, all landing as rows of the one table: the plan PDF, each page's
+ * title block read with its page number (a page with no number becomes a row to fix; dropping a
+ * file is coming soon, since the plans come by their Drive link for now); paste a sheet list in any layout and see each line read or skipped with why; or type them,
  * with + Add sheet filling in the next number. Rows can be fixed, moved, taken out, and put in a
  * discipline where the number's letters do not say it.
  */
@@ -154,11 +154,9 @@ export function SheetIndexTable({
   const rowsNow = useRef(rows)
   rowsNow.current = rows
   const [pdf, setPdf] = useState<PdfStatus>({ kind: 'idle' })
-  const [dragging, setDragging] = useState(false)
   const [pasteOpen, setPasteOpen] = useState(false)
   const [pasteText, setPasteText] = useState('')
   const [focusKey, setFocusKey] = useState<string | null>(null)
-  const fileInput = useRef<HTMLInputElement>(null)
   const inputs = useRef(new Map<string, HTMLInputElement>())
 
   useEffect(() => {
@@ -215,19 +213,6 @@ export function SheetIndexTable({
     } catch {
       setPdf({ kind: 'failed', name })
     }
-  }
-  const takeFile = (file: File | undefined) => {
-    if (!file) return
-    if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
-      setPdf({ kind: 'failed', name: file.name })
-      return
-    }
-    void file.arrayBuffer().then((bytes) => readPdf(file.name, bytes))
-  }
-  const onDrop = (e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault()
-    setDragging(false)
-    takeFile(e.dataTransfer.files[0])
   }
   const readMadeUpPdf = async () => {
     setPdf({ kind: 'reading', name: 'made-up plans.pdf', page: 0, of: 0 })
@@ -321,16 +306,13 @@ export function SheetIndexTable({
         </div>
       </div>
 
+      {/* The owner, 2026-10-04: no upload for now ("keep an uploading option but say coming soon"); the plans come by their Google Drive link. */}
       <div
-        onDragOver={(e) => {
-          e.preventDefault()
-          setDragging(true)
-        }}
-        onDragLeave={() => setDragging(false)}
-        onDrop={onDrop}
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={(e) => e.preventDefault()}
         style={{
-          border: `1.5px dashed ${dragging ? 'var(--text-blue-500)' : 'var(--border-strong)'}`,
-          background: dragging ? 'var(--bg-blue-tint)' : 'var(--bg-subtle)',
+          border: '1.5px dashed var(--border-strong)',
+          background: 'var(--bg-subtle)',
           borderRadius: 8,
           padding: '0.6rem 0.75rem',
           display: 'grid',
@@ -338,24 +320,17 @@ export function SheetIndexTable({
           fontSize: '0.85rem',
         }}
       >
-        <div>
-          <strong>Drop the plan PDF here.</strong>{' '}
-          <span style={{ color: 'var(--text-muted)' }}>The number and title are read from each page's title block, with its page number.</span>
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <strong style={{ color: 'var(--text-muted)' }}>Drop the plan PDF here.</strong>
+          <Chip tone="grey">Coming soon</Chip>
+        </div>
+        <div style={{ color: 'var(--text-muted)' }}>
+          For now, give the Google Drive link above. Its sheets can be read from the PDF there, each with its page number.
         </div>
         <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
-          <Btn onClick={() => fileInput.current?.click()} disabled={pdf.kind === 'reading'}>Choose the PDF</Btn>
+          <Btn onClick={() => undefined} disabled title="Coming soon">Choose the PDF</Btn>
           <Btn kind="quiet" onClick={() => void readMadeUpPdf()} disabled={pdf.kind === 'reading'}>Read a made-up plan PDF</Btn>
           {!pasteOpen && <Btn kind="quiet" onClick={() => setPasteOpen(true)}>Paste a sheet list</Btn>}
-          <input
-            ref={fileInput}
-            type="file"
-            accept="application/pdf,.pdf"
-            style={{ display: 'none' }}
-            onChange={(e) => {
-              takeFile(e.target.files?.[0])
-              e.target.value = ''
-            }}
-          />
         </div>
         {pdfWords && (
           <div role="status" style={{ color: pdf.kind === 'failed' || (pdf.kind === 'done' && (pdf.noText || pdf.read < pdf.of)) ? 'var(--text-amber-700)' : 'var(--text-600)' }}>

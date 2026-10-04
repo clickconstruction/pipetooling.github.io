@@ -221,6 +221,23 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   letters say no discipline gets a picker (`PlanSheet.discipline`). The pick groups it on the right,
   in the quick look, and brings its trades on step 3 (`disciplineOf`, `withPickedDisciplines`).
   A sheet the PDF reads that is already listed only gets its page.
+- **The plans come by their Google Drive link** (the owner, 2026-10-04: "I want to always have it go
+  to a Google Drive link where there is a notification that says this link is accessible by
+  anyone, this works, versus this link is only accessible by some, please correct"; then "keep an
+  uploading option but say coming soon"; then "When the link is blocked and our helper cannot see
+  the link without an account, we should give a warning"). New project step 2 and **A new set of
+  plans came in** ask for the set's Drive link (`driveLink`: a file or folder link, else "This is
+  not a Google Drive link"). Under it, green: "Anyone with the link can open it. This works." Red:
+  "Only some people can open this link. Please correct it." with the fix in Drive and **Check
+  again**. A restricted link warns and never stops Create or Issue. New project needs a link; a
+  later set needs one when it brings drawings (`driveLinkProblem`). The set keeps it
+  (`PlanSet.drive`: the link, anyone or restricted, the day checked). The warning stays on the set
+  until a check finds it open (`checkPlanSetDrive`; `PlanSetDriveLine` in the quick look, and for
+  the Plans tab's set card). The prototype cannot reach Drive (`driveAccessStandIn`): two made-up
+  links to try, Check again reads as fixed in Drive, any other link is said to be treated as open.
+  The real check is the owner's: a helper opens the link with no Google sign-in, and a sign-in page
+  or "You need access" means restricted; it runs again when a set is issued. **Drop the plan PDF
+  here** stays, turned off with **Coming soon**. **Read a made-up plan PDF** stays as the demo.
 - **What the kinds of plan sets are** (the owner, 2026-10-04: "I think it's important that we explain
   to a user what these different kinds of plans are. Perhaps as a information icon to the right of
   the three plan set choosers"): an **i** after Bid set, Pricing set and Permit set opens a card on

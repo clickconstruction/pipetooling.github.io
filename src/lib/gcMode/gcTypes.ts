@@ -41,6 +41,18 @@ export interface PlanSet {
    * live in Google Drive, uploaded by someone who checks them). Missing: a set from before.
    */
   checkedBy?: string
+  /** Where the set's files are in Google Drive, and whether anyone with the link can open them. Missing: a set from before. */
+  drive?: PlanSetDrive
+}
+
+/**
+ * A set's Google Drive link (the owner, 2026-10-04: "I want to always have it go to a Google Drive
+ * link"), with the last check of who can open it: anyone with the link, or only some people.
+ */
+export interface PlanSetDrive {
+  url: string
+  access: 'anyone' | 'restricted'
+  checkedOn: string
 }
 
 /** One drawing in the set. The discipline is read from the number's letters (E-201 → Electrical). */
@@ -822,6 +834,8 @@ export type GcAction =
       checkedBy?: string
       /** The set carries the pre-bid meeting's minutes. */
       preBidMinutes?: boolean
+      /** The set's Google Drive link and its last check. */
+      drive?: PlanSetDrive
     }
   | { type: 'acceptWork'; projectId: string; packageId: string }
   | { type: 'tradeSendWarranty'; projectId: string; packageId: string }
@@ -972,6 +986,8 @@ export type GcAction =
   | { type: 'editScopeBookLine'; trade: string; words: string; to: ScopeBookEdit['to'] }
   | { type: 'mergeScopeBookLines'; trade: string; from: string; into: string }
   | { type: 'saveScopeSet'; trade: string; name: string; lines: string[]; fromProjectId?: string }
+  /** A set's Google Drive link checked again (the owner, 2026-10-04): the warning stays until anyone with the link can open it. */
+  | { type: 'checkPlanSetDrive'; projectId: string; rev: number; access: 'anyone' | 'restricted' }
 
 /** One trade on a new project, as the office left it in the New project window. */
 export interface NewTradeDraft {
@@ -1011,6 +1027,8 @@ export interface NewProjectDraft {
   /** The project manual's sections, read from its table of contents. Missing or empty: none came in. */
   specs?: SpecSection[]
   trades: NewTradeDraft[]
+  /** The first set's Google Drive link and its last check. */
+  drive?: PlanSetDrive
 }
 
 /** What the trade typed on a draw's pay application. The numbers are rebuilt from the draws (`payApplicationForDraw`). */

@@ -21,6 +21,7 @@ import {
   type SpecInSet,
 } from '../../lib/gcMode/gcModel'
 import { Btn, Chip } from './gcUi'
+import { PlanSetDriveLine } from './GcNewProjectDriveLink'
 
 /**
  * GC mode design spike: the plans, one click from the Project Board. The Bid Board's plans link
@@ -219,6 +220,11 @@ export function GcPlansQuickLook({ project, onClose, onSeeWhoHasIt }: Props) {
             {revisedSpecs > 0 && <> {revisedSpecs} spec {revisedSpecs === 1 ? 'section' : 'sections'} revised.</>}
             {addedSpecs > 0 && <> {addedSpecs} spec {addedSpecs === 1 ? 'section' : 'sections'} new to the manual.</>}
             {specsOut > 0 && <> {specsOut} spec {specsOut === 1 ? 'section' : 'sections'} taken out.</>}
+            {set.drive && (
+              <div style={{ marginTop: '0.35rem' }}>
+                <PlanSetDriveLine projectId={project.id} set={set} />
+              </div>
+            )}
           </div>
         )}
 

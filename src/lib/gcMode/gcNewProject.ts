@@ -382,6 +382,7 @@ export function buildNewProject(state: GcState, draft: NewProjectDraft): { proje
         note: draft.setNote.trim() || `${n} ${n === 1 ? 'sheet' : 'sheets'}.`,
         changedSheets: [],
         touches: [],
+        ...(draft.drive && draft.drive.url.trim() !== '' ? { drive: { ...draft.drive, url: draft.drive.url.trim() } } : {}),
       },
     ],
     packages,
@@ -1051,6 +1052,53 @@ export function linesOnPlans(
   const onSheets = new Set(linesOnSheets(project, pkg, sheetIds, addedSheets).map((l) => l.id))
   const onSpecs = new Set(linesOnSpecs(project, pkg, specIds, added).map((l) => l.id))
   return pkg.scope.filter((item) => onSheets.has(item.id) || onSpecs.has(item.id))
+}
+
+// ---------------------------------------------------------------------------------------------
+// The plans live in Google Drive (the owner, 2026-10-04: "I want to always have it go to a Google
+// Drive link where there is a notification that says this link is accessible by anyone, this
+// works, versus this link is only accessible by some, please correct.")
+// ---------------------------------------------------------------------------------------------
+
+/** A made-up folder anyone with the link can open, to try the check with. */
+export const SAMPLE_DRIVE_OPEN = 'https://drive.google.com/drive/folders/1HcBidSetAnyoneWithTheLink'
+/** A made-up file only some people can open. */
+export const SAMPLE_DRIVE_RESTRICTED = 'https://drive.google.com/file/d/1HcPlansOnlySomePeople/view'
+
+/** A Google Drive file or folder link, read: what it points at and its id. Null: not a Drive link. */
+export function driveLink(url: string): { kind: 'file' | 'folder'; id: string } | null {
+  const u = url.trim().replace(/^(?!https?:\/\/)(?=drive\.google\.com)/, 'https://')
+  const file = u.match(/^https?:\/\/drive\.google\.com\/(?:u\/\d+\/)?file\/d\/([\w-]{10,})/) ?? u.match(/^https?:\/\/drive\.google\.com\/open\?id=([\w-]{10,})/)
+  if (file?.[1]) return { kind: 'file', id: file[1] }
+  const folder = u.match(/^https?:\/\/drive\.google\.com\/drive\/(?:u\/\d+\/)?folders\/([\w-]{10,})/)
+  if (folder?.[1]) return { kind: 'folder', id: folder[1] }
+  return null
+}
+
+/**
+ * Who can open a Drive link: the prototype's stand-in for the real check. The real one is the
+ * owner's: a helper opens the link with no Google sign-in, and a sign-in page or "You need access"
+ * means only some people can open it. The made-up restricted link reads
+ * restricted until the office says it fixed it in Drive; any other Drive link reads open, said as
+ * assumed. Null: not a Drive link.
+ */
+export function driveAccessStandIn(url: string, fixedInDrive = false): { access: 'anyone' | 'restricted'; assumed: boolean } | null {
+  const link = driveLink(url)
+  if (!link) return null
+  if (link.id === driveLink(SAMPLE_DRIVE_RESTRICTED)?.id) return { access: fixedInDrive ? 'anyone' : 'restricted', assumed: false }
+  if (link.id === driveLink(SAMPLE_DRIVE_OPEN)?.id) return { access: 'anyone', assumed: false }
+  return { access: 'anyone', assumed: true }
+}
+
+/**
+ * What stops a set's Drive link, for a window's footer. Null: the link is fine. A link only some
+ * people can open is a warning, not a stop (the owner, 2026-10-04: "When the link is blocked and our
+ * helper cannot see the link without an account, we should give a warning.").
+ */
+export function driveLinkProblem(url: string): string | null {
+  if (url.trim() === '') return 'Add the Google Drive link to the plans.'
+  if (!driveLink(url)) return 'The plans link is not a Google Drive link.'
+  return null
 }
 
 // ---------------------------------------------------------------------------------------------

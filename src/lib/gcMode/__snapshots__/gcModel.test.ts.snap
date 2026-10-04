@@ -8907,6 +8907,29 @@ exports[`GC mode golden walk > step 184: The scope book: save Leon Springs's Sit
 }
 `;
 
+exports[`GC mode golden walk > step 185: Leon Springs: Addendum 3 goes out by a Drive link only some people can open 1`] = `
+{
+  "changed": {
+    "customers.marshvale.addenda": 8,
+    "customers.marshvale.sets": 12,
+    "lastLog.id": 181,
+    "lastLog.text": "Issued Addendum 3 on Leon Springs Urgent Care, checked by Dana Whitaker, and emailed 0 companies. 0 were told it changes their trade.",
+    "projects.leon-springs-urgent-care.stageProgress.also[0]": "1 of 1 companies have not opened Addendum 3.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 186: Leon Springs: Check again finds Addendum 3's link open 1`] = `
+{
+  "changed": {
+    "lastLog.id": 182,
+    "lastLog.text": "Checked the Google Drive link for Addendum 3 on Leon Springs Urgent Care: anyone with the link can open it.",
+  },
+  "removed": [],
+}
+`;
+
 exports[`GC mode golden walk > the whole state at the end 1`] = `
 {
   "customers": [
@@ -9107,6 +9130,16 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
+      "id": 182,
+      "text": "Checked the Google Drive link for Addendum 3 on Leon Springs Urgent Care: anyone with the link can open it.",
+      "who": "office",
+    },
+    {
+      "id": 181,
+      "text": "Issued Addendum 3 on Leon Springs Urgent Care, checked by Dana Whitaker, and emailed 0 companies. 0 were told it changes their trade.",
+      "who": "office",
+    },
+    {
       "id": 180,
       "text": "Saved the set "Sitework for a clinic pad" to the scope book: 4 Sitework lines.",
       "who": "office",
@@ -9244,16 +9277,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
     {
       "id": 153,
       "text": "Added submittal 26 56 00-01 on Electrical: Site lighting fixtures, product data.",
-      "who": "office",
-    },
-    {
-      "id": 152,
-      "text": "Marsh & Vale Architects approved it as noted: submittal 07 62 00-01, Sheet metal and flashing. Use 24 gauge at the corners.",
-      "who": "office",
-    },
-    {
-      "id": 151,
-      "text": "Sent submittal 07 62 00-01, Sheet metal and flashing, to Marsh & Vale Architects.",
       "who": "office",
     },
   ],
@@ -15505,6 +15528,23 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
               "touched": false,
             },
           ],
+          "touches": [],
+        },
+        {
+          "changedSheets": [
+            "C-101",
+          ],
+          "checkedBy": "Dana Whitaker",
+          "drive": {
+            "access": "anyone",
+            "checkedOn": "2026-10-02",
+            "url": "https://drive.google.com/file/d/1HcPlansOnlySomePeople/view",
+          },
+          "issuedOn": "2026-10-02",
+          "label": "Addendum 3",
+          "note": "C-101: the detention pond moves 20 ft west.",
+          "rev": 4,
+          "sentTo": [],
           "touches": [],
         },
       ],

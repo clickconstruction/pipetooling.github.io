@@ -698,6 +698,24 @@ const STEPS: Step[] = [
       fromProjectId: 'leon-springs-urgent-care',
     },
   },
+  // The plans live in Google Drive (the owner, 2026-10-04): a link only some people can open is a warning on the set until Check again finds it open.
+  {
+    label: 'Leon Springs: Addendum 3 goes out by a Drive link only some people can open',
+    action: {
+      type: 'issuePlanSet',
+      projectId: 'leon-springs-urgent-care',
+      label: 'Addendum 3',
+      note: 'C-101: the detention pond moves 20 ft west.',
+      sheets: ['C-101'],
+      addedSheets: [],
+      touches: [],
+      recipients: [],
+      newTrades: [],
+      checkedBy: 'Dana Whitaker',
+      drive: { url: 'https://drive.google.com/file/d/1HcPlansOnlySomePeople/view', access: 'restricted', checkedOn: '2026-10-02' },
+    },
+  },
+  { label: 'Leon Springs: Check again finds Addendum 3\'s link open', action: { type: 'checkPlanSetDrive', projectId: 'leon-springs-urgent-care', rev: 4, access: 'anyone' } },
 ]
 
 const CUSTOMER_IDS = ['cibolo', 'raman']
@@ -859,6 +877,7 @@ describe('GC mode golden walk', () => {
       'setOwnerLateFinish',
       'schedulePreBid', 'recordPreBidAttendance',
       'saveToScopeBook', 'editScopeBookLine', 'mergeScopeBookLines', 'saveScopeSet',
+      'checkPlanSetDrive',
       'tradeSendSov',
     ]
     expect(all.filter((t) => !used.has(t))).toEqual([])

@@ -717,6 +717,7 @@ function reduce(state: GcState, action: GcAction): GcState {
         ...(action.removedSpecs && action.removedSpecs.length > 0 ? { removedSpecs: action.removedSpecs } : {}),
         ...(action.retitledSpecs && action.retitledSpecs.length > 0 ? { retitledSpecs: action.retitledSpecs } : {}),
         ...(action.checkedBy && action.checkedBy.trim() !== '' ? { checkedBy: action.checkedBy.trim() } : {}),
+        ...(action.drive && action.drive.url.trim() !== '' ? { drive: { ...action.drive, url: action.drive.url.trim() } } : {}),
       }
       const next = mapProject(state, project.id, () => ({ ...withTrades, planSets: [...withTrades.planSets, set] }))
       const newLines = lined.added.length > 0 ? ` It adds ${lined.added.length} scope ${lined.added.length === 1 ? 'line' : 'lines'}.` : ''
@@ -1863,6 +1864,20 @@ function reduce(state: GcState, action: GcAction): GcState {
       const book = state.scopeBook ?? EMPTY_SCOPE_BOOK
       const merges = [...book.merges, { trade: action.trade, from: from.words, into: into.words }]
       return logged({ ...state, scopeBook: { ...book, merges } }, 'office', `Folded "${from.words}" into "${into.words}" in the scope book.`)
+    }
+    case 'checkPlanSetDrive': {
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const set = project?.planSets.find((s) => s.rev === action.rev)
+      if (!project || !set?.drive) return state
+      const drive = { ...set.drive, access: action.access, checkedOn: state.today }
+      const next = mapProject(state, project.id, (p) => ({ ...p, planSets: p.planSets.map((s) => (s.rev === action.rev ? { ...s, drive } : s)) }))
+      return logged(
+        next,
+        'office',
+        action.access === 'anyone'
+          ? `Checked the Google Drive link for ${set.label} on ${project.name}: anyone with the link can open it.`
+          : `Checked the Google Drive link for ${set.label} on ${project.name}: still only some people can open it.`,
+      )
     }
     case 'saveScopeSet': {
       const name = action.name.trim()

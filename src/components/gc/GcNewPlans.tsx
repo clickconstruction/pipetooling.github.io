@@ -40,6 +40,8 @@ import {
   sampleReissueSpecs,
   sheetIndexInText,
   rowProblems,
+  driveAccessStandIn,
+  driveLinkProblem,
   scopeBook,
   sheetsOfRows,
   type SheetIndexRow,
@@ -68,6 +70,7 @@ import { Picker } from './GcNewProjectPickers'
 import { FIELD_HEIGHT_PX, pickerFace, pickerGroup, pickerRow } from './GcNewProjectPickerRows'
 import { SheetIndexTable } from './GcNewProjectSheetIndex'
 import { BookLineSearch } from './GcNewProjectScopeBook'
+import { DriveLinkField } from './GcNewProjectDriveLink'
 
 /**
  * GC mode design spike: a new set of plans came in. Four steps on one page, each feeding the
@@ -177,6 +180,9 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
   /** Who on our team checked the files: a name from the list, OTHER and a typed name, or none yet. */
   const [checker, setChecker] = useState('')
   const [checkerTyped, setCheckerTyped] = useState('')
+  /** The set's Google Drive link (the owner, 2026-10-04), and the prototype's stand-in for its sharing fixed in Drive. */
+  const [driveUrl, setDriveUrl] = useState('')
+  const [driveFixed, setDriveFixed] = useState(false)
   // The notes box takes the cursor without scrolling, so the set's name stays in view on a short screen.
   const noteBox = useRef<HTMLTextAreaElement>(null)
   useEffect(() => {
@@ -451,6 +457,9 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
 
   const compared = diff !== null || specDiff !== null
   const checkedBy = (checker === OTHER ? checkerTyped : checker).trim()
+  // A set with drawings comes by its Drive link; a set of notes alone may have none. Only some people able to open it is a warning, not a stop.
+  const driveCheck = driveUrl.trim() === '' ? null : driveAccessStandIn(driveUrl, driveFixed)
+  const driveStop = driveUrl.trim() === '' ? (whole || sheets.length > 0 ? driveLinkProblem('') : null) : driveLinkProblem(driveUrl)
   const missing =
     fullNote === '' && !compared
       ? 'Say what changed first.'
@@ -460,7 +469,7 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
           ? 'Give the set a name.'
           : checkedBy === ''
             ? 'Say who checked the set.'
-            : null
+            : driveStop
   /** A line the set brings to a trade, from the scope book or typed. The box stays open for the next one. */
   const addLine = (packageId: string, words: string) => {
     const t = words.trim()
@@ -591,6 +600,16 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
               <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
                 The files are in the job's Google Drive folder. Someone on our team checks them against the notes before the set goes out.
               </span>
+              <DriveLinkField
+                label="Google Drive link to this set"
+                url={driveUrl}
+                onUrl={(url) => {
+                  setDriveUrl(url)
+                  setDriveFixed(false)
+                }}
+                fixed={driveFixed}
+                onCheckAgain={() => setDriveFixed(true)}
+              />
             </div>
             <textarea
               ref={noteBox}
@@ -1245,6 +1264,7 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
                 retiedLines,
                 checkedBy,
                 ...(carryMinutes ? { preBidMinutes: true } : {}),
+                ...(driveCheck ? { drive: { url: driveUrl.trim(), access: driveCheck.access, checkedOn: state.today } } : {}),
               })
               // Each change order is Owner Billing's own draft, so it reads on Bill the owner as theirs do.
               for (const r of coDrafted) {

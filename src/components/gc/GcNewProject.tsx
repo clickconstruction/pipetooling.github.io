@@ -9,6 +9,8 @@ import {
   newProjectId,
   sheetIndexInText,
   disciplineOf,
+  driveAccessStandIn,
+  driveLinkProblem,
   rowProblems,
   sheetsOfRows,
   withPickedDisciplines,
@@ -74,6 +76,7 @@ import { SheetIndexTable } from './GcNewProjectSheetIndex'
 import { BookLineSearch, OftenMissed, StartFromBook } from './GcNewProjectScopeBook'
 import { GcScopeBookWindow } from './GcNewProjectScopeBookPage'
 import { SetKindsInfo } from './GcNewProjectSetKinds'
+import { DriveLinkField } from './GcNewProjectDriveLink'
 
 /**
  * GC mode design spike: New Project. A project starts the day its plans come in. Four steps in
@@ -230,6 +233,10 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
     .join(' ')
 
   const [setLabel, setSetLabel] = useState('Bid set')
+  /** The set's Google Drive link (the owner, 2026-10-04), and the prototype's stand-in for its sharing fixed in Drive. */
+  const [driveUrl, setDriveUrl] = useState('')
+  const [driveFixed, setDriveFixed] = useState(false)
+  const driveCheck = driveUrl.trim() === '' ? null : driveAccessStandIn(driveUrl, driveFixed)
   const [issuedOn, setIssuedOn] = useState(state.today)
   const [setNote, setSetNote] = useState('')
   /** The sheet list as a table: rows from the plan PDF, a paste or typing (the owner, 2026-10-04). */
@@ -305,6 +312,7 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
     setNote: setNote.trim(),
     sheets: reading.sheets,
     ...(specReading.sections.length > 0 ? { specs: specReading.sections } : {}),
+    ...(driveCheck ? { drive: { url: driveUrl.trim(), access: driveCheck.access, checkedOn: state.today } } : {}),
     trades: picked.map((r) => {
       const own = reading.sheets.filter((x) => r.from.includes(x.id))
       const ownSpecs = specReading.sections.filter((x) => r.specs.includes(x.id))
@@ -327,6 +335,9 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
   if (draft.town === '') missing.push('Add the town to the address, so drives can be measured.')
   if (ownerName === '') missing.push('Pick the owner.')
   if (archName === '') missing.push('Pick the architect.')
+  // The plans come by their Drive link. One only some people can open is a warning on step 2, not a stop.
+  const driveStop = driveLinkProblem(driveUrl)
+  if (driveStop) missing.push(driveStop)
   if (sheetRowsToFix > 0) missing.push(`Fix or take out the ${sheetRowsToFix === 1 ? 'sheet row' : `${sheetRowsToFix} sheet rows`} marked on step 2.`)
   if (picked.length === 0) missing.push(reading.sheets.length === 0 ? 'Add the sheets or a trade.' : 'Tick at least one trade.')
 
@@ -652,6 +663,15 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
                   </div>
                   <input style={field} value={setLabel} onChange={(e) => setSetLabel(e.target.value)} />
                 </Field>
+                <DriveLinkField
+                  url={driveUrl}
+                  onUrl={(url) => {
+                    setDriveUrl(url)
+                    setDriveFixed(false)
+                  }}
+                  fixed={driveFixed}
+                  onCheckAgain={() => setDriveFixed(true)}
+                />
                 <div style={{ display: 'grid', gap: '0.8rem', gridTemplateColumns: 'repeat(auto-fit, minmax(9rem, 1fr))' }}>
                   <Field label="It came in on">
                     <input type="date" style={field} value={issuedOn} onChange={(e) => setIssuedOn(e.target.value)} />

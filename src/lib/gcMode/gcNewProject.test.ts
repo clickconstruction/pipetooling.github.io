@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
 import {
+  SAMPLE_DRIVE_OPEN,
+  SAMPLE_DRIVE_RESTRICTED,
+  driveAccessStandIn,
+  driveLink,
+  driveLinkProblem,
   SET_KIND_HELP,
   budgetBySize,
   perSqFtWords,
@@ -796,5 +801,46 @@ describe('what the kinds of plan sets are', () => {
     for (const k of SET_KIND_HELP) {
       for (const text of [k.alsoCalled ?? '', k.when, k.who, k.inIt, k.forWhat]) expect(plainWordsFailures(text)).toEqual([])
     }
+  })
+})
+
+describe('the plans live in Google Drive', () => {
+  it('reads a Drive file or folder link, and nothing else', () => {
+    expect(driveLink('https://drive.google.com/file/d/1AbCdEfGhIjKlMn/view?usp=sharing')).toEqual({ kind: 'file', id: '1AbCdEfGhIjKlMn' })
+    expect(driveLink('drive.google.com/drive/u/0/folders/1AbCdEfGhIjKlMn')).toEqual({ kind: 'folder', id: '1AbCdEfGhIjKlMn' })
+    expect(driveLink('https://drive.google.com/open?id=1AbCdEfGhIjKlMn')).toEqual({ kind: 'file', id: '1AbCdEfGhIjKlMn' })
+    expect(driveLink('https://www.dropbox.com/s/abc/plans.pdf')).toBeNull()
+    expect(driveLinkProblem('')).toBe('Add the Google Drive link to the plans.')
+    expect(driveLinkProblem('https://example.com/plans.pdf')).toBe('The plans link is not a Google Drive link.')
+    expect(driveLinkProblem(SAMPLE_DRIVE_RESTRICTED)).toBeNull()
+  })
+
+  it('stands in for the sharing check: open, restricted until fixed in Drive, or assumed open', () => {
+    expect(driveAccessStandIn(SAMPLE_DRIVE_OPEN)).toEqual({ access: 'anyone', assumed: false })
+    expect(driveAccessStandIn(SAMPLE_DRIVE_RESTRICTED)).toEqual({ access: 'restricted', assumed: false })
+    expect(driveAccessStandIn(SAMPLE_DRIVE_RESTRICTED, true)).toEqual({ access: 'anyone', assumed: false })
+    expect(driveAccessStandIn('https://drive.google.com/file/d/1SomethingElseEntirely/view')).toEqual({ access: 'anyone', assumed: true })
+    expect(driveAccessStandIn('not a link')).toBeNull()
+  })
+
+  it('keeps the link on the set: the first set of a new project, and a set issued later', () => {
+    const drive = { url: SAMPLE_DRIVE_OPEN, access: 'anyone' as const, checkedOn: '2026-10-04' }
+    const made = gcReducer(initialGcState(), { type: 'createProject', draft: { ...draft(), drive } })
+    const project = made.projects[made.projects.length - 1]
+    expect(project?.planSets[0]?.drive).toEqual(drive)
+    const issued = gcReducer(made, {
+      type: 'issuePlanSet',
+      projectId: project?.id ?? '',
+      label: 'Addendum 1',
+      note: 'Revised A-101.',
+      sheets: [],
+      addedSheets: [],
+      touches: [],
+      recipients: [],
+      newTrades: [],
+      drive: { url: ` ${SAMPLE_DRIVE_RESTRICTED} `, access: 'restricted', checkedOn: '2026-10-04' },
+    })
+    const set = issued.projects.find((p) => p.id === project?.id)?.planSets[1]
+    expect(set?.drive).toEqual({ url: SAMPLE_DRIVE_RESTRICTED, access: 'restricted', checkedOn: '2026-10-04' })
   })
 })
