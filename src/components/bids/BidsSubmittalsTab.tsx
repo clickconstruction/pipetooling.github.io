@@ -37,7 +37,7 @@ import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling
 import { procurementItemsFrom } from '../../lib/submittals/procurementLogIo'
 import type { ProcurementItemSource } from '../../lib/submittals/procurementLog'
 import { submittalJourney, type JourneyAction, type JourneyStage, type JourneyStageKey, stageGate } from '../../lib/submittals/submittalJourney'
-import { SUBMITTAL_GUIDE_HREF, SUBMITTAL_STAGE_ABOUT, SUBMITTAL_TOUR_STEPS, hasOpenEveryStage, tourStopForStage, hasSeenSubmittalWalkthrough, markSubmittalWalkthroughSeen, rememberOpenEveryStage } from '../../lib/submittals/submittalTour'
+import { SUBMITTAL_GUIDE_HREF, SUBMITTAL_STAGE_ABOUT, SUBMITTAL_TOUR_STEPS, stageAbout, hasOpenEveryStage, tourStopForStage, hasSeenSubmittalWalkthrough, markSubmittalWalkthroughSeen, rememberOpenEveryStage } from '../../lib/submittals/submittalTour'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 import { supabase } from '../../lib/supabase'
@@ -100,6 +100,7 @@ import {
   asStatus,
   describeRevision, describeWhatIsLeft,
   describeRevisionChip,
+  revisionAnsweredAt,
   draftToItemInsert,
   formatPages,
   formatShortDate,
@@ -234,6 +235,8 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   // Procure (v2.4083): the newest revision's rows as the log reads them, and the counts the strip's pill lights on.
   const [procItems, setProcItems] = useState<ProcurementItemSource[]>([])
   /** 2026-10-02 · the rows approved on an earlier shared revision whose tag the newest no longer holds (`rowsThatStand`): on the log, with their parts; nowhere else. */
+  // 2026-10-03 · the newest answer on each earlier revision's rows, by revision id: a replaced draft that holds answers reads "answered", not "superseded".
+  const [answeredByRev, setAnsweredByRev] = useState<Map<string, string>>(() => new Map())
   const [standing, setStanding] = useState<{ items: SubmittalItemRow[]; parts: SubmittalPartRow[]; revOf: Map<string, number> }>({ items: [], parts: [], revOf: new Map() })
   const [procCounts, setProcCounts] = useState<{ released: number; ordered: number; delivered: number; late: number } | null>(null)
   const [reportSettings, setReportSettings] = useState<TestReportSettings>(() => cachedTestReportSettings())
@@ -585,6 +588,13 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       const approvedParts = new Set(earlierParts.filter((p) => p.on_submittal && asDecision(p.review_decision) === 'approved').map((p) => p.item_id))
       const stands = rowsThatStand([{ rev: newestRev!.rev_number, rows: items }, ...earlier.map((r, i) => ({ rev: r.rev_number, rows: rows[i] ?? [], asked: revisionWasRead(r.status) }))], (it) => asDecision(it.review_decision) === 'approved' || approvedParts.has(it.id))
       if (cancelled) return
+      const answered = new Map<string, string>()
+      earlier.forEach((r, i) => {
+        const ids = new Set((rows[i] ?? []).map((it) => it.id))
+        const at = revisionAnsweredAt(rows[i] ?? [], earlierParts.filter((p) => ids.has(p.item_id)))
+        if (at) answered.set(r.id, at)
+      })
+      setAnsweredByRev(answered)
       const standingIds = new Set(stands.map((s) => s.row.id))
       setStanding({ items: stands.map((s) => s.row), parts: earlierParts.filter((p) => standingIds.has(p.item_id)), revOf: new Map(stands.map((s) => [s.row.id, s.rev])) })
     })()
@@ -2128,7 +2138,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
           </p>
           {selectedRev ? (
             <p style={{ margin: '0.2rem 0 0', ...smallMuted }} data-testid="revision-line">
-              Working on <b style={{ color: 'var(--text-strong)' }}>{describeRevisionChip(selectedRev)}</b> · {describeRevision(tiles)}
+              Working on <b style={{ color: 'var(--text-strong)' }}>{describeRevisionChip(selectedRev, revisionAnsweredAt(items, parts))}</b> · {describeRevision(tiles)}
               {previousRev && isNewest && isDraft ? ` · started from Rev ${previousRev.rev_number}` : ''}
               {selectedRev.package_path ? <span style={{ color: 'var(--text-green-700)', fontWeight: 600 }}> · package built</span> : null}
               {!isNewest ? <span style={{ color: 'var(--text-amber-700)', fontWeight: 600 }}> · an older revision, the record; the newest is where the work is</span> : null}
@@ -2257,7 +2267,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
           </RoadSection>
 
           {/* 2 · Build Rev 1 / the revision */}
-          <RoadSection n={2} about={SUBMITTAL_STAGE_ABOUT[2]} onHelp={() => startWalkThrough(2)} title={revisions.length === 0 ? 'Build Rev 1' : `Rev ${selectedRev?.rev_number ?? newestRev?.rev_number ?? 1}`} status={stageStatus('build')} open={sectionOpen('build')} onToggle={() => toggleSection('build')} onJump={() => jumpToSection('build')} anchor="submittals-build"
+          <RoadSection n={2} about={stageAbout(2, selectedRev ? { number: selectedRev.rev_number, isNewest } : null)} onHelp={() => startWalkThrough(2)} title={revisions.length === 0 ? 'Build Rev 1' : `Rev ${selectedRev?.rev_number ?? newestRev?.rev_number ?? 1}`} status={stageStatus('build')} open={sectionOpen('build')} onToggle={() => toggleSection('build')} onJump={() => jumpToSection('build')} anchor="submittals-build"
             summary={selectedRev ? (
               <span style={{ display: 'inline-flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }} data-tour="submittals-revisions">
                 <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }} data-testid="revision-strip" data-tour="submittals-revisions">
@@ -2265,7 +2275,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                     const on = r.id === selectedRev.id
                     return (
                       <button key={r.id} type="button" data-testid="revision-chip" aria-pressed={on} onClick={() => setSelectedRevId(r.id)} style={{ ...btn, padding: '0.25rem 0.65rem', borderRadius: 999, fontSize: '0.75rem', background: on ? 'var(--bg-blue-tint)' : 'var(--surface)', borderColor: on ? '#2563eb' : 'var(--border-strong)', color: on ? 'var(--text-blue-700)' : 'var(--text-muted)', fontWeight: on ? 700 : 500 }}>
-                        {describeRevisionChip(r)}
+                        {describeRevisionChip(r, on ? revisionAnsweredAt(items, parts) : answeredByRev.get(r.id) ?? null)}
                       </button>
                     )
                   })}
@@ -2685,9 +2695,9 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                 {isNewest && approvableRows.length > 0 ? (
                   <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', margin: '0.5rem 0' }}>
                     <button type="button" disabled={busy} onClick={() => setApprovingAll(true)} style={btn} data-testid="approve-all-open" title="They said yes to all of it by email, on paper or before the room existed. One entry marks every row with no call yet.">
-                      They approved all of it…
+                      {decisions.decided > 0 ? `They approved the other ${approvableRows.length}…` : 'They approved all of it…'}
                     </button>
-                    <span style={smallMuted}>One entry for a submittal approved whole. You say who approved it and on what day.</span>
+                    <span style={smallMuted}>{decisions.decided > 0 ? 'One entry for every row with no answer yet. You say who approved them and on what day.' : 'One entry for a submittal approved whole. You say who approved it and on what day.'}</span>
                   </div>
                 ) : null}
                 {asRevisionStatus(selectedRev.status) !== 'draft' || reviewerFiles.length > 0 ? (
@@ -2791,7 +2801,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
               </RoadSection>
 
               {/* 7 · Resubmit */}
-              <RoadSection n={7} about={SUBMITTAL_STAGE_ABOUT[7]} onHelp={() => startWalkThrough(7)} title="Resubmit" status={stageStatus('resubmit')} open={sectionOpen('resubmit')} onToggle={() => toggleSection('resubmit')} onJump={() => jumpToSection('resubmit')} anchor="submittals-resubmit-section"
+              <RoadSection n={7} about={stageAbout(7, { number: selectedRev.rev_number, isNewest })} onHelp={() => startWalkThrough(7)} title="Resubmit" status={stageStatus('resubmit')} open={sectionOpen('resubmit')} onToggle={() => toggleSection('resubmit')} onJump={() => jumpToSection('resubmit')} anchor="submittals-resubmit-section"
                 summary={isNewest && decisions.sentBack > 0 ? (decisions.noAnswer > 0 ? `${decisions.sentBack} row${decisions.sentBack === 1 ? '' : 's'} sent back · ${decisions.noAnswer} with no answer go on Rev ${selectedRev.rev_number + 1} too` : `${decisions.sentBack} row${decisions.sentBack === 1 ? '' : 's'} sent back — start Rev ${selectedRev.rev_number + 1} with just ${decisions.sentBack === 1 ? 'that row' : 'those rows'}`) : previousRev ? `Rev ${selectedRev.rev_number} carries what Rev ${previousRev.rev_number} sent back` : 'nothing sent back'}>
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
                   {isNewest && decisions.sentBack > 0 ? (

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { SUBMITTAL_STAGE_ABOUT, SUBMITTAL_TOUR_STEPS, tourStopForStage } from './submittalTour'
+import { SUBMITTAL_STAGE_ABOUT, SUBMITTAL_TOUR_STEPS, stageAbout, tourStopForStage } from './submittalTour'
 import { PLAIN_WORDS_GLUE as GLUE, PLAIN_WORDS_MAX_SENTENCE_WORDS as MAX_WORDS, plainWordsSentences as sentences } from '../plainWords'
 
 /**
@@ -45,6 +45,20 @@ describe('the stage sentences and the ? on each stage (v2.4125)', () => {
     for (let n = 1; n <= 8; n++) {
       const about = SUBMITTAL_STAGE_ABOUT[n] ?? ''
       expect(about, String(n)).not.toMatch(GLUE)
+      for (const s of sentences(about)) expect(s.split(/\s+/).length, s).toBeLessThanOrEqual(MAX_WORDS)
+    }
+  })
+  it('2026-10-03 · the sentences that name a revision follow the one on screen, in the same plain words', () => {
+    for (let n = 1; n <= 8; n++) {
+      expect(stageAbout(n, null)).toBe(SUBMITTAL_STAGE_ABOUT[n])
+      expect(stageAbout(n, { number: 1, isNewest: true })).toBe(SUBMITTAL_STAGE_ABOUT[n])
+    }
+    expect(stageAbout(2, { number: 4, isNewest: true })).toBe('Rev 4 is the version you are working on. Each earlier version stays as the record.')
+    expect(stageAbout(2, { number: 3, isNewest: false })).toBe('Rev 3 is an earlier version. It stays as the record.')
+    expect(stageAbout(7, { number: 4, isNewest: true })).toBe('Rows the GC sent back come here. Start Rev 5 with only those rows, or with every row when a product changed.')
+    expect(stageAbout(3, { number: 4, isNewest: true })).toBe(SUBMITTAL_STAGE_ABOUT[3])
+    for (const about of [stageAbout(2, { number: 4, isNewest: true }), stageAbout(2, { number: 3, isNewest: false }), stageAbout(7, { number: 4, isNewest: true })]) {
+      expect(about).not.toMatch(GLUE)
       for (const s of sentences(about)) expect(s.split(/\s+/).length, s).toBeLessThanOrEqual(MAX_WORDS)
     }
   })
