@@ -18,8 +18,9 @@
  * onto the rows and builds the next revision from the rows sent back.
  */
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { smallMuted, btn, btnPrimary, btnQuiet, btnGreen, th, td, sub } from './submittalTabStyles'
+import { smallMuted, btn, btnPrimary, btnQuiet, btnGreen } from './submittalTabStyles'
 import { RoadSection, type RoadStatus } from './SubmittalRoadSection'
+import { SubmittalRowsTable } from './SubmittalRowsTable'
 import { SpotlightTour, spotlightTourStepsPresent, type SpotlightTourStep } from '../SpotlightTour'
 import { RobotOffer } from './RobotOffer'
 import { robotSeatState, staleAsk, type RobotSeatRow, type RobotSeatState } from '../../lib/submittals/robotOffer'
@@ -55,9 +56,7 @@ import { bidNumberMatchesQuery } from '../../lib/ledgerDisplayPrefixes'
 import { BidPickerStandardList } from './BidPickerStandardList'
 import { BidPickerSearchRow } from './BidPickerSearchRow'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
-import { ProductStatusChip } from './ProductStatusChip'
 import { SubmittalItemEditDialog, type SubmittalItemPatch } from './SubmittalItemEditDialog'
-import { SubmittalPartsCell } from './SubmittalPartsCell'
 import { SubmittalHouseFileModal } from './SubmittalHouseFileModal'
 import { SubmittalFoldModal, SubmittalTakeoffRefreshModal } from './SubmittalRefreshModals'
 import { matchFileToRows, pairParts, defaultFileChoice, planFileApply, readHouseFile, type FileTagChoice, type FileTagMatch, type HouseFileRead } from '../../lib/submittals/houseFileParts'
@@ -75,19 +74,18 @@ import { boughtWords, gcRows, isOrderOnlyRow, orderOnlyInsert, orderOnlyRows } f
 import { revisionWasRead, rowsThatStand } from '../../lib/submittals/standingRows'
 import { loadBidOrderFacts, loadPartOrderWords, loadRowOrderFacts, rememberLeftOutLines, writeRowOrderOnly } from '../../lib/submittals/orderOnlyIo'
 import { planRowsAdded, planSummary, standsLine, type TakeoffPlan } from '../../lib/submittals/takeoffPicks'
-import { SubmittalOrderOnlyRows } from './SubmittalOrderOnlyRows'
 import { SubmittalTakeOffDialog } from './SubmittalTakeOffDialog'
-import { DECISION_LABELS, decisionsAsText, describeDecisions, resubmitConfirm, resubmitLabel, resubmitSplit, rowCallWords, summarizeDecisions } from '../../lib/submittals/reviewDecisions'
+import { DECISION_LABELS, decisionsAsText, describeDecisions, resubmitConfirm, resubmitLabel, resubmitSplit, summarizeDecisions } from '../../lib/submittals/reviewDecisions'
 import { describeEnteredCount, describeReviewerFile, parseReviewerFiles, reviewerFileKind, reviewerFilePath, serializeReviewerFiles, type ReviewerFile } from '../../lib/submittals/reviewerFiles'
-import { CLEAR_DECISION_PATCH, enteredDecisionAt, enteredDecisionPatch, enteredEntryBody, enteredSuffix, rowsToApproveAll } from '../../lib/submittals/enteredDecisions'
+import { CLEAR_DECISION_PATCH, enteredDecisionAt, enteredDecisionPatch, enteredEntryBody, rowsToApproveAll } from '../../lib/submittals/enteredDecisions'
 import { matchRoomPerson, type ReviewerChoice, type ReviewerSources } from '../../lib/submittals/reviewerPick'
 import { newRoomToken } from '../../lib/submittals/submittalRoom'
 import { confirmLabel, guessByPage, liveTask, redlinesToConfirm, scheduleToConfirm, sheetGuessesToConfirm, taskInput, taskStatus, type SubmittalTaskRow } from '../../lib/submittals/robotTasks'
 import { describeTask, type SubmittalTaskKind } from '../../../supabase/functions/_shared/submittalRobot'
 import { keptPages, remapAfterTrim } from '../../lib/submittals/sheetAssignment'
 import { assignmentsFromItems } from '../../lib/submittals/sheetStripModel'
-import { buildSubmittalRows, changeNoteFor, summarizeChanges, type PickInput, type SpecifiedInput } from '../../lib/submittals/buildSubmittalRows'
-import { needsReason, REASON_LABELS, type StatusOverride, COLUMN_HELP, STATUS_LABELS, STATUS_MEANINGS, type ProductStatus } from '../../lib/submittals/productStatus'
+import { buildSubmittalRows, summarizeChanges, type PickInput, type SpecifiedInput } from '../../lib/submittals/buildSubmittalRows'
+import { REASON_LABELS, type StatusOverride, STATUS_LABELS, STATUS_MEANINGS, type ProductStatus } from '../../lib/submittals/productStatus'
 import { describeLeadTime } from '../../lib/submittals/leadTime'
 import { buildCoverModel, buildSubmittalPackage, packageFileName, packageSheets, planPackage, renderCoverPdf, type PackageRowInput } from '../../lib/submittals/submittalPackage'
 import { cachedTestReportSettings, fetchTestReportSettings } from '../../lib/jobs/testReportSettings'
@@ -107,10 +105,8 @@ import {
   rowsOwingSheet,
   sheetsToFollowConfirm,
   draftToItemInsert,
-  formatPages,
   formatShortDate,
   itemToPrevious,
-  needsSheet,
   parseSourceFiles,
   revisionTiles,
   serializeSourceFiles,
@@ -2316,138 +2312,28 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
               {/* 3 · Reasons & cut sheets — the rows are the work */}
               <RoadSection n={3} about={SUBMITTAL_STAGE_ABOUT[3]} onHelp={() => startWalkThrough(3)} title="Reasons & cut sheets" status={stageStatus('rows')} open={sectionOpen('rows')} onToggle={() => toggleSection('rows')} onJump={() => jumpToSection('rows')} anchor="submittals-rows-section"
                 summary={<span data-testid="submittal-tiles" data-tour="submittals-tiles" title={describeRevision(tiles)}>{describeWhatIsLeft(tiles)}</span>}>
-                <div style={{ border: '1px solid var(--border)', borderRadius: 6, overflowX: 'auto', background: 'var(--surface)' }} data-tour="submittals-rows">
-                  <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}>
-                    <thead>
-                      <tr>
-                        <th style={th}>Tag</th>
-                        <th style={th}>Specified</th>
-                        <th style={th}>Submitted</th>
-                        <th style={th} title={COLUMN_HELP.status}>Status <span aria-hidden style={{ color: 'var(--text-faint)', fontWeight: 400 }}>?</span></th>
-                        <th style={th} title={COLUMN_HELP.reason}>Reason <span aria-hidden style={{ color: 'var(--text-faint)', fontWeight: 400 }}>?</span></th>
-                        <th style={th}>Lead time</th>
-                        <th style={th} title={COLUMN_HELP.sheet}>Sheet <span aria-hidden style={{ color: 'var(--text-faint)', fontWeight: 400 }}>?</span></th>
-                        {previousRev ? <th style={th}>Since Rev {previousRev.rev_number}</th> : null}
-                        {decisions.decided > 0 || parts.some((p) => p.review_decision) ? <th style={th}>Their call</th> : null}
-                        <th style={th} />
-                      </tr>
-                    </thead>
-                    <tbody data-testid="submittal-rows">
-                      {items.length === 0 ? (
-                        <tr>
-                          <td style={td} colSpan={9}>
-                            <span style={smallMuted}>No rows on this revision.</span>
-                          </td>
-                        </tr>
-                      ) : null}
-                      {gcItems.map((it) => {
-                        const status = asStatus(it.status)
-                        const reason = asReason(it.reason_kind)
-                        const lead = describeLeadTime(it.lead_time_days)
-                        const file = it.sheet_file != null ? sourceFiles[it.sheet_file] ?? null : null
-                        const prev = it.carried_from_item_id ? prevById.get(it.carried_from_item_id) ?? null : null
-                        const note = previousRev ? changeNoteFor(prev ? itemToPrevious(prev) : null, { submittedModel: it.submitted_model, submittedLabel: it.submitted_label, status, reasonKind: reason }) : null
-                        const specText = [it.specified_manufacturer, it.specified_model].filter(Boolean).join(' ')
-                        return (
-                          <tr key={it.id} data-testid="submittal-row" style={{ background: status === 'design_change' ? 'var(--bg-red-tint)' : undefined }}>
-                            <td style={{ ...td, fontWeight: 700, color: it.tag.trim() ? 'var(--text-strong)' : 'var(--text-muted)', whiteSpace: 'nowrap' }}>{it.tag.trim() || '—'}</td>
-                            <td style={td}>
-                              {specText || (it.tag.trim() ? '—' : <span style={smallMuted}>not on the schedule</span>)}
-                              {it.specified_description ? <span style={sub}>{it.specified_description}</span> : null}
-                            </td>
-                            <td style={td}>
-                              {(partsOf.get(it.id) ?? []).length > 0 ? (
-                                <SubmittalPartsCell parts={partsOf.get(it.id) ?? []} houseNameById={houseNameById} />
-                              ) : (
-                                <>
-                                  {it.submitted_label ?? it.submitted_model ?? <span style={{ color: 'var(--text-faint)' }}>—</span>}
-                                  {it.submitted_label && it.submitted_model && it.submitted_label !== it.submitted_model ? <span style={sub}>{it.submitted_model}</span> : null}
-                                  {it.supply_house_id && houseNameById.get(it.supply_house_id) ? <span style={sub} data-testid="row-house">{houseNameById.get(it.supply_house_id)}</span> : null}
-                                </>
-                              )}
-                            </td>
-                            <td style={td}>
-                              <ProductStatusChip status={status} size="md" />
-                            </td>
-                            <td style={td}>
-                              {reason ? REASON_LABELS[reason] : needsReason(status) ? <span style={{ color: 'var(--text-amber-700)', fontWeight: 600 }}>say why</span> : <span style={{ color: 'var(--text-faint)' }}>—</span>}
-                              {it.reason_note ? <span style={sub}>{it.reason_note}</span> : null}
-                            </td>
-                            <td style={{ ...td, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{lead ?? <span style={{ color: 'var(--text-faint)' }}>—</span>}</td>
-                            <td style={td}>
-                              {file && (it.sheet_pages ?? []).length > 0 ? (
-                                <span style={{ color: 'var(--text-green-700)', fontWeight: 600 }}>
-                                  ✓ {formatPages(it.sheet_pages)}
-                                  <span style={sub}>{file.name}</span>
-                                </span>
-                              ) : needsSheet(it) ? (
-                                <span style={{ color: 'var(--text-amber-700)', fontWeight: 600 }}>sheet needed</span>
-                              ) : (
-                                <span style={{ color: 'var(--text-faint)' }}>—</span>
-                              )}
-                            </td>
-                            {previousRev ? <td style={{ ...td, color: note ? 'var(--text-amber-700)' : 'var(--text-faint)', fontWeight: note ? 600 : 400 }}>{note ?? 'carried'}</td> : null}
-                            {decisions.decided > 0 || parts.some((p) => p.review_decision) ? (
-                              <td style={td} data-testid="their-call">
-                                {(() => {
-                                  const d = asDecision(it.review_decision)
-                                  // 2026-10-03 · one word only when every part got the same answer; otherwise the cell counts ("1 of 3 rejected · 2 with no answer yet").
-                                  const w = rowCallWords(d, partsOf.get(it.id) ?? [])
-                                  if (!w) return <span style={{ color: 'var(--text-faint)' }}>—</span>
-                                  const color = w.tone === 'approved' ? 'var(--text-green-700)' : w.tone === 'revise' ? 'var(--text-amber-700)' : w.tone === 'rejected' ? 'var(--text-red-700)' : 'var(--text-muted)'
-                                  return (
-                                    <span style={{ color, fontWeight: 600 }}>
-                                      <span data-testid="their-call-head">{w.head}</span>
-                                      {w.rest ? <span style={sub} data-testid="their-call-parts">{w.rest}</span> : null}
-                                      <span style={sub}>{[it.reviewed_by_name, enteredSuffix(it), formatShortDate(it.reviewed_at)].filter(Boolean).join(' · ')}</span>
-                                      {it.review_note ? <span style={sub}>“{it.review_note}”</span> : null}
-                                    </span>
-                                  )
-                                })()}
-                              </td>
-                            ) : null}
-                            <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}>
-                              <button type="button" aria-label={`Edit ${it.tag.trim() || 'accessory'}`} onClick={() => setEditing(it)} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem' }}>
-                                Edit
-                              </button>
-                              {isOrderOnlyRow(it) ? null : (
-                                <button type="button" aria-label={`Their answer on ${it.tag.trim() || 'accessory'}`} disabled={busy} onClick={() => setAnswering(it)} title="Record what the reviewer said about this row, part by part. Nobody is emailed." style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem', marginLeft: '0.3rem' }} data-testid="their-answer-row">
-                                  Their answer
-                                </button>
-                              )}
-                              {isDraft && rowSplitTags(it.tag).length > 1 ? (
-                                <button type="button" aria-label={`Split ${it.tag.trim()}`} disabled={busy} onClick={() => void splitRow(it)} title={`One row per tag: ${rowSplitTags(it.tag).join(', ')}`} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem', marginLeft: '0.3rem', borderColor: '#2563eb', color: 'var(--text-blue-700)' }} data-testid="split-row">
-                                  Split
-                                </button>
-                              ) : null}
-                              {isDraft && !it.source_count_row_id && (partsOf.get(it.id) ?? []).length === 0 && items.length > 1 ? (
-                                <button type="button" aria-label={`Make ${it.tag.trim() || 'this row'} a part of another row`} disabled={busy} onClick={() => setFoldFrom({ fromId: it.id, intoId: foldHints.find((h) => h.fromId === it.id)?.intoId ?? null })} title="Fold this row into another row's fixture, as one of its parts" style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem', marginLeft: '0.3rem' }} data-testid="fold-row">
-                                  Part of…
-                                </button>
-                              ) : null}
-                              {isDraft ? (
-                                <button type="button" aria-label={`Remove ${it.tag.trim() || 'accessory'}`} disabled={busy} onClick={() => void askTakeOff(it)} title="Take it off the submittal: order only, or left out" style={{ ...btn, padding: '0.2rem 0.5rem', fontSize: '0.75rem', marginLeft: '0.3rem', color: 'var(--text-muted)' }}>
-                                  ×
-                                </button>
-                              ) : null}
-                            </td>
-                          </tr>
-                        )
-                      })}
-                      <SubmittalOrderOnlyRows
-                        items={orderOnlyItems}
-                        partsOf={partsOf}
-                        houseNameById={houseNameById}
-                        columns={8 + (previousRev ? 1 : 0) + (decisions.decided > 0 || parts.some((p) => p.review_decision) ? 1 : 0)}
-                        isDraft={isDraft}
-                        busy={busy}
-                        onPutBack={(it) => void setOrderOnly(it, false)}
-                        onEdit={setEditing}
-                        onLeaveOut={(it) => void leaveOrderOnlyOut(it)}
-                      />
-                    </tbody>
-                  </table>
-                </div>
+                <SubmittalRowsTable
+                  items={items}
+                  gcItems={gcItems}
+                  orderOnlyItems={orderOnlyItems}
+                  parts={parts}
+                  partsOf={partsOf}
+                  houseNameById={houseNameById}
+                  sourceFiles={sourceFiles}
+                  previousRev={previousRev}
+                  prevById={prevById}
+                  decisions={decisions}
+                  isDraft={isDraft}
+                  busy={busy}
+                  foldHints={foldHints}
+                  onEdit={setEditing}
+                  onAnswer={setAnswering}
+                  onSplit={(it) => void splitRow(it)}
+                  onFold={(fromId, intoId) => setFoldFrom({ fromId, intoId })}
+                  onTakeOff={(it) => void askTakeOff(it)}
+                  onPutBack={(it) => void setOrderOnly(it, false)}
+                  onLeaveOut={(it) => void leaveOrderOnlyOut(it)}
+                />
                 {isDraft && (takeoffLeftOut > 0 || takeoffStandsLine) ? (
                   <div style={{ marginTop: '0.4rem', fontSize: '0.8125rem', display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap' }} data-testid="left-out-line">
                     {takeoffLeftOut > 0 ? <span><b style={{ color: 'var(--text-base)' }}>Left out</b><span style={{ color: 'var(--text-muted)' }}> · {takeoffLeftOut} from the takeoff · not submitted, not ordered</span></span> : null}
