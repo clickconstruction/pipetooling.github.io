@@ -21,6 +21,23 @@ export const TOWNS: Town[] = [
   { name: 'Waco', lat: 31.5493, lng: -97.1467 },
 ]
 
+/**
+ * The town an address is in, so the drive is read from the address (the owner, 2026-10-04: "let's
+ * drop the town so the drive is pulled from the address"). The prototype finds a known town's name
+ * in the address, the one written last winning: "4410 Boerne Stage Rd, San Antonio" is San Antonio.
+ * The real build geocodes the address and measures from that point. Null: no known town in it.
+ */
+export function townFromAddress(address: string): string | null {
+  const text = address.toLowerCase()
+  let best: { name: string; at: number } | null = null
+  for (const town of TOWNS) {
+    const at = text.lastIndexOf(town.name.toLowerCase())
+    if (at < 0) continue
+    if (!best || at > best.at || (at === best.at && town.name.length > best.name.length)) best = { name: town.name, at }
+  }
+  return best?.name ?? null
+}
+
 /** About how far the drive is: the straight line between two towns, plus a fifth for the roads. */
 export function driveMiles(from: string, to: string): number | null {
   const a = TOWNS.find((t) => t.name === from)
