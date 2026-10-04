@@ -38,9 +38,16 @@ export const GC_TOUR_STEPS: SpotlightTourStep[] = [
     missingBody: 'No project is bidding right now. A new one starts here.',
   },
   {
-    anchor: 'gc-row-pursuing',
-    title: 'The ring and the days left',
-    body: 'The ring fills as the bid comes together. Point at it to see what is done and what is left. The block beside it says how many days until our bid is due. It turns amber inside two weeks. It turns red inside one week.',
+    // The owner, 2026-10-04: light the ring itself, then the block, each on its own stop.
+    anchor: 'gc-ring-pursuing',
+    title: 'The ring',
+    body: 'The ring fills as the bid comes together. It counts the steps done out of all the steps. Point at it to see what is done and what is left.',
+    missingBody: 'No project is bidding right now.',
+  },
+  {
+    anchor: 'gc-due-pursuing',
+    title: 'The days left',
+    body: 'This block says how many days until our bid is due. It turns amber inside two weeks. It turns red inside one week.',
     missingBody: 'No project is bidding right now.',
   },
   {

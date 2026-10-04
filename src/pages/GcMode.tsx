@@ -398,6 +398,7 @@ export default function GcMode() {
                       <div key={p.id} data-tour={i === 0 ? `gc-row-${stage.key}` : undefined}>
                       <ProjectRow
                         project={p}
+                        tourKey={i === 0 ? stage.key : undefined}
                         progress={stageProgress(state, p)}
                         today={state.today}
                         onOpen={() => { setProjectId(p.id); setTab('packages') }}
@@ -752,6 +753,7 @@ function GroupSwitch({ value, onChange }: { value: BoardGroupBy; onChange: (v: B
 
 function ProjectRow({
   project,
+  tourKey,
   byCustomer = false,
   progress,
   today,
@@ -763,6 +765,8 @@ function ProjectRow({
   onChase,
 }: {
   project: GcProject
+  /** The first row of a board section: its ring and its block carry walkthrough anchors (gc-ring-…, gc-due-…). */
+  tourKey?: string
   /** On the board by customer: the section names the customer, so the row names its stage instead. */
   byCustomer?: boolean
   /** How far through its stage the project is: the ring at the head of the row. */
@@ -811,8 +815,13 @@ function ProjectRow({
         alignItems: 'center',
       }}
     >
-      <GcProgressRing progress={progress} color={RING_COLORS[project.stage]} stageLabel={project.lostOn ? 'Lost' : project.closedOn ? 'Closed' : (stage?.label ?? '')} />
-      <DueBlock project={project} today={today} />
+      {/* The owner, 2026-10-04: the walkthrough lights the ring itself, then the block, not the whole row. */}
+      <div data-tour={tourKey ? `gc-ring-${tourKey}` : undefined} style={{ display: 'flex', justifyContent: 'center' }}>
+        <GcProgressRing progress={progress} color={RING_COLORS[project.stage]} stageLabel={project.lostOn ? 'Lost' : project.closedOn ? 'Closed' : (stage?.label ?? '')} />
+      </div>
+      <div data-tour={tourKey ? `gc-due-${tourKey}` : undefined} style={{ display: 'flex' }}>
+        <DueBlock project={project} today={today} />
+      </div>
       <span>
         <button
           type="button"
