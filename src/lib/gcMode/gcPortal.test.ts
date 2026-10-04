@@ -849,4 +849,24 @@ describe('a line’s spec sections on the bid form', () => {
     expect(r.lines[1]!.by).toContain('Addendum 2')
     expect(r.lines[0]!.specs).toEqual([{ id: '26 05 19', title: 'Low-voltage wire', changed: false, gone: true }])
   })
+
+  it('counts a line that names no section as touched by its trade’s revised section, as the office does', () => {
+    const later = gcReducer(withManual, {
+      type: 'issuePlanSet',
+      projectId: 'boerne',
+      label: 'Addendum 2',
+      note: 'Panel schedule revised.',
+      sheets: [],
+      addedSheets: [],
+      touches: ['elec'],
+      recipients: [],
+      newTrades: [],
+      specs: ['26 24 16'],
+    })
+    const r = read(later)
+    // Line 0 names another section, so this set does not reach it (Addendum 1's sheets still do); line 2 names none, so it does.
+    expect(r.lines[0]!.by).not.toContain('Addendum 2')
+    expect(r.lines[2]!.specs).toEqual([])
+    expect(r.lines[2]!.by).toContain('Addendum 2')
+  })
 })
