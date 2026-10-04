@@ -91,6 +91,9 @@ export function GcFollowUpPromises({ state, dispatch }: { state: GcState; dispat
   )
 }
 
+/** The date box at the height of the button beside it (the owner, 2026-10-04): a date input runs taller on its own. */
+const dateBox = { ...input, height: 30, boxSizing: 'border-box', padding: '0 0.45rem' } as const
+
 function PromiseRow({
   state,
   partner,
@@ -141,7 +144,7 @@ function PromiseRow({
       <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '0.4rem' }}>
         <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
           {promise ? 'They gave a new day' : 'They said by'}{' '}
-          <input type="date" style={input} min={state.today} value={by} onChange={(e) => setBy(e.target.value)} />
+          <input type="date" style={dateBox} min={state.today} value={by} onChange={(e) => setBy(e.target.value)} />
         </label>
         <Btn disabled={!by} onClick={save}>
           {promise ? 'Move it' : 'Write it down'}

@@ -673,6 +673,11 @@ const STEPS: Step[] = [
       preBidMinutes: true,
     },
   },
+  // Why a company is out, kept with the job and the company (the owner, 2026-10-04).
+  {
+    label: 'Bluebonnet will not do Roofing on Boerne: too busy',
+    action: { type: 'officeDecline', projectId: 'boerne', packageId: 'roof', inviteId: 'roof-bluebonnet', why: 'wont', reason: 'busy', note: 'Wes says both crews are on a school job through November' },
+  },
 ]
 
 const CUSTOMER_IDS = ['cibolo', 'raman']

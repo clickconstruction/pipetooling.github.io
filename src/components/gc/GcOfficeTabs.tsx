@@ -57,6 +57,8 @@ import {
   awardGate,
   GC_COMPANY,
   missedMandatoryPreBid,
+  declinedTitle,
+  declinedWords,
 } from '../../lib/gcMode/gcModel'
 import { linkNeverOpened } from '../../lib/gcMode/gcPortal'
 import { VettingChip } from './GcVetting'
@@ -272,8 +274,12 @@ export function GcPackagesTab({ state, project, dispatch, onSeePortal, onMap, op
                                   {inv.status === 'invited' && linkNeverOpened(state, inv.partnerId) ? (
                                     <LinkNeverOpenedChip state={state} partnerId={inv.partnerId} company={partner?.company} />
                                   ) : (
-                                  <Chip tone={stale ? 'amber' : words.tone} title={stale ? `Their quote is on an older set of plans. ${staleSentence(project, pkg, inv)}` : undefined}>
-                                    {partner?.company} · {stale ? 'old plans' : words.word}
+                                  <Chip
+                                    tone={stale ? 'amber' : words.tone}
+                                    title={stale ? `Their quote is on an older set of plans. ${staleSentence(project, pkg, inv)}` : inv.status === 'declined' ? declinedTitle(inv) : undefined}
+                                  >
+                                    {/* A company that is out says why, when the office wrote it down (the owner, 2026-10-04). */}
+                                    {partner?.company} · {stale ? 'old plans' : inv.status === 'declined' ? declinedWords(inv) : words.word}
                                     {inv.bid && bidRanOut(inv.bid, state.today) ? ' · ran out' : ''}
                                   </Chip>
                                   )}
@@ -520,7 +526,9 @@ function LevelPanel({ state, project, pkg, dispatch, onSeePortal }: GcPaneProps 
                 {inv.status === 'invited' && linkNeverOpened(state, inv.partnerId) ? (
                   <LinkNeverOpenedChip state={state} partnerId={inv.partnerId} />
                 ) : (
-                  <Chip tone={words.tone}>{words.word}</Chip>
+                  <Chip tone={words.tone} title={inv.status === 'declined' ? declinedTitle(inv) : undefined}>
+                    {inv.status === 'declined' ? declinedWords(inv) : words.word}
+                  </Chip>
                 )}
                 <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
                   asked {shortDate(inv.invitedOn)} · plans: {planLabel(project, inv.seenRev)}

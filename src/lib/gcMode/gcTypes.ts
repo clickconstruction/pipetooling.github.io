@@ -137,8 +137,20 @@ export interface Invite {
   nudgedOn?: string
   /** Why they are out, when the office took the answer by phone: will not do it, or cannot. */
   declinedWhy?: 'wont' | 'cant'
+  /** The reason the office wrote down with it (the owner, 2026-10-04); kept with the job and the company. */
+  declineReason?: DeclineReasonNote
   /** Every contact on this ask, newest first. Lines are added, never changed. */
   contacts?: AskContact[]
+}
+
+/** Quick picks for why a company is out of an ask (gcDecline.ts has the words). */
+export type DeclineReason = 'busy' | 'far' | 'size' | 'scope' | 'terms' | 'other'
+
+export interface DeclineReasonNote {
+  reason: DeclineReason
+  /** Their words, as the office took them. Optional unless the reason is 'other'. */
+  note: string
+  on: string
 }
 
 export interface SovLine {
@@ -670,7 +682,8 @@ export type GcAction =
   /** The trade sends its schedule of values for a statement of work that has none yet (question 4). */
   | { type: 'tradeSendSov'; projectId: string; packageId: string; sov: TheirSovLine[] }
   | { type: 'tradeDecline'; projectId: string; packageId: string; inviteId: string }
-  | { type: 'officeDecline'; projectId: string; packageId: string; inviteId: string; why: 'wont' | 'cant' }
+  /** `reason` and `note` (the owner, 2026-10-04): why, kept with the job and the company. */
+  | { type: 'officeDecline'; projectId: string; packageId: string; inviteId: string; why: 'wont' | 'cant'; reason?: DeclineReason; note?: string }
   | { type: 'setPlug'; projectId: string; packageId: string; inviteId: string; scopeId: string; amount: number }
   | { type: 'carry'; projectId: string; packageId: string; carried: string | null }
   | { type: 'markWon'; projectId: string }

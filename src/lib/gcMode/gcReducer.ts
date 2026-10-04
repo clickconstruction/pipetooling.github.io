@@ -17,6 +17,7 @@ import { logTrades } from './gcBuildingLog'
 import { nextSubmittalId, nextSubmittalNumber, submittalState } from './gcBuildingSubmittals'
 import { addDays, changeOrderTradePct, crewPctFromStages, drawLinesOf, drawMoney, drawApprovedLess, finalPayApplication, jobCloseout, payApplication, timesSentBack, tradeCloseout, workAllBilled } from './gcBuilding'
 import { awardGate } from './gcVetting'
+import { declineLogWords } from './gcDecline'
 import { startChecklist } from './gcStart'
 import { keepPromisesOn, openPromiseFor, PROMISE_WHAT, promisesKeptBy, tradePromisesOf } from './gcPromises'
 import { ownerInterest } from './gcOwnerBillingInterest'
@@ -274,9 +275,17 @@ function reduce(state: GcState, action: GcAction): GcState {
       const { pkg, partner } = find(state, action.projectId, action.packageId, action.inviteId)
       if (!pkg || !partner) return state
       const next = mapProject(state, action.projectId, (p) =>
-        mapPackage(p, pkg.id, (k) => mapInvite(k, action.inviteId, (i) => ({ ...i, status: 'declined', declinedWhy: action.why }))),
+        mapPackage(p, pkg.id, (k) =>
+          mapInvite(k, action.inviteId, (i) => ({
+            ...i,
+            status: 'declined',
+            declinedWhy: action.why,
+            ...(action.reason ? { declineReason: { reason: action.reason, note: (action.note ?? '').trim(), on: state.today } } : {}),
+          })),
+        ),
       )
-      return logged(next, 'office', `${partner.company} ${action.why === 'wont' ? 'will not do' : 'cannot do'} ${pkg.trade}. Offer it to the next company.`)
+      const why = action.reason ? ` Why: ${declineLogWords(action.reason, (action.note ?? '').trim())}.` : ''
+      return logged(next, 'office', `${partner.company} ${action.why === 'wont' ? 'will not do' : 'cannot do'} ${pkg.trade}.${why} Offer it to the next company.`)
     }
 
     case 'setPlug':

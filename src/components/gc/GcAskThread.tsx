@@ -19,6 +19,7 @@ import {
 import { LinkNeverOpenedChip } from './GcPortalLinkChip'
 import { Btn, Card, Chip, Why, input, type Tone } from './gcUi'
 import { GcFollowUpPromises } from './GcFollowUpPromises'
+import { GcDeclineForm } from './GcDeclineForm'
 
 /**
  * GC mode design spike: keeping up with a company on one ask. Every call, text, email, nudge and
@@ -212,6 +213,8 @@ function FollowUpCard({
 }) {
   const { project, pkg, invite, partner, why, words } = followUp
   const ids = { projectId: project.id, packageId: pkg.id, inviteId: invite.id }
+  // Will not do it / Cannot do it ask why first (the owner, 2026-10-04): the reason stays with the job and the company.
+  const [declining, setDeclining] = useState<'wont' | 'cant' | null>(null)
   return (
     <Card style={{ borderLeft: `4px solid ${why === 'waiting' ? 'var(--border-blue)' : why === 'passed' || why === 'silent' ? '#dc2626' : '#d97706'}` }}>
       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
@@ -223,12 +226,23 @@ function FollowUpCard({
         <span style={{ flex: 1 }} />
         {why !== 'waiting' && (
           <>
-            <Btn onClick={() => dispatch({ type: 'officeDecline', ...ids, why: 'wont' })}>Will not do it</Btn>
-            <Btn onClick={() => dispatch({ type: 'officeDecline', ...ids, why: 'cant' })}>Cannot do it</Btn>
+            <Btn onClick={() => setDeclining('wont')}>Will not do it</Btn>
+            <Btn onClick={() => setDeclining('cant')}>Cannot do it</Btn>
           </>
         )}
         <Btn kind="quiet" onClick={() => onMap(project.id, pkg.id)} title="See who else could quote this trade.">Who else?</Btn>
       </div>
+      {declining && (
+        <GcDeclineForm
+          company={partner.company}
+          why={declining}
+          onCancel={() => setDeclining(null)}
+          onSave={(reason, note) => {
+            dispatch({ type: 'officeDecline', ...ids, why: declining, reason, note })
+            setDeclining(null)
+          }}
+        />
+      )}
       <div style={{ margin: '0.3rem 0 0.4rem', fontSize: '0.9rem' }}>{words}</div>
       <AskThread state={state} project={project} pkg={pkg} invite={invite} partner={partner} dispatch={dispatch} />
     </Card>

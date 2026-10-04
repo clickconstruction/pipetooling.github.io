@@ -8836,6 +8836,37 @@ exports[`GC mode golden walk > step 179: Leon Springs: Addendum 2 carries the pr
 }
 `;
 
+exports[`GC mode golden walk > step 180: Bluebonnet will not do Roofing on Boerne: too busy 1`] = `
+{
+  "changed": {
+    "assistantRules[2].now": "9 of 9 asks are opened or still inside 3 days.",
+    "assistantRules[3].items": "[]",
+    "assistantRules[3].now": "9 of 9 companies we are asking have all three.",
+    "assistantRules[3].ok": true,
+    "assistantRules[5].now": "0 of 0 promises on live asks are still good.",
+    "followUps": "[]",
+    "lastLog.id": 176,
+    "lastLog.text": "Bluebonnet Roofing will not do Roofing. Why: too busy, "Wes says both crews are on a school job through November". Offer it to the next company.",
+    "tradeBenches[0].needs[0].looking": 0,
+    "tradeBenches[0].needs[0].passed": 1,
+  },
+  "removed": [
+    "followUps[0].project",
+    "followUps[0].pkg",
+    "followUps[0].invite",
+    "followUps[0].partner",
+    "followUps[0].why",
+    "followUps[0].order",
+    "followUps[0].words",
+    "assistantRules[3].items[0].id",
+    "assistantRules[3].items[0].text",
+    "assistantRules[3].items[0].action",
+    "assistantRules[3].items[0].actionLabel",
+    "assistantRules[3].items[0].doneNote",
+  ],
+}
+`;
+
 exports[`GC mode golden walk > the whole state at the end 1`] = `
 {
   "customers": [
@@ -9036,6 +9067,11 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
+      "id": 176,
+      "text": "Bluebonnet Roofing will not do Roofing. Why: too busy, "Wes says both crews are on a school job through November". Offer it to the next company.",
+      "who": "office",
+    },
+    {
       "id": 175,
       "text": "Issued Addendum 2 on Leon Springs Urgent Care, checked by Dana Whitaker, and emailed 1 company. 0 were told it changes their trade.",
       "who": "office",
@@ -9179,11 +9215,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "id": 147,
       "text": "Tejas Power: a signed W-9 came. Marked kept.",
       "who": "office",
-    },
-    {
-      "id": 146,
-      "text": "Tejas Power promised a signed W-9 by Mon Oct 5.",
-      "who": "trade",
     },
   ],
   "partners": [
@@ -10050,11 +10081,17 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
                   "on": "2026-09-24",
                 },
               ],
+              "declineReason": {
+                "note": "Wes says both crews are on a school job through November",
+                "on": "2026-10-02",
+                "reason": "busy",
+              },
+              "declinedWhy": "wont",
               "id": "roof-bluebonnet",
               "invitedOn": "2026-09-19",
               "partnerId": "bluebonnet",
               "seenRev": 1,
-              "status": "opened",
+              "status": "declined",
             },
           ],
           "scope": [
