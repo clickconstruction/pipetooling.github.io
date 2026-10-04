@@ -438,7 +438,7 @@ export function portalLink(partnerId: string): string {
   return `clicktooling.com/t/${token}`
 }
 
-/** One message we sent a company: an email, and for an invitation the same news by text. */
+/** One message we sent a company: an email (email only for now, owner 2026-10-03). */
 export interface PortalMessage {
   key: string
   on: string
@@ -450,8 +450,6 @@ export interface PortalMessage {
   lines: string[]
   /** What the number should cover, for an invitation. */
   scope?: string[]
-  /** The same news as a text message. */
-  text?: string
 }
 
 const KIND_ORDER: Record<PortalMessage['kind'], number> = { closed: -1, coi: 0, answer: 1, paid: 2, change: 3, less: 4, start: 5, sow: 6, msa: 7, bidTab: 8, plans: 9, nudge: 10, invite: 11 }
@@ -478,7 +476,6 @@ export function portalMessages(state: GcState, partnerId: string, language?: Por
   const t = (key: Parameters<typeof pt>[1], vars?: Record<string, string | number>) => pt(lang, key, vars)
   const and = t('and')
   const hello = t('mHello', { first: firstName(partner.contact) })
-  const link = portalLink(partnerId)
   const out: PortalMessage[] = []
 
   // Insurance running out: the email goes out COI_WARN_DAYS before, once that day has come, while it still holds.
@@ -647,7 +644,6 @@ export function portalMessages(state: GcState, partnerId: string, language?: Por
           t('mStartPart', { trades }),
           t('mStartReport'),
         ],
-        text: t('mStartText', { gc, project: name, when: begins ? t('mWhen', { date: begins }) : t('mSoon'), trades, link }),
       })
     }
     for (const { pkg, invite } of mine) {
@@ -668,7 +664,6 @@ export function portalMessages(state: GcState, partnerId: string, language?: Por
           t('mInviteCover'),
         ],
         scope: pkg.scope.map((item) => item.label),
-        text: t('mInviteText', { gc, trade: pkg.trade, project: name, by: due ? t('mBy', { date: due }) : '', link }),
       })
 
       for (const c of invite.contacts ?? []) {

@@ -58,7 +58,7 @@ column headers are in one block at the end of `gcBuildingWords.ts`, for the nati
 |---|---|
 | Fill out pay application {n} | Llenar la solicitud de pago {n} |
 | Go on with pay application {n} | Seguir con la solicitud de pago {n} |
-| Fix and resend pay application {n} | Corregir y reenviar la solicitud de pago {n} |
+| Fix and resend pay application {n} | Corregir y reenviar la solicitud {n} |
 | Check your work · Fill in a few details · Sign it · Send it to {gc} | Revise su avance · Llene unos datos · Fírmela · Envíela a {gc} |
 | You are on step {n} of 4 · {step} | Está en el paso {n} de 4 · {step} |
 | All four steps done | Los cuatro pasos están listos |
@@ -116,7 +116,7 @@ column headers are in one block at the end of `gcBuildingWords.ts`, for the nati
 
 ## For a native speaker to read
 
-Every Spanish string the trade's portal shows, 553 in all, drawn from the code on 2026-10-03.
+Every Spanish string the trade's portal shows, 552 in all, drawn from the code on 2026-10-04.
 They're grouped by screen, English on the left. Please mark anything that reads wrong, stiff or
 unclear, and write the better words beside it. The Portal lane makes the changes and passes the
 other lanes theirs.
@@ -137,7 +137,6 @@ other lanes theirs.
   one line's name.
 - `{note}`, `{description}`, `{text}`, `{reason}`, `{about}`, `{schedule}`, `{mark}`, `{step}`
   and `{waiver}` are words from elsewhere in the portal or typed by someone.
-- `{link}` is the company's portal link.
 
 **What stays as typed:** trade names ("Electrical"), project names, the notes the office writes on a
 plan set, a question and its answer, and our superintendent's punch list notes stay in the words
@@ -508,14 +507,12 @@ they were written in. The portal does not translate them.
 | Open your portal | Abrir su portal |
 | This link is yours. It holds every job you have with us. There is no password. | Este enlace es suyo. Aquí están todos sus trabajos con nosotros. No hay contraseña. |
 | Thank you, | Gracias, |
-| The same, by text | Lo mismo, por mensaje de texto |
 | Hello {first}, | Hola {first}: |
 | {gc} asks you to bid {trade} on {project} | {gc} lo invita a cotizar {trade} en {project} |
 | We would like your number for {trade} on {project}. | Nos gustaría recibir su precio de {trade} para {project}. |
 | Your number is due {date}. | Su precio vence el {date}. |
 | Plans to price: {label}, issued {date}. | Planos para cotizar: {label}, emitidos el {date}. |
 | Your number should cover these lines. | Su precio debe incluir estas partidas. |
-| {gc}: we would like your {trade} number for {project}{by}. Plans and details: {link} | {gc}: nos gustaría su precio de {trade} para {project}{by}. Planos y detalles: {link} |
 |  by {date} |  a más tardar el {date} |
 | A reminder: {about} | Recordatorio: {about} |
 | A reminder about your {trade} number for {project}. | Le recordamos su precio de {trade} para {project}. |
@@ -543,7 +540,6 @@ they were written in. The portal does not translate them.
 | {project} is started. | {project} ya empezó. |
 | Your part is {trades}. | Su parte es {trades}. |
 | Report your work in your portal as it goes. That is how you ask for each draw. | Reporte su avance en su portal conforme avance. Así pide cada pago. |
-| {gc}: work on {project} begins{when}. Your part is {trades}. Details: {link} | {gc}: el trabajo en {project} comienza{when}. Su parte es {trades}. Detalles: {link} |
 |  {date} |  el {date} |
 | Change order {n} on {project} | Orden de cambio {n} de {project} |
 | We have a change to your {trade} work on {project}: {description}. | Tenemos un cambio en su trabajo de {trade} en {project}: {description}. |
@@ -662,7 +658,12 @@ they were written in. The portal does not translate them.
 | Fix it and send it again. | Corríjala y envíela de nuevo. |
 | {line}: {gc} sees {n}%. You asked for {m}%. | {line}: {gc} ve {n}%. Usted pidió {m}%. |
 | Go on with pay application {n} | Seguir con la solicitud de pago {n} |
-| Fix and resend pay application {n} | Corregir y reenviar la solicitud de pago {n} |
+
+#### Short in Spanish: the long form is too wide for a button on a phone (Portal lane, 2026-10-03).
+
+| English | Español |
+|---|---|
+| Fix and resend pay application {n} | Corregir y reenviar la solicitud {n} |
 | Fill out pay application {n} | Llenar la solicitud de pago {n} |
 | {gc} approved {x} of the {y} you asked for on pay application {n}. {note} The rest is still yours to ask for. | {gc} aprobó {x} de los {y} que pidió en la solicitud de pago {n}. {note} El resto lo puede seguir pidiendo. |
 | You can ask for {amount} now. Most of the pay application is filled in for you. | Puede pedir {amount} ahora. La mayor parte de la solicitud de pago ya está llena. |
@@ -831,6 +832,8 @@ they were written in. The portal does not translate them.
 | Waiting on {gc} to check it. | Esperando que {gc} lo revise. |
 | {gc} checked it {date}. It is not fixed yet. | {gc} lo revisó el {date}. Todavía no está arreglado. |
 | Checked by {gc}: {n}. | Revisados por {gc}: {n}. |
+| {label} failed on your work {date}. | {label} no pasó en su trabajo el {date}. |
+| The re-inspection is {date}. Fix it before then. | La reinspección es el {date}. Arréglelo antes de esa fecha. |
 | Fix each one, then tell {gc} here. {gc} checks it on the job. Your work is accepted once every item is checked. | Arregle cada uno y avísele a {gc} aquí. {gc} lo revisa en la obra. Su trabajo se acepta cuando todos estén revisados. |
 
 ### The bid tab (the Board lane's words, `bidTabResult` in `gcBids.ts` and the table in `GcBidTabs.tsx`)
