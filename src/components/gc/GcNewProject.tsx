@@ -234,6 +234,10 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
   const town = townRead ?? townPick
   const [ownerPick, setOwnerPick] = useState('')
   const [ownerNew, setOwnerNew] = useState('')
+  /** The owner of the property when it is not the customer (the owner, 2026-10-04): opened by a button under Customer. */
+  const [landlordOpen, setLandlordOpen] = useState(false)
+  const [landlordPick, setLandlordPick] = useState('')
+  const [landlordNew, setLandlordNew] = useState('')
   const [archPick, setArchPick] = useState('')
   const [archNew, setArchNew] = useState('')
   const [bidDue, setBidDue] = useState('')
@@ -309,6 +313,7 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
 
   const customers = [...state.customers].sort((a, b) => a.name.localeCompare(b.name))
   const ownerName = ownerPick === NEW ? ownerNew.trim() : (state.customers.find((c) => c.id === ownerPick)?.name ?? '')
+  const landlordName = !landlordOpen ? '' : landlordPick === NEW ? landlordNew.trim() : (state.customers.find((c) => c.id === landlordPick)?.name ?? '')
   const archName = archPick === NEW ? archNew.trim() : (state.customers.find((c) => c.id === archPick)?.name ?? '')
 
   const draft: NewProjectDraft = {
@@ -316,6 +321,7 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
     address: address.trim(),
     town,
     customerId: ownerPick && ownerPick !== NEW ? ownerPick : null,
+    ...(landlordOpen && landlordName !== '' ? { propertyOwnerId: landlordPick && landlordPick !== NEW ? landlordPick : null, propertyOwnerName: landlordName } : {}),
     ownerName,
     architectId: archPick && archPick !== NEW ? archPick : null,
     architectName: archName,
@@ -347,7 +353,8 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
   const missing: string[] = []
   if (draft.name === '') missing.push('Give the project a name.')
   if (draft.town === '') missing.push('Add the town to the address, so drives can be measured.')
-  if (ownerName === '') missing.push('Pick the owner.')
+  if (ownerName === '') missing.push('Pick the customer.')
+  if (landlordOpen && landlordName === '') missing.push('Pick the owner of the property, or take it off.')
   if (archName === '') missing.push('Pick the architect.')
   // The plans come by their Drive link. One only some people can open is a warning on step 2, not a stop.
   const driveStop = driveLinkProblem(driveUrl)
@@ -589,18 +596,58 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
                   </span>
                 )}
               </Field>
-              <Field label="Owner" hint="The company we build it for. It comes from the customer list.">
-                <CustomerPicker
-                  customers={customers}
-                  value={ownerPick}
-                  onChange={setOwnerPick}
-                  onNewName={setOwnerNew}
-                  fits={(c) => !/architect/i.test(c.kind)}
-                  fitsLabel="Owners and developers"
-                  ariaLabel="Owners"
-                />
-                {ownerPick === NEW && <input style={field} value={ownerNew} onChange={(e) => setOwnerNew(e.target.value)} placeholder="Their company name" aria-label="The new owner's company name" />}
-              </Field>
+              {/* The owner, 2026-10-04: "owner should become customer and then there should be a button to add owner different than customer." */}
+              <div style={{ display: 'grid', gap: '0.25rem', alignContent: 'start' }}>
+                <Field label="Customer" hint="The company we build it for, the one we bill. It comes from the customer list.">
+                  <CustomerPicker
+                    customers={customers}
+                    value={ownerPick}
+                    onChange={setOwnerPick}
+                    onNewName={setOwnerNew}
+                    fits={(c) => !/architect/i.test(c.kind)}
+                    fitsLabel="Owners and developers"
+                    ariaLabel="Customers"
+                  />
+                  {ownerPick === NEW && <input style={field} value={ownerNew} onChange={(e) => setOwnerNew(e.target.value)} placeholder="Their company name" aria-label="The new customer's company name" />}
+                </Field>
+                {!landlordOpen && (
+                  <div>
+                    <Btn kind="quiet" onClick={() => setLandlordOpen(true)}>+ Add an owner different from the customer</Btn>
+                  </div>
+                )}
+              </div>
+              {landlordOpen && (
+                <div style={{ display: 'grid', gap: '0.25rem', alignContent: 'start', fontSize: '0.875rem' }}>
+                  <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'baseline' }}>
+                    <span style={{ fontWeight: 600, flex: 1 }}>Owner of the property</span>
+                    <button
+                      type="button"
+                      aria-label="Take off the owner of the property"
+                      onClick={() => {
+                        setLandlordOpen(false)
+                        setLandlordPick('')
+                        setLandlordNew('')
+                      }}
+                      style={{ border: 'none', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1.1rem', lineHeight: 1, padding: '0 0.2rem' }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                  <CustomerPicker
+                    customers={customers.filter((c) => c.id !== ownerPick)}
+                    value={landlordPick}
+                    onChange={setLandlordPick}
+                    onNewName={setLandlordNew}
+                    fits={(c) => !/architect/i.test(c.kind)}
+                    fitsLabel="Owners and developers"
+                    ariaLabel="Owners of the property"
+                  />
+                  {landlordPick === NEW && (
+                    <input style={field} value={landlordNew} onChange={(e) => setLandlordNew(e.target.value)} placeholder="Their company name" aria-label="The new owner's company name" />
+                  )}
+                  <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>Who owns the building when it is not our customer, like the landlord on a tenant finish-out.</span>
+                </div>
+              )}
               <Field label="Architect" hint="The firm that drew the plans. The same customer list.">
                 <CustomerPicker
                   customers={customers}

@@ -844,3 +844,21 @@ describe('the plans live in Google Drive', () => {
     expect(set?.drive).toEqual({ url: SAMPLE_DRIVE_RESTRICTED, access: 'restricted', checkedOn: '2026-10-04' })
   })
 })
+
+describe('a customer, and an owner of the property when it is someone else', () => {
+  it('keeps the owner of the property only when it is not the customer, making a record for someone new', () => {
+    const state = initialGcState()
+    const customer = state.customers.find((c) => !/architect/i.test(c.kind))
+    if (!customer) throw new Error('the made-up customers have an owner')
+    const made = gcReducer(state, { type: 'createProject', draft: draft({ customerId: customer.id, ownerName: customer.name, propertyOwnerId: null, propertyOwnerName: 'Helotes Plaza LLC' }) })
+    const project = made.projects[made.projects.length - 1]
+    expect(project?.owner).toBe(customer.name)
+    expect(project?.propertyOwner).toBe('Helotes Plaza LLC')
+    expect(made.customers.some((c) => c.id === project?.propertyOwnerId && c.name === 'Helotes Plaza LLC')).toBe(true)
+    // The customer picked again as the owner of the property: nothing extra is kept.
+    const same = gcReducer(state, { type: 'createProject', draft: draft({ customerId: customer.id, ownerName: customer.name, propertyOwnerId: customer.id }) })
+    const p2 = same.projects[same.projects.length - 1]
+    expect(p2?.propertyOwnerId).toBeUndefined()
+    expect(p2?.propertyOwner).toBeUndefined()
+  })
+})

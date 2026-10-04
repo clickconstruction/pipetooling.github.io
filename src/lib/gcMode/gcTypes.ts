@@ -532,6 +532,14 @@ export interface GcProject {
   customerId: string
   /** The customer's name, kept on the row for display. */
   owner: string
+  /**
+   * The owner of the property, when it is not our customer (the owner, 2026-10-04: "owner should
+   * become customer and then there should be a button to add owner different than customer"): a
+   * tenant finish-out, say, where the landlord owns the building. A customer record and its name,
+   * like `customerId` and `owner`. Missing: the customer owns it.
+   */
+  propertyOwnerId?: string
+  propertyOwner?: string
   ownerBilling: OwnerBilling | null
   /** Changes to our contract with the owner, oldest first. Absent: none yet. */
   changeOrders?: ChangeOrder[]
@@ -1060,6 +1068,9 @@ export interface NewProjectDraft {
   trades: NewTradeDraft[]
   /** The first set's Google Drive link and its last check. */
   drive?: PlanSetDrive
+  /** The owner of the property when it is not the customer: a record, or null with a name for someone new. */
+  propertyOwnerId?: string | null
+  propertyOwnerName?: string
 }
 
 /** What the trade typed on a draw's pay application. The numbers are rebuilt from the draws (`payApplicationForDraw`). */

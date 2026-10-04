@@ -348,6 +348,10 @@ export function buildNewProject(state: GcState, draft: NewProjectDraft): { proje
   }
   const owner = record(draft.customerId, draft.ownerName, 'Owner')
   const architect = record(draft.architectId, draft.architectName, 'Architect')
+  // The owner of the property, kept only when it is not the customer.
+  const named = draft.propertyOwnerName?.trim() ?? ''
+  const landlord = named !== '' || draft.propertyOwnerId ? record(draft.propertyOwnerId ?? null, named, 'Owner') : null
+  const propertyOwner = landlord && landlord.id !== owner.id ? landlord : null
 
   const packages = packagesFromDrafts(id, draft.trades)
 
@@ -365,6 +369,7 @@ export function buildNewProject(state: GcState, draft: NewProjectDraft): { proje
     startedOn: null,
     customerId: owner.id,
     owner: owner.name,
+    ...(propertyOwner ? { propertyOwnerId: propertyOwner.id, propertyOwner: propertyOwner.name } : {}),
     ownerBilling: null,
     architectId: architect.id,
     architect: architect.name,
