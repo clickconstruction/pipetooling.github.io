@@ -63,6 +63,7 @@ import {
 import { linkNeverOpened } from '../../lib/gcMode/gcPortal'
 import { VettingChip } from './GcVetting'
 import { GcSovSideBySide } from './GcSovSideBySide'
+import { PlanSetDriveLine } from './GcNewProjectDriveLink'
 import { LinkNeverOpenedChip } from './GcPortalLinkChip'
 import { AskThread } from './GcAskThread'
 import { GcBuildingPayAppWindow } from './GcBuildingPayApp'
@@ -873,6 +874,10 @@ export function GcPlansTab({ state, project, dispatch }: GcPaneProps) {
               {s.sentTo && s.sentTo.length > 0
                 ? ` · emailed to ${s.sentTo.length} ${s.sentTo.length === 1 ? 'company' : 'companies'}, ${s.sentTo.filter((x) => x.touched).length} told it changes their trade`
                 : ''}
+            </div>
+            {/* The set's Google Drive link and who can open it (the owner, 2026-10-04; New Project's PlanSetDriveLine). */}
+            <div style={{ marginTop: '0.4rem' }}>
+              <PlanSetDriveLine projectId={project.id} set={s} dispatch={dispatch} />
             </div>
             <p style={{ margin: '0.5rem 0 0', whiteSpace: 'pre-wrap' }}>{s.note}</p>
             {(s.changedSheets.length > 0 || (s.changedSpecs ?? []).length > 0) && (
