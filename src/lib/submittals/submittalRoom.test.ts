@@ -35,6 +35,7 @@ describe('the trail', () => {
     expect(describeRoomLine({ status: 'open', shared_at: '2026-09-16T15:00:00Z', closed_at: null }, 9, TZ)).toBe('Room link · shared Sep 16 · opened 9×')
     // 2026-10-03 · a room made by typing an answer in: no link went out, so nothing is "not opened yet".
     expect(describeRoomLine({ status: 'open', shared_at: null, closed_at: null }, 0, TZ)).toBe('Not shared from the app')
+    expect(describeRoomLine({ status: 'open', shared_at: null, closed_at: null }, 0, TZ, 4)).toBe('Not shared from the app · answers typed in')
     expect(describeRoomLine({ status: 'open', shared_at: '2026-09-16T15:00:00Z', closed_at: null }, 0, TZ)).toBe('Room link · shared Sep 16 · not opened yet')
     // The link copied by hand and opened, with no Share pressed.
     expect(describeRoomLine({ status: 'open', shared_at: null, closed_at: null }, 2, TZ)).toBe('Room link · opened 2×')

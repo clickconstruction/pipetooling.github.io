@@ -2070,7 +2070,8 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   // "Open every stage" (remembered per device) and the walkthrough open everything.
   const stageStatus = (key: JourneyStageKey): RoadStatus => journey.stages.find((st) => st.key === key)?.status ?? 'later'
   const gates = { package: stageGate(journey.stages, 'package'), share: stageGate(journey.stages, 'share'), resubmit: stageGate(journey.stages, 'resubmit') }
-  const currentStageKey = journey.stages.find((st) => (st.status === 'current' || st.status === 'waiting') && st.key !== 'procure')?.key ?? null
+  // 2026-10-03 · every stage that is live, not the first alone: a draft answered by email has its rows, Their call and Resubmit live at once.
+  const liveStageKeys = journey.stages.filter((st) => (st.status === 'current' || st.status === 'waiting') && st.key !== 'procure').map((st) => st.key)
   // What each stage reads from stays open beside it: the package reads the rows; their call and the resubmit land on the rows.
   const readsFrom: Partial<Record<JourneyStageKey, JourneyStageKey[]>> = { package: ['rows'], share: ['package'], review: ['rows'], resubmit: ['rows', 'review'] }
   const scheduleReadLive = liveTask(tasks, 'read_schedule') != null
@@ -2085,7 +2086,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     if (key === 'procure') return true
     if (stageStatus(key) === 'later') return false
     if (stageStatus(key) !== 'done') return true
-    return currentStageKey != null && (readsFrom[currentStageKey] ?? []).includes(key)
+    return liveStageKeys.some((live) => (readsFrom[live] ?? []).includes(key))
   }
   function toggleSection(key: JourneyStageKey) {
     const open = sectionOpen(key)
@@ -2610,7 +2611,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
 
               {/* 5 · Share — the room link and the people on it */}
               <RoadSection n={5} about={SUBMITTAL_STAGE_ABOUT[5]} onHelp={() => startWalkThrough(5)} title="Share" status={stageStatus('share')} open={sectionOpen('share')} onToggle={() => toggleSection('share')} onJump={() => jumpToSection('share')} anchor="submittals-share-section"
-                summary={room ? describeRoomLine(room, events.filter((e) => e.event_type === 'view').length, ROOM_TZ) : items.length > 0 ? 'not shared yet' : 'appears once Rev 1 has rows'}>
+                summary={room ? describeRoomLine(room, events.filter((e) => e.event_type === 'view').length, ROOM_TZ, decisions.entered) : items.length > 0 ? 'not shared yet' : 'appears once Rev 1 has rows'}>
                 {items.length > 0 && isNewest ? (
                   <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', marginBottom: room ? '0.5rem' : 0 }}>
                     <button type="button" disabled={busy || room?.status === 'closed' || !gates.share.on} onClick={() => setSharing(true)} style={{ ...(asRevisionStatus(selectedRev.status) === 'shared' ? btn : btnPrimary), opacity: gates.share.on ? 1 : 0.5 }} data-testid="share-button" title={room ? 'Mark this revision shared; the room link shows it' : 'Mint the bid\'s review room and copy its link'} data-tour="submittals-share">
@@ -2622,7 +2623,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                 {room ? (
                   <div style={{ border: '1px solid var(--border-blue)', background: room.status === 'closed' ? 'var(--bg-muted)' : 'var(--bg-blue-tint)', borderRadius: 8, padding: '0.55rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }} data-testid="room-line" data-tour="submittals-room">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)' }}>{describeRoomLine(room, events.filter((e) => e.event_type === 'view').length, ROOM_TZ)}</span>
+                      <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)' }}>{describeRoomLine(room, events.filter((e) => e.event_type === 'view').length, ROOM_TZ, decisions.entered)}</span>
                       <div style={{ display: 'flex', gap: '0.4rem' }}>
                         {room.status === 'open' ? (
                           <>

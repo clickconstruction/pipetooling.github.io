@@ -80,10 +80,10 @@ export function describeTrail(t: PersonTrail, tz: string): string {
 }
 
 /** "Room link · shared Sep 16 · opened 9×" */
-export function describeRoomLine(room: Pick<SubmittalRoomRow, 'status' | 'shared_at' | 'closed_at'>, opens: number, tz: string): string {
+export function describeRoomLine(room: Pick<SubmittalRoomRow, 'status' | 'shared_at' | 'closed_at'>, opens: number, tz: string, /** rows whose answer the office typed in: a submittal that went out by email */ typedAnswers = 0): string {
   if (room.status === 'closed') return `Room closed${room.closed_at ? ` · ${short(room.closed_at, tz)}` : ''}`
   // 2026-10-03 · typing an answer makes the room so the answer has somewhere to live. Nothing was sent: "not opened yet" read as if a link had gone out.
-  if (!room.shared_at && opens === 0) return 'Not shared from the app'
+  if (!room.shared_at && opens === 0) return typedAnswers > 0 ? 'Not shared from the app · answers typed in' : 'Not shared from the app'
   const parts = ['Room link']
   if (room.shared_at) parts.push(`shared ${short(room.shared_at, tz)}`)
   parts.push(opens === 0 ? 'not opened yet' : `opened ${opens}×`)

@@ -1375,9 +1375,12 @@ describe('BidsSubmittalsTab', () => {
     state.noSources = true
     try {
       mount()
-      // On a draft the step is still folded: the strip reads answers only on a shared revision.
-      fireEvent.click(await screen.findByRole('button', { name: 'Unfold step 7' }))
+      // 2026-10-03 · the answers were typed on a draft: the strip lights Their call and Resubmit, names the rows sent back, and step 7 is open with its button.
       const button = await screen.findByTestId('resubmit-sent-back')
+      expect(screen.getByRole('button', { name: '6 Their call · waiting on the reviewer' })).toBeTruthy()
+      expect(screen.getByRole('button', { name: '7 Resubmit · you are here' })).toBeTruthy()
+      expect(screen.getByTestId('submittal-journey').textContent).toContain('structura approved 1 and sent 1 back. 2 rows still have no answer. Fix what was sent back.')
+      expect((screen.getByTestId('new-revision') as HTMLButtonElement).disabled).toBe(false)
       expect(button.textContent).toBe('Rev 2 from the 1 row sent back and the 2 with no answer')
       fireEvent.click(button)
       const confirmDialog = await screen.findByRole('alertdialog')
@@ -1439,7 +1442,7 @@ describe('BidsSubmittalsTab', () => {
       mount()
       await waitFor(() => expect(screen.getAllByTestId('their-call-head').map((e) => e.textContent)).toEqual(['1 of 3 rejected', 'Rejected']))
       expect(screen.getAllByTestId('their-call-parts').map((e) => e.textContent)).toEqual(['2 with no answer yet'])
-      fireEvent.click(screen.getByRole('button', { name: 'Unfold step 6' }))
+      // Step 6 is open: the answers are what the next step reads.
       expect((await screen.findByTestId('decisions-line')).textContent).toContain('Their call: 1 rejected · 1 with a part rejected · by structura · 2 entered by Wendi')
     } finally {
       state.parts = []
