@@ -4,6 +4,7 @@ import {
   currentRev,
   customerSummary,
   ownerAccount,
+  ownerInterest,
   ownerMoney,
   daysUntil,
   lostWords,
@@ -81,6 +82,14 @@ export function GcCustomerWindow({ state, customer, dispatch, onClose, onOpenPro
       return account ? { certified: sum.certified + account.certifiedUnpaid, architect: sum.architect + account.waitingOnArchitect } : sum
     },
     { certified: 0, architect: 0 },
+  )
+  // Interest on late bills (Owner Billing, 2026-10-04): its own line, apart from the contract's numbers.
+  const interest = owner.live.reduce(
+    (sum, p) => {
+      const i = ownerInterest(state, p)
+      return { billed: sum.billed + i.billed, paid: sum.paid + i.paid, toBill: sum.toBill + i.toBill }
+    },
+    { billed: 0, paid: 0, toBill: 0 },
   )
   // A live bid we lost (owner, 2026-10-03) counts as decided, like a lost one in their history.
   const decided = owner.won + customer.past.filter((p) => p.outcome === 'lost').length + owner.live.filter((p) => p.lostOn).length
@@ -169,6 +178,20 @@ export function GcCustomerWindow({ state, customer, dispatch, onClose, onOpenPro
                   )}
                 </div>
                 <Stat label="They are holding" value={money(owner.retainageHeld)} />
+                {(interest.billed > 0 || interest.toBill > 0) && (
+                  <div style={{ display: 'grid', gap: '0.15rem' }}>
+                    <Stat label="Interest on late bills" value={money(interest.billed)} />
+                    <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                      {[
+                        interest.billed > 0 ? `${money(interest.paid)} paid` : null,
+                        interest.billed - interest.paid > 0 ? `${money(interest.billed - interest.paid)} owed` : null,
+                        interest.toBill > 0 ? `${money(interest.toBill)} built up, not billed yet` : null,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </span>
+                  </div>
+                )}
                 <Stat label="They picked us" value={decided > 0 ? `${owner.won} of ${decided}` : 'first job'} />
               </div>
             </div>
