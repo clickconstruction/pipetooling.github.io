@@ -260,7 +260,7 @@ export default function AiaG702G703Paper({
               {line('6.', 'TOTAL EARNED LESS RETAINAGE', money(math.totalEarnedLessRetainage), {
                 note: '(Line 4 less Line 5 Total)',
               })}
-              {line('7.', 'LESS PREVIOUS CERTIFICATES FOR PAYMENT', money(math.lessPreviousCertificates), {
+              {line('7.', 'LESS PREVIOUS CERTIFICATES FOR PAYMENT', moneyBox('g702_h40_less_previous_certificates'), {
                 note: '(Line 6 from prior Certificate)',
               })}
               <div style={{ border: '2px solid var(--text-strong)', padding: '0 6px 5px', margin: '8px -6px 0' }}>
@@ -396,7 +396,7 @@ export default function AiaG702G703Paper({
                 <td style={{ ...td, textAlign: 'center', padding: '3px 3px' }}>001</td>
                 <td style={td}>{box('g703_c13_description')}</td>
                 <td style={td}>{moneyBox('g703_d13_scheduled_value')}</td>
-                <td style={tdMath}>{formatAiaMoney(math.line.fromPrevious)}</td>
+                <td style={td}>{moneyBox('g703_e13_from_previous')}</td>
                 <td style={td}>{moneyBox('g703_f13_this_period')}</td>
                 <td style={td}>{moneyBox('g703_g13_materials_stored')}</td>
                 <td style={tdMath}>{formatAiaMoney(math.line.totalToDate)}</td>

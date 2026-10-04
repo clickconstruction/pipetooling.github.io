@@ -5,8 +5,6 @@ import ExcelJS from 'exceljs'
 import { describe, expect, it } from 'vitest'
 import { AIA_FIELD_DEFS, AIA_G702_SHEET, AIA_G703_SHEET, type AiaFieldKey } from './aiaG702G703Template'
 import {
-  AIA_TEMPLATE_FROM_PREVIOUS_APPLICATION,
-  AIA_TEMPLATE_LESS_PREVIOUS_CERTIFICATES,
   buildAiaPreview,
   formatAiaMoney,
   formatAiaPercent,
@@ -55,12 +53,6 @@ describe('an empty form', () => {
     expect(held(out, AIA_G702_SHEET, 'H24')).toBe(0)
     expect(held(out, AIA_G702_SHEET, 'H42')).toBe(0)
     expect(held(out, AIA_G703_SHEET, 'H49')).toBe(0)
-  })
-
-  it('still reads 0 in the two cells the math uses and the form has no box for', async () => {
-    const wb = await loadWorkbook(templateArrayBuffer())
-    expect(held(wb, AIA_G703_SHEET, 'E13')).toBe(AIA_TEMPLATE_FROM_PREVIOUS_APPLICATION)
-    expect(held(wb, AIA_G702_SHEET, 'H40')).toBe(AIA_TEMPLATE_LESS_PREVIOUS_CERTIFICATES)
   })
 })
 
@@ -149,6 +141,33 @@ describe('buildAiaPreview', () => {
     expect(math.currentPaymentDue).toBe(18900)
     expect(math.balanceToFinish).toBe(33100)
     expect(math.line.pctComplete).toBeCloseTo(21000 / 52000, 9)
+  })
+
+  it('carries a previous application: column D joins the total and line 7 comes off what is due', async () => {
+    // Application 2 of a 48,500 contract: 19,400 before, 9,700 now, 17,460 certified before.
+    const typed = {
+      g702_n5_project: '2',
+      g702_h18_original_contract_sum: 48500,
+      g702_c28_retainage_percent: 10,
+      g702_h40_less_previous_certificates: 17460,
+      g703_d13_scheduled_value: 48500,
+      g703_e13_from_previous: 19400,
+      g703_f13_this_period: 9700,
+    }
+    const { math, cells } = buildAiaPreview(typed)
+    expect(cells.g703_e13_from_previous).toEqual({ text: '$19,400.00', source: 'typed' })
+    expect(math.line.totalToDate).toBe(29100)
+    expect(math.totalRetainage).toBe(2910)
+    expect(math.totalEarnedLessRetainage).toBe(26190)
+    expect(math.lessPreviousCertificates).toBe(17460)
+    expect(math.currentPaymentDue).toBe(8730)
+    expect(math.balanceToFinish).toBe(22310)
+
+    const out = await loadWorkbook(await fillAiaG702G703Workbook(templateArrayBuffer(), typed))
+    expect(held(out, AIA_G703_SHEET, 'E13')).toBe(19400)
+    expect(held(out, AIA_G702_SHEET, 'H40')).toBe(17460)
+    expect(held(out, AIA_G702_SHEET, 'H42')).toBe(8730)
+    expect(held(out, AIA_G703_SHEET, 'H49')).toBe(29100)
   })
 
   it('has no percent when the scheduled value is zero', () => {

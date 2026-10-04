@@ -35,6 +35,7 @@
     "pay:record": "vite-node scripts/pay-record.ts",
     "pay:person": "vite-node scripts/pay-person.ts",
     "test:pg:supply-house-words": "bash scripts/pgtest-supply-house-words.sh",
+    "test:pg:pay-applications": "bash scripts/pgtest-pay-applications.sh",
     "test:pg:pay-sources": "bash scripts/pgtest-pay-sources.sh",
     "test:pg:typed-hours": "bash scripts/pgtest-typed-hours.sh",
     "test:pg:payment-activity": "bash scripts/pgtest-payment-activity.sh",

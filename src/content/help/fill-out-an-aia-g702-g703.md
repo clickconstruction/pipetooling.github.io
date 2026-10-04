@@ -23,7 +23,7 @@ The form starts with what the job already knows.
 - **Retainage %** starts at 10.
 - **APPLICATION DATE** is today.
 
-You type **APPLICATION NUMBER** and **Period to** yourself. The window does not count applications yet.
+You type **Period to** yourself. On a job with nothing saved, you type **APPLICATION NUMBER** too.
 
 1. Type in a field on the right. The paper on the left changes as you type.
 2. Press a box on the paper to jump to its field.
@@ -50,6 +50,33 @@ Press {{button:outline|Reset from job}} to start again from what the job knows.
 
 You see one side at a time. Press **Preview** at the top to see the paper. Press **Form** to go back. Pressing a box on the paper takes you to its field.
 
-## What it does not do yet
+## Save it on the job
 
-The window does not save an application. It does not know what you asked for last time. On a second application, the amounts from the first one are not filled in.
+Press {{button:outline|Save}}. The application is kept on the job under its number. {{button:green|Generate}} saves it too, after it downloads.
+
+Saved applications sit at the top of the form, under **APPLICATIONS ON THIS JOB**. Press one to open it. You can change it and save it again. Nothing locks.
+
+The window asks before you lose what you typed. Press **Stay** to keep typing.
+
+## Start the next application
+
+Open the window again next month. It opens on a new application. The number is one more than the last.
+
+The new one starts from the last one saved.
+
+- **WORK COMPLETED FROM PREVIOUS APPLICATION** is the work you asked for before.
+- **LESS PREVIOUS CERTIFICATES FOR PAYMENT** is what the last application had earned, less retainage.
+- Last month's change orders move to the previous months.
+- **Retainage %** stays what it was. Type 5 when the contract drops it.
+
+:::example the second application
+Application 1 asked for $19,400.00 of work at 10% retainage, so $17,460.00 was due. A month later the job is at $29,100.00. Application 2 opens with 19,400 as previous work and 9,700 this period. **CURRENT PAYMENT DUE** reads $8,730.00.
+:::
+
+## An application sent before today
+
+Type it in as its own application. Type its **APPLICATION NUMBER** and its amounts, then press {{button:outline|Save}}. The next application starts from it.
+
+## Take one off the job
+
+Open the saved application and press **Delete**. The window asks first. A later application keeps the amounts it was saved with.
