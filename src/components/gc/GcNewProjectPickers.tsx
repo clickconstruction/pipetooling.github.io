@@ -1,6 +1,6 @@
 import { SearchableSelect, type SearchableSelectOption } from '../SearchableSelect'
 import type { GcCustomer } from '../../lib/gcMode/gcModel'
-import { pickerFace, pickerGroup, pickerRow } from './GcNewProjectPickerRows'
+import { FIELD_HEIGHT_PX, pickerFace, pickerGroup, pickerRow } from './GcNewProjectPickerRows'
 
 /**
  * GC mode design spike: the pickers in the New project and new-set windows (the owner, 2026-10-04:
@@ -52,9 +52,9 @@ export function Picker({
       listMaxHeightPx={compact ? 220 : 280}
       fillViewportHeight={!compact}
       listMinWidthPx={minListWidth ?? (compact ? 240 : 280)}
-      triggerMinHeightPx={compact ? 0 : 38}
+      triggerMinHeightPx={compact ? 0 : FIELD_HEIGHT_PX}
       listOptionPadding={compact ? '0.4rem 0.6rem' : '0.5rem 0.7rem'}
-      triggerStyle={compact ? { padding: '0.2rem 0.45rem', fontSize: '0.8rem' } : undefined}
+      triggerStyle={compact ? { padding: '0.2rem 0.45rem', fontSize: '0.8rem' } : { height: FIELD_HEIGHT_PX, padding: '0 0.45rem' }}
       {...(onNoMatch ? { noMatchesAction: onNoMatch } : {})}
     />
   )

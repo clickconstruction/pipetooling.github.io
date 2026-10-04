@@ -18,6 +18,7 @@ import {
 } from '../../lib/gcMode/gcModel'
 import { Btn, Chip, input } from './gcUi'
 import { Picker } from './GcNewProjectPickers'
+import { FIELD_HEIGHT_PX } from './GcNewProjectPickerRows'
 
 /**
  * GC mode design spike: questions about the plans. A trade asks (in its portal, or by phone and we
@@ -259,7 +260,7 @@ function AskForm({ state, project, dispatch, onDone }: { state: GcState; project
                 options={companies.map((c) => ({ value: c.id, label: c.company }))}
               />
             </div>
-            <input style={{ ...input, flex: '1 1 10rem' }} value={sheets} onChange={(e) => setSheets(e.target.value)} placeholder="Sheets, like E-301" aria-label="The sheets it is about" />
+            <input style={{ ...input, flex: '1 1 10rem', height: FIELD_HEIGHT_PX, boxSizing: 'border-box' }} value={sheets} onChange={(e) => setSheets(e.target.value)} placeholder="Sheets, like E-301" aria-label="The sheets it is about" />
           </div>
           <textarea
             value={text}

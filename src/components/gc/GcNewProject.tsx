@@ -56,7 +56,7 @@ function usualLines(trade: string): ScopeLineDraft[] {
 import { useMatchMedia } from '../../hooks/useMatchMedia'
 import { Btn, Chip, input } from './gcUi'
 import { CustomerPicker, Picker } from './GcNewProjectPickers'
-import { pickerFace, pickerGroup, pickerRow } from './GcNewProjectPickerRows'
+import { FIELD_HEIGHT_PX, pickerFace, pickerGroup, pickerRow } from './GcNewProjectPickerRows'
 
 /**
  * GC mode design spike: New Project. A project starts the day its plans come in. Four steps in
@@ -114,7 +114,8 @@ function Field({ label, hint, children, wide }: { label: string; hint?: string; 
   )
 }
 
-const field: CSSProperties = { ...input, width: '100%', boxSizing: 'border-box' }
+/** A one-line entry field: the same height as the pickers beside it. Textareas set their own height. */
+const field: CSSProperties = { ...input, width: '100%', boxSizing: 'border-box', height: FIELD_HEIGHT_PX }
 
 function sheetsWords(ids: string[]): string {
   if (ids.length <= 4) return ids.join(', ')
@@ -571,7 +572,7 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
                     onChange={(e) => setIndexText(e.target.value)}
                     rows={11}
                     placeholder={'G-001  Cover sheet\nC-101  Site plan\nA-101  Floor plan\nA-201  Exterior elevations\nM-101  HVAC plan'}
-                    style={{ ...field, fontFamily: 'inherit', resize: 'vertical' }}
+                    style={{ ...field, height: 'auto', fontFamily: 'inherit', resize: 'vertical' }}
                   />
                 </Field>
                 {indexText.trim() === '' && (
@@ -588,7 +589,7 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
                     onChange={(e) => setSpecText(e.target.value)}
                     rows={7}
                     placeholder={'07 54 23  TPO roofing\n09 29 00  Gypsum board\n09 91 23  Interior painting\n22 40 00  Plumbing fixtures'}
-                    style={{ ...field, fontFamily: 'inherit', resize: 'vertical' }}
+                    style={{ ...field, height: 'auto', fontFamily: 'inherit', resize: 'vertical' }}
                   />
                 </Field>
                 {specText.trim() === '' && (
@@ -1108,7 +1109,7 @@ function Excludes({ trade, excludes, trades, onChange }: { trade: string; exclud
       {excludes.map((x, i) => (
         <div key={i} style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <input
-            style={{ ...input, flex: '1 1 12rem', minWidth: 0 }}
+            style={{ ...input, flex: '1 1 12rem', minWidth: 0, height: FIELD_HEIGHT_PX, boxSizing: 'border-box' }}
             value={x.label}
             onChange={(e) => set(i, { label: e.target.value })}
             placeholder="Gas piping"
@@ -1117,7 +1118,6 @@ function Excludes({ trade, excludes, trades, onChange }: { trade: string; exclud
           <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>by</span>
           <div style={{ flex: '0 1 12rem', minWidth: 0 }}>
             <Picker
-              compact
               value={x.by}
               onChange={(by) => set(i, { by })}
               placeholder="Who does it"

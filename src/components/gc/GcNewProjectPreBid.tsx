@@ -18,6 +18,7 @@ import {
 } from '../../lib/gcMode/gcModel'
 import { Btn, Chip, input } from './gcUi'
 import { Picker } from './GcNewProjectPickers'
+import { FIELD_HEIGHT_PX } from './GcNewProjectPickerRows'
 
 /**
  * GC mode design spike: the pre-bid meeting (the owner, 2026-10-04: "Let's build the pre bid
@@ -308,7 +309,7 @@ function RaiseForm({ state, project, dispatch }: { state: GcState; project: GcPr
         <div style={{ flex: '1 1 12rem', minWidth: 0 }}>
           <Picker value={who} onChange={setPartnerId} placeholder="The company" ariaLabel="The company that asked" searchPlaceholder="Search the companies" options={companies.map((c) => ({ value: c.id, label: c.company }))} />
         </div>
-        <input style={{ ...input, flex: '1 1 10rem' }} value={sheets} onChange={(e) => setSheets(e.target.value)} placeholder="Sheets, like E-301" aria-label="The sheets it is about" />
+        <input style={{ ...input, flex: '1 1 10rem', height: FIELD_HEIGHT_PX, boxSizing: 'border-box' }} value={sheets} onChange={(e) => setSheets(e.target.value)} placeholder="Sheets, like E-301" aria-label="The sheets it is about" />
       </div>
       <textarea
         value={text}

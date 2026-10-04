@@ -61,7 +61,7 @@ import { GcNewProjectQuestions } from './GcNewProjectQuestions'
 import { GcNewProjectPreBid } from './GcNewProjectPreBid'
 import { Btn, Chip, input } from './gcUi'
 import { Picker } from './GcNewProjectPickers'
-import { pickerFace, pickerGroup, pickerRow } from './GcNewProjectPickerRows'
+import { FIELD_HEIGHT_PX, pickerFace, pickerGroup, pickerRow } from './GcNewProjectPickerRows'
 
 /**
  * GC mode design spike: a new set of plans came in. Four steps on one page, each feeding the
@@ -553,7 +553,7 @@ export function GcNewPlansWindow({ state, project, dispatch, onClose }: Props) {
                 </div>
                 {checker === OTHER && (
                   <input
-                    style={{ ...input, flex: '1 1 10rem', minWidth: 0 }}
+                    style={{ ...input, flex: '1 1 10rem', minWidth: 0, height: FIELD_HEIGHT_PX, boxSizing: 'border-box' }}
                     value={checkerTyped}
                     onChange={(e) => setCheckerTyped(e.target.value)}
                     placeholder="Their name"
