@@ -359,7 +359,20 @@ describe('when the job will finish (for the late-finish warning on Bill the owne
       on: '2026-10-20',
       behind: 4,
       from: 'plan',
-      why: 'HVAC · Rooftop units has not started. It was planned to finish Wed Sep 30. What waits on it moves the finish to Tue Oct 20.',
+      why: 'HVAC · Rooftop units has not started. It was planned to finish Wed Sep 30. What comes after it moves the finish to Tue Oct 20.',
+    })
+  })
+
+  it('names what moves the finish, not what waits on it: Test and balance run to Dec 17, the final inspection after', () => {
+    const s = initialGcState()
+    const tab = fairOaks(s).schedule?.activities.find((a) => a.lineId === 'fhvac-4')
+    if (!tab) throw new Error('no Test and balance')
+    const moved = gcReducer(s, { type: 'setScheduleActivity', projectId: 'fairoaksd', lineId: 'fhvac-4', start: tab.start, finish: '2026-12-17', after: tab.after })
+    expect(projectedFinish(fairOaks(moved), moved.today)).toEqual({
+      on: '2026-12-19',
+      behind: 11,
+      from: 'plan',
+      why: 'HVAC · Test and balance is planned to finish Thu Dec 17. What comes after it moves the finish to Sat Dec 19.',
     })
   })
 })

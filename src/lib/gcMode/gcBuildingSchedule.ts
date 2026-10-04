@@ -340,7 +340,11 @@ export function projectedFinish(project: GcProject, today: string): ProjectedFin
     return { name: pkg && line ? `${pkg.trade} · ${line.label}` : a.lineId, done: line?.actual ?? 0, worth: line?.worth ?? 0, actual: line?.actual ?? 0 }
   }
   const finish = new Map<string, number>()
-  let driver: { a: ScheduleActivity; push: number } | null = null
+  // For each activity: what set its start (the activity it waits on that finishes last, when that
+  // is later than its own planned start), and whether today set its finish (work not done in time).
+  const setBy = new Map<string, string>()
+  const lateNow = new Set<string>()
+  const byId = new Map(schedule.activities.map((a) => [a.lineId, a]))
   for (const a of waitOrder(schedule.activities)) {
     const { done } = info(a)
     const days = daysBetween(a.start, a.finish) + 1
@@ -348,14 +352,18 @@ export function projectedFinish(project: GcProject, today: string): ProjectedFin
       finish.set(a.lineId, Math.min(dayNumber(a.finish), t))
       continue
     }
-    const waits = a.after.map((id) => finish.get(id)).filter((n): n is number => n !== undefined)
-    const start = Math.max(dayNumber(a.start), ...waits.map((n) => n + 1))
+    let start = dayNumber(a.start)
+    for (const id of a.after) {
+      const f = finish.get(id)
+      if (f !== undefined && f + 1 > start) {
+        start = f + 1
+        setBy.set(a.lineId, id)
+      }
+    }
     const left = Math.max(1, Math.ceil((days * (100 - done)) / 100))
     const end = start >= t ? start + days - 1 : Math.max(start + days - 1, t + left - 1)
+    if (end > start + days - 1) lateNow.add(a.lineId)
     finish.set(a.lineId, end)
-    // What moves the finish: the unfinished activity pushed furthest past its own planned finish.
-    const push = end - dayNumber(a.finish)
-    if (push > 0 && (!driver || push > driver.push)) driver = { a, push }
   }
   const planEnd = Math.max(...finish.values())
   const drawnEnd = Math.max(...schedule.activities.map((a) => dayNumber(a.finish)))
@@ -377,10 +385,22 @@ export function projectedFinish(project: GcProject, today: string): ProjectedFin
   let why: string
   if (fromPace) {
     why = `The work runs ${n(late)} behind the plan. At that pace it finishes ${weekdayDate(on)}.`
-  } else if (planEnd > drawnEnd && driver) {
-    const d = info(driver.a)
-    const state = d.done > 0 ? `is ${Math.round(d.done)}% done` : driver.a.inspection ? 'is not passed yet' : 'has not started'
-    why = `${d.name} ${state}. It was planned to finish ${weekdayDate(driver.a.finish)}. What waits on it moves the finish to ${weekdayDate(on)}.`
+  } else if (planEnd > drawnEnd) {
+    // Walk back from the last finish through what set each start, to what moves it: work late by
+    // today, or work planned to run past what waits on it.
+    const last = schedule.activities.find((a) => finish.get(a.lineId) === planEnd)
+    let cause = last
+    while (cause && !lateNow.has(cause.lineId) && setBy.has(cause.lineId)) cause = byId.get(setBy.get(cause.lineId) ?? '')
+    if (cause) {
+      const d = info(cause)
+      const state = d.done > 0 ? `is ${Math.round(d.done)}% done` : cause.inspection ? 'is not passed yet' : 'has not started'
+      why = lateNow.has(cause.lineId)
+        ? `${d.name} ${state}. It was planned to finish ${weekdayDate(cause.finish)}.`
+        : `${d.name} is planned to finish ${weekdayDate(cause.finish)}.`
+      why += cause === last ? ` So the job finishes ${weekdayDate(on)}.` : ` What comes after it moves the finish to ${weekdayDate(on)}.`
+    } else {
+      why = `The plan finishes ${weekdayDate(on)}.`
+    }
   } else {
     why = `The plan finishes ${weekdayDate(on)}.${end > baselineEnd ? ` That is ${n(end - baselineEnd)} past the plan at Start.` : ''}`
   }
