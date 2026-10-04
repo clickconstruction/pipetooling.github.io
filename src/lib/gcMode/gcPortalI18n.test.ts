@@ -47,7 +47,7 @@ describe('the portal in two languages', () => {
 
   it('leaves no blank unfilled in any message in Spanish', () => {
     const left = companies
-      .flatMap((id) => portalMessages(state, id, 'es').flatMap((m) => [m.subject, ...m.lines, m.text ?? '']))
+      .flatMap((id) => portalMessages(state, id, 'es').flatMap((m) => [m.subject, ...m.lines]))
       .filter((text) => /\{\w+\}/.test(text))
     expect(left).toEqual([])
   })
@@ -59,11 +59,10 @@ describe('the portal in two languages', () => {
     ])
   })
 
-  it('writes the invitation in Spanish, email and text', () => {
+  it('writes the invitation in Spanish, by email', () => {
     const invite = portalMessages(state, 'voltage', 'es').find((m) => m.kind === 'invite' && m.projectId === 'boerne')
     expect(invite?.subject).toBe('Click Construction lo invita a cotizar Electrical en Boerne Retail Shell')
     expect(invite?.lines).toContain('Su precio vence el jue 8 oct.')
-    expect(invite?.text).toMatch(/^Click Construction: nos gustaría su precio de Electrical para Boerne Retail Shell a más tardar el jue 8 oct\. Planos y detalles: /)
   })
 
   it('reads a passed promise in Spanish', () => {

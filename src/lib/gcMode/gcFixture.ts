@@ -154,6 +154,8 @@ export function initialGcState(): GcState {
         askedOn: '2026-09-30',
         answeredOn: null,
         answer: null,
+        // Sent to Marsh & Vale the day it was asked (the owner, 2026-10-04: "they were sent").
+        sentToArchitectOn: '2026-09-30',
       },
       {
         id: 'q-roof-1',
@@ -163,6 +165,7 @@ export function initialGcState(): GcState {
         askedOn: '2026-09-27',
         answeredOn: null,
         answer: null,
+        sentToArchitectOn: '2026-09-27',
       },
       {
         id: 'q-site-1',

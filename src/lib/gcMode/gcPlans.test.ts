@@ -585,6 +585,27 @@ describe('work a set brings goes on a schedule already drawn', () => {
     expect(inspection.start > actOf(sink?.id ?? '').finish).toBe(true)
   })
 
+  it('adds the Dry-in milestone with the job’s first dry-in work, on its last finish, once', () => {
+    expect(before.milestones.some((m) => m.label === 'Dry-in')).toBe(false)
+    const dryIn = schedule.milestones.find((m) => m.id === 'helotes-dryin')
+    const last = glass.scope.map((l) => actOf(l.id).finish).sort().pop()
+    expect(dryIn).toEqual({ id: 'helotes-dryin', label: 'Dry-in', planned: last, packageId: null, metOn: null })
+    // A second set with more dry-in work leaves the milestone the office now has.
+    const again = gcReducer(next, {
+      type: 'issuePlanSet',
+      projectId: 'helotes',
+      label: 'Bulletin 10',
+      note: 'Windows in the break room.',
+      sheets: [],
+      addedSheets: [],
+      touches: [glass.id],
+      recipients: [],
+      newTrades: [],
+      newLines: [{ packageId: glass.id, label: 'Break room windows', sheets: [] }],
+    })
+    expect(helotesIn(again).schedule.milestones.filter((m) => m.label === 'Dry-in')).toHaveLength(1)
+  })
+
   it('leaves a schedule alone when the set brings nothing new', () => {
     const quiet = gcReducer(drawn, { type: 'issuePlanSet', projectId: 'helotes', label: 'Bulletin 9', note: 'Notes only.', sheets: [], addedSheets: [], touches: [], recipients: [], newTrades: [] })
     expect(helotesIn(quiet).schedule).toEqual(before)

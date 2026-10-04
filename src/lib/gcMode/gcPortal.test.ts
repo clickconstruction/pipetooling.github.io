@@ -155,12 +155,12 @@ describe('how a company arrives', () => {
     `)
   })
 
-  it('writes the invitation as an email and a text, with the link in the text', () => {
+  it('writes the invitation as an email (email only for now)', () => {
     const invite = portalMessages(state, 'voltage').find((m) => m.kind === 'invite' && m.projectId === 'boerne')
     expect(invite?.subject).toBe('Click Construction asks you to bid Electrical on Boerne Retail Shell')
     expect(invite?.lines).toContain('Your number is due Thu Oct 8.')
     expect(invite?.scope?.length).toBeGreaterThan(0)
-    expect(invite?.text).toContain(portalLink('voltage'))
+    expect(invite).not.toHaveProperty('text')
   })
 
   it('tells Hillside the new set does not change Sitework, and Voltage that it changes Electrical', () => {
@@ -342,10 +342,10 @@ describe('the messages for sent and start days', () => {
     expect(sow?.lines).toContain('We hold back 10% of each draw until the job is done.')
   })
 
-  it('tells the companies on a started job the day work begins, by email and by text', () => {
+  it('tells the companies on a started job the day work begins, by email', () => {
     const start = portalMessages(state, 'summit').find((m) => m.kind === 'start')
     expect(start?.subject).toBe('Work starts on Fair Oaks Shops, Building D Mon Jul 6')
-    expect(start?.text).toContain(portalLink('summit'))
+    expect(start).not.toHaveProperty('text')
   })
 
   it('tells only the companies on the job when we press Start', () => {
