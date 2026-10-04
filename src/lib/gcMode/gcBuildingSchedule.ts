@@ -15,7 +15,7 @@ import { carriedAmount } from './gcBids'
 import { scheduleDraft } from './gcNewProject'
 import { partnerById } from './gcLookups'
 import { addDays, crewStages, sentBackOpen } from './gcBuilding'
-import { shortDate } from './gcWords'
+import { shortDate, weekdayDate } from './gcWords'
 import { contractDaysAdded } from './gcOwnerBilling'
 
 /** How many weeks the look-ahead shows (owner, 2026-10-02: three). */
@@ -269,22 +269,8 @@ export function workVsPlan(rows: ScheduleRow[], today: string): { donePct: numbe
  * after everything it waits on finishes, whichever is later.
  */
 export function scheduleFloat(activities: ScheduleActivity[]): Map<string, number> {
-  const byId = new Map(activities.map((a) => [a.lineId, a]))
   const duration = (a: ScheduleActivity) => daysBetween(a.start, a.finish) + 1
-  // Work in an order where every activity comes after what it waits on. A loop falls back to the drawn order.
-  const order: ScheduleActivity[] = []
-  const placed = new Set<string>()
-  const place = (a: ScheduleActivity, seen: Set<string>) => {
-    if (placed.has(a.lineId) || seen.has(a.lineId)) return
-    seen.add(a.lineId)
-    for (const id of a.after) {
-      const before = byId.get(id)
-      if (before) place(before, seen)
-    }
-    placed.add(a.lineId)
-    order.push(a)
-  }
-  for (const a of activities) place(a, new Set())
+  const order = waitOrder(activities)
   const earlyFinish = new Map<string, number>()
   for (const a of order) {
     const waits = a.after.map((id) => earlyFinish.get(id)).filter((n): n is number => n !== undefined)
@@ -299,6 +285,106 @@ export function scheduleFloat(activities: ScheduleActivity[]): Map<string, numbe
     lateFinish.set(a.lineId, lateStarts.length > 0 ? Math.min(...lateStarts) - 1 : end)
   }
   return new Map(activities.map((a) => [a.lineId, Math.round((lateFinish.get(a.lineId) ?? end) - (earlyFinish.get(a.lineId) ?? end))]))
+}
+
+/** The activities in an order where each comes after what it waits on. A loop falls back to the drawn order. */
+function waitOrder(activities: ScheduleActivity[]): ScheduleActivity[] {
+  const byId = new Map(activities.map((a) => [a.lineId, a]))
+  const order: ScheduleActivity[] = []
+  const placed = new Set<string>()
+  const place = (a: ScheduleActivity, seen: Set<string>) => {
+    if (placed.has(a.lineId) || seen.has(a.lineId)) return
+    seen.add(a.lineId)
+    for (const id of a.after) {
+      const before = byId.get(id)
+      if (before) place(before, seen)
+    }
+    placed.add(a.lineId)
+    order.push(a)
+  }
+  for (const a of activities) place(a, new Set())
+  return order
+}
+
+function isoOf(day: number): string {
+  return new Date(day * 86_400_000).toISOString().slice(0, 10)
+}
+
+/** When the job will finish as the schedule stands today, and why. */
+export interface ProjectedFinish {
+  on: string
+  /** Days past the baseline's last finish. 0: on the plan locked at Start, or ahead of it. */
+  behind: number
+  /** What set it: the current plan with the work not done moved to today, or the pace of the work. */
+  from: 'plan' | 'pace'
+  /** The reason in a sentence or two. */
+  why: string
+}
+
+/**
+ * The day the job will finish as the schedule stands today (for the Owner Billing lane's
+ * late-finish warning, 2026-10-04). Two readings, and the later one wins:
+ * - plan: the current plan, worked through what waits on what, where nothing unfinished finishes
+ *   before today. Work whose start has come needs the rest of its days from today.
+ * - pace: the baseline's last finish moved by how far the work runs behind it (`workVsPlan`).
+ * Null: no schedule drawn.
+ */
+export function projectedFinish(project: GcProject, today: string): ProjectedFinish | null {
+  const schedule = project.schedule
+  if (!schedule || schedule.activities.length === 0) return null
+  const t = dayNumber(today)
+  const info = (a: ScheduleActivity): { name: string; done: number; worth: number; actual: number } => {
+    if (a.inspection) return { name: `The ${a.inspection.label.toLowerCase()}`, done: a.inspection.passedOn ? 100 : 0, worth: 0, actual: 0 }
+    const pkg = project.packages.find((k) => k.id === a.packageId)
+    const line = pkg ? lineOf(pkg, a.lineId) : null
+    return { name: pkg && line ? `${pkg.trade} · ${line.label}` : a.lineId, done: line?.actual ?? 0, worth: line?.worth ?? 0, actual: line?.actual ?? 0 }
+  }
+  const finish = new Map<string, number>()
+  let driver: { a: ScheduleActivity; push: number } | null = null
+  for (const a of waitOrder(schedule.activities)) {
+    const { done } = info(a)
+    const days = daysBetween(a.start, a.finish) + 1
+    if (done >= 100) {
+      finish.set(a.lineId, Math.min(dayNumber(a.finish), t))
+      continue
+    }
+    const waits = a.after.map((id) => finish.get(id)).filter((n): n is number => n !== undefined)
+    const start = Math.max(dayNumber(a.start), ...waits.map((n) => n + 1))
+    const left = Math.max(1, Math.ceil((days * (100 - done)) / 100))
+    const end = start >= t ? start + days - 1 : Math.max(start + days - 1, t + left - 1)
+    finish.set(a.lineId, end)
+    // What moves the finish: the unfinished activity pushed furthest past its own planned finish.
+    const push = end - dayNumber(a.finish)
+    if (push > 0 && (!driver || push > driver.push)) driver = { a, push }
+  }
+  const planEnd = Math.max(...finish.values())
+  const drawnEnd = Math.max(...schedule.activities.map((a) => dayNumber(a.finish)))
+  const baselineEnd = Math.max(...schedule.activities.map((a) => dayNumber(schedule.baseline?.activities[a.lineId]?.finish ?? a.finish)))
+  const rows = schedule.activities.flatMap((activity): ScheduleRow[] => {
+    if (activity.inspection) return []
+    const pkg = project.packages.find((k) => k.id === activity.packageId)
+    const line = pkg ? lineOf(pkg, activity.lineId) : null
+    if (!pkg || !line) return []
+    const baseline = schedule.baseline?.activities[activity.lineId] ?? { start: activity.start, finish: activity.finish }
+    return [{ activity, pkg, trade: pkg.trade, label: line.label, company: '', worth: line.worth, actual: line.actual, baseline, plannedToday: plannedPct(baseline.start, baseline.finish, today), slipDays: daysBetween(baseline.finish, activity.finish) }]
+  })
+  const late = Math.max(0, workVsPlan(rows, today).daysBehind)
+  const paceEnd = baselineEnd + late
+  const fromPace = paceEnd > planEnd
+  const end = fromPace ? paceEnd : planEnd
+  const on = isoOf(end)
+  const n = (d: number) => `${d} ${d === 1 ? 'day' : 'days'}`
+  let why: string
+  if (fromPace) {
+    why = `The work runs ${n(late)} behind the plan. At that pace it finishes ${weekdayDate(on)}.`
+  } else if (planEnd > drawnEnd && driver) {
+    const d = info(driver.a)
+    const state = d.done > 0 ? `is ${Math.round(d.done)}% done` : driver.a.inspection ? 'is not passed yet' : 'has not started'
+    why = `${d.name} ${state}. It was planned to finish ${weekdayDate(driver.a.finish)}. What waits on it moves the finish to ${weekdayDate(on)}.`
+  } else {
+    why = `The plan finishes ${weekdayDate(on)}.${end > baselineEnd ? ` That is ${n(end - baselineEnd)} past the plan at Start.` : ''}`
+  }
+  return { on, behind: Math.max(0, end - baselineEnd), from: fromPace ? 'pace' : 'plan', why }
 }
 
 export type MilestoneState = 'hit' | 'missed' | 'late' | 'due'

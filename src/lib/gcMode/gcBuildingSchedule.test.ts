@@ -12,6 +12,7 @@ import {
   milestoneRows,
   mondayOf,
   plannedPct,
+  projectedFinish,
   scheduleFloat,
   scheduleItems,
   substantialCompletionOn,
@@ -319,5 +320,46 @@ describe('substantial completion moves with change orders (question 28)', () => 
     expect(fairOaks(s).schedule?.milestones.find((m) => m.label === 'Substantial completion')?.planned).toBe('2026-12-11')
     // Only substantial completion moves.
     expect(milestoneRows(s, fairOaks(s)).find((r) => r.milestone.label === 'Rough-in inspection')).toMatchObject({ addedDays: 0 })
+  })
+})
+
+describe('when the job will finish (for the late-finish warning on Bill the owner)', () => {
+  it('Fair Oaks D: the plan ends with the final inspection Dec 8; 3 days behind, the pace says Dec 11', () => {
+    const s = initialGcState()
+    expect(projectedFinish(fairOaks(s), s.today)).toEqual({
+      on: '2026-12-11',
+      behind: 3,
+      from: 'pace',
+      why: 'The work runs 3 days behind the plan. At that pace it finishes Fri Dec 11.',
+    })
+    expect(projectedFinish({ ...fairOaks(s), schedule: undefined }, s.today)).toBeNull()
+  })
+
+  it('work not started past its finish needs its days from today, and pushes what waits on it', () => {
+    const s = initialGcState()
+    const p = fairOaks(s)
+    const act = (lineId: string, start: string, finish: string, after: string[]): ScheduleActivity => {
+      const a = p.schedule?.activities.find((x) => x.lineId === lineId)
+      if (!a) throw new Error(`no ${lineId}`)
+      return { ...a, start, finish, after }
+    }
+    const schedule = p.schedule
+    if (!schedule) throw new Error('no schedule')
+    // The ductwork (80%) is ahead; the rooftop units, due Sep 30, have not started; controls wait on them.
+    const chain = {
+      ...p,
+      schedule: {
+        ...schedule,
+        // No baseline: the plan as drawn is the one measured against.
+        baseline: null,
+        activities: [act('fhvac-2', '2026-09-28', '2026-10-16', []), act('fhvac-1', '2026-09-28', '2026-09-30', []), act('fhvac-3', '2026-10-01', '2026-10-16', ['fhvac-1'])],
+      },
+    }
+    expect(projectedFinish(chain, s.today)).toEqual({
+      on: '2026-10-20',
+      behind: 4,
+      from: 'plan',
+      why: 'HVAC · Rooftop units has not started. It was planned to finish Wed Sep 30. What waits on it moves the finish to Tue Oct 20.',
+    })
   })
 })
