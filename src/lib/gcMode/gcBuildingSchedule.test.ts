@@ -14,6 +14,7 @@ import {
   plannedPct,
   scheduleFloat,
   scheduleItems,
+  substantialCompletionOn,
   scheduleMeasures,
   scheduleLinesOf,
   scheduleRows,
@@ -281,5 +282,42 @@ describe('a failed inspection', () => {
     expect(fail(s, '2026-10-02')).toBe(s)
     const passed = gcReducer(s, { type: 'passInspection', projectId: 'fairoaksd', lineId: 'fairoaksd-insp-roughin' })
     expect(fail(passed, '2026-10-16')).toBe(passed)
+  })
+})
+
+describe('substantial completion moves with change orders (question 28)', () => {
+  const signedWithDays = (days: number) => {
+    let s = initialGcState()
+    s = gcReducer(s, {
+      type: 'draftChangeOrder',
+      projectId: 'fairoaksd',
+      description: 'Add a second service entrance, per E-001',
+      reason: 'owner',
+      schedule: `+${days} days`,
+      packageId: 'felec',
+      cost: 18_000,
+      price: 20_000,
+      days,
+    })
+    const co = fairOaks(s).changeOrders?.find((c) => c.status === 'draft')
+    if (!co) throw new Error('no draft')
+    s = gcReducer(s, { type: 'sendChangeOrder', projectId: 'fairoaksd', changeOrderId: co.id })
+    return gcReducer(s, { type: 'ownerSignChangeOrder', projectId: 'fairoaksd', changeOrderId: co.id })
+  }
+
+  it('is the planned day while no signed change order adds days', () => {
+    const s = initialGcState()
+    expect(substantialCompletionOn(fairOaks(s))).toEqual({ planned: '2026-12-11', days: 0, on: '2026-12-11' })
+  })
+
+  it("moves by the signed change orders' days, worked out and never written", () => {
+    const s = signedWithDays(5)
+    expect(substantialCompletionOn(fairOaks(s))).toEqual({ planned: '2026-12-11', days: 5, on: '2026-12-16' })
+    const row = milestoneRows(s, fairOaks(s)).find((r) => r.milestone.label === 'Substantial completion')
+    expect(row).toMatchObject({ due: '2026-12-16', addedDays: 5, daysLate: daysBetween('2026-12-16', s.today), state: 'due' })
+    // The milestone itself keeps its planned day.
+    expect(fairOaks(s).schedule?.milestones.find((m) => m.label === 'Substantial completion')?.planned).toBe('2026-12-11')
+    // Only substantial completion moves.
+    expect(milestoneRows(s, fairOaks(s)).find((r) => r.milestone.label === 'Rough-in inspection')).toMatchObject({ addedDays: 0 })
   })
 })

@@ -16,6 +16,7 @@ import { scheduleDraft } from './gcNewProject'
 import { partnerById } from './gcLookups'
 import { addDays, crewStages, sentBackOpen } from './gcBuilding'
 import { shortDate } from './gcWords'
+import { contractDaysAdded } from './gcOwnerBilling'
 
 /** How many weeks the look-ahead shows (owner, 2026-10-02: three). */
 export const LOOKAHEAD_WEEKS = 3
@@ -307,8 +308,37 @@ export interface MilestoneRow {
   state: MilestoneState
   /** The company it belongs to, through its trade. Null: the job's own. */
   company: string | null
-  /** Days past the planned day: when met, or by today when not. */
+  /** Days past the day it is due: when met, or by today when not. */
   daysLate: number
+  /** The day it is due: its planned day, moved by signed change orders' days when it is substantial completion. */
+  due: string
+  /** Days signed change orders added to it. 0: none. */
+  addedDays: number
+}
+
+/** The milestone the contract's end is: Substantial completion, by its name. */
+function isSubstantial(m: ScheduleMilestone): boolean {
+  return /substantial completion/i.test(m.label)
+}
+
+/**
+ * Substantial completion as the contract has it now (owner, 2026-10-04, question 28): the
+ * milestone's planned day, pushed back by the days the signed change orders add
+ * (`contractDaysAdded`, the Owner Billing lane's). Worked out, never written: the signed change
+ * orders are the one source. Null: no schedule, or no Substantial completion milestone.
+ */
+export function substantialCompletionOn(project: GcProject): { planned: string; days: number; on: string } | null {
+  const m = project.schedule?.milestones.find(isSubstantial)
+  if (!m) return null
+  const days = contractDaysAdded(project)
+  return { planned: m.planned, days, on: days > 0 ? addDays(m.planned, days) : m.planned }
+}
+
+/** The day a milestone is due: substantial completion moves with signed change orders' days. */
+function dueOf(project: GcProject, m: ScheduleMilestone): { due: string; addedDays: number } {
+  if (!isSubstantial(m)) return { due: m.planned, addedDays: 0 }
+  const days = contractDaysAdded(project)
+  return { due: days > 0 ? addDays(m.planned, days) : m.planned, addedDays: days }
 }
 
 /**
@@ -319,7 +349,8 @@ export function milestoneRows(state: GcState, project: GcProject): MilestoneRow[
   return (project.schedule?.milestones ?? []).map((milestone) => {
     const pkg = milestone.packageId ? project.packages.find((k) => k.id === milestone.packageId) : undefined
     const company = pkg ? companyOf(state, pkg) : null
-    const daysLate = daysBetween(milestone.planned, milestone.metOn ?? state.today)
+    const { due, addedDays } = dueOf(project, milestone)
+    const daysLate = daysBetween(due, milestone.metOn ?? state.today)
     const stateOf: MilestoneState = milestone.metOn
       ? daysLate <= MILESTONE_GRACE_DAYS
         ? 'hit'
@@ -327,7 +358,7 @@ export function milestoneRows(state: GcState, project: GcProject): MilestoneRow[
       : daysLate > MILESTONE_GRACE_DAYS
         ? 'late'
         : 'due'
-    return { milestone, state: stateOf, company, daysLate }
+    return { milestone, state: stateOf, company, daysLate, due, addedDays }
   })
 }
 
@@ -467,8 +498,8 @@ export function scheduleMeasures(state: GcState, project: GcProject) {
 }
 
 /** A milestone's state on `today`: hit, missed, late, or still due (MILESTONE_GRACE_DAYS of grace). */
-function milestoneStateOn(m: ScheduleMilestone, today: string): { state: MilestoneState; daysLate: number } {
-  const daysLate = daysBetween(m.planned, m.metOn ?? today)
+function milestoneStateOn(m: ScheduleMilestone, due: string, today: string): { state: MilestoneState; daysLate: number } {
+  const daysLate = daysBetween(due, m.metOn ?? today)
   const state: MilestoneState = m.metOn ? (daysLate <= MILESTONE_GRACE_DAYS ? 'hit' : 'missed') : daysLate > MILESTONE_GRACE_DAYS ? 'late' : 'due'
   return { state, daysLate }
 }
@@ -498,9 +529,12 @@ export function scheduleSummary(project: GcProject, today: string): ScheduleSumm
     return [{ activity, pkg, trade: pkg.trade, label: line.label, company: '', worth: line.worth, actual: line.actual, baseline, plannedToday: plannedPct(baseline.start, baseline.finish, today), slipDays: daysBetween(baseline.finish, activity.finish) }]
   })
   const work = workVsPlan(rows, today)
-  const states = schedule.milestones.map((m) => ({ m, ...milestoneStateOn(m, today) }))
+  const states = schedule.milestones.map((m) => {
+    const { due } = dueOf(project, m)
+    return { m, due, ...milestoneStateOn(m, due, today) }
+  })
   const decided = states.filter((x) => x.state !== 'due')
-  const next = states.filter((x) => x.state === 'due').sort((a, b) => (a.m.planned < b.m.planned ? -1 : 1))[0]
+  const next = states.filter((x) => x.state === 'due').sort((a, b) => (a.due < b.due ? -1 : 1))[0]
   const thisWeek = mondayOf(today)
   const from = addDays(thisWeek, -7 * (RELIABILITY_WEEKS - 1))
   const counted = schedule.lookAhead.filter((m) => m.weekOf <= thisWeek && m.weekOf >= from && m.verifiedOn)
@@ -512,7 +546,7 @@ export function scheduleSummary(project: GcProject, today: string): ScheduleSumm
       hit: decided.filter((x) => x.state === 'hit').length,
       of: decided.length,
       late: states.filter((x) => x.state === 'late' || x.state === 'missed').map((x) => ({ label: x.m.label, daysLate: x.daysLate })),
-      next: next ? { label: next.m.label, planned: next.m.planned } : null,
+      next: next ? { label: next.m.label, planned: next.due } : null,
     },
     lookAhead: {
       done: counted.filter((m) => markState(m) === 'done').length,

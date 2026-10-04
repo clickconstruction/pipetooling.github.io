@@ -14,6 +14,7 @@ import {
   scheduleSummary,
   scheduleSummaryWords,
   shortDate,
+  substantialCompletionOn,
   verifyList,
   type GcAction,
   type GcProject,
@@ -290,11 +291,20 @@ function MilestoneLine({ project, milestone, onSave, onRemove }: { project: GcPr
   const [planned, setPlanned] = useState(milestone.planned)
   const [packageId, setPackageId] = useState(milestone.packageId ?? '')
   const changed = planned !== milestone.planned || packageId !== (milestone.packageId ?? '')
+  // Substantial completion moves with the days signed change orders add (owner, 2026-10-04).
+  const sub = /substantial completion/i.test(milestone.label) ? substantialCompletionOn(project) : null
+  const moved = sub && sub.days > 0 ? sub : null
   return (
     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
       <span style={{ minWidth: '12rem' }}>
         {milestone.label}
         {milestone.metOn && <span style={{ color: 'var(--text-muted)' }}> · met {shortDate(milestone.metOn)}</span>}
+        {moved && moved.planned === milestone.planned && (
+          <span style={{ color: 'var(--text-amber-800)' }}>
+            {' '}
+            · {shortDate(moved.on)} with {moved.days} {moved.days === 1 ? 'day' : 'days'} by change order
+          </span>
+        )}
       </span>
       <input type="date" value={planned} onChange={(e) => setPlanned(e.target.value)} style={input} aria-label={`${milestone.label} day`} />
       <TradePick project={project} value={packageId} onChange={setPackageId} />
@@ -350,7 +360,7 @@ function Measures({ m }: { m: ReturnType<typeof scheduleMeasures> }) {
         chip={`within ${MILESTONE_GRACE_DAYS} days`}
       >
         {lateOnes.map((r) => `${r.milestone.label} is ${r.daysLate} days late.`).join(' ')}{' '}
-        {nextMilestone ? `Next: ${nextMilestone.milestone.label} ${shortDate(nextMilestone.milestone.planned)}.` : ''}
+        {nextMilestone ? `Next: ${nextMilestone.milestone.label} ${shortDate(nextMilestone.due)}.` : ''}
       </Measure>
       <Measure
         label="Look-ahead done as planned"
@@ -400,7 +410,7 @@ function ScheduleChart({
   picked: string | null
   onPick: (lineId: string) => void
 }) {
-  const dates = rows.flatMap((r) => [r.activity.start, r.activity.finish, r.baseline.start, r.baseline.finish]).concat(milestones.map((x) => x.milestone.planned), [today])
+  const dates = rows.flatMap((r) => [r.activity.start, r.activity.finish, r.baseline.start, r.baseline.finish]).concat(milestones.map((x) => x.due), [today])
   const first = addDays(dates.reduce((a, b) => (a < b ? a : b)), -3)
   const last = addDays(dates.reduce((a, b) => (a > b ? a : b)), 7)
   const days = daysBetween(first, last) + 1
@@ -455,13 +465,13 @@ function ScheduleChart({
           <div style={{ position: 'relative', width, height: 42 }}>
             {todayLine}
             {[...milestones]
-              .sort((p, q) => (p.milestone.planned < q.milestone.planned ? -1 : 1))
+              .sort((p, q) => (p.due < q.due ? -1 : 1))
               .map((r, i) => (
                 <span
                   key={r.milestone.id}
-                  title={`${r.milestone.label}: planned ${shortDate(r.milestone.planned)}${r.milestone.metOn ? `, met ${shortDate(r.milestone.metOn)}` : ''}`}
+                  title={`${r.milestone.label}: planned ${shortDate(r.milestone.planned)}${r.addedDays > 0 ? `, ${shortDate(r.due)} with ${r.addedDays} days by change order` : ''}${r.milestone.metOn ? `, met ${shortDate(r.milestone.metOn)}` : ''}`}
                   // Every other one a line lower, so labels near each other do not run together.
-                  style={{ position: 'absolute', left: x(r.milestone.planned) - 6, top: i % 2 === 0 ? 4 : 22, display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}
+                  style={{ position: 'absolute', left: x(r.due) - 6, top: i % 2 === 0 ? 4 : 22, display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}
                 >
                   <span aria-hidden style={{ width: 11, height: 11, transform: 'rotate(45deg)', background: MS_COLORS[r.state], display: 'inline-block' }} />
                   <span style={{ fontSize: '0.7rem', color: r.state === 'late' || r.state === 'missed' ? 'var(--text-red-700)' : 'var(--text-muted)' }}>

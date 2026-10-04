@@ -575,8 +575,10 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
     false on one, so a portal cannot ask either. Reopen it and both come back.
 28. ~~Should a change order the owner signs move the substantial completion date by the days it
     adds?~~ Answered 2026-10-04: **yes.** Today a signed one's days add to the contract time (`contractDaysAdded`): the owner's
-    portal says "Days your change orders add to the job: +5 days". The milestone on the schedule
-    (the Building lane's) stays where it was. (Owner Billing lane, 2026-10-03.)
+    portal says "Days your change orders add to the job: +5 days". The Substantial completion
+    milestone moves with them (built 2026-10-04, Building lane): `substantialCompletionOn` works
+    the day out from the signed change orders, never writes it, and the chart, the milestones,
+    the board row and the ring read it ("Dec 16 with 5 days by change order").
 29. ~~Texts to trade partners: add a text sender before the real build, or send email only?~~
     Answered 2026-10-03: **email only for now** (through Resend, as the app sends today). Every
     lane's notification table reads "by email"; a text sender is not part of the first real build.
