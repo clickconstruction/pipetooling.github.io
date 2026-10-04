@@ -385,8 +385,10 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
 - **A line's spec sections show on the portal's bid form** (owner, 2026-10-04): under the line,
   "07 54 23 · Thermoplastic polyolefin roofing", only the sections the office set (as with sheets),
   titled from the newest set (`specsAtRev`). Amber once a newer set revised one, struck through once
-  a set took it out; a set that revised a line's section marks the line as touched (`portalLines`'
-  `specs`, `LineSpecs` in `GcPortalLineSheets.tsx`). Projects without a manual show none.
+  a set took it out. A set reaches a line through its revised sections the office's way, so the
+  portal flags the lines the set's email names (`linesOnSpecs`: a line naming no section reads its
+  whole trade's) (`portalLines`' `specs`, `LineSpecs` in `GcPortalLineSheets.tsx`). Projects
+  without a manual show none.
 
 ## My defaults the owner has not confirmed
 
