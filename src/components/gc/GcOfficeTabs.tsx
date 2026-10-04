@@ -9,6 +9,7 @@ import {
   currentRev,
   daysUntil,
   leveledTotal,
+  lineReads,
   alternateWords,
   bidGoodUntil,
   bidRanOut,
@@ -46,6 +47,7 @@ import {
   type GcState,
   type Includes,
   type Invite,
+  type ScopeItem,
   type Partner,
   type TradePackage,
 } from '../../lib/gcMode/gcModel'
@@ -267,6 +269,22 @@ export function GcPackagesTab({ state, project, dispatch, onSeePortal, onMap, op
   )
 }
 
+/**
+ * The sheets a scope line reads from, under its name in Compare bids (the owner's option 1; Board
+ * item 5). The office's own picks show plain; a sheet matched from the line's words shows with a
+ * "?"; a line that names no sheet reads the trade as a whole. The New Project lane's lineReads.
+ */
+function LineSheets({ project, pkg, item }: { project: GcProject; pkg: TradePackage; item: ScopeItem }) {
+  const reads = lineReads(project, pkg, item)
+  const style = { display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' } as const
+  if (reads.wholeTrade) return <span style={style}>the {pkg.trade.toLowerCase()} sheets as a whole</span>
+  return (
+    <span style={style} title={reads.guessed ? 'Matched from the line\'s words. Set the sheets in New Project or a new set to be sure.' : undefined}>
+      {reads.sheets.map((id) => (reads.guessed ? `${id}?` : id)).join(', ')}
+    </span>
+  )
+}
+
 /** What changed under a quote on older plans, in words (gcStale.ts); '' when it is on the newest. */
 function staleSentence(project: GcProject, pkg: TradePackage, invite: Invite): string {
   const change = staleChange(project, pkg, invite)
@@ -477,7 +495,10 @@ function LevelPanel({ state, project, pkg, dispatch, onSeePortal }: GcPaneProps 
               </tr>
               {pkg.scope.map((item) => (
                 <tr key={item.id}>
-                  <td style={td}>{item.label}</td>
+                  <td style={td}>
+                    {item.label}
+                    <LineSheets project={project} pkg={pkg} item={item} />
+                  </td>
                   {bidders.map((inv) => {
                     const state_ = inv.bid?.includes[item.id] ?? 'unclear'
                     const words = INCLUDES_WORDS[state_]
