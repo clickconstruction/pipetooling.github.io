@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { gcReducer } from './gcReducer'
 import { initialGcState } from './gcFixture'
+import { exclusionsFor } from './gcExclusions'
 import {
+  scopeBookExclusions,
+  scopeBookExclusionWords,
   inScopeBook,
   lateWords,
   linesToAdd,
@@ -101,5 +104,32 @@ describe('the scope book', () => {
     const book = scopeBook(initialGcState())
     expect(scopeBookUseWords(inScopeBook(book, 'Sitework', 'Detention pond')!)).toBe('1 job · last Aug 30')
     expect(scopeBookUseWords(inScopeBook(book, 'Masonry', 'Block walls')!)).toBe('the usual lines')
+  })
+})
+
+describe('each trade\'s exclusions in the scope book', () => {
+  it('gathers the usual ones, the Known exclusions on jobs and the quotes\' own, each under its shared name', () => {
+    const state = initialGcState()
+    const plumbing = scopeBookExclusions(state).filter((x) => x.trade === 'Plumbing')
+    const gas = plumbing.find((x) => x.name === 'Gas piping')
+    expect(gas?.usual).toBe(true)
+    expect(gas?.by).toBe('HVAC')
+    // A quote that wrote "permits" in its own words, on whatever trade has a quote in.
+    const pkg = state.projects.flatMap((p) => p.packages).find((p) => p.invites.some((i) => i.bid))
+    const inv = pkg?.invites.find((i) => i.bid)
+    if (!pkg || !inv?.bid) throw new Error('the made-up jobs have a quote in')
+    inv.bid = { ...inv.bid, exclusions: [{ name: 'permits', said: 'permits' }] }
+    const book = scopeBookExclusions(state)
+    const mine = book.filter((x) => x.trade === pkg.trade)
+    const permits = mine.find((x) => x.name === 'Permits and fees')
+    expect(permits?.quotes).toBe(1)
+    expect(permits && scopeBookExclusionWords(permits)).toMatch(/left out by 1 quote$/)
+    // The form offers the book's names first, most named first, each once.
+    const offered = exclusionsFor(pkg.trade, book)
+    expect(offered[0]).toBe(mine[0]?.name)
+    expect(offered).toContain('Permits and fees')
+    expect(new Set(offered).size).toBe(offered.length)
+    // Without the book, the form offers what it always did.
+    expect(exclusionsFor('Plumbing')[0]).toBe('Gas piping')
   })
 })
