@@ -247,7 +247,8 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   Permit set, Construction set) have no card yet: his text covers only Permit set there.
 - **The budgets against the size** (the owner, 2026-10-04: "show the amount of square feet added at
   the prior page and then the cost per square foot, broken down by trade, and the total"): step 3
-  closes with **The budgets**: the size from step 1, then each ticked trade with its budget and
+  closes with **The budgets**, a block only as wide as it needs and set to the right, like a receipt
+  ("It can be indented right and only the width it needs to be"): the size from step 1, then each ticked trade with its budget and
   its cost per square foot to the cent ("$12.35/sq ft"), then the total (`budgetBySize`,
   `perSqFtWords`). A trade that is ours shows its guess the same way. Without a size it says "Give
   the size on step 1 to see the cost per square foot." Each budget box shows its own rate as it is

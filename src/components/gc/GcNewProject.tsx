@@ -145,14 +145,28 @@ const cellNum: CSSProperties = { ...num, padding: '0.3rem 0.5rem', fontSize: '0.
  * feet added at the prior page and then the cost per square foot, broken down by trade, and the
  * total"). A trade that is ours shows its guess the same way.
  */
-function BudgetSummary({ picked, sqFt }: { picked: { trade: string; budget: string; ours: boolean }[]; sqFt: number | null }) {
+function BudgetSummary({ picked, sqFt, narrow }: { picked: { trade: string; budget: string; ours: boolean }[]; sqFt: number | null; narrow: boolean }) {
   const summary = budgetBySize(
     picked.map((r) => ({ trade: r.trade, amount: budgetNumber(r.budget), ours: r.ours })),
     sqFt,
   )
   const muted: CSSProperties = { color: 'var(--text-muted)' }
   return (
-    <div style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-subtle)', padding: '0.55rem 0.75rem', fontSize: '0.875rem', display: 'grid', gap: '0.4rem' }}>
+    // Only as wide as it needs, set to the right under the budgets it adds up (the owner, 2026-10-04); a phone gets the full width.
+    <div
+      style={{
+        width: narrow ? '100%' : 'min(30rem, 100%)',
+        marginLeft: 'auto',
+        boxSizing: 'border-box',
+        border: '1px solid var(--border)',
+        borderRadius: 8,
+        background: 'var(--bg-subtle)',
+        padding: '0.55rem 0.75rem',
+        fontSize: '0.875rem',
+        display: 'grid',
+        gap: '0.4rem',
+      }}
+    >
       <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap' }}>
         <strong>The budgets</strong>
         <span style={muted}>
@@ -873,7 +887,7 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
                   )}
                 </div>
               )}
-              {budgets > 0 && <BudgetSummary picked={picked} sqFt={sqFt} />}
+              {budgets > 0 && <BudgetSummary picked={picked} sqFt={sqFt} narrow={narrow} />}
             </div>
           )}
 
