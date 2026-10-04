@@ -9,6 +9,7 @@ import {
   currentRev,
   daysUntil,
   leveledTotal,
+  projectScopeGaps,
   lineReads,
   alternateWords,
   bidGoodUntil,
@@ -48,6 +49,7 @@ import {
   type Includes,
   type Invite,
   type ScopeItem,
+  type ScopeGap,
   type Partner,
   type TradePackage,
 } from '../../lib/gcMode/gcModel'
@@ -109,8 +111,17 @@ export function PaperworkChips({ partner, today }: { partner: Partner; today: st
 // Packages: who is covering each trade, and the leveling sheet
 // ---------------------------------------------------------------------------------------------
 
+/** A gap between the trades in a sentence: "Roofing leaves out roof curbs for HVAC, and HVAC's scope has no line for it." */
+function gapWords(g: ScopeGap): string {
+  return g.problem === 'not on the job'
+    ? `${g.trade} leaves out ${g.label} for ${g.by}, and ${g.by} is not on this job.`
+    : `${g.trade} leaves out ${g.label} for ${g.by}, and ${g.by}'s scope has no line for it.`
+}
+
 export function GcPackagesTab({ state, project, dispatch, onSeePortal, onMap, openPackageId }: GcPaneProps) {
   const [openId, setOpenId] = useState<string | null>(openPackageId ?? null)
+  // Work no trade carries: a hole in our price (the New Project lane's projectScopeGaps).
+  const gaps = projectScopeGaps(project)
   const counts = { carried: 0, ours: 0, toLevel: 0, waiting: 0, empty: 0 }
   for (const p of project.packages) {
     const c = packageCoverage(p)
@@ -130,6 +141,19 @@ export function GcPackagesTab({ state, project, dispatch, onSeePortal, onMap, op
         invited.
         {counts.ours > 0 && ` ${counts.ours === 1 ? 'One is' : `${counts.ours} are`} our own bid, not priced yet.`}
       </Why>
+      {gaps.length > 0 && (
+        <Card style={{ background: 'var(--bg-amber-tint)', marginBottom: '0.75rem' }}>
+          <strong>
+            {gaps.length === 1 ? 'A gap between the trades.' : `${gaps.length} gaps between the trades.`}
+          </strong>{' '}
+          Work one trade leaves out that no trade carries is a hole in our price.
+          <ul style={{ margin: '0.4rem 0 0', paddingLeft: '1.2rem' }}>
+            {gaps.map((g) => (
+              <li key={`${g.trade}-${g.label}-${g.by}`}>{gapWords(g)}</li>
+            ))}
+          </ul>
+        </Card>
+      )}
       <Card style={{ padding: 0, overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
@@ -380,10 +404,24 @@ function LevelPanel({ state, project, pkg, dispatch, onSeePortal }: GcPaneProps 
   const rev = currentRev(project)
   const low = lowLeveled(pkg)
   const comparison = compareBids(state, project, pkg)
+  // Work this trade leaves out, and who does it instead (the New Project lane's excludes).
+  const excludes = (pkg.excludes ?? []).filter((x) => x.label.trim() !== '')
+  const gaps = projectScopeGaps(project).filter((g) => g.trade === pkg.trade)
   const ids = { projectId: project.id, packageId: pkg.id }
 
   return (
     <div style={{ display: 'grid', gap: '0.9rem' }}>
+      {excludes.length > 0 && (
+        <div style={{ fontSize: '0.875rem' }}>
+          <strong>Not in this trade:</strong> {excludes.map((x) => `${x.label} (${x.by})`).join(', ')}.
+          {gaps.length > 0 && (
+            <span style={{ color: 'var(--text-red-700)' }}>
+              {' '}
+              {gaps.map((g) => gapWords(g)).join(' ')}
+            </span>
+          )}
+        </div>
+      )}
       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
         <strong>Invite a trade partner:</strong>
         <select value={pick} onChange={(e) => setPick(e.target.value)} style={input}>
