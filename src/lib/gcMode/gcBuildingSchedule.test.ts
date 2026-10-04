@@ -13,6 +13,7 @@ import {
   mondayOf,
   plannedPct,
   projectedFinish,
+  pushAfter,
   scheduleFloat,
   scheduleItems,
   substantialCompletionOn,
@@ -372,7 +373,31 @@ describe('when the job will finish (for the late-finish warning on Bill the owne
       on: '2026-12-19',
       behind: 11,
       from: 'plan',
-      why: 'HVAC · Test and balance is planned to finish Thu Dec 17. What comes after it moves the finish to Sat Dec 19.',
+      why: 'HVAC · Test and balance now finishes Thu Dec 17. The plan at Start had Fri Dec 4. What comes after it moves the finish to Sat Dec 19.',
     })
+  })
+
+  it('new dates push what comes after on the chart, and the log says so', () => {
+    const s = initialGcState()
+    const tab = fairOaks(s).schedule?.activities.find((a) => a.lineId === 'fhvac-4')
+    if (!tab) throw new Error('no Test and balance')
+    const moved = gcReducer(s, { type: 'setScheduleActivity', projectId: 'fairoaksd', lineId: 'fhvac-4', start: tab.start, finish: '2026-12-17', after: tab.after })
+    const final = fairOaks(moved).schedule?.activities.find((a) => a.lineId === 'fairoaksd-insp-final')
+    expect([final?.start, final?.finish]).toEqual(['2026-12-18', '2026-12-19'])
+    expect(moved.log[0]?.text).toBe('HVAC · Test and balance now runs Mon Nov 30 to Thu Dec 17. Final inspection moves to Fri Dec 18 to Sat Dec 19.')
+    // Back to Dec 4: nothing moves earlier on its own.
+    const back = gcReducer(moved, { type: 'setScheduleActivity', projectId: 'fairoaksd', lineId: 'fhvac-4', start: tab.start, finish: tab.finish, after: tab.after })
+    expect(fairOaks(back).schedule?.activities.find((a) => a.lineId === 'fairoaksd-insp-final')?.start).toBe('2026-12-18')
+  })
+
+  it('work already done stays put', () => {
+    const s = initialGcState()
+    const p = fairOaks(s)
+    const schedule = p.schedule
+    if (!schedule) throw new Error('no schedule')
+    // Pushing the slab late would move the steel after it, but the steel is reported done.
+    const slab = schedule.activities.map((a) => (a.lineId === 'fconc-1' ? { ...a, finish: '2026-10-30' } : a))
+    const pushed = pushAfter(p, slab, 'fconc-1')
+    expect(pushed.moved.map((m) => m.lineId)).not.toContain('fsteel-1')
   })
 })

@@ -10,6 +10,8 @@ import {
   mondayOf,
   onSiteWords,
   partnerById,
+  pushAfter,
+  pushedAfterWords,
   RELIABILITY_WEEKS,
   scheduleMeasures,
   scheduleSummary,
@@ -85,6 +87,7 @@ export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps)
       {pickedRow && (
         <ActivityEditor
           key={pickedRow.activity.lineId}
+          project={project}
           row={pickedRow}
           rows={m.items}
           started={Boolean(project.startedOn)}
@@ -157,6 +160,7 @@ function DraftCard({ project, today, dispatch }: { project: GcProject; today: st
  * An inspection on a job being built also takes its pass, recorded today.
  */
 function ActivityEditor({
+  project,
   row,
   rows,
   started,
@@ -164,6 +168,7 @@ function ActivityEditor({
   check,
   onClose,
 }: {
+  project: GcProject
   row: ScheduleItem
   rows: ScheduleItem[]
   started: boolean
@@ -182,6 +187,16 @@ function ActivityEditor({
   const trades = [...new Set(others.map((r) => r.pkg?.id ?? ''))]
   // What it waits on, finishing after it starts: it cannot start on the day drawn.
   const late = others.filter((r) => after.includes(r.activity.lineId) && r.activity.finish >= start)
+  // What comes after it moves out with it on Save (owner, 2026-10-04).
+  const moves = bad
+    ? ''
+    : pushedAfterWords(
+        pushAfter(
+          project,
+          (project.schedule?.activities ?? []).map((x) => (x.lineId === a.lineId ? { ...x, start, finish, after } : x)),
+          a.lineId,
+        ).moved,
+      )
   return (
     <Card style={{ border: '2px solid #2563eb' }}>
       <div style={{ display: 'grid', gap: '0.6rem', fontSize: '0.875rem' }}>
@@ -232,6 +247,7 @@ function ActivityEditor({
             spare days count it starting the day after.
           </div>
         )}
+        {changed && moves && <div style={{ color: 'var(--text-amber-800)' }}>On Save: {moves}</div>}
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <Btn kind="primary" disabled={bad || !changed} onClick={() => onSave(start, finish, after)}>
             Save

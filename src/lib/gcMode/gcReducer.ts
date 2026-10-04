@@ -10,7 +10,7 @@ import { bidsIn } from './gcBids'
 import { awardedPartner, find, logged, mapInvite, mapPackage, mapProject, mapSow, sowFromBid } from './gcReducerHelpers'
 import { initialGcState } from './gcFixture'
 import { lostWhyLabel } from './gcLost'
-import { daysBetween, draftSchedule, scheduleLinesOf, withBaselineKept } from './gcBuildingSchedule'
+import { daysBetween, draftSchedule, pushAfter, pushedAfterWords, scheduleLinesOf, withBaselineKept } from './gcBuildingSchedule'
 import { buildNewProject, dryInMilestoneFor, packagesFromDrafts, pushSchedule, scheduleSetLines, withNewLines, withRetiedLines, withTradesInOrder } from './gcNewProject'
 import { nextPunchId, punchClear } from './gcBuildingPunch'
 import { logTrades } from './gcBuildingLog'
@@ -966,7 +966,13 @@ function reduce(state: GcState, action: GcAction): GcState {
       const after = [...new Set(action.after)].filter((id) => id !== activity.lineId && ids.has(id))
       if (activity.start === action.start && activity.finish === action.finish && after.join() === activity.after.join()) return state
       const kept = withBaselineKept(project, schedule)
-      const changed = { ...kept, activities: kept.activities.map((a) => (a.lineId === activity.lineId ? { ...a, start: action.start, finish: action.finish, after } : a)) }
+      // What comes after it moves out with it (owner, 2026-10-04).
+      const pushed = pushAfter(
+        project,
+        kept.activities.map((a) => (a.lineId === activity.lineId ? { ...a, start: action.start, finish: action.finish, after } : a)),
+        activity.lineId,
+      )
+      const changed = { ...kept, activities: pushed.activities }
       const pkg = project.packages.find((k) => k.id === activity.packageId)
       const label = pkg ? (scheduleLinesOf(pkg).find((l) => l.lineId === activity.lineId)?.label ?? activity.lineId) : activity.lineId
       // An inspection goes by its own name (Building lane, 2026-10-03).
@@ -974,7 +980,7 @@ function reduce(state: GcState, action: GcAction): GcState {
       return logged(
         mapProject(state, project.id, (p) => ({ ...p, schedule: changed })),
         'office',
-        `${name} now runs ${weekdayDate(action.start)} to ${weekdayDate(action.finish)}.`,
+        `${name} now runs ${weekdayDate(action.start)} to ${weekdayDate(action.finish)}.${pushed.moved.length > 0 ? ` ${pushedAfterWords(pushed.moved)}` : ''}`,
       )
     }
 

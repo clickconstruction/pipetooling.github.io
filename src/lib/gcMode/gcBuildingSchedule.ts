@@ -310,6 +310,70 @@ function isoOf(day: number): string {
   return new Date(day * 86_400_000).toISOString().slice(0, 10)
 }
 
+/** "HVAC · Test and balance", or an inspection by its own name. */
+function activityLabel(project: GcProject, a: ScheduleActivity): string {
+  if (a.inspection) return a.inspection.label
+  const pkg = project.packages.find((k) => k.id === a.packageId)
+  const line = pkg ? lineOf(pkg, a.lineId) : null
+  return pkg && line ? `${pkg.trade} · ${line.label}` : a.lineId
+}
+
+/** Done: an inspection passed, or a line reported 100%. */
+function activityDone(project: GcProject, a: ScheduleActivity): boolean {
+  if (a.inspection) return Boolean(a.inspection.passedOn)
+  const pkg = project.packages.find((k) => k.id === a.packageId)
+  return ((pkg && lineOf(pkg, a.lineId)?.actual) ?? 0) >= 100
+}
+
+export interface PushedAfter {
+  activities: ScheduleActivity[]
+  /** What moved out, in the drawn order, with its new dates. */
+  moved: { lineId: string; label: string; start: string; finish: string; days: number }[]
+}
+
+/**
+ * New dates on one activity push what comes after it (the owner, 2026-10-04): each activity that
+ * waits on it, directly or down the line, starts the day after what it waits on finishes, keeping
+ * its length. Nothing moves earlier, work already done stays put, and the rest of the plan is left
+ * as drawn.
+ */
+export function pushAfter(project: GcProject, activities: ScheduleActivity[], lineId: string): PushedAfter {
+  const downstream = new Set<string>()
+  const add = (id: string) => {
+    for (const a of activities) {
+      if (a.after.includes(id) && a.lineId !== lineId && !downstream.has(a.lineId)) {
+        downstream.add(a.lineId)
+        add(a.lineId)
+      }
+    }
+  }
+  add(lineId)
+  if (downstream.size === 0) return { activities, moved: [] }
+  const now = new Map(activities.map((a) => [a.lineId, a]))
+  for (const a of waitOrder(activities)) {
+    if (!downstream.has(a.lineId) || activityDone(project, a)) continue
+    const latest = Math.max(...a.after.map((id) => dayNumber(now.get(id)?.finish ?? a.start)))
+    if (latest < dayNumber(a.start)) continue
+    const shift = latest + 1 - dayNumber(a.start)
+    now.set(a.lineId, { ...a, start: addDays(a.start, shift), finish: addDays(a.finish, shift) })
+  }
+  const next = activities.map((a) => now.get(a.lineId) ?? a)
+  const moved = next.flatMap((a, i) => {
+    const days = daysBetween(activities[i]?.start ?? a.start, a.start)
+    return days > 0 ? [{ lineId: a.lineId, label: activityLabel(project, a), start: a.start, finish: a.finish, days }] : []
+  })
+  return { activities: next, moved }
+}
+
+/** "Final inspection moves to Fri Dec 18 to Sat Dec 19." · "3 activities after it move out, the last to finish Sat Dec 19." Empty: nothing moved. */
+export function pushedAfterWords(moved: PushedAfter['moved']): string {
+  const [one] = moved
+  if (!one) return ''
+  if (moved.length === 1) return `${one.label} moves to ${weekdayDate(one.start)} to ${weekdayDate(one.finish)}.`
+  const last = moved.reduce((m, x) => (x.finish > m ? x.finish : m), '')
+  return `${moved.length} activities after it move out, the last to finish ${weekdayDate(last)}.`
+}
+
 /** When the job will finish as the schedule stands today, and why. */
 export interface ProjectedFinish {
   on: string
@@ -401,8 +465,24 @@ export function projectedFinish(project: GcProject, today: string): ProjectedFin
     } else {
       why = `The plan finishes ${weekdayDate(on)}.`
     }
+  } else if (end > baselineEnd) {
+    // The plan itself moved since Start: walk back from the last finish through what it starts
+    // right after, to where the slip begins.
+    const slip = (a: ScheduleActivity) => daysBetween(schedule.baseline?.activities[a.lineId]?.finish ?? a.finish, a.finish)
+    let cause = schedule.activities.find((a) => dayNumber(a.finish) === drawnEnd)
+    for (let guard = 0; cause && guard < schedule.activities.length; guard++) {
+      const here: ScheduleActivity = cause
+      const before = here.after.map((id) => byId.get(id)).find((b) => b && dayNumber(b.finish) + 1 === dayNumber(here.start) && slip(b) >= slip(here))
+      if (!before) break
+      cause = before
+    }
+    const was = cause ? schedule.baseline?.activities[cause.lineId]?.finish : undefined
+    why =
+      cause && was && cause.finish > was
+        ? `${info(cause).name} now finishes ${weekdayDate(cause.finish)}. The plan at Start had ${weekdayDate(was)}.${dayNumber(cause.finish) === drawnEnd ? '' : ` What comes after it moves the finish to ${weekdayDate(on)}.`}`
+        : `The plan finishes ${weekdayDate(on)}. That is ${n(end - baselineEnd)} past the plan at Start.`
   } else {
-    why = `The plan finishes ${weekdayDate(on)}.${end > baselineEnd ? ` That is ${n(end - baselineEnd)} past the plan at Start.` : ''}`
+    why = `The plan finishes ${weekdayDate(on)}.`
   }
   return { on, behind: Math.max(0, end - baselineEnd), from: fromPace ? 'pace' : 'plan', why }
 }
