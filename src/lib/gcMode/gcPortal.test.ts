@@ -674,7 +674,7 @@ describe('a project we lost', () => {
     ])
     expect(won?.lines.join(' ')).not.toMatch(/Hill Country|lower number/)
     const died = portalMessages(lost('project_died'), 'lonestar').find((m) => m.kind === 'closed')
-    expect(died?.lines.slice(2)).toEqual(['The owner stopped this project or put it on hold.', 'Thank you for your quote.'])
+    expect(died?.lines.slice(2)).toEqual(['The customer stopped this project or put it on hold.', 'Thank you for your quote.'])
   })
 
   it('emails each company still on a trade there the day it is marked, in its language, and not one that passed', () => {

@@ -45,7 +45,8 @@ Use these so a company reads one word for one thing across the portal.
 | bid tab | tabla de precios |
 | trade (the work) | especialidad |
 | trade partner | subcontratista |
-| the owner (of the project) | el dueño |
+| the owner (of the property) | el dueño |
+| the customer (whoever hires and pays us; owner, 2026-10-04) | el cliente |
 | report your work, percent done | reporte su avance, % terminado |
 | sent back, approved, paid | devuelta, aprobada, pagada (a pay application is feminine) |
 | due | vence |
@@ -182,7 +183,7 @@ they were written in. The portal does not translate them.
 | {trade} · result | {trade} · resultado |
 | This one went to another company. Thank you for your quote. | Este trabajo fue para otra empresa. Gracias por su cotización. |
 | {gc} did not win this project. | {gc} no ganó este proyecto. |
-| The owner stopped this project or put it on hold. | El dueño detuvo este proyecto o lo puso en pausa. |
+| The customer stopped this project or put it on hold. | El cliente detuvo este proyecto o lo puso en pausa. |
 | You do not need to send a quote. Thank you for your time. | No necesita enviar su cotización. Gracias por su tiempo. |
 | Thank you for your quote. | Gracias por su cotización. |
 | {trade} · invitation | {trade} · invitación |
@@ -333,7 +334,7 @@ they were written in. The portal does not translate them.
 | stopped or on hold | detenido o en pausa |
 | you passed | no cotizó |
 | {gc} won the job. {trade} is not picked yet. | {gc} ganó el proyecto. Todavía no se elige a nadie para {trade}. |
-| {gc} sent its bid {date}. The owner picks next. | {gc} envió su propuesta el {date}. Ahora decide el dueño. |
+| {gc} sent its bid {date}. The customer picks next. | {gc} envió su propuesta el {date}. Ahora decide el cliente. |
 | No due day yet. | Todavía no hay fecha límite. |
 | Was due {date}. | Venció el {date}. |
 | Due today, {date}. | Vence hoy, {date}. |
@@ -595,7 +596,7 @@ they were written in. The portal does not translate them.
 | payment was due {date} | el pago vencía el {date} |
 | paid back {date} | devuelto el {date} |
 | comes back {date} | se devuelve el {date} |
-| comes back after {gc} accepts your work and the owner pays {gc} | se devuelve después de que {gc} acepte su trabajo y el dueño le pague a {gc} |
+| comes back after {gc} accepts your work and the customer pays {gc} | se devuelve después de que {gc} acepte su trabajo y el cliente le pague a {gc} |
 | contract {contract} · paid {paid} · left to bill {left} | contrato {contract} · pagado {paid} · por facturar {left} |
 | No pay applications yet. | Todavía no hay solicitudes de pago. |
 
