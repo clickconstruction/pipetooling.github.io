@@ -47,6 +47,7 @@ export function GcPortalHome({
   dispatch,
   onOpenProject,
   onOpenPay,
+  onOpenPapers,
 }: {
   state: GcState
   partner: Partner
@@ -55,6 +56,8 @@ export function GcPortalHome({
   onOpenProject: (projectId: string, anchor?: string) => void
   /** Open Your pay: every pay application on the company's jobs. */
   onOpenPay: () => void
+  /** Your papers: every paper the company signed with us. */
+  onOpenPapers: () => void
 }) {
   const { lang, t: tr } = usePortalLang()
   const home = portalHome(state, partner.id, lang)
@@ -167,6 +170,12 @@ export function GcPortalHome({
           startOpen={paperAsk?.line ?? null}
           promises={{ insurance: openPromiseFor(state, { partnerId: partner.id, kind: 'insurance' }), w9: openPromiseFor(state, { partnerId: partner.id, kind: 'w9' }) }}
         />
+        {/* Your papers: every paper signed with us, to read or print (owner, 2026-10-04). */}
+        <div style={{ marginTop: '0.35rem' }}>
+          <Btn kind="quiet" onClick={onOpenPapers}>
+            {tr('papersLink')} ›
+          </Btn>
+        </div>
       </div>
 
       {home.past.length > 0 && (

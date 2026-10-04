@@ -117,7 +117,7 @@ column headers are in one block at the end of `gcBuildingWords.ts`, for the nati
 
 ## For a native speaker to read
 
-Every Spanish string the trade's portal shows, 632 in all, drawn from the code on 2026-10-04.
+Every Spanish string the trade's portal shows, 653 in all, drawn from the code on 2026-10-04.
 They're grouped by screen, English on the left. Please mark anything that reads wrong, stiff or
 unclear, and write the better words beside it. The Portal lane makes the changes and passes the
 other lanes theirs.
@@ -499,6 +499,32 @@ they were written in. The portal does not translate them.
 | Text | Mensaje |
 | Email | Correo |
 | Questions about pay: {name}, {phone}. | Preguntas sobre pagos: {name}, {phone}. |
+
+#### Your papers
+
+| English | Español |
+|---|---|
+| Your papers | Sus documentos |
+| See every paper | Ver todos los documentos |
+| Every paper you signed with {gc}, newest first. Open one to read it, or print the list. | Cada documento que firmó con {gc}, del más reciente al más antiguo. Abra uno para leerlo o imprima la lista. |
+| With {gc} | Con {gc} |
+| Nothing signed yet. | Todavía no hay nada firmado. |
+| Print this list | Imprimir la lista |
+| Printed {date} | Impreso el {date} |
+| Open | Abrir |
+| Your company form | El formulario de su empresa |
+| sent {date} | enviado el {date} |
+| {trade} statement of work | Orden de trabajo de {trade} |
+| Change order {n} | Orden de cambio {n} |
+| Pay application {n} | Solicitud de pago {n} |
+| Final pay application | Solicitud de pago final |
+| Conditional waiver, pay application {n} | Renuncia condicional, solicitud de pago {n} |
+| Unconditional waiver, pay application {n} | Renuncia incondicional, solicitud de pago {n} |
+| Conditional final release of lien | Liberación final de gravamen condicional |
+| Unconditional final release of lien | Liberación final de gravamen incondicional |
+| signed after we paid {date} | firmada después de que pagamos el {date} |
+| {company} signed it on {date}. | {company} lo firmó el {date}. |
+| Print | Imprimir |
 
 #### Your pay
 
