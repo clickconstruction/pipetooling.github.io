@@ -109,7 +109,7 @@ export function GcBidTabsTab({ state, project, dispatch, onSeePortal }: GcPanePr
 
 /** What every company is told beside its tab, said once for the office. */
 function outcomeWords(project: GcProject, pkg: TradePackage): string {
-  if (project.stage === 'pursuing') return 'Each company also reads that our bid is in and the owner has not picked a builder yet.'
+  if (project.stage === 'pursuing') return 'Each company also reads that our bid is in and the customer has not picked a builder yet.'
   if (pkg.awardedInviteId === null) return 'Each company also reads that we won the project and this trade is not awarded yet.'
   return 'Each company also reads how it came out: the winner that the trade is theirs, the rest that it went to another company.'
 }

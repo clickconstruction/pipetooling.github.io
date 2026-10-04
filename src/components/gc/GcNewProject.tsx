@@ -15,6 +15,7 @@ import {
   sheetsOfRows,
   withPickedDisciplines,
   type SheetIndexRow,
+  type CustomerRole,
   inScopeBook,
   linesToAdd,
   scopeBook,
@@ -56,6 +57,38 @@ import {
   type PlanSheet,
   type SpecSection,
 } from '../../lib/gcMode/gcModel'
+
+/** Who we work for, in the window's words, and which customers come first for each. */
+const CUSTOMER_ROLES: { role: CustomerRole; label: string; customer: string; them: string; fits: (c: { kind: string }) => boolean; fitsLabel: string }[] = [
+  {
+    role: 'owner',
+    label: 'The owner',
+    customer: 'The owner we build it for',
+    them: 'the owner',
+    fits: (c) => !/architect|contractor|builder|rep\b|manager/i.test(c.kind),
+    fitsLabel: 'Owners and developers',
+  },
+  {
+    role: 'gc',
+    label: 'Another general contractor',
+    customer: 'The general contractor we work for',
+    them: 'the general contractor',
+    fits: (c) => /contractor|builder/i.test(c.kind),
+    fitsLabel: 'General contractors',
+  },
+  {
+    role: 'ownersRep',
+    label: "An owner's rep",
+    customer: "The owner's rep we work for",
+    them: "the owner's rep",
+    fits: (c) => /rep\b|manager/i.test(c.kind),
+    fitsLabel: "Owner's reps",
+  },
+]
+
+function roleOf(role: CustomerRole) {
+  return CUSTOMER_ROLES.find((r) => r.role === role) ?? CUSTOMER_ROLES[0]!
+}
 
 /** One scope line as the office is writing it. `sheets` or `specs` null or missing: follow the guess from the line's words. */
 export interface ScopeLineDraft {
@@ -236,6 +269,10 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
   const [ownerNew, setOwnerNew] = useState('')
   /** The owner of the property when it is not the customer (the owner, 2026-10-04): opened by a button under Customer. */
   const [landlordOpen, setLandlordOpen] = useState(false)
+  /** Who we work for (the owner, 2026-10-04, Round 6): the owner, another general contractor, or an owner's rep. */
+  const [customerRole, setCustomerRole] = useState<CustomerRole>('owner')
+  /** Not the owner: the owner of the property shows on its own. */
+  const landlordShown = customerRole !== 'owner' || landlordOpen
   const [landlordPick, setLandlordPick] = useState('')
   const [landlordNew, setLandlordNew] = useState('')
   const [archPick, setArchPick] = useState('')
@@ -313,7 +350,7 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
 
   const customers = [...state.customers].sort((a, b) => a.name.localeCompare(b.name))
   const ownerName = ownerPick === NEW ? ownerNew.trim() : (state.customers.find((c) => c.id === ownerPick)?.name ?? '')
-  const landlordName = !landlordOpen ? '' : landlordPick === NEW ? landlordNew.trim() : (state.customers.find((c) => c.id === landlordPick)?.name ?? '')
+  const landlordName = !landlordShown ? '' : landlordPick === NEW ? landlordNew.trim() : (state.customers.find((c) => c.id === landlordPick)?.name ?? '')
   const archName = archPick === NEW ? archNew.trim() : (state.customers.find((c) => c.id === archPick)?.name ?? '')
 
   const draft: NewProjectDraft = {
@@ -321,7 +358,8 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
     address: address.trim(),
     town,
     customerId: ownerPick && ownerPick !== NEW ? ownerPick : null,
-    ...(landlordOpen && landlordName !== '' ? { propertyOwnerId: landlordPick && landlordPick !== NEW ? landlordPick : null, propertyOwnerName: landlordName } : {}),
+    ...(customerRole !== 'owner' ? { customerRole } : {}),
+    ...(landlordShown && landlordName !== '' ? { propertyOwnerId: landlordPick && landlordPick !== NEW ? landlordPick : null, propertyOwnerName: landlordName } : {}),
     ownerName,
     architectId: archPick && archPick !== NEW ? archPick : null,
     architectName: archName,
@@ -354,7 +392,7 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
   if (draft.name === '') missing.push('Give the project a name.')
   if (draft.town === '') missing.push('Add the town to the address, so drives can be measured.')
   if (ownerName === '') missing.push('Pick the customer.')
-  if (landlordOpen && landlordName === '') missing.push('Pick the owner of the property, or take it off.')
+  if (customerRole === 'owner' && landlordOpen && landlordName === '') missing.push('Pick the owner of the property, or take it off.')
   if (archName === '') missing.push('Pick the architect.')
   // The plans come by their Drive link. One only some people can open is a warning on step 2, not a stop.
   const driveStop = driveLinkProblem(driveUrl)
@@ -463,7 +501,7 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
         <div style={{ padding: '0.7rem 1rem', borderBottom: '1px solid var(--border)', display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
           <div>
             <div style={{ fontWeight: 700, fontSize: '1.05rem' }}>A new project</div>
-            <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>It starts under Bidding to the owner. Nobody is asked to quote until you ask them.</div>
+            <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>It starts under Bidding to the customer. Nobody is asked to quote until you ask them.</div>
           </div>
           <span style={{ flex: 1 }} />
           <button
@@ -598,40 +636,67 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
               </Field>
               {/* The owner, 2026-10-04: "owner should become customer and then there should be a button to add owner different than customer." */}
               <div style={{ display: 'grid', gap: '0.25rem', alignContent: 'start' }}>
-                <Field label="Customer" hint="The company we build it for, the one we bill. It comes from the customer list.">
+                <div style={{ display: 'grid', gap: '0.25rem', fontSize: '0.875rem' }}>
+                  <span style={{ fontWeight: 600 }}>We work for</span>
+                  <div role="radiogroup" aria-label="We work for" style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                    {CUSTOMER_ROLES.map((r) => (
+                      <button
+                        key={r.role}
+                        type="button"
+                        role="radio"
+                        aria-checked={customerRole === r.role}
+                        onClick={() => setCustomerRole(r.role)}
+                        style={{
+                          padding: '0.25rem 0.65rem',
+                          borderRadius: 999,
+                          border: `1px solid ${customerRole === r.role ? 'var(--text-blue-500)' : 'var(--border-strong)'}`,
+                          background: customerRole === r.role ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                          color: customerRole === r.role ? 'var(--text-blue-500)' : 'var(--text-600)',
+                          cursor: 'pointer',
+                          fontSize: '0.85rem',
+                        }}
+                      >
+                        {r.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <Field label="Customer" hint={`${roleOf(customerRole).customer}, the one we bill. It comes from the customer list.`}>
                   <CustomerPicker
                     customers={customers}
                     value={ownerPick}
                     onChange={setOwnerPick}
                     onNewName={setOwnerNew}
-                    fits={(c) => !/architect/i.test(c.kind)}
-                    fitsLabel="Owners and developers"
+                    fits={roleOf(customerRole).fits}
+                    fitsLabel={roleOf(customerRole).fitsLabel}
                     ariaLabel="Customers"
                   />
                   {ownerPick === NEW && <input style={field} value={ownerNew} onChange={(e) => setOwnerNew(e.target.value)} placeholder="Their company name" aria-label="The new customer's company name" />}
                 </Field>
-                {!landlordOpen && (
+                {!landlordShown && (
                   <div>
                     <Btn kind="quiet" onClick={() => setLandlordOpen(true)}>+ Add an owner different from the customer</Btn>
                   </div>
                 )}
               </div>
-              {landlordOpen && (
+              {landlordShown && (
                 <div style={{ display: 'grid', gap: '0.25rem', alignContent: 'start', fontSize: '0.875rem' }}>
                   <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'baseline' }}>
-                    <span style={{ fontWeight: 600, flex: 1 }}>Owner of the property</span>
-                    <button
-                      type="button"
-                      aria-label="Take off the owner of the property"
-                      onClick={() => {
-                        setLandlordOpen(false)
-                        setLandlordPick('')
-                        setLandlordNew('')
-                      }}
-                      style={{ border: 'none', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1.1rem', lineHeight: 1, padding: '0 0.2rem' }}
-                    >
-                      ×
-                    </button>
+                    <span style={{ fontWeight: 600, flex: 1 }}>Owner of the property{customerRole !== 'owner' ? ' (optional)' : ''}</span>
+                    {customerRole === 'owner' && (
+                      <button
+                        type="button"
+                        aria-label="Take off the owner of the property"
+                        onClick={() => {
+                          setLandlordOpen(false)
+                          setLandlordPick('')
+                          setLandlordNew('')
+                        }}
+                        style={{ border: 'none', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1.1rem', lineHeight: 1, padding: '0 0.2rem' }}
+                      >
+                        ×
+                      </button>
+                    )}
                   </div>
                   <CustomerPicker
                     customers={customers.filter((c) => c.id !== ownerPick)}
@@ -645,7 +710,11 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
                   {landlordPick === NEW && (
                     <input style={field} value={landlordNew} onChange={(e) => setLandlordNew(e.target.value)} placeholder="Their company name" aria-label="The new owner's company name" />
                   )}
-                  <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>Who owns the building when it is not our customer, like the landlord on a tenant finish-out.</span>
+                  <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>
+                    {customerRole === 'owner'
+                      ? 'Who owns the building when it is not our customer, like the landlord on a tenant finish-out.'
+                      : `Who owns the building. ${roleOf(customerRole).them.replace(/^t/, 'T')} bills them, and we bill ${roleOf(customerRole).them}.`}
+                  </span>
                 </div>
               )}
               <Field label="Architect" hint="The firm that drew the plans. The same customer list.">
@@ -738,7 +807,7 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
                     <input type="date" style={field} value={issuedOn} onChange={(e) => setIssuedOn(e.target.value)} />
                   </Field>
                   <Field label="Note to the trades (optional)" hint="Every company we ask sees this beside the set's name.">
-                    <input style={field} value={setNote} onChange={(e) => setSetNote(e.target.value)} placeholder="The set the owner sent out to bid." />
+                    <input style={field} value={setNote} onChange={(e) => setSetNote(e.target.value)} placeholder="The set the customer sent out to bid." />
                   </Field>
                 </div>
                 <SheetIndexTable
@@ -1160,7 +1229,7 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
           <span style={{ fontSize: '0.85rem', color: 'var(--text-600)', flex: '1 1 18rem' }}>
             {missing.length > 0
               ? missing[0]
-              : `${draft.name} starts under Bidding to the owner with ${picked.length} ${picked.length === 1 ? 'trade' : 'trades'}. ${
+              : `${draft.name} starts under Bidding to the customer with ${picked.length} ${picked.length === 1 ? 'trade' : 'trades'}. ${
                   asked === 0 ? 'Nobody is asked yet.' : `${asked} ${asked === 1 ? 'company is' : 'companies are'} asked to quote.`
                 }${strangersOn.length > 0 ? ` ${strangersOn.length} ${strangersOn.length === 1 ? 'is' : 'are'} new to us and not vetted yet.` : ''}`}
           </span>

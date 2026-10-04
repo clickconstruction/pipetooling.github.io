@@ -1129,7 +1129,7 @@ export function GcNumberTab({ state, project, dispatch }: GcPaneProps) {
             {project.lostNote && <span style={{ color: 'var(--text-muted)' }}>· {project.lostNote}</span>}
             <span style={{ flex: 1 }} />
             <Btn
-              title="The owner came back to us. It goes back under Bidding to the owner, as it stood."
+              title="The customer came back to us. It goes back under Bidding to the customer, as it stood."
               onClick={() => dispatch({ type: 'reopenLost', projectId: project.id })}
             >
               Bring it back
@@ -1189,11 +1189,11 @@ function LostForm({ project, dispatch, onDone }: { project: GcProject; dispatch:
       </span>
       <label style={{ display: 'grid', gap: '0.2rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
         Who won it, if we know
-        <input value={wonBy} onChange={(e) => setWonBy(e.target.value)} placeholder="the builder the owner picked" style={{ ...input, maxWidth: '22rem' }} />
+        <input value={wonBy} onChange={(e) => setWonBy(e.target.value)} placeholder="the builder the customer picked" style={{ ...input, maxWidth: '22rem' }} />
       </label>
       <label style={{ display: 'grid', gap: '0.2rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
         A note for next time
-        <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="what the owner said" style={input} />
+        <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="what the customer said" style={input} />
       </label>
       <span style={{ display: 'flex', gap: '0.4rem' }}>
         <Btn

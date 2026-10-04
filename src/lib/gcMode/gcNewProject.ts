@@ -346,7 +346,9 @@ export function buildNewProject(state: GcState, draft: NewProjectDraft): { proje
     customers.push(newCustomer(cid, name.trim(), kind))
     return { id: cid, name: name.trim() }
   }
-  const owner = record(draft.customerId, draft.ownerName, 'Owner')
+  // A customer named for the first time is filed by who they are to the job.
+  const role = draft.customerRole ?? 'owner'
+  const owner = record(draft.customerId, draft.ownerName, role === 'gc' ? 'General contractor' : role === 'ownersRep' ? "Owner's rep" : 'Owner')
   const architect = record(draft.architectId, draft.architectName, 'Architect')
   // The owner of the property, kept only when it is not the customer.
   const named = draft.propertyOwnerName?.trim() ?? ''
@@ -370,6 +372,7 @@ export function buildNewProject(state: GcState, draft: NewProjectDraft): { proje
     customerId: owner.id,
     owner: owner.name,
     ...(propertyOwner ? { propertyOwnerId: propertyOwner.id, propertyOwner: propertyOwner.name } : {}),
+    ...(role !== 'owner' ? { customerRole: role } : {}),
     ownerBilling: null,
     architectId: architect.id,
     architect: architect.name,
