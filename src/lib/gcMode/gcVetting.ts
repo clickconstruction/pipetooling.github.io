@@ -3,8 +3,10 @@
  * Anyone can quote; award stays locked until the office approves them, or approves them up to a
  * dollar limit. A company with no vetting record is one we know: approved, no limit.
  */
-import type { GcState, Partner, PartnerVetting } from './gcTypes'
+import type { GcState, Invite, Partner, PartnerVetting, TradePackage } from './gcTypes'
 import { money } from './gcWords'
+import { partnerById } from './gcLookups'
+import { leveledTotal } from './gcBids'
 
 const KNOWN: PartnerVetting = { status: 'approved' }
 
@@ -50,4 +52,16 @@ export function partnersToVet(state: GcState): Partner[] {
       if (fb) return 1
       return a.company.localeCompare(b.company)
     })
+}
+
+/** The award gate for one quote, at the price its statement of work would carry (the reducer's own test). */
+export function awardGate(state: GcState, pkg: TradePackage, invite: Invite): { ok: boolean; why: string | null } {
+  const partner = partnerById(state, invite.partnerId)
+  if (!partner) return { ok: true, why: null }
+  return canAward(partner, leveledTotal(pkg, invite) ?? pkg.budget)
+}
+
+/** Everyone on our team, for "who is deciding": the job teams' names, each once. */
+export function ourTeam(state: GcState): string[] {
+  return [...new Set(state.projects.flatMap((p) => p.team ?? []).map((c) => c.name))]
 }

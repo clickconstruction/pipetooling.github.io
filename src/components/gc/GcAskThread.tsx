@@ -18,6 +18,7 @@ import {
 } from '../../lib/gcMode/gcModel'
 import { LinkNeverOpenedChip } from './GcPortalLinkChip'
 import { Btn, Card, Chip, Why, input, type Tone } from './gcUi'
+import { GcFollowUpPromises } from './GcFollowUpPromises'
 
 /**
  * GC mode design spike: keeping up with a company on one ask. Every call, text, email, nudge and
@@ -191,7 +192,9 @@ export function GcFollowUpTab({
           </section>
         )
       })}
-      {all.length === 0 && <Card style={{ color: 'var(--text-muted)' }}>We are not waiting on anyone.</Card>}
+      {/* Insurance, papers and every other promise (question 8). */}
+      <GcFollowUpPromises state={state} dispatch={dispatch} />
+      {all.length === 0 && <Card style={{ color: 'var(--text-muted)' }}>We are not waiting on anyone for a quote.</Card>}
     </div>
   )
 }
