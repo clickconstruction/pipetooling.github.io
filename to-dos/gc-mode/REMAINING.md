@@ -205,8 +205,9 @@ first** (a partner's vetting, the promise record), so build on those once GC 0 s
 
 ### New Project (GC 2)
 
-1. **Q7:** Who to ask picks from `tradeLineup`, so its first picks follow the new order. Check
-   the words that say "closest".
+1. ~~**Q7:** Who to ask picks from `tradeLineup`, so its first picks follow the new order. Check
+   the words that say "closest".~~ done 0c94ed85d ("The most reliable companies in range are
+   ticked", "Tick the most reliable again").
 
 ## Owner (the decisions)
 
