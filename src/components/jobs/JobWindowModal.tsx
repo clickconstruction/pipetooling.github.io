@@ -374,7 +374,7 @@ export function JobWindowModal({
           {/* Documents pane (v2.4491): the job's pay applications, the files behind them, the job's folders. */}
           {documentsMounted && fullJob ? (
             <div style={tab !== 'documents' ? { display: 'none' } : undefined} role="tabpanel" aria-label="Documents">
-              <JobWindowDocumentsTab job={fullJob} onAiaOpenChange={setDocumentsEscBlocked} />
+              <JobWindowDocumentsTab job={fullJob} onOverlayOpenChange={setDocumentsEscBlocked} />
             </div>
           ) : null}
         </div>
