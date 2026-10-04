@@ -116,7 +116,7 @@ column headers are in one block at the end of `gcBuildingWords.ts`, for the nati
 
 ## For a native speaker to read
 
-Every Spanish string the trade's portal shows, 552 in all, drawn from the code on 2026-10-04.
+Every Spanish string the trade's portal shows, 557 in all, drawn from the code on 2026-10-04.
 They're grouped by screen, English on the left. Please mark anything that reads wrong, stiff or
 unclear, and write the better words beside it. The Portal lane makes the changes and passes the
 other lanes theirs.
@@ -135,6 +135,8 @@ other lanes theirs.
 - `{n}`, `{m}`, `{i}`, `{days}` and `{pct}` are numbers.
 - `{list}` is a list of sheet numbers. `{items}` is a list of lines of their price. `{line}` is
   one line's name.
+- `{what}` is a piece of work the office typed, and `{who}` is who does it instead: a trade, the
+  owner or Click.
 - `{note}`, `{description}`, `{text}`, `{reason}`, `{about}`, `{schedule}`, `{mark}`, `{step}`
   and `{waiver}` are words from elsewhere in the portal or typed by someone.
 
@@ -227,6 +229,10 @@ they were written in. The portal does not translate them.
 
 | English | Español |
 |---|---|
+| Not in your scope | Fuera de su alcance |
+| Leave these out of your number. Someone else does them. | No los incluya en su precio. Otra persona los hace. |
+| {what} ({who} does it) | {what} (lo hace {who}) |
+| the owner | el dueño |
 | Your number is good for | Su precio es válido por |
 | Alternates | Alternativas |
 | · another way to do the work, at a different price. You do not have to give one. | · otra forma de hacer el trabajo, a otro precio. No es obligatorio. |
@@ -512,6 +518,7 @@ they were written in. The portal does not translate them.
 | We would like your number for {trade} on {project}. | Nos gustaría recibir su precio de {trade} para {project}. |
 | Your number is due {date}. | Su precio vence el {date}. |
 | Plans to price: {label}, issued {date}. | Planos para cotizar: {label}, emitidos el {date}. |
+| Leave these out. Someone else does them: | No incluya esto. Otra persona lo hace: |
 | Your number should cover these lines. | Su precio debe incluir estas partidas. |
 |  by {date} |  a más tardar el {date} |
 | A reminder: {about} | Recordatorio: {about} |

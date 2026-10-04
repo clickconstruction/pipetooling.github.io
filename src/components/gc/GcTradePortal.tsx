@@ -39,7 +39,7 @@ import { GcPortalContacts } from './GcPortalContacts'
 import { GcPortalHome } from './GcPortalHome'
 import { GcPortalPay } from './GcPortalPay'
 import { GcPortalLookAhead } from './GcPortalLookAhead'
-import { AlternatesEditor, AnswerLines, GoodForPicker, QuoteFilePicker } from './GcPortalBidExtras'
+import { AlternatesEditor, AnswerLines, GoodForPicker, LeavesOut, QuoteFilePicker } from './GcPortalBidExtras'
 import { ChangedLines, LineSheets, SheetChip } from './GcPortalLineSheets'
 import { GcPortalMessages } from './GcPortalMessages'
 import { GcPortalPaperwork } from './GcPortalPaperwork'
@@ -530,6 +530,7 @@ function BidBlock({
               ))}
             </div>
           )}
+          <LeavesOut pkg={pkg} />
           <label style={{ fontSize: '0.9rem' }}>
             {t('yourNumber')}{' '}
             <input type="number" min={0} step={100} value={amount} onChange={(e) => setAmount(e.target.value)} style={{ ...input, width: '9rem' }} />

@@ -93,6 +93,10 @@ const S = {
   tellGc: { en: 'Tell {gc}', es: 'Avisar a {gc}' },
 
   // The bid form past the number
+  leavesOutTitle: { en: 'Not in your scope', es: 'Fuera de su alcance' },
+  leavesOutHelp: { en: 'Leave these out of your number. Someone else does them.', es: 'No los incluya en su precio. Otra persona los hace.' },
+  leavesOutLine: { en: '{what} ({who} does it)', es: '{what} (lo hace {who})' },
+  byOwner: { en: 'the owner', es: 'el dueño' },
   goodFor: { en: 'Your number is good for', es: 'Su precio es válido por' },
   alternatesTitle: { en: 'Alternates', es: 'Alternativas' },
   alternatesHelp: {
@@ -387,6 +391,7 @@ const S = {
   mInviteWant: { en: 'We would like your number for {trade} on {project}.', es: 'Nos gustaría recibir su precio de {trade} para {project}.' },
   mInviteDue: { en: 'Your number is due {date}.', es: 'Su precio vence el {date}.' },
   mInvitePlans: { en: 'Plans to price: {label}, issued {date}.', es: 'Planos para cotizar: {label}, emitidos el {date}.' },
+  mInviteLeavesOut: { en: 'Leave these out. Someone else does them:', es: 'No incluya esto. Otra persona lo hace:' },
   mInviteCover: { en: 'Your number should cover these lines.', es: 'Su precio debe incluir estas partidas.' },
   mBy: { en: ' by {date}', es: ' a más tardar el {date}' },
   mNudgeSubject: { en: 'A reminder: {about}', es: 'Recordatorio: {about}' },
