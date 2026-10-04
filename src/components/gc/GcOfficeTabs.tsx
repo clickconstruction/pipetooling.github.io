@@ -58,6 +58,7 @@ import { GcBuildingPayAppWindow } from './GcBuildingPayApp'
 import { GcBuildingSendBackForm, GcBuildingSentBackList } from './GcBuildingSendBack'
 import { GcBuildingTradeChanges } from './GcBuildingChanges'
 import { GcBuildingDrawDays, GcBuildingToPay } from './GcBuildingPayDays'
+import { BUILDING_CSS } from './gcBuildingCss'
 import { GcBuildingCrewCard } from './GcBuildingCrew'
 import { GcPlansDoors } from './GcNewPlans'
 import { Btn, Card, Chip, PlusUnknown, Stat, Why, input, num, td, th, type Tone } from './gcUi'
@@ -1146,6 +1147,7 @@ export function GcDrawsTab({ state, project, dispatch }: GcPaneProps) {
         fixed. The unconditional waiver follows the payment.
       </Why>
       {signed.length === 0 && <Card>No trade we hire has a signed statement of work on this project yet.</Card>}
+      <style>{BUILDING_CSS}</style>
       <GcBuildingToPay state={state} project={project} />
       {signed.map((pkg) => {
         const sow = pkg.sow
@@ -1171,9 +1173,10 @@ export function GcDrawsTab({ state, project, dispatch }: GcPaneProps) {
             </div>
             <div style={{ display: 'grid', gap: '0.35rem', marginTop: '0.7rem' }}>
               {sow.sov.map((l) => (
-                <div key={l.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(8rem, 14rem) 1fr auto', gap: '0.6rem', alignItems: 'center', fontSize: '0.875rem' }}>
+                <div key={l.id} className="gcBar-row">
                   <span>{l.label} · {money(l.amount)}</span>
                   <span
+                    className="gcBar"
                     title={`Billed ${l.pctBilled}%, reported ${l.pctReported}%`}
                     style={{ position: 'relative', height: 10, borderRadius: 5, background: 'var(--bg-muted)', overflow: 'hidden' }}
                   >

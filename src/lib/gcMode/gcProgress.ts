@@ -7,7 +7,7 @@ import { shortDate, thousands, weekdayDate } from './gcWords'
 import { currentRev, partnerById, planLabel } from './gcLookups'
 import { plansReach } from './gcPlans'
 import { startChecklist } from './gcStart'
-import { BIDS_WANTED, bidIsStale, bidsIn, carriedAmount, isGuess } from './gcBids'
+import { BIDS_WANTED, bidIsStale, bidsIn, carriedAmount, carriedUncosted, isGuess, uncostedWords } from './gcBids'
 import { followUps } from './gcFollowUp'
 import { partnerBlockers } from './gcBench'
 import { ownCrewWork, sentBackOpen, timesSentBack, tradeCloseout } from './gcBuilding'
@@ -100,11 +100,14 @@ function biddingProgress(state: GcState, project: GcProject): StageProgress {
       const carriedFrom = pkg.invites.find((i) => i.id === (pkg.awardedInviteId ?? pkg.carried))
       const who = carriedFrom ? partnerById(state, carriedFrom.partnerId)?.company : null
       const quotes = `${n} ${n === 1 ? 'quote' : 'quotes'} in`
+      // The owner's rule (2026-10-03): a carried quote with work that has no cost yet is not a
+      // real number until every line has one.
+      const uncosted = carriedUncosted(pkg)
       return {
         label: pkg.trade,
         // The owner's rule (2026-10-02): a guess never closes a trade. Only a real quote does,
         // or our own crew's number from a Trades mode bid.
-        done: amount !== null && !isGuess(pkg),
+        done: amount !== null && !isGuess(pkg) && uncosted.length === 0,
         detail:
           amount === null
             ? pkg.selfPerform
@@ -116,7 +119,9 @@ function biddingProgress(state: GcState, project: GcProject): StageProgress {
               ? `Our own crew, ${thousands(amount)}K`
               : isGuess(pkg)
                 ? `Our guess of ${thousands(amount)}K is in the price. ${n > 0 ? `${quotes}. Carry one to close it.` : 'Get a quote to close it.'}`
-                : `${who ?? 'Carried'}, ${thousands(amount)}K`,
+                : uncosted.length > 0
+                  ? `${who ?? 'Carried'}, ${thousands(amount)}K + ?. ${uncostedWords(uncosted)} Set it in Compare bids.`
+                  : `${who ?? 'Carried'}, ${thousands(amount)}K`,
       }
     }),
   }

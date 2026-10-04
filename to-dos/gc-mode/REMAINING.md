@@ -36,7 +36,7 @@ makes; nobody builds it until he answers.
 
 ## Board (GC 0)
 
-**Done 2026-10-03: items 1-10.** Left for the Board: item 11 (the ring), once the owner decides. The owner gave the Board lane a standing OK (2026-10-03): it commits, moves its own golden snapshots, shares and tells the lanes without asking him, naming every move in the commit.
+**Done 2026-10-03: items 1-10.** Item 11 (the ring) built too, on the owner's yes. The owner gave the Board lane a standing OK (2026-10-03): it commits, moves its own golden snapshots, shares and tells the lanes without asking him, naming every move in the commit.
 
 
 1. ~~**A "Money" board tab.**~~ done 0ecca9192. Place the Owner Billing lane's `GcOwnerBillingMoney` (built; the owner
@@ -62,13 +62,14 @@ makes; nobody builds it until he answers.
 
 ## Building (GC 1)
 
-1. **Our own crew's percent from its Pipeline job** in the real build; reported on Draws for now.
-2. **A phone pass on Building's tabs:** Draws, Schedule, Closeout.
+1. ~~**Our own crew's percent from its Pipeline job**~~ done c0a4c6c61: real build only, how it plugs in is in the README.
+2. ~~**A phone pass on Building's tabs:** Draws, Schedule, Closeout.~~ done 248c99720
 3. **The walk's order (owner first, item 12 in Owner):** if he says yes, move "Draw Helotes's
    schedule" before Start in the golden walk, since Start is shut until the schedule is drawn.
-4. **Notifications for Building's events** (a draw asked, a look-ahead to verify, a milestone due):
-   say where each would go; nothing is sent yet (item 21).
-5. **Tidy your lines in `README.md`.**
+   The owner said yes, and to fix a gap first (2026-10-03): a trade a later set brings in does
+   not join a drawn schedule. Waiting on the New Project lane's `issuePlanSet`.
+4. ~~**Notifications for Building's events**~~ done ac44df256: the table under *Workflow steps not built yet*.
+5. ~~**Tidy your lines in `README.md`.**~~ done c3de80230
 
 ## New Project (GC 2)
 
@@ -87,8 +88,8 @@ makes; nobody builds it until he answers.
 2. ~~**The lost-bid portal (owner's OK to commit, item 15 in Owner).**~~ done 83dcdcd20, a018d96df (owner's OK in the Portal session)
 3. ~~**A trade asks a question in its portal and sees the answer there** (`tradeAskQuestion` is ready).~~ done c2a22ad26
 4. ~~**"Left to bill" counts signed change orders** (`sowContractSum`).~~ done (the job block and Your pay both read `sowContractSum`)
-5. **The Spanish list for a native speaker to read** before anything ships (question 25), and no
-   "Click" written into the portal's words (Board item 7).
+5. ~~**The Spanish list for a native speaker to read** before anything ships (question 25), and no
+   "Click" written into the portal's words (Board item 7).~~ done 6225b3fb7 (the list in PORTAL_SPANISH.md; the portal's own words already read `GC_COMPANY`, the bid tab's since b6219f390)
 6. **A phone pass on the portal.** It is the screen trades use most on a phone.
 7. **Notifications for the portal** (a new ask, a set that changed their trade, a promise passed),
    in the company's language.
@@ -104,7 +105,7 @@ makes; nobody builds it until he answers.
 
 ## Owner (the decisions)
 
-11. **A carried quote with a line that has no cost:** does it hold the ring open? (Board builds it.)
+11. ~~**A carried quote with a line that has no cost:** does it hold the ring open?~~ Answered 2026-10-03: yes, until every line has a cost. Built by the Board (this commit).
 12. **The golden walk's order:** draw Helotes's schedule before Start? (Building moves the step.)
 13. **Marsh & Vale's made-up questions:** were they sent to the architect? (New Project.)
 14. **The open questions in `README.md`:** 2 (start at buyout?), 3 (vetting new trades), 4 (draws
