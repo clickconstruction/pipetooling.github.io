@@ -3,6 +3,7 @@ import {
   architectSummary,
   currentRev,
   customerSummary,
+  ownerAccount,
   ownerMoney,
   daysUntil,
   lostWords,
@@ -73,6 +74,14 @@ export function GcCustomerWindow({ state, customer, dispatch, onClose, onOpenPro
   const isOwner = owner.live.length > 0 || customer.past.length > 0
   const isArchitect = architect.live.length > 0
   const both = isOwner && isArchitect
+  // What they owe, split by where it stands with the architect: our sent pay applications only.
+  const owedSplit = owner.live.reduce(
+    (sum, p) => {
+      const account = ownerAccount(p)
+      return account ? { certified: sum.certified + account.certifiedUnpaid, architect: sum.architect + account.waitingOnArchitect } : sum
+    },
+    { certified: 0, architect: 0 },
+  )
   // A live bid we lost (owner, 2026-10-03) counts as decided, like a lost one in their history.
   const decided = owner.won + customer.past.filter((p) => p.outcome === 'lost').length + owner.live.filter((p) => p.lostOn).length
   const oldest = architect.waiting[0]?.days ?? 0
@@ -145,7 +154,20 @@ export function GcCustomerWindow({ state, customer, dispatch, onClose, onOpenPro
                 <Stat label="Live projects" value={owner.live.length} />
                 <Stat label="Priced, waiting on them" value={money(owner.inFront)} />
                 <Stat label="Under contract" value={money(owner.underContract)} />
-                <Stat label="They owe us now" value={money(owner.owed)} tone={owner.owed > 0 ? 'red' : undefined} />
+                <div style={{ display: 'grid', gap: '0.15rem' }}>
+                  <Stat label="They owe us now" value={money(owner.owed)} tone={owner.owed > 0 ? 'red' : undefined} />
+                  {/* Of what they owe, where it stands with the architect (the big list, Board item 2). */}
+                  {(owedSplit.certified > 0 || owedSplit.architect > 0) && (
+                    <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                      {[
+                        owedSplit.certified > 0 ? `${money(owedSplit.certified)} certified, not paid` : null,
+                        owedSplit.architect > 0 ? `${money(owedSplit.architect)} waiting on the architect` : null,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </span>
+                  )}
+                </div>
                 <Stat label="They are holding" value={money(owner.retainageHeld)} />
                 <Stat label="They picked us" value={decided > 0 ? `${owner.won} of ${decided}` : 'first job'} />
               </div>
@@ -214,7 +236,10 @@ export function GcCustomerWindow({ state, customer, dispatch, onClose, onOpenPro
                         <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center', marginBottom: '0.2rem' }}>
                           <Chip tone={waited >= 3 ? 'red' : 'amber'}>{days(waited)}</Chip>
                           <strong>{project.name}</strong>
-                          <span style={{ color: 'var(--text-muted)' }}>· {pkg?.trade} · asked by {partner?.company} on {shortDate(question.askedOn)}</span>
+                          <span style={{ color: 'var(--text-muted)' }}>
+                            · {pkg?.trade} · asked by {partner?.company} on {shortDate(question.askedOn)}
+                            {question.sentToArchitectOn ? ` · sent to them ${shortDate(question.sentToArchitectOn)}` : ''}
+                          </span>
                         </div>
                         <div>{question.text}</div>
                         <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '0.2rem' }}>
@@ -224,6 +249,18 @@ export function GcCustomerWindow({ state, customer, dispatch, onClose, onOpenPro
                       </div>
                     )
                   })}
+                </div>
+              )}
+              {architect.notSent.length > 0 && (
+                <div style={{ marginTop: '0.5rem', display: 'grid', gap: '0.25rem', fontSize: '0.85rem' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>
+                    Not sent to them yet. These wait on us, so they do not count against {customer.name}.
+                  </span>
+                  {architect.notSent.map(({ project, question, days: waited }) => (
+                    <div key={question.id}>
+                      <Chip tone="amber">ours · {days(waited)}</Chip> {project.name}: {question.text}
+                    </div>
+                  ))}
                 </div>
               )}
               {architect.answered.length > 0 && (

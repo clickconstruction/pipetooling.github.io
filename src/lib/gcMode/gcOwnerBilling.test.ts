@@ -1,6 +1,7 @@
 /** GC mode design spike: the owner's pay application, read off the made-up Helotes Dental Office. */
 import { describe, expect, it } from 'vitest'
 import {
+  allJobsMoney,
   gcReducer,
   initialGcState,
   missingTradeWaivers,
@@ -681,6 +682,35 @@ describe('when the owner pays: late, short, or on their word', () => {
     const app = projectOf(state, 'fairoaksd').ownerBilling?.payApps?.[2]
     if (!app) throw new Error('no app')
     expect(ownerPayDue(state, projectOf(state, 'fairoaksd'), app)).toEqual({ on: '2026-10-09', promised: true, daysLate: 0, missed: 1 })
+  })
+})
+
+describe('money across every job', () => {
+  const r = (n: number) => Math.round(n)
+
+  it('adds up only the jobs that are ours: we are $80,428 ahead, and Cibolo owes us', () => {
+    const state = initialGcState()
+    const m = allJobsMoney(state)
+    expect(m.jobs.map((j) => j.project.id)).toEqual(['helotes', 'fairoaksd', 'stoneoak'])
+    expect(state.projects.length).toBeGreaterThan(m.jobs.length)
+    const t = m.totals
+    expect([t.paidIn, t.paidOut, t.net, t.owed, t.ownerHolds, t.weHold, t.tradesWaiting].map(r)).toEqual([
+      735_988, 655_560, 80_428, 288_879, 113_874, 72_840, 127_700,
+    ])
+    expect(m.jobs.map((j) => r(j.cash.net))).toEqual([-19_800, 35_957, 64_272])
+    expect(m.owed.map((b) => [b.project.id, b.app.number, r(b.open), b.due.daysLate, b.waitingOnArchitect])).toEqual([['fairoaksd', 3, 288_879, 2, false]])
+  })
+
+  it('puts a late bill first and one waiting on the architect last; a paid bill leaves the list', () => {
+    let state = gcReducer(initialGcState(), { type: 'sendOwnerPayApp', projectId: 'helotes' })
+    expect(allJobsMoney(state).owed.map((b) => [b.project.id, b.waitingOnArchitect])).toEqual([
+      ['fairoaksd', false],
+      ['helotes', true],
+    ])
+    state = gcReducer(state, { type: 'ownerPaid', projectId: 'fairoaksd', number: 3 })
+    const m = allJobsMoney(state)
+    expect(m.owed.map((b) => b.project.id)).toEqual(['helotes'])
+    expect(r(m.totals.paidIn)).toBe(735_988 + 288_879)
   })
 })
 

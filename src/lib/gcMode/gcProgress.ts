@@ -11,7 +11,7 @@ import { BIDS_WANTED, bidIsStale, bidsIn, carriedAmount, isGuess } from './gcBid
 import { followUps } from './gcFollowUp'
 import { partnerBlockers } from './gcBench'
 import { ownCrewWork, sentBackOpen, timesSentBack, tradeCloseout } from './gcBuilding'
-import { scheduleSummary, scheduleSummaryWords } from './gcBuildingSchedule'
+import { openInspectionFailures, scheduleSummary, scheduleSummaryWords } from './gcBuildingSchedule'
 import { drawPayDays } from './gcBuildingPay'
 import { staleChange, staleWords } from './gcStale'
 import { punchCounts } from './gcBuildingPunch'
@@ -294,7 +294,13 @@ function buildingProgress(state: GcState, project: GcProject): StageProgress {
   }
   const pct = Math.round(share * 100)
   // The schedule, once drawn (owner, 2026-10-03: its measures on a won job's row and in this card).
-  also.unshift(...latePay)
+  // An inspection that failed and has not passed since (owner, 2026-10-03): whose work, and when again.
+  const failed = openInspectionFailures(project).map((f) => {
+    const trades = project.packages.filter((k) => f.failure.packageIds.includes(k.id)).map((k) => k.trade)
+    const whose = trades.length === 0 ? '' : ` on the ${trades.length === 1 ? trades[0] : `${trades.slice(0, -1).join(', ')} and ${trades[trades.length - 1]}`} work`
+    return `The ${f.label.toLowerCase()} failed ${shortDate(f.failure.on)}${whose}. Re-inspection ${shortDate(f.failure.reinspectOn)}.`
+  })
+  also.unshift(...failed, ...latePay)
   const sum = scheduleSummary(project, state.today)
   if (sum) also.unshift(scheduleSummaryWords(sum))
   if (share >= 1) {

@@ -10,10 +10,10 @@ import { bidsIn } from './gcBids'
 import { awardedPartner, find, logged, mapInvite, mapPackage, mapProject, mapSow, sowFromBid } from './gcReducerHelpers'
 import { initialGcState } from './gcFixture'
 import { lostWhyLabel } from './gcLost'
-import { draftSchedule, scheduleLinesOf, withBaselineKept } from './gcBuildingSchedule'
+import { daysBetween, draftSchedule, scheduleLinesOf, withBaselineKept } from './gcBuildingSchedule'
 import { buildNewProject, packagesFromDrafts, pushSchedule, withNewLines, withRetiedLines, withTradesInOrder } from './gcNewProject'
 import { nextPunchId, punchClear } from './gcBuildingPunch'
-import { changeOrderTradePct, crewPctFromStages, drawApprovedLess, finalPayApplication, jobCloseout, payApplication, timesSentBack, tradeCloseout, workAllBilled } from './gcBuilding'
+import { addDays, changeOrderTradePct, crewPctFromStages, drawApprovedLess, finalPayApplication, jobCloseout, payApplication, timesSentBack, tradeCloseout, workAllBilled } from './gcBuilding'
 import { appClaimed, appOpen, changeOrderPrice, ownerCloseout, ownerFinalPayAppToSend, ownerPayApp, ownerPayAppHasWork, ownerPayAppToSend } from './gcOwnerBilling'
 
 export function gcReducer(state: GcState, action: GcAction): GcState {
@@ -1208,6 +1208,42 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
         mapProject(state, project.id, (p) => ({ ...p, schedule: changed })),
         'office',
         `The ${inspection.label.toLowerCase()} passed on ${project.name}.${met ? ` The ${met.label} milestone is met.` : ''}`,
+      )
+    }
+
+    case 'failInspection': {
+      // Building lane (owner, 2026-10-03): the inspection did not pass. It moves to the
+      // re-inspection day, keeping its length, and what waits on it moves out (pushSchedule).
+      // After Start, the plan at Start is kept first, so the slip shows against it.
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const schedule = project?.schedule
+      const activity = schedule?.activities.find((a) => a.lineId === action.lineId)
+      const inspection = activity?.inspection
+      const note = action.note.trim().replace(/\s+/g, ' ')
+      if (!project || project.stage !== 'building' || !schedule || !activity || !inspection || inspection.passedOn) return state
+      if (!note || !action.reinspectOn || action.reinspectOn <= state.today) return state
+      const known = new Set(project.packages.map((k) => k.id))
+      const packageIds = [...new Set(action.packageIds)].filter((id) => known.has(id))
+      const kept = withBaselineKept(project, schedule)
+      const length = daysBetween(activity.start, activity.finish)
+      const failure = { on: state.today, note, packageIds, reinspectOn: action.reinspectOn }
+      const again = {
+        ...activity,
+        start: action.reinspectOn,
+        finish: addDays(action.reinspectOn, length),
+        inspection: { ...inspection, failed: [...(inspection.failed ?? []), failure] },
+      }
+      const pushed = pushSchedule(
+        kept.activities.map((a) => (a.lineId === activity.lineId ? again : a)),
+        {},
+      )
+      const movedOut = pushed.activities.filter((a) => a.lineId !== activity.lineId && a.finish !== kept.activities.find((b) => b.lineId === a.lineId)?.finish).length
+      const trades = project.packages.filter((k) => packageIds.includes(k.id)).map((k) => k.trade)
+      const whose = trades.length === 0 ? '' : ` It was ${trades.length === 1 ? trades[0] : `${trades.slice(0, -1).join(', ')} and ${trades[trades.length - 1]}`}'s work.`
+      return logged(
+        mapProject(state, project.id, (p) => ({ ...p, schedule: { ...kept, activities: pushed.activities } })),
+        'office',
+        `The ${inspection.label.toLowerCase()} failed on ${project.name}: ${note.replace(/[.\s]+$/, '')}.${whose} Re-inspection ${weekdayDate(action.reinspectOn)}.${movedOut > 0 ? ` ${movedOut} ${movedOut === 1 ? 'activity after it moves' : 'activities after it move'} out.` : ''}`,
       )
     }
 

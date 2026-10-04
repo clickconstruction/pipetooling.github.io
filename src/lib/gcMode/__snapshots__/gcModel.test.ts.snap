@@ -350,8 +350,7 @@ exports[`GC mode golden walk > before any step 1`] = `
         "«project padb»",
         "«project fairoaksd»",
       ],
-      "sets": 4,
-      "waiting": [
+      "notSent": [
         {
           "days": 5,
           "project": "«project boerne»",
@@ -379,6 +378,8 @@ exports[`GC mode golden walk > before any step 1`] = `
           },
         },
       ],
+      "sets": 4,
+      "waiting": [],
     },
     "ocotillo": {
       "addenda": 0,
@@ -399,6 +400,7 @@ exports[`GC mode golden walk > before any step 1`] = `
       "live": [
         "«project helotes»",
       ],
+      "notSent": [],
       "sets": 1,
       "waiting": [],
     },
@@ -1661,6 +1663,7 @@ exports[`GC mode golden walk > before any step 1`] = `
       "stageProgress": {
         "also": [
           "The schedule: 3 days behind the plan, 72% done where 76% was planned. Dry-in is 7 days late. Next: Rough-in inspection, Oct 13. 4 look-ahead marks wait on our superintendent.",
+          "The electrical service inspection failed Sep 28 on the Electrical work. Re-inspection Oct 2.",
           "Guadalupe Flatwork has 1 punch item to fix on Concrete.",
           "1 punch item on Concrete is fixed. Check it on Closeout.",
           "Iron Horse Fabrication asked for draw 2. Approve it.",
@@ -1743,7 +1746,7 @@ exports[`GC mode golden walk > before any step 1`] = `
         ],
         "ready": false,
         "schedule": {
-          "detail": "29 activities, 4 milestones",
+          "detail": "30 activities, 4 milestones",
           "done": true,
           "key": "schedule",
           "label": "The schedule is drawn",
@@ -7425,16 +7428,16 @@ exports[`GC mode golden walk > step 120: Fair Oaks D: the rough-in inspection pa
 exports[`GC mode golden walk > step 121: Pad B: Lonestar asks whether the drive-through lane is concrete 1`] = `
 {
   "changed": {
-    "customers.marshvale.waiting[2].days": 0,
-    "customers.marshvale.waiting[2].project": "«project padb»",
-    "customers.marshvale.waiting[2].question.answer": null,
-    "customers.marshvale.waiting[2].question.answeredOn": null,
-    "customers.marshvale.waiting[2].question.askedOn": "2026-10-02",
-    "customers.marshvale.waiting[2].question.id": "padb-q-1",
-    "customers.marshvale.waiting[2].question.packageId": "bsite",
-    "customers.marshvale.waiting[2].question.partnerId": "lonestar",
-    "customers.marshvale.waiting[2].question.sheets[0]": "C-101",
-    "customers.marshvale.waiting[2].question.text": "Is the drive-through lane concrete or asphalt?",
+    "customers.marshvale.notSent[2].days": 0,
+    "customers.marshvale.notSent[2].project": "«project padb»",
+    "customers.marshvale.notSent[2].question.answer": null,
+    "customers.marshvale.notSent[2].question.answeredOn": null,
+    "customers.marshvale.notSent[2].question.askedOn": "2026-10-02",
+    "customers.marshvale.notSent[2].question.id": "padb-q-1",
+    "customers.marshvale.notSent[2].question.packageId": "bsite",
+    "customers.marshvale.notSent[2].question.partnerId": "lonestar",
+    "customers.marshvale.notSent[2].question.sheets[0]": "C-101",
+    "customers.marshvale.notSent[2].question.text": "Is the drive-through lane concrete or asphalt?",
     "lastLog.id": 117,
     "lastLog.text": "Lonestar Earthworks asked about C-101: Is the drive-through lane concrete or asphalt?",
     "lastLog.who": "trade",
@@ -7446,12 +7449,34 @@ exports[`GC mode golden walk > step 121: Pad B: Lonestar asks whether the drive-
 exports[`GC mode golden walk > step 122: Pad B: send the question to the architect 1`] = `
 {
   "changed": {
-    "customers.marshvale.waiting[2].question.sentToArchitectOn": "2026-10-02",
+    "customers.marshvale.waiting[0].days": 0,
+    "customers.marshvale.waiting[0].project": "«project padb»",
+    "customers.marshvale.waiting[0].question.answer": null,
+    "customers.marshvale.waiting[0].question.answeredOn": null,
+    "customers.marshvale.waiting[0].question.askedOn": "2026-10-02",
+    "customers.marshvale.waiting[0].question.id": "padb-q-1",
+    "customers.marshvale.waiting[0].question.packageId": "bsite",
+    "customers.marshvale.waiting[0].question.partnerId": "lonestar",
+    "customers.marshvale.waiting[0].question.sentToArchitectOn": "2026-10-02",
+    "customers.marshvale.waiting[0].question.sheets[0]": "C-101",
+    "customers.marshvale.waiting[0].question.text": "Is the drive-through lane concrete or asphalt?",
     "lastLog.id": 118,
     "lastLog.text": "Sent Lonestar Earthworks's question to Marsh & Vale Architects.",
     "lastLog.who": "office",
   },
-  "removed": [],
+  "removed": [
+    "customers.marshvale.waiting",
+    "customers.marshvale.notSent[2].project",
+    "customers.marshvale.notSent[2].question.id",
+    "customers.marshvale.notSent[2].question.packageId",
+    "customers.marshvale.notSent[2].question.partnerId",
+    "customers.marshvale.notSent[2].question.text",
+    "customers.marshvale.notSent[2].question.askedOn",
+    "customers.marshvale.notSent[2].question.answeredOn",
+    "customers.marshvale.notSent[2].question.answer",
+    "customers.marshvale.notSent[2].question.sheets[0]",
+    "customers.marshvale.notSent[2].days",
+  ],
 }
 `;
 
@@ -7470,21 +7495,22 @@ exports[`GC mode golden walk > step 123: Pad B: the architect answers, sent to t
     "customers.marshvale.answered[1].question.sentToArchitectOn": "2026-10-02",
     "customers.marshvale.answered[1].question.sheets[0]": "C-101",
     "customers.marshvale.answered[1].question.text": "Is the drive-through lane concrete or asphalt?",
+    "customers.marshvale.waiting": "[]",
     "lastLog.id": 119,
     "lastLog.text": "Answered a sitework question on Boerne Retail Pad B and sent it to 1 company.",
   },
   "removed": [
-    "customers.marshvale.waiting[2].project",
-    "customers.marshvale.waiting[2].question.id",
-    "customers.marshvale.waiting[2].question.packageId",
-    "customers.marshvale.waiting[2].question.partnerId",
-    "customers.marshvale.waiting[2].question.text",
-    "customers.marshvale.waiting[2].question.askedOn",
-    "customers.marshvale.waiting[2].question.answeredOn",
-    "customers.marshvale.waiting[2].question.answer",
-    "customers.marshvale.waiting[2].question.sheets[0]",
-    "customers.marshvale.waiting[2].question.sentToArchitectOn",
-    "customers.marshvale.waiting[2].days",
+    "customers.marshvale.waiting[0].project",
+    "customers.marshvale.waiting[0].question.id",
+    "customers.marshvale.waiting[0].question.packageId",
+    "customers.marshvale.waiting[0].question.partnerId",
+    "customers.marshvale.waiting[0].question.text",
+    "customers.marshvale.waiting[0].question.askedOn",
+    "customers.marshvale.waiting[0].question.answeredOn",
+    "customers.marshvale.waiting[0].question.answer",
+    "customers.marshvale.waiting[0].question.sheets[0]",
+    "customers.marshvale.waiting[0].question.sentToArchitectOn",
+    "customers.marshvale.waiting[0].days",
   ],
 }
 `;
@@ -7688,7 +7714,7 @@ exports[`GC mode golden walk > step 129: Fair Oaks D: one more punch item on the
   "changed": {
     "lastLog.id": 125,
     "lastLog.text": "Punch list, Concrete: Grind the trip edge at the sidewalk joint, East entry. Guadalupe Flatwork fixes it in their portal.",
-    "projects.fairoaksd.stageProgress.also[1]": "Guadalupe Flatwork has 2 punch items to fix on Concrete.",
+    "projects.fairoaksd.stageProgress.also[2]": "Guadalupe Flatwork has 2 punch items to fix on Concrete.",
   },
   "removed": [],
 }
@@ -7700,8 +7726,8 @@ exports[`GC mode golden walk > step 130: Guadalupe fixes the spalled footing cor
     "lastLog.id": 126,
     "lastLog.text": "Guadalupe Flatwork fixed a punch item on Concrete: Patch the spalled corner on the column footing.",
     "lastLog.who": "trade",
-    "projects.fairoaksd.stageProgress.also[1]": "Guadalupe Flatwork has 1 punch item to fix on Concrete.",
-    "projects.fairoaksd.stageProgress.also[2]": "2 punch items on Concrete are fixed. Check them on Closeout.",
+    "projects.fairoaksd.stageProgress.also[2]": "Guadalupe Flatwork has 1 punch item to fix on Concrete.",
+    "projects.fairoaksd.stageProgress.also[3]": "2 punch items on Concrete are fixed. Check them on Closeout.",
   },
   "removed": [],
 }
@@ -7713,8 +7739,8 @@ exports[`GC mode golden walk > step 131: Superintendent: the stockroom joints ar
     "lastLog.id": 127,
     "lastLog.text": "Our superintendent sent a punch item back to Guadalupe Flatwork: Seal the control joints in the stockroom slab. Two joints in the back corner are still open.",
     "lastLog.who": "office",
-    "projects.fairoaksd.stageProgress.also[1]": "Guadalupe Flatwork has 2 punch items to fix on Concrete.",
-    "projects.fairoaksd.stageProgress.also[2]": "1 punch item on Concrete is fixed. Check it on Closeout.",
+    "projects.fairoaksd.stageProgress.also[2]": "Guadalupe Flatwork has 2 punch items to fix on Concrete.",
+    "projects.fairoaksd.stageProgress.also[3]": "1 punch item on Concrete is fixed. Check it on Closeout.",
   },
   "removed": [],
 }
@@ -7726,8 +7752,8 @@ exports[`GC mode golden walk > step 132: Guadalupe seals the last two joints 1`]
     "lastLog.id": 128,
     "lastLog.text": "Guadalupe Flatwork fixed a punch item on Concrete: Seal the control joints in the stockroom slab.",
     "lastLog.who": "trade",
-    "projects.fairoaksd.stageProgress.also[1]": "Guadalupe Flatwork has 1 punch item to fix on Concrete.",
-    "projects.fairoaksd.stageProgress.also[2]": "2 punch items on Concrete are fixed. Check them on Closeout.",
+    "projects.fairoaksd.stageProgress.also[2]": "Guadalupe Flatwork has 1 punch item to fix on Concrete.",
+    "projects.fairoaksd.stageProgress.also[3]": "2 punch items on Concrete are fixed. Check them on Closeout.",
   },
   "removed": [],
 }
@@ -7738,14 +7764,14 @@ exports[`GC mode golden walk > step 133: Guadalupe grinds the trip edge 1`] = `
   "changed": {
     "lastLog.id": 129,
     "lastLog.text": "Guadalupe Flatwork fixed a punch item on Concrete: Grind the trip edge at the sidewalk joint.",
-    "projects.fairoaksd.stageProgress.also[1]": "3 punch items on Concrete are fixed. Check them on Closeout.",
-    "projects.fairoaksd.stageProgress.also[2]": "Iron Horse Fabrication asked for draw 2. Approve it.",
-    "projects.fairoaksd.stageProgress.also[3]": "Pecan Valley Electric owes the unconditional waiver on draw 1.",
-    "projects.fairoaksd.stageProgress.also[4]": "Pecan Valley Electric asked for draw 2. Their insurance expired Sep 15. Approve it once that is fixed.",
-    "projects.fairoaksd.stageProgress.also[5]": "Pay application 1 is back with Summit Roofing. Waiting on a fixed one.",
+    "projects.fairoaksd.stageProgress.also[2]": "3 punch items on Concrete are fixed. Check them on Closeout.",
+    "projects.fairoaksd.stageProgress.also[3]": "Iron Horse Fabrication asked for draw 2. Approve it.",
+    "projects.fairoaksd.stageProgress.also[4]": "Pecan Valley Electric owes the unconditional waiver on draw 1.",
+    "projects.fairoaksd.stageProgress.also[5]": "Pecan Valley Electric asked for draw 2. Their insurance expired Sep 15. Approve it once that is fixed.",
+    "projects.fairoaksd.stageProgress.also[6]": "Pay application 1 is back with Summit Roofing. Waiting on a fixed one.",
   },
   "removed": [
-    "projects.fairoaksd.stageProgress.also[6]",
+    "projects.fairoaksd.stageProgress.also[7]",
   ],
 }
 `;
@@ -7756,7 +7782,7 @@ exports[`GC mode golden walk > step 134: Superintendent checks the footing corne
     "lastLog.id": 130,
     "lastLog.text": "Our superintendent checked a punch item on Concrete: Patch the spalled corner on the column footing. It is fixed.",
     "lastLog.who": "office",
-    "projects.fairoaksd.stageProgress.also[1]": "2 punch items on Concrete are fixed. Check them on Closeout.",
+    "projects.fairoaksd.stageProgress.also[2]": "2 punch items on Concrete are fixed. Check them on Closeout.",
   },
   "removed": [],
 }
@@ -7767,7 +7793,7 @@ exports[`GC mode golden walk > step 135: Superintendent checks the stockroom joi
   "changed": {
     "lastLog.id": 131,
     "lastLog.text": "Our superintendent checked a punch item on Concrete: Seal the control joints in the stockroom slab. It is fixed.",
-    "projects.fairoaksd.stageProgress.also[1]": "1 punch item on Concrete is fixed. Check it on Closeout.",
+    "projects.fairoaksd.stageProgress.also[2]": "1 punch item on Concrete is fixed. Check it on Closeout.",
   },
   "removed": [],
 }
@@ -7778,7 +7804,7 @@ exports[`GC mode golden walk > step 136: Superintendent checks the trip edge 1`]
   "changed": {
     "lastLog.id": 132,
     "lastLog.text": "Our superintendent checked a punch item on Concrete: Grind the trip edge at the sidewalk joint. It is fixed.",
-    "projects.fairoaksd.stageProgress.also[1]": "The punch list on Concrete is done. Accept the work on Closeout.",
+    "projects.fairoaksd.stageProgress.also[2]": "The punch list on Concrete is done. Accept the work on Closeout.",
   },
   "removed": [],
 }
@@ -7789,13 +7815,13 @@ exports[`GC mode golden walk > step 137: Accept the concrete work on Fair Oaks D
   "changed": {
     "lastLog.id": 133,
     "lastLog.text": "Accepted the Concrete work from Guadalupe Flatwork. The punch list is done.",
-    "projects.fairoaksd.stageProgress.also[1]": "Iron Horse Fabrication asked for draw 2. Approve it.",
-    "projects.fairoaksd.stageProgress.also[2]": "Pecan Valley Electric owes the unconditional waiver on draw 1.",
-    "projects.fairoaksd.stageProgress.also[3]": "Pecan Valley Electric asked for draw 2. Their insurance expired Sep 15. Approve it once that is fixed.",
-    "projects.fairoaksd.stageProgress.also[4]": "Pay application 1 is back with Summit Roofing. Waiting on a fixed one.",
+    "projects.fairoaksd.stageProgress.also[2]": "Iron Horse Fabrication asked for draw 2. Approve it.",
+    "projects.fairoaksd.stageProgress.also[3]": "Pecan Valley Electric owes the unconditional waiver on draw 1.",
+    "projects.fairoaksd.stageProgress.also[4]": "Pecan Valley Electric asked for draw 2. Their insurance expired Sep 15. Approve it once that is fixed.",
+    "projects.fairoaksd.stageProgress.also[5]": "Pay application 1 is back with Summit Roofing. Waiting on a fixed one.",
   },
   "removed": [
-    "projects.fairoaksd.stageProgress.also[5]",
+    "projects.fairoaksd.stageProgress.also[6]",
   ],
 }
 `;
@@ -7812,12 +7838,23 @@ exports[`GC mode golden walk > step 138: Leon Springs: Addendum 1 revises the ro
 }
 `;
 
-exports[`GC mode golden walk > step 139: Leon Springs: the permit set takes E-101 out, adds E-102 and renames A-501 1`] = `
+exports[`GC mode golden walk > step 139: Fair Oaks D: the service re-inspection fails again 1`] = `
+{
+  "changed": {
+    "lastLog.id": 135,
+    "lastLog.text": "The electrical service inspection failed on Fair Oaks Shops, Building D: The jumper is in. The service disconnect label is still missing. It was Electrical's work. Re-inspection Tue Oct 6.",
+    "projects.fairoaksd.stageProgress.also[1]": "The electrical service inspection failed Oct 2 on the Electrical work. Re-inspection Oct 6.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 140: Leon Springs: the permit set takes E-101 out, adds E-102 and renames A-501 1`] = `
 {
   "changed": {
     "customers.marshvale.addenda": 6,
     "customers.marshvale.sets": 10,
-    "lastLog.id": 135,
+    "lastLog.id": 136,
     "lastLog.text": "Issued Permit set on Leon Springs Urgent Care and emailed 0 companies. 0 were told it changes their trade. It takes out 1 sheet.",
   },
   "removed": [],
@@ -8024,8 +8061,13 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
-      "id": 135,
+      "id": 136,
       "text": "Issued Permit set on Leon Springs Urgent Care and emailed 0 companies. 0 were told it changes their trade. It takes out 1 sheet.",
+      "who": "office",
+    },
+    {
+      "id": 135,
+      "text": "The electrical service inspection failed on Fair Oaks Shops, Building D: The jumper is in. The service disconnect label is still missing. It was Electrical's work. Re-inspection Tue Oct 6.",
       "who": "office",
     },
     {
@@ -8166,11 +8208,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
     {
       "id": 107,
       "text": "Drafted change order 3 on Helotes Dental Office: Add a coffee bar cabinet in the break room, per A-501, $2,640.",
-      "who": "office",
-    },
-    {
-      "id": 106,
-      "text": "Set Comal Iron's language to Spanish: its portal and messages.",
       "who": "office",
     },
   ],
@@ -12430,6 +12467,36 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
           },
           {
             "after": [
+              "felec-1",
+            ],
+            "finish": "2026-10-06",
+            "inspection": {
+              "failed": [
+                {
+                  "note": "The main bonding jumper is missing at the service panel.",
+                  "on": "2026-09-28",
+                  "packageIds": [
+                    "felec",
+                  ],
+                  "reinspectOn": "2026-10-02",
+                },
+                {
+                  "note": "The jumper is in. The service disconnect label is still missing.",
+                  "on": "2026-10-02",
+                  "packageIds": [
+                    "felec",
+                  ],
+                  "reinspectOn": "2026-10-06",
+                },
+              ],
+              "label": "Electrical service inspection",
+            },
+            "lineId": "fairoaksd-insp-service",
+            "packageId": "",
+            "start": "2026-10-06",
+          },
+          {
+            "after": [
               "fsite-4",
               "fsteel-3",
               "froof-2",
@@ -12439,6 +12506,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
               "felec-4",
               "fplumb-4",
               "fhvac-4",
+              "fairoaksd-insp-service",
             ],
             "finish": "2026-12-08",
             "inspection": {
@@ -12458,6 +12526,10 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
             "fairoaksd-insp-roughin": {
               "finish": "2026-10-13",
               "start": "2026-10-12",
+            },
+            "fairoaksd-insp-service": {
+              "finish": "2026-09-28",
+              "start": "2026-09-28",
             },
             "fconc-1": {
               "finish": "2026-08-07",

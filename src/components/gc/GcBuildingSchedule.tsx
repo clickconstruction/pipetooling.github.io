@@ -3,6 +3,7 @@ import {
   activityName,
   addDays,
   daysBetween,
+  inspectedTrades,
   LOOKAHEAD_WEEKS,
   markReason,
   MILESTONE_GRACE_DAYS,
@@ -18,6 +19,7 @@ import {
   type LookAheadReason,
   type LookAheadState,
   type MilestoneRow,
+  type ScheduleActivity,
   type ScheduleItem,
   type ScheduleMilestone,
   type ScheduleRow,
@@ -77,10 +79,10 @@ export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps)
           rows={m.items}
           started={Boolean(project.startedOn)}
           onSave={(start, finish, after) => dispatch({ type: 'setScheduleActivity', projectId: project.id, lineId: pickedRow.activity.lineId, start, finish, after })}
-          onPass={
-            building && pickedInspection && !pickedInspection.passedOn
-              ? () => dispatch({ type: 'passInspection', projectId: project.id, lineId: pickedRow.activity.lineId })
-              : undefined
+          check={
+            building && pickedInspection && !pickedInspection.passedOn ? (
+              <InspectionCheck project={project} activity={pickedRow.activity} today={state.today} dispatch={dispatch} hint="Our superintendent records it. A pass meets the milestone with the same name." />
+            ) : undefined
           }
           onClose={() => setPicked(null)}
         />
@@ -147,15 +149,15 @@ function ActivityEditor({
   rows,
   started,
   onSave,
-  onPass,
+  check,
   onClose,
 }: {
   row: ScheduleItem
   rows: ScheduleItem[]
   started: boolean
   onSave: (start: string, finish: string, after: string[]) => void
-  /** An inspection not passed yet, on a job being built. */
-  onPass?: () => void
+  /** An inspection not passed yet, on a job being built: passed or failed, today. */
+  check?: ReactNode
   onClose: () => void
 }) {
   const a = row.activity
@@ -227,12 +229,16 @@ function ActivityEditor({
         {row.activity.inspection?.passedOn && (
           <div style={{ color: 'var(--text-green-800)' }}>It passed {shortDate(row.activity.inspection.passedOn)}.</div>
         )}
-        {onPass && (
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', paddingTop: '0.5rem', borderTop: '1px solid var(--border)' }}>
-            <Btn onClick={onPass}>It passed today</Btn>
-            <span style={{ color: 'var(--text-muted)' }}>Our superintendent records the pass. A milestone with the same name is met with it.</span>
+        {(row.activity.inspection?.failed ?? []).length > 0 && (
+          <div style={{ display: 'grid', gap: '0.15rem', color: 'var(--text-muted)' }}>
+            {(row.activity.inspection?.failed ?? []).map((f) => (
+              <span key={f.on + f.reinspectOn}>
+                Failed {shortDate(f.on)}: {f.note} Re-inspection {shortDate(f.reinspectOn)}.
+              </span>
+            ))}
           </div>
         )}
+        {check && <div style={{ paddingTop: '0.5rem', borderTop: '1px solid var(--border)' }}>{check}</div>}
       </div>
     </Card>
   )
@@ -517,6 +523,9 @@ function ChartRow({
 }) {
   const a = row.activity
   const passedOn = a.inspection?.passedOn
+  const fails = a.inspection?.failed ?? []
+  const lastFail = passedOn ? undefined : fails[fails.length - 1]
+  const inspectionWords = passedOn ? `passed ${shortDate(passedOn)}` : lastFail ? `failed ${shortDate(lastFail.on)} · again ${shortDate(lastFail.reinspectOn)}` : 'not passed yet'
   const done = row.actual >= 100
   const critical = spare === 0 && !done
   const behind = building && !done && row.actual + 0.5 < row.plannedToday
@@ -538,8 +547,8 @@ function ChartRow({
             {row.label}
           </button>
           {building && a.inspection ? (
-            <span style={{ color: passedOn ? 'var(--text-green-800)' : behind ? 'var(--text-amber-800)' : 'var(--text-muted)' }}>
-              {passedOn ? `passed ${shortDate(passedOn)}` : 'not passed yet'}
+            <span style={{ color: passedOn ? 'var(--text-green-800)' : lastFail ? 'var(--text-red-700)' : behind ? 'var(--text-amber-800)' : 'var(--text-muted)' }}>
+              {inspectionWords}
             </span>
           ) : building ? (
             <span style={{ fontVariantNumeric: 'tabular-nums', color: behind ? 'var(--text-amber-800)' : 'var(--text-muted)' }}>
@@ -568,7 +577,7 @@ function ChartRow({
           />
         )}
         <span
-          title={`${shortDate(a.start)} to ${shortDate(a.finish)} · ${a.inspection ? (passedOn ? `passed ${shortDate(passedOn)}` : 'not passed yet') : `${Math.round(row.actual)}% done`}`}
+          title={`${shortDate(a.start)} to ${shortDate(a.finish)} · ${a.inspection ? inspectionWords : `${Math.round(row.actual)}% done`}`}
           style={{
             position: 'absolute',
             left: planLeft,
@@ -637,9 +646,7 @@ function LookAhead({ weeks }: { weeks: ReturnType<typeof scheduleMeasures>['look
                   {insp.label} <span style={{ color: 'var(--text-muted)' }}>· {insp.company} · {shortDate(insp.activity.start)} to {shortDate(insp.activity.finish)}</span>
                 </span>
                 <span>
-                  <Chip tone={insp.activity.inspection?.passedOn ? 'green' : 'violet'}>
-                    {insp.activity.inspection?.passedOn ? `passed ${shortDate(insp.activity.inspection.passedOn)}` : 'inspection'}
-                  </Chip>
+                  <InspectionChip activity={insp.activity} />
                 </span>
               </div>
             ))}
@@ -718,12 +725,7 @@ function VerifyCard({ project, rows, today, dispatch }: { project: GcProject; ro
                 · {insp.company} · planned {shortDate(insp.activity.start)} to {shortDate(insp.activity.finish)}
               </span>
             </div>
-            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-              <Btn kind="primary" onClick={() => dispatch({ type: 'passInspection', projectId: project.id, lineId: insp.activity.lineId })}>
-                It passed today
-              </Btn>
-              <span style={{ color: 'var(--text-muted)' }}>Not passed yet? Move its days on the chart.</span>
-            </div>
+            <InspectionCheck project={project} activity={insp.activity} today={today} dispatch={dispatch} />
           </div>
         ))}
       </div>
@@ -798,6 +800,140 @@ function VerifyLine({
             <Btn onClick={() => onVerify(true)}>It is done</Btn>
           </>
         )}
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------------------------
+// An inspection: passed, or failed with a re-inspection day (owner, 2026-10-03)
+// ---------------------------------------------------------------------------------------------
+
+/** An inspection in the look-ahead: passed, failed and when again, or just planned. */
+function InspectionChip({ activity }: { activity: ScheduleActivity }) {
+  const inspection = activity.inspection
+  const fails = inspection?.failed ?? []
+  const last = fails[fails.length - 1]
+  if (inspection?.passedOn) return <Chip tone="green">passed {shortDate(inspection.passedOn)}</Chip>
+  if (last) return <Chip tone="red">failed, again {shortDate(last.reinspectOn)}</Chip>
+  return <Chip tone="violet">inspection</Chip>
+}
+
+/**
+ * Our superintendent records an inspection: it passed today, or it failed. A failure says what
+ * failed, whose work (the trades it inspects come ticked) and the re-inspection day; the inspection
+ * moves to that day and what waits on it moves out. The last failure shows until it passes.
+ */
+function InspectionCheck({
+  project,
+  activity,
+  today,
+  dispatch,
+  hint,
+}: {
+  project: GcProject
+  activity: ScheduleActivity
+  today: string
+  dispatch: Dispatch<GcAction>
+  hint?: string
+}) {
+  const [failing, setFailing] = useState(false)
+  const fails = activity.inspection?.failed ?? []
+  const last = fails[fails.length - 1]
+  const whose = (ids: string[]) =>
+    project.packages
+      .filter((k) => ids.includes(k.id))
+      .map((k) => k.trade)
+      .join(', ')
+  return (
+    <div style={{ display: 'grid', gap: '0.4rem', fontSize: '0.85rem' }}>
+      {last && (
+        <div style={{ color: 'var(--text-red-700)' }}>
+          Failed {shortDate(last.on)}
+          {last.packageIds.length > 0 ? ` on the ${whose(last.packageIds)} work` : ''}: {last.note} Re-inspection {shortDate(last.reinspectOn)}.
+          {fails.length > 1 ? ` It has failed ${fails.length} times.` : ''}
+        </div>
+      )}
+      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        <Btn kind="primary" onClick={() => dispatch({ type: 'passInspection', projectId: project.id, lineId: activity.lineId })}>
+          It passed today
+        </Btn>
+        {!failing && <Btn onClick={() => setFailing(true)}>It failed</Btn>}
+        {!failing && hint && <span style={{ color: 'var(--text-muted)' }}>{hint}</span>}
+      </div>
+      {failing && (
+        <InspectionFailForm
+          project={project}
+          activity={activity}
+          today={today}
+          onCancel={() => setFailing(false)}
+          onFail={(note, packageIds, reinspectOn) => {
+            dispatch({ type: 'failInspection', projectId: project.id, lineId: activity.lineId, note, packageIds, reinspectOn })
+            setFailing(false)
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+function InspectionFailForm({
+  project,
+  activity,
+  today,
+  onFail,
+  onCancel,
+}: {
+  project: GcProject
+  activity: ScheduleActivity
+  today: string
+  onFail: (note: string, packageIds: string[], reinspectOn: string) => void
+  onCancel: () => void
+}) {
+  const inspected = inspectedTrades(project, activity)
+  const others = project.packages.filter((k) => !inspected.includes(k) && (k.sow?.status === 'signed' || k.selfPerform))
+  const [picked, setPicked] = useState<string[]>(inspected.map((k) => k.id))
+  const [note, setNote] = useState('')
+  const [again, setAgain] = useState(addDays(today, 3))
+  const problem = !note.trim() ? 'Say what failed first.' : !again || again <= today ? 'The re-inspection is after today.' : null
+  const box = (id: string, trade: string) => (
+    <label key={id} style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+      <input type="checkbox" checked={picked.includes(id)} onChange={(e) => setPicked((list) => (e.target.checked ? [...list, id] : list.filter((x) => x !== id)))} />
+      <span>{trade}</span>
+    </label>
+  )
+  const label = { fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-700)' } as const
+  return (
+    <div style={{ padding: '0.65rem 0.75rem', border: '1px solid var(--border-strong)', borderRadius: 8, background: 'var(--bg-subtle)', display: 'grid', gap: '0.55rem' }}>
+      <label style={{ display: 'grid', gap: '0.2rem' }}>
+        <span style={label}>What failed · the trades read this in their portal</span>
+        <textarea
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          rows={2}
+          placeholder="The main bonding jumper is missing at the service panel."
+          style={{ ...input, width: '100%', boxSizing: 'border-box', resize: 'vertical' }}
+        />
+      </label>
+      <div style={{ display: 'grid', gap: '0.2rem' }}>
+        <span style={label}>Whose work</span>
+        <div style={{ display: 'flex', gap: '0.25rem 0.9rem', flexWrap: 'wrap' }}>
+          {inspected.map((k) => box(k.id, k.trade))}
+          {others.map((k) => box(k.id, k.trade))}
+        </div>
+      </div>
+      <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        <span style={label}>Re-inspection</span>
+        <input type="date" value={again} min={addDays(today, 1)} onChange={(e) => setAgain(e.target.value)} style={input} />
+        <span style={{ color: 'var(--text-muted)' }}>The inspection moves to that day. What waits on it moves out.</span>
+      </label>
+      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        <Btn kind="primary" disabled={problem !== null} title={problem ?? undefined} onClick={() => onFail(note, picked, again)}>
+          Record the failure
+        </Btn>
+        <Btn kind="quiet" onClick={onCancel}>
+          Keep it
+        </Btn>
       </div>
     </div>
   )

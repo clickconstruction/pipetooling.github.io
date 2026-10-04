@@ -432,6 +432,18 @@ const STEPS: Step[] = [
       addedSpecs: [{ id: '07 54 23', title: 'Thermoplastic polyolefin roofing' }],
     },
   },
+  // A failed inspection (Building lane): the service re-inspection fails again, on the electrician's work.
+  {
+    label: 'Fair Oaks D: the service re-inspection fails again',
+    action: {
+      type: 'failInspection',
+      projectId: 'fairoaksd',
+      lineId: 'fairoaksd-insp-service',
+      note: 'The jumper is in. The service disconnect label is still missing.',
+      packageIds: ['felec'],
+      reinspectOn: '2026-10-06',
+    },
+  },
   // A whole new set (New Project lane, 2026-10-03): a sheet goes, one comes, one is renamed, and the line left behind is tied to the new one.
   {
     label: 'Leon Springs: the permit set takes E-101 out, adds E-102 and renames A-501',
@@ -588,6 +600,7 @@ describe('GC mode golden walk', () => {
       'sendTradeChange', 'tradeSignChange',
       'passInspection',
       'addPunchItem', 'tradeFixPunchItem', 'checkPunchItem',
+      'failInspection',
       'tradeOpenPortal',
       'tradeAnswerLines',
       'priceOwnBid',

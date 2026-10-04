@@ -93,7 +93,9 @@ export function PlusUnknown({ words }: { words: string }) {
   return (
     <span
       title={`${words} This number counts it as $0 until you set a cost in Compare bids.`}
-      style={{ color: 'var(--text-amber-800)', fontWeight: 700, whiteSpace: 'nowrap', cursor: 'help' }}
+      // position: relative holds the hidden screen-reader words inside the marker; without it they sat at
+      // their static spot in a wide table and widened the page on a phone.
+      style={{ position: 'relative', color: 'var(--text-amber-800)', fontWeight: 700, whiteSpace: 'nowrap', cursor: 'help' }}
     >
       <span aria-hidden> + ?</span>
       <span style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap' }}>
