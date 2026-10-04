@@ -30,15 +30,23 @@ const TAB_WORDS = {
 export function BidTabTable({ rows, viewerId, showNames }: { rows: BidTabRow[]; viewerId: string | null; showNames: boolean }) {
   // 'en' everywhere outside the portal, so the office's own read stays English.
   const w = TAB_WORDS[usePortalLang().lang]
+  // A company's own read sits in a narrow portal block (about 283 px on a phone): tighter cells,
+  // no Rank column (the order already ranks them and their row is marked), and "la más baja" may
+  // wrap. The office's read keeps every column.
+  const compact = viewerId !== null
+  const pad = compact ? { padding: '0.35rem 0.3rem' } : null
+  const head = { ...th, ...pad, whiteSpace: 'normal' } as const
+  const cell = { ...td, ...pad }
+  const money_ = { ...num, ...pad }
   return (
     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
       <thead>
         <tr>
           {/* Headers wrap so the table fits a phone, even in Spanish ("Arriba de la más baja"); the numbers stay on one line. */}
-          <th style={{ ...th, whiteSpace: 'normal' }}>{w.rank}</th>
-          <th style={{ ...th, whiteSpace: 'normal' }}>{w.company}</th>
-          <th style={{ ...th, whiteSpace: 'normal', textAlign: 'right' }}>{w.quote}</th>
-          <th style={{ ...th, whiteSpace: 'normal', textAlign: 'right' }}>{w.overLow}</th>
+          {!compact && <th style={head}>{w.rank}</th>}
+          <th style={head}>{w.company}</th>
+          <th style={{ ...head, textAlign: 'right' }}>{w.quote}</th>
+          <th style={{ ...head, textAlign: 'right' }}>{w.overLow}</th>
         </tr>
       </thead>
       <tbody>
@@ -47,13 +55,13 @@ export function BidTabTable({ rows, viewerId, showNames }: { rows: BidTabRow[]; 
           const name = viewerId === null || showNames || mine ? r.company : w.another
           return (
             <tr key={r.partnerId} style={{ background: mine ? 'var(--bg-amber-100)' : undefined, fontWeight: mine ? 700 : 400 }}>
-              <td style={td}>{r.rank}</td>
-              <td style={td}>
+              {!compact && <td style={cell}>{r.rank}</td>}
+              <td style={cell}>
                 {name}
                 {mine ? ` ${w.you}` : ''} {r.awarded && <Chip tone="green">{w.awarded}</Chip>}
               </td>
-              <td style={num}>{money(r.amount)}</td>
-              <td style={num}>{r.rank === 1 ? w.low : `${r.overLowPct}%`}</td>
+              <td style={money_}>{money(r.amount)}</td>
+              <td style={r.rank === 1 ? { ...money_, whiteSpace: 'normal' } : money_}>{r.rank === 1 ? w.low : `${r.overLowPct}%`}</td>
             </tr>
           )
         })}
