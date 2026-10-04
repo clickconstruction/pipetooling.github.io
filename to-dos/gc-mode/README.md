@@ -207,8 +207,7 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   inside GC mode for now, not on the app's Schedule page. A milestone counts as hit within a few
   days of its planned day. The look-ahead shows three weeks. Each week the trade marks its
   look-ahead activities done or not in its portal, and our superintendent verifies them; only a
-  verified mark counts. The proposal is
-  under *The schedule (proposed)*.
+  verified mark counts. How it works is under *The schedule*.
 - **Each draw comes with a 702 and 703** (2026-10-02, Building lane): the trade fills the pay
   application in its portal and watches the form fill, typing only what the app cannot know. Most
   of it comes from the job and from the work they reported (`gcBuilding.ts`, `GcBuildingPayApp.tsx`).
@@ -493,10 +492,17 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
     (`GcPlansDoors` in `GcNewPlans.tsx`). `issuePlanSet` refuses a lost bid and `questionsOpen` is
     false on one, so a portal cannot ask either. Reopen it and both come back.
 
-## The schedule (proposed, 2026-10-02)
+## The schedule (proposed 2026-10-02, built 2026-10-03)
 
-Built so far (Building lane, 2026-10-03): the **Schedule** tab, its four measures and the look-ahead on Fair Oaks D, drawing it in Buying out with Start keeping the baseline, and the superintendent's verify list (`gcBuildingSchedule.ts`, `GcBuildingSchedule.tsx`), and the measures on a building job's board row and ring card (`scheduleSummary`). The trade's weekly done or not in its portal is the Portal lane's (`LookAheadMark`; the verify list reads every mark not verified). **Draw a first draft** uses the New Project lane's draft by stage of the job (`scheduleDraft`). Inspections are activities of their own (2026-10-03): the draft draws them (the New Project lane); the chart, the editor, the look-ahead and the verify list take them, and our superintendent records the pass (`scheduleItems`, `inspectionItems`, `passInspection`). The owner's answers are under *Decided by the owner*; this is the shape
-they point to, for the lanes to pick up.
+Built 2026-10-03 by every lane. The Building lane: the **Schedule** tab with its four measures,
+the chart and the look-ahead; drawing it in Buying out, with Start keeping the baseline; the
+superintendent's verify list; inspections that pass or fail (`gcBuildingSchedule.ts`,
+`GcBuildingSchedule.tsx`); the measures on a building job's board row and ring card
+(`scheduleSummary`, `GcBuildingScheduleBlock`). The New Project lane: the first draft by stage of
+the job, inspections included (`scheduleDraft`). The Portal lane: the trade's weekly done or not
+(`tradeMarkLookAhead`, `GcPortalLookAhead.tsx`). The Board lane: the Get started step and the lines
+on Trade partners (`gcPartnerSchedule.ts`). The owner's answers are under *Decided by the owner*;
+the bullets below are the shape they set.
 
 - **The activities are the statement of work lines**: the same schedule-of-values lines a trade
   reports its percent on and draws against. Our own crew has no statement of work; its activities
@@ -529,20 +535,15 @@ they point to, for the lanes to pick up.
   ring's card; milestone hit rate and look-ahead reliability on Trade partners, beside "answers
   when asked"; the weekly done or not in the trade's portal; the superintendent's verify list in
   Building.
-- **Who builds what**: the Building lane, the schedule view and the four measures; the Board
-  lane, the Get started step and the lines on Trade partners (the board row's measures were built
-  by the Building lane in the row's days block, 2026-10-03, `GcBuildingScheduleBlock`); the Portal
-  lane, the trade's weekly done or not (built 2026-10-03: `tradeMarkLookAhead`,
-  `portalLookAhead` in `gcPortal.ts`, `GcPortalLookAhead.tsx`); the Building lane also, the
-  superintendent's verify; the New Project lane, the first draft of the links from the stages of
-  the job, and a set issued after Start saying which activities it moves.
 
 ## Workflow steps not built yet
 
 - A set's added days could also carry their time onto the change order it starts, beyond the
   "+N days" words (Owner Billing's change orders carry a schedule field).
 
-- The schedule, the rest: the other lanes' parts (*The schedule, proposed*): the Get started step, the lines on Trade partners, the trade's weekly marks in its portal, and the New Project lane's draft.
+- The schedule, the rest: a trade or a line a later set brings in does not join a schedule already
+  drawn (the New Project lane's `issuePlanSet`, asked 2026-10-03; the golden walk's "Draw Helotes's
+  schedule" moves before Start once it does, the owner's call). Days are calendar days for now.
 
 - New Project past its first form: a scope line tied to its spec section, exclusions, and a
   budget from real costs, not a made-up rate per square foot. A line's sheets show only in New Project, a new set
@@ -552,16 +553,9 @@ they point to, for the lanes to pick up.
   Portal lane: the action `tradeAskQuestion` is ready). Today the office types a question that came
   in by phone or email. The window opens from **Questions about the plans** on the Plans tab and
   from A new set of plans came in.
-- Change orders to a trade, the rest: the owner's change order still reads its own percent done,
-  not the trade's on its line (`changeOrderTradePct`, the Owner Billing lane's to read), and the
-  portal's "left to bill" counts the original contract only (`sowContractSum`, the Portal lane's).
-- A closed job's own section on the board (answered yes, 2026-10-02): the Board lane reads
-  `closedOn`. Closing it on Closeout is built. Bill the owner's picker for our own crew still
-  sets one number; by stage it is set on Draws.
 - Our billing to the owner, the rest: the owner's window still shows billed and paid from the
   fixture, not from the pay applications on **Bill the owner** (`ownerAccount` has the numbers);
-  our own crew's percent read from its Pipeline job (real build only; see *Where it plugs in*);
-  a trade's retainage held until the owner has paid us ours (the Building lane's Closeout).
+  our own crew's percent read from its Pipeline job (real build only; see *Where it plugs in*).
 - No email is sent and nothing notifies anyone when a promised day passes.
   Building's events, and where each would go (Building lane, 2026-10-03; the real build sends
   through Resend, the office's go to the app's Inbox):
