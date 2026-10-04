@@ -2,6 +2,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   allJobsMoney,
+  ownerContractPrice,
+  ownerContractWorthNow,
   cashAhead,
   changeOrderScheduleWords,
   contractDaysAdded,
@@ -29,6 +31,7 @@ import {
   spreadMarkup,
   tradesOwingUnconditional,
   tradeWaiverChecks,
+  type GcProject,
   type GcState,
 } from './gcModel'
 
@@ -786,6 +789,41 @@ describe('the next weeks of money across every job', () => {
     const a = cashAhead(state)
     expect(a.weeks.flatMap((w) => w.moves).some((m) => m.who === 'Iron Horse Fabrication')).toBe(false)
     expect(r(a.standingNow)).toBe(80_428 - 79_200)
+  })
+})
+
+describe('the owner’s price stays what they signed', () => {
+  const mill = (project: GcProject, budget: number): GcProject => ({
+    ...project,
+    packages: project.packages.map((k) => (k.id === 'mill' ? { ...k, awardedInviteId: null, carried: 'plug' as const, budget } : k)),
+  })
+
+  it('keeps Helotes at the $338,767 Dr. Raman signed when we buy a trade out for less', () => {
+    const { state, project } = helotes()
+    expect([ownerPayApp(state, project).contract, ownerContractPrice(project)]).toEqual([338_767, 338_767])
+    const cheaper = mill(project, 30_000)
+    const app = ownerPayApp(state, cheaper)
+    expect([app.contract, app.lines.find((l) => l.id === 'mill')?.worth]).toEqual([338_767, 39_800])
+    // Before it was kept, the price followed what we carry.
+    const { ownerContractWorth: _kept, ...floating } = cheaper
+    expect(Math.round(ownerPayApp(state, floating).contract)).toBeLessThan(338_767)
+    expect(ownerContractWorthNow(floating).mill).toBe(30_000)
+  })
+
+  it('bills a trade its share done of what the owner signed for it', () => {
+    const { state, project } = helotes()
+    const was = ownerPayApp(state, project).lines.find((l) => l.id === 'dry')
+    const more = { ...project, ownerContractWorth: { ...project.ownerContractWorth, dry: 70_000 } }
+    const now = ownerPayApp(state, more).lines.find((l) => l.id === 'dry')
+    expect(Math.round(((now?.doneToDate ?? 0) / 70_000) * 1000)).toBe(Math.round(((was?.doneToDate ?? 0) / 64_200) * 1000))
+    expect(now?.source).toBe(was?.source)
+  })
+
+  it('a trade that came after they signed is worth nothing on it: its change order bills it', () => {
+    const { state, project } = helotes()
+    const { mill: _gone, ...kept } = project.ownerContractWorth ?? {}
+    const app = ownerPayApp(state, { ...project, ownerContractWorth: kept })
+    expect([app.lines.find((l) => l.id === 'mill')?.worth, app.contract]).toEqual([0, 338_767 - 39_800])
   })
 })
 

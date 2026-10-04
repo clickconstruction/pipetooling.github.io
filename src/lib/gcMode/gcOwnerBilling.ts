@@ -89,8 +89,31 @@ export function nextOwnerBillDay(today: string): string {
   return new Date(Date.UTC(year, month, OWNER_BILL_DAY)).toISOString().slice(0, 10)
 }
 
-function tradeLine(state: GcState, pkg: TradePackage): OwnerLine {
-  const worth = carriedAmount(pkg) ?? 0
+/** Our price to the owner by line as it stands today: what we carry for each trade, then our costs and fee. */
+export function ownerContractWorthNow(project: GcProject): Record<string, number> {
+  const totals = proposalTotals(project)
+  return {
+    ...Object.fromEntries(project.packages.map((pkg) => [pkg.id, carriedAmount(pkg) ?? 0])),
+    gc: totals.generalConditions,
+    contingency: totals.contingency,
+    fee: totals.fee,
+  }
+}
+
+/**
+ * The owner's price by line: as they signed it once it is kept (owner, 2026-10-04), else what we
+ * carry today. A trade that came after they signed is worth nothing on it: its change order bills it.
+ */
+export function ownerContractWorthOf(project: GcProject): Record<string, number> {
+  return project.ownerContractWorth ?? ownerContractWorthNow(project)
+}
+
+/** The price the owner signed for, before change orders. */
+export function ownerContractPrice(project: GcProject): number {
+  return Object.values(ownerContractWorthOf(project)).reduce((t, n) => t + n, 0)
+}
+
+function tradeLine(state: GcState, pkg: TradePackage, worth: number): OwnerLine {
   const base = { id: pkg.id, label: pkg.trade, worth, doneBefore: 0, detail: [] as OwnerLine['detail'] }
   if (pkg.selfPerform) {
     // One number with the Building lane's Our own crew card: by stage once reported that way.
@@ -129,11 +152,13 @@ function tradeLine(state: GcState, pkg: TradePackage): OwnerLine {
   const pct = sow.price === 0 ? 0 : Math.round((done / sow.price) * 100)
   const reportedPct = sow.price === 0 ? 0 : Math.round((reported / sow.price) * 100)
   const doubted = Math.round(reported - done) > 0
+  // The owner's line is worth what they signed for: it bills the trade's share done of that.
+  const billed = sow.price === 0 ? 0 : (worth * done) / sow.price
   return {
     ...base,
     kind: 'trade',
-    doneToDate: done,
-    thisMonth: done,
+    doneToDate: billed,
+    thisMonth: billed,
     source: doubted
       ? `${company} reported ${reportedPct}%. We sent their pay application back, so this bills what we see: ${pct}%.`
       : done > 0
@@ -178,10 +203,10 @@ export function appOpen(app: OwnerPayAppSent): number {
  */
 export function ownerPayApp(state: GcState, project: GcProject): OwnerPayApp {
   const customer = customerOf(state, project)
-  const totals = proposalTotals(project)
+  const signed = ownerContractWorthOf(project)
   const sent = ownerPayAppsSent(project)
   const last = sent[sent.length - 1]
-  const trades = project.packages.map((pkg) => tradeLine(state, pkg))
+  const trades = project.packages.map((pkg) => tradeLine(state, pkg, signed[pkg.id] ?? 0))
   const tradeWorth = trades.reduce((s, l) => s + l.worth, 0)
   const tradeDone = trades.reduce((s, l) => s + l.doneToDate, 0)
   const tradeShare = tradeWorth === 0 ? 0 : tradeDone / tradeWorth
@@ -199,9 +224,9 @@ export function ownerPayApp(state: GcState, project: GcProject): OwnerPayApp {
   })
   const lines: OwnerLine[] = [
     ...trades,
-    follows('gc', 'General conditions', 'generalConditions', totals.generalConditions),
-    follows('contingency', `Contingency ${project.contingencyPct}%`, 'contingency', totals.contingency),
-    follows('fee', `Fee ${project.feePct}%`, 'fee', totals.fee),
+    follows('gc', 'General conditions', 'generalConditions', signed.gc ?? 0),
+    follows('contingency', `Contingency ${project.contingencyPct}%`, 'contingency', signed.contingency ?? 0),
+    follows('fee', `Fee ${project.feePct}%`, 'fee', signed.fee ?? 0),
     ...signedChangeOrders(project).map((co) => changeOrderLine(state, project, co)),
   ].map((l) => {
     const doneBefore = last?.doneToDate[l.id] ?? 0

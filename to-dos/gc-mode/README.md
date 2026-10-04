@@ -326,6 +326,13 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   certificates. The final pay application is certified the same way, a step in our closeout.
 - **A pay application we sent back bills what we see** (Owner Billing lane, 2026-10-02): until
   the trade resends it, the owner's bill uses our percent on the lines we doubt, not theirs.
+- **The owner's price stays what they signed** (owner, 2026-10-04): the day the owner contract is
+  signed, their price is kept by line (`ownerContractWorth`: each trade, then our costs and fee).
+  Bill the owner bills from it, each trade's line its share done of what the owner signed for it.
+  Buying a trade out for more or less is ours, never theirs; only a change order changes their
+  price, and a trade that came after they signed bills through its change order. Until the
+  Board lane's **Owner contract signed** keeps it, a project signed in the prototype follows what
+  we carry (`ownerContractWorthOf`).
 - **A trade sees "Click Construction"** (2026-10-02). The name comes from one record
   (`GC_COMPANY` in `gcFixture.ts`: the full name and the short "Click" used in sentences), never
   typed into the portal's words.
