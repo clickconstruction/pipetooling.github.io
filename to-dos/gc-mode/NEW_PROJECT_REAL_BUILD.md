@@ -223,7 +223,7 @@ question about the plans" (PR 8).
 
 Planned 2026-10-04. The owner said yes to the five defaults the same day ("yes to the defaults,
 start the first PR"). PR 1 is in: the pure kernels at `src/lib/gc/plans.ts` with
-`src/lib/gc/plans.test.ts`, on main through branch `claude/gc-real-kernels` (clickconstruction/pipetooling.github.io#4448), and on this branch,
+`src/lib/gc/plans.test.ts`, merged on main 2026-10-04 (clickconstruction/pipetooling.github.io#4448, c459ecee4), and on this branch,
 where `gcNewProject.ts` and `gcPlans.ts` now import and re-export them (one copy). The kernels that
 need a whole project (a line's reach, a set's fold, the set email, the questions) move with PR 4,
 beside the real types and the row mapper. Nothing builds the tables (PRs 2 and 3) until the owner
