@@ -12,6 +12,8 @@ import { money, shortDate } from './gcWords'
 import { partnerById } from './gcLookups'
 import { GC_COMPANY } from './gcFixture'
 import { punchCounts, punchWords } from './gcBuildingPunch'
+import type { PayAppParties } from './gcPayAppFile'
+import { stageReached } from './gcTheirSov'
 
 /**
  * The general contractor's name on the "To" line. It reads the one company record in the fixture
@@ -601,6 +603,64 @@ export function jobCloseout(state: GcState, project: GcProject): { ready: boolea
 /** The lines signed change orders added to a statement of work. */
 export function changeOrderLines(sow: Sow): SovLine[] {
   return sow.sov.filter((l) => l.changeOrderId !== undefined)
+}
+
+/**
+ * What a pay application claims to date on the original contract, read against the trade's own
+ * schedule of values (the owner, 2026-10-04, question 4): the work in place on our lines. Change
+ * orders and materials stored on site are left out, as the Board's `claimedToDate` leaves them.
+ */
+export function payAppClaimedToDate(sow: Sow, app: PayApplication): number {
+  const original = new Set(sow.sov.filter((l) => !l.changeOrderId).map((l) => l.id))
+  return app.lines.filter((l) => original.has(l.sovId)).reduce((t, l) => t + l.toDate - l.stored, 0)
+}
+
+/** "Their schedule: through Rough-in, 40% into Top out." Where a draw lands on theirs. Null: they gave none. */
+export function drawOnTheirSov(sow: Sow, draw: Draw): string | null {
+  const theirs = sow.theirSov ?? []
+  if (theirs.length === 0 || draw.final) return null
+  const r = stageReached(theirs, payAppClaimedToDate(sow, payApplicationForDraw(sow, draw)))
+  const live = theirs.filter((l) => l.amount > 0)
+  if (r.through.length === live.length && live.length > 0) return 'Their schedule: every line.'
+  const parts = [r.through.length > 0 ? `through ${r.through.join(', ')}` : '', r.into ? `${r.into.pct}% into ${r.into.label}` : ''].filter(Boolean)
+  return parts.length === 0 ? 'Their schedule: nothing reached yet.' : `Their schedule: ${parts.join(', ')}.`
+}
+
+/**
+ * Who and what a trade's pay application is for, beside its numbers (question 12): the trade to us,
+ * its dates, and the change orders on it, each with whether the trade signed it since its last
+ * application. For the Owner Billing lane's shared Excel and PDF builder (`gcPayAppFile.ts`).
+ * `typed.signedOn` null: a draft not sent yet.
+ */
+export function tradePayAppParties(
+  project: GcProject,
+  sow: Sow,
+  partner: Partner,
+  app: PayApplication,
+  typed: { periodTo: string; address: string; license: string; signedOn: string | null },
+): PayAppParties {
+  const before = sow.draws
+    .filter((d) => d.number < app.number)
+    .reduce((last, d) => {
+      const day = d.payApp?.periodTo ?? d.requestedOn
+      return day > last ? day : last
+    }, '')
+  const signedOn = new Map((project.changeOrders ?? []).map((co) => [co.id, co.tradeChange?.signedOn ?? null]))
+  const changeOrders = changeOrderLines(sow).map((l) => {
+    const on = l.changeOrderId ? (signedOn.get(l.changeOrderId) ?? null) : null
+    return { amount: l.amount, thisPeriod: on !== null && on > before && (!typed.periodTo || on <= typed.periodTo) }
+  })
+  return {
+    project: project.name,
+    applicationNo: app.final ? `${app.number}, final` : String(app.number),
+    periodTo: typed.periodTo,
+    sentOn: typed.signedOn,
+    contractDate: sow.signedOn,
+    to: { name: GC_COMPANY.name, address: GC_COMPANY.address },
+    from: { name: partner.company, address: typed.address, ...(typed.license ? { license: typed.license } : {}) },
+    architect: project.architect || null,
+    changeOrders,
+  }
 }
 
 /**

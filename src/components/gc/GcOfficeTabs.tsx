@@ -33,6 +33,7 @@ import {
   proposalTotals,
   retainageHeldNow,
   sentBackOpen,
+  drawOnTheirSov,
   sowContractSum,
   tradeChangesFor,
   timesSentBack,
@@ -1352,6 +1353,7 @@ export function GcDrawsTab({ state, project, dispatch }: GcPaneProps) {
                     {d.status === 'requested' ? 'waiting on us' : d.status}
                   </Chip>
                   <GcBuildingDrawDays project={project} pkg={pkg} draw={d} today={state.today} />
+                  {drawOnTheirSov(sow, d) && <span style={{ color: 'var(--text-muted)' }}>{drawOnTheirSov(sow, d)}</span>}
                   <Chip tone={d.waiver === 'unconditional' ? 'green' : d.status === 'paid' ? 'amber' : 'grey'}>
                     {d.final
                       ? d.waiver === 'unconditional'

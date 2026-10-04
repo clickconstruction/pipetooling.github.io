@@ -136,13 +136,16 @@ first** (a partner's vetting, the promise record), so build on those once GC 0 s
 
 ### Building (GC 1)
 
-1. **Q12 the trade's pay application:** the notary block; materials stored on site (column F, into
+1. ~~**Q12 the trade's pay application:** the notary block; materials stored on site (column F, into
    G); downloads as the AIA Excel template the Jobs Stages tab fills and as a PDF. One builder with
-   Owner Billing's.
-2. **Q8 Building's kinds** on the Board's promise record: a start or move-in day, submittals, a
+   Owner Billing's.~~ done: stored materials f98aabc52; ⤓ Excel, ⤓ PDF and the notary block in the
+   trade's window 8b713255e (Owner Billing's `gcPayAppFile.ts`, `tradePayAppParties`).
+2. ~~**Q8 Building's kinds** on the Board's promise record: a start or move-in day, submittals, a
    material delivery, a pay application fixed and sent again, punch items fixed, closeout papers
-   and lien waivers.
-3. **Q6 words** on Building's screens.
+   and lien waivers.~~ done 2f9ac3ca7: `buildingPromisesKeptBy` (gcBuildingPromises.ts), *They gave
+   a day* where each lives (Schedule's Starting soon, Submittals, Draws, the punch list, Closeout).
+3. ~~**Q6 words** on Building's screens.~~ done: none said "bid" for a trade's number; nothing to
+   change.
 
 ### New Project (GC 2)
 
@@ -195,8 +198,9 @@ first** (a partner's vetting, the promise record), so build on those once GC 0 s
 
 ### Building (GC 1)
 
-1. **Q4 on each draw:** their schedule of values beside the draw (the Board's kernel: "claimed
-   $45,000 to date: through Rough-in, 40% into Top out").
+1. ~~**Q4 on each draw:** their schedule of values beside the draw (the Board's kernel: "claimed
+   $45,000 to date: through Rough-in, 40% into Top out").~~ done (Building, 2026-10-04): a line on
+   each draw on Draws, and the side by side in the office's pay application window.
 
 ### Portal (GC 3)
 
