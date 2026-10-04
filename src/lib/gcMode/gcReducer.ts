@@ -19,6 +19,7 @@ import { addDays, changeOrderTradePct, crewPctFromStages, drawApprovedLess, fina
 import { awardGate } from './gcVetting'
 import { startChecklist } from './gcStart'
 import { keepPromisesOn, openPromiseFor, PROMISE_WHAT, promisesKeptBy, tradePromisesOf } from './gcPromises'
+import { ownerInterest } from './gcOwnerBillingInterest'
 import { appClaimed, appOpen, changeOrderPrice, OWNER_RETAINAGE_DEFAULT_PCT, ownerCloseout, ownerContractWorthNow, ownerFinalPayAppToSend, ownerPayApp, ownerPayAppHasWork, ownerPayAppToSend, ownerRetainageWords } from './gcOwnerBilling'
 
 export function gcReducer(state: GcState, action: GcAction): GcState {
@@ -1696,6 +1697,50 @@ function reduce(state: GcState, action: GcAction): GcState {
         return kept ? { ...rest, ownerRetainageStep: kept } : rest
       })
       return logged(next, 'office', `On ${project.name}, ${project.owner} now holds ${ownerRetainageWords(full, kept ?? undefined)}.`)
+    }
+
+    case 'setOwnerLateInterest': {
+      // Owner Billing lane: interest on the owner's late bills is ours to offer and choose per job
+      // (the owner, 2026-10-04). A percent a month, or null to stop charging it.
+      const project = state.projects.find((p) => p.id === action.projectId)
+      if (!project || (project.stage !== 'buyout' && project.stage !== 'building')) return state
+      const pct = action.pctPerMonth === null ? null : Math.round(action.pctPerMonth * 100) / 100
+      if (pct !== null && !(pct > 0 && pct <= 5)) return state
+      if ((project.ownerLateInterest?.pctPerMonth ?? null) === pct) return state
+      const next = mapProject(state, project.id, (p) => {
+        const { ownerLateInterest: _was, ...rest } = p
+        return pct === null ? rest : { ...rest, ownerLateInterest: { pctPerMonth: pct } }
+      })
+      return logged(
+        next,
+        'office',
+        pct === null
+          ? `We stopped charging ${project.owner} interest on late bills on ${project.name}.`
+          : `On ${project.name}, ${project.owner} pays ${pct}% a month on a late bill.`,
+      )
+    }
+
+    case 'sendOwnerInterestBill': {
+      const project = state.projects.find((p) => p.id === action.projectId)
+      if (!project || !project.ownerBilling) return state
+      const amount = Math.round(ownerInterest(state, project).toBill * 100) / 100
+      if (amount < 1) return state
+      const bills = project.ownerBilling.interestBills ?? []
+      const bill = { number: bills.length + 1, sentOn: state.today, amount, paidOn: null }
+      const next = mapProject(state, project.id, (p) => (p.ownerBilling ? { ...p, ownerBilling: { ...p.ownerBilling, interestBills: [...bills, bill] } } : p))
+      return logged(next, 'office', `Sent ${project.owner} interest bill ${bill.number} on ${project.name}: ${money(amount)} on late bills.`)
+    }
+
+    case 'ownerPaidInterest': {
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const bill = project?.ownerBilling?.interestBills?.find((b) => b.number === action.number)
+      if (!project || !bill || bill.paidOn !== null) return state
+      const next = mapProject(state, project.id, (p) =>
+        p.ownerBilling
+          ? { ...p, ownerBilling: { ...p.ownerBilling, interestBills: (p.ownerBilling.interestBills ?? []).map((b) => (b.number === bill.number ? { ...b, paidOn: state.today } : b)) } }
+          : p,
+      )
+      return logged(next, 'office', `${project.owner} paid interest bill ${bill.number}: ${money(bill.amount)}.`)
     }
   }
 }

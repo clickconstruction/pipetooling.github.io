@@ -970,8 +970,9 @@ export interface ProjectCash {
 export function projectCash(state: GcState, project: GcProject): ProjectCash {
   const account = ownerAccount(project)
   const made = project.ownerBilling
+  const interestPaid = (made?.interestBills ?? []).filter((b) => b.paidOn !== null).reduce((t, b) => t + b.amount, 0)
   const owner = account
-    ? { paid: account.paid, owed: account.owed, held: account.retainageHeld, waitingOnArchitect: account.waitingOnArchitect }
+    ? { paid: account.paid + interestPaid, owed: account.owed, held: account.retainageHeld, waitingOnArchitect: account.waitingOnArchitect }
     : made
       ? { paid: made.paid, owed: made.billed - made.retainageHeld - made.paid, held: made.retainageHeld, waitingOnArchitect: 0 }
       : { paid: 0, owed: 0, held: 0, waitingOnArchitect: 0 }

@@ -357,6 +357,16 @@ export interface OwnerBilling {
   payApps?: OwnerPayAppSent[]
   /** The day the owner accepted the work in their portal. Absent: not yet. Our final pay application waits for it. */
   acceptedOn?: string
+  /** Interest on late bills we sent the owner, oldest first: a bill of its own, never on the pay application. */
+  interestBills?: OwnerInterestBill[]
+}
+
+/** A bill for the interest on the owner's late bills (owner's go-ahead, 2026-10-04). */
+export interface OwnerInterestBill {
+  number: number
+  sentOn: string
+  amount: number
+  paidOn: string | null
 }
 
 /**
@@ -416,6 +426,8 @@ export interface GcProject {
   ownerContractWorth?: Record<string, number>
   /** Retainage that drops once the work is far enough along, if we chose it for this job. Absent: held to the end. */
   ownerRetainageStep?: OwnerRetainageStep
+  /** Interest on the owner's late bills, if we chose to charge it on this job: a percent a month. Absent: none. */
+  ownerLateInterest?: { pctPerMonth: number }
   permitOn: string | null
   startDate: string | null
   /** The day we pressed Start. The trades were told then. */
@@ -825,6 +837,12 @@ export type GcAction =
   | { type: 'answerSubmittal'; projectId: string; submittalId: string; answer: SubmittalAnswer; note: string }
   /** We choose, per job, whether the owner's retainage drops partway (null: held to the end). */
   | { type: 'setOwnerRetainageStep'; projectId: string; step: OwnerRetainageStep | null }
+  /** We choose, per job, whether the owner pays interest on a late bill (null: we do not charge it). */
+  | { type: 'setOwnerLateInterest'; projectId: string; pctPerMonth: number | null }
+  /** We bill the owner the interest built up on late bills and not billed yet. */
+  | { type: 'sendOwnerInterestBill'; projectId: string }
+  /** The owner pays an interest bill (in their portal, or the office marks it). */
+  | { type: 'ownerPaidInterest'; projectId: string; number: number }
 
 /** One trade on a new project, as the office left it in the New project window. */
 export interface NewTradeDraft {

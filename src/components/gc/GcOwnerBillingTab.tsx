@@ -6,6 +6,7 @@ import { OwnerPayAppWindow } from './GcOwnerBillingPayApp'
 import { GcOwnerBillingArchitectPortal } from './GcOwnerBillingArchitect'
 import { GcOwnerBillingPortal } from './GcOwnerBillingPortal'
 import { GcOwnerBillingRetainage } from './GcOwnerBillingRetainage'
+import { GcOwnerBillingInterest } from './GcOwnerBillingInterest'
 import { Btn, Card, Chip, Stat, Why, input, num, td, th } from './gcUi'
 import {
   appCertified,
@@ -268,6 +269,8 @@ function OfficeSide({
       )}
 
       <GcOwnerBillingRetainage state={state} project={project} dispatch={dispatch} />
+
+      <GcOwnerBillingInterest state={state} project={project} dispatch={dispatch} />
 
       <GcOwnerBillingChangeOrders state={state} project={project} dispatch={dispatch} />
 
