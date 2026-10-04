@@ -7,7 +7,7 @@ import { shortDate, thousands, weekdayDate } from './gcWords'
 import { currentRev, partnerById, planLabel } from './gcLookups'
 import { plansReach } from './gcPlans'
 import { startChecklist } from './gcStart'
-import { BIDS_WANTED, bidIsStale, bidsIn, carriedAmount, carriedUncosted, isGuess, uncostedWords } from './gcBids'
+import { BIDS_WANTED, bidIsStale, bidsIn, carriedAmount, carriedUncosted, isGuess, quoteRanOut, uncostedWords } from './gcBids'
 import { followUps } from './gcFollowUp'
 import { partnerBlockers } from './gcBench'
 import { ownCrewWork, sentBackOpen, timesSentBack, tradeCloseout } from './gcBuilding'
@@ -78,15 +78,19 @@ function biddingProgress(state: GcState, project: GcProject): StageProgress {
     label: 'Enough quotes',
     why: `Every trade we hire out needs ${BIDS_WANTED} quotes from different companies.`,
     items: hired.map((pkg) => {
-      const n = bidsIn(pkg).length
+      // A number past its good-until day does not count (question 14, the Board lane's call, 2026-10-04).
+      const all = bidsIn(pkg)
+      const n = all.filter((i) => !(i.bid && quoteRanOut(i.bid, state.today))).length
+      const ranOut = all.length - n
       const waiting = pkg.invites.filter((i) => i.status === 'invited' || i.status === 'opened').length
       const done = n >= BIDS_WANTED
+      const ran = ranOut > 0 ? ` ${ranOut} ran out. Ask them to send it again.` : ''
       return {
         label: pkg.trade,
         done,
         detail: done
           ? `${n} quotes in`
-          : `${n} of ${BIDS_WANTED} in. ${waiting > 0 ? `${waiting} still asked.` : 'Ask more companies.'}`,
+          : `${n} of ${BIDS_WANTED} in.${ran} ${waiting > 0 ? `${waiting} still asked.` : 'Ask more companies.'}`,
       }
     }),
   }
@@ -103,11 +107,13 @@ function biddingProgress(state: GcState, project: GcProject): StageProgress {
       // The owner's rule (2026-10-03): a carried quote with work that has no cost yet is not a
       // real number until every line has one.
       const uncosted = carriedUncosted(pkg)
+      // A carried number past its good-until day is not a real number until it is sent again (question 14).
+      const ranOut = !pkg.sow && !!carriedFrom?.bid && quoteRanOut(carriedFrom.bid, state.today)
       return {
         label: pkg.trade,
         // The owner's rule (2026-10-02): a guess never closes a trade. Only a real quote does,
         // or our own crew's number from a Trades mode bid.
-        done: amount !== null && !isGuess(pkg) && uncosted.length === 0,
+        done: amount !== null && !isGuess(pkg) && uncosted.length === 0 && !ranOut,
         detail:
           amount === null
             ? pkg.selfPerform
@@ -119,9 +125,11 @@ function biddingProgress(state: GcState, project: GcProject): StageProgress {
               ? `Our own crew, ${thousands(amount)}K`
               : isGuess(pkg)
                 ? `Our guess of ${thousands(amount)}K is in the price. ${n > 0 ? `${quotes}. Carry one to close it.` : 'Get a quote to close it.'}`
-                : uncosted.length > 0
-                  ? `${who ?? 'Carried'}, ${thousands(amount)}K + ?. ${uncostedWords(uncosted)} Set it in Compare bids.`
-                  : `${who ?? 'Carried'}, ${thousands(amount)}K`,
+                : ranOut
+                  ? `${who ?? 'Carried'}, ${thousands(amount)}K. Their number ran out. Ask them to send it again.`
+                  : uncosted.length > 0
+                    ? `${who ?? 'Carried'}, ${thousands(amount)}K + ?. ${uncostedWords(uncosted)} Set it in Compare bids.`
+                    : `${who ?? 'Carried'}, ${thousands(amount)}K`,
       }
     }),
   }

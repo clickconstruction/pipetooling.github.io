@@ -686,9 +686,25 @@ function LevelPanel({ state, project, pkg, dispatch, onSeePortal }: GcPaneProps 
                       <span style={{ color: 'var(--text-muted)' }}>None.</span>
                     ) : (
                       <span style={{ display: 'grid', gap: '0.15rem' }}>
-                        {(inv.bid?.alternates ?? []).map((alt) => (
-                          <span key={alt.label}>{alternateWords(alt)}</span>
-                        ))}
+                        {(inv.bid?.alternates ?? []).map((alt) => {
+                          // Question 14 (the Board lane's call): an alternate moves our number only when taken.
+                          const taken = (inv.bid?.takenAlternates ?? []).includes(alt.label)
+                          return (
+                            <span key={alt.label} style={{ display: 'flex', gap: '0.35rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
+                              <span style={{ fontWeight: taken ? 600 : 400 }}>{alternateWords(alt)}</span>
+                              {taken && <Chip tone="green">taken</Chip>}
+                              {!pkg.sow && (
+                                <Btn
+                                  kind="quiet"
+                                  title={taken ? 'Put it back. Their all-in number goes back to without it.' : 'Take it. Their all-in number, and what we carry, move by it.'}
+                                  onClick={() => dispatch({ type: 'takeAlternate', ...ids, inviteId: inv.id, label: alt.label, taken: !taken })}
+                                >
+                                  {taken ? 'Put it back' : 'Take it'}
+                                </Btn>
+                              )}
+                            </span>
+                          )
+                        })}
                       </span>
                     )}
                   </td>
