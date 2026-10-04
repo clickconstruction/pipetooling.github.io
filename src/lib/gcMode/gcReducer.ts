@@ -17,6 +17,7 @@ import { logTrades } from './gcBuildingLog'
 import { nextSubmittalId, nextSubmittalNumber, submittalState } from './gcBuildingSubmittals'
 import { addDays, changeOrderTradePct, crewPctFromStages, drawLinesOf, drawMoney, drawApprovedLess, finalPayApplication, jobCloseout, payApplication, timesSentBack, tradeCloseout, workAllBilled } from './gcBuilding'
 import { awardGate } from './gcVetting'
+import { startChecklist } from './gcStart'
 import { keepPromisesOn, openPromiseFor, PROMISE_WHAT, promisesKeptBy, tradePromisesOf } from './gcPromises'
 import { appClaimed, appOpen, changeOrderPrice, ownerCloseout, ownerContractWorthNow, ownerFinalPayAppToSend, ownerPayApp, ownerPayAppHasWork, ownerPayAppToSend } from './gcOwnerBilling'
 
@@ -208,11 +209,16 @@ function reduce(state: GcState, action: GcAction): GcState {
       const project = state.projects.find((p) => p.id === action.projectId)
       if (!project) return state
       const told = planRecipients(state, { ...project, stage: 'building' }, []).length
-      const next = mapProject(state, project.id, (p) => ({ ...p, stage: 'building', startedOn: state.today }))
+      // Start anyway (the owner, 2026-10-04, question 7): what was missing stays listed as owed.
+      const missing = action.anyway ? startChecklist(state, project).missing : []
+      const anyway = action.anyway && missing.length > 0 ? { by: action.anyway.by, reason: action.anyway.reason.trim(), missing } : null
+      const next = mapProject(state, project.id, (p) => ({ ...p, stage: 'building', startedOn: state.today, ...(anyway ? { startedAnyway: anyway } : {}) }))
       return logged(
         next,
         'office',
-        `${project.name} is started${project.startDate ? `. Work begins ${weekdayDate(project.startDate)}` : ''}. Emailed the ${told} ${told === 1 ? 'company' : 'companies'} on the job.`,
+        `${project.name} is started${project.startDate ? `. Work begins ${weekdayDate(project.startDate)}` : ''}. Emailed the ${told} ${told === 1 ? 'company' : 'companies'} on the job.${
+          anyway ? ` ${anyway.by} started it before everything was in${anyway.reason ? `: ${anyway.reason.replace(/[.!]+$/, '')}` : ''}. ${anyway.missing.length} still owed.` : ''
+        }`,
       )
     }
 
@@ -313,10 +319,11 @@ function reduce(state: GcState, action: GcAction): GcState {
       const next = mapProject(state, project.id, (p) =>
         mapPackage(p, pkg.id, (k) => ({ ...k, carried: invite.id, awardedInviteId: invite.id, sow })),
       )
+      const marked = action.by ? mapProject(next, project.id, (p) => mapPackage(p, pkg.id, (k) => ({ ...k, awardedBy: action.by }))) : next
       return logged(
-        { ...next, partners: next.partners.map((p) => (p.id === partner.id ? { ...p, won: p.won + 1 } : p)) },
+        { ...marked, partners: marked.partners.map((p) => (p.id === partner.id ? { ...p, won: p.won + 1 } : p)) },
         'office',
-        `Awarded ${pkg.trade} to ${partner.company}. A statement of work is drafted from their quote.`,
+        `${action.by ? `${action.by} awarded` : 'Awarded'} ${pkg.trade} to ${partner.company}. A statement of work is drafted from their quote.`,
       )
     }
 

@@ -227,6 +227,8 @@ export interface TradePackage {
   /** An invite id, 'plug' (our budget) or 'self'. */
   carried: string | null
   awardedInviteId: string | null
+  /** The estimator who awarded it (question 7). Unset: awarded before the prototype kept it. */
+  awardedBy?: string
   sow: Sow | null
   /** Work this trade's quote leaves out, and who does it instead. Missing: none said. */
   excludes?: ScopeExclusion[]
@@ -417,6 +419,8 @@ export interface GcProject {
   startDate: string | null
   /** The day we pressed Start. The trades were told then. */
   startedOn: string | null
+  /** Started before everything was in (question 7): who, why, and what was missing that day. */
+  startedAnyway?: { by: string; reason: string; missing: string[] }
   customerId: string
   /** The customer's name, kept on the row for display. */
   owner: string
@@ -576,7 +580,8 @@ export type GcAction =
   | { type: 'tradeConfirmBid'; projectId: string; packageId: string; inviteId: string }
   | { type: 'setStartItem'; projectId: string; item: 'ownerContract' | 'permit'; done: boolean }
   | { type: 'setStartDate'; projectId: string; date: string }
-  | { type: 'startProject'; projectId: string }
+  /** `anyway`: start with steps still missing (the owner, 2026-10-04, question 7), saying why and who. */
+  | { type: 'startProject'; projectId: string; anyway?: { reason: string; by: string } }
   | { type: 'invite'; projectId: string; packageId: string; partnerId: string }
   | { type: 'nudge'; projectId: string; packageId: string; inviteId: string; about: string }
   | {
@@ -611,7 +616,8 @@ export type GcAction =
   | { type: 'markBidSent'; projectId: string }
   | { type: 'shareBidTab'; projectId: string; packageId: string; showNames: boolean }
   | { type: 'tradeSeeBidTab'; projectId: string; packageId: string; partnerId: string }
-  | { type: 'award'; projectId: string; packageId: string; inviteId: string }
+  /** `by`: the estimator who awarded it (question 7: any estimator on our team); the bid tab names them to us. */
+  | { type: 'award'; projectId: string; packageId: string; inviteId: string; by?: string }
   | { type: 'sendMsa'; partnerId: string }
   | { type: 'tradeSignMsa'; partnerId: string }
   | { type: 'sendSow'; projectId: string; packageId: string }

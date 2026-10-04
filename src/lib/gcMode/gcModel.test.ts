@@ -575,6 +575,13 @@ const STEPS: Step[] = [
     label: 'Cool Breeze sends the controls drawings',
     action: { type: 'tradeSendSubmittal', projectId: 'fairoaksd', submittalId: 'fairoaksd-sub-4', file: 'CBM-controls.pdf', note: 'Sequence of operations included.' },
   },
+  // Question 7 (the owner, 2026-10-04): any estimator awards and the bid tab names them; Start anyway.
+  { label: 'We won Pad B', action: { type: 'markWon', projectId: 'padb' } },
+  { label: 'Pad B: Rosa awards Sitework to Lonestar', action: { type: 'award', projectId: 'padb', packageId: 'bsite', inviteId: 'bsite-lonestar', by: 'Rosa Treviño' } },
+  {
+    label: 'Pad B: start anyway, before everything is in',
+    action: { type: 'startProject', projectId: 'padb', anyway: { reason: 'The owner needs the pad graded before the rains.', by: 'Dana Whitaker' } },
+  },
   // Materials stored on site (Building lane, question 12): the rooftop units are on site, not set.
   {
     label: 'Cool Breeze asks for pay application 2, the rooftop units stored on site',

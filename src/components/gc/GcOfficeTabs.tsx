@@ -1,4 +1,4 @@
-import { Fragment, useState, type Dispatch } from 'react'
+import { Fragment, useState, type Dispatch, type ReactNode } from 'react'
 import {
   bidIsStale,
   bidsIn,
@@ -54,6 +54,7 @@ import {
   type Partner,
   type TradePackage,
   awardGate,
+  GC_COMPANY,
 } from '../../lib/gcMode/gcModel'
 import { linkNeverOpened } from '../../lib/gcMode/gcPortal'
 import { VettingChip } from './GcVetting'
@@ -93,6 +94,41 @@ const INCLUDES_WORDS: Record<Includes, { tone: Tone; word: string }> = {
   yes: { tone: 'green', word: 'included' },
   no: { tone: 'red', word: 'left out' },
   unclear: { tone: 'amber', word: 'not clear' },
+}
+
+/**
+ * An award button with who is awarding (the owner, 2026-10-04, question 7: any estimator on our
+ * team). The bid tab names them in our copy. In the real build it is the person signed in.
+ */
+export function AwardButton({
+  children,
+  disabled,
+  title,
+  onAward,
+}: {
+  children: ReactNode
+  disabled?: boolean
+  title?: string
+  onAward: (by: string) => void
+}) {
+  const [by, setBy] = useState(GC_COMPANY.estimators[0] ?? '')
+  return (
+    <span style={{ display: 'inline-flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap' }}>
+      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+        Estimator{' '}
+        <select style={input} value={by} disabled={disabled} onChange={(e) => setBy(e.target.value)}>
+          {GC_COMPANY.estimators.map((name) => (
+            <option key={name} value={name}>
+              {name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <Btn kind="primary" disabled={disabled || !by} title={title} onClick={() => onAward(by)}>
+        {children}
+      </Btn>
+    </span>
+  )
 }
 
 /** Why an award button is off: the company is not vetted, was declined, or is past its limit (question 3). */
@@ -755,9 +791,9 @@ function LevelPanel({ state, project, pkg, dispatch, onSeePortal }: GcPaneProps 
                         </Btn>
                       ) : (
                         <>
-                          <Btn kind="primary" disabled={pkg.awardedInviteId !== null || !gate.ok} title={gate.why ?? undefined} onClick={() => dispatch({ type: 'award', ...ids, inviteId: inv.id })}>
+                          <AwardButton disabled={pkg.awardedInviteId !== null || !gate.ok} title={gate.why ?? undefined} onAward={(by) => dispatch({ type: 'award', ...ids, inviteId: inv.id, by })}>
                             Award and draft the statement of work
-                          </Btn>
+                          </AwardButton>
                           {!gate.ok && pkg.awardedInviteId === null && <AwardBlocked why={gate.why} />}
                         </>
                       )}
@@ -1181,15 +1217,14 @@ export function GcContractsTab({ state, project, dispatch }: GcPaneProps) {
 
             {!sow && project.stage !== 'pursuing' && (
               <div style={{ marginTop: '0.6rem' }}>
-                <Btn
-                  kind="primary"
+                <AwardButton
                   disabled={!awardGate(state, pkg, inv).ok}
                   title={awardGate(state, pkg, inv).why ?? (uncostedWords(uncostedLines(pkg, inv)) || undefined)}
-                  onClick={() => dispatch({ type: 'award', ...ids, inviteId: inv.id })}
+                  onAward={(by) => dispatch({ type: 'award', ...ids, inviteId: inv.id, by })}
                 >
                   Award at {money(leveledTotal(pkg, inv) ?? 0)}
                   {uncostedLines(pkg, inv).length > 0 ? ' + ?' : ''} and draft the statement of work
-                </Btn>
+                </AwardButton>
                 {!awardGate(state, pkg, inv).ok && <AwardBlocked why={awardGate(state, pkg, inv).why} />}
               </div>
             )}
