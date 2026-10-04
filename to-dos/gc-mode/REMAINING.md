@@ -115,7 +115,7 @@ makes; nobody builds it until he answers.
 
 11. ~~**A carried quote with a line that has no cost:** does it hold the ring open?~~ Answered 2026-10-03: yes, until every line has a cost. Built by the Board (this commit).
 12. **The golden walk's order:** draw Helotes's schedule before Start? (Building moves the step.)
-13. **Marsh & Vale's made-up questions:** were they sent to the architect? (New Project.)
+13. ~~**Marsh & Vale's made-up questions:** were they sent to the architect?~~ Answered 2026-10-04: **already sent.** (New Project gives them a sent date.)
 14. **The open questions in `README.md`:** 2 (start at buyout?), 3 (vetting new trades), 4 (draws
     by stage or percent), 5 (where the plans live), 6 ("quote" or "bid"), 7 (mark who was awarded
     on a bid tab; closest or most reliable first; "start anyway"), 8 (track other promises), 9

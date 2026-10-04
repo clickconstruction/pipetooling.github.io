@@ -474,10 +474,12 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
 2. Does the first real version need the price-to-the-owner side, or does it start at buyout?
 3. Are trade partners mostly known companies, or do strangers get invited and need vetting?
 4. Draws by stage (rough, top out, trim) or by percent with retainage, as drawn?
-5. Where do a GC project's plans live: Drive folders as today, or hosted so "who opened which
-   set" is real?
+5. ~~Where do a GC project's plans live?~~ Answered 2026-10-04: **in Google Drive, uploaded by
+   someone who checks them** before they go out. (Who opened which set is then read from the
+   portal's link to the Drive file, not from Drive.)
 6. "Quote" or "bid" for a trade partner's number? He said quote; the older screens say bid.
-7. Should a bid tab mark who was awarded? Should the map list run closest first or most
+7. ~~Should a bid tab mark who was awarded?~~ Answered 2026-10-04: **yes, set by the estimator
+   on our team who manages the job.** Still open: should the map list run closest first or most
    reliable first? Should Start allow a "start anyway"?
 8. Should promises other than a quote date be tracked (insurance by Friday, a start date)?
 9. Should the Project Board also group by customer, and should Actions for assistants also sit
@@ -493,9 +495,12 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
     own, or spread into each trade's line so the owner never sees the fee?~~ Answered: spread
     into the trades (see *Decided by the owner*).
 14. ~~Should a trade also give alternates, attach its own quote, and say how many days the number
-    is good for?~~ Built on the owner's word (2026-10-02). Still open: Compare bids and Trades do
-    not read them yet (the Board lane's change). Should an alternate the office takes change the
-    number we carry, and should a number that ran out stop counting toward the two quotes?
+    is good for?~~ Built on the owner's word (2026-10-02); Compare bids and Trades read them
+    (Board, 2026-10-03). ~~Should an alternate the office takes change the number we carry, and
+    should a number that ran out stop counting?~~ The owner left it to the Board lane
+    (2026-10-04), which decided: **an alternate changes our number only when the office takes it**
+    on Compare bids; **a number past its good-until day stops counting** toward the two quotes and
+    is not a real number to carry until the trade sends it again (the portal's bid form).
 15. ~~Should answering a "not clear" line be a move of its own?~~ Built (2026-10-02):
     `tradeAnswerLines`, logged as "answered on Concrete: Rebar supply is in their number".
 16. ~~Should a trade's retainage wait until the owner releases ours?~~ Answered: 10 days after.
@@ -527,8 +532,8 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
     stays to read; the Plans tab says "We lost this bid. Nothing goes out." in place of both doors
     (`GcPlansDoors` in `GcNewPlans.tsx`). `issuePlanSet` refuses a lost bid and `questionsOpen` is
     false on one, so a portal cannot ask either. Reopen it and both come back.
-28. Should a change order the owner signs move the substantial completion date by the days it
-    adds? Today a signed one's days add to the contract time (`contractDaysAdded`): the owner's
+28. ~~Should a change order the owner signs move the substantial completion date by the days it
+    adds?~~ Answered 2026-10-04: **yes.** Today a signed one's days add to the contract time (`contractDaysAdded`): the owner's
     portal says "Days your change orders add to the job: +5 days". The milestone on the schedule
     (the Building lane's) stays where it was. (Owner Billing lane, 2026-10-03.)
 29. ~~Texts to trade partners: add a text sender before the real build, or send email only?~~
