@@ -129,7 +129,7 @@ export function GcOwnerBillingArchitectPortal({ state, project, dispatch }: { st
 
 function CertifyRow({ state, project, app, dispatch }: { state: GcState; project: GcProject; app: OwnerPayAppSent; dispatch: Dispatch<GcAction> }) {
   const [less, setLess] = useState(false)
-  const [amount, setAmount] = useState(String(Math.round(app.due * 100) / 100))
+  const [amount, setAmount] = useState(app.due.toFixed(2))
   const [note, setNote] = useState('')
   const [form, setForm] = useState(false)
   const amountNum = Number(amount)
