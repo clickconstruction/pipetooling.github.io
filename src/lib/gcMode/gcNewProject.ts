@@ -9,6 +9,7 @@ import { sheetDiscipline, sheetsAtRev } from './gcPlans'
 import { currentRev } from './gcLookups'
 import { tradeLineup } from './gcMap'
 import { BENCH_WANTED } from './gcBench'
+import { carriedAmount, isGuess } from './gcBids'
 
 /**
  * One trade the office may buy. The list runs in the order the specs list trades (by division),
@@ -118,6 +119,54 @@ export function sqFtInText(text: string): number | null {
 export function budgetFromSize(trade: string, sqFt: number): number | null {
   const rate = BUDGET_PER_SQ_FT[trade]
   return rate === undefined ? null : Math.round((rate * sqFt) / 500) * 500
+}
+
+/** What a trade really cost on one of our jobs, per square foot of that job. */
+export interface PastTradeCost {
+  projectId: string
+  name: string
+  perSqFt: number
+}
+
+/**
+ * What a trade really cost on our other jobs, per square foot: a signed contract, the quote we
+ * carried or awarded, or our own priced bid, over the job's size. Our own budget guesses (plugs)
+ * and jobs with no size in square feet do not count.
+ */
+export function tradeCostHistory(state: GcState, trade: string, except: string | null = null): PastTradeCost[] {
+  const out: PastTradeCost[] = []
+  for (const project of state.projects) {
+    if (project.id === except) continue
+    const sqFt = sqFtInText(project.sizeNote)
+    if (!sqFt) continue
+    for (const pkg of project.packages) {
+      if (pkg.trade !== trade || isGuess(pkg)) continue
+      const amount = carriedAmount(pkg)
+      if (amount !== null && amount > 0) out.push({ projectId: project.id, name: project.name, perSqFt: amount / sqFt })
+    }
+  }
+  return out
+}
+
+/** A trade's budget from its size, and where the rate came from: our past jobs (their middle rate) or a rough rate. */
+export interface SizedBudget {
+  amount: number
+  perSqFt: number
+  /** How many past jobs the rate came from. 0: the rough rate. */
+  jobs: number
+}
+
+/**
+ * A trade's budget for a job of this size, to the nearest $500: the middle of what the trade cost
+ * on our past jobs per square foot, or the rough rate when we have no past job for it. Null for a
+ * trade with neither.
+ */
+export function budgetForSize(state: GcState, trade: string, sqFt: number): SizedBudget | null {
+  const rates = tradeCostHistory(state, trade).map((x) => x.perSqFt).sort((a, b) => a - b)
+  const middle = rates.length === 0 ? null : rates.length % 2 === 1 ? (rates[(rates.length - 1) / 2] ?? null) : ((rates[rates.length / 2 - 1] ?? 0) + (rates[rates.length / 2] ?? 0)) / 2
+  const perSqFt = middle ?? BUDGET_PER_SQ_FT[trade] ?? null
+  if (perSqFt === null) return null
+  return { amount: Math.round((perSqFt * sqFt) / 500) * 500, perSqFt, jobs: rates.length }
 }
 
 /** The trades the company does with its own crews. Their number comes from our own bid in Trades mode. */

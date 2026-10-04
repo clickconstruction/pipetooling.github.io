@@ -158,6 +158,12 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   that name the section or name none (`linesOnPlans`; the owner's whole-trade rule for sheets).
   The email lists "Spec sections:", a change order says "per" the sections too, and the plans
   window has a **Sheets · Specs** switch with "Scope that reads from 09 91 23" (2026-10-03).
+- **Budgets from what each trade cost on our past jobs** (2026-10-03, REMAINING New Project 1):
+  **Fill the empty budgets from the size** takes each trade's cost per square foot on our other
+  jobs (a signed contract, the quote carried or awarded, or our own priced bid, over the job's
+  size; never a plug), and uses the middle one times the new job's size. A trade with no past job
+  uses the rough rate (`tradeCostHistory`, `budgetForSize`). Each filled budget says where it came
+  from: "$18.35 a sq ft, from 3 past jobs" or "a rough rate".
 - **Each scope says what the trade leaves out** (2026-10-03, REMAINING New Project 1): under its
   lines, each trade has **Not in this trade**, each item with who does it instead (another trade,
   the owner or us), starting from the trade's usual list (`usualExcludes`: plumbing leaves gas
@@ -580,9 +586,9 @@ the bullets below are the shape they set.
   dry-in work) adds its activities but not that stage's milestone (Dry-in); the office adds it on
   Schedule. Days are calendar days for now.
 
-- New Project past its first form: a budget from real costs, not a made-up rate per square foot.
-  What a trade leaves out shows only in New Project; the portal's bid form and Compare bids do not
-  show it yet. A line's sheets show in New Project, a new set, the plans window and Compare
+- New Project past its first form: the past jobs a budget reads are the prototype's own made-up
+  projects. The real build reads the company's closed jobs. What a trade leaves out shows in New
+  Project, the Trades tab and Compare bids; the portal's bid form does not show it yet. A line's sheets show in New Project, a new set, the plans window and Compare
   bids (Board, 2026-10-03); its sections in New Project, a new set and the plans window. The
   portal's bid form shows a line's sheets, not its sections; Trades shows neither yet.
 - Our billing to the owner, the rest: our own crew's percent read from its Pipeline job (real

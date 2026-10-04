@@ -24,7 +24,7 @@ import {
   type ScopeGap,
   guessLineSheets,
   answerRecord,
-  budgetFromSize,
+  budgetForSize,
   buildNewProject,
   sqFtInText,
   partnerBlockers,
@@ -146,6 +146,8 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
   const [setNote, setSetNote] = useState('')
   const [indexText, setIndexText] = useState('')
   const [specText, setSpecText] = useState('')
+  /** The budgets the fill wrote, by trade, with where each rate came from. Shown while the budget is unchanged. */
+  const [filled, setFilled] = useState<Record<string, { budget: string; words: string }>>({})
 
   const [edits, setEdits] = useState<Record<string, TradeEdit>>({})
   const [added, setAdded] = useState<string[]>([])
@@ -584,6 +586,9 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
                               placeholder="$0"
                             />
                           </label>
+                          {filled[r.trade] && filled[r.trade]?.budget === r.budget && (
+                            <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem', whiteSpace: 'nowrap' }}>{filled[r.trade]?.words}</span>
+                          )}
                         </>
                       )}
                     </div>
@@ -623,16 +628,22 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
                     <>
                       <Btn
                         onClick={() => {
+                          const next: Record<string, { budget: string; words: string }> = {}
                           for (const r of picked) {
-                            const b = r.budget.trim() === '' ? budgetFromSize(r.trade, sqFt) : null
-                            if (b !== null) edit(r.trade, { budget: b.toLocaleString('en-US') })
+                            const b = r.budget.trim() === '' ? budgetForSize(state, r.trade, sqFt) : null
+                            if (b === null) continue
+                            const budget = b.amount.toLocaleString('en-US')
+                            const rate = `$${b.perSqFt.toFixed(2)} a sq ft`
+                            next[r.trade] = { budget, words: b.jobs > 0 ? `${rate}, from ${b.jobs} past ${b.jobs === 1 ? 'job' : 'jobs'}` : `${rate}, a rough rate` }
+                            edit(r.trade, { budget })
                           }
+                          setFilled((all) => ({ ...all, ...next }))
                         }}
                       >
                         Fill the empty budgets from the size
                       </Btn>
                       <span style={{ color: 'var(--text-muted)' }}>
-                        A rough cost per square foot for each trade, times {sqFt.toLocaleString('en-US')} sq ft. Change any of them.
+                        Each trade's cost per square foot on our past jobs, times {sqFt.toLocaleString('en-US')} sq ft. A trade we have no past job for uses a rough rate. Change any of them.
                       </span>
                     </>
                   )}

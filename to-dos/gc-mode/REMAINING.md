@@ -72,10 +72,10 @@ makes; nobody builds it until he answers.
 
 ## New Project (GC 2)
 
-1. **A scope line tied to its spec section, exclusions, budgets from real costs, and taking a sheet
-   out of the set in a later set** (README, *New Project past its first form*). Spec sections done
-   742e4b567; taking a sheet out done 0e8159e2d (a whole new set); exclusions done (Not in this
-   trade, the gaps between the trades). Open: budgets from real costs.
+1. ~~**A scope line tied to its spec section, exclusions, budgets from real costs, and taking a sheet
+   out of the set in a later set** (README, *New Project past its first form*).~~ done: spec sections
+   742e4b567, taking a sheet out 0e8159e2d (a whole new set), exclusions fccdfc474 (Not in this
+   trade, the gaps between the trades), budgets from our past jobs per square foot.
 2. ~~**The days a set adds to the schedule carry onto the change order they start** (with Owner Billing).~~
    done: Owner Billing's `days` c3b453453, and the set's days ride on one change order
    (`changeOrderTakingTheDays`), so the signed ones add up.

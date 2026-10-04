@@ -15,6 +15,8 @@ import {
   tradeForSpec,
   tradesForPlans,
   budgetFromSize,
+  budgetForSize,
+  tradeCostHistory,
   buildNewProject,
   changeOrderFromSet,
   changeOrderTakingTheDays,
@@ -605,5 +607,34 @@ describe('what a trade leaves out, and the gaps between the trades', () => {
     expect(project.packages.find((p) => p.trade === 'Plumbing')?.excludes).toEqual(usualExcludes('Plumbing'))
     expect(project.packages.find((p) => p.trade === 'Sitework')?.excludes).toBeUndefined()
     expect(projectScopeGaps(project)).toHaveLength(2)
+  })
+})
+
+describe('budgets from what each trade cost on our past jobs', () => {
+  const state = initialGcState()
+
+  it('reads a trade’s real cost per square foot from jobs with a size, never our own guesses', () => {
+    const history = tradeCostHistory(state, 'Electrical')
+    expect(history.length).toBeGreaterThan(0)
+    for (const h of history) {
+      const project = state.projects.find((p) => p.id === h.projectId)
+      expect(project && sqFtInText(project.sizeNote)).toBeTruthy()
+      expect(h.perSqFt).toBeGreaterThan(0)
+    }
+    // A plug is our own guess: a job that only carries our budget for a trade does not count.
+    const plugged = {
+      ...state,
+      projects: state.projects.map((p) => ({ ...p, packages: p.packages.map((k) => (k.trade === 'Electrical' ? { ...k, selfPerform: null, sow: null, awardedInviteId: null, carried: 'plug' } : k)) })),
+    }
+    expect(tradeCostHistory(plugged, 'Electrical')).toEqual([])
+  })
+
+  it('takes the middle rate of the past jobs, and the rough rate when there are none', () => {
+    const rates = tradeCostHistory(state, 'Electrical').map((h) => h.perSqFt).sort((a, b) => a - b)
+    const mid = rates.length % 2 === 1 ? (rates[(rates.length - 1) / 2] ?? 0) : ((rates[rates.length / 2 - 1] ?? 0) + (rates[rates.length / 2] ?? 0)) / 2
+    expect(budgetForSize(state, 'Electrical', 6800)).toEqual({ amount: Math.round((mid * 6800) / 500) * 500, perSqFt: mid, jobs: rates.length })
+    const none = { ...state, projects: [] }
+    expect(budgetForSize(none, 'Electrical', 6800)).toEqual({ amount: 122_500, perSqFt: 18, jobs: 0 })
+    expect(budgetForSize(state, 'Elevator', 6800)).toBeNull()
   })
 })
