@@ -102,8 +102,10 @@ function standingWords(n: number): string {
   return Math.round(n) >= 0 ? `${money(n)} ahead` : `${money(-n)} carrying`
 }
 
+/** "This week", "Next week (3d)", "Week of Oct 12 (10d)": how many days to each later week's Monday (owner, 2026-10-04). */
 function weekName(week: CashWeek, index: number): string {
-  return index === 0 ? 'This week' : index === 1 ? 'Next week' : `Week of ${shortDate(week.start)}`
+  const away = week.daysAway > 0 ? ` (${week.daysAway}d)` : ''
+  return index === 0 ? 'This week' : index === 1 ? `Next week${away}` : `Week of ${shortDate(week.start)}${away}`
 }
 
 function Headline({ weeks, lowest }: { weeks: CashWeek[]; lowest: CashWeek | null }) {

@@ -18,6 +18,7 @@ import { PAY_WITHIN_DAYS } from './gcPortal'
 import { addDays, retainageHeldNow, tradeRetainageOpensOn } from './gcBuilding'
 import { drawPayDays } from './gcBuildingPay'
 import { mondayOf } from './gcBuildingSchedule'
+import { daysUntil } from './gcWords'
 import { partnerById } from './gcLookups'
 import {
   allJobsMoney,
@@ -64,6 +65,8 @@ export interface CashWeek {
   start: string
   /** The Sunday it ends. */
   end: string
+  /** Days from today to its Monday (owner, 2026-10-04: "Next week (1d)"). Zero or less: this week. */
+  daysAway: number
   in: number
   out: number
   /** Where we stand at the end of the week across every job: paid in less paid out. */
@@ -159,7 +162,7 @@ export function cashAhead(state: GcState, opts: { countLate?: boolean; weeks?: n
   const first = mondayOf(today)
   const weeks: CashWeek[] = Array.from({ length: opts.weeks ?? CASH_AHEAD_WEEKS }, (_, i) => {
     const start = addDays(first, i * 7)
-    return { start, end: addDays(start, 6), in: 0, out: 0, standing: 0, moves: [] }
+    return { start, end: addDays(start, 6), daysAway: daysUntil(start, today), in: 0, out: 0, standing: 0, moves: [] }
   })
   const lastDay = weeks[weeks.length - 1]?.end ?? today
   const late: CashMove[] = []

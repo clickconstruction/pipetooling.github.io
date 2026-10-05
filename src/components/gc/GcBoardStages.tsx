@@ -21,6 +21,8 @@ export interface BoardStripItem {
   count: number
   /** A customer's pill: a dot in each stage's color it has jobs in. */
   dots?: Tone[]
+  /** What the count counts, for a screen reader: ['job', 'jobs'] unless said. */
+  noun?: [string, string]
 }
 
 export interface StageStripItem extends BoardStripItem {
@@ -117,7 +119,7 @@ export function GcBoardStrip({
                 type="button"
                 onClick={() => onJump(item.key)}
                 aria-current={on ? 'true' : undefined}
-                aria-label={`Jump to ${item.label}, ${item.count} ${item.count === 1 ? 'job' : 'jobs'}`}
+                aria-label={`Jump to ${item.label}, ${item.count} ${item.count === 1 ? (item.noun?.[0] ?? 'job') : (item.noun?.[1] ?? 'jobs')}`}
                 data-tour={`gc-jump-${item.key}`}
                 style={{
                   display: 'inline-flex',

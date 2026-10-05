@@ -128,6 +128,8 @@ export interface AssistantItem {
   actionLabel: string
   /** Already done today, still not at the ideal. */
   doneNote: string | null
+  /** The trade it is about, for the trade headings (the owner, 2026-10-04). Null: not one trade. */
+  trade: string | null
 }
 
 /** One standard the office holds itself to: the ideal, where we are, and what closes the gap. */
@@ -161,6 +163,7 @@ export function assistantRules(state: GcState): AssistantRule[] {
       action: { kind: 'add', trade: b.trade },
       actionLabel: 'Add a company',
       doneNote: null,
+      trade: b.trade,
     })),
   }
 
@@ -187,6 +190,7 @@ export function assistantRules(state: GcState): AssistantRule[] {
             : { kind: 'add', trade: b.trade },
         actionLabel: notAsked.length > 0 ? `Ask the ${notAsked.length} we have not asked` : 'Everyone in range is asked. Add a company',
         doneNote: null,
+        trade: b.trade,
       }
     }),
   }
@@ -194,12 +198,15 @@ export function assistantRules(state: GcState): AssistantRule[] {
   const asks: { project: GcProject; pkg: TradePackage; invite: Invite; partner: Partner; waited: number }[] = []
   let liveAsks = 0
   const askedPartners = new Map<string, Partner>()
+  // The first trade we ask each company on: its paperwork goes under that trade's heading.
+  const askedTrade = new Map<string, string>()
   for (const { need } of needs) {
     for (const invite of need.pkg.invites) {
       const partner = partnerById(state, invite.partnerId)
       if (!partner || invite.status === 'declined') continue
       liveAsks += 1
       askedPartners.set(partner.id, partner)
+      if (!askedTrade.has(partner.id)) askedTrade.set(partner.id, need.pkg.trade)
       const waited = daysUntil(state.today, invite.invitedOn)
       if (invite.status === 'invited' && waited > OPEN_WITHIN_DAYS) asks.push({ project: need.project, pkg: need.pkg, invite, partner, waited })
     }
@@ -223,6 +230,7 @@ export function assistantRules(state: GcState): AssistantRule[] {
       },
       actionLabel: 'Nudge them',
       doneNote: a.invite.nudgedOn === state.today ? 'nudged today' : null,
+      trade: a.pkg.trade,
     })),
   }
 
@@ -239,6 +247,7 @@ export function assistantRules(state: GcState): AssistantRule[] {
       action: p.msa === 'none' ? { kind: 'msa', partnerId: p.id } : null,
       actionLabel: 'Send the master agreement',
       doneNote: p.msa === 'sent' ? 'master agreement sent, waiting on them' : null,
+      trade: askedTrade.get(p.id) ?? p.trades[0] ?? null,
     })),
   }
 
@@ -258,6 +267,7 @@ export function assistantRules(state: GcState): AssistantRule[] {
       action: { kind: 'tab', projectId: project.id, packageId: pkg.id },
       actionLabel: 'Share the bid tab',
       doneNote: null,
+      trade: pkg.trade,
     })),
   }
 
@@ -276,6 +286,7 @@ export function assistantRules(state: GcState): AssistantRule[] {
       action: { kind: 'chase' },
       actionLabel: 'Go to Follow up',
       doneNote: null,
+      trade: f.pkg.trade,
     })),
   }
 
@@ -290,4 +301,22 @@ export function partnerBlockers(partner: Partner, today: string): string[] {
   else if (daysUntil(partner.coiExpires, today) < 0) out.push(`Their insurance expired ${shortDate(partner.coiExpires)}.`)
   if (!partner.w9) out.push('No W-9 is on file.')
   return out
+}
+
+/** Each trade's to-dos across every standard, for the trade strip (the owner, 2026-10-04). */
+export function tradeTodoCounts(rules: AssistantRule[]): Map<string, number> {
+  const out = new Map<string, number>()
+  for (const rule of rules) for (const item of rule.items) if (item.trade) out.set(item.trade, (out.get(item.trade) ?? 0) + 1)
+  return out
+}
+
+/** A standard's to-dos under one heading per trade, in the order the trades first come up; no trade last. */
+export function itemsByTrade(items: AssistantItem[]): { trade: string | null; items: AssistantItem[] }[] {
+  const groups: { trade: string | null; items: AssistantItem[] }[] = []
+  for (const item of items) {
+    const group = groups.find((g) => g.trade === item.trade)
+    if (group) group.items.push(item)
+    else groups.push({ trade: item.trade, items: [item] })
+  }
+  return [...groups.filter((g) => g.trade !== null), ...groups.filter((g) => g.trade === null)]
 }

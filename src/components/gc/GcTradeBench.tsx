@@ -6,6 +6,8 @@ import {
   answerRecord,
   askPromise,
   assistantRules,
+  itemsByTrade,
+  tradeTodoCounts,
   declinedTitle,
   declinedWords,
   partnerAsks,
@@ -31,6 +33,8 @@ import { CompanyLanguagePick } from './GcPortalLanguagePick'
 import { GcPartnersTab, PaperworkChips } from './GcOfficeTabs'
 import { Btn, Card, Chip, input, td, th, type Tone } from './gcUi'
 import { GcVetQueue, VettingChip } from './GcVetting'
+import { GcBoardStrip, type BoardStripItem } from './GcBoardStages'
+import { useJumpStrip } from './useJumpStrip'
 import { PartnerName } from './GcCompanyFile'
 import { GcScopeBookButton } from './GcNewProjectScopeBookPage'
 
@@ -130,9 +134,24 @@ function GcTradeBenchView({ state, dispatch, onOpenProject, onFollowUp }: Props)
     }
   }
 
+  const rules = assistantRules(state)
+  // A pill per trade, like the Project Board's strip (the owner, 2026-10-04): its to-dos, red when it
+  // is short on quotes; pressing one jumps to the trade's card.
+  const todos = tradeTodoCounts(rules)
+  const tradeItems: BoardStripItem[] = benches.map((b) => ({
+    key: b.trade,
+    label: b.trade,
+    tone: b.short > 0 ? 'red' : (todos.get(b.trade) ?? 0) > 0 ? 'amber' : 'green',
+    count: todos.get(b.trade) ?? 0,
+    ...(b.short > 0 ? { dots: ['red' as const] } : {}),
+    noun: ['to-do', 'to-dos'],
+  }))
+  const { active, jumpTo } = useJumpStrip(true, benches.map((b) => b.trade), benchAnchor)
+
   return (
     <div style={{ display: 'grid', gap: '0.9rem' }}>
-      <AssistantActions rules={assistantRules(state)} onRun={run} />
+      <GcBoardStrip items={tradeItems} active={active} onJump={jumpTo} label="Jump to a trade" />
+      <AssistantActions rules={rules} onRun={run} />
       {benches.map((bench) => (
         <BenchCard
           key={bench.trade}
@@ -193,16 +212,24 @@ function AssistantActions({ rules, onRun }: { rules: AssistantRule[]; onRun: (ac
               </div>
               {isOpen && rule.items.length > 0 && (
                 <div style={{ padding: '0 1rem 0.7rem', display: 'grid', gap: '0.3rem' }}>
-                  {rule.items.map((item) => (
-                    <div
-                      key={item.id}
-                      style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.9rem', padding: '0.3rem 0.6rem', background: 'var(--bg-subtle)', borderRadius: 6 }}
-                    >
-                      <span style={{ flex: '1 1 20rem' }}>{item.text}</span>
-                      {item.doneNote && <Chip tone="blue">{item.doneNote}</Chip>}
-                      {item.action && !item.doneNote && (
-                        <Btn kind="quiet" onClick={() => item.action && onRun(item.action)}>{item.actionLabel}</Btn>
-                      )}
+                  {/* Under one heading per trade (the owner, 2026-10-04: "headers … showing each of the trades"). */}
+                  {itemsByTrade(rule.items).map((group) => (
+                    <div key={group.trade ?? '-'} style={{ display: 'grid', gap: '0.3rem' }}>
+                      <div style={{ fontSize: '0.78rem', fontWeight: 700, letterSpacing: '0.03em', textTransform: 'uppercase', color: 'var(--text-indigo-800)', marginTop: '0.25rem' }}>
+                        {group.trade ?? 'Other'} <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>({group.items.length})</span>
+                      </div>
+                      {group.items.map((item) => (
+                        <div
+                          key={item.id}
+                          style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.9rem', padding: '0.3rem 0.6rem', background: 'var(--bg-subtle)', borderRadius: 6 }}
+                        >
+                          <span style={{ flex: '1 1 20rem' }}>{item.text}</span>
+                          {item.doneNote && <Chip tone="blue">{item.doneNote}</Chip>}
+                          {item.action && !item.doneNote && (
+                            <Btn kind="quiet" onClick={() => item.action && onRun(item.action)}>{item.actionLabel}</Btn>
+                          )}
+                        </div>
+                      ))}
                     </div>
                   ))}
                 </div>
@@ -232,7 +259,7 @@ function BenchCard({
 
   return (
     <Card style={{ padding: 0, overflow: 'hidden', borderColor: bench.short > 0 ? 'var(--border-red)' : 'var(--border)' }}>
-      <span id={benchAnchor(bench.trade)} />
+      <span id={benchAnchor(bench.trade)} style={{ display: 'block', scrollMarginTop: '3.5rem' }} />
       <div style={{ padding: '0.7rem 1rem', display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', borderBottom: '1px solid var(--border)' }}>
         <strong style={{ fontSize: '1.05rem' }}>{bench.trade}</strong>
         <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
