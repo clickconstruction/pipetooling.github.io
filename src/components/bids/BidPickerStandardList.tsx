@@ -21,6 +21,10 @@
  * bid that has since been won, lost or archived wears a dashed bar and can be
  * cleared on its own. `H` on a focused row marks or clears it.
  *
+ * Hide robots: while "Only my bids" is off and the switch under it is ticked (it starts
+ * ticked), the ZZ bids are gone from every group (`bidPickerRobots`), a line under the list
+ * counts them, and *Show them* unticks the switch. A bid marked by you or for you stays.
+ *
  * Rows are already-loaded `BidWithBuilder`s, so the evidence is built locally
  * from the row itself — no fetch. Selection stays the host's `onSelectBid`.
  * Rows render in the user's picker sort view (`BidPickerSortToggle` store)
@@ -45,6 +49,8 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { BID_MARK_SAVE_FAILED, BidMarkDot, useBidMarkRequests, useFinishBidRequests } from './BidMarkControls'
 import { receiverLine, senderStateWords, senderTone } from '../../lib/bids/bidMarkRequests'
 import { useBidPickerSortView } from './BidPickerSortToggle'
+import { setHideRobotBids, useHideRobotBids } from './HideRobotsToggle'
+import { hiddenRobotsWords, splitRobotBids } from '../../lib/bids/bidPickerRobots'
 import { UnifiedSearchResultRow } from '../search/UnifiedSearchResultRow'
 import type { UnifiedSearchResult } from '../../utils/unifiedJobBidSearch'
 
@@ -134,7 +140,10 @@ export function BidPickerStandardList({
   const finishRequests = useFinishBidRequests()
   const { showToast } = useToastContext()
   // Marked shows what you marked and what someone marked for you (v2.4297).
-  const shown = useMemo(() => (onlyMarked ? bids.filter((b) => isBidMarked(marks, b.id) || forMe.has(b.id)) : bids), [onlyMarked, marks, forMe, bids])
+  // Hide robots: the ZZ bids go first; a bid marked by you or for you is never one of them.
+  const hideRobots = useHideRobotBids()
+  const robots = useMemo(() => splitRobotBids(bids, hideRobots, (id) => isBidMarked(marks, id) || forMe.has(id)), [bids, hideRobots, marks, forMe])
+  const shown = useMemo(() => (onlyMarked ? robots.shown.filter((b) => isBidMarked(marks, b.id) || forMe.has(b.id)) : robots.shown), [onlyMarked, marks, forMe, robots.shown])
   const groups = useMemo(() => groupBidsForPicker(shown, sortView), [shown, sortView])
   const marksHere = useMemo(() => splitBidMarks(marks, bids), [marks, bids])
   const now = new Date()
@@ -154,6 +163,16 @@ export function BidPickerStandardList({
       <p style={{ margin: 0, padding: '0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>{emptyMessage}</p>
     ) : null
   }
+  const hiddenRobots =
+    robots.hidden > 0 ? (
+      <div data-testid="bid-picker-hidden-robots" style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap', padding: '0.5rem 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+        <span>{hiddenRobotsWords(robots.hidden)}</span>
+        <button type="button" onClick={() => setHideRobotBids(false)} style={{ font: 'inherit', padding: 0, border: 'none', background: 'none', color: 'var(--text-blue-700)', textDecoration: 'underline', cursor: 'pointer' }}>
+          Show them
+        </button>
+      </div>
+    ) : null
+  if (robots.shown.length === 0) return hiddenRobots
   if (shown.length === 0) {
     return <p style={{ margin: 0, padding: '0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>{BID_PICKER_NO_MARKED_ROWS}</p>
   }
@@ -289,6 +308,7 @@ export function BidPickerStandardList({
           )
         })}
       </div>
+      {hiddenRobots}
       {markedHere > 0 ? (
         <div className="bid-mark-footer">
           <span>

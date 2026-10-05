@@ -1,22 +1,26 @@
 /**
- * "Only my bids" filter toggle, shown to the right of the Search Bids bar on all eight
- * workflow tabs — Counts / Takeoffs / Labor / Pricing / Cover Letter / RFI / Change Order /
- * Lien Release (no-bid-selected list view). On by default (v2.2704); one shared state in Bids.tsx.
- * "My bids" = bids the current user is the account manager or estimator for.
+ * "Only my bids" filter toggle, shown to the right of the Search Bids bar on the nine
+ * workflow tabs — Counts / Takeoffs / Labor / Pricing / Cover Letter / Submittals / RFI /
+ * Change Order / Lien Release (no-bid-selected list view). On by default (v2.2704); one shared
+ * state in Bids.tsx. "My bids" = bids the current user is the account manager or estimator for.
+ *
+ * `BidPickerCheckToggle` is the look, shared with "Hide robots" (`HideRobotsToggle`), which
+ * shows just below it while "Only my bids" is off: stacked, each is `compact`, half the row's
+ * height; alone, "Only my bids" keeps its full size.
  */
-export function MyBidsToggle({ active, onChange }: { active: boolean; onChange: (next: boolean) => void }) {
+export function BidPickerCheckToggle({ active, onChange, label, title, compact = false }: { active: boolean; onChange: (next: boolean) => void; label: string; title: string; compact?: boolean }) {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={active}
       onClick={() => onChange(!active)}
-      title="Show only bids you are the account manager or estimator for"
+      title={title}
       style={{
         display: 'inline-flex',
         alignItems: 'center',
         gap: '0.4rem',
-        padding: '0.5rem 0.85rem',
+        padding: compact ? '0.12rem 0.6rem' : '0.5rem 0.85rem',
         whiteSpace: 'nowrap',
         border: `1px solid ${active ? '#2563eb' : '#d1d5db'}`,
         borderRadius: 4,
@@ -24,7 +28,7 @@ export function MyBidsToggle({ active, onChange }: { active: boolean; onChange: 
         background: active ? 'var(--bg-blue-tint)' : 'var(--surface)',
         color: active ? 'var(--text-blue-700)' : 'var(--text-700)',
         fontWeight: active ? 600 : 400,
-        fontSize: '0.875rem',
+        fontSize: compact ? '0.8125rem' : '0.875rem',
         boxSizing: 'border-box',
       }}
     >
@@ -46,7 +50,11 @@ export function MyBidsToggle({ active, onChange }: { active: boolean; onChange: 
       >
         {active ? '✓' : ''}
       </span>
-      Only my bids
+      {label}
     </button>
   )
+}
+
+export function MyBidsToggle({ active, onChange, compact = false }: { active: boolean; onChange: (next: boolean) => void; compact?: boolean }) {
+  return <BidPickerCheckToggle compact={compact} active={active} onChange={onChange} label="Only my bids" title="Show only bids you are the account manager or estimator for" />
 }

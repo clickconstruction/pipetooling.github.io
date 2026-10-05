@@ -4,13 +4,16 @@
  * order, Lost folded until pressed, the fold remembered across a re-mount, every group open
  * while searching, empty groups gone, a row press handing back its bid — and the marks
  * (v2.4287): the circle marks and clears, the wash and the "marked …" words, the Marked
- * switch, H on a focused row, and the footer that clears.
+ * switch, H on a focused row, and the footer that clears. Hide robots: the ZZ bids gone from
+ * every group, the line that counts them, a marked one kept.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, within } from '@testing-library/react'
 import { renderWithProviders as render } from '../../test/renderSmokeMocks'
 import { BID_PICKER_NO_MARKED_ROWS, BidPickerStandardList, setBidPickerGroupFolded } from './BidPickerStandardList'
 import { resetBidMarksStoreForTests, setOnlyMarkedBids } from '../../lib/bids/bidMarksStore'
+import { resetHideRobotsForTests, setHideRobotsOffered } from './HideRobotsToggle'
+import { BidPickerSearchRow } from './BidPickerSearchRow'
 import { resetBidMarkHoldsForTests } from '../../lib/bids/bidMarkHold'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 
@@ -62,6 +65,8 @@ beforeEach(() => {
   window.localStorage.clear()
   resetBidMarksStoreForTests()
   resetBidMarkHoldsForTests()
+  resetHideRobotsForTests()
+  window.localStorage.clear()
 })
 afterEach(() => cleanup())
 
@@ -183,6 +188,69 @@ describe('BidPickerStandardList', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Clear marks' }))
       expect(screen.queryByText(/marked bid/)).toBeNull()
       expect(rowWrap('u1').dataset.marked).toBeUndefined()
+    })
+  })
+  describe('hide robots', () => {
+    const WITH_ROBOTS: BidWithBuilder[] = [
+      ...ROWS,
+      bid({ id: 'z1', bid_number: '499', project_name: 'ZZ Shadow SPACEX BA02' }),
+      bid({ id: 'z2', bid_number: '498', project_name: 'ZZ Twin MPH STAGE', bid_date_sent: '2026-09-20' }),
+      bid({ id: 'z3', bid_number: '398', project_name: 'ZZ Test' }),
+    ]
+
+    it('not offered ("Only my bids" on), every bid shows and nothing is said, ticked or not', () => {
+      render(<BidPickerStandardList bids={WITH_ROBOTS} prefixMap={{}} onSelectBid={vi.fn()} />)
+      expect(headings().slice(0, 2)).toEqual(['Unsent / Working Bids(4)▼', 'Not yet won or lost(2)▼'])
+      expect(screen.queryByTestId('bid-picker-hidden-robots')).toBeNull()
+    })
+
+    it('offered and ticked, the ZZ bids leave every group, a line counts them, and Show them unticks it', () => {
+      setHideRobotsOffered(true)
+      render(<BidPickerStandardList bids={WITH_ROBOTS} prefixMap={{}} onSelectBid={vi.fn()} />)
+      expect(headings().slice(0, 2)).toEqual(['Unsent / Working Bids(2)▼', 'Not yet won or lost(1)▼'])
+      expect(rowButtons('unsent').some((r) => (r.textContent ?? '').includes('ZZ'))).toBe(false)
+      const line = screen.getByTestId('bid-picker-hidden-robots')
+      expect(line.textContent).toBe('3 ZZ bids hidden.Show them')
+      fireEvent.click(within(line).getByRole('button', { name: 'Show them' }))
+      expect(headings()[0]).toBe('Unsent / Working Bids(4)▼')
+      expect(screen.queryByTestId('bid-picker-hidden-robots')).toBeNull()
+      expect(window.localStorage.getItem('bidPickerHideRobots')).toBe('0')
+    })
+
+    it('with the search row above it: turning "Only my bids" off hides the ZZ bids at once, and on again shows them', () => {
+      const tree = (onlyMyBids: boolean) => (
+        <>
+          <BidPickerSearchRow query="" onQueryChange={vi.fn()} onlyMyBids={onlyMyBids} onOnlyMyBidsChange={vi.fn()} />
+          <BidPickerStandardList bids={WITH_ROBOTS} prefixMap={{}} onSelectBid={vi.fn()} />
+        </>
+      )
+      const { rerender } = render(tree(true))
+      expect(headings()[0]).toBe('Unsent / Working Bids(4)▼')
+      rerender(tree(false))
+      expect(headings()[0]).toBe('Unsent / Working Bids(2)▼')
+      expect(screen.getByTestId('bid-picker-hidden-robots').textContent).toContain('3 ZZ bids hidden.')
+      fireEvent.click(screen.getByRole('switch', { name: /Hide robots/ }))
+      expect(headings()[0]).toBe('Unsent / Working Bids(4)▼')
+      fireEvent.click(screen.getByRole('switch', { name: /Hide robots/ }))
+      rerender(tree(true))
+      expect(headings()[0]).toBe('Unsent / Working Bids(4)▼')
+      expect(screen.queryByTestId('bid-picker-hidden-robots')).toBeNull()
+    })
+
+    it('a ZZ bid you marked stays', () => {
+      resetBidMarksStoreForTests({ z1: '2026-10-01T10:00:00.000Z' })
+      setHideRobotsOffered(true)
+      render(<BidPickerStandardList bids={WITH_ROBOTS} prefixMap={{}} onSelectBid={vi.fn()} />)
+      expect(rowButtons('unsent').filter((r) => (r.textContent ?? '').includes('ZZ Shadow SPACEX'))).toHaveLength(1)
+      expect(screen.getByTestId('bid-picker-hidden-robots').textContent).toContain('2 ZZ bids hidden.')
+    })
+
+    it('a list of nothing but ZZ bids shows the line alone', () => {
+      setHideRobotsOffered(true)
+      render(<BidPickerStandardList bids={WITH_ROBOTS.slice(-2)} prefixMap={{}} onSelectBid={vi.fn()} emptyMessage="No bids." />)
+      expect(headings()).toEqual([])
+      expect(screen.getByTestId('bid-picker-hidden-robots').textContent).toBe('2 ZZ bids hidden.Show them')
+      expect(screen.queryByText('No bids.')).toBeNull()
     })
   })
 })
