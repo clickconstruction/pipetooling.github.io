@@ -293,7 +293,7 @@ The footer says what the run takes. Then the buttons follow the role.
 
 - {{button:green|Approve all N and send the run ▸}} is for a dev or a master technician. Every ready job is approved, the ticks apply and the run opens.
 - {{button:outline|The leader said to send them…}} is for an assistant, a controller or a dev. Type who said it, when and how. Every notice then goes to Ready to send on his word.
-- {{button:blue|Send all N to the leader ▸}} puts one card on the master's Dashboard and in Quickfill. It opens the same window on his phone. Once he approves the set, the office prints the run.
+- {{button:blue|Send all N to the leader ▸}} puts one card on the master's Dashboard and in Quickfill. It opens the same window on his phone. His window shows the cover letter, the reason and the note as you sent them. Once he approves the set, the office prints the run.
 
 :::example Nine jobs, one Tuesday
 Taunya hears that Harborline's Harbor Ridge draw went to another job. She filters the Pipeline to Harborline and opens Put Harborline on notice. Six of the nine owners are missing. The roll finds five, so she presses Use all found and types the sixth. One job is the city's fire station, so it is left out for a bond claim. She picks that the GC is not paying its subs and writes what she heard. She ticks the rule, Winding down and the Legal desk. Then she sends all seven to the leader. Robert approves them from his phone, and the office prints the run.

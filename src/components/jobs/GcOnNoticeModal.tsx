@@ -24,6 +24,7 @@ import {
   COVER_LETTER_KINDS,
   coverLetterKindFor,
   gcNoticeFormClaim,
+  gcNoticeSavedRun,
   type CoverLetterKind,
 } from '../../lib/jobs/gcOnNotice'
 import { approveLienDeskItem, markLienDeskItemsPrinted, saveLienDeskDraft, sendLienDeskItemOnWord, setCustomerLienNoticePolicy, submitLienDeskItem, undoLienDeskApprovals } from '../../lib/jobs/lienDeskIo'
@@ -115,8 +116,6 @@ export type GcOnNoticeModalProps = {
   onChanged: () => void
   /** Bumped by the owner of the Job window each time a job opened from this run is saved: the band and the steps re-read. */
   rereadKey?: number
-  /** "Bill the finished work first ›" — the Pipeline's capable list. */
-  onOpenCapableList?: () => void
 }
 
 const chip = (bg: string, fg: string): CSSProperties => ({ display: 'inline-block', padding: '0 6px', borderRadius: 5, fontSize: '0.68rem', fontWeight: 600, lineHeight: '18px', whiteSpace: 'nowrap', background: bg, color: fg, verticalAlign: 'middle' })
@@ -162,7 +161,8 @@ const openMonthChip = (tone: 'open' | 'soon' | 'none'): CSSProperties => ({
   background: tone === 'soon' ? 'var(--bg-red-tint)' : tone === 'none' ? 'var(--bg-muted)' : 'var(--bg-blue-tint)',
   color: tone === 'soon' ? 'var(--text-red-600)' : tone === 'none' ? 'var(--text-700)' : 'var(--text-blue-700)',
 })
-const STEP_KEYS: ReadonlyArray<GcNoticeStepKey> = ['owners', 'claims', 'letter', 'decision']
+// All five steps (v2.4571): the grid was left out, so its pill never lit while scrolling.
+const STEP_KEYS: ReadonlyArray<GcNoticeStepKey> = ['owners', 'claims', 'letter', 'decision', 'grid']
 
 type Tick = { rule: boolean; terms: boolean; legal: boolean; owners: boolean }
 
@@ -189,7 +189,7 @@ function propertyFactsFor(job: { customer_address_id?: string | null } | undefin
   return a ? { propertyKind: (a.property_kind ?? '').trim(), homestead: a.homestead === true } : null
 }
 
-export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRole, authUserId, authName, issuer, signerNameFor, signerPhoneFor, onOpenEditJob, onOpenJob, onChanged, rereadKey = 0, onOpenCapableList }: GcOnNoticeModalProps) {
+export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRole, authUserId, authName, issuer, signerNameFor, signerPhoneFor, onOpenEditJob, onOpenJob, onChanged, rereadKey = 0 }: GcOnNoticeModalProps) {
   const { showToast } = useToastContext()
   const confirmDialog = useConfirmDialog()
   const isMobile = useIsMobile()
@@ -317,6 +317,17 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
       homestead: defaultGcNoticeCoverLetter({ gcName: data.gc.name, claimantName, kind: 'homestead' }),
     })
     setUnresponsiveLetter(defaultGcNoticeCoverLetter({ gcName: data.gc.name, claimantName, gcUnresponsive: true }))
+    // Notices already sent to the leader from this window (v2.4571): open on what the office saved, not on the defaults,
+    // so Approve all does not write the defaults over the office's letter, reason and note.
+    const saved = gcNoticeSavedRun(data.jobs, (jobId) => coverLetterKindFor(propertyFactsFor(data.desk.jobsById[jobId], data.desk.addressesById)))
+    if (saved) {
+      if (saved.reason) {
+        setReason(saved.reason)
+        setNote(saved.note)
+      }
+      setIncludeLetter(saved.includeLetter)
+      if (saved.includeLetter) setLetters((cur) => ({ ...cur, ...saved.letters }))
+    }
   }, [data, issuer])
 
   /** Which of counsel's letters a job gets: the unresponsive letter for every job while the tick is on, else its property's kind. */
@@ -982,7 +993,7 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
                                   {j.isBilled ? <div style={faint}>open on bills</div> : (
                                     <div style={{ display: 'grid', gap: 2, justifyItems: 'end' }}>
                                       <span style={chip('var(--bg-amber-tint)', 'var(--text-amber-800)')}>unbilled · contract balance</span>
-                                      {onOpenCapableList ? <button type="button" style={linkBtn} onClick={onOpenCapableList}>Bill the finished work first ›</button> : null}
+                                      <button type="button" style={linkBtn} onClick={() => onOpenEditJob(j.jobId, 'bill')}>Bill the finished work first ›</button>
                                     </div>
                                   )}
                                 </td>
@@ -1093,7 +1104,7 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
                     <input value={note} onChange={(ev) => setNote(ev.target.value)} placeholder="What you know — who said what, when (kept on the record)" aria-label="Reason note" disabled={!office} style={{ fontSize: '0.8125rem', padding: '7px 10px', border: '1px solid var(--border-strong)', borderRadius: 6, width: '100%' }} />
                   </div>
                   <div style={{ display: 'grid', gap: '0.4rem' }}>
-                    <div style={fieldLabel}>Also change, when the run is recorded</div>
+                    <div style={fieldLabel}>Also change, when the notices are approved</div>
                     <div style={card}>
                       {changes.map((c, i) => (
                         <label key={c.key} data-testid="gc-notice-change" style={{ display: 'grid', gridTemplateColumns: isMobile ? 'auto 1fr' : 'auto minmax(0, 1fr) auto', gap: '2px 12px', alignItems: 'start', padding: '0.65rem 0.75rem', borderTop: i > 0 ? '1px solid var(--border)' : undefined, cursor: ticksLocked ? 'default' : 'pointer' }}>
