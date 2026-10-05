@@ -9,7 +9,7 @@ The Man hours card shows how many hours the company worked in the office and in 
 
 ## Where it is
 
-Open **People → Overhead**. The **Man hours** card sits above the day table. You see it if you can open the Overhead tab.
+Open **People → Overhead**. The **Man hours** card is near the top, under the three overhead rate cards. You see it if you can open the Overhead tab.
 
 The card shows hours only. It never shows a wage or a dollar.
 
@@ -59,7 +59,7 @@ Each person has their field, office and bid hours, and any time not on a job. Th
 
 Up to three buttons sit with the list.
 
-- {{button:outline|Show these days in the table below}} appears on the Week view. It moves the day table to that week.
+- {{button:outline|Show these days in the table below}} appears on the Week view. It moves the day table to that week and takes you down to it.
 - {{button:outline-amber|Approve waiting hours}} appears when the period has hours waiting. It opens the Hours approvals queue.
 - {{button:outline|Match hours to a job}} appears when the period has time not on a job. It opens Match sessions on the Hours tab.
 
@@ -79,7 +79,7 @@ You approve waiting hours in the Hours approvals queue. See [clear the hours app
 
 The card counts recorded hours. That is every closed clock session that was not rejected.
 
-The day table under the card uses the same rule. So a week on the card matches that week in the day table.
+The day table at the bottom of the tab uses the same rule. So a week on the card matches that week in the day table.
 
 You set the Office job with {{button:outline|Overhead office job}} on the same tab. If no Office job is set, no time counts as office.
 

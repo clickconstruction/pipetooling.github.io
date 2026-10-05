@@ -74,7 +74,6 @@ import {
 import { describeReplyToOutcome } from '../../lib/gcStatementReplyTo'
 import { fetchPhysicalInvoiceIssuerFromAppSettings, getPhysicalInvoiceIssuerDraft, getPhysicalInvoiceIssuerForDocument } from '../../lib/physicalInvoiceIssuer'
 import { copyRichHtmlToClipboard } from '../../lib/copyRichHtmlToClipboard'
-import GcHardHatIcon from '../icons/GcHardHatIcon'
 import {
   buildBilledAgingBuckets,
   buildBilledNoLineBucket,
@@ -284,6 +283,7 @@ import { accountsReceivableButtonName } from '../../lib/jobs/stagesAccountsRecei
 import { useJobsListCache } from '../../contexts/JobsListCacheContext'
 import type { StagesSectionToolKey } from '../../lib/jobs/stagesSectionToolsMenu'
 import { JobsStagesSectionToolsMenu } from './JobsStagesSectionToolsMenu'
+import { StagesToolsMenuGlyph } from './StagesToolsMenuGlyph'
 import { stagesPaidHeaderSearchCount, stagesPaidSearchHint } from '../../lib/jobs/stagesPaidSearchHint'
 import { jobLedgerHasCustomerForBilling } from '../../lib/jobLedgerCustomerForBilling'
 import { extractContactFromCustomer } from '../../lib/jobs/jobFormCustomerDisplay'
@@ -3224,7 +3224,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 whiteSpace: 'nowrap',
               }}
             >
-              <span aria-hidden>🕒</span>
+              <StagesToolsMenuGlyph name="history" inherit />
               {stagesRecentViewOpen ? 'Back to board' : 'Recently added'}
             </button>
               ) : null}
@@ -3541,7 +3541,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       aria-label="Ready to Bill notification settings"
                       style={billedHeaderActionStyle(false)}
                     >
-                      <span aria-hidden>{'\u2699'}</span>
+                      <StagesToolsMenuGlyph name="bell" inherit />
                       Ready to Bill notifications
                     </button>
                   )}
@@ -3622,7 +3622,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     aria-label="GC Review: Billed Awaiting Payment grouped by General Contractor"
                     style={billedHeaderActionStyle(billedActiveRows.length === 0 && collectionsRows.length === 0)}
                   >
-                    <GcHardHatIcon size={13} style={{ flexShrink: 0 }} />
+                    <StagesToolsMenuGlyph name="building" inherit />
                     GC Review
                   </button>
                   <div style={{ position: 'relative', flexShrink: 0, width: 'fit-content' }}>
@@ -3640,7 +3640,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       }}
                     >
                       {/* Same money mark as the Pipeline card's allocate-deposits move. */}
-                      <span aria-hidden>{'💵'}</span>
+                      <StagesToolsMenuGlyph name="bank" inherit />
                       Accounts Receivable
                     </button>
                     {typeof arBankTxUnallocatedCount === 'number' && arBankTxUnallocatedCount > 0 ? (
@@ -3679,7 +3679,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       aria-label="Share or print billed awaiting payment report"
                       style={billedHeaderActionStyle(false)}
                     >
-                      <span aria-hidden>⇪</span>
+                      <StagesToolsMenuGlyph name="share" inherit />
                       Share / Print
                     </button>
                   )}
@@ -3691,7 +3691,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       aria-label="Billed aging chart"
                       style={billedHeaderActionStyle(false)}
                     >
-                      <span aria-hidden>{'📊'}</span>
+                      <StagesToolsMenuGlyph name="chart-bar" inherit />
                       Chart
                     </button>
                   )}
@@ -3703,7 +3703,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       aria-label="Payment forecast"
                       style={billedHeaderActionStyle(false)}
                     >
-                      <span aria-hidden>{'📅'}</span>
+                      <StagesToolsMenuGlyph name="calendar-bars" inherit />
                       Payment forecast
                     </button>
                   )}
@@ -3715,7 +3715,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       aria-label="Payment email settings"
                       style={billedHeaderActionStyle(false)}
                     >
-                      <span aria-hidden>⚙</span>
+                      <StagesToolsMenuGlyph name="bell" inherit />
                       Paid notifications
                     </button>
                   )}
@@ -3809,7 +3809,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                           borderColor: legalEmpty ? undefined : 'var(--border-strong)',
                         }}
                       >
-                        <span aria-hidden>{'⚖'}</span>
+                        <StagesToolsMenuGlyph name="scales" inherit />
                         Legal
                       </button>
                     )
@@ -3826,7 +3826,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                         borderColor: 'var(--border-strong)',
                       }}
                     >
-                      <span aria-hidden>{'⏱'}</span>
+                      <StagesToolsMenuGlyph name="gavel" inherit />
                       Lien desk{typeof lienDeskCount === 'number' && lienDeskCount > 0 ? ` · ${lienDeskCount}` : ''}
                     </button>
                   ) : null}
@@ -3896,7 +3896,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     aria-label="Paid profit chart"
                     style={billedHeaderActionStyle(false)}
                   >
-                    <span aria-hidden>{'📊'}</span>
+                    <StagesToolsMenuGlyph name="chart-bar" inherit />
                     Chart
                   </button>
                 )}
@@ -3908,7 +3908,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     aria-label="Paid in Full email settings"
                     style={billedHeaderActionStyle(false)}
                   >
-                    <span aria-hidden>⚙</span>
+                    <StagesToolsMenuGlyph name="bell" inherit />
                     Paid in Full notifications
                   </button>
                 )}

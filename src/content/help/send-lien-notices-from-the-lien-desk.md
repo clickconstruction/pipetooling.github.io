@@ -19,7 +19,7 @@ Press a job to open its Lien window. The desk stays open behind it. Close the Li
 ## Where it opens
 
 - **Dashboard, Needs you.** One lien card for the office leads with the next deadline, like *Next lien deadline: Oct 15 · in 23 days*. It is grey beyond 14 days, amber inside them and red inside 7. The master also gets {{chip:blue|Approve N lien notices the office drafted}}. Both open the desk in place. Quickfill shows the same cards on a phone.
-- **Jobs, Pipeline, the Collections header.** The {{button:outline|⏱ Lien desk}} button sits beside {{button:outline|⚖ Legal}}, with its count.
+- **Jobs, Pipeline, the Collections header.** The {{button:outline|Lien desk}} button sits beside {{button:outline|⚖ Legal}}, with its count. It wears the orange gavel.
 - **Jobs, Pipeline, Today's Money Opportunities.** A card shows whenever a notice waits to be drafted, waits on an owner or waits for approval. It gives the count, the dollars and the first window to close. It is red inside a week and amber inside two. {{button:outline-blue|Open the Lien desk →}} lands on the Notices tab. With nothing due, there is no card.
 - **Jobs, Pipeline, the stage bar.** An orange gavel sits beside the last stage in the bar. It shows the count of notices to work. One click opens the desk.
 - **Jobs, Pipeline, the ⋯ Pipeline tools menu.** The desk is also the first row of the jump strip's ☰ **Section tools** menu.

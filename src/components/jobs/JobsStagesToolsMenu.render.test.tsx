@@ -56,6 +56,10 @@ describe('JobsStagesToolsMenu', () => {
     }
     expect(screen.getByText('2 without')).toBeTruthy()
     expect(screen.getByText('3')).toBeTruthy()
+    // v2.4532: the Lien desk row wears the gavel the stage bar and the ☰ menu wear.
+    const lienRow = screen.getByText('Lien desk').closest('button')!
+    expect(lienRow.querySelector<HTMLElement>('[data-tools-glyph]')?.dataset.toolsGlyph).toBe('gavel')
+    expect(lienRow.textContent).not.toContain('⏱')
     expect(screen.getByLabelText('Pipeline tools').getAttribute('aria-expanded')).toBe('true')
   })
 
