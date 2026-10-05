@@ -4,12 +4,13 @@
  * schedule — with the robot's read of the schedule in its card and, once read, the tags to confirm
  * under the cards. It draws what it is handed and reports each press; the tab owns every write.
  */
-import { Fragment } from 'react'
+import { Fragment, type CSSProperties } from 'react'
 import { confirmLabel, liveTask, scheduleToConfirm, taskStatus, type SubmittalTaskRow } from '../../lib/submittals/robotTasks'
 import { staleAsk, type RobotSeatState } from '../../lib/submittals/robotOffer'
 import { formatShortDate } from '../../lib/submittals/submittalRevision'
-import { describeTask } from '../../../supabase/functions/_shared/submittalRobot'
+import { RobotNote } from './RobotNote'
 import { RobotOffer } from './RobotOffer'
+import { robotScheduleNote } from '../../lib/submittals/robotNote'
 import { btn, btnGreen, btnPrimary, btnQuiet, smallMuted } from './submittalTabStyles'
 
 export type SubmittalSourcesPanelProps = {
@@ -40,56 +41,55 @@ export type SubmittalSourcesPanelProps = {
   onConfirmSchedule: (task: SubmittalTaskRow, tags: string[]) => void
 }
 
+/** One source, one row: the name and its count at a fixed width so the doors line up, then the doors; on a narrow screen the doors wrap under the name. */
+const sourceRow = (first: boolean): CSSProperties => ({ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.35rem 0.75rem', padding: '0.35rem 0', borderTop: first ? 'none' : '1px solid var(--border)', fontSize: '0.8125rem' })
+const sourceName: CSSProperties = { flex: '0 1 17rem', minWidth: 0 }
+const rowButton: CSSProperties = { padding: '0.25rem 0.7rem', fontSize: '0.78rem' }
+
 export function SubmittalSourcesPanel({ takeoffFixtures, takeoffWithProduct, scheduleTags, picks, hasRevision, hasPlans, tasks, robotSeat, lookChecked, busy, onChooseFromTakeoff, onOpenCompare, onPlugIn, onAskRobot, onCancelTask, onLookChecked, onConfirmSchedule }: SubmittalSourcesPanelProps) {
   return (
     <>
-      {/* v2.4107 · three sources, the takeoff first: a bid priced from a takeoff has no picks and often no schedule, yet the takeoff already names every product. */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.6rem', maxWidth: 900 }} data-testid="submittal-sources">
-        <div style={{ border: `1px solid ${takeoffFixtures > 0 && scheduleTags === 0 && picks === 0 ? '#2563eb' : 'var(--border)'}`, borderRadius: 8, padding: '0.6rem 0.75rem', background: 'var(--surface)', display: 'flex', flexDirection: 'column', gap: '0.4rem' }} data-testid="source-takeoff">
-          <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)' }}>The takeoff <span style={{ ...smallMuted, fontWeight: 400 }}>· {takeoffFixtures === 0 ? 'none on this bid' : `${takeoffFixtures} fixture${takeoffFixtures === 1 ? '' : 's'}, ${takeoffWithProduct} with a part`}</span></div>
-          <span style={smallMuted}>{takeoffFixtures === 0 ? 'Count the fixtures on Takeoffs and they show here.' : 'One row per fixture you tick. The part under it is the product.'}</span>
-          <button type="button" disabled={busy || takeoffFixtures === 0} onClick={onChooseFromTakeoff} style={{ ...(takeoffFixtures > 0 && scheduleTags === 0 && picks === 0 ? btnPrimary : btn), alignSelf: 'flex-start', opacity: takeoffFixtures === 0 ? 0.5 : 1 }} title="Tick the fixtures you counted. Each one becomes a row, with its part as the product" data-testid="choose-from-takeoff" data-tour="submittals-takeoff">
+      {/* v2.4107 · three sources, the takeoff first: a bid priced from a takeoff has no picks and often no schedule, yet the takeoff already names every product.
+          2026-10-05 · each source is one row — its name and count, then its door — where a card of three lines stood. The sentences the cards carried are the hover line on each name; the walkthrough and the guide teach them. */}
+      <div style={{ display: 'flex', flexDirection: 'column', maxWidth: 900 }} data-testid="submittal-sources">
+        <div style={sourceRow(true)} data-testid="source-takeoff">
+          <span style={sourceName} title={takeoffFixtures === 0 ? 'Count the fixtures on Takeoffs and they show here.' : 'One row per fixture you tick. The part under it is the product.'}>
+            <b style={{ fontWeight: 600, color: 'var(--text-strong)' }}>The takeoff</b> <span style={smallMuted}>· {takeoffFixtures === 0 ? 'none on this bid' : `${takeoffFixtures} fixture${takeoffFixtures === 1 ? '' : 's'}, ${takeoffWithProduct} with a part`}</span>
+          </span>
+          <button type="button" disabled={busy || takeoffFixtures === 0} onClick={onChooseFromTakeoff} style={{ ...(takeoffFixtures > 0 && scheduleTags === 0 && picks === 0 ? btnPrimary : btn), ...rowButton, opacity: takeoffFixtures === 0 ? 0.5 : 1 }} title="Tick the fixtures you counted. Each one becomes a row, with its part as the product" data-testid="choose-from-takeoff" data-tour="submittals-takeoff">
             {hasRevision ? 'Add from the takeoff' : 'Choose from the takeoff'}
           </button>
         </div>
         {picks > 0 ? (
-          <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem 0.75rem', background: 'var(--surface)', display: 'flex', flexDirection: 'column', gap: '0.4rem' }} data-testid="source-picks">
-            <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)' }}>Quotes compared <span style={{ ...smallMuted, fontWeight: 400 }}>· {picks} picked line{picks === 1 ? '' : 's'}</span></div>
-            <span style={smallMuted}>The house you picked for each line on Pricing, with the reason and lead time you gave.</span>
-            {onOpenCompare ? <button type="button" disabled={busy} onClick={onOpenCompare} style={{ ...btn, alignSelf: 'flex-start' }}>Open the compare</button> : null}
+          <div style={sourceRow(false)} data-testid="source-picks">
+            <span style={sourceName} title="The house you picked for each line on Pricing, with the reason and lead time you gave.">
+              <b style={{ fontWeight: 600, color: 'var(--text-strong)' }}>Quotes compared</b> <span style={smallMuted}>· {picks} picked line{picks === 1 ? '' : 's'}</span>
+            </span>
+            {onOpenCompare ? <button type="button" disabled={busy} onClick={onOpenCompare} style={{ ...btn, ...rowButton }}>Open the compare</button> : null}
           </div>
         ) : null}
         {(() => {
-          // v2.4109 · the robot lives in the schedule card: the offer under the typed door, the state while it works, Cancel beside it.
-          // v2.4144 · the state row is two lines, not three: the sentence, then the task line with Cancel/Dismiss at its right.
+          // v2.4109 · the robot lives on the schedule's row, after the typed door: the offer, or the state of what was asked.
           const t = liveTask(tasks, 'read_schedule')
           const st = t ? taskStatus(t) : null
-          const conf = t ? scheduleToConfirm(t) : null
           // 2026-10-03 · a queued ask nobody is coming for says the day it was asked and that no robot is on shift.
           const stale = t && st === 'queued' ? staleAsk('read_schedule', t.requested_at, robotSeat, Date.now(), formatShortDate) : null
           return (
-            <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem 0.75rem', background: 'var(--surface)', display: 'flex', flexDirection: 'column', gap: '0.4rem' }} data-testid="source-schedule">
-              <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)' }}>The plans’ schedule <span style={{ ...smallMuted, fontWeight: 400 }}>· {scheduleTags === 0 ? 'none yet' : `${scheduleTags} tag${scheduleTags === 1 ? '' : 's'}`}</span></div>
-              <span style={smallMuted}>{scheduleTags === 0 ? 'Optional. A tag is the plan’s name for a fixture, like WC-1. With the schedule, the app checks each row against the plans.' : 'Every tag here becomes a row. A row with no pick gets its product typed with Edit.'}</span>
-              {t ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem', background: stale ? 'var(--bg-amber-tint)' : 'var(--bg-muted)', borderRadius: 6, padding: '0.3rem 0.55rem', fontSize: '0.8rem' }} data-testid="robot-schedule" data-stale={stale ? 'true' : undefined} data-tour="submittals-robot">
-                  <span style={{ color: 'var(--text-strong)' }}>
-                    {stale ? stale.head : st === 'ready' ? (conf ? 'The robot read the schedule. Confirm the tags below.' : 'The robot read the schedule and found no tags.') : st === 'blocked' ? (t.summary || 'The robot could not read the plans.') : st === 'working' ? 'The robot is reading the fixture schedule off the plans.' : 'The robot is queued to read the fixture schedule off the plans.'}
-                  </span>
-                  <span style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', alignItems: 'baseline' }}>
-                    <span style={{ ...smallMuted, fontStyle: stale ? 'normal' : 'italic' }} data-testid="robot-line">{stale ? stale.detail : describeTask(t)}</span>
-                    {st === 'blocked' || st === 'queued' ? (
-                      <button type="button" disabled={busy} onClick={() => onCancelTask(t.id)} style={{ ...btnQuiet, textDecoration: 'underline', fontSize: '0.78rem', flexShrink: 0 }}>{st === 'blocked' ? 'Dismiss' : stale ? 'Take the ask back' : 'Cancel'}</button>
-                    ) : null}
-                  </span>
-                </div>
-              ) : null}
-              <button type="button" disabled={busy} onClick={onPlugIn} style={{ ...((scheduleTags === 0 && takeoffFixtures === 0) || stale ? btnPrimary : btn), alignSelf: 'flex-start' }} title="Type or paste the tags from the plans, one per line" data-testid="plug-in-schedule" data-tour="submittals-plug-in">
+            <div style={sourceRow(false)} data-testid="source-schedule">
+              <span style={sourceName} title={scheduleTags === 0 ? 'Optional. A tag is the plan’s name for a fixture, like WC-1. With the schedule, the app checks each row against the plans.' : 'Every tag here becomes a row. A row with no pick gets its product typed with Edit.'}>
+                <b style={{ fontWeight: 600, color: 'var(--text-strong)' }}>The plans’ schedule</b> <span style={smallMuted}>· {scheduleTags === 0 ? 'none yet' : `${scheduleTags} tag${scheduleTags === 1 ? '' : 's'}`}</span>
+              </span>
+              <button type="button" disabled={busy} onClick={onPlugIn} style={{ ...((scheduleTags === 0 && takeoffFixtures === 0) || stale ? btnPrimary : btn), ...rowButton }} title="Type or paste the tags from the plans, one per line" data-testid="plug-in-schedule" data-tour="submittals-plug-in">
                 {scheduleTags === 0 ? 'Type or paste the schedule' : 'Add to the schedule'}
               </button>
               {/* The header's old door to Pricing: with a schedule and nothing picked yet, the compare is where each tag gets its product. */}
-                    {scheduleTags > 0 && picks === 0 && onOpenCompare ? <button type="button" disabled={busy} onClick={onOpenCompare} style={{ ...btnQuiet, textDecoration: 'underline', fontSize: '0.78rem', alignSelf: 'flex-start' }} data-testid="open-compare-from-schedule">Pick the products on Pricing</button> : null}
-                    {!t && scheduleTags === 0 ? <RobotOffer kind="read_schedule" seat={robotSeat} hasPlans={hasPlans} busy={busy} onAsk={onAskRobot} testId="ask-robot-schedule" tour="submittals-robot" /> : null}
+              {scheduleTags > 0 && picks === 0 && onOpenCompare ? <button type="button" disabled={busy} onClick={onOpenCompare} style={{ ...btnQuiet, textDecoration: 'underline', fontSize: '0.78rem' }} data-testid="open-compare-from-schedule">Pick the products on Pricing</button> : null}
+              {/* The robot is one small line beside the human door: its state in a chip, the one thing to press, the story on hover. */}
+              {t ? (
+                <RobotNote note={robotScheduleNote(t, robotSeat, Date.now(), formatShortDate)} busy={busy} onPress={() => onCancelTask(t.id)} testId="robot-schedule" buttonTestId="robot-schedule-button" lineTestId="robot-line" tour="submittals-robot" stale={Boolean(stale)} />
+              ) : scheduleTags === 0 ? (
+                <RobotOffer kind="read_schedule" seat={robotSeat} hasPlans={hasPlans} busy={busy} onAsk={onAskRobot} testId="ask-robot-schedule" tour="submittals-robot" />
+              ) : null}
             </div>
           )
         })()}

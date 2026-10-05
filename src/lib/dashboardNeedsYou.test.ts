@@ -1138,7 +1138,7 @@ describe('submittals (stage 4b)', () => {
     expect(lead.severity).toBe('red')
     const back = items.find((i) => i.key === 'submittal-sent-back')!
     expect(back.title).toBe('2 rows sent back on B375 SpaceX Rev 2, no resubmit yet')
-    expect(back.detail).toContain('Rev 3 from the rows sent back')
+    expect(back.detail).toContain('A Rev 3 draft with those rows is one tap on the Submittals tab. Nothing is sent until you share it')
     const un = items.find((i) => i.key === 'submittal-unopened')!
     expect(un.title).toBe('2 shared submittals sit unopened — B398 ZZ Test longest, 8 days')
     expect(un.detail).toContain('Marco Ellis has not opened their link')

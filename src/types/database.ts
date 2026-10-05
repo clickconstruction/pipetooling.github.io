@@ -13219,6 +13219,100 @@ export type Database = {
           },
         ]
       }
+      lien_owner_record_requests: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          customer_address_id: string | null
+          customer_id: string | null
+          file: Json
+          gc_customer_id: string | null
+          id: string
+          job_ids: string[]
+          owner_name: string
+          property_address: string
+          seed_job_id: string | null
+          sent_at: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          customer_address_id?: string | null
+          customer_id?: string | null
+          file?: Json
+          gc_customer_id?: string | null
+          id?: string
+          job_ids?: string[]
+          owner_name?: string
+          property_address?: string
+          seed_job_id?: string | null
+          sent_at?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          customer_address_id?: string | null
+          customer_id?: string | null
+          file?: Json
+          gc_customer_id?: string | null
+          id?: string
+          job_ids?: string[]
+          owner_name?: string
+          property_address?: string
+          seed_job_id?: string | null
+          sent_at?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lien_owner_record_requests_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lien_owner_record_requests_customer_address_id_fkey"
+            columns: ["customer_address_id"]
+            isOneToOne: false
+            referencedRelation: "customer_addresses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lien_owner_record_requests_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lien_owner_record_requests_gc_customer_id_fkey"
+            columns: ["gc_customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lien_owner_record_requests_seed_job_id_fkey"
+            columns: ["seed_job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lien_owner_record_requests_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       master_primaries: {
         Row: {
           created_at: string | null

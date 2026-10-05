@@ -1386,7 +1386,7 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
         severity: 'red',
         kicker: 'Submittals',
         title: n.sentBack.count === 1 ? `${f.rows} row${f.rows === 1 ? '' : 's'} sent back on ${f.bidLabel} Rev ${f.revNumber}, no resubmit yet` : `${n.sentBack.count} submittals have rows sent back with no resubmit — ${f.bidLabel} first`,
-        detail: `The reviewer marked ${f.rows === 1 ? 'a row' : `${f.rows} rows`} Revise or Reject${n.sentBack.count === 1 ? '' : ` on ${f.bidLabel}`}. Rev ${f.revNumber + 1} from the rows sent back is one tap on the Submittals tab; the same room link shows it.`,
+        detail: `The reviewer marked ${f.rows === 1 ? 'a row' : `${f.rows} rows`} Revise or Reject${n.sentBack.count === 1 ? '' : ` on ${f.bidLabel}`}. A Rev ${f.revNumber + 1} draft with those rows is one tap on the Submittals tab. Nothing is sent until you share it; the same room link shows it then.`,
         figure: String(n.sentBack.count),
         actionLabel: 'Open Submittals',
       })

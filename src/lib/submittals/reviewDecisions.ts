@@ -134,9 +134,24 @@ export function resubmitSplit<T extends Pick<SubmittalItemRow, 'review_decision'
 
 const rowsWord = (n: number) => `${n} row${n === 1 ? '' : 's'}`
 
-/** The resubmit button: "Rev 2 from the 4 rows sent back", and "… and the 9 with no answer" when some still wait. */
-export function resubmitLabel(nextRev: number, sentBack: number, noAnswer = 0): string {
-  return `Rev ${nextRev} from the ${rowsWord(sentBack)} sent back${noAnswer > 0 ? ` and the ${noAnswer} with no answer` : ''}`
+/**
+ * The resubmit button. It says what the press does: it starts a draft. It used to read "Rev 2 from
+ * the 4 rows sent back and the 10 with no answer", which named the rows and left the owner asking
+ * whether it sent anything (2026-10-05). The rows are `resubmitWhat`'s to say, beside the button.
+ */
+export function resubmitLabel(nextRev: number): string {
+  return `Start a Rev ${nextRev} draft…`
+}
+
+/** "Nothing is sent. The GC sees Rev 2 only after you press Share." */
+export function resubmitNothingSent(nextRev: number): string {
+  return `Nothing is sent. The GC sees Rev ${nextRev} only after you press Share.`
+}
+
+/** Beside the button: which rows go on the draft, that nothing is sent, and when the GC sees it. */
+export function resubmitWhat(nextRev: number, sentBack: number, noAnswer = 0): string {
+  const rows = noAnswer > 0 ? `The ${rowsWord(sentBack)} sent back and the ${noAnswer} with no answer go on it.` : `The ${rowsWord(sentBack)} sent back ${sentBack === 1 ? 'goes' : 'go'} on it.`
+  return `${rows} ${resubmitNothingSent(nextRev)}`
 }
 
 /**
@@ -150,7 +165,9 @@ export function resubmitConfirm(rev: number, c: { sentBack: number; noAnswer: nu
   if (c.noAnswer > 0) lines.push(`${rowsWord(c.noAnswer)} ${one(c.noAnswer, 'has', 'have')} no answer yet. ${one(c.noAnswer, 'It goes', 'They go')} on Rev ${next} too and ${one(c.noAnswer, 'keeps', 'keep')} waiting.`)
   lines.push(c.approved > 0 ? `${rowsWord(c.approved)} ${one(c.approved, 'was', 'were')} approved. ${one(c.approved, 'It stays', 'They stay')} on Rev ${rev} and on the procurement log.` : `No row was approved on Rev ${rev}.`)
   if ((c.orderOnly ?? 0) > 0) lines.push(`${rowsWord(c.orderOnly ?? 0)} you buy without the GC ${one(c.orderOnly ?? 0, 'goes', 'go')} on Rev ${next} too.`)
-  return { title: resubmitLabel(next, c.sentBack, c.noAnswer), message: lines.join(' '), confirmLabel: `Build Rev ${next} with ${rowsWord(c.total)}` }
+  // The last thing the question says: this is a draft, and nobody hears about it yet.
+  lines.push(`Rev ${next} starts as a draft. ${resubmitNothingSent(next)}`)
+  return { title: `Start a Rev ${next} draft`, message: lines.join(' '), confirmLabel: `Start the draft with ${rowsWord(c.total)}` }
 }
 
 export { formatShortDate }

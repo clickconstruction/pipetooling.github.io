@@ -433,17 +433,30 @@ describe('BidsSubmittalsTab', () => {
     state.tasks = [{ ...task, requested_at: '2026-09-29T15:00:00Z' }]
     state.seat = { unrevoked_seats: 1, last_used_at: '2026-09-21T15:00:00Z' }
     const { unmount } = mount()
+    // 2026-10-05 · a finished step 1 folds even while an ask waits: its one line carries the robot's state, in amber, and the caret opens it again.
+    const folded = await screen.findByTestId('road-1-robot')
+    expect(screen.getByTestId('road-1').getAttribute('data-open')).toBe('false')
+    expect(folded.textContent).toMatch(/^ · 🤖 Asked Sep 29 · no robot has run in \d+ days$/)
+    expect(screen.queryByTestId('robot-schedule')).toBeNull()
+    fireEvent.click(screen.getByTestId('road-1-caret'))
     const card = await screen.findByTestId('robot-schedule')
     await waitFor(() => expect(card.getAttribute('data-stale')).toBe('true'))
-    expect(card.textContent).toMatch(/^You asked the robot on Sep 29\. No robot has run in \d+ days\./)
+    // One line: the chip says it is stuck and since when; the sentences open in its card.
+    expect(within(card).getByTestId('robot-schedule-chip').textContent).toMatch(/^🤖 Asked Sep 29 · no robot has run in \d+ days$/)
+    fireEvent.mouseEnter(card)
+    expect(within(card).getByRole('note').textContent).toMatch(/^You asked the robot on Sep 29\. No robot has run in \d+ days\./)
     expect(within(card).getByTestId('robot-line').textContent).toBe('Nobody is reading the plans. Type the schedule yourself, or leave the ask in place.')
     expect(within(card).getByRole('button', { name: 'Take the ask back' })).toBeTruthy()
     unmount()
     state.tasks = [{ ...task, requested_at: new Date().toISOString() }]
     state.seat = { unrevoked_seats: 1, last_used_at: new Date().toISOString() }
     mount()
+    expect((await screen.findByTestId('road-1-robot')).textContent).toBe(' · 🤖 Queued to read the plans')
+    fireEvent.click(screen.getByTestId('road-1-caret'))
     const fresh = await screen.findByTestId('robot-schedule')
     expect(fresh.getAttribute('data-stale')).toBeNull()
+    expect(within(fresh).getByTestId('robot-schedule-chip').textContent).toBe('🤖 Queued to read the plans')
+    fireEvent.mouseEnter(fresh)
     expect(fresh.textContent).toContain('The robot is queued to read the fixture schedule off the plans.')
     expect(within(fresh).getByRole('button', { name: 'Cancel' })).toBeTruthy()
     state.tasks = []
@@ -465,6 +478,8 @@ describe('BidsSubmittalsTab', () => {
     expect(await screen.findByText('No submittal on this bid yet')).toBeTruthy()
     const ask = await screen.findByTestId('ask-robot-schedule')
     expect((ask as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.getByTestId('robot-offer-read_schedule-held').textContent).toBe('needs the plans link on the bid')
+    fireEvent.mouseEnter(screen.getByTestId('robot-offer-read_schedule'))
     expect(screen.getByTestId('robot-needs-read_schedule').textContent).toMatch(/✗ Add the plans link on the bid first\. · A robot was working/)
     state.noSources = false
     state.takeoff = false
@@ -1206,6 +1221,8 @@ describe('BidsSubmittalsTab', () => {
     mount()
     // v2.4109 · the state sits in the schedule card; the tags to confirm sit under the cards.
     const card = await screen.findByTestId('robot-schedule')
+    expect(within(card).getByTestId('robot-schedule-chip').textContent).toBe('🤖 Read 2 tags · confirm below')
+    fireEvent.mouseEnter(card)
     expect(card.textContent).toContain('The robot read the schedule. Confirm the tags below.')
     expect(card.textContent).toContain('robot · read the schedule · ready · 2 tags · 1 sure · 1 want a look')
     const panel = screen.getByTestId('robot-schedule-confirm')
@@ -1468,10 +1485,10 @@ describe('BidsSubmittalsTab', () => {
       mount()
       // Rev 1 is the newest, so the log reads its two rows: one released and ordered, one sent back.
       await waitFor(() => expect(screen.getAllByTestId('procurement-row')).toHaveLength(2))
-      fireEvent.click(screen.getAllByRole('button', { name: 'Rev 2 from the 1 row sent back' })[0]!)
+      fireEvent.click(screen.getAllByRole('button', { name: 'Start a Rev 2 draft…' })[0]!)
       const confirmDialog = await screen.findByRole('alertdialog')
       expect(confirmDialog.textContent).toMatch(/1 row was approved\. It stays on Rev 1 and on the procurement log\./)
-      fireEvent.click(within(confirmDialog).getByRole('button', { name: 'Build Rev 2 with 1 row' }))
+      fireEvent.click(within(confirmDialog).getByRole('button', { name: 'Start the draft with 1 row' }))
       await waitFor(() => expect(screen.getAllByTestId('revision-chip')).toHaveLength(2))
       // Rev 2 holds the one row sent back …
       expect(state.items.filter((r) => r.submittal_id === 'rev-2').map((r) => r.tag)).toEqual(['DWH-1'])
@@ -1511,20 +1528,23 @@ describe('BidsSubmittalsTab', () => {
       const button = await screen.findByTestId('resubmit-sent-back')
       expect(screen.getByRole('button', { name: '6 Their call · waiting on the reviewer' })).toBeTruthy()
       expect(screen.getByRole('button', { name: '7 Resubmit · you are here' })).toBeTruthy()
-      expect(screen.getByTestId('submittal-journey').textContent).toContain('structura approved 1 and sent 1 back. 2 rows still have no answer. Fix what was sent back.')
+      expect(screen.getByTestId('submittal-journey').textContent).toContain('structura approved 1 and sent 1 back. 2 rows still have no answer. Start a Rev 2 draft to fix what was sent back. The rows with no answer go on it too. Nothing is sent until you share.')
       expect((screen.getByTestId('new-revision') as HTMLButtonElement).disabled).toBe(false)
-      expect(button.textContent).toBe('Rev 2 from the 1 row sent back and the 2 with no answer')
+      // 2026-10-05 · the button says what it does; the line beside it says which rows go on the draft, and that nothing is sent.
+      expect(button.textContent).toBe('Start a Rev 2 draft…')
+      expect(screen.getByTestId('resubmit-caption').textContent).toBe('The 1 row sent back and the 2 with no answer go on it. Nothing is sent. The GC sees Rev 2 only after you press Share. New revision carries every row instead.')
       fireEvent.click(button)
       const confirmDialog = await screen.findByRole('alertdialog')
       expect(confirmDialog.textContent).toContain('1 row was sent back. It goes on Rev 2 so you can fix it. 2 rows have no answer yet. They go on Rev 2 too and keep waiting. 1 row was approved. It stays on Rev 1 and on the procurement log.')
-      fireEvent.click(within(confirmDialog).getByRole('button', { name: 'Build Rev 2 with 3 rows' }))
+      expect(confirmDialog.textContent).toContain('Rev 2 starts as a draft. Nothing is sent. The GC sees Rev 2 only after you press Share.')
+      fireEvent.click(within(confirmDialog).getByRole('button', { name: 'Start the draft with 3 rows' }))
       await waitFor(() => expect(screen.getAllByTestId('revision-chip')).toHaveLength(2))
       expect(state.items.filter((r) => r.submittal_id === 'rev-2').map((r) => r.tag)).toEqual(['LAV-1', 'FCO', 'UTILITY SINK'])
       // 2026-10-03 · the words follow the revision: pill 2 and steps 2 and 7 say Rev 2 and Rev 3, and the replaced draft reads answered, not superseded.
       await waitFor(() => expect(screen.getByRole('button', { name: /^2 Rev 2 · / })).toBeTruthy())
       for (const n of [2, 7]) if (screen.getByTestId(`road-${n}`).getAttribute('data-open') !== 'true') fireEvent.click(screen.getByTestId(`road-${n}-caret`))
       expect(screen.getByTestId('road-2-about').textContent).toContain('Rev 2 is the version you are working on.')
-      expect(screen.getByTestId('road-7-about').textContent).toContain('Start Rev 3 with them and the rows with no answer yet.')
+      expect(screen.getByTestId('road-7-about').textContent).toContain('Start a Rev 3 draft with them and the rows with no answer yet.')
       await waitFor(() => expect(screen.getAllByTestId('revision-chip').map((c) => c.textContent)).toEqual([expect.stringMatching(/^Rev 2 · draft · /), 'Rev 1 · answered Oct 2']))
     } finally {
       state.noSources = false
