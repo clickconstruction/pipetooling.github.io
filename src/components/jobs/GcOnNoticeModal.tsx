@@ -192,6 +192,8 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
   const isMobile = useIsMobile()
   /** v2.4065: the title-bar toggle — the window fills the screen above the app's bottom bar, and remembers the choice. */
   const { fullScreen, toggle: toggleFullScreen, showToggle } = useModalFullScreen('gc-on-notice')
+  // What this does: its words open under the title line (they were a <details> on a line of their own until v2.4539).
+  const [whatOpen, setWhatOpen] = useState(false)
   const { data, loading, refetch } = useGcOnNoticeData(open ? gcId : null, todayYmd)
   // The Job window saves on its own clock; its owner says when (the run's data is this window's, not the desk's).
   useEffect(() => {
@@ -616,23 +618,32 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
       <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: fullScreen ? 0 : 10, width: fullScreen ? '100vw' : 'min(1140px, calc(100vw - 2rem))', height: fullScreen ? 'calc(100dvh - var(--app-top-chrome, 0px) - var(--app-bottom-chrome, 0px))' : undefined, maxHeight: fullScreen ? 'calc(100dvh - var(--app-top-chrome, 0px) - var(--app-bottom-chrome, 0px))' : 'calc(100dvh - 2rem - var(--app-top-chrome, 0px) - var(--app-bottom-chrome, 0px))', display: 'grid', gridTemplateRows: 'auto 1fr auto', overflow: 'hidden' }} data-gc-on-notice-panel>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', padding: '0.85rem 1.25rem 0.7rem', borderBottom: '1px solid var(--border)' }}>
           <div style={{ display: 'grid', gap: '0.25rem', minWidth: 0 }}>
-            <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
-              <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" style={{ flex: 'none' }}>
-                <path d="M12 3 1.8 20.5h20.4L12 3Z" fill="#f59e0b" />
-                <path d="M12 9.5v5.2" stroke="#1a1a1a" strokeWidth="2" strokeLinecap="round" fill="none" />
-                <circle cx="12" cy="17.6" r="1.15" fill="#1a1a1a" />
-              </svg>
-              <h2 style={{ margin: 0, fontSize: '1.125rem', letterSpacing: '-0.01em' }}>Put {gcName} on notice</h2>
-            </div>
-            <div style={{ display: 'flex', gap: '0.3rem 0.75rem', alignItems: 'baseline', flexWrap: 'wrap', paddingLeft: 'calc(22px + 0.6rem)' }}>
+            {/* v2.4539: the notice chip and What this does sit on the title's line; they wrap under it only when the window is narrow. */}
+            <div style={{ display: 'flex', gap: '0.3rem 0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+              <span style={{ display: 'inline-flex', gap: '0.6rem', alignItems: 'center', minWidth: 0 }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" style={{ flex: 'none' }}>
+                  <path d="M12 3 1.8 20.5h20.4L12 3Z" fill="#f59e0b" />
+                  <path d="M12 9.5v5.2" stroke="#1a1a1a" strokeWidth="2" strokeLinecap="round" fill="none" />
+                  <circle cx="12" cy="17.6" r="1.15" fill="#1a1a1a" />
+                </svg>
+                <h2 style={{ margin: 0, fontSize: '1.125rem', letterSpacing: '-0.01em' }}>Put {gcName} on notice</h2>
+              </span>
               {data && hasRows ? data.gcHasPriorNotice ? <span style={chip('var(--bg-subtle)', 'var(--text-muted)')}>noticed before</span> : <span style={chip('var(--bg-amber-tint)', 'var(--text-amber-800)')}>first notice we've sent them</span> : null}
-              <details style={{ fontSize: '0.78rem', color: 'var(--text-muted)', maxWidth: '82ch' }}>
-                <summary style={{ cursor: 'pointer', color: 'var(--text-link)', fontWeight: 600, width: 'fit-content' }}>What this does</summary>
-                <p style={{ margin: '0.25rem 0 0' }}>
-                  Every job with this GC and unpaid work. One § 53.056 notice per job naming every unnoticed month, to the owner of record and to {gcName}, in one run. Once an owner has it, they may withhold what we are owed from any payment to {gcName} and never owe it twice (§ 53.081).
-                </p>
-              </details>
+              <button
+                type="button"
+                aria-expanded={whatOpen}
+                aria-controls="gc-notice-what-this-does"
+                onClick={() => setWhatOpen((o) => !o)}
+                style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', font: 'inherit', fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-link)', whiteSpace: 'nowrap' }}
+              >
+                <span aria-hidden>{whatOpen ? '▾' : '▸'}</span> What this does
+              </button>
             </div>
+            {whatOpen ? (
+              <p id="gc-notice-what-this-does" style={{ margin: 0, paddingLeft: 'calc(22px + 0.6rem)', fontSize: '0.78rem', color: 'var(--text-muted)', maxWidth: '82ch' }}>
+                Every job with this GC and unpaid work. One § 53.056 notice per job naming every unnoticed month, to the owner of record and to {gcName}, in one run. Once an owner has it, they may withhold what we are owed from any payment to {gcName} and never owe it twice (§ 53.081).
+              </p>
+            ) : null}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0 }}>
             {showToggle ? <ModalFullScreenButton fullScreen={fullScreen} onToggle={toggleFullScreen} /> : null}
