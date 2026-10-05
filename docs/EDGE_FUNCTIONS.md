@@ -1393,7 +1393,7 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 **Stage 5a (v2.3528)** — the payload gains `messages: RoomMessage[]` (oldest first: `{ id, at, authorKind, authorName, body, kind, revNumber, tags }`; the office reads as the company name, system lines carry the person's name only inside the body) and `person.messagesThisHour`, so the page greys *Ask* at the cap. A missing table (before the migration is pushed) reads as no messages.
 ---
 
-**v2.3511 (What customers see PR 4):** the sample tokens (`sample` open, `sample-done` reviewed) answer from `sampleSubmittalRoomResponse` in `_shared/customerSampleFixtures.ts` before any database read — no row, no view stamp, no person. The room page shows the Sample banner; identify and decide stay on the page.
+**v2.3511 (What customers see PR 4):** the sample tokens (`sample` open, `sample-done` reviewed) answer from `sampleSubmittalRoomResponse` in `_shared/customerSampleFixtures.ts` before any database read — no row, no view stamp, no person. The room page shows the Sample banner; identify and decide stay on the page. Since v2.4595 the sample's rows are sample submittal rows and parts run through `roomRowsFrom` → `roomCounts`, the same call as a real bid (a fixture of parts with a call per part, a proposed row, an order-only row and part that never reach the page), so the sample cannot say what a real room cannot; `src/lib/submittals/sampleSubmittalRoom.test.ts` pins it.
 
 ### open-submittal-pdf
 

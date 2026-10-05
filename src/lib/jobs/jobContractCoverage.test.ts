@@ -6,6 +6,8 @@ import {
   filterJobsByContractCoverage,
   isContractGap,
   jobContractChipLabel,
+  jobContractChipTitle,
+  JOB_CONTRACT_COVERAGE_COLUMNS,
   parseStagesContractFilter,
   type JobContractRowLike,
   type SignedEstimateLike,
@@ -166,5 +168,53 @@ describe('Not needed and the floor (Contract sweep PR 0)', () => {
     expect(filterJobsByContractCoverage(jobs, cov, 'missing').map((j) => j.id)).toEqual(['small', 'big', 'unknown'])
     expect(isContractGap(cov.get('small'), 450, 250000)).toBe(false)
     expect(isContractGap(cov.get('small'), 450, 0)).toBe(true)
+  })
+})
+
+describe('a second signer (v2.4590): the chip names both and counts the frames', () => {
+  const twoFrames = { recipient_name: 'Sam Owner', co_signer_name: 'Alex Owner' }
+  const samSigned = { signer_printed_name: 'Sam Owner', signer_mode: 'type', signer_consented_at: '2026-09-01T15:00:00Z' }
+
+  it('signed by both: the line names both, the chip shortens each', () => {
+    const row = contract({ ...twoFrames, ...samSigned, status: 'signed', signed_at: '2026-09-02T00:14:00Z', co_signed_at: '2026-09-02T00:14:00Z', co_signer_printed_name: 'Alex Owner' })
+    const cov = buildJobContractCoverage([{ id: 'j1', bid_id: null }], [row], [])
+    expect(cov.get('j1')).toMatchObject({ kind: 'signed', source: 'contract', signerName: 'Sam Owner and Alex Owner', signerNames: ['Sam Owner', 'Alex Owner'] })
+    expect(jobContractChipLabel(cov.get('j1'), NOW)).toBe('✍ Signed Sep 1 · S. Owner and A. Owner')
+    expect(jobContractChipTitle(cov.get('j1'))).toBe('Contract signed electronically by Sam Owner and Alex Owner')
+  })
+
+  it('one of two signed: the count takes the place of the opens, and the title says who it waits on', () => {
+    const row = contract({ ...twoFrames, ...samSigned, view_count: 3 })
+    const cov = buildJobContractCoverage([{ id: 'j1', bid_id: null }], [row], [])
+    expect(cov.get('j1')).toMatchObject({ kind: 'sent', frames: '1 of 2 signed', framesDone: 1, framesWaiting: 'Sam Owner signed · waiting on Alex Owner' })
+    expect(jobContractChipLabel(cov.get('j1'), NOW)).toBe('Contract sent · 1 of 2 signed · 5d')
+    expect(jobContractChipTitle(cov.get('j1'))).toBe('Contract rev 1 sent to mpalmer@example.com · opened 3 times · Sam Owner signed · waiting on Alex Owner')
+  })
+
+  it('two frames, nobody signed yet: the opens still read, and the title carries the count', () => {
+    const cov = buildJobContractCoverage([{ id: 'j1', bid_id: null }], [contract({ ...twoFrames, view_count: 2 })], [])
+    expect(jobContractChipLabel(cov.get('j1'), NOW)).toBe('Contract sent · opened 2× · 5d')
+    expect(jobContractChipTitle(cov.get('j1'))).toBe('Contract rev 1 sent to mpalmer@example.com · opened 2 times · 0 of 2 signed')
+  })
+
+  it('one signer reads exactly as before', () => {
+    const signed = buildJobContractCoverage([{ id: 'j1', bid_id: null }], [contract({ status: 'signed', signed_at: '2026-09-02T00:14:00Z', signer_printed_name: 'Michael Palmer', signer_mode: 'draw' })], [])
+    expect(jobContractChipLabel(signed.get('j1'), NOW)).toBe('✍ Signed Sep 1 · M. Palmer')
+    expect(jobContractChipTitle(signed.get('j1'))).toBe('Contract signed electronically by Michael Palmer')
+    const sent = buildJobContractCoverage([{ id: 'j1', bid_id: null }], [contract({ view_count: 2 })], [])
+    expect(jobContractChipTitle(sent.get('j1'))).toBe('Contract rev 1 sent to mpalmer@example.com · opened 2 times')
+  })
+
+  it('a paper filing with a second signer named reads the typed name, with no count', () => {
+    const row = contract({ ...twoFrames, status: 'signed', signed_at: '2026-07-30T12:00:00Z', signer_mode: 'paper', signer_printed_name: 'Sam Owner and Alex Owner' })
+    const cov = buildJobContractCoverage([{ id: 'j1', bid_id: null }], [row], [])
+    expect(cov.get('j1')).toMatchObject({ kind: 'signed', source: 'paper', signerName: 'Sam Owner and Alex Owner' })
+    expect(jobContractChipLabel(cov.get('j1'), NOW)).toBe('✍ On file · paper · Jul 30')
+  })
+
+  it('every batch read selects the columns the frames need', () => {
+    for (const col of ['recipient_name', 'signer_consented_at', 'co_signer_name', 'co_signed_at', 'co_signer_printed_name', 'signer_printed_name']) {
+      expect(JOB_CONTRACT_COVERAGE_COLUMNS.split(', ')).toContain(col)
+    }
   })
 })
