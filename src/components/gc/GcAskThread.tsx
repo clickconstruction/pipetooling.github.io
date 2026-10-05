@@ -1,6 +1,8 @@
 import { useState, type Dispatch } from 'react'
 import {
   askPromise,
+  daysUntil,
+  weekdayDate,
   followUpCount,
   followUpPeople,
   followUps,
@@ -62,10 +64,15 @@ interface ThreadProps {
   invite: Invite
   partner: Partner
   dispatch: Dispatch<GcAction>
+  /**
+   * On a Follow up card (the owner, 2026-10-04: say it once per card): Call and Follow up already
+   * log a contact, so there is no Log a contact here; with no promise, the chip says when we asked.
+   */
+  onList?: boolean
 }
 
 /** The story on one ask: their word, the last thing said, a way to add a line, and the rest on a press. */
-export function AskThread({ state, project, pkg, invite, partner, dispatch }: ThreadProps) {
+export function AskThread({ state, project, pkg, invite, partner, dispatch, onList }: ThreadProps) {
   const [logging, setLogging] = useState(false)
   const [showAll, setShowAll] = useState(false)
   const [how, setHow] = useState<'call' | 'text' | 'email'>('call')
@@ -75,25 +82,33 @@ export function AskThread({ state, project, pkg, invite, partner, dispatch }: Th
   const last = contacts[0]
   const word = wordRecord(state, partner)
   const ids = { projectId: project.id, packageId: pkg.id, inviteId: invite.id }
+  const promise = askPromise(invite, state.today)
+  const askedDays = daysUntil(state.today, invite.invitedOn)
 
   return (
     <div style={{ display: 'grid', gap: '0.3rem', fontSize: '0.85rem' }} onClick={(e) => e.stopPropagation()}>
       <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap' }}>
         <PromiseChip invite={invite} today={state.today} />
+        {onList && !promise && (
+          <Chip tone="grey">
+            asked {weekdayDate(invite.invitedOn)}, {askedDays === 0 ? 'today' : `${askedDays} ${askedDays === 1 ? 'day' : 'days'} ago`}
+          </Chip>
+        )}
         {word.made > 0 && (
           <span style={{ color: 'var(--text-muted)' }} title="How often the day they gave for a quote held.">
             kept {word.kept} of {word.made} promises
           </span>
         )}
-        {!logging && <Btn kind="quiet" onClick={() => setLogging(true)}>Log a contact</Btn>}
+        {!logging && !onList && <Btn kind="quiet" onClick={() => setLogging(true)}>Log a contact</Btn>}
         {contacts.length > 1 && (
           <Btn kind="quiet" onClick={() => setShowAll(!showAll)}>{showAll ? 'Hide the story' : `The story (${contacts.length})`}</Btn>
         )}
       </div>
 
-      {last && !showAll && <ContactLine line={last} />}
-      {showAll && contacts.map((line, i) => <ContactLine key={`${line.on}-${i}`} line={line} />)}
-      {!last && !logging && <span style={{ color: 'var(--text-muted)' }}>No contact logged on this ask yet.</span>}
+      {/* The chip already says the promised day: the last line does not say it again. The full story keeps every one. */}
+      {last && !showAll && <ContactLine line={last} sayDay={last.promisedBy !== promise?.by} />}
+      {showAll && contacts.map((line, i) => <ContactLine key={`${line.on}-${i}`} line={line} sayDay />)}
+      {!last && !logging && <span style={{ color: 'var(--text-muted)' }}>No call or message logged yet.</span>}
 
       {logging && (
         <div style={{ display: 'grid', gap: '0.35rem', padding: '0.5rem', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface)' }}>
@@ -137,14 +152,14 @@ export function AskThread({ state, project, pkg, invite, partner, dispatch }: Th
   )
 }
 
-function ContactLine({ line }: { line: AskContact }) {
+function ContactLine({ line, sayDay }: { line: AskContact; sayDay: boolean }) {
   return (
     <div>
       <span style={{ color: 'var(--text-muted)' }}>
         {shortDate(line.on)} · {line.by} · {HOW_WORDS[line.how]}:
       </span>{' '}
       {line.note}
-      {line.promisedBy && <strong> Quote by {shortDate(line.promisedBy)}.</strong>}
+      {sayDay && line.promisedBy && <strong> Quote by {shortDate(line.promisedBy)}.</strong>}
     </div>
   )
 }
@@ -173,7 +188,6 @@ export function GcFollowUpTab({
   onMap: (projectId: string, packageId: string) => void
 }) {
   const all = followUps(state)
-  const toCall = all.filter((f) => f.why !== 'waiting').length
   // The Follow up sheet (the owner, 2026-10-04, Building lane's GcFollowUpSheet): one person at a time, a draft from me.
   const [sheet, setSheet] = useState<{ partnerId?: string; calling?: boolean } | null>(null)
   const listCount = followUpCount(followUpPeople(state))
@@ -190,9 +204,8 @@ export function GcFollowUpTab({
         </div>
       )}
       <Why>
-        Every company we are waiting on, across every project, with the ones to call first. Log what they say as you
-        go. When they give a day for their quote, write it down: if that day passes with no quote, they come back to
-        the top of this list. {toCall === 0 ? 'No one to call right now.' : `${toCall} to call now.`}
+        Every company we are waiting on, across every project, the ones to call first. A day they give for their quote
+        is written down: if it passes with no quote, they come back to the top.
       </Why>
       {WHY_ORDER.map((why) => {
         const rows = all.filter((f) => f.why === why)
@@ -233,7 +246,7 @@ function FollowUpCard({
   /** Open the Follow up sheet on this company: to write, or, after Call, to log what they said. */
   onFollowUp?: (partnerId: string, calling?: boolean) => void
 }) {
-  const { project, pkg, invite, partner, why, words } = followUp
+  const { project, pkg, invite, partner, why } = followUp
   const ids = { projectId: project.id, packageId: pkg.id, inviteId: invite.id }
   // Will not do it / Cannot do it ask why first (the owner, 2026-10-04): the reason stays with the job and the company.
   const [declining, setDeclining] = useState<'wont' | 'cant' | null>(null)
@@ -243,7 +256,11 @@ function FollowUpCard({
         {/* The name opens the company at this ask's promised day, on Activity (the owner, 2026-10-04). */}
         <PartnerLink partnerId={partner.id} company={partner.company} strong at={{ tab: 'activity', focus: `ask:${invite.id}` }} />
         <span style={{ color: 'var(--text-muted)' }}>{partner.contact}</span>
-        <Chip tone="grey">{project.name} · {pkg.trade}</Chip>
+        {/* The bid date sits with the job, once, not as a sentence on every card. */}
+        <Chip tone="grey">
+          {project.name} · {pkg.trade}
+          {project.bidDue ? ` · bid ${weekdayDate(project.bidDue)}` : ''}
+        </Chip>
         {/* Portal lane: a company that never opened its link. */}
         <LinkNeverOpenedChip state={state} partnerId={partner.id} />
         <span style={{ flex: 1 }} />
@@ -283,8 +300,10 @@ function FollowUpCard({
           }}
         />
       )}
-      <div style={{ margin: '0.3rem 0 0.4rem', fontSize: '0.9rem' }}>{words}</div>
-      <AskThread state={state} project={project} pkg={pkg} invite={invite} partner={partner} dispatch={dispatch} />
+      {/* The section says why they are here, the chip says the day: the card's sentence stays in the data (the sheet reads it). */}
+      <div style={{ marginTop: '0.35rem' }}>
+        <AskThread state={state} project={project} pkg={pkg} invite={invite} partner={partner} dispatch={dispatch} onList />
+      </div>
     </Card>
   )
 }

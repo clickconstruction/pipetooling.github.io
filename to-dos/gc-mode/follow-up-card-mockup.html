@@ -1,0 +1,159 @@
+<title>Follow Up Cards</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800&display=swap">
+<style>
+  /* Layout: a reading column; each card drawn the way Follow up draws it, the repeats marked on the "now" version. */
+  :root {
+    --bg: #f3f5f9;
+    --fg: #172033;
+    --muted: #5d6880;
+    --line: #d8deea;
+    --card: #ffffff;
+    --accent: #2f6fe4;
+    --red: #c23a3a;
+    --red-soft: #fbe3e3;
+    --amber: #a8650a;
+    --amber-soft: #fdf0d9;
+    --chip: #e9edf5;
+    --mark: #ffe58a;
+    --font: 'Public Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f1625; --fg: #e6ebf5; --muted: #95a1ba; --line: #2c3854; --card: #18213a; --accent: #6ea0ff;
+      --red: #f07a7a; --red-soft: #4a1d22; --amber: #f0b04a; --amber-soft: #3f2f12; --chip: #243049; --mark: #5c4b12;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f1625; --fg: #e6ebf5; --muted: #95a1ba; --line: #2c3854; --card: #18213a; --accent: #6ea0ff;
+    --red: #f07a7a; --red-soft: #4a1d22; --amber: #f0b04a; --amber-soft: #3f2f12; --chip: #243049; --mark: #5c4b12;
+    color-scheme: dark;
+  }
+  body { background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 15px; line-height: 1.55; }
+  .page { max-width: 1000px; margin: 0 auto; padding: 32px 20px 64px; display: grid; gap: 36px; }
+  h1, h2, h3 { margin: 0; line-height: 1.2; text-wrap: balance; }
+  h1 { font-size: 1.85rem; font-weight: 800; }
+  h2 { font-size: 1.25rem; }
+  h3 { font-size: 1rem; }
+  p { margin: 0; max-width: 70ch; }
+  .eyebrow { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); }
+  .section { display: grid; gap: 12px; }
+  .lede { color: var(--muted); }
+  .sec-head { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .sec-head span { color: var(--muted); font-size: 0.86rem; }
+  .card { background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--red); border-radius: 8px; padding: 12px 14px; display: grid; gap: 6px; font-size: 0.9rem; min-width: 0; }
+  .card.amber { border-left-color: var(--amber); }
+  .top { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .name { font-weight: 800; text-decoration: underline; text-underline-offset: 3px; }
+  .who { color: var(--muted); }
+  .chip { padding: 1px 8px; border-radius: 999px; background: var(--chip); font-size: 0.78rem; font-weight: 600; white-space: nowrap; }
+  .chip.red { background: var(--red-soft); color: var(--red); }
+  .chip.amber { background: var(--amber-soft); color: var(--amber); }
+  .chip.grey { background: var(--chip); color: var(--muted); }
+  .grow { flex: 1; }
+  .btns { display: flex; gap: 6px; flex-wrap: wrap; font-size: 0.8rem; }
+  .btn { border: 1px solid var(--line); border-radius: 6px; padding: 3px 9px; font-weight: 600; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.quiet { border: none; color: var(--accent); }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .muted { color: var(--muted); }
+  mark { background: var(--mark); color: inherit; border-radius: 3px; padding: 0 2px; }
+  .note { font-size: 0.82rem; color: var(--muted); }
+  .findings { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  .findings li { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; display: grid; gap: 2px; }
+  .findings li p { color: var(--muted); font-size: 0.92rem; }
+  .pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+  @media (max-width: 760px) { .pair { grid-template-columns: minmax(0, 1fr); } }
+  .label { font-size: 0.74rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+</style>
+
+<main class="page">
+  <header class="section">
+    <span class="eyebrow">GC mode · Follow up</span>
+    <h1>Say it once per card</h1>
+    <p class="lede">You said the Follow up cards repeat themselves. They do: a promise is said up to four times on one card, and the bid date is on every card from the same job. Below, the cards as they are with the repeats marked, a revised card, and a second look before it is built.</p>
+  </header>
+
+  <section class="section" aria-labelledby="m1">
+    <span class="eyebrow">1 · Now, with the repeats marked</span>
+    <h2 id="m1">Hillside Excavation says "Wed Sep 30" four times</h2>
+    <div class="sec-head"><h3>Their day passed (1)</h3><span><mark>They gave a day and no quote came.</mark> Call them.</span></div>
+    <div class="card">
+      <div class="top"><span class="name">Hillside Excavation</span><span class="who">Greg Paulk</span><span class="chip">Boerne Retail Shell · Sitework</span><span class="grow"></span>
+        <span class="btns"><span class="btn">Call Greg</span><span class="btn primary">Follow up</span><span class="btn">Will not do it</span><span class="btn">Cannot do it</span><span class="btn quiet">Who else?</span></span></div>
+      <div><mark>Promised a quote by Wed Sep 30. That was 2 days ago.</mark> <mark>Our bid is due Thu Oct 8.</mark></div>
+      <div class="row"><span class="chip red"><mark>promised Wed Sep 30, 2 days past</mark></span><span class="muted">kept 0 of 3 promises</span><span class="btn quiet"><mark>Log a contact</mark></span></div>
+      <div><span class="muted">Sep 26 · Robert · call:</span> Greg is busy on a subdivision. Says he will price it by Wednesday. <strong><mark>Quote by Sep 30.</mark></strong></div>
+    </div>
+    <div class="sec-head"><h3>Never opened it (1)</h3><span><mark>We asked and they have not looked.</mark> Call, or offer it to the next company.</span></div>
+    <div class="card">
+      <div class="top"><span class="name">Bexar Steel Erectors</span><span class="who">Tom Riddle</span><span class="chip">Boerne Retail Shell · Structural steel</span><span class="grow"></span>
+        <span class="btns"><span class="btn">Call Tom</span><span class="btn primary">Follow up</span><span class="btn">Will not do it</span><span class="btn">Cannot do it</span><span class="btn quiet">Who else?</span></span></div>
+      <div><mark>Asked 13 days ago and has not opened it.</mark> <mark>Our bid is due Thu Oct 8.</mark></div>
+      <div class="row"><span class="muted">kept 1 of 2 promises</span><span class="btn quiet"><mark>Log a contact</mark></span></div>
+      <div class="muted">No contact logged on this ask yet.</div>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="m2">
+    <span class="eyebrow">2 · What repeats</span>
+    <h2 id="m2">Four kinds of repeat</h2>
+    <ul class="findings">
+      <li><strong>The promise, four times.</strong><p>The section says their day passed. The sentence says it. The red chip says it. The last call ends "Quote by Sep 30." The chip alone says the day and how late, and it is the one that changes color.</p></li>
+      <li><strong>The section, again in the card.</strong><p>"Never opened it" heads the section, and the card's first line says "has not opened it". The card only needs what the section does not say: when we asked.</p></li>
+      <li><strong>The bid date on every card.</strong><p>"Our bid is due Thu Oct 8" is on all three Boerne cards. It belongs with the job's name, in the chip.</p></li>
+      <li><strong>Three ways to log a call.</strong><p>Call and Follow up open the sheet, which writes down what they said and the day they gave. Log a contact does it a third way, on the card itself.</p></li>
+    </ul>
+  </section>
+
+  <section class="section" aria-labelledby="m3">
+    <span class="eyebrow">3 · Revised</span>
+    <h2 id="m3">The chip says the status, the line says what they said</h2>
+    <div class="pair">
+      <div class="section">
+        <div class="sec-head"><h3>Their day passed (1)</h3><span>They gave a day and no quote came. Call them.</span></div>
+        <div class="card">
+          <div class="top"><span class="name">Hillside Excavation</span><span class="who">Greg Paulk</span><span class="chip">Boerne Retail Shell · Sitework · bid Thu Oct 8</span></div>
+          <div class="btns"><span class="btn">Call Greg</span><span class="btn primary">Follow up</span><span class="btn">Will not do it</span><span class="btn">Cannot do it</span><span class="btn quiet">Who else?</span></div>
+          <div class="row"><span class="chip red">promised Wed Sep 30, 2 days past</span><span class="muted">kept 0 of 3 promises</span></div>
+          <div><span class="muted">Sep 26 · Robert · call:</span> Greg is busy on a subdivision. Says he will price it by Wednesday.</div>
+        </div>
+        <div class="sec-head"><h3>Promised today (1)</h3><span>Their quote is due today. Check before you go home.</span></div>
+        <div class="card amber">
+          <div class="top"><span class="name">Tejas Power</span><span class="who">Bill Sorrell</span><span class="chip">Boerne Retail Shell · Electrical · bid Thu Oct 8</span></div>
+          <div class="row"><span class="chip amber">promised today, Fri Oct 2</span><span class="muted">kept 0 of 1 promises</span></div>
+          <div><span class="muted">Oct 1 · Wendi · text:</span> Bill texted back: quote by end of day Friday.</div>
+        </div>
+        <div class="sec-head"><h3>Never opened it (1)</h3><span>We asked and they have not looked. Call, or offer it to the next company.</span></div>
+        <div class="card">
+          <div class="top"><span class="name">Bexar Steel Erectors</span><span class="who">Tom Riddle</span><span class="chip">Boerne Retail Shell · Structural steel · bid Thu Oct 8</span></div>
+          <div class="row"><span class="chip grey">asked Sat Sep 19, 13 days ago</span><span class="muted">kept 1 of 2 promises</span></div>
+          <div class="muted">No call or message logged yet.</div>
+        </div>
+      </div>
+      <div class="section">
+        <h3>What changed</h3>
+        <ul class="findings">
+          <li><strong>One status, in the chip.</strong><p>The sentence under the name is gone. The chip says the promised day and how late, or when we asked.</p></li>
+          <li><strong>The last call says what they said.</strong><p>"Quote by Sep 30" comes off the last line when the chip already shows that day. The full story keeps every promise.</p></li>
+          <li><strong>The bid date sits with the job.</strong><p>"Boerne Retail Shell · Sitework · bid Thu Oct 8".</p></li>
+          <li><strong>Log a contact leaves this card.</strong><p>Call and Follow up already log it. The Trades tab and the company window keep it.</p></li>
+        </ul>
+      </div>
+    </div>
+    <p class="note">The buttons are left as they are in the build. They are drawn on their own row here only to fit this column.</p>
+  </section>
+
+  <section class="section" aria-labelledby="m4">
+    <span class="eyebrow">4 · Is this the best we can do?</span>
+    <h2 id="m4">Two more repeats came out on the second look</h2>
+    <ul class="findings">
+      <li><strong>The paragraph at the top repeats the sections and adds a third count.</strong><p>It says "3 to call now" right under "Work the list · 5". The sections already count their cards, so the paragraph keeps one sentence and drops its count.</p></li>
+      <li><strong>"No contact logged on this ask yet" says too much.</strong><p>It becomes "No call or message logged yet."</p></li>
+      <li><strong>Kept as they are, on purpose.</strong><p>Will not do it and Cannot do it stay two buttons: you asked for each to ask why. Who else? stays. The card's sentence still feeds the sheet, the board's people count and Trade partners, so it stays in the data and only leaves this card.</p></li>
+      <li><strong>Not fixed here: three counts of people.</strong><p>"Work the list · 5" counts people across every job. The paragraph's "3 to call now" counts companies with a quote overdue or unopened. The board row's "6 to call" counts everyone on one job, the architect included. The paragraph's count goes. Making the other two one number is the Board lane's to settle.</p></li>
+    </ul>
+  </section>
+</main>
