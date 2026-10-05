@@ -34,7 +34,7 @@ There are four forms. Two switches in step 2 choose between them. One reads **Co
 - ***Conditional · final***: the last payment has been *promised but not received*. It takes effect once that check clears.
 - ***Unconditional · final***: the job is done and *paid in full*. It fully releases all lien rights on the project.
 
-Pressing **Unconditional** asks before it switches. An unconditional release holds even when the check behind it does not clear.
+Every way into an unconditional form asks first. That includes pressing **Unconditional**, pressing a **Waive the paid** link and opening the window from **Issue unconditional**. An unconditional release holds even when the check behind it does not clear. **Stay conditional** keeps the conditional form.
 
 :::example Which bill lines does it cover?
 If the job has more than one bill line, step 1 lets you pick which line(s) the release covers — the amount and the "progress payments through" date follow your selection. Everything stays editable below, so you can always overwrite what the prefill guessed.
