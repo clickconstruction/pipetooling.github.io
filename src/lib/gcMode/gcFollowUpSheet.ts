@@ -285,13 +285,15 @@ function listWords(words: string[], lang: PortalLang): string {
 
 /**
  * The message, in the company's language: the subject (for an email) and the body. `me` is the
- * signed-in person's name; without one, the message speaks for the company.
+ * signed-in person's name; without one, the message speaks for the company. `greet`: who an email
+ * greets when it goes to someone else at the company ("Dana", "Marcus and Dana"; the Board's
+ * `mailToGreeting`). Unset: the main contact.
  */
-export function followUpDraft(person: FollowPerson, items: FollowItem[], choice: DraftChoice, me: string | null): { subject: string; body: string } {
+export function followUpDraft(person: FollowPerson, items: FollowItem[], choice: DraftChoice, me: string | null, greet?: string): { subject: string; body: string } {
   const lang: PortalLang = person.partner.lang ?? 'en'
   const es = lang === 'es'
   const gc = GC_COMPANY.shortName
-  const first = person.reach.first
+  const first = greet ?? person.reach.first
   const mine = choice.from === 'me' && me !== null
   const meFirst = me?.split(/\s+/)[0] ?? ''
   const w = items.map((i) => i.words[lang])

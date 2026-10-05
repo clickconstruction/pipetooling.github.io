@@ -3,9 +3,11 @@ import { createPortal } from 'react-dom'
 import {
   PARTNER_SCHEDULE_WHY,
   answerRecord,
+  companyPeople,
   declineReasonWords,
   insuranceRenewalWords,
   insuranceRenewals,
+  mailGroupName,
   money,
   partnerActivity,
   partnerDeclines,
@@ -285,6 +287,7 @@ function About({
           </div>
         ))}
       </dl>
+      <People partner={partner} />
       {work.jobs.length > 0 && (
         <section>
           <Heading>Their work with us</Heading>
@@ -319,6 +322,44 @@ function About({
         </section>
       )}
     </div>
+  )
+}
+
+/**
+ * Who at the company gets which of our emails (the owner, 2026-10-05: "build both", on the Portal
+ * lane's *who at the company gets what*). The company sets it in its portal; we read it here.
+ */
+function People({ partner }: { partner: Partner }) {
+  const people = companyPeople(partner)
+  return (
+    <section data-tour="gc-company-people">
+      <Heading>Who gets our emails</Heading>
+      <div style={{ display: 'grid', gap: '0.4rem', fontSize: '0.9rem' }}>
+        {people.map((p) => (
+          <div key={`${p.main ? 'main' : 'p'}:${p.name}`} style={{ display: 'flex', gap: '0.15rem 0.5rem', flexWrap: 'wrap', alignItems: 'baseline' }}>
+            <strong style={{ fontWeight: 600 }}>{p.name}</strong>
+            {p.role && <span style={{ color: 'var(--text-muted)' }}>{p.role}</span>}
+            <a href={`mailto:${p.email}`} style={reachLink} title={p.madeUp ? 'A made-up address until their record has one' : `Email ${p.name}`}>
+              {p.email}
+            </a>
+            <span style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
+              {p.gets.length === 0 ? (
+                <Chip tone="grey">no emails</Chip>
+              ) : (
+                p.gets.map((g) => (
+                  <Chip key={g} tone="grey">
+                    {mailGroupName(g)}
+                  </Chip>
+                ))
+              )}
+            </span>
+          </div>
+        ))}
+      </div>
+      <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '0.3rem' }}>
+        {people.length === 1 ? 'They can name others in their portal, like a bookkeeper for pay.' : 'They set this in their portal. Follow up emails each person what they get.'}
+      </div>
+    </section>
   )
 }
 

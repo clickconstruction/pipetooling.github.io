@@ -3,6 +3,9 @@ import { createPortal } from 'react-dom'
 import {
   followUpCallActions,
   followUpDraft,
+  followUpMailTo,
+  mailToGreeting,
+  mailToWhy,
   allFollowPeople,
   followUpSentActions,
   mailHref,
@@ -181,7 +184,7 @@ export function GcFollowUpSheet({
           })}
         </nav>
         {person ? (
-          <PersonPane key={person.partner.id} person={person} me={me} calling0={startCalling && person.partner.id === startPartnerId} dispatch={dispatch} onClose={onClose} onDone={(w) => finished(person.partner.id, w)} sent={done[person.partner.id] ?? null} />
+          <PersonPane key={person.partner.id} state={state} person={person} me={me} calling0={startCalling && person.partner.id === startPartnerId} dispatch={dispatch} onClose={onClose} onDone={(w) => finished(person.partner.id, w)} sent={done[person.partner.id] ?? null} />
         ) : (
           <div style={{ padding: '1.25rem' }}>
             No one to follow up right now.{' '}
@@ -230,6 +233,7 @@ function Seg<T extends string>({ label, value, options, onChange }: { label: str
 }
 
 function PersonPane({
+  state,
   person,
   me,
   calling0,
@@ -238,6 +242,8 @@ function PersonPane({
   onDone,
   sent,
 }: {
+  /** For who an email goes to: a plans item's job (the Board's `followItemMailGroup`). */
+  state: GcState
   person: FollowPerson
   me: string | null
   /** Open on "What did they say?". */
@@ -258,7 +264,11 @@ function PersonPane({
   const [said, setSaid] = useState('')
   const [by, setBy] = useState('')
   const picked = items.filter((i) => ticked.includes(i.key))
-  const draft = followUpDraft(person, picked, choice, me)
+  // An email goes to whoever at the company gets the kinds ticked (the owner, 2026-10-05): a waiver
+  // to the bookkeeper the company named in its portal. A text and a call stay with the main contact.
+  const mailTo = followUpMailTo(state, partner, picked)
+  const toOthers = choice.via === 'email' && mailTo.some((t) => !t.main)
+  const draft = followUpDraft(person, picked, choice, me, toOthers ? mailToGreeting(mailTo, partner.lang ?? 'en') : undefined)
   const subject = edited?.subject ?? draft.subject
   const body = edited?.body ?? draft.body
   const pick = (patch: Partial<DraftChoice>) => {
@@ -278,7 +288,7 @@ function PersonPane({
     onDone('called')
   }
   const fromMe = choice.from === 'me'
-  const sendHref = fromMe ? (choice.via === 'text' ? smsHref(reach.phone, body) : mailHref(reach.email, subject, body)) : null
+  const sendHref = fromMe ? (choice.via === 'text' ? smsHref(reach.phone, body) : mailHref(mailTo.map((t) => t.email).join(','), subject, body)) : null
   const sendWords = choice.via === 'text' ? 'Send text' : 'Send email'
   const how = fromMe
     ? choice.via === 'text'
@@ -428,6 +438,15 @@ function PersonPane({
             />
           </div>
           <div style={{ display: 'grid', gap: '0.35rem' }}>
+            {choice.via === 'email' && (
+              <div data-tour="gc-follow-mail-to" style={{ fontSize: '0.85rem', display: 'grid', gap: '0.1rem' }}>
+                <span>
+                  <span style={{ color: 'var(--text-muted)' }}>To </span>
+                  {mailTo.map((t) => `${t.name} <${t.email}>`).join(', ')}
+                </span>
+                {toOthers && <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{mailToWhy(state, partner, picked, mailTo)}</span>}
+              </div>
+            )}
             {choice.via === 'email' && (
               <input value={subject} onChange={(e) => setEdited({ subject: e.target.value, body })} aria-label="Subject" style={box} />
             )}

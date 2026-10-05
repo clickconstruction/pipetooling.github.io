@@ -363,7 +363,7 @@ email goes to the right person at the company*.
 - ~~**Portal (GC 3):**~~ done (this commit). `Partner.people`, `contactGets`, three actions, *Who
   gets our emails* on the home, every email addressed and greeted by its kind (`portalMailGroup`,
   `mailRecipients`). Seeded: Pecan Valley's bookkeeper gets pay and papers.
-- **Board (GC 0), if it fits:** the company window's About could list the people and what each
+- ~~**Board (GC 0), if it fits:**~~ done (the owner: "build both"; `gcCompanyPeople.ts`). the company window's About could list the people and what each
   gets; Follow up's Email could pick the person for the kind it chases (a quote: `quotes`; a waiver
   or a W-9: `pay`) through `mailRecipients(partner, group)`.
 
