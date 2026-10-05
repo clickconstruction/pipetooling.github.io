@@ -8,7 +8,7 @@ covers:
   - src/pages/Bids.tsx
 mapped_at: 4833712a0
 audience: Developers, AI Agents
-last_updated: 2026-09-28
+last_updated: 2026-10-05
 ---
 
 ## Overview
@@ -81,7 +81,7 @@ What the 3,343 lines are at `mapped_at` (4833712a0), top to bottom, after the se
 | Robot lens bodies (Audits, Queue, Scoreboard 2349–2369, Console, Robot Board 2378–2399) | 2340–2399 | ~60 | extracted children |
 | Bid Board | 2402–2452 | 51 | `BidsBidBoardTab` |
 | Robot overlays | 2454 | 1 | `BidsRobotOverlays` (v2.3953) |
-| Followup lens bar | 2457–2480 | 24 | `BidsLensBar` over `followupLenses`; the "N need a reason" chip and the caption are its children — v2.3931 |
+| Followup lens bar | 2457–2480 | 24 | `BidsLensBar` over `followupLenses`; the "N need a reason" chip and the caption are its children — v2.3931. The day to call again (`bids.next_followup_on`, kernel `lib/bids/bidNextFollowup.ts`, v2.4420) is the Call queue's; the page only hands the Bid Board `contactPersonNameById` / `contactPersons` / `onReloadContactPersons` for its chip (v2.4421) |
 | Followup lens bodies | 2481–2531 | ~50 | `BidsCallQueueTab`, `BidsWhyWeLostLens`, `BidsWaitingToHearLens`, `BidsJobAccountsLens` |
 | Builder Review / Working / Day book / Bid Costs / Estimators | 2533–2616 | ~85 | extracted children |
 | Counts / Takeoffs / Labor / Pricing / Cover Letter | 2619–2936 | ~320 | prop bags; each opens with `renderBidVersionPicker` (v2.3931) |
