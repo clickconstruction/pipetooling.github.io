@@ -811,7 +811,15 @@ function readings(state: GcState) {
     customers,
     followUps: followUps(state),
     tradeBenches: tradeBenches(state),
-    assistantRules: assistantRules(state),
+    // Each to-do's trade only drives the trade headings (gcBench.test.ts holds it), so it stays out of the walk.
+    assistantRules: assistantRules(state).map((r) => ({
+      ...r,
+      items: r.items.map((item) => {
+        const { trade, ...rest } = item
+        void trade
+        return rest
+      }),
+    })),
     // Question 3 and question 8 (the owner, 2026-10-04): who waits on vetting, whose insurance to chase,
     // and every promise other than a quote date with where it stands.
     toVet: partnersToVet(state).map((p) => ({ id: p.id, words: vettingWords(p) })),
