@@ -9045,8 +9045,49 @@ exports[`GC mode golden walk > step 193: Remind Bluebonnet to sign the master ag
 }
 `;
 
+exports[`GC mode golden walk > step 194: Stone Oak: a change order for two counter outlets 1`] = `
+{
+  "changed": {
+    "lastLog.id": 189,
+    "lastLog.text": "Drafted change order 1 on Stone Oak Pharmacy: Add two outlets at the front counter, $990.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 195: Send Stone Oak change order 1 to Hollis 1`] = `
+{
+  "changed": {
+    "lastLog.id": 190,
+    "lastLog.text": "Sent change order 1 to Hollis Family Pharmacy for signature: $990.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 196: Remind Hollis to sign change order 1 1`] = `
+{
+  "changed": {
+    "lastLog.id": 191,
+    "lastLog.text": "Reminded Hollis Family Pharmacy to sign change order 1 by Fri Oct 9.",
+  },
+  "removed": [],
+}
+`;
+
 exports[`GC mode golden walk > the whole state at the end 1`] = `
 {
+  "customerSends": [
+    {
+      "by": "2026-10-09",
+      "changeOrderId": "co-1",
+      "customerId": "hollis",
+      "id": "csend-1",
+      "note": "",
+      "on": "2026-10-02",
+      "projectId": "stoneoak",
+    },
+  ],
   "customers": [
     {
       "address": "200 Main Plaza, Suite 300, Boerne",
@@ -9186,6 +9227,11 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "contactRole": "Owner and pharmacist",
       "contacts": [
         {
+          "by": "You",
+          "note": "Reminded them to sign change order 1, by Fri Oct 9.",
+          "on": "2026-10-02",
+        },
+        {
           "by": "Robert",
           "note": "Dana wants to open October 20. She asked what is left before the last bill.",
           "on": "2026-09-29",
@@ -9244,6 +9290,21 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
     },
   ],
   "log": [
+    {
+      "id": 191,
+      "text": "Reminded Hollis Family Pharmacy to sign change order 1 by Fri Oct 9.",
+      "who": "office",
+    },
+    {
+      "id": 190,
+      "text": "Sent change order 1 to Hollis Family Pharmacy for signature: $990.",
+      "who": "office",
+    },
+    {
+      "id": 189,
+      "text": "Drafted change order 1 on Stone Oak Pharmacy: Add two outlets at the front counter, $990.",
+      "who": "office",
+    },
     {
       "id": 188,
       "text": "Reminded Bluebonnet Roofing to sign the master agreement by Fri Oct 9.",
@@ -9377,21 +9438,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
     {
       "id": 162,
       "text": "Cibolo Creek Partners paid interest bill 1: $285.",
-      "who": "office",
-    },
-    {
-      "id": 161,
-      "text": "Sent Cibolo Creek Partners interest bill 1 on Fair Oaks Shops, Building D: $285 on late bills.",
-      "who": "office",
-    },
-    {
-      "id": 160,
-      "text": "On Fair Oaks Shops, Building D, Cibolo Creek Partners pays 1.5% a month on a late bill.",
-      "who": "office",
-    },
-    {
-      "id": 159,
-      "text": "On Fair Oaks Shops, Building D, Cibolo Creek Partners now holds 10% until the work is half done, then 5% on the rest.",
       "who": "office",
     },
   ],
@@ -14851,6 +14897,22 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "architect": "Mesquite Design Studio",
       "architectId": "mesquite",
       "bidDue": null,
+      "changeOrders": [
+        {
+          "answeredOn": null,
+          "cost": 900,
+          "description": "Add two outlets at the front counter",
+          "id": "co-1",
+          "number": 1,
+          "packageId": "selec",
+          "pctDone": 0,
+          "price": 990,
+          "reason": "owner",
+          "schedule": "none",
+          "sentOn": "2026-10-02",
+          "status": "sent",
+        },
+      ],
       "contingencyPct": 3,
       "customerId": "hollis",
       "feePct": 10,

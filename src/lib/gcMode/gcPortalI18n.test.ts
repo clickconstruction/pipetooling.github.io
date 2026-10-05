@@ -73,6 +73,11 @@ describe('the portal in two languages', () => {
     )
   })
 
+  it('says late and the day they gave on the chip (owner, 2026-10-04)', () => {
+    expect(pt('en', 'chipDayPassed', { date: pDate('en', '2026-09-30') })).toBe('late: you said Sep 30')
+    expect(pt('es', 'chipDayPassed', { date: pDate('es', '2026-09-30') })).toBe('atrasado: dijo el 30 sep')
+  })
+
   it('keeps the company’s language on its record, and sends its messages in it', () => {
     const spanish = gcReducer(state, { type: 'tradeSetLanguage', partnerId: 'hillside', lang: 'es' })
     expect(spanish.partners.find((p) => p.id === 'hillside')?.lang).toBe('es')

@@ -12,6 +12,7 @@ import { tradePromisesOf, tradePromiseWords } from './gcPromises'
 import { priceToOwner } from './gcCustomers'
 import { retainageHeldNow, tradeChangesFor } from './gcBuilding'
 import { paperSendActivity, paperSentWords } from './gcPaperSend'
+import { customerSentWords } from './gcCustomerSend'
 
 export type DocStatus = 'ok' | 'soon' | 'missing' | 'info'
 
@@ -345,6 +346,18 @@ export function customerDocuments(state: GcState, customer: GcCustomer): { group
         projectId: project.id,
       })
     }
+    // Each change order waiting on their signature, with Remind them (the owner, 2026-10-04).
+    for (const co of (project.changeOrders ?? []).filter((c) => c.status === 'sent')) {
+      const reminded = customerSentWords(state, customer.id, co.id)
+      docs.push({
+        key: `co-${co.id}`,
+        title: `Change order ${co.number}`,
+        status: 'missing',
+        statusWords: 'waiting on their signature',
+        meta: `${reminded ? `${reminded} ` : ''}${money(co.price)} · ${co.description}${co.sentOn ? ` · sent ${shortDate(co.sentOn)}` : ''}`,
+        projectId: project.id,
+      })
+    }
     const cos = project.changeOrders ?? []
     if (cos.length > 0) {
       docs.push({
@@ -575,6 +588,22 @@ export function customerPaper(state: GcState, customer: GcCustomer, key: string)
         head: ['#', 'Sent', 'Amount', 'Paid'],
         rows: (project.ownerBilling?.interestBills ?? []).map((b) => [`${b.number}`, shortDate(b.sentOn), money(b.amount), b.paidOn ? shortDate(b.paidOn) : 'not yet']),
       },
+      foot: REAL_FILE,
+    }
+  }
+  if (key.startsWith('co-')) {
+    const co = (project.changeOrders ?? []).find((c) => `co-${c.id}` === key)
+    if (!co) return null
+    return {
+      heading: `Change order ${co.number}`,
+      rows: [
+        { label: 'Job', value: project.name },
+        { label: 'The change', value: co.description },
+        { label: 'Price', value: money(co.price) },
+        { label: 'Days', value: co.schedule },
+        { label: 'Sent', value: co.sentOn ? shortDate(co.sentOn) : 'not yet' },
+        { label: 'Signed', value: co.status === 'signed' && co.answeredOn ? shortDate(co.answeredOn) : 'not yet' },
+      ],
       foot: REAL_FILE,
     }
   }
