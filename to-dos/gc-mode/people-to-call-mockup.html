@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>People to call</title>
+<style>
+  :root {
+    --bg: #f0f2f5; --surface: #fff; --sub: #f8fafc; --text: #1f2937; --muted: #6b7280; --border: #e5e7eb; --strong: #d1d5db;
+    --blue: #2563eb; --blue-tint: #eff6ff; --blue-fg: #1e40af;
+    --amber: #d97706; --amber-tint: #fffbeb; --amber-border: #fcd34d; --amber-fg: #92400e;
+    --green: #16a34a; --green-tint: #f0fdf4; --green-fg: #166534;
+    --red: #dc2626; --red-tint: #fef2f2; --red-fg: #b91c1c; --violet-tint: #f5f3ff; --violet-fg: #5b21b6;
+    --shade: rgba(15, 23, 42, .06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f172a; --surface: #111827; --sub: #0b1220; --text: #e5e7eb; --muted: #9ca3af; --border: #374151; --strong: #4b5563;
+      --blue: #60a5fa; --blue-tint: #172554; --blue-fg: #bfdbfe;
+      --amber-tint: #2a1d05; --amber-border: #92400e; --amber-fg: #fcd34d;
+      --green-tint: #052e16; --green-fg: #86efac; --red-tint: #2a0f0f; --red-fg: #fca5a5; --violet-tint: #1e1b4b; --violet-fg: #c4b5fd;
+      --shade: rgba(0, 0, 0, .3);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f172a; --surface: #111827; --sub: #0b1220; --text: #e5e7eb; --muted: #9ca3af; --border: #374151; --strong: #4b5563;
+    --blue: #60a5fa; --blue-tint: #172554; --blue-fg: #bfdbfe;
+    --amber-tint: #2a1d05; --amber-border: #92400e; --amber-fg: #fcd34d;
+    --green-tint: #052e16; --green-fg: #86efac; --red-tint: #2a0f0f; --red-fg: #fca5a5; --violet-tint: #1e1b4b; --violet-fg: #c4b5fd;
+    --shade: rgba(0, 0, 0, .3);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 20px 16px 48px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  h2 { font-size: 17px; margin: 30px 0 6px; }
+  .lede { color: var(--muted); margin: 0 0 10px; max-width: 92ch; }
+  .row { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; display: grid; grid-template-columns: 64px 84px minmax(0, 1.25fr) minmax(0, 1.2fr) 150px; gap: 14px; align-items: center; margin-bottom: 8px; }
+  .ring { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 13px; border: 6px solid var(--amber); }
+  .ring.b { border-color: #3b82f6; } .ring.g { border-color: var(--green); }
+  .days { border-radius: 8px; padding: 4px; text-align: center; font-size: 11px; font-weight: 700; line-height: 1.15; }
+  .days b { display: block; font-size: 24px; }
+  .days.r { background: var(--red-tint); color: var(--red-fg); } .days.n { background: var(--sub); color: var(--muted); } .days.a { background: var(--amber-tint); color: var(--amber-fg); }
+  .name b { font-size: 15.5px; display: block; }
+  .name span { color: var(--muted); font-size: 13px; }
+  .name a { color: var(--blue); }
+  .price { text-align: right; }
+  .price b { font-size: 18px; display: block; }
+  .price span { font-size: 12px; color: var(--muted); }
+  .price .holes { color: var(--red-fg); text-decoration: underline dotted; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { border-radius: 999px; padding: 2px 9px; font-size: 12px; font-weight: 600; white-space: nowrap; background: var(--sub); color: var(--muted); border: 1px solid var(--border); }
+  .chip.r { background: var(--red-tint); color: var(--red-fg); border-color: transparent; }
+  .chip.a { background: var(--amber-tint); color: var(--amber-fg); border-color: transparent; }
+  .chip.g { background: var(--green-tint); color: var(--green-fg); border-color: transparent; }
+  .tag { display: inline-block; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; border-radius: 4px; padding: 0 5px; margin-left: 4px; }
+  .tag.p { background: var(--violet-tint); color: var(--violet-fg); } .tag.f { background: var(--blue-tint); color: var(--blue-fg); } .tag.s { background: var(--sub); color: var(--muted); border: 1px solid var(--border); }
+  .note { font-size: 11.5px; color: var(--muted); margin-top: 4px; }
+  .pill { display: inline-flex; align-items: center; gap: 8px; border-radius: 999px; padding: 4px 12px 4px 6px; font-weight: 700; font-size: 13.5px; border: 1px solid transparent; cursor: pointer; }
+  .pill i { font-style: normal; display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; color: #fff; font-size: 12px; }
+  .pill.r { background: var(--red-tint); color: var(--red-fg); } .pill.r i { background: var(--red); }
+  .pill.a { background: var(--amber-tint); color: var(--amber-fg); } .pill.a i { background: var(--amber); }
+  .pill small { font-weight: 600; opacity: .85; }
+  .quiet { color: var(--muted); font-size: 12.5px; }
+  .quiet::before { content: "✓ "; color: var(--green); font-weight: 700; }
+  .anchor { position: relative; }
+  .card { position: absolute; top: calc(100% + 6px); left: -8px; z-index: 5; width: min(470px, 92vw); background: var(--surface); border: 1px solid var(--strong); border-radius: 10px; box-shadow: 0 10px 30px var(--shade); padding: 12px 14px; }
+  .card h4 { margin: 0 0 2px; font-size: 14.5px; }
+  .card .sub { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+  .person { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; gap: 4px 10px; padding: 8px 0; border-top: 1px solid var(--border); align-items: start; }
+  .av { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 12px; background: var(--sub); border: 1px solid var(--border); }
+  .why { font-size: 12.5px; display: flex; gap: 6px; align-items: baseline; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; flex: none; transform: translateY(-1px); }
+  .dot.r { background: var(--red); } .dot.a { background: var(--amber); } .dot.n { background: var(--strong); }
+  .last { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+  .acts { display: flex; gap: 6px; }
+  .btn { border: 1px solid var(--strong); border-radius: 6px; padding: 3px 9px; font-size: 12px; background: var(--surface); white-space: nowrap; }
+  .btn.p { background: #2563eb; color: #fff; border-color: #2563eb; font-weight: 600; }
+  .foot { display: flex; justify-content: space-between; gap: 8px; border-top: 1px solid var(--border); padding-top: 9px; margin-top: 2px; flex-wrap: wrap; }
+  .new { outline: 2px dashed var(--amber-border); outline-offset: 3px; border-radius: 999px; }
+  .ann { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; }
+  .ann table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .ann td, .ann th { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .ann th { color: var(--muted); font-weight: 600; font-size: 12px; }
+  .critique { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 10px; }
+  .critique div { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+  .critique b { display: block; margin-bottom: 3px; }
+  ul.plan { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px 12px 30px; margin: 0; }
+  ul.plan li { margin: 6px 0; }
+  .spacer { height: 480px; }
+  @media (max-width: 900px) {
+    .row { grid-template-columns: 56px 76px minmax(0, 1fr); }
+    .row > .chipcol { grid-column: 1 / -1; }
+    .row > .price { grid-column: 1 / -1; text-align: left; }
+    .card { position: static; margin-top: 8px; width: 100%; }
+    .spacer { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>People to call, in place of the chips</h1>
+  <p class="lede">The owner (2026-10-04), on the board row's middle column: "everything in this column are follow up actions where we need to follow up with someone else. Instead of showing all these items, maybe we should instead say number of people to call and then when a user hovers over it they see the details, much like the circle." Made-up projects as of Fri Oct 2.</p>
+
+  <h2>1. Today: what is in the column</h2>
+  <div class="row">
+    <div class="ring">14/25</div>
+    <div class="days r"><b>6</b>DAYS LEFT<br>Thu Oct 8</div>
+    <div class="name"><b>Boerne Retail Shell</b><span><a>Cibolo Creek Partners</a> · drawn by <a>Marsh &amp; Vale Architects</a> · 8,400 sq ft shell</span></div>
+    <div class="chips chipcol"><span class="chip r">3 of 8 trades have a real number · 1 missing a cost</span><span class="chip a">3 to call</span><span class="chip a">plans: Addendum 1 · 5 have not opened it</span></div>
+    <div class="price"><b>$824,733 + ?</b><span class="holes">so far, with 4 holes</span><br><span>about $1.42M with every trade in</span></div>
+  </div>
+  <div class="ann">
+    <table>
+      <tr><th>Chip</th><th>What it really is</th></tr>
+      <tr><td>3 of 8 trades have a real number · 1 missing a cost</td><td>Where our price stands. The ring (14/25) and "so far, with 4 holes" already say it, and the holes open the price card.</td></tr>
+      <tr><td>3 to call</td><td>People: Hillside, Tejas, Bexar.</td></tr>
+      <tr><td>plans: Addendum 1 · 5 have not opened it</td><td>People: Hillside and Tejas again, plus Bexar, Cool Breeze and Voltage. Cool Breeze and Voltage quoted before the addendum.</td></tr>
+      <tr><td>1 of 4 statements of work signed (Buying out)</td><td>One person (Brightline is waiting to sign). One is ours: Kendall Air's statement of work is drafted and not sent.</td></tr>
+      <tr><td>plans: Permit set (every row)</td><td>A fact with nothing to do.</td></tr>
+    </table>
+  </div>
+
+  <h2>2. First idea: one count, with the same chips in a hover</h2>
+  <p class="lede">Swap the chips for "8 follow-ups", and list the same eight lines in a card on hover.</p>
+
+  <h2>3. Is this the best we can do? Not quite.</h2>
+  <div class="critique">
+    <div><b>Count people, not lines.</b>The eight lines are five trade companies. One call to Greg at Hillside covers his late quote and Addendum 1. The card lists each person once, with every reason under their name.</div>
+    <div><b>The architect and the customer are people too.</b>Marsh &amp; Vale owe us two answers (roof curbs for 5 days, the 400 amp service for 2). After our bid goes out, the customer's answer is a call too. They belong in the count, tagged.</div>
+    <div><b>Our own moves are not calls.</b>A statement of work we drafted and never sent, or pre-bid minutes to send, is our job. The ring's card already lists our steps. The pill counts only people we are waiting on.</div>
+    <div><b>Say each thing once.</b>The price chip repeats the ring and the "with 4 holes" line. A plans chip that reads "Permit set" with nothing to do is noise. Both go. Who has not opened the newest set shows as a reason in the card.</div>
+    <div><b>The pill carries the urgency.</b>Red when anyone's day has passed, amber when it is today, grey while everyone still has time: "6 to call · 2 late". When nobody owes us anything, the column says so quietly.</div>
+    <div><b>Act from the card, like the ring, only more.</b>Hover opens it, a click pins it, Escape closes it, and a tap opens it on a phone. Each person has <i>Call</i> and <i>Follow up</i>, the Building lane's draft. <i>Work the list · 6</i> opens the call sheet for just this job.</div>
+  </div>
+
+  <h2>4. Revised: one pill per row, the people behind it on hover</h2>
+  <p class="lede">The middle column keeps only who we are waiting on. Here the pointer is on Boerne Retail Shell's pill, so its card is open. The dashed outline marks what is new.</p>
+
+  <div class="row">
+    <div class="ring">14/25</div>
+    <div class="days r"><b>6</b>DAYS LEFT<br>Thu Oct 8</div>
+    <div class="name"><b>Boerne Retail Shell</b><span><a>Cibolo Creek Partners</a> · drawn by <a>Marsh &amp; Vale Architects</a> · 8,400 sq ft shell</span></div>
+    <div class="chipcol anchor">
+      <span class="pill r new"><i>6</i>to call <small>· 2 late</small></span>
+      <div class="card">
+        <h4>6 to call on Boerne Retail Shell</h4>
+        <div class="sub">Late first. One call covers every reason under a name. Our bid is due Thu Oct 8.</div>
+        <div class="person">
+          <span class="av">GP</span>
+          <div><b>Greg Paulk</b> <span style="color:var(--muted)">Hillside Excavation</span><span class="tag s">Sitework</span>
+            <div class="why"><span class="dot r"></span>Promised a quote by Wed Sep 30, 2 days ago.</div>
+            <div class="why"><span class="dot a"></span>Has not opened Addendum 1.</div>
+            <div class="last">Sep 26 · Robert called: busy on a subdivision, quote by Wednesday.</div>
+          </div>
+          <div class="acts"><span class="btn p">Call</span><span class="btn">Follow up</span></div>
+        </div>
+        <div class="person">
+          <span class="av">TR</span>
+          <div><b>Tom Riddle</b> <span style="color:var(--muted)">Bexar Steel Erectors</span><span class="tag s">Structural steel</span>
+            <div class="why"><span class="dot r"></span>Asked 13 days ago and has not opened it.</div>
+            <div class="last">No contact logged yet.</div>
+          </div>
+          <div class="acts"><span class="btn p">Call</span><span class="btn">Follow up</span></div>
+        </div>
+        <div class="person">
+          <span class="av">BS</span>
+          <div><b>Bill Sorrell</b> <span style="color:var(--muted)">Tejas Power</span><span class="tag s">Electrical</span>
+            <div class="why"><span class="dot a"></span>Promised a quote today.</div>
+            <div class="why"><span class="dot a"></span>Has not opened Addendum 1.</div>
+            <div class="last">Oct 1 · Wendi, by text: Bill will quote by end of day Friday.</div>
+          </div>
+          <div class="acts"><span class="btn p">Call</span><span class="btn">Follow up</span></div>
+        </div>
+        <div class="person">
+          <span class="av">MV</span>
+          <div><b>Marsh &amp; Vale Architects</b><span class="tag p">architect</span>
+            <div class="why"><span class="dot a"></span>2 questions waiting: roof curbs (5 days), the 400 amp service (2 days).</div>
+          </div>
+          <div class="acts"><span class="btn p">Call</span><span class="btn">Follow up</span></div>
+        </div>
+        <div class="person">
+          <span class="av">CB</span>
+          <div><b>Cool Breeze Mechanical</b><span class="tag s">HVAC</span>
+            <div class="why"><span class="dot n"></span>Quoted before Addendum 1 and has not opened it. Ask them to confirm.</div>
+          </div>
+          <div class="acts"><span class="btn p">Call</span><span class="btn">Follow up</span></div>
+        </div>
+        <div class="person">
+          <span class="av">VB</span>
+          <div><b>Voltage Brothers</b><span class="tag s">Electrical</span>
+            <div class="why"><span class="dot n"></span>Quoted before Addendum 1 and has not opened it. Ask them to confirm.</div>
+            <div class="why"><span class="dot r"></span>Their insurance ran out Sep 15.</div>
+          </div>
+          <div class="acts"><span class="btn p">Call</span><span class="btn">Follow up</span></div>
+        </div>
+        <div class="foot"><span class="btn p">Work the list · 6</span><span class="btn">Open Follow up</span></div>
+      </div>
+    </div>
+    <div class="price"><b>$824,733 + ?</b><span class="holes">so far, with 4 holes</span><br><span>about $1.42M with every trade in</span></div>
+  </div>
+  <div class="spacer"></div>
+
+  <div class="row">
+    <div class="ring">1/6</div>
+    <div class="days n"><b>20</b>DAYS LEFT<br>Thu Oct 22</div>
+    <div class="name"><b>Boerne Retail Pad B</b><span><a>Cibolo Creek Partners</a> · drawn by <a>Marsh &amp; Vale Architects</a> · 4,200 sq ft pad</span></div>
+    <div class="chipcol"><span class="quiet">Nobody to chase</span><div class="note">Nobody owes us anything here yet. What is left is ours, on the ring.</div></div>
+    <div class="price"><b>$153,090</b><span class="holes">so far, with 2 holes</span></div>
+  </div>
+  <div class="row">
+    <div class="ring b">14/25</div>
+    <div class="days n" style="font-weight:500">no start date</div>
+    <div class="name"><b>Helotes Dental Office</b><span><a>Dr. Priya Raman</a> · drawn by <a>Studio Ocotillo</a> · 3,100 sq ft</span></div>
+    <div class="chipcol"><span class="pill a"><i>1</i>to call</span><div class="note">Brightline: the statement of work is waiting on their signature. Kendall Air's draft is ours to send, on the ring.</div></div>
+    <div class="price"><b>$338,767</b><span>as signed</span></div>
+  </div>
+  <div class="row">
+    <div class="ring g">74%</div>
+    <div class="days a"><b>3</b>DAYS BEHIND</div>
+    <div class="name"><b>Fair Oaks Shops, Building D</b><span><a>Cibolo Creek Partners</a> · drawn by <a>Marsh &amp; Vale Architects</a> · 9,600 sq ft</span></div>
+    <div class="chipcol"><span class="pill r"><i>1</i>to call <small>· 1 late</small></span><div class="note">Pecan Valley: insurance ran out Sep 15, and draw 1's unconditional waiver has not come.</div></div>
+    <div class="price"><b>$1,488,762</b><span>as signed</span></div>
+  </div>
+  <div class="row">
+    <div class="ring g">100%</div>
+    <div class="days n" style="font-weight:500">started Jun 12</div>
+    <div class="name"><b>Stone Oak Pharmacy</b><span><a>Hollis Family Pharmacy</a> · drawn by <a>Mesquite Design Studio</a> · 2,400 sq ft</span></div>
+    <div class="chipcol"><span class="quiet">Nobody to chase</span></div>
+    <div class="price"><b>$182,413</b><span>as signed</span></div>
+  </div>
+  <p class="lede">The grey notes under the pills are only for this mock-up, to show who is behind each count. On the real board, the card holds them.</p>
+
+  <h2>5. Where each chip goes</h2>
+  <div class="ann">
+    <table>
+      <tr><th>Today</th><th>Revised</th></tr>
+      <tr><td>N of M trades have a real number · K missing a cost</td><td>Gone from the column. The ring and "so far, with N holes" (which opens the price card) already say it.</td></tr>
+      <tr><td>N to call</td><td>The pill, counting people, including the architect and the customer.</td></tr>
+      <tr><td>plans: X · N have not opened it</td><td>A reason under each person in the card. The plans icon's tooltip still names the newest set.</td></tr>
+      <tr><td>N of M statements of work signed</td><td>A reason under each trade waiting to sign. A draft not sent is ours and shows on the ring.</td></tr>
+      <tr><td>Pay application sent back N times</td><td>A reason under that trade, in red.</td></tr>
+      <tr><td>Pre-bid meeting, pre-bid minutes, lost</td><td>Stay as they are. They are dates and our own steps, not people.</td></tr>
+    </table>
+  </div>
+
+  <h2>6. The plan</h2>
+  <ul class="plan">
+    <li><b>Kernel</b> (<code>gcProjectPeople.ts</code>, tested): the people we are waiting on for one job, each once, with every reason and its tone. It covers trades (quote asks, the newest set not opened, quotes to confirm after a set, statements of work to sign, papers past their day, pay applications sent back), the architect (questions waiting) and the customer (our bid out, no answer). It builds on the Building lane's <code>followUpPeople</code>, and the board's count agrees with Follow up's.</li>
+    <li><b>The pill and its card</b> (<code>GcPeoplePill.tsx</code>): the ring's hover, pin, Escape and tap behavior. Call and Follow up use the Building lane's sheet, and Work the list opens it for this job only.</li>
+    <li><b>The row</b>: the price, plans and statements of work chips leave the column. Pre-bid and lost stay. "Nobody to chase" when it is empty.</li>
+    <li><b>New here?</b>: the stop that explains the column gets new words. Plain words are checked.</li>
+  </ul>
+</div>
+</body>
+</html>
