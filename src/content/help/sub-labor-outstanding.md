@@ -5,7 +5,9 @@ roles: dev, master_technician, assistant, superintendent
 keywords: sub labor, sub sheet ledger, outstanding, owed, contractor, backcharge, payment, due, pay run, ready, queued, payable after, friday, wrong job, move payment, remove payment, delete payment, undo
 order: 31
 ---
-**Jobs → Subs → Pay** (the Sub Sheet Ledger) answers two questions: **who is owed what**, and **what happened on those sheets**. The toolbar still shows one grand total — {{chip:gray|Sub Labor Due: $47,050.00}} — and the page reads the rest as a pay run: why each dollar isn't paid yet, and what you can pay right now.
+**Jobs → Subs → Pay** is the Sub Sheet Ledger. It answers two questions: **who is owed what**, and **what happened on those sheets**.
+
+The toolbar still shows one grand total, like {{chip:gray|Sub Labor Due: $47,050.00}}. The page reads the rest as a pay run, one round of paying subs. It shows why each dollar isn't paid yet, and what you can pay right now.
 
 ## The four tiles
 
@@ -15,25 +17,34 @@ order: 31
 | $47,050.00 · 5 subs · 7 sheets | $5,700.00 · 2 sheets | $1,000.00 · 1 sheet | $40,350.00 · $40,000 with no agreement · $350 waiting on customer |
 :::
 
-- **Owed to subs** is every sub sheet with money open. Crew sheets (no roster sub on them) are shown beside it as *crew pay via payroll* — they never count as owed here.
-- **Ready to pay now** — the sheet is at *Post-inspection: Trigger draw* and either the job's bill is paid or the sheet's **payable-after** date has arrived, with no hold on it.
-- **Queued** — a payable-after date is set and still ahead. The tile names the next pay-run day from Settings → Sub portal; when no day is set it says so.
-- **Not payable yet** — still in work or at the inspection, waiting on the customer with nothing promised, on hold, or {{chip:red|No agreement}} (work under way with nothing signed). The reasons are spelled out under the figure.
+- **Owed to subs** is every sub sheet with money open. Crew sheets have no roster sub on them. They are shown beside it as *crew pay via payroll*. They never count as owed here.
+- **Ready to pay now** means the sheet is at *Post-inspection: Trigger draw*. Either the job's bill is paid, or the sheet's **payable-after** date has arrived. And there is no hold on it.
+- **Queued** means a payable-after date is set and still ahead. The tile names the next pay-run day from Settings → Sub portal. When no day is set, it says so.
+- **Not payable yet** means the sheet is still in work or at the inspection. Or it is waiting on the customer with nothing promised, or on hold. Or it has {{chip:red|No agreement}}, meaning work under way with nothing signed. The reasons are spelled out under the figure.
 
 ## Who's owed
 
-One row per sub, biggest owed first, named for the subcontractor — teammates on the same sheets read as *with Malachi, Abraham*. Beside the owed figure a bar shows where that money sits: **ready** (green) · **queued** (pale green) · **waiting on customer** (amber) · **still in work** (gray) · **on hold** (red) · **no agreement** (red stripes), and the line under it says the same in words.
+There is one row per sub, biggest owed first, named for the subcontractor. Teammates on the same sheets read as *with Malachi, Abraham*. Beside the owed figure, a bar shows where that money sits:
 
-- {{button:green|Pay $1,500.00}} appears when part of the money is ready. It opens Make Payment on the sub's biggest ready sheet, prefilled; when more than one sheet is ready the label says so and the button moves to the next one after you save.
-- {{button:blue|Draft a work order…}} appears when everything owed is on a handshake.
-- Otherwise the slot says why — *Pays Fri Sep 11*, *Nothing payable yet*, *Payroll*.
-- Click a sub's name to jump to their sheets in the ledger. The 🌐 globe beside the name is their portal — Copy link, **Preview as ‹sub›**, and the gear — the same globe as People → Subs.
+- **ready** is green
+- **queued** is pale green
+- **waiting on customer** is amber
+- **still in work** is gray
+- **on hold** is red
+- **no agreement** is red stripes
+
+The line under the bar says the same in words.
+
+- {{button:green|Pay $1,500.00}} appears when part of the money is ready. It opens Make Payment on the sub's biggest ready sheet, filled in. When more than one sheet is ready, the label says so. Then the button moves to the next one after you save.
+- {{button:blue|Draft a work order…}} appears when everything owed is on a handshake, with nothing signed.
+- Otherwise the slot says why, like *Pays Fri Sep 11*, *Nothing payable yet* or *Payroll*.
+- Click a sub's name to jump to their sheets in the ledger. The 🌐 globe beside the name is their portal. It holds Copy link, **Preview as ‹sub›**, and the gear. It is the same globe as People → Subs.
 
 ## The ledger
 
-Sheets sit **under their sub**, each group with its owed total and the same Pay button, ordered ready → queued → waiting → in work. The chips over it filter with counts: {{chip:gray|All due}} (the old *Only show due*), {{chip:green|Ready now}}, {{chip:blue|Queued}}, {{chip:yellow|Waiting on customer}}, {{chip:red|No agreement}}, {{chip:purple|Crew pay}}, and {{chip:gray|Paid}} for the history. Search narrows the tiles, the rows and the ledger together.
+Sheets sit **under their sub**, ordered ready → queued → waiting → in work. Each group has its owed total and the same Pay button. The chips over the ledger filter it, with counts. {{chip:gray|All due}} is the old *Only show due*. Then come {{chip:green|Ready now}}, {{chip:blue|Queued}}, {{chip:yellow|Waiting on customer}}, {{chip:red|No agreement}} and {{chip:purple|Crew pay}}. {{chip:gray|Paid}} shows the history. Search narrows the tiles, the rows and the ledger together.
 
-Each row keeps **Agreed · Paid · Due** and the rail ([where the sheet stands](/help/record-sub-labor-on-a-job)), and gains **Pay when** — the rule the sheet is under and the fact behind it:
+Each row keeps ***Agreed · Paid · Due*** and the rail. See [where the sheet stands](/help/record-sub-labor-on-a-job). Each row also gains **Pay when**. It shows the rule the sheet is under and the fact behind it:
 
 :::example Pay when
 | Chip | Means |
@@ -46,22 +57,22 @@ Each row keeps **Agreed · Paid · Due** and the rail ([where the sheet stands](
 | {{chip:purple|Payroll}} | a crew sheet |
 :::
 
-**set payable after…** on a waiting row is the same move the sheet story offers: pick the date, {{button:green|Queue}}, and the row (and the sub's portal) reads Queued. *change payable after…* on a queued row lets you move or clear it.
+**set payable after…** on a waiting row is the same move the sheet story offers. Pick the date and press {{button:green|Queue}}. The row reads Queued, and so does the sub's portal. *change payable after…* on a queued row lets you move or clear it.
 
 ## Paying it down
 
-The ⋯ on a row holds **Payment…**, **Back-charge…**, **Edit sheet**, **Print** and **Story…**; expanding a row shows the same buttons with the sheet date, the invoice link, the line items and every payment and back-charge. The sheet date saves when it is finished: pick it from the calendar, or type it and press Enter or leave the box. A date left half typed is not saved. The tiles and rows update the moment a payment or back-charge is saved.
+The ⋯ on a row holds **Payment…**, **Back-charge…**, **Edit sheet**, **Print** and **Story…**. Expanding a row shows the same buttons. It also shows the sheet date, the invoice link, the line items and every payment and back-charge. The sheet date saves when it is finished. Pick it from the calendar, or type it and press Enter or leave the box. A date left half typed is not saved. The tiles and rows update the moment a payment or back-charge is saved.
 
-When you record a payment, the **Date sent** field lets you backdate it to the day the money actually went out (it starts on today). The ledger's Payments list shows that date, and you can fix it later with **Edit** on the payment row.
+When you record a payment, use the **Date sent** field to backdate it. Set it to the day the money actually went out. It starts on today. The ledger's Payments list shows that date. You can fix it later with **Edit** on the payment row.
 
 ## Fix a payment that landed on the wrong sheet
 
-Open the sheet with **Edit sheet** (the expanded row only lists the payments). Every row in its **Payments** table is two lines — the date, type and amount, then the memo beside three verbs: {{button:gray|Edit}}, {{button:outline|Move…}} and {{button:outline|Remove}} (on a phone, Edit and a **⋯** menu). Nothing is retyped.
+Open the sheet with **Edit sheet**. The expanded row only lists the payments. Every row in its **Payments** table is two lines. The first has the date, type and amount. The second has the memo beside three buttons: {{button:gray|Edit}}, {{button:outline|Move…}} and {{button:outline|Remove}}. On a phone it is Edit and a **⋯** menu. Nothing is retyped.
 
-- {{button:outline|Move…}} opens **Move this payment**. The same sub's other sheets are listed first; search finds any other sheet by job number, address or sub. Pick one and a **What changes** panel reads both sheets before and after — *880: paid $2,000.00 → $0.00, owed $2,200.00 → $4,200.00 · 922: paid $0.00 → $2,000.00, owed $2,000.00 → $0.00 · paid in full*. The amount, date, memo and portal-visibility setting travel with it. Say why (it starts as *wrong job*) and press {{button:blue|Move $2,000.00 to 922}}.
-- {{button:outline|Remove}} opens **Remove this payment?** with a reason: {{chip:blue|Duplicate entry}}, {{chip:gray|Wrong amount}}, {{chip:gray|Something else}} — and **Wrong job → Move it instead**, which is the door to Move. A removal can be undone for 30 days.
+- {{button:outline|Move…}} opens **Move this payment**. The same sub's other sheets are listed first. Search finds any other sheet by job number, address or sub. Pick one and a **What changes** panel reads both sheets before and after, like *880: paid $2,000.00 → $0.00, owed $2,200.00 → $4,200.00 · 922: paid $0.00 → $2,000.00, owed $2,000.00 → $0.00 · paid in full*. The amount, date, memo and portal-visibility setting travel with it. Say why, and press {{button:blue|Move $2,000.00 to 922}}. The reason starts as *wrong job*.
+- {{button:outline|Remove}} opens **Remove this payment?** with a reason: {{chip:blue|Duplicate entry}}, {{chip:gray|Wrong amount}} or {{chip:gray|Something else}}. It also has **Wrong job → Move it instead**, which is the door to Move. A removal can be undone for 30 days.
 
-Both leave a grey **trace line** under the sheet's payments — *Moved → 922 Michael Palmer · Taunya · wrong job*, *Moved here from 880 Reliant Health-HVAC*, *Removed · Taunya · Duplicate entry* — so a balance that jumped explains itself. A removed line carries {{button:gray|Undo}} while it can still come back.
+Both leave a grey **trace line** under the sheet's payments. It reads like *Moved → 922 Michael Palmer · Taunya · wrong job*, *Moved here from 880 Reliant Health-HVAC* or *Removed · Taunya · Duplicate entry*. So a balance that jumped explains itself. A removed line carries {{button:gray|Undo}} while it can still come back.
 
 :::example The check on the wrong job
 Taunya recorded Airfordable's $2,000 check on the 880 sheet; it was for 922. On 880 she presses Move…, picks 922 (top of the list — same sub), reads the panel, and moves it. 880 shows *Moved → 922 · Taunya · wrong job*; 922 shows the payment and *paid in full*.
@@ -73,9 +84,9 @@ The Pay view on a phone is a list, not a table.
 
 - **Who's owed** stacks: the name and the amount, the bar, then the {{button:green|Pay}} button.
 - Under it each sub is one row with what they are owed. Tap a sub to open their sheets.
-- A sheet is one row — its number and job, its pay-when chip, and one amount. Tap it and its actions come up from the bottom: the agreement first when nothing is in writing, **Record payment**, **Set a payable-after date**, **Back-charge**, **Edit the sheet**, **Print**, **Story**, **Lien waiver**.
+- A sheet is one row: its number and job, its pay-when chip, and one amount. Tap it and its actions come up from the bottom. The agreement comes first when nothing is in writing. Then come **Record payment**, **Set a payable-after date**, **Back-charge**, **Edit the sheet**, **Print**, **Story** and **Lien waiver**. A lien waiver is the sub's paper giving up its claim once paid.
 
-The **Work** view is rows too: under each job, a row per sheet or stage — who, where it stands and its window, and what is open. Tap a row for its moves: the next one first ({{button:blue|Get it in writing}}, {{button:blue|Send it}}, {{button:green|Pay}}…), then **Set a window**, the offer's own actions, and **Show the whole card** for the rail and the money in full. A row opens its card by itself when a form or a builder's ask is waiting on it.
+The **Work** view is rows too. Under each job there is a row per sheet or stage. It shows who, where it stands and its window, and what is open. Tap a row for its moves. The next move comes first, like {{button:blue|Get it in writing}}, {{button:blue|Send it}} or {{button:green|Pay}}. Then come **Set a window** and the offer's own actions. **Show the whole card** shows the rail and the money in full. A row opens its card by itself when a form or a builder's ask is waiting on it.
 
-On the **Work** view, when more than one sheet is on a handshake, {{button:amber|Get all 9 in writing}} sits above the cards. It opens the list — nothing is sent until you have read it and pressed send there.
+On the **Work** view, more than one sheet may be on a handshake. Then {{button:amber|Get all 9 in writing}} sits above the cards. It opens the list. Nothing is sent until you have read it and pressed send there.
 
