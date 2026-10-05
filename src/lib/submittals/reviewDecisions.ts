@@ -8,7 +8,7 @@ import { asDecision, formatShortDate, type ReviewDecision } from './submittalRev
 
 export const DECISION_LABELS: Record<ReviewDecision, string> = { approved: 'Approved', revise: 'Revise', rejected: 'Rejected' }
 
-export type DecisionSummary = { decided: number; approved: number; revise: number; rejected: number; open: number; /** rows with no answer at all, whatever their status: what a resubmit carries beside the rows sent back */ noAnswer: number; sentBack: number; byName: string[]; /** rows the office entered on a reviewer's behalf (5b) */ entered: number; enteredBy: string[]; /** of `rejected` / `revise`: rows where only some of the parts the GC sees got that answer (2026-10-03) */ rejectedInPart?: number; reviseInPart?: number }
+export type DecisionSummary = { decided: number; approved: number; revise: number; rejected: number; open: number; /** rows with no answer at all, whatever their status: what a resubmit carries beside the rows sent back */ noAnswer: number; /** of `noAnswer`: rows with no product yet, so nothing for the reviewer to answer (2026-10-05) */ noProduct?: number; sentBack: number; byName: string[]; /** rows the office entered on a reviewer's behalf (5b) */ entered: number; enteredBy: string[]; /** of `rejected` / `revise`: rows where only some of the parts the GC sees got that answer (2026-10-03) */ rejectedInPart?: number; reviseInPart?: number }
 
 /** A part as the answer words need it. */
 export type PartCall = { on_submittal: boolean; review_decision?: string | null }
@@ -62,6 +62,7 @@ export function summarizeDecisions(items: ReadonlyArray<Pick<SubmittalItemRow, '
       }
     } else {
       s.noAnswer += 1
+      if (it.status === 'missing') s.noProduct = (s.noProduct ?? 0) + 1
       if (it.status !== 'as_specified' && it.status !== 'missing' && it.status !== 'accessory') s.open += 1
     }
   }

@@ -263,7 +263,7 @@ type Customer = Database['public']['Tables']['customers']['Row']
 │    SECURITY DEFINER helpers, transaction functions       │
 │  Auth: email/password + magic links (dev-login,          │
 │    login-as-user)                                        │
-│  Edge Functions (Deno, ~125): email (Resend), Stripe,    │
+│  Edge Functions (Deno, ~130): email (Resend), Stripe,    │
 │    Mercury sync, geocoding, notifications, cron jobs     │
 └─────────────────────────────────────────────────────────┘
 ```

@@ -119,8 +119,9 @@ export function useHazmatAndReleaseJobIds(canCreateHazmatFee: boolean): {
   const loadLienReleaseJobIds = useCallback(async () => {
     if (!canCreateHazmatFee) return
     try {
-      const { data } = await supabase.from('job_lien_releases').select('job_id').is('voided_at', null)
-      setLienReleaseJobIds(jobIdSet(data))
+      // Issued means issued: a draft still being written does not box the icon (its tooltip says "issued").
+      const { data } = await supabase.from('job_lien_releases').select('job_id, status').is('voided_at', null)
+      setLienReleaseJobIds(jobIdSet((data ?? []).filter((r) => (r.status ?? '').trim() !== 'draft')))
     } catch {
       // glanceable extra — never block the tab
     }
