@@ -3364,7 +3364,7 @@ interface SendPhysicalInvoiceEmailBody {
 
 ### gc-statement-email-dispatch
 
-> **v2.4534 — the job's total in the received block**: `receivedFor` selects `revenue` with each job, so [`_shared/gcChecksApplied.ts`](../supabase/functions/_shared/gcChecksApplied.ts) applies unlinked money to the part of the job on no bill before a bill (`_shared/paymentAttribution.ts`). The *paid by* line under a bill (`render.ts` `rowPaidBy`) still reads oldest-first alone: the statement RPC's rows carry no job total.
+> **v2.4534 — the job's total in the received block**: `receivedFor` selects `revenue` with each job, so [`_shared/gcChecksApplied.ts`](../supabase/functions/_shared/gcChecksApplied.ts) applies unlinked money to the part of the job on no bill before a bill (`_shared/paymentAttribution.ts`). The *paid by* line under a bill (`render.ts` `rowPaidBy`) reads the total too since v2.4536: the RPC's rows do not carry it, so the dispatcher selects `id, revenue` for `payloadJobIds(payload)` and `attachJobTotals` sets each row's `job_total`; a failed read leaves the rows as they came and the statement still goes.
 
 > **v2.4455 — a move and a deposit read their own day**: [`_shared/gcChecksApplied.ts`](../supabase/functions/_shared/gcChecksApplied.ts) reads a payment move's `created_at` and a deposit's `posted_at` as their day in `APP_CALENDAR_TZ` (`todayYmdInAppTz(new Date(iso))`), not their UTC date. The statement's payments block prints only the received day (`paid_on`), so the email does not change; redeploy after merge so the bundle matches the repo.
 

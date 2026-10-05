@@ -34,6 +34,12 @@ export type GcStatementPayloadRow = {
   retainage_held?: number | null
   job_bills?: PaidByBill[] | null
   job_payments?: PaidByPayment[] | null
+  /**
+   * The job's total price (v2.4536). Not in the RPC's rows: the dispatcher reads it beside the
+   * payload and `attachJobTotals` sets it. With it, money that paid the part of the job on no
+   * bill is not worded as paying this bill (`_shared/paymentAttribution.ts`, v2.4534).
+   */
+  job_total?: number | null
 }
 
 export type GcStatementPayloadGroup = {
@@ -135,9 +141,25 @@ export function rowLabel(r: GcStatementPayloadRow): { lead: string; sub: string 
 export function rowPaidBy(r: GcStatementPayloadRow): string {
   if (!r.job_bills && !r.job_payments) return ''
   return billPaidByWords(
-    { bills: r.job_bills ?? [], payments: r.job_payments ?? [], retainageHeld: r.retainage_held },
+    { bills: r.job_bills ?? [], payments: r.job_payments ?? [], retainageHeld: r.retainage_held, total: r.job_total },
     r.invoice_id ? { id: r.invoice_id, amount: r.invoice_amount ?? 0 } : null,
   )
+}
+
+/** The job ids a payload's rows name, once each — what the dispatcher reads totals for. */
+export function payloadJobIds(payload: Pick<GcStatementPayload, 'groups'>): string[] {
+  return [...new Set(payload.groups.flatMap((g) => g.rows.map((r) => r.job_id)).filter(Boolean))]
+}
+
+/** Sets each row's `job_total` from the jobs read beside the payload; a job with no total read stays without one. */
+export function attachJobTotals(payload: Pick<GcStatementPayload, 'groups'>, totals: Readonly<Record<string, number | string | null | undefined>>): void {
+  for (const g of payload.groups) {
+    for (const r of g.rows) {
+      const t = totals[r.job_id]
+      const n = t == null || t === '' ? NaN : Number(t)
+      if (Number.isFinite(n)) r.job_total = n
+    }
+  }
 }
 
 const rowsHtml = (rows: GcStatementPayloadRow[]): string =>

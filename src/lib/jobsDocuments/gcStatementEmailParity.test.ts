@@ -12,6 +12,9 @@ import {
   renderGcShareAllText,
   renderGcStatementHtml,
   renderGcStatementText,
+  attachJobTotals,
+  payloadJobIds,
+  rowPaidBy,
   type GcStatementPayload,
   type GcStatementPayloadGroup,
 } from '../../../supabase/functions/gc-statement-email-dispatch/render'
@@ -47,8 +50,13 @@ const j4Payments = [{ invoice_id: null, amount: 900, paid_on: '2026-01-10', paym
 const j5Payments = [{ invoice_id: null, amount: 250, paid_on: '2026-08-01', payment_type: 'ach', reference_number: null, sequence_order: 1 }]
 const PAID_BY_J1 = billPaidByWords({ bills: j1Bills, payments: j1Payments, retainageHeld: null }, { id: 'i1', amount: 1450 })
 const PAID_BY_J3 = billPaidByWords({ bills: j3Bills, payments: [], retainageHeld: null }, { id: 'i3', amount: 4000 })
-/** The Share-all table still words a bill by the oldest-bill-first rule (v2.4100) — the client row carries those words. */
-const PAID_BY_J4 = billPaidByWords({ bills: j4Bills, payments: j4Payments, retainageHeld: null }, { id: 'i4', amount: 900 })
+/**
+ * The Share-all table words a bill by the one payment rule. Job 4 is an $1,800 job: with that total
+ * (v2.4536 on the server row, v2.4534 on the client's job) the $900 paid the half of the job on no
+ * bill, so the line reads nothing applied and agrees with the $900 the row shows as owed.
+ */
+const J4_TOTAL = 1800
+const PAID_BY_J4 = billPaidByWords({ bills: j4Bills, payments: j4Payments, retainageHeld: null, total: J4_TOTAL }, { id: 'i4', amount: 900 })
 const PAID_BY_J5 = billPaidByWords({ bills: [], payments: j5Payments, retainageHeld: null }, null)
 
 /** The same jobs in both shapes: address-led, address-less (name leads once), number-less, two spellings of one property, a job balance. */
@@ -80,7 +88,7 @@ const payloadGroup: GcStatementPayloadGroup = {
     { job_id: 'j1', row_key: 'i1', display_number: '916', job_name: 'SVP Manor', job_address: '11915 Ring Dr, Manor TX', customer_name: 'Knight', ref_date: '2026-07-21', ref_is_estimate: false, age_days: 45, remaining: 450, in_collections: false, invoice_id: 'i1', invoice_amount: 1450, retainage_held: null, job_bills: j1Bills, job_payments: j1Payments },
     { job_id: 'j2', row_key: 'j2', display_number: '948', job_name: 'Water Heater', job_address: null, customer_name: 'Knight', ref_date: '2026-08-02', ref_is_estimate: true, age_days: 30, remaining: 1_200, in_collections: false },
     { job_id: 'j3', row_key: 'i3', display_number: null, job_name: 'Connect sink', job_address: '12803 El Dorado, Universal City TX', customer_name: 'Knight', ref_date: '2026-08-30', ref_is_estimate: false, age_days: 6, remaining: 4_000, in_collections: false, invoice_id: 'i3', invoice_amount: 4000, retainage_held: null, job_bills: j3Bills, job_payments: [] },
-    { job_id: 'j4', row_key: 'i4', display_number: '951', job_name: 'Knight', job_address: '11915 Ring Drive, Manor, TX 78653', customer_name: 'Knight', ref_date: '2026-08-20', ref_is_estimate: false, age_days: 16, remaining: 900, in_collections: false, invoice_id: 'i4', invoice_amount: 900, retainage_held: null, job_bills: j4Bills, job_payments: j4Payments },
+    { job_id: 'j4', row_key: 'i4', display_number: '951', job_name: 'Knight', job_address: '11915 Ring Drive, Manor, TX 78653', customer_name: 'Knight', ref_date: '2026-08-20', ref_is_estimate: false, age_days: 16, remaining: 900, in_collections: false, invoice_id: 'i4', invoice_amount: 900, retainage_held: null, job_bills: j4Bills, job_payments: j4Payments, job_total: J4_TOTAL },
     { job_id: 'j5', row_key: 'j5', display_number: '960', job_name: 'Gas test', job_address: '12803 El Dorado, Universal City, TX', customer_name: 'Knight', ref_date: null, ref_is_estimate: false, age_days: null, remaining: 750, in_collections: false, invoice_id: null, invoice_amount: null, retainage_held: null, job_bills: [], job_payments: j5Payments },
   ],
 }
@@ -210,5 +218,27 @@ describe('GC statement — the client builders and the dispatcher render the sam
     const report = { groups: [clientGroup], grandTotal: 7_300 }
     expect(buildGcReviewShareAllEmailHtml(report, { dateStr: DATE, groupBy: 'gc', officePhone: PHONE, introText: INTRO })).toBe(renderGcShareAllHtml(payload, DATE, PHONE, INTRO))
     expect(buildGcReviewShareAllEmailText(report, { dateStr: DATE, groupBy: 'gc', officePhone: PHONE, introText: INTRO })).toBe(renderGcShareAllText(payload, DATE, PHONE, INTRO))
+  })
+})
+
+describe('the dispatcher reads each job\u2019s total beside the payload (v2.4536)', () => {
+  const row = (job_id: string, over: Record<string, unknown> = {}) => ({ job_id, row_key: 'i4', display_number: '951', job_name: 'Knight', job_address: '1 Ring Dr', customer_name: 'Knight', ref_date: '2026-08-20', ref_is_estimate: false, age_days: 16, remaining: 900, in_collections: false, invoice_id: 'i4', invoice_amount: 900, retainage_held: null, job_bills: j4Bills, job_payments: j4Payments, ...over })
+  const payloadOf = (rows: ReturnType<typeof row>[]) => ({ groups: [{ entity_id: 'gc-1', entity_name: 'Knight', is_no_entity: false, job_count: rows.length, subtotal: 900, oldest_age_days: 16, rows }] }) as unknown as GcStatementPayload
+
+  it('names each job once, sets the totals it read, and leaves a job it could not read as it came', () => {
+    const payload = payloadOf([row('j4'), row('j4', { row_key: 'x' }), row('j9')])
+    expect(payloadJobIds(payload)).toEqual(['j4', 'j9'])
+    attachJobTotals(payload, { j4: '1800', j9: null })
+    expect(payload.groups[0]!.rows.map((r) => r.job_total)).toEqual([1800, 1800, undefined])
+  })
+
+  it('the line under the bill: nothing applied with the total, the old words without it', () => {
+    const payload = payloadOf([row('j4')])
+    expect(rowPaidBy(payload.groups[0]!.rows[0]!)).toBe('paid in full by #3001 on Jan 10')
+    attachJobTotals(payload, { j4: 1800 })
+    expect(rowPaidBy(payload.groups[0]!.rows[0]!)).toBe('nothing applied yet')
+    // A job wholly on its bills: the same money does pay the bill.
+    attachJobTotals(payload, { j4: 900 })
+    expect(rowPaidBy(payload.groups[0]!.rows[0]!)).toBe('paid in full by #3001 on Jan 10')
   })
 })
