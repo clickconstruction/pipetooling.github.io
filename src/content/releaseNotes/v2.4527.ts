@@ -7,7 +7,7 @@ const note: ReleaseNote = {
   kind: 'feature',
   highlights: [
     'The buttons on the Pipeline section headers now use the same line icons as the ☰ menu, in place of their emoji.',
-    'That covers Ready to Bill notifications, the six buttons on Billed Awaiting Payment, the Lien desk button on Collections with its orange gavel, and the two on Paid in Full.',
+    'That covers Ready to Bill notifications, the six buttons on Billed Awaiting Payment, Legal (scales) and the Lien desk (its orange gavel) on Collections, and the two on Paid in Full.',
     'Each action now has one icon wherever you find it. The buttons do what they did before.',
   ],
 }

@@ -426,11 +426,11 @@ describe('JobsStagesTab render smoke', () => {
     renderWithProviders(<JobsStagesTab {...makeProps({ jobs: boardJobs() })} />)
     await settle()
     const glyphs = [...document.querySelectorAll<HTMLElement>('[data-stages-section-header] button [data-tools-glyph]')].map((g) => g.dataset.toolsGlyph)
-    // Ready to Bill · Billed Awaiting Payment (six) · Collections' Lien desk · Paid in Full (two), in board order.
-    expect(glyphs).toEqual(['bell', 'building', 'bank', 'share', 'chart-bar', 'calendar-bars', 'bell', 'gavel', 'chart-bar', 'bell'])
+    // Ready to Bill · Billed Awaiting Payment (six) · Collections' Legal and Lien desk · Paid in Full (two), in board order.
+    expect(glyphs).toEqual(['bell', 'building', 'bank', 'share', 'chart-bar', 'calendar-bars', 'bell', 'scales', 'gavel', 'chart-bar', 'bell'])
     // No header button is left with an emoji mark the menu no longer uses.
     const marks = [...document.querySelectorAll('[data-stages-section-header] button')].map((b) => b.textContent ?? '').join(' ')
-    expect(marks).not.toMatch(/[⚙📊📅💵⇪⏱]/u)
+    expect(marks).not.toMatch(/[⚙📊📅💵⇪⏱⚖]/u)
   })
 
   it('the Lien desk asks for the billed jobs the board has not loaded; its Calendar reads the board until they land (v2.4321)', async () => {

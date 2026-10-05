@@ -3809,7 +3809,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                           borderColor: legalEmpty ? undefined : 'var(--border-strong)',
                         }}
                       >
-                        <span aria-hidden>{'⚖'}</span>
+                        <StagesToolsMenuGlyph name="scales" inherit />
                         Legal
                       </button>
                     )
