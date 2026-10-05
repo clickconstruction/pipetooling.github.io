@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   allJobsMargin,
+  billDay,
   allJobsMoney,
   jobMargin,
   openChangeRequests,
@@ -1287,6 +1288,36 @@ describe('what each job makes us', () => {
     state = gcReducer(state, { type: 'ownerSignChangeOrder', projectId: 'fairoaksd', changeOrderId: 'co-1' })
     const m = jobMargin(state, job(state, 'fairoaksd'))
     expect([m.changeOrders.margin, r(m.margin), r(m.price)]).toEqual([1_200, 135_342 + 1_200, 1_488_762 + 13_200])
+  })
+})
+
+describe('bill day across every job', () => {
+  const r = (n: number) => Math.round(n)
+
+  it('gathers each job’s bill for the 25th, with what to know before it goes', () => {
+    const day = billDay(initialGcState())
+    expect([day.on, r(day.readyTotal)]).toEqual(['2026-10-25', 145_868])
+    expect(day.jobs.map((j) => [j.project.id, j.ready, r(j.app.due), j.allBilled])).toEqual([
+      ['helotes', true, 47_301, false],
+      ['fairoaksd', true, 98_566, false],
+      ['stoneoak', false, 0, true],
+    ])
+    expect(day.jobs[1]?.notes.map((n) => n.words)).toEqual([
+      'Summit Roofing has not given a waiver for $60,000 of their work on this bill.',
+      'Cool Breeze Mechanical has not given a waiver for $10,800 of their work on this bill.',
+      'Pecan Valley Electric still owes the unconditional waiver for draw 1.',
+      "We sent Summit Roofing's pay application back, so Roofing bills what we see.",
+    ])
+    expect(day.jobs[0]?.notes[0]?.words).toBe('We have not pressed Start on this job yet.')
+  })
+
+  it('a bill sent for the day shows as sent, and the next one waits for the next bill day', () => {
+    const state = gcReducer(initialGcState(), { type: 'sendOwnerPayApp', projectId: 'fairoaksd' })
+    const j = billDay(state).jobs.find((x) => x.project.id === 'fairoaksd')
+    expect([j?.ready, j?.sent?.number, j?.sent?.periodTo]).toEqual([false, 4, '2026-10-25'])
+    // The last one waits on the architect: the next bill day says so.
+    const next = billDay({ ...state, today: '2026-11-02' }).jobs.find((x) => x.project.id === 'fairoaksd')
+    expect(next?.sent).toBeNull()
   })
 })
 

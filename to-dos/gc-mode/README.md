@@ -517,6 +517,11 @@ who then works and bills the owner." So:
   The reminder is kept on the bill (`reminders`, `remindCustomerToPay`, `gcOwnerBillingRemind.ts`)
   and is never a promise: the due day stays. The golden walk has no step for it, since its one late
   bill gets a new promised day before the end; the unit tests cover it.
+- **Bill day across every job** (owner, 2026-10-05; on Money): each job's pay application for the
+  25th, what it asks, when that customer usually pays, and what to know before it goes (the last
+  bill still with the architect, trades' waivers missing or owed, a pay application we sent back,
+  a job not started). **Send** each or **Send all**; a bill sent for the day shows as sent. The notes
+  warn and never stop (`billDay`, `gcOwnerBillingDay.ts`).
 - **What each job makes us** (owner, 2026-10-05; on Money, for the owner and the controller): the
   price the customer signed for, line by line, against what the work costs us. Each trade at its
   signed statement of work (one not bought out yet at what we carry), signed change orders at their
