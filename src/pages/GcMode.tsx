@@ -31,20 +31,21 @@ import { GcPriceCard, GcPriceLikely, GcPriceTrigger, type PriceCardTab } from '.
 import { usePriceCard } from '../components/gc/usePriceCard'
 import { useGcStore } from '../components/gc/useGcStore'
 import { useJumpStrip } from '../components/gc/useJumpStrip'
+import { GcPeoplePill } from '../components/gc/GcPeoplePill'
+import { GcFollowUpSheet } from '../components/gc/GcFollowUpSheet'
 import { Btn, Card, Chip, PlusUnknown, Stat, type Tone } from '../components/gc/gcUi'
 import { GcBoardStrip, GcCustomerHeading, GcStageHeading, GcStageSubheading, type BoardStripItem, type StageStripItem } from '../components/gc/GcBoardStages'
 import { useMatchMedia } from '../hooks/useMatchMedia'
 import {
-  carriedAmount,
-  carriedUncosted,
   boardCustomerElementId,
+  projectPeople,
+  type ProjectPeopleSummary,
+  type ProjectPerson,
   boardSectionCounts,
   boardSectionElementId,
   boardSectionWorthWords,
   customerGroups,
   customerMoneyWords,
-  quoteRanOut,
-  isGuess,
   currentRev,
   daysUntil,
   followUps,
@@ -57,9 +58,6 @@ import {
   promisesToChase,
   proposalUncostedWords,
   RING_COLORS,
-  sentBackOpen,
-  timesSentBack,
-  plansReach,
   proposalTotals,
   shortDate,
   stageProgress,
@@ -211,6 +209,22 @@ export default function GcMode() {
   // The badge also counts a promise whose day came and insurance that ran out (question 8).
   const chaseCount = toChase.length + promisesToChase(state)
 
+  // Who we are waiting on for each job (the owner, 2026-10-04): the row's one count, and the
+  // Building lane's Follow up sheet behind each person's Call and Follow up.
+  const [sheet, setSheet] = useState<{ partnerId?: string; calling?: boolean } | null>(null)
+  const peopleFor = (p: GcProject) => {
+    const summary = projectPeople(state, p)
+    const firstTrade = summary.people.find((x) => x.partnerId)?.partnerId
+    return {
+      summary,
+      onFollowUp: (person: ProjectPerson, calling: boolean) => {
+        if (person.partnerId) setSheet({ partnerId: person.partnerId, calling })
+        else if (person.customerId) setCustomerId(person.customerId)
+      },
+      onWorkList: firstTrade ? () => setSheet({ partnerId: firstTrade }) : null,
+    }
+  }
+
   // The stage strip (the owner, 2026-10-04): a pill per board section, 1, 2, 3 for the stages.
   const sectionCounts = boardSectionCounts(state)
   const stripItems: StageStripItem[] = BOARD_SECTIONS.map((sec) => {
@@ -306,6 +320,16 @@ export default function GcMode() {
             setTab('packages')
             setCustomerId(null)
           }}
+        />
+      )}
+
+      {sheet && (
+        <GcFollowUpSheet
+          state={state}
+          dispatch={dispatch}
+          {...(sheet.partnerId ? { startPartnerId: sheet.partnerId } : {})}
+          startCalling={sheet.calling ?? false}
+          onClose={() => setSheet(null)}
         />
       )}
 
@@ -441,7 +465,7 @@ export default function GcMode() {
                               onPlans={() => setPlansForId(p.id)}
                               onCustomer={() => setCustomerId(p.customerId)}
                               onArchitect={() => setCustomerId(p.architectId)}
-                              chase={toChase.filter((f) => f.project.id === p.id).length}
+                              people={peopleFor(p)}
                               onChase={() => setBoardTab('followup')}
                             />
                           ))}
@@ -501,7 +525,7 @@ export default function GcMode() {
                         onPlans={() => setPlansForId(p.id)}
                         onCustomer={() => setCustomerId(p.customerId)}
                         onArchitect={() => setCustomerId(p.architectId)}
-                        chase={toChase.filter((f) => f.project.id === p.id).length}
+                        people={peopleFor(p)}
                         onChase={() => setBoardTab('followup')}
                       />
                       </div>
@@ -637,33 +661,7 @@ export default function GcMode() {
   )
 }
 
-/** A guess is not a number here: the chip counts real quotes and our own crew, and names the guesses. */
-/** The number we carry on a trade is a quote past its good-until day (question 14). */
-function carriedRanOut(pkg: GcProject['packages'][number], today: string): boolean {
-  if (pkg.sow) return false
-  const invite = pkg.invites.find((i) => i.id === (pkg.awardedInviteId ?? pkg.carried))
-  return !!invite?.bid && quoteRanOut(invite.bid, today)
-}
 
-function coverageWords(project: GcProject, today: string): string {
-  // The same rule as the ring's card: a guess, a carried quote with a line that has no cost, or one
-  // past its good-until day is not a real number yet.
-  const missing = (p: GcProject['packages'][number]) => carriedUncosted(p).length > 0
-  const ran = (p: GcProject['packages'][number]) => carriedRanOut(p, today)
-  const real = project.packages.filter((p) => carriedAmount(p) !== null && !isGuess(p) && !missing(p) && !ran(p)).length
-  const guessed = project.packages.filter(isGuess).length
-  const uncosted = project.packages.filter(missing).length
-  const ranOut = project.packages.filter(ran).length
-  const base = `${real} of ${project.packages.length} trades have a real number`
-  return [
-    base,
-    guessed > 0 ? `${guessed} on our guess` : null,
-    uncosted > 0 ? `${uncosted} missing a cost` : null,
-    ranOut > 0 ? `${ranOut} ran out` : null,
-  ]
-    .filter(Boolean)
-    .join(' · ')
-}
 
 function GcIcon({ d, size = 20 }: { d: string; size?: number }) {
   return (
@@ -859,7 +857,7 @@ function ProjectRow({
   onPlans,
   onCustomer,
   onArchitect,
-  chase,
+  people,
   onChase,
   priceCard,
 }: {
@@ -877,8 +875,13 @@ function ProjectRow({
   onPlans: () => void
   onCustomer: () => void
   onArchitect: () => void
-  /** Companies to call on this project now. */
-  chase: number
+  /** Who we are waiting on for this job, and what pressing each one does (GcPeoplePill). */
+  people: {
+    summary: ProjectPeopleSummary
+    onFollowUp: (person: ProjectPerson, calling: boolean) => void
+    onWorkList: (() => void) | null
+  }
+  /** Opens Follow up. */
   onChase: () => void
   /** The card behind the price (the owner's pick B, 2026-10-04, Building lane's GcPriceCard): each trade by what it needs next. */
   priceCard?: { state: GcState; dispatch: Dispatch<GcAction>; onTab: (tab: PriceCardTab) => void }
@@ -886,9 +889,6 @@ function ProjectRow({
   const totals = proposalTotals(project)
   const card = usePriceCard()
   const owner = priceToOwner(project)
-  const signed = project.packages.filter((p) => p.sow?.status === 'signed').length
-  const subs = project.packages.filter((p) => !p.selfPerform).length
-  const reach = plansReach(project)
   const newest = planLabel(project, currentRev(project))
   const stage = STAGES.find((st) => st.key === project.stage)
   // A phone or a narrow pane: the ring, the days and the name on top, the rest on the lines under.
@@ -980,37 +980,17 @@ function ProjectRow({
             pre-bid minutes not sent yet
           </Chip>
         )}
-        {/* A pay application sent back twice or more (the owner's yes, 2026-10-02; Board item 6): someone calls them. */}
-        {project.packages.map((pkg) => {
-          const back = pkg.sow ? sentBackOpen(pkg.sow) : null
-          const times = pkg.sow && back ? timesSentBack(pkg.sow, back.draw.number) : 0
-          return times >= 2 ? (
-            <Chip key={`back-${pkg.id}`} tone="red" title={`Pay application ${back?.draw.number} on ${pkg.trade} went back ${times} times. Call them.`}>
-              {pkg.trade}: sent back {times} times
-            </Chip>
-          ) : null
-        })}
-        {priceCard && !owner.signed ? (
-          <GcPriceTrigger card={card} label={`${coverageWords(project, today)}. Show each trade.`} style={{ textDecoration: 'none' }}>
-            <Chip tone={totals.holes.length > 0 ? 'red' : totals.plugged.length > 0 ? 'amber' : 'green'}>{coverageWords(project, today)}</Chip>
-          </GcPriceTrigger>
-        ) : (
-          <Chip tone={totals.holes.length > 0 ? 'red' : totals.plugged.length > 0 ? 'amber' : 'green'}>{coverageWords(project, today)}</Chip>
-        )}
-        {chase > 0 && (
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); onChase() }}
-            title="Companies we are waiting on that need a call. Opens Follow up."
-            style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer' }}
-          >
-            <Chip tone="amber">{chase} to call</Chip>
-          </button>
-        )}
-        {project.stage !== 'pursuing' && <Chip tone={signed === subs ? 'green' : 'amber'}>{signed} of {subs} statements of work signed</Chip>}
-        <Chip tone={reach.have === reach.of ? 'grey' : 'amber'} title={`${reach.have} of ${reach.of} trade partners have opened ${newest}.`}>
-          plans: {newest}{reach.have === reach.of ? '' : ` · ${reach.of - reach.have} have not opened it`}
-        </Chip>
+        {/* Everyone we are waiting on, in one count (the owner, 2026-10-04: "say number of people to call
+            and then when a user hovers over it they see the details"). The price, plans and statements
+            of work chips left: the ring and the price line say those, and who owes us is in the card. */}
+        <GcPeoplePill
+          summary={people.summary}
+          projectName={project.name}
+          {...(tourKey ? { tourKey } : {})}
+          onFollowUp={people.onFollowUp}
+          onWorkList={people.onWorkList}
+          onOpenFollowUp={onChase}
+        />
       </span>
       <span style={{ display: 'inline-flex', gap: '0.2rem', alignItems: 'center', ...(narrow ? { gridColumn: '1 / 3' } : null) }} aria-label="Links">
         <button

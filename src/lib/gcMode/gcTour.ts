@@ -57,6 +57,13 @@ export const GC_TOUR_STEPS: SpotlightTourStep[] = [
     missingBody: 'No project is bidding right now.',
   },
   {
+    // The owner, 2026-10-04: one count of the people we are waiting on, in place of the row's chips.
+    anchor: 'gc-people-pursuing',
+    title: 'Who to call',
+    body: 'This says how many people we are waiting on. Point at it to see who and why. Each person has Call and Follow up. When nobody owes us anything, it says Nobody to chase.',
+    missingBody: 'No project is bidding right now.',
+  },
+  {
     anchor: 'gc-row-pursuing',
     title: 'How bidding ends',
     body: 'Open the project and go to Our number. Tap We sent our bid when the price goes to the customer. When the customer picks us, tap We won this. The project moves down to Buying out. If the customer picks someone else, tap We lost this.',
