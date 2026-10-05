@@ -123,7 +123,7 @@ export function SubmittalRowsTable({ items, gcItems, orderOnlyItems, parts, part
               <th style={th}>{shape === 'schedule' ? 'Tag' : 'Fixture'}</th>
               {shape === 'schedule' ? <th style={th}>Specified</th> : null}
               <th style={th}>{shape === 'schedule' ? 'Submitted' : 'Product and parts'}</th>
-              {showAnswers ? <th style={{ ...th, width: ANSWER_WIDTH, boxSizing: 'border-box' }}>Their answer</th> : null}
+              {showAnswers ? <th className="sub-rows-answer-head" style={{ ...th, width: ANSWER_WIDTH, boxSizing: 'border-box' }}>Their answer</th> : null}
               {shape === 'schedule' ? <th style={th} title={COLUMN_HELP.status}>Status {help}</th> : null}
               <th style={th} title={COLUMN_HELP.sheet}>Cut sheet {help}</th>
               {previousRev ? <th style={th}>Since Rev {previousRev.rev_number}</th> : null}

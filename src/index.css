@@ -4718,6 +4718,13 @@ button.gcStep:hover > em { text-decoration: underline; }
    card, each cell a block under a small label, and the answer sits under its part. */
 .sub-rows-answers { display: grid; grid-template-columns: minmax(0, 1fr); column-gap: 1rem; align-items: baseline; }
 .sub-rows-answers[data-answers='true'] { grid-template-columns: minmax(0, 1fr) 12rem; }
+/* A table too narrow to give the parts and their answers a column each (a laptop-width window) stacks each
+   answer under its part, as a phone does, and drops the Their answer heading. Measured on the table, not the screen. */
+.sub-rows-wrap { container-type: inline-size; }
+@container (max-width: 900px) {
+  .sub-rows-answers[data-answers='true'] { grid-template-columns: minmax(0, 1fr); row-gap: 0.1rem; margin-bottom: 0.15rem; }
+  .sub-rows-answer-head { display: none; }
+}
 @media (max-width: 720px) {
   .sub-rows-wrap { border: none !important; background: transparent !important; overflow: visible !important; }
   .sub-rows-table { display: block; min-width: 0 !important; }
@@ -4727,9 +4734,8 @@ button.gcStep:hover > em { text-decoration: underline; }
   .sub-rows-table td { display: block; border-bottom: none !important; padding-block: 0.25rem !important; text-align: left !important; }
   .sub-rows-table td[data-label]::before { content: attr(data-label); display: block; font-size: 0.66rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-muted); }
   .sub-rows-answers[data-answers='true'] { grid-template-columns: minmax(0, 1fr); row-gap: 0.1rem; margin-bottom: 0.2rem; }
-  /* A long maker-and-model wraps inside the card instead of running past its edge. */
+  /* On a card the catalog words drop under a long maker-and-model instead of squeezing beside it. */
   .sub-rows-part { flex-wrap: wrap; }
-  .sub-rows-part-head { white-space: normal !important; overflow-wrap: anywhere; }
   /* On a card the row's verdict reads first, then its buttons, both from the left edge. */
   .sub-rows-actions { align-items: flex-start !important; }
   .sub-rows-call { order: -1; max-width: none !important; text-align: left !important; }
