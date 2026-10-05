@@ -39,7 +39,7 @@ If the office offers you a job for a set amount, it arrives as an offer card. Th
 
 ## Say how far along you are
 
-Each working job card asks **How far along is your part?** Tap 0, 25, 50 or 75. If you like, type a note. Nothing is sent until you press {{button:blue|Send to office}}. Anything under 100% just keeps the office posted. The office keeps waiting on you. Tap **100% ✓** and the button turns green. The button reads {{button:green|Send to office · work is done}} and asks you to confirm. You confirm because 100% is what tells the office to call it in for inspection.
+Each working job card asks **How far along is your part?** Tap 0, 25, 50 or 75. If you like, type a note. Nothing is sent until you press {{button:blue|Send to office}}. Anything under 100% just keeps the office posted. The office keeps waiting on you. Tap **100% ✓** and the button turns green. The button reads {{button:green|Send to office · work is done}} and asks you to confirm. The button asks because 100% is what tells the office to call it in for inspection.
 
 ## Pick your days
 

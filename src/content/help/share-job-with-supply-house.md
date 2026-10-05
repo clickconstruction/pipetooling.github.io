@@ -8,7 +8,7 @@ order: 88
 
 Supply houses setting up a **job account** ask for the same packet every time. The share button packages it all into one email that goes out **from your own inbox**.
 
-A job account is an account the house opens for one property. The packet holds the property's name, address, and phone numbers. The packet also holds the owner's info. The owner is the homeowner, or for commercial work the building owner **and their company name**. The email can go from ClickTooling instead, if you prefer.
+A job account is an account the house opens for one property. The packet holds the property's name, address, and phone numbers. The packet also holds the owner's info. The info names the homeowner, or for commercial work the building owner **and their company name**. The email can go from ClickTooling instead, if you prefer.
 
 ## Where it is
 
@@ -20,7 +20,7 @@ The icon opens a window with three sections:
 
 - **Property**: name, address, and site phone from the job.
 - **General contractor**: filled automatically when the job has a GC. The GC is *not* the owner. The GC is shown so the supply house knows who's buying.
-- **Property owner**: what the supply house actually needs. The owner is the homeowner, or the building owner's **company**. The section also takes the owner's **mailing address**, because that's what lien notices run on. A lien is a legal claim on a property for an unpaid bill. On a homeowner job with no GC this fills in from the customer. On a GC job it starts **blank**. Get the owner from the GC and type it in. {{button:blue|Email from my inbox}} stays off until the owner is entered. The footer names exactly what's missing.
+- **Property owner**: what the supply house actually needs. The section takes the homeowner, or the building owner's **company**. The section also takes the owner's **mailing address**, because that's what lien notices run on. A lien is a legal claim on a property for an unpaid bill. On a homeowner job with no GC this fills in from the customer. On a GC job it starts **blank**. Get the owner from the GC and type it in. {{button:blue|Email from my inbox}} stays off until the owner is entered. The footer names exactly what's missing.
 
 Owner info is **remembered for the job**. Enter it once, and every resend fills it in, even from another desk.
 
@@ -30,7 +30,7 @@ Don't know the owner? Hit ***Send to Dispatch — find the owner***. The errand 
 
 ## Sending
 
-Pick who gets it from your **supply house contacts**. Tap the chips to select one or more. {{button:outline|+ Add contact}} takes a label and an email, like *"Ferguson — Central desk"*. The app remembers the contact for next time. The list is shared with the whole office.
+Pick who gets it from your **supply house contacts**. Tap the chips to select one or more. {{button:outline|+ Add contact}} takes a label and an email, like *"Ferguson — Central desk"*, and remembers the contact for next time. The list is shared with the whole office.
 
 Three ways to get the packet out:
 

@@ -20,7 +20,7 @@ Each account opens as the same five-section packet the Legal desk shows.
 - The same five tabs as the desk: ***Account · Paper · Their word · Evidence · Fees & steps***. The tabs are built from the same records by the same rules. So the firm and the office never disagree.
 - On **Paper**:
   - *Where each job stands* is the job's lien timeline. The timeline is the same rail the Lien desk draws. Every Chapter 53 step is dated from the job's hours and filings. Today is marked. One *Next on the path* line says what comes next.
-  - *The paper that went out* lists each envelope once. Each envelope shows the day it went, and whether it went by the run or by hand. The method and tracking show too, with the claim as printed. When one paper covered several jobs, every job's share shows. The months show as printed, with the saved copy. A month whose window had already closed shows *as information*.
+  - *The paper that went out* lists each envelope once. Each envelope shows the day it went, and whether it went by the run or by hand. Each envelope also shows the method and tracking, and the claim as printed. When one paper covered several jobs, every job's share shows. The months show as printed. A month whose window had already closed shows *as information*. The saved copy is there too.
   - Under each § 53.056 notice, a band carries what the Lien desk recorded since it went out. The band holds the owner's answers to the letter's three questions and the pile counsel named. Counsel means the firm's lawyers. The band says whether the second owner letter is due, sent or turned off. The band also shows any written okay from the GC for the owner to pay Click directly. A second letter lists as its own envelope, named *letter two*.
 - Only the entries you marked **to counsel**. Held entries never leave the office. The portal function applies your decisions before anything is sent.
 - Signed agreements as PDF links. Each link is good for an hour, and a fresh one is made on every open. The exhibits list is there too. Exhibits are the documents attached to the packet. {{button:outline|⎙ Print packet}} prints it. The browser's print-to-PDF is the packet.
@@ -43,7 +43,7 @@ The lien grid is a third panel beside **Matters** and **Notifications**. The gri
 
 On a matter's **Fees & steps** tab the firm can:
 
-- **Add a fee or cost**: an amount and a note. The fee rolls into the matter's total demand, and shows on the desk's Fees & steps.
+- **Add a fee or cost**: an amount and a note. The fee or cost rolls into the matter's total demand, and shows on the desk's Fees & steps.
 - **Record a step**: demand sent on firm letterhead, suit filed, judgment entered, or settled. The step takes the court, cause number or terms. The cause number is the court's number for the case. The step moves the account's stage on your Pipeline row chip. A *settled* step closes the matter.
 - **Record a payment received**: money the firm holds. You apply it on the job with {{button:outline|Mark Paid}} from the Pipeline row. Then press {{button:outline|Mark applied}} on the desk to record the recovery and the firm's contingency. The contingency is the firm's share of what is recovered. The contingency is recorded as a legal cost on the matter.
 - **Ask the office**: a question you answer from the desk. The answer shows on their portal.

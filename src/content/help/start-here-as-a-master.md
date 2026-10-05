@@ -7,7 +7,7 @@ order: 4
 ---
 You see everything: customers, projects, jobs, money, people, and payroll. This page is the map, plus what each role below you sees.
 
-The map helps when you're setting someone up or answering "where do I click?"
+This page helps when you're setting someone up or answering "where do I click?"
 
 ## The four surfaces you'll live in
 

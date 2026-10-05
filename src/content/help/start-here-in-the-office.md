@@ -50,7 +50,7 @@ Sign-ins are created by a dev from People → Users → **+ Hire**. See [hire so
 
 ## When a link isn't for your role
 
-A link may open a page your role can't use, like the owner's Crew P&L or the controller's Payroll. The app says so once, with {{chip:blue|Crew P&L is for the owner — you're on Reports.}} It lands you on the nearest tab you can use. Nothing is broken. The page just isn't yours. Ask the owner or controller if you need what's on it.
+A link may open a page your role can't use, like the owner's Crew P&L or the controller's Payroll. The app says so once, with {{chip:blue|Crew P&L is for the owner — you're on Reports.}} The app lands you on the nearest tab you can use. Nothing is broken. The page just isn't yours. Ask the owner or controller if you need what's on it.
 
 ## Controller-only
 

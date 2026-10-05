@@ -17,7 +17,7 @@ The toolbar still shows one grand total, like {{chip:gray|Sub Labor Due: $47,050
 | $47,050.00 · 5 subs · 7 sheets | $5,700.00 · 2 sheets | $1,000.00 · 1 sheet | $40,350.00 · $40,000 with no agreement · $350 waiting on customer |
 :::
 
-- **Owed to subs** is every sub sheet with money open. Crew sheets have no roster sub on them. Crew sheets are shown beside the tile as *crew pay via payroll*. Crew sheets never count as owed here.
+- **Owed to subs** is every sub sheet with money open. Crew sheets have no roster sub on them. Crew sheets show inside the tile, beside the counts, as *crew pay via payroll*. Crew sheets never count as owed here.
 - **Ready to pay now** means the sheet is at *Post-inspection: Trigger draw*. Either the job's bill is paid, or the sheet's **payable-after** date has arrived. And there is no hold on it.
 - **Queued** means a payable-after date is set and still ahead. The tile names the next pay-run day from Settings → Sub portal. When no day is set, it says so.
 - **Not payable yet** means the sheet is still in work or at the inspection. Or the sheet is waiting on the customer with nothing promised, or on hold. Or the sheet has {{chip:red|No agreement}}, meaning work under way with nothing signed. The reasons are spelled out under the figure.
