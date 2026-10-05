@@ -1,7 +1,7 @@
 import type { ReleaseNote } from '../../lib/releaseNotes'
 
 const note: ReleaseNote = {
-  version: 'v2.4574',
+  version: 'v2.4580',
   date: '2026-10-05',
   title: 'Accounts Receivable: a new check closes the returned one only when it pays the same job',
   kind: 'fix',

@@ -455,7 +455,7 @@ export default function BankPaymentsModal({
         else lines.push({ id: crypto.randomUUID(), kind: 'billed', targetKey: key, amountStr: amt.toFixed(2) })
       }
       if (lines.length > 0) setAllocLines(lines)
-      // v2.4574: the deposit stands in for the case only when its bills filled, or it has none on record.
+      // v2.4580: the deposit stands in for the case only when its bills filled, or it has none on record.
       if (lines.length > 0 || v.billsItPaid.length === 0) replacingRef.current = { caseId, depositId }
       else {
         replacingRef.current = null
@@ -1842,7 +1842,7 @@ export default function BankPaymentsModal({
     setApplySubmitting(true)
     setApplyError(null)
     const allocations: Array<{ invoice_id?: string; job_id?: string; payment_id?: string; amount: number }> = []
-    /** The jobs this apply pays — what decides whether a replaced case closes (v2.4574). */
+    /** The jobs this apply pays — what decides whether a replaced case closes (v2.4580). */
     const appliedJobIds: string[] = []
     for (const line of allocLines) {
       if (line.kind === 'payment') {
@@ -1896,7 +1896,7 @@ export default function BankPaymentsModal({
       // when the switch was on and nothing had labelled it — say so, once.
       showToast(arAppliedToast(applySentence.total, arApplyBooksIncome(bankLabel)), 'success')
       // v2.4325: this deposit was used as the new check for a case — the apply landed, so the case closes.
-      // v2.4574: only while the apply still pays a job the returned check paid.
+      // v2.4580: only while the apply still pays a job the returned check paid.
       const replacing = replacingRef.current
       if (replacing && replacing.depositId === selected.mercury_transaction_id) {
         replacingRef.current = null

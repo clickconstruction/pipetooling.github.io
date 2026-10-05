@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * Render smoke for v2.4574: a deposit closes a case as replaced only while the apply still
+ * Render smoke for v2.4580: a deposit closes a case as replaced only while the apply still
  * pays a job the returned check paid. When none of those bills is open, nothing fills, the
  * deposit is not held as the new check, and an apply to another job leaves the case open.
  */

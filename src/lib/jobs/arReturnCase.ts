@@ -377,7 +377,7 @@ export function arCaseThisReplaces(deposit: ArReplacementDeposit, views: Readonl
 }
 
 /**
- * Whether an apply of the new check closes the case as replaced (v2.4574). A case with bills
+ * Whether an apply of the new check closes the case as replaced (v2.4580). A case with bills
  * on record closes only when the apply still pays a job one of those bills was on. A case
  * with none has nothing to compare, so the press alone decides.
  */
