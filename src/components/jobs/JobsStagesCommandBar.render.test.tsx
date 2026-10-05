@@ -17,6 +17,7 @@ function props(overrides: Partial<JobsStagesCommandBarProps> = {}): JobsStagesCo
     onOpenFollowups: vi.fn(),
     canSeeForecast: true,
     onOpenForecast: vi.fn(),
+    onShowMap: null,
     query: '',
     onQueryChange: vi.fn(),
     includeScheduleTimeInSearch: true,
@@ -67,6 +68,19 @@ describe('JobsStagesCommandBar', () => {
     expect(screen.queryByLabelText('Payment forecast')).toBeNull()
     expect(screen.queryByLabelText('Session notes')).toBeNull()
     expect(screen.getByText('New')).toBeTruthy()
+  })
+
+  it('draws the Map button only while the map is hidden, after Forecast and before the search box (v2.4518)', () => {
+    const view = render(<JobsStagesCommandBar {...props()} />)
+    expect(screen.queryByLabelText('Show the map')).toBeNull()
+    const onShowMap = vi.fn()
+    view.rerender(<JobsStagesCommandBar {...props({ onShowMap })} />)
+    const map = screen.getByLabelText('Show the map')
+    expect(map.textContent).toBe('Map')
+    expect(screen.getByLabelText('Payment forecast').compareDocumentPosition(map) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(map.compareDocumentPosition(screen.getByPlaceholderText(/^Search /)) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    fireEvent.click(map)
+    expect(onShowMap).toHaveBeenCalledTimes(1)
   })
 
   it('wires the search box: placeholder follows the schedule toggle, typing reports, busy hints show', () => {
