@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type Dispatch } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties, type Dispatch } from 'react'
 import { SpotlightTour } from '../components/SpotlightTour'
 import { BidsModeToggle } from '../components/gc/BidsModeToggle'
 import {
@@ -30,6 +30,7 @@ import { GcProgressRing } from '../components/gc/GcProgressRing'
 import { GcPriceCard, GcPriceLikely, GcPriceTrigger, type PriceCardTab } from '../components/gc/GcPriceCard'
 import { usePriceCard } from '../components/gc/usePriceCard'
 import { useGcStore } from '../components/gc/useGcStore'
+import { useJumpStrip } from '../components/gc/useJumpStrip'
 import { Btn, Card, Chip, PlusUnknown, Stat, type Tone } from '../components/gc/gcUi'
 import { GcBoardStrip, GcCustomerHeading, GcStageHeading, GcStageSubheading, type BoardStripItem, type StageStripItem } from '../components/gc/GcBoardStages'
 import { useMatchMedia } from '../hooks/useMatchMedia'
@@ -168,8 +169,6 @@ export default function GcMode() {
   const [boardTab, setBoardTab] = useState<BoardTab>(() => (new URLSearchParams(window.location.search).get('tab') === 'followup' ? 'followup' : 'projects'))
   // By stage every time the board opens (the owner, 2026-10-04, question 9): not remembered.
   const [boardGroup, setBoardGroup] = useState<BoardGroupBy>('stage')
-  // The stage strip (the owner, 2026-10-04): the section in view is lit as the board scrolls.
-  const [activeKey, setActiveKey] = useState<string | null>(null)
   const [projectId, setProjectId] = useState<string | null>(null)
   const [tab, setTab] = useState<ProjectTab>('packages')
   const [portalOpen, setPortalOpen] = useState(true)
@@ -231,52 +230,14 @@ export default function GcMode() {
     count: g.open.length,
     dots: STAGES.filter((st) => g.open.some((p) => p.stage === st.key)).map((st) => st.tone),
   }))
-  const elementIdOf = (key: string) => (boardGroup === 'stage' ? boardSectionElementId(key as BoardSection) : boardCustomerElementId(key))
-  // The strip's keys in board order, for the scroll watcher to read without re-subscribing.
-  const stripKeys = useRef<string[]>([])
-  stripKeys.current = boardGroup === 'stage' ? BOARD_SECTIONS.map((sec) => sec.key) : groups.map((g) => g.customer.id)
-  const jumpLock = useRef<{ key: string; until: number } | null>(null)
-  /** Jump to a stage on By stage, or to a customer on By customer. */
-  const jumpTo = (key: string) => {
-    setActiveKey(key)
-    // The pressed pill stays lit while the jump scrolls, even when the board ends before it reaches the top.
-    jumpLock.current = { key, until: Date.now() + 1500 }
-    const id = elementIdOf(key)
-    requestAnimationFrame(() => requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })))
-  }
   const onBoard = boardTab === 'projects' && !project
-  // The section in view: the last heading that has reached the strip.
-  useEffect(() => {
-    if (!onBoard) return
-    let frame = 0
-    const look = () => {
-      frame = 0
-      const lock = jumpLock.current
-      if (lock && Date.now() < lock.until) {
-        setActiveKey(lock.key)
-        return
-      }
-      let current: string | null = null
-      // At the end of the board the last headings cannot reach the strip: count the top half instead.
-      const atEnd = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4
-      const reach = atEnd ? window.innerHeight / 2 : 90
-      for (const key of stripKeys.current) {
-        const el = document.getElementById(boardGroup === 'stage' ? boardSectionElementId(key as BoardSection) : boardCustomerElementId(key))
-        if (el && el.getBoundingClientRect().top <= reach) current = key
-      }
-      setActiveKey(current ?? stripKeys.current[0] ?? null)
-    }
-    const onScroll = () => {
-      if (!frame) frame = requestAnimationFrame(look)
-    }
-    jumpLock.current = null
-    look()
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => {
-      window.removeEventListener('scroll', onScroll)
-      if (frame) cancelAnimationFrame(frame)
-    }
-  }, [onBoard, boardGroup])
+  // Jump to a stage on By stage, or to a customer on By customer; the one in view is lit.
+  const { active: activeKey, jumpTo } = useJumpStrip(
+    onBoard,
+    boardGroup === 'stage' ? BOARD_SECTIONS.map((sec) => sec.key) : groups.map((g) => g.customer.id),
+    (key) => (boardGroup === 'stage' ? boardSectionElementId(key as BoardSection) : boardCustomerElementId(key)),
+    boardGroup,
+  )
 
   return (
     <GcCompanyOpenerContext.Provider value={companyOpener}>
