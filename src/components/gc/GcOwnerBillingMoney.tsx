@@ -1,8 +1,10 @@
 import { useMatchMedia } from '../../hooks/useMatchMedia'
+import type { Dispatch } from 'react'
 import { GcOwnerBillingAhead } from './GcOwnerBillingAhead'
+import { GcOwnerBillingBillDay } from './GcOwnerBillingBillDay'
 import { GcOwnerBillingMargin } from './GcOwnerBillingMargin'
 import { Btn, Card, Chip, Stat, Why, num, td, th } from './gcUi'
-import { allJobsMoney, money, ownerFinishRisk, ownerInterestOnBill, shortDate, type GcState, type JobMoney, type OwedBill } from '../../lib/gcMode/gcModel'
+import { allJobsMoney, money, ownerFinishRisk, ownerInterestOnBill, shortDate, type GcAction, type GcState, type JobMoney, type OwedBill } from '../../lib/gcMode/gcModel'
 
 /**
  * GC mode design spike: money across every job that is ours (buying out or building). What the
@@ -10,7 +12,16 @@ import { allJobsMoney, money, ownerFinishRisk, ownerInterestOnBill, shortDate, t
  * first. Built by the Owner Billing lane for the Board lane to place on the Project Board. In the
  * real build it is for the owner and the controller, like the rest of the app's money.
  */
-export function GcOwnerBillingMoney({ state, onOpenBill }: { state: GcState; onOpenBill: (projectId: string) => void }) {
+export function GcOwnerBillingMoney({
+  state,
+  onOpenBill,
+  dispatch,
+}: {
+  state: GcState
+  onOpenBill: (projectId: string) => void
+  /** Lets bill day send. Absent: bill day opens each job's Bill the customer instead. */
+  dispatch?: Dispatch<GcAction>
+}) {
   const m = allJobsMoney(state)
   const narrow = useMatchMedia('(max-width: 640px)')
   const late = m.jobs.map((j) => ({ project: j.project, risk: ownerFinishRisk(state, j.project) })).filter((x) => x.risk.past !== null && x.risk.past > 0)
@@ -61,6 +72,8 @@ export function GcOwnerBillingMoney({ state, onOpenBill }: { state: GcState; onO
           </div>
         )}
       </Card>
+
+      <GcOwnerBillingBillDay state={state} dispatch={dispatch} onOpenBill={onOpenBill} />
 
       <GcOwnerBillingAhead state={state} />
 
