@@ -124,7 +124,7 @@ A window that closes with nothing recorded is never silent. The Dashboard's lien
 
 Noting a month is not a skip. It records that a person saw the loss, with a name and a date. Then the Dashboard stops naming it. The money is still owed, and it rides on the notice for the open months.
 
-A skipped or missed month stays as a dot under **Earlier months**, shown as {{chip:green|Sent}}, {{chip:yellow|Skipped}} or {{chip:red|Missed}}. Press the dot to open its record. A missed month's record keeps two things apart. The lien is gone for that month's work. The money is still owed, and the notice claims it with the whole balance.
+A skipped or missed month stays as a row in the **Months** grid. A skipped month reads {{chip:yellow|skipped}}, with who skipped it and why. A month whose window closed unsent reads {{chip:red|closed}} with its date. Beside it the row says who noted it, or {{chip:yellow|not noted}}. A missed month's row keeps two things apart. The lien is gone for that month's work. The money is still owed, and the notice claims it with the whole balance.
 
 On the **Affidavits** tab, the job's pane shows **Months the affidavit claims**. Each month reads {{chip:green|on the lien}}, {{chip:blue|window open}} or {{chip:yellow|unsecured}}. A month whose window closed unsent is named and left off the lien. Its share of the money is chased in Collections.
 
