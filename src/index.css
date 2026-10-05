@@ -4373,6 +4373,60 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
   color: var(--text-muted);
   font-weight: 500;
 }
+/* The Lien desk shortcut (v2.4520) rides beside the last stage: the two share that stage's
+   place in the bar, centered together. */
+.stagesStageSegTail {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+}
+.stagesStageSegTail.isWide {
+  flex-grow: 1.6;
+}
+.stagesStageSegTail > .stagesStageSeg {
+  flex: 0 1 auto;
+}
+.stagesLienDeskShortcut {
+  position: relative;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  color: #ff6600;
+  cursor: pointer;
+}
+.stagesLienDeskShortcut:hover {
+  background: var(--bg-subtle);
+}
+.stagesLienDeskShortcut:focus-visible {
+  outline: 2px solid var(--text-link);
+  outline-offset: 1px;
+}
+.stagesLienDeskShortcutBadge {
+  position: absolute;
+  top: -0.45rem;
+  right: -0.55rem;
+  min-width: 1.4em;
+  padding: 0.05rem 0.35rem;
+  border: 2px solid var(--surface);
+  border-radius: 999px;
+  background: #f59e0b;
+  color: #241a05;
+  font-size: 0.66rem;
+  font-weight: 800;
+  line-height: 1.4;
+  text-align: center;
+  pointer-events: none;
+}
 .stagesSectionBand {
   padding: 0.5rem 0.75rem;
   border-left: 4px solid var(--stage-color);
