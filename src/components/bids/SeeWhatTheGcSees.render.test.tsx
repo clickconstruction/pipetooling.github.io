@@ -13,7 +13,7 @@ const items = [
   item({ id: 'a', tag: 'WC-1', status: 'as_specified', sequence_order: 1, specified_manufacturer: 'TOTO', specified_model: 'CT708UVG', submitted_label: 'TOTO CT708UVG#01' }),
   item({ id: 'b', tag: 'DWH-1', status: 'alternate', sequence_order: 2, specified_manufacturer: 'Rheem', specified_model: 'RH375', submitted_label: 'BW RE2HP50', reason_kind: 'lead_time' }),
 ]
-const props = { items, revNumber: 1, shared: false, hasPackage: false, company: { name: 'Click Plumbing', tagline: 'Plumbing', phone: '(512) 555-0100' }, bid: { label: 'B398', projectName: 'ZZ Test', address: '5501 Balcones Dr' }, onClose: () => {} }
+const props = { items, revNumber: 1, link: { linkShowsRev: null, roomClosed: false }, hasPackage: false, company: { name: 'Click Plumbing', tagline: 'Plumbing', phone: '(512) 555-0100' }, bid: { label: 'B398', projectName: 'ZZ Test', address: '5501 Balcones Dr' }, onClose: () => {} }
 
 describe('SeeWhatTheGcSees (v2.4189, #62 Layer 2)', () => {
   if (typeof window.matchMedia !== 'function') window.matchMedia = (() => ({ matches: false, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {} })) as unknown as typeof window.matchMedia
@@ -31,16 +31,24 @@ describe('SeeWhatTheGcSees (v2.4189, #62 Layer 2)', () => {
     expect(screen.getAllByTestId('room-row')).toHaveLength(1)
     expect(screen.getAllByTestId('room-row')[0]!.textContent).toContain('DWH-1')
     expect(screen.queryByRole('group', { name: /Your call on/ })).toBeNull()
-    expect(screen.getByTestId('see-gc-why').textContent).toContain('The GC sees nothing until you share.')
+    expect(screen.getByTestId('see-gc-why').textContent).toBe('This is the page the GC will open from your link. It is drawn from your rows as they stand. The GC sees nothing until you share.')
     fireEvent.click(screen.getByRole('button', { name: 'Close' }))
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
   it('Escape closes it; a shared revision says the link shows this now', () => {
     const onClose = vi.fn()
-    render(<SeeWhatTheGcSees {...props} shared onClose={onClose} />)
-    expect(screen.getByTestId('see-gc-why').textContent).toContain('This is what the link shows now.')
+    render(<SeeWhatTheGcSees {...props} link={{ linkShowsRev: 1, roomClosed: false }} onClose={onClose} />)
+    expect(screen.getByTestId('see-gc-why').textContent).toBe('This is the page the GC opens from your link. It is drawn from your rows as they stand. That is what the link shows now.')
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('v2.4593 · a draft over a shared revision says what the link shows until it is shared; a closed room says the link is closed', () => {
+    const { unmount } = render(<SeeWhatTheGcSees {...props} revNumber={4} link={{ linkShowsRev: 2, roomClosed: false }} />)
+    expect(screen.getByTestId('see-gc-why').textContent).toBe('This is the page the GC will open from your link. It is drawn from your rows as they stand. Until you share Rev 4, the link shows Rev 2.')
+    unmount()
+    render(<SeeWhatTheGcSees {...props} revNumber={2} link={{ linkShowsRev: 2, roomClosed: true }} />)
+    expect(screen.getByTestId('see-gc-why').textContent).toContain('The room is closed. Its link says only that the review is closed. Reopen it to show this again.')
   })
 })
