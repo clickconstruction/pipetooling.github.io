@@ -20,7 +20,16 @@ import { Btn, Card, Chip, input } from './gcUi'
  * question 8). Insurance renewals first, then the papers we wait on, then every other open promise
  * of any lane's kind. Write down the day they give; the row turns red when it passes.
  */
-export function GcFollowUpPromises({ state, dispatch }: { state: GcState; dispatch: Dispatch<GcAction> }) {
+export function GcFollowUpPromises({
+  state,
+  dispatch,
+  onFollowUp,
+}: {
+  state: GcState
+  dispatch: Dispatch<GcAction>
+  /** Open the Follow up sheet on a company (the owner, 2026-10-04, Building lane's GcFollowUpSheet). */
+  onFollowUp?: (partnerId: string) => void
+}) {
   const renewals = insuranceRenewals(state)
   const papers = paperAsks(state)
   const shown = new Set([...renewals.map((r) => r.promise?.id), ...papers.map((p) => p.promise?.id)])
@@ -46,6 +55,7 @@ export function GcFollowUpPromises({ state, dispatch }: { state: GcState; dispat
             promise={r.promise}
             kind="insurance"
             dispatch={dispatch}
+            onFollowUp={onFollowUp}
             keptBy="It is kept when they send the new certificate from their portal."
           />
         ))}
@@ -62,6 +72,7 @@ export function GcFollowUpPromises({ state, dispatch }: { state: GcState; dispat
             projectId={p.projectId}
             packageId={p.packageId}
             dispatch={dispatch}
+            onFollowUp={onFollowUp}
             keptBy={p.kind === 'w9' ? 'It is kept when they sign the W-9 in their portal.' : 'It is kept when they sign it in their portal.'}
           />
         ))}
@@ -82,6 +93,7 @@ export function GcFollowUpPromises({ state, dispatch }: { state: GcState; dispat
               projectId={p.projectId}
               packageId={p.packageId}
               dispatch={dispatch}
+              onFollowUp={onFollowUp}
               keptBy={null}
             />
           ) : null
@@ -105,6 +117,7 @@ function PromiseRow({
   projectId,
   packageId,
   dispatch,
+  onFollowUp,
   keptBy,
 }: {
   state: GcState
@@ -118,6 +131,7 @@ function PromiseRow({
   projectId?: string
   packageId?: string
   dispatch: Dispatch<GcAction>
+  onFollowUp?: (partnerId: string) => void
   /** How it is kept on its own. Null: the office marks it with It came. */
   keptBy: string | null
 }) {
@@ -138,6 +152,12 @@ function PromiseRow({
         <strong>{partner.company}</strong>
         <span style={{ color: 'var(--text-muted)' }}>{partner.contact}</span>
         <Chip tone="grey">{tag}</Chip>
+        {onFollowUp && (
+          <>
+            <span style={{ flex: 1 }} />
+            <Btn onClick={() => onFollowUp(partner.id)}>Follow up</Btn>
+          </>
+        )}
       </div>
       {words && <div style={{ margin: '0.3rem 0 0.2rem', fontSize: '0.9rem' }}>{words}</div>}
       {line}

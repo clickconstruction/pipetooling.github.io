@@ -339,6 +339,9 @@ export interface Partner {
   vetting?: PartnerVetting
   /** Calls and notes with the company itself, not about one ask (the company window, 2026-10-04). Newest first. */
   contacts?: { on: string; by: string; note: string }[]
+  /** The contact's phone and email, for Follow up's Call, Text and Email (the owner, 2026-10-04). Unset: a made-up one stands in (`partnerReach`). */
+  phone?: string
+  email?: string
 }
 
 /** What a new company tells us about itself in its portal (question 3). */

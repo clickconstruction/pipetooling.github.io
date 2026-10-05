@@ -1,7 +1,11 @@
 import { useState, type Dispatch } from 'react'
 import {
   askPromise,
+  followUpCount,
+  followUpPeople,
   followUps,
+  partnerReach,
+  telHref,
   promiseWords,
   shortDate,
   wordRecord,
@@ -20,6 +24,7 @@ import { LinkNeverOpenedChip } from './GcPortalLinkChip'
 import { Btn, Card, Chip, Why, input, type Tone } from './gcUi'
 import { GcFollowUpPromises } from './GcFollowUpPromises'
 import { GcDeclineForm } from './GcDeclineForm'
+import { GcFollowUpSheet } from './GcFollowUpSheet'
 
 /**
  * GC mode design spike: keeping up with a company on one ask. Every call, text, email, nudge and
@@ -168,8 +173,21 @@ export function GcFollowUpTab({
 }) {
   const all = followUps(state)
   const toCall = all.filter((f) => f.why !== 'waiting').length
+  // The Follow up sheet (the owner, 2026-10-04, Building lane's GcFollowUpSheet): one person at a time, a draft from me.
+  const [sheet, setSheet] = useState<{ partnerId?: string; calling?: boolean } | null>(null)
+  const listCount = followUpCount(followUpPeople(state))
+  const open = (partnerId?: string, calling = false) => setSheet({ ...(partnerId ? { partnerId } : {}), calling })
   return (
     <div style={{ display: 'grid', gap: '0.9rem' }}>
+      {sheet && <GcFollowUpSheet state={state} dispatch={dispatch} {...(sheet.partnerId ? { startPartnerId: sheet.partnerId } : {})} startCalling={sheet.calling ?? false} onClose={() => setSheet(null)} />}
+      {listCount > 0 && (
+        <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <Btn kind="primary" onClick={() => open()}>
+            Work the list · {listCount}
+          </Btn>
+          <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>One person at a time: a draft from you to send, or a call to log.</span>
+        </div>
+      )}
       <Why>
         Every company we are waiting on, across every project, with the ones to call first. Log what they say as you
         go. When they give a day for their quote, write it down: if that day passes with no quote, they come back to
@@ -187,14 +205,14 @@ export function GcFollowUpTab({
             </div>
             <div style={{ display: 'grid', gap: '0.5rem' }}>
               {rows.map((f) => (
-                <FollowUpCard key={f.invite.id} state={state} followUp={f} dispatch={dispatch} onMap={onMap} />
+                <FollowUpCard key={f.invite.id} state={state} followUp={f} dispatch={dispatch} onMap={onMap} onFollowUp={open} />
               ))}
             </div>
           </section>
         )
       })}
       {/* Insurance, papers and every other promise (question 8). */}
-      <GcFollowUpPromises state={state} dispatch={dispatch} />
+      <GcFollowUpPromises state={state} dispatch={dispatch} onFollowUp={(partnerId) => open(partnerId)} />
       {all.length === 0 && <Card style={{ color: 'var(--text-muted)' }}>We are not waiting on anyone for a quote.</Card>}
     </div>
   )
@@ -205,11 +223,14 @@ function FollowUpCard({
   followUp,
   dispatch,
   onMap,
+  onFollowUp,
 }: {
   state: GcState
   followUp: FollowUp
   dispatch: Dispatch<GcAction>
   onMap: (projectId: string, packageId: string) => void
+  /** Open the Follow up sheet on this company: to write, or, after Call, to log what they said. */
+  onFollowUp?: (partnerId: string, calling?: boolean) => void
 }) {
   const { project, pkg, invite, partner, why, words } = followUp
   const ids = { projectId: project.id, packageId: pkg.id, inviteId: invite.id }
@@ -224,6 +245,22 @@ function FollowUpCard({
         {/* Portal lane: a company that never opened its link. */}
         <LinkNeverOpenedChip state={state} partnerId={partner.id} />
         <span style={{ flex: 1 }} />
+        {onFollowUp && (
+          <>
+            {/* One click to call (the owner, 2026-10-04): it dials, then the sheet asks what they said. */}
+            <a
+              href={telHref(partnerReach(partner).phone)}
+              title={`Call ${partnerReach(partner).phone}`}
+              onClick={() => onFollowUp(partner.id, true)}
+              style={{ display: 'inline-flex', alignItems: 'center', height: 30, padding: '0 0.75rem', borderRadius: 6, border: '1px solid var(--border-strong)', color: 'var(--text-base)', fontWeight: 600, fontSize: '0.85rem', textDecoration: 'none' }}
+            >
+              Call {partnerReach(partner).first}
+            </a>
+            <Btn kind="primary" onClick={() => onFollowUp(partner.id)}>
+              Follow up
+            </Btn>
+          </>
+        )}
         {why !== 'waiting' && (
           <>
             <Btn onClick={() => setDeclining('wont')}>Will not do it</Btn>
