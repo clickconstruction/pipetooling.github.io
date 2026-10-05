@@ -33,6 +33,17 @@ describe('ManHoursWho', () => {
     expect(within(robert).getAllByRole('cell').map((c) => c.textContent)).toEqual(['Robert', '—', '<1', '—', '3', '3'])
   })
 
+  it('drops a waiting note under the name on a phone-width card, and keeps it beside the name on a wide one', () => {
+    const noteDisplay = (compact: boolean) => {
+      const { unmount } = renderWithProviders(<ManHoursWho period={period} zoom="month" rows={rows} compact={compact} />)
+      const display = screen.getByText('40 h waiting').style.display
+      unmount()
+      return display
+    }
+    expect(noteDisplay(false)).toBe('inline')
+    expect(noteDisplay(true)).toBe('block')
+  })
+
   it('keeps the doors under the rows in the full-width panel and above them in the side panel', () => {
     const order = (layout: 'side' | 'below') => {
       const { container, unmount } = renderWithProviders(<ManHoursWho period={period} zoom="month" rows={rows} layout={layout} />)
