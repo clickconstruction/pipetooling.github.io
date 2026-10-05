@@ -1,17 +1,19 @@
 import { useState } from 'react'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
-import { Card, num, td, th } from './gcUi'
+import { Card, Chip, num, td, th } from './gcUi'
 import { cashAhead, money, shortDate, type CashMove, type CashWeek, type GcState } from '../../lib/gcMode/gcModel'
 
 /**
  * GC mode design spike: the next weeks of money across every job, on the Money tab. Each week what
- * comes in from the owners and goes out to the trades, and where we stand at the end of it. Only
- * what is on the books counts (`cashAhead`); late owner money counts only when the box is ticked.
+ * comes in from the customers and goes out to the trades, and where we stand at the end of it
+ * (`cashAhead`). What we expect (the next bills, the trades' next draws) counts unless its box is
+ * unticked, marked expected; late customer money counts only when its box is ticked.
  */
 export function GcOwnerBillingAhead({ state }: { state: GcState }) {
   const [countLate, setCountLate] = useState(false)
+  const [countExpected, setCountExpected] = useState(true)
   const narrow = useMatchMedia('(max-width: 640px)')
-  const a = cashAhead(state, { countLate })
+  const a = cashAhead(state, { countLate, countExpected })
   const lastWeek = a.weeks[a.weeks.length - 1]
   const lateTotal = a.late.reduce((t, m) => t + m.amount, 0)
   const lateOne = a.late.length === 1 ? a.late[0] : undefined
@@ -25,12 +27,20 @@ export function GcOwnerBillingAhead({ state }: { state: GcState }) {
       <div style={{ padding: '0.75rem 1rem 0.3rem', display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
         <strong style={{ fontSize: '1rem' }}>The next {a.weeks.length} weeks</strong>
         <span style={{ flex: 1 }} />
-        {a.late.length > 0 && (
-          <label style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', fontSize: '0.85rem', cursor: 'pointer' }}>
-            <input type="checkbox" checked={countLate} onChange={(e) => setCountLate(e.target.checked)} />
-            {lateOne ? `Count the late ${money(lateOne.amount)} from ${lateOne.who} this week` : `Count the late bills this week, ${money(lateTotal)}`}
-          </label>
-        )}
+        <div style={{ display: 'grid', gap: '0.25rem' }}>
+          {(a.expected.in > 0.5 || a.expected.out > 0.5) && (
+            <label style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', fontSize: '0.85rem', cursor: 'pointer' }}>
+              <input type="checkbox" checked={countExpected} onChange={(e) => setCountExpected(e.target.checked)} />
+              Count what we expect: the bills we send {shortDate(a.nextBills.on)} and the trades&rsquo; next draws
+            </label>
+          )}
+          {a.late.length > 0 && (
+            <label style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', fontSize: '0.85rem', cursor: 'pointer' }}>
+              <input type="checkbox" checked={countLate} onChange={(e) => setCountLate(e.target.checked)} />
+              {lateOne ? `Count the late ${money(lateOne.amount)} from ${lateOne.who} this week` : `Count the late bills this week, ${money(lateTotal)}`}
+            </label>
+          )}
+        </div>
       </div>
       <div style={{ padding: '0 1rem 0.6rem', fontSize: '0.9rem' }}>
         <Headline weeks={a.weeks} lowest={a.lowest} />{' '}
@@ -73,7 +83,11 @@ export function GcOwnerBillingAhead({ state }: { state: GcState }) {
           ))}
         {a.later.length > 0 && lastWeek && (
           <div>
-            After {shortDate(lastWeek.end)}: {a.later.map((m) => `${m.dir === 'in' ? 'in' : 'out'} ${money(m.amount)} ${shortDate(m.on)}`).join(', ')}.
+            After {shortDate(lastWeek.end)}:{' '}
+            {a.later
+              .map((m) => `${m.dir === 'in' ? `in ${money(m.amount)} from ${m.who}` : `out ${money(m.amount)} to ${m.who}`} ${shortDate(m.on)}${m.expected ? ', expected' : ''}`)
+              .join('; ')}
+            .
           </div>
         )}
         {noDayBills.map((m) => (
@@ -90,13 +104,18 @@ export function GcOwnerBillingAhead({ state }: { state: GcState }) {
         {a.nextBills.jobs > 0 && (
           <div>
             The bills we send {shortDate(a.nextBills.on)} come to {money(a.nextBills.amount)} on {a.nextBills.jobs === 1 ? '1 job' : `${a.nextBills.jobs} jobs`}.
-            They count once they go.
+            {countExpected
+              ? ` Each counts on the day that customer usually pays. The trades' next draws for the same work, ${money(a.expected.out)}, count ${PAY_WITHIN_WORDS} after we send them.`
+              : ' They are not counted until they go. Neither are the trades\u2019 next draws.'}
           </div>
         )}
       </div>
     </Card>
   )
 }
+
+/** How long after the bill day the trades' next draws are paid: the pay terms we give them. */
+const PAY_WITHIN_WORDS = '10 days'
 
 function standingWords(n: number): string {
   return Math.round(n) >= 0 ? `${money(n)} ahead` : `${money(-n)} carrying`
@@ -231,6 +250,8 @@ function MoveLine({ move: m }: { move: CashMove }) {
     weAreLate: 'past its pay-by day, counted now',
     ifApprovedToday: `asked ${shortDate(m.askedOn)}, counted as if we approve it today`,
     retainage: `from ${shortDate(m.on)}`,
+    nextBill: `goes out on the bill day, expected ${shortDate(m.on)}`,
+    nextDraw: `for the work they reported, paid by ${shortDate(m.on)} if they ask by the bill day`,
   }
   return (
     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
@@ -243,7 +264,8 @@ function MoveLine({ move: m }: { move: CashMove }) {
         <span style={{ color: 'var(--text-muted)' }}>
           {' '}
           · {m.project.name} · {paper} · {when[m.why]}
-        </span>
+        </span>{' '}
+        {m.expected && <Chip tone="grey">expected</Chip>}
       </span>
     </div>
   )

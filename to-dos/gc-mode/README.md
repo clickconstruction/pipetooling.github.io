@@ -727,7 +727,11 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
   their promise or the day we expect it, an approved draw on its pay-by day, a draw asked for as if
   we approve it today. Owner money already late counts this week only when the box is ticked.
   Retainage on both sides waits until it has a day: a trade's is 10 days after the owner pays our
-  final. The bills we send on the 25th count once they go.
+  final. What we expect counts too, marked expected, unless its box is unticked (owner's go-ahead
+  2026-10-04): the bill each job sends on the 25th, on the day that customer usually pays, and each
+  trade's next draw for the work it reported and has not drawn (what we see, on a pay application we
+  sent back), less retainage, paid 10 days after the bill day. On the made-up jobs that moves the low
+  point to $117,680 carrying the week of Nov 2: we pay the trades before the customers pay us.
 - Insurance within 30 days of running out (`COI_WARN_DAYS`) turns its chip amber, asks under
   Needs you, and emails the company 30 days before the date.
 - A new insurance certificate counts the moment the company sends it; nobody in the office checks
