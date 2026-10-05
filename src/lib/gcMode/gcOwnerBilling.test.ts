@@ -2,6 +2,10 @@
 import { describe, expect, it } from 'vitest'
 import {
   allJobsMoney,
+  latePayApps,
+  payReminderEmail,
+  payReminderSentWords,
+  payReminderStep,
   ownerFinishRisk,
   ownerInterest,
   ownerInterestFrom,
@@ -1099,6 +1103,66 @@ describe('what we expect, beside what is on the books', () => {
     expect(off.later.some((m) => m.expected)).toBe(false)
     const on = cashAhead(initialGcState())
     expect(on.weeks.flatMap((w) => w.moves).filter((m) => m.who === 'Iron Horse Fabrication' && m.expected)).toEqual([])
+  })
+})
+
+describe('reminding a customer to pay a late bill', () => {
+  const fairOaks = (state: GcState) => state.projects.find((p) => p.id === 'fairoaksd') as GcProject
+  const cibolo = (state: GcState) => state.customers.find((c) => c.name === 'Cibolo Creek Partners')
+  const r = (n: number) => Math.round(n)
+
+  it('lists the bills that can be reminded: certified, not paid, past their due day', () => {
+    const state = initialGcState()
+    expect(latePayApps(state, fairOaks(state)).map((b) => [b.number, b.due, b.daysLate, r(b.open)])).toEqual([[3, '2026-09-30', 2, 288_879]])
+    const step = payReminderStep(state, fairOaks(state), 3)
+    expect(step).toMatchObject({
+      docKey: 'payapp-fairoaksd-3',
+      title: 'Remind them to pay pay application 3',
+      history: 'Due Sep 30, 2 days late. This is the first reminder.',
+      dayWord: 'Pay by',
+      by: '2026-10-07',
+    })
+    expect(payReminderStep(state, fairOaks(state), 2)).toBeNull()
+    // Waiting on the architect: nothing to pay yet.
+    const sent = gcReducer(state, { type: 'sendOwnerPayApp', projectId: 'helotes' })
+    const helotes = sent.projects.find((p) => p.id === 'helotes') as GcProject
+    expect(payReminderStep({ ...sent, today: '2026-12-31' }, helotes, 1)).toBeNull()
+  })
+
+  it('says what is open, since when, and how to pay; interest only when we charge it', () => {
+    let state = initialGcState()
+    let mail = payReminderEmail(state, cibolo(state), fairOaks(state), 3, '2026-10-07', 'Elena, a call this week would help.')
+    expect(mail.subject).toBe('Reminder: pay application 3 for Fair Oaks Shops, Building D, $288,879')
+    expect(mail.lines).toEqual([
+      'Hello Elena,',
+      'Pay application 3 for Fair Oaks Shops, Building D has $288,879 still open. It was due Wed Sep 30, the day you gave.',
+      'Please pay it by Wed Oct 7.',
+      'Elena, a call this week would help.',
+      'Pay it in your portal, by card or bank transfer.',
+      'Our unconditional lien waiver for it comes to you the day it is paid.',
+    ])
+    state = gcReducer(state, { type: 'setOwnerLateInterest', projectId: 'fairoaksd', pctPerMonth: 1.5 })
+    state = gcReducer(state, { type: 'ownerPayPart', projectId: 'fairoaksd', number: 3, amount: 88_878.51 })
+    mail = payReminderEmail(state, cibolo(state), fairOaks(state), 3, '2026-10-07', '')
+    expect(mail.lines.slice(1, 4)).toEqual([
+      'Pay application 3 for Fair Oaks Shops, Building D has $200,000 still open. It was due Wed Sep 30, the day you gave.',
+      'Thank you for the $88,879 you paid Oct 2.',
+      'Interest of 1.5% a month runs on it from Sep 30. $285 has built up so far.',
+    ])
+  })
+
+  it('keeps the reminder on the bill, never as a promise', () => {
+    const before = initialGcState()
+    const state = gcReducer(before, { type: 'remindCustomerToPay', projectId: 'fairoaksd', number: 3, by: '2026-10-07', note: '' })
+    const app = fairOaks(state).ownerBilling?.payApps?.[2]
+    expect(app?.reminders).toEqual([{ on: '2026-10-02', by: '2026-10-07', note: '' }])
+    expect(app?.promises).toEqual(fairOaks(before).ownerBilling?.payApps?.[2]?.promises)
+    expect(latePayApps(state, fairOaks(state)).map((b) => b.daysLate)).toEqual([2])
+    expect(payReminderSentWords(state, fairOaks(state), 3)).toBe('Reminded today · pay by Wed Oct 7.')
+    expect(payReminderStep(state, fairOaks(state), 3)?.history).toBe('Due Sep 30, 2 days late. Reminded once, last Oct 2.')
+    // Not on a bill that is not late, nor for a day already gone.
+    expect(gcReducer(before, { type: 'remindCustomerToPay', projectId: 'fairoaksd', number: 2, by: '2026-10-07', note: '' })).toBe(before)
+    expect(gcReducer(before, { type: 'remindCustomerToPay', projectId: 'fairoaksd', number: 3, by: '2026-10-01', note: '' })).toBe(before)
   })
 })
 
