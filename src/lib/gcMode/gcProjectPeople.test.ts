@@ -31,8 +31,10 @@ describe('people to call on a job (the owner, 2026-10-04)', () => {
       ['Brightline Electric', ['The statement of work is waiting on their signature, sent Sep 30.']],
     ])
     const fair = of(state, 'fairoaksd')
-    expect([fair.count, fair.late]).toEqual([1, 1])
-    expect(fair.people[0]?.reasons.map((r) => r.text)).toEqual(['Their insurance ran out Sep 15.', 'The unconditional waiver on draw 1 has not come.'])
+    // Pecan Valley's insurance and waiver, and Cibolo's pay application 3, two days late.
+    expect([fair.count, fair.late]).toEqual([2, 2])
+    expect(fair.people.find((p) => p.company === 'Pecan Valley Electric')?.reasons.map((r) => r.text)).toEqual(['Their insurance ran out Sep 15.', 'The unconditional waiver on draw 1 has not come.'])
+    expect(fair.people.find((p) => p.kind === 'customer')?.reasons.map((r) => r.text)).toEqual(['Pay application 3 is 2 days late, $288,879 open.'])
     expect(of(state, 'stoneoak').count).toBe(0)
     expect(of(state, 'padb').tone).toBeNull()
   })

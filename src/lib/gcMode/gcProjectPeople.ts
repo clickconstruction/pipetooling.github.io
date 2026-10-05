@@ -6,7 +6,7 @@
  * architect and the customer count; our own moves (a draft not sent) do not, the ring lists those.
  */
 import type { AskContact, GcCustomer, GcProject, GcState, Partner } from './gcTypes'
-import { daysUntil, shortDate, weekdayDate } from './gcWords'
+import { daysUntil, money, shortDate, weekdayDate } from './gcWords'
 import { currentRev, partnerById, planLabel } from './gcLookups'
 import { followUps, packageIsOpen } from './gcFollowUp'
 import { insuranceRenewals, tradePromisesOf, tradePromiseState, tradePromiseWords } from './gcPromises'
@@ -14,6 +14,7 @@ import { architectSummary } from './gcCustomers'
 import { sentBackOpen, timesSentBack } from './gcBuilding'
 import { followUpPeople, partnerReach, type FollowItem, type FollowPerson } from './gcFollowUpSheet'
 import { contractWaitingOn, customerReminderLate, customerSentWords } from './gcCustomerSend'
+import { latePayApps, payReminderSentWords } from './gcOwnerBillingRemind'
 
 export type PeopleTone = 'red' | 'amber' | 'grey'
 
@@ -198,6 +199,15 @@ export function projectPeople(state: GcState, project: GcProject): ProjectPeople
           code: 'contract',
         })
       }
+      // A bill past its due day (Owner Billing's latePayApps): a call to make, and late.
+      for (const late of latePayApps(state, project)) {
+        const reminded = payReminderSentWords(state, project, late.number)
+        add(asCustomer, {
+          text: `Pay application ${late.number} is ${late.daysLate} ${late.daysLate === 1 ? 'day' : 'days'} late, ${money(late.open)} open.${reminded ? ` ${reminded}` : ''}`,
+          tone: 'red',
+          code: `pay:${late.number}`,
+        })
+      }
       for (const co of (project.changeOrders ?? []).filter((c) => c.status === 'sent')) {
         const reminded = customerSentWords(state, customer.id, 'changeOrder', project.id, co.id)
         add(asCustomer, {
@@ -324,6 +334,20 @@ export function projectFollowPeople(state: GcState, project: GcProject): FollowP
           words: {
             en: { about: `our bid for ${project.name}`, detail: `We sent it ${project.ourBidSentOn ? weekdayDate(project.ourBidSentOn) : 'recently'}`, ask: 'Do you have any questions for us?' },
             es: { about: `nuestra propuesta para ${project.name}`, detail: 'Se la enviamos hace unos días', ask: '¿Tiene alguna pregunta?' },
+          },
+        }]
+      }
+      if (reason.code?.startsWith('pay:')) {
+        const n = Number(reason.code.slice(4))
+        const late = latePayApps(state, project).find((l) => l.number === n)
+        return [{
+          ...base,
+          key: `payment-${project.id}-${n}`,
+          kind: 'payment',
+          label: `Pay application ${n} · ${project.name}`,
+          words: {
+            en: { about: `pay application ${n} for ${project.name}`, detail: late ? `It was due ${weekdayDate(late.due)}, and ${money(late.open)} is still open` : 'It is past its due day', ask: 'Could you send the payment this week?' },
+            es: { about: `la solicitud de pago ${n} de ${project.name}`, detail: 'Ya pasó su fecha', ask: '¿Puede enviar el pago esta semana?' },
           },
         }]
       }

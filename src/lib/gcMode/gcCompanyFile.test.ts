@@ -85,7 +85,13 @@ describe("a company's window (the owner, 2026-10-04)", () => {
     const cibolo = state.customers.find((c) => c.id === 'cibolo')
     if (!cibolo) throw new Error('no cibolo')
     const docs = customerDocuments(state, cibolo)
-    expect(docs.groups.flatMap((g) => g.docs.map((d) => `${d.key} ${d.statusWords}`))).toEqual(['contract-fairoaksd signed Jun 2', 'owner-payapps-fairoaksd 3 sent'])
+    // Pay application 3 is past its due day: its own row, with Remind them (Owner Billing's reminder).
+    expect(docs.groups.flatMap((g) => g.docs.map((d) => `${d.key} ${d.statusWords}`))).toEqual([
+      'contract-fairoaksd signed Jun 2',
+      'owner-payapps-fairoaksd 3 sent',
+      'payapp-fairoaksd-3 2 days late',
+    ])
+    expect(docs.toGet).toBe(1)
     expect(customerPaper(state, cibolo, 'owner-payapps-fairoaksd')?.table?.rows.length).toBe(3)
     const events = customerActivity(state, cibolo)
     expect(events[0]).toMatchObject({ on: '2026-10-01', kind: 'money', text: 'Paid pay application 2.' })

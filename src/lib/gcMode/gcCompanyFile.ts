@@ -13,6 +13,7 @@ import { priceToOwner } from './gcCustomers'
 import { retainageHeldNow, tradeChangesFor } from './gcBuilding'
 import { paperSendActivity, paperSentWords } from './gcPaperSend'
 import { customerSentWords } from './gcCustomerSend'
+import { latePayApps, payReminderSentWords } from './gcOwnerBillingRemind'
 
 export type DocStatus = 'ok' | 'soon' | 'missing' | 'info'
 
@@ -339,6 +340,18 @@ export function customerDocuments(state: GcState, customer: GcCustomer): { group
         projectId: project.id,
       })
     }
+    // Each bill past its due day, with Remind them (Owner Billing's reminder, 2026-10-04).
+    for (const late of latePayApps(state, project)) {
+      const reminded = payReminderSentWords(state, project, late.number)
+      docs.push({
+        key: `payapp-${project.id}-${late.number}`,
+        title: `Pay application ${late.number}`,
+        status: 'missing',
+        statusWords: `${late.daysLate} ${late.daysLate === 1 ? 'day' : 'days'} late`,
+        meta: `${reminded ? `${reminded} ` : ''}${money(late.open)} open · was due ${shortDate(late.due)}`,
+        projectId: project.id,
+      })
+    }
     // Interest on late bills (Owner Billing): its own paper, apart from the contract's bills.
     const interest = project.ownerBilling?.interestBills ?? []
     if (interest.length > 0) {
@@ -580,6 +593,20 @@ export function customerPaper(state: GcState, customer: GcCustomer, key: string)
         head: ['#', 'Sent', 'Asked', 'Paid'],
         rows: (project.ownerBilling?.payApps ?? []).map((a) => [`${a.number}`, shortDate(a.sentOn), money(a.due), a.paidOn ? shortDate(a.paidOn) : 'not yet']),
       },
+      foot: REAL_FILE,
+    }
+  }
+  if (key.startsWith('payapp-')) {
+    const late = latePayApps(state, project).find((l) => `payapp-${project.id}-${l.number}` === key)
+    if (!late) return null
+    return {
+      heading: `Pay application ${late.number}`,
+      rows: [
+        { label: 'Job', value: project.name },
+        { label: 'Still open', value: money(late.open) },
+        { label: 'Was due', value: shortDate(late.due) },
+        { label: 'Late', value: `${late.daysLate} ${late.daysLate === 1 ? 'day' : 'days'}` },
+      ],
       foot: REAL_FILE,
     }
   }

@@ -120,7 +120,10 @@ export function SendView({
   onCancel,
   dayNote = 'Follow up shows it to chase after this day. Signing or sending it keeps it.',
   notePlaceholder = 'Optional. Added to the email.',
+  choices,
 }: {
+  /** The days to pick from. Unset: in 3 days, a week, two weeks. */
+  choices?: { on: string; label: string }[]
   /** The line box's hint: a company that reads Spanish is asked for it in Spanish. */
   notePlaceholder?: string
   /** The line under the day: what the day does. A trade's paper: Follow up chases it. */
@@ -149,7 +152,7 @@ export function SendView({
     const el = box.current
     if (el && el.getBoundingClientRect().top > window.innerHeight * 0.6) el.scrollIntoView({ block: 'start', behavior: 'smooth' })
   }, [])
-  const days = paperDayChoices(today)
+  const days = choices ?? paperDayChoices(today)
   const field = { display: 'grid', gridTemplateColumns: 'minmax(5.5rem, auto) minmax(0, 1fr)', gap: '0.5rem', alignItems: 'start', fontSize: '0.88rem' } as const
   const label = { color: 'var(--text-muted)', paddingTop: '0.2rem' } as const
 

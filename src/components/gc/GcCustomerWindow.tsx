@@ -6,6 +6,7 @@ import {
   customerDocuments,
   customerPaper,
   customerStep,
+  payReminderStep,
   customerPortalJobs,
   customerPortalStatus,
   customerSummary,
@@ -28,7 +29,7 @@ import {
 } from '../../lib/gcMode/gcModel'
 import { GcOwnerBillingPortal } from './GcOwnerBillingPortal'
 import { CompanyActivity, CompanyDocuments, CompanyPortalPanel, CompanyTabStrip } from './GcCompanyFile'
-import { GcCustomerSend } from './GcCustomerSend'
+import { GcCustomerPayReminder, GcCustomerSend } from './GcCustomerSend'
 import type { CompanyTab } from './gcCompanyOpener'
 import { Btn, Chip, Stat, num, td, th, type Tone } from './gcUi'
 
@@ -88,6 +89,13 @@ export function GcCustomerWindow({ state, customer, dispatch, onClose, onOpenPro
   /** A change order being reminded, by its Documents key: the send shows in the paper's place. */
   const [sending, setSending] = useState<string | null>(at?.send && at.doc ? at.doc : null)
   const sendStep = sending ? customerStep(state, customer, sending) : null
+  // A late bill's reminder (Owner Billing's, 2026-10-04): its rows are keyed payapp-<project>-<number>.
+  const payStepOf = (key: string) => {
+    const m = key.match(/^payapp-(.+)-(\d+)$/)
+    const project = m ? state.projects.find((p) => p.id === m[1]) : undefined
+    return m && project ? payReminderStep(state, project, Number(m[2])) : null
+  }
+  const payStep = sending && !sendStep ? payStepOf(sending) : null
   const owner = customerSummary(state, customer)
   const architect = architectSummary(state, customer)
   const isOwner = owner.live.length > 0 || customer.past.length > 0
@@ -255,7 +263,7 @@ export function GcCustomerWindow({ state, customer, dispatch, onClose, onOpenPro
               paper={doc ? customerPaper(state, customer, doc) : null}
               // Our contract gets Send to sign, then Remind them; a change order waiting on them, Remind them (the owner, 2026-10-04).
               ask={(d) => {
-                const step = customerStep(state, customer, d.key)
+                const step = customerStep(state, customer, d.key) ?? (payStepOf(d.key) ? { verb: 'Remind them' } : null)
                 return step && sending !== d.key ? (
                   <Btn
                     kind="primary"
@@ -269,7 +277,17 @@ export function GcCustomerWindow({ state, customer, dispatch, onClose, onOpenPro
                 ) : null
               }}
               aside={
-                sendStep ? (
+                payStep ? (
+                  <GcCustomerPayReminder
+                    key={sending ?? ''}
+                    state={state}
+                    customer={customer}
+                    step={payStep}
+                    dispatch={dispatch}
+                    onDone={() => setSending(null)}
+                    onCancel={() => setSending(null)}
+                  />
+                ) : sendStep ? (
                   <GcCustomerSend
                     key={sending ?? ''}
                     state={state}
