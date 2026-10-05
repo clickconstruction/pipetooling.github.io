@@ -44,7 +44,7 @@ Tap **Sent** — the bids you sent most recently rise to the top, and everything
 
 You press and hold a row for half a second. The row turns violet with a bar at its left edge. That is a mark. You let go early and nothing happens. A tap still opens the bid. With a mouse, you hover the row and click the circle at its left instead. You hold the row again, or click the circle again, to clear the mark.
 
-A mark is yours alone. It stays on the bid on every workflow tab and shows lighter on the Bid Board. It also shows on the open bid as {{button:outline|Marked}} after the title. It follows you to any device you sign in on. Each marked row says when you marked it, like *marked Fri*.
+A mark is yours alone. It stays on the bid on every workflow tab and shows lighter on the Bid Board. The open bid has two small icons after its title. The left one is a ring. Press it to mark the bid. The ring fills in when the bid is marked. Rest the pointer on it and it says when you marked it. It follows you to any device you sign in on. Each marked row says when you marked it, like *marked Fri*.
 
 - {{button:outline|Marked}} next to {{button:blue|Only my bids}} shows only the bids you marked. You press it again to see every bid.
 - Search keeps the marks. A marked match stands out of the results.
@@ -58,12 +58,12 @@ Hold each row on Counts. Open Pricing and the three are still marked. Press Mark
 
 ## Mark a bid for someone else
 
-You open the bid and press {{button:outline|For someone…}} after its title. The bid's estimator and account man are listed first. You pick one of them, or pick someone else from the list. You can type a short note about what to look at. You press {{button:purple|Mark for Robert}} and the bid is marked on Robert's lists.
+You open the bid and press the person icon after its title. It is the right one of the two small icons. Rest the pointer on it and it says *For someone…* The bid's estimator and account man are listed first. You pick one of them, or pick someone else from the list. You can type a short note about what to look at. You press {{button:purple|Mark for Robert}} and the bid is marked on Robert's lists.
 
 When the person has phone notifications on, you can tick *Also send it to Robert's phone*. That sends one notification. When the box is not there, the mark waits on their bid lists.
 
 :::example Wendi asks Robert to reprice
-Wendi opens B494 and presses For someone… She picks Robert and types "GC moved the due date to Fri. Reprice the trim." Robert's Counts list now shows B494 with a violet W and her note.
+Wendi opens B494 and presses the person icon after its title. She picks Robert and types "GC moved the due date to Fri. Reprice the trim." Robert's Counts list now shows B494 with a violet W and her note.
 :::
 
 ## When someone marks a bid for you
