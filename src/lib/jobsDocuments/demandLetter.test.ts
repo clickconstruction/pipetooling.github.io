@@ -504,8 +504,20 @@ describe('paymentsAppliedToInvoice (v2.3515)', () => {
     expect(paymentsAppliedToInvoice(job, 's0')).toBe(500)
   })
 
-  // Job 273: three open bills, $38,780 unlinked. Each bill claims only what it absorbed.
-  it('job 273: oldest first covers all three bills once, the rest is the job\'s surplus', () => {
+  // v2.4534: with the job's total, the $38,780 paid the $38,780 of the job that is on no bill.
+  // The letter read $0.00 beside a § 53.056 notice for $17,585 until then.
+  it('job 273 with its $56,365 total: nothing has been paid on the three bills', () => {
+    const inv2 = (id: string, amount: number, seq: number) => ({ id, amount, status: 'billed', sequence_order: seq }) as unknown as JobWithDetails['invoices'][number]
+    const job = { revenue: 56365, invoices: [inv2('a', 13420, 0), inv2('b', 665, 1), inv2('c', 3500, 2)], payments: [pay(8880, null), pay(12000, null), pay(1200, null), pay(16700, null)] }
+    expect(['a', 'b', 'c'].map((id) => paymentsAppliedToInvoice(job, id))).toEqual([0, 0, 0])
+    // Job 102: the $3,000 check paid the $3,000 of the $8,355 job its one bill left out.
+    expect(paymentsAppliedToInvoice({ revenue: 8355, invoices: [inv('a', 5355)], payments: [pay(3000, null)] }, 'a')).toBe(0)
+    // A job wholly on its bill: the deposit still comes off it.
+    expect(paymentsAppliedToInvoice({ revenue: 5355, invoices: [inv('a', 5355)], payments: [pay(3000, null)] }, 'a')).toBe(3000)
+  })
+
+  // Job 273 read without its total (a caller that has none): each bill claims only what it absorbed.
+  it('job 273 without the job\'s total: oldest first covers all three bills once, the rest is the job\'s surplus', () => {
     const inv2 = (id: string, amount: number, seq: number) => ({ id, amount, status: 'billed', sequence_order: seq }) as unknown as JobWithDetails['invoices'][number]
     const job = { invoices: [inv2('a', 13420, 0), inv2('b', 3500, 1), inv2('c', 665, 2)], payments: [pay(38780, null)] }
     expect(paymentsAppliedToInvoice(job, 'a')).toBe(13420)

@@ -391,6 +391,7 @@ export function parsePortalChecks(raw: unknown): PortalChecksPayload | null {
       gc_customer_id: null,
       bill_to_party: null,
       lien_retainage_held: typeof j.lien_retainage_held === 'number' ? j.lien_retainage_held : null,
+      revenue: typeof j.revenue === 'number' ? j.revenue : null,
       invoices: invoices
         .filter((i) => i != null && typeof i === 'object' && typeof i.id === 'string' && i.id)
         .map((i) => ({ id: i.id as string, job_id: jobId, sequence_order: typeof i.sequence_order === 'number' ? i.sequence_order : null, amount: num(i.amount), status: str(i.status, 'billed'), billed_at: ymd(i.billed_at) })),
