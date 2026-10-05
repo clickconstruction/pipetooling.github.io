@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useReducer, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useReducer, useState, type CSSProperties, type Dispatch } from 'react'
 import { SpotlightTour } from '../components/SpotlightTour'
 import { BidsModeToggle } from '../components/gc/BidsModeToggle'
 import {
@@ -27,6 +27,8 @@ import { GcTradeMap } from '../components/gc/GcTradeMap'
 import { GcTradePortal } from '../components/gc/GcTradePortal'
 import { GC_ICON_PATHS } from '../components/gc/gcIcons'
 import { GcProgressRing } from '../components/gc/GcProgressRing'
+import { GcPriceCard, GcPriceLikely, GcPriceTrigger, type PriceCardTab } from '../components/gc/GcPriceCard'
+import { usePriceCard } from '../components/gc/usePriceCard'
 import { Btn, Card, Chip, PlusUnknown, Stat, type Tone } from '../components/gc/gcUi'
 import { useMatchMedia } from '../hooks/useMatchMedia'
 import {
@@ -61,6 +63,8 @@ import {
   type StageProgress,
   type GcProject,
   type GcStage,
+  type GcAction,
+  type GcState,
 } from '../lib/gcMode/gcModel'
 import { GC_PROJECT_TOUR_STEPS, GC_TOUR_STEPS } from '../lib/gcMode/gcTour'
 
@@ -384,6 +388,7 @@ export default function GcMode() {
                         progress={stageProgress(state, p)}
                         today={state.today}
                         onOpen={() => { setProjectId(p.id); setTab('packages') }}
+                        priceCard={{ state, dispatch, onTab: (t) => { setProjectId(p.id); setTab(t) } }}
                         onPlans={() => setPlansForId(p.id)}
                         onCustomer={() => setCustomerId(p.customerId)}
                         onArchitect={() => setCustomerId(p.architectId)}
@@ -431,6 +436,7 @@ export default function GcMode() {
                         progress={stageProgress(state, p)}
                         today={state.today}
                         onOpen={() => { setProjectId(p.id); setTab('packages') }}
+                        priceCard={{ state, dispatch, onTab: (t) => { setProjectId(p.id); setTab(t) } }}
                         onPlans={() => setPlansForId(p.id)}
                         onCustomer={() => setCustomerId(p.customerId)}
                         onArchitect={() => setCustomerId(p.architectId)}
@@ -794,6 +800,7 @@ function ProjectRow({
   onArchitect,
   chase,
   onChase,
+  priceCard,
 }: {
   project: GcProject
   /** The first row of a board section: its ring and its block carry walkthrough anchors (gc-ring-…, gc-due-…). */
@@ -812,8 +819,11 @@ function ProjectRow({
   /** Companies to call on this project now. */
   chase: number
   onChase: () => void
+  /** The card behind the price (the owner's pick B, 2026-10-04, Building lane's GcPriceCard): each trade by what it needs next. */
+  priceCard?: { state: GcState; dispatch: Dispatch<GcAction>; onTab: (tab: PriceCardTab) => void }
 }) {
   const totals = proposalTotals(project)
+  const card = usePriceCard()
   const owner = priceToOwner(project)
   const signed = project.packages.filter((p) => p.sow?.status === 'signed').length
   const subs = project.packages.filter((p) => !p.selfPerform).length
@@ -920,7 +930,13 @@ function ProjectRow({
             </Chip>
           ) : null
         })}
-        <Chip tone={totals.holes.length > 0 ? 'red' : totals.plugged.length > 0 ? 'amber' : 'green'}>{coverageWords(project, today)}</Chip>
+        {priceCard && !owner.signed ? (
+          <GcPriceTrigger card={card} label={`${coverageWords(project, today)}. Show each trade.`} style={{ textDecoration: 'none' }}>
+            <Chip tone={totals.holes.length > 0 ? 'red' : totals.plugged.length > 0 ? 'amber' : 'green'}>{coverageWords(project, today)}</Chip>
+          </GcPriceTrigger>
+        ) : (
+          <Chip tone={totals.holes.length > 0 ? 'red' : totals.plugged.length > 0 ? 'amber' : 'green'}>{coverageWords(project, today)}</Chip>
+        )}
         {chase > 0 && (
           <button
             type="button"
@@ -972,13 +988,34 @@ function ProjectRow({
           </>
         )}
         {owner.signed ? null : totals.holes.length > 0 ? (
-          <span style={{ display: 'block', fontWeight: 400, fontSize: '0.75rem', color: 'var(--text-red-700)' }}>so far, with holes</span>
+          <span style={{ display: 'block', fontWeight: 400, fontSize: '0.75rem', color: 'var(--text-red-700)' }}>
+            {priceCard ? (
+              <GcPriceTrigger card={card} label={`so far, with ${totals.holes.length} ${totals.holes.length === 1 ? 'hole' : 'holes'}. Show each trade.`}>
+                so far, with {totals.holes.length} {totals.holes.length === 1 ? 'hole' : 'holes'}
+              </GcPriceTrigger>
+            ) : (
+              'so far, with holes'
+            )}
+          </span>
         ) : (
           totals.plugged.length > 0 && (
-            <span style={{ display: 'block', fontWeight: 400, fontSize: '0.75rem', color: 'var(--text-amber-800)' }}>with our guesses in it</span>
+            <span style={{ display: 'block', fontWeight: 400, fontSize: '0.75rem', color: 'var(--text-amber-800)' }}>
+              {priceCard ? (
+                <GcPriceTrigger card={card} label="with our guesses in it. Show each trade.">
+                  with our guesses in it
+                </GcPriceTrigger>
+              ) : (
+                'with our guesses in it'
+              )}
+            </span>
           )
         )}
+        {/* The price once every trade is in (the owner's pick B, 2026-10-04): a hole at its lowest quote or our budget. */}
+        {priceCard && !owner.signed && <GcPriceLikely state={priceCard.state} project={project} />}
       </span>
+      {priceCard && !owner.signed && (
+        <GcPriceCard card={card} state={priceCard.state} project={project} dispatch={priceCard.dispatch} onTab={priceCard.onTab} onFollowUp={onChase} />
+      )}
     </div>
   )
 }
