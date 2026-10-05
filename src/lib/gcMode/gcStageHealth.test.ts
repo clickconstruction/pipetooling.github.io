@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { initialGcState } from './gcFixture'
 import { gcReducer } from './gcReducer'
 import { projectPeople } from './gcProjectPeople'
-import { quotesWantedOn, stageHealth, tradeHasNumber, workingDaysLeft } from './gcStageHealth'
+import { quotesWantedOn, stageHealth, tradeHasNumber, weekIsQuiet, weekWorkingDays, workingDaysLeft } from './gcStageHealth'
 import type { GcState } from './gcTypes'
 
 const project = (state: GcState, id: string) => {
@@ -139,5 +139,17 @@ describe('the calendar\'s helpers', () => {
     expect(quotesWantedOn(project(state, 'helotes'))).toBeNull()
     expect(workingDaysLeft('2026-10-02', '2026-10-08')).toBe(5)
     expect(workingDaysLeft('2026-10-03', '2026-10-05')).toBe(1)
+  })
+})
+
+describe('quiet weeks', () => {
+  it('folds a week with nothing in it into one rectangle, and keeps every week with something', () => {
+    const state = initialGcState()
+    const padB = stageHealth(state, project(state, 'padb'))?.calendar.weeks ?? []
+    // Pad B: the pricing set and today in the first week, nothing for two weeks, the deadlines in the last.
+    expect(padB.map((w) => weekIsQuiet(w))).toEqual([false, true, true, false])
+    expect(weekWorkingDays(padB[1] ?? [])).toBe(5)
+    const boerne = stageHealth(state, project(state, 'boerne'))?.calendar.weeks ?? []
+    expect(boerne.every((w) => !weekIsQuiet(w))).toBe(true)
   })
 })
