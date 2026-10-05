@@ -70,15 +70,16 @@ describe('JobsStagesCommandBar', () => {
     expect(screen.getByText('New')).toBeTruthy()
   })
 
-  it('draws the Map button only while the map is hidden, after Forecast and before the search box (v2.4518)', () => {
+  it('draws the Map button only while the map is hidden, right of the search box and its tools (v2.4518, moved v2.4522)', () => {
     const view = render(<JobsStagesCommandBar {...props()} />)
     expect(screen.queryByLabelText('Show the map')).toBeNull()
     const onShowMap = vi.fn()
     view.rerender(<JobsStagesCommandBar {...props({ onShowMap })} />)
     const map = screen.getByLabelText('Show the map')
     expect(map.textContent).toBe('Map')
-    expect(screen.getByLabelText('Payment forecast').compareDocumentPosition(map) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    expect(map.compareDocumentPosition(screen.getByPlaceholderText(/^Search /)) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(screen.getByPlaceholderText(/^Search /).compareDocumentPosition(map) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(screen.getByText('menu-slot').compareDocumentPosition(map) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(map.parentElement?.lastElementChild).toBe(map)
     fireEvent.click(map)
     expect(onShowMap).toHaveBeenCalledTimes(1)
   })
