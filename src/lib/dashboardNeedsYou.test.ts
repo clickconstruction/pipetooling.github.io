@@ -196,6 +196,12 @@ describe('jobs stale open (v2.2825)', () => {
 })
 
 describe('buildNeedsYouItems', () => {
+  it('GC change requests (GC mode spike, 2026-10-05): their own item, our move, gated with GC follow up', () => {
+    const gc = { count: 1, late: false, title: '1 change request waiting on you in GC mode', detail: 'Tri-County Site asked for $14,820 on Fair Oaks Shops, Building D.', projectId: 'fairoaksd' }
+    const items = buildNeedsYouItems(inputs({ gcFollowUpEnabled: true, gcChangeRequests: gc }))
+    expect(items.map((i) => [i.key, i.severity, i.figure, i.actionLabel])).toEqual([['gc-change-requests', 'amber', '1', 'Answer it']])
+    expect(buildNeedsYouItems(inputs({ gcFollowUpEnabled: false, gcChangeRequests: gc }))).toEqual([])
+  })
   it('GC follow up (GC mode spike, 2026-10-04): one item, red once a day passed, gated by the flag', () => {
     const gc = { count: 5, late: true, title: '5 to follow up on in GC mode', detail: 'Hillside Excavation is late on their word.' }
     const items = buildNeedsYouItems(inputs({ gcFollowUpEnabled: true, gcFollowUp: gc }))

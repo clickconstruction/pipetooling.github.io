@@ -100,6 +100,7 @@ export type NeedsYouItem = {
     | 'contract-stale'
     | 'work-orders-unpriced'
     | 'gc-follow-up'
+    | 'gc-change-requests'
     | 'jobs-stale-open'
     | 'capacity-under'
     | 'dispatch-requests-aged'
@@ -186,6 +187,8 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'work-orders-unpriced': 40,
   // Revenue chasing tier: a trade's quote past its day is a GC bid that cannot be priced on time (GC mode spike).
   'gc-follow-up': 40,
+  // Revenue tier: a trade's change request waits on our answer before the work or the bill moves (GC mode spike).
+  'gc-change-requests': 40,
   'jobs-stale-open': 40,
   // People/planning tier: a crew running light for three weeks is a scheduling question, not a bill.
   'capacity-under': 50,
@@ -325,6 +328,12 @@ export type NeedsYouInputs = {
    */
   gcFollowUpEnabled?: boolean
   gcFollowUp?: { count: number; late: boolean; title: string; detail: string } | null
+  /**
+   * GC mode design spike (the owner, 2026-10-05): change requests trades sent from their portal,
+   * waiting on our answer (`gcChangeRequestsNeedsYou`). Our move, so not in the people count.
+   * Action opens the oldest's job on Bill the customer.
+   */
+  gcChangeRequests?: { count: number; late: boolean; title: string; detail: string; projectId: string } | null
   jobFollowupCount: number | null
   jobFollowupStageCounts: Record<JobFollowupStage, number> | null
   /**
@@ -755,6 +764,19 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
       detail: `Drafted${who} without a subcontract amount${oldestDays != null && oldestDays > 0 ? ` — the oldest ${oldestDays} day${oldestDays === 1 ? '' : 's'} ago` : ''}. Next: price it and send.`,
       figure: String(n),
       actionLabel: n === 1 ? 'Price it' : 'Price them',
+    })
+  }
+
+  if (inputs.gcFollowUpEnabled && inputs.gcChangeRequests && inputs.gcChangeRequests.count > 0) {
+    const gc = inputs.gcChangeRequests
+    items.push({
+      key: 'gc-change-requests',
+      severity: gc.late ? 'red' : 'amber',
+      kicker: 'GC mode',
+      title: gc.title,
+      detail: gc.detail,
+      figure: String(gc.count),
+      actionLabel: gc.count === 1 ? 'Answer it' : 'Answer them',
     })
   }
 

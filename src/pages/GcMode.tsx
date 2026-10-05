@@ -170,8 +170,12 @@ export default function GcMode() {
   const [boardTab, setBoardTab] = useState<BoardTab>(() => (new URLSearchParams(window.location.search).get('tab') === 'followup' ? 'followup' : 'projects'))
   // By stage every time the board opens (the owner, 2026-10-04, question 9): not remembered.
   const [boardGroup, setBoardGroup] = useState<BoardGroupBy>('stage')
-  const [projectId, setProjectId] = useState<string | null>(null)
-  const [tab, setTab] = useState<ProjectTab>('packages')
+  // The dashboard's change-request line opens a job at a tab (/bids/gc?project=<id>&ptab=owner; the owner, 2026-10-05).
+  const [projectId, setProjectId] = useState<string | null>(() => new URLSearchParams(window.location.search).get('project'))
+  const [tab, setTab] = useState<ProjectTab>(() => {
+    const ptab = new URLSearchParams(window.location.search).get('ptab')
+    return ptab && PROJECT_TABS.some((t) => t.key === ptab) ? (ptab as ProjectTab) : 'packages'
+  })
   const [portalOpen, setPortalOpen] = useState(true)
   const [portalPartnerId, setPortalPartnerId] = useState('')
   const [plansForId, setPlansForId] = useState<string | null>(null)
