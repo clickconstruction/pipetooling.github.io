@@ -76,7 +76,7 @@ Every sub sheet sits at one of three stages. The portal draws them as a four-dot
 | {{chip:yellow|Waiting on work}} | "Finish up, then tell us below and we'll come walk it." |
 | {{chip:purple|Waiting on inspection}} | "You told us the work's done Sep 4. We'll call it in for inspection and let you know." |
 | {{chip:blue|Waiting on customer}} | "Passed the inspection Sep 6. The customer's payment is the last thing between you and this money…" |
-| {{chip:blue|Waiting on customer}} + a *payable after* date | The fourth dot lights {{chip:green|Queued for Friday}}: *"Queued for the pay run — the date is right below."* |
+| {{chip:blue|Waiting on customer}} + a *payable after* date | The fourth dot lights with a green {{chip:green|Queued for Friday}} chip: *"Queued for the pay run — the date is right below."* |
 | {{chip:green|Paid}} | The card leaves *Your jobs*. Paid sets itself when the balance hits $0. |
 
 Move a sheet from the **Where it stands** rail on **Jobs → Subs → Pay**. The **→** beside the rail advances one stage. Clicking the rail's current dot opens all three, so you can jump or step back. The same control sits in the sheet editor's *Shown on the sub's portal* box.
