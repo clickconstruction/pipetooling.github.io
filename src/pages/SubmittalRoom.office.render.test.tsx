@@ -91,4 +91,16 @@ describe('SubmittalRoom · the office is never the GC (v2.4599, #62)', () => {
     fireEvent.click(within(thread).getByRole('button', { name: 'Ask' }))
     expect((await within(thread).findByRole('alert')).textContent).toBe('You are signed in as the office. Answer their questions from the Submittals tab.')
   })
+
+  it('v2.4608 · opened from the office’s door, the page says so; opened plain, it does not', async () => {
+    refuseWrites(payload())
+    const { unmount } = mount('/submittal?t=roomtoken&preview=1')
+    await screen.findByText('1 product needs your answer')
+    expect(screen.getByTestId('room-preview-banner').textContent).toBe('You are looking as the office. Nothing here is counted or saved.')
+    unmount()
+    mount('/submittal?t=roomtoken')
+    await screen.findByText('1 product needs your answer')
+    expect(screen.queryByTestId('room-preview-banner')).toBeNull()
+  })
 })
+

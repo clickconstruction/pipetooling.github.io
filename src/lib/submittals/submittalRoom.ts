@@ -5,6 +5,7 @@
  * edge function and the page agree.
  */
 import type { Database } from '../../types/database'
+import { withPreviewFlag } from '../publicViewCounting'
 import { asRoomRole, ROOM_ROLE_LABELS, type RoomRole, type SubmittalRoomPayload, type RoomMessage} from '../../../supabase/functions/_shared/submittalRoomPayload'
 
 export type SubmittalRoomRow = Database['public']['Tables']['bid_submittal_rooms']['Row']
@@ -24,6 +25,15 @@ export function newRoomToken(): string {
 /** The page every token opens: /submittal?t=… */
 export function roomLink(origin: string, token: string): string {
   return `${origin.replace(/\/$/, '')}/submittal?t=${encodeURIComponent(token)}`
+}
+
+/**
+ * The office's door to the GC's real page (v2.4608, #62): the room link with the preview flag on
+ * it, so the page is never counted as an open and refuses every write (v2.4599) on every path,
+ * a copied address too. Never the link the office sends: that is `roomLink`.
+ */
+export function roomPreviewLink(origin: string, token: string): string {
+  return withPreviewFlag(roomLink(origin, token))
 }
 
 export type PersonHow = 'named' | 'identified' | 'forwarded'
