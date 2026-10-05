@@ -260,6 +260,16 @@ who then works and bills the owner." So:
   The real check is the owner's: a helper opens the link with no Google sign-in, and a sign-in page
   or "You need access" means restricted; it runs again when a set is issued. **Drop the plan PDF
   here** stays, turned off with **Coming soon**. **Read a made-up plan PDF** stays as the demo.
+- **Follow up says each thing once per card** (the owner, 2026-10-04: "I feel like there is some
+  unnecessary redundancy here"; `follow-up-card-mockup.html`): the section says why a company is
+  there, the chip says the promised day and how late (or, with no promise, when we asked: "asked Sat
+  Sep 19, 13 days ago"), and the last call says what they said, without "Quote by Sep 30" when the
+  chip shows that day (the full story keeps every promise). The bid date sits in the job's chip
+  ("Boerne Retail Shell · Sitework · bid Thu Oct 8"), not as a sentence on every card. Log a contact
+  leaves the Follow up card, since Call and Follow up log it (the Trades tab and the company window
+  keep it: `AskThread`'s `onList`). The paragraph at the top keeps no count of its own. The card's
+  sentence (`FollowUp.words`) stays in the data for the sheet, the board's people count and Trade
+  partners.
 - **Customer, and an owner of the property when it is someone else** (the owner, 2026-10-04: "On
   this screen owner should become customer and then there should be a button to add owner
   different than customer"): step 1's picker is **Customer** ("The company we build it for, the
