@@ -294,7 +294,7 @@ function whenWords(ask: PortalAsk, today: string, lang: PortalLang): string {
 function BidChips({ ask, lang }: { ask: PortalAsk; lang: PortalLang }) {
   const chips: { tone: Tone; words: string }[] = []
   if (ask.invite.bid) chips.push({ tone: 'green', words: pt(lang, 'chipNumber', { amount: money(ask.invite.bid.amount) }) })
-  else if (ask.promise?.state === 'passed') chips.push({ tone: 'red', words: pt(lang, 'chipDayPassed') })
+  else if (ask.promise?.state === 'passed') chips.push({ tone: 'red', words: pt(lang, 'chipDayPassed', { date: pDate(lang, ask.promise.by) }) })
   else chips.push({ tone: 'grey', words: pt(lang, 'chipNoNumber') })
   if (ask.ranOut) chips.push({ tone: 'amber', words: pt(lang, 'chipRanOut') })
   if (ask.stale) chips.push({ tone: 'amber', words: pt(lang, 'chipPlansChanged') })

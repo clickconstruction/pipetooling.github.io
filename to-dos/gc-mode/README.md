@@ -615,6 +615,9 @@ who then works and bills the owner." So:
   lane's `quotesWantedOn`): three days before our own bid is due, so we have days to level the
   quotes. The invitation, the bid form, the home and Needs you all give that day ("Send your quote
   by Mon Oct 5"); a company asked after it is given our bid day (`portalQuoteDue` in `gcPortal.ts`).
+- **A late quote's chip says late and the day they gave** (owner, 2026-10-04): "late: you said
+  Sep 30" ("atrasado: dijo el 30 sep"), not "your day passed" (`chipDayPassed`). The office's
+  "Their day passed" title went to the Board lane as "Late on their word".
 - **A company asked to the pre-bid meeting sees it in its portal** (owner, 2026-10-04, on the New
   Project lane's `preBid`): a block on the project page (when and where, who runs it, whether coming
   is required to quote, then "You came" or "You did not come"), Needs you before it (amber if
