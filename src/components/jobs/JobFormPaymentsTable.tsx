@@ -170,7 +170,7 @@ export function JobFormPaymentsTable({
   )
   // The rows this block draws: money no listed bill counts, and rows still being typed.
   const invoices = editing?.invoices ?? []
-  const split = splitBillsAndPayments(invoices, payments, persistedLedgerPaymentIds)
+  const split = splitBillsAndPayments(invoices, payments, persistedLedgerPaymentIds, editing?.revenue)
   const placedCount = payments.length - split.onNoBill.length
   const visiblePayments = manualEntryOpen ? split.onNoBill : split.onNoBill.filter((r) => !isBlankManualRow(r))
   const openManualEntry = () => {

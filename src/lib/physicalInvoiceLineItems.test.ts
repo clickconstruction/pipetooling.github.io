@@ -127,6 +127,24 @@ describe('physicalInvoiceLineItems', () => {
     expect(rows.map((r) => r.amount)).toEqual([1, 2])
   })
 
+  // v2.4534 — job 273: $38,780 paid before its three bills existed, on a $56,365 job.
+  it('filterPaymentsForPhysicalInvoiceHistory prints no payment on a bill when the money paid the part of the job on no bill', () => {
+    const bills = [
+      { id: 's0', amount: 13420, status: 'billed', sequence_order: 0 },
+      { id: 's1', amount: 665, status: 'billed', sequence_order: 1 },
+      { id: 's2', amount: 3500, status: 'billed', sequence_order: 2 },
+    ]
+    const payments = [
+      { amount: 8880, paid_on: '2025-12-19', payment_type: 'Check', note: null, invoice_id: null, sequence_order: 0 },
+      { amount: 12000, paid_on: '2025-10-10', payment_type: 'Check', note: null, invoice_id: null, sequence_order: 1 },
+      { amount: 1200, paid_on: '2025-11-11', payment_type: 'Check', note: null, invoice_id: null, sequence_order: 2 },
+      { amount: 16700, paid_on: '2026-03-10', payment_type: 'Check', note: null, invoice_id: null, sequence_order: 3 },
+    ]
+    expect(filterPaymentsForPhysicalInvoiceHistory(payments, 'invoice', 's0', bills, 56365)).toEqual([])
+    // Without the total the bill printed the old money (the reading before v2.4534).
+    expect(filterPaymentsForPhysicalInvoiceHistory(payments, 'invoice', 's0', bills).map((p) => p.amount)).toEqual([8880, 4540])
+  })
+
   // The regression: a second bill with no payments of its own used to fall back
   // to every payment on the job, so the earlier bill's check printed here and
   // the customer was credited twice (job 258: $9,800 billed, read $1,800 due).

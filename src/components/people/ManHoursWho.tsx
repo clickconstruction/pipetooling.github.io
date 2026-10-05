@@ -60,11 +60,14 @@ export function ManHoursWho({
   rows,
   onShowWeek,
   layout = 'below',
+  compact = false,
 }: {
   period: ManHoursPeriod
   zoom: ManHoursZoom
   rows: readonly ManHoursWhoRow[]
   layout?: 'side' | 'below'
+  /** A phone-width card: the cells tighten the way the side panel's do, so more of the numbers fit beside the pinned names. */
+  compact?: boolean
   /** Moves the day table to the week starting on this day. Offered on the Week zoom only. */
   onShowWeek?: (weekStartYmd: string) => void
 }) {
@@ -73,9 +76,12 @@ export function ManHoursWho({
   const offJob = period.unassignedHours >= 0.5
   const showWeek = zoom === 'week' && onShowWeek
   const side = layout === 'side'
-  // The side panel is narrow: less air beside each number. Whole `padding` values, never a longhand over the shorthand.
-  const tight = side ? { padding: '0.3rem 0.4rem' } : null
-  const tightHead = side ? { padding: '0.25rem 0.4rem' } : null
+  // The side panel and a phone are narrow: less air beside each number. Whole `padding` values, never a longhand over the shorthand.
+  const narrow = side || compact
+  // A phone is narrower still: with 0.3rem beside each number all six columns fit a 375px screen.
+  const sideAir = compact ? '0.3rem' : '0.4rem'
+  const tight = narrow ? { padding: `0.3rem ${sideAir}` } : null
+  const tightHead = narrow ? { padding: `0.25rem ${sideAir}` } : null
   const doors =
     showWeek || waiting || offJob ? (
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.5rem' }}>
@@ -100,7 +106,7 @@ export function ManHoursWho({
     <section
       aria-label={`Who made up ${label}`}
       data-layout={layout}
-      style={{ marginTop: side ? '0.5rem' : '0.6rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '0.5rem 0.65rem' }}
+      style={{ marginTop: side ? '0.5rem' : '0.6rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: compact ? '0.5rem 0.4rem' : '0.5rem 0.65rem' }}
     >
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
         <strong style={{ color: 'var(--text-strong)', fontSize: '0.875rem' }}>Who made up {label}</strong>
@@ -131,9 +137,9 @@ export function ManHoursWho({
                       ...thStyle,
                       ...tightHead,
                       ...(c.pinned ? pinnedStyle : null),
-                      // In the side panel the header stays while the rows scroll, and the long one may take two lines.
+                      // In the side panel the header stays while the rows scroll. Where it is narrow the long one may take two lines.
                       ...(side ? { position: 'sticky' as const, top: 0, zIndex: c.pinned ? 2 : 1 } : null),
-                      ...(side && c.wraps ? { whiteSpace: 'normal' as const, minWidth: '3.4rem' } : null),
+                      ...(narrow && c.wraps ? { whiteSpace: 'normal' as const, minWidth: '3.4rem' } : null),
                     }}
                   >
                     {c.label}
@@ -147,8 +153,8 @@ export function ManHoursWho({
                   <td style={{ ...tdStyle, ...pinnedStyle, ...tight }}>
                     {r.name}
                     {r.pendingHours >= 0.5 ? (
-                      // Beside the name on the wide panel, under it on the narrow one, so the Total column stays in view.
-                      <span style={{ display: side ? 'block' : 'inline', marginLeft: side ? 0 : '0.4rem', fontSize: '0.72rem', color: 'var(--text-amber-800)' }}>{hrs(r.pendingHours)} h waiting</span>
+                      // Beside the name on the wide panel, under it where it is narrow, so the Total column stays in view.
+                      <span style={{ display: narrow ? 'block' : 'inline', marginLeft: narrow ? 0 : '0.4rem', fontSize: '0.72rem', color: 'var(--text-amber-800)' }}>{hrs(r.pendingHours)} h waiting</span>
                     ) : null}
                   </td>
                   <td style={{ ...tdStyle, ...tight }}>{hrs(r.fieldHours)}</td>

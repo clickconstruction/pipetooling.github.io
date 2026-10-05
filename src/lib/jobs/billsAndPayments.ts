@@ -247,7 +247,7 @@ export type BillsAndPayments = {
   slicesByBill: Map<string, PaymentSlice<PaymentRow>[]>
   /** Payments no listed bill counts: unlinked money the sent bills did not need, or linked to a bill not listed. */
   onNoBill: PaymentRow[]
-  /** Dollars of unlinked money no bill needed. */
+  /** Dollars of unlinked money no bill counts: what paid the part of the job on no bill (v2.4534) and what no bill needed. */
   surplus: number
 }
 
@@ -264,9 +264,11 @@ export function splitBillsAndPayments(
   invoices: ReadonlyArray<JobsLedgerInvoiceRow>,
   payments: ReadonlyArray<PaymentRow>,
   persistedIds?: ReadonlySet<string> | null,
+  /** The job's total (v2.4534): money that paid the part of the job on no bill stays in ③. */
+  jobTotal?: number | string | null,
 ): BillsAndPayments {
   const saved = persistedIds ? payments.filter((p) => persistedIds.has(p.id)) : payments
-  const attribution = attributeJobPayments(invoices, saved)
+  const attribution = attributeJobPayments(invoices, saved, jobTotal)
   const slicesByBill = new Map<string, PaymentSlice<PaymentRow>[]>()
   const placed = new Set<string>()
   for (const inv of invoices) {
@@ -275,5 +277,5 @@ export function splitBillsAndPayments(
     for (const s of slices) placed.add(s.payment.id)
   }
   const onNoBill = payments.filter((p) => !placed.has(p.id))
-  return { slicesByBill, onNoBill, surplus: attribution.surplus }
+  return { slicesByBill, onNoBill, surplus: Math.round((attribution.surplus + attribution.offBill) * 100) / 100 }
 }

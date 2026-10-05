@@ -380,9 +380,11 @@ serve(async (req) => {
       viewerCustomerId: link.customer_id,
       markGcRows: link.audience === 'all',
       ownerNames,
+      // v2.4534: which bill an unlinked payment pays is decided across every sent bill of the job.
+      sentBills: portalInv,
     })
     const owedBills = bills
-    const sharedBills = buildPortalSharedBills({ jobs, invoices, payments, viewerCustomerId: link.customer_id, partyNames })
+    const sharedBills = buildPortalSharedBills({ jobs, invoices, payments, viewerCustomerId: link.customer_id, partyNames, sentBills: portalInv })
     // The jobs this viewer owes on — the promise's scope (v2.3346).
     const owedJobIds = owedJobIdsForViewer(jobs, invoices, link.customer_id)
 

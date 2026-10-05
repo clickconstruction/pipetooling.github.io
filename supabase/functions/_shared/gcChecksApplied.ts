@@ -71,6 +71,11 @@ export type ChecksJobIn = {
   gc_customer_id?: string | null
   bill_to_party?: string | null
   lien_retainage_held?: number | string | null
+  /**
+   * The job's total price (v2.4534). Give it only with EVERY sent bill of the job in `invoices`:
+   * the part of the job on no bill takes unlinked money first, and a short list would overstate it.
+   */
+  revenue?: number | string | null
   invoices: ChecksInvoiceIn[]
   payments: ChecksPaymentIn[]
 }
@@ -237,7 +242,7 @@ type JobFacts = {
 
 function jobFacts(job: ChecksJobIn): JobFacts {
   const sent = sentBillsInOrder(job)
-  const attribution = attributeJobPayments<ChecksPaymentIn>(job.invoices, job.payments)
+  const attribution = attributeJobPayments<ChecksPaymentIn>(job.invoices, job.payments, job.revenue)
   const billPaid = (b: SentBill) => (attribution.byBill.get(b.id)?.applied ?? 0) >= num(b.amount) - 0.005
   return {
     job,
@@ -481,5 +486,5 @@ export function findChecks(checks: readonly GcCheck[], query: string): GcCheck[]
  * balance with no bill behind it — then what the job has been paid so far.
  */
 export function billPaidByWords(job: ChecksJobIn, invoice: Pick<ChecksInvoiceIn, 'id' | 'amount'> | null): string {
-  return sharedBillPaidByWords({ bills: job.invoices, payments: job.payments, retainageHeld: job.lien_retainage_held }, invoice)
+  return sharedBillPaidByWords({ bills: job.invoices, payments: job.payments, retainageHeld: job.lien_retainage_held, total: job.revenue }, invoice)
 }

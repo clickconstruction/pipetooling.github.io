@@ -279,7 +279,7 @@ export function ManHoursCard({
               </tbody>
             </table>
           </div>
-          {selected && !wide ? <ManHoursWho period={selected} zoom={zoom} rows={who} onShowWeek={onShowWeek} /> : null}
+          {selected && !wide ? <ManHoursWho period={selected} zoom={zoom} rows={who} onShowWeek={onShowWeek} compact={compact} /> : null}
         </>
       )}
       <p style={{ margin: '0.4rem 0 0 0', fontSize: '0.75rem', color: 'var(--text-faint)' }}>

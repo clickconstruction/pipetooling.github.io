@@ -797,11 +797,15 @@ export type DemandLetterPrefillContext = {
  *
  * On a job with several bills, unlinked money is applied oldest bill first (the owner's rule,
  * 2026-09-18, v2.3592) — never smeared onto every bill (the double credit v2.3498 removed).
+ *
+ * Unlinked money pays the part of the job on no bill before it pays a bill (v2.4534): the job's
+ * total (`revenue`) goes to the kernel. Job 273's letter claimed $0.00 beside a § 53.056 notice
+ * for $17,585, because $38,780 paid before its three bills existed was counted against them.
  */
-export function paymentsAppliedToInvoice(job: Pick<JobWithDetails, 'payments' | 'invoices'>, invoiceId: string): number {
+export function paymentsAppliedToInvoice(job: Pick<JobWithDetails, 'payments' | 'invoices'> & { revenue?: number | string | null }, invoiceId: string): number {
   // v2.3592: oldest bill first — the same kernel the invoice's payment history, the Bill tab and the
   // portal read, so the letter, its exhibit and the statement of account cannot disagree.
-  return paymentsAppliedToBill(job.invoices ?? [], job.payments ?? [], invoiceId)
+  return paymentsAppliedToBill(job.invoices ?? [], job.payments ?? [], invoiceId, job.revenue)
 }
 
 /**

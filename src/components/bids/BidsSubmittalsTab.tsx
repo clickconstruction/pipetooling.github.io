@@ -2544,7 +2544,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
           onClose={() => setHouseFile(null)}
         />
       ) : null}
-      {editing ? <SubmittalItemEditDialog item={editing} sourceFiles={sourceFiles} houses={houses} parts={partsOf.get(editing.id) ?? []} canEnterDecision={editing.id !== NEW_ROW_ID} canEditProduct={isDraft && !standing.revOf.has(editing.id)} orderOnly={isOrderOnlyRow(editing)} boughtParts={editBought} focusPartId={editFocus?.itemId === editing.id ? editFocus.partId : null} focusHouse={editFocus?.itemId === editing.id && editFocus.house && editFocus.partId == null} busy={busy} onSave={(p) => void saveItem(p)} onClose={() => setEditing(null)} /> : null}
+      {editing ? <SubmittalItemEditDialog item={editing} sourceFiles={sourceFiles} houses={houses} parts={partsOf.get(editing.id) ?? []} canEnterDecision={editing.id !== NEW_ROW_ID} isNew={editing.id === NEW_ROW_ID} canEditProduct={isDraft && !standing.revOf.has(editing.id)} orderOnly={isOrderOnlyRow(editing)} boughtParts={editBought} focusPartId={editFocus?.itemId === editing.id ? editFocus.partId : null} focusHouse={editFocus?.itemId === editing.id && editFocus.house && editFocus.partId == null} busy={busy} onSave={(p) => void saveItem(p)} onClose={() => setEditing(null)} /> : null}
       {answering && selectedRev ? (
         <SubmittalAnswerDialog key={answering.id} item={answering} parts={partsOf.get(answering.id) ?? []} people={people} sources={reviewerSources} revLabel={`Rev ${selectedRev.rev_number}`} focusPartId={answerFocus?.itemId === answering.id ? answerFocus.partId : null} busy={busy} onSave={(a) => void saveAnswer(a)} onClose={() => setAnswering(null)} />
       ) : null}

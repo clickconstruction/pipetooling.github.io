@@ -17,6 +17,7 @@ import {
   type LienCalendarKeyGlyph,
   type LienCalendarMark,
 } from '../../lib/jobs/lienCalendar'
+import { LienJobNumber } from './LienJobNumber'
 import { buildLienCalendarBoard, lienGroupRows, lienNextDateCounts, lienPhoneLine, type LienCalendarBoard, type LienCalendarBucket, type LienCalendarBucketKey, type LienNextDateCount } from '../../lib/jobs/lienCalendarBuckets'
 import type { LienRunwayTone } from '../../lib/jobs/lienPayRunway'
 import { formatMoneyShortK } from '../../lib/formatMoneyShortK'
@@ -110,7 +111,6 @@ const STRIPE = 'repeating-linear-gradient(90deg, #fcd34d 0 4px, #fef3c7 4px 8px)
 const LABEL_W = 'minmax(0, 300px)'
 const RIGHT_W = '11rem'
 const GRID: CSSProperties = { display: 'grid', gridTemplateColumns: `${LABEL_W} minmax(0, 1fr) ${RIGHT_W}`, alignItems: 'center' }
-const cellNum: CSSProperties = { fontSize: '0.6875rem', fontWeight: 700, padding: '0 5px', borderRadius: 3, background: 'var(--bg-blue-tint)', color: 'var(--text-blue-800)', whiteSpace: 'nowrap' }
 const ROW_H = 48
 const TRACK_H = 40
 /** One baseline per row: the track line, where every pole ends and every tick and dot sits. */
@@ -449,30 +449,6 @@ function GroupHeader({ g, open, onToggle, axis, onPen }: { g: LienCalendarGroup;
   )
 }
 
-/**
- * A row's job number (v2.4531). With a door it is a button of its own that opens the job (the
- * Job window: history, bills, Edit); the rest of the row still opens the job's Lien window.
- */
-function JobNumber({ number, muted, onOpen, phone }: { number: string; muted?: boolean; onOpen?: () => void; phone?: boolean }) {
-  const look: CSSProperties = muted ? { ...cellNum, background: 'var(--bg-muted)', color: 'var(--text-muted)' } : cellNum
-  if (!onOpen) return <span style={look}>{number}</span>
-  return (
-    <button
-      type="button"
-      className="lienCalJobNo"
-      data-testid="lien-cal-job-no"
-      title="Open the job: its history, its bills and Edit"
-      onClick={(e) => {
-        e.stopPropagation()
-        onOpen()
-      }}
-      style={{ border: 'none', font: 'inherit', cursor: 'pointer', flex: 'none', ...look, ...(phone ? { minHeight: 28, padding: '0 8px' } : null) }}
-    >
-      {number}
-    </button>
-  )
-}
-
 /** A property's heading inside a group that lists overdue jobs with their property (v2.4526). */
 function PropertyLabel({ label, phone }: { label: string; phone?: boolean }) {
   return (
@@ -492,7 +468,7 @@ function JobRow({ j, g, index, axis, onOpen, onOpenJob, onPen, mark, closedHere 
       {/* The cell opens the job's Lien window wherever it is clicked; the number is its own door (v2.4531). */}
       <div onClick={onOpen} title={closedHere ? 'Its window closed; listed here with its property. Open the job’s Lien window' : 'Open the job’s Lien window'} style={{ minWidth: 0, padding: '4px 10px 4px 30px', cursor: 'pointer' }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-          <JobNumber number={j.number} muted={closedHere} onOpen={onOpenJob} />
+          <LienJobNumber number={j.number} muted={closedHere} onOpen={onOpenJob} />
           <button type="button" style={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: 6, border: 'none', background: 'none', padding: 0, textAlign: 'left', cursor: 'pointer', color: 'inherit', font: 'inherit' }}>
             <span style={{ fontSize: '0.8125rem', fontWeight: closedHere ? 500 : 600, color: closedHere ? 'var(--text-muted)' : undefined, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{j.name}</span>
             {mark ? (
@@ -743,7 +719,7 @@ function PhoneBoard({ shown, folded, onFold, onDraft, onOpenJob, onOpenJobWindow
                       return (
                       <div key={j.jobId} role="row" data-closed-here={row.closed ? 'true' : undefined} onClick={() => onOpenJob(j.jobId)} style={{ boxSizing: 'border-box', width: '100%', minHeight: 44, textAlign: 'left', borderBottom: '1px solid var(--border)', background: 'var(--surface)', padding: '7px 12px', cursor: 'pointer' }}>
                         <span style={{ display: 'flex', gap: 6, alignItems: 'center', minWidth: 0 }}>
-                          <JobNumber number={j.number} muted={row.closed} onOpen={onOpenJobWindow ? () => onOpenJobWindow(j.jobId) : undefined} phone />
+                          <LienJobNumber number={j.number} muted={row.closed} onOpen={onOpenJobWindow ? () => onOpenJobWindow(j.jobId) : undefined} phone />
                           {/* The row opens the job's Lien window wherever it is tapped; this button is its keyboard stop. */}
                           <button type="button" style={{ flex: 1, minWidth: 0, display: 'flex', gap: 6, alignItems: 'center', border: 'none', background: 'none', padding: 0, textAlign: 'left', cursor: 'pointer', color: 'inherit', font: 'inherit' }}>
                             <span style={{ fontSize: '0.8125rem', fontWeight: row.closed ? 500 : 600, color: row.closed ? 'var(--text-muted)' : undefined, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{j.name}</span>
