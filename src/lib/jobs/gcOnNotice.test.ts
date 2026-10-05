@@ -9,6 +9,8 @@ import {
   gcNoticeMonthWords,
   type GcNoticeOwnerState,
   type GcUnpaidMonthRow,
+  parseGcNoticeBatchReason,
+  gcNoticeSavedRun,
 } from './gcOnNotice'
 import type { LienDeskItemRow } from './lienDesk'
 
@@ -286,5 +288,32 @@ describe('buildGcOnNotice · a job with no clock hours is dated from its creatio
     const j = buildGcOnNotice(rows, [], () => 'on_file', TODAY).jobs[0]!
     expect(j.datedFromCreation).toBe(false)
     expect(j.months.map((m) => m.fromCreation)).toEqual([false])
+  })
+})
+
+describe('what the office sent to the leader is read back (v2.4571)', () => {
+  it('parseGcNoticeBatchReason: the label alone, the label with a note, Other without its dots, and anything else', () => {
+    expect(parseGcNoticeBatchReason('GC is not paying its subs')).toEqual({ reason: 'not_paying_subs', note: '' })
+    expect(parseGcNoticeBatchReason('Payment promise broken twice — Dana said Friday')).toEqual({ reason: 'promise_broken_twice', note: 'Dana said Friday' })
+    expect(parseGcNoticeBatchReason('Other — a lien search came back')).toEqual({ reason: 'other', note: 'a lien search came back' })
+    expect(parseGcNoticeBatchReason(gcNoticeBatchReason('insolvency', '  two bounced  '))).toEqual({ reason: 'insolvency', note: 'two bounced' })
+    expect(parseGcNoticeBatchReason('Some older wording')).toBeNull()
+    expect(parseGcNoticeBatchReason('')).toBeNull()
+  })
+
+  it('gcNoticeSavedRun: the reason, the note and each kind\u2019s letter from the drafts awaiting approval', () => {
+    const item = (status: string, fields: Record<string, unknown>) => ({ status, fields: { notice: {}, ...fields } }) as never
+    const jobs = [
+      { jobId: 'a', item: item('awaiting_approval', { batchReason: 'GC insolvency suspected — two checks came back', coverLetter: 'COMMERCIAL AS EDITED' }) },
+      { jobId: 'b', item: item('awaiting_approval', { batchReason: 'GC insolvency suspected — two checks came back', coverLetter: 'RESIDENTIAL AS EDITED' }) },
+      { jobId: 'c', item: item('drafted', { batchReason: 'Other', coverLetter: 'A DRAFT NOBODY SENT' }) },
+      { jobId: 'd', item: null },
+    ]
+    const kindOf = (id: string) => (id === 'b' ? 'residential' : 'commercial')
+    expect(gcNoticeSavedRun(jobs, kindOf)).toEqual({ reason: 'insolvency', note: 'two checks came back', letters: { commercial: 'COMMERCIAL AS EDITED', residential: 'RESIDENTIAL AS EDITED' }, includeLetter: true })
+    // The office left the letter out: the leader's window leaves it out too.
+    expect(gcNoticeSavedRun([{ jobId: 'a', item: item('awaiting_approval', { batchReason: 'Other' }) }], kindOf)).toEqual({ reason: 'other', note: '', letters: {}, includeLetter: false })
+    // Nothing waiting on the leader: the window keeps its defaults.
+    expect(gcNoticeSavedRun([jobs[2]!, jobs[3]!], kindOf)).toBeNull()
   })
 })
