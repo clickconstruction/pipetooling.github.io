@@ -350,6 +350,9 @@ the money comes off a draw. Details in README.md, *A company sees what we charge
   on one `backChargeCanTake` allows, for each draw `backChargeDraws` gives (`takeBackCharge`).
   `backChargesToAct(sow, today)` is the list that needs the office.
 - **Owner Billing (GC 4), nothing owed:** the cash forecast reads `draw.net`, which is already less.
+- ~~**Board (GC 0):**~~ done. The owner, 2026-10-05: "a Needs you line of its own". `gcBackChargesWaiting.ts`, item
+  `gc-back-charges`: disputed, unanswered, or ready to come off an approved draw; **Settle it** opens
+  the job on Draws, where Building's screen above does the rest. Not in Who to call.
 
 ## Round 10: who at the company gets which emails (the owner, 2026-10-05)
 

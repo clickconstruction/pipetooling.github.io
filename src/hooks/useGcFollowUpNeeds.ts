@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { GcNeedsYou } from '../lib/gcMode/gcNeedsYou'
 import type { GcChangeRequestsNeedsYou } from '../lib/gcMode/gcChangeRequestsWaiting'
+import type { GcBackChargesNeedsYou } from '../lib/gcMode/gcBackChargesWaiting'
 
 /**
  * GC mode design spike (the owner, 2026-10-04): GC Follow up for the dashboard's Needs you, read
@@ -46,6 +47,33 @@ export function useGcChangeRequests(enabled: boolean): GcChangeRequestsNeedsYou 
     void import('../lib/gcMode/gcModel').then((gc) => {
       if (!live) return
       const read = () => setNeeds(gc.gcChangeRequestsNeedsYou(gc.gcStoreState()))
+      read()
+      off = gc.gcStoreSubscribe(read)
+    })
+    return () => {
+      live = false
+      off()
+    }
+  }, [enabled])
+  return needs
+}
+
+/**
+ * GC mode design spike (the owner, 2026-10-05): back-charges waiting on the office, for the
+ * dashboard's own Needs you line, kept current as the GC page settles them. Loads the GC model only when on.
+ */
+export function useGcBackCharges(enabled: boolean): GcBackChargesNeedsYou | null {
+  const [needs, setNeeds] = useState<GcBackChargesNeedsYou | null>(null)
+  useEffect(() => {
+    if (!enabled) {
+      setNeeds(null)
+      return
+    }
+    let live = true
+    let off = () => {}
+    void import('../lib/gcMode/gcModel').then((gc) => {
+      if (!live) return
+      const read = () => setNeeds(gc.gcBackChargesNeedsYou(gc.gcStoreState()))
       read()
       off = gc.gcStoreSubscribe(read)
     })

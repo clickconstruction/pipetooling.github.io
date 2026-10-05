@@ -666,6 +666,23 @@ export interface GcProject {
   dailyLogs?: DailyLog[]
   /** The submittal register (Building lane, 2026-10-04): what each trade sends for approval before its work. Unset: none yet. */
   submittals?: Submittal[]
+  /** The weekly reports sent to the customer (Building lane, 2026-10-05), one per week, newest last. Unset: none yet. */
+  weeklyReports?: WeeklyReportSent[]
+}
+
+/** A weekly report as it went to the customer (Building lane, 2026-10-05): kept as sent, for their portal. */
+export interface WeeklyReportSent {
+  /** The Monday of the week it covers. */
+  weekOf: string
+  sentOn: string
+  from: 'me' | 'company'
+  /** Who sent it, from me: the signed-in name. */
+  by: string
+  /** Who it went to, and whether the architect was copied. */
+  to: string
+  copiedArchitect: boolean
+  subject: string
+  body: string
 }
 
 export type WeatherSky = 'clear' | 'cloudy' | 'rain' | 'storm' | 'wind'
@@ -1104,6 +1121,8 @@ export type GcAction =
   | { type: 'sendSubmittalToArchitect'; projectId: string; submittalId: string }
   /** We record the architect's answer: approved, approved as noted, or revise and resubmit. */
   | { type: 'answerSubmittal'; projectId: string; submittalId: string; answer: SubmittalAnswer; note: string }
+  /** The weekly report to the customer, as written (Building lane, 2026-10-05). A second one for the same week replaces the first. */
+  | { type: 'sendWeeklyReport'; projectId: string; weekOf: string; from: 'me' | 'company'; by: string; copyArchitect: boolean; subject: string; body: string }
   /** We choose, per job, whether the owner's retainage drops partway (null: held to the end). */
   | { type: 'setOwnerRetainageStep'; projectId: string; step: OwnerRetainageStep | null }
   /** We choose, per job, whether the owner pays interest on a late bill (null: we do not charge it). */

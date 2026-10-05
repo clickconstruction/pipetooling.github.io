@@ -38,6 +38,7 @@ import {
   type GcState,
   type OwnerPayAppSent,
 } from '../../lib/gcMode/gcModel'
+import { GcWeeklyReportsForCustomer } from './GcBuildingWeekly'
 
 /** The portal's paper look, the same as the trade's portal: it stays light in both themes. */
 const INK = '#16283c'
@@ -192,6 +193,13 @@ export function GcOwnerBillingPortal({ state, project, dispatch }: { state: GcSt
                 </div>
               </div>
             )}
+          </PortalBlock>
+        )}
+
+        {/* The weekly reports we sent them (Building lane, 2026-10-05): the job's story, week by week. */}
+        {(project.weeklyReports ?? []).length > 0 && (
+          <PortalBlock title="Weekly reports">
+            <GcWeeklyReportsForCustomer project={project} />
           </PortalBlock>
         )}
 

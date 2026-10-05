@@ -33,6 +33,7 @@ import {
   proposalTotals,
   retainageHeldNow,
   sentBackOpen,
+  backChargesToAct,
   drawOnTheirSov,
   sowContractSum,
   tradeChangesFor,
@@ -75,6 +76,7 @@ import { GcBuildingSendBackForm, GcBuildingSentBackList } from './GcBuildingSend
 import { GcBuildingTradeChanges } from './GcBuildingChanges'
 import { GcBuildingDrawDays, GcBuildingToPay } from './GcBuildingPayDays'
 import { GcBuildingPapersOwed, GcBuildingPromise } from './GcBuildingPromise'
+import { GcBuildingBackCharges } from './GcBuildingBackCharges'
 import { BUILDING_CSS } from './gcBuildingCss'
 import { GcBuildingCrewCard } from './GcBuildingCrew'
 import { GcPlansDoors } from './GcNewPlans'
@@ -1384,7 +1386,17 @@ export function GcDrawsTab({ state, project, dispatch }: GcPaneProps) {
         return (
           <Card key={pkg.id}>
             <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
-              <div><strong>{pkg.trade}</strong> · {partner.company}</div>
+              <div>
+                <strong>{pkg.trade}</strong> · {partner.company}
+                {backChargesToAct(sow, state.today).length > 0 && (
+                  <>
+                    {' '}
+                    <Chip tone="amber">
+                      {backChargesToAct(sow, state.today).length} back-{backChargesToAct(sow, state.today).length === 1 ? 'charge' : 'charges'} to act on
+                    </Chip>
+                  </>
+                )}
+              </div>
               <div style={{ display: 'flex', gap: '1.75rem', flexWrap: 'wrap' }}>
                 <Stat label="Contract" value={money(sowContractSum(sow))} />
                 <Stat label="Billed" value={money(m.billed)} />
@@ -1424,7 +1436,11 @@ export function GcDrawsTab({ state, project, dispatch }: GcPaneProps) {
                     <span>pays back what we held: <strong>{money(d.net)}</strong></span>
                   ) : (
                     <span>
-                      {money(d.gross)} less {money(d.retainage)} held = <strong>{money(d.net)}</strong>
+                      {money(d.gross)} less {money(d.retainage)} held
+                      {(d.backCharges ?? []).length > 0 && (
+                        <span style={{ color: 'var(--text-amber-800)' }}>, less {money((d.backCharges ?? []).reduce((t, b) => t + b.amount, 0))} in back-charges</span>
+                      )}{' '}
+                      = <strong>{money(d.net)}</strong>
                       {d.asked && <span style={{ color: 'var(--text-amber-800)' }}> · approved for less, they asked {money(d.asked.net)}</span>}
                     </span>
                   )}
@@ -1505,6 +1521,8 @@ export function GcDrawsTab({ state, project, dispatch }: GcPaneProps) {
                 company={partner.company}
                 onSend={(changeOrderId) => dispatch({ type: 'sendTradeChange', projectId: project.id, changeOrderId })}
               />
+              {/* Back-charges, the office's side (the owner's pick, 2026-10-05; the record is the Portal lane's). */}
+              <GcBuildingBackCharges sow={sow} company={partner.company} today={state.today} ids={ids} dispatch={dispatch} />
               {m.ready > 0 && !sow.draws.some((d) => d.status === 'requested') && !sentBackOpen(sow) && (
                 <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
                   {partner.company} has reported {money(m.ready)} of work they have not asked to be paid for.

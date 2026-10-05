@@ -37,7 +37,7 @@ import { useJobContractsNudge } from '../../hooks/useJobContractsNudge'
 import { planQueueRecord, readRecordedToday, writeRecordedToday, type QueueKind } from '../../lib/people/dayBookQueueRecorder'
 import { toLocalDateString } from '../../lib/dailyGoalsGate'
 import { useUnpricedWorkOrders } from '../../hooks/useUnpricedWorkOrders'
-import { useGcChangeRequests, useGcFollowUpNeeds } from '../../hooks/useGcFollowUpNeeds'
+import { useGcBackCharges, useGcChangeRequests, useGcFollowUpNeeds } from '../../hooks/useGcFollowUpNeeds'
 import { useStaleOpenJobsNudge } from '../../hooks/useStaleOpenJobsNudge'
 import { useCapacityUnderNudge } from '../../hooks/useCapacityUnderNudge'
 import { useJobAccountEvidenceGapsNudge } from '../../hooks/useJobAccountEvidenceGapsNudge'
@@ -482,6 +482,7 @@ export function DashboardPinnedQuickRow({
   const gcFollowUpEnabled = !hideBanners && Boolean(authUserId) && (role === 'dev' || isAssistantLike(role))
   const gcFollowUp = useGcFollowUpNeeds(gcFollowUpEnabled)
   const gcChangeRequests = useGcChangeRequests(gcFollowUpEnabled)
+  const gcBackCharges = useGcBackCharges(gcFollowUpEnabled)
   // Open jobs idle 21+ days (v2.2825) — the office roles that bill and close jobs.
   const staleOpenEnabled = !hideBanners && Boolean(authUserId) && officeEligible
   const { nudge: staleOpen } = useStaleOpenJobsNudge(staleOpenEnabled, authUserId)
@@ -561,6 +562,7 @@ export function DashboardPinnedQuickRow({
     gcFollowUpEnabled,
     gcFollowUp,
     gcChangeRequests,
+    gcBackCharges,
     staleOpenEnabled,
     staleOpen,
     capacityUnderEnabled,
@@ -738,6 +740,8 @@ export function DashboardPinnedQuickRow({
               navigate('/bids/gc?tab=followup')
             } else if (item.key === 'gc-change-requests') {
               navigate(`/bids/gc?project=${encodeURIComponent(gcChangeRequests?.projectId ?? '')}&ptab=owner`)
+            } else if (item.key === 'gc-back-charges') {
+              navigate(`/bids/gc?project=${encodeURIComponent(gcBackCharges?.projectId ?? '')}&ptab=draws&charge=${encodeURIComponent(gcBackCharges?.chargeId ?? '')}`)
             } else if (item.key === 'jobs-stale-open') {
               navigate('/jobs?tab=job-summary&view=cycle')
             } else if (item.key === 'capacity-under') {

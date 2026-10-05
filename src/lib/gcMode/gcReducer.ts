@@ -1883,6 +1883,32 @@ function reduce(state: GcState, action: GcAction): GcState {
       return logged(next, 'office', `${project.architect} ${words}: submittal ${sub.number}, ${sub.title}.${note ? ` ${note.replace(/[.\s]+$/, '')}.` : ''}`)
     }
 
+    case 'sendWeeklyReport': {
+      // Building lane (the owner, 2026-10-05): the week's report to the customer, kept as sent for
+      // their portal, and noted on the customer's record. A resend for the same week replaces it.
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const body = action.body.trim()
+      if (!project || project.stage !== 'building' || !body) return state
+      const customer = state.customers.find((c) => c.id === project.customerId)
+      const to = customer?.contact || customer?.name || project.owner
+      const sent = {
+        weekOf: action.weekOf,
+        sentOn: state.today,
+        from: action.from,
+        by: action.by.trim() || 'You',
+        to,
+        copiedArchitect: action.copyArchitect,
+        subject: action.subject.trim(),
+        body,
+      }
+      let next = mapProject(state, project.id, (p) => ({ ...p, weeklyReports: [...(p.weeklyReports ?? []).filter((r) => r.weekOf !== action.weekOf), sent] }))
+      if (customer) {
+        const note = `Weekly report for the week of ${shortDate(action.weekOf)} on ${project.name} sent to ${to}${action.copyArchitect ? ', the architect copied' : ''}.`
+        next = { ...next, customers: next.customers.map((c) => (c.id === customer.id ? { ...c, contacts: [{ on: state.today, by: sent.by, note }, ...c.contacts] } : c)) }
+      }
+      return logged(next, 'office', `Sent the weekly report on ${project.name} to ${to}.`)
+    }
+
     case 'setOwnerRetainageStep': {
       // Owner Billing lane: whether the owner's retainage drops partway is ours to choose per job
       // (the owner, 2026-10-04). Only on a job that is ours, and only ever lower than their percent.
