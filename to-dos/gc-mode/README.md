@@ -637,6 +637,18 @@ who then works and bills the owner." So:
   the usual way. Fair Oaks has one waiting: Tri-County's rock at the north footings
   (`TradeChangeRequest`, `portalChangeRequests`, `openChangeRequests` in `gcPortal.ts`;
   `GcPortalChanges.tsx`). The office's list is the Owner Billing lane's to draw.
+- **A company sees what we charge it for** (owner, 2026-10-05): cleanup, damage, or work we
+  finished for it. *Charges from Click* on its job page shows the amount, the reason and the photo,
+  and Needs you asks it to agree, or dispute it and say why, within `BACK_CHARGE_ANSWER_DAYS` (5)
+  days; after that the to-do turns red and it can still answer. A charge it agreed to, one we kept
+  after its dispute, or one it never answered can come off an approved draw we have not paid yet:
+  the draw's net drops by it, and the draw says "less $1,250 in back-charges" in the portal. A
+  dispute waits on the office to keep it, with a reason, or drop it. Fair Oaks has one: Iron Horse
+  cut the temporary power line, $1,250, answer by Oct 5 (`BackCharge` on the statement of work;
+  `backCharge`, `tradeAnswerBackCharge`, `settleBackCharge`, `takeBackCharge`; `portalBackCharges`,
+  `backChargesToAct`, `backChargeDraws` in `gcPortal.ts`; `GcPortalBackCharges.tsx`). The five days
+  and "off the next approved draw" are the lane's defaults until the owner says otherwise. The
+  office's screen is the Building lane's to draw.
 - **A company asked to the pre-bid meeting sees it in its portal** (owner, 2026-10-04, on the New
   Project lane's `preBid`): a block on the project page (when and where, who runs it, whether coming
   is required to quote, then "You came" or "You did not come"), Needs you before it (amber if
@@ -1004,6 +1016,8 @@ the bullets below are the shape they set.
   | The office decided on a company it did not know (`vetPartner`) | That company | Email the day it is decided: approved, with its limit, or declined (Their messages already writes it) |
   | A company asked for a change (`tradeAskChange`) | The project manager | Email the day it comes, with what, why, the amount, the days and the photo. The office's list of changes asked for keeps it until answered |
   | We answered a change it asked for (`turnDownChangeRequest`, the change order sent, the customer's no) | The company | Email each time, with its part, never our price to the customer (Their messages already writes them) |
+  | We charged it (`backCharge`) | The company | Email the day it is charged, with the reason and the answer day. Needs you until it answers, red after the day |
+  | We kept or dropped a disputed charge, or took one off a draw (`settleBackCharge`, `takeBackCharge`) | The company | Email each time (Their messages already writes them) |
 
   Billing the owner's events, and where each would go (Owner Billing lane, 2026-10-03). Every one
   is an email, through Resend (question 29: email only for now). The owner and the architect get

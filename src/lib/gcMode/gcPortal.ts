@@ -5,7 +5,7 @@
  *
  * The words follow the plain-words rules at the top of `gcTour.ts`.
  */
-import type { BidAlternate, ChangeOrder, ChangeOrderReason, Draw, GcProject, GcState, Invite, LookAheadMark, Partner, PlanQuestion, PlanSet, ProjectContact, PromiseKind, QuoteExclusion, ScopeItem, Sow, SubBid, TheirSovLine, TradeChangeRequest, TradePackage, TradePromise } from './gcTypes'
+import type { BackCharge, BidAlternate, ChangeOrder, ChangeOrderReason, Draw, GcProject, GcState, Invite, LookAheadMark, Partner, PlanQuestion, PlanSet, ProjectContact, PromiseKind, QuoteExclusion, ScopeItem, Sow, SubBid, TheirSovLine, TradeChangeRequest, TradePackage, TradePromise } from './gcTypes'
 import { daysUntil, money } from './gcWords'
 import { currentRev, partnerById } from './gcLookups'
 import { bareId, preBidInvited, questionState, questionsFor, sheetsGoneAtRev, type QuestionState } from './gcPlans'
@@ -768,6 +768,19 @@ export function portalTodos(state: GcState, partnerId: string, asks: PortalAsk[]
           by: co.tradeChange.sentOn,
         })
       }
+      // A charge for cleanup or damage to agree to or dispute (owner, 2026-10-05): red once its answer day went by.
+      for (const row of portalBackCharges(a.project, a.pkg, partnerId, state.today, lang)) {
+        if (!row.canAnswer) continue
+        const words = { gc, amount: money(row.charge.amount), project, date: pWeekday(lang, row.charge.answerBy) }
+        todos.push({
+          key: `${row.charge.id}:answer`,
+          projectId,
+          text: pt(lang, row.state === 'noAnswer' ? 'todoBackChargeLate' : 'todoBackCharge', words),
+          tone: row.state === 'noAnswer' ? 'red' : 'amber',
+          by: row.charge.answerBy,
+          anchor: `charges:${a.pkg.id}`,
+        })
+      }
       // A pay application we sent back waits on them: the work they reported is not new money to ask for.
       const back = signed ? sentBackOpen(sow) : null
       if (back) {
@@ -840,7 +853,7 @@ export function portalLink(partnerId: string): string {
 export interface PortalMessage {
   key: string
   on: string
-  kind: 'invite' | 'nudge' | 'plans' | 'bidTab' | 'msa' | 'sow' | 'start' | 'less' | 'change' | 'paid' | 'answer' | 'coi' | 'closed' | 'vetted' | 'preBid' | 'changeAsk'
+  kind: 'invite' | 'nudge' | 'plans' | 'bidTab' | 'msa' | 'sow' | 'start' | 'less' | 'change' | 'paid' | 'answer' | 'coi' | 'closed' | 'vetted' | 'preBid' | 'changeAsk' | 'backCharge'
   /** Null: about the company, not one project (the master agreement). */
   projectId: string | null
   subject: string
@@ -852,7 +865,7 @@ export interface PortalMessage {
   leavesOut?: string[]
 }
 
-const KIND_ORDER: Record<PortalMessage['kind'], number> = { vetted: -2, closed: -1, preBid: -0.5, coi: 0, answer: 1, paid: 2, change: 3, changeAsk: 3.5, less: 4, start: 5, sow: 6, msa: 7, bidTab: 8, plans: 9, nudge: 10, invite: 11 }
+const KIND_ORDER: Record<PortalMessage['kind'], number> = { vetted: -2, closed: -1, preBid: -0.5, coi: 0, answer: 1, paid: 2, change: 3, changeAsk: 3.5, backCharge: 3.6, less: 4, start: 5, sow: 6, msa: 7, bidTab: 8, plans: 9, nudge: 10, invite: 11 }
 
 function firstName(contact: string): string {
   return contact.split(' ')[0] ?? contact
@@ -993,6 +1006,42 @@ export function portalMessages(state: GcState, partnerId: string, language?: Por
         }
         if (co?.status === 'declined' && co.answeredOn) {
           out.push({ ...base, key: `${r.id}:no`, on: co.answeredOn, subject: t('mCrNoSubject', { n: co.number }), lines: [hello, t('mCrNo', { n: co.number, project: name }), t('mCrOpen')] })
+        }
+      }
+    }
+
+    // Back-charges (owner, 2026-10-05): the charge itself, our answer to a dispute, and the draw it came off.
+    for (const { pkg } of won) {
+      const sow = pkg.sow
+      for (const c of sow?.backCharges ?? []) {
+        const amount = money(c.amount)
+        const base = { kind: 'backCharge' as const, projectId: project.id }
+        out.push({
+          ...base,
+          key: `${c.id}:sent`,
+          on: c.sentOn,
+          subject: t('mBcSubject', { project: name, amount }),
+          lines: [hello, t('mBcWhat', { amount, trade: pkg.trade, reason: asSentence(c.reason) }), t('mBcAnswer', { date: pWeekday(lang, c.answerBy) }), t('mBcOpen')],
+        })
+        if (c.settled && (c.status === 'kept' || c.status === 'dropped')) {
+          const kept = c.status === 'kept'
+          out.push({
+            ...base,
+            key: `${c.id}:settled`,
+            on: c.settled.on,
+            subject: t(kept ? 'mBcKeptSubject' : 'mBcDroppedSubject', { project: name }),
+            lines: [hello, t(kept ? 'mBcKept' : 'mBcDropped', { amount, note: asSentence(c.settled.note) }), t('mBcOpen')],
+          })
+        }
+        const draw = c.taken ? sow?.draws.find((d) => d.id === c.taken?.drawId) : undefined
+        if (c.taken && draw) {
+          out.push({
+            ...base,
+            key: `${c.id}:taken`,
+            on: c.taken.on,
+            subject: t('mBcTakenSubject', { n: draw.number, project: name, amount }),
+            lines: [hello, t('mBcTaken', { amount, n: draw.number, reason: asSentence(c.reason) }), t('mBcOpen')],
+          })
         }
       }
     }
@@ -1628,6 +1677,112 @@ export function portalChangeRequests(project: GcProject, pkg: TradePackage, part
       const why = pt(lang, PORTAL_CHANGE_WHY.find((w) => w.reason === request.reason)?.key ?? 'crWhyField')
       const chip = CHANGE_CHIP[state]
       return { request, state, why, asked, chip: pt(lang, chip.key), tone: chip.tone, words }
+    })
+    .reverse()
+}
+
+// ---------------------------------------------------------------------------------------------
+// Back-charges a company can see (owner, 2026-10-05)
+// ---------------------------------------------------------------------------------------------
+
+/** Days a company has to agree to a back-charge or dispute it. After them, one with no answer can come off a draw. */
+export const BACK_CHARGE_ANSWER_DAYS = 5
+
+/** Where a back-charge stands. noAnswer: its answer day went by with no answer. */
+export type BackChargeState = 'open' | 'noAnswer' | 'agreed' | 'disputed' | 'kept' | 'dropped' | 'taken'
+
+export function backChargeState(charge: BackCharge, today: string): BackChargeState {
+  if (charge.taken) return 'taken'
+  if (charge.status === 'open') return today > charge.answerBy ? 'noAnswer' : 'open'
+  return charge.status
+}
+
+/** Whether the office can take it off a draw now: agreed, kept after a dispute, or never answered. */
+export function backChargeCanTake(charge: BackCharge, today: string): boolean {
+  const st = backChargeState(charge, today)
+  return st === 'agreed' || st === 'kept' || st === 'noAnswer'
+}
+
+/** The draws a back-charge can come off: approved, not paid yet, and paying at least the charge. */
+export function backChargeDraws(sow: Sow, charge: BackCharge): Draw[] {
+  return sow.draws.filter((d) => d.status === 'approved' && d.net >= charge.amount - 0.005)
+}
+
+/** Every back-charge on a trade's work the office still has to act on, oldest first: disputed, or ready to take. */
+export function backChargesToAct(sow: Sow, today: string): BackCharge[] {
+  return (sow.backCharges ?? []).filter((c) => backChargeState(c, today) === 'disputed' || backChargeCanTake(c, today))
+}
+
+/** A note as a sentence: ends with a stop, so the words after it read. */
+function asSentence(text: string): string {
+  const t = text.trim()
+  return t === '' || /[.!?]$/.test(t) ? t : `${t}.`
+}
+
+export interface PortalBackChargeRow {
+  charge: BackCharge
+  state: BackChargeState
+  /** "$850 · sent Sep 30" */
+  line: string
+  chip: string
+  tone: 'grey' | 'amber' | 'red' | 'green'
+  /** Where it stands, in the company's words. */
+  words: string
+  /** Its own reason, when it disputed. */
+  theirReason: string | null
+  /** It can still agree or dispute it. */
+  canAnswer: boolean
+}
+
+const BACK_CHARGE_CHIP: Record<BackChargeState, { key: PortalKey; tone: PortalBackChargeRow['tone'] }> = {
+  open: { key: 'bcChipOpen', tone: 'amber' },
+  noAnswer: { key: 'bcChipNoAnswer', tone: 'red' },
+  agreed: { key: 'bcChipAgreed', tone: 'grey' },
+  disputed: { key: 'bcChipDisputed', tone: 'amber' },
+  kept: { key: 'bcChipKept', tone: 'red' },
+  dropped: { key: 'bcChipDropped', tone: 'green' },
+  taken: { key: 'bcChipTaken', tone: 'grey' },
+}
+
+/** The charges on a company's work on one trade of a job, newest first, in its language. */
+export function portalBackCharges(project: GcProject, pkg: TradePackage, partnerId: string, today: string, lang: PortalLang = 'en'): PortalBackChargeRow[] {
+  const awarded = pkg.invites.find((i) => i.id === pkg.awardedInviteId)
+  const sow = pkg.sow
+  // Only on a job that is ours, to the company on the work.
+  if (!sow || project.stage === 'pursuing' || awarded?.partnerId !== partnerId) return []
+  const gc = GC_COMPANY.shortName
+  return (sow.backCharges ?? [])
+    .map((charge) => {
+      const state = backChargeState(charge, today)
+      const draw = charge.taken ? sow.draws.find((d) => d.id === charge.taken?.drawId) : undefined
+      const n = draw?.number ?? 0
+      const chip = BACK_CHARGE_CHIP[state]
+      const by = pDate(lang, charge.answerBy)
+      const settledNote = asSentence(charge.settled?.note ?? '')
+      const words =
+        state === 'open'
+          ? pt(lang, 'bcStOpen', { date: by })
+          : state === 'noAnswer'
+            ? pt(lang, 'bcStNoAnswer', { date: by })
+            : state === 'agreed'
+              ? pt(lang, 'bcStAgreed', { date: pDate(lang, charge.answer?.on ?? null) })
+              : state === 'disputed'
+                ? pt(lang, 'bcStDisputed', { gc, date: pDate(lang, charge.answer?.on ?? null) })
+                : state === 'kept'
+                  ? pt(lang, 'bcStKept', { gc, date: pDate(lang, charge.settled?.on ?? null), note: settledNote })
+                  : state === 'dropped'
+                    ? pt(lang, 'bcStDropped', { gc, date: pDate(lang, charge.settled?.on ?? null), note: settledNote })
+                    : pt(lang, 'bcStTaken', { n, date: pDate(lang, charge.taken?.on ?? null) })
+      return {
+        charge,
+        state,
+        line: pt(lang, 'bcLine', { amount: money(charge.amount), date: pDate(lang, charge.sentOn) }),
+        chip: pt(lang, chip.key, { date: by, gc, n }),
+        tone: chip.tone,
+        words,
+        theirReason: charge.status !== 'agreed' && charge.answer?.note ? pt(lang, 'bcYourReason', { note: charge.answer.note }) : null,
+        canAnswer: state === 'open' || state === 'noAnswer',
+      }
     })
     .reverse()
 }

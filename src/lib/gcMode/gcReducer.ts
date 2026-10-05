@@ -2,7 +2,7 @@
  * GC mode — design spike. The reducer: every action, applied to the state.
  * Split out of gcModel.ts verbatim; import from `./gcModel`, which re-exports every file.
  */
-import type { AskContact, CustomerSend, Draw, DrawSentBack, GcAction, GcState, SovLine, Invite, LookAheadMark, PaperSend, Partner, PlanQuestion, PlanSet, SubBid, TradeChangeRequest } from './gcTypes'
+import type { AskContact, BackCharge, CustomerSend, Draw, DrawSentBack, GcAction, GcState, SovLine, Invite, LookAheadMark, PaperSend, Partner, PlanQuestion, PlanSet, SubBid, TradeChangeRequest } from './gcTypes'
 import { money, shortDate, weekdayDate, daysUntil } from './gcWords'
 import { currentRev, partnerById, planLabel } from './gcLookups'
 import { planRecipients, questionRecipients, questionsOpen, timeWords } from './gcPlans'
@@ -24,6 +24,7 @@ import { startChecklist } from './gcStart'
 import { keepPromisesOn, openPromiseFor, PROMISE_WHAT, promisesKeptBy, tradePromisesOf } from './gcPromises'
 import { paperSendLog, paperStep } from './gcPaperSend'
 import { ownerInterest } from './gcOwnerBillingInterest'
+import { BACK_CHARGE_ANSWER_DAYS, backChargeCanTake, backChargeDraws, backChargeState } from './gcPortal'
 import { payReminderEmail, payReminderStep } from './gcOwnerBillingRemind'
 import { appClaimed, appOpen, changeOrderPrice, OWNER_RETAINAGE_DEFAULT_PCT, ownerCloseout, ownerContractWorthNow, ownerFinalPayAppToSend, ownerPayApp, ownerPayAppHasWork, ownerPayAppToSend, ownerRetainageWords } from './gcOwnerBilling'
 
@@ -2149,6 +2150,91 @@ function reduce(state: GcState, action: GcAction): GcState {
         changeRequests: (p.changeRequests ?? []).map((r) => (r.id === request.id ? { ...r, turnedDown: { on: state.today, note } } : r)),
       }))
       return logged(next, 'office', `Turned down ${company}'s change on ${project.name}, ${money(request.amount)}: ${note}`)
+    }
+
+    // Portal lane: back-charges a company can see (owner, 2026-10-05).
+    case 'backCharge': {
+      const { project, pkg } = find(state, action.projectId, action.packageId)
+      const partner = awardedPartner(state, pkg)
+      const reason = action.reason.trim()
+      const amount = Number.isFinite(action.amount) ? Math.round(action.amount * 100) / 100 : 0
+      if (!project || !pkg || !partner || pkg.sow?.status !== 'signed' || reason === '' || amount <= 0) return state
+      const existing = pkg.sow.backCharges ?? []
+      const used = new Set(existing.map((c) => c.id))
+      let n = existing.length + 1
+      while (used.has(`${pkg.id}-bc-${n}`)) n += 1
+      const charge: BackCharge = {
+        id: `${pkg.id}-bc-${n}`,
+        amount,
+        reason,
+        photo: action.photo?.trim() || null,
+        sentOn: state.today,
+        answerBy: addDays(state.today, BACK_CHARGE_ANSWER_DAYS),
+        status: 'open',
+      }
+      const next = mapProject(state, project.id, (p) => mapPackage(p, pkg.id, (k) => mapSow(k, (s) => ({ ...s, backCharges: [...(s.backCharges ?? []), charge] }))))
+      return logged(next, 'office', `Charged ${partner.company} ${money(amount)} on ${project.name}: ${reason}`)
+    }
+
+    case 'tradeAnswerBackCharge': {
+      const { project, pkg } = find(state, action.projectId, action.packageId)
+      const partner = awardedPartner(state, pkg)
+      const charge = pkg?.sow?.backCharges?.find((c) => c.id === action.chargeId)
+      const note = action.note.trim()
+      // A company answers a charge that is still open, even after its answer day; a dispute says why.
+      if (!project || !pkg || !partner || !charge || charge.status !== 'open' || charge.taken || (!action.agree && note === '')) return state
+      const answered: BackCharge = { ...charge, status: action.agree ? 'agreed' : 'disputed', answer: { on: state.today, note } }
+      const next = mapProject(state, project.id, (p) =>
+        mapPackage(p, pkg.id, (k) => mapSow(k, (s) => ({ ...s, backCharges: (s.backCharges ?? []).map((c) => (c.id === charge.id ? answered : c)) }))),
+      )
+      return logged(
+        next,
+        'trade',
+        action.agree
+          ? `${partner.company} agreed to the ${money(charge.amount)} back-charge on ${project.name}.`
+          : `${partner.company} disputed the ${money(charge.amount)} back-charge on ${project.name}: ${note}`,
+      )
+    }
+
+    case 'settleBackCharge': {
+      const { project, pkg } = find(state, action.projectId, action.packageId)
+      const partner = awardedPartner(state, pkg)
+      const charge = pkg?.sow?.backCharges?.find((c) => c.id === action.chargeId)
+      const note = action.note.trim()
+      if (!project || !pkg || !partner || !charge || charge.taken || note === '') return state
+      const st = backChargeState(charge, state.today)
+      // Kept: after a dispute, or when no answer came by its day. Dropped: any time before it is taken.
+      if (action.keep ? st !== 'disputed' && st !== 'noAnswer' : st === 'dropped') return state
+      const settled: BackCharge = { ...charge, status: action.keep ? 'kept' : 'dropped', settled: { on: state.today, note } }
+      const next = mapProject(state, project.id, (p) =>
+        mapPackage(p, pkg.id, (k) => mapSow(k, (s) => ({ ...s, backCharges: (s.backCharges ?? []).map((c) => (c.id === charge.id ? settled : c)) }))),
+      )
+      return logged(
+        next,
+        'office',
+        action.keep
+          ? `Kept the ${money(charge.amount)} back-charge to ${partner.company} on ${project.name}: ${note}`
+          : `Dropped the ${money(charge.amount)} back-charge to ${partner.company} on ${project.name}: ${note}`,
+      )
+    }
+
+    case 'takeBackCharge': {
+      const { project, pkg } = find(state, action.projectId, action.packageId)
+      const partner = awardedPartner(state, pkg)
+      const sow = pkg?.sow
+      const charge = sow?.backCharges?.find((c) => c.id === action.chargeId)
+      const draw = sow && charge ? backChargeDraws(sow, charge).find((d) => d.id === action.drawId) : undefined
+      if (!project || !pkg || !partner || !charge || !draw || !backChargeCanTake(charge, state.today)) return state
+      const next = mapProject(state, project.id, (p) =>
+        mapPackage(p, pkg.id, (k) =>
+          mapSow(k, (s) => ({
+            ...s,
+            draws: s.draws.map((d) => (d.id === draw.id ? { ...d, net: d.net - charge.amount, backCharges: [...(d.backCharges ?? []), { chargeId: charge.id, amount: charge.amount }] } : d)),
+            backCharges: (s.backCharges ?? []).map((c) => (c.id === charge.id ? { ...c, taken: { drawId: draw.id, on: state.today } } : c)),
+          })),
+        ),
+      )
+      return logged(next, 'office', `Took the ${money(charge.amount)} back-charge off ${partner.company}'s draw ${draw.number} on ${project.name}: ${money(draw.net - charge.amount)} to pay.`)
     }
   }
 }

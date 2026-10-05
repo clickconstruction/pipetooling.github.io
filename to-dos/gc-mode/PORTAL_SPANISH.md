@@ -120,7 +120,7 @@ column headers are in one block at the end of `gcBuildingWords.ts`, for the nati
 
 ## For a native speaker to read
 
-Every Spanish string the trade's portal shows, 827 in all, drawn from the code on 2026-10-04.
+Every Spanish string the trade's portal shows, 862 in all, drawn from the code on 2026-10-04.
 They're grouped by screen, English on the left. Please mark anything that reads wrong, stiff or
 unclear, and write the better words beside it. The Portal lane makes the changes and passes the
 other lanes theirs.
@@ -817,6 +817,46 @@ they were written in. The portal does not translate them.
 | The customer said no to change order {n} | El cliente rechazó la orden de cambio {n} |
 | The customer said no to change order {n} on {project}. We will call you about what comes next. | El cliente rechazó la orden de cambio {n} en {project}. Le llamaremos para ver qué sigue. |
 | Open your portal to see where it stands. | Abra su portal para ver cómo va. |
+
+#### Back-charges a company can see (owner, 2026-10-05)
+
+| English | Español |
+|---|---|
+| {trade} · charges from {gc} | {trade} · cargos de {gc} |
+| {amount} · sent {date} | {amount} · enviado el {date} |
+| photo: {name} | foto: {name} |
+| answer by {date} | conteste a más tardar el {date} |
+| no answer | sin respuesta |
+| you agreed | lo aceptó |
+| you disputed it | lo disputó |
+| {gc} kept it | {gc} lo mantuvo |
+| dropped | cancelado |
+| taken off draw {n} | descontado del pago {n} |
+| Agree, or dispute it and say why. With no answer by {date}, it can come off your next draw. | Acéptelo, o dispútelo y diga por qué. Si no contesta a más tardar el {date}, se puede descontar de su próximo pago. |
+| No answer came by {date}, so it can come off your next draw. You can still agree or dispute it. | No contestó a más tardar el {date}, así que se puede descontar de su próximo pago. Todavía puede aceptarlo o disputarlo. |
+| You agreed on {date}. It comes off your next draw. | Lo aceptó el {date}. Se descontará de su próximo pago. |
+| You disputed it on {date}. {gc} answers next. | Lo disputó el {date}. {gc} le contestará. |
+| {gc} kept it on {date}: {note} It comes off your next draw. | {gc} lo mantuvo el {date}: {note} Se descontará de su próximo pago. |
+| {gc} dropped it on {date}: {note} | {gc} lo canceló el {date}: {note} |
+| Taken off draw {n} on {date}. | Descontado del pago {n} el {date}. |
+| Your reason: {note} | Su razón: {note} |
+| Agree | Aceptar |
+| Dispute it | Disputarlo |
+| Why you dispute it | Por qué lo disputa |
+| Send to {gc} | Enviar a {gc} |
+| less {amount} in back-charges | menos {amount} en cargos |
+| {gc} charged you {amount} on {project}. Agree or dispute it by {date}. | {gc} le hizo un cargo de {amount} en {project}. Acéptelo o dispútelo a más tardar el {date}. |
+| {gc} charged you {amount} on {project}. No answer came by {date}. Agree or dispute it now. | {gc} le hizo un cargo de {amount} en {project}. No contestó a más tardar el {date}. Acéptelo o dispútelo ahora. |
+| A charge on {project}: {amount} | Un cargo en {project}: {amount} |
+| We are charging you {amount} on your {trade} work: {reason} | Le hacemos un cargo de {amount} en su trabajo de {trade}: {reason} |
+| Agree or dispute it in your portal by {date}. With no answer, it can come off your next draw. | Acéptelo o dispútelo en su portal a más tardar el {date}. Si no contesta, se puede descontar de su próximo pago. |
+| We are keeping the charge on {project} | Mantenemos el cargo en {project} |
+| We read your reason and are keeping the {amount} charge: {note} | Leímos su razón y mantenemos el cargo de {amount}: {note} |
+| We dropped the charge on {project} | Cancelamos el cargo en {project} |
+| We dropped the {amount} charge: {note} | Cancelamos el cargo de {amount}: {note} |
+| Draw {n} on {project} is {amount} less | El pago {n} de {project} tiene {amount} menos |
+| We took the {amount} charge off draw {n}: {reason} | Descontamos el cargo de {amount} del pago {n}: {reason} |
+| Open your portal to see it. | Abra su portal para verlo. |
 
 #### The usual exclusions, by name
 
