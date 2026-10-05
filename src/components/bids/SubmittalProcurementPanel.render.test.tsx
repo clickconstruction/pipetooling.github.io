@@ -296,6 +296,8 @@ describe('SubmittalProcurementPanel', () => {
   it('2026-10-01 · a line per part: To order puts what to buy now first by house, the waiting and the order-only lines apart; By house groups; ticked lines take one date and one PO', async () => {
     localStorage.setItem('submittals_procure_lens', 'to_order')
     state.records = []
+    // No update has gone, so no order is marked new.
+    state.updates = []
     writes.length = 0
     const partItems: ProcurementItemSource[] = [
       { tag: 'WC-1', product: 'TOTO CT728CUVG#01', supplyHouse: 'National Wholesale', leadTimeDays: 21, decision: { kind: 'approved', at: '2026-09-22T15:00:00Z' }, shared: true, partKey: 'k-bowl', partOrder: 1, quantity: 10 },
@@ -303,20 +305,39 @@ describe('SubmittalProcurementPanel', () => {
       { tag: 'WC-1', product: 'BRASSCRA PLB113XP ANG', supplyHouse: null, leadTimeDays: 7, decision: { kind: 'approved', at: '2026-09-22T15:00:00Z' }, shared: true, partKey: 'k-stop', partOrder: 3, orderOnly: true, quantity: 10 },
     ]
     renderWithProviders(<SubmittalProcurementPanel bidId="b1" bidLabel="B375" companyName="Click" items={partItems} reviewerNames={[]} currentUser={{ id: 'u', name: 'Wendi' }} />)
-    await waitFor(() => expect(screen.getAllByTestId('procurement-section').map((r) => r.textContent)).toEqual(['Order now · National Wholesale1 line', 'Order now · no house yet1 line · set a house to order', 'Waiting on the GC1 line · not ordered until they approve it']))
+    // v2.4587 · To order as orders: a section a house, the part sent back on its own with what they wrote.
+    await waitFor(() => expect(screen.getAllByTestId('procurement-section').map((r) => r.textContent)).toEqual(['Order now · National Wholesale11 order to place, by date', 'Order now · no house yet11 order to place, by date · set a house to order', 'Sent back by the GC1pick another product, then resubmit on step 7']))
     // Neither approved part has a needed date (WC-1 has no stage), so the Next line gives no day.
     expect(screen.getByTestId('procurement-next').textContent).toBe('Next: 2 parts are approved and not ordered. The GC sent 1 part back.')
     expect(stepWords()).toEqual(['Waiting on the GC11 sent back', 'To order2', 'On order0', 'On site0'])
     // Two houses on the lines: the lens row does not name one.
     expect(screen.queryByTestId('procurement-shared')).toBeNull()
-    // 2026-10-02 · the waiting lines fold to one line per house; opening it shows them.
-    expect(screen.getAllByTestId('procurement-qty').map((c) => c.textContent)).toEqual(['10', '10'])
-    const fold = screen.getByTestId('procurement-house-fold')
-    expect(fold.textContent).toBe('National Wholesale1 partShow')
-    fireEvent.click(within(fold).getByRole('button', { expanded: false }))
+    // An order is one line: its name, its count, what its parts share, and Mark ordered… at the right. The first of a section is open.
+    const groups = screen.getAllByTestId('procurement-group')
+    expect(groups.map((g) => g.textContent)).toEqual(['No order-by date yet1WC-1 · 3 wk leadMark ordered…', 'No order-by date yet1WC-1 · order only · 1 wk leadMark ordered…'])
+    expect(screen.getAllByTestId('procurement-group-fold').map((b) => b.getAttribute('aria-expanded'))).toEqual(['true', 'true'])
+    // A part inside an order: the product and the quantity, with Dates… at the right; the part sent back says what they wrote.
     expect(screen.getAllByTestId('procurement-qty').map((c) => c.textContent)).toEqual(['10', '10', '10'])
-    expect(within(screen.getByTestId('procurement-house-fold')).getByRole('button', { expanded: true }).textContent).toContain('Hide')
+    expect(screen.getAllByTestId('procurement-status').map((b) => b.textContent)).toEqual(['Dates…', 'Dates…'])
+    expect(screen.getByTestId('procurement-they-wrote').textContent).toBe('No note from them')
     expect(screen.getByTestId('procurement-order-only').textContent).toContain('order only')
+    // Folding the section hides its orders.
+    fireEvent.click(screen.getAllByTestId('procurement-section-fold')[0]!)
+    expect(screen.getAllByTestId('procurement-group')).toHaveLength(1)
+    fireEvent.click(screen.getAllByTestId('procurement-section-fold')[0]!)
+    // Mark ordered… opens a form under the order: today, a PO, and the whole order when nothing is ticked.
+    fireEvent.click(screen.getAllByTestId('procurement-mark-open')[0]!)
+    const form = screen.getByTestId('procurement-mark-form')
+    expect(form.textContent).toContain('Mark 1 part ordered')
+    expect((within(form).getByLabelText('Ordered on') as HTMLInputElement).value).toMatch(/^\d\d\/\d\d$/)
+    fireEvent.change(within(form).getByLabelText('Ordered on'), { target: { value: '10/2' } })
+    fireEvent.change(within(form).getByLabelText('PO'), { target: { value: 'SPACEX CHINA' } })
+    fireEvent.click(within(form).getByTestId('procurement-mark-save'))
+    await waitFor(() => expect(writes.filter((w) => w.table === 'bid_procurement_items' && w.op === 'insert')).toHaveLength(1))
+    expect(writes.find((w) => w.op === 'insert')!.payload).toMatchObject({ tag: 'WC-1', part_key: 'k-bowl', ordered_on: expect.stringMatching(/-10-02$/), po_ref: 'SPACEX CHINA' })
+    await waitFor(() => expect(screen.queryByTestId('procurement-mark-form')).toBeNull())
+    writes.length = 0
+    state.records = []
     fireEvent.click(screen.getByRole('button', { name: 'By house' }))
     expect(screen.getAllByTestId('procurement-section').map((r) => r.textContent)).toEqual(['National Wholesale2 lines', 'No house yet1 line'])
     // One order to the house: tick its group, one date, one PO.
@@ -559,15 +580,17 @@ describe('SubmittalProcurementPanel', () => {
     expect(stage.textContent).toBe('2 parts have no stageSet…')
     // HB-3 is approved with everything it needs; what is missing is on parts still waiting, so the line is grey.
     expect(screen.getByTestId('procurement-blockers').getAttribute('data-press')).toBeNull()
-    // To order: the lines waiting on the GC are folded one per house, so the two parts are out of sight.
-    expect(screen.getAllByTestId('procurement-house-fold')).toHaveLength(2)
+    // To order: the lines waiting on the GC are folded one per fixture, so the two parts are out of sight.
+    const folded = () => screen.getAllByTestId('procurement-group').filter((g) => g.getAttribute('data-kind') === 'fixture').map((g) => [g.textContent, within(g).getByTestId('procurement-group-fold').getAttribute('aria-expanded')])
+    expect(folded()).toEqual([['LAV-122 partsanswer by 11/03', 'false'], ['WHA-2001ZURN Z1700-200-OV', 'false']])
     expect(screen.queryByText('BOBRICK B-8236')).toBeNull()
     const link = within(stage).getByRole('button', { name: 'Show the 2 parts with no stage' })
     fireEvent.click(link)
     // Only the two parts, by name, with no fold to open; the line above still says what is ready to buy.
     expect(screen.getByTestId('procurement-only').textContent).toBe('2 parts with no stage. The other lines are hidden.Show every line')
-    expect(screen.getAllByTestId('procurement-open-row').map((d) => d.textContent)).toEqual(['LAV-1BOBRICK B-8236', 'WHA-200ZURN Z1700-200-OV'])
-    expect(screen.queryByTestId('procurement-house-fold')).toBeNull()
+    // Under its fixture a part does not say the tag again.
+    expect(screen.getAllByTestId('procurement-open-row').map((d) => d.textContent)).toEqual(['BOBRICK B-8236', 'ZURN Z1700-200-OV'])
+    expect(folded().map(([, open]) => open)).toEqual(['true', 'true'])
     expect(screen.queryByText('WOODFORD B74C')).toBeNull()
     expect(link.getAttribute('aria-pressed')).toBe('true')
     expect(screen.getByTestId('procurement-next').textContent).toMatch(/^Next: Order 1 part by 09\/22/)
@@ -577,7 +600,7 @@ describe('SubmittalProcurementPanel', () => {
     expect(link.getAttribute('aria-pressed')).toBe('false')
     expect(screen.getByTestId('procurement-only').textContent).toBe('Waiting on the GC: 3 parts. The other lines are hidden.Show every line')
     expect(screen.getAllByTestId('procurement-row')).toHaveLength(3)
-    expect(screen.queryByTestId('procurement-house-fold')).toBeNull()
+    expect(folded().map(([, open]) => open)).toEqual(['true', 'true'])
     expect(screen.queryByText('WOODFORD B74C')).toBeNull()
     // Pressed again, every line is back.
     fireEvent.click(screen.getByTestId('procurement-step-gc'))
@@ -588,7 +611,7 @@ describe('SubmittalProcurementPanel', () => {
     // The link again, or Show every line, brings the log back.
     fireEvent.click(within(screen.getByTestId('procurement-only')).getByRole('button', { name: 'Show every line' }))
     expect(screen.queryByTestId('procurement-only')).toBeNull()
-    expect(screen.getAllByTestId('procurement-house-fold')).toHaveLength(2)
+    expect(folded().map(([, open]) => open)).toEqual(['false', 'false'])
     expect(screen.getByText('WOODFORD B74C')).toBeTruthy()
     expect(stage.textContent).toBe('2 parts have no stageSet…')
   })
@@ -612,6 +635,55 @@ describe('SubmittalProcurementPanel', () => {
     // No door handed: the line ends with its sentences.
     renderWithProviders(<SubmittalProcurementPanel bidId="b1" bidLabel="B375" companyName="Click" items={lines} reviewerNames={[]} currentUser={{ id: 'u', name: 'Wendi' }} />)
     await waitFor(() => expect(screen.getByTestId('procurement-next').textContent).toBe('Next: Nothing can be ordered until the GC answers. They sent 1 part back. 1 more waits on their answer.'))
+  })
+
+  it('v2.4587 · orders by PO, on site by PO, a part sent back with what they wrote and its two doors, a waiting fixture with Their answer…', async () => {
+    localStorage.removeItem('submittals_procure_lens')
+    state.updates = []
+    state.records = [
+      { id: 'p1', bid_id: 'b1', tag: 'WHA-200', part_key: null, label: '', lead_time_days: null, stage: null, ordered_on: '2026-10-20', po_ref: '4502', expected_on: '2026-11-03', delivered_on: null, note: '', sort_order: 0, created_at: '', updated_at: '' },
+      { id: 'p2', bid_id: 'b1', tag: 'WHA-300', part_key: null, label: '', lead_time_days: null, stage: null, ordered_on: '2026-10-20', po_ref: '4502', expected_on: '2026-11-03', delivered_on: null, note: '', sort_order: 1, created_at: '', updated_at: '' },
+      { id: 'p3', bid_id: 'b1', tag: 'FCO', part_key: null, label: '', lead_time_days: null, stage: null, ordered_on: '2026-10-06', po_ref: '4471', expected_on: null, delivered_on: '2026-10-15', note: '', sort_order: 2, created_at: '', updated_at: '' },
+    ]
+    const approved = { kind: 'approved' as const, at: '2026-10-16T15:00:00Z' }
+    const lines: ProcurementItemSource[] = [
+      { tag: 'FCO', product: 'ZURN ZN1400-2NL', supplyHouse: 'National Wholesale', leadTimeDays: 7, decision: approved, shared: true, itemId: 'row-fco' },
+      { tag: 'LAV-2', product: 'KOHLER 2215-0 LADENA WHITE', supplyHouse: 'National Wholesale', leadTimeDays: null, decision: { kind: 'rejected', at: '2026-10-02T15:00:00Z' }, shared: true, partKey: 'k-lav', partOrder: 1, itemId: 'row-lav2', reviewNote: 'KOHLER 2215-0' },
+      { tag: 'LAV-2', product: 'BOBRICK B-8236', supplyHouse: 'National Wholesale', leadTimeDays: null, decision: null, shared: true, partKey: 'k-soap', partOrder: 2, itemId: 'row-lav2', fixture: 'LAV2', fixtureCount: 6 },
+      { tag: 'LAV-2', product: 'MAINLINE MLZ8700 P-TRAP', supplyHouse: 'National Wholesale', leadTimeDays: null, decision: null, shared: true, partKey: 'k-trap', partOrder: 3, itemId: 'row-lav2', orderOnly: true, fixture: 'LAV2', fixtureCount: 6 },
+      { tag: 'WHA-200', product: 'ZURN Z1700-200-OV', supplyHouse: 'National Wholesale', leadTimeDays: 14, decision: approved, shared: true, itemId: 'row-w2' },
+      { tag: 'WHA-300', product: 'ZURN Z1700-300-OV', supplyHouse: 'National Wholesale', leadTimeDays: 14, decision: approved, shared: true, itemId: 'row-w3' },
+    ]
+    const onOpenItem = vi.fn()
+    const onAnswerItem = vi.fn()
+    renderWithProviders(<SubmittalProcurementPanel bidId="b1" bidLabel="B375" companyName="Click" items={lines} reviewerNames={[]} currentUser={{ id: 'u', name: 'Wendi' }} onOpenItem={onOpenItem} onAnswerItem={onAnswerItem} />)
+    await waitFor(() => expect(screen.getAllByTestId('procurement-section').map((r) => r.textContent)).toEqual(['On order2', 'Sent back by the GC1pick another product, then resubmit on step 7', 'Waiting on their answer21 fixture · not ordered until they approve', 'On site1']))
+    // An order placed and an order on site are one line each, folded: the PO, what its parts share, and when it lands.
+    const groups = () => screen.getAllByTestId('procurement-group')
+    expect(groups().map((g) => [g.getAttribute('data-kind'), g.textContent, within(g).getByTestId('procurement-group-fold').getAttribute('aria-expanded')])).toEqual([
+      ['placed', 'PO 45022WHA-200, WHA-300 · 2 wk lead · ordered 10/20Arrives 11/03', 'false'],
+      ['fixture', 'LAV-22LAV2 × 6 · 1 part · 1 order onlyTheir answer…', 'false'],
+      ['on_site', 'PO 44711FCO · ordered 10/06✓ On site 10/15', 'false'],
+    ])
+    // Opened, a part is one line with Dates… at the right; the dates editor opens under it as before.
+    fireEvent.click(within(groups()[0]!).getByTestId('procurement-group-fold'))
+    expect(screen.getAllByTestId('procurement-open-row').map((b) => b.textContent)).toContain('WHA-200ZURN Z1700-200-OV')
+    openDates('WHA-200')
+    expect(screen.getByTestId('procurement-editor').textContent).toContain('Ordered')
+    expect((screen.getByLabelText('WHA-200 PO') as HTMLInputElement).value).toBe('4502')
+    // The part sent back says what they wrote, and has both doors.
+    expect(screen.getByTestId('procurement-they-wrote').textContent).toBe('They wrote “KOHLER 2215-0”')
+    fireEvent.click(screen.getByTestId('procurement-pick-another'))
+    expect(onOpenItem).toHaveBeenLastCalledWith({ itemId: 'row-lav2', partKey: 'k-lav' })
+    fireEvent.click(screen.getByRole('button', { name: 'Change their answer on LAV-2 KOHLER 2215-0' }))
+    expect(onAnswerItem).toHaveBeenLastCalledWith({ itemId: 'row-lav2', partKey: 'k-lav' })
+    // The waiting fixture opens the row's Their answer window; inside, the order-only part sits under its heading.
+    fireEvent.click(screen.getByTestId('procurement-fixture-answer'))
+    expect(onAnswerItem).toHaveBeenLastCalledWith({ itemId: 'row-lav2', partKey: null })
+    fireEvent.click(within(groups()[1]!).getByTestId('procurement-group-fold'))
+    expect(screen.getByTestId('procurement-order-only-divider').textContent).toBe('Ordered, not on the GC’s copy · 1 part')
+    expect(screen.getByRole('button', { name: 'Enter their answer on LAV-2 BOBRICK B-8236' })).toBeTruthy()
+    state.records = []
   })
 
   it('2026-10-02 · on a phone each part is a short card: no table, the qty, house and stage on one line, its dates open under it', async () => {
