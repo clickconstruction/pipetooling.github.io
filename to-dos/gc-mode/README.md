@@ -1228,13 +1228,17 @@ Decided by the owner (2026-10-05):
 - **Photos to Drive in one move:** drag them onto the job's folder beside the thread, or tick them
   and press Save to Drive; the file agent copies and names them. A job can save every photo as it
   comes in.
-- **Quo, Business plan** (automatic recording, transcripts and summaries on every call, ring
-  groups). Running cost about $100 / $160 / $250 a month for 3 / 5 / 8 seats billed yearly
-  ($23 a seat), almost all seats; texts from the app 1¢ each, Claude a few dollars, Supabase and
-  Drive already paid. A seat is needed only by someone who makes or takes calls.
+- **Quo Business, two seats:** the assistant (jobs and the customers who pay) and the estimator
+  (trade partners). A seat is needed only to make or take calls in Quo's apps; everyone else reads
+  every thread and texts from our app with no seat. Quo has no minimum. Business records every call
+  and writes transcripts and summaries. Running cost about $75 a month billed yearly ($46 seats,
+  ~$15 texts from our app at 1¢, $2 registration, ~$10 Claude), about $65 without Claude.
+- **Claude is ours, not Quo's.** Quo's AI does call transcripts and summaries but knows nothing of
+  our jobs. Reading texts and summaries for promised days, plans questions and the job needs an
+  Anthropic account the app calls; the app calls no AI provider today.
 
-Left for the owner: how many seats, and yearly or monthly billing. The agent's Drive connection
-waits on the plan intake's admin-console approval (the August handoff).
+Left for the owner: yearly or monthly billing, and Claude from the first day or later. The agent's
+Drive connection waits on the plan intake's admin-console approval (the August handoff).
 
 ## The plan, when the shape is settled
 
