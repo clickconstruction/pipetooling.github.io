@@ -7,7 +7,7 @@ order: 13
 ---
 A bill goes to the job's customer, or to the GC when **Bills go to** says so. Often someone else needs a copy too.
 
-The copy might go to the accounts-payable clerk at a builder, a spouse or the property manager. The copy might also go to the GC on a homeowner's job. You name these people once. Then every bill on that customer's jobs starts with them ticked.
+The copy might go to the accounts-payable clerk at a builder, a spouse or the property manager. You name these people once. Then every bill on that customer's jobs starts with them ticked. The copy might also go to the GC on a homeowner's job.
 
 ## Set it on the job
 

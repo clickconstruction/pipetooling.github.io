@@ -24,7 +24,7 @@ The link is addressed to that one house. You send a separate link to each vendor
 
 ## Or let ClickTooling send the emails
 
-Next to the copy buttons, **Send by email…** opens the request composer. Each house shows its **contacts as chips**. You tap one to CC it. A CC'd contact gets a copy of the email when it goes out. You tap it again to make it the To. There is exactly one To per house. Tapping the To un-sets it, so a typed address can take over. A typed address offers to be **remembered as that house's contact**. Contacts are managed on the supply house form itself.
+Next to the copy buttons, **Send by email…** opens the request composer. Each house shows its **contacts as chips**. You tap a chip to CC that contact. You tap the chip again to make that contact the To. A CC'd contact gets a copy of the email when it goes out. There is exactly one To per house. Tapping the To un-sets it, so a typed address can take over. A typed address offers to be **remembered as that house's contact**. Contacts are managed on the supply house form itself.
 
 You set needed-by and add a one-line note. You can also **include the job plans link**, since cut sheets sell fixtures. A cut sheet is the maker's page for the product. Then you **preview every email exactly as it will send** before anything goes out. Each house gets one email and one link. CCs ride the same message. Replies come straight to your inbox.
 
@@ -54,7 +54,7 @@ Wendi texts Moore Supply the pipe scope with a quote link. Danny at the counter 
 ## Watching for the answer
 
 - While a link is out with nothing back yet, an amber {{chip:yellow|RFQs · 1 waiting}} chip sits by Share.
-- The desk sorts by **what needs you**. Bounced addresses come first. You fix them right on the row and resend. Then come requests whose needed-by is closing in. Then come ones nobody has opened in two days. Every row has a plain-words reason chip. A coverage bar answers "which items does nobody have priced yet?".
+- The desk sorts by **what needs you**. Bounced addresses come first. You fix them right on the row and resend. Then come requests whose needed-by is closing in. Then come ones nobody has opened in two days. Each of those rows has a plain-words reason chip. A coverage bar answers "which items does nobody have priced yet?".
 - The moment a vendor submits, the {{chip:blue|Quotes (1)}} chip turns **green**. You open it to compare. See *get supply house prices on a bid* for the compare view.
 - Vendors can reopen the link to send a **revised quote**. The newest one is what compare shows.
 - Rep texted prices back instead of using the link? **Plug in a quote**, in the same menu, matches their lines to your fixtures. The match works even when the names don't quite agree. "shower tub combos 3 @ $900" finds *Shower/tub combo*. "kitchen sinks" finds *Kitchen sink*. See *get supply house prices on a bid*.

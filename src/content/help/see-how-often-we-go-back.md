@@ -8,7 +8,7 @@ order: 44
 
 Profit says nothing about whether we had to come back. **Rework** finds the return visits and turns them into a rate.
 
-The return visits come from something every job already has: its address.
+Rework finds them from something every job already has: its address.
 
 ## Where it is
 
