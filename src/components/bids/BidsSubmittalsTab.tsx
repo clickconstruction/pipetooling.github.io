@@ -25,6 +25,7 @@ import { SubmittalRoomPanel } from './SubmittalRoomPanel'
 import { SubmittalSourcesPanel } from './SubmittalSourcesPanel'
 import { SubmittalHelpMenu } from './SubmittalHelpMenu'
 import { robotScheduleNote, scheduleReadHoldsStepOpen } from '../../lib/submittals/robotNote'
+import { buildRowCutSheet, cutSheetFileName, rowCutSheetPlan } from '../../lib/submittals/rowCutSheet'
 import { SubmittalTheirCallPanel } from './SubmittalTheirCallPanel'
 import { SpotlightTour, spotlightTourStepsPresent, type SpotlightTourStep } from '../SpotlightTour'
 import { robotSeatState, staleAsk, type RobotSeatRow, type RobotSeatState } from '../../lib/submittals/robotOffer'
@@ -291,6 +292,8 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   // 6b · the robot's tasks on this bid (queued · working · ready · blocked · done)
   const [tasks, setTasks] = useState<SubmittalTaskRow[]>([])
   const [lookChecked, setLookChecked] = useState<Record<string, boolean>>({})
+  /** The row whose cut sheet is being cut into its own PDF. */
+  const [savingSheetId, setSavingSheetId] = useState<string | null>(null)
   const [messageRows, setMessageRows] = useState<Array<{ id: string; submittal_id: string | null; tags: string[]; metadata: unknown; author_kind: string; kind: string }>>([])
   const [threadOpen, setThreadOpen] = useState(false)
   const [replyTo, setReplyTo] = useState<string | null>(null)
@@ -1408,6 +1411,37 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     window.open(url, '_blank', 'noopener')
   }
 
+  /**
+   * One row's cut sheet as a PDF of its own (2026-10-05): the row's pages cut out of the vendor's
+   * file and saved to the device, to attach to an email or a text. Nothing is written or sent.
+   */
+  async function saveRowCutSheet(it: SubmittalItemRow) {
+    const plan = rowCutSheetPlan(it, partsOf.get(it.id) ?? [])
+    if (plan.length === 0 || savingSheetId) return
+    setSavingSheetId(it.id)
+    try {
+      const out = await buildRowCutSheet(plan, async (fileIndex) => {
+        const f = sourceFiles[fileIndex]
+        if (!f) throw new Error('The vendor file for this cut sheet is no longer on the revision.')
+        return downloadFile(f.path)
+      })
+      const name = cutSheetFileName(it.tag)
+      const url = URL.createObjectURL(new Blob([out.bytes as BlobPart], { type: 'application/pdf' }))
+      const a = document.createElement('a')
+      a.href = url
+      a.download = name
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.setTimeout(() => URL.revokeObjectURL(url), 30_000)
+      showToast(`Saved ${name} · ${out.pages} page${out.pages === 1 ? '' : 's'}. Attach it to your email or text.`, 'success')
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not save the cut sheet.', 'error')
+    } finally {
+      setSavingSheetId(null)
+    }
+  }
+
   // ---------- stage 3a · the sheet strip ----------
 
   async function showPages(fileIndex: number) {
@@ -2247,6 +2281,8 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                   onPutBack={(it) => void setOrderOnly(it, false)}
                   onLeaveOut={(it) => void leaveOrderOnlyOut(it)}
                   onTypeSchedule={isDraft ? () => setPlugInOpen(true) : undefined}
+                  onSaveSheet={(it) => void saveRowCutSheet(it)}
+                  savingSheetId={savingSheetId}
                 />
                 {isDraft && (takeoffLeftOut > 0 || takeoffStandsLine) ? (
                   <div style={{ marginTop: '0.4rem', fontSize: '0.8125rem', display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap' }} data-testid="left-out-line">

@@ -35,6 +35,18 @@ vi.mock('../../lib/submittals/submittalPackage', async (importOriginal) => {
   }
 })
 
+// One row's cut sheet as its own PDF: the plan and the file name are the real ones; the cutting (pdf-lib) is stood in for.
+vi.mock('../../lib/submittals/rowCutSheet', async (importOriginal) => {
+  const real = await importOriginal<typeof import('../../lib/submittals/rowCutSheet')>()
+  return {
+    ...real,
+    buildRowCutSheet: async (plan: Array<{ fileIndex: number; pages: number[] }>, readFile: (i: number) => Promise<unknown>) => {
+      for (const i of new Set(plan.map((s) => s.fileIndex))) await readFile(i)
+      return { bytes: new Uint8Array([1, 2, 3]), pages: plan.reduce((n, s) => n + s.pages.length, 0) }
+    },
+  }
+})
+
 vi.mock('../../lib/submittals/pdfThumbnails', () => ({
   renderPdfThumbnails: (bytes: ArrayBuffer) => Promise.resolve(Array.from({ length: Math.max(1, bytes.byteLength / 2) }, (_, i) => `data:page${i + 1}`)),
   // 2026-10-01 · Read its parts: the file reads as BP375's National Wholesale submittal.
@@ -647,6 +659,38 @@ describe('BidsSubmittalsTab', () => {
     expect(screen.getByText('Since Rev 1')).toBeTruthy()
     await waitFor(() => expect(screen.getByTestId('submittal-rows').textContent).toMatch(/product changed/))
     expect(screen.getByTestId('submittal-rows').textContent).toMatch(/new row/)
+  })
+
+  it('2026-10-05 · Save PDF on a row cuts that row’s pages out of the vendor file and saves them under the row’s tag; nothing is written', async () => {
+    state.revisions = [{ id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'draft', title: 'Plumbing fixtures & equipment', note: null, package_path: null, source_files: [{ path: 'b398/rev-1/0.pdf', name: 'NWS.pdf', pages: 12, house_id: null, house_name: null, trimmed_at: null }], created_at: '2026-09-15T00:00:00Z', shared_at: null }]
+    state.items = [
+      item({ id: 'it-1', tag: 'DWH-1', sequence_order: 1, submitted_label: 'RHEEM PROPH40', status: 'proposed', sheet_file: 0, sheet_pages: [6, 7, 8] }),
+      item({ id: 'it-2', tag: 'FCO', sequence_order: 2, submitted_label: 'ZURN ZN1400-2NL', status: 'proposed' }),
+    ]
+    state.writes = []
+    state.storage = []
+    const saved: Array<{ name: string; href: string }> = []
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) { saved.push({ name: this.download, href: this.href }) })
+    const createUrl = vi.fn(() => 'blob:cut-sheet')
+    const urlApi = URL as unknown as { createObjectURL?: unknown; revokeObjectURL?: unknown }
+    const before = { create: urlApi.createObjectURL, revoke: urlApi.revokeObjectURL }
+    urlApi.createObjectURL = createUrl
+    urlApi.revokeObjectURL = () => {}
+    try {
+      mount()
+      const rows = await screen.findAllByTestId('submittal-row')
+      // Only a row that has a cut sheet offers the door.
+      expect(within(rows[1]!).queryByTestId('save-sheet')).toBeNull()
+      fireEvent.click(within(rows[0]!).getByRole('button', { name: 'Save the cut sheet for DWH-1 as a PDF' }))
+      await waitFor(() => expect(saved).toEqual([{ name: 'DWH-1 cut sheet.pdf', href: 'blob:cut-sheet' }]))
+      expect(state.storage).toEqual(['download b398/rev-1/0.pdf'])
+      expect(await screen.findByText('Saved DWH-1 cut sheet.pdf · 3 pages. Attach it to your email or text.')).toBeTruthy()
+      expect(state.writes).toEqual([])
+    } finally {
+      click.mockRestore()
+      urlApi.createObjectURL = before.create
+      urlApi.revokeObjectURL = before.revoke
+    }
   })
 
   it('Build package downloads only the files the rows use, stores package-rev<N>.pdf, stamps the revision, and opens the signed link', async () => {

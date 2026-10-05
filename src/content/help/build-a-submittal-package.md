@@ -2,7 +2,7 @@
 title: build a submittal package
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
-keywords: assembly parts, which part belongs to which, change the supply house, swap supply house, refresh from the takeoff, make it a part, part of, carrier, to order, by house, mark ordered, qty, read its parts, house file, parts list, procurement log, procurement, released, ordered, lead time, expected, required, float, order by, delivered, send update, submittal, submittals, walkthrough, tour, where you are, journey, next step, cut sheet, cut sheets, fixture schedule, specified, submitted, alternate, superseded, equal, design change, missing, accessory, revision, rev, package, vendor pdf, in lieu of, GC approval, product data
+keywords: assembly parts, which part belongs to which, change the supply house, swap supply house, refresh from the takeoff, make it a part, part of, carrier, to order, by house, mark ordered, qty, read its parts, house file, parts list, procurement log, procurement, released, ordered, lead time, expected, required, float, order by, delivered, send update, submittal, submittals, walkthrough, tour, where you are, journey, next step, cut sheet, cut sheets, fixture schedule, specified, submitted, alternate, superseded, equal, design change, missing, accessory, revision, rev, package, vendor pdf, in lieu of, GC approval, product data, send a cut sheet, save a cut sheet, one cut sheet, cut sheet PDF, superintendent, installer
 ---
 A submittal is the list of products you will install. The GC approves it before anything is ordered.
 
@@ -135,6 +135,10 @@ The footer counts as you go. It reads *6 of 31 pages on rows · 25 not used*. If
 :::example Six rows from one file
 NWS's submittal PDF is 31 pages. Wendi drops it, opens the arrow, and works down the amber list: page 1 and 2 onto WC-1, 3 onto the flush valve, 5 onto DWH-1, 8 onto FD-1, 12 onto HB-3. The footer reads *6 of 31 pages on rows · 25 not used*.
 :::
+
+### Send one cut sheet to someone
+
+A superintendent or an installer sometimes needs one product's cut sheet, not the whole package. Find the row. Under its pages, like *✓ p.30–47*, tap **Save PDF**. The tab saves just those pages as a small file named for the tag, like *LAV-1 cut sheet.pdf*. Attach it to your email or text. Nothing is sent from the tab, and nothing on the submittal changes.
 
 ## Done with a file
 
