@@ -7,7 +7,7 @@ order: 46
 ---
 The Pipeline normally lists rows newest-job-number-first. To see what was added to the app most recently, switch the row order to time added.
 
-That helps you find a job someone entered this morning.
+The new order helps you find a job someone entered this morning.
 
 ## Switch the order
 
@@ -23,4 +23,4 @@ A {{chip:blue|Sorted: time added ×}} chip sits beside the ⋯ button whenever t
 The choice is remembered on your device, so the board opens the way you left it. It never changes for anyone else.
 :::
 
-There is a third order, ***Percent complete (0 → 100)***. You reach it by clicking the **Progress & payment** column title. See *sort the pipeline by percent complete*. That one is a quick look and is never remembered.
+There is a third order, ***Percent complete (0 → 100)***. You reach it by clicking the **Progress & payment** column title. See *sort the pipeline by percent complete*. The percent order is a quick look and is never remembered.

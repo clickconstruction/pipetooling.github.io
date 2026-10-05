@@ -18,7 +18,7 @@ You have a client-side view: your jobs, their money, and the estimates and bids 
 The chip is the billing state: {{chip:gray|Waiting}} {{chip:yellow|Working}} {{chip:purple|Ready to Bill}} {{chip:blue|Billed}} {{chip:green|Paid}}
 :::
 - **Estimates** holds proposals out for acceptance, and what's been accepted.
-- **Bids** is the Bid Board for your trade, plus RFIs, change orders and lien releases. An RFI, a request for information, is a written question about the plans. A change order is a priced change to the agreed work. A lien release is the paper that gives up a claim on the property. Pricing, cover letters, followup and the estimating workbench are office-only. They stay out of view.
+- **Bids** is the Bid Board for your trade, plus RFIs, change orders and lien releases. An RFI, a request for information, is a written question about the plans. A change order is a priced change to the agreed work. A lien release is the paper that gives up our lien rights for the work it covers. Pricing, cover letters, followup and the estimating workbench are office-only, so they stay out of view.
 - **Calendar** and **Job Parts Tally** are for the schedule and parts logging.
 
 ## Billing

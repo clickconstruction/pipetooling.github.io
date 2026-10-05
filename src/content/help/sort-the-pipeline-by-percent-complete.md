@@ -5,7 +5,7 @@ roles: dev, master_technician, assistant, controller, primary
 keywords: pipeline, sort, percent complete, % done, progress, least done, stages board, column header
 order: 47
 ---
-Sort the Pipeline's rows by their **% done** to see which jobs have the least work behind them. That helps you decide where the crews go next.
+Sort the Pipeline's rows by their **% done** to see which jobs have the least work behind them. The sort helps you decide where the crews go next.
 
 The order runs from 0% at the top to 100% at the bottom, inside every section.
 

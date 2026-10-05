@@ -9,7 +9,7 @@ Tapping a task on the Roadmap opens its **task card**. Everything on it saves as
 
 The task can be a row in **Plan** or a task inside a Map cluster. On a phone the card slides up from the bottom of the screen, as a bottom sheet. On a computer it's a centered card.
 
-Each stage card on **Plan** also carries a small bar of **one slot per task**, in order. Green slots are done. The amber-ringed one is next up. Outlined ones remain. Hover a slot for the task's name, or tap it. That opens the task card too. The **⚡ Next up** panel above the lists is the fastest door to staffing. Its *Needs a person* lane is the handful of tasks with nobody on them that are worth doing first. See *see what to do next on a roadmap*.
+Each stage card on **Plan** also carries a small bar of **one slot per task**, in order. Green slots are done. The amber-ringed one is next up. Outlined ones remain. Hover a slot for the task's name, or tap it. Tapping a slot opens the task card too. The **⚡ Next up** panel above the lists is the fastest door to staffing. The panel's *Needs a person* lane is the handful of tasks with nobody on them that are worth doing first. See *see what to do next on a roadmap*.
 
 ## Put names on the task
 
@@ -42,14 +42,14 @@ Tap the **title itself**. The faint ✎ marks it. Type, and press **Enter**. Esc
 
 Everything you press lives in one **dock at the bottom of the card**, the same on phone and desktop:
 
-- {{button:green|○ Mark done}} completes the roadmap task right there. It is the same as ticking its box on the Map. It flips to ***✓ Done · reopen***, so one more tap undoes it. It responds the moment you tap. If the save doesn't stick, say from bad signal, the button says ***Tap to retry — not saved***. It does not quietly revert.
-- The **☆ square** pins the task. It shows an amber ★ when pinned. The task jumps to the top of its lane on the Plan's ⚡ Next up shortlist.
+- {{button:green|○ Mark done}} completes the roadmap task right there. Marking done is the same as ticking the task's box on the Map. The button flips to ***✓ Done · reopen***, so one more tap undoes it. The button responds the moment you tap. If the save doesn't stick, say from bad signal, the button says ***Tap to retry — not saved***. The button does not quietly revert.
+- The **☆ square** pins the task. The square shows an amber ★ when pinned. The task jumps to the top of its lane on the Plan's ⚡ Next up shortlist.
 - The **🗑 square** starts the two-step delete: {{button:red|Delete permanently}} or **Keep it**. Completed history always stays.
 
-Editors see all three. An assignee sees Mark done when the stage is unlocked. The card opens from the Map, Plan and Next up. It also opens from the Review tab's Goals ledger and the "Where this task fits" window.
+Editors see all three. An assignee sees Mark done when the stage is unlocked. The card opens from the Map, Plan and Next up. The card also opens from the Review tab's Goals ledger and the "Where this task fits" window.
 
 ## On a phone in the field
 
-Crew members get a simpler card built for sunlight. It shows the task in big bold text, who's on it, the latest note, and one giant green **✓ DONE**. Two one-tap replies, **👍 On it** and **⚠️ Problem**, post straight to the task's conversation. They don't open the keyboard. A task that ⏳ waits its turn shows who it's waiting on instead of a button.
+Crew members get a simpler card built for sunlight. The card shows the task in big bold text, who's on it and the latest note. The card also carries one giant green **✓ DONE**. Two one-tap replies, **👍 On it** and **⚠️ Problem**, post straight to the task's conversation without opening the keyboard. A task that ⏳ waits its turn shows who it's waiting on instead of a button.
 
 The card's stage crumb, the line naming its stage, wears the stage's **number badge**. So "the gate task on stage 4" is easy to find from either view.

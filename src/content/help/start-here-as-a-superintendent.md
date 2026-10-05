@@ -23,7 +23,7 @@ Red needs your decision now (a completed step waiting on approval); amber is wor
 2. **Assign and schedule.** Open a project's Workflow to assign a person to a step and set its expected dates. Or use [Schedule](?g=schedule-dispatch) for the day-by-day board.
 3. **Approve or send back.** When a tech marks a step complete, you can approve it or send it back with a reason. If you send it back, the previous step reopens for rework automatically.
 4. **Watch the sub board.** Projects → Forecast → **Subs** shows every sub's committed work on a timeline. Overlapping bookings are outlined in red.
-5. **Open a job from your Dashboard.** Tap a row under **Superintendent Jobs** or **Assigned Jobs** and the job opens. It shows the address, status, files and plans, reports, and the job's notes thread. Post a note, or tap {{button:outline|Arrived}} / {{button:outline|Leaving}}. The office sees it on the same job. You read the job here. The office edits it.
+5. **Open a job from your Dashboard.** Tap a row under **Superintendent Jobs** or **Assigned Jobs** and the job opens. The job shows its address, status, files and plans, reports, and notes thread. Post a note, or tap {{button:outline|Arrived}} / {{button:outline|Leaving}}. The office sees it on the same job. You read the job here. The office edits it.
 
 :::example Leaving a note on a job
 Open **706 · Maple St rough-in** from your Dashboard, scroll to the notes, type "Inspector wants the cleanout moved 6 in. — crew back Thursday," and post. The office sees it on the job the moment it lands.
@@ -31,7 +31,7 @@ Open **706 · Maple St rough-in** from your Dashboard, scroll to the notes, type
 
 ## Grey busy blocks on the Schedule
 
-The [Schedule](?g=schedule-dispatch) board shows job cards only for work on your projects. Someone may be booked on work you can't see. Then their day shows a grey {{chip:gray|busy}} block instead of an empty cell. It has no job name or times. It just says they're not free. **Expected Manpower** counts those hours too. *83 person-hours · 38 on your projects* means 83 in total, 38 of them on your jobs.
+The [Schedule](?g=schedule-dispatch) board shows job cards only for work on your projects. Someone may be booked on work you can't see. Then their day shows a grey {{chip:gray|busy}} block instead of an empty cell. The block has no job name or times. The block just says they're not free. **Expected Manpower** counts those hours too. *83 person-hours · 38 on your projects* means 83 in total, 38 of them on your jobs.
 
 :::example Reading a busy block
 **Marcus · Wed** {{chip:gray|busy}} {{chip:gray|busy}}
@@ -43,18 +43,18 @@ Marking someone **off**, meaning not coming in, is an office action. The `off` b
 
 ## Working from the truck
 
-The first time you open the Dashboard it offers **Working in the field? Turn on Job Mode.** Tap {{button:green|Turn on Job Mode}} for the one-card field view. It shows the current job, today's stops, Clock In, Leave Report and Next Job. Your Schedule and Customers sit on a bottom tab bar. {{button:outline|Not now}} keeps the full Dashboard. The {{icon:gear}} gear menu toggles it any time. See [clocking in and out with Job Mode](?g=job-mode-clocking).
+The first time you open the Dashboard it offers **Working in the field? Turn on Job Mode.** Tap {{button:green|Turn on Job Mode}} for the one-card field view. The view shows the current job, today's stops, Clock In, Leave Report and Next Job. Your Schedule and Customers sit on a bottom tab bar. {{button:outline|Not now}} keeps the full Dashboard. The {{icon:gear}} gear menu toggles it any time. See [clocking in and out with Job Mode](?g=job-mode-clocking).
 
 ## Work orders
 
-You see the work orders on your own jobs and projects. Those are the ones you're assigned to or on the team for. You can mark a sub's work order **accepted** when they tell you directly. Creating, offering, and settling work orders stays with the office. That is the money side. See [pay a sub per step](?g=pay-a-sub-per-step).
+You see the work orders on your own jobs and projects. Your own jobs and projects are the ones you're assigned to or on the team for. You can mark a sub's work order **accepted** when they tell you directly. Creating, offering, and settling work orders is the money side, and it stays with the office. See [pay a sub per step](?g=pay-a-sub-per-step).
 
 ## What your people see
 
 Knowing their view saves phone calls:
 
-- **Subs and helpers** see only steps assigned to *them*, on their Dashboard. They get no project list, no other people's work, and no company money. They can Set Start, Mark Complete, file reports, clock in, and see their own balance. They cannot see notes for the office.
-- **Estimators** live in Bids, Materials, and the Map. They don't see your project steps at all.
+- **Subs and helpers** see only steps assigned to *them*, on their Dashboard. Subs and helpers get no project list, no other people's work, and no company money. A sub or helper can Set Start, Mark Complete, file reports, clock in, and see their own balance. Notes for the office stay hidden from them.
+- **Estimators** live in Bids, Materials, and the Map. Estimators don't see your project steps at all.
 
 In **Settings → Guides**, the "Viewing guides for" chips show the exact guide list a Sub or Helper gets. So you can point someone at the right one.
 

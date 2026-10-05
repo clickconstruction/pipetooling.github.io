@@ -12,7 +12,7 @@ Do this when a customer asks to pay with **two or more cards**. Each smaller bil
 ## Split a bill that's already out
 
 1. Open the bill. Use **View bill** from the Billing Pipeline, the job's Billing tab, or the Paid/Billed card.
-2. At the bottom, click {{button:green|Split bill…}}. It only appears on unpaid Stripe bills with no payments applied yet.
+2. At the bottom, click {{button:green|Split bill…}}. The button only appears on unpaid Stripe bills with no payments applied yet.
 3. Enter the amount for **Part 1**. The last part always fills in with the remainder automatically. Use {{button:outline|+ Add another part}} for a third or fourth card.
 4. Check the **due date**. All parts share it. Then click {{button:green|Split into 2 bills}}.
 

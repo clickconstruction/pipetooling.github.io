@@ -15,7 +15,7 @@ There is one line per job-day you supervised that has no report yet, like *J258 
 
 ## My crew's hours
 
-This shows the clock sessions of everyone who worked a job-day you supervised. They are grouped by person, newest day first. Each shows the job and the hours. It shows *in* while they are still clocked in, and a tick once the office has approved. There is no approve button here, on purpose. Approval stays with the office and the pay-approved masters. You see your crew. You do not sign for their pay.
+The section shows the clock sessions of everyone who worked a job-day you supervised. The sessions are grouped by person, newest day first. Each session shows the job and the hours. A session shows *in* while the person is still clocked in, and a tick once the office has approved. There is no approve button here, on purpose. Approval stays with the office and the pay-approved masters. You see your crew. You do not sign for their pay.
 
 :::example A week with one thing owed
 **Reports owed** 1 owed
@@ -26,7 +26,7 @@ Bryan Ortiz **16.50h** · Tue J258 · Oak St 8.00h · in · Mon J258 · Oak St 8
 
 ## If you also approve hours
 
-A dev, a pay-approved master or the office also gets **My Team** on the Dashboard. It has the same people, the crew you supervised this week, with the approve controls. Everyone else approves nothing. See *approve my team's hours*.
+A dev, a pay-approved master or the office also gets **My Team** on the Dashboard. My Team has the same people, the crew you supervised this week, with the approve controls. Everyone else approves nothing. See *approve my team's hours*.
 
 ## Who sees this
 
@@ -34,4 +34,4 @@ Anyone who supervised a job-day that week. A helper or sub who still needs super
 
 ## Rate my crew, once a month
 
-At the top of the section sits a **Rate my crew** line. It counts the people you supervised on two or more days this month. Press {{button:blue|Rate my crew}} and the deck deals one card per person. Each card has three sliders: Ability, Drive and Integrity. A box under each takes a word on why. Then press {{button:blue|Save · next}}, or **Skip**. It is by name, one rating per person per month. You can open it again to change one. Your ratings sit beside the office's on Hiring → Review, with a {{chip:green|supervisor}} chip. So the people who hire see what the people who supervise saw.
+At the top of the section sits a **Rate my crew** line. The line counts the people you supervised on two or more days this month. Press {{button:blue|Rate my crew}} and the deck deals one card per person. Each card has three sliders: Ability, Drive and Integrity. A box under each takes a word on why. Then press {{button:blue|Save · next}}, or **Skip**. Ratings are by name, one rating per person per month. You can open it again to change one. Your ratings sit beside the office's on Hiring → Review, with a {{chip:green|supervisor}} chip. So the people who hire see what the people who supervise saw.

@@ -5,14 +5,14 @@ roles: subcontractor, helpers, superintendent, master_technician
 keywords: tally, transactions, card purchases, mercury, assign jobs, split, sort, supply house
 order: 12
 ---
-Every purchase on your linked company card shows up in **Job Parts Tally → Transactions**. It waits there to be sorted to the job or jobs the material was for.
+Every purchase on your linked company card shows up in **Job Parts Tally → Transactions**. The purchase waits there to be sorted to the job or jobs the material was for.
 
 Open the tally from Settings. **Job Parts Tally** is the first chip under the search box at the top of the list, on every tab. You can also open it from the blue wrench square on your dashboard. On your phone, each purchase is a card with the store name, amount, and day. Sorting them takes a tap or two.
 
 ## Sorting one purchase
 
 1. Tap {{button:blue|Sort to job}} on any purchase.
-2. The sort screen shows the purchase up top and **your jobs from that day**. That is every job you clocked on or were scheduled for, from the day before through the day after.
+2. The sort screen shows the purchase up top and **your jobs from that day**. The list holds every job you clocked on or were scheduled for, from the day before through the day after.
 3. Tap the job the material was for, then tap the green confirm button. Done. The next unsorted purchase slides in automatically.
 
 :::example Buying at the supply house on Saturday?
@@ -23,7 +23,7 @@ The jobs you worked Friday–Sunday are already on screen — no searching.
 
 Tap a **second job**, or a third, and the screen becomes a split:
 
-- It starts **even**. A $90.42 purchase across two jobs shows $45.21 each.
+- The split starts **even**. A $90.42 purchase across two jobs shows $45.21 each.
 - Type an exact amount on any line. The other line adjusts itself, so the total always matches the purchase.
 - Tap {{button:green|Save split}} when the numbers look right.
 
