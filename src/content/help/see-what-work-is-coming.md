@@ -10,19 +10,19 @@ Every other view on Job Summary looks back. **Ahead** looks forward, from three 
 
 ## Where it is
 
-Go to **Jobs → Job Summary** and switch **View** to {{chip:blue|Ahead}}. **Worked in** sets the pace it measures backlog against.
+You go to **Jobs → Job Summary** and switch **View** to {{chip:blue|Ahead}}. **Worked in** sets the pace it measures backlog against. Backlog is the work we have booked but not done yet.
 
 ## The tiles
 
-- **Remaining on open jobs** — contract minus what's been earned so far, over every open job, the same earned-revenue rule the Jobs view uses.
-- **Won, not marked started** — bids whose outcome is still *won*, with how many have no start date and how many are past the one they had. Set a bid's outcome to *started or complete* when its job begins and it leaves this tile.
-- **Booked backlog** — the two together, and how many weeks that covers at this window's revenue per week.
-- **Expected true profit** — the backlog at this window's true margin, and at your **Target** if one is set.
-- **Field days booked** — person-days on the schedule for the next four weeks, as a share of the crew's days. Under 60% reads amber.
+- **Remaining on open jobs** is the contract minus what's been earned so far, over every open job. The tile uses the same earned-revenue rule the Jobs view uses.
+- **Won, not marked started** is the bids whose outcome is still *won*. The tile says how many have no start date, and how many are past the one they had. You set a bid's outcome to *started or complete* when its job begins. Then the bid leaves this tile.
+- **Booked backlog** is the two together. The tile says how many weeks that covers at this window's revenue per week.
+- **Expected true profit** is the backlog at this window's true margin. The tile also shows the backlog at your **Target**, if one is set.
+- **Field days booked** is the person-days on the schedule for the next four weeks. The tile shows those days as a share of the crew's days. Under 60% reads amber.
 
 ## The chart
 
-Eight weeks from this one. Each bar is the field days already on the schedule that week (a person on a job for a day is one); the dashed line is what the crew could supply; a {{chip:blue|◆}} marks a won bid's estimated start. Hover a week for the jobs and the bids behind it.
+The chart covers eight weeks, starting with this one. Each bar is the field days already on the schedule that week. A person on a job for a day is one field day. The dashed line is what the crew could supply. A {{chip:blue|◆}} marks a won bid's estimated start. You hover over a week to see the jobs and the bids behind it.
 
 :::example Reading it with Capacity
 Capacity says the last three weeks ran under 60%. Ahead says the next four are booked at 45% and the backlog covers two weeks. That's a sales problem, in numbers, before it's a payroll problem.
@@ -30,9 +30,9 @@ Capacity says the last three weeks ran under 60%. Ahead says the next four are b
 
 ## The list
 
-Won bids with no job, soonest start first. {{chip:yellow|no date}} means the bid has no estimated start, so it can't be placed on the chart — set the date on the bid and it lands in its week. A red date is a start that has passed.
+The list shows won bids with no job, soonest start first. {{chip:yellow|no date}} means the bid has no estimated start. So the bid can't be placed on the chart. You set the date on the bid, and it lands in its week. A red date is a start that has passed.
 
 ## Watch-outs
 
-- The office marks the hand-off by setting the bid's outcome to *started or complete*; jobs don't carry a link back to their bid today, so that outcome is the signal this view reads.
-- Capacity is the field roster × 5 days; the Capacity view explains who counts.
+- The office marks the hand-off by setting the bid's outcome to *started or complete*. Jobs don't carry a link back to their bid today. So the bid's outcome is the signal this view reads.
+- Capacity is the field roster × 5 days. The Capacity view explains who counts.
