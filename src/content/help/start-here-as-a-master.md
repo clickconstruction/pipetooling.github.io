@@ -32,7 +32,7 @@ The first time you open the Dashboard it offers **Working in the field? Turn on 
 
 | Role | Their world | Not visible to them |
 |---|---|---|
-| **Controller** | Everything an assistant sees, plus payroll and money detail | Nothing |
+| **Controller** | Everything an assistant sees, plus payroll and money detail | — |
 | **Assistant** | Dispatch, billing, jobs, projects, people | Payroll detail |
 | **Superintendent** | Projects, jobs, dispatch, reports, sub sheets | Payroll, company totals, People page |
 | **Estimator** | Bids, materials, map, prospects | Jobs, dispatch, crews, money |
