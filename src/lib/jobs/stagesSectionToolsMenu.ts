@@ -40,17 +40,19 @@ export type StagesSectionToolKey =
   | 'paid-in-full-notifications'
   | 'lien-desk'
 
+/** The menu's icons by name. The three notification rows share the bell; the two charts share the bars. */
+export type StagesToolGlyph = 'gavel' | 'history' | 'route' | 'cash' | 'file-dollar' | 'bell' | 'building' | 'bank' | 'share' | 'chart-bar' | 'calendar-bars'
+
 export type StagesSectionToolItem = {
   key: StagesSectionToolKey
   label: string
   title: string
   disabled: boolean
   /**
-   * Emoji mark shown before the label — the same mark the tool's board button
-   * wears (v2.2224). Absent only for gc-review, whose hard-hat SVG the view
-   * renders itself (it's a React component, not a character).
+   * The line icon drawn before the label (v2.4524, the owner's picks; emoji marks before
+   * that). A name, not a character: `StagesToolsMenuGlyph` draws it.
    */
-  icon?: string
+  icon: StagesToolGlyph
   /** Amber count bubble (Accounts Receivable unallocated bank transactions). */
   badgeCount?: number
 }
@@ -104,7 +106,7 @@ export function buildStagesSectionToolsMenu(input: StagesSectionToolsMenuInput):
               label: 'Lien desk',
               title: 'Lien notices due per unpaid work month — draft, approve, send',
               disabled: false,
-              icon: '⏱',
+              icon: 'gavel' as const,
               ...(typeof input.lienDeskCount === 'number' && input.lienDeskCount > 0 ? { badgeCount: input.lienDeskCount } : {}),
             },
           ]
@@ -119,14 +121,14 @@ export function buildStagesSectionToolsMenu(input: StagesSectionToolsMenuInput):
           ? 'Back to the pipeline board'
           : 'Show the last 100 jobs added, any status',
         disabled: false,
-        icon: '🕒',
+        icon: 'history',
       },
       {
         key: 'weekly-movement',
         label: 'Stage moves this week',
         title: 'Every job that entered a stage in a chosen week, with who moved it',
         disabled: false,
-        icon: '📆',
+        icon: 'route',
       },
       ...(canOpenWeeklyMoney
         ? [
@@ -135,7 +137,7 @@ export function buildStagesSectionToolsMenu(input: StagesSectionToolsMenuInput):
               label: 'Weekly money movement',
               title: 'Money out and in per job for a chosen week, with the % progress the spend bought',
               disabled: false,
-              icon: '💸',
+              icon: 'cash' as const,
             },
           ]
         : []),
@@ -150,7 +152,7 @@ export function buildStagesSectionToolsMenu(input: StagesSectionToolsMenuInput):
         label: `Capable of Being Billed: $${input.capableToBillTotalFormatted}`,
         title: 'Working jobs whose progress can already be billed',
         disabled: false,
-        icon: '🧾',
+        icon: 'file-dollar',
       },
     ],
   })
@@ -164,7 +166,7 @@ export function buildStagesSectionToolsMenu(input: StagesSectionToolsMenuInput):
           label: 'Ready to Bill notifications',
           title: 'Ready to Bill notification settings (email + push)',
           disabled: false,
-          icon: '⚙',
+          icon: 'bell',
         },
       ],
     })
@@ -176,13 +178,14 @@ export function buildStagesSectionToolsMenu(input: StagesSectionToolsMenuInput):
       label: 'GC Review',
       title: 'Billed Awaiting Payment grouped by GC/Builder with bill-out dates',
       disabled: input.billedRowCount === 0 && input.collectionsRowCount === 0,
+      icon: 'building',
     },
     {
       key: 'accounts-receivable',
       label: 'Accounts Receivable',
       title: 'Apply bank deposits to billed lines (non-Stripe)',
       disabled: !canOpenAccountsReceivable,
-      icon: '💵',
+      icon: 'bank',
       ...(typeof input.arBankTxUnallocatedCount === 'number' && input.arBankTxUnallocatedCount > 0
         ? { badgeCount: input.arBankTxUnallocatedCount }
         : {}),
@@ -194,7 +197,7 @@ export function buildStagesSectionToolsMenu(input: StagesSectionToolsMenuInput):
       label: 'Share / Print',
       title: 'Email this report to a teammate — now or scheduled — or print it',
       disabled: false,
-      icon: '⇪',
+      icon: 'share',
     })
   }
   // Bubble sizes are wage-derived job costs — same dev/controller gate as
@@ -205,7 +208,7 @@ export function buildStagesSectionToolsMenu(input: StagesSectionToolsMenuInput):
       label: 'Chart',
       title: 'Aging bubble chart — open $ vs days waiting, bubble = our cost',
       disabled: false,
-      icon: '📊',
+      icon: 'chart-bar',
     })
   }
   // Same audience as the expected-pay chips the forecast rolls up
@@ -216,7 +219,7 @@ export function buildStagesSectionToolsMenu(input: StagesSectionToolsMenuInput):
       label: 'Payment forecast',
       title: 'Open billed dollars bucketed by expected payment date (bill date + customer pay speed)',
       disabled: false,
-      icon: '📅',
+      icon: 'calendar-bars',
     })
   }
   if (isDevOrMaster) {
@@ -225,7 +228,7 @@ export function buildStagesSectionToolsMenu(input: StagesSectionToolsMenuInput):
       label: 'Paid notifications',
       title: 'Payment email settings',
       disabled: false,
-      icon: '⚙',
+      icon: 'bell',
     })
   }
   groups.push({ section: 'Billed Awaiting Payment', items: billedItems })
@@ -238,7 +241,7 @@ export function buildStagesSectionToolsMenu(input: StagesSectionToolsMenuInput):
       label: 'Chart',
       title: 'Profit vs clocked hours — bubble = revenue, losses below the $0 line',
       disabled: false,
-      icon: '📊',
+      icon: 'chart-bar',
     })
   }
   if (isDevOrMaster) {
@@ -247,7 +250,7 @@ export function buildStagesSectionToolsMenu(input: StagesSectionToolsMenuInput):
       label: 'Paid in Full notifications',
       title: 'Paid in Full email settings',
       disabled: false,
-      icon: '⚙',
+      icon: 'bell',
     })
   }
   if (paidItems.length > 0) {

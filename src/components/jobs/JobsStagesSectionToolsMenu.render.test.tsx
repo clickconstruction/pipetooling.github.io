@@ -26,6 +26,21 @@ const inputs = {
 }
 
 describe('JobsStagesSectionToolsMenu', () => {
+  it('draws a line icon on every row, the Lien desk\u2019s gavel in its orange and the rest in one quiet color (v2.4524)', () => {
+    render(<JobsStagesSectionToolsMenu inputs={inputs} onSelect={doors()} />)
+    fireEvent.click(screen.getByLabelText('Section tools'))
+    const rows = [...screen.getByRole('menu').querySelectorAll<HTMLElement>('button')]
+    const glyphOf = (label: RegExp) => rows.find((r) => label.test(r.textContent ?? ''))!.querySelector<HTMLElement>('[data-tools-glyph]')!
+    for (const row of rows) expect(row.querySelector('[data-tools-glyph] svg'), row.textContent ?? '').toBeTruthy()
+    expect(glyphOf(/^Lien desk/).dataset.toolsGlyph).toBe('gavel')
+    expect(glyphOf(/^Lien desk/).style.color).toBe('rgb(255, 102, 0)')
+    expect(glyphOf(/^Recently added/).dataset.toolsGlyph).toBe('history')
+    expect(glyphOf(/^Recently added/).style.color).toBe('var(--text-muted)')
+    expect(glyphOf(/^GC Review/).dataset.toolsGlyph).toBe('building')
+    expect(glyphOf(/^Capable of Being Billed/).dataset.toolsGlyph).toBe('file-dollar')
+    expect(glyphOf(/^Paid in Full notifications/).dataset.toolsGlyph).toBe('bell')
+  })
+
   it('is closed until the trigger is pressed, then lists the kernel items for a dev', () => {
     const onSelect = doors()
     render(<JobsStagesSectionToolsMenu inputs={inputs} onSelect={onSelect} />)
