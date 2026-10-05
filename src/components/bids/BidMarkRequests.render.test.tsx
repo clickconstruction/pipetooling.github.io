@@ -4,7 +4,7 @@
  *   - the receiver's picker row: the sender's initial with the not-opened dot, the note on the
  *     row, the card's Done, H on the row, and the Marked filter keeping the bid;
  *   - the sender's picker row: the outlined initial, "for Robert · seen …", Take it back;
- *   - the open bid's title: For someone… with the bid's estimator first, the note, the call;
+ *   - the open bid's title: the two icons as one control; For someone… with the bid's estimator first, the note, the call;
  *     and the strip under the title marking it seen and finishing with Done or Not for me.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -163,6 +163,27 @@ describe('the open bid’s title', () => {
     fireEvent.click(within(form).getByRole('button', { name: 'Mark for Robert' }))
     await waitFor(() => expect(H.rpc).toHaveBeenCalledWith('mark_bid_for', { p_bid_id: 'u1', p_for_user_id: 'robert', p_note: 'Reprice the trim.' }))
     expect(H.rpc).toHaveBeenCalledWith('user_has_push_device', { p_user_id: 'robert' })
+  })
+
+  it('the two title buttons are one control of two icons: no words on them, the words in their names and hover lines', () => {
+    resetBidMarksStoreForTests(undefined, { me: 'wendi', people: PEOPLE })
+    const { unmount } = render(<BidWorkflowTabTitleWithPreview bid={openBid} previewEnabled={false} onOpenPreview={vi.fn()} />)
+    const pair = screen.getByRole('group', { name: 'Mark this bid' })
+    const halves = within(pair).getAllByRole('button')
+    expect(halves.map((b) => b.getAttribute('aria-label'))).toEqual(['Mark', 'For someone…'])
+    expect(halves.map((b) => b.textContent)).toEqual(['', ''])
+    expect(halves.every((b) => b.classList.contains('bid-mark-pair__btn'))).toBe(true)
+    expect(halves[0]?.getAttribute('aria-pressed')).toBe('false')
+    expect(halves[0]?.getAttribute('title')).toBe('Mark this bid to find it again on every tab and on the Bid Board.')
+    expect(halves[1]?.getAttribute('title')).toContain('For someone…')
+    unmount()
+    // Marked: the ring is on and the name and the hover line say when.
+    resetBidMarksStoreForTests({ u1: new Date().toISOString() }, { me: 'wendi', people: PEOPLE })
+    render(<BidWorkflowTabTitleWithPreview bid={openBid} previewEnabled={false} onOpenPreview={vi.fn()} />)
+    const mark = screen.getByRole('button', { name: 'Marked today' })
+    expect(mark.getAttribute('aria-pressed')).toBe('true')
+    expect(mark.dataset.on).toBe('true')
+    expect(mark.getAttribute('title')).toBe('Marked today. Press to clear the mark.')
   })
 
   it('the strip under the title shows the note, marks it seen, and Done finishes it', async () => {

@@ -4700,7 +4700,17 @@ button.gcStep:hover > em { text-decoration: underline; }
 @media (prefers-reduced-motion: reduce) { [data-holding='true'] .bid-mark-hold-fill { animation: none; width: 100%; } }
 .bid-mark-toggle { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.5rem 0.85rem; white-space: nowrap; border: 1px solid var(--bid-mark); border-radius: 4px; cursor: pointer; background: var(--surface); color: var(--bid-mark-text); font: inherit; font-size: 0.875rem; font-weight: 600; box-sizing: border-box; }
 .bid-mark-toggle[data-on='true'] { background: var(--bid-mark-wash-strong); }
-.bid-mark-toggle--title { padding: 0.2rem 0.6rem; font-size: 0.8rem; vertical-align: middle; }
+/* The open bid's title: two icons joined as one control, [ mark | for someone ]. Each half lights on its own hover. */
+.bid-mark-pair { display: inline-flex; align-items: stretch; vertical-align: middle; border: 1px solid var(--bid-mark); border-radius: 6px; background: var(--surface); }
+.bid-mark-pair__btn { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 26px; padding: 0; border: none; background: transparent; color: var(--bid-mark-text); cursor: pointer; transition: background-color 120ms ease; }
+.bid-mark-pair > .bid-mark-pair__btn { border-radius: 5px 0 0 5px; }
+.bid-mark-pair .bid-mark-for-someone .bid-mark-pair__btn { border-left: 1px solid var(--bid-mark); border-radius: 0 5px 5px 0; }
+.bid-mark-pair__btn:hover, .bid-mark-pair__btn:focus-visible, .bid-mark-pair__btn[aria-expanded='true'] { background: var(--bid-mark-wash-strong); }
+.bid-mark-pair__btn:focus-visible { outline: 2px solid var(--text-link); outline-offset: 1px; }
+.bid-mark-pair__btn .bid-mark-toggle__dot { width: 12px; height: 12px; }
+.bid-mark-pair__btn[data-on='true'] { background: var(--bid-mark-wash); }
+.bid-mark-pair__btn[data-on='true']:hover, .bid-mark-pair__btn[data-on='true']:focus-visible { background: var(--bid-mark-wash-strong); }
+.bid-mark-pair__btn[data-on='true'] .bid-mark-toggle__dot { background: var(--bid-mark); }
 .bid-mark-toggle__dot { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--bid-mark); box-sizing: border-box; background: transparent; flex: 0 0 auto; }
 .bid-mark-toggle[data-on='true'] .bid-mark-toggle__dot { background: var(--bid-mark); }
 .bid-mark-footer { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; padding: 0.5rem 0.25rem 0; font-size: 0.8rem; color: var(--text-muted); }

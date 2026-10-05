@@ -9,8 +9,10 @@
  *   - `BidMarkInitial` + `BidMarkRequestCard`: the same circle and card on the Bid Board.
  *   - `MarkedBidsToggle`: *Marked · N* beside *Only my bids* on the nine tabs and in the Bid
  *     Board's tools row. On, the list shows only bids marked by you or for you.
- *   - `BidMarkButton`: *Mark* / *Marked · today* in the open bid's title, then *For someone…*
- *     (`BidMarkForSomeone`) and, when you sent one, where it stands.
+ *   - `BidMarkTitlePair`: after the open bid's title, two icons joined as one control —
+ *     `BidMarkButton` (the ring; filled when marked, its hover line says *Marked today*) and
+ *     `BidMarkForSomeone` (the person with a plus) — each half lighting on its own hover;
+ *     then, when you sent a mark, where it stands.
  *   - `BidMarkRequestStrip`: under the open bid's title, the note from whoever marked it for
  *     you, with Done and Not for me. Opening the bid marks it seen.
  *
@@ -314,20 +316,31 @@ export function BidMarkButton({ bidId, now = new Date() }: { bidId: string; now?
   const toggle = useToggleMark()
   const marked = isBidMarked(marks, bidId)
   const { label, since } = bidMarkButtonWords(marks, bidId, now)
-  const title = marked ? 'Marked. Press to clear the mark.' : 'Mark this bid to find it again on every tab and on the Bid Board.'
+  // Icon only (the left half of the title's pair): the words live in the name and the hover line.
+  const name = since ? `${label} ${since}` : label
+  const title = marked ? `${name}. Press to clear the mark.` : 'Mark this bid to find it again on every tab and on the Bid Board.'
   return (
     <button
       type="button"
       aria-pressed={marked}
+      aria-label={name}
       title={title}
       onClick={() => toggle(bidId)}
-      className="bid-mark-toggle bid-mark-toggle--title"
+      className="bid-mark-pair__btn"
       data-on={marked ? 'true' : undefined}
     >
       <span aria-hidden="true" className="bid-mark-toggle__dot" />
-      {label}
-      {since ? <span style={{ fontWeight: 400, opacity: 0.8 }}>{since}</span> : null}
     </button>
+  )
+}
+
+/** The two title buttons joined as one control, `[ mark | for someone ]`: each half lights on its own hover. */
+export function BidMarkTitlePair({ bid }: { bid: { id: string; bid_number?: string | null; estimator_id?: string | null; account_manager_id?: string | null } }) {
+  return (
+    <span className="bid-mark-pair" role="group" aria-label="Mark this bid">
+      <BidMarkButton bidId={bid.id} />
+      <BidMarkForSomeone bid={bid} />
+    </span>
   )
 }
 
@@ -418,18 +431,18 @@ export function BidMarkForSomeone({
     <span ref={rootRef} className="bid-mark-for-someone">
       <button
         type="button"
-        className="bid-mark-toggle bid-mark-toggle--title"
+        className="bid-mark-pair__btn"
+        aria-label="For someone…"
         aria-expanded={open}
         aria-haspopup="dialog"
         onClick={() => setOpen((o) => !o)}
-        title="Mark this bid for a teammate, with a note"
+        title="For someone… Mark this bid for a teammate, with a note."
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <circle cx="9" cy="8" r="3.5" />
           <path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6" />
           <path d="M17 8h5M19.5 5.5v5" />
         </svg>
-        For someone…
       </button>
       {open ? (
         <span role="dialog" aria-label="Mark this bid for someone" className="bid-mark-card bid-mark-card--form">
