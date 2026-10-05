@@ -1,6 +1,7 @@
 import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
+import { billCheckClearsYmd, type ClearingPayment } from './checkClearing'
 import {
   LIEN_WAIVER_FORM_SHORT_LABELS,
   type LienWaiverFields,
@@ -60,10 +61,15 @@ export type LienReleaseClearance = 'cleared' | 'waiting' | 'not_applicable'
  * `invoice_id` against the release's `invoice_ids` snapshot; a release with no
  * line snapshot compares against the job's total `payments_made` recorded on
  * or after the release date. Unconditional forms have nothing to wait on.
+ *
+ * With `todayYmd` (v2.4564) a check on a covered line that is still inside its
+ * clearing days keeps the release waiting: the same seven days the Bill tab,
+ * View bill and GC Review hold the unconditional for (`checkClearing.ts`).
  */
 export function lienReleaseClearance(
   release: Pick<JobLienReleaseRow, 'form_type' | 'amount' | 'invoice_ids' | 'created_at'>,
   job: Pick<JobWithDetails, 'payments' | 'payments_made'>,
+  todayYmd?: string,
 ): LienReleaseClearance {
   if (!isConditionalLienForm(release.form_type)) return 'not_applicable'
   const amount = Number(release.amount ?? 0)
@@ -74,9 +80,24 @@ export function lienReleaseClearance(
     for (const p of job.payments ?? []) {
       if (p.invoice_id && ids.has(p.invoice_id)) applied += Number(p.amount ?? 0)
     }
-    return applied >= amount ? 'cleared' : 'waiting'
+    if (applied < amount) return 'waiting'
+    return todayYmd && lienReleaseCheckStillClearing(release, job.payments ?? [], todayYmd) ? 'waiting' : 'cleared'
   }
   return Number(job.payments_made ?? 0) >= amount ? 'cleared' : 'waiting'
+}
+
+/** A check on one of the release's bill lines has not had its clearing days yet (v2.4564). */
+export function lienReleaseCheckStillClearing(
+  release: Pick<JobLienReleaseRow, 'invoice_ids'>,
+  payments: ReadonlyArray<ClearingPayment>,
+  todayYmd: string,
+): boolean {
+  return (release.invoice_ids ?? []).some((id) => billCheckClearsYmd(id, payments, todayYmd) != null)
+}
+
+/** The unconditional form a cleared conditional is owed (v2.4564): a final stays a final. */
+export function unconditionalFollowUpForm(formType: string): LienWaiverFormType {
+  return formType === 'conditional_final' ? 'unconditional_final' : 'unconditional_progress'
 }
 
 /** Live (non-voided) releases, newest first. */
@@ -94,11 +115,12 @@ export function liveLienReleases(rows: JobLienReleaseRow[]): JobLienReleaseRow[]
 export function computeLienUnconditionalOwed(
   releases: JobLienReleaseRow[],
   appliedByInvoiceId: ReadonlyMap<string, number>,
+  clearing?: LienCheckClearing,
 ): { count: number; total: number; jobIds: string[] } {
   let count = 0
   let total = 0
   const jobIds: string[] = []
-  for (const [jobId, owed] of owedLienReleasesByJob(releases, appliedByInvoiceId)) {
+  for (const [jobId, owed] of owedLienReleasesByJob(releases, appliedByInvoiceId, clearing)) {
     count += owed.length
     total += owed.reduce((s, r) => s + Number(r.amount ?? 0), 0)
     jobIds.push(jobId)
@@ -109,12 +131,14 @@ export function computeLienUnconditionalOwed(
 /**
  * A conditional release whose payment has cleared, with no unconditional
  * release issued on or after it — the GC is owed the unconditional version.
+ * A draft is not issued (v2.4564): an unconditional still being written does
+ * not settle the debt, and a conditional still being written owes nothing.
  */
 export function lienReleasesOwingUnconditional(
   rows: JobLienReleaseRow[],
   job: Pick<JobWithDetails, 'payments' | 'payments_made'>,
 ): JobLienReleaseRow[] {
-  const live = liveLienReleases(rows)
+  const live = liveLienReleases(rows).filter((r) => (r.status ?? '').trim() !== 'draft')
   return live.filter((r) => {
     if (lienReleaseClearance(r, job) !== 'cleared') return false
     const covered = new Set(r.invoice_ids ?? [])
@@ -195,10 +219,14 @@ export function appliedByInvoiceIdFromPayments(
   return applied
 }
 
+/** The payments and the day that say whether a check is still clearing (v2.4564). */
+export type LienCheckClearing = { payments: ReadonlyArray<ClearingPayment>; todayYmd: string }
+
 /** Owed releases per job — the shared core of the roll-up and the queue. */
 function owedLienReleasesByJob(
   releases: JobLienReleaseRow[],
   appliedByInvoiceId: ReadonlyMap<string, number>,
+  clearing?: LienCheckClearing,
 ): Map<string, JobLienReleaseRow[]> {
   const byJob = new Map<string, JobLienReleaseRow[]>()
   for (const r of releases) {
@@ -214,7 +242,7 @@ function owedLienReleasesByJob(
       amount: appliedByInvoiceId.get(invoice_id) ?? 0,
     })) as JobWithDetails['payments']
     const owed = lienReleasesOwingUnconditional(rows, { payments, payments_made: 0 }).filter(
-      (r) => (r.invoice_ids ?? []).length > 0,
+      (r) => (r.invoice_ids ?? []).length > 0 && !(clearing && lienReleaseCheckStillClearing(r, clearing.payments, clearing.todayYmd)),
     )
     if (owed.length > 0) out.set(jobId, owed)
   }
@@ -244,8 +272,9 @@ export function buildLienUnconditionalQueue(
   releases: JobLienReleaseRow[],
   payments: ReadonlyArray<LienQueuePayment>,
   jobsById: ReadonlyMap<string, LienQueueJob>,
+  todayYmd?: string,
 ): LienUnconditionalQueueRow[] {
-  const owedByJob = owedLienReleasesByJob(releases, appliedByInvoiceIdFromPayments(payments))
+  const owedByJob = owedLienReleasesByJob(releases, appliedByInvoiceIdFromPayments(payments), todayYmd ? { payments, todayYmd } : undefined)
   const rows: LienUnconditionalQueueRow[] = []
   for (const [jobId, owed] of owedByJob) {
     const job = jobsById.get(jobId)

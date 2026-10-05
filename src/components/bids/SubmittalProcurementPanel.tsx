@@ -4,7 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { formatErrorMessage } from '../../utils/errorHandling'
-import { printHtmlInNewWindow } from '../../lib/bidDocuments/htmlDoc'
+import { printAndFile } from '../../lib/sent/sentCopiesIo'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { procurementLogCsv, procurementLogFileName, procurementLogTsv } from '../../lib/submittals/procurementLogExport'
 import { loadProcurementSheetAssets, type ProcurementSheetAssets } from '../../lib/submittals/procurementSheetAssets'
@@ -563,7 +563,8 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
   /** Print the log: the log as it stands — no update number, nothing marked. */
   function printLog() {
     const today = toIsoDate(new Date())
-    printHtmlInNewWindow(buildProcurementUpdateHtml({ ...updateInput(today, updates.length + 1), kind: 'print', changes: [], line: '', sinceOn: null }))
+    // A print counts as a send (docs/SENT_COPIES.md): the log as it printed is filed under the bid.
+    printAndFile(buildProcurementUpdateHtml({ ...updateInput(today, updates.length + 1), kind: 'print', changes: [], line: '', sinceOn: null }), { kind: 'procurement_log', title: `Procurement log · ${bidLabel}`, recipientName: gcName ?? '', bidId })
   }
 
   /** v2.4113 · the log as a file: the printed sheet's columns, dates a sheet reads. */
@@ -610,7 +611,7 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
       await reloadUpdates()
       setSendOpen(false)
       setSendLine('')
-      printHtmlInNewWindow(buildProcurementUpdateHtml(input))
+      printAndFile(buildProcurementUpdateHtml(input), { kind: 'procurement_update', title: `Procurement update ${input.updateNumber} · ${bidLabel}`, recipientName: sendTo.trim() || (gcName ?? ''), bidId })
       await copyText(procurementUpdateText(input))
     } catch (e) {
       showToast(formatErrorMessage(e, 'Could not record the update'), 'error')
@@ -1085,7 +1086,7 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
               {u.sentByName ? <span style={smallMuted}>by {u.sentByName}</span> : null}
               <span style={smallMuted}>{u.changes.length} {u.changes.length === 1 ? 'change' : 'changes'}</span>
               {u.line ? <span style={{ ...smallMuted, fontStyle: 'italic' }}>“{u.line}”</span> : null}
-              <button type="button" onClick={() => printHtmlInNewWindow(buildProcurementUpdateHtml({ ...letter, kind: 'update', updateNumber: updates.length - i, sentOn: calendarYmdInAppTzFromIso(u.sentAt), sinceOn: updates[i + 1] ? calendarYmdInAppTzFromIso(updates[i + 1]!.sentAt) : null, rows: rowsFromSnapshot(u.rows), changes: u.changes, line: u.line }))} style={link}>Open</button>
+              <button type="button" onClick={() => printAndFile(buildProcurementUpdateHtml({ ...letter, kind: 'update', updateNumber: updates.length - i, sentOn: calendarYmdInAppTzFromIso(u.sentAt), sinceOn: updates[i + 1] ? calendarYmdInAppTzFromIso(updates[i + 1]!.sentAt) : null, rows: rowsFromSnapshot(u.rows), changes: u.changes, line: u.line }), { kind: 'procurement_update', title: `Procurement update ${updates.length - i} · ${bidLabel}, printed again`, recipientName: u.sentTo ?? '', bidId })} style={link}>Open</button>
             </div>
           ))}
         </div>

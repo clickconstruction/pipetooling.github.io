@@ -1,4 +1,5 @@
 import { useState, type Dispatch, type RefObject, type SetStateAction } from 'react'
+import { printAndFile } from '../../lib/sent/sentCopiesIo'
 import { supabase } from '../../lib/supabase'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import type { Database } from '../../types/database'
@@ -126,14 +127,9 @@ export function MaterialsPurchaseOrdersTab({
     return matchesStatus && matchesSearch
   })
 
-  function openPrintWindow(html: string) {
-    const win = window.open('', '_blank')
-    if (!win) return
-    win.document.write(html)
-    win.document.close()
-    win.focus()
-    win.print()
-    win.onafterprint = () => win.close()
+  // A print counts as a send (docs/SENT_COPIES.md): a purchase order is filed as it printed.
+  function openPrintWindow(html: string, po: PurchaseOrderWithItems, forSupplyHouse: boolean) {
+    printAndFile(html, { kind: forSupplyHouse ? 'purchase_order' : 'purchase_order_sheet', title: `Purchase order · ${po.name}`, source: { table: 'purchase_orders', id: po.id } })
   }
 
   async function printPO(po: PurchaseOrderWithItems) {
@@ -142,11 +138,11 @@ export function MaterialsPurchaseOrdersTab({
     const allPricesPerItem = po.status === 'finalized'
       ? null
       : await Promise.all(po.items.map(item => fetchPricesForPart(supabase, item.part.id)))
-    openPrintWindow(buildPOPrintHtml(po, allPricesPerItem))
+    openPrintWindow(buildPOPrintHtml(po, allPricesPerItem), po, false)
   }
 
   function printPOForSupplyHouse(po: PurchaseOrderWithItems, taxPercent: number) {
-    openPrintWindow(buildPOForSupplyHousePrintHtml(po, taxPercent))
+    openPrintWindow(buildPOForSupplyHousePrintHtml(po, taxPercent), po, true)
   }
 
 

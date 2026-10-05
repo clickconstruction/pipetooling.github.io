@@ -20,7 +20,7 @@ import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { assigneePersonIdsForNames } from '../../lib/people/assigneePersonIds'
 import { filterLaborCrewNames, formatCurrency } from '../../lib/jobs/jobFormatting'
 import { laborItemsSubtotal, lineLaborCost } from '../../lib/peopleLaborJobItemLineCost'
-import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
+import { printAndFile } from '../../lib/sent/sentCopiesIo'
 import { buildLaborFormSubSheetHtml } from '../../lib/jobsDocuments/subLaborSheet'
 import { resolvedLaborInvoiceLink } from '../../lib/jobs/jobAddressUrls'
 import { SubSheetPortalFieldsBox } from './SubSheetPortalFieldsBox'
@@ -1070,12 +1070,14 @@ function JobsSubLaborFormModalInner(
   }
 
   function printLaborSubSheet() {
-    openHtmlPrintWindow(
+    // A print counts as a send (docs/SENT_COPIES.md): the sheet handed to the sub is filed as it printed.
+    printAndFile(
       buildLaborFormSubSheetHtml({
         assignedNames: laborAssignedTo,
         address: laborAddress,
         rows: laborFixtureRows,
       }),
+      { kind: 'sub_labor_sheet', title: `Sub sheet · ${String(laborAddress ?? '').trim() || 'no address'}`, recipientName: Array.isArray(laborAssignedTo) ? laborAssignedTo.join(', ') : String(laborAssignedTo ?? '') },
     )
   }
 
