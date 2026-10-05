@@ -241,6 +241,11 @@ export default function LienReleaseModal({
     void loadHistory()
   }, [open, loadHistory])
 
+  // The pick belongs to one opening on one job (v2.4567): cleared here, the load below sets this job's default.
+  useEffect(() => {
+    setPresentSignerId(null)
+  }, [open, job?.id])
+
   useEffect(() => {
     if (!open || !job) {
       setMasters([])
