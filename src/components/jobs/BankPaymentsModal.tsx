@@ -29,7 +29,7 @@ import { ArReturnCasePane, type ArCaseCloseReason } from './ar/ArReturnCasePane'
 import SetPromisedPayDateModal from './SetPromisedPayDateModal'
 import { useArReturnCases } from '../../hooks/useArReturnCases'
 import { depositClearsYmd } from '../../lib/jobs/checkClearing'
-import { arCaseDay, arCaseMoney, arCaseThisReplaces, arPayerCameBackNote, arReplacementFor, arReturnCaseView, type ArReturnCaseView } from '../../lib/jobs/arReturnCase'
+import { arApplyClosesReplacedCase, arCaseDay, arCaseMoney, arCaseThisReplaces, arPayerCameBackNote, arReplacementFor, arReturnCaseView, type ArReturnCaseView } from '../../lib/jobs/arReturnCase'
 import { ArHeaderMenu } from './ar/ArHeaderMenu'
 import { ModalFullScreenButton, useModalFullScreen } from '../ModalFullScreenToggle'
 import { ArDepositHeader } from './ar/ArDepositHeader'
@@ -455,9 +455,14 @@ export default function BankPaymentsModal({
         else lines.push({ id: crypto.randomUUID(), kind: 'billed', targetKey: key, amountStr: amt.toFixed(2) })
       }
       if (lines.length > 0) setAllocLines(lines)
-      replacingRef.current = { caseId, depositId }
+      // v2.4574: the deposit stands in for the case only when its bills filled, or it has none on record.
+      if (lines.length > 0 || v.billsItPaid.length === 0) replacingRef.current = { caseId, depositId }
+      else {
+        replacingRef.current = null
+        showToast('The bills it paid are not open now. Pick the bill yourself.', 'info')
+      }
     },
-    [caseViews, targetByKey],
+    [caseViews, targetByKey, showToast],
   )
 
   /** List is loading OR the first fetch is still held for the org sorting config (cold cache). */
@@ -1837,6 +1842,8 @@ export default function BankPaymentsModal({
     setApplySubmitting(true)
     setApplyError(null)
     const allocations: Array<{ invoice_id?: string; job_id?: string; payment_id?: string; amount: number }> = []
+    /** The jobs this apply pays — what decides whether a replaced case closes (v2.4574). */
+    const appliedJobIds: string[] = []
     for (const line of allocLines) {
       if (line.kind === 'payment') {
         const p = line.targetKey ? recordedPaymentById.get(line.targetKey) : undefined
@@ -1845,12 +1852,14 @@ export default function BankPaymentsModal({
         if (!(amt > 0)) continue
         // Server uses the row's amount; amount is included for transparency only.
         allocations.push({ payment_id: p.payment_id, amount: amt })
+        appliedJobIds.push(p.job_id)
         continue
       }
       const t = line.targetKey ? targetByKey.get(line.targetKey) : undefined
       if (!t) continue
       const amt = parseBankPaymentAllocationAmount(line.amountStr)
       if (!Number.isFinite(amt) || amt <= 0) continue
+      appliedJobIds.push(t.jobId)
       if (t.invoiceId) allocations.push({ invoice_id: t.invoiceId, amount: amt })
       else allocations.push({ job_id: t.jobId, amount: amt })
     }
@@ -1887,10 +1896,12 @@ export default function BankPaymentsModal({
       // when the switch was on and nothing had labelled it — say so, once.
       showToast(arAppliedToast(applySentence.total, arApplyBooksIncome(bankLabel)), 'success')
       // v2.4325: this deposit was used as the new check for a case — the apply landed, so the case closes.
+      // v2.4574: only while the apply still pays a job the returned check paid.
       const replacing = replacingRef.current
       if (replacing && replacing.depositId === selected.mercury_transaction_id) {
         replacingRef.current = null
-        await closeReplacedCase(replacing.caseId, replacing.depositId)
+        const replacedBills = caseViews.find((x) => x.id === replacing.caseId)?.billsItPaid ?? []
+        if (arApplyClosesReplacedCase(replacedBills, appliedJobIds)) await closeReplacedCase(replacing.caseId, replacing.depositId)
       }
       // v2.1639: allocation applied — now close exactly-covered Stripe-hosted
       // bills in Stripe so the emailed links die. Failures keep the modal open

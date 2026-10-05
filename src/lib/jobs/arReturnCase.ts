@@ -376,6 +376,16 @@ export function arCaseThisReplaces(deposit: ArReplacementDeposit, views: Readonl
   return null
 }
 
+/**
+ * Whether an apply of the new check closes the case as replaced (v2.4574). A case with bills
+ * on record closes only when the apply still pays a job one of those bills was on. A case
+ * with none has nothing to compare, so the press alone decides.
+ */
+export function arApplyClosesReplacedCase(billsItPaid: ReadonlyArray<{ jobId: string }>, appliedJobIds: ReadonlyArray<string>): boolean {
+  if (billsItPaid.length === 0) return true
+  return billsItPaid.some((b) => appliedJobIds.includes(b.jobId))
+}
+
 /** The header's words: "2 came back". */
 export function arCameBackCount(n: number): string {
   return `${n} came back`
