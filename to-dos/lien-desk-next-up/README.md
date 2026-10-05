@@ -26,7 +26,7 @@ The owner, 2026-10-05: *"Looking at the lien desk and flow I think what started 
 
 Shown the proposal and a before / after prototype, he asked: *"are you sure it's right? We don't want to loose any functionality."* That led to the inventory in this folder. Shown the inventory and the corrected proposal: *"What you've proposed and the defects are probably better, please save it all to the punch list so someone else can come by and fix the defects and build all of it."*
 
-The defects are their own card: [`../lien-defects.md`](../lien-defects.md) (#83).
+The defects were their own card, #83. All 28 rows were fixed on 2026-10-05 and the card is retired (the record is in `to-dos/README.md` and the `docs/recent-features/` fragments). Two things that card noted are still true and matter here. `openLienDesk(jobId)` on the tab's handle has no caller outside its test (`JobsStagesTab.tsx`). `LienDeskMonths` can draw a *Preview ›* link and a tail line, and the desk passes neither.
 
 ## What is confusing today
 
