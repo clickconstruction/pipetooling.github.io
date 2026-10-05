@@ -4297,13 +4297,31 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
   display: flex;
   flex: 1 1 auto;
   min-width: 0;
+  container-type: inline-size;
+}
+/* The arrows between the stages (v2.4519) are the first thing to go when the bar gets tight. */
+.stagesStageArrow {
+  flex: none;
+  align-self: center;
+  color: var(--text-faint);
+  font-size: 0.875rem;
+  user-select: none;
+}
+@container (max-width: 800px) {
+  .stagesStageArrow {
+    display: none;
+  }
+  .stagesStageSegs .stagesStageSeg {
+    padding-left: 0.35rem;
+    padding-right: 0.35rem;
+  }
 }
 .stagesStageSeg {
   flex: 1 1 0;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
   gap: 1px;
   padding: 0.4rem 0.75rem 0.3rem;
   border: none;
@@ -4311,7 +4329,7 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
   background: transparent;
   color: var(--text-strong);
   font: inherit;
-  text-align: left;
+  text-align: center;
   cursor: pointer;
 }
 .stagesStageSeg.isWide {
@@ -4347,7 +4365,6 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
   background: var(--stage-color);
 }
 .stagesStageSegMeta {
-  padding-left: calc(8px + 0.4rem);
   font-size: 0.75rem;
   color: var(--text-muted);
   white-space: nowrap;

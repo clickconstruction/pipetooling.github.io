@@ -29,6 +29,10 @@ describe('JobsStagesJumpStrip', () => {
     expect(screen.getByLabelText('Jump to Billed Awaiting Payment, 66 rows').textContent).toContain('66 · $348.8k')
     expect(screen.queryByLabelText(/Jump to Collections/)).toBeNull()
     expect(screen.getByRole('navigation', { name: 'Pipeline stages' }).querySelectorAll('button').length).toBe(4)
+    // v2.4519: an arrow between neighbours, none before the first or after the last.
+    const nav = screen.getByRole('navigation', { name: 'Pipeline stages' })
+    expect([...nav.children].map((c) => (c.tagName === 'BUTTON' ? 'stage' : c.textContent?.trim()))).toEqual(['stage', '→', 'stage', '→', 'stage', '→', 'stage'])
+    expect(nav.querySelectorAll('.stagesStageArrow[aria-hidden]').length).toBe(3)
     fireEvent.click(screen.getByLabelText('Jump to Billed Awaiting Payment, 66 rows'))
     expect(onFocusSection).toHaveBeenCalledWith('billed')
   })
@@ -46,6 +50,8 @@ describe('JobsStagesJumpStrip', () => {
     const collections = screen.getByLabelText('Jump to Collections, 8 rows')
     expect(collections.style.getPropertyValue('--stage-color')).toBe('#dc2626')
     expect(screen.getByLabelText('Jump to Billed Awaiting Payment, … rows').textContent).toContain('… · $…')
+    // The arrow beside Collections points back: a job leaves Collections, it does not move on to it.
+    expect([...screen.getByRole('navigation', { name: 'Pipeline stages' }).querySelectorAll('.stagesStageArrow')].map((a) => a.textContent?.trim())).toEqual(['→', '→', '→', '←'])
     fireEvent.click(collections)
     expect(onFocusSection).toHaveBeenCalledWith('collections')
   })

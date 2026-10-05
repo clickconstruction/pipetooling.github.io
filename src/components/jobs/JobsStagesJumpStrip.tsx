@@ -7,8 +7,12 @@
  * It stays pinned to the top while the board scrolls, and the segment of the section being
  * scrolled through is lit in that section's color (`lib/jobs/stagesStageBar`). The counts
  * and totals come in already resolved (live, stats-spine or "…").
+ *
+ * v2.4519: each segment's name and numbers are centered, with an arrow between neighbours as
+ * the strip always had; the arrows drop out when the bar is too tight for them. Collections is
+ * a side road, not the step after Billed, so its arrow points back the way a job leaves it.
  */
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { Fragment, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { stageBarItems, stageColorVar, stagesActiveSection, type StageBarKey } from '../../lib/jobs/stagesStageBar'
 
 export type JumpStripSection = StageBarKey
@@ -80,11 +84,16 @@ export function JobsStagesJumpStrip({
     <div ref={barRef} className="stagesStageBar" data-stages-stage-bar style={{ top }}>
       {leading ? <div className="stagesStageBarEnd">{leading}</div> : null}
       <nav aria-label="Pipeline stages" className="stagesStageSegs">
-        {items.map((item) => {
+        {items.map((item, index) => {
           const on = item.key === active
           return (
+            <Fragment key={item.key}>
+            {index > 0 ? (
+              <span className="stagesStageArrow" aria-hidden>
+                {item.key === 'collections' ? '←' : '→'}
+              </span>
+            ) : null}
             <button
-              key={item.key}
               type="button"
               onClick={() => onFocusSection(item.key)}
               aria-label={`Jump to ${item.label}, ${item.count} ${item.noun}`}
@@ -100,6 +109,7 @@ export function JobsStagesJumpStrip({
                 {item.count} · <span className="stagesMoney">${item.total}</span>
               </span>
             </button>
+            </Fragment>
           )
         })}
       </nav>
