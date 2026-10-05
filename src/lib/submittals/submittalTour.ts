@@ -121,7 +121,7 @@ export const SUBMITTAL_TOUR_STEPS: SpotlightTourStep[] = [
   {
     anchor: 'submittals-resubmit',
     title: 'Step 7. Resubmit',
-    body: 'Some rows may come back marked Revise or Reject. Tap the green button. It starts a new version with those rows. Rows with no answer yet go on it too. Rows and parts they approved stay approved. Fix what came back, then send it again.',
+    body: 'Some rows may come back marked Revise or Reject. Tap the green button. It starts a draft of the next version with those rows. Nothing is sent. Rows with no answer yet go on it too. Rows and parts they approved stay approved. Fix what came back, then share it again.',
     missingBody: 'The green button appears when rows come back.',
   },
   {
@@ -182,7 +182,7 @@ export const SUBMITTAL_STAGE_ABOUT: Record<number, string> = {
   4: 'One PDF for the GC: the cover table and every cut sheet. A row with no cut sheet yet reads cut sheet to follow.',
   5: 'Get a link and paste it into your email to the GC.',
   6: 'The GC or the architect answers each row: Approve, Revise or Reject. If they answer by email, type it in with Their answer.',
-  7: 'Rows the GC sent back come here. Start Rev 2 with them and the rows with no answer yet. Or carry every row when a product changed.',
+  7: 'Rows the GC sent back come here. Start a Rev 2 draft with them and the rows with no answer yet. Or carry every row when a product changed.',
   8: 'The order log the GC asks for, one line per part: order dates, PO numbers and what is running late.',
 }
 
@@ -193,7 +193,7 @@ export const SUBMITTAL_STAGE_ABOUT: Record<number, string> = {
  */
 export function stageAbout(stage: number, rev: { number: number; isNewest: boolean } | null): string {
   if (rev && stage === 2 && rev.number > 1) return rev.isNewest ? `Rev ${rev.number} is the version you are working on. Each earlier version stays as the record.` : `Rev ${rev.number} is an earlier version. It stays as the record.`
-  if (rev && stage === 7 && rev.number > 1) return `Rows the GC sent back come here. Start Rev ${rev.number + 1} with them and the rows with no answer yet. Or carry every row when a product changed.`
+  if (rev && stage === 7 && rev.number > 1) return `Rows the GC sent back come here. Start a Rev ${rev.number + 1} draft with them and the rows with no answer yet. Or carry every row when a product changed.`
   return SUBMITTAL_STAGE_ABOUT[stage] ?? ''
 }
 

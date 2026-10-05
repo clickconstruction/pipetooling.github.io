@@ -79,7 +79,7 @@ import { revisionWasRead, rowsThatStand } from '../../lib/submittals/standingRow
 import { loadBidOrderFacts, loadPartOrderWords, loadRowOrderFacts, rememberLeftOutLines, writeRowOrderOnly } from '../../lib/submittals/orderOnlyIo'
 import { planRowsAdded, planSummary, standsLine, type TakeoffPlan } from '../../lib/submittals/takeoffPicks'
 import { SubmittalTakeOffDialog } from './SubmittalTakeOffDialog'
-import { decisionsAsText, describeDecisions, resubmitConfirm, resubmitLabel, resubmitSplit, summarizeDecisions } from '../../lib/submittals/reviewDecisions'
+import { decisionsAsText, describeDecisions, resubmitConfirm, resubmitLabel, resubmitNothingSent, resubmitSplit, resubmitWhat, summarizeDecisions } from '../../lib/submittals/reviewDecisions'
 import { parseReviewerFiles, reviewerFileKind, reviewerFilePath, serializeReviewerFiles, type ReviewerFile } from '../../lib/submittals/reviewerFiles'
 import { CLEAR_DECISION_PATCH, enteredDecisionAt, enteredDecisionPatch, enteredEntryBody, rowsToApproveAll } from '../../lib/submittals/enteredDecisions'
 import { matchRoomPerson, type ReviewerChoice, type ReviewerSources } from '../../lib/submittals/reviewerPick'
@@ -971,7 +971,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       title: onlySentBack ? resubmit.title : fromPicks ? `Rev ${newestRev.rev_number + 1} from today's picks` : `Rev ${newestRev.rev_number + 1} from Rev ${newestRev.rev_number}`,
       message: onlySentBack
         ? resubmit.message
-        : `${preview.length > 0 ? `${summarizeChanges(preview)} against Rev ${newestRev.rev_number}. ` : ''}${carried.length > 0 ? `${carried.length} row${carried.length === 1 ? '' : 's'} from the takeoff or typed by hand carry as ${carried.length === 1 ? 'it stands' : 'they stand'}, with ${carried.length === 1 ? 'its' : 'their'} parts. ` : ''}Sheets, reasons and lead times carry where the product is unchanged.${asRevisionStatus(newestRev.status) === 'draft' ? ` Rev ${newestRev.rev_number} was never shared and will read superseded.` : ''}`,
+        : `${preview.length > 0 ? `${summarizeChanges(preview)} against Rev ${newestRev.rev_number}. ` : ''}${carried.length > 0 ? `${carried.length} row${carried.length === 1 ? '' : 's'} from the takeoff or typed by hand carry as ${carried.length === 1 ? 'it stands' : 'they stand'}, with ${carried.length === 1 ? 'its' : 'their'} parts. ` : ''}Sheets, reasons and lead times carry where the product is unchanged.${asRevisionStatus(newestRev.status) === 'draft' ? ` Rev ${newestRev.rev_number} was never shared and will read superseded.` : ''} Rev ${newestRev.rev_number + 1} starts as a draft. ${resubmitNothingSent(newestRev.rev_number + 1)}`,
       confirmLabel: onlySentBack ? resubmit.confirmLabel : `Build Rev ${newestRev.rev_number + 1}`,
     })
     if (!ok) return
@@ -2478,14 +2478,15 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                 summary={isNewest && decisions.sentBack > 0 ? (decisions.noAnswer > 0 ? `${decisions.sentBack} row${decisions.sentBack === 1 ? '' : 's'} sent back · ${decisions.noAnswer} with no answer go on Rev ${selectedRev.rev_number + 1} too` : `${decisions.sentBack} row${decisions.sentBack === 1 ? '' : 's'} sent back — start Rev ${selectedRev.rev_number + 1} with just ${decisions.sentBack === 1 ? 'that row' : 'those rows'}`) : previousRev ? `Rev ${selectedRev.rev_number} carries what Rev ${previousRev.rev_number} sent back` : 'nothing sent back'}>
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
                   {isNewest && decisions.sentBack > 0 ? (
-                    <button type="button" disabled={busy} onClick={() => void newRevision(true)} style={btnGreen} title={decisions.noAnswer > 0 ? 'A new version with the rows sent back and the rows with no answer yet. Approved rows stay where they are' : 'A new version with only the rows marked Revise or Reject'} data-tour="submittals-resubmit" data-testid="resubmit-sent-back">
-                      {resubmitLabel(selectedRev.rev_number + 1, decisions.sentBack, decisions.noAnswer)}
+                    <button type="button" disabled={busy} onClick={() => void newRevision(true)} style={btnGreen} title={`A draft of Rev ${selectedRev.rev_number + 1}. ${resubmitWhat(selectedRev.rev_number + 1, decisions.sentBack, decisions.noAnswer)} Approved rows stay where they are.`} data-tour="submittals-resubmit" data-testid="resubmit-sent-back">
+                      {resubmitLabel(selectedRev.rev_number + 1)}
                     </button>
                   ) : null}
-                  <button type="button" disabled={busy || !isNewest || !gates.resubmit.on} onClick={() => void newRevision()} style={{ ...(decisions.sentBack > 0 || !isNewest || !gates.resubmit.on ? btn : btnGreen), opacity: !isNewest || !gates.resubmit.on ? 0.5 : 1 }} data-testid="new-revision" title={isNewest ? 'Carry every row into a new draft and mark what changed' : 'Only the newest revision can be revised'} data-tour={isNewest && decisions.sentBack > 0 ? undefined : 'submittals-resubmit'}>
+                  <button type="button" disabled={busy || !isNewest || !gates.resubmit.on} onClick={() => void newRevision()} style={{ ...(decisions.sentBack > 0 || !isNewest || !gates.resubmit.on ? btn : btnGreen), opacity: !isNewest || !gates.resubmit.on ? 0.5 : 1 }} data-testid="new-revision" title={isNewest ? `Carry every row into a Rev ${selectedRev.rev_number + 1} draft and mark what changed. ${resubmitNothingSent(selectedRev.rev_number + 1)}` : 'Only the newest revision can be revised'} data-tour={isNewest && decisions.sentBack > 0 ? undefined : 'submittals-resubmit'}>
                     New revision
                   </button>
-                  <span style={smallMuted} data-testid="resubmit-caption">{gates.resubmit.on ? 'Fix the rows, then share again. The GC’s link shows the new version.' : gates.resubmit.why}</span>
+                  {/* What a press does, said beside the buttons (2026-10-05): a draft, which rows go on it, and that nothing is sent. */}
+                  <span style={smallMuted} data-testid="resubmit-caption">{!gates.resubmit.on ? gates.resubmit.why : isNewest && decisions.sentBack > 0 ? `${resubmitWhat(selectedRev.rev_number + 1, decisions.sentBack, decisions.noAnswer)} New revision carries every row instead.` : `New revision starts a Rev ${selectedRev.rev_number + 1} draft with every row. ${resubmitNothingSent(selectedRev.rev_number + 1)}`}</span>
                 </div>
               </RoadSection>
             </>

@@ -84,7 +84,7 @@ Four cards each open the bid's Submittals tab. A submittal is the product paperw
 
 - **Won 5 days, no submittal started**. The GC usually asks in the first week. You build Rev 1, the first revision, from the picks. After 45 days the card lets the job go.
 - **Shared N days, nobody has opened it**. The card names who never opened their link. You ask the GC to nudge them, or you send the link again.
-- **N rows sent back, no resubmit**. The reviewer marked Revise or Reject. *Rev N+1 from the rows sent back* is one tap.
+- **N rows sent back, no resubmit**. The reviewer marked Revise or Reject. A draft of the next revision with those rows is one tap. Nothing is sent until you share it.
 - **A lead time runs past its stage window**. Ordered today, the product lands after the job's earliest stage window ends. You order now, pick a product in stock, or move the window.
 
 The won bid's Job block on the Bid Board carries the same fact. It shows a chip: {{chip:blue|Rev 2 · shared · waiting on Dana W.}}.

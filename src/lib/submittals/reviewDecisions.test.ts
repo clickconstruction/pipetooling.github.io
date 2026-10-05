@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 
-import { decisionsAsText, describeDecisions, itemsSentBack, resubmitConfirm, resubmitLabel, resubmitSplit, rowCallWords, summarizeDecisions } from './reviewDecisions'
+import { decisionsAsText, describeDecisions, itemsSentBack, resubmitConfirm, resubmitLabel, resubmitNothingSent, resubmitWhat, resubmitSplit, rowCallWords, summarizeDecisions } from './reviewDecisions'
 
 const it_ = (o: Record<string, unknown>) => ({ tag: 'X-1', status: 'alternate', submitted_label: 'THING', submitted_model: null, review_decision: null, review_note: null, reviewed_by_name: null, reviewed_at: null, ...o })
 
@@ -46,21 +46,23 @@ describe('reviewDecisions', () => {
     expect(split.noAnswer.map((i) => i.tag)).toEqual(['WC-1', 'RPZ-1', 'PRV-1'])
   })
 
-  it('2026-10-03 · the button and the question count every kind of row', () => {
-    expect(resubmitLabel(3, 1)).toBe('Rev 3 from the 1 row sent back')
-    expect(resubmitLabel(2, 4, 9)).toBe('Rev 2 from the 4 rows sent back and the 9 with no answer')
+  it('2026-10-05 · the button says what it does, the line beside it says which rows go on and that nothing is sent, and the question counts every kind of row', () => {
+    expect(resubmitLabel(3)).toBe('Start a Rev 3 draft…')
+    expect(resubmitWhat(3, 1)).toBe('The 1 row sent back goes on it. Nothing is sent. The GC sees Rev 3 only after you press Share.')
+    expect(resubmitWhat(2, 4, 9)).toBe('The 4 rows sent back and the 9 with no answer go on it. Nothing is sent. The GC sees Rev 2 only after you press Share.')
+    expect(resubmitNothingSent(2)).toBe('Nothing is sent. The GC sees Rev 2 only after you press Share.')
     // BP375 on 2026-10-03: four sent back, ten with no answer, nothing approved.
     expect(resubmitConfirm(1, { sentBack: 4, noAnswer: 10, approved: 0, total: 14 })).toEqual({
-      title: 'Rev 2 from the 4 rows sent back and the 10 with no answer',
-      message: '4 rows were sent back. They go on Rev 2 so you can fix them. 10 rows have no answer yet. They go on Rev 2 too and keep waiting. No row was approved on Rev 1.',
-      confirmLabel: 'Build Rev 2 with 14 rows',
+      title: 'Start a Rev 2 draft',
+      message: '4 rows were sent back. They go on Rev 2 so you can fix them. 10 rows have no answer yet. They go on Rev 2 too and keep waiting. No row was approved on Rev 1. Rev 2 starts as a draft. Nothing is sent. The GC sees Rev 2 only after you press Share.',
+      confirmLabel: 'Start the draft with 14 rows',
     })
     expect(resubmitConfirm(2, { sentBack: 1, noAnswer: 0, approved: 13, orderOnly: 1, total: 2 })).toEqual({
-      title: 'Rev 3 from the 1 row sent back',
-      message: '1 row was sent back. It goes on Rev 3 so you can fix it. 13 rows were approved. They stay on Rev 2 and on the procurement log. 1 row you buy without the GC goes on Rev 3 too.',
-      confirmLabel: 'Build Rev 3 with 2 rows',
+      title: 'Start a Rev 3 draft',
+      message: '1 row was sent back. It goes on Rev 3 so you can fix it. 13 rows were approved. They stay on Rev 2 and on the procurement log. 1 row you buy without the GC goes on Rev 3 too. Rev 3 starts as a draft. Nothing is sent. The GC sees Rev 3 only after you press Share.',
+      confirmLabel: 'Start the draft with 2 rows',
     })
-    expect(resubmitConfirm(1, { sentBack: 1, noAnswer: 1, approved: 1, total: 2 }).message).toBe('1 row was sent back. It goes on Rev 2 so you can fix it. 1 row has no answer yet. It goes on Rev 2 too and keeps waiting. 1 row was approved. It stays on Rev 1 and on the procurement log.')
+    expect(resubmitConfirm(1, { sentBack: 1, noAnswer: 1, approved: 1, total: 2 }).message).toBe('1 row was sent back. It goes on Rev 2 so you can fix it. 1 row has no answer yet. It goes on Rev 2 too and keeps waiting. 1 row was approved. It stays on Rev 1 and on the procurement log. Rev 2 starts as a draft. Nothing is sent. The GC sees Rev 2 only after you press Share.')
   })
   it('2026-10-03 · a row says what each part got: one word only when every part the GC sees has the same answer', () => {
     const part = (review_decision: string | null, on_submittal = true) => ({ on_submittal, review_decision })
