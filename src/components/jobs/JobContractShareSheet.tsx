@@ -39,6 +39,7 @@ export default function JobContractShareSheet({
   target,
   heading,
   signerName,
+  signedBy,
   signerEmail,
   contractRow,
   filenameHint,
@@ -49,7 +50,10 @@ export default function JobContractShareSheet({
   onClose: () => void
   target: ShareTarget | null
   heading: string
+  /** The person the copy goes to first (their chip). */
   signerName: string
+  /** Who signed, for the attachment line — both signers on a two-frame agreement (v2.4590). Defaults to signerName. */
+  signedBy?: string
   signerEmail: string | null
   contractRow?: JobContractRow | null
   filenameHint: string
@@ -153,7 +157,7 @@ export default function JobContractShareSheet({
           <b>{filenameHint}</b>
           <span style={{ color: 'var(--text-muted)' }}>
             {attachmentKind === 'link' ? '· sent as a link to the signed document' : '· the copy the customer received'}
-            {signerName ? `, signed by ${signerName}` : ''}
+            {(signedBy ?? signerName) ? `, signed by ${signedBy ?? signerName}` : ''}
           </span>
         </div>
         <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Replies come to you. Sending a copy never changes the agreement or the customer&apos;s link, and the job&apos;s activity records who got it.</div>

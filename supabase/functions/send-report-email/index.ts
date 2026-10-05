@@ -149,7 +149,10 @@ async function sendReportToSubscription(
   const to = await resolveRecipientEmail(admin, sub)
   if (!to) return 'skipped'
   const { subject, html, text } = buildReportEmail(content)
-  const result = await sendEmailViaResend(to, subject, text, html, resendApiKey)
+  // Sent copies (docs/SENT_COPIES.md): a report that goes to an address outside the company is
+  // kept on its job. A subscription that names one of our own users is our own mail.
+  const outside = Boolean((sub.recipient_email ?? '').trim())
+  const result = await sendEmailViaResend(to, subject, text, html, resendApiKey, outside ? { file: { kind: 'field_report', jobIds: [report.job_ledger_id], bidId: report.bid_id, source: { table: 'reports', id: report.id } } } : undefined)
   if (!result.success) {
     console.error('send-report-email Resend error:', result.error)
     return 'failed'

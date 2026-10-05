@@ -16,9 +16,12 @@ const NARRATIVE_TO_SERVICE_GAP_MM = 1.5
 /** Space (mm) between SERVICE ADDRESS (or narrative) and CONTACT on the left stack. */
 const CONTACT_AFTER_LEFT_STACK_GAP_MM = 1.5
 
+/** The brand line and the page count sit this far above the sheet's bottom edge (at 280 mm the brand line was cut in half by a letter sheet's edge), above the line an exhibit stamp writes at 5.6 mm. */
+const BRAND_LINE_FROM_BOTTOM_MM = 10
 const COL_DESC_W = 92
 const COL_QTY_X = PAGE_MARGIN + 96
-const COL_UNIT_X = PAGE_MARGIN + 112
+/** Right edge of the unit price. 26 mm clear of the quantity's right edge: "$15,200.00" is 17 mm wide at 9 pt and ran into the quantity at 16. */
+const COL_UNIT_X = PAGE_MARGIN + 122
 const COL_AMT_X = PAGE_MARGIN + 148
 /** Table horizontal bounds for line-item row rules (mm). */
 const tableRightX = (pageW: number) => pageW - PAGE_MARGIN
@@ -298,7 +301,8 @@ function drawPageFooters(doc: import('jspdf').jsPDF): void {
     doc.setPage(i)
     doc.setFontSize(8)
     doc.setTextColor(120, 120, 120)
-    doc.text(`-- ${i} of ${n} --`, pageW / 2, 287, { align: 'center' })
+    // On the page: a letter sheet is 279.4 mm tall, and 287 was below its edge. Right-aligned, clear of an exhibit's footer line on the left.
+    doc.text(`Page ${i} of ${n}`, pageW - PAGE_MARGIN, doc.internal.pageSize.getHeight() - BRAND_LINE_FROM_BOTTOM_MM, { align: 'right' })
     doc.setTextColor(0, 0, 0)
   }
 }
@@ -536,7 +540,7 @@ async function buildPhysicalInvoicePdfBlobDetailed(docModel: PhysicalInvoiceDocu
   doc.setPage(pageCount)
   doc.setFontSize(8)
   doc.setTextColor(100, 100, 100)
-  doc.text('ClickTooling', PAGE_MARGIN, 280)
+  doc.text('ClickTooling', PAGE_MARGIN, doc.internal.pageSize.getHeight() - BRAND_LINE_FROM_BOTTOM_MM)
   doc.setTextColor(0, 0, 0)
 
   return doc.output('blob')
@@ -615,7 +619,7 @@ async function buildPhysicalInvoicePdfBlobSimple(docModel: PhysicalInvoiceDocume
   doc.setPage(pageCount)
   doc.setFontSize(8)
   doc.setTextColor(100, 100, 100)
-  doc.text('ClickTooling', PAGE_MARGIN, 280)
+  doc.text('ClickTooling', PAGE_MARGIN, doc.internal.pageSize.getHeight() - BRAND_LINE_FROM_BOTTOM_MM)
   doc.setTextColor(0, 0, 0)
 
   return doc.output('blob')

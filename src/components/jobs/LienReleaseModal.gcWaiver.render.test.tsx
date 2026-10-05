@@ -171,4 +171,28 @@ describe('LienReleaseModal — our waiver to the GC (v2.4274)', () => {
     // …and Sign it / Not now sit centred under it, so the tick and the button line up.
     expect(within(pad).getByTestId('lien-waiver-sign-actions').style.justifyContent).toBe('center')
   })
+
+  it('every route into Unconditional asks (v2.4582): a window opened on it asks once; Stay conditional closes a preset window', async () => {
+    const onClose = vi.fn()
+    // Issue unconditional's route: the opener names the form.
+    renderWithProviders(<LienReleaseModal open onClose={onClose} job={job} invoice={inv2} signerNameFallback="Malachi Reyes" initialFormType="unconditional_progress" />)
+    const ask = await screen.findByRole('alertdialog', { name: 'Are you sure you meant to choose Unconditional?' })
+    fireEvent.click(within(ask).getByRole('button', { name: 'Stay conditional' }))
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1))
+    cleanup()
+    onClose.mockClear()
+    // Acknowledge keeps the window on the form it was opened for.
+    renderWithProviders(<LienReleaseModal open onClose={onClose} job={job} invoice={inv2} signerNameFallback="Malachi Reyes" initialFormType="unconditional_progress" />)
+    fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Acknowledge and choose Unconditional' }))
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull())
+    expect(onClose).not.toHaveBeenCalled()
+    expect(within(screen.getByTestId('lien-waiver-form')).getByRole('button', { name: 'Unconditional' }).getAttribute('aria-pressed')).toBe('true')
+  })
+
+  it('a window that opens conditional asks nothing (v2.4582)', async () => {
+    renderWithProviders(<LienReleaseModal open onClose={() => undefined} job={job} invoice={inv2} signerNameFallback="Malachi Reyes" />)
+    await screen.findByTestId('lien-waiver-form')
+    await settle()
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+  })
 })

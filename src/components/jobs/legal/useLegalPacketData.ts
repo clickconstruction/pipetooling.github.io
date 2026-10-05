@@ -17,7 +17,7 @@ import {
 } from '../../../lib/legal/legalPacket'
 import { classifyPromises, parsePaymentPromisesRpc, parsePromiseRecordsRpc } from '../../../lib/jobs/paymentPromises'
 import { parseChaseTouchesRpc } from '../../../lib/jobs/paymentChase'
-import type { JobContractRowLike, SignedEstimateLike } from '../../../lib/jobs/jobContractCoverage'
+import { JOB_CONTRACT_COVERAGE_COLUMNS, type JobContractRowLike, type SignedEstimateLike } from '../../../lib/jobs/jobContractCoverage'
 import type { JobDemandLetterRow } from '../../../lib/jobs/demandLetterTracking'
 import type { JobLienFilingRow } from '../../../lib/jobs/lienDeadlines'
 import type { LegalDeskItemLike } from '../../../lib/legal/legalLienPaper'
@@ -123,7 +123,7 @@ export function useLegalPacketData(
           }, []),
           src<JobContractRowLike[]>('contracts', async () =>
             (await withSupabaseRetry<JobContractRowLike[]>(
-              () => db.from('job_contracts').select('id, job_id, status, revision, recipient_email, sent_at, last_sent_at, view_count, signed_at, signer_printed_name, signer_mode, voided_at, signed_document_url').in('job_id', jobIds).is('voided_at', null),
+              () => db.from('job_contracts').select(JOB_CONTRACT_COVERAGE_COLUMNS).in('job_id', jobIds).is('voided_at', null),
               'load legal packet contracts',
             )) ?? [], []),
           src<SignedEstimateLike[]>('accepted estimates', async () =>

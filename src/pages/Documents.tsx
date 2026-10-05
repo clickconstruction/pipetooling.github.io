@@ -32,7 +32,7 @@ import {
   type JobLienReleaseRow,
 } from '../lib/jobs/lienReleaseTracking'
 import { lienReleaseChipColors, lienReleaseChips } from '../lib/jobs/lienReleaseLifecycle'
-import { formatContractStamp, jobContractChipColors, jobContractChips, jobContractSignatureAuditLine, type JobContractRow } from '../lib/jobs/jobContractLifecycle'
+import { formatContractStamp, jobContractChipColors, jobContractChips, jobContractSignersAuditLine, type JobContractRow } from '../lib/jobs/jobContractLifecycle'
 import JobContractModal from '../components/jobs/JobContractModal'
 import type { JobWithDetails } from '../types/jobWithDetails'
 import { buildJobContractRecordHtml } from '../components/jobs/JobContractRecordModal'
@@ -1076,7 +1076,7 @@ function DocumentsJobsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
                             )
                           })}
                           {con.signed_at ? (
-                            <span style={{ color: 'var(--text-muted)', marginLeft: '0.5rem', fontSize: '0.85rem' }}>{jobContractSignatureAuditLine(con)}</span>
+                            <span style={{ color: 'var(--text-muted)', marginLeft: '0.5rem', fontSize: '0.85rem' }}>{jobContractSignersAuditLine(con)}</span>
                           ) : con.last_sent_at ? (
                             <span style={{ color: 'var(--text-muted)', marginLeft: '0.5rem', fontSize: '0.85rem' }}>Sent {formatContractStamp(con.last_sent_at)}</span>
                           ) : null}

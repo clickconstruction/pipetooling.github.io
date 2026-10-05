@@ -830,9 +830,9 @@ describe('BidsSubmittalsTab', () => {
     state.noRoom = true
     mount()
     await screen.findAllByTestId('submittal-row')
-    // The door sits over the procurement log, where the rows read Not shared.
-    const door = await screen.findByTestId('procure-approve-all')
-    expect(door.textContent).toContain('2 rows have no call from the reviewer yet, so they are not released. Approved outside the app?')
+    // v2.4581 · the door sits on the procurement log's Next line.
+    const door = await screen.findByTestId('procurement-enter-approval')
+    expect(screen.getByTestId('procurement-next').textContent).toContain('Approved outside the app? Enter their approval…')
     // The same door sits under Their call, a step a draft has not reached: its title opens it.
     fireEvent.click(screen.getByRole('button', { name: /6 · Their call/ }))
     // 2026-10-03 · one row already has an answer, so the entry is for the others.
@@ -840,7 +840,7 @@ describe('BidsSubmittalsTab', () => {
     // The two waiting fixtures are named, each a door to Their answer; the one with no product is set apart.
     expect(screen.getAllByTestId('waiting-fixture').map((b) => b.textContent)).toEqual(['WC-1', 'DWH-1'])
     expect(screen.getByTestId('their-call-no-product').textContent).toContain('PRV-1 has no product yet')
-    fireEvent.click(within(door).getByRole('button', { name: 'Enter their approval…' }))
+    fireEvent.click(door)
     const dialog = await screen.findByRole('dialog', { name: 'They approved Rev 1' })
     expect(within(dialog).getByTestId('approve-all-scope').textContent).toBe('This marks 2 rows Approved in one entry. 1 row already has a call and keeps it. 1 row has no product and is left out.')
     // Nobody is on the room yet, so the reviewer is typed; the button waits for a name and an email.
@@ -864,7 +864,7 @@ describe('BidsSubmittalsTab', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
     expect(state.items.find((r) => r.id === 'a-lav')).toMatchObject({ review_decision: 'revise', reviewed_by_name: 'Dana Whitfield' })
     expect(state.items.find((r) => r.id === 'a-prv')!.review_decision).toBeNull()
-    await waitFor(() => expect(screen.queryByTestId('procure-approve-all')).toBeNull())
+    await waitFor(() => expect(screen.queryByTestId('procurement-enter-approval')).toBeNull())
     const rows = screen.getAllByTestId('submittal-row')
     expect(rows.find((r) => r.textContent?.includes('WC-1'))!.textContent).toContain('Dana Whitfield · entered by Wendi · Sep 12')
     state.noRoom = false

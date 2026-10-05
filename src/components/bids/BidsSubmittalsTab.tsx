@@ -184,7 +184,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   // 2026-10-03 · the newest answer on each earlier revision's rows, by revision id: a replaced draft that holds answers reads "answered", not "superseded".
   const [answeredByRev, setAnsweredByRev] = useState<Map<string, string>>(() => new Map())
   const [standing, setStanding] = useState<{ items: SubmittalItemRow[]; parts: SubmittalPartRow[]; revOf: Map<string, number> }>({ items: [], parts: [], revOf: new Map() })
-  const [procCounts, setProcCounts] = useState<{ released: number; ordered: number; delivered: number; late: number } | null>(null)
+  const [procCounts, setProcCounts] = useState<{ released: number; ordered: number; delivered: number; late: number; steps: { gc: number; to_order: number; on_order: number; on_site: number } } | null>(null)
   const [reportSettings, setReportSettings] = useState<TestReportSettings>(() => cachedTestReportSettings())
   const companyName = reportSettings.companyName
   const [prevItems, setPrevItems] = useState<SubmittalItemRow[]>([])
@@ -1436,6 +1436,19 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     }
   }
 
+  /** v2.4579 · the dropped vendor file, saved whole under its own name (a five-minute signed link). */
+  async function saveSourceFile(fileIndex: number) {
+    const f = sourceFiles[fileIndex]
+    if (!f) return
+    const name = /\.pdf$/i.test(f.name) ? f.name : `${f.name}.pdf`
+    const { data, error } = await supabase.storage.from(SUBMITTALS_BUCKET).createSignedUrl(f.path, 300, { download: name })
+    if (error || !data?.signedUrl) {
+      showToast(`${f.name} could not be saved right now. Try again.`, 'error')
+      return
+    }
+    window.open(data.signedUrl, '_blank', 'noopener')
+  }
+
   /** A five-minute signed link to the stored package; the fresh blob as the fallback when the link cannot be minted. */
   async function openStoredPackage(path: string, revNumber: number, fallback?: Blob) {
     const name = packageFileName(revNumber, bidWorkflowTabHeading(bid, prefixMap))
@@ -2427,6 +2440,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                     onConfirmGuesses={(i) => void confirmGuesses(i)}
                     onAssignPages={(i) => setAssignFile(i)}
                     onReadParts={(i) => void readFileParts(i)}
+                    onSaveFile={(i) => void saveSourceFile(i)}
                   />
                 ) : null}
               </RoadSection>
@@ -2545,15 +2559,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
               {/* 8 · Procure — a side track, always open (v2.4201) and drawn with or without a revision: long-lead items go in before a row is approved; never the Next stage until every row is approved */}
             <RoadSection n={8} about={SUBMITTAL_STAGE_ABOUT[8]} onHelp={() => startWalkThrough(8)} title="Procure" status={stageStatus('procure')} open={sectionOpen('procure')} onToggle={() => toggleSection('procure')} onJump={() => jumpToSection('procure')} anchor="submittals-procure-section" last always
               summaryWhenOpen={!procCounts}
-              summary={procCounts ? `${procCounts.released} released · ${procCounts.ordered} ordered · ${procCounts.delivered} delivered${procCounts.late > 0 ? ` · ${procCounts.late} behind schedule` : ''}` : isNewest || !selectedRev ? 'fills in as the GC approves rows · long-lead items can go in now' : 'on the newest version'}>
-              {isNewest && selectedRev && approvableRows.length > 0 ? (
-                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'baseline', margin: '0 0 0.5rem' }} data-testid="procure-approve-all">
-                  <span style={smallMuted}>{approvableRows.length} {approvableRows.length === 1 ? 'row has' : 'rows have'} no call from the reviewer yet, so {approvableRows.length === 1 ? 'it is' : 'they are'} not released. Approved outside the app?</span>
-                  <button type="button" disabled={busy} onClick={() => setApprovingAll(true)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit', fontSize: '0.75rem', color: 'var(--text-blue-700)', textDecoration: 'underline', textUnderlineOffset: 2 }}>
-                    Enter their approval…
-                  </button>
-                </div>
-              ) : null}
+              summary={procCounts ? `${procCounts.steps.gc} waiting on the GC · ${procCounts.steps.to_order} to order · ${procCounts.steps.on_order} on order · ${procCounts.steps.on_site} on site${procCounts.late > 0 ? ` · ${procCounts.late} behind schedule` : ''}` : isNewest || !selectedRev ? 'fills in as the GC approves rows · long-lead items can go in now' : 'on the newest version'}>
               {(isNewest || !selectedRev) && bidId && selectedBid ? (
                 <SubmittalProcurementPanel
                   bidId={bidId}
@@ -2568,6 +2574,8 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                   currentUser={{ id: user?.id ?? null, name: profileName ?? '' }}
                   busy={busy}
                   onCounts={setProcCounts}
+                  // The Next line's door to the approve-all window, while a row still has no call (v2.4581).
+                  onEnterApproval={isNewest && selectedRev && approvableRows.length > 0 ? () => setApprovingAll(true) : undefined}
                   houses={houses}
                   onLinesChanged={() => {
                     // House, lead time or stage set from the log's tick bar: the rows and their parts read again.
