@@ -8,7 +8,7 @@ covers:
   - src/components/jobs/LienDeskModal.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-10-02
+last_updated: 2026-10-05
 ---
 
 > **Line numbers are as of `a05cef4c4`** (the `mapped_at` commit) and drift with every edit — search the symbol named beside each range. Regenerate the fact sheet with `npm run map -- src/components/jobs/LienDeskModal.tsx`. The file is the busiest component this week (37 commits in 90 days; its 29 since 2026-09-18 lead every component — over 90 days `JobsStagesTab.tsx` has more); re-check ranges before any move.
@@ -317,7 +317,7 @@ Verification per step: `npm run typecheck && npm run lint && npm test`, behavior
 |---|---|---|---|---|
 | [`LienInstrumentsModal.tsx`](../src/components/jobs/LienInstrumentsModal.tsx) | 1,385 | JobsStagesTab | the "Lien window" — `onOpenLienInstruments` / `onOpenLienAffidavit` land here | render 9 |
 | [`GcOnNoticeModal.tsx`](../src/components/jobs/GcOnNoticeModal.tsx) | 1,133 | JobsStagesTab | Put a GC on notice (`onPutGcOnNotice`, `?gcnotice=`) | render 5 |
-| [`LienReleaseModal.tsx`](../src/components/jobs/LienReleaseModal.tsx) | 1,346 | JobsStagesTab, DashboardLienReleaseQueueModal, BillCustomerLienReleaseStrip, BillCustomerWaiverFollowUp and JobFormInvoiceList (both v2.4275) | releases (timeline tail); since v2.4274 the GC waiver's two questions, *He signs now* and *Send to the GC* | render 8 (`dateHold` 6, `gcWaiver` 2) |
+| [`LienReleaseModal.tsx`](../src/components/jobs/LienReleaseModal.tsx) | 1,607 | six mounts, listed in its own map | releases (timeline tail); mapped in [`LIEN_RELEASE_MODAL_ARCHITECTURE.md`](./LIEN_RELEASE_MODAL_ARCHITECTURE.md) | five render files, counted there |
 | [`LienFilingTabs.tsx`](../src/components/jobs/LienFilingTabs.tsx) | 851 | LienInstrumentsModal | the Lien window's filing tabs; on a phone its record steps are sheets on [`LienRecordSheet`](../src/components/jobs/LienRecordSheet.tsx) | render 6 |
 | `LienWaiverSendModal.tsx` | 275 | JobsSubLaborTab | waivers | render 3 |
 | `LienSignatureInboxSection.tsx` / `LienReleaseSignModal.tsx` / `DashboardLienWaiversToSignModal.tsx` (v2.4276) | 219 / 186 / 238 | inboxes / LienReleaseModal and the inbox section / the Dashboard's `lien-waivers-to-sign` Needs You item | release signing — the sign and send writes are one module, `lib/jobs/lienReleaseSignIo.ts`, and the page's foot is `LienWaiverFootPreview` (v2.4285) | none / none / render 2 |

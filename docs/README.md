@@ -70,9 +70,11 @@ Start at [`PAGE_DECOMPOSITION_PLAYBOOK.md`](./PAGE_DECOMPOSITION_PLAYBOOK.md) â€
 | [`BIDS_PRICING_LABOR_TABS_ARCHITECTURE.md`](./BIDS_PRICING_LABOR_TABS_ARCHITECTURE.md) | `BidsPricingTab` + `BidsLaborTab` + `useBidPricingEngine` |
 | [`BIDS_DOCUMENT_TABS_ARCHITECTURE.md`](./BIDS_DOCUMENT_TABS_ARCHITECTURE.md) | `BidsCoverLetterTab` + `BidsSubmittalsTab` + `BidsBuilderReviewTab` |
 | [`BID_SUBMISSION_FOLLOWUP_TAB_ARCHITECTURE.md`](./BID_SUBMISSION_FOLLOWUP_TAB_ARCHITECTURE.md) | `BidSubmissionFollowupTab` |
+| [`BIDS_AUDITS_TAB_ARCHITECTURE.md`](./BIDS_AUDITS_TAB_ARCHITECTURE.md) | `BidsAuditsTab` (the ðŸ¤– Audits lens: questions, queue, open card) |
 | [`JOBS_TABS_ARCHITECTURE.md`](./JOBS_TABS_ARCHITECTURE.md) | `src/pages/Jobs.tsx` (tab router + the page side of the Pipeline) |
 | [`JOBS_STAGES_TAB_ARCHITECTURE.md`](./JOBS_STAGES_TAB_ARCHITECTURE.md) | `JobsStagesTab` + its table/row sub-files |
 | [`LIEN_DESK_ARCHITECTURE.md`](./LIEN_DESK_ARCHITECTURE.md) | `LienDeskModal` (the Lien desk, mounted by the Pipeline) |
+| [`LIEN_RELEASE_MODAL_ARCHITECTURE.md`](./LIEN_RELEASE_MODAL_ARCHITECTURE.md) | `LienReleaseModal` (the Release of Lien window: six steps, draft, mint, signature, send) |
 | [`GC_REVIEW_MODAL_ARCHITECTURE.md`](./GC_REVIEW_MODAL_ARCHITECTURE.md) | `JobsGcReviewModal` (GC statement rounds and sends) |
 | [`JOBS_JOB_SUMMARY_TAB_ARCHITECTURE.md`](./JOBS_JOB_SUMMARY_TAB_ARCHITECTURE.md) | `JobsJobSummaryTab` (presentational cost-rollup ledger) |
 | [`JOB_FORM_MODAL_ARCHITECTURE.md`](./JOB_FORM_MODAL_ARCHITECTURE.md) | `JobFormModal` (form sections; save-engine deep-dive) |
@@ -83,7 +85,7 @@ Start at [`PAGE_DECOMPOSITION_PLAYBOOK.md`](./PAGE_DECOMPOSITION_PLAYBOOK.md) â€
 | [`PEOPLE_REVIEW_TAB_ARCHITECTURE.md`](./PEOPLE_REVIEW_TAB_ARCHITECTURE.md) | `PeopleReviewTab` (dev-only Review analytics) + the Team Summary drilldowns and popup builder |
 | [`PEOPLE_CONTRACTS_OVERHEAD_TABS_ARCHITECTURE.md`](./PEOPLE_CONTRACTS_OVERHEAD_TABS_ARCHITECTURE.md) | `PeopleContractsTab` + `PeopleOverheadTab` |
 | [`PEOPLE_VEHICLES_TAB_ARCHITECTURE.md`](./PEOPLE_VEHICLES_TAB_ARCHITECTURE.md) | `PeopleVehiclesTab` (the fleet board) |
-| [`DASHBOARD_SECTIONS_ARCHITECTURE.md`](./DASHBOARD_SECTIONS_ARCHITECTURE.md) | `src/pages/Dashboard.tsx` (section-based) + `DashboardFinancialsSection` |
+| [`DASHBOARD_SECTIONS_ARCHITECTURE.md`](./DASHBOARD_SECTIONS_ARCHITECTURE.md) | `src/pages/Dashboard.tsx` (section-based) + `DashboardFinancialsSection` + the Needs You builder `dashboardNeedsYou.ts` |
 | [`MY_TIME_DAY_EDITOR_MODAL_ARCHITECTURE.md`](./MY_TIME_DAY_EDITOR_MODAL_ARCHITECTURE.md) | `DashboardMyTimeDayEditorModal` (shared clock-day editor) |
 | [`CLOCK_SURFACES_ARCHITECTURE.md`](./CLOCK_SURFACES_ARCHITECTURE.md) | `DashboardTeamActiveClockStrip` + `ClockInOutButton` |
 | [`CALENDAR_PAGE_ARCHITECTURE.md`](./CALENDAR_PAGE_ARCHITECTURE.md) | `src/pages/Calendar.tsx` |
@@ -137,4 +139,4 @@ A plan's own status line (top of the file) is the one place its progress is reco
 - **Docs ship with features**: `recent-features/v2.NNNN.md` fragment + release note per PR, `migrations/<version>_<slug>.md` per migration, `EDGE_FUNCTIONS.md` section per function, help guide per user-facing flow (`../CLAUDE.md`).
 - Migration files cited in docs may live in `supabase/archive/migrations-pre-baseline/` â€” history was squash-baselined at `20250101000000_baseline.sql` (2026-06-04); "2027"-dated filenames there are typos from spring 2026.
 
-last_updated: 2026-09-28
+last_updated: 2026-10-05
