@@ -13,7 +13,9 @@ import {
   type ManHoursZoom,
 } from '../../lib/manHours/manHoursByPeriod'
 import { manHoursHeadlineWords, pickManHoursHeadline } from '../../lib/manHours/manHoursChart'
+import { buildManHoursNames, buildManHoursWho } from '../../lib/manHours/manHoursWho'
 import { ManHoursChart } from './ManHoursChart'
+import { ManHoursWho } from './ManHoursWho'
 
 /**
  * People → Overhead "Man hours" card: the office against the field by pay
@@ -22,6 +24,9 @@ import { ManHoursChart } from './ManHoursChart'
  * a change of Office job re-folds without a refetch. Hours only: no wage and
  * no dollar is read or shown. The fold is `lib/manHours/manHoursByPeriod.ts`,
  * the same rules as the day table under this card.
+ *
+ * One period is always picked (the newest finished one until a row or a bar
+ * is clicked); `ManHoursWho` lists who made it up and holds the doors out.
  */
 
 const hrs = (h: number): string => (h >= 0.5 ? Math.round(h).toLocaleString('en-US') : '—')
@@ -65,9 +70,32 @@ const waitingChipStyle = {
   border: '1px solid var(--border-amber)',
 }
 
-function PeriodRow({ period, zoom, firstDay }: { period: ManHoursPeriod; zoom: ManHoursZoom; firstDay: string | null }) {
+function PeriodRow({
+  period,
+  zoom,
+  firstDay,
+  selected,
+  onSelect,
+}: {
+  period: ManHoursPeriod
+  zoom: ManHoursZoom
+  firstDay: string | null
+  selected: boolean
+  onSelect: () => void
+}) {
   return (
-    <tr>
+    <tr
+      tabIndex={0}
+      aria-selected={selected}
+      title="See who made up this period"
+      onClick={onSelect}
+      onKeyDown={(e) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return
+        e.preventDefault()
+        onSelect()
+      }}
+      style={{ cursor: 'pointer', background: selected ? 'var(--bg-blue-tint)' : undefined, boxShadow: selected ? 'inset 3px 0 0 var(--text-link)' : undefined }}
+    >
       <td style={{ ...tdStyle, textAlign: 'left' }}>
         {manHoursPeriodLabel(period, zoom)}
         {period.fromFirstDay && firstDay ? <span style={chipStyle}>from {manHoursDayLabel(firstDay)}</span> : null}
@@ -90,8 +118,19 @@ function PeriodRow({ period, zoom, firstDay }: { period: ManHoursPeriod; zoom: M
   )
 }
 
-export function ManHoursCard({ officeJobLedgerId, officeJobLoading }: { officeJobLedgerId: string | null; officeJobLoading: boolean }) {
+export function ManHoursCard({
+  officeJobLedgerId,
+  officeJobLoading,
+  onShowWeek,
+}: {
+  officeJobLedgerId: string | null
+  officeJobLoading: boolean
+  /** Moves the tab's day table to the week starting on this day. */
+  onShowWeek?: (weekStartYmd: string) => void
+}) {
   const [zoom, setZoom] = useState<ManHoursZoom>('month')
+  /** The period the "who" list reads, as picked by a click; null = the newest finished one. Cleared when the zoom changes. */
+  const [pickedKey, setPickedKey] = useState<string | null>(null)
   const [sessions, setSessions] = useState<ManHoursSession[] | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [reloadTick, setReloadTick] = useState(0)
@@ -119,10 +158,15 @@ export function ManHoursCard({ officeJobLedgerId, officeJobLoading }: { officeJo
     return buildManHoursPeriods({ entries, zoom, todayYmd: todayYmdInAppTz(), maxPeriods: periods })
   }, [entries, zoom])
 
-  const headline = useMemo(() => {
-    const picked = view ? pickManHoursHeadline(view.periods) : null
-    return picked ? manHoursHeadlineWords(picked, zoom) : null
-  }, [view, zoom])
+  const headlinePick = useMemo(() => (view ? pickManHoursHeadline(view.periods) : null), [view])
+  const headline = useMemo(() => (headlinePick ? manHoursHeadlineWords(headlinePick, zoom) : null), [headlinePick, zoom])
+
+  const selected = useMemo(() => {
+    if (!view) return null
+    return view.periods.find((p) => p.key === pickedKey) ?? headlinePick?.period ?? null
+  }, [view, pickedKey, headlinePick])
+  const names = useMemo(() => (sessions ? buildManHoursNames(sessions) : null), [sessions])
+  const who = useMemo(() => (entries && names && selected ? buildManHoursWho(entries, selected, names) : []), [entries, names, selected])
 
   const loading = !loadError && (sessions == null || officeJobLoading)
 
@@ -137,7 +181,10 @@ export function ManHoursCard({ officeJobLedgerId, officeJobLoading }: { officeJo
               key={z.key}
               type="button"
               aria-pressed={z.key === zoom}
-              onClick={() => setZoom(z.key)}
+              onClick={() => {
+                setZoom(z.key)
+                setPickedKey(null)
+              }}
               style={{
                 border: 0,
                 borderRight: i < MAN_HOURS_ZOOMS.length - 1 ? '1px solid var(--border)' : 0,
@@ -179,7 +226,7 @@ export function ManHoursCard({ officeJobLedgerId, officeJobLoading }: { officeJo
               <strong>{headline.lead}</strong> {headline.rest}
             </p>
           ) : null}
-          <ManHoursChart periods={view.periods} zoom={zoom} />
+          <ManHoursChart periods={view.periods} zoom={zoom} selectedKey={selected?.key ?? null} onSelect={setPickedKey} />
           <div style={{ overflowX: 'auto', marginTop: '0.5rem' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
               <thead>
@@ -197,11 +244,12 @@ export function ManHoursCard({ officeJobLedgerId, officeJobLoading }: { officeJo
               </thead>
               <tbody>
                 {view.periods.map((p) => (
-                  <PeriodRow key={p.key} period={p} zoom={zoom} firstDay={view.firstDay} />
+                  <PeriodRow key={p.key} period={p} zoom={zoom} firstDay={view.firstDay} selected={p.key === selected?.key} onSelect={() => setPickedKey(p.key)} />
                 ))}
               </tbody>
             </table>
           </div>
+          {selected ? <ManHoursWho period={selected} zoom={zoom} rows={who} onShowWeek={onShowWeek} /> : null}
         </>
       )}
       <p style={{ margin: '0.4rem 0 0 0', fontSize: '0.75rem', color: 'var(--text-faint)' }}>

@@ -806,6 +806,21 @@ export default function People() {
     }, { replace: true })
   }, [searchParams, canAccessHours, canAccessPay, setSearchParams])
 
+  // `?tab=hours&match=1` (the Overhead Man hours card's "Match hours to a job" door) opens
+  // Match sessions on arrival and strips the flag so a reload doesn't reopen it.
+  useEffect(() => {
+    if (searchParams.get('match') !== '1') return
+    if (!canAccessHours) return
+    setActiveTab('hours')
+    setMatchSessionsOpen(true)
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      next.set('tab', 'hours')
+      next.delete('match')
+      return next
+    }, { replace: true })
+  }, [searchParams, canAccessHours, setSearchParams])
+
   useEffect(() => {
     const section = searchParams.get('section')
     if (section !== 'rejected' || !canAccessHours) return
