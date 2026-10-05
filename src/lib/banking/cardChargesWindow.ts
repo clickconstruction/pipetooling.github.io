@@ -104,19 +104,14 @@ export type CardChargesWindowClient = Pick<typeof supabase, 'rpc'>
 /**
  * Every card charge posted in `startYmd`..`endYmd` (company days, both ends included; at most
  * 366), oldest first, paged past PostgREST's silent 1,000-row cap — the RPC orders by
- * (posted_at, id), so `.range()` pages are stable. `holderUserId` narrows to one holder's
- * cards. A failed page throws, never a short list.
+ * (posted_at, id), so `.range()` pages are stable. A failed page throws, never a short list.
  */
 export async function fetchCardChargesWindow(
-  args: { startYmd: string; endYmd: string; holderUserId?: string | null },
+  args: { startYmd: string; endYmd: string },
   client: CardChargesWindowClient = supabase,
   label = 'list card charges window',
 ): Promise<CardChargeWindowRow[]> {
-  const params = {
-    p_start_ymd: args.startYmd,
-    p_end_ymd: args.endYmd,
-    p_holder_user_id: args.holderUserId ?? null,
-  }
+  const params = { p_start_ymd: args.startYmd, p_end_ymd: args.endYmd }
   const rows = await fetchAllRows<CardChargesWindowRpcRow>(
     (from, to) =>
       withSupabaseRetry(

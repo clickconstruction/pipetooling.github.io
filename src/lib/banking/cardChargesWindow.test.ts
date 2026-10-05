@@ -66,15 +66,16 @@ describe('fetchCardChargesWindow', () => {
     const rows = await fetchCardChargesWindow({ startYmd: '2026-07-08', endYmd: '2026-10-05' }, client)
     expect(calls.map((c) => c.rpc)).toEqual([CARD_CHARGES_WINDOW_RPC, CARD_CHARGES_WINDOW_RPC])
     expect(calls.map((c) => c.range)).toEqual([[0, 999], [1000, 1999]])
-    expect(calls[0]?.params).toEqual({ p_start_ymd: '2026-07-08', p_end_ymd: '2026-10-05', p_holder_user_id: null })
+    expect(calls[0]?.params).toEqual({ p_start_ymd: '2026-07-08', p_end_ymd: '2026-10-05' })
     expect(rows).toHaveLength(1300)
     expect(rows[1299]?.id).toBe('tx1299')
   })
 
-  it('narrows to one holder when asked', async () => {
+  it('reads one page when it comes back short', async () => {
     const { client, calls } = makeRpcStub(3)
-    await fetchCardChargesWindow({ startYmd: '2026-09-05', endYmd: '2026-10-05', holderUserId: 'u-1' }, client)
-    expect(calls[0]?.params).toEqual({ p_start_ymd: '2026-09-05', p_end_ymd: '2026-10-05', p_holder_user_id: 'u-1' })
+    const rows = await fetchCardChargesWindow({ startYmd: '2026-09-05', endYmd: '2026-10-05' }, client)
+    expect(calls).toHaveLength(1)
+    expect(rows).toHaveLength(3)
   })
 
   it('throws on a failed page instead of returning a short list', async () => {

@@ -1,6 +1,6 @@
 # 20261005212106_card_charges_window.sql (2026-10-05, v2.4594)
 
-`list_card_charges_window(p_start_ymd date, p_end_ymd date, p_holder_user_id uuid DEFAULT NULL)`: every card charge posted in the company days `p_start_ymd..p_end_ymd`, one row per charge, oldest first. It is the read behind **People → Spending** (punch list #52, PR 4b) and the history the **Tally team queue** reads for its suggestions (#72 PR 2 and PR 5), agreed between the two so the same table does not get two overlapping readers in one week.
+`list_card_charges_window(p_start_ymd date, p_end_ymd date)`: every card charge posted in the company days `p_start_ymd..p_end_ymd`, one row per charge, oldest first. It is the read behind **People → Spending** (punch list #52, PR 4b) and the history the **Tally team queue** reads for its suggestions (#72 PR 2 and PR 5), agreed between the two so the same table does not get two overlapping readers in one week.
 
 ## What a row carries
 

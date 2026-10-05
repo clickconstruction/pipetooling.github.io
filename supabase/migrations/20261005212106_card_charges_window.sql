@@ -22,8 +22,7 @@ SET lock_timeout = '3s';
 
 CREATE OR REPLACE FUNCTION public.list_card_charges_window(
   p_start_ymd date,
-  p_end_ymd date,
-  p_holder_user_id uuid DEFAULT NULL
+  p_end_ymd date
 )
 RETURNS TABLE (
   mercury_transaction_id uuid,
@@ -187,14 +186,13 @@ BEGIN
     LIMIT 1
   ) srt ON true
   LEFT JOIN public.users sb ON sb.id = srt.created_by
-  WHERE p_holder_user_id IS NULL OR l.user_id = p_holder_user_id
   ORDER BY c.posted_at, c.id;
 END;
 $function$;
 
-REVOKE ALL ON FUNCTION public.list_card_charges_window(date, date, uuid) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.list_card_charges_window(date, date, uuid) FROM anon;
-GRANT EXECUTE ON FUNCTION public.list_card_charges_window(date, date, uuid) TO authenticated;
+REVOKE ALL ON FUNCTION public.list_card_charges_window(date, date) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.list_card_charges_window(date, date) FROM anon;
+GRANT EXECUTE ON FUNCTION public.list_card_charges_window(date, date) TO authenticated;
 
-COMMENT ON FUNCTION public.list_card_charges_window(date, date, uuid) IS
+COMMENT ON FUNCTION public.list_card_charges_window(date, date) IS
   'Card charges posted in company days p_start_ymd..p_end_ymd (at most 366): attribution, card + holder, bank category, accounting label, payroll mark, job splits, invoice links, last sorted, and whether the viewer can write the splits. Office staff only. Ordered by (posted_at, id) for paging. People → Spending (#52) and the Tally team queue history (#72).';
