@@ -9,7 +9,7 @@
  */
 import { useCallback, useRef, useState } from 'react'
 import { useCloseOnOutsideClick } from '../../hooks/useCloseOnOutsideClick'
-import GcHardHatIcon from '../icons/GcHardHatIcon'
+import { StagesToolsMenuGlyph } from './StagesToolsMenuGlyph'
 import { buildStagesSectionToolsMenu, type StagesSectionToolKey } from '../../lib/jobs/stagesSectionToolsMenu'
 import StagesSectionToolsIcon from '../icons/StagesSectionToolsIcon'
 import { stagesToolsMenuItemStyle } from './stagesToolsMenuStyles'
@@ -94,11 +94,9 @@ export function JobsStagesSectionToolsMenu({
                     }}
                   >
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}>
-                      {/* Fixed-width icon slot so labels align down the menu; same marks
-                          as the tools' board buttons (gc-review's hard-hat is a component,
-                          so the kernel leaves its icon to us). */}
+                      {/* Fixed-width icon slot so labels align down the menu. */}
                       <span aria-hidden style={{ width: 18, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        {item.key === 'gc-review' ? <GcHardHatIcon size={13} style={{ flexShrink: 0 }} /> : item.icon}
+                        <StagesToolsMenuGlyph name={item.icon} />
                       </span>
                       <span>{item.label}</span>
                     </span>

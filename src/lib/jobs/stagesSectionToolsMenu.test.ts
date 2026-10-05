@@ -140,20 +140,24 @@ describe('buildStagesSectionToolsMenu', () => {
     }
   })
 
-  it('every item carries its board-button icon except gc-review (SVG supplied by the view)', () => {
+  it('every item names its line icon: the owner\u2019s picks (v2.4524), the notification rows and the charts sharing one each', () => {
     const items = buildStagesSectionToolsMenu({ ...base, authRole: 'dev' }).flatMap((g) => g.items)
-    for (const item of items) {
-      if (item.key === 'gc-review') expect(item.icon).toBeUndefined()
-      else expect(item.icon, `item ${item.key} is missing an icon`).toBeTruthy()
-    }
-    // Spot-check the marks mirrored from the board buttons.
-    const iconOf = (key: string) => items.find((i) => i.key === key)?.icon
-    expect(iconOf('accounts-receivable')).toBe('💵')
-    expect(iconOf('billed-share-print')).toBe('⇪')
-    expect(iconOf('billed-aging-chart')).toBe('📊')
-    expect(iconOf('billed-payment-forecast')).toBe('📅')
-    expect(iconOf('paid-notifications')).toBe('⚙')
-    expect(iconOf('recently-added')).toBe('🕒')
+    expect(Object.fromEntries(items.map((i) => [i.key, i.icon]))).toEqual({
+      'lien-desk': 'gavel',
+      'recently-added': 'history',
+      'weekly-movement': 'route',
+      'weekly-money': 'cash',
+      'capable-to-bill': 'file-dollar',
+      'ready-to-bill-notifications': 'bell',
+      'gc-review': 'building',
+      'accounts-receivable': 'bank',
+      'billed-share-print': 'share',
+      'billed-aging-chart': 'chart-bar',
+      'billed-payment-forecast': 'calendar-bars',
+      'paid-notifications': 'bell',
+      'paid-profit-chart': 'chart-bar',
+      'paid-in-full-notifications': 'bell',
+    })
   })
 
   it('GC Review disables only when Billed and Collections are both empty', () => {
@@ -221,7 +225,7 @@ describe('Lien desk row (v2.3405; leads the menu since v2.3799, punch list #34)'
     for (const authRole of ['dev', 'master_technician', 'assistant', 'controller']) {
       const groups = buildStagesSectionToolsMenu({ ...base, authRole, lienDeskCount: 16 })
       expect(groups[0]!.section).toBe('Pipeline')
-      expect(groups[0]!.items[0]).toMatchObject({ key: 'lien-desk', label: 'Lien desk', icon: '⏱', badgeCount: 16 })
+      expect(groups[0]!.items[0]).toMatchObject({ key: 'lien-desk', label: 'Lien desk', icon: 'gavel', badgeCount: 16 })
       expect(groups.some((g) => g.section === 'Collections')).toBe(false)
     }
   })
