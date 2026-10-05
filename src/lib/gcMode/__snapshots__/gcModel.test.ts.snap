@@ -9926,6 +9926,11 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "coiExpires": "2026-09-15",
       "company": "Pecan Valley Electric",
       "contact": "Marcus Bell",
+      "contactGets": [
+        "quotes",
+        "job",
+        "contracts",
+      ],
       "contacts": [
         {
           "by": "You",
@@ -9938,6 +9943,17 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "maxMiles": null,
       "msa": "signed",
       "msaSignedOn": "2026-06-12",
+      "people": [
+        {
+          "email": "dana@pecanvalleyelectric.example",
+          "gets": [
+            "pay",
+          ],
+          "id": "pecanvalley-p-1",
+          "name": "Dana Whitfield",
+          "role": "Bookkeeper",
+        },
+      ],
       "promisesKept": 0,
       "promisesMade": 0,
       "trades": [

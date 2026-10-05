@@ -286,14 +286,14 @@ code names stay. Golden moves on words are each lane's own, under its standing O
 
 - ~~**Board (GC 0):**~~ done b5c64d8bd. the stage names, Bill the customer's tab name, Our number, the ring's words, the
   company window, Lost and Closed, Bid tabs, New here? and Walk me through this job.
-- **New Project (GC 2):** step 1's *We work for*: the owner, another general contractor, an owner's
+- ~~**New Project (GC 2):**~~ done 6f5d7810f. step 1's *We work for*: the owner, another general contractor, an owner's
   rep (`GcProject.customerRole`); not the owner shows *Owner of the property* on its own. Then its own
   words.
-- **Owner Billing (GC 4):** its tab and windows ("Bill the customer", the customer's portal, "the
+- ~~**Owner Billing (GC 4):**~~ done eb0e03e29. its tab and windows ("Bill the customer", the customer's portal, "the
   customer pays"); the pay application goes to the customer and names the property's owner when
   different. Then its words.
-- **Building (GC 1)** and **Portal (GC 3):** their own words where "owner" means who we bill.
-  Portal done df682115a.
+- ~~**Building (GC 1)** and **Portal (GC 3):**~~ their own words where "owner" means who we bill.
+  Building done 069697203, Portal done df682115a.
 
 ## Round 7: the company window (the owner, 2026-10-04)
 
@@ -330,8 +330,8 @@ days and a photo. Details in README.md, *A trade asks for a change in its portal
   *Make a change order* (prefilled from the request: its words, its amount as our cost, the days)
   dispatches `draftChangeOrderFromRequest`; *Turn down* asks why and dispatches
   `turnDownChangeRequest`.~~ done 3ae5d95eb.
-- **Board (GC 0), if it fits:** a Needs you line while a request waits ("Tri-County Site asked for a
-  change on Fair Oaks").
+- ~~**Board (GC 0), if it fits:**~~ done 0edda35f4 (the owner: "build it that way"). a Needs you line while a request waits ("Tri-County Site asked for a
+  change on Fair Oaks"), and a line on the job's ring card. Not in Who to call.
 
 ## Round 9: back-charges a company can see (the owner, 2026-10-05)
 
@@ -344,7 +344,7 @@ the money comes off a draw. Details in README.md, *A company sees what we charge
   unpaid draw's net and records it on `Draw.backCharges`). *Charges from Click* on the job page,
   the to-do, four emails, "less $X in back-charges" on the draw in the portal and Your pay, the
   company window's Activity lines. Seeded: Iron Horse's cut power line on Fair Oaks, $1,250.
-- **Building (GC 1):** the office's screen, beside each trade's draws: *Charge them* (amount, what
+- ~~**Building (GC 1):**~~ done e83c6703d, with the `&charge=<id>` link 5bc123f08. the office's screen, beside each trade's draws: *Charge them* (amount, what
   for, a photo) dispatching `backCharge`; each charge's state (`backChargeState`); *Keep it* or
   *Drop it* with a reason on a disputed or unanswered one (`settleBackCharge`); *Take it off draw N*
   on one `backChargeCanTake` allows, for each draw `backChargeDraws` gives (`takeBackCharge`).
@@ -353,6 +353,19 @@ the money comes off a draw. Details in README.md, *A company sees what we charge
 - ~~**Board (GC 0):**~~ done. The owner, 2026-10-05: "a Needs you line of its own". `gcBackChargesWaiting.ts`, item
   `gc-back-charges`: disputed, unanswered, or ready to come off an approved draw; **Settle it** opens
   the job on Draws, where Building's screen above does the rest. Not in Who to call.
+
+## Round 10: who at the company gets which emails (the owner, 2026-10-05)
+
+The owner, asked what the portal builds next: "Who at the company gets what". Every email went to
+one contact; now a company names its people and the kinds each gets. Details in README.md, *Each
+email goes to the right person at the company*.
+
+- ~~**Portal (GC 3):**~~ done (this commit). `Partner.people`, `contactGets`, three actions, *Who
+  gets our emails* on the home, every email addressed and greeted by its kind (`portalMailGroup`,
+  `mailRecipients`). Seeded: Pecan Valley's bookkeeper gets pay and papers.
+- **Board (GC 0), if it fits:** the company window's About could list the people and what each
+  gets; Follow up's Email could pick the person for the kind it chases (a quote: `quotes`; a waiver
+  or a W-9: `pay`) through `mailRecipients(partner, group)`.
 
 ## Owner (the decisions)
 
