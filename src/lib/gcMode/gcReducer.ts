@@ -24,7 +24,7 @@ import { startChecklist } from './gcStart'
 import { keepPromisesOn, openPromiseFor, PROMISE_WHAT, promisesKeptBy, tradePromisesOf } from './gcPromises'
 import { paperSendLog, paperStep } from './gcPaperSend'
 import { ownerInterest } from './gcOwnerBillingInterest'
-import { payReminderStep } from './gcOwnerBillingRemind'
+import { payReminderEmail, payReminderStep } from './gcOwnerBillingRemind'
 import { appClaimed, appOpen, changeOrderPrice, OWNER_RETAINAGE_DEFAULT_PCT, ownerCloseout, ownerContractWorthNow, ownerFinalPayAppToSend, ownerPayApp, ownerPayAppHasWork, ownerPayAppToSend, ownerRetainageWords } from './gcOwnerBilling'
 
 export function gcReducer(state: GcState, action: GcAction): GcState {
@@ -1970,7 +1970,10 @@ function reduce(state: GcState, action: GcAction): GcState {
       // on the bill; our ask, so it never becomes a promise or moves the due day.
       const project = state.projects.find((p) => p.id === action.projectId)
       if (!project || !payReminderStep(state, project, action.number) || !/^\d{4}-\d{2}-\d{2}$/.test(action.by) || action.by < state.today) return state
-      const reminder = { on: state.today, by: action.by, note: action.note.trim() }
+      // The email as it went, so their messages show what they read that day.
+      const customer = state.customers.find((c) => c.id === project.customerId)
+      const mail = payReminderEmail(state, customer, project, action.number, action.by, action.note)
+      const reminder = { on: state.today, by: action.by, note: action.note.trim(), subject: mail.subject, lines: mail.lines }
       const next = mapProject(state, project.id, (p) =>
         p.ownerBilling
           ? {
