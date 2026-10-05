@@ -2,7 +2,7 @@
 name: "Lien desk: open on Next up, and name the next step on the job"
 number: 82
 group: ready
-status: building 2026-10-05 · branch feat/lien-next-up-kernel · PR 1 (the kernel) is up; no screen has changed yet
+status: building 2026-10-05 · PRs 1 and 2 built (the kernel, and Next up as the desk's first tab, v2.4583) · PR 3 next
 summary: >
   The lien work is sound but it is organised by kind of paper: five windows, five tabs on the
   desk, three places that send the same § 53.056 notice. A person has to know lien law to know
@@ -12,7 +12,7 @@ summary: >
   a card that names its next step. A GC's run becomes a row in the list. Every action that
   exists today keeps its place: the five inventory files beside this card list all of them
   (about 775) and say where each lives afterwards.
-next: PR 2, the Next up view as the desk's first tab and its opening view, over `lienNextUp.ts`.
+next: PR 3, the next-step card in the job's Lien window, the Waivers on the bills row, and the rename to Liens on job N.
 size: L (five PRs, the first two are S and M)
 blocker: None for PRs 1 to 4. PR 5 (tabs into views) waits on a week of use and the owner's yes.
 opinion: build — PRs 1 and 2 lose nothing by construction, because Next up only links into screens that exist. Do not merge the desk's Notices pane with the job's Lien window.
@@ -147,7 +147,7 @@ Order: overdue first, then by the last day. Group as *Needs you now* and *Coming
 ## The plan
 
 1. **PR 1, the kernel (S) — built 2026-10-05.** `src/lib/jobs/lienNextUp.ts` (`buildLienNextUp`, `groupLienNextUp`; 10 tests). As built it also rows the affidavit and retainage states the table above leaves out (the property record, a draft, an approval, a hold), and a row's `target` names the pane, pile and job to open. The plan read: takes the desk's notice entries, affidavit entries, retainage entries, the GC run groups and the viewer's role, and returns ordered rows `{ key, kind, jobId or gcId, title, sub, dueOn, severity, action, target }`. Unit tests for every state in the table above, both roles, and the order. No screen change.
-2. **PR 2, the view (M).** A `LienDeskNextUp.tsx` list as the desk's first tab and its default on a plain open. Each button sets the existing tab, pile and selected job, or opens the run window or the job's Lien window. A phone gets the same list as cards. Render smoke. Update the desk guide.
+2. **PR 2, the view (M) — built 2026-10-05, v2.4583.** `LienDeskNextUp.tsx`, the first tab and the default on a plain open; checked on prod data (22 rows; each state's count equals its pile's). The plan read: A `LienDeskNextUp.tsx` list as the desk's first tab and its default on a plain open. Each button sets the existing tab, pile and selected job, or opens the run window or the job's Lien window. A phone gets the same list as cards. Render smoke. Update the desk guide.
 3. **PR 3, the job's next step (M).** The card above the tab row in the job's Lien window, from `lienTimeline.ts`. The *Waivers on the bills* row that opens Release of Lien. Rename the window to *Liens on job N* everywhere it is named: tooltips, the Documents rows, the forecast button, guides, `GLOSSARY.md`.
 4. **PR 4, doors (S).** A GC's run as a Next up row. The Dashboard lien cards land on the row they describe. Do this after the door defects in #83, or fold them in.
 5. **PR 5, three views (M, the owner's yes first).** Next up, Calendar, All paper. Safe only if Retainage, the Timeline's whole book and *Print counsel's grid* each keep a named place, and `kind=affidavit` and `kind=timeline` keep landing on their lists. Tick the inventory rows off one by one in the PR description.
