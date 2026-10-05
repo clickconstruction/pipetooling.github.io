@@ -21,6 +21,7 @@ import { useToastContext } from '../contexts/ToastContext'
 import { useRoleGate } from '../hooks/useRoleGate'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { openHtmlPrintWindow } from '../lib/jobsDocuments/printWindow'
+import { printAndFile } from '../lib/sent/sentCopiesIo'
 import { buildJobSubSheetHtml } from '../lib/jobsDocuments/subLaborSheet'
 import { buildJobSummaryCostBreakdownHtml } from '../lib/jobsDocuments/jobSummaryCostBreakdown'
 import { buildSubLaborOutstandingByPerson, subLaborJobMatchesSearch } from '../lib/subLaborOutstanding'
@@ -565,7 +566,8 @@ export default function Jobs() {
   }
 
   function printJobSubSheet(job: LaborJob) {
-    openHtmlPrintWindow(buildJobSubSheetHtml(job))
+    // A print counts as a send (docs/SENT_COPIES.md): the sheet handed to the sub is filed as it printed.
+    printAndFile(buildJobSubSheetHtml(job), { kind: 'sub_labor_sheet', title: `Sub sheet · ${(job.address ?? '').trim() || 'no address'}`, recipientName: job.assigned_to_name ?? '', jobIds: [(job as { job_ledger_id?: string | null }).job_ledger_id], source: { table: 'people_labor_jobs', id: job.id } })
   }
 
   async function printJobSummaryCostBreakdown(opts: {
@@ -698,6 +700,7 @@ export default function Jobs() {
       clockSessionsLoaded: jobSummaryClockSessionsByJobId.has(jobId),
       nicknameByDebitCard,
     })
+    // Our own cost report on a job: not a paper sent to anyone, so it is not filed.
     if (!openHtmlPrintWindow(html)) {
       showToast('Allow pop-ups to print the cost breakdown.', 'error')
       return

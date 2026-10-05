@@ -6,6 +6,7 @@
  * sweep II, v2.3865); this is the one table. `hooks/useStagesDeepLinkParams` applies it
  * (consume-once, `replace` navigation, the `rtb` window arm — map quirk 2).
  */
+import type { LienDeskPile } from './lienDesk'
 
 export type StagesDeepLinkKey = 'followups' | 'gcReview' | 'gcNotice' | 'lienDesk' | 'round' | 'chase' | 'forecast' | 'rtb'
 
@@ -21,7 +22,10 @@ export const STAGES_DEEP_LINK_PARAMS: Record<StagesDeepLinkKey, readonly string[
   rtb: ['rtb'],
 }
 
-export type StagesLienDeskLink = { jobId: string | null; kind: 'notice' | 'affidavit' | 'timeline'; pile: 'missed' | null }
+/** Every pile the desk's Notices tab can open on (v2.4561): a door may name any of them. */
+const LIEN_DESK_PILES: readonly LienDeskPile[] = ['needs_owner', 'to_draft', 'awaiting', 'ready', 'printed', 'held', 'sent', 'missed']
+
+export type StagesLienDeskLink = { jobId: string | null; kind: 'notice' | 'affidavit' | 'timeline'; pile: LienDeskPile | null }
 
 export type StagesDeepLinks = {
   /** `?followups=1` (v2.1720): the follow-up deck. */
@@ -53,7 +57,7 @@ export function parseStagesDeepLinks(search: URLSearchParams): StagesDeepLinks {
       ? {
           jobId: search.get('liendeskJob'),
           kind: kindParam === 'affidavit' ? 'affidavit' : kindParam === 'timeline' ? 'timeline' : 'notice',
-          pile: search.get('liendeskPile') === 'missed' ? 'missed' : null,
+          pile: LIEN_DESK_PILES.find((p) => p === search.get('liendeskPile')) ?? null,
         }
       : null,
     round: flag('round') ? { gcId: search.get('gc') || null } : null,

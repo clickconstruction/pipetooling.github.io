@@ -28,7 +28,8 @@ import {
 } from '../../lib/jobsDocuments/lienWaiverRelease'
 import { sendLienReleaseEmailToCustomer } from '../../lib/sendLienReleaseEmail'
 import { draftHeldByDateMessage } from '../../lib/autosaveDateHold'
-import { openHtmlPrintWindow, openHtmlWindowWhenReady } from '../../lib/jobsDocuments/printWindow'
+import { openHtmlWindowWhenReady } from '../../lib/jobsDocuments/printWindow'
+import { printAndFile, printWhenReadyAndFile } from '../../lib/sent/sentCopiesIo'
 import { lienReleaseRowSignatureWithInk, lienReleaseSignedPdfBlob, loadLienReleaseInk } from '../../lib/jobs/lienReleaseInk'
 import {
   isLienWaiverFormType,
@@ -850,10 +851,12 @@ export default function LienReleaseModal({
     const row = await ensureMinted('issued')
     if (!row) return
     // v2.4335: a signed waiver prints with the ink stored at signing (it printed the name in type).
-    const ok =
-      lienReleaseStatus(row) === 'signed'
-        ? await openHtmlWindowWhenReady(async () => buildLienWaiverPrintHtml(formType, fields, jobNumber, await lienReleaseRowSignatureWithInk(row, deviceNameFor(row))), { print: true })
-        : openHtmlPrintWindow(buildLienWaiverPrintHtml(formType, fields, jobNumber, renderSignature(row)))
+    // A print counts as a send (docs/SENT_COPIES.md): the release is filed on the job as it printed.
+    const signed = lienReleaseStatus(row) === 'signed'
+    const filing = { kind: 'lien_release', title: signed ? `Release of lien — Job ${jobNumber}` : `Release of lien, unsigned — Job ${jobNumber}`, jobIds: [row.job_id], source: { table: 'job_lien_releases', id: row.id } }
+    const ok = signed
+      ? await printWhenReadyAndFile(async () => buildLienWaiverPrintHtml(formType, fields, jobNumber, await lienReleaseRowSignatureWithInk(row, deviceNameFor(row))), filing)
+      : printAndFile(buildLienWaiverPrintHtml(formType, fields, jobNumber, renderSignature(row)), filing)
     if (!ok) showToast('Popup blocked — allow popups to print.', 'error')
   }, [fields, formType, jobNumber, ensureMinted, renderSignature, deviceNameFor, showToast])
 
