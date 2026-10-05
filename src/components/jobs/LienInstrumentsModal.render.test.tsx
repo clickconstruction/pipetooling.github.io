@@ -233,6 +233,21 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
     expect(screen.getByRole('button', { name: 'Send · 3 documents' })).toBeTruthy()
   })
 
+  it('Download PDF says it is downloading at its resting width, then goes back (v2.4584)', async () => {
+    renderWithProviders(<LienInstrumentsModal {...baseProps} job={job()} />)
+    const btn = await screen.findByRole('button', { name: /^Download PDF · \d+ documents$/ })
+    expect(btn.getAttribute('data-download-phase')).toBe('idle')
+    fireEvent.click(btn)
+    expect(btn.getAttribute('data-download-phase')).toBe('busy')
+    expect(btn.textContent).toContain('Downloading…')
+    // The resting words stay in the layout, hidden, so the button does not change size.
+    expect(btn.textContent).toMatch(/Download PDF · \d+ documents/)
+    expect((btn as HTMLButtonElement).disabled).toBe(true)
+    // The hold is deliberate (1.5 s, then 2 s of Downloaded); a build that fails in jsdom returns at once.
+    await waitFor(() => expect(btn.getAttribute('data-download-phase')).toBe('idle'), { timeout: 6000 })
+    expect((btn as HTMLButtonElement).disabled).toBe(false)
+  }, 10000)
+
   it('unticking the delivery record drops Exhibit C from the letter and the preview', async () => {
     renderWithProviders(<LienInstrumentsModal {...baseProps} job={job()} />)
     await waitFor(() => expect(document.querySelector('[data-demand-exhibit="C"]')).toBeTruthy())

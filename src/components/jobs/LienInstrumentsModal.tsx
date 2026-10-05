@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { Check } from 'lucide-react'
+import { DOWNLOADED_HOLD_MS, remainingHoldMs, type DownloadPhase } from '../../lib/jobs/downloadFeedback'
 import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import {
@@ -140,6 +142,10 @@ export default function LienInstrumentsModal({
   const [historyRows, setHistoryRows] = useState<JobDemandLetterRow[]>([])
   const [voidPendingId, setVoidPendingId] = useState<string | null>(null)
   const [pdfBusy, setPdfBusy] = useState(false)
+  // Download PDF says what it is doing (v2.4584): Downloading… for at least 1.5 s, then Downloaded for 2 s.
+  const [downloadPhase, setDownloadPhase] = useState<DownloadPhase>('idle')
+  const downloadTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => () => { if (downloadTimer.current) clearTimeout(downloadTimer.current) }, [])
   const [recordOpen, setRecordOpen] = useState(false)
   const [recordMethod, setRecordMethod] = useState('certified_mail')
   const [recordTracking, setRecordTracking] = useState('')
@@ -638,8 +644,11 @@ export default function LienInstrumentsModal({
   }, [fields, pdfBusy, buildPacket, showToast])
 
   const downloadPdf = useCallback(async () => {
-    if (!fields || pdfBusy) return
+    if (!fields || pdfBusy || downloadPhase !== 'idle') return
     setPdfBusy(true)
+    setDownloadPhase('busy')
+    const startedAt = Date.now()
+    let ok = false
     try {
       const packet = await buildPacket()
       if (!packet) return
@@ -652,12 +661,21 @@ export default function LienInstrumentsModal({
       a.click()
       a.remove()
       URL.revokeObjectURL(url)
+      ok = true
     } catch {
       showToast('Could not build the PDF.', 'error')
     } finally {
       setPdfBusy(false)
+      if (!ok) setDownloadPhase('idle')
+      else {
+        // The file is already on its way; the button keeps saying so long enough to be read.
+        downloadTimer.current = setTimeout(() => {
+          setDownloadPhase('done')
+          downloadTimer.current = setTimeout(() => setDownloadPhase('idle'), DOWNLOADED_HOLD_MS)
+        }, remainingHoldMs(startedAt, Date.now()))
+      }
     }
-  }, [fields, jobNumber, pdfBusy, buildPacket, showToast])
+  }, [fields, jobNumber, pdfBusy, downloadPhase, buildPacket, showToast])
 
   const recordSend = useCallback(async (channel?: { method: string; tracking: string; sentOn: string; exhibits: DemandExhibit[] }) => {
     if (!fields || !job || recordBusy) return
@@ -1421,8 +1439,39 @@ export default function LienInstrumentsModal({
             <button type="button" onClick={() => void printLetter()} disabled={pdfBusy} style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', background: 'var(--surface)', border: '1px solid #2563eb', color: 'var(--text-link)', borderRadius: 4, cursor: pdfBusy ? 'wait' : 'pointer', ...phoneFootButton }}>
               Print packet
             </button>
-            <button type="button" onClick={() => void downloadPdf()} disabled={pdfBusy} style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', background: 'var(--surface)', border: '1px solid #2563eb', color: 'var(--text-link)', borderRadius: 4, cursor: pdfBusy ? 'wait' : 'pointer', ...phoneFootButton }}>
-              {pdfBusy ? 'Building…' : 'Download PDF'}{pdfBusy ? '' : ` · ${1 + (fields.enclosures ?? []).length} documents`}
+            {/* The button keeps its resting width through all three states: the resting words stay in the layout, hidden, under the state's own. */}
+            <button
+              type="button"
+              onClick={() => void downloadPdf()}
+              disabled={pdfBusy || downloadPhase !== 'idle'}
+              data-download-phase={downloadPhase}
+              aria-live="polite"
+              style={{
+                position: 'relative',
+                padding: '0.5rem 1rem',
+                fontSize: '0.875rem',
+                background: downloadPhase === 'busy' ? '#2563eb' : downloadPhase === 'done' ? '#15803d' : 'var(--surface)',
+                border: `1px solid ${downloadPhase === 'done' ? '#15803d' : '#2563eb'}`,
+                color: downloadPhase === 'idle' ? 'var(--text-link)' : 'white',
+                borderRadius: 4,
+                cursor: downloadPhase === 'busy' ? 'wait' : downloadPhase === 'done' ? 'default' : pdfBusy ? 'wait' : 'pointer',
+                transition: 'background 0.15s, border-color 0.15s',
+                ...phoneFootButton,
+              }}
+            >
+              <span aria-hidden={downloadPhase !== 'idle'} style={{ visibility: downloadPhase === 'idle' ? 'visible' : 'hidden' }}>
+                Download PDF · {1 + (fields.enclosures ?? []).length} documents
+              </span>
+              {downloadPhase !== 'idle' ? (
+                <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.45rem', fontWeight: 600 }}>
+                  {downloadPhase === 'busy' ? (
+                    <span aria-hidden style={{ width: 13, height: 13, border: '2px solid rgba(255,255,255,0.45)', borderTopColor: 'white', borderRadius: '50%', animation: 'bid-resolve-spin 0.8s linear infinite' }} />
+                  ) : (
+                    <Check size={15} aria-hidden />
+                  )}
+                  {downloadPhase === 'busy' ? 'Downloading…' : 'Downloaded'}
+                </span>
+              ) : null}
             </button>
             <button
               type="button"
