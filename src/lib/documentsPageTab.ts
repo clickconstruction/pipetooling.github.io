@@ -7,6 +7,7 @@ export type DocumentsPageTab =
   | 'bid-proposals'
   | 'jobs'
   | 'supply-invoices'
+  | 'sent'
   | 'upload'
 
 export function parseDocumentsPageTabFromSearch(search: string): DocumentsPageTab {
@@ -18,6 +19,7 @@ export function parseDocumentsPageTabFromSearch(search: string): DocumentsPageTa
   if (t === 'upload') return 'upload'
   if (t === 'search') return 'search'
   if (t === 'supply-invoices') return 'supply-invoices'
+  if (t === 'sent') return 'sent'
   if (t === 'jobs') return 'jobs'
   if (t === 'bid-proposals') return 'bid-proposals'
   if (t === 'estimates') return 'estimates'

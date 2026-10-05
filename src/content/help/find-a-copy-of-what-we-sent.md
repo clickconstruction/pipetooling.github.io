@@ -16,6 +16,14 @@ Printing counts as sending. You do nothing extra. The copy is filed when you pri
 
 The newest send is on top. Each line says what went, how, when, to whom and by whom.
 
+## Find a copy from the Documents page
+
+1. Open [Documents](/documents?tab=sent).
+2. Press the **Sent** tab.
+3. Pick a kind of paper, or type a name, an address or a subject.
+
+This list holds everything sent, for every job. It also holds papers that name no job. A statement to a GC is one. A price request to a supply house is another.
+
 ## Open a copy
 
 Press the name on a line. The copy opens in its own window, as it was that day.

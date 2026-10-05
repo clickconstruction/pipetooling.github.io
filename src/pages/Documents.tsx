@@ -21,6 +21,8 @@ import DocumentsAddDriveLinkModal, {
 } from '../components/documents/DocumentsAddDriveLinkModal'
 import { openInExternalBrowser } from '../lib/openInExternalBrowser'
 import { type DocumentsPageTab, parseDocumentsPageTabFromSearch } from '../lib/documentsPageTab'
+import { canReadSentCopies } from '../lib/sent/sentCopies'
+import { DocumentsSentLedger } from '../components/documents/DocumentsSentLedger'
 import { labelJobsLedgerStatus, normalizeJobsLedgerStatus } from '../lib/jobsLedgerStatusPipeline'
 import DocumentsJobBilledInvoiceModal from '../components/documents/DocumentsJobBilledInvoiceModal'
 import {
@@ -1841,6 +1843,9 @@ export default function Documents() {
     documentsAuthRole === 'controller' ||
     documentsAuthRole === 'estimator'
 
+  /** Sent copies are the office's to read (matches sent_documents RLS) — hide the tab for other roles. */
+  const sentTabVisible = canReadSentCopies(documentsAuthRole)
+
   function setDocumentsTab(next: DocumentsPageTab) {
     const nextParams = new URLSearchParams(searchParams)
     nextParams.set('tab', next)
@@ -1897,6 +1902,11 @@ export default function Documents() {
         >
           Supply invoices
         </button>
+        {sentTabVisible ? (
+          <button type="button" style={pageTabStyle(documentsTab === 'sent')} onClick={() => setDocumentsTab('sent')}>
+            Sent
+          </button>
+        ) : null}
         <button type="button" style={pageTabStyle(documentsTab === 'upload')} onClick={() => setDocumentsTab('upload')}>
           Upload
         </button>
@@ -1913,6 +1923,7 @@ export default function Documents() {
       {documentsTab === 'bid-proposals' ? <DocumentsBidProposalsLedger /> : null}
       {documentsTab === 'jobs' ? <DocumentsJobsLedger /> : null}
       {documentsTab === 'supply-invoices' ? <DocumentsSupplyHouseInvoicesLedger /> : null}
+      {documentsTab === 'sent' && sentTabVisible ? <DocumentsSentLedger /> : null}
     </div>
   )
 }
