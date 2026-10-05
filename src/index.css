@@ -4233,24 +4233,18 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
   border-color: var(--border-amber);
   color: #b45309;
 }
-.stagesWhenDoor {
-  border: none;
-  background: transparent;
-  padding: 0;
-  font: inherit;
-  font-size: 0.68rem;
-  color: var(--text-link);
-  text-decoration: underline;
-  text-underline-offset: 2px;
+.stagesWhenFlag.isDoor {
+  font-family: inherit;
   cursor: pointer;
 }
-.stagesWhenDoor:hover {
-  text-decoration-thickness: 2px;
+.stagesWhenFlag.isDoor:hover {
+  border-color: currentColor;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
-.stagesWhenDoor:focus-visible {
+.stagesWhenFlag.isDoor:focus-visible {
   outline: 2px solid var(--text-link);
   outline-offset: 1px;
-  border-radius: 2px;
 }
 
 /* The phone Pipeline (punch list #30, PR 2a): one stage at a time under sticky stage chips —

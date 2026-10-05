@@ -221,6 +221,24 @@ describe('JobsStagesTable render smoke', () => {
     expect(setScheduleModalJob).not.toHaveBeenCalled()
   })
 
+  it('v2.4510 · the Not scheduled flag opens the Assign work sheet for a planner; no Assign work… line under it; a plain flag for everyone else', async () => {
+    const job = makeJob({ job_name: 'Nothing Booked' })
+    const openQuickAssignForJob = vi.fn()
+    const view = renderWithProviders(<JobsStagesTable {...makeProps({ jobList: [job], openQuickAssignForJob })} />)
+    await settle()
+    const flag = screen.getByRole('button', { name: 'Not scheduled. Assign work' })
+    expect(flag.textContent).toBe('Not scheduled')
+    expect(screen.queryByText('Assign work…')).toBeNull()
+    flag.click()
+    expect(openQuickAssignForJob).toHaveBeenCalledWith(expect.objectContaining({ id: job.id }))
+    view.unmount()
+
+    renderWithProviders(<JobsStagesTable {...makeProps({ jobList: [job], canOpenJobScheduleModal: false })} />)
+    await settle()
+    expect(screen.queryByRole('button', { name: 'Not scheduled. Assign work' })).toBeNull()
+    expect(screen.getByText('Not scheduled').tagName).toBe('SPAN')
+  })
+
   it('v2.4160 · the address ends in the property-kind badge — C, R, or a ? that opens the picker; v2.4212: no linked property but a customer is a ? too; v2.4222: a GC counts as the home; neither, no badge', async () => {
     const commercial = makeJob({ id: 'j-c', job_name: 'Take 5- Liberty Hill', job_address: '11730 TX-29\nLiberty Hill, TX', customer_address_id: 'addr-c' })
     const residential = makeJob({ id: 'j-r', job_name: 'Tovi Polk Repairs', job_address: '1141 Lago Vista St\nSan Marcos, TX', customer_address_id: 'addr-r' })
