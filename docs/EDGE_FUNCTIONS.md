@@ -1506,6 +1506,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 ### send-job-contract
 
+> **v2.4560 — the email is kept as it went**: the signing email is filed in `sent_documents` (`kind` `job_contract`, the job, the contract as its source) through `sendEmailViaResend`'s `file` option. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
+
 **Purpose**: The office sends a job contract for signature (Contract Desk PR 2, v2.2681) — by email, or by minting the link to copy / text / sign in person.
 
 **Endpoint**: `POST /functions/v1/send-job-contract` — `{ contract_id, mode: 'email'|'link', recipient_email?, recipient_name?, cc_emails?, public_origin?, message? }` with the staff user JWT in `Authorization`.
@@ -1544,6 +1546,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 ### sign-job-contract
 
+> **v2.4560 — what goes to the signers is kept**: the customer's signed copy (`job_contract_signed_copy`, with the PDF) and the other signer's *your signature is next* email (`job_contract_next_signer`) are filed on the job. The notice to our own staff is not. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
+
 > **v2.4186 — a second signer**: the body takes `signer: 'primary' | 'co'` (default `primary`). A `co` signature on a row with no `co_signer_name` is 400 `no_co_signer`; a frame already filled is 409 `frame_signed` (the page reloads to the current state). The frame's columns are written (`signer_*` or `co_signer_*`); `status: 'signed'`, `signed_at` and `next_reminder_at: null` only when the other frame is already filled. A partial frame logs `co_signed` (`metadata.signer`, `metadata.waiting_on`) and, when the other signer's email is known (`co_signer_email` or `recipient_email`), emails them *✍ <name> signed — your signature is next* with the same link, then answers `{ ok, signed_at: null, mode, complete: false, signer, waiting_on }`. The completing frame logs `signed`, builds the PDF with both frames (`coSignerName` / `coSignature`; the other frame's drawn mark fetched from the bucket), emails the customer's signed copy with the second signer in cc and the office notice naming both, and answers `{ …, complete: true }`. One-frame rows behave exactly as before.
 
 > **v2.4150 — a statutory sentence at 10 pt**: a plain body's `**…**` run prints in the signed PDF at `STATUTORY_SIZE` (10 pt, regular weight) on the terms' 9 pt baseline (`parseStatutoryRuns` / `wrapRuns` in [`_shared/jobContractPdf.ts`](../supabase/functions/_shared/jobContractPdf.ts)); the asterisks never print. **Redeploy required.**
@@ -1565,6 +1569,8 @@ The customer's signed-copy email (subject *Signed: … — Job #…*, PDF attach
 ---
 
 ### remind-job-contracts
+
+> **v2.4560 — each reminder is kept**: a reminder email is filed (`job_contract_reminder`, the job, the contract), with no sender since it sends itself. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
 
 **Purpose**: The reminder lane for contracts out for signature (Contract Desk PR 5, v2.2690).
 
@@ -1595,6 +1601,8 @@ The customer's signed-copy email (subject *Signed: … — Job #…*, PDF attach
 **Response**: `{ ok, due, reminded, sent }`.
 
 ### share-job-contract
+
+> **v2.4560 — a shared agreement is kept**: `send_to_sign` files the email with the unsigned PDF (`job_contract`); the share of a signed copy files the email with the signed PDF or its link (`job_contract_shared`; the contract, or the accepted estimate, as its source). `pdf_url` and `draft_pdf` send nothing and file nothing. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
 
 > **v2.4186 — a second signer**: the unsigned PDF (`draft_pdf`, `send_to_sign`) carries `coSignerName` — from the row's `co_signer_name`, or the draft body's `co_signer_name` for a job with no row yet — so two pairs of pen rules print, each named; a signed row rebuilt from its frozen columns (no stored PDF) carries the second frame's signature.
 
@@ -1742,6 +1750,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 ### send-estimate-to-customer
 
+> **v2.4560 — the email is kept as it went**: after a successful send the function files the email the customer read through [`fileSentEmailBestEffort`](../supabase/functions/_shared/fileSentCopy.ts) — `kind` `estimate`, or `estimate_resent` for `mode: 'resend'` — keyed to the estimate's job, customer and bid (the row select adds `customer_id, job_ledger_id, bid_id`) with the estimate as its source. Best effort. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
+
 **Purpose**: Verify JWT, ensure caller can read draft estimate, generate token hash, set `sent`, persist resolved **`customer_experience_sent`**, email Resend link to `{public_origin}/estimate/accept?t=…`.
 
 **Endpoint**: `POST /functions/v1/send-estimate-to-customer`
@@ -1811,6 +1821,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 ---
 
 ### send-contract-for-signature
+
+> **v2.4560 — the email is kept as it went**: the signing email is filed (`person_contract`, the document as its source), under the person when the document's name finds exactly one active person. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
 
 **Purpose**: Verify JWT, ensure caller can read the **`person_contract_documents`** row, require at least one of **`signing_body_html`**, **`canonical_document_url`**, **`url`**, or **`form_template_id`** (v2.2797: a form row needs no body), mint a 14-day token, set **`status = sent`**, email the Resend link to **`{public_origin}/contract/accept?t=…`**.
 

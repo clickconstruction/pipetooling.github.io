@@ -24,19 +24,13 @@ const FILES_A_COPY = /fileSentEmailBestEffort\(|file: \{ kind: '/
 /** Writes to someone outside the company and keeps no copy yet. Remove a row when the function is wired. */
 const EMAILS_OWED: ReadonlyArray<string> = [
   'legal-notify-dispatch',
-  'remind-job-contracts',
   'send-bid-room-link',
-  'send-contract-for-signature',
-  'send-estimate-to-customer',
-  'send-job-contract',
   'send-report-email',
   'send-rfq-email',
   'send-submittal-reply-email',
   'send-supply-house-job-account',
   'send-workflow-notification',
-  'share-job-contract',
   'sign-bid-room',
-  'sign-job-contract',
   'submit-legal-portal',
   'submit-portal-request',
 ]
