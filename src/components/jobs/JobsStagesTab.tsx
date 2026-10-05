@@ -251,7 +251,7 @@ import { useJobDetailModal } from '../../contexts/JobDetailModalContext'
 import JobsStagesHideGroupsModal from './JobsStagesHideGroupsModal'
 import { JobsStagesToolsMenu, type StagesToolsFilters } from './JobsStagesToolsMenu'
 import { JobsStagesCommandBar } from './JobsStagesCommandBar'
-import { JobsStagesJumpStrip, StagesSectionBandTitle } from './JobsStagesJumpStrip'
+import { JobsStagesJumpStrip, StagesLienDeskShortcut, StagesSectionBandTitle } from './JobsStagesJumpStrip'
 import { stageColorVar } from '../../lib/jobs/stagesStageBar'
 import { StagesReadyForBillingConfirmModal } from './StagesReadyForBillingConfirmModal'
 import { StagesSendBackSimpleConfirmModal } from './StagesSendBackSimpleConfirmModal'
@@ -3161,6 +3161,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
               totals={jumpStripTotals}
               onFocusSection={focusStagesSection}
               sectionElementId={stagesSectionElementId}
+              tail={lienDeskEligible ? <StagesLienDeskShortcut count={lienDeskCount} onOpen={() => setLienDesk({ jobId: null })} /> : null}
               leading={
             <JobsStagesSectionToolsMenu
               inputs={{

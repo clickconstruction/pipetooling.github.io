@@ -7,7 +7,7 @@
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { JobsStagesJumpStrip, StagesSectionBandTitle } from './JobsStagesJumpStrip'
+import { JobsStagesJumpStrip, StagesLienDeskShortcut, StagesSectionBandTitle } from './JobsStagesJumpStrip'
 
 const counts = { waiting: '21', working: '33', readyToBill: '0', billed: '66', collections: '0' }
 const totals = { waiting: '257.3k', working: '391.8k', readyToBill: '0', billed: '348.8k', collections: '0' }
@@ -80,6 +80,42 @@ describe('JobsStagesJumpStrip', () => {
       await new Promise((r) => requestAnimationFrame(() => r(null)))
     })
     expect(lit()).toEqual(['Jump to Working, 33 jobs'])
+  })
+})
+
+describe('the Lien desk shortcut (v2.4520)', () => {
+  it('rides beside the last stage, shows the count while there is one, and opens the desk', () => {
+    const onOpen = vi.fn()
+    const view = render(
+      <JobsStagesJumpStrip
+        counts={{ ...counts, collections: '7' }}
+        totals={{ ...totals, collections: '19.3k' }}
+        onFocusSection={vi.fn()}
+        sectionElementId={sectionElementId}
+        tail={<StagesLienDeskShortcut count={23} onOpen={onOpen} />}
+      />,
+    )
+    const gavel = screen.getByRole('button', { name: 'Open the Lien desk, 23 to work' })
+    expect(gavel.textContent).toBe('23')
+    const group = gavel.parentElement!
+    expect(group.className).toContain('stagesStageSegTail')
+    expect(group.firstElementChild).toBe(screen.getByLabelText('Jump to Collections, 7 rows'))
+    fireEvent.click(gavel)
+    expect(onOpen).toHaveBeenCalledTimes(1)
+
+    // Collections empty: the shortcut moves beside Billed Awaiting Payment, the last stage drawn.
+    view.rerender(
+      <JobsStagesJumpStrip counts={counts} totals={totals} onFocusSection={vi.fn()} sectionElementId={sectionElementId} tail={<StagesLienDeskShortcut count={0} onOpen={onOpen} />} />,
+    )
+    const quiet = screen.getByRole('button', { name: 'Open the Lien desk' })
+    expect(quiet.textContent).toBe('')
+    expect(quiet.parentElement!.firstElementChild).toBe(screen.getByLabelText('Jump to Billed Awaiting Payment, 66 rows'))
+    expect(quiet.parentElement!.className).toContain('isWide')
+  })
+
+  it('draws no group when no shortcut is handed in', () => {
+    const { container } = render(<JobsStagesJumpStrip counts={counts} totals={totals} onFocusSection={vi.fn()} sectionElementId={sectionElementId} />)
+    expect(container.querySelector('.stagesStageSegTail')).toBeNull()
   })
 })
 
