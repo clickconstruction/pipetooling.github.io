@@ -50,6 +50,8 @@ Check 3 is a warning. It does not stop you. Read what it says before you send an
 
 You can close the window and come back. The checks you put on file are kept.
 
+A copy of each page is kept when you print it. The packet is kept again when you record it as sent. See [find a copy of what we sent](/help/find-a-copy-of-what-we-sent).
+
 ## The wording is a draft
 
 The cover note and the acknowledgment are draft wording. The window says so until your attorney approves them. Each print asks before it goes.
