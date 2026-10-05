@@ -1195,11 +1195,25 @@ Decided by the owner (2026-10-05):
 - **No files@ address for now.** The team forwards to bids@.
 - **One company number for everyone**, not one per estimator. Each person still has a Quo login;
   "Robert has this" on a thread keeps two people from answering the same text.
+- **Everyone sees every thread.** The Money tab stays the owner's.
+- **Reply from several places:** the thread, Follow up, Quo's phone app, a new **Customers** tab in
+  Bids where estimators talk with customers, and later the Jobs page's Pipeline tab: its Job activity
+  feed mixes in calls, texts and emails, with rows only the company sees on a yellow background and
+  anything the customer said, saw or was part of left white.
+- **Pick the job by dragging.** Once a person is known, their open jobs show as buttons with a
+  default job at the top (★ pins it); drag a job onto a message to tie it there; closed jobs are one
+  click away. On a phone: press and hold a message, then tap the job.
+- **Record every call, no notice.** We call from Texas and work in Texas (one-party consent).
+- **Photos to Drive in one move:** drag them onto the job's folder beside the thread, or tick them
+  and press Save to Drive; the file agent copies and names them. A job can save every photo as it
+  comes in.
+- **Quo, Business plan** (automatic recording, transcripts and summaries on every call, ring
+  groups). Running cost about $100 / $160 / $250 a month for 3 / 5 / 8 seats billed yearly
+  ($23 a seat), almost all seats; texts from the app 1¢ each, Claude a few dollars, Supabase and
+  Drive already paid. A seat is needed only by someone who makes or takes calls.
 
-Still open, in the mock-up's last section: who sees which threads;
-where people reply; which job a message belongs to; recordings and the notice; photos in Drive;
-the Quo plan. The agent's Drive connection waits on the plan intake's admin-console approval
-(the August handoff).
+Left for the owner: how many seats, and yearly or monthly billing. The agent's Drive connection
+waits on the plan intake's admin-console approval (the August handoff).
 
 ## The plan, when the shape is settled
 

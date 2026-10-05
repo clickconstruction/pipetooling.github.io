@@ -21,6 +21,7 @@
     --red-soft: #fbe3e3;
     --violet: #6d47c9;
     --violet-soft: #efe7fd;
+    --yellow-soft: #fff6cf;
     --font: 'Public Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
     --mono: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
   }
@@ -28,13 +29,13 @@
     :root:not([data-theme="light"]) {
       --bg: #0f1625; --fg: #e6ebf5; --muted: #97a3bb; --line: #2c3854; --panel: #18213a; --sunk: #141c31;
       --accent: #6ea0ff; --accent-soft: #22376a; --green: #4cc483; --green-soft: #163c2a; --amber: #f0b04a; --amber-soft: #3f2f12;
-      --red: #f07a7a; --red-soft: #4a1d22; --violet: #b495ff; --violet-soft: #2f2350; color-scheme: dark;
+      --red: #f07a7a; --red-soft: #4a1d22; --violet: #b495ff; --violet-soft: #2f2350; --yellow-soft: #39321a; color-scheme: dark;
     }
   }
   :root[data-theme="dark"] {
     --bg: #0f1625; --fg: #e6ebf5; --muted: #97a3bb; --line: #2c3854; --panel: #18213a; --sunk: #141c31;
     --accent: #6ea0ff; --accent-soft: #22376a; --green: #4cc483; --green-soft: #163c2a; --amber: #f0b04a; --amber-soft: #3f2f12;
-    --red: #f07a7a; --red-soft: #4a1d22; --violet: #b495ff; --violet-soft: #2f2350; color-scheme: dark;
+    --red: #f07a7a; --red-soft: #4a1d22; --violet: #b495ff; --violet-soft: #2f2350; --yellow-soft: #39321a; color-scheme: dark;
   }
   body { background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 15px; line-height: 1.5; }
   .page { max-width: 1120px; margin: 0 auto; padding: 32px 20px 72px; display: grid; gap: 40px; }
@@ -162,6 +163,27 @@
   .tree .node { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-weight: 700; margin-top: 6px; }
   .tree .leaf { margin-left: 6px; padding: 1px 0 1px 12px; border-left: 2px solid var(--line); }
   .qs li.done { border-left: 4px solid var(--green); }
+  .rail { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .jobbtn { display: inline-flex; gap: 6px; align-items: center; padding: 3px 9px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel); font-size: 0.78rem; font-weight: 700; max-width: 100%; }
+  .jobbtn.default { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+  .jobbtn.lifted { opacity: 0.45; border-style: dashed; }
+  .grip { color: var(--muted); font-weight: 400; }
+  .item.drop { position: relative; outline: 2px dashed var(--accent); outline-offset: 4px; border-radius: 10px; }
+  .ghost { position: absolute; right: -6px; top: -18px; display: inline-flex; gap: 6px; align-items: center; padding: 3px 9px; border-radius: 6px; background: var(--accent); color: #fff; font-size: 0.78rem; font-weight: 700; transform: rotate(-3deg); box-shadow: 0 6px 16px color-mix(in srgb, var(--fg) 25%, transparent); white-space: nowrap; }
+  .lrow { display: grid; grid-template-columns: 4.6rem minmax(0, 1fr); gap: 8px; padding: 6px 9px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel); font-size: 0.84rem; }
+  .lrow.team { background: var(--yellow-soft); border-color: transparent; }
+  .lrow .d { color: var(--muted); font-size: 0.74rem; }
+  .ph.picked { outline: 3px solid var(--accent); outline-offset: -3px; }
+  .tick { position: absolute; top: 5px; right: 5px; width: 20px; height: 20px; border-radius: 5px; display: grid; place-items: center; background: var(--accent); color: #fff; font-size: 0.74rem; font-weight: 800; }
+  .tick.off { background: var(--panel); border: 2px solid var(--line); }
+  .tick.small-tick { position: static; width: 16px; height: 16px; font-size: 0.66rem; flex: none; }
+  .tree .folder::before { content: '▸ '; color: var(--muted); }
+  .tree .hot { outline: 2px dashed var(--accent); outline-offset: 2px; border-radius: 4px; background: var(--accent-soft); }
+  .costs.money td.n { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: 400; width: auto; }
+  .costs.money tr:first-child td { border-top: none; font-weight: 700; color: var(--muted); font-size: 0.78rem; }
+  .costs.money tr.sum td { font-weight: 800; }
+  .costs.money td:first-child { width: auto; }
+  @media (max-width: 560px) { .costs.money { font-size: 0.78rem; } .costs.money td { padding: 6px 4px; } .costs.money td.n { white-space: normal; } }
 </style>
 
 <main class="page">
@@ -295,19 +317,18 @@
           <dt>API key</dt><dd class="code">qo_live_••••••••••7f3a</dd>
           <dt>Number</dt><dd>(210) 555-0100, one for everyone → Messages<br><span class="small">Rings everyone, and anyone can answer or text from it</span></dd>
           <dt>Text registration</dt><dd><span class="chip green">Approved</span> <span class="small">needed before texting customers</span></dd>
-          <dt>Recordings</dt><dd>On, with a short notice at the start of each call</dd>
-          <dt>Transcripts and summaries</dt><dd>On <span class="small">(a Quo plan feature: check which plan)</span></dd>
+          <dt>Recordings</dt><dd>On, every call, no notice <span class="small">(Texas needs only one side's consent)</span></dd>
+          <dt>Transcripts and summaries</dt><dd>On, every call <span class="small">(Quo's Business plan)</span></dd>
         </dl>
       </div>
       <div class="card">
         <b>People and who sees what</b>
         <dl class="kv">
           <dt>Quo users</dt><dd>Robert Douglas ↔ Robert · Wendi ↔ Wendi · Rosa Treviño ↔ Rosa</dd>
-          <dt>Trade threads</dt><dd>Estimators and the owner</dd>
-          <dt>Customer threads</dt><dd>The job's project manager and the owner</dd>
-          <dt>Money in messages</dt><dd>Owner only, as on the Money tab</dd>
+          <dt>Threads</dt><dd>Everyone on the team sees every thread</dd>
+          <dt>Money tab</dt><dd>Stays the owner's, as today</dd>
         </dl>
-        <p class="small">These are suggestions for the decisions listed at the bottom.</p>
+        <p class="small">Decided Oct 5.</p>
       </div>
     </div>
   </section>
@@ -406,7 +427,7 @@
     </div>
     <ul class="qs">
       <li><strong>A guess is always a button.</strong><p>A promised day or a plans question read from a call, a voicemail or a text is offered, never written down on its own. The thread says who confirmed it.</p></li>
-      <li><strong>Who sees a thread is set by its kind and its job.</strong><p>Trade threads: estimators and the owner. Customer threads: the job's project manager and the owner. Nothing tries to read money out of the words.</p></li>
+      <li><strong>Everyone on the team sees every thread.</strong><p>Decided Oct 5. Nothing tries to read money out of the words, and the Money tab stays the owner's.</p></li>
     </ul>
   </section>
 
@@ -631,24 +652,225 @@
     </div>
   </section>
 
-  <!-- 10. Decisions -->
-  <section class="section" aria-labelledby="s8">
-    <span class="eyebrow">10 · Decisions before anything is built</span>
-    <h2 id="s8">Six questions for you, and four decided</h2>
+  <!-- 10. The owner's answers, drawn -->
+  <section class="section" aria-labelledby="s10">
+    <span class="eyebrow">10 · Your answers, drawn (Oct 5)</span>
+    <h2 id="s10">Pick the job by dragging it onto a message</h2>
+    <p class="note">Once the app knows who someone is, their thread shows the jobs they are on. New messages go to the default job at the top. To tie a message to another job, drag that job's button onto it.</p>
+    <div class="app" role="img" aria-label="Greg Paulk's thread with his open jobs as buttons, one being dragged onto a text">
+      <div class="tabs">
+        <span class="mode">GC</span>
+        <span class="tab">Project Board</span>
+        <span class="tab">Follow up <span class="badge">7</span></span>
+        <span class="tab">Customers</span>
+        <span class="tab on">Messages</span>
+        <span class="tab">Trade partners</span>
+        <span class="tab">Money</span>
+      </div>
+      <div class="t-head" style="display:grid;gap:8px">
+        <div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap"><b>Greg Paulk</b><span class="meta">Hillside Excavation · (210) 555-0113 · trade partner</span><span style="flex:1"></span><span class="btn">Call in Quo</span></div>
+        <div class="rail">
+          <span class="small" style="font-weight:700">New messages go to</span>
+          <span class="jobbtn default">★ Boerne Retail Shell · Sitework ▾</span>
+        </div>
+        <div class="rail">
+          <span class="small" style="font-weight:700">His open jobs</span>
+          <span class="jobbtn"><span class="grip">⠿</span>Boerne Retail Shell · Sitework</span>
+          <span class="jobbtn lifted"><span class="grip">⠿</span>Boerne Retail Pad B · Sitework</span>
+          <span class="jobbtn"><span class="grip">⠿</span>Stone Oak Pharmacy · Sitework</span>
+          <span class="btn quiet">Show 3 closed jobs</span>
+        </div>
+      </div>
+      <div class="feed">
+        <div class="item them"><div class="bubble">Monday works for Boerne.</div><span class="small">Greg · 9:18 AM · <span class="chip">Boerne Retail Shell · Sitework</span> <span class="small">the default</span></span></div>
+        <div class="item them drop">
+          <div class="bubble">Can you send me the grading sheet for the pad too? Want to price both together.</div>
+          <span class="small">Greg · 9:20 AM · <span class="chip" style="text-decoration:line-through">Boerne Retail Shell · Sitework</span> <b style="color:var(--accent)">→ Boerne Retail Pad B · Sitework</b></span>
+          <span class="ghost"><span class="grip">⠿</span>Boerne Retail Pad B · Sitework</span>
+        </div>
+        <div class="item us"><div class="bubble">Yes, C-201 for Pad B is in your portal now.</div><span class="small">Robert · sent from the app · <span class="chip">Boerne Retail Pad B · Sitework</span></span></div>
+      </div>
+    </div>
     <ul class="qs">
-      <li><strong>Who sees which threads?</strong><p>Drawn in the revised version: estimators and the owner see trade threads, a job's project manager and the owner see customer threads.</p></li>
-      <li><strong>Where people reply.</strong><p>In the app, in Quo's phone app, or both. Both work if Quo's sent messages come back into the thread, which is the first thing to check.</p></li>
-      <li><strong>Which job does a message belong to?</strong><p>A company quoting four of our bids texts once. The draft rule: a job named in the message, else the most recent open ask, else the app asks.</p></li>
-      <li><strong>Recordings, and the notice.</strong><p>Texas needs only one side's consent, but callers from other states may need both. A short notice at the start of each call covers it.</p></li>
-      <li><strong>Photos in the job's Drive folder too?</strong><p>Every photo is kept in the app either way. A copy would go in the job's Team only folder, where the field team already looks.</p></li>
-      <li><strong>The Quo plan.</strong><p>Transcripts, summaries and the API are plan features. The plan sets the price per person: roughly $23 to $35 a month each, billed yearly.</p></li>
+      <li><strong>The default job.</strong><p>It starts as the job we last asked them about. Pin another with ★, and every new message from them goes there until you change it.</p></li>
+      <li><strong>Closed jobs stay one click away.</strong><p>"Show 3 closed jobs" adds the finished and lost ones to the row, for a warranty call or an old question.</p></li>
+      <li><strong>On a phone, press instead of drag.</strong><p>Press and hold a message, then tap the job. Dragging is hard with a thumb, so both ways do the same thing.</p></li>
     </ul>
-    <h3>Decided, Oct 5</h3>
+
+    <h2>A job's Job activity mixes in the conversation, and yellow means only us</h2>
+    <p class="note">Long term, the Jobs page's Pipeline tab keeps its Job activity feed and adds the calls, texts and emails to it. Rows only the company sees have a yellow background. Anything the customer said, saw or was part of stays white.</p>
+    <div class="two">
+      <div class="app" role="img" aria-label="Job activity for Fair Oaks Shops, Building D, with yellow team rows and white customer rows">
+        <div class="tabs">
+          <span class="tab on">Pipeline</span>
+          <span class="tab">Billing</span>
+        </div>
+        <div class="feed" style="gap:8px">
+          <div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap"><b>Fair Oaks Shops, Building D · Job activity</b></div>
+          <div style="display:flex;gap:4px;flex-wrap:wrap"><span class="chip" style="background:var(--accent-soft);color:var(--accent)">All</span><span class="chip">Notes</span><span class="chip">Reports</span><span class="chip">Status</span><span class="chip">Billing</span><span class="chip">Crew</span><span class="chip">Messages</span></div>
+          <div class="lrow"><span class="d">10:40 AM</span><span><b>Elena</b>, text: Can the storefront glass go in before the 15th? The tenant wants to measure.</span></div>
+          <div class="lrow team"><span class="d">10:12 AM</span><span><b>Luis</b>, field report: roof deck 90% done. <span class="small">▸ 6 answers</span></span></div>
+          <div class="lrow team"><span class="d">9:55 AM</span><span><b>Kendall Air</b>, text: RTU set Thursday, crane at 7.</span></div>
+          <div class="lrow team"><span class="d">9:30 AM</span><span><b>Dana</b>, note: Elena will ask about the glass. The storefront company says the 18th at the earliest.</span></div>
+          <div class="lrow"><span class="d">Yesterday</span><span><b>Call with Elena</b>, 6 min, Dana answered: she asked for the roof dates and the next pay application.</span></div>
+          <div class="lrow"><span class="d">Yesterday</span><span>Pay application 3 sent to Elena. She opened it at 3:12 PM.</span></div>
+          <div class="lrow team"><span class="d">Yesterday</span><span>Luis on the clock 7:02a → 3:31p.</span></div>
+          <div class="compose" style="margin:4px -16px -14px">
+            <div class="bar"><span class="seg"><span class="on">Text Elena</span><span>Note for the team</span></span></div>
+            <div class="box">Hi Elena, the glass is set for the 18th. I will confirm Thursday.</div>
+            <div class="bar"><span class="btn primary">Send text</span><span>Pick Note for the team and the box turns yellow, like the row it will become.</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <b>What gets yellow</b>
+        <div class="act">
+          <div><span class="d">Yellow</span><span>Notes, field reports, clock times, crew moves, texts and calls with trades, and Team only files. Only the company sees these.</span></div>
+          <div><span class="d">White</span><span>Texts, calls and emails with the customer, and what we sent them: bids, pay applications, contracts, the Plans link. Each says whether they opened it.</span></div>
+        </div>
+        <p class="small">On a building job most rows are the team's own, so the yellow is pale. The white rows stand out, and they are the ones to read before calling the customer.</p>
+        <p class="small">Today's Job activity has no line between the two. Every row kind already known gets a side once. A customer message is white because of who it is with.</p>
+      </div>
+    </div>
+
+    <h2>Bids gets a Customers tab, where estimators talk with customers</h2>
+    <div class="app" role="img" aria-label="The Customers tab in Bids with customers and their open bids on the left and Elena's thread on the right">
+      <div class="tabs">
+        <span class="mode">GC</span>
+        <span class="tab">Project Board</span>
+        <span class="tab">Follow up <span class="badge">7</span></span>
+        <span class="tab on">Customers</span>
+        <span class="tab">Messages</span>
+        <span class="tab">Trade partners</span>
+        <span class="tab">Money</span>
+      </div>
+      <div class="inbox" style="min-height:0">
+        <div class="list">
+          <div class="group">Waiting on us (2)</div>
+          <div class="row sel"><span class="icon cust">EM</span><div style="min-width:0"><div class="name">Elena Marchetti</div><div class="co">Cibolo Creek Partners · 2 open bids</div><div class="last">Missed call. She wants the Boerne number Thursday morning.</div></div><div class="when">25 min<span class="ch miss">missed</span></div></div>
+          <div class="row"><span class="icon cust">PR</span><div style="min-width:0"><div class="name">Dr. Priya Raman</div><div class="co">Helotes Dental Office · buying out</div><div class="last">Can you send me the start date when you have it?</div></div><div class="when">6 days<span class="ch">text</span></div></div>
+          <div class="group">Quiet</div>
+          <div class="row"><span class="icon cust">HF</span><div style="min-width:0"><div class="name">Hollis Family Pharmacy</div><div class="co">Stone Oak Pharmacy</div><div class="last">You: the inspection is set for Friday.</div></div><div class="when">Sep 24<span class="ch">email</span></div></div>
+        </div>
+        <div class="thread" style="grid-template-rows:auto minmax(0,1fr) auto">
+          <div class="t-head">
+            <div class="who"><b>Elena Marchetti</b> <span class="meta">· Cibolo Creek Partners · developer</span>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px"><span class="chip">Boerne Retail Shell · bid Thu Oct 8 · not sent</span><span class="chip">Boerne Retail Pad B · bid Oct 22</span></div></div>
+            <span class="btn primary">Call back in Quo</span>
+          </div>
+          <div class="feed">
+            <div class="call missed"><div class="top"><b>Missed call</b><span class="small">10:05 AM · no voicemail</span></div></div>
+            <div class="item them"><div class="bubble">Robert, I need the Boerne number Thursday morning, not the afternoon. Board meets at 1.</div><span class="small">Elena · text · 10:07 AM · <span class="chip">Boerne Retail Shell</span></span></div>
+            <div class="lrow team" style="max-width:620px"><span class="d">10:15 AM</span><span><b>Robert</b>, note: fine, we close the trades Wednesday night. Hold Kendall to Tuesday.</span></div>
+          </div>
+          <div class="compose">
+            <div class="bar"><span class="seg"><span class="on">Text</span><span>Email</span><span>Note for the team</span></span><span style="flex:1"></span><span>Tie to: <b>Boerne Retail Shell</b> ▾</span></div>
+            <div class="box">Understood. You will have it by 9 AM Thursday.</div>
+            <div class="bar"><span class="btn primary">Send text</span><span class="btn">Send our bid</span><span class="btn quiet">Ask about the plans</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="note">The same threads as Messages, kept to customers and ordered by who is waiting. Team notes are yellow here too. Trades stay in Follow up and Messages. Replies also work from Quo's phone app, and they land in the same thread.</p>
+
+    <h2>Photos to Drive: drag them onto a folder, or tick and press one button</h2>
+    <div class="two">
+      <div class="card">
+        <div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap"><b>Dr. Priya Raman</b><span class="small">Helotes Dental Office · 3 photos at full size</span></div>
+        <div class="photos">
+          <div class="ph a picked"><span class="tick">✓</span><div class="cap"><span>Ceiling tile, op 3</span><span class="dim">3.1 MB</span></div></div>
+          <div class="ph c picked"><span class="tick">✓</span><div class="cap"><span>Above the tile</span><span class="dim">2.8 MB</span></div></div>
+          <div class="ph tall b"><span class="tick off"></span><div class="cap"><span>Sink cabinet</span><span class="dim">3.0 MB</span></div></div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span class="btn primary">Save 2 to Drive</span><span class="small">to Team only › Photos ▾</span><span class="btn quiet">Pick all 3</span></div>
+        <div class="card agent" style="padding:8px 10px">
+          <div class="agent-head"><span class="tag">File agent</span><span class="small">2:33 PM</span></div>
+          <span>Saved 2 photos to Helotes Dental Office › Team only › Photos, named by day, sender and caption.</span>
+          <span class="code">2026-10-02 Priya Raman · Ceiling tile op 3.jpg<br>2026-10-02 Priya Raman · Above the tile.jpg</span>
+          <div style="display:flex;gap:6px;flex-wrap:wrap"><span class="btn">Open in Drive</span><span class="btn quiet">Undo</span></div>
+        </div>
+        <label class="small" style="display:flex;gap:6px;align-items:center"><span class="tick small-tick">✓</span>Save every photo on this job to Drive as it comes in</label>
+      </div>
+      <div class="card">
+        <div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap"><b>Helotes Dental Office · Drive</b><span class="small">beside the thread</span></div>
+        <div class="tree">
+          <div class="node folder">Plans <span class="chip green">anyone with the link</span></div>
+          <div class="node folder">Team only</div>
+          <div class="leaf folder hot">Photos <span class="small">drop here · 2 photos</span></div>
+          <div class="leaf folder">Quotes</div>
+          <div class="leaf folder">Contracts and insurance</div>
+        </div>
+        <p class="small">Drag one photo or several from the thread onto a folder. The agent copies the full-size file in Drive itself, so nothing downloads to your computer.</p>
+        <p class="small">Dragging a picture from this page straight onto Google's own Drive page is not dependable: browsers hand over a link, not the file. So the folders sit here, beside the thread.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 11. What it costs to run -->
+  <section class="section" aria-labelledby="s11">
+    <span class="eyebrow">11 · What it costs to run, on Quo</span>
+    <h2 id="s11">About $100 to $250 a month, almost all of it Quo seats</h2>
+    <p class="note">A Quo seat is needed only by someone who makes or takes calls. Everyone else reads every thread and texts from the app, so they need no seat. The Business plan is the one that fits. It records every call by itself, writes the transcript and summary, rings everyone on the company number, and has a phone menu. Starter records only by hand and summarizes no ordinary call.</p>
+    <div class="app" style="padding:4px 8px 8px">
+      <table class="costs money">
+        <tr><td></td><td class="n">3 seats</td><td class="n">5 seats</td><td class="n">8 seats</td></tr>
+        <tr><td>Quo Business, billed yearly at $23 a seat</td><td class="n">$69</td><td class="n">$115</td><td class="n">$184</td></tr>
+        <tr><td>The company number</td><td class="n">$0</td><td class="n">$0</td><td class="n">$0</td></tr>
+        <tr><td>Text registration, $1.50 to $3 a month</td><td class="n">$2</td><td class="n">$2</td><td class="n">$2</td></tr>
+        <tr><td>Texts sent from the app, 1¢ each</td><td class="n">$15</td><td class="n">$25</td><td class="n">$40</td></tr>
+        <tr><td>Claude reading messages and unsure files</td><td class="n">$10</td><td class="n">$15</td><td class="n">$25</td></tr>
+        <tr><td>Supabase: threads, webhooks, photos</td><td class="n">$0</td><td class="n">$0</td><td class="n">$0</td></tr>
+        <tr><td>Google Drive</td><td class="n">$0</td><td class="n">$0</td><td class="n">$0</td></tr>
+        <tr class="sum"><td>A month</td><td class="n">about $100</td><td class="n">about $160</td><td class="n">about $250</td></tr>
+        <tr class="sum"><td>A year</td><td class="n">about $1,150</td><td class="n">about $1,900</td><td class="n">about $3,000</td></tr>
+      </table>
+    </div>
+    <div class="two">
+      <div class="card">
+        <b>How each line was figured</b>
+        <div class="act">
+          <div><span class="d">Seats</span><span>$23 each billed yearly, $33 billed month to month. Monthly billing adds $30, $50 or $80 a month to the three columns.</span></div>
+          <div><span class="d">Number</span><span>Each seat comes with one number. The company number is one of them, as long as people do not also want numbers of their own. Extra numbers are $5 a month.</span></div>
+          <div><span class="d">Registration</span><span>$19.50 once, then $1.50 to $3 a month. Carriers require it before a business texts customers.</span></div>
+          <div><span class="d">Texts</span><span>Calls and texts in Quo's own apps are free and unlimited in the US. Only texts sent from our app cost 1¢ for each 160 characters. 1,500 to 4,000 a month is a guess.</span></div>
+          <div><span class="d">Claude</span><span>About a quarter of a cent to read each message or call summary for a promised day, a plans question or the job. A few cents for each file the rules cannot place.</span></div>
+          <div><span class="d">Supabase</span><span>Inside the Pro plan already paid. Photos add about 1 GB a month, which is pennies past the 100 GB included.</span></div>
+          <div><span class="d">Drive</span><span>The Workspace storage already paid for. Plan sets add a few GB a job, so check the shared storage once a year.</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <b>Not in the table</b>
+        <div class="act">
+          <div><span class="d">Building it</span><span>Our own work: the Quo link, the threads, the job rail and the file agent come first. The Customers tab, Job activity and photos to Drive follow.</span></div>
+          <div><span class="d">Upkeep</span><span>An hour or two a month: watching that Quo's events keep arriving and the registration stays approved.</span></div>
+          <div><span class="d">Sona</span><span>Quo's AI receptionist. Not needed: people answer, and the app reads what was said.</span></div>
+          <div><span class="d">Calls abroad</span><span>Charged by Quo by the minute. Rare for us.</span></div>
+        </div>
+        <p class="small">The way to spend less is fewer seats. Start with the people who answer the company number, and add a seat when someone else needs to take calls.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 12. Decisions -->
+  <section class="section" aria-labelledby="s8">
+    <span class="eyebrow">12 · Decisions</span>
+    <h2 id="s8">All ten decided, Oct 5</h2>
     <ul class="qs">
-      <li class="done"><strong>One company number for everyone.</strong><p>Calls ring everyone, and anyone can answer or text from (210) 555-0100. Each person still has their own Quo login, which is what Quo charges for. "Robert has this" on a thread keeps two people from answering the same text.</p></li>
+      <li class="done"><strong>One company number for everyone.</strong><p>Calls ring everyone, and anyone can answer or text from (210) 555-0100. "Robert has this" on a thread keeps two people from answering the same text.</p></li>
+      <li class="done"><strong>Everyone sees every thread.</strong><p>Trades and customers alike. The Money tab stays the owner's.</p></li>
+      <li class="done"><strong>Reply from several places.</strong><p>The thread, Follow up, Quo's phone app, a new Customers tab in Bids for estimators, and later the Pipeline tab's Job activity, where rows only the team sees are yellow.</p></li>
+      <li class="done"><strong>Pick the job by dragging it.</strong><p>Once a person is known, their open jobs show as buttons with a default at the top. Drag a job onto a message to tie it there. Closed jobs are one click away.</p></li>
+      <li class="done"><strong>Record every call, with no notice.</strong><p>We call from Texas and work in Texas, where one side's consent is enough.</p></li>
+      <li class="done"><strong>Photos go to Drive in one move.</strong><p>Drag them onto a folder beside the thread, or tick them and press Save to Drive. The file agent copies them and names them. A job can save every photo as it comes in.</p></li>
+      <li class="done"><strong>Quo, on the Business plan.</strong><p>About $100 to $250 a month for 3 to 8 seats, almost all of it seats. Section 11 has the lines.</p></li>
       <li class="done"><strong>The file agent files on its own when it is sure.</strong><p>Move and Undo sit on every file. Only the unsure ones wait for a person.</p></li>
       <li class="done"><strong>Anyone can open the plans, and the team keeps a folder of its own.</strong><p>Each job's Plans folder opens for anyone with the link, trades and us alike. Team only holds quotes, our bid, contracts and photos.</p></li>
       <li class="done"><strong>No files@ address for now.</strong><p>The team forwards to bids@, the mailbox quotes and plans already come to.</p></li>
+    </ul>
+    <h3>Left for you</h3>
+    <ul class="qs">
+      <li><strong>How many Quo seats?</strong><p>One for each person who answers the company number or makes calls from it. Everyone else works in the app.</p></li>
+      <li><strong>Yearly or monthly billing?</strong><p>Yearly is $23 a seat, monthly is $33. Monthly costs more but is easy to stop if this does not take.</p></li>
     </ul>
   </section>
 </main>
