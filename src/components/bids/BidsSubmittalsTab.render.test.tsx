@@ -521,7 +521,7 @@ describe('BidsSubmittalsTab', () => {
     // The Share button was folded away when the pill was tapped, so the ring lands on it a frame later; the pill always centres.
     await waitFor(() => expect(document.querySelector('[data-tour="submittals-share"]')?.classList.contains('submittal-journey-flash')).toBe(true))
     expect(scrolls).toHaveBeenCalledWith(expect.objectContaining({ block: 'center' }))
-    // v2.4207 · a step's title jumps the same way but scrolls only when the controls would be off screen (jsdom's rects sit at 0, on screen): the New revision button rings, the page stays put, and the caret is what folds.
+    // v2.4207 · a step's title jumps the same way but scrolls only when the controls would be off screen (jsdom's rects sit at 0, on screen): step 7's button rings, the page stays put, and the caret is what folds.
     scrolls.mockClear()
     fireEvent.click(screen.getByTestId('road-7-title'))
     expect(screen.getByTestId('road-7').getAttribute('data-open')).toBe('true')
@@ -538,7 +538,7 @@ describe('BidsSubmittalsTab', () => {
     expect(screen.getByTestId('package-caption').textContent).toBe('Build package turns on when every row that owes a reason has one.')
     fireEvent.click(screen.getByRole('button', { name: /^7 · Resubmit/ }))
     expect((screen.getByTestId('new-revision') as HTMLButtonElement).disabled).toBe(true)
-    expect(screen.getByTestId('resubmit-caption').textContent).toBe('New revision turns on once the package is built.')
+    expect(screen.getByTestId('resubmit-caption').textContent).toBe('You can start the next draft once the package is built.')
     fireEvent.click(screen.getByRole('button', { name: /^6 · Their call/ }))
     expect(screen.getByTestId('road-6').getAttribute('data-open')).toBe('true')
     // Opened early, Their call has only its reviewer-file door — no empty box, no decisions band.
@@ -622,7 +622,7 @@ describe('BidsSubmittalsTab', () => {
     expect(within(screen.getAllByTestId('submittal-row')[0]!).getByText('Lead time')).toBeTruthy()
   })
 
-  it('New revision carries the rows into Rev 2, marks the diff, and supersedes the unshared draft', async () => {
+  it('with nothing sent back, Start a Rev 2 draft carries every row into Rev 2, marks the diff, and supersedes the unshared draft', async () => {
     state.revisions = [{ id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'draft', title: 'Plumbing fixtures & equipment', note: null, package_path: 'b398/rev-1/package-rev1.pdf', source_files: [], shared_at: null, created_at: '2026-09-15T00:00:00Z' }]
     state.items = [
       item({ id: 'it-1', tag: 'DWH-1', sequence_order: 1, specified_manufacturer: 'Rheem', specified_model: 'RH375', submitted_model: 'AO SMITH BTH-120', submitted_label: 'AO SMITH BTH-120', status: 'alternate', reason_kind: 'cost' }),
@@ -634,12 +634,17 @@ describe('BidsSubmittalsTab', () => {
     await screen.findAllByTestId('submittal-row')
     // Stage 7 folds until it is reached (v2.4169); the package is built, so its door is on once opened.
     fireEvent.click(screen.getByRole('button', { name: /^7 · Resubmit/ }))
+    // 2026-10-05 · one button. Nothing was sent back, so there is one kind of draft: no chooser, one question.
+    expect(screen.getByTestId('new-revision').textContent).toBe('Start a Rev 2 draft…')
+    expect(screen.getByTestId('resubmit-caption').textContent).toBe('The draft starts with every row. Nothing is sent. The GC sees Rev 2 only after you press Share.')
     fireEvent.click(screen.getByTestId('new-revision'))
     // The confirm dialog names the diff, then builds.
     const confirmDialog = await screen.findByRole('alertdialog')
-    expect(confirmDialog.textContent).toMatch(/Rev 2 from today's picks/)
-    expect(confirmDialog.textContent).toMatch(/2 rows changed · 2 carried against Rev 1/)
-    fireEvent.click(within(confirmDialog).getByRole('button', { name: 'Build Rev 2' }))
+    expect(screen.queryByTestId('resubmit-chooser')).toBeNull()
+    expect(confirmDialog.textContent).toMatch(/Start a Rev 2 draft/)
+    expect(confirmDialog.textContent).toMatch(/Every row goes on Rev 2, built from today's picks\. 2 rows changed · 2 carried against Rev 1/)
+    expect(confirmDialog.textContent).toMatch(/Rev 2 starts as a draft\. Nothing is sent\./)
+    fireEvent.click(within(confirmDialog).getByRole('button', { name: 'Start the draft with 4 rows' }))
     await waitFor(() => expect(state.writes.filter((w) => w.op === 'insert')).toHaveLength(2))
     expect(state.writes.find((w) => w.table === 'bid_submittals' && w.op === 'insert')!.payload).toMatchObject({ rev_number: 2, status: 'draft' })
     const rows = state.writes.find((w) => w.table === 'bid_submittal_items')!.payload as Record<string, unknown>[]
@@ -1486,9 +1491,9 @@ describe('BidsSubmittalsTab', () => {
       // Rev 1 is the newest, so the log reads its two rows: one released and ordered, one sent back.
       await waitFor(() => expect(screen.getAllByTestId('procurement-row')).toHaveLength(2))
       fireEvent.click(screen.getAllByRole('button', { name: 'Start a Rev 2 draft…' })[0]!)
-      const confirmDialog = await screen.findByRole('alertdialog')
-      expect(confirmDialog.textContent).toMatch(/1 row was approved\. It stays on Rev 1 and on the procurement log\./)
-      fireEvent.click(within(confirmDialog).getByRole('button', { name: 'Start the draft with 1 row' }))
+      const chooser = await screen.findByRole('dialog', { name: 'Start a Rev 2 draft' })
+      expect(within(chooser).getByTestId('resubmit-rows-need').textContent).toContain('The 1 row approved stays on Rev 1 and on the procurement log.')
+      fireEvent.click(within(chooser).getByRole('button', { name: 'Start the draft with 1 row' }))
       await waitFor(() => expect(screen.getAllByTestId('revision-chip')).toHaveLength(2))
       // Rev 2 holds the one row sent back …
       expect(state.items.filter((r) => r.submittal_id === 'rev-2').map((r) => r.tag)).toEqual(['DWH-1'])
@@ -1525,19 +1530,28 @@ describe('BidsSubmittalsTab', () => {
     try {
       mount()
       // 2026-10-03 · the answers were typed on a draft: the strip lights Their call and Resubmit, names the rows sent back, and step 7 is open with its button.
-      const button = await screen.findByTestId('resubmit-sent-back')
+      const button = await screen.findByTestId('new-revision')
       expect(screen.getByRole('button', { name: '6 Their call · waiting on the reviewer' })).toBeTruthy()
       expect(screen.getByRole('button', { name: '7 Resubmit · you are here' })).toBeTruthy()
       expect(screen.getByTestId('submittal-journey').textContent).toContain('structura approved 1 and sent 1 back. 2 rows still have no answer. Start a Rev 2 draft to fix what was sent back. The rows with no answer go on it too. Nothing is sent until you share.')
-      expect((screen.getByTestId('new-revision') as HTMLButtonElement).disabled).toBe(false)
-      // 2026-10-05 · the button says what it does; the line beside it says which rows go on the draft, and that nothing is sent.
+      // 2026-10-05 · one button where there were two. It says what it does; the line beside it says the rows are chosen next, and that nothing is sent.
+      expect(screen.queryByTestId('resubmit-sent-back')).toBeNull()
+      expect((button as HTMLButtonElement).disabled).toBe(false)
       expect(button.textContent).toBe('Start a Rev 2 draft…')
-      expect(screen.getByTestId('resubmit-caption').textContent).toBe('The 1 row sent back and the 2 with no answer go on it. Nothing is sent. The GC sees Rev 2 only after you press Share. New revision carries every row instead.')
+      expect(screen.getByTestId('resubmit-caption').textContent).toBe('You choose the rows next. Nothing is sent. The GC sees Rev 2 only after you press Share.')
       fireEvent.click(button)
-      const confirmDialog = await screen.findByRole('alertdialog')
-      expect(confirmDialog.textContent).toContain('1 row was sent back. It goes on Rev 2 so you can fix it. 2 rows have no answer yet. They go on Rev 2 too and keep waiting. 1 row was approved. It stays on Rev 1 and on the procurement log.')
-      expect(confirmDialog.textContent).toContain('Rev 2 starts as a draft. Nothing is sent. The GC sees Rev 2 only after you press Share.')
-      fireEvent.click(within(confirmDialog).getByRole('button', { name: 'Start the draft with 3 rows' }))
+      // The question holds the choice. The rows that need it are ticked; each choice says what happens to the approved row.
+      const chooser = await screen.findByRole('dialog', { name: 'Start a Rev 2 draft' })
+      expect((within(within(chooser).getByTestId('resubmit-rows-need')).getByRole('radio') as HTMLInputElement).checked).toBe(true)
+      expect(within(chooser).getByTestId('resubmit-rows-need').textContent).toBe('Only the rows that need it1 sent back and 2 with no answer. The 1 row approved stays on Rev 1 and on the procurement log.')
+      expect(within(chooser).getByTestId('resubmit-rows-every').textContent).toBe('Every rowThe 1 row approved goes on Rev 2 too. The GC answers every row and every part again. Use it when a product changed.')
+      expect(within(chooser).getByTestId('resubmit-chooser-foot').textContent).toBe('Rev 2 starts as a draft. Nothing is sent. The GC sees Rev 2 only after you press Share.')
+      // Ticking Every row changes the button; ticking back restores it. Nothing is written until the button is pressed.
+      fireEvent.click(within(within(chooser).getByTestId('resubmit-rows-every')).getByRole('radio'))
+      expect(within(chooser).getByRole('button', { name: 'Start the draft with all 4 rows' })).toBeTruthy()
+      fireEvent.click(within(within(chooser).getByTestId('resubmit-rows-need')).getByRole('radio'))
+      expect(state.writes).toEqual([])
+      fireEvent.click(within(chooser).getByRole('button', { name: 'Start the draft with 3 rows' }))
       await waitFor(() => expect(screen.getAllByTestId('revision-chip')).toHaveLength(2))
       expect(state.items.filter((r) => r.submittal_id === 'rev-2').map((r) => r.tag)).toEqual(['LAV-1', 'FCO', 'UTILITY SINK'])
       // 2026-10-03 · the words follow the revision: pill 2 and steps 2 and 7 say Rev 2 and Rev 3, and the replaced draft reads answered, not superseded.
@@ -1546,6 +1560,69 @@ describe('BidsSubmittalsTab', () => {
       expect(screen.getByTestId('road-2-about').textContent).toContain('Rev 2 is the version you are working on.')
       expect(screen.getByTestId('road-7-about').textContent).toContain('Start a Rev 3 draft with them and the rows with no answer yet.')
       await waitFor(() => expect(screen.getAllByTestId('revision-chip').map((c) => c.textContent)).toEqual([expect.stringMatching(/^Rev 2 · draft · /), 'Rev 1 · answered Oct 2']))
+    } finally {
+      state.noSources = false
+    }
+  })
+  it('2026-10-05 · Every row in the question carries the approved row too, and Cancel or Esc writes nothing', async () => {
+    state.revisions = [{ id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'draft', title: 'Plumbing fixtures & equipment', note: null, package_path: null, source_files: [], shared_at: null, created_at: '2026-09-29T00:00:00Z' }]
+    state.items = [
+      item({ id: 'it-1', tag: 'WC-1', sequence_order: 1, submitted_label: 'TOTO CT728CUVG#01', status: 'proposed', review_decision: 'approved', reviewed_at: '2026-10-02T15:00:00Z', reviewed_by_name: 'structura' }),
+      item({ id: 'it-2', tag: 'LAV-1', sequence_order: 2, submitted_label: 'TOTO T25S51E#CP', status: 'proposed', review_decision: 'rejected', review_note: 'TEL145', reviewed_at: '2026-10-02T15:00:00Z', reviewed_by_name: 'structura' }),
+      item({ id: 'it-3', tag: 'FCO', sequence_order: 3, submitted_label: 'ZURN ZN1400-2NL', status: 'proposed' }),
+    ]
+    state.writes = []
+    state.parts = []
+    state.tasks = []
+    state.noSources = true
+    try {
+      mount()
+      const button = await screen.findByTestId('new-revision')
+      // Cancel, then Esc: the window goes and nothing is written.
+      fireEvent.click(button)
+      fireEvent.click(within(await screen.findByTestId('resubmit-chooser')).getByRole('button', { name: 'Cancel' }))
+      expect(screen.queryByTestId('resubmit-chooser')).toBeNull()
+      fireEvent.click(button)
+      await screen.findByTestId('resubmit-chooser')
+      fireEvent.keyDown(document, { key: 'Escape' })
+      expect(screen.queryByTestId('resubmit-chooser')).toBeNull()
+      expect(state.writes).toEqual([])
+      // Every row: the approved row goes on Rev 2 beside the other two. The window opens on the first choice each time.
+      fireEvent.click(button)
+      const chooser = await screen.findByTestId('resubmit-chooser')
+      expect(within(chooser).getByRole('button', { name: 'Start the draft with 2 rows' })).toBeTruthy()
+      fireEvent.click(within(within(chooser).getByTestId('resubmit-rows-every')).getByRole('radio'))
+      fireEvent.click(within(chooser).getByRole('button', { name: 'Start the draft with all 3 rows' }))
+      await waitFor(() => expect(screen.getAllByTestId('revision-chip')).toHaveLength(2))
+      expect(screen.queryByTestId('resubmit-chooser')).toBeNull()
+      expect(state.items.filter((r) => r.submittal_id === 'rev-2').map((r) => r.tag)).toEqual(['WC-1', 'LAV-1', 'FCO'])
+    } finally {
+      state.noSources = false
+    }
+  })
+  it('2026-10-05 · rows sent back but nothing approved: both drafts are the same one, so the button asks once and offers no choice', async () => {
+    // BP375 on 2026-10-05: rows sent back, rows with no answer, no row and no part approved.
+    state.revisions = [{ id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'draft', title: 'Plumbing fixtures & equipment', note: null, package_path: null, source_files: [], shared_at: null, created_at: '2026-09-29T00:00:00Z' }]
+    state.items = [
+      item({ id: 'it-2', tag: 'LAV-1', sequence_order: 1, submitted_label: 'TOTO T25S51E#CP', status: 'proposed', review_decision: 'rejected', review_note: 'TEL145', reviewed_at: '2026-10-02T15:00:00Z', reviewed_by_name: 'structura' }),
+      item({ id: 'it-3', tag: 'FCO', sequence_order: 2, submitted_label: 'ZURN ZN1400-2NL', status: 'proposed' }),
+    ]
+    state.writes = []
+    state.parts = []
+    state.tasks = []
+    state.noSources = true
+    try {
+      mount()
+      const button = await screen.findByTestId('new-revision')
+      expect(button.textContent).toBe('Start a Rev 2 draft…')
+      expect(screen.getByTestId('resubmit-caption').textContent).toBe('The draft starts with every row. Nothing is sent. The GC sees Rev 2 only after you press Share.')
+      fireEvent.click(button)
+      const confirmDialog = await screen.findByRole('alertdialog')
+      expect(screen.queryByTestId('resubmit-chooser')).toBeNull()
+      expect(confirmDialog.textContent).toContain('Every row goes on Rev 2. 1 sent back and 1 with no answer. No row was approved on Rev 1. Rev 2 starts as a draft. Nothing is sent. The GC sees Rev 2 only after you press Share.')
+      fireEvent.click(within(confirmDialog).getByRole('button', { name: 'Start the draft with 2 rows' }))
+      await waitFor(() => expect(screen.getAllByTestId('revision-chip')).toHaveLength(2))
+      expect(state.items.filter((r) => r.submittal_id === 'rev-2').map((r) => r.tag)).toEqual(['LAV-1', 'FCO'])
     } finally {
       state.noSources = false
     }
