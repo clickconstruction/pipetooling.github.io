@@ -325,11 +325,11 @@ days and a photo. Details in README.md, *A trade asks for a change in its portal
   `draftChangeOrderFromRequest` (drafts through `draftChangeOrder` and links the request),
   `turnDownChangeRequest`; *Changes to your work* on the job page with where each stands, its three
   emails, the company window's Activity lines. Seeded: Tri-County's rock on Fair Oaks.
-- **Owner Billing (GC 4):** the office's list on Bill the customer's change orders:
+- ~~**Owner Billing (GC 4):** the office's list on Bill the customer's change orders:
   `openChangeRequests(project)` with company, what, why, amount, days and the photo's name;
   *Make a change order* (prefilled from the request: its words, its amount as our cost, the days)
   dispatches `draftChangeOrderFromRequest`; *Turn down* asks why and dispatches
-  `turnDownChangeRequest`.
+  `turnDownChangeRequest`.~~ done 3ae5d95eb.
 - **Board (GC 0), if it fits:** a Needs you line while a request waits ("Tri-County Site asked for a
   change on Fair Oaks").
 
