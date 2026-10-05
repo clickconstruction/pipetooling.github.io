@@ -1,14 +1,14 @@
 ---
 name: "GC mode, New Project: the real build plan"
 parent: to-dos/gc-mode/README.md (punch list #81)
-status: planned 2026-10-04 by the New Project lane at the owner's ask ("yes, write the real build plan") · the owner took the five defaults the same day · PR 1 (the pure kernels in src/lib/gc/) in · nothing touches the database until the owner approves a step
+status: planned 2026-10-04 by the New Project lane at the owner's ask ("yes, write the real build plan") · the owner took the five defaults the same day · PR 1 (the pure kernels in src/lib/gc/) in · amended 2026-10-05 for the 2026-10-04 rounds (the scope book, the Drive link and its check, set kinds, We work for, budgets by size) · nothing touches the database until the owner approves a step
 summary: >
   How New Project, the plan sets and the questions about the plans move from the prototype
   (made-up data on branch spike/gc-mode) into the real app: the tables, what the app already has
   that they reuse, the kernels that move over with their tests, and the PRs in order. The owner
   said the real build starts with bidding (question 2); this is the front of bidding.
-size: L (6 tables, 3 RPCs, 2 edge functions, about 9 PRs)
-blocker: the owner's calls under "Decisions before the first migration"; the company record and the
+size: L (12 tables, 3 RPCs, 3 edge functions, about 11 PRs)
+blocker: the owner's word that the shape is settled (PR 1b, then the tables); the company record and the
   invitations (the Board and Portal lanes' part of the plan) before Who to ask and the set emails
 ---
 
@@ -16,8 +16,10 @@ blocker: the owner's calls under "Decisions before the first migration"; the com
 
 ## What moves, and what stays
 
-The prototype proved these, and they move: **New project** (the project, the plans, the trades,
-each scope with its sheets, sections and what it leaves out, who to ask, budgets from past jobs),
+The prototype proved these, and they move: **New project** (who we work for, the project, the plans
+and their Drive link, the trades with budgets by size, each scope with its sheets, sections and what
+it leaves out, who to ask, budgets from past jobs), **the scope book** (its lines, sets and
+exclusions, on step 4 and on its own page),
 **A new set of plans came in** (addenda and bulletins, a whole reissued set compared with ours,
 sheets and sections taken out or renamed, lines tied to new sheets, who checked it, the email),
 **Questions about the plans** (asked, sent to the architect, answered, carried in the next set,
@@ -53,6 +55,12 @@ Each has a default the plan is written to. **The owner took all five defaults on
    ("PipeTooling Jobs", `DRIVE_JOBS_FOLDER_ID`), and each set is a subfolder named for the set
    ("Addendum 1"). The app links to Drive; it never copies the files. Who opened a set comes from
    the portal's own link, not from Drive.
+   *Amended 2026-10-04 and 2026-10-05 by the owner:* every set carries the Google Drive link of its
+   files, pasted by whoever uploaded and checked them, and the app says whether anyone with the link
+   can open it ("this works") or only some people ("please correct"). A link only some can open is
+   a warning, never a stop. Each project folder holds **Plans** (anyone with the link can view:
+   trades and us) and **Team only** (the Calls, texts and big files proposal, README). The Shared
+   Drive has worked since 2026-08-29 (`docs/DRIVE_INTAKE_SETUP.md`), so no Google grant is needed.
 
 ## The tables
 
@@ -68,6 +76,12 @@ carries (in `src/lib/gcMode/gcTypes.ts`).
 (text) and `sq_ft` (numeric, read from the size note by `sqFtInText`), `architect_customer_id`,
 `project_manager_user_id`, `general_conditions`, `contingency_pct`, `fee_pct`, `drive_folder_url`,
 `lost_on`, `lost_why`, `won_by`, `lost_note` (the Board's lost bid), `created_by`, `created_at`.
+Added for the 2026-10-04 rounds: `customer_role` (text, `owner`, `gc` or `owners_rep`, default
+`owner`; *We work for*, `GcProject.customerRole`; the customer stays `projects.customer_id`) and
+`property_owner_customer_id` (FK `customers.id`, null when the customer owns the property;
+`GcProject.propertyOwnerId`; Owner Billing's pay application shows it when set). `sq_ft` is typed in
+step 1's **Size** box and stored as typed; `size_note` holds only the words after it (the prototype
+joins the two into `sizeNote` and reads the number back with `sqFtInText`).
 
 **`gc_trade_packages`**, one row per trade on a project: `project_id`, `trade` (text), `position`
 (the trade list's order, `tradeOrder`), `budget` (numeric), `ours` (boolean, our own crew), and
@@ -87,13 +101,19 @@ null = follow the guess; `ScopeItem.sheets`), `specs` (text[], null = follow the
 (text: a trade's name, "the owner" or "us"; `ScopeExclusion`).
 
 **`gc_plan_sets`**, one row per set: `project_id`, `rev` (0 is the first set), `label` ("Bid set",
-"Addendum 2"), `kind` (addendum, bulletin, revised, permit, construction), `issued_on`, `note`,
-`checked_by_user_id` (required in the app; `PlanSet.checkedBy`), `drive_folder_url`,
-`created_by`. Unique (`project_id`, `rev`).
+"Addendum 2"), `kind` (the first set: bid, pricing or permit, step 2's chips with their **i**,
+`SET_KIND_HELP`; a later set: addendum, bulletin, revised, permit or construction, `SET_KINDS`),
+`issued_on`, `note`, `checked_by_user_id` (required in the app; `PlanSet.checkedBy`), `created_by`.
+The Drive link (`PlanSet.drive`) replaces `drive_folder_url`: `drive_url` (a Drive file or folder
+link, `driveLink`; required on the first set, and on a later set that brings drawings,
+`driveLinkProblem`), `drive_access` (`anyone` or `restricted`, null until checked) and
+`drive_checked_on` (date). Unique (`project_id`, `rev`).
 
 **`gc_plan_set_items`**, what each set did to each sheet and section, one row each: `set_id`,
 `kind` (sheet, section), `number` ("E-201", "09 91 23"), `title`, `change` (issued, revised, added,
-removed, renamed), `was_title` (for renamed). The first set's rows are all "issued"; that is the
+removed, renamed), `was_title` (for renamed), `discipline` (text, null when the number's letters say
+it; `PlanSheet.discipline`, picked in the sheet table) and `page` (int, the plan PDF page a sheet was
+read from; `PlanSheet.page`). The first set's rows are all "issued"; that is the
 sheet index and the manual's table of contents. The sheets as they stand at any set are a fold over
 these rows, which is what `sheetsAtRev`, `sheetsGoneAtRev`, `specsAtRev` and `specsGoneAtRev`
 already do with the prototype's arrays. One table holds sheets and sections, so a set that
@@ -109,17 +129,46 @@ set reached, and whether it changed their trade, goes in **`gc_plan_set_sends`**
 `company_id`, `touched`, `email_send_log_id`), because the portal and the Board read it
 (`PlanSet.sentTo`).
 
+**The scope book** (the owner, 2026-10-04, Round 4). The book is read, not stored: `scopeBook` builds
+it from every scope line on our GC projects (`gc_scope_items` with their trade, and
+`added_in_set_id` for a line that came in late), the usual lines (`TRADE_TEMPLATES`) and the
+office's own changes. Only those changes are tables, one per list in `ScopeBookStore`, company-wide
+(no project key), with the GC projects' RLS (decision 2; the book carries no money, so it can open
+to estimators first):
+
+- **`gc_scope_book_saved`**, a line saved by hand: `trade`, `words`, `spec`, `leaves_out_label`,
+  `leaves_out_by` (a `ScopeExclusion`), `saved_by`, `saved_at` (`ScopeBookSaved`).
+- **`gc_scope_book_edits`**, read oldest first: `trade`, `words` (the line as the book had it),
+  `to_words`, `to_spec`, `clear_spec` (boolean), `to_leaves_out_label`, `to_leaves_out_by`,
+  `clear_leaves_out` (boolean), `edited_by`, `edited_at` (`ScopeBookEdit`; the mapper turns a
+  `clear_*` into the kernel's null).
+- **`gc_scope_book_merges`**: `trade`, `from_words`, `into_words`, `merged_by`, `merged_at`
+  (`ScopeBookMerge`; `resolveWords` follows a chain of merges).
+- **`gc_scope_sets`**, a named list of one trade's lines: `trade`, `name`, `lines` (text[]),
+  `from_project_id` (FK `projects.id`, nullable), `saved_by`, `saved_at` (`ScopeBookSet`).
+
+Its exclusions are read too (`scopeBookExclusions`): the usual ones, each project's
+`gc_scope_exclusions`, and what quotes left out (the Board's quote table, once it exists). "It cost
+a change order" on a late line reads Owner Billing's change orders once that table exists; until
+then a late line says only which set brought it.
+
 ## What the app already has, reused
 
-- **The owner and the architect**: `customers` and `customer_contact_persons`. Step 1's pickers read
-  them; **Someone new** inserts a customer.
+- **The customer, the property's owner and the architect**: `customers` and
+  `customer_contact_persons`. Step 1's pickers read them; **Someone new** inserts a customer. The
+  prototype's picker narrows to a customer's kind for *We work for* (`CUSTOMER_ROLES.fits`);
+  `customers` has no such kind, so the real picker lists every customer.
 - **The team who can check a set**: `users` (any role) for the project manager, and
   `project_superintendents`.
 - **Drive**: `drive-intake` finds or makes a folder under `DRIVE_JOBS_FOLDER_ID` and can upload a plan
   set from a link; `plan-fetch` reads the PDFs behind a link or a folder (it merges a folder's
   PDFs and can probe that the set is readable); `_shared/driveUpload.ts` holds `findOrCreateFolder`.
   The service account is already a member of the Shared Drive, so no new Google setup is needed.
-  **Open the folder** on the plans window becomes a real link.
+  **Open the folder** on the plans window becomes a real link. New: **`gc-drive-access`**, the check
+  behind "this works" and "please correct". It asks Drive about the link with no sign-in (the Drive
+  API with an API key answers only for a link anyone can open), and failing that opens the page and
+  treats a sign-in page or "You need access" as restricted. It runs when a project is made, when a
+  set is issued, and on **Check again**.
 - **Email**: `_shared/resendSendEmail.ts` (`sendEmailViaResend`, which logs to `email_send_log`),
   sent from `COMPANY_EMAIL_FROM` with the project manager as Reply-To, the way `send-bid-room-link`
   does. The words come from `planEmail` in the prototype.
@@ -153,6 +202,27 @@ These are pure functions with tests today (`gcNewProject.test.ts`, `gcPlans.test
 - Questions: `questionsCloseOn`, `questionsOpen`, `questionState`, `openQuestions`,
   `answeredNotInSet`, `questionInNote`.
 
+**PR 1b, the kernels from the 2026-10-04 rounds**, pure and tested, moved the same way:
+
+- The sheet table: `SHEET_DISCIPLINES`, `disciplineOf`, `withPickedDisciplines`, `SheetIndexRow`,
+  `rowProblems`, `sheetsOfRows`, `nextSheetNumber`, `readSheetLines`, `PdfTextItem`,
+  `readTitleBlock`. pdf.js itself stays in the screen; the kernel takes its text items.
+- Budgets by size: `perSqFtWords`, `budgetBySize` (`BudgetLine`).
+- The Drive link: `driveLink`, `driveLinkProblem`. `driveAccessStandIn` and the two made-up links
+  stay in the prototype; `gc-drive-access` replaces them.
+- Set kinds: `SET_KINDS`, `defaultSetKind`, `nextSetLabel`, and `SET_KIND_HELP` (the owner's words
+  for a bid, pricing and permit set).
+- We work for: `CustomerRole` and the role words now in `GcNewProject.tsx` (`CUSTOMER_ROLES`: label,
+  customer, them), moved to a kernel without `fits`.
+- The scope book, all of `gcScopeBook.ts`: `scopeWordKey`, `scopeBook`, `inScopeBook`, `lateWords`,
+  `searchScopeBook`, `oftenMissed`, `scopeSetsFor`, `linesToAdd`, `scopeBookDuplicates`,
+  `scopeBookUseWords`, `scopeBookExclusions`, `scopeBookExclusionWords`, `EMPTY_SCOPE_BOOK` and the
+  store types. One change on the way: `scopeBook` takes the projects, the store and the past jobs'
+  lines as arguments instead of the whole state and the prototype's `PAST_JOBS`, so the real build
+  passes its closed jobs. The tests stay as they are.
+- `exclusionsFor(trade, book?)` and `exclusionName` live in the Board's `gcExclusions.ts`. The scope
+  book needs them, so PR 1b moves them only with the Board lane's word, or waits for its kernels.
+
 The kernels read the prototype's shapes (`GcProject`, `PlanSet`, `TradePackage`). A mapper,
 `gcProjectFromRows`, turns the database rows into those shapes, so no kernel changes when the data
 becomes real. The mapper gets its own test against a row set built from the fixture's Boerne.
@@ -161,10 +231,15 @@ becomes real. The mapper gets its own test against a row set built from the fixt
 
 - **`gc_create_project(draft jsonb)`**: the `projects` row, `gc_projects`, the packages, scope lines,
   exclusions, set 0 and its items, in one transaction. It takes the prototype's `NewProjectDraft`
-  shape. `SECURITY INVOKER`, so RLS decides who may.
+  shape, with `customerRole`, the property's owner, `sqFt` and the first set's `drive` (already
+  checked by `gc-drive-access`). `SECURITY INVOKER`, so RLS decides who may.
 - **`gc_issue_plan_set(set jsonb)`**: the set, its items, the lines it adds, the lines it ties to new
   sheets (`retiedLines`), the trades it brings, the questions it carries, in one transaction. It
-  takes the `issuePlanSet` action's shape and refuses a lost bid and a set with no checker.
+  takes the `issuePlanSet` action's shape and refuses a lost bid and a set with no checker. Its
+  `drive` is checked first, like the first set's. **Check again** is a plain update of the set's
+  three Drive columns under RLS (`checkPlanSetDrive`).
+- The scope book's writes are single inserts under RLS (save a line, edit, merge, save a set), so
+  they need no RPC.
 - **`gc_record_question`** and **`gc_answer_question`**: small writes, kept as RPCs so the closing
   day is checked in one place (`questionsOpen`'s rule, three days before the bid is due).
 
@@ -175,22 +250,37 @@ screen on, its help guide. "Check" is how the reviewer sees it work.
 
 1. **Lift the kernels** into `src/lib/gc/` with their tests; the prototype imports them. No
    database, no screen change. *Check:* `npm test` passes, and the prototype on `/bids/gc` behaves
-   as before.
-2. **Migration: projects, trades, scope** (`gc_projects`, `gc_trade_packages`, `gc_scope_items`,
-   `gc_scope_exclusions`), RLS for dev, master and controller, the read-only blocks, the regenerated
-   types. *Check:* the migration doc's SQL shows each table empty and its policies; a read-only
+   as before. **1b.** The same for the 2026-10-04 rounds' kernels (listed under *Kernels*), with the
+   `scopeBook` argument change. *Check:* as PR 1.
+2. **Migration: projects, trades, scope and the scope book** (`gc_projects` with `customer_role`,
+   `property_owner_customer_id` and `sq_ft`, `gc_trade_packages`, `gc_scope_items`,
+   `gc_scope_exclusions`, and the book's four tables), RLS for dev, master and controller, the
+   read-only blocks, the regenerated types. *Check:* the migration doc's SQL shows each table empty and its policies; a read-only
    user's insert is refused.
-3. **Migration: plan sets and questions** (`gc_plan_sets`, `gc_plan_set_items`, `gc_plan_questions`,
-   `gc_plan_set_sends`). *Check:* as PR 2.
-4. **New project on real data**, steps 1 to 4 (the project, the plans, the trades, each scope), on a
-   dev-only page, through `gc_create_project`, and the mapper. Who to ask is hidden until the
-   company record lands. *Check:* make the clinic from the prototype's made-up index; the project
+3. **Migration: plan sets and questions** (`gc_plan_sets` with `kind` and the three Drive columns,
+   `gc_plan_set_items` with `discipline` and `page`, `gc_plan_questions`, `gc_plan_set_sends`).
+   *Check:* as PR 2.
+4. **New project on real data**, steps 1 to 4, on a dev-only page, through `gc_create_project`, and
+   the mapper: step 1 with *We work for*, the property's owner and the **Size** box; step 2 with the
+   set's kind and its **i**, the sheet table (a plan PDF with a text layer, a paste or typing) and
+   the Drive link with its check; step 3 with budgets by size; step 4 with the scope book (start
+   from a set, *Often missed*, *Add a line* searching the book, *Save to the book*). Who to ask is
+   hidden until the company record lands. Until `gc-drive-access` lands with PR 5, the link is
+   checked for being a Drive link only and its access shows as not checked. *Check:* make the clinic from the prototype's made-up index; the project
    appears with its 21 sheets, 14 trades, scope lines with their sheets and sections, and the gaps.
-5. **Drive**: making a project makes its folder (`drive-intake`, folder only); a set records its
-   folder link; the plans window opens it; `plan-fetch` probes that the set's PDFs are readable.
-   *Check:* the folder appears in the Shared Drive, and **Open the folder** opens it.
-6. **A new set of plans came in on real data**, through `gc_issue_plan_set`: names, notes, the pasted
-   index and table of contents compared with ours, take out and rename, lines left behind tied to
+**4b. The scope book's page on real data** (*Open the scope book*: lines and sets by trade, edit,
+   merge duplicates, save a project's scope as a set, its exclusions), with its door from Trade
+   partners once the Board's page is real. *Check:* save Boerne's sitework as a set and start Pad B
+   from it.
+5. **Drive**: making a project makes its folder with **Plans** and **Team only** inside
+   (`drive-intake`, folders only), and sets Plans to anyone with the link; `gc-drive-access` checks
+   each set's link on making, issuing and **Check again**; the plans window opens the link;
+   `plan-fetch` probes that the set's PDFs are readable. First see whether the Shared Drive lets
+   its files be shared with anyone with the link, and whether the service account's role may set
+   that (it could not delete its own file in August). *Check:* the folders appear in the Shared
+   Drive; a link only some can open shows "please correct" until it is fixed in Drive.
+6. **A new set of plans came in on real data**, through `gc_issue_plan_set`: names and kinds, notes,
+   the set's Drive link with its check, the pasted index and table of contents compared with ours, take out and rename, lines left behind tied to
    new sheets, trades brought, **Checked by** from the team. No email yet. *Check:* the prototype's
    walk, a permit set that takes C-201 out and renames C-101, on a real project.
 7. **The set email** (edge function `gc-plan-set-email`): to the companies on each touched trade
@@ -212,12 +302,14 @@ company's closed GC jobs as they close.
 
 ## Docs each PR touches
 
-`docs/migrations/<version>_<slug>.md` for PRs 2 and 3; `docs/EDGE_FUNCTIONS.md` for PRs 5, 7 and 8;
+`docs/migrations/<version>_<slug>.md` for PRs 2 and 3; `docs/EDGE_FUNCTIONS.md` for PRs 5 (with
+`gc-drive-access`), 7 and 8;
 `docs/ACCESS_CONTROL.md` when the page and its roles are set (PR 4), and again if decision 2 widens;
 `docs/twins/APP_DIRECTORY.md` and `PROJECT_DOCUMENTATION.md` when the page is added (PR 4);
-`GLOSSARY.md` for GC project, plan set, addendum, bulletin and scope line. Help guides:
-"start a GC project from its plans" (PR 4), "send out a new set of plans" (PR 6), "answer a
-question about the plans" (PR 8).
+`GLOSSARY.md` for GC project, plan set, bid set, pricing set, permit set, addendum, bulletin,
+scope line, scope book and scope set. Help guides: "start a GC project from its plans" (PR 4),
+"keep the lines we always write in the scope book" (PR 4b), "send out a new set of plans" (PR 6),
+"answer a question about the plans" (PR 8).
 
 ## Status
 
@@ -228,3 +320,9 @@ where `gcNewProject.ts` and `gcPlans.ts` now import and re-export them (one copy
 need a whole project (a line's reach, a set's fold, the set email, the questions) move with PR 4,
 beside the real types and the row mapper. Nothing builds the tables (PRs 2 and 3) until the owner
 says the shape is settled.
+
+Amended 2026-10-05 for the 2026-10-04 rounds: the scope book (four tables, its page as PR 4b), the
+Drive link and its check (three columns on a set, `gc-drive-access`, Plans and Team only folders),
+set kinds (bid, pricing and permit for the first set), *We work for* and the property's owner (two
+columns on `gc_projects`), budgets by size (`sq_ft` stored as typed), and PR 1b for their kernels.
+PR 1b is next, on the owner's word.

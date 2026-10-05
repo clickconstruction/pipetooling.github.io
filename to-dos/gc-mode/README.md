@@ -1263,8 +1263,10 @@ Decided by the owner (2026-10-05):
   our jobs. Reading texts and summaries for promised days, plans questions and the job needs an
   Anthropic account the app calls; the app calls no AI provider today.
 
-Left for the owner: yearly or monthly billing, and Claude from the first day or later. The agent's
-Drive connection waits on the plan intake's admin-console approval (the August handoff).
+Left for the owner: yearly or monthly billing, and Claude from the first day or later. Drive itself
+works: the plan intake has used a Shared Drive since 2026-08-29 (`docs/DRIVE_INTAKE_SETUP.md`). The
+file agent's one new Google need is reading bids@: a Gmail grant in the admin console, or bids@
+forwarding a copy to the agent.
 
 ## The plan, when the shape is settled
 
