@@ -2,9 +2,10 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { formatErrorMessage } from '../../utils/errorHandling'
-import { formatDenverCalendarDayShort, formatDenverTimeOnly, formatWorkDateYmdFriendly } from '../../utils/dateUtils'
+import { formatDenverCalendarDayWithYear, formatDenverTimeOnly, formatWorkDateYmdFriendly } from '../../utils/dateUtils'
 import { formatCurrency, formatUsdNoCents } from '../../lib/jobs/jobFormatting'
-import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
+import { fileSentCopy, printAndFile } from '../../lib/sent/sentCopiesIo'
+import type { SentFiling, SentHow } from '../../lib/sent/sentCopies'
 import {
   EMPTY_OWNER_RECORDS,
   OWNER_RECORDS_HOW_WORDS,
@@ -37,11 +38,14 @@ import { loadOwnerPacketJobs, loadOwnerRecords, saveOwnerRecords } from '../../l
 
 export type OwnerRecordsSeedJob = { jobId: string; customerId: string | null; addressId: string | null; gcId: string | null }
 
+/** How the window's "how it went" reads in the record of what was sent. */
+const SENT_HOW_OF: Record<OwnerRecordsSentHow, SentHow> = { handed: 'hand', email: 'email', mail: 'mail' }
+
 const fmt: OwnerRecordsDocFormat = {
   day: (ymd) => formatWorkDateYmdFriendly(ymd),
   dateTime: (iso) => {
     const ms = Date.parse(iso)
-    return Number.isFinite(ms) ? `${formatDenverCalendarDayShort(ms)}, ${formatDenverTimeOnly(ms)}` : ''
+    return Number.isFinite(ms) ? `${formatDenverCalendarDayWithYear(ms)}, ${formatDenverTimeOnly(ms)}` : ''
   },
   money: (n) => `$${formatCurrency(n)}`,
 }
@@ -163,8 +167,9 @@ export default function LienOwnerRecordsModal({
   const facts: OwnerRecordsDocFacts | null = picked ? { company: company.trim() || 'Our company', owner: picked.owner, address: picked.address || 'this property', asOfYmd: todayYmd, requestedOnYmd: file.request?.on ?? null } : null
   const missing = ownerRecordsMissing(file)
 
-  async function save(next: OwnerRecordsFile, done: string): Promise<boolean> {
-    if (!picked || !seed || !packet) return false
+  /** Save the request's file. Resolves to the request's row id, or null when it was not saved. */
+  async function save(next: OwnerRecordsFile, done: string): Promise<string | null> {
+    if (!picked || !seed || !packet) return null
     setBusy(true)
     try {
       const id = await saveOwnerRecords({
@@ -182,10 +187,10 @@ export default function LienOwnerRecordsModal({
       setFile(next)
       setEditing(null)
       showToast(done, 'success')
-      return true
+      return id
     } catch (e) {
       showToast(formatErrorMessage(e, 'Not saved.'), 'error')
-      return false
+      return null
     } finally {
       setBusy(false)
     }
@@ -204,7 +209,30 @@ export default function LienOwnerRecordsModal({
       if (!yes) return
     }
     const html = what === 'packet' ? ownerPacketHtml(packet, facts, fmt) : ownerAcknowledgmentHtml(facts, fmt)
-    if (!openHtmlPrintWindow(html)) showToast('The print window was blocked. Allow pop-ups for this site and press it again.', 'error')
+    // A print counts as a send: the page is filed as it was printed (v2.4554).
+    if (!printAndFile(html, filing(what))) showToast('The print window was blocked. Allow pop-ups for this site and press it again.', 'error')
+  }
+
+  /** What a copy of this property's packet, or of its acknowledgment, says about itself in Documents. */
+  function filing(what: 'packet' | 'acknowledgment'): Omit<SentFiling, 'how'> {
+    const address = picked?.address || 'this property'
+    return {
+      kind: what === 'packet' ? 'owner_records_packet' : 'owner_records_acknowledgment',
+      title: what === 'packet' ? `Records for ${address}` : `Acknowledgment for ${address}`,
+      recipientName: picked?.owner ?? '',
+      jobIds: packet?.jobs.map((j) => j.id) ?? [],
+      customerId: seed?.customerId ?? null,
+      source: { table: 'lien_owner_record_requests', id: rowId },
+    }
+  }
+
+  /** Record the packet as sent, then file the packet as it stood at that moment. */
+  async function recordSent() {
+    if (!facts || !packet) return
+    const how = sentHow
+    const html = ownerPacketHtml(packet, facts, fmt)
+    const id = await save({ ...file, sent: { at: new Date().toISOString(), by: authName.trim(), how, total: packet.owed, jobIds: packet.jobs.map((j) => j.id) } }, 'Recorded as sent. A copy is in Documents.')
+    if (id) void fileSentCopy({ ...filing('packet'), how: SENT_HOW_OF[how], source: { table: 'lien_owner_record_requests', id } }, { html })
   }
 
   const startRequest = () => {
@@ -465,7 +493,7 @@ export default function LienOwnerRecordsModal({
                   type="button"
                   disabled={busy || missing.length > 0 || !packet || !available}
                   title={missing.length ? `First: ${missing.join(', ')}` : undefined}
-                  onClick={() => packet && void save({ ...file, sent: { at: new Date().toISOString(), by: authName.trim(), how: sentHow, total: packet.owed, jobIds: packet.jobs.map((j) => j.id) } }, 'Recorded as sent.')}
+                  onClick={() => void recordSent()}
                   style={btn('primary', busy || missing.length > 0 || !packet || !available)}
                 >
                   Record it as sent

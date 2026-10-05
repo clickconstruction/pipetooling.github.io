@@ -10,7 +10,7 @@ import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import LienOwnerRecordsModal from './LienOwnerRecordsModal'
 import { EMPTY_OWNER_RECORDS, type OwnerPacketJobInput, type OwnerRecordsFile, type OwnerRecordsPropertyRow } from '../../lib/jobs/ownerRecords'
 
-const io = vi.hoisted(() => ({ jobs: [] as unknown[], file: null as unknown, available: true, saved: [] as Array<Record<string, unknown>>, printed: [] as string[] }))
+const io = vi.hoisted(() => ({ jobs: [] as unknown[], file: null as unknown, available: true, saved: [] as Array<Record<string, unknown>>, printed: [] as string[], filed: [] as Array<Record<string, unknown>> }))
 vi.mock('../../lib/jobs/ownerRecordsIo', () => ({
   loadOwnerPacketJobs: async () => ({ jobs: io.jobs, gcIds: ['gc1'] }),
   loadOwnerRecords: async () => ({ available: io.available, rowId: null, file: io.file }),
@@ -19,7 +19,11 @@ vi.mock('../../lib/jobs/ownerRecordsIo', () => ({
     return 'row-1'
   },
 }))
-vi.mock('../../lib/jobsDocuments/printWindow', () => ({ openHtmlPrintWindow: (html: string) => (io.printed.push(html), true) }))
+// A print and a send each file a copy (v2.4554): the stub keeps what was filed and the page that went.
+vi.mock('../../lib/sent/sentCopiesIo', () => ({
+  printAndFile: (html: string, filing: Record<string, unknown>) => (io.printed.push(html), io.filed.push({ ...filing, how: 'print', html }), true),
+  fileSentCopy: async (filing: Record<string, unknown>, body: { html: string }) => (io.filed.push({ ...filing, html: body.html }), true),
+}))
 
 const jobs: OwnerPacketJobInput[] = [
   {
@@ -63,6 +67,7 @@ afterEach(() => {
   io.available = true
   io.saved = []
   io.printed = []
+  io.filed = []
 })
 
 describe('LienOwnerRecordsModal', () => {
@@ -90,7 +95,7 @@ describe('LienOwnerRecordsModal', () => {
     expect(packet.textContent).toContain('$21,050.00 job total · $2,415.00 paid in 1 payment')
     expect(packet.textContent).toContain('Bill 1 · billed Aug 3, 2026')
     const payment = packet.querySelector('[data-packet-payment]') as HTMLElement
-    expect(payment.textContent).toContain('Paid Aug 14, 2026 · recorded Aug 15, 2:30 PM · Check 1042')
+    expect(payment.textContent).toContain('Paid Aug 14, 2026 · recorded Aug 15, 2026, 2:30 PM · Check 1042')
     expect(payment.textContent).toContain('$2,415.00')
     expect(packet.querySelector('[data-packet-job="881"]')?.textContent).toContain('No bill has gone out on this job yet.')
     expect(screen.getByTestId('owner-records-total').textContent).toContain('$18,635.00')
@@ -145,6 +150,10 @@ describe('LienOwnerRecordsModal', () => {
     const sent = (io.saved[3]!.file as OwnerRecordsFile).sent!
     expect(sent).toMatchObject({ by: 'Taunya', how: 'mail', total: 18635, jobIds: ['j273', 'j881'] })
     expect(screen.getByTestId('owner-records-foot').textContent).toMatch(/^Sent Oct \d+, 2026 by Taunya\. Mailed\.$/)
+    // The packet as it stood is filed with the send, pointing at the request's row.
+    await waitFor(() => expect(io.filed).toHaveLength(1))
+    expect(io.filed[0]).toMatchObject({ kind: 'owner_records_packet', how: 'mail', title: 'Records for 9703 Lenox Hl, San Antonio, TX', recipientName: 'Khan Umar & Bangash Shazmeena', jobIds: ['j273', 'j881'], customerId: 'c1', source: { table: 'lien_owner_record_requests', id: 'row-1' } })
+    expect(io.filed[0]!.html).toContain('Statement for 9703 Lenox Hl, San Antonio, TX')
   })
 
   it('a file with everything but the acknowledgment still cannot be sent', async () => {
@@ -176,6 +185,11 @@ describe('LienOwnerRecordsModal', () => {
     fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Print it' }))
     await waitFor(() => expect(io.printed).toHaveLength(2))
     expect(io.printed[1]).toContain('Acknowledgment of a records request')
+    // A print counts as a send: each page is filed as it was printed.
+    expect(io.filed.map((f) => [f.kind, f.how, f.title])).toEqual([
+      ['owner_records_packet', 'print', 'Records for 9703 Lenox Hl, San Antonio, TX'],
+      ['owner_records_acknowledgment', 'print', 'Acknowledgment for 9703 Lenox Hl, San Antonio, TX'],
+    ])
   })
 
   it('when saving is not ready the packet still reads and prints, and the window says the checks cannot be filed', async () => {

@@ -6,15 +6,19 @@ import { formatAiaMoney } from '../../lib/aiaG702G703Preview'
 import { type SavedPayApplication, carryMismatch } from '../../lib/aiaPayApplications'
 import { loadPayApplications } from '../../lib/aiaPayApplicationsIo'
 import { jobDocumentFolderLinks } from '../../lib/jobs/jobDocumentsTab'
+import { canReadSentCopies } from '../../lib/sent/sentCopies'
+import { useAuth } from '../../hooks/useAuth'
 import AiaG702G703Modal from './AiaG702G703Modal'
 import { JobDocumentsBills } from './JobDocumentsBills'
 import { JobDocumentsContract } from './JobDocumentsContract'
 import { JobDocumentsLienPaper } from './JobDocumentsLienPaper'
+import { JobDocumentsSent } from './JobDocumentsSent'
 import { JobDocumentsTestReports } from './JobDocumentsTestReports'
 
 /**
  * The job window's Documents tab (v2.4491): the job's pay applications, each with the link to the
  * file that was sent, then its bills, contract, test reports and lien paper (v2.4495, v2.4496),
+ * then what was sent from the job, each with the copy as it went (v2.4554, the office only),
  * then the job's folders. A row
  * opens the AIA G702-G703 window on that application; the window sits above the job window and
  * the list reloads when it closes.
@@ -30,6 +34,7 @@ const heading: CSSProperties = { margin: 0, fontSize: '0.9375rem', fontWeight: 7
 const quietButton: CSSProperties = { padding: '0.3rem 0.7rem', fontSize: '0.8125rem', borderRadius: 4, cursor: 'pointer', border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)' }
 
 export function JobWindowDocumentsTab({ job, onOverlayOpenChange }: { job: JobWithDetails; onOverlayOpenChange?: (open: boolean) => void }) {
+  const { role } = useAuth()
   const [apps, setApps] = useState<SavedPayApplication[] | null>(null)
   // null = closed; 'new' = a new application; a number = that saved application.
   const [aia, setAia] = useState<number | 'new' | null>(null)
@@ -147,6 +152,8 @@ export function JobWindowDocumentsTab({ job, onOverlayOpenChange }: { job: JobWi
       <JobDocumentsTestReports job={job} />
 
       <JobDocumentsLienPaper job={job} onOverlayOpenChange={onOverlayOpenChange} />
+
+      {canReadSentCopies(role) ? <JobDocumentsSent job={job} /> : null}
 
       <section aria-labelledby="job-documents-folders" style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
         <h3 id="job-documents-folders" style={heading}>

@@ -8,7 +8,7 @@ covers:
   - src/components/jobs/LienDeskModal.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-10-02
+last_updated: 2026-10-05
 ---
 
 > **Line numbers are as of `a05cef4c4`** (the `mapped_at` commit) and drift with every edit — search the symbol named beside each range. Regenerate the fact sheet with `npm run map -- src/components/jobs/LienDeskModal.tsx`. The file is the busiest component this week (37 commits in 90 days; its 29 since 2026-09-18 lead every component — over 90 days `JobsStagesTab.tsx` has more); re-check ranges before any move.
@@ -23,7 +23,7 @@ last_updated: 2026-10-02
 >
 > **v2.4531 (the job number is a door):** a Calendar row's number is its own button (`JobNumber` in `LienDeskCalendarTab.tsx`, `onOpenJobWindow`) that opens the job — `LienDeskModal`'s `onOpenJob` → `jobDetailModal.openJobDetail` in `JobsStagesTab` — over the desk (the Job window is z 1010, the desk 780). The rest of the cell still opens the Lien window: the cell's `div` takes the click, the name is its keyboard button, and the number stops the click from reaching it. Desktop axis and phone list alike.
 >
-> **v2.4544 (records for an owner):** the title bar's *An owner asked for records ›* (`onOpenOwnerRecords`) opens `LienOwnerRecordsModal`, mounted in `JobsStagesTab` beside the desk (z 800, the desk stays open behind it). Kernels: `ownerRecords.ts` (the packet, the numbers check, the four steps, what blocks a send), `ownerRecordsDocs.ts` (the cover note, the statement, the acknowledgment — draft wording), `ownerRecordsDesk.ts` (the properties and each job's notice claim, from `LienDeskData`); IO `ownerRecordsIo.ts` over `jobs_ledger` / `jobs_ledger_invoices` / `jobs_ledger_payments` and the new `lien_owner_record_requests`. Glossary: *Records for an owner*.
+> **v2.4544 (records for an owner):** the title bar's *An owner asked for records ›* (`onOpenOwnerRecords`) opens `LienOwnerRecordsModal`, mounted in `JobsStagesTab` beside the desk (z 800, the desk stays open behind it). Kernels: `ownerRecords.ts` (the packet, the numbers check, the four steps, what blocks a send), `ownerRecordsDocs.ts` (the cover note, the statement, the acknowledgment — draft wording), `ownerRecordsDesk.ts` (the properties and each job's notice claim, from `LienDeskData`); IO `ownerRecordsIo.ts` over `jobs_ledger` / `jobs_ledger_invoices` / `jobs_ledger_payments` and the new `lien_owner_record_requests`. Since v2.4554 its two prints and *Record it as sent* each file the page as it went (`printAndFile`, `fileSentCopy` — [`SENT_COPIES.md`](./SENT_COPIES.md)), and a recorded time carries its year. Glossary: *Records for an owner*.
 >
 > **v2.4541 (undo an approved run):** *Approve all N and send the run* in `GcOnNoticeModal` keeps a receipt of what the click changed (`GcRunReceipt`, `lib/jobs/gcNoticeRunUndo.ts`): the desk items, the standing rule it moved, the payment-terms columns as they were, the owner-share rows it turned on (`ownerShareTurnedOn`), the Legal desk matter it saved. `LienDeskRunModal` takes `undo` and draws a strip under its title; `undoRun` confirms with `gcRunUndoMessage`, then `undoLienDeskApprovals` (approved / awaiting → drafted, printed stamp cleared, `pulled_back_*` stamped), the rule and the terms put back, `unshareBillsTurnedOn`. A Legal desk matter is not removed. The receipt lives in the window's state: gone when the window closes or the run is recorded.
 >

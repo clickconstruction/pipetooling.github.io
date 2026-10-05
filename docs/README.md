@@ -89,6 +89,7 @@ Start at [`PAGE_DECOMPOSITION_PLAYBOOK.md`](./PAGE_DECOMPOSITION_PLAYBOOK.md) â€
 | [`CALENDAR_PAGE_ARCHITECTURE.md`](./CALENDAR_PAGE_ARCHITECTURE.md) | `src/pages/Calendar.tsx` |
 | [`ESTIMATES_TABS_ARCHITECTURE.md`](./ESTIMATES_TABS_ARCHITECTURE.md) | `src/pages/Estimates.tsx` (EstimateList + EstimateDetail) |
 | [`DOCUMENTS_PAGE_ARCHITECTURE.md`](./DOCUMENTS_PAGE_ARCHITECTURE.md) | `src/pages/Documents.tsx` (the four ledgers + Search) |
+| [`SENT_COPIES.md`](./SENT_COPIES.md) | Sent copies: the record of every send with the copy as it went (`sent_documents`, `src/lib/sent/`), the plan and what is wired |
 | [`WORKFLOW_PAGE_ARCHITECTURE.md`](./WORKFLOW_PAGE_ARCHITECTURE.md) | `src/pages/Workflow.tsx` (region-based) |
 | [`PROJECTS_FORECAST_TABS_ARCHITECTURE.md`](./PROJECTS_FORECAST_TABS_ARCHITECTURE.md) | `ProjectsForecastSpecificTab` + its stage modal + `ProjectsJobHistoryDayModal` |
 | [`MATERIALS_TABS_ARCHITECTURE.md`](./MATERIALS_TABS_ARCHITECTURE.md) | `src/pages/Materials.tsx` + `SupplyHousesTab` |
@@ -137,4 +138,4 @@ A plan's own status line (top of the file) is the one place its progress is reco
 - **Docs ship with features**: `recent-features/v2.NNNN.md` fragment + release note per PR, `migrations/<version>_<slug>.md` per migration, `EDGE_FUNCTIONS.md` section per function, help guide per user-facing flow (`../CLAUDE.md`).
 - Migration files cited in docs may live in `supabase/archive/migrations-pre-baseline/` â€” history was squash-baselined at `20250101000000_baseline.sql` (2026-06-04); "2027"-dated filenames there are typos from spring 2026.
 
-last_updated: 2026-09-28
+last_updated: 2026-10-05
