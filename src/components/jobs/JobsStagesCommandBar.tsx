@@ -26,7 +26,7 @@ export type JobsStagesCommandBarProps = {
   onOpenFollowups: () => void
   canSeeForecast: boolean
   onOpenForecast: () => void
-  /** Brings the hidden Jobs on a map card back (v2.4518). Null while the card is showing: no button. */
+  /** Brings the hidden Jobs on a map card back (v2.4518; right of the search box since v2.4522). Null while the card is showing: no button. */
   onShowMap: (() => void) | null
   query: string
   onQueryChange: (value: string) => void
@@ -192,33 +192,6 @@ export function JobsStagesCommandBar({
           Forecast
         </button>
       )}
-      {onShowMap ? (
-        <button
-          type="button"
-          onClick={onShowMap}
-          title="Show Jobs on a map"
-          aria-label="Show the map"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '0.35rem',
-            padding: '0.5rem 0.9rem',
-            background: 'var(--surface)',
-            color: 'var(--text-700)',
-            border: '1px solid var(--border-strong)',
-            borderRadius: 4,
-            cursor: 'pointer',
-            fontWeight: 600,
-            whiteSpace: 'nowrap',
-          }}
-        >
-          <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z" />
-            <circle cx="12" cy="10" r="2.4" />
-          </svg>
-          Map
-        </button>
-      ) : null}
       {/* Unified command bar (v2.1187): search + jump chip + GC filter + tools in one container. */}
       <div
         style={{
@@ -466,6 +439,37 @@ export function JobsStagesCommandBar({
         <span aria-hidden style={{ flexShrink: 0, width: 1, height: '1.25rem', background: 'var(--border)' }} />
         {toolsMenu}
       </div>
+      {/* v2.4522: the way back to a hidden map sits right of the search box, a box of its height. */}
+      {onShowMap ? (
+        <button
+          type="button"
+          onClick={onShowMap}
+          title="Show Jobs on a map"
+          aria-label="Show the map"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.35rem',
+            flexShrink: 0,
+            minHeight: '2.5rem',
+            padding: '0 0.9rem',
+            background: 'var(--surface)',
+            color: 'var(--text-700)',
+            border: '1px solid var(--border-strong)',
+            borderRadius: 10,
+            boxSizing: 'border-box',
+            cursor: 'pointer',
+            fontWeight: 600,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z" />
+            <circle cx="12" cy="10" r="2.4" />
+          </svg>
+          Map
+        </button>
+      ) : null}
       </div>
     </div>
   )
