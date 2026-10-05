@@ -341,7 +341,7 @@ they were written in. The portal does not translate them.
 | Due {date}, 1 day left. | Vence el {date}, falta 1 día. |
 | Due {date}, {n} days left. | Vence el {date}, faltan {n} días. |
 | your quote {amount} | su cotización {amount} |
-| your day passed | ya pasó su fecha |
+| late: you said {date} | atrasado: dijo el {date} |
 | no quote yet | sin cotización todavía |
 | your quote ran out | su cotización venció |
 | plans changed | cambiaron los planos |

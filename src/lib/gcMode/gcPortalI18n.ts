@@ -207,7 +207,7 @@ const S = {
   dueIn1: { en: 'Due {date}, 1 day left.', es: 'Vence el {date}, falta 1 día.' },
   dueInN: { en: 'Due {date}, {n} days left.', es: 'Vence el {date}, faltan {n} días.' },
   chipNumber: { en: 'your quote {amount}', es: 'su cotización {amount}' },
-  chipDayPassed: { en: 'your day passed', es: 'ya pasó su fecha' },
+  chipDayPassed: { en: 'late: you said {date}', es: 'atrasado: dijo el {date}' },
   chipNoNumber: { en: 'no quote yet', es: 'sin cotización todavía' },
   chipRanOut: { en: 'your quote ran out', es: 'su cotización venció' },
   chipPlansChanged: { en: 'plans changed', es: 'cambiaron los planos' },
