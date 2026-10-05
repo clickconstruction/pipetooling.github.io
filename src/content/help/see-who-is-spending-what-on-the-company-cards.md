@@ -41,11 +41,13 @@ Press the arrow beside a name. The row opens to the person's jobs. Press a job t
 
 Under the jobs you see the person's supply house invoices and the charges not on a job yet. Press {{button:outline|See the charges}} to list them.
 
+On a phone, each person is a card. Press {{button:outline|Show the details}} on the card. The card opens to the jobs and the charges not on a job yet.
+
 A line under the person says when a charge counts only because the card is theirs. Put a person on it in Banking to change that.
 
 ## Put a charge on a job
 
-1. Press {{button:outline|See the charges}} under a person.
+1. Press {{button:outline|See the charges}} under a person. On a phone, open the person's card.
 2. Press {{button:outline|Put on a job}} beside a charge.
 3. Pick the job in the window that opens. It is the same window as [Team purchases](/help/sort-the-teams-card-purchases).
 4. Save. The page loads again and the charge moves to **On jobs**.

@@ -202,10 +202,77 @@ export default function PeopleSpendingTab({ canSeePayroll }: Props) {
   const cardLabel = (l: SpendingLooseCharge) =>
     l.cardNickname ?? (l.debitCardId ? nicknameByDebitCard[l.debitCardId] ?? `card ${formatMercuryDebitCardIdCompact(l.debitCardId)}` : 'no card on file')
 
+  // The write's own check, in words a person can act on: the people who see the holder in Team
+  // purchases are exactly the people `staff_can_view_user_for_tally_followup` admits.
   const whoCannotSort = (l: SpendingLooseCharge) =>
     l.beforeSortingBegan
       ? `Bought before sorting began on ${data?.sortingFloorYmd ? ymdLabel(data.sortingFloorYmd) : 'the start date'}.`
-      : `A dev or someone who works with ${l.holderName ?? 'the card holder'} can put this on a job.`
+      : `Only someone who sees ${l.holderName ?? 'the card holder'} in Team purchases can put this on a job.`
+
+  type BreakdownLine = { key: string; label: ReactNode; cardSpend: number; fuel: number; onJobs: number; office?: number; payroll?: number; notOnJob?: number }
+
+  /** A person's lines under their row: each job, then the buckets that are not a job. */
+  function breakdownLines(r: SpendingRow): BreakdownLine[] {
+    const lines: BreakdownLine[] = r.jobs.map((j) => ({
+      key: `${r.who.key}:${j.jobId}`,
+      label: (
+        <button type="button" style={linkButtonStyle} onClick={() => jobDetail?.openJobDetail({ jobId: j.jobId })} title="Open the job">
+          {jobLabel(j.job)}
+        </button>
+      ),
+      cardSpend: j.spend,
+      fuel: j.fuel,
+      onJobs: j.spend,
+    }))
+    if (r.onSupplyInvoices.charges > 0) {
+      lines.push({ key: `${r.who.key}:invoices`, label: `On supply invoices, ${plural(r.onSupplyInvoices.charges, 'charge')}`, cardSpend: r.onSupplyInvoices.usd, fuel: r.onSupplyInvoices.fuel, onJobs: r.onSupplyInvoices.usd })
+    }
+    if (r.office.charges > 0) {
+      lines.push({ key: `${r.who.key}:office`, label: `Office, ${plural(r.office.charges, 'charge')}`, cardSpend: r.office.usd, fuel: r.office.fuel, onJobs: 0, office: r.office.usd })
+    }
+    if (canSeePayroll && r.payroll.charges > 0) {
+      lines.push({ key: `${r.who.key}:payroll`, label: `Payroll, ${plural(r.payroll.charges, 'charge')}`, cardSpend: r.payroll.usd, fuel: r.payroll.fuel, onJobs: 0, payroll: r.payroll.usd })
+    }
+    if (r.beforeSorting.charges > 0) {
+      lines.push({ key: `${r.who.key}:before`, label: `Before sorting began, ${plural(r.beforeSorting.charges, 'charge')}`, cardSpend: r.beforeSorting.usd, fuel: r.beforeSorting.fuel, onJobs: 0, notOnJob: 0 })
+    }
+    return lines
+  }
+
+  function byCardNote(r: SpendingRow): string | null {
+    if (r.byCardCharges === 0) return null
+    const one = r.byCardCharges === 1
+    return `${plural(r.byCardCharges, 'charge')} ${one ? 'counts' : 'count'} here because the card is theirs. Nobody has put a person on ${one ? 'it' : 'them'} in Banking.`
+  }
+
+  /** The charges with money on no job: the work, then the ones from before sorting began. */
+  function chargeList(r: SpendingRow) {
+    const list = [...r.looseCharges.filter((l) => !l.beforeSortingBegan), ...r.looseCharges.filter((l) => l.beforeSortingBegan)]
+    return (
+      <ul aria-label={`${r.who.name}: charges not on a job yet`} style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: '0.35rem' }}>
+        {list.map((l) => (
+          <li key={l.id} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '0.25rem 0.75rem', fontSize: '0.8rem' }}>
+            <span style={{ color: 'var(--text-muted)', minWidth: '3.2rem' }}>{dayFmt.format(new Date(l.postedAt))}</span>
+            <span style={{ fontWeight: 600 }}>{l.counterpartyName ?? 'Unknown store'}</span>
+            <span style={{ color: 'var(--text-muted)' }}>{cardLabel(l)}</span>
+            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{usd(l.notOnJobUsd)}</span>
+            {l.fuel && <span title="Fuel">⛽</span>}
+            {l.canSort ? (
+              <button type="button" style={smallButtonStyle} disabled={opening === l.id} onClick={() => void openAssign(l)}>
+                {opening === l.id ? 'Opening…' : 'Put on a job'}
+              </button>
+            ) : (
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{whoCannotSort(l)}</span>
+            )}
+          </li>
+        ))}
+      </ul>
+    )
+  }
+
+  function whoName(r: SpendingRow) {
+    return r.who.kind === 'person' ? <PersonNameDoor name={r.who.name} userId={r.who.userId} personId={r.who.personId} /> : <span>{r.who.name}</span>
+  }
 
   function valueCells(r: { cardSpend: number; fuel: number; onJobs: number; office: number; payroll: number; notOnJob: number; jobs: number | string }) {
     return (
@@ -236,7 +303,6 @@ export default function PeopleSpendingTab({ canSeePayroll }: Props) {
   function personRows(r: SpendingRow) {
     const open = openKey === r.who.key
     const looseNow = r.looseCharges.filter((l) => !l.beforeSortingBegan)
-    const looseBefore = r.looseCharges.filter((l) => l.beforeSortingBegan)
     const looseFuel = looseNow.filter((l) => l.fuel).reduce((s, l) => s + l.notOnJobUsd, 0)
     const chargesOpen = chargesOpenKey === r.who.key
     const rows: ReactNode[] = [
@@ -251,36 +317,13 @@ export default function PeopleSpendingTab({ canSeePayroll }: Props) {
           >
             {open ? '▾' : '▸'}
           </button>
-          {r.who.kind === 'person' ? (
-            <PersonNameDoor name={r.who.name} userId={r.who.userId} personId={r.who.personId} />
-          ) : (
-            <span>{r.who.name}</span>
-          )}
+          {whoName(r)}
         </td>
         {valueCells({ cardSpend: r.cardSpend, fuel: r.fuel, onJobs: r.onJobs, office: r.office.usd, payroll: r.payroll.usd, notOnJob: r.notOnJob, jobs: r.jobs.length || '—' })}
       </tr>,
     ]
     if (!open) return rows
-    for (const j of r.jobs) {
-      rows.push(
-        subRow(
-          `${r.who.key}:${j.jobId}`,
-          <button type="button" style={linkButtonStyle} onClick={() => jobDetail?.openJobDetail({ jobId: j.jobId })} title="Open the job">
-            {jobLabel(j.job)}
-          </button>,
-          { cardSpend: j.spend, fuel: j.fuel, onJobs: j.spend },
-        ),
-      )
-    }
-    if (r.onSupplyInvoices.charges > 0) {
-      rows.push(subRow(`${r.who.key}:invoices`, `On supply invoices, ${plural(r.onSupplyInvoices.charges, 'charge')}`, { cardSpend: r.onSupplyInvoices.usd, fuel: r.onSupplyInvoices.fuel, onJobs: r.onSupplyInvoices.usd }))
-    }
-    if (r.office.charges > 0) {
-      rows.push(subRow(`${r.who.key}:office`, `Office, ${plural(r.office.charges, 'charge')}`, { cardSpend: r.office.usd, fuel: r.office.fuel, onJobs: 0, office: r.office.usd }))
-    }
-    if (canSeePayroll && r.payroll.charges > 0) {
-      rows.push(subRow(`${r.who.key}:payroll`, `Payroll, ${plural(r.payroll.charges, 'charge')}`, { cardSpend: r.payroll.usd, fuel: r.payroll.fuel, onJobs: 0, payroll: r.payroll.usd }))
-    }
+    for (const line of breakdownLines(r)) rows.push(subRow(line.key, line.label, line))
     if (looseNow.length > 0) {
       rows.push(
         <tr key={`${r.who.key}:loose`} style={{ fontSize: '0.8rem', background: 'var(--bg-subtle)' }}>
@@ -294,14 +337,12 @@ export default function PeopleSpendingTab({ canSeePayroll }: Props) {
         </tr>,
       )
     }
-    if (looseBefore.length > 0) {
-      rows.push(subRow(`${r.who.key}:before`, `Before sorting began, ${plural(looseBefore.length, 'charge')}`, { cardSpend: r.beforeSorting.usd, fuel: r.beforeSorting.fuel, onJobs: 0, notOnJob: 0 }))
-    }
-    if (r.byCardCharges > 0) {
+    const note = byCardNote(r)
+    if (note) {
       rows.push(
         <tr key={`${r.who.key}:bycard`}>
           <td colSpan={columnCount} style={{ ...firstCell, paddingLeft: '1.9rem', fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'normal' }}>
-            {plural(r.byCardCharges, 'charge')} {r.byCardCharges === 1 ? 'counts' : 'count'} here because the card is theirs. Nobody has put a person on {r.byCardCharges === 1 ? 'it' : 'them'} in Banking.
+            {note}
           </td>
         </tr>,
       )
@@ -310,29 +351,69 @@ export default function PeopleSpendingTab({ canSeePayroll }: Props) {
       rows.push(
         <tr key={`${r.who.key}:list`}>
           <td colSpan={columnCount} style={{ ...firstCell, padding: '0.3rem 0.5rem 0.6rem 1.9rem', whiteSpace: 'normal' }}>
-            <ul aria-label={`${r.who.name}: charges not on a job yet`} style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: '0.3rem' }}>
-              {[...looseNow, ...looseBefore].map((l) => (
-                <li key={l.id} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '0.25rem 0.75rem', fontSize: '0.8rem' }}>
-                  <span style={{ color: 'var(--text-muted)', minWidth: '3.2rem' }}>{dayFmt.format(new Date(l.postedAt))}</span>
-                  <span style={{ fontWeight: 600 }}>{l.counterpartyName ?? 'Unknown store'}</span>
-                  <span style={{ color: 'var(--text-muted)' }}>{cardLabel(l)}</span>
-                  <span style={{ fontVariantNumeric: 'tabular-nums' }}>{usd(l.notOnJobUsd)}</span>
-                  {l.fuel && <span title="Fuel">⛽</span>}
-                  {l.canSort ? (
-                    <button type="button" style={smallButtonStyle} disabled={opening === l.id} onClick={() => void openAssign(l)}>
-                      {opening === l.id ? 'Opening…' : 'Put on a job'}
-                    </button>
-                  ) : (
-                    <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{whoCannotSort(l)}</span>
-                  )}
-                </li>
-              ))}
-            </ul>
+            {chargeList(r)}
           </td>
         </tr>,
       )
     }
     return rows
+  }
+
+  /** The phone's row: one card per person, everything on it readable without scrolling sideways. */
+  function personCard(r: SpendingRow) {
+    const open = openKey === r.who.key
+    const looseNow = r.looseCharges.filter((l) => !l.beforeSortingBegan)
+    const note = byCardNote(r)
+    return (
+      <li
+        key={r.who.key}
+        style={{ border: '1px solid var(--border)', borderRadius: 8, background: open ? 'var(--bg-blue-tint)' : 'var(--surface)', padding: '0.6rem 0.7rem', display: 'grid', gap: '0.4rem' }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem' }}>
+          <span style={{ fontWeight: 600, minWidth: 0 }}>{whoName(r)}</span>
+          <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{usd(r.cardSpend)}</span>
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.2rem 0.8rem', fontSize: '0.8rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+          <span style={{ color: r.fuel !== 0 ? 'var(--text-amber-700)' : undefined }}>⛽ {usd(r.fuel)}</span>
+          <span>On jobs {usd(r.onJobs)}</span>
+          {showOffice && r.office.usd !== 0 && <span>Office {usd(r.office.usd)}</span>}
+          {showPayroll && r.payroll.usd !== 0 && <span>Payroll {usd(r.payroll.usd)}</span>}
+          <span style={{ color: r.notOnJob !== 0 ? 'var(--text-amber-700)' : undefined, fontWeight: r.notOnJob !== 0 ? 600 : 400 }}>
+            {r.notOnJob !== 0 ? `Not on a job ${usd(r.notOnJob)}` : 'Nothing waiting'}
+          </span>
+          <span>{plural(r.jobs.length, 'job')}</span>
+        </div>
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-label={open ? `Hide ${r.who.name}` : `Show ${r.who.name}`}
+          onClick={() => setOpenKey(open ? null : r.who.key)}
+          style={{ ...smallButtonStyle, justifySelf: 'start' }}
+        >
+          {open ? 'Hide the details' : 'Show the details'}
+        </button>
+        {open && (
+          <div style={{ display: 'grid', gap: '0.35rem', fontSize: '0.8rem' }}>
+            {breakdownLines(r).map((line) => (
+              <div key={line.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.6rem' }}>
+                <span style={{ minWidth: 0 }}>{line.label}</span>
+                <span style={{ whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+                  {usd(line.cardSpend)}
+                  {line.fuel !== 0 && <span style={{ color: 'var(--text-amber-700)', marginLeft: '0.4rem' }}>⛽ {usd(line.fuel)}</span>}
+                </span>
+              </div>
+            ))}
+            {r.looseCharges.length > 0 && (
+              <>
+                <b style={{ marginTop: '0.2rem' }}>Not on a job yet, {plural(looseNow.length, 'charge')}</b>
+                {chargeList(r)}
+              </>
+            )}
+            {note && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{note}</span>}
+          </div>
+        )}
+      </li>
+    )
   }
 
   return (
@@ -393,6 +474,22 @@ export default function PeopleSpendingTab({ canSeePayroll }: Props) {
 
           {data.rows.length === 0 ? (
             <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>No card charges in this period.</p>
+          ) : narrow ? (
+            <ul aria-label="Card spend by person" style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: '0.5rem' }}>
+              {data.rows.map(personCard)}
+              <li style={{ border: '1px solid var(--border-strong)', borderRadius: 8, background: 'var(--bg-subtle)', padding: '0.6rem 0.7rem', display: 'grid', gap: '0.3rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontWeight: 700 }}>
+                  <span>Everyone</span>
+                  <span style={{ fontVariantNumeric: 'tabular-nums' }}>{usd(totals.cardSpend)}</span>
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.2rem 0.8rem', fontSize: '0.8rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+                  <span style={{ color: 'var(--text-amber-700)' }}>⛽ {usd(totals.fuel)}</span>
+                  <span>On jobs {usd(totals.onJobs)}</span>
+                  <span>Not on a job {usd(totals.notOnJob)}</span>
+                  <span>{plural(totals.jobs, 'job')}</span>
+                </div>
+              </li>
+            </ul>
           ) : (
             <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 8 }}>
               <table aria-label="Card spend by person" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
@@ -428,7 +525,7 @@ export default function PeopleSpendingTab({ canSeePayroll }: Props) {
             </div>
           )}
           <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-            Press the arrow beside a name to see their jobs and what is not on a job yet. Refunds come off. Money moved between our own accounts is not spend.
+            {narrow ? 'Press Show the details on a person' : 'Press the arrow beside a name'} to see their jobs and what is not on a job yet. Refunds come off. Money moved between our own accounts is not spend.
           </p>
         </>
       )}

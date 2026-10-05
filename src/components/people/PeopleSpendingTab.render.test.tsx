@@ -17,6 +17,7 @@ const H = vi.hoisted(() => ({
   users: [] as Row[],
   tx: null as Row | null,
   assignProps: null as Record<string, unknown> | null,
+  narrow: false,
 }))
 
 vi.mock('../../lib/supabase', () => {
@@ -57,6 +58,8 @@ vi.mock('../../hooks/useAuth', async () => {
   const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')
   return useAuthModuleMock({ role: 'assistant' })
 })
+
+vi.mock('../../hooks/useNarrowViewport640', () => ({ useNarrowViewport640: () => H.narrow }))
 
 vi.mock('../MercuryTransactionAllocationsModal', () => ({
   MercuryTransactionAllocationsModal: (props: Record<string, unknown>) => {
@@ -115,6 +118,7 @@ describe('PeopleSpendingTab', () => {
     H.rpcError = null
     H.tx = { id: 'tx-2', amount: -45, posted_at: POSTED, counterparty_name: 'Shell', mercury_account_id: 'acct', raw: null }
     H.assignProps = null
+    H.narrow = false
   })
   afterEach(() => cleanup())
 
@@ -156,8 +160,23 @@ describe('PeopleSpendingTab', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'See the charges' }))
     const list = await screen.findByRole('list', { name: 'Jorge L.: charges not on a job yet' })
     expect(within(list).queryByRole('button', { name: 'Put on a job' })).toBeNull()
-    expect(list.textContent).toContain('A dev or someone who works with Jorge L. can put this on a job.')
+    expect(list.textContent).toContain('Only someone who sees Jorge L. in Team purchases can put this on a job.')
     expect(screen.getByText(/1 charge counts here because the card is theirs/)).toBeTruthy()
+  })
+
+  it('on a phone draws one card per person, no table, and opens a person to their charges with Put on a job', async () => {
+    H.narrow = true
+    await renderSettled(<PeopleSpendingTab canSeePayroll />, { loaded: () => screen.findByRole('list', { name: 'Card spend by person' }) })
+    expect(screen.queryByRole('table')).toBeNull()
+    const cards = within(screen.getByRole('list', { name: 'Card spend by person' })).getAllByRole('listitem')
+    expect(cards[0]?.textContent).toContain('Malachi R.')
+    expect(cards[0]?.textContent).toContain('$165.00')
+    expect(cards[0]?.textContent).toContain('Not on a job $45.00')
+    expect(cards[cards.length - 1]?.textContent).toContain('Everyone')
+    fireEvent.click(screen.getByRole('button', { name: 'Show Malachi R.' }))
+    const list = await screen.findByRole('list', { name: 'Malachi R.: charges not on a job yet' })
+    expect(within(list).getByRole('button', { name: 'Put on a job' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Main St remodel/ })).toBeTruthy()
   })
 
   it('says the read is not live yet when the database does not have it', async () => {
