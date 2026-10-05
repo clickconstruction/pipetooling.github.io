@@ -51,11 +51,13 @@ Field **900** · Office **250** · Bids **50** · Total **1,200** · Office shar
 
 ## See who made up a period
 
-Click a bar or a row. A list under the table shows each person's hours for that period. It starts on the newest finished period.
+Click a bar or a row. A list shows each person's hours for that period. It starts on the newest finished period.
 
-Each person has their field, office and bid hours, and any time not on a job. The list adds up to the row you clicked.
+On a wide window the list is beside the picture. On a narrow one it is under the table.
 
-Up to three buttons sit under the list.
+Each person has their field, office and bid hours, and any time not on a job. The list adds up to the row you clicked. Time under half an hour reads **<1**.
+
+Up to three buttons sit with the list.
 
 - {{button:outline|Show these days in the table below}} appears on the Week view. It moves the day table to that week.
 - {{button:outline-amber|Approve waiting hours}} appears when the period has hours waiting. It opens the Hours approvals queue.

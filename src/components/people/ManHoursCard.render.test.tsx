@@ -140,6 +140,31 @@ describe('ManHoursCard', () => {
     expect(onShowWeek).toHaveBeenCalledWith('2026-09-13')
   })
 
+  it('stands the who list beside the picture on a wide card, and under the table on a narrow one', async () => {
+    const position = async (width: number) => {
+      const rect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({ width } as DOMRect)
+      const { unmount } = renderWithProviders(<ManHoursCard officeJobLedgerId={OFFICE} officeJobLoading={false} />)
+      const who = await screen.findByRole('region', { name: 'Who made up September 2026' })
+      const table = screen.getByText('October 2026').closest('table') as HTMLElement
+      const result = { layout: who.getAttribute('data-layout'), beforeTable: Boolean(who.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING) }
+      unmount()
+      rect.mockRestore()
+      return result
+    }
+    expect(await position(1200)).toEqual({ layout: 'side', beforeTable: true })
+    expect(await position(700)).toEqual({ layout: 'below', beforeTable: false })
+  })
+
+  it('drops a row’s chips under its name on a phone-width card', async () => {
+    const rect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({ width: 359 } as DOMRect)
+    renderWithProviders(<ManHoursCard officeJobLedgerId={OFFICE} officeJobLoading={false} />)
+    const chip = await screen.findByText('so far')
+    // The chips sit in their own block inside the pinned name cell.
+    expect(chip.parentElement?.tagName).toBe('DIV')
+    expect((chip.closest('td') as HTMLElement).style.position).toBe('sticky')
+    rect.mockRestore()
+  })
+
   it('reports a failed load and loads again on Try again', async () => {
     H.load.mockImplementationOnce(async () => {
       throw new Error('network down')

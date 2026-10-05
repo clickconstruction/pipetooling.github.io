@@ -3,6 +3,7 @@ import { buildOtherJobsLaborByDay, buildOverheadDailyLabor } from '../overheadDa
 import {
   buildManHoursEntries,
   buildManHoursPeriods,
+  formatManHours,
   manHoursDayLabel,
   manHoursPeriodBounds,
   manHoursPeriodLabel,
@@ -222,6 +223,15 @@ describe('the card against the Overhead day table', () => {
     expect(week?.fieldHours).toBeCloseTo(dayTableField)
     expect(week?.unassignedHours).toBeCloseTo(5)
     expect(week?.pendingHours).toBeCloseTo(7.5)
+  })
+})
+
+describe('formatManHours', () => {
+  it('prints whole hours, "<1" for time under half an hour, and a dash for none', () => {
+    expect(formatManHours(1434.6)).toBe('1,435')
+    expect(formatManHours(0.5)).toBe('1')
+    expect(formatManHours(0.2)).toBe('<1')
+    expect(formatManHours(0)).toBe('—')
   })
 })
 
