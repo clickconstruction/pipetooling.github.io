@@ -1,0 +1,953 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>body{margin:0}[hidden]{display:none!important}img{max-width:100%}</style>
+</head>
+<body>
+<title>Procure Step Redraw</title>
+<style>
+/* Layout: a plain working page. The plan as a two-column list, then the two logs under one sticky switch, then the second look. The logs are drawn in the app's own look so the comparison is fair. */
+:root {
+  --bg: #f1f3f6; --surface: #ffffff; --subtle: #f7f8fa; --sunk: #eef0f4;
+  --ink: #111827; --base: #374151; --muted: #6b7280; --faint: #9ca3af;
+  --line: #e5e7eb; --line-strong: #cbd5e1;
+  --blue: #2563eb; --blue-ink: #1d4ed8; --blue-tint: #eff6ff;
+  --green: #15803d; --green-tint: #dcfce7;
+  --amber: #b45309; --amber-tint: #fffbeb; --amber-wash: #fef3c7; --amber-line: #f5d27a;
+  --red: #b91c1c; --red-tint: #fee2e2;
+  --on-blue: #ffffff;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, Roboto, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f1216; --surface: #181c22; --subtle: #1e232a; --sunk: #232933;
+  --ink: #eceff4; --base: #c9cfd9; --muted: #98a1b0; --faint: #6b7483;
+  --line: #2a303a; --line-strong: #3c4553;
+  --blue: #3b76f0; --blue-ink: #93b7ff; --blue-tint: #16233b;
+  --green: #5fcf8a; --green-tint: #12301f;
+  --amber: #f0b35a; --amber-tint: #2a2313; --amber-wash: #3a2f14; --amber-line: #6b5318;
+  --red: #f38b8b; --red-tint: #3a1717;
+  --on-blue: #ffffff; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0f1216; --surface: #181c22; --subtle: #1e232a; --sunk: #232933;
+  --ink: #eceff4; --base: #c9cfd9; --muted: #98a1b0; --faint: #6b7483;
+  --line: #2a303a; --line-strong: #3c4553;
+  --blue: #3b76f0; --blue-ink: #93b7ff; --blue-tint: #16233b;
+  --green: #5fcf8a; --green-tint: #12301f;
+  --amber: #f0b35a; --amber-tint: #2a2313; --amber-wash: #3a2f14; --amber-line: #6b5318;
+  --red: #f38b8b; --red-tint: #3a1717;
+  --on-blue: #ffffff; color-scheme: dark }
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 14px/1.5 var(--sans); }
+.wrap { max-width: 1720px; margin: 0 auto; padding-inline: 20px; padding-block: 28px 72px; display: flex; flex-direction: column; gap: 30px; }
+button { font: inherit; color: inherit; }
+button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+/* ---------- the page around the logs ---------- */
+.top { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px 32px; flex-wrap: wrap; border-bottom: 2px solid var(--ink); padding-bottom: 14px; }
+.eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; }
+.lede { margin: 8px 0 0; color: var(--base); max-width: 68ch; }
+.stamp { font: 12px/1.6 var(--mono); color: var(--muted); text-align: right; }
+h2 { margin: 0 0 4px; font-size: 18px; text-wrap: balance; }
+.sec-lede { margin: 0 0 12px; color: var(--muted); max-width: 72ch; }
+.moves { display: grid; grid-template-columns: 2rem minmax(0, 1fr) minmax(0, 1fr); border: 1px solid var(--line); border-radius: 8px; background: var(--surface); overflow: hidden; }
+.moves > div { padding: 9px 12px; border-top: 1px solid var(--line); min-width: 0; }
+.moves > .h { border-top: none; background: var(--subtle); font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.moves .n { font: 600 12px/1.7 var(--mono); color: var(--muted); padding-right: 0; }
+.moves b { color: var(--ink); }
+.moves .to { border-left: 1px solid var(--line); }
+@media (max-width: 760px) {
+  .moves { grid-template-columns: 2rem minmax(0, 1fr); }
+  .moves > .h.to, .moves > .h.n { display: none; }
+  .moves .to { grid-column: 2; border-left: none; border-top: none; padding-top: 0; color: var(--blue-ink); }
+}
+
+.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; display: flex; gap: 10px 22px; flex-wrap: wrap; align-items: center; padding: 8px 12px; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+.bar .grp { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.bar .lab { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+.seg { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 6px; overflow: hidden; }
+.seg button { border: none; border-left: 1px solid var(--line-strong); background: var(--surface); padding: 5px 11px; font-size: 13px; cursor: pointer; white-space: nowrap; }
+.seg button:first-child { border-left: none; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--surface); font-weight: 600; }
+.bar .hint { font-size: 12px; color: var(--muted); }
+
+.compare { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+body[data-layout="side"] .compare { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.slot { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.slot-h { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.badge { font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; padding: 2px 9px; border-radius: 999px; }
+.badge.cur { background: var(--sunk); color: var(--base); }
+.badge.new { background: var(--blue-tint); color: var(--blue-ink); }
+.slot-h span.what { font-size: 12.5px; color: var(--muted); }
+.host { min-width: 0; overflow: hidden; border-radius: 10px; }
+body[data-layout="one"][data-show="cur"] #slot-new, body[data-layout="one"][data-show="new"] #slot-cur { display: none; }
+.example-note { font-size: 12.5px; color: var(--amber); background: var(--amber-tint); border: 1px solid var(--amber-line); border-radius: 6px; padding: 6px 10px; }
+
+.look { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.look section { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; min-width: 0; }
+.look h3 { margin: 0 0 8px; font-size: 14px; }
+.look ol, .look ul { margin: 0; padding-left: 1.2rem; display: flex; flex-direction: column; gap: 7px; color: var(--base); }
+.look li b { color: var(--ink); }
+
+/* ---------- the app, as drawn ---------- */
+.stage { background: var(--bg); padding: 2px; }
+.app { font-size: 13px; line-height: 1.45; color: var(--base); }
+.app .mut { color: var(--muted); font-size: 12px; }
+.app .faint { color: var(--faint); }
+.app a, .app .lnk { color: var(--blue-ink); text-decoration: underline; text-underline-offset: 2px; background: none; border: none; padding: 0; cursor: pointer; font-size: 12px; }
+.app .btn { padding: 5px 12px; background: var(--surface); color: var(--ink); border: 1px solid var(--line-strong); border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 500; white-space: nowrap; }
+.app .btn.pri { background: var(--blue); border-color: var(--blue); color: var(--on-blue); font-weight: 600; }
+.app .btn.blue { color: var(--blue-ink); font-weight: 600; }
+.app .card { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); padding: 10px 12px; display: flex; flex-direction: column; gap: 9px; }
+.app .rowx { display: flex; justify-content: space-between; align-items: center; gap: 8px 14px; flex-wrap: wrap; }
+.app table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.app .scroll { overflow-x: auto; }
+.app th { text-align: left; font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); padding: 6px 7px; border-bottom: 1px solid var(--line); font-weight: 600; white-space: nowrap; }
+.app td { padding: 6px 7px; border-bottom: 1px solid var(--sunk); vertical-align: middle; }
+.app td.tk { width: 28px; text-align: center; }
+.app td.num, .app th.num { text-align: center; font-weight: 600; white-space: nowrap; }
+.app td.nw { white-space: nowrap; }
+.app .tagc { font-weight: 700; color: var(--ink); margin-right: 7px; white-space: nowrap; }
+.app .head { font-weight: 600; color: var(--ink); }
+.app .words { color: var(--muted); font-size: 12.5px; }
+.app .subl { display: block; color: var(--muted); font-size: 12px; }
+.app tr.oo td { opacity: .72; }
+.app .lens { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 6px; overflow: hidden; }
+.app .lens button { padding: 5px 13px; min-height: 34px; border: none; border-left: 1px solid var(--line-strong); background: var(--surface); font-size: 13px; cursor: pointer; }
+.app .lens button:first-child { border-left: none; }
+.app .lens button[aria-pressed="true"] { background: var(--blue); color: var(--on-blue); font-weight: 700; }
+.app .editor td { background: var(--blue-tint); padding: 9px 10px 10px 36px; }
+.app .ed { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: flex-start; }
+.app .ed label { display: flex; flex-direction: column; gap: 3px; font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+.app .ed input { font: 13px var(--sans); padding: 3px 6px; border: 1px solid var(--line-strong); border-radius: 4px; background: var(--surface); color: var(--ink); width: 5.2rem; }
+.app .ed .wide input { width: 16rem; max-width: 100%; }
+.app .ed .facts { font-size: 12.5px; font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--base); }
+
+/* current */
+.cur .outer { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+.cur .blockers { background: var(--amber-tint); border: 1px solid var(--amber-line); border-radius: 8px; padding: 8px 12px; display: flex; flex-direction: column; }
+.cur .blockers > b { color: var(--ink); padding-bottom: 5px; }
+.cur .bl { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 5px 0; border-top: 1px solid var(--amber-line); }
+.cur .bl .lnk { font-size: 13px; font-weight: 700; }
+.cur tr.sec td { background: var(--subtle); }
+.cur tr.sec b { color: var(--ink); }
+.cur tr.amber td { background: var(--amber-wash); }
+.cur .fold { display: flex; align-items: center; gap: 8px; padding-left: 19px; }
+.cur .fold button { flex: 1; display: flex; align-items: baseline; gap: 8px; background: none; border: none; padding: 2px 0; cursor: pointer; text-align: left; }
+.cur .fold button span:last-child { margin-left: auto; }
+.cur .stat { width: 216px; min-width: 200px; }
+.cur .stat button { display: block; background: none; border: none; padding: 0; text-align: left; cursor: pointer; font-size: 13px; }
+.cur .stat .t { display: block; font-weight: 600; }
+.cur .t.done { color: var(--green); } .cur .t.late { color: var(--red); } .cur .t.ordered { color: var(--ink); } .cur .t.act { color: var(--blue-ink); } .cur .t.back { color: var(--amber); }
+.cur .oodiv td { font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); padding-left: 36px; }
+.cur .actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+
+/* redraw */
+.rd .head-row { display: flex; justify-content: space-between; align-items: center; gap: 8px 16px; flex-wrap: wrap; }
+.rd .title { font-size: 15px; font-weight: 700; color: var(--ink); }
+.rd .tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; position: relative; }
+.rd .menu { position: absolute; right: 0; top: calc(100% + 4px); background: var(--surface); border: 1px solid var(--line-strong); border-radius: 6px; box-shadow: 0 6px 18px rgba(0,0,0,.14); padding: 4px; display: flex; flex-direction: column; min-width: 13rem; z-index: 5; }
+.rd .menu button { text-align: left; background: none; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 13px; }
+.rd .menu button:hover { background: var(--subtle); }
+.rd .pipe { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--line-strong); border-radius: 8px; overflow: hidden; }
+.rd .step { display: flex; flex-direction: column; gap: 1px; align-items: flex-start; text-align: left; padding: 8px 12px 9px; background: var(--surface); border: none; border-left: 1px solid var(--line); cursor: pointer; position: relative; min-width: 0; }
+.rd .step:first-child { border-left: none; }
+.rd .step .lab { font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+.rd .step .n { font-size: 22px; font-weight: 700; line-height: 1.15; color: var(--ink); font-variant-numeric: tabular-nums; }
+.rd .step .note { font-size: 12px; color: var(--muted); min-height: 1.45em; }
+.rd .step.zero .n { color: var(--faint); font-weight: 500; }
+.rd .step[aria-pressed="true"] { background: var(--blue-tint); box-shadow: inset 0 -3px 0 var(--blue); }
+.rd .step .note.warn { color: var(--red); font-weight: 600; } .rd .step .note.back { color: var(--amber); font-weight: 600; } .rd .step .note.go { color: var(--blue-ink); font-weight: 600; }
+.rd .step:not(:first-child)::before { content: ""; position: absolute; left: -6px; top: 50%; width: 10px; height: 10px; background: var(--surface); border-top: 1px solid var(--line-strong); border-right: 1px solid var(--line-strong); transform: translateY(-50%) rotate(45deg); }
+.rd .share { display: flex; height: 6px; border-radius: 3px; overflow: hidden; background: var(--sunk); }
+.rd .share i { display: block; height: 100%; }
+.rd .c-gc { background: var(--line-strong); } .rd .c-ready { background: var(--blue); opacity: .45; } .rd .c-order { background: var(--blue); } .rd .c-site { background: var(--green); }
+.rd .big { display: flex; height: 22px; border-radius: 5px; overflow: hidden; background: var(--sunk); }
+.rd .big i { display: block; height: 100%; min-width: 3px; }
+.rd .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.rd .chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 999px; border: 1px solid var(--line-strong); background: var(--surface); font-size: 12.5px; font-weight: 600; cursor: pointer; font-variant-numeric: tabular-nums; }
+.rd .chip i { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
+.rd .chip[aria-pressed="true"] { background: var(--blue); border-color: var(--blue); color: var(--on-blue); }
+.rd .next { font-size: 13.5px; color: var(--ink); }
+.rd .fix { display: flex; align-items: center; gap: 6px 14px; flex-wrap: wrap; padding: 6px 10px; border-radius: 6px; background: var(--subtle); border-left: 3px solid var(--line-strong); font-size: 13px; }
+.rd .fix.hot { background: var(--amber-tint); border-left-color: var(--amber); }
+.rd .fix > b { color: var(--ink); }
+.rd .fix .it { display: inline-flex; align-items: baseline; gap: 6px; white-space: nowrap; }
+.rd .fix .it .lnk { font-size: 13px; font-weight: 700; }
+.rd .set { padding: 1px 9px; border-radius: 4px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--blue-ink); font-weight: 600; font-size: 12.5px; cursor: pointer; }
+.rd .setter { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 7px 10px; border: 1px solid var(--blue); background: var(--blue-tint); border-radius: 6px; font-size: 13px; }
+.rd .setter input { font: 13px var(--sans); padding: 3px 6px; width: 5rem; border: 1px solid var(--line-strong); border-radius: 4px; background: var(--surface); color: var(--ink); }
+.rd .viewrow { display: flex; justify-content: space-between; align-items: center; gap: 8px 14px; flex-wrap: wrap; }
+.rd .said { font-size: 12px; color: var(--muted); }
+.rd tr.sec td { background: var(--subtle); padding: 0; }
+.rd .sech { display: flex; align-items: center; gap: 8px; width: 100%; padding: 7px 7px; }
+.rd .sech button.tg { display: flex; align-items: baseline; gap: 8px; flex: 1; min-width: 0; background: none; border: none; padding: 0; cursor: pointer; text-align: left; flex-wrap: wrap; }
+.rd .car { display: inline-block; width: 12px; color: var(--muted); font-size: 11px; flex: none; }
+.rd .sech b { color: var(--ink); font-size: 13.5px; }
+.rd .cnt { font-size: 11.5px; font-weight: 700; background: var(--sunk); color: var(--base); border-radius: 999px; padding: 0 8px; font-variant-numeric: tabular-nums; }
+.rd .cnt.go { background: var(--blue-tint); color: var(--blue-ink); } .rd .cnt.back { background: var(--amber-wash); color: var(--amber); } .rd .cnt.done { background: var(--green-tint); color: var(--green); } .rd .cnt.late { background: var(--red-tint); color: var(--red); }
+.rd tr.fx td { padding: 0; }
+.rd .fxh { display: flex; align-items: center; gap: 8px; padding: 6px 7px 6px 26px; }
+.rd .fxh button.tg { display: flex; align-items: baseline; gap: 8px; flex: 1; min-width: 0; flex-wrap: wrap; background: none; border: none; padding: 0; cursor: pointer; text-align: left; }
+.rd .warnp { font-size: 11.5px; font-weight: 700; color: var(--amber); background: var(--amber-wash); border-radius: 999px; padding: 0 8px; }
+.rd td.part.in { padding-left: 46px; }
+.rd .stg { font-size: 12px; white-space: nowrap; }
+.rd .stg.none { color: var(--amber); }
+.rd .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--amber); margin-right: 6px; vertical-align: middle; }
+.rd .prog { min-width: 300px; }
+.rd .pline { display: flex; align-items: center; gap: 10px; background: none; border: none; padding: 0; cursor: pointer; text-align: left; width: 100%; }
+.rd .trk { display: inline-flex; align-items: center; flex: none; }
+.rd .trk i { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--line-strong); background: var(--surface); display: block; position: relative; }
+.rd .trk i + i { margin-left: 16px; }
+.rd .trk i + i::before { content: ""; position: absolute; right: 100%; top: 50%; width: 16px; height: 2px; margin-top: -1px; margin-right: 1.5px; background: var(--line-strong); }
+.rd .trk i.on { background: var(--blue); border-color: var(--blue); } .rd .trk i.on::before { background: var(--blue); }
+.rd .trk.done i.on { background: var(--green); border-color: var(--green); } .rd .trk.done i.on::before { background: var(--green); }
+.rd .trk.late i.nextup { border-color: var(--red); } .rd .trk.late i.nextup::before { background: var(--red); }
+.rd .trk.back i:first-child { border-color: var(--red); background: var(--red-tint); }
+.rd .ptxt { min-width: 0; }
+.rd .ptxt .t { font-weight: 600; white-space: nowrap; }
+.rd .ptxt .s { color: var(--muted); font-size: 12px; margin-left: 6px; }
+.rd .t.done { color: var(--green); } .rd .t.late { color: var(--red); } .rd .t.ordered { color: var(--ink); } .rd .t.act { color: var(--blue-ink); } .rd .t.soon { color: var(--amber); } .rd .t.wait { color: var(--muted); font-weight: 400; }
+.rd .pill { display: inline-block; font-size: 11.5px; font-weight: 700; border-radius: 999px; padding: 1px 9px; background: var(--red-tint); color: var(--red); white-space: nowrap; }
+.rd .door { margin-left: 10px; white-space: nowrap; }
+.rd .key { display: flex; align-items: center; gap: 8px 16px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+.rd .key .k { display: inline-flex; align-items: center; gap: 6px; }
+.rd .oodiv td { font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); padding-left: 46px; }
+.rd .onlybar { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; padding: 5px 10px; border-radius: 6px; background: var(--blue-tint); color: var(--ink); }
+/* third draft: orders on a calendar */
+.rd .chev { flex: none; color: var(--muted); transition: transform .12s; align-self: center; }
+.rd [aria-expanded="true"] > .chev { transform: rotate(90deg); }
+.rd .t3 tr.sec td { padding: 7px; }
+.rd .t3 .tg { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; width: 100%; min-width: 0; background: none; border: none; padding: 0; cursor: pointer; text-align: left; }
+.rd .t3 tr.sec .tg b { color: var(--ink); font-size: 13.5px; }
+.rd .t3 tr.grp td { padding-top: 7px; padding-bottom: 7px; }
+.rd .t3 tr.grp .tg { padding-left: 4px; }
+.rd .t3 tr.grp .tg b { color: var(--ink); }
+.rd .t3 .soonb { color: var(--amber) !important; }
+.rd .t3 td.part.in3 { padding-left: 32px; }
+.rd .t3 td.st3 { white-space: nowrap; width: 1%; }
+.rd .t3 td.st3.wide { width: auto; padding-left: 14px; }
+.rd .t3 td.part { min-width: 240px; }
+.rd .t3 td.st3 > * + * { margin-left: 10px; }
+.rd .t3 .q { color: var(--faint); text-decoration: none; }
+.rd .t3 .note3 { color: var(--ink); font-weight: 600; }
+.rd .btn.sm { padding: 2px 10px; font-size: 12.5px; }
+.rd .newc { font-size: 11px; font-weight: 700; color: var(--blue-ink); background: var(--blue-tint); border-radius: 999px; padding: 0 7px; }
+.rd td.tlc, .rd th.axh { padding-left: 14px; padding-right: 14px; width: 34%; min-width: 300px; background-image: linear-gradient(var(--blue), var(--blue)), linear-gradient(var(--line-strong), var(--line-strong)), linear-gradient(var(--line-strong), var(--line-strong)), linear-gradient(var(--line-strong), var(--line-strong)); background-repeat: no-repeat; background-size: 1px 100%; background-origin: content-box; background-position: var(--pt, -20px) 0, var(--pR, -20px) 0, var(--pT, -20px) 0, var(--pS, -20px) 0; }
+.rd td.tlc { padding-top: 0; padding-bottom: 0; }
+.rd .tl { position: relative; height: 26px; }
+.rd .tl i, .rd .key i { position: absolute; display: block; top: 50%; }
+.rd .dm { width: 10px; height: 10px; margin: -5px 0 0 -5px; transform: rotate(45deg); border-radius: 2px; background: var(--blue); border: 1.5px solid var(--blue); z-index: 2; }
+.rd .dm.soon { background: var(--amber); border-color: var(--amber); }
+.rd .dm.ask { background: var(--surface); border-color: var(--muted); }
+.rd .br { height: 8px; margin-top: -4px; border-radius: 4px; background: var(--blue); }
+.rd .br.haslate { border-radius: 4px 0 0 4px; }
+.rd .br.late { background: var(--red); border-radius: 0 4px 4px 0; }
+.rd .br.clip { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+.rd .ln { height: 0; border-top: 2px dotted var(--line-strong); margin-top: -1px; }
+.rd .nd { width: 2px; height: 14px; margin: -7px 0 0 -1px; background: var(--ink); border-radius: 1px; z-index: 1; }
+.rd .axis { position: relative; height: 34px; }
+.rd .axis span { position: absolute; white-space: nowrap; font-size: 10.5px; letter-spacing: 0; text-transform: none; }
+.rd .axis .wk { bottom: 0; transform: translateX(-50%); color: var(--muted); font-weight: 500; font-variant-numeric: tabular-nums; }
+.rd .axis .flag { top: 0; margin-left: 1px; padding: 0 4px; color: var(--base); font-weight: 700; background: var(--surface); }
+.rd .axis .flag.r { transform: translateX(-100%); margin-left: -1px; }
+.rd .axis .wk.tdl { color: var(--blue-ink); font-weight: 700; }
+.rd .key .k { position: relative; }
+.rd .key i { position: static; margin: 0; flex: none; }
+.rd .key .kd { transform: rotate(45deg); margin: 0 2px; }
+.rd .key .kb { width: 22px; border-radius: 4px; }
+.rd .key .kn { height: 12px; }
+.rd .key .kt { width: 1px; height: 14px; background: var(--blue); }
+@media (max-width: 640px) {
+  .rd .pipe { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .rd .step:nth-child(3) { border-left: none; } .rd .step:nth-child(n+3) { border-top: 1px solid var(--line); }
+  .rd .step::before { display: none; }
+}
+@media (prefers-reduced-motion: no-preference) { .rd .step, .app .btn, .rd .chip { transition: background-color .12s; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <p class="eyebrow">Bids → Submittals → 8 · Procure</p>
+      <h1>The procurement log, redrawn</h1>
+      <p class="lede">The log has the right facts on it. The drawing hides them. Below is what is wrong today, the plan, both logs under one switch, and the two times I asked if the redraw was the best we can do.</p>
+    </div>
+    <div class="stamp">BP375 SPACEX BA-02N<br>47 lines, read Oct 5<br>third draft · nothing built</div>
+  </header>
+
+  <section>
+    <h2>The plan</h2>
+    <p class="sec-lede">Eight things the eye trips on today, and the move for each. The numbers on BP375 are real.</p>
+    <div class="moves">
+      <div class="h n"></div><div class="h">Today</div><div class="h to">The move</div>
+      <div class="n">1</div><div><b>Three boxes inside each other.</b> The step, a note card, the log card, then an amber box inside that.</div><div class="to"><b>One card.</b> The note about rows with no call becomes the log's Next line.</div>
+      <div class="n">2</div><div><b>The counts are one grey line.</b> It reads 0 released, 3 ordered, 3 delivered. The same three parts are counted twice, and the 44 that wait are not in it.</div><div class="to"><b>Four steps, every part counted once.</b> Waiting on the GC, To order, On order, On site. Press a step to see its lines.</div>
+      <div class="n">3</div><div><b>The amber box is the loudest thing on the page,</b> and it does not say why the missing facts matter.</div><div class="to"><b>One quiet line that gives the reason.</b> Without a lead time and a stage the log cannot date anything. Set… does in one step what Tick the 43 did in two.</div>
+      <div class="n">4</div><div><b>The page shows what is done and hides what is open.</b> Three delivered carriers are on screen. The 44 open lines sit behind one grey Show.</div><div class="to"><b>Open work first, as orders.</b> What to order groups by its order-by date. What is ordered groups by PO. Sent back shows what they wrote. Waiting is one line a fixture.</div>
+      <div class="n">5</div><div><b>Finished rows are painted amber.</b> Amber means changed since the last update. No update has gone out, so every row with a status is painted, in the warning box's color.</div><div class="to"><b>A small dot, and only after an update exists.</b> Before the first update every row is new, so nothing is marked.</div>
+      <div class="n">6</div><div><b>Status is words that wrap to three lines</b> in a narrow column. House reads National Wholesale 47 times. Lead is a dash 47 times.</div><div class="to"><b>A calendar beside the orders.</b> Each order has its mark on a week line, against today and the day the job needs it. The house, the stage and the lead time are said once per order.</div>
+      <div class="n">7</div><div><b>A paragraph of definitions</b> sits under the table.</div><div class="to"><b>The calendar's key, one line.</b> The definitions stay in the dates editor, where the dates are typed.</div>
+      <div class="n">8</div><div><b>Send update is under 47 rows</b> with four links beside it. Whether an update was sent is said at the top right.</div><div class="to"><b>Buttons at the card's top right,</b> with the last update beside them. The four links go behind ⋯.</div>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:12px">
+    <div>
+      <h2>Side by side</h2>
+      <p class="sec-lede">Both logs work. Press the lens, a fold, a step, a status. The switch stays with you as you scroll.</p>
+    </div>
+    <div class="bar" role="toolbar" aria-label="Compare">
+      <div class="grp"><span class="lab">Layout</span><span class="seg" id="ctl-layout"><button type="button" data-v="side">Side by side</button><button type="button" data-v="one">One at a time</button></span></div>
+      <div class="grp" id="grp-show"><span class="lab">Show</span><span class="seg" id="ctl-show"><button type="button" data-v="cur">Current</button><button type="button" data-v="new">Redraw</button></span></div>
+      <div class="grp"><span class="lab">Redraw</span><span class="seg" id="ctl-draft"><button type="button" data-v="1">First</button><button type="button" data-v="2">Second</button><button type="button" data-v="3">Third draft</button></span></div>
+      <div class="grp"><span class="lab">Bid</span><span class="seg" id="ctl-state"><button type="button" data-v="today">Today</button><button type="button" data-v="later">Three weeks on</button></span></div>
+    </div>
+    <div class="example-note" id="example-note" hidden>Three weeks on is an example. The approvals, order dates, PO numbers and stage dates are made up to show the later steps. The parts are the bid's own.</div>
+    <div class="compare">
+      <div class="slot" id="slot-cur">
+        <div class="slot-h"><span class="badge cur">Current</span><span class="what">drawn from the live screen</span></div>
+        <div class="host"><div class="stage"><div class="app cur" id="p-cur" data-panel="cur"></div></div></div>
+      </div>
+      <div class="slot" id="slot-new">
+        <div class="slot-h"><span class="badge new" id="new-badge">Redraw</span><span class="what" id="new-what"></span></div>
+        <div class="host"><div class="stage"><div class="app rd" id="p-new"></div></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Is this the best we can do?</h2>
+    <p class="sec-lede">Asked twice, and the answer was no both times. The second draft fixed the first. Then I looked at the second at full size with a busy log in it, and it failed in a new way. The third draft is what I would build.</p>
+    <div class="look">
+      <section>
+        <h3>What the third look changed</h3>
+        <ol>
+          <li><b>Parts became orders.</b> The second draft said "Order by 10/27 · tomorrow · released 10/22 · needed 12/08" on six rows running, each wrapped to two lines. Parts that share a deadline are now one order that says it once. After ordering, parts that share a PO are one line.</li>
+          <li><b>The four dots became a calendar.</b> Fifteen rows with the same first dot lit said nothing. A week line shows what dots could not: how near each deadline is, and how far past its needed date a late order runs.</li>
+          <li><b>Sent back says what they wrote</b> and offers Pick another product. Before, it only said Rejected.</li>
+          <li><b>I was wrong about the missing lead times.</b> I called them unimportant until the GC approves. They are what lets the log say when the GC must answer. The line now gives that reason, and a waiting fixture shows its answer-by date.</li>
+          <li><b>One row shape, one column of tick boxes.</b> Waiting mixed folded fixtures with loose single lines at two indents.</li>
+          <li><b>Changed is no longer amber dots.</b> That repeated the mistake of finding 5. The count is on the Send update button.</li>
+          <li><b>One grey sentence went.</b> It repeated the line of missing facts beside it.</li>
+        </ol>
+      </section>
+      <section>
+        <h3>What the second look changed</h3>
+        <ol>
+          <li><b>A bar by share became four fixed steps.</b> With 44 of 47 waiting, the bar was one grey block and a sliver, and a step at zero vanished.</li>
+          <li><b>A track on every line became a track on started lines.</b> Forty-four empty tracks said nothing.</li>
+          <li><b>House and Lead left the rows</b> when every row says the same.</li>
+          <li><b>Sent back came out on top.</b> It is the only thing you can act on today.</li>
+          <li><b>Waiting folds by fixture, not by house.</b> With one house, one fold hid everything.</li>
+          <li><b>On site folds away.</b> Done work should not lead the page.</li>
+        </ol>
+      </section>
+      <section>
+        <h3>Where it is still short</h3>
+        <ul>
+          <li><b>The calendar is proven on made-up dates only.</b> BP375 has no stage dates and no lead times, so today its log has nothing to draw. The first job with dates will test it.</li>
+          <li><b>Grouping by order-by date is my reading</b> of how an order gets placed. If Wendi orders by fixture, or all at once, the groups should follow her.</li>
+          <li><b>The dates editor is today's,</b> restyled and nothing more.</li>
+          <li><b>The phone cards are not redrawn here.</b> An order would be a card and the calendar would drop to words.</li>
+        </ul>
+      </section>
+      <section>
+        <h3>Your calls</h3>
+        <ul>
+          <li><b>Orders by order-by date,</b> then by PO once placed. Is that how the office thinks of an order?</li>
+          <li><b>Waiting by fixture,</b> or by house as it is today?</li>
+          <li><b>Set… in place of Tick the 43,</b> and Mark ordered… on an order. Both are quicker, and both change a flow Wendi knows. The tick boxes stay either way.</li>
+        </ul>
+      </section>
+      <section>
+        <h3>How it would be built</h3>
+        <ol>
+          <li><b>The top of the card:</b> one card, the four steps, the Next line, the buttons, the line of missing facts with its reason.</li>
+          <li><b>Orders:</b> the groups by order-by date and by PO, sent back with their note, waiting by fixture, in a tested kernel first.</li>
+          <li><b>The calendar:</b> the week line, today, the needed dates, the marks.</li>
+          <li><b>The phone cards.</b></li>
+        </ol>
+        <p style="margin:8px 0 0;color:var(--muted);font-size:13px">Four small PRs. The GC's printed sheet and the update text do not change.</p>
+      </section>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  var HOUSE = 'National Wholesale';
+  var FX = {
+    MOP: { tag: '12" DEEP MOP SINK', name: '12" DEEP MOP SINK', n: 1 }, DWH: { tag: 'DWH-1', name: 'DWH1 & ET', n: 1 },
+    EWC: { tag: 'EWC-1', name: 'EWC1', n: 2 }, FCO: { tag: 'FCO', name: 'FCO', n: 2 }, FD: { tag: 'FD', name: 'FD', n: 3 },
+    HB: { tag: 'HB-3', name: 'HB-3', n: 2 }, LAV1: { tag: 'LAV-1', name: 'LAV 1', n: 2 }, LAV2: { tag: 'LAV-2', name: 'LAV2', n: 6 },
+    UR: { tag: 'UR-1, UR-2', name: 'UR 1&2', n: 2 }, UTIL: { tag: 'UTILITY SINK', name: 'UTILITY SINK', n: null },
+    WC: { tag: 'WC-1, WC-2', name: 'WC 1&2', n: 10, warn: 'Two carriers' },
+    W2: { tag: 'WHA-200', name: 'WHA-200', n: 2 }, W3: { tag: 'WHA-300', name: 'WHA-300', n: 1 }, W5: { tag: 'WHA-500', name: 'WHA-500', n: 1 }
+  };
+  var FXORDER = ['MOP', 'DWH', 'EWC', 'FCO', 'FD', 'HB', 'LAV1', 'LAV2', 'UR', 'UTIL', 'WC', 'W2', 'W3', 'W5'];
+  var STAGE = { R: 'Rough In', T: 'Top Out', S: 'Trim Set' };
+  // id, fixture, maker and model, catalog words, qty, stage, flags: o order only · h added by hand · x rejected · s on site · n no product
+  var RAW = [
+    ['m1', 'MOP', 'FIAT MSB2424100', 'MOLDED STONE MOP SERVICE BASIN 24X24X10', 1, 'S', ''],
+    ['m2', 'MOP', 'FIAT 830AA000', 'CHROME PLTD 830AA SERVICE SINK FCT', 1, 'S', 'x'],
+    ['m3', 'MOP', 'FIAT MOP BSN HOSE & BRKT COMBO', 'PN: 832AA', 1, 'S', ''],
+    ['m4', 'MOP', 'FIAT 889CC', 'SS MOP HGR BRKT PN: 889CC', 1, 'S', ''],
+    ['m5', 'MOP', 'FIAT E77AA24000', 'E77AA24 BUMPER GUARDS (2)', 1, 'S', ''],
+    ['m6', 'MOP', 'FIAT E88AA24', '', 1, 'S', ''],
+    ['m7', 'MOP', 'FIAT MOP BASIN SS WALL GUARD 24X24', 'PN: MSG2424', 1, 'S', ''],
+    ['d1', 'DWH', 'RHEEM PROPH40-T2-RH400-SO', '', 1, 'S', ''],
+    ['d2', 'DWH', 'WATTS LFN36M1', '0556031 3/4 M BRASS WATER SERVICE VACUUM RELIEF VALVE LEAD FREE', 1, 'S', ''],
+    ['e1', 'EWC', 'ELKAY LZSTL8WSLK', 'EZH20 8.0 GPH STAINLESS STEEL BI-LEVEL WALL MOUNT ADA WATER COOLER W/BOTTLE FILLER', 2, 'S', ''],
+    ['e2', 'EWC', 'ELKAY APRON', '', 2, 'S', ''],
+    ['e3', 'EWC', 'MAINLINE MLZ8700', '11/4 CHROME PLATED 17 GUAGE SEMI CAST BRASS P-TRAP', 2, 'S', 'o'],
+    ['e4', 'EWC', 'BRASSCRA PLB113XP', '1/2 NOM COMPX3/8 OD COMP W/LOOSEKEY ANG', 2, 'S', 'o'],
+    ['e5', 'EWC', 'MAINLINE ML90105', 'POLISHED CHROME 5/8 OD LOW PATTERN SURE GRIP FLANGE', 2, 'S', 'o'],
+    ['e6', 'EWC', 'BRASSCRAFT PLS1-20DW', 'F 3/8X20 COMP SS SUPPLY', 2, 'S', 'o'],
+    ['e7', 'EWC', 'JOSAM 17560-WCBL', 'floor mount bi-level water cooler carrier', 2, 'R', 'hs'],
+    ['fco', 'FCO', 'ZURN ZN1400-2NL', '2" FLOOR CLEAN OUT WITH NICKEL BRONZE TOP', 2, 'R', ''],
+    ['fd', 'FD', 'JRSMITH 2005LXH03-A05NB-P050', '', 3, 'R', ''],
+    ['hb', 'HB', 'WOODFORD B74C', '', 2, 'S', ''],
+    ['a1', 'LAV1', 'TSL.MON.B.38.2.PS1.BK', 'MONOLITH B SERIES', 2, 'S', ''],
+    ['a2', 'LAV1', 'TOTO T25S51E#CP', '', 2, 'S', 'x'],
+    ['a3', 'LAV1', 'BOBRICK B-8236', '', 2, 'S', ''],
+    ['a4', 'LAV1', 'BRASSCRAFT/PLUMBSHOP PLS1-16AF', '3/8 COMP X 1/2 FIP X 16 IN SS SUPPLY', 4, 'S', 'o'],
+    ['a5', 'LAV1', 'HYDRAPRO H20008', 'CP BRASS COMMERCIAL LAVATORY GRID DRAIN WITH OVERFLOW', 2, 'S', 'o'],
+    ['a6', 'LAV1', 'MAINLINE MLZ8700', '11/4 CHROME PLATED 17 GUAGE SEMI CAST BRASS P-TRAP', 2, 'S', 'o'],
+    ['a7', 'LAV1', 'BRASSCRA PLB113XP', '1/2 NOM COMPX3/8 OD COMP W/LOOSEKEY ANG', 2, 'S', 'o'],
+    ['a8', 'LAV1', 'MAINLINE ML90105', 'POLISHED CHROME 5/8 OD LOW PATTERN SURE GRIP FLANGE', 2, 'S', 'o'],
+    ['b1', 'LAV2', 'KOHLER 2215-0', 'LADENA WHITE', 6, 'S', 'x'],
+    ['b2', 'LAV2', 'TOTO T25S51E#CP', '', 6, 'S', 'x'],
+    ['b3', 'LAV2', 'BOBRICK B-8236', '', 6, 'S', ''],
+    ['b4', 'LAV2', 'BRASSCRAFT/PLUMBSHOP PLS1-16AF', '3/8 COMP X 1/2 FIP X 16 IN SS SUPPLY', 12, 'S', 'o'],
+    ['b5', 'LAV2', 'HYDRAPRO H20008', 'CP BRASS COMMERCIAL LAVATORY GRID DRAIN WITH OVERFLOW', 6, 'S', 'o'],
+    ['b6', 'LAV2', 'MAINLINE MLZ8700', '11/4 CHROME PLATED 17 GUAGE SEMI CAST BRASS P-TRAP', 6, 'S', 'o'],
+    ['b7', 'LAV2', 'BRASSCRA PLB113XP', '1/2 NOM COMPX3/8 OD COMP W/LOOSEKEY ANG', 6, 'S', 'o'],
+    ['b8', 'LAV2', 'MAINLINE ML90105', 'POLISHED CHROME 5/8 OD LOW PATTERN SURE GRIP FLANGE', 12, 'S', 'o'],
+    ['u1', 'UR', 'TOTO UT105UVG#01', '', 2, '', ''],
+    ['u2', 'UR', 'TOTO TEU2UA11#SS', '', 2, '', ''],
+    ['u3', 'UR', 'JOSAM 17560-UR', 'floor mount urinal carrier', 2, 'R', 'hs'],
+    ['ut', 'UTIL', 'UTILITY SINK', '', null, 'S', 'n'],
+    ['w1', 'WC', 'TOTO CT728CUVG#01', 'TORNADO FLUSH COMMERCIAL FLUSHOMETER WALL-MOUNTED TOILET', 10, '', ''],
+    ['w2', 'WC', 'TOTO TET2UB31#SS', '', 10, '', 'x'],
+    ['w3', 'WC', 'MAINLINE ML1055SSC000', 'WHT ELONG', 10, '', ''],
+    ['w4', 'WC', 'ZURN Z1201-NR4-CL12-RYK17', 'NH DURA-COAT CI ADJ HORIZONTAL SIPHON JET EZCARRY', 10, 'R', ''],
+    ['w5', 'WC', 'JOSAM 12694', '4" NH double adjustable horizontal closet carrier', 10, 'R', 'hs'],
+    ['h2', 'W2', 'ZURN Z1700-200-OV', 'HAMMER ARRESTOR 200', 2, 'T', ''],
+    ['h3', 'W3', 'ZURN Z1700-300-OV', 'HAMMER ARRESTOR 300', 1, 'T', ''],
+    ['h5', 'W5', 'ZURN Z1700-500-OV', 'HAMMER ARRESTOR', 1, 'T', '']
+  ];
+  // The example three weeks on: made-up approvals, orders and stage dates on the bid's own parts.
+  var rdy = function (by, lead) { return { st: 'ready', approved: '10/22', needed: '12/08', orderBy: by, lead: lead, changed: true }; };
+  var LATER = {
+    fco: { st: 'site', approved: '10/02', ordered: '10/06', site: '10/15', po: '4471', lead: '1 wk' },
+    fd: { st: 'site', approved: '10/02', ordered: '10/06', site: '10/15', po: '4471', lead: '1 wk' },
+    w4: { st: 'order', approved: '10/02', ordered: '10/08', expected: '10/29', needed: '10/20', late: 9, po: '4480', lead: '3 wk' },
+    h2: { st: 'order', approved: '10/16', ordered: '10/20', expected: '11/03', needed: '11/10', po: '4502', lead: '2 wk', changed: true },
+    h3: { st: 'order', approved: '10/16', ordered: '10/20', expected: '11/03', needed: '11/10', po: '4502', lead: '2 wk', changed: true },
+    h5: { st: 'order', approved: '10/16', ordered: '10/20', expected: '11/03', needed: '11/10', po: '4502', lead: '2 wk', changed: true },
+    d1: rdy('11/10', '4 wk'), d2: rdy('11/10', '4 wk'),
+    m1: rdy('10/27', '6 wk'), m3: rdy('10/27', '6 wk'), m4: rdy('10/27', '6 wk'), m5: rdy('10/27', '6 wk'), m6: rdy('10/27', '6 wk'), m7: rdy('10/27', '6 wk'),
+    hb: rdy('11/24', '2 wk'), e1: rdy('11/03', '5 wk'), e2: rdy('11/03', '5 wk'),
+    e3: { st: 'ready', noGc: true, needed: '12/08', orderBy: '12/01', lead: '1 wk' }, e4: { st: 'ready', noGc: true, needed: '12/08', orderBy: '12/01', lead: '1 wk' },
+    e5: { st: 'ready', noGc: true, needed: '12/08', orderBy: '12/01', lead: '1 wk' }, e6: { st: 'ready', noGc: true, needed: '12/08', orderBy: '12/01', lead: '1 wk' },
+    a1: { lead: '4 wk', needed: '12/08', answerBy: '11/10' }, a3: { lead: '4 wk', needed: '12/08', answerBy: '11/10' }, b3: { lead: '4 wk', needed: '12/08', answerBy: '11/10' },
+    a2: { st: 'wait', lead: '4 wk', needed: '12/08', answerBy: '11/10' }, b2: { st: 'wait', lead: '4 wk', needed: '12/08', answerBy: '11/10' }
+  };
+  var SOON = '10/27'; // in the example, tomorrow
+
+  function linesFor(state) {
+    return RAW.map(function (r) {
+      var f = r[6];
+      var l = { id: r[0], fx: r[1], tag: FX[r[1]].tag, head: r[2], words: r[3], qty: r[4], stage: r[5], oo: f.indexOf('o') >= 0, hand: f.indexOf('h') >= 0, noProduct: f.indexOf('n') >= 0, st: 'wait', lead: '' };
+      if (f.indexOf('x') >= 0) l.st = 'back';
+      if (f.indexOf('s') >= 0) { l.st = 'site'; l.ordered = '09/23'; l.site = '09/29'; l.po = 'space x carriers.'; }
+      if (state === 'later' && LATER[l.id]) for (var k in LATER[l.id]) l[k] = LATER[l.id][k];
+      return l;
+    });
+  }
+  function statusOf(l) {
+    if (l.st === 'site') return { tone: 'done', step: 4, text: 'On site ' + l.site, sub: ['ordered ' + l.ordered, l.po ? 'PO ' + l.po : ''] };
+    if (l.st === 'order') return l.late
+      ? { tone: 'late', step: 2, text: 'Arrives ' + l.expected + ', ' + l.late + ' d late', sub: ['ordered ' + l.ordered, 'needed ' + l.needed, 'PO ' + l.po] }
+      : { tone: 'ordered', step: 2, text: 'Ordered · arrives ' + l.expected, sub: ['ordered ' + l.ordered, 'PO ' + l.po] };
+    if (l.st === 'ready') return { tone: 'act', step: 1, text: 'Order by ' + l.orderBy, sub: [l.noGc ? 'no GC approval needed' : 'released ' + l.approved, 'needed ' + l.needed] };
+    if (l.st === 'back') return { tone: 'back', step: 0, text: 'Rejected by the GC', sub: [] };
+    return { tone: 'none', step: 0, text: '', sub: [] };
+  }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function plural(n, one, many) { return n + ' ' + (n === 1 ? one : (many || one + 's')); }
+  function count(lines, st) { return lines.filter(function (l) { return l.st === st; }).length; }
+  function blockersOf(lines) {
+    var open = lines.filter(function (l) { return l.st !== 'site' && l.st !== 'order' && !l.hand; });
+    return {
+      lead: open.filter(function (l) { return !l.noProduct && !l.lead; }).length,
+      stage: open.filter(function (l) { return !l.noProduct && !l.stage; }).length,
+      product: open.filter(function (l) { return l.noProduct; }),
+      hot: open.some(function (l) { return l.st === 'ready' && (!l.lead || !l.stage); })
+    };
+  }
+  function min(a) { return a.slice().sort()[0] || ''; }
+  function max(a) { var s = a.slice().sort(); return s[s.length - 1] || ''; }
+  function groupBy(list, keyOf) { var m = {}, order = []; list.forEach(function (x) { var k = keyOf(x); if (!m[k]) { m[k] = []; order.push(k); } m[k].push(x); }); return order.map(function (k) { return { key: k, rows: m[k] }; }); }
+
+  var ui = {
+    cur: { lens: 'to_order', open: {}, lines: {}, fold: {} },
+    d1: { lens: 'to_order', open: {}, lines: {}, fold: {}, filter: null, menu: false, setter: null },
+    d2: { lens: 'to_order', open: { site: false }, lines: {}, fold: {}, filter: null, menu: false, setter: null },
+    d3: { lens: 'to_order', open: {}, lines: {}, fold: {}, filter: null, menu: false, setter: null, marking: null }
+  };
+  var ctl = { layout: 'side', show: 'new', draft: '3', state: 'today' };
+  try { var saved = JSON.parse(localStorage.getItem('procure-redraw-ctl-v2') || 'null'); if (saved) for (var k in ctl) if (saved[k]) ctl[k] = saved[k]; } catch (e) {}
+  // A link can open one log in one state: #third-later, #third-today, #current-today, #second-later …
+  var hm = /^#(current|first|second|third)-(today|later)$/.exec(location.hash || '');
+  if (hm) { ctl.layout = 'one'; ctl.show = hm[1] === 'current' ? 'cur' : 'new'; if (hm[1] !== 'current') ctl.draft = { first: '1', second: '2', third: '3' }[hm[1]]; ctl.state = hm[2]; }
+
+  function editorRow(l, cols) {
+    return '<tr class="editor"><td colspan="' + cols + '"><div class="ed">' +
+      '<label>Ordered<input type="text" placeholder="mm/dd" value="' + esc(l.ordered || '') + '" aria-label="Ordered"></label>' +
+      '<label>PO<input type="text" placeholder="PO" value="' + esc(l.po || '') + '" style="width:8rem" aria-label="PO"></label>' +
+      '<label>Expected<input type="text" placeholder="mm/dd" value="' + esc(l.expected || '') + '" aria-label="Expected"></label>' +
+      '<label>Delivered<input type="text" placeholder="mm/dd" value="' + esc(l.site || '') + '" aria-label="Delivered"></label>' +
+      '<label class="wide">Note for the GC<input type="text" placeholder="note for the GC" aria-label="Note for the GC"></label>' +
+      '<label>The GC and the job<span class="facts">' + (l.st === 'back' ? 'Rejected by the GC' : l.approved ? 'Approved · released ' + l.approved : l.noGc ? 'Order only · no GC approval needed' : 'No answer from the GC yet') + '<br>' + (l.needed ? 'Needed ' + l.needed : 'No required date') + '</span></label>' +
+      '</div></td></tr>';
+  }
+  function partCell(l, underTag, extra) {
+    var bits = [];
+    if (l.hand) bits.push('added by hand');
+    if (l.oo && !underTag) bits.push('order only, not on the GC’s copy');
+    return (extra || '') + (underTag ? '' : '<span class="tagc">' + esc(l.tag) + '</span>') + (l.noProduct ? '' : '<span class="head">' + esc(l.head) + '</span>') +
+      (l.words ? ' <span class="words">' + esc(l.words) + '</span>' : '') + (bits.length ? '<span class="subl">' + bits.join(' · ') + '</span>' : '');
+  }
+
+  /* ---------------- current ---------------- */
+  function curChanged(l, state) { return state === 'today' ? (l.st === 'back' || l.st === 'site') : !!l.changed; }
+  function curRow(l, state, u, underTag, pad) {
+    var s = statusOf(l), open = !!u.lines[l.id];
+    var door = l.oo || l.noProduct || l.hand ? '' : l.st === 'wait' ? '<a data-act="noop">Enter their answer…</a>' : l.st === 'back' ? '<a data-act="noop">Change their answer…</a>' : '';
+    var sub = s.sub.filter(Boolean).join(' · ');
+    return '<tr class="' + (curChanged(l, state) ? 'amber ' : '') + (l.oo ? 'oo' : '') + '">' +
+      '<td class="tk"><input type="checkbox" aria-label="Pick ' + esc(l.head) + '"></td>' +
+      '<td class="part" style="' + (pad ? 'padding-left:' + pad + 'px' : '') + '">' + partCell(l, underTag) + '</td>' +
+      '<td class="num">' + (l.qty == null ? '<span class="mut">—</span>' : l.qty) + '</td>' +
+      '<td class="nw" style="text-decoration:underline dotted;text-underline-offset:3px">' + HOUSE + '</td>' +
+      '<td class="nw">' + (l.stage ? STAGE[l.stage] : '<span class="mut">—</span>') + '</td>' +
+      '<td class="nw">' + (l.lead || '<span class="mut">—</span>') + '</td>' +
+      '<td class="stat"><button type="button" data-act="line" data-id="' + l.id + '">' + (s.text ? '<span class="t ' + s.tone + '">' + (s.tone === 'done' ? '✓ ' : '') + esc(s.text) + '</span>' : '<span class="faint">' + (open ? 'Close' : 'Dates…') + '</span>') + (sub ? '<span class="mut" style="display:block">' + esc(sub) + '</span>' : '') + '</button>' + door + '</td>' +
+      '</tr>' + (open ? editorRow(l, 7) : '');
+  }
+  function curSec(title, note, extra) { return '<tr class="sec"><td class="tk"><input type="checkbox" aria-label="Pick every line under ' + esc(title) + '"></td><td colspan="6"><b>' + esc(title) + '</b> <span class="mut" style="margin-left:6px">' + esc(note) + '</span>' + (extra || '') + '</td></tr>'; }
+  function renderCurrent(state) {
+    var u = ui.cur, lines = linesFor(state), b = blockersOf(lines);
+    var nReady = count(lines, 'ready'), nOrder = count(lines, 'order'), nSite = count(lines, 'site'), nBack = count(lines, 'back'), nWait = count(lines, 'wait');
+    var late = lines.filter(function (l) { return l.late; }).length;
+    var released = lines.filter(function (l) { return l.approved; }).length;
+    var headline = released + ' released · ' + (nOrder + nSite) + ' ordered · ' + nSite + ' delivered' + (late ? ' · ' + late + ' behind schedule' : '') + (nBack ? ' · ' + nBack + ' sent back' : '');
+    var right = state === 'today' ? 'No stage windows on the job yet — required dates blank · no update sent yet' : 'Required dates from the job’s stage windows · last update 10/19 to structura';
+    var ready = lines.filter(function (l) { return l.st === 'ready'; });
+    var nextLine = ready.length ? plural(ready.length, 'line is', 'lines are') + ' approved and not ordered. The first must be ordered by ' + min(ready.map(function (l) { return l.orderBy; })) + '.' : 'Nothing is approved and waiting to be ordered.';
+    var body = '';
+    if (u.lens === 'to_order') {
+      if (ready.length) {
+        ready.sort(function (a, c) { return a.orderBy.localeCompare(c.orderBy); });
+        body += curSec('Order now · ' + HOUSE, plural(ready.length, 'line') + ' · the first by ' + ready[0].orderBy);
+        body += ready.map(function (l) { return curRow(l, state, u, false); }).join('');
+      }
+      var waiting = lines.filter(function (l) { return l.st === 'wait' || l.st === 'back'; });
+      if (waiting.length) {
+        body += curSec('Waiting on the GC', plural(waiting.length, 'line') + ' · not ordered until they approve it');
+        var fopen = !!u.fold.house;
+        body += '<tr><td colspan="7"><span class="fold"><input type="checkbox" aria-label="Pick every line at ' + HOUSE + '"><button type="button" data-act="fold" data-k="house" aria-expanded="' + fopen + '"><b style="color:var(--ink)">' + HOUSE + '</b><span class="mut">' + plural(waiting.length, 'part') + ' · ' + waiting.filter(function (l) { return l.oo; }).length + ' order only</span><span class="mut">' + (fopen ? 'Hide' : 'Show') + '</span></button></span></td></tr>';
+        if (fopen) body += waiting.map(function (l) { return curRow(l, state, u, false); }).join('');
+      }
+      var onOrder = lines.filter(function (l) { return l.st === 'order'; });
+      if (onOrder.length) body += curSec('On order', plural(onOrder.length, 'line')) + onOrder.map(function (l) { return curRow(l, state, u, false); }).join('');
+      var landed = lines.filter(function (l) { return l.st === 'site'; });
+      if (landed.length) body += curSec('Delivered', plural(landed.length, 'line')) + landed.map(function (l) { return curRow(l, state, u, false); }).join('');
+    } else if (u.lens === 'by_tag') {
+      FXORDER.forEach(function (k) {
+        var list = lines.filter(function (l) { return l.fx === k; });
+        if (list.length === 1) { body += curRow(list[0], state, u, false); return; }
+        var site = count(list, 'site'), ord = count(list, 'order');
+        body += curSec(FX[k].tag, FX[k].name + ' × ' + FX[k].n + ' · ' + plural(list.length, 'part') + (ord ? ' · ' + ord + ' ordered' : '') + (site ? ' · ' + site + ' on site' : ''), FX[k].warn ? ' <span style="font-size:11.5px;font-weight:700;color:var(--amber);background:var(--amber-wash);border-radius:999px;padding:0 8px;margin-left:6px">' + FX[k].warn + '</span>' : '');
+        var gc = list.filter(function (l) { return !l.oo; }), oo = list.filter(function (l) { return l.oo; });
+        body += gc.map(function (l) { return curRow(l, state, u, true, 30); }).join('');
+        if (oo.length) body += '<tr class="oodiv"><td colspan="7">Ordered, not on the GC’s copy · ' + plural(oo.length, 'part') + '</td></tr>' + oo.map(function (l) { return curRow(l, state, u, true, 30); }).join('');
+      });
+    } else {
+      body += curSec(HOUSE, plural(lines.length, 'line')) + lines.map(function (l) { return curRow(l, state, u, false); }).join('');
+    }
+    var bl = '';
+    if (b.lead) bl += '<div class="bl"><span><button type="button" class="lnk" data-act="noop">' + plural(b.lead, 'part') + '</button> ' + (b.lead === 1 ? 'has' : 'have') + ' no lead time, so no order-by date can be worked out.</span><button type="button" class="btn blue" data-act="noop">Tick the ' + b.lead + '</button></div>';
+    if (b.stage) bl += '<div class="bl"><span><button type="button" class="lnk" data-act="noop">' + plural(b.stage, 'part') + '</button> ' + (b.stage === 1 ? 'has' : 'have') + ' no stage.</span><button type="button" class="btn blue" data-act="noop">Tick the ' + b.stage + '</button></div>';
+    b.product.forEach(function (p) { bl += '<div class="bl"><span><b style="color:var(--ink)">' + esc(p.tag) + '</b> has no product yet.</span><button type="button" class="btn blue" data-act="noop">Open it</button></div>'; });
+    var noCall = state === 'today' ? 9 : 5;
+    return '<div class="outer">' +
+      '<div>' + noCall + ' rows have no call from the reviewer yet, so they are not released. Approved outside the app? <a data-act="noop" style="font-size:13px">Enter their approval…</a></div>' +
+      '<div class="card">' +
+        '<div class="rowx" style="align-items:baseline"><div><b style="font-size:14.5px;color:var(--ink)">Procurement log</b> <span class="mut" style="margin-left:6px">' + headline + '</span></div><span class="mut">' + right + '</span></div>' +
+        '<div class="rowx">' + lensHtml(u.lens) + '<span style="color:var(--ink)">' + nextLine + '</span></div>' +
+        (bl ? '<div class="blockers"><b>Before you can order</b>' + bl + '</div>' : '') +
+        '<div class="scroll"><table style="min-width:760px"><thead><tr><th style="width:28px"></th><th>Part</th><th class="num">Qty</th><th>House</th><th>Stage</th><th>Lead</th><th>Status</th></tr></thead><tbody>' + body + '</tbody></table></div>' +
+        '<div class="mut">Tap a status to type its dates. Released = the room’s approval. Expected = ordered + lead time until the house says otherwise (amber). Needed = the stage’s window on the job. <b>Order by</b> = needed − lead time for a released part not yet ordered. Amber rows have changed since the last update.</div>' +
+        '<div class="actions"><button type="button" class="btn pri" data-act="noop">Send update…</button><button type="button" class="btn" data-act="noop">+ Add item</button><a data-act="noop">Print the log</a><a data-act="noop">Download CSV</a><a data-act="noop">Open in Google Sheets</a><a data-act="noop">Updates sent (' + (state === 'today' ? 0 : 2) + ')</a></div>' +
+      '</div></div>';
+  }
+  function lensHtml(lens) {
+    return '<span class="lens" role="group" aria-label="Show the log">' + [['to_order', 'To order'], ['by_tag', 'By tag'], ['by_house', 'By house']].map(function (x) { return '<button type="button" data-act="lens" data-k="' + x[0] + '" aria-pressed="' + (lens === x[0]) + '">' + x[1] + '</button>'; }).join('') + '</span>';
+  }
+
+  /* ---------------- redraw ---------------- */
+  function track(s, v) {
+    var cls = s.tone === 'done' ? 'done' : s.tone === 'late' ? 'late' : s.tone === 'back' ? 'back' : '';
+    var dots = '';
+    for (var i = 1; i <= 4; i++) dots += '<i class="' + (i <= s.step ? 'on' : i === s.step + 1 ? 'nextup' : '') + '"></i>';
+    return '<span class="trk ' + cls + '" aria-hidden="true">' + dots + '</span>';
+  }
+  function newRow(l, state, u, v, underTag, indent, cols) {
+    var s = statusOf(l), open = !!u.lines[l.id];
+    var door = l.oo || l.noProduct || l.hand ? '' : l.st === 'wait' ? '<a class="door" data-act="noop">Enter their answer…</a>' : l.st === 'back' ? '<a class="door" data-act="noop">Change their answer…</a>' : '';
+    var sub = s.sub.filter(Boolean).join(' · ');
+    var tone = s.tone === 'act' && l.orderBy === SOON ? 'soon' : s.tone;
+    var text = s.tone === 'act' && l.orderBy === SOON ? s.text + ' · tomorrow' : s.text;
+    var prog;
+    if (l.st === 'back') prog = (v === 1 ? track(s, v) + ' ' : '') + '<span class="pill">Rejected by the GC</span>' + door;
+    else if (l.st === 'wait') prog = v === 1
+      ? '<button type="button" class="pline" data-act="line" data-id="' + l.id + '">' + track(s, v) + '<span class="ptxt"><span class="t wait">' + (l.oo ? 'Waits with its fixture' : l.noProduct ? 'No product yet' : 'Waiting on the GC') + '</span></span></button>' + (door ? '<div style="margin-left:-10px">' + door + '</div>' : '')
+      : (l.noProduct ? '<span class="t soon" style="font-weight:600;color:var(--amber)">No product yet</span> <a class="door" data-act="noop">Open it</a>' : door ? door.replace('class="door"', 'class="door" style="margin-left:0"') : '<button type="button" class="lnk" data-act="line" data-id="' + l.id + '" style="color:var(--faint);text-decoration:none">' + (open ? 'Close' : 'Dates…') + '</button>');
+    else prog = '<button type="button" class="pline" data-act="line" data-id="' + l.id + '" title="Type this line’s dates">' + track(s, v) + '<span class="ptxt"><span class="t ' + tone + '">' + esc(text) + '</span>' + (sub ? '<span class="s">' + esc(sub) + '</span>' : '') + '</span></button>';
+    var dot = state === 'later' && l.changed ? '<span class="dot" title="Changed since the update of 10/19"></span>' : '';
+    return '<tr class="' + (l.oo ? 'oo' : '') + '">' +
+      '<td class="tk"><input type="checkbox" aria-label="Pick ' + esc(l.head) + '"></td>' +
+      '<td class="part' + (indent ? ' in' : '') + '">' + partCell(l, underTag, dot) + '</td>' +
+      '<td class="num">' + (l.qty == null ? '<span class="mut">—</span>' : l.qty) + '</td>' +
+      (v === 1 ? '<td class="nw">' + HOUSE + '</td>' : '') +
+      '<td class="stg ' + (l.stage ? '' : 'none') + '">' + (l.stage ? STAGE[l.stage] + (l.needed && v === 2 ? ' <span class="mut">· ' + l.needed + '</span>' : '') : 'no stage') + '</td>' +
+      (cols.lead ? '<td class="nw">' + (l.lead || '<span class="mut">—</span>') + '</td>' : '') +
+      '<td class="prog">' + prog + '</td></tr>' + (open ? editorRow(l, cols.n) : '');
+  }
+  function secHead(key, title, n, note, tone, open, cols) {
+    return '<tr class="sec"><td colspan="' + cols.n + '"><span class="sech"><input type="checkbox" aria-label="Pick every line under ' + esc(title) + '"><button type="button" class="tg" data-act="sec" data-k="' + key + '" aria-expanded="' + open + '"><span class="car">' + (open ? '▾' : '▸') + '</span><b>' + esc(title) + '</b><span class="cnt ' + tone + '">' + n + '</span><span class="mut">' + esc(note) + '</span></button></span></td></tr>';
+  }
+  function fixtureFolds(list, state, u, v, cols, forceOpen) {
+    return groupBy(list, function (l) { return l.fx; }).map(function (g) {
+      var f = FX[g.key], gc = g.rows.filter(function (l) { return !l.oo; }), oo = g.rows.filter(function (l) { return l.oo; });
+      if (g.rows.length === 1) return newRow(g.rows[0], state, u, v, false, true, cols);
+      var open = forceOpen || !!u.fold[g.key];
+      var html = '<tr class="fx"><td colspan="' + cols.n + '"><span class="fxh"><input type="checkbox" aria-label="Pick every part of ' + esc(f.tag) + '"><button type="button" class="tg" data-act="fold" data-k="' + g.key + '" aria-expanded="' + open + '"><span class="car">' + (open ? '▾' : '▸') + '</span><span class="tagc" style="margin-right:0">' + esc(f.tag) + '</span><span class="mut">' + esc(f.name) + (f.n ? ' × ' + f.n : '') + ' · ' + plural(gc.length, 'part') + (oo.length ? ' · ' + oo.length + ' order only' : '') + '</span>' + (f.warn ? '<span class="warnp">' + f.warn + '</span>' : '') + '</button></span></td></tr>';
+      if (open) {
+        html += gc.map(function (l) { return newRow(l, state, u, v, true, true, cols); }).join('');
+        if (oo.length) html += '<tr class="oodiv"><td colspan="' + cols.n + '">Ordered, not on the GC’s copy · ' + plural(oo.length, 'part') + '</td></tr>' + oo.map(function (l) { return newRow(l, state, u, v, true, true, cols); }).join('');
+      }
+      return html;
+    }).join('');
+  }
+  function renderNew(state, v) {
+    var u = ui['d' + v], all = linesFor(state), b = blockersOf(all);
+    var V = v; if (v === 3) v = 2; // the third draft keeps the second's top and its other two lenses
+    var changes = state === 'later' ? all.filter(function (l) { return l.changed; }).length : 0;
+    var nReady = count(all, 'ready'), nOrder = count(all, 'order'), nSite = count(all, 'site'), nBack = count(all, 'back'), nWait = count(all, 'wait');
+    var late = all.filter(function (l) { return l.late; }).length;
+    var ready = all.filter(function (l) { return l.st === 'ready'; });
+    var firstBy = ready.length ? min(ready.map(function (l) { return l.orderBy; })) : '';
+    var total = all.length;
+    var anyLead = all.some(function (l) { return l.lead; });
+    var cols = { lead: v === 1 || anyLead, n: 0 };
+    cols.n = 5 + (v === 1 ? 1 : 0) + (cols.lead ? 1 : 0);
+    var f = u.filter;
+    var match = function (l) { return !f || (f === 'gc' ? (l.st === 'wait' || l.st === 'back') : l.st === f); };
+    var lines = all.filter(match);
+
+    // the top
+    var updated = state === 'today' ? (V === 3 ? 'No update sent yet. The first one sends every row.' : 'No update sent yet') : 'Last update 10/19 to structura';
+    var tools = '<span class="tools"><span class="mut">' + updated + '</span><button type="button" class="btn pri" data-act="noop">' + (V === 3 && changes ? 'Send update · ' + changes + ' changes' : 'Send update…') + '</button><button type="button" class="btn" data-act="noop">+ Add item</button><button type="button" class="btn" data-act="menu" aria-expanded="' + u.menu + '" aria-label="More" title="Print, CSV, Google Sheets, updates sent">⋯</button>' +
+      (u.menu ? '<span class="menu"><button type="button" data-act="menu">Print the log</button><button type="button" data-act="menu">Download CSV</button><button type="button" data-act="menu">Open in Google Sheets</button><button type="button" data-act="menu">Updates sent (' + (state === 'today' ? 0 : 2) + ')</button></span>' : '') + '</span>';
+    var steps = [
+      { k: 'gc', lab: 'Waiting on the GC', n: nWait + nBack, note: nBack ? nBack + ' sent back' : '', cls: 'back' },
+      { k: 'ready', lab: 'To order', n: nReady, note: nReady ? 'first by ' + firstBy : 'nothing approved yet', cls: nReady ? 'go' : '' },
+      { k: 'order', lab: 'On order', n: nOrder, note: late ? late + ' late' : nOrder ? 'next arrives ' + min(all.filter(function (l) { return l.st === 'order'; }).map(function (l) { return l.expected; })) : '', cls: late ? 'warn' : '' },
+      { k: 'site', lab: 'On site', n: nSite, note: nSite ? 'last ' + max(all.filter(function (l) { return l.st === 'site'; }).map(function (l) { return l.site; })) : '', cls: '' }
+    ];
+    var pipe;
+    if (v === 2) {
+      pipe = '<div class="pipe" role="group" aria-label="Where the parts stand">' + steps.map(function (s) {
+        return '<button type="button" class="step' + (s.n === 0 ? ' zero' : '') + '" data-act="filter" data-k="' + s.k + '" aria-pressed="' + (f === s.k) + '"><span class="lab">' + s.lab + '</span><span class="n">' + s.n + '</span><span class="note ' + s.cls + '">' + (s.note || '&nbsp;') + '</span></button>';
+      }).join('') + '</div>' +
+        '<div class="share" title="' + nSite + ' of ' + total + ' parts on site">' + steps.map(function (s) { return s.n ? '<i class="c-' + s.k + '" style="width:' + (s.n / total * 100) + '%"></i>' : ''; }).join('') + '</div>';
+    } else {
+      pipe = '<div class="big">' + steps.map(function (s) { return s.n ? '<i class="c-' + s.k + '" style="width:' + (s.n / total * 100) + '%" title="' + s.lab + ' ' + s.n + '"></i>' : ''; }).join('') + '</div>' +
+        '<div class="chips">' + steps.map(function (s) { return '<button type="button" class="chip" data-act="filter" data-k="' + s.k + '" aria-pressed="' + (f === s.k) + '"><i class="c-' + s.k + '"></i>' + s.lab + ' ' + s.n + '</button>'; }).join('') + '<span class="mut" style="align-self:center">' + total + ' parts</span></div>';
+    }
+    var next = '';
+    if (v === 2) {
+      var bits;
+      if (nReady) {
+        var k = ready.filter(function (l) { return l.orderBy === firstBy; }).length;
+        bits = 'Order ' + plural(k, 'part') + ' by ' + firstBy + (firstBy === SOON ? ', tomorrow' : '') + '.' + (late ? ' ' + plural(late, 'part') + ' on order ' + (late === 1 ? 'arrives' : 'arrive') + ' late.' : '') + (nBack ? ' The GC sent ' + plural(nBack, 'part') + ' back.' : '');
+      } else bits = 'Nothing can be ordered until the GC answers.' + (nBack ? ' They sent ' + plural(nBack, 'part') + ' back. ' + nWait + ' more wait on their answer.' : ' ' + plural(nWait, 'part') + ' wait on their answer.');
+      next = '<div class="next"><b>Next:</b> ' + bits + ' <span class="mut" style="font-size:13px">Approved outside the app?</span> <a data-act="noop" style="font-size:13px">Enter their approval…</a></div>';
+    }
+    var fix = '';
+    if (b.lead || b.stage || b.product.length) {
+      fix = '<div class="fix' + (b.hot ? ' hot' : '') + '"><b>Before you can order</b>' +
+        (V === 3 && state === 'today' ? '<span class="it"><span>The job has no stage dates</span><button type="button" class="set" data-act="noop">Open the job</button></span>' : '') +
+        (b.lead ? '<span class="it"><span><button type="button" class="lnk" data-act="noop">' + plural(b.lead, 'part') + '</button> ' + (b.lead === 1 ? 'has' : 'have') + ' no lead time</span><button type="button" class="set" data-act="setter" data-k="lead">Set…</button></span>' : '') +
+        (b.stage ? '<span class="it"><span><button type="button" class="lnk" data-act="noop">' + plural(b.stage, 'part') + '</button> ' + (b.stage === 1 ? 'has' : 'have') + ' no stage</span><button type="button" class="set" data-act="setter" data-k="stage">Set…</button></span>' : '') +
+        b.product.map(function (p) { return '<span class="it"><span><b style="color:var(--ink)">' + esc(p.tag) + '</b> has no product</span><button type="button" class="set" data-act="noop">Open it</button></span>'; }).join('') +
+        (V === 3 ? '<span class="mut" style="flex-basis:100%">Without a lead time and a stage, the log cannot say when to order a part or when the GC must answer.</span>' : '') + '</div>';
+      if (u.setter === 'lead') fix += '<div class="setter"><b style="color:var(--blue-ink)">Lead time for ' + plural(b.lead, 'part') + '</b><input type="text" placeholder="3 wk" aria-label="Lead time"><button type="button" class="btn pri" data-act="setter" data-k="lead">Set on ' + b.lead + '</button><button type="button" class="lnk" data-act="setter" data-k="lead">Cancel</button><span class="mut">Or tick lines below to set them a few at a time.</span></div>';
+      if (u.setter === 'stage') fix += '<div class="setter"><b style="color:var(--blue-ink)">Stage for ' + plural(b.stage, 'part') + '</b><span class="lens">' + ['Rough In', 'Top Out', 'Trim Set'].map(function (x) { return '<button type="button" data-act="noop">' + x + '</button>'; }).join('') + '</span><button type="button" class="btn pri" data-act="setter" data-k="stage">Set on ' + b.stage + '</button><button type="button" class="lnk" data-act="setter" data-k="stage">Cancel</button></div>';
+    }
+    var said = v === 2 ? '<span class="said">Every part comes from ' + HOUSE + '.' + (cols.lead ? '' : ' No part has a lead time yet.') + (state === 'today' ? ' The job has no stage dates yet, so nothing has a needed date.' : '') + '</span>' : '<span class="mut">' + (state === 'today' ? 'No stage windows on the job yet — required dates blank' : 'Required dates from the job’s stage windows') + '</span>';
+
+    if (V === 3 && u.lens === 'to_order') return third(state, u, all, lines, { tools: tools, pipe: pipe, next: next, fix: fix, steps: steps, f: f, changes: changes });
+
+    // the rows
+    var body = '', isOpen = function (key, dflt) { return f ? true : (u.open[key] == null ? dflt : u.open[key]); };
+    var sec = function (key, title, list, note, tone, dflt, rows) {
+      if (!list.length) return;
+      var open = isOpen(key, dflt);
+      body += secHead(key, title, list.length, note, tone, open, cols) + (open ? rows() : '');
+    };
+    if (u.lens === 'to_order') {
+      var rd = lines.filter(function (l) { return l.st === 'ready'; }).sort(function (a, c) { return a.orderBy.localeCompare(c.orderBy); });
+      var oo = lines.filter(function (l) { return l.st === 'order'; }).sort(function (a, c) { return (c.late || 0) - (a.late || 0); });
+      var bk = lines.filter(function (l) { return l.st === 'back'; });
+      var wt = lines.filter(function (l) { return l.st === 'wait'; });
+      var st = lines.filter(function (l) { return l.st === 'site'; });
+      sec('ready', 'Order now · ' + HOUSE, rd, rd.length ? 'the first by ' + rd[0].orderBy : '', 'go', true, function () { return rd.map(function (l) { return newRow(l, state, u, v, false, false, cols); }).join(''); });
+      if (v === 2) {
+        sec('order', 'On order', oo, late ? late + ' late' : '', late ? 'late' : '', true, function () { return oo.map(function (l) { return newRow(l, state, u, v, false, false, cols); }).join(''); });
+        sec('back', 'Sent back by the GC', bk, 'pick another product, then resubmit on step 7', 'back', true, function () { return bk.map(function (l) { return newRow(l, state, u, v, false, false, cols); }).join(''); });
+        sec('wait', 'Waiting on their answer', wt, plural(groupBy(wt, function (l) { return l.fx; }).length, 'fixture') + ' · not ordered until they approve', '', true, function () { return fixtureFolds(wt, state, u, v, cols, !!f && wt.length <= 12); });
+        sec('site', 'On site', st, st.length ? 'last ' + max(st.map(function (l) { return l.site; })) : '', 'done', false, function () { return st.map(function (l) { return newRow(l, state, u, v, false, false, cols); }).join(''); });
+      } else {
+        var w1 = bk.concat(wt);
+        sec('wait', 'Waiting on the GC', w1, 'not ordered until they approve it', '', true, function () {
+          var fo = f ? true : !!u.fold.house;
+          return '<tr class="fx"><td colspan="' + cols.n + '"><span class="fxh"><input type="checkbox" aria-label="Pick every line at ' + HOUSE + '"><button type="button" class="tg" data-act="fold" data-k="house" aria-expanded="' + fo + '"><span class="car">' + (fo ? '▾' : '▸') + '</span><b style="color:var(--ink)">' + HOUSE + '</b><span class="mut">' + plural(w1.length, 'part') + ' · ' + w1.filter(function (l) { return l.oo; }).length + ' order only</span></button></span></td></tr>' + (fo ? w1.map(function (l) { return newRow(l, state, u, v, false, true, cols); }).join('') : '');
+        });
+        sec('order', 'On order', oo, late ? late + ' late' : '', late ? 'late' : '', true, function () { return oo.map(function (l) { return newRow(l, state, u, v, false, false, cols); }).join(''); });
+        sec('site', 'On site', st, '', 'done', true, function () { return st.map(function (l) { return newRow(l, state, u, v, false, false, cols); }).join(''); });
+      }
+    } else if (u.lens === 'by_tag') {
+      FXORDER.forEach(function (k) {
+        var list = lines.filter(function (l) { return l.fx === k; });
+        if (!list.length) return;
+        if (list.length === 1) { body += newRow(list[0], state, u, v, false, false, cols); return; }
+        var site = count(list, 'site'), back = count(list, 'back');
+        sec('t:' + k, FX[k].tag, list, FX[k].name + ' × ' + FX[k].n + (back ? ' · ' + back + ' sent back' : '') + (site ? ' · ' + site + ' on site' : '') + (FX[k].warn ? ' · ' + FX[k].warn : ''), back ? 'back' : '', true, function () {
+          var gc = list.filter(function (l) { return !l.oo; }), o2 = list.filter(function (l) { return l.oo; });
+          return gc.map(function (l) { return newRow(l, state, u, v, true, true, cols); }).join('') + (o2.length ? '<tr class="oodiv"><td colspan="' + cols.n + '">Ordered, not on the GC’s copy · ' + plural(o2.length, 'part') + '</td></tr>' + o2.map(function (l) { return newRow(l, state, u, v, true, true, cols); }).join('') : '');
+        });
+      });
+    } else {
+      sec('h', HOUSE, lines, '', '', true, function () { return lines.map(function (l) { return newRow(l, state, u, v, false, false, cols); }).join(''); });
+    }
+    var only = f ? '<div class="onlybar"><span><b>' + steps.filter(function (s) { return s.k === f; })[0].lab + ':</b> ' + plural(lines.length, 'part') + '. The other lines are hidden.</span><button type="button" class="btn" data-act="filter" data-k="' + f + '">Show every line</button></div>' : '';
+    var keyDots = function (n, cls) { var s = { step: n, tone: cls }; return track(s, v); };
+    var key = '<div class="key"><span class="k">' + keyDots(1, 'act') + ' approved</span><span class="k">' + keyDots(2, 'ordered') + ' ordered</span><span class="k">' + keyDots(3, 'ordered') + ' due</span><span class="k">' + keyDots(4, 'done') + ' on site</span><span>Press a line’s track to type its dates.</span>' + (state === 'later' ? '<span class="k"><span class="dot" style="margin:0"></span> changed since the last update</span>' : '') + '</div>';
+    return '<div class="card">' +
+      '<div class="head-row"><span class="title">Procurement log</span>' + tools + '</div>' +
+      pipe + next + fix +
+      '<div class="viewrow">' + lensHtml(u.lens) + said + '</div>' + only +
+      '<div class="scroll"><table style="min-width:700px"><thead><tr><th style="width:28px"></th><th>Part</th><th class="num">Qty</th>' + (v === 1 ? '<th>House</th>' : '') + '<th>Stage' + (v === 2 && state === 'later' ? ' · needed' : '') + '</th>' + (cols.lead ? '<th>Lead</th>' : '') + '<th>Progress</th></tr></thead><tbody>' + body + '</tbody></table></div>' +
+      key + '</div>';
+  }
+
+  /* ---------------- third draft: orders on a calendar ---------------- */
+  var NOTES = { a2: 'TEL145', b1: 'KOHLER 2215-0', b2: 'TEL145', w2: 'TET2UA31#SS' };
+  var TODAY = { today: '10/05', later: '10/26' };
+  var NEED = { today: {}, later: { R: '10/20', T: '11/10', S: '12/08' } };
+  function dn(s) { var p = s.split('/'); return Date.UTC(2026, +p[0] - 1, +p[1]) / 864e5; }
+  function md(n) { var d = new Date(n * 864e5); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate(); }
+  function axisFor(all, state) {
+    var dates = [];
+    all.forEach(function (l) { if (l.st === 'site') return; ['orderBy', 'expected', 'needed', 'answerBy'].forEach(function (k) { if (l[k]) dates.push(dn(l[k])); }); });
+    if (!dates.length) return null;
+    var t = dn(TODAY[state]);
+    return { s: t - 7, e: Math.max.apply(null, dates) + 5, t: t };
+  }
+  var CHEV = '<svg class="chev" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path d="M4 2l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  function shared(list, k) { var v = list[0][k]; return list.every(function (l) { return l[k] === v; }) ? v : null; }
+  function tagsOf(list) { var t = []; list.forEach(function (l) { if (t.indexOf(l.tag) < 0) t.push(l.tag); }); return t.length > 3 ? t.slice(0, 3).join(', ') + ' +' + (t.length - 3) : t.join(', '); }
+
+  function third(state, u, all, lines, top) {
+    var ax = axisFor(all, state), f = top.f, n = 4 + (ax ? 1 : 0);
+    var P = function (d) { return (dn(d) - ax.s) / (ax.e - ax.s) * 100; };
+    var diamond = function (d, cls, title) { var p = P(d); return p < 0 || p > 100 ? '' : '<i class="dm ' + cls + '" style="left:' + p.toFixed(2) + '%" title="' + title + '"></i>'; };
+    var span = function (a, b, cls) { var x = Math.max(0, P(a)), y = Math.min(100, P(b)); return y <= x ? '' : '<i class="' + cls + (P(a) < 0 ? ' clip' : '') + '" style="left:' + x.toFixed(2) + '%;width:' + (y - x).toFixed(2) + '%"></i>'; };
+    var tick = function (d) { var p = P(d); return p < 0 || p > 100 ? '' : '<i class="nd" style="left:' + p.toFixed(2) + '%" title="needed ' + d + '"></i>'; };
+    var marks = function (l) {
+      if (!ax) return '';
+      if (l.st === 'ready') return span(l.orderBy, l.needed, 'ln') + tick(l.needed) + diamond(l.orderBy, l.orderBy === SOON ? 'soon' : 'go', 'order by ' + l.orderBy);
+      if (l.st === 'order') return (l.late ? span(l.ordered, l.needed, 'br haslate') + span(l.needed, l.expected, 'br late') : span(l.ordered, l.expected, 'br') + span(l.expected, l.needed, 'ln')) + tick(l.needed);
+      if (l.answerBy) return span(l.answerBy, l.needed, 'ln') + tick(l.needed) + diamond(l.answerBy, 'ask', 'the GC must answer by ' + l.answerBy);
+      return '';
+    };
+    var tlc = function (html) { return ax ? '<td class="tlc"><div class="tl">' + html + '</div></td>' : ''; };
+    var st3 = function (l) {
+      var open = !!u.lines[l.id];
+      if (l.st === 'back') return (NOTES[l.id] ? '<span class="note3">They wrote “' + esc(NOTES[l.id]) + '”</span>' : '<span class="mut">No note from them</span>') + '<button type="button" class="set" data-act="noop">Pick another product</button><a data-act="noop">Change their answer…</a>';
+      if (l.noProduct) return '<span style="color:var(--amber);font-weight:600">No product yet</span><a data-act="noop">Open it</a>';
+      if (l.st === 'wait' && !l.oo && !l.hand) return '<a data-act="noop">Enter their answer…</a>';
+      return '<button type="button" class="lnk q" data-act="line" data-id="' + l.id + '">' + (open ? 'Close' : 'Dates…') + '</button>';
+    };
+    var row3 = function (l, underTag, facts, ownMarks) {
+      var bits = [];
+      if (facts) { if (l.stage) bits.push(STAGE[l.stage] + (l.needed ? ', needed ' + l.needed : '')); else bits.push('<span style="color:var(--amber)">no stage</span>'); if (l.lead) bits.push(l.lead + ' lead'); }
+      if (l.hand) bits.push('added by hand');
+      if (l.oo && facts) bits.push('order only');
+      return '<tr class="ln3' + (l.oo ? ' oo' : '') + '"><td class="tk"><input type="checkbox" aria-label="Pick ' + esc(l.head) + '"></td>' +
+        '<td class="part in3">' + (underTag ? '' : '<span class="tagc">' + esc(l.tag) + '</span>') + (l.noProduct ? '' : '<span class="head">' + esc(l.head) + '</span>') + (l.words ? ' <span class="words">' + esc(l.words) + '</span>' : '') + (bits.length ? '<span class="subl">' + bits.join(' · ') + '</span>' : '') + '</td>' +
+        '<td class="num">' + (l.qty == null ? '<span class="mut">—</span>' : l.qty) + '</td>' + (ax && l.st === 'back' ? '<td class="st3 wide" colspan="2">' + st3(l) + '</td>' : tlc(ownMarks ? marks(l) : '') + '<td class="st3">' + st3(l) + '</td>') + '</tr>' + (u.lines[l.id] ? editorRow(l, n) : '');
+    };
+    var grp = function (key, dflt, title, note, markHtml, status, rows, extra) {
+      var open = u.fold[key] == null ? dflt : u.fold[key];
+      return '<tr class="grp"><td class="tk"><input type="checkbox" aria-label="Pick every part here"></td><td colspan="2"><button type="button" class="tg" data-act="fold" data-k="' + key + '" aria-expanded="' + open + '">' + CHEV + title + '<span class="mut">' + note + '</span></button></td>' + tlc(markHtml) + '<td class="st3">' + status + '</td></tr>' + (extra || '') + (open ? rows() : '');
+    };
+    var body = '';
+    var newc = function (list) { return top.changes && list.every(function (l) { return l.changed; }) ? '<span class="newc">new</span>' : ''; };
+    var sec = function (key, title, count, note, tone, rows) {
+      if (!count) return;
+      var open = f ? true : (u.open[key] == null ? true : u.open[key]);
+      body += '<tr class="sec"><td class="tk"><input type="checkbox" aria-label="Pick every line under ' + esc(title) + '"></td><td colspan="' + (n - 1) + '"><button type="button" class="tg" data-act="sec" data-k="' + key + '" aria-expanded="' + open + '">' + CHEV + '<b>' + esc(title) + '</b><span class="cnt ' + tone + '">' + count + '</span><span class="mut">' + esc(note) + '</span></button></td></tr>' + (open ? rows() : '');
+    };
+    var factsNote = function (list) {
+      var bits = [tagsOf(list)], stg = shared(list, 'stage'), need = shared(list, 'needed'), lead = shared(list, 'lead');
+      if (list.every(function (l) { return l.oo; })) bits.push('order only');
+      if (stg) bits.push(STAGE[stg] + (need ? ', needed ' + need : ''));
+      if (lead) bits.push(lead + ' lead');
+      return { text: bits.join(' · '), mixed: !(stg || stg === '') || !lead };
+    };
+    var rd = lines.filter(function (l) { return l.st === 'ready'; }), oo = lines.filter(function (l) { return l.st === 'order'; });
+    var bk = lines.filter(function (l) { return l.st === 'back'; }), wt = lines.filter(function (l) { return l.st === 'wait'; }), si = lines.filter(function (l) { return l.st === 'site'; });
+    var late = oo.filter(function (l) { return l.late; }).length;
+
+    var rg = groupBy(rd.slice().sort(function (a, c) { return a.orderBy.localeCompare(c.orderBy); }), function (l) { return l.orderBy; });
+    sec('ready', 'Order now · ' + HOUSE, rd.length, plural(rg.length, 'order') + ' to place, by date', 'go', function () {
+      return rg.map(function (g, i) {
+        var fn = factsNote(g.rows), soon = g.key === SOON, key = 'r:' + g.key, one = shared(g.rows, 'fx') != null;
+        var marking = u.marking === key;
+        var form = marking ? '<tr class="editor"><td colspan="' + n + '"><div class="setter" style="border:none;padding:0;background:none"><b style="color:var(--blue-ink)">Mark ' + plural(g.rows.length, 'part') + ' ordered</b><label class="mut">Ordered <input type="text" value="' + TODAY[state] + '" aria-label="Ordered on"></label><label class="mut">PO <input type="text" placeholder="PO number" style="width:8rem" aria-label="PO"></label><button type="button" class="btn pri" data-act="mark" data-k="' + key + '">Mark ' + g.rows.length + ' ordered</button><button type="button" class="lnk" data-act="mark" data-k="' + key + '">Cancel</button><span class="mut">Tick parts first to order only some of them.</span></div></td></tr>' : '';
+        return grp(key, i === 0, '<b class="' + (soon ? 'soonb' : '') + '">Order by ' + g.key + (soon ? ' · tomorrow' : '') + '</b><span class="cnt ' + (soon ? 'back' : 'go') + '">' + g.rows.length + '</span>' + newc(g.rows), esc(fn.text), marks(g.rows[0]),
+          '<button type="button" class="' + (soon ? 'btn pri sm' : 'set') + '" data-act="mark" data-k="' + key + '">Mark ordered…</button>',
+          function () { return g.rows.map(function (l) { return row3(l, one, fn.mixed, false); }).join(''); }, form);
+      }).join('');
+    });
+    var pg = function (list) { return groupBy(list, function (l) { return l.po; }); };
+    sec('order', 'On order', oo.length, late ? late + ' late' : '', late ? 'late' : '', function () {
+      return pg(oo.slice().sort(function (a, c) { return (c.late || 0) - (a.late || 0); })).map(function (g) {
+        var l0 = g.rows[0], fn = factsNote(g.rows);
+        return grp('p:' + g.key, false, '<b>PO ' + esc(g.key) + '</b><span class="cnt">' + g.rows.length + '</span>' + newc(g.rows), esc(fn.text + ' · ordered ' + l0.ordered), marks(l0),
+          l0.late ? '<span class="t late">Arrives ' + l0.expected + ', ' + l0.late + ' d late</span>' : '<span class="t ordered">Arrives ' + l0.expected + '</span>',
+          function () { return g.rows.map(function (l) { return row3(l, false, fn.mixed, false); }).join(''); });
+      }).join('');
+    });
+    sec('back', 'Sent back by the GC', bk.length, 'pick another product, then resubmit on step 7', 'back', function () { return bk.map(function (l) { return row3(l, false, false, true); }).join(''); });
+    var fg = groupBy(wt, function (l) { return l.fx; });
+    var firstAsk = min(wt.filter(function (l) { return l.answerBy; }).map(function (l) { return l.answerBy; }));
+    sec('wait', 'Waiting on their answer', wt.length, plural(fg.length, 'fixture') + (firstAsk ? ' · the first needs an answer by ' + firstAsk : ' · not ordered until they approve'), '', function () {
+      return fg.map(function (g) {
+        var fx = FX[g.key], gc = g.rows.filter(function (l) { return !l.oo; }), o2 = g.rows.filter(function (l) { return l.oo; }), l0 = g.rows[0];
+        var ask = min(g.rows.filter(function (l) { return l.answerBy; }).map(function (l) { return l.answerBy; }));
+        var note = l0.noProduct ? '<span style="color:var(--amber);font-weight:600">no product yet</span>' : g.rows.length === 1 ? esc(l0.head) + (l0.words ? ' ' + esc(l0.words) : '') : esc(fx.name + (fx.n ? ' × ' + fx.n : '') + ' · ' + plural(gc.length, 'part') + (o2.length ? ' · ' + o2.length + ' order only' : ''));
+        var withAsk = g.rows.filter(function (l) { return l.answerBy; })[0];
+        return grp('f:' + g.key, false, '<span class="tagc" style="margin-right:0">' + esc(fx.tag) + '</span>' + (fx.warn ? '<span class="warnp">' + fx.warn + '</span>' : ''), note, withAsk ? marks(withAsk) : '',
+          l0.noProduct ? '<a data-act="noop">Open it</a>' : (ask ? '<span class="mut">answer by ' + ask + '</span>' : '') + (gc.length ? '<a data-act="noop">Their answer…</a>' : ''),
+          function () { return gc.map(function (l) { return row3(l, true, true, false); }).join('') + (o2.length ? '<tr class="oodiv"><td></td><td colspan="' + (n - 1) + '" style="padding-left:30px">Ordered, not on the GC’s copy · ' + plural(o2.length, 'part') + '</td></tr>' + o2.map(function (l) { return row3(l, true, false, false); }).join('') : ''); });
+      }).join('');
+    });
+    sec('site', 'On site', si.length, '', 'done', function () {
+      return pg(si).map(function (g) {
+        var l0 = g.rows[0];
+        return grp('p:' + g.key, false, '<b>PO ' + esc(g.key) + '</b><span class="cnt">' + g.rows.length + '</span>', esc(tagsOf(g.rows) + ' · ordered ' + l0.ordered), '', '<span class="t done">✓ On site ' + l0.site + '</span>', function () { return g.rows.map(function (l) { return row3(l, false, true, false); }).join(''); });
+      }).join('');
+    });
+
+    var head = '<th style="width:28px"></th><th>Part</th><th class="num">Qty</th>', tstyle = '';
+    if (ax) {
+      var need = NEED[state], flags = '', wk = '', pv = function (d) { return d ? P(d).toFixed(2) + '%' : '-20px'; };
+      ['R', 'T', 'S'].forEach(function (k) { if (need[k]) { var p = P(need[k]); flags += '<span class="flag' + (p > 80 ? ' r' : '') + '" style="left:' + p.toFixed(2) + '%">' + STAGE[k] + '</span>'; } });
+      for (var d = ax.s; d <= ax.e; d++) if (new Date(d * 864e5).getUTCDay() === 1 && Math.abs(d - ax.t) > 3) wk += '<span class="wk" style="left:' + ((d - ax.s) / (ax.e - ax.s) * 100).toFixed(2) + '%">' + md(d) + '</span>';
+      var pt = ((ax.t - ax.s) / (ax.e - ax.s) * 100).toFixed(2) + '%';
+      head += '<th class="axh"><div class="axis">' + flags + '<span class="wk tdl" style="left:' + pt + '">today</span>' + wk + '</div></th>';
+      tstyle = '--pt:' + pt + ';--pR:' + pv(need.R) + ';--pT:' + pv(need.T) + ';--pS:' + pv(need.S);
+    }
+    head += '<th></th>';
+    var only = f ? '<div class="onlybar"><span><b>' + top.steps.filter(function (s) { return s.k === f; })[0].lab + ':</b> ' + plural(lines.length, 'part') + '. The other lines are hidden.</span><button type="button" class="btn" data-act="filter" data-k="' + f + '">Show every line</button></div>' : '';
+    var said = '<span class="said">Every part comes from ' + HOUSE + '.' + (ax ? '' : ' No dates to draw yet. <a data-act="demo">See the log with dates</a>') + '</span>';
+    var key = ax
+      ? '<div class="key"><span class="k"><i class="dm go kd"></i> order by</span><span class="k"><i class="dm ask kd"></i> the GC must answer by</span><span class="k"><i class="br kb"></i> on order</span><span class="k"><i class="br late kb"></i> past the needed date</span><span class="k"><i class="nd kn"></i> needed on the job</span><span class="k"><i class="kt"></i> today</span>' + (top.changes ? '<span class="k"><span class="newc">new</span> changed since the last update</span>' : '') + '</div>'
+      : '<div class="key"><span>Each order gets a place on a calendar once its parts have a lead time and the job has stage dates.</span></div>';
+    return '<div class="card">' +
+      '<div class="head-row"><span class="title">Procurement log</span>' + top.tools + '</div>' + top.pipe + top.next + top.fix +
+      '<div class="viewrow">' + lensHtml(u.lens) + said + '</div>' + only +
+      '<div class="scroll"><table class="t3" style="min-width:' + (ax ? 860 : 640) + 'px;' + tstyle + '"><thead><tr>' + head + '</tr></thead><tbody>' + body + '</tbody></table></div>' + key + '</div>';
+  }
+
+  /* ---------------- wiring ---------------- */
+  var DESIGN = 1180;
+  function effLayout() { return window.innerWidth < 1040 ? 'one' : ctl.layout; }
+  function paint() {
+    document.body.dataset.layout = effLayout();
+    document.body.dataset.show = ctl.show;
+    document.getElementById('p-cur').innerHTML = renderCurrent(ctl.state);
+    var pn = document.getElementById('p-new');
+    pn.dataset.panel = 'd' + ctl.draft;
+    pn.innerHTML = renderNew(ctl.state, Number(ctl.draft));
+    document.getElementById('new-badge').textContent = 'Redraw · ' + { 1: 'first', 2: 'second', 3: 'third' }[ctl.draft] + ' draft';
+    document.getElementById('new-what').textContent = { 1: 'the first idea, before the second look', 2: 'what you saw last time', 3: 'what I would build. Switch Bid to Three weeks on to see the calendar' }[ctl.draft];
+    document.getElementById('example-note').hidden = ctl.state !== 'later';
+    document.getElementById('grp-show').hidden = effLayout() !== 'one';
+    ['layout', 'show', 'draft', 'state'].forEach(function (k) {
+      Array.prototype.forEach.call(document.querySelectorAll('#ctl-' + k + ' button'), function (bn) { bn.setAttribute('aria-pressed', String((k === 'layout' ? effLayout() : ctl[k]) === bn.dataset.v)); });
+    });
+    fit();
+  }
+  function fit() {
+    var side = effLayout() === 'side';
+    Array.prototype.forEach.call(document.querySelectorAll('.stage'), function (s) {
+      var w = s.parentElement.clientWidth;
+      if (side && w > 0) { s.style.width = DESIGN + 'px'; s.style.zoom = String(Math.min(1, w / DESIGN)); }
+      else { s.style.width = ''; s.style.zoom = ''; }
+    });
+  }
+  ['layout', 'show', 'draft', 'state'].forEach(function (k) {
+    document.getElementById('ctl-' + k).addEventListener('click', function (e) {
+      var bn = e.target.closest('button'); if (!bn) return;
+      ctl[k] = bn.dataset.v;
+      try { localStorage.setItem('procure-redraw-ctl-v2', JSON.stringify(ctl)); } catch (err) {}
+      paint();
+    });
+  });
+  document.querySelector('.compare').addEventListener('click', function (e) {
+    var el = e.target.closest('[data-act]'); if (!el) return;
+    var panel = el.closest('[data-panel]'); if (!panel) return;
+    var u = ui[panel.dataset.panel], act = el.dataset.act, k = el.dataset.k;
+    if (el.tagName === 'A') e.preventDefault();
+    if (act === 'noop') return;
+    if (act === 'lens') u.lens = k;
+    else if (act === 'fold') u.fold[k] = el.getAttribute('aria-expanded') !== 'true';
+    else if (act === 'mark') u.marking = u.marking === k ? null : k;
+    else if (act === 'demo') { ctl.state = 'later'; try { localStorage.setItem('procure-redraw-ctl-v2', JSON.stringify(ctl)); } catch (err) {} }
+    else if (act === 'line') u.lines[el.dataset.id] = !u.lines[el.dataset.id];
+    else if (act === 'sec') { var cur = el.getAttribute('aria-expanded') === 'true'; u.open[k] = !cur; }
+    else if (act === 'filter') u.filter = u.filter === k ? null : k;
+    else if (act === 'menu') u.menu = !u.menu;
+    else if (act === 'setter') u.setter = u.setter === k ? null : k;
+    var y = window.scrollY;
+    paint();
+    window.scrollTo(0, y);
+  });
+  window.addEventListener('resize', function () { paint(); });
+  paint();
+})();
+</script>
+</body>
+</html>
