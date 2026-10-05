@@ -3,13 +3,11 @@ import type { ReleaseNote } from '../../lib/releaseNotes'
 const note: ReleaseNote = {
   version: 'v2.4558',
   date: '2026-10-05',
-  title: 'Documents: every email we send outside is kept',
-  kind: 'feature',
+  title: 'Put a GC on notice: printing the run marks the notices printed',
+  kind: 'fix',
   highlights: [
-    'Every email the app sends to a customer, a GC, a supplier, a sub or a law firm is now kept as it was read, with its attachments.',
-    'On a job’s Documents tab, Sent from this job now lists lien notices, demand letters, releases, hazmat notices, test reports, estimates, contract emails and supply house job accounts.',
-    'Statements to a GC, price requests to a supply house, bid room links and notices to a law firm are kept too. They cover no single job, so a place to browse them is coming to the Documents page.',
-    'Mail to our own team, such as digests and reminders, is not kept as a send.',
+    'When you print the packet from the run inside Put a GC on notice, the notices now move to In the mail · tracking owed on the Lien desk.',
+    'Before, only a run opened from the Lien desk did that. A run printed from Put a GC on notice left its notices in Ready to send.',
   ],
 }
 

@@ -198,6 +198,8 @@ Three steps run across the top of the run.
 
 With no number on any envelope, the button reads {{button:blue|Record the run ▸}} and records everything. The **Saved copy** boxes above it take a Drive link to the packet as printed.
 
+A printed notice waits on the desk in the mail pile. Open it and press {{button:blue|Record the mailing ▸}} to go back to the run. If it was never mailed, press {{button:outline|Back to ready}}. The approval stands.
+
 A notice recorded without its number is never stuck. Its row under Sent says the tracking is owed, and its footer has a box to add the number. The job's Lien window shows the same. The Dashboard's Needs you counts the mailed notices that still have no number.
 
 :::example One notice on its own

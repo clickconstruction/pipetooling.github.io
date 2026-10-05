@@ -17,7 +17,8 @@ import {
   type CustomerAddressRow,
   type JobPropertyOwnerLike,
 } from '../../lib/jobs/lienProperty'
-import { openHtmlPreviewWindow, openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
+import { openHtmlPreviewWindow } from '../../lib/jobsDocuments/printWindow'
+import { printAndFile } from '../../lib/sent/sentCopiesIo'
 import { buildDemandLetterPacket, mergePdfBlobs } from '../../lib/jobsDocuments/demandLetterPacket'
 import { buildPhysicalInvoicePdfBlob } from '../../lib/physicalInvoicePdf'
 import { payPageBlocks, payPageRows, type PayPageAssets } from '../../lib/jobs/lienNoticePayPage'
@@ -302,9 +303,14 @@ export default function LienFilingTabs({
 
   const printDoc = useCallback(() => {
     if (!currentDoc) return
-    const ok = openHtmlPrintWindow(noticeEnclosureHtml(filingDocPrintHtml(currentDoc.blocks, currentDoc.title, filingDocFooter(currentDoc.kind))))
+    // A print counts as a send (docs/SENT_COPIES.md): the paper is filed on the job as it printed.
+    const ok = printAndFile(noticeEnclosureHtml(filingDocPrintHtml(currentDoc.blocks, currentDoc.title, filingDocFooter(currentDoc.kind))), {
+      kind: `lien_${currentDoc.kind}`,
+      title: currentDoc.title,
+      jobIds: [job.id],
+    })
     if (!ok) showToast('Popup blocked — allow popups to print.', 'error')
-  }, [currentDoc, noticeEnclosureHtml, showToast])
+  }, [currentDoc, noticeEnclosureHtml, showToast, job.id])
 
   const downloadPdf = useCallback(async () => {
     if (!currentDoc || pdfBusy) return
@@ -351,7 +357,7 @@ export default function LienFilingTabs({
         setBusy(false)
       }
     },
-    [busy, job.id, authUser?.id, showToast, onChanged],
+    [busy, job.id, authUser?.id, docUrl, docNote, showToast, onChanged],
   )
 
   /** Email a recipient the notice PDF via the send-lien-filing-email edge fn; returns the resend id. */
@@ -427,7 +433,7 @@ export default function LienFilingTabs({
     } finally {
       setBusy(false)
     }
-  }, [busy, ownerSend, ocSend, ownerEmail, originalContractorEmail, emailNoticeTo, job.id, authUser?.id, openBalance, clock.workMonth, noticeMonths, noticeFields, showToast, onChanged])
+  }, [busy, ownerSend, ocSend, ownerEmail, originalContractorEmail, emailNoticeTo, job.id, authUser?.id, openBalance, clock.workMonth, noticeMonths, noticeFields, docUrl, docNote, showToast, onChanged])
 
   const recordAffidavitFiling = () =>
     insertFiling(
@@ -919,8 +925,8 @@ export default function LienFilingTabs({
             </>
           ) : (
             <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-              Clear the ✗ items above — each links back to where the fix lives (the customer's address book for
-              property facts, the § 53.056 tab for the notice).
+              Clear the ✗ items above. Property facts are fixed in the customer's address book. The notice is
+              recorded on the § 53.056 tab.
             </p>
           )}
         </div>

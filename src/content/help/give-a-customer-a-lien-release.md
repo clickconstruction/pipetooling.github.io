@@ -83,7 +83,9 @@ A conditional release only takes effect when the check clears — and once it do
 
 The **Needs you** card may say a payment cleared behind a conditional release. Then {{button:blue|Issue release}} opens a list rather than the Pipeline board. Every waiting release is a row. It shows the job and the customer. It shows the conditional release with its amount and issue date, and the check that cleared it. The oldest cleared comes first. The total owed sits at the bottom.
 
-- {{button:green|Issue unconditional}} opens the Release of Lien window already on the ***Unconditional · progress*** form. The covered bill lines are selected. The amount is filled from the applied payments. Mint it by print, PDF, or request signature. The row disappears. The card count falls with it.
+A bill paid by check waits seven days before its row appears. The bank can still send a check back in that time. A card, a bank transfer or cash does not wait. A release you are still writing does not clear a row. The row stays until the unconditional is issued.
+
+- {{button:green|Issue unconditional}} opens the Release of Lien window already on the ***Unconditional · progress*** form. A row that reads *Conditional · final* opens on ***Unconditional · final***. The covered bill lines are selected. The amount is filled from the applied payments. Mint it by print, PDF, or request signature. The row disappears. The card count falls with it.
 - The **job name** opens the Job window for context. That is the window with the *Job · Edit · Bill* tabs. The list stays open underneath. Closing the window puts you right back.
 - **View release** reopens the original conditional document so you can check the amount and through-date first.
 
