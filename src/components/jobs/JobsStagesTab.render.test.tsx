@@ -460,6 +460,34 @@ describe('JobsStagesTab render smoke', () => {
     localStorage.removeItem('pipetooling_jobs_map_hidden')
   })
 
+  it('a Lien desk row opens the job’s lien window over the desk; closing it lands back on the desk, not the board (v2.4523)', async () => {
+    cache.merged = ['working', 'billed_all']
+    const ref = createRef<JobsStagesTabHandle>()
+    renderWithProviders(<JobsStagesTab ref={ref} {...makeProps({ jobs: [...boardJobs(), makeJob({ job_name: 'Billed Lennox', status: 'billed' })] })} />)
+    await settle()
+    await act(async () => {
+      ref.current!.openLienDesk()
+    })
+    const desk = await screen.findByRole('dialog', { name: 'Lien desk' })
+    await within(desk).findByRole('button', { name: 'All · 1 job · $1,000' })
+    // The calendar folds its groups: open Overdue, then the job's row is there to click.
+    fireEvent.click([...desk.querySelectorAll('button')].find((b) => b.textContent?.startsWith('▸Overdue'))!)
+    await settle()
+    const row = [...desk.querySelectorAll<HTMLElement>('button, [role="button"]')].find((b) => b.textContent?.includes('Billed Lennox'))
+    expect(row).toBeTruthy()
+    fireEvent.click(row!)
+    await settle()
+    const lienWindow = document.querySelector('[aria-labelledby="lien-instruments-title"]') as HTMLElement
+    expect(lienWindow).toBeTruthy()
+    // The desk is still there, under the window.
+    expect(screen.getByRole('dialog', { name: 'Lien desk' })).toBeTruthy()
+    fireEvent.click(within(lienWindow).getAllByRole('button', { name: 'Close' })[0]!)
+    await settle()
+    expect(document.querySelector('[aria-labelledby="lien-instruments-title"]')).toBeNull()
+    expect(screen.getByRole('dialog', { name: 'Lien desk' })).toBeTruthy()
+    expect(within(screen.getByRole('dialog', { name: 'Lien desk' })).getByRole('button', { name: 'All · 1 job · $1,000' })).toBeTruthy()
+  })
+
   describe('section moves (the shared stagesSectionActionProps, map step 6)', () => {
     function moveJobs() {
       return [

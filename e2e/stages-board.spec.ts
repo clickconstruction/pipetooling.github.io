@@ -7,6 +7,12 @@ import { test, expect } from '@playwright/test'
  * a print dialog.
  */
 
+/**
+ * The Working header's count pill (`StagesSectionBandTitle`, v2.4512). It reads "…" until
+ * the section's count lands, so a number here means the board has rendered with its data.
+ */
+const WORKING_COUNT = '#stages-working .stagesBandCount'
+
 test.beforeEach(async ({ context }) => {
   await context.addInitScript(() => {
     window.print = () => {}
@@ -23,13 +29,14 @@ test('the six board sections render with the section flow header', async ({ page
 
 test('section headers show dollar totals and the capable-to-bill figure', async ({ page }) => {
   await page.goto('/jobs?tab=stages')
-  await expect(page.locator('main')).toContainText(/Working \(\d+\)/)
+  await expect(page.locator(WORKING_COUNT)).toHaveText(/^\d+$/)
+  await expect(page.locator('#stages-working .stagesBandTotal')).toHaveText(/^\$\d/)
   await expect(page.locator('main')).toContainText('Capable of Being Billed:')
 })
 
 test('Total by Name modal opens from the ⋯ tools menu and its Print builds the report popup', async ({ page }) => {
   await page.goto('/jobs?tab=stages')
-  await expect(page.locator('main')).toContainText(/Working \(\d+\)/, { timeout: 20000 })
+  await expect(page.locator(WORKING_COUNT)).toHaveText(/^\d+$/, { timeout: 20000 })
   // v2.1049 collapsed the Stages toolbar to New Job + search + a ⋯ menu; Total
   // by Name is a menuitem there and is not in the DOM until the menu opens.
   await page.getByRole('button', { name: 'Pipeline tools' }).click()

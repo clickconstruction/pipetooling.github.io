@@ -14,7 +14,7 @@ The [Lien desk](/jobs?tab=stages&liendesk=1) opens on its **Calendar** tab. It s
 
 Pills at the top sort the jobs into Overdue, This month, Next month and Later. Each job is counted once, at its next date. Press a pill to see one month.
 
-Press a job to open its Lien window. The Calendar is shown step by step in [see what is due on the lien calendar](/help/see-what-is-due-on-the-lien-calendar).
+Press a job to open its Lien window. The desk stays open behind it. Close the Lien window and you are back on the desk, where you left it. The Calendar is shown step by step in [see what is due on the lien calendar](/help/see-what-is-due-on-the-lien-calendar).
 
 ## Where it opens
 
