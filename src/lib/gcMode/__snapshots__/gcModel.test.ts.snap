@@ -9174,6 +9174,58 @@ exports[`GC mode golden walk > step 199: Send Elena Fair Oaks D's weekly report 
 }
 `;
 
+exports[`GC mode golden walk > step 200: Fair Oaks D: send RFI-004, the roof curb size, to Marsh & Vale 1`] = `
+{
+  "changed": {
+    "lastLog.id": 195,
+    "lastLog.text": "Sent RFI-004 on Fair Oaks Shops, Building D to Marsh & Vale Architects.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 201: Fair Oaks D: Marsh & Vale answers RFI-004, the bigger curb, $1,400 and a day 1`] = `
+{
+  "changed": {
+    "lastLog.id": 196,
+    "lastLog.text": "RFI-004 answered by Marsh & Vale Architects Oct 2: adds $1,400 and 1 day.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 202: Fair Oaks D: RFI-004 starts a change order 1`] = `
+{
+  "changed": {
+    "lastLog.id": 197,
+    "lastLog.text": "Drafted change order 1 on Fair Oaks Shops, Building D: RFI-004: Set the 54 by 72 curb. A bulletin follows (A-501, M-101), $1,540.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 203: Helotes: Brightline asks about the panel location from its portal 1`] = `
+{
+  "changed": {
+    "lastLog.id": 198,
+    "lastLog.text": "Brightline Electric asked RFI-001 on Helotes Dental Office: E-101 puts panel B behind the reception desk. Can it move to the back hall?",
+    "lastLog.who": "trade",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 204: Helotes: our superintendent asks which way the operatory 2 door swings 1`] = `
+{
+  "changed": {
+    "lastLog.id": 199,
+    "lastLog.text": "Our superintendent asked RFI-002 on Helotes Dental Office: Which way does the operatory 2 door swing? A-101 and A-601 differ.",
+    "lastLog.who": "office",
+  },
+  "removed": [],
+}
+`;
+
 exports[`GC mode golden walk > the whole state at the end 1`] = `
 {
   "customerSends": [
@@ -9411,6 +9463,31 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
+      "id": 199,
+      "text": "Our superintendent asked RFI-002 on Helotes Dental Office: Which way does the operatory 2 door swing? A-101 and A-601 differ.",
+      "who": "office",
+    },
+    {
+      "id": 198,
+      "text": "Brightline Electric asked RFI-001 on Helotes Dental Office: E-101 puts panel B behind the reception desk. Can it move to the back hall?",
+      "who": "trade",
+    },
+    {
+      "id": 197,
+      "text": "Drafted change order 1 on Fair Oaks Shops, Building D: RFI-004: Set the 54 by 72 curb. A bulletin follows (A-501, M-101), $1,540.",
+      "who": "office",
+    },
+    {
+      "id": 196,
+      "text": "RFI-004 answered by Marsh & Vale Architects Oct 2: adds $1,400 and 1 day.",
+      "who": "office",
+    },
+    {
+      "id": 195,
+      "text": "Sent RFI-004 on Fair Oaks Shops, Building D to Marsh & Vale Architects.",
+      "who": "office",
+    },
+    {
       "id": 194,
       "text": "Sent the weekly report on Fair Oaks Shops, Building D to Elena Marchetti.",
       "who": "office",
@@ -9534,31 +9611,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "id": 170,
       "text": "The contract with Cibolo Creek Partners charges $500 a day for finishing Fair Oaks Shops, Building D late.",
       "who": "office",
-    },
-    {
-      "id": 169,
-      "text": "Summit Roofing: the coping metal came. Marked kept.",
-      "who": "office",
-    },
-    {
-      "id": 168,
-      "text": "Summit Roofing promised the coping metal on Fair Oaks Shops, Building D by Thu Oct 8.",
-      "who": "office",
-    },
-    {
-      "id": 167,
-      "text": "Pecan Valley Electric signed the unconditional waiver for draw 1.",
-      "who": "trade",
-    },
-    {
-      "id": 166,
-      "text": "Pecan Valley Electric promised the unconditional waiver on draw 1 on Fair Oaks Shops, Building D by Wed Oct 7.",
-      "who": "office",
-    },
-    {
-      "id": 165,
-      "text": "Pecan Valley Electric sent submittal 26 56 00-01, Site lighting fixtures.",
-      "who": "trade",
     },
   ],
   "paperSends": [
@@ -12296,6 +12348,43 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
           "text": "Are the operatory walls full height to the deck?",
         },
       ],
+      "rfis": [
+        {
+          "answer": null,
+          "askedOn": "2026-10-02",
+          "changeOrderId": null,
+          "holds": [
+            "delec-1",
+          ],
+          "id": "helotes-rfi-1",
+          "neededDays": 3,
+          "number": 1,
+          "packageId": "delec",
+          "partnerId": "brightline",
+          "question": "E-101 puts panel B behind the reception desk. Can it move to the back hall?",
+          "sentToArchitectOn": null,
+          "sheets": [
+            "E-101",
+          ],
+        },
+        {
+          "answer": null,
+          "askedOn": "2026-10-02",
+          "changeOrderId": null,
+          "holds": [],
+          "id": "helotes-rfi-2",
+          "neededDays": 3,
+          "number": 2,
+          "packageId": null,
+          "partnerId": null,
+          "question": "Which way does the operatory 2 door swing? A-101 and A-601 differ.",
+          "sentToArchitectOn": null,
+          "sheets": [
+            "A-101",
+            "A-601",
+          ],
+        },
+      ],
       "schedule": {
         "activities": [
           {
@@ -12703,6 +12792,23 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "architect": "Marsh & Vale Architects",
       "architectId": "marshvale",
       "bidDue": null,
+      "changeOrders": [
+        {
+          "answeredOn": null,
+          "cost": 1400,
+          "days": 1,
+          "description": "RFI-004: Set the 54 by 72 curb. A bulletin follows (A-501, M-101)",
+          "id": "co-1",
+          "number": 1,
+          "packageId": "froof",
+          "pctDone": 0,
+          "price": 1540,
+          "reason": "plans",
+          "schedule": "+1 day",
+          "sentOn": null,
+          "status": "draft",
+        },
+      ],
       "changeRequests": [
         {
           "amount": 14820,
@@ -14208,6 +14314,103 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
         },
       ],
       "questions": [],
+      "rfis": [
+        {
+          "answer": {
+            "by": "architect",
+            "cost": 3800,
+            "days": 2,
+            "impact": "cost",
+            "on": "2026-09-08",
+            "text": "Cap it at the property line and take out the rest.",
+          },
+          "askedOn": "2026-09-02",
+          "changeOrderId": null,
+          "holds": [
+            "fconc-3",
+          ],
+          "id": "fairoaksd-rfi-1",
+          "neededDays": 3,
+          "number": 1,
+          "packageId": "fsite",
+          "partnerId": null,
+          "question": "Digging for the bay 4 sidewalk we found an old gas line that is not on C-101. Do we remove it or cap it?",
+          "sentToArchitectOn": "2026-09-02",
+          "sheets": [
+            "C-101",
+          ],
+        },
+        {
+          "answer": {
+            "by": "architect",
+            "cost": 0,
+            "days": 0,
+            "impact": "none",
+            "on": "2026-09-25",
+            "text": "Yes. Move it 18 inches east. No change in cost.",
+          },
+          "askedOn": "2026-09-21",
+          "changeOrderId": null,
+          "holds": [
+            "froof-1",
+          ],
+          "id": "fairoaksd-rfi-2",
+          "neededDays": 3,
+          "number": 2,
+          "packageId": "froof",
+          "partnerId": "summit",
+          "question": "The roof drain at grid C-4 lands on a joist on S-201. Can it move east one joist bay?",
+          "sentToArchitectOn": "2026-09-21",
+          "sheets": [
+            "S-201",
+          ],
+        },
+        {
+          "answer": null,
+          "askedOn": "2026-09-29",
+          "changeOrderId": null,
+          "holds": [
+            "fhvac-1",
+          ],
+          "id": "fairoaksd-rfi-3",
+          "neededDays": 3,
+          "number": 3,
+          "packageId": "fhvac",
+          "partnerId": "coolbreeze",
+          "question": "A-201 shows the storefront at bay 3 where M-101 runs the RTU-2 condensate line. Which one moves?",
+          "sentToArchitectOn": "2026-09-30",
+          "sheets": [
+            "A-201",
+            "M-101",
+          ],
+        },
+        {
+          "answer": {
+            "by": "architect",
+            "cost": 1400,
+            "days": 1,
+            "impact": "cost",
+            "on": "2026-10-02",
+            "text": "Set the 54 by 72 curb. A bulletin follows.",
+          },
+          "askedOn": "2026-10-01",
+          "changeOrderId": "co-1",
+          "holds": [
+            "froof-4",
+          ],
+          "id": "fairoaksd-rfi-4",
+          "neededDays": 3,
+          "number": 4,
+          "packageId": "froof",
+          "partnerId": "summit",
+          "question": "The roof curb on A-501 is 48 by 60 inches. The approved rooftop unit needs 54 by 72. Which size do we set?",
+          "sentToArchitectOn": "2026-10-02",
+          "sheets": [
+            "A-501",
+            "M-101",
+          ],
+        },
+      ],
       "schedule": {
         "activities": [
           {

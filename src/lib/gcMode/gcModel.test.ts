@@ -768,6 +768,22 @@ const STEPS: Step[] = [
       body: "Hi Elena,\n\nHere's where Fair Oaks Shops, Building D stands this week.\n\nThanks,\nRobert Douglas\nClick Construction",
     },
   },
+  // Questions about the plans while we build, RFIs (the owner, 2026-10-05: yes to all four).
+  { label: 'Fair Oaks D: send RFI-004, the roof curb size, to Marsh & Vale', action: { type: 'sendRfiToArchitect', projectId: 'fairoaksd', rfiId: 'fairoaksd-rfi-4' } },
+  {
+    label: 'Fair Oaks D: Marsh & Vale answers RFI-004, the bigger curb, $1,400 and a day',
+    action: { type: 'answerRfi', projectId: 'fairoaksd', rfiId: 'fairoaksd-rfi-4', text: 'Set the 54 by 72 curb. A bulletin follows.', by: 'architect', impact: 'cost', cost: 1_400, days: 1 },
+  },
+  { label: 'Fair Oaks D: RFI-004 starts a change order', action: { type: 'draftChangeOrderFromRfi', projectId: 'fairoaksd', rfiId: 'fairoaksd-rfi-4' } },
+  // Fair Oaks D is closed by now in the walk, so the new questions are on Helotes, being built.
+  {
+    label: 'Helotes: Brightline asks about the panel location from its portal',
+    action: { type: 'tradeAskRfi', projectId: 'helotes', packageId: 'delec', partnerId: 'brightline', question: 'E-101 puts panel B behind the reception desk. Can it move to the back hall?', sheets: ['E-101'] },
+  },
+  {
+    label: 'Helotes: our superintendent asks which way the operatory 2 door swings',
+    action: { type: 'addRfi', projectId: 'helotes', question: 'Which way does the operatory 2 door swing? A-101 and A-601 differ.', sheets: ['A-101', 'A-601'], packageId: null, partnerId: null, holds: [], neededDays: 3 },
+  },
 ]
 
 const CUSTOMER_IDS = ['cibolo', 'raman']
@@ -942,6 +958,7 @@ describe('GC mode golden walk', () => {
       'tradeSendSov',
       'setQuoteExclusion', 'setExclusionCover', 'logPartnerContact', 'setCustomerPortal', 'sendPaper', 'remindCustomer', 'sendOwnerContract', 'ownerSignContract',
       'remindCustomerToPay',
+      'addRfi', 'tradeAskRfi', 'sendRfiToArchitect', 'answerRfi', 'draftChangeOrderFromRfi',
     ]
     expect(all.filter((t) => !used.has(t))).toEqual([])
   })

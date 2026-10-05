@@ -666,8 +666,10 @@ export interface GcProject {
   dailyLogs?: DailyLog[]
   /** The submittal register (Building lane, 2026-10-04): what each trade sends for approval before its work. Unset: none yet. */
   submittals?: Submittal[]
-  /** The weekly reports sent to the customer (Building lane, 2026-10-05), one per week, newest last. Unset: none yet. */
+  /** The weekly reports sent to the customer (Building lane, 2026-10-05), every send, newest last. Unset: none yet. */
   weeklyReports?: WeeklyReportSent[]
+  /** Questions about the plans while we build (RFIs; the owner, 2026-10-05), numbered in order. */
+  rfis?: Rfi[]
 }
 
 /** A weekly report as it went to the customer (Building lane, 2026-10-05): kept as sent, for their portal. */
@@ -1180,6 +1182,15 @@ export type GcAction =
   | { type: 'tradeRemovePerson'; partnerId: string; personId: string }
   /** A company changes which emails one person gets. Null: the main contact. Every kind keeps someone. */
   | { type: 'tradeSetGets'; partnerId: string; personId: string | null; gets: PortalMailGroup[] }
+  /** An RFI the office records: from our superintendent, or a trade that called. */
+  | { type: 'addRfi'; projectId: string; question: string; sheets: string[]; packageId: string | null; partnerId: string | null; holds: string[]; neededDays: number }
+  /** A trade asks a question about the plans from its portal while we build. It comes to the office first. */
+  | { type: 'tradeAskRfi'; projectId: string; packageId: string; partnerId: string; question: string; sheets: string[] }
+  | { type: 'sendRfiToArchitect'; projectId: string; rfiId: string }
+  /** The architect's answer, recorded by the office, or the office's own. */
+  | { type: 'answerRfi'; projectId: string; rfiId: string; text: string; by: 'architect' | 'us'; impact: RfiImpact; cost: number; days: number }
+  /** An answer that costs money or days starts a draft change order on Bill the customer, filled in from it. */
+  | { type: 'draftChangeOrderFromRfi'; projectId: string; rfiId: string }
 
 /** One trade on a new project, as the office left it in the New project window. */
 export interface NewTradeDraft {
@@ -1474,4 +1485,34 @@ export interface TradeChangeRequest {
   changeOrderId: string | null
   /** The office turned it down: the day and why. Null: not turned down. */
   turnedDown: { on: string; note: string } | null
+}
+
+/** What an RFI's answer changes: nothing, the plans (a new set follows from Plans), or cost and days. */
+export type RfiImpact = 'none' | 'plans' | 'cost'
+
+/**
+ * A question about the plans while we build (an RFI; the owner, 2026-10-05: its own tab, trades ask
+ * from their portal, needed 3 days before the work, a cost answer starts a change order in one
+ * click). It holds the work it is about until it is answered. Bidding questions stay on Plans
+ * (`PlanQuestion`); these start once the job is ours.
+ */
+export interface Rfi {
+  id: string
+  /** RFI-001, RFI-002… on the job. */
+  number: number
+  question: string
+  sheets: string[]
+  /** The trade it is about: a cost answer's change order goes on it. Null: our own work. */
+  packageId: string | null
+  /** Who asked: a trade, from its portal or by phone. Null: our superintendent. */
+  partnerId: string | null
+  askedOn: string
+  /** The schedule activities (line ids) it holds until answered. */
+  holds: string[]
+  /** The answer is needed this many days before the first held work starts. */
+  neededDays: number
+  sentToArchitectOn: string | null
+  answer: { on: string; text: string; by: 'architect' | 'us'; impact: RfiImpact; cost: number; days: number } | null
+  /** The change order a cost answer started. Null: none yet. */
+  changeOrderId: string | null
 }

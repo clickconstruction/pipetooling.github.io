@@ -799,6 +799,24 @@ const S = {
     en: 'Your work on {jobs} overlaps {days}. Tell {gc} if one crew cannot do both.',
     es: 'Su trabajo en {jobs} se cruza {days}. Avísele a {gc} si una sola cuadrilla no puede con todo.',
   },
+  // Questions about the plans while we build, RFIs (the owner, 2026-10-05). Una pregunta: feminine.
+  rfiTitle: { en: '{trade} · questions about the plans', es: '{trade} · preguntas sobre los planos' },
+  rfiHelp: {
+    en: 'Something on the plans is not clear while you build? Ask {gc}. {gc} answers it or sends it to the architect.',
+    es: '¿Algo de los planos no está claro mientras trabaja? Pregúntele a {gc}. {gc} la contesta o se la envía al arquitecto.',
+  },
+  rfiAsk: { en: 'Ask {gc} a question', es: 'Hacerle una pregunta a {gc}' },
+  rfiQuestion: { en: 'Your question', es: 'Su pregunta' },
+  rfiQuestionHint: { en: 'What the plans do not say, or say two ways', es: 'Lo que los planos no dicen, o dicen de dos maneras' },
+  rfiSheets: { en: 'Sheets it is about, if any (like A-501)', es: 'Hojas de las que trata, si hay (como A-501)' },
+  rfiSend: { en: 'Send to {gc}', es: 'Enviar a {gc}' },
+  rfiChipUs: { en: 'with {gc}', es: 'con {gc}' },
+  rfiChipArchitect: { en: 'with the architect', es: 'con el arquitecto' },
+  rfiChipAnswered: { en: 'answered', es: 'contestada' },
+  rfiWithUs: { en: 'Asked {date}. {gc} is looking at it.', es: 'Hecha el {date}. {gc} la está revisando.' },
+  rfiWithArchitect: { en: 'Asked {date}. {gc} sent it to the architect.', es: 'Hecha el {date}. {gc} se la envió al arquitecto.' },
+  rfiNeeded: { en: 'You need the answer before {work} on {date}.', es: 'Necesita la respuesta antes de {work}, el {date}.' },
+  rfiAnswered: { en: 'Answered {date}: {answer}', es: 'Contestada el {date}: {answer}' },
 } satisfies Record<string, Record<PortalLang, string>>
 
 export type PortalKey = keyof typeof S

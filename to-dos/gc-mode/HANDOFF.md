@@ -70,25 +70,28 @@ Nothing in the real build starts before the first one.
 
 ### 2. Prototype work still open
 
-Each is small and named by the lane that owns the area. None blocks the real build now.
+Finished on 2026-10-05 at the owner's ask ("help me finish the Prototype work still open"), by the Board while the Building, Portal and Owner Billing lanes were not running. What stays open is named in its line.
 
-- **Portal: look at its newest screens.** Nobody has seen these in a browser since the Portal
-  lane's pane was signed out: Known exclusions and the exclusions form, the customer words, the
-  dates and the late chip, the quotes-wanted day, *A trade asks for a change*, *Charges from
-  Click*, *Who gets our emails* and *Your weeks*. Each has kernel tests and a render test. The last
-  phone pass was 0f89c3048, so the change request form, Charges from Click, Who gets our emails and
-  Your weeks still need a look at 375 px. *Your weeks'* overlap warning has no made-up example (no
-  company has crews on two scheduled jobs); only its test shows it.
+- ~~**Portal: look at its newest screens**~~ done 2026-10-05 by the Board, at a desk width and at
+  375 px: Known exclusions and the exclusions form, the customer words, the dates and the late chip,
+  the quotes-wanted day, *A trade asks for a change*, *Charges from Click*, *Who gets our emails*
+  and *Your weeks*. Nothing runs past the frame or widens the page. *Your weeks'* overlap warning
+  stays test-only: the made-up data has one job with a schedule, and a second job being built would
+  move every lane's numbers.
 - ~~**New Project: amend `NEW_PROJECT_REAL_BUILD.md`** before PR 2's migration~~ done 27456635d:
   the scope book's tables (PR 2, its page a new PR 4b), the Drive link on `gc_plan_sets` and the
   `gc-drive-access` check (PR 5), set kinds (PR 3), *We work for* (PR 2), and PR 1b's kernels.
-- **Building**: Questions during construction (call 2). The architect's portal lists the trades'
-  questions read only, with no answer box (New Project's `answerQuestion` would record it).
-- **Owner Billing**: the payment reminder has no golden step (unit tests cover it); Their messages
-  shows only the latest weekly report for a week.
-- **Board**: nothing open. The last asks (the people a company names on About, Follow up's Email to
-  the right person, the back-charge and change-request lines on Needs you) are built. The Board's
-  browser pane is signed in, so it can take the Portal's look above.
+- ~~**Building**: Questions during construction (call 2)~~ done: the **RFIs** tab, the portal's
+  *questions about the plans*, and **Start a change order** (`gcBuildingRfis.ts`; README → *What
+  the prototype has*). Not built yet: a ring card line, a Follow up reminder to the architect, the
+  weekly report's mention, and the hold drawn on the schedule's bar (each would move every lane's
+  snapshots, so they wait for the real build or the owner's word).
+- ~~**The architect's portal** has no answer box~~ done 28d2ca53d: each question has one, sent
+  through `answerQuestion` to every company on the trade.
+- ~~**Owner Billing**: the payment reminder has no golden step~~ done 28d2ca53d (its own test from
+  the start, since the walk's late bill gets a promise first); ~~Their messages shows only the
+  latest weekly report~~ done 28d2ca53d (every send is kept; the portal shows the newest).
+- **Board**: nothing open.
 
 ### 3. What the prototype only pretends to do
 

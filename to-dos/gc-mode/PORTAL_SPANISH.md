@@ -120,7 +120,7 @@ column headers are in one block at the end of `gcBuildingWords.ts`, for the nati
 
 ## For a native speaker to read
 
-Every Spanish string the trade's portal shows, 892 in all, drawn from the code on 2026-10-05.
+Every Spanish string the trade's portal shows, 906 in all, drawn from the code on 2026-10-05.
 They're grouped by screen, English on the left. Please mark anything that reads wrong, stiff or
 unclear, and write the better words beside it. The Portal lane makes the changes and passes the
 other lanes theirs. After any change to the words, redraw the tables below from the code with
@@ -898,6 +898,25 @@ they were written in. The portal does not translate them.
 | finishes this week | termina esta semana |
 | Inspections | Inspecciones |
 | Your work on {jobs} overlaps {days}. Tell {gc} if one crew cannot do both. | Su trabajo en {jobs} se cruza {days}. Avísele a {gc} si una sola cuadrilla no puede con todo. |
+
+#### Questions about the plans while we build, RFIs (the owner, 2026-10-05). Una pregunta: feminine.
+
+| English | Español |
+|---|---|
+| {trade} · questions about the plans | {trade} · preguntas sobre los planos |
+| Something on the plans is not clear while you build? Ask {gc}. {gc} answers it or sends it to the architect. | ¿Algo de los planos no está claro mientras trabaja? Pregúntele a {gc}. {gc} la contesta o se la envía al arquitecto. |
+| Ask {gc} a question | Hacerle una pregunta a {gc} |
+| Your question | Su pregunta |
+| What the plans do not say, or say two ways | Lo que los planos no dicen, o dicen de dos maneras |
+| Sheets it is about, if any (like A-501) | Hojas de las que trata, si hay (como A-501) |
+| Send to {gc} | Enviar a {gc} |
+| with {gc} | con {gc} |
+| with the architect | con el arquitecto |
+| answered | contestada |
+| Asked {date}. {gc} is looking at it. | Hecha el {date}. {gc} la está revisando. |
+| Asked {date}. {gc} sent it to the architect. | Hecha el {date}. {gc} se la envió al arquitecto. |
+| You need the answer before {work} on {date}. | Necesita la respuesta antes de {work}, el {date}. |
+| Answered {date}: {answer} | Contestada el {date}: {answer} |
 
 #### The usual exclusions, by name
 

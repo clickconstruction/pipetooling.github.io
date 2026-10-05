@@ -14,6 +14,7 @@ import { GcCloseoutTab } from '../components/gc/GcCloseout'
 import { GcBuildingScheduleBlock, GcBuildingScheduleTab } from '../components/gc/GcBuildingSchedule'
 import { GcBuildingLogTab } from '../components/gc/GcBuildingLog'
 import { GcBuildingSubmittalsTab } from '../components/gc/GcBuildingSubmittals'
+import { GcBuildingRfisTab } from '../components/gc/GcBuildingRfis'
 import { GcBidTabsTab } from '../components/gc/GcBidTabs'
 import { GcCustomerWindow } from '../components/gc/GcCustomerWindow'
 import { GcCompanyWindow } from '../components/gc/GcCompanyWindow'
@@ -85,7 +86,7 @@ import { GcStageHealth } from '../components/gc/GcStageHealth'
 const NEW_HERE_SEEN_KEY = 'gc-mode:new-here-seen'
 
 type BoardTab = 'projects' | 'followup' | 'partners' | 'money'
-type ProjectTab = 'packages' | 'plans' | 'number' | 'tabs' | 'contracts' | 'start' | 'draws' | 'owner' | 'closeout' | 'schedule' | 'log' | 'submittals'
+type ProjectTab = 'packages' | 'plans' | 'number' | 'tabs' | 'contracts' | 'start' | 'draws' | 'owner' | 'closeout' | 'schedule' | 'log' | 'submittals' | 'rfis'
 
 const STAGES: { key: GcStage; label: string; tone: Tone; blurb: string }[] = [
   { key: 'pursuing', label: 'Bidding to the customer', tone: 'amber', blurb: 'Collect a number for every trade, then give the customer a price.' },
@@ -143,6 +144,8 @@ const PROJECT_TABS: { key: ProjectTab; label: string }[] = [
   { key: 'contracts', label: 'Contracts' },
   { key: 'start', label: 'Get started' },
   { key: 'submittals', label: 'Submittals' },
+  // Questions about the plans while we build (the owner, 2026-10-05: its own tab beside Submittals).
+  { key: 'rfis', label: 'RFIs' },
   { key: 'schedule', label: 'Schedule' },
   { key: 'log', label: 'Daily log' },
   { key: 'draws', label: 'Draws' },
@@ -639,6 +642,7 @@ export default function GcMode() {
               {tab === 'schedule' && <GcBuildingScheduleTab state={state} project={project} dispatch={dispatch} />}
               {tab === 'log' && <GcBuildingLogTab state={state} project={project} dispatch={dispatch} />}
               {tab === 'submittals' && <GcBuildingSubmittalsTab state={state} project={project} dispatch={dispatch} />}
+              {tab === 'rfis' && <GcBuildingRfisTab state={state} project={project} dispatch={dispatch} />}
               {tab === 'closeout' && (
                 <GcCloseoutTab
                   state={state}

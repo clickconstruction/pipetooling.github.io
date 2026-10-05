@@ -2,7 +2,7 @@
  * GC mode — design spike. The reducer: every action, applied to the state.
  * Split out of gcModel.ts verbatim; import from `./gcModel`, which re-exports every file.
  */
-import type { AskContact, BackCharge, CustomerSend, Draw, PartnerPerson, PortalMailGroup, DrawSentBack, GcAction, GcState, SovLine, Invite, LookAheadMark, PaperSend, Partner, PlanQuestion, PlanSet, SubBid, TradeChangeRequest } from './gcTypes'
+import type { AskContact, BackCharge, Rfi, CustomerSend, Draw, PartnerPerson, PortalMailGroup, DrawSentBack, GcAction, GcState, SovLine, Invite, LookAheadMark, PaperSend, Partner, PlanQuestion, PlanSet, SubBid, TradeChangeRequest } from './gcTypes'
 import { money, shortDate, weekdayDate, daysUntil } from './gcWords'
 import { currentRev, partnerById, planLabel } from './gcLookups'
 import { planRecipients, questionRecipients, questionsOpen, timeWords } from './gcPlans'
@@ -26,6 +26,7 @@ import { paperSendLog, paperStep } from './gcPaperSend'
 import { ownerInterest } from './gcOwnerBillingInterest'
 import { BACK_CHARGE_ANSWER_DAYS, backChargeCanTake, backChargeDraws, backChargeState, contactGets, everyMailGroupCovered, PORTAL_MAIL_GROUPS } from './gcPortal'
 import { payReminderEmail, payReminderStep } from './gcOwnerBillingRemind'
+import { portalCanAskRfi, RFI_NEEDED_DAYS, rfiAnsweredWords, rfiChangeOrderDescription, rfiDefaultHolds, rfiLabel } from './gcBuildingRfis'
 import { appClaimed, appOpen, changeOrderPrice, OWNER_RETAINAGE_DEFAULT_PCT, ownerCloseout, ownerContractWorthNow, ownerFinalPayAppToSend, ownerPayApp, ownerPayAppHasWork, ownerPayAppToSend, ownerRetainageWords } from './gcOwnerBilling'
 
 export function gcReducer(state: GcState, action: GcAction): GcState {
@@ -2309,6 +2310,83 @@ function reduce(state: GcState, action: GcAction): GcState {
         partners: state.partners.map((p) => (p.id === partner.id ? { ...p, people, ...(person ? {} : { contactGets: gets }) } : p)),
       }
       return logged(next, 'trade', `${partner.company} set ${person ? person.name : partner.contact} to get ${gets.length > 0 ? mailGroupWords(gets) : 'no emails'}.`)
+    }
+
+    // Questions about the plans while we build (RFIs; the owner, 2026-10-05). Ours first: we send
+    // one to the architect or answer it; a cost answer starts a draft change order on a click.
+    case 'addRfi':
+    case 'tradeAskRfi': {
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const question = action.question.trim()
+      if (!project || project.stage === 'pursuing' || project.closedOn || question === '') return state
+      if (action.type === 'tradeAskRfi' && !portalCanAskRfi(project, action.packageId, action.partnerId)) return state
+      const existing = project.rfis ?? []
+      const number = existing.reduce((n, r) => Math.max(n, r.number), 0) + 1
+      const lineIds = new Set((project.schedule?.activities ?? []).map((a) => a.lineId))
+      const holds = action.type === 'tradeAskRfi' ? rfiDefaultHolds(state, project, action.packageId) : action.holds.filter((id) => lineIds.has(id))
+      const neededDays = action.type === 'addRfi' && Number.isFinite(action.neededDays) && action.neededDays >= 0 ? Math.round(action.neededDays) : RFI_NEEDED_DAYS
+      const rfi: Rfi = {
+        id: `${project.id}-rfi-${number}`,
+        number,
+        question,
+        sheets: action.sheets.map((x) => x.trim()).filter(Boolean),
+        packageId: action.packageId,
+        partnerId: action.partnerId,
+        askedOn: state.today,
+        holds,
+        neededDays,
+        sentToArchitectOn: null,
+        answer: null,
+        changeOrderId: null,
+      }
+      const next = mapProject(state, project.id, (p) => ({ ...p, rfis: [...existing, rfi] }))
+      const who = action.partnerId ? (partnerById(state, action.partnerId)?.company ?? 'A trade') : 'Our superintendent'
+      return logged(next, action.type === 'tradeAskRfi' ? 'trade' : 'office', `${who} asked ${rfiLabel(rfi)} on ${project.name}: ${question}`)
+    }
+
+    case 'sendRfiToArchitect': {
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const rfi = project?.rfis?.find((r) => r.id === action.rfiId)
+      if (!project || !rfi || rfi.answer || rfi.sentToArchitectOn) return state
+      const next = mapProject(state, project.id, (p) => ({ ...p, rfis: (p.rfis ?? []).map((r) => (r.id === rfi.id ? { ...r, sentToArchitectOn: state.today } : r)) }))
+      return logged(next, 'office', `Sent ${rfiLabel(rfi)} on ${project.name} to ${project.architect}.`)
+    }
+
+    case 'answerRfi': {
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const rfi = project?.rfis?.find((r) => r.id === action.rfiId)
+      const text = action.text.trim()
+      if (!project || !rfi || rfi.answer || text === '') return state
+      // The architect answers only what was sent to them; we can answer our own any time.
+      if (action.by === 'architect' && !rfi.sentToArchitectOn) return state
+      const cost = action.impact === 'cost' && Number.isFinite(action.cost) ? Math.max(0, Math.round(action.cost)) : 0
+      const days = action.impact === 'cost' && Number.isFinite(action.days) ? Math.max(0, Math.round(action.days)) : 0
+      if (action.impact === 'cost' && cost === 0 && days === 0) return state
+      const answered: Rfi = { ...rfi, answer: { on: state.today, text, by: action.by, impact: action.impact, cost, days } }
+      const next = mapProject(state, project.id, (p) => ({ ...p, rfis: (p.rfis ?? []).map((r) => (r.id === rfi.id ? answered : r)) }))
+      return logged(next, 'office', rfiAnsweredWords(project, answered))
+    }
+
+    case 'draftChangeOrderFromRfi': {
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const rfi = project?.rfis?.find((r) => r.id === action.rfiId)
+      if (!project || !rfi || rfi.answer?.impact !== 'cost' || rfi.changeOrderId !== null) return state
+      const before = new Set((project.changeOrders ?? []).map((c) => c.id))
+      // Drafted the way Bill the customer drafts one: an answer about the plans, priced at our cost plus the fee.
+      const drafted = gcReducer(state, {
+        type: 'draftChangeOrder',
+        projectId: project.id,
+        description: rfiChangeOrderDescription(rfi),
+        reason: 'plans',
+        schedule: '',
+        packageId: rfi.packageId,
+        cost: rfi.answer.cost,
+        price: 0,
+        days: rfi.answer.days,
+      })
+      const co = drafted.projects.find((p) => p.id === project.id)?.changeOrders?.find((c) => !before.has(c.id))
+      if (!co) return state
+      return mapProject(drafted, project.id, (p) => ({ ...p, rfis: (p.rfis ?? []).map((r) => (r.id === rfi.id ? { ...r, changeOrderId: co.id } : r)) }))
     }
   }
 }

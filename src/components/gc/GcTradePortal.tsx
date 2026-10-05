@@ -49,6 +49,7 @@ import { GcBuildingPayAppDoor } from './GcBuildingPayApp'
 import { Btn, Chip, input } from './gcUi'
 import { GcPortalBackCharges } from './GcPortalBackCharges'
 import { GcPortalChanges } from './GcPortalChanges'
+import { GcPortalRfis } from './GcPortalRfis'
 import { GcPortalContacts } from './GcPortalContacts'
 import { GcPortalHome } from './GcPortalHome'
 import { GcPortalPay } from './GcPortalPay'
@@ -414,7 +415,11 @@ function PackageBlock({
       ) : awardedElsewhere ? (
         <Block title={t('resultTitle', { trade: pkg.trade })}>{t('wentElsewhere')}</Block>
       ) : awardedToMe && pkg.sow ? (
-        <SowBlock project={project} pkg={pkg} partner={partner} today={state.today} dispatch={dispatch} />
+        <>
+          <SowBlock project={project} pkg={pkg} partner={partner} today={state.today} dispatch={dispatch} />
+          {/* Questions about the plans while we build, RFIs (the owner, 2026-10-05: trades ask from their portal). */}
+          <GcPortalRfis state={state} project={project} pkg={pkg} partnerId={partner.id} dispatch={dispatch} />
+        </>
       ) : invite.status === 'declined' ? (
         <Block title={t('inviteTitle', { trade: pkg.trade })}>{t('youPassed')}</Block>
       ) : (
