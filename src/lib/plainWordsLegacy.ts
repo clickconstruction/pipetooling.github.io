@@ -8,4 +8,5 @@
  * check:plain-words` fails CI until it does. The list only shrinks; when it is empty,
  * delete it and let `helpGuidePlainWords.test.ts` hold every guide.
  */
-export const LEGACY_PLAIN_WORDS_GUIDES: ReadonlySet<string> = new Set([])
+export const LEGACY_PLAIN_WORDS_GUIDES: ReadonlySet<string> = new Set([
+])
