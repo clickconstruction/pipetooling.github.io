@@ -145,6 +145,8 @@ describe('LienReleaseModal — six steps (v2.4314)', () => {
     db.releases = [SIGNED]
     await open650()
     fireEvent.click(within(step(1)).getByRole('button', { name: 'Waive the $17,777.51 already paid instead ›' }))
+    // It asks first, as the step 2 switch does (v2.4582).
+    fireEvent.click(await screen.findByRole('button', { name: 'Acknowledge and choose Unconditional' }))
     await waitFor(() => expect(step(1).getAttribute('data-state')).toBe('done'))
     expect(within(step(2)).getByRole('button', { name: 'Unconditional' }).getAttribute('aria-pressed')).toBe('true')
     expect((screen.getByLabelText('Amount ($)') as HTMLInputElement).value).toBe('17,777.51')
