@@ -116,7 +116,10 @@ export function SendView({
   sendLabel,
   onSend,
   onCancel,
+  dayNote = 'Follow up shows it to chase after this day. Signing or sending it keeps it.',
 }: {
+  /** The line under the day: what the day does. A trade's paper: Follow up chases it. */
+  dayNote?: string
   title: string
   history: string
   to: string
@@ -187,7 +190,7 @@ export function SendView({
               )
             })}
           </span>
-          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Follow up shows it to chase after this day. Signing or sending it keeps it.</span>
+          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{dayNote}</span>
         </span>
       </div>
       <label style={field}>
