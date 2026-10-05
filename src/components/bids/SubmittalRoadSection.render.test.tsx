@@ -25,7 +25,13 @@ describe('RoadSection', () => {
     expect(screen.queryByTestId('road-4-body')).toBeNull()
     expect(screen.queryByTestId('road-4-about')).toBeNull()
     expect(screen.queryByRole('button', { name: 'Walk me through step 4' })).toBeNull()
-    expect(section.textContent).toBe('4 · Package▾built')
+    expect(section.textContent).toBe('4 · Packagebuilt')
+    // The fold is a chevron in its own 24px button, pointing down while the step is folded.
+    const caret = screen.getByTestId('road-4-caret')
+    expect(caret.style.width).toBe('24px')
+    expect(caret.style.height).toBe('24px')
+    expect(caret.querySelector('svg')!.getAttribute('data-dir')).toBe('down')
+    expect(caret.querySelector('svg')!.getAttribute('width')).toBe('14')
     fireEvent.click(screen.getByTestId('road-4-title'))
     expect(onJump).toHaveBeenCalledTimes(1)
     fireEvent.click(screen.getByRole('button', { name: 'Unfold step 4' }))
@@ -40,6 +46,7 @@ describe('RoadSection', () => {
       </RoadSection>,
     )
     expect(screen.getByTestId('road-4-about').textContent).toContain('One PDF for the GC.')
+    expect(screen.getByTestId('road-4-caret').querySelector('svg')!.getAttribute('data-dir')).toBe('up')
     // The summary stays unless the step says its contents already carry it.
     expect(screen.getByTestId('road-4').textContent).toContain('not built yet')
     fireEvent.click(screen.getByRole('button', { name: 'Walk me through step 4' }))

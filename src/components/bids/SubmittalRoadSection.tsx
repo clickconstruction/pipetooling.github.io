@@ -28,12 +28,15 @@ export function RoadSection({ n, title, status, open, onToggle, onJump, anchor, 
       </div>
       <section data-tour={anchor} data-testid={`road-${n}`} data-status={status} data-open={open} style={{ padding: '0.15rem 0 1rem', minWidth: 0 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'baseline' }}>
-          <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: '0.25rem', minWidth: 0 }}>
+          <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: '0.45rem', minWidth: 0 }}>
             <button type="button" onClick={onJump} style={{ ...btnQuiet, fontSize: '0.95rem', fontWeight: 700, color: status === 'later' && !always ? 'var(--text-muted)' : 'var(--text-strong)', textAlign: 'left' }} data-testid={`road-${n}-title`}>
               {n} · {title}
             </button>
-            <button type="button" onClick={onToggle} aria-expanded={open} aria-label={`${open ? 'Fold' : 'Unfold'} step ${n}`} title={open ? 'Fold this step' : 'Unfold this step'} style={{ ...btnQuiet, padding: '0.1rem 0.4rem', fontSize: '0.75rem', color: 'var(--text-faint)' }} data-testid={`road-${n}-caret`}>
-              {open ? '▴' : '▾'}
+            {/* The fold: a chevron big enough to read and to press (owner, 2026-10-05: the small triangles were hard to read). Up while open, down while folded. */}
+            <button type="button" onClick={onToggle} aria-expanded={open} aria-label={`${open ? 'Fold' : 'Unfold'} step ${n}`} title={open ? 'Fold this step' : 'Unfold this step'} style={{ ...btnQuiet, alignSelf: 'center', flexShrink: 0, width: 24, height: 24, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-700)' }} data-testid={`road-${n}-caret`}>
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" data-dir={open ? 'up' : 'down'}>
+                <path d={open ? 'M3.5 10.5 8 6l4.5 4.5' : 'M3.5 5.5 8 10l4.5-4.5'} />
+              </svg>
             </button>
           </span>
           {summary && (!open || summaryWhenOpen) ? <span style={{ fontSize: '0.8125rem', color: status === 'done' ? 'var(--text-green-700)' : status === 'waiting' ? 'var(--text-amber-700)' : 'var(--text-muted)', minWidth: 0 }}>{summary}</span> : null}
