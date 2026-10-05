@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { ActionPhaseButton } from '../ActionPhaseButton'
+import { useActionPhase } from '../../hooks/useActionPhase'
 import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import {
@@ -146,6 +148,10 @@ export default function LienInstrumentsModal({
   const [historyRows, setHistoryRows] = useState<JobDemandLetterRow[]>([])
   const [voidPendingId, setVoidPendingId] = useState<string | null>(null)
   const [pdfBusy, setPdfBusy] = useState(false)
+  // The footer's three doors say what they are doing (v2.4584): busy for at least 1.5 s, then done for 2 s, at one width.
+  const printPhase = useActionPhase()
+  const downloadPhase = useActionPhase()
+  const emailPhase = useActionPhase()
   const [recordOpen, setRecordOpen] = useState(false)
   const [recordMethod, setRecordMethod] = useState('certified_mail')
   const [recordTracking, setRecordTracking] = useState('')
@@ -630,29 +636,31 @@ export default function LienInstrumentsModal({
   }
 
   // Print opens the packet PDF (letter + exhibits) in a new tab — one print, every page.
-  const printLetter = useCallback(async () => {
-    if (!fields || pdfBusy) return
+  const printLetter = useCallback(async (): Promise<boolean> => {
+    if (!fields || pdfBusy) return false
     setPdfBusy(true)
     try {
       const packet = await buildPacket()
-      if (!packet) return
+      if (!packet) return false
       const url = URL.createObjectURL(packet.blob)
       const win = window.open(url, '_blank', 'noopener')
       if (!win) showToast('Popup blocked — allow popups to print.', 'error')
       window.setTimeout(() => URL.revokeObjectURL(url), 60_000)
+      return Boolean(win)
     } catch {
       showToast('Could not build the packet.', 'error')
+      return false
     } finally {
       setPdfBusy(false)
     }
   }, [fields, pdfBusy, buildPacket, showToast])
 
-  const downloadPdf = useCallback(async () => {
-    if (!fields || pdfBusy) return
+  const downloadPdf = useCallback(async (): Promise<boolean> => {
+    if (!fields || pdfBusy) return false
     setPdfBusy(true)
     try {
       const packet = await buildPacket()
-      if (!packet) return
+      if (!packet) return false
       const blob = packet.blob
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -662,8 +670,10 @@ export default function LienInstrumentsModal({
       a.click()
       a.remove()
       URL.revokeObjectURL(url)
+      return true
     } catch {
       showToast('Could not build the PDF.', 'error')
+      return false
     } finally {
       setPdfBusy(false)
     }
@@ -762,12 +772,14 @@ export default function LienInstrumentsModal({
       if (err) throw err
       const resendId = ((data as { resend_email_id?: string | null } | null)?.resend_email_id ?? '').trim()
       await recordSend({ method: 'email', tracking: `${resendId ? `resend:${resendId}` : 'emailed'} → ${to}`, sentOn: todayYmdLocal(), exhibits: packet.exhibits })
+      // The sheet has closed; the footer's Email button says it went.
+      emailPhase.flashDone()
     } catch (e) {
       showToast(e instanceof Error && e.message ? `Could not email the letter: ${e.message}` : 'Could not email the letter.', 'error')
     } finally {
       setEmailBusy(false)
     }
-  }, [fields, job, emailBusy, emailTo, buildPacket, jobNumber, recordSend, showToast])
+  }, [fields, job, emailBusy, emailTo, buildPacket, jobNumber, recordSend, showToast, emailPhase])
 
   const viewHistoryLetter = useCallback(
     (r: JobDemandLetterRow) => {
@@ -1300,9 +1312,19 @@ export default function LienInstrumentsModal({
               <button type="button" onClick={() => setEmailOpen(false)} style={{ padding: '0.45rem 0.8rem', fontSize: '0.8125rem', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>
                 Back
               </button>
-              <button type="button" onClick={() => void emailPacket()} disabled={emailBusy || recordBusy} style={{ padding: '0.45rem 0.9rem', fontSize: '0.8125rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: emailBusy ? 'wait' : 'pointer', fontWeight: 600 }}>
-                {emailBusy ? 'Sending…' : `Send · ${1 + (fields.enclosures ?? []).length} documents`}
-              </button>
+              <ActionPhaseButton
+                action="email-send"
+                phase={emailBusy ? 'busy' : 'idle'}
+                onClick={() => void emailPacket()}
+                disabled={recordBusy}
+                busyLabel="Sending…"
+                doneLabel="Sent"
+                busyBackground="#1d4ed8"
+                outlined={false}
+                style={{ padding: '0.45rem 0.9rem', fontSize: '0.8125rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}
+              >
+                Send · {1 + (fields.enclosures ?? []).length} documents
+              </ActionPhaseButton>
             </div>
           </div>
         ) : null}
@@ -1344,24 +1366,27 @@ export default function LienInstrumentsModal({
                 Cancel
               </button>
             )}
-            <button type="button" onClick={() => void printLetter()} disabled={pdfBusy} style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', background: 'var(--surface)', border: '1px solid #2563eb', color: 'var(--text-link)', borderRadius: 4, cursor: pdfBusy ? 'wait' : 'pointer', ...phoneFootButton }}>
+            <ActionPhaseButton action="print" phase={printPhase.phase} onClick={() => void printPhase.run(printLetter)} disabled={pdfBusy} busyLabel="Opening…" doneLabel="Opened" style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', background: 'var(--surface)', border: '1px solid #2563eb', color: 'var(--text-link)', borderRadius: 4, cursor: pdfBusy ? 'wait' : 'pointer', ...phoneFootButton }}>
               Print packet
-            </button>
-            <button type="button" onClick={() => void downloadPdf()} disabled={pdfBusy} style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', background: 'var(--surface)', border: '1px solid #2563eb', color: 'var(--text-link)', borderRadius: 4, cursor: pdfBusy ? 'wait' : 'pointer', ...phoneFootButton }}>
-              {pdfBusy ? 'Building…' : 'Download PDF'}{pdfBusy ? '' : ` · ${1 + (fields.enclosures ?? []).length} documents`}
-            </button>
-            <button
-              type="button"
+            </ActionPhaseButton>
+            <ActionPhaseButton action="download" phase={downloadPhase.phase} onClick={() => void downloadPhase.run(downloadPdf)} disabled={pdfBusy} busyLabel="Downloading…" doneLabel="Downloaded" style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', background: 'var(--surface)', border: '1px solid #2563eb', color: 'var(--text-link)', borderRadius: 4, cursor: pdfBusy ? 'wait' : 'pointer', ...phoneFootButton }}>
+              Download PDF · {1 + (fields.enclosures ?? []).length} documents
+            </ActionPhaseButton>
+            <ActionPhaseButton
+              action="email"
+              phase={emailPhase.phase}
               onClick={() => {
                 setEmailTo((prev) => prev || fields.recipientEmail.trim())
                 setEmailOpen(true)
                 setRecordOpen(false)
               }}
               disabled={pdfBusy || emailBusy}
+              busyLabel="Sending…"
+              doneLabel="Emailed"
               style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', background: 'var(--surface)', border: '1px solid #2563eb', color: 'var(--text-link)', borderRadius: 4, cursor: 'pointer', ...phoneFootButton }}
             >
               Email with the PDF…
-            </button>
+            </ActionPhaseButton>
             <button type="button" onClick={() => setRecordOpen(true)} style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', background: '#b45309', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600, ...phoneFootButton }}>
               Save &amp; record send…
             </button>

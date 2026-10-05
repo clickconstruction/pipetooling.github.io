@@ -195,6 +195,8 @@ export type ProcurementItemSource = {
   noProduct?: boolean
   /** 2026-10-02 · the row was approved on this earlier revision and the newest no longer holds its tag (`rowsThatStand`): released there, still to order. */
   standsOnRev?: number | null
+  /** v2.4587 · what the reviewer wrote on the part, else on the row: the *They wrote* on a line sent back. */
+  reviewNote?: string | null
 }
 
 /** A `bid_procurement_items` row. */
@@ -271,6 +273,8 @@ export type ProcurementRow = {
   noProduct?: boolean
   /** The earlier revision the row stands approved on; null when the newest revision holds it. */
   standsOnRev?: number | null
+  /** What the reviewer wrote with their answer; '' or null for nothing. */
+  reviewNote?: string | null
 }
 
 export type ProcurementLogInput = {
@@ -328,6 +332,7 @@ function rowFrom(source: ProcurementItemSource | null, rec: ProcurementRecord, s
     addedByHand: source?.addedByHand ?? false,
     noProduct: source?.noProduct ?? false,
     standsOnRev: source?.standsOnRev ?? null,
+    reviewNote: source?.reviewNote ?? null,
     orderOnly: source?.orderOnly ?? false,
     noGc: source?.noGc ?? false,
     quantity: source?.quantity ?? null,

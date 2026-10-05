@@ -76,6 +76,20 @@ describe('SubmittalSheetStrip', () => {
     expect(screen.getAllByRole('button', { name: 'Remove' })).toHaveLength(1)
   })
 
+  it('v2.4579 · Save PDF saves the whole file: drawn only with a handler, named for the file, still there once trimmed', () => {
+    mount()
+    expect(screen.queryByTestId('save-file')).toBeNull()
+    const onSaveFile = vi.fn()
+    const h = mount({ onSaveFile })
+    const save = screen.getByRole('button', { name: 'Save NWS.pdf as a PDF' })
+    expect(save.textContent).toBe('Save PDF')
+    expect(save.getAttribute('title')).toBe('Save the whole file as one PDF, all 4 pages as it was dropped')
+    fireEvent.click(save)
+    expect(onSaveFile).toHaveBeenCalledWith(0)
+    render(<SubmittalSheetStrip files={[{ ...files[0]!, name: 'KEPT.pdf', path: 'b/r/1.pdf', pages: 2, trimmedAt: '2026-09-15T20:00:00Z', droppedPages: 24 }]} items={[item({ id: 'k', tag: 'K-1', sheet_file: 0, sheet_pages: [1, 2] })]} thumbnails={{}} busy={false} onNeedThumbnails={h.onNeedThumbnails} onAssign={h.onAssign} onUnassign={h.onUnassign} onDone={h.onDone} onRemove={h.onRemove} onSaveFile={onSaveFile} />)
+    expect(screen.getByRole('button', { name: 'Save KEPT.pdf as a PDF' }).getAttribute('title')).toBe('Save the 2 pages kept from this file as one PDF')
+  })
+
   it('the arrow folds the pages out and asks for thumbnails it does not have; a file the reader could not place says so', () => {
     const h = mount({ thumbnails: {}, files: [{ ...files[0]!, namesRows: 0 }], items: items.map((i) => ({ ...i, sheet_file: null, sheet_pages: [] })) })
     expect(screen.queryByTestId('file-fold')).toBeNull()
