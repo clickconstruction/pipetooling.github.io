@@ -22,6 +22,7 @@ export const PROMISE_WHAT: Record<PromiseKind, string> = {
   payApp: 'the fixed pay application',
   punch: 'the punch items fixed',
   closeout: 'their closeout papers',
+  msa: 'the signed master agreement',
 }
 
 /** Ask for the renewed certificate this many days before the policy runs out. */
@@ -132,6 +133,8 @@ export function promisesKeptBy(state: GcState, action: GcAction): { partnerId: s
       return [{ partnerId: action.partnerId, kind: 'insurance' }]
     case 'tradeSignW9':
       return [{ partnerId: action.partnerId, kind: 'w9' }]
+    case 'tradeSignMsa':
+      return [{ partnerId: action.partnerId, kind: 'msa' }]
     case 'tradeSignSow': {
       const pkg = state.projects.find((p) => p.id === action.projectId)?.packages.find((k) => k.id === action.packageId)
       const partnerId = pkg?.invites.find((i) => i.id === pkg.awardedInviteId)?.partnerId

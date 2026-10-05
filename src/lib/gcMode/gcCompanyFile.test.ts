@@ -30,11 +30,10 @@ describe("a company's window (the owner, 2026-10-04)", () => {
     expect(pecan.groups.map((g) => g.title)).toEqual(['Their company papers', 'Fair Oaks Shops, Building D · Electrical', 'Their quotes'])
     // Their insurance ran out and draw 1's unconditional waiver is owed: two papers to get.
     expect(pecan.toGet).toBe(2)
-    expect(docOf(state, 'pecanvalley', 'insurance')).toMatchObject({ status: 'missing', statusWords: 'ran out Sep 15', ask: 'insurance' })
-    expect(docOf(state, 'pecanvalley', 'waivers-felec')).toMatchObject({ status: 'missing', statusWords: '1 owed', ask: 'closeout' })
+    expect(docOf(state, 'pecanvalley', 'insurance')).toMatchObject({ status: 'missing', statusWords: 'ran out Sep 15' })
+    expect(docOf(state, 'pecanvalley', 'waivers-felec')).toMatchObject({ status: 'missing', statusWords: '1 owed' })
     // A draft statement of work is ours to send, not a paper to get from them.
     expect(docOf(state, 'kendall', 'sow-dhvac')).toMatchObject({ status: 'info', statusWords: 'drafted, not sent yet' })
-    expect(docOf(state, 'kendall', 'sow-dhvac')?.ask).toBeUndefined()
   })
 
   it('a W-9 never shows the tax number', () => {

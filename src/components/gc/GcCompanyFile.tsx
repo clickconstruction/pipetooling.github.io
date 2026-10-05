@@ -203,12 +203,15 @@ export function CompanyDocuments({
   onSelect,
   paper,
   ask,
+  aside,
 }: {
   groups: CompanyDocGroup[]
   selected: string | null
   onSelect: (key: string) => void
   paper: CompanyPaper | null
   ask?: (doc: CompanyDoc) => ReactNode
+  /** Shown in the paper's place: a send in progress (the owner, 2026-10-04). */
+  aside?: ReactNode
 }) {
   const paperRef = useRef<HTMLDivElement | null>(null)
   // On a phone the paper sits under the list: bring it into view when one is picked.
@@ -261,7 +264,7 @@ export function CompanyDocuments({
         ))}
       </div>
       <div ref={paperRef} style={{ minWidth: 0, position: 'sticky', top: 0 }}>
-        <PaperView paper={paper} />
+        {aside ?? <PaperView paper={paper} />}
       </div>
     </div>
   )

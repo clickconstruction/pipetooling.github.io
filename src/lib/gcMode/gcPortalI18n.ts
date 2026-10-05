@@ -249,6 +249,7 @@ const S = {
   pwInsurance: { en: 'The renewed insurance certificate', es: 'El certificado de seguro renovado' },
   pwW9: { en: 'A signed W-9', es: 'Un W-9 firmado' },
   pwSow: { en: 'The signed statement of work', es: 'La orden de trabajo firmada' },
+  pwMsa: { en: 'The signed master agreement', es: 'El contrato maestro firmado' },
   pwStart: { en: 'Your start day', es: 'Su día de inicio' },
   pwSubmittals: { en: 'Your submittals', es: 'Sus documentos para aprobación' },
   pwDelivery: { en: 'The material delivery', es: 'La entrega de material' },

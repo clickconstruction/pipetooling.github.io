@@ -740,6 +740,8 @@ const STEPS: Step[] = [
   // The company window (the owner, 2026-10-04): a call with the company itself, on its Activity tab.
   { label: 'A call with Pecan Valley about the waiver', action: { type: 'logPartnerContact', partnerId: 'pecanvalley', note: 'Said the draw 1 unconditional waiver goes out Monday.' } },
   { label: "Turn on Dr. Raman's portal", action: { type: 'setCustomerPortal', customerId: 'raman', on: true } },
+  // Send a paper from the company window (the owner, 2026-10-04): remind Bluebonnet to sign the master agreement.
+  { label: 'Remind Bluebonnet to sign the master agreement', action: { type: 'sendPaper', partnerId: 'bluebonnet', paper: 'msa', by: '2026-10-09', note: '' } },
 ]
 
 const CUSTOMER_IDS = ['cibolo', 'raman']
@@ -903,7 +905,7 @@ describe('GC mode golden walk', () => {
       'saveToScopeBook', 'editScopeBookLine', 'mergeScopeBookLines', 'saveScopeSet',
       'checkPlanSetDrive',
       'tradeSendSov',
-      'setQuoteExclusion', 'setExclusionCover', 'logPartnerContact', 'setCustomerPortal',
+      'setQuoteExclusion', 'setExclusionCover', 'logPartnerContact', 'setCustomerPortal', 'sendPaper',
     ]
     expect(all.filter((t) => !used.has(t))).toEqual([])
   })

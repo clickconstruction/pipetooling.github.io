@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Send a paper</title>
+<style>
+  :root {
+    --bg: #f4f5f7; --surface: #fff; --sub: #f8fafc; --text: #1f2937; --muted: #6b7280; --border: #e5e7eb; --strong: #d1d5db;
+    --blue: #2563eb; --blue-tint: #eff6ff; --blue-fg: #1e40af;
+    --amber-tint: #fffbeb; --amber-border: #fcd34d; --amber-fg: #92400e;
+    --green-tint: #f0fdf4; --green-fg: #166534; --red-tint: #fef2f2; --red-fg: #b91c1c;
+    --shade: rgba(15, 23, 42, .45); --ink: #16283c; --paper: #f6f3ec;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f172a; --surface: #111827; --sub: #0b1220; --text: #e5e7eb; --muted: #9ca3af; --border: #374151; --strong: #4b5563;
+      --blue: #60a5fa; --blue-tint: #172554; --blue-fg: #bfdbfe;
+      --amber-tint: #2a1d05; --amber-border: #92400e; --amber-fg: #fcd34d;
+      --green-tint: #052e16; --green-fg: #86efac; --red-tint: #2a0f0f; --red-fg: #fca5a5;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f172a; --surface: #111827; --sub: #0b1220; --text: #e5e7eb; --muted: #9ca3af; --border: #374151; --strong: #4b5563;
+    --blue: #60a5fa; --blue-tint: #172554; --blue-fg: #bfdbfe;
+    --amber-tint: #2a1d05; --amber-border: #92400e; --amber-fg: #fcd34d;
+    --green-tint: #052e16; --green-fg: #86efac; --red-tint: #2a0f0f; --red-fg: #fca5a5;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 20px 16px 48px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  h2 { font-size: 17px; margin: 28px 0 6px; }
+  .lede { color: var(--muted); margin: 0 0 10px; max-width: 90ch; }
+  .stage { background: var(--shade); border-radius: 12px; padding: 18px; }
+  .win { background: var(--surface); border: 1px solid var(--strong); border-radius: 10px; overflow: hidden; max-width: 1040px; margin: 0 auto; }
+  .whead { padding: 12px 16px 6px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .whead b { font-size: 18px; }
+  .sub { padding: 0 16px 8px; color: var(--muted); font-size: 13px; }
+  .tabs { display: flex; gap: 2px; padding: 0 12px; border-bottom: 1px solid var(--border); overflow-x: auto; }
+  .tabs span { padding: 9px 12px; color: var(--muted); border-bottom: 2px solid transparent; white-space: nowrap; }
+  .tabs span.on { color: var(--text); border-color: var(--blue); font-weight: 700; }
+  .tabs span.amber { color: var(--amber-fg); }
+  .wbody { padding: 12px 16px; }
+  .chip { display: inline-block; border-radius: 999px; padding: 1px 8px; font-size: 11.5px; font-weight: 600; white-space: nowrap; background: var(--sub); color: var(--muted); border: 1px solid var(--border); }
+  .chip.g { background: var(--green-tint); color: var(--green-fg); border-color: transparent; }
+  .chip.a { background: var(--amber-tint); color: var(--amber-fg); border-color: var(--amber-border); }
+  .muted { color: var(--muted); }
+  .small { font-size: 12px; }
+  .btn { display: inline-block; border: 1px solid var(--strong); border-radius: 6px; padding: 4px 10px; background: var(--surface); color: var(--text); font-size: 12.5px; white-space: nowrap; }
+  .btn.p { background: #2563eb; border-color: #2563eb; color: #fff; font-weight: 600; }
+  .btn.q { border-color: transparent; color: var(--blue); padding: 4px 4px; }
+  .split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 14px; align-items: start; }
+  .group h4 { margin: 0 0 4px; font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 500; }
+  .list { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-bottom: 12px; }
+  .row { padding: 8px 10px; border-top: 1px solid var(--border); display: grid; gap: 2px; }
+  .row:first-child { border-top: none; }
+  .row.sel { background: var(--blue-tint); }
+  .row .top { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .row .top b { text-decoration: underline; text-decoration-color: var(--strong); text-underline-offset: 3px; }
+  .row .meta { font-size: 12px; color: var(--muted); padding-left: 16px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; }
+  .dot.r { background: #b91c1c; } .dot.g { background: #15803d; } .dot.n { background: #9ca3af; }
+  .st { font-size: 12.5px; font-weight: 600; }
+  .st.r { color: var(--red-fg); } .st.g { color: var(--green-fg); }
+  .grow { flex: 1; }
+  .paper { background: #fff; color: #111827; border: 1px solid #cbd5e1; border-radius: 6px; padding: 12px 14px; font-size: 12.5px; }
+  .paper h5 { margin: 0 0 8px; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: #6b7280; font-weight: 500; }
+  .paper dl { display: grid; grid-template-columns: 8rem 1fr; gap: 4px 10px; margin: 0; }
+  .paper dt { color: #6b7280; } .paper dd { margin: 0; }
+  .compose { border: 1px solid var(--blue); border-radius: 8px; background: var(--surface); padding: 12px 14px; display: grid; gap: 10px; box-shadow: 0 0 0 3px var(--blue-tint); }
+  .compose h3 { margin: 0; font-size: 15px; }
+  .field { display: grid; grid-template-columns: 6.5rem minmax(0, 1fr); gap: 8px; align-items: start; font-size: 13px; }
+  .field > span:first-child { color: var(--muted); padding-top: 3px; }
+  .picks { display: flex; gap: 6px; flex-wrap: wrap; }
+  .pick { border: 1px solid var(--strong); border-radius: 999px; padding: 2px 10px; font-size: 12.5px; }
+  .pick.on { border-color: var(--blue); background: var(--blue-tint); color: var(--blue-fg); font-weight: 600; }
+  .note { border: 1px solid var(--strong); border-radius: 6px; padding: 6px 8px; color: var(--muted); font-size: 12.5px; min-height: 2.2rem; }
+  .email { background: var(--paper); color: var(--ink); border: 1px solid var(--ink); border-radius: 8px; overflow: hidden; font-size: 12.5px; }
+  .email .eh { background: var(--ink); color: var(--paper); padding: 6px 10px; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; }
+  .email .eb { padding: 8px 10px; display: grid; gap: 5px; }
+  .email .subj { font-weight: 700; }
+  .email .att { display: flex; gap: 8px; align-items: center; border: 1px solid #c9bfa8; border-radius: 6px; padding: 6px 8px; background: #fffdf8; }
+  .email .att i { font-style: normal; font-size: 18px; }
+  .email .lnk { color: #1d4ed8; text-decoration: underline; }
+  .new { outline: 2px dashed var(--amber-border); outline-offset: 2px; border-radius: 4px; }
+  .callout { font-size: 11px; color: var(--amber-fg); font-weight: 600; }
+  .critique { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 10px; }
+  .critique div { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+  .critique b { display: block; margin-bottom: 3px; }
+  table.verbs { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; font-size: 13px; }
+  table.verbs th, table.verbs td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  table.verbs th { color: var(--muted); font-weight: 600; font-size: 12px; background: var(--sub); }
+  ul.plan { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px 12px 30px; margin: 0; }
+  ul.plan li { margin: 6px 0; }
+  .after { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
+  .after div { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; font-size: 13px; }
+  .after b { display: block; margin-bottom: 4px; }
+  @media (max-width: 780px) { .split { grid-template-columns: minmax(0, 1fr); } .field { grid-template-columns: minmax(0, 1fr); } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Send a paper from the company window</h1>
+  <p class="lede">The owner (2026-10-04), on Bluebonnet Roofing's Documents tab: "make this page actionable where a user could request that agreement and by clicking on something it brings them into where they would send off that document." Made-up example: Bluebonnet's master agreement went out Sep 30 and is not signed. Today is Fri Oct 2.</p>
+
+  <h2>1. Today</h2>
+  <p class="lede">The row says <b>waiting on their signature</b>, and there is nothing to press. On other rows, <b>Ask for it</b> writes a promise on Follow up, but nothing goes to the company. They never know we asked.</p>
+  <div class="stage">
+    <div class="win">
+      <div class="whead"><b>Bluebonnet Roofing</b> <span class="chip">Roofing</span> <span class="chip a">hit or miss</span></div>
+      <div class="tabs"><span>About</span><span>Activity (6)</span><span class="on">Documents · 1 to get</span><span>Their portal · active</span></div>
+      <div class="wbody">
+        <div class="list" style="max-width:520px">
+          <div class="row sel"><div class="top"><span class="dot r"></span><b>Master agreement</b><span class="st r">waiting on their signature</span><span class="grow"></span><span class="small" style="color:var(--blue)">Showing</span></div><div class="meta">Sent Sep 30. Nothing is awarded on paper until it is signed.</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h2>2. First idea: a Send button that goes to Contracts</h2>
+  <p class="lede">Put <b>Send it</b> on the row. It closes the window and opens the project's Contracts tab, where the master agreement is sent today.</p>
+
+  <h2>3. Is this the best we can do? Not quite.</h2>
+  <div class="critique">
+    <div><b>Send where you are.</b>Leaving the window to send loses your place, and a master agreement belongs to no single job, so there is no project to land on. The window already shows the paper. The send belongs beside it.</div>
+    <div><b>Show what they will get.</b>The email, in their language, with the paper and the link to sign in their portal. Nobody sends blind, and you can add a line of your own.</div>
+    <div><b>Name the button for what happens.</b>Not sent: <i>Send to sign</i>. Sent and waiting: <i>Remind them</i>. Insurance and a W-9: <i>Ask for it</i>. A lien waiver: <i>Ask for the waiver</i>. One button per row, the next step only.</div>
+    <div><b>Asking has to send something.</b>Today's <i>Ask for it</i> only writes a promise. Every ask now sends an email and shows in their portal under <i>Needs you</i>. The promise stays: Follow up chases it after its day.</div>
+    <div><b>Give it a day.</b>Every send carries a <i>Sign by</i> or <i>Send by</i> day, a week out unless you pick another. Signing keeps it. A passed day shows on Follow up.</div>
+    <div><b>Say what already happened.</b>"First sent Sep 30, 2 days ago" sits above the button, so nobody sends twice in a day. After sending, the row reads "reminded today · sign by Fri Oct 9".</div>
+  </div>
+
+  <h2>4. Revised: the row's button opens the send beside the list</h2>
+  <p class="lede">Press <b>Remind them</b> on the master agreement. The right side changes from the paper to the send: who it goes to, the day, a line of your own, and the email exactly as Bluebonnet will get it, with the agreement attached. <b>Cancel</b> goes back to the paper. Dashed outlines mark what is new.</p>
+  <div class="stage">
+    <div class="win">
+      <div class="whead"><b>Bluebonnet Roofing</b> <span class="chip">Roofing</span> <span class="chip a">hit or miss</span> <span class="chip a">kept 1 of 2 promises</span></div>
+      <div class="sub">Wes Hartley · from Austin, goes 75 mi</div>
+      <div class="tabs"><span>About</span><span>Activity (6)</span><span class="on">Documents · 1 to get</span><span>Their portal · active</span></div>
+      <div class="wbody">
+        <div class="split">
+          <div>
+            <div class="group"><h4>Their company papers</h4>
+              <div class="list">
+                <div class="row sel"><div class="top"><span class="dot r"></span><b>Master agreement</b><span class="st r">waiting on their signature</span><span class="grow"></span><span class="btn p new">Remind them</span></div><div class="meta">Sent Sep 30, 2 days ago. Nothing is awarded on paper until it is signed.</div></div>
+                <div class="row"><div class="top"><span class="dot g"></span><b>Insurance certificate</b><span class="st g">good to Nov 30</span></div><div class="meta">Runs out in 59 days.</div></div>
+                <div class="row"><div class="top"><span class="dot g"></span><b>W-9</b><span class="st g">on file</span></div><div class="meta">Signed in their portal. The tax number is never shown here.</div></div>
+              </div>
+            </div>
+            <div class="group"><h4>Their quotes</h4>
+              <div class="list"><div class="row"><div class="top"><span class="dot n"></span><b>Quote, Fair Oaks Shops, Building D</b><span class="st">$139,800</span></div><div class="meta">Roofing · sent May 12</div></div></div>
+            </div>
+          </div>
+
+          <div class="compose new">
+            <span class="callout">NEW · replaces the paper while you send</span>
+            <h3>Remind them to sign the master agreement</h3>
+            <div class="small muted">First sent Sep 30, 2 days ago. This is the first reminder.</div>
+            <div class="field"><span>To</span><span>Wes Hartley, by email, with their portal link · in English</span></div>
+            <div class="field"><span>Sign by</span><span class="picks"><span class="pick">Mon Oct 5</span><span class="pick on">Fri Oct 9 · a week</span><span class="pick">Fri Oct 16</span></span></div>
+            <div class="field"><span>Your line</span><span class="note">Optional. Added to the email, like "We want you on Boerne. This is the last paper."</span></div>
+            <div class="email">
+              <div class="eh">The email Bluebonnet gets</div>
+              <div class="eb">
+                <div class="subj">Reminder: your master agreement with Click Construction</div>
+                <div>Hello Wes,</div>
+                <div>Our master agreement is still waiting for your signature. Please sign it by Fri Oct 9.</div>
+                <div>Here is our master agreement. You sign it once, and it covers every job you do for us.</div>
+                <div>Open your portal to read it and sign it. <span class="lnk">clicktooling.com/t/1MYP443</span></div>
+                <div class="att"><i>📄</i><span><b>Master subcontract agreement</b><br><span class="small">They read and sign it in their portal</span></span></div>
+              </div>
+            </div>
+            <div style="display:flex; gap:8px; justify-content:flex-end"><span class="btn q">Cancel</span><span class="btn p">Send the reminder</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h2>5. After Send</h2>
+  <div class="after">
+    <div><b>The row</b>Master agreement · waiting on their signature<br><span class="muted small">Reminded today · sign by Fri Oct 9. First sent Sep 30.</span></div>
+    <div><b>Activity</b>Oct 2 · We reminded them to sign the master agreement, by Fri Oct 9.</div>
+    <div><b>Their portal</b>The email is under <i>Their messages</i>. <i>Needs you</i> says "Sign the master agreement by Fri Oct 9."</div>
+    <div><b>Follow up</b>Nothing until Oct 9. If it is still not signed then, it shows to chase. Signing keeps the promise.</div>
+  </div>
+
+  <h2>6. The button on every paper</h2>
+  <table class="verbs">
+    <tr><th>Paper</th><th>Not sent or missing</th><th>Sent, waiting on them</th><th>The day</th></tr>
+    <tr><td>Master agreement</td><td>Send to sign</td><td>Remind them</td><td>Sign by</td></tr>
+    <tr><td>Statement of work</td><td>Send to sign (a draft)</td><td>Remind them</td><td>Sign by</td></tr>
+    <tr><td>Insurance certificate</td><td>Ask for it (none, ran out, or runs out within 30 days)</td><td>Remind them</td><td>Send by</td></tr>
+    <tr><td>W-9</td><td>Ask for it</td><td>Remind them</td><td>Send by</td></tr>
+    <tr><td>Lien waiver</td><td>Ask for the waiver</td><td>Remind them</td><td>Sign by</td></tr>
+  </table>
+  <p class="lede" style="margin-top:8px">A signed or current paper has no button. The first send of a master agreement or a statement of work is the same send the Contracts tab makes, so both places agree.</p>
+
+  <h2>7. The plan</h2>
+  <ul class="plan">
+    <li><b>Kernel</b> (<code>gcPaperSend.ts</code>, tested): each paper's next step (the button's words, first send or reminder, sign by or send by) and the email it sends, in the company's language.</li>
+    <li><b>One action</b>, <code>sendPaper</code>: the first master agreement or statement of work goes out as today; then it writes the promise with its day and keeps the send on the company, so the row, Activity and their portal can say it.</li>
+    <li><b>The send view</b> in the Documents tab: the row's button opens it beside the list; Cancel goes back to the paper; Send closes it and shows the paper again with the new line.</li>
+    <li><b>Their messages</b>: each send shows in the trade's inbox (one add-only line in the Portal lane's message list, told to that lane).</li>
+    <li><b>Replaces</b> today's silent <i>Ask for it</i>. Golden: one new step at the end.</li>
+  </ul>
+</div>
+</body>
+</html>

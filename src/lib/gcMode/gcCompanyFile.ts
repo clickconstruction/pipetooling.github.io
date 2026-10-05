@@ -5,12 +5,13 @@
  * Documents lead with status (what is missing, what runs out), and the activity is one timeline
  * merged from what the model already keeps. Readers only: no state of its own.
  */
-import type { GcCustomer, GcProject, GcState, Partner, PromiseKind, TradePackage } from './gcTypes'
+import type { GcCustomer, GcProject, GcState, PaperKind, Partner, PromiseKind, TradePackage } from './gcTypes'
 import { daysUntil, money, shortDate, weekdayDate } from './gcWords'
 import { declineReasonWords } from './gcDecline'
 import { tradePromisesOf, tradePromiseWords } from './gcPromises'
 import { priceToOwner } from './gcCustomers'
 import { retainageHeldNow } from './gcBuilding'
+import { paperSendActivity, paperSentWords } from './gcPaperSend'
 
 export type DocStatus = 'ok' | 'soon' | 'missing' | 'info'
 
@@ -23,8 +24,6 @@ export interface CompanyDoc {
   statusWords: string
   /** The line under it: when, who, what it covers. */
   meta: string
-  /** A missing or running-out paper can be asked for: the promise kind it writes. */
-  ask?: PromiseKind
   projectId?: string
   packageId?: string
 }
@@ -48,6 +47,14 @@ function awardedPackages(state: GcState, partnerId: string): { project: GcProjec
   return out
 }
 
+/** The send line for a Documents row, by its key. Null before anything was sent from the window. */
+function sentWordsFor(state: GcState, partnerId: string, key: string): string | null {
+  if (key === 'msa' || key === 'insurance' || key === 'w9') return paperSentWords(state, partnerId, key)
+  if (key.startsWith('sow-')) return paperSentWords(state, partnerId, 'sow', key.slice(4))
+  if (key.startsWith('waivers-')) return paperSentWords(state, partnerId, 'waiver', key.slice(8))
+  return null
+}
+
 /** A trade's file: its company papers, then each job's papers, then its quotes. */
 export function partnerDocuments(state: GcState, partner: Partner): { groups: CompanyDocGroup[]; toGet: number } {
   const company: CompanyDoc[] = []
@@ -59,21 +66,21 @@ export function partnerDocuments(state: GcState, partner: Partner): { groups: Co
         : { key: DOC_KEYS.msa, title: 'Master agreement', status: 'missing', statusWords: 'not sent', meta: 'Send it from Trade partners or Contracts. It is signed once and covers every job.' },
   )
   if (!partner.coiExpires) {
-    company.push({ key: DOC_KEYS.insurance, title: 'Insurance certificate', status: 'missing', statusWords: 'none on file', meta: 'Nothing they do for us is covered until one comes in.', ask: 'insurance' })
+    company.push({ key: DOC_KEYS.insurance, title: 'Insurance certificate', status: 'missing', statusWords: 'none on file', meta: 'Nothing they do for us is covered until one comes in.' })
   } else {
     const days = daysUntil(partner.coiExpires, state.today)
     company.push(
       days < 0
-        ? { key: DOC_KEYS.insurance, title: 'Insurance certificate', status: 'missing', statusWords: `ran out ${shortDate(partner.coiExpires)}`, meta: 'Nothing they do for us is covered until the renewed one comes in.', ask: 'insurance' }
+        ? { key: DOC_KEYS.insurance, title: 'Insurance certificate', status: 'missing', statusWords: `ran out ${shortDate(partner.coiExpires)}`, meta: 'Nothing they do for us is covered until the renewed one comes in.' }
         : days <= 30
-          ? { key: DOC_KEYS.insurance, title: 'Insurance certificate', status: 'soon', statusWords: `runs out ${shortDate(partner.coiExpires)}`, meta: `In ${days} ${days === 1 ? 'day' : 'days'}. Ask for the renewed certificate.`, ask: 'insurance' }
+          ? { key: DOC_KEYS.insurance, title: 'Insurance certificate', status: 'soon', statusWords: `runs out ${shortDate(partner.coiExpires)}`, meta: `In ${days} ${days === 1 ? 'day' : 'days'}. Ask for the renewed certificate.` }
           : { key: DOC_KEYS.insurance, title: 'Insurance certificate', status: 'ok', statusWords: `good to ${shortDate(partner.coiExpires)}`, meta: `Runs out in ${days} days.` },
     )
   }
   company.push(
     partner.w9
       ? { key: DOC_KEYS.w9, title: 'W-9', status: 'ok', statusWords: 'on file', meta: 'Signed in their portal. The tax number is never shown here.' }
-      : { key: DOC_KEYS.w9, title: 'W-9', status: 'missing', statusWords: 'none on file', meta: 'They fill it in and sign it in their portal.', ask: 'w9' },
+      : { key: DOC_KEYS.w9, title: 'W-9', status: 'missing', statusWords: 'none on file', meta: 'They fill it in and sign it in their portal.' },
   )
   if (partner.vetting) {
     const form = partner.vetting.form
@@ -99,7 +106,6 @@ export function partnerDocuments(state: GcState, partner: Partner): { groups: Co
       status: sow.status === 'signed' ? 'ok' : sow.status === 'sent' ? 'missing' : 'info',
       statusWords: sow.status === 'signed' ? 'signed' : sow.status === 'sent' ? 'waiting on their signature' : 'drafted, not sent yet',
       meta: `${money(sow.price)}${sow.signedOn ? ` · signed ${shortDate(sow.signedOn)}` : ''}${(sow.excluded ?? []).length > 0 ? ` · they will not do: ${(sow.excluded ?? []).map((x) => x.name.toLowerCase()).join(', ')}` : ''}`,
-      ...(sow.status === 'sent' ? { ask: 'sow' as const } : {}),
       ...ids,
     })
     if (sow.draws.length > 0) {
@@ -118,7 +124,6 @@ export function partnerDocuments(state: GcState, partner: Partner): { groups: Co
         status: owed.length > 0 ? 'missing' : 'ok',
         statusWords: owed.length > 0 ? `${owed.length} owed` : 'all in',
         meta: owed.length > 0 ? `Unconditional owed on draw ${owed.map((d) => d.number).join(', ')}` : 'Every paid draw has its unconditional waiver.',
-        ...(owed.length > 0 ? { ask: 'closeout' as const } : {}),
         ...ids,
       })
     }
@@ -142,8 +147,16 @@ export function partnerDocuments(state: GcState, partner: Partner): { groups: Co
     }
   }
   if (quotes.length > 0) groups.push({ title: 'Their quotes', docs: quotes })
-  const toGet = groups.flatMap((g) => g.docs).filter((d) => d.status === 'missing' || d.status === 'soon').length
-  return { groups, toGet }
+  // What we sent from this window, ahead of each row's line: "Reminded today · sign by Fri Oct 9."
+  const withSends = groups.map((g) => ({
+    ...g,
+    docs: g.docs.map((d) => {
+      const sent = sentWordsFor(state, partner.id, d.key)
+      return sent ? { ...d, meta: `${sent} ${d.meta}` } : d
+    }),
+  }))
+  const toGet = withSends.flatMap((g) => g.docs).filter((d) => d.status === 'missing' || d.status === 'soon').length
+  return { groups: withSends, toGet }
 }
 
 /** The work a trade has with us and where its money stands: what About leads with. */
@@ -236,12 +249,22 @@ export function partnerActivity(state: GcState, partner: Partner): CompanyEvent[
       }
     }
   }
+  // What we sent from the company window. A first master agreement or statement of work already
+  // reads as sent above, from the send itself.
+  const sends = (state.paperSends ?? []).filter((x) => x.partnerId === partner.id)
+  for (const send of sends) {
+    if (send.first) continue
+    out.push({ on: send.on, kind: 'paper', text: paperSendActivity(state, send), ...promiseWhere(state, send.projectId, send.packageId) })
+  }
+  const SEND_KIND: Record<PaperKind, PromiseKind> = { msa: 'msa', sow: 'sow', insurance: 'insurance', w9: 'w9', waiver: 'closeout' }
   for (const p of tradePromisesOf(state)) {
     if (p.partnerId !== partner.id) continue
     const where = promiseWhere(state, p.projectId, p.packageId)
+    const fromSend = sends.some((x) => SEND_KIND[x.paper] === p.kind && (x.packageId ?? null) === (p.packageId ?? null))
     // An ask from the office is ours, not their word: say who asked, then when it came.
     if (p.from === 'office') {
-      out.push({ on: p.madeOn, kind: 'paper', text: `We asked for ${p.what} by ${weekdayDate(p.by)}.`, ...where })
+      // A send already says it, with its day.
+      if (!fromSend) out.push({ on: p.madeOn, kind: 'paper', text: `We asked for ${p.what} by ${weekdayDate(p.by)}.`, ...where })
       if (p.keptOn) out.push({ on: p.keptOn, kind: 'paper', text: `${p.what.charAt(0).toUpperCase()}${p.what.slice(1)} came.`, ...where })
     } else {
       out.push({ on: p.madeOn, kind: 'paper', text: tradePromiseWords(p, state.today), ...where })

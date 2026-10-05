@@ -12,6 +12,7 @@ import { bareId, preBidInvited, questionState, questionsFor, sheetsGoneAtRev, ty
 import { askPromise, OPEN_WITHIN_DAYS, type AskPromise } from './gcFollowUp'
 import { bidIsStale, quoteRanOut, sowMoney } from './gcBids'
 import { GC_COMPANY } from './gcFixture'
+import { paperSendMessages } from './gcPaperSend'
 import { pDate, pExclusion, pt, pTime, pWeekday, type PortalKey, type PortalLang } from './gcPortalI18n'
 import { inSentence, lineSheets, linesOnSpecs, specsAtRev, specsGoneAtRev, tradeSheets, tradesForSheets } from './gcNewProject'
 import { addDays, retainageHeldNow, sentBackOpen, sowContractSum, tradeChangesFor, tradeCloseout, workAllBilled } from './gcBuilding'
@@ -283,6 +284,7 @@ const PROMISE_WORDS: Record<PromiseKind, { key: PortalKey; plural: boolean }> = 
   payApp: { key: 'pwPayApp', plural: false },
   punch: { key: 'pwPunch', plural: true },
   closeout: { key: 'pwCloseout', plural: true },
+  msa: { key: 'pwMsa', plural: false },
 }
 
 /** One date a company gave us, as its portal shows it, with what it is for and where it stands. */
@@ -1104,6 +1106,8 @@ export function portalMessages(state: GcState, partnerId: string, language?: Por
     }
   }
 
+  // The papers the office sent from a company window: reminders and asks (Board, 2026-10-04).
+  out.push(...paperSendMessages(state, partner, lang))
   return out.sort((a, b) => b.on.localeCompare(a.on) || KIND_ORDER[a.kind] - KIND_ORDER[b.kind])
 }
 

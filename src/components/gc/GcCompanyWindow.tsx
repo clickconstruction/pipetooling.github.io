@@ -2,13 +2,11 @@ import { useEffect, useState, type Dispatch } from 'react'
 import { createPortal } from 'react-dom'
 import {
   PARTNER_SCHEDULE_WHY,
-  PROMISE_WHAT,
   answerRecord,
   declineReasonWords,
   insuranceRenewalWords,
   insuranceRenewals,
   money,
-  openPromiseFor,
   partnerActivity,
   partnerDeclines,
   partnerDocuments,
@@ -17,11 +15,11 @@ import {
   partnerScheduleRecord,
   partnerScheduleWords,
   partnerWork,
+  paperStep,
   shortDate,
   tradePortalStatus,
   tradePromiseRecord,
   vettingOf,
-  weekdayDate,
   type AnswerRecord,
   type CompanyDoc,
   type GcAction,
@@ -30,6 +28,7 @@ import {
 } from '../../lib/gcMode/gcModel'
 import { CompanyActivity, CompanyDocuments, CompanyPortalPanel, CompanyTabStrip } from './GcCompanyFile'
 import { GcTradePortal } from './GcTradePortal'
+import { GcPaperSend } from './GcPaperSend'
 import type { CompanyTab } from './gcCompanyOpener'
 import { Btn, Chip, Stat, type Tone } from './gcUi'
 import { VettingChip } from './GcVetting'
@@ -47,13 +46,6 @@ const RECORD: Record<AnswerRecord, { tone: Tone; word: string }> = {
   reliable: { tone: 'green', word: 'answers' },
   mixed: { tone: 'amber', word: 'hit or miss' },
   silent: { tone: 'red', word: 'often silent' },
-}
-
-/** An office ask for a paper is due a week out: the day it becomes a promise to chase. */
-function weekOut(today: string): string {
-  const d = new Date(`${today}T12:00:00`)
-  d.setDate(d.getDate() + 7)
-  return d.toISOString().slice(0, 10)
 }
 
 export function GcCompanyWindow({
@@ -79,14 +71,19 @@ export function GcCompanyWindow({
   const firstDoc = docs.groups[0]?.docs[0]?.key ?? null
   const [tab, setTab] = useState<CompanyTab>(at?.tab ?? (at?.doc ? 'documents' : 'about'))
   const [doc, setDoc] = useState<string | null>(at?.doc ?? firstDoc)
+  /** The paper being sent, by its Documents key: its send shows in the paper's place. */
+  const [sending, setSending] = useState<string | null>(null)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key !== 'Escape') return
+      // Escape steps back out of a send first, then closes the window.
+      if (sending) setSending(null)
+      else onClose()
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [onClose])
+  }, [onClose, sending])
 
   const record = RECORD[answerRecord(partner)]
   const word = tradePromiseRecord(state, partner)
@@ -94,30 +91,23 @@ export function GcCompanyWindow({
   const kept = partner.promisesKept + word.kept
   const coverage = partner.base ? `from ${partner.base}${partner.maxMiles === null ? '' : `, goes ${partner.maxMiles} mi`}` : 'coverage not set'
 
-  /** Ask for a missing or running-out paper: it becomes a promise on Follow up, due in a week. */
+  /** The row's next step, when the paper is missing or waiting: it opens the send beside the list. */
   const ask = (d: CompanyDoc) => {
-    if (!d.ask) return null
-    const match = { partnerId: partner.id, kind: d.ask, ...(d.projectId ? { projectId: d.projectId } : {}), ...(d.packageId ? { packageId: d.packageId } : {}) }
-    const open = openPromiseFor(state, match)
-    if (open) return <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>asked · due {weekdayDate(open.by)}</span>
+    const step = paperStep(state, partner, d.key)
+    if (!step || sending === d.key) return null
     return (
       <Btn
-        kind="quiet"
-        title={`Writes it down as a promise: ${PROMISE_WHAT[d.ask]} by ${weekdayDate(weekOut(state.today))}. It shows on Follow up until it comes.`}
-        onClick={() =>
-          dispatch({
-            type: 'recordPromise',
-            ...match,
-            by: weekOut(state.today),
-            from: 'office',
-            ...(d.key.startsWith('waivers-') ? { what: 'the unconditional lien waiver' } : {}),
-          })
-        }
+        kind="primary"
+        onClick={() => {
+          setDoc(d.key)
+          setSending(d.key)
+        }}
       >
-        Ask for it
+        {step.verb}
       </Btn>
     )
   }
+  const sendStep = sending ? paperStep(state, partner, sending) : null
 
   return createPortal(
     <div
@@ -164,7 +154,29 @@ export function GcCompanyWindow({
             <CompanyActivity events={events} onOpenProject={onOpenProject} onLog={(note) => dispatch({ type: 'logPartnerContact', partnerId: partner.id, note })} />
           )}
           {tab === 'documents' && (
-            <CompanyDocuments groups={docs.groups} selected={doc} onSelect={setDoc} paper={doc ? partnerPaper(state, partner, doc) : null} ask={ask} />
+            <CompanyDocuments
+              groups={docs.groups}
+              selected={doc}
+              onSelect={(key) => {
+                setDoc(key)
+                setSending(null)
+              }}
+              paper={doc ? partnerPaper(state, partner, doc) : null}
+              ask={ask}
+              aside={
+                sendStep ? (
+                  <GcPaperSend
+                    key={sending ?? ''}
+                    state={state}
+                    partner={partner}
+                    step={sendStep}
+                    dispatch={dispatch}
+                    onDone={() => setSending(null)}
+                    onCancel={() => setSending(null)}
+                  />
+                ) : undefined
+              }
+            />
           )}
           {tab === 'portal' && (
             <CompanyPortalPanel

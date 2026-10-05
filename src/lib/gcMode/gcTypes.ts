@@ -372,7 +372,28 @@ export interface PartnerVetting {
 }
 
 /** Promises other than a quote date (question 8). Each lane keeps its own kinds; see gcPromises.ts. */
-export type PromiseKind = 'insurance' | 'w9' | 'sow' | 'start' | 'submittals' | 'delivery' | 'payApp' | 'punch' | 'closeout'
+export type PromiseKind = 'insurance' | 'w9' | 'sow' | 'start' | 'submittals' | 'delivery' | 'payApp' | 'punch' | 'closeout' | 'msa'
+
+/** A paper the office sends a trade from its company window (the owner, 2026-10-04): to sign, or to send us. */
+export type PaperKind = 'msa' | 'sow' | 'insurance' | 'w9' | 'waiver'
+
+/** One send of a paper from the company window: the first one, or a reminder. Each sets the day it is due. */
+export interface PaperSend {
+  id: string
+  partnerId: string
+  paper: PaperKind
+  projectId?: string
+  packageId?: string
+  on: string
+  /** The day it is due: sign by, or send by. Follow up chases it after. */
+  by: string
+  /** A line of the office's own, added to the email. */
+  note: string
+  /** The first send of a master agreement or a statement of work: the same send the Contracts tab makes. */
+  first: boolean
+  /** A lien waiver's draws, by number. */
+  draws?: number[]
+}
 
 /**
  * A date a company gave us for something other than a quote (the owner, 2026-10-04, question 8).
@@ -745,6 +766,8 @@ export interface GcState {
   log: LogEntry[]
   /** Promises other than a quote date (question 8). Unset: none yet. */
   tradePromises?: TradePromise[]
+  /** Papers sent from a company window, oldest first (the owner, 2026-10-04). */
+  paperSends?: PaperSend[]
   /** The office's changes to the scope book. Unset: nothing changed yet. */
   scopeBook?: ScopeBookStore
 }
@@ -819,6 +842,8 @@ export type GcAction =
   | { type: 'logPartnerContact'; partnerId: string; note: string }
   /** Turn a customer's portal on (we send them the link) or off, from its window's *Their portal* tab. */
   | { type: 'setCustomerPortal'; customerId: string; on: boolean }
+  /** Send a paper from the company window: to sign, or to send us, due on a day (the owner, 2026-10-04). */
+  | { type: 'sendPaper'; partnerId: string; paper: PaperKind; projectId?: string; packageId?: string; by: string; note: string }
   /** `known: false`: a company new to us, not vetted yet (question 3). Unset: one we know. */
   | { type: 'addPartner'; company: string; contact: string; trade: string; base: string | null; maxMiles: number | null; known?: boolean }
   | { type: 'setCoverage'; partnerId: string; base: string | null; maxMiles: number | null }

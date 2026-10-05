@@ -305,6 +305,10 @@ about the company, a ledger of what happened with them, and their documents, in 
   tabs. Details in README.md, *The company window*.
 - ~~**Board (GC 0):**~~ built. **Their portal**, a fourth tab: active or not yet, the link, and the
   portal itself beside it (the owner, 2026-10-04). Customers turn on and off there.
+- ~~**Board (GC 0):**~~ built. **Send a paper**: each missing or waiting paper's button opens the
+  send beside the list, with the email as they get it and a day Follow up chases (the owner,
+  2026-10-04; `send-a-paper-mockup.html`). Its emails reach *Their messages* through one add-only line
+  in the Portal lane's `portalMessages`.
 - **Other lanes:** nothing owed. If a lane adds a paper or an event a company should see (a new
   promise kind, a new paper in the trade's portal), add it to `partnerDocuments` or `partnerActivity`
   in `gcCompanyFile.ts` and to its test.

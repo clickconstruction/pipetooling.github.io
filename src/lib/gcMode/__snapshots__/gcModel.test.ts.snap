@@ -9033,6 +9033,18 @@ exports[`GC mode golden walk > step 192: Turn on Dr. Raman's portal 1`] = `
 }
 `;
 
+exports[`GC mode golden walk > step 193: Remind Bluebonnet to sign the master agreement 1`] = `
+{
+  "changed": {
+    "lastLog.id": 188,
+    "lastLog.text": "Reminded Bluebonnet Roofing to sign the master agreement by Fri Oct 9.",
+    "tradePromises[5].id": "tp-6",
+    "tradePromises[5].words": "Promised the signed master agreement by Fri Oct 9, in 7 days.",
+  },
+  "removed": [],
+}
+`;
+
 exports[`GC mode golden walk > the whole state at the end 1`] = `
 {
   "customers": [
@@ -9233,6 +9245,11 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
+      "id": 188,
+      "text": "Reminded Bluebonnet Roofing to sign the master agreement by Fri Oct 9.",
+      "who": "office",
+    },
+    {
       "id": 187,
       "text": "Turned on Dr. Priya Raman's portal and sent them the link.",
       "who": "office",
@@ -9377,10 +9394,16 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "text": "On Fair Oaks Shops, Building D, Cibolo Creek Partners now holds 10% until the work is half done, then 5% on the rest.",
       "who": "office",
     },
+  ],
+  "paperSends": [
     {
-      "id": 158,
-      "text": "Cool Breeze Mechanical sent pay application 2 on HVAC: $57,600, with a conditional waiver signed.",
-      "who": "trade",
+      "by": "2026-10-09",
+      "first": false,
+      "id": "send-1",
+      "note": "",
+      "on": "2026-10-02",
+      "paper": "msa",
+      "partnerId": "bluebonnet",
     },
   ],
   "partners": [
@@ -15858,6 +15881,15 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "partnerId": "summit",
       "projectId": "fairoaksd",
       "what": "the coping metal",
+    },
+    {
+      "by": "2026-10-09",
+      "from": "office",
+      "id": "tp-6",
+      "kind": "msa",
+      "madeOn": "2026-10-02",
+      "partnerId": "bluebonnet",
+      "what": "the signed master agreement",
     },
   ],
 }

@@ -2,7 +2,7 @@
  * GC mode — design spike. The reducer: every action, applied to the state.
  * Split out of gcModel.ts verbatim; import from `./gcModel`, which re-exports every file.
  */
-import type { AskContact, Draw, DrawSentBack, GcAction, GcState, SovLine, Invite, LookAheadMark, Partner, PlanQuestion, PlanSet, SubBid } from './gcTypes'
+import type { AskContact, Draw, DrawSentBack, GcAction, GcState, SovLine, Invite, LookAheadMark, PaperSend, Partner, PlanQuestion, PlanSet, SubBid } from './gcTypes'
 import { money, shortDate, weekdayDate, daysUntil } from './gcWords'
 import { currentRev, partnerById, planLabel } from './gcLookups'
 import { planRecipients, questionRecipients, questionsOpen, timeWords } from './gcPlans'
@@ -22,6 +22,7 @@ import { declineLogWords } from './gcDecline'
 import { exclusionName, unitPriceWords } from './gcExclusions'
 import { startChecklist } from './gcStart'
 import { keepPromisesOn, openPromiseFor, PROMISE_WHAT, promisesKeptBy, tradePromisesOf } from './gcPromises'
+import { paperSendLog, paperStep } from './gcPaperSend'
 import { ownerInterest } from './gcOwnerBillingInterest'
 import { appClaimed, appOpen, changeOrderPrice, OWNER_RETAINAGE_DEFAULT_PCT, ownerCloseout, ownerContractWorthNow, ownerFinalPayAppToSend, ownerPayApp, ownerPayAppHasWork, ownerPayAppToSend, ownerRetainageWords } from './gcOwnerBilling'
 
@@ -495,6 +496,42 @@ function reduce(state: GcState, action: GcAction): GcState {
         'office',
         `Logged a contact with ${customer.name}.`,
       )
+    }
+
+    case 'sendPaper': {
+      // Send a paper from the company window (the owner, 2026-10-04): the first master agreement or
+      // statement of work goes out as the Contracts tab sends it; every send writes the promise with
+      // its day and is kept, so the row, Activity and the company's inbox can say it. One log line.
+      const partner = partnerById(state, action.partnerId)
+      const docKey = action.paper === 'msa' || action.paper === 'insurance' || action.paper === 'w9' ? action.paper : `${action.paper === 'sow' ? 'sow' : 'waivers'}-${action.packageId ?? ''}`
+      const step = partner ? paperStep(state, partner, docKey) : null
+      if (!partner || !step || !action.by) return state
+      let next = state
+      if (step.mode === 'first' && step.paper === 'msa') next = reduce(next, { type: 'sendMsa', partnerId: partner.id })
+      if (step.mode === 'first' && step.paper === 'sow' && step.projectId && step.packageId) next = reduce(next, { type: 'sendSow', projectId: step.projectId, packageId: step.packageId })
+      next = reduce(next, {
+        type: 'recordPromise',
+        partnerId: partner.id,
+        kind: step.promiseKind,
+        ...(step.projectId ? { projectId: step.projectId } : {}),
+        ...(step.packageId ? { packageId: step.packageId } : {}),
+        by: action.by,
+        from: 'office',
+        what: step.what,
+      })
+      const send: PaperSend = {
+        id: `send-${(state.paperSends ?? []).length + 1}`,
+        partnerId: partner.id,
+        paper: step.paper,
+        ...(step.projectId ? { projectId: step.projectId } : {}),
+        ...(step.packageId ? { packageId: step.packageId } : {}),
+        on: state.today,
+        by: action.by,
+        note: action.note.trim(),
+        first: step.mode === 'first' && (step.paper === 'msa' || step.paper === 'sow'),
+        ...(step.draws ? { draws: step.draws } : {}),
+      }
+      return logged({ ...next, log: state.log, paperSends: [...(state.paperSends ?? []), send] }, 'office', paperSendLog(partner, step, action.by))
     }
 
     case 'setCustomerPortal': {
