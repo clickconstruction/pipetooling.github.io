@@ -8,7 +8,7 @@ The Lien desk shows which jobs still owe a supply house. A supply house can send
 
 ## Find the jobs
 
-Open the [Lien desk](/jobs?tab=stages&liendesk=1). A job with a small storefront on its row still owes a supply house. The words beside it say how many houses and how much.
+Open the [Lien desk](/jobs?tab=stages&liendesk=1&kind=notice) on its Notices tab, under All paper. A job with a small storefront on its row still owes a supply house. The words beside it say how many houses and how much.
 
 :::example the mark on a row
 3 houses owed $13,058

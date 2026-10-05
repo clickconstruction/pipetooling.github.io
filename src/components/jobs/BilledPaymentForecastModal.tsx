@@ -132,7 +132,7 @@ export default function BilledPaymentForecastModal({
    * loading; a job absent from the map has no sessions.
    */
   workMonths?: Record<string, JobWorkMonths> | null
-  /** Opens the Lien instruments window on the § 53.056 notice tab for a job. */
+  /** Opens the Lien desk on that job, to draft its § 53.056 notice. */
   onOpenLienNotice?: (jobId: string) => void
 }) {
   const forecast = useMemo(

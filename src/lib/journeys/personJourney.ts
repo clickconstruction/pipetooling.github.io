@@ -215,7 +215,7 @@ function customerPageAction(customerId: string, label: string): PersonStep['acti
 
 /** The job's Lien window itself (v2.4562), on the tab the step is about. */
 function lienWindowAction(jobId: string, tab: 'demand' | 'notice'): PersonStep['action'] {
-  return { label: 'Open the Lien instruments', to: lienWindowHref(jobId, tab) }
+  return { label: 'Open the job\u2019s liens', to: lienWindowHref(jobId, tab) }
 }
 
 function jobAction(jobId: string, label: string): PersonStep['action'] {
