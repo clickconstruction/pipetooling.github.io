@@ -25,7 +25,7 @@ import { ManHoursWho } from './ManHoursWho'
  * sessions on mount); the tab passes only the Office job it already holds, so
  * a change of Office job re-folds without a refetch. Hours only: no wage and
  * no dollar is read or shown. The fold is `lib/manHours/manHoursByPeriod.ts`,
- * the same rules as the day table under this card.
+ * the same rules as the day table at the bottom of the tab.
  *
  * One period is always picked (the newest finished one until a row or a bar
  * is clicked); `ManHoursWho` lists who made it up and holds the doors out.

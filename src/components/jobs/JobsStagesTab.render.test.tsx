@@ -422,6 +422,17 @@ describe('JobsStagesTab render smoke', () => {
     localStorage.removeItem('pipetooling_jobs_map_hidden')
   })
 
+  it('the section headers\u2019 buttons wear the menu\u2019s icons (v2.4527)', async () => {
+    renderWithProviders(<JobsStagesTab {...makeProps({ jobs: boardJobs() })} />)
+    await settle()
+    const glyphs = [...document.querySelectorAll<HTMLElement>('[data-stages-section-header] button [data-tools-glyph]')].map((g) => g.dataset.toolsGlyph)
+    // Ready to Bill · Billed Awaiting Payment (six) · Collections' Legal and Lien desk · Paid in Full (two), in board order.
+    expect(glyphs).toEqual(['bell', 'building', 'bank', 'share', 'chart-bar', 'calendar-bars', 'bell', 'scales', 'gavel', 'chart-bar', 'bell'])
+    // No header button is left with an emoji mark the menu no longer uses.
+    const marks = [...document.querySelectorAll('[data-stages-section-header] button')].map((b) => b.textContent ?? '').join(' ')
+    expect(marks).not.toMatch(/[⚙📊📅💵⇪⏱⚖]/u)
+  })
+
   it('the Lien desk asks for the billed jobs the board has not loaded; its Calendar reads the board until they land (v2.4321)', async () => {
     // The phone board's shape: one stage loaded, Billed folded, no map asking for every scope.
     localStorage.setItem(
