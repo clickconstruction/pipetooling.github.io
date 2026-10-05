@@ -22,6 +22,11 @@ describe('RoadSection', () => {
     expect(section.getAttribute('data-status')).toBe('done')
     expect(section.getAttribute('data-open')).toBe('false')
     expect(section.getAttribute('data-tour')).toBe('submittals-package-section')
+    // Punch list #84 · the step and its rail cell sit in the grid row of their number, in their own columns.
+    expect(section.style.gridRow).toBe('4')
+    expect(section.className).toBe('submittal-road-step')
+    expect((section.previousElementSibling as HTMLElement).className).toBe('submittal-road-rail')
+    expect((section.previousElementSibling as HTMLElement).style.gridRow).toBe('4')
     expect(screen.queryByTestId('road-4-body')).toBeNull()
     expect(screen.queryByTestId('road-4-about')).toBeNull()
     expect(screen.queryByRole('button', { name: 'Walk me through step 4' })).toBeNull()

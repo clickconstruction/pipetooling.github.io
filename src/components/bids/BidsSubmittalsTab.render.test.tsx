@@ -637,6 +637,8 @@ describe('BidsSubmittalsTab', () => {
     // 2026-10-05 · one button. Nothing was sent back, so there is one kind of draft: no chooser, one question.
     expect(screen.getByTestId('new-revision').textContent).toBe('Start a Rev 2 draft…')
     expect(screen.getByTestId('resubmit-caption').textContent).toBe('The draft starts with every row. Nothing is sent. The GC sees Rev 2 only after you press Share.')
+    // Nothing was sent back, so step 7 is not the live step and there is no Next revision loop.
+    expect(screen.queryByTestId('next-revision-loop')).toBeNull()
     fireEvent.click(screen.getByTestId('new-revision'))
     // The confirm dialog names the diff, then builds.
     const confirmDialog = await screen.findByRole('alertdialog')
@@ -1541,6 +1543,13 @@ describe('BidsSubmittalsTab', () => {
       expect(screen.getByTestId('submittal-journey').textContent).toContain('structura approved 1 and sent 1 back. 1 row still has no answer. 1 row has no product yet. Start a Rev 2 draft to fix what was sent back. The rows with no answer go on it too. Nothing is sent until you share.')
       // 2026-10-05 · one button where there were two. It says what it does; the line beside it says the rows are chosen next, and that nothing is sent.
       expect(screen.queryByTestId('resubmit-sent-back')).toBeNull()
+      // Punch list #84 · while step 7 is the live step a dashed loop marked Next revision runs back to step 2. It is decoration: hidden from readers.
+      const loop = screen.getByTestId('next-revision-loop')
+      expect(loop.textContent).toBe('Next revision')
+      expect(loop.getAttribute('aria-hidden')).toBe('true')
+      expect(loop.parentElement).toBe(screen.getByTestId('submittal-road'))
+      // Each step is its own grid row, so the loop can lie over rows 2 to 7 however the steps fold.
+      expect([2, 7].map((n) => screen.getByTestId(`road-${n}`).style.gridRow)).toEqual(['2', '7'])
       expect((button as HTMLButtonElement).disabled).toBe(false)
       expect(button.textContent).toBe('Start a Rev 2 draft…')
       expect(screen.getByTestId('resubmit-caption').textContent).toBe('You choose the rows next. Nothing is sent. The GC sees Rev 2 only after you press Share.')
@@ -1561,6 +1570,8 @@ describe('BidsSubmittalsTab', () => {
       expect(state.items.filter((r) => r.submittal_id === 'rev-2').map((r) => r.tag)).toEqual(['LAV-1', 'FCO', 'UTILITY SINK'])
       // 2026-10-03 · the words follow the revision: pill 2 and steps 2 and 7 say Rev 2 and Rev 3, and the replaced draft reads answered, not superseded.
       await waitFor(() => expect(screen.getByRole('button', { name: /^2 Rev 2 · / })).toBeTruthy())
+      // The draft is started: step 7 is no longer the live step, so the loop is gone.
+      expect(screen.queryByTestId('next-revision-loop')).toBeNull()
       for (const n of [2, 7]) if (screen.getByTestId(`road-${n}`).getAttribute('data-open') !== 'true') fireEvent.click(screen.getByTestId(`road-${n}-caret`))
       expect(screen.getByTestId('road-2-about').textContent).toContain('Rev 2 is the version you are working on.')
       expect(screen.getByTestId('road-7-about').textContent).toContain('Start a Rev 3 draft with them and the rows with no answer yet.')
