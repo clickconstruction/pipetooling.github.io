@@ -3201,6 +3201,8 @@ If **`stripe_invoice_id`** and **`hosted_invoice_url`** are already set, returns
 
 ### send-test-report
 
+> **v2.4559 — the email is kept too**: the PDF was already stored in `job-test-reports`; after the stamp the function now also files the email as it was read, with the PDF beside it, as a `sent_documents` row (`kind` `test_report`, the job, the report as its source), so it lists under *Sent from this job* with everything else. A `sample: true` send goes to the dev alone and is not filed. **Redeploy required.**
+
 > **v2.4132 — sends as the company**: the From is [`COMPANY_EMAIL_FROM`](../supabase/functions/_shared/emailFrom.ts) — *Click Plumbing and Electrical* on `EMAIL_FROM`'s verified address (punch list #53, PR 2); `email_send_log.from_email` records it.
 
 **Purpose** (v2.3301, Test reports PR 3): email a job's hydrostatic / pinpoint / gas **test report** to the GC (or the customer) with the PDF attached and the job's Stripe pay link in the body — the hand-written Gmail the office sent from plumbingtooling.com, as one button. The PDF arrives from the client (jsPDF, [`sendTestReport.ts`](../src/lib/jobs/sendTestReport.ts)); the function **stores the exact bytes** in the private `job-test-reports` bucket as `<job_id>/<report_id>-v<n>.pdf` (a re-send is the next version, never an overwrite), sends through Resend (To + cc + attachment, `email_type: 'test_report'`), stamps the `job_test_reports` row sent (`sent_at/to/cc/by`, `sent_pay_url`, `pdf_path`, `pdf_version`, `certifier_name/license` snapshot), and posts the job activity line. Send surface: the Test report modal's send sheet ([`TestReportSendSheet`](../src/components/jobs/TestReportSendSheet.tsx)); email wording from [`_shared/testReportEmail.ts`](../supabase/functions/_shared/testReportEmail.ts).
@@ -3226,6 +3228,8 @@ Body: `{ report_id, to: string[], cc?: string[], subject, email_text, email_html
 ---
 
 ### auto-send-test-reports
+
+> **v2.4559 — the email is kept too**: the shared sender ([`_shared/testReportSend.ts`](../supabase/functions/_shared/testReportSend.ts)) takes `file` and files the email and the PDF after the send; this function passes `test_report`, the job, the GC and the report, with no sender. **Redeploy required.**
 
 > **v2.4132 — sends as the company**: the From is [`COMPANY_EMAIL_FROM`](../supabase/functions/_shared/emailFrom.ts) — *Click Plumbing and Electrical* on `EMAIL_FROM`'s verified address (punch list #53, PR 2); `email_send_log.from_email` records it.
 
@@ -3348,6 +3352,8 @@ interface SendPhysicalInvoiceEmailBody {
 
 ### send-gc-statement-email
 
+> **v2.4559 — the statement is kept as it went**: after the send log the function files the statement as the GC read it through [`fileSentEmailBestEffort`](../supabase/functions/_shared/fileSentCopy.ts) — one `sent_documents` row, `kind` `gc_statement`, keyed to the GC (`customer_id`); the portal code is drawn into the kept page. `gc_statement_emails` still says that it went and for how much; this is the page itself, which was rebuilt from live data before. A statement names many jobs and is filed under the GC, not under each job. Best effort. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
+
 > **v2.4132 — sends as the company**: the From is [`COMPANY_EMAIL_FROM`](../supabase/functions/_shared/emailFrom.ts) — *Click Plumbing and Electrical* on `EMAIL_FROM`'s verified address (punch list #53, PR 2); `email_send_log.from_email` records it.
 
 **Purpose** (v2.1418): Email a **GC statement** (what is owed, one property at a time — built client-side by [`gcStatementEmail.ts`](../src/lib/jobsDocuments/gcStatementEmail.ts) over [`_shared/gcStatementByProperty.ts`](../supabase/functions/_shared/gcStatementByProperty.ts)) from GC Review's **Email…** dialog, then audit into **`gc_statement_emails`** via the **service-role** client (the table has no client write policies) and best-effort log to `email_send_log`. Since v2.1420 it also carries GC Review's **Share all** email — the whole report (every GC/development section + grand total) as `group_by: 'all'`.
@@ -3371,6 +3377,8 @@ interface SendPhysicalInvoiceEmailBody {
 ---
 
 ### gc-statement-email-dispatch
+
+> **v2.4559 — the statement is kept as it went**: each scheduled statement is filed the same way as a manual one (`gc_statement`, the GC as `customer_id`, the requester as the sender). **Redeploy required.**
 
 > **v2.4534 — the job's total in the received block**: `receivedFor` selects `revenue` with each job, so [`_shared/gcChecksApplied.ts`](../supabase/functions/_shared/gcChecksApplied.ts) applies unlinked money to the part of the job on no bill before a bill (`_shared/paymentAttribution.ts`). The *paid by* line under a bill (`render.ts` `rowPaidBy`) reads the total too since v2.4536: the RPC's rows do not carry it, so the dispatcher selects `id, revenue` for `payloadJobIds(payload)` and `attachJobTotals` sets each row's `job_total`; a failed read leaves the rows as they came and the statement still goes.
 

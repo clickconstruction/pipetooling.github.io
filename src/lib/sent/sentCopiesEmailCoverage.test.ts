@@ -23,20 +23,16 @@ const FILES_A_COPY = /fileSentEmailBestEffort\(|file: \{ kind: '/
 
 /** Writes to someone outside the company and keeps no copy yet. Remove a row when the function is wired. */
 const EMAILS_OWED: ReadonlyArray<string> = [
-  '_shared/testReportSend.ts',
-  'gc-statement-email-dispatch',
   'legal-notify-dispatch',
   'remind-job-contracts',
   'send-bid-room-link',
   'send-contract-for-signature',
   'send-estimate-to-customer',
-  'send-gc-statement-email',
   'send-job-contract',
   'send-report-email',
   'send-rfq-email',
   'send-submittal-reply-email',
   'send-supply-house-job-account',
-  'send-test-report',
   'send-workflow-notification',
   'share-job-contract',
   'sign-bid-room',
