@@ -145,7 +145,7 @@ describe('buildPhysicalInvoicePdfBlob — detailed layout', () => {
     expect(r.has('Amount due')).toBe(true)
     expect(r.has('M-12345')).toBe(true)
     expect(r.has('Thank you for your business.')).toBe(true)
-    expect(r.has('-- 1 of 1 --')).toBe(true)
+    expect(r.has('Page 1 of 1')).toBe(true)
     expect(r.find('ClickTooling')).toMatchObject({ y: 269.4, page: 1 }) // on a letter sheet (279.4 mm), not below its edge
     expect(r.doc.pages).toBe(1)
   })
@@ -200,13 +200,13 @@ describe('buildPhysicalInvoicePdfBlob — detailed layout', () => {
     expect(paid.has('Balance due')).toBe(false)
   })
 
-  it('paginates a long materials list and stamps every page with "-- k of n --"', async () => {
+  it('paginates a long materials list and stamps every page with "Page k of n"', async () => {
     const materialLines = Array.from({ length: 80 }, (_, i) => ({ description: `Part ${i + 1}`, qty: 1, unitPrice: 5, amount: 5 }))
     const r = await render({ materialLines })
     expect(r.doc.pages).toBeGreaterThan(1)
     const n = r.doc.pages
     for (let k = 1; k <= n; k++) {
-      const stamp = r.find(`-- ${k} of ${n} --`)
+      const stamp = r.find(`Page ${k} of ${n}`)
       expect(stamp?.page).toBe(k)
       expect(stamp?.align).toBe('right')
       expect(stamp?.y).toBeLessThan(279.4)
@@ -241,7 +241,7 @@ describe('buildPhysicalInvoicePdfBlob — simple layout', () => {
     expect(r.has('Leave at gate')).toBe(true)
     expect(r.has('Thank you for your business.')).toBe(true)
     expect(r.has('Services')).toBe(false) // no tables in the simple layout
-    expect(r.has('-- 1 of 1 --')).toBe(true)
+    expect(r.has('Page 1 of 1')).toBe(true)
     expect(r.find('ClickTooling')?.y).toBe(269.4)
   })
 

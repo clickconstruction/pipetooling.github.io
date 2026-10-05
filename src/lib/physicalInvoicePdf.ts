@@ -302,7 +302,7 @@ function drawPageFooters(doc: import('jspdf').jsPDF): void {
     doc.setFontSize(8)
     doc.setTextColor(120, 120, 120)
     // On the page: a letter sheet is 279.4 mm tall, and 287 was below its edge. Right-aligned, clear of an exhibit's footer line on the left.
-    doc.text(`-- ${i} of ${n} --`, pageW - PAGE_MARGIN, doc.internal.pageSize.getHeight() - BRAND_LINE_FROM_BOTTOM_MM, { align: 'right' })
+    doc.text(`Page ${i} of ${n}`, pageW - PAGE_MARGIN, doc.internal.pageSize.getHeight() - BRAND_LINE_FROM_BOTTOM_MM, { align: 'right' })
     doc.setTextColor(0, 0, 0)
   }
 }

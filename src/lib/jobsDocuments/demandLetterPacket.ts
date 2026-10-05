@@ -66,6 +66,11 @@ export function enclosureItems(exhibits: readonly Pick<DemandExhibit, 'label' | 
   return exhibits.map((e) => `Exhibit ${e.label} — ${e.title}${e.pages > 0 ? ` (${e.pages} page${e.pages === 1 ? '' : 's'})` : ''}`)
 }
 
+/** The same list as two columns, for a page that draws no dash: the exhibit's label, then what it is. */
+export function enclosureEntries(exhibits: readonly Pick<DemandExhibit, 'label' | 'title' | 'pages'>[]): Array<{ label: string; text: string }> {
+  return exhibits.map((e) => ({ label: `Exhibit ${e.label}`, text: `${e.title}${e.pages > 0 ? ` (${e.pages} page${e.pages === 1 ? '' : 's'})` : ''}` }))
+}
+
 /** "Enclosures: Exhibit A — Invoice #… (1 page) · Exhibit B — Delivery record (1 page)". */
 export function enclosuresLine(exhibits: readonly Pick<DemandExhibit, 'label' | 'title' | 'pages'>[]): string {
   if (exhibits.length === 0) return ''

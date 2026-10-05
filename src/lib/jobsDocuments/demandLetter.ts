@@ -6,7 +6,7 @@ import type { PhysicalInvoiceIssuer } from '../physicalInvoiceIssuer'
 import type { PhysicalInvoiceDocument } from '../physicalInvoiceDocument'
 import type { StripeInvoiceLineDetail } from '../stripeInvoiceDetailsResponse'
 import { effectiveInvoiceParty, type EffectiveBillParty } from '../../../supabase/functions/_shared/billToParty'
-import { enclosureItems, enclosuresLine, exhibitsSentence, type DemandExhibit } from './demandLetterPacket'
+import { enclosureEntries, enclosuresLine, exhibitsSentence, type DemandExhibit } from './demandLetterPacket'
 import { loadJsPDF } from '../loadJsPDF'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
@@ -202,18 +202,18 @@ export type DemandLetterBlock =
   | { kind: 'senderBlock'; company: string; licenseLine: string; contactLines: string[] }
   /** Who it goes to, as an envelope reads it, with the letter's date beside it. */
   | { kind: 'addressBlock'; recipient: string[]; date: string }
-  /** The label over the subject, the subject, and the one-line "Re:" the plain-text letter carries. */
-  | { kind: 'subject'; kicker: string; text: string; re: string }
+  /** The label over the subject, the subject, the line under it, and the one-line "Re:" the plain-text letter carries. */
+  | { kind: 'subject'; kicker: string; text: string; detail: string; re: string }
   /** How much and by when — the two facts the reader must not have to look for. */
   | { kind: 'amountBox'; balance: string; deadline: string }
   | { kind: 'paragraph'; text: string }
   /** `keepMm`: start a new page unless this much room is left, so a section is not split across the fold. */
   | { kind: 'heading'; text: string; keepMm?: number }
-  /** `n` numbers the item (the remedies); without it the item is a bullet. */
-  | { kind: 'listItem'; text: string; n?: number }
+  /** `n` numbers the item (the remedies); `lead` is a first column (a notice's date) and the item draws no bullet; with neither it is a bullet. */
+  | { kind: 'listItem'; text: string; n?: number; lead?: string }
   | { kind: 'signature'; lines: string[] }
   | { kind: 'statement'; invoices: DemandStatementInvoice[]; balance: string }
-  | { kind: 'enclosures'; items: string[]; line: string }
+  | { kind: 'enclosures'; items: Array<{ label: string; text: string }>; line: string }
   | { kind: 'notarial' }
 
 /** "Invoice #A" / "Invoices #A and #B" / "Invoices #A, #B and #C". */
@@ -240,11 +240,12 @@ export function recipientLines(name: string, address: string): string[] {
 
 const COUNT_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten']
 
-/** The subject under "Final demand for payment": where the work was and how many bills, or the one bill's number. */
-export function demandSubjectText(statement: DemandStatementInvoice[], serviceAddress: string): string {
+/** The subject under "Final demand for payment": where the work was, and under it how many bills or the one bill's number. Two lines, never one joined by a dash. */
+export function demandSubject(statement: DemandStatementInvoice[], serviceAddress: string): { text: string; detail: string } {
   const where = serviceAddress.trim()
-  const what = statement.length > 1 ? `${COUNT_WORDS[statement.length] ?? String(statement.length)} unpaid invoices` : demandInvoicesPhrase(statement)
-  return where ? `${where} — ${what}` : what
+  const count = COUNT_WORDS[statement.length] ?? String(statement.length)
+  const what = statement.length > 1 ? `${count.charAt(0).toUpperCase()}${count.slice(1)} unpaid invoices` : demandInvoicesPhrase(statement)
+  return where ? { text: where, detail: what } : { text: what, detail: '' }
 }
 
 export function buildDemandLetterModel(f: DemandLetterFields, todayYmd: string): DemandLetterBlock[] {
@@ -267,7 +268,7 @@ export function buildDemandLetterModel(f: DemandLetterFields, todayYmd: string):
     // v2.3425: the letter reads the bill. The Re line carries the number the
     // customer saw, the opening names the dates, and the debt is a statement
     // of account, one block per invoice — never a retyped summary.
-    blocks.push({ kind: 'subject', kicker: KICKER, text: demandSubjectText(statement, f.serviceAddress ?? ''), re: `Re: Final Demand for Payment — ${demandInvoicesPhrase(statement)} · ${out}` })
+    blocks.push({ kind: 'subject', kicker: KICKER, ...demandSubject(statement, f.serviceAddress ?? ''), re: `Re: Final Demand for Payment — ${demandInvoicesPhrase(statement)} · ${out}` })
     blocks.push(box)
     const first = statement[0]!
     const sentDates = statement.map((i) => i.sentYmd).filter((d) => d)
@@ -287,7 +288,7 @@ export function buildDemandLetterModel(f: DemandLetterFields, todayYmd: string):
     const exhibitsText = exhibitsSentence(f.enclosures ?? [])
     blocks.push({ kind: 'paragraph', text: `${exhibitsText ? `${exhibitsText} ` : ''}All payments and credits have been allowed.` })
   } else {
-    blocks.push({ kind: 'subject', kicker: KICKER, text: `Invoice #${f.invoiceNumber.trim() || '—'}`, re: `Re: Final Demand for Payment — Invoice #${f.invoiceNumber.trim() || '—'}` })
+    blocks.push({ kind: 'subject', kicker: KICKER, text: `Invoice #${f.invoiceNumber.trim() || '—'}`, detail: '', re: `Re: Final Demand for Payment — Invoice #${f.invoiceNumber.trim() || '—'}` })
     blocks.push(box)
     blocks.push({
       kind: 'paragraph',
@@ -364,7 +365,7 @@ export function buildDemandLetterModel(f: DemandLetterFields, todayYmd: string):
     blocks.push({ kind: 'listItem', text: `Invoiced on ${demandDate(f.invoiceDate)}` })
   }
   for (const n of f.priorNotices) {
-    blocks.push({ kind: 'listItem', text: `${demandDate(n.date)} — ${n.label}` })
+    blocks.push({ kind: 'listItem', lead: demandDate(n.date), text: n.label })
   }
   blocks.push({
     kind: 'signature',
@@ -373,7 +374,7 @@ export function buildDemandLetterModel(f: DemandLetterFields, todayYmd: string):
     ),
   })
   const enclosures = enclosuresLine(f.enclosures ?? [])
-  if (enclosures) blocks.push({ kind: 'enclosures', items: enclosureItems(f.enclosures ?? []), line: enclosures })
+  if (enclosures) blocks.push({ kind: 'enclosures', items: enclosureEntries(f.enclosures ?? []), line: enclosures })
   if (f.includeNotarial) blocks.push({ kind: 'notarial' })
   return blocks
 }
@@ -422,7 +423,8 @@ export function buildDemandLetterEmailHtml(f: DemandLetterFields, todayYmd: stri
       case 'subject':
         parts.push(
           `<div style="${LABEL_STYLE};color:${ALERT};margin:0 0 0.2em 0">${esc(b.kicker)}</div>` +
-            `<div style="font-weight:700;font-size:1.12em;line-height:1.35;margin:0 0 0.9em 0">${esc(b.text)}</div>`,
+            `<div style="font-weight:700;font-size:1.12em;line-height:1.35;margin:0 0 ${b.detail ? '0.1em' : '0.9em'} 0">${esc(b.text)}</div>` +
+            (b.detail ? `<div style="font-family:${SANS};font-size:0.86em;color:${MUTED};margin:0 0 1em 0">${esc(b.detail)}</div>` : ''),
         )
         break
       case 'amountBox': {
@@ -439,7 +441,8 @@ export function buildDemandLetterEmailHtml(f: DemandLetterFields, todayYmd: stri
         parts.push(`<p style="margin:0 0 0.7em 0">${esc(b.text)}</p>`)
         break
       case 'listItem':
-        parts.push(`<p style="margin:0 0 0.3em 0;padding-left:1.6em;text-indent:-1.2em">${b.n ? `${b.n}.` : '•'}&nbsp;&nbsp;${esc(b.text)}</p>`)
+        if (b.lead) parts.push(`<div style="display:flex;gap:1em;margin:0 0 0.3em 0"><span style="flex:0 0 11.5em">${esc(b.lead)}</span><span>${esc(b.text)}</span></div>`)
+        else parts.push(`<p style="margin:0 0 0.3em 0;padding-left:1.6em;text-indent:-1.2em">${b.n ? `${b.n}.` : '•'}&nbsp;&nbsp;${esc(b.text)}</p>`)
         break
       case 'signature':
         // The first line closes the letter; the gap under it is where the ink goes.
@@ -451,7 +454,7 @@ export function buildDemandLetterEmailHtml(f: DemandLetterFields, todayYmd: stri
       case 'enclosures':
         parts.push(
           `<div style="${LABEL_STYLE};color:${MUTED};margin:1.8em 0 0.3em 0">Enclosure${b.items.length > 1 ? 's' : ''}</div>` +
-            `<div style="font-family:${SANS};font-size:0.82em;color:${MUTED};line-height:1.55">${b.items.map(esc).join('<br/>')}</div>`,
+            `<div style="font-family:${SANS};font-size:0.82em;color:${MUTED};line-height:1.55">${b.items.map((e) => `<div style="display:flex;gap:1em"><span style="flex:0 0 6.5em;color:${INK}">${esc(e.label)}</span><span>${esc(e.text)}</span></div>`).join('')}</div>`,
         )
         break
       case 'notarial':
@@ -489,8 +492,8 @@ export function demandShortDate(ymd: string): string {
 
 export type DemandStatementTableRow = {
   invoice: string
-  /** What the bill was for, a line of the bill per entry; a bill of several lines carries each line's charge. */
-  lines: string[]
+  /** What the bill was for, a line of the bill per entry; a bill of several lines carries each line's charge ('' on a bill of one line: the row's own figures are its charge). */
+  lines: Array<{ text: string; amount: string }>
   sent: string
   due: string
   billed: string
@@ -512,7 +515,7 @@ export function statementTable(b: { invoices: DemandStatementInvoice[]; balance:
     const named = (l: DemandStatementLine) => `${l.description.trim() || '—'}${l.qty.trim() ? ` · Qty ${l.qty.trim()}` : ''}`
     return {
       invoice: inv.invoiceNumber.trim() || 'Invoice',
-      lines: inv.lines.length > 1 ? inv.lines.map((l) => `${named(l)} — ${demandMoney(l.amount)}`) : inv.lines.map(named),
+      lines: inv.lines.map((l) => ({ text: named(l), amount: inv.lines.length > 1 ? demandMoney(l.amount) : '' })),
       sent: inv.sentYmd ? demandShortDate(inv.sentYmd) : '—',
       due: inv.dueYmd ? demandShortDate(inv.dueYmd) : '—',
       billed: demandMoney(inv.total),
@@ -534,7 +537,7 @@ function statementHtml(b: { invoices: DemandStatementInvoice[]; balance: string 
       const last = i === t.rows.length - 1
       return `<tr>${[
         td(`${esc(r.invoice)}${t.hasPaid ? `<br/><span style="font-size:0.9em;color:${MUTED}">sent ${esc(r.sent)}</span>` : ''}`, last, 'white-space:nowrap'),
-        td(r.lines.map(esc).join('<br/>'), last),
+        td(r.lines.map((l) => (l.amount ? `<div style="display:flex;justify-content:space-between;gap:1.2em"><span>${esc(l.text)}</span><span style="color:${MUTED};${money}">${esc(l.amount)}</span></div>` : `<div>${esc(l.text)}</div>`)).join(''), last),
         ...(t.hasPaid ? [] : [td(esc(r.sent), last, 'white-space:nowrap')]),
         td(esc(r.due), last, 'white-space:nowrap'),
         ...(t.hasPaid ? [td(esc(r.billed), last, money), td(esc(r.paid), last, money)] : []),
@@ -567,7 +570,7 @@ export function buildDemandLetterText(f: DemandLetterFields, todayYmd: string): 
         lines.push(b.lines.join('\n'))
         break
       case 'listItem':
-        lines.push(`  ${b.n ? `${b.n}.` : '•'} ${b.text}`)
+        lines.push(`  ${b.n ? `${b.n}.` : '•'} ${b.lead ? `${b.lead} — ` : ''}${b.text}`)
         break
       case 'statement':
         lines.push(
@@ -690,6 +693,14 @@ export async function buildDemandLetterPdfBlob(f: DemandLetterFields, todayYmd: 
         doc.setFont('times', 'bold')
         doc.setFontSize(13)
         writeWrapped(b.text, 6)
+        if (b.detail) {
+          doc.setFont('helvetica', 'normal')
+          doc.setFontSize(9)
+          muted()
+          doc.text(b.detail, PAGE_MARGIN, y - 0.6)
+          ink()
+          y += 4.4
+        }
         y += 1.5
         break
       case 'amountBox': {
@@ -731,7 +742,12 @@ export async function buildDemandLetterPdfBlob(f: DemandLetterFields, todayYmd: 
       case 'listItem':
         doc.setFont('times', 'normal')
         doc.setFontSize(11)
-        writeWrapped(b.text, 5.4, { indent: 8, hang: b.n ? `${b.n}.` : '•' })
+        if (b.lead) {
+          // Two columns: the day, then what happened on it.
+          ensureRoom(5.4)
+          doc.text(b.lead, PAGE_MARGIN, y)
+          writeWrapped(b.text, 5.4, { indent: 46 })
+        } else writeWrapped(b.text, 5.4, { indent: 8, hang: b.n ? `${b.n}.` : '•' })
         y += 0.8
         break
       case 'signature':
@@ -779,7 +795,8 @@ export async function buildDemandLetterPdfBlob(f: DemandLetterFields, todayYmd: 
         ink()
         doc.setFontSize(9)
         t.rows.forEach((r, i) => {
-          const wrapped = r.lines.flatMap((l) => doc.splitTextToSize(l, forW) as string[])
+          // A charge sits at the right of its line's first row, inside the For column.
+          const wrapped = r.lines.flatMap((l) => (doc.splitTextToSize(l.text, forW - (l.amount ? 19 : 0)) as string[]).map((text, k) => ({ text, amount: k === 0 ? l.amount : '' })))
           const rowH = Math.max(t.hasPaid ? 2 : 1, wrapped.length) * 4.3 + 3.2
           if (y + rowH > PAGE_CONTENT_MAX_Y) {
             doc.addPage()
@@ -787,7 +804,14 @@ export async function buildDemandLetterPdfBlob(f: DemandLetterFields, todayYmd: 
           }
           const base = y + 4.6
           doc.text(r.invoice, PAGE_MARGIN, base)
-          wrapped.forEach((l, k) => doc.text(l, xFor, base + k * 4.3))
+          wrapped.forEach((l, k) => {
+            doc.text(l.text, xFor, base + k * 4.3)
+            if (l.amount) {
+              muted()
+              doc.text(l.amount, xFor + forW, base + k * 4.3, { align: 'right' })
+              ink()
+            }
+          })
           if (t.hasPaid) {
             doc.setFontSize(8)
             muted()
@@ -822,7 +846,13 @@ export async function buildDemandLetterPdfBlob(f: DemandLetterFields, todayYmd: 
         doc.setFont('helvetica', 'normal')
         doc.setFontSize(8.5)
         muted()
-        for (const item of b.items) writeWrapped(item, 4)
+        for (const item of b.items) {
+          ensureRoom(4)
+          ink()
+          doc.text(item.label, PAGE_MARGIN, y)
+          muted()
+          writeWrapped(item.text, 4, { indent: 21 })
+        }
         ink()
         break
       case 'notarial':

@@ -429,7 +429,7 @@ export default function LienInstrumentsModal({
         for (const t of (touches ?? []) as { created_at: string; outcome: string }[]) {
           const d = calendarYmdInAppTzFromIso(t.created_at ?? '')
           if (/^\d{4}-\d{2}-\d{2}$/.test(d))
-            notices.push({ date: d, label: `Collection call — ${(t.outcome ?? '').replace(/_/g, ' ') || 'recorded'}` })
+            notices.push({ date: d, label: `Collection call: ${(t.outcome ?? '').replace(/_/g, ' ') || 'recorded'}` })
         }
       } catch {
         // fail-soft

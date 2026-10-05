@@ -169,7 +169,7 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
 
     // The preview: the subject names the bill's number, the box the balance; no id fragment.
     expect(screen.getByText('Final demand for payment')).toBeTruthy()
-    expect(screen.getByText(/— Invoice #1$/)).toBeTruthy()
+    expect(screen.getByText('Invoice #1')).toBeTruthy()
     expect((document.querySelector('[data-demand-amount-box]') as HTMLElement).textContent).toContain('Balance due$1,710.00')
     expect(screen.getByText('Statement of account')).toBeTruthy()
     expect(screen.queryByText(/Details of Debt/)).toBeNull()
