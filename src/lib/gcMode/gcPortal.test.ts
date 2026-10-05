@@ -47,6 +47,8 @@ import {
   portalChangeRequests,
   backChargeCanTake,
   portalBackCharges,
+  mailRecipients,
+  portalMailGroup,
   type GcState,
 } from './gcModel'
 
@@ -1397,5 +1399,71 @@ describe('back-charges a company can see (owner, 2026-10-05)', () => {
     expect(rows(dropped)[0]).toMatchObject({ state: 'dropped', chip: 'dropped', tone: 'green', words: 'Click dropped it on Oct 2: You are right, the line was not marked.' })
     expect(rows(dropped, 'es')[0]?.words).toBe('Click lo canceló el 2 oct: You are right, the line was not marked.')
     expect(backChargeCanTake(charge(dropped), dropped.today)).toBe(false)
+  })
+})
+
+describe('who at the company gets which emails (owner, 2026-10-05)', () => {
+  const company = (s: GcState, id: string) => {
+    const p = s.partners.find((x) => x.id === id)
+    if (!p) throw new Error(`no ${id}`)
+    return p
+  }
+  const mail = (s: GcState, id: string, key: string) => portalMessages(s, id).find((m) => m.key === key)
+
+  it('sends everything to the main contact until the company names others', () => {
+    for (const m of portalMessages(state, 'hillside')) {
+      expect(m.to).toEqual(['Greg Paulk'])
+      expect(m.lines[0]).toBe('Hello Greg,')
+    }
+    expect(mail(state, 'hillside', 'boerne:plans:1')?.group).toBe('quotes')
+  })
+
+  it("sends Pecan Valley's pay to its bookkeeper and the rest to Marcus", () => {
+    expect(mail(state, 'pecanvalley', 'felec-draw-1:paid')).toMatchObject({ group: 'pay', to: ['Dana Whitfield'] })
+    expect(mail(state, 'pecanvalley', 'felec-draw-1:paid')?.lines[0]).toBe('Hello Dana,')
+    // Fair Oaks is ours: its start day goes to the job's people, its old invitation to quotes.
+    expect(mail(state, 'pecanvalley', 'fairoaksd:start')).toMatchObject({ group: 'job', to: ['Marcus Bell'] })
+    expect(mail(state, 'pecanvalley', 'felec-pecanvalley:invite')).toMatchObject({ group: 'quotes', to: ['Marcus Bell'] })
+    expect(mailRecipients(company(state, 'pecanvalley'), 'pay')).toEqual([{ name: 'Dana Whitfield', email: 'dana@pecanvalleyelectric.example', main: false }])
+  })
+
+  it("files the office's paper sends by their paper, and plans by the job's stage", () => {
+    // A second W-9 ask is a reminder with its own email (the first one rides on the portal's own).
+    let w9 = gcReducer(state, { type: 'sendPaper', partnerId: 'hillside', paper: 'w9', by: '2026-10-09', note: '' })
+    w9 = gcReducer(w9, { type: 'sendPaper', partnerId: 'hillside', paper: 'w9', by: '2026-10-12', note: '' })
+    const reminder = portalMessages(w9, 'hillside').find((x) => x.key.startsWith('send:'))
+    expect(reminder).toBeTruthy()
+    expect(reminder && portalMailGroup(w9, reminder)).toBe('pay')
+    const plansOnAJob = { key: 'x', on: state.today, kind: 'plans' as const, projectId: 'fairoaksd', subject: '', lines: [] }
+    expect(portalMailGroup(state, plansOnAJob)).toBe('job')
+    expect(portalMailGroup(state, { ...plansOnAJob, projectId: 'boerne' })).toBe('quotes')
+  })
+
+  it('adds a person who gets what is ticked, greeting both when two share a kind', () => {
+    const add = (name: string, email: string, gets: ('quotes' | 'job' | 'contracts' | 'pay')[]) =>
+      gcReducer(state, { type: 'tradeAddPerson', partnerId: 'hillside', name, email, role: 'Estimator', gets })
+    expect(add(' ', 'ana@hillside.example', ['quotes'])).toBe(state)
+    expect(add('Ana Ruiz', 'not an email', ['quotes'])).toBe(state)
+    expect(add('Ana Ruiz', 'ana@hillside.example', [])).toBe(state)
+    const added = add('Ana Ruiz', 'ana@hillside.example', ['quotes'])
+    expect(company(added, 'hillside').people).toEqual([{ id: 'hillside-p-1', name: 'Ana Ruiz', email: 'ana@hillside.example', role: 'Estimator', gets: ['quotes'] }])
+    expect(added.log[0]).toMatchObject({ who: 'trade', text: 'Hillside Excavation added Ana Ruiz, Estimator, to its emails: quotes and plans.' })
+    expect(mail(added, 'hillside', 'site-hillside:invite')).toMatchObject({ to: ['Greg Paulk', 'Ana Ruiz'] })
+    expect(mail(added, 'hillside', 'site-hillside:invite')?.lines[0]).toBe('Hello Greg and Ana,')
+    expect(portalMessages(added, 'hillside', 'es').find((m) => m.key === 'site-hillside:invite')?.lines[0]).toBe('Hola Greg y Ana:')
+  })
+
+  it('never leaves a kind of email with no one, and gives it back when a person goes', () => {
+    const set = (s: GcState, personId: string | null, gets: ('quotes' | 'job' | 'contracts' | 'pay')[]) => gcReducer(s, { type: 'tradeSetGets', partnerId: 'pecanvalley', personId, gets })
+    // Dana is the only one on pay: she cannot drop it, nor be left with nothing.
+    expect(set(state, 'pecanvalley-p-1', [])).toBe(state)
+    expect(set(state, null, ['quotes', 'job'])).toBe(state)
+    const shared = set(state, 'pecanvalley-p-1', ['pay', 'contracts'])
+    const marcusLess = set(shared, null, ['quotes', 'job'])
+    expect(company(marcusLess, 'pecanvalley').contactGets).toEqual(['quotes', 'job'])
+    expect(marcusLess.log[0]?.text).toBe('Pecan Valley Electric set Marcus Bell to get quotes and plans, the job.')
+    const gone = gcReducer(marcusLess, { type: 'tradeRemovePerson', partnerId: 'pecanvalley', personId: 'pecanvalley-p-1' })
+    expect(company(gone, 'pecanvalley')).toMatchObject({ people: [], contactGets: ['quotes', 'job', 'contracts', 'pay'] })
+    expect(mail(gone, 'pecanvalley', 'felec-draw-1:paid')?.to).toEqual(['Marcus Bell'])
   })
 })

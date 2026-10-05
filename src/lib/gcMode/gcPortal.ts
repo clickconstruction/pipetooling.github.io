@@ -5,7 +5,7 @@
  *
  * The words follow the plain-words rules at the top of `gcTour.ts`.
  */
-import type { BackCharge, BidAlternate, ChangeOrder, ChangeOrderReason, Draw, GcProject, GcState, Invite, LookAheadMark, Partner, PlanQuestion, PlanSet, ProjectContact, PromiseKind, QuoteExclusion, ScopeItem, Sow, SubBid, TheirSovLine, TradeChangeRequest, TradePackage, TradePromise } from './gcTypes'
+import type { BackCharge, PartnerPerson, PortalMailGroup, BidAlternate, ChangeOrder, ChangeOrderReason, Draw, GcProject, GcState, Invite, LookAheadMark, Partner, PlanQuestion, PlanSet, ProjectContact, PromiseKind, QuoteExclusion, ScopeItem, Sow, SubBid, TheirSovLine, TradeChangeRequest, TradePackage, TradePromise } from './gcTypes'
 import { daysUntil, money } from './gcWords'
 import { currentRev, partnerById } from './gcLookups'
 import { bareId, preBidInvited, questionState, questionsFor, sheetsGoneAtRev, type QuestionState } from './gcPlans'
@@ -863,6 +863,10 @@ export interface PortalMessage {
   scope?: string[]
   /** What the number leaves out and who does it, for an invitation. */
   leavesOut?: string[]
+  /** The kind of email it is, for who at the company gets it (owner, 2026-10-05). */
+  group?: PortalMailGroup
+  /** Who at the company it went to, by name, the main contact first. */
+  to?: string[]
 }
 
 const KIND_ORDER: Record<PortalMessage['kind'], number> = { vetted: -2, closed: -1, preBid: -0.5, coi: 0, answer: 1, paid: 2, change: 3, changeAsk: 3.5, backCharge: 3.6, less: 4, start: 5, sow: 6, msa: 7, bidTab: 8, plans: 9, nudge: 10, invite: 11 }
@@ -1219,7 +1223,70 @@ export function portalMessages(state: GcState, partnerId: string, language?: Por
 
   // The papers the office sent from a company window: reminders and asks (Board, 2026-10-04).
   out.push(...paperSendMessages(state, partner, lang))
-  return out.sort((a, b) => b.on.localeCompare(a.on) || KIND_ORDER[a.kind] - KIND_ORDER[b.kind])
+  // Each email goes to the people at the company ticked for its kind, and greets them (owner, 2026-10-05).
+  const addressed = out.map((m) => {
+    const group = portalMailGroup(state, m)
+    const to = mailRecipients(partner, group)
+    const greet = t('mHello', { first: to.map((r) => firstName(r.name)).join(and) })
+    return { ...m, group, to: to.map((r) => r.name), lines: m.lines[0] === hello ? [greet, ...m.lines.slice(1)] : m.lines }
+  })
+  return addressed.sort((a, b) => b.on.localeCompare(a.on) || KIND_ORDER[a.kind] - KIND_ORDER[b.kind])
+}
+
+// ---------------------------------------------------------------------------------------------
+// Who at the company gets which emails (owner, 2026-10-05)
+// ---------------------------------------------------------------------------------------------
+
+export const PORTAL_MAIL_GROUPS: PortalMailGroup[] = ['quotes', 'job', 'contracts', 'pay']
+
+/** The kinds the main contact gets: every kind unless the company changed it. */
+export function contactGets(partner: Partner): PortalMailGroup[] {
+  return partner.contactGets ?? PORTAL_MAIL_GROUPS
+}
+
+/** Whether every kind of email still goes to someone, with these picks. */
+export function everyMailGroupCovered(main: PortalMailGroup[], people: PartnerPerson[]): boolean {
+  return PORTAL_MAIL_GROUPS.every((g) => main.includes(g) || people.some((p) => p.gets.includes(g)))
+}
+
+/** Who gets one kind of email: the main contact when it has it, then each person ticked for it. Never empty. */
+export function mailRecipients(partner: Partner, group: PortalMailGroup): { name: string; email: string | null; main: boolean }[] {
+  const main = { name: partner.contact, email: partner.email ?? null, main: true }
+  const others = (partner.people ?? []).filter((p) => p.gets.includes(group)).map((p) => ({ name: p.name, email: p.email, main: false }))
+  const to = [...(contactGets(partner).includes(group) ? [main] : []), ...others]
+  return to.length > 0 ? to : [main]
+}
+
+const KIND_GROUP: Record<PortalMessage['kind'], PortalMailGroup> = {
+  invite: 'quotes',
+  nudge: 'quotes',
+  bidTab: 'quotes',
+  closed: 'quotes',
+  preBid: 'quotes',
+  plans: 'quotes',
+  answer: 'quotes',
+  start: 'job',
+  msa: 'contracts',
+  sow: 'contracts',
+  change: 'contracts',
+  changeAsk: 'contracts',
+  vetted: 'contracts',
+  paid: 'pay',
+  less: 'pay',
+  coi: 'pay',
+  backCharge: 'pay',
+}
+
+/**
+ * The kind of email a message is. Plans and answers on a job that is ours go to the job's people,
+ * not the estimator's. The office's paper sends say by their paper: a contract, or pay and papers.
+ */
+export function portalMailGroup(state: GcState, m: PortalMessage): PortalMailGroup {
+  const send = m.key.startsWith('send:') ? (state.paperSends ?? []).find((x) => `send:${x.id}` === m.key) : undefined
+  if (send) return send.paper === 'msa' || send.paper === 'sow' ? 'contracts' : 'pay'
+  const project = m.projectId ? state.projects.find((p) => p.id === m.projectId) : undefined
+  if ((m.kind === 'plans' || m.kind === 'answer') && project && project.stage !== 'pursuing') return 'job'
+  return KIND_GROUP[m.kind]
 }
 
 /**

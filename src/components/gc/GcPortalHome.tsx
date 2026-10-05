@@ -24,6 +24,7 @@ import {
 import { Btn, Chip, type Tone } from './gcUi'
 import { GcPortalPaperwork, type PaperworkLine } from './GcPortalPaperwork'
 import { GcPortalDates } from './GcPortalDates'
+import { GcPortalPeople } from './GcPortalPeople'
 import { PortalBlock } from './GcPortalUi'
 import { usePortalLang } from './gcPortalLang'
 
@@ -178,6 +179,9 @@ export function GcPortalHome({
           </Btn>
         </div>
       </div>
+
+      {/* Who at the company gets which emails (owner, 2026-10-05). */}
+      <GcPortalPeople partner={partner} dispatch={dispatch} />
 
       {home.past.length > 0 && (
         <PortalBlock title={tr('before')}>

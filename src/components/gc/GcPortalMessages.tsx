@@ -64,7 +64,7 @@ function Message({ m, partner, onOpenPortal }: { m: PortalMessage; partner: Part
           <span>
             <strong>{GC_COMPANY.name}</strong> <span style={{ opacity: 0.7 }}>· {pWeekday(lang, m.on)}</span>
           </span>
-          <span style={{ opacity: 0.7 }}>{t('toLine', { contact: partner.contact, company: partner.company })}</span>
+          <span style={{ opacity: 0.7 }}>{t('toLine', { contact: (m.to ?? [partner.contact]).join(', '), company: partner.company })}</span>
           <span style={{ fontSize: '0.95rem', fontWeight: 700, marginTop: '0.2rem' }}>{m.subject}</span>
         </div>
         <div style={{ padding: '0.7rem 0.75rem', display: 'grid', gap: '0.5rem', fontSize: '0.9rem', lineHeight: 1.45 }}>

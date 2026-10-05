@@ -120,7 +120,7 @@ column headers are in one block at the end of `gcBuildingWords.ts`, for the nati
 
 ## For a native speaker to read
 
-Every Spanish string the trade's portal shows, 862 in all, drawn from the code on 2026-10-04.
+Every Spanish string the trade's portal shows, 879 in all, drawn from the code on 2026-10-04.
 They're grouped by screen, English on the left. Please mark anything that reads wrong, stiff or
 unclear, and write the better words beside it. The Portal lane makes the changes and passes the
 other lanes theirs.
@@ -857,6 +857,28 @@ they were written in. The portal does not translate them.
 | Draw {n} on {project} is {amount} less | El pago {n} de {project} tiene {amount} menos |
 | We took the {amount} charge off draw {n}: {reason} | Descontamos el cargo de {amount} del pago {n}: {reason} |
 | Open your portal to see it. | Abra su portal para verlo. |
+
+#### Who at the company gets which emails (owner, 2026-10-05)
+
+| English | Español |
+|---|---|
+| Who gets our emails | Quién recibe nuestros correos |
+| Each kind of email goes to the people ticked for it. Every kind needs someone. | Cada tipo de correo va a las personas marcadas. Cada tipo necesita a alguien. |
+| main contact | contacto principal |
+| Quotes and plans | Cotizaciones y planos |
+| The job | La obra |
+| Contracts and changes | Contratos y cambios |
+| Pay and papers | Pagos y papeles |
+| Asks to quote, plans and answers while we bid | Solicitudes de cotización, planos y respuestas mientras cotizamos |
+| Plans, answers and start days once the work is yours | Planos, respuestas y fechas de inicio cuando el trabajo es suyo |
+| The master agreement, statements of work and change orders | El contrato maestro, las órdenes de trabajo y las órdenes de cambio |
+| Draws, waivers, insurance, the W-9 and charges | Pagos, renuncias de gravamen, seguro, el W-9 y cargos |
+| Add a person | Agregar a una persona |
+| Name | Nombre |
+| Email | Correo |
+| What they do, like Bookkeeper | Qué hace, por ejemplo Contador |
+| Gets | Recibe |
+| Add | Agregar |
 
 #### The usual exclusions, by name
 

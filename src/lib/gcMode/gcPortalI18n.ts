@@ -759,6 +759,25 @@ const S = {
   mBcTakenSubject: { en: 'Draw {n} on {project} is {amount} less', es: 'El pago {n} de {project} tiene {amount} menos' },
   mBcTaken: { en: 'We took the {amount} charge off draw {n}: {reason}', es: 'Descontamos el cargo de {amount} del pago {n}: {reason}' },
   mBcOpen: { en: 'Open your portal to see it.', es: 'Abra su portal para verlo.' },
+
+  // Who at the company gets which emails (owner, 2026-10-05)
+  pplTitle: { en: 'Who gets our emails', es: 'Quién recibe nuestros correos' },
+  pplHelp: { en: 'Each kind of email goes to the people ticked for it. Every kind needs someone.', es: 'Cada tipo de correo va a las personas marcadas. Cada tipo necesita a alguien.' },
+  pplMain: { en: 'main contact', es: 'contacto principal' },
+  grpQuotes: { en: 'Quotes and plans', es: 'Cotizaciones y planos' },
+  grpJob: { en: 'The job', es: 'La obra' },
+  grpContracts: { en: 'Contracts and changes', es: 'Contratos y cambios' },
+  grpPay: { en: 'Pay and papers', es: 'Pagos y papeles' },
+  grpQuotesHelp: { en: 'Asks to quote, plans and answers while we bid', es: 'Solicitudes de cotización, planos y respuestas mientras cotizamos' },
+  grpJobHelp: { en: 'Plans, answers and start days once the work is yours', es: 'Planos, respuestas y fechas de inicio cuando el trabajo es suyo' },
+  grpContractsHelp: { en: 'The master agreement, statements of work and change orders', es: 'El contrato maestro, las órdenes de trabajo y las órdenes de cambio' },
+  grpPayHelp: { en: 'Draws, waivers, insurance, the W-9 and charges', es: 'Pagos, renuncias de gravamen, seguro, el W-9 y cargos' },
+  pplAdd: { en: 'Add a person', es: 'Agregar a una persona' },
+  pplName: { en: 'Name', es: 'Nombre' },
+  pplEmail: { en: 'Email', es: 'Correo' },
+  pplRole: { en: 'What they do, like Bookkeeper', es: 'Qué hace, por ejemplo Contador' },
+  pplGets: { en: 'Gets', es: 'Recibe' },
+  pplSave: { en: 'Add', es: 'Agregar' },
 } satisfies Record<string, Record<PortalLang, string>>
 
 export type PortalKey = keyof typeof S

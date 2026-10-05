@@ -2,7 +2,7 @@
  * GC mode — design spike. The reducer: every action, applied to the state.
  * Split out of gcModel.ts verbatim; import from `./gcModel`, which re-exports every file.
  */
-import type { AskContact, BackCharge, CustomerSend, Draw, DrawSentBack, GcAction, GcState, SovLine, Invite, LookAheadMark, PaperSend, Partner, PlanQuestion, PlanSet, SubBid, TradeChangeRequest } from './gcTypes'
+import type { AskContact, BackCharge, CustomerSend, Draw, PartnerPerson, PortalMailGroup, DrawSentBack, GcAction, GcState, SovLine, Invite, LookAheadMark, PaperSend, Partner, PlanQuestion, PlanSet, SubBid, TradeChangeRequest } from './gcTypes'
 import { money, shortDate, weekdayDate, daysUntil } from './gcWords'
 import { currentRev, partnerById, planLabel } from './gcLookups'
 import { planRecipients, questionRecipients, questionsOpen, timeWords } from './gcPlans'
@@ -24,7 +24,7 @@ import { startChecklist } from './gcStart'
 import { keepPromisesOn, openPromiseFor, PROMISE_WHAT, promisesKeptBy, tradePromisesOf } from './gcPromises'
 import { paperSendLog, paperStep } from './gcPaperSend'
 import { ownerInterest } from './gcOwnerBillingInterest'
-import { BACK_CHARGE_ANSWER_DAYS, backChargeCanTake, backChargeDraws, backChargeState } from './gcPortal'
+import { BACK_CHARGE_ANSWER_DAYS, backChargeCanTake, backChargeDraws, backChargeState, contactGets, everyMailGroupCovered, PORTAL_MAIL_GROUPS } from './gcPortal'
 import { payReminderEmail, payReminderStep } from './gcOwnerBillingRemind'
 import { appClaimed, appOpen, changeOrderPrice, OWNER_RETAINAGE_DEFAULT_PCT, ownerCloseout, ownerContractWorthNow, ownerFinalPayAppToSend, ownerPayApp, ownerPayAppHasWork, ownerPayAppToSend, ownerRetainageWords } from './gcOwnerBilling'
 
@@ -2236,5 +2236,59 @@ function reduce(state: GcState, action: GcAction): GcState {
       )
       return logged(next, 'office', `Took the ${money(charge.amount)} back-charge off ${partner.company}'s draw ${draw.number} on ${project.name}: ${money(draw.net - charge.amount)} to pay.`)
     }
+
+    // Portal lane: who at a company gets which emails (owner, 2026-10-05).
+    case 'tradeAddPerson': {
+      const partner = partnerById(state, action.partnerId)
+      const name = action.name.trim()
+      const email = action.email.trim()
+      const gets = PORTAL_MAIL_GROUPS.filter((g) => action.gets.includes(g))
+      if (!partner || name === '' || !/^\S+@\S+\.\S+$/.test(email) || gets.length === 0) return state
+      const people = partner.people ?? []
+      const used = new Set(people.map((p) => p.id))
+      let n = people.length + 1
+      while (used.has(`${partner.id}-p-${n}`)) n += 1
+      const person: PartnerPerson = { id: `${partner.id}-p-${n}`, name, email, role: action.role.trim(), gets }
+      const next = { ...state, partners: state.partners.map((p) => (p.id === partner.id ? { ...p, people: [...people, person] } : p)) }
+      return logged(next, 'trade', `${partner.company} added ${name}${person.role ? `, ${person.role},` : ''} to its emails: ${mailGroupWords(gets)}.`)
+    }
+
+    case 'tradeRemovePerson': {
+      const partner = partnerById(state, action.partnerId)
+      const person = partner?.people?.find((p) => p.id === action.personId)
+      if (!partner || !person) return state
+      const people = (partner.people ?? []).filter((p) => p.id !== person.id)
+      // What only they got goes back to the main contact, so every kind still reaches someone.
+      const main = contactGets(partner)
+      const back = PORTAL_MAIL_GROUPS.filter((g) => main.includes(g) || (person.gets.includes(g) && !people.some((p) => p.gets.includes(g))))
+      const next = {
+        ...state,
+        partners: state.partners.map((p) => (p.id === partner.id ? { ...p, people, ...(partner.contactGets ? { contactGets: back } : {}) } : p)),
+      }
+      return logged(next, 'trade', `${partner.company} took ${person.name} off its emails.`)
+    }
+
+    case 'tradeSetGets': {
+      const partner = partnerById(state, action.partnerId)
+      if (!partner) return state
+      const gets = PORTAL_MAIL_GROUPS.filter((g) => action.gets.includes(g))
+      const person = action.personId === null ? null : partner.people?.find((p) => p.id === action.personId)
+      if (person === undefined || (person && gets.length === 0)) return state
+      const people = (partner.people ?? []).map((p) => (person && p.id === person.id ? { ...p, gets } : p))
+      const main = person ? contactGets(partner) : gets
+      if (!everyMailGroupCovered(main, people)) return state
+      const next = {
+        ...state,
+        partners: state.partners.map((p) => (p.id === partner.id ? { ...p, people, ...(person ? {} : { contactGets: gets }) } : p)),
+      }
+      return logged(next, 'trade', `${partner.company} set ${person ? person.name : partner.contact} to get ${gets.length > 0 ? mailGroupWords(gets) : 'no emails'}.`)
+    }
   }
+}
+
+const MAIL_GROUP_WORDS: Record<PortalMailGroup, string> = { quotes: 'quotes and plans', job: 'the job', contracts: 'contracts and changes', pay: 'pay and papers' }
+
+/** "quotes and plans, pay and papers": the kinds of email, for the log. */
+function mailGroupWords(gets: PortalMailGroup[]): string {
+  return gets.map((g) => MAIL_GROUP_WORDS[g]).join(', ')
 }
