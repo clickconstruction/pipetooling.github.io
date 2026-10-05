@@ -146,7 +146,7 @@ describe('buildPhysicalInvoicePdfBlob — detailed layout', () => {
     expect(r.has('M-12345')).toBe(true)
     expect(r.has('Thank you for your business.')).toBe(true)
     expect(r.has('-- 1 of 1 --')).toBe(true)
-    expect(r.find('ClickTooling')).toMatchObject({ y: 280, page: 1 })
+    expect(r.find('ClickTooling')).toMatchObject({ y: 269.4, page: 1 }) // on a letter sheet (279.4 mm), not below its edge
     expect(r.doc.pages).toBe(1)
   })
 
@@ -208,7 +208,8 @@ describe('buildPhysicalInvoicePdfBlob — detailed layout', () => {
     for (let k = 1; k <= n; k++) {
       const stamp = r.find(`-- ${k} of ${n} --`)
       expect(stamp?.page).toBe(k)
-      expect(stamp?.align).toBe('center')
+      expect(stamp?.align).toBe('right')
+      expect(stamp?.y).toBeLessThan(279.4)
     }
     expect(r.has('Part 80')).toBe(true)
     expect(r.find('ClickTooling')?.page).toBe(n) // brand line only on the last page
@@ -241,7 +242,7 @@ describe('buildPhysicalInvoicePdfBlob — simple layout', () => {
     expect(r.has('Thank you for your business.')).toBe(true)
     expect(r.has('Services')).toBe(false) // no tables in the simple layout
     expect(r.has('-- 1 of 1 --')).toBe(true)
-    expect(r.find('ClickTooling')?.y).toBe(280)
+    expect(r.find('ClickTooling')?.y).toBe(269.4)
   })
 
   it('prints an em dash for a missing email and skips an empty description', async () => {

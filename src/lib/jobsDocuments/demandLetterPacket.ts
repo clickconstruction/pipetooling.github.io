@@ -1,16 +1,22 @@
 /**
- * The demand letter's packet (v2.3429): the letter, then its exhibits — the
- * invoice as the customer received it (Exhibit A, always), the signed
- * agreement when one exists (Exhibit B), the delivery record (Exhibit C) —
- * merged into one PDF with pdf-lib, every exhibit page stamped with its
- * label. One file, one print, and the record names what went out.
+ * The demand letter's packet (v2.3429): the letter, then its exhibits — each
+ * invoice as the customer received it, the signed agreement when one exists,
+ * the delivery record — merged into one PDF with pdf-lib, every exhibit page
+ * stamped with its label. One file, one print, and the record names what went
+ * out. The labels run in order with no gap (`exhibitLabels`): several
+ * invoices are A-1, A-2, …, and the next paper takes the next letter.
  */
 
-export type DemandExhibitLabel = 'A' | 'B' | 'C'
+export type DemandExhibitKind = 'invoice' | 'agreement' | 'delivery'
+
+/** "A", "A-2", "B". Letters recorded before the labels ran in order are A (invoice), B (agreement), C (delivery record). */
+export type DemandExhibitLabel = string
 
 /** What the letter names and the record stores. */
 export type DemandExhibit = {
   label: DemandExhibitLabel
+  /** Absent on letters recorded before the labels ran in order; `exhibitKind` reads those by their letter. */
+  kind?: DemandExhibitKind
   /** "Invoice #867-2608180928, as sent August 18, 2026" */
   title: string
   pages: number
@@ -18,6 +24,7 @@ export type DemandExhibit = {
 
 export type DemandExhibitInput = {
   label: DemandExhibitLabel
+  kind?: DemandExhibitKind
   title: string
   /** A rendered PDF (any page count). */
   blob: Blob
@@ -32,23 +39,51 @@ export type DemandLetterPacket = {
   totalPages: number
 }
 
-/** "Enclosures: Exhibit A — Invoice #… (1 page) · Exhibit C — Delivery record (1 page)". */
+/** What an exhibit is: its recorded kind, else its letter the way older letters used them. */
+export function exhibitKind(e: Pick<DemandExhibit, 'label' | 'kind'>): DemandExhibitKind {
+  if (e.kind) return e.kind
+  const letter = e.label.trim().charAt(0).toUpperCase()
+  return letter === 'A' ? 'invoice' : letter === 'B' ? 'agreement' : 'delivery'
+}
+
+/**
+ * The labels a packet's exhibits wear, in the order they are bound: one
+ * invoice is A, several are A-1 … A-n; the signed agreement and the delivery
+ * record take the next letters, so a packet with no agreement never skips B.
+ */
+export function exhibitLabels(input: { invoices: number; agreement: boolean; delivery: boolean }): { invoices: string[]; agreement: string; delivery: string } {
+  const n = Math.max(0, Math.floor(input.invoices))
+  const invoices = n === 1 ? ['A'] : Array.from({ length: n }, (_, i) => `A-${i + 1}`)
+  let next = n > 0 ? 1 : 0
+  const letter = () => String.fromCharCode(65 + next++)
+  const agreement = input.agreement ? letter() : ''
+  const delivery = input.delivery ? letter() : ''
+  return { invoices, agreement, delivery }
+}
+
+/** One line per exhibit: "Exhibit A-1 — Invoice #… (1 page)". */
+export function enclosureItems(exhibits: readonly Pick<DemandExhibit, 'label' | 'title' | 'pages'>[]): string[] {
+  return exhibits.map((e) => `Exhibit ${e.label} — ${e.title}${e.pages > 0 ? ` (${e.pages} page${e.pages === 1 ? '' : 's'})` : ''}`)
+}
+
+/** "Enclosures: Exhibit A — Invoice #… (1 page) · Exhibit B — Delivery record (1 page)". */
 export function enclosuresLine(exhibits: readonly Pick<DemandExhibit, 'label' | 'title' | 'pages'>[]): string {
   if (exhibits.length === 0) return ''
-  return `Enclosure${exhibits.length > 1 ? 's' : ''}: ${exhibits
-    .map((e) => `Exhibit ${e.label} — ${e.title}${e.pages > 0 ? ` (${e.pages} page${e.pages === 1 ? '' : 's'})` : ''}`)
-    .join(' · ')}`
+  return `Enclosure${exhibits.length > 1 ? 's' : ''}: ${enclosureItems(exhibits).join(' · ')}`
 }
 
 /** The sentence under the statement: which exhibit is which. */
-export function exhibitsSentence(exhibits: readonly Pick<DemandExhibit, 'label' | 'title'>[]): string {
-  const a = exhibits.find((e) => e.label === 'A')
-  const b = exhibits.find((e) => e.label === 'B')
-  const c = exhibits.find((e) => e.label === 'C')
+export function exhibitsSentence(exhibits: readonly Pick<DemandExhibit, 'label' | 'kind' | 'title'>[]): string {
+  const invoices = exhibits.filter((e) => exhibitKind(e) === 'invoice')
+  const b = exhibits.find((e) => exhibitKind(e) === 'agreement')
+  const c = exhibits.find((e) => exhibitKind(e) === 'delivery')
+  const a = invoices.length > 0
   const parts: string[] = []
-  if (a) parts.push('The invoice is enclosed as Exhibit A')
-  if (b) parts.push(`${a ? 'the' : 'The'} signed agreement as Exhibit B`)
-  if (c) parts.push(`${a || b ? 'the' : 'The'} delivery record as Exhibit C`)
+  if (invoices.length === 1) parts.push(`The invoice is enclosed as Exhibit ${invoices[0]!.label}`)
+  else if (invoices.length === 2) parts.push(`The invoices are enclosed as Exhibits ${invoices[0]!.label} and ${invoices[1]!.label}`)
+  else if (invoices.length > 2) parts.push(`The invoices are enclosed as Exhibits ${invoices[0]!.label} to ${invoices[invoices.length - 1]!.label}`)
+  if (b) parts.push(`${a ? 'the' : 'The'} signed agreement as Exhibit ${b.label}`)
+  if (c) parts.push(`${a || b ? 'the' : 'The'} delivery record as Exhibit ${c.label}`)
   if (parts.length === 0) return ''
   if (parts.length === 1) return `${parts[0]}.`
   return `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}.`
@@ -116,7 +151,7 @@ export async function buildDemandLetterPacket(
       const foot = `${(ex.stamp ?? '').trim() ? ex.title : `Exhibit ${ex.label} · ${ex.title}`} · page ${i + 1} of ${count}`
       page.drawText(foot, { x: 36, y: 16, size: 7, font: regular, color: lib.rgb(0.45, 0.45, 0.45) })
     })
-    recorded.push({ label: ex.label, title: ex.title, pages: count })
+    recorded.push({ label: ex.label, ...(ex.kind ? { kind: ex.kind } : {}), title: ex.title, pages: count })
   }
 
   const bytes = await out.save()
