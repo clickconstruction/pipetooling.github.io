@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   allJobsMoney,
+  openChangeRequests,
   customerMessages,
   latePayApps,
   payReminderEmail,
@@ -1227,6 +1228,20 @@ describe('the customer’s messages, written out', () => {
     state = gcReducer(state, { type: 'ownerAcceptsWork', projectId: 'stoneoak' })
     const top = customerMessages(state, job(state, 'stoneoak'))[0]
     expect([top?.on, top?.kind, top?.lines[1]]).toEqual(['2026-10-02', 'accepted', 'You accepted the work on Stone Oak Pharmacy.'])
+  })
+})
+
+describe('a trade’s ask for a change, on Bill the customer', () => {
+  const fairOaks = (state: GcState) => state.projects.find((p) => p.id === 'fairoaksd') as GcProject
+
+  it('becomes a draft change order: their ask is our cost, the price adds our fee, the days carry', () => {
+    const state = initialGcState()
+    const ask = openChangeRequests(fairOaks(state))[0]
+    if (!ask) throw new Error('no ask on Fair Oaks D')
+    const next = gcReducer(state, { type: 'draftChangeOrderFromRequest', projectId: 'fairoaksd', requestId: ask.id, description: ask.description, cost: ask.amount, price: 0, days: ask.days })
+    const co = fairOaks(next).changeOrders?.[0]
+    expect([co?.cost, co?.price, co?.days, co?.status, co?.packageId]).toEqual([14_820, changeOrderPrice(fairOaks(state), 14_820), 2, 'draft', ask.packageId])
+    expect(openChangeRequests(fairOaks(next))).toEqual([])
   })
 })
 
