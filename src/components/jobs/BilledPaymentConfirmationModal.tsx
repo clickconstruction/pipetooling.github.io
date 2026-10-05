@@ -10,6 +10,8 @@ import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 import { promiseBackfillChoices, shouldAskPromiseBackfill } from '../../lib/jobs/promiseBackfillPrompt'
+import { waitUntilLanded } from '../../lib/jobs/waitUntilLanded'
+import { useToastContext } from '../../contexts/ToastContext'
 import {
   stripeCreditLineText,
   stripePartPaymentNote,
@@ -33,6 +35,19 @@ export type JobLikeForPayment = {
 export type InvoiceWithJobLike = JobsLedgerInvoice & { job: JobLikeForPayment }
 
 const PAYMENT_TYPES = ['Cash', 'Check', 'Wire', 'ACH', 'Card (external)', 'Other'] as const
+
+/** How long the window waits for Stripe's webhook to write the ledger before it lets the office go on. */
+const STRIPE_LANDING_POLL_MS = 350
+const STRIPE_LANDING_WAIT_MS = 10_000
+/** After that it keeps watching in the background this long, and refreshes the board when the write lands. */
+const STRIPE_LANDING_FOLLOW_POLL_MS = 2_000
+const STRIPE_LANDING_FOLLOW_MS = 60_000
+
+/** True once our ledger shows the bill paid (the webhook's `mark_invoice_paid_from_stripe` has run). */
+async function billReadsPaid(invoiceId: string): Promise<boolean> {
+  const { data } = await supabase.from('jobs_ledger_invoices').select('status').eq('id', invoiceId).maybeSingle()
+  return (data as { status?: string | null } | null)?.status === 'paid'
+}
 
 function todayIsoDate(): string {
   const d = new Date()
@@ -116,6 +131,9 @@ export default function BilledPaymentConfirmationModal({
   const [backfillCustom, setBackfillCustom] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  // A Stripe bill's full close: paid at Stripe, waiting for the webhook to write our ledger.
+  const [confirming, setConfirming] = useState(false)
+  const { showToast } = useToastContext()
   const askBackfill = open && !(mode === 'job' && job != null && Math.max(0, Number(job.revenue ?? 0) - Number(job.payments_made ?? 0)) <= 0)
     && shouldAskPromiseBackfill({ billedYmd: billedYmd ?? null, paidOnYmd: paidOn.trim(), existingPromiseYmd: existingPromiseYmd ?? null })
   const backfillChoices = askBackfill ? promiseBackfillChoices(paidOn.trim(), billedYmd ?? null) : []
@@ -270,7 +288,20 @@ export default function BilledPaymentConfirmationModal({
           }
           // A full close lands through the webhook; a part payment's row is
           // written by the function itself, so there is nothing to wait for.
-          if (!payload?.partial) await new Promise((r) => setTimeout(r, 700))
+          // v2.4521: wait for the ledger to read paid (it was a fixed 700 ms), so the
+          // refresh below moves the row out of Billed or Collections with no page reload.
+          if (!payload?.partial) {
+            setConfirming(true)
+            const read = () => billReadsPaid(inv.id)
+            const landed = await waitUntilLanded({ read, intervalMs: STRIPE_LANDING_POLL_MS, timeoutMs: STRIPE_LANDING_WAIT_MS })
+            if (!landed) {
+              // Still on its way: refresh once more when it lands.
+              showToast('Stripe is still confirming this payment. The row will move when it lands.', 'info')
+              void waitUntilLanded({ read, intervalMs: STRIPE_LANDING_FOLLOW_POLL_MS, timeoutMs: STRIPE_LANDING_FOLLOW_MS }).then((late) => {
+                if (late) void onSuccess()
+              })
+            }
+          }
         } else {
           const data = await withSupabaseRetry(
             async () =>
@@ -315,6 +346,7 @@ export default function BilledPaymentConfirmationModal({
       }
     } finally {
       setSubmitting(false)
+      setConfirming(false)
     }
   }
 
@@ -636,7 +668,7 @@ export default function BilledPaymentConfirmationModal({
               cursor: submitting ? 'not-allowed' : 'pointer',
             }}
           >
-            {submitting ? '…' : jobFullyPaid ? 'Move to Paid' : stripePlan ? stripePaymentButtonLabel(stripePlan) : 'Confirm'}
+            {confirming ? 'Confirming with Stripe…' : submitting ? '…' : jobFullyPaid ? 'Move to Paid' : stripePlan ? stripePaymentButtonLabel(stripePlan) : 'Confirm'}
           </button>
         </div>
       </div>
