@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { todayYmdInAppTz } from '../utils/dateUtils'
 import {
   appliedByInvoiceIdFromPayments,
   buildLienUnconditionalQueue,
@@ -64,7 +65,8 @@ export function useLienReleasesOwedNudge(enabled: boolean): {
           payments = (payRows ?? []) as LienQueuePayment[]
         }
         if (cancelled) return
-        const next = computeLienUnconditionalOwed(releases, appliedByInvoiceIdFromPayments(payments))
+        const todayYmd = todayYmdInAppTz()
+        const next = computeLienUnconditionalOwed(releases, appliedByInvoiceIdFromPayments(payments), { payments, todayYmd })
         const jobsById = new Map<string, LienQueueJob>()
         if (next.jobIds.length > 0) {
           const { data: jobRows, error: jobError } = await supabase
@@ -76,7 +78,7 @@ export function useLienReleasesOwedNudge(enabled: boolean): {
         }
         if (cancelled) return
         setOwed(next)
-        setQueue(buildLienUnconditionalQueue(releases, payments, jobsById))
+        setQueue(buildLienUnconditionalQueue(releases, payments, jobsById, todayYmd))
       } catch {
         if (!cancelled) {
           setOwed({ count: 0, total: 0, jobIds: [] })
