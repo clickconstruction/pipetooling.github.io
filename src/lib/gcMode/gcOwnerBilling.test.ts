@@ -760,6 +760,13 @@ describe('the next weeks of money across every job', () => {
   const r = (n: number) => Math.round(n)
   const line = (a: ReturnType<typeof cashAhead>) => a.weeks.map((w) => [w.start, r(w.in), r(w.out), r(w.standing)])
 
+  it('says how many days away each later week starts, counting to its Monday (the owner, 2026-10-04)', () => {
+    // Today is Fri Oct 2: next week's Monday, Oct 5, is 3 days away.
+    expect(cashAhead(initialGcState()).weeks.map((w) => w.daysAway)).toEqual([-4, 3, 10, 17, 24, 31])
+    // On a Sunday the next Monday is 1 day away, as in the owner's example.
+    expect(cashAhead({ ...initialGcState(), today: '2026-10-04' }).weeks.slice(1, 3).map((w) => w.daysAway)).toEqual([1, 8])
+  })
+
   it('counts what is on the books: the two draws asked at Fair Oaks D take us to $39,272 carrying', () => {
     const a = cashAhead(initialGcState())
     expect(r(a.standingNow)).toBe(80_428)
