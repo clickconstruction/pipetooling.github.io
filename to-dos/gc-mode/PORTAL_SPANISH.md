@@ -120,7 +120,7 @@ column headers are in one block at the end of `gcBuildingWords.ts`, for the nati
 
 ## For a native speaker to read
 
-Every Spanish string the trade's portal shows, 773 in all, drawn from the code on 2026-10-04.
+Every Spanish string the trade's portal shows, 775 in all, drawn from the code on 2026-10-04.
 They're grouped by screen, English on the left. Please mark anything that reads wrong, stiff or
 unclear, and write the better words beside it. The Portal lane makes the changes and passes the
 other lanes theirs.
@@ -375,8 +375,10 @@ they were written in. The portal does not translate them.
 
 | English | Español |
 |---|---|
-| Dates you gave {gc} | Fechas que le dio a {gc} |
-| If a date changes, move it here. {gc} sees the new one. | Si una fecha cambia, muévala aquí. {gc} ve la nueva. |
+| Your dates with {gc} | Sus fechas con {gc} |
+| The days you gave {gc}, and the days {gc} asked for. If one changes, move it here. | Los días que le dio a {gc} y los días que {gc} le pidió. Si uno cambia, muévalo aquí. |
+| You gave this day | Usted dio este día |
+| {gc} asked for this day | {gc} pidió este día |
 | Move the date | Cambiar la fecha |
 | Save the new date | Guardar la nueva fecha |
 | The new date | La nueva fecha |

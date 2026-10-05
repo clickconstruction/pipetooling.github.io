@@ -977,6 +977,17 @@ describe('the dates a company gave us', () => {
   it('reads in Spanish', () => {
     expect(portalPromises(gave, 'voltage', 'es')[0]).toMatchObject({ what: 'El certificado de seguro renovado', words: 'a más tardar el vie 9 oct, en 7 días' })
   })
+
+  it('says whether the company gave the day or Click asked for it when it sent a paper', () => {
+    expect(portalPromises(gave, 'voltage')[0]).toMatchObject({ source: 'said', sourceWords: 'You gave this day' })
+    // The office asks Hillside (no W-9 on file) for one by Oct 12 from its company window.
+    const asked = gcReducer(state, { type: 'sendPaper', partnerId: 'hillside', paper: 'w9', by: '2026-10-12', note: '' })
+    const row = portalPromises(asked, 'hillside').find((r) => r.p.kind === 'w9')
+    expect(row).toMatchObject({ source: 'asked', sourceWords: 'Click asked for this day' })
+    // Hillside moves it: now it is a day the company gave.
+    const moved = gcReducer(asked, { type: 'recordPromise', partnerId: 'hillside', kind: 'w9', by: '2026-10-16', from: 'trade' })
+    expect(portalPromises(moved, 'hillside').find((r) => r.p.kind === 'w9')?.source).toBe('said')
+  })
 })
 
 describe('submittals to send, on the home', () => {

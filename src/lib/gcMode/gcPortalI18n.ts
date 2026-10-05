@@ -237,8 +237,10 @@ const S = {
   promiseSaid: { en: 'You said it will come by {date}.', es: 'Dijo que llegaría a más tardar el {date}.' },
   promiseDayAria: { en: 'The day it will come', es: 'El día que llegará' },
   // The dates a company gave us (question 8)
-  datesTitle: { en: 'Dates you gave {gc}', es: 'Fechas que le dio a {gc}' },
-  datesHelp: { en: 'If a date changes, move it here. {gc} sees the new one.', es: 'Si una fecha cambia, muévala aquí. {gc} ve la nueva.' },
+  datesTitle: { en: 'Your dates with {gc}', es: 'Sus fechas con {gc}' },
+  datesHelp: { en: 'The days you gave {gc}, and the days {gc} asked for. If one changes, move it here.', es: 'Los días que le dio a {gc} y los días que {gc} le pidió. Si uno cambia, muévalo aquí.' },
+  pSaid: { en: 'You gave this day', es: 'Usted dio este día' },
+  pAsked: { en: '{gc} asked for this day', es: '{gc} pidió este día' },
   moveDate: { en: 'Move the date', es: 'Cambiar la fecha' },
   saveDate: { en: 'Save the new date', es: 'Guardar la nueva fecha' },
   newDateAria: { en: 'The new date', es: 'La nueva fecha' },

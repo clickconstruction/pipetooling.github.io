@@ -297,9 +297,18 @@ export interface PortalPromiseRow {
   words: string
   tone: 'red' | 'amber' | 'plain'
   plural: boolean
+  /** Where the day came from: the company gave it (in its portal or by phone), or the office asked for it when it sent a paper. */
+  source: 'said' | 'asked'
+  /** "You gave this day" or "Click asked for this day". */
+  sourceWords: string
 }
 
-/** A company's open dates, soonest first: the ones it gave in its portal and the ones the office wrote down for it. */
+const PAPER_KIND: Record<string, PromiseKind> = { msa: 'msa', sow: 'sow', insurance: 'insurance', w9: 'w9', waiver: 'closeout' }
+
+/**
+ * A company's open dates, soonest first (owner, 2026-10-04: "Your dates with Click"): the ones it
+ * gave and the due days the office asked for when it sent a paper (a send with that same day).
+ */
 export function portalPromises(state: GcState, partnerId: string, lang: PortalLang = 'en'): PortalPromiseRow[] {
   return tradePromisesOf(state)
     .filter((p) => p.partnerId === partnerId && !p.keptOn)
@@ -318,7 +327,24 @@ export function portalPromises(state: GcState, partnerId: string, lang: PortalLa
           : st === 'passed'
             ? pt(lang, 'pPassed', { date, ago: days === 1 ? pt(lang, 'agoYesterday') : pt(lang, 'agoN', { n: days }) })
             : pt(lang, days === 1 ? 'pIn1' : 'pInN', { date, n: days })
-      return { p, what, where, words, tone: st === 'passed' ? 'red' : st === 'today' ? 'amber' : 'plain', plural: k.plural }
+      const asked = (state.paperSends ?? []).some(
+        (s) =>
+          s.partnerId === p.partnerId &&
+          PAPER_KIND[s.paper] === p.kind &&
+          (s.projectId ?? null) === (p.projectId ?? null) &&
+          (s.packageId ?? null) === (p.packageId ?? null) &&
+          s.by === p.by,
+      )
+      return {
+        p,
+        what,
+        where,
+        words,
+        tone: st === 'passed' ? 'red' : st === 'today' ? 'amber' : 'plain',
+        plural: k.plural,
+        source: asked ? 'asked' : 'said',
+        sourceWords: pt(lang, asked ? 'pAsked' : 'pSaid', { gc: GC_COMPANY.shortName }),
+      }
     })
 }
 

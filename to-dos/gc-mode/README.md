@@ -579,8 +579,9 @@ who then works and bills the owner." So:
   the quote once the company is approved; an email goes out on the office's decision
   (`portalVetting` in `gcPortal.ts`, on the Board lane's `gcVetting.ts`).
 - **A company sees every date it gave us, and gives or moves one** (owner, 2026-10-04, question 8,
-  on the Board lane's `gcPromises.ts`): "Dates you gave Click" on its home lists each open one,
-  given in the portal or written down by the office ("The renewed insurance certificate · by Fri
+  on the Board lane's `gcPromises.ts`): "Your dates with Click" on its home (renamed 2026-10-04, once the office could ask for a
+  due day when it sends a paper) lists each open one, each saying "You gave this day" or "Click
+  asked for this day" ("The renewed insurance certificate · by Fri
   Oct 9, in 7 days"), with **Move the date**; Needs you turns it amber the day it is due and red once
   it passes. Under the insurance and W-9 lines it owes: "Not ready? Tell Click the day it will
   come." The insurance email 30 days before says so too (`COI_WARN_DAYS` is the Board's

@@ -5,9 +5,10 @@ import { PortalBlock } from './GcPortalUi'
 import { usePortalLang } from './gcPortalLang'
 
 /**
- * GC mode design spike: the dates a company gave us for things other than a quote, on its home
- * (owner, 2026-10-04, question 8): the ones it gave here and the ones the office wrote down for it.
- * Each can be moved; the old day stays on the company's word record (the Board lane's gcPromises).
+ * GC mode design spike: "Your dates with Click" on a company's home (owner, 2026-10-04): the days
+ * it gave us for things other than a quote (question 8), and the due days the office asked for
+ * when it sent a paper, each saying which. Each can be moved; the old day stays on the company's
+ * word record (the Board lane's gcPromises).
  */
 
 const GC = GC_COMPANY.shortName
@@ -38,6 +39,7 @@ function DateRow({ row, first, partner, today, dispatch }: { row: PortalPromiseR
     <div style={{ display: 'grid', gap: '0.25rem', padding: '0.45rem 0.1rem', borderTop: first ? 'none' : `1px solid ${RULE}` }}>
       <strong>{row.what}</strong>
       {row.where && <span style={{ fontSize: '0.8rem', opacity: 0.75 }}>{row.where}</span>}
+      <span style={{ fontSize: '0.8rem', opacity: 0.75 }}>{row.sourceWords}</span>
       <span style={{ fontSize: '0.85rem', color: row.tone === 'red' ? 'var(--text-red-700)' : row.tone === 'amber' ? 'var(--text-amber-800)' : undefined, fontWeight: row.tone === 'plain' ? 400 : 600 }}>
         {row.words}
       </span>
