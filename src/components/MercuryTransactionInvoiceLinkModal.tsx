@@ -4,6 +4,7 @@ import { useToastContext } from '../contexts/ToastContext'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import type { Database } from '../types/database'
 import { isSupplyCredit, SUPPLY_CREDIT_NOT_LINKABLE } from '../lib/supplyHouseDocument'
+import { invoiceTotalForCharge } from '../lib/teamPurchasesSorted'
 
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
 type InvoiceLinkRow =
@@ -47,7 +48,9 @@ export default function MercuryTransactionInvoiceLinkModal({
   const [rows, setRows] = useState<InvoiceLinkRow[]>([])
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [selected, setSelected] = useState<Set<string>>(new Set())
+  // The ticked invoices, kept whole (not just their ids) so they stay in view while the search
+  // below moves on to the next one (v2.4566).
+  const [chosen, setChosen] = useState<Map<string, InvoiceLinkRow>>(new Map())
   const seededRef = useRef(false)
 
   const txId = transaction?.id ?? null
@@ -69,7 +72,7 @@ export default function MercuryTransactionInvoiceLinkModal({
         setRows(list)
         if (!seededRef.current) {
           seededRef.current = true
-          setSelected(new Set(list.filter((r) => r.already_linked).map((r) => r.invoice_id)))
+          setChosen(new Map(list.filter((r) => r.already_linked).map((r) => [r.invoice_id, r])))
         }
       } catch (e) {
         showToast(e instanceof Error ? e.message : 'Failed to load invoices', 'error')
@@ -85,7 +88,7 @@ export default function MercuryTransactionInvoiceLinkModal({
     if (!open || !txId) return
     seededRef.current = false
     setSearch('')
-    setSelected(new Set())
+    setChosen(new Map())
     setRows([])
     void runSearch('')
   }, [open, txId, runSearch])
@@ -107,11 +110,11 @@ export default function MercuryTransactionInvoiceLinkModal({
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [open, onClose])
 
-  const toggle = useCallback((invoiceId: string) => {
-    setSelected((prev) => {
-      const next = new Set(prev)
-      if (next.has(invoiceId)) next.delete(invoiceId)
-      else next.add(invoiceId)
+  const toggle = useCallback((row: InvoiceLinkRow) => {
+    setChosen((prev) => {
+      const next = new Map(prev)
+      if (next.has(row.invoice_id)) next.delete(row.invoice_id)
+      else next.set(row.invoice_id, row)
       return next
     })
   }, [])
@@ -122,8 +125,9 @@ export default function MercuryTransactionInvoiceLinkModal({
     try {
       // Belt and braces for the v2.3501 rule: the tick is disabled on a credit, but a link made
       // some other way must not be written back here.
-      const creditIds = new Set(rows.filter((r) => isSupplyCredit(r.amount)).map((r) => r.invoice_id))
-      const invoiceIds = Array.from(selected).filter((id) => !creditIds.has(id))
+      const invoiceIds = Array.from(chosen.values())
+        .filter((r) => !isSupplyCredit(r.amount))
+        .map((r) => r.invoice_id)
       const useStaff = !tallySelfService || Boolean(tallyActAsUserId)
       if (useStaff) {
         await withSupabaseRetry(
@@ -162,6 +166,10 @@ export default function MercuryTransactionInvoiceLinkModal({
   if (!open || !transaction) return null
 
   const txAmount = Math.abs(Number(transaction.amount))
+  const chosenRows = Array.from(chosen.values())
+  const total = invoiceTotalForCharge(txAmount, chosenRows.map((r) => Number(r.amount)))
+  const chosenSum = chosenRows.reduce((s, r) => s + Number(r.amount), 0)
+  const searchRows = rows.filter((r) => !chosen.has(r.invoice_id))
 
   return (
     <div
@@ -209,9 +217,53 @@ export default function MercuryTransactionInvoiceLinkModal({
               to <strong>{transaction.counterparty_name}</strong>
             </>
           ) : null}{' '}
-          paid the invoice(s) you select below. The invoice's own job allocations handle job
-          costing — this just records the match so the transaction is no longer flagged.
+          paid the invoices you tick. Tick as many as it paid. The invoice's own job allocations
+          handle job costing — this just records the match so the transaction is no longer flagged.
         </p>
+
+        {chosenRows.length > 0 ? (
+          <div
+            data-testid="invoice-link-chosen"
+            style={{ border: '1px solid var(--border-strong)', borderRadius: 6, overflow: 'hidden', marginBottom: '0.75rem' }}
+          >
+            <div style={{ padding: '0.4rem 0.65rem', background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)', fontSize: '0.8125rem', fontWeight: 600 }}>
+              Chosen · {chosenRows.length} {chosenRows.length === 1 ? 'invoice' : 'invoices'}
+            </div>
+            {chosenRows.map((r) => (
+              <label
+                key={r.invoice_id}
+                style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.45rem 0.65rem', borderTop: '1px solid var(--border)', fontSize: '0.8125rem', cursor: 'pointer' }}
+              >
+                <input type="checkbox" checked onChange={() => toggle(r)} aria-label={`Remove invoice ${r.invoice_number}`} />
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ fontWeight: 600 }}>{r.supply_house_name} · #{r.invoice_number}</span>
+                  <span style={{ color: 'var(--text-muted)' }}> · {formatInvoiceDate(r.invoice_date)}</span>
+                </span>
+                <span style={{ whiteSpace: 'nowrap', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(Number(r.amount))}</span>
+              </label>
+            ))}
+            <div
+              data-testid="invoice-link-total"
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                gap: '0.75rem',
+                flexWrap: 'wrap',
+                padding: '0.45rem 0.65rem',
+                borderTop: '1px solid var(--border)',
+                fontSize: '0.8125rem',
+                fontWeight: 600,
+                background: total.tone === 'match' ? 'var(--bg-green-tint)' : 'var(--bg-amber-tint)',
+                color: total.tone === 'match' ? 'var(--text-green-700)' : 'var(--text-amber-700)',
+              }}
+            >
+              <span>{total.words}</span>
+              <span style={{ whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+                {formatCurrency(chosenSum)} of {formatCurrency(txAmount)}
+              </span>
+            </div>
+          </div>
+        ) : null}
 
         <input
           type="text"
@@ -230,9 +282,9 @@ export default function MercuryTransactionInvoiceLinkModal({
 
         {loading ? (
           <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', padding: '0.5rem 0' }}>Loading…</div>
-        ) : rows.length === 0 ? (
+        ) : searchRows.length === 0 ? (
           <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', padding: '0.5rem 0' }}>
-            No invoices found.
+            {rows.length === 0 ? 'No invoices found.' : 'Every invoice this search finds is already chosen.'}
           </div>
         ) : (
           <div
@@ -243,8 +295,7 @@ export default function MercuryTransactionInvoiceLinkModal({
               marginBottom: '0.75rem',
             }}
           >
-            {rows.map((r) => {
-              const isSel = selected.has(r.invoice_id)
+            {searchRows.map((r) => {
               // v2.3501: a credit memo cannot be what a card charge paid for. Linking one would
               // drop the charge from parts cost AND apply the credit's negative allocation — the
               // same money off the job twice — so the row shows why instead of offering the tick.
@@ -259,16 +310,16 @@ export default function MercuryTransactionInvoiceLinkModal({
                     gap: '0.6rem',
                     padding: '0.55rem 0.65rem',
                     borderBottom: '1px solid var(--border)',
-                    background: isSel ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                    background: 'var(--surface)',
                     cursor: isCredit ? 'not-allowed' : 'pointer',
                     opacity: isCredit ? 0.6 : 1,
                   }}
                 >
                   <input
                     type="checkbox"
-                    checked={isSel}
+                    checked={false}
                     disabled={isCredit}
-                    onChange={() => toggle(r.invoice_id)}
+                    onChange={() => toggle(r)}
                     style={{ marginTop: 3 }}
                   />
                   <span style={{ flex: 1, minWidth: 0, fontSize: '0.8125rem' }}>
@@ -324,9 +375,9 @@ export default function MercuryTransactionInvoiceLinkModal({
             marginBottom: '0.75rem',
           }}
         >
-          {selected.size === 0
-            ? 'No invoices selected — saving will clear any existing links.'
-            : `${selected.size} invoice${selected.size === 1 ? '' : 's'} selected.`}
+          {chosenRows.length === 0
+            ? 'No invoices chosen — saving will clear any existing links.'
+            : 'Search for the next invoice — the ones you chose stay above.'}
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
@@ -357,7 +408,7 @@ export default function MercuryTransactionInvoiceLinkModal({
               fontSize: '0.875rem',
             }}
           >
-            {saving ? 'Saving…' : 'Save links'}
+            {saving ? 'Saving…' : chosenRows.length === 0 ? 'Save links' : `Save ${chosenRows.length} ${chosenRows.length === 1 ? 'invoice' : 'invoices'}`}
           </button>
         </div>
       </div>
