@@ -73,6 +73,8 @@ export type PhysicalInvoiceDetailFromJob = {
   payments: PhysicalInvoicePaymentInput[]
   /** The job's bills (v2.3592) — which bill an unlinked payment pays is decided across all of them, oldest first. */
   invoices?: readonly AttributionBill[] | null
+  /** The job's total (v2.4534) — unlinked money pays the part of the job on no bill before it pays a bill. */
+  jobTotal?: number | string | null
   billingKind: 'job' | 'invoice'
   invoiceId: string | null
   invoiceSequenceOrder: number | null
@@ -211,6 +213,7 @@ export function buildPhysicalInvoiceDocument(opts: {
       detailFromJob.billingKind,
       detailFromJob.invoiceId,
       detailFromJob.invoices ?? null,
+      detailFromJob.jobTotal ?? null,
     )
     paymentHistory = formatPaymentHistoryRows(payRows, formatUsd)
     paymentTotals = buildPaymentHistoryTotals(payRows, amountDollars, formatUsd)
