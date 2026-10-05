@@ -103,7 +103,7 @@ import {
   type StagesContractFilter,
 } from '../../lib/jobs/jobContractCoverage'
 import { PipelineOverview } from './PipelineOverview'
-import type { LienDeskPile } from '../../lib/jobs/lienDesk'
+import { isLienLeader, type LienDeskPile } from '../../lib/jobs/lienDesk'
 import { pipelineOverviewHiddenBySearch } from '../../lib/jobs/pipelineOverview'
 import type { PipelineBurnAlert } from '../../lib/jobs/jobSummaryBurn'
 import { useSendBackCollectPaymentFlowNotice } from '../../hooks/useSendBackCollectPaymentFlowNotice'
@@ -253,6 +253,8 @@ import { JobsStagesCommandBar } from './JobsStagesCommandBar'
 import { JobsStagesJumpStrip, StagesLienDeskShortcut, StagesSectionBandTitle } from './JobsStagesJumpStrip'
 import { stageColorVar } from '../../lib/jobs/stagesStageBar'
 import { readJobsMapHidden, writeJobsMapHidden } from '../../lib/jobs/jobsMap'
+import LienOwnerRecordsModal from './LienOwnerRecordsModal'
+import { ownerRecordsFromDesk } from '../../lib/jobs/ownerRecordsDesk'
 import { StagesReadyForBillingConfirmModal } from './StagesReadyForBillingConfirmModal'
 import { StagesSendBackSimpleConfirmModal } from './StagesSendBackSimpleConfirmModal'
 import { StagesCollectionsConfirmModal } from './StagesCollectionsConfirmModal'
@@ -1728,6 +1730,10 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       setStagesNoEmailModalOpen(false)
     }
   }, [stagesReadyToBillNoEmailJobs.length])
+
+  // An owner asked for our records (v2.4544): the window's open flag, and what it reads from the desk.
+  const [ownerRecordsOpen, setOwnerRecordsOpen] = useState(false)
+  const ownerRecordsDesk = useMemo(() => ownerRecordsFromDesk(ownerRecordsOpen ? lienDeskData : null), [ownerRecordsOpen, lienDeskData])
 
   // The Jobs on a map card's hidden choice (per device, `lib/jobs/jobsMap`), held here since
   // v2.4518 so the command bar can offer the way back.
@@ -4496,6 +4502,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           if (!job) return
           setLienInstrumentsModal({ job, invoice: null })
         }}
+        onOpenOwnerRecords={() => setOwnerRecordsOpen(true)}
         // v2.4531: a Calendar row's job number opens the job itself, over the desk.
         onOpenJob={(jobId) => jobDetailModal?.openJobDetail({ jobId, onEditJobSaved: () => refetchLienDesk() })}
         initialPile={lienDesk?.pile ?? null}
@@ -4549,6 +4556,19 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         onPutGcOnNotice={(gcId) => {
           setGcNotice({ gcId })
         }}
+      />
+      {/* An owner asked for our records (v2.4544): over the desk, which stays open behind it. */}
+      <LienOwnerRecordsModal
+        open={ownerRecordsOpen}
+        properties={ownerRecordsDesk.properties}
+        seedFor={ownerRecordsDesk.seedFor}
+        claimsByJob={ownerRecordsDesk.claimsByJob}
+        company={lienDeskIssuer?.companyName ?? ''}
+        todayYmd={forecastTodayYmd}
+        authName={authProfileName?.trim() ?? ''}
+        isLeader={isLienLeader(authRole)}
+        isMobile={isMobile}
+        onClose={() => setOwnerRecordsOpen(false)}
       />
       <GcOnNoticeModal
         open={gcNotice != null}
