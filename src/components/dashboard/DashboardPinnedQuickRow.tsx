@@ -811,7 +811,11 @@ export function DashboardPinnedQuickRow({
               navigate(gcId ? `/jobs?tab=stages&gcnotice=${encodeURIComponent(gcId)}` : '/jobs?tab=stages&liendesk=1')
             } else if (item.key === 'lien-window-missed') {
               navigate('/jobs?tab=stages&liendesk=1&liendeskPile=missed')
-            } else if (item.key === 'lien-notice-draft' || item.key === 'lien-notice-approve') {
+            } else if (item.key === 'lien-notice-approve') {
+              // The leader's card lands on what waits on him (punch list #82).
+              navigate('/jobs?tab=stages&liendesk=1&liendeskPile=awaiting')
+            } else if (item.key === 'lien-notice-draft') {
+              // Next up: the list this card counts from.
               navigate('/jobs?tab=stages&liendesk=1')
             } else if (item.key === 'lien-file-window') {
               navigate('/jobs?tab=stages&liendesk=1&kind=affidavit')

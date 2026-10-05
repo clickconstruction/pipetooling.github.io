@@ -347,6 +347,23 @@ export default function LienDeskModal({
     if (open && !wasOpenRef.current) setKind(initialKind ?? 'notice')
     wasOpenRef.current = open
   }, [open, initialKind])
+  // A door can re-aim a desk that is already open (punch list #82: the job's Lien window, opened over the desk,
+  // sends its next step back here). The job it names is new, so its tab is applied as on a fresh open.
+  const aimedJobRef = useRef(initialJobId ?? null)
+  useEffect(() => {
+    const prev = aimedJobRef.current
+    aimedJobRef.current = initialJobId ?? null
+    if (open && wasOpenRef.current && initialJobId && initialJobId !== prev) {
+      setKind(initialKind ?? 'notice')
+      setMobileListShown(false)
+    }
+  }, [open, initialJobId, initialKind])
+  // All paper (punch list #82, PR 5): the four lists share one view; it reopens on the list last looked at.
+  const paperShown = kind === 'notice' || kind === 'affidavit' || kind === 'retainage' || kind === 'timeline'
+  const [lastPaperKind, setLastPaperKind] = useState<'notice' | 'affidavit' | 'retainage' | 'timeline'>('notice')
+  useEffect(() => {
+    if (kind === 'notice' || kind === 'affidavit' || kind === 'retainage' || kind === 'timeline') setLastPaperKind(kind)
+  }, [kind])
   const [bookGcId, setBookGcId] = useState<string | null>(null)
   const [bookShow, setBookShow] = useState<LienBookShow>('due')
   useEffect(() => {
@@ -1974,7 +1991,7 @@ export default function LienDeskModal({
       footer = (
         <>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem 1rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }} data-lien-since-sent>
-            <span>Sent <strong style={{ color: 'var(--text-700)' }}>{first?.sent_at ? demandDate(calendarYmdInAppTzFromIso(first.sent_at)) : ''}</strong> · on the job's lien instruments</span>
+            <span>Sent <strong style={{ color: 'var(--text-700)' }}>{first?.sent_at ? demandDate(calendarYmdInAppTzFromIso(first.sent_at)) : ''}</strong> · in the job's Lien window</span>
             {lt && lt.day != null ? <span>Day <strong style={{ color: 'var(--text-700)' }}>{lt.day}</strong></span> : null}
             <span>GC paid: <strong style={{ color: 'var(--text-700)' }}>{jobBalance <= 0.005 ? 'yes' : 'no'}</strong></span>
             <span>GC authorized direct pay: <strong style={{ color: 'var(--text-700)' }}>{lt?.gcAuthorized ? `yes · ${formatYmdMonthDay(calendarYmdInAppTzFromIso(lt.gcAuthorized.at))}${lt.gcAuthorized.note ? ` · ${lt.gcAuthorized.note}` : ''}` : 'no'}</strong></span>
@@ -2066,13 +2083,26 @@ export default function LienDeskModal({
           {showToggle ? <ModalFullScreenButton fullScreen={fullScreen} onToggle={toggleFullScreen} style={{ position: 'absolute', right: '3.1rem', top: '0.55rem' }} /> : null}
           <button type="button" onClick={onClose} aria-label="Close" style={{ position: 'absolute', right: '0.8rem', top: '0.5rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)', padding: 4 }}>×</button>
           {/* v2.4311: the tab row is 375 px of labels — on a phone it scrolls sideways inside the card instead of pushing the title bar (and ×, and Share) off the screen. v2.4441: a cut end fades, so Timeline past the edge is not a secret, and the picked tab is brought into view. */}
-          <div ref={kindTabs.ref} onScroll={kindTabs.onScroll} role="tablist" aria-label="Kind" data-lien-desk-kinds style={{ display: 'inline-flex', maxWidth: '100%', minWidth: 0, border: '1px solid var(--border-strong)', borderRadius: 7, overflowX: 'auto', overflowY: 'hidden', ...kindTabs.style }}>
-            {(['next', 'calendar', 'notice', 'affidavit', 'retainage', 'timeline'] as const).map((k) => (
-              <button key={k} type="button" role="tab" aria-selected={kind === k} onClick={() => setKind(k)} className="lienDeskKindTab" style={{ flexShrink: 0, whiteSpace: 'nowrap', border: 'none', background: kind === k ? FILL.primary : 'var(--surface)', color: kind === k ? '#fff' : 'var(--text-700)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }} title={k === 'retainage' ? 'The § 53.057 notice of claim for unpaid retainage — one per job, 30 days after our contract on it ends' : k === 'timeline' ? 'Every billed job with money open and a lien month — the whole path, sorted by the next date; Print the grid for counsel' : undefined}>
-                {k === 'next' ? `Next up${data ? ` · ${nextUpRows.length}` : ''}` : k === 'calendar' ? 'Calendar' : k === 'notice' ? `Notices${counts ? ` · ${entries.filter((e) => e.pile !== 'sent').length}` : ''}` : k === 'affidavit' ? `Affidavits${data ? ` · ${affCount}` : ''}` : k === 'retainage' ? `Retainage${data ? ` · ${retCount}` : ''}` : `Timeline${book ? ` · ${book.counts.due}` : ''}`}
-              </button>
-            ))}
+          {/* Three views (punch list #82, PR 5): Next up, Calendar, All paper. All paper holds the four lists that were tabs of their own, as a second row. */}
+          <div ref={kindTabs.ref} onScroll={kindTabs.onScroll} role="tablist" aria-label="View" data-lien-desk-kinds style={{ display: 'inline-flex', maxWidth: '100%', minWidth: 0, border: '1px solid var(--border-strong)', borderRadius: 7, overflowX: 'auto', overflowY: 'hidden', ...kindTabs.style }}>
+            {(['next', 'calendar', 'paper'] as const).map((v) => {
+              const on = v === 'paper' ? paperShown : kind === v
+              return (
+                <button key={v} type="button" role="tab" aria-selected={on} data-lien-desk-view={v} onClick={() => setKind(v === 'paper' ? lastPaperKind : v)} className="lienDeskKindTab" style={{ flexShrink: 0, whiteSpace: 'nowrap', border: 'none', background: on ? FILL.primary : 'var(--surface)', color: on ? '#fff' : 'var(--text-700)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }} title={v === 'paper' ? 'Every notice, affidavit and retainage notice by its state, and the timeline of every job' : undefined}>
+                  {v === 'next' ? `Next up${data ? ` · ${nextUpRows.length}` : ''}` : v === 'calendar' ? 'Calendar' : `All paper${data ? ` · ${entries.filter((e) => e.pile !== 'sent').length + affCount + retCount}` : ''}`}
+                </button>
+              )
+            })}
           </div>
+          {paperShown ? (
+            <div role="tablist" aria-label="Kind of paper" data-lien-desk-paper-kinds style={{ display: 'inline-flex', maxWidth: '100%', minWidth: 0, border: '1px solid var(--border)', borderRadius: 7, overflowX: 'auto', overflowY: 'hidden' }}>
+              {(['notice', 'affidavit', 'retainage', 'timeline'] as const).map((k) => (
+                <button key={k} type="button" role="tab" aria-selected={kind === k} onClick={() => setKind(k)} className="lienDeskKindTab" style={{ flexShrink: 0, whiteSpace: 'nowrap', border: 'none', background: kind === k ? 'var(--bg-blue-tint)' : 'var(--surface)', color: kind === k ? 'var(--text-blue-700)' : 'var(--text-700)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }} title={k === 'retainage' ? 'The § 53.057 notice of claim for unpaid retainage — one per job, 30 days after our contract on it ends' : k === 'timeline' ? 'Every billed job with money open and a lien month — the whole path, sorted by the next date; Print the grid for counsel' : undefined}>
+                  {k === 'notice' ? `Notices${counts ? ` · ${entries.filter((e) => e.pile !== 'sent').length}` : ''}` : k === 'affidavit' ? `Affidavits${data ? ` · ${affCount}` : ''}` : k === 'retainage' ? `Retainage${data ? ` · ${retCount}` : ''}` : `Timeline${book ? ` · ${book.counts.due}` : ''}`}
+                </button>
+              ))}
+            </div>
+          ) : null}
           <LienRulesDoor where={kind === 'affidavit' ? 'desk_affidavit' : 'desk_notice'} />
           {office ? <LienCallerDoor input={callerInput} onPick={(h) => setCallerJobId(h.jobId)} onOpenJob={openDeskJob} onPractice={() => setPracticeCallOpen(true)} /> : null}
           {/* An owner asked for our records (v2.4544): the checked packet for their property, opened over the desk. */}

@@ -1495,7 +1495,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const { byJob: forecastWorkMonths } = useForecastWorkMonths(forecastWorkMonthJobs, forecastTodayYmd)
   // The Lien desk (v2.3405): § 53.056 notices due per unpaid work month on sub
   // jobs. A light read keeps the menus' counts; the full read runs while open.
-  const [lienDesk, setLienDesk] = useState<{ jobId: string | null; kind?: 'notice' | 'affidavit' | 'timeline' | 'calendar'; pile?: LienDeskPile | null } | null>(null)
+  const [lienDesk, setLienDesk] = useState<{ jobId: string | null; kind?: 'next' | 'notice' | 'affidavit' | 'retainage' | 'timeline' | 'calendar'; pile?: LienDeskPile | null } | null>(null)
   const lienDeskEligible = stagesGates.isStagesOfficeRole(authRole)
   /** Put a GC on notice (v2.3470): every owner on every job with a failing GC, one approved run. */
   const [gcNotice, setGcNotice] = useState<{ gcId: string } | null>(null)
@@ -4608,6 +4608,12 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         noticeMonths={lienInstrumentsModal?.noticeMonths ?? null}
         signerNameFallback={lienDeskSignerFor(lienInstrumentsModal?.job?.master_user_id ?? null)}
         authEmail={authUser?.email?.trim() ?? ''}
+        // The next step's door (punch list #82): the desk sits under this window, so this one closes and the desk opens on the job.
+        onOpenLienDesk={(jobId, deskKind) => {
+          setLienInstrumentsModal(null)
+          setLienDesk({ jobId, kind: deskKind })
+        }}
+        onOpenRelease={openLienReleaseFromRow ? (job) => openLienReleaseFromRow({ job, invoice: null }) : undefined}
         onRecorded={() => {
           void loadDemandOutJobIds()
           // A recorded notice that names the desk item's months sends the item (v2.3405).
