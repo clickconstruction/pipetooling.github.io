@@ -2,6 +2,11 @@
 import { describe, expect, it } from 'vitest'
 import {
   allJobsMoney,
+  customerMessages,
+  latePayApps,
+  payReminderEmail,
+  payReminderSentWords,
+  payReminderStep,
   ownerFinishRisk,
   ownerInterest,
   ownerInterestFrom,
@@ -1099,6 +1104,129 @@ describe('what we expect, beside what is on the books', () => {
     expect(off.later.some((m) => m.expected)).toBe(false)
     const on = cashAhead(initialGcState())
     expect(on.weeks.flatMap((w) => w.moves).filter((m) => m.who === 'Iron Horse Fabrication' && m.expected)).toEqual([])
+  })
+})
+
+describe('reminding a customer to pay a late bill', () => {
+  const fairOaks = (state: GcState) => state.projects.find((p) => p.id === 'fairoaksd') as GcProject
+  const cibolo = (state: GcState) => state.customers.find((c) => c.name === 'Cibolo Creek Partners')
+  const r = (n: number) => Math.round(n)
+
+  it('lists the bills that can be reminded: certified, not paid, past their due day', () => {
+    const state = initialGcState()
+    expect(latePayApps(state, fairOaks(state)).map((b) => [b.number, b.due, b.daysLate, r(b.open)])).toEqual([[3, '2026-09-30', 2, 288_879]])
+    const step = payReminderStep(state, fairOaks(state), 3)
+    expect(step).toMatchObject({
+      docKey: 'payapp-fairoaksd-3',
+      title: 'Remind them to pay pay application 3',
+      history: 'Due Sep 30, 2 days late. This is the first reminder.',
+      dayWord: 'Pay by',
+      by: '2026-10-07',
+    })
+    expect(payReminderStep(state, fairOaks(state), 2)).toBeNull()
+    // Waiting on the architect: nothing to pay yet.
+    const sent = gcReducer(state, { type: 'sendOwnerPayApp', projectId: 'helotes' })
+    const helotes = sent.projects.find((p) => p.id === 'helotes') as GcProject
+    expect(payReminderStep({ ...sent, today: '2026-12-31' }, helotes, 1)).toBeNull()
+  })
+
+  it('says what is open, since when, and how to pay; interest only when we charge it', () => {
+    let state = initialGcState()
+    let mail = payReminderEmail(state, cibolo(state), fairOaks(state), 3, '2026-10-07', 'Elena, a call this week would help.')
+    expect(mail.subject).toBe('Reminder: pay application 3 for Fair Oaks Shops, Building D, $288,879')
+    expect(mail.lines).toEqual([
+      'Hello Elena,',
+      'Pay application 3 for Fair Oaks Shops, Building D has $288,879 still open. It was due Wed Sep 30, the day you gave.',
+      'Please pay it by Wed Oct 7.',
+      'Elena, a call this week would help.',
+      'Pay it in your portal, by card or bank transfer.',
+      'Our unconditional lien waiver for it comes to you the day it is paid.',
+    ])
+    state = gcReducer(state, { type: 'setOwnerLateInterest', projectId: 'fairoaksd', pctPerMonth: 1.5 })
+    state = gcReducer(state, { type: 'ownerPayPart', projectId: 'fairoaksd', number: 3, amount: 88_878.51 })
+    mail = payReminderEmail(state, cibolo(state), fairOaks(state), 3, '2026-10-07', '')
+    expect(mail.lines.slice(1, 4)).toEqual([
+      'Pay application 3 for Fair Oaks Shops, Building D has $200,000 still open. It was due Wed Sep 30, the day you gave.',
+      'Thank you for the $88,879 you paid Oct 2.',
+      'Interest of 1.5% a month runs on it from Sep 30. $285 has built up so far.',
+    ])
+  })
+
+  it('keeps the reminder on the bill, never as a promise', () => {
+    const before = initialGcState()
+    const state = gcReducer(before, { type: 'remindCustomerToPay', projectId: 'fairoaksd', number: 3, by: '2026-10-07', note: '' })
+    const app = fairOaks(state).ownerBilling?.payApps?.[2]
+    expect(app?.reminders).toMatchObject([{ on: '2026-10-02', by: '2026-10-07', note: '' }])
+    expect(app?.reminders?.[0]?.lines?.[1]).toBe('Pay application 3 for Fair Oaks Shops, Building D has $288,879 still open. It was due Wed Sep 30, the day you gave.')
+    expect(app?.promises).toEqual(fairOaks(before).ownerBilling?.payApps?.[2]?.promises)
+    expect(latePayApps(state, fairOaks(state)).map((b) => b.daysLate)).toEqual([2])
+    expect(payReminderSentWords(state, fairOaks(state), 3)).toBe('Reminded today · pay by Wed Oct 7.')
+    expect(payReminderStep(state, fairOaks(state), 3)?.history).toBe('Due Sep 30, 2 days late. Reminded once, last Oct 2.')
+    // Not on a bill that is not late, nor for a day already gone.
+    expect(gcReducer(before, { type: 'remindCustomerToPay', projectId: 'fairoaksd', number: 2, by: '2026-10-07', note: '' })).toBe(before)
+    expect(gcReducer(before, { type: 'remindCustomerToPay', projectId: 'fairoaksd', number: 3, by: '2026-10-01', note: '' })).toBe(before)
+  })
+})
+
+describe('the customer’s messages, written out', () => {
+  const job = (state: GcState, id: string) => state.projects.find((p) => p.id === id) as GcProject
+  const kinds = (state: GcState, id: string) => customerMessages(state, job(state, id)).map((m) => [m.on, m.kind])
+
+  it('lists every email on Fair Oaks D, newest first: three bills and two thank-yous', () => {
+    const state = initialGcState()
+    expect(kinds(state, 'fairoaksd')).toEqual([
+      ['2026-10-01', 'paid'],
+      ['2026-09-25', 'payApp'],
+      ['2026-09-01', 'paid'],
+      ['2026-08-25', 'payApp'],
+      ['2026-07-25', 'payApp'],
+    ])
+    const bill = customerMessages(state, job(state, 'fairoaksd')).find((m) => m.key === 'payapp-3')
+    expect(bill?.subject).toBe('Pay application 3 for Fair Oaks Shops, Building D, $288,879')
+    expect(bill?.lines).toContain('Marsh & Vale Architects certifies it first. We will tell you when they do.')
+  })
+
+  it('follows a bill from sent to certified less, paid in part, reminded and charged interest', () => {
+    let state = gcReducer(initialGcState(), { type: 'sendOwnerPayApp', projectId: 'helotes' })
+    state = gcReducer(state, { type: 'architectCertify', projectId: 'helotes', number: 1, amount: 40_000, note: 'Ceilings are not hung yet' })
+    state = gcReducer(state, { type: 'ownerPayPart', projectId: 'helotes', number: 1, amount: 15_000 })
+    const msgs = customerMessages(state, job(state, 'helotes'))
+    expect(msgs.map((m) => m.kind)).toEqual(['paid', 'certified', 'payApp'])
+    expect(msgs[0]?.lines.slice(1, 3)).toEqual(['We received $15,000 for pay application 1 on Helotes Dental Office.', '$25,000 is still open on it.'])
+    expect(msgs[1]?.lines[2]).toMatch(/^That is \$[\d,]+ less than we asked\./)
+    // The reminder shows as it went; the interest bill and its thank-you too.
+    let late = gcReducer(initialGcState(), { type: 'remindCustomerToPay', projectId: 'fairoaksd', number: 3, by: '2026-10-07', note: 'Call me' })
+    late = gcReducer(late, { type: 'setOwnerLateInterest', projectId: 'fairoaksd', pctPerMonth: 1.5 })
+    late = gcReducer(late, { type: 'sendOwnerInterestBill', projectId: 'fairoaksd' })
+    late = gcReducer(late, { type: 'ownerPaidInterest', projectId: 'fairoaksd', number: 1 })
+    const top = customerMessages(late, job(late, 'fairoaksd')).slice(0, 3)
+    expect(top.map((m) => m.kind)).toEqual(['interestPaid', 'interest', 'reminder'])
+    expect(top[2]?.lines).toContain('Call me')
+    expect(top[1]?.lines[2]).toBe('The interest on them comes to $285, at 1.5% a month.')
+  })
+
+  it('a change order to sign, with its price and days', () => {
+    let state = gcReducer(initialGcState(), { type: 'draftChangeOrder', projectId: 'fairoaksd', description: 'A second drive-through lane.', reason: 'owner', schedule: '', packageId: 'fsite', cost: 12_000, price: 0, days: 5 })
+    expect(customerMessages(state, job(state, 'fairoaksd')).some((m) => m.kind === 'changeOrder')).toBe(false)
+    state = gcReducer(state, { type: 'sendChangeOrder', projectId: 'fairoaksd', changeOrderId: 'co-1' })
+    const co = customerMessages(state, job(state, 'fairoaksd')).find((m) => m.kind === 'changeOrder')
+    expect(co?.subject).toBe('Change order 1 for Fair Oaks Shops, Building D, +$13,200')
+    expect(co?.lines.slice(1)).toEqual([
+      'Change order 1 for Fair Oaks Shops, Building D is ready for your signature: A second drive-through lane.',
+      'It adds $13,200 to your price. It adds 5 days to the job.',
+      'Sign it or decline it in your portal.',
+    ])
+  })
+
+  it('Stone Oak: every line billed asks them to accept the work, then thanks them', () => {
+    let state = initialGcState()
+    expect(kinds(state, 'stoneoak').slice(0, 2)).toEqual([
+      ['2026-10-01', 'paid'],
+      ['2026-09-25', 'acceptAsk'],
+    ])
+    state = gcReducer(state, { type: 'ownerAcceptsWork', projectId: 'stoneoak' })
+    const top = customerMessages(state, job(state, 'stoneoak'))[0]
+    expect([top?.on, top?.kind, top?.lines[1]]).toEqual(['2026-10-02', 'accepted', 'You accepted the work on Stone Oak Pharmacy.'])
   })
 })
 

@@ -85,7 +85,13 @@ describe("a company's window (the owner, 2026-10-04)", () => {
     const cibolo = state.customers.find((c) => c.id === 'cibolo')
     if (!cibolo) throw new Error('no cibolo')
     const docs = customerDocuments(state, cibolo)
-    expect(docs.groups.flatMap((g) => g.docs.map((d) => `${d.key} ${d.statusWords}`))).toEqual(['contract-fairoaksd signed Jun 2', 'owner-payapps-fairoaksd 3 sent'])
+    // Pay application 3 is past its due day: its own row, with Remind them (Owner Billing's reminder).
+    expect(docs.groups.flatMap((g) => g.docs.map((d) => `${d.key} ${d.statusWords}`))).toEqual([
+      'contract-fairoaksd signed Jun 2',
+      'owner-payapps-fairoaksd 3 sent',
+      'payapp-fairoaksd-3 2 days late',
+    ])
+    expect(docs.toGet).toBe(1)
     expect(customerPaper(state, cibolo, 'owner-payapps-fairoaksd')?.table?.rows.length).toBe(3)
     const events = customerActivity(state, cibolo)
     expect(events[0]).toMatchObject({ on: '2026-10-01', kind: 'money', text: 'Paid pay application 2.' })
@@ -156,5 +162,39 @@ describe("a trade's Activity also carries the award, pay applications sent back,
     })
     state = gcReducer(state, { type: 'turnDownChangeRequest', projectId: 'fairoaksd', requestId: 'fairoaksd-cr-1', note: 'It was in your quote.' })
     expect(partnerActivity(state, partner(state, 'tricounty')).map((e) => e.text)).toContain('Their change turned down: It was in your quote.')
+  })
+})
+
+describe("a trade's Activity carries what it did on the job (Building, 2026-10-04)", () => {
+  it('its submittals, punch items and inspections, under On the job', () => {
+    const state = initialGcState()
+    const work = (id: string) => partnerActivity(state, partner(state, id)).filter((e) => e.kind === 'work').map((e) => e.text)
+    expect(work('pecanvalley')).toEqual(
+      expect.arrayContaining([
+        'Asked them for submittal 26 24 16-01, Panelboards.',
+        'Submittal 26 24 16-01 came back to revise: Show the 22kA rating on each panel.',
+        'Sent submittal 26 24 16-01, Panelboards, round 2.',
+        'Submittal 26 24 16-01 approved as noted: Label the spare breakers.',
+        'Electrical service inspection failed on their work: The main bonding jumper is missing at the service panel. Re-inspection Oct 2.',
+      ]),
+    )
+    expect(work('guadalupe')).toEqual(
+      expect.arrayContaining([
+        'Punch item: Patch the spalled corner on the column footing, Grid C-4.',
+        'Said a punch item is fixed: Seal the control joints in the stockroom slab.',
+        'Punch item checked fixed: Clean the curb paint off the sidewalk.',
+      ]),
+    )
+    // A trade we did not award has none of it.
+    expect(work('alamo')).toEqual([])
+  })
+
+  it('a failed punch check and a passed inspection show too', () => {
+    let state = initialGcState()
+    state = gcReducer(state, { type: 'checkPunchItem', projectId: 'fairoaksd', itemId: 'fairoaksd-punch-2', fixed: false, note: 'Two joints are still open.' })
+    state = gcReducer(state, { type: 'passInspection', projectId: 'fairoaksd', lineId: 'fairoaksd-insp-service' })
+    const texts = (id: string) => partnerActivity(state, partner(state, id)).filter((e) => e.kind === 'work').map((e) => e.text)
+    expect(texts('guadalupe')).toContain('A punch item was not fixed: Two joints are still open.')
+    expect(texts('pecanvalley')).toContain('Electrical service inspection passed.')
   })
 })

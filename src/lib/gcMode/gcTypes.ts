@@ -379,12 +379,19 @@ export interface PartnerVetting {
 /** Promises other than a quote date (question 8). Each lane keeps its own kinds; see gcPromises.ts. */
 export type PromiseKind = 'insurance' | 'w9' | 'sow' | 'start' | 'submittals' | 'delivery' | 'payApp' | 'punch' | 'closeout' | 'msa'
 
-/** A reminder to a customer from its window (the owner, 2026-10-04): a change order waiting on their signature. */
+/**
+ * A paper sent to a customer from its window (the owner, 2026-10-04): our contract to sign in their
+ * portal (the first send, then reminders), or a reminder on a change order waiting on their signature.
+ */
 export interface CustomerSend {
   id: string
   customerId: string
   projectId: string
-  changeOrderId: string
+  paper: 'contract' | 'changeOrder'
+  /** A change order's reminder: which one. */
+  changeOrderId?: string
+  /** Our contract's first send; later ones are reminders. */
+  first?: boolean
   on: string
   /** The day we asked them to sign by. */
   by: string
@@ -550,6 +557,8 @@ export interface GcProject {
   ourBidSentOn: string | null
   /** Going into the job: our contract with the owner, the permit, the day work starts. */
   ownerContractSignedOn: string | null
+  /** The day our contract went to the customer to sign in their portal (the owner, 2026-10-04). Unset: not sent from the app. */
+  ownerContractSentOn?: string
   /**
    * The owner's price as they signed it, by line: each trade by its package id, then 'gc',
    * 'contingency' and 'fee' (owner, 2026-10-04). Bill the owner reads it, so buying a trade out for
@@ -865,6 +874,10 @@ export type GcAction =
   | { type: 'setCustomerPortal'; customerId: string; on: boolean }
   /** Remind a customer to sign a change order, from its window, by a day (the owner, 2026-10-04). */
   | { type: 'remindCustomer'; customerId: string; projectId: string; changeOrderId: string; by: string; note: string }
+  /** Send our contract to the customer to sign in their portal, or remind them, by a day (the owner, 2026-10-04). */
+  | { type: 'sendOwnerContract'; projectId: string; by: string; note: string }
+  /** The customer signs our contract in their portal. */
+  | { type: 'ownerSignContract'; projectId: string }
   /** Send a paper from the company window: to sign, or to send us, due on a day (the owner, 2026-10-04). */
   | { type: 'sendPaper'; partnerId: string; paper: PaperKind; projectId?: string; packageId?: string; by: string; note: string }
   /** `known: false`: a company new to us, not vetted yet (question 3). Unset: one we know. */
@@ -1076,6 +1089,8 @@ export type GcAction =
   | { type: 'ownerPaidInterest'; projectId: string; number: number }
   /** We enter the owner contract's late fee a day (null: the contract has none). */
   | { type: 'setOwnerLateFinish'; projectId: string; perDay: number | null }
+  /** We remind the customer to pay a pay application past its due day (email only). */
+  | { type: 'remindCustomerToPay'; projectId: string; number: number; by: string; note: string }
   /** We set the pre-bid meeting, or move it, while we bid. */
   | { type: 'schedulePreBid'; projectId: string; on: string; at: string; place: string; host: 'architect' | 'us'; mandatory: boolean }
   /** We record which companies came to the pre-bid meeting. */
@@ -1223,6 +1238,8 @@ export interface OwnerPayAppSent {
   retainageStep?: OwnerRetainageStep
   /** Materials stored on site, not yet in place, on each line when it went (column F). Absent: none. */
   storedByLine?: Record<string, number>
+  /** Our reminders to pay it, oldest first: the day sent, the pay-by day we asked for, the office's line. Never a promise. */
+  reminders?: { on: string; by: string; note: string; subject?: string; lines?: string[] }[]
 }
 
 /** A pay application the office sent back: the draw as the trade sent it, why, and what we see. */

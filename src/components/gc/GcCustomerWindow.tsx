@@ -6,6 +6,7 @@ import {
   customerDocuments,
   customerPaper,
   customerStep,
+  payReminderStep,
   customerPortalJobs,
   customerPortalStatus,
   customerSummary,
@@ -28,7 +29,7 @@ import {
 } from '../../lib/gcMode/gcModel'
 import { GcOwnerBillingPortal } from './GcOwnerBillingPortal'
 import { CompanyActivity, CompanyDocuments, CompanyPortalPanel, CompanyTabStrip } from './GcCompanyFile'
-import { GcCustomerSend } from './GcCustomerSend'
+import { GcCustomerPayReminder, GcCustomerSend } from './GcCustomerSend'
 import type { CompanyTab } from './gcCompanyOpener'
 import { Btn, Chip, Stat, num, td, th, type Tone } from './gcUi'
 
@@ -49,6 +50,8 @@ interface Props {
   onPlans: (projectId: string) => void
   /** Open another company's window in place of this one. */
   onCustomer: (customerId: string) => void
+  /** Where to open: a tab, a paper, and its send already open (Get started's Send to sign, 2026-10-04). */
+  at?: { tab?: CompanyTab; doc?: string; send?: boolean }
 }
 
 const STAGE_WORDS: Record<GcStage, { tone: Tone; word: string }> = {
@@ -77,15 +80,22 @@ function projects(n: number): string {
   return `${n} ${n === 1 ? 'project' : 'projects'}`
 }
 
-export function GcCustomerWindow({ state, customer, dispatch, onClose, onOpenProject, onPlans, onCustomer }: Props) {
+export function GcCustomerWindow({ state, customer, dispatch, onClose, onOpenProject, onPlans, onCustomer, at }: Props) {
   // About, Activity, Documents: the same three tabs as a trade's window (the owner, 2026-10-04).
-  const [tab, setTab] = useState<CompanyTab>('about')
+  const [tab, setTab] = useState<CompanyTab>(at?.tab ?? (at?.doc ? 'documents' : 'about'))
   const docs = customerDocuments(state, customer)
   const events = customerActivity(state, customer)
-  const [doc, setDoc] = useState<string | null>(docs.groups[0]?.docs[0]?.key ?? null)
+  const [doc, setDoc] = useState<string | null>(at?.doc ?? docs.groups[0]?.docs[0]?.key ?? null)
   /** A change order being reminded, by its Documents key: the send shows in the paper's place. */
-  const [sending, setSending] = useState<string | null>(null)
+  const [sending, setSending] = useState<string | null>(at?.send && at.doc ? at.doc : null)
   const sendStep = sending ? customerStep(state, customer, sending) : null
+  // A late bill's reminder (Owner Billing's, 2026-10-04): its rows are keyed payapp-<project>-<number>.
+  const payStepOf = (key: string) => {
+    const m = key.match(/^payapp-(.+)-(\d+)$/)
+    const project = m ? state.projects.find((p) => p.id === m[1]) : undefined
+    return m && project ? payReminderStep(state, project, Number(m[2])) : null
+  }
+  const payStep = sending && !sendStep ? payStepOf(sending) : null
   const owner = customerSummary(state, customer)
   const architect = architectSummary(state, customer)
   const isOwner = owner.live.length > 0 || customer.past.length > 0
@@ -251,9 +261,10 @@ export function GcCustomerWindow({ state, customer, dispatch, onClose, onOpenPro
                 setSending(null)
               }}
               paper={doc ? customerPaper(state, customer, doc) : null}
-              // A change order waiting on their signature gets Remind them (the owner, 2026-10-04).
-              ask={(d) =>
-                customerStep(state, customer, d.key) && sending !== d.key ? (
+              // Our contract gets Send to sign, then Remind them; a change order waiting on them, Remind them (the owner, 2026-10-04).
+              ask={(d) => {
+                const step = customerStep(state, customer, d.key) ?? (payStepOf(d.key) ? { verb: 'Remind them' } : null)
+                return step && sending !== d.key ? (
                   <Btn
                     kind="primary"
                     onClick={() => {
@@ -261,12 +272,22 @@ export function GcCustomerWindow({ state, customer, dispatch, onClose, onOpenPro
                       setSending(d.key)
                     }}
                   >
-                    Remind them
+                    {step.verb}
                   </Btn>
                 ) : null
-              }
+              }}
               aside={
-                sendStep ? (
+                payStep ? (
+                  <GcCustomerPayReminder
+                    key={sending ?? ''}
+                    state={state}
+                    customer={customer}
+                    step={payStep}
+                    dispatch={dispatch}
+                    onDone={() => setSending(null)}
+                    onCancel={() => setSending(null)}
+                  />
+                ) : sendStep ? (
                   <GcCustomerSend
                     key={sending ?? ''}
                     state={state}
@@ -555,8 +576,11 @@ function OwnerRow({
       <td style={td}>
         <strong>{project.name}</strong>
         <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-          {project.sizeNote} · drawn by{' '}
-          {onArchitect ? <button type="button" style={linkStyle} onClick={onArchitect}>{project.architect}</button> : 'them'}
+          {project.sizeNote} ·{' '}
+          {/* "drawn by" and the architect stay together when they fit on a line (the owner, 2026-10-04). */}
+          <span style={{ display: 'inline-block' }}>
+            drawn by {onArchitect ? <button type="button" style={linkStyle} onClick={onArchitect}>{project.architect}</button> : 'them'}
+          </span>
         </div>
       </td>
       <td style={td}>

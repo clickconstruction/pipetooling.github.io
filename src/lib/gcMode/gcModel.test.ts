@@ -749,6 +749,9 @@ const STEPS: Step[] = [
   },
   { label: 'Send Stone Oak change order 1 to Hollis', action: { type: 'sendChangeOrder', projectId: 'stoneoak', changeOrderId: 'co-1' } },
   { label: 'Remind Hollis to sign change order 1', action: { type: 'remindCustomer', customerId: 'hollis', projectId: 'stoneoak', changeOrderId: 'co-1', by: '2026-10-09', note: '' } },
+  // They sign it in their portal (the owner, 2026-10-04): our contract goes from Cibolo's window, they sign it in their portal.
+  { label: "Send Boerne's contract to Cibolo to sign", action: { type: 'sendOwnerContract', projectId: 'boerne', by: '2026-10-09', note: '' } },
+  { label: "Cibolo signs Boerne's contract in their portal", action: { type: 'ownerSignContract', projectId: 'boerne' } },
 ]
 
 const CUSTOMER_IDS = ['cibolo', 'raman']
@@ -920,7 +923,7 @@ describe('GC mode golden walk', () => {
       'saveToScopeBook', 'editScopeBookLine', 'mergeScopeBookLines', 'saveScopeSet',
       'checkPlanSetDrive',
       'tradeSendSov',
-      'setQuoteExclusion', 'setExclusionCover', 'logPartnerContact', 'setCustomerPortal', 'sendPaper', 'remindCustomer',
+      'setQuoteExclusion', 'setExclusionCover', 'logPartnerContact', 'setCustomerPortal', 'sendPaper', 'remindCustomer', 'sendOwnerContract', 'ownerSignContract',
     ]
     expect(all.filter((t) => !used.has(t))).toEqual([])
   })

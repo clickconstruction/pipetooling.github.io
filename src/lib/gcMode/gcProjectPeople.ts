@@ -6,21 +6,25 @@
  * architect and the customer count; our own moves (a draft not sent) do not, the ring lists those.
  */
 import type { AskContact, GcCustomer, GcProject, GcState, Partner } from './gcTypes'
-import { daysUntil, shortDate, weekdayDate } from './gcWords'
+import { daysUntil, money, shortDate, weekdayDate } from './gcWords'
 import { currentRev, partnerById, planLabel } from './gcLookups'
 import { followUps, packageIsOpen } from './gcFollowUp'
-import { insuranceRenewals, tradePromisesOf, tradePromiseState, tradePromiseWords } from './gcPromises'
+import { insuranceRenewals, paperAsks, tradePromisesOf, tradePromiseState, tradePromiseWords } from './gcPromises'
 import { architectSummary } from './gcCustomers'
 import { sentBackOpen, timesSentBack } from './gcBuilding'
 import { followUpPeople, partnerReach, type FollowItem, type FollowPerson } from './gcFollowUpSheet'
-import { customerReminderLate, customerSentWords } from './gcCustomerSend'
+import { contractWaitingOn, customerReminderLate, customerSentWords } from './gcCustomerSend'
+import { latePayApps, payReminderSentWords } from './gcOwnerBillingRemind'
 
 export type PeopleTone = 'red' | 'amber' | 'grey'
 
 export interface PersonReason {
   text: string
   tone: PeopleTone
-  /** What it is, for the Follow up sheet: `bid`, `questions`, `co:<change order id>`. Unset: a trade's reason. */
+  /**
+   * What it is: a trade's `ask`, `plans`, `sow`, `sentBack`, `waiver`, `insurance`, `promise`, `w9`;
+   * the architect's `questions`; the customer's `bid`, `contract`, `co:<id>`, `pay:<number>`.
+   */
   code?: string
 }
 
@@ -104,7 +108,7 @@ export function projectPeople(state: GcState, project: GcProject): ProjectPeople
     // Quote asks: a day passed, due today, never opened, no day given. The same reasons as Follow up.
     for (const f of followUps(state)) {
       if (f.project.id !== project.id || f.why === 'waiting') continue
-      trade(f.partner, f.pkg.trade, { text: askWords(f.words), tone: f.why === 'passed' || f.why === 'silent' ? 'red' : 'amber' })
+      trade(f.partner, f.pkg.trade, { text: askWords(f.words), tone: f.why === 'passed' || f.why === 'silent' ? 'red' : 'amber', code: 'ask' })
     }
 
     // The newest set nobody has opened: while bidding, everyone still on an ask; after, the company on each trade.
@@ -123,8 +127,8 @@ export function projectPeople(state: GcState, project: GcProject): ProjectPeople
             partner,
             pkg.trade,
             invite.bid
-              ? { text: `Quoted before ${label} and has not opened it. Ask them to confirm.`, tone: 'grey' }
-              : { text: `Has not opened ${label}.`, tone: 'amber' },
+              ? { text: `Quoted before ${label} and has not opened it. Ask them to confirm.`, tone: 'grey', code: 'plans' }
+              : { text: `Has not opened ${label}.`, tone: 'amber', code: 'plans' },
           )
         }
       }
@@ -140,16 +144,24 @@ export function projectPeople(state: GcState, project: GcProject): ProjectPeople
         if (!partner || !sow) continue
         if (sow.status === 'sent') {
           const days = sow.sentOn ? -daysUntil(sow.sentOn, state.today) : 0
-          trade(partner, pkg.trade, { text: `The statement of work is waiting on their signature${sow.sentOn ? `, sent ${shortDate(sow.sentOn)}` : ''}.`, tone: days > 7 ? 'red' : 'amber' })
+          trade(partner, pkg.trade, { text: `The statement of work is waiting on their signature${sow.sentOn ? `, sent ${shortDate(sow.sentOn)}` : ''}.`, tone: days > 7 ? 'red' : 'amber', code: 'sow' })
         }
         const back = sentBackOpen(sow)
         const times = back ? timesSentBack(sow, back.draw.number) : 0
-        if (back && times >= 2) trade(partner, pkg.trade, { text: `Pay application ${back.draw.number} went back ${times} times.`, tone: 'red' })
+        if (back && times >= 2) trade(partner, pkg.trade, { text: `Pay application ${back.draw.number} went back ${times} times.`, tone: 'red', code: 'sentBack' })
         const owed = sow.draws.filter((d) => d.status === 'paid' && d.waiver === 'conditional')
-        if (owed.length > 0) trade(partner, pkg.trade, { text: `The unconditional waiver on draw ${owed.map((d) => d.number).join(' and ')} has not come.`, tone: 'amber' })
+        if (owed.length > 0) trade(partner, pkg.trade, { text: `The unconditional waiver on draw ${owed.map((d) => d.number).join(' and ')} has not come.`, tone: 'amber', code: 'waiver' })
         const lapsed = insuranceRenewals(state).find((r) => r.partner.id === partner.id && r.days < 0 && !r.promise)
-        if (lapsed) trade(partner, pkg.trade, { text: `Their insurance ran out ${shortDate(lapsed.expires)}.`, tone: 'red' })
+        if (lapsed) trade(partner, pkg.trade, { text: `Their insurance ran out ${shortDate(lapsed.expires)}.`, tone: 'red', code: 'insurance' })
+        if (!partner.w9) trade(partner, pkg.trade, { text: 'No W-9 on file. We cannot pay them without it.', tone: 'amber', code: 'w9' })
       }
+    }
+
+    // One call covers every reason: a company we already call on this job hears about its insurance too.
+    for (const person of byKey.values()) {
+      if (person.kind !== 'trade' || !person.partnerId || person.reasons.some((r) => r.code === 'insurance')) continue
+      const lapsed = insuranceRenewals(state).find((r) => r.partner.id === person.partnerId && r.days < 0 && !r.promise)
+      if (lapsed) person.reasons.push({ text: `Their insurance ran out ${shortDate(lapsed.expires)}.`, tone: 'red', code: 'insurance' })
     }
 
     // A day a company gave us for something on this job, passed or due today.
@@ -159,7 +171,7 @@ export function projectPeople(state: GcState, project: GcProject): ProjectPeople
       if (s !== 'passed' && s !== 'today') continue
       const partner = partnerById(state, p.partnerId)
       const pkg = project.packages.find((k) => k.id === p.packageId)
-      if (partner) trade(partner, pkg?.trade ?? partner.trades[0] ?? 'trade', { text: tradePromiseWords(p, state.today), tone: s === 'passed' ? 'red' : 'amber' })
+      if (partner) trade(partner, pkg?.trade ?? partner.trades[0] ?? 'trade', { text: tradePromiseWords(p, state.today), tone: s === 'passed' ? 'red' : 'amber', code: 'promise' })
     }
 
     // The architect: questions sent to them and not answered.
@@ -189,11 +201,29 @@ export function projectPeople(state: GcState, project: GcProject): ProjectPeople
       add(asCustomer, { text: `Our bid went to them ${weekdayDate(project.ourBidSentOn)}, ${days} ${days === 1 ? 'day' : 'days'} ago. No answer yet.`, tone: days >= CUSTOMER_CALL_DAYS ? 'amber' : 'grey', code: 'bid' })
     }
     if (customer && asCustomer) {
+      // Our contract, out to sign in their portal (the owner, 2026-10-04).
+      if (contractWaitingOn(project) && project.ownerContractSentOn) {
+        const reminded = customerSentWords(state, customer.id, 'contract', project.id)
+        add(asCustomer, {
+          text: `Our contract is waiting on their signature, sent ${shortDate(project.ownerContractSentOn)}.${reminded ? ` ${reminded}` : ''}`,
+          tone: customerReminderLate(state, customer.id, 'contract', project.id) ? 'red' : 'amber',
+          code: 'contract',
+        })
+      }
+      // A bill past its due day (Owner Billing's latePayApps): a call to make, and late.
+      for (const late of latePayApps(state, project)) {
+        const reminded = payReminderSentWords(state, project, late.number)
+        add(asCustomer, {
+          text: `Pay application ${late.number} is ${late.daysLate} ${late.daysLate === 1 ? 'day' : 'days'} late, ${money(late.open)} open.${reminded ? ` ${reminded}` : ''}`,
+          tone: 'red',
+          code: `pay:${late.number}`,
+        })
+      }
       for (const co of (project.changeOrders ?? []).filter((c) => c.status === 'sent')) {
-        const reminded = customerSentWords(state, customer.id, co.id)
+        const reminded = customerSentWords(state, customer.id, 'changeOrder', project.id, co.id)
         add(asCustomer, {
           text: `Change order ${co.number} is waiting on their signature${co.sentOn ? `, sent ${shortDate(co.sentOn)}` : ''}.${reminded ? ` ${reminded}` : ''}`,
-          tone: customerReminderLate(state, customer.id, co.id) ? 'red' : 'amber',
+          tone: customerReminderLate(state, customer.id, 'changeOrder', project.id, co.id) ? 'red' : 'amber',
           code: `co:${co.id}`,
         })
       }
@@ -318,6 +348,32 @@ export function projectFollowPeople(state: GcState, project: GcProject): FollowP
           },
         }]
       }
+      if (reason.code?.startsWith('pay:')) {
+        const n = Number(reason.code.slice(4))
+        const late = latePayApps(state, project).find((l) => l.number === n)
+        return [{
+          ...base,
+          key: `payment-${project.id}-${n}`,
+          kind: 'payment',
+          label: `Pay application ${n} · ${project.name}`,
+          words: {
+            en: { about: `pay application ${n} for ${project.name}`, detail: late ? `It was due ${weekdayDate(late.due)}, and ${money(late.open)} is still open` : 'It is past its due day', ask: 'Could you send the payment this week?' },
+            es: { about: `la solicitud de pago ${n} de ${project.name}`, detail: 'Ya pasó su fecha', ask: '¿Puede enviar el pago esta semana?' },
+          },
+        }]
+      }
+      if (reason.code === 'contract') {
+        return [{
+          ...base,
+          key: `contract-${project.id}`,
+          kind: 'signature',
+          label: `Our contract · ${project.name}`,
+          words: {
+            en: { about: `our contract for ${project.name}`, detail: `We sent it ${project.ownerContractSentOn ? weekdayDate(project.ownerContractSentOn) : 'recently'}`, ask: 'Could you sign it in your portal this week?' },
+            es: { about: `nuestro contrato para ${project.name}`, detail: 'Se lo enviamos hace unos días', ask: '¿Lo puede firmar en su portal esta semana?' },
+          },
+        }]
+      }
       const co = reason.code?.startsWith('co:') ? (project.changeOrders ?? []).find((c) => `co:${c.id}` === reason.code) : undefined
       if (co) {
         return [{
@@ -335,4 +391,95 @@ export function projectFollowPeople(state: GcState, project: GcProject): FollowP
     })
     return items.length > 0 ? [{ partner: stand, reach: partnerReach(stand), items }] : []
   })
+}
+
+/**
+ * Everyone we are waiting on across every job, each person once (the owner, 2026-10-04: "make
+ * them match"): the board's Who to call merged, each reason under its job's name, plus what a
+ * company owes us apart from any job (a W-9, insurance that ran out, a day it gave for a paper).
+ * Follow up's badge, its Work the list and the dashboard's Needs you all count this; each board
+ * row counts its own job's share.
+ */
+export function allPeople(state: GcState): ProjectPeopleSummary {
+  const byKey = new Map<string, ProjectPerson>()
+  const add = (person: Omit<ProjectPerson, 'reasons' | 'tone'>, reasons: PersonReason[]) => {
+    const found = byKey.get(person.key)
+    if (!found) {
+      byKey.set(person.key, { ...person, reasons: [...reasons], tone: worst(reasons) })
+      return
+    }
+    for (const r of reasons) if (!found.reasons.some((x) => x.text === r.text)) found.reasons.push(r)
+    if (!found.last && person.last) found.last = person.last
+  }
+  for (const project of state.projects) {
+    for (const person of projectPeople(state, project).people) {
+      add(person, person.reasons.map((r) => ({ ...r, text: `${project.name}: ${r.text}` })))
+    }
+  }
+  // What a company owes apart from a job: the same reasons Follow up's papers section lists.
+  const asTrade = (partner: Partner): Omit<ProjectPerson, 'reasons' | 'tone'> => ({
+    key: `partner:${partner.id}`,
+    kind: 'trade',
+    name: partner.contact || partner.company,
+    company: partner.company,
+    tag: partner.trades[0] ?? 'trade',
+    partnerId: partner.id,
+    last: null,
+    phone: partnerReach(partner).phone,
+  })
+  const has = (partnerId: string, code: string) => byKey.get(`partner:${partnerId}`)?.reasons.some((r) => r.code === code) ?? false
+  for (const r of insuranceRenewals(state)) {
+    if (r.days > 0 || r.promise || has(r.partner.id, 'insurance')) continue
+    add(asTrade(r.partner), [{ text: r.days < 0 ? `Their insurance ran out ${shortDate(r.expires)}.` : 'Their insurance runs out today.', tone: 'red', code: 'insurance' }])
+  }
+  for (const p of tradePromisesOf(state)) {
+    if (p.projectId || p.keptOn) continue
+    const s = tradePromiseState(p, state.today).state
+    const partner = partnerById(state, p.partnerId)
+    if ((s !== 'passed' && s !== 'today') || !partner) continue
+    add(asTrade(partner), [{ text: tradePromiseWords(p, state.today), tone: s === 'passed' ? 'red' : 'amber', code: 'promise' }])
+  }
+  for (const a of paperAsks(state)) {
+    if (a.kind !== 'w9' || a.promise || has(a.partner.id, 'w9')) continue
+    add(asTrade(a.partner), [{ text: 'No W-9 on file. We cannot pay them without it.', tone: 'amber', code: 'w9' }])
+  }
+  const people = [...byKey.values()]
+    .map((p) => ({ ...p, reasons: [...p.reasons].sort((a, b) => RANK[a.tone] - RANK[b.tone]), tone: worst(p.reasons) }))
+    .sort((a, b) => RANK[a.tone] - RANK[b.tone])
+  const late = people.filter((p) => p.tone === 'red').length
+  return { people, count: people.length, late, tone: people[0]?.tone ?? null }
+}
+
+/**
+ * Everyone for the Follow up sheet, in allPeople's order: each job's items merged under the
+ * person, then what the company owes apart from a job (insurance, a W-9, a paper's day).
+ */
+export function allFollowPeople(state: GcState, also?: string): FollowPerson[] {
+  const byId = new Map<string, FollowPerson>()
+  for (const project of state.projects) {
+    if (project.closedOn || project.lostOn) continue
+    for (const fp of projectFollowPeople(state, project)) {
+      const found = byId.get(fp.partner.id)
+      if (!found) byId.set(fp.partner.id, { ...fp, items: [...fp.items] })
+      else for (const item of fp.items) if (!found.items.some((i) => i.key === item.key)) found.items.push(item)
+    }
+  }
+  const list = allPeople(state).people.flatMap((person): FollowPerson[] => {
+    const id = person.partnerId ?? `customer:${person.customerId ?? ''}`
+    const fromJobs = byId.get(id)
+    if (!person.partnerId) return fromJobs ? [fromJobs] : []
+    const badge = followUpPeople(state, person.partnerId).find((x) => x.partner.id === person.partnerId)
+    const apart = (badge?.items ?? []).filter((i) => !i.ask && !i.projectId).map((i) => ({ ...i, due: true }))
+    const base = fromJobs ?? (badge ? { ...badge, items: [] } : null)
+    if (!base) return []
+    const items = [...base.items]
+    for (const item of apart) if (!items.some((i) => i.key === item.key)) items.push(item)
+    return items.length > 0 ? [{ ...base, items }] : []
+  })
+  // `also`: a company opened from its own card though nobody counts it yet (one only waiting on its word).
+  if (also && !list.some((p) => p.partner.id === also)) {
+    const extra = followUpPeople(state, also).find((x) => x.partner.id === also)
+    if (extra) list.push(extra)
+  }
+  return list
 }

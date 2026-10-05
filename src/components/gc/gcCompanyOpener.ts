@@ -10,6 +10,8 @@ export type CompanyTab = 'about' | 'activity' | 'documents' | 'portal'
 export interface CompanyOpener {
   /** `focus`: an Activity line to light and scroll to, like a promise (`promise:<id>`, `ask:<invite id>`). */
   openPartner: (partnerId: string, at?: { tab?: CompanyTab; doc?: string; focus?: string }) => void
+  /** A customer's window, at a tab or a paper, its send open (`send`): Get started's Send to sign. */
+  openCustomer: (customerId: string, at?: { tab?: CompanyTab; doc?: string; send?: boolean }) => void
 }
 
 export const GcCompanyOpenerContext = createContext<CompanyOpener | null>(null)

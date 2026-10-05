@@ -40,6 +40,7 @@ import {
   boardCustomerElementId,
   projectPeople,
   projectFollowPeople,
+  allPeople,
   type ProjectPeopleSummary,
   type ProjectPerson,
   boardSectionCounts,
@@ -49,14 +50,12 @@ import {
   customerMoneyWords,
   currentRev,
   daysUntil,
-  followUps,
   money,
   lostWords,
   planLabel,
   priceToOwner,
   preBidMinutesLine,
   preBidWords,
-  promisesToChase,
   proposalUncostedWords,
   RING_COLORS,
   proposalTotals,
@@ -179,7 +178,18 @@ export default function GcMode() {
   const [customerId, setCustomerId] = useState<string | null>(null)
   // A trade's company window, at the tab and paper that was clicked (the owner, 2026-10-04).
   const [companyAt, setCompanyAt] = useState<{ partnerId: string; tab?: CompanyTab; doc?: string; focus?: string } | null>(null)
-  const companyOpener = useMemo<CompanyOpener>(() => ({ openPartner: (partnerId, at) => setCompanyAt({ partnerId, ...at }) }), [])
+  // A customer's window opened at a paper, its send open (Get started's Send to sign, the owner, 2026-10-04).
+  const [customerAt, setCustomerAt] = useState<{ tab?: CompanyTab; doc?: string; send?: boolean } | null>(null)
+  const companyOpener = useMemo<CompanyOpener>(
+    () => ({
+      openPartner: (partnerId, at) => setCompanyAt({ partnerId, ...at }),
+      openCustomer: (id, at) => {
+        setCustomerAt(at ?? null)
+        setCustomerId(id)
+      },
+    }),
+    [],
+  )
   const [mapFor, setMapFor] = useState<{ projectId: string; packageId: string } | null>(null)
   const [levelPackageId, setLevelPackageId] = useState<string | null>(null)
   // New here? opens itself on a first visit (the big list, Board item 8), once per browser.
@@ -206,9 +216,8 @@ export default function GcMode() {
   const customer = state.customers.find((c) => c.id === customerId) ?? null
   const companyPartner = state.partners.find((x) => x.id === companyAt?.partnerId) ?? null
   const mapProject = state.projects.find((p) => p.id === mapFor?.projectId) ?? null
-  const toChase = followUps(state).filter((f) => f.why !== 'waiting')
-  // The badge also counts a promise whose day came and insurance that ran out (question 8).
-  const chaseCount = toChase.length + promisesToChase(state)
+  // Everyone we are waiting on, each once across every job: the board rows' sum (the owner, 2026-10-04: "make them match").
+  const chaseCount = allPeople(state).count
 
   // Who we are waiting on for each job (the owner, 2026-10-04): the row's one count, and the
   // Building lane's Follow up sheet behind each person's Call and Follow up.
@@ -311,10 +320,17 @@ export default function GcMode() {
           state={state}
           customer={customer}
           dispatch={dispatch}
-          key={customer.id}
-          onClose={() => setCustomerId(null)}
+          key={`${customer.id}:${customerAt?.doc ?? ''}`}
+          {...(customerAt ? { at: customerAt } : {})}
+          onClose={() => {
+            setCustomerId(null)
+            setCustomerAt(null)
+          }}
           onPlans={setPlansForId}
-          onCustomer={setCustomerId}
+          onCustomer={(id) => {
+            setCustomerAt(null)
+            setCustomerId(id)
+          }}
           onOpenProject={(id) => {
             setBoardTab('projects')
             setProjectId(id)
@@ -945,29 +961,34 @@ function ProjectRow({
         <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
           {!byCustomer && (
             <>
+              {/* The dot rides inside the button, like the architect's, so it never starts or sits alone on a line. */}
               <button
                 type="button"
-                style={customerLink}
+                style={{ ...customerLink, textDecoration: 'none' }}
                 title={`See ${project.owner}: every project, what they owe, who to call`}
                 onClick={(e) => { e.stopPropagation(); onCustomer() }}
               >
-                {project.owner}
+                <span style={{ textDecoration: 'underline', textDecorationColor: 'var(--border-blue)', textUnderlineOffset: 3 }}>{project.owner}</span>
+                <span style={{ color: 'var(--text-muted)' }}>{'\u00a0·'}</span>
               </button>{' '}
-              ·{' '}
             </>
           )}
-          drawn by{' '}
-          {/* The dot rides inside the button, not underlined, so it stays with the name's last word: a
-              line may break right after a button, which left the dot alone on a phone. */}
-          <button
-            type="button"
-            style={{ ...customerLink, textDecoration: 'none' }}
-            title={`See ${project.architect}: the sets they issued and the questions waiting on them`}
-            onClick={(e) => { e.stopPropagation(); onArchitect() }}
-          >
-            <span style={{ textDecoration: 'underline', textDecorationColor: 'var(--border-blue)', textUnderlineOffset: 3 }}>{project.architect}</span>
-            <span style={{ color: 'var(--text-muted)' }}>{'\u00a0·'}</span>
-          </button>{' '}
+          {/* "drawn by" and the architect move to the next line together when they fit there (the
+              owner, 2026-10-04); a name longer than a line still wraps inside, on its own lines. */}
+          <span style={{ display: 'inline-block' }}>
+            drawn by{' '}
+            {/* The dot rides inside the button, not underlined, so it stays with the name's last word: a
+                line may break right after a button, which left the dot alone on a phone. */}
+            <button
+              type="button"
+              style={{ ...customerLink, textDecoration: 'none' }}
+              title={`See ${project.architect}: the sets they issued and the questions waiting on them`}
+              onClick={(e) => { e.stopPropagation(); onArchitect() }}
+            >
+              <span style={{ textDecoration: 'underline', textDecorationColor: 'var(--border-blue)', textUnderlineOffset: 3 }}>{project.architect}</span>
+              <span style={{ color: 'var(--text-muted)' }}>{'\u00a0·'}</span>
+            </button>
+          </span>{' '}
           {/* The size moves to the next line whole rather than breaking inside it (the owner,
               2026-10-04); one longer than a line still wraps inside, on its own lines. */}
           <span style={{ display: 'inline-block' }}>{project.sizeNote}</span>
