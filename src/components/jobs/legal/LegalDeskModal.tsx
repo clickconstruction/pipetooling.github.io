@@ -31,7 +31,7 @@ import { FirmMatterView } from './LegalFirmMatterView'
 import type { FirmTab } from './legalFirmMatterViewShared'
 import type { LegalEntryRow } from '../../../lib/legal/legalMatters'
 import { INK as PORTAL_INK, MUTED as PORTAL_MUTED, PAPER as PORTAL_PAPER, PORTAL_FONT } from '../../../lib/portal/portalTheme'
-import { openHtmlPrintWindow } from '../../../lib/jobsDocuments/printWindow'
+import { printAndFile } from '../../../lib/sent/sentCopiesIo'
 import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../../utils/dateUtils'
 import { useEditCustomerModal } from '../../../contexts/EditCustomerModalContext'
 import { useToastContext } from '../../../contexts/ToastContext'
@@ -276,7 +276,9 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
   }
   const printPacket = () => {
     if (!packet) return
-    if (!openHtmlPrintWindow(buildLegalPacketPrintHtml(packet, { preparedOn: todayYmd, companyName }))) showToast('Your browser blocked the print window. Allow pop-ups for this site and try again.', 'error')
+    // A print counts as a send (docs/SENT_COPIES.md): the packet for counsel is filed on its jobs and its payer.
+    const filing = { kind: 'legal_packet', title: `Legal packet for ${packet.account.payer.name}`, recipientName: 'Counsel', jobIds: packet.account.jobs.map((j) => j.jobId), customerId: packet.account.payer.customerId }
+    if (!printAndFile(buildLegalPacketPrintHtml(packet, { preparedOn: todayYmd, companyName }), filing)) showToast('Your browser blocked the print window. Allow pop-ups for this site and try again.', 'error')
   }
 
   // --- the stored acts (PR 2) ------------------------------------------------

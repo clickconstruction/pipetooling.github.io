@@ -35,9 +35,16 @@ An email may list attachments after its line. Press one to open it.
 
 Copies are kept from the day each kind of paper was added. Nothing older is listed here.
 
-The first paper to file copies is the owner's records packet on the Lien desk. Its packet and its acknowledgment are filed when printed. The packet is filed again when you press **Record it as sent**. See [give an owner our records](/help/give-an-owner-our-records-for-their-property).
+These keep a copy today.
 
-More papers join this list in later updates. The other sections of the tab still list each bill, contract and lien paper.
+- Every email the app sends to a customer, a GC, a supplier, a sub or a law firm.
+- The owner's records packet on the Lien desk, when printed and when recorded as sent. See [give an owner our records](/help/give-an-owner-our-records-for-their-property).
+- A printed lien paper. That is a notice packet, a notice, an affidavit, a release of record or a release of lien.
+- The grid and the legal packet printed for your attorney.
+
+More printed papers join this list in later updates. The other sections of the tab still list each bill, contract and lien paper.
+
+Some emails cover no single job. A statement to a GC and a price request to a supply house are two. They are kept, and a place to browse them is coming to the Documents page.
 
 ## Who can see the copies
 

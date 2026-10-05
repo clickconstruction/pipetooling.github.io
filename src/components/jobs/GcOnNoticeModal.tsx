@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { SIGNER_PHONE_FILL_WORDS } from '../../lib/jobs/lienSigner'
 import { AFFIDAVIT_PILE_WORDS, buildPlaybookGridRow, playbookGridHtml, PLAYBOOK_GRID_COLUMNS, type PlaybookGridRow } from '../../lib/jobs/lienOwnerCall'
 import { parsePaymentBond } from '../../lib/jobs/lienDeskRetainage'
-import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
+import { printAndFile } from '../../lib/sent/sentCopiesIo'
 import { supabase } from '../../lib/supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -1116,7 +1116,7 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
                   current={currentStep === 'grid'}
                   title="The grid"
                   description="Counsel's spreadsheet — one row per job, every date and every fact the memo asks for. The owner's call fills Paid out, 10% held and Their contract done; a ? is an answer the office still owes it."
-                  right={<button type="button" onClick={() => { if (!openHtmlPrintWindow(playbookGridHtml(gcName, gridRows, demandDate(todayYmd), { month: workMonthShort, money: formatUsdNoCents }))) showToast('Popup blocked — allow popups to print the grid.', 'error') }} style={btn('plain')} data-testid="gc-notice-print-grid">Print the grid ↗</button>}
+                  right={<button type="button" onClick={() => { if (!printAndFile(playbookGridHtml(gcName, gridRows, demandDate(todayYmd), { month: workMonthShort, money: formatUsdNoCents }), { kind: 'lien_grid', title: `The grid for ${gcName}`, recipientName: 'Counsel', jobIds: gridRows.map((r) => r.jobId), customerId: gcId })) showToast('Popup blocked — allow popups to print the grid.', 'error') }} style={btn('plain')} data-testid="gc-notice-print-grid">Print the grid ↗</button>}
                   last
                 >
                   <div style={{ overflowX: 'auto' }} data-testid="gc-notice-grid">
