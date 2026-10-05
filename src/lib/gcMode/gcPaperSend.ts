@@ -231,6 +231,22 @@ export function paperSendMessages(state: GcState, partner: Partner, lang: Portal
   return out
 }
 
+const SIGN_BY: Record<'msa' | 'sow', Record<PortalLang, string>> = {
+  msa: { en: 'Please sign it by {date}.', es: 'Por favor fírmelo a más tardar el {date}.' },
+  sow: { en: 'Please sign it by {date}.', es: 'Por favor fírmela a más tardar el {date}.' },
+}
+
+/**
+ * The first master agreement or statement of work sent from the company window carries its day
+ * and the office's line in the email the portal already writes (the owner, 2026-10-04): Follow up
+ * chases that day, so the trade is told it. Empty when it went out another way (Contracts).
+ */
+export function firstSendLines(state: GcState, partnerId: string, paper: 'msa' | 'sow', packageId: string | undefined, lang: PortalLang): string[] {
+  const first = paperSendsFor(state, partnerId, paper, packageId).find((s) => s.first)
+  if (!first) return []
+  return [SIGN_BY[paper][lang].split('{date}').join(pWeekday(lang, first.by)), ...(first.note ? [first.note] : [])]
+}
+
 /** The reducer's log line for a send. */
 export function paperSendLog(partner: Partner, step: PaperStep, by: string): string {
   const day = weekdayDate(by)

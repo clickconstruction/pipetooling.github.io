@@ -11,7 +11,7 @@ describe("GC follow up on the dashboard's Needs you (the owner, 2026-10-04)", ()
     expect(needs?.count).toBe(badge)
     expect(needs?.late).toBe(true)
     expect(needs?.title).toBe(`${badge} to follow up on in GC mode`)
-    expect(needs?.detail.startsWith("Hillside Excavation's quote day passed · Tejas Power promised a quote today · Bexar Steel Erectors never opened the ask")).toBe(true)
+    expect(needs?.detail.startsWith("Hillside Excavation is late on their word · Tejas Power promised a quote today · Bexar Steel Erectors never opened the ask")).toBe(true)
   })
 
   it('is null when there is no one to chase', () => {

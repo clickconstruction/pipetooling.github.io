@@ -85,3 +85,31 @@ describe('send a paper from the company window (the owner, 2026-10-04)', () => {
     expect(email?.lines[1]).toMatch(/^Pagamos el pago 1 de Fair Oaks Shops, Building D\. Por favor firme la renuncia de gravamen incondicional a más tardar el /)
   })
 })
+
+describe('the first send names its day and carries your line (the owner, 2026-10-04)', () => {
+  it('a first master agreement: the portal email says the day Follow up will chase, and the line', () => {
+    let state = initialGcState()
+    state = gcReducer(state, { type: 'sendPaper', partnerId: 'hillside', paper: 'msa', by: '2026-10-09', note: 'This gets you on Boerne.' })
+    const email = portalMessages(state, 'hillside').find((m) => m.key === 'msa')
+    expect(email?.lines).toEqual([
+      'Hello Greg,',
+      'Here is our master agreement. You sign it once, and it covers every job you do for us.',
+      'After that, each job is a short statement of work.',
+      'Please sign it by Fri Oct 9.',
+      'This gets you on Boerne.',
+      'Open your portal to read it and sign it.',
+    ])
+  })
+
+  it('one sent from Contracts, with no day of ours, reads as before', () => {
+    const state = gcReducer(initialGcState(), { type: 'sendMsa', partnerId: 'hillside' })
+    expect(portalMessages(state, 'hillside').find((m) => m.key === 'msa')?.lines).toHaveLength(4)
+  })
+
+  it('a first statement of work, in Spanish for a company that reads Spanish', () => {
+    let state = gcReducer(initialGcState(), { type: 'tradeSetLanguage', partnerId: 'kendall', lang: 'es' })
+    state = gcReducer(state, { type: 'sendPaper', partnerId: 'kendall', paper: 'sow', projectId: 'helotes', packageId: 'dhvac', by: '2026-10-09', note: '' })
+    const email = portalMessages(state, 'kendall').find((m) => m.kind === 'sow' && m.projectId === 'helotes')
+    expect(email?.lines.some((l) => l.startsWith('Por favor fírmela a más tardar el '))).toBe(true)
+  })
+})

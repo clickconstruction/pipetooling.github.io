@@ -12,7 +12,7 @@ import { bareId, preBidInvited, questionState, questionsFor, sheetsGoneAtRev, ty
 import { askPromise, OPEN_WITHIN_DAYS, type AskPromise } from './gcFollowUp'
 import { bidIsStale, quoteRanOut, sowMoney } from './gcBids'
 import { GC_COMPANY } from './gcFixture'
-import { paperSendMessages } from './gcPaperSend'
+import { firstSendLines, paperSendMessages } from './gcPaperSend'
 import { pDate, pExclusion, pt, pTime, pWeekday, type PortalKey, type PortalLang } from './gcPortalI18n'
 import { inSentence, lineSheets, linesOnSpecs, specsAtRev, specsGoneAtRev, tradeSheets, tradesForSheets } from './gcNewProject'
 import { addDays, retainageHeldNow, sentBackOpen, sowContractSum, tradeChangesFor, tradeCloseout, workAllBilled } from './gcBuilding'
@@ -917,7 +917,8 @@ export function portalMessages(state: GcState, partnerId: string, language?: Por
       kind: 'msa',
       projectId: null,
       subject: t('mMsaSubject', { gc }),
-      lines: [hello, t('mMsaHere'), t('mMsaAfter'), t('mMsaOpen')],
+      // Sent from the company window: its day and the office's line (Board, 2026-10-04).
+      lines: [hello, t('mMsaHere'), t('mMsaAfter'), ...firstSendLines(state, partnerId, 'msa', undefined, lang), t('mMsaOpen')],
     })
   }
 
@@ -1054,6 +1055,8 @@ export function portalMessages(state: GcState, partnerId: string, language?: Por
           t('mSowPicked', { trade: pkg.trade, project: name }),
           t('mSowReady', { price: money(sow.price), plans: planLabel(project, sow.basedOnRev) }),
           t('mSowHold', { pct: sow.retainagePct }),
+          // Sent from the company window: its day and the office's line (Board, 2026-10-04).
+          ...firstSendLines(state, partnerId, 'sow', pkg.id, lang),
           t('mSowOpen'),
         ],
       })

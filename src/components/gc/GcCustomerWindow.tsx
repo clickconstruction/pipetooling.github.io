@@ -5,6 +5,7 @@ import {
   customerActivity,
   customerDocuments,
   customerPaper,
+  customerStep,
   customerPortalJobs,
   customerPortalStatus,
   customerSummary,
@@ -27,6 +28,7 @@ import {
 } from '../../lib/gcMode/gcModel'
 import { GcOwnerBillingPortal } from './GcOwnerBillingPortal'
 import { CompanyActivity, CompanyDocuments, CompanyPortalPanel, CompanyTabStrip } from './GcCompanyFile'
+import { GcCustomerSend } from './GcCustomerSend'
 import type { CompanyTab } from './gcCompanyOpener'
 import { Btn, Chip, Stat, num, td, th, type Tone } from './gcUi'
 
@@ -81,6 +83,9 @@ export function GcCustomerWindow({ state, customer, dispatch, onClose, onOpenPro
   const docs = customerDocuments(state, customer)
   const events = customerActivity(state, customer)
   const [doc, setDoc] = useState<string | null>(docs.groups[0]?.docs[0]?.key ?? null)
+  /** A change order being reminded, by its Documents key: the send shows in the paper's place. */
+  const [sending, setSending] = useState<string | null>(null)
+  const sendStep = sending ? customerStep(state, customer, sending) : null
   const owner = customerSummary(state, customer)
   const architect = architectSummary(state, customer)
   const isOwner = owner.live.length > 0 || customer.past.length > 0
@@ -114,11 +119,14 @@ export function GcCustomerWindow({ state, customer, dispatch, onClose, onOpenPro
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key !== 'Escape') return
+      // Escape steps back out of a send first, then closes the window.
+      if (sending) setSending(null)
+      else onClose()
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [onClose])
+  }, [onClose, sending])
 
   return (
     <div
@@ -235,7 +243,42 @@ export function GcCustomerWindow({ state, customer, dispatch, onClose, onOpenPro
         )}
         {tab === 'documents' && (
           <div style={{ padding: '0.9rem 1rem' }}>
-            <CompanyDocuments groups={docs.groups} selected={doc} onSelect={setDoc} paper={doc ? customerPaper(state, customer, doc) : null} />
+            <CompanyDocuments
+              groups={docs.groups}
+              selected={doc}
+              onSelect={(key) => {
+                setDoc(key)
+                setSending(null)
+              }}
+              paper={doc ? customerPaper(state, customer, doc) : null}
+              // A change order waiting on their signature gets Remind them (the owner, 2026-10-04).
+              ask={(d) =>
+                customerStep(state, customer, d.key) && sending !== d.key ? (
+                  <Btn
+                    kind="primary"
+                    onClick={() => {
+                      setDoc(d.key)
+                      setSending(d.key)
+                    }}
+                  >
+                    Remind them
+                  </Btn>
+                ) : null
+              }
+              aside={
+                sendStep ? (
+                  <GcCustomerSend
+                    key={sending ?? ''}
+                    state={state}
+                    customer={customer}
+                    step={sendStep}
+                    dispatch={dispatch}
+                    onDone={() => setSending(null)}
+                    onCancel={() => setSending(null)}
+                  />
+                ) : undefined
+              }
+            />
           </div>
         )}
         {tab === 'about' && (

@@ -2,7 +2,7 @@
  * GC mode — design spike. The reducer: every action, applied to the state.
  * Split out of gcModel.ts verbatim; import from `./gcModel`, which re-exports every file.
  */
-import type { AskContact, Draw, DrawSentBack, GcAction, GcState, SovLine, Invite, LookAheadMark, PaperSend, Partner, PlanQuestion, PlanSet, SubBid } from './gcTypes'
+import type { AskContact, CustomerSend, Draw, DrawSentBack, GcAction, GcState, SovLine, Invite, LookAheadMark, PaperSend, Partner, PlanQuestion, PlanSet, SubBid } from './gcTypes'
 import { money, shortDate, weekdayDate, daysUntil } from './gcWords'
 import { currentRev, partnerById, planLabel } from './gcLookups'
 import { planRecipients, questionRecipients, questionsOpen, timeWords } from './gcPlans'
@@ -495,6 +495,27 @@ function reduce(state: GcState, action: GcAction): GcState {
         { ...state, customers: state.customers.map((c) => (c.id === customer.id ? { ...c, contacts: [entry, ...c.contacts] } : c)) },
         'office',
         `Logged a contact with ${customer.name}.`,
+      )
+    }
+
+    case 'remindCustomer': {
+      // A change order waiting on the customer's signature (the owner, 2026-10-04): the reminder is
+      // kept, so the row, the card and Follow up can say it, and noted on their record.
+      const customer = state.customers.find((c) => c.id === action.customerId)
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const co = project?.changeOrders?.find((c) => c.id === action.changeOrderId)
+      if (!customer || !project || !co || project.customerId !== customer.id || co.status !== 'sent' || !action.by) return state
+      const note = action.note.trim()
+      const send: CustomerSend = { id: `csend-${(state.customerSends ?? []).length + 1}`, customerId: customer.id, projectId: project.id, changeOrderId: co.id, on: state.today, by: action.by, note }
+      const entry = { on: state.today, by: 'You', note: `Reminded them to sign change order ${co.number}, by ${weekdayDate(action.by)}.${note ? ` "${note}"` : ''}` }
+      return logged(
+        {
+          ...state,
+          customerSends: [...(state.customerSends ?? []), send],
+          customers: state.customers.map((c) => (c.id === customer.id ? { ...c, contacts: [entry, ...c.contacts] } : c)),
+        },
+        'office',
+        `Reminded ${customer.name} to sign change order ${co.number} by ${weekdayDate(action.by)}.`,
       )
     }
 
