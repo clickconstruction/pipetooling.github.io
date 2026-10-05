@@ -1468,10 +1468,10 @@ describe('BidsSubmittalsTab', () => {
       mount()
       // Rev 1 is the newest, so the log reads its two rows: one released and ordered, one sent back.
       await waitFor(() => expect(screen.getAllByTestId('procurement-row')).toHaveLength(2))
-      fireEvent.click(screen.getAllByRole('button', { name: 'Rev 2 from the 1 row sent back' })[0]!)
+      fireEvent.click(screen.getAllByRole('button', { name: 'Start a Rev 2 draft…' })[0]!)
       const confirmDialog = await screen.findByRole('alertdialog')
       expect(confirmDialog.textContent).toMatch(/1 row was approved\. It stays on Rev 1 and on the procurement log\./)
-      fireEvent.click(within(confirmDialog).getByRole('button', { name: 'Build Rev 2 with 1 row' }))
+      fireEvent.click(within(confirmDialog).getByRole('button', { name: 'Start the draft with 1 row' }))
       await waitFor(() => expect(screen.getAllByTestId('revision-chip')).toHaveLength(2))
       // Rev 2 holds the one row sent back …
       expect(state.items.filter((r) => r.submittal_id === 'rev-2').map((r) => r.tag)).toEqual(['DWH-1'])
@@ -1511,20 +1511,23 @@ describe('BidsSubmittalsTab', () => {
       const button = await screen.findByTestId('resubmit-sent-back')
       expect(screen.getByRole('button', { name: '6 Their call · waiting on the reviewer' })).toBeTruthy()
       expect(screen.getByRole('button', { name: '7 Resubmit · you are here' })).toBeTruthy()
-      expect(screen.getByTestId('submittal-journey').textContent).toContain('structura approved 1 and sent 1 back. 2 rows still have no answer. Fix what was sent back.')
+      expect(screen.getByTestId('submittal-journey').textContent).toContain('structura approved 1 and sent 1 back. 2 rows still have no answer. Start a Rev 2 draft to fix what was sent back. The rows with no answer go on it too. Nothing is sent until you share.')
       expect((screen.getByTestId('new-revision') as HTMLButtonElement).disabled).toBe(false)
-      expect(button.textContent).toBe('Rev 2 from the 1 row sent back and the 2 with no answer')
+      // 2026-10-05 · the button says what it does; the line beside it says which rows go on the draft, and that nothing is sent.
+      expect(button.textContent).toBe('Start a Rev 2 draft…')
+      expect(screen.getByTestId('resubmit-caption').textContent).toBe('The 1 row sent back and the 2 with no answer go on it. Nothing is sent. The GC sees Rev 2 only after you press Share. New revision carries every row instead.')
       fireEvent.click(button)
       const confirmDialog = await screen.findByRole('alertdialog')
       expect(confirmDialog.textContent).toContain('1 row was sent back. It goes on Rev 2 so you can fix it. 2 rows have no answer yet. They go on Rev 2 too and keep waiting. 1 row was approved. It stays on Rev 1 and on the procurement log.')
-      fireEvent.click(within(confirmDialog).getByRole('button', { name: 'Build Rev 2 with 3 rows' }))
+      expect(confirmDialog.textContent).toContain('Rev 2 starts as a draft. Nothing is sent. The GC sees Rev 2 only after you press Share.')
+      fireEvent.click(within(confirmDialog).getByRole('button', { name: 'Start the draft with 3 rows' }))
       await waitFor(() => expect(screen.getAllByTestId('revision-chip')).toHaveLength(2))
       expect(state.items.filter((r) => r.submittal_id === 'rev-2').map((r) => r.tag)).toEqual(['LAV-1', 'FCO', 'UTILITY SINK'])
       // 2026-10-03 · the words follow the revision: pill 2 and steps 2 and 7 say Rev 2 and Rev 3, and the replaced draft reads answered, not superseded.
       await waitFor(() => expect(screen.getByRole('button', { name: /^2 Rev 2 · / })).toBeTruthy())
       for (const n of [2, 7]) if (screen.getByTestId(`road-${n}`).getAttribute('data-open') !== 'true') fireEvent.click(screen.getByTestId(`road-${n}-caret`))
       expect(screen.getByTestId('road-2-about').textContent).toContain('Rev 2 is the version you are working on.')
-      expect(screen.getByTestId('road-7-about').textContent).toContain('Start Rev 3 with them and the rows with no answer yet.')
+      expect(screen.getByTestId('road-7-about').textContent).toContain('Start a Rev 3 draft with them and the rows with no answer yet.')
       await waitFor(() => expect(screen.getAllByTestId('revision-chip').map((c) => c.textContent)).toEqual([expect.stringMatching(/^Rev 2 · draft · /), 'Rev 1 · answered Oct 2']))
     } finally {
       state.noSources = false

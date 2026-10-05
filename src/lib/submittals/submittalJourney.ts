@@ -225,7 +225,7 @@ type Decisions = NonNullable<SubmittalJourneyInput['decisions']>
 
 const nameOf = (d: Decisions) => (d.byName.length > 0 ? d.byName.join(', ') : 'The reviewer')
 
-/** Rows came back marked Revise or Reject: fix them, then the green button. The same on a shared revision and on a draft answered by email. */
+/** Rows came back marked Revise or Reject: start the next draft to fix them. The line says nothing is sent, because the button's name alone left that open. The same on a shared revision and on a draft answered by email. */
 function sentBackNext(revNumber: number, d: Decisions): JourneyNext {
   const by = nameOf(d)
   const waiting = d.noAnswer ?? 0
@@ -234,10 +234,10 @@ function sentBackNext(revNumber: number, d: Decisions): JourneyNext {
   return {
     kind: 'next',
     text: waiting > 0
-      ? `${said}. ${plural(waiting, 'row')} still ${waiting === 1 ? 'has' : 'have'} no answer. Fix what was sent back. Then tap the green button. The rows with no answer go on the new version too.`
-      : `${said}. Fix ${d.sentBack === 1 ? 'that row' : 'those rows'}. Then tap the green button to start a new version with only ${d.sentBack === 1 ? 'that row' : 'those rows'}.`,
+      ? `${said}. ${plural(waiting, 'row')} still ${waiting === 1 ? 'has' : 'have'} no answer. Start a Rev ${revNumber + 1} draft to fix what was sent back. The rows with no answer go on it too. Nothing is sent until you share.`
+      : `${said}. Start a Rev ${revNumber + 1} draft to fix ${d.sentBack === 1 ? 'that row' : 'those rows'}. Nothing is sent until you share.`,
     action: 'resubmit',
-    actionLabel: resubmitLabel(revNumber + 1, d.sentBack, waiting),
+    actionLabel: resubmitLabel(revNumber + 1),
   }
 }
 

@@ -72,12 +72,12 @@ describe('submittalJourney', () => {
   it('rows sent back → Resubmit is the step with the Rev N+1 button', () => {
     const i = { ...base, rev: draft({ number: 2, status: 'shared', packageBuilt: true }), room: { status: 'open', opens: 9, identified: ['Dana Whitfield'] }, decisions: { decided: 14, approved: 13, open: 0, sentBack: 1, byName: ['Dana Whitfield'] } }
     expect(statuses(i)).toBe('done,done,done,done,done,done,current,current')
-    expect(submittalJourney(i).next).toEqual({ kind: 'next', text: 'Dana Whitfield approved 13 and sent 1 back. Fix that row. Then tap the green button to start a new version with only that row.', action: 'resubmit', actionLabel: 'Rev 3 from the 1 row sent back' })
+    expect(submittalJourney(i).next).toEqual({ kind: 'next', text: 'Dana Whitfield approved 13 and sent 1 back. Start a Rev 3 draft to fix that row. Nothing is sent until you share.', action: 'resubmit', actionLabel: 'Start a Rev 3 draft…' })
   })
 
   it('2026-10-03 · rows sent back while others have no answer: the button and the line say both go on', () => {
     const i = { ...base, rev: draft({ number: 1, status: 'shared', packageBuilt: true }), room: { status: 'open', opens: 2, identified: ['structura'] }, decisions: { decided: 4, approved: 0, open: 9, noAnswer: 10, sentBack: 4, byName: ['structura'] } }
-    expect(submittalJourney(i).next).toEqual({ kind: 'next', text: 'structura sent 4 rows back. 10 rows still have no answer. Fix what was sent back. Then tap the green button. The rows with no answer go on the new version too.', action: 'resubmit', actionLabel: 'Rev 2 from the 4 rows sent back and the 10 with no answer' })
+    expect(submittalJourney(i).next).toEqual({ kind: 'next', text: 'structura sent 4 rows back. 10 rows still have no answer. Start a Rev 2 draft to fix what was sent back. The rows with no answer go on it too. Nothing is sent until you share.', action: 'resubmit', actionLabel: 'Start a Rev 2 draft…' })
   })
 
   it('every row approved → done; some still open → waiting', () => {
@@ -94,7 +94,7 @@ describe('submittalJourney', () => {
     // BP375: a draft sent by email. Six rows still need a cut sheet, four were sent back, ten have no answer.
     const bp375 = { ...base, rev: draft({ number: 1, rows: 14, sheetsNeeded: 6 }), decisions: { decided: 4, approved: 0, open: 9, noAnswer: 10, sentBack: 4, byName: ['structura'] } }
     expect(statuses(bp375)).toBe('done,done,current,later,later,waiting,current,later')
-    expect(submittalJourney(bp375).next).toEqual({ kind: 'next', text: 'structura sent 4 rows back. 10 rows still have no answer. Fix what was sent back. Then tap the green button. The rows with no answer go on the new version too.', action: 'resubmit', actionLabel: 'Rev 2 from the 4 rows sent back and the 10 with no answer' })
+    expect(submittalJourney(bp375).next).toEqual({ kind: 'next', text: 'structura sent 4 rows back. 10 rows still have no answer. Start a Rev 2 draft to fix what was sent back. The rows with no answer go on it too. Nothing is sent until you share.', action: 'resubmit', actionLabel: 'Start a Rev 2 draft…' })
     // New revision is past building once the GC has answered.
     expect(stageGate(submittalJourney(bp375).stages, 'resubmit')).toEqual({ on: true, why: null })
     // Share was never done in the app, and its button stays held until the package is built.
