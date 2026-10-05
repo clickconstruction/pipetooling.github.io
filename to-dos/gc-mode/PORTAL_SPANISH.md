@@ -120,7 +120,7 @@ column headers are in one block at the end of `gcBuildingWords.ts`, for the nati
 
 ## For a native speaker to read
 
-Every Spanish string the trade's portal shows, 785 in all, drawn from the code on 2026-10-04.
+Every Spanish string the trade's portal shows, 787 in all, drawn from the code on 2026-10-04.
 They're grouped by screen, English on the left. Please mark anything that reads wrong, stiff or
 unclear, and write the better words beside it. The Portal lane makes the changes and passes the
 other lanes theirs.
@@ -1127,6 +1127,8 @@ they were written in. The portal does not translate them.
 | Your lien waiver for draw {draws} on {project} | Su renuncia de gravamen del pago {draws} de {project} |
 | We paid draw {draws} on {project}. Please sign the unconditional lien waiver for it by {date}. | Pagamos el pago {draws} de {project}. Por favor firme la renuncia de gravamen incondicional a más tardar el {date}. |
 | Open your portal to sign it. | Abra su portal para firmarla. |
+| Please sign it by {date}. | Por favor fírmelo a más tardar el {date}. |
+| Please sign it by {date}. | Por favor fírmela a más tardar el {date}. |
 
 ### Follow up drafts to a company (the Building lane's, `gcFollowUpSheet.ts`, drawn for the made-up companies)
 
