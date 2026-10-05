@@ -102,3 +102,19 @@ describe("the office's own asks on Activity", () => {
     expect(asked).toMatchObject({ text: 'We asked for the unconditional lien waiver by Fri Oct 9.', where: 'Fair Oaks Shops, Building D · Electrical' })
   })
 })
+
+describe("a customer's interest bills (Owner Billing, 2026-10-04)", () => {
+  it('are a paper and two lines of Activity', () => {
+    let state = gcReducer(initialGcState(), { type: 'setOwnerLateInterest', projectId: 'fairoaksd', pctPerMonth: 1.5 })
+    state = gcReducer(state, { type: 'sendOwnerInterestBill', projectId: 'fairoaksd' })
+    const cibolo = state.customers.find((c) => c.id === 'cibolo')
+    if (!cibolo) throw new Error('no cibolo')
+    const doc = customerDocuments(state, cibolo).groups.flatMap((g) => g.docs).find((d) => d.key === 'interest-fairoaksd')
+    expect(doc).toMatchObject({ title: 'Interest bills', statusWords: '1 not paid' })
+    expect(customerPaper(state, cibolo, 'interest-fairoaksd')?.rows.find((r) => r.label === 'Rate')?.value).toBe('1.5% a month on a late bill')
+    state = gcReducer(state, { type: 'ownerPaidInterest', projectId: 'fairoaksd', number: 1 })
+    const texts = customerActivity(state, cibolo).map((e) => e.text)
+    expect(texts.some((t) => /^Interest bill 1 sent, \$[\d,]+\.$/.test(t))).toBe(true)
+    expect(texts).toContain('Paid interest bill 1.')
+  })
+})

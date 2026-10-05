@@ -280,6 +280,19 @@ export function customerDocuments(state: GcState, customer: GcCustomer): { group
         projectId: project.id,
       })
     }
+    // Interest on late bills (Owner Billing): its own paper, apart from the contract's bills.
+    const interest = project.ownerBilling?.interestBills ?? []
+    if (interest.length > 0) {
+      const unpaid = interest.filter((b) => !b.paidOn)
+      docs.push({
+        key: `interest-${project.id}`,
+        title: 'Interest bills',
+        status: 'info',
+        statusWords: unpaid.length > 0 ? `${unpaid.length} not paid` : 'all paid',
+        meta: interest.map((b) => `#${b.number} ${money(b.amount)} ${b.paidOn ? `paid ${shortDate(b.paidOn)}` : `sent ${shortDate(b.sentOn)}`}`).join(' · '),
+        projectId: project.id,
+      })
+    }
     const cos = project.changeOrders ?? []
     if (cos.length > 0) {
       docs.push({
@@ -308,6 +321,10 @@ export function customerActivity(state: GcState, customer: GcCustomer): CompanyE
     for (const a of project.ownerBilling?.payApps ?? []) {
       out.push({ on: a.sentOn, kind: 'money', text: `Pay application ${a.number} sent, ${money(a.due)}.`, ...base })
       if (a.paidOn) out.push({ on: a.paidOn, kind: 'money', text: `Paid pay application ${a.number}.`, ...base })
+    }
+    for (const b of project.ownerBilling?.interestBills ?? []) {
+      out.push({ on: b.sentOn, kind: 'money', text: `Interest bill ${b.number} sent, ${money(b.amount)}.`, ...base })
+      if (b.paidOn) out.push({ on: b.paidOn, kind: 'money', text: `Paid interest bill ${b.number}.`, ...base })
     }
     for (const co of project.changeOrders ?? []) {
       if (co.sentOn) out.push({ on: co.sentOn, kind: 'paper', text: `Change order ${co.number} sent, ${money(co.price)}: ${co.description}`, ...base })
@@ -491,6 +508,20 @@ export function customerPaper(state: GcState, customer: GcCustomer, key: string)
       table: {
         head: ['#', 'Sent', 'Asked', 'Paid'],
         rows: (project.ownerBilling?.payApps ?? []).map((a) => [`${a.number}`, shortDate(a.sentOn), money(a.due), a.paidOn ? shortDate(a.paidOn) : 'not yet']),
+      },
+      foot: REAL_FILE,
+    }
+  }
+  if (key.startsWith('interest-')) {
+    return {
+      heading: 'Interest bills',
+      rows: [
+        { label: 'Job', value: project.name },
+        ...(project.ownerLateInterest ? [{ label: 'Rate', value: `${project.ownerLateInterest.pctPerMonth}% a month on a late bill` }] : []),
+      ],
+      table: {
+        head: ['#', 'Sent', 'Amount', 'Paid'],
+        rows: (project.ownerBilling?.interestBills ?? []).map((b) => [`${b.number}`, shortDate(b.sentOn), money(b.amount), b.paidOn ? shortDate(b.paidOn) : 'not yet']),
       },
       foot: REAL_FILE,
     }
