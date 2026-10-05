@@ -598,6 +598,8 @@ export interface GcProject {
   ownerBilling: OwnerBilling | null
   /** Changes to our contract with the owner, oldest first. Absent: none yet. */
   changeOrders?: ChangeOrder[]
+  /** Changes the trades asked us for, from their portals, oldest first (Portal lane). Absent: none yet. */
+  changeRequests?: TradeChangeRequest[]
   /** A customer record too: the firm that drew the plans. */
   architectId: string
   /** The firm's name, kept on the row for display. */
@@ -1100,6 +1102,26 @@ export type GcAction =
   | { type: 'saveScopeSet'; trade: string; name: string; lines: string[]; fromProjectId?: string }
   /** A set's Google Drive link checked again (the owner, 2026-10-04): the warning stays until anyone with the link can open it. */
   | { type: 'checkPlanSetDrive'; projectId: string; rev: number; access: 'anyone' | 'restricted' }
+  /** A trade asks us for a change to its work, in its portal (owner, 2026-10-04): what, why, how much, the days. */
+  | {
+      type: 'tradeAskChange'
+      projectId: string
+      packageId: string
+      partnerId: string
+      description: string
+      reason: ChangeOrderReason
+      amount: number
+      days: number
+      /** The file sent with it (a photo, a ticket): its name. Null: none. */
+      file: string | null
+    }
+  /**
+   * The office makes a trade's change request a change order to the customer: drafted the way
+   * draftChangeOrder drafts one, on the request's trade and reason, and linked to the request.
+   */
+  | { type: 'draftChangeOrderFromRequest'; projectId: string; requestId: string; description: string; cost: number; price: number; days: number }
+  /** The office turns a trade's change request down, and says why. The trade reads it in its portal. */
+  | { type: 'turnDownChangeRequest'; projectId: string; requestId: string; note: string }
 
 /** One trade on a new project, as the office left it in the New project window. */
 export interface NewTradeDraft {
@@ -1343,4 +1365,30 @@ export interface ChangeOrder {
    * typed by the office. Absent or 0: none. A signed one adds them to the contract time.
    */
   days?: number
+}
+
+/**
+ * A change a trade asked us for from its portal (Portal lane, owner 2026-10-04): it hit something on
+ * site no one could see, the customer asked it for more, or the plans changed. The office makes it a
+ * change order to the customer (`changeOrderId`) or turns it down with a reason. Once the customer
+ * signs, the change goes to the trade to sign the usual way (`ChangeOrder.tradeChange`).
+ */
+export interface TradeChangeRequest {
+  id: string
+  packageId: string
+  partnerId: string
+  askedOn: string
+  /** What changed, in the trade's words. */
+  description: string
+  reason: ChangeOrderReason
+  /** What the trade asks for the work. */
+  amount: number
+  /** The working days it adds, as the trade sees it. 0: none. */
+  days: number
+  /** The file sent with it (a photo, a ticket): its name. Null: none. */
+  file: string | null
+  /** The change order the office made of it. Null: not yet. */
+  changeOrderId: string | null
+  /** The office turned it down: the day and why. Null: not turned down. */
+  turnedDown: { on: string; note: string } | null
 }

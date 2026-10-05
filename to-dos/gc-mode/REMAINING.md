@@ -314,6 +314,25 @@ about the company, a ledger of what happened with them, and their documents, in 
   promise kind, a new paper in the trade's portal), add it to `partnerDocuments` or `partnerActivity`
   in `gcCompanyFile.ts` and to its test.
 
+## Round 8: a trade asks for a change (the owner, 2026-10-04)
+
+The owner, asked what the portal builds next: "A trade asks for a change". Money changes only went
+one way: we send a change order and the trade signs it. Now a trade asks from its portal: what
+changed, why (something on site, the customer asked for more, the plans changed), what it asks, the
+days and a photo. Details in README.md, *A trade asks for a change in its portal*.
+
+- ~~**Portal (GC 3):**~~ done (this commit). `TradeChangeRequest` on the project, `tradeAskChange`,
+  `draftChangeOrderFromRequest` (drafts through `draftChangeOrder` and links the request),
+  `turnDownChangeRequest`; *Changes to your work* on the job page with where each stands, its three
+  emails, the company window's Activity lines. Seeded: Tri-County's rock on Fair Oaks.
+- **Owner Billing (GC 4):** the office's list on Bill the customer's change orders:
+  `openChangeRequests(project)` with company, what, why, amount, days and the photo's name;
+  *Make a change order* (prefilled from the request: its words, its amount as our cost, the days)
+  dispatches `draftChangeOrderFromRequest`; *Turn down* asks why and dispatches
+  `turnDownChangeRequest`.
+- **Board (GC 0), if it fits:** a Needs you line while a request waits ("Tri-County Site asked for a
+  change on Fair Oaks").
+
 ## Owner (the decisions)
 
 11. ~~**A carried quote with a line that has no cost:** does it hold the ring open?~~ Answered 2026-10-03: yes, until every line has a cost. Built by the Board (this commit).

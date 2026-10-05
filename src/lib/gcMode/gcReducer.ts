@@ -2,7 +2,7 @@
  * GC mode — design spike. The reducer: every action, applied to the state.
  * Split out of gcModel.ts verbatim; import from `./gcModel`, which re-exports every file.
  */
-import type { AskContact, CustomerSend, Draw, DrawSentBack, GcAction, GcState, SovLine, Invite, LookAheadMark, PaperSend, Partner, PlanQuestion, PlanSet, SubBid } from './gcTypes'
+import type { AskContact, CustomerSend, Draw, DrawSentBack, GcAction, GcState, SovLine, Invite, LookAheadMark, PaperSend, Partner, PlanQuestion, PlanSet, SubBid, TradeChangeRequest } from './gcTypes'
 import { money, shortDate, weekdayDate, daysUntil } from './gcWords'
 import { currentRev, partnerById, planLabel } from './gcLookups'
 import { planRecipients, questionRecipients, questionsOpen, timeWords } from './gcPlans'
@@ -2079,6 +2079,76 @@ function reduce(state: GcState, action: GcAction): GcState {
         ...(action.fromProjectId ? { fromProjectId: action.fromProjectId } : {}),
       }
       return logged({ ...state, scopeBook: { ...book, sets: [...book.sets, set] } }, 'office', `Saved the set "${name}" to the scope book: ${lines.length} ${action.trade} ${lines.length === 1 ? 'line' : 'lines'}.`)
+    }
+
+    // Portal lane: a trade asks for a change (owner, 2026-10-04); the office makes it a change order or turns it down.
+    case 'tradeAskChange': {
+      const { project, pkg } = find(state, action.projectId, action.packageId)
+      const partner = partnerById(state, action.partnerId)
+      const description = action.description.trim()
+      const amount = Number.isFinite(action.amount) ? Math.round(action.amount) : 0
+      const days = Number.isFinite(action.days) && action.days > 0 ? Math.round(action.days) : 0
+      // Only the company on a signed statement of work asks, while the job is ours.
+      if (!project || !pkg || !partner || project.stage === 'pursuing' || pkg.sow?.status !== 'signed') return state
+      if (awardedPartner(state, pkg)?.id !== partner.id || description === '' || amount <= 0) return state
+      const existing = project.changeRequests ?? []
+      const used = new Set(existing.map((r) => r.id))
+      let n = existing.length + 1
+      while (used.has(`${project.id}-cr-${n}`)) n += 1
+      const request: TradeChangeRequest = {
+        id: `${project.id}-cr-${n}`,
+        packageId: pkg.id,
+        partnerId: partner.id,
+        askedOn: state.today,
+        description,
+        reason: action.reason,
+        amount,
+        days,
+        file: action.file?.trim() || null,
+        changeOrderId: null,
+        turnedDown: null,
+      }
+      const next = mapProject(state, project.id, (p) => ({ ...p, changeRequests: [...existing, request] }))
+      const dayWords = days > 0 ? `, +${days} ${days === 1 ? 'day' : 'days'}` : ''
+      return logged(next, 'trade', `${partner.company} asked for a change on ${project.name}: ${description}, ${money(amount)}${dayWords}.`)
+    }
+
+    case 'draftChangeOrderFromRequest': {
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const request = project?.changeRequests?.find((r) => r.id === action.requestId)
+      if (!project || !request || request.changeOrderId !== null || request.turnedDown !== null) return state
+      const before = new Set((project.changeOrders ?? []).map((c) => c.id))
+      // Drafted the way Bill the customer drafts one, on the request's trade and reason.
+      const drafted = gcReducer(state, {
+        type: 'draftChangeOrder',
+        projectId: project.id,
+        description: action.description,
+        reason: request.reason,
+        schedule: '',
+        packageId: request.packageId,
+        cost: action.cost,
+        price: action.price,
+        days: action.days,
+      })
+      const co = drafted.projects.find((p) => p.id === project.id)?.changeOrders?.find((c) => !before.has(c.id))
+      if (!co) return state
+      return mapProject(drafted, project.id, (p) => ({
+        ...p,
+        changeRequests: (p.changeRequests ?? []).map((r) => (r.id === request.id ? { ...r, changeOrderId: co.id } : r)),
+      }))
+    }
+
+    case 'turnDownChangeRequest': {
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const request = project?.changeRequests?.find((r) => r.id === action.requestId)
+      const note = action.note.trim()
+      if (!project || !request || request.changeOrderId !== null || request.turnedDown !== null || note === '') return state
+      const company = partnerById(state, request.partnerId)?.company ?? 'A trade'
+      const next = mapProject(state, project.id, (p) => ({
+        ...p,
+        changeRequests: (p.changeRequests ?? []).map((r) => (r.id === request.id ? { ...r, turnedDown: { on: state.today, note } } : r)),
+      }))
+      return logged(next, 'office', `Turned down ${company}'s change on ${project.name}, ${money(request.amount)}: ${note}`)
     }
   }
 }
