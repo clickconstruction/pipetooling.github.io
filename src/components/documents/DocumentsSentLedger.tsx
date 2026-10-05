@@ -5,7 +5,7 @@ import { documentsQuietButton } from '../jobs/jobDocumentsStyles'
 import { SentCopyRows } from './SentCopyRows'
 
 /**
- * Documents → Sent (v2.4561): everything the company sent, newest first, each with the copy as
+ * Documents → Sent (v2.4573): everything the company sent, newest first, each with the copy as
  * it went. A job's own sends are also on its Documents tab; this is where a paper that names no
  * job is found — a statement to a GC, a price request to a supply house, a bid letter. Pick a
  * kind, or type a name, an address or a subject.

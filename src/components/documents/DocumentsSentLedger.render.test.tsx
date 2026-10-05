@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * Documents → Sent (v2.4561): everything sent, newest first, with a kind to pick and a box to
+ * Documents → Sent (v2.4573): everything sent, newest first, with a kind to pick and a box to
  * type in; a line opens its copy; the list says so when nothing matches.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'

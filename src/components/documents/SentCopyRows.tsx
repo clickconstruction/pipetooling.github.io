@@ -5,7 +5,7 @@ import { openSentCopy, openSentFile } from '../../lib/sent/sentCopiesIo'
 import { documentsLinkButton, documentsTd } from '../jobs/jobDocumentsStyles'
 
 /**
- * The rows of a list of sent copies (v2.4554; shared since v2.4561): the name opens the copy as
+ * The rows of a list of sent copies (v2.4554; shared since v2.4573): the name opens the copy as
  * it went, the grey words say how, when, to whom and by whom, an email's attachments follow as
  * links. Used by the job window's "Sent from this job" and the Documents page's Sent tab.
  */
