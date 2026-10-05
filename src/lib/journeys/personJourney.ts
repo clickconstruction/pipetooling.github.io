@@ -15,6 +15,7 @@ import { payLinkUrl } from '../billing/payLink'
 import type { OfficeViewStats } from '../portal/portalOpenedLabel'
 import { PORTAL_SHORT_ORIGIN } from '../portal/portalShortOrigin'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
+import { lienWindowHref } from '../jobs/stagesDeepLinks'
 
 export type PersonSubject =
   | { kind: 'customer'; id: string; name: string }
@@ -212,6 +213,11 @@ function customerPageAction(customerId: string, label: string): PersonStep['acti
   return { label, to: `/customers/${customerId}` }
 }
 
+/** The job's Lien window itself (v2.4562), on the tab the step is about. */
+function lienWindowAction(jobId: string, tab: 'demand' | 'notice'): PersonStep['action'] {
+  return { label: 'Open the Lien instruments', to: lienWindowHref(jobId, tab) }
+}
+
 function jobAction(jobId: string, label: string): PersonStep['action'] {
   return { label, to: `/jobs?jobDetail=${encodeURIComponent(jobId)}` }
 }
@@ -397,7 +403,7 @@ export function customerJourney(subject: Extract<PersonSubject, { kind: 'custome
   steps['demand-letter'] = dl
     ? { state: 'sent', headline: `Sent ${dayWord(dl.sent_at, now)}${dl.deadline_date ? ` · due ${dayWord(dl.deadline_date, now)}` : ''}`, detail: [dl.sent_method ?? '', dl.amount != null ? `$${Math.round(dl.amount).toLocaleString('en-US')}` : ''].filter(Boolean).join(' · '), at: dl.sent_at, link: null, action: jobAction(dl.job_id, 'Open the Lien instruments') }
     : openStripe.length && openStripe.some((i) => daysBetween(i.sent_to_customer_at!, now) >= 45)
-      ? never('Eligible — a bill is 45+ days past', openStripe[0] ? jobAction(openStripe[0].job_id, 'Open the Lien instruments') : null)
+      ? never('Eligible — a bill is 45+ days past', openStripe[0] ? lienWindowAction(openStripe[0].job_id, 'demand') : null)
       : na('Not needed')
   const lr = latestBy(rows.lienReleases.filter((r) => !r.voided_at), (r) => r.sent_to_customer_at ?? r.signed_at)
   steps['lien-release'] = lr
@@ -462,7 +468,7 @@ export function customerJourney(subject: Extract<PersonSubject, { kind: 'custome
     const notices = rows.lienFilings.filter((f) => f.kind === 'notice_53_056' && !f.voided_at)
     const lastNotice = latestBy(notices, (f) => f.served_at ?? f.filed_at)
     steps['owner-notice'] = lastNotice
-      ? { state: 'sent', headline: `Sent ${dayWord(lastNotice.served_at ?? lastNotice.filed_at, now)}`, detail: plural(notices.length, 'notice'), at: lastNotice.served_at ?? lastNotice.filed_at, link: null, action: jobAction(lastNotice.job_id, 'Open the Lien instruments') }
+      ? { state: 'sent', headline: `Sent ${dayWord(lastNotice.served_at ?? lastNotice.filed_at, now)}`, detail: plural(notices.length, 'notice'), at: lastNotice.served_at ?? lastNotice.filed_at, link: null, action: lienWindowAction(lastNotice.job_id, 'notice') }
       : na('None')
   }
 

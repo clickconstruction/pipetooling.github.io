@@ -8,9 +8,22 @@ Texas counts lien deadlines from the month the work was done, not from the bill.
 
 On a job with a GC, every unpaid month needs its own § 53.056 notice. It is due by the 15th of the third month after the work. On a residential property it is due a month sooner. The office readies and drafts each notice. The leader approves it. Then it goes out on paper.
 
-## Start on the Calendar
+## Start on Next up
 
-The [Lien desk](/jobs?tab=stages&liendesk=1) opens on its **Calendar** tab. It shows when each lien deadline falls.
+Open the Lien desk from the orange gavel on the Pipeline. It opens on its **Next up** tab. That is one list of every lien paper that needs someone to act.
+
+- **Needs you now** holds what is late or due within seven days. **Coming up** holds the rest. Each group runs in date order.
+- Each row has a tag. It reads {{chip:blue|Notice}}, {{chip:red|Affidavit}} or {{chip:yellow|Retainage}}.
+- Each row has one button. It names the next move, like {{button:blue|Find the owner}}, {{button:blue|Draft notice}} or {{button:blue|Send the run}}.
+- The button opens the tab that does that work, on that job. Nothing is sent from the list itself.
+- A GC with two or more notices ready is one row. Its button reads {{button:blue|Send the run}}.
+- A row waiting on the leader shows {{button:outline|Open}} to the office. The leader sees {{button:blue|Approve}}.
+
+When nothing needs anyone, the tab says so and points you at the Calendar.
+
+## Look ahead on the Calendar
+
+The **Calendar** tab is beside Next up. It shows when each lien deadline falls.
 
 Pills at the top sort the jobs into Overdue, This month, Next month and Later. Each job is counted once, at its next date. Press a pill to see one month.
 

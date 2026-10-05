@@ -16,7 +16,7 @@ import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { APP_CALENDAR_TZ } from '../_shared/appTimeZone.ts'
 import { buildJobContractPdf, contractBodyToPlainText, type JobContractPdfInput, type PdfLibLike } from '../_shared/jobContractPdf.ts'
 import { encodeBase64 } from 'https://deno.land/std@0.224.0/encoding/base64.ts'
-import { amountCentsFromFields, appOrigin, contractHeading, corsHeaders, escapeHtml, formatMoney, isValidEmail, JOB_CONTRACT_BUCKET, JOB_CONTRACT_LINK_DAYS, JOB_CONTRACT_REMINDER_DAYS, jobNumberLabel, json, randomUrlToken, signingUrl } from '../_shared/jobContract.ts'
+import { amountCentsFromFields, appOrigin, contractHeading, corsHeaders, escapeHtml, formatMoney, isValidEmail, JOB_CONTRACT_BUCKET, JOB_CONTRACT_LINK_DAYS, JOB_CONTRACT_REMINDER_DAYS, jobNumberLabel, json, randomUrlToken, signedRecordId, signingUrl } from '../_shared/jobContract.ts'
 import { buildJobContractPaperEmail } from '../_shared/jobContractEmail.ts'
 
 type Body = {
@@ -216,6 +216,8 @@ serve(async (req) => {
         ...(senderEmailPaper ? { replyTo: senderEmailPaper } : {}),
         ...(cc.length > 0 ? { cc } : {}),
         attachments: [{ filename: draftFilename, content: encodeBase64(bytes) }],
+        // Sent copies (docs/SENT_COPIES.md): the agreement that went for signing, email and PDF, is kept on the job.
+        file: { kind: 'job_contract', recipientName, jobIds: [jobId], source: { table: 'job_contracts', id: body.contract_id }, sentBy: user.id },
       })
       if (!sentPaper.success) return json({ error: sentPaper.error || 'Email failed' }, 502)
 
@@ -479,6 +481,8 @@ serve(async (req) => {
       ...(senderEmail ? { replyTo: senderEmail } : {}),
       ...(rest.length > 0 ? { cc: rest } : {}),
       ...(b64 ? { attachments: [{ filename, content: b64 }] } : {}),
+      // Sent copies: a signed agreement shared with someone, email and PDF, is kept on the job.
+      file: { kind: 'job_contract_shared', jobIds: [job?.id], source: contractId ? { table: 'job_contracts', id: contractId } : { table: 'estimates', id: body.estimate_id }, sentBy: user.id },
     })
     if (!sent.success) return json({ error: sent.error || 'Email failed' }, 502)
 

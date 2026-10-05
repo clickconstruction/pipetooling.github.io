@@ -127,7 +127,8 @@ serve(async (req) => {
       let emailed = false
       if (resendKey && !body.dry_run) {
         const cc = (c.cc_emails ?? []).filter(isValidEmail).slice(0, 10)
-        const r = await sendEmailViaResend(email, subject, text, html, resendKey, { ...(replyTo ? { replyTo } : {}), ...(cc.length ? { cc } : {}) })
+        // Sent copies (docs/SENT_COPIES.md): each reminder is kept on the job. No sender: it sends itself.
+        const r = await sendEmailViaResend(email, subject, text, html, resendKey, { ...(replyTo ? { replyTo } : {}), ...(cc.length ? { cc } : {}), file: { kind: 'job_contract_reminder', recipientName: c.recipient_name, jobIds: [c.job_id], source: { table: 'job_contracts', id: c.id } } })
         emailed = r.success
       }
       if (!emailed && !body.dry_run) {
