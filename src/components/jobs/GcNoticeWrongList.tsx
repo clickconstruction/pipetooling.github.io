@@ -7,7 +7,8 @@ import type { GcNoticeBandWrongItem } from '../../lib/jobs/gcNoticeJobsBand'
  * line is a button: pointing at it opens the jobs that look wrong, each with what looks wrong
  * and what is open; picking one sends the band to that row (`onPick`), which scrolls to it and
  * flashes it. A click pins the list open for a touch screen and a keyboard; Esc, a click
- * elsewhere or a pick closes it.
+ * elsewhere or a pick closes it. Each stage's header row wears the same count for its own jobs
+ * (v2.4545, `jumpWhenOne`).
  */
 export type GcNoticeWrongListProps = {
   items: ReadonlyArray<GcNoticeBandWrongItem>
@@ -15,6 +16,13 @@ export type GcNoticeWrongListProps = {
   labelOf: (jobId: string) => string
   onPick: (jobId: string) => void
   isMobile: boolean
+  /**
+   * A stage's header row (v2.4545): with one job that looks wrong there is nothing to list, so
+   * the count jumps straight to that row. The band's head line always lists.
+   */
+  jumpWhenOne?: boolean
+  /** Names the count for a screen reader when the window has several ("Billed"). */
+  scope?: string
 }
 
 /** Long enough that a pointer crossing the words on its way elsewhere opens nothing. */
@@ -26,7 +34,7 @@ const trigger: CSSProperties = { background: 'none', border: 'none', borderBotto
 const itemBtn: CSSProperties = { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '2px 10px', width: '100%', textAlign: 'left', border: 'none', background: 'none', padding: '7px 10px', borderRadius: 7, cursor: 'pointer', font: 'inherit', color: 'var(--text-strong)' }
 const stageWords = (status: string): string => (status ? status.replace(/_/g, ' ').replace(/^\w/, (m) => m.toUpperCase()) : '—')
 
-export default function GcNoticeWrongList({ items, labelOf, onPick, isMobile }: GcNoticeWrongListProps) {
+export default function GcNoticeWrongList({ items, labelOf, onPick, isMobile, jumpWhenOne = false, scope }: GcNoticeWrongListProps) {
   const [open, setOpen] = useState(false)
   const [pinned, setPinned] = useState(false)
   const wrapRef = useRef<HTMLSpanElement>(null)
@@ -66,14 +74,26 @@ export default function GcNoticeWrongList({ items, labelOf, onPick, isMobile }: 
   const [room, setRoom] = useState<number | null>(null)
   useLayoutEffect(() => {
     if (!open || !wrapRef.current) return
-    let box: HTMLElement | null = wrapRef.current.parentElement
-    while (box && !/(auto|scroll)/.test(getComputedStyle(box).overflowY)) box = box.parentElement
-    const floor = box ? box.getBoundingClientRect().bottom : window.innerHeight
+    // Every box that clips counts, the lowest floor wins: inside the table the nearest one is the
+    // table's own card, which runs far below the window's foot.
+    let floor = window.innerHeight
+    for (let box: HTMLElement | null = wrapRef.current.parentElement; box; box = box.parentElement) {
+      if (/(auto|scroll)/.test(getComputedStyle(box).overflowY)) floor = Math.min(floor, box.getBoundingClientRect().bottom)
+    }
     setRoom(Math.max(160, Math.round(floor - wrapRef.current.getBoundingClientRect().bottom - 14)))
   }, [open])
 
   const n = items.length
   if (n === 0) return null
+  const words = `${n} look${n === 1 ? 's' : ''} wrong`
+  if (jumpWhenOne && n === 1) {
+    const only = items[0]!
+    return (
+      <button type="button" onClick={(e) => { e.stopPropagation(); onPick(only.jobId) }} title={`Jump to ${labelOf(only.jobId)}`} aria-label={`${scope ? `${scope}: ` : ''}${words}. Jump to ${labelOf(only.jobId)}`} style={trigger} data-testid="gc-notice-band-wrong" data-jump="yes">
+        {words} <span aria-hidden="true" style={{ fontSize: '0.8em' }}>↓</span>
+      </button>
+    )
+  }
   const hoverIn = () => {
     if (isMobile) return
     clearTimer()
@@ -99,13 +119,13 @@ export default function GcNoticeWrongList({ items, labelOf, onPick, isMobile }: 
 
   return (
     <span ref={wrapRef} onMouseEnter={hoverIn} onMouseLeave={hoverOut} style={{ position: 'relative', display: 'inline-block' }}>
-      <button type="button" onClick={onTrigger} aria-haspopup="dialog" aria-expanded={open} title="See the jobs that look wrong" style={trigger} data-testid="gc-notice-band-wrong">
-        {n} look{n === 1 ? 's' : ''} wrong <span aria-hidden="true" style={{ fontSize: '0.7em' }}>▾</span>
+      <button type="button" onClick={(e) => { e.stopPropagation(); onTrigger() }} aria-haspopup="dialog" aria-expanded={open} aria-label={scope ? `${scope}: ${words}` : undefined} title="See the jobs that look wrong" style={trigger} data-testid="gc-notice-band-wrong">
+        {words} <span aria-hidden="true" style={{ fontSize: '0.7em' }}>▾</span>
       </button>
       {open ? (
         <div
           role="dialog"
-          aria-label={`The ${n} job${n === 1 ? '' : 's'} that look${n === 1 ? 's' : ''} wrong`}
+          aria-label={`${scope ? `${scope}: the` : 'The'} ${n} job${n === 1 ? '' : 's'} that look${n === 1 ? 's' : ''} wrong`}
           data-testid="gc-notice-band-wrong-list"
           style={{
             position: 'absolute',

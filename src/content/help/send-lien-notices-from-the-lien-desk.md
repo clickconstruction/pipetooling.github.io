@@ -275,7 +275,7 @@ The run covers every unpaid job with the GC, not only the ones the picker counts
 
 **Jobs with unpaid work under this GC** sits above the steps. It lists every job with unpaid work under the GC, grouped by its stage. Each job shows its line items, its money and the Pipeline's progress bar. A chip flags anything that looks wrong, in the Pipeline's words. A job may be marked Waiting while a bill is out, for example. The chip opens the job over the run, on the field that fixes it. Close the job, and the run comes back where you left it. Fix the record first, because a notice claims what the record says.
 
-The head line counts the jobs that look wrong, like *6 look wrong*. That count is a button. Point at it, or click it, to list those jobs. Each one says what looks wrong and what is still open. Click a job in the list. The table scrolls to its row and lights it for a moment.
+The head line counts the jobs that look wrong, like *6 look wrong*. That count is a button. Point at it, or click it, to list those jobs. Each one says what looks wrong and what is still open. Click a job in the list. The table scrolls to its row and lights it for a moment. Each stage's own header row has the same count for its jobs. When a stage has one job that looks wrong, a click on its count jumps straight to that row.
 
 The window follows the order of the work. A bar of five steps stays pinned at the top as you scroll. They are Owners, Claims, Cover letter, Decision and The grid. Each step shows its status, and a click jumps to it. Above the steps, one summary states the money once.
 
