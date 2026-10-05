@@ -79,6 +79,8 @@ const C = {
   // Split onto J2 and also on a supply-house invoice: the job counts it under the invoice.
   invoiceLinked: charge({ amount: -80, attributedUserId: 'u-dana', bankCategory: 'Retail', invoiceLinks: [INVOICE], splits: [split('j2', -80)] }),
   internalTransfer: charge({ amount: -500, attributedUserId: 'u-malachi', labelId: 'label-transfer', labelDefaultKey: 'internal_transfers', splits: [split('j2', -500)] }),
+  // A refund to Dana's card: Mercury files it as kind 'other' (money in), still on the card (J583's case).
+  refundOther: charge({ amount: 12.5, kind: 'other', attributedUserId: 'u-dana', debitCardId: 'card-d', bankCategory: 'Retail', counterpartyName: 'The Home Depot', splits: [split('j2', 12.5)] }),
   // Jorge's card, nobody attributed it: his by the card.
   byCard: charge({ amount: -35, holderUserId: 'u-jorge', holderName: 'Jorge L.', debitCardId: 'card-j', bankCategory: 'FuelAndGas' }),
   byCardOutsideCircle: charge({ amount: -12, holderUserId: 'u-jorge', holderName: 'Jorge L.', debitCardId: 'card-j', bankCategory: 'Retail', viewerCanSort: false }),
@@ -149,8 +151,8 @@ describe('buildSpendingRollup — the same numbers as the Job window', () => {
   it('the figures behind those totals: refunds net, Internal Transfers out, the invoice-linked charge under the invoice', () => {
     // J1: 100 + 40 − 25 refund + 30 (half of Dana's) + 6 (the old short split) = 151, fuel 40.
     expect(rollup.byJob.get('j1')).toEqual({ spend: 151, fuel: 40 })
-    // J2: 30 (Dana's other half) + 18 fuel by label; the invoice-linked $80 and the $500 transfer are not job card charges.
-    expect(rollup.byJob.get('j2')).toEqual({ spend: 48, fuel: 18 })
+    // J2: 30 (Dana's other half) + 18 fuel by label − 12.50 refunded; the invoice-linked $80 and the $500 transfer are not job card charges.
+    expect(rollup.byJob.get('j2')).toEqual({ spend: 35.5, fuel: 18 })
   })
 
   it('the one known edge: when a job’s refunds outweigh its other card charges, the job screens floor the card line at $0 and Spending keeps the net', () => {
@@ -230,13 +232,13 @@ describe('buildSpendingRollup — the columns', () => {
 
   it('Dana: a split charge counts on both jobs, the invoice-linked one is On supply invoices, the Office split is Office', () => {
     const d = rowOf('u:u-dana')
-    expect(d.cardSpend).toBe(180) // 60 + 18 + 80 + 22
+    expect(d.cardSpend).toBe(167.5) // 60 + 18 + 80 + 22 − 12.50 refunded
     expect(d.fuel).toBe(18) // the label made it fuel; the other charge's fuel category lost to its label
-    expect(d.onJobs).toBe(158) // 30 + 30 + 18 + 80
+    expect(d.onJobs).toBe(145.5) // 30 + 30 + 18 + 80 − 12.50
     expect(d.onSupplyInvoices).toEqual({ usd: 80, charges: 1 })
     expect(d.office).toEqual({ usd: 22, charges: 1 })
     expect(d.notOnJob).toBe(0)
-    expect(d.jobs.map((j) => [j.jobId, j.spend])).toEqual([['j2', 48], ['j1', 30]])
+    expect(d.jobs.map((j) => [j.jobId, j.spend])).toEqual([['j2', 35.5], ['j1', 30]])
     expect(d.jobs.some((j) => j.jobId === OFFICE)).toBe(false)
   })
 
@@ -254,15 +256,15 @@ describe('buildSpendingRollup — the columns', () => {
 
   it('totals: the strip above the table', () => {
     expect(rollup.totals).toEqual({
-      cardSpend: 687, // Malachi 195 + Dana 180 + Pat 50 + Jorge 47 + Company 200 + untied 15
+      cardSpend: 674.5, // Malachi 195 + Dana 167.50 + Pat 50 + Jorge 47 + Company 200 + untied 15
       fuel: 108, // 40 + 18 + 35 + 15
-      other: 579,
-      onJobs: 279, // 121 + 158
+      other: 566.5,
+      onJobs: 266.5, // 121 + 145.50
       office: 22,
       payroll: 50,
       notOnJob: 266, // Malachi's $4 remainder + Jorge 47 + Company 200 + untied 15
       beforeSorting: 70,
-      charges: 14,
+      charges: 15,
       notOnJobCharges: 5,
       notOnJobFuel: 50, // Jorge's 35 + the untied 15
       untied: { usd: 15, charges: 1 },
@@ -297,11 +299,10 @@ describe('buildSpendingRollup — the payroll mark by role', () => {
 
 describe('buildSpendingRollup — the charges not on a job yet', () => {
   it('a held card puts on a job through the holder (Team purchases’ write), another card through Banking’s', () => {
-    const jorge = rowOf('u:u-jorge').looseCharges
-    expect(jorge.map((l) => [l.id, l.sortMode, l.canSort, l.fuel])).toEqual([
-      [C.byCard.id, 'holder', true, true],
-      [C.byCardOutsideCircle.id, 'holder', false, false],
-    ])
+    const jorge = new Map(rowOf('u:u-jorge').looseCharges.map((l) => [l.id, [l.sortMode, l.canSort, l.fuel]]))
+    expect(jorge.size).toBe(2)
+    expect(jorge.get(C.byCard.id)).toEqual(['holder', true, true])
+    expect(jorge.get(C.byCardOutsideCircle.id)).toEqual(['holder', false, false])
     expect(rowOf('company').looseCharges[0]).toMatchObject({ sortMode: 'banking', canSort: true, cardNickname: 'Office Amex' })
   })
 
