@@ -12,7 +12,7 @@ import { currentRev, partnerById, planLabel } from './gcLookups'
 import { questionsCloseOn } from './gcPlans'
 import { startChecklist } from './gcStart'
 import { BIDS_WANTED, bidIsStale, bidsIn, carriedAmount, carriedUncosted, isGuess, quoteRanOut } from './gcBids'
-import { followUps } from './gcFollowUp'
+import { projectPeople } from './gcProjectPeople'
 import { ownCrewWork } from './gcBuilding'
 import { milestoneRows, openInspectionFailures, scheduleSummary, daysBetween } from './gcBuildingSchedule'
 import { submittalRows } from './gcBuildingSubmittals'
@@ -249,11 +249,17 @@ function biddingHealth(state: GcState, project: GcProject): StageHealth {
 
   const calendar = biddingCalendar(state, project)
 
-  const toCall = followUps(state).filter((f) => f.project.id === project.id && f.why !== 'waiting').length
+  // Everyone we are waiting on, each once: the board row's count (projectPeople), so the two agree.
+  const people = projectPeople(state, project)
   const numbers: HealthNumber[] = [
     { label: 'Trades with a number', value: `${withNumber} of ${tiles.length}`, note: holes.length > 0 ? `${holes.length} with no quote` : left > 0 ? `${left} to finish` : 'all in', tone: withNumber === tiles.length ? 'good' : holes.length > 0 ? 'bad' : 'warn' },
     { label: 'Our bid', value: sent ? 'Sent' : 'Not sent', note: sent ? weekdayDate(sent) : due ? `due ${weekdayDate(due)}` : 'no due date', ...(sent ? { tone: 'good' as const } : {}) },
-    { label: 'Companies to call', value: String(toCall), note: toCall > 0 ? 'see Follow up' : 'nobody right now', ...(toCall > 0 ? { tone: 'warn' as const } : {}) },
+    {
+      label: 'People to call',
+      value: String(people.count),
+      note: people.count === 0 ? 'nobody right now' : people.late > 0 ? `${people.late} late` : 'none late yet',
+      ...(people.late > 0 ? { tone: 'bad' as const } : people.count > 0 ? { tone: 'warn' as const } : {}),
+    },
   ]
   return { verdict, why, next, calendar, tiles, numbers, bars: [], askStartDate: false }
 }
