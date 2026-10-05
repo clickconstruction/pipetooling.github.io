@@ -66,6 +66,8 @@ export default function SubmittalRoom() {
   const [params] = useSearchParams()
   const token = params.get('t')?.trim() ?? ''
   const preview = isPreviewFlag(params.get(PUBLIC_PREVIEW_PARAM))
+  // v2.4599 · the room's writes carry the office's preview flag too, so the function refuses them (it refuses a verified office session either way).
+  const reviewUrl = `${supabaseUrl}/functions/v1/submit-submittal-review${preview ? `?${PUBLIC_PREVIEW_PARAM}=1` : ''}`
   // What customers see (v2.3511): the sample token renders the sample room; identifying and deciding stay on this page and save nothing.
   const sample = sampleStateFromToken(token)
   const [view, setView] = useState<View>({ kind: 'loading' })
@@ -163,7 +165,7 @@ export default function SubmittalRoom() {
       setIdentifyOpen(false)
       return
     }
-    const res = await fetch(`${supabaseUrl}/functions/v1/submit-submittal-review`, {
+    const res = await fetch(reviewUrl, {
       method: 'POST',
       headers: { ...(await staffAwarePublicHeaders()), 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'identify', token, name: idName, email: idEmail, role: idRole, viaToken: me ? me.token : viaToken !== token ? viaToken : null, website: '' }),
@@ -206,7 +208,7 @@ export default function SubmittalRoom() {
     setAskError(null)
     setAskedOk(null)
     try {
-      const res = await fetch(`${supabaseUrl}/functions/v1/submit-submittal-review`, {
+      const res = await fetch(reviewUrl, {
         method: 'POST',
         headers: { ...(await staffAwarePublicHeaders()), 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'message', token: who.token, submittalId: rev?.id ?? null, body: text, tags: askTags, website: '' }),
@@ -252,7 +254,7 @@ export default function SubmittalRoom() {
     setSending(true)
     setSendError(null)
     try {
-      const res = await fetch(`${supabaseUrl}/functions/v1/submit-submittal-review`, {
+      const res = await fetch(reviewUrl, {
         method: 'POST',
         headers: { ...(await staffAwarePublicHeaders()), 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'decide', token: me.token, submittalId: rev.id, decisions }),

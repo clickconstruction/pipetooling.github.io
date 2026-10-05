@@ -18,11 +18,15 @@
  *     revision is not the newest shared one (409 stale_revision), or the rows are not on
  *     that revision (404). A `decided` event with the counts.
  * No JWT — the token is the credential; service role behind it (the sign-bid-room pattern).
+ * v2.4599: identify, message and decide are refused (403, `code: 'office' | 'preview'`) when the
+ * request carries a verified office session or `?preview=1` (`officeWriteVerdict`); a reviewer's
+ * page sends the anon key and is never refused.
  * The rules live in `_shared/submittalReviewActions.ts`, tested from the app.
  */
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { askTitle, decideVerdict, decisionCounts, decisionEntryBody, IDENTIFY_PER_HOUR, messageVerdict, parseDecideBody, parseIdentifyBody, parseMessageBody, planDecideWrites, resolveIdentify } from '../_shared/submittalReviewActions.ts'
+import { askTitle, decideVerdict, decisionCounts, decisionEntryBody, IDENTIFY_PER_HOUR, messageVerdict, officeRoleOf, officeWriteVerdict, parseDecideBody, parseIdentifyBody, parseMessageBody, planDecideWrites, resolveIdentify } from '../_shared/submittalReviewActions.ts'
+import { isPreviewFlag, PUBLIC_PREVIEW_PARAM } from '../_shared/publicViewCounting.ts'
 import { asRoomRole, rollUpPartDecisions, ROOM_ROLE_LABELS, type RoomPartSource, gcRoomItems } from '../_shared/submittalRoomPayload.ts'
 
 const corsHeaders = {
@@ -52,6 +56,14 @@ serve(async (req) => {
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { autoRefreshToken: false, persistSession: false } })
     const body = (await req.json().catch(() => ({}))) as Record<string, unknown>
     const action = body.action
+    // v2.4599 · the office is never the GC: a write from a verified office session or the office's
+    // preview is refused before anything is read or written, with a reason the page shows.
+    if (action === 'identify' || action === 'message' || action === 'decide') {
+      const preview = isPreviewFlag(new URL(req.url).searchParams.get(PUBLIC_PREVIEW_PARAM))
+      const officeRole = await officeRoleOf(req, admin, Deno.env.get('SUPABASE_ANON_KEY'))
+      const refusal = officeWriteVerdict(action, { preview, officeRole })
+      if (!refusal.ok) return json({ error: refusal.error, code: refusal.code }, refusal.status)
+    }
 
     const roomByToken = async (t: string): Promise<{ room: RoomRow | null; person: PersonRow | null }> => {
       const { data } = await admin.from('bid_submittal_rooms').select('id, bid_id, status, closed_at').eq('token', t).maybeSingle()

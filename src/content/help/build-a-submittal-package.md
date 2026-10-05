@@ -178,7 +178,7 @@ The moment a revision is shared, its package PDF is also filed in the bid's job 
 
 ## Read their decisions
 
-On the room, a reviewer taps {{chip:green|Approve}}, {{chip:yellow|Revise}} or {{chip:red|Reject}} on each row that differs. The first tap asks once who they are. It takes their name and email. It asks whether they are the architect, the owner's rep, the designer or the builder. Then {{button:outline|Send my review}} records every call with their name. Someone you marked **watching** can tap but not send.
+On the room, a reviewer taps {{chip:green|Approve}}, {{chip:yellow|Revise}} or {{chip:red|Reject}} on each row that differs. The first tap asks once who they are. It takes their name and email. It asks whether they are the architect, the owner's rep, the designer or the builder. Then {{button:outline|Send my review}} records every call with their name. Someone you marked **watching** can tap but not send. Their page does not take an answer from you while you are signed in to the app. It says *You are signed in as the office*. Type an answer they gave you from step 6 instead.
 
 A row with parts lists each part the GC sees, with its own call. The reviewer can approve the bowl and send back the flush valve. {{button:green|Approve all 3}} on the card approves the parts still open. A part sent back sends the whole row back. The row is approved once every part is.
 
