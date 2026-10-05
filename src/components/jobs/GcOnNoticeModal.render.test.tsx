@@ -118,6 +118,9 @@ describe('GcOnNoticeModal', () => {
     renderWithProviders(<GcOnNoticeModal {...baseProps} onOpenEditJob={onOpenEditJob} onOpenJob={onOpenJob} authRole="master_technician" />)
     await settle()
     const band = screen.getByTestId('gc-notice-band')
+    // v2.4538: the band is its title alone, no paragraph under it.
+    expect(within(band).getByRole('heading', { name: 'Jobs with unpaid work under this GC' })).toBeTruthy()
+    expect(band.textContent).not.toContain('Mark the record right')
     // the head line: the stages on record and how many read wrong (1016 and 1002 are billed with no percent; 1031 is working with no percent; 994 reads right)
     const head = screen.getByTestId('gc-notice-band-head').textContent ?? ''
     expect(head).toContain('Working 1 · Billed 3')
