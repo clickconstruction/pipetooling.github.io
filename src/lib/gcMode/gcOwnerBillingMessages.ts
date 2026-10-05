@@ -226,10 +226,13 @@ export function customerMessages(state: GcState, project: GcProject): CustomerMe
     }
   }
 
-  // The Building lane's weekly reports, as each went.
-  for (const report of project.weeklyReports ?? []) {
+  // The Building lane's weekly reports, as each went: a resend is an email of its own, newest first.
+  const reports = project.weeklyReports ?? []
+  for (let i = reports.length - 1; i >= 0; i--) {
+    const report = reports[i]
+    if (!report) continue
     out.push({
-      key: `weekly-${report.weekOf}-${report.sentOn}`,
+      key: `weekly-${report.weekOf}-${report.sentOn}-${i}`,
       on: report.sentOn,
       kind: 'weekly',
       subject: report.subject,

@@ -1,5 +1,48 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
+exports[`GC mode golden walk > a payment reminder on Cibolo's late pay application 3, from the start 1`] = `
+{
+  "nextStep": {
+    "by": "2026-10-07",
+    "dayNote": "This is our ask, not their promise. The day the bill was due stays.",
+    "dayWord": "Pay by",
+    "docKey": "payapp-fairoaksd-3",
+    "history": "Due Sep 30, 2 days late. Reminded once, last Oct 2.",
+    "number": 3,
+    "projectId": "fairoaksd",
+    "sendLabel": "Send the reminder",
+    "title": "Remind them to pay pay application 3",
+  },
+  "readings": {
+    "changed": {
+      "lastLog.id": 1,
+      "lastLog.text": "Reminded Cibolo Creek Partners to pay pay application 3 on Fair Oaks Shops, Building D by Wed Oct 7.",
+      "lastLog.who": "office",
+    },
+    "removed": [
+      "lastLog",
+    ],
+  },
+  "reminders": [
+    {
+      "by": "2026-10-07",
+      "lines": [
+        "Hello Elena,",
+        "Pay application 3 for Fair Oaks Shops, Building D has $288,879 still open. It was due Wed Sep 30, the day you gave.",
+        "Please pay it by Wed Oct 7.",
+        "Call me with any question.",
+        "Pay it in your portal, by card or bank transfer.",
+        "Our unconditional lien waiver for it comes to you the day it is paid.",
+      ],
+      "note": "Call me with any question.",
+      "on": "2026-10-02",
+      "subject": "Reminder: pay application 3 for Fair Oaks Shops, Building D, $288,879",
+    },
+  ],
+  "sentWords": "Reminded today · pay by Wed Oct 7.",
+}
+`;
+
 exports[`GC mode golden walk > before any step 1`] = `
 {
   "assistantRules": [

@@ -34,6 +34,8 @@ import {
   startChecklist,
   tradeBenches,
   tradeLineup,
+  payReminderSentWords,
+  payReminderStep,
   type GcAction,
   type GcState,
 } from './gcModel'
@@ -894,6 +896,7 @@ describe('GC mode golden walk', () => {
   it('uses every action type at least once', () => {
     const used = new Set(STEPS.map((s) => s.action.type))
     used.add('reset') // played in its own test below
+    used.add('remindCustomerToPay') // played in its own test below: the walk's late bill gets a promise first
     const all: GcAction['type'][] = [
       'issueAddendum', 'tradeConfirmBid', 'setStartItem', 'setStartDate', 'startProject', 'invite', 'nudge',
       'logContact', 'tradePromise', 'tradeOpenPlans', 'tradeSubmitBid', 'tradeDecline', 'officeDecline', 'setPlug',
@@ -938,6 +941,7 @@ describe('GC mode golden walk', () => {
       'checkPlanSetDrive',
       'tradeSendSov',
       'setQuoteExclusion', 'setExclusionCover', 'logPartnerContact', 'setCustomerPortal', 'sendPaper', 'remindCustomer', 'sendOwnerContract', 'ownerSignContract',
+      'remindCustomerToPay',
     ]
     expect(all.filter((t) => !used.has(t))).toEqual([])
   })
@@ -967,5 +971,22 @@ describe('GC mode golden walk', () => {
 
   it('Start over puts the made-up data back', () => {
     expect(gcReducer(finalState, { type: 'reset' })).toEqual(initialGcState())
+  })
+
+  // A payment reminder (Owner Billing, the owner 2026-10-04) needs a bill past its day. The walk's
+  // one late bill, Cibolo's pay application 3, gets a promise before the end, so the reminder is
+  // played from the start here instead of mid-walk (which would renumber every step).
+  it("a payment reminder on Cibolo's late pay application 3, from the start", () => {
+    const before = stateAt(0)
+    const after = gcReducer(before, { type: 'remindCustomerToPay', projectId: 'fairoaksd', number: 3, by: '2026-10-07', note: 'Call me with any question.' })
+    expect(after).not.toBe(before)
+    const project = after.projects.find((p) => p.id === 'fairoaksd')
+    const bill = project?.ownerBilling?.payApps?.find((a) => a.number === 3)
+    expect({
+      readings: moved(before, after),
+      reminders: bill?.reminders,
+      sentWords: project ? payReminderSentWords(after, project, 3) : null,
+      nextStep: project ? payReminderStep(after, project, 3) : null,
+    }).toMatchSnapshot()
   })
 })

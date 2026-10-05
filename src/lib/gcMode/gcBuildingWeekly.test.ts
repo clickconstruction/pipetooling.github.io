@@ -5,7 +5,7 @@
  * contract's day.
  */
 import { describe, expect, it } from 'vitest'
-import { gcReducer, initialGcState, weeklyReport, weeklyReportReady, weeklyReportSent, weeklyReportText, type GcState } from './gcModel'
+import { customerMessages, gcReducer, initialGcState, latestWeeklyReports, weeklyReport, weeklyReportReady, weeklyReportSent, weeklyReportText, type GcState } from './gcModel'
 
 const fairOaks = (s: GcState) => {
   const p = s.projects.find((x) => x.id === 'fairoaksd')
@@ -57,7 +57,7 @@ describe('the weekly report', () => {
     expect(short).toMatch(/^Hello Elena,/)
   })
 
-  it('is ready Friday; sending keeps it for their portal, notes it on the customer, and a resend replaces it', () => {
+  it('is ready Friday; sending keeps it for their portal, notes it on the customer, and a resend is a second email that replaces it in the portal', () => {
     let s = initialGcState()
     expect(weeklyReportReady(s, fairOaks(s))).toBe(true)
     const send = (body: string) => gcReducer(s, { type: 'sendWeeklyReport', projectId: 'fairoaksd', weekOf: '2026-09-28', from: 'me', by: 'Robert Douglas', copyArchitect: false, subject: 'Fair Oaks Shops, Building D · week of Sep 28', body })
@@ -66,7 +66,11 @@ describe('the weekly report', () => {
     expect(weeklyReportReady(s, fairOaks(s))).toBe(false)
     expect(s.customers.find((c) => c.id === fairOaks(s).customerId)?.contacts[0]?.note).toBe('Weekly report for the week of Sep 28 on Fair Oaks Shops, Building D sent to Elena Marchetti.')
     s = send('Second go.')
-    expect(fairOaks(s).weeklyReports?.map((r) => r.body)).toEqual(['Second go.'])
+    // Both emails are kept (their messages list each); the portal and the card read the newest.
+    expect(fairOaks(s).weeklyReports?.map((r) => r.body)).toEqual(['First go.', 'Second go.'])
+    expect(weeklyReportSent(fairOaks(s), '2026-09-28')?.body).toBe('Second go.')
+    expect(latestWeeklyReports(fairOaks(s)).map((r) => r.body)).toEqual(['Second go.'])
+    expect(customerMessages(s, fairOaks(s)).filter((m) => m.kind === 'weekly').map((m) => m.lines[0])).toEqual(['Second go.', 'First go.'])
   })
 
   it('only for a job being built, and only from Friday', () => {

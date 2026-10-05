@@ -279,9 +279,19 @@ export function weeklyReportText(report: WeeklyReport, project: GcProject, choic
   return { subject: report.subject, body: parts.join('\n\n') }
 }
 
-/** The report sent for a job's week. Undefined: none yet. */
+/** The newest report sent for a job's week. Undefined: none yet. */
 export function weeklyReportSent(project: GcProject, weekOf: string) {
-  return (project.weeklyReports ?? []).find((r) => r.weekOf === weekOf)
+  return (project.weeklyReports ?? []).filter((r) => r.weekOf === weekOf).slice(-1)[0]
+}
+
+/**
+ * The reports as the customer's portal shows them: the newest send for each week, newest week first.
+ * Every send stays on the job, so their messages list each email they got.
+ */
+export function latestWeeklyReports(project: GcProject) {
+  const byWeek = new Map<string, NonNullable<GcProject['weeklyReports']>[number]>()
+  for (const r of project.weeklyReports ?? []) byWeek.set(r.weekOf, r)
+  return [...byWeek.values()].sort((a, b) => (a.weekOf < b.weekOf ? 1 : -1))
 }
 
 /** The week's draft is ready: a job being built, Friday or later, a log this week, nothing sent for it yet. */

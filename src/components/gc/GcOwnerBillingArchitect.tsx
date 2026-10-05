@@ -9,11 +9,13 @@ import {
   money,
   ownerPayAppsSent,
   partnerById,
+  questionRecipients,
   shortDate,
   type GcAction,
   type GcProject,
   type GcState,
   type OwnerPayAppSent,
+  type PlanQuestion,
 } from '../../lib/gcMode/gcModel'
 
 /** The portal's paper look, the same as the owner's and the trade's: it stays light in both themes. */
@@ -24,7 +26,9 @@ const RULE = '#d9d2c3'
 /**
  * GC mode design spike: what the architect sees in their portal. They certify our pay applications
  * to the owner before the owner pays (owner's call, 2026-10-03): for what we asked, or less with the
- * reason. The trades' questions about the plans that wait on them are listed too.
+ * reason. The trades' questions about the plans that wait on them are listed too, each with an
+ * answer box (the owner, 2026-10-05: finish the prototype): the answer goes to the trades the way
+ * the office's does (`answerQuestion`), to every company on the trade, without who asked.
  */
 export function GcOwnerBillingArchitectPortal({ state, project, dispatch }: { state: GcState; project: GcProject; dispatch: Dispatch<GcAction> }) {
   const architect = state.customers.find((c) => c.id === project.architectId)
@@ -32,6 +36,7 @@ export function GcOwnerBillingArchitectPortal({ state, project, dispatch }: { st
   const waiting = sent.filter((a) => a.paidOn === null && appCertified(a) === null)
   const certified = [...sent].reverse().filter((a) => a.certifiedOn)
   const questions = project.questions.filter((q) => q.sentToArchitectOn && !q.answeredOn)
+  const answered = project.questions.filter((q) => q.sentToArchitectOn && q.answeredOn)
 
   return (
     <div data-theme="light" style={{ background: PAPER, color: INK, border: `1px solid ${INK}`, borderRadius: 10, overflow: 'hidden' }}>
@@ -100,28 +105,73 @@ export function GcOwnerBillingArchitectPortal({ state, project, dispatch }: { st
             <div style={{ fontSize: '0.875rem' }}>No question waits on you.</div>
           ) : (
             <div style={{ display: 'grid', gap: '0.4rem' }}>
-              {questions.map((q) => {
-                const pkg = project.packages.find((p) => p.id === q.packageId)
-                const company = partnerById(state, q.partnerId)?.company ?? 'A company'
-                const waited = q.sentToArchitectOn ? daysUntil(state.today, q.sentToArchitectOn) : 0
-                return (
-                  <div key={q.id} style={{ fontSize: '0.85rem', borderTop: `1px solid ${RULE}`, paddingTop: '0.3rem', display: 'grid', gap: '0.15rem' }}>
-                    <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                      <Chip tone={waited >= 3 ? 'red' : 'amber'}>{waited === 1 ? '1 day' : `${waited} days`}</Chip>
-                      <span style={{ color: 'var(--text-muted)' }}>
-                        {pkg?.trade ?? 'A trade'} · asked by {company}
-                      </span>
-                    </div>
-                    <div>{q.text}</div>
-                  </div>
-                )
-              })}
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                {GC_COMPANY_NAME} records your answer and sends it to the trades.
-              </div>
+              {questions.map((q) => (
+                <AnswerRow key={q.id} state={state} project={project} q={q} dispatch={dispatch} />
+              ))}
             </div>
           )}
         </PortalBlock>
+        {answered.length > 0 && (
+          <PortalBlock title="You answered">
+            <div style={{ display: 'grid', gap: '0.35rem' }}>
+              {answered.map((q) => (
+                <div key={q.id} style={{ fontSize: '0.85rem', borderTop: `1px solid ${RULE}`, paddingTop: '0.3rem' }}>
+                  <div style={{ color: 'var(--text-muted)' }}>
+                    {project.packages.find((p) => p.id === q.packageId)?.trade ?? 'A trade'} · {shortDate(q.answeredOn ?? null)}
+                  </div>
+                  <div>{q.text}</div>
+                  <div>
+                    <strong>Answer:</strong> {q.answer}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </PortalBlock>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/** One question waiting on the architect, with the box to answer it and who the answer goes to. */
+function AnswerRow({ state, project, q, dispatch }: { state: GcState; project: GcProject; q: PlanQuestion; dispatch: Dispatch<GcAction> }) {
+  const [answer, setAnswer] = useState('')
+  const pkg = project.packages.find((p) => p.id === q.packageId)
+  const company = partnerById(state, q.partnerId)?.company ?? 'A company'
+  const waited = q.sentToArchitectOn ? daysUntil(state.today, q.sentToArchitectOn) : 0
+  const to = questionRecipients(state, project, q)
+  const trade = (pkg?.trade ?? 'the trade').toLowerCase()
+  return (
+    <div style={{ fontSize: '0.85rem', borderTop: `1px solid ${RULE}`, paddingTop: '0.3rem', display: 'grid', gap: '0.3rem' }}>
+      <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
+        <Chip tone={waited >= 3 ? 'red' : 'amber'}>{waited === 1 ? '1 day' : `${waited} days`}</Chip>
+        <span style={{ color: 'var(--text-muted)' }}>
+          {pkg?.trade ?? 'A trade'} · asked by {company}
+        </span>
+      </div>
+      <div>{q.text}</div>
+      <textarea
+        value={answer}
+        onChange={(e) => setAnswer(e.target.value)}
+        rows={2}
+        placeholder="Your answer"
+        aria-label={`Your answer to ${q.text}`}
+        style={{ ...input, width: '100%', minWidth: 0, boxSizing: 'border-box', fontFamily: 'inherit', resize: 'vertical' }}
+      />
+      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        <Btn
+          kind="primary"
+          disabled={answer.trim() === ''}
+          title={answer.trim() === '' ? 'Type your answer first.' : undefined}
+          onClick={() => dispatch({ type: 'answerQuestion', projectId: project.id, questionId: q.id, answer: answer.trim(), recipients: to.map((r) => r.partner.id) })}
+        >
+          Send your answer
+        </Btn>
+        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+          {to.length === 0
+            ? `${GC_COMPANY_NAME} keeps it. No company is on ${trade} yet.`
+            : `It goes to ${to.length === 1 ? 'the 1 company' : `all ${to.length} companies`} on ${trade}, without the name of who asked.`}
+        </span>
       </div>
     </div>
   )

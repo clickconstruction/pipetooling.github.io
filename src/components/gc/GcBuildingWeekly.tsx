@@ -6,6 +6,7 @@ import {
   weeklyReport,
   weeklyReportReady,
   weeklyReportSent,
+  latestWeeklyReports,
   weeklyReportText,
   WEEKLY_SECTIONS,
   type GcAction,
@@ -301,7 +302,7 @@ export function GcWeeklyReportWindow({ state, project, dispatch, onClose }: { st
             {done
               ? `Sent to ${report.to.first}. It is in their portal, and logged on ${report.customer?.name ?? 'their record'}.`
               : sent
-                ? `Sent ${shortDate(sent.sentOn)}. Sending again replaces it in their portal.`
+                ? `Sent ${shortDate(sent.sentOn)}. Sending again sends a new email, and it replaces this one in their portal.`
                 : fromMe
                   ? 'Opens your email with this filled in, under your name, so replies come to you. It goes in their portal too. It never goes out on its own.'
                   : 'Goes from Click Construction and into their portal. In the prototype nothing leaves the app. It never goes out on its own.'}
@@ -336,7 +337,7 @@ export function GcWeeklyReportWindow({ state, project, dispatch, onClose }: { st
 
 /** The weekly reports in the customer's portal, newest first, each opening to the text as sent. */
 export function GcWeeklyReportsForCustomer({ project }: { project: GcProject }) {
-  const reports = [...(project.weeklyReports ?? [])].sort((a, b) => (a.weekOf < b.weekOf ? 1 : -1))
+  const reports = latestWeeklyReports(project)
   const [open, setOpen] = useState<string | null>(reports[0]?.weekOf ?? null)
   if (reports.length === 0) return null
   return (

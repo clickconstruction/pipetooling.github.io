@@ -1885,7 +1885,8 @@ function reduce(state: GcState, action: GcAction): GcState {
 
     case 'sendWeeklyReport': {
       // Building lane (the owner, 2026-10-05): the week's report to the customer, kept as sent for
-      // their portal, and noted on the customer's record. A resend for the same week replaces it.
+      // their portal, and noted on the customer's record. Every send is kept: a resend is a second
+      // email in their messages, and their portal shows the newest for the week (`latestWeeklyReports`).
       const project = state.projects.find((p) => p.id === action.projectId)
       const body = action.body.trim()
       if (!project || project.stage !== 'building' || !body) return state
@@ -1901,7 +1902,7 @@ function reduce(state: GcState, action: GcAction): GcState {
         subject: action.subject.trim(),
         body,
       }
-      let next = mapProject(state, project.id, (p) => ({ ...p, weeklyReports: [...(p.weeklyReports ?? []).filter((r) => r.weekOf !== action.weekOf), sent] }))
+      let next = mapProject(state, project.id, (p) => ({ ...p, weeklyReports: [...(p.weeklyReports ?? []), sent] }))
       if (customer) {
         const note = `Weekly report for the week of ${shortDate(action.weekOf)} on ${project.name} sent to ${to}${action.copyArchitect ? ', the architect copied' : ''}.`
         next = { ...next, customers: next.customers.map((c) => (c.id === customer.id ? { ...c, contacts: [{ on: state.today, by: sent.by, note }, ...c.contacts] } : c)) }
