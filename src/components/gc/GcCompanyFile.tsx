@@ -86,6 +86,7 @@ const KIND_WORDS: { key: ActivityKind | 'all'; label: string }[] = [
   { key: 'quote', label: 'Quotes and bids' },
   { key: 'paper', label: 'Paperwork' },
   { key: 'money', label: 'Money' },
+  { key: 'work', label: 'On the job' },
 ]
 
 const KIND_DOT: Record<ActivityKind, string> = {
@@ -93,6 +94,7 @@ const KIND_DOT: Record<ActivityKind, string> = {
   quote: 'var(--text-violet-700)',
   paper: 'var(--text-amber-700)',
   money: 'var(--text-green-700)',
+  work: 'var(--text-red-700)',
 }
 
 /** One timeline, newest first, with filters, a link to each job, and a box to log a call. */

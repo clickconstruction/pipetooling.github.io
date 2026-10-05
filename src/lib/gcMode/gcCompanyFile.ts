@@ -11,6 +11,7 @@ import { declineReasonWords } from './gcDecline'
 import { tradePromisesOf, tradePromiseWords } from './gcPromises'
 import { priceToOwner } from './gcCustomers'
 import { retainageHeldNow, tradeChangesFor } from './gcBuilding'
+import { buildingActivity } from './gcBuildingActivity'
 import { paperSendActivity, paperSentWords } from './gcPaperSend'
 import { customerSentWords } from './gcCustomerSend'
 import { latePayApps, payReminderSentWords } from './gcOwnerBillingRemind'
@@ -188,7 +189,8 @@ export function partnerWork(state: GcState, partner: Partner): PartnerWork {
   return { jobs, underContract: jobs.reduce((t, j) => t + j.price, 0), paid, approved, held }
 }
 
-export type ActivityKind = 'note' | 'quote' | 'paper' | 'money'
+/** `work`: what a trade did on the job (Building lane, 2026-10-04): submittals, punch items, inspections. */
+export type ActivityKind = 'note' | 'quote' | 'paper' | 'money' | 'work'
 
 export interface CompanyEvent {
   /** For pointing at one line: `promise:<id>` for a promise, `ask:<invite id>` for a quote ask's promised day. */
@@ -263,6 +265,8 @@ export function partnerActivity(state: GcState, partner: Partner): CompanyEvent[
           if (d.approvedOn) out.push({ on: d.approvedOn, kind: 'money', text: `Draw ${d.number} approved.`, ...base })
           if (d.paidOn) out.push({ on: d.paidOn, kind: 'money', text: `Draw ${d.number} paid, ${money(d.net)}.${d.waiver === 'conditional' ? ' Unconditional waiver owed.' : ''}`, ...base })
         }
+        // On the job (the owner, 2026-10-04, Building lane's buildingActivity): submittals, punch items, inspections.
+        for (const e of buildingActivity(project, pkg)) out.push({ on: e.on, kind: 'work', text: e.text, ...base })
       }
       for (const log of project.dailyLogs ?? []) {
         for (const delay of log.delays) {
