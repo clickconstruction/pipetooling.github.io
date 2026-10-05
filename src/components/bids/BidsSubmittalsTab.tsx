@@ -23,6 +23,7 @@ import { RoadSection, type RoadStatus } from './SubmittalRoadSection'
 import { SubmittalRowsTable } from './SubmittalRowsTable'
 import { SubmittalRoomPanel } from './SubmittalRoomPanel'
 import { SubmittalSourcesPanel } from './SubmittalSourcesPanel'
+import { SubmittalHelpMenu } from './SubmittalHelpMenu'
 import { SubmittalTheirCallPanel } from './SubmittalTheirCallPanel'
 import { SpotlightTour, spotlightTourStepsPresent, type SpotlightTourStep } from '../SpotlightTour'
 import { robotSeatState, staleAsk, type RobotSeatRow, type RobotSeatState } from '../../lib/submittals/robotOffer'
@@ -42,7 +43,7 @@ import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling
 import { procurementItemsFrom } from '../../lib/submittals/procurementLogIo'
 import type { ProcurementItemSource } from '../../lib/submittals/procurementLog'
 import { submittalJourney, type JourneyAction, type JourneyStage, type JourneyStageKey, stageGate } from '../../lib/submittals/submittalJourney'
-import { SUBMITTAL_GUIDE_HREF, SUBMITTAL_STAGE_ABOUT, SUBMITTAL_TOUR_STEPS, SUBMITTAL_WORDS_ONLY_STOP, stageAbout, hasOpenEveryStage, tourStopForStage, hasSeenSubmittalWalkthrough, markSubmittalWalkthroughSeen, rememberOpenEveryStage } from '../../lib/submittals/submittalTour'
+import { SUBMITTAL_GUIDE_HREF, SUBMITTAL_STAGE_ABOUT, SUBMITTAL_TOUR_STEPS, SUBMITTAL_WORDS, SUBMITTAL_WORDS_ONLY_STOP, stageAbout, hasOpenEveryStage, tourStopForStage, hasSeenSubmittalWalkthrough, markSubmittalWalkthroughSeen, rememberOpenEveryStage } from '../../lib/submittals/submittalTour'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 import { supabase } from '../../lib/supabase'
@@ -2058,46 +2059,22 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
         <div style={{ minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
             <BidWorkflowTabTitleWithPreview bid={bid} previewEnabled={bidPreview != null} onOpenPreview={() => bidPreview?.openBidPreviewFromBid(bid)} h2Style={{ margin: 0, fontSize: '1.15rem' }} />
-            {/* v2.4067: the same "?" Pricing has beside its title — here it starts the walkthrough. */}
-            <button
-              type="button"
-              onClick={() => startWalkThrough()}
-              title="How this page works. Walk me through it"
-              aria-label="How this page works"
-              style={{ font: 'inherit', flexShrink: 0, width: 20, height: 20, borderRadius: '50%', border: '1.5px solid #3b82f6', color: 'var(--text-blue-500)', background: 'var(--surface)', fontSize: '0.72rem', fontWeight: 700, lineHeight: 1, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
-            >
-              ?
-            </button>
-            <button type="button" onClick={startWords} title="What cut sheet, tag, Rev and the other words on this page mean" style={{ ...btnQuiet, fontSize: '0.78rem', textDecoration: 'underline', flexShrink: 0 }} data-testid="submittal-words">
-              Words on this page
-            </button>
+            {/* One help door (2026-10-05): the walkthrough, the words on the page and the guide, each spelled out in its menu. */}
+            <SubmittalHelpMenu onWalkThrough={() => startWalkThrough()} onWords={startWords} wordCount={SUBMITTAL_WORDS.length} guideHref={SUBMITTAL_GUIDE_HREF} />
           </div>
-          <p style={{ margin: '0.2rem 0 0', ...smallMuted }} data-tour="submittals-source">
-            Submittals · plumbing fixtures &amp; equipment · {takeoffFixtures > 0 ? <>{takeoffFixtures} fixture{takeoffFixtures === 1 ? '' : 's'} on the takeoff · </> : null}{specified.length === 0 ? 'no schedule yet' : `${specified.length} tag${specified.length === 1 ? '' : 's'} on the schedule`}{picks.length > 0 ? <> · {picks.length} picked line{picks.length === 1 ? '' : 's'}</> : null}
-            {takeoffFixtures > 0 && specified.length === 0 && picks.length === 0 ? (
+          {/* One line (2026-10-05): which revision, and what the submittal is. Where the rows come from is step 1's to say; how many rows and sheets is step 3's. */}
+          <p style={{ margin: '0.2rem 0 0', ...smallMuted }} data-tour="submittals-source" data-testid="revision-line">
+            {selectedRev ? (
               <>
-                {' · '}
-                <button type="button" onClick={openTakeoffPicker} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer' }}>
-                  choose from the takeoff
-                </button>
+                <b style={{ color: 'var(--text-strong)' }}>{describeRevisionChip(selectedRev, revisionAnsweredAt(items, parts))}</b> · {selectedRev.title?.trim() || 'Plumbing fixtures & equipment'}
+                {previousRev && isNewest && isDraft ? ` · started from Rev ${previousRev.rev_number}` : ''}
+                {selectedRev.package_path ? <span style={{ color: 'var(--text-green-700)', fontWeight: 600 }}> · package built</span> : null}
+                {!isNewest ? <span style={{ color: 'var(--text-amber-700)', fontWeight: 600 }}> · an older revision, the record; the newest is where the work is</span> : null}
               </>
-            ) : onOpenPricing ? (
-              <>
-                {' · '}
-                <button type="button" onClick={() => (specified.length === 0 ? setPlugInOpen(true) : onOpenPricing(bid))} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer' }}>
-                  {specified.length === 0 ? 'type or paste the fixture schedule' : 'the picks on Pricing'}
-                </button>
-              </>
-            ) : null}
+            ) : (
+              'Submittals · plumbing fixtures & equipment · no submittal on this bid yet'
+            )}
           </p>
-          {selectedRev ? (
-            <p style={{ margin: '0.2rem 0 0', ...smallMuted }} data-testid="revision-line">
-              Working on <b style={{ color: 'var(--text-strong)' }}>{describeRevisionChip(selectedRev, revisionAnsweredAt(items, parts))}</b> · {describeRevision(tiles)}
-              {previousRev && isNewest && isDraft ? ` · started from Rev ${previousRev.rev_number}` : ''}
-              {selectedRev.package_path ? <span style={{ color: 'var(--text-green-700)', fontWeight: 600 }}> · package built</span> : null}
-              {!isNewest ? <span style={{ color: 'var(--text-amber-700)', fontWeight: 600 }}> · an older revision, the record; the newest is where the work is</span> : null}
-            </p>
-          ) : null}
         </div>
         {!narrowViewport640 ? (
           <button type="button" onClick={onClose} title="Close" aria-label="Close" style={bidDetailCloseXStyle}>
@@ -2138,7 +2115,8 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
         <div className="submittal-road" data-testid="submittal-road" style={{ display: 'grid', gridTemplateColumns: '34px 1fr', columnGap: '0.6rem' }}>
           {/* 1 · Sources (Where the rows come from) — the source line is in the header; the robot's offer lives here while there is no schedule. */}
           <RoadSection n={1} about={SUBMITTAL_STAGE_ABOUT[1]} onHelp={() => startWalkThrough(1)} title="Where the rows come from" status={stageStatus('picks')} open={sectionOpen('picks')} onToggle={() => toggleSection('picks')} onJump={() => jumpToSection('picks')} anchor="submittals-schedule"
-            summary={<>{takeoffFixtures > 0 ? <>{takeoffFixtures} on the takeoff · </> : null}{specified.length === 0 ? 'no schedule yet' : `${specified.length} tag${specified.length === 1 ? '' : 's'}`}{picks.length > 0 ? <> · {picks.length} picked line{picks.length === 1 ? '' : 's'}</> : null}{takeoffFixtures > 0 && specified.length === 0 && picks.length === 0 ? <> · <button type="button" onClick={openTakeoffPicker} style={{ ...btnQuiet, textDecoration: 'underline', fontSize: 'inherit' }}>choose from the takeoff</button></> : onOpenPricing ? <> · <button type="button" onClick={() => (specified.length === 0 ? setPlugInOpen(true) : onOpenPricing(bid))} style={{ ...btnQuiet, textDecoration: 'underline', fontSize: 'inherit' }}>{specified.length === 0 ? 'type or paste the fixture schedule' : 'the picks on Pricing'}</button></> : null}</>}>
+            summaryWhenOpen={false}
+            summary={<>{takeoffFixtures > 0 ? <>{takeoffFixtures} on the takeoff · </> : null}{specified.length === 0 ? 'no schedule yet' : `${specified.length} tag${specified.length === 1 ? '' : 's'}`}{picks.length > 0 ? <> · {picks.length} picked line{picks.length === 1 ? '' : 's'}</> : null}</>}>
             <SubmittalSourcesPanel
               takeoffFixtures={takeoffFixtures}
               takeoffWithProduct={takeoff?.withProduct ?? 0}
@@ -2241,6 +2219,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
             <>
               {/* 3 · Reasons & cut sheets — the rows are the work */}
               <RoadSection n={3} about={SUBMITTAL_STAGE_ABOUT[3]} onHelp={() => startWalkThrough(3)} title="Reasons & cut sheets" status={stageStatus('rows')} open={sectionOpen('rows')} onToggle={() => toggleSection('rows')} onJump={() => jumpToSection('rows')} anchor="submittals-rows-section"
+                summaryWhenOpen={false}
                 summary={<span data-testid="submittal-tiles" data-tour="submittals-tiles" title={describeRevision(tiles)}>{describeWhatIsLeft(tiles)}</span>}>
                 <SubmittalRowsTable
                   items={items}
@@ -2394,6 +2373,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
 
               {/* 5 · Share — the room link and the people on it */}
               <RoadSection n={5} about={SUBMITTAL_STAGE_ABOUT[5]} onHelp={() => startWalkThrough(5)} title="Share" status={stageStatus('share')} open={sectionOpen('share')} onToggle={() => toggleSection('share')} onJump={() => jumpToSection('share')} anchor="submittals-share-section"
+                summaryWhenOpen={!room}
                 summary={room ? describeRoomLine(room, events.filter((e) => e.event_type === 'view').length, ROOM_TZ, decisions.entered) : items.length > 0 ? 'not shared yet' : 'appears once Rev 1 has rows'}>
                 {(items.length > 0 && isNewest) || room ? (
                   <SubmittalRoomPanel
@@ -2417,6 +2397,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
 
               {/* 6 · Their call — decisions, the reviewer's own files, the thread */}
               <RoadSection n={6} about={SUBMITTAL_STAGE_ABOUT[6]} onHelp={() => startWalkThrough(6)} title={<>Their call{decisions.decided > 0 || reviewerFiles.length > 0 ? <span style={{ ...smallMuted, fontWeight: 400 }}> on Rev {selectedRev.rev_number}</span> : null}</>} status={stageStatus('review')} open={sectionOpen('review')} onToggle={() => toggleSection('review')} onJump={() => jumpToSection('review')} anchor="submittals-review"
+                summaryWhenOpen={decisions.decided === 0}
                 summary={decisions.decided > 0 ? `${describeDecisions(decisions)}${decisions.open > 0 ? ` · ${decisions.open} still open` : ''}` : room ? (room.status === 'closed' ? 'link closed' : 'no answers yet') : 'appears after you share'}>
                 {decisions.decided > 0 || (isNewest && approvableRows.length > 0) || asRevisionStatus(selectedRev.status) !== 'draft' || reviewerFiles.length > 0 || room ? (
                   <SubmittalTheirCallPanel
@@ -2451,6 +2432,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
 
               {/* 7 · Resubmit */}
               <RoadSection n={7} about={stageAbout(7, { number: selectedRev.rev_number, isNewest })} onHelp={() => startWalkThrough(7)} title="Resubmit" status={stageStatus('resubmit')} open={sectionOpen('resubmit')} onToggle={() => toggleSection('resubmit')} onJump={() => jumpToSection('resubmit')} anchor="submittals-resubmit-section"
+                summaryWhenOpen={!(isNewest && decisions.sentBack > 0)}
                 summary={isNewest && decisions.sentBack > 0 ? (decisions.noAnswer > 0 ? `${decisions.sentBack} row${decisions.sentBack === 1 ? '' : 's'} sent back · ${decisions.noAnswer} with no answer go on Rev ${selectedRev.rev_number + 1} too` : `${decisions.sentBack} row${decisions.sentBack === 1 ? '' : 's'} sent back — start Rev ${selectedRev.rev_number + 1} with just ${decisions.sentBack === 1 ? 'that row' : 'those rows'}`) : previousRev ? `Rev ${selectedRev.rev_number} carries what Rev ${previousRev.rev_number} sent back` : 'nothing sent back'}>
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
                   {isNewest && decisions.sentBack > 0 ? (
@@ -2469,6 +2451,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
 
               {/* 8 · Procure — a side track, always open (v2.4201) and drawn with or without a revision: long-lead items go in before a row is approved; never the Next stage until every row is approved */}
             <RoadSection n={8} about={SUBMITTAL_STAGE_ABOUT[8]} onHelp={() => startWalkThrough(8)} title="Procure" status={stageStatus('procure')} open={sectionOpen('procure')} onToggle={() => toggleSection('procure')} onJump={() => jumpToSection('procure')} anchor="submittals-procure-section" last always
+              summaryWhenOpen={!procCounts}
               summary={procCounts ? `${procCounts.released} released · ${procCounts.ordered} ordered · ${procCounts.delivered} delivered${procCounts.late > 0 ? ` · ${procCounts.late} behind schedule` : ''}` : isNewest || !selectedRev ? 'fills in as the GC approves rows · long-lead items can go in now' : 'on the newest version'}>
               {isNewest && selectedRev && approvableRows.length > 0 ? (
                 <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'baseline', margin: '0 0 0.5rem' }} data-testid="procure-approve-all">

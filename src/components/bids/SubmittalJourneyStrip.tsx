@@ -55,19 +55,8 @@ export function SubmittalJourneyStrip({
   const lead = next.kind === 'next' ? 'Next: ' : next.kind === 'waiting' ? 'Waiting: ' : 'Done: '
   return (
     <div data-tour="submittals-journey" data-testid="submittal-journey" style={{ border: '1px solid var(--border)', borderRadius: 10, background: 'var(--surface)', padding: '0.6rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
-        <span aria-hidden />
-        <span style={{ display: 'inline-flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-          {onSeeGc ? (
-            <button type="button" onClick={onSeeGc} aria-haspopup="dialog" style={btn} title="The GC's page for the rows as they stand, in a window" data-testid="see-gc">
-              See what the GC sees
-            </button>
-          ) : null}
-          <button type="button" onClick={onWalkThrough} style={btn} title="A one-minute walkthrough of every stage, from the schedule to the GC's approval">
-            Walk me through it ▶
-          </button>
-        </span>
-      </div>
+      {/* One row: the stages, and the GC's page beside them. The walkthrough's own button lives in the title's Help menu (2026-10-05). */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '0.5rem 0.75rem', flexWrap: 'wrap' }}>
       <div role="list" aria-label="Submittal stages" style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
         {groupJourneyStages(stages).map((g, gi, groups) => (
           <div key={g.label} role="group" aria-label={g.label} data-testid="journey-group" data-status={g.status} style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
@@ -90,6 +79,12 @@ export function SubmittalJourneyStrip({
             </span>
           </div>
         ))}
+      </div>
+        {onSeeGc ? (
+          <button type="button" onClick={onSeeGc} aria-haspopup="dialog" style={btn} title="The GC's page for the rows as they stand, in a window" data-testid="see-gc">
+            See what the GC sees
+          </button>
+        ) : null}
       </div>
       <div data-testid="journey-next" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', fontSize: '0.8125rem', color: 'var(--text-base)' }}>
         <span>

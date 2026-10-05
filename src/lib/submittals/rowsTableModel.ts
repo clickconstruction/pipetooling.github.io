@@ -5,15 +5,16 @@
  *   Submitted · Status); a bid built from the takeoff has nothing to compare, so the table is
  *   Fixture · Product and parts. The shape changes only when the bid gains a schedule — never
  *   because one cell was typed — so the table does not jump.
- * - **The counts as filters**: the rows that still need a cut sheet, have no product, were sent
- *   back or have no answer yet.
+ * - **The counts as filters**: the rows that still need a reason or a cut sheet, have no product,
+ *   were sent back or have no answer yet.
  * - **Each part's answer beside the part**, or the row's own answer, or "no answer yet" once.
  * - **What is the same on every row is said once**: the one house every part comes from.
  */
 import type { SubmittalPartRow } from './itemParts'
 import { partHouseIds, submittedParts } from './itemParts'
 import { DECISION_LABELS } from './reviewDecisions'
-import { asDecision, asStatus, needsSheet, type ReviewDecision, type SubmittalItemRow } from './submittalRevision'
+import { needsReason } from './productStatus'
+import { asDecision, asReason, asStatus, needsSheet, type ReviewDecision, type SubmittalItemRow } from './submittalRevision'
 
 export type RowsTableShape = 'takeoff' | 'schedule'
 
@@ -22,15 +23,18 @@ export function rowsTableShape(gcItems: ReadonlyArray<Pick<SubmittalItemRow, 'sp
   return scheduleTags > 0 || gcItems.some((it) => (it.specified_manufacturer ?? '').trim() !== '' || (it.specified_model ?? '').trim() !== '') ? 'schedule' : 'takeoff'
 }
 
-export type RowFilterKey = 'all' | 'sheet' | 'product' | 'sentBack' | 'noAnswer'
+export type RowFilterKey = 'all' | 'reason' | 'sheet' | 'product' | 'sentBack' | 'noAnswer'
 export type RowFilterChip = { key: RowFilterKey; label: string; count: number }
-type FilterRow = Pick<SubmittalItemRow, 'status' | 'sheet_pages' | 'review_decision'>
+type FilterRow = Pick<SubmittalItemRow, 'status' | 'sheet_pages' | 'review_decision'> & { reason_kind?: string | null }
 
-const FILTER_LABELS: Record<RowFilterKey, string> = { all: 'All', sheet: 'Need a cut sheet', product: 'No product', sentBack: 'Sent back', noAnswer: 'No answer yet' }
+const FILTER_LABELS: Record<RowFilterKey, string> = { all: 'All', reason: 'Need a reason', sheet: 'Need a cut sheet', product: 'No product', sentBack: 'Sent back', noAnswer: 'No answer yet' }
 
 export function rowMatchesFilter(key: RowFilterKey, it: FilterRow): boolean {
   const d = asDecision(it.review_decision)
   switch (key) {
+    case 'reason':
+      // An alternate or a design change with no reason picked: what holds the package.
+      return needsReason(asStatus(it.status)) && asReason(it.reason_kind) == null
     case 'sheet':
       return needsSheet(it)
     case 'product':
@@ -52,7 +56,7 @@ export function rowMatchesFilter(key: RowFilterKey, it: FilterRow): boolean {
 export function rowFilterChips(gcItems: ReadonlyArray<FilterRow>): RowFilterChip[] {
   const count = (k: RowFilterKey) => gcItems.filter((it) => rowMatchesFilter(k, it)).length
   const anyAnswer = gcItems.some((it) => asDecision(it.review_decision) != null)
-  const chips = (['sheet', 'product', 'sentBack', 'noAnswer'] as const)
+  const chips = (['reason', 'sheet', 'product', 'sentBack', 'noAnswer'] as const)
     .filter((k) => k !== 'noAnswer' || anyAnswer)
     .map((k) => ({ key: k, label: FILTER_LABELS[k], count: count(k) }))
     .filter((c) => c.count > 0)

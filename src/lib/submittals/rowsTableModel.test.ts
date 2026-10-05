@@ -32,6 +32,12 @@ describe('rowFilterChips', () => {
     expect(rowFilterChips([row(), row({ sheet_pages: [1] })]).map((c) => c.label)).toEqual(['All', 'Need a cut sheet'])
   })
 
+  it('an alternate or a design change with no reason leads the chips: it is what holds the package', () => {
+    const rows2 = [{ ...row({ status: 'alternate', sheet_pages: [1] }), reason_kind: null }, { ...row({ status: 'alternate', sheet_pages: [2] }), reason_kind: 'lead_time' }, { ...row({ status: 'design_change' }), reason_kind: null }]
+    expect(rowFilterChips(rows2).map((c) => `${c.label} ${c.count}`)).toEqual(['All 3', 'Need a reason 2', 'Need a cut sheet 1'])
+    expect(rows2.map((r) => rowMatchesFilter('reason', r))).toEqual([true, false, true])
+  })
+
   it('nothing to narrow to, no chips', () => {
     expect(rowFilterChips([row({ sheet_pages: [1] }), row({ sheet_pages: [2] })])).toEqual([])
     expect(rowFilterChips([])).toEqual([])

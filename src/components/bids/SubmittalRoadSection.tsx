@@ -8,8 +8,12 @@ export type RoadStatus = 'done' | 'current' | 'waiting' | 'later'
  * summary, and the body. A done stage folds to its summary line (click the title to
  * open it); the current stage is ringed; a later stage is dashed so a first-timer sees
  * the whole road. `anchor` is the `data-tour` the strip's pills and the walkthrough jump to.
+ *
+ * Each fact has one home (2026-10-05): a folded stage is its title and summary and nothing else;
+ * an open stage adds its explanation and its own ?, and drops the summary when its contents
+ * already say it (`summaryWhenOpen={false}`).
  */
-export function RoadSection({ n, title, status, open, onToggle, onJump, anchor, summary, about, onHelp, last = false, always = false, children }: { n: number; title: ReactNode; status: RoadStatus; open: boolean; /** The caret: fold or unfold in place. */ onToggle: () => void; /** v2.4207 · the title: open the step and ring its controls, scrolling only when they would be off screen. */ onJump: () => void; anchor: string; summary?: ReactNode; about?: string; onHelp?: () => void; last?: boolean; /** v2.4201 · never out of reach (Procure): reads strong and draws a solid box even while the journey calls it later. */ always?: boolean; children?: ReactNode }) {
+export function RoadSection({ n, title, status, open, onToggle, onJump, anchor, summary, summaryWhenOpen = true, about, onHelp, last = false, always = false, children }: { /** False when the open step's own contents say what the summary says: the summary then shows only while the step is folded. */ summaryWhenOpen?: boolean; n: number; title: ReactNode; status: RoadStatus; open: boolean; /** The caret: fold or unfold in place. */ onToggle: () => void; /** v2.4207 · the title: open the step and ring its controls, scrolling only when they would be off screen. */ onJump: () => void; anchor: string; summary?: ReactNode; about?: string; onHelp?: () => void; last?: boolean; /** v2.4201 · never out of reach (Procure): reads strong and draws a solid box even while the journey calls it later. */ always?: boolean; children?: ReactNode }) {
   const dot: CSSProperties = {
     width: 30, height: 30, borderRadius: '50%', display: 'grid', placeItems: 'center', fontWeight: 700, fontSize: '0.8125rem', flexShrink: 0,
     border: `2px solid ${status === 'done' ? '#16a34a' : status === 'current' ? '#2563eb' : status === 'waiting' ? '#d97706' : 'var(--border-strong)'}`,
@@ -32,9 +36,10 @@ export function RoadSection({ n, title, status, open, onToggle, onJump, anchor, 
               {open ? '▴' : '▾'}
             </button>
           </span>
-          {summary ? <span style={{ fontSize: '0.8125rem', color: status === 'done' ? 'var(--text-green-700)' : status === 'waiting' ? 'var(--text-amber-700)' : 'var(--text-muted)', minWidth: 0 }}>{summary}</span> : null}
+          {summary && (!open || summaryWhenOpen) ? <span style={{ fontSize: '0.8125rem', color: status === 'done' ? 'var(--text-green-700)' : status === 'waiting' ? 'var(--text-amber-700)' : 'var(--text-muted)', minWidth: 0 }}>{summary}</span> : null}
         </div>
-        {about ? (
+        {/* A folded step is one line: its explanation, and the ? that starts the walkthrough there, show once it is open. */}
+        {about && open ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.1rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }} data-testid={`road-${n}-about`}>
             <span>{about}</span>
             {onHelp ? (

@@ -18,7 +18,7 @@ export const SUBMITTAL_GUIDE_HREF = '/help?g=build-a-submittal-package'
 /**
  * The words this page uses (2026-10-04, the owner: "a terminology page at the start … where we
  * explain what cut sheets and other representative words are"). The walkthrough opens on it, and
- * *Words on this page* beside the title's ? opens it alone. Each meaning is one or two plain
+ * *Words on this page* in the title's Help menu opens it alone. Each meaning is one or two plain
  * sentences; the stops after it still explain a trade word the first time they use it.
  */
 export const SUBMITTAL_WORDS: ReadonlyArray<{ word: string; means: string }> = [

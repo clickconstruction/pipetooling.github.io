@@ -28,7 +28,9 @@ describe('SubmittalJourneyStrip', () => {
     expect(onGoToStage).toHaveBeenCalledWith(expect.objectContaining({ key: 'share', anchor: 'submittals-share' }))
 
     expect(screen.getByTestId('journey-offer').textContent).toMatch(/New here\?/)
-    fireEvent.click(screen.getAllByRole('button', { name: 'Walk me through it ▶' })[1] as HTMLElement)
+    // The offer carries the only walkthrough button on the strip; the title's Help menu holds the other.
+    expect(screen.getAllByRole('button', { name: 'Walk me through it ▶' })).toHaveLength(1)
+    fireEvent.click(screen.getByRole('button', { name: 'Walk me through it ▶' }))
     expect(onWalkThrough).toHaveBeenCalledTimes(1)
     fireEvent.click(screen.getByRole('button', { name: 'Not now' }))
     expect(onDismissOffer).toHaveBeenCalledTimes(1)
