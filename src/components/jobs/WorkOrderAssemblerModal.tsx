@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { fileSentCopy } from '../../lib/sent/sentCopiesIo'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { formatErrorMessage } from '../../utils/errorHandling'
@@ -544,12 +545,15 @@ export function WorkOrderAssemblerModal({
 
   function print() {
     if (!previewDoc) return
+    const html = renderWorkOrderDocumentHtml(previewDoc)
     const w = window.open('', '_blank')
     if (!w) return
-    w.document.write(renderWorkOrderDocumentHtml(previewDoc))
+    w.document.write(html)
     w.document.close()
     w.focus()
     setTimeout(() => w.print(), 300)
+    // A print counts as a send (docs/SENT_COPIES.md): the work order is filed on the job and under the sub.
+    void fileSentCopy({ kind: 'work_order', title: `Work order${person?.name ? ` · ${person.name}` : ''}`, how: 'print', recipientName: person?.name ?? '', jobIds: [job?.id], personId: person?.id ?? null }, { html })
   }
 
   if (!open) return null

@@ -41,10 +41,17 @@ These keep a copy today.
 - The owner's records packet on the Lien desk, when printed and when recorded as sent. See [give an owner our records](/help/give-an-owner-our-records-for-their-property).
 - A printed lien paper. That is a notice packet, a notice, an affidavit, a release of record or a release of lien.
 - The grid and the legal packet printed for your attorney.
+- A printed contract, work order, sub sheet or purchase order.
+- A printed bid cover letter, schedule of values or procurement update.
+- A printed GC statement, checks applied sheet or pay code sheet.
 
-More printed papers join this list in later updates. The other sections of the tab still list each bill, contract and lien paper.
+The other sections of the tab still list each bill, contract and lien paper.
 
-Some emails cover no single job. A statement to a GC and a price request to a supply house are two. They are kept, and a place to browse them is coming to the Documents page.
+Some papers cover no single job. A statement to a GC and a price request to a supply house are two. They are kept, and a place to browse them is coming to the Documents page.
+
+## What is not kept
+
+Our own working sheets and reports are not sends, so they are not kept here. Pay stubs stay with payroll.
 
 ## Who can see the copies
 
