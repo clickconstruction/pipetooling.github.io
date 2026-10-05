@@ -489,6 +489,8 @@ function buildingHealth(state: GcState, project: GcProject): StageHealth {
 /**
  * The day we want every quote in: the day questions close, three days before our bid is due, so
  * there are days left to level the quotes and price our bid. Null: no bid date, or not bidding.
+ * The trades' portal gives it as their due day (the Portal lane's `portalQuoteDue`): if this ever
+ * stops being the questions-close day, say which one the trades' due day follows.
  */
 export function quotesWantedOn(project: GcProject): string | null {
   return questionsCloseOn(project)
