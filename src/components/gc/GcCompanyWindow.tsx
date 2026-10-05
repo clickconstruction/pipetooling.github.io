@@ -15,7 +15,9 @@ import {
   partnerScheduleRecord,
   partnerScheduleWords,
   partnerWork,
+  partnerReach,
   paperStep,
+  telHref,
   shortDate,
   tradePortalStatus,
   tradePromiseRecord,
@@ -66,6 +68,7 @@ export function GcCompanyWindow({
   const docs = partnerDocuments(state, partner)
   const events = partnerActivity(state, partner)
   const portal = tradePortalStatus(state, partner)
+  const reach = partnerReach(partner)
   // The portal draws from a project they are asked on; its home shows every job they have with us.
   const portalProject = state.projects.find((p) => p.packages.some((k) => k.invites.some((i) => i.partnerId === partner.id))) ?? null
   const firstDoc = docs.groups[0]?.docs[0]?.key ?? null
@@ -143,8 +146,17 @@ export function GcCompanyWindow({
               ×
             </button>
           </div>
-          <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-            {[partner.contact || 'no contact yet', coverage, partner.lang === 'es' ? 'reads Spanish' : null].filter(Boolean).join(' · ')}
+          <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', display: 'flex', gap: '0.15rem 0.5rem', flexWrap: 'wrap', alignItems: 'baseline' }}>
+            <span>{partner.contact || 'no contact yet'}</span>
+            {/* One press to call or write (the Building lane's reach; made-up until the record has them). */}
+            <span>
+              · <a href={telHref(reach.phone)} style={reachLink} title={reach.madeUp ? 'A made-up number until their record has one' : `Call ${reach.first}`}>{reach.phone}</a>
+            </span>
+            <span>
+              · <a href={`mailto:${reach.email}`} style={reachLink} title={reach.madeUp ? 'A made-up address until their record has one' : `Email ${reach.first}`}>{reach.email}</a>
+            </span>
+            <span>· {coverage}</span>
+            {partner.lang === 'es' && <span>· reads Spanish</span>}
           </div>
         </div>
         <CompanyTabStrip tab={tab} onTab={setTab} activity={events.length} toGet={docs.toGet} portal={portal} />
@@ -304,6 +316,8 @@ function About({
     </div>
   )
 }
+
+const reachLink = { color: 'var(--text-link)', textDecoration: 'none' } as const
 
 const link = { background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--text-link)', cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 2 } as const
 
