@@ -256,6 +256,8 @@ export default function BankPaymentsModal({
   /** One fetch at a time; a list refresh bumps the sequence so a stale result is dropped, never cancelled mid-flight. */
   const hiddenInFlightRef = useRef(false)
   const hiddenFetchSeqRef = useRef(0)
+  /** Bumped when a list refresh outdated a fetch mid-flight, so the search asks again (v2.4576). */
+  const [hiddenRefetch, setHiddenRefetch] = useState(0)
   /** v2.4277: the trail under each row, keyed by deposit; cleared on every list refresh (rows may have moved). */
   const [trailsById, setTrailsById] = useState<Map<string, ArDepositTrail | null>>(() => new Map())
   const trailsUnavailableRef = useRef(false)
@@ -897,9 +899,10 @@ export default function BankPaymentsModal({
       } finally {
         hiddenInFlightRef.current = false
         setHiddenLoading(false)
+        if (seq !== hiddenFetchSeqRef.current) setHiddenRefetch((n) => n + 1)
       }
     })()
-  }, [wantHiddenCandidates, hiddenCandidates, sortingConfig])
+  }, [wantHiddenCandidates, hiddenCandidates, sortingConfig, hiddenRefetch])
 
   /**
    * v2.4277: the trail under every row — where the deposit went, who, when. One read
@@ -1020,7 +1023,7 @@ export default function BankPaymentsModal({
                 )
           queueMicrotask(() => {
             setSelectedId((sel) =>
-              next.some((r) => r.mercury_transaction_id === sel)
+              next.some((r) => r.mercury_transaction_id === sel) || (sel != null && caseIdsRef.current.has(sel))
                 ? sel
                 : next[0]?.mercury_transaction_id ?? null,
             )
@@ -1159,14 +1162,22 @@ export default function BankPaymentsModal({
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault()
-        onClose()
-      }
+      if (e.key !== 'Escape') return
+      // One layer at a time (v2.4576): Esc closes what is open over the window before the window.
+      if (sortingConfigModalOpen) return
+      e.preventDefault()
+      if (theySaidJob) setTheySaidJob(null)
+      else if (sweepOpen) {
+        if (!sweepApplying) {
+          setSweepOpen(false)
+          setSweepResults(null)
+        }
+      } else if (markAsk) setMarkAsk(null)
+      else onClose()
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [open, onClose])
+  }, [open, onClose, sortingConfigModalOpen, theySaidJob, sweepOpen, sweepApplying, markAsk])
 
   useEffect(() => {
     if (!open) setBankTxSearchQuery('')
