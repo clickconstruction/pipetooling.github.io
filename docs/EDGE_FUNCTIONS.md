@@ -3237,6 +3237,8 @@ Body: `{ report_id, to: string[], cc?: string[], subject, email_text, email_html
 
 ### send-lien-release-email
 
+> **v2.4558 — the release is kept as it went**: after the sent stamp the function files the email and the signed release PDF through [`fileSentEmailBestEffort`](../supabase/functions/_shared/fileSentCopy.ts) — one `sent_documents` row, `kind` `lien_release`, keyed to the job, the customer it went to (the GC when the address is the GC's billing email) and the release (`source_table` `job_lien_releases`). The account card's code is drawn into the kept page. Best effort. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
+
 > **v2.4132 — sends as the company**: the From is [`COMPANY_EMAIL_FROM`](../supabase/functions/_shared/emailFrom.ts) — *Click Plumbing and Electrical* on `EMAIL_FROM`'s verified address (punch list #53, PR 2); `email_send_log.from_email` records it.
 
 **Purpose** (v2.2621, the lien-signing loop's send leg): email a **signed** lien release to the job's customer with the PDF attached, then stamp the release row **sent** (`sent_to_customer_at`, `sent_channel: 'email'`, `sent_by`). The PDF arrives from the client — the stored `signed.pdf` bytes from the `lien-release-documents` bucket when present, else a regeneration from the row snapshot with the typed signature. Client helper: [`sendLienReleaseEmail.ts`](../src/lib/sendLienReleaseEmail.ts); the send surface is the "Signed — ready to send" inbox lane ([`LienSignatureInboxSection`](../src/components/jobs/LienSignatureInboxSection.tsx)).
@@ -3248,6 +3250,8 @@ Body: `{ release_id, job_id, customer_email, subject?, email_text?, email_html?,
 **v2.4304 — the account card**: when the recipient has a portal, the email ends with the bill emails' **Your account, any time** card — the QR code (inline `cid:portal-qr` attachment) beside the short address, *Every lien waiver and bill for your jobs, with no login.* — and the text body gains the address. The recipient's customer row is the GC when `customer_email` is the GC's billing email, else the job's customer (`waiverEmailRecipientCustomerId` in [`_shared/lienWaiverEmailCard.ts`](../supabase/functions/_shared/lienWaiverEmailCard.ts)); the address is read with the service role (`ensurePortalShortAddress` + `loadPortalReturnUrl`, as `send-stripe-invoice`), never from the body. Any failure sends the waiver without the card. New secret read: `SUPABASE_SERVICE_ROLE_KEY` (`APP_ORIGIN` optional).
 
 ### send-lien-filing-email
+
+> **v2.4558 — the notice is kept as it went**: after a successful send the function files the email and its PDF — `kind` `lien_notice`, or `demand_letter` for `email_type: 'demand_letter'` — keyed to the job, with `recipient_label` as the name it went to. Best effort. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
 
 > **v2.4132 — sends as the company**: the From is [`COMPANY_EMAIL_FROM`](../supabase/functions/_shared/emailFrom.ts) — *Click Plumbing and Electrical* on `EMAIL_FROM`'s verified address (punch list #53, PR 2); `email_send_log.from_email` records it.
 
@@ -3536,6 +3540,8 @@ interface SendPhysicalInvoiceEmailBody {
 ---
 
 ### send-hazmat-notice-email
+
+> **v2.4558 — the notice is kept as it went**: after a successful send the function files the email and the notice PDF — `kind` `hazmat_notice`, keyed to the job, its customer and the incident (`source_table` `job_hazmat_incidents`). Best effort; it runs before the incident stamp and cannot fail it. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
 
 > **v2.4132 — sends as the company**: the From is [`COMPANY_EMAIL_FROM`](../supabase/functions/_shared/emailFrom.ts) — *Click Plumbing and Electrical* on `EMAIL_FROM`'s verified address (punch list #53, PR 2); `email_send_log.from_email` records it.
 
