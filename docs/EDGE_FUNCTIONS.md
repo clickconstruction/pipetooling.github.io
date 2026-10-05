@@ -5,7 +5,7 @@ file: EDGE_FUNCTIONS.md
 type: API Reference
 purpose: Complete API documentation for all 85 Supabase Edge Functions
 audience: Developers, DevOps, AI Agents
-last_updated: 2026-09-30
+last_updated: 2026-10-05
 estimated_read_time: 20-25 minutes
 difficulty: Intermediate
 
@@ -2331,7 +2331,7 @@ const response = await supabase.functions.invoke('send-checklist-notification', 
 // or { error: string } with 400/401/403/404/500
 ```
 
-**Used by**: report save flows ([`NewReportModal.tsx`](../src/components/NewReportModal.tsx), [`AdditionalReportModal.tsx`](../src/components/AdditionalReportModal.tsx), `submitStatusReportFromStepper.ts`) for `auto`; [`ReportEmailRecipientsPanel.tsx`](../src/components/dashboard/ReportEmailRecipientsPanel.tsx) "Send now" for `manual` (mounted from the Dashboard's Recent Reports card and, since v2.3480, Jobs → Reports).
+**Used by**: report save flows ([`NewReportModal.tsx`](../src/components/NewReportModal.tsx), [`AdditionalReportModal.tsx`](../src/components/AdditionalReportModal.tsx), `submitStatusReportFromStepper.ts`) for `auto`; [`EmailReportPersonEditor.tsx`](../src/components/jobs/emailReports/EmailReportPersonEditor.tsx) for `manual` (one person's editor inside [`EmailReportsModal.tsx`](../src/components/jobs/EmailReportsModal.tsx), opened from Jobs → Reports and the Dashboard's Recent Reports card).
 
 **Deploy**: `supabase functions deploy send-report-email` (manual, per repo convention).
 

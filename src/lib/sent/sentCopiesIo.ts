@@ -76,6 +76,24 @@ export function printAndFile(html: string, filing: Omit<SentFiling, 'how'>): boo
   return true
 }
 
+/**
+ * `printAndFile` for a page that needs a moment to build (a signed waiver reads its stored ink
+ * first): the window opens inside the click, prints when the page is ready, and the page that
+ * printed is filed. False when the popup was blocked or the page could not be built.
+ */
+export async function printWhenReadyAndFile(build: () => Promise<string>, filing: Omit<SentFiling, 'how'>): Promise<boolean> {
+  let printed: string | null = null
+  const ok = await openHtmlWindowWhenReady(
+    async () => {
+      printed = await build()
+      return printed
+    },
+    { print: true },
+  )
+  if (ok && printed != null) void fileSentCopy({ ...filing, how: 'print' }, { html: printed })
+  return ok
+}
+
 /** Everything sent about one job, newest first. A read that fails is no rows. */
 export async function loadSentCopiesForJob(jobId: string): Promise<SentCopy[]> {
   try {
