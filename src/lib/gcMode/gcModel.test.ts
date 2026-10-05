@@ -742,6 +742,13 @@ const STEPS: Step[] = [
   { label: "Turn on Dr. Raman's portal", action: { type: 'setCustomerPortal', customerId: 'raman', on: true } },
   // Send a paper from the company window (the owner, 2026-10-04): remind Bluebonnet to sign the master agreement.
   { label: 'Remind Bluebonnet to sign the master agreement', action: { type: 'sendPaper', partnerId: 'bluebonnet', paper: 'msa', by: '2026-10-09', note: '' } },
+  // Remind a customer from its window (the owner, 2026-10-04): a change order waiting on their signature.
+  {
+    label: 'Stone Oak: a change order for two counter outlets',
+    action: { type: 'draftChangeOrder', projectId: 'stoneoak', description: 'Add two outlets at the front counter', reason: 'owner', schedule: 'none', packageId: 'selec', cost: 900, price: 990 },
+  },
+  { label: 'Send Stone Oak change order 1 to Hollis', action: { type: 'sendChangeOrder', projectId: 'stoneoak', changeOrderId: 'co-1' } },
+  { label: 'Remind Hollis to sign change order 1', action: { type: 'remindCustomer', customerId: 'hollis', projectId: 'stoneoak', changeOrderId: 'co-1', by: '2026-10-09', note: '' } },
 ]
 
 const CUSTOMER_IDS = ['cibolo', 'raman']
@@ -913,7 +920,7 @@ describe('GC mode golden walk', () => {
       'saveToScopeBook', 'editScopeBookLine', 'mergeScopeBookLines', 'saveScopeSet',
       'checkPlanSetDrive',
       'tradeSendSov',
-      'setQuoteExclusion', 'setExclusionCover', 'logPartnerContact', 'setCustomerPortal', 'sendPaper',
+      'setQuoteExclusion', 'setExclusionCover', 'logPartnerContact', 'setCustomerPortal', 'sendPaper', 'remindCustomer',
     ]
     expect(all.filter((t) => !used.has(t))).toEqual([])
   })

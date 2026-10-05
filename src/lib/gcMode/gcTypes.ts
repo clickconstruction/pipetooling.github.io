@@ -379,6 +379,18 @@ export interface PartnerVetting {
 /** Promises other than a quote date (question 8). Each lane keeps its own kinds; see gcPromises.ts. */
 export type PromiseKind = 'insurance' | 'w9' | 'sow' | 'start' | 'submittals' | 'delivery' | 'payApp' | 'punch' | 'closeout' | 'msa'
 
+/** A reminder to a customer from its window (the owner, 2026-10-04): a change order waiting on their signature. */
+export interface CustomerSend {
+  id: string
+  customerId: string
+  projectId: string
+  changeOrderId: string
+  on: string
+  /** The day we asked them to sign by. */
+  by: string
+  note: string
+}
+
 /** A paper the office sends a trade from its company window (the owner, 2026-10-04): to sign, or to send us. */
 export type PaperKind = 'msa' | 'sow' | 'insurance' | 'w9' | 'waiver'
 
@@ -773,6 +785,8 @@ export interface GcState {
   tradePromises?: TradePromise[]
   /** Papers sent from a company window, oldest first (the owner, 2026-10-04). */
   paperSends?: PaperSend[]
+  /** Reminders sent to customers from their window, oldest first (the owner, 2026-10-04). */
+  customerSends?: CustomerSend[]
   /** The office's changes to the scope book. Unset: nothing changed yet. */
   scopeBook?: ScopeBookStore
 }
@@ -847,6 +861,8 @@ export type GcAction =
   | { type: 'logPartnerContact'; partnerId: string; note: string }
   /** Turn a customer's portal on (we send them the link) or off, from its window's *Their portal* tab. */
   | { type: 'setCustomerPortal'; customerId: string; on: boolean }
+  /** Remind a customer to sign a change order, from its window, by a day (the owner, 2026-10-04). */
+  | { type: 'remindCustomer'; customerId: string; projectId: string; changeOrderId: string; by: string; note: string }
   /** Send a paper from the company window: to sign, or to send us, due on a day (the owner, 2026-10-04). */
   | { type: 'sendPaper'; partnerId: string; paper: PaperKind; projectId?: string; packageId?: string; by: string; note: string }
   /** `known: false`: a company new to us, not vetted yet (question 3). Unset: one we know. */

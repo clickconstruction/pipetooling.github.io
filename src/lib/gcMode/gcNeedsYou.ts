@@ -16,7 +16,7 @@ export interface GcNeedsYou {
 }
 
 const WHY_WORDS: Record<Exclude<FollowUpWhy, 'waiting'>, (company: string) => string> = {
-  passed: (c) => `${c}'s quote day passed`,
+  passed: (c) => `${c} is late on their word`,
   today: (c) => `${c} promised a quote today`,
   silent: (c) => `${c} never opened the ask`,
   nodate: (c) => `${c} gave no day`,

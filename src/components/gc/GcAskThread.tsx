@@ -169,7 +169,8 @@ function ContactLine({ line, sayDay }: { line: AskContact; sayDay: boolean }) {
 // ---------------------------------------------------------------------------------------------
 
 const WHY_WORDS: Record<FollowUpWhy, { tone: Tone; title: string; blurb: string }> = {
-  passed: { tone: 'red', title: 'Their day passed', blurb: 'They gave a day and no quote came. Call them.' },
+  // The owner, 2026-10-04 (relayed by the Portal lane): "Late on their word", matching the portal's "late: you said Sep 30".
+  passed: { tone: 'red', title: 'Late on their word', blurb: 'They gave a day and no quote came. Call them.' },
   today: { tone: 'amber', title: 'Promised today', blurb: 'Their quote is due today. Check before you go home.' },
   silent: { tone: 'red', title: 'Never opened it', blurb: 'We asked and they have not looked. Call, or offer it to the next company.' },
   nodate: { tone: 'amber', title: 'No day given', blurb: 'They have the plans. Get a day from them.' },
