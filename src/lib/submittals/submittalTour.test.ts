@@ -76,7 +76,7 @@ describe('the stage sentences and the ? on each stage (v2.4125)', () => {
     }
     expect(stageAbout(2, { number: 4, isNewest: true })).toBe('Rev 4 is the version you are working on. Each earlier version stays as the record.')
     expect(stageAbout(2, { number: 3, isNewest: false })).toBe('Rev 3 is an earlier version. It stays as the record.')
-    expect(stageAbout(7, { number: 4, isNewest: true })).toBe('Rows the GC sent back come here. Start a Rev 5 draft with them and the rows with no answer yet. Or carry every row when a product changed.')
+    expect(stageAbout(7, { number: 4, isNewest: true })).toBe('Rows the GC sent back come here. Start a Rev 5 draft with them and the rows with no answer yet. Rows they approved can stay where they are.')
     expect(stageAbout(3, { number: 4, isNewest: true })).toBe(SUBMITTAL_STAGE_ABOUT[3])
     for (const about of [stageAbout(2, { number: 4, isNewest: true }), stageAbout(2, { number: 3, isNewest: false }), stageAbout(7, { number: 4, isNewest: true })]) {
       expect(about).not.toMatch(GLUE)
@@ -90,7 +90,7 @@ describe('the stage sentences and the ? on each stage (v2.4125)', () => {
     expect(their.body).toContain('Tap Their answer on a row and type what they said.')
     expect(their.missingBody).not.toMatch(/after you share/)
     const resubmit = SUBMITTAL_TOUR_STEPS.find((s) => s.title === 'Step 7. Resubmit')!
-    expect(resubmit.body).toContain('Rows with no answer yet go on it too.')
+    expect(resubmit.body).toContain('Rows that came back go on it, and rows with no answer too.')
     expect(`${resubmit.body} ${SUBMITTAL_STAGE_ABOUT[7]}`).not.toMatch(/only those rows/)
     expect(SUBMITTAL_STAGE_ABOUT[6]).toContain('type it in with Their answer')
   })

@@ -137,7 +137,7 @@ const rowsWord = (n: number) => `${n} row${n === 1 ? '' : 's'}`
 /**
  * The resubmit button. It says what the press does: it starts a draft. It used to read "Rev 2 from
  * the 4 rows sent back and the 10 with no answer", which named the rows and left the owner asking
- * whether it sent anything (2026-10-05). The rows are `resubmitWhat`'s to say, beside the button.
+ * whether it sent anything (2026-10-05). The rows are chosen in the question (`resubmitChooser`).
  */
 export function resubmitLabel(nextRev: number): string {
   return `Start a Rev ${nextRev} draft…`
@@ -148,26 +148,83 @@ export function resubmitNothingSent(nextRev: number): string {
   return `Nothing is sent. The GC sees Rev ${nextRev} only after you press Share.`
 }
 
-/** Beside the button: which rows go on the draft, that nothing is sent, and when the GC sees it. */
-export function resubmitWhat(nextRev: number, sentBack: number, noAnswer = 0): string {
-  const rows = noAnswer > 0 ? `The ${rowsWord(sentBack)} sent back and the ${noAnswer} with no answer go on it.` : `The ${rowsWord(sentBack)} sent back ${sentBack === 1 ? 'goes' : 'go'} on it.`
-  return `${rows} ${resubmitNothingSent(nextRev)}`
+/** Which rows the next draft starts with: the rows that still need the GC, or every row. */
+export type ResubmitRows = 'need' | 'every'
+
+export type ResubmitChooserWords = {
+  title: string
+  lead: string
+  choices: ReadonlyArray<{ key: ResubmitRows; label: string; detail: string }>
+  foot: string
+  confirmLabel: Record<ResubmitRows, string>
 }
 
 /**
- * The question before the resubmit is built: every kind of row, counted, and where it goes.
- * `total` is the rows the new draft will hold, order-only rows included.
+ * Parts the GC approved on rows that go on the next draft (a row sent back, or one with no answer).
+ * "Only the rows that need it" keeps these approvals; "Every row" asks them again.
  */
-export function resubmitConfirm(rev: number, c: { sentBack: number; noAnswer: number; approved: number; orderOnly?: number; total: number }): { title: string; message: string; confirmLabel: string } {
+export function approvedPartsGoingOn(rows: ReadonlyArray<Pick<SubmittalItemRow, 'id' | 'review_decision'>>, partsOf: ReadonlyMap<string, ReadonlyArray<{ on_submittal: boolean; review_decision: string | null }>>): number {
+  let n = 0
+  for (const r of rows) {
+    if (asDecision(r.review_decision) === 'approved') continue
+    for (const p of partsOf.get(r.id) ?? []) if (p.on_submittal && p.review_decision === 'approved') n += 1
+  }
+  return n
+}
+
+/**
+ * Is there anything to choose? With no row approved and no part approved, "Only the rows that
+ * need it" and "Every row" make the same draft (BP375 on 2026-10-05), so the question is asked once.
+ */
+export function resubmitHasChoice(c: { approved: number; approvedParts?: number }): boolean {
+  return c.approved > 0 || (c.approvedParts ?? 0) > 0
+}
+
+/** Beside the button when rows were sent back: the rows are chosen in the question, and nothing is sent. */
+export function resubmitCaption(nextRev: number): string {
+  return `You choose the rows next. ${resubmitNothingSent(nextRev)}`
+}
+
+export type ResubmitCounts = { sentBack: number; noAnswer: number; approved: number; orderOnly?: number; approvedParts?: number; needTotal: number; everyTotal: number }
+
+/** "Start the draft with 14 rows" */
+export function startDraftLabel(total: number, every = false): string {
+  return `Start the draft with ${every && total > 1 ? `all ${total} rows` : rowsWord(total)}`
+}
+
+/**
+ * The question before a draft is started on a revision with rows sent back (2026-10-05). It used
+ * to be two buttons, and the owner asked whether they did the same thing. Now one button opens
+ * this, and each choice says what happens to the approved rows. `needTotal` and `everyTotal` are
+ * the rows each draft would hold, order-only rows included.
+ */
+export function resubmitChooser(rev: number, c: ResubmitCounts): ResubmitChooserWords {
   const next = rev + 1
   const one = (n: number, single: string, many: string) => (n === 1 ? single : many)
-  const lines = [`${rowsWord(c.sentBack)} ${one(c.sentBack, 'was', 'were')} sent back. ${one(c.sentBack, 'It goes', 'They go')} on Rev ${next} so you can fix ${one(c.sentBack, 'it', 'them')}.`]
-  if (c.noAnswer > 0) lines.push(`${rowsWord(c.noAnswer)} ${one(c.noAnswer, 'has', 'have')} no answer yet. ${one(c.noAnswer, 'It goes', 'They go')} on Rev ${next} too and ${one(c.noAnswer, 'keeps', 'keep')} waiting.`)
-  lines.push(c.approved > 0 ? `${rowsWord(c.approved)} ${one(c.approved, 'was', 'were')} approved. ${one(c.approved, 'It stays', 'They stay')} on Rev ${rev} and on the procurement log.` : `No row was approved on Rev ${rev}.`)
-  if ((c.orderOnly ?? 0) > 0) lines.push(`${rowsWord(c.orderOnly ?? 0)} you buy without the GC ${one(c.orderOnly ?? 0, 'goes', 'go')} on Rev ${next} too.`)
-  // The last thing the question says: this is a draft, and nobody hears about it yet.
-  lines.push(`Rev ${next} starts as a draft. ${resubmitNothingSent(next)}`)
-  return { title: `Start a Rev ${next} draft`, message: lines.join(' '), confirmLabel: `Start the draft with ${rowsWord(c.total)}` }
+  const orderOnly = c.orderOnly ?? 0
+  const need = [c.noAnswer > 0 ? `${c.sentBack} sent back and ${c.noAnswer} with no answer.` : `The ${rowsWord(c.sentBack)} sent back.`]
+  if (orderOnly > 0) need.push(`${rowsWord(orderOnly)} you buy without the GC ${one(orderOnly, 'goes', 'go')} on it too.`)
+  need.push(c.approved > 0 ? `The ${rowsWord(c.approved)} approved ${one(c.approved, 'stays', 'stay')} on Rev ${rev} and on the procurement log.` : `No row was approved on Rev ${rev}.`)
+  const every = [c.approved > 0 ? `The ${rowsWord(c.approved)} approved ${one(c.approved, 'goes', 'go')} on Rev ${next} too.` : 'The same rows go on it.', c.approved > 0 ? 'The GC answers every row and every part again.' : 'The GC answers every part again, the approved parts too.', 'Use it when a product changed.']
+  return {
+    title: `Start a Rev ${next} draft`,
+    lead: `Which rows go on Rev ${next}?`,
+    choices: [
+      { key: 'need', label: 'Only the rows that need it', detail: need.join(' ') },
+      { key: 'every', label: 'Every row', detail: every.join(' ') },
+    ],
+    foot: `Rev ${next} starts as a draft. ${resubmitNothingSent(next)}`,
+    confirmLabel: { need: startDraftLabel(c.needTotal), every: startDraftLabel(c.everyTotal, true) },
+  }
+}
+
+/**
+ * Rows were sent back but nothing was approved, so there is one kind of draft: every row goes on
+ * it. One plain question, built from the chooser's own words.
+ */
+export function resubmitOneKind(rev: number, c: ResubmitCounts): { title: string; message: string; confirmLabel: string } {
+  const words = resubmitChooser(rev, c)
+  return { title: words.title, message: `Every row goes on Rev ${rev + 1}. ${words.choices[0]!.detail} ${words.foot}`, confirmLabel: words.confirmLabel.need }
 }
 
 export { formatShortDate }

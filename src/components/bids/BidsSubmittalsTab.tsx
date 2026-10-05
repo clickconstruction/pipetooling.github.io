@@ -70,6 +70,7 @@ import { SubmittalSheetStrip, type ThumbState } from './SubmittalSheetStrip'
 import { SubmittalAssignPagesModal } from './SubmittalAssignPagesModal'
 import type { ItemWrite } from '../../lib/submittals/assignPagesWalk'
 import { SubmittalShareModal } from './SubmittalShareModal'
+import { SubmittalResubmitChooser } from './SubmittalResubmitChooser'
 import { describeRoomLine, roomLink, type SubmittalEventRow, type SubmittalPersonRow, type SubmittalRoomRow, parseRoomMessage, threadOrder } from '../../lib/submittals/submittalRoom'
 import { replyToRoom } from '../../lib/submittals/replyToRoom'
 import type { RoomMessage } from '../../../supabase/functions/_shared/submittalRoomPayload'
@@ -79,7 +80,7 @@ import { revisionWasRead, rowsThatStand } from '../../lib/submittals/standingRow
 import { loadBidOrderFacts, loadPartOrderWords, loadRowOrderFacts, rememberLeftOutLines, writeRowOrderOnly } from '../../lib/submittals/orderOnlyIo'
 import { planRowsAdded, planSummary, standsLine, type TakeoffPlan } from '../../lib/submittals/takeoffPicks'
 import { SubmittalTakeOffDialog } from './SubmittalTakeOffDialog'
-import { decisionsAsText, describeDecisions, resubmitConfirm, resubmitLabel, resubmitNothingSent, resubmitSplit, resubmitWhat, summarizeDecisions } from '../../lib/submittals/reviewDecisions'
+import { approvedPartsGoingOn, decisionsAsText, describeDecisions, resubmitCaption, resubmitChooser, resubmitHasChoice, resubmitLabel, resubmitNothingSent, resubmitOneKind, resubmitSplit, startDraftLabel, summarizeDecisions, type ResubmitRows } from '../../lib/submittals/reviewDecisions'
 import { parseReviewerFiles, reviewerFileKind, reviewerFilePath, serializeReviewerFiles, type ReviewerFile } from '../../lib/submittals/reviewerFiles'
 import { CLEAR_DECISION_PATCH, enteredDecisionAt, enteredDecisionPatch, enteredEntryBody, rowsToApproveAll } from '../../lib/submittals/enteredDecisions'
 import { matchRoomPerson, type ReviewerChoice, type ReviewerSources } from '../../lib/submittals/reviewerPick'
@@ -299,6 +300,9 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   const [replyBody, setReplyBody] = useState('')
   const [replying, setReplying] = useState(false)
   const [sharing, setSharing] = useState(false)
+  // Step 7's question, open: the next revision as planned, and which rows the owner has ticked.
+  const [nextDraft, setNextDraft] = useState<Awaited<ReturnType<typeof planNextRevision>> | null>(null)
+  const [nextDraftRows, setNextDraftRows] = useState<ResubmitRows>('need')
 
   const bidId = selectedBid?.id ?? null
   // The won question's "not needed on this job" (4c) — local so undo reads back at once.
@@ -514,6 +518,11 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editing?.id, bidId, selectedRev?.id, selectedRev?.status])
   const decisions = useMemo(() => summarizeDecisions(gcItems, partsOf), [gcItems, partsOf])
+  /** Step 7's button has a choice to offer: rows were sent back, and a row or a part was approved. */
+  const draftHasChoice = useMemo(() => {
+    const split = resubmitSplit(gcItems)
+    return split.sentBack.length > 0 && resubmitHasChoice({ approved: split.approved.length, approvedParts: approvedPartsGoingOn(gcItems, partsOf) })
+  }, [gcItems, partsOf])
   // Rows one "they approved all of it" entry would cover: no call yet, and a product to approve.
   const approvableRows = useMemo(() => rowsToApproveAll(gcItems), [gcItems])
   // 2026-10-02 · "Rev N+1 from the rows sent back" leaves the approved rows on Rev N. They are released and
@@ -950,36 +959,64 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     await insertItemParts(db, copies)
   }
 
-  async function newRevision(onlySentBack = false) {
-    if (!bidId || !newestRev) return
-    const onNewest = newestRev.id === selectedRev?.id
-    const previous = onNewest ? items : await loadItems(newestRev.id)
+  /** What the next revision would hold, read once: the question counts from it and the build writes from it. */
+  async function planNextRevision(newest: SubmittalRevisionRow) {
+    const onNewest = newest.id === selectedRev?.id
+    const previous = onNewest ? items : await loadItems(newest.id)
     const previousParts = onNewest ? partsOf : partsByItem(await loadItemParts(db, previous.map((p) => p.id)))
     // 2026-10-03 · only an approved row stays behind. A row sent back goes on to be fixed; a row nobody answered goes on to keep waiting.
     const split = resubmitSplit(gcRows(previous))
     const goOn = [...split.sentBack, ...split.noAnswer]
     const preview = buildSubmittalRows({ specified, picks, previous: previous.map(itemToPrevious), overrides: overridesByTag })
-    // 2026-10-02 · an order-only row was never the reviewer's to send back: it carries either way, so it stays on the log.
-    const kept = onlySentBack ? preview.filter((r) => r.orderOnly || goOn.some((it) => (r.tag.trim() ? it.tag === r.tag : it.submitted_label === r.submittedLabel))) : preview
     // 2026-10-01 · the rows the picks do not rebuild (from the takeoff, typed by hand) carry as they stand.
     const carried = rowsToCarry(previous, preview)
-    const carriedKept = onlySentBack ? carried.filter((it) => isOrderOnlyRow(it) || goOn.some((x) => x.id === it.id)) : carried
-    const total = kept.length + carriedKept.length
-    const fromPicks = specified.length > 0 || picks.length > 0
-    const resubmit = resubmitConfirm(newestRev.rev_number, { sentBack: split.sentBack.length, noAnswer: split.noAnswer.length, approved: split.approved.length, orderOnly: orderOnlyRows(previous).length, total })
-    const ok = await confirm({
-      title: onlySentBack ? resubmit.title : fromPicks ? `Rev ${newestRev.rev_number + 1} from today's picks` : `Rev ${newestRev.rev_number + 1} from Rev ${newestRev.rev_number}`,
-      message: onlySentBack
-        ? resubmit.message
-        : `${preview.length > 0 ? `${summarizeChanges(preview)} against Rev ${newestRev.rev_number}. ` : ''}${carried.length > 0 ? `${carried.length} row${carried.length === 1 ? '' : 's'} from the takeoff or typed by hand carry as ${carried.length === 1 ? 'it stands' : 'they stand'}, with ${carried.length === 1 ? 'its' : 'their'} parts. ` : ''}Sheets, reasons and lead times carry where the product is unchanged.${asRevisionStatus(newestRev.status) === 'draft' ? ` Rev ${newestRev.rev_number} was never shared and will read superseded.` : ''} Rev ${newestRev.rev_number + 1} starts as a draft. ${resubmitNothingSent(newestRev.rev_number + 1)}`,
-      confirmLabel: onlySentBack ? resubmit.confirmLabel : `Build Rev ${newestRev.rev_number + 1}`,
+    // 2026-10-02 · an order-only row was never the reviewer's to send back: it carries either way, so it stays on the log.
+    const rowsFor = (rows: ResubmitRows) => ({
+      kept: rows === 'need' ? preview.filter((r) => r.orderOnly || goOn.some((it) => (r.tag.trim() ? it.tag === r.tag : it.submitted_label === r.submittedLabel))) : preview,
+      carriedKept: rows === 'need' ? carried.filter((it) => isOrderOnlyRow(it) || goOn.some((x) => x.id === it.id)) : carried,
     })
-    if (!ok) return
+    const total = (rows: ResubmitRows) => rowsFor(rows).kept.length + rowsFor(rows).carriedKept.length
+    return { newest, previous, previousParts, preview, carried, rowsFor, counts: { sentBack: split.sentBack.length, noAnswer: split.noAnswer.length, approved: split.approved.length, orderOnly: orderOnlyRows(previous).length, approvedParts: approvedPartsGoingOn(gcRows(previous), previousParts), needTotal: total('need'), everyTotal: total('every') } }
+  }
+
+  /**
+   * Step 7's one button, and the strip's (2026-10-05). With rows sent back it opens the chooser:
+   * the rows that need it, or every row. With none sent back, or nothing approved, there is one kind of draft, so it asks once.
+   */
+  async function startNextDraft() {
+    if (!bidId || !newestRev) return
+    const plan = await planNextRevision(newestRev)
+    const next = newestRev.rev_number + 1
+    if (plan.counts.sentBack > 0 && resubmitHasChoice(plan.counts)) {
+      setNextDraftRows('need')
+      setNextDraft(plan)
+      return
+    }
+    // Rows sent back, nothing approved: both kinds of draft are the same one, so there is nothing to choose.
+    if (plan.counts.sentBack > 0) {
+      if (await confirm(resubmitOneKind(newestRev.rev_number, plan.counts))) await buildNextRevision(plan, 'need')
+      return
+    }
+    const { preview, carried } = plan
+    const fromPicks = specified.length > 0 || picks.length > 0
+    const ok = await confirm({
+      title: `Start a Rev ${next} draft`,
+      message: `Every row goes on Rev ${next}${fromPicks ? ", built from today's picks" : ''}. ${preview.length > 0 ? `${summarizeChanges(preview)} against Rev ${newestRev.rev_number}. ` : ''}${carried.length > 0 ? `${carried.length} row${carried.length === 1 ? '' : 's'} from the takeoff or typed by hand carry as ${carried.length === 1 ? 'it stands' : 'they stand'}, with ${carried.length === 1 ? 'its' : 'their'} parts. ` : ''}Sheets, reasons and lead times carry where the product is unchanged.${asRevisionStatus(newestRev.status) === 'draft' ? ` Rev ${newestRev.rev_number} was never shared and will read superseded.` : ''} Rev ${next} starts as a draft. ${resubmitNothingSent(next)}`,
+      confirmLabel: startDraftLabel(plan.counts.everyTotal),
+    })
+    if (ok) await buildNextRevision(plan, 'every')
+  }
+
+  async function buildNextRevision(plan: Awaited<ReturnType<typeof planNextRevision>>, rows: ResubmitRows) {
+    if (!bidId) return
+    const { newest, previous, previousParts } = plan
+    const { kept, carriedKept } = plan.rowsFor(rows)
+    const onlySentBack = rows === 'need'
     setBusy(true)
     try {
       const { data, error } = await db
         .from('bid_submittals')
-        .insert({ bid_id: bidId, rev_number: newestRev.rev_number + 1, status: 'draft', title: newestRev.title, source_files: newestRev.source_files, created_by: user?.id ?? null })
+        .insert({ bid_id: bidId, rev_number: newest.rev_number + 1, status: 'draft', title: newest.title, source_files: newest.source_files, created_by: user?.id ?? null })
         .select('id')
         .single()
       if (error) throw error
@@ -993,11 +1030,12 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
         // A resubmit: the parts the GC approved stand; the parts sent back, and the parts with no answer, are asked again.
         await carryPartsOnto((made ?? []) as Array<{ id: string; carried_from_item_id: string | null; submitted_label: string | null }>, previous, previousParts, onlySentBack)
       }
-      if (asRevisionStatus(newestRev.status) === 'draft') {
-        const { error: supErr } = await db.from('bid_submittals').update({ status: 'superseded' }).eq('id', newestRev.id)
+      if (asRevisionStatus(newest.status) === 'draft') {
+        const { error: supErr } = await db.from('bid_submittals').update({ status: 'superseded' }).eq('id', newest.id)
         if (supErr) throw supErr
       }
       setSelectedRevId(revId)
+      setNextDraft(null)
       await load(bidId)
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Could not build the revision.', 'error')
@@ -1984,7 +2022,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     else if (action === 'build_package') void askBuildPackage()
     else if (action === 'share') setSharing(true)
     else if (action === 'copy_room_link' && room) void navigator.clipboard.writeText(roomLink(window.location.origin, room.token)).then(() => showToast('Link copied.', 'success'), () => showToast(roomLink(window.location.origin, room.token), 'info'))
-    else if (action === 'resubmit') void newRevision(true)
+    else if (action === 'resubmit') void startNextDraft()
   }
   /** A pill click: scroll to the stage's controls and ring them for a moment. */
   /**
@@ -2079,6 +2117,8 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     else toggleSection(key)
   }
   const isNewest = selectedRev != null && newestRev != null && selectedRev.id === newestRev.id
+  /** The number the next draft takes: one past the newest revision, whichever one is on screen. */
+  const nextRevNumber = (newestRev?.rev_number ?? selectedRev?.rev_number ?? 0) + 1
 
   return (
     // One column: What the GC sees opens in a window over the road (2026-10-02), not a pane beside it.
@@ -2475,18 +2515,13 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
               {/* 7 · Resubmit */}
               <RoadSection n={7} about={stageAbout(7, { number: selectedRev.rev_number, isNewest })} onHelp={() => startWalkThrough(7)} title="Resubmit" status={stageStatus('resubmit')} open={sectionOpen('resubmit')} onToggle={() => toggleSection('resubmit')} onJump={() => jumpToSection('resubmit')} anchor="submittals-resubmit-section"
                 summaryWhenOpen={!(isNewest && decisions.sentBack > 0)}
-                summary={isNewest && decisions.sentBack > 0 ? (decisions.noAnswer > 0 ? `${decisions.sentBack} row${decisions.sentBack === 1 ? '' : 's'} sent back · ${decisions.noAnswer} with no answer go on Rev ${selectedRev.rev_number + 1} too` : `${decisions.sentBack} row${decisions.sentBack === 1 ? '' : 's'} sent back — start Rev ${selectedRev.rev_number + 1} with just ${decisions.sentBack === 1 ? 'that row' : 'those rows'}`) : previousRev ? `Rev ${selectedRev.rev_number} carries what Rev ${previousRev.rev_number} sent back` : 'nothing sent back'}>
+                summary={isNewest && decisions.sentBack > 0 ? (decisions.noAnswer > 0 ? `${decisions.sentBack} row${decisions.sentBack === 1 ? '' : 's'} sent back · ${decisions.noAnswer} with no answer go on Rev ${selectedRev.rev_number + 1} too` : `${decisions.sentBack} row${decisions.sentBack === 1 ? '' : 's'} sent back · start a Rev ${selectedRev.rev_number + 1} draft`) : previousRev ? `Rev ${selectedRev.rev_number} carries what Rev ${previousRev.rev_number} sent back` : 'nothing sent back'}>
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                  {isNewest && decisions.sentBack > 0 ? (
-                    <button type="button" disabled={busy} onClick={() => void newRevision(true)} style={btnGreen} title={`A draft of Rev ${selectedRev.rev_number + 1}. ${resubmitWhat(selectedRev.rev_number + 1, decisions.sentBack, decisions.noAnswer)} Approved rows stay where they are.`} data-tour="submittals-resubmit" data-testid="resubmit-sent-back">
-                      {resubmitLabel(selectedRev.rev_number + 1)}
-                    </button>
-                  ) : null}
-                  <button type="button" disabled={busy || !isNewest || !gates.resubmit.on} onClick={() => void newRevision()} style={{ ...(decisions.sentBack > 0 || !isNewest || !gates.resubmit.on ? btn : btnGreen), opacity: !isNewest || !gates.resubmit.on ? 0.5 : 1 }} data-testid="new-revision" title={isNewest ? `Carry every row into a Rev ${selectedRev.rev_number + 1} draft and mark what changed. ${resubmitNothingSent(selectedRev.rev_number + 1)}` : 'Only the newest revision can be revised'} data-tour={isNewest && decisions.sentBack > 0 ? undefined : 'submittals-resubmit'}>
-                    New revision
+                  {/* One button (2026-10-05): with rows sent back and something approved it asks which rows go on the draft; the line beside it says nothing is sent. */}
+                  <button type="button" disabled={busy || !isNewest || !gates.resubmit.on} onClick={() => void startNextDraft()} style={{ ...(!isNewest || !gates.resubmit.on ? btn : btnGreen), opacity: !isNewest || !gates.resubmit.on ? 0.5 : 1 }} data-testid="new-revision" title={!isNewest ? 'Only the newest revision can be revised' : draftHasChoice ? `Start a draft of Rev ${nextRevNumber}. ${resubmitCaption(nextRevNumber)}` : `Carry every row into a Rev ${nextRevNumber} draft and mark what changed. ${resubmitNothingSent(nextRevNumber)}`} data-tour="submittals-resubmit">
+                    {resubmitLabel(nextRevNumber)}
                   </button>
-                  {/* What a press does, said beside the buttons (2026-10-05): a draft, which rows go on it, and that nothing is sent. */}
-                  <span style={smallMuted} data-testid="resubmit-caption">{!gates.resubmit.on ? gates.resubmit.why : isNewest && decisions.sentBack > 0 ? `${resubmitWhat(selectedRev.rev_number + 1, decisions.sentBack, decisions.noAnswer)} New revision carries every row instead.` : `New revision starts a Rev ${selectedRev.rev_number + 1} draft with every row. ${resubmitNothingSent(selectedRev.rev_number + 1)}`}</span>
+                  <span style={smallMuted} data-testid="resubmit-caption">{!isNewest ? 'Only the newest revision can be revised.' : !gates.resubmit.on ? gates.resubmit.why : draftHasChoice ? resubmitCaption(nextRevNumber) : `The draft starts with every row. ${resubmitNothingSent(nextRevNumber)}`}</span>
                 </div>
               </RoadSection>
             </>
@@ -2608,6 +2643,16 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
         <SubmittalTakeoffPicker mode={takeoffPicker} revLabel={takeoffPicker === 'build' ? 'Rev 1' : `Rev ${selectedRev?.rev_number ?? newestRev?.rev_number ?? 1}`} candidates={takeoffCandidatesForPicker} bought={takeoffPicker === 'add' ? takeoffBought : undefined} boughtParts={takeoffPicker === 'add' ? takeoffBoughtParts : undefined} busy={busy} onConfirm={(plan, splits) => void confirmTakeoff(plan, splits)} onClose={() => setTakeoffPicker(null)} />
       ) : null}
       {plugInOpen && bidId && selectedBid ? <PlugInScheduleModal open onClose={() => setPlugInOpen(false)} onSaved={() => { setPlugInOpen(false); void load(bidId) }} bidId={bidId} bidLabel={bidDisplayName(selectedBid) || 'Bid'} rows={[]} /> : null}
+      {nextDraft ? (
+        <SubmittalResubmitChooser
+          words={resubmitChooser(nextDraft.newest.rev_number, nextDraft.counts)}
+          choice={nextDraftRows}
+          busy={busy}
+          onChoose={setNextDraftRows}
+          onCancel={() => setNextDraft(null)}
+          onConfirm={() => void buildNextRevision(nextDraft, nextDraftRows)}
+        />
+      ) : null}
       {sharing && selectedRev && bidId ? (
         <SubmittalShareModal
           bidId={bidId}
