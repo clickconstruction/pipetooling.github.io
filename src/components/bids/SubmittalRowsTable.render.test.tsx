@@ -157,6 +157,15 @@ describe('SubmittalRowsTable', () => {
       expect(screen.getAllByTestId('row-part-call').map((e) => e.textContent)).toEqual(['Rejected'])
     })
 
+    it('a long maker and model wraps inside its column: it is never held to one line, where it ran over the answer beside it', () => {
+      mount()
+      const head = within(screen.getAllByTestId('submittal-row')[2]!).getAllByTestId('row-part')[0]!.querySelector('b') as HTMLElement
+      expect(head.textContent).toBe('TSL.MON.B.38')
+      expect(head.style.whiteSpace).toBe('')
+      expect(head.style.overflowWrap).toBe('anywhere')
+      expect(head.style.minWidth).toBe('0')
+    })
+
     it('a row nobody answered says so once, on its first line', () => {
       mount()
       const first = screen.getAllByTestId('submittal-row')[0]!

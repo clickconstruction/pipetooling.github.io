@@ -71,9 +71,10 @@ export function SubmittalRowProducts({ item, parts, houseNameById, showAnswers, 
         return line(
           p.id,
           <span className="sub-rows-part" title={`${p.label}${qty ? ` ${qty} per fixture` : ''}`} style={{ display: 'flex', gap: '0.35rem', alignItems: 'baseline', minWidth: 0 }} data-testid="row-part">
-            <b className="sub-rows-part-head" style={{ fontWeight: 600, color: 'var(--text-strong)', whiteSpace: 'nowrap' }}>{head}</b>
+            {/* The maker and model wrap inside their column at any width: held to one line, a long one ran over the answer beside it. */}
+            <b className="sub-rows-part-head" style={{ fontWeight: 600, color: 'var(--text-strong)', overflowWrap: 'anywhere', minWidth: 0, flex: '0 1 auto' }}>{head}</b>
             {/* One line, clamped: unlike nowrap, the column can still narrow to fit a tablet. */}
-            {words ? <span style={{ ...quiet, fontSize: '0.75rem', display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden', overflowWrap: 'anywhere', minWidth: 0, flex: '1 1 auto' }}>{words}</span> : null}
+            {words ? <span style={{ ...quiet, fontSize: '0.75rem', display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden', overflowWrap: 'anywhere', minWidth: 0, flex: '1 1000 auto' }}>{words}</span> : null}
             {qty ? <span style={{ ...quiet, fontSize: '0.75rem', whiteSpace: 'nowrap' }}>{qty}</span> : null}
             {(p.sheet_pages ?? []).length > 0 ? <span style={{ ...quiet, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }} data-testid="row-part-pages">{formatPages(p.sheet_pages)}</span> : null}
           </span>,
