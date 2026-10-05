@@ -170,6 +170,7 @@ serve(async (req) => {
         const targets = recipients.filter((r) => r.mode === 'now' && canSee(r, ev.matter_id))
         for (const r of targets) {
           const unsub = await unsubscribeLink(admin, r)
+          // Sent copies (docs/SENT_COPIES.md): what the firm is sent, a notice or a digest, is kept. No sender: the queue sends itself.
           // v2.3512: one builder for the sender and Settings → What customers see (_shared/legalEmails.ts).
           const mail = buildLegalNowEmail({
             companyName: PORTAL_COMPANY.name,
@@ -182,7 +183,7 @@ serve(async (req) => {
             portalUrl: portal,
             unsubscribeUrl: unsub,
           })
-          const res = await sendEmailViaResend(r.email, mail.subject, mail.text, mail.html, resendKey, { from: COMPANY_EMAIL_FROM })
+          const res = await sendEmailViaResend(r.email, mail.subject, mail.text, mail.html, resendKey, { from: COMPANY_EMAIL_FROM, file: { kind: 'legal_notice', recipientName: `${r.name} · ${firm.name}` } })
           if (!res.success) result.errors.push(`${r.email}: ${res.error ?? 'send failed'}`)
           else result.now++
         }
@@ -208,7 +209,7 @@ serve(async (req) => {
           portalUrl: portal,
           unsubscribeUrl: unsub,
         })
-        const res = await sendEmailViaResend(r.email, mail.subject, mail.text, mail.html, resendKey, { from: COMPANY_EMAIL_FROM })
+        const res = await sendEmailViaResend(r.email, mail.subject, mail.text, mail.html, resendKey, { from: COMPANY_EMAIL_FROM, file: { kind: 'legal_digest', recipientName: `${r.name} · ${firm.name}` } })
         if (!res.success) {
           result.errors.push(`${r.email}: ${res.error ?? 'digest failed'}`)
           continue
