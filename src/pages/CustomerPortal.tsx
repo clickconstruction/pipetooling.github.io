@@ -548,7 +548,7 @@ function PortalStatement({ payload, today, requestToken }: { payload: PortalPayl
                 <div style={{ color: a.status === 'signed' ? INK : COPPER, fontSize: 12.5, fontWeight: 600, marginTop: 2 }}>
                   {a.status === 'signed'
                     ? `✍ Signed${a.signerName ? ` by ${a.signerName}` : ''}${a.signedAt ? ` · ${new Date(a.signedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}` : ''}`
-                    : a.signingProgress || 'Waiting for your signature'}
+                    : 'Waiting for your signature'}
                 </div>
               </div>
               {a.signUrl ? (

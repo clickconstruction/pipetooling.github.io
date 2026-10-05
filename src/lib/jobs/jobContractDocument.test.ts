@@ -112,8 +112,10 @@ describe('fields and terms', () => {
     expect(html).toContain('$5,000.00')
     expect(html).toContain('50% down ($2,500.00)')
     expect(html).toContain('<p>Terms body</p>')
-    // v2.4590: an open block is pen rules, as the stored PDF draws it — nothing that reads as a signature.
-    expect(html).toContain('<div class="pen"><div class="rule"><span>Sign</span></div><div class="rule date"><span>Date</span></div></div>')
+    // v2.4590: an open block is a labelled signature line and a date line — true for a preview of an
+    // e-signature and for a printed page, and nothing that reads as a signature.
+    expect(html).toContain('<div class="pen"><div class="rule"><span>Signature</span></div><div class="rule date"><span>Date</span></div></div>')
+    expect(html).not.toContain('Not yet signed')
     expect(html).not.toContain('Signed electronically')
     expect(html).not.toContain('Second signature')
     expect(html).toContain('Residential Service Agreement')
@@ -135,12 +137,12 @@ describe('the printed agreement with a second signer (v2.4590)', () => {
     issuer: null,
   }
 
-  it('unsigned: two pairs of pen rules, each with its name', () => {
+  it('unsigned: two open lines, each with its name', () => {
     const html = buildJobContractDocumentHtml({ ...base, coSignerName: 'Alex <Owner>' })
     expect(html).toContain('Customer signature')
-    expect(html).toContain('<span>Sign — Sam Owner</span>')
+    expect(html).toContain('<span>Signature — Sam Owner</span>')
     expect(html).toContain('<h2>Second signature</h2>')
-    expect(html).toContain('<span>Sign — Alex &lt;Owner&gt;</span>')
+    expect(html).toContain('<span>Signature — Alex &lt;Owner&gt;</span>')
     expect(html.match(/class="pen"/g)).toHaveLength(2)
   })
 
@@ -153,7 +155,7 @@ describe('the printed agreement with a second signer (v2.4590)', () => {
     })
     expect(html).toContain('<div class="mark">Sam Owner</div>')
     expect(html).toContain('Signed electronically by Sam Owner (typed)')
-    expect(html).toContain('<span>Sign — Alex Owner</span>')
+    expect(html).toContain('<span>Signature — Alex Owner</span>')
     expect(html.match(/class="pen"/g)).toHaveLength(1)
   })
 

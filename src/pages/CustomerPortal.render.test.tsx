@@ -389,26 +389,6 @@ describe('test reports card (v2.3304, fold v2.3312)', () => {
   })
 })
 
-describe('agreements with a second signer (v2.4590)', () => {
-  it('a signed one names both; a part-signed one says who it waits on instead of "Waiting for your signature"', async () => {
-    const withAgreements = {
-      ...payload,
-      agreements: [
-        { jobLabel: 'Repipe · Job 1053', jobAddress: null, status: 'signed', templateName: null, amountCents: null, signedAt: '2026-09-29T19:05:00Z', signerName: 'Sam Owner and Alex Owner', sentAt: null, signUrl: null },
-        { jobLabel: 'Water heater · Job 1054', jobAddress: null, status: 'sent', templateName: null, amountCents: null, signedAt: null, signerName: 'Sam Owner', signingProgress: 'Sam Owner signed · waiting on Alex Owner', sentAt: null, signUrl: 'https://clicktooling.com/contract/sign?t=x' },
-        { jobLabel: 'Service call · Job 1055', jobAddress: null, status: 'sent', templateName: null, amountCents: null, signedAt: null, signerName: null, sentAt: null, signUrl: 'https://clicktooling.com/contract/sign?t=y' },
-      ],
-    }
-    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(withAgreements), { status: 200 })))
-    mountAt('/portal?t=abcdef1234567890abcdef')
-    await waitFor(() => expect(document.querySelector('[data-portal-agreements]')).toBeTruthy())
-    const text = (document.querySelector('[data-portal-agreements]') as HTMLElement).textContent ?? ''
-    expect(text).toContain('✍ Signed by Sam Owner and Alex Owner · ')
-    expect(text).toContain('Sam Owner signed · waiting on Alex Owner')
-    expect(text.match(/Waiting for your signature/g)).toHaveLength(1)
-  })
-})
-
 describe('lien waivers (v2.4304): a note on the bill, a group in Your papers', () => {
   const signedHalf = (formType: string, ymd: string, pdfUrl: string | null, state = 'signed') => ({ state, ymd, pdfUrl, releaseId: 'r', formType, signerName: 'Malachi Whites' })
   const none = { state: 'none', ymd: null, pdfUrl: null, releaseId: null, formType: null, signerName: null }

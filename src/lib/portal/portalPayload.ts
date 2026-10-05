@@ -170,10 +170,7 @@ export type PortalAgreement = {
   templateName: string | null
   amountCents: number | null
   signedAt: string | null
-  /** Who signed — both signers of a two-frame agreement (v2.4590), and on a part-signed one, who has so far. */
   signerName: string | null
-  /** v2.4590: "Sam Owner signed · waiting on Alex Owner" while one of two has signed; absent from an older function. */
-  signingProgress?: string | null
   sentAt: string | null
   signUrl: string | null
 }
@@ -302,7 +299,6 @@ export function parsePortalPayload(raw: unknown): PortalPayload | null {
         amountCents: typeof a.amountCents === 'number' && Number.isFinite(a.amountCents) ? Math.round(a.amountCents) : null,
         signedAt: typeof a.signedAt === 'string' && a.signedAt ? a.signedAt : null,
         signerName: typeof a.signerName === 'string' && a.signerName.trim() ? a.signerName : null,
-        signingProgress: typeof a.signingProgress === 'string' && a.signingProgress.trim() ? a.signingProgress.trim() : null,
         sentAt: typeof a.sentAt === 'string' && a.sentAt ? a.sentAt : null,
         signUrl: typeof a.signUrl === 'string' && /^https?:\/\//.test(a.signUrl) ? a.signUrl : null,
       })

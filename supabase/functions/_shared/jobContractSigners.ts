@@ -5,10 +5,9 @@
  * pill, the window, the paper and the customer's page all read the frames from here, and every
  * line that names who signed reads `signerNamesLine` (v2.4590).
  *
- * TWINS, byte-identical: `src/lib/jobs/jobContractSigners.ts` (the app) and
- * `supabase/functions/_shared/jobContractSigners.ts` (the customer portal, the signed copy's
- * email). `src/lib/jobs/jobContractSigners.sharedParity.test.ts` fails when they differ; edit
- * one, copy it over the other. No imports, so Deno and Vite read the same file.
+ * One file for both sides (v2.4590): the app reads it through `src/lib/jobs/jobContractSigners.ts`
+ * (a re-export; the tests sit there), and the edge functions import it here. No imports, so
+ * Deno and Vite read the same file.
  */
 
 export type SignerFrameKey = 'primary' | 'co'

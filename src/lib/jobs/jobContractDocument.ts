@@ -236,21 +236,26 @@ export type JobContractRenderInput = {
     paper?: boolean
   } | null
   /**
-   * v2.4590: a second signer the office named — a *Second signature* block, signed or with its own
-   * pen rules and the name, as the stored PDF draws it (`_shared/jobContractPdf.ts`). Omitted: one block.
+   * v2.4590: a second signer the office named — a *Second signature* block, signed or an open line
+   * with the name, as the stored PDF draws it (`_shared/jobContractPdf.ts`). Omitted: one block.
    */
   coSignerName?: string | null
   coSignature?: JobContractRenderInput['signature']
 }
 
-/** The open block's words: the stored PDF's (`UNSIGNED_BLOCK` in `_shared/jobContractPdf.ts`). */
-const PEN_SIGN = 'Sign'
-const PEN_DATE = 'Date'
+/**
+ * The open block's words (v2.4590). This page is both the on-screen preview of an agreement going
+ * out for e-signature and a page someone may print and sign, and the builder cannot tell which —
+ * so the rules carry labels true for both: *Signature* (not the paper PDF's *Sign*, an instruction
+ * to a pen) and *Date*. Nothing here reads as a signature, and nothing turns false once a pen signs.
+ */
+const OPEN_SIGNATURE = 'Signature'
+const OPEN_DATE = 'Date'
 
-/** One signature block: the framed mark when signed; otherwise pen rules — nothing that reads as a signature. */
+/** One signature block: the framed mark when signed; otherwise a labelled signature line and a date line. */
 function signatureBlockHtml(sig: JobContractRenderInput['signature'], openFor: string | null): string {
   if (!sig) {
-    return `<div class="pen"><div class="rule"><span>${PEN_SIGN}${openFor ? ` — ${escapeHtml(openFor)}` : ''}</span></div><div class="rule date"><span>${PEN_DATE}</span></div></div>`
+    return `<div class="pen"><div class="rule"><span>${OPEN_SIGNATURE}${openFor ? ` — ${escapeHtml(openFor)}` : ''}</span></div><div class="rule date"><span>${OPEN_DATE}</span></div></div>`
   }
   return `<div class="sigrow"><div class="frame"><span class="tag">${sig.paper ? 'Signed on paper' : 'Signed electronically'}</span>${
     sig.imageUrl ? `<img src="${escapeHtml(sig.imageUrl)}" alt="Signature of ${escapeHtml(sig.printedName)}">` : `<div class="mark">${escapeHtml(sig.printedName)}</div>`

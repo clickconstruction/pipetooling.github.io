@@ -168,20 +168,6 @@ describe('agreements (Contract Desk PR 5)', () => {
     expect(p?.agreements[1]).toMatchObject({ status: 'sent', signUrl: null, amountCents: null })
   })
 
-  it('a part-signed agreement carries who has signed and who it waits on (v2.4590); an older function sends neither', () => {
-    const p = parsePortalPayload({
-      customerName: 'Sam Owner',
-      bills: [],
-      agreements: [
-        { jobLabel: 'J1053', status: 'sent', signerName: 'Sam Owner', signingProgress: ' Sam Owner signed · waiting on Alex Owner ' },
-        { jobLabel: 'J1054', status: 'signed', signerName: 'Sam Owner and Alex Owner' },
-        { jobLabel: 'J1055', status: 'sent' },
-      ],
-    })
-    expect(p?.agreements.map((a) => a.signingProgress)).toEqual(['Sam Owner signed · waiting on Alex Owner', null, null])
-    expect(p?.agreements[1]?.signerName).toBe('Sam Owner and Alex Owner')
-  })
-
   it('a payload without agreements parses to an empty list', () => {
     expect(parsePortalPayload({ customerName: 'X', bills: [] })?.agreements).toEqual([])
     // Customer Waiting (v2.3249): the number on file rides along; blank/missing → null.

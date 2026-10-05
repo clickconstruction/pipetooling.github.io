@@ -25,7 +25,6 @@ import { refreshStripeInvoiceLinks } from '../_shared/stripeInvoiceLinkRefreshIo
 import { publicViewDecision } from '../_shared/publicViewCounting.ts'
 import { resolvePortalCustomerPhone } from '../_shared/portalCustomerPhone.ts'
 import { testReportShortLabel, testReportTitle, type TestReportSystem, type TestReportType } from '../_shared/testReport.ts'
-import { framesWaitingLine, signerNamesLine } from '../_shared/jobContractSigners.ts'
 
 /**
  * Customer portal payload (portal train PR 1; merged view + slugs in the
@@ -481,7 +480,6 @@ serve(async (req) => {
       amountCents: number | null
       signedAt: string | null
       signerName: string | null
-      signingProgress: string | null
       sentAt: string | null
       signUrl: string | null
     }> = []
@@ -489,7 +487,7 @@ serve(async (req) => {
       const jobById = new Map(jobs.map((j) => [j.id, j]))
       const { data: conRaw } = await admin
         .from('job_contracts')
-        .select('job_id, status, template_name, public_token, fields, signed_at, signer_printed_name, last_sent_at, voided_at, recipient_name, signer_consented_at, co_signer_name, co_signed_at, co_signer_printed_name')
+        .select('job_id, status, template_name, public_token, fields, signed_at, signer_printed_name, last_sent_at, voided_at')
         .in('job_id', jobs.map((j) => j.id))
         .in('status', ['sent', 'signed'])
         .is('voided_at', null)
@@ -504,11 +502,6 @@ serve(async (req) => {
         signed_at: string | null
         signer_printed_name: string | null
         last_sent_at: string | null
-        recipient_name: string | null
-        signer_consented_at: string | null
-        co_signer_name: string | null
-        co_signed_at: string | null
-        co_signer_printed_name: string | null
       }>) {
         const j = jobById.get(c.job_id)
         if (!j) continue
@@ -520,9 +513,7 @@ serve(async (req) => {
           templateName: c.template_name,
           amountCents: typeof amt === 'number' && Number.isFinite(amt) ? Math.round(amt) : null,
           signedAt: c.signed_at,
-          // v2.4590: both signers of a two-frame agreement, in the app's words (_shared/jobContractSigners.ts).
-          signerName: signerNamesLine(c) || c.signer_printed_name,
-          signingProgress: c.status === 'signed' ? null : framesWaitingLine(c) || null,
+          signerName: c.signer_printed_name,
           sentAt: c.last_sent_at,
           signUrl: c.public_token ? `${origin}/contract/sign?t=${encodeURIComponent(c.public_token)}` : null,
         })
