@@ -117,3 +117,31 @@ describe("a customer's interest bills (Owner Billing, 2026-10-04)", () => {
     expect(texts).toContain('Paid interest bill 1.')
   })
 })
+
+describe("a trade's Activity also carries the award, pay applications sent back, and change orders", () => {
+  it('names the award with its day and who, and the price', () => {
+    let state = initialGcState()
+    state = gcReducer(state, { type: 'award', projectId: 'boerne', packageId: 'site', inviteId: 'site-lonestar', by: 'Rosa Treviño' })
+    const award = partnerActivity(state, partner(state, 'lonestar')).find((e) => e.text.startsWith('Awarded'))
+    expect(award).toMatchObject({ on: state.today, kind: 'quote', text: 'Awarded sitework by Rosa Treviño, $184,900.', where: 'Boerne Retail Shell · Sitework' })
+  })
+
+  it('a pay application we sent back, with our reason', () => {
+    const state = initialGcState()
+    const back = partnerActivity(state, partner(state, 'summit')).find((e) => e.text.startsWith('Pay application 1 sent back'))
+    expect(back?.kind).toBe('money')
+    expect(back?.text).toContain('The membrane is down on the east half only.')
+  })
+
+  it("a change order on their trade, sent to them and signed", () => {
+    let state = initialGcState()
+    state = gcReducer(state, { type: 'draftChangeOrder', projectId: 'helotes', description: 'Add sound batts to the walls of operatory 3', reason: 'owner', schedule: '+1 working day', packageId: 'dry', cost: 4_800, price: 5_280 })
+    state = gcReducer(state, { type: 'sendChangeOrder', projectId: 'helotes', changeOrderId: 'co-1' })
+    state = gcReducer(state, { type: 'ownerSignChangeOrder', projectId: 'helotes', changeOrderId: 'co-1' })
+    state = gcReducer(state, { type: 'sendTradeChange', projectId: 'helotes', changeOrderId: 'co-1' })
+    state = gcReducer(state, { type: 'tradeSignChange', projectId: 'helotes', changeOrderId: 'co-1' })
+    const texts = partnerActivity(state, partner(state, 'hillcountry')).map((e) => e.text)
+    expect(texts).toContain('Change order 1 sent to them to sign: Add sound batts to the walls of operatory 3')
+    expect(texts).toContain('Signed change order 1.')
+  })
+})

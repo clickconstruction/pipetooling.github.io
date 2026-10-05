@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { gcReducer, initialGcState, projectPeople, type GcState } from './gcModel'
+import { followUpCallActions, gcReducer, initialGcState, projectFollowPeople, projectPeople, type GcState } from './gcModel'
 
 const of = (state: GcState, id: string) => {
   const p = state.projects.find((x) => x.id === id)
@@ -44,5 +44,32 @@ describe('people to call on a job (the owner, 2026-10-04)', () => {
     state = gcReducer(state, { type: 'markBidSent', projectId: 'padb' })
     const padb = of(state, 'padb')
     expect(padb.people.map((p) => [p.kind, p.company, p.tone])).toEqual([['customer', 'Cibolo Creek Partners', 'grey']])
+  })
+})
+
+describe("Work the list for one job (the owner, 2026-10-04)", () => {
+  it("walks the card's people in its order, each with this job's reasons, the architect included", () => {
+    const state = initialGcState()
+    const boerne = state.projects.find((p) => p.id === 'boerne')
+    if (!boerne) throw new Error('no boerne')
+    const people = projectFollowPeople(state, boerne)
+    expect(people.map((p) => p.partner.id)).toEqual(['hillside', 'bexar', 'tejas', 'customer:marshvale', 'coolbreeze', 'voltage'])
+    expect(people[0]?.items.map((i) => [i.kind, i.due])).toEqual([['quote', true], ['plans', true]])
+    expect(people[3]?.items.map((i) => i.kind)).toEqual(['answer'])
+    expect(people[3]?.reach.name).toBe('Jonah Vale')
+    // Voltage's insurance is a company matter, not this job's: its sheet item stays off here.
+    expect(people[5]?.items.map((i) => i.kind)).toEqual(['plans'])
+    expect(people.every((p) => p.items.every((i) => !i.ask || i.ask.projectId === 'boerne'))).toBe(true)
+  })
+
+  it("a call logged with the architect goes on the architect's record", () => {
+    const state = initialGcState()
+    const boerne = state.projects.find((p) => p.id === 'boerne')
+    if (!boerne) throw new Error('no boerne')
+    const architect = projectFollowPeople(state, boerne).find((p) => p.partner.id === 'customer:marshvale')
+    if (!architect) throw new Error('no architect')
+    let next = state
+    for (const a of followUpCallActions(architect, architect.items, 'Jonah will answer both by Monday.', null)) next = gcReducer(next, a)
+    expect(next.customers.find((c) => c.id === 'marshvale')?.contacts[0]?.note).toBe('Call about questions · boerne retail shell: Jonah will answer both by Monday.')
   })
 })

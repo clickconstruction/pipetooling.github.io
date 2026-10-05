@@ -335,7 +335,7 @@ function reduce(state: GcState, action: GcAction): GcState {
       // A company we have not vetted, or past its limit, is not awarded (question 3).
       if (!awardGate(state, pkg, invite).ok) return state
       const next = mapProject(state, project.id, (p) =>
-        mapPackage(p, pkg.id, (k) => ({ ...k, carried: invite.id, awardedInviteId: invite.id, sow })),
+        mapPackage(p, pkg.id, (k) => ({ ...k, carried: invite.id, awardedInviteId: invite.id, awardedOn: state.today, sow })),
       )
       const marked = action.by ? mapProject(next, project.id, (p) => mapPackage(p, pkg.id, (k) => ({ ...k, awardedBy: action.by }))) : next
       return logged(
@@ -546,6 +546,13 @@ function reduce(state: GcState, action: GcAction): GcState {
 
     case 'logPartnerContact': {
       const partner = state.partners.find((x) => x.id === action.partnerId)
+      // The architect or the customer, walked on a job's Follow up sheet as `customer:<id>`: their record.
+      if (!partner && action.partnerId.startsWith('customer:') && action.note.trim() !== '') {
+        const id = action.partnerId.slice('customer:'.length)
+        const customer = state.customers.find((c) => c.id === id)
+        if (!customer) return state
+        return reduce(state, { type: 'logCustomerContact', customerId: id, note: action.note.trim() })
+      }
       if (!partner || action.note.trim() === '') return state
       const entry = { on: state.today, by: 'You', note: action.note.trim() }
       return logged(

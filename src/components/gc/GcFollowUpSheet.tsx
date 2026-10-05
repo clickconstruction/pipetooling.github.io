@@ -44,6 +44,8 @@ export function GcFollowUpSheet({
   startPartnerId,
   startCalling = false,
   onClose,
+  list,
+  title,
 }: {
   state: GcState
   dispatch: Dispatch<GcAction>
@@ -52,17 +54,30 @@ export function GcFollowUpSheet({
   /** Open on "What did they say?": the card's Call was pressed. */
   startCalling?: boolean
   onClose: () => void
+  /**
+   * The people to walk, in place of the badge's (Board, 2026-10-04): one job's people from the
+   * board row's Who to call card, with that job's reasons. Read again on every change.
+   */
+  list?: (state: GcState) => FollowPerson[]
+  /** The sheet's heading in place of "Follow up": the job's name. */
+  title?: string
 }) {
+  const source = (s: GcState) => (list ? list(s) : followUpPeople(s, startPartnerId))
   // The list as it stood when the sheet opened: someone who gives a day drops off the badge, but
   // stays here marked done, so the list does not jump under the pointer.
-  const [ids] = useState(() => followUpPeople(state, startPartnerId).map((p) => p.partner.id))
+  const [ids] = useState(() => source(state).map((p) => p.partner.id))
+  // A job's list keeps someone it no longer holds (a call gave a day): the last we saw of them.
+  const [seen] = useState(() => new Map<string, FollowPerson>())
   const people = useMemo(() => {
-    const now = new Map(followUpPeople(state, startPartnerId).map((p) => [p.partner.id, p]))
+    const now = new Map(source(state).map((p) => [p.partner.id, p]))
+    for (const [id, p] of now) seen.set(id, p)
     return ids.flatMap((id) => {
-      const p = now.get(id) ?? followUpPeople(state, id).find((x) => x.partner.id === id)
+      const p = now.get(id) ?? (list ? seen.get(id) : followUpPeople(state, id).find((x) => x.partner.id === id))
       return p ? [p] : []
     })
-  }, [state, startPartnerId, ids])
+    // `source` is rebuilt each render from `list` and `startPartnerId`, which are in the list.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state, startPartnerId, ids, list])
   const me = useMeName()
   const phone = useMatchMedia('(max-width: 760px)')
   const [pid, setPid] = useState<string | undefined>(startPartnerId ?? people[0]?.partner.id)
@@ -126,7 +141,7 @@ export function GcFollowUpSheet({
         >
           {!phone && (
             <div style={{ fontSize: '0.7rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 700, padding: '0.2rem 0.5rem 0.4rem' }}>
-              Follow up · {people.length}
+              {title ?? 'Follow up'} · {people.length}
             </div>
           )}
           {people.map((p) => {

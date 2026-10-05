@@ -9933,6 +9933,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "packages": [
         {
           "awardedInviteId": "site-lonestar",
+          "awardedOn": "2026-10-02",
           "bidTab": {
             "seenBy": [
               "lonestar",
@@ -10925,6 +10926,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
         {
           "awardedBy": "Rosa Treviño",
           "awardedInviteId": "bsite-lonestar",
+          "awardedOn": "2026-10-02",
           "bidTab": null,
           "budget": 96000,
           "carried": "bsite-lonestar",
@@ -11771,6 +11773,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
         },
         {
           "awardedInviteId": "mill-cedar",
+          "awardedOn": "2026-10-02",
           "bidTab": null,
           "budget": 41000,
           "carried": "mill-cedar",

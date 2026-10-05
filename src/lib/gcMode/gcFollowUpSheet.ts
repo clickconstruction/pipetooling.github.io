@@ -16,7 +16,18 @@ import { pDate, pWeekday, type PortalLang } from './gcPortalI18n'
 import { GC_COMPANY } from './gcFixture'
 import { daysUntil, shortDate, weekdayDate } from './gcWords'
 
-export type FollowItemKind = 'quote' | 'promise' | 'insurance' | 'waiver' | 'w9' | 'sow'
+export type FollowItemKind =
+  | 'quote'
+  | 'promise'
+  | 'insurance'
+  | 'waiver'
+  | 'w9'
+  | 'sow'
+  // One job's list from the board's Who to call card (Board, 2026-10-04): the newest set not
+  // opened, questions waiting on the architect, our bid waiting on the customer.
+  | 'plans'
+  | 'answer'
+  | 'decision'
 
 /** One thing a person owes us, with the words a message uses for it in each language. */
 export interface FollowItem {

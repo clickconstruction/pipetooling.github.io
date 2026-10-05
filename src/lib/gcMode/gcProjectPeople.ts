@@ -5,14 +5,14 @@
  * Each person once, with every reason under their name: one call covers them all. Trades, the
  * architect and the customer count; our own moves (a draft not sent) do not, the ring lists those.
  */
-import type { AskContact, GcProject, GcState, Partner } from './gcTypes'
+import type { AskContact, GcCustomer, GcProject, GcState, Partner } from './gcTypes'
 import { daysUntil, shortDate, weekdayDate } from './gcWords'
 import { currentRev, partnerById, planLabel } from './gcLookups'
 import { followUps, packageIsOpen } from './gcFollowUp'
 import { insuranceRenewals, tradePromisesOf, tradePromiseState, tradePromiseWords } from './gcPromises'
 import { architectSummary } from './gcCustomers'
 import { sentBackOpen, timesSentBack } from './gcBuilding'
-import { partnerReach } from './gcFollowUpSheet'
+import { followUpPeople, partnerReach, type FollowItem, type FollowPerson } from './gcFollowUpSheet'
 
 export type PeopleTone = 'red' | 'amber' | 'grey'
 
@@ -191,4 +191,125 @@ export function projectPeople(state: GcState, project: GcProject): ProjectPeople
     .sort((a, b) => RANK[a.tone] - RANK[b.tone])
   const late = people.filter((p) => p.tone === 'red').length
   return { people, count: people.length, late, tone: people.length === 0 ? null : people[0]?.tone ?? null }
+}
+
+/**
+ * The architect or the customer as a person the Follow up sheet can walk: their record in a
+ * company's shape, under the id `customer:<id>`. A call or a message logged with them goes on the
+ * customer record (the reducer's logPartnerContact).
+ */
+export function customerAsPerson(customer: GcCustomer): Partner {
+  return {
+    id: `customer:${customer.id}`,
+    company: customer.name,
+    contact: customer.contact,
+    trades: [],
+    base: null,
+    maxMiles: null,
+    msa: 'signed',
+    msaSignedOn: null,
+    coiExpires: null,
+    w9: true,
+    invited: 0,
+    bids: 0,
+    won: 0,
+    promisesMade: 0,
+    promisesKept: 0,
+    ...(customer.phone ? { phone: customer.phone } : {}),
+    ...(customer.email ? { email: customer.email } : {}),
+  }
+}
+
+function sheetTone(tone: PeopleTone): 'red' | 'amber' {
+  return tone === 'red' ? 'red' : 'amber'
+}
+
+/**
+ * One job's people for the Follow up sheet (the owner, 2026-10-04: Work the list for just this
+ * job): the same people as the Who to call card, in its order, each with this job's reasons ticked.
+ * A trade carries what the sheet already knows about it on this job, and the newest set it has not
+ * opened; the architect carries the questions waiting; the customer carries our bid.
+ */
+export function projectFollowPeople(state: GcState, project: GcProject): FollowPerson[] {
+  const summary = projectPeople(state, project)
+  const rev = currentRev(project)
+  const label = planLabel(project, rev)
+  const set = project.planSets.find((x) => x.rev === rev)
+  return summary.people.flatMap((person): FollowPerson[] => {
+    if (person.partnerId) {
+      const partner = partnerById(state, person.partnerId)
+      if (!partner) return []
+      const known = followUpPeople(state, partner.id).find((x) => x.partner.id === partner.id)
+      const onThisJob = (known?.items ?? []).filter(
+        (i) => i.ask?.projectId === project.id || i.projectId === project.id || (i.kind === 'insurance' && person.reasons.some((r) => r.text.startsWith('Their insurance'))),
+      )
+      const items: FollowItem[] = onThisJob.map((i) => ({ ...i, due: true }))
+      for (const pkg of project.packages) {
+        const invite = pkg.invites.find((i) => i.partnerId === partner.id)
+        if (!invite || rev === 0 || invite.status === 'declined' || invite.status === 'invited' || invite.seenRev === rev) continue
+        if (project.stage !== 'pursuing' && pkg.awardedInviteId !== invite.id) continue
+        const quoted = Boolean(invite.bid)
+        items.push({
+          key: `plans-${invite.id}`,
+          kind: 'plans',
+          label: `${label} · ${project.name}`,
+          why: quoted ? `Quoted before ${label} and has not opened it.` : `Has not opened ${label}.`,
+          tone: 'amber',
+          last: null,
+          due: true,
+          ask: { projectId: project.id, packageId: pkg.id, inviteId: invite.id },
+          words: {
+            en: {
+              about: `${label} for ${project.name}`,
+              detail: quoted ? 'Your quote is on the set before it' : `It came out ${set ? shortDate(set.issuedOn) : 'this week'}`,
+              ask: quoted ? 'Could you open it and tell us your quote still stands?' : 'Could you open it this week?',
+            },
+            es: {
+              about: `${label} de ${project.name}`,
+              detail: quoted ? 'Su cotización es del juego anterior' : 'Ya salió',
+              ask: quoted ? '¿Lo puede abrir y decirnos si su cotización sigue en pie?' : '¿Lo puede abrir esta semana?',
+            },
+          },
+        })
+      }
+      if (items.length === 0) return []
+      return [{ partner, reach: partnerReach(partner), items }]
+    }
+    const customer = state.customers.find((c) => c.id === person.customerId)
+    if (!customer) return []
+    const stand = customerAsPerson(customer)
+    const reason = person.reasons[0]
+    if (!reason) return []
+    const item: FollowItem =
+      person.kind === 'architect'
+        ? {
+            key: `answer-${project.id}`,
+            kind: 'answer',
+            label: `Questions · ${project.name}`,
+            why: reason.text,
+            tone: sheetTone(reason.tone),
+            last: null,
+            due: true,
+            projectId: project.id,
+            words: {
+              en: { about: `our questions on ${project.name}`, detail: reason.text.replace(/\.$/, ''), ask: 'Could you send answers this week? The trades are pricing on them.' },
+              es: { about: `nuestras preguntas sobre ${project.name}`, detail: 'Siguen sin respuesta', ask: '¿Nos puede responder esta semana?' },
+            },
+          }
+        : {
+            key: `decision-${project.id}`,
+            kind: 'decision',
+            label: `Our bid · ${project.name}`,
+            why: reason.text,
+            tone: sheetTone(reason.tone),
+            last: null,
+            due: true,
+            projectId: project.id,
+            words: {
+              en: { about: `our bid for ${project.name}`, detail: `We sent it ${project.ourBidSentOn ? weekdayDate(project.ourBidSentOn) : 'recently'}`, ask: 'Do you have any questions for us?' },
+              es: { about: `nuestra propuesta para ${project.name}`, detail: 'Se la enviamos hace unos días', ask: '¿Tiene alguna pregunta?' },
+            },
+          }
+    return [{ partner: stand, reach: partnerReach(stand), items: [item] }]
+  })
 }

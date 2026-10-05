@@ -25,6 +25,7 @@ import { Btn, Card, Chip, Why, input, type Tone } from './gcUi'
 import { GcFollowUpPromises } from './GcFollowUpPromises'
 import { GcDeclineForm } from './GcDeclineForm'
 import { GcFollowUpSheet } from './GcFollowUpSheet'
+import { PartnerLink } from './GcCompanyFile'
 
 /**
  * GC mode design spike: keeping up with a company on one ask. Every call, text, email, nudge and
@@ -239,7 +240,8 @@ function FollowUpCard({
   return (
     <Card style={{ borderLeft: `4px solid ${why === 'waiting' ? 'var(--border-blue)' : why === 'passed' || why === 'silent' ? '#dc2626' : '#d97706'}` }}>
       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
-        <strong>{partner.company}</strong>
+        {/* The name opens the company at this ask's promised day, on Activity (the owner, 2026-10-04). */}
+        <PartnerLink partnerId={partner.id} company={partner.company} strong at={{ tab: 'activity', focus: `ask:${invite.id}` }} />
         <span style={{ color: 'var(--text-muted)' }}>{partner.contact}</span>
         <Chip tone="grey">{project.name} · {pkg.trade}</Chip>
         {/* Portal lane: a company that never opened its link. */}

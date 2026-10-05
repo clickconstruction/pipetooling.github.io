@@ -39,6 +39,7 @@ import { useMatchMedia } from '../hooks/useMatchMedia'
 import {
   boardCustomerElementId,
   projectPeople,
+  projectFollowPeople,
   type ProjectPeopleSummary,
   type ProjectPerson,
   boardSectionCounts,
@@ -177,7 +178,7 @@ export default function GcMode() {
   const [plansForId, setPlansForId] = useState<string | null>(null)
   const [customerId, setCustomerId] = useState<string | null>(null)
   // A trade's company window, at the tab and paper that was clicked (the owner, 2026-10-04).
-  const [companyAt, setCompanyAt] = useState<{ partnerId: string; tab?: CompanyTab; doc?: string } | null>(null)
+  const [companyAt, setCompanyAt] = useState<{ partnerId: string; tab?: CompanyTab; doc?: string; focus?: string } | null>(null)
   const companyOpener = useMemo<CompanyOpener>(() => ({ openPartner: (partnerId, at) => setCompanyAt({ partnerId, ...at }) }), [])
   const [mapFor, setMapFor] = useState<{ projectId: string; packageId: string } | null>(null)
   const [levelPackageId, setLevelPackageId] = useState<string | null>(null)
@@ -211,19 +212,19 @@ export default function GcMode() {
 
   // Who we are waiting on for each job (the owner, 2026-10-04): the row's one count, and the
   // Building lane's Follow up sheet behind each person's Call and Follow up.
-  const [sheet, setSheet] = useState<{ partnerId?: string; calling?: boolean } | null>(null)
+  const [sheet, setSheet] = useState<{ projectId: string; partnerId?: string; calling?: boolean } | null>(null)
   const peopleFor = (p: GcProject) => {
     const summary = projectPeople(state, p)
-    const firstTrade = summary.people.find((x) => x.partnerId)?.partnerId
+    // The sheet's id for a person: the company, or the architect or customer as `customer:<id>`.
+    const sheetId = (person: ProjectPerson) => person.partnerId ?? `customer:${person.customerId ?? ''}`
+    const first = summary.people[0]
     return {
       summary,
-      onFollowUp: (person: ProjectPerson, calling: boolean) => {
-        if (person.partnerId) setSheet({ partnerId: person.partnerId, calling })
-        else if (person.customerId) setCustomerId(person.customerId)
-      },
-      onWorkList: firstTrade ? () => setSheet({ partnerId: firstTrade }) : null,
+      onFollowUp: (person: ProjectPerson, calling: boolean) => setSheet({ projectId: p.id, partnerId: sheetId(person), calling }),
+      onWorkList: first ? () => setSheet({ projectId: p.id, partnerId: sheetId(first) }) : null,
     }
   }
+  const sheetProject = state.projects.find((x) => x.id === sheet?.projectId) ?? null
 
   // The stage strip (the owner, 2026-10-04): a pill per board section, 1, 2, 3 for the stages.
   const sectionCounts = boardSectionCounts(state)
@@ -323,19 +324,25 @@ export default function GcMode() {
         />
       )}
 
-      {sheet && (
+      {sheet && sheetProject && (
+        // One job's people (the owner, 2026-10-04: Work the list for just this job), on the Building lane's sheet.
         <GcFollowUpSheet
           state={state}
           dispatch={dispatch}
           {...(sheet.partnerId ? { startPartnerId: sheet.partnerId } : {})}
           startCalling={sheet.calling ?? false}
           onClose={() => setSheet(null)}
+          list={(s) => {
+            const job = s.projects.find((x) => x.id === sheetProject.id)
+            return job ? projectFollowPeople(s, job) : []
+          }}
+          title={sheetProject.name}
         />
       )}
 
       {companyPartner && companyAt && (
         <GcCompanyWindow
-          key={`${companyPartner.id}:${companyAt.tab ?? ''}:${companyAt.doc ?? ''}`}
+          key={`${companyPartner.id}:${companyAt.tab ?? ''}:${companyAt.doc ?? ''}:${companyAt.focus ?? ''}`}
           state={state}
           partner={companyPartner}
           dispatch={dispatch}

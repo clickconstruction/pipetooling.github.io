@@ -294,6 +294,8 @@ export interface TradePackage {
   awardedInviteId: string | null
   /** The estimator who awarded it (question 7). Unset: awarded before the prototype kept it. */
   awardedBy?: string
+  /** The day it was awarded, for the company's Activity (2026-10-04). Unset: awarded before the prototype kept it. */
+  awardedOn?: string
   sow: Sow | null
   /** Work this trade's quote leaves out, and who does it instead. Missing: none said. */
   excludes?: ScopeExclusion[]

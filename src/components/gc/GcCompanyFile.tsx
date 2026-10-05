@@ -100,13 +100,20 @@ export function CompanyActivity({
   events,
   onOpenProject,
   onLog,
+  focus,
 }: {
   events: CompanyEvent[]
   onOpenProject?: (projectId: string) => void
   onLog: (note: string) => void
+  /** The line it was opened at (a promise, say): lit and scrolled to. */
+  focus?: string
 }) {
   const [kind, setKind] = useState<ActivityKind | 'all'>('all')
   const [note, setNote] = useState('')
+  const lit = useRef<HTMLLIElement | null>(null)
+  useEffect(() => {
+    lit.current?.scrollIntoView({ block: 'center' })
+  }, [focus])
   const shown = kind === 'all' ? events : events.filter((e) => e.kind === kind)
   return (
     <div style={{ display: 'grid', gap: '0.75rem' }}>
@@ -158,7 +165,19 @@ export function CompanyActivity({
       {shown.length === 0 && <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Nothing here yet.</div>}
       <ol style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: '0.1rem' }}>
         {shown.map((e, i) => (
-          <li key={`${e.on}-${i}`} style={{ display: 'grid', gridTemplateColumns: '5.5rem minmax(0, 1fr)', gap: '0.6rem', padding: '0.4rem 0', borderBottom: '1px solid var(--border)' }}>
+          <li
+            key={`${e.on}-${i}`}
+            ref={focus && e.id === focus ? lit : undefined}
+            data-tour={focus && e.id === focus ? 'gc-activity-focus' : undefined}
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '5.5rem minmax(0, 1fr)',
+              gap: '0.6rem',
+              padding: '0.4rem 0.35rem',
+              borderBottom: '1px solid var(--border)',
+              ...(focus && e.id === focus ? { background: 'var(--bg-amber-tint)', borderRadius: 6, boxShadow: 'inset 3px 0 0 var(--text-amber-700)' } : {}),
+            }}
+          >
             <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem', fontVariantNumeric: 'tabular-nums' }}>{shortDate(e.on)}</span>
             <span style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', minWidth: 0 }}>
               <span aria-hidden style={{ flex: 'none', width: 8, height: 8, borderRadius: 999, background: KIND_DOT[e.kind], transform: 'translateY(-1px)' }} />
@@ -405,5 +424,51 @@ export function CompanyPortalPanel({
         {preview}
       </div>
     </div>
+  )
+}
+
+/**
+ * A company's name in a sentence or a table that opens its window (the owner, 2026-10-04: "from
+ * any company's name"). `at` opens it on a tab, a paper or an Activity line. Plain where no window
+ * can open.
+ */
+export function PartnerLink({
+  partnerId,
+  company,
+  at,
+  strong = false,
+}: {
+  partnerId: string
+  company: string
+  at?: { tab?: CompanyTab; doc?: string; focus?: string }
+  strong?: boolean
+}) {
+  const opener = useCompanyOpener()
+  if (!opener) return strong ? <strong>{company}</strong> : <>{company}</>
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation()
+        opener.openPartner(partnerId, at ?? { tab: 'about' })
+      }}
+      title={at?.focus ? `Open ${company} at this, on Activity` : `Open ${company}`}
+      style={{
+        background: 'none',
+        border: 'none',
+        padding: 0,
+        font: 'inherit',
+        fontWeight: strong ? 700 : 'inherit',
+        color: 'inherit',
+        cursor: 'pointer',
+        textAlign: 'left',
+        textDecoration: 'underline',
+        textDecorationStyle: 'dotted',
+        textDecorationColor: 'var(--border-strong)',
+        textUnderlineOffset: 3,
+      }}
+    >
+      {company}
+    </button>
   )
 }

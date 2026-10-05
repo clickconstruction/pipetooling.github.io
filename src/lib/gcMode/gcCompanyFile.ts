@@ -10,7 +10,7 @@ import { daysUntil, money, shortDate, weekdayDate } from './gcWords'
 import { declineReasonWords } from './gcDecline'
 import { tradePromisesOf, tradePromiseWords } from './gcPromises'
 import { priceToOwner } from './gcCustomers'
-import { retainageHeldNow } from './gcBuilding'
+import { retainageHeldNow, tradeChangesFor } from './gcBuilding'
 import { paperSendActivity, paperSentWords } from './gcPaperSend'
 
 export type DocStatus = 'ok' | 'soon' | 'missing' | 'info'
@@ -189,6 +189,8 @@ export function partnerWork(state: GcState, partner: Partner): PartnerWork {
 export type ActivityKind = 'note' | 'quote' | 'paper' | 'money'
 
 export interface CompanyEvent {
+  /** For pointing at one line: `promise:<id>` for a promise, `ask:<invite id>` for a quote ask's promised day. */
+  id?: string
   on: string
   kind: ActivityKind
   text: string
@@ -224,9 +226,17 @@ export function partnerActivity(state: GcState, partner: Partner): CompanyEvent[
       const base = { projectId: project.id, where }
       const invite = pkg.invites.find((i) => i.partnerId === partner.id)
       if (invite) {
-        out.push({ on: invite.invitedOn, kind: 'note', text: `Asked them to quote ${pkg.trade.toLowerCase()}.`, ...base })
+        // The line a Follow up card's promise points at: the newest contact that gave a day, else the ask itself.
+        const promised = (invite.contacts ?? []).filter((c) => c.promisedBy).sort((a, b) => b.on.localeCompare(a.on))[0]
+        out.push({ id: promised ? `asked:${invite.id}` : `ask:${invite.id}`, on: invite.invitedOn, kind: 'note', text: `Asked them to quote ${pkg.trade.toLowerCase()}.`, ...base })
         for (const c of invite.contacts ?? []) {
-          out.push({ on: c.on, kind: 'note', text: `${c.how === 'portal' ? 'In their portal' : `${c.by}, ${HOW[c.how]}`}: ${c.note}${c.promisedBy ? ` Quote by ${shortDate(c.promisedBy)}.` : ''}`, ...base })
+          out.push({
+            ...(c === promised ? { id: `ask:${invite.id}` } : {}),
+            on: c.on,
+            kind: 'note',
+            text: `${c.how === 'portal' ? 'In their portal' : `${c.by}, ${HOW[c.how]}`}: ${c.note}${c.promisedBy ? ` Quote by ${shortDate(c.promisedBy)}.` : ''}`,
+            ...base,
+          })
         }
         if (invite.bid) out.push({ on: invite.bid.submittedOn, kind: 'quote', text: `Quoted ${money(invite.bid.amount)}.`, ...base })
         if (invite.declineReason) out.push({ on: invite.declineReason.on, kind: 'note', text: `${invite.declinedWhy === 'cant' ? 'Cannot do it' : 'Will not do it'}: ${declineReasonWords(invite.declineReason)}.`, ...base })
@@ -234,7 +244,17 @@ export function partnerActivity(state: GcState, partner: Partner): CompanyEvent[
       const awarded = pkg.invites.find((i) => i.id === pkg.awardedInviteId)
       if (awarded?.partnerId === partner.id && pkg.sow) {
         const sow = pkg.sow
+        if (pkg.awardedOn) out.push({ on: pkg.awardedOn, kind: 'quote', text: `Awarded ${pkg.trade.toLowerCase()}${pkg.awardedBy ? ` by ${pkg.awardedBy}` : ''}, ${money(sow.price)}.`, ...base })
         if (sow.sentOn) out.push({ on: sow.sentOn, kind: 'paper', text: 'Statement of work sent to sign.', ...base })
+        // Pay applications we sent back, with our reason, and change orders on their trade.
+        for (const back of sow.sentBack ?? []) {
+          out.push({ on: back.on, kind: 'money', text: `Pay application ${back.draw.number} sent back${back.note ? `: ${back.note}` : '.'}`, ...base })
+        }
+        for (const { co } of tradeChangesFor(project, pkg)) {
+          if (!co.tradeChange) continue
+          out.push({ on: co.tradeChange.sentOn, kind: 'paper', text: `Change order ${co.number} sent to them to sign: ${co.description}`, ...base })
+          if (co.tradeChange.signedOn) out.push({ on: co.tradeChange.signedOn, kind: 'paper', text: `Signed change order ${co.number}.`, ...base })
+        }
         if (sow.signedOn) out.push({ on: sow.signedOn, kind: 'paper', text: `Signed the statement of work, ${money(sow.price)}.`, ...base })
         for (const d of sow.draws) {
           out.push({ on: d.requestedOn, kind: 'money', text: `Asked for draw ${d.number}, ${money(d.gross)}.`, ...base })
@@ -252,11 +272,20 @@ export function partnerActivity(state: GcState, partner: Partner): CompanyEvent[
   // What we sent from the company window. A first master agreement or statement of work already
   // reads as sent above, from the send itself.
   const sends = (state.paperSends ?? []).filter((x) => x.partnerId === partner.id)
+  const SEND_KIND: Record<PaperKind, PromiseKind> = { msa: 'msa', sow: 'sow', insurance: 'insurance', w9: 'w9', waiver: 'closeout' }
   for (const send of sends) {
     if (send.first) continue
-    out.push({ on: send.on, kind: 'paper', text: paperSendActivity(state, send), ...promiseWhere(state, send.projectId, send.packageId) })
+    // The newest send for a paper carries its promise's id, so a promise opened from Follow up lands here.
+    const newest = sends.filter((x) => !x.first && x.paper === send.paper && (x.packageId ?? null) === (send.packageId ?? null)).pop()
+    const promise = tradePromisesOf(state).find((p) => p.partnerId === partner.id && p.from === 'office' && p.kind === SEND_KIND[send.paper] && (p.packageId ?? null) === (send.packageId ?? null))
+    out.push({
+      ...(newest === send && promise ? { id: `promise:${promise.id}` } : {}),
+      on: send.on,
+      kind: 'paper',
+      text: paperSendActivity(state, send),
+      ...promiseWhere(state, send.projectId, send.packageId),
+    })
   }
-  const SEND_KIND: Record<PaperKind, PromiseKind> = { msa: 'msa', sow: 'sow', insurance: 'insurance', w9: 'w9', waiver: 'closeout' }
   for (const p of tradePromisesOf(state)) {
     if (p.partnerId !== partner.id) continue
     const where = promiseWhere(state, p.projectId, p.packageId)
@@ -264,10 +293,10 @@ export function partnerActivity(state: GcState, partner: Partner): CompanyEvent[
     // An ask from the office is ours, not their word: say who asked, then when it came.
     if (p.from === 'office') {
       // A send already says it, with its day.
-      if (!fromSend) out.push({ on: p.madeOn, kind: 'paper', text: `We asked for ${p.what} by ${weekdayDate(p.by)}.`, ...where })
+      if (!fromSend) out.push({ id: `promise:${p.id}`, on: p.madeOn, kind: 'paper', text: `We asked for ${p.what} by ${weekdayDate(p.by)}.`, ...where })
       if (p.keptOn) out.push({ on: p.keptOn, kind: 'paper', text: `${p.what.charAt(0).toUpperCase()}${p.what.slice(1)} came.`, ...where })
     } else {
-      out.push({ on: p.madeOn, kind: 'paper', text: tradePromiseWords(p, state.today), ...where })
+      out.push({ id: `promise:${p.id}`, on: p.madeOn, kind: 'paper', text: tradePromiseWords(p, state.today), ...where })
     }
   }
   if (partner.msaSentOn) out.push({ on: partner.msaSentOn, kind: 'paper', text: 'Master agreement sent.' })

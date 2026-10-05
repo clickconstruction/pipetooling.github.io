@@ -32,9 +32,9 @@ export function GcPeoplePill({
   summary: ProjectPeopleSummary
   projectName: string
   tourKey?: string
-  /** A trade opens the Follow up sheet at them; the architect or the customer opens their window. */
+  /** Opens the Follow up sheet on this job's people, at them: on "What did they say?" after a Call. */
   onFollowUp: (person: ProjectPerson, calling: boolean) => void
-  /** The Follow up sheet, from this job's first trade. */
+  /** The Follow up sheet on this job's people, from the first. Null: nobody to call. */
   onWorkList: (() => void) | null
   onOpenFollowUp: () => void
 }) {
@@ -197,7 +197,6 @@ export function GcPeoplePill({
                   <a
                     href={telHref(person.phone)}
                     onClick={() => {
-                      if (person.kind !== 'trade') return
                       close()
                       onFollowUp(person, true)
                     }}
@@ -212,7 +211,7 @@ export function GcPeoplePill({
                       close()
                       onFollowUp(person, false)
                     }}
-                    title={person.kind === 'trade' ? 'A text or an email from you, drafted' : `Open ${person.company}: log the call, see what is waiting`}
+                    title="A text or an email from you, drafted, with every reason on this job"
                     style={{ padding: '0.2rem 0.55rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-base)', fontSize: '0.78rem', cursor: 'pointer', whiteSpace: 'nowrap' }}
                   >
                     Follow up

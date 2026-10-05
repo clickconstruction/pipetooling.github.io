@@ -14,6 +14,7 @@ import {
   type TradePromise,
 } from '../../lib/gcMode/gcModel'
 import { Btn, Card, Chip, input } from './gcUi'
+import { PartnerLink } from './GcCompanyFile'
 
 /**
  * GC mode design spike: Follow up's promises other than a quote date (the owner, 2026-10-04,
@@ -149,7 +150,13 @@ function PromiseRow({
   return (
     <Card style={{ borderLeft: `4px solid ${red ? 'var(--border-red)' : amber ? 'var(--border-amber)' : 'var(--border-blue)'}` }}>
       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
-        <strong>{partner.company}</strong>
+        {/* The name opens the company at this promise, on Activity (the owner, 2026-10-04); insurance with no day yet, at the certificate. */}
+        <PartnerLink
+          partnerId={partner.id}
+          company={partner.company}
+          strong
+          at={promise ? { tab: 'activity', focus: `promise:${promise.id}` } : kind === 'insurance' ? { tab: 'documents', doc: 'insurance' } : { tab: 'activity' }}
+        />
         <span style={{ color: 'var(--text-muted)' }}>{partner.contact}</span>
         <Chip tone="grey">{tag}</Chip>
         {onFollowUp && (

@@ -61,7 +61,7 @@ export function GcCompanyWindow({
   state: GcState
   partner: Partner
   dispatch: Dispatch<GcAction>
-  at?: { tab?: CompanyTab; doc?: string }
+  at?: { tab?: CompanyTab; doc?: string; focus?: string }
   onClose: () => void
   onOpenProject: (projectId: string) => void
 }) {
@@ -163,7 +163,12 @@ export function GcCompanyWindow({
         <div style={{ padding: '0.9rem 1rem', overflowY: 'auto' }}>
           {tab === 'about' && <About state={state} partner={partner} onOpenProject={onOpenProject} onDocuments={(key) => { setDoc(key); setTab('documents') }} />}
           {tab === 'activity' && (
-            <CompanyActivity events={events} onOpenProject={onOpenProject} onLog={(note) => dispatch({ type: 'logPartnerContact', partnerId: partner.id, note })} />
+            <CompanyActivity
+              events={events}
+              onOpenProject={onOpenProject}
+              onLog={(note) => dispatch({ type: 'logPartnerContact', partnerId: partner.id, note })}
+              {...(at?.focus ? { focus: at.focus } : {})}
+            />
           )}
           {tab === 'documents' && (
             <CompanyDocuments

@@ -64,7 +64,7 @@ import {
 import { linkNeverOpened } from '../../lib/gcMode/gcPortal'
 import { VettingChip } from './GcVetting'
 import { useCompanyOpener } from './gcCompanyOpener'
-import { PartnerName } from './GcCompanyFile'
+import { PartnerLink, PartnerName } from './GcCompanyFile'
 import { GcSovSideBySide } from './GcSovSideBySide'
 import { PlanSetDriveLine } from './GcNewProjectDriveLink'
 import { GcExclusionRows } from './GcExclusionRows'
@@ -327,7 +327,7 @@ export function GcPackagesTab({ state, project, dispatch, onSeePortal, onMap, op
                                     title={stale ? `Their quote is on an older set of plans. ${staleSentence(project, pkg, inv)}` : inv.status === 'declined' ? declinedTitle(inv) : undefined}
                                   >
                                     {/* A company that is out says why, when the office wrote it down (the owner, 2026-10-04). */}
-                                    {partner?.company} · {stale ? 'old plans' : inv.status === 'declined' ? declinedWords(inv) : words.word}
+                                    {partner ? <PartnerLink partnerId={partner.id} company={partner.company} at={{ tab: 'activity' }} /> : null} · {stale ? 'old plans' : inv.status === 'declined' ? declinedWords(inv) : words.word}
                                     {inv.bid && bidRanOut(inv.bid, state.today) ? ' · ran out' : ''}
                                   </Chip>
                                   )}
@@ -570,7 +570,7 @@ function LevelPanel({ state, project, pkg, dispatch, onSeePortal }: GcPaneProps 
             const words = INVITE_WORDS[inv.status]
             return (
               <div key={inv.id} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                <span style={{ fontWeight: 600 }}>{partner.company}</span>
+                <span style={{ fontWeight: 600 }}><PartnerLink partnerId={partner.id} company={partner.company} /></span>
                 {/* Portal lane: never opened the link, in place of "not opened". */}
                 {inv.status === 'invited' && linkNeverOpened(state, inv.partnerId) ? (
                   <LinkNeverOpenedChip state={state} partnerId={inv.partnerId} />
@@ -626,7 +626,10 @@ function LevelPanel({ state, project, pkg, dispatch, onSeePortal }: GcPaneProps 
                 <th style={th}>Side by side</th>
                 {bidders.map((inv) => (
                   <th key={inv.id} style={{ ...th, textTransform: 'none', fontSize: '0.85rem', color: 'var(--text-strong)' }}>
-                    {partnerById(state, inv.partnerId)?.company}
+                    {(() => {
+                      const p = partnerById(state, inv.partnerId)
+                      return p ? <PartnerLink partnerId={p.id} company={p.company} /> : null
+                    })()}
                     {onSeePortal && (
                       <div style={{ fontWeight: 400 }}>
                         <Btn kind="quiet" onClick={() => onSeePortal(inv.partnerId)}>See their portal</Btn>
@@ -1008,7 +1011,7 @@ export function GcPlansTab({ state, project, dispatch }: GcPaneProps) {
                     <td style={td}>
                       {pkg.trade} {touched && <Chip tone="amber">changed</Chip>}
                     </td>
-                    <td style={{ ...td, fontWeight: 600 }}>{partner.company}</td>
+                    <td style={{ ...td, fontWeight: 600 }}><PartnerLink partnerId={partner.id} company={partner.company} /></td>
                     <td style={td}>
                       {rev === 0 ? (
                         <span style={{ color: 'var(--text-muted)' }}>with their invitation</span>
@@ -1280,7 +1283,7 @@ export function GcContractsTab({ state, project, dispatch }: GcPaneProps) {
           <Card key={pkg.id}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'baseline' }}>
               <div>
-                <strong>{pkg.trade}</strong> · {partner.company}{' '}
+                <strong>{pkg.trade}</strong> · <PartnerLink partnerId={partner.id} company={partner.company} at={{ tab: 'documents', doc: `sow-${pkg.id}` }} />{' '}
                 {sow ? (
                   <Chip tone={sow.status === 'signed' ? 'green' : sow.status === 'sent' ? 'amber' : 'grey'}>
                     Statement of work {sow.status === 'signed' ? `signed ${shortDate(sow.signedOn)}` : sow.status === 'sent' ? 'waiting on their signature' : 'drafted'}
