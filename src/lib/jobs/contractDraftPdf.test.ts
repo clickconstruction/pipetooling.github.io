@@ -23,6 +23,13 @@ describe('fetchContractDraftPdf (v2.3527)', () => {
     expect(invoke).toHaveBeenCalledWith('share-job-contract', { body: { mode: 'draft_pdf', job_id: 'j-804', draft } })
   })
 
+  it('carries a named second signer, so the page prints a second pair of pen rules (v2.4590)', async () => {
+    invoke.mockResolvedValue({ data: { ok: true, filename: 'Agreement-J1053-to-sign.pdf', pdf_base64: btoa('%PDF') }, error: null })
+    const draft = { fields: {}, body_html: null, body_format: 'plain', template_name: null, recipient_name: 'Sam Owner', revision: 1, co_signer_name: 'Alex Owner' }
+    await fetchContractDraftPdf({ jobId: 'j-1053', draft })
+    expect(invoke).toHaveBeenCalledWith('share-job-contract', { body: { mode: 'draft_pdf', job_id: 'j-1053', draft: expect.objectContaining({ recipient_name: 'Sam Owner', co_signer_name: 'Alex Owner' }) } })
+  })
+
   it('names the real problem when the function has not been deployed yet', async () => {
     invoke.mockResolvedValue({ data: { error: 'Add at least one valid email.' }, error: null })
     await expect(fetchContractDraftPdf({ contractId: 'c-1' })).rejects.toThrow(/not live on the server yet/)

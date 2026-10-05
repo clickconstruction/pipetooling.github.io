@@ -18,6 +18,7 @@ import { buildJobContractPdf, contractBodyToPlainText, type JobContractPdfInput,
 import { encodeBase64 } from 'https://deno.land/std@0.224.0/encoding/base64.ts'
 import { amountCentsFromFields, appOrigin, contractHeading, corsHeaders, escapeHtml, formatMoney, isValidEmail, JOB_CONTRACT_BUCKET, JOB_CONTRACT_LINK_DAYS, JOB_CONTRACT_REMINDER_DAYS, jobNumberLabel, json, randomUrlToken, signedRecordId, signingUrl } from '../_shared/jobContract.ts'
 import { buildJobContractPaperEmail } from '../_shared/jobContractEmail.ts'
+import { signerNamesLine } from '../_shared/jobContractSigners.ts'
 
 type Body = {
   contract_id?: string
@@ -259,6 +260,8 @@ serve(async (req) => {
     let job: JobLite | null = null
     let contractId: string | null = null
     let signerName = ''
+    /** Who signed, for the email's words — both signers of a two-frame agreement (v2.4590); the PDF keeps each frame's own name. */
+    let signedBy = ''
     let signedAt: string | null = null
     let signLink: string | null = null
     /** Link-only filed record (Google Doc): emailed as a link, no attachment. */
@@ -302,6 +305,7 @@ serve(async (req) => {
       if (!job) return json({ error: 'Job not found' }, 404)
       contractId = c.id
       signerName = (c.signer_printed_name ?? '').trim()
+      signedBy = signerNamesLine(c) || signerName
       signedAt = c.signed_at
       heading = contractHeading(job)
       const jobNo = jobNumberLabel(job)
@@ -402,6 +406,7 @@ serve(async (req) => {
         job = (j ?? null) as JobLite | null
       }
       signerName = (e.acceptor_printed_name ?? '').trim()
+      signedBy = signerName
       signedAt = e.acceptor_consented_at
       const kindLabel = e.doc_kind === 'bid_proposal' ? 'Proposal' : 'Estimate'
       heading = e.title?.trim() || `${kindLabel} #${e.estimate_number}`
@@ -467,8 +472,8 @@ serve(async (req) => {
     const jobNo = job ? jobNumberLabel(job) : ''
     const subject = `Signed: ${heading}${jobNo ? ` — Job #${jobNo}` : ''}`
     const intro = docLink
-      ? `Here is the signed agreement${signerName ? ` — signed by ${signerName}` : ''}${signedAt ? ` on ${dateOnly(signedAt)}` : ''}:`
-      : `Attached is the signed agreement${signerName ? ` — signed by ${signerName}` : ''}${signedAt ? ` on ${dateOnly(signedAt)}` : ''}.`
+      ? `Here is the signed agreement${signedBy ? ` — signed by ${signedBy}` : ''}${signedAt ? ` on ${dateOnly(signedAt)}` : ''}:`
+      : `Attached is the signed agreement${signedBy ? ` — signed by ${signedBy}` : ''}${signedAt ? ` on ${dateOnly(signedAt)}` : ''}.`
     const text = `${note ? `${note}\n\n` : ''}${intro}${docLink ? `\n${docLink}` : ''}${signLink ? `\n\nIt also stays at this link any time:\n${signLink}` : ''}${senderName ? `\n\n— ${senderName}` : ''}\n`
     const html =
       `${note ? `<p>${escapeHtml(note).replace(/\n/g, '<br>')}</p>` : ''}<p>${escapeHtml(intro)}</p>` +

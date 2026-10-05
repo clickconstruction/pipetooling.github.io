@@ -1,8 +1,8 @@
 ---
 name: "A second signer: every place a signed agreement shows or prints its signers"
 number: 64
-group: ready
-status: found 2026-09-29 in the live pass of v2.4186 (the second signer) on J1053 · not started
+group: close
+status: built v2.4590 (all six items, plus five readers the survey missed) · left: deploy customer-portal, share-job-contract and legal-portal after the merge, then a live read on J1053
 summary: >
   v2.4186 gave a job's service agreement a second signature frame, and the page the customer
   signs, the stored PDF, the window's banner and its paper all carry both signers — checked live
@@ -13,15 +13,22 @@ summary: >
   also never says *1 of 2 signed*), the History and Documents audit line, the customer portal's
   *Your agreements*, and the browser print (*Print / save as PDF*, *Open full size*), which shows
   one signature block where the stored PDF has two.
-next: Build items 1–6 as one PR, item 1 first. Kernel first — one names line and one frames count in `jobContractSigners.ts`, read by the pill, the chip, the audit line and the portal.
-size: S — one client PR plus a `customer-portal` redeploy
-blocker: None.
+next: Deploy the three functions after the merge, read J1053's portal and a copy email, then retire this file — or keep it for the two items under Where it stands.
+size: XS — three redeploys and a read
+blocker: The merge.
 ver: from v2.4186 · the window v2.4175 / v2.4183
-opinion: build soon — item 1 is small and it is the one that can leave a homestead agreement short a signature line; the other five are words on screens that already exist.
+opinion: your call — the code is done; the two left items are each worth a small PR only if homestead papers come back signed by two often.
 mockup: not required — no new screen; the printed page gains the second pen rules and signature block the stored PDF already prints, and the pill, chip and lines gain a second name
 ---
 
 # A second signer: every place a signed agreement shows or prints its signers
+
+## Where it stands
+
+[v2.4590](../docs/recent-features/v2.4590.md) built items 1–6 and five readers the survey below missed. Those were the signed copy's email, the share sheet's attachment line, the legal desk, the firm's page and the legal packet, plus the filing sheet's default name. Three functions wait on a deploy after the merge: `customer-portal`, `share-job-contract` and `legal-portal`. Two items are left, both outside that PR's bounds:
+
+- **The job's activity line.** *Contract signed by Sam Owner* is written by the `job_contracts` trigger (`20260903141146_job_contracts.sql`), so it names the first signer only. Fixing it needs a migration.
+- **A paper that comes back with two signatures.** The filing sheet records one typed *Who signed*, which now defaults to both names. It does not record a second frame. Recording `co_signed_at` and `co_signer_printed_name` with `co_signer_mode = 'paper'` would let the data name both, here and on every job the paper covers.
 
 ## The ask, in the owner's words
 

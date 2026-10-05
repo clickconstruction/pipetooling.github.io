@@ -235,6 +235,27 @@ export type JobContractRenderInput = {
     /** "Signed on paper" frames paper records. */
     paper?: boolean
   } | null
+  /**
+   * v2.4590: a second signer the office named — a *Second signature* block, signed or with its own
+   * pen rules and the name, as the stored PDF draws it (`_shared/jobContractPdf.ts`). Omitted: one block.
+   */
+  coSignerName?: string | null
+  coSignature?: JobContractRenderInput['signature']
+}
+
+/** The open block's words: the stored PDF's (`UNSIGNED_BLOCK` in `_shared/jobContractPdf.ts`). */
+const PEN_SIGN = 'Sign'
+const PEN_DATE = 'Date'
+
+/** One signature block: the framed mark when signed; otherwise pen rules — nothing that reads as a signature. */
+function signatureBlockHtml(sig: JobContractRenderInput['signature'], openFor: string | null): string {
+  if (!sig) {
+    return `<div class="pen"><div class="rule"><span>${PEN_SIGN}${openFor ? ` — ${escapeHtml(openFor)}` : ''}</span></div><div class="rule date"><span>${PEN_DATE}</span></div></div>`
+  }
+  return `<div class="sigrow"><div class="frame"><span class="tag">${sig.paper ? 'Signed on paper' : 'Signed electronically'}</span>${
+    sig.imageUrl ? `<img src="${escapeHtml(sig.imageUrl)}" alt="Signature of ${escapeHtml(sig.printedName)}">` : `<div class="mark">${escapeHtml(sig.printedName)}</div>`
+  }${sig.recordId ? `<span class="id">${escapeHtml(sig.recordId)}</span>` : ''}</div><div class="who"><b>${escapeHtml(sig.printedName)}</b><span>${escapeHtml(sig.whenLabel ?? '')}</span></div></div>
+<div class="audit">${escapeHtml(sig.auditLine)}</div>`
 }
 
 /**
@@ -250,7 +271,8 @@ export function buildJobContractDocumentHtml(input: JobContractRenderInput): str
   const dates = [f.start_date ? `Start: ${escapeHtml(f.start_date)}` : '', f.completion_date ? `Estimated completion: ${escapeHtml(f.completion_date)}` : '']
     .filter(Boolean)
     .join(' · ')
-  const sig = input.signature
+  const sig = input.signature ?? null
+  const coName = (input.coSignerName ?? '').trim()
   return `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(input.heading)}</title>
 <style>
   body{margin:0;background:#fff;color:#111827;font:14px/1.5 -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
@@ -270,7 +292,7 @@ export function buildJobContractDocumentHtml(input: JobContractRenderInput): str
   .frame .id{position:absolute;bottom:-7px;right:10px;background:#fff;padding:0 6px;font:10px/1 ui-monospace,Menlo,monospace;color:#6b7280}
   .frame .mark{font:38px/1 "Great Vibes","Brush Script MT",cursive;color:#111827;white-space:nowrap}
   .frame img{max-height:60px;max-width:260px;display:block}
-  .frame .empty{font:13px -apple-system,sans-serif;color:#9ca3af}
+  .pen{display:flex;gap:30px;margin-top:34px}.pen .rule{flex:1;border-top:1px solid #111827;padding-top:3px;font-size:10px;color:#6b7280}.pen .date{flex:0 0 150px}
   .who{text-align:right}.who b{display:block;font-size:13px}.who span{font-size:11px;color:#6b7280}
   .audit{font-size:11px;color:#6b7280;margin-top:12px}
   .foot{margin-top:28px;font-size:11px;color:#6b7280;text-align:center;white-space:pre-line}
@@ -293,17 +315,8 @@ ${dates ? `<p class="kv">${dates}</p>` : ''}
 <h2>Terms${input.templateName ? ` · ${escapeHtml(input.templateName)}` : ''}</h2>
 <div class="terms">${input.termsHtml}</div>
 <div class="sig"><h2 style="margin-top:0">Customer signature</h2>
-<div class="sigrow"><div class="frame"><span class="tag">${sig?.paper ? 'Signed on paper' : 'Signed electronically'}</span>${
-    sig
-      ? sig.imageUrl
-        ? `<img src="${escapeHtml(sig.imageUrl)}" alt="Signature of ${escapeHtml(sig.printedName)}">`
-        : `<div class="mark">${escapeHtml(sig.printedName)}</div>`
-      : '<div class="empty">Not yet signed</div>'
-  }${sig?.recordId ? `<span class="id">${escapeHtml(sig.recordId)}</span>` : ''}</div>${
-    sig ? `<div class="who"><b>${escapeHtml(sig.printedName)}</b><span>${escapeHtml(sig.whenLabel ?? '')}</span></div>` : ''
-  }</div>
-${sig ? `<div class="audit">${escapeHtml(sig.auditLine)}</div>` : ''}
-</div>
+${signatureBlockHtml(sig, coName ? input.recipientName.trim() || null : null)}
+${coName ? `<h2>Second signature</h2>\n${signatureBlockHtml(input.coSignature ?? null, coName)}\n` : ''}</div>
 ${issuer ? `<div class="foot">${escapeHtml([issuer.tagline, issuer.companyName, issuer.addressText, issuer.phone ? `Ph: ${issuer.phone}` : '', issuer.licenseLine].filter(Boolean).join('\n'))}</div>` : ''}
 </div></body></html>`
 }
