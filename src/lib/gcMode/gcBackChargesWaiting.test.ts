@@ -22,6 +22,7 @@ describe('back-charges waiting on the office (the owner, 2026-10-05)', () => {
       title: '1 back-charge to settle in GC mode',
       detail: 'Iron Horse Fabrication disputed $1,250 on Fair Oaks Shops, Building D. Keep it or drop it with a reason.',
       projectId: 'fairoaksd',
+      chargeId: 'fsteel-bc-1',
     })
     // Our move: the people count does not change.
     expect(allPeople(state).count).toBe(allPeople(before).count)

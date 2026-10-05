@@ -70,8 +70,9 @@ export interface GcBackChargesNeedsYou {
   late: boolean
   title: string
   detail: string
-  /** The job the oldest is on: Settle opens it on Draws. */
+  /** The job the oldest is on: Settle opens it on Draws, at that charge (Building's `&charge=`). */
   projectId: string
+  chargeId: string
 }
 
 /** The dashboard's line, or null when no back-charge waits on us. */
@@ -93,5 +94,6 @@ export function gcBackChargesNeedsYou(state: GcState): GcBackChargesNeedsYou | n
     title: `${n} ${n === 1 ? 'back-charge' : 'back-charges'} to settle in GC mode`,
     detail: `${shown.join(' · ')}${n > 2 ? ` · and ${n - 2} more` : ''}. ${next.join(' ')}`,
     projectId: first.project.id,
+    chargeId: first.charge.id,
   }
 }

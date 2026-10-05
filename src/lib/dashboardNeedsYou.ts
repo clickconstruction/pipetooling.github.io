@@ -340,9 +340,9 @@ export type NeedsYouInputs = {
   /**
    * GC mode design spike (the owner, 2026-10-05): back-charges a trade disputed, never answered, or
    * agreed to with an approved draw to take them from (`gcBackChargesNeedsYou`). Our move, so not in
-   * the people count. Action opens the oldest's job on Draws.
+   * the people count. Action opens the oldest's job on Draws, at that charge.
    */
-  gcBackCharges?: { count: number; late: boolean; title: string; detail: string; projectId: string } | null
+  gcBackCharges?: { count: number; late: boolean; title: string; detail: string; projectId: string; chargeId: string } | null
   jobFollowupCount: number | null
   jobFollowupStageCounts: Record<JobFollowupStage, number> | null
   /**

@@ -741,7 +741,7 @@ export function DashboardPinnedQuickRow({
             } else if (item.key === 'gc-change-requests') {
               navigate(`/bids/gc?project=${encodeURIComponent(gcChangeRequests?.projectId ?? '')}&ptab=owner`)
             } else if (item.key === 'gc-back-charges') {
-              navigate(`/bids/gc?project=${encodeURIComponent(gcBackCharges?.projectId ?? '')}&ptab=draws`)
+              navigate(`/bids/gc?project=${encodeURIComponent(gcBackCharges?.projectId ?? '')}&ptab=draws&charge=${encodeURIComponent(gcBackCharges?.chargeId ?? '')}`)
             } else if (item.key === 'jobs-stale-open') {
               navigate('/jobs?tab=job-summary&view=cycle')
             } else if (item.key === 'capacity-under') {
