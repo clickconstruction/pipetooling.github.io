@@ -308,7 +308,14 @@ export default function GcNoticeJobsBand({ data, todayYmd, isMobile, onOpenJob, 
               )}
               <tbody>
                 {band.groups.map((g) => (
-                  <GroupRows key={g.key} label={g.label} count={g.rows.length} open={g.open} wrong={g.wrong} stage={order === 'stage' ? (g.key as GcNoticeBandStage) : null}>
+                  <GroupRows
+                    key={g.key}
+                    label={g.label}
+                    count={g.rows.length}
+                    open={g.open}
+                    stage={order === 'stage' ? (g.key as GcNoticeBandStage) : null}
+                    wrong={g.wrong ? <GcNoticeWrongList items={gcNoticeBandWrongItems({ groups: [g] })} labelOf={label} onPick={jumpToRow} isMobile={isMobile} jumpWhenOne scope={g.label} /> : null}
+                  >
                     {g.rows.map(renderRow)}
                   </GroupRows>
                 ))}
@@ -326,13 +333,14 @@ export default function GcNoticeJobsBand({ data, todayYmd, isMobile, onOpenJob, 
   )
 }
 
-function GroupRows({ label, count, open, wrong, stage, children }: { label: string; count: number; open: number; wrong: number; stage: GcNoticeBandStage | null; children: React.ReactNode }) {
+/** A group's header row. `wrong` is the group's own look-wrong count as a button (v2.4545), null when every job reads right. */
+function GroupRows({ label, count, open, wrong, stage, children }: { label: string; count: number; open: number; wrong: React.ReactNode; stage: GcNoticeBandStage | null; children: React.ReactNode }) {
   return (
     <>
       <tr data-testid="gc-notice-band-group">
         <td colSpan={5} style={{ ...td, background: 'var(--bg-subtle)', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-700)', padding: '6px 12px' }}>
           {stage ? <span style={{ ...stageChip(stage), marginRight: 8 }}>{label}</span> : <span style={{ marginRight: 8 }}>{label}</span>}
-          {count} job{count === 1 ? '' : 's'} <span style={{ fontWeight: 500, color: 'var(--text-muted)' }}>· {formatUsdNoCents(open)} open · {wrong ? <strong style={{ color: 'var(--text-red-600)' }}>{wrong} look{wrong === 1 ? 's' : ''} wrong</strong> : 'all read right'}</span>
+          {count} job{count === 1 ? '' : 's'} <span style={{ fontWeight: 500, color: 'var(--text-muted)' }}>· {formatUsdNoCents(open)} open · {wrong ?? 'all read right'}</span>
         </td>
       </tr>
       {children}

@@ -177,6 +177,25 @@ describe('GcOnNoticeModal', () => {
     // the row itself opens the job
     fireEvent.click(rows[0]!)
     expect(onOpenJob).toHaveBeenCalledWith('j1031')
+    // v2.4545: each group's count is its own button. Working's one wrong job jumps straight to its
+    // row, with no list; Billed's two open a list of those two only.
+    const groupTriggers = screen.getAllByTestId('gc-notice-band-group').map((g) => within(g).getByTestId('gc-notice-band-wrong'))
+    expect(groupTriggers.map((b) => [b.textContent, b.dataset.jump ?? 'no'])).toEqual([['1 looks wrong ↓', 'yes'], ['2 look wrong ▾', 'no']])
+    expect(groupTriggers[0]!.getAttribute('aria-label')).toMatch(/^Working: 1 looks wrong\. Jump to 1031 · /)
+    const opened = onOpenJob.mock.calls.length
+    fireEvent.click(groupTriggers[0]!)
+    expect(screen.queryByTestId('gc-notice-band-wrong-list')).toBeNull()
+    await waitFor(() => expect(rows[0]!.dataset.flash).toBe('yes'))
+    expect(onOpenJob.mock.calls.length).toBe(opened)
+    fireEvent.click(groupTriggers[1]!)
+    const scoped = screen.getByTestId('gc-notice-band-wrong-list')
+    expect(scoped.getAttribute('aria-label')).toBe('Billed: the 2 jobs that look wrong')
+    const scopedText = within(scoped).getAllByTestId('gc-notice-band-wrong-item').map((i) => i.textContent ?? '')
+    expect(scopedText).toHaveLength(2)
+    expect(scopedText.some((t) => t.includes('1016 · Lot 9'))).toBe(true)
+    expect(scopedText.some((t) => t.includes('1031'))).toBe(false)
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(screen.queryByTestId('gc-notice-band-wrong-list')).toBeNull()
     // fold and reorder
     fireEvent.click(within(band).getByTestId('gc-notice-band-toggle'))
     expect(screen.queryAllByTestId('gc-notice-band-row')).toHaveLength(0)
@@ -211,7 +230,8 @@ describe('GcOnNoticeModal', () => {
       renderWithProviders(<GcOnNoticeModal {...baseProps} authRole="master_technician" />)
       await settle()
       const band = screen.getByTestId('gc-notice-band')
-      const trigger = within(band).getByTestId('gc-notice-band-wrong')
+      // The head line's count; each group's header row has its own since v2.4545.
+      const trigger = within(screen.getByTestId('gc-notice-band-head')).getByTestId('gc-notice-band-wrong')
       const wrongRows = screen.getAllByTestId('gc-notice-band-row').filter((r) => r.dataset.wrong === 'yes')
       expect(trigger.textContent).toContain(`${wrongRows.length} look${wrongRows.length === 1 ? 's' : ''} wrong`)
       expect(screen.queryByTestId('gc-notice-band-wrong-list')).toBeNull()
