@@ -417,6 +417,7 @@ export default function GcMode() {
       {boardTab === 'money' && (
         <GcOwnerBillingMoney
           state={state}
+          dispatch={dispatch}
           onOpenBill={(id) => {
             setBoardTab('projects')
             setProjectId(id)
