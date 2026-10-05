@@ -1,0 +1,343 @@
+<title>Bid Calendar Strip</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  /* Layout: a reading column; each mock-up is drawn inside a frame like the app's project header, days as squares in week groups. */
+  :root {
+    --bg: #f3f5f9;
+    --fg: #172033;
+    --muted: #5d6880;
+    --line: #d8deea;
+    --frame: #ffffff;
+    --sunk: #eef1f7;
+    --accent: #2f6fe4;
+    --accent-soft: #dbe7ff;
+    --good: #1f8f4e;
+    --warn: #b7700b;
+    --warn-soft: #fdf0d9;
+    --bad: #c23a3a;
+    --bad-soft: #fbe3e3;
+    --font-body: 'Public Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-data: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f1625; --fg: #e6ebf5; --muted: #95a1ba; --line: #2c3854; --frame: #18213a; --sunk: #141c31;
+      --accent: #6ea0ff; --accent-soft: #23386b; --good: #4cc483; --warn: #f0b04a; --warn-soft: #3f2f12; --bad: #f07a7a; --bad-soft: #4a1d22;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f1625; --fg: #e6ebf5; --muted: #95a1ba; --line: #2c3854; --frame: #18213a; --sunk: #141c31;
+    --accent: #6ea0ff; --accent-soft: #23386b; --good: #4cc483; --warn: #f0b04a; --warn-soft: #3f2f12; --bad: #f07a7a; --bad-soft: #4a1d22;
+    color-scheme: dark;
+  }
+  body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.55; }
+  .page { max-width: 1080px; margin: 0 auto; padding: 32px 20px 64px; display: grid; gap: 40px; }
+  h1, h2, h3 { margin: 0; line-height: 1.2; text-wrap: balance; }
+  h1 { font-size: 1.9rem; font-weight: 800; }
+  h2 { font-size: 1.3rem; font-weight: 700; }
+  h3 { font-size: 1rem; font-weight: 700; }
+  p { margin: 0; max-width: 70ch; }
+  .eyebrow { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); }
+  .section { display: grid; gap: 14px; }
+  .lede { color: var(--muted); font-size: 1.02rem; }
+  .frame { background: var(--frame); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; display: grid; gap: 12px; min-width: 0; }
+  .verdict { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; font-weight: 600; }
+  .pill { padding: 2px 10px; border-radius: 999px; font-weight: 800; font-size: 0.78rem; background: var(--bad-soft); color: var(--bad); }
+  .next { justify-self: start; padding: 6px 12px; border-radius: 7px; background: var(--accent); color: #fff; font-weight: 700; font-size: 0.85rem; }
+  .summary { display: flex; gap: 6px 18px; flex-wrap: wrap; font-size: 0.86rem; }
+  .summary b { font-variant-numeric: tabular-nums; }
+  .summary .warn { color: var(--warn); }
+  .summary .bad { color: var(--bad); }
+  .scroll { overflow-x: auto; padding-bottom: 4px; }
+  .caption { font-size: 0.82rem; color: var(--muted); max-width: 80ch; }
+
+  /* The day squares */
+  .cal { display: flex; gap: 14px; align-items: flex-start; width: max-content; }
+  .week { display: grid; gap: 4px; }
+  .week-name { font-size: 0.68rem; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase; font-weight: 700; height: 14px; white-space: nowrap; }
+  .days { display: flex; gap: 4px; align-items: flex-start; }
+  .day { display: grid; gap: 3px; justify-items: center; width: 34px; }
+  .day.weekend { width: 34px; }
+  .rev .day.weekend { width: 18px; }
+  .sq { width: 34px; height: 34px; border-radius: 6px; border: 1.5px solid var(--line); background: var(--frame); position: relative; display: grid; place-items: center; font-size: 0.7rem; font-family: var(--font-data); color: var(--muted); box-sizing: border-box; }
+  .rev .day.weekend .sq { width: 18px; opacity: 0.75; }
+  .sq.out { border-style: dashed; opacity: 0.35; }
+  .sq.past { background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); color: var(--fg); }
+  .sq.today { border: 3px solid var(--accent); color: var(--accent); font-weight: 700; }
+  .sq.close { background: var(--warn-soft); border-color: var(--warn); color: var(--warn); font-weight: 700; }
+  .sq.due { background: var(--bad); border-color: var(--bad); color: #fff; font-weight: 800; }
+  .sq.start { border-color: var(--good); }
+  .sq .marks { position: absolute; left: 0; right: 0; bottom: 2px; display: flex; gap: 2px; justify-content: center; }
+  .sq .marks i { width: 5px; height: 5px; border-radius: 50%; background: var(--good); display: block; }
+  .sq .marks i.q { background: var(--warn); border-radius: 1px; }
+  .sq .tag { position: absolute; top: -7px; right: -7px; min-width: 15px; height: 15px; padding: 0 3px; border-radius: 8px; background: var(--fg); color: var(--frame); font-size: 0.58rem; font-weight: 800; display: grid; place-items: center; font-family: var(--font-body); }
+  .sq .tag.set { background: var(--accent); color: #fff; }
+  .lbl { font-size: 0.66rem; color: var(--muted); white-space: nowrap; height: 28px; text-align: center; line-height: 1.15; }
+  .lbl b { color: var(--fg); }
+  .lbl.today b { color: var(--accent); }
+  .lbl.due b { color: var(--bad); }
+  .lbl.close b { color: var(--warn); }
+  .legend { display: flex; gap: 6px 16px; flex-wrap: wrap; font-size: 0.74rem; color: var(--muted); align-items: center; }
+  .legend span { display: inline-flex; gap: 6px; align-items: center; }
+  .key { width: 14px; height: 14px; border-radius: 4px; border: 1.5px solid var(--line); display: inline-block; box-sizing: border-box; }
+  .key.past { background: var(--accent-soft); }
+  .key.today { border: 3px solid var(--accent); }
+  .key.close { background: var(--warn-soft); border-color: var(--warn); }
+  .key.due { background: var(--bad); border-color: var(--bad); }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--good); display: inline-block; }
+  .dot.q { background: var(--warn); border-radius: 1px; }
+
+  /* Phone grid */
+  .phone { width: min(360px, 100%); border: 1px solid var(--line); border-radius: 18px; padding: 14px; background: var(--frame); display: grid; gap: 8px; }
+  .grid7 { display: grid; grid-template-columns: repeat(5, 1fr) repeat(2, 0.55fr); gap: 4px; }
+  .grid7 .h { font-size: 0.62rem; color: var(--muted); text-align: center; font-weight: 700; }
+  .grid7 .sq { width: 100%; height: 34px; }
+  .grid7 .gap { grid-column: 1 / -1; height: 4px; }
+
+  /* Weeks for building */
+  .weeks { display: flex; gap: 10px; width: max-content; }
+  .month { display: grid; gap: 4px; }
+  .month .days .sq { width: 22px; height: 22px; font-size: 0.55rem; }
+  .month .days .day { width: 22px; }
+
+  .findings { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  .findings li { background: var(--frame); border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; display: grid; gap: 2px; }
+  .findings li p { color: var(--muted); font-size: 0.92rem; }
+  .two { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 20px; align-items: start; }
+  @media (max-width: 760px) { .two { grid-template-columns: minmax(0, 1fr); } }
+</style>
+
+<main class="page">
+  <header class="section">
+    <span class="eyebrow">GC mode · the stage-health strip · bidding clock</span>
+    <h1>The bid, day by day</h1>
+    <p class="lede">You asked for a square for each day, with a little space where one week becomes the next, so the strip shows what goes into a bid, where we are, and when things are due. Drawn with Boerne Retail Shell's real dates. Nothing is built until you approve one.</p>
+  </header>
+
+  <!-- 1. First draft -->
+  <section class="section" aria-labelledby="d1">
+    <span class="eyebrow">1 · First draft</span>
+    <h2 id="d1">A square a day, the weeks apart, the dates marked</h2>
+    <div class="frame">
+      <div class="verdict"><span class="pill">Behind</span>6 days left and 2 trades have no quote: Structural steel and Fire sprinkler.</div>
+      <span class="next">Next: ask more companies for Structural steel → Trades</span>
+      <div class="scroll"><div class="cal" id="draft"></div></div>
+      <div class="legend">
+        <span><i class="key past"></i>gone by</span>
+        <span><i class="key today"></i>today</span>
+        <span><i class="key close"></i>questions close</span>
+        <span><i class="key due"></i>bid due</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. Critique -->
+  <section class="section" aria-labelledby="d2">
+    <span class="eyebrow">2 · Is this the best we can do?</span>
+    <h2 id="d2">No. It shows the days, but not what went into them.</h2>
+    <ul class="findings">
+      <li><strong>The squares are empty.</strong><p>Fourteen companies were invited on Sep 19. Quotes came in on five different days, four of them on Oct 1. Three questions were asked. None of that shows, so the strip says when, not what. A square should carry what happened that day.</p></li>
+      <li><strong>Weekends weigh the same as work days.</strong><p>Six calendar days are left, but only five working days, counting today. Full-size Saturday and Sunday squares make the time look longer than it is.</p></li>
+      <li><strong>The future has only two dates in it.</strong><p>Questions close and the bid is due. Nothing says when the quotes we still need should come in. Our levelling needs them before the last day, so the calendar should show a day we want them by.</p></li>
+      <li><strong>Days before the bid set and after the bid look like part of it.</strong><p>Mon Sep 14 to Thu Sep 17 and Fri Oct 9 to Sun Oct 11 fill out the weeks. They should be faint, so the eye reads only the bid's own days.</p></li>
+      <li><strong>Building is five months long.</strong><p>About 160 day squares will not fit. The same idea has to work in weeks there.</p></li>
+    </ul>
+  </section>
+
+  <!-- 3. Revised -->
+  <section class="section" aria-labelledby="d3">
+    <span class="eyebrow">3 · Revised</span>
+    <h2 id="d3">Working days, what happened on each, and what is due ahead</h2>
+    <div class="frame rev">
+      <div class="verdict"><span class="pill">Behind</span>6 days left and 2 trades have no quote: Structural steel and Fire sprinkler.</div>
+      <span class="next">Next: ask more companies for Structural steel → Trades</span>
+      <div class="summary">
+        <span><b>5</b> working days left, counting today</span>
+        <span>Quotes in <b>9 of 14</b> wanted</span>
+        <span class="warn">Questions open <b>2</b></span>
+        <span class="warn">Questions close <b>Mon Oct 5</b></span>
+        <span class="bad">Bid due <b>Thu Oct 8</b></span>
+      </div>
+      <div class="scroll"><div class="cal" id="revised"></div></div>
+      <div class="legend">
+        <span><i class="key past"></i>gone by</span>
+        <span><i class="key today"></i>today</span>
+        <span><i class="key close"></i>questions close · quotes wanted</span>
+        <span><i class="key due"></i>bid due</span>
+        <span><i class="dot"></i>a quote came in</span>
+        <span><i class="dot q"></i>a question was asked</span>
+        <span>Narrow squares are Saturday and Sunday</span>
+      </div>
+    </div>
+    <p class="caption">Hover or tap a day for its list, like "Thu Oct 1: 4 quotes in. Tri-County Site, Guadalupe Flatwork, Kendall Air, Brightline Electric." The square for Mon Oct 5 carries both deadlines: questions close, and the day we want every quote, which leaves three working days to level the quotes and price our bid. That second date is new, so it is one of the questions below.</p>
+
+    <div class="two">
+      <div class="section">
+        <h3>On a phone</h3>
+        <p class="caption">The weeks stack as rows of a small calendar, Monday first, the weekend narrow on the right. The same squares, the same marks.</p>
+      </div>
+      <div class="phone" aria-label="The bid calendar on a phone">
+        <div class="summary" style="font-size:0.78rem"><span><b>5</b> working days left</span><span>Quotes <b>9 of 14</b></span></div>
+        <div class="grid7" id="phone"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. Asked again -->
+  <section class="section" aria-labelledby="d4">
+    <span class="eyebrow">4 · Asked again: is this the best we can do?</span>
+    <h2 id="d4">Closer. Three more changes made it in, and one thing stays as a question.</h2>
+    <ul class="findings">
+      <li><strong>The count sits beside the calendar.</strong><p>"Quotes in 9 of 14 wanted" makes the dots add up to something. Without it, dots on squares are decoration.</p></li>
+      <li><strong>Labels only for dates that matter.</strong><p>An early pass labelled every square with an event. Only the bid set, an addendum, today and the deadlines get words. The rest is in the hover, so labels never collide.</p></li>
+      <li><strong>The same strip for the other stages.</strong><p>Buying out has a few weeks, so it keeps day squares: from our contract to the start date, with the papers coming in as marks. Building switches to a square a week with a space between months, sampled below.</p></li>
+      <li><strong>Still a question: a promised day per company.</strong><p>When a company says "by Monday", the prototype can already write it down. Those days could sit on the future squares as hollow dots. No company on Boerne has given one yet, so it is not drawn here.</p></li>
+    </ul>
+    <div class="frame">
+      <h3>Building in weeks: Fair Oaks Shops, Building D</h3>
+      <div class="scroll"><div class="weeks" id="building"></div></div>
+      <div class="legend">
+        <span><i class="key past"></i>gone by</span>
+        <span><i class="key today"></i>this week</span>
+        <span><span class="dot"></span>milestone met</span>
+        <span><i class="key due"></i>late, or the finish</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. Questions -->
+  <section class="section" aria-labelledby="d5">
+    <span class="eyebrow">5 · What I need from you</span>
+    <h2 id="d5">Three choices before I build it</h2>
+    <ul class="findings">
+      <li><strong>Narrow weekends?</strong><p>Saturday and Sunday at half width, so the working days read first. Or every day the same size.</p></li>
+      <li><strong>A "quotes wanted by" day?</strong><p>The day we want every quote in. My draft puts it on the day questions close, three days before the bid. It would also go to the trades in their invitations and portals.</p></li>
+      <li><strong>Building in weeks?</strong><p>One square a week with a space between months, milestones marked. Or keep the line there and use day squares only while bidding and buying out.</p></li>
+    </ul>
+  </section>
+</main>
+
+<script>
+  // Boerne Retail Shell, from the prototype's made-up data.
+  const TODAY = '2026-10-02'
+  const FROM = '2026-09-18' // Bid set came in
+  const DUE = '2026-10-08'
+  const CLOSE = '2026-10-05'
+  const quotes = { '2026-09-25': ['Cool Breeze Mechanical'], '2026-09-26': ['Voltage Brothers'], '2026-09-28': ['Summit Roofing'], '2026-09-30': ['Lonestar Earthworks', 'Alamo Concrete'], '2026-10-01': ['Tri-County Site', 'Guadalupe Flatwork', 'Kendall Air', 'Brightline Electric'] }
+  const questions = { '2026-09-24': 1, '2026-09-27': 1, '2026-09-30': 1 }
+  const labels = { '2026-09-18': 'Bid set', '2026-09-29': 'Addendum 1', '2026-10-02': 'Today', '2026-10-05': 'Questions close', '2026-10-08': 'Bid due' }
+  const reviseLabels = { '2026-09-18': 'Bid set', '2026-09-29': 'Addendum 1', '2026-10-02': 'Today', '2026-10-05': 'Questions close<br>quotes wanted', '2026-10-08': 'Bid due' }
+
+  const MS = 86400000
+  const toDate = (iso) => new Date(iso + 'T12:00:00Z')
+  const iso = (d) => d.toISOString().slice(0, 10)
+  const add = (isoDay, n) => iso(new Date(toDate(isoDay).getTime() + n * MS))
+  const dow = (isoDay) => (toDate(isoDay).getUTCDay() + 6) % 7 // 0 Monday … 6 Sunday
+  const mon = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  const wd = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+  const short = (isoDay) => `${mon[toDate(isoDay).getUTCMonth()]} ${toDate(isoDay).getUTCDate()}`
+
+  function weeksOf(from, to) {
+    const start = add(from, -dow(from))
+    const end = add(to, 6 - dow(to))
+    const weeks = []
+    for (let d = start; d <= end; d = add(d, 7)) weeks.push(Array.from({ length: 7 }, (_, i) => add(d, i)))
+    return weeks
+  }
+
+  function square(day, rich) {
+    const sq = document.createElement('div')
+    sq.className = 'sq'
+    const inBid = day >= FROM && day <= DUE
+    if (!inBid) sq.classList.add('out')
+    else if (day === DUE) sq.classList.add('due')
+    else if (day === CLOSE) sq.classList.add('close')
+    else if (day === TODAY) sq.classList.add('today')
+    else if (day < TODAY) sq.classList.add('past')
+    if (day === FROM) sq.classList.add('start')
+    sq.textContent = toDate(day).getUTCDate()
+    const lines = [`${wd[dow(day)]} ${short(day)}`]
+    if (rich && inBid) {
+      const q = quotes[day] || []
+      const asks = questions[day] || 0
+      if (q.length || asks) {
+        const marks = document.createElement('span')
+        marks.className = 'marks'
+        q.forEach(() => { const i = document.createElement('i'); marks.appendChild(i) })
+        for (let n = 0; n < asks; n++) { const i = document.createElement('i'); i.className = 'q'; marks.appendChild(i) }
+        sq.appendChild(marks)
+      }
+      if (q.length) lines.push(`${q.length} ${q.length === 1 ? 'quote' : 'quotes'} in. ${q.join(', ')}.`)
+      if (asks) lines.push(`A question was asked.`)
+      if (day === '2026-09-29') { const t = document.createElement('span'); t.className = 'tag set'; t.textContent = 'A1'; sq.appendChild(t); lines.push('Addendum 1 went out.') }
+      if (day === '2026-09-19') lines.push('14 companies invited.')
+    }
+    if (labels[day] && !rich) lines.push(labels[day])
+    sq.title = lines.join(' ')
+    return sq
+  }
+
+  function strip(el, rich) {
+    for (const week of weeksOf(FROM, DUE)) {
+      const w = document.createElement('div')
+      w.className = 'week'
+      const name = document.createElement('div')
+      name.className = 'week-name'
+      name.textContent = `Week of ${short(week[0])}`
+      w.appendChild(name)
+      const days = document.createElement('div')
+      days.className = 'days'
+      for (const day of week) {
+        const col = document.createElement('div')
+        col.className = 'day' + (dow(day) >= 5 ? ' weekend' : '')
+        col.appendChild(square(day, rich))
+        const lbl = document.createElement('div')
+        const words = (rich ? reviseLabels : labels)[day]
+        lbl.className = 'lbl' + (day === TODAY ? ' today' : day === DUE ? ' due' : day === CLOSE ? ' close' : '')
+        if (words) lbl.innerHTML = `<b>${words}</b>`
+        col.appendChild(lbl)
+        days.appendChild(col)
+      }
+      w.appendChild(days)
+      el.appendChild(w)
+    }
+  }
+  strip(document.getElementById('draft'), false)
+  strip(document.getElementById('revised'), true)
+
+  // Phone: rows of weeks, Monday first.
+  const phone = document.getElementById('phone')
+  for (const h of wd) { const c = document.createElement('div'); c.className = 'h'; c.textContent = h.slice(0, 2); phone.appendChild(c) }
+  for (const week of weeksOf(FROM, DUE)) for (const day of week) phone.appendChild(square(day, true))
+
+  // Building in weeks: Fair Oaks D, Jul 6 to Dec 11, a space between months.
+  const b = document.getElementById('building')
+  const bStart = '2026-07-06', bEnd = '2026-12-11', bToday = '2026-10-02'
+  const milestones = { '2026-08-24': ['met', 'Slab poured, Aug 27'], '2026-09-21': ['late', 'Dry-in, due Sep 25, 7 days late'], '2026-10-12': ['next', 'Rough-in inspection, Oct 13'], '2026-12-07': ['end', 'Substantial completion, Dec 11'] }
+  let month = null, group = null, row = null
+  for (let w = add(bStart, -dow(bStart)); w <= bEnd; w = add(w, 7)) {
+    const m = toDate(w).getUTCMonth()
+    if (m !== month) {
+      month = m
+      group = document.createElement('div'); group.className = 'month'
+      const name = document.createElement('div'); name.className = 'week-name'; name.textContent = mon[m]
+      row = document.createElement('div'); row.className = 'days'
+      group.appendChild(name); group.appendChild(row); b.appendChild(group)
+    }
+    const col = document.createElement('div'); col.className = 'day'
+    const sq = document.createElement('div'); sq.className = 'sq'
+    const thisWeek = bToday >= w && bToday < add(w, 7)
+    const ms = milestones[w]
+    if (ms && (ms[0] === 'late' || ms[0] === 'end')) sq.classList.add('due')
+    else if (thisWeek) sq.classList.add('today')
+    else if (w < bToday) sq.classList.add('past')
+    if (ms && ms[0] === 'next') sq.classList.add('close')
+    sq.textContent = toDate(w).getUTCDate()
+    if (ms && ms[0] === 'met') { const marks = document.createElement('span'); marks.className = 'marks'; marks.appendChild(document.createElement('i')); sq.appendChild(marks) }
+    sq.title = `Week of ${short(w)}${ms ? '. ' + ms[1] : ''}${thisWeek ? '. This week.' : ''}`
+    col.appendChild(sq); row.appendChild(col)
+  }
+</script>

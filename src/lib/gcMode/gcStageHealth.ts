@@ -2,7 +2,7 @@
  * GC mode — design spike: how the stage is going, for the strip under a project's title (the owner,
  * 2026-10-04: "at the top of this page we should have some sort of visual that describes the health
  * of the stage"; he took the revised design in `to-dos/gc-mode/stage-health-mockup.html`). Every
- * stage reads the same way: a verdict with its reason, the stage's clock, one tile a trade, a few
+ * stage reads the same way: a verdict with its reason, the stage's calendar, one tile a trade, a few
  * numbers, and the one thing to do next. The counts are the ring's own (`stageProgress`), so the
  * board and the project page never give two answers.
  */
@@ -44,10 +44,52 @@ export interface HealthTile {
   pct?: number
 }
 
-export interface HealthMark {
+/** One day of the stage's calendar (the owner, 2026-10-04: "squares for days separated with a little bit of space where one week becomes the next"). */
+export interface CalendarDay {
   on: string
-  label: string
-  kind: 'start' | 'mark' | 'met' | 'late' | 'end'
+  /** One of the stage's own days. Days before or after only fill out a week, drawn faint. */
+  inStage: boolean
+  weekend: boolean
+  past: boolean
+  today: boolean
+  /** A deadline on the day: questions close and quotes wanted, or the last day (the bid due, the start). */
+  deadline?: 'close' | 'due'
+  /** Said under the square, for the days that matter. */
+  label?: string
+  /** A short tag on the square: "A1" for Addendum 1. */
+  tag?: string
+  /** What came in that day: quotes, or papers while buying out. */
+  came: string[]
+  questions: number
+  /** Companies that said they would send their quote by this day and have not. */
+  promised: string[]
+  /** Everything about the day, for the hover. */
+  events: string[]
+}
+
+/** One week of a long stage: building is drawn a square a week. */
+export interface CalendarWeek {
+  start: string
+  month: number
+  past: boolean
+  current: boolean
+  inStage: boolean
+  /** A milestone in the week: met, late, the next one due, or the finish. */
+  kind?: 'met' | 'late' | 'next' | 'end'
+  marks: ('good' | 'bad')[]
+  events: string[]
+}
+
+export interface StageCalendar {
+  mode: 'days' | 'weeks'
+  /** Days mode: the stage's weeks, Monday to Sunday. */
+  weeks: CalendarDay[][]
+  /** Weeks mode: one square a week. */
+  squares: CalendarWeek[]
+  /** The line over the calendar, each a bold value and its words: "5 working days left", "9 of 14 quotes in". */
+  summary: { label: string; value: string; tone?: 'good' | 'warn' | 'bad' }[]
+  /** A stage with no last day yet: the words for the open end ("No start date"). */
+  openEnd?: string
 }
 
 export interface HealthNumber {
@@ -76,8 +118,8 @@ export interface StageHealth {
   why: string
   /** The one thing to do now, and the tab it opens. Null: nothing waits on us. */
   next: { words: string; tab: HealthTab } | null
-  /** The stage's dates: from its first day to its last (null: no last day yet, so the clock is open). */
-  clock: { from: string; to: string | null; today: string; marks: HealthMark[]; openWords?: string }
+  /** The stage's calendar: days while bidding and buying out, weeks while building. */
+  calendar: StageCalendar
   tiles: HealthTile[]
   numbers: HealthNumber[]
   bars: HealthBar[]
@@ -205,13 +247,7 @@ function biddingHealth(state: GcState, project: GcProject): StageHealth {
             ? { words: `Ask ${partnerById(state, stalePkg.i.partnerId)?.company ?? 'them'} to confirm on ${planLabel(project, newest)}`, tab: 'packages' }
             : { words: 'Send our bid', tab: 'number' }
 
-  const first = project.planSets[0]?.issuedOn ?? today
-  const marks: HealthMark[] = [{ on: first, label: project.planSets[0]?.label ?? 'Plans came in', kind: 'start' }]
-  for (const set of project.planSets.slice(1)) marks.push({ on: set.issuedOn, label: set.label, kind: 'mark' })
-  if (project.preBid) marks.push({ on: project.preBid.on, label: 'pre-bid meeting', kind: project.preBid.on < today ? 'met' : 'mark' })
-  const close = questionsCloseOn(project)
-  if (close) marks.push({ on: close, label: 'questions close', kind: 'mark' })
-  if (due) marks.push({ on: due, label: sent ? `bid sent ${shortDate(sent)}` : 'bid due', kind: 'end' })
+  const calendar = biddingCalendar(state, project)
 
   const toCall = followUps(state).filter((f) => f.project.id === project.id && f.why !== 'waiting').length
   const numbers: HealthNumber[] = [
@@ -219,7 +255,7 @@ function biddingHealth(state: GcState, project: GcProject): StageHealth {
     { label: 'Our bid', value: sent ? 'Sent' : 'Not sent', note: sent ? weekdayDate(sent) : due ? `due ${weekdayDate(due)}` : 'no due date', ...(sent ? { tone: 'good' as const } : {}) },
     { label: 'Companies to call', value: String(toCall), note: toCall > 0 ? 'see Follow up' : 'nobody right now', ...(toCall > 0 ? { tone: 'warn' as const } : {}) },
   ]
-  return { verdict, why, next, clock: { from: first, to: due, today, marks }, tiles, numbers, bars: [], askStartDate: false }
+  return { verdict, why, next, calendar, tiles, numbers, bars: [], askStartDate: false }
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -294,10 +330,7 @@ function buyoutHealth(state: GcState, project: GcProject): StageHealth {
             ? { words: 'Draw the schedule', tab: 'schedule' }
             : { words: 'Get the papers in from the companies', tab: 'contracts' }
 
-  const from = project.ownerContractSignedOn ?? project.ourBidSentOn ?? today
-  const marks: HealthMark[] = [{ on: from, label: project.ownerContractSignedOn ? 'contract signed' : 'we won it', kind: 'start' }]
-  if (project.permitOn) marks.push({ on: project.permitOn, label: 'permit', kind: 'met' })
-  if (start) marks.push({ on: start, label: 'start', kind: 'end' })
+  const calendar = buyoutCalendar(state, project)
   const numbers: HealthNumber[] = [
     { label: 'Our side', value: `${ourDone} of ${ourSide.length}`, note: ourSide.filter((c) => !c.done).map((c) => (c.key === 'ownerContract' ? 'contract' : c.key === 'startDate' ? 'start date' : c.key === 'schedule' ? 'schedule' : 'permit')).join(', ') || 'all in', tone: ourDone === ourSide.length ? 'good' : 'warn' },
     { label: 'Trades ready', value: `${ready} of ${list.trades.length}`, note: `${onThem} ${onThem === 1 ? 'paper waits' : 'papers wait'} on companies, ${onUs} on us`, tone: ready === list.trades.length ? 'good' : onUs > 0 ? 'bad' : 'warn' },
@@ -307,7 +340,7 @@ function buyoutHealth(state: GcState, project: GcProject): StageHealth {
     verdict,
     why,
     next,
-    clock: { from, to: start, today, marks, ...(start ? {} : { openWords: 'No start date' }) },
+    calendar,
     tiles,
     numbers,
     bars: [],
@@ -414,13 +447,7 @@ function buildingHealth(state: GcState, project: GcProject): StageHealth {
               ? { words: `Write the daily log for ${weekdayDate(noLog[0] ?? today)}`, tab: 'log' }
               : null
 
-  // The clock: the start, each milestone (met or late), the finish.
-  const marks: HealthMark[] = [{ on: startOn, label: 'start', kind: 'start' }]
-  for (const r of rows) {
-    if (r === finish) continue
-    marks.push({ on: r.milestone.metOn ?? r.due, label: r.milestone.label, kind: r.state === 'late' || r.state === 'missed' ? 'late' : r.milestone.metOn ? 'met' : 'mark' })
-  }
-  if (finish) marks.push({ on: finish.due, label: 'finish', kind: 'end' })
+  const calendar = buildingCalendar(state, project, startOn, endOn)
 
   // Money against work: the price, billed and paid (Bill the customer), the work in place by the ring's weights.
   const price = priceToOwner(project).price
@@ -444,5 +471,276 @@ function buildingHealth(state: GcState, project: GcProject): StageHealth {
     ...(billed > 0 ? [{ label: 'Billed, not paid', value: money(billed - paid), note: held > 0 ? `retainage held ${money(held)}` : 'nothing held', money: true }] : []),
     { label: 'Waiting on us', value: String(onUsItems), note: onUsItems === 0 ? 'nothing' : [draws.length > 0 ? `${draws.length} ${draws.length === 1 ? 'draw' : 'draws'}` : null, submittalOnUs.length > 0 ? `${submittalOnUs.length} ${submittalOnUs.length === 1 ? 'submittal' : 'submittals'}` : null, punchToCheck > 0 ? 'a punch check' : null, lookAheadWaiting > 0 ? 'look-ahead marks' : null, noLog.length > 0 ? 'a daily log' : null].filter(Boolean).join(', '), ...(onUsItems > 0 ? { tone: 'bad' as const } : {}) },
   ]
-  return { verdict, why, next, clock: { from: startOn, to: endOn, today, marks }, tiles, numbers, bars, askStartDate: false }
+  return { verdict, why, next, calendar, tiles, numbers, bars, askStartDate: false }
+}
+
+// ---------------------------------------------------------------------------------------------
+// The calendar: a square a day, a little space where one week becomes the next (the owner,
+// 2026-10-04, `bid-calendar-mockup.html`). Weekends are narrow, each day carries what happened on
+// it, the deadlines ahead are marked, and building, months long, is a square a week.
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * The day we want every quote in: the day questions close, three days before our bid is due, so
+ * there are days left to level the quotes and price our bid. Null: no bid date, or not bidding.
+ */
+export function quotesWantedOn(project: GcProject): string | null {
+  return questionsCloseOn(project)
+}
+
+function addDay(on: string, n: number): string {
+  const d = new Date(`${on}T12:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + n)
+  return d.toISOString().slice(0, 10)
+}
+
+/** 0 for Monday through 6 for Sunday. */
+function weekday(on: string): number {
+  return (new Date(`${on}T12:00:00Z`).getUTCDay() + 6) % 7
+}
+
+const mondayOfDay = (on: string) => addDay(on, -weekday(on))
+
+/** Working days from today to the day, counting both (a weekend today counts from Monday). */
+export function workingDaysLeft(today: string, until: string): number {
+  let n = 0
+  for (let d = today; d <= until; d = addDay(d, 1)) if (weekday(d) < 5) n++
+  return n
+}
+
+/** The days from one Monday to the Sunday after the last day, each set out as a blank. */
+function blankWeeks(from: string, to: string, today: string): CalendarDay[][] {
+  const weeks: CalendarDay[][] = []
+  for (let monday = mondayOfDay(from); monday <= to; monday = addDay(monday, 7)) {
+    weeks.push(
+      Array.from({ length: 7 }, (_, i) => {
+        const on = addDay(monday, i)
+        return { on, inStage: on >= from && on <= to, weekend: i >= 5, past: on < today, today: on === today, came: [], questions: 0, promised: [], events: [] }
+      }),
+    )
+  }
+  return weeks
+}
+
+function dayOf(weeks: CalendarDay[][], on: string): CalendarDay | undefined {
+  for (const w of weeks) for (const d of w) if (d.on === on) return d
+  return undefined
+}
+
+/** A set's tag on its square: "A1" for Addendum 1, "B2" for Bulletin 2, else its first letters. */
+function setTag(label: string): string {
+  const m = label.match(/^(\w)\w*\s+(\d+)$/)
+  if (m) return `${m[1]}${m[2]}`
+  return label
+    .split(/\s+/)
+    .map((w) => w.charAt(0).toUpperCase())
+    .join('')
+    .slice(0, 3)
+}
+
+function biddingCalendar(state: GcState, project: GcProject): StageCalendar {
+  const today = state.today
+  const first = project.planSets[0]?.issuedOn ?? today
+  const due = project.bidDue ?? addDay(today, 14)
+  const weeks = blankWeeks(first, due, today)
+  const at = (on: string) => dayOf(weeks, on)
+  const close = quotesWantedOn(project)
+  const sent = project.ourBidSentOn
+
+  const firstSet = project.planSets[0]
+  const start = at(first)
+  if (start && firstSet) {
+    start.label = firstSet.label
+    start.events.push(`${firstSet.label} came in.`)
+  }
+  for (const set of project.planSets.slice(1)) {
+    const d = at(set.issuedOn)
+    if (!d) continue
+    d.tag = setTag(set.label)
+    d.label = set.label
+    d.events.push(`${set.label} went out.`)
+  }
+  const invitedBy = new Map<string, number>()
+  for (const pkg of project.packages) {
+    for (const inv of pkg.invites) {
+      invitedBy.set(inv.invitedOn, (invitedBy.get(inv.invitedOn) ?? 0) + 1)
+      const company = partnerById(state, inv.partnerId)?.company ?? 'A company'
+      if (inv.bid) at(inv.bid.submittedOn)?.came.push(company)
+      if (inv.declineReason) at(inv.declineReason.on)?.events.push(`${company} passed on ${pkg.trade}.`)
+      // A day they said they would send it, newest promise first, until the quote comes.
+      const promise = !inv.bid ? [...(inv.contacts ?? [])].reverse().find((c) => c.promisedBy)?.promisedBy : undefined
+      if (promise) at(promise)?.promised.push(company)
+    }
+  }
+  for (const [on, n] of invitedBy) at(on)?.events.push(`${n} ${n === 1 ? 'company' : 'companies'} invited.`)
+  for (const q of project.questions) {
+    const asked = at(q.askedOn)
+    if (asked) asked.questions += 1
+    if (q.answeredOn) at(q.answeredOn)?.events.push('A question was answered.')
+  }
+  if (project.preBid) {
+    const d = at(project.preBid.on)
+    if (d) {
+      d.label = 'Pre-bid meeting'
+      d.events.push(`The pre-bid meeting${project.preBid.mandatory ? ', required to quote' : ''}.`)
+    }
+  }
+  if (close) {
+    const d = at(close)
+    if (d) {
+      d.deadline = 'close'
+      d.label = 'Questions close · quotes wanted'
+      d.events.push('Questions close. Every quote wanted by today.')
+    }
+  }
+  if (project.bidDue) {
+    const d = at(project.bidDue)
+    if (d) {
+      d.deadline = 'due'
+      d.label = 'Bid due'
+      d.events.push('Our bid is due.')
+    }
+  }
+  if (sent) {
+    const d = at(sent)
+    if (d) {
+      d.label = 'Bid sent'
+      d.events.push('Our bid went in.')
+    }
+  }
+  const t = at(today)
+  if (t) t.label = t.label ? `Today · ${t.label}` : 'Today'
+  for (const w of weeks) {
+    for (const d of w) {
+      if (d.came.length > 0) d.events.push(`${d.came.length} ${d.came.length === 1 ? 'quote' : 'quotes'} in: ${d.came.join(', ')}.`)
+      if (d.questions > 0) d.events.push(`${d.questions === 1 ? 'A question was' : `${d.questions} questions were`} asked.`)
+      if (d.promised.length > 0) d.events.push(`${d.promised.join(', ')} said ${d.promised.length === 1 ? 'its quote comes' : 'their quotes come'} by today.`)
+    }
+  }
+
+  const hired = project.packages.filter((p) => !p.selfPerform)
+  const wanted = hired.length * BIDS_WANTED
+  const quotesIn = hired.reduce((n, p) => n + Math.min(BIDS_WANTED, bidsIn(p).filter((i) => !(i.bid && quoteRanOut(i.bid, today))).length), 0)
+  const open = project.questions.filter((q) => !q.answeredOn).length
+  const left = project.bidDue && !sent ? workingDaysLeft(today, project.bidDue) : null
+  const summary: StageCalendar['summary'] = [
+    ...(left !== null ? [{ label: left === 1 ? 'working day left, counting today' : 'working days left, counting today', value: String(left), ...(left <= HEALTH_LAST_DAYS ? { tone: 'bad' as const } : {}) }] : []),
+    { label: 'quotes in', value: `${quotesIn} of ${wanted}`, tone: quotesIn >= wanted ? 'good' : 'warn' },
+    ...(open > 0 ? [{ label: open === 1 ? 'question open' : 'questions open', value: String(open), tone: 'warn' as const }] : []),
+  ]
+  return { mode: 'days', weeks, squares: [], summary }
+}
+
+/** Buying out shows the last three weeks and the days to the start; the contract day is in the summary when it is earlier. */
+const BUYOUT_WEEKS_BACK = 3
+
+function buyoutCalendar(state: GcState, project: GcProject): StageCalendar {
+  const today = state.today
+  const won = project.ownerContractSignedOn ?? project.ourBidSentOn ?? today
+  const from = won < addDay(mondayOfDay(today), -7 * (BUYOUT_WEEKS_BACK - 1)) ? addDay(mondayOfDay(today), -7 * (BUYOUT_WEEKS_BACK - 1)) : won
+  const start = project.startDate
+  const to = start ?? addDay(today, 13)
+  const weeks = blankWeeks(from, to, today)
+  const at = (on: string) => dayOf(weeks, on)
+  if (project.ownerContractSignedOn) {
+    const d = at(project.ownerContractSignedOn)
+    if (d) {
+      d.label = 'Contract signed'
+      d.events.push(`Our contract with ${project.owner} was signed.`)
+    }
+  }
+  if (project.permitOn) {
+    const d = at(project.permitOn)
+    if (d) {
+      d.label = 'Permit'
+      d.came.push('the permit')
+      d.events.push('The permit came in.')
+    }
+  }
+  for (const pkg of project.packages) {
+    const invite = pkg.invites.find((i) => i.id === pkg.awardedInviteId)
+    const partner = invite ? partnerById(state, invite.partnerId) : undefined
+    const company = partner?.company ?? pkg.trade
+    if (pkg.sow?.sentOn) at(pkg.sow.sentOn)?.events.push(`The statement of work went to ${company}.`)
+    if (pkg.sow?.signedOn) {
+      const d = at(pkg.sow.signedOn)
+      if (d) {
+        d.came.push(`${company}'s statement of work`)
+        d.events.push(`${company} signed the statement of work.`)
+      }
+    }
+    if (partner?.msaSignedOn) {
+      const d = at(partner.msaSignedOn)
+      if (d) {
+        d.came.push(`${company}'s master agreement`)
+        d.events.push(`${company} signed the master agreement.`)
+      }
+    }
+  }
+  if (start) {
+    const d = at(start)
+    if (d) {
+      d.deadline = 'due'
+      d.label = 'Start'
+      d.events.push('The job starts.')
+    }
+  }
+  const t = at(today)
+  if (t) t.label = t.label ? `Today · ${t.label}` : 'Today'
+  for (const w of weeks) for (const d of w) if (d.came.length > 0 && !d.events.some((e) => e.includes('signed') || e.includes('came in'))) d.events.push(`In: ${d.came.join(', ')}.`)
+  const summary: StageCalendar['summary'] = start
+    ? [{ label: workingDaysLeft(today, start) === 1 ? 'working day to the start' : 'working days to the start', value: String(workingDaysLeft(today, start)), ...(workingDaysLeft(today, start) <= 5 ? { tone: 'bad' as const } : {}) }]
+    : [{ label: 'No start date yet', value: '', tone: 'bad' }]
+  if (project.ownerContractSignedOn && project.ownerContractSignedOn < from) summary.push({ label: 'contract signed', value: shortDate(project.ownerContractSignedOn) })
+  return { mode: 'days', weeks, squares: [], summary, ...(start ? {} : { openEnd: 'No start date' }) }
+}
+
+function buildingCalendar(state: GcState, project: GcProject, startOn: string, endOn: string | null): StageCalendar {
+  const today = state.today
+  const rows = milestoneRows(state, project)
+  const lastOn = endOn ?? addDay(today, 28)
+  const squares: CalendarWeek[] = []
+  const thisMonday = mondayOfDay(today)
+  for (let monday = mondayOfDay(startOn); monday <= lastOn; monday = addDay(monday, 7)) {
+    squares.push({
+      start: monday,
+      month: new Date(`${monday}T12:00:00Z`).getUTCMonth(),
+      past: monday < thisMonday,
+      current: monday === thisMonday,
+      inStage: true,
+      marks: [],
+      events: [],
+    })
+  }
+  const week = (on: string) => squares.find((w) => w.start === mondayOfDay(on))
+  const nextDue = rows.filter((r) => r.state === 'due').sort((a, b) => (a.due < b.due ? -1 : 1))[0]
+  for (const r of rows) {
+    const isFinish = /substantial/i.test(r.milestone.label)
+    const w = week(r.milestone.metOn ?? r.due)
+    if (!w) continue
+    const late = r.state === 'late' || r.state === 'missed'
+    const kind: CalendarWeek['kind'] = isFinish ? 'end' : late ? 'late' : r.milestone.metOn ? 'met' : r === nextDue ? 'next' : undefined
+    if (kind && (!w.kind || kind === 'end' || kind === 'late')) w.kind = kind
+    if (r.milestone.metOn) w.marks.push(late ? 'bad' : 'good')
+    w.events.push(
+      r.milestone.metOn
+        ? `${r.milestone.label} met ${shortDate(r.milestone.metOn)}${late ? `, ${r.daysLate} days late` : ''}.`
+        : late
+          ? `${r.milestone.label} was due ${shortDate(r.due)}, ${r.daysLate} days late.`
+          : `${r.milestone.label} due ${shortDate(r.due)}.`,
+    )
+  }
+  for (const f of openInspectionFailures(project)) {
+    const w = week(f.failure.on)
+    if (!w) continue
+    w.marks.push('bad')
+    w.events.push(`The ${f.label.toLowerCase()} failed ${shortDate(f.failure.on)}. Re-inspection ${shortDate(f.failure.reinspectOn)}.`)
+  }
+  const sum = scheduleSummary(project, today)
+  const weeksLeft = endOn ? Math.max(0, Math.ceil(daysBetween(today, endOn) / 7)) : null
+  const summary: StageCalendar['summary'] = [
+    ...(weeksLeft !== null ? [{ label: weeksLeft === 1 ? 'week to the finish' : 'weeks to the finish', value: String(weeksLeft) }] : []),
+    ...(sum && sum.milestones.of > 0 ? [{ label: `of ${sum.milestones.of} milestones on time`, value: String(sum.milestones.hit), ...(sum.milestones.hit < sum.milestones.of ? { tone: 'warn' as const } : { tone: 'good' as const }) }] : []),
+  ]
+  return { mode: 'weeks', weeks: [], squares, summary }
 }
