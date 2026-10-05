@@ -24,6 +24,7 @@ import { SubmittalRowsTable } from './SubmittalRowsTable'
 import { SubmittalRoomPanel } from './SubmittalRoomPanel'
 import { SubmittalSourcesPanel } from './SubmittalSourcesPanel'
 import { SubmittalHelpMenu } from './SubmittalHelpMenu'
+import { robotScheduleNote, scheduleReadHoldsStepOpen } from '../../lib/submittals/robotNote'
 import { SubmittalTheirCallPanel } from './SubmittalTheirCallPanel'
 import { SpotlightTour, spotlightTourStepsPresent, type SpotlightTourStep } from '../SpotlightTour'
 import { robotSeatState, staleAsk, type RobotSeatRow, type RobotSeatState } from '../../lib/submittals/robotOffer'
@@ -2025,12 +2026,14 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   const liveStageKeys = journey.stages.filter((st) => (st.status === 'current' || st.status === 'waiting') && st.key !== 'procure').map((st) => st.key)
   // What each stage reads from stays open beside it: the package reads the rows; their call and the resubmit land on the rows.
   const readsFrom: Partial<Record<JourneyStageKey, JourneyStageKey[]>> = { package: ['rows'], share: ['package'], review: ['rows'], resubmit: ['rows', 'review'] }
-  const scheduleReadLive = liveTask(tasks, 'read_schedule') != null
+  // 2026-10-05 · the robot's schedule read keeps step 1 open only while its tags wait to be confirmed; anything else it is doing rides on the folded step's line.
+  const scheduleRead = liveTask(tasks, 'read_schedule')
+  const scheduleReadNote = scheduleRead ? robotScheduleNote(scheduleRead, robotSeat, Date.now(), formatShortDate) : null
   function sectionOpen(key: JourneyStageKey): boolean {
     const toggled = sectionToggles[key]
     if (toggled != null) return toggled
     if (openAllStages || (tourOpen && !tourWordsOnly)) return true
-    if (key === 'picks' && scheduleReadLive) return true
+    if (key === 'picks' && scheduleReadHoldsStepOpen(scheduleRead)) return true
     // v2.4169 · a stage you have not reached folds to its sentence; its controls draw only when you open it, and then held.
     if (key === 'build' && revisions.length === 0) return true
     // v2.4201 · Procure is a side track the office works at any time (long-lead items go in before a row is approved), so it never folds on its own.
@@ -2116,7 +2119,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
           {/* 1 · Sources (Where the rows come from) — the source line is in the header; the robot's offer lives here while there is no schedule. */}
           <RoadSection n={1} about={SUBMITTAL_STAGE_ABOUT[1]} onHelp={() => startWalkThrough(1)} title="Where the rows come from" status={stageStatus('picks')} open={sectionOpen('picks')} onToggle={() => toggleSection('picks')} onJump={() => jumpToSection('picks')} anchor="submittals-schedule"
             summaryWhenOpen={false}
-            summary={<>{takeoffFixtures > 0 ? <>{takeoffFixtures} on the takeoff · </> : null}{specified.length === 0 ? 'no schedule yet' : `${specified.length} tag${specified.length === 1 ? '' : 's'}`}{picks.length > 0 ? <> · {picks.length} picked line{picks.length === 1 ? '' : 's'}</> : null}</>}>
+            summary={<>{takeoffFixtures > 0 ? <>{takeoffFixtures} on the takeoff · </> : null}{specified.length === 0 ? 'no schedule yet' : `${specified.length} tag${specified.length === 1 ? '' : 's'}`}{picks.length > 0 ? <> · {picks.length} picked line{picks.length === 1 ? '' : 's'}</> : null}{scheduleReadNote?.chip ? <span data-testid="road-1-robot" style={{ color: scheduleReadNote.tone === 'warn' ? 'var(--text-amber-700)' : scheduleReadNote.tone === 'bad' ? 'var(--text-red-700)' : undefined, fontWeight: scheduleReadNote.tone === 'plain' ? undefined : 600 }}> · <span aria-hidden>🤖 </span>{scheduleReadNote.chip}</span> : null}</>}>
             <SubmittalSourcesPanel
               takeoffFixtures={takeoffFixtures}
               takeoffWithProduct={takeoff?.withProduct ?? 0}

@@ -76,7 +76,7 @@ export const SUBMITTAL_TOUR_STEPS: SpotlightTourStep[] = [
   {
     anchor: 'submittals-robot',
     title: 'Or let the robot read it',
-    body: 'You do not have to type the schedule. The robot can read it off the plans. Tap the link. In a few minutes its tags show up here. Tick the right ones. Nothing counts until you tick it.',
+    body: 'You do not have to type the schedule. The robot can read it off the plans. Tap the small button beside the robot. In a few minutes its tags show up here. Tick the right ones. Nothing counts until you tick it.',
   },
   {
     anchor: 'submittals-build',

@@ -423,17 +423,30 @@ describe('BidsSubmittalsTab', () => {
     state.tasks = [{ ...task, requested_at: '2026-09-29T15:00:00Z' }]
     state.seat = { unrevoked_seats: 1, last_used_at: '2026-09-21T15:00:00Z' }
     const { unmount } = mount()
+    // 2026-10-05 · a finished step 1 folds even while an ask waits: its one line carries the robot's state, in amber, and the caret opens it again.
+    const folded = await screen.findByTestId('road-1-robot')
+    expect(screen.getByTestId('road-1').getAttribute('data-open')).toBe('false')
+    expect(folded.textContent).toMatch(/^ · 🤖 Asked Sep 29 · no robot has run in \d+ days$/)
+    expect(screen.queryByTestId('robot-schedule')).toBeNull()
+    fireEvent.click(screen.getByTestId('road-1-caret'))
     const card = await screen.findByTestId('robot-schedule')
     await waitFor(() => expect(card.getAttribute('data-stale')).toBe('true'))
-    expect(card.textContent).toMatch(/^You asked the robot on Sep 29\. No robot has run in \d+ days\./)
+    // One line: the chip says it is stuck and since when; the sentences open in its card.
+    expect(within(card).getByTestId('robot-schedule-chip').textContent).toMatch(/^🤖 Asked Sep 29 · no robot has run in \d+ days$/)
+    fireEvent.mouseEnter(card)
+    expect(within(card).getByRole('note').textContent).toMatch(/^You asked the robot on Sep 29\. No robot has run in \d+ days\./)
     expect(within(card).getByTestId('robot-line').textContent).toBe('Nobody is reading the plans. Type the schedule yourself, or leave the ask in place.')
     expect(within(card).getByRole('button', { name: 'Take the ask back' })).toBeTruthy()
     unmount()
     state.tasks = [{ ...task, requested_at: new Date().toISOString() }]
     state.seat = { unrevoked_seats: 1, last_used_at: new Date().toISOString() }
     mount()
+    expect((await screen.findByTestId('road-1-robot')).textContent).toBe(' · 🤖 Queued to read the plans')
+    fireEvent.click(screen.getByTestId('road-1-caret'))
     const fresh = await screen.findByTestId('robot-schedule')
     expect(fresh.getAttribute('data-stale')).toBeNull()
+    expect(within(fresh).getByTestId('robot-schedule-chip').textContent).toBe('🤖 Queued to read the plans')
+    fireEvent.mouseEnter(fresh)
     expect(fresh.textContent).toContain('The robot is queued to read the fixture schedule off the plans.')
     expect(within(fresh).getByRole('button', { name: 'Cancel' })).toBeTruthy()
     state.tasks = []
@@ -455,6 +468,8 @@ describe('BidsSubmittalsTab', () => {
     expect(await screen.findByText('No submittal on this bid yet')).toBeTruthy()
     const ask = await screen.findByTestId('ask-robot-schedule')
     expect((ask as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.getByTestId('robot-offer-read_schedule-held').textContent).toBe('needs the plans link on the bid')
+    fireEvent.mouseEnter(screen.getByTestId('robot-offer-read_schedule'))
     expect(screen.getByTestId('robot-needs-read_schedule').textContent).toMatch(/✗ Add the plans link on the bid first\. · A robot was working/)
     state.noSources = false
     state.takeoff = false
@@ -1165,6 +1180,8 @@ describe('BidsSubmittalsTab', () => {
     mount()
     // v2.4109 · the state sits in the schedule card; the tags to confirm sit under the cards.
     const card = await screen.findByTestId('robot-schedule')
+    expect(within(card).getByTestId('robot-schedule-chip').textContent).toBe('🤖 Read 2 tags · confirm below')
+    fireEvent.mouseEnter(card)
     expect(card.textContent).toContain('The robot read the schedule. Confirm the tags below.')
     expect(card.textContent).toContain('robot · read the schedule · ready · 2 tags · 1 sure · 1 want a look')
     const panel = screen.getByTestId('robot-schedule-confirm')
