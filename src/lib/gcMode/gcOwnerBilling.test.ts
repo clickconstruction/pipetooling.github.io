@@ -1,7 +1,9 @@
 /** GC mode design spike: the owner's pay application, read off the made-up Helotes Dental Office. */
 import { describe, expect, it } from 'vitest'
 import {
+  allJobsMargin,
   allJobsMoney,
+  jobMargin,
   openChangeRequests,
   customerMessages,
   latePayApps,
@@ -1242,6 +1244,41 @@ describe('a trade’s ask for a change, on Bill the customer', () => {
     const co = fairOaks(next).changeOrders?.[0]
     expect([co?.cost, co?.price, co?.days, co?.status, co?.packageId]).toEqual([14_820, changeOrderPrice(fairOaks(state), 14_820), 2, 'draft', ask.packageId])
     expect(openChangeRequests(fairOaks(next))).toEqual([])
+  })
+})
+
+describe('what each job makes us', () => {
+  const job = (state: GcState, id: string) => state.projects.find((p) => p.id === id) as GcProject
+  const r = (n: number) => Math.round(n)
+
+  it('makes its fee on the made-up jobs, earned as billed; contingency apart', () => {
+    const state = initialGcState()
+    const all = allJobsMargin(state)
+    expect(all.jobs.map((j) => [j.project.id, r(j.margin), r(j.earned)])).toEqual([
+      ['helotes', 30_797, 0],
+      ['fairoaksd', 135_342, r(135_342 * (956_327.9 / 1_488_762))],
+      ['stoneoak', 16_583, 16_583],
+    ])
+    expect([r(all.margin), r(all.contingency)]).toEqual([182_722, 53_220])
+  })
+
+  it('counts what buying out saved, and a trade not bought out yet at what we carry', () => {
+    const state = initialGcState()
+    const p = job(state, 'fairoaksd')
+    const cheaper = { ...p, packages: p.packages.map((k) => (k.id === 'froof' && k.sow ? { ...k, sow: { ...k.sow, price: 120_000 } } : k)) }
+    const m = jobMargin(state, cheaper)
+    expect([r(m.buyout), r(m.margin)]).toEqual([12_000, 135_342 + 12_000])
+    const helotes = jobMargin(state, job(state, 'helotes'))
+    expect(helotes.trades.filter((t) => !t.boughtOut && !t.ownCrew).map((t) => t.trade)).toEqual(['Electrical', 'HVAC', 'Millwork'])
+  })
+
+  it('adds a signed change order’s margin: its price less its cost', () => {
+    let state = gcReducer(initialGcState(), { type: 'draftChangeOrder', projectId: 'fairoaksd', description: 'A second drive-through lane', reason: 'owner', schedule: '', packageId: 'fsite', cost: 12_000, price: 0 })
+    state = gcReducer(state, { type: 'sendChangeOrder', projectId: 'fairoaksd', changeOrderId: 'co-1' })
+    expect(jobMargin(state, job(state, 'fairoaksd')).changeOrders.count).toBe(0)
+    state = gcReducer(state, { type: 'ownerSignChangeOrder', projectId: 'fairoaksd', changeOrderId: 'co-1' })
+    const m = jobMargin(state, job(state, 'fairoaksd'))
+    expect([m.changeOrders.margin, r(m.margin), r(m.price)]).toEqual([1_200, 135_342 + 1_200, 1_488_762 + 13_200])
   })
 })
 
