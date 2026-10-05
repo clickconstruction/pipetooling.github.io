@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties, type Dispatch } from 'react'
+import { useEffect, useMemo, useState, type Dispatch } from 'react'
 import { createPortal } from 'react-dom'
 import {
   mondayOf,
