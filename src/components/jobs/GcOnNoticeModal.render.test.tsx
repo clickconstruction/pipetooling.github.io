@@ -165,6 +165,18 @@ describe('GcOnNoticeModal', () => {
     expect(brief.textContent).toContain('open on bills · 3 jobs')
     expect(brief.textContent).toContain('not yet billed · 1 job')
     expect(screen.getByText(/first notice we've sent them/)).toBeTruthy()
+    // v2.4539: the chip and What this does share the title's line; the words open under it on a click.
+    const titleLine = screen.getByRole('heading', { name: /Put Harborline Builders on notice/ }).parentElement!.parentElement!
+    expect(titleLine.contains(screen.getByText(/first notice we've sent them/))).toBe(true)
+    const what = screen.getByRole('button', { name: /What this does/ })
+    expect(titleLine.contains(what)).toBe(true)
+    expect(what.getAttribute('aria-expanded')).toBe('false')
+    expect(screen.queryByText(/One § 53.056 notice per job naming every unnoticed month/)).toBeNull()
+    fireEvent.click(what)
+    expect(what.getAttribute('aria-expanded')).toBe('true')
+    expect(screen.getByText(/One § 53.056 notice per job naming every unnoticed month/)).toBeTruthy()
+    fireEvent.click(what)
+    expect(screen.queryByText(/One § 53.056 notice per job naming every unnoticed month/)).toBeNull()
     // the step bar (v2.3665): four steps, each with its live status; owners still wants someone (1016 is missing)
     const bar = screen.getAllByTestId('gc-notice-stepbar-step')
     expect(bar.map((b) => b.textContent?.replace(/^[✓\d]/, ''))).toEqual([
