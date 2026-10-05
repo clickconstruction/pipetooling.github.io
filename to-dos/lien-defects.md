@@ -2,7 +2,7 @@
 name: "Lien screens: defects found while listing every action"
 number: 83
 group: ready
-status: found 2026-10-05 by reading the code · none confirmed by running the app · none fixed
+status: found 2026-10-05 by reading the code · a second read the same day agrees on 20 of the 28 rows · none confirmed by running the app · none fixed
 summary: >
   Listing every action on the lien screens for #82 turned up defects that are in the app today.
   Six can affect paper or money: the Unconditional warning is skipped by three routes, a saved
@@ -29,6 +29,8 @@ The proposal is #82, [`lien-desk-next-up/`](lien-desk-next-up/README.md). Its fi
 ## How sure this is
 
 Every row was found by reading the code on 2026-10-05, main at v2.4545. **None was run.** Line numbers drift, so search for the label when a line does not match. Confirm a row before fixing it, and strike it here in the same PR.
+
+A second, separate read on 2026-10-05 (main at v2.4557) found the code as described on rows 1, 2, 4 to 10, 12, 15 to 21 and 26 to 28. On row 3 the code reads as described, and only a run will show whether the leader's window overwrites the office's letter. Rows 11, 13, 14 and 22 to 25 were not read again. Three line references had moved: row 8's handler is `DashboardPinnedQuickRow.tsx:851-854`, row 15's footer is `LienDeskModal.tsx:1640-1962` and row 21's label is `GcOnNoticeModal.tsx:1096`.
 
 File names without a path are in `src/components/jobs/`.
 
