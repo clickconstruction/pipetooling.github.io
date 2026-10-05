@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { useMeasuredWidth } from '../../hooks/useMeasuredWidth'
 import { loadManHoursSessions } from '../../lib/manHours/loadManHoursSessions'
 import {
   MAN_HOURS_ZOOMS,
   buildManHoursEntries,
   buildManHoursPeriods,
+  formatManHours as hrs,
   manHoursDayLabel,
   manHoursPeriodLabel,
   type ManHoursPeriod,
@@ -27,9 +29,16 @@ import { ManHoursWho } from './ManHoursWho'
  *
  * One period is always picked (the newest finished one until a row or a bar
  * is clicked); `ManHoursWho` lists who made it up and holds the doors out.
+ *
+ * The card lays itself out by its own width (v2.4516): at `WIDE_FROM` and up
+ * the who list stands beside the picture, so a click on a bar changes a list
+ * in view; under that it follows the table. Under `COMPACT_UNDER` (a phone) a
+ * row's chips drop under its name so the pinned name column stays narrow.
  */
 
-const hrs = (h: number): string => (h >= 0.5 ? Math.round(h).toLocaleString('en-US') : '—')
+/** Card widths, in pixels, where the layout changes. */
+const WIDE_FROM = 980
+const COMPACT_UNDER = 560
 const pct = (share: number | null): string => (share == null ? '—' : `${Math.round(share * 100)}%`)
 
 const thStyle = {
@@ -75,14 +84,28 @@ function PeriodRow({
   zoom,
   firstDay,
   selected,
+  compact,
   onSelect,
 }: {
   period: ManHoursPeriod
   zoom: ManHoursZoom
   firstDay: string | null
   selected: boolean
+  compact: boolean
   onSelect: () => void
 }) {
+  const ground = selected ? 'var(--bg-blue-tint)' : 'var(--bg-page)'
+  const chips = (
+    <>
+      {period.fromFirstDay && firstDay ? <span style={chipStyle}>from {manHoursDayLabel(firstDay)}</span> : null}
+      {period.soFar ? <span style={chipStyle}>so far</span> : null}
+      {period.pendingHours >= 0.5 ? (
+        <span style={waitingChipStyle} title="Recorded and not yet approved. Already counted in this row.">
+          {hrs(period.pendingHours)} h waiting
+        </span>
+      ) : null}
+    </>
+  )
   return (
     <tr
       tabIndex={0}
@@ -94,17 +117,12 @@ function PeriodRow({
         e.preventDefault()
         onSelect()
       }}
-      style={{ cursor: 'pointer', background: selected ? 'var(--bg-blue-tint)' : undefined, boxShadow: selected ? 'inset 3px 0 0 var(--text-link)' : undefined }}
+      style={{ cursor: 'pointer', background: ground }}
     >
-      <td style={{ ...tdStyle, textAlign: 'left' }}>
+      {/* The name column is pinned: it stays while the numbers scroll sideways on a narrow card. */}
+      <td style={{ ...tdStyle, textAlign: 'left', position: 'sticky', left: 0, zIndex: 1, background: ground, boxShadow: selected ? 'inset 3px 0 0 var(--text-link)' : undefined }}>
         {manHoursPeriodLabel(period, zoom)}
-        {period.fromFirstDay && firstDay ? <span style={chipStyle}>from {manHoursDayLabel(firstDay)}</span> : null}
-        {period.soFar ? <span style={chipStyle}>so far</span> : null}
-        {period.pendingHours >= 0.5 ? (
-          <span style={waitingChipStyle} title="Recorded and not yet approved. Already counted in this row.">
-            {hrs(period.pendingHours)} h waiting
-          </span>
-        ) : null}
+        {compact ? <div style={{ marginLeft: '-0.4rem', marginTop: '0.1rem' }}>{chips}</div> : chips}
       </td>
       <td style={tdStyle}>{hrs(period.fieldHours)}</td>
       <td style={tdStyle}>{hrs(period.officeHours)}</td>
@@ -134,6 +152,9 @@ export function ManHoursCard({
   const [sessions, setSessions] = useState<ManHoursSession[] | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [reloadTick, setReloadTick] = useState(0)
+  const [cardRef, cardWidth] = useMeasuredWidth<HTMLDivElement>()
+  const wide = cardWidth != null && cardWidth >= WIDE_FROM
+  const compact = cardWidth != null && cardWidth < COMPACT_UNDER
 
   useEffect(() => {
     let cancelled = false
@@ -171,7 +192,7 @@ export function ManHoursCard({
   const loading = !loadError && (sessions == null || officeJobLoading)
 
   return (
-    <div style={{ marginBottom: '1rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-page)', padding: '0.6rem 0.75rem' }}>
+    <div ref={cardRef} style={{ marginBottom: '1rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-page)', padding: '0.6rem 0.75rem' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
         <strong style={{ color: 'var(--text-strong)', fontSize: '0.9375rem' }}>Man hours</strong>
         <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Office against field</span>
@@ -226,12 +247,21 @@ export function ManHoursCard({
               <strong>{headline.lead}</strong> {headline.rest}
             </p>
           ) : null}
-          <ManHoursChart periods={view.periods} zoom={zoom} selectedKey={selected?.key ?? null} onSelect={setPickedKey} />
+          {wide ? (
+            <div style={{ display: 'flex', gap: '0.9rem', alignItems: 'flex-start' }}>
+              <div style={{ flex: '1 1 0', minWidth: 0 }}>
+                <ManHoursChart periods={view.periods} zoom={zoom} selectedKey={selected?.key ?? null} onSelect={setPickedKey} />
+              </div>
+              <div style={{ flex: '0 0 27rem', minWidth: 0 }}>{selected ? <ManHoursWho period={selected} zoom={zoom} rows={who} onShowWeek={onShowWeek} layout="side" /> : null}</div>
+            </div>
+          ) : (
+            <ManHoursChart periods={view.periods} zoom={zoom} selectedKey={selected?.key ?? null} onSelect={setPickedKey} />
+          )}
           <div style={{ overflowX: 'auto', marginTop: '0.5rem' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+            <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, fontSize: '0.8125rem' }}>
               <thead>
                 <tr>
-                  <th style={{ ...thStyle, textAlign: 'left' }}>Period</th>
+                  <th style={{ ...thStyle, textAlign: 'left', position: 'sticky', left: 0, zIndex: 1, background: 'var(--bg-page)' }}>Period</th>
                   <th style={thStyle}>Field</th>
                   <th style={thStyle}>Office</th>
                   <th style={thStyle}>Bids</th>
@@ -244,12 +274,12 @@ export function ManHoursCard({
               </thead>
               <tbody>
                 {view.periods.map((p) => (
-                  <PeriodRow key={p.key} period={p} zoom={zoom} firstDay={view.firstDay} selected={p.key === selected?.key} onSelect={() => setPickedKey(p.key)} />
+                  <PeriodRow key={p.key} period={p} zoom={zoom} firstDay={view.firstDay} selected={p.key === selected?.key} compact={compact} onSelect={() => setPickedKey(p.key)} />
                 ))}
               </tbody>
             </table>
           </div>
-          {selected ? <ManHoursWho period={selected} zoom={zoom} rows={who} onShowWeek={onShowWeek} /> : null}
+          {selected && !wide ? <ManHoursWho period={selected} zoom={zoom} rows={who} onShowWeek={onShowWeek} /> : null}
         </>
       )}
       <p style={{ margin: '0.4rem 0 0 0', fontSize: '0.75rem', color: 'var(--text-faint)' }}>

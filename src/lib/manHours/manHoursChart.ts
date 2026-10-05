@@ -49,11 +49,14 @@ export type ManHoursBarColumn = {
   centerX: number
   barX: number
   barWidth: number
+  /** The band drawn behind a hovered or picked bar: the bar and a little air, never wider than the slot. */
+  bandX: number
+  bandWidth: number
   /** Bottom first. Sides with no hours are left out; `top` marks the rounded end. */
   segments: ManHoursBarSegment[]
 }
 
-/** One stacked bar per period, laid out in `box`. The bar is at most 46 wide and never under 12. */
+/** One stacked bar per period, laid out in `box` at real pixel size. The bar is at most 46 wide and never under 6. */
 export function buildManHoursBars(
   periods: readonly ManHoursPeriod[],
   box: ManHoursChartBox,
@@ -63,7 +66,8 @@ export function buildManHoursBars(
   const baseline = box.height - box.bottom
   const yOf = (hours: number): number => baseline - (hours / axis.max) * plotHeight
   const slotWidth = periods.length > 0 ? (box.width - box.left - box.right) / periods.length : 0
-  const barWidth = Math.max(12, Math.min(46, slotWidth * 0.62))
+  const barWidth = Math.max(6, Math.min(46, slotWidth * 0.62))
+  const bandWidth = Math.max(0, Math.min(slotWidth - 2, barWidth + 16))
   const columns = periods.map((p, i) => {
     const slotX = box.left + i * slotWidth
     const centerX = slotX + slotWidth / 2
@@ -76,9 +80,27 @@ export function buildManHoursBars(
       below += hours
       return { side: s.key, y, height, top: si === sides.length - 1 }
     })
-    return { key: p.key, slotX, slotWidth, centerX, barX: centerX - barWidth / 2, barWidth, segments }
+    return { key: p.key, slotX, slotWidth, centerX, barX: centerX - barWidth / 2, barWidth, bandX: centerX - bandWidth / 2, bandWidth, segments }
   })
   return { axis, baseline, yOf, columns }
+}
+
+/** The room an axis label needs, in pixels at 11px type: "Sep 27", "Sep", "Q3", "2026". */
+const LABEL_ROOM: Record<ManHoursZoom, number> = { week: 46, month: 30, quarter: 26, year: 36 }
+
+/**
+ * Which columns carry their axis label when the slots are too narrow for all
+ * of them (a phone): every nth, counted back from the newest so the newest is
+ * always named. A `forced` column (the picked one, the hovered one) is always
+ * named, and a regular label too close to it steps aside.
+ */
+export function manHoursLabeledColumns(count: number, slotWidth: number, zoom: ManHoursZoom, forced: readonly number[] = []): boolean[] {
+  const every = slotWidth > 0 ? Math.max(1, Math.ceil(LABEL_ROOM[zoom] / slotWidth)) : 1
+  return Array.from({ length: count }, (_, i) => {
+    if (forced.includes(i)) return true
+    if ((count - 1 - i) % every !== 0) return false
+    return !forced.some((f) => f >= 0 && f < count && Math.abs(f - i) < every)
+  })
 }
 
 export type ManHoursSharePoint = { key: string; x: number; y: number; share: number; soFar: boolean; labeled: boolean }

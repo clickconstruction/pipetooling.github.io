@@ -4,6 +4,7 @@ import {
   buildManHoursBars,
   buildManHoursShareLine,
   manHoursAxis,
+  manHoursLabeledColumns,
   manHoursHeadlineWords,
   pickManHoursHeadline,
   type ManHoursChartBox,
@@ -73,6 +74,44 @@ describe('buildManHoursBars', () => {
     expect(columns.map((c) => c.slotX)).toEqual([50, 50 + 640 / 3, 50 + (640 / 3) * 2])
     expect(columns[0]?.barWidth).toBe(46)
     expect((columns[0]?.barX ?? 0) + 23).toBeCloseTo(columns[0]?.centerX ?? -1)
+  })
+
+  it('puts a band behind the bar, a little wider than it and never wider than the slot', () => {
+    const wideSlots = buildManHoursBars(months(), BOX).columns[0]
+    expect(wideSlots?.bandWidth).toBe(62)
+    expect((wideSlots?.bandX ?? 0) + 31).toBeCloseTo(wideSlots?.centerX ?? -1)
+
+    // Thirteen weeks on a phone: 20px slots, a 12px bar, a band that stops inside the slot.
+    const weeks = buildManHoursPeriods({
+      zoom: 'week',
+      todayYmd: '2026-09-30',
+      entries: [entry('2026-07-06', 'field', 8), entry('2026-09-29', 'field', 8)],
+    }).periods
+    const narrow = buildManHoursBars(weeks, { ...BOX, width: 320 }).columns[0]
+    expect(weeks).toHaveLength(13)
+    expect(narrow?.slotWidth).toBe(20)
+    expect(narrow?.barWidth).toBeCloseTo(12.4)
+    expect(narrow?.bandWidth).toBe(18)
+  })
+})
+
+describe('manHoursLabeledColumns', () => {
+  const marks = (flags: boolean[]) => flags.map((f) => (f ? 'x' : '.')).join('')
+
+  it('names every column when there is room', () => {
+    expect(marks(manHoursLabeledColumns(8, 90, 'month'))).toBe('xxxxxxxx')
+  })
+
+  it('names every nth on a narrow chart, counted back from the newest', () => {
+    // 20px slots and "Sep 27" needs 46: every third.
+    expect(marks(manHoursLabeledColumns(13, 20, 'week'))).toBe('x..x..x..x..x')
+  })
+
+  it('always names a picked column, and a regular label too close to it steps aside', () => {
+    // Column 11 is picked: the newest (12) is one slot away and gives way; 9 is two away and gives way too.
+    expect(marks(manHoursLabeledColumns(13, 20, 'week', [11]))).toBe('x..x..x....x.')
+    // Picking a column that already carries a label changes nothing.
+    expect(marks(manHoursLabeledColumns(13, 20, 'week', [12]))).toBe('x..x..x..x..x')
   })
 })
 
