@@ -283,6 +283,12 @@ describe('billPaidByWords', () => {
     expect(billPaidByWords(j, null)).toBe('paid $21,750.00 so far by #48102 on Sep 10 and #48211 on Sep 24')
     expect(billPaidByWords({ ...j, payments: [] }, null)).toBe('nothing applied yet')
   })
+  // v2.4534: the job's total rides on the job, and money that paid work on no bill is not a bill's.
+  it('with the job total, an unlinked payment for the part of the job on no bill is on no bill', () => {
+    const u = job('u', { revenue: 2100, invoices: [inv('u-1', 'u', 1, 500), inv('u-2', 'u', 2, 700)], payments: [pay('pu', 'u', 900, { payment_type: 'ach', reference_number: null, paid_on: '2026-09-03' })] })
+    expect(billPaidByWords(u, u.invoices[0]!)).toBe('nothing applied yet')
+    expect(billPaidByWords({ ...u, revenue: 1700 }, u.invoices[0]!)).toBe('$400.00 paid by ACH on Sep 3 · $100.00 still open')
+  })
   it('an unlinked payment counts for the oldest bill that needed it', () => {
     const u = job('u', { invoices: [inv('u-1', 'u', 1, 500), inv('u-2', 'u', 2, 700)], payments: [pay('pu', 'u', 900, { payment_type: 'ach', reference_number: null, paid_on: '2026-09-03' })] })
     expect(billPaidByWords(u, u.invoices[0]!)).toBe('paid in full by ACH on Sep 3')

@@ -145,6 +145,17 @@ describe('splitBillsAndPayments — where every payment is drawn', () => {
     expect(split.onNoBill.map((p) => p.id)).toEqual(['extra', 'elsewhere'])
     expect(split.surplus).toBeCloseTo(350, 2)
   })
+  // v2.4534 — job 102: an $8,355 job whose one bill is the $5,355 left after a $3,000 check.
+  it('with the job total, money that paid the part of the job on no bill stays on no bill', () => {
+    const invoices = [invoice({ id: 'a', amount: 5355 })]
+    const payments = [payment({ id: 'check', amount: 3000, invoice_id: null })]
+    const split = splitBillsAndPayments(invoices, payments, null, 8355)
+    expect(split.slicesByBill.get('a')).toEqual([])
+    expect(split.onNoBill.map((p) => p.id)).toEqual(['check'])
+    expect(split.surplus).toBe(3000)
+    // No total: the bill takes it, as before.
+    expect(splitBillsAndPayments(invoices, payments).slicesByBill.get('a')!.map((s) => s.payment.id)).toEqual(['check'])
+  })
   it('a row not yet saved stays on no bill while it is typed, even when the rule would count it toward a bill', () => {
     const invoices = [invoice({ id: 'old', amount: 1000, sent_to_customer_at: '2026-07-01T00:00:00Z' })]
     const payments = [payment({ id: 'saved', amount: 400, invoice_id: null }), payment({ id: 'draft', amount: 600, invoice_id: null })]

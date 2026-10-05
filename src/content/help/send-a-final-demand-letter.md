@@ -51,7 +51,7 @@ On a phone, the timeline folds to one strip, so the letter gets the room.
 - **The fee date** sits under the deadline. It is the day attorney's fees become recoverable, 30 days after the letter. Texas wants a claim presented before fees can be claimed, and the letter is that step. The letter says both dates.
 - *Payment method line (optional)* adds one line on how to pay, like who a check is made out to.
 
-**What counts as paid.** The claim subtracts every payment recorded against the bills it covers. A payment recorded on the job with no bill attached pays the oldest bill first. It fills the earliest bill up to what that bill still needs, then the next one. Anything left over sits on the job as a surplus, on no bill.
+**What counts as paid.** The claim subtracts every payment recorded against the bills it covers. Some payments are recorded on the job with no bill attached. That money first pays any part of the job that is on no bill. That part is the job's total minus the bills sent for it. What is left of the payment pays the oldest bill first. It fills the earliest bill up to what that bill still needs, then the next one. Anything left over sits on the job as a surplus, on no bill.
 
 The letter, its enclosed invoice, the Bill tab and the customer's portal all read that same rule. So they cannot disagree about a balance. If a payment was meant for one bill, link it to that bill. Every reader then follows.
 

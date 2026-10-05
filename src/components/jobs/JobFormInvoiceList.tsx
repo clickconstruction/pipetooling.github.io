@@ -386,8 +386,9 @@ export function JobFormInvoiceList({
 
   // v2.3592: what each bill has been paid follows the one rule (oldest bill first), so the row
   // agrees with the bill's own paper and the demand letter; `invPayments` stays the linked list the
-  // server's send-back guard keys on.
-  const attribution = attributeJobPayments(invoices, payments)
+  // server's send-back guard keys on. v2.4534: the job's total goes in, so money that paid the part
+  // of the job on no bill is not counted against a bill.
+  const attribution = attributeJobPayments(invoices, payments, editing.revenue)
   const rows = invoices
     .map((inv) => {
       const invPayments = payments.filter((p) => p.invoice_id === inv.id)
@@ -417,7 +418,7 @@ export function JobFormInvoiceList({
     .sort((a, b) => compareInvoiceLedgerRows({ state: a.row.state, sentYmd: a.sentYmd }, { state: b.row.state, sentYmd: b.sentYmd }))
   const listedIds = new Set(rows.map((r) => r.inv.id))
   // v2.4293: the lines under each bill — the same slices the money line counts, minus rows still being typed.
-  const linesByBill = paymentLineActions ? splitBillsAndPayments(invoices, payments, persistedLedgerPaymentIds ?? null).slicesByBill : null
+  const linesByBill = paymentLineActions ? splitBillsAndPayments(invoices, payments, persistedLedgerPaymentIds ?? null, editing.revenue).slicesByBill : null
   // v2.4294: what the list walks — the bills (By bill), or bills and payments on one date line (By date).
   type DatePayment = Extract<MoneyByDateItem, { kind: 'payment' }>
   type ListItem = { kind: 'bill'; r: (typeof rows)[number] } | DatePayment
@@ -433,8 +434,9 @@ export function JobFormInvoiceList({
         return r ? [{ kind: 'bill', r }] : []
       })
     : rows.map((r) => ({ kind: 'bill', r }))
-  // Money on no listed bill: unlinked surplus the sent bills did not need, plus payments linked to a bill not listed here.
-  const unappliedPaid = attribution.surplus + payments.reduce((s, p) => (p.invoice_id && !listedIds.has(p.invoice_id) ? s + (Number(p.amount) || 0) : s), 0)
+  // Money on no listed bill: unlinked money that paid the part of the job on no bill (v2.4534), unlinked
+  // surplus the sent bills did not need, plus payments linked to a bill not listed here.
+  const unappliedPaid = attribution.offBill + attribution.surplus + payments.reduce((s, p) => (p.invoice_id && !listedIds.has(p.invoice_id) ? s + (Number(p.amount) || 0) : s), 0)
   const totals = invoiceLedgerTotals(rows.map((r) => r.row), unappliedPaid)
 
   function openBillCustomerForDraft(inv: JobsLedgerInvoiceRow) {

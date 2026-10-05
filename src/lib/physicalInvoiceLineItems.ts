@@ -304,8 +304,10 @@ export function resolvePhysicalInvoiceLinePresentation(
  * job 258's second bill used to print the first bill's check and credit the customer
  * twice). A job-level payment (no invoice_id) is applied to the job's sent bills oldest
  * first, so on a single-bill job it is this bill's in full (job 102) and on a multi-bill
- * job each bill prints only the share it absorbed (job 273's $38,780 covers its three bills
- * with $21,195 left on the job, not counted three times). A share that is part of a larger payment carries `attributedOf` so the row can
+ * job each bill prints only the share it absorbed, never the same money on every bill. With the
+ * job's total (`jobTotal`, v2.4534) money that paid the part of the job on no bill is on none of
+ * them: job 273's $38,780 was paid before its three bills existed, and they print no payment.
+ * A share that is part of a larger payment carries `attributedOf` so the row can
  * say so. Whole-job bills (`billingKind === 'job'`) print every payment, as always.
  *
  * `bills` is the job's invoices; a caller that cannot supply them gets the pre-rule
@@ -316,11 +318,12 @@ export function filterPaymentsForPhysicalInvoiceHistory(
   billingKind: 'job' | 'invoice',
   invoiceId: string | null,
   bills?: readonly AttributionBill[] | null,
+  jobTotal?: number | string | null,
 ): PhysicalInvoicePaymentHistoryInput[] {
   const sorted = [...payments].sort((a, b) => a.sequence_order - b.sequence_order)
   if (billingKind === 'invoice' && invoiceId) {
     if (!bills) return sorted.filter((p) => !p.invoice_id || p.invoice_id === invoiceId)
-    return billPaymentSlices(bills, sorted, invoiceId).map((s) =>
+    return billPaymentSlices(bills, sorted, invoiceId, jobTotal).map((s) =>
       s.partial ? { ...s.payment, amount: s.amount, attributedOf: Number(s.payment.amount) } : { ...s.payment, amount: s.amount },
     )
   }

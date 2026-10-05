@@ -95,6 +95,29 @@ describe('buildPortalBills', () => {
     expect(bills[0]?.amount).toBe(250)
   })
 
+  // v2.4534 — job 473: a $42,868.75 job, two paid bills and one open one. The page lists the open
+  // bill; the rule reads every sent bill and the job's total, so the $32,245 of unlinked money pays
+  // the part of the job on no bill and the oldest paid bill, never the open one.
+  it('decides unlinked money across every sent bill and the job total, so an open bill is not paid by old money', () => {
+    const jobs = [job({ id: 'j473', revenue: 42868.75, payments_made: 37145.17 })]
+    const open = { id: 'open', job_id: 'j473', amount: 5723.58, status: 'billed', billed_at: '2026-09-25T18:00:00Z', sequence_order: 2, hosted_invoice_url: null }
+    const sentBills = [
+      { id: 'old', job_id: 'j473', amount: 18640, status: 'paid', billed_at: null, sequence_order: 0 },
+      { id: 'mid', job_id: 'j473', amount: 4900.17, status: 'paid', billed_at: '2026-08-06T18:00:00Z', sequence_order: 1 },
+      { id: 'open', job_id: 'j473', amount: 5723.58, status: 'billed', billed_at: '2026-09-25T18:00:00Z', sequence_order: 2 },
+    ]
+    const payments = [
+      { job_id: 'j473', invoice_id: null, amount: 13980, paid_on: '2026-01-02', sequence_order: 0 },
+      { job_id: 'j473', invoice_id: null, amount: 18265, paid_on: '2026-03-12', sequence_order: 1 },
+      { job_id: 'j473', invoice_id: 'mid', amount: 4900.17, paid_on: '2026-08-17', sequence_order: 2 },
+    ]
+    const bills = buildPortalBills({ jobs, invoices: [open], payments, viewerCustomerId: VIEWER, markGcRows: true, sentBills })
+    expect(bills).toHaveLength(1)
+    expect(bills[0]?.amount).toBe(5723.58)
+    // The sent bills did not load: the open bills alone and no total, the reading before v2.4534 (the old money covers the bill).
+    expect(buildPortalBills({ jobs, invoices: [open], payments, viewerCustomerId: VIEWER, markGcRows: true })).toEqual([])
+  })
+
   it('falls back to the job-level remainder for billed jobs with no billed line', () => {
     const jobs = [job({ id: 'shell', hcp_number: '77', revenue: 900, payments_made: 150, customer_id: 'other', gc_customer_id: VIEWER, bill_to_party: 'gc' })]
     const bills = buildPortalBills({ jobs, invoices: [], payments: [], viewerCustomerId: VIEWER, markGcRows: true })
