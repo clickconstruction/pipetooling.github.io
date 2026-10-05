@@ -17,6 +17,7 @@ import { staleChange, staleWords } from './gcStale'
 import { punchCounts } from './gcBuildingPunch'
 import { missingLogs, missingLogsWords } from './gcBuildingLog'
 import { submittalRows } from './gcBuildingSubmittals'
+import { changeRequestLinesFor } from './gcChangeRequestsWaiting'
 
 /** The stage colors, saturated on purpose: the ring is a status mark, not a neutral surface. */
 export const RING_COLORS: Record<GcStage, string> = {
@@ -68,9 +69,11 @@ function countedShare(groups: ProgressGroup[]): { done: number; total: number } 
  * weighs the work each trade has reported by what its statement of work is worth.
  */
 export function stageProgress(state: GcState, project: GcProject): StageProgress {
-  if (project.stage === 'pursuing') return biddingProgress(state, project)
-  if (project.stage === 'buyout') return buyoutProgress(state, project)
-  return buildingProgress(state, project)
+  const progress = project.stage === 'pursuing' ? biddingProgress(state, project) : project.stage === 'buyout' ? buyoutProgress(state, project) : buildingProgress(state, project)
+  // A change a trade asked for waits on us (the owner, 2026-10-05): named, never counted. After the
+  // lines each stage orders first (Building's schedule, inspections and late pay).
+  const asked = changeRequestLinesFor(state, project)
+  return asked.length > 0 ? { ...progress, also: [...progress.also, ...asked] } : progress
 }
 
 function biddingProgress(state: GcState, project: GcProject): StageProgress {
