@@ -903,7 +903,9 @@ function ProjectRow({
           >
             {project.architect}
           </button>{' '}
-          · {project.sizeNote}
+          {/* The size moves to the next line whole rather than breaking inside it (the owner,
+              2026-10-04); one longer than a line still wraps inside, on its own lines. */}
+          ·{' '}<span style={{ display: 'inline-block' }}>{project.sizeNote}</span>
         </span>
       </span>
       <span style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', ...under }}>
