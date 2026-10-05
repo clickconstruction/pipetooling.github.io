@@ -4730,6 +4730,9 @@ button.gcStep:hover > em { text-decoration: underline; }
   /* A long maker-and-model wraps inside the card instead of running past its edge. */
   .sub-rows-part { flex-wrap: wrap; }
   .sub-rows-part-head { white-space: normal !important; overflow-wrap: anywhere; }
+  /* On a card the row's verdict reads first, then its buttons, both from the left edge. */
+  .sub-rows-actions { align-items: flex-start !important; }
+  .sub-rows-call { order: -1; max-width: none !important; text-align: left !important; }
 }
 
 /* Pipeline Billed rows' dates block (v2.4193): the doors underline on hover only. */

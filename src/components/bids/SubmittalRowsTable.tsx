@@ -10,6 +10,8 @@
  *   status, reason and lead time in one Status cell.
  * - **Each part is a line with the reviewer's answer beside it** (`SubmittalRowProducts`), under a
  *   *Their answer* heading drawn once any answer exists.
+ * - **The row's verdict sits under its buttons** (*1 of 3 rejected*, who, the day): one column for
+ *   what they said and what you do about it. A long note wraps at 15rem instead of widening it.
  * - **The step's counts are chips that filter** (the chips and which one is on are this
  *   component's own state), and what every row shares — Proposed, one house — is said once.
  * - **Part of… and × sit behind ⋯** on a draft row; Edit, Their answer and Split stay out.
@@ -165,14 +167,6 @@ export function SubmittalRowsTable({ items, gcItems, orderOnlyItems, parts, part
                     {shape === 'takeoff' && takeoffName && takeoffName.toLowerCase() !== it.tag.trim().toLowerCase() ? <span style={sub}>{takeoffName}</span> : null}
                     {/* Proposed is said once over the table; any other status, and a lead time typed on the row, show here. */}
                     {shape === 'takeoff' && status !== 'proposed' ? <span style={{ display: 'block', marginTop: '0.2rem' }} data-testid="row-status">{statusBlock}</span> : shape === 'takeoff' && lead ? <span style={{ ...sub, fontVariantNumeric: 'tabular-nums' }}>lead time {lead}</span> : null}
-                    {call ? (
-                      <span style={{ display: 'block', marginTop: '0.2rem', color: callColor, fontWeight: 600, fontSize: '0.75rem' }} data-testid="their-call">
-                        <span data-testid="their-call-head">{call.head}</span>
-                        {call.rest ? <span style={sub} data-testid="their-call-parts">{call.rest}</span> : null}
-                        <span style={sub}>{[it.reviewed_by_name, enteredSuffix(it), formatShortDate(it.reviewed_at)].filter(Boolean).join(' · ')}</span>
-                        {rowNote ? <span style={sub}>“{rowNote}”</span> : null}
-                      </span>
-                    ) : null}
                   </td>
                   {shape === 'schedule' ? (
                     <td style={td} data-label="Specified">
@@ -230,6 +224,15 @@ export function SubmittalRowsTable({ items, gcItems, orderOnlyItems, parts, part
                           <button type="button" aria-label={`Remove ${name}`} disabled={busy} onClick={() => onTakeOff(it)} title="Take it off the submittal: order only, or left out" style={{ ...rowBtn, color: 'var(--text-muted)' }}>
                             × Take off…
                           </button>
+                        </span>
+                      ) : null}
+                      {/* The row's verdict under the button that records it, where who and when fit on one line. */}
+                      {call ? (
+                        <span className="sub-rows-call" style={{ display: 'block', maxWidth: '15rem', textAlign: 'right', color: callColor, fontWeight: 600, fontSize: '0.75rem' }} data-testid="their-call">
+                          <span data-testid="their-call-head">{call.head}</span>
+                          {call.rest ? <span style={sub} data-testid="their-call-parts">{call.rest}</span> : null}
+                          <span style={sub}>{[it.reviewed_by_name, enteredSuffix(it), formatShortDate(it.reviewed_at)].filter(Boolean).join(' · ')}</span>
+                          {rowNote ? <span style={sub}>“{rowNote}”</span> : null}
                         </span>
                       ) : null}
                     </span>
