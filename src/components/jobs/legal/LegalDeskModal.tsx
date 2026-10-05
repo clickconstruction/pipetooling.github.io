@@ -455,7 +455,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
           <span aria-hidden style={{ fontSize: '1.1rem' }}>⚖</span>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontWeight: 600 }}>Legal · Collections accounts</div>
-            <div style={{ ...MUTED, fontSize: '0.78rem' }}>Two exits: attorney-ready (a dev — that is what puts it with the firm) or write it down. {firm ? `Firm: ${firm.name}.` : stored ? 'No firm yet — add one on Settings → Jobs & dispatch.' : ''}</div>
+            <div style={{ ...MUTED, fontSize: '0.78rem' }}>Two exits: attorney-ready (a dev — that is what puts it with the firm) or write it down. {firm ? `Firm: ${firm.name}.` : stored ? 'No firm yet — add one on Settings → Jobs & billing.' : ''}</div>
           </div>
           {stored && firm && canEditReview ? <button type="button" onClick={() => setEmailsOpen(true)} style={btn} title="Who at the firm hears from us, by their own rules">✉ Firm’s emails{firmPaused ? ' · paused' : ''}</button> : null}
           {stored && firm && canEditReview ? <LegalPortalLinkButton firmId={firm.id} firmName={firm.name} /> : null}
