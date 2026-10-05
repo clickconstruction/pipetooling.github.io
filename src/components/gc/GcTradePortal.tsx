@@ -47,6 +47,7 @@ import {
 import { BidTabTable } from './GcBidTabs'
 import { GcBuildingPayAppDoor } from './GcBuildingPayApp'
 import { Btn, Chip, input } from './gcUi'
+import { GcPortalBackCharges } from './GcPortalBackCharges'
 import { GcPortalChanges } from './GcPortalChanges'
 import { GcPortalContacts } from './GcPortalContacts'
 import { GcPortalHome } from './GcPortalHome'
@@ -832,6 +833,9 @@ function SowBlock({
                   <span>
                     {money(d.net)}
                     {d.asked && <span style={{ opacity: 0.75 }}> {t('drawOfAsked', { asked: money(d.asked.net) })}</span>}
+                    {(d.backCharges ?? []).length > 0 && (
+                      <span style={{ opacity: 0.75 }}> {t('bcOffDraw', { amount: money((d.backCharges ?? []).reduce((sum, c) => sum + c.amount, 0)) })}</span>
+                    )}
                   </span>
                   <Chip tone={d.status === 'paid' ? 'green' : d.status === 'approved' ? 'blue' : 'amber'}>
                     {d.status === 'requested' ? t('drawReviewing', { gc: GC }) : d.status === 'approved' ? t('drawApproved') : t('drawPaid')}
@@ -850,6 +854,9 @@ function SowBlock({
           </Block>
         </div>
       )}
+
+      {/* What we charged them for: cleanup, damage, work we finished (owner, 2026-10-05). */}
+      <GcPortalBackCharges project={project} pkg={pkg} partnerId={partner.id} today={today} dispatch={dispatch} />
 
       {/* A change they ask us for: hit something on site, the customer asked for more (owner, 2026-10-04). */}
       <GcPortalChanges project={project} pkg={pkg} partnerId={partner.id} dispatch={dispatch} />

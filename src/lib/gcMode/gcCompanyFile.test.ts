@@ -163,6 +163,20 @@ describe("a trade's Activity also carries the award, pay applications sent back,
     state = gcReducer(state, { type: 'turnDownChangeRequest', projectId: 'fairoaksd', requestId: 'fairoaksd-cr-1', note: 'It was in your quote.' })
     expect(partnerActivity(state, partner(state, 'tricounty')).map((e) => e.text)).toContain('Their change turned down: It was in your quote.')
   })
+
+  it('a back-charge, their dispute, our answer and the draw it came off (Portal lane)', () => {
+    let state = initialGcState()
+    const ids = { projectId: 'fairoaksd', packageId: 'fsteel', chargeId: 'fsteel-bc-1' }
+    state = gcReducer(state, { type: 'tradeAnswerBackCharge', ...ids, agree: false, note: 'The line was not marked' })
+    state = gcReducer(state, { type: 'settleBackCharge', ...ids, keep: true, note: 'It was on the site plan.' })
+    state = gcReducer(state, { type: 'approveDraw', projectId: 'fairoaksd', packageId: 'fsteel', drawId: 'fsteel-draw-2' })
+    state = gcReducer(state, { type: 'takeBackCharge', ...ids, drawId: 'fsteel-draw-2' })
+    const texts = partnerActivity(state, partner(state, 'ironhorse')).map((e) => e.text)
+    expect(texts).toContain('Back-charged $1,250: Your crew cut the temporary power line on the north side while setting joists. Our electrician spliced it the same day.')
+    expect(texts).toContain('Disputed the $1,250 back-charge: The line was not marked')
+    expect(texts).toContain('Kept the $1,250 back-charge: It was on the site plan.')
+    expect(texts).toContain('Took the $1,250 back-charge off draw 2.')
+  })
 })
 
 describe("a trade's Activity carries what it did on the job (Building, 2026-10-04)", () => {

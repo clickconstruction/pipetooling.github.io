@@ -264,6 +264,14 @@ export function partnerActivity(state: GcState, partner: Partner): CompanyEvent[
           out.push({ on: r.askedOn, kind: 'money', text: `Asked for a change in their portal: ${r.description}, ${money(r.amount)}.`, ...base })
           if (r.turnedDown) out.push({ on: r.turnedDown.on, kind: 'money', text: `Their change turned down: ${r.turnedDown.note}`, ...base })
         }
+        // Back-charges: ours, their answer, and the draw each came off (Portal lane, owner 2026-10-05).
+        for (const c of sow.backCharges ?? []) {
+          out.push({ on: c.sentOn, kind: 'money', text: `Back-charged ${money(c.amount)}: ${c.reason}`, ...base })
+          if (c.answer) out.push({ on: c.answer.on, kind: 'money', text: c.status === 'agreed' ? `Agreed to the ${money(c.amount)} back-charge.` : `Disputed the ${money(c.amount)} back-charge: ${c.answer.note}`, ...base })
+          if (c.settled) out.push({ on: c.settled.on, kind: 'money', text: `${c.status === 'dropped' ? 'Dropped' : 'Kept'} the ${money(c.amount)} back-charge: ${c.settled.note}`, ...base })
+          const draw = c.taken ? sow.draws.find((d) => d.id === c.taken?.drawId) : undefined
+          if (c.taken && draw) out.push({ on: c.taken.on, kind: 'money', text: `Took the ${money(c.amount)} back-charge off draw ${draw.number}.`, ...base })
+        }
         if (sow.signedOn) out.push({ on: sow.signedOn, kind: 'paper', text: `Signed the statement of work, ${money(sow.price)}.`, ...base })
         for (const d of sow.draws) {
           out.push({ on: d.requestedOn, kind: 'money', text: `Asked for draw ${d.number}, ${money(d.gross)}.`, ...base })

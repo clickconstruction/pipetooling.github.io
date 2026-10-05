@@ -3,7 +3,8 @@
  * 2026-10-04), the way the trade's **Their messages** shows its own. Nothing is sent (email only,
  * question 29, in the real build). Ours: a pay application sent, certified, paid, reminded; a
  * change order to sign; an interest bill; the work billed in full and accepted. The Board lane's:
- * our contract to sign and its change-order reminders, through its own builders.
+ * our contract to sign and its change-order reminders, through its own builders. The Building
+ * lane's weekly reports, as each went (`project.weeklyReports`).
  *
  * Import from `./gcModel`.
  */
@@ -35,6 +36,7 @@ export type CustomerMessageKind =
   | 'interestPaid'
   | 'acceptAsk'
   | 'accepted'
+  | 'weekly'
 
 export interface CustomerMessage {
   key: string
@@ -58,6 +60,7 @@ const KIND_ORDER: Record<CustomerMessageKind, number> = {
   changeReminder: 8,
   changeOrder: 9,
   contract: 10,
+  weekly: 11,
 }
 
 function billWords(app: OwnerPayAppSent): { name: string; Name: string } {
@@ -221,6 +224,17 @@ export function customerMessages(state: GcState, project: GcProject): CustomerMe
         lines: [hello, `We received ${money(bill.amount)} for the interest on ${job}.`],
       })
     }
+  }
+
+  // The Building lane's weekly reports, as each went.
+  for (const report of project.weeklyReports ?? []) {
+    out.push({
+      key: `weekly-${report.weekOf}-${report.sentOn}`,
+      on: report.sentOn,
+      kind: 'weekly',
+      subject: report.subject,
+      lines: report.body.split('\n').map((l) => l.trim()).filter((l) => l !== ''),
+    })
   }
 
   return out.sort((a, b) => b.on.localeCompare(a.on) || KIND_ORDER[a.kind] - KIND_ORDER[b.kind])

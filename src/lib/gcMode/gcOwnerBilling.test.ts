@@ -1221,6 +1221,14 @@ describe('the customer’s messages, written out', () => {
     ])
   })
 
+  it('carries the Building lane’s weekly reports, as each went', () => {
+    const state = initialGcState()
+    const p = job(state, 'fairoaksd')
+    const withReport = { ...p, weeklyReports: [{ weekOf: '2026-09-28', sentOn: '2026-10-02', from: 'me' as const, by: 'Dana', to: 'Elena Marchetti', copiedArchitect: false, subject: 'Fair Oaks D: the week of Sep 28', body: 'Hello Elena,\n\nThe slab is done.\nNext week: roofing.' }] }
+    const top = customerMessages(state, withReport)[0]
+    expect([top?.kind, top?.subject, top?.lines]).toEqual(['weekly', 'Fair Oaks D: the week of Sep 28', ['Hello Elena,', 'The slab is done.', 'Next week: roofing.']])
+  })
+
   it('Stone Oak: every line billed asks them to accept the work, then thanks them', () => {
     let state = initialGcState()
     expect(kinds(state, 'stoneoak').slice(0, 2)).toEqual([

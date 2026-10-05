@@ -16,6 +16,7 @@ import {
 } from '../../lib/gcMode/gcModel'
 import type { GcPaneProps } from './GcOfficeTabs'
 import { Btn, Card, Chip, Why, input } from './gcUi'
+import { GcWeeklyReportCard } from './GcBuildingWeekly'
 
 /**
  * GC mode design spike: the superintendent's daily log (Building lane, owner 2026-10-04). Today's
@@ -65,6 +66,8 @@ export function GcBuildingLogTab({ state, project, dispatch }: GcPaneProps) {
         <Card>The daily log starts once work starts.</Card>
       ) : (
         <>
+          {/* The weekly report to the customer (the owner, 2026-10-05): drafted from these logs, ready Friday. */}
+          <GcWeeklyReportCard state={state} project={project} dispatch={dispatch} />
           {missing.length > 0 && (
             <Card style={{ border: '1px solid var(--border-strong)' }}>
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.875rem' }}>
