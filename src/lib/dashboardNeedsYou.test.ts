@@ -202,6 +202,13 @@ describe('buildNeedsYouItems', () => {
     expect(items.map((i) => [i.key, i.severity, i.figure, i.actionLabel])).toEqual([['gc-change-requests', 'amber', '1', 'Answer it']])
     expect(buildNeedsYouItems(inputs({ gcFollowUpEnabled: false, gcChangeRequests: gc }))).toEqual([])
   })
+  it('GC back-charges (GC mode spike, 2026-10-05): their own item, our move, gated with GC follow up', () => {
+    const gc = { count: 2, late: true, title: '2 back-charges to settle in GC mode', detail: 'Iron Horse Fabrication disputed $1,250 on Fair Oaks Shops, Building D.', projectId: 'fairoaksd' }
+    const items = buildNeedsYouItems(inputs({ gcFollowUpEnabled: true, gcBackCharges: gc }))
+    expect(items.map((i) => [i.key, i.severity, i.figure, i.actionLabel])).toEqual([['gc-back-charges', 'red', '2', 'Settle them']])
+    expect(buildNeedsYouItems(inputs({ gcFollowUpEnabled: true, gcBackCharges: { ...gc, count: 1, late: false } }))[0]).toMatchObject({ severity: 'amber', actionLabel: 'Settle it' })
+    expect(buildNeedsYouItems(inputs({ gcFollowUpEnabled: false, gcBackCharges: gc }))).toEqual([])
+  })
   it('GC follow up (GC mode spike, 2026-10-04): one item, red once a day passed, gated by the flag', () => {
     const gc = { count: 5, late: true, title: '5 to follow up on in GC mode', detail: 'Hillside Excavation is late on their word.' }
     const items = buildNeedsYouItems(inputs({ gcFollowUpEnabled: true, gcFollowUp: gc }))
