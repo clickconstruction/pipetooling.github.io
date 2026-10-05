@@ -49,6 +49,8 @@ interface Props {
   onPlans: (projectId: string) => void
   /** Open another company's window in place of this one. */
   onCustomer: (customerId: string) => void
+  /** Where to open: a tab, a paper, and its send already open (Get started's Send to sign, 2026-10-04). */
+  at?: { tab?: CompanyTab; doc?: string; send?: boolean }
 }
 
 const STAGE_WORDS: Record<GcStage, { tone: Tone; word: string }> = {
@@ -77,14 +79,14 @@ function projects(n: number): string {
   return `${n} ${n === 1 ? 'project' : 'projects'}`
 }
 
-export function GcCustomerWindow({ state, customer, dispatch, onClose, onOpenProject, onPlans, onCustomer }: Props) {
+export function GcCustomerWindow({ state, customer, dispatch, onClose, onOpenProject, onPlans, onCustomer, at }: Props) {
   // About, Activity, Documents: the same three tabs as a trade's window (the owner, 2026-10-04).
-  const [tab, setTab] = useState<CompanyTab>('about')
+  const [tab, setTab] = useState<CompanyTab>(at?.tab ?? (at?.doc ? 'documents' : 'about'))
   const docs = customerDocuments(state, customer)
   const events = customerActivity(state, customer)
-  const [doc, setDoc] = useState<string | null>(docs.groups[0]?.docs[0]?.key ?? null)
+  const [doc, setDoc] = useState<string | null>(at?.doc ?? docs.groups[0]?.docs[0]?.key ?? null)
   /** A change order being reminded, by its Documents key: the send shows in the paper's place. */
-  const [sending, setSending] = useState<string | null>(null)
+  const [sending, setSending] = useState<string | null>(at?.send && at.doc ? at.doc : null)
   const sendStep = sending ? customerStep(state, customer, sending) : null
   const owner = customerSummary(state, customer)
   const architect = architectSummary(state, customer)
@@ -251,9 +253,10 @@ export function GcCustomerWindow({ state, customer, dispatch, onClose, onOpenPro
                 setSending(null)
               }}
               paper={doc ? customerPaper(state, customer, doc) : null}
-              // A change order waiting on their signature gets Remind them (the owner, 2026-10-04).
-              ask={(d) =>
-                customerStep(state, customer, d.key) && sending !== d.key ? (
+              // Our contract gets Send to sign, then Remind them; a change order waiting on them, Remind them (the owner, 2026-10-04).
+              ask={(d) => {
+                const step = customerStep(state, customer, d.key)
+                return step && sending !== d.key ? (
                   <Btn
                     kind="primary"
                     onClick={() => {
@@ -261,10 +264,10 @@ export function GcCustomerWindow({ state, customer, dispatch, onClose, onOpenPro
                       setSending(d.key)
                     }}
                   >
-                    Remind them
+                    {step.verb}
                   </Btn>
                 ) : null
-              }
+              }}
               aside={
                 sendStep ? (
                   <GcCustomerSend

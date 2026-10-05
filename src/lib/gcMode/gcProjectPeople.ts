@@ -13,7 +13,7 @@ import { insuranceRenewals, tradePromisesOf, tradePromiseState, tradePromiseWord
 import { architectSummary } from './gcCustomers'
 import { sentBackOpen, timesSentBack } from './gcBuilding'
 import { followUpPeople, partnerReach, type FollowItem, type FollowPerson } from './gcFollowUpSheet'
-import { customerReminderLate, customerSentWords } from './gcCustomerSend'
+import { contractWaitingOn, customerReminderLate, customerSentWords } from './gcCustomerSend'
 
 export type PeopleTone = 'red' | 'amber' | 'grey'
 
@@ -189,11 +189,20 @@ export function projectPeople(state: GcState, project: GcProject): ProjectPeople
       add(asCustomer, { text: `Our bid went to them ${weekdayDate(project.ourBidSentOn)}, ${days} ${days === 1 ? 'day' : 'days'} ago. No answer yet.`, tone: days >= CUSTOMER_CALL_DAYS ? 'amber' : 'grey', code: 'bid' })
     }
     if (customer && asCustomer) {
+      // Our contract, out to sign in their portal (the owner, 2026-10-04).
+      if (contractWaitingOn(project) && project.ownerContractSentOn) {
+        const reminded = customerSentWords(state, customer.id, 'contract', project.id)
+        add(asCustomer, {
+          text: `Our contract is waiting on their signature, sent ${shortDate(project.ownerContractSentOn)}.${reminded ? ` ${reminded}` : ''}`,
+          tone: customerReminderLate(state, customer.id, 'contract', project.id) ? 'red' : 'amber',
+          code: 'contract',
+        })
+      }
       for (const co of (project.changeOrders ?? []).filter((c) => c.status === 'sent')) {
-        const reminded = customerSentWords(state, customer.id, co.id)
+        const reminded = customerSentWords(state, customer.id, 'changeOrder', project.id, co.id)
         add(asCustomer, {
           text: `Change order ${co.number} is waiting on their signature${co.sentOn ? `, sent ${shortDate(co.sentOn)}` : ''}.${reminded ? ` ${reminded}` : ''}`,
-          tone: customerReminderLate(state, customer.id, co.id) ? 'red' : 'amber',
+          tone: customerReminderLate(state, customer.id, 'changeOrder', project.id, co.id) ? 'red' : 'amber',
           code: `co:${co.id}`,
         })
       }
@@ -315,6 +324,18 @@ export function projectFollowPeople(state: GcState, project: GcProject): FollowP
           words: {
             en: { about: `our bid for ${project.name}`, detail: `We sent it ${project.ourBidSentOn ? weekdayDate(project.ourBidSentOn) : 'recently'}`, ask: 'Do you have any questions for us?' },
             es: { about: `nuestra propuesta para ${project.name}`, detail: 'Se la enviamos hace unos días', ask: '¿Tiene alguna pregunta?' },
+          },
+        }]
+      }
+      if (reason.code === 'contract') {
+        return [{
+          ...base,
+          key: `contract-${project.id}`,
+          kind: 'signature',
+          label: `Our contract · ${project.name}`,
+          words: {
+            en: { about: `our contract for ${project.name}`, detail: `We sent it ${project.ownerContractSentOn ? weekdayDate(project.ownerContractSentOn) : 'recently'}`, ask: 'Could you sign it in your portal this week?' },
+            es: { about: `nuestro contrato para ${project.name}`, detail: 'Se lo enviamos hace unos días', ask: '¿Lo puede firmar en su portal esta semana?' },
           },
         }]
       }

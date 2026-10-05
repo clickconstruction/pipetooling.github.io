@@ -179,7 +179,18 @@ export default function GcMode() {
   const [customerId, setCustomerId] = useState<string | null>(null)
   // A trade's company window, at the tab and paper that was clicked (the owner, 2026-10-04).
   const [companyAt, setCompanyAt] = useState<{ partnerId: string; tab?: CompanyTab; doc?: string; focus?: string } | null>(null)
-  const companyOpener = useMemo<CompanyOpener>(() => ({ openPartner: (partnerId, at) => setCompanyAt({ partnerId, ...at }) }), [])
+  // A customer's window opened at a paper, its send open (Get started's Send to sign, the owner, 2026-10-04).
+  const [customerAt, setCustomerAt] = useState<{ tab?: CompanyTab; doc?: string; send?: boolean } | null>(null)
+  const companyOpener = useMemo<CompanyOpener>(
+    () => ({
+      openPartner: (partnerId, at) => setCompanyAt({ partnerId, ...at }),
+      openCustomer: (id, at) => {
+        setCustomerAt(at ?? null)
+        setCustomerId(id)
+      },
+    }),
+    [],
+  )
   const [mapFor, setMapFor] = useState<{ projectId: string; packageId: string } | null>(null)
   const [levelPackageId, setLevelPackageId] = useState<string | null>(null)
   // New here? opens itself on a first visit (the big list, Board item 8), once per browser.
@@ -311,10 +322,17 @@ export default function GcMode() {
           state={state}
           customer={customer}
           dispatch={dispatch}
-          key={customer.id}
-          onClose={() => setCustomerId(null)}
+          key={`${customer.id}:${customerAt?.doc ?? ''}`}
+          {...(customerAt ? { at: customerAt } : {})}
+          onClose={() => {
+            setCustomerId(null)
+            setCustomerAt(null)
+          }}
           onPlans={setPlansForId}
-          onCustomer={setCustomerId}
+          onCustomer={(id) => {
+            setCustomerAt(null)
+            setCustomerId(id)
+          }}
           onOpenProject={(id) => {
             setBoardTab('projects')
             setProjectId(id)

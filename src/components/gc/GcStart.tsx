@@ -14,6 +14,7 @@ import {
 } from '../../lib/gcMode/gcModel'
 import { AwardBlocked, AwardButton, type GcPaneProps } from './GcOfficeTabs'
 import { Btn, Card, Chip, Why, input, td, th } from './gcUi'
+import { useCompanyOpener } from './gcCompanyOpener'
 
 /**
  * GC mode design spike: going into the job. One page that answers "can we start?": the things
@@ -29,6 +30,7 @@ export function GcStartTab({ state, project, dispatch, onSeePortal, onOpenSchedu
   const owed = started && Boolean(project.startedAnyway)
   const team = ourTeam(state)
   const [anywayBy, setAnywayBy] = useState(team[0] ?? '')
+  const opener = useCompanyOpener()
   const [anywayWhy, setAnywayWhy] = useState('')
   const onJob = planRecipients(state, { ...project, stage: 'building' }, []).length
 
@@ -143,12 +145,21 @@ export function GcStartTab({ state, project, dispatch, onSeePortal, onOpenSchedu
                 />
               ) : (
                 (!started || owed) && (
-                  <Btn
-                    kind={c.done ? 'quiet' : 'plain'}
-                    onClick={() => dispatch({ type: 'setStartItem', projectId: project.id, item: c.key === 'permit' ? 'permit' : 'ownerContract', done: !c.done })}
-                  >
-                    {c.done ? 'Undo' : 'Mark it done'}
-                  </Btn>
+                  <span style={{ display: 'inline-flex', gap: '0.3rem', flexWrap: 'wrap' }}>
+                    {/* They sign it in their portal (the owner, 2026-10-04): the send opens on the customer's window. */}
+                    {c.key === 'ownerContract' && !c.done && opener && (
+                      <Btn kind="primary" onClick={() => opener.openCustomer(project.customerId, { tab: 'documents', doc: `contract-${project.id}`, send: true })}>
+                        {project.ownerContractSentOn ? 'Remind them' : 'Send to sign'}
+                      </Btn>
+                    )}
+                    <Btn
+                      kind={c.done ? 'quiet' : 'plain'}
+                      onClick={() => dispatch({ type: 'setStartItem', projectId: project.id, item: c.key === 'permit' ? 'permit' : 'ownerContract', done: !c.done })}
+                      {...(c.key === 'ownerContract' && !c.done ? { title: 'Signed on paper, outside their portal' } : {})}
+                    >
+                      {c.done ? 'Undo' : c.key === 'ownerContract' ? 'Mark it signed' : 'Mark it done'}
+                    </Btn>
+                  </span>
                 )
               )}
             </div>

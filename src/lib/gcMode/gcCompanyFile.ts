@@ -313,12 +313,18 @@ export function customerDocuments(state: GcState, customer: GcCustomer): { group
   for (const project of state.projects.filter((p) => p.customerId === customer.id && !p.lostOn)) {
     const docs: CompanyDoc[] = []
     if (project.stage !== 'pursuing') {
+      // They sign it in their portal (the owner, 2026-10-04): Send to sign, then Remind them.
+      const sentWords = customerSentWords(state, customer.id, 'contract', project.id)
       docs.push({
         key: `contract-${project.id}`,
         title: 'Our contract with them',
         status: project.ownerContractSignedOn ? 'ok' : 'missing',
-        statusWords: project.ownerContractSignedOn ? `signed ${shortDate(project.ownerContractSignedOn)}` : 'not signed yet',
-        meta: project.ownerContractSignedOn ? 'Their price stays what they signed.' : 'Mark it signed on Get started.',
+        statusWords: project.ownerContractSignedOn ? `signed ${shortDate(project.ownerContractSignedOn)}` : project.ownerContractSentOn ? 'waiting on their signature' : 'not sent yet',
+        meta: project.ownerContractSignedOn
+          ? 'Their price stays what they signed.'
+          : project.ownerContractSentOn
+            ? `${sentWords ? `${sentWords} ` : ''}They sign it in their portal.`
+            : 'Send it to sign in their portal. Signed on paper? Mark it on Get started.',
         projectId: project.id,
       })
     }
@@ -348,7 +354,7 @@ export function customerDocuments(state: GcState, customer: GcCustomer): { group
     }
     // Each change order waiting on their signature, with Remind them (the owner, 2026-10-04).
     for (const co of (project.changeOrders ?? []).filter((c) => c.status === 'sent')) {
-      const reminded = customerSentWords(state, customer.id, co.id)
+      const reminded = customerSentWords(state, customer.id, 'changeOrder', project.id, co.id)
       docs.push({
         key: `co-${co.id}`,
         title: `Change order ${co.number}`,

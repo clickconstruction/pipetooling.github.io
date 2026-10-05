@@ -506,7 +506,7 @@ function reduce(state: GcState, action: GcAction): GcState {
       const co = project?.changeOrders?.find((c) => c.id === action.changeOrderId)
       if (!customer || !project || !co || project.customerId !== customer.id || co.status !== 'sent' || !action.by) return state
       const note = action.note.trim()
-      const send: CustomerSend = { id: `csend-${(state.customerSends ?? []).length + 1}`, customerId: customer.id, projectId: project.id, changeOrderId: co.id, on: state.today, by: action.by, note }
+      const send: CustomerSend = { id: `csend-${(state.customerSends ?? []).length + 1}`, customerId: customer.id, projectId: project.id, paper: 'changeOrder', changeOrderId: co.id, on: state.today, by: action.by, note }
       const entry = { on: state.today, by: 'You', note: `Reminded them to sign change order ${co.number}, by ${weekdayDate(action.by)}.${note ? ` "${note}"` : ''}` }
       return logged(
         {
@@ -517,6 +517,37 @@ function reduce(state: GcState, action: GcAction): GcState {
         'office',
         `Reminded ${customer.name} to sign change order ${co.number} by ${weekdayDate(action.by)}.`,
       )
+    }
+
+    case 'sendOwnerContract': {
+      // Our contract to sign in the customer's portal (the owner, 2026-10-04: "they sign it in their
+      // portal"). The first send marks it sent and turns their portal on if it was off; later ones remind.
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const customer = project ? state.customers.find((c) => c.id === project.customerId) : undefined
+      if (!project || !customer || project.stage === 'pursuing' || project.lostOn || project.ownerContractSignedOn || !action.by) return state
+      const first = !project.ownerContractSentOn
+      const note = action.note.trim()
+      const send: CustomerSend = { id: `csend-${(state.customerSends ?? []).length + 1}`, customerId: customer.id, projectId: project.id, paper: 'contract', first, on: state.today, by: action.by, note }
+      const day = weekdayDate(action.by)
+      const entry = { on: state.today, by: 'You', note: `${first ? `Sent our contract for ${project.name} to sign` : `Reminded them to sign our contract for ${project.name}`}, by ${day}.${note ? ` "${note}"` : ''}` }
+      const next = first ? mapProject(state, project.id, (p) => ({ ...p, ownerContractSentOn: state.today })) : state
+      return logged(
+        {
+          ...next,
+          customerSends: [...(state.customerSends ?? []), send],
+          customers: next.customers.map((c) => (c.id === customer.id ? { ...c, portalOn: true, contacts: [entry, ...c.contacts] } : c)),
+        },
+        'office',
+        first ? `Sent our contract for ${project.name} to ${customer.name} to sign in their portal by ${day}.` : `Reminded ${customer.name} to sign our contract for ${project.name} by ${day}.`,
+      )
+    }
+
+    case 'ownerSignContract': {
+      // The customer signs in their portal: the same as marking it signed on Get started, said as theirs.
+      const project = state.projects.find((p) => p.id === action.projectId)
+      if (!project || !project.ownerContractSentOn || project.ownerContractSignedOn) return state
+      const signed = reduce(state, { type: 'setStartItem', projectId: project.id, item: 'ownerContract', done: true })
+      return logged({ ...signed, log: state.log }, 'office', `${project.owner} signed our contract for ${project.name} in their portal.`)
     }
 
     case 'sendPaper': {
