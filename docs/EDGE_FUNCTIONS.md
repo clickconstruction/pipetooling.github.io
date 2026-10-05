@@ -2978,6 +2978,8 @@ const response = await supabase.functions.invoke('claim-dev', {
 
 ### test-email
 
+> **v2.4557 — a self-test for sent copies**: `file_copy_only: true` (with the usual `to`, `subject`, `body`) sends **nothing** and files the message as a `sent_documents` row of `kind` `self_test`, with one small attachment, through [`fileSentEmailBestEffort`](../supabase/functions/_shared/fileSentCopy.ts) — the way to prove the helper against the live bucket and table after a deploy. The row names no job, so no list shows it; a dev deletes it afterwards. Answers `{ success: true, sent: false, filed: 'attempted' }`. **Redeploy required.**
+
 **Purpose**: Test email templates with Resend API integration
 
 **Endpoint**: `POST /functions/v1/test-email`
@@ -3264,6 +3266,8 @@ Body: `{ job_id, to_email, recipient_label?, subject?, email_text?, pdf_base64, 
 Body: `{ mode: 'send' | 'test', payload, recipient_user_ids?, subject?, note? }`. `send`: 1–5 user ids, each a desk role with an email, not archived, not a sample or digital twin (else 400 naming the person); one email per person, worded *Waiting for your approval* for a master technician. `test`: one copy to the sender with `[TEST]` on the subject. `subject` (≤ 200, line breaks removed) defaults to `lienStatusSubject`; `note` (≤ 280) prints on top as *<sender> wrote:*. Success: `{ sent_to: string[], failed: { name, error }[] }`; 502 when nobody got it. Every send logs `email_send_log` as `lien_desk_summary` through `sendEmailViaResend`; the function writes nothing else.
 
 ### send-physical-invoice-email
+
+> **v2.4557 — the bill is kept as it went**: after a successful send the function files the email and its attachments (the invoice PDF, any companion PDFs) through [`fileSentEmailBestEffort`](../supabase/functions/_shared/fileSentCopy.ts) — one `sent_documents` row (`kind` `bill`, or `bill_resent` for `resend: true`) keyed to the job, the payer and the invoice (`source_table` `jobs_ledger_invoices`), with the files in the private `sent-documents` bucket. Best effort: a copy that cannot be kept never fails the send. A re-email, which wrote nothing before, now leaves this row. The plan: [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
 
 > **v2.4132 — sends as the company**: the From is [`COMPANY_EMAIL_FROM`](../supabase/functions/_shared/emailFrom.ts) — *Click Plumbing and Electrical* on `EMAIL_FROM`'s verified address (punch list #53, PR 2); `email_send_log.from_email` records it.
 
@@ -3581,6 +3585,8 @@ interface SendHazmatNoticeEmailBody {
 ---
 
 ### send-stripe-invoice
+> **v2.4557 — the bill is kept as it went**: the payer's own bill email (`kind` `bill`, with Stripe's PDF when it was attached) and each live copy (`bill_copy`) are filed in `sent_documents` through `sendEmailViaResend`'s new `file` option ([`fileSentCopy.ts`](../supabase/functions/_shared/fileSentCopy.ts)), keyed to the job and the invoice. The statement's code, an inline image in the email, is drawn into the kept page. A test-mode bill and its single test copy go to ourselves and are not filed; a bill Stripe emails itself (the fallback) has no message of ours to keep. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
+
 > **v2.4127 — the bill comes from the company**: the bill email and every copy send as [`COMPANY_EMAIL_FROM`](../supabase/functions/_shared/emailFrom.ts) — *Click Plumbing and Electrical* on `EMAIL_FROM`'s verified address (`mailboxWithName`, [`_shared/mailboxWithName.ts`](../supabase/functions/_shared/mailboxWithName.ts)); `sendEmailViaResend` takes `options.from` for it and `email_send_log.from_email` records it. Staff emails keep `EMAIL_FROM`. Punch list #53, PR 1.
 
 
@@ -4095,6 +4101,8 @@ Migration **`20270605150000_sync_mercury_transactions_pg_cron.sql`** schedules t
 
 **Implementation**: [`supabase/functions/ar-returned-checks/index.ts`](../supabase/functions/ar-returned-checks/index.ts); the sender in [`_shared/arReturnCaseNotify.ts`](../supabase/functions/_shared/arReturnCaseNotify.ts); the words in [`_shared/bankReturnedDeposits.ts`](../supabase/functions/_shared/bankReturnedDeposits.ts), tested from `src/lib/jobs/bankReturnNotice.test.ts` and `src/lib/jobs/bankReturnedDeposits.test.ts`.
 ### sync-resend-emails
+
+> **Sent copies (v2.4557)**: an email that goes outside the company is also kept — the message as it was read and each attachment — by [`_shared/fileSentCopy.ts`](../supabase/functions/_shared/fileSentCopy.ts) (`fileSentEmailBestEffort`; what it builds is the pure [`sentCopyEmail.ts`](../supabase/functions/_shared/sentCopyEmail.ts)). A caller of `sendEmailViaResend` passes `options.file` (`{ kind, jobIds, customerId, bidId, personId, source, sentBy }`); a function with its own Resend call invokes the helper after the send. `email_send_log` stays the delivery log; `sent_documents` is the copy. Which functions file and which are owed is held by `src/lib/sent/sentCopiesEmailCoverage.test.ts`; the plan is [`SENT_COPIES.md`](./SENT_COPIES.md).
 
 > **App-side logging (v2.1341)**: every sender function now writes its own `email_send_log` row at send time (source `'app'`) via [`_shared/logEmailSend.ts`](../supabase/functions/_shared/logEmailSend.ts) — best-effort, service-role PostgREST insert with `on_conflict=resend_email_id` ignore-duplicates so a faster webhook row wins. The shared [`resendSendEmail.ts`](../supabase/functions/_shared/resendSendEmail.ts) helper covers its 7 callers; the 6 direct-Resend functions (`send-workflow-notification`, `send-estimate-to-customer`, `send-contract-for-signature`, `send-physical-invoice-email`, `send-hazmat-notice-email`, `test-email`) call the logger inline. This sync (and the webhook) remain enrichment: delivery-status updates and history backfill.
 

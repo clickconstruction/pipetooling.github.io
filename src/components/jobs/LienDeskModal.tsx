@@ -87,7 +87,7 @@ import LienTimelineStrip from './LienTimelineStrip'
 import LienDeskTimelineTab from './LienDeskTimelineTab'
 import { useLienTimelineBook } from '../../hooks/useLienTimelineBook'
 import { lienGridHtml, type LienBookShow, type LienTimelineBookRow } from '../../lib/jobs/lienTimelineBook'
-import { printHtmlInNewWindow } from '../../lib/bidDocuments/htmlDoc'
+import { printAndFile } from '../../lib/sent/sentCopiesIo'
 import { buildLienDeskGates, lienGateMonthLine, ownerSourceWords, propertyKindClockWords, type LienGate, type LienGateKey } from '../../lib/jobs/lienDeskGates'
 import { rollMailingLines } from '../../lib/jobs/rollMailingLines'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
@@ -2164,7 +2164,10 @@ export default function LienDeskModal({
               onShow={setBookShow}
               onOpenRow={openBookRow}
               onOpenJob={onOpenJob}
-              onPrint={(rows, title) => printHtmlInNewWindow(lienGridHtml(rows, { title, todayYmd, companyName: issuer?.companyName ?? '' }))}
+              onPrint={(rows, title) => {
+                // A print counts as a send (docs/SENT_COPIES.md): counsel's grid is filed on every job in it.
+                printAndFile(lienGridHtml(rows, { title, todayYmd, companyName: issuer?.companyName ?? '' }), { kind: 'lien_grid', title, recipientName: 'Counsel', jobIds: rows.map((r) => r.jobId) })
+              }}
             />
           ) : kind === 'affidavit'
             ? (isMobile ? (mobileListShown ? affList : affPane) : (

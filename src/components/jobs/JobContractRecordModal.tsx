@@ -13,7 +13,7 @@ import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { renderContractBodyToSafeHtml } from '../../lib/renderContractBodyToSafeHtml'
-import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
+import { printAndFile } from '../../lib/sent/sentCopiesIo'
 import { getPhysicalInvoiceIssuerForDocument } from '../../lib/physicalInvoiceIssuer'
 import { buildJobContractDocumentHtml, isGoogleDocsUrl, jobContractHeading, parseJobContractFields, shortDocumentLabel } from '../../lib/jobs/jobContractDocument'
 import { formatContractStamp, jobContractSignatureAuditLine, type JobContractRow } from '../../lib/jobs/jobContractLifecycle'
@@ -222,7 +222,8 @@ export default function JobContractRecordModal({ open, onClose, row, job }: JobC
             <button
               type="button"
               onClick={() => {
-                if (!openHtmlPrintWindow(buildJobContractRecordHtml(row, job, urls.signatureUrl))) showToast('Allow pop-ups to print the contract.', 'error')
+                // A print counts as a send (docs/SENT_COPIES.md): the contract is filed on the job as it printed.
+                if (!printAndFile(buildJobContractRecordHtml(row, job, urls.signatureUrl), { kind: 'job_contract_print', title: `Contract${row.template_name ? ` · ${row.template_name}` : ''}`, recipientName: row.recipient_name ?? '', jobIds: [row.job_id], source: { table: 'job_contracts', id: row.id } })) showToast('Allow pop-ups to print the contract.', 'error')
               }}
               style={{ padding: '0.4rem 0.8rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', font: 'inherit', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}
             >
