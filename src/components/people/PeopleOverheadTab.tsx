@@ -1426,8 +1426,16 @@ export default function PeopleOverheadTab({
           </div>
         </div>
       ) : null}
-      <ManHoursCard officeJobLedgerId={overheadOfficeJobLedgerId} officeJobLoading={overheadSettingsLoading} />
+      <ManHoursCard
+        officeJobLedgerId={overheadOfficeJobLedgerId}
+        officeJobLoading={overheadSettingsLoading}
+        onShowWeek={(ymd) => {
+          showOverheadWeekOf(ymd)
+          document.getElementById('overhead-day-table')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }}
+      />
       <div
+        id="overhead-day-table"
         style={{
           display: 'flex',
           flexWrap: 'wrap',

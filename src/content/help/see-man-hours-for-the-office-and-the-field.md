@@ -49,6 +49,20 @@ Each row is one period. The oldest period is at the top.
 Field **900** · Office **250** · Bids **50** · Total **1,200** · Office share **25%**
 :::
 
+## See who made up a period
+
+Click a bar or a row. A list under the table shows each person's hours for that period. It starts on the newest finished period.
+
+Each person has their field, office and bid hours, and any time not on a job. The list adds up to the row you clicked.
+
+Up to three buttons sit under the list.
+
+- {{button:outline|Show these days in the table below}} appears on the Week view. It moves the day table to that week.
+- {{button:outline-amber|Approve waiting hours}} appears when the period has hours waiting. It opens the Hours approvals queue.
+- {{button:outline|Match hours to a job}} appears when the period has time not on a job. It opens Match sessions on the Hours tab.
+
+The queue and Match sessions show everything that is waiting, not only that period.
+
 ## The chips on a row
 
 A row can wear up to three chips beside its name.

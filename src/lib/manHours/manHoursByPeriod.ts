@@ -47,7 +47,10 @@ export type ManHoursSide = 'field' | 'office' | 'bid' | 'unassigned'
 export type ManHoursSession = Pick<
   OverheadClockSessionRow,
   'user_id' | 'work_date' | 'clocked_in_at' | 'clocked_out_at' | 'job_ledger_id' | 'bid_id' | 'approved_at' | 'rejected_at' | 'revoked_at'
->
+> & {
+  /** The person's name, for the "who made it up" list. The fold itself never reads it. */
+  users?: { name: string | null } | null
+}
 
 /** One counted session, reduced to what the fold needs. */
 export type ManHoursEntry = { workDate: string; userId: string; side: ManHoursSide; hours: number; pending: boolean }

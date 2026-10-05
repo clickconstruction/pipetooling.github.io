@@ -41,7 +41,19 @@ function Swatch({ color, hatch }: { color: string; hatch?: boolean }) {
   )
 }
 
-export function ManHoursChart({ periods, zoom }: { periods: readonly ManHoursPeriod[]; zoom: ManHoursZoom }) {
+export function ManHoursChart({
+  periods,
+  zoom,
+  selectedKey = null,
+  onSelect,
+}: {
+  periods: readonly ManHoursPeriod[]
+  zoom: ManHoursZoom
+  /** The period the card's "who" list reads; its column is marked. */
+  selectedKey?: string | null
+  /** A click (or Enter / Space) on a column picks that period. */
+  onSelect?: (key: string) => void
+}) {
   const hatchId = useId()
   const [hoverKey, setHoverKey] = useState<string | null>(null)
   const bars = useMemo(() => buildManHoursBars(periods, BARS), [periods])
@@ -96,19 +108,38 @@ export function ManHoursChart({ periods, zoom }: { periods: readonly ManHoursPer
             {bars.columns.map((c, i) => {
               const p = periods[i] as ManHoursPeriod
               const on = c.key === hoverKey
+              const picked = c.key === selectedKey
               return (
                 <g
                   key={c.key}
                   tabIndex={0}
-                  role="img"
+                  role={onSelect ? 'button' : 'img'}
+                  aria-pressed={onSelect ? picked : undefined}
                   aria-label={columnLabel(p)}
                   data-period={c.key}
-                  style={{ outline: 'none' }}
+                  style={{ outline: 'none', cursor: onSelect ? 'pointer' : 'default' }}
                   onMouseMove={() => setHoverKey(c.key)}
                   onFocus={() => setHoverKey(c.key)}
                   onBlur={() => setHoverKey(null)}
+                  onClick={onSelect ? () => onSelect(c.key) : undefined}
+                  onKeyDown={
+                    onSelect
+                      ? (e) => {
+                          if (e.key !== 'Enter' && e.key !== ' ') return
+                          e.preventDefault()
+                          onSelect(c.key)
+                        }
+                      : undefined
+                  }
                 >
-                  <rect x={c.slotX + 1} y={BARS.top} width={Math.max(0, c.slotWidth - 2)} height={BARS.height - BARS.top - BARS.bottom} rx={4} fill={on ? 'var(--bg-muted)' : 'transparent'} />
+                  <rect
+                    x={c.slotX + 1}
+                    y={BARS.top}
+                    width={Math.max(0, c.slotWidth - 2)}
+                    height={BARS.height - BARS.top - BARS.bottom}
+                    rx={4}
+                    fill={picked ? 'var(--bg-blue-tint)' : on ? 'var(--bg-muted)' : 'transparent'}
+                  />
                   <g opacity={p.soFar ? 0.6 : 1}>
                     {c.segments.map((s) => {
                       const fill = s.side === 'unassigned' ? `url(#${hatchId})` : (MAN_HOURS_SIDES.find((m) => m.key === s.side)?.color ?? 'var(--text-faint)')
@@ -121,7 +152,7 @@ export function ManHoursChart({ periods, zoom }: { periods: readonly ManHoursPer
                       )
                     })}
                   </g>
-                  <text x={c.centerX} y={BARS.height - 8} textAnchor="middle" fill={on ? 'var(--text-strong)' : 'var(--text-faint)'} fontSize={10} fontWeight={on ? 700 : 400}>
+                  <text x={c.centerX} y={BARS.height - 8} textAnchor="middle" fill={on || picked ? 'var(--text-strong)' : 'var(--text-faint)'} fontSize={10} fontWeight={on || picked ? 700 : 400}>
                     {manHoursPeriodShortLabel(p, zoom)}
                   </text>
                 </g>
@@ -148,7 +179,7 @@ export function ManHoursChart({ periods, zoom }: { periods: readonly ManHoursPer
               <polyline points={share.points.map((pt) => `${pt.x},${pt.y}`).join(' ')} fill="none" stroke="var(--man-hours-office)" strokeWidth={2} strokeLinejoin="round" />
             ) : null}
             {share.points.map((pt) => {
-              const on = pt.key === hoverKey
+              const on = pt.key === hoverKey || pt.key === selectedKey
               return (
                 <g key={pt.key}>
                   <circle cx={pt.x} cy={pt.y} r={on ? 5.5 : 4} fill="var(--man-hours-office)" stroke="var(--bg-page)" strokeWidth={2} opacity={pt.soFar ? 0.6 : 1} />
@@ -161,7 +192,17 @@ export function ManHoursChart({ periods, zoom }: { periods: readonly ManHoursPer
               )
             })}
             {bars.columns.map((c) => (
-              <rect key={c.key} x={c.slotX} y={0} width={c.slotWidth} height={SHARE.height} fill="transparent" onMouseMove={() => setHoverKey(c.key)} />
+              <rect
+                key={c.key}
+                x={c.slotX}
+                y={0}
+                width={c.slotWidth}
+                height={SHARE.height}
+                fill="transparent"
+                style={{ cursor: onSelect ? 'pointer' : 'default' }}
+                onMouseMove={() => setHoverKey(c.key)}
+                onClick={onSelect ? () => onSelect(c.key) : undefined}
+              />
             ))}
           </svg>
 

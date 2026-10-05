@@ -9,7 +9,8 @@ import { fetchAllRows } from '../supabasePaging'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import type { ManHoursSession } from './manHoursByPeriod'
 
-const SESSION_SELECT = 'user_id, work_date, clocked_in_at, clocked_out_at, job_ledger_id, bid_id, approved_at, rejected_at, revoked_at'
+const SESSION_SELECT =
+  'user_id, work_date, clocked_in_at, clocked_out_at, job_ledger_id, bid_id, approved_at, rejected_at, revoked_at, users!clock_sessions_user_id_fkey(name)'
 
 /** Paged (the read crosses PostgREST's 1,000-row cap). Throws when a page fails. */
 export async function loadManHoursSessions(): Promise<ManHoursSession[]> {

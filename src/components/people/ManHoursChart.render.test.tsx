@@ -3,7 +3,7 @@
  * Render smoke for the Man hours picture: the two charts and their columns,
  * the legend, and the box that names a column's numbers on hover or focus.
  */
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, within } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { buildManHoursPeriods, type ManHoursEntry } from '../../lib/manHours/manHoursByPeriod'
@@ -53,6 +53,20 @@ describe('ManHoursChart', () => {
       }),
     ).toBeTruthy()
     expect(screen.getByRole('img', { name: /^October 2026 so far: field 40 h/ })).toBeTruthy()
+  })
+
+  it('lets a click or Enter on a column pick its period, and marks the picked one', () => {
+    const onSelect = vi.fn()
+    renderWithProviders(<ManHoursChart periods={periods} zoom="month" selectedKey="2026-09-01" onSelect={onSelect} />)
+
+    const sep = screen.getByRole('button', { name: /^September 2026: field 300 h/ })
+    expect(sep.getAttribute('aria-pressed')).toBe('true')
+    const aug = screen.getByRole('button', { name: /^August 2026: field 300 h/ })
+    expect(aug.getAttribute('aria-pressed')).toBe('false')
+
+    fireEvent.click(aug)
+    fireEvent.keyDown(sep, { key: 'Enter' })
+    expect(onSelect.mock.calls).toEqual([['2026-08-01'], ['2026-09-01']])
   })
 
   it('shows a column’s numbers on hover and on focus, and clears them on leave', () => {

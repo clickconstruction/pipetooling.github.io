@@ -37,11 +37,14 @@ function sess(day: string, userId: string, hours: number, over: Partial<ManHours
   }
 }
 
+const abraham = { users: { name: 'Abraham' } }
+const taunya = { users: { name: 'Taunya' } }
 const SESSIONS = [
-  sess('2026-09-15', 'u1', 30, { job_ledger_id: 'job-1' }),
-  sess('2026-09-15', 'u2', 8, { job_ledger_id: OFFICE }),
-  sess('2026-09-16', 'u2', 2, { bid_id: 'bid-1' }),
-  sess('2026-10-02', 'u1', 6, { job_ledger_id: 'job-1', approved_at: null }),
+  sess('2026-09-15', 'u1', 30, { job_ledger_id: 'job-1', ...abraham }),
+  sess('2026-09-15', 'u2', 8, { job_ledger_id: OFFICE, ...taunya }),
+  sess('2026-09-16', 'u2', 2, { bid_id: 'bid-1', ...taunya }),
+  sess('2026-10-02', 'u1', 6, { job_ledger_id: 'job-1', approved_at: null, ...abraham }),
+  sess('2026-10-02', 'u2', 3, { ...taunya }),
 ]
 
 beforeEach(() => {
@@ -93,6 +96,48 @@ describe('ManHoursCard', () => {
     const sep = (await screen.findByText('September 2026')).closest('tr') as HTMLElement
     expect(within(sep).getAllByRole('cell')[1]?.textContent).toBe('38')
     expect(screen.getByText(/No Office job is set, so no time counts as office\./)).toBeTruthy()
+  })
+
+  it('lists who made up the newest finished period, and a clicked row’s period after that', async () => {
+    renderWithProviders(<ManHoursCard officeJobLedgerId={OFFICE} officeJobLoading={false} />)
+
+    const who = await screen.findByRole('region', { name: 'Who made up September 2026' })
+    const rows = within(who)
+      .getAllByRole('row')
+      .slice(1)
+      .map((r) => within(r).getAllByRole('cell').map((c) => c.textContent))
+    // Person · Field · Office · Bids · Not on a job · Total
+    expect(rows).toEqual([
+      ['Abraham', '30', '—', '—', '—', '30'],
+      ['Taunya', '—', '8', '2', '—', '10'],
+    ])
+    // A finished month with nothing waiting and nothing off a job has no doors.
+    expect(within(who).queryByRole('link')).toBeNull()
+
+    const oct = screen.getByText('October 2026').closest('tr') as HTMLElement
+    fireEvent.click(oct)
+    expect(oct.getAttribute('aria-selected')).toBe('true')
+    const octWho = screen.getByRole('region', { name: 'Who made up October 2026' })
+    expect(within(octWho).getByText('2 people so far')).toBeTruthy()
+    expect(within(octWho).getByRole('link', { name: 'Approve waiting hours · 6 h' }).getAttribute('href')).toBe('/people?tab=hours&approvals=1')
+    expect(within(octWho).getByRole('link', { name: 'Match hours to a job · 3 h' }).getAttribute('href')).toBe('/people?tab=hours&match=1')
+  })
+
+  it('picks a period from a bar, and a week can move the day table', async () => {
+    const onShowWeek = vi.fn()
+    renderWithProviders(<ManHoursCard officeJobLedgerId={OFFICE} officeJobLoading={false} onShowWeek={onShowWeek} />)
+    await screen.findByText('September 2026')
+    // Months have no day-table door: the table holds one week.
+    expect(screen.queryByRole('button', { name: 'Show these days in the table below' })).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Week' }))
+    // The pick starts over on a new zoom: the newest finished week.
+    expect(screen.getByRole('region', { name: 'Who made up Week of Sep 27' })).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: /^Week of Sep 13: field 30 h/ }))
+    const who = screen.getByRole('region', { name: 'Who made up Week of Sep 13' })
+    fireEvent.click(within(who).getByRole('button', { name: 'Show these days in the table below' }))
+    expect(onShowWeek).toHaveBeenCalledWith('2026-09-13')
   })
 
   it('reports a failed load and loads again on Try again', async () => {
