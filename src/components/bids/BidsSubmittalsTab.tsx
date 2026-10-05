@@ -2693,6 +2693,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
         items={items}
         parts={parts}
         revNumber={selectedRev.rev_number}
+        revisions={revisions}
         link={link}
         hasPackage={Boolean(selectedRev.package_path)}
         company={{ name: companyName, tagline: reportSettings.companyTagline, phone: reportSettings.officePhone }}

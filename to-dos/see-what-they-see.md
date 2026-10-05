@@ -2,7 +2,7 @@
 name: "See what they see: a live view of the GC's room (and the portal) while you work"
 number: 62
 group: ready
-status: opened 2026-09-29 · the gating fix that prompted it shipped as v2.4169 · Layer 1 shipped v2.4174 (the reviewer's own headline under the rows, live as you edit) · Layer 2 shipped v2.4187 + v2.4189 (See what the GC sees: the GC's page beside the road, a sheet on a phone, from the draft's rows; a window since v2.4358) · re-read 2026-10-05: v2.4593 makes both say what the link shows today, v2.4595 builds the What customers see sample room through the room's kernel, v2.4599 has the room refuse the office · dropping Layers 3 and 4 is with the owner; PR 1b (the page's own header and chips, the door, the rule) waits on v2.4599 being live (findings below)
+status: opened 2026-09-29 · the gating fix that prompted it shipped as v2.4169 · Layer 1 shipped v2.4174 (the reviewer's own headline under the rows, live as you edit) · Layer 2 shipped v2.4187 + v2.4189 (See what the GC sees: the GC's page beside the road, a sheet on a phone, from the draft's rows; a window since v2.4358) · re-read 2026-10-05: v2.4593 makes both say what the link shows today, v2.4595 builds the What customers see sample room through the room's kernel, v2.4599 has the room refuse the office · dropping Layers 3 and 4 is with the owner; v2.4606 (PR 1b-i) has the window draw the page's own header and the list of revisions the GC will see, naming the ones never shared · PR 1b-ii (the door, the preview banner, the GLOSSARY rule) next (findings below)
 summary: >
   On Bids → Submittals the office edits rows and never sees what the GC or the architect will
   see until after sharing. The owner's ask (2026-09-29): "an active view of what they change and

@@ -184,3 +184,49 @@ export function RoomRevisionBody({
     </>
   )
 }
+
+/**
+ * The reviewer page's header (moved verbatim out of `pages/SubmittalRoom.tsx`, v2.4606, punch list
+ * #62 PR 1b): the letterhead, *Product review*, the project and its address. The office's window
+ * draws this same header, so it cannot say what the page does not.
+ */
+export function RoomHeader({ company, bid }: { company: { name: string; tagline?: string | null; phone?: string | null }; bid: { label: string; projectName: string | null; address: string | null } }) {
+  return (
+    <header style={{ marginBottom: '0.9rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 12, paddingBottom: '0.7rem', borderBottom: `3px solid var(--text-strong)` }}>
+        <div>
+          <div style={{ fontSize: '1.5rem', fontWeight: 900, letterSpacing: '-0.03em', lineHeight: 1 }}>{company.name.toUpperCase()}</div>
+          {company.tagline ? <div style={{ ...roomLabel, marginTop: 4, letterSpacing: '0.22em' }}>{company.tagline}</div> : null}
+        </div>
+        {company.phone ? <div style={{ ...roomQuiet, fontSize: '0.75rem', textAlign: 'right' }}>{company.phone}</div> : null}
+      </div>
+      <div style={{ marginTop: '0.9rem' }}>
+        <div style={{ ...roomLabel, color: ROOM_COPPER }}>Product review</div>
+        <div style={{ fontWeight: 700, fontSize: '1.05rem', lineHeight: 1.25 }}>{bid.projectName || bid.label}</div>
+        <div style={roomQuiet}>Plumbing fixtures &amp; equipment{bid.address ? ` · ${bid.address}` : ''}</div>
+      </div>
+    </header>
+  )
+}
+
+/** One revision as the page's chips read it. */
+export type RoomChip = { id: string; rev: number; current: boolean; sharedAt: string | null }
+
+/**
+ * The page's revision chips (moved verbatim, v2.4606), drawn only when there is more than one. With
+ * `onSelect` a chip picks the revision on screen, as the page does; without it the chips are the
+ * list read only, the office's window: the same look, nothing to press.
+ */
+export function RoomRevisionChips({ revisions, selectedId, onSelect }: { revisions: ReadonlyArray<RoomChip>; selectedId: string; onSelect?: (id: string) => void }) {
+  if (revisions.length <= 1) return null
+  return (
+    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: '0.8rem' }} data-testid="room-revisions">
+      {revisions.map((r) => (
+        <button key={r.id} type="button" aria-pressed={r.id === selectedId} aria-disabled={onSelect ? undefined : true} onClick={onSelect ? () => onSelect(r.id) : undefined} style={{ padding: '0.3rem 0.7rem', borderRadius: 999, border: '1px solid var(--border-strong)', background: r.id === selectedId ? 'var(--text-strong)' : 'var(--surface)', color: r.id === selectedId ? 'white' : 'var(--text-muted)', font: 'inherit', fontSize: '0.75rem', fontWeight: r.id === selectedId ? 700 : 500, cursor: onSelect ? 'pointer' : 'default' }}>
+          Rev {r.rev}{r.current ? ' · current' : ''}{r.sharedAt ? ` · ${roomShortDate(r.sharedAt)}` : ''}
+        </button>
+      ))}
+    </div>
+  )
+}
+

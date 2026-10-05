@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { describeForReviewer, isRoomClosed, linkShowsRevOf } from './seeWhatTheySee'
+import { describeForReviewer, isRoomClosed, linkListLine, linkRevisionsAfterShare, linkShowsRevOf } from './seeWhatTheySee'
 import type { RoomItemSource } from '../../../supabase/functions/_shared/submittalRoomPayload'
 
 const item = (o: Partial<RoomItemSource> & Pick<RoomItemSource, 'id' | 'tag' | 'status'>): RoomItemSource => ({
@@ -80,3 +80,34 @@ describe('what the link shows today (v2.4593, #62)', () => {
     expect(isRoomClosed({ status: 'open', closed_at: '2026-10-01T00:00:00Z' })).toBe(true)
   })
 })
+
+describe('the list the GC will see after the share (v2.4606, #62 PR 1b)', () => {
+  it('BP398: Rev 4 as current, then Rev 2; Rev 3 and Rev 1 were never shared, and the line says so', () => {
+    const list = linkRevisionsAfterShare(
+      [
+        { id: 'r4', rev_number: 4, shared_at: null },
+        { id: 'r3', rev_number: 3, shared_at: null },
+        { id: 'r2', rev_number: 2, shared_at: '2026-09-16T03:03:49.265Z' },
+        { id: 'r1', rev_number: 1, shared_at: null },
+      ],
+      4,
+    )
+    expect(list.chips).toEqual([
+      { id: 'r4', rev: 4, current: true, sharedAt: null },
+      { id: 'r2', rev: 2, current: false, sharedAt: '2026-09-16T03:03:49.265Z' },
+    ])
+    expect(list.neverShared).toEqual([3, 1])
+    expect(linkListLine(list)).toBe('Older revisions stay under it as the record. Rev 3 and Rev 1 are not on their page, because they were never shared.')
+  })
+
+  it('a first share lists one revision and says nothing; a shared newest lists the room as it is', () => {
+    const first = linkRevisionsAfterShare([{ id: 'r1', rev_number: 1, shared_at: null }], 1)
+    expect(first).toEqual({ chips: [{ id: 'r1', rev: 1, current: true, sharedAt: null }], neverShared: [] })
+    expect(linkListLine(first)).toBe('')
+    const live = linkRevisionsAfterShare([{ id: 'r2', rev_number: 2, shared_at: '2026-09-20T00:00:00Z' }, { id: 'r1', rev_number: 1, shared_at: '2026-09-15T00:00:00Z' }], 2)
+    expect(live.chips.map((c) => `${c.rev}${c.current ? ' current' : ''}`)).toEqual(['2 current', '1'])
+    expect(linkListLine(live)).toBe('Older revisions stay under it as the record.')
+    expect(linkListLine(linkRevisionsAfterShare([{ id: 'r2', rev_number: 2, shared_at: null }, { id: 'r1', rev_number: 1, shared_at: null }], 2))).toBe('Rev 1 is not on their page, because it was never shared.')
+  })
+})
+
