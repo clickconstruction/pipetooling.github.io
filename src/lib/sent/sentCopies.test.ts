@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { type SentCopy, canReadSentCopies, parseSentCopy, sentCopyDoor, sentCopyFileName, sentCopyFrameHtml, sentCopyLines, sentCopyPath, sentCopyWords, sentDocumentInsert } from './sentCopies'
+import { type SentCopy, SENT_KIND_GROUPS, canReadSentCopies, parseSentCopy, sentCopyDoor, sentCopyFileName, sentCopyFrameHtml, sentCopyLines, sentCopyPath, sentCopyWords, sentDocumentInsert, sentKindGroup, sentKindGroupFilter, sentSearchFilter } from './sentCopies'
 
 const ID = '11111111-2222-4333-8444-555555555555'
 const JOB_A = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
@@ -141,5 +141,34 @@ describe('canReadSentCopies', () => {
   it('is the office', () => {
     expect(['dev', 'master_technician', 'assistant', 'controller'].every(canReadSentCopies)).toBe(true)
     expect(['primary', 'estimator', 'superintendent', 'subcontractor', null, undefined].some(canReadSentCopies)).toBe(false)
+  })
+})
+
+describe('the Documents page groups', () => {
+  it('sorts a kind by what the paper is about', () => {
+    expect(['bill', 'bill_resent', 'bill_copy', 'bill_pay_code'].map(sentKindGroup)).toEqual(['bills', 'bills', 'bills', 'bills'])
+    expect(['lien_notice', 'lien_release', 'demand_letter', 'owner_records_packet', 'legal_packet', 'hazmat_notice'].every((k) => sentKindGroup(k) === 'lien')).toBe(true)
+    expect(['job_contract', 'job_contract_reminder', 'person_contract', 'estimate', 'work_order', 'sub_labor_sheet'].every((k) => sentKindGroup(k) === 'contracts')).toBe(true)
+    expect(['bid_cover_letter', 'bid_room_link', 'rfq', 'submittal_reply', 'procurement_update', 'purchase_order', 'supply_house_job_account'].every((k) => sentKindGroup(k) === 'bids')).toBe(true)
+    expect(['gc_statement', 'gc_statement_print', 'gc_checks_applied', 'test_report', 'field_report'].every((k) => sentKindGroup(k) === 'statements')).toBe(true)
+    expect(sentKindGroup('something_new')).toBe('other')
+    expect(SENT_KIND_GROUPS.map((g) => g.key)).toEqual(['all', 'bills', 'lien', 'contracts', 'bids', 'statements', 'other'])
+  })
+
+  it('turns a group into a filter over kind', () => {
+    expect(sentKindGroupFilter('all')).toBeNull()
+    expect(sentKindGroupFilter('bills')).toEqual({ or: 'kind.like.bill*' })
+    expect(sentKindGroupFilter('statements')?.or).toBe('kind.like.gc_statement*,kind.like.gc_checks*,kind.like.test_report*,kind.like.field_report*')
+    const other = sentKindGroupFilter('other')
+    expect(other?.or).toBeUndefined()
+    expect(other?.notLike).toContain('bill*')
+    expect(other?.notLike).toContain('lien_*')
+  })
+
+  it('searches the title, who it went to and the subject, and drops anything a filter could read as syntax', () => {
+    expect(sentSearchFilter('Lenox')).toBe('title.ilike.*Lenox*,recipient_name.ilike.*Lenox*,subject.ilike.*Lenox*')
+    expect(sentSearchFilter('  9703, Lenox (Hill)*%  ')).toBe('title.ilike.*9703 Lenox Hill*,recipient_name.ilike.*9703 Lenox Hill*,subject.ilike.*9703 Lenox Hill*')
+    expect(sentSearchFilter('a')).toBeNull()
+    expect(sentSearchFilter(',,()')).toBeNull()
   })
 })
