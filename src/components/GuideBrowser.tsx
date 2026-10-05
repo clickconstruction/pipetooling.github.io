@@ -104,7 +104,7 @@ export function GuideBrowser({ autoFocusSearch = false }: { autoFocusSearch?: bo
     [selectedGuide],
   )
   // Heading anchors (v2.3594): the sanitizer strips ids, so they are stamped on the rendered
-  // article, and a `#fragment` on the address (the Lien desk's § The rules door) scrolls to it.
+  // article, and a `#fragment` on the address (the Lien desk's § Rules door) scrolls to it.
   const articleRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const root = articleRef.current
