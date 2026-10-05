@@ -4,6 +4,7 @@ import { noticeInvoiceDocs, noticeInvoicePrintSections, type NoticeInvoiceDoc } 
 import type { PhysicalInvoiceIssuer } from '../../lib/physicalInvoiceIssuer'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
+import { printAndFile } from '../../lib/sent/sentCopiesIo'
 import { describeNoticeMonths } from '../../lib/jobs/lienNoticeDraft'
 import { RUN_SEND_METHODS, runEnvelopeFacesHtml, runNoticeProblems, runPacketHtml, runPayPageBlocks, runRecordSplit, trackingShape, type RunNotice, type RunPayPages, type RunSendMethod } from '../../lib/jobs/lienDeskRun'
 import { payPageRows, type PayPageAssets, type PayPageRow } from '../../lib/jobs/lienNoticePayPage'
@@ -141,7 +142,10 @@ export default function LienDeskRunModal({
   }
 
   const printPacket = () => {
-    if (!openHtmlPrintWindow(runPacketHtml(shown, todayYmd, issuer, invoiceSectionsByJob, payPagesByJob))) {
+    // A print counts as a send (docs/SENT_COPIES.md): the packet is filed as it printed, on every job in it.
+    const packetJobIds = shown.flatMap((n) => (partsOf(n) ?? [{ jobId: n.jobId }]).map((p) => p.jobId))
+    const filing = { kind: 'lien_notice_packet', title: shown.length === 1 ? '§ 53.056 notice packet' : `§ 53.056 notice packet · ${shown.length} notices`, jobIds: packetJobIds }
+    if (!printAndFile(runPacketHtml(shown, todayYmd, issuer, invoiceSectionsByJob, payPagesByJob), filing)) {
       showToast('Popup blocked — allow popups to print the packet.', 'error')
       return
     }
@@ -150,6 +154,7 @@ export default function LienDeskRunModal({
     setPrintedAt(new Date().toISOString())
     void Promise.resolve(onPrinted?.(itemIds)).catch(() => undefined)
   }
+  // The envelope faces are addresses, not a paper anyone reads: the packet is what is filed.
   const printEnvelopes = () => {
     if (!openHtmlPrintWindow(runEnvelopeFacesHtml(envelopes, issuer))) showToast('Popup blocked — allow popups to print the envelopes.', 'error')
   }

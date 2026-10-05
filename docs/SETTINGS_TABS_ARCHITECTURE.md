@@ -9,7 +9,7 @@ covers:
   - src/components/settings/SettingsDashboardTab.tsx
 mapped_at: 871e06336
 audience: Developers, AI Agents
-last_updated: 2026-10-01
+last_updated: 2026-10-05
 ---
 
 > **Line numbers are exact as of `871e06336`** (from `npm run map -- <file>` fact sheets) and rot with the next edit — search the symbol; the range is only a hint. Re-run `npm run map -- src/pages/Settings.tsx` (or the tab file) before trusting a range.
@@ -153,13 +153,13 @@ Nine runtime roles. `isAssistantLike` = assistant | controller; `isSubcontractor
 
 ## Shared substrate
 
-- **`loadData()` (655–750) — the role fork.** Loads the own `users` row (role, estimator flags, name/email/phone → `applyProfileRow`) then `refreshSelfPaySalaryForPayName`; for dev | master | assistant-like: `user_dashboard_buttons` + `user_dashboard_preferences` (699–713), `report_templates` + `user_report_notification_preferences` (715–721), goal-picker `users` (723–728); for dev: the full `users` list (733–741); for dev | estimator: `loadServiceTypes()` (746–748). Callers: effect 785–787, `SettingsPeopleTab onActiveAccountsDataChanged` (1426), `useSettingsPeopleDirectory onDataChanged` (464), `SettingsAdvancedTab onRoleMaybeChanged` (1753). **Its whole middle branch is Dashboard-tab data** — it dissolves as order #2/#4 land.
-- **`users` (186, dev-only list)** feeds `useSettingsJobsAdmin` (typed but never read — quirk #14), `useSettingsPeopleDirectory`, `SettingsDashboardTab` (the four financial-pin rosters only), `SettingsPeopleTab`, `SettingsJobsTab`, `SettingsTemplatesTab`, `EasterEggsSettingsBlock`. `ActiveAccountsPanel` loads its own copy (app-level modal) and reconciles via `onActiveAccountsDataChanged → loadData`.
+- **`loadData()` (655–750) — the role fork.** Loads the own `users` row (role, estimator flags, name/email/phone → `applyProfileRow`) then `refreshSelfPaySalaryForPayName`; for dev | master | assistant-like: `user_dashboard_buttons` + `user_dashboard_preferences` (699–713), `report_templates` + `user_report_notification_preferences` (715–721), goal-picker `users` (723–728); for dev: the full `users` list (733–741); for dev | estimator: `loadServiceTypes()` (746–748). Callers: effect 785–787, `useSettingsPeopleDirectory onDataChanged` (464), `SettingsAdvancedTab onRoleMaybeChanged` (1753). **Its whole middle branch is Dashboard-tab data** — it dissolves as order #2/#4 land.
+- **`users` (186, dev-only list)** feeds `useSettingsJobsAdmin` (typed but never read — quirk #14), `useSettingsPeopleDirectory`, `SettingsDashboardTab` (the four financial-pin rosters only), `SettingsPeopleTab`, `SettingsJobsTab`, `SettingsTemplatesTab`, `EasterEggsSettingsBlock`. No account control reads or writes it: since v2.4348 those are on the person's desk (`PersonDeskAccessSection` over `usePersonDesk` and `lib/people/accountWrites.ts`) and in + Hire (`HirePersonModal` over `lib/people/hireWrites.ts`).
 - **`serviceTypes`** (from `useSettingsCatalogs`) is the only cross-tab datum outside the shell: estimator sync effect (955–961), `visibleServiceTypesForMaterials` (1056–1058), and `loadData`'s `loadServiceTypes` call.
 - **`financialPinsSectionOpen`** lives in `useSettingsFinancialPins` but is the **Page pins** collapse for every role; the deep-link effect (1010) and the search pick (1143) open it.
 - **`app_settings`**: new blocks own their keys via `src/lib/appSettingsKeys.ts` + per-domain lib fetch/save modules — **the seam to follow**; the parent itself no longer touches `app_settings` (hooks do: JobsAdmin, ProspectsCatalog, MyReports, the tab-instantiated TemplatesEngine; BackupExports reads the whole table for the settings export).
 - **Toasts / errors.** `showToast` success: 1 call in the parent (`saveReportNotificationPreferences`), 1 in the Dashboard child. Failures write the page-wide `error` (quirk #4).
-- **Seam-hook precedents** (all `src/hooks/`, none unit-tested): parent-instantiated `useSettingsCatalogs` (1,359 lines), `useSettingsJobsAdmin` (168), `useSettingsProspectsCatalog` (223), `useSettingsPeopleDirectory` (373), `useSettingsFinancialPins` (139), `useSettingsMyReports` (92), `useSettingsAccount` (331), `useSettingsBackupExports` (650); tab-instantiated `useSettingsTemplatesEngine` (729). Self-contained-section precedent: `useActiveAccountsManagement`, `useDeletedRecordsArchive`.
+- **Seam-hook precedents** (all `src/hooks/`, none unit-tested): parent-instantiated `useSettingsCatalogs` (1,359 lines), `useSettingsJobsAdmin` (168), `useSettingsProspectsCatalog` (223), `useSettingsPeopleDirectory` (373), `useSettingsFinancialPins` (139), `useSettingsMyReports` (92), `useSettingsAccount` (331), `useSettingsBackupExports` (650); tab-instantiated `useSettingsTemplatesEngine` (729). Self-contained-section precedent: `useDeletedRecordsArchive`.
 
 ---
 

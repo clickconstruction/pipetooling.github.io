@@ -17,7 +17,8 @@ import {
   type CustomerAddressRow,
   type JobPropertyOwnerLike,
 } from '../../lib/jobs/lienProperty'
-import { openHtmlPreviewWindow, openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
+import { openHtmlPreviewWindow } from '../../lib/jobsDocuments/printWindow'
+import { printAndFile } from '../../lib/sent/sentCopiesIo'
 import { buildDemandLetterPacket, mergePdfBlobs } from '../../lib/jobsDocuments/demandLetterPacket'
 import { buildPhysicalInvoicePdfBlob } from '../../lib/physicalInvoicePdf'
 import { payPageBlocks, payPageRows, type PayPageAssets } from '../../lib/jobs/lienNoticePayPage'
@@ -302,9 +303,14 @@ export default function LienFilingTabs({
 
   const printDoc = useCallback(() => {
     if (!currentDoc) return
-    const ok = openHtmlPrintWindow(noticeEnclosureHtml(filingDocPrintHtml(currentDoc.blocks, currentDoc.title, filingDocFooter(currentDoc.kind))))
+    // A print counts as a send (docs/SENT_COPIES.md): the paper is filed on the job as it printed.
+    const ok = printAndFile(noticeEnclosureHtml(filingDocPrintHtml(currentDoc.blocks, currentDoc.title, filingDocFooter(currentDoc.kind))), {
+      kind: `lien_${currentDoc.kind}`,
+      title: currentDoc.title,
+      jobIds: [job.id],
+    })
     if (!ok) showToast('Popup blocked — allow popups to print.', 'error')
-  }, [currentDoc, noticeEnclosureHtml, showToast])
+  }, [currentDoc, noticeEnclosureHtml, showToast, job.id])
 
   const downloadPdf = useCallback(async () => {
     if (!currentDoc || pdfBusy) return

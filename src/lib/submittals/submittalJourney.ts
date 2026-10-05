@@ -141,7 +141,7 @@ export function submittalJourney(input: SubmittalJourneyInput): SubmittalJourney
   }
 
   if (rev.status === 'draft') {
-    // A built package is done whatever the rows still owe (v2.4169): the pill says so, and the New revision door reads it.
+    // A built package is done whatever the rows still owe (v2.4169): the pill says so, and step 7's door reads it.
     if (rev.packageBuilt) status.package = 'done'
     // 2026-10-03 · answers typed on a draft. The estimator emails the package and records what came back, so the
     // revision never reads shared. The strip read answers only on a shared revision: on BP375 it pointed at six
@@ -286,6 +286,6 @@ export function stageGate(stages: JourneyStage[], key: 'package' | 'share' | 're
     case 'resubmit':
       // Past building: a shared revision, or a draft whose package is built (v2.4090's supersede-the-draft path stays reachable there).
       // 2026-10-03 · or a draft the GC has already answered by email: it is past building too.
-      return status('share') === 'done' || status('package') === 'done' || status('review') !== 'later' ? { on: true, why: null } : { on: false, why: 'New revision turns on once the package is built.' }
+      return status('share') === 'done' || status('package') === 'done' || status('review') !== 'later' ? { on: true, why: null } : { on: false, why: 'You can start the next draft once the package is built.' }
   }
 }

@@ -89,6 +89,7 @@ async function sendBillCopies(args: {
   inv: Stripe.Invoice
   payerName: string
   callerEmail: string | null
+  callerUserId: string
   stripeMode: StripeBillingMode
 }): Promise<BillCopiesOutcome> {
   const { data: row } = await args.admin
@@ -217,6 +218,8 @@ async function sendBillCopies(args: {
       ...(qr ? { attachments: [{ filename: PORTAL_QR_FILENAME, content: qr, content_id: PORTAL_QR_CONTENT_ID }] } : {}),
       emailType: 'stripe_bill_copy',
       from: COMPANY_EMAIL_FROM,
+      // Sent copies: each copy that went to someone is kept on the job (a test copy to ourselves is not).
+      file: { kind: 'bill_copy', jobIds: [jobId], source: { table: 'jobs_ledger_invoices', id: args.jobsLedgerInvoiceId }, sentBy: args.callerUserId },
     })
     if (res.success) sent.push(to)
     else failed.push({ email: to, error: res.error ?? 'send failed' })
@@ -315,6 +318,9 @@ async function sendOwnBillEmail(args: {
       ...(attachments.length ? { attachments } : {}),
       emailType: 'stripe_bill',
       from: COMPANY_EMAIL_FROM,
+      // Sent copies: the bill as the payer read it, with Stripe's PDF, is kept on the job. A
+      // test-mode bill goes to ourselves and is not a send.
+      ...(args.plan.testIntendedFor ? {} : { file: { kind: 'bill', recipientName: (r?.bill_to_name ?? '').trim() || args.payerName, jobIds: [r?.job_id], source: { table: 'jobs_ledger_invoices', id: args.jobsLedgerInvoiceId }, sentBy: args.callerUserId } }),
     })
     return res.success ? { ok: true } : { ok: false, error: res.error ?? 'send failed' }
   } catch (e) {
@@ -602,7 +608,7 @@ serve(async (req) => {
     // per address (a copy never shows the others), each logged to
     // email_send_log. A copy failure never fails the send already made.
     // A test-mode bill copies only the sender (planBillCopies).
-    const copies = await sendBillCopies({ admin, jobsLedgerInvoiceId, inv: sent, payerName: payerNameFromStripe(sent), callerEmail: user.email ?? null, stripeMode })
+    const copies = await sendBillCopies({ admin, jobsLedgerInvoiceId, inv: sent, payerName: payerNameFromStripe(sent), callerEmail: user.email ?? null, callerUserId: user.id, stripeMode })
 
     // The send log row carries the copies that actually went out (v2.3362), so
     // the confirm dialog's history answers "did DRF get it" per send.

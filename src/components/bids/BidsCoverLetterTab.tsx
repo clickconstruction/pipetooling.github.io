@@ -18,7 +18,7 @@ import { bidNumberMatchesQuery, type LedgerPrefixMap } from '../../lib/ledgerDis
 import { APP_SETTINGS_KEY_BID_BOARD_VALUE_RULE } from '../../lib/appSettingsKeys'
 import { boardValueForRule, bundleSectionsForBoard, formatSendBadge, latestSendByVersion, parseBoardValueRule, type BoardValueRule, type VersionSendRow } from '../../lib/bids/versionSends'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
-import { printHtmlInNewWindow } from '../../lib/bidDocuments/htmlDoc'
+import { printAndFile } from '../../lib/sent/sentCopiesIo'
 import { BidRoomPanel, BidRoomSetupButton } from './BidRoomPanel'
 import { BidBasisCard } from './BidBasisCard'
 import { useBidBasisExports } from '../../hooks/useBidBasisExports'
@@ -619,7 +619,7 @@ export function BidsCoverLetterTab({
   // letter's amount — the Takeoffs tab has no priced total, so the column is offered from here.
   function printScheduleOfValuesOfContract(bid: BidWithBuilder, amountDollars: number, split: SovSplitInput | null) {
     if (sovShape === 'lines') {
-      printHtmlInNewWindow(
+      printAndFile(
         buildSovLinesSheetHtml({
           title: `${bidDisplayName(bid) || 'Bid'} — Schedule of values`,
           subtitle: `${bid.project_name ?? ''}${bid.project_name ? ' · ' : ''}contract $${formatCurrency(amountDollars)} · for progress billing only`,
@@ -628,6 +628,7 @@ export function BidsCoverLetterTab({
           split: sovSplitEnabled,
           ruleLaborPct: sovRuleLaborPct,
         }),
+        bidFiling(bid, 'bid_schedule_of_values', 'Schedule of values'),
       )
       return
     }
@@ -636,7 +637,7 @@ export function BidsCoverLetterTab({
     const letter = scheduleOfValuesLetter(summary, amountDollars)
     const splitRows = letter && split ? splitStageValues(letter, split) : null
     const factorNote = materialsByStageDoc.factorIsBidOverride ? `Factor ${summary.factor} is this bid's own.` : `Factor ${summary.factor} is the company default.`
-    printHtmlInNewWindow(
+    printAndFile(
       buildScheduleOfValuesHtml({
         title: `${bidDisplayName(bid) || 'Bid'} — Schedule of values`,
         subtitle: `$${formatCurrency(amountDollars)} by stage, from the takeoff's stage shares · ${summary.stagedFixtureCount} of ${summary.costedFixtureCount} costed fixtures staged`,
@@ -646,6 +647,7 @@ export function BidsCoverLetterTab({
         unstagedNames: summary.fixtures.filter((f) => f.raw <= 0 && f.fixture.trim()).map((f) => f.fixture),
         factorNote,
       }),
+      bidFiling(bid, 'bid_schedule_of_values', 'Schedule of values'),
     )
   }
 
@@ -977,12 +979,15 @@ export function BidsCoverLetterTab({
     }
   }
 
-  function printCoverLetterDocument(combinedHtml: string) {
+  // A print counts as a send (docs/SENT_COPIES.md): what a bid's papers say about themselves when filed.
+  const bidFiling = (bid: BidWithBuilder, kind: string, what: string) => ({ kind, title: `${what} · ${bidDisplayName(bid) || 'Bid'}`, bidId: bid.id, customerId: (bid as { customer_id?: string | null }).customer_id ?? null })
+
+  function printCoverLetterDocument(combinedHtml: string, bid: BidWithBuilder) {
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Cover Letter</title><style>
   body { font-family: sans-serif; margin: 1in; font-size: 12pt; }
   @media print { body { margin: 0.5in; } }
 </style></head><body>${combinedHtml}</body></html>`
-    printHtmlInNewWindow(html)
+    printAndFile(html, bidFiling(bid, 'bid_cover_letter', 'Cover letter'))
   }
 
   async function handleSaveBidSubmissionQuickAdd(bidId: string, value: string) {
@@ -1386,7 +1391,7 @@ export function BidsCoverLetterTab({
                 </button>
                 <button
                   type="button"
-                  onClick={() => printCoverLetterDocument(finalCoverLetterHtml)}
+                  onClick={() => printCoverLetterDocument(finalCoverLetterHtml, bid)}
                   disabled={!totalsResolved}
                   aria-busy={!totalsResolved || undefined}
                   title={totalsResolved ? 'Print combined document' : totalsPendingTitle}
@@ -2221,7 +2226,7 @@ export function BidsCoverLetterTab({
                       </button>
                       <button
                         type="button"
-                        onClick={() => printCoverLetterDocument(finalCoverLetterHtml)}
+                        onClick={() => printCoverLetterDocument(finalCoverLetterHtml, bid)}
                         disabled={!totalsResolved}
                         aria-busy={!totalsResolved || undefined}
                         title={totalsResolved ? 'Print combined document' : totalsPendingTitle}

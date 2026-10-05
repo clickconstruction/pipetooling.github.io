@@ -851,6 +851,9 @@ export function DashboardPinnedQuickRow({
               else if (key === 'dismiss') claimDev.dismissUntilItHappensAgain()
             } else if (item.key === 'lien-notice-draft' && key === 'missed') {
               navigate('/jobs?tab=stages&liendesk=1&liendeskPile=missed')
+            } else if (item.key === 'lien-notice-draft' && key === 'letter-two') {
+              // Letter two is sent from a notice's Sent row (v2.4561); before, this line was drawn as a link and did nothing.
+              navigate('/jobs?tab=stages&liendesk=1&liendeskPile=sent')
             } else if (item.key === 'robot-backlog') {
               if (key === 'snooze') robotBacklogNudge.snooze24h()
               else if (key === 'dismiss') robotBacklogNudge.dismissUntilCountIncreases()
