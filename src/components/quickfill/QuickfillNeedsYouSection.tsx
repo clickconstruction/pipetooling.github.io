@@ -241,6 +241,8 @@ export function QuickfillNeedsYouSection({
             else if (key === 'dismiss') claimDev.dismissUntilItHappensAgain()
           } else if (item.key === 'lien-notice-draft' && key === 'missed') {
             navigate('/jobs?tab=stages&liendesk=1&liendeskPile=missed')
+          } else if (item.key === 'lien-notice-draft' && key === 'letter-two') {
+            navigate('/jobs?tab=stages&liendesk=1&liendeskPile=sent')
           }
         }}
       />

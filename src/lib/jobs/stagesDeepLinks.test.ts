@@ -27,10 +27,14 @@ describe('parseStagesDeepLinks', () => {
     expect(parseStagesDeepLinks(sp('gcnotice=')).gcNoticeGcId).toBeNull()
   })
 
-  it('the Lien desk door: the job, the pane (notice unless affidavit or timeline), the missed pile only', () => {
+  it('the Lien desk door: the job, the pane (notice unless affidavit or timeline), any pile the desk has (v2.4561)', () => {
     expect(parseStagesDeepLinks(sp('liendesk=1')).lienDesk).toEqual({ jobId: null, kind: 'notice', pile: null })
     expect(parseStagesDeepLinks(sp('liendesk=1&liendeskJob=j273&kind=affidavit&liendeskPile=missed')).lienDesk).toEqual({ jobId: 'j273', kind: 'affidavit', pile: 'missed' })
-    expect(parseStagesDeepLinks(sp('liendesk=1&kind=timeline&liendeskPile=to_draft')).lienDesk).toEqual({ jobId: null, kind: 'timeline', pile: null })
+    expect(parseStagesDeepLinks(sp('liendesk=1&kind=timeline&liendeskPile=to_draft')).lienDesk).toEqual({ jobId: null, kind: 'timeline', pile: 'to_draft' })
+    // The Dashboard's tracking card and its letter two line send `sent`; before, only `missed` was read and they landed on plain Notices.
+    expect(parseStagesDeepLinks(sp('liendesk=1&liendeskPile=sent')).lienDesk).toEqual({ jobId: null, kind: 'notice', pile: 'sent' })
+    expect(parseStagesDeepLinks(sp('liendesk=1&liendeskPile=printed')).lienDesk?.pile).toBe('printed')
+    expect(parseStagesDeepLinks(sp('liendesk=1&liendeskPile=nonsense')).lienDesk?.pile).toBeNull()
     expect(parseStagesDeepLinks(sp('liendesk=1&kind=whatever')).lienDesk?.kind).toBe('notice')
     expect(parseStagesDeepLinks(sp('liendeskJob=j273&kind=affidavit')).lienDesk).toBeNull()
   })
