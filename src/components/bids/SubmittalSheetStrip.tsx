@@ -42,6 +42,7 @@ export function SubmittalSheetStrip({
   onConfirmGuesses,
   onAssignPages,
   onReadParts,
+  onSaveFile,
 }: {
   files: SourceFile[]
   items: SubmittalItemRow[]
@@ -67,6 +68,8 @@ export function SubmittalSheetStrip({
   onAssignPages?: (fileIndex: number) => void
   /** 2026-10-01 · reads a house's submittal file into its parts, for the review. */
   onReadParts?: (fileIndex: number) => void
+  /** v2.4579 · saves the stored file as one PDF: every page as dropped, or the kept pages once trimmed. */
+  onSaveFile?: (fileIndex: number) => void
 }) {
   const [picked, setPicked] = useState<{ fileIndex: number; page: number } | null>(null)
   /** Folds the user opened or closed by hand; a file whose pages are already drawn starts open. */
@@ -122,6 +125,11 @@ export function SubmittalSheetStrip({
                 {onAssignPages ? (
                   <button type="button" disabled={busy} onClick={() => onAssignPages(fileIndex)} style={f.sectioned && onReadParts ? btn : { ...btn, background: '#2563eb', borderColor: '#2563eb', color: 'white', fontWeight: 600 }} title="Walk every page at reading size and put each on its row — the answer pre-filled where the page names a model" data-testid="assign-pages-open">
                     Assign pages…
+                  </button>
+                ) : null}
+                {onSaveFile ? (
+                  <button type="button" aria-label={`Save ${f.name} as a PDF`} onClick={() => onSaveFile(fileIndex)} style={btn} title={trimmed ? `Save the ${f.pages} page${f.pages === 1 ? '' : 's'} kept from this file as one PDF` : `Save the whole file as one PDF, all ${f.pages} page${f.pages === 1 ? '' : 's'} as it was dropped`} data-testid="save-file">
+                    Save PDF
                   </button>
                 ) : null}
                 {!trimmed && kept.length > 0 ? (

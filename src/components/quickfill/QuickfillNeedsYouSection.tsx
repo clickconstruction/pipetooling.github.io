@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { lienWindowHref } from '../../lib/jobs/stagesDeepLinks'
 import { useAuth } from '../../hooks/useAuth'
 import { TALLY_STALE_MIN_AGE_DAYS } from '../../lib/tallyStaleMinAgeDays'
 import { useTallyUnlinkedCounts } from '../../hooks/useTallyUnlinkedCounts'
@@ -204,7 +205,9 @@ export function QuickfillNeedsYouSection({
           } else if (item.key === 'lien-unconditional') {
             setLienReleaseQueueOpen(true)
           } else if (item.key === 'demand-deadline') {
-            navigate('/jobs?tab=stages')
+            // The job's Lien window on the demand letter; with several, the first and the board behind it.
+            const jobId = demandDeadlineOverdue?.jobIds[0]
+            navigate(jobId ? lienWindowHref(jobId, 'demand') : '/jobs?tab=stages')
           } else if (item.key === 'lien-notice-batch') {
             const gcId = lienDeskData?.summary.leader.batches?.[0]?.gcId
             navigate(gcId ? `/jobs?tab=stages&gcnotice=${encodeURIComponent(gcId)}` : '/jobs?tab=stages&liendesk=1')
@@ -219,7 +222,9 @@ export function QuickfillNeedsYouSection({
           } else if (item.key === 'lien-tracking-owed') {
             navigate('/jobs?tab=stages&liendesk=1&liendeskPile=sent')
           } else if (item.key === 'lien-serve-copy') {
-            navigate('/jobs?tab=stages')
+            // The lien whose serve-by day comes first, on its Mechanic's lien tab where service is recorded.
+            const first = [...(lienWatch?.serveDue ?? [])].sort((a, b) => a.serveDue.localeCompare(b.serveDue))[0]
+            navigate(first ? lienWindowHref(first.jobId, 'affidavit') : '/jobs?tab=stages')
           } else if (item.key === 'label-approvals') {
             navigate('/banking?tab=accounting')
           } else if (item.key === 'dispatch-requests-aged') {

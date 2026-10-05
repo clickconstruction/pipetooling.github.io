@@ -11,7 +11,16 @@ export type ContractDraftPdfSource =
   | { contractId: string }
   | {
       jobId: string
-      draft: { fields: unknown; body_html: string | null; body_format: string | null; template_name: string | null; recipient_name: string | null; revision?: number | null }
+      draft: {
+        fields: unknown
+        body_html: string | null
+        body_format: string | null
+        template_name: string | null
+        recipient_name: string | null
+        revision?: number | null
+        /** v2.4590: a second signer the office named — the page prints a second pair of pen rules with that name. */
+        co_signer_name?: string | null
+      }
     }
 
 export type ContractDraftPdfResult = { filename: string; bytes: Uint8Array }

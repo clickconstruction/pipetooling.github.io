@@ -1,8 +1,8 @@
 ---
 name: "A second signer: every place a signed agreement shows or prints its signers"
 number: 64
-group: ready
-status: found 2026-09-29 in the live pass of v2.4186 (the second signer) on J1053 · not started
+group: close
+status: PR A built v2.4590 (the kernel, items 1–5, the app-side readers) · PR B next (item 6 the portal, the signed copy's email, the firm's page) · then three deploys
 summary: >
   v2.4186 gave a job's service agreement a second signature frame, and the page the customer
   signs, the stored PDF, the window's banner and its paper all carry both signers — checked live
@@ -13,15 +13,32 @@ summary: >
   also never says *1 of 2 signed*), the History and Documents audit line, the customer portal's
   *Your agreements*, and the browser print (*Print / save as PDF*, *Open full size*), which shows
   one signature block where the stored PDF has two.
-next: Build items 1–6 as one PR, item 1 first. Kernel first — one names line and one frames count in `jobContractSigners.ts`, read by the pill, the chip, the audit line and the portal.
-size: S — one client PR plus a `customer-portal` redeploy
-blocker: None.
+next: Merge PR A, then PR B (stacked on it); deploy customer-portal, share-job-contract and legal-portal after PR B merges; read J1053 live; then answer the owner question under Left after this row.
+size: S — PR B, three redeploys and a live read
+blocker: The two merges.
 ver: from v2.4186 · the window v2.4175 / v2.4183
-opinion: build soon — item 1 is small and it is the one that can leave a homestead agreement short a signature line; the other five are words on screens that already exist.
+opinion: build — PR B is small; the paper filing question below is the owner's.
 mockup: not required — no new screen; the printed page gains the second pen rules and signature block the stored PDF already prints, and the pill, chip and lines gain a second name
 ---
 
 # A second signer: every place a signed agreement shows or prints its signers
+
+## Where it stands
+
+Two PRs. **PR A** ([v2.4590](../docs/recent-features/v2.4590.md)) moves the names into one kernel and fixes items 1–5. It also fixes the app-side readers the survey below missed: the legal desk, the share sheet's attachment line, the signed rail's banner, the filing sheet's default name and the covers kernel. **PR B** is stacked on it. It carries item 6, the customer portal, plus the signed copy's email and the firm's page. Those are three edge functions to deploy after it merges.
+
+## Left after this row
+
+Outside both PRs, each for its own small PR:
+
+- **The job's activity line.** *Contract signed by Sam Owner* is written by the `job_contracts` trigger in `20260903141146_job_contracts.sql`. It names the first signer only. Fixing it needs a migration.
+- **The signing function joins names on its own.** `sign-job-contract` builds its *signed by* line by hand. It should read `signerNamesLine` from `supabase/functions/_shared/jobContractSigners.ts`. The words are the same today, so this is tidy work, plus a redeploy.
+- **Dead code.** The default export of `src/components/jobs/JobContractRecordModal.tsx` is mounted nowhere. Neither is its `JobContractRecordBody`, whose facts grid names one signer. Delete both. Keep `buildJobContractRecordHtml` and `useJobContractRecordUrls`, which are in use.
+- **A paper that comes back signed by two.** Filing it records one typed *Who signed*. Since v2.4590 it defaults to both names. It never records the second signature as its own frame.
+
+  **Question for the owner:** when a homestead contract comes back signed on paper by both spouses, should filing it record each signature separately, or is one *Who signed* line that names both enough?
+
+  **Recommendation:** record each one. When the draft named a second signer, the filing sheet would show a second *Who signed* box filled with that name. Filing would save it as the second signature, marked as signed on paper. A paper filed for several jobs would carry both. The record then names both people the same way an e-signed agreement does, with no typed *and* to get wrong. It needs no table change, just one app PR on the filing sheet and its write.
 
 ## The ask, in the owner's words
 

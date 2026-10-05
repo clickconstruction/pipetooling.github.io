@@ -182,6 +182,8 @@ serve(async (req) => {
     const sent = await sendEmailViaResend(recipientEmail, subject, textPlain, html, resendKey, {
       ...(senderEmail ? { replyTo: senderEmail } : {}),
       ...(cc.length > 0 ? { cc } : {}),
+      // Sent copies (docs/SENT_COPIES.md): the email asking them to sign is kept on the job.
+      file: { kind: 'job_contract', recipientName, jobIds: [c.job_id], source: { table: 'job_contracts', id: c.id }, sentBy: user.id },
     })
     if (!sent.success) return json({ ok: true, emailed: false, sign_url: url, email_error: sent.error })
     return json({ ok: true, emailed: true, sign_url: url })

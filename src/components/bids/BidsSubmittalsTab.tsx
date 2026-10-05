@@ -1436,6 +1436,19 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     }
   }
 
+  /** v2.4579 · the dropped vendor file, saved whole under its own name (a five-minute signed link). */
+  async function saveSourceFile(fileIndex: number) {
+    const f = sourceFiles[fileIndex]
+    if (!f) return
+    const name = /\.pdf$/i.test(f.name) ? f.name : `${f.name}.pdf`
+    const { data, error } = await supabase.storage.from(SUBMITTALS_BUCKET).createSignedUrl(f.path, 300, { download: name })
+    if (error || !data?.signedUrl) {
+      showToast(`${f.name} could not be saved right now. Try again.`, 'error')
+      return
+    }
+    window.open(data.signedUrl, '_blank', 'noopener')
+  }
+
   /** A five-minute signed link to the stored package; the fresh blob as the fallback when the link cannot be minted. */
   async function openStoredPackage(path: string, revNumber: number, fallback?: Blob) {
     const name = packageFileName(revNumber, bidWorkflowTabHeading(bid, prefixMap))
@@ -2420,6 +2433,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                     onConfirmGuesses={(i) => void confirmGuesses(i)}
                     onAssignPages={(i) => setAssignFile(i)}
                     onReadParts={(i) => void readFileParts(i)}
+                    onSaveFile={(i) => void saveSourceFile(i)}
                   />
                 ) : null}
               </RoadSection>

@@ -28,6 +28,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 import { logEmailSendBestEffort } from '../_shared/logEmailSend.ts'
+import { fileSentEmailBestEffort } from '../_shared/fileSentCopy.ts'
 import { resolveServerEmailWording } from '../_shared/emailWordingServer.ts'
 import { COMPANY_EMAIL_FROM, EMAIL_FROM } from '../_shared/emailFrom.ts'
 import {
@@ -388,6 +389,7 @@ serve(async (req) => {
         const replyTo =
           typeof requester?.email === 'string' && requester.email.includes('@') ? requester.email : undefined
 
+        const statementAttachments = isSingle && qrModules ? [{ filename: PORTAL_QR_FILENAME, content: bytesToBase64(qrPngBytes(qrModules)), content_id: PORTAL_QR_CONTENT_ID }] : []
         const resendResponse = await fetch('https://api.resend.com/emails', {
           method: 'POST',
           headers: { Authorization: `Bearer ${resendApiKey}`, 'Content-Type': 'application/json' },
@@ -399,7 +401,7 @@ serve(async (req) => {
             html,
             text,
             ...(replyTo ? { reply_to: replyTo } : {}),
-            ...(isSingle && qrModules ? { attachments: [{ filename: PORTAL_QR_FILENAME, content: bytesToBase64(qrPngBytes(qrModules)), content_id: PORTAL_QR_CONTENT_ID }] } : {}),
+            ...(statementAttachments.length ? { attachments: statementAttachments } : {}),
           }),
         })
         if (!resendResponse.ok) {
@@ -415,6 +417,11 @@ serve(async (req) => {
           subject,
           emailType: GC_STATEMENT_EMAIL_TYPES.scheduled,
         })
+        // Sent copies (docs/SENT_COPIES.md): the scheduled statement as the GC read it, kept under the GC.
+        await fileSentEmailBestEffort(
+          { kind: 'gc_statement', recipientName: auditGcName, customerId: row.gc_customer_id, sentBy: row.requested_by },
+          { to: [row.sent_to], cc: Array.isArray(row.cc_emails) ? row.cc_emails : [], from: FROM, subject, html, attachments: statementAttachments, resendEmailId: sentMail.id ?? null },
+        )
 
         // Audit row (same table + semantics as send-gc-statement-email; failure
         // must not fail an already-sent email).

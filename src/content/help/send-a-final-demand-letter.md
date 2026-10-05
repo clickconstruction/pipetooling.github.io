@@ -76,11 +76,13 @@ A letter sent September 14 names September 28 as the pay-by day. It names Octobe
 
 The letter never goes alone. The **Enclosed** box lists its exhibits.
 
-- **Exhibit A** is the invoice, and it always goes. It is the bill as the customer received it. There is one per bill the demand covers.
-- **Exhibit B** is the signed agreement, when the job has one on file. Untick it to leave it out. With none on file, the row reads {{chip:gray|no contract}}.
-- **Exhibit C** is the delivery record. It puts the dated sends, re-sends, calls and promises the letter cites on one page. The payer can check it against their own inbox. Untick it to leave it out.
+- **Exhibit A** is the invoice, and it always goes. It is the bill as the customer received it. A letter that covers several bills labels them A-1, A-2 and so on. Each one prints the invoice number and the due date the letter states.
+- **The signed agreement** goes next, when the job has one on file. Untick it to leave it out. With none on file, the row reads {{chip:gray|no contract}}.
+- **The delivery record** goes last. It puts the dated sends, re-sends, calls and promises the letter cites on one page. The payer can check it against their own inbox. Untick it to leave it out.
 
-Every exhibit page is stamped with its letter. The letter names the exhibits under the statement, and again in an *Enclosures* line at the foot. The preview on the right shows the letter, then each exhibit as the page it will be.
+The exhibit letters run in order with no gap. With no agreement, the delivery record is Exhibit B.
+
+Every exhibit page is stamped with its letter. The letter names the exhibits under the statement, and again in an *Enclosures* list at the foot. The letter opens with a box that holds the balance due and the day to pay by. The preview on the right shows the letter, then each exhibit as the page it will be.
 
 {{button:outline-blue|Print packet}} opens one PDF in a new tab. It holds the letter, then every exhibit. {{button:outline-blue|Download PDF}} saves the same file. That button also counts the documents in the file.
 

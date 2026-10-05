@@ -64,6 +64,8 @@ import LienDeskCalendarTab from './LienDeskCalendarTab'
 import LienTrackingOwedEditor from './LienTrackingOwedEditor'
 import { sendsTrackingOwed } from '../../lib/jobs/lienSendTracking'
 import { clearLienDeskItemPrinted, markLienDeskItemsPrinted } from '../../lib/jobs/lienDeskIo'
+import { buildLienNextUp, type LienNextUpRow } from '../../lib/jobs/lienNextUp'
+import LienDeskNextUp from './LienDeskNextUp'
 import type { LienCalendarJob } from '../../lib/jobs/lienCalendar'
 import { callLetterFactsFor, practiceCallFacts, type CallerJobHit, type CallerMatchInput, type DeskJobRef } from '../../lib/jobs/lienCallerMatch'
 import { DEFAULT_CLAIMANT_NAME } from '../../lib/jobs/lienNoticeDraft'
@@ -147,7 +149,7 @@ export type LienDeskModalProps = {
   /** Counsel's sign-off on a sent notice (#41 PR 3): the job's state on the firm's matter, and the ask. Absent when the board has no legal matters. */
   legalSignoff?: { stateFor: (jobId: string) => LegalSignoffState | null; ask: (jobId: string, text: string) => Promise<string | null> } | null
   /** Open on the affidavit kind (the Dashboard's filing-window card), the retainage kind (v2.3753), the Timeline tab (v2.3768) or the Calendar (v2.4101). */
-  initialKind?: 'notice' | 'affidavit' | 'retainage' | 'timeline' | 'calendar'
+  initialKind?: 'next' | 'notice' | 'affidavit' | 'retainage' | 'timeline' | 'calendar'
   /** The Calendar kind (v2.4101, punch list #55): every billed / collections job with its runway — the Pipeline hands them in; null while it reads its billed jobs and their clocks. */
   calendarRows?: ReadonlyArray<LienCalendarJob> | null
   /** A Calendar row opens the job's Lien window. */
@@ -319,7 +321,7 @@ export default function LienDeskModal({
     if (!open) setShareOpen(false)
   }, [open])
   // The kind (v2.3412): notices per month, or the one affidavit per job.
-  const [kind, setKind] = useState<'notice' | 'affidavit' | 'retainage' | 'timeline' | 'calendar'>(initialKind ?? 'notice')
+  const [kind, setKind] = useState<'next' | 'notice' | 'affidavit' | 'retainage' | 'timeline' | 'calendar'>(initialKind ?? 'notice')
   // The tab row scrolls sideways on a phone (v2.4311); its cut end fades and the picked tab is scrolled into view (v2.4441) — a door can open the desk on Timeline, the last tab.
   const kindTabs = useScrollEdgeFade<HTMLDivElement>()
   const kindShownRef = useRef('')
@@ -457,6 +459,50 @@ export default function LienDeskModal({
       setPile(null)
       setCalendarJobFilter(null)
       setSelectedJobId(hit.jobId)
+    }
+  }
+  // Next up (punch list #82): the queues this desk already holds, folded into one ordered list. No read of its own.
+  const nextUpRows = useMemo(() => {
+    if (!data) return []
+    const serveDue = Object.values(data.filingsByJob)
+      .flat()
+      .filter((f) => f.kind === 'affidavit' && f.filed_at && !f.served_at && !f.voided_at && f.serve_due)
+      .map((f) => ({ jobId: f.job_id, serveDue: f.serve_due as string }))
+    return buildLienNextUp({
+      notices: data.queue.entries,
+      affidavits: data.affidavits.entries,
+      retainage: data.retainage.entries,
+      letterTwoByJob: data.letterTwoByJob,
+      serveDue,
+      role: authRole,
+      todayYmd,
+      jobTitle: (jobId) => jobLabel(data.jobsById[jobId], jobId),
+      gcName: (gcId) => data.gcsById[gcId]?.name ?? 'A GC',
+    })
+  }, [data, authRole, todayYmd])
+  /** A Next up row's button: the pane that already does that work, on that job and pile. Nothing is written here. */
+  const actOnNextUp = (row: LienNextUpRow) => {
+    const t = row.target
+    setMobileListShown(false)
+    if (t.open === 'run') {
+      setRunOpen(true)
+    } else if (t.open === 'lien_window') {
+      ;(onOpenLienAffidavit ?? onOpenLienInstruments)(t.jobId)
+    } else if (t.open === 'affidavits') {
+      setKind('affidavit')
+      setAffPile(null)
+      setAffSelectedJobId(t.jobId)
+    } else if (t.open === 'retainage') {
+      setKind('retainage')
+      setRetPile(null)
+      setRetSelectedJobId(t.jobId)
+    } else {
+      // The pile narrows the list to the row's state; the selection effect keeps this pick.
+      doorPickedJobId.current = t.jobId
+      setKind('notice')
+      setPile(t.pile)
+      setCalendarJobFilter(null)
+      setSelectedJobId(t.jobId)
     }
   }
   const pickKind = async (next: PropertyKind) => {
@@ -2021,9 +2067,9 @@ export default function LienDeskModal({
           <button type="button" onClick={onClose} aria-label="Close" style={{ position: 'absolute', right: '0.8rem', top: '0.5rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)', padding: 4 }}>×</button>
           {/* v2.4311: the tab row is 375 px of labels — on a phone it scrolls sideways inside the card instead of pushing the title bar (and ×, and Share) off the screen. v2.4441: a cut end fades, so Timeline past the edge is not a secret, and the picked tab is brought into view. */}
           <div ref={kindTabs.ref} onScroll={kindTabs.onScroll} role="tablist" aria-label="Kind" data-lien-desk-kinds style={{ display: 'inline-flex', maxWidth: '100%', minWidth: 0, border: '1px solid var(--border-strong)', borderRadius: 7, overflowX: 'auto', overflowY: 'hidden', ...kindTabs.style }}>
-            {(['calendar', 'notice', 'affidavit', 'retainage', 'timeline'] as const).map((k) => (
+            {(['next', 'calendar', 'notice', 'affidavit', 'retainage', 'timeline'] as const).map((k) => (
               <button key={k} type="button" role="tab" aria-selected={kind === k} onClick={() => setKind(k)} className="lienDeskKindTab" style={{ flexShrink: 0, whiteSpace: 'nowrap', border: 'none', background: kind === k ? FILL.primary : 'var(--surface)', color: kind === k ? '#fff' : 'var(--text-700)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }} title={k === 'retainage' ? 'The § 53.057 notice of claim for unpaid retainage — one per job, 30 days after our contract on it ends' : k === 'timeline' ? 'Every billed job with money open and a lien month — the whole path, sorted by the next date; Print the grid for counsel' : undefined}>
-                {k === 'calendar' ? 'Calendar' : k === 'notice' ? `Notices${counts ? ` · ${entries.filter((e) => e.pile !== 'sent').length}` : ''}` : k === 'affidavit' ? `Affidavits${data ? ` · ${affCount}` : ''}` : k === 'retainage' ? `Retainage${data ? ` · ${retCount}` : ''}` : `Timeline${book ? ` · ${book.counts.due}` : ''}`}
+                {k === 'next' ? `Next up${data ? ` · ${nextUpRows.length}` : ''}` : k === 'calendar' ? 'Calendar' : k === 'notice' ? `Notices${counts ? ` · ${entries.filter((e) => e.pile !== 'sent').length}` : ''}` : k === 'affidavit' ? `Affidavits${data ? ` · ${affCount}` : ''}` : k === 'retainage' ? `Retainage${data ? ` · ${retCount}` : ''}` : `Timeline${book ? ` · ${book.counts.due}` : ''}`}
               </button>
             ))}
           </div>
@@ -2163,8 +2209,10 @@ export default function LienDeskModal({
             </span>
           ) : null}
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile || kind === 'timeline' || kind === 'calendar' ? '1fr' : '320px 1fr', overflow: 'hidden', minHeight: 0 }}>
-          {kind === 'calendar' ? (
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile || kind === 'timeline' || kind === 'calendar' || kind === 'next' ? '1fr' : '320px 1fr', overflow: 'hidden', minHeight: 0 }}>
+          {kind === 'next' ? (
+            <LienDeskNextUp rows={nextUpRows} loading={loading && !data} isMobile={isMobile} onAct={actOnNextUp} />
+          ) : kind === 'calendar' ? (
             <LienDeskCalendarTab
               rows={calendarRows ?? null}
               supplierMarks={supplierMarks}

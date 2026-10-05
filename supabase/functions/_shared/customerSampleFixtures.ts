@@ -3,7 +3,7 @@
  * see, Settings dev tab). Each one lays the live Settings over `customerSample.ts` so the page
  * renders exactly what a real customer would get with today's copy, terms, footer and brand.
  */
-import { roomCounts, type RoomRow, type SubmittalRoomPayload } from './submittalRoomPayload.ts'
+import { rollUpPartDecisions, roomCounts, roomRowsFrom, type RoomItemSource, type RoomPartSource, type RoomRow, type SubmittalRoomPayload } from './submittalRoomPayload.ts'
 import { SAMPLE_BID, SAMPLE_CHANGE_ORDER, SAMPLE_CONTRACT, SAMPLE_ESTIMATE, SAMPLE_GC, SAMPLE_HOMEOWNER, SAMPLE_SUB, SAMPLE_TOKEN, ymdPlusDays, type SampleState, SAMPLE_JOB_CONTRACT } from './customerSample.ts'
 import { gcPortalStages } from './gcStages.ts'
 import { resolveEstimateCustomerExperience, toClientCustomerExperience } from './estimateCustomerExperience.ts'
@@ -410,20 +410,44 @@ export function sampleJobContractResponse(state: SampleState, company: SamplePor
 
 /**
  * get-submittal-room's answer for the sample tokens (v2.3511): the Cedar Bend bid's product
- * decisions as the GC's architect reads them. `live` is open with two rows waiting on a call;
- * `done` is the same room after Alex Sample sent the review. No row, no view stamp, no event.
+ * decisions as the GC's architect reads them. `live` is open with three products waiting on an
+ * answer; `done` is the same room after Alex Sample sent the review. No row, no view stamp, no event.
+ *
+ * v2.4595 (punch list #62): the rows are sample submittal rows and parts run through the room's
+ * own kernel (`roomRowsFrom` → `roomCounts`), the call the function makes for a real bid, so
+ * the sample can only say what a real room can. They were written by hand before: a to-follow
+ * row read "Not in our scope — by others.", no row had parts, and no row was a product we
+ * intend to install. The order-only row and part are here so the sample goes through the same
+ * filter as a real room; neither reaches the page.
  */
 export function sampleSubmittalRoomResponse(state: SampleState, company: SamplePortalCompany, todayYmd: string): SubmittalRoomPayload {
   const done = state === 'done'
   const decidedAt = `${todayYmd}T15:10:00.000Z`
-  const by = { byName: 'Alex Sample', byPersonId: 'sample-person', at: decidedAt }
-  const rows: RoomRow[] = [
-    { id: 'sample-row-wc', tag: 'WC-1', kind: 'differs', plans: 'TOTO CT708UVG · wall-hung, 1.28 gpf', proposed: 'TOTO CT728CUVG#01', why: 'The specified product has a long lead time · about 6 weeks · this one is in stock.', performanceChange: false, sheetPages: 2, decision: done ? { kind: 'approved', note: null, ...by } : null },
-    { id: 'sample-row-wh', tag: 'WH-1', kind: 'differs', plans: 'A.O. Smith BTH-120 · 120 gal, 199,000 BTU', proposed: 'Bradford White eF100T199 · 100 gal, 199,000 BTU', why: 'A performance value differs from the plans · the specified product is discontinued.', performanceChange: true, sheetPages: 3, decision: done ? { kind: 'revise', note: 'Keep 120 gal — confirm with the engineer.', ...by } : null },
-    { id: 'sample-row-tp', tag: 'TP-1', kind: 'added', plans: '', proposed: 'PPP PR-500 trap primer', why: 'Required by the fixture; the plans leave it to the contractor.', performanceChange: false, sheetPages: 1, decision: null },
-    { id: 'sample-row-lav', tag: 'L-1', kind: 'matches', plans: 'Kohler K-2210 Caxton · undermount', proposed: 'Kohler K-2210 Caxton', why: '', performanceChange: false, sheetPages: 1, decision: null },
-    { id: 'sample-row-mb', tag: 'MB-1', kind: 'not_quoted', plans: 'Elkay LZSTL8WSLK · bottle filler', proposed: '', why: 'Not in our scope — by others.', performanceChange: false, sheetPages: 0, decision: null },
+  const open = { review_decision: null, review_note: null, reviewed_by_name: null, reviewed_by_person_id: null, reviewed_at: null }
+  const answer = (decision: 'approved' | 'revise' | 'rejected', note: string | null = null) =>
+    done ? { review_decision: decision, review_note: note, reviewed_by_name: 'Alex Sample', reviewed_by_person_id: 'sample-person', reviewed_at: decidedAt } : open
+  const row = (o: Partial<RoomItemSource> & Pick<RoomItemSource, 'id' | 'tag' | 'sequence_order' | 'status'>): RoomItemSource => ({
+    specified_manufacturer: null, specified_model: null, specified_description: null, submitted_manufacturer: null, submitted_model: null, submitted_label: null,
+    reason_kind: null, reason_note: null, lead_time_days: null, sheet_pages: [], ...open, ...o,
+  })
+  const part = (id: string, sequence_order: number, label: string, o: Partial<RoomPartSource> = {}): RoomPartSource => ({ id, item_id: 'sample-row-wc', sequence_order, label, quantity: 1, on_submittal: true, ...open, ...o })
+  // WC-1 is a fixture of parts: the architect answers each one, and the row reads their roll-up, as the function writes it.
+  const wcParts = [
+    part('sample-part-bowl', 1, 'TOTO CT728CUVG#01 Elongated bowl, wall-hung', answer('approved')),
+    part('sample-part-seat', 2, 'TOTO SS114#01 SoftClose seat', answer('approved')),
+    part('sample-part-carrier', 3, 'ZURN Z1203-N Carrier, single', answer('revise', 'Match the wall depth on A-501.')),
+    part('sample-part-stop', 4, 'BRASSCRAFT KTCR19X Supply stop', { on_submittal: false }),
   ]
+  const items: RoomItemSource[] = [
+    row({ id: 'sample-row-wc', tag: 'WC-1', sequence_order: 1, status: 'alternate', specified_manufacturer: 'TOTO', specified_model: 'CT708UVG', specified_description: 'wall-hung, 1.28 gpf', submitted_label: 'TOTO CT728CUVG#01 + TOTO SS114#01 + ZURN Z1203-N', reason_kind: 'lead_time', reason_note: 'about 6 weeks for the model on the plans', lead_time_days: 0, sheet_pages: [1, 2, 3], ...rollUpPartDecisions(wcParts) }),
+    row({ id: 'sample-row-lav', tag: 'L-1', sequence_order: 2, status: 'as_specified', specified_manufacturer: 'Kohler', specified_model: 'K-2210 Caxton', specified_description: 'undermount', submitted_label: 'Kohler K-2210 Caxton', sheet_pages: [4] }),
+    row({ id: 'sample-row-sh', tag: 'SH-1', sequence_order: 3, status: 'proposed', specified_description: 'Shower valve, pressure-balance', submitted_label: 'Symmons S-9600-1 Temptrol', lead_time_days: 14, sheet_pages: [5, 6], ...answer('approved') }),
+    row({ id: 'sample-row-wh', tag: 'WH-1', sequence_order: 4, status: 'design_change', specified_manufacturer: 'A.O. Smith', specified_model: 'BTH-120', specified_description: '120 gal, 199,000 BTU', submitted_label: 'Bradford White eF100T199 · 100 gal, 199,000 BTU', reason_kind: 'discontinued', sheet_pages: [7, 8, 9], ...answer('revise', 'Keep 120 gal — confirm with the engineer.') }),
+    row({ id: 'sample-row-mb', tag: 'MB-1', sequence_order: 5, status: 'missing', specified_manufacturer: 'Elkay', specified_model: 'LZSTL8WSLK', specified_description: 'bottle filler' }),
+    row({ id: 'sample-row-tp', tag: 'TP-1', sequence_order: 6, status: 'accessory', submitted_label: 'PPP PR-500 trap primer', sheet_pages: [10] }),
+    row({ id: 'sample-row-hb', tag: 'HB-1', sequence_order: 7, status: 'as_specified', specified_description: 'Hose bibb', submitted_label: 'Woodford 24P', order_only: true }),
+  ]
+  const rows: RoomRow[] = roomRowsFrom(items, new Map([['sample-row-wc', wcParts]]))
   return {
     status: 'open',
     closedAt: null,

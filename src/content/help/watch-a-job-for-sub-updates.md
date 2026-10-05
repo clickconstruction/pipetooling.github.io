@@ -5,12 +5,14 @@ roles: dev, master_technician, assistant, controller, estimator, superintendent
 keywords: watch, watchers, bell, subscribe, email, sub progress, sub done, sub dates, superintendent, my email schedule, stop watching
 order: 63
 ---
-When a sub reports from their portal — a percent, *my work here is done*, or the days they picked — the people **watching** that job get an email as it happens. Superintendents assigned to the job watch it by default; the office can add anyone else.
+When a sub reports from their portal, the people **watching** that job get an email as it happens. Superintendents assigned to the job watch it by default.
+
+A report can be a percent, *my work here is done*, or the days they picked. The office can add anyone else as a watcher. A sub is a subcontractor. A sub's portal is the private link page they report from.
 
 ## The bell on the job
 
-1. Open **Jobs → Subs → Work**. Every job group has a bell: {{button:outline|🔔 Watching · 2}}.
-2. Open it. Each watcher has three switches — **progress**, **done**, **dates** — and a ✕. Assigned superintendents start with progress and done on and dates off.
+1. You open **Jobs → Subs → Work**. Every job group has a bell: {{button:outline|🔔 Watching · 2}}.
+2. You open it. Each watcher has a ✕ and three switches: **progress**, **done** and **dates**. Assigned superintendents start with progress and done on, and dates off.
 3. {{button:outline|+ Subscribe someone…}} adds an office user or a superintendent with all three on.
 
 :::example What the email says
@@ -19,4 +21,4 @@ When a sub reports from their portal — a percent, *my work here is done*, or t
 
 ## Your own list
 
-**Settings → My email schedule → Jobs you watch** shows every job you watch with the same switches and {{button:outline|Stop watching}}. Assigned superintendents hear progress and done on their jobs even without a row there; turning everything off keeps it that way.
+**Settings → My email schedule → Jobs you watch** shows every job you watch. Each job has the same switches and {{button:outline|Stop watching}}. Assigned superintendents hear progress and done on their jobs even without a row there. Turning everything off keeps it that way.

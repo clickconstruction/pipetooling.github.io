@@ -8,7 +8,7 @@ The Calendar tab on the Lien desk shows when each lien deadline falls. Pills at 
 
 ## Open the Calendar
 
-Open the [Lien desk](/jobs?tab=stages&liendesk=1). It opens on the {{button:blue|Calendar}} tab. Every billed job with money still owed is on it.
+Open the Lien desk from the orange gavel on the Pipeline. Press the {{button:blue|Calendar}} tab, beside Next up. Every billed job with money still owed is on it.
 
 ## Read the pills
 
