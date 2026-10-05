@@ -7,9 +7,10 @@ purpose: Step-0 map for the Dashboard.tsx decomposition (per PAGE_DECOMPOSITION_
 covers:
   - src/pages/Dashboard.tsx
   - src/components/DashboardFinancialsSection.tsx
+  - src/lib/dashboardNeedsYou.ts
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-10-01
+last_updated: 2026-10-05
 ---
 
 ## Overview
@@ -169,7 +170,7 @@ Cross-checked against [`src/lib/canLeaveJobFieldReport.ts`](../src/lib/canLeaveJ
 - **What stayed in the parent (and why):** `pinnedRoutes` 354 + `refreshPinned` 699–707 + its mount effect 709–711 + the pins-changed/focus/visibility listener effect 802–821 (also bumps `financialRefreshKey`) and `visiblePins` 630 → `has*Pin` flags 631–634, because those flags enable the parent-side financial machinery: `financialRefreshKey` 635 + `financialPinsRealtimeTimerRef` 638 + `scheduleFinancialPinsRefreshFromRealtime` 639–647 (1200 ms coalesce) + the unmount cleanup effect 793–800 + the `dashboard-financial-pins` channel on `jobs_ledger_invoices` 835–847; the **four** financial pin total hooks 648–651 (`useWeeklyTeamLaborTotal`, `useBilledTotal`, `useSupplyHousesAPTotal`, `useSubLaborDueTotal` — the Hours Awaiting Approval chip and its hook left in v2.786), totals passed down as props; and the quick-button cluster ([§1b](#1b-quick-buttons-top-placement--estimatechange-order)).
 - **Supabase / realtime:** component-side — RPCs `count_unlinked_mercury_transactions_for_tally[_stale]`, `bids` (lost-reason count), banner hooks' tables; parent-side — `user_dashboard_buttons`, `user_dashboard_preferences`, `user_pinned_tabs` (via `lib/pinnedTabs`), realtime `dashboard-financial-pins`.
 - **Sub-components (render inside the card now):** `DashboardNeedsYouCard` (all attention sources as one list — see below), `GcReviewWeekDoneNotice` (green rest-of-Wednesday confirmation, from `DashboardGcReviewWeeklyBanner.tsx`), `NewReportModal`, `DashboardStaleTallyStaffFollowUpModal`, `DashboardLienReleaseQueueModal` (v2.2751 — the `lien-unconditional` action's cleared-releases queue; issues the unconditional follow-up per row via `LienReleaseModal`, also mounted by `QuickfillNeedsYouSection`), `DashboardArDepositsModal` (v2.2890 — the `ar-deposits` "Match deposits" action opens the SAME `BankPaymentsModal` the `/accounts-receivable` page renders, fed by the shared jobs cache, over the card instead of navigating away; also mounted by `QuickfillNeedsYouSection`; the card refetches its unallocated count on close), `DashboardLienWaiversToSignModal` (v2.4276 — the `lien-waivers-to-sign` action's *Waivers to sign*: the list left, the page right, sign on the page, send to the payor; its writes are `lib/jobs/lienReleaseSignIo.ts`, shared with `LienReleaseSignModal`). The `claim-dev` action lands on `/settings?tab=settings-advanced-tools#settings-claim-code` (the code form is on Advanced, not People — v2.2890).
-- **Needs You card (v2.2339 → complete v2.2492):** the standalone attention banners are gone — every source renders as an item of [`DashboardNeedsYouCard`](../src/components/dashboard/DashboardNeedsYouCard.tsx) via the pure builder [`dashboardNeedsYou.ts`](../src/lib/dashboardNeedsYou.ts) (`buildNeedsYouItems`, 77 tests), fed by hooks this component owns: `useArBankUnallocatedCount`, the two tally counts, the lost-bids loader, `useTeamReviewsDue` (v2.2488), `useRoadmapNeedsNameNudges` (v2.2489), `useJobFollowupNudge` (v2.2487), `useGcReviewWeekNudge` (v2.2490), `useBulkDeleteNudge` (v2.2491), `useClaimDevAttemptsNudge` (v2.2492), and three the Dashboard alone feeds: `useTypedHoursWaitingNudge` (v2.4254, `typed-hours`), `useBulkHoursNudge` (v2.4281, `bulk-hours`), `useLienSignatureLanes` (v2.4276, `lien-waivers-to-sign`, master and dev). Quickfill's `QuickfillNeedsYouSection` renders the same card from the same hooks (job-followups + GC weekly excluded there — dedicated stations). Aging queues (v2.2895, journey-map #40): `dispatch-requests-aged` reads the `dispatchAged` prop; its action scrolls to `#dash-teams-inbox` (fallback `/dispatch-mode/inbox`). `hr-reports-pending` comes from `usePendingHrReportsNudge` (dev-only) and navigates to `/people?tab=hr`. Quickfill's twin takes `dispatchAged` + `onOpenDispatchInbox` from the page and renders both keys. Quickfill still mounts four of the old per-banner components (`DashboardTallyStaleStaffBanner`, `DashboardJobFollowupsBanner`, `DashboardGcReviewWeeklyBanner`, `DashboardLostBidsMissingReasonBanner`); two more, `DashboardArBankUnallocatedBanner` and `DashboardTallyStaleBanner`, are still in `src/components/` but nothing imports them.
+- **Needs You card (v2.2339 → complete v2.2492):** the standalone attention banners are gone — every source renders as an item of [`DashboardNeedsYouCard`](../src/components/dashboard/DashboardNeedsYouCard.tsx) via the builder [`dashboardNeedsYou.ts`](../src/lib/dashboardNeedsYou.ts) (`buildNeedsYouItems`, 82 tests; mapped in [§N](#n-dashboardneedsyouts--the-needs-you-item-builder)), fed by hooks this component owns: `useArBankUnallocatedCount`, the two tally counts, the lost-bids loader, `useTeamReviewsDue` (v2.2488), `useRoadmapNeedsNameNudges` (v2.2489), `useJobFollowupNudge` (v2.2487), `useGcReviewWeekNudge` (v2.2490), `useBulkDeleteNudge` (v2.2491), `useClaimDevAttemptsNudge` (v2.2492), and three the Dashboard alone feeds: `useTypedHoursWaitingNudge` (v2.4254, `typed-hours`), `useBulkHoursNudge` (v2.4281, `bulk-hours`), `useLienSignatureLanes` (v2.4276, `lien-waivers-to-sign`, master and dev). Quickfill's `QuickfillNeedsYouSection` renders the same card from the same hooks (job-followups + GC weekly excluded there — dedicated stations). Aging queues (v2.2895, journey-map #40): `dispatch-requests-aged` reads the `dispatchAged` prop; its action scrolls to `#dash-teams-inbox` (fallback `/dispatch-mode/inbox`). `hr-reports-pending` comes from `usePendingHrReportsNudge` (dev-only) and navigates to `/people?tab=hr`. Quickfill's twin takes `dispatchAged` + `onOpenDispatchInbox` from the page and renders both keys. Quickfill still mounts four of the old per-banner components (`DashboardTallyStaleStaffBanner`, `DashboardJobFollowupsBanner`, `DashboardGcReviewWeeklyBanner`, `DashboardLostBidsMissingReasonBanner`); two more, `DashboardArBankUnallocatedBanner` and `DashboardTallyStaleBanner`, are still in `src/components/` but nothing imports them.
 - **Card ↔ destination parity (v2.2896, journey-map Tier-2 #16):** the two tally counts come from one hook, [`useTallyUnlinkedCounts`](../src/hooks/useTallyUnlinkedCounts.ts), shared with `QuickfillNeedsYouSection` and the `/tally` header (which says the card's aged figure beside its own total via `tallyStaleGloss`); a `NeedsYouItem` may carry `destinationFigure`, and `needsYouClickTarget(item)` appends `&dest=<n>` to the `ui_nav_clicks` target so card-vs-page drift is auditable. The Division 22 modal folds names by case like the card's RPC; the lost-bids card names its all-trade scope. Rule: one hook feeds both surfaces, or the destination shows the card's gloss — never a third count.
 - **Item kind (v2.2916, journey-map Tier-2 #41):** `NeedsYouItem.kind` is `'company'` (default) or `'roadmap'`; `roadmap-needs-person` is the only roadmap-kind item. `rankNeedsYouItems` groups company items first and roadmap items after (tier + figure within each group), and `buildNeedsYouItems` runs `visibleNeedsYouItems(items, role)` so a non-dev viewer never receives a roadmap-kind item regardless of what the hooks fed in; `useRoadmapNeedsNameNudges` gates on `canSeeRoadmapNeedsYou` (dev, not Farm Mode) so the office does no roadmap reads. The action navigates via `roadmapPath(id, 'plan')` → `/roadmap?roadmap=<id>&view=plan`.
 - **Tests:** kernels above; `DashboardNeedsYouCard` + `DashboardLienReleaseQueueModal` smokes; **no smoke for `DashboardPinnedQuickRow`** (the slot host).
@@ -399,6 +400,94 @@ Shared modals that stay page-level (opened from 2+ sections) vs single-opener mo
 - The phone sheet and desktop dialog each carry their own copy of the row markup. A fix to one (a pill, a total, a link) has to land in both.
 
 **Extraction order for this file** (merged into the page ranking below): F-A1 partition kernel → F-B1 verbatim moves of `ApBillModal`/`SendToDispatchModal` → F-A2 `buildFinanceCards` → F-B2 `ItemsModal` to its own file, then `useArCustomersLens` + `useFinanceDrillState` and presentational phone/desktop children.
+
+### N. `dashboardNeedsYou.ts` — the Needs You item builder
+
+> **This section's line numbers are as of `7379b248f`** (2026-10-05), not the `mapped_at` commit above. Regenerate the fact sheet with `npm run map -- src/lib/dashboardNeedsYou.ts`. 64 commits in 90 days: search the item key, not the line.
+
+**1,585 lines** · no component, no hook, no table, RPC or edge-function call · 12 module functions, 5 exported types · 23 local imports, no package import. [`dashboardNeedsYou.ts`](../src/lib/dashboardNeedsYou.ts) turns what every attention hook found into the one list `DashboardNeedsYouCard` draws (§3 above): 50 item keys, one severity each, ranked worst first. Glossary: *Needs You card (Dashboard / Quickfill)*.
+
+**Who calls it:** `buildNeedsYouItems` has two callers — [`DashboardPinnedQuickRow`](../src/components/dashboard/DashboardPinnedQuickRow.tsx) 517 (every one of the 91 inputs) and [`QuickfillNeedsYouSection`](../src/components/quickfill/QuickfillNeedsYouSection.tsx) 106 (a subset: six sources passed as `…Enabled: false`, most optional inputs left out). [`DashboardNeedsYouCard`](../src/components/dashboard/DashboardNeedsYouCard.tsx) imports the item types, `needsYouClickTarget` and the mode storage. `usePriceMatrixReadyNudge` and `usePriceRequestsLateNudge` type their result as `NeedsYouInputs['priceMatrixReady' | 'priceRequestsLate']`; `lib/dashboard/phoneOffice.ts` imports `NeedsYouMode`.
+
+| Region | Anchor (symbol · lines) | ~Lines | Exported | Notes |
+|---|---|---|---|---|
+| A. Imports and date helpers | imports 1–17, 37–42 · `daysUntilYmd` 45–47 · `monthDayLabel` 50–53 | ~50 | — | the file's doc comment (19–34) sits between two import runs |
+| B. The item type | `NeedsYouSeverity` 55 · `NeedsYouKind` 65 · `NeedsYouItem` 67–141 (the `key` union 69–119) | ~90 | yes | `key` is also the telemetry target and the action handle |
+| C. Rank and visibility | `NEEDS_YOU_RANK` 152–210 · `figureValue` 213–217 · `needsYouKind` 220–222 · `KIND_ORDER` 224 · `rankNeedsYouItems` 231–240 · `visibleNeedsYouItems` 248–251 | ~100 | all but `figureValue`, `KIND_ORDER` | a `Record` over the key union: a new key without a tier does not compile |
+| D. The inputs type | `NeedsYouInputs` 253–552 | 300 | yes | 91 fields: 41 required, 50 optional; most sources are an `…Enabled` flag beside a payload |
+| E. The builder | `buildNeedsYouItems` 554–1543 | 990 | yes | 53 `key:` literals for the 50 keys, then `rankNeedsYouItems(visibleNeedsYouItems(items, inputs.role))` 1542 |
+| F. Click telemetry | `needsYouClickTarget` 1551–1554 | 4 | yes | `#<key>`, plus `&dest=<n>` when `destinationFigure` differs from `figure` |
+| G. Cards / Walk preference | `needsYouModeStorageKey` 1557 · `NeedsYouMode` 1561 · `readStoredNeedsYouMode` 1564–1572 · `readNeedsYouMode` 1574 · `writeNeedsYouMode` 1578–1585 | ~30 | yes | the only `localStorage` use in the file |
+
+**The builder's blocks, in build order** (the order is behavior: items equal on kind, tier and figure keep it):
+
+| Lines | Key(s) | Gate (all on `inputs`) | Severity |
+|---|---|---|---|
+| 557–576 | `lien-suit-year` | `lienWatchEnabled`, `lienWatch.suitDue` | red when run out or ≤ 30 days, else amber |
+| 578–591 | `lien-serve-copy` | `lienWatchEnabled`, `lienWatch.serveDue` | red |
+| 593–606 | `lien-tracking-owed` | `lienWatchEnabled`, `lienWatch.trackingOwed` | amber |
+| 610–659 | `lien-notice-draft` (two shapes) or `lien-window-missed` | `lienDeskEnabled`, `lienDesk.office` / `.missed` | next deadline: red ≤ 7 days, amber ≤ 14, else gray · letter two: red when any is past day 14, else amber · missed: gray |
+| 662–679 | `lien-notice-batch` | `lienDeskEnabled`, `lienDeskLeader`, `lienDesk.leader.batches` | red ≤ 7 days, else blue |
+| 681–695 | `lien-notice-approve` | the same, `leader.jobs` less the batch jobs | red ≤ 7 days, else blue |
+| 697–712 | `lien-file-window` | `lienWatchEnabled`, `lienWatch.filingDue` | amber |
+| 714–741 | `contract-missing`, `contract-stale` | `contractNudgeEnabled` | amber |
+| 743–755 | `work-orders-unpriced` | `unpricedWorkOrdersEnabled` | amber |
+| 757–771 | `jobs-stale-open` | `staleOpenEnabled` | amber |
+| 773–792 | `capacity-under` | `capacityUnderEnabled` | amber |
+| 794–809 | `demand-deadline` | `demandDeadlineEnabled` | red |
+| 811–828 | `lien-unconditional` | `lienUnconditionalEnabled` | blue |
+| 830–844 | `lien-waivers-to-sign` | `lienWaiversToSignEnabled` | amber |
+| 846–894 | `returned-check` (two shapes) | `bankReturnedEnabled`; `bankReturnCases` first, else `bankReturned` | amber |
+| 896–909 | `ar-deposits` | `arBankEnabled` | blue |
+| 911–948 | `tally-self`, `tally-team` | `role != null`; `tallyStaffEligible` | amber |
+| 950–967 | `lost-bids` | `!lostBidNudgeLoading`, `lostBidNudge` | gray |
+| 969–982 | `bid-followups` | `bidFollowupsDue.count` | red when any is overdue, else amber |
+| 984–998 | `team-reviews` | `teamReviewsOverdue.length` | blue |
+| 1000–1021 | `roadmap-needs-person` (`kind: 'roadmap'`) | `roadmapNudges.length` | amber |
+| 1023–1035 | `job-followups` | `jobFollowupsEnabled` | amber |
+| 1037–1064 | `statement-round` (two shapes by `statementRound.office`) | `statementRoundEnabled` | blue |
+| 1066–1081 | `gc-review-weekly` | `gcReviewEnabled`, `gcReviewNudge === 'due'` | amber |
+| 1083–1126 | `bulk-delete`, `bulk-hours` | the alert arrays | red; snooze / dismiss secondaries |
+| 1128–1171 | `robot-audits`, `robot-locked` | `robotAuditsEnabled` | amber; blue |
+| 1173–1185 | `d22-uncoded` | `d22UncodedEnabled` | amber |
+| 1187–1260 | `hours-approvals`, `typed-hours`, `label-approvals` | each `…Enabled`; the first and last also need `oldestAgeDays ≥ …MinAgeDays` | amber |
+| 1262–1284 | `customer-waiting` | `customerWaitingEnabled` | red while any is uncalled, else amber |
+| 1286–1324 | `dispatch-requests-aged`, `hr-reports-pending` | each `…Enabled` | red at `…RedDays`, else amber |
+| 1326–1341 | `claim-dev` | `claimDevRefusedCount` | red; snooze / dismiss secondaries |
+| 1343–1362 | `job-account-missing` | `jobAccountGapsEnabled` | gray |
+| 1364–1419 | `submittal-lead-time`, `-sent-back`, `-unopened`, `-not-started` | `submittalsEnabled`, `submittalNudge` | red, red, blue, amber |
+| 1421–1456 | `price-matrix-ready`, `price-requests-late` | each `…Enabled` | amber when a pick waits to settle, else blue; amber |
+| 1458–1493 | `legal-firm-activity`, `legal-review` | each `…Enabled` | amber or blue |
+| 1495–1521 | `robot-backlog` | `robotBacklogEnabled` | amber when stuck or a request is over a week old, else blue; snooze / dismiss secondaries |
+| 1523–1540 | `test-reports-ready` | `testReportsEnabled` | blue when one is ready, else gray |
+
+**Where the click goes** is not in this file: each host's `onAction` is an `if / else if` chain on `item.key` (`DashboardPinnedQuickRow` 715–841, `QuickfillNeedsYouSection` 183–234) and `onSecondary` beside it (842–858, 235–245).
+
+**Tests:** [`dashboardNeedsYou.test.ts`](../src/lib/dashboardNeedsYou.test.ts) — 1,224 lines, 82 `it` in 19 `describe`. Three keys are named by no test in the repo: `contract-missing`, `contract-stale`, `test-reports-ready`. The card has a render smoke (8), the pinned row has one (3), `phoneOffice` 6, `tallyStaleGloss` 4. `QuickfillNeedsYouSection` has no test of its own.
+
+**Hazards**
+
+- **A new key is four edits, and only two are checked:** the `key` union and `NEEDS_YOU_RANK` fail the build when one is missed; the block in the builder and the branch in each host's `onAction` do not. A key with no branch draws a button that does nothing.
+- **`letter-two` is a secondary link with no handler:** the `lien-notice-draft` item can carry `{ key: 'letter-two' }` (635), and both hosts' `onSecondary` answer only `missed` for that item.
+- **The order of the blocks is the tie-break:** `rankNeedsYouItems` sorts by kind, tier, then figure, and `Array.prototype.sort` keeps build order for the rest. Moving a block reorders cards that tie.
+- **`figureValue` reads any digits:** a money figure (`$12,345`) ranks as 12,345 against a count in the same tier, a percent (`58%`) as 58, and `99+` as 100. Changing an item's `figure` from a count to dollars moves it within its tier.
+- **Not pure about today:** `daysUntilYmd` reads `todayYmdInAppTz()` (the three Lien desk cards, 620, 668, 685) and `lien-suit-year` builds its counsel date from `new Date` (564), while `returned-check` takes `inputs.todayYmd`. A test of a lien deadline has to set the clock.
+- **Gating mirrors the banners it replaced:** a null payload or a loading flag contributes nothing. An optional `…Enabled` left out is off, which is how Quickfill drops items.
+- **`visibleNeedsYouItems` is the last line of defence for roadmap items:** it runs inside the builder (1542), so a hook that forgets its own dev gate still cannot show a roadmap card to the office. Keep it inside.
+- **Three keys are built from two shapes each** (`lien-notice-draft`, `returned-check`, `statement-round`): the host's branch for the key serves both.
+- **Money is formatted inline:** 14 lines carry the whole-dollar `toLocaleString` call, three of them local closures (`usd` 616, `money` 850 and 874), and `$${Math.round(…)}` in `statement-round` and `legal-firm-activity`. Three month-day formatters: `monthDayLabel` 50, the submittals block's `monthDay` 1366, the imported `formatYmdMonthDay`.
+- **Other files own the shapes they feed:** two hooks type their state off `NeedsYouInputs[...]`, so renaming a field there is a change here first.
+
+**Extraction order for this file** (a kernel: no Stage B, the moves are file splits behind the same exports):
+
+1. **Tests for the three unnamed keys** (`contract-missing`, `contract-stale`, `test-reports-ready`) and one that pins the order of two items that tie — the net for every later step.
+2. **`needsYouFormat.ts`:** one whole-dollar formatter and one month-day formatter; the builder's copies call them. ~40 lines.
+3. **`todayYmd` all the way through:** `daysUntilYmd(ymd, inputs.todayYmd ?? todayYmdInAppTz())`, so the lien cards test without a fake clock. Behavior-neutral when the input is left out.
+4. **Mode storage → `needsYouMode.ts`** (region G, re-exported here) — the browser part leaves the builder's file.
+5. **Per-domain builders in `src/lib/needsYou/`,** each `(inputs) => NeedsYouItem[]`, cut along contiguous runs so the build order survives: lien desk and watch (557–712), jobs and contracts (714–792), demand and releases (794–844), money received and tally (846–948), bids and people (950–1081), alerts and robots (1083–1185), approvals and queues (1187–1362), submittals to test reports (1364–1540). `buildNeedsYouItems` concatenates them in that order.
+6. **`NeedsYouInputs` as an intersection of per-domain input types,** each beside its builder. Last: 300 lines leave, and a host passes only what it feeds.
+
+A host-side step belongs to §3, not here: one `needsYouDestination(item, ctx)` table shared by the Dashboard and Quickfill would make the missing-branch hazard a compile error.
 
 ---
 

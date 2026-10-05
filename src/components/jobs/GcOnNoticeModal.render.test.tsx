@@ -40,19 +40,24 @@ vi.mock('../../lib/customers/propertyLookupClient', async () => {
   }
 })
 // The desk's writes (v2.4541, the undo): the approve path and its undo are watched; everything else is the real module.
-const io = vi.hoisted(() => ({ saved: 0, approved: [] as string[], undone: [] as Array<{ ids: string[]; userId: string | null }>, policies: [] as Array<{ policy: string; note: string }>, unshared: [] as unknown[] }))
+const io = vi.hoisted(() => ({ saved: 0, printed: [] as Array<{ ids: string[]; userId: string | null }>, approved: [] as string[], undone: [] as Array<{ ids: string[]; userId: string | null }>, policies: [] as Array<{ policy: string; note: string }>, unshared: [] as unknown[] }))
 vi.mock('../../lib/jobs/lienDeskIo', async () => {
   const actual = await vi.importActual<typeof import('../../lib/jobs/lienDeskIo')>('../../lib/jobs/lienDeskIo')
   return {
     ...actual,
     saveLienDeskDraft: async () => `item-${(io.saved += 1)}`,
     approveLienDeskItem: async (id: string) => void io.approved.push(id),
+    markLienDeskItemsPrinted: async (ids: string[], userId: string | null) => void io.printed.push({ ids: [...ids], userId }),
     undoLienDeskApprovals: async (ids: string[], userId: string | null) => {
       io.undone.push({ ids: [...ids], userId })
       return ids.length
     },
     setCustomerLienNoticePolicy: async (_id: string, policy: string, note: string) => void io.policies.push({ policy, note }),
   }
+})
+vi.mock('../../lib/jobsDocuments/printWindow', async () => {
+  const actual = await vi.importActual<typeof import('../../lib/jobsDocuments/printWindow')>('../../lib/jobsDocuments/printWindow')
+  return { ...actual, openHtmlPrintWindow: () => true }
 })
 vi.mock('../../lib/jobs/ownerBillShareIo', () => ({
   shareBillsWithOwnersOfJobs: async () => ({ owners: 2, turnedOn: { jobIds: ['j994'], invoiceIds: ['inv-9'], on: true } }),
@@ -124,6 +129,7 @@ afterEach(() => {
   confirmMock.mockClear()
   io.saved = 0
   io.approved = []
+  io.printed = []
   io.undone = []
   io.policies = []
   io.unshared = []
@@ -396,6 +402,23 @@ describe('GcOnNoticeModal', () => {
     expect(io.policies[1]!.note).toBe('Undone: the run was approved by mistake')
     expect(io.unshared).toEqual([{ jobIds: ['j994'], invoiceIds: ['inv-9'], on: true }])
     expect(screen.queryByText(/Send the run/)).toBeNull()
+  })
+
+  it('printing the packet from this window\u2019s run stamps the notices printed, as the Lien desk\u2019s run does (v2.4558)', async () => {
+    const base = data()
+    // One notice already approved and waiting in the run.
+    const approved = { id: 'it-994', job_id: 'j994', kind: 'notice_53_056', status: 'approved', months: ['2026-08'], fields: {}, cover_note: false, printed_at: null } as never
+    const queue = buildLienDeskQueue(base.rows, [approved], { harborline: 'ask' }, TODAY)
+    hookState.data = { ...base, desk: { ...base.desk, queue, items: [approved] } }
+    refetch.mockClear()
+    const onChanged = vi.fn()
+    renderWithProviders(<GcOnNoticeModal {...baseProps} authRole="assistant" onChanged={onChanged} />)
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: /Open the run · 1/ }))
+    fireEvent.click(await screen.findByRole('button', { name: /Print the packet/ }))
+    await waitFor(() => expect(io.printed).toEqual([{ ids: ['it-994'], userId: 'u1' }]))
+    await waitFor(() => expect(onChanged).toHaveBeenCalled())
+    expect(refetch).toHaveBeenCalled()
   })
 
   it('folds Step 1 to one line once every owner is on the job, and says the unknown property kind once', async () => {
