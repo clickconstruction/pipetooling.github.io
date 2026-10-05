@@ -43,6 +43,14 @@ const PAGE_LINK_HOST = 'https://page.help.internal/'
 const IN_APP_PAGE_HREF = /href="(\/(?!help(?:[/?]|"))[A-Za-z0-9/?&;=#._%-]*)"/g
 const PLACEHOLDER_PAGE_HREF = /href="https:\/\/page\.help\.internal\/([A-Za-z0-9%._-]*)"/g
 
+/**
+ * Placeholder host for a link to a heading of the same guide (v2.4529): `[The month rule](#the-month-rule)`.
+ * Restored as `href="#<anchor>" data-anchor="<anchor>"`; GuideBrowser scrolls to the heading.
+ */
+const ANCHOR_LINK_HOST = 'https://anchor.help.internal/'
+const IN_GUIDE_ANCHOR_HREF = /href="#([a-z0-9-]+)"/g
+const PLACEHOLDER_ANCHOR_HREF = /href="https:\/\/anchor\.help\.internal\/([a-z0-9-]+)"/g
+
 /** A root path a guide may send the reader to: plain URL characters, no `..`, no protocol-relative `//`. */
 export function isHelpGuidePagePath(path: string): boolean {
   return /^\/[A-Za-z0-9/?&=#._%-]*$/.test(path) && !path.includes('..') && !path.startsWith('//') && !path.startsWith('/help/') && !path.startsWith('/help?')
@@ -53,6 +61,8 @@ export function encodeHelpGuideLinks(html: string): string {
   return html
     .split(GUIDE_LINK_HOST).join('') // defensive: authored text can't pre-bake the placeholder
     .split(PAGE_LINK_HOST).join('')
+    .split(ANCHOR_LINK_HOST).join('')
+    .replace(IN_GUIDE_ANCHOR_HREF, (_m, anchor: string) => `href="${ANCHOR_LINK_HOST}${anchor}"`)
     .replace(IN_APP_GUIDE_HREF, (_m, slug: string) => `href="${GUIDE_LINK_HOST}${slug.toLowerCase()}"`)
     .replace(IN_APP_PAGE_HREF, (m, path: string) => {
       // marked writes `&amp;` in attributes; the path travels plain and is re-escaped on restore.
@@ -64,6 +74,7 @@ export function encodeHelpGuideLinks(html: string): string {
 /** Inverse of encodeHelpGuideLinks: the in-app address plus the hook GuideBrowser navigates on. */
 export function restoreHelpGuideLinks(html: string): string {
   return html
+    .replace(PLACEHOLDER_ANCHOR_HREF, (_m, anchor: string) => `href="#${anchor}" data-anchor="${anchor}"`)
     .replace(PLACEHOLDER_GUIDE_HREF, (_m, slug: string) => `href="/help?g=${slug}" data-guide="${slug}"`)
     .replace(PLACEHOLDER_PAGE_HREF, (m, enc: string) => {
       let path = ''
