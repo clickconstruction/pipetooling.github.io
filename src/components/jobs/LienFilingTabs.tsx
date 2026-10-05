@@ -919,8 +919,8 @@ export default function LienFilingTabs({
             </>
           ) : (
             <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-              Clear the ✗ items above — each links back to where the fix lives (the customer's address book for
-              property facts, the § 53.056 tab for the notice).
+              Clear the ✗ items above. Property facts are fixed in the customer's address book. The notice is
+              recorded on the § 53.056 tab.
             </p>
           )}
         </div>
