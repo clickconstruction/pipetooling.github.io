@@ -1686,6 +1686,7 @@ exports[`GC mode golden walk > before any step 1`] = `
           "Pay application 1 is back with Summit Roofing. Waiting on a fixed one.",
           "No daily log for Wed Sep 30.",
           "Submittal 07 62 00-01, Sheet metal and flashing, from Summit Roofing waits on us. It is needed today.",
+          "Tri-County Site asked for a change 2 days ago: Rock at the north footings, about 390 cubic yards to break out and haul off, $14,820. Answer it on Bill the customer.",
         ],
         "center": "74%",
         "groups": [
@@ -7128,7 +7129,9 @@ exports[`GC mode golden walk > step 92: Close Fair Oaks D with work still open (
     "lastLog.id": 88,
     "lastLog.text": "Closed Fair Oaks Shops, Building D. 8 things were still open.",
   },
-  "removed": [],
+  "removed": [
+    "projects.fairoaksd.stageProgress.also[10]",
+  ],
 }
 `;
 
