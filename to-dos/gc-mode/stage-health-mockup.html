@@ -1,0 +1,435 @@
+<title>Stage Health Strip</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  /* Layout: a reading column of findings, with each mock-up drawn as the app's own project header (full width, framed). */
+  :root {
+    --bg: #f3f5f9;
+    --fg: #172033;
+    --muted: #5d6880;
+    --line: #d8deea;
+    --frame: #ffffff;
+    --frame-2: #f6f8fc;
+    --accent: #2f6fe4;
+    --accent-soft: #e4edff;
+    --good: #1f8f4e;
+    --good-soft: #e1f5e9;
+    --warn: #b7700b;
+    --warn-soft: #fdf0d9;
+    --bad: #c23a3a;
+    --bad-soft: #fbe3e3;
+    --ours: #7b4fd6;
+    --ours-soft: #efe7fd;
+    --idle: #a5afc3;
+    --font-body: 'Public Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-data: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f1625; --fg: #e6ebf5; --muted: #95a1ba; --line: #2a3550; --frame: #18213a; --frame-2: #1d2843;
+      --accent: #6ea0ff; --accent-soft: #1f3366; --good: #4cc483; --good-soft: #163c2a; --warn: #f0b04a; --warn-soft: #3f2f12;
+      --bad: #f07a7a; --bad-soft: #4a1d22; --ours: #b495ff; --ours-soft: #2f2350; --idle: #55617c; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f1625; --fg: #e6ebf5; --muted: #95a1ba; --line: #2a3550; --frame: #18213a; --frame-2: #1d2843;
+    --accent: #6ea0ff; --accent-soft: #1f3366; --good: #4cc483; --good-soft: #163c2a; --warn: #f0b04a; --warn-soft: #3f2f12;
+    --bad: #f07a7a; --bad-soft: #4a1d22; --ours: #b495ff; --ours-soft: #2f2350; --idle: #55617c; color-scheme: dark;
+  }
+  body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.55; }
+  .page { max-width: 1120px; margin: 0 auto; padding: 32px 20px 64px; display: grid; gap: 40px; }
+  h1, h2, h3 { text-wrap: balance; margin: 0; line-height: 1.2; }
+  h1 { font-size: 2rem; font-weight: 800; letter-spacing: -0.01em; }
+  h2 { font-size: 1.35rem; font-weight: 700; }
+  h3 { font-size: 1.02rem; font-weight: 700; }
+  p { margin: 0; max-width: 68ch; }
+  .eyebrow { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); }
+  .section { display: grid; gap: 16px; }
+  .lede { color: var(--muted); font-size: 1.02rem; }
+  .data { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+
+  /* The frame that stands for the app's project header */
+  .frame { background: var(--frame); border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px; display: grid; gap: 14px; min-width: 0; }
+  .crumb { color: var(--accent); font-size: 0.85rem; }
+  .title-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .title-row strong { font-size: 1.25rem; }
+  .chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 9px; border-radius: 999px; font-size: 0.76rem; font-weight: 600; white-space: nowrap; }
+  .chip.bid { background: var(--warn-soft); color: var(--warn); }
+  .chip.buy { background: var(--accent-soft); color: var(--accent); }
+  .chip.build { background: var(--good-soft); color: var(--good); }
+  .sub { color: var(--muted); font-size: 0.86rem; }
+  .sub a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+
+  /* Life path: Bidding, Buying out, Building, Closed */
+  .path { display: flex; align-items: center; gap: 0; flex-wrap: wrap; font-size: 0.78rem; color: var(--muted); }
+  .path span { display: inline-flex; align-items: center; gap: 6px; }
+  .path span + span::before { content: ''; display: inline-block; width: 22px; height: 2px; background: var(--line); margin: 0 6px; }
+  .path .dot { width: 9px; height: 9px; border-radius: 50%; border: 2px solid var(--idle); display: inline-block; }
+  .path .done .dot { background: var(--good); border-color: var(--good); }
+  .path .now { color: var(--fg); font-weight: 700; }
+  .path .now .dot { background: var(--accent); border-color: var(--accent); }
+
+  /* The strip: verdict, picture, numbers, next */
+  .strip { border-top: 1px solid var(--line); padding-top: 14px; display: grid; gap: 14px; }
+  .verdict-row { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; justify-content: space-between; }
+  .verdict { display: flex; gap: 10px; align-items: baseline; flex: 1 1 26rem; min-width: 0; }
+  .pill { padding: 3px 11px; border-radius: 999px; font-weight: 800; font-size: 0.8rem; letter-spacing: 0.02em; white-space: nowrap; }
+  .pill.good { background: var(--good-soft); color: var(--good); }
+  .pill.warn { background: var(--warn-soft); color: var(--warn); }
+  .pill.bad { background: var(--bad-soft); color: var(--bad); }
+  .verdict p { font-weight: 600; }
+  .next { display: inline-flex; gap: 6px; align-items: center; padding: 6px 12px; border-radius: 7px; background: var(--accent); color: #fff; font-weight: 700; font-size: 0.85rem; white-space: nowrap; }
+  .next small { font-weight: 500; opacity: 0.85; }
+
+  /* The clock: a timeline with dated marks */
+  .clock { position: relative; height: 62px; margin: 0 6px; }
+  .clock .track { position: absolute; left: 0; right: 0; top: 29px; height: 6px; border-radius: 999px; background: var(--line); }
+  .clock .used { position: absolute; left: 0; top: 29px; height: 6px; border-radius: 999px; background: var(--accent); opacity: 0.55; }
+  .clock .mark { position: absolute; top: 22px; width: 2px; height: 20px; background: var(--muted); transform: translateX(-1px); }
+  .clock .mark.today { background: var(--accent); width: 3px; top: 18px; height: 28px; }
+  .clock .mark.late { background: var(--bad); }
+  .clock .mark.end { background: var(--fg); }
+  .clock .label { position: absolute; font-size: 0.72rem; color: var(--muted); white-space: nowrap; transform: translateX(-50%); }
+  .clock .label.up { top: 0; }
+  .clock .label.down { top: 46px; }
+  .clock .label.today { color: var(--accent); font-weight: 700; }
+  .clock .label.late { color: var(--bad); font-weight: 600; }
+  .clock .label.end { color: var(--fg); font-weight: 700; }
+  .clock .label.first { transform: none; }
+  .clock .label.last { transform: translateX(-100%); }
+  .clock .open { position: absolute; top: 29px; height: 6px; right: 0; border-top: 2px dashed var(--bad); border-bottom: 2px dashed var(--bad); background: transparent; }
+
+  /* Trade tiles: one per trade, in every stage */
+  .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+  .tile { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; display: grid; gap: 4px; background: var(--frame-2); min-width: 0; }
+  .tile .t-name { font-weight: 700; font-size: 0.84rem; display: flex; justify-content: space-between; gap: 6px; }
+  .tile .t-main { font-size: 0.82rem; }
+  .tile .t-note { font-size: 0.72rem; color: var(--muted); }
+  .tile.good { border-color: color-mix(in srgb, var(--good) 55%, var(--line)); }
+  .tile.warn { border-color: color-mix(in srgb, var(--warn) 60%, var(--line)); }
+  .tile.bad { border-color: color-mix(in srgb, var(--bad) 60%, var(--line)); background: color-mix(in srgb, var(--bad-soft) 55%, var(--frame-2)); }
+  .tile.ours { border-color: color-mix(in srgb, var(--ours) 55%, var(--line)); }
+  .state { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex-shrink: 0; margin-top: 4px; }
+  .state.good { background: var(--good); }
+  .state.warn { background: var(--warn); }
+  .state.bad { background: var(--bad); }
+  .state.ours { background: var(--ours); }
+  .dots { display: inline-flex; gap: 3px; align-items: center; }
+  .dots i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; border: 1.5px solid var(--idle); }
+  .dots i.on { background: var(--good); border-color: var(--good); }
+  .dots i.wait { background: var(--warn); border-color: var(--warn); }
+  .dots i.us { background: var(--bad); border-color: var(--bad); }
+  .bar { height: 6px; border-radius: 999px; background: var(--line); overflow: hidden; }
+  .bar b { display: block; height: 100%; background: var(--good); border-radius: 999px; }
+  .bar b.warn { background: var(--warn); }
+  .bar b.ours { background: var(--ours); }
+
+  /* Numbers */
+  .numbers { display: flex; gap: 10px 28px; flex-wrap: wrap; }
+  .num { display: grid; gap: 1px; min-width: 0; }
+  .num .k { font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+  .num .v { font-size: 1.1rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .num .v.bad { color: var(--bad); }
+  .num .v.warn { color: var(--warn); }
+  .num .v.good { color: var(--good); }
+  .num .s { font-size: 0.74rem; color: var(--muted); }
+
+  /* Two-bar comparison (building) */
+  .compare { display: grid; gap: 8px; }
+  .cmp-row { display: grid; grid-template-columns: 9.5rem minmax(0, 1fr) 7.5rem; gap: 10px; align-items: center; font-size: 0.82rem; }
+  .cmp-row .label { color: var(--muted); }
+  .cmp-row .val { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .cmp { position: relative; height: 10px; border-radius: 999px; background: var(--line); }
+  .cmp b { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; background: var(--good); }
+  .cmp b.time { background: var(--accent); opacity: 0.6; }
+  .cmp b.billed { background: var(--accent); }
+  .cmp b.paid { background: var(--good); }
+  .cmp i { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--fg); }
+
+  /* Readiness dots legend etc. */
+  .legend { display: flex; gap: 6px 16px; flex-wrap: wrap; font-size: 0.74rem; color: var(--muted); align-items: center; }
+  .legend span { display: inline-flex; gap: 5px; align-items: center; }
+  .rule { font-size: 0.8rem; color: var(--muted); border-left: 3px solid var(--line); padding-left: 10px; max-width: 80ch; }
+
+  /* First idea */
+  .ring-big { width: 92px; height: 92px; flex-shrink: 0; }
+  .first { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
+
+  /* Critique list */
+  .findings { display: grid; gap: 12px; padding: 0; margin: 0; list-style: none; }
+  .findings li { display: grid; gap: 2px; padding: 12px 14px; background: var(--frame); border: 1px solid var(--line); border-radius: 8px; }
+  .findings li strong { font-size: 0.98rem; }
+  .findings li p { color: var(--muted); font-size: 0.92rem; }
+  .callout { border: 1px solid color-mix(in srgb, var(--warn) 50%, var(--line)); background: var(--warn-soft); border-radius: 8px; padding: 12px 14px; }
+  .callout p { color: var(--fg); }
+
+  .grammar { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+  .grammar div { background: var(--frame); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; display: grid; gap: 2px; }
+  .grammar b { font-size: 0.9rem; }
+  .grammar span { font-size: 0.82rem; color: var(--muted); }
+
+  .stage-head { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .why-list { margin: 0; padding-left: 1.1rem; color: var(--muted); font-size: 0.9rem; display: grid; gap: 4px; max-width: 80ch; }
+  .plan { margin: 0; padding-left: 1.3rem; display: grid; gap: 10px; max-width: 80ch; }
+  .plan li p { color: var(--muted); font-size: 0.92rem; }
+  .ask { display: grid; gap: 10px; }
+  .ask div { background: var(--frame); border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; display: grid; gap: 2px; }
+  .ask div p { color: var(--muted); font-size: 0.9rem; }
+
+  @media (max-width: 720px) {
+    .grammar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .cmp-row { grid-template-columns: 6.5rem minmax(0, 1fr) 5.5rem; }
+    .clock .label.minor { display: none; }
+    .clock .label.today { top: 46px; }
+  }
+  @media (max-width: 420px) {
+    .grammar { grid-template-columns: minmax(0, 1fr); }
+    .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+</style>
+
+<main class="page">
+  <header class="section">
+    <span class="eyebrow">GC mode · project page · proposal for the owner</span>
+    <h1>How is this stage going?</h1>
+    <p class="lede">You said the project page does a poor job of showing where a job is. Below: a first idea, why it is not good enough, and a revised design drawn for each stage with three of our made-up jobs and their real numbers from the prototype.</p>
+  </header>
+
+  <!-- 1. First idea -->
+  <section class="section" aria-labelledby="s1">
+    <span class="eyebrow">1 · First idea</span>
+    <h2 id="s1">Put the life path and the ring at the top</h2>
+    <p>The board already has a ring that counts steps. The first idea moves it onto the project page, larger, beside a path of the four stages.</p>
+    <div class="frame" role="img" aria-label="First idea: the stage path and a big ring on Boerne Retail Shell">
+      <span class="crumb">← Project Board</span>
+      <div class="title-row"><strong>Boerne Retail Shell</strong><span class="chip bid">Bidding to the customer</span></div>
+      <div class="sub">1420 River Rd, Boerne · 8,400 sq ft shell · Customer: <a>Cibolo Creek Partners</a> · Architect: <a>Marsh &amp; Vale Architects</a></div>
+      <div class="strip">
+        <div class="first">
+          <svg class="ring-big" viewBox="0 0 100 100" aria-hidden="true">
+            <circle cx="50" cy="50" r="40" fill="none" stroke="var(--line)" stroke-width="10"></circle>
+            <circle cx="50" cy="50" r="40" fill="none" stroke="var(--warn)" stroke-width="10" stroke-linecap="round" stroke-dasharray="140.7 251.3" transform="rotate(-90 50 50)"></circle>
+            <text x="50" y="47" text-anchor="middle" font-size="17" font-weight="800" fill="var(--fg)" font-family="Public Sans, sans-serif">14/25</text>
+            <text x="50" y="63" text-anchor="middle" font-size="10" fill="var(--muted)" font-family="Public Sans, sans-serif">steps</text>
+          </svg>
+          <div style="display:grid;gap:8px;min-width:0">
+            <div class="path"><span class="now"><i class="dot"></i>Bidding</span><span><i class="dot"></i>Buying out</span><span><i class="dot"></i>Building</span><span><i class="dot"></i>Closed</span></div>
+            <p style="font-weight:600">14 of 25 steps done before our bid can go in.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. Critique -->
+  <section class="section" aria-labelledby="s2">
+    <span class="eyebrow">2 · Is this the best we can do?</span>
+    <h2 id="s2">No. It counts steps. It does not say how the stage is going.</h2>
+    <ul class="findings">
+      <li><strong>A count of steps is not health.</strong><p>14 of 25 with 6 days left is trouble. 14 of 25 with 20 days left is fine. Health is progress measured against the clock, and the ring has no clock.</p></li>
+      <li><strong>The steps do not weigh the same.</strong><p>Sending our bid is one step, the same as one W-9. A trade with no quote at all is one step, the same as a quote that needs confirming.</p></li>
+      <li><strong>It hides who is in the way.</strong><p>Every tab on this page is organized by trade. A glance at the top should show the trades: which are fine, which need us, which are a hole.</p></li>
+      <li><strong>It says nothing about what to do next.</strong><p>The office opens a project to act. The top of the page should name the one thing to do now, and take you there.</p></li>
+      <li><strong>Building health is buried.</strong><p>Fair Oaks D is 72% done where 76% was planned, and dry-in finished 7 days late. All of that sits in the ring card's small "Also" list. Money is missing too: the work in place is ahead of what we have billed.</p></li>
+    </ul>
+    <div class="callout">
+      <p><strong>Two counts disagree today.</strong> Boerne's header says trades <strong>4 of 8 covered</strong>. The ring says <strong>3 of 8</strong> have a quote we'll use. The difference is Roofing: Summit's quote has a line with no cost (roof curbs). The header counts it, the ring does not. The new design uses one rule, so one page cannot give two answers.</p>
+    </div>
+    <div class="callout">
+      <p><strong>Buying out has no clock.</strong> Helotes has no start date, so nothing can say it is behind. The fix is in the design below: ask for a target start date when we mark a bid won.</p>
+    </div>
+  </section>
+
+  <!-- 3. Revised -->
+  <section class="section" aria-labelledby="s3">
+    <span class="eyebrow">3 · Revised</span>
+    <h2 id="s3">One strip under the title, the same shape in every stage</h2>
+    <p>The strip replaces the loose numbers on the right of today's header. It reads the same way at every stage, so the eye learns where to look:</p>
+    <div class="grammar">
+      <div><b>Verdict</b><span>On track, Watch or Behind, with the reason in one sentence.</span></div>
+      <div><b>Clock</b><span>The stage's own dates, with today on them.</span></div>
+      <div><b>Trades</b><span>One tile a trade. Its color is its state in this stage.</span></div>
+      <div><b>Next</b><span>The one thing to do now. It opens the right tab.</span></div>
+    </div>
+    <div class="legend" aria-label="What the colors mean">
+      <span><i class="state good"></i>done for this stage</span>
+      <span><i class="state warn"></i>under way, or waiting on a company</span>
+      <span><i class="state bad"></i>a hole, a problem, or waiting on us</span>
+      <span><i class="state ours"></i>our own crew</span>
+    </div>
+  </section>
+
+  <!-- 3A Bidding -->
+  <section class="section" aria-labelledby="s3a">
+    <div class="stage-head"><h3 id="s3a">Bidding: the trades against the bid date</h3><span class="chip bid">Boerne Retail Shell</span></div>
+    <div class="frame">
+      <span class="crumb">← Project Board</span>
+      <div class="title-row"><strong>Boerne Retail Shell</strong><span class="chip bid">Bidding to the customer</span></div>
+      <div class="sub">1420 River Rd, Boerne · 8,400 sq ft shell, three tenant bays · Customer: <a>Cibolo Creek Partners</a> · Architect: <a>Marsh &amp; Vale Architects</a></div>
+      <div class="path"><span class="now"><i class="dot"></i>Bidding</span><span><i class="dot"></i>Buying out</span><span><i class="dot"></i>Building</span><span><i class="dot"></i>Closed</span></div>
+      <div class="strip">
+        <div class="verdict-row">
+          <div class="verdict"><span class="pill bad">Behind</span><p>6 days left and 2 trades have no quote: Structural steel and Fire sprinkler.</p></div>
+          <span class="next">Next: ask more companies for Structural steel <small>→ Trades</small></span>
+        </div>
+        <div class="clock" aria-label="Bid set Sep 18, Addendum 1 Sep 29, today Oct 2, questions close Oct 5, bid due Oct 8">
+          <div class="track"></div>
+          <div class="used" style="width:70%"></div>
+          <i class="mark" style="left:0%"></i><span class="label up first" style="left:0%">Sep 18 · Bid set</span>
+          <i class="mark" style="left:55%"></i><span class="label down minor" style="left:55%">Sep 29 · Addendum 1</span>
+          <i class="mark today" style="left:70%"></i><span class="label up today" style="left:70%">Today · Oct 2</span>
+          <i class="mark" style="left:85%"></i><span class="label down minor" style="left:85%">Oct 5 · questions close</span>
+          <i class="mark end" style="left:100%"></i><span class="label up end last" style="left:100%">Oct 8 · bid due</span>
+        </div>
+        <div class="tiles">
+          <div class="tile good"><span class="t-name">Sitework <span class="dots"><i class="on"></i><i class="on"></i></span></span><span class="t-main data">$184,900</span><span class="t-note">Lonestar Earthworks</span></div>
+          <div class="tile good"><span class="t-name">Concrete <span class="dots"><i class="on"></i><i class="on"></i></span></span><span class="t-main data">$219,800</span><span class="t-note">Guadalupe · $7,800 over budget</span></div>
+          <div class="tile bad"><span class="t-name">Structural steel <span class="dots"><i></i><i></i></span></span><span class="t-main">No quote</span><span class="t-note">Bexar not opened · Comal passed</span></div>
+          <div class="tile warn"><span class="t-name">Roofing <span class="dots"><i class="on"></i><i></i></span></span><span class="t-main data">$112,300 + ?</span><span class="t-note">Roof curbs have no cost</span></div>
+          <div class="tile ours"><span class="t-name">Plumbing <span class="state ours"></span></span><span class="t-main data">$86,400</span><span class="t-note">Our own crew · BP 512</span></div>
+          <div class="tile warn"><span class="t-name">HVAC <span class="dots"><i class="on"></i><i class="wait"></i></span></span><span class="t-main">Pick 1 of 2</span><span class="t-note">Cool Breeze priced old plans</span></div>
+          <div class="tile warn"><span class="t-name">Electrical <span class="dots"><i class="on"></i><i class="wait"></i></span></span><span class="t-main">Pick 1 of 2</span><span class="t-note">Voltage Brothers priced old plans</span></div>
+          <div class="tile bad"><span class="t-name">Fire sprinkler <span class="dots"><i></i><i></i></span></span><span class="t-main">No quote</span><span class="t-note">Ask more companies</span></div>
+        </div>
+        <div class="numbers">
+          <div class="num"><span class="k">Price so far</span><span class="v">$824,733 <span style="color:var(--warn)">+ ?</span></span><span class="s">2 holes, 1 line with no cost</span></div>
+          <div class="num"><span class="k">Trades with a number</span><span class="v warn">3 of 8</span><span class="s">one rule, the ring's</span></div>
+          <div class="num"><span class="k">Our bid</span><span class="v">Not sent</span><span class="s">due Thu Oct 8</span></div>
+        </div>
+      </div>
+    </div>
+    <ul class="why-list">
+      <li>The dots on a tile are its quotes against the 2 we want. Amber means a quote on old plans.</li>
+      <li>The tiles replace "4 of 8 covered" with the trades themselves, so the hole is where you look first.</li>
+      <li>A draft of the verdict rule: <b>Behind</b> when a trade has no quote inside 7 days of the bid, or anything is left inside 2 days. <b>Watch</b> when anything is left. <b>On track</b> when every trade has a number on the newest plans.</li>
+    </ul>
+  </section>
+
+  <!-- 3B Buying out -->
+  <section class="section" aria-labelledby="s3b">
+    <div class="stage-head"><h3 id="s3b">Buying out: ready to start, trade by trade</h3><span class="chip buy">Helotes Dental Office</span></div>
+    <div class="frame">
+      <span class="crumb">← Project Board</span>
+      <div class="title-row"><strong>Helotes Dental Office</strong><span class="chip buy">Buying out</span></div>
+      <div class="sub">9811 Bandera Rd, Suite 140, Helotes · 3,100 sq ft tenant finish out · Customer: <a>Dr. Priya Raman</a> · Architect: <a>Studio Ocotillo</a></div>
+      <div class="path"><span class="done"><i class="dot"></i>Bidding</span><span class="now"><i class="dot"></i>Buying out</span><span><i class="dot"></i>Building</span><span><i class="dot"></i>Closed</span></div>
+      <div class="strip">
+        <div class="verdict-row">
+          <div class="verdict"><span class="pill warn">Watch</span><p>No start date yet. 2 of 5 trades are ready. Millwork is not awarded.</p></div>
+          <span class="next">Next: award Millwork <small>→ Contracts</small></span>
+        </div>
+        <div class="clock" aria-label="Contract signed Sep 4, today Oct 2, no start date">
+          <div class="track"></div>
+          <div class="used" style="width:62%"></div>
+          <i class="mark" style="left:0%"></i><span class="label up first" style="left:0%">Sep 4 · contract signed</span>
+          <i class="mark today" style="left:62%"></i><span class="label up today" style="left:62%">Today · Oct 2</span>
+          <div class="open" style="left:63%"></div>
+          <span class="label up late last" style="left:100%">No start date · set one</span>
+        </div>
+        <div class="tiles">
+          <div class="tile good"><span class="t-name">Framing and drywall <span class="state good"></span></span><span class="dots" aria-label="award, master agreement, insurance, W-9, statement of work: all done"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span><span class="t-note">Ready · Hill Country Interiors</span></div>
+          <div class="tile warn"><span class="t-name">Electrical <span class="state warn"></span></span><span class="dots"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="wait"></i></span><span class="t-note">Statement of work sent, not signed</span></div>
+          <div class="tile bad"><span class="t-name">HVAC <span class="state bad"></span></span><span class="dots"><i class="on"></i><i class="wait"></i><i class="on"></i><i class="on"></i><i class="us"></i></span><span class="t-note">Statement of work drafted, not sent by us</span></div>
+          <div class="tile ours"><span class="t-name">Plumbing <span class="state ours"></span></span><span class="t-main">Our own crew</span><span class="t-note">Ready · J 1042</span></div>
+          <div class="tile bad"><span class="t-name">Millwork <span class="state bad"></span></span><span class="dots"><i class="us"></i><i></i><i></i><i></i><i></i></span><span class="t-note">Not awarded · Cedar &amp; Pine $39,800</span></div>
+        </div>
+        <div class="legend"><span>Dots, in order: award · master agreement · insurance · W-9 · statement of work</span></div>
+        <div class="numbers">
+          <div class="num"><span class="k">Our side</span><span class="v warn">1 of 4</span><span class="s">contract signed Sep 4 · permit, start date, schedule to go</span></div>
+          <div class="num"><span class="k">Trades ready</span><span class="v warn">2 of 5</span><span class="s">2 papers wait on companies, 2 on us</span></div>
+          <div class="num"><span class="k">Price, as signed</span><span class="v">$338,767</span><span class="s">Dr. Priya Raman</span></div>
+        </div>
+      </div>
+    </div>
+    <ul class="why-list">
+      <li>The same tiles as Bidding, now showing each trade's five papers. Red means waiting on us, amber means waiting on them.</li>
+      <li>Without a start date the clock has no end, so the strip says so in red and asks for one.</li>
+      <li>A draft of the verdict rule: <b>Behind</b> when the start date is inside 7 days and a trade is not ready. <b>Watch</b> when there is no start date or anything is left. <b>On track</b> when every trade is ready before the start.</li>
+    </ul>
+  </section>
+
+  <!-- 3C Building -->
+  <section class="section" aria-labelledby="s3c">
+    <div class="stage-head"><h3 id="s3c">Building: work done against time, and money against work</h3><span class="chip build">Fair Oaks Shops, Building D</span></div>
+    <div class="frame">
+      <span class="crumb">← Project Board</span>
+      <div class="title-row"><strong>Fair Oaks Shops, Building D</strong><span class="chip build">Building</span></div>
+      <div class="sub">7920 Fair Oaks Pkwy, Fair Oaks Ranch · 9,600 sq ft retail shell · Customer: <a>Cibolo Creek Partners</a> · Architect: <a>Marsh &amp; Vale Architects</a></div>
+      <div class="path"><span class="done"><i class="dot"></i>Bidding</span><span class="done"><i class="dot"></i>Buying out</span><span class="now"><i class="dot"></i>Building</span><span><i class="dot"></i>Closed</span></div>
+      <div class="strip">
+        <div class="verdict-row">
+          <div class="verdict"><span class="pill warn">Watch</span><p>3 days behind the plan. Dry-in finished 7 days late. The finish still holds at Dec 11.</p></div>
+          <span class="next">Next: answer Summit's flashing submittal, needed today <small>→ Submittals</small></span>
+        </div>
+        <div class="clock" aria-label="Start Jul 6, slab Aug 28, dry-in Sep 25 finished late, today Oct 2, rough-in inspection Oct 13, substantial completion Dec 11">
+          <div class="track"></div>
+          <div class="used" style="width:56%"></div>
+          <i class="mark" style="left:0%"></i><span class="label up first" style="left:0%">Jul 6 · start</span>
+          <i class="mark" style="left:33%"></i><span class="label down minor" style="left:33%">Aug 28 · slab ✓</span>
+          <i class="mark late" style="left:51%"></i><span class="label up late minor" style="left:46%">Sep 25 · dry-in, 7 days late</span>
+          <i class="mark today" style="left:56%"></i><span class="label down today" style="left:58%">Today · Oct 2</span>
+          <i class="mark" style="left:63%"></i><span class="label up minor" style="left:70%">Oct 13 · rough-in inspection</span>
+          <i class="mark end" style="left:100%"></i><span class="label up end last" style="left:100%">Dec 11 · finish</span>
+        </div>
+        <div class="compare">
+          <div class="cmp-row"><span class="label">Work done</span><span class="cmp"><b style="width:72%"></b><i style="left:76%" title="Planned for today: 76%"></i></span><span class="val">72% · plan 76%</span></div>
+          <div class="cmp-row"><span class="label">Time used</span><span class="cmp"><b class="time" style="width:56%"></b></span><span class="val">88 of 158 days</span></div>
+          <div class="cmp-row"><span class="label">Billed the customer</span><span class="cmp"><b class="billed" style="width:64%"></b><i style="left:74%" title="Work in place: about 74%"></i></span><span class="val">64% · work 74%</span></div>
+          <div class="cmp-row"><span class="label">Paid us</span><span class="cmp"><b class="paid" style="width:38%"></b></span><span class="val">38% of the price</span></div>
+        </div>
+        <div class="tiles">
+          <div class="tile good"><span class="t-name">Sitework <span>100%</span></span><span class="bar"><b style="width:100%"></b></span><span class="t-note">Tri-County Site</span></div>
+          <div class="tile good"><span class="t-name">Concrete <span>100%</span></span><span class="bar"><b style="width:100%"></b></span><span class="t-note">1 punch item to fix</span></div>
+          <div class="tile bad"><span class="t-name">Structural steel <span>97%</span></span><span class="bar"><b class="warn" style="width:97%"></b></span><span class="t-note">Draw 2 waits on our approval</span></div>
+          <div class="tile bad"><span class="t-name">Roofing <span>70%</span></span><span class="bar"><b class="warn" style="width:70%"></b></span><span class="t-note">Their submittal waits on us, needed today</span></div>
+          <div class="tile ours"><span class="t-name">Plumbing <span>65%</span></span><span class="bar"><b class="ours" style="width:65%"></b></span><span class="t-note">Our own crew</span></div>
+          <div class="tile bad"><span class="t-name">Electrical <span>54%</span></span><span class="bar"><b class="warn" style="width:54%"></b></span><span class="t-note">Service inspection failed Sep 28</span></div>
+          <div class="tile warn"><span class="t-name">HVAC <span>27%</span></span><span class="bar"><b class="warn" style="width:27%"></b></span><span class="t-note">Kendall Air</span></div>
+        </div>
+        <div class="numbers">
+          <div class="num"><span class="k">Finish</span><span class="v good">Dec 11</span><span class="s">on the plan, 70 days left</span></div>
+          <div class="num"><span class="k">Not billed yet</span><span class="v warn">about $149K</span><span class="s">work in place past pay application 3</span></div>
+          <div class="num"><span class="k">Billed, not paid</span><span class="v">$384,511</span><span class="s">retainage held $95,633</span></div>
+          <div class="num"><span class="k">Waiting on us</span><span class="v bad">6</span><span class="s">2 draws, a submittal, a daily log, a punch check, look-ahead marks</span></div>
+        </div>
+      </div>
+    </div>
+    <ul class="why-list">
+      <li>The two bars that matter most sit together: work done against the plan (the black tick), and billed against the work in place.</li>
+      <li>Work in place is each trade's reported percent weighted by its statement of work, the way the ring already weighs it.</li>
+      <li>The money rows follow the Money tab's rule in the real build: the owner and the controller see them, the rest of the team sees the schedule half.</li>
+      <li>A draft of the verdict rule: <b>Behind</b> when the finish date moves, or the plan slips more than 7 days. <b>Watch</b> when the plan slips at all, a milestone is late, or an inspection failed. <b>On track</b> otherwise.</li>
+    </ul>
+  </section>
+
+  <!-- 4. Asked again -->
+  <section class="section" aria-labelledby="s4">
+    <span class="eyebrow">4 · Asked again: is this the best we can do?</span>
+    <h2 id="s4">Closer. Three things decided on the way, and three left for you.</h2>
+    <div class="ask">
+      <div><strong>The tiles are the same objects in every stage.</strong><p>An early draft used a different chart per stage. Tiles that stay the trades while the stage changes what they show make the job feel like one story: quotes, then papers, then work.</p></div>
+      <div><strong>A verdict in words, not a score.</strong><p>A 0 to 100 health score was considered and dropped. It hides why. On track, Watch and Behind each come with the reason in one sentence, and the rule is written down.</p></div>
+      <div><strong>The ring stays on the board.</strong><p>The board row keeps the ring for a quick scan across jobs. The project page gets the strip, and the ring's card on the board uses the same counts, so the numbers match everywhere.</p></div>
+    </div>
+  </section>
+
+  <!-- 5. Plan -->
+  <section class="section" aria-labelledby="s5">
+    <span class="eyebrow">5 · The plan, if you like it</span>
+    <h2 id="s5">How it would be built in the prototype</h2>
+    <ol class="plan">
+      <li><strong>One rule for "a trade has a number".</strong><p>A quote with a line that has no cost does not count. The header, the ring and the strip all read it.</p></li>
+      <li><strong>The health kernel, tested.</strong><p>One calculation per stage gives the verdict, its reason, the next step and the tab it opens, the clock's marks, the tiles and the numbers. It builds on what the ring, Get started, the schedule and Bill the customer already count.</p></li>
+      <li><strong>The strip in the project header.</strong><p>It takes the place of today's numbers on the right. On a phone it shows the verdict, the next step and the tiles. The header is the Board lane's, so we build it together.</p></li>
+      <li><strong>A target start date when we win.</strong><p>"We won this" asks for one, so buying out has a clock from day one.</p></li>
+      <li><strong>The walkthrough learns the strip.</strong><p>"Walk me through this job" gets a stop on it.</p></li>
+    </ol>
+    <h3>What I need from you</h3>
+    <div class="ask">
+      <div><strong>The verdict rules.</strong><p>The drafts are under each stage above. Change any threshold you want: 7 days, 2 days, a slip of 7 days.</p></div>
+      <div><strong>Money in the Building strip.</strong><p>Show "billed against work in place" to the owner and the controller only, as on the Money tab? Or leave money off the project page?</p></div>
+      <div><strong>A target start date at "We won this".</strong><p>Should it be required, or asked with a skip?</p></div>
+    </div>
+  </section>
+</main>

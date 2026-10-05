@@ -1,0 +1,101 @@
+import { describe, expect, it } from 'vitest'
+import { initialGcState } from './gcFixture'
+import { gcReducer } from './gcReducer'
+import { stageHealth, tradeHasNumber } from './gcStageHealth'
+import type { GcState } from './gcTypes'
+
+const project = (state: GcState, id: string) => {
+  const p = state.projects.find((x) => x.id === id)
+  if (!p) throw new Error(`no project ${id}`)
+  return p
+}
+
+describe('how the stage is going: bidding', () => {
+  it('is behind with trades that have no quote this close to the bid, and says which', () => {
+    const state = initialGcState()
+    const h = stageHealth(state, project(state, 'boerne'))
+    expect(h?.verdict).toBe('behind')
+    expect(h?.why).toBe('6 days left and 2 trades have no quote: Structural steel and Fire sprinkler.')
+    expect(h?.next).toEqual({ words: 'Ask more companies for Structural steel', tab: 'packages' })
+    expect(h?.tiles.map((t) => `${t.trade}:${t.state}`)).toEqual([
+      'Sitework:good',
+      'Concrete:good',
+      'Structural steel:bad',
+      'Roofing:warn',
+      'Plumbing:ours',
+      'HVAC:warn',
+      'Electrical:warn',
+      'Fire sprinkler:bad',
+    ])
+    expect(h?.tiles.find((t) => t.trade === 'HVAC')?.dots).toEqual(['wait', 'on'])
+    expect(h?.clock.marks.map((m) => `${m.on} ${m.label}`)).toEqual(['2026-09-18 Bid set', '2026-09-29 Addendum 1', '2026-10-05 questions close', '2026-10-08 bid due'])
+    expect(h?.numbers[0]).toMatchObject({ label: 'Trades with a number', value: '3 of 8' })
+  })
+
+  it('does not count a carried quote with a line that has no cost: one rule for the header, the ring and the strip', () => {
+    const state = initialGcState()
+    const roofing = project(state, 'boerne').packages.find((p) => p.trade === 'Roofing')
+    expect(roofing && tradeHasNumber(state, roofing)).toBe(false)
+  })
+
+  it('watches a bid with time left, and is on track once our bid is in', () => {
+    const state = initialGcState()
+    expect(stageHealth(state, project(state, 'padb'))?.verdict).toBe('watch')
+    const sent = { ...state, projects: state.projects.map((p) => (p.id === 'boerne' ? { ...p, ourBidSentOn: '2026-10-02' } : p)) }
+    const h = stageHealth(sent, project(sent, 'boerne'))
+    expect(h?.verdict).toBe('on track')
+    expect(h?.next).toBeNull()
+  })
+
+  it('says nothing for a bid we lost', () => {
+    const state = gcReducer(initialGcState(), { type: 'markLost', projectId: 'boerne', why: 'price', wonBy: null, note: '' })
+    expect(stageHealth(state, project(state, 'boerne'))).toBeNull()
+  })
+})
+
+describe('how the stage is going: buying out', () => {
+  it('watches a job with no start date, names what waits on us, and asks for the date', () => {
+    const state = initialGcState()
+    const h = stageHealth(state, project(state, 'helotes'))
+    expect(h?.verdict).toBe('watch')
+    expect(h?.why).toBe('No start date yet. 2 of 5 trades are ready. Millwork is not awarded.')
+    expect(h?.next).toEqual({ words: 'Award Millwork', tab: 'contracts' })
+    expect(h?.askStartDate).toBe(true)
+    expect(h?.clock.to).toBeNull()
+    const hvac = h?.tiles.find((t) => t.trade === 'HVAC')
+    expect(hvac?.state).toBe('bad')
+    expect(hvac?.dots).toEqual(['on', 'wait', 'on', 'on', 'us'])
+    expect(hvac?.note).toBe('Statement of work drafted, not sent')
+    expect(h?.numbers[1]).toMatchObject({ value: '2 of 5', note: '2 papers wait on companies, 2 on us' })
+  })
+
+  it('is behind when the start is a week off and a trade is not ready', () => {
+    const state = gcReducer(initialGcState(), { type: 'setStartDate', projectId: 'helotes', date: '2026-10-06' })
+    const h = stageHealth(state, project(state, 'helotes'))
+    expect(h?.verdict).toBe('behind')
+    expect(h?.why).toBe('Start in 4 days and 3 of 5 trades are not ready.')
+    expect(h?.askStartDate).toBe(false)
+    expect(h?.clock.to).toBe('2026-10-06')
+  })
+})
+
+describe('how the stage is going: building', () => {
+  it('watches a job behind the plan, puts work against time and money against work, and names what waits on us', () => {
+    const state = initialGcState()
+    const h = stageHealth(state, project(state, 'fairoaksd'))
+    expect(h?.verdict).toBe('watch')
+    expect(h?.why).toBe('3 days behind the plan. Dry-in is 7 days late. The finish holds at Dec 11.')
+    expect(h?.next?.tab).toBe('submittals')
+    expect(h?.bars.map((b) => `${b.label} ${b.value}`)).toEqual(['Work done 72% · plan 76%', 'Time used 93 of 163 days', 'Billed the customer 64% · work 74%', 'Paid us 38% of the price'])
+    expect(h?.numbers.find((n) => n.label === 'Not billed yet')?.value).toBe('about $149,000')
+    expect(h?.numbers.find((n) => n.label === 'Waiting on us')?.value).toBe('6')
+    expect(h?.tiles.find((t) => t.trade === 'Electrical')).toMatchObject({ state: 'bad', pct: 54 })
+    // Money rows are marked, so a teammate's strip can leave them out in the real build.
+    expect(h?.bars.filter((b) => b.money).map((b) => b.kind)).toEqual(['billed', 'paid'])
+  })
+
+  it('is on track once every trade has reported all its work', () => {
+    const state = initialGcState()
+    expect(stageHealth(state, project(state, 'stoneoak'))?.verdict).toBe('on track')
+  })
+})

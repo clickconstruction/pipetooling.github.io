@@ -63,6 +63,8 @@ import {
   proposalTotals,
   shortDate,
   stageProgress,
+  stageHealth,
+  tradeHasNumber,
   weekdayDate,
   type BoardGroupBy,
   type BoardSection,
@@ -73,6 +75,7 @@ import {
   type GcState,
 } from '../lib/gcMode/gcModel'
 import { GC_PROJECT_TOUR_STEPS, GC_TOUR_STEPS } from '../lib/gcMode/gcTour'
+import { GcStageHealth } from '../components/gc/GcStageHealth'
 
 /**
  * GC mode — design spike (2026-10-02). Bids, mirrored: we are the general contractor, the plans
@@ -513,7 +516,7 @@ export default function GcMode() {
 
       {boardTab === 'projects' && project && (
         <div>
-          <ProjectHeader project={project} today={state.today} onBack={() => setProjectId(null)} onPlans={() => setPlansForId(project.id)} onCustomer={() => setCustomerId(project.customerId)} onArchitect={() => setCustomerId(project.architectId)} onCompany={setCustomerId} />
+          <ProjectHeader state={state} dispatch={dispatch} onTab={setTab} project={project} today={state.today} onBack={() => setProjectId(null)} onPlans={() => setPlansForId(project.id)} onCustomer={() => setCustomerId(project.customerId)} onArchitect={() => setCustomerId(project.architectId)} onCompany={setCustomerId} />
           <div style={{ display: 'flex', alignItems: 'center', borderBottom: '2px solid var(--border)', marginBottom: '1rem', flexWrap: 'wrap' }}>
             {PROJECT_TABS.map((t) => (
               <button key={t.key} type="button" style={tabButton(tab === t.key)} onClick={() => setTab(t.key)} data-tour={`gc-ptab-${t.key}`}>
@@ -1078,6 +1081,9 @@ function ProjectRow({
 }
 
 function ProjectHeader({
+  state,
+  dispatch,
+  onTab,
   project,
   today,
   onBack,
@@ -1086,6 +1092,10 @@ function ProjectHeader({
   onArchitect,
   onCompany,
 }: {
+  state: GcState
+  dispatch: Dispatch<GcAction>
+  /** Opens a project tab: the strip's next step. */
+  onTab: (tab: ProjectTab) => void
   project: GcProject
   today: string
   onBack: () => void
@@ -1098,6 +1108,9 @@ function ProjectHeader({
   const totals = proposalTotals(project)
   const owner = priceToOwner(project)
   const stage = STAGES.find((s) => s.key === project.stage)
+  // The stage-health strip (the owner, 2026-10-04) shows the trades; the header keeps its Trades count only where there is no strip.
+  const health = stageHealth(state, project)
+  const withNumber = project.packages.filter((p) => tradeHasNumber(state, p)).length
   return (
     <Card style={{ marginBottom: '0.75rem' }} dataTour="gc-project-header">
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-start' }}>
@@ -1129,16 +1142,18 @@ function ProjectHeader({
         </div>
         <div style={{ display: 'flex', gap: '1.75rem', flexWrap: 'wrap' }}>
           {project.stage === 'pursuing' && project.bidDue && !project.lostOn && <DueBlock project={project} today={today} />}
-          <Stat
-            label="Trades"
-            tone={totals.holes.length > 0 ? 'red' : 'green'}
-            value={
-              <>
-                {project.packages.length - totals.holes.length} of {project.packages.length}
-                <span style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, lineHeight: 1.1 }}>covered</span>
-              </>
-            }
-          />
+          {!health && (
+            <Stat
+              label="Trades"
+              tone={withNumber < project.packages.length ? 'red' : 'green'}
+              value={
+                <>
+                  {withNumber} of {project.packages.length}
+                  <span style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, lineHeight: 1.1 }}>with a number</span>
+                </>
+              }
+            />
+          )}
           <Stat
             label="Plans"
             value={
@@ -1159,6 +1174,7 @@ function ProjectHeader({
           />
         </div>
       </div>
+      <GcStageHealth state={state} project={project} dispatch={dispatch} onTab={onTab} />
     </Card>
   )
 }
