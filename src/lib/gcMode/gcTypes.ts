@@ -1217,7 +1217,7 @@ export interface OwnerPayAppSent {
   /** Materials stored on site, not yet in place, on each line when it went (column F). Absent: none. */
   storedByLine?: Record<string, number>
   /** Our reminders to pay it, oldest first: the day sent, the pay-by day we asked for, the office's line. Never a promise. */
-  reminders?: { on: string; by: string; note: string }[]
+  reminders?: { on: string; by: string; note: string; subject?: string; lines?: string[] }[]
 }
 
 /** A pay application the office sent back: the draw as the trade sent it, why, and what we see. */

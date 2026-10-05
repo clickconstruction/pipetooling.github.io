@@ -68,7 +68,8 @@ export function payReminderStep(state: GcState, project: GcProject, number: numb
   }
 }
 
-function greeting(customer: GcCustomer | undefined, fallback: string): string {
+/** How the email greets them: the contact's first name, or a title with the last name ("Dr. Raman"). */
+export function customerGreeting(customer: GcCustomer | undefined, fallback: string): string {
   // "Dr. Priya Raman" is greeted "Dr. Raman": a title keeps the last name (the Board's rule).
   const words = (customer?.contact || customer?.name || fallback).split(/\s+/)
   const titled = /^(Dr|Mr|Mrs|Ms)\.?$/i.test(words[0] ?? '')
@@ -97,7 +98,7 @@ export function payReminderEmail(
   return {
     subject: `Reminder: ${name} for ${project.name}, ${money(open)}`,
     lines: [
-      `Hello ${greeting(customer, project.owner)},`,
+      `Hello ${customerGreeting(customer, project.owner)},`,
       `${Name} for ${project.name} has ${money(open)} still open. It was due ${weekdayDate(due.on)}, ${due.promised ? 'the day you gave' : 'the day we expected it'}.`,
       ...(lastPaid ? [`Thank you for the ${money(lastPaid.amount)} you paid ${shortDate(lastPaid.on)}.`] : []),
       ...(interest && pct ? [`Interest of ${pct}% a month runs on it from ${shortDate(interest.from)}. ${money(interest.amount)} has built up so far.`] : []),
