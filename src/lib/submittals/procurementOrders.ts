@@ -6,7 +6,7 @@
  */
 import { isCarrier } from './itemParts'
 import { describeLeadTime } from './leadTime'
-import { approveBy, daysBetween, PROCUREMENT_STAGE_LABELS, shortDate, type ProcurementRow } from './procurementLog'
+import { approveBy, daysAgoWords, daysBetween, PROCUREMENT_STAGE_LABELS, shortDate, type ProcurementRow } from './procurementLog'
 
 export type OrderTone = 'go' | 'soon' | 'past' | 'late' | 'done' | 'back' | 'quiet'
 export type OrderGroupKind = 'to_place' | 'placed' | 'fixture' | 'on_site'
@@ -209,4 +209,20 @@ export function rowsToMark(group: Pick<OrderGroup, 'rows'>, ticked: ReadonlySet<
 export function theyWrote(r: Pick<ProcurementRow, 'reviewNote'>): string {
   const note = (r.reviewNote ?? '').trim()
   return note ? `They wrote “${note}”` : 'No note from them'
+}
+
+/**
+ * An order's date in words, for a card with no calendar (PR 4). An order to place says how far
+ * off its order-by date is, to follow the date in its name: *in 8 days* · *tomorrow* · *2 days
+ * ago*. The others say the whole of it: *arrives 10/29, 9 days late* · *answer by 11/10* ·
+ * *✓ On site 10/15*. '' when it has none.
+ */
+export function groupDateWords(g: Pick<OrderGroup, 'kind' | 'rows' | 'right' | 'rightTone' | 'tone'>, asOf: string): { words: string; tone: OrderTone } {
+  if (g.kind === 'to_place') {
+    const orderBy = g.rows.map((r) => r.orderBy).filter((d): d is string => !!d).sort()[0]
+    if (!orderBy) return { words: '', tone: 'quiet' }
+    return { words: daysBetween(asOf, orderBy) === 1 ? 'tomorrow' : daysAgoWords(orderBy, asOf), tone: g.tone === 'go' ? 'quiet' : g.tone }
+  }
+  if (g.kind === 'placed') return { words: g.right.replace(/^Arrives/, 'arrives').replace(/(\d+) d late$/, (_, d: string) => `${d} day${d === '1' ? '' : 's'} late`), tone: g.rightTone }
+  return { words: g.right, tone: g.kind === 'on_site' ? 'done' : 'quiet' }
 }
