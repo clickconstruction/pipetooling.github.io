@@ -17,13 +17,15 @@ type PayApplicationInsert = Database['public']['Tables']['job_pay_applications']
 
 const BASE_COLS =
   'id, job_id, application_number, period_to, application_date, fields, contract_sum_to_date, total_completed_and_stored, retainage_pct, retainage_held, total_earned_less_retainage, current_payment_due, files, updated_at'
-// Two later migrations added columns: `carry_reason` (v2.4494), then `lines` and
-// `split_labor_material` (v2.4498). A database that does not have one yet answers 42703 (a
-// selected column is unknown) or PGRST204 (a written one is). The read then goes again with the
-// columns it had before; the write does too, unless that would drop lines it cannot keep.
+// Three later migrations added columns: `carry_reason` (v2.4494), then `lines` and
+// `split_labor_material` (v2.4498), then `name` (v2.4508). A database that does not have one yet
+// answers 42703 (a selected column is unknown) or PGRST204 (a written one is). The read then goes
+// again with the columns it had before; the write does too, unless that would drop lines it
+// cannot keep.
 const COLS_WITH_REASON = `${BASE_COLS}, carry_reason`
-const COLS = `${COLS_WITH_REASON}, lines, split_labor_material`
-const COLUMN_SETS = [COLS, COLS_WITH_REASON, BASE_COLS] as const
+const COLS_WITH_LINES = `${COLS_WITH_REASON}, lines, split_labor_material`
+const COLS = `${COLS_WITH_LINES}, name`
+const COLUMN_SETS = [COLS, COLS_WITH_LINES, COLS_WITH_REASON, BASE_COLS] as const
 const isUnknownColumn = (code: string | undefined): boolean => code === '42703' || code === 'PGRST204'
 
 /** The database cannot keep this application's lines yet (the lines migration is not applied). */
@@ -66,16 +68,18 @@ export async function savePayApplication(write: PayApplicationWrite, id: string 
     const table = supabase.from('job_pay_applications')
     return id ? table.update(row).eq('id', id).select(cols).single() : table.insert(row).select(cols).single()
   }
-  const { lines, split_labor_material, carry_reason, ...base } = write
+  const { name: _name, ...withLines } = write
+  const { lines, split_labor_material, carry_reason, ...base } = withLines
   // One line also lives in `fields`, so an older database keeps it; more than one, or split rows, it cannot.
   const needsLines = (Array.isArray(lines) && lines.length > 1) || split_labor_material === true
   const attempts: Array<[Record<string, unknown>, string]> = [
     [write, COLS],
+    [withLines, COLS_WITH_LINES],
     [carry_reason === undefined ? base : { ...base, carry_reason }, COLS_WITH_REASON],
     [base, BASE_COLS],
   ]
   for (const [i, [payload, cols]] of attempts.entries()) {
-    if (i > 0 && needsLines) throw new PayApplicationLinesNotReady()
+    if (i > 1 && needsLines) throw new PayApplicationLinesNotReady()
     const { data, error } = await send(payload, cols)
     if (error && isUnknownColumn(error.code) && i < attempts.length - 1) continue
     if (error) {

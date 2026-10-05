@@ -9,6 +9,8 @@ import {
   nextApplicationNumber,
   parseAiaDate,
   parseApplicationNumber,
+  PAY_APPLICATION_NAME_MAX,
+  cleanPayApplicationName,
   payApplicationLabel,
   payApplicationWriteFromForm,
   previousPayApplication,
@@ -315,6 +317,31 @@ describe('the list', () => {
   it('labels a saved application with its number, period and amount due', () => {
     expect(payApplicationLabel(a)).toBe('1 · 09/30/2026 · $18,360.00 due')
     expect(payApplicationLabel(saved(formOf({ ...APP_1_VALUES, g702_n6_period_to: '' }, APP_1.lines)))).toBe('1 · $18,360.00 due')
+  })
+
+  it('puts the office\'s name after the number when the application has one', () => {
+    expect(payApplicationLabel({ ...a, name: 'Sent to the GC' })).toBe('1 · Sent to the GC · 09/30/2026 · $18,360.00 due')
+  })
+})
+
+describe('an application\'s name', () => {
+  it('is kept on one line, trimmed, and cut at the table\'s length', () => {
+    expect(cleanPayApplicationName('  Sent to\n the   GC ')).toBe('Sent to the GC')
+    expect(cleanPayApplicationName(null)).toBe('')
+    expect(cleanPayApplicationName('x'.repeat(200))).toHaveLength(PAY_APPLICATION_NAME_MAX)
+  })
+
+  it('is written only when the save has one to write or to clear, and read back from the row', () => {
+    const unnamed = payApplicationWriteFromForm('job-1', APP_1)
+    expect(unnamed.ok && 'name' in unnamed.row).toBe(false)
+    const named = payApplicationWriteFromForm('job-1', APP_1, '', undefined, '  Revised after  the walk ')
+    expect(named.ok && named.row.name).toBe('Revised after the walk')
+    const cleared = payApplicationWriteFromForm('job-1', APP_1, '', undefined, '')
+    expect(cleared.ok && cleared.row.name).toBe('')
+    if (!named.ok) throw new Error(named.reason)
+    expect(savedPayApplicationFromRow({ id: 'a1', updated_at: null, ...named.row } as PayApplicationRow).name).toBe('Revised after the walk')
+    // A row read from a database without the column has no name.
+    expect(saved(APP_1).name).toBe('')
   })
 })
 

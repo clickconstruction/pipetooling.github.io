@@ -38,6 +38,8 @@ export type SavedPayApplication = {
   link: string
   /** Why it keeps previous amounts that no longer match the application before it, or ''. */
   carryReason: string
+  /** The office's own name for it ("Sent to the GC"), or ''. Never printed on the form. */
+  name: string
   updatedAt: string | null
 }
 
@@ -62,6 +64,7 @@ export type PayApplicationRow = {
   carry_reason?: string | null
   lines?: unknown
   split_labor_material?: boolean | null
+  name?: string | null
   updated_at: string | null
 }
 
@@ -82,6 +85,14 @@ function fieldsFromJson(raw: unknown): AiaFieldValues {
     if (typeof v === 'string' || (typeof v === 'number' && Number.isFinite(v))) out[k as AiaFieldKey] = v
   }
   return out
+}
+
+/** The longest name the table keeps. */
+export const PAY_APPLICATION_NAME_MAX = 80
+
+/** A typed name as it is kept: one line, single spaces, trimmed, cut at the table's length. */
+export function cleanPayApplicationName(raw: string | null | undefined): string {
+  return (raw ?? '').replace(/\s+/g, ' ').trim().slice(0, PAY_APPLICATION_NAME_MAX).trim()
 }
 
 /** A pasted link as it is kept: trimmed, and only when it is a web address. Anything else → ''. */
@@ -125,6 +136,7 @@ export function savedPayApplicationFromRow(row: PayApplicationRow): SavedPayAppl
     currentPaymentDue: Number(row.current_payment_due) || 0,
     link: linkFromFiles(row.files),
     carryReason: (row.carry_reason ?? '').trim(),
+    name: cleanPayApplicationName(row.name),
     updatedAt: row.updated_at,
   }
 }
@@ -152,12 +164,18 @@ export function parseAiaDate(raw: string | number | null | undefined): string | 
 export type PayApplicationWriteResult = { ok: true; row: PayApplicationWrite } | { ok: false; reason: string }
 
 /**
- * The row a save writes for this form and its link, or why it cannot be saved. `carryReason` is
- * written only when it is passed: a save that has nothing to say about it leaves the column alone.
+ * The row a save writes for this form and its link, or why it cannot be saved. `carryReason` and
+ * `name` are each written only when passed: a save with nothing to say leaves the column alone.
  * A one-line application also writes its line into the form fields it used to live in, so a
  * client from before lines still reads it.
  */
-export function payApplicationWriteFromForm(jobId: string, form: PayApplicationForm, link = '', carryReason?: string): PayApplicationWriteResult {
+export function payApplicationWriteFromForm(
+  jobId: string,
+  form: PayApplicationForm,
+  link = '',
+  carryReason?: string,
+  name?: string,
+): PayApplicationWriteResult {
   const { values, lines, splitLaborMaterial } = form
   const number = parseApplicationNumber(values.g702_n5_project)
   if (number == null) return { ok: false, reason: 'Type the application number as a whole number, like 1, to save it on the job.' }
@@ -183,6 +201,7 @@ export function payApplicationWriteFromForm(jobId: string, form: PayApplicationF
       current_payment_due: math.currentPaymentDue,
       files,
       ...(carryReason === undefined ? {} : { carry_reason: carryReason.trim() }),
+      ...(name === undefined ? {} : { name: cleanPayApplicationName(name) }),
     },
   }
 }
@@ -386,8 +405,8 @@ export function retainageDropOffer(form: PayApplicationForm): RetainageDropOffer
   }
 }
 
-/** One line for the window's list: `2 · 09/30/2026 · $17,280.00 due`. */
+/** One line for the window's list: `2 · 09/30/2026 · $17,280.00 due`, with its name after the number when it has one. */
 export function payApplicationLabel(app: SavedPayApplication): string {
   const due = `$${app.currentPaymentDue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} due`
-  return [String(app.applicationNumber), formatAiaDate(app.periodTo), due].filter(Boolean).join(' · ')
+  return [String(app.applicationNumber), app.name, formatAiaDate(app.periodTo), due].filter(Boolean).join(' · ')
 }
