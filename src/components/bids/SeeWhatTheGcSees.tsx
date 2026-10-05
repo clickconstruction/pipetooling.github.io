@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import ResponsiveModalShell from '../ResponsiveModalShell'
 import { RoomHeader, RoomRevisionBody, RoomRevisionChips } from './SubmittalRoomView'
 import { roomQuiet } from '../../lib/submittals/roomStyles'
+import { roomPreviewLink } from '../../lib/submittals/submittalRoom'
 import { describeLink, linkListLine, linkRevisionsAfterShare, toRoomItemSource, type LinkView } from '../../lib/submittals/seeWhatTheySee'
 import { roomCounts, roomRowsFrom, type RoomItemSource, type RoomPartSource, type RoomRevision } from '../../../supabase/functions/_shared/submittalRoomPayload'
 
@@ -12,7 +13,8 @@ import { roomCounts, roomRowsFrom, type RoomItemSource, type RoomPartSource, typ
  * 2026-10-02 (Grace: a pane beside the road squeezed the rows); a sheet on a phone, as before.
  * Nothing here is minted or shared. What the link shows today is the line's own words
  * (`describeLink`, v2.4593). The header and the revision chips are the page's own (v2.4606),
- * the chips the list the GC will see once this revision is shared, read only.
+ * the chips the list the GC will see once this revision is shared, read only. A door opens
+ * their real page as it is now, flagged as the office's preview (v2.4608).
  */
 export function SeeWhatTheGcSees({
   items,
@@ -20,6 +22,7 @@ export function SeeWhatTheGcSees({
   revNumber,
   revisions = [],
   link,
+  roomToken = null,
   hasPackage,
   company,
   bid,
@@ -33,6 +36,8 @@ export function SeeWhatTheGcSees({
   revisions?: ReadonlyArray<{ id: string; rev_number: number; shared_at: string | null }>
   /** What the room's link shows now: the shared revision, if any, and whether the room is closed. */
   link: Omit<LinkView, 'rev'>
+  /** The room's token: the door to their real page as it is now (v2.4608). None, no door. */
+  roomToken?: string | null
   hasPackage: boolean
   company: { name: string; tagline?: string | null; phone?: string | null }
   bid: { label: string; projectName: string | null; address: string | null }
@@ -53,6 +58,14 @@ export function SeeWhatTheGcSees({
       <p style={{ margin: '0 0 0.7rem', fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: 1.4 }} data-testid="see-gc-why">
         {words.intro} <b style={{ color: 'var(--text-strong)' }}>{words.note}</b>
       </p>
+      {roomToken && link.linkShowsRev != null ? (
+        // v2.4608 · the twin is the draft; the door is their real page today, flagged so nothing is counted or saved.
+        <p style={{ margin: '-0.4rem 0 0.7rem', fontSize: '0.78rem' }}>
+          <a href={roomPreviewLink(window.location.origin, roomToken)} target="_blank" rel="noreferrer" style={{ color: 'var(--text-link)', fontWeight: 600 }} data-testid="see-gc-door">
+            {link.roomClosed ? 'Open their page as it is now ↗' : `Open their page as it is now · Rev ${link.linkShowsRev} ↗`}
+          </a>
+        </p>
+      ) : null}
       <RoomHeader company={company} bid={bid} />
       <RoomRevisionChips revisions={list.chips} selectedId={list.chips[0]!.id} />
       {listLine ? <p style={{ ...roomQuiet, margin: '-0.4rem 0 0.8rem' }} data-testid="see-gc-list-line">{listLine}</p> : null}

@@ -67,5 +67,22 @@ describe('SeeWhatTheGcSees (v2.4189, #62 Layer 2)', () => {
     expect(chips[0]!.getAttribute('aria-pressed')).toBe('true')
     expect(screen.getByTestId('see-gc-list-line').textContent).toBe('Older revisions stay under it as the record. Rev 3 and Rev 1 are not on their page, because they were never shared.')
   })
+
+  it('v2.4608 · the door: their real page as it is now, flagged; only when the link shows something', () => {
+    const token = 'c'.repeat(48)
+    const { unmount } = render(<SeeWhatTheGcSees {...props} revNumber={4} roomToken={token} link={{ linkShowsRev: 2, roomClosed: false }} />)
+    const door = screen.getByTestId('see-gc-door') as HTMLAnchorElement
+    expect(door.textContent).toBe('Open their page as it is now · Rev 2 ↗')
+    expect(door.getAttribute('href')).toBe(`${window.location.origin}/submittal?t=${token}&preview=1`)
+    unmount()
+    const closed = render(<SeeWhatTheGcSees {...props} revNumber={2} roomToken={token} link={{ linkShowsRev: 2, roomClosed: true }} />)
+    expect(screen.getByTestId('see-gc-door').textContent).toBe('Open their page as it is now ↗')
+    closed.unmount()
+    const nothing = render(<SeeWhatTheGcSees {...props} roomToken={token} link={{ linkShowsRev: null, roomClosed: false }} />)
+    expect(screen.queryByTestId('see-gc-door')).toBeNull()
+    nothing.unmount()
+    render(<SeeWhatTheGcSees {...props} link={{ linkShowsRev: 1, roomClosed: false }} />)
+    expect(screen.queryByTestId('see-gc-door')).toBeNull()
+  })
 })
 

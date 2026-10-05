@@ -308,6 +308,12 @@ export default function SubmittalRoom() {
     <div data-theme="light" style={paper}>
       <div style={{ maxWidth: 560, margin: '0 auto', padding: '1rem 1rem 6rem' }}>
         {sample ? <SampleModeBanner /> : null}
+        {preview && !sample ? (
+          // v2.4608 · opened from the office's door: say so before anyone presses (the function refuses every write either way).
+          <div role="status" data-theme="light" data-testid="room-preview-banner" style={{ margin: '0 0 0.9rem', padding: '0.45rem 0.75rem', borderRadius: 6, background: 'var(--bg-amber-50)', border: '1px solid var(--border-amber)', color: 'var(--text-amber-800)', fontSize: '0.8rem', fontWeight: 600 }}>
+            You are looking as the office. Nothing here is counted or saved.
+          </div>
+        ) : null}
         {payload ? (
           <RoomHeader company={payload.company} bid={payload.bid} />
         ) : null}
