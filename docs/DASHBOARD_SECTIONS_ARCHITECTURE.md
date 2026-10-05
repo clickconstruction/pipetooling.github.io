@@ -352,7 +352,7 @@ Shared modals that stay page-level (opened from 2+ sections) vs single-opener mo
 | `AdditionalReportModal` (`leaveReportJob`) | 1763–1779 (+ Job Mode copy 1201–1217) | My Schedule, Team RTB, Assigned, My crew, Job Mode card | **stays**; hoist the element (quirk #15) |
 | Send-to-Billing confirm (`readyForBillingJob`, inline) | 1780–1844 | Assigned + Superintendent rows | stays as state; **JSX → `SendToBillingConfirmModal`** |
 | `sendRecordJobMeta` "Loading job…" overlay | 1845–1849 | billing section + `handlePrepareBillFromFieldQueue` | **stays** |
-| `NewReportModal`, `DashboardStaleTallyStaffFollowUpModal` | (moved v2.723) | pinned row | moved into `DashboardPinnedQuickRow` (`renderModals`) |
+| `NewReportModal`, `DashboardStaleTallyStaffFollowUpModal` | (moved v2.723) | pinned row | moved into `DashboardPinnedQuickRow` (`renderModals`); since v2.4566 the follow-up window has a third list, Sorted (`TeamPurchasesSortedList` over `lib/teamPurchasesSorted.ts`, read `list_recently_sorted_mercury_transactions_for_tally_staff`) |
 | `ChecklistItemMuteModal`, Forward modal | (moved v2.722) | My Inbox | moved into `DashboardMyInboxCard` |
 | `CollectPaymentModal` | (moved v2.726) | Team RTB rows | moved into `DashboardTeamReadyToBillSection` |
 | `BilledPaymentConfirmationModal` ×2, send-back invoice/job confirms | (moved v2.728) | Billing Stages 2+3 | moved into `DashboardBillingPipelineSection` |
