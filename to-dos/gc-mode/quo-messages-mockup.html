@@ -1,0 +1,654 @@
+<title>Quo Messages Inbox</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* Layout: a reading column of app screens, each drawn as the GC page draws it, with a short note under it. */
+  :root {
+    --bg: #eef1f6;
+    --fg: #172033;
+    --muted: #5d6880;
+    --line: #d6dce8;
+    --panel: #ffffff;
+    --sunk: #f5f7fb;
+    --accent: #2f6fe4;
+    --accent-soft: #e2ebff;
+    --green: #1f8f4e;
+    --green-soft: #e1f5e9;
+    --amber: #a8650a;
+    --amber-soft: #fdf0d9;
+    --red: #c23a3a;
+    --red-soft: #fbe3e3;
+    --violet: #6d47c9;
+    --violet-soft: #efe7fd;
+    --font: 'Public Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --mono: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f1625; --fg: #e6ebf5; --muted: #97a3bb; --line: #2c3854; --panel: #18213a; --sunk: #141c31;
+      --accent: #6ea0ff; --accent-soft: #22376a; --green: #4cc483; --green-soft: #163c2a; --amber: #f0b04a; --amber-soft: #3f2f12;
+      --red: #f07a7a; --red-soft: #4a1d22; --violet: #b495ff; --violet-soft: #2f2350; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f1625; --fg: #e6ebf5; --muted: #97a3bb; --line: #2c3854; --panel: #18213a; --sunk: #141c31;
+    --accent: #6ea0ff; --accent-soft: #22376a; --green: #4cc483; --green-soft: #163c2a; --amber: #f0b04a; --amber-soft: #3f2f12;
+    --red: #f07a7a; --red-soft: #4a1d22; --violet: #b495ff; --violet-soft: #2f2350; color-scheme: dark;
+  }
+  body { background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 15px; line-height: 1.5; }
+  .page { max-width: 1120px; margin: 0 auto; padding: 32px 20px 72px; display: grid; gap: 40px; }
+  h1, h2, h3 { margin: 0; line-height: 1.2; text-wrap: balance; }
+  h1 { font-size: 1.9rem; font-weight: 800; }
+  h2 { font-size: 1.25rem; }
+  h3 { font-size: 0.98rem; }
+  p { margin: 0; max-width: 72ch; }
+  .eyebrow { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); }
+  .section { display: grid; gap: 12px; }
+  .lede { color: var(--muted); font-size: 1.02rem; }
+  .note { font-size: 0.86rem; color: var(--muted); max-width: 80ch; }
+  .app { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; min-width: 0; }
+  .tabs { display: flex; gap: 4px; align-items: center; padding: 10px 14px 0; border-bottom: 1px solid var(--line); flex-wrap: wrap; font-size: 0.86rem; }
+  .tab { padding: 6px 10px 9px; color: var(--muted); border-bottom: 2px solid transparent; display: inline-flex; gap: 6px; align-items: center; }
+  .tab.on { color: var(--accent); border-bottom-color: var(--accent); font-weight: 700; }
+  .badge { background: var(--red); color: #fff; border-radius: 999px; font-size: 0.68rem; font-weight: 800; padding: 0 6px; }
+  .badge.new { background: var(--accent); }
+  .mode { margin-right: 8px; border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; font-weight: 700; font-size: 0.78rem; }
+  .inbox { display: grid; grid-template-columns: 300px minmax(0, 1fr); min-height: 560px; }
+  @media (max-width: 820px) { .inbox { grid-template-columns: minmax(0, 1fr); } .list { border-right: none; border-bottom: 1px solid var(--line); } }
+  .list { border-right: 1px solid var(--line); background: var(--sunk); display: grid; align-content: start; }
+  .list-head { padding: 10px 12px; display: flex; gap: 8px; align-items: center; justify-content: space-between; font-size: 0.8rem; color: var(--muted); }
+  .search { flex: 1; border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; background: var(--panel); color: var(--muted); font-size: 0.8rem; }
+  .group { padding: 8px 12px 4px; font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 700; color: var(--muted); }
+  .row { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 8px; padding: 9px 12px; border-top: 1px solid var(--line); font-size: 0.84rem; align-items: start; }
+  .row.sel { background: var(--accent-soft); }
+  .row.unsorted { background: var(--amber-soft); }
+  .icon { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-size: 0.7rem; font-weight: 800; color: var(--panel); background: var(--muted); }
+  .icon.trade { background: var(--accent); }
+  .icon.cust { background: var(--violet); }
+  .icon.who { background: var(--amber); }
+  .row .name { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .co { color: var(--muted); font-size: 0.76rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .last { color: var(--muted); font-size: 0.78rem; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .row .when { font-size: 0.72rem; color: var(--muted); text-align: right; display: grid; gap: 4px; justify-items: end; }
+  .ch { display: inline-block; font-size: 0.66rem; font-weight: 700; padding: 0 5px; border-radius: 4px; border: 1px solid var(--line); color: var(--muted); }
+  .ch.vm { border-color: var(--amber); color: var(--amber); }
+  .ch.miss { border-color: var(--red); color: var(--red); }
+  .thread { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; min-width: 0; }
+  .t-head { padding: 12px 16px; border-bottom: 1px solid var(--line); display: flex; gap: 10px; align-items: flex-start; flex-wrap: wrap; }
+  .t-head .who { flex: 1 1 240px; min-width: 0; }
+  .t-head .who b { font-size: 1.02rem; }
+  .t-head .meta { color: var(--muted); font-size: 0.8rem; }
+  .chip { display: inline-block; padding: 1px 8px; border-radius: 999px; background: var(--sunk); border: 1px solid var(--line); font-size: 0.74rem; font-weight: 600; max-width: 100%; }
+  .chip.red { background: var(--red-soft); color: var(--red); border-color: transparent; }
+  .chip.green { background: var(--green-soft); color: var(--green); border-color: transparent; }
+  .chip.amber { background: var(--amber-soft); color: var(--amber); border-color: transparent; }
+  .btn { display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px; border-radius: 6px; border: 1px solid var(--line); font-size: 0.8rem; font-weight: 700; background: var(--panel); color: var(--fg); white-space: nowrap; max-width: 100%; }
+  .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn.quiet { border-color: transparent; color: var(--accent); background: transparent; padding-inline: 4px; }
+  .feed { padding: 14px 16px; display: grid; gap: 12px; align-content: start; background: var(--panel); }
+  .day { justify-self: center; font-size: 0.7rem; color: var(--muted); font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
+  .item { display: grid; gap: 4px; max-width: 620px; }
+  .item.them { justify-self: start; }
+  .item.us { justify-self: end; text-align: right; }
+  .bubble { padding: 8px 11px; border-radius: 12px; font-size: 0.88rem; background: var(--sunk); border: 1px solid var(--line); text-align: left; }
+  .us .bubble { background: var(--accent-soft); border-color: transparent; }
+  .call { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: grid; gap: 6px; font-size: 0.86rem; background: var(--panel); max-width: 620px; }
+  .call .top { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .call .top b { font-size: 0.9rem; }
+  .call .sum { border-left: 3px solid var(--line); padding-left: 8px; color: var(--fg); }
+  .call.missed { border-color: color-mix(in srgb, var(--red) 40%, var(--line)); }
+  .player { display: flex; gap: 8px; align-items: center; font-size: 0.76rem; color: var(--muted); }
+  .wave { flex: 1; height: 18px; border-radius: 4px; background: repeating-linear-gradient(90deg, var(--line) 0 2px, transparent 2px 5px); }
+  .small { font-size: 0.74rem; color: var(--muted); }
+  .suggest { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 6px 9px; border-radius: 8px; background: var(--amber-soft); font-size: 0.82rem; }
+  .system { justify-self: center; font-size: 0.76rem; color: var(--muted); padding: 3px 10px; border: 1px dashed var(--line); border-radius: 999px; }
+  .compose { border-top: 1px solid var(--line); padding: 10px 16px; display: grid; gap: 8px; background: var(--sunk); }
+  .compose .bar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; font-size: 0.78rem; color: var(--muted); }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+  .seg span { padding: 3px 9px; font-weight: 700; font-size: 0.76rem; }
+  .seg span.on { background: var(--accent); color: #fff; }
+  .box { border: 1px solid var(--line); border-radius: 8px; background: var(--panel); padding: 8px 10px; font-size: 0.88rem; min-height: 44px; }
+  .two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+  @media (max-width: 820px) { .two { grid-template-columns: minmax(0, 1fr); } }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: grid; gap: 8px; min-width: 0; font-size: 0.88rem; }
+  .card.redbar { border-left: 4px solid var(--red); }
+  .field { display: grid; gap: 3px; font-size: 0.82rem; }
+  .field span { font-weight: 700; }
+  .input { border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; background: var(--sunk); color: var(--fg); font-size: 0.84rem; }
+  .kv { display: grid; grid-template-columns: 9rem minmax(0, 1fr); gap: 6px 12px; font-size: 0.84rem; }
+  .kv dt { color: var(--muted); }
+  .kv dd { margin: 0; }
+  .flow { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; align-items: stretch; }
+  @media (max-width: 820px) { .flow { grid-template-columns: minmax(0, 1fr); } }
+  .step { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: grid; gap: 6px; align-content: start; font-size: 0.86rem; }
+  .step b { font-size: 0.92rem; }
+  .code { font-family: var(--mono); font-size: 0.74rem; color: var(--muted); line-height: 1.6; }
+  .qs { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  .qs li { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; display: grid; gap: 2px; }
+  .qs li p { color: var(--muted); font-size: 0.9rem; }
+  .act { display: grid; gap: 8px; font-size: 0.84rem; }
+  .act div { display: grid; grid-template-columns: 4.8rem minmax(0, 1fr); gap: 8px; }
+  .act .d { color: var(--muted); font-size: 0.76rem; }
+  .photos { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+  .photos.two-up { grid-template-columns: repeat(2, minmax(0, 150px)); }
+  .ph { aspect-ratio: 4 / 3; border-radius: 8px; position: relative; overflow: hidden; border: 1px solid var(--line); display: grid; align-content: end; }
+  .ph.tall { aspect-ratio: 3 / 4; }
+  .ph.a { background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 22%, var(--sunk)), color-mix(in srgb, var(--amber) 30%, var(--sunk))); }
+  .ph.b { background: linear-gradient(200deg, color-mix(in srgb, var(--green) 20%, var(--sunk)), color-mix(in srgb, var(--fg) 12%, var(--sunk))); }
+  .ph.c { background: linear-gradient(140deg, color-mix(in srgb, var(--violet) 22%, var(--sunk)), color-mix(in srgb, var(--accent) 16%, var(--sunk))); }
+  .ph.d { background: linear-gradient(180deg, color-mix(in srgb, var(--fg) 10%, var(--sunk)), color-mix(in srgb, var(--red) 18%, var(--sunk))); }
+  .ph::before { content: ''; position: absolute; inset: 22% 30% 38% 30%; border: 2px solid color-mix(in srgb, var(--fg) 25%, transparent); border-radius: 6px; }
+  .ph .cap { position: relative; padding: 4px 6px; font-size: 0.68rem; background: color-mix(in srgb, var(--panel) 82%, transparent); color: var(--fg); display: grid; gap: 1px; }
+  .ph .cap .dim { color: var(--muted); }
+  .src { position: absolute; top: 5px; left: 5px; font-size: 0.6rem; font-weight: 800; padding: 1px 5px; border-radius: 4px; background: var(--panel); color: var(--muted); border: 1px solid var(--line); }
+  .src.full { color: var(--green); border-color: var(--green); }
+  .react { display: inline-flex; gap: 4px; align-items: center; font-size: 0.72rem; padding: 1px 7px; border-radius: 999px; background: var(--panel); border: 1px solid var(--line); color: var(--muted); }
+  .costs { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+  .costs td { border-top: 1px solid var(--line); padding: 7px 8px; vertical-align: top; }
+  .costs td:first-child { font-weight: 700; width: 38%; }
+  .card.agent { border-left: 4px solid var(--violet); }
+  .agent-head { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .tag { font-size: 0.66rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; padding: 1px 7px; border-radius: 4px; background: var(--violet-soft); color: var(--violet); }
+  .sheets { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+  .sheet { font-family: var(--mono); font-size: 0.72rem; padding: 0 6px; border-radius: 4px; border: 1px solid var(--line); background: var(--sunk); }
+  .sheet.new { border-color: var(--green); color: var(--green); }
+  .drop { border: 2px dashed var(--line); border-radius: 8px; padding: 8px; display: grid; gap: 5px; font-size: 0.8rem; min-width: 0; overflow-wrap: anywhere; }
+  .meter { height: 6px; border-radius: 999px; background: var(--sunk); border: 1px solid var(--line); overflow: hidden; }
+  .meter i { display: block; height: 100%; background: var(--accent); }
+  .btn.wrap { white-space: normal; }
+  @media (max-width: 560px) { .kv { grid-template-columns: 6.2rem minmax(0, 1fr); } }
+  .tree { display: grid; gap: 3px; font-size: 0.84rem; }
+  .tree .node { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-weight: 700; margin-top: 6px; }
+  .tree .leaf { margin-left: 6px; padding: 1px 0 1px 12px; border-left: 2px solid var(--line); }
+  .qs li.done { border-left: 4px solid var(--green); }
+</style>
+
+<main class="page">
+  <header class="section">
+    <span class="eyebrow">Proposal · GC mode and the whole app · drawn with the prototype's made-up people</span>
+    <h1>Every call and text in one place</h1>
+    <p class="lede">The company gets one number in Quo. Everyone answers calls and texts in Quo's phone and computer apps, as they would anyway. Each call, text, voicemail, recording, transcript and summary comes into this app, sorted by who it is from and tied to the job. Replies by text go out from the company number, right from the thread. Big files go to the job's Google Drive folder through a file agent, and the thread gets the link.</p>
+  </header>
+
+  <!-- 1. The inbox -->
+  <section class="section" aria-labelledby="s1">
+    <span class="eyebrow">1 · Draft · Messages, a new tab</span>
+    <h2 id="s1">One thread per person, every channel in it</h2>
+    <div class="app" role="img" aria-label="The Messages tab with a thread list and Greg Paulk's thread open">
+      <div class="tabs">
+        <span class="mode">GC</span>
+        <span class="tab">Project Board</span>
+        <span class="tab">Follow up <span class="badge">5</span></span>
+        <span class="tab on">Messages <span class="badge new">3</span></span>
+        <span class="tab">Trade partners</span>
+        <span class="tab">Money</span>
+      </div>
+      <div class="inbox">
+        <div class="list">
+          <div class="list-head"><span class="search">Search people, jobs, words</span><span>All ▾</span></div>
+          <div class="group">Who is this? (1)</div>
+          <div class="row unsorted"><span class="icon who">?</span><div style="min-width:0"><div class="name">(830) 555-0172</div><div class="last">Hi this is Dee at Alamo Concrete, new cell. Saw the Pad B pricing set, can we quote the concrete?</div></div><div class="when">9:12 AM<span class="ch">text</span></div></div>
+          <div class="group">Today</div>
+          <div class="row sel"><span class="icon trade">GP</span><div style="min-width:0"><div class="name">Greg Paulk</div><div class="co">Hillside Excavation · Boerne · Sitework</div><div class="last">Voicemail: Sorry, ran behind. I'll have Boerne sitework over by Wednesday the 7th.</div></div><div class="when">8:41 AM<span class="ch vm">voicemail</span><span class="badge">2</span></div></div>
+          <div class="row"><span class="icon trade">BS</span><div style="min-width:0"><div class="name">Bill Sorrell</div><div class="co">Tejas Power · Boerne · Electrical</div><div class="last">Quote is in your portal now, end of day like I said.</div></div><div class="when">7:58 AM<span class="ch">text</span></div></div>
+          <div class="group">Earlier</div>
+          <div class="row"><span class="icon cust">EM</span><div style="min-width:0"><div class="name">Elena Marchetti</div><div class="co">Cibolo Creek Partners · customer</div><div class="last">Call, 6 min. She wants the Boerne number by Thursday morning, not afternoon.</div></div><div class="when">Thu<span class="ch">call</span></div></div>
+          <div class="row"><span class="icon trade">TR</span><div style="min-width:0"><div class="name">Tom Riddle</div><div class="co">Bexar Steel Erectors · Boerne · Structural steel</div><div class="last">You: Tom, did the Boerne steel invite come through? No reply yet.</div></div><div class="when">Wed<span class="ch">text</span></div></div>
+          <div class="row"><span class="icon cust">PR</span><div style="min-width:0"><div class="name">Dr. Priya Raman</div><div class="co">Helotes Dental Office · customer</div><div class="last">Thanks! Can you send me the start date when you have it?</div></div><div class="when">Sep 29<span class="ch">text</span></div></div>
+        </div>
+        <div class="thread">
+          <div class="t-head">
+            <div class="who"><b>Greg Paulk</b> <span class="meta">· Hillside Excavation · (210) 555-0113 · trade partner</span><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px"><span class="chip">Boerne Retail Shell · Sitework · bid Thu Oct 8</span><span class="chip red">promised Wed Sep 30, 2 days past</span></div></div>
+            <span class="btn">Call in Quo</span><span class="btn">Open the company</span>
+          </div>
+          <div class="feed">
+            <span class="day">Sat Sep 26</span>
+            <div class="call"><div class="top"><b>Call · 4 min</b><span class="small">Robert answered · Boerne Retail Shell · Sitework ▾</span></div>
+              <div class="sum">Greg is busy on a subdivision. He will price the Boerne sitework by Wednesday, Sep 30. He asked whether striping is in his scope; Robert said it is listed under Sitework.</div>
+              <div class="player"><span class="btn quiet">▶ 4:12</span><span class="wave"></span><span class="btn quiet">Transcript</span></div>
+              <span class="small">Written down from the summary: quote by Wed Sep 30.</span>
+            </div>
+            <span class="day">Wed Sep 30</span>
+            <div class="item us"><div class="bubble">Greg, checking on the Boerne sitework number. Still good for today?</div><span class="small">Robert · text from the company number · delivered</span></div>
+            <span class="system">Thu Oct 1 · Their day passed with no quote</span>
+            <span class="day">Today, Fri Oct 2</span>
+            <div class="call missed"><div class="top"><b>Missed call, then a voicemail · 0:38</b><span class="small">rang the Estimating group · Boerne Retail Shell · Sitework ▾</span></div>
+              <div class="sum">"Hey Robert, it's Greg with Hillside. Sorry, ran behind. I'll have Boerne sitework over by Wednesday the 7th. Call me if you need it sooner."</div>
+              <div class="player"><span class="btn quiet">▶ 0:38</span><span class="wave"></span></div>
+              <div class="suggest">Quo heard a new day: <b>Wed Oct 7</b>. It is after questions close (Mon Oct 5).<span class="btn">Write it down</span><span class="btn quiet">Not a promise</span></div>
+            </div>
+            <div class="item them"><div class="bubble">Also is the detention pond in sitework or concrete? Addendum 1 is not clear.</div><span class="small">Greg · text · 8:44 AM</span></div>
+            <div class="suggest">This reads like a question about the plans.<span class="btn">Ask the architect</span><span class="btn quiet">Answer it myself</span></div>
+          </div>
+          <div class="compose">
+            <div class="bar"><span class="seg"><span class="on">Text</span><span>Email</span></span><span>from the company number (210) 555-0100 · Click Construction</span><span style="flex:1"></span><span>Tie to: <b>Boerne Retail Shell · Sitework</b> ▾</span></div>
+            <div class="box">Thanks Greg. Wednesday is late for us: the bid is due Thursday. Can you get it to us Monday? Send any questions by Monday too, that is when questions close.</div>
+            <div class="bar"><span class="btn primary">Send text</span><span class="btn quiet">Attach a plan sheet</span><span>Replies come back to this thread.</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="note">Calls are made and answered in Quo's apps; "Call in Quo" opens the dialer there. When the call ends, Quo sends it here with its recording, transcript and summary. A day said in a call, a voicemail or a text is offered as a promise, so Follow up keeps working from what people actually said.</p>
+  </section>
+
+  <!-- 2. Unsorted -->
+  <section class="section" aria-labelledby="s2">
+    <span class="eyebrow">2 · Draft · A number the app does not know</span>
+    <h2 id="s2">Who is this? Answer once, and the app remembers</h2>
+    <div class="two">
+      <div class="card">
+        <div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap"><b>(830) 555-0172</b><span class="small">text · today 9:12 AM</span></div>
+        <div class="bubble">Hi this is Dee at Alamo Concrete, new cell. Saw the Pad B pricing set, can we quote the concrete?</div>
+        <div class="field"><span>Who is this?</span><div class="input">Alamo Concrete · Dee Salinas ▾</div><span class="small" style="font-weight:400">Suggested: the message names Alamo Concrete, a trade partner. We have (210) 555-0162 on file for them.</span></div>
+        <div class="field"><span>Which job?</span><div class="input">Boerne Retail Pad B · Concrete ▾</div><span class="small" style="font-weight:400">Suggested: the message says Pad B and concrete.</span></div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap"><span class="btn primary">Add this number to Alamo Concrete</span><span class="btn">New company</span><span class="btn quiet">Not business</span></div>
+      </div>
+      <div class="card">
+        <b>After the answer</b>
+        <div class="act">
+          <div><span class="d">Number</span><span>(830) 555-0172 is now Dee's cell on Alamo Concrete. Her next text goes straight to their thread.</span></div>
+          <div><span class="d">Job</span><span>Tied to Boerne Retail Pad B · Concrete, where nobody has quoted yet.</span></div>
+          <div><span class="d">Next</span><span><span class="btn" style="white-space:normal">Invite Alamo Concrete on Pad B concrete</span></span></div>
+        </div>
+        <p class="small">A number the app has never seen waits here, at the top of Messages, until someone says who it is. Spam and wrong numbers go to "Not business" and stay out of the threads.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. Where it shows up -->
+  <section class="section" aria-labelledby="s3">
+    <span class="eyebrow">3 · Draft · Where it shows up besides Messages</span>
+    <h2 id="s3">Follow up and the company file fill themselves</h2>
+    <div class="two">
+      <div class="card redbar">
+        <div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap"><b style="text-decoration:underline">Hillside Excavation</b><span class="small">Greg Paulk</span><span class="chip">Boerne Retail Shell · Sitework · bid Thu Oct 8</span></div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap"><span class="btn">Call Greg in Quo</span><span class="btn primary">Follow up</span><span class="btn">Will not do it</span><span class="btn">Cannot do it</span></div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="chip red">promised Wed Sep 30, 2 days past</span><span class="small">kept 0 of 3 promises</span></div>
+        <div><span class="small">Oct 2 · voicemail, from Quo:</span> Sorry, ran behind. I'll have Boerne sitework over by Wednesday the 7th.</div>
+        <div class="suggest">A new day from the voicemail: <b>Wed Oct 7</b><span class="btn">Write it down</span></div>
+        <p class="small">Nobody typed this. The voicemail arrived from Quo and became the card's last contact on its own.</p>
+      </div>
+      <div class="card">
+        <b>Hillside Excavation · Activity</b>
+        <div class="act">
+          <div><span class="d">Oct 2</span><span>Voicemail, 0:38, to the Estimating group. "Wednesday the 7th."</span></div>
+          <div><span class="d">Oct 2</span><span>Text from Greg: a question about the detention pond.</span></div>
+          <div><span class="d">Sep 30</span><span>Text from Robert: checking on the number.</span></div>
+          <div><span class="d">Sep 26</span><span>Call, 4 min, Robert. Promised Wed Sep 30.</span></div>
+          <div><span class="d">Sep 19</span><span>Invited on Boerne Retail Shell · Sitework.</span></div>
+        </div>
+        <p class="small">The company window's Activity already lists invites, quotes and promises. Calls and texts join it in the same line.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. Settings -->
+  <section class="section" aria-labelledby="s4">
+    <span class="eyebrow">4 · Draft · Setting it up, once</span>
+    <h2 id="s4">Settings → Phone and texts</h2>
+    <div class="two">
+      <div class="card">
+        <b>Quo</b>
+        <dl class="kv">
+          <dt>Connection</dt><dd><span class="chip green">Connected</span> <span class="small">last event 2 min ago</span></dd>
+          <dt>API key</dt><dd class="code">qo_live_••••••••••7f3a</dd>
+          <dt>Numbers</dt><dd>Main line (210) 555-0100 → Messages<br>Estimating (210) 555-0101 → Messages</dd>
+          <dt>Text registration</dt><dd><span class="chip green">Approved</span> <span class="small">needed before texting customers</span></dd>
+          <dt>Recordings</dt><dd>On, with a short notice at the start of each call</dd>
+          <dt>Transcripts and summaries</dt><dd>On <span class="small">(a Quo plan feature: check which plan)</span></dd>
+        </dl>
+      </div>
+      <div class="card">
+        <b>People and who sees what</b>
+        <dl class="kv">
+          <dt>Quo users</dt><dd>Robert Douglas ↔ Robert · Wendi ↔ Wendi · Rosa Treviño ↔ Rosa</dd>
+          <dt>Trade threads</dt><dd>Estimators and the owner</dd>
+          <dt>Customer threads</dt><dd>The job's project manager and the owner</dd>
+          <dt>Money in messages</dt><dd>Owner only, as on the Money tab</dd>
+        </dl>
+        <p class="small">These are suggestions for the decisions listed at the bottom.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. How it works -->
+  <section class="section" aria-labelledby="s5">
+    <span class="eyebrow">5 · Draft · How it works</span>
+    <h2 id="s5">Quo tells the app; the app sorts and ties</h2>
+    <div class="flow">
+      <div class="step"><b>Quo</b><span>Calls and texts happen in Quo's phone and computer apps. Ring groups, voicemail and business hours are set up there.</span></div>
+      <div class="step"><b>Quo sends each event</b><span class="code">message.received<br>call.completed · call.missed<br>call.voicemail.completed<br>call.recording.completed<br>call.transcript.completed<br>call.summary.completed</span></div>
+      <div class="step"><b>The app files it</b><span>Checks the event came from Quo, matches the number to a person or company, threads it, ties it to a job, and reads it for a promised day or a plans question.</span></div>
+      <div class="step"><b>It shows up</b><span>Messages, Follow up, the company's Activity, and the board's people count. A text reply goes back through Quo from the company number.</span></div>
+    </div>
+    <p class="note">The app's part is one webhook receiver, one sender, the tables for threads and phone numbers, the matching rule, and the Messages screens. Quo keeps the phones ringing. Email can join the same threads later, from a shared Google mailbox.</p>
+  </section>
+
+  <!-- 6. Critique -->
+  <section class="section" aria-labelledby="s6">
+    <span class="eyebrow">6 · Is this the best we can do?</span>
+    <h2 id="s6">No. The draft builds a second inbox, and the office already has one.</h2>
+    <ul class="qs">
+      <li><strong>Two badges asking for the same attention.</strong><p>Follow up says 5 and Messages says 3, and Greg is in both. A text nobody has answered is someone waiting on us, which is what Follow up is for. Unanswered calls and texts belong at the top of Follow up, in its count, not in a tab of their own.</p></li>
+      <li><strong>Nothing says a message still needs an answer.</strong><p>A shared number lives or dies on that. Each conversation needs a state: needs a reply (and for how long), someone has it, or done. Today the draft only shows what was said.</p></li>
+      <li><strong>Two people could answer the same text.</strong><p>With a shared number, Robert and Wendi both see Greg's voicemail. The thread needs "Robert has this" so the second person sees it is taken.</p></li>
+      <li><strong>The app wrote down a promise by itself.</strong><p>The call card says "Written down from the summary". The rest of the app never applies a guess on its own; a person confirms it. The voicemail already does it right with "Write it down". The call should match.</p></li>
+      <li><strong>One thread per person hides the jobs.</strong><p>A company quoting four of our bids would have one long thread. The job is buried in a small dropdown on each line. The thread needs job filters at the top and a visible job label on every line.</p></li>
+      <li><strong>The project page cannot see the conversation.</strong><p>Sitting on Boerne's Trades tab, you cannot tell that Hillside left a voicemail an hour ago. Each job needs its own short list of recent calls and texts, by company.</p></li>
+      <li><strong>"Money in messages: owner only" cannot work.</strong><p>A text is free words: the app cannot strip a price out of it. Who sees a thread has to be decided by the kind of thread and the job, not by what is typed in it.</p></li>
+      <li><strong>Texts sent from Quo's own app must show up too.</strong><p>People will reply from their phones. The thread is only whole if those replies come back into it. Quo reports sent messages as they are delivered, so this should work; it is a thing to check before building.</p></li>
+    </ul>
+  </section>
+
+  <!-- 7. Revised -->
+  <section class="section" aria-labelledby="s7">
+    <span class="eyebrow">7 · Revised</span>
+    <h2 id="s7">Unanswered calls and texts lead Follow up, and every job sees its own</h2>
+    <div class="app" role="img" aria-label="Follow up with a Needs a reply section at the top">
+      <div class="tabs">
+        <span class="mode">GC</span>
+        <span class="tab">Project Board</span>
+        <span class="tab on">Follow up <span class="badge">7</span></span>
+        <span class="tab">Messages</span>
+        <span class="tab">Trade partners</span>
+        <span class="tab">Money</span>
+      </div>
+      <div class="feed" style="gap:14px">
+        <div style="display:flex;gap:10px;align-items:baseline;flex-wrap:wrap"><h3>Needs a reply (3)</h3><span class="small">Texts, voicemails and missed calls nobody has answered, the longest waiting first.</span></div>
+        <div class="card redbar">
+          <div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap"><b>Greg Paulk</b><span class="small">Hillside Excavation</span><span class="chip">Boerne Retail Shell · Sitework · bid Thu Oct 8</span><span class="chip red">waiting 1 h</span><span style="flex:1"></span><span class="small">Robert has this ▾</span></div>
+          <div><span class="small">Voicemail, 8:41 AM:</span> "Sorry, ran behind. I'll have Boerne sitework over by Wednesday the 7th."</div>
+          <div><span class="small">Text, 8:44 AM:</span> Also is the detention pond in sitework or concrete? Addendum 1 is not clear.</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap"><span class="btn">Write down Wed Oct 7</span><span class="btn">Ask the architect about the pond</span></div>
+          <div class="box">Thanks Greg. Wednesday is late for us: the bid is due Thursday. Can you get it to us Monday?</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span class="btn primary">Send text</span><span class="btn">Call in Quo</span><span class="btn quiet">No reply needed</span><span class="small">from the company number</span></div>
+        </div>
+        <div class="card redbar">
+          <div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap"><b>Elena Marchetti</b><span class="small">Cibolo Creek Partners · customer</span><span class="chip">Boerne Retail Shell</span><span class="chip red">waiting 25 min</span></div>
+          <div><span class="small">Missed call, 10:05 AM, no voicemail.</span></div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap"><span class="btn primary">Call back in Quo</span><span class="btn quiet">No reply needed</span></div>
+        </div>
+        <div class="card" style="border-left:4px solid var(--amber)">
+          <div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap"><b>(830) 555-0172</b><span class="chip amber">who is this?</span><span class="small">text, 9:12 AM</span></div>
+          <div>Hi this is Dee at Alamo Concrete, new cell. Saw the Pad B pricing set, can we quote the concrete?</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span class="btn primary">Dee at Alamo Concrete</span><span class="small">and tie it to</span><span class="btn">Pad B · Concrete</span><span class="btn quiet">Someone else</span></div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:baseline;flex-wrap:wrap"><h3>Late on their word (1)</h3><span class="small">They gave a day and no quote came. Call them.</span></div>
+        <p class="small">The quote asks Follow up already lists continue below, unchanged. Answering a message clears it from Needs a reply; the count on the tab is everyone waiting on us, one number.</p>
+      </div>
+    </div>
+    <p class="note">Messages stays as the full history and search: every conversation, no badge of its own. The work happens in Follow up.</p>
+
+    <div class="two">
+      <div class="card">
+        <div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap"><b>Greg Paulk · Hillside Excavation</b><span class="chip green">answered by Robert, 9:02 AM</span></div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap"><span class="chip" style="background:var(--accent-soft);color:var(--accent)">All</span><span class="chip">Boerne Retail Shell · Sitework</span><span class="chip">Boerne Retail Pad B · Sitework</span></div>
+        <div class="call"><div class="top"><b>Call · 4 min</b><span class="small">Sat Sep 26 · Robert · <b>Boerne · Sitework</b></span></div><div class="sum">He will price the Boerne sitework by Wednesday, Sep 30.</div><span class="small">Written down by Robert: quote by Wed Sep 30.</span></div>
+        <div class="item us"><div class="bubble">Thanks Greg. Can you get it to us Monday?</div><span class="small">Robert · sent from the app · <b>Boerne · Sitework</b></span></div>
+        <div class="item them"><div class="bubble">Monday works. Pad B too?</div><span class="small">Greg · 9:20 AM · <b>Pad B · Sitework</b> (the app saw "Pad B")</span></div>
+        <div class="item us"><div class="bubble">Yes please, pricing set is in your portal.</div><span class="small">Wendi · sent from Quo's app · <b>Pad B · Sitework</b></span></div>
+        <div class="call"><div class="top"><b>Email</b><span class="small">Greg to bids@ · 11:30 AM · <b>Boerne · Sitework</b></span></div><div><b>Hillside sitework, Boerne, rev 1</b></div><div class="sum">Numbers attached. Detention pond excluded per our call; we can price it at $38,500 if you need it.</div><div style="display:flex;gap:6px;flex-wrap:wrap"><span class="chip">Hillside-Boerne-sitework-rev1.pdf</span><span class="btn">Enter it as their quote</span></div></div>
+        <div class="call"><div class="top"><b>Call · 2 min</b><span class="small">Greg called · 11:42 AM · Rosa answered · <b>Boerne · Sitework</b></span></div><div class="sum">Greg checked the email came through. Rosa said yes and that the pond goes to Concrete.</div><div class="player"><span class="btn quiet">▶ 2:05</span><span class="wave"></span><span class="btn quiet">Transcript</span></div></div>
+        <p class="small">Calls, texts and emails sit in one line in time order. The job sits on every line and the chips filter by job. A reply from Quo's phone app shows up the same as one from here. Email comes from a shared Google mailbox; calls and texts come from Quo.</p>
+      </div>
+      <div class="card">
+        <b>Boerne Retail Shell · Trades · Conversations on this job</b>
+        <div class="act">
+          <div><span class="d">10:05 AM</span><span><b>Elena</b> (customer) missed call. <span class="chip red">call back</span></span></div>
+          <div><span class="d">8:44 AM</span><span><b>Hillside</b> asked about the detention pond. <span class="chip green">answered</span></span></div>
+          <div><span class="d">8:41 AM</span><span><b>Hillside</b> voicemail: by Wed Oct 7.</span></div>
+          <div><span class="d">7:58 AM</span><span><b>Tejas Power</b>: the quote is in their portal.</span></div>
+          <div><span class="d">Wed</span><span><b>Bexar Steel</b>: no answer to our text.</span></div>
+        </div>
+        <p class="small">Each job keeps a short list of its own calls and texts, by company, beside the trades. The customer's show on the project header and in the company window too.</p>
+      </div>
+    </div>
+    <ul class="qs">
+      <li><strong>A guess is always a button.</strong><p>A promised day or a plans question read from a call, a voicemail or a text is offered, never written down on its own. The thread says who confirmed it.</p></li>
+      <li><strong>Who sees a thread is set by its kind and its job.</strong><p>Trade threads: estimators and the owner. Customer threads: the job's project manager and the owner. Nothing tries to read money out of the words.</p></li>
+    </ul>
+  </section>
+
+  <!-- 8. Photos -->
+  <section class="section" aria-labelledby="s8p">
+    <span class="eyebrow">8 · Photos</span>
+    <h2 id="s8p">A customer texts photos: they land in the thread and on the job</h2>
+    <p class="note">A business number cannot use iMessage, so an iPhone sends a photo to it as an ordinary picture text. The carrier shrinks it to fit. The app saves its own copy the moment it arrives, because Quo's link to the picture is best treated as temporary.</p>
+    <div class="two">
+      <div class="card">
+        <div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap"><b>Dr. Priya Raman</b><span class="small">Helotes Dental Office · customer</span><span class="chip">Helotes Dental Office · buying out</span></div>
+        <div class="item them" style="max-width:none">
+          <div class="bubble">Here's the stain above operatory 3, and the old sink cabinet I want gone before you start.</div>
+          <div class="photos two-up">
+            <div class="ph a"><span class="src">picture text</span><div class="cap"><span>Ceiling tile, op 3</span><span class="dim">640 × 480 · 412 KB</span></div></div>
+            <div class="ph tall b"><span class="src">picture text</span><div class="cap"><span>Sink cabinet</span><span class="dim">480 × 640 · 388 KB</span></div></div>
+          </div>
+          <span class="small">Priya · 2:14 PM · saved to Helotes Dental Office → Photos, and the job's Team only folder in Drive</span>
+        </div>
+        <div class="item us">
+          <div class="bubble">Thanks! The tile is hard to read at this size. Could you send full-size photos here? clickconstruction.example/up/helotes-7q2</div>
+          <span class="small">Rosa · sent from the app with <b>Ask for full-size photos</b></span>
+          <span class="react" style="justify-self:end">♥ Priya liked this</span>
+        </div>
+        <div class="system">2:31 PM · 3 photos came in at full size through the upload link</div>
+        <div class="photos">
+          <div class="ph a"><span class="src full">full size</span><div class="cap"><span>Ceiling tile, op 3</span><span class="dim">4032 × 3024 · 3.1 MB</span></div></div>
+          <div class="ph c"><span class="src full">full size</span><div class="cap"><span>Above the tile</span><span class="dim">4032 × 3024 · 2.8 MB</span></div></div>
+          <div class="ph tall b"><span class="src full">full size</span><div class="cap"><span>Sink cabinet</span><span class="dim">3024 × 4032 · 3.0 MB</span></div></div>
+        </div>
+        <p class="small">Her "Liked" came in as the words <i>Liked "Thanks! The tile is hard to read…"</i>. The app shows it as a small heart under our text, not as a new message.</p>
+      </div>
+      <div class="card">
+        <div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap"><b>Helotes Dental Office · Photos</b><span style="flex:1"></span><span class="btn">Open the Drive folder</span></div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap"><span class="chip" style="background:var(--accent-soft);color:var(--accent)">All 7</span><span class="chip">From the customer 5</span><span class="chip">From trades 2</span><span class="chip">Full size 3</span></div>
+        <div class="photos">
+          <div class="ph a"><span class="src full">full size</span><div class="cap"><span>Ceiling tile, op 3</span><span class="dim">Priya · today</span></div></div>
+          <div class="ph c"><span class="src full">full size</span><div class="cap"><span>Above the tile</span><span class="dim">Priya · today</span></div></div>
+          <div class="ph tall b"><span class="src full">full size</span><div class="cap"><span>Sink cabinet</span><span class="dim">Priya · today</span></div></div>
+          <div class="ph a"><span class="src">picture text</span><div class="cap"><span>Ceiling tile, op 3</span><span class="dim">Priya · today</span></div></div>
+          <div class="ph tall b"><span class="src">picture text</span><div class="cap"><span>Sink cabinet</span><span class="dim">Priya · today</span></div></div>
+          <div class="ph d"><span class="src">picture text</span><div class="cap"><span>Panel, suite 140</span><span class="dim">Brightline · Sep 30</span></div></div>
+          <div class="ph c"><span class="src">picture text</span><div class="cap"><span>RTU nameplate</span><span class="dim">Kendall Air · Sep 28</span></div></div>
+        </div>
+        <p class="small">Every photo keeps who sent it, when, from which thread, and whether it is the shrunk picture text or the full-size upload. When the full-size copy of the same photo arrives, the small one stays, marked as the earlier copy.</p>
+      </div>
+    </div>
+    <div class="two">
+      <div class="card">
+        <b>Where a photo is kept</b>
+        <div class="act">
+          <div><span class="d">Quo</span><span>In Quo's own message history, as part of the plan.</span></div>
+          <div><span class="d">The app</span><span>Its own copy, saved when the text arrives: shown in the thread, filed with the company and the job.</span></div>
+          <div><span class="d">Drive</span><span>Optional: a copy in the job's Team only folder in Google Drive, where the field team already looks.</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <b>What it costs</b>
+        <table class="costs">
+          <tr><td>Receiving photos on Quo</td><td>Nothing extra. Two-way US texting is unlimited on Quo's plans, with no carrier fees passed on.</td></tr>
+          <tr><td>Replying from the app</td><td>About $0.01 a text through Quo's API. Replies from Quo's phone app are free.</td></tr>
+          <tr><td>Keeping the photos</td><td>Practically nothing. A thousand texted photos is about 1 GB: some 2 cents a month past the 100 GB the app's storage plan includes.</td></tr>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- 9. Big files: the file agent -->
+  <section class="section" aria-labelledby="s9f">
+    <span class="eyebrow">9 · Big files · the file agent</span>
+    <h2 id="s9f">Big files go to the job's Drive folder, and the thread gets a link</h2>
+    <p class="note">A plan set is too big to text and often too big to email. A helper we call the file agent saves every file it is handed to the right job's Google Drive folder. When it is sure, it files on its own. It reads the file, puts it on the open side or the team side of the folder, and hands back a link ready to send. Big files never pass through the phone line or the mailbox. They move from where they are straight into Drive.</p>
+    <div class="app" role="img" aria-label="Jonah Vale's email with a link to Addendum 2, the file agent's card under it, and the Send panel">
+      <div class="tabs">
+        <span class="mode">GC</span>
+        <span class="tab">Project Board</span>
+        <span class="tab">Follow up <span class="badge">7</span></span>
+        <span class="tab on">Messages</span>
+        <span class="tab">Trade partners</span>
+        <span class="tab">Money</span>
+      </div>
+      <div class="two" style="padding:14px 16px">
+        <div style="display:grid;gap:12px;min-width:0">
+          <div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap"><b>Jonah Vale</b><span class="small">Marsh &amp; Vale Architects · architect</span><span class="chip">Boerne Retail Shell</span></div>
+          <div class="call"><div class="top"><b>Email</b><span class="small">Jonah to bids@ · 10:48 AM · <b>Boerne Retail Shell</b></span></div>
+            <div><b>Boerne Retail Shell, Addendum 2</b></div>
+            <div class="sum">Addendum 2 is at the link below, 184 MB. It settles the panel size and the roof curbs. The bid date holds.</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span class="chip code">files.marshvale.example/s/7Hq2</span><span class="small">a link, not an attachment</span></div>
+          </div>
+          <div class="card agent">
+            <div class="agent-head"><span class="tag">File agent</span><span class="small">10:51 AM, 3 minutes after the email</span></div>
+            <b>Saved Addendum 2 to Boerne Retail Shell › Plans › Addendum 2</b>
+            <span class="small">Why here: Jonah draws Boerne Retail Shell, and the subject and the title blocks both name it.</span>
+            <dl class="kv">
+              <dt>Files</dt><dd>3 PDFs · 184 MB</dd>
+              <dt>Sheets</dt><dd>6 read from the title blocks. 5 replace earlier sheets and 1 is new.
+                <div class="sheets"><span class="sheet">E-301</span><span class="sheet new">E-302 new</span><span class="sheet">M-101</span><span class="sheet">M-201</span><span class="sheet">A-401</span><span class="sheet">FP-101</span></div></dd>
+              <dt>Trades it touches</dt><dd>Electrical, HVAC, Roofing, Fire sprinkler</dd>
+              <dt>Who can open it</dt><dd><span class="chip green">anyone with the link · Plans folder · checked</span></dd>
+            </dl>
+            <div class="suggest">It may answer 2 open questions: Brightline's 400 or 520 amps on E-301, and Summit's roof curbs on A-401 and M-101.<span class="btn">Read the answers</span><span class="btn quiet">Not yet</span></div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap"><span class="btn primary wrap">Send to the 13 companies quoting</span><span class="btn">Copy the link</span><span class="btn">Move</span><span class="btn quiet">Open in Drive</span></div>
+          </div>
+        </div>
+        <div class="card">
+          <div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap"><b>Send Addendum 2</b><span class="small">Boerne Retail Shell · questions close Mon Oct 5</span></div>
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="small">Send as</span><span class="seg"><span class="on">Portal link</span><span>Drive link</span></span></div>
+          <span class="small">The portal link shows who opened it, and asks each company with changes to confirm or update its price. A Drive link cannot tell who opened it, and it keeps working after the bid.</span>
+          <div class="group" style="padding:4px 0 0">Changes to price (7)</div>
+          <div class="act">
+            <div><span class="d">Electrical</span><span>Brightline Electric, Voltage Brothers, Tejas Power · <span style="white-space:nowrap">E-301, E-302</span></span></div>
+            <div><span class="d">HVAC</span><span>Cool Breeze Mechanical, Kendall Air · <span style="white-space:nowrap">M-101, M-201</span></span></div>
+            <div><span class="d">Roofing</span><span>Summit Roofing, Bluebonnet Roofing · <span style="white-space:nowrap">A-401</span></span></div>
+            <div><span class="d">Fire sprinkler</span><span>Nobody invited yet. <span class="btn quiet">Invite companies</span></span></div>
+          </div>
+          <div class="group" style="padding:4px 0 0">Nothing changed for them (6)</div>
+          <span class="small">Lonestar Earthworks, Tri-County Site, Hillside Excavation, Alamo Concrete, Guadalupe Flatwork and Bexar Steel Erectors get a one-line notice.</span>
+          <div class="box">Addendum 2 for Boerne Retail Shell is in your portal. E-301 and E-302 changed for Electrical. Please confirm or update your price by Mon Oct 5.</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span class="btn primary">Send to 13</span><span class="small">by text and email, from the company</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="note">Once sent, it works the way Addendum 1 did. The ring's "Confirm quotes after plan changes" card counts who has confirmed, and Follow up chases the rest. The new sheets join the job's sheet list, and each replaced sheet is marked as the older copy.</p>
+
+    <h3>Four ways to hand it a file</h3>
+    <div class="flow">
+      <div class="step"><b>Forward an email</b><span>To bids@, the mailbox quotes and plans already come to. Attachments and links in it are saved. It answers in one line with where it put them.</span></div>
+      <div class="step"><b>Drop it on the job</b><div class="drop"><span>Boerne bid set, full size.pdf</span><div class="meter"><i style="width:63%"></i></div><span class="small">1.2 GB · 63% · straight to Drive</span></div><span class="small">It goes from your computer to Drive in pieces. A dropped connection picks up where it stopped.</span></div>
+      <div class="step"><b>Text a link</b><span>To the company number. A link in a text from a trade or a customer is saved the same as one in an email.</span></div>
+      <div class="step"><b>Drop it in "To file"</b><span>A folder in Google Drive on your computer. The agent moves what lands there into the right job within a minute.</span></div>
+    </div>
+    <p class="note">What already comes to bids@ or the company number needs no forwarding. Jonah's email above was filed with nobody touching it.</p>
+
+    <h3>Two folders on every job: one open, one for the team</h3>
+    <div class="two">
+      <div class="card">
+        <b>Boerne Retail Shell · Google Drive</b>
+        <div class="tree">
+          <div class="node">Plans <span class="chip green">anyone with the link can view</span></div>
+          <div class="leaf">Bid set · 18 sheets</div>
+          <div class="leaf">Addendum 1 · 4 sheets</div>
+          <div class="leaf">Addendum 2 · 6 sheets <span class="small">new today</span></div>
+          <div class="leaf">Specs</div>
+          <div class="node">Team only <span class="chip">our team</span></div>
+          <div class="leaf">Quotes · 9, by trade</div>
+          <div class="leaf">Our bid</div>
+          <div class="leaf">Contracts and insurance</div>
+          <div class="leaf">Photos</div>
+        </div>
+        <p class="small">A trade, the customer or anyone on our team opens Plans from one link. Nobody outside the team sees Team only.</p>
+      </div>
+      <div class="card">
+        <b>Which side a file goes to</b>
+        <div class="act">
+          <div><span class="d">Plans</span><span>Plan sets, addenda, specs and the architect's answers.</span></div>
+          <div><span class="d">Team only</span><span>Anything with a price, a signature or someone's details: quotes, our bid, contracts, insurance and W-9s. Photos too.</span></div>
+          <div><span class="d">Not sure</span><span>Team only, with a <b>Move to Plans</b> button. A quote in the open folder would show one trade's price to the others, so the agent never guesses that way.</span></div>
+        </div>
+        <p class="small">The agent sets the sharing when it makes the job's folder, and checks it again each time it files.</p>
+      </div>
+    </div>
+
+    <h3>When it is not sure, it asks</h3>
+    <div class="two">
+      <div class="card" style="border-left:4px solid var(--amber)">
+        <div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap"><b>Which job is this file for?</b><span class="chip amber">the file agent asks</span><span class="small">9:05 AM</span></div>
+        <div>Boerne Retail rev 2.pdf · 96 MB · from Jonah Vale</div>
+        <span class="small">Jonah draws both Boerne jobs, and the title block only says "Boerne Retail".</span>
+        <div style="display:flex;gap:6px;flex-wrap:wrap"><span class="btn primary">Boerne Retail Pad B</span><span class="btn">Boerne Retail Shell</span><span class="btn quiet">Another job</span></div>
+        <p class="small">It waits in Follow up under Needs a reply, like a number nobody knows. The answer becomes the rule for Jonah's next file.</p>
+      </div>
+      <div class="card">
+        <div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap"><b>It cannot get past a sign-in</b><span class="small">Elena Marchetti · email · 11:20 AM</span></div>
+        <div class="bubble">The landscape plans are posted on our BuildingConnected page.</div>
+        <div class="suggest">That site needs a sign-in, and the agent never signs in with our passwords.<span class="btn wrap">Download it, then drop it here</span></div>
+        <p class="small">Sites like BuildingConnected and Procore stay one download by hand. A plain link, an attachment or a drop is saved with nobody touching it.</p>
+      </div>
+    </div>
+
+    <div class="two">
+      <div class="card">
+        <b>Messages · Files · today</b>
+        <div class="act">
+          <div><span class="d">11:05 AM</span><span>Robert forwarded Addendum 2 again. Same file, so no second copy. Both threads link to the one in Drive.</span></div>
+          <div><span class="d">10:51 AM</span><span>Saved Addendum 2 to Boerne Retail Shell › Plans. 184 MB.<br><span class="btn quiet" style="padding-left:0">Move</span><span class="btn quiet">Undo</span></span></div>
+          <div><span class="d">10:12 AM</span><span>Saved Kendall Air's quote to Boerne Retail Shell › Team only › Quotes. 2 MB. A price, so the team side.</span></div>
+          <div><span class="d">9:40 AM</span><span>Saved 3 full-size photos from Priya to Helotes Dental Office › Team only › Photos.</span></div>
+          <div><span class="d">9:05 AM</span><span><b>Waiting on you:</b> which job Boerne Retail rev 2.pdf is for.</span></div>
+        </div>
+        <p class="small">Every file keeps who sent it, from which thread, and why the agent put it where it did. Undo moves a file back to "To file". Nothing is deleted.</p>
+      </div>
+      <div class="card">
+        <div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap"><b>Later, if you want it: ask in words</b><span class="tag">File agent</span></div>
+        <div class="box">Send Addendum 2 to the electricians and ask Tejas if they are still bidding.</div>
+        <div class="bubble">Drafted 3 texts with the portal link: Brightline Electric, Voltage Brothers and Tejas Power. The one to Tejas asks if they are still bidding. Nothing goes until you press Send.</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap"><span class="btn primary">Review and send 3</span><span class="btn quiet">Change them</span></div>
+        <p class="small">The same agent with a box to type in. It drafts, and a person sends.</p>
+      </div>
+    </div>
+
+    <div class="two">
+      <div class="card">
+        <b>How it works</b>
+        <div class="act">
+          <div><span class="d">Arrives</span><span>An email to bids@, a text through Quo, a drop on the job, or the "To file" folder.</span></div>
+          <div><span class="d">Copies</span><span>Big files go from their site straight into Drive, a piece at a time. The app's servers never hold a whole plan set.</span></div>
+          <div><span class="d">Reads</span><span>Title blocks, sheet numbers and the addendum's list of changes. Rules pick the job. Claude looks only when the rules cannot tell, and a person decides when neither is sure.</span></div>
+          <div><span class="d">Files</span><span>Names it, puts it in the job's folder, adds it to the job's plan sets, sets who can open it and checks the link works.</span></div>
+        </div>
+        <p class="small">It runs on the Google connection the app's plan intake already uses. In late August that connection was one approval short in Google's admin console, so that comes first. Reading bids@ adds one Gmail permission to the same approval.</p>
+      </div>
+      <div class="card">
+        <b>What it costs, and where it stops</b>
+        <table class="costs">
+          <tr><td>Keeping the files</td><td>Drive storage from the Google Workspace plan. The app keeps a small preview and the sheet list, not the file.</td></tr>
+          <tr><td>Reading them</td><td>Free when the rules decide. A few cents for each file Claude has to look at.</td></tr>
+          <tr><td>How big</td><td>Google takes up to 750 GB a day per account. A plan set is a few hundred MB to a few GB.</td></tr>
+          <tr><td>Email</td><td>Gmail takes attachments up to 50 MB in and 25 MB out. Anything bigger already travels as a link.</td></tr>
+          <tr><td>Sign-ins</td><td>Sites that need a sign-in stay a download by hand.</td></tr>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- 10. Decisions -->
+  <section class="section" aria-labelledby="s8">
+    <span class="eyebrow">10 · Decisions before anything is built</span>
+    <h2 id="s8">Seven questions for you, and three decided</h2>
+    <ul class="qs">
+      <li><strong>One company number, or a number per estimator?</strong><p>The mockup has a main line and an Estimating line, both into Messages.</p></li>
+      <li><strong>Who sees which threads?</strong><p>Drawn in the revised version: estimators and the owner see trade threads, a job's project manager and the owner see customer threads.</p></li>
+      <li><strong>Where people reply.</strong><p>In the app, in Quo's phone app, or both. Both work if Quo's sent messages come back into the thread, which is the first thing to check.</p></li>
+      <li><strong>Which job does a message belong to?</strong><p>A company quoting four of our bids texts once. The draft rule: a job named in the message, else the most recent open ask, else the app asks.</p></li>
+      <li><strong>Recordings, and the notice.</strong><p>Texas needs only one side's consent, but callers from other states may need both. A short notice at the start of each call covers it.</p></li>
+      <li><strong>Photos in the job's Drive folder too?</strong><p>Every photo is kept in the app either way. A copy would go in the job's Team only folder, where the field team already looks.</p></li>
+      <li><strong>The Quo plan.</strong><p>Transcripts, summaries and the API are plan features. The plan sets the price per person: roughly $23 to $35 a month each, billed yearly.</p></li>
+    </ul>
+    <h3>Decided, Oct 5</h3>
+    <ul class="qs">
+      <li class="done"><strong>The file agent files on its own when it is sure.</strong><p>Move and Undo sit on every file. Only the unsure ones wait for a person.</p></li>
+      <li class="done"><strong>Anyone can open the plans, and the team keeps a folder of its own.</strong><p>Each job's Plans folder opens for anyone with the link, trades and us alike. Team only holds quotes, our bid, contracts and photos.</p></li>
+      <li class="done"><strong>No files@ address for now.</strong><p>The team forwards to bids@, the mailbox quotes and plans already come to.</p></li>
+    </ul>
+  </section>
+</main>

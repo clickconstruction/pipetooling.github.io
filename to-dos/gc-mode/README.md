@@ -1153,6 +1153,27 @@ configs (`dev-5237`, `dev-5241`, `dev-5242`, `dev-5243`, `dev-5244`) live in the
 whose worktree has none copies it from `/Users/todd/Documents/GitHub/pipetooling.github.io/.claude/launch.json`.
 Never start another lane's port.
 
+## Calls, texts and big files (a proposal, 2026-10-04)
+
+The owner asked whether one company number and one mailbox could feed a message platform in the
+app. Mock-up: `quo-messages-mockup.html` (artifact `D2c6cJ7fc9ixVHg4v5TbXH`, New Project lane).
+**How it would work:** buy the phone part (Quo) and build the link to it. Calls, texts, voicemails,
+transcripts and email land in threads tied to a job. Unanswered ones lead Follow up. Photos are saved
+on arrival. A file agent puts big files in the job's Google Drive folder. Nothing is built.
+Decided by the owner (2026-10-05):
+
+- **The file agent files on its own when it is sure.** Move and Undo on every file; only the
+  unsure ones wait for a person.
+- **Anyone can open the plans; the team keeps a folder of its own.** Each job's Drive folder has
+  Plans (anyone with the link can view: trades and us) and Team only (quotes, our bid,
+  contracts, insurance, W-9s, photos). Not sure means Team only, with Move to Plans.
+- **No files@ address for now.** The team forwards to bids@.
+
+Still open, in the mock-up's last section: one number or one per estimator; who sees which threads;
+where people reply; which job a message belongs to; recordings and the notice; photos in Drive;
+the Quo plan. The agent's Drive connection waits on the plan intake's admin-console approval
+(the August handoff).
+
 ## The plan, when the shape is settled
 
 1. **Schema from the model.** Projects reuse `projects`; new: plan sets and their sheets, trade
