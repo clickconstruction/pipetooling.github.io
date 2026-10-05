@@ -347,6 +347,17 @@ export default function LienDeskModal({
     if (open && !wasOpenRef.current) setKind(initialKind ?? 'notice')
     wasOpenRef.current = open
   }, [open, initialKind])
+  // A door can re-aim a desk that is already open (punch list #82: the job's Lien window, opened over the desk,
+  // sends its next step back here). The job it names is new, so its tab is applied as on a fresh open.
+  const aimedJobRef = useRef(initialJobId ?? null)
+  useEffect(() => {
+    const prev = aimedJobRef.current
+    aimedJobRef.current = initialJobId ?? null
+    if (open && wasOpenRef.current && initialJobId && initialJobId !== prev) {
+      setKind(initialKind ?? 'notice')
+      setMobileListShown(false)
+    }
+  }, [open, initialJobId, initialKind])
   const [bookGcId, setBookGcId] = useState<string | null>(null)
   const [bookShow, setBookShow] = useState<LienBookShow>('due')
   useEffect(() => {
@@ -1974,7 +1985,7 @@ export default function LienDeskModal({
       footer = (
         <>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem 1rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }} data-lien-since-sent>
-            <span>Sent <strong style={{ color: 'var(--text-700)' }}>{first?.sent_at ? demandDate(calendarYmdInAppTzFromIso(first.sent_at)) : ''}</strong> · on the job's lien instruments</span>
+            <span>Sent <strong style={{ color: 'var(--text-700)' }}>{first?.sent_at ? demandDate(calendarYmdInAppTzFromIso(first.sent_at)) : ''}</strong> · in the job's Lien window</span>
             {lt && lt.day != null ? <span>Day <strong style={{ color: 'var(--text-700)' }}>{lt.day}</strong></span> : null}
             <span>GC paid: <strong style={{ color: 'var(--text-700)' }}>{jobBalance <= 0.005 ? 'yes' : 'no'}</strong></span>
             <span>GC authorized direct pay: <strong style={{ color: 'var(--text-700)' }}>{lt?.gcAuthorized ? `yes · ${formatYmdMonthDay(calendarYmdInAppTzFromIso(lt.gcAuthorized.at))}${lt.gcAuthorized.note ? ` · ${lt.gcAuthorized.note}` : ''}` : 'no'}</strong></span>

@@ -84,7 +84,7 @@ export function StagesLienInstrumentsButton({ onClick, demandOut }: { onClick: (
       type="button"
       onClick={onClick}
       title={demandOut ? 'Lien window — a demand letter is out on this job; the timeline says how long they have' : 'Lien window — the job’s timeline (whose move it is), the demand letter and the lien papers'}
-      aria-label="Lien instruments"
+      aria-label="Liens on this job"
       style={{
         ...iconButtonStyle,
         background: demandOut ? 'var(--bg-amber-tint)' : 'none',

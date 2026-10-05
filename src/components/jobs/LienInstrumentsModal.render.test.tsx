@@ -6,7 +6,7 @@
  * only — the statement math lives in src/lib/jobsDocuments/demandLetter.test.ts.
  */
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { makeInvoice, makeJob, renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import LienInstrumentsModal from './LienInstrumentsModal'
 
@@ -148,10 +148,32 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
     }
   })
 
+  it('names the next step above the papers, with its door, and links to Release of Lien (punch list #82)', async () => {
+    const onOpenLienDesk = vi.fn()
+    const onOpenRelease = vi.fn()
+    renderWithProviders(<LienInstrumentsModal {...baseProps} job={job()} onOpenLienDesk={onOpenLienDesk} onOpenRelease={onOpenRelease} />)
+    await settle()
+    expect(screen.getByRole('dialog', { name: /^Liens on job / })).toBeTruthy()
+    const card = await waitFor(() => {
+      const el = document.querySelector('[data-lien-window-next-step]') as HTMLElement | null
+      expect(el).toBeTruthy()
+      return el!
+    })
+    expect(card.textContent).toContain('Your next step')
+    const door = card.querySelector('[data-lien-window-next-step-button]') as HTMLButtonElement | null
+    if (door) {
+      fireEvent.click(door)
+      // A notice step goes to the desk on this job; any other step switches this window's tab.
+      if (/Lien desk/.test(door.textContent ?? '')) expect(onOpenLienDesk).toHaveBeenCalledWith(job().id, expect.stringMatching(/notice|retainage/))
+    }
+    fireEvent.click(within(document.querySelector('[data-lien-window-waivers]') as HTMLElement).getByRole('button', { name: 'Open Release of Lien ›' }))
+    expect(onOpenRelease).toHaveBeenCalledTimes(1)
+  })
+
   it('demands of the GC the bill went to, points the owner to the notice, and lists the bill as sent', async () => {
     renderWithProviders(<LienInstrumentsModal {...baseProps} job={job()} />)
     await settle()
-    expect(screen.getByRole('dialog', { name: 'Lien instruments' })).toBeTruthy()
+    expect(screen.getByRole('dialog', { name: /^Liens on job / })).toBeTruthy()
     await waitFor(() => expect(screen.getByText(/the GC on the job/)).toBeTruthy())
     const debtor = document.querySelector('[data-demand-debtor]') as HTMLElement
     expect(debtor.textContent).toContain('RMC- Dudley Mason')

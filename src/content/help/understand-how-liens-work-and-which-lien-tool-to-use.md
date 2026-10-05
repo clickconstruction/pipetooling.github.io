@@ -2,7 +2,7 @@
 title: understand how liens work and which lien tool to use
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: lien, mechanic's lien, Texas, Property Code, chapter 53, notice, 53.056, affidavit, 53.052, release, waiver, work month, GC, subcontractor, owner of record, deadline, Lien desk, Lien instruments, homestead, retainage
+keywords: lien, mechanic's lien, Texas, Property Code, chapter 53, notice, 53.056, affidavit, 53.052, release, waiver, work month, GC, subcontractor, owner of record, deadline, Lien desk, Next up, liens on job, homestead, retainage
 ---
 A lien is a claim on the property the work went into. Texas lets a plumber who has not been paid put one there.
 
@@ -41,7 +41,7 @@ Two related papers point the other way. First come the four Texas **lien waivers
 |---|---|
 | See which unpaid months are closing and get the notices out. | **The Lien desk**. The desk opens from Dashboard → Needs you {{chip:red|N lien notices to draft}}. The desk also opens from Jobs → Pipeline → Collections header {{button:outline|⏱ Lien desk}}. |
 | See the months and hours behind one bill. | **Jobs → Pipeline → Forecast**, the chevron on the row. |
-| Send one notice or a demand letter by hand. File the affidavit. Record the filing and the service. | **Lien instruments**, the orange lien icon on a Billed or Collections row. |
+| Send one notice or a demand letter by hand. File the affidavit. Record the filing and the service. | The job's Lien window, titled *Liens on job* and its number. Press the orange lien icon on a Billed or Collections row. Its top card names your next step. |
 | Give a customer a release when they pay. | The blue release button on the row, or **Bill Customer → Lien releases**. |
 | Ask a sub to waive their lien rights when you pay them. | **Job → Subs → Pay → Lien waiver…** |
 | Hand an unpaid account to the attorney after the paper is done. | {{button:outline|⚖ Legal}} on the Collections header. |
@@ -68,7 +68,7 @@ J650 ran June through September for a GC and nothing is paid. June's notice is d
 
 - *send lien notices from the Lien desk*: the desk, piles, approval, the run.
 - *answer an owner who calls about a lien letter*: ☎ Someone's calling. Find the letter they hold, read the cards, record the call.
-- *file a lien and never miss its deadlines*: the Lien instruments window. That window covers notice, affidavit, service and release of record.
+- *file a lien and never miss its deadlines*: the job's Lien window. That window covers notice, affidavit, service and release of record.
 - *give a customer a lien release*: conditional and unconditional releases, signing, the Needs you follow-through.
 - *send a sub the right lien waiver*: the four Texas waiver forms when you pay a sub.
 - *see when a customer will pay*: the forecast's work-month panel the desk reads from.
