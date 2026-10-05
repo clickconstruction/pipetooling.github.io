@@ -120,10 +120,11 @@ column headers are in one block at the end of `gcBuildingWords.ts`, for the nati
 
 ## For a native speaker to read
 
-Every Spanish string the trade's portal shows, 892 in all, drawn from the code on 2026-10-04.
+Every Spanish string the trade's portal shows, 892 in all, drawn from the code on 2026-10-05.
 They're grouped by screen, English on the left. Please mark anything that reads wrong, stiff or
 unclear, and write the better words beside it. The Portal lane makes the changes and passes the
-other lanes theirs.
+other lanes theirs. After any change to the words, redraw the tables below from the code with
+`to-dos/gc-mode/portal-spanish-list.ts` (how to run it is at its top).
 
 **The slots in curly brackets** are filled in when the page is drawn:
 
