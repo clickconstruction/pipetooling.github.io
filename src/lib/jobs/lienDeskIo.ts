@@ -113,6 +113,39 @@ export async function pullBackLienDeskItem(itemId: string, userId: string | null
   )
 }
 
+/**
+ * Undo a run's approval (v2.4541): every notice the click approved, or sent to the leader, goes
+ * back to the office's draft, and the printed stamp goes with it. Only rows still approved or
+ * awaiting approval move, so a notice already recorded as sent is never touched. Returns how many moved.
+ */
+export async function undoLienDeskApprovals(itemIds: ReadonlyArray<string>, userId: string | null): Promise<number> {
+  if (itemIds.length === 0) return 0
+  const rows = await withSupabaseRetry(
+    () =>
+      supabase
+        .from('job_lien_desk_items')
+        .update({
+          status: 'drafted',
+          approval_mode: null,
+          approved_by: null,
+          approved_at: null,
+          word_note: '',
+          word_channel: '',
+          hold_reason: '',
+          hold_until: null,
+          printed_at: null,
+          printed_by: null,
+          pulled_back_by: userId,
+          pulled_back_at: new Date().toISOString(),
+        } as never)
+        .in('id', [...itemIds])
+        .in('status', ['approved', 'awaiting_approval'])
+        .select('id'),
+    'lien desk: undo approvals',
+  )
+  return ((rows ?? []) as unknown as Array<{ id: string }>).length
+}
+
 /** The office accepts the forfeit for these months (the row stays as the record of the decision). */
 export async function skipLienDeskItem(input: { itemId: string | null; jobId: string; months: string[]; fields: LienDeskDraftFields; reason: string; userId: string | null; userName?: string; kind?: LienDeskItemKind }): Promise<void> {
   const who = (input.userName ?? '').trim()

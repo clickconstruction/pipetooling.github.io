@@ -66,6 +66,24 @@ describe('LienDeskRunModal', () => {
     expect(screen.getByText(/the email id is the tracking/)).toBeTruthy()
   })
 
+  it('offers to undo the approval only when the opener says the run was just started (v2.4541)', async () => {
+    const onUndo = vi.fn()
+    const view = renderWithProviders(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    await settle()
+    expect(screen.queryByTestId('run-undo')).toBeNull()
+    view.unmount()
+    renderWithProviders(
+      <LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={() => {}} undo={{ words: 'You just approved this notice for Loberg Contracting. Pressed it by mistake?', busy: false, onUndo }} />,
+    )
+    await settle()
+    const strip = screen.getByTestId('run-undo')
+    expect(strip.textContent).toContain('You just approved this notice for Loberg Contracting. Pressed it by mistake?')
+    // It sits under the title and above the steps.
+    expect(strip.compareDocumentPosition(screen.getByTestId('run-steps')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Undo the approval…' }))
+    expect(onUndo).toHaveBeenCalledTimes(1)
+  })
+
   it('a recipient with no mailing address blocks the run and says so', async () => {
     const n = notice()
     n.recipients[0] = { ...n.recipients[0]!, name: '', address: '' }

@@ -459,7 +459,7 @@ describe('BidsSubmittalsTab', () => {
     // The rows table's headers (the procurement log has a Status column of its own since 2026-10-02).
     const rowsTable = screen.getAllByTestId('submittal-row')[0]!.closest('table')!
     expect(within(rowsTable).getByRole('columnheader', { name: /^Status/ }).getAttribute('title')).toBe('How your product compares to what the plans asked for.')
-    expect(within(rowsTable).getByRole('columnheader', { name: /^Sheet/ }).getAttribute('title')).toMatch(/maker’s page/)
+    expect(within(rowsTable).getByRole('columnheader', { name: /^Cut sheet/ }).getAttribute('title')).toMatch(/maker’s page/)
     expect(screen.queryByTestId('status-legend')).toBeNull()
     fireEvent.click(screen.getByTestId('status-legend-toggle'))
     const legend = screen.getByTestId('status-legend')
@@ -860,7 +860,7 @@ describe('BidsSubmittalsTab', () => {
       mount()
       await screen.findAllByTestId('submittal-row')
       // The row with parts shows each part's call, and the count of calls over its parts.
-      await waitFor(() => expect(screen.getAllByTestId('row-part-call').map((e) => e.textContent)).toEqual(['✓ approved']))
+      await waitFor(() => expect(screen.getAllByTestId('row-part-call').map((e) => e.textContent)).toEqual(['Approved']))
       // 2026-10-03 · the cell counts in the office's words: one of two approved, one with no answer yet.
       expect(screen.getAllByTestId('their-call-head')[0]!.textContent).toBe('1 of 2 approved')
       expect(screen.getAllByTestId('their-call-parts')[0]!.textContent).toBe('1 with no answer yet')
@@ -1121,6 +1121,8 @@ describe('BidsSubmittalsTab', () => {
       const hint = await screen.findByTestId('fold-hint')
       expect(hint.textContent).toBe('CAR-1 reads like a part of WC-1.Make it a part…')
       // The hand row carries its own door too; the fixture with a product does not.
+      // Part of… sits behind each draft row's ⋯.
+      for (const more of screen.getAllByTestId('row-more')) fireEvent.click(more)
       expect(screen.getAllByTestId('fold-row')).toHaveLength(2)
       fireEvent.click(within(hint).getByTestId('fold-hint-open'))
       const dialog = await screen.findByRole('dialog', { name: 'Make CAR-1 a part of another row' })
@@ -1214,6 +1216,7 @@ describe('BidsSubmittalsTab', () => {
       expect(screen.getByTestId('add-from-takeoff').textContent).toBe('Choose what the GC sees…')
       // × on the sink: off the draft, and unticked on the takeoff list.
       state.writes = []
+      fireEvent.click(screen.getByRole('button', { name: 'More for UTILITY SINK' }))
       fireEvent.click(screen.getByRole('button', { name: 'Remove UTILITY SINK' }))
       // 2026-10-02 · the × asks whether the fixture is still bought; Left out is what it did before.
       const takeOff = await screen.findByRole('dialog', { name: 'Take UTILITY SINK off the submittal' })
@@ -1244,6 +1247,7 @@ describe('BidsSubmittalsTab', () => {
       mount()
       await waitFor(() => expect(screen.getAllByTestId('submittal-row')).toHaveLength(3))
       expect(screen.queryByTestId('order-only-heading')).toBeNull()
+      fireEvent.click(screen.getByRole('button', { name: 'More for FCO' }))
       fireEvent.click(screen.getByRole('button', { name: 'Remove FCO' }))
       const takeOff = await screen.findByRole('dialog', { name: 'Take FCO off the submittal' })
       // Nothing is bought yet, so both answers are open.
@@ -1294,6 +1298,7 @@ describe('BidsSubmittalsTab', () => {
       await waitFor(() => expect(screen.getAllByTestId('submittal-row')).toHaveLength(1))
       // A row stored order only reads in its group from the first load.
       expect(screen.getAllByTestId('order-only-row')).toHaveLength(1)
+      fireEvent.click(screen.getByRole('button', { name: 'More for EWC-1' }))
       fireEvent.click(screen.getByRole('button', { name: 'Remove EWC-1' }))
       const takeOff = await screen.findByRole('dialog', { name: 'Take EWC-1 off the submittal' })
       const out = within(takeOff).getByTestId('take-off-leave-out') as HTMLButtonElement

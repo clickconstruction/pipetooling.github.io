@@ -4713,6 +4713,25 @@ button.gcStep:hover > em { text-decoration: underline; }
   .sub-edit-two { grid-template-columns: minmax(0, 1fr); }
 }
 
+/* Submittals rows table: a part and the reviewer's answer on it are two cells of one grid row, the
+   answer under the Their answer heading (a 13rem header cell less its 1rem of padding). On a phone each row is a
+   card, each cell a block under a small label, and the answer sits under its part. */
+.sub-rows-answers { display: grid; grid-template-columns: minmax(0, 1fr); column-gap: 1rem; align-items: baseline; }
+.sub-rows-answers[data-answers='true'] { grid-template-columns: minmax(0, 1fr) 12rem; }
+@media (max-width: 720px) {
+  .sub-rows-wrap { border: none !important; background: transparent !important; overflow: visible !important; }
+  .sub-rows-table { display: block; min-width: 0 !important; }
+  .sub-rows-table thead { display: none; }
+  .sub-rows-table tbody { display: flex; flex-direction: column; gap: 0.6rem; }
+  .sub-rows-table tr { display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); padding: 0.3rem 0.25rem; }
+  .sub-rows-table td { display: block; border-bottom: none !important; padding-block: 0.25rem !important; text-align: left !important; }
+  .sub-rows-table td[data-label]::before { content: attr(data-label); display: block; font-size: 0.66rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-muted); }
+  .sub-rows-answers[data-answers='true'] { grid-template-columns: minmax(0, 1fr); row-gap: 0.1rem; margin-bottom: 0.2rem; }
+  /* A long maker-and-model wraps inside the card instead of running past its edge. */
+  .sub-rows-part { flex-wrap: wrap; }
+  .sub-rows-part-head { white-space: normal !important; overflow-wrap: anywhere; }
+}
+
 /* Pipeline Billed rows' dates block (v2.4193): the doors underline on hover only. */
 .billedDatesLedger button:hover {
   text-decoration: underline;

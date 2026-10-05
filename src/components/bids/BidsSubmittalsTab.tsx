@@ -2253,6 +2253,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                   previousRev={previousRev}
                   prevById={prevById}
                   decisions={decisions}
+                  scheduleTags={specified.length}
                   isDraft={isDraft}
                   busy={busy}
                   foldHints={foldHints}
@@ -2263,6 +2264,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                   onTakeOff={(it) => void askTakeOff(it)}
                   onPutBack={(it) => void setOrderOnly(it, false)}
                   onLeaveOut={(it) => void leaveOrderOnlyOut(it)}
+                  onTypeSchedule={isDraft ? () => setPlugInOpen(true) : undefined}
                 />
                 {isDraft && (takeoffLeftOut > 0 || takeoffStandsLine) ? (
                   <div style={{ marginTop: '0.4rem', fontSize: '0.8125rem', display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap' }} data-testid="left-out-line">
