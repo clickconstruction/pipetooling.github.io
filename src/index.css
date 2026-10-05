@@ -4451,6 +4451,28 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
 .stagesBandTotal {
   font-weight: 600;
 }
+/* Put a GC on notice (v2.4540): the row the "N look wrong" list jumped to stays lit for a moment. */
+@keyframes gcNoticeRowFlash {
+  0%, 100% { background: var(--bg-amber-tint); }
+  50% { background: transparent; }
+}
+tr.gcNoticeBandRow[data-flash='yes'] > td {
+  background: var(--bg-amber-tint);
+  animation: gcNoticeRowFlash 0.9s ease-in-out 2;
+}
+tr.gcNoticeBandRow[data-flash='yes'] > td:first-child {
+  box-shadow: inset 4px 0 0 #f59e0b;
+}
+@media (prefers-reduced-motion: reduce) {
+  tr.gcNoticeBandRow[data-flash='yes'] > td {
+    animation: none;
+  }
+}
+.gcNoticeWrongItem:hover,
+.gcNoticeWrongItem:focus-visible {
+  background: var(--bg-subtle) !important;
+  outline: none;
+}
 /* ── Pipeline Working header: the schedule pills + next-first sort (v2.3788) ── */
 .stagesWhenPills {
   display: inline-flex;

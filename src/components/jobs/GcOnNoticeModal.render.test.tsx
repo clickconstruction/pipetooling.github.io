@@ -181,6 +181,75 @@ describe('GcOnNoticeModal', () => {
     fireEvent.click(within(band).getByTestId('gc-notice-band-toggle'))
     expect(screen.queryAllByTestId('gc-notice-band-row')).toHaveLength(0)
   })
+  it('v2.4540 · "N look wrong" lists the jobs that look wrong; picking one unfolds the band, scrolls to its row and lights it', async () => {
+    const d = data()
+    d.jobs = [
+      { ...d.jobs[0]!, jobId: 'j1031', jobStatus: 'working' },
+      { ...d.jobs[0]!, jobId: 'j994', jobStatus: 'billed' },
+      d.jobs[0]!,
+    ]
+    d.desk.jobsById = {
+      ...d.desk.jobsById,
+      j1031: { id: 'j1031', hcp_number: '1031', click_number: null, job_name: 'Lot 14', job_address: '14 Elm, Austin TX', customer_id: 'c1', gc_customer_id: 'g1', status: 'working', last_work_date: null, revenue: 10000, payments_made: 0 } as never,
+      j994: { id: 'j994', hcp_number: '994', click_number: null, job_name: 'Miller residence', job_address: '9 Oak, Austin TX', customer_id: 'c2', gc_customer_id: 'g1', status: 'billed', last_work_date: null, revenue: 10000, payments_made: 0 } as never,
+    }
+    const fixture = (id: string, job_id: string, name: string, price: number, invoice_id: string | null = null, seq = 0) => ({ id, job_id, name, count: 1, line_unit_price: price, line_adjustment: null, percent_off: null, tax_rate_percent: null, is_fixed: false, invoice_id, sequence_order: seq }) as never
+    const invoice = (id: string, job_id: string, amount: number, status: string) => ({ id, job_id, sequence_order: 0, amount, status, billed_at: '2026-08-21T12:00:00Z', created_at: '2026-08-21T12:00:00Z', stripe_invoice_id: null }) as never
+    d.workByJob = {
+      j1031: { status: 'working', pctComplete: null, fixtures: [fixture('f1', 'j1031', 'Rough In', 6000)], invoices: [], payments: [] },
+      j994: { status: 'billed', pctComplete: 100, fixtures: [fixture('f3', 'j994', 'Trim set complete', 10000, 'i1')], invoices: [invoice('i1', 'j994', 10000, 'billed')], payments: [] },
+    }
+    hookState.data = d
+    // The band remembers its fold per browser; the case before this one left it folded.
+    localStorage.removeItem('gcNoticeBandOpen')
+    const scrolled: Element[] = []
+    const realScroll = Element.prototype.scrollIntoView
+    Element.prototype.scrollIntoView = function scrollIntoView(this: Element) {
+      scrolled.push(this)
+    }
+    try {
+      renderWithProviders(<GcOnNoticeModal {...baseProps} authRole="master_technician" />)
+      await settle()
+      const band = screen.getByTestId('gc-notice-band')
+      const trigger = within(band).getByTestId('gc-notice-band-wrong')
+      const wrongRows = screen.getAllByTestId('gc-notice-band-row').filter((r) => r.dataset.wrong === 'yes')
+      expect(trigger.textContent).toContain(`${wrongRows.length} look${wrongRows.length === 1 ? 's' : ''} wrong`)
+      expect(screen.queryByTestId('gc-notice-band-wrong-list')).toBeNull()
+
+      // Pointing at the words opens the list: one row per wrong job, in the table's order, each with what looks wrong.
+      fireEvent.mouseEnter(trigger.parentElement!)
+      const list = await screen.findByTestId('gc-notice-band-wrong-list')
+      const items = within(list).getAllByTestId('gc-notice-band-wrong-item')
+      expect(items.map((i) => i.dataset.jobId)).toEqual(wrongRows.map((r) => r.dataset.jobId))
+      expect(items[0]!.textContent).toContain('1031 · Lot 14')
+      expect(items[0]!.textContent).toContain('set % done')
+      // Esc closes the list and nothing else.
+      fireEvent.keyDown(document, { key: 'Escape' })
+      expect(screen.queryByTestId('gc-notice-band-wrong-list')).toBeNull()
+      expect(screen.getByRole('dialog', { name: 'Put a GC on notice' })).toBeTruthy()
+
+      // A click pins it open (touch, keyboard); fold the table, then pick: the band unfolds and the row is found.
+      fireEvent.click(within(band).getByTestId('gc-notice-band-toggle'))
+      expect(screen.queryAllByTestId('gc-notice-band-row')).toHaveLength(0)
+      fireEvent.click(trigger)
+      const last = within(screen.getByTestId('gc-notice-band-wrong-list')).getAllByTestId('gc-notice-band-wrong-item').slice(-1)[0]!
+      const pickedId = last.dataset.jobId!
+      fireEvent.click(last)
+      expect(screen.queryByTestId('gc-notice-band-wrong-list')).toBeNull()
+      const lit = await waitFor(() => {
+        const row = screen.getAllByTestId('gc-notice-band-row').find((r) => r.dataset.flash === 'yes')
+        if (!row) throw new Error('no row lit')
+        return row
+      })
+      expect(lit.dataset.jobId).toBe(pickedId)
+      expect(scrolled).toContain(lit)
+      // No other row is lit.
+      expect(screen.getAllByTestId('gc-notice-band-row').filter((r) => r.dataset.flash === 'yes')).toHaveLength(1)
+    } finally {
+      Element.prototype.scrollIntoView = realScroll
+      localStorage.removeItem('gcNoticeBandOpen')
+    }
+  })
   it('reads the brief and the step bar, lists the owners with the roll’s answer, names a closed window, and offers the leader Approve all', async () => {
     hookState.data = data()
     renderWithProviders(<GcOnNoticeModal {...baseProps} authRole="master_technician" />)

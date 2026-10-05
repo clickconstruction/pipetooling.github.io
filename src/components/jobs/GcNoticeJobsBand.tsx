@@ -1,4 +1,4 @@
-import { useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import type { GcOnNoticeData } from '../../hooks/useGcOnNoticeData'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
@@ -10,6 +10,7 @@ import { gcNoticeBandLinePartWords,
   buildGcNoticeBand,
   GC_NOTICE_BAND_ORDERS,
   gcNoticeBandStageWords,
+  gcNoticeBandWrongItems,
   type GcNoticeBandDoor,
   type GcNoticeBandJobInput,
   type GcNoticeBandLine,
@@ -18,6 +19,7 @@ import { gcNoticeBandLinePartWords,
   type GcNoticeBandStage,
 } from '../../lib/jobs/gcNoticeJobsBand'
 import StagesProgressPaymentCell from './StagesProgressPaymentCell'
+import GcNoticeWrongList from './GcNoticeWrongList'
 
 /**
  * Put a GC on notice — "Jobs with unpaid work under this GC" (v2.3819, punch list #43; titled "The jobs, by stage" until v2.4538): the
@@ -38,6 +40,8 @@ export type GcNoticeJobsBandProps = {
   onOpenEditJob: (jobId: string, focus: Exclude<GcNoticeBandDoor, 'job'>) => void
 }
 
+/** How long a row the list jumped to stays lit (v2.4540). */
+const FLASH_MS = 2200
 const ORDER_KEY = 'gcNoticeBandOrder'
 const OPEN_KEY = 'gcNoticeBandOpen'
 
@@ -127,6 +131,19 @@ export default function GcNoticeJobsBand({ data, todayYmd, isMobile, onOpenJob, 
     [data],
   )
   const band = useMemo(() => buildGcNoticeBand(inputs, todayYmd, order, (jobId) => (data.desk.jobsById[jobId]?.job_address ?? '').trim()), [inputs, todayYmd, order, data])
+  const wrongItems = useMemo(() => gcNoticeBandWrongItems(band), [band])
+  // v2.4540: the row the "N look wrong" list jumped to. Set after the band is unfolded, so the
+  // effect below finds the row drawn; `n` makes a second pick of the same job jump again.
+  const sectionRef = useRef<HTMLElement>(null)
+  const [flash, setFlash] = useState<{ jobId: string; n: number } | null>(null)
+  useEffect(() => {
+    if (!flash) return
+    const row = [...(sectionRef.current?.querySelectorAll<HTMLElement>('[data-testid="gc-notice-band-row"]') ?? [])].find((r) => r.dataset.jobId === flash.jobId)
+    const calm = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    row?.scrollIntoView?.({ block: 'center', behavior: calm ? 'auto' : 'smooth' })
+    const t = window.setTimeout(() => setFlash((f) => (f && f.n === flash.n ? null : f)), FLASH_MS)
+    return () => window.clearTimeout(t)
+  }, [flash])
   if (band.counts.jobs === 0) return null
   const c = band.counts
   const pickOrder = (o: GcNoticeBandOrder) => {
@@ -138,6 +155,13 @@ export default function GcNoticeJobsBand({ data, todayYmd, isMobile, onOpenJob, 
       writeStored(OPEN_KEY, v ? 'closed' : 'open')
       return !v
     })
+  }
+  const jumpToRow = (jobId: string) => {
+    if (!open) {
+      setOpen(true)
+      writeStored(OPEN_KEY, 'open')
+    }
+    setFlash((f) => ({ jobId, n: (f?.n ?? 0) + 1 }))
   }
   const openRow = (jobId: string) => (onOpenJob ? onOpenJob(jobId) : onOpenEditJob(jobId, 'line-items'))
   const openDoor = (jobId: string, door: GcNoticeBandDoor) => (door === 'job' ? openRow(jobId) : onOpenEditJob(jobId, door))
@@ -199,7 +223,7 @@ export default function GcNoticeJobsBand({ data, todayYmd, isMobile, onOpenJob, 
     const rowStyle: CSSProperties = { cursor: 'pointer' }
     if (isMobile) {
       return (
-        <tr key={r.jobId} onClick={() => openRow(r.jobId)} style={rowStyle} data-testid="gc-notice-band-row" data-stage={r.stage} data-wrong={r.readings.length > 0 ? 'yes' : 'no'}>
+        <tr key={r.jobId} onClick={() => openRow(r.jobId)} style={rowStyle} className="gcNoticeBandRow" data-job-id={r.jobId} data-flash={flash?.jobId === r.jobId ? 'yes' : undefined} data-testid="gc-notice-band-row" data-stage={r.stage} data-wrong={r.readings.length > 0 ? 'yes' : 'no'}>
           <td style={td} colSpan={5}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline' }}>
               <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{jobCell}</span>
@@ -215,7 +239,7 @@ export default function GcNoticeJobsBand({ data, todayYmd, isMobile, onOpenJob, 
       )
     }
     return (
-      <tr key={r.jobId} onClick={(e) => { if (!(e.target as HTMLElement).closest('button, input, a')) openRow(r.jobId) }} style={rowStyle} title="Open the job" data-testid="gc-notice-band-row" data-stage={r.stage} data-wrong={r.readings.length > 0 ? 'yes' : 'no'}>
+      <tr key={r.jobId} onClick={(e) => { if (!(e.target as HTMLElement).closest('button, input, a')) openRow(r.jobId) }} style={rowStyle} title="Open the job" className="gcNoticeBandRow" data-job-id={r.jobId} data-flash={flash?.jobId === r.jobId ? 'yes' : undefined} data-testid="gc-notice-band-row" data-stage={r.stage} data-wrong={r.readings.length > 0 ? 'yes' : 'no'}>
         <td style={{ ...td, width: '17%' }}>{jobCell}</td>
         <td style={{ ...td, width: '18%' }}>{stageCell}</td>
         <td style={{ ...td, width: '26%' }}>{lines}</td>
@@ -236,7 +260,7 @@ export default function GcNoticeJobsBand({ data, todayYmd, isMobile, onOpenJob, 
   }
 
   return (
-    <section data-testid="gc-notice-band" aria-label="Jobs with unpaid work under this GC" style={{ display: 'grid', gap: '0.6rem', paddingBottom: '1.1rem', marginBottom: '1.1rem', borderBottom: '1px solid var(--border)' }}>
+    <section ref={sectionRef} data-testid="gc-notice-band" aria-label="Jobs with unpaid work under this GC" style={{ display: 'grid', gap: '0.6rem', paddingBottom: '1.1rem', marginBottom: '1.1rem', borderBottom: '1px solid var(--border)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.4rem 1rem', flexWrap: 'wrap' }}>
         <div style={{ minWidth: 0, flex: '1 1 320px' }}>
           {/* v2.4538: the title alone (it read "The jobs, by stage" over a paragraph of how the band works). */}
@@ -250,7 +274,7 @@ export default function GcNoticeJobsBand({ data, todayYmd, isMobile, onOpenJob, 
         <div style={{ display: 'flex', gap: '0.35rem 0.75rem', flexWrap: 'wrap', alignItems: 'baseline' }}>
           <span>{gcNoticeBandStageWords(band)}</span>
           <span aria-hidden="true">·</span>
-          {c.wrong > 0 ? <strong style={{ color: 'var(--text-red-600)' }}>{c.wrong} look{c.wrong === 1 ? 's' : ''} wrong</strong> : <strong style={{ color: 'var(--text-green-800)' }}>every record reads right</strong>}
+          {c.wrong > 0 ? <GcNoticeWrongList items={wrongItems} labelOf={label} onPick={jumpToRow} isMobile={isMobile} /> : <strong style={{ color: 'var(--text-green-800)' }}>every record reads right</strong>}
           <span aria-hidden="true">·</span>
           <span><strong style={{ fontVariantNumeric: 'tabular-nums' }}>{formatUsdNoCents(c.total)}</strong> job total</span>
           <span><strong style={{ fontVariantNumeric: 'tabular-nums' }}>{formatUsdNoCents(c.billed)}</strong> billed{c.billedUnpaid > 0.5 ? <span style={faint}> ({formatUsdNoCents(c.billedUnpaid)} unpaid)</span> : null}</span>
