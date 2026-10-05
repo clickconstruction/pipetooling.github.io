@@ -26,6 +26,8 @@ This guide is about our waiver to a GC. The waiver we collect from a sub is in [
 
 Untick the box if the GC does not want a waiver this time. The bill then goes alone.
 
+The tick shows only when Bill Customer is opened on one bill. With no tick, the bill goes alone. Add the waiver from the Bill tab, as below.
+
 ## A bill already sent
 
 1. Open the job and go to its **Bill** tab.

@@ -46,6 +46,7 @@ import {
   shouldBlockBillOnPaidJob,
 } from '../../../supabase/functions/_shared/paidJobBillGuard'
 import BillCustomerLienReleaseStrip from './BillCustomerLienReleaseStrip'
+import { lienWaiverTickForBill } from '../../lib/jobsDocuments/lienWaiverRelease'
 import BillCustomerOwnerLine from './BillCustomerOwnerLine'
 import { BillCustomerReturnedChecksLine } from './BillCustomerReturnedChecksLine'
 import JobContractStrip from './JobContractStrip'
@@ -745,6 +746,10 @@ export default function SendRecordInvoiceModal({
     setEmailOverride(email)
   }
   const invoice = payload?.kind === 'invoice' ? payload.invoice : null
+  /** The bill the waiver tick is drawn for: only an open on one bill names it. */
+  const waiverInvoiceId = kind === 'invoice' ? invoice?.id ?? null : null
+  /** v2.4603: the waiver follows the bill only when the tick was drawn and left on. */
+  const waiverHandoff = waiverAfterSend && lienWaiverTickForBill(billCustomerJobDetails, waiverInvoiceId) != null
   // A stored memo (e.g. Turnaway trip charges) beats the preset default on open.
   const storedInvoiceMemo = (invoice?.stripe_invoice_memo ?? '').trim()
 
@@ -1547,7 +1552,7 @@ export default function SendRecordInvoiceModal({
       }
       recordBillCustomerCommitted('physical')
       await onSuccess()
-      if (waiverAfterSend && job) onSentWantWaiver?.(job.id, invId)
+      if (waiverHandoff && job) onSentWantWaiver?.(job.id, invId)
       onClose()
     } catch (e) {
       // Timeout: the request wasn't cancelled — the email may still send when
@@ -1634,7 +1639,7 @@ export default function SendRecordInvoiceModal({
       }
       recordBillCustomerCommitted('housecallpro')
       await onSuccess()
-      if (waiverAfterSend && sentInvoiceId) onSentWantWaiver?.(job.id, sentInvoiceId)
+      if (waiverHandoff && sentInvoiceId) onSentWantWaiver?.(job.id, sentInvoiceId)
       onClose()
     } catch (e) {
       // Timeout: the request wasn't cancelled — it may still land when the
@@ -1816,7 +1821,7 @@ export default function SendRecordInvoiceModal({
         })
       }
       await onSuccess()
-      if (waiverAfterSend) onSentWantWaiver?.(job.id, invId)
+      if (waiverHandoff) onSentWantWaiver?.(job.id, invId)
     } catch (e) {
       // Timeout: the request wasn't cancelled — the invoice may still be
       // created when the server recovers, so say so instead of implying failure.
@@ -2500,7 +2505,7 @@ export default function SendRecordInvoiceModal({
           jobId={jobRaw?.id ?? null}
           jobDetails={billCustomerJobDetails}
           jobNumber={effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—'}
-          invoiceId={kind === 'invoice' ? invoice?.id ?? null : null}
+          invoiceId={waiverInvoiceId}
           waiverAfterSend={waiverAfterSend}
           onWaiverAfterSendChange={setWaiverAfterSend}
         />
