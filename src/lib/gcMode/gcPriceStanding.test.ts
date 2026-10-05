@@ -47,6 +47,12 @@ describe('where the price stands', () => {
     })
   })
 
+  it('names who to follow up with on a trade waiting on an answer', () => {
+    const s = initialGcState()
+    const steel = priceStanding(s, projectOf(s, 'boerne')).rows.find((r) => r.pkg.trade === 'Structural steel')
+    expect(steel?.followUp).toEqual({ partnerId: 'bexar', company: 'Bexar Steel Erectors' })
+  })
+
   it('agrees with the red chip: 3 real, 1 missing a cost, 4 with no number', () => {
     const s = initialGcState()
     const { counts } = priceStanding(s, projectOf(s, 'boerne'))
