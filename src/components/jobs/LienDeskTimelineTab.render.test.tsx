@@ -4,7 +4,7 @@
  * its Next line, and under it who we are waiting on.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render } from '@testing-library/react'
+import { cleanup, fireEvent, render, within } from '@testing-library/react'
 import LienDeskTimelineTab from './LienDeskTimelineTab'
 import { buildLienTimelineBook, type LienBookJob } from '../../lib/jobs/lienTimelineBook'
 import type { LienNoticeMonthRow } from '../../lib/jobs/lienDesk'
@@ -36,5 +36,20 @@ describe('LienDeskTimelineTab', () => {
     expect(waiting.textContent).toMatch(/^Waiting on the GC — /)
     fireEvent.click(r)
     expect(onOpenRow).toHaveBeenCalledWith(expect.objectContaining({ jobId: 'j891' }))
+  })
+
+  it('the job number is its own door to the job; the rest of the row still opens its pane (v2.4535)', () => {
+    const onOpenRow = vi.fn()
+    const onOpenJob = vi.fn()
+    render(<LienDeskTimelineTab book={book} loading={false} error="" gcId={null} onGcId={() => {}} show="all" onShow={() => {}} onOpenRow={onOpenRow} onOpenJob={onOpenJob} onPrint={() => {}} />)
+    const r = document.querySelector('[data-lien-book-row="j891"]') as HTMLElement
+    const number = within(r).getByRole('button', { name: '891' })
+    fireEvent.click(number)
+    expect(onOpenJob).toHaveBeenCalledWith('j891')
+    expect(onOpenRow).not.toHaveBeenCalled()
+    // The name is the row's own button: its click opens the pane, as a click anywhere on the row does.
+    fireEvent.click(within(r).getByRole('button', { name: 'Job j891' }))
+    expect(onOpenRow).toHaveBeenCalledTimes(1)
+    expect(onOpenJob).toHaveBeenCalledTimes(1)
   })
 })

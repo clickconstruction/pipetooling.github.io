@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { LienJobHeading } from './LienJobNumber'
 import { createPortal } from 'react-dom'
 import type { PhysicalInvoiceIssuer } from '../../lib/physicalInvoiceIssuer'
 import { buildLienAffidavitBlocks, filingDocHtml, filingLetterheadFromIssuer } from '../../lib/jobsDocuments/lienFilingDocuments'
@@ -72,6 +73,7 @@ export default function LienDeskAffidavitPane({
   signerNameFor,
   onChanged,
   onOpenEditJob,
+  onOpenJob,
   onOpenLienAffidavit,
   onOpenLegalDesk,
   onShowNotices,
@@ -93,6 +95,8 @@ export default function LienDeskAffidavitPane({
   signerNameFor: (masterUserId: string | null) => string
   onChanged: () => void
   onOpenEditJob: (jobId: string) => void
+  /** The heading's job number opens the job itself (v2.4535). */
+  onOpenJob?: (jobId: string) => void
   /** The Lien window on its affidavit tab — print for notarization, file, record. */
   onOpenLienAffidavit: (jobId: string) => void
   onOpenLegalDesk?: () => void
@@ -300,7 +304,7 @@ export default function LienDeskAffidavitPane({
     {footerEl && footer ? createPortal(footer, footerEl) : null}
     <div style={{ padding: '0.9rem 1.1rem', display: 'grid', gap: '0.7rem', alignContent: 'start', overflow: 'auto', minWidth: 0 }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem 0.6rem', alignItems: 'baseline' }}>
-        <strong style={{ fontSize: '1rem' }}>{label}</strong>
+        <LienJobHeading label={label} onOpenJob={onOpenJob ? () => onOpenJob(entry.jobId) : undefined} />
         <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>{entry.isSub ? `· GC ${gc?.name ?? ''}` : '· contracted with the owner'} {job?.job_address ? `· ${job.job_address}` : ''}</span>
       </div>
       <div data-lien-desk-timeline style={{ ...boxStyle, padding: isMobile ? '0.5rem 0.7rem' : '0.55rem 0.8rem 0.5rem' }}>
