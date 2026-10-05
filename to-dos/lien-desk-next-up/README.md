@@ -2,7 +2,7 @@
 name: "Lien desk: open on Next up, and name the next step on the job"
 number: 82
 group: ready
-status: building 2026-10-05 · PRs 1 to 4 built (the kernel; Next up; the job's next-step card and the rename; the doors, v2.4586) · PR 5 next
+status: all five PRs built 2026-10-05 (the kernel; Next up; the job's next-step card and the rename; the doors; three views, v2.4588) · delete this folder once they have merged and a week of use raises nothing
 summary: >
   The lien work is sound but it is organised by kind of paper: five windows, five tabs on the
   desk, three places that send the same § 53.056 notice. A person has to know lien law to know
@@ -12,9 +12,9 @@ summary: >
   a card that names its next step. A GC's run becomes a row in the list. Every action that
   exists today keeps its place: the five inventory files beside this card list all of them
   (about 775) and say where each lives afterwards.
-next: PR 5, the five tabs become three views: Next up, Calendar, All paper (the owner's yes, 2026-10-05).
+next: Use it for a week. Then delete this folder.
 size: L (five PRs, the first two are S and M)
-blocker: None for PRs 1 to 4. PR 5 (tabs into views) waits on a week of use and the owner's yes.
+blocker: None. The owner said yes to PR 5 on 2026-10-05.
 opinion: build — PRs 1 and 2 lose nothing by construction, because Next up only links into screens that exist. Do not merge the desk's Notices pane with the job's Lien window.
 ---
 
@@ -150,7 +150,7 @@ Order: overdue first, then by the last day. Group as *Needs you now* and *Coming
 2. **PR 2, the view (M) — built 2026-10-05, v2.4583.** `LienDeskNextUp.tsx`, the first tab and the default on a plain open; checked on prod data (22 rows; each state's count equals its pile's). The plan read: A `LienDeskNextUp.tsx` list as the desk's first tab and its default on a plain open. Each button sets the existing tab, pile and selected job, or opens the run window or the job's Lien window. A phone gets the same list as cards. Render smoke. Update the desk guide.
 3. **PR 3, the job's next step (M) — built 2026-10-05, v2.4585.** `lienWindowNextStep.ts` and the card in `LienInstrumentsModal.tsx`; the window is titled *Liens on job N*. The plan read: The card above the tab row in the job's Lien window, from `lienTimeline.ts`. The *Waivers on the bills* row that opens Release of Lien. Rename the window to *Liens on job N* everywhere it is named: tooltips, the Documents rows, the forecast button, guides, `GLOSSARY.md`.
 4. **PR 4, doors (S) — built 2026-10-05, v2.4586.** A bare `?liendesk=1` lands on Next up; the leader's approve card lands on *Awaiting approval*. A GC's run was already a Next up row (PR 1). The plan read: A GC's run as a Next up row. The Dashboard lien cards land on the row they describe. Do this after the door defects in #83, or fold them in.
-5. **PR 5, three views (M, the owner's yes first).** Next up, Calendar, All paper. Safe only if Retainage, the Timeline's whole book and *Print counsel's grid* each keep a named place, and `kind=affidavit` and `kind=timeline` keep landing on their lists. Tick the inventory rows off one by one in the PR description.
+5. **PR 5, three views (M) — built 2026-10-05, v2.4588, on the owner's yes of the same day.** The top row is Next up · Calendar · All paper; under All paper a second row holds Notices · Affidavits · Retainage · Timeline, each the list it was. Retainage, the Timeline's whole book and *Print the grid* keep their named places; `kind=affidavit` and `kind=timeline` land on their lists. The plan read: Next up, Calendar, All paper. Safe only if Retainage, the Timeline's whole book and *Print counsel's grid* each keep a named place, and `kind=affidavit` and `kind=timeline` keep landing on their lists. Tick the inventory rows off one by one in the PR description.
 
 Each PR ships its release note, its `docs/recent-features/` fragment and its guide edit.
 
