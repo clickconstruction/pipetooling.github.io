@@ -5,32 +5,32 @@ roles: dev, master_technician
 keywords: punch list, to-dos, to-do board, mock-ups, next up, what to build next, ready to build, owner decision, do later drop, opinion, build later drop your call, row number, item number, settings
 order: 95
 ---
-The **Punch list** is the board of every project that was designed or partly built but is not finished. It is the same list that lives in the repo's `to-dos/` folder, rendered in the app.
+The **Punch list** is the board of every project that was designed or partly built but is not finished. The board is the same list that lives in the repo's `to-dos/` folder, rendered in the app.
 
-So nobody has to read markdown to see what is waiting. You open it from Settings. **Punch list** is a chip under the search box at the top of the list, on every tab. The page itself is `/punch-list`.
+Nobody has to read markdown to see what is waiting. You open it from Settings. **Punch list** is a chip under the search box at the top of the list, on every tab. The page itself is `/punch-list`.
 
 ## What a row tells you
 
-Each row is one to-do. It opens with its **number**. You say *#16* in a note or a request, and everyone knows which one. A number is given once, when the to-do is written, and never reused. So a retired row's number retires with it. Its name opens the to-do file on main. Beside it, a chip lists the versions that already shipped for it. Each one links to that version's write-up.
+Each row is one to-do. The row opens with its **number**. You say *#16* in a note or a request, and everyone knows which one. A number is given once, when the to-do is written, and never reused. So a retired row's number retires with it. The row's name opens the to-do file on main. Beside the name, a chip lists the versions that already shipped for it. Each version links to its write-up.
 
 :::example One row, read left to right
 **#17** · **Submittals** `stages 1 → 6c shipped` — what it is, in a sentence. **Next:** the smallest step that ships. Then the links: {{chip:blue|▣ mockup}} {{chip:blue|▣ before-after-5b}} {{chip:purple|◇ design canvas}} {{chip:gray|history}} {{chip:gray|folder}}. On the right: **Size** (XS under an hour · S a sitting · M a day of PRs · L a multi-day train) and what **Blocks** it.
 :::
 
-- **▣ mock-ups** open as pages. They are the drawings made for the to-do, served beside the app.
+- **▣ mock-ups** open as pages. The mock-ups are the drawings made for the to-do, served beside the app.
 - **◇ artifacts** are design canvases on claude.ai the to-do links.
 - **history** is every pull request that touched the to-do, newest first. **folder** is everything saved next to it.
 - A row with no drawing yet says {{chip:yellow|▢ waiting on a mock-up}}. The **Waiting on a mock-up** toggle by the filters shows only those. A row whose work changes no screen says *mock-up not required* and why.
 
 ## Read the Opinion column
 
-Under **Size** and **Blocks**, most rows carry an **Opinion**. It is a reviewer's call: {{chip:green|BUILD}}, {{chip:yellow|LATER}}, {{chip:red|DROP}} or {{chip:gray|YOUR CALL}}. It comes with one sentence naming the benefit or the cost that decides it.
+Under **Size** and **Blocks**, most rows carry an **Opinion**. An opinion is a reviewer's call: {{chip:green|BUILD}}, {{chip:yellow|LATER}}, {{chip:red|DROP}} or {{chip:gray|YOUR CALL}}. The call comes with one sentence naming the benefit or the cost that decides it.
 
 :::example One opinion
 {{chip:green|BUILD}} *35 hand-rolled tel: links with five sanitizers is a bug farm; one script PR ends it.*
 :::
 
-It is advice, not a pick. The Do / Later / Drop buttons are still yours. The opinion is a line in the to-do file, `opinion:` in its front matter. So anyone with repo access can change it. A row without one shows nothing there.
+The opinion is advice, not a pick. The Do / Later / Drop buttons are still yours. The opinion is a line in the to-do file, `opinion:` in its front matter. So anyone with repo access can change it. A row without one shows nothing there.
 
 ## The five groups
 

@@ -7,11 +7,11 @@ keywords: hours grid, mobile, phone, day sheet, pending sessions, my time, tap, 
 
 On a phone, **People → Hours** opens on three views. One switch stays at the top and moves between them.
 
-- **Who's in**: everyone clocked in right now. It shows when they came in, the job in words or {{chip:yellow|no job}}, and the session so far. Under them is who worked today and has left.
-- **Approvals**: everyone with hours waiting, the longest-waiting first. It shows the days, the sessions and the hours.
+- **Who's in**: everyone clocked in right now. The list shows when they came in, the job in words or {{chip:yellow|no job}}, and the session so far. Below the clocked-in list is who worked today and has left.
+- **Approvals**: everyone with hours waiting, the longest-waiting first. The list shows the days, the sessions and the hours.
 - **Week & sessions**: the clock strip, the grid and the sessions, described below.
 
-You tap a person in either list and their own screen opens. It shows what they are on now, the week so far, what is waiting, and **Approve**.
+You tap a person in either list and their own screen opens. The person's screen shows what they are on now, the week so far, what is waiting, and **Approve**.
 
 ## The grid
 
@@ -37,7 +37,7 @@ You tap any cell and a sheet slides up from the bottom for that person and day:
 {{chip:green|Open My Time}} — Sessions, jobs, and the day editor ›
 :::
 
-- **The hours box** is where you type the day's hours. You press {{button:blue|Save}} or Enter. It follows the same rules as the desktop cells. That includes the offer to record a matching manual session.
+- **The hours box** is where you type the day's hours. You press {{button:blue|Save}} or Enter. The box follows the same rules as the desktop cells, including the offer to record a matching manual session.
 - **Review and approve** opens the same pending-sessions list the desktop's amber badge shows, with per-session approve.
 - **Open My Time** jumps to the person's day detail: sessions, jobs, and the day editor.
 - On days marked **Correct**, the hours box locks and a **view audit** row appears instead.

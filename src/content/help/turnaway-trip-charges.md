@@ -36,7 +36,7 @@ Then you head to your next job as usual. The job stays on the schedule to be re-
 
 ## For the office: creating the trip charge
 
-Turnaway alerts arrive as push notifications. They appear in the **Dispatch inbox**, on the Dashboard and on the Checklist → Review tab. A button sits right on the inbox row:
+Turnaway alerts arrive as push notifications. The alerts appear in the **Dispatch inbox**, on the Dashboard and on the Checklist → Review tab. A button sits right on the inbox row:
 
 :::example A Turnaway in the Dispatch inbox
 From Mike T · Wed, 7/9, 8:14 AM
@@ -51,7 +51,7 @@ From Mike T · Wed, 7/9, 8:14 AM
 
 The trip charge is **extra money, not a slice of the job**. The job's total goes up by the same amount. So the job's own remainder bill, the bill for what is left, stays exactly what it was. The trip charge bills on its own line whenever you're ready, whatever stage the job is in.
 
-The job itself is untouched. It stays in its normal pipeline and gets rescheduled. When you bill the trip charge through {{button:blue|Bill Customer}}, the invoice shows one clean line. It reads like *Trip charge — client not home*.
+The job itself is untouched. The job stays in its normal pipeline and gets rescheduled. When you bill the trip charge through {{button:blue|Bill Customer}}, the invoice shows one clean line. The line reads like *Trip charge — client not home*.
 
 ## Setting the default amounts
 

@@ -7,7 +7,7 @@ order: 81
 ---
 **Settings → Usage** shows how the company actually uses the app. So design and cleanup decisions follow evidence instead of hunches.
 
-It sits in the System zone, for devs only.
+Usage sits in the System zone, for devs only.
 
 ## The two views
 

@@ -19,13 +19,13 @@ You're pricing a pool liner job and need the customer's gate code from a text th
 
 ## A draft you never touch disappears
 
-{{button:blue|New estimate}}, {{button:outline|New change order}} and a Projects card's **+ Estimate** open a fresh draft right away. You can start typing at once. You may leave that draft without typing anything: no title, no customer, no priced line, no terms. Then it removes itself on the way out. The first real edit keeps it, and that edit autosaves. {{button:outline|Save draft}} or sending keeps it too.
+{{button:blue|New estimate}}, {{button:outline|New change order}} and a Projects card's **+ Estimate** open a fresh draft right away. You can start typing at once. You may leave that draft without typing anything: no title, no customer, no priced line, no terms. Then the draft removes itself on the way out. The first real edit keeps it, and that edit autosaves. {{button:outline|Save draft}} or sending keeps it too.
 
 :::example Opened one by mistake
 You press New estimate, realise the customer already has one, and go back to the list. Nothing is left behind — the list shows exactly what it showed before.
 :::
 
-Drafts you opened from the list are never removed this way. A draft with anything typed into it stays. Some empty drafts are left over from before, or from a tab closed mid-way. Those still collapse behind the Pipeline's **Clean up empty drafts** button.
+Drafts you opened from the list are never removed this way. A draft with anything typed into it stays. Some empty drafts are left over from before, or from a tab closed mid-way. Those drafts still collapse behind the Pipeline's **Clean up empty drafts** button.
 
 ## If autosave can't save
 

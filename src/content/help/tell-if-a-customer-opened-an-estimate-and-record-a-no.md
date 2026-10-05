@@ -9,15 +9,15 @@ The Estimates **Pipeline** shows right on the row whether the customer opened yo
 
 ## Read the Sent row
 
-Every estimate in **Sent** wears one chip. It shows what the customer has done since you sent it, and how long ago:
+Every estimate in **Sent** wears one chip. The chip shows what the customer has done since you sent it, and how long ago:
 
 - {{chip:gray|never opened · sent 3d ago}}: the link has not been opened by anyone. If it's been a while, check the email address before you chase.
-- {{chip:yellow|never opened · sent 9d ago — nudge?}}: a week or more and nobody has looked. This is the one to call. They may never have received it.
+- {{chip:yellow|never opened · sent 9d ago — nudge?}}: a week or more and nobody has looked. This estimate is the one to call. The customer may never have received it.
 - {{chip:gray|opened Tue · quiet 2d}}: a person opened it on Tuesday and has been quiet since. Give them a little room.
 - {{chip:yellow|opened 8/28 · quiet 8d — nudge?}}: they looked, then went quiet for a week. A friendly follow-up fits here.
 - {{chip:gray|opened today}}: they're looking right now. Sit tight.
 
-You hover the chip to see how many times it was opened. A change order is a priced change to work already agreed. One with a **Response requested by** date still goes red when that date passes, opened or not.
+You hover the chip to see how many times it was opened. A change order is a priced change to work already agreed. A change order with a **Response requested by** date still goes red when that date passes, opened or not.
 
 :::example What counts as "opened"
 Opening the link and looking at an option both count. Mail-server prefetches — several different addresses hitting the link in the first minute after you send — are filtered out, so a burst of "views" the second you press Send is not a customer. Your own **Open customer link** from the office does not count either.
@@ -25,9 +25,9 @@ Opening the link and looking at an option both count. Mail-server prefetches —
 
 ## When the customer says no
 
-**On their side:** there is a quiet **No thanks** link under {{button:blue|Approve}} on the acceptance page. It opens a small panel, *Not going ahead?*, with an optional reason and {{button:outline|Decline this estimate}}. Nothing else is asked of them.
+**On their side:** there is a quiet **No thanks** link under {{button:blue|Approve}} on the acceptance page. The link opens a small panel, *Not going ahead?*, with an optional reason and {{button:outline|Decline this estimate}}. Nothing else is asked of them.
 
-**On your side:** the estimate moves out of **Sent** into a **Declined** section at the bottom of the Pipeline. That section only appears when there is something in it. The row reads {{chip:gray|Declined by customer · 2h ago}}. If they left a reason, you open the estimate and **Customer activity** shows it. The line reads *Declined by customer — "went with another bid"*.
+**On your side:** the estimate moves out of **Sent** into a **Declined** section at the bottom of the Pipeline. That section only appears when there is something in it. The row reads {{chip:gray|Declined by customer · 2h ago}}. If the customer left a reason, you open the estimate and **Customer activity** shows it. The line reads *Declined by customer — "went with another bid"*.
 
 ## Record a "no" you heard on the phone
 
@@ -45,4 +45,4 @@ A decline is final for that quote number — the same as the customer pressing N
 
 ## What the Ledger shows
 
-Declined estimates drop out of the Ledger by default. You toggle **Include superseded & declined** to see them. They never count toward *Outstanding sent*. So your open-quotes money stops carrying dead weight.
+Declined estimates drop out of the Ledger by default. You toggle **Include superseded & declined** to see them. Declined estimates never count toward *Outstanding sent*. So your open-quotes money stops carrying dead weight.

@@ -7,7 +7,7 @@ order: 63
 ---
 When a sub reports from their portal, the people **watching** that job get an email as it happens. Superintendents assigned to the job watch it by default.
 
-A report can be a percent, *my work here is done*, or the days they picked. The office can add anyone else as a watcher. A sub is a subcontractor. Their portal is the private link page they report from.
+A report can be a percent, *my work here is done*, or the days they picked. The office can add anyone else as a watcher. A sub is a subcontractor. A sub's portal is the private link page they report from.
 
 ## The bell on the job
 
@@ -21,4 +21,4 @@ A report can be a percent, *my work here is done*, or the days they picked. The 
 
 ## Your own list
 
-**Settings → My email schedule → Jobs you watch** shows every job you watch. Each has the same switches and {{button:outline|Stop watching}}. Assigned superintendents hear progress and done on their jobs even without a row there. Turning everything off keeps it that way.
+**Settings → My email schedule → Jobs you watch** shows every job you watch. Each job has the same switches and {{button:outline|Stop watching}}. Assigned superintendents hear progress and done on their jobs even without a row there. Turning everything off keeps it that way.

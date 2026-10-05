@@ -5,9 +5,9 @@ roles: dev, master_technician, assistant, controller, estimator, superintendent
 keywords: bid preview, copy for text, clipboard, text message, project name, address, bid due date, share bid
 order: 89
 ---
-You can text a bid's basics straight from its preview. You press {{button:gray|Copy for text}} in the header, and they land on your clipboard.
+You can text a bid's basics straight from its preview. One button puts the basics on your clipboard, ready to paste into a text message.
 
-You open any bid's preview from the Bid Board's eye icon, a **BP-number** link, or global search. The basics are ready to paste into a text message:
+You open any bid's preview from the Bid Board's eye icon, a **BP-number** link, or global search. Then you press {{button:gray|Copy for text}} in the header. The basics land on your clipboard:
 
 :::example What lands on your clipboard
 ALSATIAN
@@ -16,7 +16,7 @@ Bid due: 8/27/2026
 :::
 
 - There is one line each for **project name**, **address**, and **bid due date**. Anything the bid doesn't have yet is skipped, so you never paste a stray dash.
-- You'll see a **"Copied for text"** toast when it's on the clipboard. A toast is a small message that pops up on the screen. You can paste it anywhere: iMessage, WhatsApp, email.
+- You'll see a **"Copied for text"** toast when it's on the clipboard. A toast is a small message that pops up on the screen. You can paste the text anywhere: iMessage, WhatsApp, email.
 
 ## While you're in the preview
 

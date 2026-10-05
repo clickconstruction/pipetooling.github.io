@@ -31,7 +31,7 @@ Every step also writes a note on the bid. So the bid's ledger, its running recor
 
 ## Recording the answer
 
-When the GC answers, you type it on the sent RFI. If it came as a reference, like *Addendum 1*, you add that too. An addendum is a change issued to the plans during bidding. Then you click {{button:gray|Record answer}}.
+When the GC answers, you type it on the sent RFI. If the answer came as a reference, like *Addendum 1*, you add that too. An addendum is a change issued to the plans during bidding. Then you click {{button:gray|Record answer}}.
 
 ## The rule that keeps you safe
 

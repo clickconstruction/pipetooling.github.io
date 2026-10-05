@@ -9,23 +9,23 @@ order: 61
 
 The rates are the daily-cost averages and the three lens rates. The lenses are per field hour, per revenue dollar and per labor dollar.
 
-Every labor hour and dollar in those numbers comes from **recorded** clock sessions. Recorded means **clocked out** and **not rejected**, so approved or still awaiting approval. Each session is **priced with a wage**. That is the same rule job labor uses, so true profit reads one clock. When wages or assignments fall behind, the numbers quietly drift low. So the tab watches for it. It shows an amber maintenance strip under the three lenses whenever something needs attention. When everything is clean, the strip disappears entirely.
+Every labor hour and dollar in those numbers comes from **recorded** clock sessions. Recorded means **clocked out** and **not rejected**, so approved or still awaiting approval. Each session is **priced with a wage**. Job labor uses the same rule, so true profit reads one clock. When wages or assignments fall behind, the numbers quietly drift low. So the tab watches for that drift. The tab shows an amber maintenance strip under the three lenses whenever something needs attention. When everything is clean, the strip disappears entirely.
 
 ## Click a lens to see its math
 
 Each of the three lens cards is a button. {{button:outline|See the math ›}} opens a window that shows the actual arithmetic with today's numbers. The pool, the overhead dollars, sits on top: office labor, bid labor and office parts, each itemized. The denominator, the number the pool is divided by, sits underneath, with the exact rule for what counts. Then comes the result.
 
-Below that, **How it moved** charts the rate week by week across the 90 days. It has a rolling 4-week line and a dashed line for the 90-day headline. So you can see whether this week is unusual or the whole quarter is drifting.
+Below that, **How it moved** charts the rate week by week across the 90 days. The chart has a rolling 4-week line and a dashed line for the 90-day headline. So you can see whether this week is unusual or the whole quarter is drifting.
 
-**What moves it** lists the levers, each sized at today's numbers. For example it shows *"+100 hr → −$0.51/hr"* on Method A, or *"+$10,000 invoiced → −0.34 pts"* on Method B. Green arrows lower the rate, and amber arrows raise it. When field time is awaiting approval, Method A also shows what the rate would read once it's approved.
+**What moves it** lists the levers, each sized at today's numbers. Examples are *"+100 hr → −$0.51/hr"* on Method A, or *"+$10,000 invoiced → −0.34 pts"* on Method B. Green arrows lower the rate, and amber arrows raise it. When field time is awaiting approval, Method A also shows what the rate would read once it's approved.
 
-**Watch-outs** names the ways each lens can mislead. That is salaried hourly pricing on A, billing rhythm on B, and raises lowering C. It also states plainly whether any session is being counted on both sides of the math.
+**Watch-outs** names the ways each lens can mislead. The ways are salaried hourly pricing on A, billing rhythm on B, and raises lowering C. Watch-outs also states plainly whether any session is being counted on both sides of the math.
 
 ## Is the pool going up or down?
 
-The ***Overhead pool — 90 days*** card answers that directly. Its pill compares the average $/day over the last 30 days with the 30 days before. {{chip:yellow|↑ Trending up · +12%}} means overhead is growing. {{chip:green|↓ Trending down · −8%}} means it's shrinking. Anything inside ±5% reads as **flat**. So a single parts spike doesn't flip the arrow.
+The ***Overhead pool — 90 days*** card answers that directly. The card's pill compares the average $/day over the last 30 days with the 30 days before. {{chip:yellow|↑ Trending up · +12%}} means overhead is growing. {{chip:green|↓ Trending down · −8%}} means it's shrinking. Anything inside ±5% reads as **flat**. So a single parts spike doesn't flip the arrow.
 
-Under the pill is the ledger of what the pool is made of. It lists **office labor**, **bid labor**, and **office parts**, each with its dollars and share. Office parts are materials bought for the office, not for a job. There is also a day-by-day chart stacked the same way, with a 7-day average line. You hover any bar for that day's split.
+Under the pill is the ledger of what the pool is made of. The ledger lists **office labor**, **bid labor**, and **office parts**, each with its dollars and share. Office parts are materials bought for the office, not for a job. There is also a day-by-day chart stacked the same way, with a 7-day average line. You hover any bar for that day's split.
 
 :::example Reading a flat pill with a rising chart
 If the pill says flat but the bars climb across the last two weeks, the rise is recent and hasn't moved the 30-day average yet — check back in a week, or read the 7-day line, which reacts sooner.
@@ -33,15 +33,15 @@ If the pill says flat but the bars climb across the last two weeks, the rise is 
 
 ## Click a bar to see what's in it
 
-Every bar on the ***Overhead pool — 90 days*** chart opens. You hover one for the day's split and how it compares to a typical day. It also shows the single biggest line in it. You click a **colored segment** to see that category's lines. Purple and blue are the office and bid sessions. Amber is the purchases. Or you click the **empty space above a bar** for the whole day.
+Every bar on the ***Overhead pool — 90 days*** chart opens. You hover one for the day's split and how it compares to a typical day. Hovering also shows the single biggest line of that day. You click a **colored segment** to see that category's lines. Purple and blue are the office and bid sessions. Amber is the purchases. Or you click the **empty space above a bar** for the whole day.
 
 The panel is built to answer "is this normal?", not just "what is it":
 
-- Each **purchase** carries a source badge: {{chip:gray|card}}, {{chip:gray|supply invoice}} or {{chip:gray|tally}}. It shows the card it was paid with, and a note like *6× in 90 days · $2,940 total · the largest*. An **internal transfer** is money moved between our own accounts. It is listed struck through with {{chip:gray|internal transfer · not counted}}. It was never in the pool.
-- Each **session** shows clock in → out, hours and labor $. It shows the person's typical day and whether this is the longest. It shows {{chip:yellow|awaiting approval}} when nobody has reviewed it yet. It still counts, as recorded time.
+- Each **purchase** carries a source badge: {{chip:gray|card}}, {{chip:gray|supply invoice}} or {{chip:gray|tally}}. The purchase also shows the card it was paid with, and a note like *6× in 90 days · $2,940 total · the largest*. An **internal transfer** is money moved between our own accounts. The transfer is listed struck through with {{chip:gray|internal transfer · not counted}}. The transfer was never in the pool.
+- Each **session** shows clock in → out, hours and labor $. The session also shows the person's typical day and whether this is the longest. A session nobody has reviewed yet shows {{chip:yellow|awaiting approval}}. That session still counts, as recorded time.
 - The header reads the day's size: *$1,485 of that day's $1,917 · 5.9× a typical day for office parts · 4.0% of the 90-day pool*.
 
-You use ‹ › or the arrow keys to walk to the neighboring days. The tabs flip between **Whole day**, **Office labor**, **Bid labor** and **Office parts**. {{button:outline|Show this week in the table below ↓}} jumps the week table to that week. The footer links to **Banking → Accounting**, where you re-label or move a card purchase. It also links to **People → Hours**, where you approve or reject a session.
+You use ‹ › or the arrow keys to walk to the neighboring days. The tabs flip between **Whole day**, **Office labor**, **Bid labor** and **Office parts**. {{button:outline|Show this week in the table below ↓}} jumps the week table to that week. The footer links to **Banking → Accounting**, where you re-label or move a card purchase. The footer also links to **People → Hours**, where you approve or reject a session.
 
 :::example Finding the spike
 The amber bar sticking above the rest is a supply invoice. Under the chart, **Biggest single lines in these 90 days** already names it — hover the row to see its bar light up, click it to open the day. Or click the legend's *Office parts* swatch to hide that series and read office labor on its own scale.
@@ -55,7 +55,7 @@ You switch the window with the chips: {{chip:blue|Today}} {{chip:gray|Last 7 day
 
 ### Behind any cell
 
-Every dollar in the table is a door. You click Taunya's office labor and a window opens with the days that add up to it. There is one row per day with its hours, the wage the dollars used, and the amount. Inside the row is every punch's clock-in and clock-out. The days are grouped by week, newest first. Each week has a subtotal and a small bar, so the shape reads at a glance. A punch under 15 minutes is marked {{chip:gray|stray punch}}. It is real time, just noisy. A purchase cell lists each purchase with its source and its accounting section. The source reads like {{chip:gray|card · Malachi}} or {{chip:gray|supply invoice}}. The Pool row's cells open the whole column grouped by person. They stay collapsed to subtotals until you expand one.
+Every dollar in the table is a door. You click Taunya's office labor and a window opens with the days that add up to it. There is one row per day with its hours, the wage the dollars used, and the amount. Inside the row is every punch's clock-in and clock-out. The days are grouped by week, newest first. Each week has a subtotal and a small bar, so the shape reads at a glance. A punch under 15 minutes is marked {{chip:gray|stray punch}}. A stray punch is real time, just noisy. A purchase cell lists each purchase with its source and its accounting section. The source reads like {{chip:gray|card · Malachi}} or {{chip:gray|supply invoice}}. The Pool row's cells open the whole column grouped by person. The groups stay collapsed to subtotals until you expand one.
 
 The header proves the number: hours × the average rate. The footer says whether the lines tie to the cell. Pills across the top move between the person's columns without closing.
 
@@ -82,15 +82,15 @@ You hover any indicator for the exact rule it checks and the exact 90-day window
 
 ### Pending approvals
 
-Closed sessions nobody has approved yet **already count** the moment they are clocked out. They count in the overhead pool and in the field-hour and field-labor denominators. Approval no longer changes the overhead numbers. A **rejection** does, by removing the session. So this indicator is a review queue, not a fix list. A forgotten clock-out or a test punch prices into overhead until someone rejects it. Office and bid time is the most likely to sit unreviewed, because payroll doesn't chase it.
+Closed sessions nobody has approved yet **already count** the moment they are clocked out. These sessions count in the overhead pool and in the field-hour and field-labor denominators. Approval no longer changes the overhead numbers. A **rejection** does, by removing the session. So this indicator is a review queue, not a fix list. A forgotten clock-out or a test punch prices into overhead until someone rejects it. Office and bid time is the most likely to sit unreviewed, because payroll doesn't chase it.
 
-You review it on the **Hours** tab. You approve what's real and reject what isn't. Sessions that are still open, with no clock-out yet, are listed by count only. They count once they're clocked out.
+You review it on the **Hours** tab. You approve what's real and reject what isn't. Sessions that are still open, with no clock-out yet, are listed by count only. Open sessions count once they're clocked out.
 
-Salary-schedule sessions are the ones the system creates for salaried people. They **approve themselves** about every half hour once they close. So they no longer add to this indicator. What you see pending is real punches waiting on a human.
+Salary-schedule sessions are the ones the system creates for salaried people. These sessions **approve themselves** about every half hour once they close. So salary-schedule sessions no longer add to this indicator. What you see pending is real punches waiting on a human.
 
 ### Unpriced hours
 
-A person may clock time but have no wage in **Pay config**. Then their sessions count hours at **$0**. The hours still land in the denominators, but no dollars reach the pool. That deflates the daily-cost KPIs, the key numbers, and Methods B and C. Meanwhile Method A's denominator stays full. That is the worst combination, because every rate reads lower than reality.
+A person may clock time but have no wage in **Pay config**. Then that person's sessions count hours at **$0**. The hours still land in the denominators, but no dollars reach the pool. The missing dollars deflate the daily-cost KPIs, the key numbers, and Methods B and C. Meanwhile Method A's denominator stays full. Low dollars over a full denominator is the worst combination. Every rate then reads lower than reality.
 
 The indicator names who's unpriced. You fix it by setting an hourly wage for those people in {{button:blue|People → Pay config}}. You set an office rate too, if they use one.
 
@@ -102,4 +102,4 @@ You fix it by assigning those sessions to the office job, or to a bid for bid wo
 
 ## Why this matters
 
-Underreported overhead makes every job look more profitable than it is. It also makes the lens rates too cheap to price with. A quick weekly pass of approve, price and assign keeps the strip empty and the rates trustworthy.
+Underreported overhead makes every job look more profitable than it is. Underreported overhead also makes the lens rates too cheap to price with. A quick weekly pass of approve, price and assign keeps the strip empty and the rates trustworthy.
