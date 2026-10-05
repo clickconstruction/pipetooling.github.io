@@ -9118,6 +9118,16 @@ exports[`GC mode golden walk > step 198: Cibolo signs Boerne's contract in their
 }
 `;
 
+exports[`GC mode golden walk > step 199: Send Elena Fair Oaks D's weekly report 1`] = `
+{
+  "changed": {
+    "lastLog.id": 194,
+    "lastLog.text": "Sent the weekly report on Fair Oaks Shops, Building D to Elena Marchetti.",
+  },
+  "removed": [],
+}
+`;
+
 exports[`GC mode golden walk > the whole state at the end 1`] = `
 {
   "customerSends": [
@@ -9149,6 +9159,11 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "contact": "Elena Marchetti",
       "contactRole": "Development manager",
       "contacts": [
+        {
+          "by": "Robert Douglas",
+          "note": "Weekly report for the week of Sep 28 on Fair Oaks Shops, Building D sent to Elena Marchetti.",
+          "on": "2026-10-02",
+        },
         {
           "by": "You",
           "note": "Sent our contract for Boerne Retail Shell to sign, by Fri Oct 9.",
@@ -9350,6 +9365,11 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
+      "id": 194,
+      "text": "Sent the weekly report on Fair Oaks Shops, Building D to Elena Marchetti.",
+      "who": "office",
+    },
+    {
       "id": 193,
       "text": "Cibolo Creek Partners signed our contract for Boerne Retail Shell in their portal.",
       "who": "office",
@@ -9493,11 +9513,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "id": 165,
       "text": "Pecan Valley Electric sent submittal 26 56 00-01, Site lighting fixtures.",
       "who": "trade",
-    },
-    {
-      "id": 164,
-      "text": "Pecan Valley Electric promised their submittals on Fair Oaks Shops, Building D by Tue Oct 6.",
-      "who": "office",
     },
   ],
   "paperSends": [
@@ -14979,6 +14994,24 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
         },
       ],
       "town": "Boerne",
+      "weeklyReports": [
+        {
+          "body": "Hi Elena,
+
+Here's where Fair Oaks Shops, Building D stands this week.
+
+Thanks,
+Robert Douglas
+Click Construction",
+          "by": "Robert Douglas",
+          "copiedArchitect": false,
+          "from": "me",
+          "sentOn": "2026-10-02",
+          "subject": "Fair Oaks Shops, Building D · week of Sep 28",
+          "to": "Elena Marchetti",
+          "weekOf": "2026-09-28",
+        },
+      ],
     },
     {
       "address": "20811 Stone Oak Pkwy, Suite 104, San Antonio",

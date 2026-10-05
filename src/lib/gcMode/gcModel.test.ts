@@ -752,6 +752,20 @@ const STEPS: Step[] = [
   // They sign it in their portal (the owner, 2026-10-04): our contract goes from Cibolo's window, they sign it in their portal.
   { label: "Send Boerne's contract to Cibolo to sign", action: { type: 'sendOwnerContract', projectId: 'boerne', by: '2026-10-09', note: '' } },
   { label: "Cibolo signs Boerne's contract in their portal", action: { type: 'ownerSignContract', projectId: 'boerne' } },
+  // The weekly report to the customer (Building lane, 2026-10-05): Fair Oaks D's week, from me.
+  {
+    label: "Send Elena Fair Oaks D's weekly report",
+    action: {
+      type: 'sendWeeklyReport',
+      projectId: 'fairoaksd',
+      weekOf: '2026-09-28',
+      from: 'me',
+      by: 'Robert Douglas',
+      copyArchitect: false,
+      subject: 'Fair Oaks Shops, Building D · week of Sep 28',
+      body: "Hi Elena,\n\nHere's where Fair Oaks Shops, Building D stands this week.\n\nThanks,\nRobert Douglas\nClick Construction",
+    },
+  },
 ]
 
 const CUSTOMER_IDS = ['cibolo', 'raman']
@@ -905,7 +919,7 @@ describe('GC mode golden walk', () => {
       'addPunchItem', 'tradeFixPunchItem', 'checkPunchItem',
       'failInspection',
       'saveDailyLog',
-      'addSubmittal', 'tradeSendSubmittal', 'sendSubmittalToArchitect', 'answerSubmittal',
+      'addSubmittal', 'tradeSendSubmittal', 'sendSubmittalToArchitect', 'answerSubmittal', 'sendWeeklyReport',
       'tradeOpenPortal',
       'tradeAnswerLines',
       'priceOwnBid',
