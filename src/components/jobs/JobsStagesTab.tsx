@@ -251,7 +251,8 @@ import { useJobDetailModal } from '../../contexts/JobDetailModalContext'
 import JobsStagesHideGroupsModal from './JobsStagesHideGroupsModal'
 import { JobsStagesToolsMenu, type StagesToolsFilters } from './JobsStagesToolsMenu'
 import { JobsStagesCommandBar } from './JobsStagesCommandBar'
-import { JobsStagesJumpStrip } from './JobsStagesJumpStrip'
+import { JobsStagesJumpStrip, StagesSectionBandTitle } from './JobsStagesJumpStrip'
+import { stageColorVar } from '../../lib/jobs/stagesStageBar'
 import { StagesReadyForBillingConfirmModal } from './StagesReadyForBillingConfirmModal'
 import { StagesSendBackSimpleConfirmModal } from './StagesSendBackSimpleConfirmModal'
 import { StagesCollectionsConfirmModal } from './StagesCollectionsConfirmModal'
@@ -1645,6 +1646,24 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       readyToBill: resolve('readyToBill', stagesBoardLists.readyToBillRows.length),
       billed: resolve('billed', stagesBoardLists.billedActiveRows.length),
       collections: resolve('collections', stagesBoardLists.collectionsRows.length),
+    }
+  }, [stagesBoardLists, stagesSearchQuery, cacheMergedScopes, cacheHeaderStats])
+
+  /** The stage bar's dollars (v2.4512): the same live-or-cached totals the section headers print. */
+  const jumpStripTotals = useMemo(() => {
+    const searchActive = stagesSearchQuery.trim() !== ''
+    const total = (section: StagesSectionKey, liveTotal: number) =>
+      stagesSectionHeader({
+        useLive: searchActive || cacheMergedScopes.has(scopeForStagesSection(section)),
+        live: { count: 0, total: liveTotal },
+        cached: cacheHeaderStats?.[section],
+      }).total
+    return {
+      waiting: total('waiting', stagesJobsOpenBalanceTotal(stagesBoardLists.waiting)),
+      working: total('working', stagesJobsOpenBalanceTotal(stagesBoardLists.working)),
+      readyToBill: total('readyToBill', readyToBillRowsExposureTotal(stagesBoardLists.readyToBillRows)),
+      billed: total('billed', billedRowsRemainingTotal(stagesBoardLists.billedActiveRows)),
+      collections: total('collections', billedRowsRemainingTotal(stagesBoardLists.collectionsRows)),
     }
   }, [stagesBoardLists, stagesSearchQuery, cacheMergedScopes, cacheHeaderStats])
 
@@ -3137,31 +3156,12 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             ) : null}
           </div>
           {phoneBoard ? null : (
-          <div
-            style={{
-              marginBottom: '0.75rem',
-              fontSize: '0.9375rem',
-              lineHeight: 1.5,
-              color: 'var(--text-700)',
-              display: 'flex',
-              flexWrap: 'wrap',
-              alignItems: 'center',
-              gap: '0.5rem',
-              width: '100%',
-            }}
-          >
-            <div
-              style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flex: '1 1 auto',
-                gap: '0.35rem',
-                textAlign: 'center',
-                minWidth: 0,
-              }}
-            >
+            <JobsStagesJumpStrip
+              counts={jumpStripCounts}
+              totals={jumpStripTotals}
+              onFocusSection={focusStagesSection}
+              sectionElementId={stagesSectionElementId}
+              leading={
             <JobsStagesSectionToolsMenu
               inputs={{
       authRole,
@@ -3177,12 +3177,11 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
               }}
               onSelect={sectionToolsOnSelect}
             />
-              <JobsStagesJumpStrip counts={jumpStripCounts} onFocusSection={focusStagesSection} />
-            </div>
-            {/* "Recently added" (v2.1809) lives in the ☰ tools menu since
-                v2.1973; this pill now renders ONLY while the flat view is
-                open, as the prominent way back to the board. */}
-            {stagesRecentViewOpen && (
+              }
+              /* "Recently added" (v2.1809) lives in the ☰ tools menu since
+                 v2.1973; this pill renders ONLY while the flat view is
+                 open, as the prominent way back to the board. */
+              trailing={stagesRecentViewOpen ? (
             <button
               type="button"
               onClick={() => setStagesRecentViewOpen((o) => !o)}
@@ -3209,12 +3208,12 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
               <span aria-hidden>🕒</span>
               {stagesRecentViewOpen ? 'Back to board' : 'Recently added'}
             </button>
-            )}
+              ) : null}
+            />
+          )}
             {/* The three data-gap alerts (No customer / No pictures / No email)
                 live in the money card's Fix-ups strip (v2.1961) — the toolbar
                 strip they used to dock in here retired with the Old view (v2.2012). */}
-          </div>
-          )}
           <StagesAlertJobListModal
             open={stagesNoEmailModalOpen}
             onClose={() => setStagesNoEmailModalOpen(false)}
@@ -3414,7 +3413,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     )}
                   </div>
                 ) : null}
-                <div data-stages-section-header id={stagesSectionElementId('waiting')} style={{ margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+                <div data-stages-section-header className="stagesSectionBand" id={stagesSectionElementId('waiting')} style={{ ...(stageColorVar('waiting') as CSSProperties), margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
                   <button
                     type="button"
                     onClick={() => toggleStages('waiting')}
@@ -3422,7 +3421,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     style={{ fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
                   >
                     <span aria-hidden>{sectionShown('waiting') ? '▼' : '▶'}</span>
-                    Waiting ({waitingHdr.count}) - <span className="stagesMoney">${waitingHdr.total}</span>{sectionLoadingSuffix('waiting')}
+                    <StagesSectionBandTitle label="Waiting" count={waitingHdr.count} total={waitingHdr.total} />{sectionLoadingSuffix('waiting')}
                   </button>
                 </div>
                 {sectionShown('waiting') && !stagesSearchActive && !sectionMerged('waiting') && sectionBodyLoading('Waiting jobs')}
@@ -3437,7 +3436,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   />
                 )}
 
-                <div data-stages-section-header id={stagesSectionElementId('working')} style={{ margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+                <div data-stages-section-header className="stagesSectionBand" id={stagesSectionElementId('working')} style={{ ...(stageColorVar('working') as CSSProperties), margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
                   <button
                     type="button"
                     onClick={() => toggleStages('working')}
@@ -3445,7 +3444,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     style={{ fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
                   >
                     <span aria-hidden>{sectionShown('working') ? '\u25BC' : '\u25B6'}</span>
-                    Working ({workingHdr.count}) - <span className="stagesMoney">${workingHdr.total}</span>{sectionLoadingSuffix('working')}
+                    <StagesSectionBandTitle label="Working" count={workingHdr.count} total={workingHdr.total} />{sectionLoadingSuffix('working')}
                   </button>
                   <div className="stagesWhenPills" role="group" aria-label="Show Working jobs by schedule">
                     {STAGES_WHEN_PILLS.map((pill) => (
@@ -3505,7 +3504,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 ) : null}
 
                 {/* Header row mirrors the Paid in Full section: toggle left, gear flushed right. */}
-                <div data-stages-section-header id={stagesSectionElementId('readyToBill')} style={{ margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                <div data-stages-section-header className="stagesSectionBand" id={stagesSectionElementId('readyToBill')} style={{ ...(stageColorVar('readyToBill') as CSSProperties), margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
                   <button
                     type="button"
                     onClick={() => toggleStages('readyToBill')}
@@ -3513,7 +3512,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     style={{ fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit', flex: 1, minWidth: 0 }}
                   >
                     <span aria-hidden>{sectionShown('readyToBill') ? '\u25BC' : '\u25B6'}</span>
-                    Ready to Bill ({readyToBillHdr.count}) - <span className="stagesMoney">${readyToBillHdr.total}</span>{sectionLoadingSuffix('readyToBill')}
+                    <StagesSectionBandTitle label="Ready to Bill" count={readyToBillHdr.count} total={readyToBillHdr.total} />{sectionLoadingSuffix('readyToBill')}
                   </button>
                   {(stagesGates.isStagesOwnerRole(authRole)) && (
                     <button
@@ -3540,7 +3539,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   />
                 )}
 
-                <div data-stages-section-header id={stagesSectionElementId('billed')} style={{ margin: '1.5rem 0 0.5rem', display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', justifyContent: 'space-between', gap: isMobile ? '0.5rem' : '1rem', flexWrap: 'wrap' }}>
+                <div data-stages-section-header className="stagesSectionBand" id={stagesSectionElementId('billed')} style={{ ...(stageColorVar('billed') as CSSProperties), margin: '1.5rem 0 0.5rem', display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', justifyContent: 'space-between', gap: isMobile ? '0.5rem' : '1rem', flexWrap: 'wrap' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', minWidth: 0 }}>
                     <button
                       type="button"
@@ -3549,7 +3548,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       style={{ fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
                     >
                       <span aria-hidden>{sectionShown('billed') ? '▼' : '▶'}</span>
-                      Billed Awaiting Payment ({billedHdr.count}) - <span className="stagesMoney">${billedHdr.total}</span>{sectionLoadingSuffix('billed')}
+                      <StagesSectionBandTitle label="Billed Awaiting Payment" count={billedHdr.count} total={billedHdr.total} />{sectionLoadingSuffix('billed')}
                     </button>
                     {([
                       { key: '30_90' as const, label: `30+ · ${billedAgingBuckets.count30_90} · $${formatCurrencyAbbrevTruncated(billedAgingBuckets.sum30_90)}`, title: 'Billed 30–90 days ago (by bill date; a hand-set est. bill date wins) with money still owed — click to show only these rows', bg: 'var(--bg-amber-tint)', fg: 'var(--text-amber-800)', count: billedAgingBuckets.count30_90 },
@@ -3759,7 +3758,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   />
                 )}
 
-                <div data-stages-section-header id={stagesSectionElementId('collections')} style={{ margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                <div data-stages-section-header className="stagesSectionBand" id={stagesSectionElementId('collections')} style={{ ...(stageColorVar('collections') as CSSProperties), margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
                   <button
                     type="button"
                     onClick={() => toggleStages('collections')}
@@ -3767,7 +3766,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     style={{ fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
                   >
                     <span aria-hidden>{sectionShown('collections') ? '▼' : '▶'}</span>
-                    Collections ({collectionsHdr.count}) - <span className="stagesMoney">${collectionsHdr.total}</span>{sectionLoadingSuffix('collections')}
+                    <StagesSectionBandTitle label="Collections" count={collectionsHdr.count} total={collectionsHdr.total} />{sectionLoadingSuffix('collections')}
                   </button>
                   <span style={{ fontSize: '0.875rem', fontWeight: 400, color: 'var(--text-muted)' }}>
                     Billed jobs flagged difficult to collect — still awaiting payment
@@ -3830,7 +3829,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 ))}
 
                 {/* Header row mirrors the Billed section: toggle on the left, affordances flushed right. */}
-                <div data-stages-section-header id={stagesSectionElementId('paid')} style={{ margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                <div data-stages-section-header className="stagesSectionBand" id={stagesSectionElementId('paid')} style={{ ...(stageColorVar('paid') as CSSProperties), margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
                 <button
                   type="button"
                   onClick={() => {

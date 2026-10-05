@@ -4265,6 +4265,115 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
 .quickfillRoundScreen textarea {
   font-size: 16px !important;
 }
+/* The Pipeline's stage bar (v2.4512): the jump strip, pinned while the board scrolls, the
+   section being scrolled through lit in its own color; and each section header a band in
+   that color. `--stage-color` comes from `lib/jobs/stagesStageBar`. */
+.stagesStageBar {
+  position: sticky;
+  z-index: 18;
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.stagesStageBarEnd {
+  display: flex;
+  align-items: center;
+  padding: 0 0.6rem;
+  border-right: 1px solid var(--border);
+}
+.stagesStageBarEnd.isTrailing {
+  border-right: none;
+  border-left: 1px solid var(--border);
+}
+.stagesStageSegs {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.stagesStageSeg {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  padding: 0.4rem 0.75rem 0.3rem;
+  border: none;
+  border-bottom: 3px solid transparent;
+  background: transparent;
+  color: var(--text-strong);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.stagesStageSeg.isWide {
+  flex-grow: 1.6;
+}
+.stagesStageSeg:hover {
+  background: var(--bg-subtle);
+}
+.stagesStageSeg:focus-visible {
+  outline: 2px solid var(--text-link);
+  outline-offset: -2px;
+}
+.stagesStageSeg.isOn {
+  background: color-mix(in srgb, var(--stage-color) 14%, var(--surface));
+  border-bottom-color: var(--stage-color);
+}
+.stagesStageSegName {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  max-width: 100%;
+  font-size: 0.875rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.stagesStageSegDot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--stage-color);
+}
+.stagesStageSegMeta {
+  padding-left: calc(8px + 0.4rem);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.stagesStageSeg.isEmpty .stagesStageSegName {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.stagesSectionBand {
+  padding: 0.5rem 0.75rem;
+  border-left: 4px solid var(--stage-color);
+  background: color-mix(in srgb, var(--stage-color) 9%, var(--surface));
+  scroll-margin-top: var(--stages-jump-offset, 0px);
+}
+.stagesBandTitle {
+  font-size: 1.0625rem;
+  font-weight: 700;
+}
+.stagesBandCount {
+  padding: 0 0.55rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--stage-color) 24%, var(--surface));
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.7;
+}
+.stagesBandTotal {
+  font-weight: 600;
+}
 /* ── Pipeline Working header: the schedule pills + next-first sort (v2.3788) ── */
 .stagesWhenPills {
   display: inline-flex;

@@ -131,6 +131,13 @@ function boardJobs() {
 const byJobName = (name: string) => (_: string, el: Element | null) =>
   el?.textContent === name && el.children.length <= 3 && !['TR', 'TD', 'TBODY', 'TABLE'].includes(el.tagName)
 
+/** A section's header toggle (v2.4512: the name, the count in its pill, the dollars — "Working 2 $0"). */
+const sectionHeader = (label: string, count: number): HTMLElement => {
+  const hit = [...document.querySelectorAll<HTMLElement>('[data-stages-section-header] button[aria-expanded]')].find((b) => new RegExp(`${label} ${count}( |$)`).test(b.textContent ?? ''))
+  if (!hit) throw new Error(`no section header reads "${label} ${count}"`)
+  return hit
+}
+
 describe('JobsStagesTab render smoke', () => {
   beforeEach(() => {
     // The v2.1824 per-device default opens Ready to Bill only; these smokes
@@ -147,7 +154,7 @@ describe('JobsStagesTab render smoke', () => {
     renderWithProviders(<JobsStagesTab ref={createRef<JobsStagesTabHandle>()} {...makeProps({ active: false })} />)
     await settle()
     expect(screen.queryByPlaceholderText(SEARCH_PLACEHOLDER)).toBeNull()
-    expect(screen.queryByText(/Waiting \(/)).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Waiting \d/ })).toBeNull()
   })
 
   it('renders the board with section headers when active', async () => {
@@ -156,11 +163,11 @@ describe('JobsStagesTab render smoke', () => {
     )
     await settle()
     expect(screen.getByPlaceholderText(SEARCH_PLACEHOLDER)).toBeTruthy()
-    expect(screen.getByText(/Waiting \(1\)/)).toBeTruthy()
-    expect(screen.getByText(/Working \(2\)/)).toBeTruthy()
-    expect(screen.getByText(/Ready to Bill \(0\)/)).toBeTruthy()
-    expect(screen.getByText(/Billed Awaiting Payment \(0\)/)).toBeTruthy()
-    expect(screen.getByText(/Collections \(0\)/)).toBeTruthy()
+    expect(sectionHeader('Waiting', 1)).toBeTruthy()
+    expect(sectionHeader('Working', 2)).toBeTruthy()
+    expect(sectionHeader('Ready to Bill', 0)).toBeTruthy()
+    expect(sectionHeader('Billed Awaiting Payment', 0)).toBeTruthy()
+    expect(sectionHeader('Collections', 0)).toBeTruthy()
     expect(screen.getByText(/Paid in Full \(/)).toBeTruthy()
     // Working opens by default → its rows render
     expect(screen.getByText('Working Duplex')).toBeTruthy()
@@ -173,7 +180,7 @@ describe('JobsStagesTab render smoke', () => {
     )
     await settle()
     fireEvent.change(screen.getByPlaceholderText(SEARCH_PLACEHOLDER), { target: { value: 'Villa' } })
-    expect(screen.getByText(/Working \(1\)/)).toBeTruthy()
+    expect(sectionHeader('Working', 1)).toBeTruthy()
     expect(screen.queryByText('Working Duplex')).toBeNull()
     expect(screen.getAllByText(byJobName('Working Villa'))[0]).toBeTruthy()
   })
@@ -183,14 +190,14 @@ describe('JobsStagesTab render smoke', () => {
       <JobsStagesTab ref={createRef<JobsStagesTabHandle>()} {...makeProps({ jobs: boardJobs() })} />,
     )
     await settle()
-    const workingHeader = screen.getByText(/Working \(2\)/)
+    const workingHeader = sectionHeader('Working', 2)
     expect(workingHeader.closest('button')!.getAttribute('aria-expanded')).toBe('true')
     fireEvent.click(workingHeader)
     expect(screen.queryByText('Working Duplex')).toBeNull()
-    fireEvent.click(screen.getByText(/Working \(2\)/))
+    fireEvent.click(sectionHeader('Working', 2))
     expect(screen.getByText('Working Duplex')).toBeTruthy()
     // Waiting starts closed; opening it reveals its rows
-    const waitingHeader = screen.getByText(/Waiting \(1\)/)
+    const waitingHeader = sectionHeader('Waiting', 1)
     expect(waitingHeader.closest('button')!.getAttribute('aria-expanded')).toBe('false')
     expect((screen.queryAllByText(byJobName('Waiting Casa'))[0] ?? null)).toBeNull()
     fireEvent.click(waitingHeader)
@@ -203,7 +210,7 @@ describe('JobsStagesTab render smoke', () => {
     const view = renderWithProviders(<JobsStagesTab ref={ref} {...props} />)
     await settle()
     // Set state: open the Waiting section and type a search
-    fireEvent.click(screen.getByText(/Waiting \(1\)/))
+    fireEvent.click(sectionHeader('Waiting', 1))
     expect(screen.getAllByText(byJobName('Waiting Casa'))[0]).toBeTruthy()
     const search = screen.getByPlaceholderText(SEARCH_PLACEHOLDER) as HTMLInputElement
     fireEvent.change(search, { target: { value: 'Casa' } })
@@ -215,7 +222,7 @@ describe('JobsStagesTab render smoke', () => {
     view.rerender(<JobsStagesTab ref={ref} {...props} active={true} />)
     const searchAgain = screen.getByPlaceholderText(SEARCH_PLACEHOLDER) as HTMLInputElement
     expect(searchAgain.value).toBe('Casa')
-    const waitingHeader = screen.getByText(/Waiting \(1\)/)
+    const waitingHeader = sectionHeader('Waiting', 1)
     expect(waitingHeader.closest('button')!.getAttribute('aria-expanded')).toBe('true')
     expect(screen.getAllByText(byJobName('Waiting Casa'))[0]).toBeTruthy()
   })
@@ -236,7 +243,7 @@ describe('JobsStagesTab render smoke', () => {
     // focusJob for an unknown id falls back to a toast
     expect(showToast).toHaveBeenCalledWith('That job isn’t on the Pipeline board right now.', 'info')
     // Billed section opened by focusSection stays expanded
-    const billedHeader = screen.getByText(/Billed Awaiting Payment \(0\)/)
+    const billedHeader = sectionHeader('Billed Awaiting Payment', 0)
     expect(billedHeader.closest('button')!.getAttribute('aria-expanded')).toBe('true')
     // Total by Name modal opened via the handle
     expect(screen.getByText('take me to Job: Stages: Billed')).toBeTruthy()
@@ -252,13 +259,13 @@ describe('JobsStagesTab render smoke', () => {
     await settle()
     // A search that hides the waiting job entirely
     fireEvent.change(screen.getByPlaceholderText(SEARCH_PLACEHOLDER), { target: { value: 'Duplex' } })
-    expect(screen.getByText(/Waiting \(0\)/)).toBeTruthy()
+    expect(sectionHeader('Waiting', 0)).toBeTruthy()
     act(() => {
       ref.current!.focusJob('job-new')
     })
     // Search cleared, Waiting opened, and the job row is on screen
     expect((screen.getByPlaceholderText(SEARCH_PLACEHOLDER) as HTMLInputElement).value).toBe('')
-    const waitingHeader = screen.getByText(/Waiting \(1\)/)
+    const waitingHeader = sectionHeader('Waiting', 1)
     expect(waitingHeader.closest('button')!.getAttribute('aria-expanded')).toBe('true')
     expect(screen.getByText('Fresh Casa')).toBeTruthy()
   })
