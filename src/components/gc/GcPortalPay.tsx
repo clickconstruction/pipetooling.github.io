@@ -121,6 +121,7 @@ function Row({ row, first }: { row: PortalPayRow; first: boolean }) {
       <span>
         <strong>{money(d.net)}</strong>
         {d.asked && <span style={{ opacity: 0.75 }}> {t('drawOfAsked', { asked: money(d.asked.net) })}</span>}
+        {(d.backCharges ?? []).length > 0 && <span style={{ opacity: 0.75 }}> {t('bcOffDraw', { amount: money((d.backCharges ?? []).reduce((sum, c) => sum + c.amount, 0)) })}</span>}
         {!d.final && d.retainage > 0 && <span style={{ opacity: 0.75 }}> · {t('payHeld', { held: money(d.retainage) })}</span>}
       </span>
       <span style={{ fontSize: '0.82rem', opacity: 0.8 }}>

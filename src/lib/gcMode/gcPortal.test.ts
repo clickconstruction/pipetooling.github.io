@@ -45,6 +45,8 @@ import {
   openChangeRequests,
   portalCanAskChange,
   portalChangeRequests,
+  backChargeCanTake,
+  portalBackCharges,
   type GcState,
 } from './gcModel'
 
@@ -1304,5 +1306,96 @@ describe('a trade asks for a change (owner, 2026-10-04)', () => {
     const signed = gcReducer(toSign, { type: 'tradeSignChange', projectId: 'fairoaksd', changeOrderId: co?.id ?? '' })
     expect(rows(signed)[0]).toMatchObject({ state: 'signed', words: 'You signed change order 1 on Oct 2. It is a line of your statement of work: $14,000.' })
     expect(rows(signed, 'es')[0]?.words).toBe('Firmó la orden de cambio 1 el 2 oct. Es una partida de su orden de trabajo: $14,000.')
+  })
+})
+
+describe('back-charges a company can see (owner, 2026-10-05)', () => {
+  const steel = (s: GcState) => {
+    const project = s.projects.find((p) => p.id === 'fairoaksd')
+    const pkg = project?.packages.find((k) => k.id === 'fsteel')
+    if (!project || !pkg?.sow) throw new Error('no Fair Oaks steel')
+    return { project, pkg, sow: pkg.sow }
+  }
+  const rows = (s: GcState, lang: 'en' | 'es' = 'en') => {
+    const { project, pkg } = steel(s)
+    return portalBackCharges(project, pkg, 'ironhorse', s.today, lang)
+  }
+  const ids = { projectId: 'fairoaksd', packageId: 'fsteel' }
+  const charge = (s: GcState) => steel(s).sow.backCharges?.[0] ?? (null as never)
+
+  it('shows Iron Horse the charge to answer, on its home and by email', () => {
+    expect(rows(state)[0]).toMatchObject({ state: 'open', chip: 'answer by Oct 5', line: '$1,250 · sent Sep 30', canAnswer: true })
+    expect(rows(state)[0]?.words).toBe('Agree, or dispute it and say why. With no answer by Oct 5, it can come off your next draw.')
+    expect(portalTodos(state, 'ironhorse').find((t) => t.key === 'fsteel-bc-1:answer')).toMatchObject({
+      text: 'Click charged you $1,250 on Fair Oaks Shops, Building D. Agree or dispute it by Mon Oct 5.',
+      tone: 'amber',
+      anchor: 'charges:fsteel',
+    })
+    const m = portalMessages(state, 'ironhorse').find((x) => x.key === 'fsteel-bc-1:sent')
+    expect(m?.subject).toBe('A charge on Fair Oaks Shops, Building D: $1,250')
+    expect(m?.lines.slice(1)).toEqual([
+      'We are charging you $1,250 on your Structural steel work: Your crew cut the temporary power line on the north side while setting joists. Our electrician spliced it the same day.',
+      'Agree or dispute it in your portal by Mon Oct 5. With no answer, it can come off your next draw.',
+      'Open your portal to see it.',
+    ])
+    expect(rows(state, 'es')[0]).toMatchObject({ chip: 'conteste a más tardar el 5 oct', line: '$1,250 · enviado el 30 sep' })
+    // Not before its answer day.
+    expect(backChargeCanTake(charge(state), state.today)).toBe(false)
+  })
+
+  it('turns red once the answer day goes by, and can then come off a draw', () => {
+    const later = { ...state, today: '2026-10-06' }
+    expect(rows(later)[0]).toMatchObject({ state: 'noAnswer', chip: 'no answer', canAnswer: true })
+    expect(portalTodos(later, 'ironhorse').find((t) => t.key === 'fsteel-bc-1:answer')?.tone).toBe('red')
+    expect(backChargeCanTake(charge(later), later.today)).toBe(true)
+  })
+
+  it('lets the office charge only the company on a signed statement of work, with a reason and an amount', () => {
+    const charged = (amount: number, reason: string, projectId = 'fairoaksd', packageId = 'fsteel') => gcReducer(state, { type: 'backCharge', projectId, packageId, amount, reason, photo: null })
+    expect(charged(0, 'Cleanup')).toBe(state)
+    expect(charged(400, '  ')).toBe(state)
+    // Helotes electrical's statement of work is sent, not signed.
+    expect(charged(400, 'Cleanup', 'helotes', 'delec')).toBe(state)
+    const two = charged(400, 'Haul off the deck crates left at the loading dock')
+    expect(charge(two)).toBeTruthy()
+    expect(steel(two).sow.backCharges?.[1]).toMatchObject({ id: 'fsteel-bc-2', amount: 400, sentOn: '2026-10-02', answerBy: '2026-10-07', status: 'open', photo: null })
+    expect(two.log[0]).toMatchObject({ who: 'office', text: 'Charged Iron Horse Fabrication $400 on Fair Oaks Shops, Building D: Haul off the deck crates left at the loading dock' })
+  })
+
+  it('takes an agreed charge off an approved draw, once, and tells them', () => {
+    const agreed = gcReducer(state, { type: 'tradeAnswerBackCharge', ...ids, chargeId: 'fsteel-bc-1', agree: true, note: '' })
+    expect(rows(agreed)[0]).toMatchObject({ state: 'agreed', chip: 'you agreed', canAnswer: false, words: 'You agreed on Oct 2. It comes off your next draw.' })
+    expect(portalTodos(agreed, 'ironhorse').some((t) => t.key === 'fsteel-bc-1:answer')).toBe(false)
+    // Draw 2 is only asked for: nothing to take it off yet.
+    const early = gcReducer(agreed, { type: 'takeBackCharge', ...ids, chargeId: 'fsteel-bc-1', drawId: 'fsteel-draw-2' })
+    expect(early).toBe(agreed)
+    const approved = gcReducer(agreed, { type: 'approveDraw', ...ids, drawId: 'fsteel-draw-2' })
+    const taken = gcReducer(approved, { type: 'takeBackCharge', ...ids, chargeId: 'fsteel-bc-1', drawId: 'fsteel-draw-2' })
+    const draw = steel(taken).sow.draws.find((d) => d.id === 'fsteel-draw-2')
+    expect(draw).toMatchObject({ net: 77_950, backCharges: [{ chargeId: 'fsteel-bc-1', amount: 1_250 }] })
+    expect(rows(taken)[0]).toMatchObject({ state: 'taken', chip: 'taken off draw 2', words: 'Taken off draw 2 on Oct 2.' })
+    expect(taken.log[0]?.text).toBe("Took the $1,250 back-charge off Iron Horse Fabrication's draw 2 on Fair Oaks Shops, Building D: $77,950 to pay.")
+    expect(portalMessages(taken, 'ironhorse').find((x) => x.key === 'fsteel-bc-1:taken')?.subject).toBe('Draw 2 on Fair Oaks Shops, Building D is $1,250 less')
+    expect(portalPay(taken, 'ironhorse').rows.find((r) => r.draw.id === 'fsteel-draw-2')?.draw.net).toBe(77_950)
+    expect(gcReducer(taken, { type: 'takeBackCharge', ...ids, chargeId: 'fsteel-bc-1', drawId: 'fsteel-draw-2' })).toBe(taken)
+  })
+
+  it('answers a dispute: kept with our reason, or dropped', () => {
+    expect(gcReducer(state, { type: 'tradeAnswerBackCharge', ...ids, chargeId: 'fsteel-bc-1', agree: false, note: ' ' })).toBe(state)
+    const disputed = gcReducer(state, { type: 'tradeAnswerBackCharge', ...ids, chargeId: 'fsteel-bc-1', agree: false, note: 'The line was not marked and ran under the joist bundle' })
+    expect(rows(disputed)[0]).toMatchObject({ state: 'disputed', chip: 'you disputed it', theirReason: 'Your reason: The line was not marked and ran under the joist bundle', words: 'You disputed it on Oct 2. Click answers next.' })
+    expect(gcReducer(disputed, { type: 'settleBackCharge', ...ids, chargeId: 'fsteel-bc-1', keep: true, note: '' })).toBe(disputed)
+
+    const kept = gcReducer(disputed, { type: 'settleBackCharge', ...ids, chargeId: 'fsteel-bc-1', keep: true, note: 'The line was flagged on the site plan your foreman signed' })
+    expect(rows(kept)[0]).toMatchObject({ state: 'kept', chip: 'Click kept it', words: 'Click kept it on Oct 2: The line was flagged on the site plan your foreman signed. It comes off your next draw.' })
+    expect(portalMessages(kept, 'ironhorse').find((x) => x.key === 'fsteel-bc-1:settled')?.lines[1]).toBe(
+      'We read your reason and are keeping the $1,250 charge: The line was flagged on the site plan your foreman signed.',
+    )
+    expect(backChargeCanTake(charge(kept), kept.today)).toBe(true)
+
+    const dropped = gcReducer(disputed, { type: 'settleBackCharge', ...ids, chargeId: 'fsteel-bc-1', keep: false, note: 'You are right, the line was not marked.' })
+    expect(rows(dropped)[0]).toMatchObject({ state: 'dropped', chip: 'dropped', tone: 'green', words: 'Click dropped it on Oct 2: You are right, the line was not marked.' })
+    expect(rows(dropped, 'es')[0]?.words).toBe('Click lo canceló el 2 oct: You are right, the line was not marked.')
+    expect(backChargeCanTake(charge(dropped), dropped.today)).toBe(false)
   })
 })

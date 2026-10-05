@@ -220,6 +220,8 @@ export interface Draw {
   approvedOn?: string
   /** The day we paid it. Unset: not yet, or before the day was kept. */
   paidOn?: string
+  /** Back-charges the office took off this draw (Portal lane, owner 2026-10-05): net is already less by these. */
+  backCharges?: { chargeId: string; amount: number }[]
 }
 
 export interface Sow {
@@ -236,6 +238,8 @@ export interface Sow {
   warrantyOn?: string | null
   /** Pay applications the office sent back, oldest first. A resend takes the same number. */
   sentBack?: DrawSentBack[]
+  /** What we charged the company for: cleanup, damage, work we finished for them. Oldest first (Portal lane). */
+  backCharges?: BackCharge[]
   /** The day we sent it to the trade to sign. Unset: not sent, or before the day was kept. */
   sentOn?: string
   /**
@@ -1141,6 +1145,14 @@ export type GcAction =
   | { type: 'draftChangeOrderFromRequest'; projectId: string; requestId: string; description: string; cost: number; price: number; days: number }
   /** The office turns a trade's change request down, and says why. The trade reads it in its portal. */
   | { type: 'turnDownChangeRequest'; projectId: string; requestId: string; note: string }
+  /** The office charges a trade for cleanup, damage, or work we finished for it (owner, 2026-10-05). */
+  | { type: 'backCharge'; projectId: string; packageId: string; amount: number; reason: string; photo: string | null }
+  /** The trade agrees to a back-charge, or disputes it and says why, in its portal. */
+  | { type: 'tradeAnswerBackCharge'; projectId: string; packageId: string; chargeId: string; agree: boolean; note: string }
+  /** The office keeps a back-charge (after a dispute, or with no answer) or drops it, and says why. */
+  | { type: 'settleBackCharge'; projectId: string; packageId: string; chargeId: string; keep: boolean; note: string }
+  /** The office takes a back-charge off an approved draw it has not paid yet. */
+  | { type: 'takeBackCharge'; projectId: string; packageId: string; chargeId: string; drawId: string }
 
 /** One trade on a new project, as the office left it in the New project window. */
 export interface NewTradeDraft {
@@ -1384,6 +1396,31 @@ export interface ChangeOrder {
    * typed by the office. Absent or 0: none. A signed one adds them to the contract time.
    */
   days?: number
+}
+
+/**
+ * A charge to a trade (owner, 2026-10-05): cleanup, damage, or work we had to finish for it. The
+ * company sees it in its portal with the reason and the photo, and agrees or disputes it by
+ * `answerBy`. One it agreed to, one we kept after its dispute, or one it never answered can come
+ * off an approved draw it has not been paid yet (`Draw.backCharges`).
+ */
+export interface BackCharge {
+  id: string
+  amount: number
+  /** What it is for, in the office's words. */
+  reason: string
+  /** The photo sent with it: its name. Null: none. */
+  photo: string | null
+  sentOn: string
+  /** The day to answer by. After it, a charge with no answer can come off a draw. */
+  answerBy: string
+  status: 'open' | 'agreed' | 'disputed' | 'kept' | 'dropped'
+  /** The company's answer: the day, and its note when it disputed. */
+  answer?: { on: string; note: string }
+  /** The office's answer to a dispute, or why it dropped the charge. */
+  settled?: { on: string; note: string }
+  /** The draw it came off, and the day. */
+  taken?: { drawId: string; on: string }
 }
 
 /**

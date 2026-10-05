@@ -333,6 +333,24 @@ days and a photo. Details in README.md, *A trade asks for a change in its portal
 - **Board (GC 0), if it fits:** a Needs you line while a request waits ("Tri-County Site asked for a
   change on Fair Oaks").
 
+## Round 9: back-charges a company can see (the owner, 2026-10-05)
+
+The owner, asked what the portal builds next: "Back-charges they can see". The other way from
+Round 8: we charge a company for cleanup, damage or work we finished for it, and it sees why before
+the money comes off a draw. Details in README.md, *A company sees what we charge it for*.
+
+- ~~**Portal (GC 3):**~~ done (this commit). `BackCharge` on the statement of work and four actions:
+  `backCharge`, `tradeAnswerBackCharge`, `settleBackCharge`, `takeBackCharge` (lowers an approved,
+  unpaid draw's net and records it on `Draw.backCharges`). *Charges from Click* on the job page,
+  the to-do, four emails, "less $X in back-charges" on the draw in the portal and Your pay, the
+  company window's Activity lines. Seeded: Iron Horse's cut power line on Fair Oaks, $1,250.
+- **Building (GC 1):** the office's screen, beside each trade's draws: *Charge them* (amount, what
+  for, a photo) dispatching `backCharge`; each charge's state (`backChargeState`); *Keep it* or
+  *Drop it* with a reason on a disputed or unanswered one (`settleBackCharge`); *Take it off draw N*
+  on one `backChargeCanTake` allows, for each draw `backChargeDraws` gives (`takeBackCharge`).
+  `backChargesToAct(sow, today)` is the list that needs the office.
+- **Owner Billing (GC 4), nothing owed:** the cash forecast reads `draw.net`, which is already less.
+
 ## Owner (the decisions)
 
 11. ~~**A carried quote with a line that has no cost:** does it hold the ring open?~~ Answered 2026-10-03: yes, until every line has a cost. Built by the Board (this commit).

@@ -13457,6 +13457,17 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
           ],
           "selfPerform": null,
           "sow": {
+            "backCharges": [
+              {
+                "amount": 1250,
+                "answerBy": "2026-10-05",
+                "id": "fsteel-bc-1",
+                "photo": "north-temp-power.jpg",
+                "reason": "Your crew cut the temporary power line on the north side while setting joists. Our electrician spliced it the same day.",
+                "sentOn": "2026-09-30",
+                "status": "open",
+              },
+            ],
             "basedOnRev": 0,
             "draws": [
               {

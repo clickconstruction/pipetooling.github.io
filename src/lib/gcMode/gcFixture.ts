@@ -1219,6 +1219,19 @@ export function initialGcState(): GcState {
               payApp: typedBy('Luz Carrasco', 'Project manager', '2026-09-30', '2026-09-30', '9030 Rigsby Ave, San Antonio, TX 78263'),
             },
           ],
+          // Portal lane (owner, 2026-10-05): a charge Iron Horse has not answered yet, due Mon Oct 5.
+          // Once draw 2 is approved, the office can take it off when Iron Horse agrees.
+          backCharges: [
+            {
+              id: 'fsteel-bc-1',
+              amount: 1_250,
+              reason: 'Your crew cut the temporary power line on the north side while setting joists. Our electrician spliced it the same day.',
+              photo: 'north-temp-power.jpg',
+              sentOn: '2026-09-30',
+              answerBy: '2026-10-05',
+              status: 'open',
+            },
+          ],
         },
       }),
       pkg('felec', 'Electrical', fElec, 252_000, [
