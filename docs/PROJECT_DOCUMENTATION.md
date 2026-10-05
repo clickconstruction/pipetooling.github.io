@@ -11,7 +11,7 @@ file: PROJECT_DOCUMENTATION.md
 type: Technical Reference
 purpose: Deep technical reference — schema, RLS, auth, DB functions, client patterns, gotchas; feature surfaces route to specialist docs
 audience: Developers, AI Agents, Technical Staff
-last_updated: 2026-10-02
+last_updated: 2026-10-05
 key_sections:
   - name: "Database Schema"
   - name: "Authentication & Authorization"
@@ -674,7 +674,7 @@ WHERE proname IN (
 - **Key Fields**: `id` (uuid, PK); `leader_user_id`, `member_user_id` (FK → `users.id`, ON DELETE CASCADE); `created_at` (timestamptz); `created_by_user_id` (uuid, nullable, FK → `users`); `dashboard_hours_visibility` (`'full'` | `'strip_only'`, default `'full'`) — per link, what the **leader** sees on Dashboard: full **My Team** (roster, week totals, clock activity, pending approval) vs **clock strip only** (member still appears in **Currently clocked in** with **Today** hours; detailed My Team rows hidden). **Only dev** may change this column (DB trigger).
 - **Constraints**: `UNIQUE (leader_user_id, member_user_id)`; `CHECK (leader_user_id <> member_user_id)`.
 - **RLS**: Leaders and members can read rows they appear on; dev, master_technician, and assistant can manage all rows (People → Users **Team leads** modal or **People → Teams**). **SQL:** `is_team_lead_for_member(leader, member)`, `can_manage_team_leader_assignments()`.
-- **Usage**: **People → Users → Team leads** modal **or** **People → Teams** (`/people?tab=teams`) — both render the shared **[`TeamLeadsManager.tsx`](../src/components/people/TeamLeadsManager.tsx)** (formerly Settings → Dashboard & alerts "Team Hours Sharing"); dev, master_technician, and assistant manage rows (**Leader dashboard** Full/Strip toggle: **dev-only**); extends `clock_sessions` SELECT/UPDATE and `approve_clock_sessions` / `revoke_clock_sessions` for team-lead paths.
+- **Usage (historical)**: until v2.3616 the **Team leads** modal on People → Users and **People → Teams** rendered the shared `TeamLeadsManager.tsx` (deleted with the modal); dev, master_technician, and assistant managed rows (**Leader dashboard** Full/Strip toggle: **dev-only**); extends `clock_sessions` SELECT/UPDATE and `approve_clock_sessions` / `revoke_clock_sessions` for team-lead paths.
 
 #### `public.team_leader_clock_notify_prefs`
 - **Purpose**: Per **team leader assignment** (`team_leader_assignments.id`), whether that leader receives **Web Push** when the linked member clocks in or out (Edge Function `notify-team-lead-clock`, triggered by Database Webhook on `clock_sessions`).

@@ -254,6 +254,7 @@ import { JobsStagesJumpStrip, StagesLienDeskShortcut, StagesSectionBandTitle } f
 import { stageColorVar } from '../../lib/jobs/stagesStageBar'
 import { readJobsMapHidden, writeJobsMapHidden } from '../../lib/jobs/jobsMap'
 import LienOwnerRecordsModal from './LienOwnerRecordsModal'
+import { printAndFile } from '../../lib/sent/sentCopiesIo'
 import { ownerRecordsFromDesk } from '../../lib/jobs/ownerRecordsDesk'
 import { StagesReadyForBillingConfirmModal } from './StagesReadyForBillingConfirmModal'
 import { StagesSendBackSimpleConfirmModal } from './StagesSendBackSimpleConfirmModal'
@@ -2086,6 +2087,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       showToast('Nothing to print in Billed Awaiting Payment.', 'warning')
       return
     }
+    // Our own list of who owes what: a working report, not a paper sent to anyone, so it is not filed.
     if (!openHtmlPrintWindow(buildBilledAwaitingPaymentReportHtml(rows, opts))) {
       showToast('Allow pop-ups to print the report.', 'error')
     }
@@ -3984,7 +3986,10 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     })
                   }}
                   onPrint={(groups, groupBy) => {
-                    if (!openHtmlPrintWindow(buildGcStatementReportHtml(groups, { groupBy }))) {
+                    // A print counts as a send (docs/SENT_COPIES.md): the statement is filed on its jobs, and under the GC when it is for one.
+                    const one = groups.length === 1 ? groups[0]! : null
+                    const filing = { kind: 'gc_statement_print', title: one ? `Statement for ${one.gcName}` : `Statement for ${groups.length} ${groupBy === 'development' ? 'developments' : 'GCs'}`, recipientName: one?.gcName ?? '', jobIds: groups.flatMap((g) => g.rows.map((r) => r.jobId)), customerId: one && groupBy !== 'development' ? one.gcId : null }
+                    if (!printAndFile(buildGcStatementReportHtml(groups, { groupBy }), filing)) {
                       showToast('Allow pop-ups to print the report.', 'error')
                     }
                   }}

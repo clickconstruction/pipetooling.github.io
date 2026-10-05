@@ -145,7 +145,7 @@ function MonthLine({
             <button
               type="button"
               onClick={onSendNotice}
-              title={`Open the Lien instruments window on the § 53.056 notice for ${month.label}`}
+              title={`Open the Lien desk on this job, to draft the § 53.056 notice for ${month.label}`}
               style={{ padding: '1px 8px', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', cursor: 'pointer', fontSize: '0.72rem', color: 'var(--text-700)' }}
             >
               Send notice…
@@ -169,7 +169,7 @@ export default function ForecastWorkMonthsPanel({
   /** The customer's Comm tag — on a direct job it prompts the "is someone else the owner?" question. */
   isCommercial: boolean
   todayYmd: string
-  /** Opens the Lien instruments window on the notice tab (sub jobs). */
+  /** Opens the Lien desk on this job (sub jobs). */
   onSendNotice?: (jobId: string) => void
 }) {
   const isSub = job.role === 'sub'

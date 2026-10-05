@@ -3,12 +3,12 @@ import type { ReleaseNote } from '../../lib/releaseNotes'
 const note: ReleaseNote = {
   version: 'v2.4563',
   date: '2026-10-05',
-  title: 'Documents: a pay application workbook is kept when you download it',
-  kind: 'feature',
+  title: 'Lien window: a saved copy link typed while recording is kept',
+  kind: 'fix',
   highlights: [
-    'When you press Generate on an AIA G702-G703, the workbook that downloads is now kept as it was.',
-    'Find it on the job’s Documents tab under Sent from this job. Press its name to download the same file again.',
-    'A saved application can still be changed later. The kept workbook stays as it was the day it went out.',
+    'In a job\'s Lien window, the Saved copy link and note you type while recording a notice, a filing or a release are now saved with the record.',
+    'Before, they could be dropped, and the record showed no saved copy until you added the link again from the Filings list.',
+    'Records made earlier are not changed. If one is missing its link, add it from the Filings list.',
   ],
 }
 
