@@ -22,7 +22,7 @@ The rail on the left lists accounts by **what Click would keep** if every dollar
 - **Click keeps** is the balance after the firm's cut and costs, with a verdict. The verdict is worth it, marginal or not worth it.
 - **Against pursuing** lists facts on record that argue for writing it down instead. Writing it down means giving up the balance. Examples are a "no money" note, a dispute, broken promises, or a payer that is a name only.
 
-Then comes **Before this goes to an attorney**. {{chip:red|fix}} items are what an attorney asks for first. Those are no agreement and no sworn-account basis, no way to reach the payer, or no address. {{chip:yellow|note}} items are worth knowing. Those are no demand letter, a lien window still open, or an incomplete property record. They also include no field evidence, or never asked when they'd pay. A demand letter is the formal ask for payment. Every line has a button that opens the surface that owns the record. That may be Contract desk, Lien instruments, Edit customer, Edit job or Call mode. The desk refreshes when you come back.
+Then comes **Before this goes to an attorney**. {{chip:red|fix}} items are what an attorney asks for first. Those are no agreement and no sworn-account basis, no way to reach the payer, or no address. {{chip:yellow|note}} items are worth knowing. Those are no demand letter, a lien window still open, or an incomplete property record. They also include no field evidence, or never asked when they'd pay. A demand letter is the formal ask for payment. Every line has a button that opens the surface that owns the record. That may be Contract desk, the job's Lien window, Edit customer, Edit job or Call mode. The desk refreshes when you come back.
 
 ## The five tabs
 

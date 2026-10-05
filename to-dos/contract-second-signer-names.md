@@ -2,7 +2,7 @@
 name: "A second signer: every place a signed agreement shows or prints its signers"
 number: 64
 group: close
-status: PR A built v2.4590 (the kernel, items 1–5, the app-side readers) · PR B next (item 6 the portal, the signed copy's email, the firm's page) · then three deploys
+status: PR A built v2.4590 (the kernel, items 1–5, the app-side readers) · PR B built v2.4596 (item 6 the portal, the signed copy's email, the firm's page) · left: three deploys after PR B merges, then a live read on J1053
 summary: >
   v2.4186 gave a job's service agreement a second signature frame, and the page the customer
   signs, the stored PDF, the window's banner and its paper all carry both signers — checked live
@@ -25,7 +25,7 @@ mockup: not required — no new screen; the printed page gains the second pen ru
 
 ## Where it stands
 
-Two PRs. **PR A** ([v2.4590](../docs/recent-features/v2.4590.md)) moves the names into one kernel and fixes items 1–5. It also fixes the app-side readers the survey below missed: the legal desk, the share sheet's attachment line, the signed rail's banner, the filing sheet's default name and the covers kernel. **PR B** is stacked on it. It carries item 6, the customer portal, plus the signed copy's email and the firm's page. Those are three edge functions to deploy after it merges.
+Two PRs, both built. **PR A** ([v2.4590](../docs/recent-features/v2.4590.md)) moves the names into one kernel and fixes items 1–5. It also fixes the app-side readers the survey below missed: the legal desk, the share sheet's attachment line, the signed rail's banner, the filing sheet's default name and the covers kernel. **PR B** ([v2.4596](../docs/recent-features/v2.4596.md)) is stacked on it. It carries item 6, the customer portal, plus the signed copy's email and the firm's page. Those are three edge functions to deploy after it merges.
 
 ## Left after this row
 

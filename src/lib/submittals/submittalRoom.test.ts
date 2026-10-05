@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 
-import { anonymousOpens, describeHow, describeRoomLine, describeTrail, newRoomToken, parseSubmittalRoomPayload, personTrail, roomLink, describeThreadEntry, parseRoomMessage, summarizeThread, threadOrder } from './submittalRoom'
+import { anonymousOpens, describeHow, describeRoomLine, describeTrail, newRoomToken, parseSubmittalRoomPayload, personTrail, roomLink, describeThreadEntry, parseRoomMessage, summarizeThread, threadOrder, roomPreviewLink } from './submittalRoom'
 
 const TZ = APP_CALENDAR_TZ
 
@@ -87,3 +87,13 @@ describe('stage 5a — the thread', () => {
     expect(summarizeThread([line('Dana Whitfield decided 3 rows')], tz)).toBe('1 entry · last: the room decided Oct 2')
   })
 })
+
+describe('roomPreviewLink (v2.4608, #62): the office’s door carries the flag; the link it sends does not', () => {
+  it('flags the room link, on every path; the plain link stays plain', () => {
+    const token = 'a'.repeat(48)
+    expect(roomPreviewLink('https://app.example/', token)).toBe(`https://app.example/submittal?t=${token}&preview=1`)
+    expect(roomLink('https://app.example/', token)).toBe(`https://app.example/submittal?t=${token}`)
+    expect(roomPreviewLink('https://app.example', token)).toContain('preview=1')
+  })
+})
+

@@ -320,7 +320,7 @@ describe('electronic signature rendering (v2.2619)', () => {
 })
 
 // ---- v2.4274: the fourth form, the two toggles, the bill pick ----
-import { LIEN_WAIVER_FORM_CITES, LIEN_WAIVER_FORM_SHORT_LABELS, LIEN_WAIVER_FORM_TYPES, lienWaiverFormFrom, lienWaiverIsConditional, lienWaiverToggles, lienWaiverWhy, pickLienWaiverForBill } from './lienWaiverRelease'
+import { LIEN_WAIVER_FORM_CITES, LIEN_WAIVER_FORM_SHORT_LABELS, LIEN_WAIVER_FORM_TYPES, lienWaiverFormFrom, lienWaiverIsConditional, lienWaiverToggles, lienWaiverTickForBill, lienWaiverWhy, pickLienWaiverForBill } from './lienWaiverRelease'
 
 type BillLike = { id: string; amount: number; sequence_order: number; status: string }
 const bill = (b: BillLike) => b as unknown as JobWithDetails['invoices'][number]
@@ -381,5 +381,19 @@ describe('the four forms as two questions (v2.4274)', () => {
     const job = jobWith({ invoices: [one], payments: [{ invoice_id: 'a', amount: 4800 }] as never, revenue: 4800, payments_made: 4800 })
     expect(lienWaiverPrefillAmount('unconditional_final', job, [one])).toBe(4800)
     expect(lienWaiverPrefillAmount('conditional_final', job, [one])).toBe(0)
+  })
+})
+
+describe('lienWaiverTickForBill', () => {
+  const inv = { id: 'inv-1', amount: 500, sequence_order: 0, status: 'ready_to_bill' }
+  const gcJob = { gc_customer_id: 'gc-1', invoices: [inv], payments: [], revenue: 1000 } as unknown as Parameters<typeof lienWaiverTickForBill>[0]
+  it('a GC job billing one of its bills draws the tick', () => {
+    expect(lienWaiverTickForBill(gcJob, 'inv-1', '2026-10-05')?.formType).toBe('conditional_progress')
+  })
+  it('no tick with no bill named, a bill not on the job, a direct job, or no job', () => {
+    expect(lienWaiverTickForBill(gcJob, null)).toBeNull()
+    expect(lienWaiverTickForBill(gcJob, 'inv-other')).toBeNull()
+    expect(lienWaiverTickForBill({ ...gcJob!, gc_customer_id: null }, 'inv-1')).toBeNull()
+    expect(lienWaiverTickForBill(null, 'inv-1')).toBeNull()
   })
 })

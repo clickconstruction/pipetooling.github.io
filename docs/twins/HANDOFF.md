@@ -231,9 +231,10 @@ Google Drive service account: `DRIVE_INTAKE_SETUP.md`.
   reading the old docs. Missions bundle only the verbatim mission text — scorer
   sections stay out.
 - **Function secrets apply on cold start** — redeploy after `supabase secrets set`.
-- **Re-run the fence after bid-family DDL**: CREATE TABLE migrations in the bid family
-  end with `SELECT public.apply_digital_twin_write_blocks();` plus the two read-only
-  appliers. Fence spot-probe via `?as=twin:estimator:1` after every push. Known gap
+- **Re-run the fence after CREATE TABLE**: every CREATE TABLE migration ends with
+  `SELECT public.apply_digital_twin_write_blocks();` plus the two read-only appliers. It
+  only creates missing fence policies, so a changed allowance needs a one-off migration
+  that drops the affected policies first. Fence spot-probe via `?as=twin:estimator:1` after every push. Known gap
   (M5, question 5170bb88): `cost_estimate_labor_rows` has no `bid_id` column, so the
   fence denies twin labor writes and the Labor tab swallows the 403 — open pipeline
   work.

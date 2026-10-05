@@ -3,15 +3,15 @@
 ---
 file: docs/LIEN_DESK_ARCHITECTURE.md
 type: Architecture Map / Decomposition
-purpose: Step-0 map for the decomposition of src/components/jobs/LienDeskModal.tsx (2,002 lines) per PAGE_DECOMPOSITION_PLAYBOOK.md — the Texas Chapter 53 Lien desk (§ 53.056 monthly notices, § 53.052 affidavits, § 53.057 retainage notices, the lien Timeline) that the Pipeline board mounts. Inventories every region (state, memos, effects, handlers, writes, extracted Lien* children, lien kernels, test coverage) so extraction can proceed without re-reading the file; lists the large neighbouring Lien* modals without mapping them.
+purpose: Step-0 map for the decomposition of src/components/jobs/LienDeskModal.tsx (2,251 lines) per PAGE_DECOMPOSITION_PLAYBOOK.md — the Texas Chapter 53 Lien desk (§ 53.056 monthly notices, § 53.052 affidavits, § 53.057 retainage notices, the lien Timeline, the Calendar) that the Pipeline board mounts. Inventories every region (state, memos, effects, handlers, writes, extracted Lien* children, lien kernels, test coverage) so extraction can proceed without re-reading the file; lists the large neighbouring Lien* modals without mapping them.
 covers:
   - src/components/jobs/LienDeskModal.tsx
-mapped_at: a05cef4c4
+mapped_at: f423bd6e5
 audience: Developers, AI Agents
 last_updated: 2026-10-05
 ---
 
-> **Line numbers are as of `a05cef4c4`** (the `mapped_at` commit) and drift with every edit — search the symbol named beside each range. Regenerate the fact sheet with `npm run map -- src/components/jobs/LienDeskModal.tsx`. The file is the busiest component this week (37 commits in 90 days; its 29 since 2026-09-18 lead every component — over 90 days `JobsStagesTab.tsx` has more); re-check ranges before any move.
+> **Line numbers are as of `f423bd6e5`** (the `mapped_at` commit; re-anchored 2026-10-05 from `a05cef4c4` through the file's diff, 2,002 → 2,251 lines) and drift with every edit — search the symbol named beside each range. Regenerate the fact sheet with `npm run map -- src/components/jobs/LienDeskModal.tsx`. The file is one of the busiest components (62 commits in 90 days); re-check ranges before any move. The dated notes below say what each version added; the regions under them carry the same facts by line.
 
 ## What this surface is
 
@@ -43,18 +43,18 @@ last_updated: 2026-10-05
 
 > **v2.4101 (punch list #55 PR B):** a fifth kind, **Calendar**, first in the tab row and the desk's default landing — `LienDeskCalendarTab.tsx` over `lib/jobs/lienCalendar.ts`, fed by the parent's `calendarRows` (every billed job with its `LienPayRunway`, built in `JobsStagesTab` from `lienRunwayFor`; null, which the tab reads as *Reading the board…*, until the board holds the `billed_all` scope and `useBilledLienClocks` has read it — the parent fetches that scope while the desk is open, since v2.4321, because the phone board loads one stage at a time) and `onOpenCalendarJob`. Region A's tab row and the body switch gained the kind; nothing else in this file moved. PR C (v2.4152) landed the shared axis in the tab component and the kernels in `lib/jobs/lienCalendar.ts`; the parent's `calendarRows` carry `lastWorkYmd` (and carried each job's `months` from the desk's `useForecastWorkMonths`, widened to every billed job, until v2.4308 moved the flags onto each runway's own `noticeMonths` — fed by `useBilledLienClocks`' work months — and put the desk's work months back on its own jobs), and the tab takes `todayYmd` and `isMobile`. PR D (v2.4153) landed the pen in the tab (`TheySaidPopover`, `KindsSheet`, the density bar as a door until v2.4340) and, here, the Calendar's `calendarJobFilter` on the Notices kind (the chip above the piles, set by the tab's `onDraft`) and the `onCalendarChanged` prop the Pipeline uses to re-read pay dates or bump `useBilledLienClocks`'s `refreshKey`.
 
-[`LienDeskModal.tsx`](../src/components/jobs/LienDeskModal.tsx) is the **Lien desk**: one full-screen dialog with four kinds (tabs) — **Notices** (the queue of § 53.056 notices due per unpaid work month on sub jobs: the office readies the owner of record, drafts on the paper, sends for approval / on the leader's spoken word / straight into the run under a standing rule; the leader approves, holds or sets the GC's standing rule; a sent notice's footer runs letter two, the GC's written okay, counsel's sign-off and the owner's call), **Affidavits** (§ 53.052, pane extracted), **Retainage** (§ 53.057, pane extracted) and **Timeline** (every billed job's Chapter 53 path, tab extracted). Header doors: pile chips, **Put a GC on notice…** (hands off to `GcOnNoticeModal`), **Send the run** (`LienDeskRunModal`). Help guide: [`send-lien-notices-from-the-lien-desk`](../src/content/help/send-lien-notices-from-the-lien-desk.md).
+[`LienDeskModal.tsx`](../src/components/jobs/LienDeskModal.tsx) is the **Lien desk**: one full-screen dialog with six kinds (since v2.4588 shown as three views, *Next up · Calendar · All paper*, the last with its own row of paper kinds) — **Next up** (since v2.4583, the landing: one list of what to do next, over the queues below), **Calendar** (every billed job on its lien clock, tab extracted; the landing when no door names a job), **Notices** (the queue of § 53.056 notices due per unpaid work month on sub jobs: the office readies the owner of record, drafts on the paper, sends for approval / on the leader's spoken word / straight into the run under a standing rule; the leader approves, holds or sets the GC's standing rule; a sent notice's footer runs letter two, the GC's written okay, counsel's sign-off and the owner's call), **Affidavits** (§ 53.052, pane extracted), **Retainage** (§ 53.057, pane extracted) and **Timeline** (every billed job's Chapter 53 path, tab extracted). Header doors: **§ Rules**, **☎ Someone's calling** (`LienCallerDoor`), **An owner asked for records ›** (`LienOwnerRecordsModal`, in the parent), **Share** (`LienDeskShare`), the full-screen toggle, pile chips, **Put a GC on notice…** (hands off to `GcOnNoticeModal`), **Send the run** (`LienDeskRunModal`). Help guide: [`send-lien-notices-from-the-lien-desk`](../src/content/help/send-lien-notices-from-the-lien-desk.md).
 
-- **Mounted by** `src/components/jobs/JobsStagesTab.tsx` 4712 only (plus its render smoke), on the `/jobs` route (`Jobs`, `src/pages/Jobs.tsx`) → Pipeline tab. The parent row is region J of [`JOBS_STAGES_TAB_ARCHITECTURE.md`](./JOBS_STAGES_TAB_ARCHITECTURE.md).
-- **Doors (all in the parent):** `setLienDesk(...)` at JobsStagesTab 1355 (URL), 2469 (handle `openLienDesk`, no caller), 3025 (`'lien-desk'` tools action), 3083 (tools menu `onOpenLienDesk`), 3260 (money-opportunities lien card, clears the board search, `kind: 'notice'`), 4058 (Collections header), 4555 (forecast `onOpenLienNotice` → `{ jobId }`). **URL:** `/jobs?tab=stages&liendesk=1[&liendeskJob=<id>][&liendeskPile=<any LienDeskPile>][&kind=affidavit|timeline]` (any pile since v2.4561; before, only `missed` was read), parsed by `parseStagesDeepLinks` ([`stagesDeepLinks.ts`](../src/lib/jobs/stagesDeepLinks.ts)), consumed once by JobsStagesTab 1349–1363 and stripped; built by `DashboardPinnedQuickRow` 734–766 and `QuickfillNeedsYouSection` 208–239 (neither builds `liendeskJob`). No `retainage` URL door (the parent's `lienDesk.kind` type omits it). `?gcnotice=<gcId>` is the separate Put-a-GC-on-notice door.
-- **Stays mounted between opens:** `open={lienDesk != null}`; `if (!open) return null` sits at **708, below every hook** — state (selection, piles, book filters) survives a close.
+- **Mounted by** `src/components/jobs/JobsStagesTab.tsx` 4473 only (plus its render smoke), on the `/jobs` route (`Jobs`, `src/pages/Jobs.tsx`) → Pipeline tab. The parent row is region J of [`JOBS_STAGES_TAB_ARCHITECTURE.md`](./JOBS_STAGES_TAB_ARCHITECTURE.md).
+- **Doors (all in the parent):** `setLienDesk(...)` at JobsStagesTab 1273 (URL, handed in by `useStagesDeepLinkParams`), 2331 (handle `openLienDesk`, no caller), 2930 (`'lien-desk'` tools action), 3012 (money-opportunities lien card, clears the board search, `kind: 'notice'`), 3072 (tools menu `onOpenLienDesk`), 3188 (the stage bar's `StagesLienDeskShortcut`, v2.4520), 3826 (Collections header), 4312 (forecast `onOpenLienNotice` → `{ jobId }`). **URL:** `/jobs?tab=stages&liendesk=1[&liendeskJob=<id>][&liendeskPile=missed][&kind=affidavit|timeline]`, parsed by `parseStagesDeepLinks` ([`stagesDeepLinks.ts`](../src/lib/jobs/stagesDeepLinks.ts) 52–57: `liendeskPile` honours `missed` only at `mapped_at`; any pile since v2.4561) and stripped; built by `DashboardPinnedQuickRow` 808–818, 853 and `QuickfillNeedsYouSection` 210–220, 243 (neither builds `liendeskJob`; both send `liendeskPile=sent`). No `retainage` or `calendar` URL door (the parser reads `affidavit` and `timeline`; the parent's `lienDesk.kind` type omits `retainage`). A door that names no job and no kind lands on the Calendar (the parent's `initialKind`, 4488). `?gcnotice=<gcId>` is the separate Put-a-GC-on-notice door.
+- **Stays mounted between opens:** `open={lienDesk != null}`; `if (!open) return null` sits at **830, below every hook** — state (selection, piles, book filters) survives a close.
 
-### Parent contract (`LienDeskModalProps`, 98–138)
+### Parent contract (`LienDeskModalProps`, 115–165)
 
 | Prop | Parent source (JobsStagesTab) | Used by region |
 |---|---|---|
 | `open`, `onClose` | `lienDesk != null` / `setLienDesk(null)` | shell |
-| `data`, `loading` | `useLienDeskData(lienDeskEligible, todayYmd, { light: lienDesk == null })` 1613 — light read while closed, full while open | everything but the Calendar (its `calendarRows` say when they are read) |
+| `data`, `loading` | `useLienDeskData(lienDeskEligible, todayYmd, { light: lienDesk == null })` 1495 — light read while closed, full while open | everything but the Calendar (its `calendarRows` say when they are read) |
 | `todayYmd` | `forecastTodayYmd` (`calendarYmdInAppTzFromIso`) | clocks, paper dates |
 | `authRole`, `authUserId`, `authName` | auth; `authProfileName` | role gates, write stamps |
 | `workMonths` | `useForecastWorkMonths(lienDeskJobs)` — evidence per job | months, gates, leader card, affidavit pane |
@@ -67,17 +67,19 @@ last_updated: 2026-10-05
 | `onOpenLienInstruments`, `onOpenLienAffidavit?`, `onOpenLegalDesk?` | `LienInstrumentsModal` over the desk, which stays open under it since v2.4523 — as it does under `onOpenCalendarJob`'s window and `onPutGcOnNotice`'s — so closing the window lands back on the desk (`onOpenLienInstruments` fetches an unloaded job; `onOpenLienAffidavit` only toasts for one) / close desk → Legal desk | ready footer, book rows, affidavit pane |
 | `legalSignoff?` | `{ stateFor, ask }` over `useLegalMatters`; `ask` writes `legal_add_entry` | sent footer (counsel) |
 | `onPutGcOnNotice?` | close desk → `setGcNotice({ gcId })` | header GC picker |
+| `calendarRows?`, `onOpenCalendarJob?`, `onCalendarChanged?` | `lienCalendarRows` (every billed job with its `LienPayRunway`; null while the board reads) / `setLienInstrumentsModal` over the desk / re-read pay dates or bump the clocks, then `refetchLienDesk` | Calendar kind (K), Share |
+| `onOpenJob?`, `onOpenOwnerRecords?` | `jobDetailModal.openJobDetail` over the desk / `setOwnerRecordsOpen(true)` | job-number buttons (K, I, the three panes' headings), header |
 
-**Hook census (fact sheet @ a05cef4c4):** 40 `useState` · 0 `useReducer` · 10 `useEffect` · 18 `useMemo` · 0 `useCallback` · 7 `useRef` (`previewWinRef` 257, `paperRef` 261, `editInputRef` 262, `sourceTripRef` 264, `paneRef` 268, `wasOpenRef` 286, `onPreviewMessageRef` 667) · 4 custom hooks (`useToastContext` 227, `useIsMobile` 228, `useLienTimelineBook` 296, `useNoticePayPage` 522) · 56 local imports. One default-exported component `LienDeskModal` (202–2002, 1,801 lines; render 1813–2001) plus module helpers `jobLabel` 146–151, `severityColors` 153–157, `deadlineWords` 159–166, `chip` 168–179, `btn` 182–193 and style consts 140–200. **No direct table, RPC or edge-function call** — every write goes through an Io kernel (see Hazards).
+**Hook census (fact sheet @ f423bd6e5):** 44 `useState` · 0 `useReducer` · 12 `useEffect` · 21 `useMemo` · 0 `useCallback` · 9 `useRef` (`previewWinRef` 291, `paperRef` 295, `editInputRef` 296, `sourceTripRef` 298, `paneRef` 302, `kindShownRef` 324, `wasOpenRef` 342, `doorPickedJobId` 369, `onPreviewMessageRef` 789) · 7 custom hooks (`useToastContext` 259, `useIsMobile` 260, `useModalFullScreen` 262, `useScrollEdgeFade` 323, `useLienTimelineBook` 352, `useLienJobSuppliers` 386, `useNoticePayPage` 644) · 72 local imports. One default-exported component `LienDeskModal` (229–2251, 2,023 lines; render 1964–2250) plus module helpers `jobLabel` 173–178, `severityColors` 180–184, `deadlineWords` 186–193, `chip` 195–206, `btn` 209–220 and style consts 167–227. **No direct table, RPC or edge-function call** — every write goes through an Io kernel (see Hazards).
 
 | Largest blocks | Symbol | Lines |
 |---|---|---|
-| Notice pane (derived JSX local) | `pane` | 895–1305 (411) |
-| Footer by pile / role (JSX if-block) | `let footer` … `if (selected)` | 1493–1811 (319) |
-| Header + body switch | render `return` | 1813–2001 (189) |
-| Notice paper engine (memos + preview window) | `jobDefaults` 392 → `payHtml` 540; preview 642–706 | ~210 non-JSX |
-| Notice list | `list` | 722–806 (85) |
-| Affidavit / retainage lists | `affList` / `retList` | 1308–1362 (55) / 1394–1440 (47) |
+| Notice pane (derived JSX local) | `pane` | 1029–1444 (416) |
+| Footer by pile / role (JSX if-block) | `let footer` … `if (selected)` | 1640–1962 (323) |
+| Header + body switch | render `return` | 1964–2250 (287) |
+| Notice paper engine (memos + preview window) | `jobDefaults` 513 → `payHtml` 662; preview 764–828 | ~210 non-JSX |
+| Notice list | `list` | 844–939 (96) |
+| Affidavit / retainage lists | `affList` / `retList` | 1447–1502 (56) / 1535–1582 (48) |
 
 ---
 
@@ -85,19 +87,20 @@ last_updated: 2026-10-05
 
 | Region | Anchor (symbol · lines) | ~Lines | Coupling | Risk | Status | Tests |
 |---|---|---|---|---|---|---|
-| A. Shell, header, kind tabs, GC picker | render 1813–1934; `kind` 282; `gcPickerOptions` 233; effects 287–290 | ~175 | high — `kind` and `mobileListShown` are read by every body | low (GC picker) / must-stay (kind) | inline; `LienRulesDoor`, GC-picker kernel out | kind tabs via `initialKind` smokes; notice pile-chip counts read by smokes 132/169/193 (never clicked); **GC picker, affidavit/retainage chips, run button, "Sent on your word" untested in the desk** (`lienDeskGcPicker` 8) |
-| B. Notice queue list | `visible` 315–319 · selection effect 322–332 · `list` 722–806 · helpers 146–179 | ~135 | med — writes the selection pointer | low | inline | smokes 132, 772, 805 (letter-two chip, both branches); `deadlineWords` + row state ladder 742–761 untested |
-| C. Selection context (substrate) | `selected` 334 → `readiness` 559–560, `askReason` 564–570, `gcOpenTotal` 572–575 | ~100 | **highest** — every notice region reads it | must stay / hook seam | inline; property, claim, readiness kernels out | `lienProperty` 12, `lienClaimCorrection` 5, `lienDesk` 18; `askReason` (only `first_notice`, smoke 169) and `lastSentAt` 386 (carry strip, smoke 541) reached only through the smoke; `gcOpenTotal`'s figure never asserted |
-| D. Notice paper, wording editor, preview window | memos 392–454, 507–541; handlers 456–505, 642–664; effects 444–453, 502–505, 695–706; render 1210–1286 | ~290 | high — `noticeFields` feeds saves (F1), by-hand (F1), cover/pay pages | **high** (cross-window postMessage, DOM-positioned editor) | inline; builders out (`lienNoticePreview`, `lienFilingDocuments`, `lienNoticePayPage`) | smokes 346–619 (editor, doors, preview round-trip), 621 (cover), 722 (pay); kernels 13 + 14 + 8; `useNoticePayPage` hook 2 |
-| E. Notice pane body | `pane` 895–1209, 1288–1305; `monthCards` 809–825; `monthGrid` 828–842; gates 844–856; `timeline` 876–891; `pickKind` 341–353 | ~440 | med — reads C, D (`wordingDiff`, `claimOpenSignal`), writes `byHandOpen`, `rulePick`, `checkedMonths`, A's `mobileListShown` (back button) | med (claim money, gate truth) | inline shell; 7 children out | smokes 132–303, 382–572, 675; `lienDeskGates` 11, `lienMonthGrid` 3; strip 905–932 untested |
-| F1. Draft / awaiting / ready / held actions | handlers 543–636; footer 1497–1711; `byHandPane` 1467–1490 | ~335 | high — reads C + D + E's `gates`/`pickGate` (Go to gate 1594), the write funnel `run` | **high** (legal consequences: skip gives up lien rights; approval path) | inline; `LienWordRecordRow`, `LienNoticeByHandPane` out; Io in `lienDeskIo` | smokes 132–245, 745; `lienDesk` 18 (`submitOutcome`, `holdUntilFor`), `lienWord` 6; footer word ladder 1503–1542 only partly (blocked + "Goes to the leader" first-notice branches, smokes 132/169/183/276/382; label 1603's "Send for approval" side, 183); **ready/held footers, rule/hold/leader/`claimGate` ladder branches, toast choice 611 untested**; `lienDeskIo` 0 (mocked) |
-| F2. Sent footer (letter two, GC okay, counsel, owner's call) | footer 1712–1803; `LienOwnerCallDialog` 1973–1989 | ~110 | low-med — reads C + `data` + D's `jobDefaults` (letter two) + `run`/`busy`; own 6 states | med (inline `jobBalance` money gate) | inline; dialog + kernels out | smokes 772–842; `lienLetterTwo` 6, `lienOwnerCall` 4, `legalAsks` 4; `jobBalance` 1718 only its unpaid branch (smoke 772 "GC paid: no"); **counsel sign-off ask 1764–1770 untested** (no smoke passes `legalSignoff`) |
-| G. Affidavit kind | `affVisible`… 711–714 · `affList` 1308–1362 · `affPane` 1363–1391 · chips 1856–1867 | ~100 | low — own pile/selection/footer slot; `onShowNotices` writes C | low | pane **extracted** → `LienDeskAffidavitPane` (410) | smokes 305–342, 695, 843; `lienDeskAffidavits` 4 |
-| H. Retainage kind | 715–719 · `retList` 1394–1440 · `retPane` 1441–1464 · chips 1844–1855 | ~90 | low — as G, plus `onOpenRun` | low | pane **extracted** → `LienDeskRetainagePane` (306) | smokes 636–689, 695; `lienDeskRetainage` 4 |
-| I. Timeline kind | `bookOpened` 284 + effect 293–295 · `useLienTimelineBook` 296 · `openBookRow` 859–873 · render 1936–1947 | ~45 | low — `openBookRow` writes `kind` + both selections | low | tab **extracted** → `LienDeskTimelineTab` (116) | **none** (no smoke opens it; `useLienTimelineBook` none; `lienTimelineBook` 8) |
-| J. The run | `runOpen` 280 · header button 1924–1928 · ready footer 1692 · `LienDeskRunModal` 1990–1999 | ~20 | low | med (certified-mail packet) | **extracted** → `LienDeskRunModal` (256) | own render 6; `lienDeskRun` 16 |
+| A. Shell, header, kind tabs, header doors, GC picker | render 1964–2133; `kind` 321; `gcPickerOptions` 267; effects 343–346 | ~175 | high — `kind` and `mobileListShown` are read by every body | low (GC picker) / must-stay (kind) | inline; `LienRulesDoor`, `LienCallerDoor`, `LienDeskShare`, GC-picker kernel out | kind tabs via `initialKind` smokes; Share 148, the owner-records door 167, the caller's door 985–1047, the full-screen toggle 1089; notice pile-chip counts read by smokes 181/226/252 (never clicked); **GC picker, affidavit/retainage chips, run button, "Sent on your word" untested in the desk** (`lienDeskGcPicker` 8) |
+| B. Notice queue list | `visible` 397–402 · selection effect 405–420 · `list` 844–939 · helpers 173–206 | ~135 | med — writes the selection pointer | low | inline | smokes 181, 900, 934 (letter-two chip, both branches); `deadlineWords` + row state ladder 874–893 untested |
+| C. Selection context (substrate) | `selected` 422 → `readiness` 681–682, `askReason` 686–692, `gcOpenTotal` 694–697 | ~100 | **highest** — every notice region reads it | must stay / hook seam | inline; property, claim, readiness kernels out | `lienProperty` 12, `lienClaimCorrection` 7, `lienDesk` 20; `askReason` (only `first_notice`, smoke 226) and `lastSentAt` 507 (carry strip, smoke 638) reached only through the smoke; `gcOpenTotal`'s figure never asserted |
+| D. Notice paper, wording editor, preview window | memos 513–576, 629–663; handlers 578–627, 764–786; effects 566–575, 624–627, 817–828; render 1349–1425 | ~290 | high — `noticeFields` feeds saves (F1), by-hand (F1), cover/pay pages | **high** (cross-window postMessage, DOM-positioned editor) | inline; builders out (`lienNoticePreview`, `lienFilingDocuments`, `lienNoticePayPage`) | smokes 441–717 (editor, doors, preview round-trip), 719 (cover), 824 (pay); kernels 13 + 14 + 8; `useNoticePayPage` hook 2 |
+| E. Notice pane body | `pane` 1029–1348, 1427–1444; `monthCards` 942–958; `monthGrid` 961–975; gates 977–989; `timeline` 1009–1025; `pickKind` 461–473 | ~440 | med — reads C, D (`wordingDiff`, `claimOpenSignal`), writes `byHandOpen`, `rulePick`, `checkedMonths`, A's `mobileListShown` (back button) | med (claim money, gate truth) | inline shell; 8 children out | smokes 181–397, 478–669, 777, the supplier card 1105–1188; `lienDeskGates` 11, `lienMonthGrid` 4; strip 1039–1066 untested |
+| F1. Draft / awaiting / ready / held actions | handlers 665–758; footer 1644–1858; `byHandPane` 1611–1637 | ~335 | high — reads C + D + E's `gates`/`pickGate` (Go to gate 1741), the write funnel `run` | **high** (legal consequences: skip gives up lien rights; approval path) | inline; `LienWordRecordRow`, `LienNoticeByHandPane` out; Io in `lienDeskIo` | smokes 181–308, 848, 860 (the by-hand sheet on a phone); `lienDesk` 20 (`submitOutcome`, `holdUntilFor`), `lienWord` 6; footer word ladder 1650–1689 only partly (blocked + "Goes to the leader" first-notice branches, smokes 181/226/241/368/478; label 1750's "Send for approval" side, 241); **ready/held footers, the `printed` footer (none at `mapped_at`; added v2.4568), rule/hold/leader/`claimGate` ladder branches, toast choice 733 untested**; `lienDeskIo` 0 (mocked) |
+| F2. Sent footer (letter two, GC okay, counsel, owner's call) | footer 1859–1954; `LienOwnerCallDialog` 2194–2223 | ~110 | low-med — reads C + `data` + D's `jobDefaults` (letter two) + `run`/`busy`; own 6 states | med (inline `jobBalance` money gate) | inline; dialog + kernels out | smokes 900–984, 1209; `lienLetterTwo` 8, `lienOwnerCall` 5, `legalAsks` 4; `jobBalance` 1868 only its unpaid branch (smoke 900 "GC paid: no"); **counsel sign-off ask 1915–1921 untested** (no smoke passes `legalSignoff`) |
+| G. Affidavit kind | `affVisible`… 833–836 · `affList` 1447–1502 · `affPane` 1503–1532 · chips 2055–2066 | ~100 | low — own pile/selection/footer slot; `onShowNotices` writes C | low | pane **extracted** → `LienDeskAffidavitPane` (417) | smokes 326, 399–437, 797, 1071; `lienDeskAffidavits` 5 |
+| H. Retainage kind | 837–841 · `retList` 1535–1582 · `retPane` 1583–1608 · chips 2043–2054 | ~90 | low — as G, plus `onOpenRun` | low | pane **extracted** → `LienDeskRetainagePane` (316) | smokes 739–791, 797; `lienDeskRetainage` 5 |
+| I. Timeline kind | `bookOpened` 340 + effect 349–351 · `useLienTimelineBook` 352 · `openBookRow` 992–1006 · render 2135–2168 | ~45 | low — `openBookRow` writes `kind` + both selections | low | tab **extracted** → `LienDeskTimelineTab` (134) | own render 2 (the job-number door, v2.4535); **the desk smoke never opens the kind**; `useLienTimelineBook` none; `lienTimelineBook` 8 |
+| J. The run | `runOpen` 314 · header button 2123–2127 · ready footer 1839 · `LienDeskRunModal` 2235–2248 | ~20 | low | med (certified-mail packet) | **extracted** → `LienDeskRunModal` (334) | own render 8; `lienDeskRun` 20 |
+| K. Calendar kind (v2.4101) | `calendarJobFilter` 396 · `supplierMarks` 387–394 · render 2135–2156 | ~25 | low — the tab's `onDraft` writes `calendarJobFilter`, `pile` and `kind`; rows come from the parent | low | tab **extracted** → `LienDeskCalendarTab` (940) | own render 25; the desk smoke never opens the kind; `lienCalendar`, `lienCalendarBuckets`, `lienCalendarAxis`, `lienCalendarMarks` kernels |
 
-Render smoke: [`LienDeskModal.render.test.tsx`](../src/components/jobs/LienDeskModal.render.test.tsx) (860 lines) — **34 `it` blocks** (35 cases; one loops over affidavit/retainage), mocks `useAuth`, `supabase`, `propertyLookupClient`, `lienClaimCorrectionIo`, `useNoticePayPage`, `propertyKindWrite`, `lienDeskIo` (importActual + spies), `ownerConfirmWrite`. No e2e spec names the desk.
+Render smoke: [`LienDeskModal.render.test.tsx`](../src/components/jobs/LienDeskModal.render.test.tsx) (1,228 lines) — **50 `it` blocks** (51 cases; one loops over affidavit/retainage), mocks `useAuth`, `supabase`, `propertyLookupClient`, `lienClaimCorrectionIo`, `useNoticePayPage`, `useLienJobSuppliers`, `lienSupplierWordIo`, `propertyKindWrite`, `lienDeskIo` (importActual + spies), `ownerConfirmWrite`. No e2e spec names the desk.
 
 ---
 
@@ -105,95 +108,95 @@ Render smoke: [`LienDeskModal.render.test.tsx`](../src/components/jobs/LienDeskM
 
 ### A. Shell, header, kind tabs, GC picker
 
-- **Render:** overlay 1814–1821 (`bottom: var(--app-bottom-chrome)`, `padding-top: var(--app-top-chrome)` for an iPhone's status bar, z 80); card 1822–1825 (`gridTemplateRows: auto 1fr auto`); header 1826–1934 — title with the flow tooltip 1827–1832, close 1833, kind tablist 1834–1840 (counts: notices = `entries.filter(pile !== 'sent')`, affidavits `affCount`, retainage `retCount`, timeline `book.counts.due`), `LienRulesDoor` 1841, line break 1843 (v2.3817), pile chips ×3 1844–1877, GC picker 1878–1923, run button 1924–1928 (`counts.ready + retReady`), "Sent on your word" 1929–1933 (leader). Body switch 1935–1968 (mobile: list **or** pane by `mobileListShown`). Footer slots 1969–1971 (affidavit/retainage portal targets; notice footer inline).
-- **Owned state:** `gcPickerOpen` 231, `kind` 282, `mobileListShown` 254; ref `wasOpenRef` 286.
-- **Memos/effects:** `gcPickerOptions` 233 (`buildLienGcPickerOptions(entries, gcsById)`); kind-on-open 287–290 (resets `kind` to `initialKind ?? 'notice'` on each false→true `open`). Since v2.4583 (punch list #82) `kind` has a sixth value, `next`, the first tab: `LienDeskNextUp` draws `buildLienNextUp` (`lib/jobs/lienNextUp.ts`) over the queues `data` already holds (`nextUpRows` memo, no read of its own), and `actOnNextUp` turns a row's `target` into the existing setters — `kind` + `pile` + the selected job for a notice, the affidavit or retainage selection, `setRunOpen(true)`, or `onOpenLienAffidavit`. The host passes `initialKind='next'` on a plain open; a door that names a job, a pile or a kind lands where it did.
-- **Coupling:** `kind` is written by the tabs, `openBookRow` (I), and both panes' `onShowNotices` (G, H); `mobileListShown` by every list row, the back button (E 933–937), `openBookRow` (I) and the selection effect.
-- **Extraction:** kind + `mobileListShown` stay. The three pile-chip blocks are one shape → `LienDeskPileChips({ piles, counts, active, onPick })`. The GC picker (1878–1923 + `gcPickerOpen`) is self-contained → `LienDeskGcPicker({ options, onPick })`.
+- **Render:** overlay 1965–1973 (`bottom: var(--app-bottom-chrome)`, `padding-top: var(--app-top-chrome)` for an iPhone's status bar, z 80); card 1974–1978 (`gridTemplateRows: auto 1fr auto`); header 1979–2133 — title with the flow tooltip 1981–1987, `ModalFullScreenButton` 1988, close 1989, kind tablist 1990–1997 (five kinds, Calendar first; scrolls sideways on a phone through `useScrollEdgeFade`; counts: notices = `entries.filter(pile !== 'sent')`, affidavits `affCount`, retainage `retCount`, timeline `book.counts.due`), `LienRulesDoor` 1998, `LienCallerDoor` 1999 (office), the owner-records door 2001–2011 (office, when the parent passes `onOpenOwnerRecords`), Share + `LienDeskShare` 2013–2039, line break 2041 (v2.3817), pile chips ×3 2043–2076, GC picker 2077–2122, run button 2123–2127 (`counts.ready + retReady`), "Sent on your word" 2128–2132 (leader). Body switch 2134–2189 (mobile: list **or** pane by `mobileListShown`). Footer slots 2190–2192 (affidavit/retainage portal targets; notice footer inline).
+- **Owned state:** `gcPickerOpen` 265, `kind` 321, `mobileListShown` 288, `shareOpen` 316 (cleared when the desk closes, effect 317–319), `callerJobId` 365, `practiceCallOpen` 367; refs `wasOpenRef` 342, `kindShownRef` 324 (the every-render effect 326–338 scrolls the picked tab into view only when the tab or the row's width changed), `doorPickedJobId` 369.
+- **Memos/effects:** `gcPickerOptions` 267 (`buildLienGcPickerOptions(entries, gcsById)`); kind-on-open 343–346 (resets `kind` to `initialKind ?? 'notice'` on each false→true `open`). Since v2.4583 (punch list #82) `kind` has a sixth value, `next`, the first tab: `LienDeskNextUp` draws `buildLienNextUp` (`lib/jobs/lienNextUp.ts`) over the queues `data` already holds (`nextUpRows` memo, no read of its own), and `actOnNextUp` turns a row's `target` into the existing setters — `kind` + `pile` + the selected job for a notice, the affidavit or retainage selection, `setRunOpen(true)`, or `onOpenLienAffidavit`. Since v2.4588 the header draws three views, not six tabs: *Next up · Calendar · All paper* (`tablist` "View"), and under All paper a second `tablist` ("Kind of paper": Notices · Affidavits · Retainage · Timeline). `kind` keeps its six values, so every body, door and deep link is untouched; `paperShown` says a paper kind is on, and `lastPaperKind` is where All paper reopens. The host passes `initialKind='next'` on a plain open; a door that names a job, a pile or a kind lands where it did.
+- **Coupling:** `kind` is written by the tabs, `openDeskJob` 442–460 (the caller's door), the Calendar's `onDraft` (K), `openBookRow` (I), and both panes' `onShowNotices` (G, H); `mobileListShown` by every list row, the back button (E 1067–1071), `openBookRow` (I) and the selection effect.
+- **Extraction:** kind + `mobileListShown` stay. The three pile-chip blocks are one shape → `LienDeskPileChips({ piles, counts, active, onPick })`. The GC picker (2077–2122 + `gcPickerOpen`) is self-contained → `LienDeskGcPicker({ options, onPick })`.
 
 ### B. Notice queue list
 
-- **Render:** `list` 722–806 — empty sentence 724–728, groups by `PILE_ORDER` 729–804, row button 763–799 (dot, `jobLabel`, GC, `formatUsdNoCents(openBalance)`, deadline chip, missed chip 781–785, months named, dated-from-creation, state words 742–761, letter-two chip IIFE 789–797).
-- **Owned state:** `pile` 234 (+ effect 235–237: sets only when `initialPile` given — never cleared on reopen) — shared with A: the header's notice pile chips 1868–1877 read and write it (`setPile`).
-- **Memos:** `visible` 315–319 — the **Missed lens** (v2.3679): `pile === 'missed'` also shows entries with `missedMonths.length > 0`; ordered by `PILE_ORDER` 140 (same order as `LIEN_DESK_PILES`).
-- **Selection effect 322–332** (deps `[open, initialJobId, visible ids joined]`, exhaustive-deps disabled): the requested job wins (and hides the mobile list); a still-visible selection stays; else first visible row on desktop, none on mobile.
-- **Extraction:** Stage A the row words (`deadlineWords`, state ladder, letter-two chip decision) → `lienDesk.ts`; Stage B a shared `LienDeskQueueList` shell with `affList`/`retList` (identical row grid/dot/pile-header markup at 771/1335/1420, 773/1337/1422, 735/1320/1406). Selection stays a controlled prop.
+- **Render:** `list` 844–939 — empty sentence 846–850, groups by `PILE_ORDER` 861–937, row button 895–932 (dot, `jobLabel`, GC, `formatUsdNoCents(openBalance)`, deadline chip, missed chip 913–917, months named, dated-from-creation, state words 874–893, letter-two chip IIFE 921–929).
+- **Owned state:** `pile` 268 (+ effect 269–271: sets only when `initialPile` given — never cleared on reopen) — shared with A: the header's notice pile chips 2067–2076 read and write it (`setPile`).
+- **Memos:** `visible` 397–402 — the **Missed lens** (v2.3679): `pile === 'missed'` also shows entries with `missedMonths.length > 0`; ordered by `PILE_ORDER` 167 (same order as `LIEN_DESK_PILES`).
+- **Selection effect 405–420** (deps `[open, initialJobId, visible ids joined]`, exhaustive-deps disabled): the requested job wins (and hides the mobile list); a still-visible selection stays; else first visible row on desktop, none on mobile.
+- **Extraction:** Stage A the row words (`deadlineWords`, state ladder, letter-two chip decision) → `lienDesk.ts`; Stage B a shared `LienDeskQueueList` shell with `affList`/`retList` (identical row grid/dot/pile-header markup at 903/1474/1561, 905/1476/1563, 867/1459/1547). Selection stays a controlled prop.
 
 ### C. Selection context — the shared substrate (stays)
 
-- **Pointer:** `selectedJobId` 238 → `selected` 334 (visible first, then any entry — a filtered-out selection survives).
-- **Derived locals (no state):** `job` 335, `gc` 336, `address` 337, `ownerRow` 338, `property` memo 339 (`resolveLienProperty`), `ownerName` 340, `promise` 354, `gcHasPriorNotice` 355, `ruleLive` 357 (`ruleWaitsOnFirstNotice`), `wm` 358, `item` 359 (live item: not sent/missed), `storedDraft` memo 360, `monthChoices` 363, `defaultMonths` 364, `months`/`monthsList` 380–381, `openBalance` 383, `correction` 385, `lastSentAt` 386, `claimed` 387 (`correctedClaim`), `claimSplitLine` 388, `claimGate` 389 (`correctionSendGate`), `handSetClaimWords` 390, `readiness`/`ready` 559–560 (`draftReadiness`), `askReason` memo 564–570, `gcOpenTotal` memo 572–575.
-- **Reset effect 365–379** (deps `[selected?.jobId]`): clears 11 states — `checkedMonths`, `coverNote` (→ item's), `wordOpen`, `skipOpen`, `byHandOpen`, `holdOpen`, `rulePick`, `wordNote`, `wordingEdits`, `editing`, `paneScrolled` — and scrolls `paneRef` to top (guarded for jsdom).
+- **Pointer:** `selectedJobId` 272 → `selected` 422 (visible first, then any entry — a filtered-out selection survives).
+- **Derived locals (no state):** `job` 423, `gc` 424, `address` 425, `ownerRow` 426, `property` memo 427 (`resolveLienProperty`), `ownerName` 428, `promise` 474, `gcHasPriorNotice` 475, `ruleLive` 477 (`ruleWaitsOnFirstNotice`), `wm` 478, `item` 479 (live item: not sent/missed), `storedDraft` memo 480, `monthChoices` 483, `defaultMonths` 484, `months`/`monthsList` 500–501, `openBalance` 503, `correction` 506, `lastSentAt` 507, `claimed` 508 (`correctedClaim`), `claimSplitLine` 509, `claimGate` 510 (`correctionSendGate`), `handSetClaimWords` 511, `readiness`/`ready` 681–682 (`draftReadiness`), `askReason` memo 686–692, `gcOpenTotal` memo 694–697.
+- **Reset effect 485–499** (deps `[selected?.jobId]`): clears 11 states — `checkedMonths`, `coverNote` (→ item's), `wordOpen`, `skipOpen`, `byHandOpen`, `holdOpen`, `rulePick`, `wordNote`, `wordingEdits`, `editing`, `paneScrolled` — and scrolls `paneRef` to top (guarded for jsdom).
 - **Extraction:** becomes the `useLienNoticeDraft` hook seam together with D's memos (step 9) — one object in, every notice region consumes it. The pointer itself stays in the modal.
 
 ### D. Notice paper, wording editor, preview window
 
-- **Render:** envelope line + cover-note tick 1210–1218; legend + "Preview in a new window" 1221–1233; page 1 cover 1236–1243; notice page label 1244–1249; the paper `data-lien-desk-paper` 1250–1273 (`dangerouslySetInnerHTML` of `docHtml`, `onClick={onPaperClick}`, absolutely positioned `<input>` editor 1252–1272); pay page 1276–1286. Paper divs wear `data-theme="light"`.
-- **Owned state:** `coverNote` 240, `wordingEdits` 256, `previewJobId` 258, `editing` 260, `ringField` 265, `claimOpenSignal` 266 (read by E's `LienClaimBox`); refs `previewWinRef`, `paperRef`, `editInputRef`, `sourceTripRef`, `onPreviewMessageRef`.
-- **Memos:** `jobDefaults` 392–407 (`buildLienNoticeFieldsForJob`, claim = `claimed.claim`), `noticeFields` 410–413 (stored draft or defaults, **claim/claimSplit/retainage always re-read live**, typed edits on top), `wordingDiff` 414, `docExtras` 418–424, `paperMarks` 426–443 (typed/locked/derived + door per field), `docHtml` 454, `coverBlocks` 507–519 (**exhaustive-deps disabled**), `coverHtml` 520, `payBlocks` 523–539, `payHtml` 540; locals `wordingTouched` 415, `wordingEditedBy` 416, `wordingLocked` 417 (`!office` or item past draft), `pageTotal` 541.
-- **Handlers:** `startEdit` 456–465 (measures `[data-field]` rect vs `paperRef`, copies computed font), `onPaperClick` 466–495 (reset button → default; plain value with `data-door` → Edit Job GC / Settings → Company / claim box, remembering `sourceTripRef`; typed value → edit), `commitEdit` 496–501, `previewInput` 642–649, `postToPreview` 650–654, `openPreview` 655–664 (blob URL, **not `noopener`**, revoked after 60 s), `onPreviewMessageRef.current` 668–694 (assigned during render).
-- **Effects:** ring-on-return 444–453; focus editor 502–505; `message` listener 695–700 (while open); post rebuilt pages 702–706 (exhaustive-deps disabled).
-- **Data:** `useNoticePayPage(selected?.jobId, open)` 522 → `fetchJobWithDetailsById` + `noticeInvoiceDocs` + `buildPayPageAssets` (own test `src/hooks/useNoticePayPage.render.test.tsx`, 2 cases; mocked in the desk smoke).
-- **Extraction:** Stage A `mergeNoticeFields` (410–413) and `lienNoticePaperMarks` (426–443) into [`lienNoticePreview.ts`](../src/lib/jobs/lienNoticePreview.ts) with tests. Stage B `LienNoticePaper` owning `previewJobId`, `editing`, `ringField` (+ 5 refs, 4 effects) — only after the hook seam (step 9) exposes `noticeFields`/`jobDefaults`/`wordingLocked`, because F1's `draftFields` and the by-hand pane read them. `wordingEdits` (read by `noticeFields`) and `coverNote` (read by `coverBlocks` and F1's `ensureDraft`) go into the seam, not the paper; `claimOpenSignal` is read by E's `LienClaimBox`, so it lifts to the pane.
+- **Render:** envelope line + cover-note tick 1349–1357; legend + "Preview in a new window" 1360–1372; page 1 cover 1375–1382; notice page label 1383–1388; the paper `data-lien-desk-paper` 1389–1412 (`dangerouslySetInnerHTML` of `docHtml`, `onClick={onPaperClick}`, absolutely positioned `<input>` editor 1391–1411); pay page 1415–1425. Paper divs wear `data-theme="light"`.
+- **Owned state:** `coverNote` 274, `wordingEdits` 290, `previewJobId` 292, `editing` 294, `ringField` 299, `claimOpenSignal` 300 (read by E's `LienClaimBox`); refs `previewWinRef`, `paperRef`, `editInputRef`, `sourceTripRef`, `onPreviewMessageRef`.
+- **Memos:** `jobDefaults` 513–529 (`buildLienNoticeFieldsForJob`, claim = `claimed.claim`), `noticeFields` 532–535 (stored draft or defaults, **claim/claimSplit/retainage always re-read live**, typed edits on top), `wordingDiff` 536, `docExtras` 540–546, `paperMarks` 548–565 (typed/locked/derived + door per field), `docHtml` 576, `coverBlocks` 629–641 (**exhaustive-deps disabled**), `coverHtml` 642, `payBlocks` 645–661, `payHtml` 662; locals `wordingTouched` 537, `wordingEditedBy` 538, `wordingLocked` 539 (`!office` or item past draft), `pageTotal` 663.
+- **Handlers:** `startEdit` 578–587 (measures `[data-field]` rect vs `paperRef`, copies computed font), `onPaperClick` 588–617 (reset button → default; plain value with `data-door` → Edit Job GC / Settings → Company / claim box, remembering `sourceTripRef`; typed value → edit), `commitEdit` 618–623, `previewInput` 764–771, `postToPreview` 772–776, `openPreview` 777–786 (blob URL, **not `noopener`**, revoked after 60 s), `onPreviewMessageRef.current` 790–816 (assigned during render).
+- **Effects:** ring-on-return 566–575; focus editor 624–627; `message` listener 817–822 (while open); post rebuilt pages 824–828 (exhaustive-deps disabled).
+- **Data:** `useNoticePayPage(selected?.jobId, open)` 644 → `fetchJobWithDetailsById` + `noticeInvoiceDocs` + `buildPayPageAssets` (own test `src/hooks/useNoticePayPage.render.test.tsx`, 2 cases; mocked in the desk smoke).
+- **Extraction:** Stage A `mergeNoticeFields` (532–535) and `lienNoticePaperMarks` (548–565) into [`lienNoticePreview.ts`](../src/lib/jobs/lienNoticePreview.ts) with tests. Stage B `LienNoticePaper` owning `previewJobId`, `editing`, `ringField` (+ 5 refs, 4 effects) — only after the hook seam (step 9) exposes `noticeFields`/`jobDefaults`/`wordingLocked`, because F1's `draftFields` and the by-hand pane read them. `wordingEdits` (read by `noticeFields`) and `coverNote` (read by `coverBlocks` and F1's `ensureDraft`) go into the seam, not the paper; `claimOpenSignal` is read by E's `LienClaimBox`, so it lifts to the pane.
 
 ### E. Notice pane body
 
-- **Render (`pane` 895–1305):** scroll handler 899–902 (`STRIP_COLLAPSE_PX` 200, 72 px); sticky strip 905–932 (verdict, non-ok gates, months, next step, claim, wording line); mobile back 933–937; heading + letter-two chip 938–948; `LienTimelineStrip` 949–953; leader "What you're deciding" card 955–990 (hand-set claim, wording, open-with-GC total, promise, months + hours/people, hold consequence); `LienDeskGates` 993–1148 with `details` — owner 1000–1059 (roll-shaped address via `rollMailingLines`, CAD link via `txCountyCadPropertyUrl`/`…SearchUrl` → `openInExternalBrowser`, `LienDeskOwnerPane` 1045–1057), gc 1060–1083, kind 1084–1110 (`PropertyKindSwitch` → `pickKind`, shared-property words), months 1111–1146; carried-correction strip 1151–1167 (Still true / Clear it); `LienDeskMonths` 1170–1207 (`monthGrid!`, `LienClaimBox` 1173–1182, retainage-in-claim tail 1184–1197, missed/by-hand/toggle callbacks); [D renders 1210–1286]; standing-rule box 1288–1301 (leader; radio writes `rulePick` and calls `saveRule`); empty placeholder 1303–1305.
-- **Owned state:** `checkedMonths` 239 (written here, but read only by C's `months` 380 — seam state, not pane-local), `rulePick` 252, `paneScrolled` 267, `activeGate` 270 (+ 4 s clear effect 271–275, `pickGate` 276 — also called by F1's Go to gate 1594), `kindBusy` 278; ref `paneRef` 268 (also used by C's reset effect 378, D's claim door 485 and F1's Go to gate 1594).
-- **Derived:** `monthCards` 809–825, `monthGrid` 828–842 (`buildLienMonthGrid`), `{ gates, verdict }` 844–855 (`buildLienDeskGates`), `gateByKey` 856, `timeline` 876–891 (`buildLienTimelineFromDesk` + `lienRetainageClockFromDesk`).
-- **Writes:** `savePropertyKind` (pickKind 341–353, own try/catch — **not** through `run`), `lookLienClaimCorrection`/`clearLienClaimCorrection`/`saveLienClaimCorrection` via `run`, `noteMissed` 554–557, `saveRule` 635–636.
-- **Children out:** `LienTimelineStrip` (378), `LienDeskGates` (94), `LienDeskOwnerPane` (238, keyed by job, writes the owner itself), `PropertyKindSwitch` (52), `LienDeskMonths` (216), `LienClaimBox` (175).
+- **Render (`pane` 1029–1444):** scroll handler 1033–1036 (`STRIP_COLLAPSE_PX` 227, 72 px); sticky strip 1039–1066 (verdict, non-ok gates, months, next step, claim, wording line); mobile back 1067–1071; heading + letter-two chip 1072–1082; `LienTimelineStrip` 1083–1087; leader "What you're deciding" card 1089–1124 (hand-set claim, wording, open-with-GC total, promise, months + hours/people, hold consequence); `LienDeskGates` 1127–1282 with `details` — owner 1134–1193 (roll-shaped address via `rollMailingLines`, CAD link via `txCountyCadPropertyUrl`/`…SearchUrl` → `openInExternalBrowser`, `LienDeskOwnerPane` 1179–1191), gc 1194–1217, kind 1218–1244 (`PropertyKindSwitch` → `pickKind`, shared-property words), months 1245–1280; carried-correction strip 1290–1306 (Still true / Clear it); `LienDeskMonths` 1309–1346 (`monthGrid!`, `LienClaimBox` 1312–1321, retainage-in-claim tail 1323–1336, missed/by-hand/toggle callbacks); [D renders 1349–1425]; standing-rule box 1427–1440 (leader; radio writes `rulePick` and calls `saveRule`); empty placeholder 1442–1444.
+- **Owned state:** `checkedMonths` 273 (written here, but read only by C's `months` 500 — seam state, not pane-local), `rulePick` 286, `paneScrolled` 301, `activeGate` 304 (+ 4 s clear effect 305–309, `pickGate` 310 — also called by F1's Go to gate 1741), `kindBusy` 312; ref `paneRef` 302 (also used by C's reset effect 498, D's claim door 607 and F1's Go to gate 1741).
+- **Derived:** `monthCards` 942–958, `monthGrid` 961–975 (`buildLienMonthGrid`), `{ gates, verdict }` 977–988 (`buildLienDeskGates`), `gateByKey` 989, `timeline` 1009–1025 (`buildLienTimelineFromDesk` + `lienRetainageClockFromDesk`).
+- **Writes:** `savePropertyKind` (pickKind 461–473, own try/catch — **not** through `run`), `lookLienClaimCorrection`/`clearLienClaimCorrection`/`saveLienClaimCorrection` via `run`, `noteMissed` 676–679, `saveRule` 757–758.
+- **Children out:** `LienTimelineStrip` (530), `LienDeskGates` (94), `LienDeskOwnerPane` (238, keyed by job, writes the owner itself), `PropertyKindSwitch` (52), `LienDeskMonths` (217), `LienClaimBox` (175), `LienJobSuppliersCard` (in `LienJobSuppliers.tsx`, 350).
 - **Extraction:** last Stage B (`LienDeskNoticePane`), after C/D seam; move strip, leader card, gate details, carry strip and rule box as sub-components first if the pane is still too big.
 
 ### F1. Draft / awaiting / ready / held actions
 
-- **Handlers:** `draftFields` 543–552 (keeps `batchReason`/`coverLetter` from Put-a-GC-on-notice, `monthsDatedFromCreation`, wording stamp with `new Date()`), `noteMissed` 554–557, **`run` 577–591** (busy guard → toast → `onChanged`), `ensureDraft` 593–596, `saveDraft` 598, `sendToLeader` 599–612 (`claimGate` forces `awaiting_approval/claim_by_hand`, else `submitOutcome`; toast text chosen separately at 611), `sendOnWord` 613–621, `skip` 622–630, `approve` 631, `hold` 632–633 (`holdUntilFor`), `pullBack` 634, `saveRule` 635–636.
-- **Footer (1493–1811), by `selected.pile`:** draft states (`needs_owner` / `to_draft` / `missed` with due months) 1497–1610 — `stateWords` 1503–1519 and `stateWhy` 1520–1542 ladders, skip confirm 1547–1553, word row 1554–1568, main row 1570–1607 (Skip…, Already mailed?, Save draft, "The leader said to send it…", Go to gate / **leader Approve = `ensureDraft` + `approveLienDeskItem` 1598** / Send for approval · Put it in the run); `awaiting` 1611–1675 (leader: hold confirm 1614–1622, Hold/Back/Already mailed/Approve & next 1624–1635; office: word row 1638–1653 or waiting line + "He is here" 1654–1674); `ready` 1676–1696 (Not what I said, Just this one → Lien window, Send the run); `held` 1697–1711; `missed` 1804–1810. `byHandPane` 1467–1490 replaces any draft/awaiting/ready/held footer while open; on a phone it is `layout="sheet"`, a [`LienRecordSheet`](../src/components/jobs/LienRecordSheet.tsx) over the desk's card (v2.4446).
-- **Owned state:** `wordOpen` 241, `wordNote` 242, `wordChannel` 243, `skipOpen` 244, `byHandOpen` 246 (also opened from E's `LienDeskMonths`), `skipReason` 250, `holdOpen` 251. Shared: `busy` 253 (substrate), `rulePick` (E, read in the awaiting line 1627), E's derived `gates` (`firstBlocker` 1502) and `pickGate`/`paneRef` (Go to gate 1594).
+- **Handlers:** `draftFields` 665–674 (keeps `batchReason`/`coverLetter` from Put-a-GC-on-notice, `monthsDatedFromCreation`, wording stamp with `new Date()`), `noteMissed` 676–679, **`run` 699–713** (busy guard → toast → `onChanged`), `ensureDraft` 715–718, `saveDraft` 720, `sendToLeader` 721–734 (`claimGate` forces `awaiting_approval/claim_by_hand`, else `submitOutcome`; toast text chosen separately at 733), `sendOnWord` 735–743, `skip` 744–752, `approve` 753, `hold` 754–755 (`holdUntilFor`), `pullBack` 756, `saveRule` 757–758.
+- **Footer (1640–1962), by `selected.pile`:** draft states (`needs_owner` / `to_draft` / `missed` with due months) 1644–1757 — `stateWords` 1650–1666 and `stateWhy` 1667–1689 ladders, skip confirm 1694–1700, word row 1701–1715, main row 1717–1754 (Skip…, Already mailed?, Save draft, "The leader said to send it…", Go to gate / **leader Approve = `ensureDraft` + `approveLienDeskItem` 1745** / Send for approval · Put it in the run); `awaiting` 1758–1822 (leader: hold confirm 1761–1769, Hold/Back/Already mailed/Approve & next 1771–1782; office: word row 1785–1800 or waiting line + "He is here" 1801–1821); `ready` 1823–1843 (Not what I said, Just this one → Lien window, Send the run); `held` 1844–1858; `missed` 1955–1961. `byHandPane` 1611–1637 replaces any draft/awaiting/ready/held footer while open; on a phone it is `layout="sheet"`, a [`LienRecordSheet`](../src/components/jobs/LienRecordSheet.tsx) over the desk's card (v2.4446).
+- **Owned state:** `wordOpen` 275, `wordNote` 276, `wordChannel` 277, `skipOpen` 278, `byHandOpen` 280 (also opened from E's `LienDeskMonths`), `skipReason` 284, `holdOpen` 285. Shared: `busy` 287 (substrate), `rulePick` (E, read in the awaiting line 1774), E's derived `gates` (`firstBlocker` 1649) and `pickGate`/`paneRef` (Go to gate 1741).
 - **Writes (`lienDeskIo`):** `saveLienDeskDraft`, `submitLienDeskItem`, `sendLienDeskItemOnWord`, `approveLienDeskItem`, `holdLienDeskItem`, `pullBackLienDeskItem`, `skipLienDeskItem`, `noteLienWindowMissed`, `setCustomerLienNoticePolicy`.
-- **Extraction:** Stage A first — `lienDeskDraftFooterWords` (1503–1542 + the toast 611 + the button label 1603 in one kernel so they cannot disagree) and `buildDeskDraftFields` (543–552, `nowIso` param). Then `useLienDeskRunner` (`busy` + `run`). Then `LienDeskDraftFooter` taking the seam object + runner (+ E's `gates` and `pickGate` as props).
+- **Extraction:** Stage A first — `lienDeskDraftFooterWords` (1650–1689 + the toast 733 + the button label 1750 in one kernel so they cannot disagree) and `buildDeskDraftFields` (665–674, `nowIso` param). Then `useLienDeskRunner` (`busy` + `run`). Then `LienDeskDraftFooter` taking the seam object + runner (+ E's `gates` and `pickGate` as props).
 
 ### F2. Sent footer — letter two, GC okay, counsel, owner's call
 
-- **Render:** facts row 1748–1756 (sent date, day count, GC paid, GC authorized, letter two, counsel, owner called + pile); GC-okay input 1757–1763; counsel ask 1764–1770; sentence + doors 1772–1800 (Ask counsel…, Record the owner's call…, The GC authorized direct pay…, Send letter two ▸ menu 1780–1799); `LienOwnerCallDialog` IIFE 1973–1989 (outside the card).
-- **Locals:** `lt` 1714, `first` 1716 (first packet's item — **re-derived at 1975**), `call` 1717, **`jobBalance` 1718 = `max(0, revenue − payments_made)`**, `signoff`/`signoffLine` 1721–1722, `startTwo` 1723–1736 (builds letter-two `LienDeskDraftFields` from `jobDefaults`), `noteOkay` 1737–1745.
-- **Owned state:** `signoffOpen` 248, `signoffText` 249, `letterTwoMenu` 303, `gcOkayOpen` 304, `gcOkayNote` 305, `ownerCallOpen` 307.
+- **Render:** facts row 1898–1907 (sent date, day count, GC paid, GC authorized, letter two, counsel, owner called + pile); GC-okay input 1908–1914; counsel ask 1915–1921; sentence + doors 1923–1951 (Ask counsel…, Record the owner's call…, The GC authorized direct pay…, Send letter two ▸ menu 1931–1950); `LienOwnerCallDialog` IIFE 2194–2223 (outside the card).
+- **Locals:** `lt` 1861, `first` 1863 (first packet's item — **re-derived at 2196**), `call` 1864, **`jobBalance` 1868 = `max(0, revenue − payments_made)`**, `signoff`/`signoffLine` 1871–1872, `startTwo` 1873–1886 (builds letter-two `LienDeskDraftFields` from `jobDefaults`), `noteOkay` 1887–1895.
+- **Owned state:** `signoffOpen` 282, `signoffText` 283, `letterTwoMenu` 359, `gcOkayOpen` 360, `gcOkayNote` 361, `ownerCallOpen` 363.
 - **Writes:** `startLetterTwo`, `noteGcAuthorizedDirectPay`, `noteOwnerCall` (lienDeskIo); `legalSignoff!.ask` (parent → `legal_add_entry`).
-- **Extraction:** Stage A `sentPacketFacts` (1714–1718 + 1975), `letterTwoFooterSentence` (1774), door predicates (1777–1780) and `letterTwoDraftFields` (1726–1734) → [`lienLetterTwo.ts`](../src/lib/jobs/lienLetterTwo.ts). Stage B `LienDeskSentFooter` with its 6 states + the owner-call dialog — the cleanest footer to move (own state; reads C, D's `jobDefaults` for `startTwo`, and `run`/`busy` — pass them as props).
+- **Extraction:** Stage A `sentPacketFacts` (1861–1868 + 2196), `letterTwoFooterSentence` (1925), door predicates (1928–1931) and `letterTwoDraftFields` (1876–1884) → [`lienLetterTwo.ts`](../src/lib/jobs/lienLetterTwo.ts). Stage B `LienDeskSentFooter` with its 6 states + the owner-call dialog — the cleanest footer to move (own state; reads C, D's `jobDefaults` for `startTwo`, and `run`/`busy` — pass them as props).
 
 ### G / H. Affidavit and retainage kinds
 
-- **Inline:** G — `affEntries`/`affVisible`/`affSelected`/`affCount` 711–714 (pile order literal duplicates `LIEN_AFFIDAVIT_PILES`), `affList` 1308–1362 (counsel pile chip via `affidavitPileFor`, missing gates), `affPane` mount 1363–1391, chips 1856–1867. H — `retEntries`/`retVisible`/`retSelected`/`retCount`/`retReady` 715–719, `retList` 1394–1440, `retPane` 1441–1464 (`onOpenRun`), chips 1844–1855.
-- **Owned state:** G `affPile` 297, `affSelectedJobId` 308, `affFooterEl` 312; H `retPile` 299, `retSelectedJobId` 300, `retFooterEl` 301. Selection falls back to the first row on desktop (713, 717).
-- **Footer portal:** the panes render their footer into `affFooterEl`/`retFooterEl` (callback refs at 1969–1970) — replaced a handed-up-state loop (comment 309–311; guarded by smoke 695).
-- **Extracted:** [`LienDeskAffidavitPane`](../src/components/jobs/LienDeskAffidavitPane.tsx) (410; also exports the pure `affidavitDeadlineWords` 54), [`LienDeskRetainagePane`](../src/components/jobs/LienDeskRetainagePane.tsx) (306). Neither has its own render test.
+- **Inline:** G — `affEntries`/`affVisible`/`affSelected`/`affCount` 833–836 (pile order literal duplicates `LIEN_AFFIDAVIT_PILES`), `affList` 1447–1502 (counsel pile chip via `affidavitPileFor`, missing gates), `affPane` mount 1503–1532, chips 2055–2066. H — `retEntries`/`retVisible`/`retSelected`/`retCount`/`retReady` 837–841, `retList` 1535–1582, `retPane` 1583–1608 (`onOpenRun`), chips 2043–2054.
+- **Owned state:** G `affPile` 353, `affSelectedJobId` 370, `affFooterEl` 374; H `retPile` 355, `retSelectedJobId` 356, `retFooterEl` 357. Selection falls back to the first row on desktop (835, 839).
+- **Footer portal:** the panes render their footer into `affFooterEl`/`retFooterEl` (callback refs at 2190–2191) — replaced a handed-up-state loop (comment 371–373; guarded by smoke 797).
+- **Extracted:** [`LienDeskAffidavitPane`](../src/components/jobs/LienDeskAffidavitPane.tsx) (417; also exports the pure `affidavitDeadlineWords` 56), [`LienDeskRetainagePane`](../src/components/jobs/LienDeskRetainagePane.tsx) (316). Neither has its own render test.
 - **Extraction:** lists fold into `LienDeskQueueList` (step 5); pile/selection stay because `openBookRow` and `onShowNotices` cross kinds.
 
 ### I. Timeline kind
 
-- **State:** `bookOpened` 284 (true once the tab is visited; effect 293–295), `bookGcId` 291, `bookShow` 292 (setters only passed to the tab). **Hook:** `useLienTimelineBook(open && bookOpened && data != null, todayYmd, data?.items)` 296 — its own reads (`jobs_ledger`, `customers`, `customer_addresses`, `job_property_owners`, `job_lien_filings`, `job_demand_letters`; RPCs `list_lien_notice_months`, `list_lien_affidavit_windows`), kept for the modal's life.
-- **Routing:** `openBookRow` 859–873 — next step on the affidavit side (`affidavit|serve|suit|release`) and listed → Affidavits; listed in the queue → Notices; else `onOpenLienInstruments`.
-- **Render:** 1936–1947, print via `printHtmlInNewWindow(lienGridHtml(...))`.
-- **Extracted:** [`LienDeskTimelineTab`](../src/components/jobs/LienDeskTimelineTab.tsx) (116). **No test opens this kind.**
+- **State:** `bookOpened` 340 (true once the tab is visited; effect 349–351), `bookGcId` 347, `bookShow` 348 (setters only passed to the tab). **Hook:** `useLienTimelineBook(open && bookOpened && data != null, todayYmd, data?.items)` 352 — its own reads (`jobs_ledger`, `customers`, `customer_addresses`, `job_property_owners`, `job_lien_filings`, `job_demand_letters`; RPCs `list_lien_notice_months`, `list_lien_affidavit_windows`), kept for the modal's life.
+- **Routing:** `openBookRow` 992–1006 — next step on the affidavit side (`affidavit|serve|suit|release`) and listed → Affidavits; listed in the queue → Notices; else `onOpenLienInstruments`.
+- **Render:** 2135–2168, print via `printHtmlInNewWindow(lienGridHtml(...))`.
+- **Extracted:** [`LienDeskTimelineTab`](../src/components/jobs/LienDeskTimelineTab.tsx) (134), own render test 2 cases. **The desk smoke never opens this kind.**
 
 ### J. The run
 
-`runOpen` 280; opened from the header 1924–1928, the ready footer 1692 and `retPane`'s `onOpenRun`. `LienDeskRunModal` 1990–1999 receives `[...buildLienDeskRun(queue.piles.ready, …), ...buildLienRetainageRun(retainage.piles.ready, …)]` **built inline on every render while open**. Extracted and tested (render 6, `lienDeskRun` 16).
+`runOpen` 314; opened from the header 2123–2127, the ready footer 1839 and `retPane`'s `onOpenRun`. `LienDeskRunModal` 2235–2248 receives `[...buildLienDeskRun(queue.piles.ready, …), ...buildLienRetainageRun(retainage.piles.ready, …)]` **built inline on every render while open**; the source is `piles.ready + piles.printed`, and `onPrinted` stamps `markLienDeskItemsPrinted`. The header button's count and its condition read `counts.ready + retReady` only, so at `mapped_at` a desk with nothing but printed notices had no door back into the run (counted since v2.4568). Extracted and tested (render 8, `lienDeskRun` 20).
 
 ---
 
 ## Shared substrate
 
-1. **Kind + three selection pointers:** `kind` 282, `selectedJobId` 238, `affSelectedJobId` 308, `retSelectedJobId` 300, plus `mobileListShown` 254. Cross-kind writers: `openBookRow` (kind + notice/affidavit selection), `affPane`/`retPane` `onShowNotices` (kind + notice selection), the selection effect 322–332. **Stay in the modal**; children get `selected…` + `onSelect…` props.
+1. **Kind + three selection pointers:** `kind` 321, `selectedJobId` 272, `affSelectedJobId` 370, `retSelectedJobId` 356, plus `mobileListShown` 288. Cross-kind writers: `openBookRow` (kind + notice/affidavit selection), `affPane`/`retPane` `onShowNotices` (kind + notice selection), the selection effect 405–420. **Stay in the modal**; children get `selected…` + `onSelect…` props.
 2. **Selection context (C) + notice draft engine (D memos):** `selected` → `job`/`gc`/`property`/`months`/`claimed`/`claimGate` → `jobDefaults` → `noticeFields` → `docHtml`/`coverBlocks`/`payBlocks`. Read by E, F1, F2 (`jobDefaults`), the by-hand pane and the preview window. Becomes **`useLienNoticeDraft`** (one hook, one object) before any notice-side Stage B.
-3. **Write funnel:** `busy` 253 + `run` 577–591 — every notice/sent/claim/owner-call write (except `pickKind`) goes through it; the extracted panes keep their own copies (`LienDeskAffidavitPane` `busy` 113 + `run` 174, `LienDeskRetainagePane` `busy` 85, `LienDeskOwnerPane` `busy` 67). Becomes **`useLienDeskRunner({ onChanged })`**, which those panes can adopt later.
-4. **Parent data engine:** `useLienDeskData` (374 lines; `demandLettersByJob` feeds both panes' strips, JobsStagesTab 1613) — no realtime; refreshed only by `onChanged` → `refetchLienDesk`. Not this map's to move.
+3. **Write funnel:** `busy` 287 + `run` 699–713 — every notice/sent/claim/owner-call write (except `pickKind`) goes through it; the extracted panes keep their own copies (`LienDeskAffidavitPane` `busy` 118 + `run` 181, `LienDeskRetainagePane` `busy` 94 + `run` 136, `LienDeskOwnerPane` `busy` 67). Becomes **`useLienDeskRunner({ onChanged })`**, which those panes can adopt later.
+4. **Parent data engine:** `useLienDeskData` (374 lines; `demandLettersByJob` feeds both panes' strips, JobsStagesTab 1495) — no realtime; refreshed only by `onChanged` → `refetchLienDesk`. Not this map's to move.
 
 ## What must STAY in `LienDeskModal`
 
-- `kind`, the three selection pointers, `mobileListShown`, the selection effect 322–332 and the kind-on-open / pile effects 235–237, 287–290 (the parent's doors land through them).
-- The reset-on-job effect 365–379 until every state it clears has moved with its region (then each child resets itself by `key={jobId}`).
-- The header's kind tabs and body switch; the footer slots 1969–1971 (portal targets).
+- `kind`, the three selection pointers, `mobileListShown`, the selection effect 405–420 and the kind-on-open / pile effects 269–271, 343–346 (the parent's doors land through them).
+- The reset-on-job effect 485–499 until every state it clears has moved with its region (then each child resets itself by `key={jobId}`).
+- The header's kind tabs and body switch; the footer slots 2190–2192 (portal targets).
 - `runOpen` + the `LienDeskRunModal` mount (opened from three regions).
 
 ---
@@ -204,49 +207,49 @@ Render smoke: [`LienDeskModal.render.test.tsx`](../src/components/jobs/LienDeskM
 
 | Kernel | Lines | Tests | Used here for |
 |---|---|---|---|
-| [`lienDesk.ts`](../src/lib/jobs/lienDesk.ts) | 510 | 18 | piles, policies, role helpers, `draftReadiness`, `submitOutcome`, `holdUntilFor`, `ruleWaitsOnFirstNotice` |
-| [`lienDeskIo.ts`](../src/lib/jobs/lienDeskIo.ts) | 228 | **0** (spied in smoke) | 12 of its 14 writers |
+| [`lienDesk.ts`](../src/lib/jobs/lienDesk.ts) | 514 | 20 | piles, policies, role helpers, `draftReadiness`, `submitOutcome`, `holdUntilFor`, `ruleWaitsOnFirstNotice` |
+| [`lienDeskIo.ts`](../src/lib/jobs/lienDeskIo.ts) | 270 | **0** (spied in smoke) | 13 of its 16 writers |
 | `lienDeskGcPicker.ts` | 99 | 8 | picker rows |
 | `lienNoticePreview.ts` | 315 | 13 | wording edits/diff, preview HTML + messages |
-| `lienNoticeDraft.ts` | 279 | 4 | `buildLienNoticeFieldsForJob`, `parseLienDeskDraftFields`, cover note, `retainageInsideClaim` |
+| `lienNoticeDraft.ts` | 348 | 5 | `buildLienNoticeFieldsForJob`, `parseLienDeskDraftFields`, cover note, `retainageInsideClaim` |
 | `lienNoticePayPage.ts` | 127 | 8 | pay page blocks/summary |
-| `lienDeskRun.ts` | 366 | 16 | run notices, `runCoverNoteBlocks` |
-| `gcOnNotice.ts` | 537 | 14 | `fillCoverLetter`, `letterTwoTemplate`, affidavit month word |
-| `lienLetterTwo.ts` | 118 | 6 | kinds, `letterTwoIsDue` |
-| `lienOwnerCall.ts` | 227 | 4 | piles A/B/C, call words |
-| `lienDeskRetainage.ts` | 257 | 4 | retainage piles/words; `parsePaymentBond` (no direct test) |
-| `lienDeskAffidavits.ts` | 152 | 4 | affidavit piles |
-| `lienMonthGrid.ts` | 207 | 3 | the months grid |
-| `lienTimelineDesk.ts` | 191 | 2 | `buildLienTimelineFromDesk`, `lienRetainageClockFromDesk` — **neither named in its test** (it tests `buildLienTimelineFromWindow`) |
+| `lienDeskRun.ts` | 444 | 20 | run notices, `runCoverNoteBlocks` |
+| `gcOnNotice.ts` | 571 | 14 | `fillCoverLetter`, `letterTwoTemplate`, affidavit month word |
+| `lienLetterTwo.ts` | 119 | 8 | kinds, `letterTwoIsDue` |
+| `lienOwnerCall.ts` | 268 | 5 | piles A/B/C, call words |
+| `lienDeskRetainage.ts` | 258 | 5 | retainage piles/words; `parsePaymentBond` (no direct test) |
+| `lienDeskAffidavits.ts` | 153 | 5 | affidavit piles |
+| `lienMonthGrid.ts` | 208 | 4 | the months grid |
+| `lienTimelineDesk.ts` | 212 | 6 | `buildLienTimelineFromDesk`, `lienRetainageClockFromDesk` — **neither named in its test** (it tests `buildLienTimelineFromWindow`) |
 | `lienTimelineBook.ts` | 233 | 8 | print grid |
 | `lienDeskGates.ts` | 146 | 11 | the four gates + verdict |
-| `lienClaimCorrection.ts` / `…Io.ts` | 106 / 68 | 5 / 0 (mocked) | hand-set claim math / writes |
+| `lienClaimCorrection.ts` / `…Io.ts` | 122 / 68 | 7 / 0 (mocked) | hand-set claim math / writes |
 | `lienProperty.ts` | 131 | 12 | owner + property resolution |
-| `propertyKind.ts` / `propertyKindWrite.ts` | 47 / 18 | 4 / 0 (mocked) | kind words, shared property / write |
+| `propertyKind.ts` / `propertyKindWrite.ts` | 47 / 49 | 4 / 0 (mocked) | kind words, shared property / write |
 | `rollMailingLines.ts`, `lienWord.ts`, `forecastWorkMonths.ts` | 59, 63, 311 | 6, 6, 11 | owner envelope, spoken word, month labels |
-| `lienFilingDocuments.ts`, `demandLetter.ts`, `legal/legalAsks.ts` | 757, 868, 159 | 14 (+1 pdf), 37, 4 | paper HTML, dates/money words, counsel sign-off |
+| `lienFilingDocuments.ts`, `demandLetter.ts`, `legal/legalAsks.ts` | 757, 874, 159 | 14 (+1 pdf), 40, 4 | paper HTML, dates/money words, counsel sign-off |
 
 **Still inline (move to `src/lib/jobs/*` + tests):**
 
 | Candidate | Where | Target |
 |---|---|---|
-| Draft-footer state/why ladder + submit toast + button label | 1503–1542, 611, 1603 | `lienDeskDraftFooterWords` in `lienDesk.ts` — one source for what the office is told |
-| `askReason` | 564–570 | `lienAskReasonFor(entry, data, promise)` in `lienDesk.ts` |
-| Row words: `deadlineWords`, state ladder, letter-two chip decision | 159–166, 742–761, 789–797 | `lienDesk.ts` / `lienLetterTwo.ts` |
-| `visible` + Missed lens | 315–319 | `lienDeskVisible(entries, pile)` (load-bearing lens rule) |
-| `lastSentAt` | 386 | `lastSentAtFor(items, jobId)` — feeds `claimGate` and the carry strip (money gate) |
-| GC open total + job count | 572–575, 970 (count computed twice) | `gcOpenOnDesk(entries, gcId)` → `{ total, jobs }` |
-| `noticeFields` merge | 410–413 | `mergeNoticeFields` in `lienNoticePreview.ts` |
-| `paperMarks` | 426–443 | `lienNoticePaperMarks` in `lienNoticePreview.ts` |
-| `draftFields` | 543–552 | `buildDeskDraftFields(…, nowIso)` in `lienNoticeDraft.ts` |
-| `monthCards` | 809–825 | `lienDeskMonthCards` in `lienMonthGrid.ts` |
-| `openBookRow` routing | 859–873 | `bookRowTarget(row, data)` in `lienTimelineBook.ts` |
-| Sent-packet facts: `first`, `jobBalance` | 1714–1718, 1975 | `sentPacketFacts` in `lienLetterTwo.ts` — **money gate with no unit test** (smoke 772 hits only the unpaid branch) |
-| Letter-two sentence + door predicates + `startTwo` fields | 1774, 1777–1780, 1726–1734 | `lienLetterTwo.ts` |
-| Pile-order constants | `PILE_ORDER` 140, literal 712 | derive from `LIEN_DESK_PILES` / `LIEN_AFFIDAVIT_PILES` (same order today) |
+| Draft-footer state/why ladder + submit toast + button label | 1650–1689, 733, 1750 | `lienDeskDraftFooterWords` in `lienDesk.ts` — one source for what the office is told |
+| `askReason` | 686–692 | `lienAskReasonFor(entry, data, promise)` in `lienDesk.ts` |
+| Row words: `deadlineWords`, state ladder, letter-two chip decision | 186–193, 874–893, 921–929 | `lienDesk.ts` / `lienLetterTwo.ts` |
+| `visible` + Missed lens | 397–402 | `lienDeskVisible(entries, pile)` (load-bearing lens rule) |
+| `lastSentAt` | 507 | `lastSentAtFor(items, jobId)` — feeds `claimGate` and the carry strip (money gate) |
+| GC open total + job count | 694–697, 1104 (count computed twice) | `gcOpenOnDesk(entries, gcId)` → `{ total, jobs }` |
+| `noticeFields` merge | 532–535 | `mergeNoticeFields` in `lienNoticePreview.ts` |
+| `paperMarks` | 548–565 | `lienNoticePaperMarks` in `lienNoticePreview.ts` |
+| `draftFields` | 665–674 | `buildDeskDraftFields(…, nowIso)` in `lienNoticeDraft.ts` |
+| `monthCards` | 942–958 | `lienDeskMonthCards` in `lienMonthGrid.ts` |
+| `openBookRow` routing | 992–1006 | `bookRowTarget(row, data)` in `lienTimelineBook.ts` |
+| Sent-packet facts: `first`, `jobBalance` | 1861–1868, 2196 | `sentPacketFacts` in `lienLetterTwo.ts` — **money gate with no unit test** (smoke 900 hits only the unpaid branch) |
+| Letter-two sentence + door predicates + `startTwo` fields | 1925, 1928–1931, 1876–1884 | `lienLetterTwo.ts` |
+| Pile-order constants | `PILE_ORDER` 167, literal 834 | derive from `LIEN_DESK_PILES` / `LIEN_AFFIDAVIT_PILES` (same order today) |
 | `affidavitDeadlineWords` | `LienDeskAffidavitPane.tsx` 54 (exported from a component) | `lienDeskAffidavits.ts` |
-| "X's lien right ends …" sentence | 986, 1618, 1702 | one `lienRightEndsWords` |
-| Tone → chip colours | 153–157, 795, 919, 1349 | `lienDeskStyles.ts` (component-side consts, not a kernel) |
+| "X's lien right ends …" sentence | 1120, 1765, 1849 | one `lienRightEndsWords` |
+| Tone → chip colours | 180–184, 927, 1053, 1488 | `lienDeskStyles.ts` (component-side consts, not a kernel) |
 
 ---
 
@@ -254,17 +257,17 @@ Render smoke: [`LienDeskModal.render.test.tsx`](../src/components/jobs/LienDeskM
 
 Done: panes/tabs/dialogs listed in the Neighbours "extracted children" table (~2,600 lines out), plus every kernel above.
 
-1. **Stage A: `lienDeskDraftFooterWords` + `lienAskReasonFor`** (1503–1542, 564–570, 611, 1603) — ~60 lines out, pins the rule-to-UI truth under tests.
-2. **Stage A: `sentPacketFacts` + letter-two words/doors/fields** (1714–1780, 1975) — ~45 lines; puts `jobBalance` under a test.
-3. **Stage A: `mergeNoticeFields`, `lienNoticePaperMarks`, `buildDeskDraftFields`** (410–443, 543–552) — ~45 lines.
+1. **Stage A: `lienDeskDraftFooterWords` + `lienAskReasonFor`** (1650–1689, 686–692, 733, 1750) — ~60 lines out, pins the rule-to-UI truth under tests.
+2. **Stage A: `sentPacketFacts` + letter-two words/doors/fields** (1861–1931, 2196) — ~45 lines; puts `jobBalance` under a test.
+3. **Stage A: `mergeNoticeFields`, `lienNoticePaperMarks`, `buildDeskDraftFields`** (532–565, 665–674) — ~45 lines.
 4. **Stage A sweep:** `lienDeskVisible`, `lastSentAtFor`, `gcOpenOnDesk`, `lienDeskMonthCards`, `bookRowTarget`, row words, pile constants, `affidavitDeadlineWords` — ~80 lines.
-5. **`LienDeskQueueList`** — one list shell for `list`/`affList`/`retList` (722–806, 1308–1362, 1394–1440) — ~190 → ~90; selection controlled.
-6. **`LienDeskPileChips` + `LienDeskGcPicker`** (1844–1923) — ~80 lines; `gcPickerOpen` moves.
-7. **`useLienDeskRunner`** (`busy` + `run`, 577–591) — ~20 lines; unlocks every footer move.
-8. **`LienDeskSentFooter`** (F2, 1712–1803 + 1973–1989) — ~110 lines + 6 states.
-9. **`useLienNoticeDraft` hook seam** (C + D memos, 334–416, 418–454, 507–575) — ~200 lines; returns the selection context and the paper's HTML.
-10. **`LienNoticePaper`** (D render 1210–1286 + editor/preview handlers, refs, 4 effects) — ~230 lines.
-11. **`LienDeskDraftFooter`** (F1, 1467–1711) — ~245 lines + 7 states.
+5. **`LienDeskQueueList`** — one list shell for `list`/`affList`/`retList` (844–939, 1447–1502, 1535–1582) — ~190 → ~90; selection controlled.
+6. **`LienDeskPileChips` + `LienDeskGcPicker`** (2043–2122) — ~80 lines; `gcPickerOpen` moves.
+7. **`useLienDeskRunner`** (`busy` + `run`, 699–713) — ~20 lines; unlocks every footer move.
+8. **`LienDeskSentFooter`** (F2, 1859–1954 + 2194–2223) — ~110 lines + 6 states.
+9. **`useLienNoticeDraft` hook seam** (C + D memos, 422–538, 540–576, 629–697) — ~200 lines; returns the selection context and the paper's HTML.
+10. **`LienNoticePaper`** (D render 1349–1425 + editor/preview handlers, refs, 4 effects) — ~230 lines.
+11. **`LienDeskDraftFooter`** (F1, 1611–1858) — ~245 lines + 7 states.
 12. **`LienDeskNoticePane`** (E, rest of `pane`) — ~330 lines, last.
 
 Verification per step: `npm run typecheck && npm run lint && npm test`, behavior-preserving only, one PR per step (see [`PAGE_DECOMPOSITION_PLAYBOOK.md`](./PAGE_DECOMPOSITION_PLAYBOOK.md)). The smoke's `lienDeskIo` spies and DOM hooks (`data-lien-*`) are the regression net — keep every `data-*` attribute through moves.
@@ -273,56 +276,61 @@ Verification per step: `npm run typecheck && npm run lint && npm test`, behavior
 
 ## Hazards
 
-- **Money on a statutory form:** the notice claims `claimed.claim` = `correctedClaim(openBalance, correction)`; `noticeFields` 411 **always overwrites the stored draft's claim/claimSplit/retainage with the live figure** (v2.3682) — keep that precedence. `claimGate` 389 forces leader approval over any rule (606–607) and, when `'leader'`, blocks the spoken word unless the channel says he is present (`wordRecordBlock`, `lienWord.ts` 38–42). `retainageInsideClaim` is named on the form (1186–1188).
-- **Two balances:** the notice uses the desk's `selected.openBalance`; the sent footer's letter-two / GC-okay / counsel doors and "GC paid" use `jobBalance = max(0, revenue − payments_made)` 1718 with a `> 0.005` threshold; the counsel ask formats it `$${Math.round(jobBalance)…}` 1777, not `formatUsdNoCents`. Preserve; reconcile only in its own PR.
-- **Legal consequences:** Skip gives up lien rights on the months (reason required, 1551); Note it as missed writes a `missed` row (554–557); the leader's Approve from a draft footer is `ensureDraft` + `approveLienDeskItem` without `submitLienDeskItem` (1598) — unlike Approve & next on an awaiting item (631).
+- **Money on a statutory form:** the notice claims `claimed.claim` = `correctedClaim(openBalance, correction)`; `noticeFields` 533 **always overwrites the stored draft's claim/claimSplit/retainage with the live figure** (v2.3682) — keep that precedence. `claimGate` 510 forces leader approval over any rule (728–729) and, when `'leader'`, blocks the spoken word unless the channel says he is present (`wordRecordBlock`, `lienWord.ts` 38–42). `retainageInsideClaim` is named on the form (1325–1327).
+- **Two balances:** the notice uses the desk's `selected.openBalance`; the sent footer's letter-two / GC-okay / counsel doors and "GC paid" use `jobBalance = max(0, revenue − payments_made)` 1868 with a `> 0.005` threshold; the counsel ask formats it `$${Math.round(jobBalance)…}` 1928, not `formatUsdNoCents`. Preserve; reconcile only in its own PR.
+- **Legal consequences:** Skip gives up lien rights on the months (reason required, 1698); Note it as missed writes a `missed` row (676–679); the leader's Approve from a draft footer is `ensureDraft` + `approveLienDeskItem` without `submitLienDeskItem` (1745) — unlike Approve & next on an awaiting item (753).
 - **Role gates (client mirrors DB):** `isLienLeader` = dev | master_technician; `isLienOffice` = dev | master | assistant | controller; `canSendLienOnWord` = dev | assistant | controller (**deliberately not the master**). Server: `job_lien_desk_items` RLS `*_office` (is_dev / is_assistant [assistant + controller] / master_technician), delete dev-only; trigger `job_lien_desk_items_guard` (approval needs a leader; the word needs note + channel); `set_customer_lien_notice_policy` raises unless dev/master (migration `20260914180000_lien_desk.sql`). The parent loads data only for `stagesGates.isStagesOfficeRole`.
-- **Cross-window messaging (D):** preview opened **without `noopener`** so it can post back; the listener checks `ev.origin`, `ev.source === previewWinRef.current`, `previewIsThisJob` and `wordingLocked` before layering an edit or saving (668–694). The handler is re-assigned into a ref every render — moving it must keep that pattern or the listener goes stale.
+- **Cross-window messaging (D):** preview opened **without `noopener`** so it can post back; the listener checks `ev.origin`, `ev.source === previewWinRef.current`, `previewIsThisJob` and `wordingLocked` before layering an edit or saving (790–816). The handler is re-assigned into a ref every render — moving it must keep that pattern or the listener goes stale.
 - **DOM-positioned editor:** `startEdit` measures against `paperRef`; the `<input>` must stay inside the same `position: relative` container as the `dangerouslySetInnerHTML` paper.
-- **Hooks above the early return:** all 40 states, 18 memos, 10 effects and 4 custom hooks sit above `if (!open) return null` 708; the desk stays mounted, so state persists across opens (only `kind` resets; `pile` only when a door passes one).
-- **Effects whose deps make moves risky:** selection 322–332 (keyed on joined visible ids; disabled lint), reset 365–379 (**partial**: does not clear `skipReason`, `wordChannel`, `signoffOpen/Text`, `gcOkayOpen/Note`, `letterTwoMenu`, `ownerCallOpen` — an open GC-okay input survives a job switch), `coverBlocks` memo 507–519 (disabled lint; omits `property`, `storedDraft.staleNote`, `issuer`), post-to-preview 702–706 (disabled lint).
-- **Footer portals (G/H):** the panes write into `affFooterEl`/`retFooterEl` via callback refs; turning that back into handed-up state recreates the render loop (smoke 695 guards it).
-- **Non-null assertions:** `monthGrid!` 1171 (safe only because `pane` renders under `selected`, which implies `data`), `legalSignoff!` 1768 (door shown only when `signoff` exists).
+- **Hooks above the early return:** all 44 states, 21 memos, 12 effects and 7 custom hooks sit above `if (!open) return null` 830; the desk stays mounted, so state persists across opens (only `kind` resets; `pile` only when a door passes one).
+- **Effects whose deps make moves risky:** selection 405–420 (keyed on joined visible ids; disabled lint), reset 485–499 (**partial**: does not clear `skipReason`, `wordChannel`, `signoffOpen/Text`, `gcOkayOpen/Note`, `letterTwoMenu`, `ownerCallOpen` — an open GC-okay input survives a job switch), `coverBlocks` memo 629–641 (disabled lint; omits `property`, `storedDraft.staleNote`, `issuer`), post-to-preview 824–828 (disabled lint).
+- **Footer portals (G/H):** the panes write into `affFooterEl`/`retFooterEl` via callback refs; turning that back into handed-up state recreates the render loop (smoke 797 guards it).
+- **Non-null assertions:** `monthGrid!` 1310 (safe only because `pane` renders under `selected`, which implies `data`), `legalSignoff!` 1919 (door shown only when `signoff` exists).
 - **No realtime:** the desk re-reads only through `onChanged` → `refetchLienDesk`; a write elsewhere (another tab, the Lien window) is invisible until then. `LienDeskOwnerPane` and the G/H panes write on their own and call `onChanged` themselves.
-- **URL deep links:** consumed in the parent (JobsStagesTab 1349–1363); this file reads none. `initialPile` takes any `LienDeskPile`, and since v2.4561 the URL can name any of them; the Dashboard and Quickfill build `missed` and `sent` (the tracking card and the letter two line); `initialKind` accepts `retainage` but no URL produces it.
+- **URL deep links:** parsed in `stagesDeepLinks.ts` and landed by the parent (JobsStagesTab 1273); this file reads none. `initialPile` takes any `LienDeskPile`, and since v2.4561 the URL can name any of them; the Dashboard and Quickfill build `missed` and `sent` (the tracking card and the letter two line); a pile a door passed is cleared on the next plain open since v2.4568; `initialKind` accepts `retainage` but no URL produces it.
 
 ---
 
 ## Neighbours (not mapped here)
 
-**Extracted children of this desk** (already out; sizes at a05cef4c4):
+**Extracted children of this desk** (already out; sizes at f423bd6e5):
 
 | Component | Lines | Mounted at | Own test |
 |---|---|---|---|
-| `LienDeskAffidavitPane` | 410 | 1365–1388 | none (desk smoke) |
-| `LienTimelineStrip` | 424 | 951 | render 5 (v2.3877: the move pill, the Waiting-on line, the demand node) |
-| `LienDeskRetainagePane` | 306 | 1443–1461 | none (desk smoke) |
-| `LienDeskRunModal` | 256 | 1991–1998 | render 6 |
-| `LienDeskOwnerPane` | 238 | 1045–1057 | none (desk smoke 246–303) |
-| `LienDeskMonths` | 216 | 1170–1207 | none (desk smoke) |
-| `LienClaimBox` | 175 | 1173–1182 | none (desk smoke 523, 541) |
-| `LienNoticeByHandPane` | 159 | 1469–1489 | render 2 |
-| `LienDeskTimelineTab` | 116 | 1937–1947 | **none** |
-| `LienDeskGates` | 94 | 993–1148 | none (kernel 11) |
-| `LienOwnerCallDialog` | 94 | 1978–1987 | none (desk smoke 823) |
-| `LienWordRecordRow` | 72 | 1555, 1639 | none (desk smoke) |
-| `PropertyKindSwitch` | 52 | 1088 | none (desk smoke 382) |
-| `LienRulesDoor` | 38 | 1841 | none |
-| `LienJobSuppliersCard` / `LienSupplierMarkLine` (`LienJobSuppliers.tsx`, v2.4404) | 205 | region E under the gates; every list row | desk smoke (2) |
-| hooks `useLienDeskData` / `useLienTimelineBook` / `useNoticePayPage` | 374 / 112 / 55 | parent 1613 / 296 / 522 | none / none / render 2 |
+| `LienDeskAffidavitPane` | 417 | 1505–1529 | none (desk smoke) |
+| `LienTimelineStrip` | 530 | 1085 | render 7 (v2.3877: the move pill, the Waiting-on line, the demand node) |
+| `LienDeskRetainagePane` | 316 | 1585–1605 | none (desk smoke) |
+| `LienDeskRunModal` | 334 | 2236–2247 | render 8 |
+| `LienDeskOwnerPane` | 238 | 1179–1191 | none (desk smoke 338–397) |
+| `LienDeskMonths` | 217 | 1309–1346 | none (desk smoke) |
+| `LienClaimBox` | 175 | 1312–1321 | none (desk smoke 620, 638) |
+| `LienNoticeByHandPane` | 245 | 1613–1636 | render 3 |
+| `LienDeskTimelineTab` | 134 | 2157–2168 | render 2 |
+| `LienDeskCalendarTab` (v2.4101) | 940 | 2136–2155 | render 25 |
+| `LienCallerDoor` (v2.3854) | 166 | 1999 | none (desk smoke 985–1047) |
+| `LienDeskShare` / `LienDeskSharePanel` / `LienDeskEmailSheet` (v2.4311) | 128 / 174 / 239 | 2038 | render 11 (`LienDeskShare`) |
+| `LienTrackingOwedEditor` (v2.4119) | 82 | the Sent footer | render 1 |
+| `LienJobHeading` (`LienJobNumber.tsx`, v2.4535) | 46 | the notice pane's heading | render 5 |
+| `LienDeskGates` | 94 | 1127–1282 | none (kernel 11) |
+| `LienOwnerCallDialog` | 183 | 2214–2221, 2225–2234 (practice) | none (desk smoke 952) |
+| `LienWordRecordRow` | 72 | 1702, 1786 | none (desk smoke) |
+| `PropertyKindSwitch` | 52 | 1222 | none (desk smoke 478) |
+| `LienRulesDoor` | 38 | 1998 | none |
+| `LienJobSuppliersCard` / `LienSupplierMarkLine` (`LienJobSuppliers.tsx`, v2.4404) | 350 | region E under the gates; every list row | desk smoke (5, 1105–1188) |
+| hooks `useLienDeskData` / `useLienTimelineBook` / `useNoticePayPage` | 374 / 112 / 55 | parent 1495 / 352 / 644 | none / render 2 / render 2 |
 
 **Large sibling Lien surfaces** (candidates for their own maps):
 
 | File | Lines | Mounted by | Relation to the desk | Test |
 |---|---|---|---|---|
-| [`LienInstrumentsModal.tsx`](../src/components/jobs/LienInstrumentsModal.tsx) | 1,385 | JobsStagesTab | the "Lien window" — `onOpenLienInstruments` / `onOpenLienAffidavit` land here | render 9 |
-| [`GcOnNoticeModal.tsx`](../src/components/jobs/GcOnNoticeModal.tsx) | 1,133 | JobsStagesTab | Put a GC on notice (`onPutGcOnNotice`, `?gcnotice=`) | render 5 |
+| [`LienInstrumentsModal.tsx`](../src/components/jobs/LienInstrumentsModal.tsx) | 1,472 | JobsStagesTab | the "Lien window" — `onOpenLienInstruments` / `onOpenLienAffidavit` land here | render 12 |
+| [`GcOnNoticeModal.tsx`](../src/components/jobs/GcOnNoticeModal.tsx) | 1,231 | JobsStagesTab | Put a GC on notice (`onPutGcOnNotice`, `?gcnotice=`) | render 8 |
 | [`LienReleaseModal.tsx`](../src/components/jobs/LienReleaseModal.tsx) | 1,607 | six mounts, listed in its own map | releases (timeline tail); mapped in [`LIEN_RELEASE_MODAL_ARCHITECTURE.md`](./LIEN_RELEASE_MODAL_ARCHITECTURE.md) | five render files, counted there |
-| [`LienFilingTabs.tsx`](../src/components/jobs/LienFilingTabs.tsx) | 851 | LienInstrumentsModal | the Lien window's filing tabs; on a phone its record steps are sheets on [`LienRecordSheet`](../src/components/jobs/LienRecordSheet.tsx) | render 6 |
+| [`LienFilingTabs.tsx`](../src/components/jobs/LienFilingTabs.tsx) | 971 | LienInstrumentsModal | the Lien window's filing tabs; on a phone its record steps are sheets on [`LienRecordSheet`](../src/components/jobs/LienRecordSheet.tsx) | render 6 |
 | `LienWaiverAmountMath.tsx` (v2.4296) | 234 | LienReleaseModal | the Release of Lien window's amount pieces, per step; draws only, the kernel is `lienWaiverAmountMath.ts`; the amount box types through `lib/moneyTyping.ts` (v2.4334) and the drawn signature is trimmed by `lib/signatureInkTrim.ts` (v2.4335) | kernels 16 / 6 |
 | `LienWindowFoldedSteps.tsx` (v2.4398) | 113 | LienInstrumentsModal | the Lien window's steps folded to one strip on a phone, so the paper gets the room | render 3 |
 | `DemandRecordSendSheet.tsx` (v2.4414) | 71 | LienInstrumentsModal | Save & record send… as its own page on a phone; shares `lienRecordSheetStyles.ts` (v2.4422) with `LienFilingTabs` and `LienNoticeByHandPane` | render 4 |
 | `useScrollEdgeFade` over `lib/scrollEdges.ts` (v2.4441) | 24 / 36 | LienDeskModal, LienInstrumentsModal | a tab row wider than a phone fades its cut end | kernel 5 |
 | `LienWaiverSendModal.tsx` | 275 | JobsSubLaborTab | waivers | render 3 |
-| `LienSignatureInboxSection.tsx` / `LienReleaseSignModal.tsx` / `DashboardLienWaiversToSignModal.tsx` (v2.4276) | 219 / 186 / 238 | inboxes / LienReleaseModal and the inbox section / the Dashboard's `lien-waivers-to-sign` Needs You item | release signing — the sign and send writes are one module, `lib/jobs/lienReleaseSignIo.ts`, and the page's foot is `LienWaiverFootPreview` (v2.4285) | none / none / render 2 |
-| Parent `JobsStagesTab.tsx` | 5,099 | Jobs page | mounts the desk; mapped in [`JOBS_STAGES_TAB_ARCHITECTURE.md`](./JOBS_STAGES_TAB_ARCHITECTURE.md) | — |
+| `LienSignatureInboxSection.tsx` / `LienReleaseSignModal.tsx` / `DashboardLienWaiversToSignModal.tsx` (v2.4276) | 219 / 197 / 250 | inboxes / LienReleaseModal and the inbox section / the Dashboard's `lien-waivers-to-sign` Needs You item | release signing — the sign and send writes are one module, `lib/jobs/lienReleaseSignIo.ts`, and the page's foot is `LienWaiverFootPreview` (v2.4285) | none / render 2 / render 2 |
+| Parent `JobsStagesTab.tsx` | 4,876 | Jobs page | mounts the desk; mapped in [`JOBS_STAGES_TAB_ARCHITECTURE.md`](./JOBS_STAGES_TAB_ARCHITECTURE.md) | — |

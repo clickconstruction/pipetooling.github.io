@@ -204,8 +204,8 @@ The exit criteria — when these hold, the environment is stable and Wave 5 (fle
 - **Every wave ends on LIVSTE.** No wave is done because its PRs merged; it's done when the
   live test gate passed and its stumbles are recorded (missions-results discipline — M1–M3
   each caught real bugs).
-- **Migrations**: house rules apply in full (lock_timeout, both read-only appliers,
-  `apply_digital_twin_write_blocks()` on bid-family DDL, fence spot-probe via
+- **Migrations**: house rules apply in full (lock_timeout, the two read-only appliers and
+  `apply_digital_twin_write_blocks()` on every CREATE TABLE, fence spot-probe via
   `?as=twin:estimator:1` after every push). CT migrations apply via Supabase MCP (its
   `db push` refuses) — opposite of PT.
 - **Briefs are generated**: any `docs/twins/` edit → `node scripts/build-twin-mcp-briefs.mjs`

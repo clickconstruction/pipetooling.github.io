@@ -6,7 +6,7 @@ roles: dev, master_technician, assistant, controller
 ---
 When a demand letter does not shake the money loose, Texas gives you a lien. But only if the paperwork happens in the right order, on the right dates.
 
-A lien is a legal claim on the property for unpaid work. The **Lien instruments** window walks all of it, and the app watches every deadline. It opens from the orange lien icon on Billed and Collections rows.
+A lien is a legal claim on the property for unpaid work. The job's Lien window walks all of it, and the app watches every deadline. Its title reads *Liens on job* and the job's number. It opens from the orange lien icon on Billed and Collections rows.
 
 ## The clock, always visible
 

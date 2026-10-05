@@ -29,7 +29,7 @@ import { SubmittalTheirCallPanel } from './SubmittalTheirCallPanel'
 import { SpotlightTour, spotlightTourStepsPresent, type SpotlightTourStep } from '../SpotlightTour'
 import { robotSeatState, staleAsk, type RobotSeatRow, type RobotSeatState } from '../../lib/submittals/robotOffer'
 import { SeeWhatTheGcSees } from './SeeWhatTheGcSees'
-import { describeForReviewer } from '../../lib/submittals/seeWhatTheySee'
+import { describeForReviewer, isRoomClosed, linkShowsRevOf } from '../../lib/submittals/seeWhatTheySee'
 import { SubmittalJourneyStrip } from './SubmittalJourneyStrip'
 import { SubmittalProcurementPanel } from './SubmittalProcurementPanel'
 import { PlugInScheduleModal } from './PlugInScheduleModal'
@@ -2130,6 +2130,8 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     else toggleSection(key)
   }
   const isNewest = selectedRev != null && newestRev != null && selectedRev.id === newestRev.id
+  // v2.4593 · what the room's link shows now (the newest shared revision; a closed room shows only that), for the line under the rows and the window.
+  const link = { linkShowsRev: linkShowsRevOf(revisions), roomClosed: isRoomClosed(room) }
   /** The number the next draft takes: one past the newest revision, whichever one is on screen. */
   const nextRevNumber = (newestRev?.rev_number ?? selectedRev?.rev_number ?? 0) + 1
 
@@ -2370,7 +2372,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                 </div>
                 {isNewest ? (() => {
                   // v2.4174 · see what they see, Layer 1 (#62): the reviewer's own headline and subline, from the rows as they stand — under the rows, where they are edited.
-                  const r = describeForReviewer(items, asRevisionStatus(selectedRev.status) !== 'draft')
+                  const r = describeForReviewer(items, { rev: selectedRev.rev_number, ...link })
                   return (
                     <p style={{ margin: '0.45rem 0 0', fontSize: '0.8125rem', color: 'var(--text-base)', lineHeight: 1.45 }} data-testid="reviewer-line">
                       <b style={{ color: 'var(--text-strong)' }}>{r.lead}</b> {r.line} <span style={smallMuted}>{r.note}</span>
@@ -2698,7 +2700,9 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
         items={items}
         parts={parts}
         revNumber={selectedRev.rev_number}
-        shared={asRevisionStatus(selectedRev.status) !== 'draft'}
+        revisions={revisions}
+        link={link}
+        roomToken={room?.token ?? null}
         hasPackage={Boolean(selectedRev.package_path)}
         company={{ name: companyName, tagline: reportSettings.companyTagline, phone: reportSettings.officePhone }}
         bid={{ label: bidDisplayName(selectedBid) || 'Bid', projectName: selectedBid.project_name ?? null, address: selectedBid.address ?? null }}
