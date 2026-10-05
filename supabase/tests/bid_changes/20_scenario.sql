@@ -71,9 +71,11 @@ GRANT EXECUTE ON FUNCTION bct.visible_as(uuid, uuid) TO authenticated;
 GRANT USAGE ON SCHEMA bct TO authenticated;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA bct TO authenticated;
 CREATE TEMP TABLE mark (id bigint) ON COMMIT DROP;
+CREATE TEMP TABLE start (id bigint) ON COMMIT DROP;
 CREATE TEMP TABLE ids (k text PRIMARY KEY, id uuid) ON COMMIT DROP;
-GRANT ALL ON mark, ids TO authenticated;
+GRANT ALL ON mark, start, ids TO authenticated;
 INSERT INTO mark SELECT bct.last();
+INSERT INTO start SELECT bct.last();
 
 -- The trigger is on the seventeen tables, and on bids only for the columns the ledger keeps.
 SELECT bct.same('a trigger on each of the seventeen tables',
@@ -185,6 +187,29 @@ SELECT bct.same('labor, costs, SOV, schedule, version',
   E'cost_estimates insert -\ncost_estimate_labor_rows insert Lav-1\ncost_estimate_permit_rows insert City permit\n' ||
   E'cost_estimate_labor_rows update Lav-1 rough_in_hrs_per_unit\ncost_estimates update - labor_rate\n' ||
   E'bid_sov_lines insert Underground\nbid_payment_schedule_rows insert At rough-in\nbid_versions update Base bid name');
+UPDATE mark SET id = bct.last();
+
+-- 5b · The other four direct-cost tables: each reaches the bid through its cost estimate and is
+-- named by its note, on an insert, an update and a delete. A wrong branch here is silent in the
+-- trigger (a warning, no row), so each is written and read back.
+DO $$
+DECLARE t text; v uuid;
+BEGIN
+  FOREACH t IN ARRAY ARRAY['cost_estimate_equipment_rows', 'cost_estimate_other_rows', 'cost_estimate_subcontractor_rows', 'cost_estimate_waste_rows'] LOOP
+    EXECUTE format('INSERT INTO public.%I (cost_estimate_id, note, rough_in, top_out, trim_set, sequence_order) VALUES (%L, %L, 100, 0, 0, 1) RETURNING id',
+      t, '00000000-0000-0000-0000-00000000c731', 'Line in ' || t) INTO v;
+    EXECUTE format('UPDATE public.%I SET rough_in = 150 WHERE id = %L', t, v);
+    EXECUTE format('DELETE FROM public.%I WHERE id = %L', t, v);
+  END LOOP;
+END $$;
+SELECT bct.same('equipment, other, subcontractor, waste: each recorded, named, under the bid',
+  bct.log('00000000-0000-0000-0000-00000000c7d1', (SELECT id FROM mark)),
+  (SELECT string_agg(t || ' insert Line in ' || t || E'\n' || t || ' update Line in ' || t || E' rough_in\n' || t || ' delete Line in ' || t, E'\n' ORDER BY o)
+     FROM unnest(ARRAY['cost_estimate_equipment_rows', 'cost_estimate_other_rows', 'cost_estimate_subcontractor_rows', 'cost_estimate_waste_rows']) WITH ORDINALITY AS x(t, o)));
+SELECT bct.same('equipment, other, subcontractor, waste: twelve rows, all under the bid, none written elsewhere',
+  (SELECT count(*) FILTER (WHERE bid_id = '00000000-0000-0000-0000-00000000c7d1')::text || ' ' || count(*) FILTER (WHERE bid_id <> '00000000-0000-0000-0000-00000000c7d1')::text
+     FROM bct.rows_after((SELECT id FROM mark))),
+  '12 0');
 UPDATE mark SET id = bct.last();
 
 -- 6 · SUMP removed: its row, and everything its delete took with it, each still named SUMP (the
@@ -311,6 +336,12 @@ SELECT set_config('request.jwt.claims', '', true);
 SELECT set_config('request.jwt.claim.sub', '', true);
 UPDATE public.bids SET notes = 'Set by a job' WHERE id = '00000000-0000-0000-0000-00000000c7d1';
 SELECT bct.same('no person: no author', (SELECT COALESCE(changed_by::text, 'none') FROM bct.rows_after((SELECT id FROM mark))), 'none');
+
+-- 15 · Every table the trigger is on recorded at least one row in this scenario.
+SELECT bct.same('every one of the seventeen tables recorded something',
+  (SELECT COALESCE(string_agg(t, ', ' ORDER BY t), '(none missing)') FROM unnest(public.bid_changes_tables()) AS t
+    WHERE NOT EXISTS (SELECT 1 FROM bct.rows_after((SELECT id FROM start)) c WHERE c.table_name = t)),
+  '(none missing)');
 
 SELECT 'bid_changes PASSED' AS result;
 ROLLBACK;

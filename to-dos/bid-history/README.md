@@ -241,7 +241,7 @@ Planned 2026-09-30. **PR 1 built 2026-10-05 as v2.4598**, directed and reviewed 
 migrations (`20261005215057_bid_changes`, then `20261005215059_bid_changes_triggers`, the
 seventeen triggers alone so their write locks are held for nothing else), the CI test
 `bidChangesCapture.test.ts`, and the full-schema bed `npm run test:pg:bid-changes`. It ran on a
-scratch Postgres 15 with stub tables (30 assertions; the bed itself needs docker and has not run);
+scratch Postgres 15 with stub tables (33 assertions; the bed itself needs docker and has not run, and the PR merges only after it runs green);
 not pushed. What the build settled, beyond the decision above (the migration docs hold the detail):
 
 - A row trigger, not statement triggers: measured, the statement design still passes 64

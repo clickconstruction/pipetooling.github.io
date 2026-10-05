@@ -18,6 +18,17 @@ Bid history, PR 1, file 2 of 2 (punch list #73): attaches `record_bid_change()` 
           (SELECT max(changed_at) FROM public.bid_changes) AS last_change;
    ```
 
+4. **For the first hour, watch the database log for `record_bid_change on`** (Supabase → Logs → Postgres). A caught failure leaves a warning and no row, and the warning is its only sign. Any warning there means a table is not recording, and the warning names the table and the error.
+5. **A day after the push, list the seventeen tables with their ledger rows so far.** A zero on a table people wrote that day means it is not recording. The direct-cost tables are written rarely, so a zero there needs a check on a ZZ test bid before it means anything.
+
+   ```sql
+   SELECT t.table_name, count(c.id) AS rows_since_push, max(c.changed_at) AS last_row
+   FROM unnest(public.bid_changes_tables()) AS t(table_name)
+   LEFT JOIN public.bid_changes c ON c.table_name = t.table_name
+   GROUP BY t.table_name
+   ORDER BY count(c.id), t.table_name;
+   ```
+
 ## Can a trigger error reach the person saving?
 
 Not from the ledger's own work: the function catches every error inside it (`WHEN OTHERS`) and raises a warning, which PostgREST does not pass on. The scratch scenario renames `bid_changes`, then makes every write to it fail. An insert, an update and a delete that cascades all save. Two things the guard cannot catch, by Postgres design:
