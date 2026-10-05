@@ -4,7 +4,7 @@
  * seam pinned. It draws what it is handed and reports each press; nothing is written here.
  */
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, screen, within } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { SubmittalSourcesPanel, type SubmittalSourcesPanelProps } from './SubmittalSourcesPanel'
 import type { SubmittalTaskRow } from '../../lib/submittals/robotTasks'
@@ -48,6 +48,19 @@ describe('SubmittalSourcesPanel', () => {
     mount({ picks: 1, onOpenCompare: undefined })
     expect(screen.getByTestId('source-picks').textContent).toContain('1 picked line')
     expect(screen.queryByRole('button', { name: 'Open the compare' })).toBeNull()
+  })
+
+  it('a schedule with nothing picked yet offers the door to Pricing on the schedule card; picks or no schedule, it is gone', () => {
+    const on = mount({ scheduleTags: 5 })
+    fireEvent.click(screen.getByTestId('open-compare-from-schedule'))
+    expect(on.onOpenCompare).toHaveBeenCalledTimes(1)
+    expect(screen.getByTestId('open-compare-from-schedule').textContent).toBe('Pick the products on Pricing')
+    cleanup()
+    mount({ scheduleTags: 5, picks: 2 })
+    expect(screen.queryByTestId('open-compare-from-schedule')).toBeNull()
+    cleanup()
+    mount()
+    expect(screen.queryByTestId('open-compare-from-schedule')).toBeNull()
   })
 
   it('a queued ask says so in the schedule card and Cancel reports its task', () => {
