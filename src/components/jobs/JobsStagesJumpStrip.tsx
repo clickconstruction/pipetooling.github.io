@@ -13,6 +13,7 @@
  * a side road, not the step after Billed, so its arrow points back the way a job leaves it.
  */
 import { Fragment, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { StagesGavelGlyph } from './StagesRowActionButtons'
 import { stageBarItems, stageColorVar, stagesActiveSection, type StageBarKey } from '../../lib/jobs/stagesStageBar'
 
 export type JumpStripSection = StageBarKey
@@ -29,6 +30,7 @@ export function JobsStagesJumpStrip({
   sectionElementId,
   leading,
   trailing,
+  tail,
 }: {
   counts: JumpStripCounts
   /** Abbreviated dollars per section, without the "$". */
@@ -41,6 +43,8 @@ export function JobsStagesJumpStrip({
   leading?: ReactNode
   /** The way back from the Recently added view, at the bar's right end. */
   trailing?: ReactNode
+  /** Drawn right beside the last stage (v2.4520: the Lien desk shortcut). */
+  tail?: ReactNode
 }) {
   const items = stageBarItems(counts, totals)
   const keys = items.map((i) => i.key).join(',')
@@ -86,13 +90,8 @@ export function JobsStagesJumpStrip({
       <nav aria-label="Pipeline stages" className="stagesStageSegs">
         {items.map((item, index) => {
           const on = item.key === active
-          return (
-            <Fragment key={item.key}>
-            {index > 0 ? (
-              <span className="stagesStageArrow" aria-hidden>
-                {item.key === 'collections' ? '←' : '→'}
-              </span>
-            ) : null}
+          const withTail = tail != null && index === items.length - 1
+          const seg = (
             <button
               type="button"
               onClick={() => onFocusSection(item.key)}
@@ -109,12 +108,52 @@ export function JobsStagesJumpStrip({
                 {item.count} · <span className="stagesMoney">${item.total}</span>
               </span>
             </button>
+          )
+          return (
+            <Fragment key={item.key}>
+            {index > 0 ? (
+              <span className="stagesStageArrow" aria-hidden>
+                {item.key === 'collections' ? '←' : '→'}
+              </span>
+            ) : null}
+            {withTail ? (
+              <span className={`stagesStageSegTail${item.key === 'billed' ? ' isWide' : ''}`}>
+                {seg}
+                {tail}
+              </span>
+            ) : (
+              seg
+            )}
             </Fragment>
           )
         })}
       </nav>
       {trailing ? <div className="stagesStageBarEnd isTrailing">{trailing}</div> : null}
     </div>
+  )
+}
+
+/**
+ * The Lien desk in one click (v2.4520): the gavel beside the last stage, with the count of
+ * notices to work while there are any. The desk keeps its row in the ☰ menu.
+ */
+export function StagesLienDeskShortcut({ count, onOpen }: { count: number | null; onOpen: () => void }) {
+  const due = typeof count === 'number' && count > 0 ? count : 0
+  return (
+    <button
+      type="button"
+      className="stagesLienDeskShortcut"
+      onClick={onOpen}
+      title="Lien desk: lien notices due per unpaid work month. Draft, approve, send"
+      aria-label={due > 0 ? `Open the Lien desk, ${due} to work` : 'Open the Lien desk'}
+    >
+      <StagesGavelGlyph size={17} />
+      {due > 0 ? (
+        <span className="stagesLienDeskShortcutBadge" aria-hidden>
+          {due}
+        </span>
+      ) : null}
+    </button>
   )
 }
 
