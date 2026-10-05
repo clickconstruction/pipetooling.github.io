@@ -79,26 +79,32 @@ Bids page. Off, the tabs are as today. On: every editable number shows its past 
 text; a side pane lists everything that happened on the bid, newest first, grouped into actions; any
 old value or removed row has **Put back**.
 
-**Capture — one table, one trigger, no client.** `bid_changes`: `bid_id`, `table_name`, `record_id`,
-`count_row_id` (when the row hangs off one), `op` (insert · update · delete), `changed` (the columns
-that changed), `old` and `new` (those columns only, jsonb), `label` (the row's human name, computed
-at write time: the count row's fixture, the part's name, the labor row's fixture, the bid column's
-word — so the reader never joins back to a row that may be gone), `changed_by` (`auth.uid()`; null
-for a robot or the system), `changed_at`, `action` (the request's tag, see captions), `by_app`
-(true when the write was the app's own doing, not a person's press). One generic
-`AFTER INSERT OR UPDATE OR DELETE` trigger, `record_bid_change()`, attached to the tables that hold
-what people type: `bids` (a chosen column list: value, dates, notes, outcome, the selected books,
-the alternate tags — not `updated_at` and not the robot columns), `bids_count_rows`,
+**Capture — one table, one trigger, no client.** `bid_changes`: `bid_id`, `bid_version_id` (the
+version the row belongs to, so the reader's "an earlier Lav-1" fallback stays inside one version),
+`table_name`, `record_id`, `count_row_id` (when the row hangs off one; a count row's own id),
+`op` (insert · update · delete), `changed` (the columns that changed), `old_values` and
+`new_values` (those columns only, jsonb), `label` (the row's human name, computed at write time:
+the count row's fixture, the part's name, the labor row's fixture; none for a `bids` row, since one
+row can carry several columns and the reader words each — so the reader never joins back to a row
+that may be gone), `changed_by` (`auth.uid()`; null for a robot or the system), `changed_at`,
+`action` (the request's tag, see captions), `by_app` (true when the write was the app's own doing,
+not a person's press). One generic `AFTER INSERT OR UPDATE OR DELETE` trigger,
+`record_bid_change()`, attached to the seventeen tables that hold what people type: `bids` (48
+columns: everything Edit Bid saves and the Pricing, Cover Letter and SOV picks — not `updated_at`,
+the stamps or the robot columns — under `UPDATE OF`), `bids_count_rows`,
 `bid_count_row_custom_prices`, `bid_count_row_custom_costs`, `bid_pricing_assignments`,
-`bids_takeoff_rough_part_lines`, `bids_takeoff_template_mappings`, `bid_takeoff_stage_splits`,
-`cost_estimates`, `cost_estimate_labor_rows` and the five direct-cost row tables, `bid_sov_lines`,
-`bid_payment_schedule_rows`, `bid_versions`. It is the contract-text history's pattern
+`bids_takeoff_rough_part_lines`, `bid_takeoff_stage_splits`, `cost_estimates`,
+`cost_estimate_labor_rows` and the five direct-cost row tables, `bid_sov_lines`,
+`bid_payment_schedule_rows`, `bid_versions`. Not `bids_takeoff_template_mappings`: it is By
+Stage's, unwritten since v2.4396. It is the contract-text history's pattern
 (`20260928050129`): SECURITY DEFINER, writes only when something actually changed
 (`IS DISTINCT FROM`), swallows its own errors so a save can never fail. Deletes are recorded too
 (old values only), so history outlives the archive's 90-day purge; the archive stays the thing a
-restore reads. Volume is small — about 500 bid-table writes a week across every bid — so keep three
-years, purged by `pg_cron` like the archive. RLS: read for whoever can open the bid (office roles,
-and an estimator within her service types, the same rule as `bidsTabOpenFor`); no client writes.
+restore reads. The volume was guessed at about 500 bid-table writes a week and never checked
+(Wendi's bid alone had 47 deletes in one day, and a copy writes a row per copied row), so plan for
+hundreds of thousands of rows over three years, purged by `pg_cron` like the archive. RLS: read for
+whoever can read the bid under their own `bids` policies (an estimator every bid, a primary only
+theirs), and a dev after it is deleted; no client writes.
 
 **Actions, not rows.** Each REST call is its own transaction and the import inserts one row at a
 time, so a transaction id cannot group a burst. The reader groups instead: same person, same bid,
@@ -183,7 +189,7 @@ numbers people type are enough); per-tab put-back code (one RPC does it for ever
 | 0a | Cover Letter Inclusions / Exclusions / Terms saved per bid | S |
 | 0b | Labor sync keeps typed hours through a rename; unmatched band | S |
 | 0c | `bid_count_row_custom_costs` FK + archive coverage for three tables | XS (migration) |
-| 1 | `bid_changes` + `record_bid_change()` on the seventeen tables, RLS, purge, `docs/migrations` | S — ship first |
+| 1 | `bid_changes` + `record_bid_change()` on the seventeen tables, RLS, purge, `docs/migrations` — built as v2.4598 (two migrations: the ledger, then the triggers alone) | S — ship first |
 | 1b | The request tag on the bulk paths and the app's own writes (`x-bid-action`), read by the trigger | S — with or right after PR 1 |
 | 2 | `list_bid_history` + `bidHistory.ts` + the pane, read-only, with the archive's removed rows | M |
 | 3 | The History pill and the under-cell lines on the four tabs (`latest_bid_cell_history`, the label fallback) | M |
@@ -231,5 +237,22 @@ waits a day for her answer, while PR 1 ships regardless.
 
 ## Where it stands
 
-Planned 2026-09-30. Nothing built. Owner's calls open (front matter). PR 1 needs no call and no
-answer from Wendi; PR 0 waits a day for hers, so the right loss gets fixed.
+Planned 2026-09-30. **PR 1 built 2026-10-05 as v2.4598**, directed and reviewed by PUNCHLIST: two
+migrations (`20261005215057_bid_changes`, then `20261005215059_bid_changes_triggers`, the
+seventeen triggers alone so their write locks are held for nothing else), the CI test
+`bidChangesCapture.test.ts`, and the full-schema bed `npm run test:pg:bid-changes`. It ran on a
+scratch Postgres 15 with stub tables (30 assertions; the bed itself needs docker and has not run);
+not pushed. What the build settled, beyond the decision above (the migration docs hold the detail):
+
+- A row trigger, not statement triggers: measured, the statement design still passes 64
+  subtransactions on a copy and is 3–7 times slower per single-row save; concurrent reads showed
+  no cost from the subtransactions.
+- A child removed with its parent takes the parent's fixture, version or bid from the delete
+  archive's snapshot; a row is never written without its bid; a deleted bid writes one row.
+- `bid_id` has no foreign key: a deleted bid's history stays for a dev and returns if the bid is
+  put back.
+- Not captured yet, and typed on a bid: `bid_sov_stage_overrides` (keyed `(bid_id, stage)`, no
+  `id`) and the entries of a bid's own price book. PR 1b also needs a transaction-local mark for
+  the app's writes made inside a person's request (the labor minted on send, the copies).
+
+Owner's calls open (front matter). PR 0 waits for Wendi's answer, so the right loss gets fixed.

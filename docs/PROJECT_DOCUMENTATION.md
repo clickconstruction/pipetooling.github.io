@@ -2709,7 +2709,7 @@ The page behind any modal, sheet, or dialog is frozen **app-wide without per-mod
 ### Database Considerations
 - **Indexes**: Review query patterns and add indexes for performance
 - **Archiving**: Implemented — `deleted_records` archives deletes with restore RPCs (six migrations 2026-07-16/17: `20260716120000_deleted_records_archive.sql` through `20260717210000_deleted_records_archive_people.sql`); see the Deleted-records section under Key Features
-- **Audit Trail**: Partially implemented — `deleted_records` (who deleted what, when, with payload), `bulk_deletion_alerts` (`20260717120000`), and `claim_dev_attempts` (claim-dev attempt audit, `20260717150000`); plus the long-standing `project_workflow_step_actions` action history
+- **Audit Trail**: Partially implemented — `deleted_records` (who deleted what, when, with payload), `bulk_deletion_alerts` (`20260717120000`), `claim_dev_attempts` (claim-dev attempt audit, `20260717150000`), and `bid_changes` (every value entered on a bid, who and when, `20261005215057`; nothing reads it until the History pane); plus the long-standing `project_workflow_step_actions` action history
 
 ### Security Considerations
 - **Admin Code**: DEV_PROMOTION_CODE Supabase secret (claim-dev Edge Function) — break-glass only since `20260717150000_claim_dev_break_glass.sql` (refused while a usable dev exists; audited)
