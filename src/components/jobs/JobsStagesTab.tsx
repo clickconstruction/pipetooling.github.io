@@ -4497,7 +4497,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         signerPhoneFor={lienDeskSignerPhoneFor}
         initialJobId={lienDesk?.jobId ?? null}
         // The Calendar is the desk's landing (v2.4101); a door that names a job lands on its notice as before.
-        initialKind={lienDesk?.kind ?? (lienDesk?.jobId ? 'notice' : 'calendar')}
+        // A plain open lands on Next up (punch list #82); a door that names a job or a pile keeps landing on Notices.
+        initialKind={lienDesk?.kind ?? (lienDesk?.jobId || lienDesk?.pile ? 'notice' : 'next')}
         calendarRows={lienCalendarRows}
         onCalendarChanged={(what) => {
           // The pen (v2.4153): a promise re-reads the pay dates; a kind re-reads the clocks; the desk's own queue follows either.

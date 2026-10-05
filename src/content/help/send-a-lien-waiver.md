@@ -26,7 +26,7 @@ The title reads **Send a lien waiver · Texas R & A**. The chips read {{chip:blu
 
 ## If the app read the payment wrong
 
-The app guesses that a payment has settled once it is five days old. It cannot see the sub's bank. Two tick boxes let you correct it.
+The app guesses that a payment has settled once it is seven days old. It cannot see the sub's bank. Two tick boxes let you correct it.
 
 - **The money has landed in the sub's account** switches between conditional and unconditional.
 - **This is the final payment on the sheet** switches between progress and final.

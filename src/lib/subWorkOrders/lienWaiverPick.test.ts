@@ -48,9 +48,11 @@ describe('guessLienWaiver', () => {
   })
 
   it(`a payment ${LIEN_WAIVER_SETTLE_DAYS}+ days old is presumed settled → unconditional`, () => {
-    const g = guessLienWaiver({ payments: [pay(17752.65, '2026-09-01')], balance: 22247.35, todayYmd: TODAY })
+    const g = guessLienWaiver({ payments: [pay(17752.65, '2026-08-31')], balance: 22247.35, todayYmd: TODAY })
     expect(g.kind).toBe('unconditional_progress')
-    expect(g.reasons[0]).toMatch(/6 days ago/)
+    expect(g.reasons[0]).toMatch(/7 days ago/)
+    // Six days is not enough (it was five until 2026-10-05).
+    expect(guessLienWaiver({ payments: [pay(17752.65, '2026-09-01')], balance: 22247.35, todayYmd: TODAY }).settled).toBe(false)
   })
 
   it('a zero balance after a payment → final; the newest positive payment is the subject', () => {
@@ -99,12 +101,12 @@ describe('lienWaiverMoney', () => {
 
 describe('a payment with no payment day keeps its Central day (v2.4469)', () => {
   it('counts the settle days from the day it was recorded, in the company calendar', () => {
-    // 00:30 UTC on Sep 3 is 7:30 pm CDT on Sep 2: 5 days old on Sep 7, so presumed settled.
-    const evening = guessLienWaiver({ payments: [{ amount: 4500, payment_date: null, created_at: '2026-09-03T00:30:00Z' }], balance: 1000, todayYmd: TODAY })
+    // 00:30 UTC on Sep 1 is 7:30 pm CDT on Aug 31: 7 days old on Sep 7, so presumed settled.
+    const evening = guessLienWaiver({ payments: [{ amount: 4500, payment_date: null, created_at: '2026-09-01T00:30:00Z' }], balance: 1000, todayYmd: TODAY })
     expect(evening.settled).toBe(true)
-    expect(evening.reasons[0]).toMatch(/5 days ago/)
+    expect(evening.reasons[0]).toMatch(/7 days ago/)
     // 00:30 UTC on Dec 2 is 6:30 pm CST on Dec 1.
-    expect(guessLienWaiver({ payments: [{ amount: 4500, payment_date: null, created_at: '2026-12-02T00:30:00+00:00' }], balance: 1000, todayYmd: '2026-12-06' }).settled).toBe(true)
-    expect(guessLienWaiver({ payments: [{ amount: 4500, payment_date: null, created_at: '2026-09-03T12:00:00Z' }], balance: 1000, todayYmd: TODAY }).settled).toBe(false)
+    expect(guessLienWaiver({ payments: [{ amount: 4500, payment_date: null, created_at: '2026-12-02T00:30:00+00:00' }], balance: 1000, todayYmd: '2026-12-08' }).settled).toBe(true)
+    expect(guessLienWaiver({ payments: [{ amount: 4500, payment_date: null, created_at: '2026-09-01T12:00:00Z' }], balance: 1000, todayYmd: TODAY }).settled).toBe(false)
   })
 })
