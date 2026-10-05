@@ -10,19 +10,20 @@ const of = (state: GcState, id: string) => {
 describe('people to call on a job (the owner, 2026-10-04)', () => {
   it('counts people, not lines: each once, with every reason, worst first', () => {
     const boerne = of(initialGcState(), 'boerne')
-    expect([boerne.count, boerne.late, boerne.tone]).toEqual([6, 2, 'red'])
+    expect([boerne.count, boerne.late, boerne.tone]).toEqual([6, 3, 'red'])
+    // Voltage is late too: one call about the addendum also covers its insurance, which ran out.
     expect(boerne.people.map((p) => `${p.company} ${p.tone}`)).toEqual([
       'Hillside Excavation red',
       'Bexar Steel Erectors red',
+      'Voltage Brothers red',
       'Tejas Power amber',
       'Marsh & Vale Architects amber',
       'Cool Breeze Mechanical grey',
-      'Voltage Brothers grey',
     ])
     // One call to Greg covers his late quote and the addendum.
     expect(boerne.people[0]?.reasons.map((r) => r.text)).toEqual(['Promised a quote by Wed Sep 30. That was 2 days ago.', 'Has not opened Addendum 1.'])
     expect(boerne.people[0]?.last).toBe('Sep 26 · Robert called: Greg is busy on a subdivision. Says he will price it by Wednesday.')
-    expect(boerne.people[3]).toMatchObject({ kind: 'architect', tag: 'architect', reasons: [{ text: '2 questions are waiting on them, the oldest 5 days.', tone: 'amber' }] })
+    expect(boerne.people[4]).toMatchObject({ kind: 'architect', tag: 'architect', reasons: [{ text: '2 questions are waiting on them, the oldest 5 days.', tone: 'amber' }] })
   })
 
   it('after the award: the statement of work to sign, a waiver owed, insurance that ran out; a draft of ours is not a call', () => {
@@ -55,12 +56,12 @@ describe("Work the list for one job (the owner, 2026-10-04)", () => {
     const boerne = state.projects.find((p) => p.id === 'boerne')
     if (!boerne) throw new Error('no boerne')
     const people = projectFollowPeople(state, boerne)
-    expect(people.map((p) => p.partner.id)).toEqual(['hillside', 'bexar', 'tejas', 'customer:marshvale', 'coolbreeze', 'voltage'])
+    expect(people.map((p) => p.partner.id)).toEqual(['hillside', 'bexar', 'voltage', 'tejas', 'customer:marshvale', 'coolbreeze'])
     expect(people[0]?.items.map((i) => [i.kind, i.due])).toEqual([['quote', true], ['plans', true]])
-    expect(people[3]?.items.map((i) => i.kind)).toEqual(['answer'])
-    expect(people[3]?.reach.name).toBe('Jonah Vale')
-    // Voltage's insurance is a company matter, not this job's: its sheet item stays off here.
-    expect(people[5]?.items.map((i) => i.kind)).toEqual(['plans'])
+    expect(people[4]?.items.map((i) => i.kind)).toEqual(['answer'])
+    expect(people[4]?.reach.name).toBe('Jonah Vale')
+    // One call covers both: the addendum, and the insurance that ran out.
+    expect(people[2]?.items.map((i) => i.kind).sort()).toEqual(['insurance', 'plans'])
     expect(people.every((p) => p.items.every((i) => !i.ask || i.ask.projectId === 'boerne'))).toBe(true)
   })
 

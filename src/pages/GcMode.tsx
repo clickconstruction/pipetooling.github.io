@@ -40,6 +40,7 @@ import {
   boardCustomerElementId,
   projectPeople,
   projectFollowPeople,
+  allPeople,
   type ProjectPeopleSummary,
   type ProjectPerson,
   boardSectionCounts,
@@ -49,14 +50,12 @@ import {
   customerMoneyWords,
   currentRev,
   daysUntil,
-  followUps,
   money,
   lostWords,
   planLabel,
   priceToOwner,
   preBidMinutesLine,
   preBidWords,
-  promisesToChase,
   proposalUncostedWords,
   RING_COLORS,
   proposalTotals,
@@ -217,9 +216,8 @@ export default function GcMode() {
   const customer = state.customers.find((c) => c.id === customerId) ?? null
   const companyPartner = state.partners.find((x) => x.id === companyAt?.partnerId) ?? null
   const mapProject = state.projects.find((p) => p.id === mapFor?.projectId) ?? null
-  const toChase = followUps(state).filter((f) => f.why !== 'waiting')
-  // The badge also counts a promise whose day came and insurance that ran out (question 8).
-  const chaseCount = toChase.length + promisesToChase(state)
+  // Everyone we are waiting on, each once across every job: the board rows' sum (the owner, 2026-10-04: "make them match").
+  const chaseCount = allPeople(state).count
 
   // Who we are waiting on for each job (the owner, 2026-10-04): the row's one count, and the
   // Building lane's Follow up sheet behind each person's Call and Follow up.
