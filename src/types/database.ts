@@ -10671,6 +10671,7 @@ export type Database = {
           id: string
           job_id: string
           lines: Json
+          name: string
           period_to: string | null
           retainage_held: number
           retainage_pct: number
@@ -10694,6 +10695,7 @@ export type Database = {
           id?: string
           job_id: string
           lines?: Json
+          name?: string
           period_to?: string | null
           retainage_held?: number
           retainage_pct?: number
@@ -10717,6 +10719,7 @@ export type Database = {
           id?: string
           job_id?: string
           lines?: Json
+          name?: string
           period_to?: string | null
           retainage_held?: number
           retainage_pct?: number
