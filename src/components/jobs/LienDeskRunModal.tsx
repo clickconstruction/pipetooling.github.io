@@ -31,6 +31,7 @@ export default function LienDeskRunModal({
   onClose,
   onRecorded,
   onPrinted,
+  undo,
 }: {
   notices: RunNotice[]
   issuer: PhysicalInvoiceIssuer | null
@@ -41,6 +42,11 @@ export default function LienDeskRunModal({
   onRecorded: () => void
   /** The packet printed (v2.4119): the desk stamps these items printed so they sit in "In the mail · tracking owed" until recorded. */
   onPrinted?: (itemIds: string[]) => Promise<void> | void
+  /**
+   * The run was started a moment ago by one click (Put a GC on notice's Approve all, v2.4541):
+   * a strip under the title offers to undo that click. The opener owns what undo does.
+   */
+  undo?: { words: string; busy: boolean; onUndo: () => void }
 }) {
   const { showToast } = useToastContext()
   const [notices, setNotices] = useState<RunNotice[]>(initial)
@@ -193,6 +199,15 @@ export default function LienDeskRunModal({
           </div>
           <button type="button" onClick={onClose} aria-label="Close" style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)', padding: 4 }}>×</button>
         </div>
+        {undo ? (
+          <div data-testid="run-undo" role="status" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', padding: '0.5rem 1.25rem', borderBottom: '1px solid var(--border)', borderLeft: '4px solid #f59e0b', background: 'var(--bg-amber-tint)', fontSize: '0.8125rem' }}>
+            <span aria-hidden style={{ fontSize: '1rem', lineHeight: 1 }}>↶</span>
+            <span style={{ flex: '1 1 16rem', minWidth: 0 }}>{undo.words}</span>
+            <button type="button" onClick={undo.onUndo} disabled={undo.busy || busy} style={{ padding: '4px 11px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, whiteSpace: 'nowrap', cursor: undo.busy || busy ? 'not-allowed' : 'pointer' }}>
+              {undo.busy ? 'Undoing…' : 'Undo the approval…'}
+            </button>
+          </div>
+        ) : null}
         <div data-testid="run-steps" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', padding: '0.45rem 1.25rem', borderBottom: '1px solid var(--border)', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
           <span style={{ fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Steps</span>
           {[

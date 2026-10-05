@@ -26,7 +26,7 @@ import {
   gcNoticeFormClaim,
   type CoverLetterKind,
 } from '../../lib/jobs/gcOnNotice'
-import { approveLienDeskItem, saveLienDeskDraft, sendLienDeskItemOnWord, setCustomerLienNoticePolicy, submitLienDeskItem } from '../../lib/jobs/lienDeskIo'
+import { approveLienDeskItem, saveLienDeskDraft, sendLienDeskItemOnWord, setCustomerLienNoticePolicy, submitLienDeskItem, undoLienDeskApprovals } from '../../lib/jobs/lienDeskIo'
 import { leaderPresent, type LienWordChannel } from '../../lib/jobs/lienWord'
 import { LienWordRecordRow } from './LienWordRecordRow'
 import { buildLienNoticeFieldsForJob, DEFAULT_CLAIMANT_NAME, homesteadStatementApplies } from '../../lib/jobs/lienNoticeDraft'
@@ -68,7 +68,9 @@ import { gcNoticePreviewableJobs } from '../../lib/jobs/gcNoticePreview'
 import { GcNoticeStepBar, GcNoticeStepPill, GcNoticeStepSection } from './GcNoticeStepShell'
 import { useGcNoticeStepSpy } from '../../hooks/useGcNoticeStepSpy'
 import GcNoticeJobsBand from './GcNoticeJobsBand'
-import { shareBillsWithOwnersOfJobs } from '../../lib/jobs/ownerBillShareIo'
+import { shareBillsWithOwnersOfJobs, unshareBillsTurnedOn } from '../../lib/jobs/ownerBillShareIo'
+import { gcRunReceiptHasUndo, gcRunUndoMessage, gcRunUndoStripWords, type GcRunReceipt, type GcRunTermsBefore } from '../../lib/jobs/gcNoticeRunUndo'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 
 /**
  * Put a GC on notice (v2.3470, PR 1 of `to-dos/gc-on-notice/`).
@@ -189,6 +191,7 @@ function propertyFactsFor(job: { customer_address_id?: string | null } | undefin
 
 export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRole, authUserId, authName, issuer, signerNameFor, signerPhoneFor, onOpenEditJob, onOpenJob, onChanged, rereadKey = 0, onOpenCapableList }: GcOnNoticeModalProps) {
   const { showToast } = useToastContext()
+  const confirmDialog = useConfirmDialog()
   const isMobile = useIsMobile()
   /** v2.4065: the title-bar toggle — the window fills the screen above the app's bottom bar, and remembers the choice. */
   const { fullScreen, toggle: toggleFullScreen, showToggle } = useModalFullScreen('gc-on-notice')
@@ -227,6 +230,9 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
   const [busy, setBusy] = useState(false)
   const [runOpen, setRunOpen] = useState(false)
   const runPendingRef = useRef(false)
+  // What the last Approve all changed, kept for this sitting so the run window can offer to undo it (v2.4541).
+  const [runReceipt, setRunReceipt] = useState<GcRunReceipt | null>(null)
+  const [undoBusy, setUndoBusy] = useState(false)
   const cancelRef = useRef(false)
   // The step bar (v2.3665): which step is in view, and Step 1 folded once every owner is on the job (null — the app decides).
   const scrollRef = useRef<HTMLDivElement | null>(null)
@@ -264,6 +270,7 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
     setTyped({})
     setWordOpen(false)
     setRunOpen(false)
+    setRunReceipt(null)
     setOwnersOpenChoice(null)
     setKindEditing(null)
     setPreview(null)
@@ -448,6 +455,8 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
     if (ready.length === 0) return
     setBusy(true)
     let done = 0
+    // The receipt of this click (v2.4541): filled as each write lands, so a click that stops halfway can still be undone.
+    const receipt: GcRunReceipt = { gcId: gc.id, gcName: gc.name, itemIds: [], rule: null, terms: null, owners: null, legal: null }
     try {
       for (const j of ready) {
         const job = data.desk.jobsById[j.jobId]
@@ -478,6 +487,7 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
         }
         // Counsel's letter everywhere (v2.3828): unticked means the form alone — there is no standard note any more.
         const id = await saveLienDeskDraft({ itemId: j.item?.id ?? null, jobId: j.jobId, months, fields, coverNote: includeLetter && jobLetter.trim().length > 0, userId: authUserId })
+        receipt.itemIds.push(id)
         // A claim over the app's balance goes to the leader whatever the mode: never a remembered word (v2.3682's gate, kept here) —
         // but a leader standing at the desk or typing it in (v2.3813) is the leader deciding it.
         if (mode === 'leader') await approveLienDeskItem(id)
@@ -491,31 +501,44 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
         const consequences: string[] = []
         if (ticks.rule && gc.policy !== 'send') {
           await setCustomerLienNoticePolicy(gc.id, 'send', batchReason)
+          receipt.rule = { from: gc.policy === 'hold' ? 'hold' : 'ask' }
           consequences.push('standing rule → send without asking')
         }
         if (ticks.terms && data.gcTerms !== 'winding_down') {
+          // The terms as they stand, read before they change: an undo puts back exactly these.
+          const before = (await withSupabaseRetry(
+            () => supabase.from('customers').select('payment_terms, payment_terms_note, payment_terms_set_by, payment_terms_set_at').eq('id', gc.id).maybeSingle(),
+            'GC on notice: payment terms before',
+          )) as unknown as GcRunTermsBefore | null
           await withSupabaseRetry(
             () => supabase.from('customers').update({ payment_terms: 'winding_down', payment_terms_note: batchReason, payment_terms_set_by: authUserId, payment_terms_set_at: new Date().toISOString() } as never).eq('id', gc.id),
             'GC on notice: payment terms',
           )
+          if (before) receipt.terms = { before, fromLabel: termsLabel || 'what they were' }
           consequences.push('terms → Winding down')
         }
         if (ticks.legal) {
           const jobIds = [...new Set([...data.legalMatterJobIds, ...data.jobs.map((j) => j.jobId)])]
           const err = await legalRpc('legal_matter_save_review', { p_payer_key: `c:${gc.id}`, p_customer_id: gc.id, p_payer_name: gc.name, p_job_ids: jobIds })
           if (err) showToast(`The Legal desk matter could not be saved: ${err}`, 'error')
-          else consequences.push(`Legal desk matter · ${jobIds.length} jobs`)
+          else {
+            receipt.legal = { jobs: jobIds.length }
+            consequences.push(`Legal desk matter · ${jobIds.length} jobs`)
+          }
         }
         // The fourth tick (v2.3826): every owner in the run sees their property's bills on their portal.
         if (ticks.owners && changes.some((c) => c.key === 'owners')) {
           try {
-            const n = await shareBillsWithOwnersOfJobs(ready.map((j) => j.jobId))
+            const share = await shareBillsWithOwnersOfJobs(ready.map((j) => j.jobId))
+            const n = share.owners
+            receipt.owners = { turnedOn: share.turnedOn }
             if (n > 0) consequences.push(`${n} owner${n === 1 ? '' : 's'} see their property's bills`)
           } catch (e) {
             showToast(`The owners' portals could not be updated: ${e instanceof Error ? e.message : String(e)}`, 'error')
           }
         }
         showToast(`${done} notice${done === 1 ? '' : 's'} approved for ${gc.name}${consequences.length ? ` · ${consequences.join(' · ')}` : ''}. The run is next.`, 'success')
+        setRunReceipt(receipt)
         runPendingRef.current = true
       } else {
         showToast(`${done} notice${done === 1 ? '' : 's'} sent to the leader for ${gc.name}.`, 'success')
@@ -525,11 +548,41 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
       onChanged()
     } catch (e) {
       showToast(formatErrorMessage(e, `Stopped after ${done} of ${ready.length}`), 'error')
+      // What did land can still be undone from the run window.
+      if (mode !== 'to_leader' && receipt.itemIds.length > 0) setRunReceipt(receipt)
       refetch()
       onChanged()
     } finally {
       setBusy(false)
     }
+  }
+
+  /** Undo the last Approve all (v2.4541): asks first, naming what goes back and what stays, then takes back what the receipt holds. */
+  async function undoRun() {
+    if (!gcRunReceiptHasUndo(runReceipt) || undoBusy) return
+    const r = runReceipt
+    const yes = await confirmDialog({ title: `Undo the approval for ${r.gcName}?`, message: gcRunUndoMessage(r), confirmLabel: 'Undo the approval', cancelLabel: 'Keep the run', danger: true, cancelIsSafe: true })
+    if (!yes) return
+    setUndoBusy(true)
+    const missed: string[] = []
+    let back = 0
+    try {
+      back = await undoLienDeskApprovals(r.itemIds, authUserId)
+    } catch (e) {
+      missed.push(`the notices (${formatErrorMessage(e, 'not moved')})`)
+    }
+    if (r.rule) await setCustomerLienNoticePolicy(r.gcId, r.rule.from, 'Undone: the run was approved by mistake').catch(() => missed.push('the standing rule'))
+    if (r.terms) {
+      await withSupabaseRetry(() => supabase.from('customers').update(r.terms!.before as never).eq('id', r.gcId), 'GC on notice: payment terms back').catch(() => missed.push('the payment terms'))
+    }
+    if (r.owners) await unshareBillsTurnedOn(r.owners.turnedOn).catch(() => missed.push("the owners' bills"))
+    setUndoBusy(false)
+    if (missed.length) showToast(`Undo did not finish: ${missed.join(', ')} could not be put back. Nothing else was changed.`, 'error')
+    else showToast(`Undone. ${back} ${back === 1 ? 'notice is a draft' : 'notices are drafts'} again for ${r.gcName}.${r.legal ? ' The Legal desk matter stays.' : ''}`, 'success')
+    setRunReceipt(null)
+    setRunOpen(false)
+    refetch()
+    onChanged()
   }
 
   const runEntries: LienDeskEntry[] = data ? data.desk.queue.entries.filter((e) => e.item?.status === 'approved') : []
@@ -1165,9 +1218,12 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
           userId={authUserId}
           onClose={() => setRunOpen(false)}
           onRecorded={() => {
+            // A recorded run is mailed: there is nothing left to undo.
+            setRunReceipt(null)
             refetch()
             onChanged()
           }}
+          undo={gcRunReceiptHasUndo(runReceipt) ? { words: gcRunUndoStripWords(runReceipt), busy: undoBusy, onUndo: () => void undoRun() } : undefined}
         />
       ) : null}
     </div>

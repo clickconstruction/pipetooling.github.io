@@ -297,6 +297,21 @@ Taunya hears that Harborline's Harbor Ridge draw went to another job. She filter
 
 Nothing is mailed or recorded until the run is recorded. Afterwards, the GC's row on Bids, Customer review shows {{chip:red|on notice since Sep 15 · 7}}. The desk's Affidavits tab carries the same jobs with their deadlines.
 
+### Pressed Approve all by mistake
+
+**Approve all** opens the run window. A strip under its title says what you just approved. Press {{button:outline|Undo the approval…}} there.
+
+A window asks first. It lists what goes back and what stays.
+
+- The notices go back to drafts. Nothing is mailed or recorded.
+- The standing rule and the payment terms go back to what they were.
+- The bills that run showed to owners are hidden from them again.
+- A Legal desk matter stays. Close it on the Legal desk if you do not want it.
+
+{{button:blue|Keep the run}} changes nothing. {{button:red|Undo the approval}} takes it back.
+
+The offer lasts while Put a GC on notice stays open. It ends once the run is recorded.
+
 ## Who can do what
 
 - **Draft, send for approval, send on the leader's word and skip:** a dev, an assistant or a controller. A master can draft and approve his own.
