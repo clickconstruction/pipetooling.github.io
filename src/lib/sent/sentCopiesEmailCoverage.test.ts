@@ -68,7 +68,6 @@ const NOT_OUTSIDE: Readonly<Record<string, string>> = {
   'send-sign-in-email': 'a sign-in link, not a paper',
   'statement-round-email-dispatch': 'a digest to our own staff',
   'sync-resend-emails': 'reads the email log from Resend; sends nothing',
-  'test-email': 'a test message to ourselves',
   'weekly-money-email-dispatch': 'a report to our own staff',
   'weekly-movement-email-dispatch': 'a report to our own staff',
 }

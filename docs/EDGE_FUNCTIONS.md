@@ -2978,6 +2978,8 @@ const response = await supabase.functions.invoke('claim-dev', {
 
 ### test-email
 
+> **v2.4557 — a self-test for sent copies**: `file_copy_only: true` (with the usual `to`, `subject`, `body`) sends **nothing** and files the message as a `sent_documents` row of `kind` `self_test`, with one small attachment, through [`fileSentEmailBestEffort`](../supabase/functions/_shared/fileSentCopy.ts) — the way to prove the helper against the live bucket and table after a deploy. The row names no job, so no list shows it; a dev deletes it afterwards. Answers `{ success: true, sent: false, filed: 'attempted' }`. **Redeploy required.**
+
 **Purpose**: Test email templates with Resend API integration
 
 **Endpoint**: `POST /functions/v1/test-email`
