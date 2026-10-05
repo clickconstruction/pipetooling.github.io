@@ -778,6 +778,27 @@ const S = {
   pplRole: { en: 'What they do, like Bookkeeper', es: 'Qué hace, por ejemplo Contador' },
   pplGets: { en: 'Gets', es: 'Recibe' },
   pplSave: { en: 'Add', es: 'Agregar' },
+
+  // Your weeks across every job (owner, 2026-10-05)
+  wkLink: { en: 'Your weeks across every job', es: 'Sus semanas en todas las obras' },
+  wkTitle: { en: 'Your weeks', es: 'Sus semanas' },
+  wkIntro: {
+    en: 'Your work on every {gc} job, this week and the next three. Mark each week on the job page.',
+    es: 'Su trabajo en todas las obras de {gc}, esta semana y las tres siguientes. Marque cada semana en la página de la obra.',
+  },
+  wkThis: { en: 'This week · {date}', es: 'Esta semana · {date}' },
+  wkNext: { en: 'Next week · {date}', es: 'La próxima semana · {date}' },
+  wkOf: { en: 'Week of {date}', es: 'Semana del {date}' },
+  wkNone: { en: 'Nothing of yours on the schedule this week.', es: 'Nada suyo en el programa esta semana.' },
+  wkSpan: { en: '{from} to {to}', es: 'del {from} al {to}' },
+  wkOn: { en: '{day}', es: 'el {day}' },
+  wkFirst: { en: 'first day on this job', es: 'primer día en esta obra' },
+  wkFinishes: { en: 'finishes this week', es: 'termina esta semana' },
+  wkInspections: { en: 'Inspections', es: 'Inspecciones' },
+  wkOverlap: {
+    en: 'Your work on {jobs} overlaps {days}. Tell {gc} if one crew cannot do both.',
+    es: 'Su trabajo en {jobs} se cruza {days}. Avísele a {gc} si una sola cuadrilla no puede con todo.',
+  },
 } satisfies Record<string, Record<PortalLang, string>>
 
 export type PortalKey = keyof typeof S

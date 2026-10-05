@@ -367,6 +367,14 @@ email goes to the right person at the company*.
   gets; Follow up's Email could pick the person for the kind it chases (a quote: `quotes`; a waiver
   or a W-9: `pay`) through `mailRecipients(partner, group)`.
 
+## Round 11: your weeks across every job (the owner, 2026-10-05)
+
+The owner, asked what the portal builds next: "Your weeks across every job". Details in README.md,
+*A company sees its weeks across every job*.
+
+- ~~**Portal (GC 3):**~~ done (this commit). `portalWeeks`, *Your weeks* from the home's Your
+  jobs, the overlap warning in both languages. Nothing owed by the other lanes.
+
 ## Owner (the decisions)
 
 11. ~~**A carried quote with a line that has no cost:** does it hold the ring open?~~ Answered 2026-10-03: yes, until every line has a cost. Built by the Board (this commit).

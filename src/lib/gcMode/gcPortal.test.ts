@@ -49,6 +49,7 @@ import {
   portalBackCharges,
   mailRecipients,
   portalMailGroup,
+  portalWeeks,
   type GcState,
 } from './gcModel'
 
@@ -1465,5 +1466,43 @@ describe('who at the company gets which emails (owner, 2026-10-05)', () => {
     const gone = gcReducer(marcusLess, { type: 'tradeRemovePerson', partnerId: 'pecanvalley', personId: 'pecanvalley-p-1' })
     expect(company(gone, 'pecanvalley')).toMatchObject({ people: [], contactGets: ['quotes', 'job', 'contracts', 'pay'] })
     expect(mail(gone, 'pecanvalley', 'felec-draw-1:paid')?.to).toEqual(['Marcus Bell'])
+  })
+})
+
+describe('your weeks across every job (owner, 2026-10-05)', () => {
+  /** A second job just like Fair Oaks D, its schedule moved by some days: the same companies on two jobs at once. */
+  const withSecondJob = (shiftDays: number): GcState => {
+    const fairOaks = state.projects.find((p) => p.id === 'fairoaksd')
+    if (!fairOaks?.schedule) throw new Error('no Fair Oaks schedule')
+    const shift = (d: string) => new Date(Date.parse(`${d}T00:00:00Z`) + shiftDays * 86_400_000).toISOString().slice(0, 10)
+    const schedule = { ...fairOaks.schedule, activities: fairOaks.schedule.activities.map((a) => ({ ...a, start: shift(a.start), finish: shift(a.finish) })) }
+    return { ...state, projects: [...state.projects, { ...fairOaks, id: 'fairoakse', name: 'Fair Oaks Shops, Building E', schedule }] }
+  }
+
+  it("lays out Pecan Valley's next four weeks on Fair Oaks, with the inspections", () => {
+    const weeks = portalWeeks(state, 'pecanvalley')
+    expect(weeks.map((w) => w.title)).toEqual(['This week · Sep 28', 'Next week · Oct 5', 'Week of Oct 12', 'Week of Oct 19'])
+    expect(weeks[0]?.items.map((i) => [i.name, i.days, i.finishes])).toEqual([
+      ['Electrical · Panels and feeders', 'Mon Sep 28 to Fri Oct 2', true],
+      ['Electrical · Lighting', 'Mon Sep 28 to Fri Oct 2', false],
+    ])
+    expect(weeks[0]?.inspections.map((x) => x.words)).toEqual(['Fair Oaks Shops, Building D · Electrical service inspection, Fri Oct 2'])
+    expect(weeks[3]?.items.map((i) => i.name)).toEqual(['Electrical · Lighting', 'Electrical · Site lighting'])
+    expect(weeks.every((w) => w.overlaps.length === 0)).toBe(true)
+    // A company with no scheduled work gets no page.
+    expect(portalWeeks(state, 'hillside')).toEqual([])
+  })
+
+  it('says when two jobs want the company on the same days, and its first day on a job', () => {
+    const two = withSecondJob(14)
+    const [week] = portalWeeks(two, 'coolbreeze')
+    expect(week?.items.map((i) => [i.project.id, i.name, i.firstOnJob])).toEqual([
+      ['fairoaksd', 'HVAC · Ductwork', false],
+      ['fairoakse', 'HVAC · Ductwork', true],
+    ])
+    expect(week?.overlaps).toEqual(['Your work on Fair Oaks Shops, Building D and Fair Oaks Shops, Building E overlaps Mon Sep 28 to Fri Oct 2. Tell Click if one crew cannot do both.'])
+    expect(portalWeeks(two, 'coolbreeze', 'es')[0]?.overlaps[0]).toBe(
+      'Su trabajo en Fair Oaks Shops, Building D y Fair Oaks Shops, Building E se cruza del lun 28 sep al vie 2 oct. Avísele a Click si una sola cuadrilla no puede con todo.',
+    )
   })
 })

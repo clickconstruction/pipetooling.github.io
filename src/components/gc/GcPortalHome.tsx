@@ -6,6 +6,7 @@ import {
   pDate,
   portalFirstVisit,
   portalHome,
+  portalWeeks,
   portalQuoteDue,
   pt,
   pWeekday,
@@ -50,6 +51,7 @@ export function GcPortalHome({
   onOpenProject,
   onOpenPay,
   onOpenPapers,
+  onOpenWeeks,
 }: {
   state: GcState
   partner: Partner
@@ -60,10 +62,14 @@ export function GcPortalHome({
   onOpenPay: () => void
   /** Your papers: every paper the company signed with us. */
   onOpenPapers: () => void
+  /** Your weeks: its work on every job, this week and the next three (owner, 2026-10-05). */
+  onOpenWeeks: () => void
 }) {
   const { lang, t: tr } = usePortalLang()
   const home = portalHome(state, partner.id, lang)
   const firstVisit = portalFirstVisit(state, partner.id)
+  // Its work on the schedule of any job: the door to Your weeks.
+  const hasWeeks = portalWeeks(state, partner.id, lang).length > 0
   const paperRef = useRef<HTMLDivElement | null>(null)
   const [paperAsk, setPaperAsk] = useState<{ line: PaperworkLine; n: number } | null>(null)
 
@@ -137,6 +143,13 @@ export function GcPortalHome({
               </Row>
             ))}
           </div>
+          {hasWeeks && (
+            <div style={{ marginTop: '0.5rem' }}>
+              <Btn kind="quiet" onClick={onOpenWeeks}>
+                {tr('wkLink')} ›
+              </Btn>
+            </div>
+          )}
         </PortalBlock>
       )}
 

@@ -120,7 +120,7 @@ column headers are in one block at the end of `gcBuildingWords.ts`, for the nati
 
 ## For a native speaker to read
 
-Every Spanish string the trade's portal shows, 879 in all, drawn from the code on 2026-10-04.
+Every Spanish string the trade's portal shows, 892 in all, drawn from the code on 2026-10-04.
 They're grouped by screen, English on the left. Please mark anything that reads wrong, stiff or
 unclear, and write the better words beside it. The Portal lane makes the changes and passes the
 other lanes theirs.
@@ -879,6 +879,24 @@ they were written in. The portal does not translate them.
 | What they do, like Bookkeeper | Qué hace, por ejemplo Contador |
 | Gets | Recibe |
 | Add | Agregar |
+
+#### Your weeks across every job (owner, 2026-10-05)
+
+| English | Español |
+|---|---|
+| Your weeks across every job | Sus semanas en todas las obras |
+| Your weeks | Sus semanas |
+| Your work on every {gc} job, this week and the next three. Mark each week on the job page. | Su trabajo en todas las obras de {gc}, esta semana y las tres siguientes. Marque cada semana en la página de la obra. |
+| This week · {date} | Esta semana · {date} |
+| Next week · {date} | La próxima semana · {date} |
+| Week of {date} | Semana del {date} |
+| Nothing of yours on the schedule this week. | Nada suyo en el programa esta semana. |
+| {from} to {to} | del {from} al {to} |
+| {day} | el {day} |
+| first day on this job | primer día en esta obra |
+| finishes this week | termina esta semana |
+| Inspections | Inspecciones |
+| Your work on {jobs} overlaps {days}. Tell {gc} if one crew cannot do both. | Su trabajo en {jobs} se cruza {days}. Avísele a {gc} si una sola cuadrilla no puede con todo. |
 
 #### The usual exclusions, by name
 
