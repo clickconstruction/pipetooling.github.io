@@ -5,7 +5,7 @@ file: docs/PAGE_DECOMPOSITION_PLAYBOOK.md
 type: Engineering / Refactor Process
 purpose: A repeatable, generic process for breaking a multi-thousand-line "God component" page into per-tab components + shared hooks + tested pure logic, without re-deriving the strategy each time. Generalizes the method proven on Bids.tsx (~18,800 lines at the start) and People.tsx (~21,435). Also the one home for the large-file inventory and the seams that cut across maps.
 audience: Developers, AI Agents
-last_updated: 2026-09-28
+last_updated: 2026-10-05
 ---
 
 ## What this is
@@ -31,7 +31,7 @@ The repo still has several God components:
 | `src/pages/Quickfill.tsx` (+ `QuickfillScheduleSection` 1,885) | 2,476 | [`QUICKFILL_ARCHITECTURE.md`](./QUICKFILL_ARCHITECTURE.md) | section bodies out; framework + schedule section inline — Stage A the module helpers, delete the phone code the round made unreachable, then move the section wrapper |
 | `src/pages/Jobs.tsx` | 2,274 | [`JOBS_TABS_ARCHITECTURE.md`](./JOBS_TABS_ARCHITECTURE.md) | tab router, every tab extracted — Stage A the untested `jobSummaryData` P&L memo, then the ten Pipeline deep-link effects |
 | `src/pages/Settings.tsx` (+ `SettingsDashboardTab` 1,642) | 1,741 | [`SETTINGS_TABS_ARCHITECTURE.md`](./SETTINGS_TABS_ARCHITECTURE.md) | engine campaign done; left is the Your dashboard membrane (109 props) — Stage A the financial-pin money, then make four Dashboard sections self-contained |
-| `src/pages/Dashboard.tsx` (+ `DashboardFinancialsSection` 1,824) | 1,852 | [`DASHBOARD_SECTIONS_ARCHITECTURE.md`](./DASHBOARD_SECTIONS_ARCHITECTURE.md) | every section extracted, the parent is glue — Stage A the finance drill-down partition, then move single-consumer state into its section |
+| `src/pages/Dashboard.tsx` (+ `DashboardFinancialsSection` 1,824, `lib/dashboardNeedsYou.ts` 1,585) | 1,852 | [`DASHBOARD_SECTIONS_ARCHITECTURE.md`](./DASHBOARD_SECTIONS_ARCHITECTURE.md) | every section extracted, the parent is glue — Stage A the finance drill-down partition, then move single-consumer state into its section |
 | `src/pages/Calendar.tsx` | 2,044 | [`CALENDAR_PAGE_ARCHITECTURE.md`](./CALENDAR_PAGE_ARCHITECTURE.md) | only two modals out, 15 untested module helpers — fix the suspected month-arrow snap-back first, then the `calendarGrid` / `calendarDayItems` kernels |
 | `src/pages/Documents.tsx` | 1,926 | [`DOCUMENTS_PAGE_ARCHITECTURE.md`](./DOCUMENTS_PAGE_ARCHITECTURE.md) | four props-clean ledgers already componentized in-file — tests + per-ledger kernels, then verbatim file moves |
 | `src/pages/SubPortal.tsx` | 1,563 | [`SUB_PORTAL_ARCHITECTURE.md`](./SUB_PORTAL_ARCHITECTURE.md) | public page, 7 in-file components; payload/i18n kernels in `lib/subPortal` — Stage A `subPortalMoney` + one `postSubPortal` client, then `DocRow` |
@@ -47,6 +47,7 @@ The repo still has several God components:
 | `src/components/jobs/JobsJobSummaryTab.tsx` | 3,276 | [`JOBS_JOB_SUMMARY_TAB_ARCHITECTURE.md`](./JOBS_JOB_SUMMARY_TAB_ARCHITECTURE.md) | zero hooks; views, toolbar and Job cell out, the expanded row inline — decide the dead person-filter state, then the person-footer kernel + `JobSummaryAltView` |
 | `src/components/bids/BidsPricingTab.tsx` + `BidsLaborTab.tsx` (+ `useBidPricingEngine` 1,819) | 5,122 + 1,451 | [`BIDS_PRICING_LABOR_TABS_ARCHITECTURE.md`](./BIDS_PRICING_LABOR_TABS_ARCHITECTURE.md) | P3–P5, L5, L6 out — Stage A `scenarioPricingRows` (the money adapter is hand-written 4× in Pricing; one copy shipped a $0.00 bug), then a dead-code PR |
 | `src/components/bids/BidSubmissionFollowupTab.tsx` | 2,214 | [`BID_SUBMISSION_FOLLOWUP_TAB_ARCHITECTURE.md`](./BID_SUBMISSION_FOLLOWUP_TAB_ARCHITECTURE.md) | nothing extracted since 2026-07-29; Bids-by-GC added untested bucketing — Stage A `bucketSubmissionRows`, then the two PDF builders |
+| `src/components/bids/BidsAuditsTab.tsx` | 1,500 (at `7379b248f`) | [`BIDS_AUDITS_TAB_ARCHITECTURE.md`](./BIDS_AUDITS_TAB_ARCHITECTURE.md) | eight kernels and the run-through sheet out; the 536-line `renderCard`, the loader and the writes inline — Stage A the seal's reference map + the delta, then `useAuditRulings` and the Questions panel; the card last (every write blanks the page) |
 | `src/components/projects/ProjectsForecastSpecificTab.tsx` (+ `ProjectsJobHistoryDayModal` 1,595, stage modal 1,471) | 2,329 | [`PROJECTS_FORECAST_TABS_ARCHITECTURE.md`](./PROJECTS_FORECAST_TABS_ARCHITECTURE.md) | pure logic in tested libs, the money totals among them (the `workflowMoneyTotals` kernel shared with Workflow) — the balance-event mapping, then day-modal Stage A |
 | `src/components/people/PeopleVehiclesTab.tsx` | 2,946 | [`PEOPLE_VEHICLES_TAB_ARCHITECTURE.md`](./PEOPLE_VEHICLES_TAB_ARCHITECTURE.md) | regrew from a thin wrapper to 95 `useState` and 13 inline dialogs — Stage A ledger helpers + fleet money, then the self-contained dialogs; keep panel state in the tab or make `loading` first-load-only (its own PR) before any panel move |
 | `src/components/bids/BidsBidBoardTab.tsx` + `BidFormModal.tsx` | 1,983 + 1,695 | [`BIDS_BOARD_FORM_ARCHITECTURE.md`](./BIDS_BOARD_FORM_ARCHITECTURE.md) | neither decomposed internally; the board is hot — Stage A board bucketing + form kernels, then `BidCopyBidDialog` |
@@ -64,6 +65,7 @@ The repo still has several God components:
 | `src/components/jobs/BankPaymentsModal.tsx` + `CollectPaymentModal.tsx` | 2,618 + 1,655 | [`AR_PAYMENT_MODALS_ARCHITECTURE.md`](./AR_PAYMENT_MODALS_ARCHITECTURE.md) | Bank partly split (8 `ar/*` components, 12 kernels) but its apply payload is inline and untested; Collect unsplit with no component test — `buildArApplyAllocations` first |
 | `src/components/jobs/JobsGcReviewModal.tsx` | 2,312 | [`GC_REVIEW_MODAL_ARCHITECTURE.md`](./GC_REVIEW_MODAL_ARCHITECTURE.md) | 17 kernels + 5 children out, 5 overlays inline — punch list #49 is rebuilding the round for one operator; move `ScheduleWhenControls`, then the send-payload kernels |
 | `src/components/jobs/LienDeskModal.tsx` | 2,002 | [`LIEN_DESK_ARCHITECTURE.md`](./LIEN_DESK_ARCHITECTURE.md) | ~2,600 lines of panes out; notice pane, footer and paper engine inline — Stage A the footer words + sent-packet money, then `useLienDeskRunner` / `useLienNoticeDraft` |
+| `src/components/jobs/LienReleaseModal.tsx` | 1,607 (at `7379b248f`) | [`LIEN_RELEASE_MODAL_ARCHITECTURE.md`](./LIEN_RELEASE_MODAL_ARCHITECTURE.md) | 6 mounts; the forms, the rail, the math and the pad out, every read and write a direct `supabase` call inline — Stage A the snapshot / amount / payload kernels, then `lienReleaseIo.ts`, then the history box and the page |
 
 **Edge functions and shell:**
 
@@ -72,7 +74,7 @@ The repo still has several God components:
 | `src/App.tsx` + `src/components/Layout.tsx` | 383 + 2,332 | [`APP_SHELL_ARCHITECTURE.md`](./APP_SHELL_ARCHITECTURE.md) | App is the route table (tests parse its `<Route>` literals — they stay) + providers; Layout is one component — Stage A dedupe (`roleHomePath`, sign-out / impersonation), then `PinModeFooter` |
 | `supabase/functions/twin-mcp/index.ts` | 3,362 | [`TWIN_MCP_SERVER_ARCHITECTURE.md`](./TWIN_MCP_SERVER_ARCHITECTURE.md) | 48 verbs in one 2,260-line `callTool`; neither type-checked nor linted — `TOOLS` → `tools.ts` with a count/seat-gate test, then adopt `_shared/mcpJsonRpc.ts` |
 
-Each unfinished surface owns dozens-to-hundreds of `useState`s, loaders/handlers, and inline JSX. **As of 2026-09-25, every source file ≥1,500 lines (60 files) is covered by a map that names it in `covers:`** — re-check with `npm run map -- --triage`, which pairs files to maps by `covers:` and flags stale ones. Start any extraction from the map, not from the source file; seams that span maps are in [Cross-surface seams](#cross-surface-seams).
+Each unfinished surface owns dozens-to-hundreds of `useState`s, loaders/handlers, and inline JSX. **As of 2026-10-05, every source file ≥1,500 lines (61 files) is covered by a map that names it in `covers:`** — re-check with `npm run map -- --triage`, which pairs files to maps by `covers:` and flags stale ones. Start any extraction from the map, not from the source file; seams that span maps are in [Cross-surface seams](#cross-surface-seams).
 
 This document is the **process** for shrinking one. The two reference implementations are:
 
