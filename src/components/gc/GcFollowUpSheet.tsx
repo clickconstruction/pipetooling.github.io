@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import {
   followUpCallActions,
   followUpDraft,
-  followUpPeople,
+  allFollowPeople,
   followUpSentActions,
   mailHref,
   smsHref,
@@ -62,7 +62,9 @@ export function GcFollowUpSheet({
   /** The sheet's heading in place of "Follow up": the job's name. */
   title?: string
 }) {
-  const source = (s: GcState) => (list ? list(s) : followUpPeople(s, startPartnerId))
+  // Without a list: everyone Follow up's badge counts (the Board's allFollowPeople, so every opener
+  // stays in step with the badge and the dashboard).
+  const source = (s: GcState) => (list ? list(s) : allFollowPeople(s, startPartnerId))
   // The list as it stood when the sheet opened: someone who gives a day drops off the badge, but
   // stays here marked done, so the list does not jump under the pointer.
   const [ids] = useState(() => source(state).map((p) => p.partner.id))
@@ -72,7 +74,7 @@ export function GcFollowUpSheet({
     const now = new Map(source(state).map((p) => [p.partner.id, p]))
     for (const [id, p] of now) seen.set(id, p)
     return ids.flatMap((id) => {
-      const p = now.get(id) ?? (list ? seen.get(id) : followUpPeople(state, id).find((x) => x.partner.id === id))
+      const p = now.get(id) ?? (list ? seen.get(id) : allFollowPeople(state, id).find((x) => x.partner.id === id) ?? seen.get(id))
       return p ? [p] : []
     })
     // `source` is rebuilt each render from `list` and `startPartnerId`, which are in the list.
