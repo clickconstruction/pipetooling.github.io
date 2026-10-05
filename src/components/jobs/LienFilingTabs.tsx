@@ -351,7 +351,7 @@ export default function LienFilingTabs({
         setBusy(false)
       }
     },
-    [busy, job.id, authUser?.id, showToast, onChanged],
+    [busy, job.id, authUser?.id, docUrl, docNote, showToast, onChanged],
   )
 
   /** Email a recipient the notice PDF via the send-lien-filing-email edge fn; returns the resend id. */
@@ -427,7 +427,7 @@ export default function LienFilingTabs({
     } finally {
       setBusy(false)
     }
-  }, [busy, ownerSend, ocSend, ownerEmail, originalContractorEmail, emailNoticeTo, job.id, authUser?.id, openBalance, clock.workMonth, noticeMonths, noticeFields, showToast, onChanged])
+  }, [busy, ownerSend, ocSend, ownerEmail, originalContractorEmail, emailNoticeTo, job.id, authUser?.id, openBalance, clock.workMonth, noticeMonths, noticeFields, docUrl, docNote, showToast, onChanged])
 
   const recordAffidavitFiling = () =>
     insertFiling(
