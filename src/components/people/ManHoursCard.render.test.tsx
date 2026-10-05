@@ -63,6 +63,9 @@ describe('ManHoursCard', () => {
     expect(within(oct).getByText('so far')).toBeTruthy()
     expect(within(oct).getByText('6 h waiting')).toBeTruthy()
     expect(screen.getByText(/Hours start Sep 15, 2026, the first day on the clock\./)).toBeTruthy()
+    // The headline reads the newest finished month; with one month on record there is nothing to compare.
+    expect(screen.getByText('September 2026:').parentElement?.textContent).toBe('September 2026: 40 hours. Office share 25%.')
+    expect(screen.getByRole('img', { name: /^Hours per period/ })).toBeTruthy()
   })
 
   it('switches to pay weeks and drops the Per week column', async () => {

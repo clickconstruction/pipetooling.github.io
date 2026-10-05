@@ -231,3 +231,12 @@ export function manHoursPeriodLabel(period: Pick<ManHoursPeriod, 'start'>, zoom:
   if (zoom === 'quarter') return `Q${Math.floor((month - 1) / 3) + 1} ${year}`
   return year
 }
+
+/** The same period on a chart axis: "Sep 27" · "Sep" · "Q3" · "2026". */
+export function manHoursPeriodShortLabel(period: Pick<ManHoursPeriod, 'start'>, zoom: ManHoursZoom): string {
+  const month = Number(period.start.slice(5, 7))
+  if (zoom === 'week') return manHoursDayLabel(period.start)
+  if (zoom === 'month') return (MONTHS[month - 1] ?? '').slice(0, 3)
+  if (zoom === 'quarter') return `Q${Math.floor((month - 1) / 3) + 1}`
+  return period.start.slice(0, 4)
+}

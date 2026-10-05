@@ -22,6 +22,16 @@ The switch is at the top right of the card. It has four choices.
 - {{button:outline|Quarter}} shows the last 8 quarters.
 - {{button:outline|Year}} shows every year on record.
 
+## Read the picture
+
+One line at the top reads the newest finished period for you. It gives the total hours and the office share. It says if the share went up or down.
+
+Each bar is one period. The bar is stacked from the bottom: field, office, bids, then time not on a job. A faded bar is a period that is not over yet.
+
+The line under the bars is the office share for each period. A line going down means the office is shrinking against the field.
+
+Point at a bar to see its numbers.
+
 ## Read a row
 
 Each row is one period. The oldest period is at the top.

@@ -223,6 +223,11 @@ button:focus-visible {
   --text-violet-800: #5b21b6;
   --text-indigo-800: #3730a3;
 
+  /* Man hours chart series (People → Overhead): checked for color-blind readers against --bg-page, one set per theme. */
+  --man-hours-field: #0f9a8a;
+  --man-hours-office: #8b5cf6;
+  --man-hours-bids: #e2602b;
+
   /* surfaces (background:) */
   --bg-page: #f0f2f5; /* v2.2203: was #fafafa — white cards need a ground to sit on, like dark mode */
   --surface: #ffffff;
@@ -342,6 +347,10 @@ button:focus-visible {
   --text-violet-700: #c4b5fd;
   --text-violet-800: #c4b5fd;
   --text-indigo-800: #a5b4fc;
+
+  --man-hours-field: #199e70;
+  --man-hours-office: #8b6fe0;
+  --man-hours-bids: #e0703f;
 
   --bg-page: #111827;
   --surface: #1f2937;
