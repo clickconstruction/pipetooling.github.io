@@ -14,11 +14,11 @@ You go to **Jobs → Job Summary** and switch **View** to {{chip:blue|Ahead}}. *
 
 ## The tiles
 
-- **Remaining on open jobs** is the contract minus what's been earned so far, over every open job. It uses the same earned-revenue rule the Jobs view uses.
-- **Won, not marked started** counts bids whose outcome is still *won*. It says how many have no start date, and how many are past the one they had. You set a bid's outcome to *started or complete* when its job begins. Then it leaves this tile.
-- **Booked backlog** is the two together. It says how many weeks that covers at this window's revenue per week.
-- **Expected true profit** is the backlog at this window's true margin. It also shows the backlog at your **Target**, if one is set.
-- **Field days booked** is the person-days on the schedule for the next four weeks. It shows them as a share of the crew's days. Under 60% reads amber.
+- **Remaining on open jobs** is the contract minus what's been earned so far, over every open job. The tile uses the same earned-revenue rule the Jobs view uses.
+- **Won, not marked started** is the bids whose outcome is still *won*. The tile says how many have no start date, and how many are past the one they had. You set a bid's outcome to *started or complete* when its job begins. Then the bid leaves this tile.
+- **Booked backlog** is the two together. The tile says how many weeks that covers at this window's revenue per week.
+- **Expected true profit** is the backlog at this window's true margin. The tile also shows the backlog at your **Target**, if one is set.
+- **Field days booked** is the person-days on the schedule for the next four weeks. The tile shows those days as a share of the crew's days. Under 60% reads amber.
 
 ## The chart
 
@@ -30,9 +30,9 @@ Capacity says the last three weeks ran under 60%. Ahead says the next four are b
 
 ## The list
 
-The list shows won bids with no job, soonest start first. {{chip:yellow|no date}} means the bid has no estimated start. So it can't be placed on the chart. You set the date on the bid, and it lands in its week. A red date is a start that has passed.
+The list shows won bids with no job, soonest start first. {{chip:yellow|no date}} means the bid has no estimated start. So the bid can't be placed on the chart. You set the date on the bid, and it lands in its week. A red date is a start that has passed.
 
 ## Watch-outs
 
-- The office marks the hand-off by setting the bid's outcome to *started or complete*. Jobs don't carry a link back to their bid today. So that outcome is the signal this view reads.
+- The office marks the hand-off by setting the bid's outcome to *started or complete*. Jobs don't carry a link back to their bid today. So the bid's outcome is the signal this view reads.
 - Capacity is the field roster × 5 days. The Capacity view explains who counts.

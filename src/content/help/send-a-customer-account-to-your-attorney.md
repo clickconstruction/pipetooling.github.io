@@ -6,7 +6,7 @@ keywords: legal, attorney, law firm, collections, attorney ready, release, porta
 ---
 When a customer will not pay, one law firm does the pursuing. Click hands them everything on the account.
 
-This is the whole path, start to finish. It covers moving a job to Collections, the review and the release. It covers what the firm does, and how it ends. The three guides it links to go deeper on each surface.
+This guide is the whole path, start to finish. The guide covers moving a job to Collections, the review and the release. The guide also covers what the firm does, and how a matter ends. The three guides it links to go deeper on each surface.
 
 ## 1. Move the job to Collections
 
@@ -16,19 +16,19 @@ Nothing reaches an attorney yet. Collections is the office's holding pen. The fi
 
 ## 2. A dev gets a card
 
-Every Collections account that has not been reviewed shows on the dev's Dashboard, oldest first. The card reads **"N Collections accounts await your review before an attorney sees them"**. Its button opens the Legal desk on that account. Office staff may want a dev's eyes sooner. They press {{button:outline|Ask a dev to review…}} on the desk, with a short note. That account goes to the top of the card.
+Every Collections account that has not been reviewed shows on the dev's Dashboard, oldest first. The card reads **"N Collections accounts await your review before an attorney sees them"**. Its button opens the Legal desk on that account. Office staff who want a dev's eyes sooner press {{button:outline|Ask a dev to review…}} on the desk. A short note goes with the ask. That account goes to the top of the card.
 
 ## 3. Review the account the way the firm will see it
 
-On **Jobs → Pipeline**, the **Collections** header carries {{button:outline|⚖ Legal}} next to the count. That is where Billed has Accounts Receivable. It opens the desk on every Collections account, the ones worth the most first.
+On **Jobs → Pipeline**, the **Collections** header carries {{button:outline|⚖ Legal}} next to the count. Legal sits where Billed has Accounts Receivable. Legal opens the desk on every Collections account, the ones worth the most first.
 
-An account is the **payer**. That is the GC when one pays, otherwise the customer. An account spans every Collections job that payer owes on. For each account, the desk says these at the top:
+An account is the **payer**. The payer is the GC when one pays, otherwise the customer. An account spans every Collections job that payer owes on. For each account, the desk says these at the top:
 
-- **Theory** is what an attorney could plead: {{chip:green|Signed contract}}, {{chip:yellow|Sworn account}}, {{chip:yellow|Lien only}} or {{chip:red|None yet}}. That is the legal ground they could sue on.
-- **Click keeps** is the balance less the firm's contingency and a filing cost. The contingency is the firm's share of what it recovers. It comes with a verdict: *worth it*, *marginal* or *not worth it*.
-- **Before this goes to an attorney** lists {{chip:red|fix}} items an attorney asks for first. It lists {{chip:yellow|note}} items worth knowing. Each has a button to the surface that owns the record.
+- **Theory** is what an attorney could plead: {{chip:green|Signed contract}}, {{chip:yellow|Sworn account}}, {{chip:yellow|Lien only}} or {{chip:red|None yet}}. The theory is the legal ground an attorney could sue on.
+- **Click keeps** is the balance less the firm's contingency and a filing cost. The contingency is the firm's share of what it recovers. Click keeps comes with a verdict: *worth it*, *marginal* or *not worth it*.
+- **Before this goes to an attorney** lists {{chip:red|fix}} items an attorney asks for first. The list also shows {{chip:yellow|note}} items worth knowing. Each item has a button to the surface that owns the record.
 
-Then come five tabs: ***Account · Paper · Their word · Evidence · Fees & steps***. They are built from the same records the firm's portal is built from. You fix what the gap list says. You tick or untick what the firm may read on **Their word**, and come back. Details: [review a collections account before it goes to your attorney](/help/review-a-collections-account-before-it-goes-to-your-attorney).
+Then come five tabs: ***Account · Paper · Their word · Evidence · Fees & steps***. The tabs are built from the same records the firm's portal is built from. You fix what the gap list says. You tick or untick what the firm may read on **Their word**, and come back. Details: [review a collections account before it goes to your attorney](/help/review-a-collections-account-before-it-goes-to-your-attorney).
 
 :::example Not every account should go
 Surf Thru Express Car Wash owes $250 on one job with no agreement and no field evidence. The desk reads {{chip:red|None yet}} and **Click keeps −$182 · not worth it** — the firm's third and a filing cost eat more than the balance. {{button:outline|Write down…}} is the honest exit for that one; the firm never needs to see it.
@@ -36,13 +36,13 @@ Surf Thru Express Car Wash owes $250 on one job with no agreement and no field e
 
 ## 4. Set the firm up once
 
-**Settings → Jobs & billing → Collections law firm** is for devs. It holds the firm's name, the handling person, and a contact email and phone. It holds the fee model behind "Click keeps": the contingency % and filing cost. Below it, **Click's particulars for filing** show on the firm's portal. They are the legal entity, license, registered agent, custodian of records and affiant. They also include the office phone and email, and a W-9 note. So a petition or lien affidavit needs nothing from you. One firm at a time.
+**Settings → Jobs & billing → Collections law firm** is for devs. The setting holds the firm's name, the handling person, and a contact email and phone. The setting also holds the fee model behind "Click keeps": the contingency % and filing cost. Below it, **Click's particulars for filing** show on the firm's portal. The particulars are the legal entity, license, registered agent, custodian of records and affiant. The particulars also include the office phone and email, and a W-9 note. So a petition or lien affidavit needs nothing from you. One firm at a time.
 
 The contact email is a contact, not a subscription. The firm's own people decide who gets emails, on their portal.
 
 ## 5. Mark it attorney-ready — that is the release
 
-Only a dev sees {{button:blue|⚖ Mark attorney ready…}}. The sheet says exactly what goes: jobs, balance, theory, exhibits, and how many entries are held back. It names the handling person at the firm. It lists who at the firm will hear and how: {{chip:green|Email now}}, {{chip:gray|In their digest}} or {{chip:yellow|Not confirmed}}. It takes a note for the firm. It warns when red gaps are still open. You can mark anyway, and the packet's cover sheet says so.
+Only a dev sees {{button:blue|⚖ Mark attorney ready…}}. The sheet says exactly what goes: jobs, balance, theory, exhibits, and how many entries are held back. The sheet names the handling person at the firm. The sheet lists who at the firm will hear and how: {{chip:green|Email now}}, {{chip:gray|In their digest}} or {{chip:yellow|Not confirmed}}. The sheet takes a note for the firm. The sheet warns when red gaps are still open. You can mark anyway, and the packet's cover sheet says so.
 
 You confirm, and the account moves to **With the firm** on the desk's rail. The Pipeline row wears {{chip:yellow|⚖ new}}. Each job's Activity records the release. The matter appears on the firm's portal the moment they open it.
 
@@ -50,13 +50,13 @@ You confirm, and the account moves to **With the firm** on the desk's rail. The 
 
 {{button:outline|🌐 Firm's link}} on the desk header creates one private link, with no sign-in. You press {{button:blue|Copy link}} and send it however you like. The firm keeps the same link for every matter you ever release. **Rotate** replaces it. **Turn off** is the kill switch. Details: [share your attorney their portal](/help/share-your-attorney-their-portal).
 
-On the portal's **Notifications** page, the firm adds its own people and gives each one rule. The rule is right away or a weekly digest, and every matter or only theirs. A new address gets nothing until its owner clicks the confirmation. Every email carries a one-click stop. The office sees the same list under {{button:outline|✉ Firm's emails}}. It has two overrides: remove a person, and pause everything. Details: [manage who at the law firm gets emails](/help/manage-who-at-the-law-firm-gets-emails).
+On the portal's **Notifications** page, the firm adds its own people and gives each one rule. The rule is right away or a weekly digest, and every matter or only theirs. A new address gets nothing until its owner clicks the confirmation. Every email carries a one-click stop. The office sees the same list under {{button:outline|✉ Firm's emails}}. The office list has two overrides: remove a person, and pause everything. Details: [manage who at the law firm gets emails](/help/manage-who-at-the-law-firm-gets-emails).
 
 ## 7. The firm works the matter
 
-On the portal's **Fees & steps**, the firm adds fees and costs. It records steps: *demand sent · suit filed · judgment · settled*. It records a payment they received, and asks the office questions. Each one lands on the Dashboard for office roles as **"The law firm has N things for you"**. Its button opens the desk on that account's Fees & steps tab.
+On the portal's **Fees & steps**, the firm adds fees and costs. The firm records steps: *demand sent · suit filed · judgment · settled*. The firm records a payment it received, and asks the office questions. Each item lands on the Dashboard for office roles as **"The law firm has N things for you"**. Its button opens the desk on that account's Fees & steps tab.
 
-- A **question**: you answer it inline. The answer shows on their portal. It emails the people who chose right away.
+- A **question**: you answer it inline. The answer shows on their portal. The answer also emails the people who chose right away.
 - A **fee, cost or step**: you press {{button:outline|Acknowledge}}. Steps move the account's stage on the Pipeline row chip.
 - A **payment received**: you apply it on the job with {{button:outline|Mark Paid}}. Then you press {{button:outline|Mark applied}} on the desk. The recovery and the firm's contingency are recorded on the matter.
 
@@ -65,15 +65,15 @@ The firm never marks anything paid, edits a job, or emails the customer through 
 ## 8. How it ends
 
 - **Settled**: the firm records the step. The matter closes as {{chip:green|Settled}} once the money is applied.
-- **Written down**: {{button:outline|Write down…}} on the desk records the agreed write-down on the largest open bill line. A write-down is the part of the balance we agree to give up. It closes the matter as {{chip:gray|Written down}}.
-- **Pulled back**: a dev's {{button:outline|Pull back}} returns the account to review. It leaves the portal the next time the firm opens it. Their fees and steps stay on the record.
+- **Written down**: {{button:outline|Write down…}} on the desk records the agreed write-down on the largest open bill line. A write-down is the part of the balance we agree to give up. Write down… then closes the matter as {{chip:gray|Written down}}.
+- **Pulled back**: a dev's {{button:outline|Pull back}} returns the account to review. The account leaves the portal the next time the firm opens it. The firm's fees and steps stay on the record.
 
 Closed matters sit under **Closed** on the desk's rail. So the history is one click away.
 
 ## 6. Ask the firm
 
-On the desk's **Fees & steps** tab, {{button:outline|Ask the firm…}} sends counsel a question. Counsel means the firm's lawyers. It can also ask for a **sign-off on one job**. Counsel's memo names the moment for it. An owner wants to pay Click direct while the GC is silent. Counsel signs off per job before the office takes the check.
+On the desk's **Fees & steps** tab, {{button:outline|Ask the firm…}} sends counsel a question. Counsel means the firm's lawyers. Ask the firm can also ask for a **sign-off on one job**. Counsel's memo names the moment for it. That moment is when an owner wants to pay Click direct while the GC is silent. Counsel signs off per job before the office takes the check.
 
-The ask shows on the desk as {{chip:yellow|waiting on the firm}}, with **Withdraw**, until they answer. The answer is {{chip:green|signed off Oct 3}} or {{chip:red|not yet}}. It lands on your Needs You card as *The law firm has N things for you*. It clears when you acknowledge it.
+The ask shows on the desk as {{chip:yellow|waiting on the firm}}, with **Withdraw**, until they answer. The answer is {{chip:green|signed off Oct 3}} or {{chip:red|not yet}}. The answer lands on your Needs You card as *The law firm has N things for you*. The card item clears when you acknowledge it.
 
-A sent § 53.056 notice on the Lien desk carries the same door on its footer: *Ask counsel to sign off…*. That shows when the job's account is with the firm. The footer then reads *counsel signed off Oct 3 · take the owner's payment*. A sign-off moves no money. You still record the payment on the job.
+A sent § 53.056 notice on the Lien desk carries the same door on its footer: *Ask counsel to sign off…*. The door shows when the job's account is with the firm. The footer then reads *counsel signed off Oct 3 · take the owner's payment*. A sign-off moves no money. You still record the payment on the job.

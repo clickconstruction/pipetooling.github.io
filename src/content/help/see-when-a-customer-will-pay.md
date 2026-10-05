@@ -6,26 +6,26 @@ keywords: expected payment, pay speed, billed awaiting payment, accounts receiva
 ---
 Every row in **Jobs → Pipeline → Billed Awaiting Payment** predicts its own payment date. So "when should we expect payment?" is answered on the board, not in someone's head.
 
-Each billed row's **View Bill** button also carries a small **PDF tail**. That is the page icon attached to its right edge. One click opens the invoice PDF in a new tab. It is freshly made with the current payment history, ready to print or send. It's the same paper the View Bill window's "Open PDF in new tab" produces. You just skip the trip through the window.
+Each billed row's **View Bill** button also carries a small **PDF tail**. The tail is the page icon attached to the button's right edge. One click opens the invoice PDF in a new tab. The PDF is freshly made with the current payment history, ready to print or send. The PDF is the same paper the View Bill window's "Open PDF in new tab" produces. You just skip the trip through the window.
 
 ## Where this fits in the receivables routine
 
 The dates block at the bottom of each row is for reading. The doing happens in four places:
 
 - Quickfill's **Billed Awaiting Payment** station is the daily look at every open bill.
-- The Pipeline's **📞 Ask N customers when they'll pay** card is **call mode**. It is also inside Quickfill → Jobs Cleanup. Call mode is where the promises below get recorded.
-- **Accounts Receivable** is the bank-deposit matching desk. Its address is `/accounts-receivable`. {{button:blue|Match deposits}} on the Needs you card opens it in place. There, money that already landed gets applied to the bill it pays. Then the row here turns green on its own.
+- The Pipeline's **📞 Ask N customers when they'll pay** card is **call mode**. The same card is also inside Quickfill → Jobs Cleanup. Call mode is where the promises below get recorded.
+- **Accounts Receivable** is the bank-deposit matching desk. The desk's address is `/accounts-receivable`. {{button:blue|Match deposits}} on the Needs you card opens it in place. There, money that already landed gets applied to the bill it pays. Then the row here turns green on its own.
 - **GC Review** certifies and sends the weekly GC statements.
 
-"Who owes us?" in one figure is the Dashboard's **Accounts Receivable** card. Its drill-down, this board, Quickfill and a customer's page all count the same bills.
+"Who owes us?" in one figure is the Dashboard's **Accounts Receivable** card. The card's drill-down, this board, Quickfill and a customer's page all count the same bills.
 
 ## Reading the Expected row
 
-Each billed row ends with the bill's dates in one block. It is a short ledger, explained in *read the Pipeline money view*. The money is the Expected row:
+Each billed row ends with the bill's dates in one block. The block is a short ledger, explained in *read the Pipeline money view*. The money is the Expected row:
 
-- *Expected Sep 8 · in 12 d* in green means on track. The date is the bill date, from the Billed row, plus this customer's usual pay speed. Pay speed is the **median** time between our bill going out and their payments landing. The median is the middle one when all their times are lined up. It covers the last 12 months.
-- *Expected Sep 8 · 12 d past* in amber means the customer is now slower than **their own** history. This is the real follow-up signal. A 40-day-old bill is normal for a customer who pays in 45 days. It is alarming for one who pays in 20.
-- A customer with too little payment history gets the company-wide average instead. Too little means fewer than 3 measured payments. Treat it as a rough guess, not their norm.
+- *Expected Sep 8 · in 12 d* in green means on track. The date is the bill date, from the Billed row, plus this customer's usual pay speed. Pay speed is the **median** time between our bill going out and their payments landing. The median is the middle time: half their payments land sooner, and half later. Pay speed covers the last 12 months.
+- *Expected Sep 8 · 12 d past* in amber means the customer is now slower than **their own** history. Running late against their own history is the real follow-up signal. A 40-day-old bill is normal for a customer who pays in 45 days. The same bill is alarming for a customer who pays in 20.
+- A customer with too little payment history gets the company-wide average instead. Too little means *no measurable payment yet*. Treat that average as a rough guess, not their norm.
 
 You hover over the row and it spells out the math. In Collections, the row reads red whatever the dates say.
 
@@ -35,7 +35,7 @@ Find the row on Billed Awaiting Payment — its dates read *Billed Aug 4* and *E
 
 ## When the customer names a real date
 
-Statistics stop mattering the moment someone gives you an actual answer. A GC may tell you "you're on the check run for the 25th". A check run is the day a company sends out its batch of checks. You click the **Expected** row in the dates block and record it. You record the date, who said it, and how. The row becomes *They said Sep 25*. The estimate stays as a quiet line under it. The record keeps who took the call, so the next person with the question sees both. A date the customer named themselves from their portal statement shows as {{chip:green|✓ Promised Sep 25 · customer}}.
+Statistics stop mattering the moment someone gives you an actual answer. Say a GC tells you "you're on the check run for the 25th". A check run is the day a company sends out its batch of checks. You click the **Expected** row in the dates block to record the answer. You record the date, who said it, and how. The row becomes *They said Sep 25*. The estimate stays as a quiet line under it. The record keeps who took the call. So the next person with the question sees the promise and the estimate. A date the customer named themselves from their portal statement shows as {{chip:green|✓ Promised Sep 25 · customer}}.
 
 - A promise **overrides** the estimate everywhere, including the forecast.
 - If the promised date passes unpaid, the row reads *They said Sep 25 · 5 d past* in amber. Now you're following up on their word, not a statistic.
@@ -45,22 +45,22 @@ Anyone who can see the board sees promises. Marking them is for dev, leaders and
 
 ## The pay history under it
 
-Below the chip, a small line reads how this customer actually pays. It reads like {{chip:gray|▂▅▃▇▂▁ Pays in 9–41d · keeps 3 of 7 · slips ~9d}}. The bars are their last six bills. Each bar is the days from bill to money. The range is their real spread over the last year. The promise part appears once they have named dates. See *know whether a customer keeps their word*. The forecast uses the same record. A promise from a customer who usually slips nine days is filed nine days later than the date they gave.
+Below the chip, a small line reads how this customer actually pays. The line reads like {{chip:gray|▂▅▃▇▂▁ Pays in 9–41d · keeps 3 of 7 · slips ~9d}}. The bars are their last six bills. Each bar is the days from bill to money. The range is their real spread over the last year. The promise part appears once they have named dates. See *know whether a customer keeps their word*. The forecast uses the same record. A promise from a customer who usually slips nine days is filed nine days later than the date they gave.
 
 ## The payment forecast
 
-The {{button:green|Forecast}} button at the top of the Pipeline rolls every chip up into one view. It sits next to {{button:blue|New Job}} and {{button:outline-amber|Follow-ups}}. The same view also opens from the {{button:outline|Payment forecast}} button on the Billed Awaiting Payment header. It opens from the stage strip's hamburger menu too. The view puts open dollars in buckets by expected payment date. **Past expected** comes first, in red. It is your follow-up queue. Then come **This week**, **Next week** and beyond. It reads two ways:
+The {{button:green|Forecast}} button at the top of the Pipeline rolls every chip up into one view. The Forecast button sits next to {{button:blue|New Job}} and {{button:outline-amber|Follow-ups}}. The same view also opens from the {{button:outline|Payment forecast}} button on the Billed Awaiting Payment header. The view opens from the stage strip's hamburger menu too. The view puts open dollars in buckets by expected payment date. **Past expected** comes first, in red. Past expected is your follow-up queue. Then come **This week**, **Next week** and beyond. The forecast reads two ways:
 
 - **As a cash forecast**: "about $35k should land this week, $47k next week."
 - **As a work list**: everything in Past expected is a customer running slower than their own norm. You click any row to jump straight to that bill on the board.
 
 Bills whose customers have no measurable history sit in **No pay history** at the end. So no money ever hides from the total.
 
-The **Pay speeds** strip under the buckets gives the averages at a glance. It shows the company-wide pay time next to the {{chip:blue|Res}} and {{chip:yellow|Comm}} averages. Each says how many payments it's based on. Res means residential and Comm means commercial. Every row also wears its customer's Res/Comm tag. Commercial GCs usually pay on check runs, while homeowners pay on the spot. So the same "late by 10 days" reads very differently between the two.
+The **Pay speeds** strip under the buckets gives the averages at a glance. The strip shows the company-wide pay time next to the {{chip:blue|Res}} and {{chip:yellow|Comm}} averages. Each average says how many payments it's based on. Res means residential and Comm means commercial. Every row also wears its customer's Res/Comm tag. Commercial GCs usually pay on check runs, while homeowners pay on the spot. So the same "late by 10 days" reads very differently between the two.
 
 ## Emailing the forecast
 
-The {{button:outline|✉ Email…}} button in the forecast's header sends this exact view as an email. It has the bucket totals, the pay-speeds line, and every bill with its expected date. Past-expected follow-ups come first. The email is built **fresh at send time**. So a Monday 7 AM email shows Monday's numbers.
+The {{button:outline|✉ Email…}} button in the forecast's header sends this exact view as an email. The email has the bucket totals, the pay-speeds line, and every bill with its expected date. Past-expected follow-ups come first. The email is built **fresh at send time**. So a Monday 7 AM email shows Monday's numbers.
 
 - **Send now** emails a teammate immediately. **Schedule…** picks a date and time, in Central time. **Repeat weekly** turns it into a standing subscription. The classic setup is Monday 7:00 AM. Then the week's cash-in picture is in the inbox before the day starts.
 - **Preview** opens the email in a new tab. **Email me a test** sends it to your own address first.
@@ -68,15 +68,15 @@ The {{button:outline|✉ Email…}} button in the forecast's header sends this e
 - Recipients are office-capable teammates: dev, leaders, assistant-type roles and primary. Scheduled sends also appear on the recipient's {{icon:gear}} **Settings → Your account → My email schedule**.
 - Every job in the email links back to the app. The **Open the forecast** button lands right on this window.
 
-Sending is for dev, leaders and assistant-type roles. They are the same people who can share the Billed report.
+Sending is for dev, leaders and assistant-type roles. Those roles are the same people who can share the Billed report.
 
 ## The months people worked, under a row
 
-Texas counts lien deadlines from the **month the work was done**, not from the bill date. A lien is a legal claim on a property for unpaid work. So every forecast row whose job has clock sessions carries a small chevron arrow at its left edge. You tap it and the months worked open under the row, one line per month:
+A lien is a legal claim on a property for unpaid work. Texas counts lien deadlines from the **month the work was done**, not from the bill date. So every forecast row whose job has clock sessions carries a small chevron arrow at its left edge. You tap it and the months worked open under the row, one line per month:
 
-- **The weeks as bars**: each bar is one week, sized by hours. The number of people that week sits above it. You hover over a bar for the names, the hours, and how many days ago that week was. It reads like *Week of Jun 8 (98d ago)*. A hatched bar has sessions still awaiting approval. Only approved hours count toward the lien clock.
-- **What counts** reads like {{chip:gray|5 people · 82.7 h · 5 days · 24% of hours}}. The share is this month's part of the job's hours. It is a rough guide to how much of the open balance the month represents.
-- **The notice, on jobs with a GC**: every unpaid month has its own § 53.056 notice date. It shows {{chip:red|due tomorrow}} inside a week and {{chip:yellow|closes in 12d}} inside two. It shows {{chip:green|notice sent}} once the Lien window has recorded one for that month. {{button:outline|Send notice…}} opens the **Lien desk** on that job. There the notice is drafted, approved and sent. See *send lien notices from the Lien desk*. Direct-with-owner jobs say *no monthly notice*. They show their single affidavit date instead. The affidavit is the sworn lien claim filed with the county.
+- **The weeks as bars**: each bar is one week, sized by hours. The number of people that week sits above it. You hover over a bar for the names, the hours, and how many days ago that week was. The hover reads like *Week of Jun 8 (98d ago)*. A hatched bar has sessions still awaiting approval. Only approved hours count toward the lien clock.
+- **What counts** reads like {{chip:gray|5 people · 82.7 h · 5 days · 24% of hours}}. The share is this month's part of the job's hours. The share is a rough guide to how much of the open balance the month represents.
+- **The notice, on jobs with a GC**: every unpaid month has its own § 53.056 notice date. The date shows {{chip:red|due tomorrow}} inside a week and {{chip:yellow|closes in 12d}} inside two. The date shows {{chip:green|notice sent}} once the Lien window has recorded one for that month. {{button:outline|Send notice…}} opens the **Lien desk** on that job. There the notice is drafted, approved and sent. See *send lien notices from the Lien desk*. Direct-with-owner jobs say *no monthly notice*. Those jobs show their single affidavit date instead. The affidavit is the sworn lien claim filed with the county.
 
 :::example You do not have to open anything to see the one that matters
 A sub row whose notice month closes within 14 days wears it on the row itself — {{chip:red|⏱ Jun notice due tomorrow}} — and one amber line above the buckets counts every month closing with the dollars riding on them. Rows with nothing closing look exactly as before.
@@ -86,13 +86,13 @@ A {{chip:yellow|property kind unknown}} chip means no property record is linked.
 
 ## The pay-speeds breakdown
 
-The strip is a door. You click anywhere on it, where it reads **See the breakdown ›**. A second view opens, showing *who* is behind those averages.
+The strip is a door. You click anywhere on the strip. The strip's label reads **See the breakdown ›**. A second view opens, showing *who* is behind those averages.
 
 - **Three tiles** echo the strip: Company, Res and Comm.
-- **Money waiting** lists every customer whose oldest open bill has waited past their own normal, slowest first. The bar on each row **is their open bills**. It has one piece per job, sized by dollars. Each piece is colored by how late that bill runs against what this customer usually does. Green is on pace and amber is over it. Red is at twice it or more. Gray means the bill has no date. The row's numbers say it in words: *164d waiting · usually ~35d · $21,850 open on 3 jobs*. **Click the row and each job they owe lists out**. Each job shows its own wait clock, billed date and dollars, and clicks through to the job. There is also a jump to their bills on the board. Customers paying like they usually do collapse into one quiet line at the bottom. The {{button:outline|✉ Email this weekly…}} button in its header sends this exact list by email. It works the same way as the forecast email above. It has **Send now** and **Schedule…** with **Repeat weekly**, **Preview** and **Email me a test**. The email carries a color legend and every customer's full bill breakdown. That is the job, the full address with city, the dollars and the wait. It rebuilds fresh at send time. It lands on the recipient's **My email schedule** like the rest.
-- ***By customer — slowest first*** ranks every customer by their median. It shows their payment count and the open dollars riding on their speed. The top of this list is your follow-up list. Customers with under 3 measured payments sit muted at the bottom of the same list, with a ***—*** median. Their forecasts run on the company median. The list says so instead of showing a made-up number.
-- **Data health** is one quiet line under the tiles. It says how much of the last year's money the math can actually measure, like *238 of 545 payments measurable*. Amber counts show the two things the office can fix. Those are payments not applied to a bill, and bills with no date. You hover over any number and it says what to do about it. The **+ Weekly hygiene task** link turns the worklist into a recurring checklist task. You pick who does it and when.
-- **Fixing the misses**: you click the Data health line and every payment lists out with its billed → paid dates. A {{chip:yellow|no bill}} chip means the payment isn't applied to any bill. You open the job to link it. {{chip:yellow|no bill date}} means the bill just needs its date. {{chip:yellow|billed after paid}} means the recorded date sits *after* the money arrived. So it can't be right, and the math refuses it until it's corrected. Either date problem is fixed the same way. You tap **＋ add date** and type it as MM/DD/YY. The row turns measurable on the spot. The same quick fix works down the whole **Undated bills** backlog.
+- **Money waiting** lists every customer whose oldest open bill has waited past their own normal, slowest first. The bar on each row **is their open bills**. The bar has one piece per job, sized by dollars. Each piece is colored by how late that bill runs against what this customer usually does. Green is on pace and amber is over it. Red is at twice it or more. Gray means the bill has no date. The row's numbers say it in words: *164d waiting · usually ~35d · $21,850 open on 3 jobs*. **Click the row and each job they owe lists out**. Each job shows its own wait clock, billed date and dollars, and clicks through to the job. There is also a jump to their bills on the board. Customers paying like they usually do collapse into one quiet line at the bottom. The {{button:outline|✉ Email this weekly…}} button in its header sends this exact list by email. That email works the same way as the forecast email above. The button has **Send now** and **Schedule…** with **Repeat weekly**, **Preview** and **Email me a test**. The email carries a color legend and every customer's full bill breakdown. The breakdown gives the job, the full address with city, the dollars and the wait. The email rebuilds fresh at send time. The email lands on the recipient's **My email schedule** like the rest.
+- ***By customer — slowest first*** ranks every customer by their median. The list shows their payment count and the open dollars riding on their speed. The top of this list is your follow-up list. Customers with *no measurable payment yet* sit muted at the bottom of the same list, with a ***—*** median. Those customers' forecasts run on the company median. The list says so instead of showing a made-up number.
+- **Data health** is one quiet line under the tiles. The line says how much of the last year's money the math can actually measure, like *238 of 545 payments measurable*. Amber counts show the two things the office can fix. The two things are payments not applied to a bill, and bills with no date. You hover over any number and it says what to do about it. The **+ Weekly hygiene task** link turns the worklist into a recurring checklist task. You pick who does it and when.
+- **Fixing the misses**: you click the Data health line and every payment lists out with its billed → paid dates. A {{chip:yellow|no bill}} chip means the payment isn't applied to any bill. You open the job to link it. {{chip:yellow|no bill date}} means the bill just needs its date. {{chip:yellow|billed after paid}} means the recorded date sits *after* the money arrived. So that date can't be right, and the math refuses it until it's corrected. Either date problem is fixed the same way. You tap **＋ add date** and type it as MM/DD/YY. The row turns measurable on the spot. The same quick fix works down the whole **Undated bills** backlog.
 - **The receipts**: you click any customer row and their story unfolds in two halves. ***Owes now — by job*** lists each open bill with its wait clock and dollars, straight into the job. **Paid before** shows the payments behind their number. {{chip:green|+8 05/01–05/09}} means billed May 1, and the money hit May 9, eight days later. Green is at or under the company median. Amber is above it. Red is twice it or more. So one glance shows whether a median is built on steady habits or one slow outlier. Customers with no chips say why: no payments linked to a billed invoice in the last 12 months.
 
 :::example Who's actually slow?
@@ -101,16 +101,16 @@ The Comm average says ~25d — but the breakdown shows that's Knight Contracting
 
 ## Recording payments so they count
 
-A payment only teaches the system when it's applied to a bill. That's where the bill-to-paid gap comes from. The Edit-Job payments table helps that happen on its own:
+A payment only teaches the system when it's applied to a bill. The bill-to-paid gap comes from that link. The Edit-Job payments table helps that happen on its own:
 
 - You type an amount on a new payment line. If the job has exactly **one** open bill that takes hand-entered payments, **Applies to** fills itself in. You can still switch it back to {{chip:gray|Job (unassigned)}} if the money really isn't for that bill.
-- A bill that went out through **Stripe**, the online payment service, records its payments through Stripe. That includes cash and checks. You use {{button:blue|Record payment}} on the bill itself, under Edit Job → Bill. It works for the whole balance or part of it. A part payment becomes a credit line on the Stripe invoice, so the pay link asks for the rest. A hand-entered line never attaches to a Stripe bill. If you type one on such a job, an amber note offers **Record on the bill →**. It carries your amount across.
-- A real payment can be left unapplied on a job that *has* open bills. Then its bill choices show right under the row. Each open bill is a tappable chip with its amount, when it went out, and what's still left on it. A bill whose balance {{chip:green|matches this payment}} is highlighted and listed first. One tap applies it. {{button:outline|Keep as job payment}} leaves it general. It stays flagged, since an unapplied payment can't pay a bill down or feed the customer's speed.
+- A bill that went out through **Stripe**, the online payment service, records its payments through Stripe. Stripe records cash and checks too. You use {{button:blue|Record payment}} on the bill itself, under Edit Job → Bill. Record payment works for the whole balance or part of it. A part payment becomes a credit line on the Stripe invoice, so the pay link asks for the rest. A hand-entered line never attaches to a Stripe bill. If you type one on such a job, an amber note offers **Record on the bill →**. The note carries your amount across.
+- A real payment can be left unapplied on a job that *has* open bills. Then its bill choices show right under the row. Each open bill is a tappable chip with its amount, when it went out, and what's still left on it. A bill whose balance {{chip:green|matches this payment}} is highlighted and listed first. One tap applies the payment to that bill. {{button:outline|Keep as job payment}} leaves it general. The payment stays flagged, since an unapplied payment can't pay a bill down or feed the customer's speed.
 - When **two or more** payments need placing, a summary bar appears above the table. You tap {{button:outline|Match payments…}} to place them all in one panel. Each bill's remaining balance updates as you assign.
-- A paid date **earlier** than the bill's own date gets a red ⚠. Money can't arrive before the bill goes out. So that's almost always a mistyped date.
+- A paid date **earlier** than the bill's own date gets a red ⚠. Money can't arrive before the bill goes out. So an early paid date is almost always a mistyped date.
 
 ## Where the speed number comes from
 
-It's the same "pays in ~N days" stat the customer profile shows. Only payments that are linked to a billed invoice count. A payment with no bill date can't be measured. Only the last 12 months count, so a customer who cleaned up their act isn't haunted by old habits.
+The speed number is the same "pays in ~N days" stat the customer profile shows. Only payments that are linked to a billed invoice count. A payment with no bill date can't be measured. Only the last 12 months count, so a customer who cleaned up their act isn't haunted by old habits.
 
-Jobs flagged for **Collections** keep their rows in the Collections section. They don't get expectation chips. A job you've already flagged as hard to collect is past statistics.
+Jobs flagged for **Collections** keep their rows in the Collections section. Those jobs don't get expectation chips. A job you've already flagged as hard to collect is past statistics.

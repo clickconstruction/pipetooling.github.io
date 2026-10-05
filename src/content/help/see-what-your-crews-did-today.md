@@ -4,9 +4,9 @@ category: Jobs & Scheduling
 roles: dev, master_technician, assistant, controller, superintendent
 keywords: crew day, daily report, who worked, hours, field reports, schedule, superintendent, flags, clocked in
 ---
-The **Crew Day** card on your Dashboard shows one day of crew activity in one place. It shows who was on which jobs, and their scheduled versus actual clock times.
+The **Crew Day** card on your Dashboard shows one day of crew activity in one place. The card shows who was on which jobs, and their scheduled versus actual clock times.
 
-It also shows the hours that added up and the field reports they left. It shows how far each job moved.
+The card also shows the hours that added up and the field reports the crew left. The card shows how far each job moved too.
 
 ## Read the card
 
@@ -19,13 +19,13 @@ Each person gets a row, biggest day first:
 :::
 
 - The chips at the top total the day: people, jobs, hours, reports, and flags.
-- A green block under a job is a field report that person left. It shows the first lines of what they wrote.
-- **▲ 45% → 60%** next to a job means it moved that much today. The app reads that move from the day's "% complete" notes and the job's current number.
+- A green block under a job is a field report that person left. The block shows the first lines of what they wrote.
+- **▲ 45% → 60%** next to a job means it moved that much today. The move runs from the day's "% complete" notes to the job's current number.
 - **on the clock** next to the hours means they haven't clocked out yet. The hours keep counting.
 
 ## The office's line
 
-An office person's card ends with one line of what they got done that day. It reads like *Today: billed 3 · 4 deposits · 2 contracts sent · approved 12 sessions*. It comes from the same records the Day book lists. A *Day book →* link opens that person's day there. A day with nothing on the record shows no line. Superintendents do not see this line.
+An office person's card ends with one line of what they got done that day. The line reads like *Today: billed 3 · 4 deposits · 2 contracts sent · approved 12 sessions*. The line comes from the same records the Day book lists. The line ends with a *Day book →* link that opens that person's day there. A day with nothing on the record shows no line. Superintendents do not see this line.
 
 ## The flags
 
@@ -35,7 +35,7 @@ Flags mark what needs a follow-up, so you don't hunt for it:
 - {{chip:red|Scheduled — never clocked in}} means a schedule block existed, but there was no clock session all day.
 - {{chip:yellow|Unscheduled work}} means they clocked a job that wasn't on their schedule.
 
-A flagged person's card gets an amber or red left edge. So it stands out while you scroll.
+A flagged person's card gets an amber or red left edge. So the card stands out while you scroll.
 
 ## Move between days
 
@@ -43,7 +43,7 @@ The {{button:outline|◀}} {{button:outline|▶}} arrows sit together in the car
 
 ## Who sees what
 
-- **Office roles** see the whole company. They are dev, leader, assistant and controller.
+- **Office roles** see the whole company. The office roles are dev, leader, assistant and controller.
 - **Superintendents** see the crews on jobs tied to their assigned projects. The card says "Scoped to your assigned projects."
 - **Superintendents see field crews first**. Office staff fold behind a *Show office staff* link at the bottom of the card. A {{chip:gray|+N office hidden}} chip keeps the totals honest. Your choice is remembered on that device. *Hide office staff* puts the fold back.
-- The card shows **hours only**. It shows no wages or billing amounts.
+- The card shows **hours only**. The card shows no wages or billing amounts.
