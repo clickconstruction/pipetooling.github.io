@@ -468,7 +468,7 @@ Shared modals that stay page-level (opened from 2+ sections) vs single-opener mo
 **Hazards**
 
 - **A new key is four edits, and only two are checked:** the `key` union and `NEEDS_YOU_RANK` fail the build when one is missed; the block in the builder and the branch in each host's `onAction` do not. A key with no branch draws a button that does nothing.
-- **`letter-two` is a secondary link with no handler:** the `lien-notice-draft` item can carry `{ key: 'letter-two' }` (635), and both hosts' `onSecondary` answer only `missed` for that item.
+- **`lien-notice-draft` has two secondary links, each with its own branch in both hosts:** `missed` opens the Lien desk on `liendeskPile=missed`, and `letter-two` (635) opens it on `liendeskPile=sent` since v2.4561 (before, the line was drawn as a link and did nothing). A new secondary key needs a branch in both `onSecondary` chains or it is dead the same way.
 - **The order of the blocks is the tie-break:** `rankNeedsYouItems` sorts by kind, tier, then figure, and `Array.prototype.sort` keeps build order for the rest. Moving a block reorders cards that tie.
 - **`figureValue` reads any digits:** a money figure (`$12,345`) ranks as 12,345 against a count in the same tier, a percent (`58%`) as 58, and `99+` as 100. Changing an item's `figure` from a count to dollars moves it within its tier.
 - **Not pure about today:** `daysUntilYmd` reads `todayYmdInAppTz()` (the three Lien desk cards, 620, 668, 685) and `lien-suit-year` builds its counsel date from `new Date` (564), while `returned-check` takes `inputs.todayYmd`. A test of a lien deadline has to set the clock.

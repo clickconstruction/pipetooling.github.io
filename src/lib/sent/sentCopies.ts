@@ -221,3 +221,53 @@ iframe{flex:1;border:0;background:#fff}
 <script>document.getElementById('print').addEventListener('click',function(){var f=document.getElementById('copy');try{f.contentWindow.focus();f.contentWindow.print()}catch(e){window.print()}})</script>
 </body></html>`
 }
+
+/** How the Documents page sorts what was sent: by what the paper is about. */
+export type SentKindGroup = 'bills' | 'lien' | 'contracts' | 'bids' | 'statements' | 'other'
+
+/** Each group's kinds, by how a kind begins. A kind no group claims is "other". */
+const SENT_GROUP_PREFIXES: Record<Exclude<SentKindGroup, 'other'>, ReadonlyArray<string>> = {
+  bills: ['bill'],
+  lien: ['lien_', 'demand_letter', 'owner_records', 'legal_', 'hazmat_notice'],
+  contracts: ['job_contract', 'person_contract', 'estimate', 'work_order', 'sub_labor_sheet'],
+  bids: ['bid_', 'rfq', 'submittal_', 'procurement_', 'purchase_order', 'supply_house'],
+  statements: ['gc_statement', 'gc_checks', 'test_report', 'field_report'],
+}
+
+export const SENT_KIND_GROUPS: ReadonlyArray<{ key: SentKindGroup | 'all'; label: string }> = [
+  { key: 'all', label: 'All' },
+  { key: 'bills', label: 'Bills' },
+  { key: 'lien', label: 'Lien and legal' },
+  { key: 'contracts', label: 'Contracts and estimates' },
+  { key: 'bids', label: 'Bids and suppliers' },
+  { key: 'statements', label: 'Statements and reports' },
+  { key: 'other', label: 'Other' },
+]
+
+export function sentKindGroup(kind: string): SentKindGroup {
+  for (const [group, prefixes] of Object.entries(SENT_GROUP_PREFIXES) as Array<[Exclude<SentKindGroup, 'other'>, ReadonlyArray<string>]>) {
+    if (prefixes.some((p) => kind.startsWith(p))) return group
+  }
+  return 'other'
+}
+
+/**
+ * A group as a PostgREST filter over `kind`: an `or` list for a named group, an `and` list of
+ * "not like" for "other", null for all. The prefixes are ours, so nothing here is typed by a person.
+ */
+export function sentKindGroupFilter(group: SentKindGroup | 'all'): { or?: string; notLike?: string[] } | null {
+  if (group === 'all') return null
+  if (group === 'other') return { notLike: Object.values(SENT_GROUP_PREFIXES).flat().map((p) => `${p}*`) }
+  return { or: SENT_GROUP_PREFIXES[group].map((p) => `kind.like.${p}*`).join(',') }
+}
+
+/**
+ * What a person typed, as a PostgREST `or` over the title, who it went to and the subject, or
+ * null when there is nothing to look for. Everything a filter could read as syntax is dropped.
+ */
+export function sentSearchFilter(typed: string): string | null {
+  const q = typed.replace(/[^A-Za-z0-9 @._#'&-]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 60)
+  if (q.length < 2) return null
+  const like = `*${q}*`
+  return ['title', 'recipient_name', 'subject'].map((col) => `${col}.ilike.${like}`).join(',')
+}

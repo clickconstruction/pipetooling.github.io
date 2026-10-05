@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { logEmailSendBestEffort } from '../_shared/logEmailSend.ts'
+import { fileSentEmailBestEffort } from '../_shared/fileSentCopy.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { COMPANY_EMAIL_FROM } from '../_shared/emailFrom.ts'
 
@@ -98,6 +99,7 @@ serve(async (req) => {
           : 'Please find the attached notice of claim for unpaid labor or materials (Tex. Prop. Code § 53.056). A copy is also being delivered by certified mail.'
     const htmlBody = `<p>${textPlain.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br/>')}</p>`
 
+    const attachments = [{ filename: pdfFilename.replace(/[^a-zA-Z0-9._-]/g, '_'), content: pdfBase64 }]
     const resendResponse = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -110,7 +112,7 @@ serve(async (req) => {
         subject,
         html: htmlBody,
         text: textPlain,
-        attachments: [{ filename: pdfFilename.replace(/[^a-zA-Z0-9._-]/g, '_'), content: pdfBase64 }],
+        attachments,
       }),
     })
     if (!resendResponse.ok) {
@@ -119,6 +121,12 @@ serve(async (req) => {
     }
     const sent = (await resendResponse.json().catch(() => ({}))) as { id?: string }
     await logEmailSendBestEffort({ resendEmailId: sent.id ?? null, to: [toEmail], from: COMPANY_EMAIL_FROM, subject, emailType })
+    // Sent copies (docs/SENT_COPIES.md): the notice or the demand as it went, with its PDF, is kept on the job.
+    const recipientLabel = typeof body.recipient_label === 'string' ? body.recipient_label.trim() : ''
+    await fileSentEmailBestEffort(
+      { kind: emailType === 'demand_letter' ? 'demand_letter' : 'lien_notice', recipientName: recipientLabel, jobIds: [jobId], sentBy: user.id },
+      { to: [toEmail], from: COMPANY_EMAIL_FROM, subject, html: htmlBody, attachments, resendEmailId: sent.id ?? null },
+    )
 
     return jsonResponse({ success: true, resend_email_id: sent.id ?? null })
   } catch (e) {
