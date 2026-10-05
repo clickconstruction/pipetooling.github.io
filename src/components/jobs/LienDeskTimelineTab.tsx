@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { LienJobNumber } from './LienJobNumber'
+import { splitLienJobLabel } from '../../lib/jobs/lienJobLabel'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { propertyKindWords, normalizePropertyKind } from '../../lib/jobs/propertyKind'
 import { filterLienTimelineBook, type LienBookShow, type LienTimelineBook, type LienTimelineBookRow } from '../../lib/jobs/lienTimelineBook'
@@ -23,6 +25,8 @@ export type LienDeskTimelineTabProps = {
   show: LienBookShow
   onShow: (s: LienBookShow) => void
   onOpenRow: (row: LienTimelineBookRow) => void
+  /** A row's job number opens the job itself (v2.4535): the Job window, with its history and Edit. */
+  onOpenJob?: (jobId: string) => void
   onPrint: (rows: LienTimelineBookRow[], title: string) => void
 }
 
@@ -34,7 +38,7 @@ function nextColor(tone: LienTimelineBookRow['timeline']['next']['tone']): strin
 
 const selectStyle: CSSProperties = { padding: '2px 6px', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-700)', font: 'inherit', fontSize: '0.78rem' }
 
-export default function LienDeskTimelineTab({ book, loading, error, gcId, onGcId, show, onShow, onOpenRow, onPrint }: LienDeskTimelineTabProps) {
+export default function LienDeskTimelineTab({ book, loading, error, gcId, onGcId, show, onShow, onOpenRow, onOpenJob, onPrint }: LienDeskTimelineTabProps) {
   const hostRef = useRef<HTMLDivElement | null>(null)
   const [stacked, setStacked] = useState(false)
   useEffect(() => {
@@ -89,16 +93,23 @@ export default function LienDeskTimelineTab({ book, loading, error, gcId, onGcId
         const t = r.timeline
         const kind = normalizePropertyKind(r.job.propertyKind)
         return (
-          <button
+          // The row opens the job's pane wherever it is clicked; its number is its own door to the job (v2.4535).
+          <div
             key={r.jobId}
-            type="button"
+            role="row"
             data-lien-book-row={r.jobId}
             onClick={() => onOpenRow(r)}
             title="Open this job on the pane its next step belongs to"
-            style={{ display: 'grid', gridTemplateColumns: stacked ? 'minmax(0, 1fr)' : 'minmax(200px, 250px) minmax(0, 1fr) minmax(180px, 230px)', gap: stacked ? '0.35rem 0' : '0 1rem', alignItems: 'center', width: '100%', textAlign: 'left', padding: '0.55rem 0.9rem', border: 'none', borderTop: '1px solid var(--border)', background: 'transparent', cursor: 'pointer', font: 'inherit', color: 'inherit', fontSize: '0.8125rem', opacity: r.lens === 'dead' ? 0.7 : 1 }}
+            style={{ display: 'grid', gridTemplateColumns: stacked ? 'minmax(0, 1fr)' : 'minmax(200px, 250px) minmax(0, 1fr) minmax(180px, 230px)', gap: stacked ? '0.35rem 0' : '0 1rem', alignItems: 'center', width: '100%', textAlign: 'left', padding: '0.55rem 0.9rem', boxSizing: 'border-box', borderTop: '1px solid var(--border)', background: 'transparent', cursor: 'pointer', fontSize: '0.8125rem', opacity: r.lens === 'dead' ? 0.7 : 1 }}
           >
             <span style={{ minWidth: 0, display: 'grid', gap: '0.05rem' }}>
-              <strong style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.job.label}</strong>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                {onOpenJob ? <LienJobNumber number={splitLienJobLabel(r.job.label).number} onOpen={() => onOpenJob(r.jobId)} /> : null}
+                {/* the name is the row's keyboard stop; its click rides up to the row */}
+                <button type="button" style={{ minWidth: 0, border: 'none', background: 'none', padding: 0, textAlign: 'left', cursor: 'pointer', color: 'inherit', font: 'inherit', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {onOpenJob ? splitLienJobLabel(r.job.label).name || r.job.label : r.job.label}
+                </button>
+              </span>
               <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {r.job.isSub ? r.job.gcName || 'GC' : 'with the owner'} · {propertyKindWords(kind)}
               </span>
@@ -115,7 +126,7 @@ export default function LienDeskTimelineTab({ book, loading, error, gcId, onGcId
               ) : null}
               {t.kindUnknown ? <span style={{ color: 'var(--text-amber-800)' }}>commercial dates · a month earlier if residential</span> : null}
             </span>
-          </button>
+          </div>
         )
       })}
     </div>
