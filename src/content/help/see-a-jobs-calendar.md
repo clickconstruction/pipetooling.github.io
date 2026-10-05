@@ -10,16 +10,16 @@ Every job on Jobs → Pipeline carries a two-week strip in the Crew & Dates colu
 A blue cell is a day someone is booked on the job. The outlined cell is today. Under it the row says it in words:
 
 - {{chip:green|NEXT}} **Wed Sep 23**, then *tomorrow · 8–10 AM*, is the first appointment. {{chip:blue|ENDS}} **Fri Sep 25**, then *in 3 days · 3 visits*, is the last day on the calendar. One visit reads *same day*.
-- {{chip:yellow|NOT SCHEDULED}} with **Activity Thu Sep 17**, then *6 days ago · worked*, means nothing is booked from today on. It reads *none yet* when nobody has been out. On a Working job the flag is amber. On a Waiting job it is grey, because nothing booked is what Waiting means. Planners get an **Assign work…** link right under it.
+- {{chip:yellow|NOT SCHEDULED}} with **Activity Thu Sep 17**, then *6 days ago · worked*, means nothing is booked from today on. It reads *none yet* when nobody has been out. On a Working job the flag is amber. On a Waiting job it is grey, because nothing booked is what Waiting means. For planners the flag is a button. Click it to open **Assign work** with the job already picked. The green calendar at the start of the row opens the same sheet.
 - **Done** with the last day on site means nothing is booked. The job is at 100 %, or already past Working. The day reads *worked* or *booked, no hrs*.
 
 :::example A scheduled row and an unscheduled one
 ▢ ▣ ▣ ▣ ▢ · ▢ ▢ ▢ ▢ ▢ &nbsp; NEXT Wed Sep 23 · 8–10 AM &nbsp; ENDS Fri Sep 25 · 3 visits
 
-▢ ▢ ▢ ▢ ▢ · ▢ ▢ ▢ ▢ ▢ &nbsp; NOT SCHEDULED &nbsp; Activity Thu Sep 17 · worked &nbsp; Assign work…
+▢ ▢ ▢ ▢ ▢ · ▢ ▢ ▢ ▢ ▢ &nbsp; NOT SCHEDULED &nbsp; Activity Thu Sep 17 · worked
 :::
 
-A Saturday block shows as a sixth cell on its week. Days booked beyond next week are counted in the strip's hover text. The days that have passed say what happened. A **green ✓** marks a day where someone clocked approved hours. A **hollow blue** cell marks a day where a crew was booked and nobody clocked. Grey means nothing was planned. Hover the strip to see who worked each ticked day. Today's cell stays plain blue until the day is over. On the phone cards the same strip sits in the chip row. There it shows **→ Fri Sep 25** when the plan runs past the next visit. It shows the **not scheduled** chip when nothing is booked.
+A Saturday block shows as a sixth cell on its week. Days booked beyond next week are counted in the strip's hover text. The days that have passed say what happened. A **green ✓** marks a day where someone clocked approved hours. A **hollow blue** cell marks a day where a crew was booked and nobody clocked. Grey means nothing was planned. Hover the strip to see who worked each ticked day. Today's cell stays plain blue until the day is over. On the phone cards the same strip sits in the chip row. There it shows **→ Fri Sep 25** when the plan runs past the next visit. It shows the **not scheduled** chip when nothing is booked. Planners get an **Assign work…** chip beside it there.
 
 ## Find the ones with no date
 

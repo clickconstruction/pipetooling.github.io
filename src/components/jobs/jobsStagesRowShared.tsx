@@ -595,21 +595,24 @@ export function renderStagesFieldAndBillingLines(
           whenLine('Done', 'isMuted isReached', stripDoneParts(when.lastYmd, when.lastKind, todayYmd, { onSubSheet }), openCal, 'Nothing on the calendar — open the job calendar')
         ) : (
           <>
-            <span className={`stagesWhenFlag${when.tone === 'amber' ? ' isAmber' : ''}`}>Not scheduled</span>
-            {whenLine('Activity', 'isMuted isReached', stripLastParts(when.lastYmd, when.lastKind, todayYmd, { onSubSheet }), openCal, 'Latest field activity — open the job calendar')}
+            {/* v2.4510: the flag is the door a planner takes; the Assign work… line under Activity is gone (the green calendar opens the same sheet). */}
             {ctx.canOpenJobScheduleModal ? (
               <button
                 type="button"
-                className="stagesWhenDoor"
+                className={`stagesWhenFlag isDoor${when.tone === 'amber' ? ' isAmber' : ''}`}
                 onClick={(e) => {
                   e.stopPropagation()
                   ctx.openQuickAssignForJob(job)
                 }}
-                title="Assign work — pick people and a time"
+                title="Not scheduled. Click to assign work: pick people and a time"
+                aria-label="Not scheduled. Assign work"
               >
-                Assign work…
+                Not scheduled
               </button>
-            ) : null}
+            ) : (
+              <span className={`stagesWhenFlag${when.tone === 'amber' ? ' isAmber' : ''}`}>Not scheduled</span>
+            )}
+            {whenLine('Activity', 'isMuted isReached', stripLastParts(when.lastYmd, when.lastKind, todayYmd, { onSubSheet }), openCal, 'Latest field activity — open the job calendar')}
           </>
         )}
       </div>
