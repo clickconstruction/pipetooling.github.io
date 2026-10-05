@@ -205,6 +205,20 @@ describe('JobsMapCard', () => {
     expect(openExternal).toHaveBeenCalledWith(expect.stringContaining('173%20Atlantis'))
   })
 
+  it('Hide map is the header row’s last piece, outside the group that wraps (v2.4509)', async () => {
+    cacheRows.mockReturnValue([{ address_normalized: '173 atlantis, kyle', lat: 30.0, lng: -97.9 }])
+    renderCard([job({ id: 'a' })])
+    await waitFor(() => expect(screen.getByTestId('canvas')).toBeTruthy())
+    const hide = screen.getByTestId('jobs-map-hide')
+    const row = hide.parentElement!
+    expect(row.lastElementChild).toBe(hide)
+    expect(row.style.flexWrap).toBe('')
+    const wrapping = row.firstElementChild as HTMLElement
+    expect(wrapping.style.flexWrap).toBe('wrap')
+    expect(wrapping.contains(screen.getByRole('button', { name: 'Jobs on a map' }))).toBe(true)
+    expect(wrapping.contains(hide)).toBe(false)
+  })
+
   it('Hide map collapses to the header and persists per device', async () => {
     cacheRows.mockReturnValue([{ address_normalized: '173 atlantis, kyle', lat: 30.0, lng: -97.9 }])
     const view = renderCard([job({ id: 'a' })])
