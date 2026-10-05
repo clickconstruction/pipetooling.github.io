@@ -44,6 +44,7 @@ export function GcCustomerSend({
       recipient={customer.name}
       attached={{ name: `Change order ${co.number}`, how: customer.portalOn ? 'They read it and sign it in their portal.' : 'With the email, to sign and send back.' }}
       sendLabel={step.sendLabel}
+      dayNote="The job's Who to call shows them late after this day. Signing it clears it."
       onSend={() => {
         dispatch({ type: 'remindCustomer', customerId: customer.id, projectId: project.id, changeOrderId: co.id, by, note })
         onDone()

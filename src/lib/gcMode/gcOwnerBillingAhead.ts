@@ -11,6 +11,11 @@
  * the retainage the owner holds on us. Owner money already late is left out of the weeks unless
  * asked, since we cannot say when it comes.
  *
+ * Expected, not on the books yet (owner's go-ahead 2026-10-04), counted unless the box is unticked:
+ * the bill each job sends on the next bill day, on the day that customer usually pays; and each
+ * trade's next draw for the work it has reported and not drawn yet, less retainage, paid within
+ * PAY_WITHIN_DAYS of the bill day as if they ask by then.
+ *
  * Its own file because it reads gcBuildingPay, which reads gcPortal. Import from `./gcModel`.
  */
 import type { GcProject, GcState } from './gcTypes'
@@ -40,7 +45,20 @@ export const CASH_AHEAD_WEEKS = 6
  * or the retainage they hold until the end. Out: the day we pay an approved draw by, a pay-by day
  * already gone, a draw counted as if we approve it today, or retainage waiting on the owner's.
  */
-export type CashMoveWhy = 'promised' | 'expected' | 'late' | 'noDay' | 'atTheEnd' | 'payBy' | 'weAreLate' | 'ifApprovedToday' | 'retainage'
+export type CashMoveWhy =
+  | 'promised'
+  | 'expected'
+  | 'late'
+  | 'noDay'
+  | 'atTheEnd'
+  | 'payBy'
+  | 'weAreLate'
+  | 'ifApprovedToday'
+  | 'retainage'
+  /** In, expected: the bill we send on the next bill day. */
+  | 'nextBill'
+  /** Out, expected: a trade's next draw for work it reported and has not drawn. */
+  | 'nextDraw'
 
 export interface CashMove {
   project: GcProject
@@ -58,6 +76,8 @@ export interface CashMove {
   waitingOnArchitect: boolean
   /** Out: the day the trade asked for it. */
   askedOn: string | null
+  /** Not on the books yet: the next bill or a trade's next draw. */
+  expected: boolean
 }
 
 export interface CashWeek {
@@ -87,19 +107,24 @@ export interface CashAhead {
   later: CashMove[]
   /** No day yet: retainage held until the end, or a bill with no day. */
   noDay: CashMove[]
-  /** The bills we send on the next bill day, added up. Not counted until they go. */
+  /** The bills we send on the next bill day, added up. */
   nextBills: { on: string; amount: number; jobs: number }
+  /** Whether what we expect (the next bills, the trades' next draws) is in the weeks. */
+  countExpected: boolean
+  /** What we expect, added up, in the weeks or after them: in from the next bills, out to the trades. */
+  expected: { in: number; out: number }
 }
 
 function oursProjects(state: GcState): GcProject[] {
   return state.projects.filter((p) => p.stage === 'buyout' || p.stage === 'building')
 }
 
-/** Every move of money on the books across the jobs that are ours, in and out, each with its day. */
+/** Every move of money across the jobs that are ours, in and out, each with its day: on the books, then what we expect. */
 export function cashMoves(state: GcState): CashMove[] {
   const today = state.today
   const moves: CashMove[] = []
-  const base = { waitingOnArchitect: false, askedOn: null, final: false }
+  const base = { waitingOnArchitect: false, askedOn: null, final: false, expected: false }
+  const billOn = nextOwnerBillDay(today)
   for (const project of oursProjects(state)) {
     // In, from the owner.
     const account = ownerAccount(project)
@@ -144,6 +169,27 @@ export function cashMoves(state: GcState): CashMove[] {
       const asking = sow.draws.some((d) => d.final && d.status !== 'paid')
       const holding = retainageHeldNow(sow)
       if (!asking && holding > 0.005) moves.push({ ...trade, number: null, final: true, amount: holding, on: opens ? notBefore(opens) : null, why: 'retainage' })
+
+      // Expected: their next draw, for the work they reported and have not drawn, less retainage. A
+      // pay application we sent back counts what we see on the lines we doubt, as our bill does.
+      const weSee = new Map<string, number>()
+      for (const back of sow.sentBack ?? []) {
+        if (sow.draws.some((d) => d.number === back.draw.number)) continue
+        for (const line of back.lines) weSee.set(line.sovId, Math.min(weSee.get(line.sovId) ?? 100, line.weSee))
+      }
+      const reported = sow.sov.reduce((t, l) => t + (l.amount * Math.min(l.pctReported, weSee.get(l.id) ?? 100)) / 100, 0)
+      const drawn = sow.draws.filter((d) => !d.final).reduce((t, d) => t + d.gross, 0)
+      const next = (reported - drawn) * (1 - sow.retainagePct / 100)
+      if (next >= 1) {
+        const number = sow.draws.reduce((n, d) => Math.max(n, d.number), 0) + 1
+        moves.push({ ...trade, number, amount: next, on: addDays(billOn, PAY_WITHIN_DAYS), why: 'nextDraw', expected: true })
+      }
+    }
+
+    // Expected: the bill this job sends on the next bill day, on the day this customer usually pays.
+    const draft = ownerPayApp(state, project)
+    if (ownerPayAppHasWork(draft) && draft.due > 0.005) {
+      moves.push({ ...base, project, dir: 'in', who: project.owner, number: draft.number, amount: draft.due, on: draft.expectPaidOn, why: 'nextBill', expected: true })
     }
   }
   return moves
@@ -154,11 +200,14 @@ export function cashMoves(state: GcState): CashMove[] {
  * end of it, starting from where we stand today. With countLate, owner money already late counts
  * this week, as if they pay it now.
  */
-export function cashAhead(state: GcState, opts: { countLate?: boolean; weeks?: number } = {}): CashAhead {
+export function cashAhead(state: GcState, opts: { countLate?: boolean; countExpected?: boolean; weeks?: number } = {}): CashAhead {
   const countLate = opts.countLate === true
+  const countExpected = opts.countExpected !== false
   const today = state.today
   const standingNow = allJobsMoney(state).totals.net
-  const moves = cashMoves(state)
+  const all = cashMoves(state)
+  const expectedMoves = all.filter((m) => m.expected)
+  const moves = countExpected ? all : all.filter((m) => !m.expected)
   const first = mondayOf(today)
   const weeks: CashWeek[] = Array.from({ length: opts.weeks ?? CASH_AHEAD_WEEKS }, (_, i) => {
     const start = addDays(first, i * 7)
@@ -203,5 +252,9 @@ export function cashAhead(state: GcState, opts: { countLate?: boolean; weeks?: n
     .filter((app) => ownerPayAppHasWork(app) && app.due > 0.005)
   const nextBills = { on: billOn, amount: drafts.reduce((t, app) => t + app.due, 0), jobs: drafts.length }
 
-  return { standingNow, weeks, lowest, late, countLate, later, noDay, nextBills }
+  const expected = {
+    in: expectedMoves.filter((m) => m.dir === 'in').reduce((t, m) => t + m.amount, 0),
+    out: expectedMoves.filter((m) => m.dir === 'out').reduce((t, m) => t + m.amount, 0),
+  }
+  return { standingNow, weeks, lowest, late, countLate, later, noDay, nextBills, countExpected, expected }
 }
