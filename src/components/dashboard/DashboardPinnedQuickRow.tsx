@@ -37,6 +37,7 @@ import { useJobContractsNudge } from '../../hooks/useJobContractsNudge'
 import { planQueueRecord, readRecordedToday, writeRecordedToday, type QueueKind } from '../../lib/people/dayBookQueueRecorder'
 import { toLocalDateString } from '../../lib/dailyGoalsGate'
 import { useUnpricedWorkOrders } from '../../hooks/useUnpricedWorkOrders'
+import { useGcFollowUpNeeds } from '../../hooks/useGcFollowUpNeeds'
 import { useStaleOpenJobsNudge } from '../../hooks/useStaleOpenJobsNudge'
 import { useCapacityUnderNudge } from '../../hooks/useCapacityUnderNudge'
 import { useJobAccountEvidenceGapsNudge } from '../../hooks/useJobAccountEvidenceGapsNudge'
@@ -477,6 +478,9 @@ export function DashboardPinnedQuickRow({
   // Work Orders tab PR 3: drafts waiting for a price — the master's queue.
   const unpricedWorkOrdersEnabled = !hideBanners && Boolean(authUserId) && officeEligible
   const { unpriced: unpricedWorkOrders } = useUnpricedWorkOrders(unpricedWorkOrdersEnabled)
+  // GC mode design spike (the owner, 2026-10-04): GC Follow up on an assistant's Needs you.
+  const gcFollowUpEnabled = !hideBanners && Boolean(authUserId) && (role === 'dev' || isAssistantLike(role))
+  const gcFollowUp = useGcFollowUpNeeds(gcFollowUpEnabled)
   // Open jobs idle 21+ days (v2.2825) — the office roles that bill and close jobs.
   const staleOpenEnabled = !hideBanners && Boolean(authUserId) && officeEligible
   const { nudge: staleOpen } = useStaleOpenJobsNudge(staleOpenEnabled, authUserId)
@@ -553,6 +557,8 @@ export function DashboardPinnedQuickRow({
     contractNudge,
     unpricedWorkOrdersEnabled,
     unpricedWorkOrders,
+    gcFollowUpEnabled,
+    gcFollowUp,
     staleOpenEnabled,
     staleOpen,
     capacityUnderEnabled,
@@ -726,6 +732,8 @@ export function DashboardPinnedQuickRow({
               navigate('/jobs?tab=stages&contract=sent')
             } else if (item.key === 'work-orders-unpriced') {
               navigate('/jobs?tab=subs&wof=drafts')
+            } else if (item.key === 'gc-follow-up') {
+              navigate('/bids/gc?tab=followup')
             } else if (item.key === 'jobs-stale-open') {
               navigate('/jobs?tab=job-summary&view=cycle')
             } else if (item.key === 'capacity-under') {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useReducer, useRef, useState, type CSSProperties, type Dispatch } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type Dispatch } from 'react'
 import { SpotlightTour } from '../components/SpotlightTour'
 import { BidsModeToggle } from '../components/gc/BidsModeToggle'
 import {
@@ -29,6 +29,7 @@ import { GC_ICON_PATHS } from '../components/gc/gcIcons'
 import { GcProgressRing } from '../components/gc/GcProgressRing'
 import { GcPriceCard, GcPriceLikely, GcPriceTrigger, type PriceCardTab } from '../components/gc/GcPriceCard'
 import { usePriceCard } from '../components/gc/usePriceCard'
+import { useGcStore } from '../components/gc/useGcStore'
 import { Btn, Card, Chip, PlusUnknown, Stat, type Tone } from '../components/gc/gcUi'
 import { GcBoardStrip, GcCustomerHeading, GcStageHeading, GcStageSubheading, type BoardStripItem, type StageStripItem } from '../components/gc/GcBoardStages'
 import { useMatchMedia } from '../hooks/useMatchMedia'
@@ -46,8 +47,6 @@ import {
   currentRev,
   daysUntil,
   followUps,
-  gcReducer,
-  initialGcState,
   money,
   lostWords,
   planLabel,
@@ -163,8 +162,10 @@ function tabButton(active: boolean) {
 }
 
 export default function GcMode() {
-  const [state, dispatch] = useReducer(gcReducer, undefined, initialGcState)
-  const [boardTab, setBoardTab] = useState<BoardTab>('projects')
+  // The session's one copy, shared with the dashboard's Needs you (the owner, 2026-10-04).
+  const [state, dispatch] = useGcStore()
+  // The dashboard's Needs you opens GC mode on Follow up (/bids/gc?tab=followup; the owner, 2026-10-04).
+  const [boardTab, setBoardTab] = useState<BoardTab>(() => (new URLSearchParams(window.location.search).get('tab') === 'followup' ? 'followup' : 'projects'))
   // By stage every time the board opens (the owner, 2026-10-04, question 9): not remembered.
   const [boardGroup, setBoardGroup] = useState<BoardGroupBy>('stage')
   // The stage strip (the owner, 2026-10-04): the section in view is lit as the board scrolls.

@@ -196,6 +196,14 @@ describe('jobs stale open (v2.2825)', () => {
 })
 
 describe('buildNeedsYouItems', () => {
+  it('GC follow up (GC mode spike, 2026-10-04): one item, red once a day passed, gated by the flag', () => {
+    const gc = { count: 5, late: true, title: '5 to follow up on in GC mode', detail: "Hillside Excavation's quote day passed." }
+    const items = buildNeedsYouItems(inputs({ gcFollowUpEnabled: true, gcFollowUp: gc }))
+    expect(items.map((i) => [i.key, i.severity, i.kicker, i.figure, i.actionLabel])).toEqual([['gc-follow-up', 'red', 'GC follow up', '5', 'Follow up']])
+    expect(buildNeedsYouItems(inputs({ gcFollowUpEnabled: true, gcFollowUp: { ...gc, late: false } }))[0]!.severity).toBe('amber')
+    expect(buildNeedsYouItems(inputs({ gcFollowUpEnabled: false, gcFollowUp: gc }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ gcFollowUpEnabled: true, gcFollowUp: null }))).toEqual([])
+  })
   it('unpriced work-order drafts (v2.2829): one item, names the subs, gated by the flag', () => {
     const one = buildNeedsYouItems(inputs({ unpricedWorkOrdersEnabled: true, unpricedWorkOrders: { count: 1, subNames: ['Rudy'], oldestDays: 2 } }))
     expect(one.map((i) => i.key)).toEqual(['work-orders-unpriced'])

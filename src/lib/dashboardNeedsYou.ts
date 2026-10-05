@@ -99,6 +99,7 @@ export type NeedsYouItem = {
     | 'contract-missing'
     | 'contract-stale'
     | 'work-orders-unpriced'
+    | 'gc-follow-up'
     | 'jobs-stale-open'
     | 'capacity-under'
     | 'dispatch-requests-aged'
@@ -183,6 +184,8 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'contract-missing': 40,
   'contract-stale': 50,
   'work-orders-unpriced': 40,
+  // Revenue chasing tier: a trade's quote past its day is a GC bid that cannot be priced on time (GC mode spike).
+  'gc-follow-up': 40,
   'jobs-stale-open': 40,
   // People/planning tier: a crew running light for three weeks is a scheduling question, not a bill.
   'capacity-under': 50,
@@ -315,6 +318,13 @@ export type NeedsYouInputs = {
    */
   unpricedWorkOrdersEnabled?: boolean
   unpricedWorkOrders?: { count: number; subNames: string[]; oldestDays: number | null } | null
+  /**
+   * GC mode design spike (the owner, 2026-10-04): the companies to call and the papers past their
+   * day on GC Follow up, from the prototype's session state (`gcNeedsYou`). Null = nothing to chase.
+   * Action opens GC mode on Follow up.
+   */
+  gcFollowUpEnabled?: boolean
+  gcFollowUp?: { count: number; late: boolean; title: string; detail: string } | null
   jobFollowupCount: number | null
   jobFollowupStageCounts: Record<JobFollowupStage, number> | null
   /**
@@ -745,6 +755,19 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
       detail: `Drafted${who} without a subcontract amount${oldestDays != null && oldestDays > 0 ? ` — the oldest ${oldestDays} day${oldestDays === 1 ? '' : 's'} ago` : ''}. Next: price it and send.`,
       figure: String(n),
       actionLabel: n === 1 ? 'Price it' : 'Price them',
+    })
+  }
+
+  if (inputs.gcFollowUpEnabled && inputs.gcFollowUp && inputs.gcFollowUp.count > 0) {
+    const gc = inputs.gcFollowUp
+    items.push({
+      key: 'gc-follow-up',
+      severity: gc.late ? 'red' : 'amber',
+      kicker: 'GC follow up',
+      title: gc.title,
+      detail: gc.detail,
+      figure: String(gc.count),
+      actionLabel: 'Follow up',
     })
   }
 
