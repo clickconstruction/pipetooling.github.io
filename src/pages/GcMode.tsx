@@ -945,29 +945,34 @@ function ProjectRow({
         <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
           {!byCustomer && (
             <>
+              {/* The dot rides inside the button, like the architect's, so it never starts or sits alone on a line. */}
               <button
                 type="button"
-                style={customerLink}
+                style={{ ...customerLink, textDecoration: 'none' }}
                 title={`See ${project.owner}: every project, what they owe, who to call`}
                 onClick={(e) => { e.stopPropagation(); onCustomer() }}
               >
-                {project.owner}
+                <span style={{ textDecoration: 'underline', textDecorationColor: 'var(--border-blue)', textUnderlineOffset: 3 }}>{project.owner}</span>
+                <span style={{ color: 'var(--text-muted)' }}>{'\u00a0·'}</span>
               </button>{' '}
-              ·{' '}
             </>
           )}
-          drawn by{' '}
-          {/* The dot rides inside the button, not underlined, so it stays with the name's last word: a
-              line may break right after a button, which left the dot alone on a phone. */}
-          <button
-            type="button"
-            style={{ ...customerLink, textDecoration: 'none' }}
-            title={`See ${project.architect}: the sets they issued and the questions waiting on them`}
-            onClick={(e) => { e.stopPropagation(); onArchitect() }}
-          >
-            <span style={{ textDecoration: 'underline', textDecorationColor: 'var(--border-blue)', textUnderlineOffset: 3 }}>{project.architect}</span>
-            <span style={{ color: 'var(--text-muted)' }}>{'\u00a0·'}</span>
-          </button>{' '}
+          {/* "drawn by" and the architect move to the next line together when they fit there (the
+              owner, 2026-10-04); a name longer than a line still wraps inside, on its own lines. */}
+          <span style={{ display: 'inline-block' }}>
+            drawn by{' '}
+            {/* The dot rides inside the button, not underlined, so it stays with the name's last word: a
+                line may break right after a button, which left the dot alone on a phone. */}
+            <button
+              type="button"
+              style={{ ...customerLink, textDecoration: 'none' }}
+              title={`See ${project.architect}: the sets they issued and the questions waiting on them`}
+              onClick={(e) => { e.stopPropagation(); onArchitect() }}
+            >
+              <span style={{ textDecoration: 'underline', textDecorationColor: 'var(--border-blue)', textUnderlineOffset: 3 }}>{project.architect}</span>
+              <span style={{ color: 'var(--text-muted)' }}>{'\u00a0·'}</span>
+            </button>
+          </span>{' '}
           {/* The size moves to the next line whole rather than breaking inside it (the owner,
               2026-10-04); one longer than a line still wraps inside, on its own lines. */}
           <span style={{ display: 'inline-block' }}>{project.sizeNote}</span>

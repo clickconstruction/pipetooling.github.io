@@ -512,8 +512,11 @@ function OwnerRow({
       <td style={td}>
         <strong>{project.name}</strong>
         <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-          {project.sizeNote} · drawn by{' '}
-          {onArchitect ? <button type="button" style={linkStyle} onClick={onArchitect}>{project.architect}</button> : 'them'}
+          {project.sizeNote} ·{' '}
+          {/* "drawn by" and the architect stay together when they fit on a line (the owner, 2026-10-04). */}
+          <span style={{ display: 'inline-block' }}>
+            drawn by {onArchitect ? <button type="button" style={linkStyle} onClick={onArchitect}>{project.architect}</button> : 'them'}
+          </span>
         </div>
       </td>
       <td style={td}>
