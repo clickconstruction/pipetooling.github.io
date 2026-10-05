@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { SeeWhatTheGcSees } from './SeeWhatTheGcSees'
 import type { RoomItemSource } from '../../../supabase/functions/_shared/submittalRoomPayload'
 
@@ -25,7 +25,8 @@ describe('SeeWhatTheGcSees (v2.4189, #62 Layer 2)', () => {
     const pane = screen.getByTestId('see-gc-pane')
     expect(dialog.contains(pane)).toBe(true)
     expect(pane.textContent).toContain('CLICK PLUMBING')
-    expect(pane.textContent).toContain('Product review · Rev 1')
+    expect(pane.textContent).toContain('Product review')
+    expect(pane.textContent).not.toContain('Product review · Rev')
     expect(pane.textContent).toContain('ZZ Test')
     expect(screen.getByTestId('room-headline').textContent).toContain('1 product needs your answer')
     expect(screen.getAllByTestId('room-row')).toHaveLength(1)
@@ -51,4 +52,37 @@ describe('SeeWhatTheGcSees (v2.4189, #62 Layer 2)', () => {
     render(<SeeWhatTheGcSees {...props} revNumber={2} link={{ linkShowsRev: 2, roomClosed: true }} />)
     expect(screen.getByTestId('see-gc-why').textContent).toContain('The room is closed. Its link says only that the review is closed. Reopen it to show this again.')
   })
+
+  it('v2.4606 · the page’s own header and chips: the list the GC will see after the share, read only, and the revisions it skips', () => {
+    const revisions = [
+      { id: 'r4', rev_number: 4, shared_at: null },
+      { id: 'r3', rev_number: 3, shared_at: null },
+      { id: 'r2', rev_number: 2, shared_at: '2026-09-16T15:00:00Z' },
+      { id: 'r1', rev_number: 1, shared_at: null },
+    ]
+    render(<SeeWhatTheGcSees {...props} revNumber={4} revisions={revisions} link={{ linkShowsRev: 2, roomClosed: false }} />)
+    const chips = within(screen.getByTestId('room-revisions')).getAllByRole('button')
+    expect(chips.map((c) => c.textContent)).toEqual(['Rev 4 · current', expect.stringMatching(/^Rev 2 · /)])
+    expect(chips.every((c) => c.getAttribute('aria-disabled') === 'true')).toBe(true)
+    expect(chips[0]!.getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByTestId('see-gc-list-line').textContent).toBe('Older revisions stay under it as the record. Rev 3 and Rev 1 are not on their page, because they were never shared.')
+  })
+
+  it('v2.4608 · the door: their real page as it is now, flagged; only when the link shows something', () => {
+    const token = 'c'.repeat(48)
+    const { unmount } = render(<SeeWhatTheGcSees {...props} revNumber={4} roomToken={token} link={{ linkShowsRev: 2, roomClosed: false }} />)
+    const door = screen.getByTestId('see-gc-door') as HTMLAnchorElement
+    expect(door.textContent).toBe('Open their page as it is now · Rev 2 ↗')
+    expect(door.getAttribute('href')).toBe(`${window.location.origin}/submittal?t=${token}&preview=1`)
+    unmount()
+    const closed = render(<SeeWhatTheGcSees {...props} revNumber={2} roomToken={token} link={{ linkShowsRev: 2, roomClosed: true }} />)
+    expect(screen.getByTestId('see-gc-door').textContent).toBe('Open their page as it is now ↗')
+    closed.unmount()
+    const nothing = render(<SeeWhatTheGcSees {...props} roomToken={token} link={{ linkShowsRev: null, roomClosed: false }} />)
+    expect(screen.queryByTestId('see-gc-door')).toBeNull()
+    nothing.unmount()
+    render(<SeeWhatTheGcSees {...props} link={{ linkShowsRev: 1, roomClosed: false }} />)
+    expect(screen.queryByTestId('see-gc-door')).toBeNull()
+  })
 })
+

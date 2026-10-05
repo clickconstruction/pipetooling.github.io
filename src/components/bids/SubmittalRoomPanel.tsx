@@ -5,7 +5,7 @@
  * handed and reports each press; the tab owns the room and every write.
  */
 import { useToastContext } from '../../contexts/ToastContext'
-import { anonymousOpens, asPersonHow, asRoomRole, describeHow, describeTrail, personTrail, roomLink, ROOM_ROLE_LABELS, type SubmittalEventRow, type SubmittalPersonRow, type SubmittalRoomRow } from '../../lib/submittals/submittalRoom'
+import { anonymousOpens, asPersonHow, asRoomRole, describeHow, describeTrail, personTrail, roomLink, roomPreviewLink, ROOM_ROLE_LABELS, type SubmittalEventRow, type SubmittalPersonRow, type SubmittalRoomRow } from '../../lib/submittals/submittalRoom'
 import type { StageGate } from '../../lib/submittals/submittalJourney'
 import { APP_CALENDAR_TZ as ROOM_TZ } from '../../utils/dateUtils'
 import { btn, btnPrimary, smallMuted } from './submittalTabStyles'
@@ -48,6 +48,12 @@ export function SubmittalRoomPanel({ showShare, revisionShared, shareGate, room,
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
             <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)' }}>{roomLine}</span>
             <div style={{ display: 'flex', gap: '0.4rem' }}>
+              {room.shared_at ? (
+                // v2.4608 · their real page, opened as the office: flagged, so nothing is counted or saved (Copy link stays the plain link).
+                <a href={roomPreviewLink(window.location.origin, room.token)} target="_blank" rel="noreferrer" style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem', textDecoration: 'none' }} title="Their page as they see it now. Nothing you do there is counted or saved." data-testid="room-open-preview">
+                  Open their page ↗
+                </a>
+              ) : null}
               {room.status === 'open' ? (
                 <>
                   <button type="button" onClick={() => void navigator.clipboard.writeText(roomLink(window.location.origin, room.token)).then(() => showToast('Link copied.', 'success'), () => showToast(roomLink(window.location.origin, room.token), 'info'))} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem' }}>

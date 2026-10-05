@@ -34,11 +34,41 @@ export type LinkView = {
 /**
  * The revision the room's link shows now, by get-submittal-room's own rule: the newest revision
  * with a share date. A revision answered by email and never shared has none, so the link skips it.
+ * It restates the function's one-line query on purpose: sharing code would cost a deploy for no
+ * change in behaviour, and the BP398 case in the test pins the rule.
  */
 export function linkShowsRevOf(revisions: ReadonlyArray<{ rev_number: number; shared_at: string | null }>): number | null {
   let newest: number | null = null
   for (const r of revisions) if (r.shared_at && (newest == null || r.rev_number > newest)) newest = r.rev_number
   return newest
+}
+
+/** One revision as the GC's chips will read it. */
+export type LinkChip = { id: string; rev: number; current: boolean; sharedAt: string | null }
+
+/**
+ * The revisions the GC's page will list once `rev` is shared (v2.4606, #62 PR 1b): `rev` as the
+ * current one, then every other revision with a share date, newest first, as get-submittal-room
+ * lists them. `neverShared` names the older revisions the list skips, answered by email or
+ * replaced before a share, so the office sees the gap before anyone shares.
+ */
+export function linkRevisionsAfterShare(revisions: ReadonlyArray<{ id: string; rev_number: number; shared_at: string | null }>, rev: number): { chips: LinkChip[]; neverShared: number[] } {
+  const self = revisions.find((r) => r.rev_number === rev)
+  const shared = revisions.filter((r) => r.rev_number !== rev && r.shared_at).sort((a, b) => b.rev_number - a.rev_number)
+  return {
+    chips: [{ id: self?.id ?? `rev-${rev}`, rev, current: true, sharedAt: self?.shared_at ?? null }, ...shared.map((r) => ({ id: r.id, rev: r.rev_number, current: false, sharedAt: r.shared_at }))],
+    neverShared: revisions.filter((r) => r.rev_number < rev && !r.shared_at).map((r) => r.rev_number).sort((a, b) => b - a),
+  }
+}
+
+/** The quiet line under the window's chips: the record under the current one, and what the list skips. Empty when nothing is older. */
+export function linkListLine(list: { chips: ReadonlyArray<LinkChip>; neverShared: ReadonlyArray<number> }): string {
+  const bits: string[] = []
+  if (list.chips.length > 1) bits.push('Older revisions stay under it as the record.')
+  const n = list.neverShared.map((r) => `Rev ${r}`)
+  if (n.length === 1) bits.push(`${n[0]} is not on their page, because it was never shared.`)
+  else if (n.length > 1) bits.push(`${n.slice(0, -1).join(', ')} and ${n[n.length - 1]} are not on their page, because they were never shared.`)
+  return bits.join(' ')
 }
 
 /** The room is closed for everyone on the link, by get-submittal-room's own test. */
