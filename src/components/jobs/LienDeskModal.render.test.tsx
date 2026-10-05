@@ -164,6 +164,20 @@ describe('LienDeskModal', () => {
     expect(screen.queryByRole('dialog', { name: 'Share where the liens stand' })).toBeNull()
   })
 
+  it('the title bar has the door for an owner who asks for our records, for the office and only when the desk is given one (v2.4544)', async () => {
+    const onOpenOwnerRecords = vi.fn()
+    const view = renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} onOpenOwnerRecords={onOpenOwnerRecords} />)
+    await settle()
+    const door = screen.getByTestId('lien-owner-records-door')
+    expect(door.textContent).toBe('An owner asked for records ›')
+    fireEvent.click(door)
+    expect(onOpenOwnerRecords).toHaveBeenCalledTimes(1)
+    view.unmount()
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} />)
+    await settle()
+    expect(screen.queryByTestId('lien-owner-records-door')).toBeNull()
+  })
+
   it('lists the job under Needs the owner, blocks the send, and offers the Find the owner door', async () => {
     const onOpenEditJob = vi.fn()
     renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} onOpenEditJob={onOpenEditJob} />)
