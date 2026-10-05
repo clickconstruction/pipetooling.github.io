@@ -673,6 +673,15 @@ who then works and bills the owner." So:
   and Ana,"). Pecan Valley's bookkeeper, Dana Whitfield, gets its pay and papers (`Partner.people`,
   `contactGets`; `tradeAddPerson`, `tradeRemovePerson`, `tradeSetGets`; `portalMailGroup`,
   `mailRecipients` in `gcPortal.ts`; `GcPortalPeople.tsx`).
+- **A company sees its weeks across every job** (owner, 2026-10-05). *Your weeks across every
+  job* under Your jobs on its home opens one page: this week and the next three
+  (`PORTAL_WEEKS_AHEAD`), each activity of its trades not done yet on every job of ours with a
+  schedule, with its days that week, "first day on this job" and "finishes this week"; the
+  inspections on its jobs not passed yet; and, when two jobs have its work on the same weekdays,
+  "Your work on A and B overlaps Mon Oct 12 to Wed Oct 14. Tell Click if one crew cannot do both."
+  A row opens the job's page, where the week is still marked. It reads the Building lane's schedule
+  (`portalWeeks` in `gcPortal.ts`; `GcPortalWeeks.tsx`). No made-up company has two scheduled jobs
+  yet, so the overlap shows in its test; Pecan Valley's four weeks on Fair Oaks are the example.
 - **A company asked to the pre-bid meeting sees it in its portal** (owner, 2026-10-04, on the New
   Project lane's `preBid`): a block on the project page (when and where, who runs it, whether coming
   is required to quote, then "You came" or "You did not come"), Needs you before it (amber if

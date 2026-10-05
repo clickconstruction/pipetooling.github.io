@@ -16,7 +16,7 @@ import { firstSendLines, paperSendMessages } from './gcPaperSend'
 import { pDate, pExclusion, pt, pTime, pWeekday, type PortalKey, type PortalLang } from './gcPortalI18n'
 import { inSentence, lineSheets, linesOnSpecs, specsAtRev, specsGoneAtRev, tradeSheets, tradesForSheets } from './gcNewProject'
 import { addDays, retainageHeldNow, sentBackOpen, sowContractSum, tradeChangesFor, tradeCloseout, workAllBilled } from './gcBuilding'
-import { lookAheadWeeks, markState, mondayOf, scheduleRows, type LookAheadState, type ScheduleRow } from './gcBuildingSchedule'
+import { activityName, inspectionItems, lookAheadWeeks, markState, mondayOf, scheduleRows, type LookAheadState, type ScheduleRow } from './gcBuildingSchedule'
 import { onSite } from './gcBuildingLog'
 import { submittalRowsOn } from './gcBuildingSubmittals'
 import { quotesWantedOn } from './gcStageHealth'
@@ -1852,4 +1852,115 @@ export function portalBackCharges(project: GcProject, pkg: TradePackage, partner
       }
     })
     .reverse()
+}
+
+// ---------------------------------------------------------------------------------------------
+// Your weeks across every job (owner, 2026-10-05)
+// ---------------------------------------------------------------------------------------------
+
+/** How many weeks Your weeks shows: this week and the next three. */
+export const PORTAL_WEEKS_AHEAD = 4
+
+export interface PortalWeekItem {
+  project: GcProject
+  row: ScheduleRow
+  /** "Plumbing · Trim" */
+  name: string
+  /** The days of it in this week, Monday to Friday: "Mon Oct 12 to Fri Oct 16". */
+  days: string
+  from: string
+  /** Its company's first day on that job falls on this activity, this week. */
+  firstOnJob: boolean
+  /** It finishes this week. */
+  finishes: boolean
+}
+
+export interface PortalWeek {
+  weekOf: string
+  when: 'this' | 'next' | 'later'
+  title: string
+  items: PortalWeekItem[]
+  /** Inspections on its jobs this week, not passed yet: "Fair Oaks Shops, Building D · Rough-in inspection, Tue Oct 6". */
+  inspections: { project: GcProject; words: string }[]
+  /** Days two or more of its jobs have its work, in words. */
+  overlaps: string[]
+}
+
+function isWeekday(day: string): boolean {
+  const d = new Date(`${day}T00:00:00Z`).getUTCDay()
+  return d >= 1 && d <= 5
+}
+
+function spanWords(lang: PortalLang, from: string, to: string): string {
+  return from === to ? pt(lang, 'wkOn', { day: pWeekday(lang, from) }) : pt(lang, 'wkSpan', { from: pWeekday(lang, from), to: pWeekday(lang, to) })
+}
+
+/**
+ * One company's work on every job of ours with a schedule, this week and the next three: each
+ * activity of its trades not done yet, the days of it in each week, its first day on a job, the
+ * inspections on its jobs, and the days two of its jobs want it at once. Empty: no work scheduled.
+ */
+export function portalWeeks(state: GcState, partnerId: string, lang: PortalLang = 'en'): PortalWeek[] {
+  const jobs = state.projects
+    .filter((p) => p.stage !== 'pursuing' && p.schedule)
+    .map((project) => ({ project, rows: scheduleRows(state, project).filter((r) => isOurs(partnerId, r) && r.actual < 100) }))
+    .filter((j) => j.rows.length > 0)
+  if (jobs.length === 0) return []
+  const gc = GC_COMPANY.shortName
+  const first = mondayOf(state.today)
+  return Array.from({ length: PORTAL_WEEKS_AHEAD }, (_, i) => {
+    const weekOf = addDays(first, i * 7)
+    const friday = addDays(weekOf, 4)
+    const sunday = addDays(weekOf, 6)
+    const items: PortalWeekItem[] = []
+    const onDay = new Map<string, Set<string>>()
+    const inspections: PortalWeek['inspections'] = []
+    for (const { project, rows } of jobs) {
+      const firstDay = [...scheduleRows(state, project).filter((r) => isOurs(partnerId, r)).map((r) => r.activity.start)].sort()[0]
+      for (const row of rows) {
+        const { start, finish } = row.activity
+        const from = start > weekOf ? start : weekOf
+        const to = finish < friday ? finish : friday
+        if (from > to) continue
+        for (let d = from; d <= to; d = addDays(d, 1)) {
+          if (!isWeekday(d)) continue
+          onDay.set(d, new Set([...(onDay.get(d) ?? []), project.id]))
+        }
+        items.push({ project, row, name: activityName(row), days: spanWords(lang, from, to), from, firstOnJob: start === firstDay && start >= weekOf, finishes: finish <= sunday })
+      }
+      for (const insp of inspectionItems(project, state.today)) {
+        const on = insp.activity.start
+        if (on < weekOf || on > sunday || insp.activity.inspection?.passedOn) continue
+        inspections.push({ project, words: `${project.name} · ${insp.label}, ${pWeekday(lang, on)}` })
+      }
+    }
+    items.sort((a, b) => a.from.localeCompare(b.from) || a.project.name.localeCompare(b.project.name))
+    // Runs of days with the same two or more jobs.
+    const overlaps: string[] = []
+    let run: { from: string; to: string; ids: string } | null = null
+    const flush = () => {
+      if (!run) return
+      const names = run.ids.split('|').map((id) => state.projects.find((p) => p.id === id)?.name ?? id)
+      overlaps.push(pt(lang, 'wkOverlap', { jobs: names.join(pt(lang, 'and')), days: spanWords(lang, run.from, run.to), gc }))
+      run = null
+    }
+    for (let d = weekOf; d <= friday; d = addDays(d, 1)) {
+      const ids = [...(onDay.get(d) ?? [])].sort()
+      if (ids.length < 2) {
+        flush()
+        continue
+      }
+      const key = ids.join('|')
+      if (run && run.ids === key) run.to = d
+      else {
+        flush()
+        run = { from: d, to: d, ids: key }
+      }
+    }
+    flush()
+    const date = pDate(lang, weekOf)
+    const when: PortalWeek['when'] = i === 0 ? 'this' : i === 1 ? 'next' : 'later'
+    const title = pt(lang, when === 'this' ? 'wkThis' : when === 'next' ? 'wkNext' : 'wkOf', { date })
+    return { weekOf, when, title, items, inspections, overlaps }
+  })
 }

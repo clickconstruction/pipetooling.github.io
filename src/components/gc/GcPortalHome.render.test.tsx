@@ -18,7 +18,7 @@ const hillside = state.partners.find((p) => p.id === 'hillside') as Partner
 function draw(lang: 'en' | 'es') {
   render(
     <PortalLangContext.Provider value={lang}>
-      <GcPortalHome state={state} partner={hillside} dispatch={vi.fn<(a: GcAction) => void>()} onOpenProject={vi.fn()} onOpenPay={vi.fn()} onOpenPapers={vi.fn()} />
+      <GcPortalHome state={state} partner={hillside} dispatch={vi.fn<(a: GcAction) => void>()} onOpenProject={vi.fn()} onOpenPay={vi.fn()} onOpenPapers={vi.fn()} onOpenWeeks={vi.fn()} />
     </PortalLangContext.Provider>,
   )
 }
