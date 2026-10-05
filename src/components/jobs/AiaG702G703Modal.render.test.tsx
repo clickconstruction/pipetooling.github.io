@@ -57,6 +57,9 @@ vi.mock('../../lib/aiaPayApplicationsIo', () => ({
   savePayApplication: (write: PayApplicationWrite, id: string | null) => saveSpy(write, id),
   deletePayApplication: (id: string) => deleteSpy(id),
 }))
+// Sent copies (v2.4575): the workbook that was downloaded is filed; the stub keeps what was filed.
+const filedSpy = vi.fn((_filing: Record<string, unknown>, _body: { fileName: string; contentType: string; blob: Blob }) => Promise.resolve(true))
+vi.mock('../../lib/sent/sentCopiesIo', () => ({ fileSentCopy: (filing: Record<string, unknown>, body: { fileName: string; contentType: string; blob: Blob }) => filedSpy(filing, body) }))
 // The workbook itself is covered by the fill tests; here Generate only has to hand over a file.
 const fillSpy = vi.fn((_url: string, _values: unknown, _lines: PayApplicationLine[], _options: { splitLaborMaterial?: boolean }) => Promise.resolve(new ArrayBuffer(8)))
 vi.mock('../../lib/fillAiaG702G703Workbook', async () => {
@@ -432,6 +435,15 @@ describe('AiaG702G703Modal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Generate' }))
     expect(await screen.findByText('Workbook downloaded. Application 1 saved on the job.')).toBeTruthy()
     expect(saveSpy).toHaveBeenCalledTimes(1)
+    // Each download files the workbook itself: the first with no saved application to point at, the second on its row.
+    expect(filedSpy).toHaveBeenCalledTimes(2)
+    expect(filedSpy.mock.calls[0]![0]).toMatchObject({ kind: 'pay_application', how: 'download', jobIds: [job.id], source: null })
+    const [filing, body] = filedSpy.mock.calls[1]!
+    expect(filing).toMatchObject({ kind: 'pay_application', title: 'Pay application 1 · AIA G702-G703', how: 'download', jobIds: [job.id] })
+    expect((filing.source as { table: string }).table).toBe('job_pay_applications')
+    expect(body.fileName).toMatch(/\.xlsx$/)
+    expect(body.contentType).toBe('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    expect(body.blob.size).toBe(8)
   })
 
   it('deletes a saved application after asking', async () => {

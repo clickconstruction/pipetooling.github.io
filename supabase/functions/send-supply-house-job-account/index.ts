@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { logEmailSendBestEffort } from '../_shared/logEmailSend.ts'
+import { fileSentEmailBestEffort } from '../_shared/fileSentCopy.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { COMPANY_EMAIL_FROM, EMAIL_FROM } from '../_shared/emailFrom.ts'
 
@@ -154,6 +155,11 @@ serve(async (req) => {
       from: COMPANY_EMAIL_FROM,
       subject,
     })
+    // Sent copies (docs/SENT_COPIES.md): the job account as the supply house read it is kept on the job.
+    await fileSentEmailBestEffort(
+      { kind: 'supply_house_job_account', jobIds: [jobId], sentBy: me.id },
+      { to: toEmails, from: COMPANY_EMAIL_FROM, subject, html: emailHtml, resendEmailId: sent.id ?? null },
+    )
 
     // Share ledger (v2.1606): one row per recipient, service role (the table
     // has no client write policies). Failure must not report the send as

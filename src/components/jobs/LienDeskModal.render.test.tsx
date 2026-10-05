@@ -198,6 +198,21 @@ describe('LienDeskModal', () => {
     await waitFor(() => expect(onChanged).toHaveBeenCalled())
   })
 
+  it('Next up is the first tab (punch list #82): its count, and a row\u2019s button opens the Notices pane on that job and pile', async () => {
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} initialKind="next" />)
+    await settle()
+    const tabs = screen.getAllByRole('tab').map((t) => t.textContent)
+    expect(tabs[0]).toBe('Next up · 1')
+    expect(screen.getByRole('tab', { name: 'Next up · 1' }).getAttribute('aria-selected')).toBe('true')
+    // J650 has no owner on file: its one move is Find the owner.
+    const row = document.querySelector('[data-lien-next-up-row="notice:j650"]') as HTMLElement
+    expect(row.textContent).toContain('650 · ATI Schertz')
+    fireEvent.click(within(row).getByRole('button', { name: 'Find the owner' }))
+    await settle()
+    expect(screen.getByRole('tab', { name: /^Notices/ }).getAttribute('aria-selected')).toBe('true')
+    expect(document.querySelector('[data-lien-next-up="list"]')).toBeNull()
+  })
+
   it('lists the job under Needs the owner, blocks the send, and offers the Find the owner door', async () => {
     const onOpenEditJob = vi.fn()
     renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} onOpenEditJob={onOpenEditJob} />)
