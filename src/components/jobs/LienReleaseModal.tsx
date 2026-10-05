@@ -32,6 +32,7 @@ import { openHtmlWindowWhenReady } from '../../lib/jobsDocuments/printWindow'
 import { printAndFile, printWhenReadyAndFile } from '../../lib/sent/sentCopiesIo'
 import { lienReleaseRowSignatureWithInk, lienReleaseSignedPdfBlob, loadLienReleaseInk } from '../../lib/jobs/lienReleaseInk'
 import {
+  isConditionalLienForm,
   isLienWaiverFormType,
   lienReleaseFieldsFromSnapshot,
   lienReleaseFormLabel,
@@ -163,6 +164,11 @@ function selectableInvoices(job: JobWithDetails): JobsLedgerInvoice[] {
     .sort((a, b) => a.sequence_order - b.sequence_order)
 }
 
+/** The conditional form of the same kind: a final stays a final. */
+function conditionalFormOf(formType: LienWaiverFormType): LienWaiverFormType {
+  return lienWaiverFormFrom({ conditional: true, final: formType.endsWith('final') })
+}
+
 export default function LienReleaseModal({
   open,
   onClose,
@@ -214,6 +220,10 @@ export default function LienReleaseModal({
   // release button — billed rows have no Bill Customer, so the strip alone
   // couldn't view/void there. Fail-soft like the strip.
   const [historyRows, setHistoryRows] = useState<JobLienReleaseRow[]>([])
+  /** The job's releases have been read for this open: only then is it known whether a draft resumes. */
+  const [historyReady, setHistoryReady] = useState(false)
+  /** The window opened on an unconditional form nobody pressed for (v2.4582): asked once the history is read. */
+  const openUnconditionalAskRef = useRef<{ preset: boolean; fallback: LienWaiverFormType } | null>(null)
   const [voidPendingId, setVoidPendingId] = useState<string | null>(null)
 
   const loadHistory = useCallback(async () => {
@@ -230,12 +240,15 @@ export default function LienReleaseModal({
       setHistoryRows((data ?? []) as JobLienReleaseRow[])
     } catch {
       setHistoryRows([])
+    } finally {
+      setHistoryReady(true)
     }
   }, [job?.id])
 
   useEffect(() => {
     if (!open) {
       setHistoryRows([])
+      setHistoryReady(false)
       setVoidPendingId(null)
       return
     }
@@ -402,6 +415,7 @@ export default function LienReleaseModal({
   useEffect(() => {
     if (!open || !job) return
     setFormType(initialFormType ?? 'conditional_progress')
+    openUnconditionalAskRef.current = initialFormType && !isConditionalLienForm(initialFormType) ? { preset: true, fallback: conditionalFormOf(initialFormType) } : null
     setReleaseRow(null)
     setAutosaveState('idle')
     setSignOpen(false)
@@ -412,7 +426,11 @@ export default function LienReleaseModal({
     if (invoice && selectable.some((i) => i.id === invoice.id)) {
       setSelectedInvoiceIds(new Set([invoice.id]))
       // The bill picks its own form (v2.4274) unless the opener asked for one.
-      if (!initialFormType) setFormType(pickLienWaiverForBill(job, invoice).formType)
+      if (!initialFormType) {
+        const pickedForm = pickLienWaiverForBill(job, invoice).formType
+        setFormType(pickedForm)
+        if (!isConditionalLienForm(pickedForm)) openUnconditionalAskRef.current = { preset: false, fallback: conditionalFormOf(pickedForm) }
+      }
       return
     }
     const billed = selectable.filter((i) => i.status === 'billed')
@@ -449,6 +467,24 @@ export default function LienReleaseModal({
     setAutosaveState('saved')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, historyRows])
+
+  // Every route into Unconditional asks (v2.4582, the owner's call on punch list #83 row 1): a window opened
+  // already on an unconditional form — Issue unconditional's preset, or a settled bill's own pick — asks the
+  // same question the step 2 switch does. A resumed draft or pending request does not: that choice was made.
+  // Stay conditional closes a preset window (it was opened for the unconditional) and steps a picked form back.
+  useEffect(() => {
+    if (!open || !historyReady) return
+    const ask = openUnconditionalAskRef.current
+    if (!ask) return
+    openUnconditionalAskRef.current = null
+    if (hydratedDraftRef.current) return
+    void (async () => {
+      if (await confirmDialog(UNCONDITIONAL_WAIVER_WARNING)) return
+      if (ask.preset) onClose()
+      else setFormType(ask.fallback)
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, historyReady])
 
   const selectedInvoices = useMemo(
     () => invoices.filter((i) => selectedInvoiceIds.has(i.id)),
@@ -1032,9 +1068,13 @@ export default function LienReleaseModal({
   }
   const waivePaid = () => {
     // The same bills, now as the waiver for money already in hand; the amount follows (a resumed draft keeps no prefill).
-    userTouchedRef.current = true
-    setFormType('unconditional_progress')
-    setField('amount', lienWaiverPrefillAmount('unconditional_progress', job, selectedInvoices).toFixed(2))
+    // It asks first (v2.4582), as the step 2 switch does; on a form already unconditional there is nothing to ask.
+    void (async () => {
+      if (isConditionalLienForm(formType) && !(await confirmDialog(UNCONDITIONAL_WAIVER_WARNING))) return
+      userTouchedRef.current = true
+      setFormType('unconditional_progress')
+      setField('amount', lienWaiverPrefillAmount('unconditional_progress', job, selectedInvoices).toFixed(2))
+    })()
   }
   const historyRow = (r: JobLienReleaseRow) => (
     <div key={r.id} style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem', fontSize: '0.75rem' }}>

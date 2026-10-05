@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { supabase } from '../../lib/supabase'
@@ -25,7 +26,6 @@ import {
   procurementSections,
   PROCUREMENT_STAGE_LABELS,
   procurementCounts,
-  procurementHeadline,
   procurementUpdateText,
   lineStatus,
   logDateRead,
@@ -52,6 +52,8 @@ import {
   type ProcurementStage,
   type StageDates,
 } from '../../lib/submittals/procurementLog'
+import { blockersPress, procurementNextLine, procurementSteps, rowsForStep, sendUpdateLabel, sharedHouse, stepOnlyWords, stepShares, type ProcurementStepKey, type ProcurementStepTone } from '../../lib/submittals/procurementBoard'
+import { orderSections, rowsToMark, theyWrote, type OrderGroup, type OrderTone } from '../../lib/submittals/procurementOrders'
 import { loadProcurementRecords, loadProcurementUpdates, loadStageDatesForBid, loadTagStagesForBid, type ProcurementUpdate } from '../../lib/submittals/procurementLogIo'
 
 type Props = {
@@ -73,7 +75,7 @@ type Props = {
   roomUrl?: string | null
   busy?: boolean
   /** The strip's Procure pill reads these. */
-  onCounts?: (c: { released: number; ordered: number; delivered: number; late: number }) => void
+  onCounts?: (c: { released: number; ordered: number; delivered: number; late: number; /** v2.4581 · each line once, by its step. */ steps: Record<ProcurementStepKey, number> }) => void
   /** A tap on a line's item opens its row's Edit window, on that part (2026-10-02, Grace: no scrolling back and forth). */
   onOpenItem?: (line: { itemId: string; partKey: string | null; /** the house cell was what was tapped */ house?: boolean }) => void
   /** A line the GC still holds opens its row's Their answer window, on that part (2026-10-02). Not given: no door. */
@@ -82,6 +84,8 @@ type Props = {
   houses?: ReadonlyArray<{ id: string; name: string }>
   /** The rows' parts changed from the log (house, lead time, stage): the caller reads them again. */
   onLinesChanged?: () => void
+  /** v2.4581 · the Next line's *Enter their approval…* door (the approve-all window). Not given: no door. */
+  onEnterApproval?: () => void
 }
 
 const smallMuted: CSSProperties = { fontSize: '0.75rem', color: 'var(--text-muted)' }
@@ -97,11 +101,26 @@ const itemTd: CSSProperties = { ...td, minWidth: 'min(14rem, 46vw)', lineHeight:
 const editorField: CSSProperties = { display: 'flex', flexDirection: 'column', gap: '0.2rem', alignItems: 'flex-start' }
 const editorLabel: CSSProperties = { fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)' }
 const COLS = 8
+// v2.4587 · To order as orders: Pick · Part · Qty · the right-hand words.
+const ORDER_COLS = 4
+const ORDER_TONE_COLOR: Record<OrderTone, string> = { go: 'var(--text-strong)', soon: 'var(--text-amber-700)', past: 'var(--text-red-700)', late: 'var(--text-red-700)', done: 'var(--text-green-700)', back: 'var(--text-amber-700)', quiet: 'var(--text-muted)' }
+const countPill: CSSProperties = { fontSize: '0.72rem', fontWeight: 700, borderRadius: 999, padding: '0.05rem 0.5rem', background: 'var(--bg-muted)', color: 'var(--text-base)', fontVariantNumeric: 'tabular-nums' }
+/** The fold's chevron: right when folded, down when open. */
+function Chevron({ open }: { open: boolean }) {
+  return (
+    <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style={{ flex: 'none', alignSelf: 'center', transform: open ? 'rotate(90deg)' : undefined, color: 'var(--text-muted)' }}>
+      <path d="M4 2l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
 // The table's least width; a log narrower than this draws a card per line instead.
 const TABLE_MIN_WIDTH = 760
 // The count in a blocker's sentence is a link to its lines (Wendi, 2026-10-02).
 const blockerLink: CSSProperties = { background: 'none', border: 'none', padding: 0, margin: 0, font: 'inherit', fontWeight: 700, color: 'var(--text-blue-700)', textDecoration: 'underline', textUnderlineOffset: '2px', cursor: 'pointer' }
-const blockerLine: CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', padding: '0.3rem 0', borderTop: '1px solid var(--border-amber)' }
+const STEP_TONE_COLOR: Record<ProcurementStepTone, string> = { back: 'var(--text-amber-700)', go: 'var(--text-blue-700)', late: 'var(--text-red-700)', quiet: 'var(--text-muted)' }
+// The share bar under the steps: grey, light blue, blue, green.
+const STEP_SHARE_COLOR: Record<ProcurementStepKey, string> = { gc: 'var(--border-strong)', to_order: '#93c5fd', on_order: '#2563eb', on_site: '#16a34a' }
+const jobWindowHref = (jobId: string) => `/jobs?jobDetail=${jobId}`
 const STATUS_COLOR: Record<LineStatus['tone'], string> = { done: 'var(--text-green-700)', late: 'var(--text-red-700)', ordered: 'var(--text-strong)', act: 'var(--text-blue-700)', back: 'var(--text-amber-700)', waiting: 'var(--text-muted)', none: 'var(--text-muted)' }
 const itemTag: CSSProperties = { fontWeight: 700, color: 'var(--text-strong)', marginRight: '0.45rem' }
 
@@ -151,7 +170,7 @@ type Draft = Partial<Record<'po' | 'note' | 'label' | 'lead' | DateField, string
  * the delivered date and a note. Send update records a dated snapshot with what
  * changed, opens the sheet to print, and copies the text for the email.
  */
-export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items, reviewerNames, currentUser, letterhead = null, projectAddress = null, gcName = null, roomUrl = null, busy = false, onCounts, onOpenItem, onAnswerItem, houses = [], onLinesChanged }: Props) {
+export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items, reviewerNames, currentUser, letterhead = null, projectAddress = null, gcName = null, roomUrl = null, busy = false, onCounts, onOpenItem, onAnswerItem, houses = [], onLinesChanged, onEnterApproval }: Props) {
   const { showToast } = useToastContext()
   const confirmDialog = useConfirmDialog()
   const [records, setRecords] = useState<ProcurementRecord[]>([])
@@ -205,9 +224,18 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
   const [bulkHouse, setBulkHouse] = useState('')
   const [bulkLead, setBulkLead] = useState('')
   const [bulkStage, setBulkStage] = useState('')
-  const bulkRef = useRef<HTMLDivElement | null>(null)
   // 2026-10-02 · the blocker whose lines are the only ones showing; none = the whole log.
   const [onlyPicked, setOnlyPicked] = useState<BlockerKind | null>(null)
+  // v2.4581 · the step whose lines are the only ones showing; the ⋯ menu; the Set… form under the missing facts.
+  const [stepPicked, setStepPicked] = useState<ProcurementStepKey | null>(null)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [setter, setSetter] = useState<BlockerKind | null>(null)
+  const [setterValue, setSetterValue] = useState('')
+  // v2.4587 · To order's sections and groups opened or folded by hand; the group whose Mark ordered… form is open.
+  const [foldOpen, setFoldOpen] = useState<Record<string, boolean>>({})
+  const [marking, setMarking] = useState<string | null>(null)
+  const [markOn, setMarkOn] = useState('')
+  const [markPo, setMarkPo] = useState('')
   const onlyRef = useRef<HTMLDivElement | null>(null)
 
   const tagsKey = items.map((i) => i.tag).join('|')
@@ -268,7 +296,8 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
   const gcRows = useMemo(() => gcProcurementRows(rows), [rows])
   const blockers = useMemo(() => orderBlockers(rows), [rows])
   // The lines on screen: every line, or the ones a picked blocker names. Counts, the update and the print read every line.
-  const shown = useMemo(() => rowsForBlocker(rows, blockers, onlyPicked), [rows, blockers, onlyPicked])
+  const shown = useMemo(() => (stepPicked ? { rows: rowsForStep(rows, stepPicked), only: null as BlockerKind | null } : rowsForBlocker(rows, blockers, onlyPicked)), [rows, blockers, onlyPicked, stepPicked])
+  const steps = useMemo(() => procurementSteps(rows), [rows])
   const only = shown.only
   const sections = useMemo(() => procurementSections(shown.rows, lens), [shown, lens])
   const lastUpdate = updates[0] ?? null
@@ -276,11 +305,13 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
   const hasStageDates = Object.keys(stageDates).length > 0
   // Today, for the soft line under each date ("2 days ago").
   const today = toIsoDate(new Date())
+  // v2.4587 · To order as orders; a group is new only against an update that has gone.
+  const orders = useMemo(() => orderSections(shown.rows, today, new Set(lastUpdate ? changes.map((c) => c.key) : [])), [shown, today, lastUpdate, changes])
   useEffect(() => {
     if (!loaded || !onCounts) return
     const c = procurementCounts(rows)
-    onCounts({ released: c.released, ordered: c.ordered, delivered: c.delivered, late: c.late })
-  }, [loaded, rows, onCounts])
+    onCounts({ released: c.released, ordered: c.ordered, delivered: c.delivered, late: c.late, steps: Object.fromEntries(steps.map((s) => [s.key, s.count])) as Record<ProcurementStepKey, number> })
+  }, [loaded, rows, steps, onCounts])
 
   function draftOf(key: string, field: keyof Draft, stored: string): string {
     const d = drafts[key]?.[field]
@@ -464,36 +495,81 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
     showToast(`${chosen.length} line${chosen.length === 1 ? '' : 's'} marked ${field === 'ordered_on' ? `ordered ${shortDate(on)}${po ? ` on ${po}` : ''}` : `delivered ${shortDate(on)}`}.`, 'success')
   }
 
+  /** v2.4587 · Mark ordered… on an order: its ticked parts when any are ticked, else all of it, on one day with one PO. */
+  async function markGroup(group: OrderGroup) {
+    const chosen = rowsToMark(group, ticked)
+    const entry = readTypedLogDate(markOn.trim() || logDateRead(today, today), today)
+    if (entry.kind !== 'date') {
+      showToast(`“${markOn.trim()}” does not read as a date. Type the month and the day, like 9/23.`, 'info')
+      return
+    }
+    const po = markPo.trim().slice(0, 60)
+    for (const r of chosen) await write(r, { ordered_on: entry.iso, ...(po ? { po_ref: po } : {}) })
+    setTicked((cur) => { const next = new Set(cur); for (const r of chosen) next.delete(r.key); return next })
+    setMarking(null)
+    setMarkOn('')
+    setMarkPo('')
+    showToast(`${chosen.length} part${chosen.length === 1 ? '' : 's'} marked ordered ${shortDate(entry.iso)}${po ? ` on ${po}` : ''}.`, 'success')
+  }
+
+  /** Write a house, lead time or stage onto lines that have a row behind them, and say what was set. */
+  async function saveFacts(chosen: ReadonlyArray<ProcurementRow>, patch: { supply_house_id?: string | null; lead_time_days?: number | null; stage?: string | null }): Promise<boolean> {
+    if (chosen.length === 0 || Object.keys(patch).length === 0) return false
+    setSaving(true)
+    try {
+      const n = await setLineFacts(supabase, chosen.map((r) => ({ itemId: r.itemId!, partKey: r.partKey ?? null })), patch)
+      onLinesChanged?.()
+      const what = [patch.supply_house_id ? houses.find((h) => h.id === patch.supply_house_id)?.name ?? 'the house' : '', patch.lead_time_days != null ? describeLeadTime(patch.lead_time_days) : '', patch.stage ? PROCUREMENT_STAGE_LABELS[patch.stage as ProcurementStage] : ''].filter(Boolean).join(', ')
+      showToast(`${what} set on ${n} line${n === 1 ? '' : 's'}.`, 'success')
+      return true
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not set them'), 'error')
+      return false
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  /** A typed lead time as days; null (with a line saying why) when it does not read. */
+  function readLead(text: string): number | null {
+    const days = parseLeadTime(text)
+    if (days == null) showToast(`“${text.trim()}” does not read as a lead time. Type it like 3 wk or 10 days.`, 'info')
+    return days
+  }
+
   /** Set the house, lead time and stage on every ticked line that has a row behind it (2026-10-02). */
   async function setTickedFacts() {
     const chosen = rows.filter((r) => ticked.has(r.key) && r.itemId)
     const patch: { supply_house_id?: string | null; lead_time_days?: number | null; stage?: string | null } = {}
     if (bulkHouse) patch.supply_house_id = bulkHouse
     if (bulkLead.trim()) {
-      const days = parseLeadTime(bulkLead)
-      if (days == null) {
-        showToast(`“${bulkLead.trim()}” does not read as a lead time. Type it like 3 wk or 10 days.`, 'info')
-        return
-      }
+      const days = readLead(bulkLead)
+      if (days == null) return
       patch.lead_time_days = days
     }
     if (bulkStage) patch.stage = bulkStage
-    if (chosen.length === 0 || Object.keys(patch).length === 0) return
-    setSaving(true)
-    try {
-      const n = await setLineFacts(supabase, chosen.map((r) => ({ itemId: r.itemId!, partKey: r.partKey ?? null })), patch)
-      setTicked(new Set())
-      setBulkHouse('')
-      setBulkLead('')
-      setBulkStage('')
-      onLinesChanged?.()
-      const what = [patch.supply_house_id ? houses.find((h) => h.id === patch.supply_house_id)?.name ?? 'the house' : '', patch.lead_time_days != null ? describeLeadTime(patch.lead_time_days) : '', patch.stage ? PROCUREMENT_STAGE_LABELS[patch.stage as ProcurementStage] : ''].filter(Boolean).join(', ')
-      showToast(`${what} set on ${n} line${n === 1 ? '' : 's'}.`, 'success')
-    } catch (e) {
-      showToast(formatErrorMessage(e, 'Could not set them'), 'error')
-    } finally {
-      setSaving(false)
-    }
+    if (!(await saveFacts(chosen, patch))) return
+    setTicked(new Set())
+    setBulkHouse('')
+    setBulkLead('')
+    setBulkStage('')
+  }
+
+  /** v2.4581 · Set… on a missing fact: one lead time, stage or house on every line the blocker names. */
+  async function setOnBlocker(kind: BlockerKind) {
+    const keys = new Set(kind === 'lead' ? blockers.noLead : kind === 'house' ? blockers.noHouse : blockers.noStage)
+    const chosen = rows.filter((r) => keys.has(r.key) && r.itemId)
+    const value = setterValue.trim()
+    if (!value) return
+    let patch: { supply_house_id?: string; lead_time_days?: number; stage?: string }
+    if (kind === 'lead') {
+      const days = readLead(value)
+      if (days == null) return
+      patch = { lead_time_days: days }
+    } else patch = kind === 'house' ? { supply_house_id: value } : { stage: value }
+    if (!(await saveFacts(chosen, patch))) return
+    setSetter(null)
+    setSetterValue('')
   }
 
   // The last line a picked blocker named was fixed: nothing is picked any more.
@@ -503,14 +579,15 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
 
   /** Show only the lines a blocker names (its count is the link), or every line again. */
   function showOnly(kind: BlockerKind | null) {
+    setStepPicked(null)
     setOnlyPicked(kind)
     if (kind) window.setTimeout(() => onlyRef.current?.scrollIntoView?.({ block: 'center', behavior: 'smooth' }), 0)
   }
 
-  /** Tick the lines a blocker names, and bring the tick bar into view. */
-  function tickLines(keys: ReadonlyArray<string>) {
-    setTicked(new Set(keys))
-    window.setTimeout(() => bulkRef.current?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' }), 0)
+  /** v2.4581 · a step shows only its lines; pressed again, every line. */
+  function pickStep(key: ProcurementStepKey) {
+    setOnlyPicked(null)
+    setStepPicked((cur) => (cur === key ? null : key))
   }
 
   async function addHandRow() {
@@ -623,8 +700,7 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
   const disabled = busy || saving
 
   /** One line of the log; `underTag` drops the tag on a part line drawn under its tag's heading. */
-  function renderRow(r: ProcurementRow, underTag: boolean, guides?: ReadonlyArray<TagGuide>) {
-    const changed = changes.some((c) => c.key === r.key)
+  function renderRow(r: ProcurementRow, underTag: boolean, guides?: ReadonlyArray<TagGuide>, order?: { /** the group mixes fixtures */ showTag: boolean; /** its parts differ in stage or lead time */ facts: boolean }) {
     const open = openLines.has(r.key)
     const status = lineStatus(r)
     const name = r.tag ?? r.product
@@ -633,7 +709,7 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
     const part = (
       <>
         <span style={{ display: 'flex', gap: '0 0.4rem', alignItems: 'baseline', minWidth: 0, flexWrap: narrow ? 'wrap' : undefined }}>
-          {underTag && r.partKey ? null : <b style={{ ...itemTag, flexShrink: 0, maxWidth: narrow ? '100%' : '45%' }}>{r.tag}</b>}
+          {(order && !narrow ? !order.showTag : underTag && r.partKey) ? null : <b style={{ ...itemTag, flexShrink: 0, maxWidth: narrow ? '100%' : '45%' }}>{r.tag}</b>}
           <b className="procure-item-name" style={{ fontWeight: 600, color: 'var(--text-strong)', flexShrink: 0, maxWidth: '100%', overflowWrap: narrow ? 'anywhere' : undefined }}>{head}</b>
           {words ? <span style={{ ...smallMuted, fontSize: '0.78rem', display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden', overflowWrap: 'anywhere', minWidth: 0 }}>{words}</span> : null}
         </span>
@@ -746,7 +822,53 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
                 </div>
               </div>
     )
-    const lineBackground = ticked.has(r.key) ? 'var(--bg-blue-tint)' : changed ? 'var(--bg-amber-100)' : undefined
+    const lineBackground = ticked.has(r.key) ? 'var(--bg-blue-tint)' : undefined
+    if (order && !narrow) {
+      // v2.4587 · a part inside an order: the product, the quantity, and one quiet door at the right.
+      const leadWords = describeLeadTime(r.leadTimeDays)
+      const noProduct = !r.partKey && (r.noProduct || r.product === '(no product)')
+      const right = r.status === 'sent_back' ? (
+        <span style={{ display: 'flex', flexWrap: 'wrap', gap: '0.2rem 0.75rem', alignItems: 'baseline', justifyContent: 'flex-end' }}>
+          <span style={r.reviewNote?.trim() ? { color: 'var(--text-amber-700)', fontWeight: 600 } : smallMuted} data-testid="procurement-they-wrote">{theyWrote(r)}</span>
+          {onOpenItem && r.itemId ? <button type="button" onClick={() => onOpenItem({ itemId: r.itemId!, partKey: r.partKey ?? null })} style={{ ...link, fontSize: '0.8125rem', fontWeight: 700 }} data-testid="procurement-pick-another">Pick another product</button> : null}
+          {answerButton}
+        </span>
+      ) : noProduct ? (
+        <span style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', justifyContent: 'flex-end' }}>
+          <span style={{ color: 'var(--text-amber-700)', fontWeight: 600 }}>No product yet</span>
+          {onOpenItem && r.itemId ? <button type="button" onClick={() => onOpenItem({ itemId: r.itemId!, partKey: null })} style={link}>Open it</button> : null}
+        </span>
+      ) : door === 'enter' ? (
+        answerButton
+      ) : (
+        <button type="button" aria-expanded={open} aria-label={`${name}${r.partKey ? ` ${head}` : ''} dates`} onClick={toggle} style={{ ...link, color: 'var(--text-muted)' }} data-testid="procurement-status" data-tone={status.tone}>{open ? 'Close' : 'Dates…'}</button>
+      )
+      return (
+        <Fragment key={r.key}>
+          <tr data-testid="procurement-row" data-part={r.partKey ? 'true' : undefined} data-order-only={r.orderOnly ? 'true' : undefined} style={{ background: lineBackground, opacity: r.orderOnly ? 0.72 : undefined }}>
+            <td style={{ ...td, width: 28, textAlign: 'center' }}>{tick}</td>
+            <td style={{ ...itemTd, paddingLeft: '2.2rem' }} data-testid="procurement-item" title={r.product}>
+              {item}
+              {r.isHand ? (
+                <span style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginTop: '0.25rem' }}>{stage}{lead}{remove}</span>
+              ) : order.facts ? (
+                <span style={{ ...smallMuted, display: 'block' }} data-testid="procurement-line-facts">
+                  {r.stage ? `${PROCUREMENT_STAGE_LABELS[r.stage]}${r.requiredOn ? `, needed ${shortDate(r.requiredOn)}` : ''}` : <span style={{ color: 'var(--text-amber-700)' }}>no stage</span>}
+                  {leadWords ? ` · ${leadWords} lead` : ''}
+                </span>
+              ) : null}
+            </td>
+            <td style={{ ...tdCenter, fontWeight: 600 }} data-testid="procurement-qty">{qty}</td>
+            <td style={{ ...td, textAlign: 'right' }}>{right}</td>
+          </tr>
+          {open ? (
+            <tr data-testid="procurement-editor">
+              <td colSpan={ORDER_COLS} style={{ ...td, background: 'var(--bg-blue-tint)', padding: '0.5rem 0.6rem 0.6rem 2.2rem' }}>{editor}</td>
+            </tr>
+          ) : null}
+        </Fragment>
+      )
+    }
     if (narrow) {
       // 2026-10-02 · on a phone each part is a short card: nothing scrolls sideways.
       return (
@@ -812,16 +934,178 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
 
   return (
     <div ref={rootRef} data-testid="submittal-procurement" data-tour="submittals-procure" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem 0.75rem', background: 'var(--surface)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'baseline' }}>
-        <div>
-          <b style={{ fontSize: '0.9rem' }}>Procurement log</b>
-          <span style={{ ...smallMuted, marginLeft: '0.5rem' }} data-testid="procurement-headline">{loaded ? procurementHeadline(rows) : 'Reading…'}</span>
-        </div>
-        <span style={smallMuted}>
-          {hasStageDates ? `Required dates from the job's stage windows` : jobId ? 'No stage windows on the job yet — required dates blank' : 'Not a job yet — required dates blank'}
-          {lastUpdate ? ` · last update ${shortDate(calendarYmdInAppTzFromIso(lastUpdate.sentAt))}${lastUpdate.sentTo ? ` to ${lastUpdate.sentTo}` : ''}` : ' · no update sent yet'}
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem 0.75rem', flexWrap: 'wrap', alignItems: 'center' }} data-testid="procurement-top">
+        <b style={{ fontSize: '0.9rem' }}>Procurement log</b>
+        <span style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', position: 'relative' }}>
+          <span style={smallMuted} data-testid="procurement-last-update">
+            {lastUpdate ? `Last update ${shortDate(calendarYmdInAppTzFromIso(lastUpdate.sentAt))}${lastUpdate.sentTo ? ` to ${lastUpdate.sentTo}` : ''}` : 'No update sent yet. The first one sends every row.'}
+          </span>
+          <button type="button" onClick={() => { setSendTo((t) => t || reviewerNames.join(', ')); setSendOpen((v) => !v) }} disabled={disabled || rows.length === 0} style={btnPrimary} data-testid="procurement-send">{sendUpdateLabel(lastUpdate != null, changes.length)}</button>
+          <button type="button" onClick={() => void addHandRow()} disabled={disabled} style={btn}>+ Add item</button>
+          <button type="button" aria-haspopup="menu" aria-expanded={menuOpen} aria-label="More" title="Print, CSV, Google Sheets, updates sent" onClick={() => setMenuOpen((v) => !v)} onKeyDown={(e) => { if (e.key === 'Escape' && menuOpen) { e.stopPropagation(); setMenuOpen(false) } }} style={{ ...btn, padding: '0.35rem 0.6rem', fontWeight: 700 }} data-testid="procurement-more">⋯</button>
+          {menuOpen ? (
+            <>
+              {/* A press anywhere else closes the menu. */}
+              <span aria-hidden="true" onClick={() => setMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 20 }} />
+              <span role="menu" aria-label="More for the log" onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); setMenuOpen(false) } }} style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, zIndex: 21, display: 'flex', flexDirection: 'column', minWidth: '13rem', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 6, boxShadow: '0 6px 18px rgba(0, 0, 0, 0.14)', padding: '0.25rem' }} data-testid="procurement-menu">
+                {([
+                  ['Print the log', printLog, rows.length === 0, undefined, 'procurement-print'],
+                  ['Download CSV', downloadCsv, rows.length === 0, 'The log as a .csv file, one row per item, dates a spreadsheet reads', 'procurement-csv'],
+                  ['Open in Google Sheets', () => void openInGoogleSheets(), rows.length === 0, 'Copies the log and opens a new Google Sheet; click A1 and paste', 'procurement-sheets'],
+                  [`Updates sent (${updates.length})`, () => setUpdatesOpen((v) => !v), false, undefined, 'procurement-updates-open'],
+                ] as const).map(([label, run, off, title, testid]) => (
+                  <button key={testid} type="button" role="menuitem" disabled={off} title={title} onClick={() => { setMenuOpen(false); run() }} style={{ ...btn, border: 'none', textAlign: 'left', padding: '0.4rem 0.6rem' }} data-testid={testid}>{label}</button>
+                ))}
+              </span>
+            </>
+          ) : null}
         </span>
       </div>
+
+      {sendOpen ? (
+        <div style={{ border: '1px solid var(--border-amber)', background: 'var(--bg-amber-100)', borderRadius: 6, padding: '0.55rem 0.7rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }} data-testid="procurement-send-card">
+          <b style={{ fontSize: '0.85rem' }}>Procurement log update {updates.length + 1} · {shortDate(toIsoDate(new Date()))}</b>
+          <div style={smallMuted}>{lastUpdate ? `Since ${shortDate(calendarYmdInAppTzFromIso(lastUpdate.sentAt))}: ${changes.length} ${changes.length === 1 ? 'row' : 'rows'} changed` : 'First update: every row goes.'}</div>
+          {changes.length > 0 ? (
+            <ul style={{ margin: 0, paddingLeft: '1.1rem', fontSize: '0.8125rem' }} data-testid="procurement-changes">
+              {changes.map((c) => <li key={c.key}><b>{c.tag ?? c.product}</b>{c.tag ? ` ${c.product}` : ''}: {c.text}</li>)}
+            </ul>
+          ) : lastUpdate ? <span style={smallMuted}>Nothing has changed since the last update; the sheet goes out as it stands.</span> : null}
+          <label style={{ fontSize: '0.8125rem' }}>
+            To <input type="text" value={sendTo} onChange={(e) => setSendTo(e.target.value)} placeholder="who gets it (for the record)" maxLength={300} style={{ ...inp, width: 'min(100%, 28rem)', marginLeft: 6 }} />
+          </label>
+          <textarea aria-label="A line for the GC" value={sendLine} onChange={(e) => setSendLine(e.target.value)} rows={2} maxLength={1000} placeholder="A line for the GC (optional) — e.g. BFP-1: can Rough In wait for the RPZ, or do we stub and set it later?" style={{ ...inp, width: '100%', resize: 'vertical' }} />
+          <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            <button type="button" onClick={() => void sendAndRecord()} disabled={disabled} style={btnPrimary} data-testid="procurement-record">Record, print and copy</button>
+            <button type="button" onClick={() => setSendOpen(false)} style={link}>Cancel</button>
+            <span style={smallMuted}>Records the update, opens the sheet to print or save as PDF, and copies the text to paste into your email.</span>
+          </div>
+        </div>
+      ) : null}
+
+      {updatesOpen ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }} data-testid="procurement-updates">
+          {updates.length === 0 ? <span style={smallMuted}>No update sent yet.</span> : null}
+          {updates.map((u, i) => (
+            <div key={u.id} style={{ fontSize: '0.8125rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'baseline' }}>
+              <b>Update {updates.length - i}</b>
+              <span>{shortDate(calendarYmdInAppTzFromIso(u.sentAt))}</span>
+              {u.sentTo ? <span style={smallMuted}>to {u.sentTo}</span> : null}
+              {u.sentByName ? <span style={smallMuted}>by {u.sentByName}</span> : null}
+              <span style={smallMuted}>{u.changes.length} {u.changes.length === 1 ? 'change' : 'changes'}</span>
+              {u.line ? <span style={{ ...smallMuted, fontStyle: 'italic' }}>“{u.line}”</span> : null}
+              <button type="button" onClick={() => printAndFile(buildProcurementUpdateHtml({ ...letter, kind: 'update', updateNumber: updates.length - i, sentOn: calendarYmdInAppTzFromIso(u.sentAt), sinceOn: updates[i + 1] ? calendarYmdInAppTzFromIso(updates[i + 1]!.sentAt) : null, rows: rowsFromSnapshot(u.rows), changes: u.changes, line: u.line }), { kind: 'procurement_update', title: `Procurement update ${updates.length - i} · ${bidLabel}, printed again`, recipientName: u.sentTo ?? '', bidId })} style={link}>Open</button>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {loaded ? (
+        <>
+          {/* v2.4581 · where every part stands, each line counted once; a step pressed shows only its lines. */}
+          <div role="group" aria-label="Where the parts stand" style={{ display: 'grid', gridTemplateColumns: narrow ? 'repeat(2, minmax(0, 1fr))' : 'repeat(4, minmax(0, 1fr))', gap: '0.4rem' }} data-testid="procurement-steps">
+            {steps.map((st, i) => (
+              <button key={st.key} type="button" aria-pressed={stepPicked === st.key} title={stepPicked === st.key ? 'Show every line again' : `Show only the lines ${st.key === 'gc' ? 'waiting on the GC' : st.label.toLowerCase()}`} onClick={() => pickStep(st.key)} style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0.1rem', padding: '0.45rem 0.7rem', border: `1px solid ${stepPicked === st.key ? '#2563eb' : 'var(--border)'}`, borderRadius: 8, background: stepPicked === st.key ? 'var(--bg-blue-tint)' : 'var(--surface)', color: 'var(--text-base)', font: 'inherit', textAlign: 'left', cursor: 'pointer', minWidth: 0 }} data-testid={`procurement-step-${st.key}`}>
+                {i > 0 && !narrow ? <span aria-hidden="true" style={{ position: 'absolute', left: '-0.5rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontSize: '0.8rem', pointerEvents: 'none' }}>›</span> : null}
+                <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)' }}>{st.label}</span>
+                <b style={{ fontSize: '1.35rem', lineHeight: 1.1, fontVariantNumeric: 'tabular-nums', color: st.count === 0 ? 'var(--text-muted)' : 'var(--text-strong)', fontWeight: st.count === 0 ? 500 : 700 }}>{st.count}</b>
+                <span style={{ fontSize: '0.75rem', minHeight: '1.1em', color: STEP_TONE_COLOR[st.tone], fontWeight: st.tone === 'quiet' ? 400 : 600 }}>{st.note}</span>
+              </button>
+            ))}
+          </div>
+          <div aria-hidden="true" title={`${steps[3]?.count ?? 0} of ${rows.length} part${rows.length === 1 ? '' : 's'} on site`} style={{ display: 'flex', height: 4, borderRadius: 2, overflow: 'hidden', background: 'var(--bg-muted)' }} data-testid="procurement-share">
+            {stepShares(steps).map((sh) => <span key={sh.key} style={{ width: `${sh.percent}%`, background: STEP_SHARE_COLOR[sh.key] }} />)}
+          </div>
+          {rows.length > 0 ? (
+            <div style={{ fontSize: '0.8125rem', color: 'var(--text-strong)' }} data-testid="procurement-next">
+              <b>Next:</b> {procurementNextLine(rows, today).join(' ')}
+              {onEnterApproval ? (
+                <>
+                  {' '}<span style={smallMuted}>Approved outside the app?</span>{' '}
+                  <button type="button" disabled={busy} onClick={onEnterApproval} style={link} data-testid="procurement-enter-approval">Enter their approval…</button>
+                </>
+              ) : null}
+            </div>
+          ) : null}
+        </>
+      ) : <span style={smallMuted}>Reading…</span>}
+
+      {loaded && logIsDraft(rows) ? (
+        // 2026-10-02 · said once, not "Not shared" on every line.
+        <div style={{ fontSize: '0.8125rem', color: 'var(--text-strong)', background: 'var(--bg-muted)', borderRadius: 6, padding: '0.4rem 0.6rem' }} data-testid="procurement-draft">
+          This version is a draft, so nothing is released yet. The GC releases each part when they approve it.{rows.some((r) => r.noGc) ? ' Order-only fixtures wait for nobody: they are ready to order now.' : ''}
+        </div>
+      ) : null}
+
+      {loaded && (blockers.noLead.length > 0 || blockers.noHouse.length > 0 || blockers.noStage.length > 0 || blockers.noProduct.length > 0) ? (() => {
+        // v2.4581 · one line, not a box: grey until a part that can be ordered lacks a lead time or a stage.
+        const press = blockersPress(rows, blockers)
+        const kinds = ([
+          ['lead', blockers.noLead],
+          ['house', blockers.noHouse],
+          ['stage', blockers.noStage],
+        ] as const).filter(([, keys]) => keys.length > 0)
+        const item: CSSProperties = { display: 'inline-flex', gap: '0.4rem', alignItems: 'baseline', fontSize: '0.8125rem' }
+        const setBtn: CSSProperties = { ...link, fontSize: '0.8125rem', fontWeight: 700 }
+        const setterKeys = setter ? (setter === 'lead' ? blockers.noLead : setter === 'house' ? blockers.noHouse : blockers.noStage) : []
+        const n = setterKeys.length
+        return (
+          <>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem 1rem', alignItems: 'baseline', padding: '0.4rem 0.7rem', background: press ? 'var(--bg-amber-tint)' : 'var(--bg-muted)', borderLeft: `3px solid ${press ? 'var(--text-amber-700)' : 'var(--border-strong)'}`, borderRadius: 4 }} data-testid="procurement-blockers" data-press={press ? 'true' : undefined}>
+              <b style={{ fontSize: '0.8125rem', color: 'var(--text-strong)' }}>Before you can order</b>
+              {!hasStageDates ? (
+                <span style={item} data-testid="procurement-blocker-dates">
+                  <span>{jobId ? 'The job has no stage dates' : 'The bid is not a job yet, so no part has a needed date'}</span>
+                  {jobId ? <Link to={jobWindowHref(jobId)} style={setBtn}>Open the job</Link> : null}
+                </span>
+              ) : null}
+              {kinds.map(([k, keys]) => {
+                const count = keys.length
+                const on = only === k
+                return (
+                  <span key={k} style={item} data-testid={`procurement-blocker-${k}`}>
+                    <span>
+                      {/* The count is the link: it shows which parts these are. */}
+                      <button type="button" aria-pressed={on} aria-label={on ? 'Show every line' : `Show the ${count === 1 ? 'part' : `${count} parts`} with ${BLOCKER_WORDS[k]}`} title={on ? 'Show every line again' : `See which ${count === 1 ? 'part this is' : `${count} parts these are`}`} onClick={() => showOnly(on ? null : k)} style={blockerLink} data-testid={`procurement-blocker-show-${k}`}>{count} part{count === 1 ? '' : 's'}</button>
+                      {' '}{count === 1 ? 'has' : 'have'} {BLOCKER_WORDS[k]}
+                    </span>
+                    <button type="button" aria-expanded={setter === k} onClick={() => { setSetterValue(''); setSetter((cur) => (cur === k ? null : k)) }} style={setBtn} data-testid={`procurement-blocker-set-${k}`}>Set…</button>
+                  </span>
+                )
+              })}
+              {blockers.noProduct.map((p) => (
+                <span key={p.key} style={item} data-testid="procurement-blocker-product">
+                  <span><b>{p.tag}</b> has no product</span>
+                  {onOpenItem && p.itemId ? <button type="button" onClick={() => onOpenItem({ itemId: p.itemId!, partKey: null })} style={setBtn}>Open it</button> : null}
+                </span>
+              ))}
+              <span style={{ ...smallMuted, flexBasis: '100%' }}>Without a lead time and a stage, the log cannot say when to order a part or when the GC must answer.</span>
+            </div>
+            {setter && n > 0 ? (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem 0.6rem', alignItems: 'center', padding: '0.45rem 0.7rem', border: '1px solid #2563eb', background: 'var(--bg-blue-tint)', borderRadius: 6 }} data-testid="procurement-setter">
+                <b style={{ fontSize: '0.8125rem', color: 'var(--text-blue-700)' }}>{setter === 'lead' ? 'Lead time' : setter === 'house' ? 'House' : 'Stage'} for {n} part{n === 1 ? '' : 's'}</b>
+                {setter === 'lead' ? (
+                  <input type="text" aria-label="Lead time" placeholder="3 wk" autoFocus value={setterValue} onChange={(e) => setSetterValue(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void setOnBlocker('lead') }} style={{ ...inp, width: '6rem' }} />
+                ) : setter === 'house' ? (
+                  <select aria-label="House" value={setterValue} onChange={(e) => setSetterValue(e.target.value)} style={{ ...inp, maxWidth: '14rem' }}>
+                    <option value="">pick a house</option>
+                    {houses.map((h) => <option key={h.id} value={h.id}>{h.name}</option>)}
+                  </select>
+                ) : (
+                  <span role="group" aria-label="Stage" style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 6, overflow: 'hidden' }}>
+                    {(['rough_in', 'top_out', 'trim_set'] as const).map((sk, i) => (
+                      <button key={sk} type="button" aria-pressed={setterValue === sk} onClick={() => setSetterValue(sk)} style={{ padding: '0.25rem 0.7rem', border: 'none', borderLeft: i > 0 ? '1px solid var(--border-strong)' : 'none', font: 'inherit', fontSize: '0.8rem', fontWeight: setterValue === sk ? 700 : 500, cursor: 'pointer', background: setterValue === sk ? '#2563eb' : 'var(--surface)', color: setterValue === sk ? 'white' : 'var(--text-base)' }}>{PROCUREMENT_STAGE_LABELS[sk]}</button>
+                    ))}
+                  </span>
+                )}
+                <button type="button" disabled={disabled || !setterValue.trim()} onClick={() => void setOnBlocker(setter)} style={btnPrimary} data-testid="procurement-setter-set">Set on {n}</button>
+                <button type="button" onClick={() => setSetter(null)} style={link}>Cancel</button>
+                <span style={smallMuted}>Or tick lines below to set them a few at a time.</span>
+              </div>
+            ) : null}
+          </>
+        )
+      })() : null}
 
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
         <div role="group" aria-label="Show the log" style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 6, overflow: 'hidden' }} data-testid="procurement-lens">
@@ -831,50 +1115,11 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
             </button>
           ))}
         </div>
-        {lens === 'to_order' && loaded ? <span style={{ fontSize: '0.8125rem', color: 'var(--text-strong)' }} data-testid="procurement-next">{toOrderLine(only ? procurementSections(rows, lens) : sections)}</span> : null}
+        {loaded && sharedHouse(rows) ? <span style={smallMuted} data-testid="procurement-shared">Every part comes from {sharedHouse(rows)}.</span> : null}
       </div>
 
-      {loaded && logIsDraft(rows) ? (
-        // 2026-10-02 · said once, not "Not shared" on every line.
-        <div style={{ fontSize: '0.8125rem', color: 'var(--text-strong)', background: 'var(--bg-muted)', borderRadius: 6, padding: '0.4rem 0.6rem' }} data-testid="procurement-draft">
-          This version is a draft, so nothing is released yet. The GC releases each part when they approve it.{rows.some((r) => r.noGc) ? ' Order-only fixtures wait for nobody: they are ready to order now.' : ''}
-        </div>
-      ) : null}
-
-      {loaded && (blockers.noLead.length > 0 || blockers.noHouse.length > 0 || blockers.noStage.length > 0 || blockers.noProduct.length > 0) ? (
-        // 2026-10-02 · what still blocks ordering, counted once, each a tap away from the tick bar.
-        <div style={{ background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber)', borderRadius: 8, padding: '0.5rem 0.75rem', display: 'flex', flexDirection: 'column' }} data-testid="procurement-blockers">
-          <b style={{ fontSize: '0.85rem', color: 'var(--text-strong)', paddingBottom: '0.3rem' }}>Before you can order</b>
-          {([
-            ['lead', blockers.noLead, 'no lead time, so no order-by date can be worked out.'],
-            ['house', blockers.noHouse, 'no house.'],
-            ['stage', blockers.noStage, 'no stage.'],
-          ] as const).filter(([, keys]) => keys.length > 0).map(([k, keys, tail]) => {
-            const n = keys.length
-            const on = only === k
-            return (
-              <div key={k} style={blockerLine} data-testid={`procurement-blocker-${k}`}>
-                <span style={{ fontSize: '0.8125rem' }}>
-                  {/* The count is the link: it shows which parts these are. */}
-                  <button type="button" aria-pressed={on} aria-label={on ? 'Show every line' : `Show the ${n === 1 ? 'part' : `${n} parts`} with ${BLOCKER_WORDS[k]}`} title={on ? 'Show every line again' : `See which ${n === 1 ? 'part this is' : `${n} parts these are`}`} onClick={() => showOnly(on ? null : k)} style={blockerLink} data-testid={`procurement-blocker-show-${k}`}>{n} part{n === 1 ? '' : 's'}</button>
-                  {' '}{n === 1 ? 'has' : 'have'} {tail}
-                  {on ? <span style={smallMuted}> Shown below.</span> : null}
-                </span>
-                <button type="button" onClick={() => tickLines(keys)} style={{ ...btn, color: 'var(--text-blue-700)', fontWeight: 600, flexShrink: 0 }}>Tick the {n}</button>
-              </div>
-            )
-          })}
-          {blockers.noProduct.map((p) => (
-            <div key={p.key} style={blockerLine} data-testid="procurement-blocker-product">
-              <span style={{ fontSize: '0.8125rem' }}><b>{p.tag}</b> has no product yet.</span>
-              {onOpenItem && p.itemId ? <button type="button" onClick={() => onOpenItem({ itemId: p.itemId!, partKey: null })} style={{ ...btn, color: 'var(--text-blue-700)', fontWeight: 600, flexShrink: 0 }}>Open it</button> : null}
-            </div>
-          ))}
-        </div>
-      ) : null}
-
       {ticked.size > 0 ? (
-        <div ref={bulkRef} style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem 0.75rem', alignItems: 'center', padding: '0.5rem 0.7rem', border: '1px solid #2563eb', background: 'var(--bg-blue-tint)', borderRadius: 6 }} data-testid="procurement-bulk">
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem 0.75rem', alignItems: 'center', padding: '0.5rem 0.7rem', border: '1px solid #2563eb', background: 'var(--bg-blue-tint)', borderRadius: 6 }} data-testid="procurement-bulk">
           <b style={{ fontSize: '0.8125rem', color: 'var(--text-blue-700)' }}>{ticked.size} line{ticked.size === 1 ? '' : 's'} ticked</b>
           {/* 2026-10-02 · set the office's facts on every ticked line: one house, one lead time, one stage. */}
           <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: '0.4rem 0.6rem', alignItems: 'center', width: '100%' }} data-testid="procurement-bulk-facts">
@@ -914,7 +1159,13 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
         </div>
       ) : null}
 
-      {only ? (
+      {stepPicked ? (
+        // v2.4581 · the log is showing one step's lines only.
+        <div role="status" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem 0.75rem', flexWrap: 'wrap', padding: '0.4rem 0.7rem', border: '1px solid #2563eb', background: 'var(--bg-blue-tint)', borderRadius: 6, fontSize: '0.8125rem', color: 'var(--text-strong)' }} data-testid="procurement-only">
+          <span><b>{stepOnlyWords(stepPicked, shown.rows.length).lead}</b> {stepOnlyWords(stepPicked, shown.rows.length).rest}</span>
+          <button type="button" onClick={() => setStepPicked(null)} style={{ ...btn, flexShrink: 0 }}>Show every line</button>
+        </div>
+      ) : only ? (
         // 2026-10-02 · the log is showing one blocker's lines only; this says so, and brings the rest back.
         <div ref={onlyRef} role="status" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem 0.75rem', flexWrap: 'wrap', padding: '0.4rem 0.7rem', border: '1px solid var(--border-amber)', background: 'var(--bg-amber-tint)', borderRadius: 6, fontSize: '0.8125rem', color: 'var(--text-strong)' }} data-testid="procurement-only">
           <span><b>{shown.rows.length} part{shown.rows.length === 1 ? '' : 's'} with {BLOCKER_WORDS[only]}.</b> The other lines are hidden.</span>
@@ -946,6 +1197,125 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
         const tickAll = (keys: string[], label: string) => (
           <input type="checkbox" aria-label={label} checked={keys.length > 0 && keys.every((k) => ticked.has(k))} onChange={(e) => setTicked((cur) => { const next = new Set(cur); for (const k of keys) { if (e.target.checked) next.add(k); else next.delete(k) } return next })} />
         )
+        if (lens === 'to_order' && !narrow && rows.length > 0) {
+          // v2.4587 · To order as orders: five sections, each line under the order it belongs to. A phone keeps its cards.
+          const filtered = only != null || stepPicked != null
+          const isOpen = (key: string, dflt: boolean) => filtered || (foldOpen[key] ?? dflt)
+          const flip = (key: string, dflt: boolean) => setFoldOpen((cur) => ({ ...cur, [key]: !(cur[key] ?? dflt) }))
+          const pill = (n: number, tone: OrderTone) => <span style={{ ...countPill, ...(tone === 'go' ? { background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)' } : tone === 'soon' || tone === 'back' ? { background: 'var(--bg-amber-100)', color: 'var(--text-amber-700)' } : tone === 'late' || tone === 'past' ? { color: 'var(--text-red-700)' } : tone === 'done' ? { color: 'var(--text-green-700)' } : null) }}>{n}</span>
+          const divider = (key: string, n: number) => (
+            <tr key={key} data-testid="procurement-order-only-divider">
+              <td style={td} />
+              <td colSpan={ORDER_COLS - 1} style={{ ...td, padding: '0.25rem 0.4rem 0.25rem 2.2rem', fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Ordered, not on the GC’s copy · {n} part{n === 1 ? '' : 's'}</td>
+            </tr>
+          )
+          const groupRight = (g: OrderGroup) => {
+            if (g.kind === 'to_place') {
+              const press = g.tone === 'soon' || g.tone === 'past'
+              return <button type="button" disabled={disabled} aria-expanded={marking === g.key} onClick={() => { setMarkOn(logDateRead(today, today)); setMarkPo(''); setMarking((cur) => (cur === g.key ? null : g.key)) }} style={press ? { ...btnPrimary, padding: '0.25rem 0.65rem' } : { ...link, fontSize: '0.8125rem', fontWeight: 700 }} data-testid="procurement-mark-open">Mark ordered…</button>
+            }
+            if (g.kind === 'fixture') {
+              const first = g.rows[0]
+              if (g.noProduct) return onOpenItem && first?.itemId ? <button type="button" onClick={() => onOpenItem({ itemId: first.itemId!, partKey: null })} style={link}>Open it</button> : null
+              return (
+                <span style={{ display: 'inline-flex', gap: '0.6rem', alignItems: 'baseline', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                  {g.right ? <span style={smallMuted}>{g.right}</span> : null}
+                  {onAnswerItem && g.answerItemId && !first?.isHand && g.rows.some((r) => answerDoor(r) === 'enter') ? <button type="button" disabled={busy} onClick={() => onAnswerItem({ itemId: g.answerItemId!, partKey: null })} title="Record what they said about this fixture. Nobody is emailed." aria-label={`Their answer for the fixture ${g.title}`} style={link} data-testid="procurement-fixture-answer">Their answer…</button> : null}
+                </span>
+              )
+            }
+            return g.right ? <span style={{ fontWeight: 600, color: g.rightTone === 'quiet' ? 'var(--text-strong)' : ORDER_TONE_COLOR[g.rightTone] }}>{g.right}</span> : null
+          }
+          const groupRows = (g: OrderGroup) => {
+            const n = rowsToMark(g, ticked).length
+            const open = isOpen(g.key, g.openByDefault)
+            const keys = g.rows.map((r) => r.key)
+            return (
+              <Fragment key={g.key}>
+                <tr data-testid="procurement-group" data-kind={g.kind}>
+                  <td style={{ ...td, width: 28, textAlign: 'center' }}>{tickAll(keys, `Pick every part under ${g.title}`)}</td>
+                  <td colSpan={2} style={{ ...td, padding: '0.15rem 0.4rem 0.15rem 0.9rem' }}>
+                    <button type="button" className="procure-fold" aria-expanded={open} onClick={() => flip(g.key, g.openByDefault)} data-testid="procurement-group-fold">
+                      <Chevron open={open} />
+                      <b style={{ color: g.kind === 'to_place' ? ORDER_TONE_COLOR[g.tone === 'quiet' ? 'go' : g.tone] : 'var(--text-strong)' }}>{g.title}{g.soon ? ` · ${g.soon}` : ''}</b>
+                      {pill(g.count, g.kind === 'to_place' ? g.tone : 'quiet')}
+                      {g.isNew ? <span style={{ fontSize: '0.68rem', fontWeight: 700, color: 'white', background: '#2563eb', borderRadius: 999, padding: '0.05rem 0.45rem' }} data-testid="procurement-new">new</span> : null}
+                      {g.warn ? <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-amber-700)', background: 'var(--bg-amber-100)', borderRadius: 999, padding: '0.05rem 0.5rem' }} data-testid="procurement-section-warn">{g.warn}</span> : null}
+                      {g.noProduct ? <span style={{ color: 'var(--text-amber-700)', fontWeight: 600, fontSize: '0.8rem' }}>no product yet</span> : <span style={smallMuted}>{g.note}</span>}
+                    </button>
+                  </td>
+                  <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }} data-testid="procurement-group-right">{groupRight(g)}</td>
+                </tr>
+                {marking === g.key ? (
+                  <tr data-testid="procurement-mark-form">
+                    <td style={{ ...td, background: 'var(--bg-blue-tint)' }} />
+                    <td colSpan={ORDER_COLS - 1} style={{ ...td, background: 'var(--bg-blue-tint)', padding: '0.45rem 0.6rem 0.5rem 0.9rem' }}>
+                      <span style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem 0.7rem', alignItems: 'center' }}>
+                        <b style={{ fontSize: '0.8125rem', color: 'var(--text-blue-700)' }}>Mark {n} part{n === 1 ? '' : 's'} ordered</b>
+                        <label style={{ display: 'inline-flex', gap: '0.3rem', alignItems: 'center', fontSize: '0.8rem' }}>
+                          Ordered
+                          <input type="text" aria-label="Ordered on" value={markOn} onChange={(e) => setMarkOn(e.target.value)} style={{ ...inp, width: '4.6rem', textAlign: 'center' }} />
+                        </label>
+                        <label style={{ display: 'inline-flex', gap: '0.3rem', alignItems: 'center', fontSize: '0.8rem' }}>
+                          PO
+                          <input type="text" aria-label="PO" placeholder="PO number" value={markPo} onChange={(e) => setMarkPo(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void markGroup(g) }} maxLength={60} style={{ ...inp, width: '8rem' }} />
+                        </label>
+                        <button type="button" disabled={disabled} onClick={() => void markGroup(g)} style={btnPrimary} data-testid="procurement-mark-save">Mark {n} ordered</button>
+                        <button type="button" onClick={() => setMarking(null)} style={link}>Cancel</button>
+                        <span style={smallMuted}>{n < g.count ? 'Only the ticked parts are marked.' : 'Tick parts first to order only some of them.'}</span>
+                      </span>
+                    </td>
+                  </tr>
+                ) : null}
+                {open
+                  ? g.rows.map((r, i) => (
+                      <Fragment key={r.key}>
+                        {g.orderOnlyFrom != null && i === g.orderOnlyFrom ? divider(`${g.key}:oo`, g.rows.length - g.orderOnlyFrom) : null}
+                        {renderRow(r, g.kind === 'fixture', undefined, { showTag: g.showTag, facts: g.showFacts })}
+                      </Fragment>
+                    ))
+                  : null}
+              </Fragment>
+            )
+          }
+          return (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 640, fontVariantNumeric: 'tabular-nums' }}>
+                <thead>
+                  <tr>
+                    <th style={{ ...th, width: 28 }} aria-label="Pick" />
+                    <th style={th}>Part</th>
+                    <th style={thCenter}>Qty</th>
+                    <th style={th} />
+                  </tr>
+                </thead>
+                <tbody data-testid="procurement-rows">
+                  {orders.map((sec) => {
+                    const open = isOpen(sec.key, true)
+                    const keys = [...sec.rows, ...sec.groups.flatMap((g) => g.rows)].map((r) => r.key)
+                    return (
+                      <Fragment key={sec.key}>
+                        <tr data-testid="procurement-section" data-kind={sec.kind}>
+                          <td style={{ ...td, width: 28, textAlign: 'center', background: 'var(--bg-subtle)' }}>{tickAll(keys, `Pick every line under ${sec.title}`)}</td>
+                          <td colSpan={ORDER_COLS - 1} style={{ ...td, padding: '0.15rem 0.4rem', background: 'var(--bg-subtle)' }}>
+                            <button type="button" className="procure-fold" aria-expanded={open} onClick={() => flip(sec.key, true)} data-testid="procurement-section-fold">
+                              <Chevron open={open} />
+                              <b style={{ color: 'var(--text-strong)' }}>{sec.title}</b>
+                              {pill(sec.count, sec.tone)}
+                              <span style={{ ...smallMuted, ...(sec.tone === 'late' ? { color: 'var(--text-red-700)', fontWeight: 600 } : null) }}>{sec.note}</span>
+                            </button>
+                          </td>
+                        </tr>
+                        {open ? sec.groups.map(groupRows) : null}
+                        {open ? sec.rows.map((r) => renderRow(r, false, undefined, { showTag: true, facts: false })) : null}
+                      </Fragment>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )
+        }
         const body = (
           <>
             {rows.length === 0 ? block('empty', 'procurement-empty', {}, <span style={smallMuted}>No rows yet. The submittal's rows appear here once a revision is shared; + Add item for a long-lead item with no cut sheet.</span>) : null}
@@ -954,7 +1324,7 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
               const heading = lens !== 'by_tag' || sec.rows.length > 1 || (sec.rows[0]?.isHand ?? false)
               const keys = sec.rows.map((r) => r.key)
               // 2026-10-02 · To order folds the lines waiting on the GC to one line per house; a blocker's short list is never folded.
-              const folds = lens === 'to_order' && sec.key === 'waiting' && !only ? foldByHouse(sec.rows) : null
+              const folds = lens === 'to_order' && sec.key === 'waiting' && !only && !stepPicked ? foldByHouse(sec.rows) : null
               // By tag, a fixture's lines as a tree: its parts one step in, an assembly's own step only when it mixes (v2.4384).
               const tree = lens === 'by_tag' && heading ? tagBlock(sec.rows) : null
               return (
@@ -1042,55 +1412,9 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
         )
       })()}
       <div style={smallMuted}>
-        Tap a status to type its dates. Released = the room's approval. Expected = ordered + lead time until the house says otherwise (amber). Needed = the stage's window on the job. <b>Order by</b> = needed − lead time for a released part not yet ordered. Amber rows have changed since the last update.
+        Tap a status to type its dates. Released = the room's approval. Expected = ordered + lead time until the house says otherwise (amber). Needed = the stage's window on the job. <b>Order by</b> = needed − lead time for a released part not yet ordered.
       </div>
 
-      <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
-        <button type="button" onClick={() => { setSendTo((t) => t || reviewerNames.join(', ')); setSendOpen((v) => !v) }} disabled={disabled || rows.length === 0} style={btnPrimary} data-testid="procurement-send">Send update…</button>
-        <button type="button" onClick={() => void addHandRow()} disabled={disabled} style={btn}>+ Add item</button>
-        <button type="button" onClick={printLog} disabled={rows.length === 0} style={link}>Print the log</button>
-        <button type="button" onClick={downloadCsv} disabled={rows.length === 0} style={link} title="The log as a .csv file, one row per item, dates a spreadsheet reads" data-testid="procurement-csv">Download CSV</button>
-        <button type="button" onClick={() => void openInGoogleSheets()} disabled={rows.length === 0} style={link} title="Copies the log and opens a new Google Sheet; click A1 and paste" data-testid="procurement-sheets">Open in Google Sheets</button>
-        <button type="button" onClick={() => setUpdatesOpen((v) => !v)} style={link}>Updates sent ({updates.length})</button>
-      </div>
-
-      {sendOpen ? (
-        <div style={{ border: '1px solid var(--border-amber)', background: 'var(--bg-amber-100)', borderRadius: 6, padding: '0.55rem 0.7rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }} data-testid="procurement-send-card">
-          <b style={{ fontSize: '0.85rem' }}>Procurement log update {updates.length + 1} · {shortDate(toIsoDate(new Date()))}</b>
-          <div style={smallMuted}>{lastUpdate ? `Since ${shortDate(calendarYmdInAppTzFromIso(lastUpdate.sentAt))}: ${changes.length} ${changes.length === 1 ? 'row' : 'rows'} changed` : 'First update: every row goes.'}</div>
-          {changes.length > 0 ? (
-            <ul style={{ margin: 0, paddingLeft: '1.1rem', fontSize: '0.8125rem' }} data-testid="procurement-changes">
-              {changes.map((c) => <li key={c.key}><b>{c.tag ?? c.product}</b>{c.tag ? ` ${c.product}` : ''}: {c.text}</li>)}
-            </ul>
-          ) : lastUpdate ? <span style={smallMuted}>Nothing has changed since the last update; the sheet goes out as it stands.</span> : null}
-          <label style={{ fontSize: '0.8125rem' }}>
-            To <input type="text" value={sendTo} onChange={(e) => setSendTo(e.target.value)} placeholder="who gets it (for the record)" maxLength={300} style={{ ...inp, width: 'min(100%, 28rem)', marginLeft: 6 }} />
-          </label>
-          <textarea aria-label="A line for the GC" value={sendLine} onChange={(e) => setSendLine(e.target.value)} rows={2} maxLength={1000} placeholder="A line for the GC (optional) — e.g. BFP-1: can Rough In wait for the RPZ, or do we stub and set it later?" style={{ ...inp, width: '100%', resize: 'vertical' }} />
-          <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
-            <button type="button" onClick={() => void sendAndRecord()} disabled={disabled} style={btnPrimary} data-testid="procurement-record">Record, print and copy</button>
-            <button type="button" onClick={() => setSendOpen(false)} style={link}>Cancel</button>
-            <span style={smallMuted}>Records the update, opens the sheet to print or save as PDF, and copies the text to paste into your email.</span>
-          </div>
-        </div>
-      ) : null}
-
-      {updatesOpen ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }} data-testid="procurement-updates">
-          {updates.length === 0 ? <span style={smallMuted}>No update sent yet.</span> : null}
-          {updates.map((u, i) => (
-            <div key={u.id} style={{ fontSize: '0.8125rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'baseline' }}>
-              <b>Update {updates.length - i}</b>
-              <span>{shortDate(calendarYmdInAppTzFromIso(u.sentAt))}</span>
-              {u.sentTo ? <span style={smallMuted}>to {u.sentTo}</span> : null}
-              {u.sentByName ? <span style={smallMuted}>by {u.sentByName}</span> : null}
-              <span style={smallMuted}>{u.changes.length} {u.changes.length === 1 ? 'change' : 'changes'}</span>
-              {u.line ? <span style={{ ...smallMuted, fontStyle: 'italic' }}>“{u.line}”</span> : null}
-              <button type="button" onClick={() => printAndFile(buildProcurementUpdateHtml({ ...letter, kind: 'update', updateNumber: updates.length - i, sentOn: calendarYmdInAppTzFromIso(u.sentAt), sinceOn: updates[i + 1] ? calendarYmdInAppTzFromIso(updates[i + 1]!.sentAt) : null, rows: rowsFromSnapshot(u.rows), changes: u.changes, line: u.line }), { kind: 'procurement_update', title: `Procurement update ${updates.length - i} · ${bidLabel}, printed again`, recipientName: u.sentTo ?? '', bidId })} style={link}>Open</button>
-            </div>
-          ))}
-        </div>
-      ) : null}
     </div>
   )
 }
@@ -1122,12 +1446,4 @@ function rowsFromSnapshot(snap: ProcurementUpdate['rows']): ProcurementRow[] {
     status: s.status,
     late: s.floatDays != null && s.floatDays < 0,
   }))
-}
-
-/** The To order lens's one line: how many lines to order now, and the first order-by date. */
-function toOrderLine(sections: ReadonlyArray<{ key: string; rows: ProcurementRow[] }>): string {
-  const buy = sections.filter((s) => s.key.startsWith('buy:')).flatMap((s) => s.rows)
-  if (buy.length === 0) return 'Nothing is approved and waiting to be ordered.'
-  const first = buy.map((r) => r.orderBy).filter((d): d is string => !!d).sort()[0] ?? null
-  return `${buy.length} line${buy.length === 1 ? ' is' : 's are'} approved and not ordered.${first ? ` The first must be ordered by ${shortDate(first)}.` : ''}`
 }

@@ -112,8 +112,66 @@ describe('fields and terms', () => {
     expect(html).toContain('$5,000.00')
     expect(html).toContain('50% down ($2,500.00)')
     expect(html).toContain('<p>Terms body</p>')
-    expect(html).toContain('Not yet signed')
+    // v2.4590: an open block is a labelled signature line and a date line — true for a preview of an
+    // e-signature and for a printed page, and nothing that reads as a signature.
+    expect(html).toContain('<div class="pen"><div class="rule"><span>Signature</span></div><div class="rule date"><span>Date</span></div></div>')
+    expect(html).not.toContain('Not yet signed')
+    expect(html).not.toContain('Signed electronically')
+    expect(html).not.toContain('Second signature')
     expect(html).toContain('Residential Service Agreement')
+  })
+})
+
+describe('the printed agreement with a second signer (v2.4590)', () => {
+  const base = {
+    heading: 'Service agreement for 138 W Pat Blanco',
+    jobNumber: '1053',
+    jobAddress: job.job_address,
+    customerName: 'Sam Owner',
+    recipientName: 'Sam Owner',
+    dateLabel: 'Sep 29, 2026',
+    revision: 1,
+    fields: parseJobContractFields(null),
+    termsHtml: '<p>Terms</p>',
+    templateName: null,
+    issuer: null,
+  }
+
+  it('unsigned: two open lines, each with its name', () => {
+    const html = buildJobContractDocumentHtml({ ...base, coSignerName: 'Alex <Owner>' })
+    expect(html).toContain('Customer signature')
+    expect(html).toContain('<span>Signature — Sam Owner</span>')
+    expect(html).toContain('<h2>Second signature</h2>')
+    expect(html).toContain('<span>Signature — Alex &lt;Owner&gt;</span>')
+    expect(html.match(/class="pen"/g)).toHaveLength(2)
+  })
+
+  it('one of two signed: the first frame signed, the second open', () => {
+    const html = buildJobContractDocumentHtml({
+      ...base,
+      signature: { printedName: 'Sam Owner', auditLine: 'Signed electronically by Sam Owner (typed)', whenLabel: 'Sep 29, 2026, 2:00 PM CT' },
+      coSignerName: 'Alex Owner',
+      coSignature: null,
+    })
+    expect(html).toContain('<div class="mark">Sam Owner</div>')
+    expect(html).toContain('Signed electronically by Sam Owner (typed)')
+    expect(html).toContain('<span>Signature — Alex Owner</span>')
+    expect(html.match(/class="pen"/g)).toHaveLength(1)
+  })
+
+  it('both signed: two framed marks, each with its own audit line and stamp', () => {
+    const html = buildJobContractDocumentHtml({
+      ...base,
+      signature: { printedName: 'Sam Owner', auditLine: 'audit one', whenLabel: 'Sep 29, 2026, 2:00 PM CT', recordId: 'J1053-ABC' },
+      coSignerName: 'Alex Owner',
+      coSignature: { printedName: 'Alex Owner', auditLine: 'audit two', imageUrl: 'https://x.test/sig.png', whenLabel: 'Sep 29, 2026, 2:05 PM CT', recordId: 'J1053-ABC' },
+    })
+    expect(html.match(/class="frame"/g)).toHaveLength(2)
+    expect(html).toContain('audit one')
+    expect(html).toContain('audit two')
+    expect(html).toContain('alt="Signature of Alex Owner"')
+    expect(html).toContain('Sep 29, 2026, 2:05 PM CT')
+    expect(html).not.toContain('class="pen"')
   })
 })
 

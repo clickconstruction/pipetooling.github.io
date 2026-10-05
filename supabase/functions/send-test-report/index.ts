@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { COMPANY_EMAIL_FROM } from '../_shared/emailFrom.ts'
 import { logEmailSendBestEffort } from '../_shared/logEmailSend.ts'
+import { fileSentEmailBestEffort } from '../_shared/fileSentCopy.ts'
 import { TEST_REPORT_BUCKET, testReportActivityLine, testReportStoragePath } from '../_shared/testReportSend.ts'
 
 /**
@@ -186,6 +187,12 @@ serve(async (req) => {
         certifier_license: typeof body.certifier_license === 'string' ? body.certifier_license.trim() || null : null,
       })
       .eq('id', r.id)
+    // Sent copies (docs/SENT_COPIES.md): the email and the report as they went, kept on the job.
+    // After the stamp, so keeping the copy never delays it; the email went either way.
+    await fileSentEmailBestEffort(
+      { kind: 'test_report', recipientName: (body.recipient_label ?? '').trim(), jobIds: [r.job_id], source: { table: 'job_test_reports', id: r.id }, sentBy: user.id },
+      { to, cc: ccOnly, from: COMPANY_EMAIL_FROM, subject, html, attachments: [{ filename: pdfFilename, content: pdfBase64 }], resendEmailId: sent.id ?? null },
+    )
     if (stampErr) {
       console.error('test report stamp', stampErr)
       return jsonResponse({ error: 'The email went out but the report could not be marked sent — open it and check.', resend_email_id: sent.id ?? null }, 500)

@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { logEmailSendBestEffort } from '../_shared/logEmailSend.ts'
+import { fileSentEmailBestEffort } from '../_shared/fileSentCopy.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { COMPANY_EMAIL_FROM, EMAIL_FROM } from '../_shared/emailFrom.ts'
 import {
@@ -246,6 +247,8 @@ serve(async (req) => {
     }
 
     const replyTo = replies.replyTo ?? undefined
+    const statementHtml = qrModules ? emailHtmlQr : emailHtml
+    const statementAttachments = qrModules ? [{ filename: PORTAL_QR_FILENAME, content: bytesToBase64(qrPngBytes(qrModules)), content_id: PORTAL_QR_CONTENT_ID }] : []
     const resendResponse = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -257,10 +260,10 @@ serve(async (req) => {
         to: [toEmail],
         ...(ccAll.length ? { cc: ccAll } : {}),
         subject,
-        html: qrModules ? emailHtmlQr : emailHtml,
+        html: statementHtml,
         text: emailText,
         ...(replyTo ? { reply_to: replyTo } : {}),
-        ...(qrModules ? { attachments: [{ filename: PORTAL_QR_FILENAME, content: bytesToBase64(qrPngBytes(qrModules)), content_id: PORTAL_QR_CONTENT_ID }] } : {}),
+        ...(statementAttachments.length ? { attachments: statementAttachments } : {}),
       }),
     })
     if (!resendResponse.ok) {
@@ -276,6 +279,12 @@ serve(async (req) => {
       subject,
       emailType: GC_STATEMENT_EMAIL_TYPES.manual,
     })
+    // Sent copies (docs/SENT_COPIES.md): the statement as the GC read it is kept under the GC.
+    // gc_statement_emails says that it went and for how much; this is the page itself.
+    await fileSentEmailBestEffort(
+      { kind: 'gc_statement', recipientName: gcName, customerId: gcCustomerId, sentBy: me.id },
+      { to: [toEmail], cc: ccAll, from: COMPANY_EMAIL_FROM, subject, html: statementHtml, attachments: statementAttachments, resendEmailId: sent.id ?? null },
+    )
 
     // Audit row (service role — table has no client write policies). Failure
     // here must not report the send as failed: the email is already gone.

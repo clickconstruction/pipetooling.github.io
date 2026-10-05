@@ -136,9 +136,11 @@ describe('useJobContractCoverage', () => {
 describe('useHazmatAndReleaseJobIds', () => {
   it('office: reads live hazmat fees, then live releases', async () => {
     db.tables.job_hazmat_incidents = [{ job_id: 'j1' }]
-    db.tables.job_lien_releases = [{ job_id: 'j2' }]
+    // A draft is not an issued release: j9's icon stays plain.
+    db.tables.job_lien_releases = [{ job_id: 'j2' }, { job_id: 'j3', status: 'signed' }, { job_id: 'j9', status: 'draft' }]
     const { result } = renderHook(() => useHazmatAndReleaseJobIds(true))
     await waitFor(() => expect(result.current.lienReleaseJobIds.has('j2')).toBe(true))
+    expect([...result.current.lienReleaseJobIds].sort()).toEqual(['j2', 'j3'])
     expect(result.current.hazmatFeeJobIds.has('j1')).toBe(true)
     expect(db.reads.map((r) => r.table)).toEqual(['job_hazmat_incidents', 'job_lien_releases'])
     expect(db.reads.every((r) => r.filters.join() === 'voided_at is null')).toBe(true)

@@ -5,8 +5,8 @@ import {
   isConditionalLienForm,
   isLienWaiverFormType,
   lienReleaseClearance,
-  lienReleaseFieldsFromSnapshot,
   lienReleaseFormLabel,
+  lienReleaseSnapshotToWaiverFields,
   liveLienReleases,
   unconditionalFollowUpForm,
   type JobLienReleaseRow,
@@ -18,10 +18,10 @@ import {
   lienWaiverDate,
   lienWaiverWhy,
   pickLienWaiverForBill,
-  type LienWaiverFields,
   type LienWaiverFormType,
 } from '../../lib/jobsDocuments/lienWaiverRelease'
-import { openHtmlPreviewWindow } from '../../lib/jobsDocuments/printWindow'
+import { openHtmlWindowWhenReady } from '../../lib/jobsDocuments/printWindow'
+import { lienReleaseRowSignatureWithInk } from '../../lib/jobs/lienReleaseInk'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils'
@@ -57,7 +57,7 @@ export default function BillCustomerLienReleaseStrip({
   waiverAfterSend?: boolean
   onWaiverAfterSendChange?: (on: boolean) => void
 }) {
-  const { profileName } = useAuth()
+  const { profileName, user: authUser } = useAuth()
   const { showToast } = useToastContext()
   const [rows, setRows] = useState<JobLienReleaseRow[]>([])
   const [releaseModal, setReleaseModal] = useState<{ formType: LienWaiverFormType; invoiceIds: string[] } | null>(null)
@@ -99,27 +99,20 @@ export default function BillCustomerLienReleaseStrip({
 
   if (!open || (live.length === 0 && !canIssue)) return null
 
+  // The same page every other View shows (v2.4569): the stored snapshot with the ink stored at signing.
   const viewRelease = (r: JobLienReleaseRow) => {
-    const snapshot = lienReleaseFieldsFromSnapshot(r.fields)
     const formType: LienWaiverFormType = isLienWaiverFormType(r.form_type) ? r.form_type : 'conditional_progress'
-    const fields: LienWaiverFields = {
-      companyName: snapshot.companyName ?? '',
-      checkFrom: snapshot.checkFrom ?? '',
-      amount: snapshot.amount ?? String(r.amount ?? ''),
-      projectDescription: snapshot.projectDescription ?? '',
-      throughDate: snapshot.throughDate ?? r.through_date ?? '',
-      signedDate: snapshot.signedDate ?? r.signed_date ?? '',
-      signerName: snapshot.signerName ?? '',
-      signerTitle: snapshot.signerTitle ?? '',
-    }
-    const ok = openHtmlPreviewWindow(buildLienWaiverPrintHtml(formType, fields, jobNumber))
-    if (!ok) showToast('Popup blocked — allow popups to view the release.', 'error')
+    void openHtmlWindowWhenReady(async () =>
+      buildLienWaiverPrintHtml(formType, lienReleaseSnapshotToWaiverFields(r), jobNumber, await lienReleaseRowSignatureWithInk(r)),
+    ).then((ok) => {
+      if (!ok) showToast('Popup blocked — allow popups to view the release.', 'error')
+    })
   }
 
   const voidRelease = async (r: JobLienReleaseRow) => {
     try {
       await withSupabaseRetry(
-        () => supabase.from('job_lien_releases').update({ voided_at: new Date().toISOString() }).eq('id', r.id),
+        () => supabase.from('job_lien_releases').update({ voided_at: new Date().toISOString(), voided_by: authUser?.id ?? null }).eq('id', r.id),
         'void lien release',
       )
       showToast('Release voided.', 'success')

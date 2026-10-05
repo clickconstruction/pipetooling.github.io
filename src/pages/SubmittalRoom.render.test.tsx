@@ -10,6 +10,8 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { MemoryRouter } from 'react-router-dom'
 
 import SubmittalRoom from './SubmittalRoom'
+import { sampleSubmittalRoomResponse } from '../../supabase/functions/_shared/customerSampleFixtures'
+import { PORTAL_COMPANY } from '../../supabase/functions/_shared/portalCompany'
 
 vi.mock('../lib/publicFunctionStaffHeaders', () => ({ staffAwarePublicHeaders: () => Promise.resolve({ apikey: 'anon', Authorization: 'Bearer anon' }) }))
 
@@ -318,3 +320,19 @@ describe('SubmittalRoom · a call on each part (2026-10-01)', () => {
     expect(screen.getByTestId('room-footer').textContent).toMatch(/1 decided · 0 to answer/)
   })
 })
+
+describe('SubmittalRoom · the What customers see sample (v2.4595, #62)', () => {
+  it('the sample room draws through the page like a real one: the parts the GC sees, the proposed card, the to-follow row; the order-only row and part never show', async () => {
+    mockFetch(200, sampleSubmittalRoomResponse('live', PORTAL_COMPANY, '2026-10-05'))
+    mount('/submittal?t=sample')
+    await screen.findByText('3 products need your answer')
+    const cards = screen.getAllByTestId('room-row')
+    const wc = cards.find((c) => c.textContent?.includes('WC-1'))!
+    expect(within(wc).getAllByTestId('room-part').map((p) => p.textContent ?? '')).toEqual([expect.stringContaining('TOTO CT728CUVG#01'), expect.stringContaining('TOTO SS114#01'), expect.stringContaining('ZURN Z1203-N')])
+    expect(cards.find((c) => c.textContent?.includes('SH-1'))!.textContent).toContain('for your review')
+    expect(cards.find((c) => c.textContent?.includes('MB-1'))!.textContent).toContain('No product yet — to follow.')
+    expect(document.body.textContent).not.toContain('HB-1')
+    expect(document.body.textContent).not.toContain('KTCR19X')
+  })
+})
+

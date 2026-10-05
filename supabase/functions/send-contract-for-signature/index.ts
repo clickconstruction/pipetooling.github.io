@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { logEmailSendBestEffort } from '../_shared/logEmailSend.ts'
+import { fileSentEmailBestEffort } from '../_shared/fileSentCopy.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { EMAIL_FROM } from '../_shared/emailFrom.ts'
 import { mailboxWithName } from '../_shared/mailboxWithName.ts'
@@ -53,7 +54,7 @@ async function sendEmailViaResend(
   resendApiKey: string,
   fromMailbox: string,
   replyTo: string | null,
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; resendEmailId?: string | null }> {
   const resendResponse = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
@@ -75,7 +76,7 @@ async function sendEmailViaResend(
   }
   const sent = (await resendResponse.json().catch(() => ({}))) as { id?: string }
   await logEmailSendBestEffort({ resendEmailId: sent.id ?? null, to: [to], from: fromMailbox, subject, emailType: 'contract_for_signature' })
-  return { success: true }
+  return { success: true, resendEmailId: sent.id ?? null }
 }
 
 serve(async (req) => {
@@ -243,6 +244,8 @@ serve(async (req) => {
     // The person's live portal address, if they have one: a saved slug AND an unrevoked link.
     // Read-only — nothing is minted to send an email (the portal's no-mint-on-demand rule).
     let portalUrl: string | null = null
+    // The one person this document names, when the name finds exactly one: the sent copy is filed under them.
+    let sentCopyPersonId: string | null = null
     try {
       const { data: personRows } = await admin
         .from('people')
@@ -253,6 +256,7 @@ serve(async (req) => {
       const personIds = ((personRows ?? []) as Array<{ id: string }>).map((r) => r.id)
       if (personIds.length === 1) {
         const personId = personIds[0]!
+        sentCopyPersonId = personId
         const [{ data: slugRow }, { data: linkRows }] = await Promise.all([
           admin.from('sub_portal_slugs').select('slug').eq('person_id', personId).maybeSingle(),
           admin.from('sub_portal_links').select('id').eq('person_id', personId).is('revoked_at', null).limit(1),
@@ -297,6 +301,13 @@ serve(async (req) => {
     }
 
     const sent = await sendEmailViaResend(signer_email.trim(), subject, textPlain, htmlBody, resendApiKey, fromMailbox, mail.replyTo)
+    // Sent copies (docs/SENT_COPIES.md): the email asking them to sign is kept, under the person.
+    if (sent.success) {
+      await fileSentEmailBestEffort(
+        { kind: 'person_contract', recipientName: doc.person_name, personId: sentCopyPersonId, source: { table: 'person_contract_documents', id: doc.id }, sentBy: user.id },
+        { to: [signer_email.trim()], from: fromMailbox, subject, html: htmlBody, resendEmailId: sent.resendEmailId ?? null },
+      )
+    }
     if (!sent.success) {
       return new Response(
         JSON.stringify({
