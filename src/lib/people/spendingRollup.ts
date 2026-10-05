@@ -10,7 +10,8 @@
 //   through the invoice: it counts On jobs and is listed On supply invoices, never under a job —
 //   the Job window counts it under the invoice, so every job cell here is the job's card line there.
 // - The Office job is sorted but overhead: its own bucket, never job cost.
-// - A payroll mark settles a charge with no job (Tally): its own bucket, not work to do.
+// - A payroll mark settles a charge with no job (Tally): its own bucket, not work to do. The read
+//   returns such a charge only to callers with payroll access, so the bucket is theirs alone.
 // - A charge before Tally's sorting floor that is on no job: its own bucket, not work to do.
 // So for every row: card spend = on jobs + office + payroll + not on a job + before sorting began.
 //

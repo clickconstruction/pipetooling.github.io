@@ -11,14 +11,23 @@ SET lock_timeout = '3s';
 -- suggestions. job_splits and invoice_links carry the keys of the Sorted RPC (v2.4566).
 --
 -- Read only. SECURITY DEFINER because the office roles cannot all read every piece through RLS
--- (the card-holder links are Banking-only; the payroll marks follow payroll access), and the card
--- id lives in `raw`, which this does not return. The office roles (dev, master, assistant,
--- controller — is_office_staff()) already read the charges, attributions, splits, labels and
--- invoice links; the holder per card and the payroll mark per charge are what the Team purchases
--- definer RPCs already show the same roles. Card kinds only (no ACH, no checks); duplicates out.
+-- (the card-holder links are Banking-only), and the card id lives in `raw`, which this does not
+-- return. The office roles (dev, master, assistant, controller — is_office_staff()) already read
+-- the charges, attributions, splits, labels and invoice links; the holder per card is what the
+-- Team purchases definer RPCs already show them. The payroll mark keeps its own rule
+-- (has_payroll_access(), the table's policy): a caller without it does not get a charge settled
+-- by a payroll mark alone — the Team purchases queue leaves those off too — and reads
+-- payroll_marked false on the rest, so totals differ by role by exactly those charges.
+-- Card kinds only (no ACH, no checks); duplicates out.
+--
+-- Bounded so a poor plan stays small: at most 366 days, a range on posted_at
+-- (mercury_transactions_posted_at_desc_idx), the kind and duplicate filters before anything per
+-- row; `raw` is read once per row in the window for the card id (no stored card-id column
+-- exists; every card-holder RPC reads it the same way), in a MATERIALIZED CTE; every other piece
+-- is a primary-key or transaction-id index probe; the circle check runs once per holder.
 -- The window is the company's civil day by posted_at (reporting_window_calendar_civil_day owns
--- the zone), at most 366 days, ordered by (posted_at, id) so callers page past PostgREST's
--- 1,000-row cap. See docs/migrations/20261005212106_card_charges_window.md.
+-- the zone), ordered by (posted_at, id) so callers page past PostgREST's 1,000-row cap.
+-- See docs/migrations/20261005212106_card_charges_window.md.
 
 CREATE OR REPLACE FUNCTION public.list_card_charges_window(
   p_start_ymd date,
@@ -57,6 +66,7 @@ AS $function$
 DECLARE
   v_lo timestamp with time zone;
   v_hi timestamp with time zone;
+  v_payroll_access boolean;
 BEGIN
   IF NOT public.is_office_staff() THEN
     RAISE EXCEPTION 'list_card_charges_window: not authorized';
@@ -74,8 +84,11 @@ BEGIN
   SELECT w.window_start_utc INTO v_lo FROM public.reporting_window_calendar_civil_day(NULL, p_start_ymd) w;
   SELECT w.window_end_utc INTO v_hi FROM public.reporting_window_calendar_civil_day(NULL, p_end_ymd) w;
 
+  -- The payroll marks' own rule (the policy on mercury_tally_payroll_flags).
+  v_payroll_access := public.has_payroll_access();
+
   RETURN QUERY
-  WITH c AS (
+  WITH c AS MATERIALIZED (
     SELECT
       t.id,
       t.posted_at,
@@ -124,7 +137,7 @@ BEGIN
     att.person_id,
     asg.label_id,
     lab.default_key,
-    COALESCE(pf.is_payroll, false),
+    CASE WHEN v_payroll_access THEN COALESCE(pf.is_payroll, false) ELSE false END,
     COALESCE((
       SELECT jsonb_agg(
         jsonb_build_object(
@@ -186,6 +199,13 @@ BEGIN
     LIMIT 1
   ) srt ON true
   LEFT JOIN public.users sb ON sb.id = srt.created_by
+  -- A charge settled by a payroll mark alone reaches only callers with payroll access, as the
+  -- Team purchases queue leaves it off; a marked charge that is also on a job or an invoice
+  -- stays for everyone, so a job's card spend reads the same for every role.
+  WHERE v_payroll_access
+     OR pf.is_payroll IS NOT TRUE
+     OR EXISTS (SELECT 1 FROM public.mercury_transaction_job_allocations a3 WHERE a3.mercury_transaction_id = c.id)
+     OR EXISTS (SELECT 1 FROM public.mercury_transaction_supply_house_invoice_links il3 WHERE il3.mercury_transaction_id = c.id)
   ORDER BY c.posted_at, c.id;
 END;
 $function$;
@@ -195,4 +215,4 @@ REVOKE ALL ON FUNCTION public.list_card_charges_window(date, date) FROM anon;
 GRANT EXECUTE ON FUNCTION public.list_card_charges_window(date, date) TO authenticated;
 
 COMMENT ON FUNCTION public.list_card_charges_window(date, date) IS
-  'Card charges posted in company days p_start_ymd..p_end_ymd (at most 366): attribution, card + holder, bank category, accounting label, payroll mark, job splits, invoice links, last sorted, and whether the viewer can write the splits. Office staff only. Ordered by (posted_at, id) for paging. People → Spending (#52) and the Tally team queue history (#72).';
+  'Card charges posted in company days p_start_ymd..p_end_ymd (at most 366): attribution, card + holder, bank category, accounting label, payroll mark, job splits, invoice links, last sorted, and whether the viewer can write the splits. Office staff only; a charge settled by a payroll mark alone only with payroll access. Ordered by (posted_at, id) for paging. People → Spending (#52) and the Tally team queue history (#72).';
