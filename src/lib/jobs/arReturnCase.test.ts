@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { arCaseDay, arCaseTakeOff, arCaseThisReplaces, arPayerCameBackNote, arPayerKey, arReplacementFor, arReturnCaseView, type ArReturnCaseRow } from './arReturnCase'
+import { arApplyClosesReplacedCase, arCaseDay, arCaseTakeOff, arCaseThisReplaces, arPayerCameBackNote, arPayerKey, arReplacementFor, arReturnCaseView, type ArReturnCaseRow } from './arReturnCase'
 import type { ArDepositTrailRow } from './arDepositTrail'
 import { helpGuidePlainWordsFailures } from '../plainWords'
 
@@ -199,6 +199,21 @@ describe('the new check', () => {
   it('arPayerKey', () => {
     expect(arPayerKey('M&M Roofing Co')).toBe(arPayerKey('M & M Roofing'))
     expect(arPayerKey('DR')).toBeNull()
+  })
+})
+
+describe('arApplyClosesReplacedCase', () => {
+  const bills = [{ jobId: 'job-878' }, { jobId: 'job-900' }]
+  it('closes when the apply pays a job the returned check paid', () => {
+    expect(arApplyClosesReplacedCase(bills, ['job-900'])).toBe(true)
+    expect(arApplyClosesReplacedCase(bills, ['job-1', 'job-878'])).toBe(true)
+  })
+  it('leaves the case open when the lines were moved to other jobs', () => {
+    expect(arApplyClosesReplacedCase(bills, ['job-1'])).toBe(false)
+    expect(arApplyClosesReplacedCase(bills, [])).toBe(false)
+  })
+  it('a case with no bills on record closes on the press alone', () => {
+    expect(arApplyClosesReplacedCase([], ['job-1'])).toBe(true)
   })
 })
 

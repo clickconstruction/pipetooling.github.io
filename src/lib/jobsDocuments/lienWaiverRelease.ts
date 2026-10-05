@@ -386,6 +386,21 @@ export function pickLienWaiverForBill(
   }
 }
 
+/**
+ * The tick on Bill Customer (v2.4603): the pick for the bill about to go, or null when no
+ * tick is drawn. No tick on a direct job, with no bill named, or for a bill not on the job.
+ * The hand-off to the Release of Lien window follows the tick, so both read this.
+ */
+export function lienWaiverTickForBill(
+  job: (Pick<JobWithDetails, 'invoices' | 'payments' | 'revenue'> & { gc_customer_id?: string | null }) | null | undefined,
+  invoiceId: string | null | undefined,
+  today: string = todayYmd(),
+): LienWaiverBillPick | null {
+  if (!job?.gc_customer_id || !invoiceId) return null
+  const invoice = (job.invoices ?? []).find((i) => i.id === invoiceId)
+  return invoice ? pickLienWaiverForBill(job, invoice, today) : null
+}
+
 export function buildLienWaiverPrefill(formType: LienWaiverFormType, ctx: LienWaiverPrefillContext): LienWaiverFields {
   const { job, invoices, issuer, ownerName, signerName } = ctx
   const name = (job.job_name ?? '').trim()
