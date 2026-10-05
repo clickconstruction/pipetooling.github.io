@@ -28,6 +28,8 @@ Press a pill to see only that month. Press it again to see every month.
 
 With **All** picked, each month is a section with a bar on top. The bar says the date, the days left and what falls due. **Overdue** starts folded at the top. Press its bar to open it.
 
+An overdue job is listed with its property when that property has a date still ahead. It sits under the property's address, greyed, after the jobs that are still on the clock. Its amount reads *still owed*. So one property reads in one place. The Overdue bar says how many of its jobs are listed that way. The Overdue count and its dollars do not change. Press the {{chip:red|Overdue}} pill to see every overdue job in one list.
+
 :::example the bar on top of this month
 This month by Oct 15, in 14 days. 24 notices across 9 GCs.
 :::

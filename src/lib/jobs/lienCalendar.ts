@@ -39,6 +39,13 @@ export type LienCalendarJob = {
 
 export type LienCalendarGroupKind = 'gc' | 'direct' | 'gone'
 
+/**
+ * One property's rows inside a group (v2.4526): its jobs with a date still ahead, then the overdue
+ * jobs at the same property, listed here instead of under Overdue. `label` is the address; null
+ * is the group's other properties.
+ */
+export type LienCalendarPropertyRows = { key: string; label: string | null; jobs: LienCalendarJob[]; closed: LienCalendarJob[] }
+
 export type LienCalendarGroup = {
   key: string
   kind: LienCalendarGroupKind
@@ -51,6 +58,8 @@ export type LienCalendarGroup = {
   word: string
   tone: LienRunwayTone
   sortKey: number
+  /** Set only on a group that lists overdue jobs with their property (`lienCalendarBuckets`); `jobs` stays the jobs with a date ahead. */
+  byProperty?: LienCalendarPropertyRows[]
 }
 
 export type LienCalendar = {
@@ -94,11 +103,16 @@ function groupWord(jobs: LienCalendarJob[], kind: LienCalendarGroupKind): { word
   return { word: verdict, tone: tightest.runway.tone }
 }
 
+/** A typed address as a key: lower case, no punctuation, nothing from the state on ("9703 lenox hl san antonio"). */
+export function lienAddressKey(address: string | null | undefined): string {
+  return norm(address).replace(/[.,#]/g, '').replace(/\b(tx|texas)\b.*$/, '').trim()
+}
+
 /** "4 at one property" — the largest set of a group's jobs that share one address (one notice can cover them, v2.3777); '' when none share. */
 export function sharedPropertyNote(jobs: ReadonlyArray<Pick<LienCalendarJob, 'address'>>): string {
   const counts = new Map<string, number>()
   for (const j of jobs) {
-    const key = norm(j.address).replace(/[.,#]/g, '').replace(/\b(tx|texas)\b.*$/, '').trim()
+    const key = lienAddressKey(j.address)
     if (!key) continue
     counts.set(key, (counts.get(key) ?? 0) + 1)
   }
