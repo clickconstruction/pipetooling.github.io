@@ -11,7 +11,7 @@ covers:
   - src/components/jobs/JobsStagesUnifiedTable.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-10-01
+last_updated: 2026-10-05
 ---
 
 > **Line numbers are as of `a05cef4c4`** (from the `npm run map` fact sheets). This is the hottest surface in the repo (195 commits in 90 days on the tab, 62 on `jobsStagesRowShared`) — search the symbol, and trust a range only while the symbol still sits at it.
@@ -209,7 +209,7 @@ None of the three v2.3530 dialogs has a render test.
 
 ### 8. [`JobsStagesUnifiedTable.tsx`](../src/components/jobs/JobsStagesUnifiedTable.tsx) (449 lines — job + invoice rows)
 
-- Callers: Ready to Bill / Billed / Collections sites and the deck, via `StagesUnifiedSectionList`. 86 prop fields. Builds one `StagesUnifiedRowContext` (type 162–179; built as `rowCtx` 368–390) per render; row kinds split into `StagesUnifiedJobRow` / `StagesUnifiedInvoiceRow` (v2.3548); icon buttons in `StagesRowActionButtons.tsx`, thread row in `StagesExpandedThreadRow` (v2.3541). No Supabase.
+- Callers: Ready to Bill / Billed / Collections sites and the deck, via `StagesUnifiedSectionList`. 86 prop fields. Builds one `StagesUnifiedRowContext` (type 162–179; built as `rowCtx` 368–390) per render; row kinds split into `StagesUnifiedJobRow` / `StagesUnifiedInvoiceRow` (v2.3548); icon buttons in `StagesRowActionButtons.tsx`, thread row in `StagesExpandedThreadRow` (v2.3541). No Supabase. A bill row's own line (*This bill · paid … left*) is `StagesBillRowLine` (v2.4349, kernel `stagesBillRowLine`), and `stagesRowIconGrid` (v2.4305, 3 tests) says how many icons sit on each row of the icon block.
 - Tests: `JobsStagesUnifiedTable.render.test.tsx` (10), `StagesRowActionButtons` (2).
 - **Open:** the single typed prop, same as §7.
 
