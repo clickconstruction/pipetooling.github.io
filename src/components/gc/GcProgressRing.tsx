@@ -125,7 +125,17 @@ export function GcProgressRing({
           />
         </svg>
         <span style={{ position: 'relative', display: 'grid', justifyItems: 'center', lineHeight: 1.05, fontVariantNumeric: 'tabular-nums' }}>
-          <span style={{ fontSize: progress.center.length > 4 ? '0.72rem' : '0.82rem', fontWeight: 700, color: 'var(--text-base)' }}>{progress.center}</span>
+          <span style={{ fontSize: progress.center.length > 4 ? '0.72rem' : '0.82rem', fontWeight: 700, color: 'var(--text-base)' }}>
+            {/* Three digits (100%): a smaller percent sign keeps the number easy to read (the owner, 2026-10-04). */}
+            {/^\d{3}%$/.test(progress.center) ? (
+              <>
+                {progress.center.slice(0, -1)}
+                <span style={{ fontSize: '0.7em' }}>%</span>
+              </>
+            ) : (
+              progress.center
+            )}
+          </span>
           {closed && <span style={{ fontSize: '0.7rem', fontWeight: 700, color }}>✓</span>}
         </span>
       </span>

@@ -134,6 +134,30 @@ describe("Building's promises (question 8)", () => {
     expect(papersOwedWords(papersOwed(fairOaks(s), pkgOf(s, 'felec'), s.today))).toBeNull()
   })
 
+  it("a promise for the waivers alone is kept once they are in, though the final pay application is still owed", () => {
+    // Cool Breeze on Stone Oak: its work is accepted and its final pay application can go. Say draw 2's waiver is still owed.
+    const base = initialGcState()
+    const s0: GcState = {
+      ...base,
+      projects: base.projects.map((p) =>
+        p.id !== 'stoneoak'
+          ? p
+          : {
+              ...p,
+              packages: p.packages.map((k) =>
+                k.id === 'shvac' && k.sow ? { ...k, sow: { ...k.sow, draws: k.sow.draws.map((d) => (d.number === 2 ? { ...d, waiver: 'conditional' as const } : d)) } } : k,
+              ),
+            },
+      ),
+    }
+    const ask = (what: string): GcAction => ({ type: 'recordPromise', partnerId: 'coolbreeze', kind: 'closeout', projectId: 'stoneoak', packageId: 'shvac', by: '2026-10-09', from: 'office', what })
+    const sign: GcAction = { type: 'tradeSignUnconditional', projectId: 'stoneoak', packageId: 'shvac', drawId: 'shvac-draw-2' }
+    // The Board's ask for the waiver: kept by the signature.
+    expect(only(play(s0, ask('the unconditional lien waiver on draw 2'), sign)).keptOn).toBe('2026-10-02')
+    // Our ask for every paper: the final pay application is still owed, so it waits.
+    expect(only(play(s0, ask('the final pay application and the unconditional waiver on draw 2'), sign)).keptOn).toBeUndefined()
+  })
+
   it('a delivery is marked by hand, and every kind counts on the word record', () => {
     let s = play(initialGcState(), promise('pecanvalley', 'delivery', 'felec', '2026-10-01', 'the light poles'))
     // Recorded on Oct 2 for Oct 1: the day has passed.
