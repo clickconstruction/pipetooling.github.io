@@ -39,6 +39,29 @@ vi.mock('../../lib/customers/propertyLookupClient', async () => {
     }),
   }
 })
+// The desk's writes (v2.4541, the undo): the approve path and its undo are watched; everything else is the real module.
+const io = vi.hoisted(() => ({ saved: 0, approved: [] as string[], undone: [] as Array<{ ids: string[]; userId: string | null }>, policies: [] as Array<{ policy: string; note: string }>, unshared: [] as unknown[] }))
+vi.mock('../../lib/jobs/lienDeskIo', async () => {
+  const actual = await vi.importActual<typeof import('../../lib/jobs/lienDeskIo')>('../../lib/jobs/lienDeskIo')
+  return {
+    ...actual,
+    saveLienDeskDraft: async () => `item-${(io.saved += 1)}`,
+    approveLienDeskItem: async (id: string) => void io.approved.push(id),
+    undoLienDeskApprovals: async (ids: string[], userId: string | null) => {
+      io.undone.push({ ids: [...ids], userId })
+      return ids.length
+    },
+    setCustomerLienNoticePolicy: async (_id: string, policy: string, note: string) => void io.policies.push({ policy, note }),
+  }
+})
+vi.mock('../../lib/jobs/ownerBillShareIo', () => ({
+  shareBillsWithOwnersOfJobs: async () => ({ owners: 2, turnedOn: { jobIds: ['j994'], invoiceIds: ['inv-9'], on: true } }),
+  unshareBillsTurnedOn: async (w: unknown) => void io.unshared.push(w),
+}))
+vi.mock('../../hooks/useLegalMatters', async () => {
+  const actual = await vi.importActual<typeof import('../../hooks/useLegalMatters')>('../../hooks/useLegalMatters')
+  return { ...actual, legalRpc: async () => null }
+})
 const hookState: { data: GcOnNoticeData | null; loading: boolean } = { data: null, loading: false }
 const refetch = vi.fn()
 vi.mock('../../hooks/useGcOnNoticeData', () => ({ useGcOnNoticeData: () => ({ data: hookState.data, loading: hookState.loading, refetch }) }))
@@ -99,6 +122,11 @@ afterEach(() => {
   cleanup()
   resetPropertyLookupCache()
   confirmMock.mockClear()
+  io.saved = 0
+  io.approved = []
+  io.undone = []
+  io.policies = []
+  io.unshared = []
 })
 
 const fixture = (id: string, job_id: string, name: string, price: number, invoice_id: string | null = null, sequence_order = 0) =>
@@ -225,6 +253,45 @@ describe('GcOnNoticeModal', () => {
     fireEvent.click(screen.getByTestId('gc-notice-use'))
     await waitFor(() => expect(confirmMock).toHaveBeenCalledTimes(1))
     expect(refetch).toHaveBeenCalled()
+  })
+
+  it('Approve all can be undone from the run window: it asks first, names what goes back and what stays, then takes it back (v2.4541)', async () => {
+    hookState.data = data()
+    const view = renderWithProviders(<GcOnNoticeModal {...baseProps} authRole="master_technician" />)
+    await settle()
+    // No run has been started in this sitting: nothing to undo.
+    expect(screen.queryByTestId('run-undo')).toBeNull()
+    fireEvent.click(screen.getByTestId('gc-notice-approve-all'))
+    // The click approved the two ready notices and, with its ticks, moved the standing rule.
+    await waitFor(() => expect(io.approved).toEqual(['item-1', 'item-2']))
+    expect(io.policies).toEqual([expect.objectContaining({ policy: 'send' })])
+    // The re-read lands (the hook is a stub here, so the test hands it the new read), and the run window opens with the offer under its title.
+    hookState.data = data()
+    view.rerender(<GcOnNoticeModal {...baseProps} authRole="master_technician" />)
+    const strip = await screen.findByTestId('run-undo')
+    expect(strip.textContent).toContain('You just approved these 2 notices for Harborline Builders. Pressed it by mistake?')
+    fireEvent.click(within(strip).getByRole('button', { name: 'Undo the approval…' }))
+    const ask = await screen.findByRole('alertdialog', { name: 'Undo the approval for Harborline Builders?' })
+    expect(ask.textContent).toContain('2 notices go back to drafts. Nothing is mailed or recorded.')
+    expect(ask.textContent).toContain('The standing rule goes back to Ask each time.')
+    expect(ask.textContent).toContain('The bills this run showed to owners are hidden from them again.')
+    expect(ask.textContent).toContain('This stays:')
+    expect(ask.textContent).toContain('The Legal desk matter. Close it on the Legal desk if you do not want it.')
+    // Keep the run is the safe answer, and it changes nothing.
+    expect(document.activeElement).toBe(within(ask).getByRole('button', { name: 'Keep the run' }))
+    fireEvent.click(within(ask).getByRole('button', { name: 'Keep the run' }))
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull())
+    expect(io.undone).toEqual([])
+    expect(screen.getByTestId('run-undo')).toBeTruthy()
+    // Undo: the notices go back, the rule goes back, the owners' bills are hidden again, the run window closes.
+    fireEvent.click(within(screen.getByTestId('run-undo')).getByRole('button', { name: 'Undo the approval…' }))
+    fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Undo the approval' }))
+    await waitFor(() => expect(io.undone).toEqual([{ ids: ['item-1', 'item-2'], userId: 'u1' }]))
+    await waitFor(() => expect(screen.queryByTestId('run-undo')).toBeNull())
+    expect(io.policies.map((p) => p.policy)).toEqual(['send', 'ask'])
+    expect(io.policies[1]!.note).toBe('Undone: the run was approved by mistake')
+    expect(io.unshared).toEqual([{ jobIds: ['j994'], invoiceIds: ['inv-9'], on: true }])
+    expect(screen.queryByText(/Send the run/)).toBeNull()
   })
 
   it('folds Step 1 to one line once every owner is on the job, and says the unknown property kind once', async () => {

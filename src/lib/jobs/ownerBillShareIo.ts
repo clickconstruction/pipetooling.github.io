@@ -5,7 +5,7 @@
 import { supabase } from '../supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { PORTAL_OPEN_INVOICE_STATUS } from '../../../supabase/functions/_shared/portalBillMembership'
-import { ownerShareApplies, ownerShareScope, ownerShareWrites, type OwnerShareInvoice, type OwnerShareJob, type OwnerShareWrites } from './ownerBillShare'
+import { ownerShareApplies, ownerShareScope, ownerShareTurnedOn, ownerShareWrites, type OwnerShareInvoice, type OwnerShareJob, type OwnerShareWrites } from './ownerBillShare'
 
 export type OwnerSharePropertyJob = OwnerShareJob & {
   hcp_number: string | null
@@ -39,10 +39,11 @@ export async function loadOwnerShareProperty(job: OwnerShareJob): Promise<{ jobs
 
 /**
  * Put a GC on notice's fourth tick (v2.3826): show every owner in the run their property's
- * bills — each job's whole property, as the Pipeline switch does. Returns how many owners.
+ * bills — each job's whole property, as the Pipeline switch does. Returns how many owners,
+ * and the rows it turned on.
  */
-export async function shareBillsWithOwnersOfJobs(jobIds: ReadonlyArray<string>): Promise<number> {
-  if (jobIds.length === 0) return 0
+export async function shareBillsWithOwnersOfJobs(jobIds: ReadonlyArray<string>): Promise<{ owners: number; turnedOn: OwnerShareWrites }> {
+  if (jobIds.length === 0) return { owners: 0, turnedOn: { jobIds: [], invoiceIds: [], on: true } }
   const seeds = (await withSupabaseRetry(
     () => supabase.from('jobs_ledger').select('id, customer_id, gc_customer_id, bill_to_party, customer_address_id, show_bills_to_other_party').in('id', [...jobIds]),
     'owner sees the bills: run jobs',
@@ -60,8 +61,15 @@ export async function shareBillsWithOwnersOfJobs(jobIds: ReadonlyArray<string>):
     for (const i of loaded.invoices) invoices.set(i.id, i)
     if (seed.customer_id) owners.add(seed.customer_id)
   }
+  // What this share turns on, read before it is written: an undo takes back these rows and no others (v2.4541).
+  const turnedOn = ownerShareTurnedOn([...jobs.values()], [...invoices.values()])
   await applyOwnerShare(ownerShareWrites([...jobs.values()], [...invoices.values()], true))
-  return owners.size
+  return { owners: owners.size, turnedOn }
+}
+
+/** Takes a share back: the rows it turned on go off again; what was on before it stays on. */
+export async function unshareBillsTurnedOn(turnedOn: OwnerShareWrites): Promise<void> {
+  await applyOwnerShare({ jobIds: turnedOn.jobIds, invoiceIds: turnedOn.invoiceIds, on: false })
 }
 
 /** The flip: the jobs' memory for their next bills, then the open bills' stamps. */
