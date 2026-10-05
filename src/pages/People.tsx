@@ -29,6 +29,8 @@ import PeopleReviewTab from '../components/people/PeopleReviewTab'
 import PeopleDayBookTab from '../components/people/PeopleDayBookTab'
 import { dropDayBookDoorParams, type DayBookDoor } from '../lib/people/dayBookDoor'
 import PeopleWhosWhereTab from '../components/people/PeopleWhosWhereTab'
+import PeopleSpendingTab from '../components/people/PeopleSpendingTab'
+import { canOpenSpending } from '../lib/people/spendingAccess'
 import { PeopleScoreboardTab } from '../components/people/PeopleScoreboardTab'
 import PeoplePayStubsTab, { type PayStubRow } from '../components/people/PeoplePayStubsTab'
 import PeoplePayLedgerView from '../components/people/PeoplePayLedgerView'
@@ -1911,6 +1913,7 @@ export default function People() {
     users: true,
     subs: true,
     person: canOpenPersonDesk(authRole),
+    spending: canOpenSpending(authRole),
     day_book: canSeeDayBook,
     whos_where: canSeeWhosWhere,
     hours: canOpenHoursTab,
@@ -2804,6 +2807,7 @@ export default function People() {
         <PeopleDayBookTab authUserId={authUser?.id ?? null} authRole={authRole} canPickPerson={canPickDayBookPerson} memory={dayBookMemoryRef} />
       )}
       {activeTab === 'whos_where' && canSeeWhosWhere && <PeopleWhosWhereTab authRole={authRole} />}
+      {activeTab === 'spending' && canOpenSpending(authRole) && <PeopleSpendingTab canSeePayroll={canAccessPay} />}
       {activeTab === 'activity' && (
         <div>
           {!activityAccessResolved ? (
