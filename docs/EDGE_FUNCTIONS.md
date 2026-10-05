@@ -1608,7 +1608,7 @@ The customer's signed-copy email (subject *Signed: … — Job #…*, PDF attach
 
 ### share-job-contract
 
-> **v2.4558 — a shared agreement is kept**: `send_to_sign` files the email with the unsigned PDF (`job_contract`); the share of a signed copy files the email with the signed PDF or its link (`job_contract_shared`; the contract, or the accepted estimate, as its source). `pdf_url` and `draft_pdf` send nothing and file nothing. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
+> **v2.4558 — a shared agreement is kept**: `send_to_sign` files the email with the unsigned PDF (`job_contract`); the share of a signed copy files the email with the signed PDF or its link (`job_contract_shared`; the contract, or the accepted estimate, as its source). `pdf_url` and `draft_pdf` send nothing and file nothing. The same change adds the missing import of `signedRecordId`: since v2.4186 the paths that rebuild a signed PDF (a contract whose stored PDF is missing, an accepted estimate's first share) threw. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
 
 > **v2.4186 — a second signer**: the unsigned PDF (`draft_pdf`, `send_to_sign`) carries `coSignerName` — from the row's `co_signer_name`, or the draft body's `co_signer_name` for a job with no row yet — so two pairs of pen rules print, each named; a signed row rebuilt from its frozen columns (no stored PDF) carries the second frame's signature.
 

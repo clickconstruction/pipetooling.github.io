@@ -16,7 +16,7 @@ import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { APP_CALENDAR_TZ } from '../_shared/appTimeZone.ts'
 import { buildJobContractPdf, contractBodyToPlainText, type JobContractPdfInput, type PdfLibLike } from '../_shared/jobContractPdf.ts'
 import { encodeBase64 } from 'https://deno.land/std@0.224.0/encoding/base64.ts'
-import { amountCentsFromFields, appOrigin, contractHeading, corsHeaders, escapeHtml, formatMoney, isValidEmail, JOB_CONTRACT_BUCKET, JOB_CONTRACT_LINK_DAYS, JOB_CONTRACT_REMINDER_DAYS, jobNumberLabel, json, randomUrlToken, signingUrl } from '../_shared/jobContract.ts'
+import { amountCentsFromFields, appOrigin, contractHeading, corsHeaders, escapeHtml, formatMoney, isValidEmail, JOB_CONTRACT_BUCKET, JOB_CONTRACT_LINK_DAYS, JOB_CONTRACT_REMINDER_DAYS, jobNumberLabel, json, randomUrlToken, signedRecordId, signingUrl } from '../_shared/jobContract.ts'
 import { buildJobContractPaperEmail } from '../_shared/jobContractEmail.ts'
 
 type Body = {
