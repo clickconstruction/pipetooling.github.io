@@ -22,6 +22,7 @@ import {
   portalExclusionWords,
   portalSowExcluded,
   portalOnSite,
+  portalQuoteDue,
   portalSovCheck,
   portalSovStart,
   portalVetting,
@@ -494,7 +495,8 @@ function BidBlock({
   })
   const [answering, setAnswering] = useState(false)
   const ids = { projectId: project.id, packageId: pkg.id, inviteId: invite.id }
-  const due = project.bidDue
+  // The day we want quotes by, three days before our bid is due (owner, 2026-10-04).
+  const due = portalQuoteDue(project)
   const days = due ? daysUntil(due, today) : null
   const unanswered = pkg.scope.filter((item) => includes[item.id] === 'unclear').length
   const openedNewest = !portalPlanNews(project, pkg, invite).behind

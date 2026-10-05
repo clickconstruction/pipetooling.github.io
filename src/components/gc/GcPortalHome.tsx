@@ -6,6 +6,7 @@ import {
   pDate,
   portalFirstVisit,
   portalHome,
+  portalQuoteDue,
   pt,
   pWeekday,
   sentBackOpen,
@@ -280,9 +281,11 @@ function whenWords(ask: PortalAsk, today: string, lang: PortalLang): string {
   const p = ask.project
   if (p.stage !== 'pursuing') return pt(lang, 'whenWon', { gc: GC, trade: ask.pkg.trade })
   if (p.ourBidSentOn) return pt(lang, 'whenSent', { gc: GC, date: pDate(lang, p.ourBidSentOn) })
-  if (!p.bidDue) return pt(lang, 'noDueDay')
-  const left = daysUntil(p.bidDue, today)
-  const date = pWeekday(lang, p.bidDue)
+  // The day we want quotes by, three days before our bid is due (owner, 2026-10-04).
+  const due = portalQuoteDue(p)
+  if (!due) return pt(lang, 'noDueDay')
+  const left = daysUntil(due, today)
+  const date = pWeekday(lang, due)
   if (left < 0) return pt(lang, 'wasDue', { date })
   if (left === 0) return pt(lang, 'dueToday', { date })
   return pt(lang, left === 1 ? 'dueIn1' : 'dueInN', { date, n: left })

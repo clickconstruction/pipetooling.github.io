@@ -62,7 +62,7 @@ describe('the portal in two languages', () => {
   it('writes the invitation in Spanish, by email', () => {
     const invite = portalMessages(state, 'voltage', 'es').find((m) => m.kind === 'invite' && m.projectId === 'boerne')
     expect(invite?.subject).toBe('Click Construction lo invita a cotizar Electrical en Boerne Retail Shell')
-    expect(invite?.lines).toContain('Su cotización vence el jue 8 oct.')
+    expect(invite?.lines).toContain('Su cotización vence el lun 5 oct.')
   })
 
   it('reads a passed promise in Spanish', () => {
