@@ -1193,8 +1193,10 @@ Decided by the owner (2026-10-05):
   Plans (anyone with the link can view: trades and us) and Team only (quotes, our bid,
   contracts, insurance, W-9s, photos). Not sure means Team only, with Move to Plans.
 - **No files@ address for now.** The team forwards to bids@.
+- **One company number for everyone**, not one per estimator. Each person still has a Quo login;
+  "Robert has this" on a thread keeps two people from answering the same text.
 
-Still open, in the mock-up's last section: one number or one per estimator; who sees which threads;
+Still open, in the mock-up's last section: who sees which threads;
 where people reply; which job a message belongs to; recordings and the notice; photos in Drive;
 the Quo plan. The agent's Drive connection waits on the plan intake's admin-console approval
 (the August handoff).
