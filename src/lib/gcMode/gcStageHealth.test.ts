@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { initialGcState } from './gcFixture'
 import { gcReducer } from './gcReducer'
+import { projectPeople } from './gcProjectPeople'
 import { quotesWantedOn, stageHealth, tradeHasNumber, workingDaysLeft } from './gcStageHealth'
 import type { GcState } from './gcTypes'
 
@@ -49,6 +50,9 @@ describe('how the stage is going: bidding', () => {
     expect(day('2026-09-19')?.weekend).toBe(true)
     expect(h?.calendar.summary.map((x) => `${x.value} ${x.label}`)).toEqual(['5 working days left, counting today', '9 of 14 quotes in', '2 questions open'])
     expect(h?.numbers[0]).toMatchObject({ label: 'Trades with a number', value: '3 of 8' })
+    // The same count of people as the board row.
+    const people = projectPeople(state, project(state, 'boerne'))
+    expect(h?.numbers.find((n) => n.label === 'People to call')).toMatchObject({ value: String(people.count), note: `${people.late} late` })
   })
 
   it('does not count a carried quote with a line that has no cost: one rule for the header, the ring and the strip', () => {
