@@ -200,6 +200,28 @@ describe('SubmittalRowsTable', () => {
     })
   })
 
+  describe('one row’s cut sheet as its own PDF', () => {
+    it('Save PDF sits under the pages of a row that has a cut sheet, and reports that row', () => {
+      const onSaveSheet = vi.fn()
+      mount({ onSaveSheet })
+      expect(screen.getAllByTestId('save-sheet')).toHaveLength(1)
+      const save = screen.getByRole('button', { name: 'Save the cut sheet for DWH-1 as a PDF' })
+      expect(save.textContent).toBe('Save PDF')
+      fireEvent.click(save)
+      expect(onSaveSheet).toHaveBeenCalledWith(dwh)
+    })
+
+    it('while one is being cut its door reads Saving… and every door holds; with no handler there is no door', () => {
+      mount({ onSaveSheet: vi.fn(), savingSheetId: 'dwh' })
+      const save = screen.getByTestId('save-sheet') as HTMLButtonElement
+      expect(save.textContent).toBe('Saving…')
+      expect(save.disabled).toBe(true)
+      cleanup()
+      mount()
+      expect(screen.queryByTestId('save-sheet')).toBeNull()
+    })
+  })
+
   describe('what every row shares is said once', () => {
     const houses = new Map([['nws', 'National Wholesale'], ['moore', 'Moore Supply']])
     const a = row({ id: 'a', tag: 'FCO', submitted_label: 'ZURN ZN1400-2NL', supply_house_id: 'nws' })
