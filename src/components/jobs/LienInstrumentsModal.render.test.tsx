@@ -189,8 +189,10 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
     expect(stmt.textContent).toContain('Balance due$1,710.00')
     expect(stmt.textContent).toContain('Fix it on the bill')
 
-    // The preview: the Re line names the bill's number and the balance; no id fragment.
-    expect(screen.getByText('Re: Final Demand for Payment — Invoice #1 · $1,710.00')).toBeTruthy()
+    // The preview: the subject names the bill's number, the box the balance; no id fragment.
+    expect(screen.getByText('Final demand for payment')).toBeTruthy()
+    expect(screen.getByText('Invoice #1')).toBeTruthy()
+    expect((document.querySelector('[data-demand-amount-box]') as HTMLElement).textContent).toContain('Balance due$1,710.00')
     expect(screen.getByText('Statement of account')).toBeTruthy()
     expect(screen.queryByText(/Details of Debt/)).toBeNull()
 
@@ -199,11 +201,12 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
     expect(enclosed.textContent).toContain('Exhibit A · Invoice #1, as sent August 18, 2026')
     expect(enclosed.textContent).toContain('always')
     expect(enclosed.textContent).toContain('Signed agreement — none on this job')
-    expect(enclosed.textContent).toContain('Exhibit C · Delivery record')
-    expect(screen.getByText('The invoice is enclosed as Exhibit A and the delivery record as Exhibit C. All payments and credits have been allowed.')).toBeTruthy()
+    // The labels run in order: with no agreement the delivery record is B, never C over a missing B.
+    expect(enclosed.textContent).toContain('Exhibit B · Delivery record')
+    expect(screen.getByText('The invoice is enclosed as Exhibit A and the delivery record as Exhibit B. All payments and credits have been allowed.')).toBeTruthy()
     expect(document.querySelector('[data-demand-exhibit="A"]')).toBeTruthy()
-    expect(document.querySelector('[data-demand-exhibit="C"]')).toBeTruthy()
-    expect(document.querySelector('[data-demand-exhibit="B"]')).toBeNull()
+    expect(document.querySelector('[data-demand-exhibit="B"]')).toBeTruthy()
+    expect(document.querySelector('[data-demand-exhibit="C"]')).toBeNull()
     expect(screen.getByRole('button', { name: 'Print packet' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Download PDF · 3 documents' })).toBeTruthy()
   })
@@ -255,13 +258,13 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
     expect(screen.getByRole('button', { name: 'Send · 3 documents' })).toBeTruthy()
   })
 
-  it('unticking the delivery record drops Exhibit C from the letter and the preview', async () => {
+  it('unticking the delivery record drops its exhibit from the letter and the preview', async () => {
     renderWithProviders(<LienInstrumentsModal {...baseProps} job={job()} />)
-    await waitFor(() => expect(document.querySelector('[data-demand-exhibit="C"]')).toBeTruthy())
+    await waitFor(() => expect(document.querySelector('[data-demand-exhibit="B"]')).toBeTruthy())
     const boxes = (document.querySelector('[data-demand-enclosed]') as HTMLElement).querySelectorAll('input[type="checkbox"]')
     expect(boxes.length).toBe(1)
     fireEvent.click(boxes[0]!)
-    await waitFor(() => expect(document.querySelector('[data-demand-exhibit="C"]')).toBeNull())
+    await waitFor(() => expect(document.querySelector('[data-demand-exhibit="B"]')).toBeNull())
     expect(screen.getByText('The invoice is enclosed as Exhibit A. All payments and credits have been allowed.')).toBeTruthy()
   })
 

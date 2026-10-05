@@ -3,7 +3,8 @@ import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import {
   addBusinessDays,
-  buildDemandLetterModel,
+  buildDemandLetterEmailHtml,
+  exhibitInvoiceDocument,
   buildDemandLetterPdfBlob,
   buildDemandLetterPrefill,
   buildDemandLetterPrintHtml,
@@ -26,7 +27,7 @@ import { buildPhysicalInvoiceDocumentForBilledInvoice } from '../../lib/physical
 import { getAccessTokenForEdgeFunctions } from '../../lib/supabaseAccessTokenForEdge'
 import { getBillingStripeModePref, stripeModeInvokeBody } from '../../lib/billingStripeModePref'
 import { parseStripeInvoiceDetailsResponse } from '../../lib/stripeInvoiceDetailsResponse'
-import { buildDemandLetterPacket, type DemandExhibit, type DemandExhibitInput, type DemandLetterPacket } from '../../lib/jobsDocuments/demandLetterPacket'
+import { buildDemandLetterPacket, exhibitKind, exhibitLabels, type DemandExhibit, type DemandExhibitInput, type DemandLetterPacket } from '../../lib/jobsDocuments/demandLetterPacket'
 import { buildPhysicalInvoicePdfBlob } from '../../lib/physicalInvoicePdf'
 import { LienRulesDoor } from './LienRulesDoor'
 import { lienRuleHref } from '../../lib/jobs/lienRuleCites'
@@ -91,12 +92,17 @@ function exhibitATitle(invoiceNumber: string, sentYmd: string): string {
   return `Invoice ${invoiceNumber}${sentYmd ? `, as sent ${demandDate(sentYmd)}` : ''}`
 }
 
+function billDay(i: JobsLedgerInvoice): string {
+  return calendarYmdInAppTzFromIso(i.billed_at ?? '') || calendarYmdInAppTzFromIso(i.sent_to_customer_at ?? '') || calendarYmdInAppTzFromIso(i.created_at ?? '')
+}
+
 /** Billed lines with money still open — what a demand letter is about. Same payment rule as the letter's claim (v2.3515). */
 function demandableInvoices(job: JobWithDetails): JobsLedgerInvoice[] {
   return (job.invoices ?? [])
     .filter((i) => i.status === 'billed' && Number(i.amount ?? 0) - paymentsAppliedToInvoice(job, i.id) > 0.005)
     .slice()
-    .sort((a, b) => a.sequence_order - b.sequence_order)
+    // In the order they went out, so the statement and the exhibits read by date; the sequence breaks a tie.
+    .sort((a, b) => billDay(a).localeCompare(billDay(b)) || a.sequence_order - b.sequence_order)
 }
 
 export default function LienInstrumentsModal({
@@ -158,7 +164,7 @@ export default function LienInstrumentsModal({
   const [stripeByInvoice, setStripeByInvoice] = useState<Record<string, { invoiceNumber: string | null; lines: { description: string; quantity: number | null; amount: number }[]; dueYmd: string | null }>>({})
   const [payerRows, setPayerRows] = useState<Record<string, { name: string; address: string; email: string }>>({})
   const [addressTouched, setAddressTouched] = useState(false)
-  // v2.3429 — the exhibits: the signed agreement when the job has one (Exhibit B), and the two switches.
+  // v2.3429 — the exhibits: the signed agreement when the job has one, and the two switches.
   const [signedAgreement, setSignedAgreement] = useState<{ path: string; title: string } | null>(null)
   const [includeAgreement, setIncludeAgreement] = useState(true)
   const [includeDeliveryRecord, setIncludeDeliveryRecord] = useState(true)
@@ -271,7 +277,7 @@ export default function LienInstrumentsModal({
             if (job.customer_id) setCustomerAddress(next[job.customer_id]?.address ?? '')
           }
         }
-        // Exhibit B: the job's signed agreement, when one exists as a PDF.
+        // The job's signed agreement, when one exists as a PDF.
         try {
           const { data: contracts } = await supabase
             .from('job_contracts')
@@ -430,7 +436,7 @@ export default function LienInstrumentsModal({
         for (const t of (touches ?? []) as { created_at: string; outcome: string }[]) {
           const d = calendarYmdInAppTzFromIso(t.created_at ?? '')
           if (/^\d{4}-\d{2}-\d{2}$/.test(d))
-            notices.push({ date: d, label: `Collection call — ${(t.outcome ?? '').replace(/_/g, ' ') || 'recorded'}` })
+            notices.push({ date: d, label: `Collection call: ${(t.outcome ?? '').replace(/_/g, ' ') || 'recorded'}` })
         }
       } catch {
         // fail-soft
@@ -516,11 +522,11 @@ export default function LienInstrumentsModal({
       })
       // The exhibits the letter names (v2.3429). Page counts arrive when the packet is built.
       const enclosures: DemandExhibit[] = []
-      ;(next.statement ?? []).forEach((st, i) => {
-        if (sources[i]?.doc) enclosures.push({ label: 'A', title: exhibitATitle(st.invoiceNumber, st.sentYmd), pages: 0 })
-      })
-      if (signedAgreement && includeAgreement) enclosures.push({ label: 'B', title: signedAgreement.title, pages: 0 })
-      if (includeDeliveryRecord) enclosures.push({ label: 'C', title: 'Delivery record', pages: 0 })
+      const withDoc = (next.statement ?? []).filter((_, i) => sources[i]?.doc)
+      const labels = exhibitLabels({ invoices: withDoc.length, agreement: Boolean(signedAgreement && includeAgreement), delivery: includeDeliveryRecord })
+      withDoc.forEach((st, i) => enclosures.push({ label: labels.invoices[i]!, kind: 'invoice', title: exhibitATitle(st.invoiceNumber, st.sentYmd), pages: 0 }))
+      if (signedAgreement && includeAgreement) enclosures.push({ label: labels.agreement, kind: 'agreement', title: signedAgreement.title, pages: 0 })
+      if (includeDeliveryRecord) enclosures.push({ label: labels.delivery, kind: 'delivery', title: 'Delivery record', pages: 0 })
       const nextWithExhibits = { ...next, enclosures }
       if (!prev) return nextWithExhibits
       return {
@@ -549,28 +555,32 @@ export default function LienInstrumentsModal({
     const today = todayYmdLocal()
     const statement = fields.statement ?? []
     const inputs: DemandExhibitInput[] = []
-    for (let i = 0; i < sources.length; i++) {
-      const doc = sources[i]?.doc
-      const st = statement[i]
-      if (!doc || !st) continue
-      inputs.push({ label: 'A', title: exhibitATitle(st.invoiceNumber, st.sentYmd), blob: await buildPhysicalInvoicePdfBlob(doc) })
-    }
+    const bills = sources.flatMap((src, i) => (src.doc && statement[i] ? [{ doc: src.doc, st: statement[i]! }] : []))
+    let agreementBlob: Blob | null = null
     if (signedAgreement && includeAgreement) {
       try {
         const { data } = await supabase.storage.from(JOB_CONTRACT_BUCKET).download(signedAgreement.path)
-        if (data) inputs.push({ label: 'B', title: signedAgreement.title, blob: data })
+        agreementBlob = data ?? null
       } catch {
-        // the letter still goes without it; the enclosures line follows what was actually merged
+        // the letter still goes without it; the labels and the enclosures follow what was actually merged
       }
     }
+    const labels = exhibitLabels({ invoices: bills.length, agreement: agreementBlob != null, delivery: includeDeliveryRecord })
+    for (let i = 0; i < bills.length; i++) {
+      const { doc, st } = bills[i]!
+      // The exhibit carries the letter's number and due day for this bill.
+      inputs.push({ label: labels.invoices[i]!, kind: 'invoice', title: exhibitATitle(st.invoiceNumber, st.sentYmd), blob: await buildPhysicalInvoicePdfBlob(exhibitInvoiceDocument(doc, st)) })
+    }
+    if (signedAgreement && agreementBlob) inputs.push({ label: labels.agreement, kind: 'agreement', title: signedAgreement.title, blob: agreementBlob })
     if (includeDeliveryRecord) {
       inputs.push({
-        label: 'C',
+        label: labels.delivery,
+        kind: 'delivery',
         title: 'Delivery record',
         blob: await buildDeliveryRecordPdfBlob({ businessName: fields.businessName, invoicesPhrase: demandInvoicesPhrase(statement), recipientName: fields.recipientName, rows: fields.priorNotices, todayYmd: today }),
       })
     }
-    const first = await buildDemandLetterPacket(await buildDemandLetterPdfBlob({ ...fields, enclosures: inputs.map((i) => ({ label: i.label, title: i.title, pages: 0 })) }, today), inputs)
+    const first = await buildDemandLetterPacket(await buildDemandLetterPdfBlob({ ...fields, enclosures: inputs.map((i) => ({ label: i.label, kind: i.kind, title: i.title, pages: 0 })) }, today), inputs)
     const letter = await buildDemandLetterPdfBlob({ ...fields, enclosures: first.exhibits }, today)
     return buildDemandLetterPacket(letter, inputs)
   }, [fields, sources, signedAgreement, includeAgreement, includeDeliveryRecord])
@@ -800,7 +810,9 @@ export default function LienInstrumentsModal({
   if (!open || !job || !fields) return null
 
   const liveHistory = liveDemandLetters(historyRows)
-  const model = buildDemandLetterModel(fields, todayYmdLocal())
+  const letterHtml = buildDemandLetterEmailHtml(fields, todayYmdLocal())
+  // The Enclosed panel names each exhibit by the letter it will wear: in order, no gap.
+  const panelLabels = exhibitLabels({ invoices: sources.filter((src) => src.doc).length, agreement: Boolean(signedAgreement && includeAgreement), delivery: includeDeliveryRecord })
   // `extraHref` (v2.3594): a basis line that names a section links to that rule's row in the guide.
   const toggle = (key: keyof DemandLetterFields, label: string, extra?: string, extraHref?: string) => (
     <label key={key} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8125rem', marginBottom: '0.3rem', cursor: 'pointer' }}>
@@ -1165,25 +1177,25 @@ export default function LienInstrumentsModal({
                   sources[i]?.doc ? (
                     <div key={`a-${i}`} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', alignItems: 'center' }}>
                       <span>
-                        <b>Exhibit A</b> · {exhibitATitle(st.invoiceNumber, st.sentYmd)}
+                        <b>Exhibit {panelLabels.invoices[sources.slice(0, i).filter((src) => src.doc).length]}</b> · {exhibitATitle(st.invoiceNumber, st.sentYmd)}
                       </span>
                       <span style={{ padding: '0.05rem 0.45rem', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 700, background: 'var(--bg-green-tint)', color: 'var(--text-green-700)' }}>always</span>
                     </div>
                   ) : (
                     <div key={`a-${i}`} style={{ color: 'var(--text-muted)' }}>
-                      <b>Exhibit A</b> · {st.invoiceNumber} — the bill could not be rendered from this job; open it from Bill Customer and try again
+                      <b>Not enclosed</b> · {st.invoiceNumber} — the bill could not be rendered from this job; open it from Bill Customer and try again
                     </div>
                   ),
                 )}
                 <label style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', alignItems: 'center', cursor: signedAgreement ? 'pointer' : 'default', color: signedAgreement ? undefined : 'var(--text-muted)' }}>
                   <span>
-                    <b>Exhibit B</b> · {signedAgreement ? signedAgreement.title : 'Signed agreement — none on this job'}
+                    {panelLabels.agreement ? <><b>Exhibit {panelLabels.agreement}</b> · </> : null}{signedAgreement ? signedAgreement.title : 'Signed agreement — none on this job'}
                   </span>
                   {signedAgreement ? <input type="checkbox" checked={includeAgreement} onChange={(e) => setIncludeAgreement(e.target.checked)} /> : <span style={{ padding: '0.05rem 0.45rem', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 700, background: 'var(--bg-subtle)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>no contract</span>}
                 </label>
                 <label style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', alignItems: 'center', cursor: 'pointer' }}>
                   <span>
-                    <b>Exhibit C</b> · Delivery record — {priorNotices.length === 0 ? 'the invoice date only' : `${priorNotices.length} dated send${priorNotices.length === 1 ? '' : 's'} and contact${priorNotices.length === 1 ? '' : 's'}`}
+                    {panelLabels.delivery ? <><b>Exhibit {panelLabels.delivery}</b> · </> : null}Delivery record — {priorNotices.length === 0 ? 'the invoice date only' : `${priorNotices.length} dated send${priorNotices.length === 1 ? '' : 's'} and contact${priorNotices.length === 1 ? '' : 's'}`}
                   </span>
                   <input type="checkbox" checked={includeDeliveryRecord} onChange={(e) => setIncludeDeliveryRecord(e.target.checked)} />
                 </label>
@@ -1269,95 +1281,8 @@ export default function LienInstrumentsModal({
 
           {/* Live preview — pinned light like the printed letter. */}
           <div data-theme="light" style={{ flex: '1 1 22rem', minWidth: '19rem', padding: '1.25rem', background: 'var(--bg-subtle)', borderLeft: '1px solid var(--border)' }}>
-            <div style={{ background: 'var(--surface)', color: 'var(--text-base)', border: '1px solid var(--border)', borderRadius: 4, padding: '1.2rem 1.35rem', fontFamily: "Georgia, 'Times New Roman', serif", fontSize: '0.78rem', lineHeight: 1.65, boxShadow: '0 4px 14px rgba(0,0,0,0.08)' }}>
-              {model.map((b, i) => {
-                switch (b.kind) {
-                  case 'senderBlock':
-                    return (
-                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1.5rem', margin: '0 0 0.9em', paddingBottom: '0.6em', borderBottom: '1px solid #cfcbc2' }}>
-                        <div>
-                          <div style={{ fontWeight: 700, fontSize: '1.12em' }}>{b.company}</div>
-                          {b.licenseLine ? <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: '0.72em', color: '#7a756c', marginTop: '0.15em' }}>{b.licenseLine}</div> : null}
-                        </div>
-                        <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", flex: '0 0 auto', whiteSpace: 'nowrap', textAlign: 'right', fontSize: '0.8em', color: '#5f5a52', lineHeight: 1.45 }}>
-                          {b.contactLines.map((l, j) => (
-                            <span key={j}>
-                              {l}
-                              <br />
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )
-                  case 'meta':
-                    return (
-                      <p key={i} style={{ margin: '0 0 0.4em' }}>
-                        {b.text}
-                      </p>
-                    )
-                  case 'reLine':
-                    return (
-                      <p key={i} style={{ textAlign: 'center', fontWeight: 700, margin: '0.7em 0' }}>
-                        {b.text}
-                      </p>
-                    )
-                  case 'heading':
-                    return (
-                      <p key={i} style={{ fontWeight: 700, margin: '0.8em 0 0.25em' }}>
-                        {b.text}
-                      </p>
-                    )
-                  case 'paragraph':
-                    return (
-                      <p key={i} style={{ margin: '0 0 0.6em' }}>
-                        {b.text}
-                      </p>
-                    )
-                  case 'listItem':
-                    return (
-                      <p key={i} style={{ margin: '0 0 0.2em 1.1em' }}>
-                        • {b.text}
-                      </p>
-                    )
-                  case 'signature':
-                    return (
-                      <p key={i} style={{ margin: '1em 0 0' }}>
-                        {b.lines.map((l, j) => (
-                          <span key={j}>
-                            {l}
-                            <br />
-                          </span>
-                        ))}
-                      </p>
-                    )
-                  case 'statement':
-                    return (
-                      <table key={i} style={{ borderCollapse: 'collapse', width: '100%', margin: '0.3em 0 0.8em', fontSize: '0.95em' }}>
-                        <tbody>
-                          {statementRows(b).map((r, j) => {
-                            const strong = r.kind === 'invoice' || r.kind === 'total' || (r.kind === 'balance' && b.invoices.length === 1)
-                            const rule = r.kind === 'total' || (r.kind === 'balance' && b.invoices.length === 1) ? '2px solid #333' : '1px solid #e3ded2'
-                            return (
-                              <tr key={j}>
-                                <td style={{ padding: r.kind === 'invoice' ? '0.6em 0.4em 0.25em 0' : '0.25em 0.4em 0.25em 0', borderBottom: rule, fontWeight: strong ? 700 : 400, color: r.kind === 'paid' ? '#555' : undefined }}>{r.left}</td>
-                                <td style={{ padding: '0.25em 0 0.25em 0.6em', borderBottom: rule, textAlign: 'right', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', fontWeight: strong ? 700 : 400, color: r.kind === 'paid' ? '#555' : undefined }}>{r.right}</td>
-                              </tr>
-                            )
-                          })}
-                        </tbody>
-                      </table>
-                    )
-                  case 'notarial':
-                    return (
-                      <p key={i} style={{ margin: '1.6em 0 0', color: 'var(--text-muted)' }}>
-                        STATE OF TEXAS · COUNTY OF ___ · notarial block
-                      </p>
-                    )
-                  default:
-                    return null
-                }
-              })}
-            </div>
+            {/* The letter as it prints: the print and PDF renderers' own HTML, so the preview cannot drift from the paper. */}
+            <div style={{ background: 'var(--surface)', color: 'var(--text-base)', border: '1px solid var(--border)', borderRadius: 4, padding: '1.2rem 1.35rem', fontFamily: "Georgia, 'Times New Roman', serif", fontSize: '0.78rem', lineHeight: 1.65, boxShadow: '0 4px 14px rgba(0,0,0,0.08)', overflowX: 'auto' }} dangerouslySetInnerHTML={{ __html: letterHtml }} />
             {/* The exhibits, as the pages they will be (v2.3429). */}
             {(fields.enclosures ?? []).map((ex, i) => {
               const stamp = (
@@ -1371,12 +1296,13 @@ export default function LienInstrumentsModal({
                   {children}
                 </div>
               )
-              if (ex.label === 'A') {
-                const aIndex = (fields.enclosures ?? []).slice(0, i).filter((e) => e.label === 'A').length
-                const doc = sources[aIndex]?.doc ?? null
+              if (exhibitKind(ex) === 'invoice') {
+                const aIndex = (fields.enclosures ?? []).slice(0, i).filter((e) => exhibitKind(e) === 'invoice').length
+                const bill = sources.flatMap((src, k) => (src.doc ? [{ doc: src.doc, st: (fields.statement ?? [])[k] }] : []))[aIndex]
+                const doc = bill ? (bill.st ? exhibitInvoiceDocument(bill.doc, bill.st) : bill.doc) : null
                 return card(doc ? <PhysicalInvoicePreview document={doc} /> : <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{ex.title}</div>)
               }
-              if (ex.label === 'B') {
+              if (exhibitKind(ex) === 'agreement') {
                 return card(
                   <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: '0.8rem', paddingRight: '6rem' }}>
                     <div style={{ fontWeight: 700 }}>{ex.title}</div>
