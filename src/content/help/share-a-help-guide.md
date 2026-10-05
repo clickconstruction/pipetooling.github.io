@@ -19,6 +19,6 @@ A card with the ClickTooling mark, **How do I split a job into stages and bill s
 
 ## Good to know
 
-- The link works for anyone with an account. The guide itself still opens inside the app. So they sign in first, if they aren't signed in already.
+- The link works for anyone with an account. The guide itself still opens inside the app. So the person signs in first, if they aren't signed in already.
 - A link copied from the address bar, like `/help?g=…`, works too. But the address bar link previews as a plain ClickTooling card, not the guide's own title. Use the share link when the preview matters.
 - A phone keeps a link's preview for a while. If a link you shared earlier still shows the old look, share the `/g/…` link instead.

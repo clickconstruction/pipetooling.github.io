@@ -26,7 +26,7 @@ Offer a sub a step for an agreed amount. The sub accepts from their phone. Appro
 
 ## Working in the field yourself
 
-The first time you open the Dashboard it offers **Working in the field? Turn on Job Mode.** Tap {{button:green|Turn on Job Mode}} for the one-card field view. The view shows the current job, today's stops, Clock In, Leave Report and Next Job. {{button:outline|Not now}} keeps the full Dashboard. Either way the {{icon:gear}} gear menu toggles it later. See [clocking in and out with Job Mode](?g=job-mode-clocking). Subs and helpers get Job Mode on by default.
+The first time you open the Dashboard it offers **Working in the field? Turn on Job Mode.** Tap {{button:green|Turn on Job Mode}} for the one-card field view. The view shows the current job, today's stops, Clock In, Leave Report and Next Job. {{button:outline|Not now}} keeps the full Dashboard. Either way, the {{icon:gear}} gear menu toggles Job Mode later. See [clocking in and out with Job Mode](?g=job-mode-clocking). Subs and helpers get Job Mode on by default.
 
 ## What each role sees below you
 

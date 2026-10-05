@@ -7,7 +7,7 @@ order: 87
 ---
 A schedule of values says what each stage of the job is worth. This schedule comes straight from the takeoff.
 
-A takeoff turns the fixture counts into the list of parts a bid needs. Every fixture or tie-in on **Bids → Takeoffs** carries a stage. The stage can be {{chip:yellow|1 Rough In}}, {{chip:blue|2 Top Out}}, {{chip:green|3 Trim Set}}, or a split. A tie-in is a connection to an existing line. The rail, the side panel, adds the material cost up by stage. Then it multiplies it by the company factor. The factor is 1.5 unless Settings says otherwise.
+A takeoff turns the fixture counts into the list of parts a bid needs. Every fixture or tie-in on **Bids → Takeoffs** carries a stage. The stage can be {{chip:yellow|1 Rough In}}, {{chip:blue|2 Top Out}}, {{chip:green|3 Trim Set}}, or a split. A tie-in is a connection to an existing line. The rail, the side panel, adds the material cost up by stage. Then the rail multiplies each stage's total by the company factor. The factor is 1.5 unless Settings says otherwise.
 
 ## The boxes under each fixture
 
@@ -23,7 +23,7 @@ Every part line under a fixture follows the fixture's boxes, shown dashed. Click
 
 ## Fill from rules & book
 
-{{button:outline|Fill from rules & book}} in the rail's **Stages** panel gives every fixture what the takeoff book remembers for it. Otherwise it gives the stage the fixture's name implies, as in the example above. Boxes you set by hand are kept. The note under the button says what happened, like *4 fixtures staged from the book · 28 staged by rule · 2 set by hand kept · 1 has no stage (allowance)*.
+{{button:outline|Fill from rules & book}} in the rail's **Stages** panel gives every fixture what the takeoff book remembers for it. Otherwise the button gives the stage the fixture's name implies, as in the example above. Boxes you set by hand are kept. The note under the button says what happened, like *4 fixtures staged from the book · 28 staged by rule · 2 set by hand kept · 1 has no stage (allowance)*.
 
 ## Teaching the book and the assembly
 
@@ -47,7 +47,7 @@ When a GC wants each stage broken into labor and material, tick **Split labor an
 
 The schedule has a shape, chosen under the pill. {{chip:blue|By stage}} is the one above. The takeoff writes the three lines and keeps them current when the price or the stages change. {{chip:gray|My lines}} is your own schedule. Your own schedule suits a GC whose pay application wants its own lines. Such lines can be mobilization, underground, gas piping or a water heater. Mobilization is the cost of moving crews and gear onto the job. The first time you switch, the three stages become your first three lines. From there rename, {{button:outline|+ Add line}}, move with ▲ ▼, remove with ×, and give any line a note. **Paste the GC's line names…** takes the list from their form, one per row. The names arrive with blank values for you to fill. **Seed again from the stages** starts over from the three stages. Seeding again asks first. Switching back to By stage keeps your lines for next time. Nothing is lost either way.
 
-A bar under the lines checks them against the letter's amount. The bar turns amber with the gap when they miss it. One click on **Scale every line to the contract** brings them to it. A typed labor figure scales with its line. With **Split labor and material** on, each line has a labor box. Leave it blank and the line takes the company share. **Print the schedule** prints the pay-application form, headed *for progress billing only*. The form's columns are #, description of work, labor and material, scheduled value, and notes.
+A bar under the lines checks them against the letter's amount. The bar turns amber with the gap when they miss it. One click on **Scale every line to the contract** brings the lines to the amount. A typed labor figure scales with its line. With **Split labor and material** on, each line has a labor box. Leave it blank and the line takes the company share. **Print the schedule** prints the pay-application form, headed *for progress billing only*. The form's columns are #, description of work, labor and material, scheduled value, and notes.
 
 The {{chip:blue|Materials by stage}} pill adds a short **Materials by stage** section. The section has one line per stage with the factored figure. Each pill is off unless you turn it on. The sections read in order. First is what each stage is worth. Next is when it is paid, from {{chip:gray|Payment schedule}}, headed *Payment schedule:* in the letter. Last is what the material costs.
 

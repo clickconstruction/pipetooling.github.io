@@ -20,7 +20,7 @@ The toolbar still shows one grand total, like {{chip:gray|Sub Labor Due: $47,050
 - **Owed to subs** is every sub sheet with money open. Crew sheets have no roster sub on them. Crew sheets are shown beside the tile as *crew pay via payroll*. Crew sheets never count as owed here.
 - **Ready to pay now** means the sheet is at *Post-inspection: Trigger draw*. Either the job's bill is paid, or the sheet's **payable-after** date has arrived. And there is no hold on it.
 - **Queued** means a payable-after date is set and still ahead. The tile names the next pay-run day from Settings → Sub portal. When no day is set, it says so.
-- **Not payable yet** means the sheet is still in work or at the inspection. Or it is waiting on the customer with nothing promised, or on hold. Or it has {{chip:red|No agreement}}, meaning work under way with nothing signed. The reasons are spelled out under the figure.
+- **Not payable yet** means the sheet is still in work or at the inspection. Or the sheet is waiting on the customer with nothing promised, or on hold. Or the sheet has {{chip:red|No agreement}}, meaning work under way with nothing signed. The reasons are spelled out under the figure.
 
 ## Who's owed
 
@@ -72,7 +72,7 @@ Open the sheet with **Edit sheet**. The expanded row only lists the payments. Ev
 - {{button:outline|Move…}} opens **Move this payment**. The same sub's other sheets are listed first. Search finds any other sheet by job number, address or sub. Pick one and a **What changes** panel reads both sheets before and after, like *880: paid $2,000.00 → $0.00, owed $2,200.00 → $4,200.00 · 922: paid $0.00 → $2,000.00, owed $2,000.00 → $0.00 · paid in full*. The amount, date, memo and portal-visibility setting travel with it. Say why, and press {{button:blue|Move $2,000.00 to 922}}. The reason starts as *wrong job*.
 - {{button:outline|Remove}} opens **Remove this payment?** with a reason: {{chip:blue|Duplicate entry}}, {{chip:gray|Wrong amount}} or {{chip:gray|Something else}}. The window also has **Wrong job → Move it instead**, which is the door to Move. A removal can be undone for 30 days.
 
-Both leave a grey **trace line** under the sheet's payments. The line reads like *Moved → 922 Michael Palmer · Taunya · wrong job*, *Moved here from 880 Reliant Health-HVAC* or *Removed · Taunya · Duplicate entry*. So a balance that jumped explains itself. A removed line carries {{button:gray|Undo}} while it can still come back.
+A move and a removal both leave a grey **trace line** under the sheet's payments. The line reads like *Moved → 922 Michael Palmer · Taunya · wrong job*, *Moved here from 880 Reliant Health-HVAC* or *Removed · Taunya · Duplicate entry*. So a balance that jumped explains itself. A removed line carries {{button:gray|Undo}} while it can still come back.
 
 :::example The check on the wrong job
 Taunya recorded Airfordable's $2,000 check on the 880 sheet; it was for 922. On 880 she presses Move…, picks 922 (top of the list — same sub), reads the panel, and moves it. 880 shows *Moved → 922 · Taunya · wrong job*; 922 shows the payment and *paid in full*.
