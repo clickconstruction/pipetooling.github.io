@@ -23,7 +23,6 @@ import { RoadSection, type RoadStatus } from './SubmittalRoadSection'
 import { SubmittalRowsTable } from './SubmittalRowsTable'
 import { SubmittalRoomPanel } from './SubmittalRoomPanel'
 import { SubmittalSourcesPanel } from './SubmittalSourcesPanel'
-import { SubmittalHelpMenu } from './SubmittalHelpMenu'
 import { robotScheduleNote, scheduleReadHoldsStepOpen } from '../../lib/submittals/robotNote'
 import { buildRowCutSheet, cutSheetFileName, rowCutSheetPlan } from '../../lib/submittals/rowCutSheet'
 import { SubmittalTheirCallPanel } from './SubmittalTheirCallPanel'
@@ -45,7 +44,7 @@ import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling
 import { procurementItemsFrom } from '../../lib/submittals/procurementLogIo'
 import type { ProcurementItemSource } from '../../lib/submittals/procurementLog'
 import { submittalJourney, type JourneyAction, type JourneyStage, type JourneyStageKey, stageGate } from '../../lib/submittals/submittalJourney'
-import { SUBMITTAL_GUIDE_HREF, SUBMITTAL_STAGE_ABOUT, SUBMITTAL_TOUR_STEPS, SUBMITTAL_WORDS, SUBMITTAL_WORDS_ONLY_STOP, stageAbout, hasOpenEveryStage, tourStopForStage, hasSeenSubmittalWalkthrough, markSubmittalWalkthroughSeen, rememberOpenEveryStage } from '../../lib/submittals/submittalTour'
+import { SUBMITTAL_GUIDE_HREF, SUBMITTAL_STAGE_ABOUT, SUBMITTAL_TOUR_STEPS, stageAbout, hasOpenEveryStage, tourStopForStage, hasSeenSubmittalWalkthrough, markSubmittalWalkthroughSeen, rememberOpenEveryStage } from '../../lib/submittals/submittalTour'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 import { supabase } from '../../lib/supabase'
@@ -2021,13 +2020,6 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     setTourSteps(null)
     setTourOpen(true)
   }
-  /** Words on this page (2026-10-04): the walkthrough's terms stop alone, any time, with the page left as it is behind it. */
-  function startWords() {
-    setTourStage(null)
-    setTourSteps([SUBMITTAL_WORDS_ONLY_STOP])
-    setTourOpen(true)
-  }
-  const tourWordsOnly = tourOpen && tourSteps?.length === 1 && tourSteps[0] === SUBMITTAL_WORDS_ONLY_STOP
 
   const visibleBids = (onlyMyBids ? bids.filter(isMyBid) : bids).filter((b) => {
     const q = query.toLowerCase()
@@ -2066,7 +2058,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   function sectionOpen(key: JourneyStageKey): boolean {
     const toggled = sectionToggles[key]
     if (toggled != null) return toggled
-    if (openAllStages || (tourOpen && !tourWordsOnly)) return true
+    if (openAllStages || tourOpen) return true
     if (key === 'picks' && scheduleReadHoldsStepOpen(scheduleRead)) return true
     // v2.4169 · a stage you have not reached folds to its sentence; its controls draw only when you open it, and then held.
     if (key === 'build' && revisions.length === 0) return true
@@ -2096,8 +2088,6 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
         <div style={{ minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
             <BidWorkflowTabTitleWithPreview bid={bid} previewEnabled={bidPreview != null} onOpenPreview={() => bidPreview?.openBidPreviewFromBid(bid)} h2Style={{ margin: 0, fontSize: '1.15rem' }} />
-            {/* One help door (2026-10-05): the walkthrough, the words on the page and the guide, each spelled out in its menu. */}
-            <SubmittalHelpMenu onWalkThrough={() => startWalkThrough()} onWords={startWords} wordCount={SUBMITTAL_WORDS.length} guideHref={SUBMITTAL_GUIDE_HREF} />
           </div>
           {/* One line (2026-10-05): which revision, and what the submittal is. Where the rows come from is step 1's to say; how many rows and sheets is step 3's. */}
           <p style={{ margin: '0.2rem 0 0', ...smallMuted }} data-tour="submittals-source" data-testid="revision-line">
@@ -2113,11 +2103,24 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
             )}
           </p>
         </div>
-        {!narrowViewport640 ? (
-          <button type="button" onClick={onClose} title="Close" aria-label="Close" style={bidDetailCloseXStyle}>
-            ×
+        {/* The page's one help door (owner, 2026-10-05): the ? beside the ×. It starts the walkthrough, which opens with the words the page uses and links to the guide. */}
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0, marginLeft: 'auto' }}>
+          <button
+            type="button"
+            onClick={() => startWalkThrough()}
+            title="How this page works. Walk me through it"
+            aria-label="How this page works"
+            style={{ font: 'inherit', flexShrink: 0, width: 22, height: 22, borderRadius: '50%', border: '1.5px solid #3b82f6', color: 'var(--text-blue-500)', background: 'var(--surface)', fontSize: '0.78rem', fontWeight: 700, lineHeight: 1, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
+            data-testid="submittal-help"
+          >
+            ?
           </button>
-        ) : null}
+          {!narrowViewport640 ? (
+            <button type="button" onClick={onClose} title="Close" aria-label="Close" style={bidDetailCloseXStyle}>
+              ×
+            </button>
+          ) : null}
+        </span>
       </div>
 
       {loading ? <p style={smallMuted}>Loading…</p> : null}

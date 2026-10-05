@@ -152,6 +152,8 @@ export type LienDeskModalProps = {
   calendarRows?: ReadonlyArray<LienCalendarJob> | null
   /** A Calendar row opens the job's Lien window. */
   onOpenCalendarJob?: (jobId: string) => void
+  /** The title bar's door for an owner who asks for our records on their property (v2.4544). */
+  onOpenOwnerRecords?: () => void
   /** A job number opens the job itself: the Job window, with its history and Edit (v2.4531 the Calendar; v2.4535 the Timeline and the three panes' headings). */
   onOpenJob?: (jobId: string) => void
   /** The Calendar's pen wrote something (v2.4153): a pay date, or a property kind — the Pipeline re-reads what changed. */
@@ -248,6 +250,7 @@ export default function LienDeskModal({
   calendarRows,
   onOpenCalendarJob,
   onOpenJob,
+  onOpenOwnerRecords,
   onCalendarChanged,
   initialPile,
   onPutGcOnNotice,
@@ -1994,6 +1997,18 @@ export default function LienDeskModal({
           </div>
           <LienRulesDoor where={kind === 'affidavit' ? 'desk_affidavit' : 'desk_notice'} />
           {office ? <LienCallerDoor input={callerInput} onPick={(h) => setCallerJobId(h.jobId)} onOpenJob={openDeskJob} onPractice={() => setPracticeCallOpen(true)} /> : null}
+          {/* An owner asked for our records (v2.4544): the checked packet for their property, opened over the desk. */}
+          {office && onOpenOwnerRecords ? (
+            <button
+              type="button"
+              data-testid="lien-owner-records-door"
+              onClick={onOpenOwnerRecords}
+              title="An owner asked what we billed and what was paid on their property: the packet for that property, behind four checks"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '2px 10px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', font: 'inherit', fontSize: '0.78rem', fontWeight: 600, whiteSpace: 'nowrap', cursor: 'pointer' }}
+            >
+              An owner asked for records ›
+            </button>
+          ) : null}
           {/* Share where the liens stand (v2.4311): the same place on every tab — the end of the title line; beside × on a phone. The title bar's right padding keeps every line clear of the full-screen toggle and × (before v2.4311 it cleared × alone, and § The rules ran under the toggle at 768 px). */}
           <span style={isMobile ? { position: 'absolute', right: '2.9rem', top: '0.35rem' } : { position: 'relative', display: 'inline-flex', marginLeft: 'auto' }}>
             <button

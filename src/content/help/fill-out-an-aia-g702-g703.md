@@ -52,6 +52,26 @@ A line has these boxes.
 
 Press **Add a line** to add a row. A change order can be its own line. Press **Remove** on a line to take it off.
 
+## Choose how the rows start
+
+On a job's first application you choose where the rows come from. The choice sits at the top of **LINES**, under **START THE ROWS FROM**.
+
+- **One row** puts the whole contract on one line. It is picked for you on a job with no bid schedule.
+- **A row per Line Item** makes a row for each Line Item on the job's **Bill** tab. It shows when the job has two or more.
+- **The bid's schedule** uses the lines from the bid. It shows when the bid has a schedule, and then it is the one picked.
+
+Press an option and the rows change. The paper on the left changes with them.
+
+:::example job 892, three Line Items
+The job is priced at $37,745. **One row** gives one line for $37,745. **A row per Line Item** gives Rough In for $15,098, Top Out for $15,098 and Trim Set for $7,549.
+:::
+
+The window asks before it replaces rows you typed in. Press **Keep** to leave them.
+
+A Line Item with no price turns **A row per Line Item** off. Price it on the **Bill** tab first.
+
+The choice goes away after the first {{button:outline|Save}}. From then on the rows belong to the job. You can still add, rename and remove rows by hand.
+
 ## Lines from the bid
 
 A job that came from a bid starts with the bid's schedule of values. Those are the lines the GC already saw.
@@ -59,7 +79,7 @@ A job that came from a bid starts with the bid's schedule of values. Those are t
 - A bid with its own lines brings them over as written.
 - A bid left on the three stages brings three lines. They are Rough In, Top Out and Trim Set.
 - A bid with fewer than two stages filled in brings nothing. The job starts with one line.
-- A job with no bid starts with one line.
+- A job with no bid starts with one line, unless you choose a row per Line Item.
 
 The bid is only the start. Once you save application 1, the lines belong to the job. You can rename them, add to them and take them off.
 

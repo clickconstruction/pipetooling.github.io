@@ -644,4 +644,135 @@ describe('AiaG702G703Modal', () => {
     expect(screen.getAllByTestId('aia-line')).toHaveLength(1)
     expect(lineField('from').value).toBe('19400')
   })
+
+  /** Job 892's shape: three stage Line Items that add to the job's price, and no bid schedule. */
+  const stageItemsJob = (fixtures?: Array<Record<string, unknown>>) =>
+    makeJob({
+      job_name: 'Megan Connell',
+      revenue: 37745,
+      fixtures: fixtures ?? [
+        { id: 'f1', name: 'Rough In', count: 1, line_unit_price: 15098, progress_pct: 100, sequence_order: 0 },
+        { id: 'f2', name: 'Top Out', count: 1, line_unit_price: 15098, progress_pct: null, sequence_order: 1 },
+        { id: 'f3', name: 'Trim Set', count: 1, line_unit_price: 7549, progress_pct: null, sequence_order: 2 },
+      ],
+    })
+  const sourceRadio = (key: string) => document.getElementById(`aia-line-source-${key}`) as HTMLInputElement
+
+  it('offers one row or a row per Line Item on a first application, one row picked, and the paper follows the choice', async () => {
+    setWide(true)
+    renderWithProviders(<AiaG702G703Modal open onClose={() => undefined} job={stageItemsJob()} hcpForFilename="892" />)
+    await waitFor(() => expect(field('g702_h18_original_contract_sum').value).toBe('37745'))
+    const chooser = screen.getByTestId('aia-line-source')
+    expect(chooser.textContent).toContain('START THE ROWS FROM')
+    expect(chooser.textContent).toContain('One rowThe whole contract, $37,745.00')
+    expect(chooser.textContent).toContain('A row per Line Item3 rows: Rough In, Top Out, Trim Set')
+    expect(sourceRadio('bid')).toBeNull()
+    expect([sourceRadio('one').checked, sourceRadio('items').checked]).toEqual([true, false])
+    expect(screen.getAllByTestId('aia-line')).toHaveLength(1)
+
+    // Nothing typed in the row yet, so the switch does not ask.
+    fireEvent.click(sourceRadio('items'))
+    await waitFor(() => expect(screen.getAllByTestId('aia-line')).toHaveLength(3))
+    expect(screen.queryByText('Replace the rows?')).toBeNull()
+    expect(['item-f1', 'item-f2', 'item-f3'].map((id) => [lineField('label', id).value, lineField('scheduled', id).value])).toEqual([
+      ['Rough In', '15098'],
+      ['Top Out', '15098'],
+      ['Trim Set', '7549'],
+    ])
+    expect(screen.getByLabelText('G703 continuation sheet').querySelectorAll('[data-aia-row]')).toHaveLength(3)
+    // The rows add to the job's price, and the crew's report on Rough In is offered on its row.
+    expect(screen.queryByTestId('aia-lines-gap')).toBeNull()
+    expect(screen.getAllByTestId('aia-line-offer').map((o) => o.textContent)).toEqual(['The crew reported Rough In at 100%.Use 100%'])
+
+    // Saved, the rows are the job's and the choice is closed.
+    fireEvent.change(field('g702_n5_project'), { target: { value: '1' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(saveSpy).toHaveBeenCalledTimes(1))
+    expect((saveSpy.mock.calls[0]![0].lines as PayApplicationLine[]).map((l) => [l.id, l.scheduledValue, l.stage])).toEqual([
+      ['item-f1', 15098, 'rough_in'],
+      ['item-f2', 15098, 'top_out'],
+      ['item-f3', 7549, 'trim_set'],
+    ])
+    await waitFor(() => expect(screen.queryByTestId('aia-line-source')).toBeNull())
+  })
+
+  it('does not offer the choice until the job has been read, so a quick press is not undone', async () => {
+    setWide(true)
+    renderWithProviders(<AiaG702G703Modal open onClose={() => undefined} job={stageItemsJob()} hcpForFilename="892" />)
+    // First paint: the saved applications and the bid are still being read.
+    expect(screen.queryByTestId('aia-line-source')).toBeNull()
+    expect(await screen.findByTestId('aia-line-source')).toBeTruthy()
+    expect(field('g702_h18_original_contract_sum').value).toBe('37745')
+  })
+
+  it('asks before a switch replaces rows that were typed in, and keeps them on Keep', async () => {
+    setWide(true)
+    renderWithProviders(<AiaG702G703Modal open onClose={() => undefined} job={stageItemsJob()} hcpForFilename="892" />)
+    await waitFor(() => expect(field('g702_h18_original_contract_sum').value).toBe('37745'))
+    fireEvent.change(lineField('label'), { target: { value: 'Plumbing, all of it' } })
+
+    fireEvent.click(sourceRadio('items'))
+    expect(await screen.findByText('Replace the rows?')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Keep' }))
+    await waitFor(() => expect(screen.queryByText('Replace the rows?')).toBeNull())
+    expect(lineField('label').value).toBe('Plumbing, all of it')
+    expect(sourceRadio('one').checked).toBe(true)
+
+    fireEvent.click(sourceRadio('items'))
+    fireEvent.click(await screen.findByRole('button', { name: 'Replace' }))
+    await waitFor(() => expect(screen.getAllByTestId('aia-line')).toHaveLength(3))
+    expect(sourceRadio('items').checked).toBe(true)
+
+    // Back to one row: the three rows were not typed in, so it does not ask.
+    fireEvent.click(sourceRadio('one'))
+    await waitFor(() => expect(screen.getAllByTestId('aia-line')).toHaveLength(1))
+    expect(lineField('scheduled').value).toBe('37745')
+  })
+
+  it('turns a row per Line Item off, and says why, when a Line Item has no price', async () => {
+    setWide(true)
+    const job = stageItemsJob([
+      { id: 'f1', name: 'Rough In', count: 1, line_unit_price: 15098, progress_pct: null },
+      { id: 'f2', name: 'Top Out', count: 1, line_unit_price: null, progress_pct: null },
+    ])
+    renderWithProviders(<AiaG702G703Modal open onClose={() => undefined} job={job} hcpForFilename="892" />)
+    await waitFor(() => expect(field('g702_h18_original_contract_sum').value).toBe('37745'))
+    expect(sourceRadio('items').disabled).toBe(true)
+    expect(screen.getByTestId('aia-line-source').textContent).toContain('1 Line Item has no price. Price it on the Bill tab to use this.')
+  })
+
+  it('has nothing to choose on a job with one Line Item, or once the job has a saved application', async () => {
+    setWide(true)
+    const { unmount } = renderWithProviders(
+      <AiaG702G703Modal open onClose={() => undefined} job={stageItemsJob([{ id: 'f1', name: 'Water heater', count: 1, line_unit_price: 37745, progress_pct: null }])} hcpForFilename="892" />,
+    )
+    await waitFor(() => expect(field('g702_h18_original_contract_sum').value).toBe('37745'))
+    expect(screen.queryByTestId('aia-line-source')).toBeNull()
+    unmount()
+
+    onJob = [savedOne()]
+    renderWithProviders(<AiaG702G703Modal open onClose={() => undefined} job={stageItemsJob()} hcpForFilename="892" />)
+    await waitFor(() => expect(field('g702_n5_project').value).toBe('2'))
+    expect(screen.queryByTestId('aia-line-source')).toBeNull()
+  })
+
+  it('lists the bid\'s schedule as a third start, picked when the job has one, and one row takes its place on a press', async () => {
+    setWide(true)
+    schedule = stageSchedule()
+    renderWithProviders(<AiaG702G703Modal open onClose={() => undefined} job={bidJob()} hcpForFilename="1041" />)
+    await waitFor(() => expect(screen.getAllByTestId('aia-line')).toHaveLength(3))
+    expect([sourceRadio('one').checked, sourceRadio('items').checked, sourceRadio('bid').checked]).toEqual([false, false, true])
+    expect(screen.getByTestId('aia-line-source').textContent).toContain("The bid's schedule3 rows: Rough In, Top Out, Trim Set")
+
+    fireEvent.click(sourceRadio('one'))
+    await waitFor(() => expect(screen.getAllByTestId('aia-line')).toHaveLength(1))
+    expect(lineField('scheduled').value).toBe('96000')
+    // One row has no labor part, so the split and the bid's note go with it.
+    expect(screen.queryByLabelText('Labor and material on their own rows')).toBeNull()
+    expect(screen.getByTestId('aia-applications').textContent).not.toContain("The lines come from the bid's schedule of values.")
+
+    fireEvent.click(sourceRadio('bid'))
+    await waitFor(() => expect(screen.getAllByTestId('aia-line')).toHaveLength(3))
+    expect((screen.getByLabelText('Labor and material on their own rows') as HTMLInputElement).checked).toBe(true)
+  })
 })

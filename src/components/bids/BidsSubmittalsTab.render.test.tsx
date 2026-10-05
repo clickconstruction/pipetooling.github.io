@@ -384,27 +384,25 @@ describe('BidsSubmittalsTab', () => {
     expect(screen.queryByRole('dialog')).toBeNull()
   })
 
-  it('2026-10-04 · Words on this page opens the terms alone: one card, Done, and the steps stay folded as they were', async () => {
+  it('2026-10-05 · the page’s one help door is the ? beside the ×: it starts the walkthrough on the words page, and there is no separate words link', async () => {
     state.revisions = [{ id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'draft', title: 'Plumbing fixtures & equipment', note: null, package_path: null, source_files: [], created_at: '2026-09-15T00:00:00Z', shared_at: null }]
     state.items = [item({ id: 'it-1', tag: 'WC-1', sequence_order: 1, specified_manufacturer: 'TOTO', specified_model: 'CT708UVG', submitted_label: 'TOTO CT708UVG#01', status: 'as_specified' })]
     if (typeof window.matchMedia !== 'function') window.matchMedia = (() => ({ matches: false, addEventListener: () => {}, removeEventListener: () => {} })) as unknown as typeof window.matchMedia
     Element.prototype.scrollIntoView = () => {}
     mount()
-    // The words page is the second choice of the title's one Help menu.
-    fireEvent.click(await screen.findByTestId('submittal-help'))
-    const link = screen.getByTestId('submittal-words')
-    expect(link.textContent).toBe('Words on this pageCut sheet, revision, tag and 12 more.')
-    const folded = screen.getByTestId('road-5').getAttribute('data-open')
-    expect(folded).toBe('false')
-    fireEvent.click(link)
+    const help = await screen.findByRole('button', { name: 'How this page works' })
+    expect(help.textContent).toBe('?')
+    // It sits with the close ×, at the far end of the title row, not beside the bid's name.
+    const close = screen.getByRole('button', { name: 'Close' })
+    expect(help.parentElement).toBe(close.parentElement)
+    expect(help.compareDocumentPosition(close) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(screen.queryByText('Words on this page')).toBeNull()
+    expect(screen.queryByTestId('submittal-words')).toBeNull()
+    fireEvent.click(help)
+    // The walkthrough opens on the words the page uses, then goes on to the steps.
     const card = screen.getByRole('dialog', { name: 'The words on this page' })
-    expect(card.textContent).toContain('1 of 1')
     expect(within(card).getByTestId('tour-terms').textContent).toContain('TagThe plan’s name for a fixture, like WC-1.')
-    expect(within(card).queryByRole('button', { name: 'Next →' })).toBeNull()
-    // The whole walkthrough unfolds every step; the words alone leave the page as it is.
-    expect(screen.getByTestId('road-5').getAttribute('data-open')).toBe(folded)
-    fireEvent.click(within(card).getByRole('button', { name: 'Done' }))
-    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(within(card).getByRole('button', { name: 'Next →' })).toBeTruthy()
   })
 
   it('v2.4125 · every stage carries its plain sentence, and its ? opens the walkthrough on that stage’s stop', async () => {
@@ -1005,8 +1003,7 @@ describe('BidsSubmittalsTab', () => {
     try {
       mount()
       await screen.findByTestId('draft-catch-up')
-      fireEvent.click(screen.getByTestId('submittal-help'))
-      fireEvent.click(screen.getByTestId('submittal-help-walk'))
+      fireEvent.click(screen.getByRole('button', { name: 'How this page works' }))
       const titles: string[] = []
       for (let i = 0; i < 14; i++) {
         const dialog = screen.queryByRole('dialog')
