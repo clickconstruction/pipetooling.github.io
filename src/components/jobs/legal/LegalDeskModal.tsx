@@ -14,6 +14,7 @@ import {
   type LegalGap,
   type LegalPacket,
   type LegalPayerKey,
+  legalLargestOpenLine,
 } from '../../../lib/legal/legalPacket'
 import {
   feeModelOf,
@@ -252,7 +253,9 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
     else if (firstJob) props.onOpenEditJob(firstJob.id)
   }
   const openWriteDown = (jobId: string | null) => {
-    const job = jobById(jobId)
+    // No job named (the header's button): the account's largest open bill line, whichever job holds it.
+    const largest = jobId ? null : legalLargestOpenLine(packet?.account.jobs ?? [])
+    const job = jobById(jobId ?? largest?.jobId ?? null)
     const line = packet?.account.jobs.find((l) => l.jobId === job?.id)
     const inv = job?.invoices.find((i) => i.id === line?.primaryInvoiceId) ?? null
     if (!job || !inv) {

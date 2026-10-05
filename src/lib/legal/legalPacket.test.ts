@@ -5,6 +5,7 @@ import type { CustomerAddressRow } from '../jobs/lienProperty'
 import type { JobDemandLetterRow } from '../jobs/demandLetterTracking'
 import type { JobContractRowLike } from '../jobs/jobContractCoverage'
 import {
+  legalLargestOpenLine,
   legalLienClockWords,
   buildLegalPacket,
   daysBetweenYmd,
@@ -131,6 +132,12 @@ describe('buildLegalPacket', () => {
       ['payment', '2026-06-02', -200],
     ])
     expect(packet.account.jobs.find((j) => j.jobId === 'job-a')?.primaryInvoiceId).toBe('inv-a')
+    // The account's largest open line (v2.4570): the header's Write down… opens on it, whichever job holds it.
+    const lines = packet.account.jobs
+    expect(lines.find((j) => j.jobId === 'job-a')?.primaryInvoiceOpen).toBeGreaterThan(0)
+    expect(legalLargestOpenLine(lines)?.invoiceId).toBe([...lines].sort((x, y) => y.primaryInvoiceOpen - x.primaryInvoiceOpen)[0]!.primaryInvoiceId)
+    expect(legalLargestOpenLine([{ jobId: 'j1', primaryInvoiceId: null, primaryInvoiceOpen: 0 }, { jobId: 'j2', primaryInvoiceId: 'inv-2', primaryInvoiceOpen: 300 }, { jobId: 'j3', primaryInvoiceId: 'inv-3', primaryInvoiceOpen: 900 }])).toEqual({ jobId: 'j3', invoiceId: 'inv-3' })
+    expect(legalLargestOpenLine([{ jobId: 'j1', primaryInvoiceId: null, primaryInvoiceOpen: 0 }])).toBeNull()
     expect(packet.theirWord.firstBillYmd).toBe('2026-04-17')
     expect(packet.theirWord.timeline.find((e) => e.kind === 'note')).toEqual(expect.objectContaining({ key: 'note:job-a', by: 'Taunya', shared: true }))
   })
