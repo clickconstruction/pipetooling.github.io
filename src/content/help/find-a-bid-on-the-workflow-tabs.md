@@ -2,7 +2,7 @@
 title: find a bid on the workflow tabs
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: bids, sort, order, group, stage, unsent, pending, won, lost, archived, bid number, due date, sent, value, search, counts, takeoffs, labor, pricing, cover letter, RFI, change order, lien release, picker, mark, marked, hold, highlight, flag, mark for someone, teammate, for you, done, not for me, take it back
+keywords: bids, sort, order, group, stage, unsent, pending, won, lost, archived, bid number, due date, sent, value, search, counts, takeoffs, labor, pricing, cover letter, RFI, change order, lien release, picker, mark, marked, hold, highlight, flag, mark for someone, teammate, for you, done, not for me, take it back, hide robots, robots, ZZ, shadow, twin, test bids
 order: 97
 ---
 When no bid is selected on a workflow tab, the bid list sits under the Bid Board's headings. Inside each group the bids are sorted, bid number first by default. The buttons next to the search bar switch the order.
@@ -38,6 +38,7 @@ Tap **Sent** — the bids you sent most recently rise to the top, and everything
 
 - Type in the search bar to filter by **bid #, project name, or GC/Builder**. GC means the general contractor. The matches keep the order you picked.
 - {{button:blue|Only my bids}} is on when you arrive. It keeps just the bids where you are the estimator or account manager. It sits next to the sort buttons on every workflow tab, RFI, Change Order, and Lien Release included. Tap it to see everyone's bids. It switches back on next time you open Bids.
+- {{button:blue|Hide robots}} shows just below {{button:outline|Only my bids}} once you turn that off. It is already on. It hides every bid whose name starts with ZZ. Those are the robots' bids and the test bids. A line under the list counts what is hidden. Press **Show them** on that line to bring them back. A bid marked by you or for you always stays. Turn it off and your browser remembers that.
 
 ## Mark a bid to find it again
 
