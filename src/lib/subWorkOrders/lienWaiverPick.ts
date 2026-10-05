@@ -16,6 +16,7 @@
  */
 
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
+import { CHECK_CLEAR_DAYS } from '../jobs/checkClearing'
 
 export type LienWaiverKind = 'conditional_progress' | 'unconditional_progress' | 'conditional_final' | 'unconditional_final'
 
@@ -99,8 +100,11 @@ export function isLienWaiverDocumentName(name: string | null | undefined): boole
   return !!name && LIEN_WAIVER_DOCUMENT_NAMES.includes(name.trim())
 }
 
-/** A payment older than this many days is presumed settled; the office can flip it. */
-export const LIEN_WAIVER_SETTLE_DAYS = 5
+/**
+ * A payment this many days old is presumed settled; the office can flip it. The same seven days a
+ * customer's check waits before we offer the unconditional (the owner, 2026-10-05; it was five).
+ */
+export const LIEN_WAIVER_SETTLE_DAYS = CHECK_CLEAR_DAYS
 
 export type LienWaiverPaymentLike = { amount: number; payment_date?: string | null; created_at: string }
 

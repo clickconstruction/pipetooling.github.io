@@ -1272,6 +1272,13 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       gcReview: () => setGcReviewModalOpen(true),
       gcNotice: (gcId) => setGcNotice({ gcId }),
       lienDesk: (link) => setLienDesk(link),
+      // The board may not hold the job yet (or at all): read it, as the desk's book rows do.
+      lienWindow: ({ jobId, tab }) => {
+        void fetchJobWithDetailsById(jobId).then((job) => {
+          if (job) setLienInstrumentsModal({ job, invoice: null, initialTab: tab })
+          else showToast('That job could not be loaded. Open it from the Pipeline board.', 'error')
+        })
+      },
       round: (gcId) => {
         setGcReviewRoundGcId(gcId)
         setGcReviewModalOpen(true)
@@ -1279,7 +1286,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       chase: () => setChaseModalOpen(true),
       forecast: () => setBilledPaymentForecastOpen(true),
     }),
-    [],
+    [showToast],
   )
   const deepLinks = useStagesDeepLinkParams(searchParams, navigate, stagesDeepLinkDoors)
 
