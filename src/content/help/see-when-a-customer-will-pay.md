@@ -54,7 +54,7 @@ The {{button:green|Forecast}} button at the top of the Pipeline rolls every chip
 - **As a cash forecast**: "about $35k should land this week, $47k next week."
 - **As a work list**: everything in Past expected is a customer running slower than their own norm. You click any row to jump straight to that bill on the board.
 
-Bills whose customers have no measurable history sit in **No pay history** at the end. So no money ever hides from the total.
+A bill with no bill date sits in **No pay history** at the end. So no money ever hides from the total.
 
 The **Pay speeds** strip under the buckets gives the averages at a glance. The strip shows the company-wide pay time next to the {{chip:blue|Res}} and {{chip:yellow|Comm}} averages. Each average says how many payments it's based on. Res means residential and Comm means commercial. Every row also wears its customer's Res/Comm tag. Commercial GCs usually pay on check runs, while homeowners pay on the spot. So the same "late by 10 days" reads very differently between the two.
 
