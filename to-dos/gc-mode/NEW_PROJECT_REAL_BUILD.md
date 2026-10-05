@@ -220,8 +220,9 @@ These are pure functions with tests today (`gcNewProject.test.ts`, `gcPlans.test
   store types. One change on the way: `scopeBook` takes the projects, the store and the past jobs'
   lines as arguments instead of the whole state and the prototype's `PAST_JOBS`, so the real build
   passes its closed jobs. The tests stay as they are.
-- `exclusionsFor(trade, book?)` and `exclusionName` live in the Board's `gcExclusions.ts`. The scope
-  book needs them, so PR 1b moves them only with the Board lane's word, or waits for its kernels.
+- `exclusionsFor(trade, book?)`, `exclusionName` and its folding table, from the Board's
+  `gcExclusions.ts`, which the scope book needs (the Board lane's OK, 2026-10-05). `gcExclusions.ts`
+  re-exports them, so there is one copy and nothing on the branch changes.
 
 The kernels read the prototype's shapes (`GcProject`, `PlanSet`, `TradePackage`). A mapper,
 `gcProjectFromRows`, turns the database rows into those shapes, so no kernel changes when the data
