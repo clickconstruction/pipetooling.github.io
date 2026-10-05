@@ -10,7 +10,7 @@ There is one row per tag on the plans' fixture schedule. Each row carries its cu
 
 ## The words on this page
 
-The page uses a few trade words. The walkthrough opens with this same list. On the tab, tap {{button:outline|? Help}} beside the bid name, then **Words on this page**, to read it again.
+The page uses a few trade words. The walkthrough opens with this same list. On the tab, tap the {{icon:help}} at the top right, beside the ×, to read it again.
 
 - **Submittal.** The list of products you plan to install. The GC approves it before you order.
 - **GC.** The general contractor. Their architect or designer may answer for them.
@@ -38,7 +38,7 @@ One line under the bid name says which revision you are on, like *Rev 1 · draft
 
 The page below runs in the same order. Each stage is a numbered section down a rail on the left. A finished stage folds to one green line. The stage you are on is open and ringed. The rows stay open beside whatever reads them. A later stage is dashed, with a line saying what will appear there. Tap any stage's title and it opens and rings its buttons, the same as its pill. The page moves only if the buttons would be out of view. The small ▴ after the title folds it again. A revision is one version of the submittal. Rev 1 is the first. **Procure** at the bottom is always open, even before a revision exists. So a long-lead item can go in the moment you know about it. Tick **Open every stage** to see everything at once. The page remembers that on this device. The line under the bid name says which revision you are working on. It reads like *Working on Rev 3 · draft, started from Rev 2*. Older revisions are the chips on stage 2.
 
-{{button:outline|See what the GC sees}} on the strip opens the GC's page in a window. On a phone it fills the screen. It is the same page your link opens, read only. It shows your rows as they stand. Close it with the × or the Esc key. Nothing is shared by looking. New to the page? Tap {{button:outline|? Help}} beside the bid name, then **Walk me through it**. It walks every stage in order. It rings what is on the page and explains what will appear later. So you see the whole road on a fresh bid. An open step has one plain sentence under its title saying what it is for. The {{icon:help}} beside it starts the walkthrough at that step. A folded step is one line. The Help menu also opens this guide. The first time a device opens Submittals, the strip offers the walkthrough in a line. **Not now** puts it away for good on that device.
+{{button:outline|See what the GC sees}} on the strip opens the GC's page in a window. On a phone it fills the screen. It is the same page your link opens, read only. It shows your rows as they stand. Close it with the × or the Esc key. Nothing is shared by looking. New to the page? Tap the {{icon:help}} at the top right, beside the ×. It opens with the words the page uses. Then it walks every stage in order. It rings what is on the page and explains what will appear later. So you see the whole road on a fresh bid. An open step has one plain sentence under its title saying what it is for. The {{icon:help}} beside it starts the walkthrough at that step. A folded step is one line. The last card of the walkthrough links to this guide. The first time a device opens Submittals, the strip offers the walkthrough in a line. **Not now** puts it away for good on that device.
 
 ## Without the robot
 
