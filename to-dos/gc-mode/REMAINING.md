@@ -1,5 +1,7 @@
 # GC mode: what is left to build (the big list)
 
+**Now the history.** What is still open, from every lane, is in [`HANDOFF.md`](./HANDOFF.md) (2026-10-05). This file keeps how the lanes worked and what each built, round by round.
+
 Written 2026-10-03 by the Board lane at the owner's ask, from the plan (`README.md`), the lanes'
 messages and what the Board lane found. **Each lane owns its section below. Work down your section
 in order, and test along the way.** The owner's words: "work down that list testing along the way."

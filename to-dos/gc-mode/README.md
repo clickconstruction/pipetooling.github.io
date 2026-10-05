@@ -12,9 +12,9 @@ summary: >
   The prototype plays the whole loop on a fixture with the office on one side and a trade
   partner's portal on the other, so every screen and rule below was decided by using it.
 next: >
-  The owner keeps walking the prototype and answering the open questions in this file. When he
-  says the shape is right: write the schema from the model file, then build it for real in the
-  order under "The plan".
+  Read HANDOFF.md (what is left, gathered from every lane on 2026-10-05). Every open question is
+  answered; take its list of the owner's calls to him. When he says the shape is right: write the
+  schema from the model file, then build it for real in the order under "The plan".
 size: XL (a new mode: about ten tables, a company-keyed portal, email, and six to eight screens)
 blocker: The owner's calls listed under "Open questions". No engineering blocker.
 mockup: not required — the mock-up is the running prototype at /bids/gc on branch spike/gc-mode
@@ -1178,7 +1178,7 @@ checked by hand in the browser after every change; the model is pinned by the go
 
 ## Working in parallel
 
-**What is left, lane by lane: [`REMAINING.md`](./REMAINING.md)** (2026-10-03). Each lane works down its own section, testing along the way; the Board lane drives it.
+**What is left: [`HANDOFF.md`](./HANDOFF.md)** (2026-10-05), every lane's open items in one list, for whoever picks this up. [`REMAINING.md`](./REMAINING.md) is the history: what each lane built, round by round.
 
 Since 2026-10-02 several sessions build the prototype at once, one area each. Each lane is a
 branch and a dev-server port of its own; `spike/gc-mode` is where the lanes meet.
