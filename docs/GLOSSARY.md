@@ -7,7 +7,7 @@ file: GLOSSARY.md
 type: Reference
 purpose: Comprehensive definitions of all domain-specific terms and technical concepts
 audience: All users (especially new developers and AI agents)
-last_updated: 2026-10-02
+last_updated: 2026-10-04
 estimated_read_time: 15-20 minutes (reference only)
 difficulty: Beginner
 
@@ -298,6 +298,10 @@ User clock-in/clock-out records from the Dashboard. Each session has `clocked_in
 ### Recorded time vs approved time (v2.3179)
 
 Two readings of the same `clock_sessions` rows. **Approved time** is what payroll pays: `approved_at` set, merged into `people_hours` by `approve_clock_sessions` / the salary auto-approve cron; pay stubs, Draft Payroll, the People → Overhead pool, the Moneyfill week close and the unallocated-time queue read it. **Recorded time** is every session that is not rejected or revoked — closed sessions approved *or* awaiting approval (and, for the day split only, the session open right now). **Job costing reads recorded time** since migration `20260909022534`: `sync_crew_jobs_from_clock` / `sync_crew_bids_from_clock` split the day over recorded sessions (resynced by the row trigger `clock_sessions_sync_crew_recorded_tr`), and `teamLabor.ts` + `get_man_hours_by_job()` read hours from the view **`people_hours_recorded`** (`people_hours` + closed-unapproved hours, columns `hours` / `approved_hours` / `pending_hours`). Consumers: the job window's **Team labor** row and Bill-tab line, the Cost Timeline's 👷 markers, Job Summary's **Labor** column, the Pipeline man-hours, Crew P&L. Since v2.3261 the **overhead pool and the job day ledger read recorded time too** (`isRecordedClockSession` in `overheadDailyLabor.ts`: closed, not rejected/revoked): People → Overhead's day table, 90-day KPIs, three lenses, pool trend and people table, the Dashboard overhead card, Job Summary's Hours · days / overhead / Days / Timeline / Capacity, and the Burn projection. Still approved-only: `jobs_ledger.last_work_date`, the History day grid, and People → Review's Team Summary (`people_hours` on both of its sides — candidates for a later sweep).
+
+### Man hours · office share (People → Overhead)
+
+**Man hours** are recorded clock hours split by where the time was clocked: **field** (any job but the Office job), **office** (the Office job, `app_settings.overhead_office_job_ledger_id_v1`), **bids** (a bid) and **not on a job** (neither). **Office share** is office plus bids, out of field plus office plus bids; time not on a job is in the total and out of the share. The split is by session, not by the person's role. Card and kernel: [PEOPLE_CONTRACTS_OVERHEAD_TABS_ARCHITECTURE.md](./PEOPLE_CONTRACTS_OVERHEAD_TABS_ARCHITECTURE.md) → *Man hours card*.
 
 ### Overhead allocation — smoothing window · carry share · idle cap (Job Summary, v2.3259)
 
