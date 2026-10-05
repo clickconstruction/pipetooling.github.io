@@ -12,6 +12,7 @@ import { makeInvoice, makeJob, renderWithProviders } from '../../test/renderSmok
 import type { TestReportDocumentRow } from '../../lib/jobsDocuments/testReportDocumentRow'
 import type { JobContractRow } from '../../lib/jobs/jobContractLifecycle'
 import type { JobLienPaper } from '../../lib/jobs/jobLienPaperRows'
+import type { SentCopy } from '../../lib/sent/sentCopies'
 import { JobWindowDocumentsTab } from './JobWindowDocumentsTab'
 import { payApplicationWriteFromForm, savedPayApplicationFromRow, type PayApplicationRow, type SavedPayApplication } from '../../lib/aiaPayApplications'
 
@@ -49,7 +50,7 @@ vi.mock('./HostedStripeBillPanel', () => ({ billingTypeLabel: () => 'Stripe' }))
 const pdfSpy = vi.fn((_inv: { id: string; job_id: string }, _cb: unknown) => Promise.resolve(true))
 vi.mock('../../lib/openBilledInvoicePdf', () => ({ openBilledInvoicePdfInNewTab: (inv: { id: string; job_id: string }, cb: unknown) => pdfSpy(inv, cb) }))
 
-vi.mock('../../hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'u1', email: 'office@example.com' }, role: 'dev', profileName: 'Dana Office' }) }))
+vi.mock('../../hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'u1', email: 'office@example.com' }, role: authRole, profileName: 'Dana Office' }) }))
 
 // Contract and lien paper: the rows the tab is given; their windows are stubs that say what they were handed.
 let contracts: JobContractRow[] = []
@@ -88,6 +89,17 @@ vi.mock('../../lib/jobsDocuments/printWindow', () => ({
   openHtmlWindowWhenReady: (build: () => Promise<string>) => whenReadySpy(build),
 }))
 vi.mock('../../lib/jobs/lienReleaseInk', () => ({ lienReleaseRowSignatureWithInk: () => Promise.resolve(null) }))
+
+// Sent from this job (v2.4554): the rows the tab is given, and the two doors to a kept copy.
+let sent: SentCopy[] = []
+let authRole = 'dev'
+const openCopySpy = vi.fn((_row: { copyPath: string | null }, _label: string) => Promise.resolve(true))
+const openFileSpy = vi.fn((_path: string) => Promise.resolve(true))
+vi.mock('../../lib/sent/sentCopiesIo', () => ({
+  loadSentCopiesForJob: () => Promise.resolve(sent),
+  openSentCopy: (row: { copyPath: string | null }, label: string) => openCopySpy(row, label),
+  openSentFile: (path: string) => openFileSpy(path),
+}))
 
 // The AIA window has its own render test; here it is a stub that says what it was handed.
 vi.mock('./AiaG702G703Modal', () => ({
@@ -130,6 +142,10 @@ beforeEach(() => {
   reports = []
   contracts = []
   lienPaper = { filings: [], letters: [], releases: [] }
+  sent = []
+  authRole = 'dev'
+  openCopySpy.mockClear()
+  openFileSpy.mockClear()
   previewSpy.mockClear()
   whenReadySpy.mockClear()
   loadSpy.mockClear()
@@ -315,6 +331,41 @@ describe('JobWindowDocumentsTab', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Release of lien' }))
     expect(whenReadySpy).toHaveBeenCalledTimes(1)
     expect(screen.queryByTestId('lien-window-stub')).toBeNull()
+  })
+
+  it('lists what was sent from the job, newest first: a line opens its copy, a repeat folds, an email shows its attachment', async () => {
+    const base: Omit<SentCopy, 'id' | 'sentAt'> = { kind: 'owner_records_packet', title: 'Records for 9703 Lenox Hill', how: 'print', recipientName: 'Umar Khan', recipientEmails: [], subject: '', sourceTable: '', sourceId: null, copyPath: 's1/copy.html', copyType: 'text/html', copyHash: 'h1', attachments: [], sentByName: 'Dana' }
+    sent = [
+      { ...base, id: 's1', sentAt: '2026-10-05T20:30:00Z' },
+      { ...base, id: 's2', sentAt: '2026-10-05T20:34:00Z' },
+      { ...base, id: 's3', kind: 'bill', title: 'Bill 2', how: 'email', recipientName: '', recipientEmails: ['ap@gc.example'], copyPath: 's3/copy.html', copyHash: 'h3', attachments: [{ name: 'Bill 2.pdf', path: 's3/Bill-2.pdf', type: 'application/pdf' }], sentAt: '2026-10-06T15:00:00Z' },
+      { ...base, id: 's4', kind: 'demand_letter', title: 'Demand letter', how: 'mail', copyPath: null, copyType: '', copyHash: '', sentAt: '2026-10-01T15:00:00Z' },
+    ]
+    renderWithProviders(<JobWindowDocumentsTab job={job} />)
+    const rows = await screen.findAllByTestId('job-documents-sent-row')
+    expect(rows).toHaveLength(3)
+    expect(rows[0]!.textContent).toMatch(/^Bill 2Emailed Oct 6, 2026, .* · to ap@gc\.example · by DanaBill 2\.pdf$/)
+    expect(rows[1]!.textContent).toMatch(/^Records for 9703 Lenox HillPrinted 2 times, last Oct 5, 2026, .* · to Umar Khan · by Dana$/)
+    expect(rows[2]!.textContent).toMatch(/^Demand letterMailed Oct 1, 2026, .* · to Umar Khan · by DanaThe copy was not kept\.$/)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Records for 9703 Lenox Hill' }))
+    await waitFor(() => expect(openCopySpy).toHaveBeenCalledTimes(1))
+    expect(openCopySpy.mock.calls[0]![0]).toMatchObject({ id: 's2', copyPath: 's1/copy.html' })
+    expect(openCopySpy.mock.calls[0]![1]).toMatch(/^Copy as it went out · Records for 9703 Lenox Hill · Printed 2 times/)
+    fireEvent.click(screen.getByRole('button', { name: 'Bill 2.pdf' }))
+    await waitFor(() => expect(openFileSpy).toHaveBeenCalledWith('s3/Bill-2.pdf'))
+    // A row whose copy was not kept has nothing to open.
+    expect(screen.queryByRole('button', { name: 'Demand letter' })).toBeNull()
+  })
+
+  it('says so when nothing has been filed, and leaves the list out for a role outside the office', async () => {
+    const first = renderWithProviders(<JobWindowDocumentsTab job={job} />)
+    expect((await screen.findByTestId('job-documents-sent-empty')).textContent).toBe('No copy is on file for this job yet. A copy is kept each time something about the job is printed or sent.')
+    first.unmount()
+    authRole = 'primary'
+    renderWithProviders(<JobWindowDocumentsTab job={job} />)
+    await screen.findByText('No contract has been sent or signed on this job.')
+    expect(screen.queryByRole('heading', { name: 'Sent from this job' })).toBeNull()
   })
 
   it('says so when the job has no contract and no lien paper', async () => {

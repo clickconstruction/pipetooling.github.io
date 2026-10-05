@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { customerBillingEmail, effectiveInvoiceParty } from '../_shared/billToParty.ts'
 import { logEmailSendBestEffort } from '../_shared/logEmailSend.ts'
+import { fileSentEmailBestEffort } from '../_shared/fileSentCopy.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { COMPANY_EMAIL_FROM } from '../_shared/emailFrom.ts'
 import {
@@ -39,7 +40,7 @@ async function sendEmailWithAttachmentsViaResend(
   htmlBody: string,
   attachments: Array<{ filename: string; content: string }>,
   resendApiKey: string,
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; resendEmailId?: string | null }> {
   const resendResponse = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
@@ -61,7 +62,7 @@ async function sendEmailWithAttachmentsViaResend(
   }
   const sent = (await resendResponse.json().catch(() => ({}))) as { id?: string }
   await logEmailSendBestEffort({ resendEmailId: sent.id ?? null, to, from: COMPANY_EMAIL_FROM, subject })
-  return { success: true }
+  return { success: true, resendEmailId: sent.id ?? null }
 }
 
 serve(async (req) => {
@@ -289,21 +290,32 @@ serve(async (req) => {
         ? body.email_html.trim()
         : `<p>${textPlain.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>`
 
+    const billAttachments = [{ filename: pdfFilename.replace(/[^a-zA-Z0-9._-]/g, '_'), content: pdfBase64 }, ...extraAttachments]
     const sendResult = await sendEmailWithAttachmentsViaResend(
       [customerEmailIn, ...additionalEmails],
       subject,
       textPlain,
       htmlBody,
-      [{ filename: pdfFilename.replace(/[^a-zA-Z0-9._-]/g, '_'), content: pdfBase64 }, ...extraAttachments],
+      billAttachments,
       resendApiKey,
     )
     if (!sendResult.success) {
       return jsonResponse({ error: sendResult.error ?? 'Failed to send email' }, 502)
     }
 
+    // Sent copies (docs/SENT_COPIES.md): the email and the PDF as they went are kept on the job.
+    // A re-email is filed too: until this it left no trace beyond the email log. On a first
+    // send it runs after the bill is recorded, so keeping the copy never delays that write.
+    const fileTheBill = () =>
+      fileSentEmailBestEffort(
+        { kind: isResend ? 'bill_resent' : 'bill', jobIds: [jobId], customerId: party === 'gc' ? jl.gc_customer_id : jl.customer_id, source: { table: 'jobs_ledger_invoices', id: invoiceId }, sentBy: user.id },
+        { to: [customerEmailIn, ...additionalEmails], from: COMPANY_EMAIL_FROM, subject, html: htmlBody, attachments: billAttachments, resendEmailId: sendResult.resendEmailId ?? null },
+      )
+
     // A resend records nothing on the row: the bill already carries its first
     // send evidence, and the email log above captured this send.
     if (isResend) {
+      await fileTheBill()
       return jsonResponse({ success: true })
     }
 
@@ -323,6 +335,9 @@ serve(async (req) => {
       })
       .eq('id', invoiceId)
       .eq('status', 'ready_to_bill')
+
+    // The email went whether or not the row took the write, so the copy is kept either way.
+    await fileTheBill()
 
     if (upErr) {
       console.error('send-physical-invoice-email: invoice update after send', upErr)

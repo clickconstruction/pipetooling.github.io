@@ -91,6 +91,7 @@ Start at [`PAGE_DECOMPOSITION_PLAYBOOK.md`](./PAGE_DECOMPOSITION_PLAYBOOK.md) â€
 | [`CALENDAR_PAGE_ARCHITECTURE.md`](./CALENDAR_PAGE_ARCHITECTURE.md) | `src/pages/Calendar.tsx` |
 | [`ESTIMATES_TABS_ARCHITECTURE.md`](./ESTIMATES_TABS_ARCHITECTURE.md) | `src/pages/Estimates.tsx` (EstimateList + EstimateDetail) |
 | [`DOCUMENTS_PAGE_ARCHITECTURE.md`](./DOCUMENTS_PAGE_ARCHITECTURE.md) | `src/pages/Documents.tsx` (the four ledgers + Search) |
+| [`SENT_COPIES.md`](./SENT_COPIES.md) | Sent copies: the record of every send with the copy as it went (`sent_documents`, `src/lib/sent/`), the plan and what is wired |
 | [`WORKFLOW_PAGE_ARCHITECTURE.md`](./WORKFLOW_PAGE_ARCHITECTURE.md) | `src/pages/Workflow.tsx` (region-based) |
 | [`PROJECTS_FORECAST_TABS_ARCHITECTURE.md`](./PROJECTS_FORECAST_TABS_ARCHITECTURE.md) | `ProjectsForecastSpecificTab` + its stage modal + `ProjectsJobHistoryDayModal` |
 | [`MATERIALS_TABS_ARCHITECTURE.md`](./MATERIALS_TABS_ARCHITECTURE.md) | `src/pages/Materials.tsx` + `SupplyHousesTab` |

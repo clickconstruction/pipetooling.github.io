@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 
-import { decisionsAsText, describeDecisions, itemsSentBack, resubmitConfirm, resubmitLabel, resubmitNothingSent, resubmitWhat, resubmitSplit, rowCallWords, summarizeDecisions } from './reviewDecisions'
+import { approvedPartsGoingOn, decisionsAsText, describeDecisions, itemsSentBack, resubmitCaption, resubmitChooser, resubmitHasChoice, resubmitLabel, resubmitOneKind, resubmitNothingSent, resubmitSplit, rowCallWords, startDraftLabel, summarizeDecisions } from './reviewDecisions'
 
 const it_ = (o: Record<string, unknown>) => ({ tag: 'X-1', status: 'alternate', submitted_label: 'THING', submitted_model: null, review_decision: null, review_note: null, reviewed_by_name: null, reviewed_at: null, ...o })
 
@@ -46,23 +46,70 @@ describe('reviewDecisions', () => {
     expect(split.noAnswer.map((i) => i.tag)).toEqual(['WC-1', 'RPZ-1', 'PRV-1'])
   })
 
-  it('2026-10-05 · the button says what it does, the line beside it says which rows go on and that nothing is sent, and the question counts every kind of row', () => {
+  it('2026-10-05 · the button says what it does, and the line beside it says the rows are chosen next and nothing is sent', () => {
     expect(resubmitLabel(3)).toBe('Start a Rev 3 draft…')
-    expect(resubmitWhat(3, 1)).toBe('The 1 row sent back goes on it. Nothing is sent. The GC sees Rev 3 only after you press Share.')
-    expect(resubmitWhat(2, 4, 9)).toBe('The 4 rows sent back and the 9 with no answer go on it. Nothing is sent. The GC sees Rev 2 only after you press Share.')
     expect(resubmitNothingSent(2)).toBe('Nothing is sent. The GC sees Rev 2 only after you press Share.')
-    // BP375 on 2026-10-03: four sent back, ten with no answer, nothing approved.
-    expect(resubmitConfirm(1, { sentBack: 4, noAnswer: 10, approved: 0, total: 14 })).toEqual({
+    expect(resubmitCaption(2)).toBe('You choose the rows next. Nothing is sent. The GC sees Rev 2 only after you press Share.')
+    expect(startDraftLabel(1)).toBe('Start the draft with 1 row')
+    expect(startDraftLabel(14)).toBe('Start the draft with 14 rows')
+    expect(startDraftLabel(23, true)).toBe('Start the draft with all 23 rows')
+    expect(startDraftLabel(1, true)).toBe('Start the draft with 1 row')
+  })
+  it('2026-10-05 · one button, and the question holds the choice: the rows that need it, or every row, each beside what happens to the approved rows', () => {
+    // Four sent back, ten with no answer, nine approved.
+    expect(resubmitChooser(1, { sentBack: 4, noAnswer: 10, approved: 9, needTotal: 14, everyTotal: 23 })).toEqual({
       title: 'Start a Rev 2 draft',
-      message: '4 rows were sent back. They go on Rev 2 so you can fix them. 10 rows have no answer yet. They go on Rev 2 too and keep waiting. No row was approved on Rev 1. Rev 2 starts as a draft. Nothing is sent. The GC sees Rev 2 only after you press Share.',
+      lead: 'Which rows go on Rev 2?',
+      choices: [
+        { key: 'need', label: 'Only the rows that need it', detail: '4 sent back and 10 with no answer. The 9 rows approved stay on Rev 1 and on the procurement log.' },
+        { key: 'every', label: 'Every row', detail: 'The 9 rows approved go on Rev 2 too. The GC answers every row and every part again. Use it when a product changed.' },
+      ],
+      foot: 'Rev 2 starts as a draft. Nothing is sent. The GC sees Rev 2 only after you press Share.',
+      confirmLabel: { need: 'Start the draft with 14 rows', every: 'Start the draft with all 23 rows' },
+    })
+    // No row approved, but a part was: the rows are the same, and Every row asks that part again.
+    expect(resubmitChooser(1, { sentBack: 1, noAnswer: 0, approved: 0, approvedParts: 2, needTotal: 1, everyTotal: 1 }).choices.map((c) => c.detail)).toEqual([
+      'The 1 row sent back. No row was approved on Rev 1.',
+      'The same rows go on it. The GC answers every part again, the approved parts too. Use it when a product changed.',
+    ])
+    // One sent back, thirteen approved, and a row the GC never sees: it rides along either way.
+    const late = resubmitChooser(2, { sentBack: 1, noAnswer: 0, approved: 13, orderOnly: 1, needTotal: 2, everyTotal: 15 })
+    expect(late.title).toBe('Start a Rev 3 draft')
+    expect(late.choices.map((c) => c.detail)).toEqual([
+      'The 1 row sent back. 1 row you buy without the GC goes on it too. The 13 rows approved stay on Rev 2 and on the procurement log.',
+      'The 13 rows approved go on Rev 3 too. The GC answers every row and every part again. Use it when a product changed.',
+    ])
+    expect(late.confirmLabel).toEqual({ need: 'Start the draft with 2 rows', every: 'Start the draft with all 15 rows' })
+    expect(resubmitChooser(1, { sentBack: 1, noAnswer: 1, approved: 1, needTotal: 2, everyTotal: 3 }).choices.map((c) => c.detail)).toEqual([
+      '1 sent back and 1 with no answer. The 1 row approved stays on Rev 1 and on the procurement log.',
+      'The 1 row approved goes on Rev 2 too. The GC answers every row and every part again. Use it when a product changed.',
+    ])
+  })
+  it('2026-10-05 · with nothing approved both drafts are the same one, so there is no choice and the question is asked once', () => {
+    expect(resubmitHasChoice({ approved: 0 })).toBe(false)
+    expect(resubmitHasChoice({ approved: 0, approvedParts: 0 })).toBe(false)
+    expect(resubmitHasChoice({ approved: 1 })).toBe(true)
+    expect(resubmitHasChoice({ approved: 0, approvedParts: 1 })).toBe(true)
+    // BP375 on 2026-10-05: four sent back, ten with no answer, nothing approved.
+    expect(resubmitOneKind(1, { sentBack: 4, noAnswer: 10, approved: 0, needTotal: 14, everyTotal: 14 })).toEqual({
+      title: 'Start a Rev 2 draft',
+      message: 'Every row goes on Rev 2. 4 sent back and 10 with no answer. No row was approved on Rev 1. Rev 2 starts as a draft. Nothing is sent. The GC sees Rev 2 only after you press Share.',
       confirmLabel: 'Start the draft with 14 rows',
     })
-    expect(resubmitConfirm(2, { sentBack: 1, noAnswer: 0, approved: 13, orderOnly: 1, total: 2 })).toEqual({
-      title: 'Start a Rev 3 draft',
-      message: '1 row was sent back. It goes on Rev 3 so you can fix it. 13 rows were approved. They stay on Rev 2 and on the procurement log. 1 row you buy without the GC goes on Rev 3 too. Rev 3 starts as a draft. Nothing is sent. The GC sees Rev 3 only after you press Share.',
-      confirmLabel: 'Start the draft with 2 rows',
-    })
-    expect(resubmitConfirm(1, { sentBack: 1, noAnswer: 1, approved: 1, total: 2 }).message).toBe('1 row was sent back. It goes on Rev 2 so you can fix it. 1 row has no answer yet. It goes on Rev 2 too and keeps waiting. 1 row was approved. It stays on Rev 1 and on the procurement log. Rev 2 starts as a draft. Nothing is sent. The GC sees Rev 2 only after you press Share.')
+    // Approved parts count only on rows that go on, and only parts the GC sees.
+    const rows = [
+      { id: 'a', review_decision: 'approved' },
+      { id: 'b', review_decision: 'rejected' },
+      { id: 'c', review_decision: null },
+    ]
+    const part = (review_decision: string | null, on_submittal = true) => ({ on_submittal, review_decision })
+    const partsOf = new Map([
+      ['a', [part('approved'), part('approved')]],
+      ['b', [part('approved'), part('rejected'), part('approved', false)]],
+      ['c', [part(null), part('approved')]],
+    ])
+    expect(approvedPartsGoingOn(rows, partsOf)).toBe(2)
+    expect(approvedPartsGoingOn(rows, new Map())).toBe(0)
   })
   it('2026-10-03 · a row says what each part got: one word only when every part the GC sees has the same answer', () => {
     const part = (review_decision: string | null, on_submittal = true) => ({ on_submittal, review_decision })

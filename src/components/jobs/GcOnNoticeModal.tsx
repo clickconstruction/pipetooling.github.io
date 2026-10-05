@@ -26,7 +26,7 @@ import {
   gcNoticeFormClaim,
   type CoverLetterKind,
 } from '../../lib/jobs/gcOnNotice'
-import { approveLienDeskItem, saveLienDeskDraft, sendLienDeskItemOnWord, setCustomerLienNoticePolicy, submitLienDeskItem, undoLienDeskApprovals } from '../../lib/jobs/lienDeskIo'
+import { approveLienDeskItem, markLienDeskItemsPrinted, saveLienDeskDraft, sendLienDeskItemOnWord, setCustomerLienNoticePolicy, submitLienDeskItem, undoLienDeskApprovals } from '../../lib/jobs/lienDeskIo'
 import { leaderPresent, type LienWordChannel } from '../../lib/jobs/lienWord'
 import { LienWordRecordRow } from './LienWordRecordRow'
 import { buildLienNoticeFieldsForJob, DEFAULT_CLAIMANT_NAME, homesteadStatementApplies } from '../../lib/jobs/lienNoticeDraft'
@@ -1217,6 +1217,12 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
           todayYmd={todayYmd}
           userId={authUserId}
           onClose={() => setRunOpen(false)}
+          // Printed is a state (v2.4119): the same stamp the Lien desk's run writes, so these reach In the mail · tracking owed.
+          onPrinted={async (ids) => {
+            await markLienDeskItemsPrinted(ids, authUserId).catch(() => undefined)
+            refetch()
+            onChanged()
+          }}
           onRecorded={() => {
             // A recorded run is mailed: there is nothing left to undo.
             setRunReceipt(null)

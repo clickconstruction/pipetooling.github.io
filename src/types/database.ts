@@ -19282,6 +19282,110 @@ export type Database = {
           },
         ]
       }
+      sent_documents: {
+        Row: {
+          attachments: Json
+          bid_id: string | null
+          copy_bytes: number | null
+          copy_hash: string
+          copy_path: string | null
+          copy_type: string
+          customer_id: string | null
+          how: string
+          id: string
+          job_ids: string[]
+          kind: string
+          person_id: string | null
+          recipient_emails: string[]
+          recipient_name: string
+          resend_email_id: string | null
+          sent_at: string
+          sent_by: string | null
+          sent_by_name: string
+          source_id: string | null
+          source_table: string
+          subject: string
+          title: string
+        }
+        Insert: {
+          attachments?: Json
+          bid_id?: string | null
+          copy_bytes?: number | null
+          copy_hash?: string
+          copy_path?: string | null
+          copy_type?: string
+          customer_id?: string | null
+          how: string
+          id?: string
+          job_ids?: string[]
+          kind: string
+          person_id?: string | null
+          recipient_emails?: string[]
+          recipient_name?: string
+          resend_email_id?: string | null
+          sent_at?: string
+          sent_by?: string | null
+          sent_by_name?: string
+          source_id?: string | null
+          source_table?: string
+          subject?: string
+          title?: string
+        }
+        Update: {
+          attachments?: Json
+          bid_id?: string | null
+          copy_bytes?: number | null
+          copy_hash?: string
+          copy_path?: string | null
+          copy_type?: string
+          customer_id?: string | null
+          how?: string
+          id?: string
+          job_ids?: string[]
+          kind?: string
+          person_id?: string | null
+          recipient_emails?: string[]
+          recipient_name?: string
+          resend_email_id?: string | null
+          sent_at?: string
+          sent_by?: string | null
+          sent_by_name?: string
+          source_id?: string | null
+          source_table?: string
+          subject?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sent_documents_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sent_documents_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sent_documents_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sent_documents_sent_by_fkey"
+            columns: ["sent_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       service_types: {
         Row: {
           color: string | null
