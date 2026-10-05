@@ -105,7 +105,8 @@ export function papersOwedWords(owed: PapersOwed): string | null {
  * - a submittal sent keeps "their submittals" once none waits on the trade;
  * - a pay application sent keeps "the fixed pay application";
  * - a punch item marked fixed keeps "the punch items fixed" once none is left to fix;
- * - the final pay application, or an unconditional waiver, keeps "their closeout papers" once none is owed.
+ * - the final pay application, or an unconditional waiver, keeps "their closeout papers" once none is owed;
+ *   a promise for the waivers alone is kept once the waivers are in.
  */
 export function buildingPromisesKeptBy(state: GcState, action: GcAction): BuildingPromiseMatch[] {
   const projectOf = (id: string) => state.projects.find((p) => p.id === id)
@@ -149,7 +150,11 @@ export function buildingPromisesKeptBy(state: GcState, action: GcAction): Buildi
       if (!project || !pkg) return []
       const owed = papersOwed(project, pkg, state.today)
       if (!owed.waivers.some((d) => d.id === action.drawId)) return []
-      const left = owed.finalApp || owed.waivers.some((d) => d.id !== action.drawId)
+      // A promise for the waivers alone (the Board's "Ask for the waiver") is kept once they are all
+      // in, even while the final pay application is still owed; one for every paper waits for it too.
+      const open = (state.tradePromises ?? []).find((p) => !p.keptOn && p.kind === 'closeout' && p.projectId === project.id && p.packageId === pkg.id)
+      const waiversOnly = open !== undefined && !/final pay application/i.test(open.what)
+      const left = owed.waivers.some((d) => d.id !== action.drawId) || (owed.finalApp && !waiversOnly)
       return left ? [] : match(project, pkg.id, 'closeout')
     }
     default:
