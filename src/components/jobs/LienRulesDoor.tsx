@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react'
 import { LIEN_RULES_DOOR, lienRuleHref } from '../../lib/jobs/lienRuleCites'
 
 /**
- * § The rules (v2.3594): the door from the Lien desk header and the Lien window's tab row to
+ * § Rules (v2.3594; it read "§ The rules" until v2.4528): the door from the Lien desk header and the Lien window's tab row to
  * the guide *read the Texas lien rules the app follows*, opened at the row that matters for
  * what is on screen. A plain link in a new tab — the desk or window stays open behind it.
  * Shows wherever its surface shows; the guide's own front matter gates who reads it.
@@ -32,7 +32,7 @@ export function LienRulesDoor({ where, style }: { where: keyof typeof LIEN_RULES
         ...style,
       }}
     >
-      § The rules
+      § Rules
     </a>
   )
 }

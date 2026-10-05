@@ -874,7 +874,7 @@ export default function LienInstrumentsModal({
             onRecord={() => void recordSend()}
           />
         ) : null}
-        {/* The title bar. On a phone (v2.4398) the title, § The rules and × share one line and the steps fold to a strip, so the paper below gets the window; a computer keeps the steps as a row and gains the ×. */}
+        {/* The title bar. On a phone (v2.4398) the title, § Rules and × share one line and the steps fold to a strip, so the paper below gets the window; a computer keeps the steps as a row and gains the ×. */}
         <div style={{ position: 'relative', padding: isMobile ? '0.35rem 1rem 0.65rem' : '1rem 1.25rem', borderBottom: '1px solid var(--border)' }}>
           {isMobile ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minHeight: 44 }}>
