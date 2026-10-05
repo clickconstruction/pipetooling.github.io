@@ -58,7 +58,7 @@ Nothing in the real build starts before the first one.
 | # | The call | Raised by | Where it stands |
 |---|---|---|---|
 | 1 | **"The shape is settled."** The gate for the real build (section 4). | The plan | Not said yet. |
-| 2 | **Questions during construction (RFIs).** Its own tab? Trades ask from the portal? Needed 3 days before the work? A cost answer starts a change order in one click? | Building | Mocked up (artifact `7AfjYR93kvqA2JV7zFBMuz`). The lane suggests yes to all four. Nothing built. |
+| 2 | ~~**Questions during construction (RFIs).** Its own tab? Trades ask from the portal? Needed 3 days before the work? A cost answer starts a change order in one click?~~ | Building | Answered 2026-10-05: **yes to all four.** Being built (section 2). |
 | 3 | **New Project's PR 1b**: lift the kernels added since PR 1 (the sheet table, the title block, budgets per square foot, the Drive link, the scope book) into `src/lib/gc/` with their tests. Pure code, no tables. | New Project | Waiting on his word, like PRs 2 and 3. |
 | 4 | **Quo**: whether to build the calls-and-texts link at all (exploration so far); billed yearly or monthly ($23 or $33 a seat); Claude reading texts from the first day or later. Before building, ask Quo whether texts sent from its own phone app come back to us as events, and whether calls forwarded to a cell are still recorded and summarized. | New Project | Everything else decided. See section 5. |
 | 5 | **The defaults he never confirmed**: `README.md` → *My defaults the owner has not confirmed* (about 30 rules), plus the lanes' timings below. | Every lane | Each is a constant in `src/lib/gcMode/`; change freely. |
@@ -66,12 +66,11 @@ Nothing in the real build starts before the first one.
 | 7 | **Building's defaults**: a milestone's grace 3 days, the daily log looks back 5 working days, reliability over 4 weeks, Starting soon at 14 days, a kept promise shows 7 days, our crew's stage shares (20, 35, 25, 20), calendar days on the schedule "for now". | Building | Defaults in the code. |
 | 8 | **The Board's and the Portal's defaults**: a change request or a back-charge reads late after 7 days; a paper's day picks 3 days, a week or two weeks; a bench is deep at 3 companies that answer; a company should open the plans within 3 days. A trade has 5 days to answer a back-charge (`BACK_CHARGE_ANSWER_DAYS`), and one comes off an approved draw not paid yet. | Board, Portal | Defaults in the code. |
 | 9 | **The portal's Spanish** read by a native speaker before it ships. | Portal | Someone he names, at production. The list is at the end of `PORTAL_SPANISH.md`. |
-| 10 | **Drive's admin-console grant**: the Drive service account's domain-wide delegation in the douglasmining admin console. New Project's PR 5 and the file agent both need it. | New Project | The one human step left on 2026-08-29; its state today is unknown. |
-| 11 | **Two portal ideas offered and not picked**: "Your record with Click" and "Get paid early". | Portal | Open if he wants them. |
+| 10 | **Two portal ideas offered and not picked**: "Your record with Click" and "Get paid early". | Portal | Open if he wants them. |
 
 ### 2. Prototype work still open
 
-Each is small and named by the lane that owns the area. Only the plan amendment blocks the real build (it comes before New Project's PR 2).
+Each is small and named by the lane that owns the area. None blocks the real build now.
 
 - **Portal: look at its newest screens.** Nobody has seen these in a browser since the Portal
   lane's pane was signed out: Known exclusions and the exclusions form, the customer words, the
@@ -80,10 +79,9 @@ Each is small and named by the lane that owns the area. Only the plan amendment 
   phone pass was 0f89c3048, so the change request form, Charges from Click, Who gets our emails and
   Your weeks still need a look at 375 px. *Your weeks'* overlap warning has no made-up example (no
   company has crews on two scheduled jobs); only its test shows it.
-- **New Project: amend `NEW_PROJECT_REAL_BUILD.md`** before PR 2's migration. It was written before
-  the 2026-10-04 rounds, so it has no tables or PRs for the scope book (lines, sets, exclusions),
-  the Drive link record (`PlanSet.drive`), set kinds, *We work for* with the customer's role and
-  the property's owner, or budgets by size.
+- ~~**New Project: amend `NEW_PROJECT_REAL_BUILD.md`** before PR 2's migration~~ done 27456635d:
+  the scope book's tables (PR 2, its page a new PR 4b), the Drive link on `gc_plan_sets` and the
+  `gc-drive-access` check (PR 5), set kinds (PR 3), *We work for* (PR 2), and PR 1b's kernels.
 - **Building**: Questions during construction (call 2). The architect's portal lists the trades'
   questions read only, with no answer box (New Project's `answerQuestion` would record it).
 - **Owner Billing**: the payment reminder has no golden step (unit tests cover it); Their messages
@@ -156,7 +154,7 @@ docs fragment and help guide (`CLAUDE.md`).
    language; `mailRecipients` gives who gets each kind. Printing goes through `printPortalHtml`.
 5. **Plans: sets, the email, who opened them**: `NEW_PROJECT_REAL_BUILD.md`. PR 1 is merged
    (#4448). Next PR 1b (call 3), then PRs 2 and 3 (the migrations), 4 (New project steps 1 to 4 on
-   real data, dev only), 5 (Drive, after call 10), 6 (a new set), 7 (the set email, after the
+   real data, dev only), 5 (Drive: the folders and the link check), 6 (a new set), 7 (the set email, after the
    company record and invitations), 8 (questions), 9 (the plans window). Who to ask waits on the
    company record and invitations too.
 6. **Compare, carry, our number.**
@@ -170,7 +168,7 @@ docs fragment and help guide (`CLAUDE.md`).
    and its chase loop; our waivers use the lien waiver train's four forms (`LienReleaseStepRow`);
    Money and margin stay the owner's and the controller's.
 9. **Building**: the schedule, daily log, submittals, punch list and inspections (and questions
-   during construction, if call 2 is yes); our crew's count and percent from clock sessions and its
+   during construction, yes to all four on 2026-10-05); our crew's count and percent from clock sessions and its
    Pipeline job; files and photos in Drive.
 
 Access (question 9): an assistant follows up the same way an estimator does; awarding stays with an
@@ -182,8 +180,10 @@ The owner took a design on 2026-10-05 (`README.md` → *Calls, texts and big fil
 `quo-messages-mockup.html`): one company number on Quo Business with two seats, every call recorded,
 threads tied to a job by dragging a job onto a message, everyone sees every thread, a Customers tab
 in Bids, calls and texts mixed into the Pipeline's Job activity later, and a file agent that files
-big files and photos into the job's Drive folder. Open: calls 4 and 10 above. It is its own build,
-after or beside the real build.
+big files and photos into the job's Drive folder. Open: call 4 above, and how the file agent reads
+bids@ (a Gmail grant in the admin console, or bids@ forwarding a copy). Drive itself needs nothing:
+uploads work through the "PipeTooling Jobs" Shared Drive since 2026-08-29
+(`docs/DRIVE_INTAKE_SETUP.md`). It is its own build, after or beside the real build.
 
 ## Gotchas
 
