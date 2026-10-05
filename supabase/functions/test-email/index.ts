@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { logEmailSendBestEffort } from '../_shared/logEmailSend.ts'
+import { fileSentEmailBestEffort } from '../_shared/fileSentCopy.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { EMAIL_FROM } from '../_shared/emailFrom.ts'
 
@@ -89,7 +90,7 @@ serve(async (req) => {
     }
 
     // Parse request body
-    const { to, subject, body, template_type } = await req.json()
+    const { to, subject, body, template_type, file_copy_only } = await req.json()
 
     if (!to || !subject || !body) {
       return new Response(
@@ -105,6 +106,20 @@ serve(async (req) => {
         JSON.stringify({ error: 'Invalid email address' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
+    }
+
+    // Sent copies self-test (docs/SENT_COPIES.md): `file_copy_only: true` sends NOTHING. It files
+    // this message as a `self_test` copy, with one small attachment, the way a real send would,
+    // so a dev can prove the helper against the live bucket and table and then delete the row.
+    if (file_copy_only === true) {
+      await fileSentEmailBestEffort(
+        { kind: 'self_test', title: 'Sent copies self test (safe to delete)', sentBy: user.id },
+        { to: [to], from: EMAIL_FROM, subject, html: String(body).replace(/\n/g, '<br>'), attachments: [{ filename: 'self-test.txt', content: btoa('Sent copies self test') }] },
+      )
+      return new Response(JSON.stringify({ success: true, sent: false, filed: 'attempted' }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
     }
 
     // Send email via Resend
