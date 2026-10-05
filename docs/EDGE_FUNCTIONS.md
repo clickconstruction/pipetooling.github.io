@@ -272,6 +272,8 @@ JWT-validating functions check the caller's role from the `public.users` table. 
 
 ### send-supply-house-job-account
 
+> **v2.4558 — the email is kept as it went**: the job account email is filed (`supply_house_job_account`) on the job, through [`fileSentEmailBestEffort`](../supabase/functions/_shared/fileSentCopy.ts) after the send log. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
+
 > **v2.4132 — sends as the company**: the From is [`COMPANY_EMAIL_FROM`](../supabase/functions/_shared/emailFrom.ts) — *Click Plumbing and Electrical* on `EMAIL_FROM`'s verified address (punch list #53, PR 2); `email_send_log.from_email` records it.
 
 **Purpose**: Email a job-account setup packet (property, phones, homeowner / building owner + company) to office-chosen supply house contacts — the Job Detail "Share with supply house" flow (v2.1605).
@@ -1448,6 +1450,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 ### send-rfq-email
 
+> **v2.4558 — the request is kept as it went**: each email to a supply house is filed in `sent_documents` through `sendEmailViaResend`'s `file` option — `rfq`, `rfq_reminder` or `rfq_resent` — keyed to the bid, with the request (`bid_rfqs`) as its source. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
+
 > **v2.4132 — sends as the company**: the From is [`COMPANY_EMAIL_FROM`](../supabase/functions/_shared/emailFrom.ts) — *Click Plumbing and Electrical* on `EMAIL_FROM`'s verified address (punch list #53, PR 2); `email_send_log.from_email` records it.
 
 **Purpose**: The **RFQ Desk** sender (lane B, v2.2636) — system-sent supply-house price requests with tracking, nudges, and previews (`docs/SUPPLY_HOUSE_RFQ_PLAN.md`).
@@ -1465,6 +1469,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 **v2.3512 (What customers see PR 6):** the request and reminder emails are built by `_shared/rfqEmail.ts` → `buildRfqEmail` (wording moved verbatim), re-exported by `src/lib/rfqEmail.ts` so the tab renders the same email over the sample.
 
 ### send-bid-room-link
+
+> **v2.4558 — the email is kept as it went**: the email carrying the bid room's link is filed (`bid_room_link`), keyed to the room's bid and customer (the room select adds `bid_id, customer_id`). [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
 
 > **v2.4132 — sends as the company**: the From is [`COMPANY_EMAIL_FROM`](../supabase/functions/_shared/emailFrom.ts) — *Click Plumbing and Electrical* on `EMAIL_FROM`'s verified address (punch list #53, PR 2); `email_send_log.from_email` records it.
 
@@ -1506,7 +1512,7 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 ### send-job-contract
 
-> **v2.4560 — the email is kept as it went**: the signing email is filed in `sent_documents` (`kind` `job_contract`, the job, the contract as its source) through `sendEmailViaResend`'s `file` option. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
+> **v2.4558 — the email is kept as it went**: the signing email is filed in `sent_documents` (`kind` `job_contract`, the job, the contract as its source) through `sendEmailViaResend`'s `file` option. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
 
 **Purpose**: The office sends a job contract for signature (Contract Desk PR 2, v2.2681) — by email, or by minting the link to copy / text / sign in person.
 
@@ -1546,7 +1552,7 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 ### sign-job-contract
 
-> **v2.4560 — what goes to the signers is kept**: the customer's signed copy (`job_contract_signed_copy`, with the PDF) and the other signer's *your signature is next* email (`job_contract_next_signer`) are filed on the job. The notice to our own staff is not. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
+> **v2.4558 — what goes to the signers is kept**: the customer's signed copy (`job_contract_signed_copy`, with the PDF) and the other signer's *your signature is next* email (`job_contract_next_signer`) are filed on the job. The notice to our own staff is not. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
 
 > **v2.4186 — a second signer**: the body takes `signer: 'primary' | 'co'` (default `primary`). A `co` signature on a row with no `co_signer_name` is 400 `no_co_signer`; a frame already filled is 409 `frame_signed` (the page reloads to the current state). The frame's columns are written (`signer_*` or `co_signer_*`); `status: 'signed'`, `signed_at` and `next_reminder_at: null` only when the other frame is already filled. A partial frame logs `co_signed` (`metadata.signer`, `metadata.waiting_on`) and, when the other signer's email is known (`co_signer_email` or `recipient_email`), emails them *✍ <name> signed — your signature is next* with the same link, then answers `{ ok, signed_at: null, mode, complete: false, signer, waiting_on }`. The completing frame logs `signed`, builds the PDF with both frames (`coSignerName` / `coSignature`; the other frame's drawn mark fetched from the bucket), emails the customer's signed copy with the second signer in cc and the office notice naming both, and answers `{ …, complete: true }`. One-frame rows behave exactly as before.
 
@@ -1570,7 +1576,7 @@ The customer's signed-copy email (subject *Signed: … — Job #…*, PDF attach
 
 ### remind-job-contracts
 
-> **v2.4560 — each reminder is kept**: a reminder email is filed (`job_contract_reminder`, the job, the contract), with no sender since it sends itself. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
+> **v2.4558 — each reminder is kept**: a reminder email is filed (`job_contract_reminder`, the job, the contract), with no sender since it sends itself. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
 
 **Purpose**: The reminder lane for contracts out for signature (Contract Desk PR 5, v2.2690).
 
@@ -1602,7 +1608,7 @@ The customer's signed-copy email (subject *Signed: … — Job #…*, PDF attach
 
 ### share-job-contract
 
-> **v2.4560 — a shared agreement is kept**: `send_to_sign` files the email with the unsigned PDF (`job_contract`); the share of a signed copy files the email with the signed PDF or its link (`job_contract_shared`; the contract, or the accepted estimate, as its source). `pdf_url` and `draft_pdf` send nothing and file nothing. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
+> **v2.4558 — a shared agreement is kept**: `send_to_sign` files the email with the unsigned PDF (`job_contract`); the share of a signed copy files the email with the signed PDF or its link (`job_contract_shared`; the contract, or the accepted estimate, as its source). `pdf_url` and `draft_pdf` send nothing and file nothing. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
 
 > **v2.4186 — a second signer**: the unsigned PDF (`draft_pdf`, `send_to_sign`) carries `coSignerName` — from the row's `co_signer_name`, or the draft body's `co_signer_name` for a job with no row yet — so two pairs of pen rules print, each named; a signed row rebuilt from its frozen columns (no stored PDF) carries the second frame's signature.
 
@@ -1621,6 +1627,8 @@ The customer's signed-copy email (subject *Signed: … — Job #…*, PDF attach
 ---
 
 ### send-submittal-reply-email
+
+> **v2.4558 — the reply is kept as it went**: the reply email is filed (`submittal_reply`), keyed to the bid, with the message as its source. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
 
 **Purpose**: The office's answer to a question asked on a bid's review room reaches the person who asked (Submittals stage 5a, v2.3528).
 
@@ -1673,6 +1681,8 @@ The customer's signed-copy email (subject *Signed: … — Job #…*, PDF attach
 **v2.3521:** the confirm email links to `${APP_ORIGIN}/legal/confirm?t=<raw>` (the app page), not the function.
 
 ### legal-notify-dispatch
+
+> **v2.4558 — what the firm is sent is kept**: a send-now notice (`legal_notice`) and a digest (`legal_digest`) are filed with the recipient and the firm as the name they went to. They name no job; they are found on the Documents page once step 4 of the plan lands. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
 
 > **v2.4457 — the digest's days**: the weekly digest ([`_shared/legalEmails.ts`](../supabase/functions/_shared/legalEmails.ts) `buildLegalDigestEmail`) prints a matter's *since* (`legal_matters.released_at`) and each event's day (`legal_notification_queue.created_at`) in `APP_CALENDAR_TZ` (`todayYmdInAppTz(new Date(iso))`), not as the UTC date, which read the next day for anything after 7 pm Central. Redeploy after merge.
 
@@ -1750,7 +1760,7 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 ### send-estimate-to-customer
 
-> **v2.4560 — the email is kept as it went**: after a successful send the function files the email the customer read through [`fileSentEmailBestEffort`](../supabase/functions/_shared/fileSentCopy.ts) — `kind` `estimate`, or `estimate_resent` for `mode: 'resend'` — keyed to the estimate's job, customer and bid (the row select adds `customer_id, job_ledger_id, bid_id`) with the estimate as its source. Best effort. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
+> **v2.4558 — the email is kept as it went**: after a successful send the function files the email the customer read through [`fileSentEmailBestEffort`](../supabase/functions/_shared/fileSentCopy.ts) — `kind` `estimate`, or `estimate_resent` for `mode: 'resend'` — keyed to the estimate's job, customer and bid (the row select adds `customer_id, job_ledger_id, bid_id`) with the estimate as its source. Best effort. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
 
 **Purpose**: Verify JWT, ensure caller can read draft estimate, generate token hash, set `sent`, persist resolved **`customer_experience_sent`**, email Resend link to `{public_origin}/estimate/accept?t=…`.
 
@@ -1822,7 +1832,7 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 ### send-contract-for-signature
 
-> **v2.4560 — the email is kept as it went**: the signing email is filed (`person_contract`, the document as its source), under the person when the document's name finds exactly one active person. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
+> **v2.4558 — the email is kept as it went**: the signing email is filed (`person_contract`, the document as its source), under the person when the document's name finds exactly one active person. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
 
 **Purpose**: Verify JWT, ensure caller can read the **`person_contract_documents`** row, require at least one of **`signing_body_html`**, **`canonical_document_url`**, **`url`**, or **`form_template_id`** (v2.2797: a form row needs no body), mint a 14-day token, set **`status = sent`**, email the Resend link to **`{public_origin}/contract/accept?t=…`**.
 
@@ -2314,6 +2324,8 @@ const response = await supabase.functions.invoke('send-checklist-notification', 
 ---
 
 ### send-report-email
+
+> **v2.4558 — a report that leaves the company is kept**: when a subscription names an outside address (`recipient_email`), the report email is filed (`field_report`) on its job and bid. A subscription that names one of our own users is our own mail and is not filed. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
 
 > **v2.4180 — the email is a kernel**: `buildReportEmail`, `ReportContent`, `renderFieldValue` and `escapeHtml` moved verbatim into [`_shared/fieldReportEmail.ts`](../supabase/functions/_shared/fieldReportEmail.ts); `index.ts` imports them, so Settings → What the team sees renders the email on sample data (punch list #60, lift 11 of 14). Redeploy after merge.
 
@@ -3213,7 +3225,7 @@ If **`stripe_invoice_id`** and **`hosted_invoice_url`** are already set, returns
 
 ### send-test-report
 
-> **v2.4559 — the email is kept too**: the PDF was already stored in `job-test-reports`; after the stamp the function now also files the email as it was read, with the PDF beside it, as a `sent_documents` row (`kind` `test_report`, the job, the report as its source), so it lists under *Sent from this job* with everything else. A `sample: true` send goes to the dev alone and is not filed. **Redeploy required.**
+> **v2.4558 — the email is kept too**: the PDF was already stored in `job-test-reports`; after the stamp the function now also files the email as it was read, with the PDF beside it, as a `sent_documents` row (`kind` `test_report`, the job, the report as its source), so it lists under *Sent from this job* with everything else. A `sample: true` send goes to the dev alone and is not filed. **Redeploy required.**
 
 > **v2.4132 — sends as the company**: the From is [`COMPANY_EMAIL_FROM`](../supabase/functions/_shared/emailFrom.ts) — *Click Plumbing and Electrical* on `EMAIL_FROM`'s verified address (punch list #53, PR 2); `email_send_log.from_email` records it.
 
@@ -3241,7 +3253,7 @@ Body: `{ report_id, to: string[], cc?: string[], subject, email_text, email_html
 
 ### auto-send-test-reports
 
-> **v2.4559 — the email is kept too**: the shared sender ([`_shared/testReportSend.ts`](../supabase/functions/_shared/testReportSend.ts)) takes `file` and files the email and the PDF after the send; this function passes `test_report`, the job, the GC and the report, with no sender. **Redeploy required.**
+> **v2.4558 — the email is kept too**: the shared sender ([`_shared/testReportSend.ts`](../supabase/functions/_shared/testReportSend.ts)) takes `file` and files the email and the PDF after the send; this function passes `test_report`, the job, the GC and the report, with no sender. **Redeploy required.**
 
 > **v2.4132 — sends as the company**: the From is [`COMPANY_EMAIL_FROM`](../supabase/functions/_shared/emailFrom.ts) — *Click Plumbing and Electrical* on `EMAIL_FROM`'s verified address (punch list #53, PR 2); `email_send_log.from_email` records it.
 
@@ -3364,7 +3376,7 @@ interface SendPhysicalInvoiceEmailBody {
 
 ### send-gc-statement-email
 
-> **v2.4559 — the statement is kept as it went**: after the send log the function files the statement as the GC read it through [`fileSentEmailBestEffort`](../supabase/functions/_shared/fileSentCopy.ts) — one `sent_documents` row, `kind` `gc_statement`, keyed to the GC (`customer_id`); the portal code is drawn into the kept page. `gc_statement_emails` still says that it went and for how much; this is the page itself, which was rebuilt from live data before. A statement names many jobs and is filed under the GC, not under each job. Best effort. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
+> **v2.4558 — the statement is kept as it went**: after the send log the function files the statement as the GC read it through [`fileSentEmailBestEffort`](../supabase/functions/_shared/fileSentCopy.ts) — one `sent_documents` row, `kind` `gc_statement`, keyed to the GC (`customer_id`); the portal code is drawn into the kept page. `gc_statement_emails` still says that it went and for how much; this is the page itself, which was rebuilt from live data before. A statement names many jobs and is filed under the GC, not under each job. Best effort. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
 
 > **v2.4132 — sends as the company**: the From is [`COMPANY_EMAIL_FROM`](../supabase/functions/_shared/emailFrom.ts) — *Click Plumbing and Electrical* on `EMAIL_FROM`'s verified address (punch list #53, PR 2); `email_send_log.from_email` records it.
 
@@ -3390,7 +3402,7 @@ interface SendPhysicalInvoiceEmailBody {
 
 ### gc-statement-email-dispatch
 
-> **v2.4559 — the statement is kept as it went**: each scheduled statement is filed the same way as a manual one (`gc_statement`, the GC as `customer_id`, the requester as the sender). **Redeploy required.**
+> **v2.4558 — the statement is kept as it went**: each scheduled statement is filed the same way as a manual one (`gc_statement`, the GC as `customer_id`, the requester as the sender). **Redeploy required.**
 
 > **v2.4534 — the job's total in the received block**: `receivedFor` selects `revenue` with each job, so [`_shared/gcChecksApplied.ts`](../supabase/functions/_shared/gcChecksApplied.ts) applies unlinked money to the part of the job on no bill before a bill (`_shared/paymentAttribution.ts`). The *paid by* line under a bill (`render.ts` `rowPaidBy`) reads the total too since v2.4536: the RPC's rows do not carry it, so the dispatcher selects `id, revenue` for `payloadJobIds(payload)` and `attachJobTotals` sets each row's `job_total`; a failed read leaves the rows as they came and the statement still goes.
 

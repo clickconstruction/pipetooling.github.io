@@ -23,16 +23,6 @@ const FILES_A_COPY = /fileSentEmailBestEffort\(|file: \{ kind: '/
 
 /** Writes to someone outside the company and keeps no copy yet. Remove a row when the function is wired. */
 const EMAILS_OWED: ReadonlyArray<string> = [
-  'legal-notify-dispatch',
-  'send-bid-room-link',
-  'send-report-email',
-  'send-rfq-email',
-  'send-submittal-reply-email',
-  'send-supply-house-job-account',
-  'send-workflow-notification',
-  'sign-bid-room',
-  'submit-legal-portal',
-  'submit-portal-request',
 ]
 
 /** Sends mail that is not a paper to someone outside, each with why. */
@@ -53,7 +43,11 @@ const NOT_OUTSIDE: Readonly<Record<string, string>> = {
   'send-lien-desk-summary': 'a summary to our own office',
   'send-scheduled-reminders': 'reminders to our own users',
   'send-sign-in-email': 'a sign-in link, not a paper',
+  'send-workflow-notification': 'a notice to a user of the app that something waits for them; the paper itself is filed where it is offered',
+  'sign-bid-room': 'a notice to our own staff that a bid room was signed',
   'statement-round-email-dispatch': 'a digest to our own staff',
+  'submit-legal-portal': 'an email-address confirmation for a law firm, not a paper',
+  'submit-portal-request': 'a notice to our own staff that a customer asked for something',
   'sync-resend-emails': 'reads the email log from Resend; sends nothing',
   'weekly-money-email-dispatch': 'a report to our own staff',
   'weekly-movement-email-dispatch': 'a report to our own staff',
