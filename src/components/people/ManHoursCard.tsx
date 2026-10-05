@@ -12,6 +12,8 @@ import {
   type ManHoursSession,
   type ManHoursZoom,
 } from '../../lib/manHours/manHoursByPeriod'
+import { manHoursHeadlineWords, pickManHoursHeadline } from '../../lib/manHours/manHoursChart'
+import { ManHoursChart } from './ManHoursChart'
 
 /**
  * People → Overhead "Man hours" card: the office against the field by pay
@@ -117,6 +119,11 @@ export function ManHoursCard({ officeJobLedgerId, officeJobLoading }: { officeJo
     return buildManHoursPeriods({ entries, zoom, todayYmd: todayYmdInAppTz(), maxPeriods: periods })
   }, [entries, zoom])
 
+  const headline = useMemo(() => {
+    const picked = view ? pickManHoursHeadline(view.periods) : null
+    return picked ? manHoursHeadlineWords(picked, zoom) : null
+  }, [view, zoom])
+
   const loading = !loadError && (sessions == null || officeJobLoading)
 
   return (
@@ -166,28 +173,36 @@ export function ManHoursCard({ officeJobLedgerId, officeJobLoading }: { officeJo
       ) : view.periods.length === 0 ? (
         <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.4rem' }}>No recorded clock sessions yet.</div>
       ) : (
-        <div style={{ overflowX: 'auto', marginTop: '0.5rem' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
-            <thead>
-              <tr>
-                <th style={{ ...thStyle, textAlign: 'left' }}>Period</th>
-                <th style={thStyle}>Field</th>
-                <th style={thStyle}>Office</th>
-                <th style={thStyle}>Bids</th>
-                <th style={thStyle}>Not on a job</th>
-                <th style={thStyle}>Total</th>
-                <th style={thStyle}>Office share</th>
-                {zoom !== 'week' ? <th style={thStyle}>Per week</th> : null}
-                <th style={thStyle}>People</th>
-              </tr>
-            </thead>
-            <tbody>
-              {view.periods.map((p) => (
-                <PeriodRow key={p.key} period={p} zoom={zoom} firstDay={view.firstDay} />
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <>
+          {headline ? (
+            <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.9375rem', color: 'var(--text-strong)' }}>
+              <strong>{headline.lead}</strong> {headline.rest}
+            </p>
+          ) : null}
+          <ManHoursChart periods={view.periods} zoom={zoom} />
+          <div style={{ overflowX: 'auto', marginTop: '0.5rem' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+              <thead>
+                <tr>
+                  <th style={{ ...thStyle, textAlign: 'left' }}>Period</th>
+                  <th style={thStyle}>Field</th>
+                  <th style={thStyle}>Office</th>
+                  <th style={thStyle}>Bids</th>
+                  <th style={thStyle}>Not on a job</th>
+                  <th style={thStyle}>Total</th>
+                  <th style={thStyle}>Office share</th>
+                  {zoom !== 'week' ? <th style={thStyle}>Per week</th> : null}
+                  <th style={thStyle}>People</th>
+                </tr>
+              </thead>
+              <tbody>
+                {view.periods.map((p) => (
+                  <PeriodRow key={p.key} period={p} zoom={zoom} firstDay={view.firstDay} />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
       <p style={{ margin: '0.4rem 0 0 0', fontSize: '0.75rem', color: 'var(--text-faint)' }}>
         Recorded hours: every closed clock session that was not rejected. Office is time on the Office job. Field is time on any other job. Office
