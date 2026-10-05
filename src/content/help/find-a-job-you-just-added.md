@@ -11,7 +11,7 @@ The Pipeline's sections order by job number and hide Paid jobs by default. So a 
 
 ## Open the view
 
-1. On **Jobs → Pipeline**, tap the {{chip:blue|🕒 Recently added}} button. It sits at the right end of the section strip, the Waiting → Working → … row.
+1. On **Jobs → Pipeline**, tap the {{chip:blue|🕒 Recently added}} button. It sits at the right end of the stage bar, the row that starts with Waiting.
 2. The sections are replaced by one flat list. Each row shows the job number, the name and the job's address. It shows the job's GC or Builder when it has one. GC means the general contractor. A status chip shows where the job currently sits. The row also says when it was added: {{chip:gray|today 12:08 PM}} for today, the date for older jobs.
 3. Click any row to open the job's detail window. Everything about the job works from there as usual: status moves, billing, notes.
 
