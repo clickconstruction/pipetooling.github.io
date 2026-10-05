@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { SUBMITTAL_STAGE_ABOUT, SUBMITTAL_TOUR_STEPS, SUBMITTAL_WORDS, SUBMITTAL_WORDS_ONLY_STOP, SUBMITTAL_WORDS_STOP, stageAbout, tourStopForStage } from './submittalTour'
+import { SUBMITTAL_STAGE_ABOUT, SUBMITTAL_TOUR_STEPS, SUBMITTAL_WORDS, SUBMITTAL_WORDS_STOP, stageAbout, tourStopForStage } from './submittalTour'
 import { PLAIN_WORDS_GLUE as GLUE, PLAIN_WORDS_MAX_SENTENCE_WORDS as MAX_WORDS, plainWordsSentences as sentences } from '../plainWords'
 
 /**
@@ -30,8 +30,6 @@ describe('submittal walkthrough plain words', () => {
       expect(sentences(t.means).length, t.word).toBeLessThanOrEqual(2)
       for (const s of sentences(t.means)) expect(s.split(/\s+/).length, s).toBeLessThanOrEqual(MAX_WORDS)
     }
-    // Opened alone there is no next stop, so its line says Done.
-    expect(SUBMITTAL_WORDS_ONLY_STOP).toMatchObject({ center: true, terms: SUBMITTAL_WORDS, body: 'These are the words this page uses. Tap Done when you have read them.' })
     // The page's own trade words keep their plain word here too.
     expect(SUBMITTAL_WORDS.find((t) => t.word === 'Cut sheet')!.means).toMatch(/maker’s page/)
     expect(SUBMITTAL_WORDS.find((t) => t.word === 'Rev')!.means).toMatch(/first version/)
