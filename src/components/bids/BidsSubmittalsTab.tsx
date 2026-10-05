@@ -2693,7 +2693,9 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
         items={items}
         parts={parts}
         revNumber={selectedRev.rev_number}
+        revisions={revisions}
         link={link}
+        roomToken={room?.token ?? null}
         hasPackage={Boolean(selectedRev.package_path)}
         company={{ name: companyName, tagline: reportSettings.companyTagline, phone: reportSettings.officePhone }}
         bid={{ label: bidDisplayName(selectedBid) || 'Bid', projectName: selectedBid.project_name ?? null, address: selectedBid.address ?? null }}

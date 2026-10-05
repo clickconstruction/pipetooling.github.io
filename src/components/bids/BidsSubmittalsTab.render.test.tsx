@@ -557,7 +557,7 @@ describe('BidsSubmittalsTab', () => {
     fireEvent.click(screen.getByTestId('see-gc'))
     const dialog = screen.getByRole('dialog', { name: 'What the GC sees' })
     const pane = within(dialog).getByTestId('see-gc-pane')
-    expect(pane.textContent).toContain('Product review · Rev 1')
+    expect(pane.textContent).toContain('Product review')
     expect(screen.getByTestId('room-headline').textContent).toContain('1 product needs your answer')
     expect(screen.getAllByTestId('room-row')).toHaveLength(1)
     expect(screen.queryByRole('group', { name: /Your call on/ })).toBeNull()

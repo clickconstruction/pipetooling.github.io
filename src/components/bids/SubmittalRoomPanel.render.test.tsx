@@ -62,4 +62,22 @@ describe('SubmittalRoomPanel', () => {
     expect(screen.queryByTestId('share-button')).toBeNull()
     expect(screen.getByTestId('room-line')).toBeTruthy()
   })
+
+  it('v2.4608 · Open their page opens the real page flagged as the office’s preview; Copy link still copies the plain link the office sends', async () => {
+    const writeText = vi.fn(() => Promise.resolve())
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+    mount()
+    const door = screen.getByTestId('room-open-preview') as HTMLAnchorElement
+    expect(door.textContent).toBe('Open their page ↗')
+    expect(door.getAttribute('href')).toBe(`${window.location.origin}/submittal?t=${'a'.repeat(48)}&preview=1`)
+    expect(door.getAttribute('target')).toBe('_blank')
+    fireEvent.click(screen.getByRole('button', { name: 'Copy link' }))
+    expect(writeText).toHaveBeenCalledWith(`${window.location.origin}/submittal?t=${'a'.repeat(48)}`)
+  })
+
+  it('v2.4608 · no door while nothing was ever shared from the app', () => {
+    mount({ room: { ...room, shared_at: null } as unknown as SubmittalRoomRow })
+    expect(screen.queryByTestId('room-open-preview')).toBeNull()
+  })
 })
+
