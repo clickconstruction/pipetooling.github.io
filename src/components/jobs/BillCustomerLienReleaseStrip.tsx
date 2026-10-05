@@ -17,7 +17,7 @@ import {
   buildLienWaiverPrintHtml,
   lienWaiverDate,
   lienWaiverWhy,
-  pickLienWaiverForBill,
+  lienWaiverTickForBill,
   type LienWaiverFormType,
 } from '../../lib/jobsDocuments/lienWaiverRelease'
 import { openHtmlWindowWhenReady } from '../../lib/jobsDocuments/printWindow'
@@ -93,8 +93,7 @@ export default function BillCustomerLienReleaseStrip({
   const live = liveLienReleases(rows)
   const canIssue = jobDetails != null
   // The bill about to go, on a GC job: which waiver it picks, and the tick (v2.4275).
-  const outgoing = jobDetails?.gc_customer_id && invoiceId ? (jobDetails.invoices ?? []).find((i) => i.id === invoiceId) ?? null : null
-  const outgoingPick = outgoing && jobDetails ? pickLienWaiverForBill(jobDetails, outgoing) : null
+  const outgoingPick = lienWaiverTickForBill(jobDetails, invoiceId)
   const gcName = (jobDetails?.gcCustomer?.name ?? '').trim()
 
   if (!open || (live.length === 0 && !canIssue)) return null

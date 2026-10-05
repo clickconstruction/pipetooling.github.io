@@ -156,7 +156,7 @@ Sep 21 Taunya applied it to #878 Take 5- Seguin. Sep 23 The bank sent it back.
 
 - **Still on a job.** The next step is {{button:red|Take it off the job}}. It reads back what changes on each job first. It may read *$11,181.78 comes off bill 2.* One press takes it off every job it paid. Each job's history keeps the removal and who did it. A bill Stripe holds as paid must be undone there first. The read-back says so.
 - **Off its jobs.** The next step is to get a new check. Press {{button:blue|They said…}} to record the date the customer named. The case then waits for that date. A stopped check asks you to find out why it was stopped.
-- **The new check arrives.** A deposit may land from the same payer for the same amount. Then the case says *This looks like the new check.* Press {{button:blue|Use it as the new check}}. The bills the old check paid fill in. Press Apply, and the case closes.
+- **The new check arrives.** A deposit may land from the same payer for the same amount. Then the case says *This looks like the new check.* Press {{button:blue|Use it as the new check}}. The bills the old check paid fill in. Press Apply, and the case closes. If you move the money to a different job first, the case stays open.
 - **It ends another way.** Open **More**. Pick **Settled another way** or **Not coming** and add a note. The case closes with your name on it.
 
 A check that came back cannot pay a bill. Its pane has no bills to pick and Apply stays off.

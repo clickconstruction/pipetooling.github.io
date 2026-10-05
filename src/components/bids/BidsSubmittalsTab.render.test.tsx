@@ -579,6 +579,23 @@ describe('BidsSubmittalsTab', () => {
     expect(line).toContain('The GC sees nothing until you share.')
   })
 
+  it('v2.4593 · a draft over a shared revision says what the link shows now, skipping a revision answered by email and never shared (BP398 today)', async () => {
+    state.revisions = [
+      { id: 'rev-3', bid_id: 'b398', rev_number: 3, status: 'draft', title: 'Plumbing fixtures & equipment', note: null, package_path: null, source_files: [], created_at: '2026-10-02T00:00:00Z', shared_at: null },
+      { id: 'rev-2', bid_id: 'b398', rev_number: 2, status: 'superseded', title: 'Plumbing fixtures & equipment', note: null, package_path: null, source_files: [], created_at: '2026-09-20T00:00:00Z', shared_at: null },
+      { id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'shared', title: 'Plumbing fixtures & equipment', note: null, package_path: 'b398/rev-1/package-rev1.pdf', source_files: [], created_at: '2026-09-15T00:00:00Z', shared_at: '2026-09-16T03:03:49Z' },
+    ]
+    state.items = [item({ id: 'it-9', submittal_id: 'rev-3', tag: 'DWH-1', sequence_order: 1, specified_manufacturer: 'Rheem', specified_model: 'RH375', submitted_label: 'BW RE2HP50', status: 'alternate', reason_kind: 'lead_time' })]
+    mount()
+    await screen.findAllByTestId('submittal-row')
+    const line = screen.getByTestId('reviewer-line').textContent ?? ''
+    expect(line).toContain('The GC’s page will read: “1 product needs your answer”')
+    expect(line).toContain('Until you share Rev 3, the link shows Rev 1.')
+    expect(line).not.toContain('The GC sees nothing')
+    fireEvent.click(screen.getByTestId('see-gc'))
+    expect(screen.getByTestId('see-gc-why').textContent).toContain('Until you share Rev 3, the link shows Rev 1.')
+  })
+
   it('draws the tiles and rows of a revision — say why, sheet needed, the status chips — and Edit saves the row', async () => {
     state.revisions = [{ id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'draft', title: 'Plumbing fixtures & equipment', note: null, package_path: null, source_files: [{ path: 'b398/rev-1/0.pdf', name: 'NWS.pdf', pages: 12, house_id: null, house_name: null, trimmed_at: null }], shared_at: null, created_at: '2026-09-15T00:00:00Z' }]
     state.items = [

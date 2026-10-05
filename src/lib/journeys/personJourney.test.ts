@@ -175,7 +175,7 @@ describe('personJourney — a real person on the strips', () => {
     expect(j.steps['demand-letter']?.state).toBe('na')
     rows.invoices[0]!.sent_to_customer_at = '2026-07-20T12:00:00Z'
     j = customerJourney(palmer, rows, NOW)
-    expect(j.steps['demand-letter']).toMatchObject({ state: 'never', headline: 'Eligible — a bill is 45+ days past', action: { label: 'Open the Lien instruments', to: '/jobs?tab=stages&lienwindow=j1&lientab=demand' } })
+    expect(j.steps['demand-letter']).toMatchObject({ state: 'never', headline: 'Eligible — a bill is 45+ days past', action: { label: 'Open the job\u2019s liens', to: '/jobs?tab=stages&lienwindow=j1&lientab=demand' } })
     rows.invoices[0]!.stripe_invoice_status = 'paid'
     j = customerJourney(palmer, rows, NOW)
     expect(j.steps['bill-email']).toMatchObject({ state: 'paid', detail: '2 bills paid' })
