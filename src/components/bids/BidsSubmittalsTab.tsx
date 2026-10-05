@@ -2479,10 +2479,18 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
 
               {/* 6 · Their call — decisions, the reviewer's own files, the thread */}
               <RoadSection n={6} about={SUBMITTAL_STAGE_ABOUT[6]} onHelp={() => startWalkThrough(6)} title={<>Their call{decisions.decided > 0 || reviewerFiles.length > 0 ? <span style={{ ...smallMuted, fontWeight: 400 }}> on Rev {selectedRev.rev_number}</span> : null}</>} status={stageStatus('review')} open={sectionOpen('review')} onToggle={() => toggleSection('review')} onJump={() => jumpToSection('review')} anchor="submittals-review"
-                summaryWhenOpen={decisions.decided === 0}
+                summaryWhenOpen={gcItems.length === 0}
                 summary={decisions.decided > 0 ? `${describeDecisions(decisions)}${decisions.open > 0 ? ` · ${decisions.open} still open` : ''}` : room ? (room.status === 'closed' ? 'link closed' : 'no answers yet') : 'appears after you share'}>
-                {decisions.decided > 0 || (isNewest && approvableRows.length > 0) || asRevisionStatus(selectedRev.status) !== 'draft' || reviewerFiles.length > 0 || room ? (
+                {gcItems.length > 0 || asRevisionStatus(selectedRev.status) !== 'draft' || reviewerFiles.length > 0 || room ? (
                   <SubmittalTheirCallPanel
+                    items={gcItems}
+                    partsOf={partsOf}
+                    canEdit={isDraft && isNewest}
+                    isNewest={isNewest}
+                    nextRev={selectedRev.rev_number + 1}
+                    sharedLine={room ? describeRoomLine(room, events.filter((e) => e.event_type === 'view').length, ROOM_TZ, decisions.entered) : ''}
+                    onEdit={setEditing}
+                    onAnswer={setAnswering}
                     decisions={decisions}
                     decisionsText={() => decisionsAsText(items, `${describeRevisionChip(selectedRev)} · ${bidWorkflowTabHeading(bid, prefixMap)}`, ROOM_TZ)}
                     approvable={isNewest ? approvableRows.length : 0}
