@@ -26,6 +26,11 @@ describe('the stage-health strip', () => {
     expect(screen.getByText('Behind')).toBeTruthy()
     expect(screen.getByText('6 days left and 2 trades have no quote: Structural steel and Fire sprinkler.')).toBeTruthy()
     expect(screen.getByText('Fire sprinkler')).toBeTruthy()
+    // The calendar: a square a day, the deadlines under their days, the count over it.
+    expect(screen.getByText('Questions close')).toBeTruthy()
+    expect(screen.getByText('Bid due')).toBeTruthy()
+    expect(screen.getByText('9 of 14')).toBeTruthy()
+    expect(screen.getByLabelText(/^Thu Oct 1\. 4 quotes in: Tri-County Site/)).toBeTruthy()
     fireEvent.click(screen.getByText(/Next: Ask more companies for Structural steel/))
     expect(tabs).toEqual(['packages'])
   })
@@ -44,5 +49,6 @@ describe('the stage-health strip', () => {
     expect(screen.getByText('72% · plan 76%')).toBeTruthy()
     expect(screen.getByText('64% · work 74%')).toBeTruthy()
     expect(screen.getByText('about $149,000')).toBeTruthy()
+    expect(screen.getByLabelText(/^Week of Sep 21\. Dry-in was due Sep 25/)).toBeTruthy()
   })
 })

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { initialGcState } from './gcFixture'
 import { gcReducer } from './gcReducer'
-import { stageHealth, tradeHasNumber } from './gcStageHealth'
+import { quotesWantedOn, stageHealth, tradeHasNumber, workingDaysLeft } from './gcStageHealth'
 import type { GcState } from './gcTypes'
 
 const project = (state: GcState, id: string) => {
@@ -28,7 +28,26 @@ describe('how the stage is going: bidding', () => {
       'Fire sprinkler:bad',
     ])
     expect(h?.tiles.find((t) => t.trade === 'HVAC')?.dots).toEqual(['wait', 'on'])
-    expect(h?.clock.marks.map((m) => `${m.on} ${m.label}`)).toEqual(['2026-09-18 Bid set', '2026-09-29 Addendum 1', '2026-10-05 questions close', '2026-10-08 bid due'])
+    // The calendar: a square a day from the bid set to the bid date, Monday to Sunday.
+    const days = h?.calendar.weeks.flat() ?? []
+    expect(h?.calendar.mode).toBe('days')
+    expect(days[0]?.on).toBe('2026-09-14')
+    expect(days[days.length - 1]?.on).toBe('2026-10-11')
+    expect(days.filter((d) => d.label).map((d) => `${d.on} ${d.label}`)).toEqual([
+      '2026-09-18 Bid set',
+      '2026-09-29 Addendum 1',
+      '2026-10-02 Today',
+      '2026-10-05 Questions close · quotes wanted',
+      '2026-10-08 Bid due',
+    ])
+    const day = (on: string) => days.find((d) => d.on === on)
+    expect(day('2026-10-01')?.came).toEqual(['Tri-County Site', 'Guadalupe Flatwork', 'Kendall Air', 'Brightline Electric'])
+    expect(day('2026-09-30')?.questions).toBe(1)
+    expect(day('2026-09-29')?.tag).toBe('A1')
+    expect(day('2026-09-19')?.events).toContain('14 companies invited.')
+    expect(day('2026-09-17')?.inStage).toBe(false)
+    expect(day('2026-09-19')?.weekend).toBe(true)
+    expect(h?.calendar.summary.map((x) => `${x.value} ${x.label}`)).toEqual(['5 working days left, counting today', '9 of 14 quotes in', '2 questions open'])
     expect(h?.numbers[0]).toMatchObject({ label: 'Trades with a number', value: '3 of 8' })
   })
 
@@ -61,7 +80,8 @@ describe('how the stage is going: buying out', () => {
     expect(h?.why).toBe('No start date yet. 2 of 5 trades are ready. Millwork is not awarded.')
     expect(h?.next).toEqual({ words: 'Award Millwork', tab: 'contracts' })
     expect(h?.askStartDate).toBe(true)
-    expect(h?.clock.to).toBeNull()
+    expect(h?.calendar.openEnd).toBe('No start date')
+    expect(h?.calendar.weeks.flat().find((d) => d.on === '2026-09-04')).toBeUndefined()
     const hvac = h?.tiles.find((t) => t.trade === 'HVAC')
     expect(hvac?.state).toBe('bad')
     expect(hvac?.dots).toEqual(['on', 'wait', 'on', 'on', 'us'])
@@ -75,7 +95,9 @@ describe('how the stage is going: buying out', () => {
     expect(h?.verdict).toBe('behind')
     expect(h?.why).toBe('Start in 4 days and 3 of 5 trades are not ready.')
     expect(h?.askStartDate).toBe(false)
-    expect(h?.clock.to).toBe('2026-10-06')
+    const start = h?.calendar.weeks.flat().find((d) => d.on === '2026-10-06')
+    expect(start?.deadline).toBe('due')
+    expect(h?.calendar.summary[0]).toMatchObject({ value: '3', label: 'working days to the start' })
   })
 })
 
@@ -86,6 +108,12 @@ describe('how the stage is going: building', () => {
     expect(h?.verdict).toBe('watch')
     expect(h?.why).toBe('3 days behind the plan. Dry-in is 7 days late. The finish holds at Dec 11.')
     expect(h?.next?.tab).toBe('submittals')
+    // Building is a square a week: the dry-in week late, the finish week marked, this week ringed.
+    expect(h?.calendar.mode).toBe('weeks')
+    const weeks = h?.calendar.squares ?? []
+    expect(weeks.find((w) => w.start === '2026-09-21')?.kind).toBe('late')
+    expect(weeks.find((w) => w.start === '2026-12-07')?.kind).toBe('end')
+    expect(weeks.find((w) => w.current)?.start).toBe('2026-09-28')
     expect(h?.bars.map((b) => `${b.label} ${b.value}`)).toEqual(['Work done 72% · plan 76%', 'Time used 93 of 163 days', 'Billed the customer 64% · work 74%', 'Paid us 38% of the price'])
     expect(h?.numbers.find((n) => n.label === 'Not billed yet')?.value).toBe('about $149,000')
     expect(h?.numbers.find((n) => n.label === 'Waiting on us')?.value).toBe('6')
@@ -97,5 +125,15 @@ describe('how the stage is going: building', () => {
   it('is on track once every trade has reported all its work', () => {
     const state = initialGcState()
     expect(stageHealth(state, project(state, 'stoneoak'))?.verdict).toBe('on track')
+  })
+})
+
+describe('the calendar\'s helpers', () => {
+  it('wants every quote on the day questions close, and counts working days with today', () => {
+    const state = initialGcState()
+    expect(quotesWantedOn(project(state, 'boerne'))).toBe('2026-10-05')
+    expect(quotesWantedOn(project(state, 'helotes'))).toBeNull()
+    expect(workingDaysLeft('2026-10-02', '2026-10-08')).toBe(5)
+    expect(workingDaysLeft('2026-10-03', '2026-10-05')).toBe(1)
   })
 })

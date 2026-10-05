@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type Dispatch } from 'react'
 import {
-  daysBetween,
   shortDate,
   stageHealth,
+  weekdayDate,
   type GcAction,
   type GcProject,
   type GcState,
-  type HealthMark,
+  type CalendarDay,
+  type CalendarWeek,
+  type StageCalendar,
   type HealthTab,
   type HealthTile,
   type StageHealth,
@@ -41,6 +43,8 @@ const PATH: { key: string; label: string }[] = [
 ]
 
 const BUYOUT_STEPS = 'award · master agreement · insurance · W-9 · statement of work'
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 /** The strip for one project. Nothing for a bid we lost or a closed job. */
 export function GcStageHealth({
@@ -103,7 +107,7 @@ export function GcStageHealth({
         )}
       </div>
 
-      <Clock health={health} width={width} />
+      <Calendar calendar={health.calendar} width={width} stage={project.stage} />
       {health.askStartDate && <SetStart onSet={(date) => dispatch({ type: 'setStartDate', projectId: project.id, date })} today={state.today} />}
 
       {health.bars.length > 0 && (
@@ -247,95 +251,239 @@ function SetStart({ onSet, today }: { onSet: (date: string) => void; today: stri
   )
 }
 
-/** The stage's clock: its first and last day, each mark, and today. Labels that would collide are left to the hover. */
-function Clock({ health, width }: { health: StageHealth; width: number }) {
-  const { from, to, today, marks, openWords } = health.clock
-  // An open clock (no last day yet) puts today about two thirds along, with the rest dashed.
-  const end = to ?? (() => {
-    const used = Math.max(1, daysBetween(from, today))
-    const d = new Date(`${from}T12:00:00Z`)
-    d.setUTCDate(d.getUTCDate() + Math.round(used / 0.64))
-    return d.toISOString().slice(0, 10)
-  })()
-  const span = Math.max(1, daysBetween(from, end))
-  const at = (on: string) => Math.min(100, Math.max(0, (daysBetween(from, on) / span) * 100))
-  const todayAt = at(today)
-  type Label = { pct: number; text: string; color: string; weight: number; align: 'start' | 'center' | 'end'; priority: number }
-  const color = (m: HealthMark) => (m.kind === 'late' ? 'var(--text-red-700)' : m.kind === 'end' ? 'var(--text-base)' : 'var(--text-muted)')
-  const labels: Label[] = [
-    { pct: todayAt, text: `Today · ${shortDate(today)}`, color: 'var(--text-blue-500)', weight: 700, align: 'center', priority: 0 },
-    ...marks.map((m) => ({
-      pct: at(m.on),
-      text: `${shortDate(m.on)} · ${m.label}${m.kind === 'met' ? ' ✓' : ''}`,
-      color: color(m),
-      weight: m.kind === 'end' || m.kind === 'late' ? 700 : 500,
-      align: (m.kind === 'start' ? 'start' : m.kind === 'end' ? 'end' : 'center') as Label['align'],
-      priority: m.kind === 'end' ? 1 : m.kind === 'start' ? 2 : m.kind === 'late' ? 3 : 4,
-    })),
-    ...(to === null && openWords ? [{ pct: 100, text: openWords, color: 'var(--text-red-700)', weight: 700, align: 'end' as const, priority: 1 }] : []),
-  ]
-  // Lay the labels out above and below the line, most important first; one that fits nowhere keeps its mark and hover.
-  const placed: (Label & { row: 0 | 1 })[] = []
-  const extent = (l: Label) => {
-    const w = (l.text.length * 6.3 + 8) / Math.max(1, width) * 100
-    const left = l.align === 'start' ? l.pct : l.align === 'end' ? l.pct - w : l.pct - w / 2
-    return [Math.max(0, left), Math.min(100, left + w)] as const
+/** The square colors: saturated on purpose for the deadlines, theme tints for the days. */
+const SQUARE_CLOSE = '#f59e0b'
+const SQUARE_DUE = '#ef4444'
+
+function daySquareStyle(d: CalendarDay, openEnd: boolean, narrow: boolean): CSSProperties {
+  const base: CSSProperties = {
+    width: narrow ? '100%' : d.weekend ? 18 : 34,
+    height: 34,
+    borderRadius: 6,
+    border: '1.5px solid var(--border)',
+    background: 'var(--surface)',
+    position: 'relative',
+    display: 'grid',
+    placeItems: 'center',
+    fontSize: '0.7rem',
+    fontVariantNumeric: 'tabular-nums',
+    color: 'var(--text-muted)',
+    boxSizing: 'border-box',
+    opacity: d.weekend ? 0.8 : 1,
   }
-  for (const l of [...labels].sort((a, b) => a.priority - b.priority)) {
-    const [a, b] = extent(l)
-    for (const row of [0, 1] as const) {
-      const clash = placed.some((p) => p.row === row && (() => {
-        const [c, d] = extent(p)
-        return a < d && c < b
-      })())
-      if (!clash) {
-        placed.push({ ...l, row })
-        break
-      }
-    }
-  }
-  const labelStyle = (l: Label & { row: 0 | 1 }): CSSProperties => ({
-    position: 'absolute',
-    top: l.row === 0 ? 0 : 46,
-    left: `${l.pct}%`,
-    transform: l.align === 'start' ? 'none' : l.align === 'end' ? 'translateX(-100%)' : 'translateX(-50%)',
-    whiteSpace: 'nowrap',
-    fontSize: '0.72rem',
-    color: l.color,
-    fontWeight: l.weight,
-  })
+  if (!d.inStage) return { ...base, borderStyle: 'dashed', opacity: 0.35 }
+  if (d.deadline === 'due') return { ...base, background: SQUARE_DUE, borderColor: SQUARE_DUE, color: '#fff', fontWeight: 800 }
+  if (d.deadline === 'close') return { ...base, background: 'var(--bg-amber-tint)', borderColor: SQUARE_CLOSE, color: 'var(--text-amber-700)', fontWeight: 700 }
+  if (d.today) return { ...base, border: '3px solid var(--text-blue-500)', color: 'var(--text-blue-500)', fontWeight: 700 }
+  if (d.past) return { ...base, background: 'var(--bg-blue-tint)', color: 'var(--text-base)' }
+  if (openEnd) return { ...base, borderStyle: 'dashed', borderColor: SQUARE_DUE }
+  return base
+}
+
+function DaySquare({ d, openEnd, narrow }: { d: CalendarDay; openEnd: boolean; narrow: boolean }) {
+  const title = [weekdayDate(d.on), ...d.events].join('. ').replace(/\.\./g, '.')
   return (
-    <div
-      role="img"
-      aria-label={[`Today ${shortDate(today)}`, ...marks.map((m) => `${m.label} ${shortDate(m.on)}`), ...(to === null && openWords ? [openWords] : [])].join(', ')}
-      style={{ position: 'relative', height: 62, margin: '0 0.25rem' }}
-    >
-      <span style={{ position: 'absolute', left: 0, right: to === null ? `${100 - todayAt - 2}%` : 0, top: 29, height: 6, borderRadius: 999, background: 'var(--bg-muted)' }} />
-      {to === null && (
-        <span style={{ position: 'absolute', left: `${todayAt + 2}%`, right: 0, top: 29, height: 6, borderTop: `2px dashed ${TILE.bad}`, borderBottom: `2px dashed ${TILE.bad}`, boxSizing: 'border-box' }} />
+    <div style={daySquareStyle(d, openEnd, narrow)} title={title} aria-label={title} data-today={d.today ? 'yes' : undefined}>
+      {Number(d.on.slice(8))}
+      {(d.came.length > 0 || d.questions > 0 || d.promised.length > 0) && d.inStage && (
+        <span aria-hidden style={{ position: 'absolute', left: 0, right: 0, bottom: 2, display: 'flex', gap: 2, justifyContent: 'center' }}>
+          {d.came.slice(0, 4).map((_, i) => (
+            <span key={`c${i}`} style={{ width: 5, height: 5, borderRadius: '50%', background: TILE.good }} />
+          ))}
+          {Array.from({ length: Math.min(2, d.questions) }, (_, i) => (
+            <span key={`q${i}`} style={{ width: 5, height: 5, borderRadius: 1, background: SQUARE_CLOSE }} />
+          ))}
+          {d.promised.slice(0, 2).map((_, i) => (
+            <span key={`p${i}`} style={{ width: 5, height: 5, borderRadius: '50%', border: `1.5px solid ${TILE.good}`, boxSizing: 'border-box' }} />
+          ))}
+        </span>
       )}
-      <span style={{ position: 'absolute', left: 0, width: `${todayAt}%`, top: 29, height: 6, borderRadius: 999, background: 'var(--text-blue-500)', opacity: 0.5 }} />
-      {marks.map((m) => (
-        <span
-          key={`${m.on}-${m.label}`}
-          title={`${m.label}, ${shortDate(m.on)}`}
-          style={{
-            position: 'absolute',
-            left: `${at(m.on)}%`,
-            top: 22,
-            width: 2,
-            height: 20,
-            transform: 'translateX(-1px)',
-            background: m.kind === 'late' ? TILE.bad : m.kind === 'met' ? TILE.good : m.kind === 'end' ? 'var(--text-base)' : 'var(--text-muted)',
-          }}
-        />
-      ))}
-      <span title={`Today, ${shortDate(today)}`} style={{ position: 'absolute', left: `${todayAt}%`, top: 18, width: 3, height: 28, transform: 'translateX(-1px)', background: 'var(--text-blue-500)', borderRadius: 2 }} />
-      {placed.map((l) => (
-        <span key={l.text} style={labelStyle(l)}>
-          {l.text}
+      {d.tag && (
+        <span aria-hidden style={{ position: 'absolute', top: -7, right: -7, minWidth: 15, height: 15, padding: '0 3px', borderRadius: 8, background: 'var(--text-blue-500)', color: '#fff', fontSize: '0.58rem', fontWeight: 800, display: 'grid', placeItems: 'center', boxSizing: 'border-box' }}>
+          {d.tag}
+        </span>
+      )}
+    </div>
+  )
+}
+
+/**
+ * The stage's calendar (the owner, 2026-10-04): a square a day with a little space where one week
+ * becomes the next, weekends narrow; building is a square a week with a space between months. On a
+ * phone the weeks stack as rows of a small calendar. Every square's hover lists its day.
+ */
+function Calendar({ calendar, width, stage }: { calendar: StageCalendar; width: number; stage: GcProject['stage'] }) {
+  const scroller = useRef<HTMLDivElement>(null)
+  // A calendar wider than the strip opens with today in view.
+  useEffect(() => {
+    const el = scroller.current
+    if (!el || el.scrollWidth <= el.clientWidth) return
+    const today = el.querySelector<HTMLElement>('[data-today="yes"]')
+    if (today) el.scrollLeft = Math.max(0, today.offsetLeft - el.clientWidth / 2)
+  }, [calendar, width])
+  const buyout = stage === 'buyout'
+  const summary = calendar.summary.length > 0 && (
+    <div style={{ display: 'flex', gap: '0.3rem 1.1rem', flexWrap: 'wrap', fontSize: '0.85rem' }}>
+      {calendar.summary.map((x) => (
+        <span key={x.label} style={{ color: x.tone === 'bad' ? 'var(--text-red-700)' : x.tone === 'warn' ? 'var(--text-amber-700)' : x.tone === 'good' ? 'var(--text-green-700)' : 'var(--text-base)' }}>
+          {x.value && <b style={{ fontVariantNumeric: 'tabular-nums' }}>{x.value}</b>} {x.label}
         </span>
       ))}
+    </div>
+  )
+  const legendDot = (style: CSSProperties, words: string) => (
+    <span style={{ display: 'inline-flex', gap: '0.3rem', alignItems: 'center' }}>
+      <span aria-hidden style={{ display: 'inline-block', boxSizing: 'border-box', ...style }} />
+      {words}
+    </span>
+  )
+
+  if (calendar.mode === 'weeks') {
+    const months: { month: number; weeks: CalendarWeek[] }[] = []
+    for (const w of calendar.squares) {
+      const last = months[months.length - 1]
+      if (last && last.month === w.month) last.weeks.push(w)
+      else months.push({ month: w.month, weeks: [w] })
+    }
+    return (
+      <div style={{ display: 'grid', gap: '0.45rem', minWidth: 0 }}>
+        {summary}
+        <div ref={scroller} style={{ overflowX: 'auto', paddingBottom: 4 }}>
+          <div style={{ display: 'flex', gap: 10, width: 'max-content' }}>
+            {months.map((m) => (
+              <div key={`${m.month}-${m.weeks[0]?.start}`} style={{ display: 'grid', gap: 4 }}>
+                <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{MONTHS[m.month]}</span>
+                <div style={{ display: 'flex', gap: 4 }}>
+                  {m.weeks.map((w) => {
+                    const title = [`Week of ${shortDate(w.start)}`, ...w.events, ...(w.current ? ['This week.'] : [])].join('. ').replace(/\.\./g, '.')
+                    const style: CSSProperties = {
+                      width: 22,
+                      height: 22,
+                      borderRadius: 5,
+                      border: '1.5px solid var(--border)',
+                      background: 'var(--surface)',
+                      position: 'relative',
+                      display: 'grid',
+                      placeItems: 'center',
+                      fontSize: '0.55rem',
+                      color: 'var(--text-muted)',
+                      boxSizing: 'border-box',
+                      ...(w.past ? { background: 'var(--bg-blue-tint)', color: 'var(--text-base)' } : {}),
+                      ...(w.current ? { border: '3px solid var(--text-blue-500)', color: 'var(--text-blue-500)', fontWeight: 700 } : {}),
+                      ...(w.kind === 'next' ? { background: 'var(--bg-amber-tint)', borderColor: SQUARE_CLOSE } : {}),
+                      ...(w.kind === 'late' ? { background: SQUARE_DUE, borderColor: SQUARE_DUE, color: '#fff' } : {}),
+                      ...(w.kind === 'end' ? { border: `3px solid ${SQUARE_DUE}`, color: 'var(--text-red-700)', fontWeight: 800 } : {}),
+                    }
+                    return (
+                      <div key={w.start} style={style} title={title} aria-label={title} data-today={w.current ? 'yes' : undefined}>
+                        {Number(w.start.slice(8))}
+                        {w.marks.length > 0 && (
+                          <span aria-hidden style={{ position: 'absolute', left: 0, right: 0, bottom: 1, display: 'flex', gap: 2, justifyContent: 'center' }}>
+                            {w.marks.slice(0, 3).map((k, i) => (
+                              <span key={i} style={{ width: 4, height: 4, borderRadius: '50%', background: k === 'good' ? TILE.good : '#fff', border: k === 'bad' ? `1px solid ${SQUARE_DUE}` : 'none' }} />
+                            ))}
+                          </span>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: '0.3rem 1rem', flexWrap: 'wrap', fontSize: '0.74rem', color: 'var(--text-muted)' }}>
+          <span>A square a week, the months apart.</span>
+          {legendDot({ width: 12, height: 12, borderRadius: 3, background: 'var(--bg-blue-tint)', border: '1.5px solid var(--border)' }, 'gone by')}
+          {legendDot({ width: 12, height: 12, borderRadius: 3, border: '3px solid var(--text-blue-500)' }, 'this week')}
+          {legendDot({ width: 12, height: 12, borderRadius: 3, background: 'var(--bg-amber-tint)', border: `1.5px solid ${SQUARE_CLOSE}` }, 'next milestone')}
+          {legendDot({ width: 12, height: 12, borderRadius: 3, background: SQUARE_DUE }, 'a late milestone')}
+          {legendDot({ width: 12, height: 12, borderRadius: 3, border: `3px solid ${SQUARE_DUE}` }, 'the finish')}
+          {legendDot({ width: 6, height: 6, borderRadius: '50%', background: TILE.good }, 'milestone met')}
+        </div>
+      </div>
+    )
+  }
+
+  const narrow = width < 560
+  const lastInStage = calendar.openEnd ? [...calendar.weeks.flat()].reverse().find((d) => d.inStage)?.on : undefined
+  const legend = (
+    <div style={{ display: 'flex', gap: '0.3rem 1rem', flexWrap: 'wrap', fontSize: '0.74rem', color: 'var(--text-muted)' }}>
+      {legendDot({ width: 12, height: 12, borderRadius: 3, background: 'var(--bg-blue-tint)', border: '1.5px solid var(--border)' }, 'gone by')}
+      {legendDot({ width: 12, height: 12, borderRadius: 3, border: '3px solid var(--text-blue-500)' }, 'today')}
+      {!buyout && legendDot({ width: 12, height: 12, borderRadius: 3, background: 'var(--bg-amber-tint)', border: `1.5px solid ${SQUARE_CLOSE}` }, 'questions close · quotes wanted')}
+      {legendDot({ width: 12, height: 12, borderRadius: 3, background: SQUARE_DUE }, buyout ? 'the start' : 'bid due')}
+      {legendDot({ width: 6, height: 6, borderRadius: '50%', background: TILE.good }, buyout ? 'a paper came in' : 'a quote came in')}
+      {!buyout && legendDot({ width: 6, height: 6, borderRadius: 1, background: SQUARE_CLOSE }, 'a question was asked')}
+      {!buyout && legendDot({ width: 6, height: 6, borderRadius: '50%', border: `1.5px solid ${TILE.good}` }, 'a quote promised by')}
+      <span>Narrow squares are Saturday and Sunday.</span>
+    </div>
+  )
+  if (narrow) {
+    return (
+      <div style={{ display: 'grid', gap: '0.45rem', minWidth: 0 }}>
+        {summary}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr)) repeat(2, minmax(0, 0.55fr))', gap: 4 }}>
+          {['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'].map((h) => (
+            <span key={h} style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textAlign: 'center', fontWeight: 700 }}>{h}</span>
+          ))}
+          {calendar.weeks.flat().map((d) => (
+            <DaySquare key={d.on} d={d} openEnd={Boolean(calendar.openEnd) && d.inStage && !d.past && !d.today} narrow />
+          ))}
+        </div>
+        {calendar.openEnd && <span style={{ fontSize: '0.78rem', color: 'var(--text-red-700)', fontWeight: 700 }}>{calendar.openEnd}</span>}
+        {legend}
+      </div>
+    )
+  }
+  return (
+    <div style={{ display: 'grid', gap: '0.45rem', minWidth: 0 }}>
+      {summary}
+      <div ref={scroller} style={{ overflowX: 'auto', paddingBottom: 4, paddingTop: 8 }}>
+        <div style={{ display: 'flex', gap: 14, width: 'max-content', alignItems: 'flex-start' }}>
+          {calendar.weeks.map((week) => (
+            <div key={week[0]?.on} style={{ display: 'grid', gap: 4 }}>
+              <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                Week of {shortDate(week[0]?.on ?? null)}
+              </span>
+              <div style={{ display: 'flex', gap: 4, alignItems: 'flex-start' }}>
+                {week.map((d) => {
+                  const label = d.on === lastInStage && calendar.openEnd ? calendar.openEnd : d.inStage ? d.label : undefined
+                  return (
+                    <div key={d.on} style={{ display: 'grid', gap: 3, justifyItems: 'center', width: d.weekend ? 18 : 34 }}>
+                      <DaySquare d={d} openEnd={Boolean(calendar.openEnd) && d.inStage && !d.past && !d.today} narrow={false} />
+                      <span
+                        style={{
+                          fontSize: '0.66rem',
+                          height: 28,
+                          lineHeight: 1.15,
+                          textAlign: 'center',
+                          whiteSpace: 'nowrap',
+                          fontWeight: 700,
+                          color: d.today
+                            ? 'var(--text-blue-500)'
+                            : d.deadline === 'due' || label === calendar.openEnd
+                              ? 'var(--text-red-700)'
+                              : d.deadline === 'close'
+                                ? 'var(--text-amber-700)'
+                                : 'var(--text-base)',
+                        }}
+                      >
+                        {label?.split(' · ').map((part, i) => (
+                          <span key={i} style={{ display: 'block' }}>
+                            {part}
+                          </span>
+                        ))}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      {legend}
     </div>
   )
 }
