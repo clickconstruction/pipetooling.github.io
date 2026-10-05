@@ -647,7 +647,8 @@ function buyoutCalendar(state: GcState, project: GcProject): StageCalendar {
   const won = project.ownerContractSignedOn ?? project.ourBidSentOn ?? today
   const from = won < addDay(mondayOfDay(today), -7 * (BUYOUT_WEEKS_BACK - 1)) ? addDay(mondayOfDay(today), -7 * (BUYOUT_WEEKS_BACK - 1)) : won
   const start = project.startDate
-  const to = start ?? addDay(today, 13)
+  // With no start date, two weeks past this one, to their Sunday, drawn open.
+  const to = start ?? addDay(mondayOfDay(addDay(today, 13)), 6)
   const weeks = blankWeeks(from, to, today)
   const at = (on: string) => dayOf(weeks, on)
   if (project.ownerContractSignedOn) {
@@ -751,4 +752,18 @@ function buildingCalendar(state: GcState, project: GcProject, startOn: string, e
     ...(sum && sum.milestones.of > 0 ? [{ label: `of ${sum.milestones.of} milestones on time`, value: String(sum.milestones.hit), ...(sum.milestones.hit < sum.milestones.of ? { tone: 'warn' as const } : { tone: 'good' as const }) }] : []),
   ]
   return { mode: 'weeks', weeks: [], squares, summary }
+}
+
+/**
+ * A week with nothing in it (the owner, 2026-10-04: "take weeks with no action and show a single
+ * rectangle for that week instead"): no quote, question, promise, set, deadline or event on any of
+ * its days, and not this week.
+ */
+export function weekIsQuiet(week: CalendarDay[]): boolean {
+  return week.every((d) => !d.today && !d.deadline && !d.label && !d.tag && d.came.length === 0 && d.questions === 0 && d.promised.length === 0 && d.events.length === 0)
+}
+
+/** The working days of a week that belong to the stage. */
+export function weekWorkingDays(week: CalendarDay[]): number {
+  return week.filter((d) => d.inStage && !d.weekend).length
 }

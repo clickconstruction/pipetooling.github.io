@@ -28,6 +28,8 @@ export type FollowItemKind =
   | 'plans'
   | 'answer'
   | 'decision'
+  // A change order waiting on the customer's signature (Board, 2026-10-04).
+  | 'signature'
 
 /** One thing a person owes us, with the words a message uses for it in each language. */
 export interface FollowItem {

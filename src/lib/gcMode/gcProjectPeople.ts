@@ -13,12 +13,15 @@ import { insuranceRenewals, tradePromisesOf, tradePromiseState, tradePromiseWord
 import { architectSummary } from './gcCustomers'
 import { sentBackOpen, timesSentBack } from './gcBuilding'
 import { followUpPeople, partnerReach, type FollowItem, type FollowPerson } from './gcFollowUpSheet'
+import { customerReminderLate, customerSentWords } from './gcCustomerSend'
 
 export type PeopleTone = 'red' | 'amber' | 'grey'
 
 export interface PersonReason {
   text: string
   tone: PeopleTone
+  /** What it is, for the Follow up sheet: `bid`, `questions`, `co:<change order id>`. Unset: a trade's reason. */
+  code?: string
 }
 
 export interface ProjectPerson {
@@ -170,19 +173,30 @@ export function projectPeople(state: GcState, project: GcProject): ProjectPeople
           {
             text: `${waiting.length === 1 ? 'A question is' : `${waiting.length} questions are`} waiting on them, the oldest ${oldest} ${oldest === 1 ? 'day' : 'days'}.`,
             tone: oldest >= ARCHITECT_LATE_DAYS ? 'red' : 'amber',
+            code: 'questions',
           },
         )
       }
     }
 
-    // The customer: our bid is out and they have not answered.
+    // The customer: our bid is out and they have not answered; a change order waiting on their signature.
     const customer = state.customers.find((c) => c.id === project.customerId)
-    if (customer && project.stage === 'pursuing' && project.ourBidSentOn) {
+    const asCustomer = customer
+      ? { key: `customer:${customer.id}`, kind: 'customer' as const, name: customer.contact || customer.name, company: customer.name, tag: 'customer', customerId: customer.id, phone: customer.phone }
+      : null
+    if (customer && asCustomer && project.stage === 'pursuing' && project.ourBidSentOn) {
       const days = -daysUntil(project.ourBidSentOn, state.today)
-      add(
-        { key: `customer:${customer.id}`, kind: 'customer', name: customer.contact || customer.name, company: customer.name, tag: 'customer', customerId: customer.id, phone: customer.phone },
-        { text: `Our bid went to them ${weekdayDate(project.ourBidSentOn)}, ${days} ${days === 1 ? 'day' : 'days'} ago. No answer yet.`, tone: days >= CUSTOMER_CALL_DAYS ? 'amber' : 'grey' },
-      )
+      add(asCustomer, { text: `Our bid went to them ${weekdayDate(project.ourBidSentOn)}, ${days} ${days === 1 ? 'day' : 'days'} ago. No answer yet.`, tone: days >= CUSTOMER_CALL_DAYS ? 'amber' : 'grey', code: 'bid' })
+    }
+    if (customer && asCustomer) {
+      for (const co of (project.changeOrders ?? []).filter((c) => c.status === 'sent')) {
+        const reminded = customerSentWords(state, customer.id, co.id)
+        add(asCustomer, {
+          text: `Change order ${co.number} is waiting on their signature${co.sentOn ? `, sent ${shortDate(co.sentOn)}` : ''}.${reminded ? ` ${reminded}` : ''}`,
+          tone: customerReminderLate(state, customer.id, co.id) ? 'red' : 'amber',
+          code: `co:${co.id}`,
+        })
+      }
     }
   }
 
@@ -278,38 +292,47 @@ export function projectFollowPeople(state: GcState, project: GcProject): FollowP
     const customer = state.customers.find((c) => c.id === person.customerId)
     if (!customer) return []
     const stand = customerAsPerson(customer)
-    const reason = person.reasons[0]
-    if (!reason) return []
-    const item: FollowItem =
-      person.kind === 'architect'
-        ? {
-            key: `answer-${project.id}`,
-            kind: 'answer',
-            label: `Questions · ${project.name}`,
-            why: reason.text,
-            tone: sheetTone(reason.tone),
-            last: null,
-            due: true,
-            projectId: project.id,
-            words: {
-              en: { about: `our questions on ${project.name}`, detail: reason.text.replace(/\.$/, ''), ask: 'Could you send answers this week? The trades are pricing on them.' },
-              es: { about: `nuestras preguntas sobre ${project.name}`, detail: 'Siguen sin respuesta', ask: '¿Nos puede responder esta semana?' },
-            },
-          }
-        : {
-            key: `decision-${project.id}`,
-            kind: 'decision',
-            label: `Our bid · ${project.name}`,
-            why: reason.text,
-            tone: sheetTone(reason.tone),
-            last: null,
-            due: true,
-            projectId: project.id,
-            words: {
-              en: { about: `our bid for ${project.name}`, detail: `We sent it ${project.ourBidSentOn ? weekdayDate(project.ourBidSentOn) : 'recently'}`, ask: 'Do you have any questions for us?' },
-              es: { about: `nuestra propuesta para ${project.name}`, detail: 'Se la enviamos hace unos días', ask: '¿Tiene alguna pregunta?' },
-            },
-          }
-    return [{ partner: stand, reach: partnerReach(stand), items: [item] }]
+    const items = person.reasons.flatMap((reason): FollowItem[] => {
+      const base = { why: reason.text, tone: sheetTone(reason.tone), last: null, due: true, projectId: project.id }
+      if (reason.code === 'questions') {
+        return [{
+          ...base,
+          key: `answer-${project.id}`,
+          kind: 'answer',
+          label: `Questions · ${project.name}`,
+          words: {
+            en: { about: `our questions on ${project.name}`, detail: reason.text.replace(/\.$/, ''), ask: 'Could you send answers this week? The trades are pricing on them.' },
+            es: { about: `nuestras preguntas sobre ${project.name}`, detail: 'Siguen sin respuesta', ask: '¿Nos puede responder esta semana?' },
+          },
+        }]
+      }
+      if (reason.code === 'bid') {
+        return [{
+          ...base,
+          key: `decision-${project.id}`,
+          kind: 'decision',
+          label: `Our bid · ${project.name}`,
+          words: {
+            en: { about: `our bid for ${project.name}`, detail: `We sent it ${project.ourBidSentOn ? weekdayDate(project.ourBidSentOn) : 'recently'}`, ask: 'Do you have any questions for us?' },
+            es: { about: `nuestra propuesta para ${project.name}`, detail: 'Se la enviamos hace unos días', ask: '¿Tiene alguna pregunta?' },
+          },
+        }]
+      }
+      const co = reason.code?.startsWith('co:') ? (project.changeOrders ?? []).find((c) => `co:${c.id}` === reason.code) : undefined
+      if (co) {
+        return [{
+          ...base,
+          key: `signature-${co.id}`,
+          kind: 'signature',
+          label: `Change order ${co.number} · ${project.name}`,
+          words: {
+            en: { about: `change order ${co.number} for ${project.name}`, detail: `We sent it ${co.sentOn ? weekdayDate(co.sentOn) : 'recently'}`, ask: 'Could you sign it this week?' },
+            es: { about: `la orden de cambio ${co.number} de ${project.name}`, detail: 'Se la enviamos hace unos días', ask: '¿La puede firmar esta semana?' },
+          },
+        }]
+      }
+      return []
+    })
+    return items.length > 0 ? [{ partner: stand, reach: partnerReach(stand), items }] : []
   })
 }

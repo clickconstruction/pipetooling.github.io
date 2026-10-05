@@ -14,6 +14,8 @@ import {
   type StageHealth,
   type TileDot,
   type TileState,
+  weekIsQuiet,
+  weekWorkingDays,
 } from '../../lib/gcMode/gcModel'
 import { Btn, input } from './gcUi'
 
@@ -201,17 +203,19 @@ function Tile({ tile }: { tile: HealthTile }) {
         borderRadius: 8,
         padding: '0.45rem 0.6rem',
         display: 'grid',
+        gridTemplateColumns: 'minmax(0, 1fr)',
         gap: '0.2rem',
         background: tile.state === 'bad' ? 'var(--bg-red-tint)' : 'var(--bg-subtle)',
         minWidth: 0,
       }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.4rem', alignItems: 'center', fontWeight: 700, fontSize: '0.84rem' }}>
-        <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={tile.trade}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.4rem', alignItems: 'flex-start', fontWeight: 700, fontSize: '0.84rem', minWidth: 0 }}>
+        {/* A long trade name wraps rather than losing its words. */}
+        <span style={{ minWidth: 0, overflowWrap: 'anywhere', lineHeight: 1.25 }}>
           {tile.trade}
         </span>
         {tile.dots ? (
-          <span style={{ display: 'inline-flex', gap: 3, flexShrink: 0 }} aria-label={tile.dots.join(', ')}>
+          <span style={{ display: 'inline-flex', gap: 3, flexShrink: 0, marginTop: 3 }} aria-label={tile.dots.join(', ')}>
             {tile.dots.map((d, i) => (
               <span key={i} style={{ width: 9, height: 9, borderRadius: '50%', display: 'inline-block', background: DOT[d], border: `1.5px solid ${d === 'off' ? 'var(--border-strong)' : DOT[d]}` }} />
             ))}
@@ -255,10 +259,10 @@ function SetStart({ onSet, today }: { onSet: (date: string) => void; today: stri
 const SQUARE_CLOSE = '#f59e0b'
 const SQUARE_DUE = '#ef4444'
 
-function daySquareStyle(d: CalendarDay, openEnd: boolean, narrow: boolean): CSSProperties {
+function daySquareStyle(d: CalendarDay, openEnd: boolean, narrow: boolean, sz: CalendarSizes): CSSProperties {
   const base: CSSProperties = {
-    width: narrow ? '100%' : d.weekend ? 18 : 34,
-    height: 34,
+    width: narrow ? '100%' : d.weekend ? sz.weekend : sz.day,
+    height: narrow ? 34 : sz.day,
     borderRadius: 6,
     border: '1.5px solid var(--border)',
     background: 'var(--surface)',
@@ -280,10 +284,10 @@ function daySquareStyle(d: CalendarDay, openEnd: boolean, narrow: boolean): CSSP
   return base
 }
 
-function DaySquare({ d, openEnd, narrow }: { d: CalendarDay; openEnd: boolean; narrow: boolean }) {
+function DaySquare({ d, openEnd, narrow, sz = ROOMY }: { d: CalendarDay; openEnd: boolean; narrow: boolean; sz?: CalendarSizes }) {
   const title = [weekdayDate(d.on), ...d.events].join('. ').replace(/\.\./g, '.')
   return (
-    <div style={daySquareStyle(d, openEnd, narrow)} title={title} aria-label={title} data-today={d.today ? 'yes' : undefined}>
+    <div style={daySquareStyle(d, openEnd, narrow, sz)} title={title} aria-label={title} data-today={d.today ? 'yes' : undefined}>
       {Number(d.on.slice(8))}
       {(d.came.length > 0 || d.questions > 0 || d.promised.length > 0) && d.inStage && (
         <span aria-hidden style={{ position: 'absolute', left: 0, right: 0, bottom: 2, display: 'flex', gap: 2, justifyContent: 'center' }}>
@@ -305,6 +309,71 @@ function DaySquare({ d, openEnd, narrow }: { d: CalendarDay; openEnd: boolean; n
       )}
     </div>
   )
+}
+
+/** The calendar's sizes; a strip too narrow for them takes the compact ones before it scrolls. */
+interface CalendarSizes {
+  day: number
+  weekend: number
+  gap: number
+  week: number
+  quiet: number
+}
+const ROOMY: CalendarSizes = { day: 34, weekend: 18, gap: 4, week: 14, quiet: 104 }
+const COMPACT: CalendarSizes = { day: 28, weekend: 15, gap: 3, week: 10, quiet: 86 }
+const LANE_HEIGHT = 30
+/** Lines a week's label lane may take: two as a rule, a third when labels crowd. */
+const LANE_ROWS = 3
+const LABEL_AIR = 8
+
+/** How wide the day calendar draws at a size: busy weeks as days, quiet weeks as one rectangle. */
+function calendarWidth(weeks: CalendarDay[][], sz: CalendarSizes): number {
+  return weeks.reduce((w, week) => w + (weekIsQuiet(week) ? sz.quiet : 5 * sz.day + 2 * sz.weekend + 6 * sz.gap), 0) + sz.week * Math.max(0, weeks.length - 1)
+}
+
+/** A week's two ends: "Sep 28 – Oct 4", or "Oct 5 – 11" inside one month. */
+function weekRange(week: CalendarDay[]): string {
+  const first = week[0]?.on ?? ''
+  const last = week[week.length - 1]?.on ?? ''
+  return first.slice(5, 7) === last.slice(5, 7) ? `${shortDate(first)} – ${Number(last.slice(8))}` : `${shortDate(first)} – ${shortDate(last)}`
+}
+
+/** The labels under a week's squares, each centered on its day, a second line when two would touch. */
+function laneLabels(week: CalendarDay[], sz: CalendarSizes): { on: string; lines: string[]; left: number; width: number; row: number; color: string }[] {
+  const out: { on: string; lines: string[]; left: number; width: number; row: number; color: string }[] = []
+  const weekWidth = week.reduce((w, d) => w + (d.weekend ? sz.weekend : sz.day), 0) + sz.gap * (week.length - 1)
+  let x = 0
+  for (const d of week) {
+    const size = d.weekend ? sz.weekend : sz.day
+    const label = d.inStage ? d.label : undefined
+    if (label) {
+      const lines = label.split(' · ')
+      // About 5.6px a character at the label's size, with a little air.
+      const width = Math.round(Math.max(...lines.map((l) => l.length)) * 5.6 + 4)
+      const left = Math.min(Math.max(x + size / 2 - width / 2, -sz.week / 2), weekWidth + sz.week / 2 - width)
+      const rows = lines.length
+      // The first row that is free across this label's width.
+      let row = 0
+      // Two labels need a little air between them on a line, else the later one drops a line.
+      while (row < LANE_ROWS && out.some((o) => o.left < left + width + LABEL_AIR && left < o.left + o.width + LABEL_AIR && rangesTouch(o.row, o.lines.length, row, rows))) row++
+      if (row + rows <= LANE_ROWS) {
+        out.push({
+          on: d.on,
+          lines,
+          left,
+          width,
+          row,
+          color: d.today ? 'var(--text-blue-500)' : d.deadline === 'due' ? 'var(--text-red-700)' : d.deadline === 'close' ? 'var(--text-amber-700)' : 'var(--text-base)',
+        })
+      }
+    }
+    x += size + sz.gap
+  }
+  return out
+}
+
+function rangesTouch(rowA: number, linesA: number, rowB: number, linesB: number): boolean {
+  return rowA < rowB + linesB && rowB < rowA + linesA
 }
 
 /**
@@ -406,7 +475,9 @@ function Calendar({ calendar, width, stage }: { calendar: StageCalendar; width: 
   }
 
   const narrow = width < 560
-  const lastInStage = calendar.openEnd ? [...calendar.weeks.flat()].reverse().find((d) => d.inStage)?.on : undefined
+  // The roomy sizes when they fit; the compact ones before the strip has to scroll.
+  const sz = calendarWidth(calendar.weeks, ROOMY) <= width ? ROOMY : COMPACT
+  const openEnd = calendar.openEnd
   const legend = (
     <div style={{ display: 'flex', gap: '0.3rem 1rem', flexWrap: 'wrap', fontSize: '0.74rem', color: 'var(--text-muted)' }}>
       {legendDot({ width: 12, height: 12, borderRadius: 3, background: 'var(--bg-blue-tint)', border: '1.5px solid var(--border)' }, 'gone by')}
@@ -416,10 +487,41 @@ function Calendar({ calendar, width, stage }: { calendar: StageCalendar; width: 
       {legendDot({ width: 6, height: 6, borderRadius: '50%', background: TILE.good }, buyout ? 'a paper came in' : 'a quote came in')}
       {!buyout && legendDot({ width: 6, height: 6, borderRadius: 1, background: SQUARE_CLOSE }, 'a question was asked')}
       {!buyout && legendDot({ width: 6, height: 6, borderRadius: '50%', border: `1.5px solid ${TILE.good}` }, 'a quote promised by')}
-      <span>Narrow squares are Saturday and Sunday.</span>
+      {legendDot({ width: 22, height: 10, borderRadius: 3, border: '1.5px dashed var(--border-strong)' }, 'a week with nothing in it')}
     </div>
   )
+  /** A quiet week: one rectangle with its dates, and what kind of quiet under it. */
+  const lastWeek = calendar.weeks[calendar.weeks.length - 1]
+  const quietWords = (week: CalendarDay[]) => {
+    // Every week past today on a job with no last day is dashed red; the last one says why.
+    const isOpen = Boolean(openEnd) && week.some((d) => d.inStage) && week.every((d) => !d.inStage || (!d.past && !d.today))
+    const past = week.every((d) => d.past || !d.inStage)
+    const n = weekWorkingDays(week)
+    return {
+      isOpen,
+      past,
+      words: isOpen && week === lastWeek ? (openEnd ?? '') : past ? 'nothing came in' : `${n} working ${n === 1 ? 'day' : 'days'}`,
+    }
+  }
+  const quietBox = (week: CalendarDay[], full: boolean): CSSProperties => {
+    const q = quietWords(week)
+    return {
+      height: 34,
+      width: full ? '100%' : sz.quiet,
+      borderRadius: 6,
+      boxSizing: 'border-box',
+      display: 'grid',
+      placeItems: 'center',
+      fontSize: '0.72rem',
+      fontVariantNumeric: 'tabular-nums',
+      border: `1.5px ${q.past ? 'solid' : 'dashed'} ${q.isOpen ? SQUARE_DUE : q.past ? 'var(--border)' : 'var(--border-strong)'}`,
+      background: q.past ? 'var(--bg-blue-tint)' : 'transparent',
+      color: q.isOpen ? 'var(--text-red-700)' : q.past ? 'var(--text-base)' : 'var(--text-muted)',
+    }
+  }
+
   if (narrow) {
+    // A phone: the weeks stack as rows of a small calendar; a quiet week is one row.
     return (
       <div style={{ display: 'grid', gap: '0.45rem', minWidth: 0 }}>
         {summary}
@@ -427,11 +529,25 @@ function Calendar({ calendar, width, stage }: { calendar: StageCalendar; width: 
           {['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'].map((h) => (
             <span key={h} style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textAlign: 'center', fontWeight: 700 }}>{h}</span>
           ))}
-          {calendar.weeks.flat().map((d) => (
-            <DaySquare key={d.on} d={d} openEnd={Boolean(calendar.openEnd) && d.inStage && !d.past && !d.today} narrow />
-          ))}
+          {calendar.weeks.map((week) =>
+            weekIsQuiet(week) ? (
+              <div key={week[0]?.on} style={{ gridColumn: '1 / -1', ...quietBox(week, true) }} title={`${weekRange(week)}: ${quietWords(week).words}`}>
+                {weekRange(week)} · {quietWords(week).words}
+              </div>
+            ) : (
+              week.map((d) => <DaySquare key={d.on} d={d} openEnd={Boolean(openEnd) && d.inStage && !d.past && !d.today} narrow />)
+            ),
+          )}
         </div>
-        {calendar.openEnd && <span style={{ fontSize: '0.78rem', color: 'var(--text-red-700)', fontWeight: 700 }}>{calendar.openEnd}</span>}
+        {/* A phone has no hover: the days that matter are listed under the calendar. */}
+        <div style={{ display: 'grid', gap: '0.15rem', fontSize: '0.8rem' }}>
+          {calendar.weeks.flat().filter((d) => d.inStage && d.label).map((d) => (
+            <span key={d.on} style={{ color: d.today ? 'var(--text-blue-500)' : d.deadline === 'due' ? 'var(--text-red-700)' : d.deadline === 'close' ? 'var(--text-amber-700)' : 'var(--text-base)' }}>
+              <b style={{ fontVariantNumeric: 'tabular-nums' }}>{weekdayDate(d.on)}</b> · {d.label?.replace(' · ', ', ')}
+            </span>
+          ))}
+          {openEnd && <span style={{ color: 'var(--text-red-700)', fontWeight: 700 }}>{openEnd}</span>}
+        </div>
         {legend}
       </div>
     )
@@ -440,47 +556,58 @@ function Calendar({ calendar, width, stage }: { calendar: StageCalendar; width: 
     <div style={{ display: 'grid', gap: '0.45rem', minWidth: 0 }}>
       {summary}
       <div ref={scroller} style={{ overflowX: 'auto', paddingBottom: 4, paddingTop: 8 }}>
-        <div style={{ display: 'flex', gap: 14, width: 'max-content', alignItems: 'flex-start' }}>
-          {calendar.weeks.map((week) => (
-            <div key={week[0]?.on} style={{ display: 'grid', gap: 4 }}>
-              <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
-                Week of {shortDate(week[0]?.on ?? null)}
+        <div style={{ display: 'flex', gap: sz.week, width: 'max-content', alignItems: 'flex-start' }}>
+          {calendar.weeks.map((week) => {
+            const head = (
+              <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap', height: 14 }}>
+                {weekIsQuiet(week) ? '' : weekRange(week)}
               </span>
-              <div style={{ display: 'flex', gap: 4, alignItems: 'flex-start' }}>
-                {week.map((d) => {
-                  const label = d.on === lastInStage && calendar.openEnd ? calendar.openEnd : d.inStage ? d.label : undefined
-                  return (
-                    <div key={d.on} style={{ display: 'grid', gap: 3, justifyItems: 'center', width: d.weekend ? 18 : 34 }}>
-                      <DaySquare d={d} openEnd={Boolean(calendar.openEnd) && d.inStage && !d.past && !d.today} narrow={false} />
-                      <span
-                        style={{
-                          fontSize: '0.66rem',
-                          height: 28,
-                          lineHeight: 1.15,
-                          textAlign: 'center',
-                          whiteSpace: 'nowrap',
-                          fontWeight: 700,
-                          color: d.today
-                            ? 'var(--text-blue-500)'
-                            : d.deadline === 'due' || label === calendar.openEnd
-                              ? 'var(--text-red-700)'
-                              : d.deadline === 'close'
-                                ? 'var(--text-amber-700)'
-                                : 'var(--text-base)',
-                        }}
-                      >
-                        {label?.split(' · ').map((part, i) => (
-                          <span key={i} style={{ display: 'block' }}>
-                            {part}
-                          </span>
-                        ))}
-                      </span>
-                    </div>
-                  )
-                })}
+            )
+            if (weekIsQuiet(week)) {
+              const q = quietWords(week)
+              return (
+                <div key={week[0]?.on} style={{ display: 'grid', gap: 3, width: sz.quiet }}>
+                  {head}
+                  <span style={{ height: 12 }} />
+                  <div style={quietBox(week, false)} title={`${weekRange(week)}: ${q.words}`} aria-label={`${weekRange(week)}: ${q.words}`}>
+                    {weekRange(week)}
+                  </div>
+                  <span style={{ height: LANE_HEIGHT, fontSize: '0.66rem', textAlign: 'center', fontWeight: q.isOpen ? 700 : 500, color: q.isOpen ? 'var(--text-red-700)' : 'var(--text-muted)' }}>{q.words}</span>
+                </div>
+              )
+            }
+            const labels = laneLabels(week, sz)
+            return (
+              <div key={week[0]?.on} style={{ display: 'grid', gap: 3 }}>
+                {head}
+                {/* The weekday over each square, so a number reads as a day. */}
+                <div style={{ display: 'flex', gap: sz.gap }} aria-hidden>
+                  {week.map((d, i) => (
+                    <span key={d.on} style={{ width: d.weekend ? sz.weekend : sz.day, textAlign: 'center', fontSize: '0.62rem', fontWeight: 700, color: d.today ? 'var(--text-blue-500)' : 'var(--text-muted)' }}>
+                      {'MTWTFSS'[i]}
+                    </span>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', gap: sz.gap }}>
+                  {week.map((d) => (
+                    <DaySquare key={d.on} d={d} openEnd={Boolean(openEnd) && d.inStage && !d.past && !d.today} narrow={false} sz={sz} />
+                  ))}
+                </div>
+                {/* Labels in their own lane: they never move a square, and two that would touch take two lines. */}
+                <div style={{ position: 'relative', height: Math.max(LANE_HEIGHT, ...labels.map((l) => (l.row + l.lines.length) * 14 + 2)) }}>
+                  {labels.map((l) => (
+                    <span key={l.on} style={{ position: 'absolute', top: l.row * 14, left: l.left, width: l.width, textAlign: 'center', fontSize: '0.66rem', lineHeight: 1.15, fontWeight: 700, whiteSpace: 'nowrap', color: l.color }}>
+                      {l.lines.map((line) => (
+                        <span key={line} style={{ display: 'block' }}>
+                          {line}
+                        </span>
+                      ))}
+                    </span>
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
       {legend}
