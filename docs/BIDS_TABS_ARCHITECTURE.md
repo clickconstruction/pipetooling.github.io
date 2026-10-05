@@ -8,7 +8,7 @@ covers:
   - src/pages/Bids.tsx
 mapped_at: 4833712a0
 audience: Developers, AI Agents
-last_updated: 2026-09-28
+last_updated: 2026-10-05
 ---
 
 ## Overview
@@ -336,6 +336,7 @@ These primitives are touched by many tabs; any extracted piece must be handed th
 
 - **[`BidVersionPicker`](../src/components/bids/BidVersionPicker.tsx)** — rendered **4× by the parent** (Counts, Takeoffs, Pricing, Cover Letter) with near-identical props; drives `switchActiveVersion` + rename/delete/first-split and opens the package map.
 - **[`MyBidsToggle`](../src/components/bids/MyBidsToggle.tsx)** — the "only my bids" chip inside the 9 workflow tabs that take `onlyMyBids`.
+- **[`HideRobotsToggle`](../src/components/bids/HideRobotsToggle.tsx)** — *Hide robots*, just below *Only my bids* on the same nine tabs (v2.4511): the list without the ZZ bids (`lib/bids/bidPickerRobots`). Offered only while *Only my bids* is off; one tick for every tab, kept per browser.
 - **[`BidBoardCustomerReviewModal`](../src/components/bids/BidBoardCustomerReviewModal.tsx)** / **[`BidBoardEstimatingHealthSection`](../src/components/bids/BidBoardEstimatingHealthSection.tsx)** — rendered by `BidsBidBoardTab`.
 
 ---

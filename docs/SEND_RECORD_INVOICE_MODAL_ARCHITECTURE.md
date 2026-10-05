@@ -8,7 +8,7 @@ covers:
   - src/components/jobs/SendRecordInvoiceModal.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-10-01
+last_updated: 2026-10-05
 ---
 
 > **Line numbers are as of `a05cef4c4`** (read from `npm run map -- src/components/jobs/SendRecordInvoiceModal.tsx`). They rot on the next commit — search the symbol; every region below names one.
@@ -193,7 +193,7 @@ The modal's equivalent of Bids' `useBidPricingEngine` — **no shared selection 
 - **Header** (L2332–2377): title, `effectiveJobLedgerNumber` line with RTB amount (payload `invoice.amount` or `ensuredInvoice.amount`), dev Stripe mode toggle (Stripe tab pre-submit only).
 - **Missing-email banner** (L2379–2438, v2.936 + v2.3345 GC copy): `emailFix*` + `saveMissingCustomerEmail`; GC payer → "Saved on <GC>'s customer record", else the also-customer checkbox.
 - **Bill-to / GC-payer banner** (L2440–2476): `billToDisplayLabel(billToOverride)` when set, else the GC-payer banner (`bill-customer-gc-payer-banner`).
-- **Strips:** `JobContractStrip` (L2479), `BillCustomerLienReleaseStrip` (L2481–2486).
+- **Strips:** `JobContractStrip` (L2479), `BillCustomerLienReleaseStrip` (L2481–2486). Since v2.4301 the contract strip reads `useJobContractPapers` (the signed papers on file for the customer's jobs), offers a sibling job's paper through `JobContractSiblingOffer` and files a signed paper through `AddJobContractSheet` (3 smokes; also opened from the Pipeline and from the Customer page's `CustomerAgreementsCard`). Since v2.4333 `BillCustomerReturnedChecksLine` (2 smokes) says how many of the payer's checks came back; it never gates the send.
 - **Tab bar** (L2488–2524): Stripe bill · Physical invoice · ▾ / HouseCall Pro.
 - **Paid-job notice** (L2526–2554): `PAID_JOB_BILL_BLOCKED_MESSAGE` + "Bill this job again anyway" (`allowRebill`, disabled while `busy`).
 - **Send-to block** (`sendToBlock`, L2234–2315) and **`discountStrip`** — rendered by 2 tabs → parent-built.
