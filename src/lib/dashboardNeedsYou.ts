@@ -101,6 +101,7 @@ export type NeedsYouItem = {
     | 'work-orders-unpriced'
     | 'gc-follow-up'
     | 'gc-change-requests'
+    | 'gc-back-charges'
     | 'jobs-stale-open'
     | 'capacity-under'
     | 'dispatch-requests-aged'
@@ -189,6 +190,8 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'gc-follow-up': 40,
   // Revenue tier: a trade's change request waits on our answer before the work or the bill moves (GC mode spike).
   'gc-change-requests': 40,
+  // Revenue tier: a disputed or agreed back-charge is money off a trade's draw, decided before the draw is paid (GC mode spike).
+  'gc-back-charges': 40,
   'jobs-stale-open': 40,
   // People/planning tier: a crew running light for three weeks is a scheduling question, not a bill.
   'capacity-under': 50,
@@ -334,6 +337,12 @@ export type NeedsYouInputs = {
    * Action opens the oldest's job on Bill the customer.
    */
   gcChangeRequests?: { count: number; late: boolean; title: string; detail: string; projectId: string } | null
+  /**
+   * GC mode design spike (the owner, 2026-10-05): back-charges a trade disputed, never answered, or
+   * agreed to with an approved draw to take them from (`gcBackChargesNeedsYou`). Our move, so not in
+   * the people count. Action opens the oldest's job on Draws.
+   */
+  gcBackCharges?: { count: number; late: boolean; title: string; detail: string; projectId: string } | null
   jobFollowupCount: number | null
   jobFollowupStageCounts: Record<JobFollowupStage, number> | null
   /**
@@ -777,6 +786,19 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
       detail: gc.detail,
       figure: String(gc.count),
       actionLabel: gc.count === 1 ? 'Answer it' : 'Answer them',
+    })
+  }
+
+  if (inputs.gcFollowUpEnabled && inputs.gcBackCharges && inputs.gcBackCharges.count > 0) {
+    const gc = inputs.gcBackCharges
+    items.push({
+      key: 'gc-back-charges',
+      severity: gc.late ? 'red' : 'amber',
+      kicker: 'GC mode',
+      title: gc.title,
+      detail: gc.detail,
+      figure: String(gc.count),
+      actionLabel: gc.count === 1 ? 'Settle it' : 'Settle them',
     })
   }
 
