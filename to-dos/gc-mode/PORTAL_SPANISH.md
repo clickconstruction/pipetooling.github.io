@@ -120,7 +120,7 @@ column headers are in one block at the end of `gcBuildingWords.ts`, for the nati
 
 ## For a native speaker to read
 
-Every Spanish string the trade's portal shows, 760 in all, drawn from the code on 2026-10-04.
+Every Spanish string the trade's portal shows, 773 in all, drawn from the code on 2026-10-04.
 They're grouped by screen, English on the left. Please mark anything that reads wrong, stiff or
 unclear, and write the better words beside it. The Portal lane makes the changes and passes the
 other lanes theirs.
@@ -387,6 +387,7 @@ they were written in. The portal does not translate them.
 | The renewed insurance certificate | El certificado de seguro renovado |
 | A signed W-9 | Un W-9 firmado |
 | The signed statement of work | La orden de trabajo firmada |
+| The signed master agreement | El contrato maestro firmado |
 | Your start day | Su día de inicio |
 | Your submittals | Sus documentos para aprobación |
 | The material delivery | La entrega de material |
@@ -1107,6 +1108,23 @@ they were written in. The portal does not translate them.
 | (you) | (usted) |
 | awarded | adjudicada |
 | Another company | Otra empresa |
+
+### The papers the office sends from a company window (the Board lane's words, `gcPaperSend.ts`)
+
+| English | Español |
+|---|---|
+| Reminder:  | Recordatorio:  |
+| Our master agreement is still waiting for your signature. Please sign it by {date}. | Nuestro contrato maestro todavía espera su firma. Por favor fírmelo a más tardar el {date}. |
+| Your statement of work for {trade} on {project} is still waiting for your signature. Please sign it by {date}. | Su orden de trabajo de {trade} para {project} todavía espera su firma. Por favor fírmela a más tardar el {date}. |
+| Your insurance certificate for {gc} | Su certificado de seguro para {gc} |
+| Please send us your renewed insurance certificate by {date}. | Por favor envíenos su certificado de seguro renovado a más tardar el {date}. |
+| Please send us your insurance certificate by {date}. Nothing you do for us is covered until it comes. | Por favor envíenos su certificado de seguro a más tardar el {date}. Nada de lo que haga para nosotros está cubierto hasta que llegue. |
+| Your W-9 for {gc} | Su W-9 para {gc} |
+| Please fill in and sign your W-9 by {date}. We need it before we can pay you. | Por favor llene y firme su W-9 a más tardar el {date}. Lo necesitamos antes de poder pagarle. |
+| Open your portal to fill it in and sign it. | Abra su portal para llenarlo y firmarlo. |
+| Your lien waiver for draw {draws} on {project} | Su renuncia de gravamen del pago {draws} de {project} |
+| We paid draw {draws} on {project}. Please sign the unconditional lien waiver for it by {date}. | Pagamos el pago {draws} de {project}. Por favor firme la renuncia de gravamen incondicional a más tardar el {date}. |
+| Open your portal to sign it. | Abra su portal para firmarla. |
 
 ### The notary block on a pay application (the Owner Billing lane's words, `GcPayAppNotary.tsx`)
 
