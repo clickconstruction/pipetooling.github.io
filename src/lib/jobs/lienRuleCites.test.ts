@@ -3,7 +3,8 @@ import { describe, expect, it } from 'vitest'
 import { LIEN_RULES_DOOR, LIEN_RULES_GUIDE_SLUG, LIEN_RULE_CITES, lienRuleHref } from './lienRuleCites'
 
 const guide = readFileSync(new URL(`../../content/help/${LIEN_RULES_GUIDE_SLUG}.md`, import.meta.url), 'utf8')
-const headings = new Set(guide.split('\n').filter((l) => l.startsWith('## ')).map((l) => l.slice(3).trim()))
+// The rules are h3 under a group's h2 since v2.4529; an anchor is stamped on both.
+const headings = new Set(guide.split('\n').filter((l) => /^#{2,3} /.test(l)).map((l) => l.replace(/^#{2,3} /, '').trim()))
 
 describe('LIEN_RULE_CITES (v2.3594)', () => {
   it('every cite points at a real heading in the guide', () => {

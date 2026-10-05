@@ -23,7 +23,7 @@ It is for the **owner**, not the GC, the general contractor. If the builder is t
 ## Where it is
 
 1. Open the **Lien desk**. You reach it from Jobs → Pipeline → the Collections header {{button:outline|Lien desk}}. Or open Dashboard → Needs you {{chip:red|N lien notices to draft}}.
-2. On the desk's header, next to {{button:outline|§ The rules}}, press {{button:blue|☎ Someone's calling ›}}.
+2. On the desk's header, next to {{button:outline|§ Rules}}, press {{button:blue|☎ Someone's calling ›}}.
 
 You can also reach the same sheet from a job you already have open on the desk. Pick the job in **Sent**. The footer has {{button:outline|Record the owner's call…}}.
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { LienCalendarJob } from './lienCalendar'
-import { buildLienCalendarBoard, lienBucketOf, lienNextDate, lienNextDateCounts, lienPhoneLine } from './lienCalendarBuckets'
+import { buildLienCalendarBoard, lienBucketOf, lienGroupRows, lienNextDate, lienNextDateCounts, lienPhoneLine, lienSameProperty } from './lienCalendarBuckets'
 import { buildLienPayRunway, type LienRunwayInput } from './lienPayRunway'
 
 // Today is Thursday 2026-10-01 unless a test says otherwise: Oct 15 is 14 days out, Nov 16 46, Dec 15 75.
@@ -16,7 +16,8 @@ function job(over: Partial<LienCalendarJob> & { r?: Partial<LienRunwayInput> } =
     customer: 'Randolph Field Reality',
     gcId: null,
     gcName: null,
-    address: '214 Beechwood Ave',
+    // Each job at its own street number: jobs at one property are a case of their own (v2.4526).
+    address: `${(rest.jobId ?? 'j').charCodeAt(0)} Beechwood Ave`,
     openBalance: 1000,
     isSub,
     runway: buildLienPayRunway({ todayYmd: TODAY, openBalance: rest.openBalance ?? 1000, lastWorkYmd: '2026-08-12', propertyKind: 'residential', expectedPayYmd: null, filedYmd: null, releasedYmd: null, isSub, ...r }),
@@ -193,5 +194,102 @@ describe('late in the month and across the new year', () => {
     expect(board.buckets[2]!.span).toEqual({ fromYmd: '2027-01-01', toYmd: '2027-02-01' })
     expect(board.buckets[2]!.facts).toBe('by Jan 15 · in 44 days · 1 notice to RMC · Dudley Mason')
     expect(board.buckets[3]!.empty).toBe('Nothing falls due after January.')
+  })
+})
+
+describe('an overdue job is listed with its property (v2.4526)', () => {
+  const TERRELL = '628 Terrell Rd, San Antonio, TX 78209'
+  const LENOX = '9703 Lenox Hl San Antonio, TX 78240'
+  const rows = [
+    // RMC, notices due Oct 15: two at Lenox Hl, one at Terrell Rd, one somewhere else
+    job({ jobId: 'n1', number: '273', ...RMC, openBalance: 17585, address: LENOX }),
+    job({ jobId: 'n2', number: '858', ...RMC, openBalance: 7902, address: '9703 Lenox Hl, San Antonio, TX' }),
+    job({ jobId: 'n3', number: '867', ...RMC, openBalance: 1710, address: TERRELL }),
+    job({ jobId: 'n4', number: '868', ...RMC, openBalance: 2650, address: '1875 Co Rd 777, Devine, TX' }),
+    // Overdue: one at Lenox Hl, two at Terrell Rd, one at a property with nothing ahead
+    job({ jobId: 'o1', number: '881', ...RMC, openBalance: 1050, address: LENOX, r: { lastWorkYmd: '2026-07-10' } }),
+    job({ jobId: 'o2', number: '226', ...RMC, openBalance: 650, address: TERRELL, r: { lastWorkYmd: '2026-05-05' } }),
+    job({ jobId: 'o3', number: '608', ...RMC, openBalance: 2245, address: '628 Terrell Rd', r: { lastWorkYmd: '2026-07-10' } }),
+    job({ jobId: 'o4', number: '186', ...RMC, openBalance: 6200, address: '574 Co Rd 660, Devine TX 78016', r: { lastWorkYmd: '2026-05-05' } }),
+  ]
+  const board = buildLienCalendarBoard(rows, '', TODAY)
+  const [overdue, thisMonth] = board.buckets
+
+  it('the counts and the money do not move', () => {
+    expect(ids(overdue!.jobs).sort()).toEqual(['o1', 'o2', 'o3', 'o4'])
+    expect(overdue!.total).toBe(1050 + 650 + 2245 + 6200)
+    expect(ids(thisMonth!.jobs).sort()).toEqual(['n1', 'n2', 'n3', 'n4'])
+    expect(thisMonth!.total).toBe(17585 + 7902 + 1710 + 2650)
+    expect(thisMonth!.notices).toBe(4)
+    expect(board.count).toBe(8)
+  })
+
+  it('Overdue lists only the job with nothing ahead at its property, and its bar says where the rest are', () => {
+    expect(ids(overdue!.groups.flatMap((g) => g.jobs))).toEqual(['o4'])
+    expect(overdue!.away).toBe(3)
+    expect(overdue!.facts).toBe('4 jobs · 1 listed here · 3 are listed under This month')
+    // Shown on its own, Overdue is whole again.
+    expect(ids(overdue!.whole!.groups.flatMap((g) => g.jobs)).sort()).toEqual(['o1', 'o2', 'o3', 'o4'])
+    expect(overdue!.whole!.facts).toBe('4 jobs · nothing left to file · money still owed')
+  })
+
+  it('the GC’s group clusters by property: its jobs with a date ahead, then the overdue ones, biggest first', () => {
+    const g = thisMonth!.groups[0]!
+    expect(thisMonth!.guests).toBe(3)
+    // The group's own numbers are its notices only.
+    expect(ids(g.jobs).sort()).toEqual(['n1', 'n2', 'n3', 'n4'])
+    expect(g.total).toBe(17585 + 7902 + 1710 + 2650)
+    expect(g.sub).toBe('GC · 4 jobs · 4 notices owed · 3 windows closed · 2 at one property')
+    expect(lienGroupRows(g).map((r) => (r.kind === 'label' ? `# ${r.label}` : `${r.job.number}${r.closed ? ' closed' : ''}`))).toEqual([
+      '# 9703 Lenox Hl San Antonio',
+      '273',
+      '858',
+      '881 closed',
+      '# 628 Terrell Rd, San Antonio',
+      '867',
+      '608 closed',
+      '226 closed',
+      '# Other properties',
+      '868',
+    ])
+  })
+
+  it('a group that lists none draws its jobs as before', () => {
+    const plain = buildLienCalendarBoard(ROWS, '', TODAY).buckets[1]!.groups[0]!
+    expect(plain.byProperty).toBeUndefined()
+    expect(lienGroupRows(plain).every((r) => r.kind === 'job' && !r.closed)).toBe(true)
+  })
+
+  it('follows the property to its earliest date, in whichever bucket that is', () => {
+    const later = buildLienCalendarBoard(
+      [
+        job({ jobId: 'd1', gcId: 'gc-hi', gcName: 'H & I Construction', address: '12 Oak St, Seguin, TX', r: { lastWorkYmd: '2026-09-03' } }),
+        job({ jobId: 'x1', openBalance: 400, address: '12 Oak St, Seguin, TX', r: { lastWorkYmd: '2026-05-05' } }),
+      ],
+      '',
+      TODAY,
+    )
+    expect(later.buckets[0]!.facts).toBe('1 job · 0 listed here · 1 is listed under Next month')
+    expect(later.buckets[2]!.guests).toBe(1)
+    expect(lienGroupRows(later.buckets[2]!.groups[0]!).map((r) => (r.kind === 'label' ? r.label : `${r.job.jobId}${r.closed ? ' closed' : ''}`))).toEqual(['12 Oak St, Seguin', 'd1', 'x1 closed'])
+  })
+
+  it('matches on the linked property record, the typed address, or one address cut short of the other', () => {
+    const at = (address: string, addressId: string | null = null) => ({ address, addressId })
+    expect(lienSameProperty(at('1 A St', 'addr-1'), at('somewhere else', 'addr-1'))).toBe(true)
+    expect(lienSameProperty(at('9703 Lenox Hl San Antonio, TX 78240'), at('9703 Lenox Hl, San Antonio, TX'))).toBe(true)
+    expect(lienSameProperty(at('628 Terrell Rd'), at('628 Terrell Rd, San Antonio, TX 78209'))).toBe(true)
+    // A city alone is not a property, a number and one word is too little, and 62 is not 628.
+    expect(lienSameProperty(at('San Antonio, TX'), at('San Antonio, TX'))).toBe(false)
+    expect(lienSameProperty(at('12 Oak'), at('12 Oak St, Seguin, TX'))).toBe(false)
+    expect(lienSameProperty(at('62 Terrell Rd'), at('628 Terrell Rd'))).toBe(false)
+    // A filed lien has no date ahead, so it hosts nothing.
+    const filed = buildLienCalendarBoard(
+      [job({ jobId: 'f1', address: '5 Elm St', r: { filedYmd: '2026-09-03' } }), job({ jobId: 'x2', address: '5 Elm St', r: { lastWorkYmd: '2026-05-05' } })],
+      '',
+      TODAY,
+    )
+    expect(filed.buckets[0]!.away).toBe(0)
+    expect(filed.buckets[0]!.whole).toBeNull()
   })
 })

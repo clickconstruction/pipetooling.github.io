@@ -21,7 +21,7 @@ The window has one tab for each paper.
 - **Mechanic's lien** is the lien affidavit. It is covered in [file a lien and never miss its deadlines](/help/file-a-lien-and-never-miss-its-deadlines).
 - **Release of record** shows only once a lien affidavit is filed on the job.
 
-{{button:outline|§ The rules}} sits beside the tabs. It opens [read the Texas lien rules the app follows](/help/texas-lien-rules-the-app-follows) in a new tab, at attorney's fees.
+{{button:outline|§ Rules}} sits beside the tabs. It opens [read the Texas lien rules the app follows](/help/texas-lien-rules-the-app-follows) in a new tab, at attorney's fees.
 
 ## The job's timeline
 

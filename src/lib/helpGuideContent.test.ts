@@ -8,6 +8,7 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { buildHelpGuideRegistry } from './helpGuides'
 import { BUTTON_VARIANTS, CHIP_VARIANTS } from './helpGuideIllustrations'
+import { headingAnchor } from './helpGuideAnchors'
 
 const CONTENT_DIR = join(__dirname, '../content/help')
 
@@ -56,6 +57,27 @@ describe('help guide content', () => {
     const guides = buildHelpGuideRegistry(loadContent())
     for (const g of guides) {
       expect(/^# /m.test(g.body), `guide "${g.slug}" uses a top-level # heading`).toBe(false)
+    }
+  })
+
+  it('a link to a heading of the same guide names a real heading (v2.4529: [The month rule](#the-month-rule))', () => {
+    const guides = buildHelpGuideRegistry(loadContent())
+    for (const g of guides) {
+      const links = [...g.body.matchAll(/\]\(#([^)\s]+)\)/g)].map((m) => m[1]!)
+      if (links.length === 0) continue
+      // The same numbering the page stamps: a repeated heading gets -2, -3.
+      const seen = new Map<string, number>()
+      const anchors = new Set<string>()
+      for (const line of g.body.split('\n')) {
+        const m = /^#{2,3} (.+)$/.exec(line)
+        if (!m) continue
+        const base = headingAnchor(m[1]!)
+        if (!base) continue
+        const n = (seen.get(base) ?? 0) + 1
+        seen.set(base, n)
+        anchors.add(n === 1 ? base : `${base}-${n}`)
+      }
+      for (const link of links) expect(anchors.has(link), `guide "${g.slug}" links to #${link}, which is no heading in it`).toBe(true)
     }
   })
 
