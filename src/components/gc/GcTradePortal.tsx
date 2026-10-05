@@ -47,6 +47,7 @@ import {
 import { BidTabTable } from './GcBidTabs'
 import { GcBuildingPayAppDoor } from './GcBuildingPayApp'
 import { Btn, Chip, input } from './gcUi'
+import { GcPortalChanges } from './GcPortalChanges'
 import { GcPortalContacts } from './GcPortalContacts'
 import { GcPortalHome } from './GcPortalHome'
 import { GcPortalPay } from './GcPortalPay'
@@ -849,6 +850,9 @@ function SowBlock({
           </Block>
         </div>
       )}
+
+      {/* A change they ask us for: hit something on site, the customer asked for more (owner, 2026-10-04). */}
+      <GcPortalChanges project={project} pkg={pkg} partnerId={partner.id} dispatch={dispatch} />
     </>
   )
 }

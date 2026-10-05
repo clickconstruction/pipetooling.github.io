@@ -5,7 +5,7 @@
  *
  * The words follow the plain-words rules at the top of `gcTour.ts`.
  */
-import type { BidAlternate, Draw, GcProject, GcState, Invite, LookAheadMark, Partner, PlanQuestion, PlanSet, ProjectContact, PromiseKind, QuoteExclusion, ScopeItem, Sow, SubBid, TheirSovLine, TradePackage, TradePromise } from './gcTypes'
+import type { BidAlternate, ChangeOrder, ChangeOrderReason, Draw, GcProject, GcState, Invite, LookAheadMark, Partner, PlanQuestion, PlanSet, ProjectContact, PromiseKind, QuoteExclusion, ScopeItem, Sow, SubBid, TheirSovLine, TradeChangeRequest, TradePackage, TradePromise } from './gcTypes'
 import { daysUntil, money } from './gcWords'
 import { currentRev, partnerById } from './gcLookups'
 import { bareId, preBidInvited, questionState, questionsFor, sheetsGoneAtRev, type QuestionState } from './gcPlans'
@@ -840,7 +840,7 @@ export function portalLink(partnerId: string): string {
 export interface PortalMessage {
   key: string
   on: string
-  kind: 'invite' | 'nudge' | 'plans' | 'bidTab' | 'msa' | 'sow' | 'start' | 'less' | 'change' | 'paid' | 'answer' | 'coi' | 'closed' | 'vetted' | 'preBid'
+  kind: 'invite' | 'nudge' | 'plans' | 'bidTab' | 'msa' | 'sow' | 'start' | 'less' | 'change' | 'paid' | 'answer' | 'coi' | 'closed' | 'vetted' | 'preBid' | 'changeAsk'
   /** Null: about the company, not one project (the master agreement). */
   projectId: string | null
   subject: string
@@ -852,7 +852,7 @@ export interface PortalMessage {
   leavesOut?: string[]
 }
 
-const KIND_ORDER: Record<PortalMessage['kind'], number> = { vetted: -2, closed: -1, preBid: -0.5, coi: 0, answer: 1, paid: 2, change: 3, less: 4, start: 5, sow: 6, msa: 7, bidTab: 8, plans: 9, nudge: 10, invite: 11 }
+const KIND_ORDER: Record<PortalMessage['kind'], number> = { vetted: -2, closed: -1, preBid: -0.5, coi: 0, answer: 1, paid: 2, change: 3, changeAsk: 3.5, less: 4, start: 5, sow: 6, msa: 7, bidTab: 8, plans: 9, nudge: 10, invite: 11 }
 
 function firstName(contact: string): string {
   return contact.split(' ')[0] ?? contact
@@ -974,6 +974,26 @@ export function portalMessages(state: GcState, partnerId: string, language?: Por
             t('mChangeOpen'),
           ],
         })
+      }
+    }
+
+    // The office's answers to a change the company asked for (owner, 2026-10-04): turned down, sent
+    // to the customer, or the customer said no. A yes reaches it as the change to sign, above.
+    for (const { pkg } of won) {
+      for (const row of portalChangeRequests(project, pkg, partnerId, lang)) {
+        const r = row.request
+        const co = changeRequestState(project, r).co
+        const base = { kind: 'changeAsk' as const, projectId: project.id }
+        const youAsked = t('mCrYouAsked', { trade: pkg.trade, what: r.description.replace(/\.$/, ''), amount: money(r.amount) })
+        if (r.turnedDown) {
+          out.push({ ...base, key: `${r.id}:down`, on: r.turnedDown.on, subject: t('mCrDownSubject', { project: name }), lines: [hello, youAsked, t('mCrDown', { note: r.turnedDown.note }), t('mCrOpen')] })
+        }
+        if (co?.sentOn) {
+          out.push({ ...base, key: `${r.id}:sent`, on: co.sentOn, subject: t('mCrSentSubject', { project: name }), lines: [hello, youAsked, t('mCrSent', { n: co.number, part: money(co.cost) }), t('mCrOpen')] })
+        }
+        if (co?.status === 'declined' && co.answeredOn) {
+          out.push({ ...base, key: `${r.id}:no`, on: co.answeredOn, subject: t('mCrNoSubject', { n: co.number }), lines: [hello, t('mCrNo', { n: co.number, project: name }), t('mCrOpen')] })
+        }
       }
     }
 
@@ -1510,4 +1530,104 @@ export function portalQuestions(project: GcProject, packageId: string, partnerId
     if (!mine && answerOn === null) return []
     return [{ q, mine, state: questionState(q), answerOn }]
   })
+}
+
+// ---------------------------------------------------------------------------------------------
+// A trade asks for a change (owner, 2026-10-04)
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * Where a trade's change request stands: asked and not answered, turned down, or the change order
+ * the office made of it, from its draft to the trade's signature on its statement of work.
+ */
+export type ChangeRequestState = 'asked' | 'drafting' | 'withCustomer' | 'customerNo' | 'customerYes' | 'toSign' | 'signed' | 'turnedDown'
+
+export function changeRequestState(project: GcProject, request: TradeChangeRequest): { state: ChangeRequestState; co: ChangeOrder | null } {
+  if (request.turnedDown) return { state: 'turnedDown', co: null }
+  const co = request.changeOrderId ? ((project.changeOrders ?? []).find((c) => c.id === request.changeOrderId) ?? null) : null
+  if (!co) return { state: 'asked', co: null }
+  if (co.status === 'draft') return { state: 'drafting', co }
+  if (co.status === 'sent') return { state: 'withCustomer', co }
+  if (co.status === 'declined') return { state: 'customerNo', co }
+  if (!co.tradeChange) return { state: 'customerYes', co }
+  return { state: co.tradeChange.status === 'sent' ? 'toSign' : 'signed', co }
+}
+
+/** The change requests the office has not answered yet, oldest first: what the office's list reads. */
+export function openChangeRequests(project: GcProject): TradeChangeRequest[] {
+  return (project.changeRequests ?? []).filter((r) => changeRequestState(project, r).state === 'asked')
+}
+
+/** Whether a company can ask for a change on a trade: its statement of work is signed, on a job that is ours. */
+export function portalCanAskChange(project: GcProject, pkg: TradePackage, partnerId: string): boolean {
+  const awarded = pkg.invites.find((i) => i.id === pkg.awardedInviteId)
+  return project.stage !== 'pursuing' && !pkg.selfPerform && pkg.sow?.status === 'signed' && awarded?.partnerId === partnerId
+}
+
+/** The reasons a company picks from, in its words; the same three a change order to the customer carries. */
+export const PORTAL_CHANGE_WHY: { reason: ChangeOrderReason; key: PortalKey }[] = [
+  { reason: 'field', key: 'crWhyField' },
+  { reason: 'owner', key: 'crWhyOwner' },
+  { reason: 'plans', key: 'crWhyPlans' },
+]
+
+export interface PortalChangeRow {
+  request: TradeChangeRequest
+  state: ChangeRequestState
+  /** Why, in the company's words. */
+  why: string
+  /** "You asked $14,820 · sent Sep 30 · +2 working days" */
+  asked: string
+  chip: string
+  tone: 'grey' | 'blue' | 'amber' | 'green' | 'red'
+  /** Where it stands, in the company's words. */
+  words: string
+}
+
+const CHANGE_CHIP: Record<ChangeRequestState, { key: PortalKey; tone: PortalChangeRow['tone'] }> = {
+  asked: { key: 'crChipAsked', tone: 'grey' },
+  drafting: { key: 'crChipDrafting', tone: 'blue' },
+  withCustomer: { key: 'crChipWithCustomer', tone: 'blue' },
+  customerNo: { key: 'crChipCustomerNo', tone: 'red' },
+  customerYes: { key: 'crChipCustomerYes', tone: 'green' },
+  toSign: { key: 'crChipToSign', tone: 'amber' },
+  signed: { key: 'crChipSigned', tone: 'green' },
+  turnedDown: { key: 'crChipTurnedDown', tone: 'red' },
+}
+
+/**
+ * The changes a company asked for on one trade of a job, newest first, in its language. Its part is
+ * what the change order pays it (its cost to us), never our price to the customer.
+ */
+export function portalChangeRequests(project: GcProject, pkg: TradePackage, partnerId: string, lang: PortalLang = 'en'): PortalChangeRow[] {
+  const gc = GC_COMPANY.shortName
+  return (project.changeRequests ?? [])
+    .filter((r) => r.packageId === pkg.id && r.partnerId === partnerId)
+    .map((request) => {
+      const { state, co } = changeRequestState(project, request)
+      const n = co?.number ?? 0
+      const part = co ? money(co.cost) : ''
+      const days = request.days === 1 ? pt(lang, 'crDays1') : request.days > 1 ? pt(lang, 'crDaysN', { n: request.days }) : ''
+      const asked = [pt(lang, 'crAsked', { amount: money(request.amount), date: pDate(lang, request.askedOn) }), days].filter(Boolean).join(' · ')
+      const words =
+        state === 'turnedDown'
+          ? pt(lang, 'crStTurnedDown', { gc, date: pDate(lang, request.turnedDown?.on ?? null), note: request.turnedDown?.note ?? '' })
+          : state === 'asked'
+            ? pt(lang, 'crStAsked', { gc })
+            : state === 'drafting'
+              ? pt(lang, 'crStDrafting', { gc })
+              : state === 'withCustomer'
+                ? pt(lang, 'crStWithCustomer', { gc, n, date: pDate(lang, co?.sentOn ?? null), part })
+                : state === 'customerNo'
+                  ? pt(lang, 'crStCustomerNo', { gc, n, date: pDate(lang, co?.answeredOn ?? null) })
+                  : state === 'customerYes'
+                    ? pt(lang, 'crStCustomerYes', { gc, n, date: pDate(lang, co?.answeredOn ?? null), part })
+                    : state === 'toSign'
+                      ? pt(lang, 'crStToSign', { n, part })
+                      : pt(lang, 'crStSigned', { n, date: pDate(lang, co?.tradeChange?.signedOn ?? null), part })
+      const why = pt(lang, PORTAL_CHANGE_WHY.find((w) => w.reason === request.reason)?.key ?? 'crWhyField')
+      const chip = CHANGE_CHIP[state]
+      return { request, state, why, asked, chip: pt(lang, chip.key), tone: chip.tone, words }
+    })
+    .reverse()
 }

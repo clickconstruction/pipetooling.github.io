@@ -1039,6 +1039,23 @@ export function initialGcState(): GcState {
     startedOn: '2026-07-01',
     customerId: 'cibolo',
     owner: 'Cibolo Creek Partners',
+    // Portal lane: Tri-County hit rock at the north footings and asked for a change in its portal
+    // (owner, 2026-10-04). The office has not answered it yet.
+    changeRequests: [
+      {
+        id: 'fairoaksd-cr-1',
+        packageId: 'fsite',
+        partnerId: 'tricounty',
+        askedOn: '2026-09-30',
+        description: 'Rock at the north footings, about 390 cubic yards to break out and haul off',
+        reason: 'field',
+        amount: 14_820,
+        days: 2,
+        file: 'north-footings-rock.jpg',
+        changeOrderId: null,
+        turnedDown: null,
+      },
+    ],
     // Owner Billing lane: three monthly pay applications to Cibolo, built from what the trades had
     // reported by each 25th. The first two are paid (Cibolo pays in about 38 days); the third
     // waits. The October draft bills the work reported since. billed, paid and retainageHeld

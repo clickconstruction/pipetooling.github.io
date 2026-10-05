@@ -1,10 +1,10 @@
 import { useState, type Dispatch } from 'react'
 import {
+  allFollowPeople,
+  allPeople,
   askPromise,
   daysUntil,
   weekdayDate,
-  followUpCount,
-  followUpPeople,
   followUps,
   partnerReach,
   telHref,
@@ -27,6 +27,7 @@ import { Btn, Card, Chip, Why, input, type Tone } from './gcUi'
 import { GcFollowUpPromises } from './GcFollowUpPromises'
 import { GcDeclineForm } from './GcDeclineForm'
 import { GcFollowUpSheet } from './GcFollowUpSheet'
+import { PeopleRows } from './GcPeoplePill'
 import { PartnerLink } from './GcCompanyFile'
 
 /**
@@ -191,11 +192,29 @@ export function GcFollowUpTab({
   const all = followUps(state)
   // The Follow up sheet (the owner, 2026-10-04, Building lane's GcFollowUpSheet): one person at a time, a draft from me.
   const [sheet, setSheet] = useState<{ partnerId?: string; calling?: boolean } | null>(null)
-  const listCount = followUpCount(followUpPeople(state))
+  // Everyone we are waiting on, each once across every job: the board rows' sum and the dashboard's count ("make them match").
+  const everyone = allPeople(state)
+  const listCount = everyone.count
   const open = (partnerId?: string, calling = false) => setSheet({ ...(partnerId ? { partnerId } : {}), calling })
+  // Who the cards and the papers below do not show: the architect, a customer, the newest plans not opened, a waiver, a late bill.
+  const SHOWN_ABOVE = new Set(['ask', 'promise', 'insurance', 'sow', 'w9'])
+  const more = everyone.people
+    .map((p) => ({ ...p, reasons: p.reasons.filter((r) => !SHOWN_ABOVE.has(r.code ?? '')) }))
+    .filter((p) => p.reasons.length > 0)
+  // A phone puts each person's buttons under their words. Read once: a test page may have no matchMedia.
+  const phone = typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 480px)').matches
   return (
     <div style={{ display: 'grid', gap: '0.9rem' }}>
-      {sheet && <GcFollowUpSheet state={state} dispatch={dispatch} {...(sheet.partnerId ? { startPartnerId: sheet.partnerId } : {})} startCalling={sheet.calling ?? false} onClose={() => setSheet(null)} />}
+      {sheet && (
+        <GcFollowUpSheet
+          state={state}
+          dispatch={dispatch}
+          {...(sheet.partnerId ? { startPartnerId: sheet.partnerId } : {})}
+          startCalling={sheet.calling ?? false}
+          onClose={() => setSheet(null)}
+          list={(s) => allFollowPeople(s, sheet.partnerId)}
+        />
+      )}
       {listCount > 0 && (
         <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <Btn kind="primary" onClick={() => open()}>
@@ -228,6 +247,21 @@ export function GcFollowUpTab({
       })}
       {/* Insurance, papers and every other promise (question 8). */}
       <GcFollowUpPromises state={state} dispatch={dispatch} onFollowUp={(partnerId) => open(partnerId)} />
+      {more.length > 0 && (
+        <section>
+          <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', marginBottom: '0.4rem', flexWrap: 'wrap' }}>
+            <h3 style={{ margin: 0, fontSize: '1rem' }}>More to follow up on ({more.length})</h3>
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>The architect, customers, plans not opened, waivers and late bills, by job.</span>
+          </div>
+          <Card style={{ padding: '0.2rem 0.9rem' }}>
+            <PeopleRows
+              people={more}
+              narrow={phone}
+              onFollowUp={(person, calling) => open(person.partnerId ?? `customer:${person.customerId ?? ''}`, calling)}
+            />
+          </Card>
+        </section>
+      )}
       {all.length === 0 && <Card style={{ color: 'var(--text-muted)' }}>We are not waiting on anyone for a quote.</Card>}
     </div>
   )

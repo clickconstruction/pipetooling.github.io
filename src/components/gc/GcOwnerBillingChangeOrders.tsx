@@ -9,6 +9,8 @@ import {
   contractDaysAdded,
   daysWords,
   money,
+  openChangeRequests,
+  partnerById,
   projectChangeOrders,
   shortDate,
   substantialCompletionOn,
@@ -17,6 +19,7 @@ import {
   type GcAction,
   type GcProject,
   type GcState,
+  type TradeChangeRequest,
 } from '../../lib/gcMode/gcModel'
 
 const PCT_STEPS = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
@@ -33,6 +36,8 @@ export function GcOwnerBillingChangeOrders({ state, project, dispatch }: { state
   const waiting = all.filter((co) => co.status === 'sent').length
   const days = contractDaysAdded(project)
   const finish = substantialCompletionOn(project)
+  // A trade's asks for a change (Portal lane, the owner's pick 2026-10-04): the ones we have not answered.
+  const asks = openChangeRequests(project)
 
   return (
     <Card>
@@ -43,6 +48,7 @@ export function GcOwnerBillingChangeOrders({ state, project, dispatch }: { state
           <Chip tone="amber">{finish ? `+${daysWords(days)}: substantial completion ${shortDate(finish.on)}` : `+${daysWords(days)} to the job`}</Chip>
         )}
         {waiting > 0 && <Chip tone="amber">{`${waiting} waiting on ${project.owner}`}</Chip>}
+        {asks.length > 0 && <Chip tone="red">{`${asks.length} asked by the trades`}</Chip>}
         <span style={{ flex: 1 }} />
         {!adding && <Btn onClick={() => setAdding(true)}>New change order</Btn>}
       </div>
@@ -50,6 +56,14 @@ export function GcOwnerBillingChangeOrders({ state, project, dispatch }: { state
         When the work changes, write it up and send it to {project.owner} to sign. A signed one changes their price and gets
         its own line on the bill.
       </div>
+
+      {asks.length > 0 && (
+        <div style={{ display: 'grid', gap: '0.45rem', marginBottom: '0.6rem' }}>
+          {asks.map((r) => (
+            <ChangeRequestRow key={r.id} state={state} project={project} request={r} dispatch={dispatch} />
+          ))}
+        </div>
+      )}
 
       {adding && <NewChangeOrder project={project} dispatch={dispatch} onDone={() => setAdding(false)} />}
 
@@ -60,6 +74,122 @@ export function GcOwnerBillingChangeOrders({ state, project, dispatch }: { state
         ))}
       </div>
     </Card>
+  )
+}
+
+/**
+ * A trade's ask for a change, waiting on us: make it a change order (its words, its amount as our
+ * cost, its days; the price starts at the cost plus our fee) or turn it down with why.
+ */
+function ChangeRequestRow({ state, project, request: r, dispatch }: { state: GcState; project: GcProject; request: TradeChangeRequest; dispatch: Dispatch<GcAction> }) {
+  const [open, setOpen] = useState<'make' | 'down' | null>(null)
+  const [description, setDescription] = useState(r.description)
+  const [cost, setCost] = useState(String(r.amount))
+  const [price, setPrice] = useState('')
+  const [days, setDays] = useState(String(r.days))
+  const [note, setNote] = useState('')
+  const company = partnerById(state, r.partnerId)?.company ?? 'A trade'
+  const trade = project.packages.find((k) => k.id === r.packageId)?.trade ?? ''
+  const costNum = Math.round(Number(cost) || 0)
+  const daysNum = Math.max(0, Math.round(Number(days) || 0))
+  const suggested = changeOrderPrice(project, costNum)
+  const priceNum = price.trim() === '' ? 0 : Math.round(Number(price) || 0)
+  const ready = description.trim() !== '' && costNum !== 0
+  const label = { display: 'grid', gap: '0.2rem', fontSize: '0.8rem', color: 'var(--text-muted)' } as const
+  const ids = { projectId: project.id, requestId: r.id }
+
+  return (
+    <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.55rem 0.65rem', display: 'grid', gap: '0.3rem', fontSize: '0.875rem' }}>
+      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        <Chip tone="red">asked by the trade</Chip>
+        <strong>{company}</strong>
+        <span style={{ color: 'var(--text-muted)' }}>
+          {trade} · asked {shortDate(r.askedOn)}
+        </span>
+        <span style={{ flex: 1 }} />
+        <strong style={{ fontVariantNumeric: 'tabular-nums' }}>{money(r.amount)}</strong>
+      </div>
+      <div>{r.description}</div>
+      <div style={{ color: 'var(--text-muted)' }}>
+        {CHANGE_ORDER_REASON_WORDS[r.reason]} · {r.days > 0 ? `adds ${daysWords(r.days)} to the job` : 'no days added'}
+        {r.file ? ` · sent ${r.file}` : ''}
+      </div>
+      {open === null && (
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <Btn kind="primary" onClick={() => setOpen('make')}>
+            Make a change order
+          </Btn>
+          <Btn onClick={() => setOpen('down')}>Turn down</Btn>
+        </div>
+      )}
+      {open === 'make' && (
+        <div style={{ display: 'grid', gap: '0.5rem', borderTop: '1px solid var(--border)', paddingTop: '0.5rem' }}>
+          <label style={label}>
+            Description of change
+            <input style={input} value={description} onChange={(e) => setDescription(e.target.value)} />
+          </label>
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            <label style={label}>
+              What it costs us
+              <input style={{ ...input, width: '8rem' }} type="number" value={cost} onChange={(e) => setCost(e.target.value)} />
+            </label>
+            <label style={label}>
+              What it adds to their price
+              <input
+                style={{ ...input, width: '8rem' }}
+                type="number"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                placeholder={costNum === 0 ? '' : String(Math.abs(suggested))}
+              />
+            </label>
+            <label style={label}>
+              Days it adds to the job
+              <input style={{ ...input, width: '6rem' }} type="number" min={0} value={days} onChange={(e) => setDays(e.target.value)} />
+            </label>
+          </div>
+          <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+            Their ask is our cost. The price starts at the cost plus our {project.feePct}% fee. {company} only ever sees the cost.
+          </div>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <Btn
+              kind="primary"
+              disabled={!ready}
+              onClick={() => {
+                dispatch({ type: 'draftChangeOrderFromRequest', ...ids, description, cost: costNum, price: priceNum, days: daysNum })
+                setOpen(null)
+              }}
+            >
+              Save the draft
+            </Btn>
+            <Btn kind="quiet" onClick={() => setOpen(null)}>
+              Cancel
+            </Btn>
+          </div>
+        </div>
+      )}
+      {open === 'down' && (
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end', flexWrap: 'wrap', borderTop: '1px solid var(--border)', paddingTop: '0.5rem' }}>
+          <label style={{ ...label, flex: '1 1 16rem' }}>
+            Why, for {company}
+            <input style={input} value={note} onChange={(e) => setNote(e.target.value)} placeholder="It is in your scope, sheet S-201." />
+          </label>
+          <Btn
+            kind="primary"
+            disabled={note.trim() === ''}
+            onClick={() => {
+              dispatch({ type: 'turnDownChangeRequest', ...ids, note })
+              setOpen(null)
+            }}
+          >
+            Turn it down
+          </Btn>
+          <Btn kind="quiet" onClick={() => setOpen(null)}>
+            Cancel
+          </Btn>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -74,6 +204,14 @@ function ChangeOrderRow({ state, project, co, dispatch }: { state: GcState; proj
         <span style={{ flex: 1 }} />
         <strong style={{ fontVariantNumeric: 'tabular-nums' }}>{`${credit ? '−' : '+'}${money(Math.abs(co.price))}`}</strong>
       </div>
+      {(() => {
+        const asked = (project.changeRequests ?? []).find((r) => r.changeOrderId === co.id)
+        return asked ? (
+          <div style={{ color: 'var(--text-muted)' }}>
+            Asked for by {partnerById(state, asked.partnerId)?.company ?? 'the trade'} on {shortDate(asked.askedOn)}: {money(asked.amount)}.
+          </div>
+        ) : null
+      })()}
       <div style={{ color: 'var(--text-muted)' }}>
         {CHANGE_ORDER_REASON_WORDS[co.reason]} · {changeOrderWho(state, project, co)} · {changeOrderScheduleWords(co)} · costs us{' '}
         {money(co.cost)}

@@ -41,6 +41,10 @@ import {
   portalPlanNews,
   portalPromiseLine,
   portalTodos,
+  changeRequestState,
+  openChangeRequests,
+  portalCanAskChange,
+  portalChangeRequests,
   type GcState,
 } from './gcModel'
 
@@ -1210,5 +1214,95 @@ describe('the day a quote is due', () => {
     const late = gcReducer({ ...state, today: '2026-10-06' }, { type: 'invite', projectId: 'boerne', packageId: 'steel', partnerId: 'ironhorse' })
     const m = portalMessages(late, 'ironhorse').find((x) => x.kind === 'invite' && x.projectId === 'boerne')
     expect(m?.lines).toContain('Your quote is due Thu Oct 8.')
+  })
+})
+
+describe('a trade asks for a change (owner, 2026-10-04)', () => {
+  const fairOaks = (s: GcState) => {
+    const project = s.projects.find((p) => p.id === 'fairoaksd')
+    const pkg = project?.packages.find((k) => k.id === 'fsite')
+    if (!project || !pkg) throw new Error('no Fair Oaks sitework')
+    return { project, pkg }
+  }
+  const rows = (s: GcState, lang: 'en' | 'es' = 'en') => {
+    const { project, pkg } = fairOaks(s)
+    return portalChangeRequests(project, pkg, 'tricounty', lang)
+  }
+
+  it('shows Tri-County the rock it asked about, waiting on us', () => {
+    const [row] = rows(state)
+    expect(row).toMatchObject({ state: 'asked', chip: 'sent', why: 'Something on site no one could see', asked: 'You asked $14,820 · sent Sep 30 · +2 working days', words: 'Click is looking at it.' })
+    expect(openChangeRequests(fairOaks(state).project).map((r) => r.id)).toEqual(['fairoaksd-cr-1'])
+    expect(rows(state, 'es')[0]).toMatchObject({ chip: 'enviado', asked: 'Pidió $14,820 · enviado el 30 sep · +2 días hábiles', words: 'Click lo está revisando.' })
+  })
+
+  it('lets only the company on a signed statement of work ask', () => {
+    const { project, pkg } = fairOaks(state)
+    expect(portalCanAskChange(project, pkg, 'tricounty')).toBe(true)
+    expect(portalCanAskChange(project, pkg, 'hillside')).toBe(false)
+    const helotes = state.projects.find((p) => p.id === 'helotes')
+    const sent = helotes?.packages.find((k) => k.id === 'delec')
+    if (!helotes || !sent) throw new Error('no Helotes electrical')
+    expect(portalCanAskChange(helotes, sent, 'brightline')).toBe(false)
+
+    const askAs = (partnerId: string, description = 'Owner wants two more yard lights', amount = 3_400) =>
+      gcReducer(state, { type: 'tradeAskChange', projectId: 'fairoaksd', packageId: 'fsite', partnerId, description, reason: 'owner', amount, days: 0, file: null })
+    expect(askAs('hillside')).toBe(state)
+    expect(askAs('tricounty', '  ')).toBe(state)
+    expect(askAs('tricounty', 'Two more yard lights', 0)).toBe(state)
+
+    const asked = askAs('tricounty')
+    expect(rows(asked).map((r) => r.request.id)).toEqual(['fairoaksd-cr-2', 'fairoaksd-cr-1'])
+    expect(rows(asked)[0]).toMatchObject({ why: 'The customer asked for more', asked: 'You asked $3,400 · sent Oct 2' })
+    expect(asked.log[0]).toMatchObject({ who: 'trade', text: 'Tri-County Site asked for a change on Fair Oaks Shops, Building D: Owner wants two more yard lights, $3,400.' })
+  })
+
+  it('tells the company why we turned it down, on the page and by email', () => {
+    const noNote = gcReducer(state, { type: 'turnDownChangeRequest', projectId: 'fairoaksd', requestId: 'fairoaksd-cr-1', note: ' ' })
+    expect(noNote).toBe(state)
+    const down = gcReducer(state, { type: 'turnDownChangeRequest', projectId: 'fairoaksd', requestId: 'fairoaksd-cr-1', note: 'The soils report showed rock there, so it was in your quote.' })
+    expect(rows(down)[0]).toMatchObject({ state: 'turnedDown', chip: 'turned down', words: 'Click turned it down on Oct 2: The soils report showed rock there, so it was in your quote.' })
+    expect(openChangeRequests(fairOaks(down).project)).toEqual([])
+    const m = portalMessages(down, 'tricounty').find((x) => x.key === 'fairoaksd-cr-1:down')
+    expect(m?.subject).toBe('About the change you asked for on Fair Oaks Shops, Building D')
+    expect(m?.lines.slice(1)).toEqual([
+      'You asked for a change to your Sitework work: Rock at the north footings, about 390 cubic yards to break out and haul off, $14,820.',
+      'We are not making it a change order: The soils report showed rock there, so it was in your quote.',
+      'Open your portal to see where it stands.',
+    ])
+    // Once answered, it cannot be answered again.
+    expect(gcReducer(down, { type: 'draftChangeOrderFromRequest', projectId: 'fairoaksd', requestId: 'fairoaksd-cr-1', description: 'Rock', cost: 14_820, price: 0, days: 2 })).toBe(down)
+  })
+
+  it('follows it through the change order to the customer and back to their signature, showing their part only', () => {
+    const drafted = gcReducer(state, { type: 'draftChangeOrderFromRequest', projectId: 'fairoaksd', requestId: 'fairoaksd-cr-1', description: 'Break out and haul rock at the north footings', cost: 14_000, price: 0, days: 2 })
+    const { project } = fairOaks(drafted)
+    const co = project.changeOrders?.[0]
+    expect(co).toMatchObject({ number: 1, packageId: 'fsite', reason: 'field', cost: 14_000, days: 2, status: 'draft' })
+    expect(changeRequestState(project, project.changeRequests?.[0] ?? (null as never)).co?.id).toBe(co?.id)
+    expect(rows(drafted)[0]).toMatchObject({ state: 'drafting', chip: 'being written up' })
+
+    const sent = gcReducer(drafted, { type: 'sendChangeOrder', projectId: 'fairoaksd', changeOrderId: co?.id ?? '' })
+    expect(rows(sent)[0]?.words).toBe('Click sent it to the customer as change order 1 on Oct 2. Your part: $14,000.')
+    const sentMail = portalMessages(sent, 'tricounty').find((x) => x.key === 'fairoaksd-cr-1:sent')
+    expect(sentMail?.subject).toBe('Your change on Fair Oaks Shops, Building D went to the customer')
+    expect(sentMail?.lines).toContain('We sent it to the customer as change order 1. Your part: $14,000.')
+    // Our price to the customer, with our fee, never reaches the trade.
+    const price = `$${(co?.price ?? 0).toLocaleString('en-US')}`
+    expect(co?.price).toBeGreaterThan(14_000)
+    expect(JSON.stringify(portalMessages(sent, 'tricounty'))).not.toContain(price)
+    expect(JSON.stringify(rows(sent))).not.toContain(price)
+
+    const no = gcReducer(sent, { type: 'ownerDeclineChangeOrder', projectId: 'fairoaksd', changeOrderId: co?.id ?? '' })
+    expect(rows(no)[0]).toMatchObject({ state: 'customerNo', words: 'The customer said no to change order 1 on Oct 2. Click will call you about what comes next.' })
+    expect(portalMessages(no, 'tricounty').find((x) => x.key === 'fairoaksd-cr-1:no')?.subject).toBe('The customer said no to change order 1')
+
+    const yes = gcReducer(sent, { type: 'ownerSignChangeOrder', projectId: 'fairoaksd', changeOrderId: co?.id ?? '' })
+    expect(rows(yes)[0]).toMatchObject({ state: 'customerYes', chip: 'customer said yes' })
+    const toSign = gcReducer(yes, { type: 'sendTradeChange', projectId: 'fairoaksd', changeOrderId: co?.id ?? '' })
+    expect(rows(toSign)[0]).toMatchObject({ state: 'toSign', words: 'Change order 1 is ready for you to sign, above. Your part: $14,000.' })
+    const signed = gcReducer(toSign, { type: 'tradeSignChange', projectId: 'fairoaksd', changeOrderId: co?.id ?? '' })
+    expect(rows(signed)[0]).toMatchObject({ state: 'signed', words: 'You signed change order 1 on Oct 2. It is a line of your statement of work: $14,000.' })
+    expect(rows(signed, 'es')[0]?.words).toBe('Firmó la orden de cambio 1 el 2 oct. Es una partida de su orden de trabajo: $14,000.')
   })
 })

@@ -9075,6 +9075,49 @@ exports[`GC mode golden walk > step 196: Remind Hollis to sign change order 1 1`
 }
 `;
 
+exports[`GC mode golden walk > step 197: Send Boerne's contract to Cibolo to sign 1`] = `
+{
+  "changed": {
+    "lastLog.id": 192,
+    "lastLog.text": "Sent our contract for Boerne Retail Shell to Cibolo Creek Partners to sign in their portal by Fri Oct 9.",
+    "projects.boerne.stageProgress.groups[0].items[0].detail": "sent Oct 2, waiting on their signature",
+    "projects.boerne.startChecklist.missing[0]": "Our contract with Cibolo Creek Partners is signed: sent Oct 2, waiting on their signature.",
+    "projects.boerne.startChecklist.owner[0].detail": "sent Oct 2, waiting on their signature",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 198: Cibolo signs Boerne's contract in their portal 1`] = `
+{
+  "changed": {
+    "lastLog.id": 193,
+    "lastLog.text": "Cibolo Creek Partners signed our contract for Boerne Retail Shell in their portal.",
+    "projects.boerne.stageProgress.center": "6/40",
+    "projects.boerne.stageProgress.groups[0].items[0].detail": "signed Oct 2",
+    "projects.boerne.stageProgress.groups[0].items[0].done": true,
+    "projects.boerne.stageProgress.headline": "6 of 40 steps done before work can start.",
+    "projects.boerne.stageProgress.share": 0.15,
+    "projects.boerne.startChecklist.done": 6,
+    "projects.boerne.startChecklist.missing[0]": "The permit is in hand: not yet.",
+    "projects.boerne.startChecklist.missing[1]": "A start date is set: no date yet.",
+    "projects.boerne.startChecklist.missing[2]": "The schedule is drawn: not drawn yet.",
+    "projects.boerne.startChecklist.missing[3]": "Sitework: Send the statement of work.",
+    "projects.boerne.startChecklist.missing[4]": "Concrete: Pick a company and award the trade.",
+    "projects.boerne.startChecklist.missing[5]": "Structural steel: Pick a company and award the trade.",
+    "projects.boerne.startChecklist.missing[6]": "Roofing: Pick a company and award the trade.",
+    "projects.boerne.startChecklist.missing[7]": "HVAC: Pick a company and award the trade.",
+    "projects.boerne.startChecklist.missing[8]": "Electrical: Pick a company and award the trade.",
+    "projects.boerne.startChecklist.missing[9]": "Fire sprinkler: Pick a company and award the trade.",
+    "projects.boerne.startChecklist.owner[0].detail": "signed Oct 2",
+    "projects.boerne.startChecklist.owner[0].done": true,
+  },
+  "removed": [
+    "projects.boerne.startChecklist.missing[10]",
+  ],
+}
+`;
+
 exports[`GC mode golden walk > the whole state at the end 1`] = `
 {
   "customerSends": [
@@ -9085,7 +9128,18 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "id": "csend-1",
       "note": "",
       "on": "2026-10-02",
+      "paper": "changeOrder",
       "projectId": "stoneoak",
+    },
+    {
+      "by": "2026-10-09",
+      "customerId": "cibolo",
+      "first": true,
+      "id": "csend-2",
+      "note": "",
+      "on": "2026-10-02",
+      "paper": "contract",
+      "projectId": "boerne",
     },
   ],
   "customers": [
@@ -9095,6 +9149,11 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "contact": "Elena Marchetti",
       "contactRole": "Development manager",
       "contacts": [
+        {
+          "by": "You",
+          "note": "Sent our contract for Boerne Retail Shell to sign, by Fri Oct 9.",
+          "on": "2026-10-02",
+        },
         {
           "by": "You",
           "note": "Asked when the pad building bids are due.",
@@ -9291,6 +9350,16 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
+      "id": 193,
+      "text": "Cibolo Creek Partners signed our contract for Boerne Retail Shell in their portal.",
+      "who": "office",
+    },
+    {
+      "id": 192,
+      "text": "Sent our contract for Boerne Retail Shell to Cibolo Creek Partners to sign in their portal by Fri Oct 9.",
+      "who": "office",
+    },
+    {
       "id": 191,
       "text": "Reminded Hollis Family Pharmacy to sign change order 1 by Fri Oct 9.",
       "who": "office",
@@ -9428,16 +9497,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
     {
       "id": 164,
       "text": "Pecan Valley Electric promised their submittals on Fair Oaks Shops, Building D by Tue Oct 6.",
-      "who": "office",
-    },
-    {
-      "id": 163,
-      "text": "Cool Breeze Mechanical sent its schedule of values for HVAC on Fair Oaks Shops, Building D: 3 lines, $158,000.",
-      "who": "trade",
-    },
-    {
-      "id": 162,
-      "text": "Cibolo Creek Partners paid interest bill 1: $285.",
       "who": "office",
     },
   ],
@@ -9975,7 +10034,21 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "ourBidSentOn": "2026-10-02",
       "owner": "Cibolo Creek Partners",
       "ownerBilling": null,
-      "ownerContractSignedOn": null,
+      "ownerContractSentOn": "2026-10-02",
+      "ownerContractSignedOn": "2026-10-02",
+      "ownerContractWorth": {
+        "conc": 219800,
+        "contingency": 29982,
+        "elec": 180000,
+        "fee": 82350.56,
+        "fire": 0,
+        "gc": 60000,
+        "hvac": 0,
+        "plumb": 86400,
+        "roof": 112300,
+        "site": 184900,
+        "steel": 156000,
+      },
       "packages": [
         {
           "awardedInviteId": "site-lonestar",
@@ -12553,6 +12626,21 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "architect": "Marsh & Vale Architects",
       "architectId": "marshvale",
       "bidDue": null,
+      "changeRequests": [
+        {
+          "amount": 14820,
+          "askedOn": "2026-09-30",
+          "changeOrderId": null,
+          "days": 2,
+          "description": "Rock at the north footings, about 390 cubic yards to break out and haul off",
+          "file": "north-footings-rock.jpg",
+          "id": "fairoaksd-cr-1",
+          "packageId": "fsite",
+          "partnerId": "tricounty",
+          "reason": "field",
+          "turnedDown": null,
+        },
+      ],
       "closedOn": "2026-10-02",
       "contingencyPct": 3,
       "customerId": "cibolo",

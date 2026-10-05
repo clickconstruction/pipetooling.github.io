@@ -120,7 +120,7 @@ column headers are in one block at the end of `gcBuildingWords.ts`, for the nati
 
 ## For a native speaker to read
 
-Every Spanish string the trade's portal shows, 785 in all, drawn from the code on 2026-10-04.
+Every Spanish string the trade's portal shows, 827 in all, drawn from the code on 2026-10-04.
 They're grouped by screen, English on the left. Please mark anything that reads wrong, stiff or
 unclear, and write the better words beside it. The Portal lane makes the changes and passes the
 other lanes theirs.
@@ -773,6 +773,51 @@ they were written in. The portal does not translate them.
 | yesterday | ayer |
 | {n} days ago | hace {n} días |
 
+#### A trade asks for a change (owner, 2026-10-04)
+
+| English | Español |
+|---|---|
+| {trade} · changes to your work | {trade} · cambios a su trabajo |
+| Found something on site no one could see? Did the customer ask you for more? Ask {gc} for a change before you do the work. | ¿Encontró algo en la obra que nadie podía ver? ¿El cliente le pidió más? Pídale a {gc} un cambio antes de hacer el trabajo. |
+| Ask for a change | Pedir un cambio |
+| What changed | Qué cambió |
+| What you found or were asked for, and where | Qué encontró o qué le pidieron, y dónde |
+| Why | Por qué |
+| Something on site no one could see | Algo en la obra que nadie podía ver |
+| The customer asked for more | El cliente pidió más |
+| The plans changed | Cambiaron los planos |
+| What you ask for it | Cuánto pide |
+| Working days it adds | Días hábiles que agrega |
+| A photo or ticket, if you have one | Una foto o boleta, si la tiene |
+| Send to {gc} | Enviar a {gc} |
+| You asked {amount} · sent {date} | Pidió {amount} · enviado el {date} |
+| +1 working day | +1 día hábil |
+| +{n} working days | +{n} días hábiles |
+| sent | enviado |
+| being written up | en preparación |
+| with the customer | con el cliente |
+| customer said no | el cliente dijo que no |
+| customer said yes | el cliente dijo que sí |
+| ready to sign | lista para firmar |
+| signed | firmado |
+| turned down | rechazado |
+| {gc} is looking at it. | {gc} lo está revisando. |
+| {gc} is writing it up as a change order for the customer. | {gc} lo está preparando como orden de cambio para el cliente. |
+| {gc} sent it to the customer as change order {n} on {date}. Your part: {part}. | {gc} lo envió al cliente como orden de cambio {n} el {date}. Su parte: {part}. |
+| The customer said no to change order {n} on {date}. {gc} will call you about what comes next. | El cliente rechazó la orden de cambio {n} el {date}. {gc} le llamará para ver qué sigue. |
+| The customer signed change order {n} on {date}. {gc} sends you the change to sign next. Your part: {part}. | El cliente firmó la orden de cambio {n} el {date}. {gc} le enviará el cambio para firmar. Su parte: {part}. |
+| Change order {n} is ready for you to sign, above. Your part: {part}. | La orden de cambio {n} está lista para que la firme, arriba. Su parte: {part}. |
+| You signed change order {n} on {date}. It is a line of your statement of work: {part}. | Firmó la orden de cambio {n} el {date}. Es una partida de su orden de trabajo: {part}. |
+| {gc} turned it down on {date}: {note} | {gc} lo rechazó el {date}: {note} |
+| About the change you asked for on {project} | Sobre el cambio que pidió en {project} |
+| You asked for a change to your {trade} work: {what}, {amount}. | Pidió un cambio en su trabajo de {trade}: {what}, {amount}. |
+| We are not making it a change order: {note} | No vamos a hacer una orden de cambio con esto: {note} |
+| Your change on {project} went to the customer | Su cambio en {project} se envió al cliente |
+| We sent it to the customer as change order {n}. Your part: {part}. | Lo enviamos al cliente como orden de cambio {n}. Su parte: {part}. |
+| The customer said no to change order {n} | El cliente rechazó la orden de cambio {n} |
+| The customer said no to change order {n} on {project}. We will call you about what comes next. | El cliente rechazó la orden de cambio {n} en {project}. Le llamaremos para ver qué sigue. |
+| Open your portal to see where it stands. | Abra su portal para ver cómo va. |
+
 #### The usual exclusions, by name
 
 | English | Español |
@@ -1127,6 +1172,8 @@ they were written in. The portal does not translate them.
 | Your lien waiver for draw {draws} on {project} | Su renuncia de gravamen del pago {draws} de {project} |
 | We paid draw {draws} on {project}. Please sign the unconditional lien waiver for it by {date}. | Pagamos el pago {draws} de {project}. Por favor firme la renuncia de gravamen incondicional a más tardar el {date}. |
 | Open your portal to sign it. | Abra su portal para firmarla. |
+| Please sign it by {date}. | Por favor fírmelo a más tardar el {date}. |
+| Please sign it by {date}. | Por favor fírmela a más tardar el {date}. |
 
 ### Follow up drafts to a company (the Building lane's, `gcFollowUpSheet.ts`, drawn for the made-up companies)
 

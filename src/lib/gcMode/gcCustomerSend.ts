@@ -1,16 +1,23 @@
 /**
- * GC mode — design spike: remind a customer from its window (the owner, 2026-10-04, after send a
- * paper): a change order waiting on their signature gets **Remind them**, with the day to sign by,
- * a line of your own and the email as they will get it. Payment reminders are Owner Billing's to
- * shape; our contract has no send yet (how the customer signs it is the owner's call).
+ * GC mode — design spike: send a customer a paper from its window (the owner, 2026-10-04, after
+ * send a paper). Our contract goes to them to sign in their portal ("they sign it in their
+ * portal"), then reminders; a change order waiting on their signature gets **Remind them**. Each
+ * send has the day to sign by, a line of your own and the email as they will get it. Payment
+ * reminders are Owner Billing's (gcOwnerBillingRemind.ts).
  */
 import type { ChangeOrder, CustomerSend, GcCustomer, GcProject, GcState } from './gcTypes'
 import { daysUntil, money, shortDate, weekdayDate } from './gcWords'
+import { priceToOwner } from './gcCustomers'
 
 export interface CustomerStep {
   docKey: string
+  paper: 'contract' | 'changeOrder'
   projectId: string
-  changeOrderId: string
+  changeOrderId?: string
+  /** first: our contract has not gone to them yet. reminder: it went, or the change order did. */
+  mode: 'first' | 'reminder'
+  /** The row's button: "Send to sign" or "Remind them". */
+  verb: string
   title: string
   history: string
   sendLabel: string
@@ -22,6 +29,13 @@ function ago(iso: string, today: string): string {
   return days <= 0 ? 'today' : days === 1 ? 'yesterday' : `${days} days ago`
 }
 
+/** "Dr. Priya Raman" is greeted "Dr. Raman", not "Dr.": a title keeps the last name. */
+function greetingName(customer: GcCustomer): string {
+  const words = (customer.contact || customer.name).split(/\s+/)
+  const titled = /^(Dr|Mr|Mrs|Ms)\.?$/i.test(words[0] ?? '')
+  return titled ? `${words[0]} ${words[words.length - 1]}` : (words[0] ?? customer.name)
+}
+
 /** Change orders sent to this customer and not answered, on the jobs they are the customer on. */
 export function changeOrdersWaitingOn(state: GcState, customer: GcCustomer): { project: GcProject; co: ChangeOrder }[] {
   return state.projects
@@ -29,23 +43,63 @@ export function changeOrdersWaitingOn(state: GcState, customer: GcCustomer): { p
     .flatMap((project) => (project.changeOrders ?? []).filter((co) => co.status === 'sent').map((co) => ({ project, co })))
 }
 
-export function customerSendsFor(state: GcState, customerId: string, changeOrderId: string): CustomerSend[] {
-  return (state.customerSends ?? []).filter((s) => s.customerId === customerId && s.changeOrderId === changeOrderId)
+/** Every send of one paper to one customer, oldest first: a change order by its id, our contract by its job. */
+export function customerSendsFor(state: GcState, customerId: string, paper: 'contract' | 'changeOrder', projectId: string, changeOrderId?: string): CustomerSend[] {
+  return (state.customerSends ?? []).filter(
+    (s) => s.customerId === customerId && s.paper === paper && s.projectId === projectId && (paper === 'contract' || s.changeOrderId === changeOrderId),
+  )
 }
 
-/** The next step on a customer's paper, by its Documents key (`co-<id>`). Null: nothing to send. */
+/** Our contract is out to sign on this job: won, sent, not signed. */
+export function contractWaitingOn(project: GcProject): boolean {
+  return project.stage !== 'pursuing' && !project.lostOn && !project.ownerContractSignedOn && Boolean(project.ownerContractSentOn)
+}
+
+/**
+ * The next step on a customer's paper, by its Documents key: `contract-<project>` (send our contract
+ * to sign, then remind) or `co-<change order>` (remind). Null: nothing to send.
+ */
 export function customerStep(state: GcState, customer: GcCustomer, docKey: string): CustomerStep | null {
+  if (docKey.startsWith('contract-')) {
+    const project = state.projects.find((p) => `contract-${p.id}` === docKey)
+    if (!project || project.customerId !== customer.id || project.stage === 'pursuing' || project.lostOn || project.ownerContractSignedOn) return null
+    const base = { docKey, paper: 'contract' as const, projectId: project.id, dayWord: 'Sign by' }
+    if (!project.ownerContractSentOn) {
+      return {
+        ...base,
+        mode: 'first',
+        verb: 'Send to sign',
+        title: 'Send our contract to sign in their portal',
+        history: customer.portalOn ? 'Not sent yet. They read it and sign it in their portal.' : 'Not sent yet. Sending it turns their portal on: they sign it there.',
+        sendLabel: 'Send to sign',
+      }
+    }
+    const reminders = customerSendsFor(state, customer.id, 'contract', project.id).filter((s) => !s.first)
+    const last = reminders[reminders.length - 1]
+    const sent = `Sent ${shortDate(project.ownerContractSentOn)}, ${ago(project.ownerContractSentOn, state.today)}.`
+    return {
+      ...base,
+      mode: 'reminder',
+      verb: 'Remind them',
+      title: 'Remind them to sign our contract',
+      history: last ? `${sent} Reminded ${reminders.length === 1 ? 'once' : `${reminders.length} times`}, last ${shortDate(last.on)}.` : `${sent} This is the first reminder.`,
+      sendLabel: 'Send the reminder',
+    }
+  }
   if (!docKey.startsWith('co-')) return null
   const found = changeOrdersWaitingOn(state, customer).find(({ co }) => `co-${co.id}` === docKey)
   if (!found) return null
   const { project, co } = found
-  const sends = customerSendsFor(state, customer.id, co.id)
+  const sends = customerSendsFor(state, customer.id, 'changeOrder', project.id, co.id)
   const last = sends[sends.length - 1]
   const sent = co.sentOn ? `Sent ${shortDate(co.sentOn)}, ${ago(co.sentOn, state.today)}.` : 'Sent.'
   return {
     docKey,
+    paper: 'changeOrder',
     projectId: project.id,
     changeOrderId: co.id,
+    mode: 'reminder',
+    verb: 'Remind them',
     title: `Remind them to sign change order ${co.number}`,
     history: last ? `${sent} Reminded ${sends.length === 1 ? 'once' : `${sends.length} times`}, last ${shortDate(last.on)}.` : `${sent} This is the first reminder.`,
     sendLabel: 'Send the reminder',
@@ -53,16 +107,12 @@ export function customerStep(state: GcState, customer: GcCustomer, docKey: strin
   }
 }
 
-/** The reminder as the customer will read it. */
+/** A change order's reminder as the customer will read it. */
 export function customerReminderEmail(customer: GcCustomer, project: GcProject, co: ChangeOrder, by: string, note: string): { subject: string; lines: string[] } {
-  // "Dr. Priya Raman" is greeted "Dr. Raman", not "Dr.": a title keeps the last name.
-  const words = (customer.contact || customer.name).split(/\s+/)
-  const titled = /^(Dr|Mr|Mrs|Ms)\.?$/i.test(words[0] ?? '')
-  const first = titled ? `${words[0]} ${words[words.length - 1]}` : (words[0] ?? customer.name)
   return {
     subject: `Reminder: change order ${co.number} for ${project.name}`,
     lines: [
-      `Hello ${first},`,
+      `Hello ${greetingName(customer)},`,
       `Change order ${co.number} for ${project.name} is waiting on your signature: ${co.description}, ${money(co.price)}.`,
       `Please sign it by ${weekdayDate(by)}.`,
       ...(note.trim() ? [note.trim()] : []),
@@ -71,16 +121,34 @@ export function customerReminderEmail(customer: GcCustomer, project: GcProject, 
   }
 }
 
-/** The Documents row's line once a reminder went: "Reminded today · sign by Fri Oct 9." */
-export function customerSentWords(state: GcState, customerId: string, changeOrderId: string): string | null {
-  const sends = customerSendsFor(state, customerId, changeOrderId)
-  const last = sends[sends.length - 1]
-  return last ? `Reminded ${ago(last.on, state.today)} · sign by ${weekdayDate(last.by)}.` : null
+/** Our contract's email, the first or a reminder. They always sign in their portal: the first send turns it on. */
+export function contractEmail(customer: GcCustomer, project: GcProject, first: boolean, by: string, note: string): { subject: string; lines: string[] } {
+  const price = money(priceToOwner(project).price)
+  return {
+    subject: first ? `Your contract for ${project.name}` : `Reminder: your contract for ${project.name}`,
+    lines: [
+      `Hello ${greetingName(customer)},`,
+      first
+        ? `Thank you for choosing us for ${project.name}. Here is our contract for it: ${price}.`
+        : `Our contract for ${project.name} is still waiting on your signature: ${price}.`,
+      `Please sign it by ${weekdayDate(by)}.`,
+      ...(note.trim() ? [note.trim()] : []),
+      'Open your portal to read it and sign it. Your bills, change orders and papers for the job will be there too.',
+    ],
+  }
 }
 
-/** A reminder's day that passed with the change order still not signed: the customer reads late. */
-export function customerReminderLate(state: GcState, customerId: string, changeOrderId: string): boolean {
-  const sends = customerSendsFor(state, customerId, changeOrderId)
+/** The Documents row's line once something went: "Reminded today · sign by Fri Oct 9." */
+export function customerSentWords(state: GcState, customerId: string, paper: 'contract' | 'changeOrder', projectId: string, changeOrderId?: string): string | null {
+  const sends = customerSendsFor(state, customerId, paper, projectId, changeOrderId)
+  const last = sends[sends.length - 1]
+  if (!last) return null
+  return `${last.first ? 'Sent' : 'Reminded'} ${ago(last.on, state.today)} · sign by ${weekdayDate(last.by)}.`
+}
+
+/** The day we asked them to sign by passed, still unsigned: the customer reads late. */
+export function customerReminderLate(state: GcState, customerId: string, paper: 'contract' | 'changeOrder', projectId: string, changeOrderId?: string): boolean {
+  const sends = customerSendsFor(state, customerId, paper, projectId, changeOrderId)
   const last = sends[sends.length - 1]
   return Boolean(last && daysUntil(last.by, state.today) < 0)
 }

@@ -1,11 +1,25 @@
 import { useState, type Dispatch } from 'react'
-import { customerPortalLink, customerReminderEmail, paperDayChoices, type CustomerStep, type GcAction, type GcCustomer, type GcState } from '../../lib/gcMode/gcModel'
+import {
+  PAY_REMINDER_DAYS,
+  contractEmail,
+  customerPortalLink,
+  customerReminderEmail,
+  paperDayChoices,
+  payReminderEmail,
+  weekdayDate,
+  type CustomerStep,
+  type GcAction,
+  type GcCustomer,
+  type GcState,
+  type PayReminderStep,
+} from '../../lib/gcMode/gcModel'
 import { SendView } from './GcPaperSend'
 
 /**
- * GC mode design spike: remind a customer to sign a change order, from its window's Documents
- * (the owner, 2026-10-04). The same send as a trade's paper: who it goes to, the day, a line of
- * your own, and the email as they will get it.
+ * GC mode design spike: send a customer a paper from its window's Documents (the owner,
+ * 2026-10-04): our contract to sign in their portal, or a reminder on a change order. The same
+ * send as a trade's paper: who it goes to, the day, a line of your own, and the email as they
+ * will get it.
  */
 export function GcCustomerSend({
   state,
@@ -26,26 +40,97 @@ export function GcCustomerSend({
   const [by, setBy] = useState(days[1]?.on ?? state.today)
   const [note, setNote] = useState('')
   const project = state.projects.find((p) => p.id === step.projectId)
-  const co = project?.changeOrders?.find((c) => c.id === step.changeOrderId)
-  if (!project || !co) return null
+  if (!project) return null
+  const co = step.changeOrderId ? project.changeOrders?.find((c) => c.id === step.changeOrderId) : undefined
+  if (step.paper === 'changeOrder' && !co) return null
+  // Our contract: they sign in their portal, so it goes with their portal link (the first send turns it on).
+  const contract = step.paper === 'contract'
+  const portal = contract || customer.portalOn
   return (
     <SendView
       title={step.title}
       history={step.history}
-      to={`${customer.contact || customer.name}, by email${customer.portalOn ? ', with their portal link' : ''}`}
+      to={`${customer.contact || customer.name}, by email${portal ? ', with their portal link' : ''}`}
       dayWord={step.dayWord}
       today={state.today}
       by={by}
       onBy={setBy}
       note={note}
       onNote={setNote}
-      email={customerReminderEmail(customer, project, co, by, note)}
+      email={contract || !co ? contractEmail(customer, project, step.mode === 'first', by, note) : customerReminderEmail(customer, project, co, by, note)}
+      link={portal ? customerPortalLink(customer.id) : null}
+      recipient={customer.name}
+      attached={
+        contract
+          ? { name: `Our contract · ${project.name}`, how: 'They read it and sign it in their portal.' }
+          : { name: `Change order ${co?.number ?? ''}`, how: customer.portalOn ? 'They read it and sign it in their portal.' : 'With the email, to sign and send back.' }
+      }
+      sendLabel={step.sendLabel}
+      dayNote="The job's Who to call shows them late after this day. Signing it clears it."
+      onSend={() => {
+        if (contract) dispatch({ type: 'sendOwnerContract', projectId: project.id, by, note })
+        else if (co) dispatch({ type: 'remindCustomer', customerId: customer.id, projectId: project.id, changeOrderId: co.id, by, note })
+        onDone()
+      }}
+      onCancel={onCancel}
+    />
+  )
+}
+
+/**
+ * A late bill's reminder (Owner Billing's rules and words, gcOwnerBillingRemind.ts; the owner,
+ * 2026-10-04): the same send, with a pay-by day that starts five days out and is our ask, not
+ * their promise.
+ */
+export function GcCustomerPayReminder({
+  state,
+  customer,
+  step,
+  dispatch,
+  onDone,
+  onCancel,
+}: {
+  state: GcState
+  customer: GcCustomer
+  step: PayReminderStep
+  dispatch: Dispatch<GcAction>
+  onDone: () => void
+  onCancel: () => void
+}) {
+  const plus = (n: number) => {
+    const d = new Date(`${state.today}T12:00:00`)
+    d.setDate(d.getDate() + n)
+    return d.toISOString().slice(0, 10)
+  }
+  const choices = [
+    { on: plus(3), label: weekdayDate(plus(3)) },
+    { on: step.by, label: `${weekdayDate(step.by)} · ${PAY_REMINDER_DAYS} days` },
+    { on: plus(10), label: weekdayDate(plus(10)) },
+  ]
+  const [by, setBy] = useState(step.by)
+  const [note, setNote] = useState('')
+  const project = state.projects.find((p) => p.id === step.projectId)
+  if (!project) return null
+  return (
+    <SendView
+      title={step.title}
+      history={step.history}
+      to={`${customer.contact || customer.name}, by email${customer.portalOn ? ', with their portal link' : ''}`}
+      dayWord={step.dayWord}
+      dayNote={step.dayNote}
+      choices={choices}
+      today={state.today}
+      by={by}
+      onBy={setBy}
+      note={note}
+      onNote={setNote}
+      email={payReminderEmail(state, customer, project, step.number, by, note)}
       link={customer.portalOn ? customerPortalLink(customer.id) : null}
       recipient={customer.name}
-      attached={{ name: `Change order ${co.number}`, how: customer.portalOn ? 'They read it and sign it in their portal.' : 'With the email, to sign and send back.' }}
+      attached={{ name: `Pay application ${step.number} · ${project.name}`, how: customer.portalOn ? 'They pay it in their portal, by card or bank transfer.' : 'With the email.' }}
       sendLabel={step.sendLabel}
       onSend={() => {
-        dispatch({ type: 'remindCustomer', customerId: customer.id, projectId: project.id, changeOrderId: co.id, by, note })
+        dispatch({ type: 'remindCustomerToPay', projectId: project.id, number: step.number, by, note })
         onDone()
       }}
       onCancel={onCancel}

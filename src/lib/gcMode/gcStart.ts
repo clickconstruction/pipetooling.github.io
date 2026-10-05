@@ -48,7 +48,12 @@ export function startChecklist(state: GcState, project: GcProject): StartCheckli
       key: 'ownerContract',
       label: `Our contract with ${project.owner} is signed`,
       done: project.ownerContractSignedOn !== null,
-      detail: project.ownerContractSignedOn ? `signed ${shortDate(project.ownerContractSignedOn)}` : 'not signed yet',
+      // They sign it in their portal (the owner, 2026-10-04): sent and waiting reads as such.
+      detail: project.ownerContractSignedOn
+        ? `signed ${shortDate(project.ownerContractSignedOn)}`
+        : project.ownerContractSentOn
+          ? `sent ${shortDate(project.ownerContractSentOn)}, waiting on their signature`
+          : 'not signed yet',
     },
     {
       key: 'permit',

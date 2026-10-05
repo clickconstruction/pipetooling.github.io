@@ -11,8 +11,10 @@ import { declineReasonWords } from './gcDecline'
 import { tradePromisesOf, tradePromiseWords } from './gcPromises'
 import { priceToOwner } from './gcCustomers'
 import { retainageHeldNow, tradeChangesFor } from './gcBuilding'
+import { buildingActivity } from './gcBuildingActivity'
 import { paperSendActivity, paperSentWords } from './gcPaperSend'
 import { customerSentWords } from './gcCustomerSend'
+import { latePayApps, payReminderSentWords } from './gcOwnerBillingRemind'
 
 export type DocStatus = 'ok' | 'soon' | 'missing' | 'info'
 
@@ -187,7 +189,8 @@ export function partnerWork(state: GcState, partner: Partner): PartnerWork {
   return { jobs, underContract: jobs.reduce((t, j) => t + j.price, 0), paid, approved, held }
 }
 
-export type ActivityKind = 'note' | 'quote' | 'paper' | 'money'
+/** `work`: what a trade did on the job (Building lane, 2026-10-04): submittals, punch items, inspections. */
+export type ActivityKind = 'note' | 'quote' | 'paper' | 'money' | 'work'
 
 export interface CompanyEvent {
   /** For pointing at one line: `promise:<id>` for a promise, `ask:<invite id>` for a quote ask's promised day. */
@@ -256,12 +259,19 @@ export function partnerActivity(state: GcState, partner: Partner): CompanyEvent[
           out.push({ on: co.tradeChange.sentOn, kind: 'paper', text: `Change order ${co.number} sent to them to sign: ${co.description}`, ...base })
           if (co.tradeChange.signedOn) out.push({ on: co.tradeChange.signedOn, kind: 'paper', text: `Signed change order ${co.number}.`, ...base })
         }
+        // Changes they asked us for in their portal, and our no with its reason (Portal lane, owner 2026-10-04).
+        for (const r of (project.changeRequests ?? []).filter((x) => x.packageId === pkg.id && x.partnerId === partner.id)) {
+          out.push({ on: r.askedOn, kind: 'money', text: `Asked for a change in their portal: ${r.description}, ${money(r.amount)}.`, ...base })
+          if (r.turnedDown) out.push({ on: r.turnedDown.on, kind: 'money', text: `Their change turned down: ${r.turnedDown.note}`, ...base })
+        }
         if (sow.signedOn) out.push({ on: sow.signedOn, kind: 'paper', text: `Signed the statement of work, ${money(sow.price)}.`, ...base })
         for (const d of sow.draws) {
           out.push({ on: d.requestedOn, kind: 'money', text: `Asked for draw ${d.number}, ${money(d.gross)}.`, ...base })
           if (d.approvedOn) out.push({ on: d.approvedOn, kind: 'money', text: `Draw ${d.number} approved.`, ...base })
           if (d.paidOn) out.push({ on: d.paidOn, kind: 'money', text: `Draw ${d.number} paid, ${money(d.net)}.${d.waiver === 'conditional' ? ' Unconditional waiver owed.' : ''}`, ...base })
         }
+        // On the job (the owner, 2026-10-04, Building lane's buildingActivity): submittals, punch items, inspections.
+        for (const e of buildingActivity(project, pkg)) out.push({ on: e.on, kind: 'work', text: e.text, ...base })
       }
       for (const log of project.dailyLogs ?? []) {
         for (const delay of log.delays) {
@@ -313,12 +323,18 @@ export function customerDocuments(state: GcState, customer: GcCustomer): { group
   for (const project of state.projects.filter((p) => p.customerId === customer.id && !p.lostOn)) {
     const docs: CompanyDoc[] = []
     if (project.stage !== 'pursuing') {
+      // They sign it in their portal (the owner, 2026-10-04): Send to sign, then Remind them.
+      const sentWords = customerSentWords(state, customer.id, 'contract', project.id)
       docs.push({
         key: `contract-${project.id}`,
         title: 'Our contract with them',
         status: project.ownerContractSignedOn ? 'ok' : 'missing',
-        statusWords: project.ownerContractSignedOn ? `signed ${shortDate(project.ownerContractSignedOn)}` : 'not signed yet',
-        meta: project.ownerContractSignedOn ? 'Their price stays what they signed.' : 'Mark it signed on Get started.',
+        statusWords: project.ownerContractSignedOn ? `signed ${shortDate(project.ownerContractSignedOn)}` : project.ownerContractSentOn ? 'waiting on their signature' : 'not sent yet',
+        meta: project.ownerContractSignedOn
+          ? 'Their price stays what they signed.'
+          : project.ownerContractSentOn
+            ? `${sentWords ? `${sentWords} ` : ''}They sign it in their portal.`
+            : 'Send it to sign in their portal. Signed on paper? Mark it on Get started.',
         projectId: project.id,
       })
     }
@@ -330,6 +346,18 @@ export function customerDocuments(state: GcState, customer: GcCustomer): { group
         status: apps.some((a) => !a.paidOn) ? 'info' : 'ok',
         statusWords: `${apps.length} sent`,
         meta: apps.map((a) => `#${a.number} ${a.paidOn ? `paid ${shortDate(a.paidOn)}` : `sent ${shortDate(a.sentOn)}`}`).join(' · '),
+        projectId: project.id,
+      })
+    }
+    // Each bill past its due day, with Remind them (Owner Billing's reminder, 2026-10-04).
+    for (const late of latePayApps(state, project)) {
+      const reminded = payReminderSentWords(state, project, late.number)
+      docs.push({
+        key: `payapp-${project.id}-${late.number}`,
+        title: `Pay application ${late.number}`,
+        status: 'missing',
+        statusWords: `${late.daysLate} ${late.daysLate === 1 ? 'day' : 'days'} late`,
+        meta: `${reminded ? `${reminded} ` : ''}${money(late.open)} open · was due ${shortDate(late.due)}`,
         projectId: project.id,
       })
     }
@@ -348,7 +376,7 @@ export function customerDocuments(state: GcState, customer: GcCustomer): { group
     }
     // Each change order waiting on their signature, with Remind them (the owner, 2026-10-04).
     for (const co of (project.changeOrders ?? []).filter((c) => c.status === 'sent')) {
-      const reminded = customerSentWords(state, customer.id, co.id)
+      const reminded = customerSentWords(state, customer.id, 'changeOrder', project.id, co.id)
       docs.push({
         key: `co-${co.id}`,
         title: `Change order ${co.number}`,
@@ -574,6 +602,20 @@ export function customerPaper(state: GcState, customer: GcCustomer, key: string)
         head: ['#', 'Sent', 'Asked', 'Paid'],
         rows: (project.ownerBilling?.payApps ?? []).map((a) => [`${a.number}`, shortDate(a.sentOn), money(a.due), a.paidOn ? shortDate(a.paidOn) : 'not yet']),
       },
+      foot: REAL_FILE,
+    }
+  }
+  if (key.startsWith('payapp-')) {
+    const late = latePayApps(state, project).find((l) => `payapp-${project.id}-${l.number}` === key)
+    if (!late) return null
+    return {
+      heading: `Pay application ${late.number}`,
+      rows: [
+        { label: 'Job', value: project.name },
+        { label: 'Still open', value: money(late.open) },
+        { label: 'Was due', value: shortDate(late.due) },
+        { label: 'Late', value: `${late.daysLate} ${late.daysLate === 1 ? 'day' : 'days'}` },
+      ],
       foot: REAL_FILE,
     }
   }

@@ -2,6 +2,8 @@ import { useState, type Dispatch } from 'react'
 import { Btn, Chip, input } from './gcUi'
 import { OwnerPayAppWindow } from './GcOwnerBillingPayApp'
 import { PortalBlock, PortalNote } from './GcPortalUi'
+import { GcCustomerContractSign } from './GcCustomerContractSign'
+import { GcOwnerBillingMessages } from './GcOwnerBillingMessages'
 import {
   GC_COMPANY_NAME,
   CHANGE_ORDER_REASON_WORDS,
@@ -67,6 +69,27 @@ export function GcOwnerBillingPortal({ state, project, dispatch }: { state: GcSt
   const changeOrders = projectChangeOrders(project).filter((co) => co.status !== 'draft')
   const acceptedOn = project.ownerBilling?.acceptedOn ?? null
   const allBilled = closeout.steps[0]?.done === true
+  // Their portal, or every email we send them (owner's go-ahead 2026-10-04), as the trade's portal has it.
+  const [view, setView] = useState<'portal' | 'messages'>('portal')
+  const viewButton = (v: 'portal' | 'messages', words: string) => (
+    <button
+      type="button"
+      onClick={() => setView(v)}
+      aria-pressed={view === v}
+      style={{
+        padding: '0.25rem 0.7rem',
+        borderRadius: 999,
+        border: `1px solid ${PAPER}`,
+        background: view === v ? PAPER : 'transparent',
+        color: view === v ? INK : PAPER,
+        fontSize: '0.78rem',
+        fontWeight: 600,
+        cursor: 'pointer',
+      }}
+    >
+      {words}
+    </button>
+  )
 
   return (
     <div data-theme="light" style={{ background: PAPER, color: INK, border: `1px solid ${INK}`, borderRadius: 10, overflow: 'hidden' }}>
@@ -75,8 +98,17 @@ export function GcOwnerBillingPortal({ state, project, dispatch }: { state: GcSt
           What the customer sees · their portal
         </div>
         <div style={{ fontWeight: 700, marginTop: '0.15rem' }}>{project.owner}</div>
+        <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.45rem' }}>
+          {viewButton('portal', 'Their portal')}
+          {viewButton('messages', 'Their messages')}
+        </div>
       </div>
 
+      {view === 'messages' ? (
+        <div style={{ padding: '0.8rem 0.9rem' }}>
+          <GcOwnerBillingMessages state={state} project={project} />
+        </div>
+      ) : (
       <div style={{ padding: '0.8rem 0.9rem', display: 'grid', gap: '0.75rem' }}>
         <div>
           <div style={{ fontWeight: 700, fontSize: '1.05rem' }}>{project.name}</div>
@@ -86,6 +118,9 @@ export function GcOwnerBillingPortal({ state, project, dispatch }: { state: GcSt
             {customer ? ` · Hello, ${customer.contact}.` : ''}
           </div>
         </div>
+
+        {/* The contract to sign, once the office sends it (Board, 2026-10-04: they sign it in their portal). */}
+        <GcCustomerContractSign state={state} project={project} dispatch={dispatch} />
 
         <PortalBlock title="Your contract">
           <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '0.2rem 0.75rem', fontSize: '0.875rem' }}>
@@ -293,6 +328,7 @@ export function GcOwnerBillingPortal({ state, project, dispatch }: { state: GcSt
           )}
         </PortalBlock>
       </div>
+      )}
     </div>
   )
 }

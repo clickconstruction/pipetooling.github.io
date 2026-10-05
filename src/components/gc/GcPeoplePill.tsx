@@ -159,66 +159,14 @@ export function GcPeoplePill({
               {summary.count} to call on {projectName}
             </span>
             <span style={{ color: 'var(--text-muted)', marginBottom: '0.4rem' }}>Late first. One call covers every reason under a name.</span>
-            {summary.people.map((person) => (
-              <span key={person.key} style={{ display: 'grid', gridTemplateColumns: narrow ? '28px minmax(0, 1fr)' : '28px minmax(0, 1fr) auto', gap: '0.15rem 0.6rem', padding: '0.5rem 0', borderTop: '1px solid var(--border)', alignItems: 'start' }}>
-                <span aria-hidden style={{ width: 28, height: 28, borderRadius: '50%', display: 'grid', placeItems: 'center', fontWeight: 700, fontSize: '0.72rem', background: 'var(--bg-subtle)', border: '1px solid var(--border)' }}>
-                  {initials(person.name)}
-                </span>
-                <span style={{ display: 'grid', gap: '0.12rem', minWidth: 0 }}>
-                  <span>
-                    <strong>{person.name}</strong>
-                    {person.name !== person.company && <span style={{ color: 'var(--text-muted)' }}> {person.company}</span>}{' '}
-                    <span
-                      style={{
-                        display: 'inline-block',
-                        fontSize: '0.66rem',
-                        fontWeight: 700,
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.04em',
-                        borderRadius: 4,
-                        padding: '0 0.3rem',
-                        background: person.kind === 'trade' ? 'var(--bg-subtle)' : 'var(--bg-violet-100)',
-                        color: person.kind === 'trade' ? 'var(--text-600)' : 'var(--text-violet-800)',
-                        border: '1px solid var(--border)',
-                      }}
-                    >
-                      {person.tag}
-                    </span>
-                  </span>
-                  {person.reasons.map((r) => (
-                    <span key={r.text} style={{ display: 'flex', gap: '0.4rem', alignItems: 'baseline' }}>
-                      <span aria-hidden style={{ width: 7, height: 7, borderRadius: '50%', background: TONE[r.tone].dot, flex: 'none', transform: 'translateY(-1px)' }} />
-                      {r.text}
-                    </span>
-                  ))}
-                  {person.last && <span style={{ color: 'var(--text-muted)', fontSize: '0.76rem' }}>{person.last}</span>}
-                </span>
-                <span style={{ display: 'flex', gap: '0.3rem', ...(narrow ? { gridColumn: '2 / -1', marginTop: '0.2rem' } : {}) }}>
-                  <a
-                    href={telHref(person.phone)}
-                    onClick={() => {
-                      close()
-                      onFollowUp(person, true)
-                    }}
-                    title={`Call ${person.name}, ${person.phone}`}
-                    style={{ padding: '0.2rem 0.55rem', borderRadius: 6, background: '#2563eb', color: 'white', fontWeight: 600, fontSize: '0.78rem', textDecoration: 'none', whiteSpace: 'nowrap' }}
-                  >
-                    Call
-                  </a>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      close()
-                      onFollowUp(person, false)
-                    }}
-                    title="A text or an email from you, drafted, with every reason on this job"
-                    style={{ padding: '0.2rem 0.55rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-base)', fontSize: '0.78rem', cursor: 'pointer', whiteSpace: 'nowrap' }}
-                  >
-                    Follow up
-                  </button>
-                </span>
-              </span>
-            ))}
+            <PeopleRows
+              people={summary.people}
+              narrow={narrow}
+              onFollowUp={(person, calling) => {
+                close()
+                onFollowUp(person, calling)
+              }}
+            />
             <span style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', flexWrap: 'wrap', borderTop: '1px solid var(--border)', paddingTop: '0.5rem' }}>
               {onWorkList ? (
                 <button
@@ -249,5 +197,82 @@ export function GcPeoplePill({
         </span>
       )}
     </span>
+  )
+}
+
+/**
+ * The people, each with every reason, the last thing said, and Call and Follow up: the Who to call
+ * card's rows, and Follow up's list of everyone its cards do not show (the owner, 2026-10-04).
+ */
+export function PeopleRows({
+  people,
+  narrow,
+  onFollowUp,
+}: {
+  people: ProjectPerson[]
+  narrow: boolean
+  onFollowUp: (person: ProjectPerson, calling: boolean) => void
+}) {
+  return (
+    <>
+      {people.map((person) => (
+      <span key={person.key} style={{ display: 'grid', gridTemplateColumns: narrow ? '28px minmax(0, 1fr)' : '28px minmax(0, 1fr) auto', gap: '0.15rem 0.6rem', padding: '0.5rem 0', borderTop: '1px solid var(--border)', alignItems: 'start' }}>
+        <span aria-hidden style={{ width: 28, height: 28, borderRadius: '50%', display: 'grid', placeItems: 'center', fontWeight: 700, fontSize: '0.72rem', background: 'var(--bg-subtle)', border: '1px solid var(--border)' }}>
+          {initials(person.name)}
+        </span>
+        <span style={{ display: 'grid', gap: '0.12rem', minWidth: 0 }}>
+          <span>
+            <strong>{person.name}</strong>
+            {person.name !== person.company && <span style={{ color: 'var(--text-muted)' }}> {person.company}</span>}{' '}
+            <span
+              style={{
+                display: 'inline-block',
+                fontSize: '0.66rem',
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '0.04em',
+                borderRadius: 4,
+                padding: '0 0.3rem',
+                background: person.kind === 'trade' ? 'var(--bg-subtle)' : 'var(--bg-violet-100)',
+                color: person.kind === 'trade' ? 'var(--text-600)' : 'var(--text-violet-800)',
+                border: '1px solid var(--border)',
+              }}
+            >
+              {person.tag}
+            </span>
+          </span>
+          {person.reasons.map((r) => (
+            <span key={r.text} style={{ display: 'flex', gap: '0.4rem', alignItems: 'baseline' }}>
+              <span aria-hidden style={{ width: 7, height: 7, borderRadius: '50%', background: TONE[r.tone].dot, flex: 'none', transform: 'translateY(-1px)' }} />
+              {r.text}
+            </span>
+          ))}
+          {person.last && <span style={{ color: 'var(--text-muted)', fontSize: '0.76rem' }}>{person.last}</span>}
+        </span>
+        <span style={{ display: 'flex', gap: '0.3rem', ...(narrow ? { gridColumn: '2 / -1', marginTop: '0.2rem' } : {}) }}>
+          <a
+            href={telHref(person.phone)}
+            onClick={() => {
+              onFollowUp(person, true)
+            }}
+            title={`Call ${person.name}, ${person.phone}`}
+            style={{ padding: '0.2rem 0.55rem', borderRadius: 6, background: '#2563eb', color: 'white', fontWeight: 600, fontSize: '0.78rem', textDecoration: 'none', whiteSpace: 'nowrap' }}
+          >
+            Call
+          </a>
+          <button
+            type="button"
+            onClick={() => {
+              onFollowUp(person, false)
+            }}
+            title="A text or an email from you, drafted, with every reason on this job"
+            style={{ padding: '0.2rem 0.55rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-base)', fontSize: '0.78rem', cursor: 'pointer', whiteSpace: 'nowrap' }}
+          >
+            Follow up
+          </button>
+        </span>
+      </span>
+      ))}
+    </>
   )
 }

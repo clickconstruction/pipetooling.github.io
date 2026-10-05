@@ -1,15 +1,16 @@
 /**
  * GC mode — design spike: GC Follow up on the dashboard's Needs you list (the owner, 2026-10-04).
- * One item, like the dashboard's others: how many companies to call or papers past their day,
- * the first few by name, and red when a day already passed.
+ * One item, like the dashboard's others: how many people we are waiting on, the first few by name
+ * and why, and red when anyone is late. The count is Follow up's badge and the board rows' sum
+ * ("make them match"): allPeople, each person once across every job.
  */
 import type { GcState } from './gcTypes'
 import { followUps, type FollowUpWhy } from './gcFollowUp'
-import { insuranceRenewals, tradePromisesOf, tradePromiseState } from './gcPromises'
+import { allPeople, type ProjectPerson } from './gcProjectPeople'
 
 export interface GcNeedsYou {
   count: number
-  /** A day already passed, or a company never opened an ask past the days we give it: red, not amber. */
+  /** Someone is late: a day passed, an ask never opened, a bill past due, insurance run out. Red, not amber. */
   late: boolean
   title: string
   detail: string
@@ -22,32 +23,44 @@ const WHY_WORDS: Record<Exclude<FollowUpWhy, 'waiting'>, (company: string) => st
   nodate: (c) => `${c} gave no day`,
 }
 
+/** "Voltage Brothers'" and "Pecan Valley Electric's". */
+function possessive(name: string): string {
+  return name.endsWith('s') ? `${name}'` : `${name}'s`
+}
+
+/** One short phrase for a person: their worst reason, said the way the dashboard says things. */
+function phraseFor(state: GcState, person: ProjectPerson): string {
+  const top = person.reasons[0]
+  const c = person.company
+  const code = top?.code ?? ''
+  if (code === 'ask' && person.partnerId) {
+    const ask = followUps(state).find((f) => f.partner.id === person.partnerId && f.why !== 'waiting')
+    if (ask && ask.why !== 'waiting') return WHY_WORDS[ask.why](c)
+  }
+  if (code === 'questions') return `${c} owes us answers`
+  if (code === 'plans') return `${c} has not opened the newest plans`
+  if (code === 'sow' || code === 'contract' || code.startsWith('co:')) return `${c} has a paper to sign`
+  if (code.startsWith('pay:')) return `${c} is late paying`
+  if (code === 'waiver') return `${c} owes a waiver`
+  if (code === 'insurance') return `${possessive(c)} insurance ran out`
+  if (code === 'w9') return `${c} owes a W-9`
+  if (code === 'promise') return `${c} is past a day they gave`
+  if (code === 'sentBack') return `${possessive(c)} pay application went back`
+  if (code === 'bid') return `${c} has our bid`
+  return `${c} owes us an answer`
+}
+
 /** The item, or null when there is no one to chase: the same count as Follow up's badge. */
 export function gcNeedsYou(state: GcState): GcNeedsYou | null {
-  const calls = followUps(state).filter((f) => f.why !== 'waiting')
-  const promises = tradePromisesOf(state).filter((p) => {
-    const s = tradePromiseState(p, state.today).state
-    return s === 'passed' || s === 'today'
-  })
-  const lapsed = insuranceRenewals(state).filter((r) => r.days <= 0 && !r.promise)
-  const papers = promises.length + lapsed.length
-  const count = calls.length + papers
-  if (count === 0) return null
-  const late =
-    calls.some((f) => f.why === 'passed' || f.why === 'silent') ||
-    promises.some((p) => tradePromiseState(p, state.today).state === 'passed') ||
-    lapsed.length > 0
-  const phrases = calls.map((f) => {
-    const why = f.why === 'waiting' ? 'nodate' : f.why
-    return WHY_WORDS[why](f.partner.company)
-  })
-  if (papers > 0) phrases.push(`${papers} ${papers === 1 ? 'paper is' : 'papers are'} past or at their day`)
+  const all = allPeople(state)
+  if (all.count === 0) return null
+  const phrases = all.people.map((p) => phraseFor(state, p))
   const shown = phrases.slice(0, 3)
   const more = phrases.length - shown.length
   return {
-    count,
-    late,
-    title: calls.length > 0 ? `${count} to follow up on in GC mode` : `${count} ${count === 1 ? 'paper' : 'papers'} to chase in GC mode`,
+    count: all.count,
+    late: all.late > 0,
+    title: `${all.count} to follow up on in GC mode`,
     detail: `${shown.join(' · ')}${more > 0 ? ` · and ${more} more` : ''}.`,
   }
 }

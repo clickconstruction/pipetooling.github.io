@@ -204,8 +204,8 @@ first** (a partner's vetting, the promise record), so build on those once GC 0 s
 
 ### Portal (GC 3)
 
-1. **Q4:** the quote form takes their schedule of values (Rough-in, Top out, Trim as a start; any
-   lines; it adds up to the quote), in both languages.
+1. ~~**Q4:** the quote form takes their schedule of values (Rough-in, Top out, Trim as a start; any
+   lines; it adds up to the quote), in both languages.~~ done 8fd901616
 
 ### New Project (GC 2)
 
@@ -264,10 +264,10 @@ do."
 
 ### Portal (GC 3)
 
-1. **The quote form: What your quote leaves out**: `exclusionsFor(trade)` as ticks, typed ones,
+1. ~~**The quote form: What your quote leaves out**: `exclusionsFor(trade)` as ticks, typed ones,
    a unit price where it fits; sends `exclusions` and `exclusionsAnswered` (every tick offered) on
-   `tradeSubmitBid`. Both languages.
-2. **The statement of work in the portal** shows "What you will not do" from `Sow.excluded`.
+   `tradeSubmitBid`. Both languages.~~ done 6ef5b43ea
+2. ~~**The statement of work in the portal** shows "What you will not do" from `Sow.excluded`.~~ done 6ef5b43ea
 
 ### New Project (GC 2)
 
@@ -293,6 +293,7 @@ code names stay. Golden moves on words are each lane's own, under its standing O
   customer pays"); the pay application goes to the customer and names the property's owner when
   different. Then its words.
 - **Building (GC 1)** and **Portal (GC 3):** their own words where "owner" means who we bill.
+  Portal done df682115a.
 
 ## Round 7: the company window (the owner, 2026-10-04)
 
@@ -312,6 +313,25 @@ about the company, a ledger of what happened with them, and their documents, in 
 - **Other lanes:** nothing owed. If a lane adds a paper or an event a company should see (a new
   promise kind, a new paper in the trade's portal), add it to `partnerDocuments` or `partnerActivity`
   in `gcCompanyFile.ts` and to its test.
+
+## Round 8: a trade asks for a change (the owner, 2026-10-04)
+
+The owner, asked what the portal builds next: "A trade asks for a change". Money changes only went
+one way: we send a change order and the trade signs it. Now a trade asks from its portal: what
+changed, why (something on site, the customer asked for more, the plans changed), what it asks, the
+days and a photo. Details in README.md, *A trade asks for a change in its portal*.
+
+- ~~**Portal (GC 3):**~~ done (this commit). `TradeChangeRequest` on the project, `tradeAskChange`,
+  `draftChangeOrderFromRequest` (drafts through `draftChangeOrder` and links the request),
+  `turnDownChangeRequest`; *Changes to your work* on the job page with where each stands, its three
+  emails, the company window's Activity lines. Seeded: Tri-County's rock on Fair Oaks.
+- ~~**Owner Billing (GC 4):** the office's list on Bill the customer's change orders:
+  `openChangeRequests(project)` with company, what, why, amount, days and the photo's name;
+  *Make a change order* (prefilled from the request: its words, its amount as our cost, the days)
+  dispatches `draftChangeOrderFromRequest`; *Turn down* asks why and dispatches
+  `turnDownChangeRequest`.~~ done 3ae5d95eb.
+- **Board (GC 0), if it fits:** a Needs you line while a request waits ("Tri-County Site asked for a
+  change on Fair Oaks").
 
 ## Owner (the decisions)
 

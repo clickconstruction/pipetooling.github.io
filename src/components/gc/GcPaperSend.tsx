@@ -86,6 +86,8 @@ export function GcPaperSend({
       recipient={partner.company}
       attached={ATTACHED[step.paper]}
       sendLabel={step.sendLabel}
+      // It goes into their email as typed (the Portal lane, 2026-10-04): a Spanish reader gets it in Spanish.
+      {...(partner.lang === 'es' ? { notePlaceholder: 'Optional. They read Spanish: write it in Spanish, it goes in as typed.' } : {})}
       onSend={() => {
         dispatch(action)
         onDone()
@@ -116,7 +118,16 @@ export function SendView({
   sendLabel,
   onSend,
   onCancel,
+  dayNote = 'Follow up shows it to chase after this day. Signing or sending it keeps it.',
+  notePlaceholder = 'Optional. Added to the email.',
+  choices,
 }: {
+  /** The days to pick from. Unset: in 3 days, a week, two weeks. */
+  choices?: { on: string; label: string }[]
+  /** The line box's hint: a company that reads Spanish is asked for it in Spanish. */
+  notePlaceholder?: string
+  /** The line under the day: what the day does. A trade's paper: Follow up chases it. */
+  dayNote?: string
   title: string
   history: string
   to: string
@@ -141,7 +152,7 @@ export function SendView({
     const el = box.current
     if (el && el.getBoundingClientRect().top > window.innerHeight * 0.6) el.scrollIntoView({ block: 'start', behavior: 'smooth' })
   }, [])
-  const days = paperDayChoices(today)
+  const days = choices ?? paperDayChoices(today)
   const field = { display: 'grid', gridTemplateColumns: 'minmax(5.5rem, auto) minmax(0, 1fr)', gap: '0.5rem', alignItems: 'start', fontSize: '0.88rem' } as const
   const label = { color: 'var(--text-muted)', paddingTop: '0.2rem' } as const
 
@@ -187,7 +198,7 @@ export function SendView({
               )
             })}
           </span>
-          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Follow up shows it to chase after this day. Signing or sending it keeps it.</span>
+          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{dayNote}</span>
         </span>
       </div>
       <label style={field}>
@@ -196,7 +207,7 @@ export function SendView({
           value={note}
           onChange={(e) => onNote(e.target.value)}
           rows={2}
-          placeholder="Optional. Added to the email."
+          placeholder={notePlaceholder}
           aria-label="Your line, added to the email"
           style={{ ...input, width: '100%', boxSizing: 'border-box', resize: 'vertical', font: 'inherit', fontSize: '0.88rem' }}
         />

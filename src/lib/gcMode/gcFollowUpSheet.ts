@@ -30,6 +30,8 @@ export type FollowItemKind =
   | 'decision'
   // A change order waiting on the customer's signature (Board, 2026-10-04).
   | 'signature'
+  // A customer's bill past its due day (Board, 2026-10-04, on Owner Billing's reminder).
+  | 'payment'
 
 /** One thing a person owes us, with the words a message uses for it in each language. */
 export interface FollowItem {

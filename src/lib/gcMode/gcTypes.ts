@@ -379,12 +379,19 @@ export interface PartnerVetting {
 /** Promises other than a quote date (question 8). Each lane keeps its own kinds; see gcPromises.ts. */
 export type PromiseKind = 'insurance' | 'w9' | 'sow' | 'start' | 'submittals' | 'delivery' | 'payApp' | 'punch' | 'closeout' | 'msa'
 
-/** A reminder to a customer from its window (the owner, 2026-10-04): a change order waiting on their signature. */
+/**
+ * A paper sent to a customer from its window (the owner, 2026-10-04): our contract to sign in their
+ * portal (the first send, then reminders), or a reminder on a change order waiting on their signature.
+ */
 export interface CustomerSend {
   id: string
   customerId: string
   projectId: string
-  changeOrderId: string
+  paper: 'contract' | 'changeOrder'
+  /** A change order's reminder: which one. */
+  changeOrderId?: string
+  /** Our contract's first send; later ones are reminders. */
+  first?: boolean
   on: string
   /** The day we asked them to sign by. */
   by: string
@@ -550,6 +557,8 @@ export interface GcProject {
   ourBidSentOn: string | null
   /** Going into the job: our contract with the owner, the permit, the day work starts. */
   ownerContractSignedOn: string | null
+  /** The day our contract went to the customer to sign in their portal (the owner, 2026-10-04). Unset: not sent from the app. */
+  ownerContractSentOn?: string
   /**
    * The owner's price as they signed it, by line: each trade by its package id, then 'gc',
    * 'contingency' and 'fee' (owner, 2026-10-04). Bill the owner reads it, so buying a trade out for
@@ -589,6 +598,8 @@ export interface GcProject {
   ownerBilling: OwnerBilling | null
   /** Changes to our contract with the owner, oldest first. Absent: none yet. */
   changeOrders?: ChangeOrder[]
+  /** Changes the trades asked us for, from their portals, oldest first (Portal lane). Absent: none yet. */
+  changeRequests?: TradeChangeRequest[]
   /** A customer record too: the firm that drew the plans. */
   architectId: string
   /** The firm's name, kept on the row for display. */
@@ -863,6 +874,10 @@ export type GcAction =
   | { type: 'setCustomerPortal'; customerId: string; on: boolean }
   /** Remind a customer to sign a change order, from its window, by a day (the owner, 2026-10-04). */
   | { type: 'remindCustomer'; customerId: string; projectId: string; changeOrderId: string; by: string; note: string }
+  /** Send our contract to the customer to sign in their portal, or remind them, by a day (the owner, 2026-10-04). */
+  | { type: 'sendOwnerContract'; projectId: string; by: string; note: string }
+  /** The customer signs our contract in their portal. */
+  | { type: 'ownerSignContract'; projectId: string }
   /** Send a paper from the company window: to sign, or to send us, due on a day (the owner, 2026-10-04). */
   | { type: 'sendPaper'; partnerId: string; paper: PaperKind; projectId?: string; packageId?: string; by: string; note: string }
   /** `known: false`: a company new to us, not vetted yet (question 3). Unset: one we know. */
@@ -1074,6 +1089,8 @@ export type GcAction =
   | { type: 'ownerPaidInterest'; projectId: string; number: number }
   /** We enter the owner contract's late fee a day (null: the contract has none). */
   | { type: 'setOwnerLateFinish'; projectId: string; perDay: number | null }
+  /** We remind the customer to pay a pay application past its due day (email only). */
+  | { type: 'remindCustomerToPay'; projectId: string; number: number; by: string; note: string }
   /** We set the pre-bid meeting, or move it, while we bid. */
   | { type: 'schedulePreBid'; projectId: string; on: string; at: string; place: string; host: 'architect' | 'us'; mandatory: boolean }
   /** We record which companies came to the pre-bid meeting. */
@@ -1085,6 +1102,26 @@ export type GcAction =
   | { type: 'saveScopeSet'; trade: string; name: string; lines: string[]; fromProjectId?: string }
   /** A set's Google Drive link checked again (the owner, 2026-10-04): the warning stays until anyone with the link can open it. */
   | { type: 'checkPlanSetDrive'; projectId: string; rev: number; access: 'anyone' | 'restricted' }
+  /** A trade asks us for a change to its work, in its portal (owner, 2026-10-04): what, why, how much, the days. */
+  | {
+      type: 'tradeAskChange'
+      projectId: string
+      packageId: string
+      partnerId: string
+      description: string
+      reason: ChangeOrderReason
+      amount: number
+      days: number
+      /** The file sent with it (a photo, a ticket): its name. Null: none. */
+      file: string | null
+    }
+  /**
+   * The office makes a trade's change request a change order to the customer: drafted the way
+   * draftChangeOrder drafts one, on the request's trade and reason, and linked to the request.
+   */
+  | { type: 'draftChangeOrderFromRequest'; projectId: string; requestId: string; description: string; cost: number; price: number; days: number }
+  /** The office turns a trade's change request down, and says why. The trade reads it in its portal. */
+  | { type: 'turnDownChangeRequest'; projectId: string; requestId: string; note: string }
 
 /** One trade on a new project, as the office left it in the New project window. */
 export interface NewTradeDraft {
@@ -1201,6 +1238,8 @@ export interface OwnerPayAppSent {
   retainageStep?: OwnerRetainageStep
   /** Materials stored on site, not yet in place, on each line when it went (column F). Absent: none. */
   storedByLine?: Record<string, number>
+  /** Our reminders to pay it, oldest first: the day sent, the pay-by day we asked for, the office's line. Never a promise. */
+  reminders?: { on: string; by: string; note: string; subject?: string; lines?: string[] }[]
 }
 
 /** A pay application the office sent back: the draw as the trade sent it, why, and what we see. */
@@ -1326,4 +1365,30 @@ export interface ChangeOrder {
    * typed by the office. Absent or 0: none. A signed one adds them to the contract time.
    */
   days?: number
+}
+
+/**
+ * A change a trade asked us for from its portal (Portal lane, owner 2026-10-04): it hit something on
+ * site no one could see, the customer asked it for more, or the plans changed. The office makes it a
+ * change order to the customer (`changeOrderId`) or turns it down with a reason. Once the customer
+ * signs, the change goes to the trade to sign the usual way (`ChangeOrder.tradeChange`).
+ */
+export interface TradeChangeRequest {
+  id: string
+  packageId: string
+  partnerId: string
+  askedOn: string
+  /** What changed, in the trade's words. */
+  description: string
+  reason: ChangeOrderReason
+  /** What the trade asks for the work. */
+  amount: number
+  /** The working days it adds, as the trade sees it. 0: none. */
+  days: number
+  /** The file sent with it (a photo, a ticket): its name. Null: none. */
+  file: string | null
+  /** The change order the office made of it. Null: not yet. */
+  changeOrderId: string | null
+  /** The office turned it down: the day and why. Null: not turned down. */
+  turnedDown: { on: string; note: string } | null
 }
