@@ -13,6 +13,7 @@
  * - **The step's counts are chips that filter** (the chips and which one is on are this
  *   component's own state), and what every row shares — Proposed, one house — is said once.
  * - **Part of… and × sit behind ⋯** on a draft row; Edit, Their answer and Split stay out.
+ * - **Save PDF** under a row's cut sheet pages saves just those pages (`rowCutSheet`).
  * - On a phone each row is a card (`.sub-rows-table` in `index.css`); nothing scrolls sideways.
  */
 import { useState } from 'react'
@@ -61,6 +62,10 @@ export type SubmittalRowsTableProps = {
   onLeaveOut: (item: SubmittalItemRow) => void
   /** Opens the window that types the schedule; absent, the line over a takeoff table has no door. */
   onTypeSchedule?: () => void
+  /** Save one row's cut sheet as a PDF of its own; absent, the row has no such door. */
+  onSaveSheet?: (item: SubmittalItemRow) => void
+  /** The row whose cut sheet is being cut right now: its door reads Saving…. */
+  savingSheetId?: string | null
 }
 
 const rowBtn = { ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem' } as const
@@ -68,7 +73,7 @@ const linkBtn = { background: 'none', border: 'none', padding: 0, font: 'inherit
 /** The answer sub-column's header cell; the grid inside the merged cell is this less the cell's padding (`.sub-rows-answers`). */
 const ANSWER_WIDTH = '13rem'
 
-export function SubmittalRowsTable({ items, gcItems, orderOnlyItems, parts, partsOf, houseNameById, sourceFiles, previousRev, prevById, decisions, scheduleTags = 0, isDraft, busy, foldHints, onEdit, onAnswer, onSplit, onFold, onTakeOff, onPutBack, onLeaveOut, onTypeSchedule }: SubmittalRowsTableProps) {
+export function SubmittalRowsTable({ items, gcItems, orderOnlyItems, parts, partsOf, houseNameById, sourceFiles, previousRev, prevById, decisions, scheduleTags = 0, isDraft, busy, foldHints, onEdit, onAnswer, onSplit, onFold, onTakeOff, onPutBack, onLeaveOut, onTypeSchedule, onSaveSheet, savingSheetId = null }: SubmittalRowsTableProps) {
   const [filter, setFilter] = useState<RowFilterKey>('all')
   const [moreOpen, setMoreOpen] = useState<ReadonlySet<string>>(() => new Set())
   const shape = rowsTableShape(gcItems, scheduleTags)
@@ -190,6 +195,12 @@ export function SubmittalRowsTable({ items, gcItems, orderOnlyItems, parts, part
                         ✓ {formatPages(it.sheet_pages)}
                         {/* One vendor file is named once, on its own line under the table. */}
                         {sourceFiles.length > 1 ? <span style={{ ...sub, whiteSpace: 'normal' }}>{file.name}</span> : null}
+                        {/* The row's own pages as a small PDF, to attach to an email or a text. */}
+                        {onSaveSheet ? (
+                          <button type="button" aria-label={`Save the cut sheet for ${name} as a PDF`} disabled={savingSheetId != null} onClick={() => onSaveSheet(it)} title={`Save ${name}'s cut sheet as a PDF of its own, to attach to an email or a text`} style={{ ...linkBtn, display: 'block', fontSize: '0.75rem', fontWeight: 400, whiteSpace: 'nowrap', cursor: savingSheetId != null ? 'wait' : 'pointer' }} data-testid="save-sheet">
+                            {savingSheetId === it.id ? 'Saving…' : 'Save PDF'}
+                          </button>
+                        ) : null}
                       </span>
                     ) : needsSheet(it) ? (
                       <span style={{ color: 'var(--text-amber-700)', fontWeight: 600, whiteSpace: 'nowrap' }}>sheet needed</span>
