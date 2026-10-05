@@ -657,6 +657,17 @@ who then works and bills the owner." So:
   `backChargesToAct`, `backChargeDraws` in `gcPortal.ts`; `GcPortalBackCharges.tsx`). The five days
   and "off the next approved draw" are the lane's defaults until the owner says otherwise. The
   office's screen is the Building lane's to draw.
+- **Each email goes to the right person at the company** (owner, 2026-10-05). *Who gets our
+  emails* on a company's home names its people and ticks what each gets, in four kinds: *Quotes
+  and plans* (asks, plans and answers while we bid), *The job* (plans, answers and start days once
+  the work is theirs), *Contracts and changes* (the master agreement, statements of work, change
+  orders and change requests), *Pay and papers* (draws, waivers, insurance, the W-9, charges).
+  The main contact gets every kind until the company changes it; every kind keeps at least one
+  person, so the last tick on a kind is locked; taking a person off gives what only they had back to
+  the main contact. Each email in Their messages says who it went to and greets them ("Hello Greg
+  and Ana,"). Pecan Valley's bookkeeper, Dana Whitfield, gets its pay and papers (`Partner.people`,
+  `contactGets`; `tradeAddPerson`, `tradeRemovePerson`, `tradeSetGets`; `portalMailGroup`,
+  `mailRecipients` in `gcPortal.ts`; `GcPortalPeople.tsx`).
 - **A company asked to the pre-bid meeting sees it in its portal** (owner, 2026-10-04, on the New
   Project lane's `preBid`): a block on the project page (when and where, who runs it, whether coming
   is required to quote, then "You came" or "You did not come"), Needs you before it (amber if
@@ -1001,8 +1012,9 @@ the bullets below are the shape they set.
   | Retainage can be paid (`tradeRetainageOpensOn`) | The office, the trade | Inbox on that day; the trade hears that its release is coming |
 
   The trade portal's events, and where each would go (Portal lane, 2026-10-03). Every message goes
-  out in the company's language (`Partner.lang`, set by the company or the office) and carries its
-  one portal link (`portalLink`, no password). **Their messages** already shows each email as
+  out in the company's language (`Partner.lang`, set by the company or the office), to the people at
+  the company who get its kind (`portalMailGroup`, `mailRecipients`; the main contact until the
+  company names others), and carries its one portal link (`portalLink`, no password). **Their messages** already shows each email as
   written (`portalMessages`); nothing is sent. Everything goes by email, through Resend (the
   owner, 2026-10-03: email only for now, question 29):
 

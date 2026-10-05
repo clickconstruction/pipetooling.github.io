@@ -780,6 +780,13 @@ export function initialGcState(): GcState {
     promisesKept: 0,
   })
 
+  // Portal lane (owner, 2026-10-05): Pecan Valley's bookkeeper gets its pay and papers; Marcus keeps the rest.
+  const people: Record<string, Pick<Partner, 'people' | 'contactGets'>> = {
+    pecanvalley: {
+      people: [{ id: 'pecanvalley-p-1', name: 'Dana Whitfield', email: 'dana@pecanvalleyelectric.example', role: 'Bookkeeper', gets: ['pay'] }],
+      contactGets: ['quotes', 'job', 'contracts'],
+    },
+  }
   /** Where each company drives from, and how far they will go. */
   const coverage: Record<string, [string, number]> = {
     lonestar: ['San Antonio', 75],
@@ -1433,7 +1440,7 @@ export function initialGcState(): GcState {
       const c = coverage[p.id]
       const w = word[p.id] ?? [0, 0]
       const sent = msaSent[p.id]
-      return { ...p, promisesMade: w[0], promisesKept: w[1], ...(c ? { base: c[0], maxMiles: c[1] } : {}), ...(sent ? { msaSentOn: sent } : {}) }
+      return { ...p, promisesMade: w[0], promisesKept: w[1], ...(c ? { base: c[0], maxMiles: c[1] } : {}), ...(sent ? { msaSentOn: sent } : {}), ...(people[p.id] ?? {}) }
     }),
     log: [],
   }

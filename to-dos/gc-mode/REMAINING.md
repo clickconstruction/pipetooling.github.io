@@ -354,6 +354,19 @@ the money comes off a draw. Details in README.md, *A company sees what we charge
   `gc-back-charges`: disputed, unanswered, or ready to come off an approved draw; **Settle it** opens
   the job on Draws, where Building's screen above does the rest. Not in Who to call.
 
+## Round 10: who at the company gets which emails (the owner, 2026-10-05)
+
+The owner, asked what the portal builds next: "Who at the company gets what". Every email went to
+one contact; now a company names its people and the kinds each gets. Details in README.md, *Each
+email goes to the right person at the company*.
+
+- ~~**Portal (GC 3):**~~ done (this commit). `Partner.people`, `contactGets`, three actions, *Who
+  gets our emails* on the home, every email addressed and greeted by its kind (`portalMailGroup`,
+  `mailRecipients`). Seeded: Pecan Valley's bookkeeper gets pay and papers.
+- **Board (GC 0), if it fits:** the company window's About could list the people and what each
+  gets; Follow up's Email could pick the person for the kind it chases (a quote: `quotes`; a waiver
+  or a W-9: `pay`) through `mailRecipients(partner, group)`.
+
 ## Owner (the decisions)
 
 11. ~~**A carried quote with a line that has no cost:** does it hold the ring open?~~ Answered 2026-10-03: yes, until every line has a cost. Built by the Board (this commit).

@@ -348,6 +348,27 @@ export interface Partner {
   /** The contact's phone and email, for Follow up's Call, Text and Email (the owner, 2026-10-04). Unset: a made-up one stands in (`partnerReach`). */
   phone?: string
   email?: string
+  /** Others at the company and the emails each gets, named in its portal (Portal lane, owner 2026-10-05). */
+  people?: PartnerPerson[]
+  /** The emails the main contact gets. Unset: every kind. */
+  contactGets?: PortalMailGroup[]
+}
+
+/**
+ * The kinds of email a company's people can get (owner, 2026-10-05): quotes and plans while we
+ * bid; the job once it is theirs (its plans, answers, start days); contracts and changes; pay,
+ * waivers, insurance and charges. Every kind goes to at least one person.
+ */
+export type PortalMailGroup = 'quotes' | 'job' | 'contracts' | 'pay'
+
+/** Someone at a company besides its main contact, and the emails they get. */
+export interface PartnerPerson {
+  id: string
+  name: string
+  email: string
+  /** What they do there, in the company's words ("Bookkeeper"). Empty: not said. */
+  role: string
+  gets: PortalMailGroup[]
 }
 
 /** What a new company tells us about itself in its portal (question 3). */
@@ -1153,6 +1174,12 @@ export type GcAction =
   | { type: 'settleBackCharge'; projectId: string; packageId: string; chargeId: string; keep: boolean; note: string }
   /** The office takes a back-charge off an approved draw it has not paid yet. */
   | { type: 'takeBackCharge'; projectId: string; packageId: string; chargeId: string; drawId: string }
+  /** A company names someone else to get some of our emails, in its portal (owner, 2026-10-05). */
+  | { type: 'tradeAddPerson'; partnerId: string; name: string; email: string; role: string; gets: PortalMailGroup[] }
+  /** A company takes someone off its emails. What only they got goes back to the main contact. */
+  | { type: 'tradeRemovePerson'; partnerId: string; personId: string }
+  /** A company changes which emails one person gets. Null: the main contact. Every kind keeps someone. */
+  | { type: 'tradeSetGets'; partnerId: string; personId: string | null; gets: PortalMailGroup[] }
 
 /** One trade on a new project, as the office left it in the New project window. */
 export interface NewTradeDraft {
