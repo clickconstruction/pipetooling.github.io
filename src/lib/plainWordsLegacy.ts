@@ -64,7 +64,6 @@ export const LEGACY_PLAIN_WORDS_GUIDES: ReadonlySet<string> = new Set([
   'turn-a-bill-into-a-stripe-bill',
   'turn-a-won-bid-into-a-job',
   'turnaway-trip-charges',
-  'understand-how-liens-work-and-which-lien-tool-to-use',
   'understand-overhead-numbers',
   'update-percent-done-from-my-dashboard',
   'usage-dashboard',

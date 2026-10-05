@@ -26,7 +26,7 @@ describe('StagesRowActionButtons', () => {
         <StagesHazmatFeeButton onClick={fns[4]} hasFee={false} />
       </>,
     )
-    const names = ['Open Test report', 'Lien instruments', 'Release of lien', 'Open AIA G702-G703 workbook generator', 'Create a hazmat fee for this job']
+    const names = ['Open Test report', 'Liens on this job', 'Release of lien', 'Open AIA G702-G703 workbook generator', 'Create a hazmat fee for this job']
     names.forEach((name, i) => {
       fireEvent.click(screen.getByLabelText(name))
       expect(fns[i]).toHaveBeenCalledTimes(1)
@@ -41,8 +41,8 @@ describe('StagesRowActionButtons', () => {
         <StagesHazmatFeeButton onClick={vi.fn()} hasFee />
       </>,
     )
-    expect(screen.getByLabelText('Lien instruments').getAttribute('title')).toMatch(/a demand letter is out/)
-    expect(screen.getByLabelText('Lien instruments').style.border).toBe('2px solid rgb(180, 83, 9)')
+    expect(screen.getByLabelText('Liens on this job').getAttribute('title')).toMatch(/a demand letter is out/)
+    expect(screen.getByLabelText('Liens on this job').style.border).toBe('2px solid rgb(180, 83, 9)')
     expect(screen.getByLabelText('Release of lien').getAttribute('title')).toMatch(/issued lien release/)
     expect(screen.getByLabelText('Release of lien').style.border).toBe('2px solid rgb(37, 99, 235)')
     expect(screen.getByLabelText('Create a hazmat fee for this job').getAttribute('title')).toMatch(/click to add another/)

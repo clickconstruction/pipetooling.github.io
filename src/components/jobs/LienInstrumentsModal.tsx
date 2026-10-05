@@ -38,6 +38,7 @@ import { parsePaymentPromisesRpc } from '../../lib/jobs/paymentPromises'
 import { computeJobLienClock, type JobLienFilingRow } from '../../lib/jobs/lienDeadlines'
 import { buildLienTimelineFromWindow } from '../../lib/jobs/lienTimelineDesk'
 import LienTimelineStrip from './LienTimelineStrip'
+import { lienWindowNextStep } from '../../lib/jobs/lienWindowNextStep'
 import LienWindowFoldedSteps from './LienWindowFoldedSteps'
 import DemandRecordSendSheet from './DemandRecordSendSheet'
 import { useIsMobile } from '../../hooks/useIsMobile'
@@ -108,6 +109,8 @@ export default function LienInstrumentsModal({
   onRecorded,
   initialTab,
   noticeMonths,
+  onOpenLienDesk,
+  onOpenRelease,
 }: {
   open: boolean
   onClose: () => void
@@ -123,6 +126,10 @@ export default function LienInstrumentsModal({
   initialTab?: 'demand' | 'notice' | 'affidavit' | 'release_record'
   /** The Lien desk's months for the § 53.056 notice (v2.3405) — recorded as months_covered instead of the last work month alone. */
   noticeMonths?: string[] | null
+  /** The next step's door to the Lien desk on this job (punch list #82): notices and retainage are drafted, approved and sent there. Absent, the card has no desk button. */
+  onOpenLienDesk?: (jobId: string, kind: 'notice' | 'retainage') => void
+  /** *Waivers on the bills* (punch list #82): the Release of Lien window for this job, opened over this one. */
+  onOpenRelease?: (job: JobWithDetails) => void
 }) {
   const { role: authRole, user: authUser } = useAuth()
   const { showToast } = useToastContext()
@@ -811,6 +818,23 @@ export default function LienInstrumentsModal({
     </label>
   )
 
+  // The next step, named (punch list #82): the timeline's own Next on the path, with the one door that goes there.
+  const nextStep = timeline ? lienWindowNextStep(timeline.next, timeline.waitingOn) : null
+  const nextDoor = nextStep?.button?.door ?? null
+  const nextStepButton =
+    nextStep?.button && nextDoor && (nextDoor.to === 'tab' || onOpenLienDesk) ? (
+      <button
+        type="button"
+        data-lien-window-next-step-button
+        onClick={() => {
+          if (nextDoor.to === 'tab') setActiveTab(nextDoor.tab)
+          else if (job) onOpenLienDesk?.(job.id, nextDoor.kind)
+        }}
+        style={{ flexShrink: 0, padding: '6px 14px', borderRadius: 7, border: 'none', background: '#2563eb', color: '#fff', fontWeight: 600, fontSize: '0.8125rem', cursor: 'pointer', ...(isMobile ? { width: '100%', padding: '9px 14px' } : {}) }}
+      >
+        {nextStep.button.label} ›
+      </button>
+    ) : null
   const paperTabs = [
     ['demand', 'Demand letter'],
     ['notice', '§ 53.056 notice'],
@@ -879,7 +903,7 @@ export default function LienInstrumentsModal({
           {isMobile ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minHeight: 44 }}>
               <h2 id="lien-instruments-title" style={{ margin: 0, fontSize: '1.0625rem', fontWeight: 600, flex: 1, minWidth: 0 }}>
-                Lien instruments
+                Liens on job {jobNumber}
               </h2>
               <LienRulesDoor where={rulesWhere} style={{ minHeight: 34, padding: '0 0.65rem' }} />
               <button type="button" onClick={onClose} aria-label="Close" style={{ flexShrink: 0, width: 44, height: 44, marginRight: '-0.6rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.4rem', lineHeight: 1, color: 'var(--text-muted)' }}>×</button>
@@ -887,7 +911,7 @@ export default function LienInstrumentsModal({
           ) : (
             <>
               <h2 id="lien-instruments-title" style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600, paddingRight: '2rem' }}>
-                Lien instruments
+                Liens on job {jobNumber}
               </h2>
               <button type="button" onClick={onClose} aria-label="Close" style={{ position: 'absolute', right: '0.8rem', top: '0.7rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)', padding: 4 }}>×</button>
             </>
@@ -904,6 +928,26 @@ export default function LienInstrumentsModal({
                 <LienTimelineStrip timeline={timeline} />
               </div>
             )
+          ) : null}
+          {nextStep ? (
+            <div data-lien-window-next-step data-tone={nextStep.tone} style={{ marginTop: isMobile ? '0.4rem' : '0.6rem', border: `1px solid ${nextStep.tone === 'red' ? 'var(--text-red-600)' : 'var(--border-strong)'}`, borderRadius: 9, padding: '0.55rem 0.8rem', background: nextStep.tone === 'red' ? 'var(--bg-red-tint)' : nextStep.tone === 'amber' ? 'var(--bg-amber-tint)' : nextStep.tone === 'green' ? 'var(--bg-green-tint)' : 'var(--bg-subtle)', display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+              <div style={{ flex: '1 1 16rem', minWidth: 0 }}>
+                <div style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+                  Your next step{nextStep.daysWords ? <span style={{ color: nextStep.tone === 'red' ? 'var(--text-red-600)' : 'var(--text-700)' }}> · {nextStep.daysWords}</span> : null}
+                </div>
+                <div style={{ fontSize: '0.92rem', fontWeight: 700, marginTop: 2 }}>{nextStep.words}</div>
+                {nextStep.waitingWords ? <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 2 }}>{nextStep.waitingWords}</div> : null}
+              </div>
+              {nextStepButton}
+            </div>
+          ) : null}
+          {onOpenRelease ? (
+            <div data-lien-window-waivers style={{ marginTop: '0.4rem', fontSize: '0.8125rem', color: 'var(--text-muted)', display: 'flex', gap: '0.4rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
+              <span>Waivers on the bills are their own paper.</span>
+              <button type="button" onClick={() => onOpenRelease(job)} style={{ border: 'none', background: 'none', padding: 0, color: 'var(--text-link)', fontWeight: 600, cursor: 'pointer', fontSize: '0.8125rem' }}>
+                Open Release of Lien ›
+              </button>
+            </div>
           ) : null}
           {supplierJob ? (
             // The header does not scroll, so the opened card scrolls inside its own height and the paper keeps the window.
