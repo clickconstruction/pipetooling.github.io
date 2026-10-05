@@ -53,6 +53,7 @@ import { buildOverheadPoolDayIndex, type OverheadPoolPartsLine } from '../../lib
 import { type OverheadLensKey } from '../../lib/overheadLensSeries'
 import { OverheadLensModal, type OverheadLensDetail } from './OverheadLensModal'
 import { OverheadPeopleTable } from './OverheadPeopleTable'
+import { ManHoursCard } from './ManHoursCard'
 import { loadOverheadPoolSnapshot } from '../../lib/overheadPoolSnapshot'
 import type { OverheadPeoplePartsInput } from '../../lib/overheadPeopleTable'
 import {
@@ -1425,6 +1426,7 @@ export default function PeopleOverheadTab({
           </div>
         </div>
       ) : null}
+      <ManHoursCard officeJobLedgerId={overheadOfficeJobLedgerId} officeJobLoading={overheadSettingsLoading} />
       <div
         style={{
           display: 'flex',
