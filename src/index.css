@@ -4736,6 +4736,9 @@ button.gcStep:hover > em { text-decoration: underline; }
   .sub-rows-answers[data-answers='true'] { grid-template-columns: minmax(0, 1fr); row-gap: 0.1rem; margin-bottom: 0.2rem; }
   /* On a card the catalog words drop under a long maker-and-model instead of squeezing beside it. */
   .sub-rows-part { flex-wrap: wrap; }
+  /* On a card the row's verdict reads first, then its buttons, both from the left edge. */
+  .sub-rows-actions { align-items: flex-start !important; }
+  .sub-rows-call { order: -1; max-width: none !important; text-align: left !important; }
 }
 
 /* Pipeline Billed rows' dates block (v2.4193): the doors underline on hover only. */

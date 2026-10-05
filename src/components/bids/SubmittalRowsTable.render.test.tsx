@@ -64,6 +64,8 @@ describe('SubmittalRowsTable', () => {
     expect(rows[1]!.textContent).toContain('sheet needed')
     expect(within(rows[2]!).getByTestId('their-call-head').textContent).toBe('1 of 2 rejected')
     expect(within(rows[2]!).getByTestId('their-call-parts').textContent).toBe('1 with no answer yet')
+    // The verdict shares the buttons' column, under Their answer.
+    expect(within(rows[2]!).getByTestId('their-call').closest('td')).toBe(within(rows[2]!).getByTestId('their-answer-row').closest('td'))
     // The order-only fixture sits under them, in its own group.
     expect(screen.getByTestId('submittal-rows').textContent).toContain('STOPS')
   })
