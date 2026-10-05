@@ -1087,6 +1087,8 @@ export type GcAction =
   | { type: 'ownerPaidInterest'; projectId: string; number: number }
   /** We enter the owner contract's late fee a day (null: the contract has none). */
   | { type: 'setOwnerLateFinish'; projectId: string; perDay: number | null }
+  /** We remind the customer to pay a pay application past its due day (email only). */
+  | { type: 'remindCustomerToPay'; projectId: string; number: number; by: string; note: string }
   /** We set the pre-bid meeting, or move it, while we bid. */
   | { type: 'schedulePreBid'; projectId: string; on: string; at: string; place: string; host: 'architect' | 'us'; mandatory: boolean }
   /** We record which companies came to the pre-bid meeting. */
@@ -1214,6 +1216,8 @@ export interface OwnerPayAppSent {
   retainageStep?: OwnerRetainageStep
   /** Materials stored on site, not yet in place, on each line when it went (column F). Absent: none. */
   storedByLine?: Record<string, number>
+  /** Our reminders to pay it, oldest first: the day sent, the pay-by day we asked for, the office's line. Never a promise. */
+  reminders?: { on: string; by: string; note: string }[]
 }
 
 /** A pay application the office sent back: the draw as the trade sent it, why, and what we see. */

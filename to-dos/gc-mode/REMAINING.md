@@ -204,8 +204,8 @@ first** (a partner's vetting, the promise record), so build on those once GC 0 s
 
 ### Portal (GC 3)
 
-1. **Q4:** the quote form takes their schedule of values (Rough-in, Top out, Trim as a start; any
-   lines; it adds up to the quote), in both languages.
+1. ~~**Q4:** the quote form takes their schedule of values (Rough-in, Top out, Trim as a start; any
+   lines; it adds up to the quote), in both languages.~~ done 8fd901616
 
 ### New Project (GC 2)
 
@@ -264,10 +264,10 @@ do."
 
 ### Portal (GC 3)
 
-1. **The quote form: What your quote leaves out**: `exclusionsFor(trade)` as ticks, typed ones,
+1. ~~**The quote form: What your quote leaves out**: `exclusionsFor(trade)` as ticks, typed ones,
    a unit price where it fits; sends `exclusions` and `exclusionsAnswered` (every tick offered) on
-   `tradeSubmitBid`. Both languages.
-2. **The statement of work in the portal** shows "What you will not do" from `Sow.excluded`.
+   `tradeSubmitBid`. Both languages.~~ done 6ef5b43ea
+2. ~~**The statement of work in the portal** shows "What you will not do" from `Sow.excluded`.~~ done 6ef5b43ea
 
 ### New Project (GC 2)
 
@@ -293,6 +293,7 @@ code names stay. Golden moves on words are each lane's own, under its standing O
   customer pays"); the pay application goes to the customer and names the property's owner when
   different. Then its words.
 - **Building (GC 1)** and **Portal (GC 3):** their own words where "owner" means who we bill.
+  Portal done df682115a.
 
 ## Round 7: the company window (the owner, 2026-10-04)
 
