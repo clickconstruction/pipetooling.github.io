@@ -497,6 +497,16 @@ function reduce(state: GcState, action: GcAction): GcState {
       )
     }
 
+    case 'setCustomerPortal': {
+      const customer = state.customers.find((c) => c.id === action.customerId)
+      if (!customer || customer.portalOn === action.on) return state
+      return logged(
+        { ...state, customers: state.customers.map((c) => (c.id === customer.id ? { ...c, portalOn: action.on } : c)) },
+        'office',
+        action.on ? `Turned on ${customer.name}'s portal and sent them the link.` : `Turned off ${customer.name}'s portal. Their link stops working.`,
+      )
+    }
+
     case 'logPartnerContact': {
       const partner = state.partners.find((x) => x.id === action.partnerId)
       if (!partner || action.note.trim() === '') return state

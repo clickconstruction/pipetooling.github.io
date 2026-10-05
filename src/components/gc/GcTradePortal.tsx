@@ -75,13 +75,15 @@ interface Props {
   partnerId: string
   onPickPartner: (id: string) => void
   dispatch: Dispatch<GcAction>
+  /** One company only, as in its company window (Board, 2026-10-04): its name instead of the picker. */
+  partnerLocked?: boolean
 }
 
 const INK = '#16283c'
 const PAPER = '#f6f3ec'
 const GC = GC_COMPANY.shortName
 
-export function GcTradePortal({ state, project, partnerId, onPickPartner, dispatch }: Props) {
+export function GcTradePortal({ state, project, partnerId, onPickPartner, dispatch, partnerLocked }: Props) {
   const onProject = state.partners.filter((p) => project.packages.some((k) => k.invites.some((i) => i.partnerId === p.id)))
   const partner = partnerById(state, partnerId) ?? onProject[0]
   /** The project page on show. Null: the company's home, where the link lands. */
@@ -123,6 +125,9 @@ export function GcTradePortal({ state, project, partnerId, onPickPartner, dispat
         <div style={{ fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', opacity: 0.8 }}>
           What the trade sees · their portal
         </div>
+        {partnerLocked && partner ? (
+          <div style={{ marginTop: '0.3rem', fontSize: '1rem', fontWeight: 600 }}>{partner.company}</div>
+        ) : (
         <select
           value={partner?.id ?? ''}
           onChange={(e) => onPickPartner(e.target.value)}
@@ -133,6 +138,7 @@ export function GcTradePortal({ state, project, partnerId, onPickPartner, dispat
             <option key={p.id} value={p.id}>{p.company}</option>
           ))}
         </select>
+        )}
         {partner && (
           <div role="tablist" aria-label="What to show" style={{ display: 'flex', gap: '0.3rem', marginTop: '0.45rem' }}>
             {(

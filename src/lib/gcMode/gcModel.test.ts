@@ -739,6 +739,7 @@ const STEPS: Step[] = [
   { label: 'Hillside now includes dewatering', action: { type: 'setQuoteExclusion', projectId: 'boerne', packageId: 'site', inviteId: 'site-hillside', name: 'Dewatering', excluded: false } },
   // The company window (the owner, 2026-10-04): a call with the company itself, on its Activity tab.
   { label: 'A call with Pecan Valley about the waiver', action: { type: 'logPartnerContact', partnerId: 'pecanvalley', note: 'Said the draw 1 unconditional waiver goes out Monday.' } },
+  { label: "Turn on Dr. Raman's portal", action: { type: 'setCustomerPortal', customerId: 'raman', on: true } },
 ]
 
 const CUSTOMER_IDS = ['cibolo', 'raman']
@@ -902,7 +903,7 @@ describe('GC mode golden walk', () => {
       'saveToScopeBook', 'editScopeBookLine', 'mergeScopeBookLines', 'saveScopeSet',
       'checkPlanSetDrive',
       'tradeSendSov',
-      'setQuoteExclusion', 'setExclusionCover', 'logPartnerContact',
+      'setQuoteExclusion', 'setExclusionCover', 'logPartnerContact', 'setCustomerPortal',
     ]
     expect(all.filter((t) => !used.has(t))).toEqual([])
   })

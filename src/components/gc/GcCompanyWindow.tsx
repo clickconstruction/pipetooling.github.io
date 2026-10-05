@@ -18,6 +18,7 @@ import {
   partnerScheduleWords,
   partnerWork,
   shortDate,
+  tradePortalStatus,
   tradePromiseRecord,
   vettingOf,
   weekdayDate,
@@ -27,7 +28,8 @@ import {
   type GcState,
   type Partner,
 } from '../../lib/gcMode/gcModel'
-import { CompanyActivity, CompanyDocuments, CompanyTabStrip } from './GcCompanyFile'
+import { CompanyActivity, CompanyDocuments, CompanyPortalPanel, CompanyTabStrip } from './GcCompanyFile'
+import { GcTradePortal } from './GcTradePortal'
 import type { CompanyTab } from './gcCompanyOpener'
 import { Btn, Chip, Stat, type Tone } from './gcUi'
 import { VettingChip } from './GcVetting'
@@ -71,6 +73,9 @@ export function GcCompanyWindow({
 }) {
   const docs = partnerDocuments(state, partner)
   const events = partnerActivity(state, partner)
+  const portal = tradePortalStatus(state, partner)
+  // The portal draws from a project they are asked on; its home shows every job they have with us.
+  const portalProject = state.projects.find((p) => p.packages.some((k) => k.invites.some((i) => i.partnerId === partner.id))) ?? null
   const firstDoc = docs.groups[0]?.docs[0]?.key ?? null
   const [tab, setTab] = useState<CompanyTab>(at?.tab ?? (at?.doc ? 'documents' : 'about'))
   const [doc, setDoc] = useState<string | null>(at?.doc ?? firstDoc)
@@ -152,7 +157,7 @@ export function GcCompanyWindow({
             {[partner.contact || 'no contact yet', coverage, partner.lang === 'es' ? 'reads Spanish' : null].filter(Boolean).join(' · ')}
           </div>
         </div>
-        <CompanyTabStrip tab={tab} onTab={setTab} activity={events.length} toGet={docs.toGet} />
+        <CompanyTabStrip tab={tab} onTab={setTab} activity={events.length} toGet={docs.toGet} portal={portal} />
         <div style={{ padding: '0.9rem 1rem', overflowY: 'auto' }}>
           {tab === 'about' && <About state={state} partner={partner} onOpenProject={onOpenProject} onDocuments={(key) => { setDoc(key); setTab('documents') }} />}
           {tab === 'activity' && (
@@ -160,6 +165,21 @@ export function GcCompanyWindow({
           )}
           {tab === 'documents' && (
             <CompanyDocuments groups={docs.groups} selected={doc} onSelect={setDoc} paper={doc ? partnerPaper(state, partner, doc) : null} ask={ask} />
+          )}
+          {tab === 'portal' && (
+            <CompanyPortalPanel
+              status={portal}
+              shows={`One link for everything they have with us: what we ask them to quote, the plans, papers to sign, their pay and their schedule. They read it in ${partner.lang === 'es' ? 'Spanish' : 'English'}. What they press here lands on our side at once.`}
+              preview={
+                portalProject ? (
+                  <GcTradePortal state={state} project={portalProject} partnerId={partner.id} onPickPartner={() => undefined} dispatch={dispatch} partnerLocked />
+                ) : (
+                  <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', padding: '1rem', border: '1px dashed var(--border-strong)', borderRadius: 8 }}>
+                    Nothing to show yet. Ask them to quote on a job and their portal opens.
+                  </div>
+                )
+              }
+            />
           )}
         </div>
       </div>

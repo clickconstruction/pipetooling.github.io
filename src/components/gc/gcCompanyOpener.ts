@@ -1,7 +1,7 @@
 import { createContext, useContext } from 'react'
 
-/** The company window's three tabs (the owner, 2026-10-04). */
-export type CompanyTab = 'about' | 'activity' | 'documents'
+/** The company window's tabs (the owner, 2026-10-04): About, Activity, Documents, then Their portal. */
+export type CompanyTab = 'about' | 'activity' | 'documents' | 'portal'
 
 /**
  * GC mode design spike: open a trade's company window from anywhere below the page, at the tab

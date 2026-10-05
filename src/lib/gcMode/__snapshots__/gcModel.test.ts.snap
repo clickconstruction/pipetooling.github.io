@@ -9023,6 +9023,16 @@ exports[`GC mode golden walk > step 191: A call with Pecan Valley about the waiv
 }
 `;
 
+exports[`GC mode golden walk > step 192: Turn on Dr. Raman's portal 1`] = `
+{
+  "changed": {
+    "lastLog.id": 187,
+    "lastLog.text": "Turned on Dr. Priya Raman's portal and sent them the link.",
+  },
+  "removed": [],
+}
+`;
+
 exports[`GC mode golden walk > the whole state at the end 1`] = `
 {
   "customers": [
@@ -9104,7 +9114,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "payDays": 21,
       "phone": "(210) 555-0177",
       "portalLastOpened": null,
-      "portalOn": false,
+      "portalOn": true,
       "retainagePct": 10,
       "tradesNote": null,
     },
@@ -9222,6 +9232,11 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
     },
   ],
   "log": [
+    {
+      "id": 187,
+      "text": "Turned on Dr. Priya Raman's portal and sent them the link.",
+      "who": "office",
+    },
     {
       "id": 186,
       "text": "Logged a contact with Pecan Valley Electric.",
@@ -9366,11 +9381,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "id": 158,
       "text": "Cool Breeze Mechanical sent pay application 2 on HVAC: $57,600, with a conditional waiver signed.",
       "who": "trade",
-    },
-    {
-      "id": 157,
-      "text": "Boerne Retail Pad B is started. Emailed the 1 company on the job. Dana Whitaker started it before everything was in: The owner needs the pad graded before the rains. 6 still owed.",
-      "who": "office",
     },
   ],
   "partners": [

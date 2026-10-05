@@ -5,6 +5,8 @@ import {
   customerActivity,
   customerDocuments,
   customerPaper,
+  customerPortalJobs,
+  customerPortalStatus,
   customerSummary,
   ownerAccount,
   ownerInterest,
@@ -24,7 +26,7 @@ import {
   type GcState,
 } from '../../lib/gcMode/gcModel'
 import { GcOwnerBillingPortal } from './GcOwnerBillingPortal'
-import { CompanyActivity, CompanyDocuments, CompanyTabStrip } from './GcCompanyFile'
+import { CompanyActivity, CompanyDocuments, CompanyPortalPanel, CompanyTabStrip } from './GcCompanyFile'
 import type { CompanyTab } from './gcCompanyOpener'
 import { Btn, Chip, Stat, num, td, th, type Tone } from './gcUi'
 
@@ -103,25 +105,22 @@ export function GcCustomerWindow({ state, customer, dispatch, onClose, onOpenPro
   // A live bid we lost (owner, 2026-10-03) counts as decided, like a lost one in their history.
   const decided = owner.won + customer.past.filter((p) => p.outcome === 'lost').length + owner.live.filter((p) => p.lostOn).length
   const oldest = architect.waiting[0]?.days ?? 0
-  // The owner's portal shows a job that is ours: won and buying out, or building. A job still
-  // bidding has nothing to bill on. 'pick' asks which first when there is more than one.
-  const portalProjects = state.projects.filter((p) => p.customerId === customer.id && (p.stage === 'buyout' || p.stage === 'building'))
-  const [portal, setPortal] = useState<string | null>(null)
-  const portalProject = state.projects.find((p) => p.id === portal) ?? null
+  // Their portal (the owner, 2026-10-04): whether it is working, and the portal itself, on its own
+  // tab. It shows a job that is ours, buying out or building, one at a time.
+  const portal = customerPortalStatus(state, customer)
+  const portalJobs = customerPortalJobs(state, customer)
+  const [portalJobId, setPortalJobId] = useState<string | null>(portalJobs[0]?.id ?? null)
+  const portalJob = portalJobs.find((p) => p.id === portalJobId) ?? portalJobs[0] ?? null
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return
-      // Escape closes the window on top: the portal first, then this one.
-      if (portal) setPortal(null)
-      else onClose()
+      if (e.key === 'Escape') onClose()
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [onClose, portal])
+  }, [onClose])
 
   return (
-    <>
     <div
       onClick={onClose}
       style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.55)', zIndex: 1200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
@@ -147,11 +146,13 @@ export function GcCustomerWindow({ state, customer, dispatch, onClose, onOpenPro
           {owner.live.length > 0 && <Chip tone="amber">Customer on {projects(owner.live.length)}</Chip>}
           {isArchitect && <Chip tone="violet">Architect on {projects(architect.live.length)}</Chip>}
           {isOwner && (
-            <Chip tone={customer.portalOn ? 'green' : 'grey'}>
-              {customer.portalOn
-                ? `Customer's portal on${customer.portalLastOpened ? ` · opened ${shortDate(customer.portalLastOpened)}` : ''}`
-                : "Customer's portal off"}
-            </Chip>
+            <button type="button" onClick={() => setTab('portal')} title="See their portal and whether it is working" style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit' }}>
+              <Chip tone={customer.portalOn ? 'green' : 'grey'}>
+                {customer.portalOn
+                  ? `Customer's portal on${customer.portalLastOpened ? ` · opened ${shortDate(customer.portalLastOpened)}` : ''}`
+                  : "Customer's portal off"}
+              </Chip>
+            </button>
           )}
           <span style={{ flex: 1 }} />
           <button
@@ -163,7 +164,69 @@ export function GcCustomerWindow({ state, customer, dispatch, onClose, onOpenPro
             ×
           </button>
         </div>
-        <CompanyTabStrip tab={tab} onTab={setTab} activity={events.length} toGet={docs.toGet} />
+        <CompanyTabStrip tab={tab} onTab={setTab} activity={events.length} toGet={docs.toGet} portal={isOwner ? portal : undefined} />
+        {tab === 'portal' && (
+          <div style={{ padding: '0.9rem 1rem' }}>
+            <CompanyPortalPanel
+              status={portal}
+              shows="Their portal shows one job at a time: the contract, each bill with its lines and a Pay button, the work, and the papers."
+              actions={
+                portal.state === 'off' ? (
+                  <Btn kind="primary" disabled={portalJobs.length === 0} onClick={() => dispatch({ type: 'setCustomerPortal', customerId: customer.id, on: true })}>
+                    Turn it on and send the link
+                  </Btn>
+                ) : (
+                  <Btn kind="quiet" onClick={() => dispatch({ type: 'setCustomerPortal', customerId: customer.id, on: false })}>
+                    Turn it off
+                  </Btn>
+                )
+              }
+              picker={
+                portalJobs.length > 1 ? (
+                  <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }} role="group" aria-label="The job it shows">
+                    {portalJobs.map((p) => {
+                      const on = p.id === portalJob?.id
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          aria-pressed={on}
+                          onClick={() => setPortalJobId(p.id)}
+                          style={{
+                            padding: '0.25rem 0.7rem',
+                            borderRadius: 999,
+                            border: `1px solid ${on ? 'var(--text-blue-500)' : 'var(--border-strong)'}`,
+                            background: on ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                            color: on ? 'var(--text-blue-500)' : 'var(--text-600)',
+                            fontWeight: on ? 600 : 400,
+                            fontSize: '0.82rem',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {p.name}
+                        </button>
+                      )
+                    })}
+                  </div>
+                ) : null
+              }
+              preview={
+                portalJob ? (
+                  <div style={{ display: 'grid', gap: '0.4rem' }}>
+                    {portal.state === 'off' && (
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-amber-800)' }}>Not on yet. This is what they will see once it is.</div>
+                    )}
+                    <GcOwnerBillingPortal state={state} project={portalJob} dispatch={dispatch} />
+                  </div>
+                ) : (
+                  <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', padding: '1rem', border: '1px dashed var(--border-strong)', borderRadius: 8 }}>
+                    Nothing to show yet. Their portal opens once we win a job for them.
+                  </div>
+                )
+              }
+            />
+          </div>
+        )}
 
         {tab === 'activity' && (
           <div style={{ padding: '0.9rem 1rem' }}>
@@ -400,15 +463,10 @@ export function GcCustomerWindow({ state, customer, dispatch, onClose, onOpenPro
         <div style={{ padding: '0.6rem 1rem', borderTop: '1px solid var(--border)', display: 'flex', gap: '0.6rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
           {isOwner && (
             <Btn
-              disabled={portalProjects.length === 0}
-              onClick={() => setPortal(portalProjects.length === 1 ? (portalProjects[0]?.id ?? null) : 'pick')}
-              title={
-                portalProjects.length === 0
-                  ? 'Nothing to show yet. Their portal opens once we win a job for them.'
-                  : 'Their portal, as they see it: the contract, each bill with its lines and a Pay button, the work, and the papers.'
-              }
+              onClick={() => setTab('portal')}
+              title="Their portal, as they see it: the contract, each bill with its lines and a Pay button, the work, and the papers."
             >
-              See what they see ↗
+              See what they see
             </Btn>
           )}
           <Btn
@@ -418,110 +476,6 @@ export function GcCustomerWindow({ state, customer, dispatch, onClose, onOpenPro
             Open the customer&rsquo;s page ↗
           </Btn>
         </div>
-      </div>
-    </div>
-    {portal && (
-      <OwnerPortalWindow
-        state={state}
-        customer={customer}
-        projects={portalProjects}
-        project={portalProject}
-        dispatch={dispatch}
-        onPick={setPortal}
-        onClose={() => setPortal(null)}
-      />
-    )}
-    </>
-  )
-}
-
-/**
- * "See what they see": the owner's portal (the Owner Billing lane's panel) in a window over the
- * company window. One job opens straight to it; more than one asks which first. In the real
- * build this is the customer portal they already use for our bills.
- */
-function OwnerPortalWindow({
-  state,
-  customer,
-  projects,
-  project,
-  dispatch,
-  onPick,
-  onClose,
-}: {
-  state: GcState
-  customer: GcCustomer
-  projects: GcProject[]
-  project: GcProject | null
-  dispatch: Dispatch<GcAction>
-  onPick: (id: string | null) => void
-  onClose: () => void
-}) {
-  return (
-    <div
-      onClick={onClose}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.55)', zIndex: 1250, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={`What ${customer.name} sees`}
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          background: 'var(--surface)',
-          color: 'var(--text-base)',
-          borderRadius: 10,
-          width: 'min(26rem, 100%)',
-          maxHeight: '92vh',
-          overflowY: 'auto',
-          border: '1px solid var(--border-strong)',
-          padding: '0.6rem',
-          display: 'grid',
-          gap: '0.5rem',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-          <span style={{ fontWeight: 700, flex: '1 1 auto' }}>{project ? `What ${customer.name} sees` : 'Which job?'}</span>
-          {project && projects.length > 1 && (
-            <Btn kind="quiet" onClick={() => onPick('pick')}>
-              ← Their jobs
-            </Btn>
-          )}
-          <Btn kind="quiet" onClick={onClose}>
-            Close
-          </Btn>
-        </div>
-        {project ? (
-          <GcOwnerBillingPortal state={state} project={project} dispatch={dispatch} />
-        ) : (
-          <div style={{ display: 'grid', gap: '0.4rem' }}>
-            <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-              {customer.name} has {projects.length} jobs with us. Their portal shows one at a time.
-            </span>
-            {projects.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => onPick(p.id)}
-                style={{
-                  textAlign: 'left',
-                  padding: '0.55rem 0.7rem',
-                  border: '1px solid var(--border)',
-                  borderRadius: 8,
-                  background: 'var(--surface)',
-                  color: 'var(--text-base)',
-                  cursor: 'pointer',
-                  font: 'inherit',
-                }}
-              >
-                <span style={{ fontWeight: 600 }}>{p.name}</span>
-                <span style={{ display: 'block', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-                  {STAGE_WORDS[p.stage].word} · {p.address}
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
       </div>
     </div>
   )

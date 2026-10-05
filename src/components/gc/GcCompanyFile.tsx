@@ -1,5 +1,5 @@
-import { useRef, useState, type ReactNode } from 'react'
-import { shortDate, type ActivityKind, type CompanyDoc, type CompanyDocGroup, type CompanyEvent, type CompanyPaper, type DocStatus } from '../../lib/gcMode/gcModel'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { shortDate, type ActivityKind, type CompanyDoc, type CompanyDocGroup, type CompanyEvent, type CompanyPaper, type CompanyPortalStatus, type DocStatus, type PortalState } from '../../lib/gcMode/gcModel'
 import { useCompanyOpener, type CompanyTab } from './gcCompanyOpener'
 import { Btn, input } from './gcUi'
 
@@ -9,14 +9,40 @@ import { Btn, input } from './gcUi'
  * Activity is one timeline; Documents leads with what is missing and shows the paper beside the list.
  */
 
-export function CompanyTabStrip({ tab, onTab, activity, toGet }: { tab: CompanyTab; onTab: (t: CompanyTab) => void; activity: number; toGet: number }) {
+export function CompanyTabStrip({
+  tab,
+  onTab,
+  activity,
+  toGet,
+  portal,
+}: {
+  tab: CompanyTab
+  onTab: (t: CompanyTab) => void
+  activity: number
+  toGet: number
+  /** Their portal's status: the tab says it ("Their portal · active"). Unset: no portal tab (an architect). */
+  portal?: CompanyPortalStatus
+}) {
   const tabs: { key: CompanyTab; label: string }[] = [
     { key: 'about', label: 'About' },
     { key: 'activity', label: `Activity (${activity})` },
     { key: 'documents', label: toGet > 0 ? `Documents · ${toGet} to get` : 'Documents' },
+    ...(portal ? [{ key: 'portal' as const, label: `Their portal · ${portal.word}` }] : []),
   ]
+  const stripRef = useRef<HTMLDivElement | null>(null)
+  // The picked tab stays in sight when the row scrolls on a phone (Their portal sits last).
+  useEffect(() => {
+    const strip = stripRef.current
+    const on = strip?.querySelector<HTMLElement>('[aria-selected="true"]')
+    if (!strip || !on) return
+    const box = strip.getBoundingClientRect()
+    const r = on.getBoundingClientRect()
+    if (r.right > box.right) strip.scrollLeft += r.right - box.right
+    else if (r.left < box.left) strip.scrollLeft -= box.left - r.left
+  }, [tab])
   return (
-    <div role="tablist" aria-label="Company" style={{ display: 'flex', gap: '0.25rem', padding: '0 1rem', borderBottom: '1px solid var(--border)', flexWrap: 'wrap' }}>
+    // One row that scrolls sideways on a phone, rather than three rows of tabs.
+    <div ref={stripRef} role="tablist" aria-label="Company" style={{ display: 'flex', gap: '0.25rem', padding: '0 1rem', borderBottom: '1px solid var(--border)', overflowX: 'auto', flex: 'none' }}>
       {tabs.map((t) => {
         const on = tab === t.key
         return (
@@ -32,10 +58,17 @@ export function CompanyTabStrip({ tab, onTab, activity, toGet }: { tab: CompanyT
               border: 'none',
               borderBottom: `2px solid ${on ? 'var(--text-blue-500)' : 'transparent'}`,
               padding: '0.55rem 0.7rem',
+              whiteSpace: 'nowrap',
               font: 'inherit',
               fontSize: '0.9rem',
               fontWeight: on ? 700 : 500,
-              color: on ? 'var(--text-base)' : t.key === 'documents' && toGet > 0 ? 'var(--text-amber-800)' : 'var(--text-muted)',
+              color: on
+                ? 'var(--text-base)'
+                : (t.key === 'documents' && toGet > 0) || (t.key === 'portal' && portal?.state === 'waiting')
+                  ? 'var(--text-amber-800)'
+                  : t.key === 'portal' && portal?.state === 'active'
+                    ? 'var(--text-green-700)'
+                    : 'var(--text-muted)',
               cursor: 'pointer',
             }}
           >
@@ -299,5 +332,75 @@ export function PartnerName({ partnerId, company }: { partnerId: string; company
     >
       {company}
     </button>
+  )
+}
+
+const PORTAL_TONE: Record<PortalState, { bg: string; fg: string; label: string }> = {
+  active: { bg: 'var(--bg-green-100)', fg: 'var(--text-green-800)', label: 'Active' },
+  waiting: { bg: 'var(--bg-amber-100)', fg: 'var(--text-amber-800)', label: 'Not opened yet' },
+  off: { bg: 'var(--bg-muted)', fg: 'var(--text-600)', label: 'Off' },
+  none: { bg: 'var(--bg-muted)', fg: 'var(--text-600)', label: 'No link yet' },
+}
+
+/**
+ * *Their portal* (the owner, 2026-10-04): whether it is working, the link, and the portal itself as
+ * they see it, beside it. `actions` are the window's own (turn a customer's on, say); `picker` picks
+ * the job a customer's portal shows.
+ */
+export function CompanyPortalPanel({
+  status,
+  shows,
+  actions,
+  picker,
+  preview,
+}: {
+  status: CompanyPortalStatus
+  /** What the portal holds for them, in a sentence. */
+  shows: string
+  actions?: ReactNode
+  picker?: ReactNode
+  preview: ReactNode
+}) {
+  const tone = PORTAL_TONE[status.state]
+  const [copied, setCopied] = useState(false)
+  const copy = async () => {
+    if (!status.link) return
+    try {
+      await navigator.clipboard.writeText(`https://${status.link}`)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 1500)
+    } catch {
+      /* no clipboard here: the link is on screen to copy by hand */
+    }
+  }
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: '1rem', alignItems: 'start' }}>
+      <div style={{ display: 'grid', gap: '0.75rem', minWidth: 0 }} data-tour="gc-company-portal-status">
+        <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.75rem 0.85rem', display: 'grid', gap: '0.45rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <span style={{ padding: '0.15rem 0.6rem', borderRadius: 999, background: tone.bg, color: tone.fg, fontWeight: 700, fontSize: '0.85rem' }}>
+              {tone.label}
+            </span>
+            {status.late && <span style={{ color: 'var(--text-red-700)', fontSize: '0.8rem', fontWeight: 600 }}>longer than we give it</span>}
+          </div>
+          <div style={{ fontSize: '0.9rem' }}>{status.words}</div>
+          {status.link && (
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.85rem' }}>
+              <span style={{ color: 'var(--text-muted)' }}>Their link</span>
+              <code style={{ background: 'var(--bg-subtle)', padding: '0.1rem 0.4rem', borderRadius: 4, overflowWrap: 'anywhere' }}>{status.link}</code>
+              <Btn kind="quiet" onClick={() => void copy()}>
+                {copied ? 'Copied' : 'Copy link'}
+              </Btn>
+            </div>
+          )}
+          {actions && <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>{actions}</div>}
+        </div>
+        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{shows}</div>
+        {picker}
+      </div>
+      <div style={{ minWidth: 0 }} data-tour="gc-company-portal-preview">
+        {preview}
+      </div>
+    </div>
   )
 }

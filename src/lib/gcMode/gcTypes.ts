@@ -817,6 +817,8 @@ export type GcAction =
   | { type: 'logCustomerContact'; customerId: string; note: string }
   /** A call or note with a trade company, from its window's Activity tab. */
   | { type: 'logPartnerContact'; partnerId: string; note: string }
+  /** Turn a customer's portal on (we send them the link) or off, from its window's *Their portal* tab. */
+  | { type: 'setCustomerPortal'; customerId: string; on: boolean }
   /** `known: false`: a company new to us, not vetted yet (question 3). Unset: one we know. */
   | { type: 'addPartner'; company: string; contact: string; trade: string; base: string | null; maxMiles: number | null; known?: boolean }
   | { type: 'setCoverage'; partnerId: string; base: string | null; maxMiles: number | null }

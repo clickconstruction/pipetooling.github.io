@@ -303,6 +303,8 @@ about the company, a ledger of what happened with them, and their documents, in 
 - ~~**Board (GC 0):**~~ built. One window for every company: About, Activity, Documents. Paperwork
   chips open it at that paper, a trade's name opens it on About, and a customer's window gets the same
   tabs. Details in README.md, *The company window*.
+- ~~**Board (GC 0):**~~ built. **Their portal**, a fourth tab: active or not yet, the link, and the
+  portal itself beside it (the owner, 2026-10-04). Customers turn on and off there.
 - **Other lanes:** nothing owed. If a lane adds a paper or an event a company should see (a new
   promise kind, a new paper in the trade's portal), add it to `partnerDocuments` or `partnerActivity`
   in `gcCompanyFile.ts` and to its test.
