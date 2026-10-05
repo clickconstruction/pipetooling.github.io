@@ -18,6 +18,7 @@ import {
   portalLeavesOut,
   portalLink,
   portalOnSite,
+  portalQuoteDue,
   portalExclusionChoices,
   portalExclusionWords,
   portalSowExcluded,
@@ -106,7 +107,7 @@ describe('the company home', () => {
 
   it('asks a company that never opened the plans to open them and send its number', () => {
     // Bexar Steel Erectors was asked on Boerne structural steel and has not opened the plans.
-    expect(home('bexar').todos.map((t) => t.text)).toEqual(['Open the plans and send your Structural steel quote for Boerne Retail Shell by Thu Oct 8.'])
+    expect(home('bexar').todos.map((t) => t.text)).toEqual(['Open the plans and send your Structural steel quote for Boerne Retail Shell by Mon Oct 5.'])
   })
 
   it('has no money strip until a dollar moves, and adds it up once one has', () => {
@@ -174,7 +175,8 @@ describe('how a company arrives', () => {
   it('writes the invitation as an email (email only for now)', () => {
     const invite = portalMessages(state, 'voltage').find((m) => m.kind === 'invite' && m.projectId === 'boerne')
     expect(invite?.subject).toBe('Click Construction asks you to quote Electrical on Boerne Retail Shell')
-    expect(invite?.lines).toContain('Your quote is due Thu Oct 8.')
+    // The day we want quotes by: three days before our bid is due Thu Oct 8 (owner, 2026-10-04).
+    expect(invite?.lines).toContain('Your quote is due Mon Oct 5.')
     expect(invite?.scope?.length).toBeGreaterThan(0)
     expect(invite).not.toHaveProperty('text')
   })
@@ -1193,5 +1195,20 @@ describe('what a company’s quote leaves out', () => {
     const won = gcReducer(sent, { type: 'award', projectId: 'boerne', packageId: 'steel', inviteId: inv.id })
     const sow = steel(won).sow
     expect(sow && portalSowExcluded(sow)).toEqual(['Crane', 'Fireproofing, $4 per sf if it comes up'])
+  })
+})
+
+describe('the day a quote is due', () => {
+  const boerne = state.projects.find((p) => p.id === 'boerne')!
+
+  it('is the day we want quotes by, three days before our bid is due', () => {
+    expect(boerne.bidDue).toBe('2026-10-08')
+    expect(portalQuoteDue(boerne)).toBe('2026-10-05')
+  })
+
+  it('gives a company asked after that day our bid day in its invitation', () => {
+    const late = gcReducer({ ...state, today: '2026-10-06' }, { type: 'invite', projectId: 'boerne', packageId: 'steel', partnerId: 'ironhorse' })
+    const m = portalMessages(late, 'ironhorse').find((x) => x.kind === 'invite' && x.projectId === 'boerne')
+    expect(m?.lines).toContain('Your quote is due Thu Oct 8.')
   })
 })

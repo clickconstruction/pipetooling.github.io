@@ -3,6 +3,7 @@ import type { PriceCardHandle } from './usePriceCard'
 import { createPortal } from 'react-dom'
 import { aboutMoney, isHole, money, priceStanding, type GcAction, type GcProject, type GcState, type TradeStanding, type TradeStandingRow } from '../../lib/gcMode/gcModel'
 import { Btn } from './gcUi'
+import { GcFollowUpSheet } from './GcFollowUpSheet'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
 
 /**
@@ -93,6 +94,8 @@ export function GcPriceCard({
   const ref = useRef<HTMLDivElement>(null)
   const phone = useMatchMedia('(max-width: 720px)')
   const [, redraw] = useState(0)
+  // The Follow up sheet on a company (the owner, 2026-10-04): it outlives the card, which closes as it opens.
+  const [sheetFor, setSheetFor] = useState<string | null>(null)
   const anchor = card.anchor
   useEffect(() => {
     if (!anchor) return
@@ -116,7 +119,8 @@ export function GcPriceCard({
       window.removeEventListener('resize', onMove)
     }
   }, [anchor, card])
-  if (!anchor) return null
+  const sheet = sheetFor ? <GcFollowUpSheet state={state} dispatch={dispatch} startPartnerId={sheetFor} onClose={() => setSheetFor(null)} /> : null
+  if (!anchor) return sheet
   const p = priceStanding(state, project)
   const rect = anchor.getBoundingClientRect()
   const width = Math.min(460, window.innerWidth - 24)
@@ -135,7 +139,7 @@ export function GcPriceCard({
   }
   const days = (n: number) => `${n} ${n === 1 ? 'trade' : 'trades'}`
   const groups = (Object.keys(GROUPS) as TradeStanding[]).filter((st) => p.counts[st] > 0)
-  return createPortal(
+  const cardEl = createPortal(
     <div
       ref={ref}
       role="dialog"
@@ -180,7 +184,7 @@ export function GcPriceCard({
           {p.rows
             .filter((r) => r.standing === st)
             .map((r, i) => (
-              <TradeLine key={r.pkg.id} row={r} first={i === 0} project={project} dispatch={dispatch} go={go} onTab={onTab} onFollowUp={onFollowUp} />
+              <TradeLine key={r.pkg.id} row={r} first={i === 0} project={project} dispatch={dispatch} go={go} onTab={onTab} onFollowUp={onFollowUp} onSheet={setSheetFor} />
             ))}
         </div>
       ))}
@@ -213,6 +217,12 @@ export function GcPriceCard({
     </div>,
     document.body,
   )
+  return (
+    <>
+      {sheet}
+      {cardEl}
+    </>
+  )
 }
 
 function TradeLine({
@@ -223,6 +233,7 @@ function TradeLine({
   go,
   onTab,
   onFollowUp,
+  onSheet,
 }: {
   row: TradeStandingRow
   first: boolean
@@ -231,8 +242,11 @@ function TradeLine({
   go: (fn: () => void) => () => void
   onTab: (tab: PriceCardTab) => void
   onFollowUp: () => void
+  /** Open the Follow up sheet on a company. */
+  onSheet: (partnerId: string) => void
 }) {
   const { pkg, standing, lowest } = row
+  const who = row.followUp
   const carry = (carried: string) => dispatch({ type: 'carry', projectId: project.id, packageId: pkg.id, carried })
   const amount = isHole(standing) ? row.estimate : row.carried
   let actions: ReactNode = null
@@ -250,7 +264,7 @@ function TradeLine({
   } else if (standing === 'waiting') {
     actions = (
       <>
-        <Btn onClick={go(onFollowUp)}>Open Follow up</Btn>
+        {who ? <Btn onClick={go(() => onSheet(who.partnerId))}>Follow up with {who.company}</Btn> : <Btn onClick={go(onFollowUp)}>Open Follow up</Btn>}
         <Btn kind="quiet" onClick={go(() => onTab('packages'))}>
           Ask someone else
         </Btn>
@@ -270,7 +284,7 @@ function TradeLine({
   } else if (standing === 'gap') {
     actions = <Btn onClick={go(() => onTab('packages'))}>Set the cost in Compare quotes</Btn>
   } else if (standing === 'ranOut') {
-    actions = <Btn onClick={go(onFollowUp)}>Open Follow up</Btn>
+    actions = who ? <Btn onClick={go(() => onSheet(who.partnerId))}>Follow up with {who.company}</Btn> : <Btn onClick={go(onFollowUp)}>Open Follow up</Btn>
   } else if (standing === 'guess') {
     actions = lowest ? (
       <Btn kind="primary" onClick={() => carry(lowest.invite.id)}>

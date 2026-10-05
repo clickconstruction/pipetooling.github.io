@@ -41,6 +41,8 @@ export interface TradeStandingRow {
   lowest: { invite: Invite; company: string; total: number } | null
   /** What happens next, in a sentence or three. Empty for a real number. */
   words: string
+  /** Who to follow up with: the first company asked that has not answered, or the one whose quote ran out. */
+  followUp?: { partnerId: string; company: string }
 }
 
 export interface PriceStanding {
@@ -113,7 +115,14 @@ function rowOf(state: GcState, project: GcProject, pkg: TradePackage): TradeStan
     if (waiting.length > 0) {
       // Waiting first, then who said no.
       const ordered = [...waiting, ...pkg.invites.filter((i) => i.status === 'declined')]
-      return { ...base, standing: 'waiting', estimate: pkg.budget, words: `${askedWords(state, ordered)}${due} Our budget is shown.` }
+      const first = waiting[0]
+      return {
+        ...base,
+        standing: 'waiting',
+        estimate: pkg.budget,
+        words: `${askedWords(state, ordered)}${due} Our budget is shown.`,
+        ...(first ? { followUp: { partnerId: first.partnerId, company: companyOf(state, first) } } : {}),
+      }
     }
     const said = askedWords(state, pkg.invites)
     return {
@@ -130,7 +139,13 @@ function rowOf(state: GcState, project: GcProject, pkg: TradePackage): TradeStan
     return { ...base, standing: 'gap', estimate: null, words: `${base.company ?? 'The quote'} leaves out ${list}. No cost set yet, so ${names.length === 1 ? 'it counts' : 'they count'} as $0.` }
   }
   if (!pkg.sow && carriedInvite?.bid && quoteRanOut(carriedInvite.bid, today)) {
-    return { ...base, standing: 'ranOut', estimate: null, words: `${base.company}'s quote ran out. Ask them to send it again.` }
+    return {
+      ...base,
+      standing: 'ranOut',
+      estimate: null,
+      words: `${base.company}'s quote ran out. Ask them to send it again.`,
+      followUp: { partnerId: carriedInvite.partnerId, company: companyOf(state, carriedInvite) },
+    }
   }
   if (isGuess(pkg)) {
     return {
