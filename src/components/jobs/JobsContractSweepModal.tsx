@@ -922,7 +922,7 @@ export default function JobsContractSweepModal({
         data-testid="sweep-paper"
       >
         <iframe title="The agreement as the customer will see it" srcDoc={paneHtml} sandbox="" style={{ width: '100%', height: fullScreen ? 'auto' : isMobile ? '60vh' : '54vh', ...(fullScreen ? { flex: '1 1 auto', minHeight: 0 } : {}), border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', display: 'block' }} />
-        <div style={{ fontSize: '0.7rem', color: 'var(--text-faint)', textAlign: 'center', marginTop: '0.3rem' }}>Exactly what the signing page and the PDF will show{draftRow ? '' : ' — from the job’s fixtures or its accepted estimate, and the terms above'}.</div>
+        <div style={{ fontSize: '0.7rem', color: 'var(--text-faint)', textAlign: 'center', marginTop: '0.3rem' }}>The agreement the signing page and the PDF will show{draftRow ? '' : ' — from the job’s fixtures or its accepted estimate, and the terms above'}.</div>
       </div>
     ) : null
 

@@ -21,6 +21,16 @@ Open the Lien desk from the orange gavel on the Pipeline. It opens on its **Next
 
 When nothing needs anyone, the tab says so and points you at the Calendar.
 
+## The three views
+
+The top of the desk has three tabs.
+
+- **Next up** is the list of what to do now.
+- **Calendar** shows when each deadline falls.
+- **All paper** holds every paper by its state. A second row of tabs appears under it. They are **Notices**, **Affidavits**, **Retainage** and **Timeline**.
+
+All paper reopens on the tab you last used there. This guide names those four tabs often. Each one sits under All paper.
+
 ## Look ahead on the Calendar
 
 The **Calendar** tab is beside Next up. It shows when each lien deadline falls.

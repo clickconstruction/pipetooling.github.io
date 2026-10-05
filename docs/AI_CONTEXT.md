@@ -38,7 +38,7 @@
 **RLS Everywhere**:
 - Every table has Row Level Security; policies check role and, for field/outsider roles, assignment
 - Helper/capability functions prevent timeouts and centralize role logic: `is_dev()`, `is_assistant()` (assistant + controller), `has_payroll_access()`, `can_access_project_via_step()`, `can_edit_schedule_dispatch()` (mirror of the client's `CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES`)
-- **Read-only training mode**: users flagged `users.read_only` are blocked from writes by restrictive policies and a statement trigger (the two calls every CREATE TABLE migration ends with — `../CLAUDE.md` → DB migrations)
+- **Read-only training mode**: users flagged `users.read_only` are blocked from writes by restrictive policies and a statement trigger (two of the three calls every CREATE TABLE migration ends with — `../CLAUDE.md` → DB migrations)
 
 ### Data Flow
 
@@ -127,7 +127,7 @@ The large-file inventory and each surface's architecture map live in `PAGE_DECOM
 
 ### Adding a New Database Table
 
-1. **Create the migration** and write the SQL (CREATE TABLE + RLS policies + constraints) under the rules in `../AGENTS.md` → Critical constraints §1 — numbering, the lock-timeout preamble, the two read-only block calls.
+1. **Create the migration** and write the SQL (CREATE TABLE + RLS policies + constraints) under the rules in `../AGENTS.md` → Critical constraints §1 — numbering, the lock-timeout preamble, the three closing calls (two read-only blocks, the twin fence).
 2. **Merge the PR**, then **apply** with `supabase db push`; regenerate types (`npm run gen-types:linked`) as its own PR.
 3. **Test RLS** for all 9 roles.
 4. **Document**: a `migrations/<version>_<slug>.md` fragment + the relevant specialist doc.

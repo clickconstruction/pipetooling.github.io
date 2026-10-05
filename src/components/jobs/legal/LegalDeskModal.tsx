@@ -176,7 +176,7 @@ function coverageText(c: JobContractCoverage): string {
 
 const FIX_LABEL: Record<LegalGap['fix'], string> = {
   contract: 'Contract…',
-  lien_instruments: 'Lien instruments…',
+  lien_instruments: 'Liens on the job…',
   edit_customer: 'Edit customer…',
   edit_job: 'Edit job…',
   call_mode: 'Call mode…',
@@ -779,7 +779,7 @@ function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDo
             j.swornMissing.length ? pill(`needs ${j.swornMissing.join(', ')}`, 'warn') : pill('holds', 'ok'),
             <button key="b" type="button" onClick={() => { const job = jobOf(j.jobId); if (job) props.onOpenContract(job) }} style={btn}>{j.contract.kind === 'signed' ? 'View' : 'Contract…'}</button>,
           ])} empty="No jobs." />
-        <SectionTitle doors={first ? <Door label="Lien instruments" onClick={() => props.onOpenLienInstruments(first)} /> : null}>Where each job stands</SectionTitle>
+        <SectionTitle doors={first ? <Door label="Liens on the job" onClick={() => props.onOpenLienInstruments(first)} /> : null}>Where each job stands</SectionTitle>
         {packet.paper.timelines.length === 0 ? <p style={{ ...MUTED, fontSize: '0.8rem', margin: '4px 0' }}>No jobs.</p> : packet.paper.timelines.map((t) => (
           <div key={t.jobId} data-legal-job-timeline={t.jobId} style={{ display: 'grid', gridTemplateColumns: 'minmax(150px, 190px) minmax(0, 1fr)', gap: 12, padding: '8px 0', borderBottom: '1px dotted var(--border)', alignItems: 'start', fontSize: '0.82rem' }}>
             <div>
@@ -792,7 +792,7 @@ function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDo
           </div>
         ))}
         <p style={{ ...MUTED, fontSize: '0.76rem', margin: '4px 0 0' }}>The desk's own timeline, from each job's approved hours, its filings and the property kind; the monthly notice applies when a GC pays (Click is the subcontractor), the affidavit to both.</p>
-        <SectionTitle doors={first ? <Door label="Lien instruments" onClick={() => props.onOpenLienInstruments(first)} /> : null}>Final demand letters</SectionTitle>
+        <SectionTitle doors={first ? <Door label="Liens on the job" onClick={() => props.onOpenLienInstruments(first)} /> : null}>Final demand letters</SectionTitle>
         <Table head={['Job', 'Sent', 'Method', 'Tracking', 'Deadline', 'Amount', '']} numCols={[5]}
           rows={packet.paper.demandLetters.map((d) => [
             <b key="l">{d.jobLabel}</b>, d.sentYmd ?? pill('drafted, not sent', 'warn'), d.method, d.tracking || '—',

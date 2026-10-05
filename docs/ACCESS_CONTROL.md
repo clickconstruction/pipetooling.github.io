@@ -117,7 +117,9 @@ on top of the normal role permissions:
   estimator on** (+ bid-child tables detected by their `bid_id` column, + bid-scoped
   `price_book_entries`, + `help_feedback` INSERT for bug reports). Everything else is
   read-only for twins; humans can always read AND edit twin work (the review workflow).
-  Rerun the applier after CREATE TABLE on bid-family tables (drop+recreate, idempotent).
+  Every CREATE TABLE migration reruns the applier. Since v2.4604 it only creates missing
+  fence policies (the rerun locks just the new table), so changing an allowance takes a
+  one-off migration that drops the affected policies first.
 
 ### Database agent roles (Postgres roles, not app roles)
 
