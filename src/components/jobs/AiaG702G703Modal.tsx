@@ -55,11 +55,12 @@ import { useMatchMedia } from '../../hooks/useMatchMedia'
 import { fetchPhysicalInvoiceIssuerFromAppSettings, getPhysicalInvoiceIssuerDraft } from '../../lib/physicalInvoiceIssuer'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
+import { fileSentCopy } from '../../lib/sent/sentCopiesIo'
+
+const XLSX_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 
 function triggerDownloadArrayBuffer(ab: ArrayBuffer, filename: string): void {
-  const blob = new Blob([ab], {
-    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  })
+  const blob = new Blob([ab], { type: XLSX_TYPE })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
@@ -498,9 +499,17 @@ export default function AiaG702G703Modal({
       const { values, lines, splitLaborMaterial } = appForm
       const ab = await fetchAndFillAiaTemplate(AIA_TEMPLATE_PUBLIC_PATH, values, lines, { splitLaborMaterial })
       const jobNumber = effectiveJobLedgerNumber(hcpForFilename || job.hcp_number, 'click_number' in job ? job.click_number : null)
-      triggerDownloadArrayBuffer(ab, aiaDownloadFilename(jobNumber || job.id, values.g702_n5_project))
+      const filename = aiaDownloadFilename(jobNumber || job.id, values.g702_n5_project)
+      triggerDownloadArrayBuffer(ab, filename)
       // What went out is kept on the job, so the next application can start from it.
       const outcome = await saveOnJob(appForm)
+      // Sent copies (docs/SENT_COPIES.md, step 5): a workbook leaves the app as a file, so the file
+      // itself is kept as it was downloaded. The saved application stays editable; this does not.
+      const number = String(values.g702_n5_project ?? '').trim()
+      void fileSentCopy(
+        { kind: 'pay_application', title: `Pay application${number ? ` ${number}` : ''} · AIA G702-G703`, how: 'download', jobIds: [job.id], source: 'saved' in outcome ? { table: 'job_pay_applications', id: outcome.saved.id } : null },
+        { blob: new Blob([ab], { type: XLSX_TYPE }), fileName: filename, contentType: XLSX_TYPE },
+      )
       if ('saved' in outcome) showToast(`Workbook downloaded. Application ${outcome.saved.applicationNumber} saved on the job.`, 'success')
       else showToast(`Workbook downloaded. Not saved on the job: ${outcome.notSaved}`, 'warning')
     } catch (e) {
