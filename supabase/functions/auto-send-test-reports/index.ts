@@ -162,6 +162,8 @@ serve(async (req) => {
           html: email.html,
           pdfFilename: testReportPdfFilename(jobInfo, data).replace(/[^a-zA-Z0-9._-]/g, '_'),
           pdfBase64: bytesToBase64(bytes),
+          // Sent copies: the email and the report as they went, kept on the job. No sender: this one sends itself.
+          file: { kind: 'test_report', jobIds: [job.id], customerId: job.gc_customer_id, source: { table: 'job_test_reports', id: draft.id } },
         })
         if (!sent.ok) {
           results.push({ report: draft.id, outcome: `resend failed: ${sent.error}` })

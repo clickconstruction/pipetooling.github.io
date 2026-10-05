@@ -11,7 +11,7 @@ covers:
   - src/components/jobs/JobsStagesUnifiedTable.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-10-01
+last_updated: 2026-10-05
 ---
 
 > **Line numbers are as of `a05cef4c4`** (from the `npm run map` fact sheets). This is the hottest surface in the repo (195 commits in 90 days on the tab, 62 on `jobsStagesRowShared`) — search the symbol, and trust a range only while the symbol still sits at it.
@@ -49,7 +49,7 @@ Changes since this map's previous refresh (829c507cd, v2.3792) — `jobsStagesRo
 - `Jobs.tsx` (1907) renders `<JobsStagesTab ref={stagesTabRef} active={activeTab === 'stages'} …/>` **unconditionally**. The board is `{active && …}` (3035–4352); the **modal tail (4353–5096) renders regardless**, so Pipeline state survives tab switches.
 - **Exception:** the six dialogs mounted inside the section IIFE (4194–4347: Weekly movement, Weekly money, GC Review, Total by Name, Capable, Est-bill-date) sit inside the `active` block — their open flags survive a tab switch, the dialogs unmount.
 - **The handle** (`useImperativeHandle`, 2460–2509): `followMovedJob`, `focusSection` (= `focusStagesSection` 1832), `focusJob` (= `focusJobOnBoard` 2443), `focusInvoice` (= `applyStagesInvoiceFocus` 2215), `openBankPayments`, `openLegalDesk`, `openLienDesk`, `openWeeklyMovement`, `openWeeklyMoney`, `showBilledTotalByName`, `openMoneyMove` (keys `capable` / `chase90` / `fixDates` / `ar` / `chase` / `gcRoundCertify` / `gcRoundStart`, each clearing a live search first). `Jobs.tsx` calls every method except `openLienDesk`, which has no caller in `src/`.
-- **URL: the tab is no longer read-only.** The page router still drives the handle for `?stagesSection` / `stagesJob` / `stagesInvoice` / `openBankPayments` / `stagesWeekly` / `stagesMoney` / `stagesMove` / `legal` / `showBilledTotalByName`. The tab itself consumes eight one-shot params and strips each with `navigate({ search }, { replace: true })`: `followups` (1314), `gcReview` (1326), `gcnotice` (1338), `liendesk` + `liendeskJob` / `liendeskPile` / `kind` (1351), `round` + `gc` (1366), `chase` (1381), `forecast` (1393), `rtb` (1849 — a layout-settle poller, below). Three more are lazy-init reads of `window.location.search`: `contractSweep` (925), `contract` (943), `view=recent` (1493). Read-only: `openBankPayments` for the loading hint (3389), `tab` for the return-edit banner (2254). The comments at 1491–1492 ("the tab never writes search params") and 942 are stale.
+- **URL: the tab is no longer read-only.** The page router still drives the handle for `?stagesSection` / `stagesJob` / `stagesInvoice` / `openBankPayments` / `stagesWeekly` / `stagesMoney` / `stagesMove` / `legal` / `showBilledTotalByName`. The tab itself consumes nine one-shot params and strips each with `navigate({ search }, { replace: true })`: `followups` (1314), `gcReview` (1326), `gcnotice` (1338), `liendesk` + `liendeskJob` / `liendeskPile` (any pile, v2.4561) / `kind` (1351), `lienwindow` + `lientab` (v2.4562: a job's Lien window on a tab, the job read by id; build the address with `lienWindowHref`), `round` + `gc` (1366), `chase` (1381), `forecast` (1393), `rtb` (1849 — a layout-settle poller, below). Three more are lazy-init reads of `window.location.search`: `contractSweep` (925), `contract` (943), `view=recent` (1493). Read-only: `openBankPayments` for the loading hint (3389), `tab` for the return-edit banner (2254). The comments at 1491–1492 ("the tab never writes search params") and 942 are stale.
 
 ### Old/New views — retired
 
@@ -209,7 +209,7 @@ None of the three v2.3530 dialogs has a render test.
 
 ### 8. [`JobsStagesUnifiedTable.tsx`](../src/components/jobs/JobsStagesUnifiedTable.tsx) (449 lines — job + invoice rows)
 
-- Callers: Ready to Bill / Billed / Collections sites and the deck, via `StagesUnifiedSectionList`. 86 prop fields. Builds one `StagesUnifiedRowContext` (type 162–179; built as `rowCtx` 368–390) per render; row kinds split into `StagesUnifiedJobRow` / `StagesUnifiedInvoiceRow` (v2.3548); icon buttons in `StagesRowActionButtons.tsx`, thread row in `StagesExpandedThreadRow` (v2.3541). No Supabase.
+- Callers: Ready to Bill / Billed / Collections sites and the deck, via `StagesUnifiedSectionList`. 86 prop fields. Builds one `StagesUnifiedRowContext` (type 162–179; built as `rowCtx` 368–390) per render; row kinds split into `StagesUnifiedJobRow` / `StagesUnifiedInvoiceRow` (v2.3548); icon buttons in `StagesRowActionButtons.tsx`, thread row in `StagesExpandedThreadRow` (v2.3541). No Supabase. A bill row's own line (*This bill · paid … left*) is `StagesBillRowLine` (v2.4349, kernel `stagesBillRowLine`), and `stagesRowIconGrid` (v2.4305, 3 tests) says how many icons sit on each row of the icon block.
 - Tests: `JobsStagesUnifiedTable.render.test.tsx` (10), `StagesRowActionButtons` (2).
 - **Open:** the single typed prop, same as §7.
 
@@ -317,7 +317,7 @@ Already-extracted lib (add tests only where missing): `buildJobsStagesBoardLists
 ## Preserve-quirks list (load-bearing — do not "fix" during moves)
 
 1. **Always-mounted + `active`-gated body; modal tail unconditional; the six IIFE dialogs unmount while inactive** (Mount/state semantics). Effects key on `active`.
-2. **The board consumes eight one-shot URL params** ([`useStagesDeepLinkParams`](../src/hooks/useStagesDeepLinkParams.ts): consumed once per mount, in the old effect order, each door stripping its own params from the same pre-strip URL with `replace`; `rtb` arms `window.__rtbFocusArmedAt` for 5 s to survive the StrictMode double mount, then polls — first tick 400 ms, then every 300 ms, up to 100 tries — until the Ready to Bill header holds still). The page router and the `!jobsListLoading` handle gate stay in `Jobs.tsx`.
+2. **The board consumes nine one-shot URL params** ([`useStagesDeepLinkParams`](../src/hooks/useStagesDeepLinkParams.ts): consumed once per mount, in the old effect order, each door stripping its own params from the same pre-strip URL with `replace`; `rtb` arms `window.__rtbFocusArmedAt` for 5 s to survive the StrictMode double mount, then polls — first tick 400 ms, then every 300 ms, up to 100 tries — until the Ready to Bill header holds still). The page router and the `!jobsListLoading` handle gate stay in `Jobs.tsx`.
 3. **`bankPaymentsModalBilledRows` builds with an EMPTY search**; `JobsAccountsReceivable.tsx` carries the same derivation — keep it in `lib/jobsStagesBoard.ts`.
 4. **Money never hides:** money surfaces read `unfilteredBoardLists` (1567–1576 comment). Exceptions today, preserve until decided separately: `PaidProfitChartModal` (filtered `paid`), `FixBillLinesModal` and `BilledReportShareModal` (filtered billed rows), `LegalDeskModal` (filtered `collectionsJobs`, 4632).
 5. **Page-global `error`:** the partial-invoice dialog displays and clears it; `createInvoiceFromModal` and `confirmSendBackJob` write it. Do not localize.

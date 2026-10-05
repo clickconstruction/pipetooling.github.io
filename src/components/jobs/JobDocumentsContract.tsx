@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { JobWithDetails } from '../../types/jobWithDetails'
-import { formatContractStamp, jobContractChipColors, jobContractChips, jobContractSignatureAuditLine, type JobContractRow } from '../../lib/jobs/jobContractLifecycle'
+import { formatContractStamp, jobContractChipColors, jobContractChips, jobContractSignersAuditLine, type JobContractRow } from '../../lib/jobs/jobContractLifecycle'
 import { loadJobContractRows } from '../../lib/jobs/jobLienPaperIo'
 import { normalizeDocumentUrl } from '../../lib/jobs/lienFilingDocumentLink'
 import { openHtmlPreviewWindow } from '../../lib/jobsDocuments/printWindow'
@@ -80,7 +80,7 @@ export function JobDocumentsContract({ job, onOverlayOpenChange }: { job: JobWit
                       </span>
                     ))}
                     {con.signed_at ? (
-                      <span style={{ color: 'var(--text-muted)', marginLeft: '0.5rem', fontSize: '0.8125rem' }}>{jobContractSignatureAuditLine(con)}</span>
+                      <span style={{ color: 'var(--text-muted)', marginLeft: '0.5rem', fontSize: '0.8125rem' }}>{jobContractSignersAuditLine(con)}</span>
                     ) : con.last_sent_at ? (
                       <span style={{ color: 'var(--text-muted)', marginLeft: '0.5rem', fontSize: '0.8125rem' }}>Sent {formatContractStamp(con.last_sent_at)}</span>
                     ) : null}

@@ -186,6 +186,8 @@ Open the job and press the **Documents** tab. Every saved application is listed 
 
 Press **Open the file** to see the file you sent. Press **Open** to change the application. Press **New application** to start one from there.
 
+Each workbook you download is also kept as it was. Find it lower on the tab under **Sent from this job**. A saved application can still be changed. The kept workbook cannot.
+
 ## Take one off the job
 
 Open the saved application and press **Delete**. The window asks first. A later application keeps the amounts it was saved with.

@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { Link, useNavigate } from 'react-router-dom'
+import { lienWindowHref } from '../../lib/jobs/stagesDeepLinks'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { canAccessBanking } from '../../lib/bankingAccess'
 import { TALLY_STALE_MIN_AGE_DAYS } from '../../lib/tallyStaleMinAgeDays'
@@ -802,7 +803,9 @@ export function DashboardPinnedQuickRow({
               // The leader's seat (v2.4276): the list, the page, the pad.
               setLienWaiversToSignOpen(true)
             } else if (item.key === 'demand-deadline') {
-              navigate('/jobs?tab=stages')
+              // The job's Lien window on the demand letter; with several, the first and the board behind it.
+              const jobId = demandDeadlineOverdue?.jobIds[0]
+              navigate(jobId ? lienWindowHref(jobId, 'demand') : '/jobs?tab=stages')
             } else if (item.key === 'lien-notice-batch') {
               const gcId = lienDeskData?.summary.leader.batches?.[0]?.gcId
               navigate(gcId ? `/jobs?tab=stages&gcnotice=${encodeURIComponent(gcId)}` : '/jobs?tab=stages&liendesk=1')
@@ -817,7 +820,9 @@ export function DashboardPinnedQuickRow({
             } else if (item.key === 'lien-tracking-owed') {
               navigate('/jobs?tab=stages&liendesk=1&liendeskPile=sent')
             } else if (item.key === 'lien-serve-copy') {
-              navigate('/jobs?tab=stages')
+              // The lien whose serve-by day comes first, on its Mechanic's lien tab where service is recorded.
+              const first = [...(lienWatch?.serveDue ?? [])].sort((a, b) => a.serveDue.localeCompare(b.serveDue))[0]
+              navigate(first ? lienWindowHref(first.jobId, 'affidavit') : '/jobs?tab=stages')
             } else if (item.key === 'hours-approvals') {
               navigate('/people?tab=hours&approvals=1')
             } else if (item.key === 'typed-hours') {

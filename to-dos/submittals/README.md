@@ -36,8 +36,8 @@ next: >
   BP375 a read_schedule one); 3b when the owner says so. One code residual (v2.4107): a schedule typed
   after a takeoff build re-grades Proposed rows only on *Rebuild rows from picks* — a merge that keeps
   the takeoff rows and grades them against the schedule is the next piece.
-  From the 2026-10-03 tab review, not built: findings 10–12 (the header's repeats, the rows table on a takeoff bid, the Edit window's
-  labels), after a week of use.
+  From the 2026-10-03 tab review, findings 10–12 shipped 2026-10-05 as v2.4543, v2.4542 and v2.4537 (the header's repeats, the
+  rows table on a takeoff bid, the Edit window's labels); nothing from that review is left.
   Owed live checks: Wendi pastes the schedule on one live bid she is pricing this week (gate 1's
   second half) and the SpaceX Rev 3 rebuild on B375 (gate 2's second half).
 size: S (live checks, SpaceX Rev 4 and the takeoff-schedule merge; 3b gated)

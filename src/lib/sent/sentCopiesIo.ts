@@ -11,7 +11,7 @@
 import { supabase } from '../supabase'
 import { openHtmlPrintWindow, openHtmlWindowWhenReady } from '../jobsDocuments/printWindow'
 import { openInExternalBrowser } from '../openInExternalBrowser'
-import { type SentCopy, type SentCopyBody, type SentCopyStored, type SentFiling, parseSentCopy, sentCopyDoor, sentCopyFrameHtml, sentCopyPath, sentDocumentInsert } from './sentCopies'
+import { type SentCopy, type SentCopyBody, type SentCopyStored, type SentFiling, type SentKindGroup, parseSentCopy, sentCopyDoor, sentCopyFrameHtml, sentCopyPath, sentDocumentInsert, sentKindGroupFilter, sentSearchFilter } from './sentCopies'
 
 /** The private bucket the copies live in: `<sent_documents.id>/<file>`. */
 export const SENT_COPIES_BUCKET = 'sent-documents'
@@ -131,5 +131,25 @@ export async function openSentFile(path: string): Promise<boolean> {
     return true
   } catch {
     return false
+  }
+}
+
+/**
+ * Everything sent, newest first, for the Documents page: one group of papers or all of them,
+ * narrowed by what was typed. Self-tests are left out. A read that fails is no rows.
+ */
+export async function loadSentCopies(opts: { group: SentKindGroup | 'all'; typed: string; limit: number }): Promise<SentCopy[]> {
+  try {
+    let q = table().select(SENT_COLS).neq('kind', 'self_test')
+    const group = sentKindGroupFilter(opts.group)
+    if (group?.or) q = q.or(group.or)
+    for (const pattern of group?.notLike ?? []) q = q.not('kind', 'like', pattern)
+    const search = sentSearchFilter(opts.typed)
+    if (search) q = q.or(search)
+    const { data, error } = await q.order('sent_at', { ascending: false }).limit(Math.max(1, Math.min(opts.limit, 1000)))
+    if (error) return []
+    return ((data ?? []) as unknown[]).map(parseSentCopy).filter((r): r is SentCopy => !!r)
+  } catch {
+    return []
   }
 }

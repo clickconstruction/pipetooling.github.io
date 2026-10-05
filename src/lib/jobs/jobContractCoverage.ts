@@ -12,6 +12,7 @@
  */
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import { isUnderContractFloor } from './jobContractFloor'
+import { framesLabel, framesProgress, framesWaitingLine, joinSignerNames, signedNames, signerNamesLine } from './jobContractSigners'
 
 export type JobContractRowLike = {
   id: string
@@ -28,7 +29,21 @@ export type JobContractRowLike = {
   voided_at: string | null
   /** A Google Doc (or other link) the office filed as the signed contract (v2.2744). */
   signed_document_url?: string | null
+  /**
+   * v2.4590: the frames — a second signer's name and stamp, and the first frame's own consent
+   * time and expected name (what a part-signed agreement waits on). Optional: a batch read that
+   * leaves them out reads one signer, as before.
+   */
+  recipient_name?: string | null
+  signer_consented_at?: string | null
+  co_signer_name?: string | null
+  co_signed_at?: string | null
+  co_signer_printed_name?: string | null
 }
+
+/** The columns a batch read selects for the coverage kernel — one list, so no reader drops the second signer. */
+export const JOB_CONTRACT_COVERAGE_COLUMNS =
+  'id, job_id, status, revision, recipient_email, sent_at, last_sent_at, view_count, signed_at, signer_printed_name, signer_mode, voided_at, signed_document_url, recipient_name, signer_consented_at, co_signer_name, co_signed_at, co_signer_printed_name'
 
 /** A customer-accepted estimates row — the rails every online signature already lands on. */
 export type SignedEstimateLike = {
@@ -63,6 +78,12 @@ export type JobContractCoverage =
       sentAt: string
       viewCount: number
       recipientEmail: string | null
+      /** v2.4590: "1 of 2 signed" on a two-frame agreement; '' (or absent) with one frame. */
+      frames?: string
+      /** v2.4590: how many frames are filled — the chip counts only once someone has signed. */
+      framesDone?: number
+      /** v2.4590: "Sam Owner signed · waiting on Alex Owner"; '' until someone has signed. */
+      framesWaiting?: string
     }
   | {
       kind: 'signed'
@@ -70,7 +91,10 @@ export type JobContractCoverage =
       /** Paper/link records: the filed document link, when one was given. */
       documentUrl?: string | null
       signedAt: string | null
+      /** Who signed, as one line: both signers of a two-frame agreement (v2.4590). */
       signerName: string | null
+      /** v2.4590: each signer's name, for a short form (the chip's "S. Owner and A. Owner"). */
+      signerNames?: string[]
       contractId: string | null
       estimateNumber: number | null
       /** The estimates row behind an estimate / bid-room signature (opens the acceptance record). */
@@ -133,7 +157,8 @@ export function buildJobContractCoverage(
         source: signed.signer_mode === 'paper' ? 'paper' : 'contract',
         documentUrl: signed.signed_document_url ?? null,
         signedAt: signed.signed_at,
-        signerName: signed.signer_printed_name,
+        signerName: signerNamesLine(signed) || signed.signer_printed_name,
+        signerNames: signedNames(signed),
         contractId: signed.id,
         estimateNumber: null,
         estimateId: null,
@@ -179,6 +204,9 @@ export function buildJobContractCoverage(
         sentAt: sent.last_sent_at ?? sent.sent_at ?? '',
         viewCount: sent.view_count,
         recipientEmail: sent.recipient_email,
+        frames: framesLabel(sent),
+        framesDone: framesProgress(sent)?.done ?? 0,
+        framesWaiting: framesWaitingLine(sent),
       })
       continue
     }
@@ -234,13 +262,15 @@ export function jobContractChipLabel(cov: JobContractCoverage | null | undefined
   if (cov.kind === 'not_needed') return 'No contract · not needed'
   if (cov.kind === 'sent') {
     const parts = ['Contract sent']
-    if (cov.viewCount > 0) parts.push(`opened ${cov.viewCount}×`)
+    // v2.4590: once one of two has signed, the count says more than the opens (a signature was an open).
+    if (cov.frames && (cov.framesDone ?? 0) > 0) parts.push(cov.frames)
+    else if (cov.viewCount > 0) parts.push(`opened ${cov.viewCount}×`)
     const days = daysSinceIso(cov.sentAt, now)
     if (days != null) parts.push(days === 0 ? 'today' : `${days}d`)
     return parts.join(' · ')
   }
   const when = shortDate(cov.signedAt)
-  const who = abbreviateSignerName(cov.signerName)
+  const who = cov.signerNames && cov.signerNames.length > 1 ? joinSignerNames(cov.signerNames.map(abbreviateSignerName)) : abbreviateSignerName(cov.signerName)
   switch (cov.source) {
     case 'paper':
       return `✍ On file · ${cov.documentUrl ? 'Google Doc' : 'paper'}${when ? ` · ${when}` : ''}`
@@ -264,7 +294,7 @@ export function jobContractChipTitle(cov: JobContractCoverage | null | undefined
   if (cov.kind === 'sent') {
     return `Contract rev ${cov.revision} sent${cov.recipientEmail ? ` to ${cov.recipientEmail}` : ''}${
       cov.viewCount > 0 ? ` · opened ${cov.viewCount} time${cov.viewCount === 1 ? '' : 's'}` : ' · not opened yet'
-    }`
+    }${cov.framesWaiting ? ` · ${cov.framesWaiting}` : cov.frames ? ` · ${cov.frames}` : ''}`
   }
   const who = (cov.signerName ?? '').trim()
   switch (cov.source) {

@@ -214,6 +214,14 @@ export async function markLienDeskItemsPrinted(itemIds: ReadonlyArray<string>, u
   )
 }
 
+/** Back to Ready to send (v2.4568): the packet was not mailed after all, or was printed by mistake. The approval stands. */
+export async function clearLienDeskItemPrinted(itemId: string): Promise<void> {
+  await withSupabaseRetry(
+    () => supabase.from('job_lien_desk_items').update({ printed_at: null, printed_by: null } as never).eq('id', itemId),
+    'lien desk: clear printed',
+  )
+}
+
 export async function markLienDeskItemSent(itemId: string, filingId: string): Promise<void> {
   await withSupabaseRetry(
     () => supabase.from('job_lien_desk_items').update({ status: 'sent', sent_filing_id: filingId } as never).eq('id', itemId),

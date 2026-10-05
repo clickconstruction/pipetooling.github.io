@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseStagesDeepLinks, stripStagesDeepLink, STAGES_DEEP_LINK_PARAMS } from './stagesDeepLinks'
+import { lienWindowHref, parseStagesDeepLinks, stripStagesDeepLink, STAGES_DEEP_LINK_PARAMS } from './stagesDeepLinks'
 
 const sp = (q: string) => new URLSearchParams(q)
 
@@ -10,6 +10,7 @@ describe('parseStagesDeepLinks', () => {
       gcReview: false,
       gcNoticeGcId: null,
       lienDesk: null,
+      lienWindow: null,
       round: null,
       chase: false,
       forecast: false,
@@ -62,5 +63,16 @@ describe('stripStagesDeepLink', () => {
 
   it('every door names at least its own flag', () => {
     for (const [key, names] of Object.entries(STAGES_DEEP_LINK_PARAMS)) expect(names.length, key).toBeGreaterThan(0)
+  })
+
+  it('the Lien window door (v2.4562): a job and a tab, the demand letter unless named; the href builds what the parser reads', () => {
+    expect(parseStagesDeepLinks(sp('tab=stages&lienwindow=j273')).lienWindow).toEqual({ jobId: 'j273', tab: 'demand' })
+    expect(parseStagesDeepLinks(sp('lienwindow=j273&lientab=affidavit')).lienWindow).toEqual({ jobId: 'j273', tab: 'affidavit' })
+    expect(parseStagesDeepLinks(sp('lienwindow=j273&lientab=whatever')).lienWindow?.tab).toBe('demand')
+    expect(parseStagesDeepLinks(sp('lientab=affidavit')).lienWindow).toBeNull()
+    const href = lienWindowHref('j 273', 'notice')
+    expect(href).toBe('/jobs?tab=stages&lienwindow=j%20273&lientab=notice')
+    expect(parseStagesDeepLinks(sp(href.split('?')[1]!)).lienWindow).toEqual({ jobId: 'j 273', tab: 'notice' })
+    expect(stripStagesDeepLink(sp('tab=stages&lienwindow=j273&lientab=notice&scope=all'), 'lienWindow')).toBe('tab=stages&scope=all')
   })
 })
