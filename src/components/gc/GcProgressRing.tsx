@@ -204,7 +204,7 @@ function GroupBlock({ group, color }: { group: ProgressGroup; color: string }) {
       <span style={{ display: 'block', height: 4, borderRadius: 999, background: 'var(--bg-muted)', overflow: 'hidden' }}>
         <span style={{ display: 'block', height: '100%', width: `${share * 100}%`, background: complete ? DONE : color, borderRadius: 999 }} />
       </span>
-      <span style={{ color: 'var(--text-muted)', fontSize: '0.76rem' }}>{group.why}</span>
+      {group.why && <span style={{ color: 'var(--text-muted)', fontSize: '0.76rem' }}>{group.why}</span>}
       {left.length > 0 && (
         <span style={{ display: 'grid', gap: '0.15rem', marginTop: '0.1rem' }}>
           {left.slice(0, LEFT_SHOWN).map((i) => (

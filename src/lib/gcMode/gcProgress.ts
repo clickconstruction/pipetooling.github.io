@@ -36,7 +36,7 @@ export interface ProgressItem {
 export interface ProgressGroup {
   key: string
   label: string
-  /** Why this type matters, in one sentence. */
+  /** Why this type matters, in one sentence. Empty: the title says it all. */
   why: string
   items: ProgressItem[]
   /** Said instead of naming every done item, when the names would not read as a list. */
@@ -77,8 +77,9 @@ function biddingProgress(state: GcState, project: GcProject): StageProgress {
   const hired = project.packages.filter((p) => !p.selfPerform)
   const quotes: ProgressGroup = {
     key: 'quotes',
-    label: 'Enough quotes',
-    why: `Every trade we hire out needs ${BIDS_WANTED} quotes from different companies.`,
+    // Each title says what to do (the owner, 2026-10-04: "more direct or more self-explanatory").
+    label: `Get ${BIDS_WANTED} quotes for each trade`,
+    why: '',
     items: hired.map((pkg) => {
       // A number past its good-until day does not count (question 14, the Board lane's call, 2026-10-04).
       const all = bidsIn(pkg)
@@ -98,7 +99,7 @@ function biddingProgress(state: GcState, project: GcProject): StageProgress {
   }
   const number: ProgressGroup = {
     key: 'number',
-    label: 'A real number to carry',
+    label: "Pick the quote we'll use for each trade",
     why: 'Our price needs a real quote for every trade. Our own guess fills the price but does not count.',
     items: project.packages.map((pkg) => {
       const amount = carriedAmount(pkg)
@@ -139,7 +140,7 @@ function biddingProgress(state: GcState, project: GcProject): StageProgress {
   const priced = hired.flatMap((pkg) => bidsIn(pkg).map((invite) => ({ pkg, invite })))
   const current: ProgressGroup = {
     key: 'current',
-    label: 'Quotes on the newest plans',
+    label: 'Confirm quotes after plan changes',
     why: 'A quote priced on older plans has to be confirmed after a change.',
     doneWords: (n) => `${n} ${n === 1 ? 'quote is' : 'quotes are'} on ${planLabel(project, newest)}.`,
     items: priced.map(({ pkg, invite }) => {
@@ -158,7 +159,7 @@ function biddingProgress(state: GcState, project: GcProject): StageProgress {
   }
   const sent: ProgressGroup = {
     key: 'sent',
-    label: 'Our bid to the customer',
+    label: 'Send our bid',
     why: 'The last step here. Send our price to the customer.',
     items: [
       {
@@ -189,18 +190,18 @@ function biddingProgress(state: GcState, project: GcProject): StageProgress {
 }
 
 const START_STEP_GROUPS: { key: string; label: string; why: string }[] = [
-  { key: 'awarded', label: 'Awarded', why: 'Pick one company for each trade.' },
-  { key: 'msa', label: 'Master agreement', why: 'Each company signs it once. It covers every job they do with us.' },
-  { key: 'coi', label: 'Insurance', why: 'A current insurance certificate on file.' },
-  { key: 'w9', label: 'W-9', why: 'Their tax form. We need it before we pay them.' },
-  { key: 'sow', label: 'Statement of work', why: 'The scope and price for this job, signed on the newest plans.' },
+  { key: 'awarded', label: 'Award each trade', why: 'Pick one company for each trade.' },
+  { key: 'msa', label: 'Get the master agreement signed', why: 'Each company signs it once. It covers every job they do with us.' },
+  { key: 'coi', label: 'Get current insurance', why: 'A current insurance certificate on file.' },
+  { key: 'w9', label: 'Get each W-9', why: 'Their tax form. We need it before we pay them.' },
+  { key: 'sow', label: 'Get the statement of work signed', why: 'The scope and price for this job, signed on the newest plans.' },
 ]
 
 function buyoutProgress(state: GcState, project: GcProject): StageProgress {
   const list = startChecklist(state, project)
   const owner: ProgressGroup = {
     key: 'owner',
-    label: 'Our side with the customer',
+    label: 'Our contract, permit and start date',
     why: 'Our contract with the customer, the permit and a start date.',
     items: list.owner.map((c) => ({ label: c.label, detail: c.detail, done: c.done })),
   }
@@ -218,7 +219,7 @@ function buyoutProgress(state: GcState, project: GcProject): StageProgress {
   }))
   const schedule: ProgressGroup = {
     key: 'schedule',
-    label: 'The schedule',
+    label: 'Draw the schedule',
     why: 'The dates and what waits on what. Start locks it as the plan we measure against.',
     items: [{ label: list.schedule.label, detail: list.schedule.detail, done: list.schedule.done }],
   }
@@ -250,7 +251,7 @@ function buildingProgress(state: GcState, project: GcProject): StageProgress {
   const share = worth === 0 ? 0 : doneWorth / worth
   const work: ProgressGroup = {
     key: 'work',
-    label: 'Work done',
+    label: 'Trades report their work',
     why: 'What each trade has reported, out of its statement of work. Our own crew counts too.',
     items: counted.map((c) => ({ label: c.pkg.trade, detail: c.detail, done: c.worth > 0 && c.done >= c.worth })),
   }
