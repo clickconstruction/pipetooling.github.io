@@ -7,6 +7,7 @@
  * the database around it.
  */
 import { asRoomRole, type RoomRole } from './submittalRoomPayload.ts'
+import { requestStaff, type StaffVerifier } from './publicViewCounting.ts'
 
 export type DecisionKind = 'approved' | 'revise' | 'rejected'
 export const DECISION_KINDS: ReadonlyArray<DecisionKind> = ['approved', 'revise', 'rejected']
@@ -218,3 +219,61 @@ export function planDecideWrites(
   const list = [...parts.values()]
   return { parts: list, rows, itemsWithParts: [...new Set(list.map((p) => p.itemId))] }
 }
+
+// ---------- the office is never the GC (v2.4599, punch list #62) ----------
+
+/**
+ * The roles that open Bids. A session in one of them is the office, and the room's writes refuse
+ * it: a call made on the GC's page records a GC answer nobody at the GC gave. The office enters
+ * a GC's answer from the Submittals tab (an entered answer, under the office's own name).
+ * Subcontractors and helpers are not the office here.
+ */
+export const OFFICE_ROLES: ReadonlyArray<string> = ['dev', 'master_technician', 'assistant', 'controller', 'estimator', 'primary', 'superintendent']
+
+export type RoomWriteAction = 'identify' | 'message' | 'decide'
+
+/** The plain reason a refused write carries; the page shows it where the press was. */
+export const OFFICE_REFUSAL: Record<RoomWriteAction, string> = {
+  identify: 'You are signed in as the office. Enter their answer from the Submittals tab.',
+  decide: 'You are signed in as the office. Enter their answer from the Submittals tab.',
+  message: 'You are signed in as the office. Answer their questions from the Submittals tab.',
+}
+export const PREVIEW_REFUSAL = 'This page is open as the office’s preview, so nothing here is saved.'
+
+/** Whether a room write may go ahead: never from a verified office session, never from the office's preview. */
+export function officeWriteVerdict(
+  action: RoomWriteAction,
+  signal: { preview: boolean; officeRole: string | null },
+): { ok: true } | { ok: false; status: 403; code: 'office' | 'preview'; error: string } {
+  if (signal.officeRole) return { ok: false, status: 403, code: 'office', error: OFFICE_REFUSAL[action] }
+  if (signal.preview) return { ok: false, status: 403, code: 'preview', error: PREVIEW_REFUSAL }
+  return { ok: true }
+}
+
+/** The slice of the service client `officeRoleOf` needs: the auth check, and one read of `users`. */
+export type OfficeSessionReader = StaffVerifier & { from(table: string): unknown }
+
+type RoleQuery = { select(columns: string): { eq(column: string, value: string): { maybeSingle(): PromiseLike<{ data: unknown }> } } }
+
+/**
+ * The office role behind a request, verified, or null. The bearer token must be a user's (the
+ * anon key proves nothing), the auth server must resolve it (`requestStaff`), and that user's
+ * `users.role` must be an office role. A reviewer's page sends the anon key, so a reviewer's
+ * write never reaches the auth server; anything that cannot be verified reads as no session.
+ */
+export async function officeRoleOf(
+  req: { headers: { get(name: string): string | null } },
+  admin: OfficeSessionReader,
+  anonKey: string | null | undefined,
+): Promise<string | null> {
+  const staff = await requestStaff(req, admin, anonKey)
+  if (!staff.isStaff || !staff.userId) return null
+  try {
+    const { data } = await (admin.from('users') as RoleQuery).select('role').eq('id', staff.userId).maybeSingle()
+    const role = (data as { role?: unknown } | null)?.role
+    return typeof role === 'string' && OFFICE_ROLES.includes(role) ? role : null
+  } catch {
+    return null
+  }
+}
+
