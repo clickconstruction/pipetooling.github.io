@@ -273,7 +273,7 @@ When one GC stops paying everywhere at once, a month at a time is too slow. **Pu
 
 The run covers every unpaid job with the GC, not only the ones the picker counts.
 
-**The jobs, by stage** sits above the steps. It lists every job with unpaid work under the GC, grouped by its stage. Each job shows its line items, its money and the Pipeline's progress bar. A chip flags anything that looks wrong, in the Pipeline's words. A job may be marked Waiting while a bill is out, for example. The chip opens the job over the run, on the field that fixes it. Close the job, and the run comes back where you left it. Fix the record first, because a notice claims what the record says.
+**Jobs with unpaid work under this GC** sits above the steps. It lists every job with unpaid work under the GC, grouped by its stage. Each job shows its line items, its money and the Pipeline's progress bar. A chip flags anything that looks wrong, in the Pipeline's words. A job may be marked Waiting while a bill is out, for example. The chip opens the job over the run, on the field that fixes it. Close the job, and the run comes back where you left it. Fix the record first, because a notice claims what the record says.
 
 The window follows the order of the work. A bar of five steps stays pinned at the top as you scroll. They are Owners, Claims, Cover letter, Decision and The grid. Each step shows its status, and a click jumps to it. Above the steps, one summary states the money once.
 

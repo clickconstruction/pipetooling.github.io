@@ -20,7 +20,7 @@ import { gcNoticeBandLinePartWords,
 import StagesProgressPaymentCell from './StagesProgressPaymentCell'
 
 /**
- * Put a GC on notice — "The jobs, by stage" (v2.3819, punch list #43): the
+ * Put a GC on notice — "Jobs with unpaid work under this GC" (v2.3819, punch list #43; titled "The jobs, by stage" until v2.4538): the
  * band between the brief and Step 1. Every job with unpaid work under the GC,
  * grouped by the stage on record, each with its line items and the money
  * poured onto them, the Pipeline's own Progress & payment cell, the Job
@@ -236,11 +236,11 @@ export default function GcNoticeJobsBand({ data, todayYmd, isMobile, onOpenJob, 
   }
 
   return (
-    <section data-testid="gc-notice-band" aria-label="The jobs, by stage" style={{ display: 'grid', gap: '0.6rem', paddingBottom: '1.1rem', marginBottom: '1.1rem', borderBottom: '1px solid var(--border)' }}>
+    <section data-testid="gc-notice-band" aria-label="Jobs with unpaid work under this GC" style={{ display: 'grid', gap: '0.6rem', paddingBottom: '1.1rem', marginBottom: '1.1rem', borderBottom: '1px solid var(--border)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.4rem 1rem', flexWrap: 'wrap' }}>
         <div style={{ minWidth: 0, flex: '1 1 320px' }}>
-          <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, letterSpacing: '-0.01em' }}>The jobs, by stage</h3>
-          <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--text-muted)', maxWidth: '72ch' }}>Every job with unpaid work under this GC, by the stage on record, against what the work and the money say. A chip opens the job on the field that fixes it; a row opens the job; a line opens its bill. Mark the record right before the notices claim against it.</p>
+          {/* v2.4538: the title alone (it read "The jobs, by stage" over a paragraph of how the band works). */}
+          <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, letterSpacing: '-0.01em' }}>Jobs with unpaid work under this GC</h3>
         </div>
         <button type="button" style={linkBtn} onClick={toggleOpen} aria-expanded={open} data-testid="gc-notice-band-toggle">
           {open ? 'Hide the jobs ▴' : `Show the ${c.jobs} job${c.jobs === 1 ? '' : 's'} ▾`}
