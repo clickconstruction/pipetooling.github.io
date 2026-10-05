@@ -151,3 +151,37 @@ describe("a trade's Activity also carries the award, pay applications sent back,
     expect(texts).toContain('Signed change order 1.')
   })
 })
+
+describe("a trade's Activity carries what it did on the job (Building, 2026-10-04)", () => {
+  it('its submittals, punch items and inspections, under On the job', () => {
+    const state = initialGcState()
+    const work = (id: string) => partnerActivity(state, partner(state, id)).filter((e) => e.kind === 'work').map((e) => e.text)
+    expect(work('pecanvalley')).toEqual(
+      expect.arrayContaining([
+        'Asked them for submittal 26 24 16-01, Panelboards.',
+        'Submittal 26 24 16-01 came back to revise: Show the 22kA rating on each panel.',
+        'Sent submittal 26 24 16-01, Panelboards, round 2.',
+        'Submittal 26 24 16-01 approved as noted: Label the spare breakers.',
+        'Electrical service inspection failed on their work: The main bonding jumper is missing at the service panel. Re-inspection Oct 2.',
+      ]),
+    )
+    expect(work('guadalupe')).toEqual(
+      expect.arrayContaining([
+        'Punch item: Patch the spalled corner on the column footing, Grid C-4.',
+        'Said a punch item is fixed: Seal the control joints in the stockroom slab.',
+        'Punch item checked fixed: Clean the curb paint off the sidewalk.',
+      ]),
+    )
+    // A trade we did not award has none of it.
+    expect(work('alamo')).toEqual([])
+  })
+
+  it('a failed punch check and a passed inspection show too', () => {
+    let state = initialGcState()
+    state = gcReducer(state, { type: 'checkPunchItem', projectId: 'fairoaksd', itemId: 'fairoaksd-punch-2', fixed: false, note: 'Two joints are still open.' })
+    state = gcReducer(state, { type: 'passInspection', projectId: 'fairoaksd', lineId: 'fairoaksd-insp-service' })
+    const texts = (id: string) => partnerActivity(state, partner(state, id)).filter((e) => e.kind === 'work').map((e) => e.text)
+    expect(texts('guadalupe')).toContain('A punch item was not fixed: Two joints are still open.')
+    expect(texts('pecanvalley')).toContain('Electrical service inspection passed.')
+  })
+})
