@@ -1,4 +1,4 @@
-import { useState, type Dispatch } from 'react'
+import { useEffect, useRef, useState, type Dispatch } from 'react'
 import {
   backChargeCanTake,
   backChargeDraws,
@@ -104,6 +104,18 @@ export function GcBuildingBackCharges({
 
 function ChargeLine({ sow, charge, today, ids, dispatch }: { sow: Sow; charge: BackCharge; today: string; ids: { projectId: string; packageId: string }; dispatch: Dispatch<GcAction> }) {
   const st = backChargeState(charge, today)
+  // Needs you links straight to one charge (Board, 2026-10-05: ?project=…&ptab=draws&charge=<id>): it scrolls into view, outlined.
+  const ref = useRef<HTMLDivElement>(null)
+  const [lit] = useState(() => {
+    try {
+      return new URLSearchParams(window.location.search).get('charge') === charge.id
+    } catch {
+      return false
+    }
+  })
+  useEffect(() => {
+    if (lit) ref.current?.scrollIntoView({ block: 'center' })
+  }, [lit])
   const [settling, setSettling] = useState<'keep' | 'drop' | null>(null)
   const [note, setNote] = useState('')
   const canTake = backChargeCanTake(charge, today)
@@ -125,7 +137,11 @@ function ChargeLine({ sow, charge, today, ids, dispatch }: { sow: Sow; charge: B
   }
   const live = st !== 'taken' && st !== 'dropped'
   return (
-    <div style={{ display: 'grid', gap: '0.3rem', padding: '0.45rem 0.6rem', border: '1px solid var(--border)', borderRadius: 8 }}>
+    <div
+      ref={ref}
+      data-charge={charge.id}
+      style={{ display: 'grid', gap: '0.3rem', padding: '0.45rem 0.6rem', border: lit ? '2px solid var(--border-blue)' : '1px solid var(--border)', borderRadius: 8 }}
+    >
       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
         <strong style={{ fontVariantNumeric: 'tabular-nums' }}>{money(charge.amount)}</strong>
         <span>{charge.reason}</span>
