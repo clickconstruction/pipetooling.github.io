@@ -272,6 +272,29 @@ describe('buildSpendingRollup — the columns', () => {
   })
 })
 
+describe('buildSpendingRollup — the payroll mark by role', () => {
+  // What the read returns to a caller without payroll access: no charge settled by a payroll
+  // mark alone (the function's WHERE), the rest as is.
+  const withoutPayrollAccess = CHARGES.filter((c) => !(c.payrollMarked && c.splits.length === 0 && c.invoiceLinks.length === 0))
+  const narrow = buildSpendingRollup({ charges: withoutPayrollAccess, lookups: LOOKUPS, fuelTagId: FUEL.id, officeJobId: OFFICE, sortingFloorYmd: FLOOR, directory: DIRECTORY })
+
+  it('totals differ by exactly the charges settled by a payroll mark alone; every job reads the same', () => {
+    expect(rollup.totals.payroll).toBe(50)
+    expect(narrow.totals.payroll).toBe(0)
+    expect(rollup.totals.cardSpend - narrow.totals.cardSpend).toBeCloseTo(rollup.totals.payroll, 2)
+    expect([...narrow.byJob]).toEqual([...rollup.byJob])
+    expect(narrow.totals.notOnJob).toBe(rollup.totals.notOnJob)
+    expect(narrow.rows.some((r) => r.who.key === 'p:p-pat')).toBe(false)
+  })
+
+  it('a marked charge that is also on a job counts on the job, for every role', () => {
+    const markedOnJob = charge({ amount: -33, attributedUserId: 'u-dana', payrollMarked: true, splits: [split('j1', -33)] })
+    const r = buildSpendingRollup({ charges: [markedOnJob], lookups: LOOKUPS, fuelTagId: FUEL.id, officeJobId: OFFICE, sortingFloorYmd: FLOOR, directory: DIRECTORY })
+    expect(r.rows[0]).toMatchObject({ onJobs: 33, payroll: { usd: 0, charges: 0 }, notOnJob: 0 })
+    expect(r.byJob.get('j1')).toEqual({ spend: 33, fuel: 0 })
+  })
+})
+
 describe('buildSpendingRollup — the charges not on a job yet', () => {
   it('a held card puts on a job through the holder (Team purchases’ write), another card through Banking’s', () => {
     const jorge = rowOf('u:u-jorge').looseCharges

@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   CARD_CHARGES_WINDOW_RPC,
@@ -81,6 +83,56 @@ describe('fetchCardChargesWindow', () => {
   it('throws on a failed page instead of returning a short list', async () => {
     const { client } = makeRpcStub(1300, { failOnCall: 2 })
     await expect(fetchCardChargesWindow({ startYmd: '2026-07-08', endYmd: '2026-10-05' }, client, 'window test')).rejects.toThrow()
+  })
+})
+
+// The database checks the sql rows function when the migration creates it, but the plpgsql
+// wrapper's RETURN QUERY is matched to its declared columns only at the first call. These keep
+// the two lists — and the client's row type — the same, here, before any push.
+const MIGRATION = readFileSync(join(__dirname, '../../../supabase/migrations/20261005212106_card_charges_window.sql'), 'utf8')
+
+function returnsTableColumns(sql: string, fn: string): string[] {
+  const head = `CREATE OR REPLACE FUNCTION public.${fn}(`
+  const start = sql.indexOf(head)
+  expect(start, `${fn} is created once`).toBeGreaterThanOrEqual(0)
+  expect(sql.indexOf(head, start + 1), `${fn} is created once`).toBe(-1)
+  const open = sql.indexOf('RETURNS TABLE (', start) + 'RETURNS TABLE ('.length
+  const close = sql.indexOf('\n)', open)
+  return sql
+    .slice(open, close)
+    .split(',')
+    .map((c) => c.trim().replace(/\s+/g, ' '))
+    .filter(Boolean)
+}
+
+describe('the migration', () => {
+  it('the wrapper returns exactly the columns of the checked sql function, in order, with their types', () => {
+    const rows = returnsTableColumns(MIGRATION, '_card_charges_window_rows')
+    expect(rows).toHaveLength(22)
+    expect(returnsTableColumns(MIGRATION, 'list_card_charges_window')).toEqual(rows)
+  })
+
+  it('the client row type names every column the function returns', () => {
+    const names = returnsTableColumns(MIGRATION, 'list_card_charges_window').map((c) => c.split(' ')[0])
+    expect(Object.keys(rpcRow(0)).sort()).toEqual([...names].sort())
+  })
+
+  it('the rows function is sql (checked at create) and only the wrapper calls it', () => {
+    const rowsFn = MIGRATION.slice(MIGRATION.indexOf('CREATE OR REPLACE FUNCTION public._card_charges_window_rows('), MIGRATION.indexOf('CREATE OR REPLACE FUNCTION public.list_card_charges_window('))
+    expect(rowsFn).toMatch(/\nLANGUAGE sql\n/)
+    for (const role of ['PUBLIC', 'anon', 'authenticated']) {
+      expect(MIGRATION).toMatch(new RegExp(`REVOKE ALL ON FUNCTION public\\._card_charges_window_rows\\([^)]*\\) FROM ${role};`))
+    }
+    expect(MIGRATION).not.toMatch(/GRANT [A-Z ,]*ON FUNCTION public\._card_charges_window_rows/)
+    expect(MIGRATION).toMatch(/GRANT EXECUTE ON FUNCTION public\.list_card_charges_window\(date, date\) TO authenticated;/)
+  })
+
+  it('the wrapper checks the role before anything else and passes the payroll marks’ own rule', () => {
+    const wrapper = MIGRATION.slice(MIGRATION.indexOf('CREATE OR REPLACE FUNCTION public.list_card_charges_window('))
+    const body = wrapper.slice(wrapper.indexOf('BEGIN'))
+    expect(body.indexOf('IF NOT public.is_office_staff() THEN')).toBeGreaterThan(0)
+    expect(body.indexOf('IF NOT public.is_office_staff() THEN')).toBeLessThan(body.indexOf('IF p_start_ymd IS NULL'))
+    expect(body).toMatch(/_card_charges_window_rows\(v_lo, v_hi, auth\.uid\(\), public\.has_payroll_access\(\)\)/)
   })
 })
 
