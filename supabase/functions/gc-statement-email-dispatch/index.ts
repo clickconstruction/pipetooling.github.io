@@ -53,6 +53,8 @@ import {
   renderGcShareAllText,
   renderGcStatementHtml,
   renderGcStatementText,
+  attachJobTotals,
+  payloadJobIds,
   type GcStatementPayload,
 } from './render.ts'
 
@@ -300,6 +302,17 @@ serve(async (req) => {
         if (rpcErr) throw new Error(`payload rpc: ${rpcErr.message}`)
         const payload = payloadRaw as GcStatementPayload
         if (!payload || !Array.isArray(payload.groups)) throw new Error('empty payload')
+        // v2.4536: each job's total, so the line under a bill does not word money that paid the
+        // part of the job on no bill as paying that bill. A failed read leaves the rows as they came.
+        try {
+          const jobIds = payloadJobIds(payload)
+          if (jobIds.length > 0) {
+            const { data: totalRows } = await admin.from('jobs_ledger').select('id, revenue').in('id', jobIds)
+            attachJobTotals(payload, Object.fromEntries(((totalRows ?? []) as Array<{ id: string; revenue: number | null }>).map((j) => [j.id, j.revenue])))
+          }
+        } catch {
+          /* the statement still goes, worded by the bills alone */
+        }
 
         const dateStr = chicagoDateStr()
         const isSingle = entityId != null
