@@ -53,6 +53,7 @@ import {
   type StageDates,
 } from '../../lib/submittals/procurementLog'
 import { blockersPress, procurementNextLine, procurementSteps, rowsForStep, sendUpdateLabel, sharedHouse, stepOnlyWords, stepShares, type ProcurementStepKey, type ProcurementStepTone } from '../../lib/submittals/procurementBoard'
+import { calendarAxis, groupMark, type CalendarAxis, type CalendarMark } from '../../lib/submittals/procurementCalendar'
 import { orderSections, rowsToMark, theyWrote, type OrderGroup, type OrderTone } from '../../lib/submittals/procurementOrders'
 import { loadProcurementRecords, loadProcurementUpdates, loadStageDatesForBid, loadTagStagesForBid, type ProcurementUpdate } from '../../lib/submittals/procurementLogIo'
 
@@ -105,6 +106,59 @@ const COLS = 8
 const ORDER_COLS = 4
 const ORDER_TONE_COLOR: Record<OrderTone, string> = { go: 'var(--text-strong)', soon: 'var(--text-amber-700)', past: 'var(--text-red-700)', late: 'var(--text-red-700)', done: 'var(--text-green-700)', back: 'var(--text-amber-700)', quiet: 'var(--text-muted)' }
 const countPill: CSSProperties = { fontSize: '0.72rem', fontWeight: 700, borderRadius: 999, padding: '0.05rem 0.5rem', background: 'var(--bg-muted)', color: 'var(--text-base)', fontVariantNumeric: 'tabular-nums' }
+// v2.4592 · the calendar beside the orders: its column, its marks' colours, and the room kept clear at each edge.
+const CAL_TD: CSSProperties = { padding: 0, position: 'relative', minWidth: 300, width: '34%' }
+const CAL_INSET = '0 12px'
+const CAL_BLUE = '#2563eb'
+const CAL_RED = '#dc2626'
+const CAL_AMBER = '#d97706'
+const DIAMOND_COLOR: Record<'go' | 'soon' | 'past' | 'ask', string> = { go: CAL_BLUE, soon: CAL_AMBER, past: CAL_RED, ask: 'var(--text-muted)' }
+const calLine = (at: number, color: string, opacity = 1): CSSProperties => ({ position: 'absolute', top: 0, bottom: 0, left: `${at}%`, width: 1, background: color, opacity, pointerEvents: 'none' })
+function Diamond({ tone, style, title }: { tone: 'go' | 'soon' | 'past' | 'ask'; style?: CSSProperties; title?: string }) {
+  return <span title={title} data-testid="procurement-cal-diamond" data-tone={tone} style={{ display: 'inline-block', width: 9, height: 9, transform: 'rotate(45deg)', boxSizing: 'border-box', background: tone === 'ask' ? 'var(--surface)' : DIAMOND_COLOR[tone], border: tone === 'ask' ? '1.5px solid var(--text-muted)' : 'none', ...style }} />
+}
+/** Today's line and each stage's needed day, down a calendar cell. */
+function CalendarLines({ axis }: { axis: CalendarAxis }) {
+  return (
+    <>
+      {axis.stages.map((st) => <span key={st.stage} aria-hidden="true" style={calLine(st.at, 'var(--border-strong)')} />)}
+      <span aria-hidden="true" style={calLine(axis.today, CAL_BLUE, 0.6)} />
+    </>
+  )
+}
+/** One row's cell on the calendar: the lines every row shares, and the order's own mark when it has one. */
+function CalendarCell({ axis, mark = null }: { axis: CalendarAxis; mark?: CalendarMark | null }) {
+  const mid = (h: number): CSSProperties => ({ position: 'absolute', top: `calc(50% - ${h / 2}px)`, height: h })
+  return (
+    <td style={{ ...td, ...CAL_TD }} data-testid="procurement-cal" aria-label={mark?.words || undefined}>
+      <div style={{ position: 'absolute', inset: CAL_INSET }}>
+        <CalendarLines axis={axis} />
+        {mark?.dotted ? <span aria-hidden="true" style={{ ...mid(0), left: `${mark.dotted.from}%`, width: `${mark.dotted.to - mark.dotted.from}%`, borderTop: '1.5px dotted var(--text-muted)' }} data-testid="procurement-cal-dotted" /> : null}
+        {mark?.bar ? <span title={mark.words} style={{ ...mid(7), left: `${mark.bar.from}%`, width: `${mark.bar.to - mark.bar.from}%`, background: CAL_BLUE, borderRadius: mark.bar.clipped ? '0 3px 3px 0' : 3, ...(mark.lateBar ? { borderTopRightRadius: 0, borderBottomRightRadius: 0 } : null) }} data-testid="procurement-cal-bar" data-clipped={mark.bar.clipped ? 'true' : undefined} /> : null}
+        {mark?.lateBar ? <span title={mark.words} style={{ ...mid(7), left: `${mark.lateBar.from}%`, width: `${mark.lateBar.to - mark.lateBar.from}%`, background: CAL_RED, borderRadius: '0 3px 3px 0' }} data-testid="procurement-cal-late" /> : null}
+        {mark?.tick ? <span title={mark.tick.title} style={{ ...mid(13), left: `calc(${mark.tick.at}% - 1px)`, width: 2, background: 'var(--text-strong)' }} data-testid="procurement-cal-tick" /> : null}
+        {mark?.diamond ? <Diamond tone={mark.diamond.tone} title={mark.diamond.title} style={{ ...mid(9), left: `calc(${mark.diamond.at}% - 4.5px)` }} /> : null}
+      </div>
+    </td>
+  )
+}
+/** The calendar's head: each stage named beside its line, the Mondays under them, today in blue. */
+function CalendarHead({ axis }: { axis: CalendarAxis }) {
+  // Each label sits on the surface, so a line that crosses its place passes behind the words, never through them.
+  const small: CSSProperties = { position: 'absolute', zIndex: 1, background: 'var(--surface)', padding: '1px 2px', fontSize: '0.64rem', fontWeight: 600, letterSpacing: 0, textTransform: 'none', whiteSpace: 'nowrap', lineHeight: 1 }
+  return (
+    <th style={{ ...th, ...CAL_TD, height: 40 }} data-testid="procurement-cal-head" aria-label="Calendar">
+      <div style={{ position: 'absolute', inset: CAL_INSET }}>
+        <CalendarLines axis={axis} />
+        {axis.stages.map((st) => (
+          <span key={st.stage} title={`${st.label}: needed ${shortDate(st.iso)}`} style={{ ...small, top: 4, color: 'var(--text-base)', ...(st.flip ? { right: `calc(${100 - st.at}% + 4px)` } : { left: `calc(${st.at}% + 4px)` }) }} data-testid="procurement-cal-stage">{st.label}</span>
+        ))}
+        {axis.weeks.map((w) => <span key={w.iso} style={{ ...small, bottom: 5, left: `${w.at}%`, transform: 'translateX(-50%)', color: 'var(--text-muted)', fontWeight: 500 }} data-testid="procurement-cal-week">{w.label}</span>)}
+        <span style={{ ...small, bottom: 5, left: `${axis.today}%`, transform: 'translateX(-50%)', color: CAL_BLUE, fontWeight: 700 }} data-testid="procurement-cal-today">today</span>
+      </div>
+    </th>
+  )
+}
 /** The fold's chevron: right when folded, down when open. */
 function Chevron({ open }: { open: boolean }) {
   return (
@@ -307,6 +361,10 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
   const today = toIsoDate(new Date())
   // v2.4587 · To order as orders; a group is new only against an update that has gone.
   const orders = useMemo(() => orderSections(shown.rows, today, new Set(lastUpdate ? changes.map((c) => c.key) : [])), [shown, today, lastUpdate, changes])
+  // v2.4592 · the line of weeks, from every line (a step or a missing fact picked does not move it); null with nothing to place.
+  const axis = useMemo(() => calendarAxis(rows, stageDates, today), [rows, stageDates, today])
+  // The orders, and so the calendar, draw on a wide screen's To order lens.
+  const ordersView = lens === 'to_order' && !narrow && rows.length > 0
   useEffect(() => {
     if (!loaded || !onCounts) return
     const c = procurementCounts(rows)
@@ -700,7 +758,7 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
   const disabled = busy || saving
 
   /** One line of the log; `underTag` drops the tag on a part line drawn under its tag's heading. */
-  function renderRow(r: ProcurementRow, underTag: boolean, guides?: ReadonlyArray<TagGuide>, order?: { /** the group mixes fixtures */ showTag: boolean; /** its parts differ in stage or lead time */ facts: boolean }) {
+  function renderRow(r: ProcurementRow, underTag: boolean, guides?: ReadonlyArray<TagGuide>, order?: { /** the group mixes fixtures */ showTag: boolean; /** its parts differ in stage or lead time */ facts: boolean; /** the line of weeks, when the calendar is drawn */ axis?: CalendarAxis | null }) {
     const open = openLines.has(r.key)
     const status = lineStatus(r)
     const name = r.tag ?? r.product
@@ -859,11 +917,13 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
               ) : null}
             </td>
             <td style={{ ...tdCenter, fontWeight: 600 }} data-testid="procurement-qty">{qty}</td>
-            <td style={{ ...td, textAlign: 'right' }}>{right}</td>
+            {/* A part carries no mark of its own; one sent back uses the calendar's width for its note and doors. */}
+            {order.axis && r.status !== 'sent_back' ? <CalendarCell axis={order.axis} /> : null}
+            <td colSpan={order.axis && r.status === 'sent_back' ? 2 : undefined} style={{ ...td, textAlign: 'right' }}>{right}</td>
           </tr>
           {open ? (
             <tr data-testid="procurement-editor">
-              <td colSpan={ORDER_COLS} style={{ ...td, background: 'var(--bg-blue-tint)', padding: '0.5rem 0.6rem 0.6rem 2.2rem' }}>{editor}</td>
+              <td colSpan={ORDER_COLS + (order.axis ? 1 : 0)} style={{ ...td, background: 'var(--bg-blue-tint)', padding: '0.5rem 0.6rem 0.6rem 2.2rem' }}>{editor}</td>
             </tr>
           ) : null}
         </Fragment>
@@ -1115,7 +1175,12 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
             </button>
           ))}
         </div>
-        {loaded && sharedHouse(rows) ? <span style={smallMuted} data-testid="procurement-shared">Every part comes from {sharedHouse(rows)}.</span> : null}
+        {loaded && (sharedHouse(rows) || (ordersView && !axis)) ? (
+          <span style={smallMuted} data-testid="procurement-shared">
+            {sharedHouse(rows) ? `Every part comes from ${sharedHouse(rows)}.` : ''}
+            {ordersView && !axis ? `${sharedHouse(rows) ? ' ' : ''}No dates to draw yet.` : ''}
+          </span>
+        ) : null}
       </div>
 
       {ticked.size > 0 ? (
@@ -1197,7 +1262,8 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
         const tickAll = (keys: string[], label: string) => (
           <input type="checkbox" aria-label={label} checked={keys.length > 0 && keys.every((k) => ticked.has(k))} onChange={(e) => setTicked((cur) => { const next = new Set(cur); for (const k of keys) { if (e.target.checked) next.add(k); else next.delete(k) } return next })} />
         )
-        if (lens === 'to_order' && !narrow && rows.length > 0) {
+        if (ordersView) {
+          const cols = ORDER_COLS + (axis ? 1 : 0)
           // v2.4587 · To order as orders: five sections, each line under the order it belongs to. A phone keeps its cards.
           const filtered = only != null || stepPicked != null
           const isOpen = (key: string, dflt: boolean) => filtered || (foldOpen[key] ?? dflt)
@@ -1206,7 +1272,7 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
           const divider = (key: string, n: number) => (
             <tr key={key} data-testid="procurement-order-only-divider">
               <td style={td} />
-              <td colSpan={ORDER_COLS - 1} style={{ ...td, padding: '0.25rem 0.4rem 0.25rem 2.2rem', fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Ordered, not on the GC’s copy · {n} part{n === 1 ? '' : 's'}</td>
+              <td colSpan={cols - 1} style={{ ...td, padding: '0.25rem 0.4rem 0.25rem 2.2rem', fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Ordered, not on the GC’s copy · {n} part{n === 1 ? '' : 's'}</td>
             </tr>
           )
           const groupRight = (g: OrderGroup) => {
@@ -1218,7 +1284,7 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
               const first = g.rows[0]
               if (g.noProduct) return onOpenItem && first?.itemId ? <button type="button" onClick={() => onOpenItem({ itemId: first.itemId!, partKey: null })} style={link}>Open it</button> : null
               return (
-                <span style={{ display: 'inline-flex', gap: '0.6rem', alignItems: 'baseline', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                <span style={{ display: 'inline-flex', gap: '0.6rem', alignItems: 'baseline', justifyContent: 'flex-end' }}>
                   {g.right ? <span style={smallMuted}>{g.right}</span> : null}
                   {onAnswerItem && g.answerItemId && !first?.isHand && g.rows.some((r) => answerDoor(r) === 'enter') ? <button type="button" disabled={busy} onClick={() => onAnswerItem({ itemId: g.answerItemId!, partKey: null })} title="Record what they said about this fixture. Nobody is emailed." aria-label={`Their answer for the fixture ${g.title}`} style={link} data-testid="procurement-fixture-answer">Their answer…</button> : null}
                 </span>
@@ -1244,12 +1310,13 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
                       {g.noProduct ? <span style={{ color: 'var(--text-amber-700)', fontWeight: 600, fontSize: '0.8rem' }}>no product yet</span> : <span style={smallMuted}>{g.note}</span>}
                     </button>
                   </td>
+                  {axis ? <CalendarCell axis={axis} mark={groupMark(g, axis, today)} /> : null}
                   <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }} data-testid="procurement-group-right">{groupRight(g)}</td>
                 </tr>
                 {marking === g.key ? (
                   <tr data-testid="procurement-mark-form">
                     <td style={{ ...td, background: 'var(--bg-blue-tint)' }} />
-                    <td colSpan={ORDER_COLS - 1} style={{ ...td, background: 'var(--bg-blue-tint)', padding: '0.45rem 0.6rem 0.5rem 0.9rem' }}>
+                    <td colSpan={cols - 1} style={{ ...td, background: 'var(--bg-blue-tint)', padding: '0.45rem 0.6rem 0.5rem 0.9rem' }}>
                       <span style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem 0.7rem', alignItems: 'center' }}>
                         <b style={{ fontSize: '0.8125rem', color: 'var(--text-blue-700)' }}>Mark {n} part{n === 1 ? '' : 's'} ordered</b>
                         <label style={{ display: 'inline-flex', gap: '0.3rem', alignItems: 'center', fontSize: '0.8rem' }}>
@@ -1271,7 +1338,7 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
                   ? g.rows.map((r, i) => (
                       <Fragment key={r.key}>
                         {g.orderOnlyFrom != null && i === g.orderOnlyFrom ? divider(`${g.key}:oo`, g.rows.length - g.orderOnlyFrom) : null}
-                        {renderRow(r, g.kind === 'fixture', undefined, { showTag: g.showTag, facts: g.showFacts })}
+                        {renderRow(r, g.kind === 'fixture', undefined, { showTag: g.showTag, facts: g.showFacts, axis })}
                       </Fragment>
                     ))
                   : null}
@@ -1280,12 +1347,13 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
           }
           return (
             <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 640, fontVariantNumeric: 'tabular-nums' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: axis ? 880 : 640, fontVariantNumeric: 'tabular-nums' }}>
                 <thead>
                   <tr>
                     <th style={{ ...th, width: 28 }} aria-label="Pick" />
                     <th style={th}>Part</th>
                     <th style={thCenter}>Qty</th>
+                    {axis ? <CalendarHead axis={axis} /> : null}
                     <th style={th} />
                   </tr>
                 </thead>
@@ -1297,7 +1365,7 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
                       <Fragment key={sec.key}>
                         <tr data-testid="procurement-section" data-kind={sec.kind}>
                           <td style={{ ...td, width: 28, textAlign: 'center', background: 'var(--bg-subtle)' }}>{tickAll(keys, `Pick every line under ${sec.title}`)}</td>
-                          <td colSpan={ORDER_COLS - 1} style={{ ...td, padding: '0.15rem 0.4rem', background: 'var(--bg-subtle)' }}>
+                          <td colSpan={cols - 1} style={{ ...td, padding: '0.15rem 0.4rem', background: 'var(--bg-subtle)' }}>
                             <button type="button" className="procure-fold" aria-expanded={open} onClick={() => flip(sec.key, true)} data-testid="procurement-section-fold">
                               <Chevron open={open} />
                               <b style={{ color: 'var(--text-strong)' }}>{sec.title}</b>
@@ -1307,7 +1375,7 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
                           </td>
                         </tr>
                         {open ? sec.groups.map(groupRows) : null}
-                        {open ? sec.rows.map((r) => renderRow(r, false, undefined, { showTag: true, facts: false })) : null}
+                        {open ? sec.rows.map((r) => renderRow(r, false, undefined, { showTag: true, facts: false, axis })) : null}
                       </Fragment>
                     )
                   })}
@@ -1411,9 +1479,31 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
           </div>
         )
       })()}
-      <div style={smallMuted}>
-        Tap a status to type its dates. Released = the room's approval. Expected = ordered + lead time until the house says otherwise (amber). Needed = the stage's window on the job. <b>Order by</b> = needed − lead time for a released part not yet ordered.
-      </div>
+      {ordersView ? (
+        axis ? (
+          // v2.4592 · the calendar's key, one line.
+          <div style={{ ...smallMuted, display: 'flex', flexWrap: 'wrap', gap: '0.3rem 1.1rem', alignItems: 'center' }} data-testid="procurement-key">
+            {([
+              [<Diamond key="d" tone="go" />, 'order by'],
+              [<Diamond key="d" tone="ask" />, 'the GC must answer by'],
+              [<span key="b" style={{ display: 'inline-block', width: 22, height: 7, borderRadius: 3, background: CAL_BLUE }} />, 'on order'],
+              [<span key="b" style={{ display: 'inline-block', width: 22, height: 7, borderRadius: 3, background: CAL_RED }} />, 'past the needed date'],
+              [<span key="t" style={{ display: 'inline-block', width: 2, height: 13, background: 'var(--text-strong)' }} />, 'needed on the job'],
+              [<span key="l" style={{ display: 'inline-block', width: 2, height: 13, background: CAL_BLUE, opacity: 0.6 }} />, 'today'],
+              ...(lastUpdate ? [[<span key="n" style={{ fontSize: '0.68rem', fontWeight: 700, color: 'white', background: CAL_BLUE, borderRadius: 999, padding: '0.05rem 0.45rem' }}>new</span>, 'changed since the last update'] as const] : []),
+            ] as ReadonlyArray<readonly [JSX.Element, string]>).map(([swatch, words]) => (
+              <span key={words} style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'center' }}>{swatch}{words}</span>
+            ))}
+            {axis.capped ? <span>The calendar stops at 26 weeks. Later dates are past its right edge.</span> : null}
+          </div>
+        ) : (
+          <div style={smallMuted} data-testid="procurement-key">Each order gets a place on a calendar once its parts have a lead time and the job has stage dates.</div>
+        )
+      ) : (
+        <div style={smallMuted}>
+          Tap a status to type its dates. Released = the room's approval. Expected = ordered + lead time until the house says otherwise (amber). Needed = the stage's window on the job. <b>Order by</b> = needed − lead time for a released part not yet ordered.
+        </div>
+      )}
 
     </div>
   )
