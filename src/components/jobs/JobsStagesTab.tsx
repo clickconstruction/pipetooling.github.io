@@ -4488,10 +4488,11 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           } else setLienClocksRefresh((k) => k + 1)
           refetchLienDesk()
         }}
+        // v2.4523: the desk stays open under a window one of its rows opens (the lien window, the GC
+        // notice), so closing that window lands back on the desk where it was, not on the board.
         onOpenCalendarJob={(jobId) => {
           const job = jobs.find((x) => x.id === jobId)
           if (!job) return
-          setLienDesk(null)
           setLienInstrumentsModal({ job, invoice: null })
         }}
         initialPile={lienDesk?.pile ?? null}
@@ -4521,7 +4522,6 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             showToast('Open that job from the Pipeline board to file its affidavit — it is not loaded here yet.', 'info')
             return
           }
-          setLienDesk(null)
           setLienInstrumentsModal({ job, invoice: null, initialTab: 'affidavit' })
         }}
         onChanged={refetchLienDesk}
@@ -4530,7 +4530,6 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         onOpenLienInstruments={(jobId) => {
           const months = lienDeskData?.queue.entries.find((e) => e.jobId === jobId)?.item?.months ?? []
           const openWith = (job: JobWithDetails) => {
-            setLienDesk(null)
             setLienInstrumentsModal({ job, invoice: null, initialTab: 'notice', noticeMonths: months })
           }
           const loaded = jobs.find((j) => j.id === jobId)
@@ -4545,7 +4544,6 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           })
         }}
         onPutGcOnNotice={(gcId) => {
-          setLienDesk(null)
           setGcNotice({ gcId })
         }}
       />

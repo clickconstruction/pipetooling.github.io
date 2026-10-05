@@ -54,7 +54,7 @@ last_updated: 2026-10-02
 | `onChanged` | `refetchLienDesk` | after every write (`run`) |
 | `onOpenEditJob(jobId, focus?)` | `tryOpenEditJob` with focus → `propertyRecordFocus` / `focusRow` | gate doors, paper "gc" door, retainage door |
 | `onOpenCompanySettings?` | `navigate('/settings?tab=settings-jobs&focus=issuer.<field>')` | paper "company" door |
-| `onOpenLienInstruments`, `onOpenLienAffidavit?`, `onOpenLegalDesk?` | close desk → `LienInstrumentsModal` (`onOpenLienInstruments` fetches an unloaded job; `onOpenLienAffidavit` only toasts for one) / Legal desk | ready footer, book rows, affidavit pane |
+| `onOpenLienInstruments`, `onOpenLienAffidavit?`, `onOpenLegalDesk?` | `LienInstrumentsModal` over the desk, which stays open under it since v2.4523 — as it does under `onOpenCalendarJob`'s window and `onPutGcOnNotice`'s — so closing the window lands back on the desk (`onOpenLienInstruments` fetches an unloaded job; `onOpenLienAffidavit` only toasts for one) / close desk → Legal desk | ready footer, book rows, affidavit pane |
 | `legalSignoff?` | `{ stateFor, ask }` over `useLegalMatters`; `ask` writes `legal_add_entry` | sent footer (counsel) |
 | `onPutGcOnNotice?` | close desk → `setGcNotice({ gcId })` | header GC picker |
 
