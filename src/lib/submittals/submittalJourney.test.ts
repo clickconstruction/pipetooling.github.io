@@ -97,6 +97,9 @@ describe('submittalJourney', () => {
     expect(submittalJourney(bp375).next).toEqual({ kind: 'next', text: 'structura sent 4 rows back. 10 rows still have no answer. Start a Rev 2 draft to fix what was sent back. The rows with no answer go on it too. Nothing is sent until you share.', action: 'resubmit', actionLabel: 'Start a Rev 2 draft…' })
     // Step 7's button is past building once the GC has answered.
     expect(stageGate(submittalJourney(bp375).stages, 'resubmit')).toEqual({ on: true, why: null })
+    // 2026-10-05 · step 6 counts the sink with no product apart from the nine waiting on the reviewer; so does this line.
+    const apart = submittalJourney({ ...bp375, decisions: { ...bp375.decisions, noProduct: 1 } }).next
+    expect(apart.text).toBe('structura sent 4 rows back. 9 rows still have no answer. 1 row has no product yet. Start a Rev 2 draft to fix what was sent back. The rows with no answer go on it too. Nothing is sent until you share.')
     // Share was never done in the app, and its button stays held until the package is built.
     expect(stageGate(submittalJourney(bp375).stages, 'share').on).toBe(false)
     // Every row sent back, none waiting: Their call is done.

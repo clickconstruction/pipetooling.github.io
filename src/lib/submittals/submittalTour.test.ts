@@ -87,12 +87,12 @@ describe('the stage sentences and the ? on each stage (v2.4125)', () => {
     const their = SUBMITTAL_TOUR_STEPS.find((s) => s.title === 'Step 6. Their answer')!
     // The step itself, not the Share step's link box.
     expect(their.anchor).toBe('submittals-review')
-    expect(their.body).toContain('Tap Their answer on a row and type what they said.')
+    expect(their.body).toContain('Press the fixture in this step and type what they said.')
     expect(their.missingBody).not.toMatch(/after you share/)
     const resubmit = SUBMITTAL_TOUR_STEPS.find((s) => s.title === 'Step 7. Resubmit')!
     expect(resubmit.body).toContain('Rows that came back go on it, and rows with no answer too.')
     expect(`${resubmit.body} ${SUBMITTAL_STAGE_ABOUT[7]}`).not.toMatch(/only those rows/)
-    expect(SUBMITTAL_STAGE_ABOUT[6]).toContain('type it in with Their answer')
+    expect(SUBMITTAL_STAGE_ABOUT[6]).toContain('press the fixture here and type it in')
   })
   it('each stage opens the tour on its own stop, in order', () => {
     const stops = [1, 2, 3, 4, 5, 6, 7, 8].map((n) => tourStopForStage(n))

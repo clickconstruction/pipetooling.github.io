@@ -5,7 +5,7 @@ file: REPORT_SUBSCRIPTIONS.md
 type: Architecture/Reference
 purpose: Names and defines the app's recurring/scheduled report-email pattern — streams, request tables, cron dispatchers, fresh-at-send builds, and the My Email Schedule surface — and the checklist for adding a new stream
 audience: Developers, AI Agents
-last_updated: 2026-09-30
+last_updated: 2026-10-05
 key_sections:
   - name: "What the system is"
   - name: "The five pieces"
@@ -32,7 +32,7 @@ Every full-featured stream is made of the same five parts:
 
 Not every stream carries all five pieces — event-driven streams (paid-in-full, payment-received, estimate-accepted, field-report emails) have no request table or scheduling UI; they appear only in the subscriptions list. The five-piece shape is the target for *report* streams.
 
-**Field report emails** (`report_email`, v2.746) are the per-report cousin of the digest: the digest bundles every field report in its window into one scheduled email; the field-report stream sends one email per report the moment it is filed, to recipients the office picks (all authors, reports from named people, or — v2.3480 — reports from a team lead's whole team, `team_leader_assignments` read at send time so new hires flow in), managed from Jobs → Reports → **Email reports** → *Every report* (one modal for both streams since v2.3570) or the Dashboard's Recent Reports mail button ([`ReportEmailRecipientsPanel.tsx`](../src/components/dashboard/ReportEmailRecipientsPanel.tsx) inside [`EmailReportsModal.tsx`](../src/components/jobs/EmailReportsModal.tsx), kernel [`reportEmailSubscriptions.ts`](../src/lib/reportEmailSubscriptions.ts) — `subscriptionMatchesReport` is the rule the edge function mirrors). Since v2.3472 both schedule RPCs read it, so subscribers see it on Settings and devs on Email streams.
+**Field report emails** (`report_email`, v2.746) are the per-report cousin of the digest: the digest bundles every field report in its window into one scheduled email; the field-report stream sends one email per report the moment it is filed, to recipients the office picks (all authors, reports from named people, or — v2.3480 — reports from a team lead's whole team, `team_leader_assignments` read at send time so new hires flow in), managed from Jobs → Reports → **Email reports** → *Every report* (one modal for both streams since v2.3570) or the Dashboard's Recent Reports mail button ([`EmailReportPersonEditor.tsx`](../src/components/jobs/emailReports/EmailReportPersonEditor.tsx) inside [`EmailReportsModal.tsx`](../src/components/jobs/EmailReportsModal.tsx), kernel [`reportEmailSubscriptions.ts`](../src/lib/reportEmailSubscriptions.ts) — `subscriptionMatchesReport` is the rule the edge function mirrors). Since v2.3472 both schedule RPCs read it, so subscribers see it on Settings and devs on Email streams.
 
 ## Stream inventory
 

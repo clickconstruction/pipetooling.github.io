@@ -7,7 +7,9 @@ import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
 import {
   isLienWaiverFormType,
+  lienReleaseFormLabel,
   lienReleaseSnapshotToWaiverFields,
+  unconditionalFollowUpForm,
   type JobLienReleaseRow,
   type LienUnconditionalQueueRow,
 } from '../../lib/jobs/lienReleaseTracking'
@@ -26,8 +28,9 @@ import LienReleaseModal from '../jobs/LienReleaseModal'
  * release" action opens. One row per conditional lien release whose check
  * has cleared and whose unconditional follow-up hasn't been issued — the job,
  * the release, the payment that cleared it — with the follow-up issued right
- * from the row (the Release of Lien window preset to unconditional-progress
- * on the covered bill lines, exactly as the Bill Customer strip does). The
+ * from the row (the Release of Lien window preset to the unconditional of the
+ * same kind — a final stays a final, v2.4564 — on the covered bill lines,
+ * exactly as the Bill Customer strip does). The
  * job name opens the Job window for context; the queue stays open beneath it.
  *
  * Stacking: this overlay sits at 1000 so the Job window (1010), Bill Customer
@@ -301,7 +304,7 @@ export function DashboardLienReleaseQueueModal({
                           verticalAlign: 'middle',
                         }}
                       >
-                        Conditional · progress
+                        {lienReleaseFormLabel(row.release.form_type)}
                       </span>
                       <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{money(row.amount)}</span>
                       <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem', marginTop: '0.1rem' }}>
@@ -369,7 +372,7 @@ export function DashboardLienReleaseQueueModal({
           job={issue.job}
           invoice={(issue.job.invoices ?? []).find((i) => issue.row.invoiceIds.includes(i.id)) ?? null}
           signerNameFallback={profileName?.trim() ?? ''}
-          initialFormType="unconditional_progress"
+          initialFormType={unconditionalFollowUpForm(issue.row.release.form_type)}
           onIssued={onChanged}
         />
       ) : null}
