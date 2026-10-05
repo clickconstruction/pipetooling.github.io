@@ -24,6 +24,7 @@ import { startChecklist } from './gcStart'
 import { keepPromisesOn, openPromiseFor, PROMISE_WHAT, promisesKeptBy, tradePromisesOf } from './gcPromises'
 import { paperSendLog, paperStep } from './gcPaperSend'
 import { ownerInterest } from './gcOwnerBillingInterest'
+import { payReminderStep } from './gcOwnerBillingRemind'
 import { appClaimed, appOpen, changeOrderPrice, OWNER_RETAINAGE_DEFAULT_PCT, ownerCloseout, ownerContractWorthNow, ownerFinalPayAppToSend, ownerPayApp, ownerPayAppHasWork, ownerPayAppToSend, ownerRetainageWords } from './gcOwnerBilling'
 
 export function gcReducer(state: GcState, action: GcAction): GcState {
@@ -1931,6 +1932,26 @@ function reduce(state: GcState, action: GcAction): GcState {
           ? `The contract with ${project.owner} has no late fee on ${project.name}.`
           : `The contract with ${project.owner} charges ${money(perDay)} a day for finishing ${project.name} late.`,
       )
+    }
+
+    case 'remindCustomerToPay': {
+      // Owner Billing lane: a reminder to pay a bill past its due day (the owner, 2026-10-04). Kept
+      // on the bill; our ask, so it never becomes a promise or moves the due day.
+      const project = state.projects.find((p) => p.id === action.projectId)
+      if (!project || !payReminderStep(state, project, action.number) || !/^\d{4}-\d{2}-\d{2}$/.test(action.by) || action.by < state.today) return state
+      const reminder = { on: state.today, by: action.by, note: action.note.trim() }
+      const next = mapProject(state, project.id, (p) =>
+        p.ownerBilling
+          ? {
+              ...p,
+              ownerBilling: {
+                ...p.ownerBilling,
+                payApps: (p.ownerBilling.payApps ?? []).map((a) => (a.number === action.number ? { ...a, reminders: [...(a.reminders ?? []), reminder] } : a)),
+              },
+            }
+          : p,
+      )
+      return logged(next, 'office', `Reminded ${project.owner} to pay pay application ${action.number} on ${project.name} by ${weekdayDate(action.by)}.`)
     }
 
     case 'schedulePreBid': {

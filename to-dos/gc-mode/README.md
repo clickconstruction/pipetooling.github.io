@@ -507,6 +507,14 @@ who then works and bills the owner." So:
   certificates. The final pay application is certified the same way, a step in our closeout.
 - **A pay application we sent back bills what we see** (Owner Billing lane, 2026-10-02): until
   the trade resends it, the owner's bill uses our percent on the lines we doubt, not theirs.
+- **Reminding a customer to pay a late bill** (owner, 2026-10-04; the wording and rules are Owner
+  Billing's, the button the Board's on the customer's Documents): a pay application that is
+  certified, not paid, open and past its due day can be reminded. The email says what is open, the
+  day it was due and whose day that was, thanks them for a part paid, says the interest when we
+  charge it, asks for a pay-by day (5 days to start), and points to their portal or asks for a day.
+  The reminder is kept on the bill (`reminders`, `remindCustomerToPay`, `gcOwnerBillingRemind.ts`)
+  and is never a promise: the due day stays. The golden walk has no step for it, since its one late
+  bill gets a new promised day before the end; the unit tests cover it.
 - **A late-finish warning** (owner, 2026-10-04): Bill the owner's **Finish date** compares the
   contract's day (substantial completion with change orders' days) with the schedule's finish
   (the Building lane's `projectedFinish`, with its sentence of why). Past it, the days times the contract's late fee a day (liquidated damages, ours to enter

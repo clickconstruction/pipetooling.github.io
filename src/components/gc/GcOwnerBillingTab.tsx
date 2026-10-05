@@ -21,6 +21,7 @@ import {
   ownerAccount,
   ownerLateBills,
   ownerRetainageWords,
+  payReminderSentWords,
   ownerPayDue,
   ownerPayApp,
   ownerPayAppHasWork,
@@ -167,6 +168,7 @@ function OfficeSide({
                 onPromise={(by, note) => dispatch({ type: 'ownerPromisePay', projectId: project.id, number: a.number, by, note, who: 'office' })}
                 onForm={() => setFormFor(a.number)}
                 architect={project.architect}
+                reminded={payReminderSentWords(state, project, a.number)}
                 onSeeArchitect={onSeeArchitect}
               />
             ))}
@@ -410,6 +412,7 @@ function SentRow({
   onForm,
   architect,
   onSeeArchitect,
+  reminded,
 }: {
   app: OwnerPayAppSent
   /** When it is due: their newest promise, or the day we expected it, and how late. */
@@ -422,6 +425,8 @@ function SentRow({
   architect: string
   /** Opens the architect's portal, where they certify it. */
   onSeeArchitect: () => void
+  /** The last reminder to pay it: "Reminded today · pay by Wed Oct 7." Null: none sent. */
+  reminded: string | null
 }) {
   const [open, setOpen] = useState<'part' | 'when' | null>(null)
   const [part, setPart] = useState('')
@@ -496,6 +501,7 @@ function SentRow({
           {due.missed > 0 ? ` They missed ${due.missed === 1 ? 'an earlier day' : `${due.missed} earlier days`} before that.` : ''}
         </div>
       )}
+      {reminded && app.paidOn === null && <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{reminded}</div>}
       {open === 'part' && app.paidOn === null && certified !== null && (
         <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-end', flexWrap: 'wrap', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.6rem' }}>
           <label style={label}>
