@@ -36,13 +36,13 @@ Alternates:
 - **Rename things right in step 1**. Every bid name and price name in the checklist has a ✎. The letter prints exactly these names. Your team sees the same names everywhere too. An offered price you **never renamed** prints as a bare *"— or: Deduct $…"* line. Internal names like *Default* never reach the customer.
 - **The automatic name is customer-facing**. A packet named after its GC prints under the **project's** name instead. The letter reads *ALSATIAN value engineered*, not *MERIT GENERAL CONTRACTORS value engineered*.
 - **Fine-tune wording** by clicking the dashed text right on the preview. The dashed text is the alternate's name, its optional note line, or the *Alternates:* heading. You type and press Enter, and you're done. {{button:outline|Reset to auto}} brings the automatic text back.
-- **The difference is computed**, like *Deduct $5,287* or *Add $4,100* against the proposed amount. The line reads *no change* when the two match. So the difference can never disagree with the Pricing tab.
+- **The difference is computed**, so it can never disagree with the Pricing tab. The line reads like *Deduct $5,287* or *Add $4,100* against the proposed amount, or *no change* when they match.
 - **No base bid, only alternates?** The ★ price leads the letter and the rest are listed against it. The headline amount is never $0.00.
 - **Want the old document?** You flip **Alternates in the letter** to {{chip:gray|Separate pages}} in step 1. The switch then gives one full letter per alternate, exactly as before. Your choice is remembered on this device.
 
 ## Sending it
 
-The buttons live right under the letter. {{button:blue|Copy & open in Google Docs}} copies the finished document and opens your proposal template. **Print** prints it. The paste-the-link field attaches the shared Proposal back onto the bid. Both buttons wait a moment after you open the tab. The buttons stay greyed while Pricing is still loading. So you can't print or copy a "$0.00" letter. A packet with no GC yet is addressed to **General contractor** everywhere until you link one. Everywhere means the letterhead, the Bid Room panel and the GC's page.
+The buttons live right under the letter. {{button:blue|Copy & open in Google Docs}} copies the finished document and opens your proposal template. **Print** prints it. The paste-the-link field attaches the shared Proposal back onto the bid. Both buttons wait a moment after you open the tab. The buttons stay greyed while Pricing is still loading, so you can't print or copy a "$0.00" letter. A packet with no GC yet is addressed to **General contractor** everywhere until you link one. Everywhere means the letterhead, the Bid Room panel and the GC's page.
 
 :::example Bidding to two GCs?
 When a bid goes to more than one GC, the GC tabs above the form switch whose letter you're writing — each GC only ever sees their own packets and prices. A GC whose packet has no prices yet gets a *No prices yet* note instead of a letter, and its **Mark sent** stays off until it's priced.

@@ -6,7 +6,7 @@ keywords: stripe, convert bill, pay online, hosted invoice, billed date, houseca
 ---
 Billed something outside Stripe and now want the customer to pay by card? You convert the bill in place.
 
-Outside Stripe means HouseCall Pro or a paper invoice. Stripe is the service that takes card payments online. The **billed date never moves**. So AR aging, Pipeline, and the customer's statement history stay exactly as they are. AR aging is how long each bill has been owed.
+Outside Stripe means HouseCall Pro or a paper invoice. Stripe is the service that takes card payments online. The **billed date never moves**, so AR aging, Pipeline, and the customer's statement history stay exactly as they are. AR aging is how long each bill has been owed.
 
 ## Converting
 
@@ -18,7 +18,7 @@ You're done. The line now has a hosted pay page and card payment. A hosted pay p
 
 ## What the customer gets when you send it
 
-{{button:purple|stripe}}{{button:amber|Send Email invoice}} sends the bill email from Click Plumbing and Electrical. The purple tag means it is a Stripe bill. So the customer pays on Stripe's page.
+{{button:purple|stripe}}{{button:amber|Send Email invoice}} sends the bill email from Click Plumbing and Electrical. The purple tag means it is a Stripe bill, so the customer pays on Stripe's page.
 
 :::example The bill email
 **Invoice #1042-2610120930** for 100 Sample St — **$1,850.00**, due Oct 12, 2026

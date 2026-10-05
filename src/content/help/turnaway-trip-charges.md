@@ -29,7 +29,7 @@ Not in Job Mode? If the job is **on your schedule today**, the same option appea
 
 You pick the reason and add a quick note if it helps. Then you tap {{button:amber|File Turnaway}}. Two things happen automatically:
 
-- A **field report** is saved on the job with your location. So there's a permanent record.
+- A **field report** is saved on the job with your location, so there's a permanent record.
 - **Dispatch gets an instant alert**. You don't need to call the office.
 
 Then you head to your next job as usual. The job stays on the schedule to be re-booked.

@@ -25,7 +25,7 @@ What got done? (optional) &nbsp; {{button:blue|Save 65%}}
 
 - You tap the **+** and **−** chips to step the number. The big figure and the ▲/▼ readout always show exactly how far you're moving it from where it was.
 - The bar underneath previews the move the same way your schedule card draws it. Blue is where the job started. Green is the gain you're adding. Amber shows if you're correcting it downward.
-- You can add a quick note about what got done. The note lands on the job's activity thread with your name and the new percent. So the office sees *65% complete — set fixtures in units 3–5* instead of a bare number.
+- You can add a quick note about what got done. The note lands on the job's activity thread with your name and the new percent. The office then sees *65% complete — set fixtures in units 3–5* instead of a bare number.
 
 ## What happens when you save
 
@@ -33,7 +33,7 @@ What got done? (optional) &nbsp; {{button:blue|Save 65%}}
 
 The new % also shows up everywhere immediately. Your schedule card shows the new %, with today's ▲ movement. The office's Jobs Pipeline **% done** and the job's activity history show it too.
 
-**Saving 100% on a Working job** asks one more question. The question is whether to move the job to **Ready to bill**. The question uses the same two checkboxes as the report flow. Ready to bill tells the office the job is ready to invoice. So you only confirm it when the work is truly wrapped.
+**Saving 100% on a Working job** asks one more question. The question is whether to move the job to **Ready to bill**. The question uses the same two checkboxes as the report flow. Moving the job to Ready to bill tells the office the job is ready to invoice. You confirm the move only when the work is truly wrapped.
 
 ## When a finished job comes back
 

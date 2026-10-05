@@ -11,7 +11,7 @@ The Bridge is for devs only for now. You open it from the compass icon in the he
 
 ## First, type cash on hand
 
-The app doesn't sync a bank balance. So the cash line starts from a number you type. Under the cash chart, you enter today's bank balance in **Cash on hand today** and press {{button:outline|Set}}. The number is remembered with the date. On later days the page rolls it forward through the bank transactions since. The Data Gaps strip says which day you typed it. You retype it whenever you look at the bank.
+The app doesn't sync a bank balance, so the cash line starts from a number you type. Under the cash chart, you enter today's bank balance in **Cash on hand today** and press {{button:outline|Set}}. The number is remembered with the date. On later days the page rolls it forward through the bank transactions since. The Data Gaps strip says which day you typed it. You retype it whenever you look at the bank.
 
 You set the **Floor** the same way. The floor is the cash level you never want to go under. The floor starts at $5,000.
 
@@ -38,17 +38,17 @@ The sentence on the right is the verdict: *steer by the profit rate*, *bill it t
 Profit on paper +$194k · net position moved −$3.4k · the $197k between them: +$180k earned but not invoiced, +$17k costs the paper doesn't see. The verdict says the profit is real on paper — bill it to see it — and the cost side is close enough to trust.
 :::
 
-A loan or an owner deposit is money in that isn't a customer payment. So the money shows here as a negative cost. Payroll and sub labor count when the bank pays them, not when the hours are worked.
+A loan or an owner deposit is money in that isn't a customer payment. The Bridge shows that money as a negative cost. Payroll and sub labor count when the bank pays them, not when the hours are worked.
 
 ## Vectors — who moved the number
 
 Under the Truth check, **Vectors** lists one row per person for one pay week. A pay week runs Sunday–Saturday. You step back through the eight weeks on the page with ‹ ›. The current week reads *so far*. The headline is the week's **field contribution**. Field contribution is what approved field hours earned minus what those hours cost in wages.
 
-- **Field people** carry Field h, Earned, Labor, **Contribution** and $/h. Field h also shows hours still {{chip:yellow|waiting}} on approval. Earned uses the Bridge's own rate: the job's contract ÷ its expected hours. So a person's earned dollars add up to the company's.
+- **Field people** carry Field h, Earned, Labor, **Contribution** and $/h. Field h also shows hours still {{chip:yellow|waiting}} on approval. Earned uses the Bridge's own rate: the job's contract ÷ its expected hours. With this rate, a person's earned dollars add up to the company's.
 - **Office people** carry Billed and Collected. Billed is the invoices they sent. Collected is the payments they recorded. Everyone carries **% reports**: job % updates plus field reports filed.
 - **The estimator** carries Bids sent and Bids won, by value.
 
-**A name is a door.** You click it and People → Review opens on that pay week. The person's panel is expanded. The panel shows jobs worked with day rows, hours and pay, reports and tasks. Review counts earned the same way. So Review's Gross is the Earned you clicked.
+**A name is a door.** You click it and People → Review opens on that pay week. The person's panel is expanded. The panel shows jobs worked with day rows, hours and pay, reports and tasks. Review counts earned the same way, so its Gross is the Earned you clicked.
 
 An amber **≈** on Earned or Contribution means some of it rests on a job with no % complete. The app assumed that job half done, so the rate is a guess. You set the % on the job and the mark goes away. You hover the Contribution cell for the split. The split shows earned, labor, guessed, hours on jobs with no contract price, and no wage on file.
 
@@ -56,7 +56,7 @@ An amber **≈** on Earned or Contribution means some of it rests on a job with 
 +$125k field contribution on 50 approved hours — but ≈ $124k of it is one person's day on a job with no % complete, and 166h are still waiting on approval, so most rows read "—". The number becomes real when the % is set and the hours are approved.
 :::
 
-Materials and sub sheets are job costs, not anyone's vector. So contribution here is labor-only. Some invoice sends were written by the system with no signed-in sender. Those sends, and bids with no estimator, are listed under the table as *not on anyone's row*.
+Materials and sub sheets are job costs, not anyone's vector, so contribution here is labor-only. Some invoice sends were written by the system with no signed-in sender. Those sends, and bids with no estimator, are listed under the table as *not on anyone's row*.
 
 ## Vectors by the day — was each person's day worth it
 
@@ -70,7 +70,7 @@ The zoom row beside the title changes the columns. **Days** is the month. **Week
 - **A grey cell with hours** is an office or bid day. That day costs a wage and earns nothing here, so it is never judged.
 - **A salaried person's day** costs the flat workday, the way payroll prices it, whatever the clock says.
 - The **Field crew** row at the bottom is the company line day by day.
-- The grid reads **recorded time**. Recorded time counts every closed session not rejected or revoked, the way job costing does. This week is on the grid before approvals catch up. Hours still waiting draw with a dashed border and say so. {{button:outline|Approved only}} beside the zoom row switches to what payroll paid. This browser remembers that choice. The Vectors table above always reads approved time. So the two never disagree about what was paid.
+- The grid reads **recorded time**. Recorded time counts every closed session not rejected or revoked, the way job costing does. This week is on the grid before approvals catch up. Hours still waiting draw with a dashed border and say so. {{button:outline|Approved only}} beside the zoom row switches to what payroll paid. This browser remembers that choice. The Vectors table above always reads approved time, so the two never disagree about what was paid.
 
 :::example Reading a red day
 Tristen's Tuesday reads −53: 7.5 h on J1044 at $31 an hour, against a $38 wage. That is the job's price against the hours it is taking, not how fast the day went — everyone on J1044 reads red this month. The job has no % complete, so its expected hours are a guess: set the % and the rate firms up either way.

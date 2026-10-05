@@ -33,7 +33,7 @@ On **Jobs → Pipeline**, the **Billed Awaiting Payment** section header has a {
 
 Jobs without a GC gather in a **Not billed to a GC** bucket at the bottom. Jobs whose GC is on the job but the owner pays gather there too. So **Total outstanding** always matches the section header. The total is pinned at the bottom of the window. That bucket doubles as your list of jobs to go set GCs on, or Bills go to. You open the bucket and **click any job** to open Edit Job right on top. You set the GC or fix anything else. The report refreshes itself when you save.
 
-- **Include Collections** sits at the bottom, beside **Total outstanding**. The box is ticked by default. So hard-to-collect jobs ride along in the view and in Share all / Print all, marked with a red chip. You untick it to see active billing only. Certification and the weekly statement rounds always look at active jobs only, whichever way the box is set.
+- **Include Collections** sits at the bottom, beside **Total outstanding**. The box is ticked by default. Hard-to-collect jobs then ride along in the view and in Share all / Print all, marked with a red chip. You untick it to see active billing only. Certification and the weekly statement rounds always look at active jobs only, whichever way the box is set.
 
 ## Certify each GC — the Wednesday ritual
 
@@ -88,7 +88,7 @@ One menu serves To and Cc. The GC's own contact people come first, then the offi
 
 To read it first, you press {{button:outline|Preview}}. Preview lays the exact email over the dialog, full size. **← Back** returns you to the dialog with everything you typed still there. Esc does the same. Nothing has been sent. After a send, the opened row shows a small **last sent** date. So the office can see at a glance which GCs have already been statemented.
 
-**Reply to** is the third line. The GC may have an account man, the teammate who knows that GC. That teammate is already picked, so the GC's "Reply" reaches them. Your copy shows on the Cc line, marked *copied, since replies go to Malachi*. So the thread reaches the office too. You pick yourself to take the replies, and the copy goes away. After sending, the message says where replies went. A scheduled send replies to whoever scheduled it. The line greys with that reason.
+**Reply to** is the third line. The GC may have an account man, the teammate who knows that GC. That teammate is already picked, so the GC's "Reply" reaches them. Your copy shows on the Cc line, marked *copied, since replies go to Malachi*, so the thread reaches the office too. You pick yourself to take the replies, and the copy goes away. After sending, the message says where replies went. A scheduled send replies to whoever scheduled it. The line greys with that reason.
 
 Need someone else on the thread? You press **+ Add** on the **Cc** line. You tick as many as ten from the same menu, or type an address. You press × on a name to take it off. Whoever is on To is greyed in the menu. The Cc applies to Send now and to scheduled sends. A weekly schedule keeps its list.
 

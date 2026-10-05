@@ -45,4 +45,4 @@ A decline is final for that quote number — the same as the customer pressing N
 
 ## What the Ledger shows
 
-Declined estimates drop out of the Ledger by default. You toggle **Include superseded & declined** to see them. Declined estimates never count toward *Outstanding sent*. So your open-quotes money stops carrying dead weight.
+Declined estimates drop out of the Ledger by default. You toggle **Include superseded & declined** to see them. Declined estimates never count toward *Outstanding sent*, so your open-quotes money stops carrying dead weight.

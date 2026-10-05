@@ -27,7 +27,7 @@ While counting in CountTooling, drop a note reading `RFI: cleanout shown twice â
 1. You click {{button:gray|Approve}} on a draft. You pick which GCs it goes to. Every bidding GC is checked by default. You pick how it's going out: *email*, *PlanHub Q&A* or *phone*.
 2. You send it however that channel works. The message travels outside the app. The record here is the official one. Then you click {{button:blue|Mark sent}}.
 
-Every step also writes a note on the bid. So the bid's ledger, its running record, tells the whole story later.
+Every step also writes a note on the bid. The bid's ledger, its running record, then tells the whole story later.
 
 ## Recording the answer
 

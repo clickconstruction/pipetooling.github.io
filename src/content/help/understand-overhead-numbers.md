@@ -9,7 +9,7 @@ order: 61
 
 The rates are the daily-cost averages and the three lens rates. The lenses are per field hour, per revenue dollar and per labor dollar.
 
-Every labor hour and dollar in those numbers comes from **recorded** clock sessions. Recorded means **clocked out** and **not rejected**, so approved or still awaiting approval. Each session is **priced with a wage**. Job labor uses the same rule, so true profit reads one clock. When wages or assignments fall behind, the numbers quietly drift low. So the tab watches for that drift. The tab shows an amber maintenance strip under the three lenses whenever something needs attention. When everything is clean, the strip disappears entirely.
+Every labor hour and dollar in those numbers comes from **recorded** clock sessions. Recorded means **clocked out** and **not rejected**, so approved or still awaiting approval. Each session is **priced with a wage**. Job labor uses the same rule, so true profit reads one clock. When wages or assignments fall behind, the numbers quietly drift low, so the tab watches for that drift. The tab shows an amber maintenance strip under the three lenses whenever something needs attention. When everything is clean, the strip disappears entirely.
 
 ## Click a lens to see its math
 
@@ -23,7 +23,7 @@ Below that, **How it moved** charts the rate week by week across the 90 days. Th
 
 ## Is the pool going up or down?
 
-The ***Overhead pool — 90 days*** card answers that directly. The card's pill compares the average $/day over the last 30 days with the 30 days before. {{chip:yellow|↑ Trending up · +12%}} means overhead is growing. {{chip:green|↓ Trending down · −8%}} means it's shrinking. Anything inside ±5% reads as **flat**. So a single parts spike doesn't flip the arrow.
+The ***Overhead pool — 90 days*** card answers that directly. The card's pill compares the average $/day over the last 30 days with the 30 days before. {{chip:yellow|↑ Trending up · +12%}} means overhead is growing. {{chip:green|↓ Trending down · −8%}} means it's shrinking. Anything inside ±5% reads as **flat**, so a single parts spike doesn't flip the arrow.
 
 Under the pill is the ledger of what the pool is made of. The ledger lists **office labor**, **bid labor**, and **office parts**, each with its dollars and share. Office parts are materials bought for the office, not for a job. There is also a day-by-day chart stacked the same way, with a 7-day average line. You hover any bar for that day's split.
 
@@ -49,7 +49,7 @@ The amber bar sticking above the rest is a supply invoice. Under the chart, **Bi
 
 ## Who makes up the pool
 
-The **Who makes up overhead** table lists every person with office or bid time in the window. People with office-job card purchases are listed too. There is one row each, with columns for **office labor**, **bid labor**, **office parts**, and **total**. Every cell shows the dollars and that person's share of the column. So the biggest contributors read at a glance. The Pool row at the bottom shows each column's share of the whole.
+The **Who makes up overhead** table lists every person with office or bid time in the window. People with office-job card purchases are listed too. There is one row each, with columns for **office labor**, **bid labor**, **office parts**, and **total**. Every cell shows the dollars and that person's share of the column, so the biggest contributors read at a glance. The Pool row at the bottom shows each column's share of the whole.
 
 You switch the window with the chips: {{chip:blue|Today}} {{chip:gray|Last 7 days}} {{chip:gray|Last 30 days}} {{chip:gray|Last 90 days}}. The numbers re-slice instantly, and nothing reloads.
 
@@ -86,7 +86,7 @@ Closed sessions nobody has approved yet **already count** the moment they are cl
 
 You review it on the **Hours** tab. You approve what's real and reject what isn't. Sessions that are still open, with no clock-out yet, are listed by count only. Open sessions count once they're clocked out.
 
-Salary-schedule sessions are the ones the system creates for salaried people. These sessions **approve themselves** about every half hour once they close. So salary-schedule sessions no longer add to this indicator. What you see pending is real punches waiting on a human.
+Salary-schedule sessions are the ones the system creates for salaried people. These sessions **approve themselves** about every half hour once they close, so they no longer add to this indicator. What you see pending is real punches waiting on a human.
 
 ### Unpriced hours
 
