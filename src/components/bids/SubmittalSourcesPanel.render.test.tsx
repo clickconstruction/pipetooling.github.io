@@ -63,11 +63,24 @@ describe('SubmittalSourcesPanel', () => {
     expect(screen.queryByTestId('open-compare-from-schedule')).toBeNull()
   })
 
+  it('each source is one row: its name and count, then its door; the sentences are hover lines, not text on the page', () => {
+    mount({ takeoffFixtures: 26, takeoffWithProduct: 22, picks: 3 })
+    expect(screen.getByTestId('source-takeoff').textContent).toBe('The takeoff · 26 fixtures, 22 with a partChoose from the takeoff')
+    expect(screen.getByTestId('source-picks').textContent).toBe('Quotes compared · 3 picked linesOpen the compare')
+    expect(screen.getByTestId('source-schedule').textContent).toBe('The plans’ schedule · none yetType or paste the schedule')
+    expect(screen.getByTestId('submittal-sources').textContent).not.toContain('Optional.')
+    expect(within(screen.getByTestId('source-schedule')).getByTitle(/^Optional\. A tag is the plan’s name for a fixture/)).toBeTruthy()
+    expect(within(screen.getByTestId('source-takeoff')).getByTitle('One row per fixture you tick. The part under it is the product.')).toBeTruthy()
+  })
+
   it('a queued ask says so in the schedule card and Cancel reports its task', () => {
     const fresh = { ...queued, requested_at: new Date().toISOString() } as SubmittalTaskRow
     const on = mount({ tasks: [fresh], robotSeat: { live: true, line: '' } })
     const state = screen.getByTestId('robot-schedule')
-    expect(state.textContent).toContain('The robot is queued to read the fixture schedule off the plans.')
+    // One line: the chip and its button. The sentence waits in the card.
+    expect(state.textContent).toBe('🤖 Queued to read the plansCancel')
+    fireEvent.mouseEnter(state)
+    expect(within(state).getByRole('note').textContent).toContain('The robot is queued to read the fixture schedule off the plans.')
     fireEvent.click(within(state).getByRole('button', { name: 'Cancel' }))
     expect(on.onCancelTask).toHaveBeenCalledWith('task-q')
     expect(screen.queryByTestId('robot-schedule-confirm')).toBeNull()
@@ -77,7 +90,11 @@ describe('SubmittalSourcesPanel', () => {
     const on = mount({ tasks: [queued] })
     const state = screen.getByTestId('robot-schedule')
     expect(state.getAttribute('data-stale')).toBe('true')
-    expect(state.textContent).toContain('You asked the robot on Sep 17.')
+    // The chip itself says the ask is stuck and the day it was asked: nothing that matters waits for a hover.
+    expect(within(state).getByTestId('robot-schedule-chip').textContent).toBe('🤖 Asked Sep 17 · no robot seat exists')
+    fireEvent.click(within(state).getByTestId('robot-schedule-chip'))
+    expect(within(state).getByRole('note').textContent).toContain('You asked the robot on Sep 17.')
+    expect(within(state).getByTestId('robot-line').textContent).toBe('Nobody is reading the plans. Type the schedule yourself, or leave the ask in place.')
     fireEvent.click(within(state).getByRole('button', { name: 'Take the ask back' }))
     expect(on.onCancelTask).toHaveBeenCalledWith('task-q')
   })

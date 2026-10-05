@@ -1,0 +1,194 @@
+<meta charset="utf-8">
+<title>Submittals Robot Line</title>
+<style>
+  /* Layout: the section as it is, the first idea, and the second draft with a working hover card, stacked at the screen's own width; then the plan. Drawn in the app's tokens. */
+  :root {
+    --page: #f0f2f5; --surface: #ffffff; --subtle: #f9fafb; --muted-bg: #f3f4f6; --bg-200: #e5e7eb;
+    --border: #cfd4db; --border-strong: #aab2bd;
+    --strong: #111827; --base: #1a1a1a; --muted: #6b7280; --faint: #8a93a1;
+    --link: #2563eb; --amber: #b45309; --red: #b91c1c; --green: #15803d; --violet: #7c3aed;
+    --blue-tint: #eff6ff; --border-blue: #bfdbfe; --blue-700: #1d4ed8; --blue: #2563eb;
+    --green-tint: #f0fdf4; --amber-tint: #fffbeb; --red-tint: #fef2f2; --violet-tint: #f3effe;
+    --save: #16a34a; --bar: #5f6b7a; --bar-after: #1d4ed8; --on-bar: #ffffff;
+    --scrim: rgba(17,24,39,0.55);
+    --shadow: 0 6px 18px rgba(0,0,0,0.10);
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    --page: #111827; --surface: #1f2937; --subtle: #18212f; --muted-bg: #374151; --bg-200: #4b5563;
+    --border: #374151; --border-strong: #56606f;
+    --strong: #f9fafb; --base: #f3f4f6; --muted: #9ca3af; --faint: #8892a3;
+    --link: #60a5fa; --amber: #fbbf24; --red: #f87171; --green: #4ade80; --violet: #a78bfa;
+    --blue-tint: #1e3358; --border-blue: #1e40af; --blue-700: #93c5fd; --blue: #3b82f6;
+    --green-tint: #12301f; --amber-tint: #3a2a0c; --red-tint: #3b1414; --violet-tint: #2a2147;
+    --save: #16a34a; --bar: #4b5563; --bar-after: #1e40af; --on-bar: #ffffff;
+    --scrim: rgba(0,0,0,0.65);
+    --shadow: 0 6px 18px rgba(0,0,0,0.45); color-scheme: dark;
+  } }
+  :root[data-theme="dark"] {
+    --page: #111827; --surface: #1f2937; --subtle: #18212f; --muted-bg: #374151; --bg-200: #4b5563;
+    --border: #374151; --border-strong: #56606f;
+    --strong: #f9fafb; --base: #f3f4f6; --muted: #9ca3af; --faint: #8892a3;
+    --link: #60a5fa; --amber: #fbbf24; --red: #f87171; --green: #4ade80; --violet: #a78bfa;
+    --blue-tint: #1e3358; --border-blue: #1e40af; --blue-700: #93c5fd; --blue: #3b82f6;
+    --green-tint: #12301f; --amber-tint: #3a2a0c; --red-tint: #3b1414; --violet-tint: #2a2147;
+    --save: #16a34a; --bar: #4b5563; --bar-after: #1e40af; --on-bar: #ffffff;
+    --scrim: rgba(0,0,0,0.65);
+    --shadow: 0 6px 18px rgba(0,0,0,0.45); color-scheme: dark;
+  }
+  body { background: var(--page); color: var(--base); font-family: var(--sans); font-size: 15px; line-height: 1.5; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding-inline: 20px; padding-block: 32px 64px; display: flex; flex-direction: column; gap: 22px; }
+  .eyebrow { font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--strong); text-wrap: balance; }
+  h2 { margin: 0; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  p { margin: 0; }
+  .lede { max-width: 70ch; }
+  .muted { color: var(--muted); }
+  .panel { border-radius: 8px; background: var(--surface); border: 1px solid var(--border); min-width: 0; }
+  .bar { padding: 6px 14px; font-size: 11.5px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 700; color: var(--on-bar); background: var(--bar); display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; border-radius: 7px 7px 0 0; }
+  .bar span { font-weight: 500; letter-spacing: 0.02em; text-transform: none; opacity: 0.9; }
+  .panel.after .bar { background: var(--bar-after); }
+  .panel.mid .bar { background: var(--violet); }
+  .mock { padding: 14px; display: flex; flex-direction: column; gap: 10px; font-size: 13px; background: var(--page); }
+  .note { padding: 10px 14px; border-top: 1px solid var(--border); font-size: 13.5px; border-radius: 0 0 7px 7px; }
+  .note.bad { background: var(--red-tint); } .note.good { background: var(--green-tint); } .note.mid { background: var(--violet-tint); }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; max-width: 900px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+  .card.lead { border-color: var(--blue); }
+  .b { display: inline-block; font: inherit; font-size: 12.5px; padding: 5px 10px; border-radius: 4px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--strong); font-weight: 500; white-space: nowrap; align-self: flex-start; }
+  .b.pri { background: var(--blue); border-color: var(--blue); color: #fff; font-weight: 600; }
+  .b.sm { font-size: 11.5px; padding: 2px 8px; }
+  .small { font-size: 12px; color: var(--muted); }
+  .strong { color: var(--strong); font-weight: 600; }
+  .stale { background: var(--amber-tint); border-radius: 6px; padding: 5px 9px; display: flex; flex-direction: column; gap: 2px; }
+  .between { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .robot { position: relative; display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; align-self: flex-start; }
+  .chip { font: inherit; font-size: 11.5px; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--amber); background: var(--amber-tint); color: var(--amber); font-weight: 600; cursor: default; white-space: nowrap; }
+  .chip.plain { border-color: var(--border-strong); background: var(--muted-bg); color: var(--strong); }
+  .lnk { font: inherit; font-size: 11.5px; color: var(--muted); text-decoration: underline; background: none; border: none; padding: 0; cursor: pointer; }
+  .pop { position: absolute; top: calc(100% + 6px); left: 0; z-index: 5; width: min(21rem, 78vw); background: var(--surface); border: 1px solid var(--border-strong); border-radius: 10px; box-shadow: var(--shadow); padding: 10px 12px; display: none; flex-direction: column; gap: 5px; font-size: 13px; }
+  .robot:hover .pop, .robot:focus-within .pop, .pop.shown { display: flex; }
+  .pop.static { position: static; display: flex; }
+  .plan { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+  .plan ol, .plan ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; max-width: 74ch; }
+  .plan b { color: var(--strong); }
+  .best { border-left: 4px solid var(--violet); }
+  .states { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 14px; align-items: center; font-size: 13px; }
+  .tally { display: flex; gap: 6px 16px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+  .tally b { color: var(--strong); } .tally .to { color: var(--green); font-weight: 700; }
+</style>
+
+<div class="wrap">
+  <header style="display:flex;flex-direction:column;gap:8px">
+    <div class="eyebrow">Bids → Submittals · step 1, Where the rows come from · Oct 5, 2026</div>
+    <h1>The robot shrinks to one line, with the story on hover</h1>
+    <p class="lede">On the SpaceX bid the robot’s box is the biggest thing in step 1, and all it offers is one small link. Below: the section today, a first idea, and the second draft that is being built. Point at the amber chip in the last one to try it.</p>
+    <div class="tally"><span>Step 1 <b>about 220 px</b> tall → <span class="to">about 100</span></span><span>Robot <b>5 lines in a box</b> → <span class="to">1 line</span></span><span>Same line at <span class="to">all three</span> robot spots</span></div>
+  </header>
+
+  <section class="panel">
+    <div class="bar">Current <span>the live section on BP375</span></div>
+    <div class="mock">
+      <div class="cards">
+        <div class="card lead"><span><span class="strong">The takeoff</span> <span class="small">· 26 fixtures, 22 with a part</span></span><span class="small">One row per fixture you tick. The part under it is the product.</span><span class="b pri">Add from the takeoff</span></div>
+        <div class="card"><span><span class="strong">The plans’ schedule</span> <span class="small">· none yet</span></span><span class="small">Optional. A tag is the plan’s name for a fixture, like WC-1. With the schedule, the app checks each row against the plans.</span>
+          <div class="stale"><span class="strong" style="font-weight:500">You asked the robot on Sep 28. A robot last ran 6 days ago. It has not picked this up.</span><div class="between"><span class="small">Nobody is reading the plans. Type the schedule yourself, or leave the ask in place.</span><span class="lnk">Take the ask back</span></div></div>
+          <span class="b pri">Type or paste the schedule</span></div>
+      </div>
+    </div>
+    <div class="note bad">The amber box is five lines for one small link. It pushes the card to twice the height of the one beside it, so the takeoff card is half empty. Before anything is asked, the robot’s offer is a dashed box of four lines for one button.</div>
+  </section>
+
+  <section class="panel mid">
+    <div class="bar">First idea <span>hide the box, show it on hover</span></div>
+    <div class="mock">
+      <div class="cards">
+        <div class="card lead"><span><span class="strong">The takeoff</span> <span class="small">· 26 fixtures, 22 with a part</span></span><span class="small">One row per fixture you tick. The part under it is the product.</span><span class="b pri">Add from the takeoff</span></div>
+        <div class="card"><span><span class="strong">The plans’ schedule</span> <span class="small">· none yet</span></span><span class="small">Optional. A tag is the plan’s name for a fixture, like WC-1. With the schedule, the app checks each row against the plans.</span>
+          <span class="b pri">Type or paste the schedule</span>
+          <span class="chip plain" style="align-self:flex-start">🤖 Robot</span>
+          <div class="pop static"><span class="strong">You asked the robot on Sep 28. A robot last ran 6 days ago. It has not picked this up.</span><span class="small">Nobody is reading the plans. Type the schedule yourself, or leave the ask in place.</span><span class="b sm">Take the ask back</span></div>
+          <span class="small">↑ the card as it would show while the pointer is on “Robot”</span></div>
+      </div>
+    </div>
+    <div class="note mid">Small, but it fails four ways. A grey “Robot” chip hides that the ask is stuck. Nothing opens it on a phone or with the keyboard. The one button is inside the card, so she has to chase it. And the robot’s other two spots on the tab would still be big boxes.</div>
+  </section>
+
+  <section class="panel after">
+    <div class="bar">After the second look <span>the first build · point at the amber chip</span></div>
+    <div class="mock" style="padding-bottom:120px">
+      <div class="cards">
+        <div class="card lead"><span><span class="strong">The takeoff</span> <span class="small">· 26 fixtures, 22 with a part</span></span><span class="small">One row per fixture you tick. The part under it is the product.</span><span class="b pri">Add from the takeoff</span></div>
+        <div class="card"><span><span class="strong">The plans’ schedule</span> <span class="small">· none yet</span></span><span class="small">Optional. A tag is the plan’s name for a fixture, like WC-1. With the schedule, the app checks each row against the plans.</span>
+          <span class="b pri">Type or paste the schedule</span>
+          <span class="robot"><button type="button" class="chip" id="chip-stale">🤖 Asked Sep 28 · not picked up yet</button><button type="button" class="lnk" id="take-back">Take the ask back</button>
+            <span class="pop" role="note"><span class="strong">You asked the robot on Sep 28. A robot last ran 6 days ago. It has not picked this up.</span><span class="small">Nobody is reading the plans. Type the schedule yourself, or leave the ask in place.</span></span></span></div>
+      </div>
+    </div>
+    <div class="note good">One line. The chip itself says what is wrong, in amber, so nothing important waits for a hover. The one thing to press sits beside it. The full story opens on hover, on keyboard focus, and on a tap.</div>
+  </section>
+
+  <section class="panel after">
+    <div class="bar">Further, after your note <span>the sentences leave the page · this is what is built</span></div>
+    <div class="mock" style="padding-bottom:110px">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:4px 12px;max-width:900px">
+        <div style="display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;padding:6px 0"><span style="flex:0 1 17rem"><span class="strong">The takeoff</span> <span class="small">· 26 fixtures, 22 with a part</span></span><span class="b pri sm">Add from the takeoff</span></div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;padding:6px 0;border-top:1px solid var(--border)"><span style="flex:0 1 17rem"><span class="strong">The plans’ schedule</span> <span class="small">· none yet</span></span><span class="b pri sm">Type or paste the schedule</span>
+          <span class="robot"><button type="button" class="chip">🤖 Asked Sep 28 · not picked up yet</button><button type="button" class="lnk">Take the ask back</button>
+            <span class="pop" role="note"><span class="strong">You asked the robot on Sep 28. A robot last ran 6 days ago. It has not picked this up.</span><span class="small">Nobody is reading the plans. Type the schedule yourself, or leave the ask in place.</span></span></span></div>
+      </div>
+    </div>
+    <div class="note good">Two rows where two tall cards stood: about 100 px in place of about 220, measured on the live bid. “Optional. A tag is the plan’s name…” and the takeoff’s sentence are now the hover line on each name. The walkthrough and the guide still teach them.</div>
+  </section>
+
+  <section class="panel after">
+    <div class="bar">Folded once the rows exist <span>your next note · built with the rest</span></div>
+    <div class="mock">
+      <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline;max-width:900px"><span><span class="strong" style="font-size:14px">✓ 1 · Where the rows come from ▾</span></span><span class="small" style="color:var(--green)">26 on the takeoff · no schedule yet <b style="color:var(--amber)">· 🤖 Asked Sep 28 · not picked up yet</b></span></div>
+    </div>
+    <div class="note good">A finished step 1 is this one line, even while a robot ask is waiting. The line says what the robot is doing, in amber when it is stuck. The small ▾ after the title opens the two rows again. It only stays open by itself when the robot has read tags that are waiting for you to confirm.</div>
+  </section>
+
+  <section class="plan">
+    <h2>The same line in every state</h2>
+    <div class="states">
+      <span class="robot"><span class="chip plain">🤖 The robot can read this</span><span class="b sm">Ask the robot</span></span><span class="small">Nothing asked yet. The card on hover says what it does, what it needs, and what you do after.</span>
+      <span class="robot"><span class="chip">🤖 The robot needs the plans link</span><span class="b sm" style="opacity:.5">Ask the robot</span></span><span class="small">No plans link on the bid. The button is held and the chip says why.</span>
+      <span class="robot"><span class="chip plain">🤖 Queued</span><span class="lnk">Cancel</span></span><span class="small">Asked, and a robot is on shift.</span>
+      <span class="robot"><span class="chip">🤖 Asked Sep 28 · not picked up yet</span><span class="lnk">Take the ask back</span></span><span class="small">Asked more than a day ago, or no robot is on shift.</span>
+      <span class="robot"><span class="chip plain">🤖 Reading the plans now</span></span><span class="small">Working. Nothing to press.</span>
+      <span class="robot"><span class="chip plain" style="border-color:var(--green);color:var(--green);background:var(--green-tint)">🤖 Read 12 tags · confirm below</span></span><span class="small">Done. The tags to confirm still show under the cards, full width.</span>
+      <span class="robot"><span class="chip" style="border-color:var(--red);color:var(--red);background:var(--red-tint)">🤖 Could not read the plans</span><span class="lnk">Dismiss</span></span><span class="small">Blocked. The card on hover gives the robot’s reason.</span>
+    </div>
+  </section>
+
+  <section class="plan best">
+    <h2>Is this the best we can do?</h2>
+    <ol>
+      <li><b>The chip carries the state, not just the word “Robot”.</b> A stuck ask is amber and says the day it was asked. Hover adds detail. It never holds the only warning.</li>
+      <li><b>It opens on focus and on a tap too.</b> A phone has no hover. A tap on the chip pins the card open, and Esc or a tap elsewhere closes it.</li>
+      <li><b>The button stays outside the card.</b> Ask, Cancel and Take the ask back sit beside the chip, one press away.</li>
+      <li><b>All three robot spots get the same line.</b> The offer on a vendor PDF in step 3 and on a reviewer’s file in step 6 are the same four line box today. One shape everywhere was your earlier call, so they change together.</li>
+      <li><b>The two cards end up the same height,</b> so the takeoff card is no longer half empty. Nothing else on the cards changes.</li>
+    </ol>
+    <p class="muted" style="font-size:13.5px"><b style="color:var(--strong)">Changed after your note.</b> I had kept the two cards’ sentences, thinking a first-timer needs them on a fresh bid. You said they do not matter to her, so the cards became rows and the sentences became hover lines. <b style="color:var(--strong)">Still left out:</b> hiding the robot until asked for. A stuck ask is something she started, so it stays in view.</p>
+  </section>
+
+  <section class="plan">
+    <h2>The plan</h2>
+    <ol>
+      <li>The rules as a small tested file: for each robot chore and state, the chip’s words, the card’s lines and the one button.</li>
+      <li>One component for the line and its hover card, used by the offer at all three spots and by the schedule card’s states.</li>
+      <li>Tests, the guide’s robot section, a release note. Checked in the app on the SpaceX bid, read only.</li>
+    </ol>
+  </section>
+</div>
+<script>
+  (function () {
+    var chip = document.getElementById('chip-stale');
+    if (!chip) return;
+    var pop = chip.parentElement.querySelector('.pop');
+    chip.addEventListener('click', function () { pop.classList.toggle('shown'); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { pop.classList.remove('shown'); chip.blur(); } });
+  })();
+</script>
