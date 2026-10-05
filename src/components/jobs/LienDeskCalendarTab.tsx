@@ -17,7 +17,7 @@ import {
   type LienCalendarKeyGlyph,
   type LienCalendarMark,
 } from '../../lib/jobs/lienCalendar'
-import { buildLienCalendarBoard, lienNextDateCounts, lienPhoneLine, type LienCalendarBoard, type LienCalendarBucket, type LienCalendarBucketKey, type LienNextDateCount } from '../../lib/jobs/lienCalendarBuckets'
+import { buildLienCalendarBoard, lienGroupRows, lienNextDateCounts, lienPhoneLine, type LienCalendarBoard, type LienCalendarBucket, type LienCalendarBucketKey, type LienNextDateCount } from '../../lib/jobs/lienCalendarBuckets'
 import type { LienRunwayTone } from '../../lib/jobs/lienPayRunway'
 import { formatMoneyShortK } from '../../lib/formatMoneyShortK'
 import { payDateShortcuts } from '../../lib/jobs/gcWordPromise'
@@ -447,17 +447,26 @@ function GroupHeader({ g, open, onToggle, axis, onPen }: { g: LienCalendarGroup;
   )
 }
 
-function JobRow({ j, g, index, axis, onOpen, onPen, mark }: { j: LienCalendarJob; g: LienCalendarGroup; index: number; axis: LienCalendarAxis | null; onOpen: () => void; onPen?: (pct: number) => void; mark?: LienSupplierMark }) {
+/** A property's heading inside a group that lists overdue jobs with their property (v2.4526). */
+function PropertyLabel({ label, phone }: { label: string; phone?: boolean }) {
+  return (
+    <div data-testid="lien-cal-property" style={{ padding: phone ? '6px 12px 2px' : '5px 10px 1px 30px', fontSize: '0.6875rem', fontWeight: 600, color: 'var(--text-muted)', background: 'var(--surface)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+      {label}
+    </div>
+  )
+}
+
+function JobRow({ j, g, index, axis, onOpen, onPen, mark, closedHere }: { j: LienCalendarJob; g: LienCalendarGroup; index: number; axis: LienCalendarAxis | null; onOpen: () => void; onPen?: (pct: number) => void; mark?: LienSupplierMark; /** An overdue job listed with its property: greyed. */ closedHere?: boolean }) {
   // Under a GC row its one dot speaks for every job; a job draws the dashed dot only on its own.
   const marks = axis ? lienCalendarMarks(j, axis, { payMissingDot: g.kind !== 'gc' }) : []
   const word = rowWord(j, g)
   const dead = j.runway.state === 'closed'
   return (
-    <div role="row" className="lienCalendarRow" style={{ ...GRID, minHeight: ROW_H, background: index % 2 === 1 ? 'var(--bg-subtle)' : 'var(--surface)' }}>
-      <button type="button" onClick={onOpen} title="Open the job’s Lien window" style={{ minWidth: 0, textAlign: 'left', border: 'none', background: 'none', padding: '4px 10px 4px 30px', cursor: 'pointer', color: 'inherit' }}>
+    <div role="row" className="lienCalendarRow" data-closed-here={closedHere ? 'true' : undefined} style={{ ...GRID, minHeight: ROW_H, background: index % 2 === 1 ? 'var(--bg-subtle)' : 'var(--surface)' }}>
+      <button type="button" onClick={onOpen} title={closedHere ? 'Its window closed; listed here with its property. Open the job’s Lien window' : 'Open the job’s Lien window'} style={{ minWidth: 0, textAlign: 'left', border: 'none', background: 'none', padding: '4px 10px 4px 30px', cursor: 'pointer', color: 'inherit' }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-          <span style={cellNum}>{j.number}</span>
-          <span style={{ fontSize: '0.8125rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{j.name}</span>
+          <span style={closedHere ? { ...cellNum, background: 'var(--bg-muted)', color: 'var(--text-muted)' } : cellNum}>{j.number}</span>
+          <span style={{ fontSize: '0.8125rem', fontWeight: closedHere ? 500 : 600, color: closedHere ? 'var(--text-muted)' : undefined, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{j.name}</span>
           {mark ? (
             <span style={{ flex: 'none', fontSize: '0.6875rem', position: 'relative' }}>
               <LienSupplierMarkLine mark={mark} short />
@@ -699,11 +708,14 @@ function PhoneBoard({ shown, folded, onFold, onDraft, onOpenJob, query, marks }:
                         <span style={{ fontSize: '0.6875rem', fontWeight: 700, color: TONE[g.tone], whiteSpace: 'nowrap' }}>{g.word}</span>
                       </div>
                     ) : null}
-                    {g.jobs.map((j) => (
-                      <button key={j.jobId} type="button" onClick={() => onOpenJob(j.jobId)} style={{ display: 'block', width: '100%', minHeight: 44, textAlign: 'left', border: 'none', borderBottom: '1px solid var(--border)', background: 'var(--surface)', padding: '7px 12px', cursor: 'pointer', color: 'inherit', font: 'inherit' }}>
+                    {lienGroupRows(g).map((row) => {
+                      if (row.kind === 'label') return <PropertyLabel key={row.key} label={row.label} phone />
+                      const j = row.job
+                      return (
+                      <button key={j.jobId} type="button" data-closed-here={row.closed ? 'true' : undefined} onClick={() => onOpenJob(j.jobId)} style={{ display: 'block', width: '100%', minHeight: 44, textAlign: 'left', border: 'none', borderBottom: '1px solid var(--border)', background: 'var(--surface)', padding: '7px 12px', cursor: 'pointer', color: 'inherit', font: 'inherit' }}>
                         <span style={{ display: 'flex', gap: 6, alignItems: 'center', minWidth: 0 }}>
-                          <span style={cellNum}>{j.number}</span>
-                          <span style={{ fontSize: '0.8125rem', fontWeight: 600, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{j.name}</span>
+                          <span style={row.closed ? { ...cellNum, background: 'var(--bg-muted)', color: 'var(--text-muted)' } : cellNum}>{j.number}</span>
+                          <span style={{ fontSize: '0.8125rem', fontWeight: row.closed ? 500 : 600, color: row.closed ? 'var(--text-muted)' : undefined, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{j.name}</span>
                           <span style={{ marginLeft: 'auto', fontSize: '0.8125rem', fontVariantNumeric: 'tabular-nums', color: j.runway.state === 'closed' ? 'var(--text-muted)' : undefined }}>{formatUsdNoCents(j.openBalance)}</span>
                         </span>
                         <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, fontSize: '0.6875rem', marginTop: 1, position: 'relative' }}>
@@ -711,7 +723,8 @@ function PhoneBoard({ shown, folded, onFold, onDraft, onOpenJob, query, marks }:
                           <LienSupplierMarkLine mark={marks?.get(j.jobId)} short />
                         </span>
                       </button>
-                    ))}
+                      )
+                    })}
                   </div>
                 ))
               : null}
@@ -738,7 +751,11 @@ export default function LienDeskCalendarTab({ rows, todayYmd, onOpenJob, isMobil
   const board = useMemo(() => buildLienCalendarBoard(lensOn ? houseRows : (rows ?? []), query, todayYmd), [rows, houseRows, lensOn, query, todayYmd])
   const axis = useMemo(() => (rows && rows.length ? lienCalendarAxis(rows.filter((r) => r.runway.state !== 'none'), todayYmd) : null), [rows, todayYmd])
   // All shows every bucket that holds a job; a picked pill shows its bucket even when it is empty.
-  const shown = useMemo(() => (pick === 'all' ? board.buckets.filter((b) => b.jobs.length > 0) : board.buckets.filter((b) => b.key === pick)), [board, pick])
+  // v2.4526: under All an overdue job is listed with its property; Overdue picked on its own lists every one of its jobs.
+  const shown = useMemo(
+    () => (pick === 'all' ? board.buckets.filter((b) => b.jobs.length > 0) : board.buckets.filter((b) => b.key === pick).map((b) => (b.whole ? { ...b, groups: b.whole.groups, facts: b.whole.facts } : b))),
+    [board, pick],
+  )
   const counts = useMemo(() => lienNextDateCounts(shown), [shown])
   const liveJobs = useMemo(() => board.buckets.flatMap((b) => b.jobs), [board])
   const firstDraft = board.buckets.find((b) => b.draft)?.draft ?? null
@@ -856,9 +873,12 @@ export default function LienDeskCalendarTab({ rows, todayYmd, onOpenJob, isMobil
                                   </div>
                                 ) : null}
                                 {groupOpen
-                                  ? g.jobs.map((j, index) => (
+                                  ? lienGroupRows(g).map((row, index) => {
+                                      if (row.kind === 'label') return <PropertyLabel key={row.key} label={row.label} />
+                                      const j = row.job
+                                      return (
                                       <div key={j.jobId} style={{ position: 'relative' }}>
-                                        <JobRow j={j} g={g} index={index} axis={axis} onOpen={() => onOpenJob(j.jobId)} onPen={penOn ? (pct) => setPen({ kind: 'job', job: j, pct }) : undefined} mark={supplierMarks?.get(j.jobId)} />
+                                        <JobRow j={j} g={g} index={index} closedHere={row.closed} axis={axis} onOpen={() => onOpenJob(j.jobId)} onPen={penOn ? (pct) => setPen({ kind: 'job', job: j, pct }) : undefined} mark={supplierMarks?.get(j.jobId)} />
                                         {pen && pen.kind === 'job' && pen.job.jobId === j.jobId ? (
                                           <div style={{ ...GRID, position: 'absolute', left: 0, right: 0, top: 0, pointerEvents: 'none' }}>
                                             <div />
@@ -869,7 +889,8 @@ export default function LienDeskCalendarTab({ rows, todayYmd, onOpenJob, isMobil
                                           </div>
                                         ) : null}
                                       </div>
-                                    ))
+                                      )
+                                    })
                                   : null}
                               </div>
                             )
