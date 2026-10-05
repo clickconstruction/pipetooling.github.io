@@ -295,6 +295,8 @@ export function JobsMapCard({
   onOpenJob,
   onEditJob,
   onFocusJob,
+  hidden: hiddenFromBoard,
+  onToggleHidden,
 }: {
   /** The board's filtered rows — the map follows the search and every filter. */
   jobs: readonly JobWithDetails[]
@@ -314,8 +316,15 @@ export function JobsMapCard({
   onEditJob: (jobId: string) => void
   /** A pin (or an unmapped-job link) was clicked — light the row on the board (by number when the row is not loaded, e.g. a rewound paid job). */
   onFocusJob: (jobId: string, numberLabel: string) => void
+  /**
+   * The board holds the hidden choice (v2.4518): on a desktop a hidden card is not drawn at all and
+   * a Map button beside the search box brings it back. Left out, the card keeps the choice itself.
+   */
+  hidden?: boolean
+  onToggleHidden?: () => void
 }) {
-  const [hidden, setHidden] = useState<boolean>(() => readJobsMapHidden())
+  const [hiddenOwn, setHidden] = useState<boolean>(() => readJobsMapHidden())
+  const hidden = hiddenFromBoard ?? hiddenOwn
   const [clustered, setClustered] = useState<boolean>(() => readJobsMapClustered())
   const toggleClustered = useCallback(() => {
     setClustered((c) => {
@@ -468,11 +477,15 @@ export function JobsMapCard({
   }, [byId, selectedId])
 
   const toggleHidden = useCallback(() => {
+    if (onToggleHidden) {
+      onToggleHidden()
+      return
+    }
     setHidden((h) => {
       writeJobsMapHidden(!h)
       return !h
     })
-  }, [])
+  }, [onToggleHidden])
   const toggleSection = useCallback(
     (section: JobsMapSection) => {
       if (section === 'paid' && !paidLoaded) onLoadPaid()
