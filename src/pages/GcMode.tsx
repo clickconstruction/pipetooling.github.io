@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useReducer, useState, type CSSProperties, type Dispatch } from 'react'
+import { useEffect, useMemo, useReducer, useRef, useState, type CSSProperties, type Dispatch } from 'react'
 import { SpotlightTour } from '../components/SpotlightTour'
 import { BidsModeToggle } from '../components/gc/BidsModeToggle'
 import {
@@ -30,10 +30,15 @@ import { GcProgressRing } from '../components/gc/GcProgressRing'
 import { GcPriceCard, GcPriceLikely, GcPriceTrigger, type PriceCardTab } from '../components/gc/GcPriceCard'
 import { usePriceCard } from '../components/gc/usePriceCard'
 import { Btn, Card, Chip, PlusUnknown, Stat, type Tone } from '../components/gc/gcUi'
+import { GcBoardStrip, GcCustomerHeading, GcStageHeading, GcStageSubheading, type BoardStripItem, type StageStripItem } from '../components/gc/GcBoardStages'
 import { useMatchMedia } from '../hooks/useMatchMedia'
 import {
   carriedAmount,
   carriedUncosted,
+  boardCustomerElementId,
+  boardSectionCounts,
+  boardSectionElementId,
+  boardSectionWorthWords,
   customerGroups,
   customerMoneyWords,
   quoteRanOut,
@@ -60,6 +65,7 @@ import {
   stageProgress,
   weekdayDate,
   type BoardGroupBy,
+  type BoardSection,
   type StageProgress,
   type GcProject,
   type GcStage,
@@ -161,6 +167,8 @@ export default function GcMode() {
   const [boardTab, setBoardTab] = useState<BoardTab>('projects')
   // By stage every time the board opens (the owner, 2026-10-04, question 9): not remembered.
   const [boardGroup, setBoardGroup] = useState<BoardGroupBy>('stage')
+  // The stage strip (the owner, 2026-10-04): the section in view is lit as the board scrolls.
+  const [activeKey, setActiveKey] = useState<string | null>(null)
   const [projectId, setProjectId] = useState<string | null>(null)
   const [tab, setTab] = useState<ProjectTab>('packages')
   const [portalOpen, setPortalOpen] = useState(true)
@@ -199,6 +207,75 @@ export default function GcMode() {
   const toChase = followUps(state).filter((f) => f.why !== 'waiting')
   // The badge also counts a promise whose day came and insurance that ran out (question 8).
   const chaseCount = toChase.length + promisesToChase(state)
+
+  // The stage strip (the owner, 2026-10-04): a pill per board section, 1, 2, 3 for the stages.
+  const sectionCounts = boardSectionCounts(state)
+  const stripItems: StageStripItem[] = BOARD_SECTIONS.map((sec) => {
+    const n = STAGES.findIndex((st) => st.key === sec.key)
+    return {
+      key: sec.key,
+      label: sec.label,
+      ...(n >= 0 ? { number: n + 1 } : {}),
+      tone: STAGES[n]?.tone ?? 'grey',
+      count: sectionCounts.find((c) => c.key === sec.key)?.count ?? 0,
+    }
+  })
+  // By customer (the owner, 2026-10-04: "once a user clicks on By customer, we should change the
+  // header"): a pill per customer, with a dot for each stage they have jobs in.
+  const groups = customerGroups(state)
+  const customerItems: BoardStripItem[] = groups.map((g) => ({
+    key: g.customer.id,
+    label: g.customer.name,
+    tone: 'blue',
+    count: g.open.length,
+    dots: STAGES.filter((st) => g.open.some((p) => p.stage === st.key)).map((st) => st.tone),
+  }))
+  const elementIdOf = (key: string) => (boardGroup === 'stage' ? boardSectionElementId(key as BoardSection) : boardCustomerElementId(key))
+  // The strip's keys in board order, for the scroll watcher to read without re-subscribing.
+  const stripKeys = useRef<string[]>([])
+  stripKeys.current = boardGroup === 'stage' ? BOARD_SECTIONS.map((sec) => sec.key) : groups.map((g) => g.customer.id)
+  const jumpLock = useRef<{ key: string; until: number } | null>(null)
+  /** Jump to a stage on By stage, or to a customer on By customer. */
+  const jumpTo = (key: string) => {
+    setActiveKey(key)
+    // The pressed pill stays lit while the jump scrolls, even when the board ends before it reaches the top.
+    jumpLock.current = { key, until: Date.now() + 1500 }
+    const id = elementIdOf(key)
+    requestAnimationFrame(() => requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })))
+  }
+  const onBoard = boardTab === 'projects' && !project
+  // The section in view: the last heading that has reached the strip.
+  useEffect(() => {
+    if (!onBoard) return
+    let frame = 0
+    const look = () => {
+      frame = 0
+      const lock = jumpLock.current
+      if (lock && Date.now() < lock.until) {
+        setActiveKey(lock.key)
+        return
+      }
+      let current: string | null = null
+      // At the end of the board the last headings cannot reach the strip: count the top half instead.
+      const atEnd = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4
+      const reach = atEnd ? window.innerHeight / 2 : 90
+      for (const key of stripKeys.current) {
+        const el = document.getElementById(boardGroup === 'stage' ? boardSectionElementId(key as BoardSection) : boardCustomerElementId(key))
+        if (el && el.getBoundingClientRect().top <= reach) current = key
+      }
+      setActiveKey(current ?? stripKeys.current[0] ?? null)
+    }
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(look)
+    }
+    jumpLock.current = null
+    look()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      if (frame) cancelAnimationFrame(frame)
+    }
+  }, [onBoard, boardGroup])
 
   return (
     <GcCompanyOpenerContext.Provider value={companyOpener}>
@@ -347,55 +424,65 @@ export default function GcMode() {
 
       {boardTab === 'projects' && !project && (
         <div style={{ display: 'grid', gap: '1.1rem' }} data-tour="gc-board">
-          <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', marginBottom: '-0.4rem' }}>
-            <GroupSwitch value={boardGroup} onChange={setBoardGroup} />
-            {boardGroup === 'customer' && (
-              <span style={{ marginLeft: 'auto' }} data-tour="gc-new-project">
-                <GcNewProjectButton state={state} dispatch={dispatch} onCreated={(id) => { setProjectId(id); setTab('packages') }} />
-              </span>
-            )}
-          </div>
-          {boardGroup === 'customer' && customerGroups(state).map((group) => {
+          <GcBoardStrip
+            items={boardGroup === 'stage' ? stripItems : customerItems}
+            active={activeKey}
+            onJump={jumpTo}
+            label={boardGroup === 'stage' ? 'Jump to a stage' : 'Jump to a customer'}
+            lead={<GroupSwitch value={boardGroup} onChange={setBoardGroup} />}
+            trail={
+              boardGroup === 'customer' ? (
+                <span data-tour="gc-new-project">
+                  <GcNewProjectButton state={state} dispatch={dispatch} onCreated={(id) => { setProjectId(id); setTab('packages') }} />
+                </span>
+              ) : undefined
+            }
+          />
+          {boardGroup === 'customer' && groups.map((group) => {
             const words = customerMoneyWords(group.summary)
             const folded = [...group.closed.map((p) => ({ p, word: `closed ${shortDate(p.closedOn ?? '')}` })), ...group.lost.map((p) => ({ p, word: 'lost' }))]
             return (
               <section key={group.customer.id}>
-                <div style={{ display: 'flex', gap: '0.25rem 0.6rem', alignItems: 'baseline', marginBottom: '0.4rem', flexWrap: 'wrap' }}>
-                  <h3 style={{ margin: 0, fontSize: '1rem' }}>
-                    <button
-                      type="button"
-                      style={{ ...customerLink, fontWeight: 700 }}
-                      title={`See ${group.customer.name}: every project, what they owe, who to call`}
-                      onClick={() => setCustomerId(group.customer.id)}
-                    >
-                      {group.customer.name}
-                    </button>{' '}
-                    ({group.open.length})
-                  </h3>
-                  <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{group.customer.kind} · {group.customer.contact}</span>
-                  {words && <span style={{ marginLeft: 'auto', color: 'var(--text-muted)', fontSize: '0.85rem', fontVariantNumeric: 'tabular-nums' }}>{words}</span>}
-                </div>
+                <GcCustomerHeading
+                  id={boardCustomerElementId(group.customer.id)}
+                  name={group.customer.name}
+                  title={`See ${group.customer.name}: every project, what they owe, who to call`}
+                  onName={() => setCustomerId(group.customer.id)}
+                  count={group.open.length}
+                  sub={`${group.customer.kind} · ${group.customer.contact}`}
+                  money={words}
+                />
                 {group.open.length === 0 ? (
                   <Card style={{ color: 'var(--text-muted)' }}>Nothing open with them right now.</Card>
                 ) : (
                   <div style={{ display: 'grid', gap: '0.5rem' }}>
-                    {group.open.map((p) => (
-                      <ProjectRow
-                        key={p.id}
-                        project={p}
-                        byCustomer
-                        preBidMinutes={preBidMinutesLine(state, p)}
-                        progress={stageProgress(state, p)}
-                        today={state.today}
-                        onOpen={() => { setProjectId(p.id); setTab('packages') }}
-                        priceCard={{ state, dispatch, onTab: (t) => { setProjectId(p.id); setTab(t) } }}
-                        onPlans={() => setPlansForId(p.id)}
-                        onCustomer={() => setCustomerId(p.customerId)}
-                        onArchitect={() => setCustomerId(p.architectId)}
-                        chase={toChase.filter((f) => f.project.id === p.id).length}
-                        onChase={() => setBoardTab('followup')}
-                      />
-                    ))}
+                    {/* The customer's jobs under a small heading for each stage (the owner, 2026-10-04). */}
+                    {STAGES.filter((st) => group.open.some((p) => p.stage === st.key)).map((st) => {
+                      const jobs = group.open.filter((p) => p.stage === st.key)
+                      const item = stripItems.find((x) => x.key === st.key)
+                      return (
+                        <div key={st.key} style={{ display: 'grid', gap: '0.5rem' }}>
+                          {item && <GcStageSubheading item={{ ...item, count: jobs.length }} />}
+                          {jobs.map((p) => (
+                            <ProjectRow
+                              key={p.id}
+                              project={p}
+                              byCustomer
+                              preBidMinutes={preBidMinutesLine(state, p)}
+                              progress={stageProgress(state, p)}
+                              today={state.today}
+                              onOpen={() => { setProjectId(p.id); setTab('packages') }}
+                              priceCard={{ state, dispatch, onTab: (t) => { setProjectId(p.id); setTab(t) } }}
+                              onPlans={() => setPlansForId(p.id)}
+                              onCustomer={() => setCustomerId(p.customerId)}
+                              onArchitect={() => setCustomerId(p.architectId)}
+                              chase={toChase.filter((f) => f.project.id === p.id).length}
+                              onChase={() => setBoardTab('followup')}
+                            />
+                          ))}
+                        </div>
+                      )
+                    })}
                   </div>
                 )}
                 {/* Closed and lost jobs fold into one quiet line under the customer (the mock-up's rule). */}
@@ -417,12 +504,21 @@ export default function GcMode() {
             const rows = state.projects.filter(stage.holds).sort(stage.order)
             return (
               <section key={stage.key} data-tour={`gc-stage-${stage.key}`}>
-                <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', marginBottom: '0.4rem' }}>
-                  {/* New here?'s first stop numbers the three stage titles 1, 2, 3 (the owner, 2026-10-04). */}
-                  <h3 data-tour={`gc-stage-title-${stage.key}`} style={{ margin: 0, fontSize: '1rem' }}>{stage.label} ({rows.length})</h3>
-                  <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{stage.blurb}</span>
-                  {stage.key === 'pursuing' && <span style={{ marginLeft: 'auto' }} data-tour="gc-new-project"><GcNewProjectButton state={state} dispatch={dispatch} onCreated={(id) => { setProjectId(id); setTab('packages') }} /></span>}
-                </div>
+                {/* A heading in the stage's color with its number, count and worth (the owner, 2026-10-04).
+                    New here?'s first stop numbers the three stage titles 1, 2, 3: its anchor stays on the title. */}
+                <GcStageHeading
+                  item={stripItems.find((x) => x.key === stage.key) ?? { key: stage.key, label: stage.label, tone: 'grey', count: rows.length }}
+                  worth={boardSectionWorthWords(sectionCounts.find((c) => c.key === stage.key) ?? { key: stage.key, count: 0, worth: 0 })}
+                  blurb={stage.blurb}
+                  titleTour={`gc-stage-title-${stage.key}`}
+                  right={
+                    stage.key === 'pursuing' ? (
+                      <span data-tour="gc-new-project">
+                        <GcNewProjectButton state={state} dispatch={dispatch} onCreated={(id) => { setProjectId(id); setTab('packages') }} />
+                      </span>
+                    ) : undefined
+                  }
+                />
                 {rows.length === 0 ? (
                   <Card style={{ color: 'var(--text-muted)' }}>{stage.empty}</Card>
                 ) : (
@@ -873,12 +969,6 @@ function ProjectRow({
         >
           {project.name}
         </button>
-        {byCustomer && stage && (
-          <>
-            {' '}
-            <Chip tone={stage.tone}>{stage.label}</Chip>
-          </>
-        )}
         <br />
         <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
           {!byCustomer && (
@@ -895,17 +985,20 @@ function ProjectRow({
             </>
           )}
           drawn by{' '}
+          {/* The dot rides inside the button, not underlined, so it stays with the name's last word: a
+              line may break right after a button, which left the dot alone on a phone. */}
           <button
             type="button"
-            style={customerLink}
+            style={{ ...customerLink, textDecoration: 'none' }}
             title={`See ${project.architect}: the sets they issued and the questions waiting on them`}
             onClick={(e) => { e.stopPropagation(); onArchitect() }}
           >
-            {project.architect}
+            <span style={{ textDecoration: 'underline', textDecorationColor: 'var(--border-blue)', textUnderlineOffset: 3 }}>{project.architect}</span>
+            <span style={{ color: 'var(--text-muted)' }}>{'\u00a0·'}</span>
           </button>{' '}
           {/* The size moves to the next line whole rather than breaking inside it (the owner,
               2026-10-04); one longer than a line still wraps inside, on its own lines. */}
-          ·{' '}<span style={{ display: 'inline-block' }}>{project.sizeNote}</span>
+          <span style={{ display: 'inline-block' }}>{project.sizeNote}</span>
         </span>
       </span>
       <span style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', ...under }}>

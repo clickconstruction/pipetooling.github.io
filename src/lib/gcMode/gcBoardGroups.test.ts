@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { customerGroups, customerMoneyWords, initialGcState, type CustomerGroup, type CustomerSummary, type GcState } from './gcModel'
+import { boardSectionCounts, boardSectionWorthWords, customerGroups, customerMoneyWords, gcReducer, initialGcState, type CustomerGroup, type CustomerSummary, type GcState } from './gcModel'
 
 const names = (state: GcState) => customerGroups(state).map((g) => [g.customer.name, g.open.map((p) => p.name)])
 
@@ -52,5 +52,20 @@ describe('customerMoneyWords', () => {
 
   it('is empty when nothing is in front of them or under contract', () => {
     expect(customerMoneyWords(base)).toBe('')
+  })
+})
+
+describe('the stage strip (the owner, 2026-10-04)', () => {
+  it('counts each section and what it is worth', () => {
+    const counts = boardSectionCounts(initialGcState())
+    expect(counts.map((c) => `${c.key} ${c.count}`)).toEqual(['pursuing 2', 'buyout 1', 'building 2', 'closed 0', 'lost 0'])
+    expect(counts.map(boardSectionWorthWords)).toEqual(['$977,823 priced so far', '$338,767 under contract', '$1,671,175 under contract', '', ''])
+  })
+
+  it('a lost bid leaves Bidding for Lost', () => {
+    const state = gcReducer(initialGcState(), { type: 'markLost', projectId: 'padb', why: 'price', wonBy: '', note: '' })
+    const counts = boardSectionCounts(state)
+    expect(counts.find((c) => c.key === 'pursuing')?.count).toBe(1)
+    expect(counts.find((c) => c.key === 'lost')?.count).toBe(1)
   })
 })
