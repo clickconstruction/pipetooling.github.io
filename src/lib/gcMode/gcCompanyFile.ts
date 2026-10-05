@@ -256,6 +256,11 @@ export function partnerActivity(state: GcState, partner: Partner): CompanyEvent[
           out.push({ on: co.tradeChange.sentOn, kind: 'paper', text: `Change order ${co.number} sent to them to sign: ${co.description}`, ...base })
           if (co.tradeChange.signedOn) out.push({ on: co.tradeChange.signedOn, kind: 'paper', text: `Signed change order ${co.number}.`, ...base })
         }
+        // Changes they asked us for in their portal, and our no with its reason (Portal lane, owner 2026-10-04).
+        for (const r of (project.changeRequests ?? []).filter((x) => x.packageId === pkg.id && x.partnerId === partner.id)) {
+          out.push({ on: r.askedOn, kind: 'money', text: `Asked for a change in their portal: ${r.description}, ${money(r.amount)}.`, ...base })
+          if (r.turnedDown) out.push({ on: r.turnedDown.on, kind: 'money', text: `Their change turned down: ${r.turnedDown.note}`, ...base })
+        }
         if (sow.signedOn) out.push({ on: sow.signedOn, kind: 'paper', text: `Signed the statement of work, ${money(sow.price)}.`, ...base })
         for (const d of sow.draws) {
           out.push({ on: d.requestedOn, kind: 'money', text: `Asked for draw ${d.number}, ${money(d.gross)}.`, ...base })

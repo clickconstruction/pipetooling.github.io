@@ -144,4 +144,17 @@ describe("a trade's Activity also carries the award, pay applications sent back,
     expect(texts).toContain('Change order 1 sent to them to sign: Add sound batts to the walls of operatory 3')
     expect(texts).toContain('Signed change order 1.')
   })
+
+  it('a change they asked for in their portal, and our no with its reason (Portal lane)', () => {
+    let state = initialGcState()
+    const rock = partnerActivity(state, partner(state, 'tricounty')).find((e) => e.text.startsWith('Asked for a change'))
+    expect(rock).toMatchObject({
+      on: '2026-09-30',
+      kind: 'money',
+      text: 'Asked for a change in their portal: Rock at the north footings, about 390 cubic yards to break out and haul off, $14,820.',
+      where: 'Fair Oaks Shops, Building D · Sitework',
+    })
+    state = gcReducer(state, { type: 'turnDownChangeRequest', projectId: 'fairoaksd', requestId: 'fairoaksd-cr-1', note: 'It was in your quote.' })
+    expect(partnerActivity(state, partner(state, 'tricounty')).map((e) => e.text)).toContain('Their change turned down: It was in your quote.')
+  })
 })

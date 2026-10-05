@@ -618,6 +618,17 @@ who then works and bills the owner." So:
 - **A late quote's chip says late and the day they gave** (owner, 2026-10-04): "late: you said
   Sep 30" ("atrasado: dijo el 30 sep"), not "your day passed" (`chipDayPassed`). The office's
   "Their day passed" title went to the Board lane as "Late on their word".
+- **A trade asks for a change in its portal** (owner, 2026-10-04): it hit something on site no one
+  could see, the customer asked it for more, or the plans changed. On its job page, *Changes to your
+  work* takes what changed, why, what it asks, the working days it adds and a photo or ticket. Each
+  one then says where it stands: sent, being written up, with the customer as change order N,
+  the customer's no or yes, ready to sign, signed, or turned down with our reason. It sees its own
+  part, never our price to the customer. The office makes it a change order to the customer
+  (`draftChangeOrderFromRequest`, drafted the way Bill the customer drafts one) or turns it down
+  with a reason (`turnDownChangeRequest`); after the customer signs, the change goes to the trade
+  the usual way. Fair Oaks has one waiting: Tri-County's rock at the north footings
+  (`TradeChangeRequest`, `portalChangeRequests`, `openChangeRequests` in `gcPortal.ts`;
+  `GcPortalChanges.tsx`). The office's list is the Owner Billing lane's to draw.
 - **A company asked to the pre-bid meeting sees it in its portal** (owner, 2026-10-04, on the New
   Project lane's `preBid`): a block on the project page (when and where, who runs it, whether coming
   is required to quote, then "You came" or "You did not come"), Needs you before it (amber if
@@ -983,6 +994,8 @@ the bullets below are the shape they set.
   | A pre-bid meeting set (`schedulePreBid`) | Each company still quoting a trade there | Email the day it is set, with when, where and whether it is required |
   | Look-ahead marks due (`lookAheadOwed`) | Each company on a job being built | An email Friday morning, "Mark your week"; Needs you already says so |
   | The office decided on a company it did not know (`vetPartner`) | That company | Email the day it is decided: approved, with its limit, or declined (Their messages already writes it) |
+  | A company asked for a change (`tradeAskChange`) | The project manager | Email the day it comes, with what, why, the amount, the days and the photo. The office's list of changes asked for keeps it until answered |
+  | We answered a change it asked for (`turnDownChangeRequest`, the change order sent, the customer's no) | The company | Email each time, with its part, never our price to the customer (Their messages already writes them) |
 
   Billing the owner's events, and where each would go (Owner Billing lane, 2026-10-03). Every one
   is an email, through Resend (question 29: email only for now). The owner and the architect get
