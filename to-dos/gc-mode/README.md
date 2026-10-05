@@ -516,6 +516,12 @@ who then works and bills the owner." So:
   The reminder is kept on the bill (`reminders`, `remindCustomerToPay`, `gcOwnerBillingRemind.ts`)
   and is never a promise: the due day stays. The golden walk has no step for it, since its one late
   bill gets a new promised day before the end; the unit tests cover it.
+- **What each job makes us** (owner, 2026-10-05; on Money, for the owner and the controller): the
+  price the customer signed for, line by line, against what the work costs us. Each trade at its
+  signed statement of work (one not bought out yet at what we carry), signed change orders at their
+  cost, general conditions at their budget, our own crew at its price (its cost is on its Pipeline
+  job). What is left is ours: the fee, what buying out saved, the change orders' margin; earned so
+  far as billed; contingency not spent apart (`jobMargin`, `allJobsMargin`, `gcOwnerBillingMargin.ts`).
 - **A late-finish warning** (owner, 2026-10-04): Bill the owner's **Finish date** compares the
   contract's day (substantial completion with change orders' days) with the schedule's finish
   (the Building lane's `projectedFinish`, with its sentence of why). Past it, the days times the contract's late fee a day (liquidated damages, ours to enter

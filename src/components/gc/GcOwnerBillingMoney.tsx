@@ -1,5 +1,6 @@
 import { useMatchMedia } from '../../hooks/useMatchMedia'
 import { GcOwnerBillingAhead } from './GcOwnerBillingAhead'
+import { GcOwnerBillingMargin } from './GcOwnerBillingMargin'
 import { Btn, Card, Chip, Stat, Why, num, td, th } from './gcUi'
 import { allJobsMoney, money, ownerFinishRisk, ownerInterestOnBill, shortDate, type GcState, type JobMoney, type OwedBill } from '../../lib/gcMode/gcModel'
 
@@ -120,6 +121,8 @@ export function GcOwnerBillingMoney({ state, onOpenBill }: { state: GcState; onO
           Our own crews are paid through payroll, so they are not here. Neither are our general conditions.
         </div>
       </Card>
+
+      <GcOwnerBillingMargin state={state} />
     </div>
   )
 }
