@@ -338,7 +338,7 @@ These primitives are touched by many tabs; any extracted piece must be handed th
 
 - **[`BidVersionPicker`](../src/components/bids/BidVersionPicker.tsx)** — drawn by the page-local `renderBidVersionPicker` (1196–1215), called **4×** (Counts, Takeoffs, Pricing, Cover Letter); drives `switchActiveVersion` + rename/delete/first-split and opens the package map.
 - **[`MyBidsToggle`](../src/components/bids/MyBidsToggle.tsx)** — the "only my bids" chip, drawn through `BidPickerSearchRow` in the 9 workflow tabs that take `onlyMyBids`.
-- **[`HideRobotsToggle`](../src/components/bids/HideRobotsToggle.tsx)** — *Hide robots*, just below *Only my bids* on the same nine tabs (v2.4511): the list without the ZZ bids (`lib/bids/bidPickerRobots`). Offered only while *Only my bids* is off; one tick for every tab, kept per browser.
+- **[`HideRobotsToggle`](../src/components/bids/HideRobotsToggle.tsx)** — *Hide robots*, drawn by `BidPickerSearchRow` under *Only my bids* while that is off (v2.4511): the list without the ZZ bids (`lib/bids/bidPickerRobots`), one tick for every tab, kept per browser.
 - **[`BidBoardCustomerReviewModal`](../src/components/bids/BidBoardCustomerReviewModal.tsx)** / **[`BidBoardEstimatingHealthSection`](../src/components/bids/BidBoardEstimatingHealthSection.tsx)** — rendered by `BidsBidBoardTab`.
 
 ---
