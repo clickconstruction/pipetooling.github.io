@@ -8,6 +8,7 @@ import {
   lienReleaseFieldsFromSnapshot,
   lienReleaseFormLabel,
   liveLienReleases,
+  unconditionalFollowUpForm,
   type JobLienReleaseRow,
 } from '../../lib/jobs/lienReleaseTracking'
 import {
@@ -23,7 +24,7 @@ import {
 import { openHtmlPreviewWindow } from '../../lib/jobsDocuments/printWindow'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
-import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
+import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
 import LienReleaseModal from './LienReleaseModal'
@@ -175,7 +176,8 @@ export default function BillCustomerLienReleaseStrip({
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
           {live.map((r) => {
-            const clearance = jobDetails ? lienReleaseClearance(r, jobDetails) : 'not_applicable'
+            // A check on the bill waits its clearing days here too (v2.4564), as on the Bill tab.
+            const clearance = jobDetails ? lienReleaseClearance(r, jobDetails, todayYmdInAppTz()) : 'not_applicable'
             const conditional = isConditionalLienForm(r.form_type)
             return (
               <div
@@ -214,7 +216,7 @@ export default function BillCustomerLienReleaseStrip({
                   {conditional && clearance === 'cleared' && canIssue ? (
                     <button
                       type="button"
-                      onClick={() => setReleaseModal({ formType: r.form_type === 'conditional_final' ? 'unconditional_final' : 'unconditional_progress', invoiceIds: r.invoice_ids ?? [] })}
+                      onClick={() => setReleaseModal({ formType: unconditionalFollowUpForm(r.form_type), invoiceIds: r.invoice_ids ?? [] })}
                       style={{ background: 'none', border: 'none', color: 'var(--text-green-700)', fontWeight: 700, cursor: 'pointer', padding: 0, fontSize: '0.75rem' }}
                     >
                       Issue unconditional
