@@ -403,6 +403,25 @@ describe('JobsStagesTab render smoke', () => {
     expect(document.body.textContent).toContain('Accounts Receivable')
   })
 
+  it('a hidden map is a Map button in the command bar, not a folded card; the button brings the card back and Hide map puts it away (v2.4518)', async () => {
+    localStorage.setItem('pipetooling_jobs_map_hidden', '1')
+    renderWithProviders(<JobsStagesTab {...makeProps({ jobs: boardJobs() })} />)
+    await settle()
+    expect(document.getElementById('jobs-map-card')).toBeNull()
+    expect(screen.queryByText('Show map')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Show the map' }))
+    await settle()
+    expect(document.getElementById('jobs-map-card')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Show the map' })).toBeNull()
+    expect(localStorage.getItem('pipetooling_jobs_map_hidden')).toBeNull()
+    fireEvent.click(screen.getByText('Hide map'))
+    await settle()
+    expect(document.getElementById('jobs-map-card')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Show the map' })).toBeTruthy()
+    expect(localStorage.getItem('pipetooling_jobs_map_hidden')).toBe('1')
+    localStorage.removeItem('pipetooling_jobs_map_hidden')
+  })
+
   it('the Lien desk asks for the billed jobs the board has not loaded; its Calendar reads the board until they land (v2.4321)', async () => {
     // The phone board's shape: one stage loaded, Billed folded, no map asking for every scope.
     localStorage.setItem(

@@ -253,6 +253,7 @@ import { JobsStagesToolsMenu, type StagesToolsFilters } from './JobsStagesToolsM
 import { JobsStagesCommandBar } from './JobsStagesCommandBar'
 import { JobsStagesJumpStrip, StagesLienDeskShortcut, StagesSectionBandTitle } from './JobsStagesJumpStrip'
 import { stageColorVar } from '../../lib/jobs/stagesStageBar'
+import { readJobsMapHidden, writeJobsMapHidden } from '../../lib/jobs/jobsMap'
 import { StagesReadyForBillingConfirmModal } from './StagesReadyForBillingConfirmModal'
 import { StagesSendBackSimpleConfirmModal } from './StagesSendBackSimpleConfirmModal'
 import { StagesCollectionsConfirmModal } from './StagesCollectionsConfirmModal'
@@ -1728,6 +1729,16 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     }
   }, [stagesReadyToBillNoEmailJobs.length])
 
+  // The Jobs on a map card's hidden choice (per device, `lib/jobs/jobsMap`), held here since
+  // v2.4518 so the command bar can offer the way back.
+  const [jobsMapHidden, setJobsMapHidden] = useState<boolean>(() => readJobsMapHidden())
+  const toggleJobsMapHidden = useCallback(() => {
+    setJobsMapHidden((h) => {
+      writeJobsMapHidden(!h)
+      return !h
+    })
+  }, [])
+
   const focusStagesSection = useCallback((key: 'waiting' | 'working' | 'readyToBill' | 'billed' | 'collections') => {
     setStagesSectionOpen((prev) => ({ ...prev, [key]: true }))
     const elId = stagesSectionElementId(key)
@@ -3019,6 +3030,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             onOpenFollowups={() => setFollowupOpen(true)}
             canSeeForecast={canSeeBilledExpectedPay}
             onOpenForecast={() => setBilledPaymentForecastOpen(true)}
+            onShowMap={!phoneBoard && jobsMapHidden ? toggleJobsMapHidden : null}
             query={stagesSearchQuery}
             onQueryChange={setStagesSearchQuery}
             includeScheduleTimeInSearch={stagesIncludeScheduleTimeInSearch}
@@ -3127,7 +3139,12 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             ) : null}
             {!phoneBoard || phoneOverviewOpen ? (
               <>
+          {/* v2.4518: a hidden map is not drawn on a desktop (the command bar's Map button brings it
+              back); inside the phone's Overview it still folds to its title line. */}
+          {!phoneBoard && jobsMapHidden ? null : (
           <JobsMapCard
+            hidden={jobsMapHidden}
+            onToggleHidden={toggleJobsMapHidden}
             jobs={stagesBoardLists.filtered}
             isMobile={isMobile}
             loading={jobsListLoading}
@@ -3147,6 +3164,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
               if (numberLabel && numberLabel !== '—') void jumpViaLeanLookup(numberLabel)
             }}
           />
+          )}
           {/* The Pipeline money story + Today's Money Opportunities (v2.1915,
               Old/New pills retired v2.2012 — this is the only view now).
               v2.3184: steps aside while the search box has text, so the

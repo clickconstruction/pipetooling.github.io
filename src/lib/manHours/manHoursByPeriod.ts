@@ -243,3 +243,9 @@ export function manHoursPeriodShortLabel(period: Pick<ManHoursPeriod, 'start'>, 
   if (zoom === 'quarter') return `Q${Math.floor((month - 1) / 3) + 1}`
   return period.start.slice(0, 4)
 }
+
+/** Hours as the card prints them: whole hours, "<1" for time under half an hour, a dash for none. */
+export function formatManHours(hours: number): string {
+  if (hours >= 0.5) return Math.round(hours).toLocaleString('en-US')
+  return hours > 0 ? '<1' : '—'
+}
