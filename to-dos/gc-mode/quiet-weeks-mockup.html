@@ -1,0 +1,191 @@
+<title>Quiet Weeks Calendar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800&display=swap">
+<style>
+  /* Layout: a reading column; each calendar drawn as the strip draws it, quiet weeks as one rectangle. */
+  :root {
+    --bg: #f3f5f9; --fg: #172033; --muted: #5d6880; --line: #d3d9e6; --card: #ffffff;
+    --blue: #2f6fe4; --blue-soft: #dce7ff; --amber: #c27c0e; --amber-soft: #fdf0d9; --red: #d64545; --red-soft: #fbe3e3; --green: #1f9d55;
+    --font: 'Public Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --bg: #0f1625; --fg: #e6ebf5; --muted: #95a1ba; --line: #2f3b58; --card: #18213a; --blue: #6ea0ff; --blue-soft: #233a70; --amber: #f0b04a; --amber-soft: #3f2f12; --red: #f07a7a; --red-soft: #4a1d22; --green: #4cc483; color-scheme: dark; }
+  }
+  :root[data-theme="dark"] { --bg: #0f1625; --fg: #e6ebf5; --muted: #95a1ba; --line: #2f3b58; --card: #18213a; --blue: #6ea0ff; --blue-soft: #233a70; --amber: #f0b04a; --amber-soft: #3f2f12; --red: #f07a7a; --red-soft: #4a1d22; --green: #4cc483; color-scheme: dark; }
+  body { background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 15px; line-height: 1.55; }
+  .page { max-width: 1040px; margin: 0 auto; padding: 32px 20px 64px; display: grid; gap: 34px; }
+  h1, h2, h3 { margin: 0; line-height: 1.2; text-wrap: balance; }
+  h1 { font-size: 1.85rem; font-weight: 800; } h2 { font-size: 1.25rem; } h3 { font-size: 1rem; }
+  p { margin: 0; max-width: 70ch; }
+  .eyebrow { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); }
+  .section { display: grid; gap: 12px; }
+  .frame { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; display: grid; gap: 10px; overflow-x: auto; }
+  .summary { font-size: 0.88rem; display: flex; gap: 6px 18px; flex-wrap: wrap; }
+  .summary .warn { color: var(--amber); }
+  .cal { display: flex; gap: 14px; align-items: flex-start; width: max-content; }
+  .wk { display: grid; gap: 3px; }
+  .wk-h { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); white-space: nowrap; height: 14px; }
+  .letters, .days { display: flex; gap: 4px; }
+  .letters span { width: 34px; text-align: center; font-size: 0.62rem; font-weight: 700; color: var(--muted); }
+  .letters span.we { width: 18px; }
+  .sq { width: 34px; height: 34px; border-radius: 6px; border: 1.5px solid var(--line); box-sizing: border-box; display: grid; place-items: center; font-size: 0.72rem; color: var(--muted); position: relative; background: var(--card); font-variant-numeric: tabular-nums; }
+  .sq.we { width: 18px; opacity: 0.8; }
+  .sq.out { border-style: dashed; opacity: 0.35; }
+  .sq.past { background: var(--blue-soft); color: var(--fg); }
+  .sq.today { border: 3px solid var(--blue); color: var(--blue); font-weight: 800; }
+  .sq.close { background: var(--amber-soft); border-color: var(--amber); color: var(--amber); font-weight: 700; }
+  .sq.due { background: var(--red); border-color: var(--red); color: #fff; font-weight: 800; }
+  .sq .tag { position: absolute; top: -7px; right: -7px; padding: 0 3px; height: 15px; min-width: 15px; border-radius: 8px; background: var(--blue); color: #fff; font-size: 0.56rem; font-weight: 800; display: grid; place-items: center; }
+  .sq .dots { position: absolute; bottom: 2px; left: 0; right: 0; display: flex; justify-content: center; gap: 2px; }
+  .sq .dots i { width: 5px; height: 5px; border-radius: 50%; background: var(--green); }
+  .lane { position: relative; height: 32px; }
+  .lane span { position: absolute; transform: translateX(-50%); white-space: nowrap; font-size: 0.66rem; font-weight: 700; line-height: 1.15; text-align: center; }
+  .lane span.r2 { top: 15px; }
+  .quiet { height: 34px; width: 104px; border-radius: 6px; border: 1.5px dashed var(--line); box-sizing: border-box; display: grid; place-items: center; font-size: 0.72rem; color: var(--muted); }
+  .quiet.past { border-style: solid; background: var(--blue-soft); color: var(--fg); }
+  .quiet.open { border-color: var(--red); color: var(--red); }
+  .qlbl { font-size: 0.66rem; color: var(--muted); text-align: center; height: 32px; }
+  .t { color: var(--blue); } .a { color: var(--amber); } .r { color: var(--red); } .n { color: var(--fg); }
+  .bad .lane span.clash { color: var(--red); }
+  .findings { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  .findings li { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; display: grid; gap: 2px; }
+  .findings li p { color: var(--muted); font-size: 0.92rem; }
+  .note { font-size: 0.82rem; color: var(--muted); }
+</style>
+
+<main class="page">
+  <header class="section">
+    <span class="eyebrow">GC mode · the stage strip's calendar</span>
+    <h1>Quiet weeks as one rectangle</h1>
+    <p>You said the date boxes do not say the days well, and a week with nothing in it should be a single rectangle. Drawn with Boerne Retail Pad B's dates: the pricing set came in Thu Oct 1, today is Fri Oct 2, questions close Mon Oct 19, the bid is due Thu Oct 22.</p>
+  </header>
+
+  <section class="section">
+    <span class="eyebrow">1 · What goes wrong today</span>
+    <h2>Three problems in your screenshot</h2>
+    <ul class="findings">
+      <li><strong>Labels collide.</strong><p>"Pricing set" under Thu Oct 1 and "Today" under Fri Oct 2 print on top of each other. A wide label also pushes its own square sideways, so the amber Oct 19 square hides under Oct 20.</p></li>
+      <li><strong>Empty weeks take the room.</strong><p>Oct 5 to 18 has nothing in it, but its fourteen squares are half the strip. The two weeks that matter are squeezed to the ends.</p></li>
+      <li><strong>A square is only a number.</strong><p>Nothing says which day is a Monday, so "19" and "22" read as numbers, not as "the Monday questions close" and "the Thursday the bid is due".</p></li>
+    </ul>
+  </section>
+
+  <section class="section">
+    <span class="eyebrow">2 · Draft</span>
+    <h2>Busy weeks as days, quiet weeks as one rectangle</h2>
+    <div class="frame">
+      <div class="summary"><span><b>15</b> working days left, counting today</span><span class="warn"><b>0 of 4</b> quotes in</span></div>
+      <div class="cal" id="draft"></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <span class="eyebrow">3 · Is this the best we can do?</span>
+    <h2>Closer, but the days still do not read</h2>
+    <ul class="findings">
+      <li><strong>The weekday is still missing.</strong><p>A letter over each square (M T W T F S S) makes "22" read as Thursday the 22nd at a glance.</p></li>
+      <li><strong>"Week of Sep 28" hides where the month turns.</strong><p>"Sep 28 – Oct 4" says both ends, so Oct 1 is not a mystery "1".</p></li>
+      <li><strong>The labels need their own lane.</strong><p>Each label sits under its day without moving any square. Two labels that would touch take two lines.</p></li>
+      <li><strong>A quiet rectangle should say what kind of quiet.</strong><p>Ahead: "5 working days". Gone by: "nothing came in". When the job has no last day: "No start date", dashed red.</p></li>
+      <li><strong>Considered and left out: one rectangle for two quiet weeks.</strong><p>One rectangle a week keeps the weeks countable, which is the point of the calendar.</p></li>
+    </ul>
+  </section>
+
+  <section class="section">
+    <span class="eyebrow">4 · Revised</span>
+    <h2>Weekday letters, both ends of the week, a lane for labels</h2>
+    <div class="frame">
+      <div class="summary"><span><b>15</b> working days left, counting today</span><span class="warn"><b>0 of 4</b> quotes in</span></div>
+      <div class="cal" id="revised"></div>
+    </div>
+    <p class="note">Boerne Retail Shell has something in every week, so it keeps four weeks of squares. Helotes, buying out with no start date, shows its quiet weeks as rectangles and the open end dashed red.</p>
+    <div class="frame">
+      <div class="summary"><span class="r"><b>No start date yet</b></span></div>
+      <div class="cal" id="buyout"></div>
+    </div>
+  </section>
+</main>
+
+<script>
+  const add = (iso, n) => { const d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10) }
+  const dow = (iso) => (new Date(iso + 'T12:00:00Z').getUTCDay() + 6) % 7
+  const M = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  const short = (iso) => `${M[+iso.slice(5, 7) - 1]} ${+iso.slice(8)}`
+  const range = (mon) => { const sun = add(mon, 6); return iso2(mon, sun) }
+  const iso2 = (a, b) => a.slice(5, 7) === b.slice(5, 7) ? `${short(a)} – ${+b.slice(8)}` : `${short(a)} – ${short(b)}`
+
+  function draw(el, cfg, revised) {
+    const { from, to, today, days, openEnd } = cfg
+    for (let mon = add(from, -dow(from)); mon <= (openEnd ? add(today, 13) : to); mon = add(mon, 7)) {
+      const week = Array.from({ length: 7 }, (_, i) => add(mon, i))
+      const busy = week.some((d) => days[d] || d === today)
+      const w = document.createElement('div'); w.className = 'wk'
+      const head = document.createElement('div'); head.className = 'wk-h'
+      if (!busy) {
+        head.textContent = revised ? '' : `Week of ${short(mon)}`
+        w.appendChild(head)
+        if (revised) { const sp = document.createElement('div'); sp.className = 'letters'; sp.style.height = '12px'; w.appendChild(sp) }
+        const q = document.createElement('div'); q.className = 'quiet'
+        const past = add(mon, 6) < today
+        const isOpen = openEnd && mon > today
+        if (past) q.classList.add('past')
+        if (isOpen && revised) q.classList.add('open')
+        q.textContent = range(mon)
+        w.appendChild(q)
+        const lbl = document.createElement('div'); lbl.className = 'qlbl'
+        if (revised) { lbl.textContent = isOpen ? 'No start date' : past ? 'nothing came in' : '5 working days'; if (isOpen) lbl.style.color = 'var(--red)' }
+        w.appendChild(lbl)
+        el.appendChild(w)
+        continue
+      }
+      head.textContent = revised ? range(mon) : `Week of ${short(mon)}`
+      w.appendChild(head)
+      if (revised) {
+        const letters = document.createElement('div'); letters.className = 'letters'
+        'MTWTFSS'.split('').forEach((c, i) => { const s = document.createElement('span'); s.textContent = c; if (i >= 5) s.className = 'we'; letters.appendChild(s) })
+        w.appendChild(letters)
+      }
+      const row = document.createElement('div'); row.className = 'days'
+      const labels = []
+      let x = 0
+      week.forEach((d, i) => {
+        const sq = document.createElement('div'); sq.className = 'sq' + (i >= 5 ? ' we' : '')
+        const info = days[d] || {}
+        if (d < from || d > to) sq.classList.add('out')
+        else if (info.kind === 'due') sq.classList.add('due')
+        else if (info.kind === 'close') sq.classList.add('close')
+        else if (d === today) sq.classList.add('today')
+        else if (d < today) sq.classList.add('past')
+        sq.textContent = +d.slice(8)
+        if (info.tag) { const t = document.createElement('span'); t.className = 'tag'; t.textContent = info.tag; sq.appendChild(t) }
+        if (info.quotes) { const ds = document.createElement('span'); ds.className = 'dots'; for (let k = 0; k < info.quotes; k++) ds.appendChild(document.createElement('i')); sq.appendChild(ds) }
+        row.appendChild(sq)
+        const width = i >= 5 ? 18 : 34
+        const words = [info.label, d === today ? 'Today' : null].filter(Boolean)
+        if (words.length) labels.push({ x: x + width / 2, words: words.join(' · '), cls: d === today && !info.label ? 't' : info.kind === 'due' ? 'r' : info.kind === 'close' ? 'a' : 'n', today: d === today })
+        x += width + 4
+      })
+      w.appendChild(row)
+      const lane = document.createElement('div'); lane.className = 'lane'
+      if (!revised) lane.parentElement
+      let lastRight = -Infinity, row2 = false
+      labels.forEach((l) => {
+        if (revised && l.today && l.words === 'Today') { /* today label lives in the lane too */ }
+        const s = document.createElement('span'); s.className = l.cls
+        s.innerHTML = l.words.replace(' · quotes wanted', '<br>quotes wanted')
+        s.style.left = l.x + 'px'
+        const w2 = l.words.length * 5.4
+        if (revised && l.x - w2 / 2 < lastRight + 4) { s.classList.add('r2'); row2 = !row2 } else lastRight = l.x + w2 / 2
+        lane.appendChild(s)
+      })
+      if (!revised) lane.classList.add('bad')
+      w.appendChild(lane)
+      el.appendChild(w)
+    }
+  }
+  const padB = { from: '2026-10-01', to: '2026-10-22', today: '2026-10-02', days: { '2026-10-01': { label: 'Pricing set' }, '2026-10-19': { label: 'Questions close · quotes wanted', kind: 'close' }, '2026-10-22': { label: 'Bid due', kind: 'due' } } }
+  draw(document.getElementById('draft'), padB, false)
+  draw(document.getElementById('revised'), padB, true)
+  draw(document.getElementById('buyout'), { from: '2026-09-14', to: '2026-10-16', today: '2026-10-02', openEnd: true, days: {} }, true)
+</script>
