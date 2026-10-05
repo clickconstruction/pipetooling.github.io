@@ -67,8 +67,6 @@ export function GcWeeklyReportCard({ state, project, dispatch }: { state: GcStat
   )
 }
 
-const box: CSSProperties = { ...input, height: 30, boxSizing: 'border-box', padding: '0 0.45rem' }
-
 function Seg<T extends string>({ label, value, options, onChange }: { label: string; value: T; options: { v: T; words: string; off?: boolean; title?: string }[]; onChange: (v: T) => void }) {
   return (
     <div style={{ display: 'grid', gap: '0.2rem' }}>
