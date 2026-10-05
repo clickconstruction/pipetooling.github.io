@@ -87,7 +87,9 @@ export function SubmittalSourcesPanel({ takeoffFixtures, takeoffWithProduct, sch
               <button type="button" disabled={busy} onClick={onPlugIn} style={{ ...((scheduleTags === 0 && takeoffFixtures === 0) || stale ? btnPrimary : btn), alignSelf: 'flex-start' }} title="Type or paste the tags from the plans, one per line" data-testid="plug-in-schedule" data-tour="submittals-plug-in">
                 {scheduleTags === 0 ? 'Type or paste the schedule' : 'Add to the schedule'}
               </button>
-              {!t && scheduleTags === 0 ? <RobotOffer kind="read_schedule" seat={robotSeat} hasPlans={hasPlans} busy={busy} onAsk={onAskRobot} testId="ask-robot-schedule" tour="submittals-robot" /> : null}
+              {/* The header's old door to Pricing: with a schedule and nothing picked yet, the compare is where each tag gets its product. */}
+                    {scheduleTags > 0 && picks === 0 && onOpenCompare ? <button type="button" disabled={busy} onClick={onOpenCompare} style={{ ...btnQuiet, textDecoration: 'underline', fontSize: '0.78rem', alignSelf: 'flex-start' }} data-testid="open-compare-from-schedule">Pick the products on Pricing</button> : null}
+                    {!t && scheduleTags === 0 ? <RobotOffer kind="read_schedule" seat={robotSeat} hasPlans={hasPlans} busy={busy} onAsk={onAskRobot} testId="ask-robot-schedule" tour="submittals-robot" /> : null}
             </div>
           )
         })()}

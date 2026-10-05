@@ -257,7 +257,8 @@ describe('BidsSubmittalsTab', () => {
     state.writes = []
     mount()
     expect(await screen.findByText('No submittal on this bid yet')).toBeTruthy()
-    expect(screen.getByText(/3 tags on the schedule · 3 picked lines/)).toBeTruthy()
+    // One header line: the counts live on step 1 and in the Next line below.
+    expect(screen.getByTestId('revision-line').textContent).toBe('Submittals · plumbing fixtures & equipment · no submittal on this bid yet')
     // v2.4067: the journey strip offers the same door above the card; either one builds.
     expect(screen.getByTestId('journey-next').textContent).toBe('Next: 3 tags on the schedule and 3 lines picked. Ready to build Rev 1, the first version.Build Rev 1 from the picks')
     fireEvent.click(screen.getAllByRole('button', { name: 'Build Rev 1 from the picks' })[1] as HTMLElement)
@@ -377,8 +378,10 @@ describe('BidsSubmittalsTab', () => {
     if (typeof window.matchMedia !== 'function') window.matchMedia = (() => ({ matches: false, addEventListener: () => {}, removeEventListener: () => {} })) as unknown as typeof window.matchMedia
     Element.prototype.scrollIntoView = () => {}
     mount()
-    const link = await screen.findByTestId('submittal-words')
-    expect(link.textContent).toBe('Words on this page')
+    // The words page is the second choice of the title's one Help menu.
+    fireEvent.click(await screen.findByTestId('submittal-help'))
+    const link = screen.getByTestId('submittal-words')
+    expect(link.textContent).toBe('Words on this pageCut sheet, revision, tag and 12 more.')
     const folded = screen.getByTestId('road-5').getAttribute('data-open')
     expect(folded).toBe('false')
     fireEvent.click(link)
@@ -396,9 +399,15 @@ describe('BidsSubmittalsTab', () => {
     if (typeof window.matchMedia !== 'function') window.matchMedia = (() => ({ matches: false, addEventListener: () => {}, removeEventListener: () => {} })) as unknown as typeof window.matchMedia
     Element.prototype.scrollIntoView = () => {}
     mount()
-    expect(await screen.findByTestId('road-1-about')).toBeTruthy()
-    // A fresh bid draws stages 1 and 2; the rest come with Rev 1.
-    for (const n of [1, 2]) expect(screen.getByTestId(`road-${n}-about`).textContent).toContain(SUBMITTAL_STAGE_ABOUT[n])
+    await screen.findByTestId('road-1')
+    // A fresh bid draws stages 1 and 2; the rest come with Rev 1. A folded stage is one line: its sentence and its ? show once it is open.
+    for (const n of [1, 2]) {
+      if (screen.getByTestId(`road-${n}`).getAttribute('data-open') !== 'true') {
+        expect(screen.queryByTestId(`road-${n}-about`)).toBeNull()
+        fireEvent.click(screen.getByTestId(`road-${n}-caret`))
+      }
+      expect(screen.getByTestId(`road-${n}-about`).textContent).toContain(SUBMITTAL_STAGE_ABOUT[n])
+    }
     fireEvent.click(screen.getByRole('button', { name: 'Walk me through step 2' }))
     expect(screen.getByRole('dialog').getAttribute('aria-label')).toMatch(/Build Rev 1/)
     fireEvent.click(screen.getByRole('button', { name: 'Skip tour' }))
@@ -554,12 +563,18 @@ describe('BidsSubmittalsTab', () => {
     ]
     state.writes = []
     mount()
-    const rows = await screen.findAllByTestId('submittal-row')
-    expect(rows).toHaveLength(3)
-    expect(screen.getByTestId('revision-line').textContent).toMatch(/Rev 1 · draft · Sep 1[45] · 3 rows · 1 as specified · 1 alternate · 1 without a reason · 1 missing · 1 of 2 sheets in/)
-    const tiles = screen.getByTestId('submittal-tiles').textContent ?? ''
-    expect(tiles).toBe('3 rows. 1 still needs a reason. 1 still needs a product. 1 still needs a cut sheet.')
+    await screen.findAllByTestId('submittal-row')
+    // One header line: the revision and what the submittal is. The counts are step 3's.
+    expect(screen.getByTestId('revision-line').textContent).toMatch(/^Rev 1 · draft · Sep 1[45] · Plumbing fixtures & equipment$/)
+    // Open, step 3 says what is left as its filter chips; folded, as its one-line summary.
+    expect(screen.queryByTestId('submittal-tiles')).toBeNull()
+    expect(within(screen.getByTestId('row-filters')).getAllByRole('button').map((b) => b.textContent)).toEqual(['All 3', 'Need a reason 1', 'Need a cut sheet 1', 'No product 1'])
+    fireEvent.click(screen.getByTestId('road-3-caret'))
+    expect(screen.getByTestId('submittal-tiles').textContent).toBe('3 rows. 1 still needs a reason. 1 still needs a product. 1 still needs a cut sheet.')
     expect(screen.getByTestId('submittal-tiles').getAttribute('title')).toMatch(/1 alternate · 1 without a reason · 1 missing · 1 of 2 sheets in/)
+    fireEvent.click(screen.getByTestId('road-3-caret'))
+    const rows = screen.getAllByTestId('submittal-row')
+    expect(rows).toHaveLength(3)
     expect(within(rows[0]!).getByText('say why')).toBeTruthy()
     expect(within(rows[0]!).getByText('sheet needed')).toBeTruthy()
     expect(within(rows[2]!).getByText(/✓ p\.1–2/)).toBeTruthy()
@@ -931,7 +946,8 @@ describe('BidsSubmittalsTab', () => {
     try {
       mount()
       await screen.findByTestId('draft-catch-up')
-      fireEvent.click(screen.getAllByRole('button', { name: 'Walk me through it ▶' })[0] as HTMLElement)
+      fireEvent.click(screen.getByTestId('submittal-help'))
+      fireEvent.click(screen.getByTestId('submittal-help-walk'))
       const titles: string[] = []
       for (let i = 0; i < 14; i++) {
         const dialog = screen.queryByRole('dialog')
@@ -1175,7 +1191,8 @@ describe('BidsSubmittalsTab', () => {
     try {
       mount()
       expect(await screen.findByText('No submittal on this bid yet')).toBeTruthy()
-      expect(document.querySelector('[data-tour="submittals-source"]')?.textContent).toContain('4 fixtures on the takeoff · no schedule yet · choose from the takeoff')
+      // The header no longer repeats step 1: the takeoff's count and its door are on the takeoff card below.
+      expect(document.querySelector('[data-tour="submittals-source"]')?.textContent).toBe('Submittals · plumbing fixtures & equipment · no submittal on this bid yet')
       expect(screen.getByTestId('journey-next').textContent).toBe('Next: The takeoff has 4 fixtures. 3 of them have a part. Pick what the GC sees, then build Rev 1 from them. You can type the plans’ schedule later. Then each row is checked against it.Choose from the takeoff')
       expect(screen.getByTestId('source-takeoff').textContent).toContain('The takeoff · 4 fixtures, 3 with a part')
       expect(screen.getByTestId('choose-from-takeoff').textContent).toBe('Choose from the takeoff')
@@ -1464,6 +1481,7 @@ describe('BidsSubmittalsTab', () => {
       expect(state.items.filter((r) => r.submittal_id === 'rev-2').map((r) => r.tag)).toEqual(['LAV-1', 'FCO', 'UTILITY SINK'])
       // 2026-10-03 · the words follow the revision: pill 2 and steps 2 and 7 say Rev 2 and Rev 3, and the replaced draft reads answered, not superseded.
       await waitFor(() => expect(screen.getByRole('button', { name: /^2 Rev 2 · / })).toBeTruthy())
+      for (const n of [2, 7]) if (screen.getByTestId(`road-${n}`).getAttribute('data-open') !== 'true') fireEvent.click(screen.getByTestId(`road-${n}-caret`))
       expect(screen.getByTestId('road-2-about').textContent).toContain('Rev 2 is the version you are working on.')
       expect(screen.getByTestId('road-7-about').textContent).toContain('Start Rev 3 with them and the rows with no answer yet.')
       await waitFor(() => expect(screen.getAllByTestId('revision-chip').map((c) => c.textContent)).toEqual([expect.stringMatching(/^Rev 2 · draft · /), 'Rev 1 · answered Oct 2']))

@@ -185,11 +185,15 @@
 
 <div class="wrap">
   <header class="head">
-    <div class="eyebrow">Bids → Submittals · findings 10, 11 and 12 · drawn Oct 5, 2026</div>
+    <div class="eyebrow">Bids → Submittals · findings 10, 11 and 12 · drawn Oct 5, 2026 · built the same day</div>
     <h1>Three redraws for the Submittals tab</h1>
     <p class="verdict">Each one was drawn, then asked one question: is this the best we can do? The answer changed all three. What you open below is the second draft.</p>
-    <p class="lede">The “Current” side of each window is the live SpaceX bid (BP375) as it looked this morning, read only, nothing changed. The “After” side is a drawing. Nothing here is built.</p>
+    <p class="lede">The “Current” side of each window is the live SpaceX bid (BP375) as it looked on the morning of Oct 5, read only, nothing changed. The “After” side is the drawing the build was made from.</p>
   </header>
+
+  <section class="plan" style="border-left:4px solid var(--green)">
+    <p><b>Where this stands.</b> All three are built, in the order you gave: 12 as v2.4537, 11 as v2.4542, 10 as v2.4543. The drawings below are left as they were drawn. Each item says where the build differs.</p>
+  </section>
 
   <section class="band">
     <h2>The three redraws</h2>
@@ -200,6 +204,7 @@
           <h3>The top of the tab says each thing once</h3>
           <p>Today the takeoff count is written three times, the revision twice and the row counts twice. There are twelve help doors on the screen. The redraw gives each fact one home and help one door.</p>
           <div class="tally"><span>Lines above step 1 <b>9</b> → <span class="to">6</span></span><span>Help doors <b>12</b> → <span class="to">6</span></span><span>Facts written more than once <b>4</b> → <span class="to">0</span></span></div>
+          <p class="muted" style="font-size:13px"><b class="grn">Shipped · v2.4543.</b> As built: the revision’s name is still on the header line and on its switch in step 2, because the switch is a control. Walk me through it in the Help menu starts at the first step. The rows table gained a “Need a reason” count so nothing the old header counted is lost.</p>
         </div>
         <button class="open" data-open="r10">Open the before and after</button>
       </div>
@@ -209,6 +214,7 @@
           <h3>A rows table shaped for a takeoff bid</h3>
           <p>Three of nine columns never hold anything on a bid built from the takeoff. The GC’s answers are squeezed into 102 pixels, away from the parts they are about. On a phone the table is a 273 pixel window onto a 1,251 pixel sheet.</p>
           <div class="tally"><span>Columns <b>9</b> → <span class="to">5</span></span><span>Cells that are always a dash <b>28</b> → <span class="to">0</span></span><span>Phone: sideways scrolling → <span class="to">a card per fixture</span></span></div>
+          <p class="muted" style="font-size:13px"><b class="grn">Shipped · v2.4542.</b> As built: Split stays a visible button, since it only shows on a row that can split. Only Part of… and × went behind ⋯. The row’s count, like “1 of 3 rejected”, stays under the tag. The words “sheet needed” were kept.</p>
         </div>
         <button class="open" data-open="r11">Open the before and after</button>
       </div>
@@ -218,6 +224,7 @@
           <h3>An Edit window that fits on one screen</h3>
           <p>A lavatory with eight parts takes twenty four lines and two screens of scrolling. Nothing in a part has a heading. The part the GC rejected looks like every other part.</p>
           <div class="tally"><span>Lines for 8 parts <b>24</b> → <span class="to">8</span></span><span>Three-way switches <b>8</b> → <span class="to">0</span></span><span>Scrolling <b>2 screens</b> → <span class="to">about 1</span></span></div>
+          <p class="muted" style="font-size:13px"><b class="grn">Shipped · v2.4537.</b> As built: the window is 1,040 px wide, not 940, so a part name has 384 px. On a phone a part is three short lines with every field showing, not two with the stage behind a tap. LAV-1 went from 1,459 px of content to 747.</p>
         </div>
         <button class="open" data-open="r12">Open the before and after</button>
       </div>
@@ -225,13 +232,13 @@
   </section>
 
   <section class="plan">
-    <h2>If you build them</h2>
+    <h2>The order they were built in</h2>
     <ol>
       <li><b>12 first.</b> It is the window she opens most, and it stands alone. One file changes.</li>
       <li><b>11 second.</b> The rows table became its own small file in yesterday’s split, so this touches that file and nothing around it.</li>
       <li><b>10 last.</b> It is the smallest gain and it moves lines the walkthrough points at, so its stops need checking after.</li>
     </ol>
-    <p class="muted" style="font-size:13.5px">Each is a medium piece of work with its own release note and guide update. We agreed earlier to wait for the estimator’s first week before building them. That still helps most for 11: her week will show which columns she reads on a bid that does have a schedule.</p>
+    <p class="muted" style="font-size:13.5px">Each shipped as its own change with a release note and a guide update. Her first week will still show which columns she reads on a bid that has a schedule. That shape of the table kept Specified and Status for that reason.</p>
   </section>
 </div>
 
