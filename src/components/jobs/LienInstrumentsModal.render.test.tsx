@@ -236,17 +236,39 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
   it('Download PDF says it is downloading at its resting width, then goes back (v2.4584)', async () => {
     renderWithProviders(<LienInstrumentsModal {...baseProps} job={job()} />)
     const btn = await screen.findByRole('button', { name: /^Download PDF · \d+ documents$/ })
-    expect(btn.getAttribute('data-download-phase')).toBe('idle')
+    expect(btn.getAttribute('data-action-phase')).toBe('idle')
     fireEvent.click(btn)
-    expect(btn.getAttribute('data-download-phase')).toBe('busy')
+    expect(btn.getAttribute('data-action-phase')).toBe('busy')
     expect(btn.textContent).toContain('Downloading…')
     // The resting words stay in the layout, hidden, so the button does not change size.
     expect(btn.textContent).toMatch(/Download PDF · \d+ documents/)
     expect((btn as HTMLButtonElement).disabled).toBe(true)
     // The hold is deliberate (1.5 s, then 2 s of Downloaded); a build that fails in jsdom returns at once.
-    await waitFor(() => expect(btn.getAttribute('data-download-phase')).toBe('idle'), { timeout: 6000 })
+    await waitFor(() => expect(btn.getAttribute('data-action-phase')).toBe('idle'), { timeout: 6000 })
     expect((btn as HTMLButtonElement).disabled).toBe(false)
   }, 10000)
+
+  it('Print packet says it is opening at its resting width, and a blocked popup puts it straight back (v2.4584)', async () => {
+    renderWithProviders(<LienInstrumentsModal {...baseProps} job={job()} />)
+    const btn = await screen.findByRole('button', { name: 'Print packet' })
+    expect(btn.getAttribute('data-action')).toBe('print')
+    fireEvent.click(btn)
+    expect(btn.getAttribute('data-action-phase')).toBe('busy')
+    expect(btn.textContent).toContain('Opening…')
+    expect(btn.textContent).toContain('Print packet')
+    await waitFor(() => expect(btn.getAttribute('data-action-phase')).toBe('idle'), { timeout: 6000 })
+  }, 10000)
+
+  it('the email sheet’s Send keeps its words in the layout, and the footer’s Email button is the same kind of button', async () => {
+    renderWithProviders(<LienInstrumentsModal {...baseProps} job={job({ gc_customer_id: null, gcCustomer: null, bill_to_party: 'customer' })} />)
+    await waitFor(() => expect(screen.getByText(/the customer on the job/)).toBeTruthy())
+    const foot = screen.getByRole('button', { name: 'Email with the PDF…' })
+    expect(foot.getAttribute('data-action-phase')).toBe('idle')
+    fireEvent.click(foot)
+    const send = screen.getByRole('button', { name: /^Send · \d+ documents$/ })
+    expect(send.getAttribute('data-action')).toBe('email-send')
+    expect(send.getAttribute('data-action-phase')).toBe('idle')
+  })
 
   it('unticking the delivery record drops Exhibit C from the letter and the preview', async () => {
     renderWithProviders(<LienInstrumentsModal {...baseProps} job={job()} />)
