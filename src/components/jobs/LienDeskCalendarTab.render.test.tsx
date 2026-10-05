@@ -52,7 +52,7 @@ const rows: LienCalendarJob[] = [
 
 /** A job's row on the board, found by its number. */
 function rowOf(number: string): HTMLElement {
-  return screen.getByRole('button', { name: new RegExp(`^${number}`) }).closest('[role="row"]') as HTMLElement
+  return screen.getByText(number).closest('[role="row"]') as HTMLElement
 }
 
 /** The Overdue section's bar (the pill of the same name filters instead). */
@@ -133,7 +133,7 @@ describe('LienDeskCalendarTab', () => {
     expect(guest.getAttribute('data-closed-here')).toBe('true')
     expect(within(guest).getByTestId('lien-cal-row-money').textContent).toContain('still owed')
     // Its property's own job comes first, the overdue one after it, then the GC's other property.
-    expect(within(next).getAllByRole('row').map((r) => r.querySelector('button')?.textContent?.match(/^\d+ PLUM/)?.[0])).toEqual(['890 PLUM', '226 PLUM', '881 PLUM'])
+    expect(within(next).getAllByRole('row').map((r) => r.textContent?.match(/^\d+ PLUM/)?.[0])).toEqual(['890 PLUM', '226 PLUM', '881 PLUM'])
     // The GC's money is its notices only.
     expect(within(next).getByText(/2 notices owed · 1 window closed/)).toBeTruthy()
     // Overdue opened under All lists only the job with nothing ahead at its property.
@@ -153,9 +153,9 @@ describe('LienDeskCalendarTab', () => {
     mount({ rows: [...rows, closed], isMobile: true })
     const next = within(screen.getByTestId('lien-cal-phone')).getByTestId('lien-cal-bucket-next_month')
     expect(within(next).getAllByTestId('lien-cal-property').map((p) => p.textContent)).toEqual(['628 Terrell Rd', 'Other properties'])
-    const guest = within(next).getByText('Older Terrell job').closest('button') as HTMLElement
+    const guest = within(next).getByText('Older Terrell job').closest('[role="row"]') as HTMLElement
     expect(guest.getAttribute('data-closed-here')).toBe('true')
-    expect([...next.querySelectorAll('button[data-closed-here], button:not([aria-expanded])')].map((b) => b.textContent?.match(/^\d+ PLUM/)?.[0]).filter(Boolean)).toEqual(['890 PLUM', '226 PLUM', '881 PLUM'])
+    expect(within(next).getAllByRole('row').map((r) => r.textContent?.match(/^\d+ PLUM/)?.[0])).toEqual(['890 PLUM', '226 PLUM', '881 PLUM'])
   })
 
   it('groups: the GC row folds its flags with a count, its jobs draw their marks; Overdue opens to its rows', () => {
@@ -240,7 +240,7 @@ describe('LienDeskCalendarTab', () => {
 
   it('a row and a hollow flag open the job; the search narrows the buckets and their counts', () => {
     const { onOpen } = mount()
-    fireEvent.click(screen.getByRole('button', { name: /^890 PLUM/ }))
+    fireEvent.click(within(rowOf('890 PLUM')).getByRole('button', { name: /^Rizvi/ }))
     expect(onOpen).toHaveBeenCalledWith('a')
     fireEvent.click(within(rowOf('881 PLUM')).getByRole('button', { name: /A § 53.056 notice is owed for August 2026/ }))
     expect(onOpen).toHaveBeenLastCalledWith('b')
@@ -340,6 +340,37 @@ describe('the pen (v2.4153)', () => {
     await waitFor(() => expect(onChanged).toHaveBeenCalledWith('promise'))
     expect(screen.queryByTestId('lien-cal-pen')).toBeNull()
   })
+  it('the job number is its own door: it opens the job, and the rest of the row still opens the Lien window (v2.4531)', () => {
+    const onOpenJobWindow = vi.fn()
+    const { onOpen } = mount({ onOpenJobWindow })
+    const number = within(rowOf('890 PLUM')).getByRole('button', { name: '890 PLUM' })
+    expect(number.getAttribute('title')).toBe('Open the job: its history, its bills and Edit')
+    fireEvent.click(number)
+    expect(onOpenJobWindow).toHaveBeenCalledWith('a')
+    expect(onOpen).not.toHaveBeenCalled()
+    // The name, and the address line under it, open the Lien window as before.
+    fireEvent.click(within(rowOf('890 PLUM')).getByRole('button', { name: /^Rizvi/ }))
+    expect(onOpen).toHaveBeenCalledTimes(1)
+    fireEvent.click(within(rowOf('890 PLUM')).getByText(/628 Terrell Rd/))
+    expect(onOpen).toHaveBeenCalledTimes(2)
+    expect(onOpenJobWindow).toHaveBeenCalledTimes(1)
+    cleanup()
+    // On a phone too.
+    const phoneJob = vi.fn()
+    const phone = mount({ onOpenJobWindow: phoneJob, isMobile: true })
+    fireEvent.click(within(screen.getByTestId('lien-cal-phone')).getByRole('button', { name: '890 PLUM' }))
+    expect(phoneJob).toHaveBeenCalledWith('a')
+    expect(phone.onOpen).not.toHaveBeenCalled()
+    fireEvent.click(within(screen.getByTestId('lien-cal-phone')).getByText('Rizvi'))
+    expect(phone.onOpen).toHaveBeenCalledWith('a')
+  })
+
+  it('with no door for the job, the number is plain and nothing about the row changes', () => {
+    mount()
+    expect(screen.queryByTestId('lien-cal-job-no')).toBeNull()
+    expect(within(rowOf('890 PLUM')).queryByRole('button', { name: '890 PLUM' })).toBeNull()
+  })
+
   it('without the pen the dot opens the job', () => {
     const { onOpen } = mount()
     fireEvent.click(screen.getByRole('button', { name: 'Record when Ana Garza expects to pay · 512 PLUM' }))
@@ -391,10 +422,10 @@ describe('the pen (v2.4153)', () => {
       fireEvent.click(lens)
       expect(lens.getAttribute('aria-pressed')).toBe('true')
       expect(within(screen.getByTestId('lien-cal-pills')).getByRole('button', { name: /^All · 2 jobs/ })).toBeTruthy()
-      expect(screen.queryByRole('button', { name: /^881 PLUM/ })).toBeNull()
-      expect(screen.getByRole('button', { name: /^890 PLUM/ })).toBeTruthy()
+      expect(screen.queryByText('881 PLUM')).toBeNull()
+      expect(screen.getByText('890 PLUM')).toBeTruthy()
       fireEvent.click(lens)
-      expect(screen.getByRole('button', { name: /^881 PLUM/ })).toBeTruthy()
+      expect(screen.getByText('881 PLUM')).toBeTruthy()
     })
 
     it('draws no lens when no job on the board owes a house', () => {
@@ -406,7 +437,7 @@ describe('the pen (v2.4153)', () => {
 
     it('a phone row carries the money at the right of its dates', () => {
       mount({ supplierMarks: marks, isMobile: true })
-      const row = screen.getByRole('button', { name: /^890 PLUM/ })
+      const row = rowOf('890 PLUM')
       expect(row.querySelector('[data-lien-supplier-mark]')?.textContent).toContain('$1,670')
     })
   })

@@ -151,6 +151,8 @@ export type LienDeskModalProps = {
   calendarRows?: ReadonlyArray<LienCalendarJob> | null
   /** A Calendar row opens the job's Lien window. */
   onOpenCalendarJob?: (jobId: string) => void
+  /** A Calendar row's job number opens the job itself (v2.4531): the Job window, with its history and Edit. */
+  onOpenJob?: (jobId: string) => void
   /** The Calendar's pen wrote something (v2.4153): a pay date, or a property kind — the Pipeline re-reads what changed. */
   onCalendarChanged?: (what: 'promise' | 'kind') => void
   /** Open on a pile — the Dashboard's missed-window line lands on the Missed lens (v2.3679). */
@@ -244,6 +246,7 @@ export default function LienDeskModal({
   initialKind,
   calendarRows,
   onOpenCalendarJob,
+  onOpenJob,
   onCalendarChanged,
   initialPile,
   onPutGcOnNotice,
@@ -2119,6 +2122,7 @@ export default function LienDeskModal({
               isMobile={isMobile}
               canWrite={office}
               onOpenJob={(jobId) => (onOpenCalendarJob ?? onOpenLienInstruments)(jobId)}
+              onOpenJobWindow={onOpenJob}
               onOpenEditJob={(jobId) => onOpenEditJob(jobId, 'property-record')}
               onChanged={(what) => {
                 onChanged()
