@@ -250,6 +250,50 @@ describe('AiaG702G703Modal', () => {
     await waitFor(() => expect(linkBox.value).toBe('https://docs.google.com/spreadsheets/d/abc123/edit'))
   })
 
+  it('names a saved application, shows the name in the list, and renames or clears it on a later save', async () => {
+    setWide(true)
+    renderWithProviders(<AiaG702G703Modal open onClose={() => undefined} job={job} hcpForFilename="1023" />)
+    await waitFor(() => expect(field('g702_h18_original_contract_sum').value).toBe('48500'))
+    const nameBox = screen.getByLabelText(/^NAME/) as HTMLInputElement
+
+    // A save with no name leaves the column alone.
+    fireEvent.change(field('g702_n5_project'), { target: { value: '1' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(saveSpy).toHaveBeenCalledTimes(1))
+    expect('name' in saveSpy.mock.calls[0]![0]).toBe(false)
+
+    // Typing a name makes the form unsaved; Save writes it and the list shows it.
+    fireEvent.change(nameBox, { target: { value: 'Sent to the GC' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(saveSpy).toHaveBeenCalledTimes(2))
+    expect(saveSpy.mock.calls[1]![0].name).toBe('Sent to the GC')
+    expect(saveSpy.mock.calls[1]![1]).toBe('new-1')
+    await waitFor(() => expect(screen.getByTestId('aia-applications').textContent).toContain('1 · Sent to the GC'))
+
+    // Renaming is the same box and Save.
+    fireEvent.change(nameBox, { target: { value: 'Revised after the walk' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(saveSpy).toHaveBeenCalledTimes(3))
+    expect(saveSpy.mock.calls[2]![0].name).toBe('Revised after the walk')
+    await waitFor(() => expect(screen.getByTestId('aia-applications').textContent).toContain('1 · Revised after the walk'))
+
+    // Clearing it writes the empty name, so the old one does not stay.
+    fireEvent.change(nameBox, { target: { value: '' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(saveSpy).toHaveBeenCalledTimes(4))
+    expect(saveSpy.mock.calls[3]![0].name).toBe('')
+  })
+
+  it('opens a new application with no name, whatever the last one was called', async () => {
+    setWide(true)
+    onJob = [{ ...savedOne(), name: 'Sent to the GC' }]
+    renderWithProviders(<AiaG702G703Modal open onClose={() => undefined} job={job} hcpForFilename="1023" />)
+    await waitFor(() => expect(field('g702_n5_project').value).toBe('2'))
+    expect((screen.getByLabelText(/^NAME/) as HTMLInputElement).value).toBe('')
+    fireEvent.click(screen.getByRole('button', { name: /^1 · Sent to the GC/ }))
+    await waitFor(() => expect((screen.getByLabelText(/^NAME/) as HTMLInputElement).value).toBe('Sent to the GC'))
+  })
+
   it('starts the next application from the last one saved', async () => {
     setWide(true)
     onJob = [savedOne()]

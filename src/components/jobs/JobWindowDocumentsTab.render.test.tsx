@@ -163,6 +163,14 @@ describe('JobWindowDocumentsTab', () => {
     expect(loadSpy).toHaveBeenCalledTimes(2)
   })
 
+  it('shows a saved application\'s name beside its number', async () => {
+    onJob = [{ ...app(1, 19400, 0, 0), name: 'Sent to the GC' }, app(2, 9700, 19400, 17460)]
+    renderWithProviders(<JobWindowDocumentsTab job={job} />)
+    const rows = await screen.findAllByTestId('job-documents-pay-app')
+    expect(rows[0]!.textContent).toContain('1 · Sent to the GC')
+    expect(screen.getAllByTestId('job-documents-pay-app-name')).toHaveLength(1)
+  })
+
   it('marks an application that no longer matches the one before it, with its reason', async () => {
     // Application 1 now reads 21,000 of work; 2 and 3 went out on 19,400.
     onJob = [app(1, 21000, 0, 0), app(2, 9700, 19400, 17460, '', 'It went out this way on Nov 2.'), app(3, 4850, 29100, 26190)]
