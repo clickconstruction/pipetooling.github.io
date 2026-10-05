@@ -16,7 +16,8 @@ describe('reviewDecisions', () => {
   ]
   it('summarizes: decided, the three kinds, the open differing rows, who decided', () => {
     const s = summarizeDecisions(items)
-    expect(s).toEqual({ decided: 3, approved: 1, revise: 1, rejected: 1, open: 1, noAnswer: 3, sentBack: 2, byName: ['Dana W.', 'Tom R.'], entered: 0, enteredBy: [] })
+    // Of the three rows with no answer, PRV-1 has no product: there is nothing on it for the reviewer to answer.
+    expect(s).toEqual({ decided: 3, approved: 1, revise: 1, rejected: 1, open: 1, noAnswer: 3, noProduct: 1, sentBack: 2, byName: ['Dana W.', 'Tom R.'], entered: 0, enteredBy: [] })
     expect(describeDecisions(s)).toBe('1 approved · 1 revise · 1 rejected · by Dana W., Tom R.')
     expect(describeDecisions(summarizeDecisions([it_({})]))).toBe('')
   })

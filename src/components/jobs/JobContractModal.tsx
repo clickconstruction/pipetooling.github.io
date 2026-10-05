@@ -59,6 +59,8 @@ import {
   jobContractIsEditable,
   jobContractIsLive,
   jobContractSignatureAuditLine,
+  jobContractSignatureBlocks,
+  jobContractSignersAuditLine,
   jobContractSigningUrl,
   jobContractStatus,
   type JobContractRow,
@@ -71,7 +73,7 @@ import { effectiveWindowWay, emailLooksValid, jobTakesTheirSubcontract, phoneLoo
 import JobContractSigningRail from './JobContractSigningRail'
 import JobContractPaper from './JobContractPaper'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
-import { frameAsSignerRow, framesLabel, framesProgress, signerFrames } from '../../lib/jobs/jobContractSigners'
+import { frameAsSignerRow, framesLabel, framesProgress, joinSignerNames, signerFrames, signerNamesLine } from '../../lib/jobs/jobContractSigners'
 
 type TemplateRow = Pick<
   Database['public']['Tables']['contract_template_documents']['Row'],
@@ -559,6 +561,12 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
     setBusy('preview')
     try {
       const issuer = getPhysicalInvoiceIssuerForDocument()
+      // v2.4590: the blocks the editor holds — a second signer named here prints a second block.
+      const blocks = jobContractSignatureBlocks(
+        liveRow
+          ? { ...liveRow, recipient_name: recipientName, co_signer_name: coSigner.name }
+          : { id: '', signed_at: null, signer_printed_name: null, signer_mode: null, signer_consented_at: null, recipient_name: recipientName, co_signer_name: coSigner.name },
+      )
       const html = buildJobContractDocumentHtml({
         heading: jobContractHeading(job),
         jobNumber,
@@ -571,10 +579,7 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
         termsHtml: renderContractBodyToSafeHtml(liveRow && !editable ? liveRow.body_html : bodyHtml, liveRow && !editable ? liveRow.body_format : bodyFormat),
         templateName: liveRow && !editable ? liveRow.template_name : templateName,
         issuer: issuer.companyName ? issuer : null,
-        signature:
-          liveRow && liveRow.signed_at
-            ? { printedName: liveRow.signer_printed_name ?? '', auditLine: jobContractSignatureAuditLine(liveRow) ?? '' }
-            : null,
+        ...blocks,
       })
       if (!openHtmlPreviewWindow(html)) showToast('Allow pop-ups to preview the contract.', 'error')
     } finally {
@@ -597,7 +602,7 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
       termsHtml: renderContractBodyToSafeHtml(row.body_html, row.body_format),
       templateName: row.template_name,
       issuer: issuer.companyName ? issuer : null,
-      signature: row.signed_at ? { printedName: row.signer_printed_name ?? '', auditLine: jobContractSignatureAuditLine(row) ?? '' } : null,
+      ...jobContractSignatureBlocks(row),
     })
     if (!openHtmlPreviewWindow(html)) showToast('Allow pop-ups to view the contract.', 'error')
   }
@@ -816,6 +821,8 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
           template_name: liveRow && !editable ? liveRow.template_name : (payload.template_name ?? null),
           recipient_name: payload.recipient_name ?? null,
           revision: liveRow?.revision ?? 1,
+          // v2.4590: the second signer's own Sign and Date rules — a homestead page needs both spouses.
+          co_signer_name: payload.co_signer_name ?? null,
         },
       })
       saveBytesAsFile(bytes, filename)
@@ -938,7 +945,7 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
     sentAt: liveRow?.last_sent_at ?? liveRow?.sent_at ?? null,
     viewCount: liveRow?.view_count ?? 0,
     signedAt: signedView ? ('row' in signedView ? signedView.row.signed_at : estimateRow?.acceptor_consented_at ?? signedView.coverage.signedAt) : null,
-    signerName: signedView ? ('row' in signedView ? signedView.row.signer_printed_name : estimateRow?.acceptor_printed_name ?? signedView.coverage.signerName) : null,
+    signerName: signedView ? ('row' in signedView ? signerNamesLine(signedView.row) : estimateRow?.acceptor_printed_name ?? signedView.coverage.signerName) : null,
     signedVerb: signedView && !('row' in signedView) ? 'Accepted' : 'Signed',
     frames: liveRow ? framesLabel(liveRow) : '',
     signedOnFile,
@@ -1063,13 +1070,14 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
               }}
               signature={
                 shownRow?.signed_at
-                  ? { printedName: shownRow.signer_printed_name ?? '', auditLine: jobContractSignatureAuditLine(shownRow) ?? '', imageUrl: recordUrls.signatureUrl }
+                  ? jobContractSignatureBlocks(shownRow, { signatureUrl: recordUrls.signatureUrl }).signature
                   : paperRow?.signer_printed_name && paperRow.signer_consented_at
                     ? { printedName: paperRow.signer_printed_name, auditLine: jobContractSignatureAuditLine(frameAsSignerRow(signerFrames(paperRow)[0]!)) ?? '', imageUrl: recordUrls.signatureUrl }
                     : null
               }
               filed={filedDoc}
-              coSigner={paperRow ? { name: paperRow.co_signer_name ?? '', email: paperRow.co_signer_email ?? '' } : coSigner}
+              // A paper record's signatures are on the scan: no open second frame beside it (v2.4590).
+              coSigner={paperRow ? (paperRow.signer_mode === 'paper' ? { name: '', email: '' } : { name: paperRow.co_signer_name ?? '', email: paperRow.co_signer_email ?? '' }) : coSigner}
               setCoSigner={
                 paperEditable
                   ? (v) => {
@@ -1125,7 +1133,7 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
                   <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.4rem 0.6rem', borderBottom: '1px solid var(--border)', fontSize: '0.78rem' }}>
                     <span style={{ flex: 1, minWidth: 0 }}>
                       rev {r.revision} · {r.template_name ?? 'Contract'}
-                      {r.signed_at ? ` · ${jobContractSignatureAuditLine(r) ?? ''}` : r.last_sent_at ? ` · sent ${formatContractStamp(r.last_sent_at) ?? ''}` : ` · ${formatContractStamp(r.created_at) ?? ''}`}
+                      {r.signed_at ? ` · ${jobContractSignersAuditLine(r) ?? ''}` : r.last_sent_at ? ` · sent ${formatContractStamp(r.last_sent_at) ?? ''}` : ` · ${formatContractStamp(r.created_at) ?? ''}`}
                     </span>
                     {jobContractChips(r).map((chip) => (
                       <span key={chip.label} style={{ ...jobContractChipColors(chip.tone), padding: '0.05rem 0.45rem', borderRadius: 999, fontWeight: 600, whiteSpace: 'nowrap' }}>
@@ -1241,7 +1249,7 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
         <JobContractFileSheet
           layout="sheet"
           jobId={job.id}
-          defaultSignerName={recipientName.trim() || (job.customer_name ?? '').trim()}
+          defaultSignerName={joinSignerNames([recipientName.trim() || (job.customer_name ?? '').trim(), coSigner.name])}
           existingDraft={liveRow && (jobContractStatus(liveRow) === 'draft' || isAwaitingPaperCopy(liveRow)) ? liveRow : null}
           basePayload={buildRowPayload()}
           onFiled={() => void onPaperFiled()}

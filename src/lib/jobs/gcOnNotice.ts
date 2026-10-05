@@ -135,6 +135,42 @@ export function gcNoticeBatchReason(key: GcNoticeReasonKey, note: string): strin
   return n ? `${label} — ${n}` : label
 }
 
+/** The stored reason read back into the window's two fields; null when it is not one of the window's reasons. */
+export function parseGcNoticeBatchReason(text: string | null | undefined): { reason: GcNoticeReasonKey; note: string } | null {
+  const t = (text ?? '').trim()
+  if (!t) return null
+  for (const r of GC_NOTICE_REASONS) {
+    const label = r.label.replace(/…$/, '')
+    if (t === label) return { reason: r.key, note: '' }
+    if (t.startsWith(`${label} — `)) return { reason: r.key, note: t.slice(label.length + 3).trim() }
+  }
+  return null
+}
+
+/**
+ * What the office saved when it sent a GC's notices to the leader (v2.4571): the reason, the
+ * note, and the cover letter as edited, read back from the drafts waiting on him. The window
+ * opens on these, so the leader reads and approves what the office wrote; before, his window
+ * opened on the defaults and Approve all saved the defaults over the office's drafts.
+ * `kindOf` says which of counsel's letters a job gets. Null when nothing is waiting.
+ */
+export function gcNoticeSavedRun<K extends string>(
+  jobs: ReadonlyArray<Pick<GcNoticeJob, 'jobId' | 'item'>>,
+  kindOf: (jobId: string) => K,
+): { reason: GcNoticeReasonKey | null; note: string; letters: Partial<Record<K, string>>; includeLetter: boolean } | null {
+  const waiting = jobs.filter((j) => j.item?.status === 'awaiting_approval')
+  const drafts = waiting.map((j) => ({ jobId: j.jobId, fields: parseLienDeskDraftFields(j.item?.fields) })).filter((d) => d.fields?.batchReason)
+  if (drafts.length === 0) return null
+  const parsed = parseGcNoticeBatchReason(drafts[0]!.fields!.batchReason)
+  const letters: Partial<Record<K, string>> = {}
+  for (const d of drafts) {
+    const letter = (d.fields!.coverLetter ?? '').trim()
+    const kind = kindOf(d.jobId)
+    if (letter && letters[kind] == null) letters[kind] = letter
+  }
+  return { reason: parsed?.reason ?? null, note: parsed?.note ?? '', letters, includeLetter: Object.keys(letters).length > 0 }
+}
+
 /** A job's months split by window (v2.3818), and the office's per-month figures (v2.3682) when set. */
 export function gcNoticeJobClaim(
   months: ReadonlyArray<GcNoticeMonth>,

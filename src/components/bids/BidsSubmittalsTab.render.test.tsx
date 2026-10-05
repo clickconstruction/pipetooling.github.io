@@ -809,7 +809,9 @@ describe('BidsSubmittalsTab', () => {
     expect(card.textContent).toContain("SUBMITTALS-REVISED.pdf")
     expect(card.textContent).toContain("Dana Whitfield's redlined PDF · dropped Sep 17 by Wendi")
     expect(card.textContent).toContain('1 row entered by hand on this revision')
-    expect((await screen.findByTestId('decisions-line')).textContent).toContain('1 revise · by Dana Whitfield · 1 entered by Wendi')
+    // Step 6 says where it stands and who answered, in plain words.
+    expect((await screen.findByTestId('decisions-line')).textContent).toContain('1sent back')
+    expect(screen.getByTestId('their-call-who').textContent).toBe('Dana Whitfield answered. Wendi typed the answers in on Sep 17.')
     const rows = await screen.findAllByTestId('submittal-row')
     expect(rows[0]!.textContent).toContain('Dana Whitfield · entered by Wendi')
   })
@@ -826,14 +828,17 @@ describe('BidsSubmittalsTab', () => {
     state.noRoom = true
     mount()
     await screen.findAllByTestId('submittal-row')
-    // The door sits over the procurement log, where the rows read Not shared.
-    const door = await screen.findByTestId('procure-approve-all')
-    expect(door.textContent).toContain('2 rows have no call from the reviewer yet, so they are not released. Approved outside the app?')
+    // v2.4581 · the door sits on the procurement log's Next line.
+    const door = await screen.findByTestId('procurement-enter-approval')
+    expect(screen.getByTestId('procurement-next').textContent).toContain('Approved outside the app? Enter their approval…')
     // The same door sits under Their call, a step a draft has not reached: its title opens it.
     fireEvent.click(screen.getByRole('button', { name: /6 · Their call/ }))
     // 2026-10-03 · one row already has an answer, so the entry is for the others.
-    expect(screen.getByTestId('approve-all-open').textContent).toBe('They approved the other 2…')
-    fireEvent.click(within(door).getByRole('button', { name: 'Enter their approval…' }))
+    expect(screen.getByTestId('approve-all-open').textContent).toBe('Mark all 2 approved…')
+    // The two waiting fixtures are named, each a door to Their answer; the one with no product is set apart.
+    expect(screen.getAllByTestId('waiting-fixture').map((b) => b.textContent)).toEqual(['WC-1', 'DWH-1'])
+    expect(screen.getByTestId('their-call-no-product').textContent).toContain('PRV-1 has no product yet')
+    fireEvent.click(door)
     const dialog = await screen.findByRole('dialog', { name: 'They approved Rev 1' })
     expect(within(dialog).getByTestId('approve-all-scope').textContent).toBe('This marks 2 rows Approved in one entry. 1 row already has a call and keeps it. 1 row has no product and is left out.')
     // Nobody is on the room yet, so the reviewer is typed; the button waits for a name and an email.
@@ -857,7 +862,7 @@ describe('BidsSubmittalsTab', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
     expect(state.items.find((r) => r.id === 'a-lav')).toMatchObject({ review_decision: 'revise', reviewed_by_name: 'Dana Whitfield' })
     expect(state.items.find((r) => r.id === 'a-prv')!.review_decision).toBeNull()
-    await waitFor(() => expect(screen.queryByTestId('procure-approve-all')).toBeNull())
+    await waitFor(() => expect(screen.queryByTestId('procurement-enter-approval')).toBeNull())
     const rows = screen.getAllByTestId('submittal-row')
     expect(rows.find((r) => r.textContent?.includes('WC-1'))!.textContent).toContain('Dana Whitfield · entered by Wendi · Sep 12')
     state.noRoom = false
@@ -1533,7 +1538,7 @@ describe('BidsSubmittalsTab', () => {
       const button = await screen.findByTestId('new-revision')
       expect(screen.getByRole('button', { name: '6 Their call · waiting on the reviewer' })).toBeTruthy()
       expect(screen.getByRole('button', { name: '7 Resubmit · you are here' })).toBeTruthy()
-      expect(screen.getByTestId('submittal-journey').textContent).toContain('structura approved 1 and sent 1 back. 2 rows still have no answer. Start a Rev 2 draft to fix what was sent back. The rows with no answer go on it too. Nothing is sent until you share.')
+      expect(screen.getByTestId('submittal-journey').textContent).toContain('structura approved 1 and sent 1 back. 1 row still has no answer. 1 row has no product yet. Start a Rev 2 draft to fix what was sent back. The rows with no answer go on it too. Nothing is sent until you share.')
       // 2026-10-05 · one button where there were two. It says what it does; the line beside it says the rows are chosen next, and that nothing is sent.
       expect(screen.queryByTestId('resubmit-sent-back')).toBeNull()
       expect((button as HTMLButtonElement).disabled).toBe(false)
@@ -1673,7 +1678,10 @@ describe('BidsSubmittalsTab', () => {
       await waitFor(() => expect(screen.getAllByTestId('their-call-head').map((e) => e.textContent)).toEqual(['1 of 3 rejected', 'Rejected']))
       expect(screen.getAllByTestId('their-call-parts').map((e) => e.textContent)).toEqual(['2 with no answer yet'])
       // Step 6 is open: the answers are what the next step reads.
-      expect((await screen.findByTestId('decisions-line')).textContent).toContain('Their call: 1 rejected · 1 with a part rejected · by structura · 2 entered by Wendi')
+      expect((await screen.findByTestId('decisions-line')).textContent).toContain('2sent back')
+      expect(screen.getByTestId('their-call-who').textContent).toContain('structura answered. Wendi typed the answers in')
+      // What came back is named in the step: the part, and the reviewer's words when they gave any.
+      expect(screen.getAllByTestId('sent-back-row')).toHaveLength(2)
     } finally {
       state.parts = []
       state.noSources = false

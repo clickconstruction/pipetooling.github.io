@@ -8,7 +8,7 @@
  */
 import type { LienDeskPile } from './lienDesk'
 
-export type StagesDeepLinkKey = 'followups' | 'gcReview' | 'gcNotice' | 'lienDesk' | 'round' | 'chase' | 'forecast' | 'rtb'
+export type StagesDeepLinkKey = 'followups' | 'gcReview' | 'gcNotice' | 'lienDesk' | 'lienWindow' | 'round' | 'chase' | 'forecast' | 'rtb'
 
 /** The params each door consumes — stripped together, so a door's whole address leaves the URL at once. */
 export const STAGES_DEEP_LINK_PARAMS: Record<StagesDeepLinkKey, readonly string[]> = {
@@ -16,6 +16,7 @@ export const STAGES_DEEP_LINK_PARAMS: Record<StagesDeepLinkKey, readonly string[
   gcReview: ['gcReview'],
   gcNotice: ['gcnotice'],
   lienDesk: ['liendesk', 'liendeskJob', 'liendeskPile', 'kind'],
+  lienWindow: ['lienwindow', 'lientab'],
   round: ['round', 'gc'],
   chase: ['chase'],
   forecast: ['forecast'],
@@ -27,6 +28,17 @@ const LIEN_DESK_PILES: readonly LienDeskPile[] = ['needs_owner', 'to_draft', 'aw
 
 export type StagesLienDeskLink = { jobId: string | null; kind: 'notice' | 'affidavit' | 'timeline'; pile: LienDeskPile | null }
 
+/** The tabs of a job's Lien window a door may land on. */
+export type StagesLienWindowTab = 'demand' | 'notice' | 'affidavit' | 'release_record'
+const LIEN_WINDOW_TABS: readonly StagesLienWindowTab[] = ['demand', 'notice', 'affidavit', 'release_record']
+
+export type StagesLienWindowLink = { jobId: string; tab: StagesLienWindowTab }
+
+/** The address of a job's Lien window on a tab — what a card or a journey step links to. */
+export function lienWindowHref(jobId: string, tab: StagesLienWindowTab = 'demand'): string {
+  return `/jobs?tab=stages&lienwindow=${encodeURIComponent(jobId)}&lientab=${tab}`
+}
+
 export type StagesDeepLinks = {
   /** `?followups=1` (v2.1720): the follow-up deck. */
   followups: boolean
@@ -36,6 +48,8 @@ export type StagesDeepLinks = {
   gcNoticeGcId: string | null
   /** `?liendesk=1` (+ `liendeskJob`, `kind`, `liendeskPile`) (v2.3405): the Lien desk on a job, pane and pile. */
   lienDesk: StagesLienDeskLink | null
+  /** `?lienwindow=<job id>` (+ `lientab`): that job's Lien window on a tab (the demand letter unless named). */
+  lienWindow: StagesLienWindowLink | null
   /** `?round=1` (+ `gc`) (v2.2771): GC Review straight into the round overlay. */
   round: { gcId: string | null } | null
   /** `?chase=1` (v2.2025): payment follow-up call mode. */
@@ -49,6 +63,7 @@ export type StagesDeepLinks = {
 export function parseStagesDeepLinks(search: URLSearchParams): StagesDeepLinks {
   const flag = (k: string) => search.get(k) === '1'
   const kindParam = search.get('kind')
+  const lienWindowJobId = search.get('lienwindow')
   return {
     followups: flag('followups'),
     gcReview: flag('gcReview'),
@@ -60,6 +75,7 @@ export function parseStagesDeepLinks(search: URLSearchParams): StagesDeepLinks {
           pile: LIEN_DESK_PILES.find((p) => p === search.get('liendeskPile')) ?? null,
         }
       : null,
+    lienWindow: lienWindowJobId ? { jobId: lienWindowJobId, tab: LIEN_WINDOW_TABS.find((t) => t === search.get('lientab')) ?? 'demand' } : null,
     round: flag('round') ? { gcId: search.get('gc') || null } : null,
     chase: flag('chase'),
     forecast: flag('forecast'),

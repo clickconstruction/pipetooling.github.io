@@ -214,7 +214,8 @@ serve(async (req) => {
           token,
           plansLink,
         })
-        const sent = await sendEmailViaResend(email, mail.subject, mail.text, mail.html, resendApiKey, { from: COMPANY_EMAIL_FROM, replyTo, cc })
+        // Sent copies (docs/SENT_COPIES.md): the request as the supply house read it is kept, under the bid.
+        const sent = await sendEmailViaResend(email, mail.subject, mail.text, mail.html, resendApiKey, { from: COMPANY_EMAIL_FROM, replyTo, cc, file: { kind: 'rfq', recipientName: house?.name ?? '', bidId, source: { table: 'bid_rfqs', id: rfq.id }, sentBy: userData.user.id } })
         if (sent.success) {
           await admin.from('bid_rfqs').update({ resend_email_id: sent.resendEmailId ?? null }).eq('id', rfq.id)
           results.push({ supplyHouseId: r.supplyHouseId, ok: true })
@@ -257,7 +258,7 @@ serve(async (req) => {
         token: rfq.token as string,
         plansLink: cleanPlansLink(scope.plansLink),
       })
-      const sent = await sendEmailViaResend(rfq.sent_email, mail.subject, mail.text, mail.html, resendApiKey, { from: COMPANY_EMAIL_FROM, replyTo, cc: cleanCc(rfq.sent_cc) })
+      const sent = await sendEmailViaResend(rfq.sent_email, mail.subject, mail.text, mail.html, resendApiKey, { from: COMPANY_EMAIL_FROM, replyTo, cc: cleanCc(rfq.sent_cc), file: { kind: 'rfq_reminder', recipientName: rfq.sent_to ?? '', bidId: rfq.bid_id, source: { table: 'bid_rfqs', id: rfq.id }, sentBy: userData.user.id } })
       if (!sent.success) return json({ error: sent.error ?? 'Send failed' }, 502)
       await admin
         .from('bid_rfqs')
@@ -286,7 +287,7 @@ serve(async (req) => {
         token: rfq.token as string,
         plansLink: cleanPlansLink(scope.plansLink),
       })
-      const sent = await sendEmailViaResend(email, mail.subject, mail.text, mail.html, resendApiKey, { from: COMPANY_EMAIL_FROM, replyTo, cc: cleanCc(rfq.sent_cc) })
+      const sent = await sendEmailViaResend(email, mail.subject, mail.text, mail.html, resendApiKey, { from: COMPANY_EMAIL_FROM, replyTo, cc: cleanCc(rfq.sent_cc), file: { kind: 'rfq_resent', recipientName: rfq.sent_to ?? '', bidId: rfq.bid_id, source: { table: 'bid_rfqs', id: rfq.id }, sentBy: userData.user.id } })
       if (!sent.success) return json({ error: sent.error ?? 'Send failed' }, 502)
       await admin.from('bid_rfqs').update({ sent_email: email, resend_email_id: sent.resendEmailId ?? null }).eq('id', rfq.id)
       return json({ ok: true })

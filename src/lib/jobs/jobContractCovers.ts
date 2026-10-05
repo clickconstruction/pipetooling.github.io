@@ -7,6 +7,7 @@
  * the same customer's other jobs to offer a job that has none. Pure; words follow plainWords.ts.
  */
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
+import { signerNamesLine, type SignerFramesRow } from './jobContractSigners'
 
 /** The rows' group: the shared id, or the row's own id when it was filed alone. */
 export function coversGroupKey(row: { id: string; covers_group_id?: string | null }): string {
@@ -148,7 +149,7 @@ export type PaperRowLike = {
   paper_upload_path: string | null
   covers_group_id?: string | null
   created_at?: string | null
-}
+} & SignerFramesRow
 
 export type CoversPaper = {
   key: string
@@ -184,7 +185,8 @@ export function groupPapers(rows: ReadonlyArray<PaperRowLike>): CoversPaper[] {
       source: newest,
       jobIds: [...new Set(list.map((r) => r.job_id))],
       signedAt: newest.signed_at,
-      signerName: newest.signer_printed_name,
+      // Who signed, in the kernel's words (v2.4590): a filing's typed name today; both, once a filing records two frames.
+      signerName: signerNamesLine(newest) || newest.signer_printed_name,
       documentUrl: (newest.signed_document_url ?? '').trim() || null,
       hasUpload: Boolean((newest.paper_upload_path ?? '').trim()),
     })

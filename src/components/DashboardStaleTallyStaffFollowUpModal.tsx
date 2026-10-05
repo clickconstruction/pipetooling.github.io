@@ -3,6 +3,9 @@ import { supabase } from '../lib/supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import type { Database, Json } from '../types/database'
 import { MercuryTransactionAllocationsModal } from './MercuryTransactionAllocationsModal'
+import MercuryTransactionInvoiceLinkModal from './MercuryTransactionInvoiceLinkModal'
+import { TeamPurchasesSortedList } from './TeamPurchasesSortedList'
+import type { SortedTeamPurchaseRow } from '../lib/teamPurchasesSorted'
 import { PersonOffsetFormModal, type PersonOffsetInitialDraft } from './pay/PersonOffsetFormModal'
 import { parseTallyJobSplitsJson } from '../lib/tallyJobSplits'
 import {
@@ -50,6 +53,31 @@ function mercuryTxRowFromStaffListRow(row: StaleStaffRow): MercuryTxRow {
     duplicate_of_transaction_id: null,
   }
 }
+
+/** A sorted charge in the To sort row's shape, so the Assign window opens on it the same way. */
+function staffListRowFromSorted(row: SortedTeamPurchaseRow): StaleStaffRow {
+  return {
+    target_user_id: row.target_user_id,
+    target_name: row.target_name ?? '',
+    target_email: '',
+    target_phone: '',
+    mercury_transaction_id: row.mercury_transaction_id,
+    posted_at: row.posted_at ?? '',
+    amount: row.amount,
+    counterparty_name: row.counterparty_name ?? '',
+    note: row.note ?? '',
+    mercury_account_id: row.mercury_account_id ?? '',
+    currency: row.currency ?? 'USD',
+    mercury_id: row.mercury_id ?? '',
+    raw: row.raw,
+    job_splits: row.job_splits,
+  } as StaleStaffRow
+}
+
+type FollowUpView = 'all' | 'stale' | 'sorted'
+
+/** How far back the Sorted view reads (days since a charge was last sorted). */
+const SORTED_WINDOW_DAYS = 30
 
 function formatCurrency(n: number): string {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n)
@@ -149,7 +177,12 @@ export function DashboardStaleTallyStaffFollowUpModal({
   const [personOffsetCreateDraft, setPersonOffsetCreateDraft] = useState<PersonOffsetInitialDraft | null>(null)
   const [backchargeBusyTxId, setBackchargeBusyTxId] = useState<string | null>(null)
   // Always fetch the full unlinked set; "stale only" is a client-side filter so toggling is instant.
-  const [staleOnly, setStaleOnly] = useState(false)
+  const [view, setView] = useState<FollowUpView>('all')
+  const staleOnly = view === 'stale'
+  // Sorted (v2.4566): what already left the list, so a charge can be opened again. Null until the
+  // read answers; a refused read (the function not pushed yet) leaves the view off.
+  const [sortedRows, setSortedRows] = useState<SortedTeamPurchaseRow[] | null>(null)
+  const [invoiceRow, setInvoiceRow] = useState<StaleStaffRow | null>(null)
   // Org-wide "hide dev-role transactions" flag (app_settings). The RPC reads the same flag, so
   // this just mirrors the stored value for the dev-only toggle button.
   const [hideDevTransactions, setHideDevTransactions] = useState(false)
@@ -171,6 +204,15 @@ export function DashboardStaleTallyStaffFollowUpModal({
       ])
       setRows(Array.isArray(data) ? (data as StaleStaffRow[]) : [])
       setHideDevTransactions(hideDev)
+      try {
+        const { data: sorted, error: sortedError } = await supabase.rpc(
+          'list_recently_sorted_mercury_transactions_for_tally_staff' as never,
+          { p_days: SORTED_WINDOW_DAYS } as never,
+        )
+        setSortedRows(!sortedError && Array.isArray(sorted) ? (sorted as SortedTeamPurchaseRow[]) : null)
+      } catch {
+        setSortedRows(null)
+      }
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Could not load follow-up list', 'error')
       setRows([])
@@ -201,7 +243,8 @@ export function DashboardStaleTallyStaffFollowUpModal({
       setPersonOffsetNameOptions(null)
       setPersonOffsetCreateDraft(null)
       setBackchargeBusyTxId(null)
-      setStaleOnly(false)
+      setView('all')
+      setInvoiceRow(null)
       return
     }
     void load()
@@ -310,13 +353,13 @@ export function DashboardStaleTallyStaffFollowUpModal({
     function onKeyDown(e: KeyboardEvent) {
       if (e.key !== 'Escape') return
       if (personOffsetFormOpen) return
-      if (allocRow) return
+      if (allocRow || invoiceRow) return
       e.preventDefault()
       onClose()
     }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
-  }, [open, onClose, allocRow, personOffsetFormOpen])
+  }, [open, onClose, allocRow, invoiceRow, personOffsetFormOpen])
 
   if (!open) return null
 
@@ -359,7 +402,9 @@ export function DashboardStaleTallyStaffFollowUpModal({
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
               <h2 id="stale-tally-staff-followup-title" style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600 }}>
                 Team purchases follow-up
-                {!loading && visibleTxCount > 0 ? (
+                {view === 'sorted' ? (
+                  <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.9375rem' }}> · sorted in the last {SORTED_WINDOW_DAYS} days</span>
+                ) : !loading && visibleTxCount > 0 ? (
                   <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.9375rem' }}> · {visibleTxCount} to sort</span>
                 ) : null}
               </h2>
@@ -392,20 +437,22 @@ export function DashboardStaleTallyStaffFollowUpModal({
                 }}
               >
                 {([
-                  { stale: false, label: loading ? 'All' : `All (${rows.length})` },
-                  { stale: true, label: loading ? 'Stale' : `Stale (${staleCount})` },
-                ] as const).map((opt) => {
-                  const active = staleOnly === opt.stale
+                  { view: 'all', label: loading ? 'To sort' : `To sort (${rows.length})` },
+                  { view: 'stale', label: loading ? 'Stale' : `Stale (${staleCount})` },
+                  ...(sortedRows ? [{ view: 'sorted', label: `Sorted (${sortedRows.length})` } as const] : []),
+                ] as { view: FollowUpView; label: string }[]).map((opt, i) => {
+                  const active = view === opt.view
                   return (
                     <button
-                      key={String(opt.stale)}
+                      key={opt.view}
                       type="button"
                       aria-pressed={active}
-                      onClick={() => setStaleOnly(opt.stale)}
+                      onClick={() => setView(opt.view)}
                       style={{
                         flex: 1,
                         padding: isNarrow ? '0.45rem 0.4rem' : '0.45rem 1rem',
                         border: 'none',
+                        borderLeft: i > 0 ? '1px solid var(--border-strong)' : 'none',
                         cursor: 'pointer',
                         fontSize: '0.8125rem',
                         fontWeight: 600,
@@ -445,14 +492,31 @@ export function DashboardStaleTallyStaffFollowUpModal({
             </div>
             {!isNarrow ? (
               <p style={{ margin: '0.6rem 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                Unlinked Mercury transactions linked via debit card to persons. Open <strong>Assign</strong> to split to
-                jobs. Use <strong>Backcharge</strong> to record a pending person offset.
+                {view === 'sorted' ? (
+                  <>
+                    Card purchases already sorted to a job or matched to invoices. Open one to add an invoice or
+                    change where it went.
+                  </>
+                ) : (
+                  <>
+                    Unlinked Mercury transactions linked via debit card to persons. Open <strong>Assign</strong> to split to
+                    jobs. Use <strong>Backcharge</strong> to record a pending person offset.
+                  </>
+                )}
               </p>
             ) : null}
           </div>
           <div style={{ overflowY: 'auto', padding: isNarrow ? '0.65rem 0.65rem 1rem' : '0.85rem 1.25rem 1.25rem' }}>
           {loading ? (
             <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>Loading…</div>
+          ) : view === 'sorted' ? (
+            <TeamPurchasesSortedList
+              rows={sortedRows ?? []}
+              isNarrow={isNarrow}
+              windowDays={SORTED_WINDOW_DAYS}
+              onChangeJobs={(row) => setAllocRow(staffListRowFromSorted(row))}
+              onInvoices={(row) => setInvoiceRow(staffListRowFromSorted(row))}
+            />
           ) : visibleGroups.length === 0 ? (
             <div style={{ padding: '1.25rem', textAlign: 'center', color: 'var(--text-muted)', border: '1px dashed var(--border)', borderRadius: 8 }}>
               {staleOnly && rows.length > 0
@@ -740,6 +804,18 @@ export function DashboardStaleTallyStaffFollowUpModal({
         recentPersonPicksStorageKey={null}
         onSaved={() => {
           setAllocRow(null)
+          void load()
+          onDataChanged?.()
+        }}
+      />
+
+      <MercuryTransactionInvoiceLinkModal
+        open={invoiceRow !== null}
+        onClose={() => setInvoiceRow(null)}
+        transaction={invoiceRow ? mercuryTxRowFromStaffListRow(invoiceRow) : null}
+        tallySelfService
+        tallyActAsUserId={invoiceRow?.target_user_id ?? null}
+        onSaved={() => {
           void load()
           onDataChanged?.()
         }}

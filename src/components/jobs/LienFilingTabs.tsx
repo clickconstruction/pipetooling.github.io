@@ -357,7 +357,7 @@ export default function LienFilingTabs({
         setBusy(false)
       }
     },
-    [busy, job.id, authUser?.id, showToast, onChanged],
+    [busy, job.id, authUser?.id, docUrl, docNote, showToast, onChanged],
   )
 
   /** Email a recipient the notice PDF via the send-lien-filing-email edge fn; returns the resend id. */
@@ -433,7 +433,7 @@ export default function LienFilingTabs({
     } finally {
       setBusy(false)
     }
-  }, [busy, ownerSend, ocSend, ownerEmail, originalContractorEmail, emailNoticeTo, job.id, authUser?.id, openBalance, clock.workMonth, noticeMonths, noticeFields, showToast, onChanged])
+  }, [busy, ownerSend, ocSend, ownerEmail, originalContractorEmail, emailNoticeTo, job.id, authUser?.id, openBalance, clock.workMonth, noticeMonths, noticeFields, docUrl, docNote, showToast, onChanged])
 
   const recordAffidavitFiling = () =>
     insertFiling(
@@ -925,8 +925,8 @@ export default function LienFilingTabs({
             </>
           ) : (
             <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-              Clear the ✗ items above — each links back to where the fix lives (the customer's address book for
-              property facts, the § 53.056 tab for the notice).
+              Clear the ✗ items above. Property facts are fixed in the customer's address book. The notice is
+              recorded on the § 53.056 tab.
             </p>
           )}
         </div>

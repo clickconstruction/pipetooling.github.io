@@ -83,7 +83,7 @@ What the 2,642 lines are at `mapped_at` (f423bd6e5), top to bottom. Regions that
 | Plans-waiting line | 1799–1805 | 7 | **inline** (v2.4165): "N bids are waiting on plans" over `plansWaitingBids` / `plansWaitingWords`, its button opens the Robot Board |
 | Bid Board | 1806–1857 | 52 | `BidsBidBoardTab` |
 | Robot overlays | 1859 | 1 | `BidsRobotOverlays` (v2.3953) |
-| Followup lens bar | 1862–1885 | 24 | `BidsLensBar` over `followupLenses`; the "N need a reason" chip and the caption are its children — v2.3931 |
+| Followup lens bar | 1862–1885 | 24 | `BidsLensBar` over `followupLenses`; the "N need a reason" chip and the caption are its children — v2.3931. The day to call again (`bids.next_followup_on`, kernel `lib/bids/bidNextFollowup.ts`, v2.4420) is the Call queue's; the page hands the Bid Board `contactPersonNameById` (1808) and the Call queue `contactPersons` / `onReloadContactPersons` (1898–1899) for the chip (v2.4421) |
 | Followup lens bodies | 1886–1939 | ~54 | `BidsCallQueueTab`, `BidsWhyWeLostLens`, `BidsWaitingToHearLens`, `BidsJobAccountsLens` |
 | Builder Review / Working / Day book / Bid Costs / Estimators | 1940–2023 | ~84 | extracted children |
 | Counts / Takeoffs / Labor / Pricing / Cover Letter | 2026–2328 | ~303 | prop bags; all but Labor open with `renderBidVersionPicker` (v2.3931) |
@@ -338,6 +338,7 @@ These primitives are touched by many tabs; any extracted piece must be handed th
 
 - **[`BidVersionPicker`](../src/components/bids/BidVersionPicker.tsx)** — drawn by the page-local `renderBidVersionPicker` (1196–1215), called **4×** (Counts, Takeoffs, Pricing, Cover Letter); drives `switchActiveVersion` + rename/delete/first-split and opens the package map.
 - **[`MyBidsToggle`](../src/components/bids/MyBidsToggle.tsx)** — the "only my bids" chip, drawn through `BidPickerSearchRow` in the 9 workflow tabs that take `onlyMyBids`.
+- **[`HideRobotsToggle`](../src/components/bids/HideRobotsToggle.tsx)** — *Hide robots*, drawn by `BidPickerSearchRow` under *Only my bids* while that is off (v2.4511): the list without the ZZ bids (`lib/bids/bidPickerRobots`), one tick for every tab, kept per browser.
 - **[`BidBoardCustomerReviewModal`](../src/components/bids/BidBoardCustomerReviewModal.tsx)** / **[`BidBoardEstimatingHealthSection`](../src/components/bids/BidBoardEstimatingHealthSection.tsx)** — rendered by `BidsBidBoardTab`.
 
 ---

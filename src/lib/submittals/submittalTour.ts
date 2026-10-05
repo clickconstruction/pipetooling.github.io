@@ -115,7 +115,7 @@ export const SUBMITTAL_TOUR_STEPS: SpotlightTourStep[] = [
     // 2026-10-04 · the step itself, not the Share step's link box: it holds the answers whichever way they came.
     anchor: 'submittals-review',
     title: 'Step 6. Their answer',
-    body: 'The GC or the architect answers each row. On the link they tap Approve, Revise or Reject. Their answers show up on your rows. Did they answer by email instead? Tap Their answer on a row and type what they said. Nobody is emailed. Any question they ask on the link lands in your inbox.',
+    body: 'The GC or the architect answers each row. On the link they tap Approve, Revise or Reject. Their answers show up on your rows. Did they answer by email instead? Press the fixture in this step and type what they said. Nobody is emailed. Any question they ask on the link lands in your inbox.',
     missingBody: 'This step fills in when they answer on the link, or when you type their answers on a row.',
   },
   {
@@ -127,7 +127,7 @@ export const SUBMITTAL_TOUR_STEPS: SpotlightTourStep[] = [
   {
     anchor: 'submittals-procure',
     title: 'Step 8. Procure',
-    body: 'This is the order log the GC asks for. Each part gets its own line. To order shows what to buy now. Tick the lines on one order, then mark them ordered. Tap a line to change its house. Red means it will arrive late. Tap Send update to send the GC the changes.',
+    body: 'This is the order log the GC asks for. Each part gets its own line. To order shows what to buy now, one order per date. Press Mark ordered on an order when you place it. Tap a line to change its house. Red means it will arrive late. Tap Send update to send the GC the changes.',
     missingBody: 'The log appears after you build Rev 1. It fills in as the GC approves each part.',
   },
 ]
@@ -181,7 +181,7 @@ export const SUBMITTAL_STAGE_ABOUT: Record<number, string> = {
   3: 'Check each row and its parts. Is it the product the plans asked for? If not, say why. Add its cut sheet, the maker’s page for the product.',
   4: 'One PDF for the GC: the cover table and every cut sheet. A row with no cut sheet yet reads cut sheet to follow.',
   5: 'Get a link and paste it into your email to the GC.',
-  6: 'The GC or the architect answers each row: Approve, Revise or Reject. If they answer by email, type it in with Their answer.',
+  6: 'The GC or the architect answers each fixture: Approve, Revise or Reject. If they answer by email, press the fixture here and type it in.',
   7: 'Rows the GC sent back come here. Start a Rev 2 draft with them and the rows with no answer yet. Rows they approved can stay where they are.',
   8: 'The order log the GC asks for, one line per part: order dates, PO numbers and what is running late.',
 }

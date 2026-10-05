@@ -21,6 +21,8 @@ import DocumentsAddDriveLinkModal, {
 } from '../components/documents/DocumentsAddDriveLinkModal'
 import { openInExternalBrowser } from '../lib/openInExternalBrowser'
 import { type DocumentsPageTab, parseDocumentsPageTabFromSearch } from '../lib/documentsPageTab'
+import { canReadSentCopies } from '../lib/sent/sentCopies'
+import { DocumentsSentLedger } from '../components/documents/DocumentsSentLedger'
 import { labelJobsLedgerStatus, normalizeJobsLedgerStatus } from '../lib/jobsLedgerStatusPipeline'
 import DocumentsJobBilledInvoiceModal from '../components/documents/DocumentsJobBilledInvoiceModal'
 import {
@@ -30,7 +32,7 @@ import {
   type JobLienReleaseRow,
 } from '../lib/jobs/lienReleaseTracking'
 import { lienReleaseChipColors, lienReleaseChips } from '../lib/jobs/lienReleaseLifecycle'
-import { formatContractStamp, jobContractChipColors, jobContractChips, jobContractSignatureAuditLine, type JobContractRow } from '../lib/jobs/jobContractLifecycle'
+import { formatContractStamp, jobContractChipColors, jobContractChips, jobContractSignersAuditLine, type JobContractRow } from '../lib/jobs/jobContractLifecycle'
 import JobContractModal from '../components/jobs/JobContractModal'
 import type { JobWithDetails } from '../types/jobWithDetails'
 import { buildJobContractRecordHtml } from '../components/jobs/JobContractRecordModal'
@@ -1074,7 +1076,7 @@ function DocumentsJobsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
                             )
                           })}
                           {con.signed_at ? (
-                            <span style={{ color: 'var(--text-muted)', marginLeft: '0.5rem', fontSize: '0.85rem' }}>{jobContractSignatureAuditLine(con)}</span>
+                            <span style={{ color: 'var(--text-muted)', marginLeft: '0.5rem', fontSize: '0.85rem' }}>{jobContractSignersAuditLine(con)}</span>
                           ) : con.last_sent_at ? (
                             <span style={{ color: 'var(--text-muted)', marginLeft: '0.5rem', fontSize: '0.85rem' }}>Sent {formatContractStamp(con.last_sent_at)}</span>
                           ) : null}
@@ -1841,6 +1843,9 @@ export default function Documents() {
     documentsAuthRole === 'controller' ||
     documentsAuthRole === 'estimator'
 
+  /** Sent copies are the office's to read (matches sent_documents RLS) — hide the tab for other roles. */
+  const sentTabVisible = canReadSentCopies(documentsAuthRole)
+
   function setDocumentsTab(next: DocumentsPageTab) {
     const nextParams = new URLSearchParams(searchParams)
     nextParams.set('tab', next)
@@ -1897,6 +1902,11 @@ export default function Documents() {
         >
           Supply invoices
         </button>
+        {sentTabVisible ? (
+          <button type="button" style={pageTabStyle(documentsTab === 'sent')} onClick={() => setDocumentsTab('sent')}>
+            Sent
+          </button>
+        ) : null}
         <button type="button" style={pageTabStyle(documentsTab === 'upload')} onClick={() => setDocumentsTab('upload')}>
           Upload
         </button>
@@ -1913,6 +1923,7 @@ export default function Documents() {
       {documentsTab === 'bid-proposals' ? <DocumentsBidProposalsLedger /> : null}
       {documentsTab === 'jobs' ? <DocumentsJobsLedger /> : null}
       {documentsTab === 'supply-invoices' ? <DocumentsSupplyHouseInvoicesLedger /> : null}
+      {documentsTab === 'sent' && sentTabVisible ? <DocumentsSentLedger /> : null}
     </div>
   )
 }

@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { logEmailSendBestEffort } from '../_shared/logEmailSend.ts'
+import { fileSentEmailBestEffort } from '../_shared/fileSentCopy.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { COMPANY_EMAIL_FROM } from '../_shared/emailFrom.ts'
 import { loadPortalReturnUrl } from '../_shared/customerPortalReturnUrl.ts'
@@ -154,6 +155,10 @@ serve(async (req) => {
     const htmlBody = withCard.html
     const textBody = withCard.text
 
+    const attachments: Array<{ filename: string; content: string; content_id?: string }> = [
+      { filename: pdfFilename.replace(/[^a-zA-Z0-9._-]/g, '_'), content: pdfBase64 },
+      ...(qrBase64 ? [{ filename: PORTAL_QR_FILENAME, content: qrBase64, content_id: PORTAL_QR_CONTENT_ID }] : []),
+    ]
     const resendResponse = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -166,10 +171,7 @@ serve(async (req) => {
         subject,
         html: htmlBody,
         text: textBody,
-        attachments: [
-          { filename: pdfFilename.replace(/[^a-zA-Z0-9._-]/g, '_'), content: pdfBase64 },
-          ...(qrBase64 ? [{ filename: PORTAL_QR_FILENAME, content: qrBase64, content_id: PORTAL_QR_CONTENT_ID }] : []),
-        ],
+        attachments,
       }),
     })
     if (!resendResponse.ok) {
@@ -184,6 +186,12 @@ serve(async (req) => {
       .update({ sent_to_customer_at: new Date().toISOString(), sent_channel: 'email', sent_by: user.id })
       .eq('id', releaseId)
       .eq('status', 'signed')
+    // Sent copies (docs/SENT_COPIES.md): the email and the signed release as they went are kept on
+    // the job. After the sent stamp, so keeping the copy never delays it; the email went either way.
+    await fileSentEmailBestEffort(
+      { kind: 'lien_release', jobIds: [jobId], customerId: gcEmail && customerEmailIn.toLowerCase() === gcEmail ? gcId : typeof jl.customer_id === 'string' ? jl.customer_id : null, source: { table: 'job_lien_releases', id: releaseId }, sentBy: user.id },
+      { to: [customerEmailIn], from: COMPANY_EMAIL_FROM, subject, html: htmlBody, attachments, resendEmailId: sent.id ?? null },
+    )
     if (upErr) {
       console.error('send-lien-release-email: sent stamp after send', upErr)
       return jsonResponse(
