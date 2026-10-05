@@ -40,12 +40,15 @@ vi.mock('../../lib/customers/propertyLookupClient', async () => {
   }
 })
 // The desk's writes (v2.4541, the undo): the approve path and its undo are watched; everything else is the real module.
-const io = vi.hoisted(() => ({ saved: 0, printed: [] as Array<{ ids: string[]; userId: string | null }>, approved: [] as string[], undone: [] as Array<{ ids: string[]; userId: string | null }>, policies: [] as Array<{ policy: string; note: string }>, unshared: [] as unknown[] }))
+const io = vi.hoisted(() => ({ saved: 0, drafts: [] as Array<{ itemId: string | null; jobId: string; coverNote: boolean; fields: { batchReason?: string; coverLetter?: string } }>, printed: [] as Array<{ ids: string[]; userId: string | null }>, approved: [] as string[], undone: [] as Array<{ ids: string[]; userId: string | null }>, policies: [] as Array<{ policy: string; note: string }>, unshared: [] as unknown[] }))
 vi.mock('../../lib/jobs/lienDeskIo', async () => {
   const actual = await vi.importActual<typeof import('../../lib/jobs/lienDeskIo')>('../../lib/jobs/lienDeskIo')
   return {
     ...actual,
-    saveLienDeskDraft: async () => `item-${(io.saved += 1)}`,
+    saveLienDeskDraft: async (input: (typeof io.drafts)[number]) => {
+      io.drafts.push(input)
+      return `item-${(io.saved += 1)}`
+    },
     approveLienDeskItem: async (id: string) => void io.approved.push(id),
     markLienDeskItemsPrinted: async (ids: string[], userId: string | null) => void io.printed.push({ ids: [...ids], userId }),
     undoLienDeskApprovals: async (ids: string[], userId: string | null) => {
@@ -128,6 +131,7 @@ afterEach(() => {
   resetPropertyLookupCache()
   confirmMock.mockClear()
   io.saved = 0
+  io.drafts = []
   io.approved = []
   io.printed = []
   io.undone = []
@@ -419,6 +423,28 @@ describe('GcOnNoticeModal', () => {
     await waitFor(() => expect(io.printed).toEqual([{ ids: ['it-994'], userId: 'u1' }]))
     await waitFor(() => expect(onChanged).toHaveBeenCalled())
     expect(refetch).toHaveBeenCalled()
+  })
+
+  it('the leader\u2019s window opens on what the office sent him, and Approve all saves that, not the defaults (v2.4571)', async () => {
+    const base = data()
+    // The office edited the letter and the reason, then pressed Send all to the leader: the draft waits with both.
+    const waiting = {
+      id: 'it-994', job_id: 'j994', kind: 'notice_53_056', status: 'awaiting_approval', months: ['2026-08'], cover_note: true, printed_at: null,
+      fields: { notice: { claimAmount: '18750.00' }, gcEmail: 'ap@harborline.test', batchReason: 'Payment promise broken twice — Dana promised Friday twice', coverLetter: 'THE OFFICE\u2019S OWN LETTER' },
+    } as never
+    const folded = buildGcOnNotice(base.rows, [waiting], (id) => (({ j994: 'on_file', j1016: 'missing', j1002: 'public', j1031: 'on_file' }) as OwnerStates)[id as keyof OwnerStates], TODAY)
+    hookState.data = { ...base, jobs: folded.jobs, summary: folded.summary, desk: { ...base.desk, items: [waiting] } }
+    renderWithProviders(<GcOnNoticeModal {...baseProps} authRole="master_technician" />)
+    await settle()
+    expect((screen.getByLabelText('Reason note') as HTMLInputElement).value).toBe('Dana promised Friday twice')
+    expect((screen.getByRole('radio', { name: 'Payment promise broken twice' }) as HTMLInputElement).checked).toBe(true)
+    fireEvent.click(screen.getByTestId('gc-notice-approve-all'))
+    await waitFor(() => expect(io.drafts.length).toBeGreaterThan(0))
+    const saved = io.drafts.find((d) => d.jobId === 'j994')!
+    expect(saved.itemId).toBe('it-994')
+    expect(saved.fields.coverLetter).toBe('THE OFFICE\u2019S OWN LETTER')
+    expect(saved.fields.batchReason).toBe('Payment promise broken twice — Dana promised Friday twice')
+    expect(saved.coverNote).toBe(true)
   })
 
   it('folds Step 1 to one line once every owner is on the job, and says the unknown property kind once', async () => {

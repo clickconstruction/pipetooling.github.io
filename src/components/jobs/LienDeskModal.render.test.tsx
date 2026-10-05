@@ -62,9 +62,10 @@ vi.mock('../../lib/jobs/propertyKindWrite', () => ({
 const startTwoMock = vi.fn()
 const gcOkayMock = vi.fn()
 const ownerCallMock = vi.fn()
+const clearPrintedMock = vi.fn()
 vi.mock('../../lib/jobs/lienDeskIo', async () => {
   const actual = await vi.importActual<typeof import('../../lib/jobs/lienDeskIo')>('../../lib/jobs/lienDeskIo')
-  return { ...actual, startLetterTwo: (input: unknown) => startTwoMock(input), noteGcAuthorizedDirectPay: (...args: unknown[]) => gcOkayMock(...args), noteOwnerCall: (...args: unknown[]) => ownerCallMock(...args) }
+  return { ...actual, clearLienDeskItemPrinted: (id: string) => clearPrintedMock(id), startLetterTwo: (input: unknown) => startTwoMock(input), noteGcAuthorizedDirectPay: (...args: unknown[]) => gcOkayMock(...args), noteOwnerCall: (...args: unknown[]) => ownerCallMock(...args) }
 })
 vi.mock('../../lib/jobs/ownerConfirmWrite', () => ({
   confirmOwnerForProperty: (input: unknown) => confirmMock(input),
@@ -176,6 +177,25 @@ describe('LienDeskModal', () => {
     renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} />)
     await settle()
     expect(screen.queryByTestId('lien-owner-records-door')).toBeNull()
+  })
+
+  it('a printed notice has a footer: the run to record the mailing, and Back to ready; the header counts it (v2.4568)', async () => {
+    clearPrintedMock.mockReset()
+    clearPrintedMock.mockResolvedValue(undefined)
+    const printed = {
+      id: 'it1', job_id: 'j650', kind: 'notice_53_056', months: ['2026-06', '2026-07', '2026-08'], status: 'approved', fields: {}, cover_note: true, drafted_by: 'u-taunya', drafted_at: '2026-09-14T14:00:00Z', submitted_at: '2026-09-14T14:12:00Z', approved_by: 'u-malachi', approved_at: '2026-09-14T15:00:00Z', approval_mode: 'leader', word_note: '', word_channel: '', printed_at: '2026-09-14T16:00:00Z',
+    } as unknown as LienDeskItemRow
+    const onChanged = vi.fn()
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650, [printed], true)} initialJobId="j650" initialKind="notice" onChanged={onChanged} />)
+    await settle()
+    // Nothing is Ready to send, one is printed: the header still offers the run, counting what the run lists.
+    expect(screen.getByRole('button', { name: 'Send the run · 1' })).toBeTruthy()
+    const footer = document.querySelector('[data-lien-desk-printed-footer]') as HTMLElement
+    expect(footer.textContent).toContain('Printed September 14, 2026 · in the mail.')
+    expect(within(footer).getByRole('button', { name: /Record the mailing · 1/ })).toBeTruthy()
+    fireEvent.click(within(footer).getByRole('button', { name: 'Back to ready' }))
+    await waitFor(() => expect(clearPrintedMock).toHaveBeenCalledWith('it1'))
+    await waitFor(() => expect(onChanged).toHaveBeenCalled())
   })
 
   it('lists the job under Needs the owner, blocks the send, and offers the Find the owner door', async () => {

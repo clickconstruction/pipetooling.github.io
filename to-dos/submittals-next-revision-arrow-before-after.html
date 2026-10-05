@@ -1,0 +1,130 @@
+<meta charset="utf-8">
+<title>Next Revision Arrow</title>
+<style>
+  /* Layout: the Submittals steps as they are, then with the loop arrow in the left gutter, stacked at the screen's own width; then the rules. Drawn in the app's tokens. */
+  :root {
+    --page: #f0f2f5; --surface: #ffffff; --subtle: #f9fafb; --muted-bg: #f3f4f6; --bg-200: #e5e7eb;
+    --border: #cfd4db; --border-strong: #aab2bd;
+    --strong: #111827; --base: #1a1a1a; --muted: #6b7280; --faint: #8a93a1;
+    --link: #2563eb; --amber: #b45309; --red: #b91c1c; --green: #15803d; --violet: #7c3aed;
+    --blue-tint: #eff6ff; --border-blue: #bfdbfe; --blue-700: #1d4ed8; --blue: #2563eb;
+    --green-tint: #f0fdf4; --amber-tint: #fffbeb; --red-tint: #fef2f2; --violet-tint: #f3effe;
+    --save: #16a34a; --bar: #5f6b7a; --bar-after: #1d4ed8; --on-bar: #ffffff;
+    --scrim: rgba(17,24,39,0.55);
+    --shadow: 0 6px 18px rgba(0,0,0,0.10);
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    --page: #111827; --surface: #1f2937; --subtle: #18212f; --muted-bg: #374151; --bg-200: #4b5563;
+    --border: #374151; --border-strong: #56606f;
+    --strong: #f9fafb; --base: #f3f4f6; --muted: #9ca3af; --faint: #8892a3;
+    --link: #60a5fa; --amber: #fbbf24; --red: #f87171; --green: #4ade80; --violet: #a78bfa;
+    --blue-tint: #1e3358; --border-blue: #1e40af; --blue-700: #93c5fd; --blue: #3b82f6;
+    --green-tint: #12301f; --amber-tint: #3a2a0c; --red-tint: #3b1414; --violet-tint: #2a2147;
+    --save: #16a34a; --bar: #4b5563; --bar-after: #1e40af; --on-bar: #ffffff;
+    --scrim: rgba(0,0,0,0.65);
+    --shadow: 0 6px 18px rgba(0,0,0,0.45); color-scheme: dark;
+  } }
+  :root[data-theme="dark"] {
+    --page: #111827; --surface: #1f2937; --subtle: #18212f; --muted-bg: #374151; --bg-200: #4b5563;
+    --border: #374151; --border-strong: #56606f;
+    --strong: #f9fafb; --base: #f3f4f6; --muted: #9ca3af; --faint: #8892a3;
+    --link: #60a5fa; --amber: #fbbf24; --red: #f87171; --green: #4ade80; --violet: #a78bfa;
+    --blue-tint: #1e3358; --border-blue: #1e40af; --blue-700: #93c5fd; --blue: #3b82f6;
+    --green-tint: #12301f; --amber-tint: #3a2a0c; --red-tint: #3b1414; --violet-tint: #2a2147;
+    --save: #16a34a; --bar: #4b5563; --bar-after: #1e40af; --on-bar: #ffffff;
+    --scrim: rgba(0,0,0,0.65);
+    --shadow: 0 6px 18px rgba(0,0,0,0.45); color-scheme: dark;
+  }
+  body { background: var(--page); color: var(--base); font-family: var(--sans); font-size: 15px; line-height: 1.5; margin: 0; }
+  .wrap { max-width: 900px; margin: 0 auto; padding-inline: 16px; padding-block: 28px 56px; display: flex; flex-direction: column; gap: 20px; }
+  .eyebrow { font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  h1 { margin: 0; font-size: 24px; line-height: 1.2; color: var(--strong); }
+  h2 { margin: 0; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  p { margin: 0; max-width: 70ch; }
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 16px 6px; display: flex; flex-direction: column; gap: 12px; }
+  .road { display: grid; grid-template-columns: 34px minmax(0, 1fr); column-gap: 10px; position: relative; }
+  .road.with-loop { grid-template-columns: 26px 34px minmax(0, 1fr); column-gap: 6px; }
+  .road.with-loop .rail { grid-column: 2; }
+  .road.with-loop section { grid-column: 3; }
+  .rail { display: flex; flex-direction: column; align-items: center; }
+  .dot { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 13px; border: 2px solid var(--border-strong); color: var(--muted); background: var(--surface); box-sizing: border-box; }
+  .dot.done { border-color: var(--save); color: var(--green); }
+  .dot.waiting { border-color: #d97706; color: var(--amber); }
+  .dot.current { border-color: var(--blue); background: var(--blue); color: #fff; }
+  .line { flex: 1; width: 2px; min-height: 14px; background: var(--border); }
+  .line.done { background: var(--save); }
+  section { padding: 2px 0 16px; min-width: 0; }
+  .head { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; align-items: baseline; }
+  .head b { font-size: 15px; color: var(--strong); }
+  section.later .head b { color: var(--muted); }
+  .summ { font-size: 13px; color: var(--muted); }
+  .summ.t-green { color: var(--green); } .summ.t-amber { color: var(--amber); }
+  .chip { border: 1px solid var(--blue); color: var(--blue-700); border-radius: 999px; padding: 2px 10px; font-weight: 600; font-size: 12px; }
+  .body { margin-top: 8px; border: 1px solid var(--blue); box-shadow: 0 0 0 3px var(--blue-tint); border-radius: 8px; padding: 10px 12px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .green { background: var(--save); color: #fff; border: 0; border-radius: 6px; padding: 7px 12px; font: inherit; font-weight: 600; font-size: 14px; }
+  .cap { font-size: 13px; color: var(--muted); }
+  /* The loop: one grid item in the new first column, from step 2's dot to step 7's dot. Rows 2 to 6 end at step 7's top, so 15px more reaches its dot's middle. */
+  .loop { grid-column: 1; grid-row: 2 / 7; margin-top: 15px; margin-bottom: -15px; margin-right: -6px; position: relative; border: 2px dashed var(--blue); border-right: 0; border-radius: 10px 0 0 10px; pointer-events: none; }
+  .loop-head { position: absolute; top: -6px; right: -1px; width: 8px; height: 8px; border-top: 2px solid var(--blue); border-right: 2px solid var(--blue); transform: rotate(45deg); }
+  .loop-label { position: absolute; top: 50%; left: -3px; transform: translate(-50%, -50%) rotate(-90deg); white-space: nowrap; font-size: 12px; font-weight: 600; color: var(--blue-700); background: var(--surface); padding: 0 6px; }
+  ul { margin: 0; padding-left: 20px; max-width: 72ch; } li { margin: 4px 0; }
+  @media (max-width: 720px) { .road.with-loop { grid-template-columns: 34px minmax(0, 1fr); column-gap: 10px; } .road.with-loop .rail { grid-column: 1; } .road.with-loop section { grid-column: 2; } .loop { display: none; } }
+</style>
+<div class="wrap">
+  <div>
+    <div class="eyebrow">Bids · Submittals · punch list #84</div>
+    <h1>An arrow from Resubmit back to the next revision</h1>
+  </div>
+  <p>Pressing step 7's button starts the next revision. The page then goes back to step 2, which reads Rev 2, and the work runs 3, 4, 5, 6 again. Nothing on the page shows that loop. The owner drew it by hand on a screenshot and asked for it with the title “next revision”, written vertically.</p>
+
+  <h2>Before · the steps as they are</h2>
+  <div class="panel"><div class="road">
+<div class="rail"><div class="dot done">✓</div><div class="line done"></div></div>
+<section class="done"><div class="head"><b>1 · Where the rows come from</b><span class="summ t-green">26 on the takeoff · no schedule yet</span></div></section>
+<div class="rail"><div class="dot done">✓</div><div class="line done"></div></div>
+<section class="done"><div class="head"><b>2 · Rev 1</b><span class="summ "><span class="chip">Rev 1 · draft · Sep 29</span></span></div></section>
+<div class="rail"><div class="dot later">3</div><div class="line later"></div></div>
+<section class="later"><div class="head"><b>3 · Reasons &amp; cut sheets</b><span class="summ ">14 rows. 6 still need a cut sheet.</span></div></section>
+<div class="rail"><div class="dot later">4</div><div class="line later"></div></div>
+<section class="later"><div class="head"><b>4 · Package</b><span class="summ ">not built for this version yet</span></div></section>
+<div class="rail"><div class="dot later">5</div><div class="line later"></div></div>
+<section class="later"><div class="head"><b>5 · Share</b><span class="summ ">Not shared from the app · answers typed in</span></div></section>
+<div class="rail"><div class="dot waiting">6</div><div class="line waiting"></div></div>
+<section class="waiting"><div class="head"><b>6 · Their call</b><span class="summ t-amber">4 with a part rejected · 9 still open</span></div></section>
+<div class="rail"><div class="dot current">7</div><div class="line current"></div></div>
+<section class="current"><div class="head"><b>7 · Resubmit</b><span class="summ "></span></div><div class="body"><button class="green">Start a Rev 2 draft…</button><span class="cap">The draft starts with every row. Nothing is sent. The GC sees Rev 2 only after you press Share.</span></div></section>
+<div class="rail"><div class="dot later">8</div></div>
+<section class="later"><div class="head"><b>8 · Procure</b><span class="summ ">3 ordered · 3 delivered</span></div></section>
+</div></div>
+
+  <h2>After · the loop, while step 7 is the live step</h2>
+  <div class="panel"><div class="road with-loop">
+<div class="loop" aria-hidden="true"><span class="loop-label">Next revision</span><span class="loop-head"></span></div>
+<div class="rail"><div class="dot done">✓</div><div class="line done"></div></div>
+<section class="done"><div class="head"><b>1 · Where the rows come from</b><span class="summ t-green">26 on the takeoff · no schedule yet</span></div></section>
+<div class="rail"><div class="dot done">✓</div><div class="line done"></div></div>
+<section class="done"><div class="head"><b>2 · Rev 1</b><span class="summ "><span class="chip">Rev 1 · draft · Sep 29</span></span></div></section>
+<div class="rail"><div class="dot later">3</div><div class="line later"></div></div>
+<section class="later"><div class="head"><b>3 · Reasons &amp; cut sheets</b><span class="summ ">14 rows. 6 still need a cut sheet.</span></div></section>
+<div class="rail"><div class="dot later">4</div><div class="line later"></div></div>
+<section class="later"><div class="head"><b>4 · Package</b><span class="summ ">not built for this version yet</span></div></section>
+<div class="rail"><div class="dot later">5</div><div class="line later"></div></div>
+<section class="later"><div class="head"><b>5 · Share</b><span class="summ ">Not shared from the app · answers typed in</span></div></section>
+<div class="rail"><div class="dot waiting">6</div><div class="line waiting"></div></div>
+<section class="waiting"><div class="head"><b>6 · Their call</b><span class="summ t-amber">4 with a part rejected · 9 still open</span></div></section>
+<div class="rail"><div class="dot current">7</div><div class="line current"></div></div>
+<section class="current"><div class="head"><b>7 · Resubmit</b><span class="summ "></span></div><div class="body"><button class="green">Start a Rev 2 draft…</button><span class="cap">The draft starts with every row. Nothing is sent. The GC sees Rev 2 only after you press Share.</span></div></section>
+<div class="rail"><div class="dot later">8</div></div>
+<section class="later"><div class="head"><b>8 · Procure</b><span class="summ ">3 ordered · 3 delivered</span></div></section>
+</div></div>
+
+  <h2>The rules</h2>
+  <ul>
+    <li><b>Only while step 7 is the live step</b>, on the newest revision. That is when rows were sent back and the button is the next thing to do.</li>
+    <li><b>Dashed, in the blue of the “you are here” dot.</b> The solid grey and green rail means the order you work in. The loop must not read as part of it.</li>
+    <li><b>It points at step 2</b>, not step 6. Their call for the new revision comes only after it is shared.</li>
+    <li><b>Hidden at 720 px and under.</b> A phone has no left margin for it. Make this page narrow to see it go.</li>
+    <li><b>Decoration only.</b> It is hidden from screen readers. The button's name and the line beside it already say a draft starts.</li>
+  </ul>
+</div>
