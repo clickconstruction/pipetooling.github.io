@@ -127,7 +127,7 @@ export const SUBMITTAL_TOUR_STEPS: SpotlightTourStep[] = [
   {
     anchor: 'submittals-procure',
     title: 'Step 8. Procure',
-    body: 'This is the order log the GC asks for. Each part gets its own line. To order shows what to buy now. Tick the lines on one order, then mark them ordered. Tap a line to change its house. Red means it will arrive late. Tap Send update to send the GC the changes.',
+    body: 'This is the order log the GC asks for. Each part gets its own line. To order shows what to buy now, one order per date. Press Mark ordered on an order when you place it. Tap a line to change its house. Red means it will arrive late. Tap Send update to send the GC the changes.',
     missingBody: 'The log appears after you build Rev 1. It fills in as the GC approves each part.',
   },
 ]
