@@ -4741,6 +4741,13 @@ button.gcStep:hover > em { text-decoration: underline; }
   .sub-rows-call { order: -1; max-width: none !important; text-align: left !important; }
 }
 
+/* Submittals step 6, what came back: the fixture, its parts and the door to change them line up down
+   the list; on a phone the fixture and its door share a line and the parts sit under them. */
+.sub-call-row { display: grid; grid-template-columns: 9rem minmax(0, 1fr) auto; grid-template-areas: "tag parts edit"; gap: 0.2rem 0.7rem; align-items: baseline; padding: 0.35rem 0; }
+@media (max-width: 720px) {
+  .sub-call-row { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "tag edit" "parts parts"; }
+}
+
 /* Pipeline Billed rows' dates block (v2.4193): the doors underline on hover only. */
 .billedDatesLedger button:hover {
   text-decoration: underline;

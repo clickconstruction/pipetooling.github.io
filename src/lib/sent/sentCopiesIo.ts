@@ -11,7 +11,7 @@
 import { supabase } from '../supabase'
 import { openHtmlPrintWindow, openHtmlWindowWhenReady } from '../jobsDocuments/printWindow'
 import { openInExternalBrowser } from '../openInExternalBrowser'
-import { type SentCopy, type SentCopyBody, type SentCopyStored, type SentFiling, parseSentCopy, sentCopyDoor, sentCopyFrameHtml, sentCopyPath, sentDocumentInsert } from './sentCopies'
+import { type SentCopy, type SentCopyBody, type SentCopyStored, type SentFiling, type SentKindGroup, parseSentCopy, sentCopyDoor, sentCopyFrameHtml, sentCopyPath, sentDocumentInsert, sentKindGroupFilter, sentSearchFilter } from './sentCopies'
 
 /** The private bucket the copies live in: `<sent_documents.id>/<file>`. */
 export const SENT_COPIES_BUCKET = 'sent-documents'
@@ -76,6 +76,24 @@ export function printAndFile(html: string, filing: Omit<SentFiling, 'how'>): boo
   return true
 }
 
+/**
+ * `printAndFile` for a page that needs a moment to build (a signed waiver reads its stored ink
+ * first): the window opens inside the click, prints when the page is ready, and the page that
+ * printed is filed. False when the popup was blocked or the page could not be built.
+ */
+export async function printWhenReadyAndFile(build: () => Promise<string>, filing: Omit<SentFiling, 'how'>): Promise<boolean> {
+  let printed: string | null = null
+  const ok = await openHtmlWindowWhenReady(
+    async () => {
+      printed = await build()
+      return printed
+    },
+    { print: true },
+  )
+  if (ok && printed != null) void fileSentCopy({ ...filing, how: 'print' }, { html: printed })
+  return ok
+}
+
 /** Everything sent about one job, newest first. A read that fails is no rows. */
 export async function loadSentCopiesForJob(jobId: string): Promise<SentCopy[]> {
   try {
@@ -113,5 +131,25 @@ export async function openSentFile(path: string): Promise<boolean> {
     return true
   } catch {
     return false
+  }
+}
+
+/**
+ * Everything sent, newest first, for the Documents page: one group of papers or all of them,
+ * narrowed by what was typed. Self-tests are left out. A read that fails is no rows.
+ */
+export async function loadSentCopies(opts: { group: SentKindGroup | 'all'; typed: string; limit: number }): Promise<SentCopy[]> {
+  try {
+    let q = table().select(SENT_COLS).neq('kind', 'self_test')
+    const group = sentKindGroupFilter(opts.group)
+    if (group?.or) q = q.or(group.or)
+    for (const pattern of group?.notLike ?? []) q = q.not('kind', 'like', pattern)
+    const search = sentSearchFilter(opts.typed)
+    if (search) q = q.or(search)
+    const { data, error } = await q.order('sent_at', { ascending: false }).limit(Math.max(1, Math.min(opts.limit, 1000)))
+    if (error) return []
+    return ((data ?? []) as unknown[]).map(parseSentCopy).filter((r): r is SentCopy => !!r)
+  } catch {
+    return []
   }
 }

@@ -86,6 +86,14 @@ describe('DashboardLienReleaseQueueModal', () => {
     expect(screen.getByText(/across 2 jobs still owed/)).toBeTruthy()
   })
 
+  it('a conditional final reads as one on its chip (v2.4564)', async () => {
+    const base = row()
+    renderWithProviders(<DashboardLienReleaseQueueModal open onClose={noop} rows={[row({ release: { ...base.release, form_type: 'conditional_final' } })]} onChanged={noop} />)
+    await settle()
+    expect(screen.getByText('Conditional · final')).toBeTruthy()
+    expect(screen.queryByText('Conditional · progress')).toBeNull()
+  })
+
   it('shows the all-caught-up line when the queue is empty', async () => {
     renderWithProviders(<DashboardLienReleaseQueueModal open onClose={noop} rows={[]} onChanged={noop} />)
     await settle()

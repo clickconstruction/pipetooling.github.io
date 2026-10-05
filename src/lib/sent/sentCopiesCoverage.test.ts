@@ -22,29 +22,6 @@ const FILES_A_COPY = /lib\/sent\/sentCopiesIo'|from '\.\/sentCopiesIo'/
 
 /** Goes to someone outside the company and keeps no copy yet. Remove a row when the file is wired. */
 const PRINTS_OWED: ReadonlyArray<string> = [
-  'components/bids/BidSubmissionFollowupTab.tsx',
-  'components/bids/BidsCoverLetterTab.tsx',
-  'components/bids/BidsTakeoffTab.tsx',
-  'components/bids/SubmittalProcurementPanel.tsx',
-  'components/jobs/BillQrModal.tsx',
-  'components/jobs/GcFindCheckModal.tsx',
-  'components/jobs/GcOnNoticeModal.tsx',
-  'components/jobs/JobContractRecordModal.tsx',
-  'components/jobs/JobContractSignedRail.tsx',
-  'components/jobs/JobsStagesTab.tsx',
-  'components/jobs/JobsSubLaborFormModal.tsx',
-  'components/jobs/LienDeskModal.tsx',
-  'components/jobs/LienDeskRunModal.tsx',
-  'components/jobs/LienFilingTabs.tsx',
-  'components/jobs/LienReleaseModal.tsx',
-  'components/jobs/WorkOrderAssemblerModal.tsx',
-  'components/jobs/legal/LegalDeskModal.tsx',
-  'components/materials/MaterialsPurchaseOrdersTab.tsx',
-  'components/partnerships/PartnershipAgreementsTab.tsx',
-  'components/settings/ContractReaderModal.tsx',
-  'lib/bidDocuments/costEstimatePage.ts',
-  'lib/bidDocuments/pricingPage.ts',
-  'pages/Jobs.tsx',
 ]
 
 /** Prints that are not a send, each with why. */
@@ -55,6 +32,12 @@ const NOT_A_SEND: Readonly<Record<string, string>> = {
   'lib/sent/sentCopiesIo.ts': 'printAndFile itself: the print that files',
   'lib/jobs/lienNoticePreview.ts': 'the Print button inside a preview page; the send is filed where the notice is sent',
   'components/UserReviewModal.tsx': 'our own review of a teammate',
+  'components/bids/BidSubmissionFollowupTab.tsx': 'a follow-up sheet for our own account managers',
+  'components/bids/BidsTakeoffTab.tsx': 'our own takeoff sheets; the schedule that goes to the GC is filed from the cover letter tab',
+  'components/partnerships/PartnershipAgreementsTab.tsx': 'a partnership notice: kept on the partnership itself (notice_html), never in a list the whole office reads',
+  'components/settings/ContractReaderModal.tsx': 'reading a contract in Settings; a contract that goes to someone is filed where it is sent',
+  'lib/bidDocuments/costEstimatePage.ts': 'our own cost estimate: it holds cost and margin',
+  'lib/bidDocuments/pricingPage.ts': 'our own pricing sheet: it holds cost and margin',
   'components/bids/BidsBuilderReviewTab.tsx': 'a call sheet for our own callers',
   'components/jobs/JobsGcReviewModal.tsx': 'a call sheet for our own callers',
   'components/jobs/JobHoursStoryModal.tsx': 'our own report on a job',

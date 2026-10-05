@@ -124,7 +124,7 @@ A window that closes with nothing recorded is never silent. The Dashboard's lien
 
 Noting a month is not a skip. It records that a person saw the loss, with a name and a date. Then the Dashboard stops naming it. The money is still owed, and it rides on the notice for the open months.
 
-A skipped or missed month stays as a dot under **Earlier months**, shown as {{chip:green|Sent}}, {{chip:yellow|Skipped}} or {{chip:red|Missed}}. Press the dot to open its record. A missed month's record keeps two things apart. The lien is gone for that month's work. The money is still owed, and the notice claims it with the whole balance.
+A skipped or missed month stays as a row in the **Months** grid. A skipped month reads {{chip:yellow|skipped}}, with who skipped it and why. A month whose window closed unsent reads {{chip:red|closed}} with its date. Beside it the row says who noted it, or {{chip:yellow|not noted}}. A missed month's row keeps two things apart. The lien is gone for that month's work. The money is still owed, and the notice claims it with the whole balance.
 
 On the **Affidavits** tab, the job's pane shows **Months the affidavit claims**. Each month reads {{chip:green|on the lien}}, {{chip:blue|window open}} or {{chip:yellow|unsecured}}. A month whose window closed unsent is named and left off the lien. Its share of the money is chased in Collections.
 
@@ -197,6 +197,8 @@ Three steps run across the top of the run.
 3. **Record the mailing.** The button names what it will do, like recording 2 mailed while 1 stays in the pile. Each envelope with a number is recorded now. Each notice is written to its job with every month it covered. The courtesy emails go out, and the row moves to **Sent**. An envelope with no number waits in the mail pile until its number is typed.
 
 With no number on any envelope, the button reads {{button:blue|Record the run ▸}} and records everything. The **Saved copy** boxes above it take a Drive link to the packet as printed.
+
+A printed notice waits on the desk in the mail pile. Open it and press {{button:blue|Record the mailing ▸}} to go back to the run. If it was never mailed, press {{button:outline|Back to ready}}. The approval stands.
 
 A notice recorded without its number is never stuck. Its row under Sent says the tracking is owed, and its footer has a box to add the number. The job's Lien window shows the same. The Dashboard's Needs you counts the mailed notices that still have no number.
 
@@ -291,7 +293,7 @@ The footer says what the run takes. Then the buttons follow the role.
 
 - {{button:green|Approve all N and send the run ▸}} is for a dev or a master technician. Every ready job is approved, the ticks apply and the run opens.
 - {{button:outline|The leader said to send them…}} is for an assistant, a controller or a dev. Type who said it, when and how. Every notice then goes to Ready to send on his word.
-- {{button:blue|Send all N to the leader ▸}} puts one card on the master's Dashboard and in Quickfill. It opens the same window on his phone. Once he approves the set, the office prints the run.
+- {{button:blue|Send all N to the leader ▸}} puts one card on the master's Dashboard and in Quickfill. It opens the same window on his phone. His window shows the cover letter, the reason and the note as you sent them. Once he approves the set, the office prints the run.
 
 :::example Nine jobs, one Tuesday
 Taunya hears that Harborline's Harbor Ridge draw went to another job. She filters the Pipeline to Harborline and opens Put Harborline on notice. Six of the nine owners are missing. The roll finds five, so she presses Use all found and types the sixth. One job is the city's fire station, so it is left out for a bond claim. She picks that the GC is not paying its subs and writes what she heard. She ticks the rule, Winding down and the Legal desk. Then she sends all seven to the leader. Robert approves them from his phone, and the office prints the run.

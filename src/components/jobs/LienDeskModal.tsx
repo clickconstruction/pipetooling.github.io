@@ -63,7 +63,7 @@ import { LienCallerDoor } from './LienCallerDoor'
 import LienDeskCalendarTab from './LienDeskCalendarTab'
 import LienTrackingOwedEditor from './LienTrackingOwedEditor'
 import { sendsTrackingOwed } from '../../lib/jobs/lienSendTracking'
-import { markLienDeskItemsPrinted } from '../../lib/jobs/lienDeskIo'
+import { clearLienDeskItemPrinted, markLienDeskItemsPrinted } from '../../lib/jobs/lienDeskIo'
 import type { LienCalendarJob } from '../../lib/jobs/lienCalendar'
 import { callLetterFactsFor, practiceCallFacts, type CallerJobHit, type CallerMatchInput, type DeskJobRef } from '../../lib/jobs/lienCallerMatch'
 import { DEFAULT_CLAIMANT_NAME } from '../../lib/jobs/lienNoticeDraft'
@@ -87,7 +87,7 @@ import LienTimelineStrip from './LienTimelineStrip'
 import LienDeskTimelineTab from './LienDeskTimelineTab'
 import { useLienTimelineBook } from '../../hooks/useLienTimelineBook'
 import { lienGridHtml, type LienBookShow, type LienTimelineBookRow } from '../../lib/jobs/lienTimelineBook'
-import { printHtmlInNewWindow } from '../../lib/bidDocuments/htmlDoc'
+import { printAndFile } from '../../lib/sent/sentCopiesIo'
 import { buildLienDeskGates, lienGateMonthLine, ownerSourceWords, propertyKindClockWords, type LienGate, type LienGateKey } from '../../lib/jobs/lienDeskGates'
 import { rollMailingLines } from '../../lib/jobs/rollMailingLines'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
@@ -266,8 +266,9 @@ export default function LienDeskModal({
   /** The GCs on the desk right now — the picker behind Put a GC on notice… (v2.3470; rows v2.3817: how soon, what is stuck, nothing-left last). */
   const gcPickerOptions = useMemo(() => buildLienGcPickerOptions(data?.queue.entries ?? [], data?.gcsById ?? {}), [data])
   const [pile, setPile] = useState<LienDeskPile | null>(initialPile ?? null)
+  // Each open starts on the pile its door names, or on every pile (v2.4568): a pile from an earlier door no longer sticks.
   useEffect(() => {
-    if (open && initialPile) setPile(initialPile)
+    if (open) setPile(initialPile ?? null)
   }, [open, initialPile])
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null)
   const [checkedMonths, setCheckedMonths] = useState<ReadonlySet<string> | null>(null)
@@ -491,6 +492,14 @@ export default function LienDeskModal({
     setHoldOpen(null)
     setRulePick(null)
     setWordNote('')
+    // v2.4568: these stayed open, or kept their words, on the next job.
+    setWordChannel('phone')
+    setSkipReason('')
+    setGcOkayOpen(false)
+    setGcOkayNote('')
+    setSignoffOpen(false)
+    setSignoffText('')
+    setLetterTwoMenu(false)
     setWordingEdits({})
     setEditing(null)
     setPaneScrolled(false)
@@ -753,6 +762,7 @@ export default function LienDeskModal({
   const approve = () => run('Approve', async () => void (item && (await approveLienDeskItem(item.id))), 'Approved — it is in the run.')
   const hold = (reason: 'promised' | 'call_first') =>
     run('Hold', async () => void (item && selected && (await holdLienDeskItem(item.id, { reason, until: holdUntilFor(reason, selected.earliestDeadline, promise?.promisedYmd ?? null, todayYmd) }))), 'Held — the desk re-asks before the deadline.')
+  const backToReady = () => run('Back to ready', async () => void (item && (await clearLienDeskItemPrinted(item.id))), 'Back in Ready to send.')
   const pullBack = () => run('Pull back', async () => void (item && (await pullBackLienDeskItem(item.id, authUserId))), 'Back in the office’s drafts.')
   const saveRule = (policy: LienNoticePolicy) =>
     run('Standing rule', async () => void (selected?.gcCustomerId && (await setCustomerLienNoticePolicy(selected.gcCustomerId, policy, ''))), `Rule saved for ${gc?.name ?? 'this GC'}.`)
@@ -839,6 +849,8 @@ export default function LienDeskModal({
   const retSelected = retVisible.find((e) => e.jobId === retSelectedJobId) ?? (!isMobile ? retVisible[0] : undefined) ?? null
   const retCount = retEntries.filter((e) => e.pile !== 'sent').length
   const retReady = data?.retainage.counts.ready ?? 0
+  /** What the run lists (v2.4568): ready and printed notices, and ready retainage. The buttons that open it count the same. */
+  const runCount = (counts?.ready ?? 0) + (counts?.printed ?? 0) + retReady
   const wordSent = entries.filter((e) => e.item?.approval_mode === 'word' && (e.pile === 'ready' || e.pile === 'sent'))
 
   const list = (
@@ -1837,7 +1849,27 @@ export default function LienDeskModal({
             Just this one, from the Lien window ›
           </button>
           <button type="button" onClick={() => setRunOpen(true)} disabled={!office} style={btn('primary', !office)} title="Every approved notice as one packet and one tracking form">
-            Send the run · {counts?.ready ?? 0} ▸
+            Send the run · {runCount} ▸
+          </button>
+        </div>
+      )
+    } else if (state === 'printed') {
+      // v2.4568: a printed notice had no footer at all. The run is where its tracking numbers are typed and the mailing recorded.
+      const printedAt = (selected.item as { printed_at?: string | null } | null)?.printed_at ?? null
+      footer = byHandPane ?? (
+        <div data-lien-desk-printed-footer style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+          <span>
+            Printed{printedAt ? ` ${demandDate(calendarYmdInAppTzFromIso(printedAt))}` : ''} · in the mail. Type its tracking numbers in the run to record it.
+          </span>
+          <span style={{ flex: 1 }} />
+          <button type="button" onClick={backToReady} disabled={!office || busy} style={btn('plain', !office || busy)} title="It was not mailed: put it back in Ready to send. The approval stands">
+            Back to ready
+          </button>
+          <button type="button" onClick={() => setByHandOpen(true)} disabled={!office || busy} style={btn('plain', !office || busy)} data-lien-desk-by-hand title="The paper already went out by hand — record it instead of sending the run">
+            Already mailed? Record it…
+          </button>
+          <button type="button" onClick={() => setRunOpen(true)} disabled={!office} style={btn('primary', !office)} title="The run, where the tracking numbers are typed and the mailing is recorded">
+            Record the mailing · {runCount} ▸
           </button>
         </div>
       )
@@ -2120,13 +2152,13 @@ export default function LienDeskModal({
               ) : null}
             </div>
           ) : null}
-          {kind !== 'affidavit' && office && (counts?.ready ?? 0) + retReady > 0 ? (
+          {kind !== 'affidavit' && office && runCount > 0 ? (
             <button type="button" onClick={() => setRunOpen(true)} style={{ ...btn('primary'), marginLeft: kind === 'notice' && onPutGcOnNotice && gcPickerOptions.length > 0 ? 0 : 'auto' }} title="Every approved notice — monthly and retainage — as one packet and one tracking form">
-              Send the run · {(counts?.ready ?? 0) + retReady}
+              Send the run · {runCount}
             </button>
           ) : null}
           {leader && wordSent.length > 0 ? (
-            <span style={{ marginLeft: office && (counts?.ready ?? 0) > 0 ? 0 : 'auto', fontSize: '0.75rem', color: 'var(--text-muted)' }} title="Notices the office sent on your spoken word">
+            <span style={{ marginLeft: office && runCount > 0 ? 0 : 'auto', fontSize: '0.75rem', color: 'var(--text-muted)' }} title="Notices the office sent on your spoken word">
               Sent on your word: {wordSent.map((e) => jobLabel(data?.jobsById[e.jobId], e.jobId).split(' · ')[0]).join(', ')}
             </span>
           ) : null}
@@ -2164,7 +2196,10 @@ export default function LienDeskModal({
               onShow={setBookShow}
               onOpenRow={openBookRow}
               onOpenJob={onOpenJob}
-              onPrint={(rows, title) => printHtmlInNewWindow(lienGridHtml(rows, { title, todayYmd, companyName: issuer?.companyName ?? '' }))}
+              onPrint={(rows, title) => {
+                // A print counts as a send (docs/SENT_COPIES.md): counsel's grid is filed on every job in it.
+                printAndFile(lienGridHtml(rows, { title, todayYmd, companyName: issuer?.companyName ?? '' }), { kind: 'lien_grid', title, recipientName: 'Counsel', jobIds: rows.map((r) => r.jobId) })
+              }}
             />
           ) : kind === 'affidavit'
             ? (isMobile ? (mobileListShown ? affList : affPane) : (

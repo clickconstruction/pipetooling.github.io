@@ -56,7 +56,7 @@ export type SubmittalJourneyInput = {
   /** The bid's review room once minted. */
   room: { status: string; opens: number; identified: string[] } | null
   /** The revision's reviewer decisions (`summarizeDecisions`). */
-  decisions: { decided: number; approved: number; open: number; sentBack: number; byName: string[]; /** rows with no answer at all: a resubmit carries them beside the rows sent back (2026-10-03) */ noAnswer?: number } | null
+  decisions: { decided: number; approved: number; open: number; sentBack: number; byName: string[]; /** rows with no answer at all: a resubmit carries them beside the rows sent back (2026-10-03) */ noAnswer?: number; /** of those, rows with no product yet: said apart, as step 6 counts them (2026-10-05) */ noProduct?: number } | null
   /** The procurement log (v2.4083): rows released, ordered, delivered, late — null before any row is approved. */
   procurement?: { released: number; ordered: number; delivered: number; late: number } | null
 }
@@ -229,12 +229,15 @@ const nameOf = (d: Decisions) => (d.byName.length > 0 ? d.byName.join(', ') : 'T
 function sentBackNext(revNumber: number, d: Decisions): JourneyNext {
   const by = nameOf(d)
   const waiting = d.noAnswer ?? 0
+  // The page's step 6 counts a row with no product apart from the rows waiting on the reviewer; so does this line.
+  const noProduct = Math.min(d.noProduct ?? 0, waiting)
+  const owed = waiting - noProduct
   // "approved 0 and sent 4 back" read oddly: with nothing approved, say what came back.
   const said = d.approved > 0 ? `${by} approved ${d.approved} and sent ${d.sentBack} back` : `${by} sent ${plural(d.sentBack, 'row')} back`
   return {
     kind: 'next',
     text: waiting > 0
-      ? `${said}. ${plural(waiting, 'row')} still ${waiting === 1 ? 'has' : 'have'} no answer. Start a Rev ${revNumber + 1} draft to fix what was sent back. The rows with no answer go on it too. Nothing is sent until you share.`
+      ? `${said}. ${owed > 0 ? `${plural(owed, 'row')} still ${owed === 1 ? 'has' : 'have'} no answer. ` : ''}${noProduct > 0 ? `${plural(noProduct, 'row')} ${noProduct === 1 ? 'has' : 'have'} no product yet. ` : ''}Start a Rev ${revNumber + 1} draft to fix what was sent back. The rows with no answer go on it too. Nothing is sent until you share.`
       : `${said}. Start a Rev ${revNumber + 1} draft to fix ${d.sentBack === 1 ? 'that row' : 'those rows'}. Nothing is sent until you share.`,
     action: 'resubmit',
     actionLabel: resubmitLabel(revNumber + 1),

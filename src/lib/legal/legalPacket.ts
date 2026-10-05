@@ -251,6 +251,22 @@ export type LegalJobLine = {
   swornMissing: string[]
   /** The largest open billed line — what a write-down or Mark Paid opens on. */
   primaryInvoiceId: string | null
+  /** What is still open on that line (0 when there is none) — ranks the jobs of an account (v2.4570). */
+  primaryInvoiceOpen: number
+}
+
+/**
+ * The account's largest open bill line (v2.4570): the job and line the desk's own Write down…
+ * opens on. Before, it opened on the first job's line, and said there was none when the first
+ * job had no billed line though another did.
+ */
+export function legalLargestOpenLine(jobs: ReadonlyArray<Pick<LegalJobLine, 'jobId' | 'primaryInvoiceId' | 'primaryInvoiceOpen'>>): { jobId: string; invoiceId: string } | null {
+  let best: { jobId: string; invoiceId: string; open: number } | null = null
+  for (const j of jobs) {
+    if (!j.primaryInvoiceId) continue
+    if (!best || j.primaryInvoiceOpen > best.open) best = { jobId: j.jobId, invoiceId: j.primaryInvoiceId, open: j.primaryInvoiceOpen }
+  }
+  return best ? { jobId: best.jobId, invoiceId: best.invoiceId } : null
 }
 
 export type LegalPropertyLine = {
@@ -628,6 +644,7 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
       contract: coverage.get(j.id) ?? { kind: 'none' },
       swornMissing: swornMissingFor(j),
       primaryInvoiceId: openBilled[0]?.id ?? null,
+      primaryInvoiceOpen: openBilled[0]?.open ?? 0,
     }
   })
 
