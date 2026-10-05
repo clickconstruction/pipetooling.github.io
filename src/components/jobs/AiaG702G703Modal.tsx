@@ -47,6 +47,7 @@ import {
 import { PayApplicationLinesNotReady, PayApplicationNumberTaken, deletePayApplication, loadPayApplications, savePayApplication } from '../../lib/aiaPayApplicationsIo'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { BID_STAGE_NAMES, type BidSchedule, crewOfferForLine, crewPercentByStage, scaleLinesToAmount, scheduleGap } from '../../lib/aiaBidSchedule'
+import { type AiaLineSourceKey, aiaLineSources } from '../../lib/aiaLineSources'
 import { loadBidScheduleForJob } from '../../lib/aiaBidScheduleIo'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import AiaG702G703Paper from './AiaG702G703Paper'
@@ -230,6 +231,14 @@ export default function AiaG702G703Modal({
   const [openId, setOpenId] = useState<string | null>(null)
   // The bid's schedule of values, read when the job has a bid and nothing saved: application 1's lines.
   const [bidSchedule, setBidSchedule] = useState<BidSchedule | null>(null)
+  // Where application 1's rows start from: one row, a row per Line Item, or the bid's schedule.
+  const [lineSource, setLineSource] = useState<AiaLineSourceKey>('one')
+  // The job whose saved applications and bid have been read. Until then the form is not this job's yet.
+  const [loadedJobId, setLoadedJobId] = useState<string | null>(null)
+  const lineSources = useMemo(
+    () => (job ? aiaLineSources({ oneLine: buildAiaPrefillLinesFromJob(job), lineItems: 'fixtures' in job ? (job.fixtures ?? []) : [], bidSchedule }) : []),
+    [job, bidSchedule],
+  )
   // What the crew reported per stage, from the job's own stage lines.
   const crew = useMemo(() => (job && 'fixtures' in job ? crewPercentByStage(job.fixtures ?? []) : {}), [job])
   // The form as it was loaded or last saved: what "you typed something" is measured against.
@@ -297,6 +306,15 @@ export default function AiaG702G703Modal({
     [job],
   )
 
+  /** Open a new application as the job gives it, on the start it picks itself: the bid's schedule when there is one, else one row. */
+  const startNew = useCallback(
+    (list: ReadonlyArray<SavedPayApplication>, withFacts: AiaPrefillFacts | null, schedule: BidSchedule | null) => {
+      loadForm(newApplicationValues(list, withFacts, schedule))
+      setLineSource(schedule && list.length === 0 ? 'bid' : 'one')
+    },
+    [loadForm, newApplicationValues],
+  )
+
   /** A saved application as the window holds it. */
   const formOfSaved = (app: SavedPayApplication): PayApplicationForm => ({ values: app.fields, lines: app.lines, splitLaborMaterial: app.splitLaborMaterial })
 
@@ -305,6 +323,7 @@ export default function AiaG702G703Modal({
   useEffect(() => {
     if (!open || !job) return
     let cancelled = false
+    setLoadedJobId(null)
     void (async () => {
       const [, loadedFacts, list] = await Promise.all([
         fetchPhysicalInvoiceIssuerFromAppSettings({ authRole }),
@@ -323,12 +342,13 @@ export default function AiaG702G703Modal({
       const first = initialApplicationNumber == null ? null : list.find((a) => a.applicationNumber === initialApplicationNumber) ?? null
       setOpenId(first?.id ?? null)
       if (first) loadForm({ values: first.fields, lines: first.lines, splitLaborMaterial: first.splitLaborMaterial }, first.link, first.carryReason, first.name)
-      else loadForm(newApplicationValues(list, loadedFacts, schedule))
+      else startNew(list, loadedFacts, schedule)
+      setLoadedJobId(job.id)
     })()
     return () => {
       cancelled = true
     }
-  }, [open, job, authRole, loadForm, newApplicationValues, initialApplicationNumber])
+  }, [open, job, authRole, loadForm, startNew, initialApplicationNumber])
 
   const titleId = 'aia-g702-g703-modal-title'
 
@@ -352,11 +372,36 @@ export default function AiaG702G703Modal({
     if (!(await mayLeave())) return
     setOpenId(app?.id ?? null)
     if (app) loadForm(formOfSaved(app), app.link, app.carryReason, app.name)
-    else loadForm(newApplicationValues(saved, facts, bidSchedule))
+    else startNew(saved, facts, bidSchedule)
   }
 
   /** Back to where this application started: the saved one as saved, a new one as the job and the last one give it. */
-  const resetForm = () => (openApp ? loadForm(formOfSaved(openApp), openApp.link, openApp.carryReason, openApp.name) : loadForm(newApplicationValues(saved, facts, bidSchedule)))
+  const resetForm = () => (openApp ? loadForm(formOfSaved(openApp), openApp.link, openApp.carryReason, openApp.name) : startNew(saved, facts, bidSchedule))
+
+  // The choice of start is only there while nothing is saved on the job: after that the rows carry by their ids.
+  // It also waits for the job to be read: a start picked before that would be undone when the read lands.
+  const canPickLineSource = loadedJobId === job?.id && openId == null && saved.length === 0 && lineSources.length > 1
+  const pickLineSource = async (key: AiaLineSourceKey) => {
+    const source = lineSources.find((s) => s.key === key)
+    if (!source?.lines || key === lineSource) return
+    if (JSON.stringify(lineForms) !== baselineLines) {
+      const ok = await confirm({
+        title: 'Replace the rows?',
+        message: 'What you typed in the rows is lost.',
+        confirmLabel: 'Replace',
+        cancelLabel: 'Keep',
+      })
+      if (!ok) return
+    }
+    // A start nobody typed over is not unsaved work, so the rows it gives are the new baseline.
+    const next = source.lines.map(lineToForm)
+    setLineForms(next)
+    setBaselineLines(JSON.stringify(next))
+    setSplit(source.splitLaborMaterial)
+    setBaselineSplit(source.splitLaborMaterial)
+    setPctDraft({})
+    setLineSource(key)
+  }
 
   // The lines against the contract to date: the bid's total is not always the job's price.
   const gap = useMemo(() => scheduleGap(appForm.lines, preview.math.contractSumToDate), [appForm.lines, preview.math.contractSumToDate])
@@ -438,7 +483,7 @@ export default function AiaG702G703Modal({
       const rest = saved.filter((a) => a.id !== openApp.id)
       setSaved(rest)
       setOpenId(null)
-      loadForm(newApplicationValues(rest, facts, rest.length === 0 ? bidSchedule : null))
+      startNew(rest, facts, rest.length === 0 ? bidSchedule : null)
       showToast(`Application ${openApp.applicationNumber} deleted.`, 'success')
     } catch (e) {
       console.error(e)
@@ -671,7 +716,7 @@ export default function AiaG702G703Modal({
                   ? `Application ${openApp.applicationNumber} is saved on the job. You can change it and save it again.`
                   : saved.length > 0
                     ? `A new application. It starts from application ${saved[saved.length - 1]!.applicationNumber}: that work is now previous work.`
-                    : bidSchedule
+                    : lineSource === 'bid'
                       ? `Nothing is saved on this job yet. The lines come from the bid's schedule of values. Save keeps this application here.`
                       : 'Nothing is saved on this job yet. Save keeps this application here, and the next one starts from it.'}
               </span>
@@ -997,6 +1042,57 @@ export default function AiaG702G703Modal({
                   {printedRows} of {AIA_G703_MAX_ROWS} rows
                 </span>
               </div>
+              {canPickLineSource ? (
+                <div
+                  data-testid="aia-line-source"
+                  role="radiogroup"
+                  aria-labelledby="aia-line-source-label"
+                  style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', padding: '0.6rem', borderRadius: 4, border: '1px solid var(--border)', background: 'var(--bg-subtle)' }}
+                >
+                  <span id="aia-line-source-label" style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.04em', color: 'var(--text-700)' }}>
+                    START THE ROWS FROM
+                  </span>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(9.5rem, 1fr))', gap: '0.4rem' }}>
+                    {lineSources.map((source) => {
+                      const on = source.key === lineSource
+                      const off = source.lines == null
+                      return (
+                        <label
+                          key={source.key}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            gap: '0.45rem',
+                            minWidth: 0,
+                            padding: '0.45rem 0.55rem',
+                            borderRadius: 4,
+                            cursor: off ? 'not-allowed' : 'pointer',
+                            borderWidth: 1,
+                            borderStyle: off ? 'dashed' : 'solid',
+                            borderColor: on ? 'var(--border-blue)' : 'var(--border-strong)',
+                            background: on ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                          }}
+                        >
+                          <input
+                            type="radio"
+                            name="aia-line-source"
+                            id={`aia-line-source-${source.key}`}
+                            checked={on}
+                            disabled={off}
+                            onChange={() => void pickLineSource(source.key)}
+                            style={{ marginTop: '0.2rem' }}
+                          />
+                          <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                            <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: off ? 'var(--text-muted)' : 'var(--text-strong)' }}>{source.title}</span>
+                            <span style={{ fontSize: '0.75rem', color: off ? 'var(--text-muted)' : 'var(--text-600)', overflowWrap: 'anywhere' }}>{source.detail}</span>
+                          </span>
+                        </label>
+                      )
+                    })}
+                  </div>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>You can change this until the first Save.</span>
+                </div>
+              ) : null}
               {lineForms.some((l) => l.labor != null) ? (
                 <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8125rem', color: 'var(--text-700)' }}>
                   <input type="checkbox" id="aia-lines-split" checked={split} onChange={(e) => setSplit(e.target.checked)} />
