@@ -9013,6 +9013,16 @@ exports[`GC mode golden walk > step 190: Hillside now includes dewatering 1`] = 
 }
 `;
 
+exports[`GC mode golden walk > step 191: A call with Pecan Valley about the waiver 1`] = `
+{
+  "changed": {
+    "lastLog.id": 186,
+    "lastLog.text": "Logged a contact with Pecan Valley Electric.",
+  },
+  "removed": [],
+}
+`;
+
 exports[`GC mode golden walk > the whole state at the end 1`] = `
 {
   "customers": [
@@ -9213,6 +9223,11 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
+      "id": 186,
+      "text": "Logged a contact with Pecan Valley Electric.",
+      "who": "office",
+    },
+    {
       "id": 185,
       "text": "Hillside Excavation now includes dewatering in its Sitework quote.",
       "who": "office",
@@ -9355,11 +9370,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
     {
       "id": 157,
       "text": "Boerne Retail Pad B is started. Emailed the 1 company on the job. Dana Whitaker started it before everything was in: The owner needs the pad graded before the rains. 6 still owed.",
-      "who": "office",
-    },
-    {
-      "id": 156,
-      "text": "Rosa Treviño awarded Sitework to Lonestar Earthworks. A statement of work is drafted from their quote.",
       "who": "office",
     },
   ],
@@ -9760,6 +9770,13 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "coiExpires": "2026-09-15",
       "company": "Pecan Valley Electric",
       "contact": "Marcus Bell",
+      "contacts": [
+        {
+          "by": "You",
+          "note": "Said the draw 1 unconditional waiver goes out Monday.",
+          "on": "2026-10-02",
+        },
+      ],
       "id": "pecanvalley",
       "invited": 3,
       "maxMiles": null,

@@ -497,6 +497,17 @@ function reduce(state: GcState, action: GcAction): GcState {
       )
     }
 
+    case 'logPartnerContact': {
+      const partner = state.partners.find((x) => x.id === action.partnerId)
+      if (!partner || action.note.trim() === '') return state
+      const entry = { on: state.today, by: 'You', note: action.note.trim() }
+      return logged(
+        { ...state, partners: state.partners.map((x) => (x.id === partner.id ? { ...x, contacts: [entry, ...(x.contacts ?? [])] } : x)) },
+        'office',
+        `Logged a contact with ${partner.company}.`,
+      )
+    }
+
     case 'addPartner': {
       const id = `new-${state.partners.length + 1}`
       const partner: Partner = {

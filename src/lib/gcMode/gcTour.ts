@@ -107,7 +107,7 @@ export const GC_TOUR_STEPS: SpotlightTourStep[] = [
   {
     anchor: 'gc-tab-partners',
     title: 'Trade partners and the scope book',
-    body: 'Trade partners lists every company we use, by trade. It also holds the scope book. The book keeps the scope lines we use for each trade. On step 4 of a new project, you pull lines from it. It warns you about lines we missed on past jobs.',
+    body: 'Trade partners lists every company we use, by trade. Press a company’s name to open its window. Press a paperwork chip to see that paper. It also holds the scope book. The book keeps the scope lines we use for each trade. On step 4 of a new project, you pull lines from it. It warns you about lines we missed on past jobs.',
   },
   {
     anchor: 'gc-new-here',

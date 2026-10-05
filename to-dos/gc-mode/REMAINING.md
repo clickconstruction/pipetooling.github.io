@@ -294,6 +294,19 @@ code names stay. Golden moves on words are each lane's own, under its standing O
   different. Then its words.
 - **Building (GC 1)** and **Portal (GC 3):** their own words where "owner" means who we bill.
 
+## Round 7: the company window (the owner, 2026-10-04)
+
+The owner: "click on any of the paperwork buttons and have that paperwork appear", with information
+about the company, a ledger of what happened with them, and their documents, in three tabs. Mock-up
+`company-window-mockup.html` (the first idea, the critique, the revised version); he said build it.
+
+- ~~**Board (GC 0):**~~ built. One window for every company: About, Activity, Documents. Paperwork
+  chips open it at that paper, a trade's name opens it on About, and a customer's window gets the same
+  tabs. Details in README.md, *The company window*.
+- **Other lanes:** nothing owed. If a lane adds a paper or an event a company should see (a new
+  promise kind, a new paper in the trade's portal), add it to `partnerDocuments` or `partnerActivity`
+  in `gcCompanyFile.ts` and to its test.
+
 ## Owner (the decisions)
 
 11. ~~**A carried quote with a line that has no cost:** does it hold the ring open?~~ Answered 2026-10-03: yes, until every line has a cost. Built by the Board (this commit).

@@ -337,6 +337,8 @@ export interface Partner {
   lang?: 'en' | 'es'
   /** Whether we have checked them (question 3). Unset: a company we know, approved. */
   vetting?: PartnerVetting
+  /** Calls and notes with the company itself, not about one ask (the company window, 2026-10-04). Newest first. */
+  contacts?: { on: string; by: string; note: string }[]
 }
 
 /** What a new company tells us about itself in its portal (question 3). */
@@ -813,6 +815,8 @@ export type GcAction =
   | { type: 'tradeSignUnconditional'; projectId: string; packageId: string; drawId: string }
   | { type: 'setMarkup'; projectId: string; field: 'generalConditions' | 'contingencyPct' | 'feePct'; value: number }
   | { type: 'logCustomerContact'; customerId: string; note: string }
+  /** A call or note with a trade company, from its window's Activity tab. */
+  | { type: 'logPartnerContact'; partnerId: string; note: string }
   /** `known: false`: a company new to us, not vetted yet (question 3). Unset: one we know. */
   | { type: 'addPartner'; company: string; contact: string; trade: string; base: string | null; maxMiles: number | null; known?: boolean }
   | { type: 'setCoverage'; partnerId: string; base: string | null; maxMiles: number | null }

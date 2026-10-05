@@ -63,6 +63,8 @@ import {
 } from '../../lib/gcMode/gcModel'
 import { linkNeverOpened } from '../../lib/gcMode/gcPortal'
 import { VettingChip } from './GcVetting'
+import { useCompanyOpener } from './gcCompanyOpener'
+import { PartnerName } from './GcCompanyFile'
 import { GcSovSideBySide } from './GcSovSideBySide'
 import { PlanSetDriveLine } from './GcNewProjectDriveLink'
 import { GcExclusionRows } from './GcExclusionRows'
@@ -165,16 +167,41 @@ export function AwardBlocked({ why }: { why: string | null }) {
 
 export function PaperworkChips({ partner, today }: { partner: Partner; today: string }) {
   const coiOk = partner.coiExpires !== null && daysUntil(partner.coiExpires, today) >= 0
+  // Each chip opens the company's window at that paper (the owner, 2026-10-04). Plain where no
+  // window can open, like a portal.
+  const opener = useCompanyOpener()
+  const wrap = (doc: string, label: string, chip: ReactNode) =>
+    opener ? (
+      <button
+        type="button"
+        onClick={() => opener.openPartner(partner.id, { tab: 'documents', doc })}
+        title={`Open ${partner.company}: ${label}`}
+        data-tour={`gc-paper-${doc}-${partner.id}`}
+        style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit' }}
+      >
+        {chip}
+      </button>
+    ) : (
+      chip
+    )
   return (
     <span style={{ display: 'inline-flex', gap: '0.3rem', flexWrap: 'wrap' }}>
-      <Chip tone={partner.msa === 'signed' ? 'green' : partner.msa === 'sent' ? 'amber' : 'red'}>
-        {partner.msa === 'signed' ? 'Master agreement signed' : partner.msa === 'sent' ? 'Master agreement sent' : 'No master agreement'}
-      </Chip>
-      <Chip tone={coiOk ? 'green' : 'red'}>
-        {partner.coiExpires ? (coiOk ? `Insured to ${shortDate(partner.coiExpires)}` : `Insurance expired ${shortDate(partner.coiExpires)}`) : 'No insurance on file'}
-      </Chip>
-      <Chip tone={partner.w9 ? 'green' : 'red'}>{partner.w9 ? 'W-9' : 'No W-9'}</Chip>
-      <VettingChip partner={partner} />
+      {wrap(
+        'msa',
+        'the master agreement',
+        <Chip tone={partner.msa === 'signed' ? 'green' : partner.msa === 'sent' ? 'amber' : 'red'}>
+          {partner.msa === 'signed' ? 'Master agreement signed' : partner.msa === 'sent' ? 'Master agreement sent' : 'No master agreement'}
+        </Chip>,
+      )}
+      {wrap(
+        'insurance',
+        'the insurance certificate',
+        <Chip tone={coiOk ? 'green' : 'red'}>
+          {partner.coiExpires ? (coiOk ? `Insured to ${shortDate(partner.coiExpires)}` : `Insurance expired ${shortDate(partner.coiExpires)}`) : 'No insurance on file'}
+        </Chip>,
+      )}
+      {wrap('w9', 'the W-9', <Chip tone={partner.w9 ? 'green' : 'red'}>{partner.w9 ? 'W-9' : 'No W-9'}</Chip>)}
+      {partner.vetting && wrap('vetting', 'their company form', <VettingChip partner={partner} />)}
     </span>
   )
 }
@@ -1524,7 +1551,7 @@ export function GcPartnersTab({ state, dispatch }: { state: GcState; dispatch: D
           <tbody>
             {state.partners.map((p) => (
               <tr key={p.id}>
-                <td style={{ ...td, fontWeight: 600 }}>{p.company}</td>
+                <td style={{ ...td, fontWeight: 600 }}><PartnerName partnerId={p.id} company={p.company} /></td>
                 <td style={td}>{p.trades.join(', ')}</td>
                 <td style={td}>{p.contact}</td>
                 <td style={td}><PaperworkChips partner={p} today={state.today} /></td>

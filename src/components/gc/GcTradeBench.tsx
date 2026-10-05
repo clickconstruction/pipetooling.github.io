@@ -31,6 +31,7 @@ import { CompanyLanguagePick } from './GcPortalLanguagePick'
 import { GcPartnersTab, PaperworkChips } from './GcOfficeTabs'
 import { Btn, Card, Chip, input, td, th, type Tone } from './gcUi'
 import { GcVetQueue, VettingChip } from './GcVetting'
+import { PartnerName } from './GcCompanyFile'
 import { GcScopeBookButton } from './GcNewProjectScopeBookPage'
 
 /**
@@ -447,7 +448,7 @@ function PartnerLine({ state, partner, bench, dispatch }: { state: GcState; part
   return (
     <tr>
       <td style={{ ...td, minWidth: '14rem' }}>
-        <strong>{partner.company}</strong> <VettingChip partner={partner} />
+        <PartnerName partnerId={partner.id} company={partner.company} /> <VettingChip partner={partner} />
         <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{partner.contact || 'no contact yet'}</div>
         {/* Portal lane: the company's language, for its portal and messages. */}
         <div>

@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useReducer, useState, type CSSProperties } from 'react'
 import { SpotlightTour } from '../components/SpotlightTour'
 import { BidsModeToggle } from '../components/gc/BidsModeToggle'
 import {
@@ -16,6 +16,8 @@ import { GcBuildingLogTab } from '../components/gc/GcBuildingLog'
 import { GcBuildingSubmittalsTab } from '../components/gc/GcBuildingSubmittals'
 import { GcBidTabsTab } from '../components/gc/GcBidTabs'
 import { GcCustomerWindow } from '../components/gc/GcCustomerWindow'
+import { GcCompanyWindow } from '../components/gc/GcCompanyWindow'
+import { GcCompanyOpenerContext, type CompanyOpener, type CompanyTab } from '../components/gc/gcCompanyOpener'
 import { GcPlansQuickLook } from '../components/gc/GcPlansQuickLook'
 import { GcNewProjectButton } from '../components/gc/GcNewProject'
 import { GcPartnersBoard } from '../components/gc/GcTradeBench'
@@ -161,6 +163,9 @@ export default function GcMode() {
   const [portalPartnerId, setPortalPartnerId] = useState('')
   const [plansForId, setPlansForId] = useState<string | null>(null)
   const [customerId, setCustomerId] = useState<string | null>(null)
+  // A trade's company window, at the tab and paper that was clicked (the owner, 2026-10-04).
+  const [companyAt, setCompanyAt] = useState<{ partnerId: string; tab?: CompanyTab; doc?: string } | null>(null)
+  const companyOpener = useMemo<CompanyOpener>(() => ({ openPartner: (partnerId, at) => setCompanyAt({ partnerId, ...at }) }), [])
   const [mapFor, setMapFor] = useState<{ projectId: string; packageId: string } | null>(null)
   const [levelPackageId, setLevelPackageId] = useState<string | null>(null)
   // New here? opens itself on a first visit (the big list, Board item 8), once per browser.
@@ -185,12 +190,14 @@ export default function GcMode() {
   const project = state.projects.find((p) => p.id === projectId) ?? null
   const plansFor = state.projects.find((p) => p.id === plansForId) ?? null
   const customer = state.customers.find((c) => c.id === customerId) ?? null
+  const companyPartner = state.partners.find((x) => x.id === companyAt?.partnerId) ?? null
   const mapProject = state.projects.find((p) => p.id === mapFor?.projectId) ?? null
   const toChase = followUps(state).filter((f) => f.why !== 'waiting')
   // The badge also counts a promise whose day came and insurance that ran out (question 8).
   const chaseCount = toChase.length + promisesToChase(state)
 
   return (
+    <GcCompanyOpenerContext.Provider value={companyOpener}>
     <div className="pageWrap" style={{ maxWidth: 1500, margin: '0 auto' }}>
       <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap', marginBottom: '0.65rem' }}>
         <BidsModeToggle mode="gc" />
@@ -252,6 +259,23 @@ export default function GcMode() {
             setProjectId(id)
             setTab('packages')
             setCustomerId(null)
+          }}
+        />
+      )}
+
+      {companyPartner && companyAt && (
+        <GcCompanyWindow
+          key={`${companyPartner.id}:${companyAt.tab ?? ''}:${companyAt.doc ?? ''}`}
+          state={state}
+          partner={companyPartner}
+          dispatch={dispatch}
+          at={companyAt}
+          onClose={() => setCompanyAt(null)}
+          onOpenProject={(id) => {
+            setBoardTab('projects')
+            setProjectId(id)
+            setTab('packages')
+            setCompanyAt(null)
           }}
         />
       )}
@@ -542,6 +566,7 @@ export default function GcMode() {
         </div>
       )}
     </div>
+    </GcCompanyOpenerContext.Provider>
   )
 }
 

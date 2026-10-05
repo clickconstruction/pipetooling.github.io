@@ -2,6 +2,9 @@ import { useEffect, useState, type Dispatch } from 'react'
 import {
   architectSummary,
   currentRev,
+  customerActivity,
+  customerDocuments,
+  customerPaper,
   customerSummary,
   ownerAccount,
   ownerInterest,
@@ -21,7 +24,9 @@ import {
   type GcState,
 } from '../../lib/gcMode/gcModel'
 import { GcOwnerBillingPortal } from './GcOwnerBillingPortal'
-import { Btn, Chip, Stat, input, num, td, th, type Tone } from './gcUi'
+import { CompanyActivity, CompanyDocuments, CompanyTabStrip } from './GcCompanyFile'
+import type { CompanyTab } from './gcCompanyOpener'
+import { Btn, Chip, Stat, num, td, th, type Tone } from './gcUi'
 
 /**
  * GC mode design spike: one company, one window, whatever they are to us. The record is the
@@ -69,7 +74,11 @@ function projects(n: number): string {
 }
 
 export function GcCustomerWindow({ state, customer, dispatch, onClose, onOpenProject, onPlans, onCustomer }: Props) {
-  const [note, setNote] = useState('')
+  // About, Activity, Documents: the same three tabs as a trade's window (the owner, 2026-10-04).
+  const [tab, setTab] = useState<CompanyTab>('about')
+  const docs = customerDocuments(state, customer)
+  const events = customerActivity(state, customer)
+  const [doc, setDoc] = useState<string | null>(docs.groups[0]?.docs[0]?.key ?? null)
   const owner = customerSummary(state, customer)
   const architect = architectSummary(state, customer)
   const isOwner = owner.live.length > 0 || customer.past.length > 0
@@ -154,7 +163,19 @@ export function GcCustomerWindow({ state, customer, dispatch, onClose, onOpenPro
             ×
           </button>
         </div>
+        <CompanyTabStrip tab={tab} onTab={setTab} activity={events.length} toGet={docs.toGet} />
 
+        {tab === 'activity' && (
+          <div style={{ padding: '0.9rem 1rem' }}>
+            <CompanyActivity events={events} onOpenProject={onOpenProject} onLog={(note) => dispatch({ type: 'logCustomerContact', customerId: customer.id, note })} />
+          </div>
+        )}
+        {tab === 'documents' && (
+          <div style={{ padding: '0.9rem 1rem' }}>
+            <CompanyDocuments groups={docs.groups} selected={doc} onSelect={setDoc} paper={doc ? customerPaper(state, customer, doc) : null} />
+          </div>
+        )}
+        {tab === 'about' && (
         <div style={{ padding: '0.9rem 1rem', display: 'grid', gap: '1rem' }}>
           {isOwner && (
             <div>
@@ -373,37 +394,8 @@ export function GcCustomerWindow({ state, customer, dispatch, onClose, onOpenPro
               </div>
             </section>
           )}
-
-          <section>
-            <Heading>Last contacts</Heading>
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
-              <input
-                style={{ ...input, flex: '1 1 18rem' }}
-                placeholder="What was said, in a sentence"
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-              />
-              <Btn
-                kind="primary"
-                disabled={note.trim() === ''}
-                onClick={() => {
-                  dispatch({ type: 'logCustomerContact', customerId: customer.id, note: note.trim() })
-                  setNote('')
-                }}
-              >
-                Log a call
-              </Btn>
-            </div>
-            <div style={{ display: 'grid', gap: '0.3rem', fontSize: '0.9rem' }}>
-              {customer.contacts.length === 0 && <span style={{ color: 'var(--text-muted)' }}>No contact logged yet.</span>}
-              {customer.contacts.map((c, i) => (
-                <div key={`${c.on}-${i}`}>
-                  <span style={{ color: 'var(--text-muted)' }}>{shortDate(c.on)} · {c.by}:</span> {c.note}
-                </div>
-              ))}
-            </div>
-          </section>
         </div>
+        )}
 
         <div style={{ padding: '0.6rem 1rem', borderTop: '1px solid var(--border)', display: 'flex', gap: '0.6rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
           {isOwner && (
