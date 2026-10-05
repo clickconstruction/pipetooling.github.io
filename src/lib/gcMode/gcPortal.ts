@@ -19,6 +19,7 @@ import { addDays, retainageHeldNow, sentBackOpen, sowContractSum, tradeChangesFo
 import { lookAheadWeeks, markState, mondayOf, scheduleRows, type LookAheadState, type ScheduleRow } from './gcBuildingSchedule'
 import { onSite } from './gcBuildingLog'
 import { submittalRowsOn } from './gcBuildingSubmittals'
+import { quotesWantedOn } from './gcStageHealth'
 import { SOV_STAGES, stageReached, theirSovGap } from './gcTheirSov'
 import { exclusionsFor } from './gcExclusions'
 import { scopeBookExclusions } from './gcScopeBook'
@@ -545,6 +546,15 @@ export function portalSowExcluded(sow: Sow, lang: PortalLang = 'en'): string[] {
   })
 }
 
+/**
+ * The day a company's quote is due (owner, 2026-10-04): the day we want quotes by, three days
+ * before our own bid is due, so we have days to level them (the New Project lane's
+ * `quotesWantedOn`). Null with no bid date, or once we are not bidding.
+ */
+export function portalQuoteDue(project: GcProject): string | null {
+  return quotesWantedOn(project)
+}
+
 export function portalJobMoney(pkg: TradePackage): PortalJobMoney | null {
   const sow = pkg.sow
   if (!sow) return null
@@ -642,7 +652,7 @@ export function portalTodos(state: GcState, partnerId: string, asks: PortalAsk[]
     const key = a.invite.id
     const projectId = a.project.id
     if (a.kind === 'bidding') {
-      const due = a.project.stage === 'pursuing' && a.project.ourBidSentOn === null ? a.project.bidDue : null
+      const due = a.project.stage === 'pursuing' && a.project.ourBidSentOn === null ? portalQuoteDue(a.project) : null
       const left = due ? daysUntil(due, today) : null
       const news = portalPlanNews(a.project, a.pkg, a.invite)
       if (a.invite.bid && a.stale) {
@@ -1068,7 +1078,10 @@ export function portalMessages(state: GcState, partnerId: string, language?: Por
     }
     for (const { pkg, invite } of mine) {
       const set = setOn(project, invite.invitedOn)
-      const due = project.bidDue && invite.invitedOn <= project.bidDue ? pWeekday(lang, project.bidDue) : null
+      // The day quotes are wanted by; a company asked after that day is given our bid day.
+      const wanted = portalQuoteDue(project)
+      const dueOn = wanted && invite.invitedOn <= wanted ? wanted : project.bidDue && invite.invitedOn <= project.bidDue ? project.bidDue : null
+      const due = dueOn ? pWeekday(lang, dueOn) : null
       out.push({
         key: `${invite.id}:invite`,
         on: invite.invitedOn,
