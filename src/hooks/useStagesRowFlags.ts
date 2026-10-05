@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import {
   buildJobContractCoverage,
+  JOB_CONTRACT_COVERAGE_COLUMNS,
   type JobContractCoverage,
   type JobContractRowLike,
   type JobForCoverage,
@@ -61,7 +62,7 @@ export function useJobContractCoverage(
       const [contractsRes, estimatesRes] = await Promise.all([
         supabase
           .from('job_contracts')
-          .select('id, job_id, status, revision, recipient_email, sent_at, last_sent_at, view_count, signed_at, signer_printed_name, signer_mode, voided_at, signed_document_url')
+          .select(JOB_CONTRACT_COVERAGE_COLUMNS)
           .is('voided_at', null),
         supabase
           .from('estimates')
