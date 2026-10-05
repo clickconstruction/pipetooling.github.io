@@ -95,7 +95,7 @@ describe('submittalJourney', () => {
     const bp375 = { ...base, rev: draft({ number: 1, rows: 14, sheetsNeeded: 6 }), decisions: { decided: 4, approved: 0, open: 9, noAnswer: 10, sentBack: 4, byName: ['structura'] } }
     expect(statuses(bp375)).toBe('done,done,current,later,later,waiting,current,later')
     expect(submittalJourney(bp375).next).toEqual({ kind: 'next', text: 'structura sent 4 rows back. 10 rows still have no answer. Start a Rev 2 draft to fix what was sent back. The rows with no answer go on it too. Nothing is sent until you share.', action: 'resubmit', actionLabel: 'Start a Rev 2 draft…' })
-    // New revision is past building once the GC has answered.
+    // Step 7's button is past building once the GC has answered.
     expect(stageGate(submittalJourney(bp375).stages, 'resubmit')).toEqual({ on: true, why: null })
     // Share was never done in the app, and its button stays held until the package is built.
     expect(stageGate(submittalJourney(bp375).stages, 'share').on).toBe(false)
