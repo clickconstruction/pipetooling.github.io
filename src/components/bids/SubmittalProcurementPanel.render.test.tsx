@@ -310,8 +310,10 @@ describe('SubmittalProcurementPanel', () => {
     // Neither approved part has a needed date (WC-1 has no stage), so the Next line gives no day.
     expect(screen.getByTestId('procurement-next').textContent).toBe('Next: 2 parts are approved and not ordered. The GC sent 1 part back.')
     expect(stepWords()).toEqual(['Waiting on the GC11 sent back', 'To order2', 'On order0', 'On site0'])
-    // Two houses on the lines: the lens row does not name one.
-    expect(screen.queryByTestId('procurement-shared')).toBeNull()
+    // Two houses on the lines: the lens row does not name one. Nothing has a date to place, so no calendar is drawn.
+    expect(screen.getByTestId('procurement-shared').textContent).toBe('No dates to draw yet.')
+    expect(screen.queryByTestId('procurement-cal-head')).toBeNull()
+    expect(screen.getByTestId('procurement-key').textContent).toBe('Each order gets a place on a calendar once its parts have a lead time and the job has stage dates.')
     // An order is one line: its name, its count, what its parts share, and Mark ordered… at the right. The first of a section is open.
     const groups = screen.getAllByTestId('procurement-group')
     expect(groups.map((g) => g.textContent)).toEqual(['No order-by date yet1WC-1 · 3 wk leadMark ordered…', 'No order-by date yet1WC-1 · order only · 1 wk leadMark ordered…'])
@@ -628,7 +630,7 @@ describe('SubmittalProcurementPanel', () => {
     await waitFor(() => expect(screen.getByTestId('procurement-next').textContent).toBe('Next: Nothing can be ordered until the GC answers. They sent 1 part back. 1 more waits on their answer. Approved outside the app? Enter their approval…'))
     fireEvent.click(screen.getByTestId('procurement-enter-approval'))
     expect(onEnterApproval).toHaveBeenCalledTimes(1)
-    expect(screen.getByTestId('procurement-shared').textContent).toBe('Every part comes from National Wholesale.')
+    expect(screen.getByTestId('procurement-shared').textContent).toBe('Every part comes from National Wholesale. No dates to draw yet.')
     // The share bar has one piece: everything waits on the GC.
     expect(screen.getByTestId('procurement-share').children).toHaveLength(1)
     unmount()
@@ -684,6 +686,53 @@ describe('SubmittalProcurementPanel', () => {
     expect(screen.getByTestId('procurement-order-only-divider').textContent).toBe('Ordered, not on the GC’s copy · 1 part')
     expect(screen.getByRole('button', { name: 'Enter their answer on LAV-2 BOBRICK B-8236' })).toBeTruthy()
     state.records = []
+  })
+
+  it('v2.4592 · the calendar beside the orders: a diamond at the order-by date, a bar for what is on order with its late part in red, the stages and today in the head, the key under the table', async () => {
+    localStorage.removeItem('submittals_procure_lens')
+    // A fixed today: the marks stand where the dates put them.
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-10-01T18:00:00Z'))
+    state.updates = []
+    state.records = [{ id: 'p1', bid_id: 'b1', tag: 'BFP-1', label: '', lead_time_days: null, stage: null, ordered_on: '2026-09-25', po_ref: '119', expected_on: '2026-10-20', delivered_on: null, note: '', sort_order: 0, created_at: '', updated_at: '' }]
+    try {
+      renderWithProviders(<SubmittalProcurementPanel bidId="b1" bidLabel="B482 Shipley" companyName="Click" items={[...items, { tag: 'S-3', product: 'Elkay sink', supplyHouse: null, leadTimeDays: 7, decision: null, shared: true }]} reviewerNames={[]} currentUser={{ id: 'u', name: 'Wendi' }} />)
+      const head = await screen.findByTestId('procurement-cal-head')
+      // The job needs Rough In 10/06 and Trim Set 11/17; the Mondays are named, with today in place of the one beside it.
+      expect(within(head).getAllByTestId('procurement-cal-stage').map((x) => x.textContent)).toEqual(['Rough In', 'Trim Set'])
+      expect(within(head).getAllByTestId('procurement-cal-week').map((x) => x.textContent)).toEqual(['10/5', '10/12', '10/19', '10/26', '11/2', '11/9', '11/16'])
+      expect(within(head).getByTestId('procurement-cal-today').textContent).toBe('today')
+      // There are dates to draw, and the lines have no one house to name: the lens row says nothing.
+      expect(screen.queryByTestId('procurement-shared')).toBeNull()
+      const groups = screen.getAllByTestId('procurement-group')
+      expect(groups.map((g) => g.getAttribute('data-kind'))).toEqual(['to_place', 'placed', 'fixture'])
+      const cal = (g: HTMLElement) => within(g).getByTestId('procurement-cal')
+      // WH-1 is approved: order by 10/06 for Trim Set 11/17. A diamond, a dotted run, a tick.
+      expect(cal(groups[0]!).getAttribute('aria-label')).toBe('order by 10/06, needed 11/17')
+      expect(within(cal(groups[0]!)).getByTestId('procurement-cal-diamond').getAttribute('data-tone')).toBe('go')
+      expect(within(cal(groups[0]!)).getByTestId('procurement-cal-dotted')).toBeTruthy()
+      expect(within(cal(groups[0]!)).getByTestId('procurement-cal-tick').getAttribute('title')).toBe('needed on the job 11/17')
+      // BFP-1 is on order and lands 14 days past Rough In: blue up to the tick, red past it.
+      expect(cal(groups[1]!).getAttribute('aria-label')).toBe('ordered 09/25, arrives 10/20, needed 10/06, 14 days late')
+      expect(within(cal(groups[1]!)).getByTestId('procurement-cal-bar').getAttribute('data-clipped')).toBeNull()
+      expect(within(cal(groups[1]!)).getByTestId('procurement-cal-late')).toBeTruthy()
+      expect(within(cal(groups[1]!)).queryByTestId('procurement-cal-diamond')).toBeNull()
+      // S-3 waits on the GC and has no stage: no needed date, so no mark, but its cell still carries today's line.
+      expect(cal(groups[2]!).getAttribute('aria-label')).toBeNull()
+      expect(within(cal(groups[2]!)).queryByTestId('procurement-cal-diamond')).toBeNull()
+      // A part inside an order has a calendar cell with no mark of its own.
+      const partCells = screen.getAllByTestId('procurement-row').map((r) => within(r).queryByTestId('procurement-cal'))
+      expect(partCells.every((c) => c != null && c.querySelector('[data-testid="procurement-cal-diamond"]') == null)).toBe(true)
+      expect(screen.getByTestId('procurement-key').textContent).toBe('order bythe GC must answer byon orderpast the needed dateneeded on the jobtoday')
+      // By tag keeps its own rows and its paragraph: no calendar.
+      fireEvent.click(screen.getByRole('button', { name: 'By tag' }))
+      expect(screen.queryByTestId('procurement-cal-head')).toBeNull()
+      expect(screen.queryByTestId('procurement-key')).toBeNull()
+      expect(screen.getByText(/Tap a status to type its dates/)).toBeTruthy()
+    } finally {
+      vi.useRealTimers()
+      state.records = []
+    }
   })
 
   it('2026-10-02 · on a phone each part is a short card: no table, the qty, house and stage on one line, its dates open under it', async () => {
