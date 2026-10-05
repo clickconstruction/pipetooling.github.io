@@ -3945,6 +3945,9 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
 .lienCalSearch:focus-within { border-color: var(--text-link); }
 .lienCalSearch input { flex: 1; min-width: 0; border: none; outline: none; background: transparent; font: inherit; font-size: 0.8125rem; color: inherit; }
 .lienCalDateCount { position: absolute; left: 100%; bottom: 0; margin-left: 4px; padding: 0 5px; border-radius: 8px; font-size: 0.625rem; font-weight: 700; line-height: 1.5; font-variant-numeric: tabular-nums; }
+/* A Calendar row's job number as its own door to the job (v2.4531). */
+.lienCalJobNo:hover { text-decoration: underline; text-underline-offset: 2px; }
+.lienCalJobNo:focus-visible { outline: 2px solid var(--border-blue); outline-offset: 1px; }
 .lienCalDraft { border: none; border-radius: 7px; padding: 4px 11px; background: var(--text-amber-800); color: var(--surface); font: inherit; font-size: 0.75rem; font-weight: 700; white-space: nowrap; cursor: pointer; }
 .lienCalDraft:hover { opacity: 0.9; }
 .lienCalDraftPhone { min-height: 40px; padding: 0 14px; font-size: 0.8125rem; }

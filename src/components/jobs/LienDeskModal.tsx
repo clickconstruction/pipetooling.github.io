@@ -52,6 +52,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { useLienJobSuppliers } from '../../hooks/useLienJobSuppliers'
 import { ModalFullScreenButton, useModalFullScreen } from '../ModalFullScreenToggle'
+import { LienJobHeading } from './LienJobNumber'
 import { buildLienDeskRun, buildLienRetainageRun, runCoverNoteBlocks } from '../../lib/jobs/lienDeskRun'
 import { affidavitMonthWord, counselCoverLetterTemplate, coverLetterKindFor, fillCoverLetter, letterTwoTemplate } from '../../lib/jobs/gcOnNotice'
 import { LETTER_TWO_KINDS, letterTwoIsDue, letterTwoKindLabel, type LetterTwoKind } from '../../lib/jobs/lienLetterTwo'
@@ -151,6 +152,8 @@ export type LienDeskModalProps = {
   calendarRows?: ReadonlyArray<LienCalendarJob> | null
   /** A Calendar row opens the job's Lien window. */
   onOpenCalendarJob?: (jobId: string) => void
+  /** A job number opens the job itself: the Job window, with its history and Edit (v2.4531 the Calendar; v2.4535 the Timeline and the three panes' headings). */
+  onOpenJob?: (jobId: string) => void
   /** The Calendar's pen wrote something (v2.4153): a pay date, or a property kind — the Pipeline re-reads what changed. */
   onCalendarChanged?: (what: 'promise' | 'kind') => void
   /** Open on a pile — the Dashboard's missed-window line lands on the Missed lens (v2.3679). */
@@ -244,6 +247,7 @@ export default function LienDeskModal({
   initialKind,
   calendarRows,
   onOpenCalendarJob,
+  onOpenJob,
   onCalendarChanged,
   initialPile,
   onPutGcOnNotice,
@@ -1063,7 +1067,7 @@ export default function LienDeskModal({
         </button>
       ) : null}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem 0.6rem', alignItems: 'baseline', paddingTop: isMobile ? 0 : '0.9rem' }}>
-        <strong style={{ fontSize: '1rem' }}>{jobLabel(job, selected.jobId)}</strong>
+        <LienJobHeading label={jobLabel(job, selected.jobId)} onOpenJob={onOpenJob ? () => onOpenJob(selected.jobId) : undefined} />
         {storedDraft?.letterTwo && item ? (
           <span style={chip('var(--bg-blue-tint)', 'var(--text-blue-800)')} data-lien-letter-two-heading title="The second owner letter, on the same form to the same two recipients; the first packet stays on the record">
             letter two · {letterTwoKindLabel(storedDraft.letterTwo.kind)}{storedDraft.letterTwo.afterSentAt ? ` · after the ${formatYmdMonthDay(calendarYmdInAppTzFromIso(storedDraft.letterTwo.afterSentAt))} packet` : ''}
@@ -1508,6 +1512,7 @@ export default function LienDeskModal({
         signerNameFor={signerNameFor}
         onChanged={onChanged}
         onOpenEditJob={onOpenEditJob}
+        onOpenJob={onOpenJob}
         ownerCall={data.ownerCallByJob[affSelected.jobId] ?? null}
         bond={parsePaymentBond(data.jobsById[affSelected.jobId]?.lien_payment_bond)}
         onOpenLienContract={(jobId) => onOpenEditJob(jobId, 'lien-contract')}
@@ -1587,6 +1592,7 @@ export default function LienDeskModal({
         signerPhoneFor={signerPhoneFor}
         onChanged={onChanged}
         onOpenEditJob={onOpenEditJob}
+        onOpenJob={onOpenJob}
         onOpenRun={() => setRunOpen(true)}
         onShowNotices={(jobId) => {
           setKind('notice')
@@ -2119,6 +2125,7 @@ export default function LienDeskModal({
               isMobile={isMobile}
               canWrite={office}
               onOpenJob={(jobId) => (onOpenCalendarJob ?? onOpenLienInstruments)(jobId)}
+              onOpenJobWindow={onOpenJob}
               onOpenEditJob={(jobId) => onOpenEditJob(jobId, 'property-record')}
               onChanged={(what) => {
                 onChanged()
@@ -2141,6 +2148,7 @@ export default function LienDeskModal({
               show={bookShow}
               onShow={setBookShow}
               onOpenRow={openBookRow}
+              onOpenJob={onOpenJob}
               onPrint={(rows, title) => printHtmlInNewWindow(lienGridHtml(rows, { title, todayYmd, companyName: issuer?.companyName ?? '' }))}
             />
           ) : kind === 'affidavit'

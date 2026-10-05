@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { LienJobHeading } from './LienJobNumber'
 import { createPortal } from 'react-dom'
 import type { PhysicalInvoiceIssuer } from '../../lib/physicalInvoiceIssuer'
 import { buildLienRetainageNoticeBlocks, filingDocHtml, filingLetterheadFromIssuer } from '../../lib/jobsDocuments/lienFilingDocuments'
@@ -58,6 +59,7 @@ export default function LienDeskRetainagePane({
   signerPhoneFor,
   onChanged,
   onOpenEditJob,
+  onOpenJob,
   onOpenRun,
   onShowNotices,
   footerEl,
@@ -76,6 +78,8 @@ export default function LienDeskRetainagePane({
   onChanged: () => void
   /** Edit Job — on its Property record row (the owner), or on *Our contract on this job* (the clock, the retainage). */
   onOpenEditJob: (jobId: string, focus: 'property-record' | 'lien-contract') => void
+  /** The heading's job number opens the job itself (v2.4535). */
+  onOpenJob?: (jobId: string) => void
   /** The desk's run — approved retainage notices go out with the monthly ones. */
   onOpenRun: () => void
   /** Switch the desk to the notices kind on this job — where the retainage rides inside the § 53.056 claim. */
@@ -259,7 +263,7 @@ export default function LienDeskRetainagePane({
     {footerEl && footer ? createPortal(footer, footerEl) : null}
     <div style={{ padding: '0.9rem 1.1rem', display: 'grid', gap: '0.7rem', alignContent: 'start', overflow: 'auto', minWidth: 0 }} data-lien-retainage-pane>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem 0.6rem', alignItems: 'baseline' }}>
-        <strong style={{ fontSize: '1rem' }}>{label}</strong>
+        <LienJobHeading label={label} onOpenJob={onOpenJob ? () => onOpenJob(entry.jobId) : undefined} />
         <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>· GC {gc?.name ?? ''} {job?.job_address ? `· ${job.job_address}` : ''}</span>
         <span style={tone}>§ 53.057 · {retainageDeadlineWords(entry, formatYmdMonthDay)}</span>
         <span style={chip(entry.paymentBond === 'yes' ? 'var(--bg-amber-tint)' : 'var(--bg-subtle)', entry.paymentBond === 'yes' ? 'var(--text-amber-800)' : 'var(--text-muted)')}>{paymentBondWords(entry.paymentBond)}</span>

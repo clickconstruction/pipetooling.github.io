@@ -17,6 +17,7 @@ import {
   type LienCalendarKeyGlyph,
   type LienCalendarMark,
 } from '../../lib/jobs/lienCalendar'
+import { LienJobNumber } from './LienJobNumber'
 import { buildLienCalendarBoard, lienGroupRows, lienNextDateCounts, lienPhoneLine, type LienCalendarBoard, type LienCalendarBucket, type LienCalendarBucketKey, type LienNextDateCount } from '../../lib/jobs/lienCalendarBuckets'
 import type { LienRunwayTone } from '../../lib/jobs/lienPayRunway'
 import { formatMoneyShortK } from '../../lib/formatMoneyShortK'
@@ -67,6 +68,8 @@ export type LienDeskCalendarTabProps = {
   rows: ReadonlyArray<LienCalendarJob> | null
   todayYmd: string
   onOpenJob: (jobId: string) => void
+  /** The job number opens the job itself (v2.4531): the Job window, with its history and Edit. Left out, the number is plain. */
+  onOpenJobWindow?: (jobId: string) => void
   /** Phone: no axis, the column cards and the sentences instead. */
   isMobile?: boolean
   /** Office roles write; everyone else reads (the dot opens the Lien window instead). */
@@ -108,7 +111,6 @@ const STRIPE = 'repeating-linear-gradient(90deg, #fcd34d 0 4px, #fef3c7 4px 8px)
 const LABEL_W = 'minmax(0, 300px)'
 const RIGHT_W = '11rem'
 const GRID: CSSProperties = { display: 'grid', gridTemplateColumns: `${LABEL_W} minmax(0, 1fr) ${RIGHT_W}`, alignItems: 'center' }
-const cellNum: CSSProperties = { fontSize: '0.6875rem', fontWeight: 700, padding: '0 5px', borderRadius: 3, background: 'var(--bg-blue-tint)', color: 'var(--text-blue-800)', whiteSpace: 'nowrap' }
 const ROW_H = 48
 const TRACK_H = 40
 /** One baseline per row: the track line, where every pole ends and every tick and dot sits. */
@@ -456,28 +458,31 @@ function PropertyLabel({ label, phone }: { label: string; phone?: boolean }) {
   )
 }
 
-function JobRow({ j, g, index, axis, onOpen, onPen, mark, closedHere }: { j: LienCalendarJob; g: LienCalendarGroup; index: number; axis: LienCalendarAxis | null; onOpen: () => void; onPen?: (pct: number) => void; mark?: LienSupplierMark; /** An overdue job listed with its property: greyed. */ closedHere?: boolean }) {
+function JobRow({ j, g, index, axis, onOpen, onOpenJob, onPen, mark, closedHere }: { j: LienCalendarJob; g: LienCalendarGroup; index: number; axis: LienCalendarAxis | null; onOpen: () => void; /** The number's own door: the Job window. */ onOpenJob?: () => void; onPen?: (pct: number) => void; mark?: LienSupplierMark; /** An overdue job listed with its property: greyed. */ closedHere?: boolean }) {
   // Under a GC row its one dot speaks for every job; a job draws the dashed dot only on its own.
   const marks = axis ? lienCalendarMarks(j, axis, { payMissingDot: g.kind !== 'gc' }) : []
   const word = rowWord(j, g)
   const dead = j.runway.state === 'closed'
   return (
     <div role="row" className="lienCalendarRow" data-closed-here={closedHere ? 'true' : undefined} style={{ ...GRID, minHeight: ROW_H, background: index % 2 === 1 ? 'var(--bg-subtle)' : 'var(--surface)' }}>
-      <button type="button" onClick={onOpen} title={closedHere ? 'Its window closed; listed here with its property. Open the job’s Lien window' : 'Open the job’s Lien window'} style={{ minWidth: 0, textAlign: 'left', border: 'none', background: 'none', padding: '4px 10px 4px 30px', cursor: 'pointer', color: 'inherit' }}>
+      {/* The cell opens the job's Lien window wherever it is clicked; the number is its own door (v2.4531). */}
+      <div onClick={onOpen} title={closedHere ? 'Its window closed; listed here with its property. Open the job’s Lien window' : 'Open the job’s Lien window'} style={{ minWidth: 0, padding: '4px 10px 4px 30px', cursor: 'pointer' }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-          <span style={closedHere ? { ...cellNum, background: 'var(--bg-muted)', color: 'var(--text-muted)' } : cellNum}>{j.number}</span>
-          <span style={{ fontSize: '0.8125rem', fontWeight: closedHere ? 500 : 600, color: closedHere ? 'var(--text-muted)' : undefined, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{j.name}</span>
-          {mark ? (
-            <span style={{ flex: 'none', fontSize: '0.6875rem', position: 'relative' }}>
-              <LienSupplierMarkLine mark={mark} short />
-            </span>
-          ) : null}
+          <LienJobNumber number={j.number} muted={closedHere} onOpen={onOpenJob} />
+          <button type="button" style={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: 6, border: 'none', background: 'none', padding: 0, textAlign: 'left', cursor: 'pointer', color: 'inherit', font: 'inherit' }}>
+            <span style={{ fontSize: '0.8125rem', fontWeight: closedHere ? 500 : 600, color: closedHere ? 'var(--text-muted)' : undefined, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{j.name}</span>
+            {mark ? (
+              <span style={{ flex: 'none', fontSize: '0.6875rem', position: 'relative' }}>
+                <LienSupplierMarkLine mark={mark} short />
+              </span>
+            ) : null}
+          </button>
         </span>
         <span style={{ display: 'block', fontSize: '0.6875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {j.customer}
           {j.address ? ` · ${j.address}` : ''}
         </span>
-      </button>
+      </div>
       {axis ? <Track marks={marks} j={j} onOpen={onOpen} onPen={onPen} /> : <div />}
       <div style={{ padding: '0 14px', textAlign: 'right' }} data-testid="lien-cal-row-money">
         <div style={{ fontSize: '0.8125rem', fontWeight: 500, fontVariantNumeric: 'tabular-nums', color: dead ? 'var(--text-muted)' : undefined }}>{formatUsdNoCents(j.openBalance)}</div>
@@ -690,7 +695,7 @@ function KeyStrip({ openGlyph, onToggle, doors, onDoor }: { openGlyph: LienCalen
 }
 
 /** Phone: the buckets as sections of two-line sentences — no axis. */
-function PhoneBoard({ shown, folded, onFold, onDraft, onOpenJob, query, marks }: { shown: LienCalendarBucket[]; folded: ReadonlySet<string>; onFold: (key: string) => void; onDraft?: (ymd: string, jobIds: string[]) => void; onOpenJob: (id: string) => void; query: string; marks?: ReadonlyMap<string, LienSupplierMark> }) {
+function PhoneBoard({ shown, folded, onFold, onDraft, onOpenJob, onOpenJobWindow, query, marks }: { shown: LienCalendarBucket[]; folded: ReadonlySet<string>; onFold: (key: string) => void; onDraft?: (ymd: string, jobIds: string[]) => void; onOpenJob: (id: string) => void; onOpenJobWindow?: (id: string) => void; query: string; marks?: ReadonlyMap<string, LienSupplierMark> }) {
   return (
     <div data-testid="lien-cal-phone">
       {shown.map((b) => {
@@ -712,17 +717,20 @@ function PhoneBoard({ shown, folded, onFold, onDraft, onOpenJob, query, marks }:
                       if (row.kind === 'label') return <PropertyLabel key={row.key} label={row.label} phone />
                       const j = row.job
                       return (
-                      <button key={j.jobId} type="button" data-closed-here={row.closed ? 'true' : undefined} onClick={() => onOpenJob(j.jobId)} style={{ display: 'block', width: '100%', minHeight: 44, textAlign: 'left', border: 'none', borderBottom: '1px solid var(--border)', background: 'var(--surface)', padding: '7px 12px', cursor: 'pointer', color: 'inherit', font: 'inherit' }}>
+                      <div key={j.jobId} role="row" data-closed-here={row.closed ? 'true' : undefined} onClick={() => onOpenJob(j.jobId)} style={{ boxSizing: 'border-box', width: '100%', minHeight: 44, textAlign: 'left', borderBottom: '1px solid var(--border)', background: 'var(--surface)', padding: '7px 12px', cursor: 'pointer' }}>
                         <span style={{ display: 'flex', gap: 6, alignItems: 'center', minWidth: 0 }}>
-                          <span style={row.closed ? { ...cellNum, background: 'var(--bg-muted)', color: 'var(--text-muted)' } : cellNum}>{j.number}</span>
-                          <span style={{ fontSize: '0.8125rem', fontWeight: row.closed ? 500 : 600, color: row.closed ? 'var(--text-muted)' : undefined, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{j.name}</span>
-                          <span style={{ marginLeft: 'auto', fontSize: '0.8125rem', fontVariantNumeric: 'tabular-nums', color: j.runway.state === 'closed' ? 'var(--text-muted)' : undefined }}>{formatUsdNoCents(j.openBalance)}</span>
+                          <LienJobNumber number={j.number} muted={row.closed} onOpen={onOpenJobWindow ? () => onOpenJobWindow(j.jobId) : undefined} phone />
+                          {/* The row opens the job's Lien window wherever it is tapped; this button is its keyboard stop. */}
+                          <button type="button" style={{ flex: 1, minWidth: 0, display: 'flex', gap: 6, alignItems: 'center', border: 'none', background: 'none', padding: 0, textAlign: 'left', cursor: 'pointer', color: 'inherit', font: 'inherit' }}>
+                            <span style={{ fontSize: '0.8125rem', fontWeight: row.closed ? 500 : 600, color: row.closed ? 'var(--text-muted)' : undefined, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{j.name}</span>
+                            <span style={{ marginLeft: 'auto', fontSize: '0.8125rem', fontVariantNumeric: 'tabular-nums', color: j.runway.state === 'closed' ? 'var(--text-muted)' : undefined }}>{formatUsdNoCents(j.openBalance)}</span>
+                          </button>
                         </span>
                         <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, fontSize: '0.6875rem', marginTop: 1, position: 'relative' }}>
                           <span title={j.runway.lines.join(' · ')} style={{ color: TONE[j.runway.tone], fontWeight: 600, minWidth: 0 }}>{lienPhoneLine(j)}</span>
                           <LienSupplierMarkLine mark={marks?.get(j.jobId)} short />
                         </span>
-                      </button>
+                      </div>
                       )
                     })}
                   </div>
@@ -735,7 +743,7 @@ function PhoneBoard({ shown, folded, onFold, onDraft, onOpenJob, query, marks }:
   )
 }
 
-export default function LienDeskCalendarTab({ rows, todayYmd, onOpenJob, isMobile = false, canWrite = false, onDraft, onOpenEditJob, onChanged, supplierMarks }: LienDeskCalendarTabProps) {
+export default function LienDeskCalendarTab({ rows, todayYmd, onOpenJob, onOpenJobWindow, isMobile = false, canWrite = false, onDraft, onOpenEditJob, onChanged, supplierMarks }: LienDeskCalendarTabProps) {
   const [query, setQuery] = useState('')
   const [pen, setPen] = useState<PenTarget | null>(null)
   const [kindsOpen, setKindsOpen] = useState(false)
@@ -838,7 +846,7 @@ export default function LienDeskCalendarTab({ rows, todayYmd, onOpenJob, isMobil
           board.count === 0 ? (
             <div style={{ padding: '1.5rem 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>No billed job matches that.</div>
           ) : (
-            <PhoneBoard shown={shown} folded={folded} onFold={fold} onDraft={onDraft} onOpenJob={onOpenJob} query={query} marks={supplierMarks} />
+            <PhoneBoard shown={shown} folded={folded} onFold={fold} onDraft={onDraft} onOpenJob={onOpenJob} onOpenJobWindow={onOpenJobWindow} query={query} marks={supplierMarks} />
           )
         ) : null}
         {rows && !isMobile && axis && (board.count > 0 || query.trim()) ? (
@@ -878,7 +886,7 @@ export default function LienDeskCalendarTab({ rows, todayYmd, onOpenJob, isMobil
                                       const j = row.job
                                       return (
                                       <div key={j.jobId} style={{ position: 'relative' }}>
-                                        <JobRow j={j} g={g} index={index} closedHere={row.closed} axis={axis} onOpen={() => onOpenJob(j.jobId)} onPen={penOn ? (pct) => setPen({ kind: 'job', job: j, pct }) : undefined} mark={supplierMarks?.get(j.jobId)} />
+                                        <JobRow j={j} g={g} index={index} closedHere={row.closed} axis={axis} onOpen={() => onOpenJob(j.jobId)} onOpenJob={onOpenJobWindow ? () => onOpenJobWindow(j.jobId) : undefined} onPen={penOn ? (pct) => setPen({ kind: 'job', job: j, pct }) : undefined} mark={supplierMarks?.get(j.jobId)} />
                                         {pen && pen.kind === 'job' && pen.job.jobId === j.jobId ? (
                                           <div style={{ ...GRID, position: 'absolute', left: 0, right: 0, top: 0, pointerEvents: 'none' }}>
                                             <div />

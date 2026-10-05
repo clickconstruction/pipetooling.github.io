@@ -4496,6 +4496,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           if (!job) return
           setLienInstrumentsModal({ job, invoice: null })
         }}
+        // v2.4531: a Calendar row's job number opens the job itself, over the desk.
+        onOpenJob={(jobId) => jobDetailModal?.openJobDetail({ jobId, onEditJobSaved: () => refetchLienDesk() })}
         initialPile={lienDesk?.pile ?? null}
         onOpenLegalDesk={() => {
           setLienDesk(null)
