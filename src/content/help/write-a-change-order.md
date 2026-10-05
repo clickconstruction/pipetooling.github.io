@@ -6,39 +6,41 @@ keywords: change order, CO, signature, net change, credit, scope change, GC, est
 order: 87
 ---
 
-When the scope changes mid-job — owner directive, field condition, plan revision — a **change order** documents what changed, what it costs, and gets the customer's signature on it. Change orders live in **Estimates** and ride the same rails as an estimate: same send, same acceptance page, same typed signature, same paper trail.
+When the scope, the work agreed on, changes mid-job, a **change order** documents what changed and what it costs. It also gets the customer's signature on it.
+
+The change might come from an owner directive, a field condition or a plan revision. Change orders live in **Estimates** and ride the same rails as an estimate. That means the same send, the same acceptance page, the same typed signature and the same paper trail.
 
 ## The numbered guide
 
-Drafts now carry a numbered guide — on a wide screen it sits to the left of the document; on a phone it's the pinned row of pills up top. It answers the two questions that matter: *what do I fill out* and *why can't I send yet*.
+Drafts now carry a numbered guide. On a wide screen it sits to the left of the document. On a phone it's the pinned row of pills up top. It answers the two questions that matter: *what do I fill out* and *why can't I send yet*.
 
-- Steps under **On the customer's copy** are the parts of the document itself, in the order the customer reads them. **Behind the scenes** holds Delivery — who gets notified, the project link, internal notes — which the customer never sees.
-- Each step shows where it stands: a green check when done, an amber dot with a short reason ("no lines yet", "email needed for the accept link") when it wants attention, or "optional".
-- Tap any step to jump straight to it. The send button under the guide tells you what's left ("2 steps left: cost lines · delivery") and lights up when the draft is ready.
-- The **Editing / Customer view** switch under the guide flips the page to the exact document your customer will see — rendered by the same code as the signature page, live as you type. Switch back to Editing to change anything.
-- A $0 document can still be sent — schedule-only change orders are real — but it asks you to confirm first.
+- Steps under **On the customer's copy** are the parts of the document itself, in the order the customer reads them. **Behind the scenes** holds Delivery, which the customer never sees. Delivery is who gets notified, the project link and internal notes.
+- Each step shows where it stands. A green check means done. An amber dot with a short reason means it wants attention. The reason reads like "no lines yet" or "email needed for the accept link". Or the step says "optional".
+- You tap any step to jump straight to it. The send button under the guide tells you what's left, like *2 steps left: cost lines · delivery*. It lights up when the draft is ready.
+- The **Editing / Customer view** switch under the guide flips the page to the exact document your customer will see. It is rendered by the same code as the signature page, live as you type. You switch back to Editing to change anything.
+- A $0 document can still be sent, since schedule-only change orders are real. It asks you to confirm first.
 
 ## Starting one
 
-On **Estimates**, click {{button:outline|New change order}} (right next to {{button:blue|New estimate}}). You get a draft marked with an amber {{chip:yellow|Change order}} chip — that chip follows it everywhere: the Pipeline and Ledger lists, the detail header, and the customer's document.
+On **Estimates**, you click {{button:outline|New change order}}, right next to {{button:blue|New estimate}}. You get a draft marked with an amber {{chip:yellow|Change order}} chip. That chip follows it everywhere: the Pipeline and Ledger lists, the detail header, and the customer's document.
 
-Pick the **customer** just like an estimate, and use the project link if the work belongs to one.
+You pick the **customer** just like an estimate. You use the project link if the work belongs to one.
 
 ## Filling it out
 
 The editor asks for the change-order story:
 
-- **Description of change** — what is changing, with the plan reference if there is one.
-- **Reason for change** — owner directive, field condition, plan revision…
-- **Impact on schedule** — plain words: "+2 working days", "none".
-- **Response requested by** — the date you want an answer.
+- **Description of change**: what is changing, with the plan reference if there is one.
+- **Reason for change**: owner directive, field condition, plan revision…
+- **Impact on schedule**: plain words, like "+2 working days" or "none".
+- **Response requested by**: the date you want an answer.
 
-**Impact on cost is real line items**, not a typed total. A new change order opens the section with one question — *What does this change include?* — and two ways to answer:
+**Impact on cost is real line items**, not a typed total. A new change order opens the section with one question: *What does this change include?* It offers two ways to answer:
 
-- {{button:outline|+ Added work}} — work going **into** the contract. One tap adds the line; name the work, note what's included (fixtures, materials, labor…), set quantity and unit price right on it.
-- {{button:outline-amber|− Credit / removed work}} — work coming **out**. One tap adds a line labeled "Credit — "; the price you enter is credited back automatically.
+- {{button:outline|+ Added work}}: work going **into** the contract. One tap adds the line. You name the work and note what's included, like fixtures, materials or labor. You set quantity and unit price right on it.
+- {{button:outline-amber|− Credit / removed work}}: work coming **out**. One tap adds a line labeled *Credit —*. The price you enter is credited back automatically.
 
-Each tap on a button is one line — the buttons stay below the list so the next line is always one tap away. Repeat-priced work is still one tap away in the **line-item catalog**.
+Each tap on a button is one line. The buttons stay below the list, so the next line is always one tap away. Repeat-priced work is still one tap away in the **line-item catalog**.
 
 :::example Impact on cost
 Reroute condensate line — labor + materials — **$2,840.00**
@@ -50,11 +52,11 @@ The **net change** is computed from the lines, so the customer sees exactly how 
 
 ## Sending it for signature
 
-{{button:amber|Send to customer}} works exactly like an estimate: the customer gets an email (subject "Change order #12 — <title> — $net · Click Plumbing") with a **Review & sign the change order** button, reviews the change-order document — description, reason, cost breakdown, net change, schedule impact — and signs it by typing or drawing their name. You get the same accepted notification, and the signature record (name, time, IP) is stored with the change order.
+{{button:amber|Send to customer}} works exactly like an estimate. The customer gets an email with a **Review & sign the change order** button. Its subject reads *Change order #12 — <title> — $net · Click Plumbing*. They review the change-order document: description, reason, cost breakdown, net change and schedule impact. They sign it by typing or drawing their name. You get the same accepted notification. The signature record is stored with the change order. It holds the name, the time and the IP address, the internet address they signed from.
 
 ## Starting from Bids
 
-Working a commercial job through **Bids**? The `bids?tab=change-order` form works like always — fill it out, {{button:blue|Copy to clipboard}} or open the Google Docs template for GCs who want their own paper. But now there's also {{button:green|Send for signature →}}: it opens a short confirm sheet before anything is created.
+Working a commercial job through **Bids**? The `bids?tab=change-order` form works like always. You fill it out, then {{button:blue|Copy to clipboard}} or open the Google Docs template. The template is for GCs who want their own paper. A GC is the general contractor. But now there's also {{button:green|Send for signature →}}. It opens a short confirm sheet before anything is created.
 
 Each of the three buttons now says what it does with your work, right under it:
 
@@ -62,26 +64,28 @@ Each of the three buttons now says what it does with your work, right under it:
 {{button:blue|Copy to clipboard}} — *Paper copy only — nothing is saved here.* · {{button:outline|Open in Google Docs}} — *Paper copy in Docs — nothing is saved here.* · {{button:green|Send for signature →}} — *Creates a tracked change order the GC signs online — the only one of the three that leaves a record.*
 :::
 
-And as you type in **Impact on Cost**, a line under the box reads the money back to you — **$2,450.00** *Reads as a net change of $2,450.00 — this becomes the draft's total and its one cost line when you send for signature.* If your text has several figures and no "Net …" line, it says the confirm sheet will ask you for the number instead of guessing.
+And as you type in **Impact on Cost**, a line under the box reads the money back to you. It reads **$2,450.00** *Reads as a net change of $2,450.00 — this becomes the draft's total and its one cost line when you send for signature.*
+
+Your text may have several figures and no "Net …" line. Then it says the confirm sheet will ask you for the number instead of guessing.
 
 :::example The confirm sheet
 **Create a change order draft in Estimates?** · the description, reason, schedule impact, response-by date and your cost text, as they'll land · **Net change to contract ($)** — prefilled when your cost text has one clear number or a "Net …" line; type it otherwise (credits negative, blank = $0 for schedule-only changes) · {{button:outline|Cancel}} creates nothing · {{button:green|Create draft →}}
 :::
 
-Confirm and the draft opens in Estimates, prefilled from the form and linked to the bid, with the net change as a **real cost line** (your typed breakdown becomes its description) — not $0 with the money hidden in a note. Above **Impact on cost** the draft shows *From the Bids form — Impact on Cost as typed:* with your exact text, so you don't have to scroll to the internal notes to remember the breakdown. Adjust the lines there if you want the breakdown itemized, then send it like any change order.
+You confirm, and the draft opens in Estimates, prefilled from the form and linked to the bid. The net change lands as a **real cost line**, not $0 with the money hidden in a note. Your typed breakdown becomes its description. Above **Impact on cost** the draft shows *From the Bids form — Impact on Cost as typed:* with your exact text. So you don't have to scroll to the internal notes to remember the breakdown. You adjust the lines there if you want the breakdown itemized. Then you send it like any change order.
 
 ## After the customer signs
 
-An accepted change order's money needs to land on a job. On the accepted row (or the detail page), tap {{button:outline|Apply to job}}:
+An accepted change order's money needs to land on a job. On the accepted row or the detail page, you tap {{button:outline|Apply to job}}:
 
-- **Add to an existing job** — the usual case. Search for the job (any job you can open — since v2.2967 it no longer has to have been created by the same person), and the preview shows exactly what will happen: how many lines join the job's Specific Work and the job total before → after, moved by the **net change** (credits subtract). Tap **Apply to job** and the job's activity feed gets a note — *"Change order #52 applied: +$2,450.00 — …"* — so the office sees it in Pipeline and Job Detail.
-- **Create a new job** — for change-order work you want billed on its own job number. Works exactly like creating a job from an estimate; the lines carry over as Specific Work.
-- **Link only (no cost change)** — the quiet escape hatch for jobs already billed or tracked elsewhere: connects the change order to the job without touching its numbers.
+- **Add to an existing job**: the usual case. You search for the job. It can be any job you can open. Since v2.2967 it no longer has to have been created by the same person. The preview shows exactly what will happen. It shows how many lines join the job's Specific Work. It shows the job total before → after, moved by the **net change**. Credits subtract. You tap **Apply to job** and the job's activity feed gets a note. It reads *"Change order #52 applied: +$2,450.00 — …"*. So the office sees it in Pipeline and Job Detail.
+- **Create a new job**: for change-order work you want billed on its own job number. It works exactly like creating a job from an estimate. The lines carry over as Specific Work.
+- ***Link only (no cost change)***: the quiet escape hatch for jobs already billed or tracked elsewhere. It connects the change order to the job without touching its numbers.
 
 Applying is one-time: once a change order is linked to a job, the button becomes a link to that job.
 
 ## Keeping track
 
-Change orders appear in the Estimates Pipeline and Ledger alongside estimates, with the amber chip telling them apart. Statuses are the same: Draft → Sent → Accepted (or Declined).
+Change orders appear in the Estimates Pipeline and Ledger alongside estimates. The amber chip tells them apart. Statuses are the same: Draft → Sent → Accepted, or Declined.
 
-One old estimate (#1) was *titled* "change order" before change orders had their own kind. It carries a quiet dashed tag — {{chip:gray|titled "change order" — an estimate, not a tracked change order}} — in the lists and on its detail page: it follows the estimate rails and has no **Apply to job**. To track a change against a job, start a **New change order**.
+One old estimate, #1, was *titled* "change order" before change orders had their own kind. It carries a quiet dashed tag in the lists and on its detail page. The tag reads {{chip:gray|titled "change order" — an estimate, not a tracked change order}}. It follows the estimate rails and has no **Apply to job**. To track a change against a job, you start a **New change order**.
