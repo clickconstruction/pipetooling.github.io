@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../../lib/supabase'
@@ -1055,17 +1055,33 @@ export default function PeopleOverheadTab({
     setOverheadPoolDay({ ymd, category })
     setOverheadPoolHighlightYmd(ymd)
   }
-  /** Move the week table to the Sun–Sat week holding this day (the table's own local-Date week math). */
-  const showOverheadWeekOf = (ymd: string) => {
+  /** Move the week table to the Sun–Sat week holding this day (the table's own local-Date week math). True when the dates changed, so the table reloads. */
+  const showOverheadWeekOf = (ymd: string): boolean => {
     const d = new Date(`${ymd}T12:00:00`)
     const start = new Date(d)
     start.setDate(d.getDate() - d.getDay())
     const end = new Date(start)
     end.setDate(start.getDate() + 6)
-    setOverheadDateStart(localCalendarDayKey(start))
-    setOverheadDateEnd(localCalendarDayKey(end))
+    const startKey = localCalendarDayKey(start)
+    const endKey = localCalendarDayKey(end)
+    setOverheadDateStart(startKey)
+    setOverheadDateEnd(endKey)
     setOverheadPoolDay(null)
+    return startKey !== overheadDateStart || endKey !== overheadDateEnd
   }
+
+  // The Man hours card sits near the top of the tab and its "Show these days in the table
+  // below" door lands on the day table near the bottom. While the table reloads it is one
+  // line tall, so a scroll made on the click stops short; scroll again once the rows are in.
+  const overheadDayTableLoading =
+    overheadSessionsLoading || overheadOfficePartsLoading || overheadOtherJobsSessionsLoading || overheadOtherJobsPartsLoading
+  const scrollToDayTableAfterLoadRef = useRef(false)
+  const scrollToOverheadDayTable = () => document.getElementById('overhead-day-table')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  useEffect(() => {
+    if (overheadDayTableLoading || !scrollToDayTableAfterLoadRef.current) return
+    scrollToDayTableAfterLoadRef.current = false
+    scrollToOverheadDayTable()
+  }, [overheadDayTableLoading])
 
   // People table (v2.2675): attribute each office-parts line to a person the
   // same way the breakdown modal labels it — Mercury card → nickname; supply /
@@ -1357,6 +1373,14 @@ export default function PeopleOverheadTab({
           not these.
         </p>
       </div>
+      <ManHoursCard
+        officeJobLedgerId={overheadOfficeJobLedgerId}
+        officeJobLoading={overheadSettingsLoading}
+        onShowWeek={(ymd) => {
+          scrollToDayTableAfterLoadRef.current = showOverheadWeekOf(ymd)
+          scrollToOverheadDayTable()
+        }}
+      />
       <OverheadPoolTrendCard
         trend={overheadPoolTrend.trend}
         loading={overheadPoolTrend.loading}
@@ -1426,14 +1450,6 @@ export default function PeopleOverheadTab({
           </div>
         </div>
       ) : null}
-      <ManHoursCard
-        officeJobLedgerId={overheadOfficeJobLedgerId}
-        officeJobLoading={overheadSettingsLoading}
-        onShowWeek={(ymd) => {
-          showOverheadWeekOf(ymd)
-          document.getElementById('overhead-day-table')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-        }}
-      />
       <div
         id="overhead-day-table"
         style={{
@@ -1561,10 +1577,7 @@ export default function PeopleOverheadTab({
         </button>
       </div>
 
-      {overheadSessionsLoading ||
-      overheadOfficePartsLoading ||
-      overheadOtherJobsSessionsLoading ||
-      overheadOtherJobsPartsLoading ? (
+      {overheadDayTableLoading ? (
         <p style={{ color: 'var(--text-muted)' }}>Loading overhead (sessions, office materials, field totals)…</p>
       ) : (
         <div style={{ overflowX: 'auto' }}>
