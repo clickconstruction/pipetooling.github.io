@@ -99,7 +99,8 @@ export type LienStepCard = {
 
 const KIND_WORDS: Record<LienNextUpKind, string> = { notice: 'Notice', affidavit: 'Affidavit', retainage: 'Retainage notice' }
 
-function dueWords(row: Pick<LienNextUpRow, 'kind' | 'dueOn' | 'daysLeft'>): string {
+/** "In the mail by Oct 15 · 10 days left", "File by Oct 1 · 4 days late"; the paper preview's banner reads it too (v2.4632). */
+export function lienStepDueWords(row: Pick<LienNextUpRow, 'kind' | 'dueOn' | 'daysLeft'>): string {
   if (!row.dueOn || row.daysLeft == null) return 'No day of its own'
   const verb = row.kind === 'affidavit' ? 'File by' : 'In the mail by'
   const day = formatYmdMonthDay(row.dueOn)
@@ -202,7 +203,7 @@ function besideItems(row: Pick<LienNextUpRow, 'action' | 'sub'>): { items: LienS
 export function lienStepCard(row: LienNextUpRow, facts: LienStepFacts = {}): LienStepCard {
   const at = lienStepOfRow(row)
   const tone: LienStepCard['tone'] = row.daysLeft != null && row.daysLeft < 0 ? 'red' : row.severity === 'red' ? 'red' : row.severity === 'amber' ? 'amber' : 'quiet'
-  const base = { ladder: row.kind, kindWords: KIND_WORDS[row.kind], title: row.title, deadline: dueWords(row), tone, button: row.button }
+  const base = { ladder: row.kind, kindWords: KIND_WORDS[row.kind], title: row.title, deadline: lienStepDueWords(row), tone, button: row.button }
   if (!at) {
     const beside = besideItems(row)
     return { ...base, items: beside.items, blocked: null, foot: beside.foot }

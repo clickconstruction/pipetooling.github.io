@@ -3951,6 +3951,11 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
 /* A Do now row's four dots (v2.4631): a hover or focus lifts them so the card beside them reads as theirs. */
 .lienStepMark:hover, .lienStepMark:focus-visible { background: var(--bg-subtle); outline: none; }
 .lienStepMark:focus-visible { box-shadow: 0 0 0 2px var(--border-blue); }
+/* A Do now row's chip as a door to the paper (v2.4632): a ring in its own color on hover and focus. */
+.lienPaperDoor:hover, .lienPaperDoor:focus-visible { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px currentColor; text-decoration: underline; text-underline-offset: 2px; outline: none; }
+/* A statutory blank on the previewed paper (v2.4632): a red underline and its number, small enough that the form still reads as a form. */
+.lienPaperGap { display: inline-flex; align-items: center; gap: 0.35em; border-bottom: 2px solid #dc2626; color: #991b1b; font-family: -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-weight: 700; font-size: 0.82em; padding-bottom: 1px; white-space: nowrap; }
+.lienPaperGap b { background: #dc2626; color: #fff; border-radius: 999px; width: 1.35em; height: 1.35em; display: inline-grid; place-items: center; font-size: 0.8em; }
 .lienCalDraft { border: none; border-radius: 7px; padding: 4px 11px; background: var(--text-amber-800); color: var(--surface); font: inherit; font-size: 0.75rem; font-weight: 700; white-space: nowrap; cursor: pointer; }
 .lienCalDraft:hover { opacity: 0.9; }
 .lienCalDraftPhone { min-height: 40px; padding: 0 14px; font-size: 0.8125rem; }

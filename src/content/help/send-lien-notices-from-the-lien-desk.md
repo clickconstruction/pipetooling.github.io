@@ -20,6 +20,7 @@ Open the Lien desk from the orange gavel on the Pipeline. It opens on its **Do n
 - A row waiting on the leader shows {{button:outline|Open}} to the office. The leader sees {{button:blue|Approve}}.
 - The job's number and name underline when you point at them. Press them to open the job itself, over the desk. Close the job and the desk reads its rows again. The same door is on every view of the desk.
 - A rail above the rows shows the four steps of a notice. They are Find the owner, Draft notice, Approve and Send the run. Each step shows how many rows stand on it. Press a step to see only those rows. Press it again to see every row. Affidavits get a rail of their own when one needs an act.
+- The Notice or Affidavit chip on a row is a door too. It rings when you point at it. A red count on it says how many details the paper still needs. Press it to see the paper as it would print today. Each missing detail is marked in red on the page with a number. A list beside the page names each one and gives the button that fills it. The arrow keys walk the rows. Esc closes the paper.
 - Each row wears four dots and a count like 2/4. Point at the dots to read where that paper stands. The card lists what is done, what is being done now and what is left. On a phone, tap the dots.
 
 When nothing needs anyone, the tab says so and points you at the Deadlines.
