@@ -177,6 +177,22 @@ describe('spare days on the paper (G-08)', () => {
   })
 })
 
+describe('where a bar could start earlier, on the paper (G-37)', () => {
+  it('prints our team the chart’s green ghost behind the bar, keyed; never the customer', () => {
+    const { input } = fairOaks()
+    const ductwork = input.bars.find((b) => b.item.label === 'Ductwork')
+    if (!ductwork) throw new Error('no Ductwork on Fair Oaks D')
+    const earlier = new Map([[ductwork.id, { start: '2026-09-10', finish: '2026-10-05', words: 'Thu Sep 10, 4 days sooner' }]])
+    const team = ganttPrint({ ...input, earlier })
+    expect(team.key.flat()).toContain('earlier')
+    const html = ganttPrintHtml(team)
+    expect(html).toContain(`data-earlier="${ductwork.id}"`)
+    expect(html).toContain('where it could start, now that the work before it finished early')
+    expect(ganttPrint(input).key.flat()).not.toContain('earlier')
+    expect(ganttPrintHtml(ganttPrint({ ...input, earlier, for: 'customer' }))).not.toContain('data-earlier=')
+  })
+})
+
 describe('the scale and the dates to meet', () => {
   it('picks the scale from the page: every day for five weeks, Mondays for six months, the 1st and 15th for two years', () => {
     expect(printAxis('2026-09-21', 35, 300, 434, true)).toMatchObject({ scale: 'days', tint: true })

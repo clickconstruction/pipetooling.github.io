@@ -311,9 +311,10 @@ export function GcGantt({
             // The chart's own note, with what the daily log says of the bar (G-60), so paper and screen say the same.
             noteOf: (bar: GanttBar) => barNote(bar, logNotes?.get(bar.id)),
             ...(lateSaid ? { lateSaid } : {}),
+            ...(earlier ? { earlier } : {}),
           }
         : null,
-    [print, all, filters, by, folded, showLinks, showSpare, milestones, waitList, lost, today, building, lateSaid, logNotes],
+    [print, all, filters, by, folded, showLinks, showSpare, milestones, waitList, lost, today, building, lateSaid, logNotes, earlier],
   )
   const anyFilter = Object.values(filters).some(Boolean)
   // Open all whenever anything is folded (finished trades open folded); Fold all only when nothing is.

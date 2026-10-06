@@ -76,6 +76,8 @@ export interface GanttPrintInput {
   lateSaid?: ReadonlyMap<string, { finish: string; words: string }>
   /** Show spare days is on (G-08): each bar's spare days as the chart's faint tail, on our team's copy. */
   spare?: boolean
+  /** Where each bar could start now that the work before it finished early (G-37): the chart's green ghost behind it. */
+  earlier?: ReadonlyMap<string, { start: string; finish: string; words: string }>
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -121,7 +123,7 @@ export interface GanttPrintAxis {
 }
 
 /** The marks the key explains, in the key's order. */
-export type GanttPrintMark = 'done' | 'underway' | 'notStarted' | 'tight' | 'late' | 'held' | 'inspection' | 'coTail' | 'said' | 'spare' | 'wait' | 'baseline' | 'actual' | 'group' | 'stage' | 'milestone' | 'link' | 'weekend' | 'holiday' | 'lost' | 'cut' | 'today'
+export type GanttPrintMark = 'done' | 'underway' | 'notStarted' | 'tight' | 'late' | 'held' | 'inspection' | 'coTail' | 'said' | 'spare' | 'earlier' | 'wait' | 'baseline' | 'actual' | 'group' | 'stage' | 'milestone' | 'link' | 'weekend' | 'holiday' | 'lost' | 'cut' | 'today'
 
 /** A date the job must meet, placed on its line so no two labels run together. */
 export interface GanttPrintMilestone {
@@ -172,6 +174,8 @@ export interface GanttPrint {
   lateSaid: ReadonlyMap<string, { finish: string; words: string }>
   /** Each bar's spare days as a faint tail (G-08), on our team's copy only, when Show spare days is on. */
   spare: boolean
+  /** Where each bar could start earlier (G-37), on our team's copy only. */
+  earlier: ReadonlyMap<string, { start: string; finish: string; words: string }>
   /** The marks each page uses. */
   key: GanttPrintMark[][]
   /** "Every day is a working day, weekends and holidays too." Our team's copy only. */
@@ -527,7 +531,7 @@ function listsHeight(lists: { title: string; lines: string[] }[]): number {
   return lists.reduce((h, l) => h + LIST_TITLE_H + l.lines.reduce((s, line) => s + LIST_LINE_H * Math.max(1, Math.ceil((line.length * LIST_CHAR_PT) / PRINT_PAGE.width)), 0), 0)
 }
 
-function marksOf(rows: GanttPrintRow[], print: Pick<GanttPrint, 'copy' | 'axis' | 'lost' | 'lateSaid' | 'spare' | 'links' | 'waitLinks'> & { milestones: readonly unknown[] }, page: number): GanttPrintMark[] {
+function marksOf(rows: GanttPrintRow[], print: Pick<GanttPrint, 'copy' | 'axis' | 'lost' | 'lateSaid' | 'spare' | 'earlier' | 'links' | 'waitLinks'> & { milestones: readonly unknown[] }, page: number): GanttPrintMark[] {
   const used = new Set<GanttPrintMark>()
   for (const r of rows) {
     if (r.kind === 'group') used.add('group')
@@ -549,6 +553,7 @@ function marksOf(rows: GanttPrintRow[], print: Pick<GanttPrint, 'copy' | 'axis' 
     const said = r.plain ? undefined : print.lateSaid.get(b.id)
     if (said && said.finish > a.finish) used.add('said')
     if (!r.plain && print.spare && spareTail(b)) used.add('spare')
+    if (!r.plain && print.earlier.has(b.id)) used.add('earlier')
     if (!r.plain && (print.lost.get(b.id) ?? []).length > 0) used.add('lost')
     if (print.axis.window && (a.start < print.axis.first || a.finish > addDays(print.axis.first, print.axis.days - 1))) used.add('cut')
   }
@@ -557,7 +562,7 @@ function marksOf(rows: GanttPrintRow[], print: Pick<GanttPrint, 'copy' | 'axis' 
   if (print.axis.tint && print.axis.marked.some((d) => d.weekend)) used.add('weekend')
   if (print.axis.marked.some((d) => d.holiday)) used.add('holiday')
   used.add('today')
-  const order: GanttPrintMark[] = ['done', 'underway', 'notStarted', 'tight', 'late', 'held', 'inspection', 'coTail', 'said', 'spare', 'wait', 'baseline', 'actual', 'group', 'stage', 'milestone', 'link', 'weekend', 'holiday', 'lost', 'cut', 'today']
+  const order: GanttPrintMark[] = ['done', 'underway', 'notStarted', 'tight', 'late', 'held', 'inspection', 'coTail', 'said', 'spare', 'earlier', 'wait', 'baseline', 'actual', 'group', 'stage', 'milestone', 'link', 'weekend', 'holiday', 'lost', 'cut', 'today']
   return order.filter((m) => used.has(m))
 }
 
@@ -613,7 +618,8 @@ export function ganttPrint(input: GanttPrintInput): GanttPrint {
   const lateSaid: ReadonlyMap<string, { finish: string; words: string }> = copy === 'team' ? (input.lateSaid ?? new Map()) : new Map()
   // Spare days are our team's: a customer never sees them.
   const spare = copy === 'team' && Boolean(input.spare)
-  const keyMarks = marksOf(rows, { copy, axis, milestones, lost: input.lost, lateSaid, spare, links: input.links && copy === 'team' ? [{ from: '', to: '', critical: false, gap: 0, page: 0 }] : [], waitLinks: [] }, 0)
+  const earlier: ReadonlyMap<string, { start: string; finish: string; words: string }> = copy === 'team' ? (input.earlier ?? new Map()) : new Map()
+  const keyMarks = marksOf(rows, { copy, axis, milestones, lost: input.lost, lateSaid, spare, earlier, links: input.links && copy === 'team' ? [{ from: '', to: '', critical: false, gap: 0, page: 0 }] : [], waitLinks: [] }, 0)
   const keyLines = Math.max(1, Math.ceil(keyMarks.reduce((w, m) => w + KEY_ENTRY_PT + keyWords(m, today).length * KEY_CHAR_PT, 0) / PRINT_PAGE.width))
   const keyH = keyLines * KEY_LINE_H + (copy === 'team' ? KEY_LINE_H : 0) + FOOT_H
   const ms = placeMilestones(axis.window ? milestones.filter((m) => inWindow(m.due)) : milestones, axis, PRINT_PAGE.width)
@@ -686,6 +692,7 @@ export function ganttPrint(input: GanttPrintInput): GanttPrint {
     lost: copy === 'team' ? input.lost : new Map(),
     lateSaid,
     spare,
+    earlier,
     key: [],
     everyDay: copy === 'team' ? 'Every day is a working day, weekends and holidays too.' : null,
     lists,
@@ -720,6 +727,7 @@ const P = {
   blueFill: '#dbeafe',
   blueTint: '#eff6ff',
   greenFill: '#bbf7d0',
+  greenGhost: '#dcfce7',
   redTint: '#fef2f2',
   amberFill: '#fef3c7',
   violetFill: '#ede9fe',
@@ -798,6 +806,7 @@ const KEY_WORDS: Record<GanttPrintMark, string> = {
   coTail: 'days a signed change order adds, not on the dates yet',
   said: "a trade's new day from its portal, not on the dates yet",
   spare: 'its spare days, how long it can slip before the job finishes later',
+  earlier: 'where it could start, now that the work before it finished early',
   wait: 'what the work waits on, from the day asked for to the day expected',
   baseline: 'where it sat in the plan at Start',
   actual: 'the days it really ran',
@@ -838,6 +847,8 @@ function keySwatch(mark: GanttPrintMark): string {
         return box('url(#gp-tail)', P.violet, 0.9, '2 1.2')
       case 'said':
         return box(P.white, P.amber, 0.9, '2 1.2')
+      case 'earlier':
+        return box(P.greenGhost, P.green, 0.9, '2 1.2')
       case 'spare':
         return `${rect(0.5, 6, 14, 1.6, P.blue, 'opacity="0.35"')}${vline(14.5, 4.5, 8, P.blue, 0.9, 'opacity="0.75"')}`
       case 'wait':
@@ -1025,6 +1036,9 @@ function chartSvg(p: GanttPrint, rows: GanttPrintRow[], page: number): string {
         const end = a.actualFinish ?? (p.today > a.actualStart ? p.today : a.actualStart)
         lane.push(rect(x(a.actualStart), y + 1, Math.max(dayW, (daysBetween(a.actualStart, end) + 1) * dayW), 1.4, P.green, a.actualFinish ? '' : 'opacity="0.6"'))
       }
+      // Where it could start now that the work before it finished early (G-37): the chart's green ghost, behind the bar.
+      const soon = r.plain ? undefined : p.earlier.get(b.id)
+      if (soon) lane.push(`<rect data-earlier="${esc(b.id)}" x="${n2(x(soon.start))}" y="${n2(by)}" width="${n2(Math.max(dayW, (daysBetween(soon.start, soon.finish) + 1) * dayW))}" height="${n2(bh)}" rx="1.5" fill="${P.greenGhost}" stroke="${P.green}" stroke-width="0.9" stroke-dasharray="2 1.2" opacity="0.8"/>`)
       if (!r.plain && b.moved && b.status !== 'done') lane.push(rect(x(b.item.baseline.start), y + h - 2.4, (daysBetween(b.item.baseline.start, b.item.baseline.finish) + 1) * dayW, 1.4, P.strong))
       lane.push(`<rect x="${n2(bx)}" y="${n2(by)}" width="${n2(bw)}" height="${n2(bh)}" rx="1.5" fill="${look.fill}" stroke="${look.stroke}" stroke-width="${look.width}"${look.dash ? ` stroke-dasharray="${look.dash}"` : ''}/>`)
       if (b.item.actual > 0 && b.status !== 'done') lane.push(rect(bx, by, (bw * Math.min(100, b.item.actual)) / 100, bh, P.blue, 'opacity="0.85" rx="1.5"'))
