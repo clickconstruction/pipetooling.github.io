@@ -30,6 +30,7 @@ import {
   renderCrewDayEmail,
   type CrewDayEmailPayload,
 } from './render.ts'
+import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -167,7 +168,7 @@ async function requireEligible(
 
   const { data: meRow } = await admin
     .from('users')
-    .select('role, email, name, archived_at').eq('is_sample', false)
+    .select('role, email, name, archived_at').match(REAL_ACCOUNT)
     .eq('id', user.id)
     .maybeSingle()
   if (!meRow || meRow.archived_at || !SENDER_ROLES.has(String(meRow.role))) {
@@ -185,7 +186,7 @@ type UserRow = { id: string; email: string | null; name: string | null; role: st
 async function loadUser(admin: Admin, id: string): Promise<UserRow | null> {
   const { data } = await admin
     .from('users')
-    .select('id, email, name, role, archived_at').eq('is_sample', false)
+    .select('id, email, name, role, archived_at').match(REAL_ACCOUNT)
     .eq('id', id)
     .maybeSingle()
   return (data as UserRow | null) ?? null

@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { LIEN_STATUS_NOTE_MAX, lienStatusEmailHtml, lienStatusEmailText, lienStatusSubject, parseLienStatusPayload } from '../_shared/lienDeskStatus.ts'
+import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
 
 /**
  * Email where the liens stand (v2.4311): the Lien desk's Share → Email a teammate….
@@ -60,7 +61,7 @@ serve(async (req) => {
     if (authError || !user) return jsonResponse({ error: 'Unauthorized' }, 401)
 
     const admin = createClient(supabaseUrl, serviceRole)
-    const { data: meRow } = await admin.from('users').select('id, name, email, role, archived_at, read_only').eq('id', user.id).eq('is_sample', false).maybeSingle()
+    const { data: meRow } = await admin.from('users').select('id, name, email, role, archived_at, read_only').eq('id', user.id).match(REAL_ACCOUNT).maybeSingle()
     const me = meRow as UserRow | null
     if (!me || me.archived_at || !DESK_ROLES.has(String(me.role))) return jsonResponse({ error: 'Only the people who use the Lien desk can send this.' }, 403)
     if (me.read_only) return jsonResponse({ error: 'A training account cannot send email.' }, 403)
@@ -100,7 +101,7 @@ serve(async (req) => {
     const ids = Array.isArray(body.recipient_user_ids) ? [...new Set(body.recipient_user_ids.filter((x): x is string => typeof x === 'string' && x.trim().length > 0).map((x) => x.trim()))] : []
     if (ids.length === 0) return jsonResponse({ error: 'Pick someone to send it to.' }, 400)
     if (ids.length > MAX_RECIPIENTS) return jsonResponse({ error: `One email goes to ${MAX_RECIPIENTS} people at most.` }, 400)
-    const { data: rows, error: rowsErr } = await admin.from('users').select('id, name, email, role, archived_at').in('id', ids).eq('is_sample', false).eq('is_digital_twin', false)
+    const { data: rows, error: rowsErr } = await admin.from('users').select('id, name, email, role, archived_at').in('id', ids).match(REAL_ACCOUNT)
     if (rowsErr) return jsonResponse({ error: rowsErr.message }, 500)
     const byId = new Map(((rows ?? []) as UserRow[]).map((r) => [r.id, r]))
     const recipients: UserRow[] = []

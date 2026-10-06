@@ -240,7 +240,7 @@ Not every function takes an `Authorization` header — each function authenticat
 
 ### Role-Based Access Control
 
-JWT-validating functions check the caller's role from the `public.users` table. The nine roles:
+JWT-validating functions check the caller's role from the `public.users` table. A function that looks a sender or a recipient up there takes only a real account (v2.4658, punch list #29): `.match(REAL_ACCOUNT)` from [`_shared/realAccount.ts`](../supabase/functions/_shared/realAccount.ts) refuses View-as sample accounts and digital twins (twins are estimators). That is the `users` half of `roster_people`'s rule, which a function cannot read as the service role. Archived stays with each caller. `src/lib/people/realAccountSweep.test.ts` fails CI on a hand-written `.eq('is_sample', false)`; `node scripts/sweep-real-account.mjs` rewrites one. The nine roles:
 - **dev**: Full admin access (create/archive/restore users, set passwords, claim-dev administration, Stripe data surfaces)
 - **master_technician**: Broad operational access; limited admin (e.g. login-as-user impersonation)
 - **assistant**: Office staff — most operational functions (billing, notifications, reports) but no user administration

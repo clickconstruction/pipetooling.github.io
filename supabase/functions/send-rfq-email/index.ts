@@ -17,6 +17,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { COMPANY_EMAIL_FROM } from '../_shared/emailFrom.ts'
 import { buildRfqEmail, type RfqEmailInput } from '../_shared/rfqEmail.ts'
+import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -61,7 +62,7 @@ serve(async (req) => {
     if (authErr || !userData?.user) return json({ error: 'Not signed in' }, 401)
     const { data: sender } = await admin
       .from('users')
-      .select('id, name, email, role, archived_at').eq('is_sample', false)
+      .select('id, name, email, role, archived_at').match(REAL_ACCOUNT)
       .eq('id', userData.user.id)
       .maybeSingle()
     if (!sender || sender.archived_at || !ALLOWED_ROLES.has((sender.role as string) ?? '')) {

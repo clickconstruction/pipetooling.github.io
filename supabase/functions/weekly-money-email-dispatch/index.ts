@@ -26,6 +26,7 @@ import {
   weeklyMoneySubject,
   type WeeklyMoneyPayload,
 } from './render.ts'
+import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -111,7 +112,7 @@ serve(async (req) => {
       try {
         const { data: recipient } = await admin
           .from('users')
-          .select('email, name, role, archived_at').eq('is_sample', false)
+          .select('email, name, role, archived_at').match(REAL_ACCOUNT)
           .eq('id', row.recipient_user_id)
           .maybeSingle()
         const recipientEmail = (recipient?.email ?? '').trim()
