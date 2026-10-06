@@ -601,17 +601,15 @@ describe('LienDeskModal · wording and the preview (v2.3522)', () => {
     expect(send.textContent).toContain('by certified mail')
     expect(send.textContent).toContain('Loberg Contracting')
     expect(send.textContent).toContain('courtesy PDF to office@loberg.test')
-    // Ready (v2.3776): ONE row — the state and its why, then Save draft, a quiet Skip, and the one primary.
+    // Ready (v2.3776): ONE row — the state and its why, then Save draft and the one primary (Skip left in v2.4743).
     const next = document.querySelector('[data-lien-desk-next]') as HTMLElement
     expect(next.getAttribute('data-blocked')).toBe('no')
     expect(next.textContent).toContain('Goes to the leader')
     expect(next.textContent).not.toContain('Blocked until')
     expect(next.textContent).not.toContain('give up the lien right')
     expect(screen.queryByRole('button', { name: /Go to gate/ })).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: /^Skip Jun \+ Jul \+ Aug…$/ }))
-    expect(screen.getByText(/Skipping gives up the lien right on/)).toBeTruthy()
-    expect(screen.getByLabelText('Skip reason')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    // v2.4743: no Skip — a month nobody sends closes on its own and is noted as missed.
+    expect(screen.queryByRole('button', { name: /^Skip / })).toBeNull()
     expect(screen.getByLabelText(/Include counsel's cover letter/)).toBeTruthy()
     const gatesBox = document.querySelector('[data-lien-desk-gates]') as HTMLElement
     expect(gatesBox.getAttribute('data-ready')).toBe('yes')

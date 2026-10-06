@@ -120,7 +120,7 @@ The **Timeline** tab is the book. It lists every billed job with money open and 
 Pick the row. The pane first shows what must be true before the notice can go. Then comes **Months on this job**, a grid with months down and papers across. Above the grid, one line names the last day of work and where it came from. It reads from clock hours, or from the job's creation when there are none. Press **Change ›** to set the day by hand. {{button:blue|Save the day}} opens a window before anything is written. It says how far the day sits from the clock hours, in words. A table shows the dates that move with it, today beside the new day. A changed row is lit. A day earlier than the hours is refused there, and so is a day after today. A day far past the hours asks for a second look. The reason is typed in the window, and it is required. Press **Set the day** to write it. The months follow the day you set. Clock hours and pay are not changed. The same line sits in Edit Job, under Our contract on this job. The Lien window has it too. Press **change ›** under **Last work** on its timeline, and the line opens there. On **Deadlines**, the date where a row's bar starts opens the same thing. A day set in either place moves the row to its new group.
 
 - Each row is one month worked, oldest first, with its hours and crew. A job nobody clocked in on has one row, the month it was created.
-- Each row shows its window, with the day to mail by and the days left. A closed month says it was not noted, with {{button:outline|Note it as missed}}. A skipped month says who skipped it and why.
+- Each row shows its window, with the day to mail by and the days left. A closed month says it was not noted, with {{button:outline|Note it as missed}}. A month skipped before the Skip button left says who skipped it and why.
 - Each column is a § 53.056 notice already sent on the job, lettered A, B and on. A ✓ marks each month the paper names. Its header says when it was sent and links the saved copy.
 - The last column is this notice. Every open month is ticked, because one notice may carry several months. It must beat the earliest deadline.
 
@@ -148,15 +148,15 @@ Type when it went out, how and to whom. Type the claim and the months as they we
 
 The record lands on every one of those jobs, and the desk stops asking for them. When the paper's claim differs from the app's, the record shows both figures. Neither one is rewritten. The Lien window's notice tab has the same door, {{button:outline|Already sent — record it…}}.
 
-## Skipping a month
+## A month nobody sends
 
-**Skip** gives up the lien right on a month, on purpose. The reason stays on the record. Its confirm line names the cost, like giving up the lien right on July 2026. It refuses without a reason, because a skip cannot be undone.
+There is no button to give up a month. If the notice should wait, the master can hold it. If a month will never go out, let its window close and note it as missed.
 
 A window that closes with nothing recorded is never silent. The Dashboard's lien card adds a quiet line with the count, the money and a link to note them. That link opens the desk's **Missed** lens. That month's row under **Months on this job** turns red, with {{button:outline|Note it as missed}}.
 
-Noting a month is not a skip. It records that a person saw the loss, with a name and a date. Then the Dashboard stops naming it. The money is still owed, and it rides on the notice for the open months.
+Noting a month records that a person saw the loss, with a name and a date. Then the Dashboard stops naming it. The money is still owed, and it rides on the notice for the open months.
 
-A skipped or missed month stays as a row in the **Months** grid. A skipped month reads {{chip:yellow|skipped}}, with who skipped it and why. A month whose window closed unsent reads {{chip:red|closed}} with its date. Beside it the row says who noted it, or {{chip:yellow|not noted}}. A missed month's row keeps two things apart. While the affidavit window is open, a late notice can still claim that month. The row says so, and the tick reads late. Once that window closes too, the lien is gone for that month's work. The money is still owed, and the notice claims it with the whole balance.
+A skipped or missed month stays as a row in the **Months** grid. A month skipped in the past reads {{chip:yellow|skipped}}, with who skipped it and why. A month whose window closed unsent reads {{chip:red|closed}} with its date. Beside it the row says who noted it, or {{chip:yellow|not noted}}. A missed month's row keeps two things apart. While the affidavit window is open, a late notice can still claim that month. The row says so, and the tick reads late. Once that window closes too, the lien is gone for that month's work. The money is still owed, and the notice claims it with the whole balance.
 
 On the **Affidavits** tab, the job's pane shows **Months the affidavit claims**. Each month reads {{chip:green|on the lien}}, {{chip:blue|window open}} or {{chip:yellow|unsecured}}. A month whose window closed unsent is named and left off the lien. Its share of the money is chased in Collections.
 
@@ -387,7 +387,7 @@ The offer lasts while Put a GC on notice stays open. It ends once the run is rec
 
 ## Who can do what
 
-- **Draft, send for approval, send on the leader's word and skip:** a dev, an assistant or a controller. A master can draft and approve his own.
+- **Draft, send for approval and send on the leader's word:** a dev, an assistant or a controller. A master can draft and approve his own.
 - **Approve, hold and set a standing rule:** a dev or a master technician. The database refuses an approval from anyone else. It also refuses a send on a spoken word without a note.
 - **Put a GC on notice:** the office opens it and readies the owners. Approving all of it is for the master or a dev. A send on the spoken word is for an assistant, a controller or a dev.
 
