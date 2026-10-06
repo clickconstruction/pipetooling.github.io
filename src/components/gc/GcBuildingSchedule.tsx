@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState, type CSSProperties, type Dispatch, type ReactNode } from 'react'
 import {
+  GC_COMPANY,
   activityName,
   addDays,
   daysBetween,
@@ -52,6 +53,8 @@ import { ADDED_WHO, addedActivityProblem } from '../../lib/gcMode/gcAddedActivit
 import { actualProblem, actualWords } from '../../lib/gcMode/gcActualDates'
 import { baselineDue, baselineHistory, baselineWords, nextBaselineName } from '../../lib/gcMode/gcBaseline'
 import { customerScheduleHtml, customerScheduleLetter, scheduleSends } from '../../lib/gcMode/gcCustomerScheduleSend'
+import { customerDoneWords, customerSchedulePicture, customerStanding } from '../../lib/gcMode/gcCustomerSchedule'
+import type { GanttPrintJob } from '../../lib/gcMode/gcGanttPrint'
 import { useAuth } from '../../hooks/useAuth'
 import type { WaitKind } from '../../lib/gcMode/gcTypes'
 
@@ -96,6 +99,22 @@ export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps)
       return plan && !plan.problem ? { pushed: plan.pushed.map((p) => ({ lineId: p.lineId, start: p.to.start, finish: p.to.finish })), words: plan.words } : null
     },
     [project],
+  )
+  // Print or PDF on the chart (G-21): the job's words, and the customer's picture as their portal reads it.
+  const printJob = useMemo<GanttPrintJob | null>(
+    () =>
+      m.finish
+        ? {
+            name: project.name,
+            place: project.address,
+            company: GC_COMPANY.name,
+            by: me,
+            finishWords: finishSentence(m.finish, m.contract),
+            doneWords: project.stage === 'building' ? customerDoneWords(customerStanding(state, project)) : null,
+            customer: customerSchedulePicture(state, project),
+          }
+        : null,
+    [state, project, m, me],
   )
   const schedule = project.schedule
   const building = project.stage === 'building'
@@ -179,6 +198,7 @@ export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps)
           tails={tails}
           waits={waits}
           lost={lost}
+          {...(printJob ? { print: printJob } : {})}
           items={m.items}
           float={m.float}
           milestones={m.milestones}
@@ -1086,6 +1106,12 @@ function Measures({ m }: { m: ReturnType<typeof scheduleMeasures> }) {
  * When the job finishes as the schedule stands today (owner, 2026-10-04), against substantial
  * completion in the contract, in days. The late fee in dollars stays on Bill the owner.
  */
+/** The projected finish and the contract's day, as the Projected finish card says them: the printed chart's head reads it too (G-21). */
+function finishSentence(finish: ProjectedFinish, contract: ReturnType<typeof substantialCompletionOn>): string {
+  const days = (n: number) => `${n} ${n === 1 ? 'day' : 'days'}`
+  return `${finish.why} ${contract ? `The contract says substantial completion by ${shortDate(contract.on)}${contract.days > 0 ? `, with ${days(contract.days)} by change order` : ''}.` : 'No substantial completion milestone to measure against.'}`
+}
+
 function FinishMeasure({ finish, contract }: { finish: ProjectedFinish; contract: ReturnType<typeof substantialCompletionOn> }) {
   const days = (n: number) => `${n} ${n === 1 ? 'day' : 'days'}`
   const past = contract ? daysBetween(contract.on, finish.on) : null
@@ -1102,10 +1128,7 @@ function FinishMeasure({ finish, contract }: { finish: ProjectedFinish; contract
   const tone: Tone = past === null ? (finish.behind > 0 ? 'amber' : 'green') : past > 0 ? 'red' : past === 0 ? 'amber' : 'green'
   return (
     <Measure label="Projected finish" value={weekdayDate(finish.on)} tone={tone} chip={chip}>
-      {finish.why}{' '}
-      {contract
-        ? `The contract says substantial completion by ${shortDate(contract.on)}${contract.days > 0 ? `, with ${days(contract.days)} by change order` : ''}.`
-        : 'No substantial completion milestone to measure against.'}
+      {finishSentence(finish, contract)}
     </Measure>
   )
 }

@@ -7,6 +7,7 @@
 import { useState } from 'react'
 import { daysBetween, shortDate, weekdayDate } from '../../lib/gcMode/gcModel'
 import type { GanttBar, GanttGroup } from '../../lib/gcMode/gcGantt'
+import { customerBarWords } from '../../lib/gcMode/gcCustomerSchedule'
 import { Chip } from './gcUi'
 
 /** Saturated on purpose: the chart's status colors, the same in both themes. */
@@ -88,7 +89,7 @@ export function GcGanttList({ groups, today, building, picked, onPick, plain }: 
                           {shortDate(a.start)} to {shortDate(a.finish)}
                         </td>
                         <td style={{ padding: '0.4rem 0.5rem' }}>
-                          <Chip tone={plain && (b.status === 'onTrack' || b.status === 'notStarted') ? 'grey' : b.tone}>{plain && b.status === 'onTrack' ? 'on plan' : plain && b.status === 'notStarted' ? 'not started' : b.statusWords}</Chip>
+                          <Chip tone={plain ? customerBarWords(b).tone : b.tone}>{plain ? customerBarWords(b).words : b.statusWords}</Chip>
                         </td>
                         <td style={{ padding: '0.4rem 0.75rem 0.4rem 0.5rem', width: 88 }}>{bar(b, g)}</td>
                       </tr>
