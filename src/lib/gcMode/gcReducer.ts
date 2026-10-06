@@ -42,6 +42,7 @@ import { BACK_CHARGE_ANSWER_DAYS, backChargeCanTake, backChargeDraws, backCharge
 import { payReminderEmail, payReminderStep } from './gcOwnerBillingRemind'
 import { portalCanAskRfi, RFI_NEEDED_DAYS, rfiAnsweredWords, rfiChangeOrderDescription, rfiDefaultHolds, rfiLabel } from './gcBuildingRfis'
 import { bidSentWeeksWords, keepRough, roughDrawnWords } from './gcRoughSchedule'
+import { importRefusal, importedSchedule } from './gcScheduleImport'
 import { appClaimed, appOpen, changeOrderPrice, OWNER_RETAINAGE_DEFAULT_PCT, ownerCloseout, ownerContractWorthNow, ownerFinalPayAppToSend, ownerPayApp, ownerPayAppHasWork, ownerPayAppToSend, ownerRetainageWords } from './gcOwnerBilling'
 import { lateFinish } from './gcLateFinish'
 
@@ -1126,6 +1127,17 @@ function reduce(state: GcState, action: GcAction): GcState {
       const schedule = draftSchedule(project, action.start, action.days)
       const next = mapProject(state, project.id, (p) => ({ ...p, schedule }))
       return logged(next, 'office', `Drew a first draft of the schedule on ${project.name}: ${schedule.activities.length} activities from ${weekdayDate(action.start)}.`)
+    }
+
+    case 'importSchedule': {
+      // A schedule a customer or the architect handed us (G-137): through the first draft's own kernel, their dates and waits
+      // on the lines it names. The first schedule, or in place of one drawn before Start that nobody walked or moved.
+      const project = state.projects.find((p) => p.id === action.projectId)
+      if (!project || importRefusal(project) || !action.imported.workStarts) return state
+      const made = importedSchedule(project, action.imported)
+      if (made.kept === 0 && action.imported.dates.length === 0) return state
+      const next = mapProject(state, project.id, (p) => ({ ...p, schedule: made.schedule }))
+      return logged(next, 'office', made.words)
     }
 
     case 'setScheduleActivity': {
