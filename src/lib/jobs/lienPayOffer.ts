@@ -84,10 +84,8 @@ export function lienOfferLowAmount(amount: number, pct: number): number {
   return Math.round(amount * (100 - pct)) / 100
 }
 
-/** The credit Stripe gets, in cents, from what the bill still asks for. */
-export function lienOfferCreditCents(remainingCents: number, pct: number): number {
-  return Math.max(0, Math.round((remainingCents * pct) / 100))
-}
+/** The credit Stripe gets, in cents, from what the bill asks for — the shared definition the function and the webhook run. */
+export { lienOfferCreditCents } from './lienPayOfferShared'
 
 /** What the offer gives up at most: the percent of every payable bill. */
 export function lienOfferCost(amounts: ReadonlyArray<number>, pct: number): number {

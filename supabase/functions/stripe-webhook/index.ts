@@ -10,6 +10,8 @@ import {
   type StripeBillingMode,
 } from '../_shared/stripeSecrets.ts'
 import { parseOobPaymentMetadataFromStripe } from '../_shared/pipetoolingStripeOobPaymentMetadata.ts'
+import { lienOfferWriteDown, type LienOfferRow } from '../_shared/lienPayOffer.ts'
+import { APP_CALENDAR_TZ } from '../_shared/appTimeZone.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -90,7 +92,7 @@ async function syncJobsLedgerStripeInvoiceStatus(
 ): Promise<void> {
   const { data: rows, error: qErr } = await admin
     .from('jobs_ledger_invoices')
-    .select('id, status, stripe_mode')
+    .select('id, status, stripe_mode, amount, lien_offer_pct, lien_offer_by, lien_offer_set_by, lien_offer_credit_note_id, lien_offer_credit_cents, lien_offer_taken_at, lien_offer_ended_at')
     .eq('stripe_invoice_id', stripeInvId)
     .limit(1)
 
@@ -126,6 +128,40 @@ async function syncJobsLedgerStripeInvoiceStatus(
 /** Postgres unique_violation — duplicate Stripe event id (dedupe). */
 function isUniqueViolation(err: { code?: string } | null): boolean {
   return err?.code === '23505'
+}
+
+type LienOfferWebhookRow = LienOfferRow & { id: string; amount: number | null; lien_offer_set_by: string | null }
+
+/** YYYY-MM-DD of a Stripe epoch-seconds stamp, in the company's calendar; today when Stripe gave none. */
+function ymdInAppTz(epochSeconds: number | null | undefined): string {
+  const d = typeof epochSeconds === 'number' && Number.isFinite(epochSeconds) && epochSeconds > 0 ? new Date(epochSeconds * 1000) : new Date()
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: APP_CALENDAR_TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(d)
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? ''
+  return `${get('year')}-${get('month')}-${get('day')}`
+}
+
+/** The pay offer's write-down (v2.4704). Never throws: a bill that cannot be written down is still marked paid, with a warning line. */
+async function recordLienOfferWriteDown(admin: SupabaseClient, row: LienOfferWebhookRow, inv: Stripe.Invoice, eventForLog: Pick<Stripe.Event, 'id' | 'type'>): Promise<void> {
+  const plan = lienOfferWriteDown(row, Number(row.amount ?? 0), ymdInAppTz(inv.status_transitions?.paid_at))
+  if (!plan) return
+  if (!row.lien_offer_set_by) {
+    webhookLog('warn', eventForLog, 'lien offer: no leader on the bill, write-down skipped', row.id)
+    return
+  }
+  const { data, error } = await admin.rpc('service_apply_agreed_write_down_from_stripe', {
+    p_invoice_id: row.id,
+    p_new_amount: plan.newAmount,
+    p_note: `${plan.note} (Stripe credit note ${row.lien_offer_credit_note_id})`,
+    p_stripe_credit_note_id: row.lien_offer_credit_note_id,
+    p_actor_user_id: row.lien_offer_set_by,
+  })
+  const result = data as { error?: string; ok?: boolean } | null
+  if (error || (result && typeof result === 'object' && result.error)) {
+    webhookLog('warn', eventForLog, 'lien offer: write-down refused', error ?? result?.error)
+    return
+  }
+  const { error: upErr } = await admin.from('jobs_ledger_invoices').update({ lien_offer_taken_at: new Date().toISOString() }).eq('id', row.id)
+  if (upErr) webhookLog('warn', eventForLog, 'lien offer: taken_at not stored', upErr)
 }
 
 /** `invoice.paid` (classic) and `invoice.payment_succeeded` (newer API / dashboard) — same PipeTooling handling. */
@@ -171,6 +207,10 @@ async function handleStripeInvoicePaidEvent(
   if (row.status === 'paid') {
     await admin.from('jobs_ledger_invoices').update({ stripe_invoice_status: 'paid' }).eq('id', row.id)
   } else {
+    // The pay offer (v2.4704): paid in full with the leader's credit on the bill — the ledger is written down by the
+    // credit, with the note, BEFORE the payment is recorded, since mark_invoice_paid_from_stripe records the ledger's
+    // remaining amount, not Stripe's. The actor is the leader who gave the offer.
+    await recordLienOfferWriteDown(admin, row as unknown as LienOfferWebhookRow, inv, eventForLog)
     const md = inv.metadata && typeof inv.metadata === 'object' && !Array.isArray(inv.metadata)
       ? (inv.metadata as Record<string, string>)
       : undefined
