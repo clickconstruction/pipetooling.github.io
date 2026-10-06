@@ -2,24 +2,24 @@
 name: "Owner's portal: show what is happening on their property"
 number: 45
 group: close
-status: built 2026-09-25 — v2.3827 the switch · v2.3825 the notice card (customer-portal deployed) · v2.3826 the GC run's tick · left: the first real owner, counsel on the card's words
+status: built 2026-09-25 — v2.3827 the switch · v2.3825 the notice card (customer-portal deployed) · v2.3826 the GC run's tick · left: the first real owner · counsel read the card's words and approved them 2026-10-06
 summary: >
   An owner whose jobs are billed to the GC opened their portal and read "You're all paid up"
   while tens of thousands were unpaid on their house and a lien notice was on its way (Umar Khan,
   9703 Lenox Hl, $30,387). Built: one switch to show the owner their property's bills, the
   portal showing a recorded § 53.056 notice on its own, and a GC run's tick that does both.
-next: Record the Lenox Hl and Terrell Rd notices once mailed and flip the owner switch; look at Umar Khan's portal; counsel reads the card's words; then delete the folder.
+next: Record the Lenox Hl and Terrell Rd notices once mailed and flip the owner switch; look at Umar Khan's portal; then delete the folder.
 size: XS
 blocker: A recorded notice on a real owner's job.
 ver: v2.3825 · 3826 · 3827
-opinion: close — built; the first real owner and counsel's read remain.
+opinion: close — built and the words approved; the first real owner remains.
 ---
 
 # Owner's portal: show what is happening on their property
 
 ## Where it stands
 
-Built on 2026-09-25, following the owner's calls: the notice card shows on its own once a notice is recorded, and the switch covers the whole property. Counsel's read of the card's wording is still pending (`owner-decisions-pending.md`).
+Built on 2026-09-25, following the owner's calls: the notice card shows on its own once a notice is recorded, and the switch covers the whole property. Counsel read the card's wording and approved it on 2026-10-06.
 
 - **v2.3827** (PR 1, #3702): *owner sees $0 / the bills* beside the owner's 🌐 on the Pipeline row, and a line per property in the owner's portal window.
 - **v2.3825** (PR 2, #3704): the notice card on the owner's portal, *Nothing is billed to you directly*, and the noticed wording on shared bills. `customer-portal` was deployed 2026-09-25; the live response carries `propertyNotices`.
