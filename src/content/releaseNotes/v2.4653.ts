@@ -3,12 +3,13 @@ import type { ReleaseNote } from '../../lib/releaseNotes'
 const note: ReleaseNote = {
   version: 'v2.4653',
   date: '2026-10-06',
-  title: 'Lien desk: set the last day of work by hand',
+  title: 'Review: fuel stays on the jobs',
   kind: 'feature',
   highlights: [
-    'Every job on the Lien desk now has a Last day of work line above its months, saying where the day came from: clock hours, the day the job was created, or a person. A job with no clock hours used to be dated from its creation with no way to say better.',
-    'Press Change to set the day by hand with a line on why. The lien months, the deadlines, the timeline, the GC run and the affidavit all follow it. The record keeps who set it and when.',
-    'Clock hours and pay are never changed. A day earlier than the last clock day is refused. The same line sits in Edit Job under Our contract on this job.',
+    'On People → Review, fuel put on a job now stays on that job, as on every other screen. Everyone who worked the job shares it.',
+    'A vehicle deal now charges only what is not on a job. A company truck charges its insurance, registration and service per field hour, plus fuel on no job.',
+    'A company truck with no insurance, registration or service entered on People → Vehicles charges only its fuel on no job, until those costs are entered.',
+    'In Wheels, a refund to a card now comes off the fuel.',
   ],
 }
 

@@ -41,7 +41,7 @@ export function JobFormLienContractRow({ jobId, gcName, expanded, onToggle, flas
   const { showToast } = useToastContext()
   const { user: authUser } = useAuth()
   const [loaded, setLoaded] = useState<Loaded | null>(null)
-  // The last day of work set by hand (v2.4653): re-read after the line saves.
+  // The last day of work set by hand (v2.4676): re-read after the line saves.
   const [lastWorkTick, setLastWorkTick] = useState(0)
   const [lastWork, setLastWork] = useState<{ lien_last_work_on: string | null; lien_last_work_note: string | null; lien_last_work_set_at: string | null; lien_last_work_set_by: string | null; created_at: string | null } | null>(null)
   const [unavailable, setUnavailable] = useState(false)
@@ -78,7 +78,7 @@ export function JobFormLienContractRow({ jobId, gcName, expanded, onToggle, flas
       setLoaded(next)
       setRetainageDraft(next.retainage)
       setDateDraft(next.endedOn || next.lastWorkDate || '')
-      // The last day of work (v2.4653), best-effort: the line waits until its columns are on prod.
+      // The last day of work (v2.4676), best-effort: the line waits until its columns are on prod.
       const lwRes = await supabase.from('jobs_ledger').select('created_at, lien_last_work_on, lien_last_work_note, lien_last_work_set_at, lien_last_work_set_by').eq('id', jobId).maybeSingle()
       if (cancelled) return
       const lw = (lwRes.error ? null : lwRes.data) as { lien_last_work_on?: string | null; lien_last_work_note?: string | null; lien_last_work_set_at?: string | null; lien_last_work_set_by?: string | null; created_at?: string | null } | null

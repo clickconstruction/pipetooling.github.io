@@ -181,7 +181,7 @@ export interface LienTimelineInput {
   /** 'YYYY-MM' — the last month worked, or the creation month; '' unknown. */
   lastMonth: string
   lastMonthFromCreation: boolean
-  /** The last month is the day set by hand (v2.4653) — the node says so. */
+  /** The last month is the day set by hand (v2.4676) — the node says so. */
   lastMonthByHand?: boolean
   months: ReadonlyArray<LienTimelineMonth>
   /** Where the job's live notice sits on the desk, for the due node's words. */

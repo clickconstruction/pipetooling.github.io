@@ -90,7 +90,7 @@ export function buildLienTimelineFromDesk(jobId: string, src: LienTimelineDeskSo
   const fromLedger = (src.lastWorkDate ?? '').slice(0, 7)
   const lastMonth = src.affidavit?.lastMonth || (fromRows && fromLedger ? (fromRows.key > fromLedger ? fromRows.key : fromLedger) : fromRows?.key || fromLedger || '')
   const lastMonthFromCreation = src.affidavit ? src.affidavit.lastMonthFromCreation : Boolean(fromRows && fromRows.key === lastMonth && fromRows.fromCreation) || Boolean(src.entry?.datedFromCreation && (!fromRows || fromRows.key === lastMonth))
-  // The last day of work set by hand (v2.4653): the affidavit entry says so, else the desk row for the last month.
+  // The last day of work set by hand (v2.4676): the affidavit entry says so, else the desk row for the last month.
   const lastMonthByHand = src.affidavit ? src.affidavit.lastMonthByHand : src.rows.some((r) => r.job_id === jobId && r.work_month === lastMonth && r.month_source === 'hand')
 
   const live = src.filings.filter((f) => f.job_id === jobId && f.voided_at == null)
@@ -182,7 +182,7 @@ export function buildLienTimelineFromWindow(src: {
       return { key: m.key, deadline, fromCreation: false, outcome, at: sentAt ?? '', noteUnknown: outcome === 'missed' }
     })
     lastMonth = wm.lastMonthKey || (src.job.last_work_date ?? '').slice(0, 7)
-    // The last day of work set by hand (v2.4653) extends the months when it is later than the sessions.
+    // The last day of work set by hand (v2.4676) extends the months when it is later than the sessions.
     const hand = (src.job.lien_last_work_on ?? '').slice(0, 7)
     if (hand && hand > lastMonth) {
       lastMonth = hand

@@ -43,12 +43,12 @@ export type LienDeskJob = {
   master_user_id: string | null
   /** 'YYYY-MM-DD' — the timeline's last-work fallback when the RPC's months are older (v2.3761). */
   last_work_date: string | null
-  /** The day the job was created — the last-day line's fallback when there are no clock hours (v2.4653). */
+  /** The day the job was created — the last-day line's fallback when there are no clock hours (v2.4676). */
   created_at?: string | null
   /** The lien clock (v2.3753): the day our contract on the job ended and how; null while open. */
   lien_contract_ended_on?: string | null
   lien_contract_ended_how?: string | null
-  /** The last day of work set by hand (v2.4653), with who, when and why; null while the clock hours (or the creation day) stand. */
+  /** The last day of work set by hand (v2.4676), with who, when and why; null while the clock hours (or the creation day) stand. */
   lien_last_work_on?: string | null
   lien_last_work_note?: string | null
   lien_last_work_set_at?: string | null
@@ -71,7 +71,7 @@ export async function fetchLienClockColumns(jobIds: ReadonlyArray<string>): Prom
   const out: Record<string, LienClockColumns> = {}
   for (const chunk of chunkIds([...jobIds])) {
     if (chunk.length === 0) continue
-    // The last-day columns (v2.4653) ride along once the migration is on prod; until then the four clock columns alone, so the desk never goes dark on a client that landed first.
+    // The last-day columns (v2.4676) ride along once the migration is on prod; until then the four clock columns alone, so the desk never goes dark on a client that landed first.
     const part = await withSupabaseRetry(
       () => supabase.from('jobs_ledger').select('id, lien_contract_ended_on, lien_contract_ended_how, lien_retainage_held, lien_payment_bond, lien_last_work_on, lien_last_work_note, lien_last_work_set_at, lien_last_work_set_by').in('id', chunk),
       'lien desk: lien clock columns',

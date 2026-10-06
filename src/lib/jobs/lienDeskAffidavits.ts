@@ -53,7 +53,7 @@ export type LienAffidavitEntry = {
   lastMonth: string
   /** last_month is the job's creation month — no approved hours (v2.3747). */
   lastMonthFromCreation: boolean
-  /** last_month is the last day of work set by hand (v2.4653). */
+  /** last_month is the last day of work set by hand (v2.4676). */
   lastMonthByHand?: boolean
   deadline: string
   daysLeft: number

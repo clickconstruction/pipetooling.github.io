@@ -1,7 +1,9 @@
 // Wheels (v2.2733): what each person's vehicle costs per field hour over the
 // trailing 90 days — own-vehicle fuel beside company trucks all-in — plus the
 // truck table behind those rates. Read-only report; the arrangement itself is
-// set on Payroll → Pay config, the override inline here. Review wiring is PR 2.
+// set on Payroll → Pay config, the fixed-rate override inline here. Since v2.4653
+// fuel stays on the jobs it was put on; Review's vehicle line charges the fixed
+// rate per field hour plus the person's fuel on no job.
 
 import { useCallback, useEffect, useState, type CSSProperties } from 'react'
 import { formatCurrency } from '../../lib/format'
@@ -46,7 +48,7 @@ export function VehicleArrangementChip({ arrangement, rate }: { arrangement: Veh
       title={o.label}
     >
       {o.icon ? <span aria-hidden="true">{o.icon}</span> : null}
-      {arrangement === 'none' ? '—' : rate != null ? `$${rate.toFixed(2)}/h` : o.short}
+      {arrangement === 'none' ? '—' : rate != null && rate > 0 ? `$${rate.toFixed(2)}/h fixed` : o.short}
     </span>
   )
 }
@@ -85,15 +87,15 @@ function OverrideCell({ row, onSaved }: { row: WheelsPersonRow; onSaved: () => v
       type="text"
       inputMode="decimal"
       value={draft}
-      placeholder={row.computedRate != null ? row.computedRate.toFixed(2) : '—'}
+      placeholder={row.computedFixedRate != null ? row.computedFixedRate.toFixed(2) : '—'}
       onChange={(e) => setDraft(e.target.value)}
       onBlur={() => void commit()}
       onKeyDown={(e) => {
         if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur()
       }}
       disabled={busy}
-      aria-label={`Manual vehicle rate for ${row.name}, dollars per field hour`}
-      title="Type a $/field hour to override the computed rate; blank uses the computed one."
+      aria-label={`Manual fixed vehicle rate for ${row.name}, dollars per field hour`}
+      title="A fixed $/field hour, such as insurance or a vehicle allowance. Fuel is never in it: fuel stays on the jobs, and Review adds the fuel on no job. Blank uses the computed fixed rate."
       style={{ width: 72, padding: '0.2rem 0.4rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-base)', font: 'inherit', fontSize: '0.8125rem', textAlign: 'right' }}
     />
   )
@@ -202,8 +204,8 @@ export function PeopleVehiclesWheelsSection({ users, onOpenPayConfig }: { users:
                       <th style={thNum}>Fuel · 90d</th>
                       <th style={thNum}>Field h</th>
                       <th style={thNum}>Fuel / field h</th>
-                      <th style={thNum} title="The rate Review will use once wired: own = fuel ÷ field h, company = the truck's all-in rate. A manual override wins.">Rate</th>
-                      <th style={thNum} title="Manual $/field hour; blank = computed">Override</th>
+                      <th style={thNum} title="What Review charges per field hour besides the person's fuel on no job: a company truck's insurance + registration + service ÷ the holder's field hours; own vehicle $0. A manual rate wins. Fuel stays on the jobs.">Fixed / field h</th>
+                      <th style={thNum} title="Manual fixed $/field hour; blank = computed">Override</th>
                       <th style={th}>Why</th>
                     </tr>
                   </thead>
@@ -223,7 +225,7 @@ export function PeopleVehiclesWheelsSection({ users, onOpenPayConfig }: { users:
                           <td style={tdNum}>{r.fuelUsd > 0 ? usd(r.fuelUsd) : <span style={{ color: 'var(--text-faint)' }}>$0</span>}</td>
                           <td style={tdNum}>{fmtH(r.fieldHours)}</td>
                           <td style={tdNum}>{r.fuelPerFieldHour != null ? `$${r.fuelPerFieldHour.toFixed(2)}` : '—'}</td>
-                          <td style={{ ...tdNum, fontWeight: 600 }}>{r.effectiveRate != null ? `$${r.effectiveRate.toFixed(2)}` : '—'}</td>
+                          <td style={{ ...tdNum, fontWeight: 600 }}>{r.fixedRate != null ? `$${r.fixedRate.toFixed(2)}` : '—'}</td>
                           <td style={tdNum}><OverrideCell row={r} onSaved={() => void load()} /></td>
                           <td style={{ ...td, color: 'var(--text-muted)', fontSize: '0.8125rem' }}>{r.note}</td>
                         </tr>
@@ -259,7 +261,7 @@ export function PeopleVehiclesWheelsSection({ users, onOpenPayConfig }: { users:
                         <th style={thNum}>Service</th>
                         <th style={thNum}>Total</th>
                         <th style={thNum}>Holder field h</th>
-                        <th style={thNum}>$ / field h</th>
+                        <th style={thNum} title="All-in, fuel included, for comparison. Review charges only the fixed part plus the holder's fuel on no job.">$ / field h</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -292,7 +294,7 @@ export function PeopleVehiclesWheelsSection({ users, onOpenPayConfig }: { users:
                 </div>
               </div>
               <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)', maxWidth: '72ch' }}>
-                Fuel is every debit-card purchase in the fuel tag attributed to the person (Banking → Accounting); payments that were not on a card never count. Field hours are approved job sessions. A truck's fuel is its holder's fuel; insurance counts only while the truck is on a plan. Wear is not included yet.
+                Fuel is every card charge in the fuel tag attributed to the person (Banking → Accounting): a purchase adds and a refund comes off. Payments that were not on a card never count. Field hours are approved job sessions. A truck's fuel is its holder's fuel; insurance counts only while the truck is on a plan. Wear is not included yet. Fuel stays on the jobs it was put on: Review's vehicle line charges the fixed rate per field hour plus the person's fuel on no job.
               </p>
             </>
           ) : null}

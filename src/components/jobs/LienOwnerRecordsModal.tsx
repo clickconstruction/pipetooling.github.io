@@ -14,6 +14,7 @@ import {
   OWNER_RECORDS_LEFT_OUT,
   OWNER_RECORDS_SENT_HOW_WORDS,
   buildOwnerPacket,
+  ownerRecordsSentHows,
   ownerPacketNumbers,
   ownerRecordsFootWords,
   ownerRecordsMissing,
@@ -40,7 +41,7 @@ import { loadOwnerPacketJobs, loadOwnerRecords, saveOwnerRecords } from '../../l
 export type OwnerRecordsSeedJob = { jobId: string; customerId: string | null; addressId: string | null; gcId: string | null }
 
 /** How the window's "how it went" reads in the record of what was sent. */
-const SENT_HOW_OF: Record<OwnerRecordsSentHow, SentHow> = { handed: 'hand', email: 'email', mail: 'mail' }
+const SENT_HOW_OF: Record<OwnerRecordsSentHow, SentHow> = { handed: 'hand', email: 'email', mail: 'mail', portal: 'link' }
 
 const fmt: OwnerRecordsDocFormat = {
   day: (ymd) => formatWorkDateYmdFriendly(ymd),
@@ -242,8 +243,10 @@ export default function LienOwnerRecordsModal({
     if (!facts || !packet) return
     const how = sentHow
     const html = ownerPacketHtml(packet, facts, fmt)
+    // On their portal (punch list #86, PR 2): the copy is the PDF, so the owner's Download is a file; the portal reads the copy.
+    const portalCopy = how === 'portal' ? await ownerPacketPdfBlob(packet, facts, fmt).catch(() => null) : null
     const id = await save({ ...file, sent: { at: new Date().toISOString(), by: authName.trim(), how, total: packet.owed, jobIds: packet.jobs.map((j) => j.id) } }, 'Recorded as sent. A copy is in Documents.')
-    if (id) void fileSentCopy({ ...filing('packet'), how: SENT_HOW_OF[how], source: { table: 'lien_owner_record_requests', id } }, { html })
+    if (id) void fileSentCopy({ ...filing('packet'), how: SENT_HOW_OF[how], source: { table: 'lien_owner_record_requests', id } }, portalCopy ? { blob: portalCopy, fileName: ownerPacketPdfFilename(facts.address, facts.asOfYmd), contentType: 'application/pdf' } : { html })
   }
 
   const startRequest = () => {
@@ -555,7 +558,7 @@ export default function LienOwnerRecordsModal({
             {!file.sent ? (
               <>
                 <select value={sentHow} onChange={(ev) => setSentHow(ev.target.value as OwnerRecordsSentHow)} aria-label="How it went to them" style={input}>
-                  {(Object.keys(OWNER_RECORDS_SENT_HOW_WORDS) as OwnerRecordsSentHow[]).map((k) => (
+                  {ownerRecordsSentHows(file).map((k) => (
                     <option key={k} value={k}>
                       {OWNER_RECORDS_SENT_HOW_WORDS[k]}
                     </option>

@@ -6,7 +6,7 @@ import { LIEN_LAST_WORK_CLEAR, lienLastWorkDay, lienLastWorkDayPatch, lienLastWo
 import { FinishedDateInput } from '../FinishedDateInput'
 
 /**
- * The last day of work, on one line (v2.4653): the day, a chip saying where it came from (clock
+ * The last day of work, on one line (v2.4676): the day, a chip saying where it came from (clock
  * hours, the job's creation, or a person), the reason when a person set it, and *Change ›* to set
  * it by hand — a day and a one-line reason, saved on the job. Clock hours and pay are never
  * touched, and the line says so. Drawn above the Months card on the Lien desk and in Edit Job's

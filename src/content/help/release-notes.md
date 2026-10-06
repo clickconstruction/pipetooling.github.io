@@ -9,8 +9,8 @@ Every app update ships with a short release note. You can read them all in one p
 
 To read them:
 
-1. You open {{icon:gear}} **Settings**.
-2. You pick the **Release notes** tab.
+1. Open {{icon:gear}} **Settings**.
+2. Pick the **Release notes** tab.
 
 The newest update is at the top. The line above the list tells you which version you're on right now. Each note shows:
 

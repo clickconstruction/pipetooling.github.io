@@ -1,5 +1,5 @@
 /**
- * The last day of work on a job, for the lien clocks (v2.4653, the owner's ask): a billed job
+ * The last day of work on a job, for the lien clocks (v2.4676, the owner's ask): a billed job
  * with no approved clock hours was dated from the day it was created, and the office remembers
  * the real day but will not touch hours already paid. The day lives on the job
  * (`jobs_ledger.lien_last_work_on`, with who set it, when and why); the four lien readers take

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * The last day of work line (v2.4653): the day and its source, Change opens the box, a day before
+ * The last day of work line (v2.4676): the day and its source, Change opens the box, a day before
  * the clock hours is refused, a good day saves the four columns and the caller re-reads, Back
  * clears them.
  */

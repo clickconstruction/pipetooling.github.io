@@ -1,4 +1,4 @@
-# 20261006120000_lien_last_work_day.sql (2026-10-06, v2.4653)
+# 20261006120000_lien_last_work_day.sql (2026-10-06, v2.4676)
 
 The last day of work on a job, set by hand for the lien clocks. The owner (2026-10-05): a billed job with no clock hours is dated from its creation; the office remembers the real day but will not edit hours already paid.
 

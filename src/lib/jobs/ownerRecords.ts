@@ -13,10 +13,15 @@
  */
 
 export type OwnerRecordsHow = 'email' | 'letter' | 'text' | 'portal'
-export type OwnerRecordsSentHow = 'handed' | 'email' | 'mail'
+export type OwnerRecordsSentHow = 'handed' | 'email' | 'mail' | 'portal'
 
 export const OWNER_RECORDS_HOW_WORDS: Record<OwnerRecordsHow, string> = { email: 'Email', letter: 'Letter', text: 'Text message', portal: 'On their portal' }
-export const OWNER_RECORDS_SENT_HOW_WORDS: Record<OwnerRecordsSentHow, string> = { handed: 'Handed to them', email: 'Emailed', mail: 'Mailed' }
+export const OWNER_RECORDS_SENT_HOW_WORDS: Record<OwnerRecordsSentHow, string> = { handed: 'Handed to them', email: 'Emailed', mail: 'Mailed', portal: 'On their portal' }
+
+/** The ways the window offers: *On their portal* only once the records were offered there (punch list #86). */
+export function ownerRecordsSentHows(file: Pick<OwnerRecordsFile, 'offer'>): OwnerRecordsSentHow[] {
+  return (Object.keys(OWNER_RECORDS_SENT_HOW_WORDS) as OwnerRecordsSentHow[]).filter((k) => k !== 'portal' || file.offer != null)
+}
 
 /** What the desk keeps about one owner's request: the `file` of its `lien_owner_record_requests` row. */
 export type OwnerRecordsFile = {
@@ -53,7 +58,7 @@ export function parseOwnerRecords(raw: unknown): OwnerRecordsFile | null {
   const st = o.sent as Record<string, unknown> | null | undefined
   const of = o.offer as Record<string, unknown> | null | undefined
   const how = (v: unknown): OwnerRecordsHow => (v === 'letter' || v === 'text' || v === 'portal' ? v : 'email')
-  const sentHow = (v: unknown): OwnerRecordsSentHow => (v === 'email' || v === 'mail' ? v : 'handed')
+  const sentHow = (v: unknown): OwnerRecordsSentHow => (v === 'email' || v === 'mail' || v === 'portal' ? v : 'handed')
   const file: OwnerRecordsFile = {
     request: rq && YMD.test(str(rq.on)) ? { on: str(rq.on), how: how(rq.how), from: str(rq.from), link: str(rq.link) } : null,
     contractChecked: cc && str(cc.at) ? { by: str(cc.by), at: str(cc.at) } : null,

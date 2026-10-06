@@ -39,8 +39,8 @@ Most houses print the job name the tech said at the counter instead of the code.
 
 This lane makes a real document: parts, quantities, a chosen supply house per line, and prices. Estimators can reach it too.
 
-1. **Materials → PO Builder.** You pick an assembly, a named kit such as "Toilet rough-in". You press {{button:blue|Create PO}} to start a draft from it. Or you press {{button:outline|→ Add to PO}} to drop it into the draft you're already editing. Each part lands with the price on file at that moment and the supply house it came from.
-2. You edit the draft right there: quantity, supply house, price, notes. The supply house dropdown shows every house that has a price for that part. Rename it so the counter can read it.
+1. **Materials → PO Builder.** Pick an assembly, a named kit such as "Toilet rough-in". Press {{button:blue|Create PO}} to start a draft from it. Or press {{button:outline|→ Add to PO}} to drop it into the draft you're already editing. Each part lands with the price on file at that moment and the supply house it came from.
+2. Edit the draft right there: quantity, supply house, price, notes. The supply house dropdown shows every house that has a price for that part. Rename it so the counter can read it.
 3. **Materials → Purchase Orders** lists every PO for the trade pill, Draft or Finalized. You open one to add notes or confirm prices. The **Confirmed** column shows who checked the number and how long ago. You can **Print** it. A draft prints every house's price beside the chosen one. The supply-house print shows just the chosen prices with tax. Or press {{button:outline|Duplicate as Draft}} for a repeat order.
 4. {{button:green|Finalize}} locks it. The confirm says so: *It will become immutable.* A finalized PO can't be edited. Only a one-time note can be added. It becomes pickable as a line item on a project's Workflow and Forecast.
 

@@ -45,6 +45,20 @@ export function lienReleaseChips(
   return out
 }
 
+/**
+ * Where *Cancel request* takes a waiver (punch list #87 C). A waiver minted by its own signature
+ * request (sent to his desk, or opened for him to sign, straight from a draft: never printed or
+ * marked issued, so its minted_at is its signature_requested_at) goes back to a draft, editable
+ * again. A waiver issued on paper first goes back to issued, still locked: a printed copy may be
+ * out, and the mint gate is no paper without the record.
+ */
+export function lienReleaseCancelTarget(row: Pick<JobLienReleaseRow, 'status' | 'minted_at' | 'signature_requested_at'>): 'draft' | 'issued' {
+  if (lienReleaseStatus(row) !== 'awaiting_signature') return 'issued'
+  const minted = Date.parse(row.minted_at ?? '')
+  const asked = Date.parse(row.signature_requested_at ?? '')
+  return Number.isFinite(minted) && minted === asked ? 'draft' : 'issued'
+}
+
 /** A signature can be requested on an editable draft or an issued-but-unsigned release. */
 export function canRequestLienSignature(
   row: Pick<JobLienReleaseRow, 'status' | 'voided_at'> | null,

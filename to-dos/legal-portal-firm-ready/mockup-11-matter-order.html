@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Legal portal item 11: the order of the matters — before / after</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #F3F4F6; color: #111827; font: 14px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif; padding: 0 16px 64px; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid #111827; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #6B7280; margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; }
+  header.top p { margin: 8px 0 0; color: #374151; max-width: 90ch; }
+  h2 { font-size: 18px; margin: 30px 0 6px; }
+  .two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; margin-top: 10px; }
+  @media (max-width: 760px) { .two { grid-template-columns: minmax(0, 1fr); } }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; }
+  .cap.old { background: #E5E7EB; color: #374151; } .cap.new { background: #111827; color: #fff; }
+  .paper { background: #f6f3ec; color: #16283c; border: 1px solid #D1D5DB; border-top: none; border-radius: 0 0 8px 8px; padding: 14px; font: 13.5px/1.45 -apple-system, 'Segoe UI', Roboto, sans-serif; }
+  .k { font-size: 11px; color: #8a97a6; text-transform: uppercase; letter-spacing: .07em; }
+  .m { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; background: #fdfcf9; border: 1px solid #ddd6c8; border-radius: 6px; padding: 10px 12px; margin-top: 8px; }
+  .m.on { border-color: #b0662f; }
+  .m small { font-size: 11.5px; color: #5a6b7e; }
+  .chip { font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 4px; background: #f1ece2; color: #5a6b7e; justify-self: end; }
+  .n { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .faint { color: #8a97a6; font-size: 12px; }
+  ul.notes { margin: 10px 0 0; padding-left: 20px; color: #374151; max-width: 100ch; }
+  ul.notes li { margin: 5px 0; }
+</style>
+</head>
+<body><div class="wrap">
+<header class="top"><p class="eyebrow">Punch list #85 · item 11 · mockup</p><h1>Largest balance first, as the guide says</h1>
+<p>Three matters, invented for the drawing. The guide promises <i>largest first</i>. The page keeps the function's order, which is the oldest referral first. Left: today. Right: largest balance first, the newest referral first when two balances match. The first matter opens by itself.</p></header>
+<div class="two">
+  <div><div class="cap old">Before — oldest referral first</div><div class="paper">
+    <div class="k">Matters</div>
+    <div class="m on"><b>Hill Country Dental</b><span class="n">$2,100.00</span><small>1 job · referred 2026-09-18</small><span class="chip">demand sent</span></div>
+    <div class="m"><b>Sample Contracting</b><span class="n">$14,400.00</span><small>1 job · referred 2026-09-29</small><span class="chip">referred</span></div>
+    <div class="m"><b>Riverbend Builders</b><span class="n">$14,400.00</span><small>2 jobs · referred 2026-10-02</small><span class="chip">referred</span></div>
+    <p class="faint">The $2,100 matter opens first because it was referred first.</p>
+  </div></div>
+  <div><div class="cap new">After — largest balance first</div><div class="paper">
+    <div class="k">Matters · largest balance first</div>
+    <div class="m on"><b>Riverbend Builders</b><span class="n">$14,400.00</span><small>2 jobs · referred 2026-10-02</small><span class="chip">referred</span></div>
+    <div class="m"><b>Sample Contracting</b><span class="n">$14,400.00</span><small>1 job · referred 2026-09-29</small><span class="chip">referred</span></div>
+    <div class="m"><b>Hill Country Dental</b><span class="n">$2,100.00</span><small>1 job · referred 2026-09-18</small><span class="chip">demand sent</span></div>
+    <p class="faint">Two balances match, so the newest referral comes first. A matter whose packet cannot be built keeps the function's place, after the rest.</p>
+  </div></div>
+</div>
+
+<h2>Is this the best we can do?</h2>
+<ul class="notes">
+  <li><b>Which order?</b> Largest balance first. A firm works the money: the biggest claim is the first call, and it is what the owner will point at in the meeting. The newest referral breaks a tie, because a matter just sent is the one the firm has not read yet.</li>
+  <li><b>Balance, or total demand with the firm's fees?</b> The balance. Fees are the firm's own entries; ranking by them would move a matter up because the firm billed it. The balance is what the customer owes the company.</li>
+  <li><b>Sort in the function or on the page?</b> On the page. The balance is the packet kernel's figure, built on the page from the records. The function cannot rank by a number it does not compute, and a second copy of the money rule would drift. The function's order stays as the fallback and the tie after the tie.</li>
+  <li><b>Say the order on screen?</b> Yes, in the list's caption, so nobody wonders why a new referral sits third.</li>
+  <li><b>The digest email?</b> It lists the matters in the function's order and carries no balances. It is left as it is.</li>
+</ul>
+</div></body></html>

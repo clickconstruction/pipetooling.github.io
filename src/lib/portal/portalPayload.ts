@@ -120,7 +120,7 @@ export type PortalPayload = {
   ownerRecords: PortalOwnerRecords | null
 }
 
-export type PortalOwnerRecords = { id: string; address: string; ownerName: string; offeredOn: string; signed: { on: string; name: string } | null }
+export type PortalOwnerRecords = { id: string; address: string; ownerName: string; offeredOn: string; signed: { on: string; name: string } | null; /** Sent on the portal (shape B): the day, and the packet's PDF as a signed URL, or null while the copy is still being kept. */ sent: { on: string; downloadUrl: string | null } | null }
 
 export type PortalChecksPayload = { jobs: ChecksJobIn[]; events: ChecksEventIn[] }
 
@@ -351,6 +351,7 @@ export function parsePortalPayload(raw: unknown): PortalPayload | null {
   if (r.ownerRecords && typeof r.ownerRecords === 'object') {
     const o = r.ownerRecords as Record<string, unknown>
     const sg = o.signed && typeof o.signed === 'object' ? (o.signed as Record<string, unknown>) : null
+    const st = o.sent && typeof o.sent === 'object' ? (o.sent as Record<string, unknown>) : null
     if (typeof o.id === 'string' && o.id && typeof o.offeredOn === 'string') {
       ownerRecords = {
         id: o.id,
@@ -358,6 +359,7 @@ export function parsePortalPayload(raw: unknown): PortalPayload | null {
         ownerName: typeof o.ownerName === 'string' ? o.ownerName : '',
         offeredOn: o.offeredOn,
         signed: sg && typeof sg.on === 'string' ? { on: sg.on, name: typeof sg.name === 'string' ? sg.name : '' } : null,
+        sent: st && typeof st.on === 'string' ? { on: st.on, downloadUrl: typeof st.downloadUrl === 'string' && /^https?:\/\//.test(st.downloadUrl) ? st.downloadUrl : null } : null,
       }
     }
   }

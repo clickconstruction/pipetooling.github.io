@@ -451,7 +451,7 @@ describe('keepDatesWhole (v2.4633)', () => {
   })
 })
 
-describe('the last day of work set by hand (v2.4653)', () => {
+describe('the last day of work set by hand (v2.4676)', () => {
   it('the LAST WORK node says so, and the creation words give way', () => {
     const t = buildLienTimeline(base({ lastMonth: '2026-08', lastMonthFromCreation: false, lastMonthByHand: true }))
     expect(t.steps[0]!.words).toBe('last day set by hand')

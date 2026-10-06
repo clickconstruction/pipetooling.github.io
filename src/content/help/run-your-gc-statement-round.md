@@ -76,7 +76,7 @@ Applied now to $6,400.00 on 210 Maple Ct · 1058 Maple Ct, Invoice 1 of 1, which
 The word is the account man's read of the GC. You can take it in any order, before the statement goes out or after. You tap {{button:outline|Word}}:
 
 1. **Whose word is this?** The GC's account man is already picked. You change it to someone else, or to ***Mine — I talked to Knight*** when you reached the GC yourself.
-2. **How did you hear it from Malachi?** You pick {{chip:blue|Call}} {{chip:gray|Text}} {{chip:gray|In person}} {{chip:gray|Email}} {{chip:gray|Other}}.
+2. **How did you hear it from Malachi?** Pick {{chip:blue|Call}} {{chip:gray|Text}} {{chip:gray|In person}} {{chip:gray|Email}} {{chip:gray|Other}}.
 3. **Their temperature**, the sentence, and the date they said they would pay.
 
 :::example What the record says
@@ -130,7 +130,7 @@ A GC has one word a week. Saving again for the same GC this week replaces it. **
 
 When the account man is on a job site, you send him a link instead of phoning. On his group, you tap {{button:outline-blue|🔗 Ask by link}}:
 
-1. You press {{button:blue|Make the link}}. It asks only about his GCs with **no word in this week**. Nothing is sent yet.
+1. Press {{button:blue|Make the link}}. It asks only about his GCs with **no word in this week**. Nothing is sent yet.
 2. {{button:blue|Copy a text for Malachi}} copies a short message with the link. You paste it into a text. Or {{button:outline|Email it to Malachi}} sends it from the app. Or you use {{button:outline|Copy link}}.
 3. He opens it on his phone. **No sign-in.** For each GC he sees what it owes, the last word and any broken promise. He answers with a temperature, a sentence and a pay date.
 4. His group then shows {{button:green|Malachi answered 3 — review}}. It opens the call sheet with his answers filled in. You read them, change what needs changing, and press {{button:blue|Save 3 answers}}.

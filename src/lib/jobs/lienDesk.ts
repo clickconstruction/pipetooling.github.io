@@ -23,7 +23,7 @@ export function monthFromCreation(r: { month_source?: LienMonthSource | string |
   return r.month_source === 'job_created'
 }
 
-/** The month came from the last day of work set by hand on the job (v2.4653). */
+/** The month came from the last day of work set by hand on the job (v2.4676). */
 export function monthSetByHand(r: { month_source?: LienMonthSource | string | null }): boolean {
   return r.month_source === 'hand'
 }
@@ -91,7 +91,7 @@ export type LienDeskMonth = {
   noticed: boolean
   /** The month is the job's creation month — it has no approved hours (v2.3747). */
   fromCreation: boolean
-  /** The month is the last day of work set by hand (v2.4653). */
+  /** The month is the last day of work set by hand (v2.4676). */
   byHand?: boolean
 }
 
@@ -106,7 +106,7 @@ export type LienDeskEntry = {
   months: LienDeskMonth[]
   /** The job has no approved clock hours: its one month is the month it was created (v2.3747). */
   datedFromCreation: boolean
-  /** The job's last month is the day set by hand (v2.4653). */
+  /** The job's last month is the day set by hand (v2.4676). */
   datedByHand?: boolean
   /** Unnoticed months whose window is still open — what a new notice would name. */
   dueMonths: string[]

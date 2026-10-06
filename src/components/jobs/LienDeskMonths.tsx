@@ -126,7 +126,7 @@ export default function LienDeskMonths({
   onRecordByHand?: () => void
   /** Lines under the grid beside the claim — the affidavit's state, for one. */
   tail?: ReactNode
-  /** The last day of work line (v2.4653), above the grid. */
+  /** The last day of work line (v2.4676), above the grid. */
   lastWork?: ReactNode
 }) {
   const view = useLienTimelineView()

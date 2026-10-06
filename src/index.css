@@ -5084,3 +5084,35 @@ div.bid-mark-board-row[data-marked='true'] { box-shadow: inset 3px 0 0 var(--bid
 .procure-fold { display: flex; flex: 1 1 auto; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; min-height: 32px; padding: 0.2rem 0.3rem; border: none; border-radius: 6px; background: transparent; color: inherit; font: inherit; font-size: 0.8125rem; text-align: left; cursor: pointer; }
 .procure-fold:hover { background: var(--bg-blue-tint); }
 .procure-fold:focus-visible { outline: 2px solid var(--text-link); outline-offset: 0; }
+
+/* The law firm's portal at phone width (punch list #85, item 8). One grid for the page: the
+   matter on the left, the matters list and the side cards on the right. Under 720 px it is one
+   column, matters list first, then the matter, then the side cards; the firm's forms stack and
+   their buttons go full width. Tables keep their own sideways scroll inside the card. */
+.legalPortalPage { padding: 26px 20px 60px; }
+.legalPortalSplit { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(260px, 0.85fr); grid-template-areas: "main list" "main aside"; grid-template-rows: auto 1fr; column-gap: 16px; align-items: start; }
+.legalPortalSplit > * { min-width: 0; }
+.legalPortalMain { grid-area: main; }
+.legalPortalList { grid-area: list; }
+.legalPortalAside { grid-area: aside; }
+.legalPortalForm { display: grid; gap: 8px; align-items: end; }
+.legalPortalForm--fee { grid-template-columns: 1fr 1fr 2fr auto; }
+.legalPortalForm--note { grid-template-columns: 1fr 2fr auto; }
+.legalPortalForm--ask { grid-template-columns: 1fr auto; }
+.legalPortalPair { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(260px, 0.85fr); gap: 16px; align-items: start; }
+.legalPortalPair > * { min-width: 0; }
+.legalJobTimeline { display: grid; grid-template-columns: minmax(150px, 190px) minmax(0, 1fr); gap: 12px; align-items: start; }
+@media (max-width: 720px) {
+  .legalPortalPage { padding: 16px 16px 48px; }
+  .legalPortalSplit { grid-template-columns: minmax(0, 1fr); grid-template-areas: "list" "main" "aside"; grid-template-rows: auto; row-gap: 14px; }
+  .legalPortalList > button:first-of-type, .legalPortalAside > :first-child { margin-top: 6px !important; }
+  .legalPortalPair { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .legalPortalForm { grid-template-columns: minmax(0, 1fr); }
+  .legalPortalForm + .legalPortalForm { border-top: 1px dotted var(--border); padding-top: 10px; }
+  .legalPortalForm button[type="submit"], .legalPortalWide { width: 100%; justify-content: center; }
+  .legalPortalHeadAside, .legalMatterHeadSums { text-align: left !important; }
+  .legalMatterHeadSums { width: 100%; }
+  .legalMatterHeadSums > * { text-align: left !important; }
+  .legalJobTimeline { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  .legalRecipientScope { margin-left: 0 !important; }
+}

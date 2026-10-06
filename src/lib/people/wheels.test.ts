@@ -24,7 +24,7 @@ describe('wheels window + arrangement parsing', () => {
 })
 
 describe('fuel + hours per user', () => {
-  it('sums |amount| per attributed user and skips unattributed charges', () => {
+  it('sums fuel as cost per attributed user: a purchase adds, a refund comes off; skips unattributed charges', () => {
     const m = sumFuelByUser([
       { amount: -60.1, userId: 'u1' },
       { amount: -40, userId: 'u1' },
@@ -32,7 +32,7 @@ describe('fuel + hours per user', () => {
       { amount: -80, userId: null },
       { amount: -12.5, userId: 'u2' },
     ])
-    expect(m.get('u1')).toBe(105.1)
+    expect(m.get('u1')).toBe(95.1) // 60.10 + 40 − 5 refunded
     expect(m.get('u2')).toBe(12.5)
     expect(m.size).toBe(2)
   })
@@ -53,8 +53,9 @@ describe('fuel + hours per user', () => {
 describe('rates', () => {
   it('prices a company truck all-in per holder field hour, pro-rating weekly costs by the window', () => {
     const c = truckRunningCost({ fuelUsd: 3018, weeklyInsurance: 48, weeklyRegistration: 6, onPlan: true, days: 91, serviceUsd: 412, holderFieldHours: 496.5 })
-    expect(c).toEqual({ fuel: 3018, insurance: 624, registration: 78, service: 412, total: 4132, ratePerFieldHour: 8.32 })
-    expect(truckRunningCost({ fuelUsd: 100, weeklyInsurance: 48, weeklyRegistration: 6, onPlan: false, days: 7, serviceUsd: 0, holderFieldHours: 0 })).toMatchObject({ insurance: 0, registration: 6, ratePerFieldHour: null })
+    // All-in for the comparison; the fixed part (insurance + registration + service) is what Review charges besides fuel on no job.
+    expect(c).toEqual({ fuel: 3018, insurance: 624, registration: 78, service: 412, total: 4132, ratePerFieldHour: 8.32, fixedRatePerFieldHour: 2.24 })
+    expect(truckRunningCost({ fuelUsd: 100, weeklyInsurance: 48, weeklyRegistration: 6, onPlan: false, days: 7, serviceUsd: 0, holderFieldHours: 0 })).toMatchObject({ insurance: 0, registration: 6, ratePerFieldHour: null, fixedRatePerFieldHour: null })
   })
   it('prices an own vehicle as fuel per field hour', () => {
     expect(ownVehicleFuelRate(1006, 165.5)).toBe(6.08)
@@ -80,7 +81,7 @@ describe('buildWheelsRows', () => {
     ['u-mal', 496.5],
     ['u-mic', 148],
   ])
-  it('builds one row per person with the rate for their arrangement, company first', () => {
+  it('builds one row per person with the fixed rate Review charges for their deal, company first', () => {
     const rows = buildWheelsRows(
       [
         { name: 'Taunya', userId: 'u-tau', arrangement: 'none', override: null },
@@ -96,25 +97,32 @@ describe('buildWheelsRows', () => {
     expect(rows.map((r) => r.name)).toEqual(['Malachi', 'Wendi', 'Micah', 'Ghost', 'Taunya'])
     const mal = rows[0]!
     expect(mal.truck?.name).toBe('2019 Ford F-150')
-    expect(mal.computedRate).toBe(8.32)
-    expect(mal.effectiveRate).toBe(8.32)
-    expect(mal.note).toBe('2019 Ford F-150 · $4,132 ÷ 496.5 field h')
+    expect(mal.allInRate).toBe(8.32)
+    expect(mal.computedFixedRate).toBe(2.24)
+    expect(mal.fixedRate).toBe(2.24)
+    expect(mal.note).toBe('2019 Ford F-150 · $1,114 fixed ÷ 496.5 field h; fuel stays on the jobs')
     const wen = rows[1]!
-    expect(wen.computedRate).toBeNull()
-    expect(wen.effectiveRate).toBe(7.5)
-    expect(wen.note).toBe('manual override')
+    expect(wen.computedFixedRate).toBeNull()
+    expect(wen.fixedRate).toBe(7.5) // the override is the fixed part only
+    expect(wen.note).toBe('manual fixed rate; fuel stays on the jobs')
     const mic = rows[2]!
-    expect(mic.computedRate).toBe(6.1)
+    expect(mic.allInRate).toBe(6.1)
     expect(mic.fuelPerFieldHour).toBe(6.1)
-    expect(mic.note).toBe('fuel ÷ 148.0 field h')
+    expect(mic.fixedRate).toBe(0) // an own vehicle has no fixed costs; Review charges their fuel on no job
+    expect(mic.note).toBe('fuel stays on the jobs; Review charges their fuel on no job')
     const ghost = rows[3]!
-    expect(ghost.effectiveRate).toBeNull()
     expect(ghost.note).toBe('not linked to a login — fuel cannot be attributed')
     const tau = rows[4]!
-    expect(tau.effectiveRate).toBeNull()
+    expect(tau.fixedRate).toBeNull()
     expect(tau.note).toBe('fuel stays on the job as parts')
   })
-  it('averages the two deals for the comparison line', () => {
+  it('a company truck with no fixed costs on file charges only the fuel on no job', () => {
+    const bare: WheelsTruck = { ...truck, cost: truckRunningCost({ fuelUsd: 3018, weeklyInsurance: null, weeklyRegistration: null, onPlan: false, days: 90, serviceUsd: 0, holderFieldHours: 496.5 }) }
+    const [row] = buildWheelsRows([{ name: 'Malachi', userId: 'u-mal', arrangement: 'company', override: null }], fuel, hours, [bare])
+    expect(row).toMatchObject({ allInRate: 6.08, computedFixedRate: 0, fixedRate: 0 })
+    expect(row!.note).toBe('2019 Ford F-150 · no insurance, registration or service on file; Review charges only their fuel on no job')
+  })
+  it('averages the two deals all-in for the comparison line', () => {
     const rows = buildWheelsRows(
       [
         { name: 'A', userId: 'u-mal', arrangement: 'company', override: null },
@@ -129,16 +137,18 @@ describe('buildWheelsRows', () => {
   })
 })
 
-describe('fuel family split (card purchases only)', () => {
-  it('keeps card purchases and reports off-card rows by counterparty instead of counting them', () => {
+describe('fuel family split (card charges only)', () => {
+  it('keeps card charges, a refund to the card included, and reports off-card rows by counterparty instead of counting them', () => {
     const rows = [
       { id: 'a', amount: -60, kind: 'debitCardTransaction', counterparty: 'QuikTrip', hasCard: true },
       { id: 'b', amount: -36737, kind: 'other', counterparty: 'HAJOCA CORPORATI', hasCard: false },
       { id: 'c', amount: -540, kind: 'debitCardTransaction', counterparty: 'Cash App', hasCard: false },
       { id: 'd', amount: -45, kind: 'debitCardTransaction', counterparty: 'Shell', hasCard: true },
+      // Mercury files a refund to a card as kind 'other'; it carries the card, so it counts (and comes off).
+      { id: 'r', amount: 12, kind: 'other', counterparty: 'Shell', hasCard: true },
     ]
     const s = splitFuelFamily(rows)
-    expect(s.card.map((r) => r.id)).toEqual(['a', 'd'])
+    expect(s.card.map((r) => r.id)).toEqual(['a', 'd', 'r'])
     expect(s.offCard).toEqual({ usd: 37277, n: 2, top: [{ counterparty: 'HAJOCA CORPORATI', usd: 36737 }, { counterparty: 'Cash App', usd: 540 }] })
     expect(s.companyCard).toEqual({ usd: 0, n: 0, byCard: [] })
   })

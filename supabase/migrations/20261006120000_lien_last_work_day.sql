@@ -1,4 +1,4 @@
--- The last day of work, set by hand (v2.4653, the owner's ask: a billed job with no clock hours is dated
+-- The last day of work, set by hand (v2.4676, the owner's ask: a billed job with no clock hours is dated
 -- from its creation, and the office remembers the real day but will not touch hours already paid).
 -- Four columns on jobs_ledger beside the contract-end day the retainage notice keeps, and the four lien
 -- readers take the hand-set day: its month replaces the creation fallback, and on a job with sessions it
@@ -11,10 +11,10 @@ ALTER TABLE public.jobs_ledger
   ADD COLUMN IF NOT EXISTS lien_last_work_set_at timestamptz,
   ADD COLUMN IF NOT EXISTS lien_last_work_set_by uuid REFERENCES public.users(id) ON DELETE SET NULL;
 
-COMMENT ON COLUMN public.jobs_ledger.lien_last_work_on IS 'The last day of work on the job, set by hand for the lien clocks (v2.4653). Its month replaces the creation-month fallback and extends the sessions'' months; never earlier than the last approved session. Clock sessions are untouched.';
-COMMENT ON COLUMN public.jobs_ledger.lien_last_work_note IS 'Why the last day of work was set by hand: what was done that day, and why the hours do not show it (v2.4653).';
-COMMENT ON COLUMN public.jobs_ledger.lien_last_work_set_at IS 'When the last day of work was set by hand (v2.4653).';
-COMMENT ON COLUMN public.jobs_ledger.lien_last_work_set_by IS 'Who set the last day of work by hand (users.id, v2.4653).';
+COMMENT ON COLUMN public.jobs_ledger.lien_last_work_on IS 'The last day of work on the job, set by hand for the lien clocks (v2.4676). Its month replaces the creation-month fallback and extends the sessions'' months; never earlier than the last approved session. Clock sessions are untouched.';
+COMMENT ON COLUMN public.jobs_ledger.lien_last_work_note IS 'Why the last day of work was set by hand: what was done that day, and why the hours do not show it (v2.4676).';
+COMMENT ON COLUMN public.jobs_ledger.lien_last_work_set_at IS 'When the last day of work was set by hand (v2.4676).';
+COMMENT ON COLUMN public.jobs_ledger.lien_last_work_set_by IS 'Who set the last day of work by hand (users.id, v2.4676).';
 
 -- ---------- The four lien readers, from their newest definitions (20260923170000, 20260924030000) ----------
 
@@ -106,7 +106,7 @@ AS $$
           AND cs.clocked_out_at > cs.clocked_in_at
       )
     UNION ALL
-    -- The last day of work set by hand (v2.4653): its month, when no approved session reaches that month.
+    -- The last day of work set by hand (v2.4676): its month, when no approved session reaches that month.
     SELECT jobs.id,
            to_char(jobs.lien_last_work_on, 'YYYY-MM'),
            0::numeric,
@@ -252,7 +252,7 @@ AS $$
           AND cs.clocked_out_at > cs.clocked_in_at
       )
     UNION ALL
-    -- The last day of work set by hand (v2.4653): its month, when no approved session reaches that month.
+    -- The last day of work set by hand (v2.4676): its month, when no approved session reaches that month.
     SELECT jobs.id,
            to_char(jobs.lien_last_work_on, 'YYYY-MM'),
            0::numeric,
@@ -415,14 +415,14 @@ AS $$
           AND cs.approved_at IS NOT NULL AND cs.rejected_at IS NULL AND cs.revoked_at IS NULL
       )
     UNION ALL
-    -- The last day of work set by hand (v2.4653): its month; the later of it and the sessions' last month wins below.
+    -- The last day of work set by hand (v2.4676): its month; the later of it and the sessions' last month wins below.
     SELECT jobs.id,
            to_char(jobs.lien_last_work_on, 'YYYY-MM'),
            'hand'::text
     FROM jobs
     WHERE jobs.lien_last_work_on IS NOT NULL
   ),
-  -- One row per job (v2.4653): the latest month wins, and its source with it.
+  -- One row per job (v2.4676): the latest month wins, and its source with it.
   last_months AS (
     SELECT r.job_id,
            max(r.last_month) AS last_month,
@@ -561,7 +561,7 @@ AS $$
           AND cs.clocked_out_at > cs.clocked_in_at
       )
     UNION ALL
-    -- The last day of work set by hand (v2.4653): the first month of a job with no approved session is that day's month.
+    -- The last day of work set by hand (v2.4676): the first month of a job with no approved session is that day's month.
     SELECT jobs.id,
            to_char(jobs.lien_last_work_on, 'YYYY-MM'),
            'hand'::text
