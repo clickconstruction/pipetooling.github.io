@@ -135,6 +135,7 @@ export function GcGantt({
   tails,
   waits,
   lost,
+  lateSaid,
 }: {
   items: ScheduleItem[]
   float: Map<string, number>
@@ -160,6 +161,8 @@ export function GcGantt({
   waits?: WaitRow[]
   /** Days the daily log says each bar lost to the weather (G-58), marked on the bar. */
   lost?: Map<string, LostDay[]>
+  /** A trade's own new finish from its portal, not on the dates yet (G-117), drawn as an amber dashed tail. */
+  lateSaid?: Map<string, { finish: string; words: string }>
 }) {
   const [zoom, setZoom] = useState<GanttZoom>('weeks')
   const [by, setBy] = useState<GanttGroupBy>('trade')
@@ -324,6 +327,9 @@ export function GcGantt({
     const note = dragging ? null : barNote(b)
     // The days a change order adds, drawn after the bar until they are on its dates (G-76).
     const tailW = b.coTail && !dragging ? b.coTail.days * px : 0
+    // A trade's own new finish, not on the dates yet (G-117): an amber dashed tail out to it.
+    const saidTo = dragging ? undefined : lateSaid?.get(b.id)
+    const saidW = saidTo && saidTo.finish > span.finish ? daysBetween(span.finish, saidTo.finish) * px : 0
     const canDrag = Boolean(onMove) && b.status !== 'done'
     const ghost = pushedTo.get(b.id)
     const isPicked = picked === b.id
@@ -446,6 +452,14 @@ export function GcGantt({
               style={{ position: 'absolute', left: left + w, width: tailW, top: (ROW_H - BAR_H) / 2, height: BAR_H, borderRadius: '0 4px 4px 0', boxSizing: 'border-box', border: `1.5px dashed ${C.violet}`, borderLeft: 'none', background: 'repeating-linear-gradient(135deg, var(--bg-violet-100) 0 4px, var(--surface) 4px 8px)', pointerEvents: 'none' }}
             />
           )}
+          {saidTo && saidW > 0 && (
+            <span
+              aria-hidden
+              data-gantt-said={b.id}
+              title={saidTo.words}
+              style={{ position: 'absolute', left: left + w, width: saidW, top: (ROW_H - BAR_H) / 2, height: BAR_H, borderRadius: '0 4px 4px 0', boxSizing: 'border-box', border: `1.5px dashed ${C.amber}`, borderLeft: 'none', pointerEvents: 'none' }}
+            />
+          )}
           {/* The port (G-34): pull a line from here to another bar, and that bar waits on this one. */}
           {onLink && (
             <span
@@ -482,7 +496,7 @@ export function GcGantt({
             </span>
           )}
           {note && (
-            <span style={{ position: 'absolute', left: left + w + tailW + 7, top: (ROW_H - 14) / 2, fontSize: '0.68rem', lineHeight: '14px', whiteSpace: 'nowrap', color: note.color, background: rowBg, padding: '0 3px', borderRadius: 3 }}>
+            <span style={{ position: 'absolute', left: left + w + Math.max(tailW, saidW) + 7, top: (ROW_H - 14) / 2, fontSize: '0.68rem', lineHeight: '14px', whiteSpace: 'nowrap', color: note.color, background: rowBg, padding: '0 3px', borderRadius: 3 }}>
               {note.words}
             </span>
           )}
@@ -805,7 +819,7 @@ export function GcGantt({
       )}
 
       {view === 'chart' && <GanttLegend building={building} canMove={Boolean(onMove)} />}
-      {view === 'chart' && hovered && hover && !drag && <GanttHoverCard bar={hovered} all={all} at={hover} building={building} today={today} lost={lost?.get(hovered.id) ?? []} />}
+      {view === 'chart' && hovered && hover && !drag && <GanttHoverCard bar={hovered} all={all} at={hover} building={building} today={today} lost={lost?.get(hovered.id) ?? []} said={lateSaid?.get(hovered.id)} />}
     </div>
   )
 }
@@ -827,6 +841,7 @@ function GanttLegend({ building, canMove }: { building: boolean; canMove: boolea
       {key({ ...bar, background: 'repeating-linear-gradient(135deg, var(--bg-amber-100) 0 4px, var(--surface) 4px 8px)', border: `1.5px solid ${C.amber}` }, 'held by a submittal or a question')}
       {key({ ...bar, background: 'var(--bg-violet-100)', border: `1.5px dashed ${C.violet}` }, 'an inspection')}
       {key({ ...bar, background: 'repeating-linear-gradient(135deg, var(--bg-violet-100) 0 4px, var(--surface) 4px 8px)', border: `1.5px dashed ${C.violet}`, borderLeft: 'none', borderRadius: '0 3px 3px 0' }, 'days a signed change order adds, not on the dates yet')}
+      {building && key({ ...bar, background: 'var(--surface)', border: `1.5px dashed ${C.amber}`, borderLeft: 'none', borderRadius: '0 3px 3px 0' }, "a trade's new day from its portal, not on the dates yet")}
       {key({ width: 20, height: 8, borderRadius: 4, background: 'var(--bg-violet-100)', border: `1.5px solid ${C.violet}` }, 'what the work waits on: a delivery, a decision, a permit, the utility, from the day it was asked for to the day it is expected')}
       {key({ width: 20, height: 3, borderRadius: 2, background: 'var(--border-strong)' }, 'where it sat in the plan at Start')}
       {building && key({ width: 20, height: 3, borderRadius: 2, background: C.green }, 'the days it really ran, as recorded')}
@@ -842,7 +857,7 @@ function GanttLegend({ building, canMove }: { building: boolean; canMove: boolea
 }
 
 /** Everything about one bar, beside the pointer: its days, how far along, what it waits on and holds up. */
-function GanttHoverCard({ bar, all, at, building, today, lost }: { bar: GanttBar; all: GanttBar[]; at: { x: number; y: number }; building: boolean; today: string; lost: LostDay[] }) {
+function GanttHoverCard({ bar, all, at, building, today, lost, said }: { bar: GanttBar; all: GanttBar[]; at: { x: number; y: number }; building: boolean; today: string; lost: LostDay[]; said?: { finish: string; words: string } | undefined }) {
   const a = bar.item.activity
   const n = ganttNeighbors(all, bar.id)
   const note = barNote(bar)
@@ -895,6 +910,7 @@ function GanttHoverCard({ bar, all, at, building, today, lost }: { bar: GanttBar
       {a.mustFinishBy && row('Must finish by', weekdayDate(a.mustFinishBy), a.finish > a.mustFinishBy ? 'var(--text-red-700)' : undefined)}
       {bar.coTail && row('Change order', bar.coTail.words, 'var(--text-violet-800)')}
       {lost.length > 0 && row('Lost', lostDaysWords(lost) ?? '', 'var(--text-amber-800)')}
+      {said && row('Their word', said.words, 'var(--text-amber-800)')}
       {note && !bar.coTail && row('Note', note.words, note.color)}
       {n.waitsOn.length > 0 && row('Waits on', n.waitsOn.join(', '))}
       {n.holdsUp.length > 0 && row('Holds up', n.holdsUp.join(', '))}

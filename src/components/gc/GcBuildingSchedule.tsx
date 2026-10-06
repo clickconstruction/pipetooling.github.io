@@ -42,12 +42,14 @@ import { GcBuildingPromise } from './GcBuildingPromise'
 import { GcGantt } from './GcGantt'
 import { GcMoveExplain, GcMoveHistory, type PendingMove } from './GcScheduleMoves'
 import { GcScheduleWalk, GcWalkLine } from './GcScheduleWalk'
+import { GcLateNotices } from './GcLateNotices'
 import { walkStanding } from '../../lib/gcMode/gcScheduleWalk'
 import { planMove, whatIfSlips, type MoveLimits } from '../../lib/gcMode/gcScheduleMoves'
 import type { GanttHold } from '../../lib/gcMode/gcGantt'
 import { changeOrderMove, changeOrdersOnChart, changeOrderTails, type ChangeOrderOnChart } from '../../lib/gcMode/gcChangeOrderDays'
 import { WAIT_KINDS, waitHolds, waitKind, waitRows, waitWhoDefault, type WaitRow } from '../../lib/gcMode/gcScheduleWaits'
 import { daysLostByCause, lostDaysByLine } from '../../lib/gcMode/gcDaysLost'
+import { lateNoticeTails } from '../../lib/gcMode/gcLateNotices'
 import { ADDED_WHO, addedActivityProblem } from '../../lib/gcMode/gcAddedActivity'
 import { actualProblem, actualWords } from '../../lib/gcMode/gcActualDates'
 import { baselineDue, baselineHistory, baselineWords, nextBaselineName } from '../../lib/gcMode/gcBaseline'
@@ -86,6 +88,8 @@ export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps)
   const waits = useMemo(() => waitRows(state, project), [state, project])
   // Days the daily log says were lost to the weather, by bar (G-58).
   const lost = useMemo(() => lostDaysByLine(project), [project])
+  // A trade's own new day from its portal, not on the dates yet (G-117): a dashed tail on its bar.
+  const lateSaid = useMemo(() => lateNoticeTails(state, project), [state, project])
   // Every move goes through the explanation window first (the owner, 2026-10-05; the Gantt, Phase 2).
   const [pending, setPending] = useState<PendingMove | null>(null)
   // The weekly walk (the owner, 2026-10-05): every bar that should have moved, one at a time.
@@ -179,6 +183,7 @@ export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps)
           tails={tails}
           waits={waits}
           lost={lost}
+          lateSaid={lateSaid}
           items={m.items}
           float={m.float}
           milestones={m.milestones}
@@ -202,6 +207,9 @@ export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps)
       {walking && <GcScheduleWalk state={state} project={project} holds={holds} dispatch={dispatch} onClose={() => setWalking(false)} />}
 
       {pending && <GcMoveExplain key={`${pending.lineId}:${pending.start}:${pending.finish}`} project={project} pending={pending} dispatch={dispatch} onClose={() => setPending(null)} />}
+
+      {/* Trades say they will be late (G-117): take the day as a move, or push back. */}
+      {building && <GcLateNotices state={state} project={project} dispatch={dispatch} onTake={(move) => setPending(move)} />}
 
       <GcMoveHistory state={state} project={project} dispatch={dispatch} />
 

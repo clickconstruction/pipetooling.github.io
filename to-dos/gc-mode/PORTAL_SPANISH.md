@@ -120,7 +120,7 @@ column headers are in one block at the end of `gcBuildingWords.ts`, for the nati
 
 ## For a native speaker to read
 
-Every Spanish string the trade's portal shows, 906 in all, drawn from the code on 2026-10-05.
+Every Spanish string the trade's portal shows, 971 in all, drawn from the code on 2026-10-05.
 They're grouped by screen, English on the left. Please mark anything that reads wrong, stiff or
 unclear, and write the better words beside it. The Portal lane makes the changes and passes the
 other lanes theirs. After any change to the words, redraw the tables below from the code with
@@ -729,6 +729,57 @@ they were written in. The portal does not translate them.
 | You told {gc} {what} would come by {date}. Send them or give a new day. | Le dijo a {gc} que {what} llegarían a más tardar el {date}. Envíe lo prometido o dé una nueva fecha. |
 | Tell {gc} about your company. {gc} can pick your quote once you are approved. | Cuéntele a {gc} de su empresa. {gc} puede elegir su cotización cuando apruebe a su empresa. |
 | Fill in your W-9. | Llene su W-9. |
+
+#### Your dates moved (the Gantt, Phase 3: Tell the trades).
+
+| English | Español |
+|---|---|
+| Your dates moved on {project} | Sus fechas cambiaron en {project} |
+
+#### Start reminders (the Gantt, G-114): 14 days and 3 days before a company's first day, with what must be in place.
+
+| English | Español |
+|---|---|
+| Your work on {project} starts {date} | Su trabajo en {project} comienza el {date} |
+| Your {trade} work on {project} starts {date}, in {days} days: {work}. | Su trabajo de {trade} en {project} comienza el {date}, en {days} días: {work}. |
+| Your {trade} work on {project} starts today: {work}. | Su trabajo de {trade} en {project} comienza hoy: {work}. |
+| Your {trade} work on {project} was to start {date}, and nobody has been on site: {work}. | Su trabajo de {trade} en {project} debía comenzar el {date}, y nadie ha estado en la obra: {work}. |
+| Before then, this must be in place: | Antes de eso, esto debe estar listo: |
+| Everything is in place on our side. | Todo está listo de nuestro lado. |
+| Your submittal {number}, {title}: {state}. The work cannot start until it is approved. | Su submittal {number}, {title}: {state}. El trabajo no puede comenzar hasta que esté aprobado. |
+| not sent yet | aún no enviado |
+| with us | con nosotros |
+| with the architect | con el arquitecto |
+| Your insurance certificate runs out {date}, before your work starts. Send a current one. | Su certificado de seguro vence el {date}, antes de que comience su trabajo. Envíe uno vigente. |
+| Your insurance certificate: we have none on file. | Su certificado de seguro: no tenemos ninguno. |
+| Your statement of work is not signed yet. | Su orden de trabajo aún no está firmada. |
+| Answer in your portal with the day your crew will be on site. | Responda en su portal con el día en que su cuadrilla estará en la obra. |
+| The schedule on {project} moved. Your work is now planned for these days. | El cronograma de {project} cambió. Su trabajo ahora está planeado para estos días. |
+| {work}: {to}, not {from}. | {work}: {to}, no {from}. |
+| Why: {why} | Motivo: {why} |
+| In your portal, tell us the dates work, or give us another day. | En su portal, díganos si las fechas funcionan o denos otra fecha. |
+| Your dates moved | Sus fechas cambiaron |
+| These dates work | Estas fechas funcionan |
+| I need another day | Necesito otra fecha |
+| The day you can | La fecha en que puede |
+| A word on why, if you like | Un comentario sobre el motivo, si gusta |
+| Send | Enviar |
+| Thank you. The office has your answer. | Gracias. La oficina tiene su respuesta. |
+
+#### Your schedule on this job (the Gantt, Phase 3, G-110).
+
+| English | Español |
+|---|---|
+| Your schedule on this job | Su cronograma en este trabajo |
+| Before you | Antes de usted |
+| Your work | Su trabajo |
+| Waiting on you | Esperando por usted |
+| Your work, what it waits on, and what waits on it. Other companies' work shows by name, never by price. | Su trabajo, lo que espera y lo que lo espera. El trabajo de otras empresas aparece por nombre, nunca por precio. |
+| done | terminado |
+| moved {days} days since Start | movido {days} días desde el inicio |
+| today | hoy |
+| The schedule is not drawn yet. | El cronograma todavía no está dibujado. |
+| Your dates moved on {project}. Tell us they work, or give another day. | Sus fechas cambiaron en {project}. Díganos si funcionan o denos otra fecha. |
 | The plans changed for {trade} on {project}. Confirm your quote or change it. | Cambiaron los planos de {trade} en {project}. Confirme su cotización o cámbiela. |
 | Answer one line of your {trade} quote for {project}. | Conteste una partida de su cotización de {trade} para {project}. |
 | Answer {n} lines of your {trade} quote for {project}. | Conteste {n} partidas de su cotización de {trade} para {project}. |
@@ -917,6 +968,40 @@ they were written in. The portal does not translate them.
 | Asked {date}. {gc} sent it to the architect. | Hecha el {date}. {gc} se la envió al arquitecto. |
 | You need the answer before {work} on {date}. | Necesita la respuesta antes de {work}, el {date}. |
 | Answered {date}: {answer} | Contestada el {date}: {answer} |
+
+#### A trade says it will be late, from its own chart (the Gantt, G-117). Una fecha: feminine.
+
+| English | Español |
+|---|---|
+| We will be late | Vamos a atrasarnos |
+| Tell {gc} the day you will finish. | Dígale a {gc} el día en que va a terminar. |
+| Tell {gc} the day you can start. | Dígale a {gc} el día en que puede empezar. |
+| It finishes | Termina |
+| It starts | Empieza |
+| The day you will finish | El día en que va a terminar |
+| The day you can start | El día en que puede empezar |
+| That is {days} after {date}. | Es decir, {days} más tarde que el {date}. |
+| It would finish {date}. | Terminaría el {date}. |
+| Why | Motivo |
+| Say what happened, in a sentence. | Diga qué pasó, en una oración. |
+| What waits on it | Lo que espera este trabajo |
+| Your {work} would start {date}, {days} later. | Su {work} empezaría el {date}, {days} después. |
+| {work} by {company} would start {date}, {days} later. | {work} de {company} empezaría el {date}, {days} después. |
+| 1 day | 1 día |
+| {n} days | {n} días |
+| {gc} decides. Your dates stay as they are until {gc} moves them. | {gc} decide. Sus fechas siguen igual hasta que {gc} las cambie. |
+| Pick the day. | Elija el día. |
+| Pick a day after {date}. | Elija un día después del {date}. |
+| Pick today or a later day. | Elija hoy o un día después. |
+| Pick why. | Elija el motivo. |
+| You said {date}. {gc} has not answered yet. | Usted dijo el {date}. {gc} todavía no contesta. |
+| Change it | Cambiarla |
+| {gc} took your day, {date}. | {gc} aceptó su fecha, el {date}. |
+| {gc} needs {date}. | {gc} necesita el {date}. |
+| We will make {date} | Vamos a cumplir el {date} |
+| You said you will make {date}. | Dijo que va a cumplir el {date}. |
+| Sent. {gc} has your new day. | Enviado. {gc} tiene su nueva fecha. |
+| {gc} needs {date} on {work} at {project}. Say you will make it, or give another day. | {gc} necesita el {date} para {work} en {project}. Díganos si va a cumplir o denos otra fecha. |
 
 #### The usual exclusions, by name
 

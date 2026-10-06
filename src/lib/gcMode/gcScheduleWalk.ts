@@ -16,6 +16,7 @@ import { shortDate, weekdayDate } from './gcWords'
 import { ganttBars, type GanttBar, type GanttHold } from './gcGantt'
 import { moveRows, type MoveRow } from './gcScheduleMoves'
 import { lostDaysUnanswered, lostDaysWords, type LostDay } from './gcDaysLost'
+import { lateWalkFact } from './gcLateNotices'
 
 /** A schedule not walked in this many days is stale. */
 export const WALK_STALE_DAYS = 7
@@ -94,6 +95,9 @@ function itemOf(project: GcProject, b: GanttBar, today: string): WalkItem | null
     const over = daysBetween(a.finish, paceLater)
     facts.push(`At this pace it finishes ${weekdayDate(paceLater)}, ${over} ${over === 1 ? 'day' : 'days'} after the day drawn.`)
   }
+  // The trade's own word that it will be late, not answered yet (G-117): the walk should not keep as drawn what its trade says will move.
+  const lateWord = noReport ? null : lateWalkFact(project, a.lineId, b.item.company, today)
+  if (lateWord) facts.push(lateWord)
   if (b.status === 'ahead') facts.push('It is ahead of the plan.')
   const lostDays = a.inspection ? [] : lostDaysUnanswered(project, a.lineId)
   const lost = lostDaysWords(lostDays)
