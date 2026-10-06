@@ -13,7 +13,7 @@
  *   <out>/metrics.json   page height, tap targets under 36 px, text runs under 12 px, inputs
  *                        under 16 px (iOS zooms on focus), elements past the right edge, tables
  *                        and their widths, sideways scrollers — the numbers a mobile pass is
- *                        measured against (to-dos/taunya-mobile.md, punch list #30).
+ *                        measured against (punch list #30, closed 2026-10-06; its record is docs/recent-features/v2.3749.md onward).
  *
  * With no URLs it walks the assistant's thirteen surfaces from that to-do. Needs a dev server on
  * the port (`npx vite --port 5181`) and Playwright's chromium, which the repo already ships.

@@ -216,7 +216,7 @@ export default function JobsContractSweepModal({
   const [sendingAll, setSendingAll] = useState(false)
   const [detail, setDetail] = useState<{ job: JobWithDetails; filing: boolean } | null>(null)
   const [filter, setFilter] = useState<SweepFilter>('to_send')
-  /** The Drive pass (refresh, to-dos/contract-sweep-refresh): contract-looking files in the jobs Drive, read once per open. Null = not read (yet, or not allowed). */
+  /** The Drive pass (refresh, docs/recent-features/v2.3669.md): contract-looking files in the jobs Drive, read once per open. Null = not read (yet, or not allowed). */
   const [driveFiles, setDriveFiles] = useState<DriveScanFile[] | null>(null)
   const [driveChecking, setDriveChecking] = useState(false)
   /** v2.3709: when the scan the office shares was made — the ⋯ item says it, so a stale read is a known thing. */
