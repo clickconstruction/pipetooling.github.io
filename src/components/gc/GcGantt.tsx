@@ -37,6 +37,8 @@ import { lostDayTitle, lostDaysWords, type LostDay } from '../../lib/gcMode/gcDa
 import { actualWords } from '../../lib/gcMode/gcActualDates'
 import { Chip } from './gcUi'
 import { GcGanttList } from './GcGanttList'
+import { GcPeopleStrip } from './GcPeopleStrip'
+import type { PeopleWeek } from '../../lib/gcMode/gcPeopleOnSite'
 import { GcGanttPrint } from './GcGanttPrint'
 import type { GanttPrintJob } from '../../lib/gcMode/gcGanttPrint'
 
@@ -144,6 +146,7 @@ export function GcGantt({
   lateSaid,
   logNotes,
   uninsured,
+  peopleOf,
   callList,
   print,
   earlier,
@@ -180,6 +183,8 @@ export function GcGantt({
   logNotes?: Map<string, { note: string; words: string }>
   /** A bar under way whose trade's insurance ran out (G-138): a red note beside it and a line on its hover card. No stripes: the work goes on. */
   uninsured?: Map<string, { note: string; words: string }>
+  /** People on site per week (G-84), the plan's busiest day against the daily log's, for the weeks between two days. Given only by the office's tab; unset, no toggle and no strip. */
+  peopleOf?: (from: string, to: string) => PeopleWeek[]
   /** By company as a call list (G-115): drawn under the toolbar while the chart is grouped by company. */
   callList?: ReactNode
   /** The job's words for Print or PDF (G-21). Unset: the toolbar has no print button. */
@@ -206,6 +211,8 @@ export function GcGantt({
   const [showLinks, setShowLinks] = useState(true)
   // Spare days as a faint tail after each bar (G-08), on request; held like the links, while the chart is open.
   const [showSpare, setShowSpare] = useState(false)
+  // People on site per week (G-84): a strip under the rows, the whole job whatever is filtered or folded.
+  const [showPeople, setShowPeople] = useState(false)
   // A group whose work is all done opens folded: it is history, and the live work gets the room.
   const [folded, setFolded] = useState<Set<string>>(() => finishedGroups(items, float, holds, today, building, 'trade'))
   const [hover, setHover] = useState<{ id: string; x: number; y: number } | null>(null)
@@ -228,6 +235,7 @@ export function GcGantt({
   const shown = useMemo(() => ganttFilter(all, filters), [all, filters])
   const groups = useMemo(() => ganttGroups(shown, by), [shown, by])
   const axis = useMemo(() => ganttAxis(all, milestones, today, zoom), [all, milestones, today, zoom])
+  const people = useMemo(() => (showPeople && peopleOf ? peopleOf(axis.first, addDays(axis.first, axis.days - 1)) : []), [showPeople, peopleOf, axis.first, axis.days])
   const px = ZOOM_PX[zoom]
   const width = axis.days * px
   const x = (on: string) => daysBetween(axis.first, on) * px
@@ -613,6 +621,11 @@ export function GcGantt({
           <button type="button" style={quietBtn} aria-pressed={showSpare} onClick={() => setShowSpare((v) => !v)} title="A faint tail after each bar, out to the last day it can finish before the job finishes later. The work that sets the finish has none.">
             {showSpare ? 'Hide spare days' : 'Show spare days'}
           </button>
+          {peopleOf && (
+            <button type="button" style={quietBtn} aria-pressed={showPeople} onClick={() => setShowPeople((v) => !v)} title="A strip under the rows: each week, the plan's busiest day against the daily log's.">
+              {showPeople ? 'Hide people on site' : 'Show people on site'}
+            </button>
+          )}
           <button type="button" style={quietBtn} onClick={() => setFolded(anyFolded ? new Set() : new Set(groups.map((g) => g.key)))}>
             {anyFolded ? 'Open all' : 'Fold all'}
           </button>
@@ -857,6 +870,8 @@ export function GcGantt({
               Nothing on the schedule passes these filters.
             </div>
           )}
+          {/* People on site per week (G-84), under the rows: the whole job, whatever is filtered or folded. */}
+          {showPeople && people.length > 0 && <GcPeopleStrip weeks={people} first={axis.first} px={px} labelW={labelW} width={width} phone={phone} />}
 
           {/* Over the rows: the links, then today. Neither takes a press. */}
           <svg aria-hidden={!onUnlink} width={labelW + width} height={layout.height} style={{ position: 'absolute', left: 0, top: 0, zIndex: 2, pointerEvents: 'none' }}>
@@ -927,14 +942,14 @@ export function GcGantt({
 
       )}
 
-      {view === 'chart' && <GanttLegend building={building} canMove={Boolean(onMove)} spare={showSpare} />}
+      {view === 'chart' && <GanttLegend building={building} canMove={Boolean(onMove)} spare={showSpare} people={showPeople && Boolean(peopleOf)} />}
       {view === 'chart' && hovered && hover && !drag && <GanttHoverCard bar={hovered} all={all} at={hover} building={building} today={today} lost={lost?.get(hovered.id) ?? []} said={lateSaid?.get(hovered.id)} log={logNotes?.get(hovered.id)} uninsured={uninsured?.get(hovered.id)} soon={earlier?.get(hovered.id) ?? null} realSpan={real?.get(hovered.id) ?? null} />}
       {printing && printInput && <GcGanttPrint input={printInput} onClose={() => setPrinting(false)} />}
     </div>
   )
 }
 
-function GanttLegend({ building, canMove, spare = false }: { building: boolean; canMove: boolean; /** The spare-day tails are on (G-08). */ spare?: boolean }) {
+function GanttLegend({ building, canMove, spare = false, people = false }: { building: boolean; canMove: boolean; /** The spare-day tails are on (G-08). */ spare?: boolean; /** The people-on-site strip is on (G-84). */ people?: boolean }) {
   const key = (style: CSSProperties, words: string) => (
     <span key={words} style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
       <span aria-hidden style={{ display: 'inline-block', boxSizing: 'border-box', flex: 'none', ...style }} />
@@ -955,6 +970,7 @@ function GanttLegend({ building, canMove, spare = false }: { building: boolean; 
       {key({ width: 20, height: 8, borderRadius: 4, background: 'var(--bg-violet-100)', border: `1.5px solid ${C.violet}` }, 'what the work waits on: a delivery, a decision, a permit, the utility, from the day it was asked for to the day it is expected')}
       {key({ width: 20, height: 3, borderRadius: 2, background: 'var(--border-strong)' }, 'where it sat in the plan at Start')}
       {spare && key({ width: 20, height: 3, background: 'var(--bg-blue-200)', borderRight: `1.5px solid ${C.blue}` }, "a bar's spare days: how long it can slip before the job finishes later")}
+      {people && key({ width: 20, height: 11, borderRadius: 2, border: '1.5px solid var(--text-muted)', background: `linear-gradient(90deg, var(--surface) 0 50%, ${C.blue} 50% 100%)` }, "people on site: the plan's busiest day each week, from each trade's count, beside the daily log's busiest day")}
       {building && key({ width: 20, height: 3, borderRadius: 2, background: C.green }, 'the days it really ran, as recorded')}
       {key({ width: 20, height: 7, borderRadius: 3, background: 'var(--border-strong)' }, 'a whole group, as one bar')}
       {key({ width: 10, height: 10, transform: 'rotate(45deg)', background: 'var(--text-muted)' }, 'a date the job must meet')}
