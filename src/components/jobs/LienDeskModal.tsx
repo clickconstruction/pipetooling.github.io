@@ -84,6 +84,9 @@ import { Share } from 'lucide-react'
 import { useScrollEdgeFade } from '../../hooks/useScrollEdgeFade'
 import { LienJobSuppliersCard, LienSupplierMarkLine } from './LienJobSuppliers'
 import { LIEN_HOUSES_PARAGRAPH_READ_BY_COUNSEL, lienSupplierLetterParagraphFor, lienSupplierMark, type LienSupplierMark } from '../../lib/jobs/lienJobSuppliers'
+import { LIEN_RELEASE_PARAGRAPH_READ_BY_COUNSEL, conditionalReleaseParagraph, noticeReleaseFields, noticeReleaseFormType, noticeReleasePageHtml, noticeReleaseThroughDate } from '../../lib/jobs/lienNoticeRelease'
+import { createNoticeReleaseDraft, refreshNoticeReleaseDraft, voidNoticeReleaseDraft, type NoticeReleaseDraftInput } from '../../lib/jobs/lienNoticeReleaseIo'
+import { useNoticeReleases } from '../../hooks/useNoticeReleases'
 import LienDeskAffidavitPane, { affidavitDeadlineWords } from './LienDeskAffidavitPane'
 import LienDeskRetainagePane from './LienDeskRetainagePane'
 import { LIEN_RETAINAGE_PILES, contractEndedWords, retainageDeadlineWords, type LienRetainagePile } from '../../lib/jobs/lienDeskRetainage'
@@ -292,6 +295,9 @@ export default function LienDeskModal({
   const [coverNote, setCoverNote] = useState(true)
   // The supply houses in the owner's letter (v2.4725): on when a house is owed, unless the draft left them out.
   const [housesInLetter, setHousesInLetter] = useState(true)
+  // The conditional release enclosed with the notice (v2.4729): the draft row the tick made, kept on the item's draft fields; the ref is what the next save writes.
+  const [releaseId, setReleaseId] = useState<string | null>(null)
+  const releaseIdRef = useRef<string | null>(null)
   // The pay offer (v2.4713): the leader's choice, written with the approval; read back from the item when one is selected.
   const [offer, setOffer] = useState<LienPayOffer | null>(null)
   const [wordOpen, setWordOpen] = useState(false)
@@ -437,6 +443,9 @@ export default function LienDeskModal({
     return [...ids]
   }, [data, calendarRows])
   const suppliers = useLienJobSuppliers(supplierJobIds, open)
+  // The conditional releases the drafts point at (v2.4729): the pane's page and the run's packet read them by row id.
+  const releaseIds = useMemo(() => (data?.items ?? []).map((it) => parseLienDeskDraftFields(it.fields)?.releaseId ?? '').filter(Boolean), [data?.items])
+  const releases = useNoticeReleases(releaseIds, open)
   const supplierMarks = useMemo(() => {
     const marks = new Map<string, LienSupplierMark>()
     for (const [jobId, job] of suppliers.byJob) {
@@ -706,6 +715,9 @@ export default function LienDeskModal({
     setCheckedMonths(null)
     setCoverNote(selected?.item ? selected.item.cover_note : true)
     setHousesInLetter(parseLienDeskDraftFields(selected?.item?.fields)?.housesInLetter !== false)
+    const storedRelease = parseLienDeskDraftFields(selected?.item?.fields)?.releaseId ?? null
+    releaseIdRef.current = storedRelease
+    setReleaseId(storedRelease)
     setWordOpen(false)
     setSkipOpen(false)
     setByHandOpen(false)
@@ -855,10 +867,28 @@ export default function LienDeskModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editing?.key])
   // The supply houses paragraph for the owner's letter (v2.4725): the same words the run prints, from the job's houses and the letter's own claim figure.
+  const claimNumber = Number(String(noticeFields.claimAmount ?? '').replace(/[$,\s]/g, '')) || 0
   const supplierParagraph = useMemo(
-    () => lienSupplierLetterParagraphFor(supplierJob, { propertyKind: property.propertyKind ?? '', todayYmd, payerName: gc?.name ?? noticeFields.originalContractorName, claim: Number(String(noticeFields.claimAmount ?? '').replace(/[$,\s]/g, '')) || 0 }),
-    [supplierJob, property.propertyKind, todayYmd, gc?.name, noticeFields.originalContractorName, noticeFields.claimAmount],
+    () => lienSupplierLetterParagraphFor(supplierJob, { propertyKind: property.propertyKind ?? '', todayYmd, payerName: gc?.name ?? noticeFields.originalContractorName, claim: claimNumber }),
+    [supplierJob, property.propertyKind, todayYmd, gc?.name, noticeFields.originalContractorName, claimNumber],
   )
+  // The enclosed release (v2.4729): the row the draft points at, as the run carries it; the page behind the letter.
+  const noticeRelease = releaseId ? (releases.byId.get(releaseId) ?? null) : null
+  const releaseHtml = useMemo(() => (noticeRelease ? noticeReleasePageHtml(noticeRelease, docExtras) : ''), [noticeRelease, docExtras])
+  /** The release's draft as the notice reads now — the tick creates it, and every save of the notice's draft refreshes it. */
+  const releaseDraftInput = (): NoticeReleaseDraftInput | null =>
+    selected
+      ? {
+          jobId: selected.jobId,
+          formType: noticeReleaseFormType(claimNumber, payPage.rows.reduce((s, r) => s + r.openAmount, 0)),
+          fields: noticeReleaseFields({ claimantName: noticeFields.claimantName, gcName: gc?.name ?? noticeFields.originalContractorName, jobName: job?.job_name, jobAddress: job?.job_address, claim: noticeFields.claimAmount, months: monthsList, signerName: (issuer?.signerName ?? '').trim() || noticeFields.contactPerson, signerTitle: issuer?.signerTitle }),
+          amount: claimNumber,
+          invoiceIds: payPage.rows.map((r) => r.invoiceId),
+          throughDate: noticeReleaseThroughDate(monthsList),
+          signerUserId: job?.master_user_id ?? null,
+          userId: authUserId,
+        }
+      : null
   // The cover page (v2.3540): the same page the run prints — counsel's letter for the property's kind while the box is ticked (v2.3828), or the letter the item carries.
   const coverBlocks = useMemo(() => {
     if (!selected) return []
@@ -869,10 +899,11 @@ export default function LienDeskModal({
       fields: noticeFields,
       extras: docExtras,
       coverNote: null,
-      coverLetter: coverNote || storedDraft?.coverLetter ? fillCoverLetter(counselCoverLetterTemplate({ stored: storedDraft?.coverLetter, gcName: gc?.name ?? noticeFields.originalContractorName, claimantName: noticeFields.claimantName, property }), { property: (job?.job_address ?? '').trim(), months: describeNoticeMonths(monthsList), job: jobNumber, amount: demandMoney(noticeFields.claimAmount), staleNote: storedDraft?.staleNote ?? '', contact: noticeFields.contactPerson, phone: signerPhoneFor ? signerPhoneFor(job?.master_user_id ?? null) : (issuer?.phone ?? '').trim(), affidavitMonth: affidavitMonthWord(coverLetterKindFor(property)), trade: job?.service_type?.name, supplyHouses: housesInLetter ? supplierParagraph : '' }) : null,
+      release: noticeRelease,
+      coverLetter: coverNote || storedDraft?.coverLetter ? fillCoverLetter(counselCoverLetterTemplate({ stored: storedDraft?.coverLetter, gcName: gc?.name ?? noticeFields.originalContractorName, claimantName: noticeFields.claimantName, property }), { property: (job?.job_address ?? '').trim(), months: describeNoticeMonths(monthsList), job: jobNumber, amount: demandMoney(noticeFields.claimAmount), staleNote: storedDraft?.staleNote ?? '', contact: noticeFields.contactPerson, phone: signerPhoneFor ? signerPhoneFor(job?.master_user_id ?? null) : (issuer?.phone ?? '').trim(), affidavitMonth: affidavitMonthWord(coverLetterKindFor(property)), trade: job?.service_type?.name, supplyHouses: housesInLetter ? supplierParagraph : '', conditionalRelease: noticeRelease ? conditionalReleaseParagraph(demandMoney(noticeFields.claimAmount)) : '' }) : null,
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected?.jobId, job, monthsList.join('|'), noticeFields, docExtras, coverNote, storedDraft?.coverLetter, signerPhoneFor, gc?.name, property, housesInLetter, supplierParagraph])
+  }, [selected?.jobId, job, monthsList.join('|'), noticeFields, docExtras, coverNote, storedDraft?.coverLetter, signerPhoneFor, gc?.name, property, housesInLetter, supplierParagraph, noticeRelease])
   const coverHtml = useMemo(() => (coverBlocks.length ? filingDocHtml(coverBlocks) : ''), [coverBlocks])
   // The pay page (punch list #35, PR 3): the page the run prints behind the owner's copy, from the job's unpaid bills — fetched once per job while the desk is open.
   const payPage = useNoticePayPage(selected?.jobId ?? null, open)
@@ -895,7 +926,8 @@ export default function LienDeskModal({
     [selected, payPage, noticeFields, issuer, docExtras, offer],
   )
   const payHtml = useMemo(() => (payBlocks.length ? filingDocHtml(payBlocks) : ''), [payBlocks])
-  const pageTotal = (coverHtml ? 1 : 0) + 1 + (payHtml ? 1 : 0)
+  const pageTotal = (coverHtml ? 1 : 0) + (releaseHtml ? 1 : 0) + 1 + (payHtml ? 1 : 0)
+  const noticePageNumber = (coverHtml ? 1 : 0) + (releaseHtml ? 1 : 0) + 1
 
   const draftFields = (): LienDeskDraftFields => ({
     notice: noticeFields,
@@ -905,6 +937,8 @@ export default function LienDeskModal({
     ...(storedDraft?.coverLetter ? { coverLetter: storedDraft.coverLetter } : {}),
     // The supply houses left out of the owner's letter (v2.4725) — only the leaving-out is written down.
     ...(housesInLetter ? {} : { housesInLetter: false as const }),
+    // The conditional release enclosed with this notice (v2.4729).
+    ...(releaseIdRef.current ? { releaseId: releaseIdRef.current } : {}),
     // The month is the job's creation month, not clock hours (v2.3747): the record says where the date came from.
     ...(selected?.datedFromCreation ? { monthsDatedFromCreation: true as const } : {}),
     ...(wordingDiff.length > 0 ? { wording: wordingTouched || !storedDraft?.wording ? { editedBy: authName, editedAt: new Date().toISOString() } : storedDraft.wording } : {}),
@@ -951,7 +985,44 @@ export default function LienDeskModal({
 
   const ensureDraft = async (): Promise<string> => {
     if (!selected) throw new Error('nothing selected')
-    return saveLienDeskDraft({ itemId: item?.id ?? null, jobId: selected.jobId, months: monthsList, fields: draftFields(), coverNote, userId: authUserId })
+    const id = await saveLienDeskDraft({ itemId: item?.id ?? null, jobId: selected.jobId, months: monthsList, fields: draftFields(), coverNote, userId: authUserId })
+    // The enclosed release follows the notice (v2.4729): a claim or a month changed here is written to its draft too; a release past a draft is left as it is.
+    const rel = releaseIdRef.current
+    const relInput = rel ? releaseDraftInput() : null
+    if (rel && relInput) await refreshNoticeReleaseDraft(rel, relInput).catch(() => undefined)
+    return id
+  }
+  /** Enclose a conditional release (v2.4729): on makes the draft row and points the notice's draft at it; off voids the row and forgets it. */
+  const toggleRelease = (on: boolean) => {
+    if (!selected) return
+    if (on) {
+      void run(
+        'Enclose a conditional release',
+        async () => {
+          const input = releaseDraftInput()
+          if (!input) return
+          const id = await createNoticeReleaseDraft(input)
+          releaseIdRef.current = id
+          setReleaseId(id)
+          await ensureDraft()
+          releases.reload()
+        },
+        'The conditional release rides with the notice. It is issued when the run is recorded.',
+      )
+    } else {
+      const id = releaseIdRef.current
+      void run(
+        'Leave the release out',
+        async () => {
+          if (id) await voidNoticeReleaseDraft(id, authUserId)
+          releaseIdRef.current = null
+          setReleaseId(null)
+          await ensureDraft()
+          releases.reload()
+        },
+        'The release is left out.',
+      )
+    }
   }
 
   const saveDraft = () => run('Save draft', async () => void (await ensureDraft()), 'Draft saved.')
@@ -1254,7 +1325,7 @@ export default function LienDeskModal({
   // The page labels (v2.4726): the pages in the pane in order, each label a sticky bar that stacks under the strip once
   // passed and at the pane's foot while ahead (the Notices list's pile titles, v2.4651), lit for the page under the reader,
   // and a button that scrolls to its page.
-  const pageKeys: string[] = [...(coverHtml ? ['cover'] : []), 'notice', ...(payHtml ? ['pay'] : [])]
+  const pageKeys: string[] = [...(coverHtml ? ['cover'] : []), ...(releaseHtml ? ['release'] : []), 'notice', ...(payHtml ? ['pay'] : [])]
   const relightPages = (host: HTMLElement) => {
     let on: string | null = null
     pageKeys.forEach((key, i) => {
@@ -1726,8 +1797,21 @@ export default function LienDeskModal({
             <span>Name the supply {supplierJob.housesOwed === 1 ? 'house' : 'houses'} owed · {formatUsdNoCents(supplierJob.owed)}</span>
           </label>
         ) : null}
-        {coverNote && housesInLetter && supplierJob && supplierJob.owed > 0 && !LIEN_HOUSES_PARAGRAPH_READ_BY_COUNSEL ? (
-          <span data-lien-desk-houses-counsel style={{ flexBasis: '100%', fontSize: '0.72rem', color: 'var(--text-amber-800)' }}>Counsel has not read the supply house paragraph yet.</span>
+        {/* A conditional release of lien in the envelope (v2.4729, Stephen's addition): off until asked for; the tick makes the draft row, the run issues it. */}
+        {coverNote && selected && claimNumber > 0 ? (
+          <label data-lien-desk-release-tick title="The app's § 53.284 conditional release, prefilled from the notice — the claim as the amount, the GC as the check's maker — behind the owner's letter and the GC's form, named in the letter; a draft on the job now, issued when the run is recorded">
+            <input type="checkbox" checked={releaseId != null} disabled={(item != null && item.status !== 'drafted') || busy} onChange={(ev) => toggleRelease(ev.target.checked)} />
+            <span>Enclose a conditional release · {formatUsdNoCents(claimNumber)}</span>
+          </label>
+        ) : null}
+        {coverNote && ((housesInLetter && supplierJob && supplierJob.owed > 0 && !LIEN_HOUSES_PARAGRAPH_READ_BY_COUNSEL) || (releaseId != null && !LIEN_RELEASE_PARAGRAPH_READ_BY_COUNSEL)) ? (
+          <span data-lien-desk-houses-counsel style={{ flexBasis: '100%', fontSize: '0.72rem', color: 'var(--text-amber-800)' }}>
+            {housesInLetter && supplierJob && supplierJob.owed > 0 && !LIEN_HOUSES_PARAGRAPH_READ_BY_COUNSEL && releaseId != null && !LIEN_RELEASE_PARAGRAPH_READ_BY_COUNSEL
+              ? 'Counsel has not read the supply house and release paragraphs yet.'
+              : releaseId != null && !LIEN_RELEASE_PARAGRAPH_READ_BY_COUNSEL
+                ? 'Counsel has not read the release paragraph yet.'
+                : 'Counsel has not read the supply house paragraph yet.'}
+          </span>
         ) : null}
       </div>
 
@@ -1755,9 +1839,18 @@ export default function LienDeskModal({
           </div>
         </>
       ) : null}
+      {/* The conditional release (v2.4729): the § 53.284 form behind the letter, as the Release of Lien window would print it. */}
+      {releaseHtml ? (
+        <>
+          {pageLabel('release', `Page ${coverHtml ? 2 : 1} of ${pageTotal} · conditional release`, <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: 'none' }}>· {noticeRelease?.signature ? 'signed in the app' : 'the master signs it with the notice'} · change it in the Release of Lien window</span>)}
+          <div data-theme="light" data-lien-desk-release style={paperStyle}>
+            <div dangerouslySetInnerHTML={{ __html: releaseHtml }} />
+          </div>
+        </>
+      ) : null}
       {pageLabel(
         'notice',
-        `Page ${coverHtml ? 2 : 1} of ${pageTotal} · the notice`,
+        `Page ${noticePageNumber} of ${pageTotal} · the notice`,
         <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: 'none', color: wordingDiff.length ? 'var(--text-amber-800)' : undefined }}>
           · {wordingDiff.length ? wordingLineText(wordingDiff, wordingEditedBy) : payHtml ? 'the pay codes and the invoice follow it in the packet' : "the job's unpaid invoice follows it in the packet"}
         </span>,
@@ -2718,7 +2811,7 @@ export default function LienDeskModal({
             await markLienDeskItemsPrinted(ids, authUserId).catch(() => undefined)
             onChanged()
           }}
-          notices={[...buildLienDeskRun([...data.queue.piles.ready, ...data.queue.piles.printed], data, issuer, signerNameFor, todayYmd, signerPhoneFor, { suppliers: suppliers.byJob }), ...buildLienRetainageRun(data.retainage.piles.ready, data, issuer, signerNameFor, todayYmd, signerPhoneFor)]}
+          notices={[...buildLienDeskRun([...data.queue.piles.ready, ...data.queue.piles.printed], data, issuer, signerNameFor, todayYmd, signerPhoneFor, { suppliers: suppliers.byJob, releases: releases.byId }), ...buildLienRetainageRun(data.retainage.piles.ready, data, issuer, signerNameFor, todayYmd, signerPhoneFor)]}
           issuer={issuer}
           todayYmd={todayYmd}
           userId={authUserId}

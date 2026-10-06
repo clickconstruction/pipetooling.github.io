@@ -51,6 +51,14 @@ vi.mock('../../hooks/useNoticePayPage', () => ({ useNoticePayPage: () => payPage
 const supplierState: { byJob: Map<string, LienSupplierJob> } = { byJob: new Map() }
 const supplierReload = vi.fn()
 vi.mock('../../hooks/useLienJobSuppliers', () => ({ useLienJobSuppliers: () => ({ byJob: supplierState.byJob, loaded: true, reload: supplierReload }) }))
+// The conditional release enclosed with a notice (v2.4729): the reads and writes are seams; the kernel has its own tests.
+const releaseState: { byId: Map<string, import('../../lib/jobs/lienNoticeRelease').NoticeRelease> } = { byId: new Map() }
+const releaseReload = vi.fn()
+const createReleaseMock = vi.fn(async (_input: unknown) => 'rel-1')
+const refreshReleaseMock = vi.fn(async () => undefined)
+const voidReleaseMock = vi.fn(async () => undefined)
+vi.mock('../../hooks/useNoticeReleases', () => ({ useNoticeReleases: () => ({ byId: releaseState.byId, loaded: true, reload: releaseReload }) }))
+vi.mock('../../lib/jobs/lienNoticeReleaseIo', () => ({ createNoticeReleaseDraft: (input: unknown) => createReleaseMock(input), refreshNoticeReleaseDraft: (...a: unknown[]) => refreshReleaseMock(...(a as [])), voidNoticeReleaseDraft: (...a: unknown[]) => voidReleaseMock(...(a as [])) }))
 // What the house told us (v2.4411): the two writes are seams.
 const saveWordMock = vi.fn()
 const clearWordMock = vi.fn()
@@ -77,6 +85,11 @@ beforeEach(() => {
   resetPropertyLookupCache()
   supplierState.byJob = new Map()
   supplierReload.mockReset()
+  releaseState.byId = new Map()
+  releaseReload.mockReset()
+  createReleaseMock.mockClear()
+  refreshReleaseMock.mockClear()
+  voidReleaseMock.mockClear()
   saveWordMock.mockReset()
   saveWordMock.mockResolvedValue(undefined)
   clearWordMock.mockReset()
@@ -1249,6 +1262,45 @@ describe('LienDeskModal the owner’s call and the piles (v2.3767)', () => {
     fireEvent.click(tick)
     expect(document.querySelector('[data-lien-desk-cover]')?.textContent).not.toContain('You should also know')
     expect(document.querySelector('[data-lien-desk-houses-counsel]')).toBeNull()
+  })
+
+  it('encloses a conditional release on a tick (v2.4729): a draft row from the notice, the paragraph closes the letter, the form is page 2, the enclosure line says it, and unticking voids it', async () => {
+    releaseState.byId = new Map([
+      [
+        'rel-1',
+        { id: 'rel-1', formType: 'conditional_progress', amount: 33500, signature: null, fields: { companyName: 'Click Plumbing', checkFrom: 'Loberg Contracting', amount: '33500.00', projectDescription: 'ATI Schertz, 1204 Elbel Rd, Schertz, TX', throughDate: '2026-07-31', signedDate: '', signerName: 'Robert Douglas', signerTitle: '' } },
+      ],
+    ])
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650.map((r) => ({ ...r, has_owner: true })), [], true)} />)
+    await settle()
+    const tick = screen.getByLabelText(/Enclose a conditional release · \$33,500/) as HTMLInputElement
+    expect(tick.checked).toBe(false)
+    expect(document.querySelector('[data-lien-desk-release]')).toBeNull()
+    expect(document.querySelector('[data-lien-desk-cover]')?.textContent).not.toContain('conditional release')
+    fireEvent.click(tick)
+    await settle()
+    expect(createReleaseMock).toHaveBeenCalledTimes(1)
+    const input = createReleaseMock.mock.calls[0]![0] as { jobId: string; formType: string; amount: number; invoiceIds: string[]; throughDate: string; fields: { checkFrom: string; companyName: string; amount: string; throughDate: string; signedDate: string } }
+    expect(input.jobId).toBe('j650')
+    // No bills known to the pane: the Progress form, the one that does not call itself the last payment.
+    expect(input.formType).toBe('conditional_progress')
+    expect(input.amount).toBe(33500)
+    expect(input.invoiceIds).toEqual([])
+    expect(input.throughDate).toBe('2026-08-31')
+    expect(input.fields).toMatchObject({ checkFrom: 'Loberg Contracting', amount: '33500.00', throughDate: '2026-08-31', signedDate: '' })
+    expect(tick.checked).toBe(true)
+    const cover = document.querySelector('[data-lien-desk-cover]')!
+    expect(cover.textContent).toContain('A conditional release of lien is enclosed. This release is not effective today. It becomes effective only after $33,500.00 is received and the funds have cleared. Until then, the notice stands.')
+    expect(cover.textContent).toContain(', and a conditional release of lien.')
+    expect(screen.getByText('Page 2 of 3 · conditional release', { exact: false })).toBeTruthy()
+    expect(screen.getByText('Page 3 of 3 · the notice', { exact: false })).toBeTruthy()
+    expect(document.querySelector('[data-lien-desk-release]')?.textContent).toContain('a check from Loberg Contracting in the sum of $33,500.00 payable to Click Plumbing')
+    expect(document.querySelector('[data-lien-desk-houses-counsel]')?.textContent).toBe('Counsel has not read the release paragraph yet.')
+    fireEvent.click(tick)
+    await settle()
+    expect(voidReleaseMock).toHaveBeenCalledWith('rel-1', expect.anything())
+    expect(tick.checked).toBe(false)
+    expect(document.querySelector('[data-lien-desk-cover]')?.textContent).not.toContain('conditional release')
   })
 
   it('draws no card and no mark on a job that bought nothing (v2.4404)', async () => {

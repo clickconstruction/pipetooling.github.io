@@ -475,3 +475,39 @@ describe('the supply houses in the owner’s letter (v2.4725)', () => {
     expect(n.coverLetter).not.toContain('You should also know')
   })
 })
+
+describe('the conditional release in the envelope (v2.4729)', () => {
+  const release = {
+    id: 'rel-1',
+    formType: 'conditional_progress' as const,
+    amount: 33500,
+    signature: null,
+    fields: { companyName: 'Click Plumbing', checkFrom: 'Loberg Contracting', amount: '33500.00', projectDescription: 'ATI Schertz, 1204 Elbel Rd, Schertz, TX', throughDate: '2026-07-31', signedDate: '', signerName: 'Robert Douglas', signerTitle: '' },
+  }
+  const withRelease = () => data([{ ...approved, fields: { notice: { noticeDate: '', projectDescription: '', claimantName: 'Click Plumbing', laborMaterialsType: '', originalContractorName: 'Loberg Contracting', contractedWithIfDifferent: '', claimAmount: '33500.00', contactPerson: 'Robert Douglas', claimantAddress: '' }, gcEmail: '', releaseId: 'rel-1' } }])
+
+  it('rides when the draft points at it: the letter names it, the enclosure line says it, and it sits behind the owner’s letter and behind the GC’s form', () => {
+    const d = withRelease()
+    const n = buildLienDeskRun(d.queue.piles.ready, d, null, () => 'Robert Douglas', TODAY, undefined, { releases: new Map([['rel-1', release]]) })[0]!
+    expect(n.release?.id).toBe('rel-1')
+    const paragraphs = n.coverLetter!.split('\n\n')
+    expect(paragraphs[paragraphs.length - 1]).toBe('A conditional release of lien is enclosed. This release is not effective today. It becomes effective only after $33,500.00 is received and the funds have cleared. Until then, the notice stands.')
+    const texts = runCoverNoteBlocks(n).map((b) => (b.kind === 'paragraph' ? b.text : ''))
+    expect(texts.find((t) => t.startsWith('Enclosed:'))).toBe('Enclosed: Notice of claim for unpaid labor or materials (Tex. Prop. Code § 53.056), and a conditional release of lien.')
+    const owner = runCopyPages(n, n.recipients[0]!).map((p) => p.label)
+    expect(owner).toEqual(['Cover letter', 'Conditional release of lien · $33,500.00', '§ 53.056 notice · copy for owner of record'])
+    const gc = runCopyPages(n, n.recipients[1]!).map((p) => p.label)
+    expect(gc).toEqual(['§ 53.056 notice · copy for original contractor', 'Conditional release of lien · $33,500.00'])
+    expect(runCopyPages(n, n.recipients[0]!)[1]!.html).toContain('a check from Loberg Contracting in the sum of $33,500.00 payable to Click Plumbing')
+  })
+
+  it('a draft pointing at a release the desk could not read, or at none, rides without one', () => {
+    const d = withRelease()
+    const n = buildLienDeskRun(d.queue.piles.ready, d, null, () => 'Robert Douglas', TODAY)[0]!
+    expect(n.release).toBeNull()
+    expect(n.coverLetter).not.toContain('conditional release')
+    expect(runCopyPages(n, n.recipients[0]!).map((p) => p.label)).toEqual(['Cover letter', '§ 53.056 notice · copy for owner of record'])
+    const plain = buildLienDeskRun(data([approved]).queue.piles.ready, data([approved]), null, () => 'Robert Douglas', TODAY)[0]!
+    expect(plain.release).toBeNull()
+  })
+})

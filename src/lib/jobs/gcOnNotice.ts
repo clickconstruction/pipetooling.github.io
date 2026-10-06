@@ -357,6 +357,8 @@ export const COVER_LETTER_FILLS = {
   /** The job's trade (v2.3849, `lienTradeWords`): the contractor ("plumbing contractor"), the work ("the plumbing" / "the electrical work"), what we did ("installed the plumbing" / "did the electrical work"). */
   /** The supply houses owed on the job (v2.4725): a paragraph of its own, or nothing — `lienSupplierLetterParagraph`. */
   supplyHouses: '{{supply_houses}}',
+  /** The conditional release enclosed with the notice (v2.4729): a paragraph of its own, or nothing — `conditionalReleaseParagraph`. */
+  conditionalRelease: '{{conditional_release}}',
   tradeContractor: '{{trade_contractor}}',
   tradeWork: '{{trade_work}}',
   tradeInstalled: '{{trade_installed}}',
@@ -425,6 +427,7 @@ export function defaultGcNoticeCoverLetter(input: { gcName: string; claimantName
       `If ${F.amount} is not paid, we will file the lien affidavit in the county records within the time § 53.052 allows — the 15th day of the ${F.affidavitMonth} month after our last work month on this job. A recorded affidavit is harder to take off than this notice. We would rather pick up a check.`,
       `Call ${F.contact} at ${F.phone} before you make the next payment to ${gc}. If you have already paid ${gc} in full, say so on that call. There may be nothing left to withhold except retainage.`,
       F.supplyHouses,
+    F.conditionalRelease,
     ].join('\n\n')
   }
   const kind = input.kind ?? 'commercial'
@@ -443,6 +446,7 @@ export function defaultGcNoticeCoverLetter(input: { gcName: string; claimantName
       `• ${gc} writes that you may pay ${us} directly, and you send us ${F.amount}. We cannot deposit a joint check.`,
       `We would rather pick up a check than put an affidavit on a homestead. Please call before the next payment to ${gc}.`,
       F.supplyHouses,
+    F.conditionalRelease,
     ].join('\n\n')
   }
   if (kind === 'residential') {
@@ -459,6 +463,7 @@ export function defaultGcNoticeCoverLetter(input: { gcName: string; claimantName
       `3. If ${gc} writes that you may pay ${us} directly, send us ${F.amount}. We cannot deposit a joint check, so please do not send one.`,
       `Do not send ${us} a check on your own unless ${gc} has agreed in writing.`,
       F.supplyHouses,
+    F.conditionalRelease,
     ].join('\n\n')
   }
   return [
@@ -475,6 +480,7 @@ export function defaultGcNoticeCoverLetter(input: { gcName: string; claimantName
     `Please do not send ${us} a check on your own. Without ${gc}’s written okay, that payment sits in the wrong contract.`,
     `Call ${F.contact} at ${F.phone} before the next payment to ${gc}. We would rather pick up a check than file a lien on your property.`,
     F.supplyHouses,
+    F.conditionalRelease,
   ].join('\n\n')
 }
 
@@ -505,6 +511,7 @@ export function paidOutOwnerLetter(input: { gcName: string; claimantName: string
     `If you still owe ${gc}, do not send ${gc} those dollars until this is cleared. If you want the notice released, the payment we can take is a check or wire payable only to ${us}. We cannot deposit a joint check. We will send you a release the day funds clear and mail a copy to ${gc}.`,
     `We would rather pick up a check than record an affidavit.`,
     F.supplyHouses,
+    F.conditionalRelease,
   ].join('\n\n')
 }
 
@@ -527,6 +534,8 @@ export type CoverLetterFills = {
   trade?: string | null
   /** The supply houses paragraph (v2.4725), or '' / absent — the paragraph then leaves the letter. */
   supplyHouses?: string
+  /** The conditional release paragraph (v2.4729), or '' / absent. */
+  conditionalRelease?: string
 }
 
 /** Resolve the fills for one notice. Unknown fills are left as typed; a blank stale note leaves no gap. */
@@ -548,6 +557,7 @@ export function fillCoverLetter(template: string, fills: CoverLetterFills): stri
     .split(F.phone).join(fills.phone || 'the number on our letterhead')
     .split(F.affidavitMonth).join(fills.affidavitMonth || 'fourth')
     .split(F.supplyHouses).join((fills.supplyHouses ?? '').trim())
+    .split(F.conditionalRelease).join((fills.conditionalRelease ?? '').trim())
   // A blank stale note leaves "… {{months}}. " with a trailing space, and a blank houses paragraph a blank line at the end (v2.4725): tidy both.
   return out.replace(/[ \t]+$/gm, '').replace(/\n{3,}/g, '\n\n').trimEnd()
 }

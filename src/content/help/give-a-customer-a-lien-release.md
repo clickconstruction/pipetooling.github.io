@@ -88,6 +88,24 @@ The moment the leader signs, the release lands in the **Teams Inbox**. That is o
 
 The leader sees his own lane the same way. It is called **Awaiting your signature**. He signs right from the row. In **Dispatch Mode → Inbox** both lanes sit at the very top of the page, above My Inbox.
 
+## Enclose one with a lien notice
+
+The Lien desk can put a conditional release in the envelope with a § 53.056 notice. A box above the paper reads **Enclose a conditional release**. It shows the claim beside it. It starts off. Tick it when the GC or the owner has asked for a release before they cut the check.
+
+The release is the app's own form, filled from the notice. The claim is the amount. The GC is the one the check comes from. The form is ***Conditional · progress*** when the claim is less than everything open on the job. It is ***Conditional · final*** when the claim is all of it.
+
+The owner's copy carries the release behind the cover letter. The GC's copy carries it behind the notice. The letter ends with a paragraph about it.
+
+:::example the paragraph in the letter
+A conditional release of lien is enclosed. This release is not effective today. It becomes effective only after $17,585.00 is received and the funds have cleared. Until then, the notice stands.
+:::
+
+The tick makes a draft release on the job. Open it from this window to change a box or to sign it. A release signed here prints with his signature. One not signed prints a line, and he signs it with the notice.
+
+Recording the run issues the release. It then shows on the job like any release you issued here. When the money clears, the Dashboard offers the unconditional. Untick the box and the draft is voided.
+
+An amber line under the box says counsel has not read the release paragraph yet. It goes away once counsel signs off.
+
 ## Track what you issued
 
 Once a release is minted, that is made, the app keeps it in sight:

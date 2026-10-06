@@ -329,10 +329,7 @@ describe('the supply houses paragraph in the letter (v2.4725)', () => {
       defaultGcNoticeCoverLetter({ ...base, gcUnresponsive: true }),
       paidOutOwnerLetter(base),
     ]
-    for (const t of letters) {
-      const ps = coverLetterParagraphs(t)
-      expect(ps[ps.length - 1]).toBe(COVER_LETTER_FILLS.supplyHouses)
-    }
+    for (const t of letters) expect(coverLetterParagraphs(t)).toContain(COVER_LETTER_FILLS.supplyHouses)
     const fills = { property: '212 Kettle Dr, Buda', months: 'May 2026', job: '994', amount: '$5,900.00', staleNote: '', contact: 'Robert', phone: '(512) 360-0599' }
     const without = fillCoverLetter(letters[0]!, fills)
     expect(without).not.toContain('{{')
@@ -342,5 +339,25 @@ describe('the supply houses paragraph in the letter (v2.4725)', () => {
     const withHouses = coverLetterParagraphs(fillCoverLetter(letters[1]!, { ...fills, supplyHouses: para }))
     expect(withHouses[withHouses.length - 1]).toBe(para)
     expect(withHouses[withHouses.length - 2]).toBe('Do not send Click Plumbing and Electrical a check on your own unless Harborline Builders has agreed in writing.')
+  })
+})
+
+describe('the conditional release paragraph in the letter (v2.4729)', () => {
+  it('every default letter carries the fill after the houses; blank it leaves; given it closes the letter', async () => {
+    const { defaultGcNoticeCoverLetter, paidOutOwnerLetter, fillCoverLetter, coverLetterParagraphs, COVER_LETTER_FILLS } = await import('./gcOnNotice')
+    const base = { gcName: 'Harborline Builders', claimantName: 'Click Plumbing and Electrical' }
+    for (const t of [defaultGcNoticeCoverLetter(base), defaultGcNoticeCoverLetter({ ...base, kind: 'residential' }), defaultGcNoticeCoverLetter({ ...base, kind: 'homestead' }), defaultGcNoticeCoverLetter({ ...base, gcUnresponsive: true }), paidOutOwnerLetter(base)]) {
+      const ps = coverLetterParagraphs(t)
+      expect(ps[ps.length - 2]).toBe(COVER_LETTER_FILLS.supplyHouses)
+      expect(ps[ps.length - 1]).toBe(COVER_LETTER_FILLS.conditionalRelease)
+    }
+    const fills = { property: '212 Kettle Dr, Buda', months: 'May 2026', job: '994', amount: '$5,900.00', staleNote: '', contact: 'Robert', phone: '(512) 360-0599' }
+    const plain = coverLetterParagraphs(fillCoverLetter(defaultGcNoticeCoverLetter(base), fills))
+    expect(plain).toHaveLength(12)
+    const rel = 'A conditional release of lien is enclosed. This release is not effective today. It becomes effective only after $5,900.00 is received and the funds have cleared. Until then, the notice stands.'
+    const both = coverLetterParagraphs(fillCoverLetter(defaultGcNoticeCoverLetter(base), { ...fills, supplyHouses: 'You should also know that Reece is owed $130.75.', conditionalRelease: rel }))
+    expect(both).toHaveLength(14)
+    expect(both[both.length - 1]).toBe(rel)
+    expect(both[both.length - 2]).toBe('You should also know that Reece is owed $130.75.')
   })
 })
