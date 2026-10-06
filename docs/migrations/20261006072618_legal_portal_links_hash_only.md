@@ -1,4 +1,4 @@
-# 20261006034207_legal_portal_links_hash_only.sql (2026-10-05, v2.4647)
+# 20261006072618_legal_portal_links_hash_only.sql (2026-10-05, v2.4647)
 
 The collections law firm's portal token stops being readable at rest (punch list #85, item 22). Before: `legal_portal_links` kept the raw `token` beside `token_hash` (`20260911202259_legal_portal_links.sql`), the four office roles behind `legal_office_can_read()` could SELECT it, and `mint_legal_portal_link(p_rotate => false)` handed an existing raw token back to any of them. Whoever holds it can act as the firm on the portal.
 

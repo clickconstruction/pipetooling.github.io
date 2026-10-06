@@ -30,7 +30,7 @@ const db = supabase as unknown as SupabaseClient
  */
 type LinkState = { kind: 'loading' } | PortalLinkView
 
-/** The columns the office may read once the raw token leaves the table (punch list #85 item 22, migration 20261006034207). */
+/** The columns the office may read once the raw token leaves the table (punch list #85 item 22, migration 20261006072618). */
 const LINK_COLUMNS = 'id, firm_id, created_at, revoked_at, token_hash'
 
 const btn: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 5, height: 26, padding: '0 0.55rem', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-700)', fontSize: '0.74rem', fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' }

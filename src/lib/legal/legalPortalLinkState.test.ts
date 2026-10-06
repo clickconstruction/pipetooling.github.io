@@ -38,7 +38,7 @@ describe('firmPortalUrls', () => {
 })
 
 describe('the migration', () => {
-  const sql = readFileSync('supabase/migrations/20261006034207_legal_portal_links_hash_only.sql', 'utf8')
+  const sql = readFileSync('supabase/migrations/20261006072618_legal_portal_links_hash_only.sql', 'utf8')
   it('starts with the lock timeout, empties the raw column and holds it empty', () => {
     expect(sql.startsWith("SET lock_timeout = '3s';")).toBe(true)
     expect(sql).toContain('UPDATE public.legal_portal_links SET token = NULL WHERE token IS NOT NULL;')

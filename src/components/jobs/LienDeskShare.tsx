@@ -46,7 +46,7 @@ export default function LienDeskShare({
   const [view, setView] = useState<'panel' | 'email'>('panel')
   const [scope, setScope] = useState<LienShareScope>('all')
   const [asOf] = useState(() => new Date().toISOString())
-  const [firm, setFirm] = useState<{ firmName: string; url: string } | null>(null)
+  const [firm, setFirm] = useState<{ firmName: string; url: string | null } | null>(null)
   useEffect(() => {
     let live = true
     fetchFirmPortalUrl(window.location.origin)
@@ -121,7 +121,7 @@ export default function LienDeskShare({
       onCopy={() => copy(`${text}\n${url}`, COPIED)}
       onEmail={() => setView('email')}
       firm={firm}
-      onCopyFirm={() => firm && copy(firm.url, 'The firm’s link is copied. Send it to the firm however you like.')}
+      onCopyFirm={() => firm?.url && copy(firm.url, 'The firm’s link is copied. Send it to the firm however you like.')}
       onClose={onClose}
     />
   )

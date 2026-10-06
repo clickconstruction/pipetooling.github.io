@@ -25,7 +25,7 @@ const people = [
   { id: 'u-tau', name: 'Taunya', email: 'taunya@example.test', role: 'assistant' },
 ]
 const sendMock = vi.fn(async (_input: unknown) => ({ sentTo: ['Malachi'], failed: [] as string[] }))
-const firmMock = vi.fn(async (_origin: string) => ({ firmName: 'Smith Law', url: 'https://clicktooling.test/legal?t=abc' }) as { firmName: string; url: string } | null)
+const firmMock = vi.fn(async (_origin: string) => ({ firmName: 'Smith Law', url: 'https://clicktooling.test/legal?t=abc' }) as { firmName: string; url: string | null } | null)
 vi.mock('../../lib/jobs/lienDeskShareIo', () => ({
   fetchLienSharePeople: async () => people,
   fetchFirmPortalUrl: (origin: string) => firmMock(origin),
@@ -148,6 +148,15 @@ describe('LienDeskShare — the panel', () => {
     fireEvent.click(screen.getByRole('button', { name: /Copy the firm’s link/ }))
     await settle()
     expect(writeText).toHaveBeenCalledWith('https://clicktooling.test/legal?t=abc')
+  })
+
+  it('a live link whose address is no longer readable (item 22) points at the Legal desk instead of going quiet', async () => {
+    firmMock.mockResolvedValueOnce({ firmName: 'Smith Law', url: null })
+    renderShare()
+    await settle()
+    expect(document.querySelector('[data-lien-share-firm]')).not.toBeNull()
+    expect(screen.queryByRole('button', { name: /Copy the firm’s link/ })).toBeNull()
+    expect(document.querySelector('[data-lien-share-firm-desk]')?.textContent).toMatch(/Send the link on the Legal desk/)
   })
 
   it('no firm link, no counsel line', async () => {
