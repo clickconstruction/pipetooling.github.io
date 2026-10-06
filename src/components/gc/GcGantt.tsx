@@ -96,6 +96,7 @@ function barNote(b: GanttBar): { words: string; color: string } | null {
   const lastFail = fails[fails.length - 1]
   if (lastFail) return { words: `failed ${shortDate(lastFail.on)}, seen again ${shortDate(lastFail.reinspectOn)}`, color: 'var(--text-red-700)' }
   if (b.hold) return { words: `waits on ${b.hold.words}${b.hold.late ? ', late' : ''}`, color: b.hold.late ? 'var(--text-red-700)' : 'var(--text-amber-800)' }
+  if (b.coTail) return { words: `+${b.coTail.days} ${b.coTail.days === 1 ? 'day' : 'days'} by change order, not on the dates yet`, color: 'var(--text-violet-800)' }
   if (b.item.slipDays > 0) return { words: `${b.item.slipDays} ${b.item.slipDays === 1 ? 'day' : 'days'} later than at Start`, color: 'var(--text-muted)' }
   if (b.item.slipDays < 0) return { words: `${-b.item.slipDays} ${b.item.slipDays === -1 ? 'day' : 'days'} sooner than at Start`, color: 'var(--text-muted)' }
   return null
@@ -124,6 +125,7 @@ export function GcGantt({
   planOf,
   onLink,
   onUnlink,
+  tails,
 }: {
   items: ScheduleItem[]
   float: Map<string, number>
@@ -143,6 +145,8 @@ export function GcGantt({
   onLink?: (from: string, to: string) => void
   /** A link pressed: `to` would stop waiting on `from`. */
   onUnlink?: (from: string, to: string) => void
+  /** Days a signed change order adds to a bar that are not on its dates yet (G-76), drawn as a tail after it. */
+  tails?: Map<string, { days: number; words: string }>
 }) {
   const [zoom, setZoom] = useState<GanttZoom>('weeks')
   const [by, setBy] = useState<GanttGroupBy>('trade')
@@ -163,7 +167,7 @@ export function GcGantt({
   const phone = typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 640px)').matches
   const labelW = phone ? 168 : 360
 
-  const all = useMemo(() => ganttBars(items, float, holds, today, building), [items, float, holds, today, building])
+  const all = useMemo(() => ganttBars(items, float, holds, today, building, tails), [items, float, holds, today, building, tails])
   const counts = useMemo(() => ganttCounts(all), [all])
   const shown = useMemo(() => ganttFilter(all, filters), [all, filters])
   const groups = useMemo(() => ganttGroups(shown, by), [shown, by])
@@ -268,6 +272,8 @@ export function GcGantt({
     const left = x(span.start)
     const w = Math.max(px, (daysBetween(span.start, span.finish) + 1) * px)
     const note = dragging ? null : barNote(b)
+    // The days a change order adds, drawn after the bar until they are on its dates (G-76).
+    const tailW = b.coTail && !dragging ? b.coTail.days * px : 0
     const canDrag = Boolean(onMove) && b.status !== 'done'
     const ghost = pushedTo.get(b.id)
     const isPicked = picked === b.id
@@ -371,6 +377,13 @@ export function GcGantt({
             {canDrag && w >= 22 && <span aria-hidden style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 6, cursor: 'ew-resize' }} />}
             {canDrag && w >= 22 && <span aria-hidden style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 6, cursor: 'ew-resize' }} />}
           </button>
+          {b.coTail && !dragging && (
+            <span
+              aria-hidden
+              title={b.coTail.words}
+              style={{ position: 'absolute', left: left + w, width: tailW, top: (ROW_H - BAR_H) / 2, height: BAR_H, borderRadius: '0 4px 4px 0', boxSizing: 'border-box', border: `1.5px dashed ${C.violet}`, borderLeft: 'none', background: 'repeating-linear-gradient(135deg, var(--bg-violet-100) 0 4px, var(--surface) 4px 8px)', pointerEvents: 'none' }}
+            />
+          )}
           {/* The port (G-34): pull a line from here to another bar, and that bar waits on this one. */}
           {onLink && (
             <span
@@ -407,7 +420,7 @@ export function GcGantt({
             </span>
           )}
           {note && (
-            <span style={{ position: 'absolute', left: left + w + 7, top: (ROW_H - 14) / 2, fontSize: '0.68rem', lineHeight: '14px', whiteSpace: 'nowrap', color: note.color, background: rowBg, padding: '0 3px', borderRadius: 3 }}>
+            <span style={{ position: 'absolute', left: left + w + tailW + 7, top: (ROW_H - 14) / 2, fontSize: '0.68rem', lineHeight: '14px', whiteSpace: 'nowrap', color: note.color, background: rowBg, padding: '0 3px', borderRadius: 3 }}>
               {note.words}
             </span>
           )}
@@ -653,6 +666,7 @@ function GanttLegend({ building, canMove }: { building: boolean; canMove: boolea
       {key({ ...bar, background: 'var(--bg-blue-tint)', border: `2px solid ${C.red}` }, `${TIGHT_SPARE_DAYS} or fewer spare days: it sets the finish`)}
       {key({ ...bar, background: 'repeating-linear-gradient(135deg, var(--bg-amber-100) 0 4px, var(--surface) 4px 8px)', border: `1.5px solid ${C.amber}` }, 'held by a submittal or a question')}
       {key({ ...bar, background: 'var(--bg-violet-100)', border: `1.5px dashed ${C.violet}` }, 'an inspection')}
+      {key({ ...bar, background: 'repeating-linear-gradient(135deg, var(--bg-violet-100) 0 4px, var(--surface) 4px 8px)', border: `1.5px dashed ${C.violet}`, borderLeft: 'none', borderRadius: '0 3px 3px 0' }, 'days a signed change order adds, not on the dates yet')}
       {key({ width: 20, height: 3, borderRadius: 2, background: 'var(--border-strong)' }, 'where it sat in the plan at Start')}
       {key({ width: 20, height: 7, borderRadius: 3, background: 'var(--border-strong)' }, 'a whole group, as one bar')}
       {key({ width: 10, height: 10, transform: 'rotate(45deg)', background: 'var(--text-muted)' }, 'a date the job must meet')}
@@ -715,7 +729,8 @@ function GanttHoverCard({ bar, all, at, building, today }: { bar: GanttBar; all:
       {bar.moved && row('At Start', `${shortDate(bar.item.baseline.start)} to ${shortDate(bar.item.baseline.finish)}`)}
       {a.notBefore && row('Not before', weekdayDate(a.notBefore))}
       {a.mustFinishBy && row('Must finish by', weekdayDate(a.mustFinishBy), a.finish > a.mustFinishBy ? 'var(--text-red-700)' : undefined)}
-      {note && row('Note', note.words, note.color)}
+      {bar.coTail && row('Change order', bar.coTail.words, 'var(--text-violet-800)')}
+      {note && !bar.coTail && row('Note', note.words, note.color)}
       {n.waitsOn.length > 0 && row('Waits on', n.waitsOn.join(', '))}
       {n.holdsUp.length > 0 && row('Holds up', n.holdsUp.join(', '))}
       {a.finish < addDays(today, 1) && bar.status !== 'done' && !a.inspection && row('Due', a.finish === today ? 'Today' : weekdayDate(a.finish), 'var(--text-red-700)')}

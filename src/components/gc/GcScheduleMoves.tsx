@@ -29,6 +29,10 @@ export interface PendingMove {
   after: string[]
   /** The gap after each wait, the day it cannot start before, the day it must finish by, when the form set them. */
   limits?: MoveLimits
+  /** The reason and the words to start the window with: a change order's days come with theirs (G-76). The person can still change them. */
+  why?: { reason: ScheduleMoveReason; note: string }
+  /** The signed change order whose days this move puts on the schedule. */
+  changeOrderId?: string
 }
 
 const label = { fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-muted)', textTransform: 'uppercase' } as const
@@ -36,8 +40,8 @@ const label = { fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', c
 /** The window a move is saved from: what it does, then why. Nothing is saved without both. */
 export function GcMoveExplain({ project, pending, dispatch, onClose }: { project: GcProject; pending: PendingMove; dispatch: Dispatch<GcAction>; onClose: () => void }) {
   const me = useMeName() ?? 'The office'
-  const [reason, setReason] = useState<ScheduleMoveReason | null>(null)
-  const [note, setNote] = useState('')
+  const [reason, setReason] = useState<ScheduleMoveReason | null>(pending.why?.reason ?? null)
+  const [note, setNote] = useState(pending.why?.note ?? '')
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
@@ -54,7 +58,7 @@ export function GcMoveExplain({ project, pending, dispatch, onClose }: { project
   const longer = daysBetween(plan.to.start, plan.to.finish) - daysBetween(plan.from.start, plan.from.finish)
   const save = () => {
     if (problem || !reason) return
-    dispatch({ type: 'setScheduleActivity', projectId: project.id, lineId: pending.lineId, start: pending.start, finish: pending.finish, after: pending.after, why: { reason, note: note.trim(), by: me }, ...(pending.limits ?? {}) })
+    dispatch({ type: 'setScheduleActivity', projectId: project.id, lineId: pending.lineId, start: pending.start, finish: pending.finish, after: pending.after, why: { reason, note: note.trim(), by: me }, ...(pending.limits ?? {}), ...(pending.changeOrderId ? { changeOrderId: pending.changeOrderId } : {}) })
     onClose()
   }
   return createPortal(

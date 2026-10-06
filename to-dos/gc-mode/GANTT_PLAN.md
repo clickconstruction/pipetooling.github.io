@@ -364,9 +364,38 @@ PDF and the architect's view (G-94, G-95); the Friday report's words are unchang
 Left in Phase 2: an added activity that is not a schedule-of-values line (G-38), actual start and
 finish (G-55), a new baseline after a change order (G-41), redo.
 
+## Phase 4, change-order days on the chart, as built (2026-10-06)
+
+The first of Phase 4 (G-76). `gcChangeOrderDays.ts` (tested, out of the barrel), a card on the
+Schedule tab, a tail on the chart, two sentences in the customer's portal.
+
+- **Where the days land.** A signed change order that adds days has a trade; its days land on that
+  trade's bar running the day the customer signed (else the next to start, else the last). An order
+  on our own work under general conditions has no bar: only the contract's finish moves, as before.
+- **A tail until they are on the dates.** The chart draws the days as a hatched tail after the bar,
+  with the order on its hover card, and the bar's note reads "+3 days by change order, not on the
+  dates yet". The contract's finish already counted them (`substantialCompletionOn`); the tail is
+  the gap between the contract and the chart, made visible.
+- **Put its days on the schedule**, from the *Days from change orders* card, opens Why it moved with
+  the bar's finish out by the days, *A change order* picked as the reason (a new reason), and the
+  order's own words filled in. It saves as a move like any other, so what follows is pushed, the
+  trades are told, and Undo puts it back. The move carries the order (`changeOrderId`), which is
+  how the card knows the days are on the schedule.
+- **The customer's schedule** says "Change order 2 added 3 days to your contract. Substantial
+  completion is now Fri Dec 14, 3 days past the Dec 11 you signed." A landed move reads in What
+  changed as "because of the change order you signed".
+
+What the second look changed:
+
+- **The days are not put on the schedule by themselves.** The reducer could lengthen the bar the
+  moment the customer signs, but then nobody would have said which bar, and the move would carry
+  no one's name. The office presses once, and the press is the explanation.
+- **A tail, not a longer bar.** Until the press, the bar keeps its drawn dates, so the trade's own
+  chart and the walk read what was agreed; the tail says what is coming.
+
 ## Status
 
 Planned 2026-10-05. Phases 1 and 2 (all but an added activity, actuals, a new baseline and redo)
-and most of Phase 3 built by 2026-10-06. Next: Phase 4 (what holds the work: long-lead items, the
+and most of Phase 3 built by 2026-10-06; Phase 4's change-order days the same day. Next: the rest of Phase 4 (what holds the work: long-lead items, the
 customer's decisions, change-order days on the chart, weather days from the log), or the rest of
 Phase 3 on the owner's word.

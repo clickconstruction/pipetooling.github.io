@@ -88,10 +88,10 @@ export function holidaysIn(start: string, finish: string): string[] {
 // Each bar's standing
 // ---------------------------------------------------------------------------------------------
 
-/** What holds an activity: a submittal not approved, or a question not answered. */
+/** What holds an activity: a submittal not approved, a question not answered, or something the work waits on from outside (a delivery, a decision, a permit, the utility; G-73 to G-75). */
 export interface GanttHold {
-  kind: 'submittal' | 'rfi'
-  /** "submittal 07 62 00-01", "RFI-003". */
+  kind: 'submittal' | 'rfi' | 'delivery' | 'decision' | 'permit' | 'utility'
+  /** "submittal 07 62 00-01", "RFI-003", "Rooftop units, expected Oct 20, 8 days after this starts". */
   words: string
   late: boolean
 }
@@ -122,6 +122,8 @@ export interface GanttBar {
   moved: boolean
   /** It is under way or starts within three weeks of today. */
   soon: boolean
+  /** Days a signed change order adds to this work that are not on its dates yet (G-76), drawn as a tail. Null: none. */
+  coTail: { days: number; words: string } | null
 }
 
 const SOON_DAYS = 21
@@ -131,7 +133,7 @@ export const TIGHT_SPARE_DAYS = 5
 export const BEHIND_POINTS = 5
 
 /** One bar per activity, with where it stands today. `building` off (buying out): nothing is late or behind yet. */
-export function ganttBars(items: ScheduleItem[], float: Map<string, number>, holds: Map<string, GanttHold>, today: string, building: boolean): GanttBar[] {
+export function ganttBars(items: ScheduleItem[], float: Map<string, number>, holds: Map<string, GanttHold>, today: string, building: boolean, tails?: Map<string, { days: number; words: string }>): GanttBar[] {
   return items.map((item) => {
     const a = item.activity
     const spare = float.get(a.lineId) ?? 0
@@ -175,6 +177,7 @@ export function ganttBars(items: ScheduleItem[], float: Map<string, number>, hol
       holidays: done ? [] : holidaysIn(a.start, a.finish),
       moved: item.baseline.start !== a.start || item.baseline.finish !== a.finish,
       soon: !done && a.start <= addDays(today, SOON_DAYS) && a.finish >= today,
+      coTail: done ? null : (tails?.get(a.lineId) ?? null),
     }
   })
 }

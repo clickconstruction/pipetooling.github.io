@@ -90,7 +90,7 @@ The three jobs the chart has, which every feature serves at least one of:
 | G-73 | Long-lead items as bars: ordered, shipped, on site, each tied to the work that needs it | See, Chase | New | 4 |
 | G-74 | The customer's own decisions as rows with a needed-by day (a finish to pick, a tenant's equipment) | Tell | New | 4 |
 | G-75 | Permits and the utility's work as rows, with who is waiting on whom | See | New | 4 |
-| G-76 | A change order's days: signed, it adds its days where the work is and moves the contract's finish | See, Tell | Part (the days on the order) | 4 |
+| G-76 | A change order's days: signed, it adds its days where the work is and moves the contract's finish | See, Tell | Have (built 2026-10-06: the days land on the trade's bar running the day it was signed, drawn as a tail until Put its days on the schedule makes them a move with the change order as its reason; the customer's schedule says what each signed order did to the contract) | 4 |
 | G-77 | A trade not ready to start: no signed statement of work, insurance run out. The bar says so before its start day | See, Chase | Part (Get started) | 4 |
 
 ## E. What if

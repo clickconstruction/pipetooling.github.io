@@ -71,9 +71,10 @@ Nothing below starts without the one named.
 
 Each is one sitting or less. The feature numbers are `GANTT_FEATURES.md`'s.
 
-- [ ] **Phase 4, change-order days on the chart** (G-76): a signed change order's days land where
+- [x] **Phase 4, change-order days on the chart** (G-76): a signed change order's days land where
   the work is and move the contract's finish; the customer's schedule says so. Owner Billing's
   `changeOrderDays` exists; `substantialCompletionOn` already adds the days to the contract.
+  Built 2026-10-06 (`gcChangeOrderDays.ts`; `GANTT_PLAN.md` → *Phase 4, change-order days*).
 - [ ] **Phase 4, long-lead items as bars** (G-73): ordered, shipped, on site, each tied to the
   work that needs it, holding it the way a submittal does (`GanttHold` gains a kind).
 - [ ] **Phase 4, the customer's decisions as rows** (G-74) and permits and the utility (G-75), with

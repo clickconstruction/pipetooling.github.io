@@ -13,6 +13,7 @@ import { ganttBars, ganttGroups } from './gcGantt'
 import { lineStage } from './gcNewProject'
 import { SCHEDULE_STAGES } from './gcNewProject'
 import { changeOrderDays, projectChangeOrders } from './gcOwnerBilling'
+import { customerDecisions } from './gcScheduleWaits'
 
 /** One stage of the job as the customer sees it. */
 export interface CustomerStage {
@@ -84,6 +85,7 @@ const CUSTOMER_WHY: Record<ScheduleMoveReason, string> = {
   plans: 'a change to the plans',
   inspection: 'an inspection',
   us: 'our own scheduling',
+  'change order': 'the change order you signed',
   other: '',
 }
 
@@ -120,14 +122,15 @@ function lineLabel(project: GcProject, lineId: string): string {
   return ''
 }
 
-/** What we need from the customer, with the day it starts costing time: change orders waiting on their signature. */
+/** What we need from the customer, with the day it starts costing time: change orders waiting on their signature, and the decisions they owe (G-74, G-92). */
 export function customerAsks(project: GcProject): { words: string; by: string | null }[] {
-  return projectChangeOrders(project)
+  const orders = projectChangeOrders(project)
     .filter((co) => co.status === 'sent')
     .map((co) => ({
       words: `Your signature on change order ${co.number}, ${co.description}${changeOrderDays(co) > 0 ? ` (${changeOrderDays(co)} days of schedule)` : ''}, sent ${shortDate(co.sentOn ?? '')}.`,
       by: null,
     }))
+  return [...orders, ...customerDecisions(project)]
 }
 
 /** The milestones the customer sees: every date the job must meet. */

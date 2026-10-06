@@ -12,6 +12,7 @@ import { EMPTY_SCOPE_BOOK, inScopeBook, linesToAdd, scopeBook, scopeWordKey } fr
 import { initialGcState } from './gcFixture'
 import { moveActivityName, moveRecord, moveWhyProblem, planMove, spanWords, undoMove } from './gcScheduleMoves'
 import { companiesToTell } from './gcTellTrades'
+import { nextWaitId, waitKind } from './gcScheduleWaits'
 import { lostWhyLabel } from './gcLost'
 import { daysBetween, draftSchedule, pushAfter, pushedAfterWords, scheduleLinesOf, withBaselineKept } from './gcBuildingSchedule'
 import { buildNewProject, dryInMilestoneFor, packagesFromDrafts, pushSchedule, scheduleSetLines, withNewLines, withRetiedLines, withTradesInOrder } from './gcNewProject'
@@ -1135,7 +1136,7 @@ function reduce(state: GcState, action: GcAction): GcState {
       const why = action.why
       if (why && moveWhyProblem(why.reason, why.note)) return state
       const plan = why ? planMove(project, activity.lineId, action.start, action.finish, after) : null
-      const changed = { ...kept, activities: pushed.activities, ...(why && plan ? { moves: [moveRecord(schedule, activity.lineId, plan, why, state.today), ...(schedule.moves ?? [])] } : {}) }
+      const changed = { ...kept, activities: pushed.activities, ...(why && plan ? { moves: [moveRecord(schedule, activity.lineId, plan, why, state.today, action.changeOrderId), ...(schedule.moves ?? [])] } : {}) }
       const pkg = project.packages.find((k) => k.id === activity.packageId)
       const label = pkg ? (scheduleLinesOf(pkg).find((l) => l.lineId === activity.lineId)?.label ?? activity.lineId) : activity.lineId
       // An inspection goes by its own name (Building lane, 2026-10-03).
@@ -2455,6 +2456,75 @@ function reduce(state: GcState, action: GcAction): GcState {
         mapProject(state, project.id, (p) => ({ ...p, schedule: { ...schedule, moves: (schedule.moves ?? []).map((m) => (m.id === move.id ? { ...m, answers: [...(m.answers ?? []), answer] } : m)) } })),
         'trade',
         action.ok ? `${partner.company}: the new dates on ${project.name} work.` : `${partner.company} asked for ${action.day ? weekdayDate(action.day) : 'another day'} on ${project.name}.`,
+      )
+    }
+
+    case 'addScheduleWait': {
+      // Something the work waits on from outside the trades (the Gantt, Phase 4): a delivery, a decision, a permit, the utility.
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const title = action.title.trim()
+      if (!project || !title || !action.expectedOn) return state
+      const ids = new Set((project.schedule?.activities ?? []).map((a) => a.lineId))
+      const lineIds = [...new Set(action.lineIds)].filter((id) => ids.has(id))
+      const k = waitKind(action.kind)
+      const wait = {
+        id: nextWaitId(project),
+        kind: action.kind,
+        title,
+        packageId: action.packageId,
+        who: action.who.trim() || k.who,
+        lineIds,
+        askedOn: action.askedOn ?? null,
+        expectedOn: action.expectedOn,
+        ...(action.kind === 'delivery' ? { shippedOn: null } : {}),
+        doneOn: null,
+        ...(action.note?.trim() ? { note: action.note.trim() } : {}),
+      }
+      return logged(
+        mapProject(state, project.id, (p) => ({ ...p, waits: [...(p.waits ?? []), wait] })),
+        'office',
+        `${title} is on ${project.name}'s schedule: ${k.label.toLowerCase()}, expected ${weekdayDate(action.expectedOn)} from ${wait.who}${lineIds.length > 0 ? `, holding ${lineIds.length} ${lineIds.length === 1 ? 'activity' : 'activities'}` : ''}.`,
+      )
+    }
+
+    case 'setScheduleWaitStep': {
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const wait = project?.waits?.find((w) => w.id === action.waitId)
+      if (!project || !wait || !action.on) return state
+      if (action.step === 'shipped' && wait.kind !== 'delivery') return state
+      const k = waitKind(wait.kind)
+      const next =
+        action.step === 'asked'
+          ? { ...wait, askedOn: action.on }
+          : action.step === 'shipped'
+            ? { ...wait, shippedOn: action.on }
+            : action.step === 'done'
+              ? { ...wait, doneOn: action.on }
+              : { ...wait, expectedOn: action.on, ...(action.note?.trim() ? { note: action.note.trim() } : {}) }
+      if (JSON.stringify(next) === JSON.stringify(wait)) return state
+      const words =
+        action.step === 'asked'
+          ? `${wait.title} was ${k.asked} ${weekdayDate(action.on)}.`
+          : action.step === 'shipped'
+            ? `${wait.title} shipped ${weekdayDate(action.on)}.`
+            : action.step === 'done'
+              ? `${wait.title} is ${k.done}, ${weekdayDate(action.on)}.`
+              : `${wait.title} is now expected ${weekdayDate(action.on)}${action.note?.trim() ? `: ${action.note.trim()}` : '.'}`
+      return logged(
+        mapProject(state, project.id, (p) => ({ ...p, waits: (p.waits ?? []).map((w) => (w.id === wait.id ? next : w)) })),
+        'office',
+        `${project.name}: ${words}`,
+      )
+    }
+
+    case 'removeScheduleWait': {
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const wait = project?.waits?.find((w) => w.id === action.waitId)
+      if (!project || !wait) return state
+      return logged(
+        mapProject(state, project.id, (p) => ({ ...p, waits: (p.waits ?? []).filter((w) => w.id !== wait.id) })),
+        'office',
+        `${wait.title} came off ${project.name}'s schedule.`,
       )
     }
 

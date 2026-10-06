@@ -670,6 +670,8 @@ export interface GcProject {
   weeklyReports?: WeeklyReportSent[]
   /** Questions about the plans while we build (RFIs; the owner, 2026-10-05), numbered in order. */
   rfis?: Rfi[]
+  /** What the work waits on from outside the trades (the Gantt, Phase 4): deliveries, the customer's decisions, permits, the utility. Unset: none. */
+  waits?: ScheduleWait[]
 }
 
 /** A weekly report as it went to the customer (Building lane, 2026-10-05): kept as sent, for their portal. */
@@ -1042,7 +1044,7 @@ export type GcAction =
   | { type: 'priceOwnBid'; projectId: string; packageId: string; value: number }
   | { type: 'draftSchedule'; projectId: string; start: string }
   /** `why` (the Gantt, Phase 2): the explanation a move is saved with. The screens always send it; it is kept in `schedule.moves`. */
-  | { type: 'setScheduleActivity'; projectId: string; lineId: string; start: string; finish: string; after: string[]; why?: { reason: ScheduleMoveReason; note: string; by: string }; lag?: Record<string, number>; notBefore?: string | null; mustFinishBy?: string | null }
+  | { type: 'setScheduleActivity'; projectId: string; lineId: string; start: string; finish: string; after: string[]; why?: { reason: ScheduleMoveReason; note: string; by: string }; lag?: Record<string, number>; notBefore?: string | null; mustFinishBy?: string | null; changeOrderId?: string }
   | { type: 'setScheduleMilestone'; projectId: string; milestone: ScheduleMilestone }
   | { type: 'removeScheduleMilestone'; projectId: string; milestoneId: string }
   | { type: 'verifyLookAhead'; projectId: string; weekOf: string; lineId: string; done: boolean; reason?: LookAheadReason }
@@ -1199,6 +1201,11 @@ export type GcAction =
   | { type: 'recordScheduleWalk'; projectId: string; by: string; kept: string[]; moveIds: string[]; skipped: number }
   /** Tell the trades (the Gantt, Phase 3): the companies whose dates these moves changed get one message each. In the prototype it is written, never sent. */
   | { type: 'tellTradesMoves'; projectId: string; moveIds: string[]; by: string }
+  /** Something the work waits on from outside the trades (the Gantt, Phase 4: G-73 to G-75): put it on the schedule, tied to the work that needs it. */
+  | { type: 'addScheduleWait'; projectId: string; kind: WaitKind; title: string; packageId: string | null; who: string; lineIds: string[]; expectedOn: string; askedOn?: string | null; note?: string }
+  /** It moved a step: ordered, asked for, applied for or requested; shipped (a delivery); in; or the expected day changed. */
+  | { type: 'setScheduleWaitStep'; projectId: string; waitId: string; step: 'asked' | 'shipped' | 'done' | 'expected'; on: string; note?: string }
+  | { type: 'removeScheduleWait'; projectId: string; waitId: string }
   /** A company answers a dates message from its portal: the dates work, or it needs another day, with a note. */
   | { type: 'tradeAnswerDates'; projectId: string; partnerId: string; moveId: string; ok: boolean; day?: string; note?: string }
 
@@ -1434,7 +1441,7 @@ export interface ScheduleWalk {
 }
 
 /** Why a bar moved: the look-ahead's reasons, and the ones a move adds. */
-export type ScheduleMoveReason = 'weather' | 'trade before' | 'materials' | 'crew' | 'customer' | 'plans' | 'inspection' | 'us' | 'other'
+export type ScheduleMoveReason = 'weather' | 'trade before' | 'materials' | 'crew' | 'customer' | 'plans' | 'inspection' | 'us' | 'change order' | 'other'
 
 /**
  * One move on the schedule (the owner, 2026-10-05: "anyone on our team may move a bar, when a bar
@@ -1468,6 +1475,40 @@ export interface ScheduleMove {
   toldTo?: string[]
   /** Each company's answer from its portal: the dates work, or it needs another day. */
   answers?: { partnerId: string; on: string; ok: boolean; day?: string; note?: string }[]
+  /** The signed change order whose days this move put on the schedule (the Gantt, G-76). Unset: an ordinary move. */
+  changeOrderId?: string
+}
+
+/** What the work waits on from outside the trades (G-73 to G-75): a long-lead delivery, a decision the customer owes, a permit, the utility's work. */
+export type WaitKind = 'delivery' | 'decision' | 'permit' | 'utility'
+
+/**
+ * One thing the work waits on that is not a trade's work (the Gantt, Phase 4): a long-lead item
+ * on order, a decision the customer owes us, a permit the city owes us, the utility's part. It
+ * holds the activities that need it until it is in, and it is drawn on the chart as a row of its
+ * own, so the day it is expected reads beside the day the work needs it.
+ */
+export interface ScheduleWait {
+  id: string
+  kind: WaitKind
+  /** "Rooftop units", "Restroom tile", "Electrical service permit", "The transformer". */
+  title: string
+  /** The trade whose work needs it. Null: the job's own. */
+  packageId: string | null
+  /** Who we wait on, by name: the supplier, the customer, the city, the utility. */
+  who: string
+  /** The activities (line ids) that cannot start until it is in. */
+  lineIds: string[]
+  /** The day it was ordered, asked for, applied for or requested. Null: not yet. */
+  askedOn: string | null
+  /** The day it is expected: the supplier's date, the day the customer said, the city's turnaround. */
+  expectedOn: string
+  /** A delivery only: the day it shipped. Null: not yet. */
+  shippedOn?: string | null
+  /** The day it came: on site, decided, issued, done. Null: still waiting. */
+  doneOn: string | null
+  /** Who said the expected day, or what is holding it up. */
+  note?: string
 }
 
 /** Why the work changed, in the words the app's change orders already use. */

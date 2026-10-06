@@ -7,6 +7,7 @@
 import type { GcProject, GcState } from '../../lib/gcMode/gcModel'
 import { daysBetween, shortDate, weekdayDate } from '../../lib/gcMode/gcModel'
 import { customerAsks, customerChanges, customerMilestones, customerStages, customerStanding } from '../../lib/gcMode/gcCustomerSchedule'
+import { customerContractDays } from '../../lib/gcMode/gcChangeOrderDays'
 import { PortalBlock } from './GcPortalUi'
 
 /** Saturated on purpose: the same status colors as the office's chart. */
@@ -19,6 +20,8 @@ export function GcCustomerSchedule({ state, project }: { state: GcState; project
   const milestones = customerMilestones(state, project)
   const changes = customerChanges(project, state.today)
   const asks = customerAsks(project)
+  // What their signed change orders did to the contract's finish (G-76).
+  const contractDays = customerContractDays(project)
   const first = stages.reduce((a, s) => (s.start < a ? s.start : a), stages[0]?.start ?? state.today)
   const last = [standing.finish ?? '', ...stages.map((s) => s.finish), ...milestones.map((m) => m.due)].reduce((a, b) => (b > a ? b : a), '')
   const days = Math.max(1, daysBetween(first, last) + 1)
@@ -72,7 +75,12 @@ export function GcCustomerSchedule({ state, project }: { state: GcState; project
             <span aria-hidden style={{ position: 'absolute', left: x(state.today), top: -2, bottom: 0, width: 2, background: C.blue, opacity: 0.6 }} />
           </div>
         </div>
-        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{standing.finishWords}</div>
+        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+          {standing.finishWords}
+          {contractDays.map((s) => (
+            <div key={s}>{s}</div>
+          ))}
+        </div>
         <div>
           <strong>What changed this week</strong>
           {changes.length === 0 ? <div style={{ color: 'var(--text-muted)' }}>Nothing moved. The schedule stands as planned.</div> : changes.map((c) => <div key={c}>{c}</div>)}

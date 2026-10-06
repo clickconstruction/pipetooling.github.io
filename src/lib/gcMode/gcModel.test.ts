@@ -917,6 +917,9 @@ describe('GC mode golden walk', () => {
     used.add('recordScheduleWalk') // played in gcScheduleWalk.test.ts: the weekly walk, which ends a sitting of moves
     used.add('tellTradesMoves') // played in gcTellTrades.test.ts: it needs a move saved with its explanation first
     used.add('tradeAnswerDates') // played in gcTellTrades.test.ts: it needs a move the company was told of
+    used.add('addScheduleWait') // played in gcScheduleWaits.test.ts: what the work waits on, from outside the trades
+    used.add('setScheduleWaitStep') // played in gcScheduleWaits.test.ts
+    used.add('removeScheduleWait') // played in gcScheduleWaits.test.ts
     const all: GcAction['type'][] = [
       'issueAddendum', 'tradeConfirmBid', 'setStartItem', 'setStartDate', 'startProject', 'invite', 'nudge',
       'logContact', 'tradePromise', 'tradeOpenPlans', 'tradeSubmitBid', 'tradeDecline', 'officeDecline', 'setPlug',
@@ -964,6 +967,7 @@ describe('GC mode golden walk', () => {
       'remindCustomerToPay',
       'undoScheduleMove', 'recordScheduleWalk', 'tellTradesMoves', 'tradeAnswerDates',
       'addRfi', 'tradeAskRfi', 'sendRfiToArchitect', 'answerRfi', 'draftChangeOrderFromRfi',
+      'addScheduleWait', 'setScheduleWaitStep', 'removeScheduleWait',
     ]
     expect(all.filter((t) => !used.has(t))).toEqual([])
   })

@@ -44,6 +44,7 @@ import { GcMoveExplain, GcMoveHistory, type PendingMove } from './GcScheduleMove
 import { GcScheduleWalk, GcWalkLine } from './GcScheduleWalk'
 import { planMove, whatIfSlips, type MoveLimits } from '../../lib/gcMode/gcScheduleMoves'
 import type { GanttHold } from '../../lib/gcMode/gcGantt'
+import { changeOrderMove, changeOrdersOnChart, changeOrderTails, type ChangeOrderOnChart } from '../../lib/gcMode/gcChangeOrderDays'
 
 /**
  * GC mode design spike: the schedule (Building lane, owner's shape 2026-10-02). Each activity is a
@@ -60,6 +61,8 @@ export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps)
   const m = useMemo(() => scheduleMeasures(state, project), [state, project])
   const [picked, setPicked] = useState<string | null>(null)
   const holds = useMemo(() => holdsOf(state, project), [state, project])
+  // Days a signed change order adds that are not on the dates yet, drawn as tails (G-76).
+  const tails = useMemo(() => changeOrderTails(project, state.today), [project, state.today])
   // Every move goes through the explanation window first (the owner, 2026-10-05; the Gantt, Phase 2).
   const [pending, setPending] = useState<PendingMove | null>(null)
   // The weekly walk (the owner, 2026-10-05): every bar that should have moved, one at a time.
@@ -123,6 +126,7 @@ export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps)
         {building && <GcWalkLine state={state} project={project} holds={holds} onWalk={() => setWalking(true)} />}
         <GcGantt
           holds={holds}
+          tails={tails}
           items={m.items}
           float={m.float}
           milestones={m.milestones}
@@ -148,6 +152,15 @@ export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps)
       {pending && <GcMoveExplain key={`${pending.lineId}:${pending.start}:${pending.finish}`} project={project} pending={pending} dispatch={dispatch} onClose={() => setPending(null)} />}
 
       <GcMoveHistory state={state} project={project} dispatch={dispatch} />
+
+      <ChangeOrderDaysCard
+        project={project}
+        today={state.today}
+        onPut={(r) => {
+          const move = changeOrderMove(project, r.co, state.today)
+          if (move) setPending(move)
+        }}
+      />
 
       <MilestonesCard project={project} milestones={schedule.milestones} dispatch={dispatch} />
 
@@ -346,6 +359,42 @@ function ActivityEditor({
           </div>
         )}
         {check && <div style={{ paddingTop: '0.5rem', borderTop: '1px solid var(--border)' }}>{check}</div>}
+      </div>
+    </Card>
+  )
+}
+
+/**
+ * Days from signed change orders (the Gantt, G-76): where each order's days land and whether they
+ * are on the schedule yet. The contract's finish moves by itself; the bar moves when someone puts
+ * the days on it, as a move like any other, so the trades are told and the customer reads why.
+ */
+function ChangeOrderDaysCard({ project, today, onPut }: { project: GcProject; today: string; onPut: (row: ChangeOrderOnChart) => void }) {
+  const rows = changeOrdersOnChart(project, today)
+  if (rows.length === 0) return null
+  const waiting = rows.filter((r) => r.lineId && !r.landed).length
+  return (
+    <Card>
+      <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', flexWrap: 'wrap', marginBottom: '0.4rem' }}>
+        <strong>Days from change orders ({rows.length})</strong>
+        {waiting > 0 && <Chip tone="violet">{waiting} not on the dates yet</Chip>}
+        <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>A signed change order moves the contract's finish by itself. Its days go on the bar its work is on when you put them there, as a move the trades are told of.</span>
+      </div>
+      <div style={{ display: 'grid' }}>
+        {rows.map((r) => (
+          <div key={r.co.id} style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', padding: '0.45rem 0', borderTop: '1px solid var(--border)', fontSize: '0.875rem' }}>
+            <span style={{ flex: '1 1 18rem' }}>{r.words}</span>
+            {r.landed ? (
+              <Chip tone="green">on the schedule</Chip>
+            ) : r.lineId ? (
+              <Btn kind="primary" onClick={() => onPut(r)} title="Opens Why it moved with the change order as the reason. The finish of that bar moves out by its days.">
+                Put its {r.days} {r.days === 1 ? 'day' : 'days'} on the schedule
+              </Btn>
+            ) : (
+              <Chip tone="grey">contract only</Chip>
+            )}
+          </div>
+        ))}
       </div>
     </Card>
   )

@@ -22,6 +22,7 @@ export const MOVE_REASONS: { key: ScheduleMoveReason; label: string }[] = [
   { key: 'plans', label: 'The plans' },
   { key: 'inspection', label: 'An inspection' },
   { key: 'us', label: 'Us' },
+  { key: 'change order', label: 'A change order' },
   { key: 'other', label: 'Something else' },
 ]
 
@@ -137,7 +138,7 @@ export function planMove(project: GcProject, lineId: string, start: string, fini
 }
 
 /** The record of a planned move, as it is kept on the schedule. */
-export function moveRecord(schedule: ProjectSchedule, lineId: string, plan: MovePlan, why: { reason: ScheduleMoveReason; note: string; by: string }, today: string): ScheduleMove {
+export function moveRecord(schedule: ProjectSchedule, lineId: string, plan: MovePlan, why: { reason: ScheduleMoveReason; note: string; by: string }, today: string, changeOrderId?: string): ScheduleMove {
   return {
     id: `move-${(schedule.moves ?? []).length + 1}`,
     on: today,
@@ -151,6 +152,7 @@ export function moveRecord(schedule: ProjectSchedule, lineId: string, plan: Move
     pushed: plan.pushed.map((p) => ({ lineId: p.lineId, from: p.from, to: p.to })),
     finishFrom: plan.finishFrom,
     finishTo: plan.finishTo,
+    ...(changeOrderId ? { changeOrderId } : {}),
   }
 }
 
