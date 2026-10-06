@@ -722,7 +722,7 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
     return {
       bill: billed.length === 0 ? 'none' : billed.some(invoiceReachedCustomer) ? 'sent' : 'not_sent',
       field: !ev || ev.reports + ev.sessions === 0 ? 'none' : ev.reportsWithGps + ev.sessionsWithGps === 0 ? 'no_gps' : 'gps',
-      awaitingApproval: ev ? ev.sessions - ev.approvedSessions : 0,
+      awaitingApproval: ev ? ev.awaitingApproval : 0,
       dispute: disputeOnRecord,
     }
   }
