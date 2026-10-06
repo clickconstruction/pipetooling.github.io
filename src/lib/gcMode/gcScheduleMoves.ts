@@ -139,7 +139,7 @@ export function planMove(project: GcProject, lineId: string, start: string, fini
 }
 
 /** The record of a planned move, as it is kept on the schedule. */
-export function moveRecord(schedule: ProjectSchedule, lineId: string, plan: MovePlan, why: { reason: ScheduleMoveReason; note: string; by: string }, today: string, changeOrderId?: string): ScheduleMove {
+export function moveRecord(schedule: ProjectSchedule, lineId: string, plan: MovePlan, why: { reason: ScheduleMoveReason; note: string; by: string }, today: string, changeOrderId?: string, lateNoticeId?: string): ScheduleMove {
   return {
     id: `move-${(schedule.moves ?? []).length + 1}`,
     on: today,
@@ -154,6 +154,7 @@ export function moveRecord(schedule: ProjectSchedule, lineId: string, plan: Move
     finishFrom: plan.finishFrom,
     finishTo: plan.finishTo,
     ...(changeOrderId ? { changeOrderId } : {}),
+    ...(lateNoticeId ? { lateNoticeId } : {}),
   }
 }
 
