@@ -26,7 +26,7 @@ The Calendar then shows only those jobs, still sorted by month. Press it again t
 
 ## Read the card
 
-Press a job on the Notices tab. The card **Supply houses on this job** sits under the four checks. Each house has one row.
+Press a job on the Notices tab. The card **Supply houses on this job** sits under the four gates. Each house has one row.
 
 - **House** names the house. Under it you see if a job account is open there.
 - **Unpaid since** names the oldest month with an unpaid invoice.
@@ -70,7 +70,7 @@ The paragraph names each house and what it is owed. It says the house's notice i
 
 ## Send the whole list
 
-Press {{button:outline|Share}} at the end of the desk's title line. Open **What to send** and pick **Jobs where a supply house is also owed**. The message lists every such job. Each line says what is owed to us and what is owed to the houses. It names the house whose notice comes first.
+Press {{button:outline|Share}} at the end of the desk's title line. Open **What to send** and pick **Jobs where a supply house is also owed**. The message lists up to twelve such jobs and sums the rest. The email lists them all. Each line says what is owed to us and what is owed to the houses. It names the house whose notice comes first.
 
 Send it as a text or email it to a teammate. The steps are in [share where our liens stand](/help/share-where-our-liens-stand).
 

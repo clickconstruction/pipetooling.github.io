@@ -6,7 +6,7 @@ keywords: someone's calling, owner called, lien letter, practice call, find a jo
 ---
 Every lien letter we mail ends with a phone number, so owners call. This guide gives you the words for that call, one card at a time.
 
-The owner is usually worried and sometimes angry. They did nothing wrong. They paid their builder. You do not need to know the Lien desk, the statute or the attorney's memo to take that call well. **☎ Someone's calling ›** finds the letter they are holding. It gives you the words, one card at a time, in the order the conversation goes. This guide shows you how to reach it and when to press it. It also says what to do with what they tell you.
+The owner is usually worried and sometimes angry. They did nothing wrong. They paid their builder. You do not need to know the Lien desk, the statute or the attorney's memo to take that call well. the **☎** button finds the letter they are holding. It gives you the words, one card at a time, in the order the conversation goes. This guide shows you how to reach it and when to press it. It also says what to do with what they tell you.
 
 ## When to press it
 
@@ -23,7 +23,7 @@ It is for the **owner**, not the GC, the general contractor. If the builder is t
 ## Where it is
 
 1. Open the **Lien desk**. You reach it from Jobs → Pipeline → the Collections header {{button:outline|Lien desk}}. Or open Dashboard → Needs you, the card that names the next lien deadline, and press **Open the Lien desk**.
-2. On the desk's header, next to {{button:outline|§ Rules}}, press {{button:blue|☎ Someone's calling ›}}.
+2. On the desk's header, next to {{button:outline|§ Rules}}, press the {{button:blue|☎}} button. Its hint reads *Someone's calling*.
 
 You can also reach the same sheet from a job you already have open on the desk. Pick the job in **Sent**. The footer has {{button:outline|Record the owner's call…}}.
 

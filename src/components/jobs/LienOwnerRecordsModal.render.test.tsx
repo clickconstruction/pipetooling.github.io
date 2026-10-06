@@ -10,7 +10,7 @@ import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import LienOwnerRecordsModal from './LienOwnerRecordsModal'
 import { EMPTY_OWNER_RECORDS, type OwnerPacketJobInput, type OwnerRecordsFile, type OwnerRecordsPropertyRow } from '../../lib/jobs/ownerRecords'
 
-const io = vi.hoisted(() => ({ jobs: [] as unknown[], file: null as unknown, available: true, saved: [] as Array<Record<string, unknown>>, printed: [] as string[], filed: [] as Array<Record<string, unknown>> }))
+const io = vi.hoisted(() => ({ jobs: [] as unknown[], file: null as unknown, available: true, saved: [] as Array<Record<string, unknown>>, downloaded: [] as Array<{ name: string; type: string }>, printed: [] as string[], filed: [] as Array<Record<string, unknown>> }))
 vi.mock('../../lib/jobs/ownerRecordsIo', () => ({
   loadOwnerPacketJobs: async () => ({ jobs: io.jobs, gcIds: ['gc1'] }),
   loadOwnerRecords: async () => ({ available: io.available, rowId: null, file: io.file }),
@@ -20,6 +20,11 @@ vi.mock('../../lib/jobs/ownerRecordsIo', () => ({
   },
 }))
 // A print and a send each file a copy (v2.4554): the stub keeps what was filed and the page that went.
+vi.mock('../../lib/jobs/ownerRecordsPdf', async () => {
+  const actual = await vi.importActual<typeof import('../../lib/jobs/ownerRecordsPdf')>('../../lib/jobs/ownerRecordsPdf')
+  return { ...actual, ownerPacketPdfBlob: async () => new Blob(['%PDF-1.4 fake'], { type: 'application/pdf' }) }
+})
+vi.mock('../../lib/storageSave', () => ({ saveBlobAs: (blob: Blob, name: string) => io.downloaded.push({ name, type: blob.type }) }))
 vi.mock('../../lib/sent/sentCopiesIo', () => ({
   printAndFile: (html: string, filing: Record<string, unknown>) => (io.printed.push(html), io.filed.push({ ...filing, how: 'print', html }), true),
   fileSentCopy: async (filing: Record<string, unknown>, body: { html: string }) => (io.filed.push({ ...filing, html: body.html }), true),
@@ -190,6 +195,24 @@ describe('LienOwnerRecordsModal', () => {
       ['owner_records_packet', 'print', 'Records for 9703 Lenox Hl, San Antonio, TX'],
       ['owner_records_acknowledgment', 'print', 'Acknowledgment for 9703 Lenox Hl, San Antonio, TX'],
     ])
+  })
+
+  it('Download the packet asks while the wording is a draft, saves the PDF, and files it as a download (v2.4619)', async () => {
+    io.jobs = jobs
+    io.file = full
+    io.downloaded = []
+    io.filed = []
+    mount()
+    await pick()
+    fireEvent.click(screen.getByRole('button', { name: 'Download the packet' }))
+    const ask = await screen.findByRole('alertdialog', { name: 'Save the draft wording?' })
+    fireEvent.click(within(ask).getByRole('button', { name: 'Not yet' }))
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull())
+    expect(io.downloaded).toEqual([])
+    fireEvent.click(screen.getByRole('button', { name: 'Download the packet' }))
+    fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Save it' }))
+    await waitFor(() => expect(io.downloaded).toEqual([{ name: 'Records-9703-Lenox-Hl-San-Antonio-TX-2026-10-05.pdf', type: 'application/pdf' }]))
+    await waitFor(() => expect(io.filed.map((f) => [f.kind, f.how])).toEqual([['owner_records_packet', 'download']]))
   })
 
   it('when saving is not ready the packet still reads and prints, and the window says the checks cannot be filed', async () => {
