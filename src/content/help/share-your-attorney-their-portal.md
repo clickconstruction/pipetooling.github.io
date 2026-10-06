@@ -18,6 +18,7 @@ Each account opens as the same five-section packet the Legal desk shows.
 
 - Every matter marked attorney-ready, largest first. A matter is one account in the firm's hands. Each matter shows its stage in the firm's words: referred, demand sent, suit filed or judgment entered.
 - The same five tabs as the desk: ***Account · Paper · Record of contact · Evidence · Fees & steps***. The desk's **Their word** tab is **Record of contact** on the portal. The tabs are built from the same records by the same rules. So the firm and the office never disagree.
+- On **Account**, each job lists what is on file and what is not. That covers the agreement, the bill, the field record and any dispute. The desk's theory and the customer's payment terms stay with the office.
 - On **Paper**:
   - *Where each job stands* is the job's lien timeline. The timeline is the same rail the Lien desk draws. Every Chapter 53 step is dated from the job's hours and filings. Today is marked. One *Next on the path* line says what comes next.
   - *The paper that went out* lists each envelope once. Each envelope shows the day it went, and whether it went by the run or by hand. Each envelope also shows the method and tracking, and the claim as printed. When one paper covered several jobs, every job's share shows. The months show as printed. A month whose window had already closed shows *as information*. The saved copy is there too.

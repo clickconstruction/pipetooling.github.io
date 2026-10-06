@@ -236,6 +236,22 @@ export type LegalLedgerEntry = {
   amount: number
 }
 
+/** A job's record for the claim, as facts: was a bill sent, did the field place a crew there, is a dispute logged. */
+export type LegalJobRecord = {
+  /** `sent`: a billed or paid line reached the customer (`invoiceReachedCustomer`); `not_sent`: lines exist, none sent; `none`: no bill line. */
+  bill: 'sent' | 'not_sent' | 'none'
+  /**
+   * `gps`: a report or clock session carries a GPS location; `no_gps`: field records, none with a
+   * location; `none`: nothing from the field. A location is a recorded latitude, never checked
+   * against the job's address, so the words say *a GPS location*, not *on site*.
+   */
+  field: 'gps' | 'no_gps' | 'none'
+  /** Clock sessions on the job nobody has approved yet (said beside the field record; 0 or absent when none). */
+  awaitingApproval?: number
+  /** A dispute logged on the account in call mode. */
+  dispute: boolean
+}
+
 export type LegalJobLine = {
   jobId: string
   label: string
@@ -249,6 +265,11 @@ export type LegalJobLine = {
   contract: JobContractCoverage
   /** Empty when a sworn account holds for this job. */
   swornMissing: string[]
+  /**
+   * The facts behind `swornMissing`, as data (punch list #85, item 4): what the firm's words
+   * read, so a wording change on the desk can never empty the firm's facts.
+   */
+  record: LegalJobRecord
   /** The largest open billed line — what a write-down or Mark Paid opens on. */
   primaryInvoiceId: string | null
   /** What is still open on that line (0 when there is none) — ranks the jobs of an account (v2.4570). */
@@ -614,21 +635,32 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
   )
   const disputeOnRecord = accountTouches.some((t) => t.outcome === 'dispute')
 
-  /** What a sworn account still needs on this job: an invoice the customer received, field evidence with GPS, no dispute. */
-  const swornMissingFor = (j: JobWithDetails): string[] => {
-    const missing: string[] = []
+  /** The job's record as facts (item 4 of punch list #85) — the sworn-account rule below reads it. */
+  const recordFor = (j: JobWithDetails): LegalJobRecord => {
     const billed = (j.invoices ?? []).filter((i) => i.status === 'billed' || i.status === 'paid')
-    if (billed.length === 0) missing.push('a bill line')
-    else if (!billed.some(invoiceReachedCustomer)) missing.push('a bill the customer received')
     const ev = evidenceByJob.get(j.id)
-    if (!ev || ev.reports + ev.sessions === 0) missing.push('field evidence on the property')
-    else if (ev.reportsWithGps + ev.sessionsWithGps === 0) missing.push('field evidence with GPS')
-    if (disputeOnRecord) missing.push('no dispute on record')
+    return {
+      bill: billed.length === 0 ? 'none' : billed.some(invoiceReachedCustomer) ? 'sent' : 'not_sent',
+      field: !ev || ev.reports + ev.sessions === 0 ? 'none' : ev.reportsWithGps + ev.sessionsWithGps === 0 ? 'no_gps' : 'gps',
+      awaitingApproval: ev ? ev.sessions - ev.approvedSessions : 0,
+      dispute: disputeOnRecord,
+    }
+  }
+
+  /** What a sworn account still needs on this job: an invoice the customer received, field evidence with GPS, no dispute. */
+  const swornMissingFor = (r: LegalJobRecord): string[] => {
+    const missing: string[] = []
+    if (r.bill === 'none') missing.push('a bill line')
+    else if (r.bill === 'not_sent') missing.push('a bill the customer received')
+    if (r.field === 'none') missing.push('field evidence on the property')
+    else if (r.field === 'no_gps') missing.push('field evidence with GPS')
+    if (r.dispute) missing.push('no dispute on record')
     return missing
   }
 
   const jobLines: LegalJobLine[] = jobs.map((j) => {
     const aging = jobAgingYmd(j)
+    const record = recordFor(j)
     const openBilled = (j.invoices ?? [])
       .filter((i) => i.status === 'billed')
       .map((i) => ({ id: i.id, open: invoiceOpenAmount(i, j.payments) }))
@@ -644,7 +676,8 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
       collectionsBy: userName(j.collections_by),
       collectionsYmd: calendarYmdInAppTzFromIso(j.collections_at ?? '') || null,
       contract: coverage.get(j.id) ?? { kind: 'none' },
-      swornMissing: swornMissingFor(j),
+      record,
+      swornMissing: swornMissingFor(record),
       primaryInvoiceId: openBilled[0]?.id ?? null,
       primaryInvoiceOpen: openBilled[0]?.open ?? 0,
     }
