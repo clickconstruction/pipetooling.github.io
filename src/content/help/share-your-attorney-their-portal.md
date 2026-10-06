@@ -56,4 +56,6 @@ You can give the firm settlement authority. On the desk's **Fees & steps** tab, 
 
 Each act carries a date and a name. The date starts as today, and the firm can set an earlier one. The name is picked under **Recorded by**, from the people on the firm's Notifications page. Both show on the desk's tables. The name is the firm's own word for who did it. The portal has no sign-in, so it proves nothing on its own.
 
+A mistake is undone, never deleted. The firm presses **Undo…** on its own fee, cost or unapplied payment and types why. You do the same on a fee, cost or note the office wrote. An undone row stays struck through, with the reason, and leaves every total.
+
 After each act, the portal tells the firm what happens next. A step names the matter's new stage. Each act lands on the Dashboard as **"The law firm has N things for you"**, for office roles. The act clears from the desk's Fees & steps tab when you answer, apply or acknowledge it. The firm never marks anything paid, edits a job, or emails the customer through Click.

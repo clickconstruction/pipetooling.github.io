@@ -15,7 +15,7 @@ import { contactGoesWithShare, contactScopeNumbers } from '../_shared/legalConta
 import { LIEN_BOOK_COUNSEL_SELECT, shapeLienBookForCounsel } from '../_shared/legalLienBookShape.ts'
 import { LEGAL_PORTAL_STAGES } from '../_shared/legalStages.ts'
 // Item 23 (#85): the matter's rows name their columns and are cut to them once more before they leave.
-import { MATTER_COUNSEL_SELECT, shapeMatterForCounsel } from '../_shared/legalMatterShape.ts'
+import { MATTER_COUNSEL_SELECT, MATTER_ENTRY_PENDING_COLUMNS, shapeMatterForCounsel } from '../_shared/legalMatterShape.ts'
 
 /**
  * Legal portal payload (Legal portal train, PR 3): resolves the collections law
@@ -161,6 +161,20 @@ function pulledEntryTravels(e: Row, pulledAt: string | null): boolean {
   return true
 }
 
+// Item 23's entry columns (without the void stamps, `MATTER_ENTRY_PENDING_COLUMNS`), so both reads stay shaped.
+const ENTRY_COLS = MATTER_COUNSEL_SELECT.entries
+
+/**
+ * The matters' entries, with the undo stamps (#85 item 18, migration 20261006160000) — and, until that migration
+ * is pushed, without them, so the portal never opens empty because a column is not there yet.
+ */
+// deno-lint-ignore no-explicit-any
+async function readMatterEntries(admin: any, matterIds: string[]): Promise<{ data: unknown[] | null }> {
+  const withVoid = await admin.from('legal_matter_entries').select(`${ENTRY_COLS}, ${MATTER_ENTRY_PENDING_COLUMNS.join(', ')}`).in('matter_id', matterIds).order('created_at')
+  if (!withVoid.error) return withVoid
+  return admin.from('legal_matter_entries').select(ENTRY_COLS).in('matter_id', matterIds).order('created_at')
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: { ...corsHeaders, ...privateHeaders } })
   try {
@@ -229,7 +243,7 @@ serve(async (req) => {
     const { data: pulledRows } = await admin.from('legal_matters').select('id, payer_name, pulled_at, pulled_reason').eq('firm_id', link.firm_id).eq('stage', 'review').not('pulled_at', 'is', null).order('pulled_at', { ascending: false }).limit(50)
     const pulled = (pulledRows ?? []) as Row[]
     const { data: pulledEntryRows } = pulled.length
-      ? await admin.from('legal_matter_entries').select('id, matter_id, kind, amount, body, occurred_on, meta, via_portal, acknowledged_at, created_at').in('matter_id', pulled.map((p) => p.id as string)).order('created_at')
+      ? await readMatterEntries(admin, pulled.map((p) => p.id as string))
       : { data: [] }
     const pulledMatters = pulled.map((p) => ({
       id: p.id,
@@ -239,7 +253,7 @@ serve(async (req) => {
       // Slim (#85 item 16 review): only the firm's own fee and cost rows and the conversation, dated before the
       // pull-back, and never a voided row. The office's steps, notes and anything after the pull-back stay home.
       entries: ((pulledEntryRows ?? []) as Row[]).filter((e) => e.matter_id === p.id && pulledEntryTravels(e, p.pulled_at as string | null)),
-    }))
+    })).map((pm) => ({ ...pm, entries: (shapeMatterForCounsel({ jobs: [], entries: pm.entries }).entries as Row[]) }))
     if (matters.length === 0) {
       return jsonResponse({ company: PORTAL_COMPANY, preparedOn: todayYmd, firm, particulars, recipients, firmPaused, matters: [], pulledMatters, lienBook: await readLienBook(admin) })
     }
@@ -269,7 +283,7 @@ serve(async (req) => {
       admin.from('report_templates').select('id, name'),
       allJobIds.length ? admin.from('clock_sessions').select('job_ledger_id, work_date, clocked_in_at, clocked_out_at, clock_in_lat, approved_at, rejected_at, revoked_at').in('job_ledger_id', allJobIds).order('work_date').limit(2000) : Promise.resolve({ data: [] }),
       allJobIds.length ? admin.from('jobs_ledger_thread_notes').select('job_id, created_at').in('job_id', allJobIds).order('created_at', { ascending: false }).limit(2000) : Promise.resolve({ data: [] }),
-      admin.from('legal_matter_entries').select(MATTER_COUNSEL_SELECT.entries).in('matter_id', matterIds).order('created_at'),
+      readMatterEntries(admin, matterIds),
     ])
 
     const jobs = (jobsRes.data ?? []) as Row[]

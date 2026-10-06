@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { isLegalClientId, legalActDateProblem, legalRateLimitMessage, recordedByOf } from '../../../supabase/functions/_shared/legalPortalActs'
+import { firmVoidProblem, isLegalClientId, isVoidedEntry, legalActDateProblem, legalRateLimitMessage, officeCanVoid, recordedByOf, voidIsRetry } from '../../../supabase/functions/_shared/legalPortalActs'
+import { buildFirmActivity, type LegalMatterRow } from './legalMatters'
 import { conversationRows, conversationWho, entryRecordedByWords } from './legalAsks'
 import type { LegalEntryRow } from './legalMatters'
 
@@ -43,5 +44,37 @@ describe('an unknown Recorded by is refused, never saved as the firm (review)', 
   it('submit-legal-portal answers 400 when the id names nobody live on the firm’s list', () => {
     const src = readFileSync('supabase/functions/submit-legal-portal/index.ts', 'utf8')
     expect(src).toMatch(/if \(!who\) return jsonResponse\(\{ error: 'Pick who recorded this from the list\.' \}, 400\)/)
+  })
+})
+
+describe('undo with a reason (#85 item 18, PR 2)', () => {
+  const e = (over: Record<string, unknown>) => ({ kind: 'fee', via_portal: true, voided_at: null, acknowledged_at: null, ...over }) as { kind: string; via_portal: boolean; voided_at: string | null; acknowledged_at: string | null }
+  it('each side undoes its own: the firm its fees, costs and an unapplied payment; the office its fees, costs and notes', () => {
+    expect(firmVoidProblem(e({}))).toBeNull()
+    expect(firmVoidProblem(e({ kind: 'cost' }))).toBeNull()
+    expect(firmVoidProblem(e({ kind: 'payment_received' }))).toBeNull()
+    expect(firmVoidProblem(e({ kind: 'payment_received', acknowledged_at: '2026-10-05T00:00:00Z' }))).toMatch(/already applied/)
+    expect(firmVoidProblem(e({ kind: 'step' }))).toBe('Record the right step instead.')
+    expect(firmVoidProblem(e({ via_portal: false }))).toMatch(/office’s/)
+    expect(firmVoidProblem(e({ voided_at: '2026-10-05T00:00:00Z' }))).toBe('Already undone.')
+    expect(officeCanVoid(e({ via_portal: false, kind: 'note' }))).toBe(true)
+    expect(officeCanVoid(e({ via_portal: false, kind: 'recovery_applied' }))).toBe(false)
+    expect(officeCanVoid(e({ via_portal: true }))).toBe(false)
+    expect(isVoidedEntry({ voided_at: '2026-10-05T00:00:00Z' })).toBe(true)
+  })
+  it('a voided act leaves the office’s Needs You', () => {
+    const m = { id: 'm1', payer_key: 'c:x', payer_name: 'Lenox' } as LegalMatterRow
+    const row = { id: 'f1', matter_id: 'm1', kind: 'fee', amount: 3500, body: 'Filing fee', occurred_on: '2026-10-01', meta: {}, via_portal: true, created_by: null, acknowledged_at: null, created_at: '2026-10-01T15:00:00Z' }
+    expect(buildFirmActivity([row], [m]).count).toBe(1)
+    expect(buildFirmActivity([{ ...row, voided_at: '2026-10-05T00:00:00Z' }], [m]).count).toBe(0)
+    // The office's Acknowledge on a fee row stamps acknowledged_at, which takes it off the card too.
+    expect(buildFirmActivity([{ ...row, acknowledged_at: '2026-10-05T00:00:00Z' }], [m]).count).toBe(0)
+  })
+  it('a retried undo with the same reason is the same act; a different reason is not', () => {
+    const done = { voided_at: '2026-10-05T00:00:00Z', voided_via_portal: true, void_reason: 'Entered twice' }
+    expect(voidIsRetry(done, ' Entered twice ')).toBe(true)
+    expect(voidIsRetry(done, 'Wrong matter')).toBe(false)
+    expect(voidIsRetry({ ...done, voided_via_portal: false }, 'Entered twice')).toBe(false)
+    expect(voidIsRetry({ voided_at: null }, 'Entered twice')).toBe(false)
   })
 })
