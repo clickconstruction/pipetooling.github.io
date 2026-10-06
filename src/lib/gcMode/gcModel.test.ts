@@ -931,6 +931,10 @@ describe('GC mode golden walk', () => {
     used.add('pushBackLateNotice') // played in gcLateNotices.test.ts: it needs a notice sent first
     used.add('tradeKeepDay') // played in gcLateNotices.test.ts: it needs a notice pushed back first
     used.add('pullScheduleEarlier') // played in gcPullEarlier.test.ts: it needs work that finished early first
+    used.add('startWhatIf') // played in gcWhatIf.test.ts: a what-if copy of the schedule (G-81)
+    used.add('inWhatIf') // played in gcWhatIf.test.ts: it needs a copy open
+    used.add('keepWhatIf') // played in gcWhatIf.test.ts: it needs moves tried in a copy
+    used.add('throwAwayWhatIf') // played in gcWhatIf.test.ts: it needs a copy open
     const all: GcAction['type'][] = [
       'issueAddendum', 'tradeConfirmBid', 'setStartItem', 'setStartDate', 'startProject', 'invite', 'nudge',
       'logContact', 'tradePromise', 'tradeOpenPlans', 'tradeSubmitBid', 'tradeDecline', 'officeDecline', 'setPlug',
@@ -984,6 +988,7 @@ describe('GC mode golden walk', () => {
       'sendCustomerSchedule',
       'tradeSayLate', 'pushBackLateNotice', 'tradeKeepDay',
       'pullScheduleEarlier',
+      'startWhatIf', 'inWhatIf', 'keepWhatIf', 'throwAwayWhatIf',
     ]
     expect(all.filter((t) => !used.has(t))).toEqual([])
   })

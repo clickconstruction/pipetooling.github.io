@@ -674,6 +674,8 @@ export interface GcProject {
   waits?: ScheduleWait[]
   /** The customer's schedule as we sent it on its own (the Gantt, G-94), every send kept as it went, newest last. Unset: never sent. */
   scheduleSends?: ScheduleSend[]
+  /** A what-if copy of the schedule (the Gantt, G-81), beside it and never inside it: only the Schedule tab reads it. Unset: none open. */
+  whatIf?: ScheduleWhatIf
 }
 
 /** The customer's schedule sent on its own, dated and kept as sent (G-94). */
@@ -1244,6 +1246,14 @@ export type GcAction =
   | { type: 'tradeKeepDay'; projectId: string; partnerId: string; noticeId: string }
   /** Work finished early (G-37): its plan catches up, and what was right behind it comes in by the days it gave back. On a press, never by itself. `leaveOut`: the activities a trade cannot start sooner. */
   | { type: 'pullScheduleEarlier'; projectId: string; leaveOut: string[]; why: { reason: ScheduleMoveReason; note: string; by: string } }
+  /** A what-if copy of the schedule to try moves on (G-81), made from the real one. One per job. */
+  | { type: 'startWhatIf'; projectId: string; by: string }
+  /** A move tried on the what-if copy (G-81): setScheduleActivity, pullScheduleEarlier, undoScheduleMove or redoScheduleMove. Any other is refused. */
+  | { type: 'inWhatIf'; projectId: string; action: GcAction; by: string }
+  /** Keep the what-if (G-81): its standing moves go on the real schedule, oldest first, as real moves. `whys`: the reasons for moves tried with none, by the copy's move id. */
+  | { type: 'keepWhatIf'; projectId: string; by: string; whys: Record<string, { reason: ScheduleMoveReason; note: string }> }
+  /** Throw the what-if away (G-81): the copy goes, the real schedule stays as it is. */
+  | { type: 'throwAwayWhatIf'; projectId: string; by: string }
 
 /** One trade on a new project, as the office left it in the New project window. */
 export interface NewTradeDraft {
@@ -1547,6 +1557,34 @@ export interface ScheduleMove {
    * finished lines: their work is done. Unset: an ordinary move.
    */
   pull?: { finished: string[] }
+  /** Tried in a what-if copy with no reason yet (G-81): its reason and words are a stand-in, and Keep asks for real ones. Never on a real move. */
+  noWhy?: boolean
+  /** Kept from a what-if copy made on this day (G-81): tried there first, then put on the real schedule with its reason. Unset: an ordinary move. */
+  fromWhatIf?: string
+}
+
+/** One activity's planned dates and waits, as a what-if copy saw them on the real schedule (G-81). */
+export interface WhatIfBase {
+  start: string
+  finish: string
+  after: string[]
+  lag?: Record<string, number>
+  notBefore?: string
+  mustFinishBy?: string
+}
+
+/**
+ * A what-if copy of the schedule (the Gantt, G-81): the real schedule when it was made, with moves
+ * of its own tried on it, kept onto the real one as real moves or thrown away. It is never walked,
+ * told, sent or baselined, and nothing outside the Schedule tab reads it.
+ */
+export interface ScheduleWhatIf {
+  /** The copy, with its own history of moves tried. */
+  schedule: ProjectSchedule
+  /** Each activity's planned dates and waits on the real schedule when the copy was made. Keep is safe only while the real one still has them. */
+  base: Record<string, WhatIfBase>
+  on: string
+  by: string
 }
 
 /**

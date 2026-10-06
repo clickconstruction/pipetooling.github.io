@@ -42,7 +42,7 @@ export interface PendingMove {
 const label = { fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-muted)', textTransform: 'uppercase' } as const
 
 /** The window a move is saved from: what it does, then why. Nothing is saved without both. */
-export function GcMoveExplain({ state, project, pending, dispatch, onClose }: { state?: GcState; project: GcProject; pending: PendingMove; dispatch: Dispatch<GcAction>; onClose: () => void }) {
+export function GcMoveExplain({ state, project, pending, dispatch, onClose, tryIt }: { state?: GcState; project: GcProject; pending: PendingMove; dispatch: Dispatch<GcAction>; onClose: () => void; tryIt?: boolean }) {
   const me = useMeName() ?? 'The office'
   const [reason, setReason] = useState<ScheduleMoveReason | null>(pending.why?.reason ?? null)
   const [note, setNote] = useState(pending.why?.note ?? '')
@@ -57,14 +57,17 @@ export function GcMoveExplain({ state, project, pending, dispatch, onClose }: { 
   // What the move does to the bills (G-97): worked out once per move, not on every keystroke.
   const billing = useMemo(() => (state && plan && !plan.problem && !plan.same ? shiftWords(planBillingShift(state, project, plan), 'will') : null), [state, project, pending]) // eslint-disable-line react-hooks/exhaustive-deps
   if (!plan || plan.same) return null
-  const problem = plan.problem ?? moveWhyProblem(reason, note)
+  // In a what-if (G-81) a reason is optional: the move is tried with one when it is given whole, else with none yet.
+  const whyGiven = moveWhyProblem(reason, note) === null
+  const problem = tryIt ? plan.problem : (plan.problem ?? moveWhyProblem(reason, note))
   const phone = typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 640px)').matches
   const dated = plan.from.start !== plan.to.start || plan.from.finish !== plan.to.finish
   const shift = daysBetween(plan.from.finish, plan.to.finish)
   const longer = daysBetween(plan.to.start, plan.to.finish) - daysBetween(plan.from.start, plan.from.finish)
   const save = () => {
-    if (problem || !reason) return
-    dispatch({ type: 'setScheduleActivity', projectId: project.id, lineId: pending.lineId, start: pending.start, finish: pending.finish, after: pending.after, why: { reason, note: note.trim(), by: me }, ...(pending.limits ?? {}), ...(pending.changeOrderId ? { changeOrderId: pending.changeOrderId } : {}), ...(pending.lateNoticeId ? { lateNoticeId: pending.lateNoticeId } : {}) })
+    if (problem || (!tryIt && !reason)) return
+    const why = reason && whyGiven ? { why: { reason, note: note.trim(), by: me } } : {}
+    dispatch({ type: 'setScheduleActivity', projectId: project.id, lineId: pending.lineId, start: pending.start, finish: pending.finish, after: pending.after, ...why, ...(pending.limits ?? {}), ...(pending.changeOrderId ? { changeOrderId: pending.changeOrderId } : {}), ...(pending.lateNoticeId ? { lateNoticeId: pending.lateNoticeId } : {}) })
     onClose()
   }
   return createPortal(
@@ -81,8 +84,12 @@ export function GcMoveExplain({ state, project, pending, dispatch, onClose }: { 
         style={{ background: 'var(--surface)', color: 'var(--text-base)', borderRadius: phone ? '12px 12px 0 0' : 12, width: phone ? '100%' : 'min(560px, 100%)', maxHeight: '92vh', overflow: 'auto', boxShadow: '0 24px 48px rgba(0,0,0,0.22)', padding: '1rem', display: 'grid', gap: '0.75rem', fontSize: '0.9rem' }}
       >
         <div>
-          <h3 style={{ margin: 0, fontSize: '1.05rem' }}>{dated ? 'Move' : 'Change'} {moveActivityName(project, pending.lineId)}</h3>
-          <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>A move is saved with why it moved. Both stay on the schedule's record.</div>
+          <h3 style={{ margin: 0, fontSize: '1.05rem' }}>
+            {tryIt ? `Try ${dated ? 'moving' : 'changing'}` : dated ? 'Move' : 'Change'} {moveActivityName(project, pending.lineId)}
+          </h3>
+          <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+            {tryIt ? 'In the what-if, a reason is optional. Keep asks for one.' : "A move is saved with why it moved. Both stay on the schedule's record."}
+          </div>
         </div>
         <div style={{ display: 'grid', gap: '0.3rem', background: 'var(--bg-subtle)', borderRadius: 8, padding: '0.6rem 0.7rem' }}>
           {dated ? (
@@ -151,12 +158,14 @@ export function GcMoveExplain({ state, project, pending, dispatch, onClose }: { 
           />
         </label>
         <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', borderTop: '1px solid var(--border)', paddingTop: '0.7rem' }}>
-          <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem', flex: '1 1 10rem' }}>{problem ?? `Saved as moved by ${me}, today.`}</span>
+          <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem', flex: '1 1 10rem' }}>
+            {problem ?? (tryIt ? (whyGiven ? 'Tried with its reason, on the copy only.' : 'Tried with no reason yet, on the copy only.') : `Saved as moved by ${me}, today.`)}
+          </span>
           <Btn kind="quiet" onClick={onClose}>
             Cancel
           </Btn>
           <Btn kind="primary" disabled={problem !== null} onClick={save}>
-            Save the move
+            {tryIt ? 'Try it' : 'Save the move'}
           </Btn>
         </div>
       </div>
@@ -166,7 +175,7 @@ export function GcMoveExplain({ state, project, pending, dispatch, onClose }: { 
 }
 
 /** Every move made on the schedule, newest first, each with who, why and what it did. The last one standing can be undone. */
-export function GcMoveHistory({ state, project, dispatch }: { state: GcState; project: GcProject; dispatch: Dispatch<GcAction> }) {
+export function GcMoveHistory({ state, project, dispatch, tryIt }: { state: GcState; project: GcProject; dispatch: Dispatch<GcAction>; tryIt?: boolean }) {
   const me = useMeName() ?? 'The office'
   const rows = moveRows(project)
   const [all, setAll] = useState(false)
@@ -176,12 +185,15 @@ export function GcMoveHistory({ state, project, dispatch }: { state: GcState; pr
   const redoable = redoableMove(project)
   // Tell the trades (Phase 3): the companies whose days the standing, untold moves changed.
   const untold = untoldMoves(project)
-  const toTell = companiesToTell(state, project, untold)
+  // A what-if's moves (G-81) are for nobody outside the office, so there is nobody to tell.
+  const toTell = tryIt ? [] : companiesToTell(state, project, untold)
   if (rows.length === 0) {
     return (
       <Card>
-        <strong>Changes to the schedule</strong>{' '}
-        <span style={{ color: 'var(--text-muted)' }}>None yet. Drag a bar on the chart, or press one to change its dates. Every move is kept here with who made it and why.</span>
+        <strong>{tryIt ? 'Tried in the what-if' : 'Changes to the schedule'}</strong>{' '}
+        <span style={{ color: 'var(--text-muted)' }}>
+          {tryIt ? 'Nothing tried yet. Drag a bar on the chart, or press one to change its dates.' : 'None yet. Drag a bar on the chart, or press one to change its dates. Every move is kept here with who made it and why.'}
+        </span>
       </Card>
     )
   }
@@ -189,8 +201,10 @@ export function GcMoveHistory({ state, project, dispatch }: { state: GcState; pr
   return (
     <Card>
       <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
-        <strong>Changes to the schedule ({rows.length})</strong>
-        <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Every move, who made it and why. Newest first.</span>
+        <strong>
+          {tryIt ? 'Tried in the what-if' : 'Changes to the schedule'} ({rows.length})
+        </strong>
+        <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{tryIt ? 'Every move tried on the copy, newest first. Keep puts them on the real schedule.' : 'Every move, who made it and why. Newest first.'}</span>
         <span style={{ flex: 1 }} />
         {toTell.length > 0 && (
           <span data-tour="gc-tell-trades">
@@ -221,7 +235,7 @@ export function GcMoveHistory({ state, project, dispatch }: { state: GcState; pr
               )}
             </div>
             <div style={r.undone ? { textDecoration: 'line-through' } : undefined}>{r.what}</div>
-            <div style={{ color: 'var(--text-base)' }}>“{r.move.note}”</div>
+            {r.move.noWhy ? <div style={{ color: 'var(--text-muted)' }}>{r.move.note}</div> : <div style={{ color: 'var(--text-base)' }}>“{r.move.note}”</div>}
             {(r.effect || r.undone) && <div style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>{[r.effect, r.undone].filter(Boolean).join(' ')}</div>}
             {/* A move that took a trade's late notice (G-117): who asked, and how far ahead. */}
             {lateNoticeMoveWords(state, project, r.move) && <div style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>{lateNoticeMoveWords(state, project, r.move)}</div>}
@@ -234,7 +248,7 @@ export function GcMoveHistory({ state, project, dispatch }: { state: GcState; pr
                   {w}
                 </div>
               ))}
-            {!r.move.toldOn && !r.undone && companiesToTell(state, project, [r.move]).length > 0 && <div style={{ fontSize: '0.82rem', color: 'var(--text-amber-800)' }}>The trades have not been told.</div>}
+            {!tryIt && !r.move.toldOn && !r.undone && companiesToTell(state, project, [r.move]).length > 0 && <div style={{ fontSize: '0.82rem', color: 'var(--text-amber-800)' }}>The trades have not been told.</div>}
           </div>
         ))}
       </div>
@@ -250,7 +264,7 @@ export function GcMoveHistory({ state, project, dispatch }: { state: GcState; pr
 }
 
 /** Tell the trades: each company whose days moved, its message as it will go, and one press. In the prototype nothing leaves the app. */
-function GcTellTrades({ state, project, dispatch, onClose }: { state: GcState; project: GcProject; dispatch: Dispatch<GcAction>; onClose: () => void }) {
+export function GcTellTrades({ state, project, dispatch, onClose }: { state: GcState; project: GcProject; dispatch: Dispatch<GcAction>; onClose: () => void }) {
   const me = useMeName() ?? 'The office'
   const untold = untoldMoves(project)
   const companies = companiesToTell(state, project, untold)

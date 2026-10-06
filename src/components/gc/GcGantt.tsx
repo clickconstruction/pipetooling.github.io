@@ -145,6 +145,8 @@ export function GcGantt({
   callList,
   print,
   earlier,
+  real,
+  toolbarExtra,
 }: {
   items: ScheduleItem[]
   float: Map<string, number>
@@ -180,6 +182,10 @@ export function GcGantt({
   print?: GanttPrintJob
   /** Where each bar could start now that the work before it finished early (G-37): a green ghost behind it, and a line on its hover card. */
   earlier?: Map<string, { start: string; finish: string; words: string }>
+  /** In a what-if copy (G-81): the real schedule's dates under each bar the copy moved, a grey ghost behind it and a line on its hover card. */
+  real?: Map<string, { start: string; finish: string }>
+  /** One more control at the end of the toolbar: the what-if's way in and out (G-81). */
+  toolbarExtra?: ReactNode
 }) {
   const [zoom, setZoom] = useState<GanttZoom>('weeks')
   const [by, setBy] = useState<GanttGroupBy>('trade')
@@ -394,6 +400,9 @@ export function GcGantt({
     const ghost = pushedTo.get(b.id)
     // The sooner days a pull would give it (G-37), drawn behind the bar so only the days it gains show.
     const soon = dragging ? undefined : earlier?.get(b.id)
+    // In a what-if (G-81), where the real schedule has this bar: a dashed outline over it, so the difference shows on one
+    // picture even where the copy only made the bar longer.
+    const realSpan = dragging ? undefined : real?.get(b.id)
     const isPicked = picked === b.id
     const rowBg = isPicked ? 'var(--bg-blue-tint)' : 'var(--surface)'
     const said = `${b.item.label}, ${b.item.company}. ${weekdayDate(a.start)} to ${weekdayDate(a.finish)}. ${b.statusWords}.`
@@ -425,6 +434,13 @@ export function GcGantt({
             <span
               title={actualWords(a) ?? ''}
               style={{ position: 'absolute', left: x(a.actualStart), width: Math.max(px, (daysBetween(a.actualStart, a.actualFinish ?? (today > a.actualStart ? today : a.actualStart)) + 1) * px), top: 3, height: 3, borderRadius: 2, background: C.green, opacity: a.actualFinish ? 1 : 0.6 }}
+            />
+          )}
+          {realSpan && (
+            <span
+              aria-hidden
+              title={`Real: ${shortDate(realSpan.start)} to ${shortDate(realSpan.finish)}`}
+              style={{ position: 'absolute', left: x(realSpan.start) - 2, width: Math.max(px, (daysBetween(realSpan.start, realSpan.finish) + 1) * px) + 4, top: (ROW_H - BAR_H) / 2 - 3, height: BAR_H + 6, borderRadius: 6, boxSizing: 'border-box', border: '1.5px dashed var(--text-muted)', background: 'transparent', zIndex: 2, pointerEvents: 'none' }}
             />
           )}
           {soon && (
@@ -607,6 +623,7 @@ export function GcGantt({
               Print or PDF
             </button>
           )}
+          {toolbarExtra}
         </div>
         {/* The filters carry their counts, so the row is the chart's summary too (GANTT_FEATURES G-13, G-18). */}
         <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -906,7 +923,7 @@ export function GcGantt({
       )}
 
       {view === 'chart' && <GanttLegend building={building} canMove={Boolean(onMove)} spare={showSpare} />}
-      {view === 'chart' && hovered && hover && !drag && <GanttHoverCard bar={hovered} all={all} at={hover} building={building} today={today} lost={lost?.get(hovered.id) ?? []} said={lateSaid?.get(hovered.id)} log={logNotes?.get(hovered.id)} soon={earlier?.get(hovered.id) ?? null} />}
+      {view === 'chart' && hovered && hover && !drag && <GanttHoverCard bar={hovered} all={all} at={hover} building={building} today={today} lost={lost?.get(hovered.id) ?? []} said={lateSaid?.get(hovered.id)} log={logNotes?.get(hovered.id)} soon={earlier?.get(hovered.id) ?? null} realSpan={real?.get(hovered.id) ?? null} />}
       {printing && printInput && <GcGanttPrint input={printInput} onClose={() => setPrinting(false)} />}
     </div>
   )
@@ -946,7 +963,7 @@ function GanttLegend({ building, canMove, spare = false }: { building: boolean; 
 }
 
 /** Everything about one bar, beside the pointer: its days, how far along, what it waits on and holds up. */
-function GanttHoverCard({ bar, all, at, building, today, lost, said, log, soon }: { bar: GanttBar; all: GanttBar[]; at: { x: number; y: number }; building: boolean; today: string; lost: LostDay[]; said?: { finish: string; words: string } | undefined; log?: { note: string; words: string } | undefined; soon: { words: string } | null }) {
+function GanttHoverCard({ bar, all, at, building, today, lost, said, log, soon, realSpan }: { bar: GanttBar; all: GanttBar[]; at: { x: number; y: number }; building: boolean; today: string; lost: LostDay[]; said?: { finish: string; words: string } | undefined; log?: { note: string; words: string } | undefined; soon: { words: string } | null; realSpan: { start: string; finish: string } | null }) {
   const a = bar.item.activity
   const n = ganttNeighbors(all, bar.id)
   const note = barNote(bar, log)
@@ -1003,6 +1020,7 @@ function GanttHoverCard({ bar, all, at, building, today, lost, said, log, soon }
       {said && row('Their word', said.words, 'var(--text-amber-800)')}
       {log && row('Log', log.words, 'var(--text-amber-800)')}
       {soon && row('Could start', soon.words, 'var(--text-green-800)')}
+      {realSpan && row('Real', `${shortDate(realSpan.start)} to ${shortDate(realSpan.finish)}`)}
       {note && !bar.coTail && note.words !== log?.note && row('Note', note.words, note.color)}
       {n.waitsOn.length > 0 && row('Waits on', n.waitsOn.join(', '))}
       {n.holdsUp.length > 0 && row('Holds up', n.holdsUp.join(', '))}
