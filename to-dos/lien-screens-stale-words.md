@@ -4,14 +4,14 @@ number: 87
 group: ready
 status: found 2026-10-05 by the lien-guide freshness pass (read against main's code, no live look) · not started
 summary: >
-  Five places on the lien screens where the app's own words promise something the app does not do,
+  Seven places on the lien screens where the app's own words promise something the app does not do,
   or name a rule it no longer follows. The help guides were patched to say what the app does today;
-  these are the app's side, kept here so they are not lost. E and F are wording; G, H and I need the
-  owner's call.
-next: E and F as one small PR (a focus and a sentence); G, H and I once the owner says which way.
+  these are the app's side, kept here so they are not lost. E, F and J are wording; G, H, I and K
+  need the owner's call.
+next: E, F and J as one small PR (a focus and two sentences); G, H, I and K once the owner says which way.
 size: XS each
-blocker: None for E and F. G, H and I wait on the owner.
-opinion: build E and F — each is one line; G, H and I are your call.
+blocker: None for E, F and J. G, H, I and K wait on the owner.
+opinion: build E, F and J — each is one line; G, H, I and K are your call.
 mockup: not required — words and one focus on screens that exist
 ---
 
@@ -19,9 +19,9 @@ mockup: not required — words and one focus on screens that exist
 
 ## Where this came from
 
-On 2026-10-05 the owner's coordinating session asked for every lien help guide to be read against main's code. Six read-only readers checked about 700 claims. Most findings were guide sentences gone stale, and those were patched in the guides. These four went the other way: the guide matched what the screen says, and the screen is the one that is wrong. The coordinating session asked that they be written here.
+On 2026-10-05 the owner's coordinating session asked for every lien help guide to be read against main's code. Six read-only readers checked about 700 claims. Most findings were guide sentences gone stale, and those were patched in the guides. Items E to H went the other way: the guide matched what the screen says, and the screen is the one that is wrong. J and K came from the second read of the guide pass's fourth PR (v2.4623). The coordinating session asked that they be written here.
 
-Four more of that kind (a fee the firm adds cannot be acknowledged, the courtesy PDF, *Cancel request* unlocking a release, *Issue unconditional* reselecting one bill) are with the owner as decisions. They are listed in the guide PRs as held sentences, not here. A fifth, I below, is here because its fix is in the app's code.
+Four more of that kind (a fee the firm adds cannot be acknowledged, the courtesy PDF, *Cancel request* unlocking a release, *Issue unconditional* reselecting one bill) are with the owner as decisions. They are listed in the guide PRs as held sentences, not here. Item I below is here as well, because its fix is in the app's code.
 
 This card was first numbered #85. The legal-portal train had already named its card #85 in its PRs, so this one moved to #87.
 
@@ -62,3 +62,19 @@ This card was first numbered #85. The legal-portal train had already named its c
 - `mark_invoice_paid` (`supabase/migrations/20260927230000_controller_money_functions.sql:1954-1958`) flips a bill paid in full to `paid`.
 - The guide *send a GC our lien waiver* says the window opens on that bill and still opens the unconditional (its steps under *A bill already sent*, and the check paragraph). Those lines are held as written until this is decided.
 - The owner's call: let the window take a paid bill for the unconditional, or change the door and the guide.
+
+**J. The billed date's hover says every clock starts there.** On a Billed or Collections row, the *Billed* line's hover in the dates under the money bar reads *The bill went out … — the day every clock below starts from*. The pay estimate counts from the bill date, but the lien row below it counts from the job's last work month.
+
+- `src/lib/jobs/billedDatesLedger.ts:107` is the hover.
+- `src/lib/jobs/lienPayRunway.ts:266` dates the lien row from the last work month (`lienByForJob(lastWork, …)`).
+- The guide *read the Pipeline's money view* says the pay estimate counts from the bill date since v2.4623 (#4616).
+- Fix: say the pay estimate starts there, not every clock.
+
+**K. With the property kind unset, the runway and the Lien window give different dates.** When a property's kind is not set, the Billed row's lien runway shows the residential date, a month earlier, as an assumption. The job's Lien window shows the commercial dates and says *Commercial dates shown — a residential property is a month earlier.*
+
+- `src/lib/jobs/lienPayRunway.ts:173-179` (`lienByForJob`) uses the residential date when the kind is blank.
+- `src/lib/jobs/lienDeadlines.ts:41-47` dates a blank kind as commercial, for the notice (`:41-43`) and the lien (`:45-47`). The window's warning is defined at `src/lib/jobs/lienTimeline.ts:687` and printed by `LienTimelineStrip.tsx:260` and, on a phone, through `lienTimeline.ts:710`.
+- It is wider than two screens. The Lien desk's Calendar also uses the residential date (`lienCalendar.ts:250-257, 490-497`). The desk's Timeline tab, its gates, the GC on-notice window, the timeline book and the Forecast panel show commercial dates (`LienDeskTimelineTab.tsx:127`, `lienDeskGates.ts:77, 132`, `GcOnNoticeModal.tsx:891`, `lienTimelineBook.ts:227`, `ForecastWorkMonthsPanel.tsx:179`).
+- The guides describe each side. *read the Pipeline's money view* (L30-32) has the runway's residential date. *send lien notices from the Lien desk* (L91) and *see when a customer will pay* (L85) have the commercial dates. *read the Texas lien rules the app follows* (L81) states the commercial dates as the whole app's rule, which the runway and the Calendar break.
+- The owner's call: one rule everywhere. The earlier date is the safe one for a deadline, or every screen could show commercial dates with the warning.
+
