@@ -6,6 +6,7 @@ import { formatCurrency, formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { fileSentCopy, printAndFile } from '../../lib/sent/sentCopiesIo'
 import { saveBlobAs } from '../../lib/storageSave'
 import { ownerPacketPdfBlob, ownerPacketPdfFilename } from '../../lib/jobs/ownerRecordsPdf'
+import { mintCustomerPortalLink } from '../../lib/portal/mintCustomerPortalLink'
 import type { SentFiling, SentHow } from '../../lib/sent/sentCopies'
 import {
   EMPTY_OWNER_RECORDS,
@@ -112,7 +113,10 @@ export default function LienOwnerRecordsModal({
   const [loadError, setLoadError] = useState('')
   const [busy, setBusy] = useState(false)
   // The two small forms: the request (step 1) and the signed acknowledgment (step 4).
-  const [editing, setEditing] = useState<'request' | 'acknowledgment' | null>(null)
+  const [editing, setEditing] = useState<'request' | 'acknowledgment' | 'offer' | null>(null)
+  /** Offer it on their portal (punch list #86): a second name allowed to sign, typed before the link is made. */
+  const [alsoAllowed, setAlsoAllowed] = useState('')
+  const [offerBusy, setOfferBusy] = useState(false)
   const [reqOn, setReqOn] = useState(todayYmd)
   const [reqHow, setReqHow] = useState<OwnerRecordsHow>('email')
   const [reqFrom, setReqFrom] = useState('')
@@ -249,6 +253,38 @@ export default function LienOwnerRecordsModal({
     setReqLink(file.request?.link ?? '')
     setEditing('request')
   }
+  /** Offer it on their portal (punch list #86, PR 1): the owner's portal link, the offer on file, the link on the clipboard. */
+  async function offerOnPortal() {
+    if (!seed?.customerId || !picked || offerBusy) return
+    setOfferBusy(true)
+    try {
+      const token = await mintCustomerPortalLink(seed.customerId, 'all', false)
+      if (!token) throw new Error('No portal link came back.')
+      const id = await save({ ...file, offer: { at: new Date().toISOString(), by: authName.trim(), alsoAllowed: alsoAllowed.trim() } }, 'Offered on their portal. The link is on your clipboard.')
+      if (!id) return
+      const url = `${window.location.origin}/portal?t=${encodeURIComponent(token)}`
+      try {
+        await navigator.clipboard.writeText(url)
+      } catch {
+        showToast(`Copy this link for the owner: ${url}`, 'info', 12000)
+      }
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not offer it on their portal.'), 'error')
+    } finally {
+      setOfferBusy(false)
+    }
+  }
+  async function copyPortalLink() {
+    if (!seed?.customerId) return
+    try {
+      const token = await mintCustomerPortalLink(seed.customerId, 'all', false)
+      const url = `${window.location.origin}/portal?t=${encodeURIComponent(token ?? '')}`
+      await navigator.clipboard.writeText(url)
+      showToast('The portal link is on your clipboard.', 'success')
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not copy the link.'), 'error')
+    }
+  }
   const startAck = () => {
     setAckOn(file.acknowledgment?.signedOn ?? todayYmd)
     setAckLink(file.acknowledgment?.link ?? '')
@@ -283,10 +319,39 @@ export default function LienOwnerRecordsModal({
           </div>
         )
       }
+      if (editing === 'offer') {
+        return (
+          <div style={{ display: 'grid', gap: 6, marginTop: 6 }}>
+            <input value={alsoAllowed} onChange={(ev) => setAlsoAllowed(ev.target.value)} placeholder="Also allowed to sign (a spouse, a manager) — optional" aria-label="A second name allowed to sign" style={input} />
+            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>On their portal they type their name, which must match {picked?.owner ? <b>{picked.owner}</b> : 'the owner of record'} letter for letter, or this second name. Then they sign.</div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button type="button" disabled={offerBusy} onClick={() => void offerOnPortal()} style={btn('primary', offerBusy)}>
+                {offerBusy ? 'Making the link…' : 'Offer it and copy the link'}
+              </button>
+              <button type="button" onClick={() => setEditing(null)} style={btn('plain')}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        )
+      }
       return available && !file.sent ? (
-        <button type="button" onClick={startRequest} style={{ ...linkBtn, marginTop: 4 }}>
-          {file.request ? 'Change' : 'Put it on file ›'}
-        </button>
+        <div style={{ display: 'flex', gap: '0.4rem 1rem', flexWrap: 'wrap', marginTop: 4 }}>
+          <button type="button" onClick={startRequest} style={linkBtn}>
+            {file.request ? 'Change' : 'Put it on file ›'}
+          </button>
+          {!file.request && seed?.customerId ? (
+            file.offer ? (
+              <button type="button" onClick={() => void copyPortalLink()} style={linkBtn} data-testid="owner-records-copy-link">
+                Copy the portal link ›
+              </button>
+            ) : (
+              <button type="button" onClick={() => { setAlsoAllowed(file.offer?.alsoAllowed ?? ''); setEditing('offer') }} style={linkBtn} data-testid="owner-records-offer">
+                Offer it on their portal ›
+              </button>
+            )
+          ) : null}
+        </div>
       ) : null
     }
     if (s.key === 'contract') {
@@ -316,6 +381,8 @@ export default function LienOwnerRecordsModal({
           </div>
         )
       }
+      // Signed on the portal: the name, the mode and the ink are the record; nothing to change by hand.
+      if (file.acknowledgment?.printedName) return null
       return available && !file.sent ? (
         <button type="button" onClick={startAck} style={{ ...linkBtn, marginTop: 4 }}>
           {file.acknowledgment ? 'Change' : 'They signed it ›'}
