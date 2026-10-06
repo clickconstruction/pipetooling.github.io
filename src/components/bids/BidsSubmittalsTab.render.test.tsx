@@ -10,11 +10,14 @@ import { SUBMITTAL_STAGE_ABOUT } from '../../lib/submittals/submittalTour'
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 
-import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { installDomShims, renderWithProviders } from '../../test/renderSmokeMocks'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import { BidsSubmittalsTab } from './BidsSubmittalsTab'
 
 type Rec = { table: string; op: string; payload: unknown; filters: Array<[string, unknown]> }
+
+// v2.4690 · the parts fold reads the viewport width.
+installDomShims()
 const state: { /** 2026-10-02 · what the procurement log holds, for the left-out guard */ procRecords?: Record<string, unknown>[]; revisions: Record<string, unknown>[]; items: Record<string, unknown>[]; /** 2026-10-01 · the rows' parts */ parts: Record<string, unknown>[]; tasks: Record<string, unknown>[]; writes: Rec[]; storage: string[]; packageCalls: Array<{ files: number; sheets: string[] }>; noSources: boolean; takeoff: boolean; /** the bid has no review room yet: the room and people reads answer null, as PostgREST does */ noRoom: boolean; seat: { unrevoked_seats: number; last_used_at: string | null } | null } = { revisions: [], items: [], parts: [], tasks: [], writes: [], storage: [], packageCalls: [], noSources: false, takeoff: false, noRoom: false, seat: { unrevoked_seats: 1, last_used_at: new Date().toISOString() } }
 
 vi.mock('../../lib/jobs/testReportSettings', () => {

@@ -11,6 +11,10 @@ import { SubmittalRowsTable, type SubmittalRowsTableProps } from './SubmittalRow
 import type { SubmittalPartRow } from '../../lib/submittals/itemParts'
 import type { SubmittalItemRow } from '../../lib/submittals/submittalRevision'
 
+import { installDomShims } from '../../test/renderSmokeMocks'
+
+// v2.4690 · the parts fold reads the viewport width.
+installDomShims()
 const row = (o: Partial<SubmittalItemRow> & { id: string; tag: string }): SubmittalItemRow => ({
   submittal_id: 's1', source_count_row_id: null, sequence_order: 1, specified_manufacturer: null, specified_model: null, specified_description: null,
   submitted_manufacturer: null, submitted_model: null, submitted_label: null, supply_house_id: null, source_quote_line_id: null, status: 'proposed',
@@ -68,6 +72,30 @@ describe('SubmittalRowsTable', () => {
     expect(within(rows[2]!).getByTestId('their-call').closest('td')).toBe(within(rows[2]!).getByTestId('their-answer-row').closest('td'))
     // The order-only fixture sits under them, in its own group.
     expect(screen.getByTestId('submittal-rows').textContent).toContain('STOPS')
+  })
+
+  it('v2.4690 · on a phone a fixture’s parts fold under its first one, and a tap opens the rest; on a wide screen every part shows', () => {
+    const wide = window.matchMedia
+    window.matchMedia = ((query: string) => ({ matches: true, media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false })) as typeof window.matchMedia
+    // DWH-1 with three unanswered parts folds; LAV-1, LAV-2 holds a part's own answer, so it stays open.
+    const dwhParts = [part('tank', 'dwh', 'RHEEM PROPH40 WATER HEATER', 1), part('pan', 'dwh', 'HOLDRITE 30-ARP DRAIN PAN', 2), part('exp', 'dwh', 'AMTROL ST-5 EXPANSION TANK', 3)]
+    const withParts = { parts: [...dwhParts, ...lavParts], partsOf: new Map([['dwh', dwhParts], ['lav', lavParts]]) }
+    try {
+      mount(withParts)
+      const folds = screen.getAllByTestId('row-parts-fold')
+      expect(folds).toHaveLength(1)
+      expect(folds[0]!.textContent).toBe('and 2 more parts')
+      expect(screen.getAllByTestId('row-part')).toHaveLength(1 + 2)
+      fireEvent.click(folds[0]!)
+      expect(screen.getAllByTestId('row-part')).toHaveLength(3 + 2)
+      expect(screen.getByTestId('row-parts-fold').textContent).toBe('Fewer parts')
+    } finally {
+      window.matchMedia = wide
+    }
+    cleanup()
+    mount(withParts)
+    expect(screen.queryByTestId('row-parts-fold')).toBeNull()
+    expect(screen.getAllByTestId('row-part')).toHaveLength(5)
   })
 
   it('each button reports its row; Part of… and × wait behind the row’s ⋯; nothing is written here', () => {
@@ -238,10 +266,10 @@ describe('SubmittalRowsTable', () => {
     const a = row({ id: 'a', tag: 'FCO', submitted_label: 'ZURN ZN1400-2NL', supply_house_id: 'nws' })
     const b = row({ id: 'b', tag: 'FD', sequence_order: 2, submitted_label: 'JRSMITH 2005', supply_house_id: 'nws' })
 
-    it('Proposed and the one house, over the table; the rows do not repeat the house', () => {
+    it('Proposed over the table; the rows do not repeat the one house, and neither does the line (the log says it, v2.4690)', () => {
       const on = { onTypeSchedule: vi.fn() }
       mount({ items: [a, b], gcItems: [a, b], orderOnlyItems: [], parts: [], partsOf: new Map(), houseNameById: houses, decisions: { decided: 0 }, ...on })
-      expect(screen.getByTestId('rows-said-once').textContent).toBe('Every row is Proposed because this bid has no schedule to check against. Type the schedule to change that. Every part comes from National Wholesale.')
+      expect(screen.getByTestId('rows-said-once').textContent).toBe('Every row is Proposed because this bid has no schedule to check against. Type the schedule to change that. ')
       expect(screen.queryByTestId('row-house')).toBeNull()
       fireEvent.click(screen.getByRole('button', { name: 'Type the schedule' }))
       expect(on.onTypeSchedule).toHaveBeenCalledTimes(1)
