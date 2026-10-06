@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { lienWindowHref, parseStagesDeepLinks, stripStagesDeepLink, STAGES_DEEP_LINK_PARAMS } from './stagesDeepLinks'
+import { lienWindowHref, ownerRecordsHref, parseStagesDeepLinks, stripStagesDeepLink, STAGES_DEEP_LINK_PARAMS } from './stagesDeepLinks'
 
 const sp = (q: string) => new URLSearchParams(q)
 
@@ -11,6 +11,7 @@ describe('parseStagesDeepLinks', () => {
       gcNoticeGcId: null,
       lienDesk: null,
       lienWindow: null,
+      ownerRecordsJobId: null,
       round: null,
       chase: false,
       forecast: false,
@@ -77,5 +78,14 @@ describe('stripStagesDeepLink', () => {
     expect(href).toBe('/jobs?tab=stages&lienwindow=j%20273&lientab=notice')
     expect(parseStagesDeepLinks(sp(href.split('?')[1]!)).lienWindow).toEqual({ jobId: 'j 273', tab: 'notice' })
     expect(stripStagesDeepLink(sp('tab=stages&lienwindow=j273&lientab=notice&scope=all'), 'lienWindow')).toBe('tab=stages&scope=all')
+  })
+
+  it('the Records for an owner door (punch list #86): a job; an empty one is no door; the href builds what the parser reads', () => {
+    expect(parseStagesDeepLinks(sp('tab=stages&ownerrecords=j273')).ownerRecordsJobId).toBe('j273')
+    expect(parseStagesDeepLinks(sp('tab=stages&ownerrecords=')).ownerRecordsJobId).toBeNull()
+    const href = ownerRecordsHref('j 273')
+    expect(href).toBe('/jobs?tab=stages&ownerrecords=j%20273')
+    expect(parseStagesDeepLinks(sp(href.split('?')[1]!)).ownerRecordsJobId).toBe('j 273')
+    expect(stripStagesDeepLink(sp('tab=stages&ownerrecords=j273&scope=all'), 'ownerRecords')).toBe('tab=stages&scope=all')
   })
 })

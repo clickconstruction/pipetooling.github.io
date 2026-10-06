@@ -276,3 +276,34 @@ describe('LienOwnerRecordsModal', () => {
     expect(behind).not.toHaveBeenCalled()
   })
 })
+
+describe('the Dashboard’s door (punch list #86)', () => {
+  const folded: OwnerRecordsPropertyRow[] = [{ ...properties[0]!, jobIds: ['j273', 'j881'] }, properties[1]!]
+
+  it('opens straight on the property holding the job, a job folded into the row included', async () => {
+    io.jobs = jobs
+    io.file = EMPTY_OWNER_RECORDS
+    mount({ properties: folded, initialJobId: 'j881' })
+    await settle()
+    await screen.findByTestId('owner-records-total')
+    expect(screen.queryByTestId('owner-records-picker')).toBeNull()
+    expect(screen.getByText('Khan Umar & Bangash Shazmeena · 9703 Lenox Hl, San Antonio, TX · GC RMC- Dudley Mason')).toBeTruthy()
+  })
+
+  it('lands once: Another owner goes back to the list and stays there', async () => {
+    io.jobs = jobs
+    io.file = EMPTY_OWNER_RECORDS
+    mount({ properties: folded, initialJobId: 'j273' })
+    await settle()
+    await screen.findByTestId('owner-records-total')
+    fireEvent.click(screen.getByRole('button', { name: '‹ Another owner' }))
+    await settle()
+    expect(screen.getByTestId('owner-records-picker')).toBeTruthy()
+  })
+
+  it('a job no row holds leaves the picker, as the desk’s own button opens it', async () => {
+    mount({ properties: folded, initialJobId: 'j-elsewhere' })
+    await settle()
+    expect(screen.getByTestId('owner-records-picker')).toBeTruthy()
+  })
+})

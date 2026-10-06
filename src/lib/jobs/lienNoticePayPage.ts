@@ -79,7 +79,7 @@ export type PayPageInput = {
   contactPerson: string
   phone: string
   extras: FilingDocExtras
-  /** The pay offer (v2.4700): the leader's discount on each payable bill paid in full by a day; null or absent = no offer. */
+  /** The pay offer (v2.4708): the leader's discount on each payable bill paid in full by a day; null or absent = no offer. */
   offer?: LienPayOffer | null
 }
 
@@ -87,7 +87,7 @@ export type PayPageInput = {
  * The page as the packet renders it — empty when the copy does not carry it, or when no bill has
  * a payment page (a page of codes with no code on it is not a page; the enclosed invoices say
  * what is owed). A paper bill beside a Stripe bill keeps its row, with a note instead of a code.
- * With an offer (v2.4700) the boxed sentence sits under the title, every payable row carries
+ * With an offer (v2.4708) the boxed sentence sits under the title, every payable row carries
  * the lower amount beside the full one, the rule line says whoever pays gets it, and the
  * closing line sums the lower amounts. The notice form itself never changes.
  */

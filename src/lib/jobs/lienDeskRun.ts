@@ -69,7 +69,7 @@ export type RunNotice = {
   recipients: RunRecipient[]
   /** The owner came from the appraisal roll (the nightly save, v2.3450) and no person has confirmed it — the run refuses until someone does. */
   ownerUnconfirmed: boolean
-  /** The pay offer (v2.4700): the leader's discount on each enclosed bill paid in full by a day, carried from the desk item to the pay page; absent or null = none. */
+  /** The pay offer (v2.4708): the leader's discount on each enclosed bill paid in full by a day, carried from the desk item to the pay page; absent or null = none. */
   offer?: LienPayOffer | null
 }
 

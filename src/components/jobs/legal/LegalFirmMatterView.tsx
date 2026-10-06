@@ -3,7 +3,7 @@ import { COPPER, FAINT, HAIR, INK, MUTED, NOTE_BAND, PAPER_GREEN, PAPER_RED } fr
 import { formatLegalMoney, legalSessionWords, type LegalPacket } from '../../../lib/legal/legalPacket'
 import { envelopeAnswersWords, envelopeKindWords, envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords, legalLastWorkWords, type LegalEnvelope } from '../../../lib/legal/legalLienPaper'
 import { calendarYmdInAppTzFromIso } from '../../../utils/dateUtils'
-import { firmAgreementWords, firmEntryKindWords, firmEntryStatusWords, firmNotNeededWords, firmExhibitTitle, firmFeeKindWords, firmHistoryKindWords, firmJobRecord, firmSaidKindWords, firmSaidRecordedBy } from '../../../lib/legal/legalFirmWords'
+import { firmAgreementWords, firmEntryKindWords, firmEntryStatusWords, firmNotNeededWords, firmExhibitTitle, firmExhibitWhere, firmFeeKindWords, firmHistoryKindWords, firmJobRecord, firmSaidKindWords, firmSaidRecordedBy } from '../../../lib/legal/legalFirmWords'
 import { contingencyEntries, firmDemand, firmFeeRows, legalRunningLedger } from '../../../lib/legal/legalMoney'
 import { conversationRows, conversationStateWords, conversationWho, entryRecordedByWords, isConversationEntry } from '../../../lib/legal/legalAsks'
 import { propertyKindCell, propertySourceNote } from '../../../lib/legal/legalProperty'
@@ -180,7 +180,7 @@ export function FirmMatterTab({ tab, packet, matter, companyName, acts, onUndo }
     return (
       <div>
         <PortalTable head={['Job', 'Field reports', 'Clock sessions', 'Hours', 'Worked', 'Job notes']} numCols={[3]} rows={packet.evidence.map((e) => [<b key="l">{e.jobLabel}</b>, `${e.reports} (${e.reportsWithGps} with GPS)`, legalSessionWords(e), `${e.hours}h`, e.firstWorkYmd ? `${e.firstWorkYmd} → ${e.lastWorkYmd}` : '—', String(e.threadNotes)])} empty="No jobs." />
-        <p style={{ fontSize: 12, color: MUTED, marginTop: 8 }}><b style={{ color: INK }}>Only approved clock sessions count</b>: hours, days worked and the lien dates read them. Rejected and revoked sessions are left out; sessions not yet approved show as awaiting approval. Individual reports and sessions come with the printed packet; ask the office for the originals.</p>
+        <p style={{ fontSize: 12, color: MUTED, marginTop: 8 }}><b style={{ color: INK }}>Only approved clock sessions count</b>: hours, days worked and the lien dates read them. Rejected and revoked sessions are left out; sessions not yet approved show as awaiting approval. The printed packet counts the reports and sessions. Ask the office for the reports themselves.</p>
       </div>
     )
   }
@@ -273,7 +273,7 @@ export function FirmMatterView({ packet, matter, companyName, tab, onTab, acts, 
                   <td style={{ padding: '6px 4px', borderBottom: `1px dotted ${HAIR}`, color: COPPER, fontWeight: 700, width: 26 }}>{x.letter}</td>
                   <td style={{ padding: '6px 4px', borderBottom: `1px dotted ${HAIR}` }}>{firmExhibitTitle(x.title)} <span style={{ color: FAINT }}>· {x.count} item{x.count === 1 ? '' : 's'}</span></td>
                   <td style={{ padding: '6px 4px', borderBottom: `1px dotted ${HAIR}`, textAlign: 'right', fontSize: 12, color: FAINT }}>
-                    {x.title === 'Signed agreements' && matter.contracts.some((c) => c.signedPdfUrl) ? matter.contracts.filter((c) => c.signedPdfUrl).map((c) => <a key={c.id} href={c.signedPdfUrl as string} target="_blank" rel="noreferrer" style={{ color: COPPER, marginLeft: 8 }}>PDF ↗</a>) : 'in the printed packet'}
+                    {x.title === 'Signed agreements' && matter.contracts.some((c) => c.signedPdfUrl) ? matter.contracts.filter((c) => c.signedPdfUrl).map((c) => <a key={c.id} href={c.signedPdfUrl as string} target="_blank" rel="noreferrer" style={{ color: COPPER, marginLeft: 8 }}>PDF ↗</a>) : firmExhibitWhere(x.title, { agreementPdfs: false, paperCopies: packet.paper.envelopes.some((e) => Boolean(e.documentUrl)) })}
                   </td>
                 </tr>
               ))}

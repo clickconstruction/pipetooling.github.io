@@ -99,6 +99,8 @@ describe('buildBilledDatesLedger (v2.4205 — rows and one bold line, one deadli
     expect(runway.state).toBe('no_pay')
     const l = buildBilledDatesLedger({ todayYmd: '2026-10-05', row, data, promise: null, runway, inCollections: false })
     expect(l.rows.map(line)).toEqual(['Billed Sep 23 12d ago', 'Expected Oct 4 1d past', 'Lien by Nov 16 42d'])
+    // #87 J: the pay estimate counts from the bill date; the lien row counts from the last work month, so the hover names only the first.
+    expect(l.rows[0]?.title).toBe('The bill went out Sep 23 — the day the pay estimate below counts from')
     expect(l.rows[2]).toMatchObject({ label: 'Lien', tone: 'plain', bold: false, dot: 'ring' })
     expect(l.verdict).toMatchObject({ label: 'Ask for a date', value: '1d past', tone: 'amber', action: 'they-said' })
     const c = buildBilledDatesLedger({ todayYmd: '2026-10-05', row, data, promise: null, runway, inCollections: true })

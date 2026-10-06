@@ -3,7 +3,7 @@ import { withSupabaseRetry } from '../../utils/errorHandling'
 import { lienOfferPatch, type LienPayOffer } from './lienPayOffer'
 
 /**
- * The pay offer's one write on the desk (v2.4700): the leader's choice on the notice being
+ * The pay offer's one write on the desk (v2.4708): the leader's choice on the notice being
  * approved. The guard trigger refuses anyone but a master or dev and stamps who and when;
  * clearing the offer clears the stamp. The money side (the Stripe credit on each bill) is the
  * `lien-pay-offer` function's, called when the run is recorded.

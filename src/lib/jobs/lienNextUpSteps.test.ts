@@ -43,7 +43,7 @@ describe('countLienSteps + lienLaddersShown', () => {
 })
 
 describe('lienStepCard', () => {
-  it('an approved notice with a pay offer (v2.4700) says so on the Approve rung', () => {
+  it('an approved notice with a pay offer (v2.4708) says so on the Approve rung', () => {
     const c = lienStepCard(row({ action: 'send', sub: 'Approved · ready to send', button: 'Send' }), { approvedOn: '2026-10-30T14:00:00Z', offer: { pct: 10, by: '2026-11-15' } })
     expect(c.items[2]!.detail).toBe('Approved Oct 30 with a 10% offer, by Nov 15.')
   })
