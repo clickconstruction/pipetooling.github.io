@@ -70,7 +70,7 @@ The paragraph names each house and what it is owed. It says the house's notice i
 
 ## Send the whole list
 
-Press {{button:outline|Share}} at the end of the desk's title line. Open **What to send** and pick **Jobs where a supply house is also owed**. The message lists up to twelve such jobs and sums the rest. The email lists them all. Each line says what is owed to us and what is owed to the houses. It names the house whose notice comes first.
+Press {{button:outline|Share}} at the end of the desk's title line. Open **Which liens** and pick **Jobs where a supply house is also owed**. The message lists up to twelve such jobs and sums the rest. The email lists them all. Each line says what is owed to us and what is owed to the houses. It names the house whose notice comes first.
 
 Send it as a text or email it to a teammate. The steps are in [share where our liens stand](/help/share-where-our-liens-stand).
 

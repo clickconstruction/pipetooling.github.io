@@ -152,7 +152,7 @@ export function lienShareHouseJobs(input: {
   return out
 }
 
-/** The What to send menu: the whole desk first, the jobs that also owe a supply house when there are any, then every GC with a notice to send, most money first. */
+/** The Which liens menu (What to send until v2.4722): the whole desk first, the jobs that also owe a supply house when there are any, then every GC with a notice to send, most money first. */
 export function lienShareScopeOptions(data: LienDeskData | null, houses: ReadonlyArray<LienStatusHouseJob> = []): LienShareScopeOption[] {
   if (!data) return [optionFor('all', 'Everything on the desk', [])]
   const byGc = new Map<string, LienStatusJob[]>()
@@ -249,7 +249,7 @@ export function buildLienStatusPayload(input: {
   }
 }
 
-/** "23 jobs · $173,597": what a What to send choice holds. The houses choice says whose money it is. */
+/** "23 jobs · $173,597": what a Which liens choice holds. The houses choice says whose money it is. */
 export function lienShareScopeFacts(o: Pick<LienShareScopeOption, 'jobs' | 'owed' | 'toHouses'>): string {
   return `${o.jobs} ${o.jobs === 1 ? 'job' : 'jobs'} · ${formatUsdNoCents(o.owed)}${o.toHouses ? ' to houses' : ''}`
 }
