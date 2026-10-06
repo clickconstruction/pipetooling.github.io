@@ -60,6 +60,9 @@ import { withNotReady } from '../../lib/gcMode/gcNotReady'
 import { GcNotReady } from './GcNotReady'
 import { useAuth } from '../../hooks/useAuth'
 import type { WaitKind } from '../../lib/gcMode/gcTypes'
+import { barCaller, callList, callListFollowPeople, callSheetId } from '../../lib/gcMode/gcCallList'
+import { GcBarCaller, GcCallList } from './GcCallList'
+import { GcFollowUpSheet } from './GcFollowUpSheet'
 
 /**
  * GC mode design spike: the schedule (Building lane, owner's shape 2026-10-02). Each activity is a
@@ -107,6 +110,10 @@ export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps)
   const [pending, setPending] = useState<PendingMove | null>(null)
   // The weekly walk (the owner, 2026-10-05): every bar that should have moved, one at a time.
   const [walking, setWalking] = useState(false)
+  // By company as a call list (the Gantt's G-115): whoever's answer moves the chart, from the chart's own holds.
+  const calls = useMemo(() => (project.stage === 'building' ? callList(state, project, holds) : null), [state, project, holds])
+  // The Follow up sheet on that list; `lineId` is an opened bar's, so its company is on it.
+  const [sheet, setSheet] = useState<{ partnerId?: string; calling?: boolean; lineId?: string } | null>(null)
   const planOf = useCallback(
     (lineId: string, start: string, finish: string) => {
       const plan = planMove(project, lineId, start, finish)
@@ -128,6 +135,13 @@ export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps)
 
   const pickedRow = m.items.find((r) => r.activity.lineId === picked) ?? null
   const pickedInspection = pickedRow?.activity.inspection
+  // The opened bar's company, with Call and Follow up (G-115), while its work is not done.
+  const caller = calls && pickedRow && pickedRow.actual < 100 ? barCaller(state, project, pickedRow.activity.lineId) : null
+  // A line on the call list opens its bar, and the editor comes into view above the chart.
+  const openBar = (lineId: string) => {
+    setPicked(lineId)
+    window.setTimeout(() => document.querySelector('[data-gc-opened-activity]')?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' }), 0)
+  }
 
   return (
     <div style={{ display: 'grid', gap: '0.9rem' }}>
@@ -146,48 +160,52 @@ export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps)
       )}
 
       {pickedRow && (
-        <ActivityEditor
-          key={pickedRow.activity.lineId}
-          project={project}
-          row={pickedRow}
-          rows={m.items}
-          started={Boolean(project.startedOn)}
-          onSave={(start, finish, after, limits) => setPending({ lineId: pickedRow.activity.lineId, start, finish, after, limits })}
-          today={state.today}
-          onActual={(actualStart, actualFinish) => dispatch({ type: 'setActualDates', projectId: project.id, lineId: pickedRow.activity.lineId, actualStart, actualFinish, by: me })}
-          ready={<GcNotReady state={state} project={project} lineId={pickedRow.activity.lineId} />}
-          extra={
-            pickedRow.activity.added ? (
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                <span style={{ color: 'var(--text-muted)' }}>{pickedRow.activity.added.who}. Nobody reports it: mark it here.</span>
-                {pickedRow.activity.added.doneOn ? (
-                  <Btn kind="plain" onClick={() => dispatch({ type: 'setAddedActivityDone', projectId: project.id, lineId: pickedRow.activity.lineId, on: null })}>
-                    Not done after all
+        <div data-gc-opened-activity>
+          <ActivityEditor
+            key={pickedRow.activity.lineId}
+            project={project}
+            row={pickedRow}
+            rows={m.items}
+            started={Boolean(project.startedOn)}
+            onSave={(start, finish, after, limits) => setPending({ lineId: pickedRow.activity.lineId, start, finish, after, limits })}
+            today={state.today}
+            onActual={(actualStart, actualFinish) => dispatch({ type: 'setActualDates', projectId: project.id, lineId: pickedRow.activity.lineId, actualStart, actualFinish, by: me })}
+            ready={<GcNotReady state={state} project={project} lineId={pickedRow.activity.lineId} />}
+            extra={
+              pickedRow.activity.added ? (
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>{pickedRow.activity.added.who}. Nobody reports it: mark it here.</span>
+                  {pickedRow.activity.added.doneOn ? (
+                    <Btn kind="plain" onClick={() => dispatch({ type: 'setAddedActivityDone', projectId: project.id, lineId: pickedRow.activity.lineId, on: null })}>
+                      Not done after all
+                    </Btn>
+                  ) : (
+                    <Btn kind="primary" onClick={() => dispatch({ type: 'setAddedActivityDone', projectId: project.id, lineId: pickedRow.activity.lineId, on: state.today })}>
+                      Mark it done today
+                    </Btn>
+                  )}
+                  <Btn
+                    kind="quiet"
+                    onClick={() => {
+                      dispatch({ type: 'removeScheduleActivity', projectId: project.id, lineId: pickedRow.activity.lineId })
+                      setPicked(null)
+                    }}
+                  >
+                    Take it off the schedule
                   </Btn>
-                ) : (
-                  <Btn kind="primary" onClick={() => dispatch({ type: 'setAddedActivityDone', projectId: project.id, lineId: pickedRow.activity.lineId, on: state.today })}>
-                    Mark it done today
-                  </Btn>
-                )}
-                <Btn
-                  kind="quiet"
-                  onClick={() => {
-                    dispatch({ type: 'removeScheduleActivity', projectId: project.id, lineId: pickedRow.activity.lineId })
-                    setPicked(null)
-                  }}
-                >
-                  Take it off the schedule
-                </Btn>
-              </div>
-            ) : undefined
-          }
-          check={
-            building && pickedInspection && !pickedInspection.passedOn ? (
-              <InspectionCheck project={project} activity={pickedRow.activity} today={state.today} dispatch={dispatch} hint="Our superintendent records it. A pass meets the milestone with the same name." />
-            ) : undefined
-          }
-          onClose={() => setPicked(null)}
-        />
+                </div>
+              ) : caller ? (
+                <GcBarCaller caller={caller} onFollowUp={(calling) => setSheet({ partnerId: caller.partner.id, calling, lineId: pickedRow.activity.lineId })} />
+              ) : undefined
+            }
+            check={
+              building && pickedInspection && !pickedInspection.passedOn ? (
+                <InspectionCheck project={project} activity={pickedRow.activity} today={state.today} dispatch={dispatch} hint="Our superintendent records it. A pass meets the milestone with the same name." />
+              ) : undefined
+            }
+            onClose={() => setPicked(null)}
+          />
+        </div>
       )}
 
       <Card style={{ padding: 0, overflow: 'hidden' }}>
@@ -216,11 +234,32 @@ export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps)
             const a = schedule.activities.find((x) => x.lineId === to)
             if (a) setPending({ lineId: to, start: a.start, finish: a.finish, after: a.after.filter((id) => id !== from) })
           }}
+          callList={
+            calls ? (
+              <GcCallList list={calls} onFollowUp={(person, calling) => setSheet({ partnerId: callSheetId(person), calling })} onWorkList={() => setSheet({})} onReason={openBar} />
+            ) : undefined
+          }
         />
       </Card>
 
       {/* What this week's daily log says against the chart (G-60): a trade on site with no bar, a bar with nobody on site. */}
       {building && <GcLogVsChart project={project} gaps={logGaps} dispatch={dispatch} onOpen={openFromCard} />}
+
+      {sheet && (
+        // The call list's people (G-115) on the Follow up sheet, with this job's reasons and the schedule's.
+        <GcFollowUpSheet
+          state={state}
+          dispatch={dispatch}
+          {...(sheet.partnerId ? { startPartnerId: sheet.partnerId } : {})}
+          startCalling={sheet.calling ?? false}
+          onClose={() => setSheet(null)}
+          list={(s) => {
+            const job = s.projects.find((x) => x.id === project.id)
+            return job ? callListFollowPeople(s, job, holds, sheet.lineId) : []
+          }}
+          title={project.name}
+        />
+      )}
 
       {walking && <GcScheduleWalk state={state} project={project} holds={holds} dispatch={dispatch} onClose={() => setWalking(false)} />}
 

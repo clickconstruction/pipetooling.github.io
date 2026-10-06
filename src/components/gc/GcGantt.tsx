@@ -138,6 +138,7 @@ export function GcGantt({
   lost,
   lateSaid,
   logNotes,
+  callList,
 }: {
   items: ScheduleItem[]
   float: Map<string, number>
@@ -167,6 +168,8 @@ export function GcGantt({
   lateSaid?: Map<string, { finish: string; words: string }>
   /** What this week's daily log says against a bar (G-60): a note beside it and a line on its hover card. */
   logNotes?: Map<string, { note: string; words: string }>
+  /** By company as a call list (G-115): drawn under the toolbar while the chart is grouped by company. */
+  callList?: ReactNode
 }) {
   const [zoom, setZoom] = useState<GanttZoom>('weeks')
   const [by, setBy] = useState<GanttGroupBy>('trade')
@@ -570,6 +573,8 @@ export function GcGantt({
           )}
         </div>
       </div>
+
+      {by === 'company' && callList}
 
       {view === 'list' && <GcGanttList groups={ganttListGroups(shown, today)} today={today} building={building} picked={picked} onPick={onPick} />}
 
