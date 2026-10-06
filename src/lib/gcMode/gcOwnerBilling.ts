@@ -247,7 +247,10 @@ export function ownerPayApp(state: GcState, project: GcProject): OwnerPayApp {
     follows('gc', 'General conditions', 'generalConditions', signed.gc ?? 0),
     follows('contingency', `Contingency ${project.contingencyPct}%`, 'contingency', signed.contingency ?? 0),
     follows('fee', `Fee ${project.feePct}%`, 'fee', signed.fee ?? 0),
-    ...signedChangeOrders(project).map((co) => changeOrderLine(state, project, co)),
+    // A time extension (G-141) has no price and no work: no line.
+    ...signedChangeOrders(project)
+      .filter((co) => !co.daysOnChart)
+      .map((co) => changeOrderLine(state, project, co)),
   ].map((l) => {
     const doneBefore = last?.doneToDate[l.id] ?? 0
     const doneToDate = Math.max(l.doneToDate, doneBefore)

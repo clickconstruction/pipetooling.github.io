@@ -1565,9 +1565,17 @@ two doors.
 - **The write**: one action, `importSchedule`, in the golden list. The reducer calls
   `importedSchedule` in five steps:
   1. `scheduleDraft(project, workStarts, project.rough?.days)`, exactly the first draft.
-  2. The lines, inspections and job's own activities the file names take its dates and waits. When
-     two of theirs land on one line, the bar spans both. A wait their own dates break is left out,
-     with a sentence.
+  2. The lines, inspections and job's own activities the file names take its dates and waits. A
+     wait their own dates break is left out, with a sentence. When two of theirs or more land on one
+     of our lines, the line spans them and each becomes one of its parts (G-39's `splitParts`):
+     - named as their file names it;
+     - counted from the line's start, its share from its days;
+     - at the line's own percent, from its trade's report.
+
+     The office then reports each part as the customer's file named it. The line stays one bar when
+     one of them is shorter than a working day in their file (its Duration), or when two share a
+     name. The window says which: *Hang and tape: 2 of theirs, each a part of it.* or *Hang and
+     tape: 2 of theirs as one bar. One of them is shorter than a day.*
   3. Our lines and the first draft's inspections not in the file keep the draft's waits and days.
      Each starts the day after what it waits on finishes, or on Work starts.
   4. A final inspection the file does not name waits on everything nothing else waits on.
@@ -1618,6 +1626,100 @@ Left out:
 Not picked, one line each:
 - Their dates kept beside ours as a named plan: G-41's ground, and the owner's call.
 - Dates to meet only, onto a running job: now its own row for the owner, G-145.
+
+## Later, templates, as built (2026-10-06)
+
+G-44, Helper 5 on `spike/g44` (the mock-up and plan: `mockups/G-44.md`). `gcScheduleTemplates.ts`
+(tested, out of the barrel), `GcScheduleTemplates.tsx`, a fourth optional argument on `scheduleDraft`,
+three actions, and `templateId` on `setRough` and `draftSchedule`.
+
+- **What a template is**: a job's shape with no dates. Each line of each trade, and the first draft's
+  two inspections, keeps its days, the lines it waits on (by trade and name, with any G-35 gap) and
+  its offset: the days after the last of those that it started, or after the job's first day. The
+  stages' spans and the weeks are kept for the card. No dates, companies, percents, actual dates or
+  moves. An inspection only that job had, and G-38's added activities, stay with their job.
+- **Why waits and offsets**: Fair Oaks D took 23 weeks. Its days alone, in the first draft's stage
+  order, draw Boerne at 42. With waits and no offsets it is 19, and Fair Oaks D itself 17. With
+  offsets, Fair Oaks D redrawn from its own template lands every line and both inspections on its own
+  dates, the tests' pin.
+- **Saved** from a job being built: *Templates* on the Schedule tab, after the baseline card, *Save as
+  a template* with a name, the job's to start. Each template shows where it came from (*Saved Fri Oct
+  2 from Fair Oaks Shops, Building D, with 72% of the work done.*), its size and stage chips, the jobs
+  drawn from it, *Rename*, and *Set it aside* or *Bring it back*.
+- **Used**: *Start from a template* beside the start day on G-45's rough and on the first-draft card,
+  only where one is offered, with the fit said first: *The template Fair Oaks Shops, Building D covers
+  27 of the 31 lines here. Those run as they ran there. The other 4 take the stage days. It makes 27
+  weeks to build. Without it, 14 weeks.* Helotes reads 8 of 17, and 19 weeks against 10.
+- **One path**: `scheduleDraft(project, start, stageDays?, like?)`, G-45's stage days still the third
+  argument and the template's lines the fourth. A covered line (the same trade and name, any case)
+  takes its days, its waits this job has and its offset. Every other line is the first draft's own,
+  and the rough-in inspection still waits on every rough-in the template does not cover. With no
+  `like` the draw is exactly the first draft's, and G-45's snapshot of every fixture job's draw holds.
+- **Boerne's 27, not 23**: its fire sprinkler, which Fair Oaks D did not have, is the first draft's
+  own, the mains after the roof and the inspection after the mains. Its shell alone takes Fair Oaks
+  D's 23.
+- **A copy, recorded**: the rough keeps the lines it drew with (`rough.like`) and `rough.template`. A
+  first draft keeps `schedule.template`, and at award draws from the rough's copy as the rough did,
+  even with the template set aside. Renaming or setting a template aside never touches a job.
+- **Nothing reaches the trades or the customer**: templates live in `state.scheduleTemplates`, and the
+  customer's picture of a job drawn from one says nothing of it.
+- **Places (G-83) and parts (G-39)**, both on the spike by the end of the build: a template line keeps
+  its line's kept place, tidied as G-83 keeps one, and the draw writes it as kept on the same line of
+  the new job, not as a guess, since the office kept it once on purpose. A split line keeps its parts'
+  names, first days from the line's start, days and shares, and the new line is split the same way with
+  nothing done.
+- **Tests**: `gcScheduleTemplates.test.ts` (14) and `GcScheduleTemplates.render.test.tsx` (5). The
+  golden test lists the three actions. No fixture change, and nothing moved.
+
+Left for later: B, days from what really happened (G-55's actual dates), once they are recorded as a
+habit; C, a template's track record, once jobs close.
+## Telling the customer, ask for the days, as built (2026-10-06)
+
+G-141, Helper 3 (mock-up `mockups/G-141.md`). `gcTimeExtension.ts`, tested, out of the barrel,
+`GcAskForDays.tsx`, one field and one action.
+
+- **The press**: *Ask for the days*, under G-98's whose-days line on the Projected finish measure
+  and on Bill the customer's Finish date card, only while some late days are the customer's and
+  their moves are not all asked for. *It drafts a change order on Bill the customer for 5 days, the
+  days their moves put on the finish. Nothing goes to them until you send it.* Never in the what-if
+  copy. The paper prints G-98's lines, never the press.
+- **The days**: every day the customer's moves put on the finish, not only the ones late today (the
+  lead's call). On G-98's late job that is 5, while the whose-days line's late count stays 4. A time
+  extension covers the delay they caused, and the day in hand is ours. A move counts when it stands,
+  its reason is the customer's decision or a change to the plans, it was not made by a change order,
+  and no draft, sent or signed ask holds it. A move with the reason *change order* belongs to that
+  order.
+- **The draft**: the next change order, cost and price 0, no trade, the days, and
+  `ChangeOrder.daysOnChart`, the moves its days come from. The reducer reads the ask from the
+  state (`draftTimeExtension`), so a stale or second press drafts nothing. The description is the
+  customer's: *A time extension for the restroom tile decision we asked you for on Sep 28*, when one
+  decision the customer owes holds every moved bar (the pick). Otherwise it is G-96's words, *A time
+  extension for a decision we were waiting on from you*. The rule says itself on the order: *5 days,
+  the days your decision moved the finish.*
+- **G-98's whose-days line** says where the ask stands. Draft: *All 4 are the customer's: change
+  order 1 asks for 5, the days their moves put on the finish. It is a draft on Bill the customer.*
+  Sent, the same without the last sentence, with G-98's own *would move the contract 5 days* line.
+  Declined, the press comes back. A customer's move since adds *Their moves since then add 3 days,
+  not asked for yet.*, and the press asks for that move alone. With no ask, every line G-98 pinned
+  reads as before.
+- **Signed**: the contract's day moves 5 days, Fri Dec 11 to Wed Dec 16, and the job has a day to
+  spare. The moves leave G-98's count, the way a signed change order's own moves do. **The bars stay
+  where they are.** `changeOrdersOnChart` skips an order with `daysOnChart`, even on a trade's work,
+  so G-76 draws no tail and offers no push. The customer's schedule reads it like any signed order.
+- **On the list and in the portal**: *no change to the price*, the rule, each move with our note, *At
+  the contract's $500 a day, it saves $2,000 and leaves 1 day to spare.*, and the contract's day,
+  with no *% done* once signed. A move undone since says so. The customer's card says *no change to
+  your price*, the rule, and *Your price stays the same.* It is no line on the bill, so the pay
+  application's change order summary, built from those lines, leaves it out too.
+
+What changed from the plan: the days (5, the lead's call, where the plan asked for the late 4); the
+rule sentence on the order, the lead's; G-98 carries the ask itself (`ask`, `asked`), so the press,
+the reducer and the line read one call; the press says the days it asks for.
+
+Not done, on purpose: money with the days (the cost of the longer job is the owner's call); the
+weather's days under the contract's weather clause (another row); editing or throwing away a draft
+(no change order can be, today); marks in the move history for an asked move (the order's row lists
+them).
 
 ## Status
 

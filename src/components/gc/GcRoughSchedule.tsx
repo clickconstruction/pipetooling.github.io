@@ -9,14 +9,17 @@
 import { useState, type Dispatch } from 'react'
 import { addDays, daysBetween, mondayOf, shortDate, weekdayDate, type GcAction, type GcProject } from '../../lib/gcMode/gcModel'
 import { roughStages, roughWeeks, roughWeeksWords } from '../../lib/gcMode/gcRoughSchedule'
+import { roughTemplateWords, stagesCovered } from '../../lib/gcMode/gcScheduleTemplates'
+import type { ScheduleTemplate } from '../../lib/gcMode/gcTypes'
 import { Btn, Card, Chip, input } from './gcUi'
+import { GcTemplatePick } from './GcScheduleTemplates'
 
 /** Saturated on purpose: the chart's status colors, the same in both themes. */
 const C = { blue: '#3b82f6', violet: '#7c3aed' }
 
 const box = { ...input, height: 30, boxSizing: 'border-box', padding: '0 0.45rem' } as const
 
-export function GcRoughSchedule({ project, today, by, dispatch }: { project: GcProject; today: string; by: string; dispatch: Dispatch<GcAction> }) {
+export function GcRoughSchedule({ project, today, by, dispatch, offered = [] }: { project: GcProject; today: string; by: string; dispatch: Dispatch<GcAction>; /** The templates to start from (G-44). */ offered?: ScheduleTemplate[] }) {
   const rough = project.rough
   const locked = Boolean(rough?.kept) || project.stage !== 'pursuing' || Boolean(project.ourBidSentOn) || Boolean(project.lostOn)
   const stages = roughStages(project)
@@ -24,11 +27,17 @@ export function GcRoughSchedule({ project, today, by, dispatch }: { project: GcP
   const [start, setStart] = useState(rough?.start ?? project.startDate ?? addDays(mondayOf(today), 7))
   const [days, setDays] = useState<Record<string, number>>({})
   const daysOf = (key: string, drawn: number) => days[key] ?? drawn
+  // Start from a template (G-44): the one the rough was drawn from, until another is picked.
+  const [templateId, setTemplateId] = useState(rough?.template?.id ?? '')
+  const own = rough?.template && rough.like ? { use: rough.template, lines: rough.like } : undefined
+  const covered = rough?.like ? stagesCovered(rough.like, project) : new Set<string>()
   const draw = () => {
     // Only the lengths that differ from the usual ones are kept: the rest follow the usual.
     const usual = new Map((stages?.rows ?? []).map((r) => [r.key, r.usual]))
     const job = { ...(rough?.days ?? {}), ...days }
-    dispatch({ type: 'setRough', projectId: project.id, start, days: Object.fromEntries(Object.entries(job).filter(([k, d]) => d !== usual.get(k))), by })
+    // A template picked or changed goes with the draw; a redraw with the same one keeps it.
+    const pick = !rough ? (templateId ? { templateId } : {}) : templateId === (rough.template?.id ?? '') ? {} : { templateId: templateId || null }
+    dispatch({ type: 'setRough', projectId: project.id, start, days: Object.fromEntries(Object.entries(job).filter(([k, d]) => d !== usual.get(k))), by, ...pick })
     setDays({})
   }
   const startBox = (
@@ -52,6 +61,7 @@ export function GcRoughSchedule({ project, today, by, dispatch }: { project: GcP
           {!locked && (
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
               {startBox}
+              <GcTemplatePick project={project} start={start} offered={offered} value={templateId} onChange={setTemplateId} />
               <Btn kind="primary" disabled={!start} onClick={draw}>
                 Draw a rough schedule
               </Btn>
@@ -78,6 +88,7 @@ export function GcRoughSchedule({ project, today, by, dispatch }: { project: GcP
         </div>
         <div style={{ display: 'grid', gap: '0.15rem' }}>
           <span>{roughWeeksWords(project)}</span>
+          {roughTemplateWords(project) && <span data-rough-template>{roughTemplateWords(project)}</span>}
           {!locked && <span style={{ color: 'var(--text-muted)' }}>Change a stage&apos;s days for this job, then Redraw.</span>}
         </div>
         <div role="table" aria-label="The rough schedule, by stage" style={{ display: 'grid', gap: '0.3rem' }}>
@@ -91,7 +102,10 @@ export function GcRoughSchedule({ project, today, by, dispatch }: { project: GcP
             <div key={r.key} role="row" data-rough-stage={r.key} style={grid}>
               <span role="cell">{r.label}</span>
               <span role="cell">
-                {locked ? (
+                {covered.has(r.key) ? (
+                  // Every line of the stage runs as it ran on the template's job (G-44): no days to change.
+                  <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>from the template</span>
+                ) : locked ? (
                   <span style={{ fontVariantNumeric: 'tabular-nums' }}>{r.days}</span>
                 ) : (
                   <input
@@ -136,6 +150,7 @@ export function GcRoughSchedule({ project, today, by, dispatch }: { project: GcP
         {!locked && (
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
             {startBox}
+            <GcTemplatePick project={project} start={start} stageDays={rough.days} offered={offered} {...(own ? { own } : {})} value={templateId} onChange={setTemplateId} fit={templateId !== (rough.template?.id ?? '')} />
             <Btn kind="primary" disabled={!start} onClick={draw}>
               Redraw
             </Btn>

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, type CSSProperties, type Dispatch, type ReactNode } from 'react'
+import { Fragment, useCallback, useMemo, useState, type CSSProperties, type Dispatch, type ReactNode } from 'react'
 import {
   GC_COMPANY,
   activityName,
@@ -69,16 +69,19 @@ import { GcNotReady } from './GcNotReady'
 import { GcRoughSchedule } from './GcRoughSchedule'
 import { GcScheduleImport } from './GcScheduleImport'
 import { importRefusal } from '../../lib/gcMode/gcScheduleImport'
+import { GcTemplatePick, GcTemplatesCard } from './GcScheduleTemplates'
+import { drawnFromWords, templatesOffered } from '../../lib/gcMode/gcScheduleTemplates'
 import { firstDraftAgainstBid, roughFirstDraftWords } from '../../lib/gcMode/gcRoughSchedule'
 import { customerDoneWords, customerSchedulePicture, customerStanding } from '../../lib/gcMode/gcCustomerSchedule'
 import type { GanttPrintJob } from '../../lib/gcMode/gcGanttPrint'
 import { useAuth } from '../../hooks/useAuth'
-import type { WaitKind } from '../../lib/gcMode/gcTypes'
+import type { ScheduleTemplate, WaitKind } from '../../lib/gcMode/gcTypes'
 import { barCaller, callList, callListFollowPeople, callSheetId } from '../../lib/gcMode/gcCallList'
 import { GcBarCaller, GcCallList } from './GcCallList'
 import { GcFollowUpSheet } from './GcFollowUpSheet'
 import { lateFinish, type LateFinish } from '../../lib/gcMode/gcLateFinish'
 import { finishOutlook, type FinishOutlook } from '../../lib/gcMode/gcFinishOutlook'
+import { GcAskForDays } from './GcAskForDays'
 import { recoveryOffers, sideBySideWords, type RecoveryOffer } from '../../lib/gcMode/gcRecovery'
 import { GcDaysBack } from './GcRecovery'
 
@@ -187,13 +190,13 @@ export function GcBuildingScheduleTab({ state, project: realProject, dispatch: r
   const building = project.stage === 'building'
 
   // While we bid, the tab is the rough schedule for our bid (G-45): its own record, never the schedule.
-  if (project.stage === 'pursuing') return <GcRoughSchedule project={project} today={state.today} by={me} dispatch={dispatch} />
+  if (project.stage === 'pursuing') return <GcRoughSchedule project={project} today={state.today} by={me} dispatch={dispatch} offered={templatesOffered(state)} />
 
   if (!schedule || m.rows.length === 0) {
     return (
       <div style={{ display: 'grid', gap: '0.9rem' }}>
         <ScheduleWhy />
-        <DraftCard project={project} today={state.today} dispatch={dispatch} {...(importRefusal(realProject) ? {} : { onImport: () => setImporting(true) })} />
+        <DraftCard project={project} today={state.today} dispatch={dispatch} offered={templatesOffered(state)} {...(importRefusal(realProject) ? {} : { onImport: () => setImporting(true) })} />
         {importing && (
           <GcScheduleImport state={state} project={realProject} dispatch={realDispatch} replacing={false} by={me} defaultStart={realProject.startDate ?? realProject.rough?.start ?? addDays(mondayOf(state.today), 7)} onClose={() => setImporting(false)} />
         )}
@@ -216,7 +219,14 @@ export function GcBuildingScheduleTab({ state, project: realProject, dispatch: r
       <ScheduleWhy />
 
       {building ? (
-        <Measures m={m} late={late} {...(offers[0] ? { best: offers[0] } : {})} {...(outlook ? { outlook } : {})} />
+        <Measures
+          m={m}
+          late={late}
+          {...(offers[0] ? { best: offers[0] } : {})}
+          {...(outlook ? { outlook } : {})}
+          // Ask for the days (G-141): a change order is real, so never from the what-if copy.
+          {...(!inCopy ? { onAsk: () => realDispatch({ type: 'draftTimeExtension', projectId: realProject.id }) } : {})}
+        />
       ) : (
         <Card>
           <strong>Drawing the schedule.</strong>{' '}
@@ -226,6 +236,8 @@ export function GcBuildingScheduleTab({ state, project: realProject, dispatch: r
           </span>
           {/* The first draft against the weeks we bid (G-45). */}
           {firstDraftAgainstBid(project) && <div data-tour="gc-draft-vs-bid" style={{ marginTop: '0.35rem' }}>{firstDraftAgainstBid(project)}</div>}
+          {/* The template it was drawn from (G-44). */}
+          {schedule.template && <div data-drawn-from style={{ marginTop: '0.35rem' }}>{drawnFromWords(schedule.template)}</div>}
           {/* Their schedule in its place (G-137): before Start, while nobody has walked or moved it. */}
           {!inCopy && !importRefusal(realProject) && (
             <div style={{ marginTop: '0.4rem' }}>
@@ -413,6 +425,9 @@ export function GcBuildingScheduleTab({ state, project: realProject, dispatch: r
 
           {schedule.baseline && <BaselineCard project={project} today={state.today} by={me} dispatch={dispatch} />}
 
+          {/* Save this job's schedule as a template for the next job like it (G-44). */}
+          {building && <GcTemplatesCard state={state} project={project} by={me} dispatch={dispatch} />}
+
           {building && <ScheduleSendCard state={state} project={project} by={me} dispatch={dispatch} />}
 
           {building && <VerifyCard project={project} rows={m.rows} today={state.today} dispatch={dispatch} />}
@@ -442,9 +457,26 @@ function ScheduleWhy() {
 // ---------------------------------------------------------------------------------------------
 
 /** Nothing drawn yet: a start day and a first draft to draw from. */
-function DraftCard({ project, today, dispatch, onImport }: { project: GcProject; today: string; dispatch: Dispatch<GcAction>; /** Bring in their schedule (G-137). Unset: the job may not take one. */ onImport?: () => void }) {
+function DraftCard({
+  project,
+  today,
+  dispatch,
+  offered = [],
+  onImport,
+}: {
+  project: GcProject
+  today: string
+  dispatch: Dispatch<GcAction>
+  /** The templates to start from (G-44). */
+  offered?: ScheduleTemplate[]
+  /** Bring in their schedule (G-137). Unset: the job may not take one. */
+  onImport?: () => void
+}) {
   // The first draft starts from the rough's start day when we bid one (G-45).
   const [start, setStart] = useState(project.startDate ?? project.rough?.start ?? addDays(mondayOf(today), 7))
+  // From a template (G-44): the one the rough was drawn from, until another is picked.
+  const own = project.rough?.template && project.rough.like ? { use: project.rough.template, lines: project.rough.like } : undefined
+  const [templateId, setTemplateId] = useState(own?.use.id ?? '')
   return (
     <Card>
       <div style={{ display: 'grid', gap: '0.5rem', fontSize: '0.9rem' }}>
@@ -458,7 +490,12 @@ function DraftCard({ project, today, dispatch, onImport }: { project: GcProject;
             <span style={{ color: 'var(--text-muted)' }}>Work starts</span>
             <input type="date" value={start} onChange={(e) => setStart(e.target.value)} style={rowBox} />
           </label>
-          <Btn kind="primary" disabled={!start} onClick={() => dispatch({ type: 'draftSchedule', projectId: project.id, start, ...(project.rough ? { days: project.rough.days } : {}) })}>
+          <GcTemplatePick project={project} start={start} {...(project.rough ? { stageDays: project.rough.days } : {})} offered={offered} {...(own ? { own } : {})} value={templateId} onChange={setTemplateId} />
+          <Btn
+            kind="primary"
+            disabled={!start}
+            onClick={() => dispatch({ type: 'draftSchedule', projectId: project.id, start, ...(project.rough ? { days: project.rough.days } : {}), ...(templateId ? { templateId } : {}) })}
+          >
             Draw a first draft
           </Btn>
         </div>
@@ -1256,7 +1293,7 @@ function TradePick({ project, value, onChange }: { project: GcProject; value: st
 // The measures
 // ---------------------------------------------------------------------------------------------
 
-function Measures({ m, late, best, outlook }: { m: ReturnType<typeof scheduleMeasures>; late?: LateFinish; best?: RecoveryOffer; outlook?: FinishOutlook }) {
+function Measures({ m, late, best, outlook, onAsk }: { m: ReturnType<typeof scheduleMeasures>; late?: LateFinish; best?: RecoveryOffer; outlook?: FinishOutlook; onAsk?: () => void }) {
   const behind = m.work.daysBehind
   const nextMilestone = m.milestones.find((r) => r.state === 'due')
   const lateOnes = m.milestones.filter((r) => r.state === 'late' || r.state === 'missed')
@@ -1291,7 +1328,7 @@ function Measures({ m, late, best, outlook }: { m: ReturnType<typeof scheduleMea
       >
         {rel.done} of {rel.of} verified marks were done. {rel.waiting > 0 ? `${rel.waiting} ${rel.waiting === 1 ? 'mark waits' : 'marks wait'} on our superintendent.` : ''}
       </Measure>
-      {m.finish && <FinishMeasure finish={m.finish} contract={m.contract} {...(late ? { late } : {})} {...(best ? { best } : {})} {...(outlook ? { outlook } : {})} />}
+      {m.finish && <FinishMeasure finish={m.finish} contract={m.contract} {...(late ? { late } : {})} {...(best ? { best } : {})} {...(outlook ? { outlook } : {})} {...(onAsk ? { onAsk } : {})} />}
     </div>
   )
 }
@@ -1306,7 +1343,21 @@ function finishSentence(finish: ProjectedFinish, contract: ReturnType<typeof sub
   return `${finish.why} ${contract ? `The contract says substantial completion by ${shortDate(contract.on)}${contract.days > 0 ? `, with ${days(contract.days)} by change order` : ''}.` : 'No substantial completion milestone to measure against.'}`
 }
 
-function FinishMeasure({ finish, contract, late, best, outlook }: { finish: ProjectedFinish; contract: ReturnType<typeof substantialCompletionOn>; late?: LateFinish; best?: RecoveryOffer; outlook?: FinishOutlook }) {
+function FinishMeasure({
+  finish,
+  contract,
+  late,
+  best,
+  outlook,
+  onAsk,
+}: {
+  finish: ProjectedFinish
+  contract: ReturnType<typeof substantialCompletionOn>
+  late?: LateFinish
+  best?: RecoveryOffer
+  outlook?: FinishOutlook
+  onAsk?: () => void
+}) {
   const days = (n: number) => `${n} ${n === 1 ? 'day' : 'days'}`
   // The days past come from the one call Bill the customer and the customer's words read too (G-98).
   const past = late ? late.risk.past : contract ? daysBetween(contract.on, finish.on) : null
@@ -1328,7 +1379,11 @@ function FinishMeasure({ finish, contract, late, best, outlook }: { finish: Proj
       {late && late.words.length > 0 && (
         <span data-tour="gc-late-finish" style={{ display: 'grid', gap: '0.15rem', marginTop: '0.4rem', paddingTop: '0.4rem', borderTop: '1px solid var(--border)', color: 'var(--text-base)' }}>
           {late.words.map((w) => (
-            <span key={w}>{w}</span>
+            <Fragment key={w}>
+              <span>{w}</span>
+              {/* Ask for the days (G-141), under the whose-days line. Not a span, so the paper (G-21) prints only the lines. */}
+              {w === late.split && late.ask && onAsk && <GcAskForDays ask={late.ask} where="schedule" onAsk={onAsk} />}
+            </Fragment>
           ))}
         </span>
       )}

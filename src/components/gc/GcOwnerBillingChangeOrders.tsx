@@ -21,6 +21,7 @@ import {
   type GcState,
   type TradeChangeRequest,
 } from '../../lib/gcMode/gcModel'
+import { isTimeExtension, timeExtensionLines } from '../../lib/gcMode/gcTimeExtension'
 
 const PCT_STEPS = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
 
@@ -196,13 +197,19 @@ function ChangeRequestRow({ state, project, request: r, dispatch }: { state: GcS
 function ChangeOrderRow({ state, project, co, dispatch }: { state: GcState; project: GcProject; co: ChangeOrder; dispatch: Dispatch<GcAction> }) {
   const ids = { projectId: project.id, changeOrderId: co.id }
   const credit = co.price < 0
+  // A time extension (G-141): days only, already on the chart. No price, no work, so no % done.
+  const timeOnly = isTimeExtension(co)
   return (
     <div style={{ borderTop: '1px solid var(--border)', paddingTop: '0.45rem', display: 'grid', gap: '0.25rem', fontSize: '0.875rem' }}>
       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
         <strong>Change order {co.number}</strong>
         <span>{co.description}</span>
         <span style={{ flex: 1 }} />
-        <strong style={{ fontVariantNumeric: 'tabular-nums' }}>{`${credit ? '−' : '+'}${money(Math.abs(co.price))}`}</strong>
+        {timeOnly ? (
+          <span style={{ color: 'var(--text-muted)' }}>no change to the price</span>
+        ) : (
+          <strong style={{ fontVariantNumeric: 'tabular-nums' }}>{`${credit ? '−' : '+'}${money(Math.abs(co.price))}`}</strong>
+        )}
       </div>
       {(() => {
         const asked = (project.changeRequests ?? []).find((r) => r.changeOrderId === co.id)
@@ -212,10 +219,21 @@ function ChangeOrderRow({ state, project, co, dispatch }: { state: GcState; proj
           </div>
         ) : null
       })()}
-      <div style={{ color: 'var(--text-muted)' }}>
-        {CHANGE_ORDER_REASON_WORDS[co.reason]} · {changeOrderWho(state, project, co)} · {changeOrderScheduleWords(co)} · costs us{' '}
-        {money(co.cost)}
-      </div>
+      {timeOnly ? (
+        <>
+          <div style={{ color: 'var(--text-muted)' }}>
+            {CHANGE_ORDER_REASON_WORDS[co.reason]} · adds {daysWords(co.days ?? 0)} to the contract · its days are on the chart already
+          </div>
+          {timeExtensionLines(state, project, co).map((w) => (
+            <div key={w}>{w}</div>
+          ))}
+        </>
+      ) : (
+        <div style={{ color: 'var(--text-muted)' }}>
+          {CHANGE_ORDER_REASON_WORDS[co.reason]} · {changeOrderWho(state, project, co)} · {changeOrderScheduleWords(co)} · costs us{' '}
+          {money(co.cost)}
+        </div>
+      )}
       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
         {co.status === 'draft' && (
           <>
@@ -227,7 +245,7 @@ function ChangeOrderRow({ state, project, co, dispatch }: { state: GcState; proj
         )}
         {co.status === 'sent' && <Chip tone="amber">{`waiting on them since ${shortDate(co.sentOn)}`}</Chip>}
         {co.status === 'declined' && <Chip tone="red">{`declined ${shortDate(co.answeredOn)}`}</Chip>}
-        {co.status === 'signed' && changeOrderPct(project, co).fromTrade && (
+        {co.status === 'signed' && !timeOnly && changeOrderPct(project, co).fromTrade && (
           <>
             <Chip tone="green">{`signed ${shortDate(co.answeredOn)}`}</Chip>
             <span>
@@ -236,7 +254,8 @@ function ChangeOrderRow({ state, project, co, dispatch }: { state: GcState; proj
             <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Its line on the bill follows their report.</span>
           </>
         )}
-        {co.status === 'signed' && !changeOrderPct(project, co).fromTrade && (
+        {co.status === 'signed' && timeOnly && <Chip tone="green">{`signed ${shortDate(co.answeredOn)}`}</Chip>}
+        {co.status === 'signed' && !timeOnly && !changeOrderPct(project, co).fromTrade && (
           <>
             <Chip tone="green">{`signed ${shortDate(co.answeredOn)}`}</Chip>
             <select
