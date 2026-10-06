@@ -37,6 +37,7 @@ import { ownerInterest } from './gcOwnerBillingInterest'
 import { BACK_CHARGE_ANSWER_DAYS, backChargeCanTake, backChargeDraws, backChargeState, contactGets, everyMailGroupCovered, PORTAL_MAIL_GROUPS } from './gcPortal'
 import { payReminderEmail, payReminderStep } from './gcOwnerBillingRemind'
 import { portalCanAskRfi, RFI_NEEDED_DAYS, rfiAnsweredWords, rfiChangeOrderDescription, rfiDefaultHolds, rfiLabel } from './gcBuildingRfis'
+import { bidSentWeeksWords, keepRough, roughDrawnWords } from './gcRoughSchedule'
 import { appClaimed, appOpen, changeOrderPrice, OWNER_RETAINAGE_DEFAULT_PCT, ownerCloseout, ownerContractWorthNow, ownerFinalPayAppToSend, ownerPayApp, ownerPayAppHasWork, ownerPayAppToSend, ownerRetainageWords } from './gcOwnerBilling'
 
 export function gcReducer(state: GcState, action: GcAction): GcState {
@@ -257,8 +258,10 @@ function reduce(state: GcState, action: GcAction): GcState {
     case 'markBidSent': {
       const project = state.projects.find((p) => p.id === action.projectId)
       if (!project) return state
-      const next = mapProject(state, project.id, (p) => ({ ...p, ourBidSentOn: state.today }))
-      return logged(next, 'office', `Our bid on ${project.name} went to ${project.owner}. Bid tabs can go out now.`)
+      // A rough schedule goes with the bid as it stands: its weeks are kept as they went (G-45).
+      const next = mapProject(state, project.id, (p) => ({ ...p, ourBidSentOn: state.today, ...(p.rough ? { rough: keepRough(p, state.today, 'bid') } : {}) }))
+      const weeks = bidSentWeeksWords(project)
+      return logged(next, 'office', `Our bid on ${project.name} went to ${project.owner}.${weeks ? ` ${weeks}` : ''} Bid tabs can go out now.`)
     }
 
     case 'shareBidTab': {
@@ -337,7 +340,8 @@ function reduce(state: GcState, action: GcAction): GcState {
     case 'markWon': {
       const project = state.projects.find((p) => p.id === action.projectId)
       if (!project) return state
-      const next = mapProject(state, project.id, (p) => ({ ...p, stage: 'buyout' }))
+      // A rough never marked sent is kept at award, so the weeks we bid stay what they were (G-45).
+      const next = mapProject(state, project.id, (p) => ({ ...p, stage: 'buyout', ...(p.rough && !p.rough.kept ? { rough: keepRough(p, state.today, 'award') } : {}) }))
       return logged(next, 'office', `We won ${project.name}. Buyout starts: award each trade.`)
     }
 
@@ -1110,7 +1114,7 @@ function reduce(state: GcState, action: GcAction): GcState {
       // A first draft to draw from, only when nothing is drawn yet (owner, 2026-10-02: we draw it).
       const project = state.projects.find((p) => p.id === action.projectId)
       if (!project || project.schedule || !action.start) return state
-      const schedule = draftSchedule(project, action.start)
+      const schedule = draftSchedule(project, action.start, action.days)
       const next = mapProject(state, project.id, (p) => ({ ...p, schedule }))
       return logged(next, 'office', `Drew a first draft of the schedule on ${project.name}: ${schedule.activities.length} activities from ${weekdayDate(action.start)}.`)
     }
@@ -2742,6 +2746,16 @@ function reduce(state: GcState, action: GcAction): GcState {
         'office',
         `${action.why.by} pulled ${pullCountWords(offer)} earlier on ${project.name}. ${offer.note}`,
       )
+    }
+
+    case 'setRough': {
+      // A rough schedule while we bid (G-45): drawn or redrawn, only on a job still bidding, not lost, before our bid goes in.
+      const project = state.projects.find((p) => p.id === action.projectId)
+      if (!project || project.stage !== 'pursuing' || project.lostOn || project.ourBidSentOn || !action.start) return state
+      const days = Object.fromEntries(Object.entries(action.days).filter(([, d]) => Number.isFinite(d) && d >= 1).map(([k, d]) => [k, Math.round(d)]))
+      const rough = { start: action.start, days, by: action.by, on: state.today }
+      const next = mapProject(state, project.id, (p) => ({ ...p, rough }))
+      return logged(next, 'office', roughDrawnWords({ ...project, rough }) ?? `Drew a rough schedule for our bid on ${project.name}.`)
     }
 
     case 'tradeSetCrewCount': {

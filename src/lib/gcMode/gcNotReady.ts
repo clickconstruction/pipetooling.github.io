@@ -19,13 +19,17 @@ import { scheduleItems } from './gcBuildingSchedule'
 import { startChecklist, type StartTradeRow } from './gcStart'
 import { paperStep } from './gcPaperSend'
 import { INSURANCE_ASK_DAYS, openPromiseFor, tradePromiseWords } from './gcPromises'
-import { START_REMINDER_DAYS } from './gcStartReminders'
 import { daysUntil, shortDate, weekdayDate } from './gcWords'
 import { partnerById, planLabel } from './gcLookups'
 import type { GanttHold } from './gcGantt'
 
-/** A bar starting within this many days with its papers not in is late: the trade's last start reminder has gone (G-114). */
-export const NOT_READY_LATE_DAYS: number = START_REMINDER_DAYS[1]
+/**
+ * A bar starting within this many days with its papers not in is late: the trade's last start
+ * reminder has gone (G-114's `START_REMINDER_DAYS`, the last of them). Its own number, not an import:
+ * the start reminders read this file's list of papers (G-139), and a constant read across that import
+ * cycle is undefined on load. A test holds the two equal.
+ */
+export const NOT_READY_LATE_DAYS = 3
 
 export type StartGapKind = 'award' | 'msa' | 'insurance' | 'w9' | 'sow'
 

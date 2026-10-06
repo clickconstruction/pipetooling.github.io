@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { initialGcState } from './gcFixture'
 import { gcReducer } from './gcReducer'
 import { plainWordsFailures } from '../plainWords'
-import { startNeeds } from './gcStartReminders'
+import { START_REMINDER_DAYS, startNeeds } from './gcStartReminders'
 import { walkItems } from './gcScheduleWalk'
 import type { GanttHold } from './gcGantt'
 import type { GcProject, GcState, Partner } from './gcTypes'
@@ -116,6 +116,8 @@ describe('a trade not ready to start (G-77)', () => {
 
   it('turns late once the bar starts within three days, or its day passed with nothing reported', () => {
     expect(NOT_READY_LATE_DAYS).toBe(3)
+    // The day the trade's last start reminder goes (G-114): its own number here, held equal.
+    expect(NOT_READY_LATE_DAYS).toBe(START_REMINDER_DAYS[START_REMINDER_DAYS.length - 1])
     const on = (today: string) => {
       const state = { ...initialGcState(), today }
       return { state, bar: notReadyBars(state, fairOaks(state)).find((b) => b.lineId === 'felec-5') }
@@ -230,32 +232,29 @@ describe('a trade not ready to start (G-77)', () => {
     expect(sentences.flatMap(plainWordsFailures)).toEqual([])
   })
 
-  it('never leaves out a paper the trade’s own start reminder names (G-114)', () => {
+  it('is the very list the trade’s start reminder reads (G-114, one list since G-139)', () => {
     // Tri-County's sitework on Fair Oaks D starts Mon Jul 6; its reminders go Jun 22 and Jul 3.
-    // Submittals are left out on purpose: the chart holds a bar for its submittal on its own.
-    const cases: { coiExpires?: string | null; sow?: 'sent' }[] = [{}, { coiExpires: null }, { coiExpires: '2026-07-01' }, { sow: 'sent' }, { coiExpires: '2026-07-01', sow: 'sent' }]
+    // Submittals are the reminder's own first lines: the chart holds a bar for its submittal apart.
+    const kindOf = (sentence: string) =>
+      sentence.startsWith('Your master agreement') ? 'msa' : sentence.startsWith('Your insurance certificate') ? 'insurance' : sentence.startsWith('We have no W-9') ? 'w9' : sentence.startsWith('Your statement of work') || sentence.startsWith('The plans changed') ? 'sow' : 'other'
+    const cases: Partial<Partner & { sow: 'draft' | 'sent' }>[] = [{}, { coiExpires: null }, { coiExpires: '2026-07-01' }, { sow: 'sent' }, { sow: 'draft' }, { msa: 'sent' }, { msa: 'none', w9: false }, { coiExpires: '2026-07-01', sow: 'sent', msa: 'sent', w9: false }]
     let named = 0
     for (const today of ['2026-06-22', '2026-07-03']) {
-      for (const c of cases) {
-        const fresh = { ...initialGcState(), today }
-        const changed = 'coiExpires' in c ? withPartner(fresh, 'tricounty', { coiExpires: c.coiExpires ?? null }) : fresh
-        const state: GcState = c.sow
-          ? { ...changed, projects: changed.projects.map((p) => (p.id !== 'fairoaksd' ? p : { ...p, packages: p.packages.map((k) => (k.id === 'fsite' && k.sow ? { ...k, sow: { ...k.sow, status: c.sow ?? k.sow.status } } : k)) })) }
-          : changed
+      for (const { sow, ...change } of cases) {
+        const fresh = withPartner({ ...initialGcState(), today }, 'tricounty', change)
+        const state: GcState = sow
+          ? { ...fresh, projects: fresh.projects.map((p) => (p.id !== 'fairoaksd' ? p : { ...p, packages: p.packages.map((k) => (k.id === 'fsite' && k.sow ? { ...k, sow: { ...k.sow, status: sow } } : k)) })) }
+          : fresh
         const project = fairOaks(state)
         const pkg = project.packages.find((k) => k.id === 'fsite')!
-        const needs = startNeeds(state, 'tricounty', project, pkg, '2026-07-06', 'en')
-        const kinds = startGaps(state, project, pkg, '2026-07-06').map((g) => g.kind)
-        const wanted = [
-          ...(needs.some((n) => n.startsWith('Your insurance certificate')) ? (['insurance'] as const) : []),
-          ...(needs.includes('Your statement of work is not signed yet.') ? (['sow'] as const) : []),
-        ]
-        named += wanted.length
-        expect(kinds).toEqual(expect.arrayContaining(wanted))
+        const papers = startNeeds(state, 'tricounty', project, pkg, '2026-07-06', 'en').map(kindOf).filter((k) => k !== 'other')
+        const gaps = startGaps(state, project, pkg, '2026-07-06').map((g) => g.kind)
+        named += gaps.length
+        expect(papers).toEqual(gaps)
       }
     }
     // The cases do name papers: the check is not empty.
-    expect(named).toBe(10)
+    expect(named).toBe(22)
   })
 })
 
