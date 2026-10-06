@@ -22,7 +22,7 @@ export type PeopleOffsetsTabProps = {
   users: UserRow[]
   payStubs: PayStubRow[]
   loadPayStubs: () => Promise<unknown>
-  /** Archived account-user names (RPC get_archived_user_names) — fold into the Archived users section. */
+  /** The names archived roster rows answer to (`archivedRosterNames`, from `roster_people`) — fold into the Archived users section. */
   archivedUserNames?: Set<string>
   /** Archived roster people (people.archived_at set) — same treatment. */
   archivedPeople?: Person[]

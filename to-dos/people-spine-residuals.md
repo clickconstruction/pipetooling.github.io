@@ -3,7 +3,7 @@ name: People spine — residuals
 number: 29
 group: residual
 status: >
-  open 2026-09-22 — the six-PR train shipped (v2.3698 · 3700 · 3701 · 3702 · 3705; the planned PR 4 was already in place since July); the view is pushed and typed. 2026-10-06 (v2.4658): item 2 swept (the edge functions take one `REAL_ACCOUNT` rule; deployed in waves after the merge), item 1 closed by a pin; v2.4664: item 5 done; items 3–4 open
+  open 2026-09-22 — the six-PR train shipped (v2.3698 · 3700 · 3701 · 3702 · 3705; the planned PR 4 was already in place since July); the view is pushed and typed. 2026-10-06 (v2.4658): item 2 swept (the edge functions take one `REAL_ACCOUNT` rule; deployed in waves after the merge), item 1 closed by a pin; v2.4664: item 5 done; v2.4671: item 3a (the archived names from the roster view); 3b, 3c and item 4 open
 summary: >
   **People spine residuals**: after the roster view, Leave, Hire, the Users lenses and the pointers
   landed, small things stayed open. Done in v2.4658: the edge functions' hand-written sample
@@ -37,7 +37,11 @@ The train: [`docs/recent-features/v2.3698.md`](../docs/recent-features/v2.3698.m
    - **How it was done.** `scripts/sweep-real-account.mjs` did the rewrite. `realAccountSweep.test.ts` fails CI on a new hand-written copy.
    - **Deploy waves.** The two outside-email senders first, then the other thirteen. The three shared-module importers are held until they deploy for their own reasons.
    - **Left alone on purpose:** `create-user` (writes the flag), `dev-mcp` and `_shared/devMcpComposites` (View-as reads the samples), and `_shared/rosterRow.ts` (fixture accounts get no roster row, v2.3701).
-3. **`get_archived_user_names()`** still serves Offsets (the archived fold), Contracts (archived grouped at the bottom), the Teams member filter in `People.tsx` and the Hours grid's roster (`src/lib/people/hoursGridRoster.ts` keeps the pre-v2.3698 archived-name rule as its first filter). Swap them to the view's `is_archived` and drop the RPC (revoke first — `20260906180000` revoked anon on it).
+3. **`get_archived_user_names()`** served five surfaces, all through one set built in `People.tsx`: Offsets (the archived fold), Contracts (archived grouped at the bottom), Review (pay names filtered beside the pay roster), the Teams member filter, and the Hours grid's roster (`src/lib/people/hoursGridRoster.ts`, rule 1).
+   - **3a, done in v2.4671:** the set now comes from the `roster_people` read `People.tsx` already makes (`archivedRosterNames`). That means every name an archived roster row answers to, except a living namesake's. It is a pure source swap; no consumer changed.
+   - **Id-first matching** (by `person_id`, which the roster rows carry) is left to each consumer's own PR, per the identity plan.
+   - **3b:** drop the RPC once 3a has been live a day (REVOKE and DROP in one file; `20260906180000` revoked anon on it). PUNCHLIST pushes it.
+   - **3c:** the types PR after that push. It regenerates `database.ts` and dev-mcp's `catalog.ts`.
 4. **Twin Estimator 2** (`twin-estimator-2@twins.pipetooling.local`) has `is_digital_twin = false` in prod, so it sits in the People → Users roster under Estimators and the roster view calls it a person. Until the flag is set, v2.4658's twin refusal does not catch it either. A dev sets the flag from Settings → System → Digital twins & samples (the twin minter sets it after `create-user`; this one predates that). Data, not code — the owner's.
 5. **The `as never` cast** in `src/lib/people/rosterPeople.ts` — done in v2.4664: `fetchRosterPeople` takes the typed client and reads `roster_people` by name (`src/types/database.ts` has carried the view since the 2026-09-22 regen).
 

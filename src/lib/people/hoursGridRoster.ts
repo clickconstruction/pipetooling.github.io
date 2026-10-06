@@ -4,17 +4,19 @@
  * The pay-config rows are the roster's source (every person with a pay-config row is on the
  * grid — the modal's own copy says so). Two exclusions, both applied:
  *
- *   1. the archived *account names* from `get_archived_user_names()` — the pre-v2.3698 rule, kept
- *      because it needs no view (the client can deploy before the migration is pushed) and costs
- *      nothing;
+ *   1. the archived names (`archivedRosterNames`, v2.4671, #29): every name an archived roster row
+ *      answers to, except a living namesake's. They come from the same `roster_people` read as rule
+ *      2. Until v2.4671 they came from `get_archived_user_names()` (archived accounts only, no
+ *      namesake guard);
  *   2. the roster view's verdict (`rosterPeople.ts`, v2.3698): a sample account, a digital twin or
  *      a person whose roster row is archived is not on the grid either. Until v2.3698 rule 1 was
  *      the only one, and a Salary-ticked pay row on a test account put 40 h a week into every
  *      total (2026-09-21).
  *
- * J7-6 still holds: the list is the same whatever the viewer, given the same inputs — both the
- * RPC and the view run with owner rights, so every viewer who can open the grid gets the same
- * roster. A view that has not loaded (null) is no verdict, never a blank grid.
+ * J7-6 still holds: the list is the same whatever the viewer, given the same inputs. The view
+ * runs with owner rights, so every viewer who can open the grid gets the same roster. A read
+ * that has not landed is no verdict, never a blank grid: rule 1 is empty and rule 2 null, so every
+ * pay row stays for that load.
  */
 
 import { isPayRosterRow, type PayRosterIndex, type PayRosterRowRef } from './rosterPeople'
@@ -24,7 +26,7 @@ const UNORDERED = 999999
 export type HoursGridRosterInput = {
   /** Every pay-config row — `person_name` plus the `person_id` it carries (null for old rows). */
   payConfigRows: readonly PayRosterRowRef[]
-  /** Trimmed names of archived accounts (`get_archived_user_names`). */
+  /** The names archived roster rows answer to (`archivedRosterNames`); empty until the roster read lands. */
   archivedUserNames: ReadonlySet<string>
   /** The roster view's verdicts; null while loading (no verdict: rule 1 alone). */
   payRoster: PayRosterIndex | null
