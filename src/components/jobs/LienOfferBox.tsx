@@ -16,7 +16,7 @@ import {
 } from '../../lib/jobs/lienPayOffer'
 
 /**
- * The leader's pay offer box (v2.4708): on the notice he is about to approve, one switch —
+ * The leader's pay offer box (v2.4713): on the notice he is about to approve, one switch —
  * *Offer a discount if a bill is paid in full by a day* — with the percent, the day and what
  * it costs at most, and the sentence as the pay page will print it. Controlled: the pane owns
  * the value and writes it with the approval (or, on an approved notice, through `onSave`).

@@ -2819,6 +2819,7 @@ export type Database = {
           rev_number: number
           reviewer_files: Json
           shared_at: string | null
+          sent_outside_at: string | null
           shared_by: string | null
           source_files: Json
           status: string
@@ -2839,6 +2840,7 @@ export type Database = {
           rev_number: number
           reviewer_files?: Json
           shared_at?: string | null
+          sent_outside_at?: string | null
           shared_by?: string | null
           source_files?: Json
           status?: string
@@ -2859,6 +2861,7 @@ export type Database = {
           rev_number?: number
           reviewer_files?: Json
           shared_at?: string | null
+          sent_outside_at?: string | null
           shared_by?: string | null
           source_files?: Json
           status?: string

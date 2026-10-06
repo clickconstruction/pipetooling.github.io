@@ -285,7 +285,7 @@ export default function LienDeskModal({
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null)
   const [checkedMonths, setCheckedMonths] = useState<ReadonlySet<string> | null>(null)
   const [coverNote, setCoverNote] = useState(true)
-  // The pay offer (v2.4708): the leader's choice, written with the approval; read back from the item when one is selected.
+  // The pay offer (v2.4713): the leader's choice, written with the approval; read back from the item when one is selected.
   const [offer, setOffer] = useState<LienPayOffer | null>(null)
   const [wordOpen, setWordOpen] = useState(false)
   const [wordNote, setWordNote] = useState('')
@@ -1906,7 +1906,7 @@ export default function LienDeskModal({
   if (selected) {
     const state = selected.pile
     const monthsWord = monthsList.length ? describeNoticeMonths(monthsList) : 'no months'
-    // The pay offer (v2.4708): the leader's box above the footer, on a notice he can approve or has approved.
+    // The pay offer (v2.4713): the leader's box above the footer, on a notice he can approve or has approved.
     const affidavitDueOn = timeline?.steps.find((st) => st.kind === 'affidavit')?.date || null
     const offerAmounts = payPage.rows.filter((r) => r.payable).map((r) => r.openAmount)
     const offerProblem = offer ? lienOfferDayProblem(offer.by, todayYmd, affidavitDueOn) : null

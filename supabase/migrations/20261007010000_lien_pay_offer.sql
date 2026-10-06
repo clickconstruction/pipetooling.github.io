@@ -1,6 +1,6 @@
 SET lock_timeout = '3s';
 
--- The pay offer (v2.4708): a discount on each bill if it is paid in full by a day, offered on
+-- The pay offer (v2.4713): a discount on each bill if it is paid in full by a day, offered on
 -- the owner's pay page behind a § 53.056 notice. The leader turns it on where the notice is
 -- approved (the desk item carries the choice); when the run is recorded the `lien-pay-offer`
 -- function puts a Stripe credit note on every enclosed Stripe bill (the invoice row carries the
@@ -23,7 +23,7 @@ ALTER TABLE public.job_lien_desk_items
   ADD CONSTRAINT job_lien_desk_items_offer_day_check CHECK (offer_pct = 0 OR offer_by IS NOT NULL);
 
 COMMENT ON COLUMN public.job_lien_desk_items.offer_pct IS
-  'The pay offer (v2.4708): percent off each enclosed bill paid in full by offer_by; 0 = no offer. Set by a master or dev only (the guard trigger).';
+  'The pay offer (v2.4713): percent off each enclosed bill paid in full by offer_by; 0 = no offer. Set by a master or dev only (the guard trigger).';
 COMMENT ON COLUMN public.job_lien_desk_items.offer_by IS
   'The pay offer''s last day: a bill paid in full by this day is offer_pct less. Never later than a week before the affidavit must be filed (client rule).';
 
@@ -40,7 +40,7 @@ ALTER TABLE public.jobs_ledger_invoices
   ADD COLUMN IF NOT EXISTS lien_offer_ended_at timestamptz;
 
 COMMENT ON COLUMN public.jobs_ledger_invoices.lien_offer_credit_note_id IS
-  'The pay offer (v2.4708): the Stripe credit note that lowers what Stripe asks for while the offer is live. taken_at = paid in full with it (the webhook recorded the agreed write-down); ended_at = the day passed unpaid and the nightly sweep voided it.';
+  'The pay offer (v2.4713): the Stripe credit note that lowers what Stripe asks for while the offer is live. taken_at = paid in full with it (the webhook recorded the agreed write-down); ended_at = the day passed unpaid and the nightly sweep voided it.';
 
 -- The nightly sweep's rows: live offers, by day.
 CREATE INDEX IF NOT EXISTS jobs_ledger_invoices_lien_offer_live_idx
@@ -96,7 +96,7 @@ BEGIN
     IF NEW.approved_at IS NULL THEN NEW.approved_at := now(); END IF;
     IF NEW.approved_by IS NULL THEN NEW.approved_by := auth.uid(); END IF;
   END IF;
-  -- v2.4708: the pay offer is the leader's to give.
+  -- v2.4713: the pay offer is the leader's to give.
   v_offer_changed := (TG_OP = 'INSERT' AND NEW.offer_pct <> 0)
     OR (TG_OP = 'UPDATE' AND (OLD.offer_pct IS DISTINCT FROM NEW.offer_pct OR OLD.offer_by IS DISTINCT FROM NEW.offer_by));
   IF v_offer_changed THEN
@@ -125,4 +125,4 @@ END;
 $$;
 
 COMMENT ON FUNCTION public.job_lien_desk_items_guard() IS
-  'Lien desk approval guard (v2.3405): a leader approval needs a master or dev; the spoken word needs its note and channel; v2.3469: a rule approval needs a recorded § 53.056 notice to the GC first; v2.4708: the pay offer (offer_pct / offer_by) is set by a master or dev only, stamped offer_set_by / _at.';
+  'Lien desk approval guard (v2.3405): a leader approval needs a master or dev; the spoken word needs its note and channel; v2.3469: a rule approval needs a recorded § 53.056 notice to the GC first; v2.4713: the pay offer (offer_pct / offer_by) is set by a master or dev only, stamped offer_set_by / _at.';

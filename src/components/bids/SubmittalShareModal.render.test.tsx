@@ -40,7 +40,7 @@ function builder(table: string) {
 const invokeSpy = vi.fn(() => Promise.resolve({ data: { ok: true }, error: null }))
 vi.mock('../../lib/supabase', () => ({ supabase: { from: (t: string) => builder(t), functions: { invoke: (...a: unknown[]) => invokeSpy(...(a as [])) } } }))
 
-const revision = { id: 'rev-2', bid_id: 'b398', rev_number: 2, status: 'draft', title: 'x', note: null, package_path: 'p', source_files: [], reviewer_files: [], drive_file_id: null, drive_file_url: null, drive_filed_at: null, shared_at: null, shared_by: null, job_ledger_id: null, created_by: null, created_at: '', updated_at: '' } as SubmittalRevisionRow
+const revision = { id: 'rev-2', bid_id: 'b398', rev_number: 2, status: 'draft', title: 'x', note: null, package_path: 'p', source_files: [], reviewer_files: [], drive_file_id: null, drive_file_url: null, drive_filed_at: null, sent_outside_at: null, shared_at: null, shared_by: null, job_ledger_id: null, created_by: null, created_at: '', updated_at: '' } as SubmittalRevisionRow
 
 describe('SubmittalShareModal', () => {
   it('mints the room, names a person, runs the before-it-goes steps, marks the revision shared', async () => {
