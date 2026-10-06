@@ -463,6 +463,60 @@ export type Database = {
           },
         ]
       }
+      bid_changes: {
+        Row: {
+          action: string | null
+          bid_id: string
+          bid_version_id: string | null
+          by_app: boolean | null
+          changed: string[]
+          changed_at: string
+          changed_by: string | null
+          count_row_id: string | null
+          id: number
+          label: string | null
+          new_values: Json | null
+          old_values: Json | null
+          op: string
+          record_id: string
+          table_name: string
+        }
+        Insert: {
+          action?: string | null
+          bid_id: string
+          bid_version_id?: string | null
+          by_app?: boolean | null
+          changed: string[]
+          changed_at?: string
+          changed_by?: string | null
+          count_row_id?: string | null
+          id?: never
+          label?: string | null
+          new_values?: Json | null
+          old_values?: Json | null
+          op: string
+          record_id: string
+          table_name: string
+        }
+        Update: {
+          action?: string | null
+          bid_id?: string
+          bid_version_id?: string | null
+          by_app?: boolean | null
+          changed?: string[]
+          changed_at?: string
+          changed_by?: string | null
+          count_row_id?: string | null
+          id?: never
+          label?: string | null
+          new_values?: Json | null
+          old_values?: Json | null
+          op?: string
+          record_id?: string
+          table_name?: string
+        }
+        Relationships: []
+      }
       bid_count_row_custom_costs: {
         Row: {
           applied_at: string
@@ -24559,6 +24613,10 @@ export type Database = {
         Args: { p_mercury_debit_card_id: string }
         Returns: number
       }
+      bid_change_action: { Args: never; Returns: string }
+      bid_changes_app_actions: { Args: never; Returns: string[] }
+      bid_changes_bid_columns: { Args: never; Returns: string[] }
+      bid_changes_tables: { Args: never; Returns: string[] }
       bid_estimate_breakdown: { Args: { p_bid_id: string }; Returns: Json }
       bid_mark_request_take_back: {
         Args: { p_request_id: string }
@@ -25088,6 +25146,7 @@ export type Database = {
           manual_involved: boolean
         }[]
       }
+      gc_create_project: { Args: { draft: Json }; Returns: string }
       gc_review_week_status: { Args: { p_week_start: string }; Returns: Json }
       generate_agreement_notice: {
         Args: { p_partnership_id: string }
@@ -25632,6 +25691,18 @@ export type Database = {
       legal_portal_link_token: { Args: { p_firm_id: string }; Returns: string }
       legal_pull_back: {
         Args: { p_matter_id: string; p_note?: string }
+        Returns: Json
+      }
+      legal_replace_firm: {
+        Args: {
+          p_contingency_pct?: number
+          p_email?: string
+          p_filing_cost?: number
+          p_handling_name?: string
+          p_name: string
+          p_old_firm_id: string
+          p_phone?: string
+        }
         Returns: Json
       }
       legal_set_settlement_floor: {
