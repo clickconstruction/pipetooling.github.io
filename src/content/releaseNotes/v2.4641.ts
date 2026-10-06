@@ -8,7 +8,7 @@ const note: ReleaseNote = {
   highlights: [
     'The app now holds you to one active collections law firm, as the Legal desk guide already says. A second active firm cannot be saved.',
     'If two people save a firm at once in Settings, the second sees "One firm at a time" and a hint to reload.',
-    'To change firms, retire the old one first. Its matters and history stay as they are.',
+    'To change firms, ask a dev to retire the old firm first. Its matters and history stay as they are.',
   ],
 }
 

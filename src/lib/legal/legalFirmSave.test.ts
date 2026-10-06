@@ -14,7 +14,7 @@ describe('legalFirmSaveErrorWords', () => {
   })
 
   it('names the index the migration creates', () => {
-    const sql = readFileSync('supabase/migrations/20261006031612_legal_firms_one_active.sql', 'utf8')
+    const sql = readFileSync('supabase/migrations/20261006070144_legal_firms_one_active.sql', 'utf8')
     expect(sql).toContain(`CREATE UNIQUE INDEX IF NOT EXISTS ${ONE_FIRM_INDEX} ON public.legal_firms ((true)) WHERE active;`)
     expect(sql.startsWith("SET lock_timeout = '3s';")).toBe(true)
   })

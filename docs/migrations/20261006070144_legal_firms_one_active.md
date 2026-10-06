@@ -1,4 +1,4 @@
-# 20261006031612_legal_firms_one_active.sql (2026-10-05, v2.4641)
+# 20261006070144_legal_firms_one_active.sql (2026-10-05, v2.4641)
 
 One collections law firm at a time, said in the schema (punch list #85, item 27; the owner's decision of 2026-10-05). The guide already says *One firm at a time*, the firm's portal and Lien grid serve that firm, and Settings → Collections law firm edits the one active row and inserts only when none is active. The table allowed a second active row, and its readers each pick "the first active firm" their own way (Settings and the Lien desk's share by `created_at`, the desk's firm list by `active` then age).
 
