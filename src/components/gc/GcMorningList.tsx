@@ -9,6 +9,7 @@ import { useMemo } from 'react'
 import { telHref, weekdayDate, type GcProject, type GcState } from '../../lib/gcMode/gcModel'
 import { chartHolds } from '../../lib/gcMode/gcChartHolds'
 import { morningList, morningSteps, type MorningCompany } from '../../lib/gcMode/gcMorningList'
+import { keptPlaces, morningCrowding } from '../../lib/gcMode/gcPlaces'
 import { Btn, Card, Chip } from './gcUi'
 import { PartnerLink } from './GcCompanyFile'
 
@@ -29,6 +30,9 @@ function CompanyName({ c }: { c: MorningCompany }) {
 export function GcMorningList({ state, project, day, onDay }: { state: GcState; project: GcProject; day: string; onDay: (day: string) => void }) {
   const holds = useMemo(() => chartHolds(state, project), [state, project])
   const list = useMemo(() => morningList(state, project, holds, day), [state, project, holds, day])
+  // Too many trades in one place that day (G-83), from the list's own companies, and each bar's place beside its name.
+  const crowding = useMemo(() => morningCrowding(project, list, state.today), [project, list, state.today])
+  const places = useMemo(() => keptPlaces(project), [project])
   const steps = morningSteps(project, day, state.today)
   const short = (d: string) => weekdayDate(d).split(' ')[0] ?? d
   const when = day === state.today ? 'today' : weekdayDate(day)
@@ -48,6 +52,11 @@ export function GcMorningList({ state, project, day, onDay }: { state: GcState; 
         )}
       </div>
       <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.4rem' }}>{list.summary}</div>
+      {crowding.map((w) => (
+        <div key={w} data-morning-crowding style={{ fontSize: '0.875rem', color: 'var(--text-amber-800)', fontWeight: 600, marginBottom: '0.4rem' }}>
+          {w}
+        </div>
+      ))}
 
       <div style={{ display: 'grid', gap: '0.55rem' }}>
         {list.expected.map((c) => (
@@ -70,7 +79,10 @@ export function GcMorningList({ state, project, day, onDay }: { state: GcState; 
             {c.insurance && <div style={{ color: 'var(--text-red-700)', fontWeight: 600 }}>{c.insurance}</div>}
             {c.bars.map((b) => (
               <div key={b.lineId} style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap', paddingLeft: '0.75rem' }}>
-                <span style={{ flex: '1 1 9rem', minWidth: 0 }}>{b.name}</span>
+                <span style={{ flex: '1 1 9rem', minWidth: 0 }}>
+                  {b.name}
+                  {places.get(b.lineId) && <span style={{ color: 'var(--text-muted)' }}> · {places.get(b.lineId)}</span>}
+                </span>
                 <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>{b.dayWords}</span>
                 <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: '0.8rem', minWidth: '2.5rem', textAlign: 'right' }}>{b.pct}%</span>
                 {b.flags.map((f) => (

@@ -7,7 +7,7 @@
  * summary. It draws; `gcGantt.ts` works everything out. Pressing a bar opens it in the tab's editor.
  */
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { addDays, daysBetween, shortDate, weekdayDate, type MilestoneRow, type ScheduleItem } from '../../lib/gcMode/gcModel'
+import { addDays, daysBetween, plannedPct, shortDate, weekdayDate, type MilestoneRow, type ScheduleItem } from '../../lib/gcMode/gcModel'
 import {
   NO_FILTERS,
   TIGHT_SPARE_DAYS,
@@ -35,9 +35,12 @@ import {
 import { waitKind, type WaitRow } from '../../lib/gcMode/gcScheduleWaits'
 import { lostDayTitle, lostDaysWords, type LostDay } from '../../lib/gcMode/gcDaysLost'
 import { actualWords } from '../../lib/gcMode/gcActualDates'
+import { movedParts, partSpans, partStanding, type PartSpan } from '../../lib/gcMode/gcSplitBars'
 import { Chip } from './gcUi'
 import { GcGanttList } from './GcGanttList'
 import { GcPeopleStrip } from './GcPeopleStrip'
+import { GcCrowdedLane } from './GcPlaces'
+import { TRADES_IN_ONE_PLACE, crowdedPlaces, type CrowdedWeek } from '../../lib/gcMode/gcPlaces'
 import type { PeopleWeek } from '../../lib/gcMode/gcPeopleOnSite'
 import { GcGanttPrint } from './GcGanttPrint'
 import { GcScheduleExport } from './GcScheduleExport'
@@ -48,6 +51,9 @@ const MS_H = 40
 const GROUP_H = 30
 const ROW_H = 32
 const BAR_H = 16
+/** A split line's part (G-39): a lower row under its line's, with a thinner bar. */
+const PART_H = 26
+const PART_BAR_H = 12
 
 /** Saturated on purpose: these are the chart's status colors, the same in both themes. */
 const C = { blue: '#3b82f6', green: '#16a34a', red: '#dc2626', amber: '#d97706', violet: '#7c3aed' }
@@ -148,11 +154,13 @@ export function GcGantt({
   logNotes,
   uninsured,
   peopleOf,
+  crowded,
   callList,
   print,
   earlier,
   real,
   toolbarExtra,
+  onMovePart,
 }: {
   items: ScheduleItem[]
   float: Map<string, number>
@@ -186,6 +194,8 @@ export function GcGantt({
   uninsured?: Map<string, { note: string; words: string }>
   /** People on site per week (G-84), the plan's busiest day against the daily log's, for the weeks between two days. Given only by the office's tab; unset, no toggle and no strip. */
   peopleOf?: (from: string, to: string) => PeopleWeek[]
+  /** Each place and week with too many trades in one place (G-83): a lane under the dates the job must meet. Given only by the office's tab; unset or empty, no lane. */
+  crowded?: CrowdedWeek[]
   /** By company as a call list (G-115): drawn under the toolbar while the chart is grouped by company. */
   callList?: ReactNode
   /** The job's words for Print or PDF (G-21). Unset: the toolbar has no print button. */
@@ -196,6 +206,8 @@ export function GcGantt({
   real?: Map<string, { start: string; finish: string }>
   /** One more control at the end of the toolbar: the what-if's way in and out (G-81). */
   toolbarExtra?: ReactNode
+  /** A split line's part dropped after a drag (G-39): the tab asks why, then saves. Unset: parts do not drag. */
+  onMovePart?: (lineId: string, partId: string, start: string, finish: string) => void
 }) {
   const [zoom, setZoom] = useState<GanttZoom>('weeks')
   const [by, setBy] = useState<GanttGroupBy>('trade')
@@ -223,6 +235,12 @@ export function GcGantt({
   const dragFrom = useRef<{ id: string; mode: 'move' | 'start' | 'finish'; x0: number } | null>(null)
   // A drag ends in a click on the same bar: that click must not also open the editor.
   const justDragged = useRef(false)
+  // A split line's parts (G-39) fold under it the way a group folds. A split line opens unfolded; the fold is the person's.
+  const [partsFolded, setPartsFolded] = useState<Set<string>>(() => new Set())
+  // A part being dragged (G-39): like a bar, but only the part moves, and its line's span follows.
+  const [partDrag, setPartDrag] = useState<{ lineId: string; partId: string; mode: 'move' | 'start' | 'finish'; days: number } | null>(null)
+  const partDragFrom = useRef<{ lineId: string; partId: string; mode: 'move' | 'start' | 'finish'; x0: number } | null>(null)
+  const [partHover, setPartHover] = useState<{ lineId: string; partId: string; x: number; y: number } | null>(null)
   // A link being drawn (G-34): from a bar's end port to wherever the pointer is, over a bar or not.
   const [linking, setLinking] = useState<{ from: string; x: number; y: number; over: string | null } | null>(null)
   // Print or PDF (G-21): the window, fed the chart as the person has it.
@@ -247,13 +265,15 @@ export function GcGantt({
   // The waits (deliveries, decisions, permits, the utility) sit under the milestones, over the groups.
   const waitList = useMemo(() => waits ?? [], [waits])
   const waitsH = waitList.length > 0 ? GROUP_H + waitList.length * ROW_H : 0
+  // Too many in one place (G-83): a row for each place with a flagged week, between the dates the job must meet and the waits.
+  const crowdH = crowded && crowded.length > 0 ? crowdedPlaces(crowded).length * ROW_H : 0
   // Where each row sits, so the links can be drawn over them. A folded group's bars have no row.
   const layout = useMemo(() => {
     const at = new Map<string, number>()
     const waitAt = new Map<string, number>()
     const entries: GanttRowEntry[] = []
-    waitList.forEach((r, i) => waitAt.set(r.wait.id, HEAD_H + MS_H + GROUP_H + i * ROW_H + ROW_H / 2))
-    let y = HEAD_H + MS_H + waitsH
+    waitList.forEach((r, i) => waitAt.set(r.wait.id, HEAD_H + MS_H + crowdH + GROUP_H + i * ROW_H + ROW_H / 2))
+    let y = HEAD_H + MS_H + crowdH + waitsH
     for (const g of groups) {
       entries.push({ kind: 'group', key: `g:${g.key}`, y, height: GROUP_H })
       y += GROUP_H
@@ -262,10 +282,17 @@ export function GcGantt({
         at.set(b.id, y + ROW_H / 2)
         entries.push({ kind: 'bar', key: b.id, y, height: ROW_H, groupKey: g.key })
         y += ROW_H
+        // A split line's parts (G-39): a row each under it, while its fold is open.
+        if (!partsFolded.has(b.id)) {
+          for (const pt of partSpans(b.item.activity)) {
+            entries.push({ kind: 'part', key: `${b.id}:${pt.part.id}`, y, height: PART_H, groupKey: g.key, lineId: b.id })
+            y += PART_H
+          }
+        }
       }
     }
     return { at, waitAt, entries, height: y }
-  }, [groups, folded, waitList, waitsH])
+  }, [groups, folded, waitList, waitsH, crowdH, partsFolded])
   const drawn = useMemo(() => rowsInView(layout.entries, win.top, win.height), [layout, win])
   const links = useMemo(() => (showLinks ? ganttLinks(shown).filter((l) => layout.at.has(l.from) && layout.at.has(l.to)) : []), [showLinks, shown, layout])
   const byId = useMemo(() => new Map(all.map((b) => [b.id, b])), [all])
@@ -281,6 +308,26 @@ export function GcGantt({
   const dragSpan = drag && dragBar ? draggedSpan(dragBar, drag) : null
   const dragPlan = useMemo(() => (drag && dragSpan && planOf && drag.days !== 0 ? planOf(drag.id, dragSpan.start, dragSpan.finish) : null), [drag, dragSpan?.start, dragSpan?.finish, planOf]) // eslint-disable-line react-hooks/exhaustive-deps
   const pushedTo = useMemo(() => new Map((dragPlan?.pushed ?? []).map((p) => [p.lineId, p])), [dragPlan])
+  /** Where a dragged part would sit (G-39): its dates with the drag applied, an end never crossing the other. */
+  const spanDragged = (sp: { start: string; finish: string }, d: { mode: 'move' | 'start' | 'finish'; days: number }) => {
+    const len = daysBetween(sp.start, sp.finish)
+    if (d.mode === 'move') return { start: addDays(sp.start, d.days), finish: addDays(sp.finish, d.days) }
+    if (d.mode === 'start') return { start: addDays(sp.start, Math.min(d.days, len)), finish: sp.finish }
+    return { start: sp.start, finish: addDays(sp.finish, Math.max(d.days, -len)) }
+  }
+  // While a part is dragged, its line's new span, and what that would push: the line's ghost and the pushed bars' ghosts.
+  const partDragBar = partDrag ? byId.get(partDrag.lineId) : undefined
+  const partDragSpan = useMemo(() => {
+    const was = partDrag && partDragBar ? partSpans(partDragBar.item.activity).find((x) => x.part.id === partDrag.partId) : undefined
+    return partDrag && was ? spanDragged(was, partDrag) : null
+  }, [partDrag, partDragBar])
+  const partDragLine = useMemo(() => (partDrag && partDragBar && partDragSpan ? movedParts(partDragBar.item.activity, partDrag.partId, partDragSpan.start, partDragSpan.finish) : null), [partDrag, partDragBar, partDragSpan])
+  const partLineMoved = Boolean(partDragLine && partDragBar && (partDragLine.start !== partDragBar.item.activity.start || partDragLine.finish !== partDragBar.item.activity.finish))
+  const partPlan = useMemo(() => (partDrag && partDragLine && partLineMoved && planOf ? planOf(partDrag.lineId, partDragLine.start, partDragLine.finish) : null), [partDrag, partDragLine, partLineMoved, planOf])
+  const partPushedTo = useMemo(
+    () => new Map([...(partDrag && partDragLine && partLineMoved ? [[partDrag.lineId, { lineId: partDrag.lineId, start: partDragLine.start, finish: partDragLine.finish }] as const] : []), ...(partPlan?.pushed ?? []).map((p) => [p.lineId, p] as const)]),
+    [partDrag, partDragLine, partLineMoved, partPlan],
+  )
 
   // The arrow keys move between bars (G-20): up and down to the next bar, left and right a week along. Enter opens one, as any button.
   const onKeys = (e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -414,7 +461,7 @@ export function GcGantt({
     const saidTo = dragging ? undefined : lateSaid?.get(b.id)
     const saidW = saidTo && saidTo.finish > span.finish ? daysBetween(span.finish, saidTo.finish) * px : 0
     const canDrag = Boolean(onMove) && b.status !== 'done'
-    const ghost = pushedTo.get(b.id)
+    const ghost = pushedTo.get(b.id) ?? partPushedTo.get(b.id)
     // The sooner days a pull would give it (G-37), drawn behind the bar so only the days it gains show.
     const soon = dragging ? undefined : earlier?.get(b.id)
     // In a what-if (G-81), where the real schedule has this bar: a dashed outline over it, so the difference shows on one
@@ -423,9 +470,31 @@ export function GcGantt({
     const isPicked = picked === b.id
     const rowBg = isPicked ? 'var(--bg-blue-tint)' : 'var(--surface)'
     const said = `${b.item.label}, ${b.item.company}. ${weekdayDate(a.start)} to ${weekdayDate(a.finish)}. ${b.statusWords}.`
+    // A split line (G-39): a caret before its name folds its parts, the way a group folds.
+    const split = (a.parts ?? []).length > 0
+    const partsShut = partsFolded.has(b.id)
     return (
       <div key={b.id} style={{ display: 'flex', height: ROW_H, borderTop: '1px solid var(--border)', background: isPicked ? 'var(--bg-blue-tint)' : undefined }}>
-        <div style={{ ...label, background: rowBg, paddingLeft: '1.55rem' }}>
+        <div style={{ ...label, background: rowBg, paddingLeft: split ? '0.35rem' : '1.55rem' }}>
+          {split && (
+            <button
+              type="button"
+              aria-expanded={!partsShut}
+              aria-label={partsShut ? `Show the parts of ${b.item.label}` : `Fold the parts of ${b.item.label}`}
+              title={partsShut ? 'Show its parts' : 'Fold its parts into the line'}
+              onClick={() =>
+                setPartsFolded((was) => {
+                  const next = new Set(was)
+                  if (next.has(b.id)) next.delete(b.id)
+                  else next.add(b.id)
+                  return next
+                })
+              }
+              style={{ background: 'none', border: 'none', padding: 0, width: '0.8rem', flex: 'none', font: 'inherit', cursor: 'pointer', color: 'var(--text-muted)' }}
+            >
+              {partsShut ? '▸' : '▾'}
+            </button>
+          )}
           <button
             type="button"
             onClick={() => onPick(b.id)}
@@ -602,6 +671,129 @@ export function GcGantt({
           {note && (
             <span style={{ position: 'absolute', left: left + w + Math.max(tailW, saidW) + 7, top: (ROW_H - 14) / 2, fontSize: '0.68rem', lineHeight: '14px', whiteSpace: 'nowrap', color: note.color, background: rowBg, padding: '0 3px', borderRadius: 3 }}>
               {note.words}
+            </span>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  /** A split line's part (G-39): a row under its line, its bar at its own dates and filled to its percent, dragged like a bar. No links start or end at it. */
+  const partRow = (b: GanttBar, pt: PartSpan) => {
+    const key = `${b.id}:${pt.part.id}`
+    const dragging = partDrag && partDrag.lineId === b.id && partDrag.partId === pt.part.id && partDragSpan ? partDragSpan : null
+    const span = dragging ?? { start: pt.start, finish: pt.finish }
+    const left = x(span.start)
+    const w = Math.max(px, (daysBetween(span.start, span.finish) + 1) * px)
+    const canDrag = Boolean(onMovePart) && pt.part.pct < 100
+    const standing = partStanding(pt, pt.part.pct, today)
+    const plan = Math.round(plannedPct(pt.start, pt.finish, today))
+    const isPicked = picked === b.id
+    const rowBg = isPicked ? 'var(--bg-blue-tint)' : 'var(--surface)'
+    const words = !building ? `${shortDate(pt.start)} – ${shortDate(pt.finish)}` : pt.part.pct >= 100 ? '100%' : pt.start > today ? (pt.part.pct > 0 ? `${pt.part.pct}%` : 'not started') : `${pt.part.pct}% · plan ${plan}%`
+    const edge = standing.tone === 'green' ? C.green : standing.tone === 'red' ? C.red : standing.tone === 'amber' ? C.amber : C.blue
+    return (
+      <div key={key} data-gantt-part-row={key} style={{ display: 'flex', height: PART_H, borderTop: '1px dashed var(--border)', background: isPicked ? 'var(--bg-blue-tint)' : undefined }}>
+        <div style={{ ...label, background: rowBg, paddingLeft: '2.6rem', fontSize: '0.76rem' }}>
+          <button
+            type="button"
+            onClick={() => onPick(b.id)}
+            title={`A part of ${b.item.label}. Press to open the line.`}
+            style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--text-base)', cursor: 'pointer', textAlign: 'left', flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+          >
+            {pt.part.name}
+          </button>
+          {!phone && <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{words}</span>}
+          {building && <Chip tone={standing.tone}>{standing.words}</Chip>}
+        </div>
+        <div style={{ position: 'relative', width }}>
+          {dragging && (
+            <span aria-hidden style={{ position: 'absolute', left: x(pt.start), width: Math.max(px, (daysBetween(pt.start, pt.finish) + 1) * px), top: (PART_H - PART_BAR_H) / 2, height: PART_BAR_H, borderRadius: 3, boxSizing: 'border-box', border: '1.5px dashed var(--border-strong)' }} />
+          )}
+          <button
+            type="button"
+            aria-label={`${pt.part.name}, a part of ${b.item.label}. ${weekdayDate(pt.start)} to ${weekdayDate(pt.finish)}. ${pt.part.pct}% done, ${standing.words}.`}
+            data-gantt-part={key}
+            onClick={() => {
+              if (justDragged.current) {
+                justDragged.current = false
+                return
+              }
+              onPick(b.id)
+            }}
+            onPointerDown={(e) => {
+              if (!canDrag || e.button !== 0) return
+              const r = e.currentTarget.getBoundingClientRect()
+              const at = e.clientX - r.left
+              const mode = r.width >= 22 && at <= 6 ? 'start' : r.width >= 22 && at >= r.width - 6 ? 'finish' : 'move'
+              partDragFrom.current = { lineId: b.id, partId: pt.part.id, mode, x0: e.clientX }
+              try {
+                e.currentTarget.setPointerCapture(e.pointerId)
+              } catch {
+                // no capture
+              }
+            }}
+            onPointerMove={(e) => {
+              const from = partDragFrom.current
+              if (!from || from.lineId !== b.id || from.partId !== pt.part.id) return
+              const days = Math.round((e.clientX - from.x0) / px)
+              if (days !== 0 || partDrag) {
+                setPartHover(null)
+                setPartDrag({ lineId: b.id, partId: pt.part.id, mode: from.mode, days })
+              }
+            }}
+            onPointerUp={(e) => {
+              const from = partDragFrom.current
+              partDragFrom.current = null
+              try {
+                e.currentTarget.releasePointerCapture(e.pointerId)
+              } catch {
+                // was not captured
+              }
+              if (!from || !partDrag || partDrag.lineId !== b.id || partDrag.partId !== pt.part.id) return
+              const to = spanDragged(pt, partDrag)
+              setPartDrag(null)
+              justDragged.current = true
+              if (to.start !== pt.start || to.finish !== pt.finish) onMovePart?.(b.id, pt.part.id, to.start, to.finish)
+            }}
+            onPointerCancel={() => {
+              partDragFrom.current = null
+              setPartDrag(null)
+            }}
+            onMouseEnter={(e) => !partDrag && setPartHover({ lineId: b.id, partId: pt.part.id, x: e.clientX, y: e.clientY })}
+            onMouseMove={(e) => !partDrag && setPartHover({ lineId: b.id, partId: pt.part.id, x: e.clientX, y: e.clientY })}
+            onMouseLeave={() => setPartHover(null)}
+            onFocus={(e) => {
+              const r = e.currentTarget.getBoundingClientRect()
+              setPartHover({ lineId: b.id, partId: pt.part.id, x: r.left, y: r.bottom })
+            }}
+            onBlur={() => setPartHover(null)}
+            style={{
+              position: 'absolute',
+              left,
+              width: w,
+              top: (PART_H - PART_BAR_H) / 2,
+              height: PART_BAR_H,
+              borderRadius: 3,
+              boxSizing: 'border-box',
+              overflow: 'hidden',
+              padding: 0,
+              cursor: canDrag ? (dragging ? 'grabbing' : 'grab') : 'pointer',
+              touchAction: canDrag ? 'none' : undefined,
+              background: pt.part.pct >= 100 ? 'var(--bg-green-200)' : 'var(--bg-blue-tint)',
+              border: `1.5px solid ${edge}`,
+              ...(dragging ? { boxShadow: '0 4px 12px rgba(0,0,0,0.25)', zIndex: 4 } : {}),
+            }}
+          >
+            {pt.part.pct > 0 && pt.part.pct < 100 && <span style={{ display: 'block', height: '100%', width: `${pt.part.pct}%`, background: C.blue, opacity: 0.8 }} />}
+            {canDrag && w >= 22 && <span aria-hidden style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 6, cursor: 'ew-resize' }} />}
+            {canDrag && w >= 22 && <span aria-hidden style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 6, cursor: 'ew-resize' }} />}
+          </button>
+          {dragging && (
+            <span role="status" style={{ position: 'absolute', left: Math.max(0, Math.min(left, width - 350)), bottom: PART_H - 2, zIndex: 6, width: 'max-content', maxWidth: 340, lineHeight: 1.3, background: 'var(--text-base)', color: 'var(--surface)', borderRadius: 6, padding: '4px 8px', fontSize: '0.72rem', fontWeight: 600, pointerEvents: 'none' }}>
+              {pt.part.name}: {weekdayDate(span.start)} to {weekdayDate(span.finish)} · {daysBetween(span.start, span.finish) + 1} days
+              {partDragLine && partLineMoved ? ` · ${b.item.label} now runs ${shortDate(partDragLine.start)} to ${shortDate(partDragLine.finish)}` : ` · ${b.item.label} keeps its dates`}
+              {partPlan ? ` · ${partPlan.words}` : ''}
             </span>
           )}
         </div>
@@ -808,6 +1000,9 @@ export function GcGantt({
             </div>
           </div>
 
+          {/* Too many in one place (G-83): an amber band on each week a place has too many trades, the whole job whatever is filtered. */}
+          {crowded && crowded.length > 0 && <GcCrowdedLane weeks={crowded} first={axis.first} px={px} labelW={labelW} width={width} phone={phone} rowH={ROW_H} />}
+
           {/* What the work waits on (G-73 to G-75): a row each, from the day it was asked for to the day it is expected or came, with the day the work needs it. */}
           {waitList.length > 0 && (
             <div>
@@ -871,6 +1066,15 @@ export function GcGantt({
                   flush()
                   rows.push(barRow(b))
                 } else skipped += ROW_H
+                // A split line's parts (G-39), under it while its fold is open.
+                if (!partsFolded.has(b.id)) {
+                  for (const pt of partSpans(b.item.activity)) {
+                    if (drawn.has(`${b.id}:${pt.part.id}`)) {
+                      flush()
+                      rows.push(partRow(b, pt))
+                    } else skipped += PART_H
+                  }
+                }
               }
               flush()
             }
@@ -958,15 +1162,16 @@ export function GcGantt({
 
       )}
 
-      {view === 'chart' && <GanttLegend building={building} canMove={Boolean(onMove)} spare={showSpare} people={showPeople && Boolean(peopleOf)} />}
+      {view === 'chart' && <GanttLegend building={building} canMove={Boolean(onMove)} spare={showSpare} people={showPeople && Boolean(peopleOf)} crowded={Boolean(crowded && crowded.length > 0)} parts={all.some((b) => (b.item.activity.parts ?? []).length > 0)} />}
       {view === 'chart' && hovered && hover && !drag && <GanttHoverCard bar={hovered} all={all} at={hover} building={building} today={today} lost={lost?.get(hovered.id) ?? []} said={lateSaid?.get(hovered.id)} log={logNotes?.get(hovered.id)} uninsured={uninsured?.get(hovered.id)} soon={earlier?.get(hovered.id) ?? null} realSpan={real?.get(hovered.id) ?? null} />}
+      {view === 'chart' && partHover && !partDrag && byId.get(partHover.lineId) && <GanttPartHoverCard bar={byId.get(partHover.lineId)!} partId={partHover.partId} at={partHover} building={building} today={today} />}
       {printing && printInput && <GcGanttPrint input={printInput} onClose={() => setPrinting(false)} />}
       {exporting && printInput && <GcScheduleExport input={printInput} onClose={() => setExporting(false)} />}
     </div>
   )
 }
 
-function GanttLegend({ building, canMove, spare = false, people = false }: { building: boolean; canMove: boolean; /** The spare-day tails are on (G-08). */ spare?: boolean; /** The people-on-site strip is on (G-84). */ people?: boolean }) {
+function GanttLegend({ building, canMove, spare = false, people = false, crowded = false, parts = false }: { building: boolean; canMove: boolean; /** The spare-day tails are on (G-08). */ spare?: boolean; /** The people-on-site strip is on (G-84). */ people?: boolean; /** The lane of too many in one place shows (G-83). */ crowded?: boolean; /** A line on the chart is split into parts (G-39). */ parts?: boolean }) {
   const key = (style: CSSProperties, words: string) => (
     <span key={words} style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
       <span aria-hidden style={{ display: 'inline-block', boxSizing: 'border-box', flex: 'none', ...style }} />
@@ -988,6 +1193,7 @@ function GanttLegend({ building, canMove, spare = false, people = false }: { bui
       {key({ width: 20, height: 3, borderRadius: 2, background: 'var(--border-strong)' }, 'where it sat in the plan at Start')}
       {spare && key({ width: 20, height: 3, background: 'var(--bg-blue-200)', borderRight: `1.5px solid ${C.blue}` }, "a bar's spare days: how long it can slip before the job finishes later")}
       {people && key({ width: 20, height: 11, borderRadius: 2, border: '1.5px solid var(--text-muted)', background: `linear-gradient(90deg, var(--surface) 0 50%, ${C.blue} 50% 100%)` }, "people on site: the plan's busiest day each week, from each trade's count, beside the daily log's busiest day")}
+      {crowded && key({ width: 20, height: 10, borderRadius: 5, border: `1.5px solid ${C.amber}`, background: 'var(--bg-amber-100)' }, `too many in one place: ${TRADES_IN_ONE_PLACE} trades or more on the same day, from the places kept on the bars`)}
       {building && key({ width: 20, height: 3, borderRadius: 2, background: C.green }, 'the days it really ran, as recorded')}
       {key({ width: 20, height: 7, borderRadius: 3, background: 'var(--border-strong)' }, 'a whole group, as one bar')}
       {key({ width: 10, height: 10, transform: 'rotate(45deg)', background: 'var(--text-muted)' }, 'a date the job must meet')}
@@ -995,6 +1201,7 @@ function GanttLegend({ building, canMove, spare = false, people = false }: { bui
       {key({ width: 12, height: 12, background: 'var(--bg-amber-100)', border: '1px solid var(--border)' }, 'a holiday')}
       {building && key({ width: 12, height: 11, borderRadius: 2, background: 'repeating-linear-gradient(90deg, var(--text-base) 0 2px, var(--bg-blue-200) 2px 4px)', opacity: 0.7 }, 'a day lost to the weather, by the daily log')}
       <span>Every day is a working day, weekends and holidays too.</span>
+      {parts && key({ width: 20, height: 8, borderRadius: 3, background: 'var(--bg-blue-tint)', border: `1.5px solid ${C.blue}` }, "a part of a split line, under its line. The line's dates and percent are its parts'")}
       {canMove && <span style={{ flexBasis: '100%', color: 'var(--text-600)' }}>Drag a bar to move it, or pull an end to change its length. Pull the small circle at a bar's end to another bar to make that one wait on it; press a line to take a wait off. Every change asks why before it saves. Press a bar to open it.</span>}
     </div>
   )
@@ -1045,6 +1252,7 @@ function GanttHoverCard({ bar, all, at, building, today, lost, said, log, uninsu
       </div>
       {row('Planned', `${weekdayDate(a.start)} to ${weekdayDate(a.finish)}`)}
       {row('Takes', `${bar.workDays} ${bar.workDays === 1 ? 'day' : 'days'}${starts > 0 ? `, starts in ${starts}` : ''}`)}
+      {a.place && row('Place', a.place)}
       {bar.holidays.length > 0 && row('Runs over', bar.holidays.join(', '))}
       {building && !a.inspection && row('Done', bar.status === 'done' ? '100%' : `${Math.round(bar.item.actual)}%, and the plan has ${Math.round(bar.item.plannedToday)}% by today`)}
       {bar.status !== 'done' && row('Spare', bar.critical ? 'None. A day lost here is a day lost on the finish.' : `${bar.spare} ${bar.spare === 1 ? 'day' : 'days'} before it moves the finish`, bar.tight ? 'var(--text-red-700)' : undefined)}
@@ -1064,6 +1272,43 @@ function GanttHoverCard({ bar, all, at, building, today, lost, said, log, uninsu
       {n.waitsOn.length > 0 && row('Waits on', n.waitsOn.join(', '))}
       {n.holdsUp.length > 0 && row('Holds up', n.holdsUp.join(', '))}
       {a.finish < addDays(today, 1) && bar.status !== 'done' && !a.inspection && row('Due', a.finish === today ? 'Today' : weekdayDate(a.finish), 'var(--text-red-700)')}
+    </div>
+  )
+}
+
+/** Everything about one part of a split line (G-39), beside the pointer: its days, how far along against its own plan, its share. */
+function GanttPartHoverCard({ bar, partId, at, building, today }: { bar: GanttBar; partId: string; at: { x: number; y: number }; building: boolean; today: string }) {
+  const pt = partSpans(bar.item.activity).find((x) => x.part.id === partId)
+  if (!pt) return null
+  const standing = partStanding(pt, pt.part.pct, today)
+  const plan = Math.round(plannedPct(pt.start, pt.finish, today))
+  const vw = typeof window !== 'undefined' ? window.innerWidth : 1200
+  const vh = typeof window !== 'undefined' ? window.innerHeight : 800
+  const W = 280
+  const row = (k: string, v: string) => (
+    <div key={k} style={{ display: 'grid', gridTemplateColumns: '5.6rem minmax(0, 1fr)', gap: '0.5rem' }}>
+      <span style={{ color: 'var(--text-muted)' }}>{k}</span>
+      <span>{v}</span>
+    </div>
+  )
+  const really = pt.part.actualStart ? `Started ${weekdayDate(pt.part.actualStart)}${pt.part.actualFinish ? `, finished ${weekdayDate(pt.part.actualFinish)}` : ''}.` : null
+  return (
+    <div
+      role="tooltip"
+      style={{ position: 'fixed', left: Math.max(8, Math.min(at.x + 14, vw - W - 12)), top: at.y + 18 + 170 > vh ? Math.max(8, at.y - 180) : at.y + 18, width: W, zIndex: 1300, pointerEvents: 'none', background: 'var(--surface)', color: 'var(--text-base)', border: '1px solid var(--border-strong)', borderRadius: 8, boxShadow: '0 10px 26px rgba(0,0,0,0.18)', padding: '0.6rem 0.7rem', fontSize: '0.78rem', display: 'grid', gap: '0.25rem' }}
+    >
+      <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
+        <strong style={{ fontSize: '0.86rem' }}>{pt.part.name}</strong>
+        {building && <Chip tone={standing.tone}>{standing.words}</Chip>}
+      </div>
+      <div style={{ color: 'var(--text-muted)', marginBottom: '0.15rem' }}>
+        A part of {bar.item.label} · {bar.item.company}
+      </div>
+      {row('Planned', `${weekdayDate(pt.start)} to ${weekdayDate(pt.finish)}`)}
+      {row('Takes', `${pt.days} ${pt.days === 1 ? 'day' : 'days'}`)}
+      {building && row('Done', pt.part.pct >= 100 ? '100%' : pt.start > today ? `${pt.part.pct}%. It starts ${weekdayDate(pt.start)}.` : `${pt.part.pct}%, and its own plan has ${plan}% by today`)}
+      {row('Share', `${pt.part.share}% of ${bar.item.label}`)}
+      {really && row('Really', really)}
     </div>
   )
 }

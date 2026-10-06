@@ -18,7 +18,7 @@ import { companiesToTell } from './gcTellTrades'
 import { weekdayDate } from './gcWords'
 
 /** What a what-if copy takes (G-81): a move, a pull, undo and redo, and days got back (G-82). Everything else records what happened, so it belongs to the real schedule. */
-export const WHAT_IF_ACTIONS: GcAction['type'][] = ['setScheduleActivity', 'pullScheduleEarlier', 'undoScheduleMove', 'redoScheduleMove', 'recoverScheduleDays']
+export const WHAT_IF_ACTIONS: GcAction['type'][] = ['setScheduleActivity', 'pullScheduleEarlier', 'undoScheduleMove', 'redoScheduleMove', 'recoverScheduleDays', 'moveActivityPart']
 
 /** The stand-in kept on a move tried with no reason, so the copy's history has it. Keep asks for a real one. */
 export const WHAT_IF_NO_WHY: { reason: ScheduleMoveReason; note: string } = { reason: 'other', note: 'No reason yet. Keep asks for one.' }
@@ -40,11 +40,12 @@ function lineName(project: GcProject, lineId: string): string {
 
 /** The planned dates and waits a copy compares, as one record. */
 function baseOf(a: ScheduleActivity): WhatIfBase {
-  return { start: a.start, finish: a.finish, after: a.after, ...(a.lag ? { lag: a.lag } : {}), ...(a.notBefore ? { notBefore: a.notBefore } : {}), ...(a.mustFinishBy ? { mustFinishBy: a.mustFinishBy } : {}) }
+  // A split line's parts (G-39) are part of its plan: their days from its start.
+  return { start: a.start, finish: a.finish, after: a.after, ...(a.lag ? { lag: a.lag } : {}), ...(a.notBefore ? { notBefore: a.notBefore } : {}), ...(a.mustFinishBy ? { mustFinishBy: a.mustFinishBy } : {}), ...(a.parts ? { parts: a.parts.map((p) => ({ id: p.id, from: p.from, days: p.days })) } : {}) }
 }
 
 function sameBase(a: WhatIfBase, b: WhatIfBase): boolean {
-  const key = (x: WhatIfBase) => JSON.stringify([x.start, x.finish, x.after, x.lag ?? {}, x.notBefore ?? '', x.mustFinishBy ?? ''])
+  const key = (x: WhatIfBase) => JSON.stringify([x.start, x.finish, x.after, x.lag ?? {}, x.notBefore ?? '', x.mustFinishBy ?? '', x.parts ?? []])
   return key(a) === key(b)
 }
 
@@ -174,7 +175,10 @@ export function keepWhatIf(project: GcProject, whys: Record<string, { reason: Sc
     if (!c || sameBase(baseOf(a), baseOf(c))) return a
     // The limits are set or dropped, never left as undefined keys (exactOptionalPropertyTypes).
     const { lag: _lag, notBefore: _nb, mustFinishBy: _mf, ...rest } = a
-    return { ...rest, start: c.start, finish: c.finish, after: c.after, ...(c.lag ? { lag: c.lag } : {}), ...(c.notBefore ? { notBefore: c.notBefore } : {}), ...(c.mustFinishBy ? { mustFinishBy: c.mustFinishBy } : {}) }
+    // A split line's parts take the copy's days, and keep the real percents and real days (G-39).
+    const days = new Map((c.parts ?? []).map((p) => [p.id, p]))
+    const parts = a.parts ? { parts: a.parts.map((p) => ({ ...p, from: days.get(p.id)?.from ?? p.from, days: days.get(p.id)?.days ?? p.days })) } : {}
+    return { ...rest, start: c.start, finish: c.finish, after: c.after, ...(c.lag ? { lag: c.lag } : {}), ...(c.notBefore ? { notBefore: c.notBefore } : {}), ...(c.mustFinishBy ? { mustFinishBy: c.mustFinishBy } : {}), ...parts }
   })
   const base = withBaselineKept(project, real)
   // Moves are kept newest first, so the copy's newest is the real schedule's newest and Undo takes it first.

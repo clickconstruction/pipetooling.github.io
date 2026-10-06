@@ -1298,6 +1298,18 @@ export type GcAction =
   | { type: 'keepWhatIf'; projectId: string; by: string; whys: Record<string, { reason: ScheduleMoveReason; note: string }> }
   /** Throw the what-if away (G-81): the copy goes, the real schedule stays as it is. */
   | { type: 'throwAwayWhatIf'; projectId: string; by: string }
+  /** Split a line into parts (G-39): each with a name and dates, the first starting and the last ending with the line. Its percent and dates stay. */
+  | { type: 'splitActivity'; projectId: string; lineId: string; parts: { name: string; start: string; finish: string }[]; by: string }
+  /** Make a split line one bar again (G-39): the parts go, its percent and dates stay. */
+  | { type: 'joinActivity'; projectId: string; lineId: string; by: string }
+  /** One part of a split line moved (G-39): the line's span follows its parts, and what waits on it moves as for any move. `why` as on setScheduleActivity. */
+  | { type: 'moveActivityPart'; projectId: string; lineId: string; partId: string; start: string; finish: string; why?: { reason: ScheduleMoveReason; note: string; by: string } }
+  /** A trade reports one part of a split line from its portal (G-39): the line's percent follows. */
+  | { type: 'tradeReportPart'; projectId: string; packageId: string; sovId: string; partId: string; pct: number }
+  /** Our own crew reports one part of a split stage (G-39): the stage's percent follows. */
+  | { type: 'selfReportPart'; projectId: string; packageId: string; lineId: string; partId: string; pct: number }
+  /** The office says where bars' work is (G-83): each line id to its place, or null to take it off. A trade's bars and our own crew's only. */
+  | { type: 'setActivityPlaces'; projectId: string; places: Record<string, string | null> }
 
 /** One trade on a new project, as the office left it in the New project window. */
 export interface NewTradeDraft {
@@ -1462,6 +1474,34 @@ export interface ScheduleActivity {
   actualStart?: string
   /** The day it really finished (G-55). Unset: not recorded. */
   actualFinish?: string
+  /** Where on the job its work is, in the office's word: Roof, Inside, Level 2 (G-83). Unset: no place yet. A guess is never kept here until the office keeps it. */
+  place?: string
+  /** A line split into parts (G-39): first floor, second floor. The line's dates are their span, its percent their weighted sum. Unset: one bar. */
+  parts?: ActivityPart[]
+}
+
+/**
+ * One part of a split line (the Gantt, G-39): a floor or an area of the work, with its own dates
+ * and percent. Its days are counted from the line's start, so every move of the line carries it:
+ * a drag, a push, a pull, days got back, Undo, a what-if. The part that ends last ends with the
+ * line, so a new finish on the line lands on it.
+ */
+export interface ActivityPart {
+  /** `${lineId}-p1` */
+  id: string
+  /** "Sales floor", as the office named it. */
+  name: string
+  /** Its first day, in days from the line's start. 0: with the line. */
+  from: number
+  /** Its days. The part that ends last ends with the line, whatever this says. */
+  days: number
+  /** Its share of the line's work, in percent, set from the days at the split and kept. The shares add up to 100. */
+  share: number
+  /** Percent done, as its trade or our own crew reported it. */
+  pct: number
+  /** The day it really started and finished, set by its reports (G-55). Unset: not yet. */
+  actualStart?: string
+  actualFinish?: string
 }
 
 /**
@@ -1611,6 +1651,8 @@ export interface ScheduleMove {
   noWhy?: boolean
   /** Kept from a what-if copy made on this day (G-81): tried there first, then put on the real schedule with its reason. Unset: an ordinary move. */
   fromWhatIf?: string
+  /** A part of a split line moved (G-39): which, and every part's days from the line's start before and after, so Undo and Redo put them back. Unset: the line moved whole, its parts with it. */
+  parts?: { id: string; was: { id: string; from: number; days: number }[]; now: { id: string; from: number; days: number }[] }
 }
 
 /** One activity's planned dates and waits, as a what-if copy saw them on the real schedule (G-81). */
@@ -1621,6 +1663,8 @@ export interface WhatIfBase {
   lag?: Record<string, number>
   notBefore?: string
   mustFinishBy?: string
+  /** A split line's parts (G-39): their days from its start. */
+  parts?: { id: string; from: number; days: number }[]
 }
 
 /**

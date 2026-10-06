@@ -12,6 +12,7 @@ import { partnerById } from './gcLookups'
 import { shortDate, weekdayDate } from './gcWords'
 import { pt, type PortalLang } from './gcPortalI18n'
 import { moveActivityName, moveReasonLabel, spanWords } from './gcScheduleMoves'
+import { partMoveSpans } from './gcSplitBars'
 
 /** One company's line in a move: the work, and its days before and after. */
 export interface MovedLine {
@@ -45,6 +46,15 @@ export function movedLines(state: GcState, project: GcProject, move: ScheduleMov
     // A pull's finished lines are done work (G-37): only the companies whose dates came in are told.
     .filter((l) => !move.pull?.finished.includes(l.lineId))
     .map((l) => ({ line: { lineId: l.lineId, work: lineWork(project, l.lineId), from: l.from, to: l.to }, partner: partnerOfLine(state, project, l.lineId) }))
+    // A part's move (G-39) names the part, with its own days: the trade's crew for it is the one to move.
+    .map((x) => (move.parts && x.line.lineId === move.lineId ? { ...x, line: { ...x.line, ...partDays(project, move, x.line) } } : x))
+}
+
+/** A moved part's name and dates for its line in the message (G-39): "Lighting, Back of house: Oct 17 to Oct 30, not Oct 10 to Oct 23." */
+function partDays(project: GcProject, move: ScheduleMove, line: MovedLine): Partial<MovedLine> {
+  const spans = partMoveSpans(move)
+  const part = project.schedule?.activities.find((a) => a.lineId === move.lineId)?.parts?.find((p) => p.id === move.parts?.id)
+  return spans && part ? { work: `${line.work}, ${part.name}`, from: spans.from, to: spans.to } : {}
 }
 
 /** The companies a set of moves changed days for, each with its lines, for Tell the trades. */

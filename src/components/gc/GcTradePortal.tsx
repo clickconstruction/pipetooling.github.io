@@ -67,6 +67,8 @@ import { GcPortalPlans } from './GcPortalPlans'
 import { GcPortalQuestions } from './GcPortalQuestions'
 import { PortalBlock as Block, PortalNote } from './GcPortalUi'
 import { PortalLangContext, usePortalLang } from './gcPortalLang'
+import { GcPortalPartRows } from './GcSplitBars'
+import { splitActivityOf } from '../../lib/gcMode/gcSplitBars'
 
 /**
  * GC mode design spike: what one trade partner sees. No sign-in: the link is the key, like the
@@ -829,7 +831,11 @@ function SowBlock({
             <div style={{ display: 'grid', gap: '0.45rem', fontSize: '0.9rem' }}>
               {/* The days our superintendent's log has them on site, beside the percents they report. */}
               {onSiteLine && <div style={{ fontSize: '0.85rem', opacity: 0.8 }}>{onSiteLine}</div>}
-              {sow.sov.map((l) => (
+              {sow.sov.map((l) =>
+                // A line split into parts (G-39): its percent as text, and a picker for each part.
+                splitActivityOf(project, l.id) ? (
+                  <GcPortalPartRows key={l.id} line={l} activity={splitActivityOf(project, l.id)!} ids={ids} dispatch={dispatch} />
+                ) : (
                 <label key={l.id} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '0.5rem', alignItems: 'center' }}>
                   <span>
                     {l.label} <span style={{ opacity: 0.7 }}>· {money(l.amount)} · {t('paidThrough', { pct: l.pctBilled })}</span>
@@ -847,7 +853,8 @@ function SowBlock({
                       ))}
                   </select>
                 </label>
-              ))}
+                ),
+              )}
               {/* Building lane: a draw is asked for with its pay application (the 702 and 703). */}
               <GcBuildingPayAppDoor project={project} pkg={pkg} partner={partner} today={today} dispatch={dispatch} />
               {sow.draws.map((d) => (

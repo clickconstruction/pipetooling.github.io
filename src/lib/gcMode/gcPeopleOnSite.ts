@@ -52,23 +52,35 @@ function companyOf(state: GcState, pkg: TradePackage): string {
   return (partnerId ? partnerById(state, partnerId)?.company : undefined) ?? pkg.trade
 }
 
+/**
+ * Each trade's number of people for a week, in order: its own count for the week (G-142's
+ * `crewCountsNow`, the `told` argument), else the daily log's last count for it up to today, else
+ * ASSUMED_CREW. Lifted out of `peopleOnSite` unchanged, so G-83's crowded places count people the
+ * way this strip does.
+ */
+export function crewNumbers(state: GcState, project: GcProject, told: CrewCountNow[] = []): (packageId: string, weekOf: string) => { count: number; from: CountFrom } {
+  const logs = [...(project.dailyLogs ?? [])].filter((l) => l.date <= state.today).sort((a, b) => a.date.localeCompare(b.date))
+  // The daily log's last count for each trade, up to today.
+  const lastLog = new Map<string, number>()
+  for (const l of logs) for (const c of l.crews) if (c.workers > 0) lastLog.set(c.packageId, c.workers)
+  return (packageId, weekOf) => {
+    // `crewCountsNow` keeps one count a trade and week, its newest.
+    const own = told.find((c) => c.packageId === packageId && c.weekOf === weekOf)
+    if (own) return { count: own.count, from: 'told' }
+    const last = lastLog.get(packageId)
+    return last !== undefined ? { count: last, from: 'log' } : { count: ASSUMED_CREW, from: 'assumed' }
+  }
+}
+
 /** Every week from the one holding `from` to the one holding `to`, Monday to Sunday: the plan's and the log's busiest day. */
 export function peopleOnSite(state: GcState, project: GcProject, from: string, to: string, told: CrewCountNow[] = []): PeopleWeek[] {
   if (!project.schedule) return []
   const items = scheduleItems(state, project).filter((it) => it.pkg && !it.activity.inspection && !it.activity.added)
   const logs = [...(project.dailyLogs ?? [])].filter((l) => l.date <= state.today).sort((a, b) => a.date.localeCompare(b.date))
-  // The daily log's last count for each trade, up to today.
-  const lastLog = new Map<string, number>()
-  for (const l of logs) for (const c of l.crews) if (c.workers > 0) lastLog.set(c.packageId, c.workers)
+  const numberOf = crewNumbers(state, project, told)
   const out: PeopleWeek[] = []
   for (let week = mondayOf(from); week <= to; week = addDays(week, 7)) {
-    const countOf = (packageId: string): { count: number; from: CountFrom } => {
-      // `crewCountsNow` keeps one count a trade and week, its newest.
-      const own = told.find((c) => c.packageId === packageId && c.weekOf === week)
-      if (own) return { count: own.count, from: 'told' }
-      const last = lastLog.get(packageId)
-      return last !== undefined ? { count: last, from: 'log' } : { count: ASSUMED_CREW, from: 'assumed' }
-    }
+    const countOf = (packageId: string): { count: number; from: CountFrom } => numberOf(packageId, week)
     // The plan's busiest day: each trade once a day, as the log counts it.
     let best: { on: string | null; count: number; ids: Set<string> } = { on: null, count: 0, ids: new Set() }
     for (let i = 0; i < 7; i++) {

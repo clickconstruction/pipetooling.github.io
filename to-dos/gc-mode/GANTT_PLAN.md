@@ -1384,6 +1384,117 @@ Not done, on purpose: tails on the chart for the stretch (a second row, only whe
 the finish); the contract on the second line (G-98 says it for the pace line, and a second count
 would argue with it until the owner picks the line the customer hears); past jobs' weather and the
 season (the fixture has one job with logs); a crew per bar (a bar has none, so so far stands in).
+## Later, one line as several bars, as built (2026-10-06)
+
+G-39, built by Helper 1 from `mockups/G-39.md` with the lead's go. `gcSplitBars.ts` (tested, out of the
+barrel), `GcSplitBars.tsx`, and five actions: `splitActivity`, `joinActivity`, `moveActivityPart`,
+`tradeReportPart` and `selfReportPart`.
+
+- **A split line stays the line.** Its parts (`ScheduleActivity.parts`) each have a name, their own
+  dates, a share of the work and a percent. The line's dates are its parts' span. Its percent is
+  their percents weighted by their share, stored on the line as today: `pctReported` for a trade,
+  `pctByLine` for our crew. So the pay application, the list, the paper, the export, the forecast,
+  the portals and the customer read it as before. A test holds that Pecan Valley's next pay
+  application, the customer's bill and the forecast are the same before and after a split with no
+  new report. Another holds that after each part reports, the line equals the weighted sum.
+- **A part's days are counted from its line's start** (`from`, `days`), and the part that ends last
+  ends with the line. So a drag of the whole line, a push from the work before, a pull (G-37), days
+  got back (G-82), Undo, Redo and a what-if (G-81) carry the parts unchanged. A test holds each of
+  them, and Undo after each.
+- **The shares are set from the days at the split, and kept.** They are not counted again from the
+  days at each move. Counted again, a part that slipped longer would weigh more, and the line's
+  percent would change with no report. Back of house a week longer would grow from 35% of Lighting
+  to 45%, and Lighting would fall from 53% to 51% with nobody reporting anything. The bill reads the
+  line, so the slip would move Pecan Valley's pay application, the customer's bill and the forecast.
+  A slip changes when the work is done, not how much work there is. When the work itself grows, that
+  is a change order, or a new split.
+- **Splitting a reported line keeps its percent**: each part starts at the line's percent. The split
+  window starts with two halves, shows the shares as the dates are typed, and says why it cannot
+  split yet. That is fewer than two parts, a name missing or doubled, a part with no days, or a first
+  part not starting and a last not ending with the line. Inspections and added activities are not
+  split. **Make it one bar** asks once inline, then takes the parts away. The line keeps its percent
+  and its dates.
+- **A part moves through Why it moved** like any move. It is dragged on its row, or given dates by
+  **Change a part's dates…** on the card. The window names the part: *Move Electrical · Lighting,
+  Back of house*. It shows the part's dates before and after, then what the line's span does:
+  "Lighting now ends Fri Oct 30." What that pushes follows, as for any move. A part moved inside its
+  line's span is a move all the same, with its reason. Its row in the history reads "Electrical ·
+  Lighting, Back of house moved from Oct 10 to Oct 23, to Oct 17 to Oct 30." Tell the trades names
+  the part too.
+- **Reports.** The trade's portal shows a split line's percent as text, with the line's picker for
+  each part under it. A pick that would take the line under what is billed is not offered, and the
+  reducer refuses it too. Our crew's card on the Draws tab does the same for a split stage.
+  `tradeReport` and `selfReportStage` on a split line are refused: it is reported a part at a time.
+  A part's first report over 0% is its real start, and 100% is its finish. The line's real start is
+  its first part's, and its real finish waits for every part.
+- **The chart** keeps the line's row as it is, with a caret before its name that folds a row per
+  part under it. A split line opens unfolded. A part's row has its bar at its dates, filled to its
+  percent, with a pill by its own dates and a hover card with its share. No links start or end at a
+  part: the line's waits hold the whole. The list, the paper (G-21) and the export (G-136) draw the
+  line as today.
+- **The walk** lists a split bar's parts under its facts, a line each, such as "Sales floor: 60%,
+  plan 73%. Started Fri Oct 2." Its question stays the line's finish.
+- Tests: `gcSplitBars.test.ts` (19) and `GcSplitBars.render.test.tsx` (12). The golden test did not
+  move: no fixture data and no new step. The five actions are in its list, and the what-if's list of
+  actions takes the part's move.
+
+What the build changed from the mockup:
+
+- **A part's move is its own action, `moveActivityPart`**, not `setScheduleActivity` with an optional
+  part. It works out the line's new span. When the span changes, it runs `setScheduleActivity` for
+  it, so the pushes, the record and the plan at Start are every move's. Then it keeps the parts' days
+  before and after on the move (`ScheduleMove.parts`), for Undo and Redo. So nothing that sends or
+  reads `setScheduleActivity` changed: late notices, change-order days, the walk, the copy.
+- **A part not yet at its dates reads its percent and its start.** A split gives it the line's 40%,
+  and "40%, plan 0%" read wrong. It reads "Back of house: 40%, starts Sat Oct 10." until it reports.
+
+Not done, on purpose: links to or from a part, a part's own wait, shares typed by hand, and a split
+made in the what-if copy. A reason of its own for a part's move would go on Helper 3's list of
+reasons.
+
+## What if, too many trades in one place, as built (2026-10-06)
+
+G-83, by Helper 4, round three (the mock-up and plan: `mockups/G-83.md`). `gcPlaces.ts` (tested,
+out of the barrel), `GcPlaces.tsx`, one optional field and one action. G-84's per-trade number was
+lifted out of `peopleOnSite` into an exported `crewNumbers` first, as its own commit, with no
+change in behavior.
+
+- **A place** is a plain word the office keeps on a bar: `ScheduleActivity.place`, at most 40
+  characters, a trade's bar or our own crew's only. A guess comes from the name (*Rooftop units* is
+  Roof, *Framing, level 2* is Level 2), then the trade (Roofing is Roof), then the stage (rough-in
+  to closeout is Inside). Foundations, the slab and the frame get none. A guess counts for nothing
+  until it is kept, so with no place kept nothing is flagged and no pinned list moved.
+- **Keeping them**: *Where the work is*, a card after *What the work waits on*, with *Look at the
+  places*. Its window lists each bar not done with its place or its guess in a box, and *Keep these
+  places* sends one `setActivityPlaces` with every box that changed. The opened bar has a *Place*
+  line with *Set the place*. The action sets an open what-if copy's bar too, since a place is a fact
+  about the work. The card and the line are hidden in the copy.
+- **The rule**, `TRADES_IN_ONE_PLACE` = 3, said on the surface: *Our rule: 3 trades or more in one
+  place on the same day is too many.* It is counted by the day on the plan's own dates, as G-84
+  counts people, from today on, and flagged by the week. Our own crew counts; inspections, the job's
+  own bars and done bars do not. The people beside it are G-84's numbers, the trade's own count
+  first. When the days named do not all have the most, it says *up to 4 trades*.
+- **Where it shows**:
+  - A lane under *Dates the job must meet*, a row for each crowded place: an amber band over each
+    week's crowded days, the most at once after each run, and a hover card in G-84's look (Where,
+    When, Who one company a line, People, Rule). The legend gains it while it shows. A bar's hover
+    card gains *Place*.
+  - The move window, under the billing line: *Too many in one place: Inside would have 3 trades at
+    once, Mon Nov 30 to Fri Dec 4.* when Fire alarm slips to Nov 30, and *this clears Inside* in green
+    when a move ends a crowd.
+  - The morning list, in amber under its summary, from its own companies not held: *Inside has 3
+    trades at once today. They are Pecan Valley Electric, our own crew and Cool Breeze Mechanical.*
+    Each bar line shows its place.
+  - The call list: a `crowded` line for each hired company in a crowded week of the look-ahead that
+    has not given its count (G-142), amber this week and next. Its Follow up words ask for the
+    count in English and Spanish. It goes once the count is given.
+  - Nothing on the customer's side, the trade's portal or the paper.
+- On Fair Oaks D with the guesses kept: Inside has 3 trades at once from Fri Oct 2 to Fri Oct 9,
+  Pecan Valley Electric 2, our own crew 3 and Cool Breeze Mechanical 3, about 8 people a day. The
+  roof's 2, Oct 12 to Oct 21, is under the rule.
+
+Left for later: a limit for each place, a *By place* grouping of the chart, the trade's portal
+saying who else is in the place, the paper, and the job's own bars taking a place.
 
 ## Telling the customer, ask for the days, as built (2026-10-06)
 
