@@ -5,6 +5,7 @@ import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { COMPANY_EMAIL_FROM } from '../_shared/emailFrom.ts'
 import { buildLegalConfirmEmail } from '../_shared/legalEmails.ts'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
+import { legalRecipientSendPatch } from '../_shared/legalNotifyLedger.ts'
 
 /**
  * The firm's acts on its portal (Legal portal train, PR 4): one POST endpoint,
@@ -84,12 +85,21 @@ serve(async (req) => {
         const raw = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '')
         await admin.from('legal_firm_recipients').update({ confirm_token_hash: await sha256Hex(raw), updated_at: nowIso }).eq('id', id)
         const key = Deno.env.get('RESEND_API_KEY')
-        if (!key) return false
+        // v2.4632: a confirmation that does not go marks the person "not reaching" (send_failed_since), as the dispatcher does.
+        const note = async (res: { success: boolean; error?: string }) => {
+          const { data: prev } = await admin.from('legal_firm_recipients').select('send_failed_since').eq('id', id).maybeSingle()
+          await admin.from('legal_firm_recipients').update(legalRecipientSendPatch((prev as { send_failed_since?: string | null } | null)?.send_failed_since ?? null, res, new Date().toISOString())).eq('id', id)
+        }
+        if (!key) {
+          await note({ success: false, error: 'Email is not set up on the server.' })
+          return false
+        }
         // v2.3521: the link lands on the app's page; the function's GET is what that page calls.
         const confirmUrl = `${Deno.env.get('APP_ORIGIN') ?? 'https://clicktooling.com'}/legal/confirm?t=${raw}`
         // v2.3512: one builder for the sender and Settings → What customers see (_shared/legalEmails.ts).
         const mail = buildLegalConfirmEmail({ companyName: PORTAL_COMPANY.name, email, confirmUrl })
         const res = await sendEmailViaResend(email, mail.subject, mail.text, mail.html, key, { from: COMPANY_EMAIL_FROM })
+        await note(res)
         return res.success
       }
       if (kind === 'recipient_add') {
@@ -126,7 +136,11 @@ serve(async (req) => {
         return jsonResponse({ ok: true })
       }
       if (kind === 'recipient_resume') {
+        // v2.4632: turning emails back on is the one rotation of the stop link — a new salt, so a stop link
+        // in an old (perhaps forwarded) email no longer pauses them. The dispatcher mints the new one.
+        // Two writes: the resume never waits on the salt column.
         await admin.from('legal_firm_recipients').update({ paused_at: null, updated_at: nowIso }).eq('id', r.id)
+        await admin.from('legal_firm_recipients').update({ unsubscribe_salt: crypto.randomUUID().replace(/-/g, ''), unsubscribe_token_hash: null }).eq('id', r.id)
         return jsonResponse({ ok: true })
       }
       // recipient_resend

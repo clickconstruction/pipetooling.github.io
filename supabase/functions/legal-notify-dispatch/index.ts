@@ -5,6 +5,7 @@ import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { COMPANY_EMAIL_FROM } from '../_shared/emailFrom.ts'
 import { buildLegalDigestEmail, buildLegalNowEmail, legalPageHtml, legalWrapHtml, type LegalNowTrigger } from '../_shared/legalEmails.ts'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
+import { constantTimeEqual, legalNotifyDone, legalNotifyDue, legalNotifyRecord, legalRecipientSendPatch, legalUnsubscribeToken, parseSentTo } from '../_shared/legalNotifyLedger.ts'
 
 /**
  * The firm's emails (Legal portal train, PR 5). Two doors:
@@ -12,7 +13,11 @@ import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
  *   POST (pg_cron every 5 minutes, X-Cron-Secret) —
  *     1. drains legal_notification_queue rows not yet sent: every confirmed, unpaused
  *        recipient at the firm with mode 'now' (and, for scope 'mine', named as the
- *        matter's handling person) gets one email per event; stamps sent_now_at.
+ *        matter's handling person) gets one email per event. v2.4632: each person is
+ *        stamped in the event's `sent_to` only when their send went through; a failed
+ *        send is tried again next tick, twelve tries at most (`_shared/legalNotifyLedger.ts`),
+ *        and the person carries send_failed_since / send_error until one goes through.
+ *        sent_now_at is stamped once every person is sent, given up or skipped.
  *     2. digests: each confirmed, unpaused recipient with mode 'digest' whose weekday and
  *        Central time have arrived and who has not had today's digest gets ONE email —
  *        every open matter for the firm plus the events since their last digest;
@@ -60,21 +65,28 @@ function ymdInAppTz(iso: string | null | undefined): string | null {
   return todayYmdInAppTz(new Date(iso))
 }
 
-type Recipient = { id: string; firm_id: string; name: string; email: string; mode: string; scope: string; digest_weekday: number; digest_time: string; confirmed_at: string | null; paused_at: string | null; last_digest_at: string | null; unsubscribe_token_hash: string | null }
+type Recipient = { id: string; firm_id: string; name: string; email: string; mode: string; scope: string; digest_weekday: number; digest_time: string; confirmed_at: string | null; paused_at: string | null; last_digest_at: string | null; unsubscribe_token_hash: string | null; unsubscribe_salt?: string | null; send_failed_since?: string | null }
 
 async function unsubscribeLink(admin: SupabaseClient, r: Recipient): Promise<string> {
-  // The unsubscribe token is minted once per recipient, hashed at rest; the raw value lives only in the emails.
+  // v2.4632: minted once — an HMAC of the person's id and salt under the service key, so every email
+  // carries the same token and an older email's stop link keeps working. Only its hash is stored;
+  // the row is written when the hash is missing or stale (a new salt, a rotated key), never per email.
   // v2.3521: the link lands on the app's page (the platform relays this function's HTML as text/plain).
   const base = `${Deno.env.get('APP_ORIGIN') ?? 'https://clicktooling.com'}/legal/confirm`
-  const raw = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '')
-  if (!r.unsubscribe_token_hash) {
-    await admin.from('legal_firm_recipients').update({ unsubscribe_token_hash: await sha256Hex(raw), updated_at: new Date().toISOString() }).eq('id', r.id)
-    r.unsubscribe_token_hash = await sha256Hex(raw)
-    return `${base}?t=${raw}&stop=1`
+  const { token, hash } = await legalUnsubscribeToken(Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '', r.id, r.unsubscribe_salt)
+  if (r.unsubscribe_token_hash !== hash) {
+    await admin.from('legal_firm_recipients').update({ unsubscribe_token_hash: hash, updated_at: new Date().toISOString() }).eq('id', r.id)
+    r.unsubscribe_token_hash = hash
   }
-  // An existing hash cannot be reversed; rotate it so this email's link works (older emails' links stop — acceptable).
-  await admin.from('legal_firm_recipients').update({ unsubscribe_token_hash: await sha256Hex(raw), updated_at: new Date().toISOString() }).eq('id', r.id)
-  return `${base}?t=${raw}&stop=1`
+  return `${base}?t=${token}&stop=1`
+}
+
+/** A person's standing after a send: cleared by a success, "failing since" kept from the first failure. */
+async function noteSend(admin: SupabaseClient, r: Recipient, result: { success: boolean; error?: string }): Promise<void> {
+  const patch = legalRecipientSendPatch(r.send_failed_since ?? null, result, new Date().toISOString())
+  if ((r.send_failed_since ?? null) === patch.send_failed_since && !patch.send_error) return
+  r.send_failed_since = patch.send_failed_since
+  await admin.from('legal_firm_recipients').update(patch).eq('id', r.id)
 }
 
 function portalLink(token: string | null): string {
@@ -130,11 +142,12 @@ serve(async (req) => {
   // --- POST: the cron tick -----------------------------------------------------
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
   const secret = Deno.env.get('CRON_SECRET')
-  if (!secret || req.headers.get('x-cron-secret') !== secret) return json({ error: 'Unauthorized' }, 401)
+  // v2.4632: compared in constant time.
+  if (!secret || !constantTimeEqual(req.headers.get('x-cron-secret') ?? '', secret)) return json({ error: 'Unauthorized' }, 401)
   const resendKey = Deno.env.get('RESEND_API_KEY')
   if (!resendKey) return json({ error: 'RESEND_API_KEY missing' }, 500)
 
-  const result = { now: 0, digests: 0, skipped: 0, errors: [] as string[] }
+  const result = { now: 0, digests: 0, skipped: 0, retrying: 0, gaveUp: 0, errors: [] as string[] }
   try {
     const { data: firmRows } = await admin.from('legal_firms').select('id, name, paused_at').eq('active', true)
     const firms = (firmRows ?? []) as Array<{ id: string; name: string; paused_at: string | null }>
@@ -166,9 +179,14 @@ serve(async (req) => {
 
       // 1. "Now" recipients drain the queue.
       const { data: openRows } = await admin.from('legal_notification_queue').select('*').eq('firm_id', firm.id).is('sent_now_at', null).order('created_at').limit(50)
-      for (const ev of (openRows ?? []) as Array<{ id: string; matter_id: string | null; trigger: string; payload: Row }>) {
-        const targets = recipients.filter((r) => r.mode === 'now' && canSee(r, ev.matter_id))
-        for (const r of targets) {
+      for (const ev of (openRows ?? []) as Array<{ id: string; matter_id: string | null; trigger: string; payload: Row; sent_to?: unknown }>) {
+        // v2.4632: the per-person ledger. Before the migration's column exists (`sent_to` absent) the
+        // event is stamped after one pass, as before, so a deploy ahead of the push never re-sends.
+        const hasLedger = ev.sent_to !== undefined
+        const targetIds = recipients.filter((r) => r.mode === 'now' && canSee(r, ev.matter_id)).map((r) => r.id)
+        const plan = legalNotifyDue(hasLedger ? parseSentTo(ev.sent_to) : {}, targetIds)
+        let sentTo = plan.sentTo
+        for (const r of recipients.filter((x) => plan.due.includes(x.id))) {
           const unsub = await unsubscribeLink(admin, r)
           // Sent copies (docs/SENT_COPIES.md): what the firm is sent, a notice or a digest, is kept. No sender: the queue sends itself.
           // v2.3512: one builder for the sender and Settings → What customers see (_shared/legalEmails.ts).
@@ -184,10 +202,18 @@ serve(async (req) => {
             unsubscribeUrl: unsub,
           })
           const res = await sendEmailViaResend(r.email, mail.subject, mail.text, mail.html, resendKey, { from: COMPANY_EMAIL_FROM, file: { kind: 'legal_notice', recipientName: `${r.name} · ${firm.name}` } })
-          if (!res.success) result.errors.push(`${r.email}: ${res.error ?? 'send failed'}`)
-          else result.now++
+          sentTo = legalNotifyRecord(sentTo, r.id, res, new Date().toISOString())
+          await noteSend(admin, r, res)
+          if (!res.success) {
+            result.errors.push(`${r.email}: ${res.error ?? 'send failed'}`)
+            if (sentTo[r.id]?.gaveUp) result.gaveUp++
+            else result.retrying++
+          } else result.now++
         }
-        await admin.from('legal_notification_queue').update({ sent_now_at: new Date().toISOString() }).eq('id', ev.id)
+        // The ledger and the stamp are separate writes. A ledger that cannot be kept falls back to the old
+        // rule (stamp after one pass): better one missed retry than re-sending to everyone each tick.
+        const kept = hasLedger ? !(await admin.from('legal_notification_queue').update({ sent_to: sentTo }).eq('id', ev.id)).error : false
+        if (!kept || legalNotifyDone(sentTo)) await admin.from('legal_notification_queue').update({ sent_now_at: new Date().toISOString() }).eq('id', ev.id)
       }
 
       // 2. Digests on each recipient's weekday, once the time has arrived, once per day.
@@ -210,6 +236,7 @@ serve(async (req) => {
           unsubscribeUrl: unsub,
         })
         const res = await sendEmailViaResend(r.email, mail.subject, mail.text, mail.html, resendKey, { from: COMPANY_EMAIL_FROM, file: { kind: 'legal_digest', recipientName: `${r.name} · ${firm.name}` } })
+        await noteSend(admin, r, res)
         if (!res.success) {
           result.errors.push(`${r.email}: ${res.error ?? 'digest failed'}`)
           continue

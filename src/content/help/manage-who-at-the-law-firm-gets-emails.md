@@ -2,7 +2,7 @@
 title: manage who at the law firm gets emails
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: legal, attorney, law firm, portal, emails, notifications, digest, confirm, unsubscribe, pause, recipients
+keywords: legal, attorney, law firm, portal, emails, notifications, digest, confirm, unsubscribe, pause, recipients, not reaching, bounced, retry
 ---
 You open the Legal desk to see who at the law firm gets our emails. The firm sets the rules on its portal, and the office keeps two overrides.
 
@@ -24,11 +24,11 @@ The firm opens the **Notifications** page on its portal. Each person at the firm
 - The office answering one of their questions.
 - An account pulled back. The firm's email calls it a referral withdrawn.
 
-People on **Each event** get one email per event within five minutes. Digest people get one email on their day: every open matter, then everything since their last digest.
+People on **Each event** get one email per event within five minutes. When an email does not go, it is tried again every five minutes for an hour. The others are not sent it twice. Digest people get one email on their day: every open matter, then everything since their last digest.
 
 ## What the office sees and controls
 
-You press {{button:outline|✉ Firm's emails}} on the Legal desk header. It lists every person with their rule and status. The status is {{chip:green|confirmed}}, {{chip:yellow|not confirmed}} or {{chip:gray|stopped}}. The office has two overrides:
+You press {{button:outline|✉ Firm's emails}} on the Legal desk header. It lists every person with their rule and status. The status is {{chip:green|confirmed}}, {{chip:yellow|not confirmed}}, {{chip:yellow|not reaching}} or {{chip:gray|stopped}}. *Not reaching* means our emails to that person stopped going through. A red line under the name says since when and what the mail service said. The line clears once an email gets through. The header button counts these people. The firm sees the same line on its portal. The office has two overrides:
 
 - {{button:outline|Remove}} takes a person off the list.
 - {{button:outline|Pause all emails to the firm}} holds every email. Events queue and send when you resume. The portal keeps working meanwhile.
