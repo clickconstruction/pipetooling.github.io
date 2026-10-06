@@ -1,7 +1,7 @@
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { daysBetweenYmd } from './billedExpectedPay'
 import { LIEN_DESK_SENT_DAYS, severityForDaysLeft, type LienDeskItemRow, type LienDeskSeverity } from './lienDesk'
-import { monthFromCreation, type LienMonthSource } from './lienDesk'
+import { monthFromCreation, type LienMonthSource, monthSetByHand } from './lienDesk'
 
 /**
  * The Lien desk's second kind (pure kernel): the § 53.052 affidavit — one
@@ -53,6 +53,8 @@ export type LienAffidavitEntry = {
   lastMonth: string
   /** last_month is the job's creation month — no approved hours (v2.3747). */
   lastMonthFromCreation: boolean
+  /** last_month is the last day of work set by hand (v2.4676). */
+  lastMonthByHand?: boolean
   deadline: string
   daysLeft: number
   severity: LienDeskSeverity
@@ -132,6 +134,7 @@ export function buildLienAffidavitQueue(rows: ReadonlyArray<LienAffidavitRow>, i
       isSub: r.is_sub,
       lastMonth: r.last_month,
       lastMonthFromCreation: monthFromCreation(r),
+      lastMonthByHand: monthSetByHand(r),
       deadline: r.deadline,
       daysLeft,
       severity: pile === 'filed' ? 'quiet' : severityForDaysLeft(daysLeft),

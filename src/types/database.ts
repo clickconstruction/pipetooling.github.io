@@ -11706,6 +11706,10 @@ export type Database = {
           last_work_date: string | null
           lien_contract_ended_how: string | null
           lien_contract_ended_on: string | null
+          lien_last_work_note: string
+          lien_last_work_on: string | null
+          lien_last_work_set_at: string | null
+          lien_last_work_set_by: string | null
           lien_contract_ended_set_at: string | null
           lien_contract_ended_set_by: string | null
           lien_payment_bond: string
@@ -11763,6 +11767,10 @@ export type Database = {
           last_work_date?: string | null
           lien_contract_ended_how?: string | null
           lien_contract_ended_on?: string | null
+          lien_last_work_note?: string
+          lien_last_work_on?: string | null
+          lien_last_work_set_at?: string | null
+          lien_last_work_set_by?: string | null
           lien_contract_ended_set_at?: string | null
           lien_contract_ended_set_by?: string | null
           lien_payment_bond?: string
@@ -11820,6 +11828,10 @@ export type Database = {
           last_work_date?: string | null
           lien_contract_ended_how?: string | null
           lien_contract_ended_on?: string | null
+          lien_last_work_note?: string
+          lien_last_work_on?: string | null
+          lien_last_work_set_at?: string | null
+          lien_last_work_set_by?: string | null
           lien_contract_ended_set_at?: string | null
           lien_contract_ended_set_by?: string | null
           lien_payment_bond?: string

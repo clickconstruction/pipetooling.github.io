@@ -68,6 +68,7 @@ import { buildLienNextUp, type LienNextUpRow } from '../../lib/jobs/lienNextUp'
 import { lienStepDueWords, LIEN_STEP_LADDERS, lienStepOfRow, type LienStepFacts } from '../../lib/jobs/lienNextUpSteps'
 import { gapToken, lienPaperGaps, paintGaps, withGapTokens, type LienPaperFacts } from '../../lib/jobs/lienPaperGaps'
 import LienPaperPreviewOverlay, { type LienPaperPreviewEntry } from './LienPaperPreviewOverlay'
+import { LienLastWorkDayLine } from './LienLastWorkDayLine'
 import LienDeskNextUp from './LienDeskNextUp'
 import type { LienCalendarJob } from '../../lib/jobs/lienCalendar'
 import { callLetterFactsFor, practiceCallFacts, type CallerJobHit, type CallerMatchInput, type DeskJobRef } from '../../lib/jobs/lienCallerMatch'
@@ -1551,6 +1552,7 @@ export default function LienDeskModal({
       {/* Months (#38): the grid — months down, papers across, this notice as the last column. */}
       <LienDeskMonths
         grid={monthGrid!}
+        lastWork={<LienLastWorkDayLine jobId={selected.jobId} job={job ?? null} todayYmd={todayYmd} canEdit={office} userId={authUserId} onSaved={onChanged} />}
         claimNode={
           <LienClaimBox
             openSignal={claimOpenSignal}

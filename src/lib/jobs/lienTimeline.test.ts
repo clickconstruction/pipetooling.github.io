@@ -450,3 +450,12 @@ describe('keepDatesWhole (v2.4633)', () => {
     expect(keepDatesWhole('sent Oct 1 · noted')).toBe('sent Oct\u00a01 · noted')
   })
 })
+
+describe('the last day of work set by hand (v2.4676)', () => {
+  it('the LAST WORK node says so, and the creation words give way', () => {
+    const t = buildLienTimeline(base({ lastMonth: '2026-08', lastMonthFromCreation: false, lastMonthByHand: true }))
+    expect(t.steps[0]!.words).toBe('last day set by hand')
+    const c = buildLienTimeline(base({ lastMonth: '2026-08', lastMonthFromCreation: true }))
+    expect(c.steps[0]!.words).toBe('dated from the job’s creation · no clock hours')
+  })
+})

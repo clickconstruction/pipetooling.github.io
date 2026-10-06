@@ -3,6 +3,7 @@ import { filingDeadlineForMonth, LIEN_SUIT_COUNSEL_LEAD_DAYS, serveDueForFiling,
 
 export { LIEN_SUIT_COUNSEL_LEAD_DAYS, suitDeadlineFor }
 import { DATED_FROM_CREATION_WORDS } from './lienDesk'
+import { LAST_DAY_SET_BY_HAND_WORDS } from './lienLastWorkDay'
 import { workMonthShort } from './forecastWorkMonths'
 
 /**
@@ -180,6 +181,8 @@ export interface LienTimelineInput {
   /** 'YYYY-MM' — the last month worked, or the creation month; '' unknown. */
   lastMonth: string
   lastMonthFromCreation: boolean
+  /** The last month is the day set by hand (v2.4676) — the node says so. */
+  lastMonthByHand?: boolean
   months: ReadonlyArray<LienTimelineMonth>
   /** Where the job's live notice sits on the desk, for the due node's words. */
   noticeState: LienTimelineNoticeState
@@ -351,7 +354,7 @@ export function buildLienTimeline(input: LienTimelineInput): LienTimeline {
       date: `${input.lastMonth}-01`,
       dateWords: `${workMonthShort(input.lastMonth)} ${input.lastMonth.slice(0, 4)}`,
       state: 'done',
-      words: input.lastMonthFromCreation ? DATED_FROM_CREATION_WORDS : 'clock hours',
+      words: input.lastMonthFromCreation ? DATED_FROM_CREATION_WORDS : input.lastMonthByHand ? LAST_DAY_SET_BY_HAND_WORDS : 'clock hours',
       daysLeft: null,
       door: null,
     })
