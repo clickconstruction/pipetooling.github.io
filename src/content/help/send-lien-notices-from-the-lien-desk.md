@@ -235,7 +235,7 @@ The pay page says it in one boxed sentence under its title. Every bill's row sho
 
 On the desk an approved notice reads {{chip:blue|Offer 10% by Nov 15}}. Its step card says the same on the Approve rung. The leader can change or remove the offer until the run goes out. Press **Save the offer** on the ready footer.
 
-A bill paid in full by the day is written down by the percent once the money lands. A bill still open after the day goes back to its full amount. An affidavit always swears the full balance. Counsel has not read the offer's words yet. The box says so in amber until they have.
+A bill paid in full by the day is written down by the percent once the money lands. A bill still open after the day goes back to its full amount. An affidavit always swears the full balance.
 
 ## Sending the run
 
