@@ -28,7 +28,7 @@ describe('wonOptionVersionId / wonOptionWrites', () => {
     expect(wonOptionWrites(options, 'nope')).toEqual({ won: [], cleared: [] })
   })
   it('the agreed value is the option’s sent value plus the accepted add-ons', () => {
-    const alts = [{ key: 'group:break room', tag: 'Break room', amount: 3220, offered: true, taken: true }]
+    const alts = [{ key: 'group:break room', tag: 'Break room', amount: 3220, offered: true, accepted: true, answer: 'taken' as const }]
     expect(agreedValueForOption(366998.23, alts, ['Break room'])).toBe(370218.23)
     expect(agreedValueForOption(366998.23, alts, [])).toBe(366998.23)
     expect(agreedValueForOption(null, alts, ['Break room'])).toBeNull()

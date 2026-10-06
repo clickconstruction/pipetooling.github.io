@@ -61,7 +61,7 @@ function props(): BidFormModalProps {
     open: true, editingBid: bid, closeBidForm: vi.fn(), saveBid: vi.fn((e) => e.preventDefault()), form: makeForm(), projects: [], estimatorUsers: [], myRole: 'dev',
     visibleServiceTypes: [{ id: 'st-1', name: 'Plumbing', color: null }], bidDateSent: '', handleBidDateSentInputChange: vi.fn(), handleBidDateSentBlur: vi.fn(), onGcRollupDateChanged: vi.fn(),
     pendingAttestationForDate: null, pendingBidDateSentAttestation: null, gcCustomerDropdownOpen: false, setGcCustomerDropdownOpen: vi.fn(), customers: [], loadCustomers: vi.fn(),
-    getCustomerDisplay: (c) => c.name, getGcBuilderPhone: () => '', getGcBuilderEmail: () => '', saveBidAndOpenCounts: vi.fn(), savingBid: false, setDeleteBidModalOpen: vi.fn(),
+    getCustomerDisplay: (c: { name: string }) => c.name, getGcBuilderPhone: () => '', getGcBuilderEmail: () => '', saveBidAndOpenCounts: vi.fn(), savingBid: false, setDeleteBidModalOpen: vi.fn(),
     setDeleteConfirmProjectName: vi.fn(), setError: vi.fn(), autosave,
   } as unknown as BidFormModalProps
 }
