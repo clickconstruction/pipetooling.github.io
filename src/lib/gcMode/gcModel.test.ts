@@ -944,6 +944,7 @@ describe('GC mode golden walk', () => {
     used.add('tradeReportPart') // played in gcSplitBars.test.ts: it needs a split line
     used.add('selfReportPart') // played in gcSplitBars.test.ts: it needs a split stage of our own crew
     used.add('setActivityPlaces') // played in gcPlaces.test.ts: where the work is (G-83)
+    used.add('importSchedule') // played in gcScheduleImport.test.ts: a schedule a customer or the architect handed us (G-137), on a job with none
     const all: GcAction['type'][] = [
       'issueAddendum', 'tradeConfirmBid', 'setStartItem', 'setStartDate', 'startProject', 'invite', 'nudge',
       'logContact', 'tradePromise', 'tradeOpenPlans', 'tradeSubmitBid', 'tradeDecline', 'officeDecline', 'setPlug',
@@ -1003,6 +1004,7 @@ describe('GC mode golden walk', () => {
       'startWhatIf', 'inWhatIf', 'keepWhatIf', 'throwAwayWhatIf',
       'splitActivity', 'joinActivity', 'moveActivityPart', 'tradeReportPart', 'selfReportPart',
       'setActivityPlaces',
+      'importSchedule',
     ]
     expect(all.filter((t) => !used.has(t))).toEqual([])
   })

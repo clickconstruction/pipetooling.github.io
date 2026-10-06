@@ -1095,6 +1095,8 @@ export type GcAction =
   /** Our own bid in Trades mode is priced: the trade carries a real number from now on. */
   | { type: 'priceOwnBid'; projectId: string; packageId: string; value: number }
   | { type: 'draftSchedule'; projectId: string; start: string; /** The rough's stage lengths, by stage key (G-45). Absent: the usual ones. */ days?: Record<string, number> }
+  /** A schedule a customer or the architect handed us (G-137): their activities on our lines, their waits and dates, the first draft everywhere else, in one press. */
+  | { type: 'importSchedule'; projectId: string; imported: ScheduleImport; by: string }
   /** `why` (the Gantt, Phase 2): the explanation a move is saved with. The screens always send it; it is kept in `schedule.moves`. */
   | { type: 'setScheduleActivity'; projectId: string; lineId: string; start: string; finish: string; after: string[]; why?: { reason: ScheduleMoveReason; note: string; by: string }; lag?: Record<string, number>; notBefore?: string | null; mustFinishBy?: string | null; changeOrderId?: string; lateNoticeId?: string }
   | { type: 'setScheduleMilestone'; projectId: string; milestone: ScheduleMilestone }
@@ -1563,6 +1565,40 @@ export interface ProjectSchedule {
   walks?: ScheduleWalk[]
   /** Every late notice a trade sent from its portal, newest first (the Gantt, G-117). Unset: none yet. */
   lateNotices?: LateNotice[]
+}
+
+/** Where a row of a schedule someone handed us lands (G-137): one of our lines, an inspection, or the job's own. */
+export type ScheduleImportPlace =
+  | { kind: 'line'; lineId: string }
+  | { kind: 'roughInInspection' }
+  | { kind: 'finalInspection' }
+  | { kind: 'inspection' }
+  | { kind: 'added'; who: string }
+
+/** One activity of theirs the office kept, and where it lands (G-137). */
+export interface ScheduleImportRow {
+  /** The file's own key for it: its task's number, or its line in the spreadsheet. */
+  key: string
+  name: string
+  start: string
+  finish: string
+  place: ScheduleImportPlace
+  /** What it waits on in their file, by key, with the days of gap. */
+  after: { key: string; gap: number }[]
+  notBefore?: string
+  mustFinishBy?: string
+}
+
+/** A schedule a customer or the architect handed us, as the office kept it (G-137). Never kept on the job: the schedule it makes is. */
+export interface ScheduleImport {
+  /** The file's name and who handed it, for the log. */
+  file: string
+  from: string
+  /** The day our lines not in the file are drawn from, when nothing they wait on comes later. */
+  workStarts: string
+  rows: ScheduleImportRow[]
+  /** Their dates to meet, as ticked. */
+  dates: { name: string; on: string }[]
 }
 
 /** A plan the schedule is measured against (G-41): the one locked at Start, or one set after a signed change order, named. */
