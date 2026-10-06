@@ -1,6 +1,11 @@
-import { useState, type CSSProperties } from 'react'
+import { lazy, Suspense, useState, type CSSProperties } from 'react'
 import { LIEN_RULES_DOOR } from '../../lib/jobs/lienRuleCites'
-import LienRulesModal from './LienRulesModal'
+
+// The window reads one guide through `helpGuideRegistry`, whose eager glob carries every help guide
+// (about 1.7 MB of text). Imported here directly it put that text in the app's main chunk, past the
+// service worker's 5 MiB precache cap, and every deploy build failed from v2.4655 on. Loaded on the
+// first press, it rides in the lazy chunk it shares with the /help page.
+const LienRulesModal = lazy(() => import('./LienRulesModal'))
 
 /**
  * § Rules (v2.3594; it read "§ The rules" until v2.4528): the door from the Lien desk header and the Lien window's tab row to
@@ -43,7 +48,11 @@ export function LienRulesDoor({ where, style }: { where: keyof typeof LIEN_RULES
       >
         § Rules
       </button>
-      {open ? <LienRulesModal cite={cite} onClose={() => setOpen(false)} /> : null}
+      {open ? (
+        <Suspense fallback={null}>
+          <LienRulesModal cite={cite} onClose={() => setOpen(false)} />
+        </Suspense>
+      ) : null}
     </>
   )
 }
