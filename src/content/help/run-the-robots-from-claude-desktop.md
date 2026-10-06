@@ -23,7 +23,7 @@ One command, and you never see the key. The same setup serves the Code tab and c
 1. Open **Bids → 🤖 Robots → Console**. In step 1 of the *From Claude Code* column, press {{button:purple|Set up on this Mac}}. The same button is on the robot's row at Settings → Digital twins. Type whose Mac it is. That becomes the key's label, so it can be revoked on its own later. Press {{button:purple|Make my setup command}}.
 2. Press {{button:purple|Copy the command}}. It carries a one-time code that is good for ten minutes and one use.
 3. Open Terminal: press ⌘ Space, type *Terminal*, press Return. Paste and press Return. The command trades the code for a fresh key on the server. It writes the key straight into Claude's connector config. Then it quits Claude and reopens it so the connector loads. It also puts the robot's kickoff on your clipboard. Anything running in Claude stops when it quits, so finish or pause that first. If it says Node is missing, install Node 18 or newer from nodejs.org and run it again.
-4. In Claude, you open the **Code** tab, start a new session and paste. The robot reads its brief and says the connector answered.
+4. In Claude, open the **Code** tab, start a new session and paste. The robot reads its brief and says the connector answered.
 
 :::example Why a code instead of a key
 The key is what lets a machine act as the robot. Handing it to a person to paste means it sits in a clipboard, a chat, or a shell history somewhere. The code is worth one key for ten minutes; the command redeems it and the key goes from the server straight into the config file. Nobody ever reads it.
@@ -34,9 +34,9 @@ The long way is for another harness, or a Mac where the short way failed. A harn
 ## Run a batch
 
 1. Open **Bids → 🤖 Robots → Console** and press {{button:blue|Copy Code kickoff}}. It is step 2 of the *Run the robots* card. {{button:gray|Preview the Code kickoff}} under it shows exactly what goes to the clipboard.
-2. In Claude, you open the **Code** tab, start a **new session** and paste. The kickoff opens by telling the session to run it, so it starts without a question. If it does ask what to do with the text, you answer *run it here as the robot*.
+2. In Claude, open the **Code** tab, start a **new session** and paste. The kickoff opens by telling the session to run it, so it starts without a question. If it does ask what to do with the text, answer *run it here as the robot*.
 3. The robot scores existing shadows and reads its guides. Then it calls the dispatcher for the oldest uncovered bid, human requests first. At the plans stage it fetches the sheets itself, a few pages at a time. It reads them and carries on. The steps are substrate, takeoff, counts, prices, lock, audit questions and report. A takeoff is the parts list read off the plans. There is nothing to attach.
-4. It claims the next bid only after the current one is locked and reported. It stops after three bids in one session. You paste the kickoff into a fresh session for the rest. *done: true* from the dispatcher means the live board is fully covered.
+4. It claims the next bid only after the current one is locked and reported. It stops after three bids in one session. Paste the kickoff into a fresh session for the rest. *done: true* from the dispatcher means the live board is fully covered.
 
 :::example Two at once
 Each session claims its own bid, and the dispatcher never hands two sessions the same one, so a second Code session can run beside the first: paste the kickoff again. Keep it to two — the robot's sign-ins are limited to six a minute. A session that finds an open bid another session touched in the last hour leaves it alone and says so.

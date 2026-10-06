@@ -14,7 +14,7 @@ Most work orders now start on **Jobs → Subs → Work**, where signing creates 
 ## Write it on the sheet
 
 1. Open the sheet from **Jobs → Subs → Pay** with {{button:outline|Edit}}. Scroll to the **Work order** box, just below {{chip:blue|Shown on the sub's portal}}.
-2. {{button:blue|Write a work order for …}} opens the **assembler**, the same one as Jobs → Subs → Work. The job, the sub, and the sheet total as the price are already filled. You tick the scope and send. Some sheets keep the older inline editor described here. Those sheets have more than one assignee, or a job that isn't loaded.
+2. {{button:blue|Write a work order for …}} opens the **assembler**, the same one as Jobs → Subs → Work. The job, the sub, and the sheet total as the price are already filled. Tick the scope and send. Some sheets keep the older inline editor described here. Those sheets have more than one assignee, or a job that isn't loaded.
    - **Scope** comes from the scope library for the job's trade. You change the list with the dropdown. You tick what applies. You type lines for this job underneath, one per line. Whatever is ticked is what the sub signs, word for word.
    - **Exclusions** are the library's standing exclusions, ticked the same way.
    - **Terms**: the **amount is the sheet total and it's fixed at send**. So you add the work and cost first. You set the work window, how long the offer is good for, retainage, and whether a bond is furnished. Retainage is a share of the amount the office holds back for a while. Special provisions is a free line.

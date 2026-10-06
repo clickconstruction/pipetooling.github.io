@@ -14,7 +14,7 @@ You can now link a GC to any job. Then you manage work by GC without touching bi
 1. Open the job and click {{button:outline|Edit}}.
 2. Expand the **Customer** section.
 3. Under ***GC/Builder (customer)***, you search and pick the GC. A GC is just a customer row. The list of GCs is the one Bids uses for GC/Builder.
-4. The GC saves automatically. You use {{button:outline|Clear GC}} to remove it.
+4. The GC saves automatically. Use {{button:outline|Clear GC}} to remove it.
 
 :::example Linked to a bid? Mostly automatic.
 Jobs **created from a bid** inherit the bid's GC/Builder automatically, and linking a bid to an existing job fills the GC if it's empty. For anything else, the {{chip:blue|Use bid's GC}} button copies it over in one click.
@@ -39,7 +39,7 @@ Jobs without a GC gather in a **Not billed to a GC** bucket at the bottom. Jobs 
 
 Every week, the office certifies each GC's group before sending statements. Certification is due Wednesday. Certifying means you confirm each bill belongs to this GC and the amount is right. The **stage track** pinned at the top tracks the week: **Check → Send → Word → Done**. Word is where you write down where the GC stands. Each stage shows how many GCs are waiting there. Each unchecked GC's row has a {{button:blue|Check bills}} button. The opened row has a {{button:blue|Certify}} button inside it:
 
-1. Clicking the button opens a **per-bill checklist**. You check off each bill as you confirm it belongs to this GC and the amount is right.
+1. Clicking the button opens a **per-bill checklist**. Check off each bill as you confirm it belongs to this GC and the amount is right.
 2. Not sure about one? The **▾ chevron** drops down the job's recent activity right in the list. Clicking the **job link** opens Job Detail on top. You dig in and close it, and your checkmarks are still there.
 3. When every bill is checked, {{button:outline|Check only}} records the attestation. The attestation is the record of who signed off, when, and exactly what. {{button:blue|Check & send…}} signs off and opens the statement email as a draft. The GC is already on the **To** line. The subject reads **Click Plumbing open balances: Aug 22, 2026**. Nothing sends until you click {{button:blue|Send statement}}. The statement's footer tells the GC to reply or **call the office at** a number. The number comes from Settings → Company → invoice issuer. You set the phone there once. Every statement carries the number, whether sent now, scheduled, or pasted.
 

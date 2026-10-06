@@ -46,7 +46,7 @@ From Mike T · Wed, 7/9, 8:14 AM
 :::
 
 1. Tap {{button:outline-amber|Create trip charge}}.
-2. The amount is pre-filled from Settings for that reason. You adjust it if this job warrants something different.
+2. The amount is pre-filled from Settings for that reason. Adjust it if this job warrants something different.
 3. Confirm with {{button:amber|Create trip charge}}. The charge lands in **Ready to Bill** as its own line. The inbox item closes itself with a record of what was created.
 
 The trip charge is **extra money, not a slice of the job**. The job's total goes up by the same amount. So the job's own remainder bill, the bill for what is left, stays exactly what it was. The trip charge bills on its own line whenever you're ready, whatever stage the job is in.
