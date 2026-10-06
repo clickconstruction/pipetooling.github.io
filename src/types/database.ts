@@ -11066,6 +11066,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "job_lien_desk_items_offer_set_by_fkey"
+            columns: ["offer_set_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "job_lien_desk_items_printed_by_fkey"
             columns: ["printed_by"]
             isOneToOne: false
@@ -11327,6 +11334,8 @@ export type Database = {
           created_at: string
           created_by: string | null
           current_payment_due: number
+          deleted_at: string | null
+          deleted_by: string | null
           fields: Json
           files: Json
           id: string
@@ -11351,6 +11360,8 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           current_payment_due?: number
+          deleted_at?: string | null
+          deleted_by?: string | null
           fields?: Json
           files?: Json
           id?: string
@@ -11375,6 +11386,8 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           current_payment_due?: number
+          deleted_at?: string | null
+          deleted_by?: string | null
           fields?: Json
           files?: Json
           id?: string
@@ -11395,6 +11408,13 @@ export type Database = {
           {
             foreignKeyName: "job_pay_applications_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_pay_applications_deleted_by_fkey"
+            columns: ["deleted_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -12873,6 +12893,20 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_ledger_invoices_lien_offer_filing_id_fkey"
+            columns: ["lien_offer_filing_id"]
+            isOneToOne: false
+            referencedRelation: "job_lien_filings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_ledger_invoices_lien_offer_set_by_fkey"
+            columns: ["lien_offer_set_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
@@ -20056,6 +20090,7 @@ export type Database = {
           sent_by: string | null
           sent_by_name: string
           source_id: string | null
+          source_snapshot: Json | null
           source_table: string
           subject: string
           title: string
@@ -20080,6 +20115,7 @@ export type Database = {
           sent_by?: string | null
           sent_by_name?: string
           source_id?: string | null
+          source_snapshot?: Json | null
           source_table?: string
           subject?: string
           title?: string
@@ -20104,6 +20140,7 @@ export type Database = {
           sent_by?: string | null
           sent_by_name?: string
           source_id?: string | null
+          source_snapshot?: Json | null
           source_table?: string
           subject?: string
           title?: string
