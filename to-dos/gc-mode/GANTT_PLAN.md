@@ -1385,6 +1385,51 @@ the finish); the contract on the second line (G-98 says it for the pace line, an
 would argue with it until the owner picks the line the customer hears); past jobs' weather and the
 season (the fixture has one job with logs); a crew per bar (a bar has none, so so far stands in).
 
+## Later, templates, as built (2026-10-06)
+
+G-44, Helper 5 on `spike/g44` (the mock-up and plan: `mockups/G-44.md`). `gcScheduleTemplates.ts`
+(tested, out of the barrel), `GcScheduleTemplates.tsx`, a fourth optional argument on `scheduleDraft`,
+three actions, and `templateId` on `setRough` and `draftSchedule`.
+
+- **What a template is**: a job's shape with no dates. Each line of each trade, and the first draft's
+  two inspections, keeps its days, the lines it waits on (by trade and name, with any G-35 gap) and
+  its offset: the days after the last of those that it started, or after the job's first day. The
+  stages' spans and the weeks are kept for the card. No dates, companies, percents, actual dates or
+  moves. An inspection only that job had, and G-38's added activities, stay with their job.
+- **Why waits and offsets**: Fair Oaks D took 23 weeks. Its days alone, in the first draft's stage
+  order, draw Boerne at 42. With waits and no offsets it is 19, and Fair Oaks D itself 17. With
+  offsets, Fair Oaks D redrawn from its own template lands every line and both inspections on its own
+  dates, the tests' pin.
+- **Saved** from a job being built: *Templates* on the Schedule tab, after the baseline card, *Save as
+  a template* with a name, the job's to start. Each template shows where it came from (*Saved Fri Oct
+  2 from Fair Oaks Shops, Building D, with 72% of the work done.*), its size and stage chips, the jobs
+  drawn from it, *Rename*, and *Set it aside* or *Bring it back*.
+- **Used**: *Start from a template* beside the start day on G-45's rough and on the first-draft card,
+  only where one is offered, with the fit said first: *The template Fair Oaks Shops, Building D covers
+  27 of the 31 lines here. Those run as they ran there. The other 4 take the stage days. It makes 27
+  weeks to build. Without it, 14 weeks.* Helotes reads 8 of 17, and 19 weeks against 10.
+- **One path**: `scheduleDraft(project, start, stageDays?, like?)`, G-45's stage days still the third
+  argument and the template's lines the fourth. A covered line (the same trade and name, any case)
+  takes its days, its waits this job has and its offset. Every other line is the first draft's own,
+  and the rough-in inspection still waits on every rough-in the template does not cover. With no
+  `like` the draw is exactly the first draft's, and G-45's snapshot of every fixture job's draw holds.
+- **Boerne's 27, not 23**: its fire sprinkler, which Fair Oaks D did not have, is the first draft's
+  own, the mains after the roof and the inspection after the mains. Its shell alone takes Fair Oaks
+  D's 23.
+- **A copy, recorded**: the rough keeps the lines it drew with (`rough.like`) and `rough.template`. A
+  first draft keeps `schedule.template`, and at award draws from the rough's copy as the rough did,
+  even with the template set aside. Renaming or setting a template aside never touches a job.
+- **Nothing reaches the trades or the customer**: templates live in `state.scheduleTemplates`, and the
+  customer's picture of a job drawn from one says nothing of it.
+- **Places (G-83)**: a template line keeps its line's kept place, and the draw writes it as kept on the
+  same line of the new job, not as a guess, since the office kept it once on purpose. It waits on
+  G-83's `ScheduleActivity.place`: one field and one line join when G-83 lands.
+- **Tests**: `gcScheduleTemplates.test.ts` (13) and `GcScheduleTemplates.render.test.tsx` (5). The
+  golden test lists the three actions. No fixture change, and nothing moved.
+
+Left for later: B, days from what really happened (G-55's actual dates), once they are recorded as a
+habit; C, a template's track record, once jobs close.
+
 ## Status
 
 Planned 2026-10-05. Phases 1 and 2 (finished 2026-10-06: an added activity, actuals, a new baseline, redo)

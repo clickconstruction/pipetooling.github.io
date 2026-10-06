@@ -586,6 +586,54 @@ export interface RoughSchedule {
   on: string
   /** The weeks to build and the finish as they went with our bid: kept when the bid went in, or at award if it was never marked sent. */
   kept?: { on: string; weeks: number; finish: string; at: 'bid' | 'award' }
+  /** The template it was drawn from (G-44). Unset: the stage days alone. */
+  template?: TemplateUse
+  /** A copy of that template's lines, so every redraw reads the copy and no edit to the template reaches the rough (G-44). */
+  like?: TemplateLine[]
+}
+
+/**
+ * A line of a schedule template (G-44): one line of a trade, or one of the two inspections the first
+ * draft draws, as it ran on the job it was saved from. No dates: its days, what it waits on and how
+ * many days after them it started.
+ */
+export interface TemplateLine {
+  /** "Roofing". Empty for one of the job's two inspections. */
+  trade: string
+  /** "TPO membrane", or "Rough-in inspection". Another job's line of the same trade and name takes it, whatever the case. */
+  label: string
+  /** The stage the first draft puts it in. */
+  stage: string
+  /** Its days, both ends counted. */
+  days: number
+  /** The lines it waits on, by trade and name, each with the office's gap on that wait (G-35) when one was set. */
+  after: { trade: string; label: string; gap?: number }[]
+  /** Days after the last of those finished that it started. With nothing to wait on: days after the job's first day. */
+  offset: number
+}
+
+/** A job's schedule shape kept to start the next job like it (G-44). Never dates, companies, percents or moves. */
+export interface ScheduleTemplate {
+  id: string
+  name: string
+  /** The job it was saved from, by its name then, and how much of its work was done. */
+  from: { projectId: string; name: string; donePct: number }
+  on: string
+  by: string
+  lines: TemplateLine[]
+  /** Each stage's span on that job in days, first start to last finish, in build order: what the card shows. */
+  stages: { key: string; days: number }[]
+  /** From the job's first day to substantial completion, in whole weeks. */
+  weeks: number
+  /** Set aside: not offered for new jobs. The jobs drawn from it keep what they drew. */
+  asideOn?: string
+}
+
+/** The template a draw came from, by the name it had that day (G-44). */
+export interface TemplateUse {
+  id: string
+  name: string
+  on: string
 }
 
 export interface GcProject {
@@ -898,6 +946,8 @@ export interface GcState {
   customerSends?: CustomerSend[]
   /** The office's changes to the scope book. Unset: nothing changed yet. */
   scopeBook?: ScopeBookStore
+  /** Schedule templates, oldest first (G-44): a job's shape for the next job like it. Unset: none saved. */
+  scheduleTemplates?: ScheduleTemplate[]
 }
 
 export type GcAction =
@@ -1094,7 +1144,15 @@ export type GcAction =
   | { type: 'selfReportStage'; projectId: string; packageId: string; lineId: string; pct: number }
   /** Our own bid in Trades mode is priced: the trade carries a real number from now on. */
   | { type: 'priceOwnBid'; projectId: string; packageId: string; value: number }
-  | { type: 'draftSchedule'; projectId: string; start: string; /** The rough's stage lengths, by stage key (G-45). Absent: the usual ones. */ days?: Record<string, number> }
+  | {
+      type: 'draftSchedule'
+      projectId: string
+      start: string
+      /** The rough's stage lengths, by stage key (G-45). Absent: the usual ones. */
+      days?: Record<string, number>
+      /** A template to draw from (G-44): its lines, or the rough's copy when the rough was drawn from it. */
+      templateId?: string
+    }
   /** `why` (the Gantt, Phase 2): the explanation a move is saved with. The screens always send it; it is kept in `schedule.moves`. */
   | { type: 'setScheduleActivity'; projectId: string; lineId: string; start: string; finish: string; after: string[]; why?: { reason: ScheduleMoveReason; note: string; by: string }; lag?: Record<string, number>; notBefore?: string | null; mustFinishBy?: string | null; changeOrderId?: string; lateNoticeId?: string }
   | { type: 'setScheduleMilestone'; projectId: string; milestone: ScheduleMilestone }
@@ -1283,7 +1341,19 @@ export type GcAction =
   /** Work finished early (G-37): its plan catches up, and what was right behind it comes in by the days it gave back. On a press, never by itself. `leaveOut`: the activities a trade cannot start sooner. */
   | { type: 'pullScheduleEarlier'; projectId: string; leaveOut: string[]; why: { reason: ScheduleMoveReason; note: string; by: string } }
   /** Draw or redraw the rough schedule while we bid (G-45): only on a job still bidding, not lost, before our bid goes in. */
-  | { type: 'setRough'; projectId: string; start: string; days: Record<string, number>; by: string }
+  | {
+      type: 'setRough'
+      projectId: string
+      start: string
+      days: Record<string, number>
+      by: string
+      /** A template (G-44): its id copies its lines to the rough; null goes back to the stage days alone; absent keeps what the rough had. */
+      templateId?: string | null
+    }
+  /** Schedule templates (G-44): save a job's shape, rename one, set one aside or bring it back. */
+  | { type: 'saveScheduleTemplate'; projectId: string; name: string; by: string }
+  | { type: 'renameScheduleTemplate'; templateId: string; name: string }
+  | { type: 'setAsideScheduleTemplate'; templateId: string; aside: boolean; by: string }
   /** Days got back (G-82): one offer from the late job's list, by its key, re-planned from the state and saved as one move. On a press, never by itself. */
   | { type: 'recoverScheduleDays'; projectId: string; key: string; why: { reason: ScheduleMoveReason; note: string; by: string } }
   /** A trade says from its portal how many people a day it will have on site in a coming week (G-142). */
@@ -1523,6 +1593,8 @@ export interface ProjectSchedule {
   walks?: ScheduleWalk[]
   /** Every late notice a trade sent from its portal, newest first (the Gantt, G-117). Unset: none yet. */
   lateNotices?: LateNotice[]
+  /** The template its first draft was drawn from (G-44). Unset: none. */
+  template?: TemplateUse
 }
 
 /** A plan the schedule is measured against (G-41): the one locked at Start, or one set after a signed change order, named. */

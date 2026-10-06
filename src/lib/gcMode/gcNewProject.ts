@@ -4,7 +4,7 @@
  * starts from its usual scope. A later set of plans uses the same guess, and can bring a trade
  * the job did not have. Every guess here is a starting point the office changes.
  */
-import type { GcAction, GcCustomer, GcProject, GcState, NewProjectDraft, NewTradeDraft, PlanSheet, ProjectSchedule, ScheduleActivity, ScheduleMilestone, ScopeItem, SpecSection, TradePackage } from './gcTypes'
+import type { GcAction, GcCustomer, GcProject, GcState, NewProjectDraft, NewTradeDraft, PlanSheet, ProjectSchedule, ScheduleActivity, ScheduleMilestone, ScopeItem, SpecSection, TemplateLine, TradePackage } from './gcTypes'
 import { sheetsAtRev } from './gcPlans'
 import {
   BUDGET_PER_SQ_FT,
@@ -511,6 +511,11 @@ function plusDays(iso: string, days: number): string {
   return new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, (d ?? 1) + days)).toISOString().slice(0, 10)
 }
 
+/** A line's key in a template (G-44): its trade and its name, the name matched whatever the case and spacing. An inspection's trade is empty. */
+export function templateKey(trade: string, label: string): string {
+  return `${trade}|${label.trim().replace(/\s+/g, ' ').toLowerCase()}`
+}
+
 /** The lines a trade's activities are drawn from: its schedule of values, or its scope (our own crew, or before one). */
 function draftLines(pkg: TradePackage): { lineId: string; label: string }[] {
   if (pkg.sow && !pkg.selfPerform) return pkg.sow.sov.map((l) => ({ lineId: l.id, label: l.label }))
@@ -527,13 +532,53 @@ function draftLines(pkg: TradePackage): { lineId: string; label: string }[] {
  * and anything else after the rough-ins wait on, and the final inspection after all the work.
  * Milestones: dry-in (the last dry-in line), the rough-in inspection (on its finish) and
  * substantial completion (three days after the final inspection). The office changes every date.
+ *
+ * `like`, a template's lines (G-44): a line of the same trade and name runs as it ran on the template's
+ * job. It takes its days, the template's waits this job has (with their gaps), and its offset: as many
+ * days after the last of them as it started there. A line with nothing to wait on starts its offset after
+ * the first day. The two inspections follow the template's the same way, and the rough-in inspection
+ * still waits on every rough-in the template does not cover. Every other line is drawn as above. With no
+ * `like`, nothing here runs differently.
  */
-export function scheduleDraft(project: GcProject, start: string, stageDays?: Partial<Record<string, number>>): ProjectSchedule {
+export function scheduleDraft(project: GcProject, start: string, stageDays?: Partial<Record<string, number>>, like?: TemplateLine[]): ProjectSchedule {
   const order = new Map(SCHEDULE_STAGES.map((st, i) => [st.key, i]))
-  type Line = { lineId: string; packageId: string; trade: string; stage: string; index: number }
+  type Line = { lineId: string; packageId: string; trade: string; label: string; stage: string; index: number }
   const lines: Line[] = project.packages.flatMap((pkg) =>
-    draftLines(pkg).map((l, index) => ({ lineId: l.lineId, packageId: pkg.id, trade: pkg.trade, stage: lineStage(pkg.trade, l.label), index })),
+    draftLines(pkg).map((l, index) => ({ lineId: l.lineId, packageId: pkg.id, trade: pkg.trade, label: l.label, stage: lineStage(pkg.trade, l.label), index })),
   )
+  // A template's lines by trade and name (G-44), and what this job has drawn by the same keys.
+  const likeOf = new Map((like ?? []).map((t) => [templateKey(t.trade, t.label), t]))
+  const keyOfLine = (l: Line) => templateKey(l.trade, l.label)
+  const drawnByKey = new Map<string, ScheduleActivity>()
+  /**
+   * Where a covered line goes: after the last of the template's waits this job has drawn, by its
+   * offset, and never before a gap set on one of them. With nothing to wait on, its offset after the
+   * first day. Null: it waited on lines this job has none of, so the stage rules place it.
+   */
+  const placeLike = (t: TemplateLine): { from: string; after: string[]; lag?: Record<string, number> } | null => {
+    const waits = t.after.flatMap((w) => {
+      const a = drawnByKey.get(templateKey(w.trade, w.label))
+      return a ? [{ a, gap: w.gap ?? 0 }] : []
+    })
+    if (t.after.length > 0 && waits.length === 0) return null
+    if (waits.length === 0) return { from: plusDays(start, Math.max(0, t.offset)), after: [] }
+    const last = waits.reduce((m, w) => (w.a.finish > m ? w.a.finish : m), '')
+    const from = [start, plusDays(last, 1 + t.offset), ...waits.map((w) => plusDays(w.a.finish, 1 + w.gap))].reduce((m, d) => (d > m ? d : m))
+    const gaps = waits.filter((w) => w.gap !== 0)
+    return { from, after: [...new Set(waits.map((w) => w.a.lineId))], ...(gaps.length > 0 ? { lag: Object.fromEntries(gaps.map((w) => [w.a.lineId, w.gap])) } : {}) }
+  }
+  /** A stage's lines as drawn: as listed, except a covered line comes after the lines of its stage it waits on. */
+  const inWaitOrder = (stageLines: Line[]): Line[] => {
+    if (likeOf.size === 0) return stageLines
+    const left = [...stageLines]
+    const out: Line[] = []
+    while (left.length > 0) {
+      const ready = left.findIndex((l) => !(likeOf.get(keyOfLine(l))?.after ?? []).some((w) => left.some((o) => o !== l && keyOfLine(o) === templateKey(w.trade, w.label))))
+      // Waits that loop: the first as listed goes, and the rest follow.
+      out.push(...left.splice(ready < 0 ? 0 : ready, 1))
+    }
+    return out
+  }
   const byStage = (key: string) => lines.filter((l) => l.stage === key)
   /** The nearest stage before this one, along `after`, that the job has lines in. */
   const gateOf = (key: string): string | null => {
@@ -554,7 +599,18 @@ export function scheduleDraft(project: GcProject, start: string, stageDays?: Par
           ? byStage(gate).map((l) => done.get(l.lineId)).filter((a): a is ScheduleActivity => !!a)
           : []
     const gateDay = gateActs.reduce<string | null>((m, a) => (m === null || a.finish > m ? a.finish : m), null)
-    for (const line of byStage(stage.key)) {
+    for (const line of inWaitOrder(byStage(stage.key))) {
+      // A line the template covers (G-44) runs as it ran there.
+      const t = likeOf.get(keyOfLine(line))
+      const at = t ? placeLike(t) : null
+      if (t && at) {
+        // G-83's kept place joins here once G-83 is on the spike: the template line's place, written as kept (the lead, 2026-10-06).
+        const a: ScheduleActivity = { lineId: line.lineId, packageId: line.packageId, start: at.from, finish: plusDays(at.from, t.days - 1), after: at.after, ...(at.lag ? { lag: at.lag } : {}) }
+        done.set(line.lineId, a)
+        drawnByKey.set(keyOfLine(line), a)
+        activities.push(a)
+        continue
+      }
       // The line before it in its own trade, in stage order: a crew does its lines one after another.
       const own = lines
         .filter((l) => l.packageId === line.packageId)
@@ -570,33 +626,43 @@ export function scheduleDraft(project: GcProject, start: string, stageDays?: Par
       // A trade's lines in one stage share the stage's days: roofing's four lines take about ten days, not forty.
       const shares = own.filter((l) => l.stage === stage.key).length
       // A rough schedule may set this job's own stage lengths (G-45); every other caller draws the usual ones.
-      const days = Math.max(2, Math.ceil((stageDays?.[stage.key] ?? stage.days) / Math.max(1, shares)))
+      // A covered line whose waits this job has none of keeps the template's days (G-44).
+      const days = t ? t.days : Math.max(2, Math.ceil((stageDays?.[stage.key] ?? stage.days) / Math.max(1, shares)))
       const a: ScheduleActivity = { lineId: line.lineId, packageId: line.packageId, start: from, finish: plusDays(from, days - 1), after }
       done.set(line.lineId, a)
+      drawnByKey.set(keyOfLine(line), a)
       activities.push(a)
     }
     if (stage.key === 'roughIn' && byStage('roughIn').length > 0) {
       const roughs = byStage('roughIn').map((l) => done.get(l.lineId)).filter((a): a is ScheduleActivity => !!a)
-      const from = plusDays(roughs.reduce((m, a) => (a.finish > m ? a.finish : m), start), 1)
+      // The template's rough-in inspection (G-44): as it ran there, and still after every rough-in here it does not cover.
+      const t = likeOf.get(templateKey('', 'Rough-in inspection'))
+      const at = t ? placeLike(t) : null
+      const others = at ? byStage('roughIn').filter((l) => !likeOf.has(keyOfLine(l))).map((l) => done.get(l.lineId)).filter((a): a is ScheduleActivity => !!a) : []
+      const from = at ? others.reduce((m, a) => (plusDays(a.finish, 1) > m ? plusDays(a.finish, 1) : m), at.from) : plusDays(roughs.reduce((m, a) => (a.finish > m ? a.finish : m), start), 1)
       roughInspection = {
         lineId: `${project.id}-insp-roughin`,
         packageId: '',
         start: from,
-        finish: plusDays(from, INSPECTION_DAYS - 1),
-        after: roughs.map((a) => a.lineId),
+        finish: plusDays(from, (t && at ? t.days : INSPECTION_DAYS) - 1),
+        after: at ? [...new Set([...at.after, ...others.map((a) => a.lineId)])] : roughs.map((a) => a.lineId),
+        ...(at?.lag ? { lag: at.lag } : {}),
         inspection: { label: 'Rough-in inspection' },
       }
+      drawnByKey.set(templateKey('', 'Rough-in inspection'), roughInspection)
       activities.push(roughInspection)
     }
   }
   // The final inspection waits on all the work; substantial completion follows it.
   const workEnd = activities.reduce((m, a) => (a.finish > m ? a.finish : m), start)
-  const finalFrom = plusDays(workEnd, 1)
+  // The template's final inspection (G-44): its offset after the last of the work, and its days.
+  const lastLike = likeOf.get(templateKey('', 'Final inspection'))
+  const finalFrom = plusDays(workEnd, 1 + (lastLike ? Math.max(0, lastLike.offset) : 0))
   const finalInspection: ScheduleActivity = {
     lineId: `${project.id}-insp-final`,
     packageId: '',
     start: finalFrom,
-    finish: plusDays(finalFrom, INSPECTION_DAYS - 1),
+    finish: plusDays(finalFrom, (lastLike ? lastLike.days : INSPECTION_DAYS) - 1),
     after: activities.map((a) => a.lineId).filter((id) => !activities.some((b) => b.after.includes(id))),
     inspection: { label: 'Final inspection' },
   }

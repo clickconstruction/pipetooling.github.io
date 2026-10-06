@@ -938,6 +938,9 @@ describe('GC mode golden walk', () => {
     used.add('inWhatIf') // played in gcWhatIf.test.ts: it needs a copy open
     used.add('keepWhatIf') // played in gcWhatIf.test.ts: it needs moves tried in a copy
     used.add('throwAwayWhatIf') // played in gcWhatIf.test.ts: it needs a copy open
+    used.add('saveScheduleTemplate') // played in gcScheduleTemplates.test.ts: a job's schedule saved as a template (G-44)
+    used.add('renameScheduleTemplate') // played in gcScheduleTemplates.test.ts: it needs a template saved first
+    used.add('setAsideScheduleTemplate') // played in gcScheduleTemplates.test.ts: it needs a template saved first
     const all: GcAction['type'][] = [
       'issueAddendum', 'tradeConfirmBid', 'setStartItem', 'setStartDate', 'startProject', 'invite', 'nudge',
       'logContact', 'tradePromise', 'tradeOpenPlans', 'tradeSubmitBid', 'tradeDecline', 'officeDecline', 'setPlug',
@@ -995,6 +998,7 @@ describe('GC mode golden walk', () => {
       'recoverScheduleDays',
       'tradeSetCrewCount',
       'startWhatIf', 'inWhatIf', 'keepWhatIf', 'throwAwayWhatIf',
+      'saveScheduleTemplate', 'renameScheduleTemplate', 'setAsideScheduleTemplate',
     ]
     expect(all.filter((t) => !used.has(t))).toEqual([])
   })

@@ -10,7 +10,7 @@
  *
  * Days are calendar days in the prototype. Import from `./gcModel`, which re-exports this file.
  */
-import type { GcProject, GcState, InspectionFailure, LookAheadMark, LookAheadReason, ProjectSchedule, ScheduleActivity, ScheduleMilestone, TradePackage } from './gcTypes'
+import type { GcProject, GcState, InspectionFailure, LookAheadMark, LookAheadReason, ProjectSchedule, ScheduleActivity, ScheduleMilestone, TemplateLine, TradePackage } from './gcTypes'
 import { carriedAmount } from './gcBids'
 import { scheduleDraft } from './gcNewProject'
 import { partnerById } from './gcLookups'
@@ -118,10 +118,11 @@ export function scheduleLinesOf(pkg: TradePackage): { lineId: string; label: str
 /**
  * The first draft to draw from: the New Project lane's draft from the stages of the job
  * (`scheduleDraft` in gcNewProject.ts: the rough-ins side by side after framing, close-in after
- * the inspection, the trims after the finishes). The Draw a first draft button calls this.
+ * the inspection, the trims after the finishes). The Draw a first draft button calls this, with a
+ * template's lines when it starts from one (G-44).
  */
-export function draftSchedule(project: GcProject, start: string, stageDays?: Partial<Record<string, number>>): ProjectSchedule {
-  return scheduleDraft(project, start, stageDays)
+export function draftSchedule(project: GcProject, start: string, stageDays?: Partial<Record<string, number>>, like?: TemplateLine[]): ProjectSchedule {
+  return scheduleDraft(project, start, stageDays, like)
 }
 
 /**

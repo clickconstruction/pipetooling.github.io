@@ -22,10 +22,10 @@ function weeksWords(n: number): string {
   return `${n} ${n === 1 ? 'week' : 'weeks'}`
 }
 
-/** The rough's draw: the first draft's kernel on the trades' lines, from the rough's start, with the job's stage days. Null: none drawn. */
+/** The rough's draw: the first draft's kernel on the trades' lines, from the rough's start, with the job's stage days, and its copy of a template's lines when it was drawn from one (G-44). Null: none drawn. */
 export function roughDraw(project: GcProject): ProjectSchedule | null {
   const r = project.rough
-  return r ? scheduleDraft(project, r.start, r.days) : null
+  return r ? scheduleDraft(project, r.start, r.days, r.like) : null
 }
 
 /** A draw's length: its first day of work to substantial completion (else its last day), rounded up to whole weeks. Null: nothing drawn. */
@@ -129,7 +129,10 @@ export function bidSentWeeksWords(project: GcProject): string | null {
 /** The first-draft card's line in buyout: the weeks we bid, and what the first draft starts from. */
 export function roughFirstDraftWords(project: GcProject): string | null {
   const w = roughWeeks(project)
-  return w ? `We bid ${weeksWords(w.weeks)}, from the rough schedule. The first draft starts from its start day and its stage lengths.` : null
+  if (!w) return null
+  // A rough drawn from a template (G-44): the first draft draws the same way.
+  if (project.rough?.template) return `We bid ${weeksWords(w.weeks)}, from the rough schedule drawn from a template. The first draft starts from it the same way.`
+  return `We bid ${weeksWords(w.weeks)}, from the rough schedule. The first draft starts from its start day and its stage lengths.`
 }
 
 /** Once the first draft is drawn, against the bid: "The first draft runs 15 weeks. We bid 14." Null: no rough, or no first draft. */

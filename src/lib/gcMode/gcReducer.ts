@@ -40,6 +40,7 @@ import { BACK_CHARGE_ANSWER_DAYS, backChargeCanTake, backChargeDraws, backCharge
 import { payReminderEmail, payReminderStep } from './gcOwnerBillingRemind'
 import { portalCanAskRfi, RFI_NEEDED_DAYS, rfiAnsweredWords, rfiChangeOrderDescription, rfiDefaultHolds, rfiLabel } from './gcBuildingRfis'
 import { bidSentWeeksWords, keepRough, roughDrawnWords } from './gcRoughSchedule'
+import { cleanTemplateName, templateNameProblem, templateShape, templatesOffered } from './gcScheduleTemplates'
 import { appClaimed, appOpen, changeOrderPrice, OWNER_RETAINAGE_DEFAULT_PCT, ownerCloseout, ownerContractWorthNow, ownerFinalPayAppToSend, ownerPayApp, ownerPayAppHasWork, ownerPayAppToSend, ownerRetainageWords } from './gcOwnerBilling'
 
 export function gcReducer(state: GcState, action: GcAction): GcState {
@@ -1116,9 +1117,19 @@ function reduce(state: GcState, action: GcAction): GcState {
       // A first draft to draw from, only when nothing is drawn yet (owner, 2026-10-02: we draw it).
       const project = state.projects.find((p) => p.id === action.projectId)
       if (!project || project.schedule || !action.start) return state
-      const schedule = draftSchedule(project, action.start, action.days)
+      // From a template (G-44): the rough's copy when the rough was drawn from it, else an offered template's lines.
+      const own = action.templateId && project.rough?.template?.id === action.templateId && project.rough.like ? project.rough : undefined
+      const template = action.templateId && !own ? templatesOffered(state).find((t) => t.id === action.templateId) : undefined
+      if (action.templateId && !own && !template) return state
+      const use = own?.template ? { ...own.template, on: state.today } : template ? { id: template.id, name: template.name, on: state.today } : null
+      const drawn = draftSchedule(project, action.start, action.days, own?.like ?? template?.lines)
+      const schedule = use ? { ...drawn, template: use } : drawn
       const next = mapProject(state, project.id, (p) => ({ ...p, schedule }))
-      return logged(next, 'office', `Drew a first draft of the schedule on ${project.name}: ${schedule.activities.length} activities from ${weekdayDate(action.start)}.`)
+      return logged(
+        next,
+        'office',
+        `Drew a first draft of the schedule on ${project.name}: ${schedule.activities.length} activities from ${weekdayDate(action.start)}.${use ? ` It is drawn from the template ${use.name}.` : ''}`,
+      )
     }
 
     case 'setScheduleActivity': {
@@ -2756,9 +2767,49 @@ function reduce(state: GcState, action: GcAction): GcState {
       const project = state.projects.find((p) => p.id === action.projectId)
       if (!project || project.stage !== 'pursuing' || project.lostOn || project.ourBidSentOn || !action.start) return state
       const days = Object.fromEntries(Object.entries(action.days).filter(([, d]) => Number.isFinite(d) && d >= 1).map(([k, d]) => [k, Math.round(d)]))
-      const rough = { start: action.start, days, by: action.by, on: state.today }
+      // A template (G-44): an offered one's lines are copied, null goes back to the stage days alone, and a redraw keeps what the rough had.
+      const template = typeof action.templateId === 'string' ? templatesOffered(state).find((t) => t.id === action.templateId) : undefined
+      if (typeof action.templateId === 'string' && !template) return state
+      const keep = action.templateId === undefined ? project.rough : undefined
+      const use = template ? { id: template.id, name: template.name, on: state.today } : keep?.template
+      const lines = template ? template.lines : keep?.like
+      const rough = { start: action.start, days, by: action.by, on: state.today, ...(use && lines ? { template: use, like: lines } : {}) }
       const next = mapProject(state, project.id, (p) => ({ ...p, rough }))
-      return logged(next, 'office', roughDrawnWords({ ...project, rough }) ?? `Drew a rough schedule for our bid on ${project.name}.`)
+      const drew = roughDrawnWords({ ...project, rough }) ?? `Drew a rough schedule for our bid on ${project.name}.`
+      return logged(next, 'office', use && lines ? `${drew} It is drawn from the template ${use.name}.` : drew)
+    }
+
+    case 'saveScheduleTemplate': {
+      // A job being built saved as a template (G-44): its shape, with no dates, companies, percents or moves.
+      const project = state.projects.find((p) => p.id === action.projectId)
+      if (!project || project.stage !== 'building' || templateNameProblem(state, action.name)) return state
+      const shape = templateShape(state, project)
+      if (!shape) return state
+      const all = state.scheduleTemplates ?? []
+      const template = { id: `tpl-${all.length + 1}`, name: cleanTemplateName(action.name), on: state.today, by: action.by, ...shape }
+      return logged({ ...state, scheduleTemplates: [...all, template] }, 'office', `Saved the schedule of ${project.name} as the template ${template.name}.`)
+    }
+
+    case 'renameScheduleTemplate': {
+      // A template's new name (G-44): the jobs drawn from it keep the name they were drawn with.
+      const template = (state.scheduleTemplates ?? []).find((t) => t.id === action.templateId)
+      if (!template || templateNameProblem(state, action.name, template.id)) return state
+      const name = cleanTemplateName(action.name)
+      if (name === template.name) return state
+      return logged({ ...state, scheduleTemplates: (state.scheduleTemplates ?? []).map((t) => (t.id === template.id ? { ...t, name } : t)) }, 'office', `Renamed the template ${template.name} to ${name}.`)
+    }
+
+    case 'setAsideScheduleTemplate': {
+      // A template set aside is no longer offered (G-44); brought back, it is again. The jobs drawn from it keep what they drew.
+      const template = (state.scheduleTemplates ?? []).find((t) => t.id === action.templateId)
+      if (!template || Boolean(template.asideOn) === action.aside) return state
+      const templates = (state.scheduleTemplates ?? []).map((t) => {
+        if (t.id !== template.id) return t
+        if (action.aside) return { ...t, asideOn: state.today }
+        const { asideOn: _aside, ...offered } = t
+        return offered
+      })
+      return logged({ ...state, scheduleTemplates: templates }, 'office', action.aside ? `${action.by} set aside the template ${template.name}.` : `${action.by} brought back the template ${template.name}.`)
     }
 
     case 'recoverScheduleDays': {

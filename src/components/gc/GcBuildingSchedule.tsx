@@ -63,11 +63,13 @@ import { customerScheduleHtml, customerScheduleLetter, scheduleSends } from '../
 import { chartHolds } from '../../lib/gcMode/gcChartHolds'
 import { GcNotReady } from './GcNotReady'
 import { GcRoughSchedule } from './GcRoughSchedule'
+import { GcTemplatePick, GcTemplatesCard } from './GcScheduleTemplates'
+import { drawnFromWords, templatesOffered } from '../../lib/gcMode/gcScheduleTemplates'
 import { firstDraftAgainstBid, roughFirstDraftWords } from '../../lib/gcMode/gcRoughSchedule'
 import { customerDoneWords, customerSchedulePicture, customerStanding } from '../../lib/gcMode/gcCustomerSchedule'
 import type { GanttPrintJob } from '../../lib/gcMode/gcGanttPrint'
 import { useAuth } from '../../hooks/useAuth'
-import type { WaitKind } from '../../lib/gcMode/gcTypes'
+import type { ScheduleTemplate, WaitKind } from '../../lib/gcMode/gcTypes'
 import { barCaller, callList, callListFollowPeople, callSheetId } from '../../lib/gcMode/gcCallList'
 import { GcBarCaller, GcCallList } from './GcCallList'
 import { GcFollowUpSheet } from './GcFollowUpSheet'
@@ -177,13 +179,13 @@ export function GcBuildingScheduleTab({ state, project: realProject, dispatch: r
   const building = project.stage === 'building'
 
   // While we bid, the tab is the rough schedule for our bid (G-45): its own record, never the schedule.
-  if (project.stage === 'pursuing') return <GcRoughSchedule project={project} today={state.today} by={me} dispatch={dispatch} />
+  if (project.stage === 'pursuing') return <GcRoughSchedule project={project} today={state.today} by={me} dispatch={dispatch} offered={templatesOffered(state)} />
 
   if (!schedule || m.rows.length === 0) {
     return (
       <div style={{ display: 'grid', gap: '0.9rem' }}>
         <ScheduleWhy />
-        <DraftCard project={project} today={state.today} dispatch={dispatch} />
+        <DraftCard project={project} today={state.today} dispatch={dispatch} offered={templatesOffered(state)} />
       </div>
     )
   }
@@ -213,6 +215,8 @@ export function GcBuildingScheduleTab({ state, project: realProject, dispatch: r
           </span>
           {/* The first draft against the weeks we bid (G-45). */}
           {firstDraftAgainstBid(project) && <div data-tour="gc-draft-vs-bid" style={{ marginTop: '0.35rem' }}>{firstDraftAgainstBid(project)}</div>}
+          {/* The template it was drawn from (G-44). */}
+          {schedule.template && <div data-drawn-from style={{ marginTop: '0.35rem' }}>{drawnFromWords(schedule.template)}</div>}
         </Card>
       )}
 
@@ -374,6 +378,9 @@ export function GcBuildingScheduleTab({ state, project: realProject, dispatch: r
 
           {schedule.baseline && <BaselineCard project={project} today={state.today} by={me} dispatch={dispatch} />}
 
+          {/* Save this job's schedule as a template for the next job like it (G-44). */}
+          {building && <GcTemplatesCard state={state} project={project} by={me} dispatch={dispatch} />}
+
           {building && <ScheduleSendCard state={state} project={project} by={me} dispatch={dispatch} />}
 
           {building && <VerifyCard project={project} rows={m.rows} today={state.today} dispatch={dispatch} />}
@@ -403,9 +410,12 @@ function ScheduleWhy() {
 // ---------------------------------------------------------------------------------------------
 
 /** Nothing drawn yet: a start day and a first draft to draw from. */
-function DraftCard({ project, today, dispatch }: { project: GcProject; today: string; dispatch: Dispatch<GcAction> }) {
+function DraftCard({ project, today, dispatch, offered = [] }: { project: GcProject; today: string; dispatch: Dispatch<GcAction>; /** The templates to start from (G-44). */ offered?: ScheduleTemplate[] }) {
   // The first draft starts from the rough's start day when we bid one (G-45).
   const [start, setStart] = useState(project.startDate ?? project.rough?.start ?? addDays(mondayOf(today), 7))
+  // From a template (G-44): the one the rough was drawn from, until another is picked.
+  const own = project.rough?.template && project.rough.like ? { use: project.rough.template, lines: project.rough.like } : undefined
+  const [templateId, setTemplateId] = useState(own?.use.id ?? '')
   return (
     <Card>
       <div style={{ display: 'grid', gap: '0.5rem', fontSize: '0.9rem' }}>
@@ -419,7 +429,12 @@ function DraftCard({ project, today, dispatch }: { project: GcProject; today: st
             <span style={{ color: 'var(--text-muted)' }}>Work starts</span>
             <input type="date" value={start} onChange={(e) => setStart(e.target.value)} style={rowBox} />
           </label>
-          <Btn kind="primary" disabled={!start} onClick={() => dispatch({ type: 'draftSchedule', projectId: project.id, start, ...(project.rough ? { days: project.rough.days } : {}) })}>
+          <GcTemplatePick project={project} start={start} {...(project.rough ? { stageDays: project.rough.days } : {})} offered={offered} {...(own ? { own } : {})} value={templateId} onChange={setTemplateId} />
+          <Btn
+            kind="primary"
+            disabled={!start}
+            onClick={() => dispatch({ type: 'draftSchedule', projectId: project.id, start, ...(project.rough ? { days: project.rough.days } : {}), ...(templateId ? { templateId } : {}) })}
+          >
             Draw a first draft
           </Btn>
         </div>
