@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import type { PhysicalInvoiceIssuer } from '../../lib/physicalInvoiceIssuer'
-import { buildLienNoticeBlocks, filingDocHtml, filingLetterheadFromIssuer, type FilingDocExtras, type FilingFieldMark, type LienNoticeFields } from '../../lib/jobsDocuments/lienFilingDocuments'
+import { buildLienAffidavitBlocks, buildLienNoticeBlocks, filingDocHtml, filingLetterheadFromIssuer, type FilingDocExtras, type FilingFieldMark, type LienNoticeFields } from '../../lib/jobsDocuments/lienFilingDocuments'
 import { LIEN_NOTICE_FIELD_GUIDE, LIEN_NOTICE_PREVIEW_EDIT_MESSAGE, LIEN_NOTICE_PREVIEW_MESSAGE, LIEN_NOTICE_PREVIEW_SAVE_MESSAGE, applyWordingEdits, buildLienNoticePreviewHtml, isTypedNoticeField, lienNoticePreviewPages, noticeWordingDiff, wordingLineText, type LienNoticeFieldKey } from '../../lib/jobs/lienNoticePreview'
 import { demandDate, demandMoney } from '../../lib/jobsDocuments/demandLetter'
 import { defaultSignoffAsk, signoffWords, type LegalSignoffState } from '../../lib/legal/legalAsks'
@@ -44,7 +44,7 @@ import {
 } from '../../lib/jobs/lienDeskIo'
 import { wordRecordBlock, wordRecordWords, type LienWordChannel } from '../../lib/jobs/lienWord'
 import { LienWordRecordRow } from './LienWordRecordRow'
-import { buildLienNoticeFieldsForJob, describeNoticeMonths, homesteadStatementApplies, parseLienDeskDraftFields, type LienDeskDraftFields } from '../../lib/jobs/lienNoticeDraft'
+import { buildLienAffidavitFieldsForJob, buildLienNoticeFieldsForJob, describeNoticeMonths, homesteadStatementApplies, parseLienDeskDraftFields, type LienDeskDraftFields } from '../../lib/jobs/lienNoticeDraft'
 import type { LienDeskData, LienDeskJob } from '../../hooks/useLienDeskData'
 import { useNoticePayPage } from '../../hooks/useNoticePayPage'
 import { payPageBlocks, payPageSummary } from '../../lib/jobs/lienNoticePayPage'
@@ -65,7 +65,9 @@ import LienTrackingOwedEditor from './LienTrackingOwedEditor'
 import { sendsTrackingOwed } from '../../lib/jobs/lienSendTracking'
 import { clearLienDeskItemPrinted, markLienDeskItemsPrinted } from '../../lib/jobs/lienDeskIo'
 import { buildLienNextUp, type LienNextUpRow } from '../../lib/jobs/lienNextUp'
-import type { LienStepFacts } from '../../lib/jobs/lienNextUpSteps'
+import { lienStepDueWords, LIEN_STEP_LADDERS, lienStepOfRow, type LienStepFacts } from '../../lib/jobs/lienNextUpSteps'
+import { gapToken, lienPaperGaps, paintGaps, withGapTokens, type LienPaperFacts } from '../../lib/jobs/lienPaperGaps'
+import LienPaperPreviewOverlay, { type LienPaperPreviewEntry } from './LienPaperPreviewOverlay'
 import LienDeskNextUp from './LienDeskNextUp'
 import type { LienCalendarJob } from '../../lib/jobs/lienCalendar'
 import { callLetterFactsFor, practiceCallFacts, type CallerJobHit, type CallerMatchInput, type DeskJobRef } from '../../lib/jobs/lienCallerMatch'
@@ -503,6 +505,100 @@ export default function LienDeskModal({
       gcName: (gcId) => data.gcsById[gcId]?.name ?? 'A GC',
     })
   }, [data, authRole, todayYmd])
+  // The paper behind a Do now chip (v2.4632): the notice or the affidavit as it stands, every statutory blank marked.
+  const [paperOpen, setPaperOpen] = useState<number | null>(null)
+  const paperRows = useMemo(() => nextUpRows.filter((r) => r.jobId && r.kind !== 'retainage'), [nextUpRows])
+  const paperFactsFor = (row: LienNextUpRow): LienPaperFacts | null => {
+    if (!data || !row.jobId) return null
+    const rowJob = data.jobsById[row.jobId]
+    const rowAddress = rowJob?.customer_address_id ? data.addressesById[rowJob.customer_address_id] ?? null : null
+    const prop = resolveLienProperty(rowAddress, data.ownerByJob[row.jobId] ?? null)
+    const rowGc = row.gcId ? data.gcsById[row.gcId] : undefined
+    return {
+      ownerName: lienPropertyOwnerDisplayName(prop.owner),
+      ownerAddress: prop.owner.mailingAddress,
+      county: prop.county,
+      legalDescription: prop.legalDescription,
+      gcName: rowGc?.name ?? '',
+      contactPerson: signerNameFor(rowJob?.master_user_id ?? null),
+      claimantAddress: (issuer?.addressText ?? '').trim(),
+      affidavitGates: row.kind === 'affidavit' ? data.affidavits.entries.find((x) => x.jobId === row.jobId)?.gates.map((g) => ({ key: g.key, ok: g.ok })) : undefined,
+    }
+  }
+  const paperGapCount = (row: LienNextUpRow): number | null => {
+    if (row.kind === 'retainage') return null
+    const f = paperFactsFor(row)
+    return f ? lienPaperGaps(row.kind, f).length : null
+  }
+  const paperEntries = useMemo<LienPaperPreviewEntry[]>(() => {
+    if (paperOpen == null || !data) return []
+    return paperRows.map((row): LienPaperPreviewEntry => {
+      const jobId = row.jobId as string
+      const rowJob = data.jobsById[jobId]
+      const rowAddress = rowJob?.customer_address_id ? data.addressesById[rowJob.customer_address_id] ?? null : null
+      const prop = resolveLienProperty(rowAddress, data.ownerByJob[jobId] ?? null)
+      const rowGc = row.gcId ? data.gcsById[row.gcId] : undefined
+      const f = paperFactsFor(row)!
+      const kind = row.kind === 'affidavit' ? 'affidavit' : 'notice'
+      const gaps = lienPaperGaps(kind, f)
+      const jobNo = rowJob ? effectiveJobLedgerNumber(rowJob.hcp_number, rowJob.click_number) : ''
+      const letterhead = filingLetterheadFromIssuer(issuer)
+      const correction = data.claimCorrectionsByJob[jobId] ?? null
+      const at = lienStepOfRow(row)
+      const next = (at ? LIEN_STEP_LADDERS.find((l) => l.key === at.ladder)?.steps[at.step - 1] : row.button) ?? 'the next step'
+      const gapByField = (field: string) => gaps.find((g) => g.field === field)
+      if (kind === 'affidavit') {
+        const e = data.affidavits.entries.find((x) => x.jobId === jobId)
+        const fields = buildLienAffidavitFieldsForJob({
+          jobName: rowJob?.job_name,
+          jobAddress: rowJob?.job_address,
+          serviceTypeName: rowJob?.service_type?.name,
+          isSub: e?.isSub ?? true,
+          originalContractorName: rowGc?.name ?? '',
+          originalContractorAddress: rowGc?.address ?? '',
+          ownerName: f.ownerName,
+          ownerAddress: f.ownerAddress,
+          county: prop.county,
+          legalDescription: prop.legalDescription,
+          customerName: rowJob?.customer_name,
+          revenue: Number(rowJob?.revenue ?? 0),
+          paymentsMade: Number(rowJob?.payments_made ?? 0),
+          claimAmountOff: correction?.amountOff,
+          lastMonth: e?.lastMonth ?? '',
+          noticesRecorded: e?.gates.find((g) => g.key === 'notice')?.ok ?? false,
+          contactPerson: f.contactPerson,
+          issuer,
+        })
+        const html = paintGaps(filingDocHtml(buildLienAffidavitBlocks(withGapTokens(fields, gaps), { letterhead, refItems: [`Job #${jobNo}`, e ? `Last work month ${e.lastMonth}` : '', demandDate(todayYmd)].filter(Boolean) })), gaps)
+        return { key: row.key, title: row.title, kind, deadline: lienStepDueWords(row), envelope: null, html, gaps, next, button: row.action === 'fix_property' ? row.button : null }
+      }
+      const e = data.queue.entries.find((x) => x.jobId === jobId)
+      const stored = e?.item ? parseLienDeskDraftFields(e.item.fields) : null
+      const claimed = correctedClaim(e?.openBalance ?? 0, correction)
+      const defaults = buildLienNoticeFieldsForJob({
+        jobName: rowJob?.job_name,
+        jobAddress: rowJob?.job_address,
+        homesteadStatement: homesteadStatementApplies(prop),
+        originalContractorName: rowGc?.name ?? '',
+        openBalance: claimed.claim,
+        contactPerson: f.contactPerson,
+        issuer,
+        todayYmd,
+        retainageHeld: rowJob?.lien_retainage_held ?? null,
+        serviceTypeName: rowJob?.service_type?.name,
+      })
+      const fields: LienNoticeFields = { ...(stored?.notice ?? defaults), claimAmount: defaults.claimAmount }
+      const months = e?.item?.months?.length ? e.item.months : e?.dueMonths ?? []
+      const html = paintGaps(filingDocHtml(buildLienNoticeBlocks(withGapTokens(fields, gaps), { letterhead, refItems: [`Job #${jobNo}`, months.length ? `Work months ${describeNoticeMonths(months)}` : '', demandDate(todayYmd)].filter(Boolean) })), gaps)
+      const ownerGap = gaps.find((g) => g.where === 'envelope')
+      const esc = (t: string) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] as string)
+      const ownerHtml = ownerGap ? paintGaps(gapToken(ownerGap.n), gaps) : esc([f.ownerName, f.ownerAddress].filter(Boolean).join(', '))
+      const gcGap = gapByField('originalContractorName')
+      const gcHtml = gcGap ? paintGaps(gapToken(gcGap.n), gaps) : esc([rowGc?.name ?? '', rowGc?.address ?? ''].filter(Boolean).join(', '))
+      return { key: row.key, title: row.title, kind, deadline: lienStepDueWords(row), envelope: { ownerHtml, gcHtml }, html, gaps, next, button: row.action === 'find_owner' ? row.button : null }
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paperOpen, paperRows, data, issuer, todayYmd])
   /** A Do now row's button: the pane that already does that work, on that job and pile. Nothing is written here. */
   const actOnNextUp = (row: LienNextUpRow) => {
     const t = row.target
@@ -2276,8 +2372,21 @@ export default function LienDeskModal({
           </span>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: isMobile || kind === 'timeline' || kind === 'calendar' || kind === 'next' ? '1fr' : '320px 1fr', overflow: 'hidden', minHeight: 0 }}>
+          {paperOpen != null && paperEntries.length > 0 ? (
+            <LienPaperPreviewOverlay
+              entries={paperEntries}
+              index={paperOpen}
+              onIndex={setPaperOpen}
+              onClose={() => setPaperOpen(null)}
+              onAct={(i) => {
+                const row = paperRows[i]
+                setPaperOpen(null)
+                if (row) actOnNextUp(row)
+              }}
+            />
+          ) : null}
           {kind === 'next' ? (
-            <LienDeskNextUp rows={nextUpRows} loading={loading && !data} isMobile={isMobile} onAct={actOnNextUp} onOpenJob={onOpenJob} ready={{ notice: counts?.ready ?? 0, retainage: retReady }} onOpenRun={office ? () => setRunOpen(true) : undefined} factsFor={stepFactsFor} viewerIsLeader={leader} />
+            <LienDeskNextUp rows={nextUpRows} loading={loading && !data} isMobile={isMobile} onAct={actOnNextUp} onOpenJob={onOpenJob} ready={{ notice: counts?.ready ?? 0, retainage: retReady }} onOpenRun={office ? () => setRunOpen(true) : undefined} factsFor={stepFactsFor} viewerIsLeader={leader} onOpenPaper={(row) => setPaperOpen(Math.max(0, paperRows.findIndex((r) => r.key === row.key)))} gapsFor={paperGapCount} />
           ) : kind === 'calendar' ? (
             <LienDeskCalendarTab
               rows={calendarRows ?? null}
