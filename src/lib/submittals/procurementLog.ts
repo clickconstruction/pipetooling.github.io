@@ -407,10 +407,9 @@ export type ProcurementLens = 'to_order' | 'by_tag' | 'by_house'
 export type ProcurementSection = { key: string; title: string; note: string; rows: ProcurementRow[]; /** A fixture listing two carriers (2026-10-02). */ warn?: string; /** By tag: where the order-only parts start, after the GC's. */ orderOnlyFrom?: number }
 
 /**
- * The log grouped three ways (2026-10-01). **To order**: what to buy now (released, not ordered;
- * by house, the soonest order-by first), then what waits on the GC, then what is on order, then
- * what has landed. **By tag**: one group per tag, its lines in the row's order. **By house**: one
- * group per house, a line with no house last.
+ * The log's lines grouped (2026-10-01). **By tag**: one group per tag, its lines in the row's
+ * order. **By house**: one group per house, a line with no house last. **To order** groups
+ * nothing here: it is drawn as orders (`orderSections`).
  */
 export function procurementSections(rows: ReadonlyArray<ProcurementRow>, lens: ProcurementLens): ProcurementSection[] {
   const byKey = (list: ProcurementRow[], keyOf: (r: ProcurementRow) => string) => {
@@ -431,21 +430,8 @@ export function procurementSections(rows: ReadonlyArray<ProcurementRow>, lens: P
     const houses = [...byKey([...rows], (r) => r.supplyHouse ?? '').entries()].sort(([a], [b]) => (a === '' ? 1 : b === '' ? -1 : a.localeCompare(b)))
     return houses.map(([k, list]) => ({ key: `house:${k}`, title: k || 'No house yet', note: lineCount(list), rows: list }))
   }
-  const toBuy = rows.filter((r) => r.status === 'released')
-  const waiting = rows.filter((r) => r.status === 'awaiting' || r.status === 'sent_back' || r.status === 'not_submitted')
-  const onOrder = rows.filter((r) => r.status === 'ordered')
-  const landed = rows.filter((r) => r.status === 'delivered')
-  const soonest = (a: ProcurementRow, b: ProcurementRow) => (a.orderBy ?? '9999').localeCompare(b.orderBy ?? '9999') || compareTags(a.tag ?? '', b.tag ?? '')
-  const out: ProcurementSection[] = []
-  const houses = [...byKey(toBuy, (r) => r.supplyHouse ?? '').entries()].map(([k, list]) => [k, list.sort(soonest)] as const).sort(([a, la], [b, lb]) => soonest(la[0]!, lb[0]!) || (a === '' ? 1 : b === '' ? -1 : a.localeCompare(b)))
-  for (const [k, list] of houses) {
-    const first = list.find((r) => r.orderBy)?.orderBy ?? null
-    out.push({ key: `buy:${k}`, title: k ? `Order now · ${k}` : 'Order now · no house yet', note: `${lineCount(list)}${first ? ` · the first by ${shortDate(first)}` : ''}${k ? '' : ' · set a house to order'}`, rows: list })
-  }
-  if (waiting.length > 0) out.push({ key: 'waiting', title: 'Waiting on the GC', note: `${lineCount(waiting)} · not ordered until they approve it`, rows: waiting })
-  if (onOrder.length > 0) out.push({ key: 'on_order', title: 'On order', note: lineCount(onOrder), rows: onOrder })
-  if (landed.length > 0) out.push({ key: 'landed', title: 'Delivered', note: lineCount(landed), rows: landed })
-  return out
+  // To order is drawn as orders, not as lines: `orderSections` in procurementOrders.ts (v2.4600).
+  return []
 }
 
 function lineCount(list: ReadonlyArray<ProcurementRow>): string {
@@ -547,25 +533,6 @@ export function rowsForBlocker(rows: ReadonlyArray<ProcurementRow>, b: OrderBloc
   const keys = kind ? new Set(blockerKeys(b, kind)) : null
   if (!kind || !keys || keys.size === 0) return { rows: [...rows], only: null }
   return { rows: rows.filter((r) => keys.has(r.key)), only: kind }
-}
-
-export type HouseFold = { key: string; house: string | null; rows: ProcurementRow[]; parts: number; orderOnly: number }
-
-/**
- * Lines folded one per house (2026-10-02, To order's *Waiting on the GC*: BP375's 44 waiting
- * lines became four): the named houses A–Z, then the lines with no house yet.
- */
-export function foldByHouse(rows: ReadonlyArray<ProcurementRow>): HouseFold[] {
-  const by = new Map<string, ProcurementRow[]>()
-  for (const r of rows) by.set(r.supplyHouse ?? '', [...(by.get(r.supplyHouse ?? '') ?? []), r])
-  return [...by.entries()]
-    .sort(([a], [b]) => (a === '' ? 1 : b === '' ? -1 : a.localeCompare(b)))
-    .map(([k, list]) => ({ key: `fold:${k}`, house: k || null, rows: list, parts: list.length, orderOnly: list.filter((r) => r.orderOnly).length }))
-}
-
-/** "22 parts · 4 order only" · "18 parts · 10 order only · pick a house to order" */
-export function houseFoldNote(f: HouseFold): string {
-  return [`${f.parts} part${f.parts === 1 ? '' : 's'}`, f.orderOnly > 0 ? `${f.orderOnly} order only` : '', f.house ? '' : 'pick a house to order'].filter(Boolean).join(' · ')
 }
 
 /** No line has gone to the GC yet: the log says so once instead of on every line. */

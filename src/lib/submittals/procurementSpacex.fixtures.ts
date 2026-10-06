@@ -1,6 +1,6 @@
 /**
- * BP375 SPACEX BA-02N as punch list #82's page holds it (`RAW` and `LATER` in
- * `to-dos/procure-log-redraw/before-after.html`): 47 lines, 14 fixtures, one house. `today` is
+ * BP375 SPACEX BA-02N as the procurement log redraw's working page holds it (`RAW` and `LATER` in
+ * `before-after.html` on PR #4527's branch; the card was closed unmerged once the train shipped): 47 lines, 14 fixtures, one house. `today` is
  * the log read on 2026-10-05: five parts sent back, three carriers on site, 39 waiting, no lead
  * time and no stage dates. `later` is the page's made-up three weeks on, read on 2026-10-26:
  * approvals, three POs, lead times and stage dates. Test data only.
