@@ -101,6 +101,7 @@ export const CUSTOMER_WHY: Record<ScheduleMoveReason, string> = {
   other: '',
   // A pull (G-37): good news that explains itself, with no company named.
   early: '',
+  recovery: 'a faster plan for the work',
 }
 
 /** Days since the move counted as "this week" in What changed. */

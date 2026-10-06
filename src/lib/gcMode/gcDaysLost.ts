@@ -93,7 +93,7 @@ export function lostDaysMoveNote(days: LostDay[]): string {
 // ---------------------------------------------------------------------------------------------
 
 /** Who a lost day is on, for a time extension ask. A pull's days given back (G-37) stand on their own line, never netted against a door. */
-export type LostCause = 'customer' | 'weather' | 'us' | 'trade' | 'other' | 'early'
+export type LostCause = 'customer' | 'weather' | 'us' | 'trade' | 'other' | 'early' | 'recovery'
 
 /** Each reason a move can give, laid at a door: the plans are the customer's side (their architect drew them). */
 export const CAUSE_OF: Record<ScheduleMoveReason, LostCause> = {
@@ -108,10 +108,11 @@ export const CAUSE_OF: Record<ScheduleMoveReason, LostCause> = {
   inspection: 'trade',
   other: 'other',
   early: 'early',
+  recovery: 'recovery',
 }
 
-export const CAUSE_WORDS: Record<LostCause, string> = { customer: "the customer's", weather: "the weather's", us: 'ours', trade: "a trade's", other: 'other', early: 'finished early' }
-const CAUSE_ORDER: LostCause[] = ['customer', 'weather', 'trade', 'us', 'other', 'early']
+export const CAUSE_WORDS: Record<LostCause, string> = { customer: "the customer's", weather: "the weather's", us: 'ours', trade: "a trade's", other: 'other', early: 'finished early', recovery: 'got back' }
+const CAUSE_ORDER: LostCause[] = ['customer', 'weather', 'trade', 'us', 'other', 'early', 'recovery']
 
 export interface CauseRow {
   cause: LostCause
@@ -162,7 +163,13 @@ export function daysLostByCause(project: GcProject): DaysLost {
   const n = (d: number) => `${Math.abs(d)} ${Math.abs(d) === 1 ? 'day' : 'days'}`
   const parts = rows
     .filter((r) => r.finishDays !== 0)
-    .map((r) => (r.cause === 'early' ? `${n(r.finishDays)}${r.finishDays < 0 ? ' back' : ''} from work that finished early` : `${n(r.finishDays)}${r.finishDays < 0 ? ' back' : ''} ${r.label} (${r.reasons.join(', ')})`))
+    .map((r) =>
+      r.cause === 'early'
+        ? `${n(r.finishDays)}${r.finishDays < 0 ? ' back' : ''} from work that finished early`
+        : r.cause === 'recovery'
+          ? `${n(r.finishDays)}${r.finishDays < 0 ? ' back' : ''} from work we sped up`
+          : `${n(r.finishDays)}${r.finishDays < 0 ? ' back' : ''} ${r.label} (${r.reasons.join(', ')})`,
+    )
   let words =
     moves.length === 0
       ? 'No move has been made on the schedule.'

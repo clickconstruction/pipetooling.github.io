@@ -1282,6 +1282,8 @@ export type GcAction =
   | { type: 'pullScheduleEarlier'; projectId: string; leaveOut: string[]; why: { reason: ScheduleMoveReason; note: string; by: string } }
   /** Draw or redraw the rough schedule while we bid (G-45): only on a job still bidding, not lost, before our bid goes in. */
   | { type: 'setRough'; projectId: string; start: string; days: Record<string, number>; by: string }
+  /** Days got back (G-82): one offer from the late job's list, by its key, re-planned from the state and saved as one move. On a press, never by itself. */
+  | { type: 'recoverScheduleDays'; projectId: string; key: string; why: { reason: ScheduleMoveReason; note: string; by: string } }
   /** A trade says from its portal how many people a day it will have on site in a coming week (G-142). */
   | { type: 'tradeSetCrewCount'; projectId: string; partnerId: string; packageId: string; weekOf: string; count: number }
 
@@ -1543,7 +1545,7 @@ export interface ScheduleWalk {
 }
 
 /** Why a bar moved: the look-ahead's reasons, and the ones a move adds. */
-export type ScheduleMoveReason = 'weather' | 'trade before' | 'materials' | 'crew' | 'customer' | 'plans' | 'inspection' | 'us' | 'change order' | 'other' | 'early'
+export type ScheduleMoveReason = 'weather' | 'trade before' | 'materials' | 'crew' | 'customer' | 'plans' | 'inspection' | 'us' | 'change order' | 'other' | 'early' | 'recovery'
 
 /**
  * One move on the schedule (the owner, 2026-10-05: "anyone on our team may move a bar, when a bar
@@ -1587,6 +1589,12 @@ export interface ScheduleMove {
    * finished lines: their work is done. Unset: an ordinary move.
    */
   pull?: { finished: string[] }
+  /**
+   * Days got back (G-82): side by side, the line now starts before the work it waits on (`after`)
+   * finishes, its gap there changed from `gapWas` to `gap`, which Undo and Redo put back too; or a
+   * second crew on it. Everything in `pushed` came in behind it. Unset: an ordinary move.
+   */
+  recovery?: { how: 'side' | 'crew'; after?: string; gapWas?: number; gap?: number }
 }
 
 /**
