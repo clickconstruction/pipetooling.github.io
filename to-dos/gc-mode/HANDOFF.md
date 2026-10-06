@@ -1,7 +1,7 @@
 ---
 name: "GC mode: pick it up here"
 parent: to-dos/gc-mode/README.md (punch list #81)
-status: handed off 2026-10-05 by the Board lane at the owner's ask, with each lane's open items · the prototype is done enough to judge · every open question in README.md is answered · the owner has not yet said "the shape is settled", which starts the real build · on main only the plan kernels (`src/lib/gc/`, #4448)
+status: handed off 2026-10-05 by the Board lane at the owner's ask, with each lane's open items · **2026-10-06: the open items are now kept in PUNCHLIST.md** (the Gantt landed 2026-10-05 and 2026-10-06; GANTT_PLAN.md and GANTT_FEATURES.md hold it) · the prototype is done enough to judge · every open question in README.md is answered · the owner has not yet said "the shape is settled", which starts the real build · on main only the plan kernels (`src/lib/gc/`, #4448)
 summary: >
   What is left in GC mode and where to start, for someone new. The prototype plays the whole loop
   on made-up data (branch spike/gc-mode, page /bids/gc). Left: a short list of the owner's calls,
@@ -262,6 +262,8 @@ Tell the owner before changing one of these; another area reads it.
 | The kernels in `src/lib/gc/` | New Project | `gcNewProject.ts`, `gcPlans.ts` (they re-export them) |
 
 ## Status
+
+Handed off 2026-10-05. **Since then** (2026-10-05 and 2026-10-06, the owner's sittings): the schedule as a Gantt landed (`GANTT_PLAN.md`), with the Ask window, Follow up's two views and a company's address; what is left is kept in `PUNCHLIST.md`, which is where to start now.
 
 Handed off 2026-10-05. Pick it up by reading *Start here*, then take section 1 to the owner. When
 the real build starts, put its branch here and drop a session card (`docs/SESSIONS.md`).
