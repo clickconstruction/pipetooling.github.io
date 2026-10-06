@@ -40,6 +40,7 @@ import type { CapacityUnderStreak } from './jobs/jobSummaryCapacity'
 import { daysBetweenYmd } from './jobs/billedExpectedPay'
 import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../utils/dateUtils'
 import { followupNamesLine, type BidFollowupsDue } from './bids/bidFollowupsDue'
+import { vehicleRecordGapWords, type VehicleRecordGap } from './vehicleRecordGaps'
 
 /** Whole days from today (the company calendar) to a 'YYYY-MM-DD' — the Lien desk cards' urgency. */
 function daysUntilYmd(ymd: string): number | null {
@@ -107,6 +108,7 @@ export type NeedsYouItem = {
     | 'dispatch-requests-aged'
     | 'hr-reports-pending'
     | 'job-account-missing'
+    | 'vehicle-records-missing'
     | 'customer-waiting'
     | 'price-matrix-ready'
     | 'price-requests-late'
@@ -198,6 +200,8 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'lost-bids': 60,
   'd22-uncoded': 60,
   'job-account-missing': 60,
+  // Hygiene tier: records to enter, though Review prices a company truck from them (v2.4700).
+  'vehicle-records-missing': 60,
   'price-matrix-ready': 40,
   // Revenue chasing tier: a request past its date is a bid that cannot be priced on time.
   'price-requests-late': 40,
@@ -502,6 +506,10 @@ export type NeedsYouInputs = {
   jobAccountGapsEnabled?: boolean
   /** v2.3430 — the evidence rule: jobs that bought at a house expecting a job account with none on record. */
   jobAccountGaps?: { jobs: number; pairs: number; allocatedTotal: number; houseNames: string } | null
+  /** v2.4700 — dev, assistant and controller: active vehicles with no insurance, registration or service on file. */
+  vehicleRecordGapsEnabled?: boolean
+  /** `useVehicleRecordGapsNudge`: most missing first; null while loading or when none is missing. */
+  vehicleRecordGaps?: VehicleRecordGap[] | null
   /**
    * Customer Waiting (v2.3248): open high-priority portal requests in the
    * inboxes this viewer belongs to, from `CustomerWaitingContext` — null when
@@ -1386,6 +1394,32 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
         'The house bills the property owner either way; the account is what puts the job on its own statement. Mark each one opened, or not needed.',
       figure: String(n),
       actionLabel: 'Review them',
+    })
+  }
+
+  if (inputs.vehicleRecordGapsEnabled && (inputs.vehicleRecordGaps?.length ?? 0) > 0) {
+    const gaps = inputs.vehicleRecordGaps!
+    const n = gaps.length
+    const first = gaps[0]!
+    const held = (g: VehicleRecordGap) => (g.holderName ? ` (${g.holderName})` : '')
+    const why = 'Review prices a company truck from these, so until they are entered they count as $0 there.'
+    items.push({
+      key: 'vehicle-records-missing',
+      severity: 'gray',
+      kicker: 'Vehicles',
+      title:
+        n === 1
+          ? `The ${first.name} has no ${vehicleRecordGapWords(first, 'or')} on file`
+          : `${n} vehicles are missing insurance, registration or service`,
+      detail:
+        n === 1
+          ? `${first.holderName ? `${first.holderName} drives it. ` : ''}Add them on People → Vehicles. ${why}`
+          : `${gaps
+              .slice(0, 3)
+              .map((g) => `${g.name}${held(g)}: ${vehicleRecordGapWords(g)}`)
+              .join('. ')}${n > 3 ? `. And ${n - 3} more` : ''}. Add them on People → Vehicles. ${why}`,
+      figure: String(n),
+      actionLabel: 'Open Vehicles',
     })
   }
 
