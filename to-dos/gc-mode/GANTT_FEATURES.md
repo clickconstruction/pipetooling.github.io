@@ -41,7 +41,7 @@ The three jobs the chart has, which every feature serves at least one of:
 | G-18 | The strip of numbers over the chart: finish against the contract, work done against plan, how many have no spare days, how many are held, what moved this week | See | Have (built 2026-10-05: the filter counts, under the four measures) | 1 |
 | G-19 | A phone view: one stage at a time as a list with small bars, today first | See | Have (built 2026-10-06: the List view, which a phone opens on, the stages with the one running today first, each a table of its bars with a small bar in the stage's span; `GcGanttList.tsx`) | 5 |
 | G-20 | Keyboard: arrows move between bars, Enter opens one, a list a screen reader can read | See | Have (built 2026-10-06: up and down move between bars, left and right a week along, Home and End, Enter opens; every bar says its name, company, dates and standing; the List view is a real table) | 5 |
-| G-21 | Print and PDF of the chart as it is filtered, on one or more landscape pages | Tell | New | 3 |
+| G-21 | Print and PDF of the chart as it is filtered, on one or more landscape pages | Tell | Have (built 2026-10-06: **Print or PDF** on the chart's toolbar opens *Print the chart*; our team's copy is the chart as it is filtered, grouped and folded, the customer's is their portal's picture, and Next 3 weeks prints the look-ahead sheet; letter landscape pages through the print dialog; `gcGanttPrint.ts`, `GcGanttPrint.tsx`) | 3 |
 
 ## B. Building and changing the schedule
 
@@ -77,7 +77,7 @@ The three jobs the chart has, which every feature serves at least one of:
 | G-56 | The projected finish from the pace of the work so far | See | Have | — |
 | G-57 | The projected finish with a weather allowance and crew sizes | See | New | Later |
 | G-58 | Weather days from the daily log land on the chart as lost days on the work that was outside | See | Have (built 2026-10-06: a log that says the weather stopped a trade, or the site, marks a lost day on every bar that trade had running; the walk lists them and Add the lost days moves the finish with the weather as the reason and the log's words; `gcDaysLost.ts`) | 4 |
-| G-59 | A stale schedule says so: "not walked since Sep 25" on the chart, the board row and Needs you | See | Part (on the Schedule tab: check the dates, part walked, walked; not on the board row or Needs you, which would move every lane's snapshots) | 2 |
+| G-59 | A stale schedule says so: "not walked since Sep 25" on the chart, the board row and Needs you | See | Have (the Schedule tab's walk line, built 2026-10-05; the owner's call 4, built 2026-10-06: *not walked* on the board row, in its schedule block and the ring card's line, and the dashboard's Needs you line *1 schedule not walked this week in GC mode* with *Walk it*, `gcStaleSchedules.ts`, kind `gc-stale-schedules`) | 2 |
 | G-60 | The daily log and the chart disagree: a trade on site with no bar that week, or a bar with nobody on site | See | Have (built 2026-10-06: this week's logged days against the bars; a crew on site with none of its bars running, or a trade's running bars with nobody on 2 or more logged weekdays, the weather's days and held bars left out; the note beside the bar and a Log line on its hover card, a card under the chart with what to do and It started, the on-site rows on the Daily log tab too; `gcLogVsChart.ts`) | 4 |
 
 ## D. What holds the work
@@ -116,8 +116,9 @@ The three jobs the chart has, which every feature serves at least one of:
 | G-94 | A link or a PDF to send on its own, dated, kept as sent | Tell | Have (built 2026-10-06: the letter on the Schedule tab, the same picture as the portal, Send keeps it as it went, Print or PDF opens it as a page; `gcCustomerScheduleSend.ts`) | 3 |
 | G-95 | The architect's view: the customer's view plus submittals and RFIs waiting on them, with the work each holds | Tell, Chase | Have (built 2026-10-06: *The schedule* in the architect's portal, the stages and what waits on them, each with the work it holds and the day we need it back; `gcArchitectSchedule.ts`) | 3 |
 | G-96 | Days lost by cause across the job, for a time extension ask: the customer's, the weather's, ours, a trade's | Tell | Have (built 2026-10-06: Days lost, by cause on the Schedule tab adds every standing move up by whose door its reason lays at, on the finish and on the work, with the log's weather days beside) | 4 |
-| G-97 | The billing forecast follows the schedule: what we expect to bill each month, as the bars move | Tell | Part (Owner Billing's forecast) | 4 |
+| G-97 | The billing forecast follows the schedule: what we expect to bill each month, as the bars move | Tell | Have (built 2026-10-06: *What we expect to bill* under the draft on Bill the customer, with each month's trades and what this week's moves changed; *What we bill, month by month* on the Money tab; the customer's bills ahead in their portal, rounded; *Billing: …* in Why it moved and on a move's row. Each bill is Owner Billing's own `ownerPayApp` run on the job at that day's percents; `gcBillingForecast.ts`) | 4 |
 | G-98 | The late-finish days in the contract, counted against the projected finish | See, Tell | Part (the contract's day) | 4 |
+| G-140 | The cash forecast follows the bars too: *The next 6 weeks* counts each bill as the schedule has it, and the trades' draws follow the same bars | See, Tell | New | Later |
 
 ## G. Chasing the trades
 

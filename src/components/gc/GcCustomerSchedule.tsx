@@ -7,7 +7,7 @@
 import type { GcProject, GcState } from '../../lib/gcMode/gcModel'
 import { daysBetween, shortDate, weekdayDate } from '../../lib/gcMode/gcModel'
 import { useState } from 'react'
-import { customerAsks, customerChanges, customerFullChart, customerMaySeeEveryBar, customerMilestones, customerStages, customerStanding } from '../../lib/gcMode/gcCustomerSchedule'
+import { CUSTOMER_NOTHING_MOVED, customerAsks, customerChanges, customerFullChart, customerMaySeeEveryBar, customerMilestones, customerStages, customerStanding } from '../../lib/gcMode/gcCustomerSchedule'
 import { GcGanttList } from './GcGanttList'
 import { customerContractDays } from '../../lib/gcMode/gcChangeOrderDays'
 import { PortalBlock } from './GcPortalUi'
@@ -99,7 +99,7 @@ export function GcCustomerSchedule({ state, project }: { state: GcState; project
         </div>
         <div>
           <strong>What changed this week</strong>
-          {changes.length === 0 ? <div style={{ color: 'var(--text-muted)' }}>Nothing moved. The schedule stands as planned.</div> : changes.map((c) => <div key={c}>{c}</div>)}
+          {changes.length === 0 ? <div style={{ color: 'var(--text-muted)' }}>{CUSTOMER_NOTHING_MOVED}</div> : changes.map((c) => <div key={c}>{c}</div>)}
         </div>
         {asks.length > 0 && (
           <div>
