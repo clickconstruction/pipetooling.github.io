@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Legal portal item 22: the firm's key at rest — before / after</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #F3F4F6; color: #111827; font: 14px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif; padding: 0 16px 64px; }
+  .wrap { max-width: 1200px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid #111827; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #6B7280; margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; }
+  header.top p { margin: 8px 0 0; color: #374151; max-width: 90ch; }
+  h2 { font-size: 18px; margin: 30px 0 6px; }
+  .lede { margin: 0 0 14px; color: #374151; max-width: 100ch; }
+  .two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+  @media (max-width: 900px) { .two { grid-template-columns: minmax(0, 1fr); } }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; }
+  .cap.old { background: #E5E7EB; color: #374151; } .cap.new { background: #111827; color: #fff; }
+  .pane { background: #fff; border: 1px solid #D1D5DB; border-top: none; border-radius: 0 0 8px 8px; padding: 12px 14px; }
+  pre { margin: 0; font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; }
+  .bad { color: #991B1B; } .ok { color: #05603A; }
+  .dialog { border: 1px solid #D1D5DB; border-radius: 10px; padding: 14px; box-shadow: 0 8px 24px rgba(0,0,0,.10); }
+  .dialog h3 { margin: 0 0 6px; font-size: 15px; }
+  .url { font: 12px ui-monospace, Menlo, monospace; background: #F3F4F6; border: 1px solid #D1D5DB; border-radius: 5px; padding: 6px 8px; word-break: break-all; }
+  .hidden { font-size: 12.5px; background: #F3F4F6; border: 1px solid #D1D5DB; border-radius: 5px; padding: 6px 8px; color: #4B5563; }
+  .btns { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .b { font-size: 12px; padding: 3px 9px; border-radius: 4px; border: 1px solid #D1D5DB; background: #fff; }
+  .b.dark { background: #374151; color: #fff; border-color: #374151; } .b.red { color: #B42318; border-color: #B42318; }
+  ul.notes { margin: 18px 0 0; padding-left: 20px; color: #374151; max-width: 100ch; }
+  ul.notes li { margin: 4px 0; }
+</style>
+</head>
+<body><div class="wrap">
+<header class="top"><p class="eyebrow">Punch list #85 · item 22 (the key at rest) · mockup</p><h1>The firm's key, kept locked</h1>
+<p>The portal link is the firm's key: whoever has it acts as the firm. The table kept it in plain text and four office roles could read it. The catch: every email to the firm carries the live link, so the server still needs the key. The answer is Vault, not a plain hash.</p></header>
+
+<h2>Where the key lives</h2>
+<div class="two">
+  <div><div class="cap old">Before</div><div class="pane"><pre>legal_portal_links
+  token       <span class="bad">a1b2…(64 hex)   ← office roles can SELECT</span>
+  token_hash  9f3c…
+mint_legal_portal_link(rotate => false)
+  → <span class="bad">{ token: "a1b2…" }  ← any office role, any time</span>
+legal-notify-dispatch
+  → reads token from the table</pre></div></div>
+  <div><div class="cap new">After</div><div class="pane"><pre>legal_portal_links
+  token            <span class="ok">NULL, CHECK (token IS NULL)</span>
+  token_hash       9f3c…   (the functions look up by it)
+  token_secret_id  → Vault, encrypted
+office grant: <span class="ok">every column but token</span>
+mint_legal_portal_link(rotate => false)
+  → <span class="ok">{ token: null, exists: true }</span>
+mint on create / rotate → the raw token, once
+legal-notify-dispatch
+  → legal_portal_link_token(firm)  <span class="ok">service role only</span></pre></div></div>
+</div>
+
+<h2>What the office sees on the Firm's link dialog</h2>
+<div class="two">
+  <div><div class="cap old">Before: any time</div><div class="pane"><div class="dialog"><h3>🌐 Sample &amp; Partner, PLLC’s portal link</h3>
+    <div class="url">https://clicktooling.com/legal?t=a1b2c3d4e5f6…</div>
+    <div class="btns"><span class="b dark">Copy link</span><span class="b">Preview ↗</span><span class="b">Rotate</span><span class="b red">Turn off</span></div></div></div></div>
+  <div><div class="cap new">After: right after Create or Rotate</div><div class="pane"><div class="dialog"><h3>🌐 Sample &amp; Partner, PLLC’s portal link</h3>
+    <div class="url">https://clicktooling.com/legal?t=7e8f9a0b…</div>
+    <div class="btns"><span class="b dark">Copy link</span><span class="b">Preview ↗</span><span class="b">Rotate</span><span class="b red">Turn off</span></div></div></div>
+    <div class="cap new" style="margin-top:12px">After: any later visit</div><div class="pane"><div class="dialog"><h3>🌐 Sample &amp; Partner, PLLC’s portal link</h3>
+    <div class="hidden">The link is live. The link can be copied only when it is created or rotated. To send it to the firm again, rotate it. The old link and every emailed copy stop opening.</div>
+    <div class="btns"><span class="b">Preview ↗</span><span class="b">Rotate</span><span class="b red">Turn off</span></div>
+    <p style="font-size:12px;color:#6B7280;margin:8px 0 0">Preview opens <code>/legal?firm=&lt;id&gt;&amp;preview=1</code>: signed in, by firm, never counted, nothing saved.</p></div></div>
+  </div>
+</div>
+
+<h2>Is this the best we can do?</h2>
+<ul class="notes">
+  <li><b>Why not a plain hash, as asked?</b> The first draft did exactly that, then traced <code>legal-notify-dispatch</code>: every notice and digest builds the firm's link from the raw token. Hash-only would have emailed a dead link. Vault keeps the key for the server alone.</li>
+  <li><b>How does the office preview without the key?</b> By firm id, signed in. The function checks the caller's own session against <code>legal_office_can_read()</code>, the same rule that already lets those roles read every legal table.</li>
+  <li><b>Can the push break anything?</b> The dialog, the page and the journey work before and after it, and the dispatcher reads the raw column until the Vault read exists. Deploy the two functions, then push. The Lien desk share's "copy the firm's link" line goes quiet after the push.</li>
+  <li><b>What if Vault refuses?</b> The backfill aborts the whole file before anything is emptied. A refused cleanup on rotate is noted and skipped; a revoked link's key opens nothing anyway.</li>
+</ul>
+</div></body></html>

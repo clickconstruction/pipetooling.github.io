@@ -3,11 +3,11 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../../../lib/supabase'
 import { useToastContext } from '../../../contexts/ToastContext'
 import { useConfirmDialog } from '../../../contexts/ConfirmDialogContext'
-import { withPreviewFlag } from '../../../lib/publicViewCounting'
 import { calendarYmdInAppTzFromIso } from '../../../utils/dateUtils'
 import { readEdgeFunctionErrorBody } from '../../../lib/readEdgeFunctionErrorBody'
 import { LEGAL_FIRM_LINK_KIND, legalFirmLinkAddresses, legalFirmLinkSentLine, type LegalFirmLinkSentRow } from '../../../lib/legal/legalFirmLink'
 import { rotateLinkMessage, turnOffLinkMessage } from '../../../lib/legal/legalPortalLinkWords'
+import { COPY_ONLY_AT_MINT, firmPortalUrls, portalLinkView, type PortalLinkRow, type PortalLinkView } from '../../../lib/legal/legalPortalLinkState'
 
 const db = supabase as unknown as SupabaseClient
 
@@ -22,9 +22,13 @@ const db = supabase as unknown as SupabaseClient
  * (`legal-send-firm-link`) to the firm's address on file and/or typed ones, and the line
  * *Sent to … on …* read back from the filed copy (`sent_documents`, under this link). A Rotate
  * starts the line over: the emailed link no longer opens.
+ *
+ * Hash-only at rest (punch list #85, item 22): the table stops giving the office the raw token, so the
+ * address is shown only in the session that created or rotated the link (the mint RPC's answer).
+ * Preview always works, by the firm's id, and Send the link always works: the function reads the
+ * token on the server (`legalPortalLinkState.ts`).
  */
-type LinkState = { kind: 'loading' } | { kind: 'none' } | { kind: 'active'; id: string; token: string | null; since: string } | { kind: 'off' }
-type LinkRow = { id: string; token?: string | null; created_at: string; revoked_at: string | null }
+type LinkState = { kind: 'loading' } | PortalLinkView
 
 /** The columns the office may read once the raw token leaves the table (punch list #85 item 22, migration 20261006034207). */
 const LINK_COLUMNS = 'id, firm_id, created_at, revoked_at, token_hash'
@@ -44,10 +48,10 @@ export default function LegalPortalLinkButton({ firmId, firmName }: { firmId: st
   const [note, setNote] = useState('')
   const [sentLine, setSentLine] = useState<string | null>(null)
   const [sendError, setSendError] = useState<string | null>(null)
-  /** The token the mint RPC answered in this session: once the table keeps only the hash, the only time the office holds the raw link. */
-  const [minted, setMinted] = useState<{ id: string | null; token: string } | null>(null)
+  /** The token this session minted: once the table keeps only the hash, the only time the office holds the raw link. */
+  const [minted, setMinted] = useState<{ token: string; since: string } | null>(null)
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (justMinted: { token: string; since: string } | null = null) => {
     setState({ kind: 'loading' })
     // The firm's address on file (Settings → Collections law firm), offered as a ticked box.
     void db.from('legal_firms').select('email').eq('id', firmId).maybeSingle().then(({ data: f }) => setOnFile(String((f as { email?: string | null } | null)?.email ?? '').trim()))
@@ -60,23 +64,22 @@ export default function LegalPortalLinkButton({ firmId, firmName }: { firmId: st
       setState({ kind: 'none' })
       return
     }
-    const rows = (res.data ?? []) as LinkRow[]
-    const active = rows.find((r) => !r.revoked_at)
-    if (active) setState({ kind: 'active', id: active.id, token: active.token || (minted?.id === active.id ? minted.token : null), since: active.created_at })
-    else if (rows.length) setState({ kind: 'off' })
-    else setState({ kind: 'none' })
-    if (!active) {
+    const rows = (res.data ?? []) as PortalLinkRow[]
+    const view = portalLinkView(rows, justMinted)
+    setState(view)
+    const active = view.kind === 'active' ? view : null
+    if (!active?.id) {
       setSentLine(null)
       return
     }
     // The welcome email's filed copy, under this link (fail-soft: no line when it cannot be read).
     const sent = await db.from('sent_documents').select('recipient_emails, sent_at, sent_by_name').eq('kind', LEGAL_FIRM_LINK_KIND).eq('source_table', 'legal_portal_links').eq('source_id', active.id)
     setSentLine(sent.error ? null : legalFirmLinkSentLine((sent.data ?? []) as LegalFirmLinkSentRow[], calendarYmdInAppTzFromIso))
-  }, [firmId, minted])
+  }, [firmId])
 
   useEffect(() => {
-    if (open) void load()
-  }, [open, load])
+    if (open) void load(minted)
+  }, [open, load]) // eslint-disable-line react-hooks/exhaustive-deps -- the minted token is passed when it changes, by mint()
 
   const mint = async (rotate: boolean) => {
     if (rotate) {
@@ -86,17 +89,14 @@ export default function LegalPortalLinkButton({ firmId, firmName }: { firmId: st
     setBusy(true)
     try {
       const { data, error } = await db.rpc('mint_legal_portal_link', { p_firm_id: firmId, p_rotate: rotate })
-      const res = (data ?? {}) as { token?: string | null; error?: string }
+      const res = (data ?? {}) as { token?: string | null; activeSince?: string; error?: string }
       if (error || res.error) {
         showToast(`Could not create the link: ${error?.message ?? res.error}`, 'error')
         return
       }
-      if (res.token) {
-        // Pair the fresh token with the row it made (the newest live one) when the card reloads.
-        const { data: row } = await db.from('legal_portal_links').select('id').eq('firm_id', firmId).is('revoked_at', null).maybeSingle()
-        setMinted({ id: (row as { id?: string } | null)?.id ?? null, token: res.token })
-      }
-      await load()
+      const fresh = res.token ? { token: res.token, since: res.activeSince ?? new Date().toISOString() } : minted
+      setMinted(fresh)
+      await load(fresh)
       showToast(rotate ? 'New link minted. The old one no longer opens, so send the firm the new one.' : 'The firm’s link is ready.', 'success')
     } finally {
       setBusy(false)
@@ -112,13 +112,14 @@ export default function LegalPortalLinkButton({ firmId, firmName }: { firmId: st
         showToast(`Could not turn it off: ${error.message}`, 'error')
         return
       }
-      await load()
+      await load(minted)
       showToast('The firm’s portal is off.', 'info')
     } finally {
       setBusy(false)
     }
   }
-  const url = state.kind === 'active' && state.token ? `${window.location.origin}/legal?t=${state.token}` : null
+  const urls = state.kind === 'active' ? firmPortalUrls(window.location.origin, firmId, state.token) : null
+  const url = urls?.copyUrl ?? null
   const copy = async () => {
     if (!url) return
     try {
@@ -147,7 +148,7 @@ export default function LegalPortalLinkButton({ firmId, firmName }: { firmId: st
       setTyped('')
       setNote('')
       showToast(`Sent to ${(res.sentTo ?? addresses.emails).join(', ')}.`, 'success')
-      await load()
+      await load(minted)
     } finally {
       setBusy(false)
     }
@@ -173,12 +174,12 @@ export default function LegalPortalLinkButton({ firmId, firmName }: { firmId: st
                 {url ? (
                   <div style={{ fontFamily: 'ui-monospace, monospace', fontSize: '0.78rem', background: 'var(--bg-muted)', border: '1px solid var(--border)', borderRadius: 5, padding: '6px 8px', wordBreak: 'break-all' }}>{url}</div>
                 ) : (
-                  <div data-legal-link-hidden style={{ fontSize: '0.8rem', background: 'var(--bg-muted)', border: '1px solid var(--border)', borderRadius: 5, padding: '6px 8px', color: 'var(--text-muted)' }}>The link is live. Its address shows only when it is created or rotated; Send the link below emails it to the firm.</div>
+                  <div data-legal-link-hidden style={{ fontSize: '0.8rem', background: 'var(--bg-muted)', border: '1px solid var(--border)', borderRadius: 5, padding: '6px 8px', color: 'var(--text-muted)' }}>The link is live. {COPY_ONLY_AT_MINT}</div>
                 )}
                 <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', margin: '4px 0 10px' }}>active since {calendarYmdInAppTzFromIso(state.since)}</div>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   {url ? <button type="button" onClick={() => void copy()} style={{ ...btn, background: 'var(--text-700)', color: 'var(--surface)', borderColor: 'var(--text-700)' }}>Copy link</button> : null}
-                  {url ? <a href={withPreviewFlag(url)} target="_blank" rel="noreferrer" style={{ ...btn, textDecoration: 'none' }}>Preview ↗</a> : null}
+                  {urls ? <a href={urls.previewUrl} target="_blank" rel="noreferrer" style={{ ...btn, textDecoration: 'none' }}>Preview ↗</a> : null}
                   <span style={{ flex: 1 }} />
                   <button type="button" onClick={() => void mint(true)} disabled={busy} style={btn}>Rotate</button>
                   <button type="button" onClick={() => void revoke()} disabled={busy} style={{ ...btn, color: '#b42318', borderColor: '#b42318' }}>Turn off</button>
