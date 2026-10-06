@@ -90,7 +90,7 @@ export function GcScheduleImport({ state, project, dispatch, replacing, by, defa
       .flatMap((r) => {
         const guess = guesses.get(r.key)
         const place = placeOf(choices[r.key] ?? '', guess?.place?.kind === 'added' ? guess.place.who || (r.company ?? '') : (r.company ?? ''))
-        return place ? [{ key: r.key, name: r.name, start: r.start, finish: r.finish, place, after: r.after, ...(r.notBefore ? { notBefore: r.notBefore } : {}), ...(r.mustFinishBy ? { mustFinishBy: r.mustFinishBy } : {}), ...(r.underADay ? { underADay: true } : {}) }] : []
+        return place ? [{ key: r.key, name: r.name, start: r.start, finish: r.finish, place, after: r.after, ...(r.notBefore ? { notBefore: r.notBefore } : {}), ...(r.mustFinishBy ? { mustFinishBy: r.mustFinishBy } : {}), ...(r.underADay ? { underADay: true } : {}), ...(r.workPlace ? { workPlace: r.workPlace } : {}) }] : []
       })
     return { file: file.name, from, workStarts, rows, dates: reading.rows.filter((r) => r.date && ticked[r.key]).map((r) => ({ name: r.name, on: r.start })) }
   }, [reading, file, guesses, choices, ticked, from, workStarts])

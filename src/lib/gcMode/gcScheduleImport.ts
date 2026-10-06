@@ -21,6 +21,7 @@ import { TRADE_TEMPLATES, lineStage, scheduleDraft } from './gcNewProject'
 import { weekdayDate } from './gcWords'
 import { splitParts } from './gcSplitBars'
 import { CSV_COLUMNS, EXPORT_DATES_CUSTOMER, EXPORT_DATES_TEAM, EXPORT_WAITS_GROUP, MSPDI_NAMESPACE, csvHeads, type ExportCopy } from './gcScheduleExport'
+import { PLACE_MAX, cleanPlace, placeProblem, takesPlace } from './gcPlaces'
 
 function plural(n: number, one: string, many: string): string {
   return `${n} ${n === 1 ? one : many}`
@@ -61,6 +62,8 @@ export interface ImportFileRow {
   company: string | null
   /** Shorter than a working day in their file (a project file's Duration): never a part of a split line. */
   underADay: boolean
+  /** Where its work is, from our own file's Place column or the text field it names Place (G-83), tidied as G-83 keeps a place. Unset: none. */
+  workPlace?: string
 }
 
 export interface ScheduleFileReading {
@@ -83,7 +86,7 @@ const NOT_OUR_COLUMNS = 'This spreadsheet’s columns are not the ones Export wr
 const OWN_PROGRAM = 'Only its own program opens this file. Ask them to save it from Project or Primavera with Save as XML.'
 
 /** What a file could not give, counted while reading. */
-type Unread = { notFinishStart: number; outside: number; onGroup: number; onDate: number; percentGap: number; noDates: number; inactive: number; unknownName: number; outsideWaits: number; progress: boolean }
+type Unread = { notFinishStart: number; outside: number; onGroup: number; onDate: number; percentGap: number; noDates: number; inactive: number; unknownName: number; outsideWaits: number; progress: boolean; placeTooLong: number }
 
 function unreadWords(u: Unread): string[] {
   const left = (n: number) => (n === 1 ? 'it is' : 'they are')
@@ -98,11 +101,23 @@ function unreadWords(u: Unread): string[] {
     ...(u.inactive > 0 ? [`${plural(u.inactive, 'task is', 'tasks are')} marked inactive, so ${left(u.inactive)} left out.`] : []),
     ...(u.outsideWaits > 0 ? [`${plural(u.outsideWaits, 'thing the work waits on is', 'things the work waits on are')} left out. The office enters them on the job.`] : []),
     ...(u.progress ? ['The file says what is done. That comes from the trades and the walk, so it is passed over.'] : []),
+    ...(u.placeTooLong > 0 ? [`${plural(u.placeTooLong, 'place is', 'places are')} over ${PLACE_MAX} characters, so ${left(u.placeTooLong)} left off.`] : []),
   ]
 }
 
 function newUnread(): Unread {
-  return { notFinishStart: 0, outside: 0, onGroup: 0, onDate: 0, percentGap: 0, noDates: 0, inactive: 0, unknownName: 0, outsideWaits: 0, progress: false }
+  return { notFinishStart: 0, outside: 0, onGroup: 0, onDate: 0, percentGap: 0, noDates: 0, inactive: 0, unknownName: 0, outsideWaits: 0, progress: false, placeTooLong: 0 }
+}
+
+/** A place read from our own file, kept as G-83 keeps one: tidied, and left off and counted when it is too long. Empty: none. */
+function placeRead(raw: string | null | undefined, u: Unread): { workPlace?: string } {
+  const place = cleanPlace(raw ?? '')
+  if (place === '') return {}
+  if (placeProblem(place)) {
+    u.placeTooLong += 1
+    return {}
+  }
+  return { workPlace: place }
 }
 
 /** "2026-10-09T08:00:00" → "2026-10-09". Null: not a date. */
@@ -145,6 +160,9 @@ function readProjectXml(text: string): ScheduleFileResult {
   const root = doc.documentElement
   if (root.localName !== 'Project' || root.namespaceURI !== MSPDI_NAMESPACE) return { problem: NOT_PROJECT_XML }
   const minutesPerDay = Number(val(root, 'MinutesPerDay')) || 480
+  // Our own project file's places (G-83): the text field the file names Place, our Text2.
+  const placeField = Array.from(kid(root, 'ExtendedAttributes')?.children ?? []).find((a) => a.localName === 'ExtendedAttribute' && (val(a, 'Alias') ?? '').trim().toLowerCase() === 'place')
+  const placeId = placeField ? (val(placeField, 'FieldID') ?? '').trim() : ''
   const tasks = Array.from(kid(root, 'Tasks')?.children ?? []).filter((t) => t.localName === 'Task')
   const u = newUnread()
   const groups: { level: number; name: string }[] = []
@@ -204,6 +222,7 @@ function readProjectXml(text: string): ScheduleFileResult {
         trade: null,
         company: null,
         underADay: val(t, 'Milestone') !== '1' && minutes !== null && minutes < minutesPerDay,
+        ...(placeId ? placeRead(Array.from(t.children).find((c) => c.localName === 'ExtendedAttribute' && (val(c, 'FieldID') ?? '').trim() === placeId)?.getElementsByTagName('Value')[0]?.textContent, u) : {}),
       },
       links: Array.from(t.children)
         .filter((c) => c.localName === 'PredecessorLink')
@@ -318,6 +337,7 @@ function readSpreadsheet(text: string): ScheduleFileResult {
       trade,
       company: copy === 'team' ? cellOf(cells, 'Company') || null : null,
       underADay: false,
+      ...(copy === 'team' ? placeRead(cellOf(cells, 'Place'), u) : {}),
     })
     waitsOn.push(copy === 'team' ? cellOf(cells, 'Waits on') : '')
   })
@@ -613,6 +633,9 @@ export function importedSchedule(project: GcProject, imp: ScheduleImport): Impor
     const lag = Object.fromEntries([...gaps].filter(([, g]) => g !== 0))
     const { lag: _lag, notBefore: _nb, mustFinishBy: _mf, ...rest } = base
     const made: ScheduleActivity = { ...rest, start, finish: finish < start ? start : finish, after: [...gaps.keys()], ...(Object.keys(lag).length > 0 ? { lag } : {}), ...(notBefore ? { notBefore } : {}), ...(mustFinishBy ? { mustFinishBy } : {}) }
+    // Where its work is, from our own file (G-83): kept on a trade's line or our crew's, the first of theirs on it that has one, by G-83's rule again.
+    const workPlace = rows.map((r) => cleanPlace(r.workPlace ?? '')).find((w) => w !== '' && !placeProblem(w))
+    if (workPlace && takesPlace(made)) made.place = workPlace
     // Two of theirs or more on one of our lines are its parts (G-39), each as their file names it, counted from the line's
     // start with its share from its days, at the line's own percent as its trade reported it. One bar when a part would be
     // shorter than a day, or two would share a name.

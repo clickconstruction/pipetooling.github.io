@@ -14,10 +14,12 @@ import { NO_FILTERS, ganttBars, type GanttGroupBy } from './gcGantt'
 import { waitHolds, waitRows } from './gcScheduleWaits'
 import { customerDoneWords, customerSchedulePicture, customerStanding } from './gcCustomerSchedule'
 import type { GanttPrintInput } from './gcGanttPrint'
+import { plainWordsFailures } from '../plainWords'
 import { MSPDI_TEXT1, MSPDI_TEXT2, csvColumns, scheduleCsv, scheduleExport, scheduleMspdi, type ScheduleExport } from './gcScheduleExport'
 import { placeRows } from './gcPlaces'
-import { readScheduleFile } from './gcScheduleImport'
-import type { GcProject, GcState } from './gcTypes'
+import { guessPlaces, importedSchedule, readScheduleFile, type ScheduleFileReading, type ScheduleFileResult } from './gcScheduleImport'
+import { HELOTES_SAMPLE_FILE, HELOTES_SAMPLE_XML } from './gcScheduleImportSample'
+import type { GcProject, GcState, ScheduleActivity, ScheduleImport } from './gcTypes'
 
 const ID = 'fairoaksd'
 const job = (s: GcState) => s.projects.find((p) => p.id === ID)!
@@ -170,15 +172,86 @@ describe('the lead’s pins, as G-136 has them', () => {
   })
 })
 
+function reading(result: ScheduleFileResult): ScheduleFileReading {
+  if ('problem' in result) throw new Error(result.problem)
+  return result
+}
+
+/** Every row kept where G-137 guesses it lands, its place from the file with it, every date ticked: the office pressing Make the schedule from it. */
+function planOf(project: GcProject, read: ScheduleFileReading): ScheduleImport {
+  const guess = guessPlaces(project, read)
+  const rows = read.rows
+    .filter((r) => !r.date)
+    .flatMap((r) => {
+      const place = guess.get(r.key)?.place
+      if (!place || place.kind === 'out') return []
+      return [{ key: r.key, name: r.name, start: r.start, finish: r.finish, place, after: r.after, ...(r.notBefore ? { notBefore: r.notBefore } : {}), ...(r.mustFinishBy ? { mustFinishBy: r.mustFinishBy } : {}), ...(r.underADay ? { underADay: true } : {}), ...(r.workPlace ? { workPlace: r.workPlace } : {}) }]
+    })
+  return { file: 'fair-oaks', from: 'Robert Douglas', workStarts: '2026-07-06', rows, dates: read.rows.filter((r) => r.date).map((r) => ({ name: r.name, on: r.start })) }
+}
+
+const placesOf = (acts: ScheduleActivity[]) => Object.fromEntries(acts.flatMap((a) => (a.place ? [[a.lineId, a.place]] : [])))
+/** The job with no schedule and no Start, as G-137 brings a file into it. */
+const bareOf = (p: GcProject): GcProject => ({ ...p, schedule: undefined, startedOn: null })
+
 describe('bringing our own file back in (G-137)', () => {
-  it('reads our team’s spreadsheet and project file with places exactly as it reads them without', () => {
+  it('reads our team’s files with places as it reads them without, each place on its row', () => {
     const withPlaces = exportOf(placed(), 'team')
     const without = exportOf(initialGcState(), 'team')
     expect(scheduleCsv(withPlaces).split('\r\n')[0]).toContain(',Place,')
     for (const [write, name] of [[scheduleCsv, 'fair-oaks.csv'], [scheduleMspdi, 'fair-oaks.xml']] as const) {
-      const read = readScheduleFile(write(withPlaces), name)
-      expect('problem' in read).toBe(false)
-      expect(read).toEqual(readScheduleFile(write(without), name))
+      const read = reading(readScheduleFile(write(withPlaces), name))
+      const bare = { ...read, rows: read.rows.map(({ workPlace: _w, ...r }) => r) }
+      expect(bare).toEqual(readScheduleFile(write(without), name))
+      const byName = new Map(read.rows.map((r) => [r.name, r.workPlace]))
+      expect([byName.get('Top out'), byName.get('Ductwork'), byName.get('Rooftop units'), byName.get('Erection'), byName.get('Final inspection')]).toEqual(['North bay', 'Mezzanine', 'Roof', undefined, undefined])
+    }
+  })
+
+  it('brings every kept place back on its line, from either file, and out again the same', () => {
+    const s = placed()
+    const kept = placesOf(job(s).schedule!.activities)
+    expect(Object.keys(kept)).toHaveLength(13)
+    const first = exportOf(s, 'team')
+    const firstColumn = new Map(csvLines(scheduleCsv(first)).map((l) => [`${l.Group}|${l.Activity}`, l.Place]))
+    for (const [write, name] of [[scheduleCsv, 'fair-oaks.csv'], [scheduleMspdi, 'fair-oaks.xml']] as const) {
+      const bare = bareOf(job(s))
+      const made = importedSchedule(bare, planOf(bare, reading(readScheduleFile(write(first), name))))
+      // In: every place on the line it came from, none anywhere else.
+      expect(placesOf(made.schedule.activities)).toEqual(kept)
+      // And out again: the job made from the file writes the same Place column.
+      const back: GcState = { ...s, projects: s.projects.map((p) => (p.id === ID ? { ...bare, schedule: made.schedule } : p)) }
+      expect(new Map(csvLines(scheduleCsv(exportOf(back, 'team'))).map((l) => [`${l.Group}|${l.Activity}`, l.Place]))).toEqual(firstColumn)
+    }
+  })
+
+  it('leaves off a place over 40 characters and says so under What it could not read', () => {
+    const first = exportOf(placed(), 'team')
+    const long = 'x'.repeat(41)
+    for (const [text, name] of [[scheduleCsv(first).replace('North bay', long), 'fair-oaks.csv'], [scheduleMspdi(first).replace('<Value>North bay</Value>', `<Value>${long}</Value>`), 'fair-oaks.xml']] as const) {
+      const read = reading(readScheduleFile(text, name))
+      expect(read.rows.find((r) => r.name === 'Top out')?.workPlace).toBeUndefined()
+      expect(read.rows.find((r) => r.name === 'Ductwork')?.workPlace).toBe('Mezzanine')
+      expect(read.unread).toContain('1 place is over 40 characters, so it is left off.')
+    }
+    expect(plainWordsFailures('1 place is over 40 characters, so it is left off.')).toEqual([])
+    expect(plainWordsFailures('2 places are over 40 characters, so they are left off.')).toEqual([])
+  })
+
+  it('leaves every place empty from a file that has none: theirs, and ours with no place kept', () => {
+    // Studio Ocotillo's own Project file for Helotes: no text field at all.
+    const theirs = reading(readScheduleFile(HELOTES_SAMPLE_XML, HELOTES_SAMPLE_FILE))
+    expect(theirs.rows.some((r) => r.workPlace !== undefined)).toBe(false)
+    const helotes = bareOf(initialGcState().projects.find((p) => p.id === 'helotes')!)
+    expect(placesOf(importedSchedule(helotes, planOf(helotes, theirs)).schedule.activities)).toEqual({})
+    // A second text field they named something else is not a place.
+    const renamed = scheduleMspdi(exportOf(placed(), 'team')).replace('<Alias>Place</Alias>', '<Alias>Phase</Alias>')
+    expect(reading(readScheduleFile(renamed, 'fair-oaks.xml')).rows.some((r) => r.workPlace !== undefined)).toBe(false)
+    // Our own files with no place kept bring none in.
+    const s = initialGcState()
+    for (const [write, name] of [[scheduleCsv, 'fair-oaks.csv'], [scheduleMspdi, 'fair-oaks.xml']] as const) {
+      const bare = bareOf(job(s))
+      expect(placesOf(importedSchedule(bare, planOf(bare, reading(readScheduleFile(write(exportOf(s, 'team')), name)))).schedule.activities)).toEqual({})
     }
   })
 })

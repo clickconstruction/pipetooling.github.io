@@ -1667,6 +1667,8 @@ export interface ScheduleImportRow {
   mustFinishBy?: string
   /** Shorter than a working day in their file: it never becomes a part of a split line (G-137 after G-39). */
   underADay?: boolean
+  /** Where its work is, from our own file's Place (G-83): kept on the line it lands on. Unset: none in the file. */
+  workPlace?: string
 }
 
 /** A schedule a customer or the architect handed us, as the office kept it (G-137). Never kept on the job: the schedule it makes is. */
