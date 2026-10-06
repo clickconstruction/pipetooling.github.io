@@ -318,7 +318,7 @@ export type LienAffidavitJobFacts = {
   noticesRecorded: boolean
   contactPerson: string
   issuer: PhysicalInvoiceIssuer | null
-  /** The job's service type name (v2.3849) — the work description when the job has no name. */
+  /** The job's service type name (v2.3849) — the affidavit's kind of work. */
   serviceTypeName?: string | null
 }
 
@@ -333,7 +333,8 @@ export function buildLienAffidavitFieldsForJob(f: LienAffidavitJobFacts): LienAf
     legalDescription: f.legalDescription,
     propertyAddress: cleanStoredAddress(f.jobAddress),
     contractedWithName: f.isSub ? f.originalContractorName : f.ownerName || (f.customerName ?? '').trim(),
-    workDescription: (f.jobName ?? '').trim() || lienTradeWords(f.serviceTypeName).laborMaterials,
+    // The trade, never the job's name (v2.4719): a job is often named for its customer, and the affidavit swore "the kind of work … was: Bruce Hall".
+    workDescription: lienTradeWords(f.serviceTypeName).laborMaterials,
     workStart: monthEnd,
     workEnd: monthEnd,
     ownerName: f.ownerName,

@@ -69,7 +69,9 @@ import { lienOfferChipWords, lienOfferDayProblem, lienOfferFromItem, type LienPa
 import { setLienDeskItemOffer } from '../../lib/jobs/lienPayOfferIo'
 import { buildLienNextUp, type LienNextUpRow } from '../../lib/jobs/lienNextUp'
 import { lienStepDueWords, LIEN_STEP_LADDERS, lienStepOfRow, type LienStepFacts } from '../../lib/jobs/lienNextUpSteps'
-import { gapToken, lienPaperGaps, paintGaps, withGapTokens, type LienPaperFacts } from '../../lib/jobs/lienPaperGaps'
+import { freshHtml, gapToken, lienPaperFilledSince, lienPaperFixWindow, lienPaperGaps, paintGaps, withFreshMarks, withGapTokens, type LienPaperFacts, type LienPaperFixWindow, type LienPaperGap } from '../../lib/jobs/lienPaperGaps'
+import LienPaperPropertyWindow from './LienPaperPropertyWindow'
+import LienPaperGcWindow from './LienPaperGcWindow'
 import LienPaperPreviewOverlay, { type LienPaperPreviewEntry } from './LienPaperPreviewOverlay'
 import { LienLastWorkDayLine } from './LienLastWorkDayLine'
 import LienDeskNextUp from './LienDeskNextUp'
@@ -520,6 +522,15 @@ export default function LienDeskModal({
   // The paper behind a Do now chip (v2.4632): the notice or the affidavit as it stands, every statutory blank marked.
   const [paperOpen, setPaperOpen] = useState<number | null>(null)
   const paperRows = useMemo(() => nextUpRows.filter((r) => r.jobId && r.kind !== 'retainage'), [nextUpRows])
+  // Fix it from the paper (v2.4719): the window stacked over the paper, and the blanks the row had when it opened.
+  const [paperFix, setPaperFix] = useState<{ index: number; window: LienPaperFixWindow; gap: LienPaperGap } | null>(null)
+  const [paperFilledFrom, setPaperFilledFrom] = useState<{ key: string; gaps: ReadonlyArray<LienPaperGap> } | null>(null)
+  // A fix can move the row (a whole property turns "Fix the property" into "Draft affidavit"): the paper stays on it by key.
+  useEffect(() => {
+    if (!paperFilledFrom) return
+    const at = paperRows.findIndex((r) => r.key === paperFilledFrom.key)
+    if (at >= 0) setPaperOpen((cur) => (cur == null || cur === at ? cur : at))
+  }, [paperRows, paperFilledFrom])
   const paperFactsFor = (row: LienNextUpRow): LienPaperFacts | null => {
     if (!data || !row.jobId) return null
     const rowJob = data.jobsById[row.jobId]
@@ -559,6 +570,10 @@ export default function LienDeskModal({
       const at = lienStepOfRow(row)
       const next = (at ? LIEN_STEP_LADDERS.find((l) => l.key === at.ladder)?.steps[at.step - 1] : row.button) ?? 'the next step'
       const gapByField = (field: string) => gaps.find((g) => g.field === field)
+      const filledGaps = paperFilledFrom?.key === row.key ? lienPaperFilledSince(paperFilledFrom.gaps, gaps) : []
+      const filledValue = (k: LienPaperGap['key']): string => (k === 'county' ? f.county : k === 'legal' ? f.legalDescription : k === 'owner' ? [f.ownerName, f.ownerAddress].filter(Boolean).join(', ') : k === 'owner_address' ? f.ownerAddress : k === 'gc' ? f.gcName : '')
+      const filled = filledGaps.map((g) => ({ key: g.key, label: g.label, value: filledValue(g.key) }))
+      const filledKeys = new Set(filledGaps.map((g) => g.key))
       if (kind === 'affidavit') {
         const e = data.affidavits.entries.find((x) => x.jobId === jobId)
         const fields = buildLienAffidavitFieldsForJob({
@@ -581,8 +596,8 @@ export default function LienDeskModal({
           contactPerson: f.contactPerson,
           issuer,
         })
-        const html = paintGaps(filingDocHtml(buildLienAffidavitBlocks(withGapTokens(fields, gaps), { letterhead, refItems: [`Job #${jobNo}`, e ? `Last work month ${e.lastMonth}` : '', demandDate(todayYmd)].filter(Boolean) })), gaps)
-        return { key: row.key, title: row.title, kind, deadline: lienStepDueWords(row), envelope: null, html, gaps, next, button: row.action === 'fix_property' ? row.button : null }
+        const html = paintGaps(filingDocHtml(buildLienAffidavitBlocks(withGapTokens(withFreshMarks(fields, filledGaps), gaps), { letterhead, refItems: [`Job #${jobNo}`, e ? `Last work month ${e.lastMonth}` : '', demandDate(todayYmd)].filter(Boolean) })), gaps)
+        return { key: row.key, title: row.title, kind, deadline: lienStepDueWords(row), envelope: null, html, gaps, next, button: row.action === 'fix_property' ? row.button : null, filled }
       }
       const e = data.queue.entries.find((x) => x.jobId === jobId)
       const stored = e?.item ? parseLienDeskDraftFields(e.item.fields) : null
@@ -601,16 +616,18 @@ export default function LienDeskModal({
       })
       const fields: LienNoticeFields = { ...(stored?.notice ?? defaults), claimAmount: defaults.claimAmount }
       const months = e?.item?.months?.length ? e.item.months : e?.dueMonths ?? []
-      const html = paintGaps(filingDocHtml(buildLienNoticeBlocks(withGapTokens(fields, gaps), { letterhead, refItems: [`Job #${jobNo}`, months.length ? `Work months ${describeNoticeMonths(months)}` : '', demandDate(todayYmd)].filter(Boolean) })), gaps)
+      const html = paintGaps(filingDocHtml(buildLienNoticeBlocks(withGapTokens(withFreshMarks(fields, filledGaps), gaps), { letterhead, refItems: [`Job #${jobNo}`, months.length ? `Work months ${describeNoticeMonths(months)}` : '', demandDate(todayYmd)].filter(Boolean) })), gaps)
       const ownerGap = gaps.find((g) => g.where === 'envelope')
       const esc = (t: string) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] as string)
-      const ownerHtml = ownerGap ? paintGaps(gapToken(ownerGap.n), gaps) : esc([f.ownerName, f.ownerAddress].filter(Boolean).join(', '))
+      const ownerWords = esc([f.ownerName, f.ownerAddress].filter(Boolean).join(', '))
+      const ownerHtml = ownerGap ? paintGaps(gapToken(ownerGap.n), gaps) : filledKeys.has('owner') || filledKeys.has('owner_address') ? freshHtml(ownerWords) : ownerWords
       const gcGap = gapByField('originalContractorName')
-      const gcHtml = gcGap ? paintGaps(gapToken(gcGap.n), gaps) : esc([rowGc?.name ?? '', rowGc?.address ?? ''].filter(Boolean).join(', '))
-      return { key: row.key, title: row.title, kind, deadline: lienStepDueWords(row), envelope: { ownerHtml, gcHtml }, html, gaps, next, button: row.action === 'find_owner' ? row.button : null }
+      const gcWords = esc([rowGc?.name ?? '', rowGc?.address ?? ''].filter(Boolean).join(', '))
+      const gcHtml = gcGap ? paintGaps(gapToken(gcGap.n), gaps) : filledKeys.has('gc') ? freshHtml(gcWords) : gcWords
+      return { key: row.key, title: row.title, kind, deadline: lienStepDueWords(row), envelope: { ownerHtml, gcHtml }, html, gaps, next, button: row.action === 'find_owner' ? row.button : null, filled }
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paperOpen, paperRows, data, issuer, todayYmd])
+  }, [paperOpen, paperRows, data, issuer, todayYmd, paperFilledFrom])
   /** A Do now row's button: the pane that already does that work, on that job and pile. Nothing is written here. */
   const actOnNextUp = (row: LienNextUpRow) => {
     const t = row.target
@@ -2467,15 +2484,42 @@ export default function LienDeskModal({
             <LienPaperPreviewOverlay
               entries={paperEntries}
               index={paperOpen}
-              onIndex={setPaperOpen}
-              onClose={() => setPaperOpen(null)}
+              onIndex={(i) => {
+                setPaperFilledFrom(null)
+                setPaperOpen(i)
+              }}
+              onClose={() => {
+                setPaperFilledFrom(null)
+                setPaperOpen(null)
+              }}
               onAct={(i) => {
                 const row = paperRows[i]
                 setPaperOpen(null)
                 if (row) actOnNextUp(row)
               }}
+              onFix={office ? (i, gap) => {
+                const w = lienPaperFixWindow(gap)
+                if (w) setPaperFix({ index: i, window: w, gap })
+              } : undefined}
+              paused={paperFix != null}
             />
           ) : null}
+          {paperFix && data ? (() => {
+            const entry = paperEntries[paperFix.index]
+            const row = paperRows[paperFix.index]
+            const fixJob = row?.jobId ? data.jobsById[row.jobId] : undefined
+            if (!entry || !fixJob) return null
+            const done = (saved: boolean) => {
+              setPaperFix(null)
+              if (!saved) return
+              // Every blank this paper had since the first fix, so a second window keeps the first one's green cards.
+              setPaperFilledFrom((prev) => ({ key: entry.key, gaps: prev?.key === entry.key ? [...prev.gaps, ...entry.gaps.filter((g) => !prev.gaps.some((p) => p.key === g.key))] : entry.gaps }))
+              onChanged()
+            }
+            if (paperFix.window === 'gc') return <LienPaperGcWindow job={fixJob} knownGcs={Object.values(data.gcsById)} onClose={done} />
+            const fixAddress = fixJob.customer_address_id ? data.addressesById[fixJob.customer_address_id] ?? null : null
+            return <LienPaperPropertyWindow job={fixJob} address={fixAddress} ownerOnJob={resolveLienProperty(fixAddress, data.ownerByJob[fixJob.id] ?? null).owner.source === 'job_override'} focus={paperFix.gap.key} onClose={done} />
+          })() : null}
           {kind === 'next' ? (
             <LienDeskNextUp rows={nextUpRows} loading={loading && !data} isMobile={isMobile} onAct={actOnNextUp} onOpenJob={onOpenJob} ready={{ notice: counts?.ready ?? 0, retainage: retReady }} onOpenRun={office ? () => setRunOpen(true) : undefined} factsFor={stepFactsFor} viewerIsLeader={leader} onOpenPaper={(row) => setPaperOpen(Math.max(0, paperRows.findIndex((r) => r.key === row.key)))} gapsFor={paperGapCount} />
           ) : kind === 'calendar' ? (

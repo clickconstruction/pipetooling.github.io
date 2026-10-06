@@ -3978,6 +3978,9 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
 .lienRulesBody mark[data-find] { background: var(--bg-amber-tint); color: inherit; border-radius: 2px; padding: 0 1px; box-shadow: 0 0 0 1px var(--border-amber); }
 .lienRulesBody mark[data-find-at="yes"] { background: #fbbf24; color: #1a1200; }
 .lienRulesBody [data-rule-opened="yes"] { scroll-margin-top: 0.5rem; box-shadow: inset 3px 0 0 var(--border-blue); padding-left: 0.5rem; }
+.lienPaperFresh { background: #dcfce7; border-bottom: 2px solid #16a34a; padding: 0 2px; animation: lienPaperFresh 2.4s ease-out 0.6s forwards; }
+@keyframes lienPaperFresh { to { background: transparent; border-bottom-color: transparent; } }
+@media (prefers-reduced-motion: reduce) { .lienPaperFresh { animation: none; } }
 .lienPaperGap b { background: #dc2626; color: #fff; border-radius: 999px; width: 1.35em; height: 1.35em; display: inline-grid; place-items: center; font-size: 0.8em; }
 .lienCalDraft { border: none; border-radius: 7px; padding: 4px 11px; background: var(--text-amber-800); color: var(--surface); font: inherit; font-size: 0.75rem; font-weight: 700; white-space: nowrap; cursor: pointer; }
 .lienCalDraft:hover { opacity: 0.9; }

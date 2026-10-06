@@ -1,5 +1,5 @@
 import { useEffect, useRef, type CSSProperties } from 'react'
-import { lienPaperBannerWords, type LienPaperGap, type LienPaperKind } from '../../lib/jobs/lienPaperGaps'
+import { lienPaperBannerWords, lienPaperFixButtonWords, lienPaperFixWindow, type LienPaperGap, type LienPaperKind } from '../../lib/jobs/lienPaperGaps'
 import { stepRunPreview } from '../../lib/jobs/lienDeskRun'
 import { useIsMobile } from '../../hooks/useIsMobile'
 
@@ -9,7 +9,12 @@ import { useIsMobile } from '../../hooks/useIsMobile'
  * with a red number, and a rail beside it that lists the blanks by number with the button
  * that fills each. ‹ › and the arrow keys walk the rows; Esc closes this alone. The pages
  * come from the same builders that print the paper (`lienPaperGaps.ts` paints the marks), so
- * the preview can never differ from the paper. Read-only.
+ * the preview can never differ from the paper.
+ *
+ * Fix it from the paper (v2.4719, Taunya's ask): with `onFix`, a property blank's button opens
+ * the property record and the GC's opens the GC picker, each in a window stacked above this one
+ * (`paused` while it is open, so its keys stay its own). When the window saves, the blanks it
+ * filled come back as green cards with their values, and the paper marks the new words.
  */
 export type LienPaperPreviewEntry = {
   key: string
@@ -27,6 +32,8 @@ export type LienPaperPreviewEntry = {
   next: string
   /** The row's own button, when a gap's fix is that rung. */
   button: string | null
+  /** The blanks the last fix window filled, with what they read now (v2.4719). */
+  filled?: ReadonlyArray<{ key: string; label: string; value: string }>
 }
 
 type Props = {
@@ -36,6 +43,10 @@ type Props = {
   onClose: () => void
   /** The row's own act, from the rail's button; the overlay closes first. */
   onAct: (index: number) => void
+  /** Fix a blank in a window stacked above (v2.4719); without it the rail keeps the row's own act. */
+  onFix?: (index: number, gap: LienPaperGap) => void
+  /** A fix window is open above: the keys are its own. */
+  paused?: boolean
 }
 
 const faint: CSSProperties = { fontSize: '0.75rem', color: 'var(--text-muted)' }
@@ -45,7 +56,7 @@ const navBtn = (disabled: boolean): CSSProperties => ({ padding: '3px 9px', bord
 const paperStyle: CSSProperties = { border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', padding: '1.1rem 1.4rem', boxShadow: '0 1px 4px rgba(0,0,0,0.2)', fontFamily: "Georgia, 'Times New Roman', serif", fontSize: '0.9rem', lineHeight: 1.6 }
 const kbd: CSSProperties = { fontSize: '0.7rem', border: '1px solid var(--border-strong)', borderBottomWidth: 2, borderRadius: 4, padding: '0 5px', background: 'var(--surface)' }
 
-export default function LienPaperPreviewOverlay({ entries, index, onIndex, onClose, onAct }: Props) {
+export default function LienPaperPreviewOverlay({ entries, index, onIndex, onClose, onAct, onFix, paused = false }: Props) {
   const isMobile = useIsMobile()
   const closeRef = useRef<HTMLButtonElement | null>(null)
   const scrollRef = useRef<HTMLDivElement | null>(null)
@@ -55,6 +66,7 @@ export default function LienPaperPreviewOverlay({ entries, index, onIndex, onClo
 
   // Esc closes only the preview; the arrows walk the rows. Capture, so the desk underneath never sees the key.
   useEffect(() => {
+    if (paused) return
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape' && e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
       e.stopPropagation()
@@ -64,7 +76,7 @@ export default function LienPaperPreviewOverlay({ entries, index, onIndex, onClo
     }
     window.addEventListener('keydown', onKey, true)
     return () => window.removeEventListener('keydown', onKey, true)
-  }, [onClose, onIndex, safeIndex, total])
+  }, [onClose, onIndex, safeIndex, total, paused])
   useEffect(() => {
     closeRef.current?.focus()
   }, [])
@@ -122,6 +134,20 @@ export default function LienPaperPreviewOverlay({ entries, index, onIndex, onClo
             <div data-testid="lien-paper-preview-paper" dangerouslySetInnerHTML={{ __html: entry.html }} />
           </div>
           <div style={{ display: 'grid', gap: '0.5rem', alignContent: 'start' }}>
+            {entry.filled?.length ? (
+              <>
+                <div style={railHead}>Just filled</div>
+                {entry.filled.map((f) => (
+                  <div key={f.key} data-testid="lien-paper-preview-filled" style={{ display: 'grid', gridTemplateColumns: '20px 1fr', gap: 8, alignItems: 'start', padding: '0.5rem 0.65rem', border: '1px solid var(--border-green)', borderRadius: 8, background: 'var(--bg-green-tint)' }}>
+                    <span aria-hidden style={{ background: '#15803d', color: '#fff', borderRadius: 999, width: 18, height: 18, display: 'inline-grid', placeItems: 'center', fontSize: '0.68rem', fontWeight: 800 }}>✓</span>
+                    <span style={{ minWidth: 0 }}>
+                      <span style={{ display: 'block', fontSize: '0.84rem', fontWeight: 600 }}>{f.label}</span>
+                      <span style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-green-800)', overflowWrap: 'anywhere' }}>{f.value}</span>
+                    </span>
+                  </div>
+                ))}
+              </>
+            ) : null}
             {entry.gaps.length ? (
               <>
                 <div style={railHead}>What is missing</div>
@@ -131,7 +157,11 @@ export default function LienPaperPreviewOverlay({ entries, index, onIndex, onClo
                     <span style={{ minWidth: 0 }}>
                       <span style={{ display: 'block', fontSize: '0.84rem', fontWeight: 600 }}>{g.label}</span>
                       <span style={{ display: 'block', fontSize: '0.76rem', color: 'var(--text-muted)' }}>{g.why}</span>
-                      {entry.button && (g.fix === 'find_owner' || g.fix === 'fix_property') ? (
+                      {onFix && lienPaperFixWindow(g) ? (
+                        <button type="button" data-testid="lien-paper-preview-fix" onClick={() => onFix(safeIndex, g)} style={{ marginTop: 6, padding: '3px 9px', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', font: 'inherit', fontWeight: 600, fontSize: '0.74rem', cursor: 'pointer' }}>
+                          {lienPaperFixButtonWords(g)}
+                        </button>
+                      ) : entry.button && (g.fix === 'find_owner' || g.fix === 'fix_property') ? (
                         <button type="button" data-testid="lien-paper-preview-fix" onClick={() => onAct(safeIndex)} style={{ marginTop: 6, padding: '3px 9px', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', font: 'inherit', fontWeight: 600, fontSize: '0.74rem', cursor: 'pointer' }}>
                           {entry.button}
                         </button>
@@ -149,11 +179,11 @@ export default function LienPaperPreviewOverlay({ entries, index, onIndex, onClo
               </>
             )}
             <div style={{ ...railHead, marginTop: 6 }}>Filled from the job</div>
-            <div style={{ padding: '0.5rem 0.65rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', fontSize: '0.76rem', color: 'var(--text-muted)' }}>The claim, the months, the GC and the signer read from the job. Change them at their source and the paper follows.</div>
+            <div style={{ padding: '0.5rem 0.65rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', fontSize: '0.76rem', color: 'var(--text-muted)' }}>{onFix ? 'The claim, the months and the signer read from the job.' : 'The claim, the months, the GC and the signer read from the job.'} Change them at their source and the paper follows.</div>
           </div>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap', padding: '0.45rem 0.9rem', borderTop: '1px solid var(--border)', ...faint }}>
-          <span>Read-only: the {paperWord} as it would {entry.kind === 'affidavit' ? 'file' : 'print'} today, from the desk as it stands.</span>
+          <span>{onFix ? `The ${paperWord} as it would ${entry.kind === 'affidavit' ? 'file' : 'print'} today. Fix a blank and the paper follows.` : `Read-only: the ${paperWord} as it would ${entry.kind === 'affidavit' ? 'file' : 'print'} today, from the desk as it stands.`}</span>
           {isMobile ? null : <span><span style={kbd}>←</span> <span style={kbd}>→</span> next row · <span style={kbd}>Esc</span> back to the desk</span>}
         </div>
       </div>
