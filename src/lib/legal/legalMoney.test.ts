@@ -10,7 +10,7 @@ import { sampleLegalPortalResponse } from '../../../supabase/functions/_shared/c
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { buildLegalPacket, groupCollectionsByPayer, jobOpenBalance, legalJobMoney, type LegalAccountSummary, type LegalPacket, type LegalPacketInput } from './legalPacket'
 import { buildMatterPacket, parseLegalPortalPayload, portalFeeModel } from './legalPortalPayload'
-import { CONTINGENCY_ENTRY_META, contingencyEntries, contingencyEntryBody, firmDemand, firmFeeEntries, invoiceSentWords, isContingencyEntry, legalRunningLedger, paymentHowWords } from './legalMoney'
+import { CONTINGENCY_ENTRY_META, contingencyEntries, contingencyEntryBody, firmDemand, firmFeeEntries, firmFeeRows, invoiceSentWords, isContingencyEntry, legalRunningLedger, paymentHowWords } from './legalMoney'
 import type { LegalEntryRow } from './legalMatters'
 
 const TODAY = '2026-10-05'
@@ -187,5 +187,14 @@ describe('integration pass · the no-line path, refunds and credits', () => {
     expect(p.account.ledger.find((e) => e.kind === 'credit')?.text).toMatch(/^Credit to the customer of \$200\.00/)
     expectFoots(p)
     expect(firmDemand(p.account.totals.balance, [entry({ kind: 'fee', body: 'Letter', amount: 100 })]).demand).toBe(0)
+  })
+})
+
+describe('an undone fee (#85 item 18) is out of every total, still listed struck through', () => {
+  it('firmFeeEntries and firmDemand leave it out; firmFeeRows keeps it for the table', () => {
+    const rows = [entry({ kind: 'fee', body: 'Letter', amount: 450 }), { ...entry({ kind: 'cost', body: 'Filing twice', amount: 350 }), voided_at: '2026-10-05T00:00:00Z' }]
+    expect(firmFeeEntries(rows).map((e) => e.body)).toEqual(['Letter'])
+    expect(firmFeeRows(rows).map((e) => e.body)).toEqual(['Letter', 'Filing twice'])
+    expect(firmDemand(1000, rows)).toEqual({ feesTotal: 450, demand: 1450 })
   })
 })

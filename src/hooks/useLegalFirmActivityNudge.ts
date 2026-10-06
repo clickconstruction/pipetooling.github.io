@@ -19,15 +19,18 @@ export function useLegalFirmActivityNudge(enabled: boolean): { activity: LegalFi
       return
     }
     try {
-      const [entriesRes, mattersRes] = await Promise.all([
-        db.from('legal_matter_entries').select('id, matter_id, kind, amount, body, occurred_on, meta, via_portal, created_by, acknowledged_at, created_at').eq('via_portal', true).is('acknowledged_at', null).order('created_at', { ascending: false }).limit(200),
-        db.from('legal_matters').select('*'),
-      ])
+      // `voided_at` (#85 item 18 PR 2): a fee the firm undid must not count here forever. Until that migration is
+      // pushed the column is missing, so the read without it is the fallback.
+      const cols = 'id, matter_id, kind, amount, body, occurred_on, meta, via_portal, created_by, acknowledged_at, created_at'
+      const entries = (withVoid: boolean) => db.from('legal_matter_entries').select(withVoid ? `${cols}, voided_at` : cols).eq('via_portal', true).is('acknowledged_at', null).order('created_at', { ascending: false }).limit(200)
+      const [first, mattersRes] = await Promise.all([entries(true), db.from('legal_matters').select('*')])
+      let entriesRes = first
+      if (entriesRes.error) entriesRes = await entries(false)
       if (entriesRes.error || mattersRes.error) {
         setActivity(null)
         return
       }
-      setActivity(buildFirmActivity((entriesRes.data ?? []) as LegalEntryRow[], (mattersRes.data ?? []) as LegalMatterRow[]))
+      setActivity(buildFirmActivity((entriesRes.data ?? []) as unknown as LegalEntryRow[], (mattersRes.data ?? []) as LegalMatterRow[]))
     } catch {
       setActivity(null)
     }

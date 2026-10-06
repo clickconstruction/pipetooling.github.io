@@ -31,7 +31,7 @@ import {
   type LegalMatterRow,
 } from '../../../lib/legal/legalMatters'
 import { buildLegalPacketPrintHtml } from '../../../lib/legal/legalPacketPrint'
-import { CONTINGENCY_ENTRY_META, contingencyEntries, contingencyEntryBody, firmFeeEntries, legalRunningLedger } from '../../../lib/legal/legalMoney'
+import { CONTINGENCY_ENTRY_META, contingencyEntries, contingencyEntryBody, firmFeeEntries, firmFeeRows, legalRunningLedger } from '../../../lib/legal/legalMoney'
 import { propertyKindCell, propertySourceNote } from '../../../lib/legal/legalProperty'
 import { FirmMatterView } from './LegalFirmMatterView'
 import type { FirmTab } from './legalFirmMatterViewShared'
@@ -43,6 +43,7 @@ import { useEditCustomerModal } from '../../../contexts/EditCustomerModalContext
 import { useToastContext } from '../../../contexts/ToastContext'
 import { legalRpc, legalRpcData, type LegalMattersData } from '../../../hooks/useLegalMatters'
 import { settlementFloorDollars, settlementFloorOf, settlementFloorWords, type LegalSettlementFloor } from '../../../../supabase/functions/_shared/legalSettlement'
+import { isVoidedEntry, officeCanVoid } from '../../../../supabase/functions/_shared/legalPortalActs'
 import AgreedWriteDownModal from '../AgreedWriteDownModal'
 import LegalPortalLinkButton from './LegalPortalLinkButton'
 import { legalNotReachingLine } from '../../../lib/legal/legalNotifyLedger'
@@ -415,6 +416,12 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
     const ok = await run(signedOff ? 'Sign off' : 'Not yet', () => legalRpc('legal_answer_settlement', { p_entry_id: entryId, p_signed_off: signedOff, p_note: note }))
     if (ok) showToast(signedOff ? 'Signed off — the matter is settled, and the firm is told.' : 'Sent — the firm sees your answer; the stage stays.', signedOff ? 'success' : 'info')
   }
+  /** #85 item 18: undo an entry the office wrote, with a reason the firm reads. */
+  const voidEntry = async (entryId: string, reason: string): Promise<boolean> => {
+    const ok = await run('Undo', () => legalRpc('legal_void_entry', { p_entry_id: entryId, p_reason: reason }))
+    if (ok) showToast('Undone — it stays on the record, struck through, out of every total.', 'info')
+    return Boolean(ok)
+  }
   /** #85 item 16: accept a firm step that would have moved the stage back. */
   const moveStage = async (stageTo: string, entryId: string) => {
     if (!matter) return
@@ -637,7 +644,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
                 {packet ? (
                   <PacketTab tab={tab} packet={packet} selected={selected} props={props} openEditCustomer={openEditCustomer} openWriteDown={openWriteDown}
                     curation={stored && canEditReview ? { holdBack, shareAgain, shareAll, holdFor, setHoldFor, reasons: heldReasonsOf(matter), busy } : null} entries={matter ? (legal?.entriesByMatter.get(matter.id) ?? []) : []}
-                    officeActs={stored && canEditReview ? { acknowledge, answerFor, setAnswerFor, sendAnswer, markApplied, busy, onOpenPipelineRow: () => { if (firstJob) props.onFocusJob(firstJob.id) }, askForm: matter ? askForm : null, setAskForm, sendAsk, withdrawFirmAsk, canAsk: matterIsWithFirm(matter), answerSettlement, setSettlementFloor, floor: settlementFloorOf(matter), moveStage } : null} />
+                    officeActs={stored && canEditReview ? { acknowledge, answerFor, setAnswerFor, sendAnswer, markApplied, busy, onOpenPipelineRow: () => { if (firstJob) props.onFocusJob(firstJob.id) }, askForm: matter ? askForm : null, setAskForm, sendAsk, withdrawFirmAsk, canAsk: matterIsWithFirm(matter), answerSettlement, setSettlementFloor, floor: settlementFloorOf(matter), moveStage, voidEntry } : null} />
                 ) : null}
               </>
             )}
@@ -800,7 +807,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
 
 type Curation = { holdBack: (key: string, reason: string) => Promise<void>; shareAgain: (key: string) => Promise<void>; shareAll: () => Promise<void>; holdFor: { key: string; reason: string } | null; setHoldFor: (v: { key: string; reason: string } | null) => void; reasons: Record<string, string>; busy: boolean } | null
 type EntryLike = LegalEntryRow
-type OfficeActs = { acknowledge: (entryId: string) => Promise<void>; answerFor: { entryId: string; text: string } | null; setAnswerFor: (v: { entryId: string; text: string } | null) => void; sendAnswer: () => Promise<void>; markApplied: (entry: { id: string; amount: number | null; body: string }) => Promise<void>; busy: boolean; onOpenPipelineRow: () => void; askForm: { flavor: LegalAskFlavor; jobId: string; text: string } | null; setAskForm: (v: { flavor: LegalAskFlavor; jobId: string; text: string } | null) => void; sendAsk: () => Promise<void>; withdrawFirmAsk: (entryId: string) => Promise<void>; /** A matter exists for the account (asks hang on a matter). */ canAsk: boolean; /** #85 item 20. */ answerSettlement: (entryId: string, signedOff: boolean, note: string) => Promise<void>; setSettlementFloor: (amount: number | null, pct: number | null) => Promise<void>; floor: LegalSettlementFloor | null; /** #85 item 16. */ moveStage: (stage: string, entryId: string) => Promise<void> } | null
+type OfficeActs = { acknowledge: (entryId: string) => Promise<void>; answerFor: { entryId: string; text: string } | null; setAnswerFor: (v: { entryId: string; text: string } | null) => void; sendAnswer: () => Promise<void>; markApplied: (entry: { id: string; amount: number | null; body: string }) => Promise<void>; busy: boolean; onOpenPipelineRow: () => void; askForm: { flavor: LegalAskFlavor; jobId: string; text: string } | null; setAskForm: (v: { flavor: LegalAskFlavor; jobId: string; text: string } | null) => void; sendAsk: () => Promise<void>; withdrawFirmAsk: (entryId: string) => Promise<void>; /** A matter exists for the account (asks hang on a matter). */ canAsk: boolean; /** #85 item 20. */ answerSettlement: (entryId: string, signedOff: boolean, note: string) => Promise<void>; setSettlementFloor: (amount: number | null, pct: number | null) => Promise<void>; floor: LegalSettlementFloor | null; /** #85 item 16. */ moveStage: (stage: string, entryId: string) => Promise<void>; /** #85 item 18. */ voidEntry: (entryId: string, reason: string) => Promise<boolean> } | null
 
 function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDown, curation, entries, officeActs }: { tab: Tab; packet: LegalPacket; selected: LegalAccountSummary; props: LegalDeskModalProps; openEditCustomer: () => void; openWriteDown: (jobId: string | null) => void; curation: Curation; entries: EntryLike[]; officeActs: OfficeActs }) {
   const a = packet.account
@@ -955,10 +962,10 @@ function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDo
   }
 
   // The firm's fees and costs the debtor owes (item 5): the contingency is the firm's share of a recovery, said on its own line.
-  const fees = firmFeeEntries(entries)
+  const fees = firmFeeRows(entries)
   const contingency = contingencyEntries(entries)
   const userNameOf = (id: string | null) => (id ? (props.users.find((u) => u.id === id)?.name ?? null) : null)
-  const feeTotal = fees.reduce((s, e) => s + Number(e.amount ?? 0), 0)
+  const feeTotal = firmFeeEntries(entries).reduce((s, e) => s + Number(e.amount ?? 0), 0)
   // #85 item 17: questions and answers leave the steps table for the conversation, each answer under its question.
   const firmSteps = entries.filter((e) => e.kind !== 'fee' && e.kind !== 'cost' && !isConversationEntry(e))
   const talk = conversationRows(entries)
@@ -979,7 +986,10 @@ function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDo
       {officeActs && officeActs.canAsk ? <SettlementFloorEditor floor={officeActs.floor} balance={packet.account.totals.balance} busy={officeActs.busy} onSave={officeActs.setSettlementFloor} /> : null}
       <SectionTitle doors={first ? <Door label="Write down" onClick={() => openWriteDown(first.id)} /> : null}>Attorney fees and costs{fees.length ? ` · ${formatLegalMoney(feeTotal)}` : ''}</SectionTitle>
       {fees.length ? (
-        <Table head={['Date', 'Kind', 'Note', 'By', 'Amount']} numCols={[4]} rows={fees.map((e) => [e.occurred_on, e.kind, e.body, entryRecordedByWords(e, 'office', userNameOf), formatLegalMoney(Number(e.amount ?? 0))])} empty="" />
+        <Table head={['Date', 'Kind', 'Note', 'By', 'Amount', '']} numCols={[4]} rows={fees.map((e) => [e.occurred_on, e.kind, <DeskVoidableText key="t" e={e} />, entryRecordedByWords(e, 'office', userNameOf), <span key="a" style={isVoidedEntry(e) ? { textDecoration: 'line-through', color: 'var(--text-muted)' } : undefined}>{formatLegalMoney(Number(e.amount ?? 0))}</span>, officeActs && officeCanVoid(e) ? <DeskUndo key="u" onUndo={(reason) => officeActs.voidEntry(e.id, reason)} /> : officeActs && e.via_portal && !e.acknowledged_at && !isVoidedEntry(e) ? (
+          // #85 item 18 PR 2: a fee or cost the firm adds is acknowledged here like a step, which clears it from Needs You.
+          <button key="k" type="button" onClick={() => void officeActs.acknowledge(e.id)} disabled={officeActs.busy} style={btn}>Acknowledge</button>
+        ) : e.via_portal && e.acknowledged_at ? <span key="k" style={{ ...MUTED, fontSize: '0.76rem' }}>seen</span> : ''])} empty="" />
       ) : contingency.length ? null : (
         <p style={{ ...MUTED, fontSize: '0.84rem' }}>None yet{entries.length ? ' — the firm has not added a fee or cost.' : ' — no firm is on this account. When one is, the fees and costs they add list here and roll into the total demand.'}</p>
       )}
@@ -1014,8 +1024,8 @@ function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDo
           <SectionTitle>On the matter{officeActs && waitingOn(firmSteps) ? ` · ${waitingOn(firmSteps)} from the firm waiting on you` : ''}</SectionTitle>
           <Table head={['Date', 'Kind', 'What happened', 'By', 'Amount', '']} numCols={[4]}
             rows={firmSteps.map((e) => {
-              const waiting = e.via_portal && !e.acknowledged_at
-              const acts = officeActs && waiting ? (
+              const waiting = e.via_portal && !e.acknowledged_at && !isVoidedEntry(e)
+              const acts = isVoidedEntry(e) ? pill('undone', 'neutral') : officeActs && officeCanVoid(e) ? <DeskUndo key="u" onUndo={(reason) => officeActs.voidEntry(e.id, reason)} /> : officeActs && waiting ? (
                 e.kind === 'payment_received' ? (
                   <span key="p" style={{ display: 'inline-flex', gap: 6 }}>
                     <button type="button" onClick={officeActs.onOpenPipelineRow} style={btn} title="Apply it on the job with Mark Paid, then come back">Mark Paid on the row ↗</button>
@@ -1032,7 +1042,7 @@ function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDo
                 )
               ) : waiting ? pill('waiting on the office', 'warn') : e.via_portal ? pill('seen', 'ok') : null
               const proposal = stepProposalOf(e)
-              return [e.occurred_on, pill(legalEntryKindWords(e), e.via_portal ? 'legal' : 'neutral'), proposal && waiting ? <span key="b">{e.body}<span style={{ ...MUTED, display: 'block', fontSize: '0.74rem' }}>The stage stays at {legalStageLabel(proposal.from).replace('With the firm · ', '')} until you choose.</span></span> : e.body, entryRecordedByWords(e, 'office', userNameOf), e.amount != null ? formatLegalMoney(Number(e.amount)) : '', acts]
+              return [e.occurred_on, pill(legalEntryKindWords(e), e.via_portal ? 'legal' : 'neutral'), proposal && waiting ? <span key="b">{e.body}<span style={{ ...MUTED, display: 'block', fontSize: '0.74rem' }}>The stage stays at {legalStageLabel(proposal.from).replace('With the firm · ', '')} until you choose.</span></span> : <DeskVoidableText key="b" e={e} />, entryRecordedByWords(e, 'office', userNameOf), e.amount != null ? formatLegalMoney(Number(e.amount)) : '', acts]
             })}
             empty="" />
         </>
@@ -1104,6 +1114,31 @@ function SettlementAnswer({ busy, onAnswer }: { busy: boolean; onAnswer: (signed
       <button type="button" disabled={busy} onClick={() => void onAnswer(true, note)} style={btnPrimary}>Sign off</button>
       <button type="button" disabled={busy} onClick={() => void onAnswer(false, note)} style={btn}>Not yet</button>
       <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="a note for the firm (optional)" aria-label="A note for the firm" style={{ font: 'inherit', fontSize: '0.8rem', padding: '3px 6px', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text)', width: 180 }} />
+    </span>
+  )
+}
+
+/** #85 item 18: an entry's text, struck through with who undid it and why once it is voided. */
+function DeskVoidableText({ e }: { e: Pick<LegalEntryRow, 'body' | 'voided_at' | 'voided_via_portal' | 'void_reason'> }) {
+  if (!e.voided_at) return <>{e.body}</>
+  return (
+    <span data-legal-voided>
+      <span style={{ textDecoration: 'line-through', color: 'var(--text-muted)' }}>{e.body}</span>
+      <span style={{ ...MUTED, display: 'block', fontSize: '0.74rem' }}>undone by {e.voided_via_portal ? 'the firm' : 'the office'} {calendarYmdInAppTzFromIso(e.voided_at)}{e.void_reason ? `: ${e.void_reason}` : ''}</span>
+    </span>
+  )
+}
+
+/** #85 item 18: Undo… with a reason; the entry stays on the record, out of every total. */
+function DeskUndo({ onUndo }: { onUndo: (reason: string) => Promise<boolean> }) {
+  const [open, setOpen] = useState(false)
+  const [reason, setReason] = useState('')
+  if (!open) return <button type="button" onClick={() => setOpen(true)} style={btn}>Undo…</button>
+  return (
+    <span data-legal-undo style={{ display: 'inline-flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+      <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Why (the firm sees it)" aria-label="Why you are undoing it" style={{ font: 'inherit', fontSize: '0.8rem', padding: '3px 6px', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text)', width: 170 }} />
+      <button type="button" disabled={!reason.trim()} onClick={() => void onUndo(reason.trim()).then((ok) => { if (ok) setOpen(false) })} style={btnPrimary}>Undo it</button>
+      <button type="button" onClick={() => setOpen(false)} style={btn}>Cancel</button>
     </span>
   )
 }

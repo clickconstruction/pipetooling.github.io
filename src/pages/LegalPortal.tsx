@@ -275,6 +275,7 @@ export default function LegalPortal() {
                 matter={{ payerName: selected.payer.name, noteToFirm: selected.noteToFirm, contracts: selected.contracts, entries: selected.entries, heldCount: selected.heldCount, settlementFloor: selected.settlementFloor }}
                 tab={tab}
                 onTab={setTab}
+                onUndo={(entryId, reason) => act({ kind: 'void', matterId: selected.id, entryId, note: reason })}
                 acts={<><RecordedByPicker recipients={payload.recipients} value={recordedById} onChange={(id) => { setRecordedById(id); try { window.localStorage.setItem(RECORDED_BY_KEY, id) } catch { /* private window: the pick lasts this visit */ } }} /><FirmAsks matter={selected} act={act} busy={busy} /><FirmActs matter={selected} act={act} busy={busy} notice={notice} todayYmd={payload.preparedOn} /></>}
                 onPrint={() => { if (!openHtmlPrintWindow(buildFirmPacketPrintHtml(packet, { preparedOn: payload.preparedOn, companyName: payload.company.name, firm: { name: payload.firm.name, handling: payload.firm.handling_name ?? '' }, matter: { stage: selected.stage, noteToFirm: selected.noteToFirm, releasedAt: selected.releasedAt, entries: selected.entries, heldCount: selected.heldCount }, particulars: payload.particulars }))) setNotice('Your browser blocked the print window. Allow pop-ups and try again.') }}
               />

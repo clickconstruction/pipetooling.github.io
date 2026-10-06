@@ -99,6 +99,7 @@ describe('firmFeeEntries', () => {
       entry({ kind: 'cost', body: 'Contingency 33% of $4,000.00', amount: 1320, via_portal: false }),
       entry({ kind: 'cost', body: 'Tagged', amount: 10, via_portal: false, meta: { contingency: true } }),
       entry({ kind: 'payment_received', body: 'Check 1001', amount: 4000 }),
+      entry({ kind: 'cost', body: 'Typed 3,500 for 350', amount: 3500, voided_at: '2026-10-05T15:00:00Z', void_reason: 'typo' }),
     ]
     expect(firmFeeEntries(rows).map((e) => e.body)).toEqual(['Demand letter', 'Filing'])
   })
