@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Legal portal item 22: headers, short PDF links, and what Rotate kills — before / after</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #F3F4F6; color: #111827; font: 14px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif; padding: 0 16px 64px; }
+  .wrap { max-width: 1200px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid #111827; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #6B7280; margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; }
+  header.top p { margin: 8px 0 0; color: #374151; max-width: 90ch; }
+  h2 { font-size: 18px; margin: 30px 0 6px; }
+  .lede { margin: 0 0 14px; color: #374151; max-width: 100ch; }
+  .two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+  @media (max-width: 900px) { .two { grid-template-columns: minmax(0, 1fr); } }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; }
+  .cap.old { background: #E5E7EB; color: #374151; } .cap.new { background: #111827; color: #fff; }
+  .pane { background: #fff; border: 1px solid #D1D5DB; border-top: none; border-radius: 0 0 8px 8px; padding: 12px 14px; }
+  pre { margin: 0; font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; }
+  .add { background: #ECFDF3; color: #05603A; }
+  .del { background: #FEF2F2; color: #991B1B; }
+  .dialog { border: 1px solid #D1D5DB; border-radius: 10px; padding: 16px; box-shadow: 0 8px 24px rgba(0,0,0,.12); max-width: 440px; }
+  .dialog h3 { margin: 0 0 6px; font-size: 15px; }
+  .dialog p { margin: 0 0 12px; color: #374151; font-size: 13px; }
+  .btns { display: flex; justify-content: flex-end; gap: 8px; }
+  .b { font-size: 12px; padding: 4px 10px; border-radius: 4px; border: 1px solid #D1D5DB; background: #fff; }
+  .b.danger { background: #B42318; color: #fff; border-color: #B42318; }
+  .none { color: #6B7280; font-style: italic; font-size: 13px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th { text-align: left; font-size: 10.5px; letter-spacing: .05em; text-transform: uppercase; color: #6B7280; border-bottom: 1px solid #D1D5DB; padding: 5px 6px; }
+  td { padding: 5px 6px; border-bottom: 1px solid #E5E7EB; vertical-align: top; }
+  ul.notes { margin: 18px 0 0; padding-left: 20px; color: #374151; max-width: 100ch; }
+  ul.notes li { margin: 4px 0; }
+</style>
+</head>
+<body><div class="wrap">
+<header class="top"><p class="eyebrow">Punch list #85 · item 22 (functions and dialog) · mockup</p><h1>Headers, short PDF links, and what Rotate kills</h1>
+<p>Three small things that make the link behave like a key. The hash-only token at rest is the other half of item 22 and has its own PR and mockup, because it carries a migration the coordinator pushes on its own.</p></header>
+
+<h2>What travels with every answer</h2>
+<p class="lede">The response headers on <code>legal-portal</code> and <code>submit-legal-portal</code>, including the CORS preflight.</p>
+<div class="two">
+  <div><div class="cap old">Before</div><div class="pane"><pre>HTTP/1.1 200 OK
+Access-Control-Allow-Origin: *
+Content-Type: application/json</pre></div></div>
+  <div><div class="cap new">After</div><div class="pane"><pre>HTTP/1.1 200 OK
+Access-Control-Allow-Origin: *
+<span class="add">Cache-Control: no-store</span>
+<span class="add">Referrer-Policy: no-referrer</span>
+Content-Type: application/json</pre></div></div>
+</div>
+
+<h2>The agreement PDF links</h2>
+<p class="lede">A signed PDF on the Account tab is a signed storage URL. It opens for anyone who has it, until it runs out.</p>
+<div class="pane" style="border-top: 1px solid #D1D5DB; border-radius: 8px;">
+<table><thead><tr><th></th><th>Before</th><th>After</th></tr></thead><tbody>
+<tr><td>Link life</td><td>one hour</td><td>fifteen minutes</td></tr>
+<tr><td>After Turn off</td><td>a PDF link already on the firm's screen, or pasted into an email, opens for up to an hour</td><td>for up to fifteen minutes</td></tr>
+<tr><td>A firm that leaves the page open</td><td>the link dies after an hour; the firm sees a storage error</td><td>the page reloads its payload quietly at ten minutes (when the tab comes back into view, and on a one-minute check while it is in view), so the links on screen are always fresh. The matter and tab stay where they were.</td></tr>
+<tr><td>Where the link points back</td><td>every PDF link already carries <code>rel="noreferrer"</code></td><td>the same, and the page adds <code>&lt;meta name="referrer" content="no-referrer"&gt;</code> while it is open, so nothing it opens learns the address with the firm's key in it</td></tr>
+</tbody></table>
+</div>
+
+<h2>The office's confirms on the Firm's link dialog</h2>
+<p class="lede">Every email the firm is sent (a matter referred, an answer, the digest) carries the live link. Rotating or turning it off kills all of those, and the office was not told.</p>
+<div class="two">
+  <div><div class="cap old">Before</div><div class="pane">
+    <p class="none">Rotate: no confirm at all. One click mints a new link and the old one stops opening.</p>
+    <div class="dialog"><h3>Turn the firm’s portal off?</h3><p>Sample &amp; Partner, PLLC will get "This link is no longer active" until you create a new one. Matters stay marked as they are.</p><div class="btns"><span class="b">Cancel</span><span class="b danger">Turn off</span></div></div>
+  </div></div>
+  <div><div class="cap new">After</div><div class="pane">
+    <div class="dialog" style="margin-bottom:12px"><h3>Mint a new link for the firm?</h3><p>The link Sample &amp; Partner, PLLC has now stops opening at once. That includes the link in every email already sent to the firm. Send the new link to the firm after you mint it.</p><div class="btns"><span class="b">Cancel</span><span class="b danger">Mint a new link</span></div></div>
+    <div class="dialog"><h3>Turn the firm’s portal off?</h3><p>Sample &amp; Partner, PLLC will see "This link is no longer active" until you create a new one. That includes the link in every email already sent to the firm. Matters stay marked as they are.</p><div class="btns"><span class="b">Cancel</span><span class="b danger">Turn off</span></div></div>
+  </div></div>
+</div>
+
+<h2>Is this the best we can do?</h2>
+<ul class="notes">
+  <li><b>Does a Referrer-Policy on a JSON answer protect anything?</b> Barely: a JSON answer opens no links. The real path is the page's own address, which carries the firm's key. Refined: the page sets a no-referrer meta while it is open, on top of the <code>rel="noreferrer"</code> its links already carry. The header stays on the functions as a cheap default.</li>
+  <li><b>Will fifteen-minute links break a firm that reads slowly?</b> They would, so the page reloads itself at ten minutes before any link can die. The first draft only shortened the life; the reload is what makes it safe.</li>
+  <li><b>Why confirm Rotate at all?</b> It is the more dangerous of the two buttons: it looks like housekeeping, and it silently kills every link in the firm's inbox. Now it asks, and it says to send the new link.</li>
+  <li><b>Anything else?</b> Both functions now look the link up by its hash first and fall back to the raw column. That is harmless today and lets the hash-only migration land without a function change.</li>
+</ul>
+</div></body></html>
