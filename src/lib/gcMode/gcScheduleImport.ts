@@ -19,6 +19,7 @@ import { addDays } from './gcBuilding'
 import { daysBetween, scheduleLinesOf } from './gcBuildingSchedule'
 import { TRADE_TEMPLATES, lineStage, scheduleDraft } from './gcNewProject'
 import { weekdayDate } from './gcWords'
+import { splitParts } from './gcSplitBars'
 import { CSV_COLUMNS, EXPORT_DATES_CUSTOMER, EXPORT_DATES_TEAM, EXPORT_WAITS_GROUP, MSPDI_NAMESPACE, type ExportCopy } from './gcScheduleExport'
 
 function plural(n: number, one: string, many: string): string {
@@ -58,6 +59,8 @@ export interface ImportFileRow {
   kind: string | null
   trade: string | null
   company: string | null
+  /** Shorter than a working day in their file (a project file's Duration): never a part of a split line. */
+  underADay: boolean
 }
 
 export interface ScheduleFileReading {
@@ -182,6 +185,9 @@ function readProjectXml(text: string): ScheduleFileResult {
     if (Number(val(t, 'PercentComplete')) > 0 || isoDay(val(t, 'ActualStart'))) u.progress = true
     const held = isoDay(val(t, 'ConstraintDate'))
     const constraint = Number(val(t, 'ConstraintType'))
+    // "PT4H0M0S": its work in minutes, against the file's own working day.
+    const worked = /^PT(\d+)H(\d+)M/.exec(val(t, 'Duration') ?? '')
+    const minutes = worked ? Number(worked[1]) * 60 + Number(worked[2]) : null
     read.push({
       row: {
         key: `task:${uid}`,
@@ -197,6 +203,7 @@ function readProjectXml(text: string): ScheduleFileResult {
         kind: null,
         trade: null,
         company: null,
+        underADay: val(t, 'Milestone') !== '1' && minutes !== null && minutes < minutesPerDay,
       },
       links: Array.from(t.children)
         .filter((c) => c.localName === 'PredecessorLink')
@@ -309,6 +316,7 @@ function readSpreadsheet(text: string): ScheduleFileResult {
       kind,
       trade,
       company: copy === 'team' ? cellOf(cells, 'Company') || null : null,
+      underADay: false,
     })
     waitsOn.push(copy === 'team' ? cellOf(cells, 'Waits on') : '')
   })
@@ -536,6 +544,8 @@ export interface ImportedSchedule {
   inspectionsNotIn: string[]
   /** Our lines not in the file that run into or past their final inspection, by name. Empty when the file has no final inspection. */
   pastFinal: string[]
+  /** Our lines two of theirs or more land on: their parts (G-39), or one bar and why. */
+  together: { label: string; rows: number; parts: boolean; why: string | null }[]
   words: string
 }
 
@@ -583,6 +593,7 @@ export function importedSchedule(project: GcProject, imp: ScheduleImport): Impor
     }
   }
   // Their dates and waits on what the file names.
+  const together: ImportedSchedule['together'] = []
   for (const [id, rows] of landed) {
     const base = acts.get(id)
     if (!base) continue
@@ -600,7 +611,22 @@ export function importedSchedule(project: GcProject, imp: ScheduleImport): Impor
     const mustFinishBy = rows.map((r) => r.mustFinishBy).filter((d): d is string => Boolean(d)).sort()[0]
     const lag = Object.fromEntries([...gaps].filter(([, g]) => g !== 0))
     const { lag: _lag, notBefore: _nb, mustFinishBy: _mf, ...rest } = base
-    acts.set(id, { ...rest, start, finish: finish < start ? start : finish, after: [...gaps.keys()], ...(Object.keys(lag).length > 0 ? { lag } : {}), ...(notBefore ? { notBefore } : {}), ...(mustFinishBy ? { mustFinishBy } : {}) })
+    const made: ScheduleActivity = { ...rest, start, finish: finish < start ? start : finish, after: [...gaps.keys()], ...(Object.keys(lag).length > 0 ? { lag } : {}), ...(notBefore ? { notBefore } : {}), ...(mustFinishBy ? { mustFinishBy } : {}) }
+    // Two of theirs or more on one of our lines are its parts (G-39), each as their file names it, counted from the line's
+    // start with its share from its days, at the line's own percent as its trade reported it. One bar when a part would be
+    // shorter than a day, or two would share a name.
+    const line = lines.find((l) => l.lineId === id)
+    if (line && rows.length >= 2) {
+      const pkg = project.packages.find((k) => k.id === line.packageId)
+      const self = pkg?.selfPerform
+      const linePct = self ? (self.pctByLine?.[id] ?? self.pctDone ?? 0) : (pkg?.sow?.sov.find((l) => l.id === id)?.pctReported ?? 0)
+      const short = rows.some((r) => r.underADay)
+      const split = short ? null : splitParts(made, [...rows].sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0)).map((r) => ({ name: r.name, start: r.start, finish: r.finish })), linePct)
+      const parts = split && 'parts' in split ? split.parts : null
+      if (parts) made.parts = parts
+      together.push({ label: line.label, rows: rows.length, parts: Boolean(parts), why: parts ? null : short ? 'One of them is shorter than a day.' : 'Two of them have the same name.' })
+    }
+    acts.set(id, made)
   }
   // A wait their own dates break is left out: the dates are theirs.
   const nameOf = (id: string) => {
@@ -681,7 +707,7 @@ export function importedSchedule(project: GcProject, imp: ScheduleImport): Impor
     `${kept} of their activities ${kept === 1 ? 'is' : 'are'} on our schedule${dates > 0 ? `, with ${plural(dates, 'date', 'dates')} to meet` : ''}.`,
     ...(drawn > 0 ? [`${plural(drawn, 'of our lines was', 'of our lines were')} drawn as the first draft draws them.`] : []),
   ].join(' ')
-  return { schedule: { activities: [...acts.values()], milestones, baseline: null, lookAhead: [] }, notes, kept, drawn, notIn, inspectionsNotIn, pastFinal, words }
+  return { schedule: { activities: [...acts.values()], milestones, baseline: null, lookAhead: [] }, notes, kept, drawn, notIn, inspectionsNotIn, pastFinal, together, words }
 }
 
 /**
@@ -729,4 +755,9 @@ export function notInWords(made: Pick<ImportedSchedule, 'notIn' | 'inspectionsNo
     ...made.inspectionsNotIn.map((label) => `The first draft's ${label.toLowerCase()} is not in it either. It is drawn after the work it waits on.`),
     ...(made.pastFinal.length > 0 ? [`${andList(made.pastFinal)} ${made.pastFinal.length === 1 ? 'runs' : 'run'} into their final inspection. Look at ${made.pastFinal.length === 1 ? 'it' : 'them'} before Start.`] : []),
   ]
+}
+
+/** "Hang and tape: 2 of theirs, each a part of it." or, as one bar, why: "One of them is shorter than a day." */
+export function togetherWords(made: Pick<ImportedSchedule, 'together'>): string[] {
+  return made.together.map((t) => (t.parts ? `${t.label}: ${t.rows} of theirs, each a part of it.` : `${t.label}: ${t.rows} of theirs as one bar. ${t.why ?? ''}`.trim()))
 }

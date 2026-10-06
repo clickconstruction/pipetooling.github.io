@@ -15,9 +15,10 @@ import { waitHolds, waitRows } from './gcScheduleWaits'
 import { customerSchedulePicture } from './gcCustomerSchedule'
 import { scheduleDraft } from './gcNewProject'
 import { scheduleCsv, scheduleExport, scheduleMspdi } from './gcScheduleExport'
-import { IMPORT_INTRO, IMPORT_REPLACES, guessPlaces, importHoldsWords, importLines, importRefusal, importedSchedule, notInWords, notPlacedWords, readScheduleFile, type ScheduleFileReading, type ScheduleFileResult } from './gcScheduleImport'
+import { IMPORT_INTRO, IMPORT_REPLACES, togetherWords, guessPlaces, importHoldsWords, importLines, importRefusal, importedSchedule, notInWords, notPlacedWords, readScheduleFile, type ScheduleFileReading, type ScheduleFileResult } from './gcScheduleImport'
 import { HELOTES_SAMPLE_FILE, HELOTES_SAMPLE_XML } from './gcScheduleImportSample'
 import { gcReducer } from './gcReducer'
+import { linePctOf, partSpans } from './gcSplitBars'
 import { plainWordsFailures } from '../plainWords'
 import type { GcAction, GcProject, GcState, ProjectSchedule, ScheduleImport, ScheduleImportPlace, ScheduleImportRow } from './gcTypes'
 
@@ -39,7 +40,7 @@ function plan(project: GcProject, read: ScheduleFileReading, workStarts: string,
       const chosen = places[r.name]
       const place = chosen === 'out' ? null : (chosen ?? guess.get(r.key)?.place ?? null)
       if (!place || place.kind === 'out') return []
-      return [{ key: r.key, name: r.name, start: r.start, finish: r.finish, place, after: r.after, ...(r.notBefore ? { notBefore: r.notBefore } : {}), ...(r.mustFinishBy ? { mustFinishBy: r.mustFinishBy } : {}) }]
+      return [{ key: r.key, name: r.name, start: r.start, finish: r.finish, place, after: r.after, ...(r.notBefore ? { notBefore: r.notBefore } : {}), ...(r.mustFinishBy ? { mustFinishBy: r.mustFinishBy } : {}), ...(r.underADay ? { underADay: true } : {}) }]
     })
   return { file: 'their-file', from, workStarts, rows, dates: read.rows.filter((r) => r.date).map((r) => ({ name: r.name, on: r.start })) }
 }
@@ -278,17 +279,43 @@ describe('the schedule it makes, through the first draft’s own path (G-137)', 
     expect(made.words).toBe("Drew the schedule on Helotes Dental Office from Studio Ocotillo's file helotes-schedule.xml. 11 of their activities are on our schedule, with 4 dates to meet. 8 of our lines were drawn as the first draft draws them.")
   })
 
-  it('puts two of theirs on one line as one bar, first start to last finish, their waits joined', () => {
+  it('makes two of theirs on one line its parts as their file names them, and one bar when a part would be shorter than a day (after G-39)', () => {
     const { project, read, line } = helotes()
-    const made = importedSchedule(project, plan(project, read, '2026-11-02', { 'Acoustical ceilings': line('Hang and tape'), 'MEP rough-in': line('Rough in') }))
-    const hangId = importLines(project).find((l) => l.label === 'Hang and tape')?.lineId
-    const hang = made.schedule.activities.find((a) => a.lineId === hangId)
-    expect([hang?.start, hang?.finish]).toEqual(['2026-12-09', '2026-12-30'])
-    // The ceilings' wait on the drywall is now a wait on itself, so it goes; the trims that waited on the ceilings wait on the bar.
-    expect(hang?.after).toEqual(['helotes-insp-1'])
+    const both = { 'Acoustical ceilings': line('Hang and tape'), 'MEP rough-in': line('Rough in') }
+    const hangId = importLines(project).find((l) => l.label === 'Hang and tape')?.lineId ?? ''
+    const made = importedSchedule(project, plan(project, read, '2026-11-02', both))
+    const hang = made.schedule.activities.find((a) => a.lineId === hangId) as ProjectSchedule['activities'][number]
+    // The line spans both. Each of theirs is a part of it, named as their file names it, counted from the line's start, its
+    // share from its days, at the line's own percent: Hill Country Interiors reported Hang and tape at 60.
+    expect([hang.start, hang.finish]).toEqual(['2026-12-09', '2026-12-30'])
+    expect(hang.parts).toEqual([
+      { id: `${hangId}-p1`, name: 'Hang, tape and finish', from: 0, days: 10, share: 50, pct: 60 },
+      { id: `${hangId}-p2`, name: 'Acoustical ceilings', from: 12, days: 10, share: 50, pct: 60 },
+    ])
+    expect(partSpans(hang).map((p) => [p.part.name, p.start, p.finish])).toEqual([
+      ['Hang, tape and finish', '2026-12-09', '2026-12-18'],
+      ['Acoustical ceilings', '2026-12-21', '2026-12-30'],
+    ])
+    expect(linePctOf(hang.parts ?? [])).toBe(60)
+    expect(togetherWords(made)).toEqual(['Hang and tape: 2 of theirs, each a part of it.'])
+    // Their waits as before: the ceilings' wait on the drywall is a wait on itself, so it goes; the trims wait on the line.
+    expect(hang.after).toEqual(['helotes-insp-1'])
     const trim = made.schedule.activities.find((a) => importLines(project).find((l) => l.lineId === a.lineId)?.label === 'Trim')
-    expect(trim?.after).toEqual([hang?.lineId])
+    expect(trim?.after).toEqual([hangId])
     expect(brokenWaits(made.schedule)).toEqual([])
+    // Their ceilings half a day in their file: one bar from the first start to the last finish, and the window says why.
+    const halfDay = HELOTES_SAMPLE_XML.replace(/(<Name>Acoustical ceilings<\/Name>[\s\S]*?<Finish>)2026-12-30T17:00:00(<\/Finish><Duration>)PT\d+H0M0S/, '$12026-12-21T12:00:00$2PT4H0M0S')
+    const short = reading(readScheduleFile(halfDay, HELOTES_SAMPLE_FILE))
+    expect(short.rows.filter((r) => r.underADay).map((r) => r.name)).toEqual(['Acoustical ceilings'])
+    const oneBar = importedSchedule(project, plan(project, short, '2026-11-02', both))
+    const span = oneBar.schedule.activities.find((a) => a.lineId === hangId)
+    expect([span?.start, span?.finish, span?.parts]).toEqual(['2026-12-09', '2026-12-21', undefined])
+    expect(togetherWords(oneBar)).toEqual(['Hang and tape: 2 of theirs as one bar. One of them is shorter than a day.'])
+    // Two of theirs with one name cannot be told apart as parts: one bar too.
+    const twins = reading(readScheduleFile(HELOTES_SAMPLE_XML.replace('<Name>Acoustical ceilings</Name>', '<Name>Hang, tape and finish</Name>'), HELOTES_SAMPLE_FILE))
+    const same = importedSchedule(project, plan(project, twins, '2026-11-02', { ...both, 'Hang, tape and finish': line('Hang and tape') }))
+    expect(same.schedule.activities.find((a) => a.lineId === hangId)?.parts).toBeUndefined()
+    expect(togetherWords(same)).toEqual(['Hang and tape: 2 of theirs as one bar. Two of them have the same name.'])
   })
 
   it('leaves out a wait their own dates break, and says so', () => {
