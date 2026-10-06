@@ -141,7 +141,7 @@ Order: overdue first, then by the last day. Group as *Needs you now* and *Coming
 - **The job's window.** `LienInstrumentsModal.tsx` and `LienFilingTabs.tsx`. The next step comes from `src/lib/jobs/lienTimeline.ts`, which already words *Next on the path* and whose move it is.
 - **Deep links.** `src/lib/jobs/stagesDeepLinks.ts` and `src/hooks/useStagesDeepLinkParams.ts`. A URL door lands on Notices today and the buttons land on Calendar. Keep every existing parameter working.
 - **The host.** `src/components/jobs/JobsStagesTab.tsx` mounts all five windows and wires `onRecorded`.
-- **Guides.** `send-lien-notices-from-the-lien-desk`, `see-what-is-due-on-the-lien-calendar`, `file-a-lien-and-never-miss-its-deadlines`, `understand-how-liens-work-and-which-lien-tool-to-use`. Some sit on `LEGACY_PLAIN_WORDS_GUIDES`: a touched one must be rewritten in full.
+- **Guides.** `send-lien-notices-from-the-lien-desk`, `see-what-is-due-on-the-lien-calendar`, `file-a-lien-and-never-miss-its-deadlines`, `understand-how-liens-work-and-which-lien-tool-to-use`. All four are held to plain words by `helpGuidePlainWords.test.ts`, so an edit must keep passing it.
 - **Docs.** `GLOSSARY.md` and `PROJECT_DOCUMENTATION.md` name *Lien instruments* and the desk's tabs.
 
 ## The plan
