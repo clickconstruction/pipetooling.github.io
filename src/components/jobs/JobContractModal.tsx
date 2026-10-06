@@ -73,7 +73,7 @@ import { effectiveWindowWay, emailLooksValid, jobTakesTheirSubcontract, phoneLoo
 import JobContractSigningRail from './JobContractSigningRail'
 import JobContractPaper from './JobContractPaper'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
-import { frameAsSignerRow, framesLabel, framesProgress, joinSignerNames, signerFrames, signerNamesLine } from '../../lib/jobs/jobContractSigners'
+import { frameAsSignerRow, framesLabel, framesProgress, signerFrames, signerNamesLine } from '../../lib/jobs/jobContractSigners'
 
 type TemplateRow = Pick<
   Database['public']['Tables']['contract_template_documents']['Row'],
@@ -840,6 +840,12 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
   const phoneOk = phoneLooksUsable(recipientPhone)
   const plan = windowWaysPlan({ emailOk, phoneOk, gcJob, gcName })
   const way = effectiveWindowWay(plan, pickedWay)
+  /**
+   * v2.4657: a builder's job filing the builder's own subcontract (the way the rail leads with, until
+   * Send ours anyway; no copy of ours out on paper). The GC signs it, and our draft's second signer
+   * has no line on it.
+   */
+  const filingTheirs = Boolean(gcJob && gcName && way === 'file_theirs' && !(liveRow && isAwaitingPaperCopy(liveRow)))
   const issuerForSentence = getPhysicalInvoiceIssuerForDocument()
   const paperIssuer = issuerForSentence.companyName ? issuerForSentence : null
   const sentence = windowWaySentence({ way, paperSend, recipientName, email: recipientEmail, phone: recipientPhone, textToo, remindersEnabled, fromAddress: issuerForSentence.email || 'the office' })
@@ -1042,7 +1048,7 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
               setField={setField}
               scopeText={scopeText}
               applyScopeText={applyScopeText}
-              recipientName={shownRow ? (shownRow.signer_printed_name || shownRow.recipient_name || '') : recipientName}
+              recipientName={shownRow ? (signerNamesLine(shownRow) || shownRow.recipient_name || '') : recipientName}
               setRecipientName={(v) => {
                 touch()
                 setRecipientName(v)
@@ -1086,8 +1092,10 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
                     }
                   : undefined
               }
+              // A second frame filed from the paper is named in the paper's one mark, as its print does (v2.4657);
+              // one signed through the link keeps its own mark.
               coSignature={
-                paperRow?.co_signer_name && paperRow.co_signed_at
+                paperRow?.co_signer_name && paperRow.co_signed_at && paperRow.co_signer_mode !== 'paper'
                   ? { printedName: paperRow.co_signer_printed_name ?? '', auditLine: jobContractSignatureAuditLine(frameAsSignerRow(signerFrames(paperRow)[1]!)) ?? '', imageUrl: recordUrls.coSignatureUrl }
                   : null
               }
@@ -1249,7 +1257,9 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
         <JobContractFileSheet
           layout="sheet"
           jobId={job.id}
-          defaultSignerName={joinSignerNames([recipientName.trim() || (job.customer_name ?? '').trim(), coSigner.name])}
+          defaultSignerName={filingTheirs && gcName ? gcName : recipientName.trim() || (job.customer_name ?? '').trim()}
+          // v2.4657: the second signer gets a box of their own, filed as the second signature.
+          defaultCoSignerName={filingTheirs ? '' : coSigner.name}
           existingDraft={liveRow && (jobContractStatus(liveRow) === 'draft' || isAwaitingPaperCopy(liveRow)) ? liveRow : null}
           basePayload={buildRowPayload()}
           onFiled={() => void onPaperFiled()}

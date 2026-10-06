@@ -1165,7 +1165,9 @@ export default function JobsContractSweepModal({
                   layout="inline"
                   inlineTitle={selState?.flags.includes('gc_job') && gcName ? `File ${gcName}'s subcontract` : 'File a signed contract'}
                   jobId={selected.id}
-                  defaultSignerName={(selected.customer_name ?? '').trim()}
+                  // v2.4657: the builder's subcontract is signed by the GC, with no second signer of ours on it.
+                  defaultSignerName={(selState?.flags.includes('gc_job') && gcName ? gcName : selected.customer_name ?? '').trim()}
+                  defaultCoSignerName={selState?.flags.includes('gc_job') && gcName ? '' : undefined}
                   existingDraft={draftRow && (draftRow.status === 'draft' || isAwaitingPaperCopy(draftRow)) ? draftRow : null}
                   basePayload={buildJobContractDraftPayload({
                     jobId: selected.id,

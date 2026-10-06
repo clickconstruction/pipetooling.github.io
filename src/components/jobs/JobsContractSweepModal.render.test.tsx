@@ -8,7 +8,7 @@
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
-import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import JobsContractSweepModal from './JobsContractSweepModal'
 import { sweepDriveScanCache } from '../../lib/jobs/driveContractScanCache'
@@ -394,6 +394,30 @@ describe('JobsContractSweepModal', () => {
       expect((screen.getByTestId('contract-file-record') as HTMLButtonElement).disabled).toBe(false)
     } finally {
       driveScan.files = []
+    }
+  })
+
+  it("v2.4657 · a builder's subcontract files as signed by the GC, and a second signer on our draft stays off it", async () => {
+    contractRows.rows = [
+      { id: 'd804', job_id: 'j804', status: 'draft', revision: 1, voided_at: null, fields: { scope_lines: ['Rough-in'], amount_cents: 3_260_000, payment_terms_key: 'half_down', payment_terms_text: '' }, body_html: 'terms', body_format: 'plain', template_name: 'Built-in service agreement terms', recipient_name: 'Summit GC', recipient_email: null, co_signer_name: 'Grace Palmer', co_signed_at: null, co_signer_printed_name: null, created_at: '2026-09-14T00:00:00Z', updated_at: null, last_sent_at: null },
+    ]
+    try {
+      mount()
+      await waitFor(() => expect(screen.getByTestId('sweep-summary')).toBeTruthy())
+      const tab = screen.getAllByRole('tab').find((t) => /^Needs a look/.test(t.textContent ?? ''))!
+      fireEvent.click(tab)
+      const row = await waitFor(() => {
+        const r = screen.getAllByTestId('sweep-row').find((x) => x.getAttribute('data-job') === '804')
+        expect(r).toBeTruthy()
+        return r!
+      })
+      fireEvent.click(row)
+      const sheet = await screen.findByTestId('contract-file-sheet')
+      await settle()
+      expect((within(sheet).getByLabelText('Who signed') as HTMLInputElement).value).toBe('Summit GC')
+      expect((within(sheet).getByLabelText('Second signer') as HTMLInputElement).value).toBe('')
+    } finally {
+      contractRows.rows = []
     }
   })
 
