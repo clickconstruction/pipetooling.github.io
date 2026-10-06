@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Legal portal item 23: what travels behind a matter — before / after</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #F3F4F6; color: #111827; font: 14px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif; padding: 0 16px 64px; }
+  .wrap { max-width: 1400px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid #111827; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #6B7280; margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; }
+  header.top p { margin: 8px 0 0; color: #374151; max-width: 90ch; }
+  h2 { font-size: 18px; margin: 30px 0 6px; }
+  .lede { margin: 0 0 14px; color: #374151; max-width: 100ch; }
+  .pane { background: #fff; border: 1px solid #D1D5DB; border-radius: 8px; padding: 12px 14px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th { text-align: left; font-size: 10.5px; letter-spacing: .05em; text-transform: uppercase; color: #6B7280; border-bottom: 1px solid #D1D5DB; padding: 5px 6px; }
+  td { padding: 5px 6px; border-bottom: 1px solid #E5E7EB; vertical-align: top; }
+  td.k { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; }
+  .leak { background: #FEF2F2; color: #991B1B; }
+  .gone { color: #9CA3AF; text-decoration: line-through; }
+  .add { background: #ECFDF3; color: #05603A; }
+  ul.notes { margin: 18px 0 0; padding-left: 20px; color: #374151; max-width: 100ch; }
+  ul.notes li { margin: 4px 0; }
+</style>
+</head>
+<body><div class="wrap">
+<header class="top"><p class="eyebrow">Punch list #85 · item 23 · mockup</p><h1>What travels behind a matter</h1>
+<p>The firm's page does not change. What changes is what the function sends for each referred matter. The list of what the page reads was traced through <code>buildMatterPacket</code> → <code>buildLegalPacket</code> (and the coverage, promise and lien-paper kernels) and <code>LegalFirmMatterView</code>. Red rows went to a law firm's browser and are never drawn. Grey rows were harmless and unread. Green rows are columns the page reads that were never sent.</p></header>
+
+<h2>Per table: before → after</h2>
+<div class="pane">
+<table><thead><tr><th>Table</th><th>Column</th><th>What it holds</th><th>After</th></tr></thead><tbody>
+<tr class="leak"><td>customer_addresses</td><td class="k">select('*') → note</td><td>the office's free-text note on the property (gate codes, who to call)</td><td>cut; the property record list from item 2</td></tr>
+<tr class="gone"><td></td><td class="k">county_source · owner_confirmed_by · parcel_source · parcel_tax_year · created_at · updated_at</td><td>bookkeeping</td><td>cut</td></tr>
+<tr class="leak"><td>job_demand_letters</td><td class="k">select('*') → fields</td><td>the whole letter as drafted</td><td>cut to <code>feeClockYmd</code> and the enclosures' label, kind, title and pages</td></tr>
+<tr class="leak"><td></td><td class="k">recipient_address · recipient_email · debtor_party · exhibits · invoice_ids · created_by</td><td>the debtor's address and email, the exhibit storage list, who drafted it</td><td>cut</td></tr>
+<tr class="leak"><td>job_lien_filings</td><td class="k">select('*') → document_note · fields · invoice_ids · created_by</td><td>the office's note on the copy, the printed claim's inputs, who filed it</td><td>cut</td></tr>
+<tr class="leak"><td></td><td class="k">sends[] → every key</td><td>each address and email the paper went to</td><td>cut to recipient, method, tracking, day</td></tr>
+<tr class="leak"><td>customers</td><td class="k">contact_info (whole JSON) · payment_terms_note</td><td>every contact key the office keeps; its note on the customer's credit</td><td>cut to email, billing_email, ap_email, phone, mobile, office_phone; note cut</td></tr>
+<tr class="leak"><td>jobs_ledger_thread_notes</td><td class="k">body · author (up to 500)</td><td>the job's internal chat, with names</td><td>count only: <code>{ jobId, createdAt }</code>, up to 2000 so the count is right</td></tr>
+<tr class="leak"><td>jobs_ledger</td><td class="k">google_drive_link · job_pictures_link</td><td>the job's Drive folder and photo album</td><td>cut (item 12 decides what documents go)</td></tr>
+<tr class="gone"><td></td><td class="k">status</td><td>unread</td><td>cut</td></tr>
+<tr class="leak"><td>job_contracts</td><td class="k">signed_document_url (+ storage paths, already blanked)</td><td>the Doc link of a filed contract</td><td>cut; the signed PDF still goes as a short-lived link</td></tr>
+<tr class="gone"><td>jobs_ledger_invoices</td><td class="k">stripe_invoice_id · sequence_order</td><td>unread</td><td>cut</td></tr>
+<tr class="gone"><td>estimates</td><td class="k">total_cents</td><td>unread</td><td>cut</td></tr>
+<tr class="add"><td>legal_matter_entries</td><td class="k">acknowledged_at</td><td>read by the page, never sent: a withdrawn office ask showed as open, a seen act as "waiting on the office"</td><td>sent</td></tr>
+<tr class="add"><td>jobs_ledger</td><td class="k">customer_address_id</td><td>the job's own property record (item 6 needs it)</td><td>sent</td></tr>
+</tbody></table>
+</div>
+
+<h2>How it is held</h2>
+<div class="pane">
+<p style="margin:0 0 8px">One file, <code>_shared/legalMatterShape.ts</code>, the item 2 pattern: a column list per table, the select strings (the list plus the PDF storage paths only the function reads), and <code>shapeMatterForCounsel</code>, which cuts every row of a built matter to its list before it is sent. A select widened later cannot leak by itself. The test sends whole rows carrying fifteen kinds of secret through the shaper: none come out, each row has exactly its list, and the shaped matter builds the same packet as the whole one.</p>
+</div>
+
+<h2>Is this the best we can do?</h2>
+<ul class="notes">
+  <li><b>Why shape twice?</b> A select is a promise only until someone adds a column or writes <code>select('*')</code> again. The kernel is the contract and the test holds it.</li>
+  <li><b>Why keep the contact person's note?</b> It is the only thing that says who the person is ("Project manager"), and the printed packet prints it. The table has no role column. (The firm print on #4601 reads <code>role</code>, which nobody sends: it should read <code>note</code>.)</li>
+  <li><b>Why keep the filed copy's link?</b> The Paper tab's Copy column draws it. What documents travel is item 12's call.</li>
+  <li><b>Found on the way, left alone:</b> coverage reads <code>bid_id</code>, <code>contract_not_needed_at</code> and <code>contract_not_needed_reason</code> on jobs, which the function never sent; adding them would change what the firm sees, so it waits for its own item. The GC's name is looked up only among the matters' payers, so a job whose GC is not the payer reads "GC".</li>
+</ul>
+</div></body></html>

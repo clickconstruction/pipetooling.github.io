@@ -14,6 +14,8 @@ import { sampleLegalPortalResponse } from '../_shared/customerSampleFixtures.ts'
 import { contactGoesWithShare, contactScopeNumbers } from '../_shared/legalContactScope.ts'
 import { LIEN_BOOK_COUNSEL_SELECT, shapeLienBookForCounsel } from '../_shared/legalLienBookShape.ts'
 import { LEGAL_PORTAL_STAGES } from '../_shared/legalStages.ts'
+// Item 23 (#85): the matter's rows name their columns and are cut to them once more before they leave.
+import { MATTER_COUNSEL_SELECT, shapeMatterForCounsel } from '../_shared/legalMatterShape.ts'
 
 /**
  * Legal portal payload (Legal portal train, PR 3): resolves the collections law
@@ -219,16 +221,16 @@ serve(async (req) => {
     const customerIds = [...new Set(matters.map((m) => m.customer_id as string | null).filter((x): x is string => Boolean(x)))]
 
     const [jobsRes, invRes, payRes, custRes, personsRes, addrRes, contractsRes, estRes, demandRes, filingRes, deskItemRes, promRes, touchRes, contactRes, reportRes, tplRes, sessRes, noteRes, entryRes] = await Promise.all([
-      allJobIds.length ? admin.from('jobs_ledger').select('id, hcp_number, click_number, job_name, job_address, customer_id, customer_name, customer_email, customer_phone, gc_customer_id, customer_address_id, revenue, payments_made, status, last_bill_date, last_work_date, created_at, lien_contract_ended_on, lien_retainage_held, lien_payment_bond, collections_at, collections_by, collections_note, job_pictures_link, google_drive_link, contract_not_needed_at, contract_not_needed_reason').in('id', allJobIds) : Promise.resolve({ data: [] }),
-      allJobIds.length ? admin.from('jobs_ledger_invoices').select('id, job_id, amount, status, billed_at, sent_to_customer_at, external_send_channel, stripe_invoice_status, stripe_invoice_id, sequence_order, agreed_write_down_at, agreed_write_down_note, agreed_write_down_previous_amount, created_at').in('job_id', allJobIds) : Promise.resolve({ data: [] }),
-      allJobIds.length ? admin.from('jobs_ledger_payments').select('id, job_id, invoice_id, amount, paid_on, sent_on, payment_type, reference_number').in('job_id', allJobIds) : Promise.resolve({ data: [] }),
-      customerIds.length ? admin.from('customers').select('id, name, address, contact_info, customer_type, payment_terms, payment_terms_note').in('id', customerIds) : Promise.resolve({ data: [] }),
-      customerIds.length ? admin.from('customer_contact_persons').select('customer_id, name, email, phone, note').in('customer_id', customerIds) : Promise.resolve({ data: [] }),
-      customerIds.length ? admin.from('customer_addresses').select('*').in('customer_id', customerIds).order('sequence_order') : Promise.resolve({ data: [] }),
-      allJobIds.length ? admin.from('job_contracts').select('id, job_id, status, revision, recipient_email, sent_at, last_sent_at, view_count, signed_at, signer_printed_name, signer_mode, voided_at, signed_document_url, signed_pdf_path, paper_upload_path, recipient_name, signer_consented_at, co_signer_name, co_signed_at, co_signer_printed_name').in('job_id', allJobIds).is('voided_at', null) : Promise.resolve({ data: [] }),
-      allJobIds.length ? admin.from('estimates').select('id, job_ledger_id, bid_id, doc_kind, status, acceptor_consented_at, acceptor_printed_name, estimate_number, total_cents').in('job_ledger_id', allJobIds).eq('status', 'customer_accepted').not('acceptor_consented_at', 'is', null) : Promise.resolve({ data: [] }),
-      allJobIds.length ? admin.from('job_demand_letters').select('*').in('job_id', allJobIds) : Promise.resolve({ data: [] }),
-      allJobIds.length ? admin.from('job_lien_filings').select('*').in('job_id', allJobIds) : Promise.resolve({ data: [] }),
+      allJobIds.length ? admin.from('jobs_ledger').select(MATTER_COUNSEL_SELECT.jobs).in('id', allJobIds) : Promise.resolve({ data: [] }),
+      allJobIds.length ? admin.from('jobs_ledger_invoices').select(MATTER_COUNSEL_SELECT.invoices).in('job_id', allJobIds) : Promise.resolve({ data: [] }),
+      allJobIds.length ? admin.from('jobs_ledger_payments').select(MATTER_COUNSEL_SELECT.payments).in('job_id', allJobIds) : Promise.resolve({ data: [] }),
+      customerIds.length ? admin.from('customers').select(MATTER_COUNSEL_SELECT.customers).in('id', customerIds) : Promise.resolve({ data: [] }),
+      customerIds.length ? admin.from('customer_contact_persons').select(MATTER_COUNSEL_SELECT.contactPersons).in('customer_id', customerIds) : Promise.resolve({ data: [] }),
+      customerIds.length ? admin.from('customer_addresses').select(MATTER_COUNSEL_SELECT.addresses).in('customer_id', customerIds).order('sequence_order') : Promise.resolve({ data: [] }),
+      allJobIds.length ? admin.from('job_contracts').select(MATTER_COUNSEL_SELECT.contracts).in('job_id', allJobIds).is('voided_at', null) : Promise.resolve({ data: [] }),
+      allJobIds.length ? admin.from('estimates').select(MATTER_COUNSEL_SELECT.estimates).in('job_ledger_id', allJobIds).eq('status', 'customer_accepted').not('acceptor_consented_at', 'is', null) : Promise.resolve({ data: [] }),
+      allJobIds.length ? admin.from('job_demand_letters').select(MATTER_COUNSEL_SELECT.demandLetters).in('job_id', allJobIds) : Promise.resolve({ data: [] }),
+      allJobIds.length ? admin.from('job_lien_filings').select(MATTER_COUNSEL_SELECT.filings).in('job_id', allJobIds) : Promise.resolve({ data: [] }),
       allJobIds.length ? admin.from('job_lien_desk_items').select('id, job_id, kind, status, sent_at, sent_filing_id, fields, created_at, voided_at').in('job_id', allJobIds).eq('kind', 'notice_53_056').is('voided_at', null) : Promise.resolve({ data: [] }),
       allJobIds.length ? admin.from('job_payment_promises').select('id, job_id, customer_id, promised_date, said_by, heard_by, channel, source, note, created_at, voided_at').in('job_id', allJobIds).is('voided_at', null) : Promise.resolve({ data: [] }),
       customerIds.length ? admin.from('job_payment_chase_touches').select('id, customer_id, job_id, outcome, note, promised_date, snooze_days, resolved_at, created_at, created_by').in('customer_id', customerIds) : Promise.resolve({ data: [] }),
@@ -236,8 +238,8 @@ serve(async (req) => {
       allJobIds.length ? admin.from('reports').select('id, job_ledger_id, created_at, created_by_user_id, template_id, reported_at_lat').in('job_ledger_id', allJobIds) : Promise.resolve({ data: [] }),
       admin.from('report_templates').select('id, name'),
       allJobIds.length ? admin.from('clock_sessions').select('job_ledger_id, work_date, clocked_in_at, clocked_out_at, clock_in_lat, approved_at, rejected_at, revoked_at').in('job_ledger_id', allJobIds).order('work_date').limit(2000) : Promise.resolve({ data: [] }),
-      allJobIds.length ? admin.from('jobs_ledger_thread_notes').select('job_id, body, created_at, author_user_id').in('job_id', allJobIds).order('created_at', { ascending: false }).limit(500) : Promise.resolve({ data: [] }),
-      admin.from('legal_matter_entries').select('id, matter_id, kind, amount, body, occurred_on, meta, via_portal, acknowledged_at, created_at').in('matter_id', matterIds).order('created_at'),
+      allJobIds.length ? admin.from('jobs_ledger_thread_notes').select('job_id, created_at').in('job_id', allJobIds).order('created_at', { ascending: false }).limit(2000) : Promise.resolve({ data: [] }),
+      admin.from('legal_matter_entries').select(MATTER_COUNSEL_SELECT.entries).in('matter_id', matterIds).order('created_at'),
     ])
 
     const jobs = (jobsRes.data ?? []) as Row[]
@@ -290,7 +292,6 @@ serve(async (req) => {
     for (const t of touches) if (t.created_by) userIds.add(t.created_by as string)
     for (const p of promises) if (p.heard_by) userIds.add(p.heard_by as string)
     for (const r of reports) if (r.created_by_user_id) userIds.add(r.created_by_user_id as string)
-    for (const n of notes) if (n.author_user_id) userIds.add(n.author_user_id as string)
     const { data: userRows } = userIds.size ? await admin.from('users').select('id, name').in('id', [...userIds]) : { data: [] }
     const userName = new Map(((userRows ?? []) as Row[]).map((u) => [u.id as string, (u.name as string | null) ?? null]))
 
@@ -369,7 +370,7 @@ serve(async (req) => {
         payments: mPayments.filter((x) => x.job_id === p.jobId && x.paid_on).map((x) => ({ paidOn: ymd(x.paid_on) as string, amount: Number(x.amount ?? 0) })).sort((a, b) => a.paidOn.localeCompare(b.paidOn)),
       }))
       const customer = customers.find((c) => c.id === customerId) ?? null
-      return {
+      return shapeMatterForCounsel({
         id: m.id,
         stage: m.stage,
         payer: { key: m.payer_key, name: m.payer_name, customerId },
@@ -396,9 +397,10 @@ serve(async (req) => {
         chaseTouches: mTouches,
         reports: reports.filter((r) => jobIdSet.has(r.job_ledger_id as string)).map((r) => ({ jobId: r.job_ledger_id as string, createdAt: (r.created_at as string) ?? todayYmd, authorName: userName.get(r.created_by_user_id as string) ?? '', templateName: templates.get(r.template_id as string) ?? '', hasGps: r.reported_at_lat != null })),
         clockSessions: sessions.filter((s) => jobIdSet.has(s.job_ledger_id as string)).map((s) => ({ jobId: s.job_ledger_id as string, workDate: s.work_date as string, clockedInAt: s.clocked_in_at as string, clockedOutAt: (s.clocked_out_at as string | null) ?? null, hasGps: s.clock_in_lat != null, approved: s.approved_at != null, disqualified: s.rejected_at != null || s.revoked_at != null })),
-        threadNotes: notes.filter((n) => jobIdSet.has(n.job_id as string)).map((n) => ({ jobId: n.job_id as string, body: n.body as string, createdAt: n.created_at as string, authorName: userName.get(n.author_user_id as string) ?? null })),
+        // Job notes travel as a count per job (item 23): the packet draws how many, never a body or an author.
+        threadNotes: notes.filter((n) => jobIdSet.has(n.job_id as string)).map((n) => ({ jobId: n.job_id as string, body: '', createdAt: n.created_at as string, authorName: null })),
         entries: entries.filter((e) => e.matter_id === m.id),
-      }
+      })
     })
 
     return jsonResponse({ company: PORTAL_COMPANY, preparedOn: todayYmd, firm, particulars, recipients, firmPaused, matters: out, lienBook: await readLienBook(admin) })
