@@ -11,7 +11,7 @@ const db = supabase as unknown as SupabaseClient
 export const LEGAL_FIRM_SETTINGS_HREF = '/settings?tab=settings-jobs#settings-legal-firm'
 
 /**
- * The collections law firm, opened from its name in the Legal desk's header (v2.4704).
+ * The collections law firm, opened from its name in the Legal desk's header (v2.4707).
  * A window over the desk, so the account list keeps its place. A dev gets the Settings
  * block itself (`LegalFirmSettingsBlock inWindow`), so the two can never disagree, and a
  * save reloads the desk's firm (`onSaved`). Everyone else on the desk reads the firm

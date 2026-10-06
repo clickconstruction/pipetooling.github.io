@@ -28,7 +28,7 @@ export const SETTINGS_HASH_ANCHOR_TO_TAB: Readonly<Record<string, string>> = {
   'settings-recently-deleted': 'settings-data',
   'settings-page-pins': 'settings-dashboard',
   'settings-claim-code': 'settings-advanced-tools',
-  // The Legal desk's firm window opens the firm's block here (v2.4704).
+  // The Legal desk's firm window opens the firm's block here (v2.4707).
   'settings-legal-firm': 'settings-jobs',
   // The editors Settings → Contracts & terms opens.
   'settings-estimate-public-terms': 'settings-catalogs',

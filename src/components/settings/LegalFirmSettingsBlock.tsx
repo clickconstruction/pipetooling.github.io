@@ -16,7 +16,7 @@ const db = supabase as unknown as SupabaseClient
  * v2.3313). One active row in legal_firms — its name, the handling person and
  * their email (who hears about a release today), and the fee model the Legal
  * desk's worth panel uses. Dev-only (RLS). Self-contained like the sub-portal
- * pay block beside it. Since v2.4704 the Legal desk's firm window mounts it too
+ * pay block beside it. Since v2.4707 the Legal desk's firm window mounts it too
  * (`inWindow`: no frame of its own, the window's facts under the firm, `onSaved` so
  * the desk reloads the firm the moment it is saved).
  */
@@ -210,7 +210,7 @@ export default function LegalFirmSettingsBlock({ onSaved, inWindow = false, firm
   )
 }
 
-/** `3 of 8 filled`: how much of the company's filing details the firm can read today (v2.4704). */
+/** `3 of 8 filled`: how much of the company's filing details the firm can read today (v2.4707). */
 function ParticularsCount({ particulars }: { particulars: Particulars }) {
   const { filled, total } = particularsFilled(particulars)
   const done = filled === total
