@@ -36,6 +36,7 @@ import JobContractStrip from './JobContractStrip'
 import JobWorkOrderStrip from './JobWorkOrderStrip'
 import JobFormPropertyAddSheet from './JobFormPropertyAddSheet'
 import JobFormOwnerLookupBox from './JobFormOwnerLookupBox'
+import LienPaperPropertyWindow from './LienPaperPropertyWindow'
 import type { CustomerAddressRow } from '../../lib/jobs/lienProperty'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { JobFormAccountManSection } from './JobFormAccountManSection'
@@ -322,6 +323,8 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
   const propertyRowAnchorRef = useRef<HTMLDivElement | null>(null)
   const propertyKindScrolledRef = useRef(false)
   const [propertyKindFlash, setPropertyKindFlash] = useState(propertyRecordFocus)
+  /** The property record's window (v2.4724, Taunya's ask): open above Edit Job on the first blank the lien papers need. */
+  const [recordWindowFocus, setRecordWindowFocus] = useState<'county' | 'legal' | 'owner' | 'owner_address' | null>(null)
   // A row the Lien desk sent us to (v2.3697): open it, scroll to it, ring it for four seconds.
   const [rowFlash, setRowFlash] = useState<JobFormFocusRow | null>(focusRow)
   const focusRowAnchorRef = useRef<HTMLDivElement | null>(null)
@@ -892,6 +895,56 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
                 ) : null}
               </>
             )}
+            {linked && linked.county !== undefined ? (() => {
+              // What the lien papers read (v2.4724): the four facts on the linked record, each blank in red, and one door to fill them.
+              const facts: Array<{ key: 'county' | 'legal' | 'owner' | 'owner_address'; label: string; value: string }> = [
+                { key: 'county', label: 'County', value: (linked.county ?? '').trim() },
+                { key: 'legal', label: 'Legal description', value: (linked.legal_description ?? '').trim() },
+                { key: 'owner', label: 'Owner of record', value: ((linked.owner_name ?? '').trim() || (linked.owner_company ?? '').trim()) },
+                { key: 'owner_address', label: 'Owner mailing address', value: (linked.owner_mailing_address ?? '').trim() },
+              ]
+              const firstBlank = facts.find((f) => !f.value)
+              return (
+                <div data-testid="property-record-facts" style={{ marginTop: '0.6rem', border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden', background: 'var(--surface)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap', padding: '0.35rem 0.65rem', background: 'var(--bg-muted)', borderBottom: '1px solid var(--border)', fontSize: '0.78rem', fontWeight: 600 }}>
+                    What the lien papers read
+                    <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.72rem' }}>on the property, shared by every job here</span>
+                  </div>
+                  {facts.map((f) => (
+                    <div key={f.key} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 9rem) minmax(0, 1fr)', gap: '0.6rem', padding: '0.3rem 0.65rem', borderBottom: '1px solid var(--border)', fontSize: '0.8125rem' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>{f.label}</span>
+                      {f.value ? <span style={{ overflowWrap: 'anywhere' }}>{f.value}</span> : <span style={{ color: 'var(--text-red-700)', fontWeight: 700 }}>Missing</span>}
+                    </div>
+                  ))}
+                  <div style={{ padding: '0.45rem 0.65rem', display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      data-testid="property-record-fill"
+                      disabled={!jobId}
+                      onClick={() => setRecordWindowFocus(firstBlank?.key ?? 'legal')}
+                      style={{ padding: '0.3rem 0.75rem', fontSize: '0.8125rem', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', fontWeight: 600, cursor: jobId ? 'pointer' : 'not-allowed' }}
+                    >
+                      {firstBlank ? 'Fill in the record' : 'Change the record'}
+                    </button>
+                    <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>Opens above this window. The job's own edits stay as they are.</span>
+                  </div>
+                  {recordWindowFocus && jobId ? (
+                    <LienPaperPropertyWindow
+                      job={{ id: jobId, job_address: jobAddressTrimmed, customer_id: customerId || null, gc_customer_id: gcCustomerId || null }}
+                      address={null}
+                      loadAddressId={linked.id}
+                      ownerOnJob={false}
+                      focus={recordWindowFocus}
+                      zIndex={1150}
+                      onClose={(saved, row) => {
+                        setRecordWindowFocus(null)
+                        if (saved && row) onOwnerConfirmed(row)
+                      }}
+                    />
+                  ) : null}
+                </div>
+              )
+            })() : null}
             {linked && linked.property_kind !== undefined ? (
               <div
                 ref={propertyKindBlockRef}

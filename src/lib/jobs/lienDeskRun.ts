@@ -11,6 +11,7 @@ import type { LienDeskData } from '../../hooks/useLienDeskData'
 import { buildLienNoticeFieldsForJob, buildLienRetainageNoticeFieldsForJob, describeNoticeMonths, homesteadStatementApplies, lienRetainageCoverLetter, parseLienDeskDraftFields } from './lienNoticeDraft'
 import type { LienRetainageEntry } from './lienDeskRetainage'
 import { affidavitMonthWord, coverLetterKindFor, coverLetterParagraphs, counselCoverLetterTemplate, fillCoverLetter } from './gcOnNotice'
+import { lienSupplierLetterParagraphFor, type LienSupplierJob } from './lienJobSuppliers'
 import { runCopies, runEnvelopes, type RunEnvelope } from './runEnvelopes'
 import { payPageBlocks, type PayPageAssets, type PayPageRow } from './lienNoticePayPage'
 import { lienOfferFromItem, type LienPayOffer } from './lienPayOffer'
@@ -82,6 +83,8 @@ export function buildLienDeskRun(
   todayYmd: string,
   /** The signer's own phone for `{{phone}}` (v2.3753); the letterhead's when absent. */
   signerPhoneFor?: (masterUserId: string | null) => string,
+  /** The supply houses per job (v2.4725): the letter's `{{supply_houses}}` paragraph, unless the draft left it out. */
+  opts?: { suppliers?: ReadonlyMap<string, LienSupplierJob> },
 ): RunNotice[] {
   const out: RunNotice[] = []
   for (const e of entries) {
@@ -128,7 +131,7 @@ export function buildLienDeskRun(
       },
       // Counsel's letter everywhere (v2.3828): the box on the desk now turns counsel's letter on or off; the short routine note is gone.
       coverNote: null,
-      coverLetter: item.cover_note || draft?.coverLetter ? fillCoverLetter(counselCoverLetterTemplate({ stored: draft?.coverLetter, gcName: gc?.name ?? fields.originalContractorName, claimantName: fields.claimantName, property }), { property: (job?.job_address ?? '').trim(), months: describeNoticeMonths(months), job: jobNumber, amount: demandMoney(fields.claimAmount), staleNote: draft?.staleNote ?? '', contact: fields.contactPerson, phone, affidavitMonth: affidavitMonthWord(coverLetterKindFor(property)), trade: job?.service_type?.name }) : null,
+      coverLetter: item.cover_note || draft?.coverLetter ? fillCoverLetter(counselCoverLetterTemplate({ stored: draft?.coverLetter, gcName: gc?.name ?? fields.originalContractorName, claimantName: fields.claimantName, property }), { property: (job?.job_address ?? '').trim(), months: describeNoticeMonths(months), job: jobNumber, amount: demandMoney(fields.claimAmount), staleNote: draft?.staleNote ?? '', contact: fields.contactPerson, phone, affidavitMonth: affidavitMonthWord(coverLetterKindFor(property)), trade: job?.service_type?.name, supplyHouses: draft?.housesInLetter === false ? '' : lienSupplierLetterParagraphFor(opts?.suppliers?.get(e.jobId), { propertyKind: property.propertyKind ?? '', todayYmd, payerName: gc?.name ?? fields.originalContractorName, claim: moneyNumber(fields.claimAmount) }) }) : null,
       ownerUnconfirmed: property.owner.source === 'property_record' && ownerFromRollUnconfirmed(address),
       offer: lienOfferFromItem(item),
       recipients: [
@@ -207,6 +210,12 @@ export function buildLienRetainageRun(
     })
   }
   return out
+}
+
+/** The form's Claim amount as a number ("17585.00" or "$17,585.00"); 0 when it is not one. */
+function moneyNumber(s: string): number {
+  const n = Number(String(s ?? '').replace(/[$,\s]/g, ''))
+  return Number.isFinite(n) ? n : 0
 }
 
 /** "Notice of claim for unpaid labor or materials (Tex. Prop. Code § 53.056)" / the retainage form's name — the cover page's "Enclosed:" line and the run's words. */

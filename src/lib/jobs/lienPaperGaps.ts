@@ -75,6 +75,66 @@ export function lienPaperGaps(kind: LienPaperKind, f: LienPaperFacts): LienPaper
 
 const TOKEN = (n: number) => `⟦GAP:${n}⟧`
 const TOKEN_RE = /⟦GAP:(\d+)⟧/g
+const FRESH_OPEN = '⟦NEW⟧'
+const FRESH_CLOSE = '⟦END⟧'
+const FRESH_RE = /⟦NEW⟧([\s\S]*?)⟦END⟧/g
+
+/**
+ * Fix it from the paper (v2.4719, Taunya's ask): which window a blank opens over the paper.
+ * The property record holds the county, the legal description and the owner; the GC is the
+ * job's own pick. The signer, the company address, the notices and the homestead stay words.
+ */
+export type LienPaperFixWindow = 'property' | 'gc'
+
+export function lienPaperFixWindow(g: Pick<LienPaperGap, 'fix' | 'key'>): LienPaperFixWindow | null {
+  if (g.fix === 'fix_property' || g.fix === 'find_owner') return 'property'
+  if (g.fix === 'edit_job' && g.key === 'gc') return 'gc'
+  return null
+}
+
+/** The button on a blank's card: the property window keeps the rung's words, the GC window says what it does. */
+export function lienPaperFixButtonWords(g: Pick<LienPaperGap, 'fix' | 'key' | 'fixWords'>): string {
+  return lienPaperFixWindow(g) === 'gc' ? 'Pick the GC' : g.fixWords
+}
+
+/** The paper fields each blank prints into. */
+const GAP_FIELDS: Record<LienPaperGap['key'], ReadonlyArray<string>> = {
+  county: ['county'],
+  legal: ['legalDescription'],
+  owner: ['ownerName', 'ownerAddress'],
+  owner_address: ['ownerAddress'],
+  gc: ['originalContractorName'],
+  signer: ['contactPerson'],
+  company_address: ['claimantAddress'],
+  notices: [],
+  homestead: [],
+}
+
+/**
+ * The blanks a fix window just filled: a blank before it opened that is gone now. An owner
+ * named but still without an address is not filled (the blank became the address).
+ */
+export function lienPaperFilledSince(before: ReadonlyArray<LienPaperGap>, now: ReadonlyArray<LienPaperGap>): LienPaperGap[] {
+  const still = new Set(now.map((g) => g.key))
+  return before.filter((g) => !still.has(g.key) && !(g.key === 'owner' && still.has('owner_address')))
+}
+
+/** The fields with each just-filled blank's value wrapped, so the paper shows what changed. */
+export function withFreshMarks<F extends Record<string, unknown>>(fields: F, filled: ReadonlyArray<Pick<LienPaperGap, 'key'>>): F {
+  const out: Record<string, unknown> = { ...fields }
+  for (const g of filled) {
+    for (const field of GAP_FIELDS[g.key]) {
+      const v = out[field]
+      if (typeof v === 'string' && v.trim() && !v.startsWith(FRESH_OPEN)) out[field] = `${FRESH_OPEN}${v}${FRESH_CLOSE}`
+    }
+  }
+  return out as F
+}
+
+/** A just-filled value on the envelope line: already-escaped HTML wrapped as the fresh mark. */
+export function freshHtml(html: string): string {
+  return `<span class="lienPaperFresh">${html}</span>`
+}
 
 /** The fields with each form gap's value replaced by its token, so the paper builder prints the mark where the blank is. */
 export function withGapTokens<F extends Record<string, unknown>>(fields: F, gaps: ReadonlyArray<LienPaperGap>): F {
@@ -88,13 +148,13 @@ export function gapToken(n: number): string {
   return TOKEN(n)
 }
 
-/** Every token in the paper's HTML painted as the numbered red mark; the label comes from the gap. */
+/** Every token in the paper's HTML painted as the numbered red mark (the label comes from the gap), and every just-filled value as the green one. */
 export function paintGaps(html: string, gaps: ReadonlyArray<LienPaperGap>): string {
   return html.replace(TOKEN_RE, (_m, n: string) => {
     const g = gaps.find((x) => x.n === Number(n))
     const label = g ? g.label : 'Missing'
     return `<span class="lienPaperGap" data-gap="${n}"><b>${n}</b>${escapeHtml(label)}</span>`
-  })
+  }).replace(FRESH_RE, (_m, inner: string) => freshHtml(inner))
 }
 
 function escapeHtml(s: string): string {

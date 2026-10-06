@@ -48,7 +48,7 @@ export default function JobContractStrip({
   const { user: authUser } = useAuth()
   const { showToast } = useToastContext()
   const [modalOpen, setModalOpen] = useState(false)
-  /** The contract field (refresh, to-dos/contract-sweep-refresh): a customer who already has a contract with us — paste where it lives in Drive. */
+  /** The contract field (refresh, docs/recent-features/v2.3669.md): a customer who already has a contract with us — paste where it lives in Drive. */
   const [link, setLink] = useState('')
   const [filingLink, setFilingLink] = useState(false)
   /** v2.4301: Add the contract — file a signed paper for this job and any other job of theirs it names. */

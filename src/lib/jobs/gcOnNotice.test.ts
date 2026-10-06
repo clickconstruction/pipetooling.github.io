@@ -317,3 +317,30 @@ describe('what the office sent to the leader is read back (v2.4571)', () => {
     expect(gcNoticeSavedRun([jobs[2]!, jobs[3]!], kindOf)).toBeNull()
   })
 })
+
+describe('the supply houses paragraph in the letter (v2.4725)', () => {
+  it('every default letter ends with the fill; blank, the paragraph leaves without a trace; given, it is the last paragraph before the enclosure', async () => {
+    const { defaultGcNoticeCoverLetter, paidOutOwnerLetter, fillCoverLetter, coverLetterParagraphs, COVER_LETTER_FILLS } = await import('./gcOnNotice')
+    const base = { gcName: 'Harborline Builders', claimantName: 'Click Plumbing and Electrical' }
+    const letters = [
+      defaultGcNoticeCoverLetter(base),
+      defaultGcNoticeCoverLetter({ ...base, kind: 'residential' }),
+      defaultGcNoticeCoverLetter({ ...base, kind: 'homestead' }),
+      defaultGcNoticeCoverLetter({ ...base, gcUnresponsive: true }),
+      paidOutOwnerLetter(base),
+    ]
+    for (const t of letters) {
+      const ps = coverLetterParagraphs(t)
+      expect(ps[ps.length - 1]).toBe(COVER_LETTER_FILLS.supplyHouses)
+    }
+    const fills = { property: '212 Kettle Dr, Buda', months: 'May 2026', job: '994', amount: '$5,900.00', staleNote: '', contact: 'Robert', phone: '(512) 360-0599' }
+    const without = fillCoverLetter(letters[0]!, fills)
+    expect(without).not.toContain('{{')
+    expect(coverLetterParagraphs(without)).toHaveLength(12)
+    expect(without.endsWith('file a lien on your property.')).toBe(true)
+    const para = 'You should also know that Reece sold materials for this job and is still owed $130.75.'
+    const withHouses = coverLetterParagraphs(fillCoverLetter(letters[1]!, { ...fills, supplyHouses: para }))
+    expect(withHouses[withHouses.length - 1]).toBe(para)
+    expect(withHouses[withHouses.length - 2]).toBe('Do not send Click Plumbing and Electrical a check on your own unless Harborline Builders has agreed in writing.')
+  })
+})

@@ -204,6 +204,8 @@ export type LienDeskDraftFields = {
   coverLetter?: string
   /** The letter's `{{stale_note}}` (v2.3745): stale-month dollars named as information, '' or absent when none. */
   staleNote?: string
+  /** The office left the supply houses out of the owner's letter (v2.4725); absent means the paragraph rides when a house is owed. */
+  housesInLetter?: false
   /** The wording was changed from the job's defaults (v2.3522): who, and when — the leader sees it before approving. */
   wording?: { editedBy: string; editedAt: string }
   /** The months named are the job's creation month, not clock hours (v2.3747) — the paper trail says where the date came from. */
@@ -240,6 +242,7 @@ export function parseLienDeskDraftFields(raw: unknown): LienDeskDraftFields | nu
     gcEmail: str(o.gcEmail),
     ...(typeof o.skipReason === 'string' ? { skipReason: o.skipReason } : {}),
     ...(typeof o.staleNote === 'string' && o.staleNote.trim() ? { staleNote: o.staleNote.trim() } : {}),
+    ...((o as { housesInLetter?: unknown }).housesInLetter === false ? { housesInLetter: false as const } : {}),
     ...(o.skippedBy && typeof o.skippedBy === 'object' && typeof (o.skippedBy as { name?: unknown }).name === 'string'
       ? { skippedBy: { name: str((o.skippedBy as { name?: unknown }).name), at: str((o.skippedBy as { at?: unknown }).at) } }
       : {}),
@@ -318,7 +321,7 @@ export type LienAffidavitJobFacts = {
   noticesRecorded: boolean
   contactPerson: string
   issuer: PhysicalInvoiceIssuer | null
-  /** The job's service type name (v2.3849) — the work description when the job has no name. */
+  /** The job's service type name (v2.3849) — the affidavit's kind of work. */
   serviceTypeName?: string | null
 }
 
@@ -333,7 +336,8 @@ export function buildLienAffidavitFieldsForJob(f: LienAffidavitJobFacts): LienAf
     legalDescription: f.legalDescription,
     propertyAddress: cleanStoredAddress(f.jobAddress),
     contractedWithName: f.isSub ? f.originalContractorName : f.ownerName || (f.customerName ?? '').trim(),
-    workDescription: (f.jobName ?? '').trim() || lienTradeWords(f.serviceTypeName).laborMaterials,
+    // The trade, never the job's name (v2.4719): a job is often named for its customer, and the affidavit swore "the kind of work … was: Bruce Hall".
+    workDescription: lienTradeWords(f.serviceTypeName).laborMaterials,
     workStart: monthEnd,
     workEnd: monthEnd,
     ownerName: f.ownerName,

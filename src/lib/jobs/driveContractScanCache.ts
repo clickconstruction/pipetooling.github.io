@@ -1,5 +1,5 @@
 /**
- * The Drive pass's scan, remembered (Contract sweep refresh — to-dos/contract-sweep-refresh).
+ * The Drive pass's scan, remembered (Contract sweep refresh — docs/recent-features/v2.3669.md).
  *
  * `drive-contract-scan` lists up to 20 000 files and looks up hundreds of parent folders: it takes
  * a minute or more. The sweep runs it by itself when it opens, so it must not run on EVERY open —

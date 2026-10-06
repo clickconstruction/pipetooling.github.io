@@ -20,7 +20,7 @@ Open the Lien desk from the orange gavel on the Pipeline. It opens on its **Do n
 - A row waiting on the leader shows {{button:outline|Open}} to the office. The leader sees {{button:blue|Approve}}.
 - The job's number and name underline when you point at them. Press them to open the job itself, over the desk. Close the job and the desk reads its rows again. The same door is on every view of the desk.
 - A rail above the rows shows the four steps of a notice. They are Find the owner, Draft notice, Approve and Send the run. Each step shows how many rows stand on it. Press a step to see only those rows. Press it again to see every row. Affidavits get a rail of their own when one needs an act.
-- The Notice or Affidavit chip on a row is a door too. It rings when you point at it. A red count on it says how many details the paper still needs. Press it to see the paper as it would print today. Each missing detail is marked in red on the page with a number. A list beside the page names each one and gives the button that fills it. The arrow keys walk the rows. Esc closes the paper.
+- The Notice or Affidavit chip on a row is a door too. It rings when you point at it. A red count on it says how many details the paper still needs. Press it to see the paper as it would print today. Each missing detail is marked in red on the page with a number. A list beside the page names each one and gives the button that fills it. {{button:blue|Fix the property}} opens the property record in a window above the paper. The lookup fills the county, the legal description and the owner when it can. {{button:blue|Pick the GC}} sets the job's original contractor the same way. Press {{button:blue|Done}} and the paper fills in behind it. Each filled detail turns green in the list and shows what it reads now. The arrow keys walk the rows. Esc closes the paper.
 - Each row wears four dots and a count like 2/4. Point at the dots to read where that paper stands. The card lists what is done, what is being done now and what is left. On a phone, tap the dots.
 
 When nothing needs anyone, the tab says so and points you at the Deadlines.
@@ -120,7 +120,7 @@ Pick the row. The pane first shows what must be true before the notice can go. T
 - Each column is a § 53.056 notice already sent on the job, lettered A, B and on. A ✓ marks each month the paper names. Its header says when it was sent and links the saved copy.
 - The last column is this notice. Every open month is ticked, because one notice may carry several months. It must beat the earliest deadline.
 
-The claim amount sits under the grid, then the notice itself. It is the same paper the Lien window prints.
+The claim amount sits under the grid, then the notice itself. It is the same paper the Lien window prints. Each page has a label above it, like Page 2 of 3. The labels stack as you scroll, the way the pile titles do on the list. Pages you have passed stack at the top. Pages still ahead stack at the foot. The page under you is lit. Press a label to go to that page.
 
 Above the paper, one line says who gets it. The owner of record and the GC get it by certified mail. The GC also gets a PDF by email when we have an address. The **Include counsel's cover letter** box adds counsel's letter as page 1 of the owner's copy. The letter matches the property's kind, commercial, residential or homestead. The GC's copy is the form only.
 
@@ -165,6 +165,7 @@ Robert opens J650 under Awaiting approval. Loberg Contracting owes $33,500 on it
 The pane shows what goes in the envelope, page by page.
 
 1. Counsel's cover letter is page 1 while its box is ticked. Untick it, and the page leaves.
+   When a supply house is still owed on the job, the letter ends with a paragraph about it. A second box reads **Name the supply house owed**. It starts ticked. Untick it, and the paragraph leaves. Read more in [see which supply houses are owed on a lien job](/help/see-which-supply-houses-are-owed-on-a-lien-job#name-the-house-in-the-owners-letter).
 2. The notice comes next.
 3. The pay codes page comes last when the job has unpaid bills. It shows one QR code per Stripe bill, with what is still owed on it. It says that once these bills are paid, no lien will be filed.
 

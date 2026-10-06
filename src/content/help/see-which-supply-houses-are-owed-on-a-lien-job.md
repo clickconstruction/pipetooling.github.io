@@ -68,9 +68,25 @@ Press {{button:blue|Copy for an email}}. The desk copies a short paragraph. Past
 
 The paragraph names each house and what it is owed. It says the house's notice is its own claim. It says that claim is not part of the money owed to us.
 
+## Name the house in the owner's letter
+
+Counsel's cover letter goes on the owner's copy of the notice. When a house is still owed, the letter ends with a paragraph about it. The paragraph names the house and what it is owed. It says when the house's own notice goes out. It says that notice is the house's own claim. Our release does not cover it, and it is not part of our claim. When our claim covers what the houses are owed, it says paying us is what clears that account.
+
+The box **Name the supply house owed** sits beside the cover letter box above the paper. It starts ticked. Untick it, and the paragraph leaves the letter. The box shows only while the cover letter is on and a house is owed.
+
+:::example the paragraph, when the house told us its day
+You should also know that Reece sold materials for this job and is still owed $7,393.33. Reece told us its own notice goes out on October 14 unless that balance is paid. That notice is Reece's own claim for materials. It is not covered by our release, and it is not included in the $15,722.49. Paying us the $15,722.49 is what lets us clear that account.
+:::
+
+The middle sentence changes with what we know. When the house gave us its day, the letter says so. When it did not, the letter gives our estimate as ours. When there is nothing to count from, it says the house may send its own notice. When the house's window has already closed, no notice is mentioned.
+
+The money is the figure the house gave when it gave one. Our books fill in otherwise.
+
+An amber line under the box says counsel has not read this paragraph yet. It goes away once counsel signs off.
+
 ## Send the whole list
 
-Press {{button:outline|Share}} at the end of the desk's title line. Open **What to send** and pick **Jobs where a supply house is also owed**. The message lists up to twelve such jobs and sums the rest. The email lists them all. Each line says what is owed to us and what is owed to the houses. It names the house whose notice comes first.
+Press {{button:outline|Share}} at the end of the desk's title line. Open **Which liens** and pick **Jobs where a supply house is also owed**. The message lists up to twelve such jobs and sums the rest. The email lists them all. Each line says what is owed to us and what is owed to the houses. It names the house whose notice comes first.
 
 Send it as a text or email it to a teammate. The steps are in [share where our liens stand](/help/share-where-our-liens-stand).
 

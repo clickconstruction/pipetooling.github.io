@@ -510,8 +510,11 @@ describe('LienDeskModal affidavits (v2.3412)', () => {
     expect(timeline.textContent).toContain('File the affidavit — tomorrow · owner of record, legal description, the notice missing.')
     expect(timeline.textContent).toContain('Commercial dates shown — a residential property is a month earlier.')
     expect(screen.getByText(/Before this affidavit can be generated/)).toBeTruthy()
-    fireEvent.click(screen.getAllByRole('button', { name: 'Property record ›' })[0]!)
-    expect(onOpenEditJob).toHaveBeenCalledWith('j650')
+    // v2.4724: the door opens the property record in a window over the desk, not Edit Job.
+    fireEvent.click(screen.getAllByRole('button', { name: 'Fill in the record ›' })[0]!)
+    expect(await screen.findByTestId('lien-paper-property-window')).toBeTruthy()
+    expect(onOpenEditJob).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByTestId('lien-paper-property-discard'))
     expect(screen.getByRole('button', { name: 'Send the notice first ›' })).toBeTruthy()
   })
 
@@ -1238,6 +1241,14 @@ describe('LienDeskModal the owner’s call and the piles (v2.3767)', () => {
     expect(text).toContain('Supply houses on 650 · ATI Schertz')
     expect(text).toContain('Reece is owed $9,612.40. Its oldest unpaid materials are from July. We expect its own notice by October 15.')
     expect(within(card).getByRole('link', { name: 'Open in Held for suppliers ›' }).getAttribute('href')).toBe('/materials?tab=job-accounts&job=j650')
+    // The owner's letter names the house (v2.4725): the tick starts on, the paragraph is the letter's last, the amber line waits for counsel; unticked, the paragraph leaves.
+    const tick = screen.getByLabelText(/Name the supply house owed · \$9,612/) as HTMLInputElement
+    expect(tick.checked).toBe(true)
+    expect(document.querySelector('[data-lien-desk-cover]')?.textContent).toContain('You should also know that Reece sold materials for this job and is still owed $9,612.40. We expect Reece’s own notice by October 15. That notice is Reece’s own claim for materials. It is not covered by our release, and it is not included in the $33,500.00. Paying us the $33,500.00 is what lets us clear that account.')
+    expect(document.querySelector('[data-lien-desk-houses-counsel]')?.textContent).toBe('Counsel has not read the supply house paragraph yet.')
+    fireEvent.click(tick)
+    expect(document.querySelector('[data-lien-desk-cover]')?.textContent).not.toContain('You should also know')
+    expect(document.querySelector('[data-lien-desk-houses-counsel]')).toBeNull()
   })
 
   it('draws no card and no mark on a job that bought nothing (v2.4404)', async () => {
@@ -1358,5 +1369,26 @@ describe('LienDeskModal · the pile titles stack (v2.4672)', () => {
     fireEvent.click(document.querySelector('[data-lien-pile-all]') as HTMLElement)
     expect(document.querySelector('[data-lien-pile-all]')).toBeNull()
     expect(document.querySelector('[data-lien-pile-head="needs_owner"]')).toBeTruthy()
+  })
+})
+
+describe('LienDeskModal — the page labels stick (v2.4726)', () => {
+  it('the page labels stack under the strip and at the foot like the pile titles, the one under the reader lit, each a button to its page', async () => {
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650.map((r) => ({ ...r, has_owner: true })), [], true)} />)
+    await settle()
+    const labels = Array.from(document.querySelectorAll('[data-lien-desk-page-label]')) as HTMLElement[]
+    expect(labels.length).toBeGreaterThanOrEqual(2)
+    // Stacked like the pile titles: the i-th label sits i bars from the top once passed and n-1-i bars from the bottom while ahead.
+    expect(labels.map((l) => l.style.top)).toEqual(labels.map((_, i) => `${i * 30}px`))
+    expect(labels.map((l) => l.style.bottom)).toEqual(labels.map((_, i) => `${(labels.length - 1 - i) * 30}px`))
+    expect(labels.map((l) => l.getAttribute('data-on'))).toEqual(labels.map((_, i) => (i === 0 ? 'yes' : 'no')))
+    expect(labels[0]!.textContent).toMatch(/^Page 1 of \d/)
+    // Each is a button that goes to its page and lights up.
+    const pane = document.querySelector('[data-lien-desk-pane]') as HTMLElement
+    pane.scrollTo = vi.fn() as never
+    fireEvent.click(labels[1]!.querySelector('button') as HTMLElement)
+    expect(pane.scrollTo).toHaveBeenCalled()
+    expect(labels[1]!.getAttribute('data-on')).toBe('yes')
+    expect(labels[0]!.getAttribute('data-on')).toBe('no')
   })
 })
