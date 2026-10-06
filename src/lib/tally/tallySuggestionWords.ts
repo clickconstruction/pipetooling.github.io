@@ -53,10 +53,10 @@ export function tallySuggestionWhy(s: TallySuggestion): string {
     case 'schedule-job':
       return 'scheduled that day'
     case 'same-day-sorted': {
-      const posted = f.postedAt ?? []
-      return posted.length === 1
-        ? `where the ${formatDenverTimeOnly(Date.parse(posted[0]!))} charge went`
-        : `where ${posted.length} other charges that day went`
+      const made = f.madeAt ?? []
+      return made.length === 1
+        ? `where the ${formatDenverTimeOnly(Date.parse(made[0]!))} charge went`
+        : `where ${made.length} other charges that day went`
     }
     case 'neighbour-day':
       return `worked ${(f.days ?? []).map(weekdayOfYmd).join(' and ')}`

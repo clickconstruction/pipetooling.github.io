@@ -28,7 +28,7 @@ const SAMPLES: Record<TallyRuleId, TallySuggestion> = {
   'split-even': s('split-even'),
   'schedule-one-job': s('schedule-one-job'),
   'schedule-job': s('schedule-job'),
-  'same-day-sorted': s('same-day-sorted', { postedAt: ['2026-09-26T09:26:00-05:00'] }),
+  'same-day-sorted': s('same-day-sorted', { madeAt: ['2026-09-26T09:26:00-05:00'] }),
   'neighbour-day': s('neighbour-day', { days: ['2026-09-25', '2026-09-28'] }),
   office: s('office'),
 }
@@ -65,7 +65,7 @@ describe('tallySuggestionWhy', () => {
   it('reads a clocked job with no hours yet, and several sorted charges', () => {
     expect(words(s('clock-job', { hours: [null] }))).toBe('clocked that day')
     expect(
-      words(s('same-day-sorted', { postedAt: ['2026-09-26T11:00:00-05:00', '2026-09-26T09:26:00-05:00'] })),
+      words(s('same-day-sorted', { madeAt: ['2026-09-26T11:00:00-05:00', '2026-09-26T09:26:00-05:00'] })),
     ).toBe('where 2 other charges that day went')
   })
 })
