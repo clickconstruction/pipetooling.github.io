@@ -695,7 +695,10 @@ owner's call: on a press, never by itself, so no report or finish ever pulls any
   inspection, which waits on both. Finished early together, they bring it in 7 days.
 - **The press**, *Pull the work earlier*: what finished early, each activity that comes in with a
   tick, what keeps its dates and why, the finish, then *Finished early* preset as the reason (a new
-  reason) and the sentence filled in. It saves one move (`pullScheduleEarlier`, `ScheduleMove.pull`).
+  reason) and the sentence filled in. Under the finish, what the pull moves between bills, read the
+  way Why it moved reads a move (G-97's `planBillingShift`): "Billing: $14,301 of the Nov 25 bill
+  moves to Oct 25." The move's row says the same shift after the press, and a pull that moves no
+  money, like the rough-in inspection's, says nothing. It saves one move (`pullScheduleEarlier`, `ScheduleMove.pull`).
   Undo, Redo and Tell the trades read it like any move, and Tell the trades never tells the company
   that finished.
 - **Where it shows**: a green line under the walk line, with the press, or with what holds the days
@@ -708,7 +711,7 @@ owner's call: on a press, never by itself, so no report or finish ever pulls any
   inspection was pulled earlier with them." The customer reads "Rough-in is 7 days sooner than
   planned. The finish holds." Days lost has its own line, *Finished early*, with days back, never
   netted against a trade's door (the lead's call).
-- Tests: `gcPullEarlier.test.ts` (30) and `GcPullEarlier.render.test.tsx` (7). The golden test did
+- Tests: `gcPullEarlier.test.ts` (30) and `GcPullEarlier.render.test.tsx` (9). The golden test did
   not move: no fixture change and no new step.
 
 What the second look changed:

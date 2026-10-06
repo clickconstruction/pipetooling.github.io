@@ -5,12 +5,13 @@
  * finished, what comes in with a tick each, what keeps its dates, then why), and a small box for
  * one activity in the walk and under the opened activity.
  */
-import { useEffect, useState, type Dispatch } from 'react'
+import { useEffect, useMemo, useState, type Dispatch } from 'react'
 import { createPortal } from 'react-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { shortDate, weekdayDate, type GcAction, type GcProject, type GcState, type ScheduleMoveReason } from '../../lib/gcMode/gcModel'
 import { MOVE_REASONS, moveWhyProblem, spanWords } from '../../lib/gcMode/gcScheduleMoves'
 import { planPull, pullCountWords, pullSentences, pullWordsFor, type PullOffer } from '../../lib/gcMode/gcPullEarlier'
+import { planBillingShift, shiftWords } from '../../lib/gcMode/gcBillingForecast'
 import { Btn, Chip, input } from './gcUi'
 
 /** The signed-in person's name. Outside the app's sign-in (a test), none. */
@@ -74,8 +75,10 @@ export function GcPullWindow({ state, project, dispatch, onClose, onSaved }: { s
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
   // Every activity that could come in, for the ticks; and the pull as the ticks have it.
-  const full = planPull(state, project)
-  const plan = planPull(state, project, leaveOut)
+  const full = useMemo(() => planPull(state, project), [state, project])
+  const plan = useMemo(() => planPull(state, project, leaveOut), [state, project, leaveOut])
+  // What the pull moves between bills (G-97), read the way Why it moved reads a move: the forecast with the pull's dates against the forecast now.
+  const billing = useMemo(() => (plan && plan.pulls.length > 0 ? shiftWords(planBillingShift(state, project, plan), 'will') : null), [state, project, plan])
   if (!full || !plan || full.show !== 'pull') return null
   const problem = plan.pulls.length === 0 ? 'Tick at least one to pull.' : moveWhyProblem(reason, note)
   const phone = typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 640px)').matches
@@ -157,6 +160,7 @@ export function GcPullWindow({ state, project, dispatch, onClose, onSaved }: { s
             </>
           )}
           <div style={{ color: plan.finishDays < 0 ? 'var(--text-green-800)' : 'var(--text-600)', fontWeight: plan.finishDays < 0 ? 600 : 400, marginTop: '0.2rem' }}>{plan.words.finish}</div>
+          {billing && <div style={{ color: 'var(--text-600)' }}>Billing: {billing}</div>}
           {plan.words.lost && <div style={{ color: 'var(--text-amber-800)' }}>{plan.words.lost}</div>}
         </div>
         <div style={{ display: 'grid', gap: '0.35rem' }}>
