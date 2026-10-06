@@ -110,6 +110,7 @@ export default function LienDeskMonths({
   onRecordByHand,
   tail,
   lastWork,
+  headless = false,
 }: {
   grid: LienMonthGrid
   claim: string
@@ -128,6 +129,8 @@ export default function LienDeskMonths({
   tail?: ReactNode
   /** The last day of work line (v2.4676), above the grid. */
   lastWork?: ReactNode
+  /** The title is drawn by the pane's stacked head instead (v2.4733); the helper sentence stays. */
+  headless?: boolean
 }) {
   const view = useLienTimelineView()
   const filings = grid.papers.filter((p) => p.kind === 'filing')
@@ -136,7 +139,7 @@ export default function LienDeskMonths({
   return (
     <div className="lienMonths" data-lien-desk-months data-lien-desk-month-grid>
       <div className="lienMonthsHead">
-        <strong>Months on this job</strong>
+        {headless ? null : <strong>Months on this job</strong>}
         <span>Every month worked, oldest first. A check is a paper that names the month; the last column is this notice — tick a month to put it on.</span>
       </div>
       {lastWork ? <div style={{ margin: '0.5rem 0 0.25rem' }}>{lastWork}</div> : null}

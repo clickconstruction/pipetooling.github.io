@@ -154,6 +154,7 @@ export function LienJobSuppliersCard({
   isMobile,
   startFolded = false,
   word,
+  headless = false,
 }: {
   job: LienSupplierJob
   propertyKind: string
@@ -165,6 +166,8 @@ export function LienJobSuppliersCard({
   startFolded?: boolean
   /** Given to the office (v2.4411): each owed house gets *They told us…*, and a save re-reads the card. */
   word?: { authName: string; onChanged: () => void }
+  /** The title row is drawn by the pane's stacked head instead (v2.4733); a folded card keeps its row, since the fold lives there. */
+  headless?: boolean
 }) {
   const { showToast } = useToastContext()
   const [editingHouse, setEditingHouse] = useState<string | null>(null)
@@ -325,7 +328,7 @@ export function LienJobSuppliersCard({
 
   return (
     <section data-lien-suppliers-card={allPaid ? 'paid' : 'owed'} aria-label="Supply houses on this job" style={{ border: '1px solid var(--border-strong)', borderRadius: 10, background: 'var(--surface)', fontSize: '0.8125rem', minWidth: 0 }}>
-      {head}
+      {headless && !foldable ? null : head}
       {showRows ? rows : null}
       {showRows && (card.verdict || card.paidFirst) ? (
         <div style={{ padding: '0.55rem 0.8rem', borderTop: '1px solid var(--border)', display: 'grid', gap: 3 }}>
