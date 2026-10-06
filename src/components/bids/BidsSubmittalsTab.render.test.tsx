@@ -7,6 +7,7 @@
  * the item row.
  */
 import { SUBMITTAL_STAGE_ABOUT } from '../../lib/submittals/submittalTour'
+import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 
@@ -443,22 +444,24 @@ describe('BidsSubmittalsTab', () => {
     state.revisions = []
     state.items = []
     const task = { id: 'task-q', bid_id: 'b398', submittal_id: null, kind: 'read_schedule', input: {}, result: null, status: 'queued', claimed_at: null, finished_at: null, reviewed_at: null, summary: null }
-    // BP375: asked on Sep 29, and no seat has been used since.
-    state.tasks = [{ ...task, requested_at: '2026-09-29T15:00:00Z' }]
-    state.seat = { unrevoked_seats: 1, last_used_at: '2026-09-21T15:00:00Z' }
+    // BP375's shape: asked two days ago (relative to today, so the week-old words of v2.4690 never catch it), and no seat has been used since.
+    const askedAt = new Date(Date.now() - 2 * 86_400_000)
+    const askedDay = askedAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: APP_CALENDAR_TZ })
+    state.tasks = [{ ...task, requested_at: askedAt.toISOString() }]
+    state.seat = { unrevoked_seats: 1, last_used_at: new Date(Date.now() - 10 * 86_400_000).toISOString() }
     const { unmount } = mount()
     // 2026-10-05 · a finished step 1 folds even while an ask waits: its one line carries the robot's state, in amber, and the caret opens it again.
     const folded = await screen.findByTestId('road-1-robot')
     expect(screen.getByTestId('road-1').getAttribute('data-open')).toBe('false')
-    expect(folded.textContent).toMatch(/^ · 🤖 Asked Sep 29 · no robot has run in \d+ days$/)
+    expect(folded.textContent).toBe(` · 🤖 Asked ${askedDay} · no robot has run in 10 days`)
     expect(screen.queryByTestId('robot-schedule')).toBeNull()
     fireEvent.click(screen.getByTestId('road-1-caret'))
     const card = await screen.findByTestId('robot-schedule')
     await waitFor(() => expect(card.getAttribute('data-stale')).toBe('true'))
     // One line: the chip says it is stuck and since when; the sentences open in its card.
-    expect(within(card).getByTestId('robot-schedule-chip').textContent).toMatch(/^🤖 Asked Sep 29 · no robot has run in \d+ days$/)
+    expect(within(card).getByTestId('robot-schedule-chip').textContent).toBe(`🤖 Asked ${askedDay} · no robot has run in 10 days`)
     fireEvent.mouseEnter(card)
-    expect(within(card).getByRole('note').textContent).toMatch(/^You asked the robot on Sep 29\. No robot has run in \d+ days\./)
+    expect(within(card).getByRole('note').textContent).toMatch(new RegExp(`^You asked the robot on ${askedDay}\\. No robot has run in 10 days\\.`))
     expect(within(card).getByTestId('robot-line').textContent).toBe('Nobody is reading the plans. Type the schedule yourself, or leave the ask in place.')
     expect(within(card).getByRole('button', { name: 'Take the ask back' })).toBeTruthy()
     unmount()
