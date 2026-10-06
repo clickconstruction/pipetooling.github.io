@@ -6,7 +6,7 @@ export const APP_SETTINGS_KEY_HIDE_DEV_TALLY_TRANSACTIONS = 'hide_dev_tally_tran
 
 /**
  * `app_settings.key` — 'true' in `value_text` lets the nightly `owner-confirm-nightly` edge function save the
- * appraisal roll's owner of record on every GC job with approved hours and no owner, as *from the roll ·
+ * appraisal roll's owner of record on every GC job with no owner, hours or not (v2.3747), as *from the roll ·
  * unconfirmed* (owner of record decision 5, v2.3450). Off on day one. Master + dev write (key-scoped UPDATE
  * policy); all authenticated read. @see `src/lib/ownerAutoConfirmSetting.ts`
  */
