@@ -1157,6 +1157,8 @@ export type GcAction =
       /** A template to draw from (G-44): its lines, or the rough's copy when the rough was drawn from it. */
       templateId?: string
     }
+  /** A schedule a customer or the architect handed us (G-137): their activities on our lines, their waits and dates, the first draft everywhere else, in one press. */
+  | { type: 'importSchedule'; projectId: string; imported: ScheduleImport; by: string }
   /** `why` (the Gantt, Phase 2): the explanation a move is saved with. The screens always send it; it is kept in `schedule.moves`. */
   | { type: 'setScheduleActivity'; projectId: string; lineId: string; start: string; finish: string; after: string[]; why?: { reason: ScheduleMoveReason; note: string; by: string }; lag?: Record<string, number>; notBefore?: string | null; mustFinishBy?: string | null; changeOrderId?: string; lateNoticeId?: string }
   | { type: 'setScheduleMilestone'; projectId: string; milestone: ScheduleMilestone }
@@ -1639,6 +1641,40 @@ export interface ProjectSchedule {
   lateNotices?: LateNotice[]
   /** The template its first draft was drawn from (G-44). Unset: none. */
   template?: TemplateUse
+}
+
+/** Where a row of a schedule someone handed us lands (G-137): one of our lines, an inspection, or the job's own. */
+export type ScheduleImportPlace =
+  | { kind: 'line'; lineId: string }
+  | { kind: 'roughInInspection' }
+  | { kind: 'finalInspection' }
+  | { kind: 'inspection' }
+  | { kind: 'added'; who: string }
+
+/** One activity of theirs the office kept, and where it lands (G-137). */
+export interface ScheduleImportRow {
+  /** The file's own key for it: its task's number, or its line in the spreadsheet. */
+  key: string
+  name: string
+  start: string
+  finish: string
+  place: ScheduleImportPlace
+  /** What it waits on in their file, by key, with the days of gap. */
+  after: { key: string; gap: number }[]
+  notBefore?: string
+  mustFinishBy?: string
+}
+
+/** A schedule a customer or the architect handed us, as the office kept it (G-137). Never kept on the job: the schedule it makes is. */
+export interface ScheduleImport {
+  /** The file's name and who handed it, for the log. */
+  file: string
+  from: string
+  /** The day our lines not in the file are drawn from, when nothing they wait on comes later. */
+  workStarts: string
+  rows: ScheduleImportRow[]
+  /** Their dates to meet, as ticked. */
+  dates: { name: string; on: string }[]
 }
 
 /** A plan the schedule is measured against (G-41): the one locked at Start, or one set after a signed change order, named. */

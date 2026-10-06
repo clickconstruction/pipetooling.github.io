@@ -1496,6 +1496,121 @@ change in behavior.
 Left for later: a limit for each place, a *By place* grouping of the chart, the trade's portal
 saying who else is in the place, the paper, and the job's own bars taking a place.
 
+## Later, bringing in their schedule, as built (2026-10-06)
+
+G-137, Helper 2 on `spike/g137`; the mock-up and plan are `mockups/G-137.md`. New files:
+`gcScheduleImport.ts` (tested, out of the barrel), `GcScheduleImport.tsx`, and
+`gcScheduleImportSample.ts`, the made-up file the tests and the browser check bring in. One action,
+`importSchedule`, has its payload in `gcTypes.ts` and a case in the reducer. The Schedule tab has
+two doors.
+
+- **The doors**: on a job with no schedule (from buyout on), the first-draft card says *Or start
+  from the schedule the customer or the architect handed us.* and has **Bring in their schedule**.
+  On a schedule drawn before Start that nobody walked or moved, the Drawing card has **Bring in their
+  schedule instead**. Its window adds *It takes the place of the schedule drawn now. The changes made
+  to it are lost.*
+- **When it is refused**: `importRefusal` closes both doors, and the reducer refuses too:
+  - while bidding;
+  - on a lost job;
+  - past Start, with a schedule;
+  - after a walk or a recorded move;
+  - while a what-if copy is open.
+  The made-up data has no walk for Fair Oaks D, so Start is what keeps it shut.
+- **What it reads**: Project's XML (MSPDI), which P6 also writes, and our three spreadsheets. The
+  reader uses the namespace and headers `gcScheduleExport.ts` writes with.
+  - Passed over: task 0, groups, blank rows and inactive tasks. A group's name still helps the guess.
+  - Waits: finish-to-start between activities. The gap is read in working days by the file's
+    minutes a day, or as elapsed days.
+  - Limits: *start no earlier than* a day before the start comes in as Not before, and *finish no
+    later than* as Must finish by. G-136's hold on a task's own start is passed over.
+  - Spreadsheets: Excel's `10/9/2026` after an edit is read, with or without the byte-order mark.
+    *Waits on* is read back by its names. "Rough-in inspection" names both the inspection and the
+    date to meet, and a wait means the inspection.
+  - Refused: `.mpp`, `.xer` and PDF, with *Only its own program opens this file. Ask them to save it
+    from Project or Primavera with Save as XML.*
+- **Before anything is written**, the window shows:
+  - the count: *What it holds: 13 activities, 14 waits between them and 4 dates.*
+  - each of their activities: its dates, what it waits on (*after MEP rough-in and HVAC
+    ductwork*), and one select for where it goes, with why the guess said so. The choices are our
+    lines by trade, the rough-in and final inspections, an inspection of its own, the job's own,
+    and Not ours. The rows with no place come first.
+  - their dates to meet, ticked. One with our name says *It takes the place of our own substantial
+    completion.*
+  - *Our lines not in it*, by trade. It also names the first draft's inspections the file does not
+    name, and our lines that run into their final inspection: *Lighting and Controls run into their
+    final inspection. Look at them before Start.*
+  - *What it could not read*, one counted sentence for each kind.
+  - *3 of theirs are not placed. They stay out unless you pick a place.*
+- **The guess**, in order:
+  1. our spreadsheet's Kind and Trade;
+  2. Not ours for *by owner*, *by others*, *by tenant*, *owner furnished*, OFOI, OFCI and NIC;
+  3. a name with *inspection*;
+  4. a trade the job has, named in the row, then in its groups;
+  5. a word only one of the job's trades has, from New Project's `TRADE_TEMPLATES` (its words and
+     usual scope) and the job's own lines.
+
+  The line is the one with the same name, else the one sharing the most words, else the trade's one
+  line in the name's stage. On Studio Ocotillo's file for Helotes it places 10 of 13 rows as the
+  mock-up has them. The other three give their reasons: *MEP rough-in* reads *rough is in
+  Electrical's lines and in Plumbing's*, *Casework install* reads *Millwork, 3 lines in its stage*,
+  and *Punch list* reads *no trade in its name*.
+- **The write**: one action, `importSchedule`, in the golden list. The reducer calls
+  `importedSchedule` in five steps:
+  1. `scheduleDraft(project, workStarts, project.rough?.days)`, exactly the first draft.
+  2. The lines, inspections and job's own activities the file names take its dates and waits. When
+     two of theirs land on one line, the bar spans both. A wait their own dates break is left out,
+     with a sentence.
+  3. Our lines and the first draft's inspections not in the file keep the draft's waits and days.
+     Each starts the day after what it waits on finishes, or on Work starts.
+  4. A final inspection the file does not name waits on everything nothing else waits on.
+  5. Their dates to meet come in as ticked. Ours not taken are worked out again the first draft's
+     way.
+
+  The result is a `ProjectSchedule` like any other, with no record of the file in it. The log says
+  *Drew the schedule on Helotes Dental Office from Studio Ocotillo's file helotes-schedule.xml. 11
+  of their activities are on our schedule, with 4 dates to meet. 8 of our lines were drawn as the
+  first draft draws them.*
+- **The pins**:
+  - The round trip: Fair Oaks D's own team `.xml` and `.csv` come back as its schedule, on a
+    test-only copy with no schedule and no Start. Every line's dates, waits and gaps return, with
+    the inspections and the 4 dates.
+  - The lead's first pin: the two files make the same schedule as each other, in one test.
+  - The lead's second pin: an import onto Boerne, after its rough was drawn and the job won, keeps
+    `project.rough` as the very same object. Boerne's lines not in the file get `scheduleDraft`'s
+    days with the rough's stage days.
+  - Lines not in a file are held against `scheduleDraft` itself, never against fixed dates, so G-44
+    can land before or after this.
+- **Never**:
+  - nothing is sent to the trades or the customer;
+  - nothing goes into a what-if copy;
+  - no percent and no actual days are read from a file. Helotes' Framing still reads done, from Hill
+    Country Interiors' own report.
+  - no outside waits: our own file's three are left out, with their sentence.
+- **One difference between the files**: Not before and Must finish by come back from the spreadsheet
+  only, because G-136 writes them there only. A test says so.
+- **Tests**: `gcScheduleImport.test.ts` (17) and `GcScheduleImport.render.test.tsx` (5, on the real
+  Schedule tab through a real reducer). The golden test lists `importSchedule`. No fixture change,
+  and no snapshot moved.
+
+What changed from the mock-up:
+- Each row has one select, with our lines grouped by trade inside it, instead of a trade select and a
+  line select.
+- The start-to-start sentence reads *1 wait does not start when the work before ends. The app has
+  only that kind, so it is left out.*
+- *Our lines not in it* also names the first draft's inspections the file does not name, and our
+  lines that run into their final inspection. Both were found on the build's first run.
+- The MEP rough-in row's reason names Electrical first, in the job's own order of trades.
+
+Left out:
+- One row of theirs on several of our lines. Casework install covers three millwork lines; the office
+  puts it on one, and the first draft draws the other two after it.
+- Project's own Excel columns: one more header row, and the lead's call.
+- `.mpp`, `.xer` and PDF files.
+
+Not picked, one line each:
+- Their dates kept beside ours as a named plan: G-41's ground, and the owner's call.
+- Dates to meet only, onto a running job: now its own row for the owner, G-145.
+
 ## Later, templates, as built (2026-10-06)
 
 G-44, Helper 5 on `spike/g44` (the mock-up and plan: `mockups/G-44.md`). `gcScheduleTemplates.ts`

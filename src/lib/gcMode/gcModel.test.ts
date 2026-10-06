@@ -944,6 +944,7 @@ describe('GC mode golden walk', () => {
     used.add('tradeReportPart') // played in gcSplitBars.test.ts: it needs a split line
     used.add('selfReportPart') // played in gcSplitBars.test.ts: it needs a split stage of our own crew
     used.add('setActivityPlaces') // played in gcPlaces.test.ts: where the work is (G-83)
+    used.add('importSchedule') // played in gcScheduleImport.test.ts: a schedule a customer or the architect handed us (G-137), on a job with none
     used.add('saveScheduleTemplate') // played in gcScheduleTemplates.test.ts: a job's schedule saved as a template (G-44)
     used.add('renameScheduleTemplate') // played in gcScheduleTemplates.test.ts: it needs a template saved first
     used.add('setAsideScheduleTemplate') // played in gcScheduleTemplates.test.ts: it needs a template saved first
@@ -1006,6 +1007,7 @@ describe('GC mode golden walk', () => {
       'startWhatIf', 'inWhatIf', 'keepWhatIf', 'throwAwayWhatIf',
       'splitActivity', 'joinActivity', 'moveActivityPart', 'tradeReportPart', 'selfReportPart',
       'setActivityPlaces',
+      'importSchedule',
       'saveScheduleTemplate', 'renameScheduleTemplate', 'setAsideScheduleTemplate',
     ]
     expect(all.filter((t) => !used.has(t))).toEqual([])

@@ -67,6 +67,8 @@ import { customerScheduleHtml, customerScheduleLetter, scheduleSends } from '../
 import { chartHolds } from '../../lib/gcMode/gcChartHolds'
 import { GcNotReady } from './GcNotReady'
 import { GcRoughSchedule } from './GcRoughSchedule'
+import { GcScheduleImport } from './GcScheduleImport'
+import { importRefusal } from '../../lib/gcMode/gcScheduleImport'
 import { GcTemplatePick, GcTemplatesCard } from './GcScheduleTemplates'
 import { drawnFromWords, templatesOffered } from '../../lib/gcMode/gcScheduleTemplates'
 import { firstDraftAgainstBid, roughFirstDraftWords } from '../../lib/gcMode/gcRoughSchedule'
@@ -107,6 +109,8 @@ export function GcBuildingScheduleTab({ state, project: realProject, dispatch: r
   // A what-if copy (G-81): while it is shown, the tab reads the copy, and every move it makes goes to the copy.
   const [copyShown, setCopyShown] = useState(false)
   const [keeping, setKeeping] = useState(false)
+  // Bring in their schedule (G-137): a window over the tab, the first schedule or one drawn before Start nobody walked.
+  const [importing, setImporting] = useState(false)
   const copyProject = useMemo(() => whatIfProject(realProject), [realProject])
   const inCopy = copyShown && copyProject !== null
   const project = inCopy && copyProject ? copyProject : realProject
@@ -191,7 +195,10 @@ export function GcBuildingScheduleTab({ state, project: realProject, dispatch: r
     return (
       <div style={{ display: 'grid', gap: '0.9rem' }}>
         <ScheduleWhy />
-        <DraftCard project={project} today={state.today} dispatch={dispatch} offered={templatesOffered(state)} />
+        <DraftCard project={project} today={state.today} dispatch={dispatch} offered={templatesOffered(state)} {...(importRefusal(realProject) ? {} : { onImport: () => setImporting(true) })} />
+        {importing && (
+          <GcScheduleImport state={state} project={realProject} dispatch={realDispatch} replacing={false} by={me} defaultStart={realProject.startDate ?? realProject.rough?.start ?? addDays(mondayOf(state.today), 7)} onClose={() => setImporting(false)} />
+        )}
       </div>
     )
   }
@@ -223,6 +230,17 @@ export function GcBuildingScheduleTab({ state, project: realProject, dispatch: r
           {firstDraftAgainstBid(project) && <div data-tour="gc-draft-vs-bid" style={{ marginTop: '0.35rem' }}>{firstDraftAgainstBid(project)}</div>}
           {/* The template it was drawn from (G-44). */}
           {schedule.template && <div data-drawn-from style={{ marginTop: '0.35rem' }}>{drawnFromWords(schedule.template)}</div>}
+          {/* Their schedule in its place (G-137): before Start, while nobody has walked or moved it. */}
+          {!inCopy && !importRefusal(realProject) && (
+            <div style={{ marginTop: '0.4rem' }}>
+              <Btn kind="quiet" onClick={() => setImporting(true)}>
+                Bring in their schedule instead
+              </Btn>
+            </div>
+          )}
+          {importing && (
+            <GcScheduleImport state={state} project={realProject} dispatch={realDispatch} replacing by={me} defaultStart={realProject.startDate ?? schedule.activities[0]?.start ?? addDays(mondayOf(state.today), 7)} onClose={() => setImporting(false)} />
+          )}
         </Card>
       )}
 
@@ -431,7 +449,21 @@ function ScheduleWhy() {
 // ---------------------------------------------------------------------------------------------
 
 /** Nothing drawn yet: a start day and a first draft to draw from. */
-function DraftCard({ project, today, dispatch, offered = [] }: { project: GcProject; today: string; dispatch: Dispatch<GcAction>; /** The templates to start from (G-44). */ offered?: ScheduleTemplate[] }) {
+function DraftCard({
+  project,
+  today,
+  dispatch,
+  offered = [],
+  onImport,
+}: {
+  project: GcProject
+  today: string
+  dispatch: Dispatch<GcAction>
+  /** The templates to start from (G-44). */
+  offered?: ScheduleTemplate[]
+  /** Bring in their schedule (G-137). Unset: the job may not take one. */
+  onImport?: () => void
+}) {
   // The first draft starts from the rough's start day when we bid one (G-45).
   const [start, setStart] = useState(project.startDate ?? project.rough?.start ?? addDays(mondayOf(today), 7))
   // From a template (G-44): the one the rough was drawn from, until another is picked.
@@ -459,6 +491,14 @@ function DraftCard({ project, today, dispatch, offered = [] }: { project: GcProj
             Draw a first draft
           </Btn>
         </div>
+        {onImport && (
+          <div style={{ display: 'grid', gap: '0.35rem', justifyItems: 'start' }}>
+            <span style={{ color: 'var(--text-600)' }}>Or start from the schedule the customer or the architect handed us.</span>
+            <Btn kind="plain" onClick={onImport}>
+              Bring in their schedule
+            </Btn>
+          </div>
+        )}
       </div>
     </Card>
   )
