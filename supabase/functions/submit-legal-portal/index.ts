@@ -10,14 +10,15 @@ import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 import { legalRecipientSendPatch } from '../_shared/legalNotifyLedger.ts'
 import { isLegalClientId, LEGAL_ACTS_PER_MATTER_PER_HOUR, legalActDateProblem, legalRateLimitMessage } from '../_shared/legalPortalActs.ts'
 import { matterOpenBalance, SETTLEMENT_ASK_FLAVOR, settlementBelowFloor, settlementFloorDollars, settlementFloorOf } from '../_shared/legalSettlement.ts'
-import { firmStepDecision, LEGAL_FIRM_STEP_WORDS, LEGAL_FIRM_STEPS_BEFORE_16, legalMatterOnPortal, type LegalFirmStep } from '../_shared/legalStages.ts'
+import { firmStepDecision, isLegalFirmStep, LEGAL_FIRM_STEP_WORDS, legalMatterOnPortal } from '../_shared/legalStages.ts'
 
 /**
  * The firm's acts on its portal (Legal portal train, PR 4): one POST endpoint,
  * token-authenticated like submit-sub-portal, five kinds (six with `answer`, #41 PR 3) —
  *
  *   fee · cost          — an amount and a note; rolls into the matter's total demand
- *   step                — demand · suit · judgment · settled (+ detail); moves the matter's stage.
+ *   step                — demand · suit · judgment · post_judgment · payment_plan · settled ·
+ *                         uncollectible · dismissed (+ detail); moves the matter's stage.
  *                         Since #85 item 16 an end (settled) moves the stage but not closed_at — the
  *                         matter stays here for the check until the office closes it — and a step that
  *                         would move the stage backward is recorded with meta.proposed and waits on
@@ -219,10 +220,9 @@ serve(async (req) => {
       meta.applied = false
       entryBody = note || 'Payment received by counsel'
     } else if (kind === 'step') {
-      // The steps the table takes today; the item 16 migration widens the CHECK and this list with it.
-      const stage = str(body.stage, 20)
-      if (!(LEGAL_FIRM_STEPS_BEFORE_16 as readonly string[]).includes(stage)) return jsonResponse({ error: 'Pick a step.' }, 400)
-      const step = stage as LegalFirmStep
+      // Every step the firm records (#85 item 16; the CHECK takes them since migration 20261006150000).
+      const step = str(body.stage, 20)
+      if (!isLegalFirmStep(step)) return jsonResponse({ error: 'Pick a step.' }, 400)
       const label = LEGAL_FIRM_STEP_WORDS[step]
       entryBody = note ? `${label} — ${note}` : label
       meta.stage = step

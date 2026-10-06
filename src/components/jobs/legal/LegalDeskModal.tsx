@@ -374,7 +374,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
     const ok = await run('Pull back', () => legalRpc('legal_pull_back', { p_matter_id: matter.id, p_note: sheet.note }))
     if (ok) {
       setSheet(null)
-      showToast(`${selected?.name} pulled back — the firm no longer sees it.`, 'info')
+      showToast(`${selected?.name} pulled back — the firm keeps a read-only page with your reason.`, 'info')
     }
   }
   /** #85 item 16: the firm's end moved the stage; the office's close is the end of the matter. */
@@ -414,6 +414,12 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
   const answerSettlement = async (entryId: string, signedOff: boolean, note: string) => {
     const ok = await run(signedOff ? 'Sign off' : 'Not yet', () => legalRpc('legal_answer_settlement', { p_entry_id: entryId, p_signed_off: signedOff, p_note: note }))
     if (ok) showToast(signedOff ? 'Signed off — the matter is settled, and the firm is told.' : 'Sent — the firm sees your answer; the stage stays.', signedOff ? 'success' : 'info')
+  }
+  /** #85 item 16: accept a firm step that would have moved the stage back. */
+  const moveStage = async (stageTo: string, entryId: string) => {
+    if (!matter) return
+    const ok = await run('Move the stage', () => legalRpc('legal_set_stage', { p_matter_id: matter.id, p_stage: stageTo, p_entry_id: entryId }))
+    if (ok) showToast(`Stage moved to ${legalStageLabel(stageTo).replace('With the firm · ', '')}.`, 'success')
   }
   const setSettlementFloor = async (amount: number | null, pct: number | null) => {
     if (!matter) return
@@ -488,6 +494,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
     pill(`${legalStageLabel(stage)} ${calendarYmdInAppTzFromIso(matter?.closed_at ?? '')}${matter?.closed_reason ? ` · ${matter.closed_reason}` : ''}`, 'neutral')
   ) : (
     <>
+      {matter?.pulled_at ? pill(`Pulled back ${calendarYmdInAppTzFromIso(matter.pulled_at)}${matter.pulled_reason ? ` · ${matter.pulled_reason}` : ''}`, 'neutral') : null}
       {matter?.review_requested_at ? pill(`${requesterName} asked for a dev${requestedDays != null ? ` · ${requestedDays}d ago` : ''}`, 'blue') : null}
       {canMarkReady ? (
         <button type="button" onClick={() => setSheet({ kind: 'ready', handling: firm?.handling_name ?? '', note: '', floor: '', floorUnit: 'pct' })} disabled={busy} style={btnPrimary}>⚖ Mark attorney ready…</button>
@@ -630,7 +637,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
                 {packet ? (
                   <PacketTab tab={tab} packet={packet} selected={selected} props={props} openEditCustomer={openEditCustomer} openWriteDown={openWriteDown}
                     curation={stored && canEditReview ? { holdBack, shareAgain, shareAll, holdFor, setHoldFor, reasons: heldReasonsOf(matter), busy } : null} entries={matter ? (legal?.entriesByMatter.get(matter.id) ?? []) : []}
-                    officeActs={stored && canEditReview ? { acknowledge, answerFor, setAnswerFor, sendAnswer, markApplied, busy, onOpenPipelineRow: () => { if (firstJob) props.onFocusJob(firstJob.id) }, askForm: matter ? askForm : null, setAskForm, sendAsk, withdrawFirmAsk, canAsk: matterIsWithFirm(matter), answerSettlement, setSettlementFloor, floor: settlementFloorOf(matter) } : null} />
+                    officeActs={stored && canEditReview ? { acknowledge, answerFor, setAnswerFor, sendAnswer, markApplied, busy, onOpenPipelineRow: () => { if (firstJob) props.onFocusJob(firstJob.id) }, askForm: matter ? askForm : null, setAskForm, sendAsk, withdrawFirmAsk, canAsk: matterIsWithFirm(matter), answerSettlement, setSettlementFloor, floor: settlementFloorOf(matter), moveStage } : null} />
                 ) : null}
               </>
             )}
@@ -723,11 +730,11 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
         <div role="presentation" onClick={(e) => { e.stopPropagation(); setSheet(null) }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: overlayZIndex + 10, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(14px + var(--app-top-chrome, 0px)) 14px 14px' }}>
           <div role="dialog" aria-modal="true" aria-label="Pull back from the firm" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', color: 'var(--text)', borderRadius: 10, padding: 18, maxWidth: 520, width: '100%', boxShadow: '0 12px 40px rgba(0,0,0,0.28)' }}>
             <h3 style={{ margin: '0 0 8px', fontSize: '1rem' }}>Pull {selected.name} back from {firm?.name ?? 'the firm'}?</h3>
-            <p style={{ ...MUTED, fontSize: '0.84rem' }}>The firm stops seeing it and the account returns to review. Their fees and steps stay on the record.</p>
-            <textarea value={sheet.note} onChange={(e) => setSheet({ ...sheet, note: e.target.value })} rows={2} placeholder="Why (optional)" style={sheetInput} />
+            <p style={{ ...MUTED, fontSize: '0.84rem' }}>The account returns to review. The firm keeps a read-only page with your reason, their own fees and steps, and the conversation; the account's records leave their portal. They are emailed the reason.</p>
+            <textarea value={sheet.note} onChange={(e) => setSheet({ ...sheet, note: e.target.value })} rows={2} placeholder="Why (the firm reads this)" aria-label="Why you are pulling it back" style={sheetInput} />
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button type="button" onClick={() => setSheet(null)} style={btn}>Cancel</button>
-              <button type="button" onClick={() => void confirmPull()} disabled={busy} style={btnPrimary}>Pull back</button>
+              <button type="button" onClick={() => void confirmPull()} disabled={busy || !sheet.note.trim()} style={{ ...btnPrimary, opacity: busy || !sheet.note.trim() ? 0.5 : 1 }}>Pull back</button>
             </div>
           </div>
         </div>
@@ -793,7 +800,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
 
 type Curation = { holdBack: (key: string, reason: string) => Promise<void>; shareAgain: (key: string) => Promise<void>; shareAll: () => Promise<void>; holdFor: { key: string; reason: string } | null; setHoldFor: (v: { key: string; reason: string } | null) => void; reasons: Record<string, string>; busy: boolean } | null
 type EntryLike = LegalEntryRow
-type OfficeActs = { acknowledge: (entryId: string) => Promise<void>; answerFor: { entryId: string; text: string } | null; setAnswerFor: (v: { entryId: string; text: string } | null) => void; sendAnswer: () => Promise<void>; markApplied: (entry: { id: string; amount: number | null; body: string }) => Promise<void>; busy: boolean; onOpenPipelineRow: () => void; askForm: { flavor: LegalAskFlavor; jobId: string; text: string } | null; setAskForm: (v: { flavor: LegalAskFlavor; jobId: string; text: string } | null) => void; sendAsk: () => Promise<void>; withdrawFirmAsk: (entryId: string) => Promise<void>; /** A matter exists for the account (asks hang on a matter). */ canAsk: boolean; /** #85 item 20. */ answerSettlement: (entryId: string, signedOff: boolean, note: string) => Promise<void>; setSettlementFloor: (amount: number | null, pct: number | null) => Promise<void>; floor: LegalSettlementFloor | null } | null
+type OfficeActs = { acknowledge: (entryId: string) => Promise<void>; answerFor: { entryId: string; text: string } | null; setAnswerFor: (v: { entryId: string; text: string } | null) => void; sendAnswer: () => Promise<void>; markApplied: (entry: { id: string; amount: number | null; body: string }) => Promise<void>; busy: boolean; onOpenPipelineRow: () => void; askForm: { flavor: LegalAskFlavor; jobId: string; text: string } | null; setAskForm: (v: { flavor: LegalAskFlavor; jobId: string; text: string } | null) => void; sendAsk: () => Promise<void>; withdrawFirmAsk: (entryId: string) => Promise<void>; /** A matter exists for the account (asks hang on a matter). */ canAsk: boolean; /** #85 item 20. */ answerSettlement: (entryId: string, signedOff: boolean, note: string) => Promise<void>; setSettlementFloor: (amount: number | null, pct: number | null) => Promise<void>; floor: LegalSettlementFloor | null; /** #85 item 16. */ moveStage: (stage: string, entryId: string) => Promise<void> } | null
 
 function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDown, curation, entries, officeActs }: { tab: Tab; packet: LegalPacket; selected: LegalAccountSummary; props: LegalDeskModalProps; openEditCustomer: () => void; openWriteDown: (jobId: string | null) => void; curation: Curation; entries: EntryLike[]; officeActs: OfficeActs }) {
   const a = packet.account
@@ -1016,7 +1023,10 @@ function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDo
                   </span>
                 ) : stepProposalOf(e) ? (
                   // #85 item 16: a step that would move the stage back waits on the office; the stage has not moved.
-                  <button key="k" type="button" onClick={() => void officeActs.acknowledge(e.id)} disabled={officeActs.busy} style={btn} title="Record it, leave the stage where it is">Keep {legalStageLabel(stepProposalOf(e)?.from).replace('With the firm · ', '')}</button>
+                  <span key="k" style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>
+                    <button type="button" onClick={() => void officeActs.moveStage(stepProposalOf(e)?.stage ?? '', e.id)} disabled={officeActs.busy} style={btn}>Move it back to {legalStageLabel(stepProposalOf(e)?.stage).replace('With the firm · ', '')}</button>
+                    <button type="button" onClick={() => void officeActs.acknowledge(e.id)} disabled={officeActs.busy} style={btn} title="Record it, leave the stage where it is">Keep {legalStageLabel(stepProposalOf(e)?.from).replace('With the firm · ', '')}</button>
+                  </span>
                 ) : (
                   <button key="k" type="button" onClick={() => void officeActs.acknowledge(e.id)} disabled={officeActs.busy} style={btn}>Acknowledge</button>
                 )

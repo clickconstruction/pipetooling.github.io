@@ -213,6 +213,7 @@ serve(async (req) => {
             handling: ev.payload.handling ? String(ev.payload.handling) : null,
             note: ev.payload.note ? String(ev.payload.note) : null,
             body: ev.payload.body ? String(ev.payload.body) : null,
+            reason: ev.payload.reason ? String(ev.payload.reason) : null,
             portalUrl: portal,
             unsubscribeUrl: unsub,
           })
@@ -246,7 +247,7 @@ serve(async (req) => {
           companyName: PORTAL_COMPANY.name,
           recipientName: r.name,
           matters: mine.map((m) => ({ payerName: m.payer_name, stage: m.stage, handlingName: m.handling_name, releasedAt: m.released_at })),
-          events: events.map((e) => ({ createdAt: String(e.created_at), trigger: (e.trigger === 'referred' || e.trigger === 'answer' ? e.trigger : 'pulled') as LegalNowTrigger, payer: String(e.payload.payer ?? ''), body: e.payload.body ? String(e.payload.body) : null })),
+          events: events.map((e) => ({ createdAt: String(e.created_at), trigger: (e.trigger === 'referred' || e.trigger === 'answer' ? e.trigger : 'pulled') as LegalNowTrigger, payer: String(e.payload.payer ?? ''), body: e.payload.body ? String(e.payload.body) : null, reason: e.payload.reason ? String(e.payload.reason) : null })),
           portalUrl: portal,
           unsubscribeUrl: unsub,
         })

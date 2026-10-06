@@ -48,6 +48,9 @@ export type LegalMatterRow = {
   /** Settlement authority (#85 item 20): one of the two, or neither (no floor). Absent before the migration. */
   settlement_floor_amount?: number | null
   settlement_floor_pct?: number | null
+  /** The office's pull-back (#85 item 16): when and why. Absent before the migration. */
+  pulled_at?: string | null
+  pulled_reason?: string
 }
 
 export type LegalMatterJobRow = { matter_id: string; job_id: string }

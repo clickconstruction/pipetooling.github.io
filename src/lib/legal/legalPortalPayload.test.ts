@@ -43,6 +43,9 @@ describe('parseLegalPortalPayload', () => {
     // #85 item 29: the count of entries the office held back, as the function counted them; 0 from an older function.
     expect(p?.matters[0]?.heldCount).toBe(0)
     expect(parseLegalPortalPayload({ firm, matters: [{ ...matterRaw(), heldCount: 2 }] })?.matters[0]?.heldCount).toBe(2)
+    // #85 item 16: pulled-back matters, slim; [] from an older function.
+    expect(p?.pulledMatters).toEqual([])
+    expect(parseLegalPortalPayload({ firm, matters: [], pulledMatters: [{ id: 'm9', payerName: 'Ridgeway Dental', pulledAt: '2026-10-04', reason: 'Paid in full', entries: [] }, { payerName: 'no id' }] })?.pulledMatters).toEqual([{ id: 'm9', payerName: 'Ridgeway Dental', pulledAt: '2026-10-04', reason: 'Paid in full', entries: [] }])
     // #85 item 20: the settlement floor; none from an older function.
     expect(p?.matters[0]?.settlementFloor).toBeNull()
     expect(parseLegalPortalPayload({ firm, matters: [{ ...matterRaw(), settlementFloor: { amount: null, pct: 70 } }] })?.matters[0]?.settlementFloor).toEqual({ amount: null, pct: 70 })

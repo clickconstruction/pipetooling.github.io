@@ -13,16 +13,17 @@ import { buildFirmPacketPrintHtml } from '../lib/legal/legalFirmPacketPrint'
 import { openHtmlPrintWindow } from '../lib/jobsDocuments/printWindow'
 import { FIRM_EMAIL_MODE_WORDS, firmRecipientStatusWords, firmSavedWords, legalFirmStageWords } from '../lib/legal/legalFirmWords'
 import { PORTAL_QUIET_RELOAD_FAILED, portalPayloadIsStale } from '../lib/legal/legalPortalFreshness'
-import { buildMatterPacket, parseLegalPortalPayload, portalFeeModel, type LegalPortalMatter, type LegalPortalPayload, type LegalPortalRecipient } from '../lib/legal/legalPortalPayload'
+import { buildMatterPacket, parseLegalPortalPayload, portalFeeModel, type LegalPortalMatter, type LegalPortalPayload, type LegalPortalPulledMatter, type LegalPortalRecipient } from '../lib/legal/legalPortalPayload'
 import { WEEKDAY_LABELS } from '../lib/legal/legalMatters'
 import { legalNotReachingLine } from '../lib/legal/legalNotifyLedger'
-import { FirmMatterView } from '../components/jobs/legal/LegalFirmMatterView'
+import { FirmMatterView, PortalTable } from '../components/jobs/legal/LegalFirmMatterView'
 import { orderFirmMatters } from '../lib/legal/legalFirmMatterOrder'
 import LegalPortalLienGrid from '../components/jobs/legal/LegalPortalLienGrid'
-import { askKindWords, openAsks } from '../lib/legal/legalAsks'
+import { askKindWords, conversationRows, conversationWho, entryRecordedByWords, openAsks } from '../lib/legal/legalAsks'
 import { confirmationNotice, type LegalActAnswer, type LegalActNotice } from '../lib/legal/legalPortalNotice'
 import { firmFacingErrorLine } from '../lib/legal/legalPortalErrors'
 import { portalH, type FirmTab } from '../components/jobs/legal/legalFirmMatterViewShared'
+import { isLegalFirmStep, LEGAL_FIRM_STEP_GROUPS, LEGAL_FIRM_STEP_WORDS, type LegalFirmStep } from '../../supabase/functions/_shared/legalStages'
 
 /**
  * The collections law firm's portal (Legal portal PR 3): the no-login page
@@ -263,6 +264,8 @@ export default function LegalPortal() {
           <div style={{ ...card, textAlign: 'center', padding: 40 }}><b>No matters yet.</b><br /><span style={{ color: MUTED }}>Accounts appear here the moment the office marks them attorney-ready.</span></div>
         ) : null}
 
+        {payload && panel === 'matters' && payload.pulledMatters.length ? <PulledMattersSection pulled={payload.pulledMatters} companyName={payload.company.name} /> : null}
+
         {payload && panel === 'matters' && selected && packet ? (
           <div className="legalPortalSplit">
             <div className="legalPortalMain">
@@ -312,6 +315,32 @@ export default function LegalPortal() {
           </div>
         ) : null}
       </div>
+    </div>
+  )
+}
+
+/**
+ * Matters the office pulled back (#85 item 16): read-only, with the office's reason, the firm's own fees and
+ * costs and the conversation. The customer's records are gone from the portal: counsel no longer has the matter.
+ */
+function PulledMattersSection({ pulled, companyName }: { pulled: ReadonlyArray<LegalPortalPulledMatter>; companyName: string }) {
+  return (
+    <div data-legal-pulled style={{ marginBottom: 16 }}>
+      <div style={cap}>Pulled back · read only</div>
+      {pulled.map((m) => {
+        const fees = m.entries.filter((e) => e.kind === 'fee' || e.kind === 'cost')
+        const talk = conversationRows(m.entries)
+        return (
+          <details key={m.id} style={{ ...card, marginTop: 8 }}>
+            <summary style={{ cursor: 'pointer', fontSize: 13.5 }}><b>{m.payerName}</b><span style={{ color: MUTED }}>{m.pulledAt ? ` · pulled back ${m.pulledAt}` : ''}</span></summary>
+            <div style={{ fontSize: 12.5, marginTop: 8, padding: '6px 10px', background: NOTE_BAND, borderRadius: 4 }}><b>Why:</b> {m.reason || `${companyName} gave no reason.`}</div>
+            <div style={portalH}>Your fees and costs</div>
+            <PortalTable head={['Date', 'Kind', 'Note', 'By', 'Amount']} numCols={[4]} rows={fees.map((e) => [e.occurred_on, e.kind, e.body, entryRecordedByWords(e, 'firm'), formatLegalMoney(Number(e.amount ?? 0))])} empty="None recorded." />
+            {talk.length ? (<><div style={portalH}>The conversation</div><PortalTable head={['Date', 'Who', 'What was said']} rows={talk.map((r) => [r.entry.occurred_on, `${r.isAnswer ? '↳ ' : ''}${conversationWho(r, 'firm')}`, r.entry.body])} empty="" /></>) : null}
+            <p style={{ fontSize: 11.5, color: FAINT, margin: '8px 0 0' }}>The account's records left the portal when {companyName} pulled it back. Ask the office if you need anything from it.</p>
+          </details>
+        )
+      })}
     </div>
   )
 }
@@ -385,7 +414,7 @@ function FirmActs({ matter, act, busy, notice, todayYmd }: { matter: LegalPortal
   const [feeKind, setFeeKind] = useState<'fee' | 'cost'>('fee')
   const [feeAmount, setFeeAmount] = useState('')
   const [feeNote, setFeeNote] = useState('')
-  const [stage, setStage] = useState<'demand' | 'suit' | 'judgment' | 'settled'>('demand')
+  const [stage, setStage] = useState<LegalFirmStep>('demand')
   const [stepNote, setStepNote] = useState('')
   /** #85 item 20: the settlement amount, checked against the office's floor. */
   const [settleAmount, setSettleAmount] = useState('')
@@ -423,7 +452,7 @@ function FirmActs({ matter, act, busy, notice, todayYmd }: { matter: LegalPortal
         <button type="submit" disabled={busy} style={btn}>+ Add fee or cost</button>
       </form>
       <form onSubmit={submit({ kind: 'step', stage, note: stepNote, occurredOn: stepOn, ...(stage === 'settled' && settleAmount ? { amount: Number(settleAmount) } : {}) }, () => { setStepNote(''); setSettleAmount('') })} className={`legalPortalForm ${stage === 'settled' ? 'legalPortalForm--fee' : 'legalPortalForm--note'}`}>
-        <label style={lab}>Record a step<select value={stage} onChange={(e) => setStage(e.target.value as 'demand' | 'suit' | 'judgment' | 'settled')} style={input}><option value="demand">Demand sent on firm letterhead</option><option value="suit">Suit filed</option><option value="judgment">Judgment entered</option><option value="settled">Settled</option></select></label>
+        <label style={lab}>Record a step<select value={stage} onChange={(e) => { if (isLegalFirmStep(e.target.value)) setStage(e.target.value) }} style={input}>{LEGAL_FIRM_STEP_GROUPS.map((g) => <optgroup key={g.label} label={g.label}>{g.steps.map((s) => <option key={s} value={s}>{LEGAL_FIRM_STEP_WORDS[s]}</option>)}</optgroup>)}</select></label>
         <label style={lab}>Date<input type="date" value={stepOn} max={todayYmd} onChange={(e) => setStepOn(e.target.value)} required style={input} /></label>
         {stage === 'settled' ? <label style={lab}>Settlement amount<input type="number" min={1} step="0.01" value={settleAmount} onChange={(e) => setSettleAmount(e.target.value)} placeholder={matter.settlementFloor ? 'required' : 'optional'} required={Boolean(matter.settlementFloor)} style={input} /></label> : null}
         <label style={lab}>Detail<input value={stepNote} onChange={(e) => setStepNote(e.target.value)} placeholder="Court, cause no., amount, terms…" style={input} /></label>

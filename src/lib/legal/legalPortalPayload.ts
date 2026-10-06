@@ -64,6 +64,9 @@ export type LegalPortalMatter = {
   entries: LegalEntryRow[]
 }
 
+/** A matter the office pulled back (#85 item 16): read-only on the portal — the reason and the firm's own entries, none of the customer's records. */
+export type LegalPortalPulledMatter = { id: string; payerName: string; pulledAt: string | null; reason: string; entries: LegalEntryRow[] }
+
 export type LegalPortalParticulars = { entity?: string; license?: string; agent?: string; custodian?: string; affiant?: string; phone?: string; email?: string; w9?: string }
 
 export type LegalPortalPayload = {
@@ -74,6 +77,8 @@ export type LegalPortalPayload = {
   recipients: LegalPortalRecipient[]
   firmPaused: boolean
   matters: LegalPortalMatter[]
+  /** Matters the office pulled back (#85 item 16); [] from an older function. */
+  pulledMatters: LegalPortalPulledMatter[]
   /** The Lien desk's Timeline book, raw (#41 PR 2) — null when the function could not read it (or an older function). */
   lienBook: LienBookRaw | null
 }
@@ -132,6 +137,9 @@ export function parseLegalPortalPayload(raw: unknown): LegalPortalPayload | null
       : [],
     firmPaused: Boolean(raw.firmPaused),
     matters,
+    pulledMatters: Array.isArray(raw.pulledMatters)
+      ? (raw.pulledMatters as unknown[]).filter(isRecord).filter((p) => typeof p.id === 'string').map((p): LegalPortalPulledMatter => ({ id: p.id as string, payerName: String(p.payerName ?? ''), pulledAt: typeof p.pulledAt === 'string' ? p.pulledAt : null, reason: typeof p.reason === 'string' ? p.reason : '', entries: Array.isArray(p.entries) ? (p.entries as LegalEntryRow[]) : [] }))
+      : [],
     lienBook: parseLienBookRaw(raw.lienBook),
   }
 }
