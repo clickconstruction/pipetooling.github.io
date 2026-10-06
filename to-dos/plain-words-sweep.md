@@ -15,8 +15,7 @@ summary: >
 next: >
   Nothing to rewrite. Three things for the owner: (1) a freshness pass per surface — 21 guides
   describe screens that moved (the list below; the lien guides are the worst and are underway);
-  (2) the six long reference guides that do several jobs want a task-first opening and cuts
-  (the openings and splits are in the PR bodies of #4575, #4586 and #4589); (3) whether numbered
+  (2) the reshape is #88 (`to-dos/help-guides-reshape.md`); (3) whether numbered
   steps should read as plain commands ("Press…") rather than "You press…" — on main today 144
   steps start with a command and 51 with "You". Then delete this folder.
 size: done
@@ -159,14 +158,7 @@ are underway (Helper 3, 2026-10-05).
 
 ### Guides that do several jobs (the reshape question)
 
-Readable by the line after the sweep and still too long for a first-timer; each wants a
-"do this first" opening and cuts, which is the owner's call. The openings and splits are in the
-PR bodies: *see when a customer will pay* (2,814 words, four guides in one), *share a customer
-their portal* (2,673), *track a general contractor on a job* (2,509; mostly duplicates *run your
-GC statement round*), *share a sub their portal* (1,983; share it / what a sub sees), *the Bridge*
-(1,707), *understand overhead numbers* (1,520; the how-to sits at the bottom), *see what the
-office got done* (1,213), *stage a takeoff*, *sub labor outstanding*, *turn a won bid into a
-job*, *write a change order*, the two start-here maps.
+The reshape is #88: [`help-guides-reshape.md`](help-guides-reshape.md).
 
 ## The recipe (what worked)
 
