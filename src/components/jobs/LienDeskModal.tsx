@@ -83,7 +83,7 @@ import LienDeskShare from './LienDeskShare'
 import { Share } from 'lucide-react'
 import { useScrollEdgeFade } from '../../hooks/useScrollEdgeFade'
 import { LienJobSuppliersCard, LienSupplierMarkLine } from './LienJobSuppliers'
-import { lienSupplierMark, type LienSupplierMark } from '../../lib/jobs/lienJobSuppliers'
+import { LIEN_HOUSES_PARAGRAPH_READ_BY_COUNSEL, lienSupplierLetterParagraphFor, lienSupplierMark, type LienSupplierMark } from '../../lib/jobs/lienJobSuppliers'
 import LienDeskAffidavitPane, { affidavitDeadlineWords } from './LienDeskAffidavitPane'
 import LienDeskRetainagePane from './LienDeskRetainagePane'
 import { LIEN_RETAINAGE_PILES, contractEndedWords, retainageDeadlineWords, type LienRetainagePile } from '../../lib/jobs/lienDeskRetainage'
@@ -288,6 +288,8 @@ export default function LienDeskModal({
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null)
   const [checkedMonths, setCheckedMonths] = useState<ReadonlySet<string> | null>(null)
   const [coverNote, setCoverNote] = useState(true)
+  // The supply houses in the owner's letter (v2.4725): on when a house is owed, unless the draft left them out.
+  const [housesInLetter, setHousesInLetter] = useState(true)
   // The pay offer (v2.4713): the leader's choice, written with the approval; read back from the item when one is selected.
   const [offer, setOffer] = useState<LienPayOffer | null>(null)
   const [wordOpen, setWordOpen] = useState(false)
@@ -692,6 +694,7 @@ export default function LienDeskModal({
   useEffect(() => {
     setCheckedMonths(null)
     setCoverNote(selected?.item ? selected.item.cover_note : true)
+    setHousesInLetter(parseLienDeskDraftFields(selected?.item?.fields)?.housesInLetter !== false)
     setWordOpen(false)
     setSkipOpen(false)
     setByHandOpen(false)
@@ -840,6 +843,11 @@ export default function LienDeskModal({
     if (editing) editInputRef.current?.focus()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editing?.key])
+  // The supply houses paragraph for the owner's letter (v2.4725): the same words the run prints, from the job's houses and the letter's own claim figure.
+  const supplierParagraph = useMemo(
+    () => lienSupplierLetterParagraphFor(supplierJob, { propertyKind: property.propertyKind ?? '', todayYmd, payerName: gc?.name ?? noticeFields.originalContractorName, claim: Number(String(noticeFields.claimAmount ?? '').replace(/[$,\s]/g, '')) || 0 }),
+    [supplierJob, property.propertyKind, todayYmd, gc?.name, noticeFields.originalContractorName, noticeFields.claimAmount],
+  )
   // The cover page (v2.3540): the same page the run prints — counsel's letter for the property's kind while the box is ticked (v2.3828), or the letter the item carries.
   const coverBlocks = useMemo(() => {
     if (!selected) return []
@@ -850,10 +858,10 @@ export default function LienDeskModal({
       fields: noticeFields,
       extras: docExtras,
       coverNote: null,
-      coverLetter: coverNote || storedDraft?.coverLetter ? fillCoverLetter(counselCoverLetterTemplate({ stored: storedDraft?.coverLetter, gcName: gc?.name ?? noticeFields.originalContractorName, claimantName: noticeFields.claimantName, property }), { property: (job?.job_address ?? '').trim(), months: describeNoticeMonths(monthsList), job: jobNumber, amount: demandMoney(noticeFields.claimAmount), staleNote: storedDraft?.staleNote ?? '', contact: noticeFields.contactPerson, phone: signerPhoneFor ? signerPhoneFor(job?.master_user_id ?? null) : (issuer?.phone ?? '').trim(), affidavitMonth: affidavitMonthWord(coverLetterKindFor(property)), trade: job?.service_type?.name }) : null,
+      coverLetter: coverNote || storedDraft?.coverLetter ? fillCoverLetter(counselCoverLetterTemplate({ stored: storedDraft?.coverLetter, gcName: gc?.name ?? noticeFields.originalContractorName, claimantName: noticeFields.claimantName, property }), { property: (job?.job_address ?? '').trim(), months: describeNoticeMonths(monthsList), job: jobNumber, amount: demandMoney(noticeFields.claimAmount), staleNote: storedDraft?.staleNote ?? '', contact: noticeFields.contactPerson, phone: signerPhoneFor ? signerPhoneFor(job?.master_user_id ?? null) : (issuer?.phone ?? '').trim(), affidavitMonth: affidavitMonthWord(coverLetterKindFor(property)), trade: job?.service_type?.name, supplyHouses: housesInLetter ? supplierParagraph : '' }) : null,
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected?.jobId, job, monthsList.join('|'), noticeFields, docExtras, coverNote, storedDraft?.coverLetter, signerPhoneFor, gc?.name, property])
+  }, [selected?.jobId, job, monthsList.join('|'), noticeFields, docExtras, coverNote, storedDraft?.coverLetter, signerPhoneFor, gc?.name, property, housesInLetter, supplierParagraph])
   const coverHtml = useMemo(() => (coverBlocks.length ? filingDocHtml(coverBlocks) : ''), [coverBlocks])
   // The pay page (punch list #35, PR 3): the page the run prints behind the owner's copy, from the job's unpaid bills — fetched once per job while the desk is open.
   const payPage = useNoticePayPage(selected?.jobId ?? null, open)
@@ -884,6 +892,8 @@ export default function LienDeskModal({
     // A re-save keeps what Put a GC on notice wrote on the item (v2.3522 — these used to be dropped).
     ...(storedDraft?.batchReason ? { batchReason: storedDraft.batchReason } : {}),
     ...(storedDraft?.coverLetter ? { coverLetter: storedDraft.coverLetter } : {}),
+    // The supply houses left out of the owner's letter (v2.4725) — only the leaving-out is written down.
+    ...(housesInLetter ? {} : { housesInLetter: false as const }),
     // The month is the job's creation month, not clock hours (v2.3747): the record says where the date came from.
     ...(selected?.datedFromCreation ? { monthsDatedFromCreation: true as const } : {}),
     ...(wordingDiff.length > 0 ? { wording: wordingTouched || !storedDraft?.wording ? { editedBy: authName, editedAt: new Date().toISOString() } : storedDraft.wording } : {}),
@@ -1657,6 +1667,16 @@ export default function LienDeskModal({
           <input type="checkbox" checked={coverNote} disabled={item != null && item.status !== 'drafted'} onChange={(ev) => setCoverNote(ev.target.checked)} />
           <span>Include counsel's cover letter</span>
         </label>
+        {/* The supply houses in the owner's letter (v2.4725, Taunya's ask): one more tick, drawn only while the letter is on and a house is owed. */}
+        {coverNote && supplierJob && supplierJob.owed > 0 ? (
+          <label data-lien-desk-houses-tick title="A paragraph at the end of counsel's letter: the house, what it is owed, the day its own notice goes out, that it is a separate claim our release does not cover, and that paying us is what clears it">
+            <input type="checkbox" checked={housesInLetter} disabled={item != null && item.status !== 'drafted'} onChange={(ev) => setHousesInLetter(ev.target.checked)} />
+            <span>Name the supply {supplierJob.housesOwed === 1 ? 'house' : 'houses'} owed · {formatUsdNoCents(supplierJob.owed)}</span>
+          </label>
+        ) : null}
+        {coverNote && housesInLetter && supplierJob && supplierJob.owed > 0 && !LIEN_HOUSES_PARAGRAPH_READ_BY_COUNSEL ? (
+          <span data-lien-desk-houses-counsel style={{ flexBasis: '100%', fontSize: '0.72rem', color: 'var(--text-amber-800)' }}>Counsel has not read the supply house paragraph yet.</span>
+        ) : null}
       </div>
 
       {/* The paper is the editor (v2.3694): the four values the office may change sit in shaded boxes on the notice itself; this row keeps only the legend and the preview door. */}
@@ -2631,7 +2651,7 @@ export default function LienDeskModal({
             await markLienDeskItemsPrinted(ids, authUserId).catch(() => undefined)
             onChanged()
           }}
-          notices={[...buildLienDeskRun([...data.queue.piles.ready, ...data.queue.piles.printed], data, issuer, signerNameFor, todayYmd, signerPhoneFor), ...buildLienRetainageRun(data.retainage.piles.ready, data, issuer, signerNameFor, todayYmd, signerPhoneFor)]}
+          notices={[...buildLienDeskRun([...data.queue.piles.ready, ...data.queue.piles.printed], data, issuer, signerNameFor, todayYmd, signerPhoneFor, { suppliers: suppliers.byJob }), ...buildLienRetainageRun(data.retainage.piles.ready, data, issuer, signerNameFor, todayYmd, signerPhoneFor)]}
           issuer={issuer}
           todayYmd={todayYmd}
           userId={authUserId}

@@ -442,3 +442,60 @@ export function lienSupplierEmailText(
   }
   return lines.join('\n')
 }
+
+// ---------- the paragraph for the owner's cover letter (v2.4725) ----------
+
+/** Counsel has not read the owner's-letter paragraph about the houses yet: the desk draws an amber line beside the tick until this flips. */
+export const LIEN_HOUSES_PARAGRAPH_READ_BY_COUNSEL = false
+
+/** The figure the letter names for a house: the balance the house gave when it gave one (the notice is the house's claim), else our books. */
+function houseFigure(r: LienSupplierCardRow): number {
+  return r.word?.balance != null && r.word.balance > EPSILON ? r.word.balance : r.owed
+}
+
+/**
+ * The owner's cover letter paragraph (v2.4725, Taunya's ask): the house, its money, the day its
+ * own notice goes out, that it is a separate claim our release does not cover, and what clears
+ * it. Four shapes of the middle sentence — the day the house gave, our estimate, "may send" when
+ * there is nothing to count from, nothing at all when its window has closed (its lien right is
+ * ours to know). The last sentence is said only when our claim covers what the houses are owed.
+ * `claim` is the letter's own figure, so the two never disagree. '' when no house is owed.
+ */
+export function lienSupplierLetterParagraph(card: LienSupplierCard, ctx: { claim: number }): string {
+  const rows = card.rows.filter((r) => r.owed > EPSILON)
+  if (!rows.length) return ''
+  const one = rows.length === 1
+  const total = rows.reduce((s, r) => s + houseFigure(r), 0)
+  const S: string[] = []
+  if (one) {
+    const r = rows[0]!
+    S.push(`You should also know that ${r.name} sold materials for this job and is still owed ${usd(houseFigure(r))}.`)
+  } else {
+    const n = (NUMBER_WORDS[rows.length] ?? String(rows.length)).toLowerCase()
+    S.push(`You should also know that ${n} supply houses sold materials for this job and are still owed ${usd(total)} between them: ${rows.map((r) => `${r.name} ${usd(houseFigure(r))}`).join(', ')}.`)
+  }
+  for (const r of rows) {
+    if (r.notice.kind === 'said') S.push(`${r.name} told us its own notice ${r.notice.daysLeft < 0 ? 'went' : 'goes'} out on ${longDay(r.notice.ymd)} unless ${one ? 'that balance' : 'it'} is paid.`)
+    else if (r.notice.kind === 'open') S.push(`We expect ${r.name}’s own notice by ${longDay(r.notice.ymd)}.`)
+    else if (r.notice.kind === 'none') S.push(one ? `${r.name} may send its own notice for that balance.` : `${r.name} may send its own notice.`)
+    // closed: the money is named above and no notice is mentioned.
+  }
+  const firm = rows.some((r) => r.notice.kind === 'said' || r.notice.kind === 'open')
+  const maybe = rows.some((r) => r.notice.kind === 'none')
+  if (one) {
+    const name = rows[0]!.name
+    S.push(firm ? `That notice is ${name}’s own claim for materials.` : maybe ? `That notice would be ${name}’s own claim for materials.` : `That balance is ${name}’s own claim for materials.`)
+    S.push(ctx.claim > EPSILON ? `It is not covered by our release, and it is not included in the ${usd(ctx.claim)}.` : 'It is not covered by our release.')
+  } else {
+    S.push(firm ? 'Those notices are the houses’ own claims for materials.' : maybe ? 'Those notices would be the houses’ own claims for materials.' : 'Those balances are the houses’ own claims for materials.')
+    S.push(ctx.claim > EPSILON ? `They are not covered by our release, and they are not included in the ${usd(ctx.claim)}.` : 'They are not covered by our release.')
+  }
+  if (ctx.claim > EPSILON && ctx.claim + EPSILON >= total) S.push(`Paying us the ${usd(ctx.claim)} is what lets us clear ${one ? 'that account' : 'those accounts'}.`)
+  return S.join(' ')
+}
+
+/** The paragraph for one job as the desk and the run build it: the card from the job's houses, then the words. '' when the job bought nothing or owes no house. */
+export function lienSupplierLetterParagraphFor(job: LienSupplierJob | null | undefined, ctx: { propertyKind: string; todayYmd: string; payerName: string; claim: number }): string {
+  if (!job || job.owed <= EPSILON) return ''
+  return lienSupplierLetterParagraph(buildLienSupplierCard(job, { propertyKind: ctx.propertyKind, todayYmd: ctx.todayYmd, openBalance: ctx.claim, payerName: ctx.payerName }), { claim: ctx.claim })
+}
