@@ -21,7 +21,7 @@
 import type { GcAction, GcCustomer, GcProject, GcState, Partner, ScheduleMove, Submittal, TradePackage } from './gcTypes'
 import { daysUntil, shortDate, weekdayDate } from './gcWords'
 import { partnerById } from './gcLookups'
-import { daysBetween, mondayOf, scheduleMeasures, type ScheduleItem } from './gcBuildingSchedule'
+import { daysBetween, scheduleMeasures, type ScheduleItem } from './gcBuildingSchedule'
 import { ganttBars, type GanttBar, type GanttHold } from './gcGantt'
 import { submittalHolding, submittalNeededBy, submittalState } from './gcBuildingSubmittals'
 import { notReadyBars, type NotReadyBar } from './gcNotReady'
@@ -30,16 +30,15 @@ import { moveReasonLabel } from './gcScheduleMoves'
 import { rfiRows, type RfiRow } from './gcBuildingRfis'
 import { waitRows, type WaitRow } from './gcScheduleWaits'
 import { companiesToTell, datesAsksOpen, untoldMoves } from './gcTellTrades'
-import { startsToPromise } from './gcBuildingPromises'
 import { tradePromisesOf, tradePromiseState } from './gcPromises'
 import { customerAsPerson, projectFollowPeople, projectPeople, type PeopleTone, type PersonReason, type ProjectPerson } from './gcProjectPeople'
 import { partnerReach, type FollowItem, type FollowPerson } from './gcFollowUpSheet'
-import { pDate, pWeekday, type PortalLang } from './gcPortalI18n'
-import { finishOutlook, shortCrewDetail, shortCrewReason } from './gcFinishOutlook'
+import { pWeekday, type PortalLang } from './gcPortalI18n'
+import { crewCalls, unconfirmedDates, unconfirmedStarts } from './gcCounts'
 import { crowdedCalls } from './gcPlaces'
 
-/** A company has this many days to answer its new dates before a call is due. The new start this close, it is late. */
-export const CONFIRM_WITHIN_DAYS = 3
+/** A company has this many days to answer its new dates before a call is due (it moved to gcCounts.ts with the loops that read it). */
+export { CONFIRM_WITHIN_DAYS } from './gcCounts'
 
 /** What a line on the call list is about on the schedule, for the Follow up sheet and the call's answer. */
 export interface CallRef {
@@ -507,29 +506,7 @@ export function callList(state: GcState, project: GcProject, holds: Map<string, 
   }
 
   // New dates told and not answered (G-113): the call is to hear the yes or the other day.
-  for (const move of project.schedule.moves ?? []) {
-    if (move.undoneOn || !move.toldOn) continue
-    for (const company of companiesToTell(state, project, [move])) {
-      if (!move.toldTo?.includes(company.partner.id) || move.answers?.some((x) => x.partnerId === company.partner.id)) continue
-      const works = company.lines.map((l) => l.work)
-      const said3 = works.length > 2 ? `${works[0]} and ${works.length - 1} more` : andList(works)
-      const start = company.lines.reduce((min, l) => (l.to.start < min ? l.to.start : min), company.lines[0]?.to.start ?? today)
-      const toldDays = -daysUntil(move.toldOn, today)
-      const tone: PeopleTone = daysUntil(start, today) <= CONFIRM_WITHIN_DAYS ? 'red' : toldDays >= CONFIRM_WITHIN_DAYS ? 'amber' : 'grey'
-      const first = company.lines[0]
-      rows.trade(company.partner, tradeOfLine(project, first?.lineId), {
-        text: `New dates for ${said3} went out ${weekdayDate(move.toldOn)}. No answer yet.`,
-        tone,
-        ...(first ? { lineId: first.lineId } : {}),
-        code: 'schedule',
-        call: { kind: 'dates', moveId: move.id, ...(first ? { lineId: first.lineId } : {}) },
-        words: {
-          en: { about: `your new dates on ${name}`, detail: `We sent them ${weekdayDate(move.toldOn)}. ${company.lines.map((l) => `${l.work} is now ${weekdayDate(l.to.start)} to ${weekdayDate(l.to.finish)}`).join('. ')}`, ask: 'Do they work? You can answer in your portal.' },
-          es: { about: `sus nuevas fechas en ${name}`, detail: `Se las enviamos el ${pWeekday('es', move.toldOn)}. ${company.lines.map((l) => `${l.work} ahora es del ${pWeekday('es', l.to.start)} al ${pWeekday('es', l.to.finish)}`).join('. ')}`, ask: '¿Le funcionan? Puede contestar en su portal.' },
-        },
-      })
-    }
-  }
+  for (const l of unconfirmedDates(state, project)) rows.trade(l.partner, l.trade, l.reason)
 
   // A company that asked for another day (Follow up's own reason, the owner's OK 2026-10-06): until the bar moves again.
   for (const ask of datesAsksOpen(state, project)) {
@@ -562,29 +539,7 @@ export function callList(state: GcState, project: GcProject, holds: Map<string, 
   }
 
   // A first day on site within two weeks, or passed, that nobody confirmed (G-114's office half).
-  for (const s of startsToPromise(project, today, tradePromisesOf(state))) {
-    if (s.promisedBy) continue
-    const partner = partnerById(state, s.partnerId)
-    if (!partner) continue
-    const lineId = m.items.find((i) => i.pkg?.id === s.pkg.id && i.activity.start === s.start)?.activity.lineId
-    const left = daysUntil(s.start, today)
-    rows.trade(partner, s.pkg.trade, {
-      text:
-        left > 0
-          ? `Their first day on site is ${weekdayDate(s.start)}. They have not said their crew will be there.`
-          : left === 0
-            ? 'Their first day on site is today. Nobody from them is on the daily log yet.'
-            : `Their first day on site was ${weekdayDate(s.start)}. Nobody from them is on the daily log yet.`,
-      tone: left < 0 ? 'red' : 'amber',
-      ...(lineId ? { lineId } : {}),
-      code: 'schedule',
-      call: { kind: 'start', packageId: s.pkg.id, ...(lineId ? { lineId } : {}) },
-      words: {
-        en: { about: `your start on ${name}`, detail: `Your first day on our schedule is ${weekdayDate(s.start)}`, ask: 'Will your crew be there?' },
-        es: { about: `su inicio en ${name}`, detail: `Su primer día en nuestro cronograma es el ${pWeekday('es', s.start)}`, ask: '¿Estará su cuadrilla ahí?' },
-      },
-    })
-  }
+  for (const l of unconfirmedStarts(state, project, m.items)) rows.trade(l.partner, l.trade, l.reason)
 
   // What holds the bars, each to whoever owes it.
   const items = new Map(m.items.map((i) => [i.activity.lineId, i]))
@@ -625,23 +580,7 @@ export function callList(state: GcState, project: GcProject, holds: Map<string, 
   }
 
   // A short crew that alone moves the finish (G-57's pick 2): the one thing on that line a call can change.
-  for (const c of finishOutlook(state, project)?.crews.short ?? []) {
-    const pkg = project.packages.find((k) => k.id === c.packageId)
-    const partner = hiredPartner(state, pkg)
-    if (c.days <= 0 || !partner || !pkg) continue
-    const ahora = c.said === null ? `Tiene ${c.now} en la obra esta semana` : `Nos dijo ${c.now} al día ${c.said === mondayOf(today) ? 'esta semana' : `la semana del ${pDate('es', c.said)}`}`
-    rows.trade(partner, pkg.trade, {
-      text: shortCrewReason(c, today),
-      tone: 'amber',
-      lineId: c.lineId,
-      code: 'schedule',
-      call: { kind: 'crew', lineId: c.lineId, packageId: c.packageId, label: 'Crew on site' },
-      words: {
-        en: { about: `your crew on ${name}`, detail: shortCrewDetail(c, today), ask: 'Can you bring it back up to size?' },
-        es: { about: `su cuadrilla en ${name}`, detail: `${ahora}, frente a ${c.soFar} al día hasta ahora`, ask: '¿Puede volver a completarla?' },
-      },
-    })
-  }
+  for (const l of crewCalls(state, project)) rows.trade(l.partner, l.trade, l.reason)
 
   // Too many trades in one place (G-83): each hired company in a crowded week of the look-ahead that has not said how many people it will have.
   for (const c of crowdedCalls(state, project)) {
