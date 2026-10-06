@@ -55,6 +55,24 @@ describe('LegalPortal — the sample matter', () => {
     expect(document.body.textContent).not.toMatch(/what a customer sees/)
   })
 
+  it('lists the facts on file for each job, never a theory or the office’s credit terms (punch list #85 item 4)', async () => {
+    const today = new Date().toISOString().slice(0, 10)
+    const payload = sampleLegalPortalResponse({ name: 'Acme Mechanical', cityLine: 'Kyle, TX', phone: '(512) 555-0100', email: 'office@example.com' } as never, today)
+    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response(JSON.stringify(payload), { status: 200, headers: { 'Content-Type': 'application/json' } }))))
+    render(
+      <MemoryRouter initialEntries={['/legal?t=sample']}>
+        <LegalPortal />
+      </MemoryRouter>,
+    )
+    await waitFor(() => expect(screen.getAllByText(/Sample Contracting/).length).toBeGreaterThan(0))
+    const record = document.querySelector('[data-legal-job-record]')
+    expect(record?.textContent).toMatch(/^signed agreement \d{4}-\d{2}-\d{2} by Pat Sample, bill sent, field record with a GPS location, no dispute logged$/)
+    expect(document.body.textContent).not.toMatch(/theory|Basis|sworn account|Terms with/i)
+    fireEvent.click(screen.getByRole('button', { name: 'Paper' }))
+    expect(document.body.textContent).toMatch(/Agreements/)
+    expect(document.body.textContent).not.toMatch(/Agreements and theory|holds — bill received/)
+  })
+
   it('draws the owner\'s answers under a notice on Paper when the payload carries the desk item that sent it (#41 PR 1b)', async () => {
     const today = new Date().toISOString().slice(0, 10)
     const payload = sampleLegalPortalResponse({ name: 'Click Plumbing and Electrical', cityLine: 'Kyle, TX', phone: '(512) 555-0100', email: 'office@example.com' } as never, today) as { matters: Array<Record<string, unknown> & { jobs: Array<{ id: string }> }> }

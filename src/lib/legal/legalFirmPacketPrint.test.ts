@@ -6,8 +6,8 @@
 import { describe, expect, it } from 'vitest'
 import { sampleLegalPortalResponse } from '../../../supabase/functions/_shared/customerSampleFixtures'
 import { buildMatterPacket, parseLegalPortalPayload, portalFeeModel } from './legalPortalPayload'
-import { buildFirmPacketPrintHtml, firmFeeEntries, firmJobRecordWords } from './legalFirmPacketPrint'
-import { legalFirmStageWords } from './legalFirmWords'
+import { buildFirmPacketPrintHtml, firmFeeEntries } from './legalFirmPacketPrint'
+import { firmJobRecordWords, legalFirmStageWords } from './legalFirmWords'
 import { buildLegalPacketPrintHtml } from './legalPacketPrint'
 import { formatLegalMoney } from './legalPacket'
 import type { LegalEntryRow } from './legalMatters'
@@ -97,15 +97,13 @@ describe('firmFeeEntries', () => {
 })
 
 describe('firmJobRecordWords and legalFirmStageWords', () => {
-  it('says what is on file as facts, never a theory', () => {
-    const { packet } = sample()
+  it('words a job the same on paper as on the screen: one kernel, no parse of the desk’s strings', () => {
+    const { payload, m, packet } = sample()
+    const html = buildFirmPacketPrintHtml(packet, { preparedOn: payload.preparedOn, companyName: company.name, firm: { name: payload.firm.name, handling: payload.firm.handling_name }, matter: { stage: m.stage, noteToFirm: m.noteToFirm, releasedAt: m.releasedAt, entries: m.entries }, particulars: payload.particulars })
     const job = packet.account.jobs[0]
     if (!job) throw new Error('sample has no job')
-    expect(firmJobRecordWords(job)).toBe('signed agreement 2026-04-22 by Pat Sample')
-    const sworn = { ...job, contract: { ...job.contract, kind: 'none' as const }, swornMissing: [] } as unknown as typeof job
-    expect(firmJobRecordWords(sworn)).toBe('bill sent, crew on site with GPS, no dispute logged')
-    const missing = { ...sworn, swornMissing: ['field evidence with GPS'] } as unknown as typeof job
-    expect(firmJobRecordWords(missing)).toBe('on file: bill sent, no dispute logged · missing: field evidence with GPS')
+    expect(html).toContain(firmJobRecordWords(job).replace(/&/g, '&amp;'))
+    expect(html).not.toMatch(/crew on site|sworn account/)
   })
   it('names the stage in the firm’s words', () => {
     expect(legalFirmStageWords('referred')).toBe('referred')
