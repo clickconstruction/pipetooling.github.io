@@ -4618,6 +4618,11 @@ supabase functions list
 
 # Check function logs
 supabase functions logs create-user
+
+# Every repo function deployed and running this checkout's code: index.ts and every file it
+# imports, _shared included (scripts/check-edge-function-drift.mjs)
+npm run check:edge-drift             # reads the functions whose code changed since their deploy
+npm run check:edge-drift -- --full   # reads every deployed function (the daily CI run)
 ```
 
 ### Local Testing
