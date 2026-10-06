@@ -30,7 +30,7 @@ The same five the firm will see:
 
 - **Account** shows who owes, contacts, the jobs, every invoice and payment in date order, and the property record.
 - **Paper** shows agreements per job with the sworn-account column, *Where each job stands*, demand letters and *The paper that went out*. *Where each job stands* shows each job's notice and affidavit dates, drawn from its approved hours, its filings and the property kind. *The paper that went out* lists each notice, affidavit and release. An affidavit is the sworn lien filing. The monthly notice applies when a GC pays.
-- **Their word** is one timeline of everything said. It holds contacts logged on the customer, payment promises and whether they were kept, collection calls, and the collections note. Entries dated **before the first bill are held back** from counsel by default. Counsel means the law firm. Held entries show struck through. The firm's portal leaves out a contact that names only another of the customer's jobs by its number. A contact that names no job goes as account history. The firm sees this tab as **Record of contact**.
+- **Their word** is one timeline of everything said. It holds contacts logged on the customer, payment promises and whether they were kept, collection calls, and the collections note. **Every entry goes to counsel** unless you hold it back. Counsel means the law firm. Held entries show struck through. The firm sees this tab as **Record of contact**.
 - **Evidence** shows field reports and clock sessions per job. It shows how many carry GPS, hours, first and last work day, and photo and Drive links.
 - **Fees & steps** shows what the office did, in order. It shows the exhibits the packet would carry, lettered A onward. Exhibits are the documents attached to the packet.
 
@@ -50,7 +50,11 @@ The Learning Experience has no signed contract on either job. With a sent Stripe
 
 ## Curate what the firm sees
 
-On **Their word**, every entry has a **to counsel** box. Entries dated before the first bill are held unless you tick them. Anything after goes unless you untick it. {{button:outline|Only after the first bill ↗}} clears every override. {{button:outline|Share all ↗}} sends everything. Held entries show struck through. They never reach the printed packet, and they never reach the firm.
+On **Their word**, every entry goes to counsel. Records can be shown in court either way, so your own lawyer should not be surprised by them.
+
+To keep one entry from the firm, press {{button:outline|Hold back…}} on its row. Type why, then press {{button:dark|Hold back}}. The button stays off until you type a reason. The reason shows under the entry, for the office only.
+
+Held entries show struck through. They never reach the printed packet, and they never reach the firm. The firm sees how many were held, never what or why. {{button:outline|Share}} on a held row sends it again. {{button:outline|Share all ↗}} clears every hold.
 
 ## Ask a dev to review
 

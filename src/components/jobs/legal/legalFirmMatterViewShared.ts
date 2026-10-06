@@ -14,6 +14,8 @@ export type FirmMatterLike = {
   noteToFirm: string
   contracts: ReadonlyArray<{ id: string; job_id: string; signedPdfUrl: string | null }>
   entries: ReadonlyArray<LegalEntryRow>
+  /** Entries the office held back (#85 item 29): the portal passes the function's count (held entries never arrive); the desk's preview reads its packet. */
+  heldCount?: number
 }
 
 export const portalCard: CSSProperties = { background: CARD, border: `1px solid ${HAIR}`, borderRadius: 6, padding: '14px 16px' }

@@ -21,7 +21,7 @@ export type FirmPacketPrintOptions = {
   preparedOn: string
   companyName: string
   firm: { name: string; handling: string }
-  matter: { stage: string; noteToFirm: string; releasedAt: string | null; entries: ReadonlyArray<LegalEntryRow> }
+  matter: { stage: string; noteToFirm: string; releasedAt: string | null; entries: ReadonlyArray<LegalEntryRow>; /** Entries the office held back (#85 item 29); 0 or absent says nothing. */ heldCount?: number }
   particulars: LegalPortalParticulars
 }
 
@@ -161,6 +161,7 @@ ${table(['Job', 'Sent', 'Method', 'Tracking', 'Deadline', 'Amount'], demandRows,
 <h3>Notices, affidavits and releases</h3>
 ${table(['', 'Paper', 'Went out', 'Claim', 'Months as printed', 'Jobs and shares', 'County · recording', 'Copy'], envelopeRows, 'No § 53.056 notice, affidavit or release recorded.')}
 <h2><span class="sec">C</span> Record of contact</h2>
+${opts.matter.heldCount ? `<p class="muted">${opts.matter.heldCount} entr${opts.matter.heldCount === 1 ? 'y' : 'ies'} held back by the office.</p>` : ''}
 <p class="muted">Promises: ${packet.theirWord.decided ? `kept ${packet.theirWord.kept} of ${packet.theirWord.decided}` : 'none decided yet'}${packet.theirWord.broken ? ` · ${packet.theirWord.broken} broken` : ''}</p>
 ${table(['Date', 'Kind', 'Job', 'What was said', 'Recorded by'], saidRows, 'No contact on record.')}
 <h2><span class="sec">D</span> Field evidence</h2>

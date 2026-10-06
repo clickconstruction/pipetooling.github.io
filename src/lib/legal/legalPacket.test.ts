@@ -219,7 +219,7 @@ describe('buildLegalPacket', () => {
     expect(sub.gaps.find((g) => g.key === 'lien:job-s')?.label).toMatch(/§ 53.056 notice due 2026-10-15/)
   })
 
-  it('their word reads each instant on the company calendar: a call or promise the evening before the first bill is held', () => {
+  it('their word reads each instant on the company calendar: a call or promise the evening before the first bill is that evening', () => {
     // The first bill is Apr 17 at noon. Both were logged at 7:30 pm CDT on Apr 16, which is Apr 17 in UTC.
     const packet = buildLegalPacket(
       baseInput(account, {
@@ -228,9 +228,10 @@ describe('buildLegalPacket', () => {
       }),
     )
     const byKey = new Map(packet.theirWord.timeline.map((e) => [e.key, e] as const))
-    expect(byKey.get('call:t0')).toEqual(expect.objectContaining({ ymd: '2026-04-16', sharedByDefault: false, shared: false }))
-    expect(byKey.get('promise:pr0')).toEqual(expect.objectContaining({ ymd: '2026-04-16', sharedByDefault: false, shared: false }))
-    // The same call at noon UTC on Apr 17 is the bill's own day, and goes.
+    // #85 item 29: before the first bill or after, both go to counsel.
+    expect(byKey.get('call:t0')).toEqual(expect.objectContaining({ ymd: '2026-04-16', sharedByDefault: true, shared: true }))
+    expect(byKey.get('promise:pr0')).toEqual(expect.objectContaining({ ymd: '2026-04-16', sharedByDefault: true, shared: true }))
+    // The same call at noon UTC on Apr 17 is the bill's own day.
     const noon = buildLegalPacket(baseInput(account, { chaseTouches: [{ id: 't0', customerId: 'tle', jobId: null, outcome: 'cant_reach', note: null, promisedYmd: null, snoozeDays: null, resolvedAt: null, createdAt: '2026-04-17T12:00:00Z', createdByName: 'Taunya' }] }))
     expect(noon.theirWord.timeline.find((e) => e.key === 'call:t0')).toEqual(expect.objectContaining({ ymd: '2026-04-17', shared: true }))
   })
@@ -252,7 +253,7 @@ describe('buildLegalPacket', () => {
     expect(packet.theirWord.timeline.find((e) => e.kind === 'note')?.ymd).toBe('2026-12-01')
   })
 
-  it('their word: one timeline, entries before the first bill held by default, overrides win both ways', () => {
+  it('their word: one timeline, every entry goes to counsel unless held; an old share override is a no-op (#85 item 29)', () => {
     const packet = buildLegalPacket(
       baseInput(account, {
         contactEntries: [
@@ -266,7 +267,7 @@ describe('buildLegalPacket', () => {
       }),
     )
     expect(packet.theirWord.timeline.map((e) => [e.key, e.sharedByDefault, e.shared])).toEqual([
-      ['contact:c1', false, true],
+      ['contact:c1', true, true],
       ['contact:c2', true, false],
       ['call:t1', true, true],
       ['promise:pr1', true, true],

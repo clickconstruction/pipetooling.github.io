@@ -13,9 +13,8 @@
  *   - the WORTH panel (balance after the firm's cut and costs, and the flags
  *     that argue against pursuing) — facts, no invented odds,
  *   - the § 53.056 LIEN CLOCK per job (notice + affidavit deadlines),
- *   - the "what was said" TIMELINE with the sharing default: entries dated
- *     before the first bill are held back from counsel unless the office
- *     overrides them one by one.
+ *   - the "what was said" TIMELINE with the sharing default (#85 item 29):
+ *     every entry goes to counsel unless the office holds it back, one by one.
  *
  * Pure: no React, no supabase. Inputs are row shapes the existing kernels type;
  * the loader hook fetches them. An "account" is the PAYER — the GC when one
@@ -58,8 +57,8 @@ type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['R
 export const LEGAL_DEFAULT_FEE = { contingencyPct: 0.33, filingCost: 350 } as const
 export type LegalFeeModel = { contingencyPct: number; filingCost: number }
 
-/** Entries dated before the first bill are held back from counsel by default; the office overrides per entry. */
-export const LEGAL_SHARE_DEFAULT = 'after_first_bill' as const
+/** Every entry goes to counsel by default (#85 item 29); the office holds one back per entry. */
+export const LEGAL_SHARE_DEFAULT = 'share_all' as const
 
 // ---------------------------------------------------------------------------
 // Payer grouping
@@ -289,7 +288,7 @@ export type LegalPacketInput = {
   threadNotes: ReadonlyArray<LegalThreadNoteLike>
   /** For naming who flagged Collections. */
   users: ReadonlyArray<{ id: string; name: string | null }>
-  /** Per-entry sharing overrides keyed by timeline entry key: true = hold back, false = share (PR 2 stores them). */
+  /** Per-entry holds keyed by timeline entry key: true = hold back from counsel (PR 2 stores them). Since #85 item 29 everything else goes; a `false` is a no-op. */
   holdOverrides?: Readonly<Record<string, boolean>>
   fee?: LegalFeeModel
 }
@@ -458,7 +457,7 @@ export type LegalSaidEntry = {
   jobLabel: string | null
   /** A promise the customer made themselves, on their statement page: no one in the office recorded it. */
   fromCustomer?: boolean
-  /** Shared under the default rule (on or after the first bill). */
+  /** Shared under the default rule — always true since #85 item 29 (share everything unless held); kept for the readers that compare. */
   sharedByDefault: boolean
   /** What actually goes to counsel after overrides. */
   shared: boolean
@@ -915,10 +914,10 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
   }
   const timeline: LegalSaidEntry[] = raw
     .map((e) => {
-      const sharedByDefault = firstBillYmd == null || e.ymd >= firstBillYmd
-      const override = holdOverrides[e.key]
-      const shared = override == null ? sharedByDefault : !override
-      return { ...e, sharedByDefault, shared }
+      // #85 item 29 (owner, 2026-10-05): everything goes to counsel unless the office holds it back.
+      // Only `true` holds; an old `false` (share a pre-bill entry) is the default now and changes nothing.
+      const shared = holdOverrides[e.key] !== true
+      return { ...e, sharedByDefault: true, shared }
     })
     .sort((a, b) => a.ymd.localeCompare(b.ymd) || a.key.localeCompare(b.key))
   const heldCount = timeline.filter((e) => !e.shared).length

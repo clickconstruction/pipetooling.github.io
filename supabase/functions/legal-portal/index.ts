@@ -32,10 +32,10 @@ import { LIEN_BOOK_COUNSEL_SELECT, shapeLienBookForCounsel } from '../_shared/le
  * Timeline book raw (`lienBook`) for counsel's grid.
  *
  * HELD ENTRIES NEVER LEAVE. The office's "to counsel" decisions are applied here,
- * under the service role, with the same rule the desk uses: an entry dated before
- * the account's first bill is held unless the matter's held_overrides says false;
- * one dated on or after it goes unless held_overrides says true. Timeline keys:
- * contact:<id> · promise:<id> · call:<id> · note:<job id>.
+ * under the service role, with the same rule the desk uses — since #85 item 29
+ * every entry goes unless the matter's held_overrides says true for its key, and
+ * the matter's heldCount says how many were held (the office's reasons stay home).
+ * Timeline keys: contact:<id> · promise:<id> · call:<id> · note:<job id>.
  *
  * No auth for the firm: the link is the capability. Same shape as customer-portal /
  * sub-portal. The office's preview by firm id is the one signed-in door.
@@ -82,8 +82,8 @@ function jsonResponse(body: unknown, status = 200): Response {
 
 /**
  * A `date` column's day (`paid_on`). An instant's day is `todayYmdInAppTz(new Date(iso))`, never its
- * first ten characters (the UTC date): the held rule compares those days with the desk's, which reads
- * them in APP_CALENDAR_TZ too (src/lib/legal/legalPacket.ts).
+ * first ten characters (the UTC date): the page dates the timeline the way the desk does, in
+ * APP_CALENDAR_TZ (src/lib/legal/legalPacket.ts).
  */
 function ymd(iso: unknown): string | null {
   const s = typeof iso === 'string' ? iso : ''
@@ -298,18 +298,24 @@ serve(async (req) => {
       const jobIdSet = new Set(jobIds)
       const customerId = (m.customer_id as string | null) ?? null
       const heldOverrides = (m.held_overrides && typeof m.held_overrides === 'object' ? (m.held_overrides as Record<string, unknown>) : {}) as Record<string, unknown>
-      const firstBill = invoices
-        .filter((i) => jobIdSet.has(i.job_id as string) && (i.status === 'billed' || i.status === 'paid'))
-        .map((i) => (i.billed_at ? todayYmdInAppTz(new Date(i.billed_at as string)) : i.sent_to_customer_at ? todayYmdInAppTz(new Date(i.sent_to_customer_at as string)) : null))
-        .filter((y): y is string => Boolean(y))
-        .sort()[0] ?? null
-      const goes = (key: string, entryYmd: string): boolean => {
-        const o = heldOverrides[key]
-        if (typeof o === 'boolean') return !o
-        return firstBill == null || entryYmd >= firstBill
+      // #85 item 29 (owner, 2026-10-05): everything goes to counsel unless the office held it back —
+      // `true` holds, nothing else does (an old `false` is the default now). The same rule as the desk's
+      // kernel (src/lib/legal/legalPacket.ts). The reasons (`_reasons`) never leave; the count does.
+      let heldCount = 0
+      const goes = (key: string): boolean => {
+        if (heldOverrides[key] === true) {
+          heldCount++
+          return false
+        }
+        return true
       }
+      // Every entry that arrives is marked shared, so a page still on the old pre-bill rule shows it too.
       const sharedOverrides: Record<string, boolean> = {}
-      for (const [k, v] of Object.entries(heldOverrides)) if (v === false) sharedOverrides[k] = false
+      const share = (key: string): boolean => {
+        if (!goes(key)) return false
+        sharedOverrides[key] = false
+        return true
+      }
 
       const mInvoices = invoices.filter((i) => jobIdSet.has(i.job_id as string))
       const mPayments = payments.filter((p) => jobIdSet.has(p.job_id as string))
@@ -325,19 +331,18 @@ serve(async (req) => {
         .filter((c) => customerId && c.customer_id === customerId)
         .filter((c) => contactGoesWithShare(c.details as string | null, contactNumbers, heldOverrides[`contact:${c.id as string}`]))
         .map((c) => ({ id: c.id as string, ymd: c.contact_date ? todayYmdInAppTz(new Date(c.contact_date as string)) : todayYmd, method: (c.contact_method as string | null) ?? null, by: userName.get(c.created_by as string) ?? null, text: ((c.details as string | null) ?? '').trim() }))
-        .filter((c) => goes(`contact:${c.id}`, c.ymd))
+        .filter((c) => share(`contact:${c.id}`))
       const mPromises = promises
         .filter((p) => jobIdSet.has(p.job_id as string))
         .map((p) => ({ id: p.id as string, jobId: p.job_id as string, customerId: (p.customer_id as string | null) ?? null, promisedYmd: p.promised_date as string, saidBy: (p.said_by as string | null) ?? null, heardByName: userName.get(p.heard_by as string) ?? null, channel: (p.channel as string | null) ?? null, source: p.source === 'customer' ? 'customer' : 'office', note: (p.note as string | null) ?? null, createdAt: p.created_at as string }))
-        .filter((p) => goes(`promise:${p.id}`, p.createdAt ? todayYmdInAppTz(new Date(p.createdAt)) : p.promisedYmd))
+        .filter((p) => share(`promise:${p.id}`))
       const mTouches = touches
         .filter((t) => t.job_id ? jobIdSet.has(t.job_id as string) : customerId != null && t.customer_id === customerId)
         .map((t) => ({ id: t.id as string, customerId: t.customer_id as string, jobId: (t.job_id as string | null) ?? null, outcome: t.outcome as string, note: (t.note as string | null) ?? null, promisedYmd: (t.promised_date as string | null) ?? null, snoozeDays: (t.snooze_days as number | null) ?? null, resolvedAt: (t.resolved_at as string | null) ?? null, createdAt: t.created_at as string, createdByName: userName.get(t.created_by as string) ?? 'the office' }))
-        .filter((t) => goes(`call:${t.id}`, t.createdAt ? todayYmdInAppTz(new Date(t.createdAt)) : todayYmd))
+        .filter((t) => share(`call:${t.id}`))
       // The collections note rides on the job; a held note is blanked, the job stays.
       for (const j of jobsWithDetails) {
-        const noteYmd = j.collections_at ? todayYmdInAppTz(new Date(j.collections_at as string)) : todayYmd
-        if (j.collections_note && !goes(`note:${j.id}`, noteYmd)) (j as Row).collections_note = null
+        if (j.collections_note && !share(`note:${j.id}`)) (j as Row).collections_note = null
       }
       // Promise records: the outcome inputs (billed at the promise, dated payments) — the page classifies.
       const promiseRecords = mPromises.map((p) => ({
@@ -359,7 +364,7 @@ serve(async (req) => {
         noteToFirm: m.note_to_firm,
         releasedAt: m.released_at ? todayYmdInAppTz(new Date(m.released_at as string)) : null,
         feesToStatement: Boolean(m.fees_to_statement),
-        heldCount: 0,
+        heldCount,
         sharedOverrides,
         jobs: jobsWithDetails,
         customer,
