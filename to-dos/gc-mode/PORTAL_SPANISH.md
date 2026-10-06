@@ -120,7 +120,7 @@ column headers are in one block at the end of `gcBuildingWords.ts`, for the nati
 
 ## For a native speaker to read
 
-Every Spanish string the trade's portal shows, 971 in all, drawn from the code on 2026-10-05.
+Every Spanish string the trade's portal shows, 977 in all, drawn from the code on 2026-10-05.
 They're grouped by screen, English on the left. Please mark anything that reads wrong, stiff or
 unclear, and write the better words beside it. The Portal lane makes the changes and passes the
 other lanes theirs. After any change to the words, redraw the tables below from the code with
@@ -753,6 +753,12 @@ they were written in. The portal does not translate them.
 | Your insurance certificate runs out {date}, before your work starts. Send a current one. | Su certificado de seguro vence el {date}, antes de que comience su trabajo. Envíe uno vigente. |
 | Your insurance certificate: we have none on file. | Su certificado de seguro: no tenemos ninguno. |
 | Your statement of work is not signed yet. | Su orden de trabajo aún no está firmada. |
+| Your master agreement is not signed yet. Sign it in your portal. | Su contrato maestro aún no está firmado. Fírmelo en su portal. |
+| Your master agreement is not sent yet. We will send it to sign. | Su contrato maestro aún no ha sido enviado. Se lo enviaremos para firmar. |
+| Your insurance certificate ran out {date}. Send a current one. | Su certificado de seguro venció el {date}. Envíe uno vigente. |
+| We have no W-9 from you yet. Fill it in and sign it in your portal. | Aún no tenemos su W-9. Llénelo y fírmelo en su portal. |
+| Your statement of work is not sent yet. We will send it to sign. | Su orden de trabajo aún no ha sido enviada. Se la enviaremos para firmar. |
+| The plans changed after you signed your statement of work. We will send a new one to sign. | Los planos cambiaron después de que firmó su orden de trabajo. Le enviaremos una nueva para firmar. |
 | Answer in your portal with the day your crew will be on site. | Responda en su portal con el día en que su cuadrilla estará en la obra. |
 | The schedule on {project} moved. Your work is now planned for these days. | El cronograma de {project} cambió. Su trabajo ahora está planeado para estos días. |
 | {work}: {to}, not {from}. | {work}: {to}, no {from}. |

@@ -51,6 +51,7 @@ import { WAIT_KINDS, waitKind, waitRows, waitWhoDefault, type WaitRow } from '..
 import { daysLostByCause, lostDaysByLine } from '../../lib/gcMode/gcDaysLost'
 import { lateNoticeTails } from '../../lib/gcMode/gcLateNotices'
 import { logChartGaps, logChartNotes } from '../../lib/gcMode/gcLogVsChart'
+import { uninsuredNotes } from '../../lib/gcMode/gcNotReady'
 import { ADDED_WHO, addedActivityProblem } from '../../lib/gcMode/gcAddedActivity'
 import { actualProblem, actualWords } from '../../lib/gcMode/gcActualDates'
 import { baselineDue, baselineHistory, baselineWords, nextBaselineName } from '../../lib/gcMode/gcBaseline'
@@ -109,6 +110,8 @@ export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps)
   // What this week's daily log says against the chart (G-60): read with the chart's holds, so a held bar is explained.
   const logGaps = useMemo(() => logChartGaps(state, project, holds), [state, project, holds])
   const logNotes = useMemo(() => logChartNotes(logGaps), [logGaps])
+  // A trade at work with its insurance run out (G-138): a red note on its bars under way, no stripes.
+  const uninsured = useMemo(() => uninsuredNotes(state, project), [state, project])
   // The card under the chart opens a bar in the editor above it, and brings the editor into view.
   const openFromCard = (lineId: string) => {
     setPicked(lineId)
@@ -254,6 +257,7 @@ export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps)
           lost={lost}
           lateSaid={lateSaid}
           logNotes={logNotes}
+          uninsured={uninsured}
           {...(printJob ? { print: printJob } : {})}
           earlier={earlier}
           items={m.items}

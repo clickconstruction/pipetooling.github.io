@@ -7,13 +7,14 @@
  * the email in their language. Sending writes the promise Follow up chases, as it does from there.
  */
 import type { GcProject, GcState } from '../../lib/gcMode/gcTypes'
-import { notReadyBlock } from '../../lib/gcMode/gcNotReady'
+import { notReadyBlock, uninsuredBlock } from '../../lib/gcMode/gcNotReady'
 import { useCompanyOpener } from './gcCompanyOpener'
 import { Btn } from './gcUi'
 
 export function GcNotReady({ state, project, lineId }: { state: GcState; project: GcProject; lineId: string }) {
   const opener = useCompanyOpener()
-  const block = notReadyBlock(state, project, lineId)
+  // Not ready to start (G-77), or under way with its insurance run out (G-138).
+  const block = notReadyBlock(state, project, lineId) ?? uninsuredBlock(state, project, lineId)
   if (!block) return null
   const partner = block.partner
   // The first paper with a button is the next step, in Get started's order; the rest are plain.

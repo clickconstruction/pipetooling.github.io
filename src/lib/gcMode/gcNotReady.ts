@@ -19,13 +19,17 @@ import { scheduleItems } from './gcBuildingSchedule'
 import { startChecklist, type StartTradeRow } from './gcStart'
 import { paperStep } from './gcPaperSend'
 import { INSURANCE_ASK_DAYS, openPromiseFor, tradePromiseWords } from './gcPromises'
-import { START_REMINDER_DAYS } from './gcStartReminders'
 import { daysUntil, shortDate, weekdayDate } from './gcWords'
-import { planLabel } from './gcLookups'
+import { partnerById, planLabel } from './gcLookups'
 import type { GanttHold } from './gcGantt'
 
-/** A bar starting within this many days with its papers not in is late: the trade's last start reminder has gone (G-114). */
-export const NOT_READY_LATE_DAYS: number = START_REMINDER_DAYS[1]
+/**
+ * A bar starting within this many days with its papers not in is late: the trade's last start
+ * reminder has gone (G-114's `START_REMINDER_DAYS`, the last of them). Its own number, not an import:
+ * the start reminders read this file's list of papers (G-139), and a constant read across that import
+ * cycle is undefined on load. A test holds the two equal.
+ */
+export const NOT_READY_LATE_DAYS = 3
 
 export type StartGapKind = 'award' | 'msa' | 'insurance' | 'w9' | 'sow'
 
@@ -231,4 +235,82 @@ export function notReadyBlock(state: GcState, project: GcProject, lineId: string
   })
   const last = !partner ? 'The bar stays held until the trade is awarded.' : bar.gaps.length === 1 ? 'The bar stays held until it is in.' : 'The bar stays held until they are in.'
   return { title, partner, lines, last, late: bar.late }
+}
+
+// ---------------------------------------------------------------------------------------------
+// A trade on site with insurance run out (G-138): its bars under way, said in red, no hold
+// ---------------------------------------------------------------------------------------------
+
+/** A bar under way, of a trade whose insurance ran out or was never on file (G-138): the work goes on uncovered. */
+export interface UninsuredBar {
+  lineId: string
+  pkg: TradePackage
+  partner: Partner
+  gap: StartGap
+}
+
+/**
+ * On a job being built, a hired trade's bars under way (work reported or a real start, not done)
+ * whose insurance ran out or was never on file. G-77's own insurance gap, read on the day itself:
+ * for work already going, "before it starts" no longer applies. Under way is the complement of
+ * G-77's not started, so a bar is never both: held there, a red note here.
+ */
+export function uninsuredBars(state: GcState, project: GcProject): UninsuredBar[] {
+  if (project.stage !== 'building' || !project.schedule) return []
+  const today = state.today
+  return scheduleItems(state, project).flatMap((item) => {
+    const a = item.activity
+    const pkg = item.pkg
+    if (!pkg || pkg.selfPerform || a.inspection || a.added) return []
+    if (item.actual >= 100 || (item.actual <= 0 && !a.actualStart)) return []
+    const partnerId = pkg.invites.find((i) => i.id === pkg.awardedInviteId)?.partnerId
+    const partner = partnerId ? partnerById(state, partnerId) : undefined
+    const gap = partner ? insuranceGap(partner, today, today) : null
+    return partner && gap ? [{ lineId: a.lineId, pkg, partner, gap }] : []
+  })
+}
+
+/**
+ * A company's insurance on a day when it is not current, in a sentence for its line on the morning
+ * list (G-118): "Their insurance ran out Tue Sep 15. Nothing they do for us is covered." G-77's gap,
+ * read on that day. Null: current.
+ */
+export function lapsedInsuranceWords(partner: Partner, day: string): string | null {
+  if (!insuranceGap(partner, day, day)) return null
+  return partner.coiExpires ? `Their insurance ran out ${weekdayDate(partner.coiExpires)}. Nothing they do for us is covered.` : 'No insurance on file. Nothing they do for us is covered.'
+}
+
+/** "Pecan Valley Electric's insurance ran out Tue Sep 15." · "Pecan Valley Electric has no insurance on file." */
+function uninsuredWords(bar: UninsuredBar): string {
+  const expires = bar.partner.coiExpires
+  return expires ? `${bar.partner.company}'s insurance ran out ${weekdayDate(expires)}.` : `${bar.partner.company} has no insurance on file.`
+}
+
+/** By bar: the red note beside it ("insurance ran out Sep 15") and the hover card's line. */
+export function uninsuredNotes(state: GcState, project: GcProject): Map<string, { note: string; words: string }> {
+  return new Map(
+    uninsuredBars(state, project).map((bar) => [
+      bar.lineId,
+      { note: bar.partner.coiExpires ? `insurance ran out ${shortDate(bar.partner.coiExpires)}` : 'no insurance on file', words: `${uninsuredWords(bar)} Nothing they do for us is covered.` },
+    ]),
+  )
+}
+
+/**
+ * The opened bar's block for a bar under way with its insurance run out (G-138): G-77's shape, the
+ * paper's own next step to ask for it, and in one line the guard that already stands, Approve on
+ * Draws locked until a current certificate is in, so nobody takes the note for the only one.
+ */
+export function uninsuredBlock(state: GcState, project: GcProject, lineId: string): NotReadyBlock | null {
+  const bar = uninsuredBars(state, project).find((b) => b.lineId === lineId)
+  if (!bar) return null
+  const step = bar.gap.doc ? paperStep(state, bar.partner, bar.gap.doc) : null
+  const promised = openPromiseFor(state, { partnerId: bar.partner.id, kind: 'insurance' })
+  return {
+    title: `${bar.partner.company} is working on this without current insurance.`,
+    partner: bar.partner,
+    lines: [{ ...bar.gap, verb: step?.verb ?? null, promise: promised ? tradePromiseWords(promised, state.today) : null, hint: null }],
+    last: 'On Draws, Approve stays locked until a current certificate is in.',
+    late: true,
+  }
 }

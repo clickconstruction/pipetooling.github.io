@@ -22,6 +22,7 @@ import { waitRows } from './gcScheduleWaits'
 import { partnerById } from './gcLookups'
 import { partnerReach } from './gcFollowUpSheet'
 import { weekdayDate } from './gcWords'
+import { lapsedInsuranceWords } from './gcNotReady'
 
 export interface MorningBar {
   lineId: string
@@ -51,6 +52,8 @@ export interface MorningCompany {
   logWords: string
   /** Expected, and not on the day's written log: called first. */
   missing: boolean
+  /** Its insurance not current that day, in red under its name (G-138): "Their insurance ran out Tue Sep 15. …". Null: current, or our own crew. */
+  insurance: string | null
 }
 
 export interface MorningList {
@@ -156,6 +159,7 @@ export function morningList(state: GcState, project: GcProject, holds: Map<strin
       onTheDay,
       logWords,
       missing: expected && onTheDay === 0,
+      insurance: partner ? lapsedInsuranceWords(partner, day) : null,
     })
   }
   const expected = companies.filter((c) => c.bars.some((b) => !b.held))
