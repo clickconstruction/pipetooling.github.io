@@ -15,7 +15,7 @@ Open [Materials, Held for suppliers](/materials?tab=job-accounts). Jobs where th
 - {{chip:yellow|Holding for suppliers}} is what you owe houses on jobs the customer has paid. It counts only up to what came in. This is the number to drive to zero.
 - {{chip:blue|Floating out of pocket}} is the reverse. You paid houses on jobs the customer has not paid yet.
 - {{chip:green|Settled}} counts jobs paid both ways.
-- {{chip:gray|Unallocated invoices}} are unpaid invoices tied to no job and no bid. They are missing from every job's numbers. Set each one's **Jobs** field on the Supply Houses tab.
+- {{chip:gray|Unallocated invoices}} are unpaid invoices tied to no job and no bid. They are missing from every job's numbers. Add each invoice's job under **Which job**, on the Supply Houses tab.
 - **On job accounts** shows once an invoice is flagged. It is owed money on a house's job account. If it goes unpaid, the house bills the property owner.
 
 The Holding tile also splits into *Your account* and *Job accounts*. That shows how much of the holding is truly yours.
@@ -35,19 +35,19 @@ The chip says where the job stands. It reads {{chip:yellow|Owe suppliers}}, {{ch
 
 ## Pick one group
 
-Press a chip above the list to see one group. The first four match the row chips. More chips show only when there is something to fix.
+Press a chip above the list to see one group. After **All**, the next three match the row chips. **Awaiting customer** also lists the Floating jobs. More chips show only when there is something to fix.
 
 - {{chip:gray|On job account}} lists jobs with owed money on a job account.
-- {{chip:yellow|Bought, no account}} lists jobs that bought from a house that expects a job account. No account is on record there.
+- {{chip:gray|Bought, no account}} lists jobs that bought from a house that expects a job account. No account is on record there.
 - {{chip:gray|Packet on file, unflagged}} lists jobs with a packet sent and unpaid invoices not flagged.
 - {{chip:gray|Flagged, no packet}} lists jobs with flagged invoices and no packet sent from the app.
-- {{chip:red|Paid, house can still notice}} lists the jobs to act on first. It is explained below.
+- {{chip:gray|Paid, house can still notice}} lists the jobs to act on first. It is explained below.
 
 ## Catch a paid job a house can still notice
 
 A supply house can send its own lien notice on a job. It can do that even after the customer paid you in full. The notice then lands on a customer who owes nothing.
 
-Press {{chip:red|Paid, house can still notice}}. The list shows each paid job where a house is still owed and can still act. The soonest date comes first. Each row names the house and the date in red.
+Press {{chip:gray|Paid, house can still notice}}. The list shows each paid job where a house is still owed and can still act. The soonest date comes first. Each row names the house and the date in red.
 
 Open a row. A red line at the top says which house and by when. Pay that house, or call it.
 

@@ -42,7 +42,7 @@ Press **Read the message** to see all of it first.
 
 When the house answers, type its figure under **Their balance**. Pick the day under **Their notice goes out**. Fill in only what the house told you.
 
-Type the person's name beside **Who said it**. Press {{button:blue|Save}}. Every answer you typed is saved at once.
+Type the person's name beside **Who said it**. Press {{button:blue|Save}}. With more than one answer typed, the button reads **Save N answers**. Every answer you typed is saved at once.
 
 A row you left blank is not changed.
 
@@ -60,5 +60,5 @@ Type 0 under **Their balance**. The row then says your books still show money ow
 
 - A click outside the sheet does not close it once you have typed something. Press **Close without saving** to leave.
 - A house with no billing contact on file says so. Add one under Supply houses.
-- To change one answer later, press **They told us…** on that house in the job's row.
+- To change one answer later, press **Change what they told us…** on that house in the job's row.
 - The rest of the tab is in [see which paid jobs still owe my supply houses](/help/see-which-paid-jobs-still-owe-supply-houses).
