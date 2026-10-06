@@ -10,6 +10,7 @@ import { daysUntil, money, shortDate, weekdayDate } from './gcWords'
 import { currentRev, partnerById, planLabel } from './gcLookups'
 import { followUps, packageIsOpen } from './gcFollowUp'
 import { datesAsksOpen } from './gcTellTrades'
+import { lateNoticeReasons } from './gcLateNotices'
 import { insuranceRenewals, paperAsks, tradePromisesOf, tradePromiseState, tradePromiseWords } from './gcPromises'
 import { architectSummary } from './gcCustomers'
 import { sentBackOpen, timesSentBack } from './gcBuilding'
@@ -27,6 +28,10 @@ export interface PersonReason {
    * the architect's `questions`; the customer's `bid`, `contract`, `co:<id>`, `pay:<number>`.
    */
   code?: string
+  /** The bar on the schedule it is about (the Gantt's call list, G-115): pressing the reason opens it. */
+  lineId?: string
+  /** Said so the caller knows, not theirs to do: a hold that waits on us or someone else (G-115). Not counted. */
+  aside?: boolean
 }
 
 export interface ProjectPerson {
@@ -177,6 +182,9 @@ export function projectPeople(state: GcState, project: GcProject): ProjectPeople
 
     // A company that asked for another day on a move (the Gantt, G-113; the owner's OK 2026-10-06): on Follow up until the bar moves again.
     for (const ask of datesAsksOpen(state, project)) trade(ask.partner, ask.trade, { text: ask.words, tone: ask.day && ask.day < state.today ? 'red' : 'amber', code: 'dates' })
+
+    // A company that told us from its portal it will be late (the Gantt, G-117): on Follow up until we take the day, push back, or the bar moves.
+    for (const late of lateNoticeReasons(state, project)) trade(late.partner, late.trade, { text: late.text, tone: late.tone, code: 'late' })
 
     // The architect: questions sent to them and not answered.
     const architect = state.customers.find((c) => c.id === project.architectId)

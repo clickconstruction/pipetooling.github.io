@@ -139,6 +139,20 @@ describe('Print or PDF: our team’s copy is the chart as the person has it (G-2
   })
 })
 
+describe('a trade’s own new day from its portal (G-117)', () => {
+  it('prints as the chart draws it, an amber dashed tail keyed in the chart’s words, on our team’s copy only', () => {
+    const { input } = fairOaks()
+    const tpo = input.bars.find((b) => b.item.label === 'TPO membrane')
+    if (!tpo) throw new Error('no TPO membrane on Fair Oaks D')
+    const lateSaid = new Map([[tpo.id, { finish: '2026-10-14', words: 'Summit Roofing says TPO membrane will finish Wed Oct 14, not Fri Oct 9: materials.' }]])
+    const team = ganttPrint({ ...input, lateSaid })
+    expect(team.key[0]).toContain('said')
+    expect(ganttPrintHtml(team)).toContain("a trade's new day from its portal, not on the dates yet")
+    expect(ganttPrint(input).key.flat()).not.toContain('said')
+    expect(ganttPrint({ ...input, lateSaid, for: 'customer' }).key.flat()).not.toContain('said')
+  })
+})
+
 describe('the scale and the dates to meet', () => {
   it('picks the scale from the page: every day for five weeks, Mondays for six months, the 1st and 15th for two years', () => {
     expect(printAxis('2026-09-21', 35, 300, 434, true)).toMatchObject({ scale: 'days', tint: true })

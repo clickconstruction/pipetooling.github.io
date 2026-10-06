@@ -524,6 +524,47 @@ the trade's company, the way the customer's view keeps company names out; and th
 derived, not stored, so a trade that shows up on the daily log stops getting them with nothing to
 clean up.
 
+## Phase 3, a trade says it will be late, as built (2026-10-06)
+
+G-117, built by Helper 4 from `to-dos/gc-mode/mockups/G-117.md`. The kernel is
+`gcLateNotices.ts`, tested, out of the barrel. The screens are `GcPortalLate.tsx`, under each bar
+of *Your schedule on this job*, and `GcLateNotices.tsx`, a card on the Schedule tab.
+
+- **The trade's side.** Each of the company's unfinished bars in its portal has **We will be
+  late**. Work under way gives the day it will finish. Work not started gives the day it can
+  start, and the bar moves whole. It picks one of the look-ahead's five reasons and writes a
+  sentence. The form shows the bars that wait on this one and would move: *Rooftop units by Cool
+  Breeze Mechanical would start Thu Oct 15, 3 days later.* After sending, the bar reads *You said
+  Wed Oct 14. Click has not answered yet.*, then *Click took your day*, or *Click needs Fri Oct
+  9.* with Click's words. In both languages.
+- **The office's side.** **Trades say they will be late**, between the chart and Changes to the
+  schedule, shows what the company said and when: *Sent today, 7 days before its finish.* It also
+  says what taking it does. **Take Wed Oct 14** opens Why it moved with the trade's reason picked
+  and its words filled in, and the move carries `lateNoticeId`. So Tell the trades, the customer's
+  What changed and Days lost read it like any move, and Undo opens the notice again. **Push back**
+  sends the office's words to the portal and the portal's home. The trade answers *We will make
+  Fri Oct 9* or sends a new day.
+- **Everywhere else.** The bar has an amber dashed tail to the trade's day until it is answered.
+  The company has a `late` reason on Follow up, red once the day passes unanswered. Needs you
+  says *Summit Roofing says it will be late*. The weekly walk lists the trade's word among the
+  bar's facts.
+- **Helper 3's read.** `openLateNotices(project)` returns the open notices with `id`,
+  `partnerId`, `lineId`, the day asked for, `started`, `reason`, `note` and `on`. G-115's By
+  company list reads it, so its shape stays.
+
+What the second look changed:
+
+- **The trade sees what its day does before it sends.** It sees the work waiting on it, never a
+  price or the job's finish.
+- **A push back gets an answer.** Without one, a push back ends in silence.
+- **The walk carries the trade's word as a fact.** The walk cannot keep a bar as drawn while its
+  trade says otherwise. The Take buttons in the walk and on Starting soon wait for a later round.
+
+Where a notice stands is worked out each time from the schedule. A standing move carrying it
+means taken. A newer notice means replaced. The bar's dates changing means moved. Otherwise it
+is the office's answer, or open. No state is copied, and the golden walk did not move: the made-up
+data has no notice.
+
 ## Phase 5, fit and finish, as built (2026-10-06)
 
 - **A phone view** (G-19): the chart's toolbar has *Chart | List*. A phone opens on List: the
@@ -540,6 +581,98 @@ clean up.
 What the second look changed: the List is not only for phones. It is the same rows a screen
 reader gets and the quickest read of "what is this stage doing", so it is a view anyone can
 switch to, and the phone only opens on it.
+
+## Phase 4, a trade not ready to start, as built (2026-10-06)
+
+G-77, by Helper 5 (the mock-up and plan: `mockups/G-77.md`). `gcNotReady.ts` (tested, out of the
+barrel), `GcNotReady.tsx`, and one line in the Schedule tab's holds.
+
+- **A held bar like any other.** On a job being built, a trade's bar that has not started is held
+  when its trade is not ready: the same amber stripes, the *held* pill, and the note after *waits
+  on*: "waits on current insurance, theirs ran out Sep 15", or several papers by name, "waits on a
+  signed master agreement and a signed statement of work". It turns red with ", late" once the bar
+  starts within 3 days or its day passed, the day the trade's last start reminder goes. A bar
+  already held keeps that hold after the papers: "waits on current insurance and submittal
+  28 31 11-01". The Held filter, the group's chip and the walk count it like any hold (its kind is
+  `paperwork`).
+- **Ready is Get started's five steps**: awarded, master agreement, insurance, W-9 and statement of
+  work, a statement signed on older plans counting as not in. Insurance is read on the bar's own
+  start: none on file, run out, or running out before it starts once the renewal ask is due (30
+  days). Further out the usual renewal has time, and a bar striped months early would be noise.
+- **The opened activity says what to do.** First under its name: "Pecan Valley Electric is not
+  ready to start this on Mon Oct 19.", each paper in Get started's words ("Insurance ran out Tue
+  Sep 15."), a day they gave in Follow up's words, and the paper's own next step: *Ask for it*,
+  *Remind them*, *Send to sign*. The button opens the company's window on that paper's send
+  (`send: true` on `openPartner`, as `openCustomer` has), so the ask goes with a day it is due and
+  Follow up chases it. Where nothing can be sent from there, Get started's sentence: an award, a
+  statement on older plans, a drafted statement waiting on the master agreement ("It goes once the
+  papers above are in.").
+- **Where it does not show**: while buying out (the whole job is not ready, and Get started is the
+  place), on running bars (their trade is on site), on our own crew, inspections and added
+  activities, in the customer's and the architect's views (they pass no holds), and on the board
+  row, the ring card, Follow up and Needs you (each would move the golden walk).
+- On Fair Oaks D today: Site lighting and Fire alarm, Pecan Valley's two bars not started, its
+  insurance run out Sep 15. The Held filter reads 6 where it read 5.
+
+What the second look changed:
+
+- **One press to the send, not two.** The button names the paper's own next step and opens its
+  send, rather than the company at the paper.
+- **Two left for the owner**, as G-138 and G-139: a trade on site whose insurance ran out saying so
+  on its running bars, and the trade's start reminder naming every paper its bar waits on. A test
+  holds that the reminder never names a paper the bar does not.
+
+## Phase 3, By company as a call list, as built (2026-10-06)
+
+G-115, Helper 3 (mock-up `mockups/G-115.md`). `gcCallList.ts` (tested, out of the barrel),
+`GcCallList.tsx`, an optional `callList` on `GcGantt.tsx`, and the Follow up sheet's call form.
+
+- **By company opens the call list** under the chart's toolbar, in Chart and List, on a job being
+  built: *5 to call about the schedule · 2 late*, then one row per person, late first, with every
+  reason under the name. The rows are Follow up's own (`PeopleRows`): **Call** dials and opens the
+  Follow up sheet on *What did they say?*, **Follow up** opens it on a draft, **Work the list** walks
+  them all. **Hide** folds it to its first line.
+- **Who is on it.** A hired trade, for an inspection that failed on its work, a bar late, due today
+  or behind, new dates told and not answered or answered with another day, its own word from its
+  portal that a bar will be late (G-117: *Summit Roofing says TPO membrane will finish Wed Oct 14,
+  not Fri Oct 9: materials.*), and a first day on site within two weeks nobody confirmed. Whoever
+  owes what holds a bar: the trade for its own submittal, its supplier's delivery or its papers
+  (G-77: *Fire alarm waits on current insurance.*), the architect for a submittal or an RFI with
+  them, the customer for a decision. Every hold on a bar counts, not only the one the chart's pill
+  shows: a submittal, an RFI and a wait come from their own records, any other kind from the chart's
+  map. A kind it does not know is the trade's own, worded as the chart words it. A hold on us, the
+  city or the utility is a muted aside under the trade, never a row. Then everything else they owe
+  on this job (`projectPeople`) is merged under the name, and Follow up's copy of a late notice is
+  said once.
+- **A line about a bar opens it** in the editor above the chart, and the page comes to it. The opened
+  bar has its company at its foot: their word on its newest dates, **Call Marcus** and **Follow up**.
+  That is picture 2 of `gantt-mockup.html`.
+- **The call's answer lands where it belongs.** The call form asks *On the new dates*: *No answer
+  yet*, *They work*, *They need another day*. That goes through `tradeAnswerDates`, as the portal
+  answers. A day given on a delivery or a decision is its new expected day, with who said so. A day
+  on their submittal or their start becomes their word (`recordPromise`), which Follow up chases and
+  Building keeps. No new action type: the golden test did not move.
+- **The draft names each bar** with its trade, in English and Spanish: *your roofing TPO membrane on
+  Fair Oaks Shops, Building D. It is 50% done, and our plan had 100% by today. When will it be done?*
+
+What the second look changed:
+
+- **Held work goes to whoever holds it.** A submittal with the architect is a call to the architect.
+  The trade keeps it as an aside, so the caller can answer if asked.
+- **A decision not holding work yet makes no row.** The rule is the chart's: a wait holds only when it
+  comes after the work starts. So the customer is not on the fixture's list, and the count is five.
+- **A company that asked for another day is on the list for it.** Follow up already counts it, and
+  the office owes it an answer.
+- **A line's name reads with its trade inside a message.** Alone, *your Erection* read badly.
+- **A hold the chart folds into G-77's paperwork still reaches its own owner.** The pill on Fire
+  alarm reads *current insurance and submittal 28 31 11-01*. On the list, the trade is asked for its
+  insurance, and the architect for the submittal.
+
+Not done, on purpose: these reasons are not counted on the board row, Follow up's badge or Needs you.
+That moves the golden walk's people counts, so it is the owner's call. A day given on a call about
+late work under way is only logged: whether the office's call writes G-117's late notice on the
+trade's behalf is the lead's next call. The nudge for several things still ends *Could you send them
+this week?*, which is the sheet's own sentence. *A full note* reads right.
 
 ## Phase 3, print and PDF, as built (2026-10-06)
 

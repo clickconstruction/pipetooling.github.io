@@ -7,6 +7,7 @@
  */
 import { companiesToTell, datesMessage, datesNotices } from './gcTellTrades'
 import { startReminders } from './gcStartReminders'
+import { lateDayChanged, lateNoticesToAnswer } from './gcLateNotices'
 import type { BackCharge, PartnerPerson, PortalMailGroup, BidAlternate, ChangeOrder, ChangeOrderReason, Draw, GcProject, GcState, Invite, LookAheadMark, Partner, PlanQuestion, PlanSet, ProjectContact, PromiseKind, QuoteExclusion, ScopeItem, Sow, SubBid, TheirSovLine, TradeChangeRequest, TradePackage, TradePromise } from './gcTypes'
 import { daysUntil, money } from './gcWords'
 import { currentRev, partnerById } from './gcLookups'
@@ -623,6 +624,11 @@ export function portalTodos(state: GcState, partnerId: string, asks: PortalAsk[]
   // Your dates moved, not answered yet (the Gantt, Phase 3).
   for (const n of datesNotices(state, partner.id, lang)) {
     todos.push({ key: `dates:${n.move.id}`, projectId: n.project.id, text: pt(lang, 'todoDates', { project: n.project.name }), tone: 'amber', by: null, anchor: 'dates' })
+  }
+  // The office pushed back on a day the company said it would be late (the Gantt, G-117): say it will make it, or give another.
+  for (const n of lateNoticesToAnswer(state, partner.id)) {
+    const day = lateDayChanged(n.notice)
+    todos.push({ key: `late:${n.project.id}:${n.notice.id}`, projectId: n.project.id, text: pt(lang, 'todoLatePushed', { gc, date: pWeekday(lang, day), work: n.work, project: n.project.name }), tone: day < today ? 'red' : 'amber', by: day, anchor: 'schedule' })
   }
   // A date the company gave us that came due or passed with nothing yet (question 8).
   for (const row of portalPromises(state, partnerId, lang)) {

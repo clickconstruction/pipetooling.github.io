@@ -72,6 +72,8 @@ export interface GanttPrintInput {
   job: GanttPrintJob
   /** The chart's own note beside a bar, so paper and screen say the same thing. */
   noteOf?: (bar: GanttBar) => { words: string; color: string } | null
+  /** A trade's own new finish from its portal, not on the dates yet (G-117): the chart's amber dashed tail. */
+  lateSaid?: ReadonlyMap<string, { finish: string; words: string }>
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -117,7 +119,7 @@ export interface GanttPrintAxis {
 }
 
 /** The marks the key explains, in the key's order. */
-export type GanttPrintMark = 'done' | 'underway' | 'notStarted' | 'tight' | 'late' | 'held' | 'inspection' | 'coTail' | 'wait' | 'baseline' | 'actual' | 'group' | 'stage' | 'milestone' | 'link' | 'weekend' | 'holiday' | 'lost' | 'cut' | 'today'
+export type GanttPrintMark = 'done' | 'underway' | 'notStarted' | 'tight' | 'late' | 'held' | 'inspection' | 'coTail' | 'said' | 'wait' | 'baseline' | 'actual' | 'group' | 'stage' | 'milestone' | 'link' | 'weekend' | 'holiday' | 'lost' | 'cut' | 'today'
 
 /** A date the job must meet, placed on its line so no two labels run together. */
 export interface GanttPrintMilestone {
@@ -164,6 +166,8 @@ export interface GanttPrint {
   links: GanttPrintLink[]
   waitLinks: { wait: string; to: string; late: boolean; page: number }[]
   lost: ReadonlyMap<string, LostDay[]>
+  /** A trade's own new finish from its portal (G-117), on our team's copy only. */
+  lateSaid: ReadonlyMap<string, { finish: string; words: string }>
   /** The marks each page uses. */
   key: GanttPrintMark[][]
   /** "Every day is a working day, weekends and holidays too." Our team's copy only. */
@@ -518,7 +522,7 @@ function listsHeight(lists: { title: string; lines: string[] }[]): number {
   return lists.reduce((h, l) => h + LIST_TITLE_H + l.lines.reduce((s, line) => s + LIST_LINE_H * Math.max(1, Math.ceil((line.length * LIST_CHAR_PT) / PRINT_PAGE.width)), 0), 0)
 }
 
-function marksOf(rows: GanttPrintRow[], print: Pick<GanttPrint, 'copy' | 'axis' | 'lost' | 'links' | 'waitLinks'> & { milestones: readonly unknown[] }, page: number): GanttPrintMark[] {
+function marksOf(rows: GanttPrintRow[], print: Pick<GanttPrint, 'copy' | 'axis' | 'lost' | 'lateSaid' | 'links' | 'waitLinks'> & { milestones: readonly unknown[] }, page: number): GanttPrintMark[] {
   const used = new Set<GanttPrintMark>()
   for (const r of rows) {
     if (r.kind === 'group') used.add('group')
@@ -537,6 +541,8 @@ function marksOf(rows: GanttPrintRow[], print: Pick<GanttPrint, 'copy' | 'axis' 
     if (!r.plain && b.moved && b.status !== 'done') used.add('baseline')
     if (!r.plain && a.actualStart) used.add('actual')
     if (!r.plain && b.coTail) used.add('coTail')
+    const said = r.plain ? undefined : print.lateSaid.get(b.id)
+    if (said && said.finish > a.finish) used.add('said')
     if (!r.plain && (print.lost.get(b.id) ?? []).length > 0) used.add('lost')
     if (print.axis.window && (a.start < print.axis.first || a.finish > addDays(print.axis.first, print.axis.days - 1))) used.add('cut')
   }
@@ -545,7 +551,7 @@ function marksOf(rows: GanttPrintRow[], print: Pick<GanttPrint, 'copy' | 'axis' 
   if (print.axis.tint && print.axis.marked.some((d) => d.weekend)) used.add('weekend')
   if (print.axis.marked.some((d) => d.holiday)) used.add('holiday')
   used.add('today')
-  const order: GanttPrintMark[] = ['done', 'underway', 'notStarted', 'tight', 'late', 'held', 'inspection', 'coTail', 'wait', 'baseline', 'actual', 'group', 'stage', 'milestone', 'link', 'weekend', 'holiday', 'lost', 'cut', 'today']
+  const order: GanttPrintMark[] = ['done', 'underway', 'notStarted', 'tight', 'late', 'held', 'inspection', 'coTail', 'said', 'wait', 'baseline', 'actual', 'group', 'stage', 'milestone', 'link', 'weekend', 'holiday', 'lost', 'cut', 'today']
   return order.filter((m) => used.has(m))
 }
 
@@ -598,7 +604,8 @@ export function ganttPrint(input: GanttPrintInput): GanttPrint {
   const lists = copy === 'team' ? [] : [{ title: 'What changed this week', lines: picture.changes.length > 0 ? picture.changes : [CUSTOMER_NOTHING_MOVED] }, ...(picture.asks.length > 0 ? [{ title: 'What we need from you', lines: picture.asks }] : [])]
 
   // The key's height: every page keeps room for the key the whole print would need.
-  const keyMarks = marksOf(rows, { copy, axis, milestones, lost: input.lost, links: input.links && copy === 'team' ? [{ from: '', to: '', critical: false, gap: 0, page: 0 }] : [], waitLinks: [] }, 0)
+  const lateSaid: ReadonlyMap<string, { finish: string; words: string }> = copy === 'team' ? (input.lateSaid ?? new Map()) : new Map()
+  const keyMarks = marksOf(rows, { copy, axis, milestones, lost: input.lost, lateSaid, links: input.links && copy === 'team' ? [{ from: '', to: '', critical: false, gap: 0, page: 0 }] : [], waitLinks: [] }, 0)
   const keyLines = Math.max(1, Math.ceil(keyMarks.reduce((w, m) => w + KEY_ENTRY_PT + keyWords(m, today).length * KEY_CHAR_PT, 0) / PRINT_PAGE.width))
   const keyH = keyLines * KEY_LINE_H + (copy === 'team' ? KEY_LINE_H : 0) + FOOT_H
   const ms = placeMilestones(axis.window ? milestones.filter((m) => inWindow(m.due)) : milestones, axis, PRINT_PAGE.width)
@@ -669,6 +676,7 @@ export function ganttPrint(input: GanttPrintInput): GanttPrint {
     links,
     waitLinks,
     lost: copy === 'team' ? input.lost : new Map(),
+    lateSaid,
     key: [],
     everyDay: copy === 'team' ? 'Every day is a working day, weekends and holidays too.' : null,
     lists,
@@ -779,6 +787,7 @@ const KEY_WORDS: Record<GanttPrintMark, string> = {
   held: 'held, it waits on something',
   inspection: 'an inspection',
   coTail: 'days a signed change order adds, not on the dates yet',
+  said: "a trade's new day from its portal, not on the dates yet",
   wait: 'what the work waits on, from the day asked for to the day expected',
   baseline: 'where it sat in the plan at Start',
   actual: 'the days it really ran',
@@ -817,6 +826,8 @@ function keySwatch(mark: GanttPrintMark): string {
         return box(P.violetFill, P.violet, 0.9, '2 1.2')
       case 'coTail':
         return box('url(#gp-tail)', P.violet, 0.9, '2 1.2')
+      case 'said':
+        return box(P.white, P.amber, 0.9, '2 1.2')
       case 'wait':
         return `<rect x="0.5" y="2.5" width="15" height="4" rx="2" fill="${P.violetFill}" stroke="${P.violet}" stroke-width="0.9"/>`
       case 'baseline':
@@ -1008,12 +1019,16 @@ function chartSvg(p: GanttPrint, rows: GanttPrintRow[], page: number): string {
       for (const d of r.plain ? [] : (p.lost.get(b.id) ?? [])) lane.push(rect(x(d.date), by, Math.max(1.2, dayW), bh, 'url(#gp-lost)'))
       const tailW = !r.plain && b.coTail ? b.coTail.days * dayW : 0
       if (tailW > 0) lane.push(`<rect x="${n2(bx + bw)}" y="${n2(by)}" width="${n2(tailW)}" height="${n2(bh)}" fill="url(#gp-tail)" stroke="${P.violet}" stroke-width="0.8" stroke-dasharray="2 1.2"/>`)
+      // A trade's own new finish from its portal (G-117): an amber dashed tail out to it, as on the chart.
+      const said = r.plain ? undefined : p.lateSaid.get(b.id)
+      const saidW = said && said.finish > a.finish ? daysBetween(a.finish, said.finish) * dayW : 0
+      if (saidW > 0) lane.push(`<rect x="${n2(bx + bw)}" y="${n2(by)}" width="${n2(saidW)}" height="${n2(bh)}" fill="none" stroke="${P.amber}" stroke-width="0.9" stroke-dasharray="2 1.2"/>`)
       if (!r.plain && a.notBefore) lane.push(vline(x(a.notBefore), y + 2, y + h - 2, P.violet, 1))
       if (!r.plain && a.mustFinishBy) lane.push(vline(x(a.mustFinishBy) + dayW, y + 2, y + h - 2, a.finish > a.mustFinishBy ? P.red : P.violet, 1))
       if (axis.window && a.start < axis.first) lane.push(`<path d="M${n2(axis.x0 + 1)} ${n2(y + h / 2)} l3.5 -3 v6 Z" fill="${P.soft}"/>`)
       if (axis.window && a.finish > lastDay) lane.push(`<path d="M${n2(W - 1)} ${n2(y + h / 2)} l-3.5 -3 v6 Z" fill="${P.soft}"/>`)
       if (r.note) {
-        const after = Math.min(bx + bw + tailW, W) + 4
+        const after = Math.min(bx + bw + Math.max(tailW, saidW), W) + 4
         const room = W - after
         const words = r.note.words
         if (textWidth(words, 6) <= room || bx - axis.x0 < textWidth(words, 6) + 4) lane.push(text(after, y + rowY(6), fit(words, Math.max(room, 30), 6), { size: 6, fill: r.note.ink }))

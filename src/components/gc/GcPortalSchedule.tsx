@@ -3,16 +3,18 @@
  * `gantt-mockup.html`, picture 5). Its bars on the job, the work before it and the work waiting on
  * it, on the portal's paper, in its language. Other companies' work shows by name, never by price.
  */
-import type { GcProject, GcState, Partner } from '../../lib/gcMode/gcModel'
+import type { Dispatch } from 'react'
+import type { GcAction, GcProject, GcState, Partner } from '../../lib/gcMode/gcModel'
 import { daysBetween } from '../../lib/gcMode/gcModel'
 import { pDate } from '../../lib/gcMode/gcPortalI18n'
 import { portalSchedule, portalScheduleX, type PortalScheduleBar } from '../../lib/gcMode/gcPortalSchedule'
 import { PortalBlock } from './GcPortalUi'
 import { usePortalLang } from './gcPortalLang'
+import { GcPortalLate } from './GcPortalLate'
 
 const C = { blue: '#3b82f6', green: '#16a34a' }
 
-export function GcPortalSchedule({ state, project, partner }: { state: GcState; project: GcProject; partner: Partner }) {
+export function GcPortalSchedule({ state, project, partner, dispatch }: { state: GcState; project: GcProject; partner: Partner; dispatch?: Dispatch<GcAction> }) {
   const { lang, t } = usePortalLang()
   if (project.stage !== 'building') return null
   const s = portalSchedule(state, partner.id, project)
@@ -40,6 +42,8 @@ export function GcPortalSchedule({ state, project, partner }: { state: GcState; 
             {b.pct > 0 && !done && <span style={{ display: 'block', height: '100%', width: `${Math.min(100, b.pct)}%`, background: b.mine ? C.blue : 'var(--border-strong)', opacity: 0.75 }} />}
           </span>
         </div>
+        {/* We will be late (G-117): the company's own word on its own bar, the whole row wide. */}
+        {b.mine && dispatch && <GcPortalLate state={state} project={project} partner={partner} lineId={b.lineId} dispatch={dispatch} />}
       </div>
     )
   }

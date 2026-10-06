@@ -77,6 +77,9 @@ export function followItemMailGroup(state: GcState, item: FollowItem): PortalMai
       return 'pay'
     case 'promise':
       return item.promise ? PROMISE_GROUP[item.promise.kind] : 'job'
+    // A reason from the job's schedule (the Gantt's call list, G-115) goes with the job's emails.
+    case 'schedule':
+      return 'job'
     default:
       return null
   }
