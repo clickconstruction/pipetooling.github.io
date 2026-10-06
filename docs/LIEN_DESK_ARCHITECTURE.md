@@ -315,7 +315,7 @@ Verification per step: `npm run typecheck && npm run lint && npm test`, behavior
 | `LienOwnerCallDialog` | 183 | 2214–2221, 2225–2234 (practice) | none (desk smoke 952) |
 | `LienWordRecordRow` | 72 | 1702, 1786 | none (desk smoke) |
 | `PropertyKindSwitch` | 52 | 1222 | none (desk smoke 478) |
-| `LienRulesDoor` | 38 | 1998 | none |
+| `LienRulesDoor` (since v2.4634 a button that opens `LienRulesModal`, 150 — the rules guide over the desk at the surface's cite, with a find box over `lib/helpGuideFind.ts`) | 48 | 1998 | render 2 + 3 dom |
 | `LienJobSuppliersCard` / `LienSupplierMarkLine` (`LienJobSuppliers.tsx`, v2.4404) | 350 | region E under the gates; every list row | desk smoke (5, 1105–1188) |
 | hooks `useLienDeskData` / `useLienTimelineBook` / `useNoticePayPage` | 374 / 112 / 55 | parent 1495 / 352 / 644 | none / render 2 / render 2 |
 

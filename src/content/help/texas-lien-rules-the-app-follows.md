@@ -10,7 +10,7 @@ Every lien deadline and every line in a demand letter comes from a rule in Texas
 
 Each rule has three parts. **What it says** is the rule. **What the app does** is where you see it on screen. **Cite** is the law it comes from.
 
-{{button:outline|§ Rules}} on the Lien desk opens this page at the rule for what is on screen. The Lien window has the same button. In a demand letter, the section numbers beside the interest switches open their rules here.
+Press {{button:outline|§ Rules}} on the Lien desk. These rules open in a window over the desk, at the rule for what is on screen. A find box at the top narrows the rules to what you type. Enter walks the matches and Esc closes the window. The Lien window has the same button. In a demand letter, the section numbers beside the interest switches open their rules here.
 
 New to liens? Start with [understand how liens work and which lien tool to use](/help/understand-how-liens-work-and-which-lien-tool-to-use).
 
