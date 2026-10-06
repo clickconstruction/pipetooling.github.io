@@ -26,7 +26,8 @@ import { recordedByOf } from '../../../supabase/functions/_shared/legalPortalAct
  * these.
  */
 
-export type LegalAskFlavor = 'question' | 'signoff'
+/** `settlement` (#85 item 20) is the firm's: a settled step under the office's floor, which the office signs off. */
+export type LegalAskFlavor = 'question' | 'signoff' | 'settlement'
 
 export type LegalAskMeta = { flavor: LegalAskFlavor; jobId: string | null; jobLabel: string; askedBy: string }
 
@@ -37,7 +38,7 @@ function isRecord(v: unknown): v is Record<string, unknown> {
 export function askMetaOf(meta: unknown): LegalAskMeta {
   const m = isRecord(meta) ? meta : {}
   return {
-    flavor: m.flavor === 'signoff' ? 'signoff' : 'question',
+    flavor: m.flavor === 'signoff' ? 'signoff' : m.flavor === 'settlement' ? 'settlement' : 'question',
     jobId: typeof m.jobId === 'string' && m.jobId ? m.jobId : null,
     jobLabel: typeof m.jobLabel === 'string' ? m.jobLabel : '',
     askedBy: typeof m.askedBy === 'string' ? m.askedBy : '',
@@ -134,6 +135,7 @@ export function legalEntryKindWords(e: Pick<LegalEntryRow, 'kind' | 'via_portal'
     const m = answerMetaOf(e.meta)
     return m.signedOff === true ? 'answer · signed off' : m.signedOff === false ? 'answer · not yet' : 'answer'
   }
+  if (e.kind === 'question' && e.via_portal && askMetaOf(e.meta).flavor === 'settlement') return 'settlement ask'
   if (stepProposalOf(e)) return 'step · asks to move the stage back'
   return e.kind.replace('_', ' ')
 }
@@ -237,7 +239,7 @@ export function buildLegalConversation(entries: ReadonlyArray<LegalEntryRow>): L
   const threads = questions.map((q): LegalThread => {
     const answers = answersFor.get(q.id) ?? []
     if (q.via_portal) {
-      return { question: q, askedBy: 'firm', askerName: '', flavor: 'question', jobLabel: '', answers, state: answers.length ? 'answered' : q.acknowledged_at ? 'seen' : 'open' }
+      return { question: q, askedBy: 'firm', askerName: '', flavor: askMetaOf(q.meta).flavor === 'settlement' ? 'settlement' : 'question', jobLabel: '', answers, state: answers.length ? 'answered' : q.acknowledged_at ? 'seen' : 'open' }
     }
     const meta = askMetaOf(q.meta)
     return { question: q, askedBy: 'office', askerName: meta.askedBy, flavor: meta.flavor, jobLabel: meta.jobLabel, answers, state: answers.length ? 'answered' : q.acknowledged_at ? 'withdrawn' : 'open' }
@@ -258,7 +260,8 @@ export function conversationWho(row: LegalConversationRow, reader: 'firm' | 'off
   // #85 item 18: a firm act names the person the firm picked.
   const by = fromFirm ? recordedByOf(row.entry.meta) : null
   if (row.isAnswer) return fromFirm ? (reader === 'firm' ? (by?.name ?? 'You') : by ? `${by.name} · firm` : 'The firm') : 'The office'
-  if (fromFirm) return reader === 'firm' ? (by ? `${by.name} asked` : 'You asked') : by ? `${by.name} at the firm asked` : 'The firm asked'
+  const settle = row.thread.flavor === 'settlement' ? ` to settle at ${settlementAmountWords(row.entry)}` : ''
+  if (fromFirm) return `${reader === 'firm' ? (by ? `${by.name} asked` : 'You asked') : by ? `${by.name} at the firm asked` : 'The firm asked'}${settle}`
   const asker = row.thread.askerName || (reader === 'firm' ? 'The office' : 'We')
   const job = row.thread.flavor === 'signoff' && row.thread.jobLabel ? ` · ${row.thread.jobLabel}` : ''
   return `${asker} ${row.thread.flavor === 'signoff' ? 'asked for a sign-off' : 'asked'}${job}`
@@ -278,6 +281,11 @@ export function conversationStateWords(row: LegalConversationRow, reader: 'firm'
   const last = t.answers[t.answers.length - 1]
   const on = last ? formatDay(last.occurred_on) : ''
   if (t.askedBy === 'firm') {
+    if (t.flavor === 'settlement' && t.state === 'answered') {
+      const yes = answerMetaOf(last?.meta).signedOff
+      if (yes === true) return { text: `signed off ${on}`, tone: 'ok' }
+      if (yes === false) return { text: `not yet · ${on}`, tone: 'stop' }
+    }
     if (t.state === 'answered') return { text: `answered ${on}`, tone: 'ok' }
     if (t.state === 'seen') return { text: 'seen', tone: 'ok' }
     return { text: reader === 'firm' ? 'waiting on the office' : 'waiting on you', tone: 'warn' }
@@ -307,4 +315,11 @@ export function entryRecordedByWords(e: Pick<LegalEntryRow, 'via_portal' | 'meta
     return reader === 'firm' ? 'your firm' : 'the firm'
   }
   return reader === 'firm' ? 'the office' : (userNameOf(e.created_by) ?? 'the office')
+}
+
+/** The proposed amount on a firm's settlement ask (`meta.proposedAmount`, else the entry's amount), as dollars. */
+export function settlementAmountWords(e: Pick<LegalEntryRow, 'amount' | 'meta'>): string {
+  const m = isRecord(e.meta) ? e.meta : {}
+  const raw = typeof m.proposedAmount === 'number' ? m.proposedAmount : Number(e.amount ?? 0)
+  return `$${(Number.isFinite(raw) ? raw : 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }

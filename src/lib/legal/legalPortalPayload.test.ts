@@ -43,6 +43,9 @@ describe('parseLegalPortalPayload', () => {
     // #85 item 29: the count of entries the office held back, as the function counted them; 0 from an older function.
     expect(p?.matters[0]?.heldCount).toBe(0)
     expect(parseLegalPortalPayload({ firm, matters: [{ ...matterRaw(), heldCount: 2 }] })?.matters[0]?.heldCount).toBe(2)
+    // #85 item 20: the settlement floor; none from an older function.
+    expect(p?.matters[0]?.settlementFloor).toBeNull()
+    expect(parseLegalPortalPayload({ firm, matters: [{ ...matterRaw(), settlementFloor: { amount: null, pct: 70 } }] })?.matters[0]?.settlementFloor).toEqual({ amount: null, pct: 70 })
     expect(p?.particulars.entity).toBe('Click, LLC')
     expect(portalFeeModel(p!)).toEqual({ contingencyPct: 0.3, filingCost: 400 })
   })

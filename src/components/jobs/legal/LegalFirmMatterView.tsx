@@ -7,6 +7,7 @@ import { contingencyEntries, firmDemand, firmFeeEntries, legalRunningLedger } fr
 import { conversationRows, conversationStateWords, conversationWho, entryRecordedByWords, isConversationEntry } from '../../../lib/legal/legalAsks'
 import { propertyKindCell, propertySourceNote } from '../../../lib/legal/legalProperty'
 import LienTimelineStrip from '../LienTimelineStrip'
+import { settlementFloorWords } from '../../../../supabase/functions/_shared/legalSettlement'
 
 /**
  * The firm's view of one matter (Legal portal PR 3 → shared in v2.3363): the
@@ -212,6 +213,7 @@ export function FirmMatterView({ packet, matter, companyName, tab, onTab, acts, 
               {firstProperty?.county ? ` · ${firstProperty.county} County` : ''}
               {firstProperty?.owner ? ` · owner of record: ${firstProperty.owner}${packet.account.jobs.length > 1 ? ` (job ${packet.account.jobs[0]?.label})` : ''}` : ''}
             </div>
+            {matter.settlementFloor !== undefined ? <div data-legal-settlement-floor style={{ fontSize: 12.5, marginTop: 6, padding: '5px 9px', background: NOTE_BAND, borderRadius: 4, color: INK }}><b>Settlement authority:</b> {settlementFloorWords(matter.settlementFloor, packet.account.totals.balance)}</div> : null}
             {matter.noteToFirm ? <div style={{ fontSize: 12.5, marginTop: 4, color: MUTED }}><b style={{ color: INK }}>From the office:</b> {matter.noteToFirm}</div> : null}
           </div>
           <div className="legalMatterHeadSums" style={{ textAlign: 'right' }}>

@@ -1105,7 +1105,7 @@ describe('legal-review (Legal portal PR 2)', () => {
 })
 
 describe('legal-firm-activity (Legal portal PR 4)', () => {
-  const activity = { count: 3, fees: 1, feeTotal: 450, steps: 0, questions: 1, answers: 0, signoffs: 0, payments: 1, paymentTotal: 2000, firstKey: 'c:tle', firstName: 'The Learning Experience', latestAt: '2026-09-11T11:00:00Z' }
+  const activity = { count: 3, fees: 1, feeTotal: 450, steps: 0, questions: 1, settlements: 0, answers: 0, signoffs: 0, payments: 1, paymentTotal: 2000, firstKey: 'c:tle', firstName: 'The Learning Experience', latestAt: '2026-09-11T11:00:00Z' }
   it('one amber card naming payments to apply, questions and fees', () => {
     const it1 = buildNeedsYouItems(inputs({ legalFirmActivityEnabled: true, legalFirmActivity: activity })).find((i) => i.key === 'legal-firm-activity')!
     expect(it1.title).toBe('The law firm has 3 things for you')
@@ -1118,6 +1118,11 @@ describe('legal-firm-activity (Legal portal PR 4)', () => {
   it('fees alone stay blue; absent when disabled or empty', () => {
     expect(buildNeedsYouItems(inputs({ legalFirmActivityEnabled: true, legalFirmActivity: { ...activity, count: 1, questions: 0, answers: 0, signoffs: 0, payments: 0 } })).find((i) => i.key === 'legal-firm-activity')!.severity).toBe('blue')
     expect(buildNeedsYouItems(inputs({ legalFirmActivityEnabled: false, legalFirmActivity: activity })).some((i) => i.key === 'legal-firm-activity')).toBe(false)
+  })
+  it('a settlement under the floor leads, amber (#85 item 20)', () => {
+    const it1 = buildNeedsYouItems(inputs({ legalFirmActivityEnabled: true, legalFirmActivity: { ...activity, count: 1, fees: 0, questions: 0, payments: 0, settlements: 1 } })).find((i) => i.key === 'legal-firm-activity')!
+    expect(it1.detail).toMatch(/^1 settlement below your floor to sign off/)
+    expect(it1.severity).toBe('amber')
   })
 })
 

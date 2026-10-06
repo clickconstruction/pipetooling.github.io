@@ -9,6 +9,7 @@ import { unexpectedErrorBody } from '../_shared/legalPortalErrors.ts'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 import { legalRecipientSendPatch } from '../_shared/legalNotifyLedger.ts'
 import { isLegalClientId, LEGAL_ACTS_PER_MATTER_PER_HOUR, legalActDateProblem, legalRateLimitMessage } from '../_shared/legalPortalActs.ts'
+import { matterOpenBalance, SETTLEMENT_ASK_FLAVOR, settlementBelowFloor, settlementFloorDollars, settlementFloorOf } from '../_shared/legalSettlement.ts'
 import { firmStepDecision, LEGAL_FIRM_STEP_WORDS, LEGAL_FIRM_STEPS_BEFORE_16, legalMatterOnPortal, type LegalFirmStep } from '../_shared/legalStages.ts'
 
 /**
@@ -160,8 +161,9 @@ serve(async (req) => {
 
     if (!matterId) return jsonResponse({ error: 'Missing matter' }, 400)
 
-    const { data: matter } = await admin.from('legal_matters').select('id, firm_id, stage, payer_name, closed_at').eq('id', matterId).maybeSingle()
-    const m = matter as { id: string; firm_id: string | null; stage: string; payer_name: string; closed_at: string | null } | null
+    // select('*'): the settlement floor columns (#85 item 20) arrive with their migration; until then they read as no floor.
+    const { data: matter } = await admin.from('legal_matters').select('*').eq('id', matterId).maybeSingle()
+    const m = matter as { id: string; firm_id: string | null; stage: string; payer_name: string; closed_at: string | null; settlement_floor_amount?: unknown; settlement_floor_pct?: unknown } | null
     // #85 item 16: a working stage, or an end (settled …) the office has not closed yet.
     if (!m || m.firm_id !== link.firm_id || !legalMatterOnPortal(m)) return jsonResponse({ error: 'That matter is not with your firm.' }, 403)
 
@@ -193,6 +195,7 @@ serve(async (req) => {
     let amount: number | null = null
     let entryBody = note
     const meta: Record<string, unknown> = {}
+    let entryKind = kind
     let notice: string | null = null
     if (clientId) meta.clientId = clientId
     // #85 item 18 (b): who recorded it — a person on the firm's own list, never free text.
@@ -224,7 +227,48 @@ serve(async (req) => {
       entryBody = note ? `${label} — ${note}` : label
       meta.stage = step
       const decision = firmStepDecision(m.stage, step)
-      if (decision === 'ask') {
+      // #85 item 20: settlement authority as a threshold. Under the office's floor, the settled step is a settlement ask.
+      const floor = step === 'settled' && decision !== 'ask' ? settlementFloorOf(m) : null
+      const proposed = Number(body.amount)
+      const hasAmount = Number.isFinite(proposed) && proposed > 0 && proposed <= MAX_AMOUNT
+      if (floor && !hasAmount) return jsonResponse({ error: 'Enter the settlement amount. The office set a floor on this matter.' }, 400)
+      if (step === 'settled' && hasAmount) {
+        amount = Math.round(proposed * 100) / 100
+        meta.settlementAmount = amount
+      }
+      let balance = 0
+      // A percent floor needs the balance. When it cannot be read, or the matter has no jobs, the floor is
+      // unknown: the settlement goes to the office as an ask, never through at $0 (item 20 review).
+      let floorUnknown = false
+      if (floor?.pct != null && amount != null) {
+        const { data: links, error: linkErr } = await admin.from('legal_matter_jobs').select('job_id').eq('matter_id', matterId)
+        const jobIds = ((links ?? []) as Array<{ job_id: string }>).map((l) => l.job_id)
+        if (linkErr || !jobIds.length) floorUnknown = true
+        else {
+          const [jr, ir, pr] = await Promise.all([
+            admin.from('jobs_ledger').select('id, revenue, payments_made').in('id', jobIds),
+            admin.from('jobs_ledger_invoices').select('id, job_id, amount, status, sequence_order, billed_at, agreed_write_down_at, agreed_write_down_previous_amount').in('job_id', jobIds),
+            admin.from('jobs_ledger_payments').select('job_id, invoice_id, amount, paid_on').in('job_id', jobIds),
+          ])
+          if (jr.error || ir.error || pr.error || !(jr.data ?? []).length) floorUnknown = true
+          else balance = matterOpenBalance((jr.data ?? []) as Array<{ id: string }>, (ir.data ?? []) as Array<{ id: string; job_id: string }>, (pr.data ?? []) as Array<{ job_id: string }>)
+        }
+      }
+      if (floor && amount != null && (floorUnknown || settlementBelowFloor(amount, floor, balance))) {
+        const floorDollars = settlementFloorDollars(floor, balance) ?? 0
+        const money = (n: number) => `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+        entryKind = 'question'
+        entryBody = `Proposed settlement ${money(amount)}${note ? ` — ${note}` : ''}`
+        meta.flavor = SETTLEMENT_ASK_FLAVOR
+        meta.proposedAmount = amount
+        meta.floor = floorDollars
+        if (floor.pct != null) meta.floorPct = floor.pct
+        delete meta.settlementAmount
+        notice = floorUnknown
+          ? `The office's floor could not be worked out just now, so ${money(amount)} went to the office as a settlement ask. The stage moves when they sign off.`
+          : `${money(amount)} is below the office's floor of ${money(floorDollars)}. It went to the office as a settlement ask. The stage moves when they sign off.`
+        if (floorUnknown) meta.floorUnknown = true
+      } else if (decision === 'ask') {
         // Backward (judgment → demand, or anything after an end): recorded, the stage waits for the office.
         meta.proposed = true
         meta.from = m.stage
@@ -254,7 +298,7 @@ serve(async (req) => {
 
     const { data: inserted, error } = await admin
       .from('legal_matter_entries')
-      .insert({ matter_id: matterId, kind, amount, body: entryBody, occurred_on: occurredOn, meta, via_portal: true })
+      .insert({ matter_id: matterId, kind: entryKind, amount, body: entryBody, occurred_on: occurredOn, meta, via_portal: true })
       .select('id')
       .single()
     if (error) return jsonResponse({ error: 'Could not save that.' }, 500)
