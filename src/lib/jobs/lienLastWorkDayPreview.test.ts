@@ -15,7 +15,7 @@ const job922 = (candidate: string, over: Partial<LienLastWorkPreviewInput> = {})
   ...over,
 })
 
-describe('lienLastWorkPreview (v2.4709) — the verdict and the shift', () => {
+describe('lienLastWorkPreview (v2.4717) — the verdict and the shift', () => {
   it('the slip: July for October is refused as two months earlier than the clock hours, with the month-number hint', () => {
     const p = lienLastWorkPreview(job922('2026-07-02'))
     expect(p.verdict).toBe('refused')

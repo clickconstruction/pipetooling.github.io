@@ -3,7 +3,7 @@ import { lienLastWorkPreview, type LienLastWorkPreviewInput } from '../../lib/jo
 import { FinishedDateInput } from '../FinishedDateInput'
 
 /**
- * The window that opens before a hand-set last day of work is saved (v2.4709): how far the day
+ * The window that opens before a hand-set last day of work is saved (v2.4717): how far the day
  * moves from the clock hours, in words; the dates the law hangs on it, today beside the new day,
  * changed rows lit; the reason, asked here. The day can still be
  * fixed inside the window, and everything recomputes as it changes. A refused day explains

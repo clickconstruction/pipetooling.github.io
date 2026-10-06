@@ -28,7 +28,7 @@ describe('LienLastWorkDayLine', () => {
     fireEvent.change(screen.getByLabelText('Last day of work'), { target: { value: '2026-08-14' } })
     fireEvent.blur(screen.getByLabelText('Last day of work'))
     fireEvent.click(screen.getByTestId('lien-last-work-save'))
-    // Save the day opens the window (v2.4709): the shift from the creation day, the dates, and the reason asked there.
+    // Save the day opens the window (v2.4717): the shift from the creation day, the dates, and the reason asked there.
     expect(screen.getByTestId('lien-last-work-confirm').getAttribute('data-verdict')).toBe('fine')
     expect(screen.getByTestId('lien-last-work-shift').textContent).toBe("Last day of work Aug 14 — 44 days later than the job's creation (Jul 1).")
     expect(screen.queryByTestId('lien-last-work-diff')).toBeNull()

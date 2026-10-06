@@ -1,5 +1,5 @@
 /**
- * Setting the last day of work by hand, with its consequences in view (v2.4709, the owner's
+ * Setting the last day of work by hand, with its consequences in view (v2.4717, the owner's
  * ask after typing July for October): before the day is saved, a window says how far it moves
  * from the clock hours and shows only the dates the law hangs on it — the months the notice
  * names, the § 53.056 window of the last month, the § 53.052 affidavit, the § 53.158 suit —

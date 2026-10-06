@@ -1,7 +1,7 @@
 import type { ReleaseNote } from '../../lib/releaseNotes'
 
 const note: ReleaseNote = {
-  version: 'v2.4709',
+  version: 'v2.4717',
   date: '2026-10-07',
   title: 'Lien desk: setting the last day of work by hand shows what moves first',
   kind: 'feature',

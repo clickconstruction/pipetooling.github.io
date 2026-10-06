@@ -11,7 +11,7 @@ import { LienLastWorkDayConfirm } from './LienLastWorkDayConfirm'
  * hours, the job's creation, or a person), the reason when a person set it, and *Change ›* to set
  * it by hand — a day and a one-line reason, saved on the job. Clock hours and pay are never
  * touched, and the line says so. Drawn above the Months card on the Lien desk and in Edit Job's
- * lien row; the caller re-reads after a save. Since v2.4709 *Save the day* opens a window first
+ * lien row; the caller re-reads after a save. Since v2.4717 *Save the day* opens a window first
  * (`LienLastWorkDayConfirm`): how far the day moves from the hours, the dates that move with it,
  * and the reason, asked there; the write happens on its *Set the day*.
  */
@@ -86,7 +86,7 @@ export function LienLastWorkDayLine({
     setEditing(false)
     onSaved()
   }
-  // Save the day opens the window (v2.4709); the write is its Set the day, after the day and the reason stand.
+  // Save the day opens the window (v2.4717); the write is its Set the day, after the day and the reason stand.
   const save = () => setConfirming(true)
   const confirm = () => {
     const problem = lienLastWorkDayProblem(dayDraft, job?.last_work_date ?? null, todayYmd)
