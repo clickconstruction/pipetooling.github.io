@@ -18,6 +18,7 @@ import { TallyJobTransactionsModal } from '../components/tally/TallyJobTransacti
 import { TallyClockWindowAllocateModal } from '../components/tally/TallyClockWindowAllocateModal'
 import { TallySortModeCardList } from '../components/tally/TallySortModeCardList'
 import { TallyTeamQueue } from '../components/tally/TallyTeamQueue'
+import { mercurySwipeAtIso } from '../lib/mercurySwipeTime'
 import { TallySortPurchaseModal } from '../components/tally/TallySortPurchaseModal'
 import { formatTallyCurrency, formatTallyPostedParts } from '../lib/tally/formatTallyPosted'
 import { APP_SETTINGS_KEY_JOB_TALLY_MIN_POSTED_YMD, normalizeJobTallyMinPostedYmd } from '../lib/appSettingsKeys'
@@ -2336,7 +2337,7 @@ export default function JobTally() {
         onClose={() => setTallyClockAllocateRow(null)}
         userId={authUser?.id ?? null}
         transactionId={tallyClockAllocateRow?.mercury_transaction_id ?? null}
-        postedAtIso={tallyClockAllocateRow?.posted_at ?? null}
+        swipeAtIso={tallyClockAllocateRow ? mercurySwipeAtIso(tallyClockAllocateRow.raw, tallyClockAllocateRow.posted_at) : null}
         transactionAmount={
           tallyClockAllocateRow != null ? Number(tallyClockAllocateRow.amount) : 0
         }

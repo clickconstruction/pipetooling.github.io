@@ -32,6 +32,8 @@ const staff = (p: Partial<StaleStaffRow> & { id: string; holder: string; name: s
     job_splits: [],
   }) as StaleStaffRow
 
+// Asserted, not annotated: the row type gains fields as #52 grows the read (purchasedAt, v2.4665),
+// and these fixtures only need the ones the queue reads.
 const windowRow = (p: { id: string; holder: string; ymd: string; hm: string; amount: number; store: string; jobs?: Array<[string, number]>; invoices?: number; payroll?: boolean; by?: string }): CardChargeWindowRow => ({
   id: p.id,
   postedAt: at(p.ymd, p.hm),
@@ -55,7 +57,7 @@ const windowRow = (p: { id: string; holder: string; ymd: string; hm: string; amo
   sortedAt: p.jobs || p.invoices || p.payroll ? at(p.ymd, '18:00') : null,
   sortedByName: p.by ?? null,
   viewerCanSort: true,
-})
+}) as CardChargeWindowRow
 
 const session = (holder: string, ymd: string, jobId: string | null, from: string, to: string | null): TallyQueueSessionRow => ({
   user_id: holder,

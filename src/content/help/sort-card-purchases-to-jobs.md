@@ -14,7 +14,7 @@ Open the tally from Settings. **Job Parts Tally** is the first chip under the se
 ## Sorting one purchase
 
 1. Tap {{button:blue|Sort to job}} on any purchase.
-2. The sort screen shows the purchase up top and **your jobs from that day**. The list holds every job you clocked on or were scheduled for, from the day before through the day after.
+2. The sort screen shows the purchase up top and **your jobs from the day you bought it**. That day's clocked jobs come first. The list also holds the day before and the day after.
 3. Tap the job the material was for, then tap the green confirm button. Done. The next unsorted purchase slides in automatically.
 
 :::example Buying at the supply house on Saturday?

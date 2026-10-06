@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import {
-  denverCalendarDayKey,
+  calendarYmdInAppTzFromIso,
   formatDenverCalendarDayShort,
   referenceDateForWorkDateYmd,
   ymdAddDays,
@@ -18,7 +18,8 @@ export type TallyClockWindowAllocateModalProps = {
   onClose: () => void
   userId: string | null
   transactionId: string | null
-  postedAtIso: string | null
+  /** When the card was swiped (`mercurySwipeAtIso`): the three days are the swipe day ±1. */
+  swipeAtIso: string | null
   transactionAmount: number
   onSaved: () => void
 }
@@ -45,7 +46,7 @@ export function TallyClockWindowAllocateModal({
   onClose,
   userId,
   transactionId,
-  postedAtIso,
+  swipeAtIso,
   transactionAmount,
   onSaved,
 }: TallyClockWindowAllocateModalProps) {
@@ -74,21 +75,20 @@ export function TallyClockWindowAllocateModal({
       reset()
       return
     }
-    if (!userId || !postedAtIso) {
+    if (!userId || !swipeAtIso) {
       setLoading(false)
-      setLoadError('Missing user or posted date.')
+      setLoadError('Missing user or purchase date.')
       setPickerRows([])
       return
     }
-    const ms = new Date(postedAtIso).getTime()
-    if (Number.isNaN(ms)) {
+    const anchorYmd = calendarYmdInAppTzFromIso(swipeAtIso)
+    if (!anchorYmd) {
       setLoading(false)
-      setLoadError('Invalid posted date.')
+      setLoadError('Invalid purchase date.')
       setPickerRows([])
       return
     }
 
-    const anchorYmd = denverCalendarDayKey(ms)
     const d0 = ymdAddDays(anchorYmd, -1)
     const d2 = ymdAddDays(anchorYmd, 1)
     const dates = [d0, anchorYmd, d2]
@@ -220,7 +220,7 @@ export function TallyClockWindowAllocateModal({
     return () => {
       cancelled = true
     }
-  }, [open, userId, postedAtIso, reset, ledgerPrefixMap])
+  }, [open, userId, swipeAtIso, reset, ledgerPrefixMap])
 
   useEffect(() => {
     if (!open) return
