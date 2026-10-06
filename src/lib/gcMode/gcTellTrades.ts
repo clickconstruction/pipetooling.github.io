@@ -42,6 +42,8 @@ export function movedLines(state: GcState, project: GcProject, move: ScheduleMov
   const all = [{ lineId: move.lineId, from: move.from, to: move.to }, ...move.pushed]
   return all
     .filter((l) => l.from.start !== l.to.start || l.from.finish !== l.to.finish)
+    // A pull's finished lines are done work (G-37): only the companies whose dates came in are told.
+    .filter((l) => !move.pull?.finished.includes(l.lineId))
     .map((l) => ({ line: { lineId: l.lineId, work: lineWork(project, l.lineId), from: l.from, to: l.to }, partner: partnerOfLine(state, project, l.lineId) }))
 }
 
