@@ -1,6 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
+import { APP_CALENDAR_TZ, todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { COMPANY_EMAIL_FROM } from '../_shared/emailFrom.ts'
 import { buildLegalConfirmEmail } from '../_shared/legalEmails.ts'
@@ -8,6 +8,7 @@ import { buildLegalConfirmEmail } from '../_shared/legalEmails.ts'
 import { unexpectedErrorBody } from '../_shared/legalPortalErrors.ts'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 import { legalRecipientSendPatch } from '../_shared/legalNotifyLedger.ts'
+import { isLegalClientId, LEGAL_ACTS_PER_MATTER_PER_HOUR, legalActDateProblem, legalRateLimitMessage } from '../_shared/legalPortalActs.ts'
 import { firmStepDecision, LEGAL_FIRM_STEP_WORDS, LEGAL_FIRM_STEPS_BEFORE_16, legalMatterOnPortal, type LegalFirmStep } from '../_shared/legalStages.ts'
 
 /**
@@ -28,9 +29,12 @@ import { firmStepDecision, LEGAL_FIRM_STEP_WORDS, LEGAL_FIRM_STEPS_BEFORE_16, le
  * never marks anything paid, edits a job, or emails the customer through us.
  *
  * Guards: the link is the key, length caps, the matter must belong to the
- * firm and be in the with-firm set, 30 acts per firm per hour, twelve people.
- * No honeypot (v2.4622): the page is behind a private link, and a hidden box a
- * password manager fills would have made a real act vanish behind "Saved".
+ * firm and be in the with-firm set, 60 acts per matter per hour (#85 item 18; 30 per firm
+ * before), twelve people. No honeypot (v2.4622): the page is behind a private link, and a
+ * hidden box a password manager fills would have made a real act vanish behind "Saved".
+ * Since item 18 every matter act may carry `occurredOn` (the date the firm sets,
+ * not in the future), `clientId` (a uuid: a retry or double click saves once, the first
+ * entry is answered) and `recordedById` (a person on the firm's list → meta.recordedBy).
  */
 
 const corsHeaders = {
@@ -43,7 +47,6 @@ const corsHeaders = {
 const privateHeaders = { 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' }
 
 const LINK_INACTIVE_MSG = 'This link is no longer active. Please contact the office.'
-const MAX_PER_HOUR = 30
 const MAX_BODY = 2000
 const MAX_AMOUNT = 1_000_000
 
@@ -162,20 +165,44 @@ serve(async (req) => {
     // #85 item 16: a working stage, or an end (settled …) the office has not closed yet.
     if (!m || m.firm_id !== link.firm_id || !legalMatterOnPortal(m)) return jsonResponse({ error: 'That matter is not with your firm.' }, 403)
 
-    // Rate limit: portal acts across the firm's matters in the last hour.
-    const since = new Date(Date.now() - 3_600_000).toISOString()
-    const { data: matterIds } = await admin.from('legal_matters').select('id').eq('firm_id', link.firm_id)
-    const ids = ((matterIds ?? []) as Array<{ id: string }>).map((r) => r.id)
-    const { count } = await admin.from('legal_matter_entries').select('id', { count: 'exact', head: true }).in('matter_id', ids.length ? ids : [matterId]).eq('via_portal', true).gte('created_at', since)
-    if ((count ?? 0) >= MAX_PER_HOUR) return jsonResponse({ error: 'Too many changes in the last hour. Please try again later.' }, 429)
+    // #85 item 18 (d): one save per act. A retry or a double click carries the same key and gets the first entry back.
+    const clientId = isLegalClientId(body.clientId) ? (body.clientId as string).toLowerCase() : null
+    if (clientId) {
+      const { data: dup } = await admin.from('legal_matter_entries').select('id').eq('matter_id', matterId).eq('meta->>clientId', clientId).limit(1).maybeSingle()
+      if (dup) return jsonResponse({ ok: true, entryId: (dup as { id: string }).id, duplicate: true })
+    }
 
+    // #85 item 18 (e): the hourly limit is per matter, and the refusal names it and when it lifts.
+    const since = new Date(Date.now() - 3_600_000).toISOString()
+    const { data: recent, count } = await admin.from('legal_matter_entries').select('created_at', { count: 'exact' }).eq('matter_id', matterId).eq('via_portal', true).gte('created_at', since).order('created_at').limit(1)
+    if ((count ?? 0) >= LEGAL_ACTS_PER_MATTER_PER_HOUR) {
+      const oldest = ((recent ?? []) as Array<{ created_at: string }>)[0]?.created_at
+      const retryAt = oldest ? new Intl.DateTimeFormat('en-US', { timeZone: APP_CALENDAR_TZ, hour: 'numeric', minute: '2-digit' }).format(new Date(new Date(oldest).getTime() + 3_600_000)) : null
+      return jsonResponse({ error: legalRateLimitMessage(m.payer_name, retryAt) }, 429)
+    }
+
+    // #85 item 18 (c): the date the firm sets; today when it sends none.
     const today = todayYmdInAppTz()
-    const occurredOn = /^\d{4}-\d{2}-\d{2}$/.test(str(body.occurredOn, 10)) ? str(body.occurredOn, 10) : today
+    const typedOn = str(body.occurredOn, 10)
+    if (typedOn) {
+      const problem = legalActDateProblem(typedOn, today)
+      if (problem) return jsonResponse({ error: problem }, 400)
+    }
+    const occurredOn = typedOn || today
     const note = str(body.note)
     let amount: number | null = null
     let entryBody = note
     const meta: Record<string, unknown> = {}
     let notice: string | null = null
+    if (clientId) meta.clientId = clientId
+    // #85 item 18 (b): who recorded it — a person on the firm's own list, never free text.
+    const recordedById = str(body.recordedById, 64)
+    if (recordedById) {
+      const { data: who } = await admin.from('legal_firm_recipients').select('id, name').eq('id', recordedById).eq('firm_id', link.firm_id).is('removed_at', null).maybeSingle()
+      // An id that names nobody on this firm's list is refused, never saved as "the firm".
+      if (!who) return jsonResponse({ error: 'Pick who recorded this from the list.' }, 400)
+      meta.recordedBy = { id: (who as { id: string }).id, name: (who as { name: string }).name }
+    }
 
     if (kind === 'fee' || kind === 'cost') {
       const n = Number(body.amount)

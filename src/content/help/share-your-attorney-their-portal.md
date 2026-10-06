@@ -52,4 +52,6 @@ On a matter's **Fees & steps** tab the firm can:
 - **Ask the office**: a question you answer from the desk. Your answer shows under their question, in the conversation table on their portal.
 - **Answer the office**: your asks sit at the top of their Fees & steps, under *From the office*. A question gets an answer box. A sign-off on one job gets {{button:blue|Signed off}} / {{button:outline|Not yet}} with a note. A sign-off is for a job where the owner wants to pay Click direct while the GC is silent. The firm's answer lands on your Needs You card.
 
+Each act carries a date and a name. The date starts as today, and the firm can set an earlier one. The name is picked under **Recorded by**, from the people on the firm's Notifications page. Both show on the desk's tables. The name is the firm's own word for who did it. The portal has no sign-in, so it proves nothing on its own.
+
 After each act, the portal tells the firm what happens next. A step names the matter's new stage. Each act lands on the Dashboard as **"The law firm has N things for you"**, for office roles. The act clears from the desk's Fees & steps tab when you answer, apply or acknowledge it. The firm never marks anything paid, edits a job, or emails the customer through Click.

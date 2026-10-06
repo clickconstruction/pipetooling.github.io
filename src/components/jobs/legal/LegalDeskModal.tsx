@@ -3,7 +3,7 @@ import type { JobWithDetails } from '../../../types/jobWithDetails'
 import type { Database } from '../../../types/database'
 import type { JobContractCoverage } from '../../../lib/jobs/jobContractCoverage'
 import { envelopeAnswersWords, envelopeKindWords, envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords, type LegalEnvelope } from '../../../lib/legal/legalLienPaper'
-import { conversationRows, conversationStateWords, conversationWho, isConversationEntry, legalEntryKindWords, newAskMeta, officeAnswerMeta, stepProposalOf, type LegalAskFlavor } from '../../../lib/legal/legalAsks'
+import { conversationRows, conversationStateWords, conversationWho, entryRecordedByWords, isConversationEntry, legalEntryKindWords, newAskMeta, officeAnswerMeta, stepProposalOf, type LegalAskFlavor } from '../../../lib/legal/legalAsks'
 import LienTimelineStrip from '../LienTimelineStrip'
 import {
   formatLegalMoney,
@@ -919,6 +919,7 @@ function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDo
   // The firm's fees and costs the debtor owes (item 5): the contingency is the firm's share of a recovery, said on its own line.
   const fees = firmFeeEntries(entries)
   const contingency = contingencyEntries(entries)
+  const userNameOf = (id: string | null) => (id ? (props.users.find((u) => u.id === id)?.name ?? null) : null)
   const feeTotal = fees.reduce((s, e) => s + Number(e.amount ?? 0), 0)
   // #85 item 17: questions and answers leave the steps table for the conversation, each answer under its question.
   const firmSteps = entries.filter((e) => e.kind !== 'fee' && e.kind !== 'cost' && !isConversationEntry(e))
@@ -939,7 +940,7 @@ function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDo
     <div>
       <SectionTitle doors={first ? <Door label="Write down" onClick={() => openWriteDown(first.id)} /> : null}>Attorney fees and costs{fees.length ? ` · ${formatLegalMoney(feeTotal)}` : ''}</SectionTitle>
       {fees.length ? (
-        <Table head={['Date', 'Kind', 'Note', 'Amount']} numCols={[3]} rows={fees.map((e) => [e.occurred_on, e.kind, e.body, formatLegalMoney(Number(e.amount ?? 0))])} empty="" />
+        <Table head={['Date', 'Kind', 'Note', 'By', 'Amount']} numCols={[4]} rows={fees.map((e) => [e.occurred_on, e.kind, e.body, entryRecordedByWords(e, 'office', userNameOf), formatLegalMoney(Number(e.amount ?? 0))])} empty="" />
       ) : contingency.length ? null : (
         <p style={{ ...MUTED, fontSize: '0.84rem' }}>None yet{entries.length ? ' — the firm has not added a fee or cost.' : ' — no firm is on this account. When one is, the fees and costs they add list here and roll into the total demand.'}</p>
       )}
@@ -969,7 +970,7 @@ function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDo
       {firmSteps.length ? (
         <>
           <SectionTitle>On the matter{officeActs && waitingOn(firmSteps) ? ` · ${waitingOn(firmSteps)} from the firm waiting on you` : ''}</SectionTitle>
-          <Table head={['Date', 'Kind', 'What happened', 'Amount', '']} numCols={[3]}
+          <Table head={['Date', 'Kind', 'What happened', 'By', 'Amount', '']} numCols={[4]}
             rows={firmSteps.map((e) => {
               const waiting = e.via_portal && !e.acknowledged_at
               const acts = officeActs && waiting ? (
@@ -986,7 +987,7 @@ function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDo
                 )
               ) : waiting ? pill('waiting on the office', 'warn') : e.via_portal ? pill('seen', 'ok') : null
               const proposal = stepProposalOf(e)
-              return [e.occurred_on, pill(legalEntryKindWords(e), e.via_portal ? 'legal' : 'neutral'), proposal && waiting ? <span key="b">{e.body}<span style={{ ...MUTED, display: 'block', fontSize: '0.74rem' }}>The stage stays at {legalStageLabel(proposal.from).replace('With the firm · ', '')} until you choose.</span></span> : e.body, e.amount != null ? formatLegalMoney(Number(e.amount)) : '', acts]
+              return [e.occurred_on, pill(legalEntryKindWords(e), e.via_portal ? 'legal' : 'neutral'), proposal && waiting ? <span key="b">{e.body}<span style={{ ...MUTED, display: 'block', fontSize: '0.74rem' }}>The stage stays at {legalStageLabel(proposal.from).replace('With the firm · ', '')} until you choose.</span></span> : e.body, entryRecordedByWords(e, 'office', userNameOf), e.amount != null ? formatLegalMoney(Number(e.amount)) : '', acts]
             })}
             empty="" />
         </>

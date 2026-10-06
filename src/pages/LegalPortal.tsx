@@ -67,6 +67,16 @@ export default function LegalPortal() {
   const quietRef = useRef(false)
   /** The page-level notice line a failed quiet reload leaves; cleared by the next load that works. */
   const [refreshNote, setRefreshNote] = useState<string | null>(null)
+  /** #85 item 18 (b): who at the firm is recording — a person on their own list, remembered on this browser. */
+  const [recordedById, setRecordedById] = useState<string>(() => {
+    try {
+      return window.localStorage.getItem(RECORDED_BY_KEY) ?? ''
+    } catch {
+      return ''
+    }
+  })
+  /** #85 item 18 (d): one key per act, kept until it saves — a retry after a dropped connection reuses it, so it saves once. */
+  const pendingKeys = useRef(new Map<string, string>())
 
   /** One POST to submit-legal-portal; reloads the payload on success. */
   const act: Act = async (payload, said) => {
@@ -84,12 +94,17 @@ export default function LegalPortal() {
     setNotice(null)
     setNoticeWarn(false)
     try {
-      const res = await fetch(`${supabaseUrl}/functions/v1/submit-legal-portal`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(await staffAwarePublicHeaders()) }, body: JSON.stringify({ token, ...payload }) })
+      const sig = JSON.stringify(payload)
+      const clientId = typeof payload.matterId === 'string' ? (pendingKeys.current.get(sig) ?? newClientId()) : null
+      if (clientId) pendingKeys.current.set(sig, clientId)
+      const extra = typeof payload.matterId === 'string' ? { ...(clientId ? { clientId } : {}), ...(recordedById ? { recordedById } : {}) } : {}
+      const res = await fetch(`${supabaseUrl}/functions/v1/submit-legal-portal`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(await staffAwarePublicHeaders()) }, body: JSON.stringify({ token, ...payload, ...extra }) })
       const body = (await res.json().catch(() => null)) as LegalActAnswer | null
       if (!res.ok || !body?.ok) {
         setNotice(res.ok ? 'Could not save that. Please try again.' : firmFacingErrorLine(res.status, body))
         return false
       }
+      pendingKeys.current.delete(JSON.stringify(payload))
       setReloadTick((t) => t + 1)
       // #85 item 16: the function says when a step did not move the stage, or kept a settled matter open.
       const line = said ? said(body) : { text: body.notice ?? firmSavedWords(payload), warn: false }
@@ -257,7 +272,7 @@ export default function LegalPortal() {
                 matter={{ payerName: selected.payer.name, noteToFirm: selected.noteToFirm, contracts: selected.contracts, entries: selected.entries, heldCount: selected.heldCount }}
                 tab={tab}
                 onTab={setTab}
-                acts={<><FirmAsks matter={selected} act={act} busy={busy} /><FirmActs matter={selected} act={act} busy={busy} notice={notice} /></>}
+                acts={<><RecordedByPicker recipients={payload.recipients} value={recordedById} onChange={(id) => { setRecordedById(id); try { window.localStorage.setItem(RECORDED_BY_KEY, id) } catch { /* private window: the pick lasts this visit */ } }} /><FirmAsks matter={selected} act={act} busy={busy} /><FirmActs matter={selected} act={act} busy={busy} notice={notice} todayYmd={payload.preparedOn} /></>}
                 onPrint={() => { if (!openHtmlPrintWindow(buildFirmPacketPrintHtml(packet, { preparedOn: payload.preparedOn, companyName: payload.company.name, firm: { name: payload.firm.name, handling: payload.firm.handling_name ?? '' }, matter: { stage: selected.stage, noteToFirm: selected.noteToFirm, releasedAt: selected.releasedAt, entries: selected.entries, heldCount: selected.heldCount }, particulars: payload.particulars }))) setNotice('Your browser blocked the print window. Allow pop-ups and try again.') }}
               />
             </div>
@@ -301,6 +316,32 @@ export default function LegalPortal() {
   )
 }
 
+const RECORDED_BY_KEY = 'legalPortal.recordedBy'
+
+function newClientId(): string | null {
+  try {
+    return typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : null
+  } catch {
+    return null
+  }
+}
+
+/** #85 item 18 (b): every act names who at the firm recorded it, picked from the firm's own Notifications list. */
+function RecordedByPicker({ recipients, value, onChange }: { recipients: ReadonlyArray<LegalPortalRecipient>; value: string; onChange: (id: string) => void }) {
+  const live = recipients.filter((r) => !r.paused || r.id === value)
+  const known = live.some((r) => r.id === value)
+  return (
+    <label data-legal-recorded-by style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: 12.5, color: MUTED, marginTop: 12 }}>
+      Recorded by
+      <select value={known ? value : ''} onChange={(e) => onChange(e.target.value)} style={{ font: 'inherit', fontSize: 13, padding: '4px 8px', border: `1px solid ${HAIR}`, borderRadius: 4, background: CARD, color: INK }}>
+        <option value="">the firm</option>
+        {live.map((r) => <option key={r.id} value={r.id}>{r.name}{r.role ? ` · ${r.role}` : ''}</option>)}
+      </select>
+      <span style={{ fontSize: 11.5, color: FAINT }}>{live.length ? 'Your pick is remembered on this browser.' : 'Add your people on the Notifications page to sign each act.'}</span>
+    </label>
+  )
+}
+
 /** From the office (#41 PR 3): the office's open asks — a question, or a sign-off on one job — answered here. */
 function FirmAsks({ matter, act, busy }: { matter: LegalPortalMatter; act: Act; busy: boolean }) {
   const [notes, setNotes] = useState<Record<string, string>>({})
@@ -340,7 +381,7 @@ function FirmAsks({ matter, act, busy }: { matter: LegalPortalMatter; act: Act; 
 }
 
 /** The firm's four acts (PR 4): add a fee or cost, record a step, record a payment received, ask the office. */
-function FirmActs({ matter, act, busy, notice }: { matter: LegalPortalMatter; act: Act; busy: boolean; notice: string | null }) {
+function FirmActs({ matter, act, busy, notice, todayYmd }: { matter: LegalPortalMatter; act: Act; busy: boolean; notice: string | null; todayYmd: string }) {
   const [feeKind, setFeeKind] = useState<'fee' | 'cost'>('fee')
   const [feeAmount, setFeeAmount] = useState('')
   const [feeNote, setFeeNote] = useState('')
@@ -349,6 +390,20 @@ function FirmActs({ matter, act, busy, notice }: { matter: LegalPortalMatter; ac
   const [payAmount, setPayAmount] = useState('')
   const [payNote, setPayNote] = useState('')
   const [question, setQuestion] = useState('')
+  // #85 item 18 (c): the date it happened, today unless the firm says otherwise.
+  const [feeOn, setFeeOn] = useState(todayYmd)
+  const [stepOn, setStepOn] = useState(todayYmd)
+  const [payOn, setPayOn] = useState(todayYmd)
+  // A page left open past midnight reloads with a new preparedOn: a date nobody changed follows it, so it never defaults to yesterday.
+  const seededFor = useRef(todayYmd)
+  useEffect(() => {
+    const was = seededFor.current
+    if (was === todayYmd) return
+    seededFor.current = todayYmd
+    setFeeOn((d) => (d === was ? todayYmd : d))
+    setStepOn((d) => (d === was ? todayYmd : d))
+    setPayOn((d) => (d === was ? todayYmd : d))
+  }, [todayYmd])
   const input: CSSProperties = { font: 'inherit', fontSize: 13, padding: '5px 8px', border: `1px solid ${HAIR}`, borderRadius: 4, background: 'var(--surface)', color: INK, width: '100%' }
   const lab: CSSProperties = { display: 'grid', gap: 3, fontSize: 11.5, color: MUTED }
   const submit = (payload: Record<string, unknown>, after: () => void) => async (e: FormEvent) => {
@@ -358,20 +413,23 @@ function FirmActs({ matter, act, busy, notice }: { matter: LegalPortalMatter; ac
   return (
     <div style={{ marginTop: 12, display: 'grid', gap: 10 }}>
       {notice ? <div style={{ fontSize: 12.5, padding: '6px 10px', background: NOTE_BAND, borderRadius: 4 }}>{notice}</div> : null}
-      <form onSubmit={submit({ kind: feeKind, amount: Number(feeAmount), note: feeNote }, () => { setFeeAmount(''); setFeeNote('') })} className="legalPortalForm legalPortalForm--fee">
+      <form onSubmit={submit({ kind: feeKind, amount: Number(feeAmount), note: feeNote, occurredOn: feeOn }, () => { setFeeAmount(''); setFeeNote('') })} className="legalPortalForm legalPortalForm--fee">
         <label style={lab}>Fee or cost<select value={feeKind} onChange={(e) => setFeeKind(e.target.value as 'fee' | 'cost')} style={input}><option value="fee">Attorney fee</option><option value="cost">Cost (filing, service)</option></select></label>
         <label style={lab}>Amount<input type="number" min={1} step="0.01" value={feeAmount} onChange={(e) => setFeeAmount(e.target.value)} placeholder="450" required style={input} /></label>
+        <label style={lab}>Date<input type="date" value={feeOn} max={todayYmd} onChange={(e) => setFeeOn(e.target.value)} required style={input} /></label>
         <label style={lab}>Note<input value={feeNote} onChange={(e) => setFeeNote(e.target.value)} placeholder="Demand letter on firm letterhead" required style={input} /></label>
         <button type="submit" disabled={busy} style={btn}>+ Add fee or cost</button>
       </form>
-      <form onSubmit={submit({ kind: 'step', stage, note: stepNote }, () => setStepNote(''))} className="legalPortalForm legalPortalForm--note">
+      <form onSubmit={submit({ kind: 'step', stage, note: stepNote, occurredOn: stepOn }, () => setStepNote(''))} className="legalPortalForm legalPortalForm--note">
         <label style={lab}>Record a step<select value={stage} onChange={(e) => setStage(e.target.value as 'demand' | 'suit' | 'judgment' | 'settled')} style={input}><option value="demand">Demand sent on firm letterhead</option><option value="suit">Suit filed</option><option value="judgment">Judgment entered</option><option value="settled">Settled</option></select></label>
+        <label style={lab}>Date<input type="date" value={stepOn} max={todayYmd} onChange={(e) => setStepOn(e.target.value)} required style={input} /></label>
         <label style={lab}>Detail<input value={stepNote} onChange={(e) => setStepNote(e.target.value)} placeholder="Court, cause no., amount, terms…" style={input} /></label>
         <button type="submit" disabled={busy} style={btn}>Record step</button>
       </form>
-      <form onSubmit={submit({ kind: 'payment_received', amount: Number(payAmount), note: payNote }, () => { setPayAmount(''); setPayNote('') })} className="legalPortalForm legalPortalForm--note">
+      <form onSubmit={submit({ kind: 'payment_received', amount: Number(payAmount), note: payNote, occurredOn: payOn }, () => { setPayAmount(''); setPayNote('') })} className="legalPortalForm legalPortalForm--note">
         <label style={lab}>Payment received<input type="number" min={1} step="0.01" value={payAmount} onChange={(e) => setPayAmount(e.target.value)} placeholder="Amount" required style={input} /></label>
-        <label style={lab}>Check no., date, from whom<input value={payNote} onChange={(e) => setPayNote(e.target.value)} style={input} /></label>
+        <label style={lab}>Received on<input type="date" value={payOn} max={todayYmd} onChange={(e) => setPayOn(e.target.value)} required style={input} /></label>
+        <label style={lab}>Check no., from whom<input value={payNote} onChange={(e) => setPayNote(e.target.value)} style={input} /></label>
         <button type="submit" disabled={busy} style={btn}>Record payment</button>
       </form>
       <form onSubmit={submit({ kind: 'question', note: question }, () => setQuestion(''))} className="legalPortalForm legalPortalForm--ask">

@@ -1,4 +1,5 @@
 import type { LegalEntryRow } from './legalMatters'
+import { recordedByOf } from '../../../supabase/functions/_shared/legalPortalActs'
 
 /**
  * Asks and answers between the office and the law firm (punch list #41, PR 3).
@@ -254,8 +255,10 @@ export function conversationRows(entries: ReadonlyArray<LegalEntryRow>): LegalCo
 /** Who said it, from the reader's side — the firm reads *You asked*, the office reads *The firm asked*. */
 export function conversationWho(row: LegalConversationRow, reader: 'firm' | 'office'): string {
   const fromFirm = row.entry.via_portal
-  if (row.isAnswer) return fromFirm ? (reader === 'firm' ? 'You' : 'The firm') : 'The office'
-  if (fromFirm) return reader === 'firm' ? 'You asked' : 'The firm asked'
+  // #85 item 18: a firm act names the person the firm picked.
+  const by = fromFirm ? recordedByOf(row.entry.meta) : null
+  if (row.isAnswer) return fromFirm ? (reader === 'firm' ? (by?.name ?? 'You') : by ? `${by.name} · firm` : 'The firm') : 'The office'
+  if (fromFirm) return reader === 'firm' ? (by ? `${by.name} asked` : 'You asked') : by ? `${by.name} at the firm asked` : 'The firm asked'
   const asker = row.thread.askerName || (reader === 'firm' ? 'The office' : 'We')
   const job = row.thread.flavor === 'signoff' && row.thread.jobLabel ? ` · ${row.thread.jobLabel}` : ''
   return `${asker} ${row.thread.flavor === 'signoff' ? 'asked for a sign-off' : 'asked'}${job}`
@@ -290,4 +293,18 @@ export function conversationStateWords(row: LegalConversationRow, reader: 'firm'
 /** The meta the office's answer to a firm question is written with (item 17) — what threads it. */
 export function officeAnswerMeta(questionId: string): Record<string, unknown> {
   return { askId: questionId }
+}
+
+/**
+ * Who recorded an entry, from the reader's side (#85 item 18). A firm act names
+ * the person the firm picked (`meta.recordedBy`), else *your firm* / *the firm*;
+ * an office entry is *the office* to the firm and its author to the office.
+ */
+export function entryRecordedByWords(e: Pick<LegalEntryRow, 'via_portal' | 'meta' | 'created_by'>, reader: 'firm' | 'office', userNameOf: (id: string | null) => string | null = () => null): string {
+  if (e.via_portal) {
+    const by = recordedByOf(e.meta)
+    if (by) return reader === 'firm' ? by.name : `${by.name} · firm`
+    return reader === 'firm' ? 'your firm' : 'the firm'
+  }
+  return reader === 'firm' ? 'the office' : (userNameOf(e.created_by) ?? 'the office')
 }

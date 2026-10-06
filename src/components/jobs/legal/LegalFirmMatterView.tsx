@@ -4,7 +4,7 @@ import { formatLegalMoney, type LegalPacket } from '../../../lib/legal/legalPack
 import { envelopeAnswersWords, envelopeKindWords, envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords, type LegalEnvelope } from '../../../lib/legal/legalLienPaper'
 import { firmAgreementWords, firmEntryKindWords, firmEntryStatusWords, firmNotNeededWords, firmExhibitTitle, firmFeeKindWords, firmHistoryKindWords, firmJobRecord, firmSaidKindWords, firmSaidRecordedBy } from '../../../lib/legal/legalFirmWords'
 import { contingencyEntries, firmDemand, firmFeeEntries, legalRunningLedger } from '../../../lib/legal/legalMoney'
-import { conversationRows, conversationStateWords, conversationWho, isConversationEntry } from '../../../lib/legal/legalAsks'
+import { conversationRows, conversationStateWords, conversationWho, entryRecordedByWords, isConversationEntry } from '../../../lib/legal/legalAsks'
 import { propertyKindCell, propertySourceNote } from '../../../lib/legal/legalProperty'
 import LienTimelineStrip from '../LienTimelineStrip'
 
@@ -164,7 +164,7 @@ export function FirmMatterTab({ tab, packet, matter, companyName, acts }: { tab:
   return (
     <div>
       <div style={h}>Fees and costs</div>
-      <PortalTable head={['Date', 'Kind', 'Note', 'Amount']} numCols={[3]} rows={fees.map((e) => [e.occurred_on, firmFeeKindWords(e.kind), e.body, formatLegalMoney(Number(e.amount ?? 0))])} empty="None yet." />
+      <PortalTable head={['Date', 'Kind', 'Note', 'By', 'Amount']} numCols={[4]} rows={fees.map((e) => [e.occurred_on, firmFeeKindWords(e.kind), e.body, entryRecordedByWords(e, 'firm'), formatLegalMoney(Number(e.amount ?? 0))])} empty="None yet." />
       {fees.length ? <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 18, fontSize: 13.5, padding: '8px 8px 0', fontWeight: 700 }}><span style={{ color: MUTED, fontWeight: 400 }}>Fees and costs in the demand</span><span style={portalNum}>{formatLegalMoney(feesTotal)}</span></div> : null}
       {contingency.length ? <p data-legal-contingency style={{ fontSize: 12.5, color: MUTED, margin: '6px 0 0' }}>Your contingency on recoveries the office applied: {contingency.map((e) => `${formatLegalMoney(Number(e.amount ?? 0))} on ${e.occurred_on}`).join(', ')}. It is your share of money collected, so it is not in the demand.</p> : null}
       {acts}
@@ -178,7 +178,7 @@ export function FirmMatterTab({ tab, packet, matter, companyName, acts }: { tab:
         </div>
       ) : null}
       <div style={h}>On this matter</div>
-      <PortalTable head={['Date', 'Kind', 'What happened', 'Status']} rows={steps.map((e) => [e.occurred_on, firmEntryKindWords(e), e.body, firmEntryStatusWords(e)])} empty="No steps recorded." />
+      <PortalTable head={['Date', 'Kind', 'What happened', 'By', 'Status']} rows={steps.map((e) => [e.occurred_on, firmEntryKindWords(e), e.body, entryRecordedByWords(e, 'firm'), firmEntryStatusWords(e)])} empty="No steps recorded." />
       <div style={h}>Account history, oldest first</div>
       <PortalTable head={['Date', 'Job', 'Step', 'What happened']} rows={packet.feesAndSteps.steps.map((s) => [s.ymd ?? '—', s.jobLabel ?? '', firmHistoryKindWords(s.kind), s.text])} empty="No history recorded." />
     </div>
