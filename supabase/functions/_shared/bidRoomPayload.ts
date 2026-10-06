@@ -11,6 +11,8 @@ export type SharedRoomOption = {
   name: string
   is_base: boolean
   total_cents: number
+  /** v2.4728: the bid version this option is (a letter with options); absent on older revisions and on a merged base. */
+  bid_version_id?: string | null
   fixture_rows: SharedRoomFixtureRow[]
 }
 
@@ -53,6 +55,7 @@ export function parseSharedBidRoomPayload(raw: unknown): SharedBidRoomPayload | 
       name: typeof opt.name === 'string' ? opt.name : '',
       is_base: opt.is_base === true,
       total_cents: Number.isFinite(total) ? Math.round(total) : 0,
+      ...(typeof opt.bid_version_id === 'string' && opt.bid_version_id.trim() ? { bid_version_id: opt.bid_version_id.trim() } : {}),
       fixture_rows: Array.isArray(opt.fixture_rows)
         ? opt.fixture_rows
             .filter((r): r is Record<string, unknown> => !!r && typeof r === 'object')

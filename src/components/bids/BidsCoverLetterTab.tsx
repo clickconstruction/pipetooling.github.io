@@ -62,6 +62,7 @@ import type {
 } from '../../lib/bids/bidPricingEngineTypes'
 import { bundleSummary, letterTotal, sectionLabel, starredPricingIdForVersion } from '../../lib/bids/coverLetterVersionBundle'
 import { COVER_LETTER_ALTS_HEADING_DEFAULT, COVER_LETTER_ALTS_LAYOUT_KEY, altSectionKey, buildAlternatesBlock, parseCoverLetterAltTexts, readCoverLetterAltsLayout, type CoverLetterAltTexts, type CoverLetterAltsLayout, buildOptionsBlock, optionsAlternateCount } from '../../lib/bids/coverLetterSamePage'
+import { roomSectionsForLetterOptions } from '../../lib/bids/wonOption'
 import { alternateIsPriced, buildAddAlternatesBlock, offeredAddAlternates, stampAddAlternateAmounts, type LetterTotalsByAlternate } from '../../lib/bids/coverLetterAddAlternates'
 import { letterDocument, letterRowsFor, letterSectionPlans, letterTotalsWithoutOffered, priceLetterSections, type LetterSection } from '../../lib/bids/coverLetterDocument'
 import { copyRichHtmlToClipboard } from '../../lib/copyRichHtmlToClipboard'
@@ -1536,13 +1537,16 @@ export function BidsCoverLetterTab({
                                 serviceTypeName={serviceTypeName}
                                 sections={
                                   letterOptions
-                                    // Options (v2.4723): the room signs the lead option; the other options are offered in lieu of it. Their own alternates wait for the room's option picker.
-                                    ? [
-                                        { name: `Option 1 — ${letterOptions[0]!.section.name}`, isAlternate: false, revenueSum: letterOptions[0]!.section.revenueSum, fixtureRows: letterOptions[0]!.section.fixtureRows },
-                                        ...letterOptions[0]!.alternates.map((a) => ({ name: a.name, isAlternate: true, revenueSum: a.revenueSum, fixtureRows: a.fixtureRows })),
-                                        ...letterOptions.slice(1).map((o) => ({ name: `Option ${o.n} — ${o.section.name}`, isAlternate: true, revenueSum: o.section.revenueSum, fixtureRows: o.section.fixtureRows })),
-                                        ...samePagePlan!.alternates.map((a) => ({ name: a.name, isAlternate: true, revenueSum: a.revenueSum, fixtureRows: a.fixtureRows })),
-                                      ]
+                                    // Options (v2.4728): every signable combination is a pickable proposal — Option 1, Option 1 with each
+                                    // of its alternates, each other option, each with its alternates — carrying its version so the
+                                    // signature records the option taken. The letter's own labels name them.
+                                    ? (() => {
+                                        const block = buildOptionsBlock(samePagePlan!, altTexts, formatCurrency, numberToWords, false, { gcName: letterCustomerName, projectName: projectNameVal })
+                                        return roomSectionsForLetterOptions(letterOptions, samePagePlan!.alternates, {
+                                          option: (o) => block?.items[o.n - 1]?.label ?? `Option ${o.n} — ${o.section.name}`,
+                                          alternate: (o, _a, j) => block?.items[o.n - 1]?.alternates[j]?.label ?? `Alternate ${j + 1}`,
+                                        })
+                                      })()
                                     : bundlePricings.length > 0
                                       ? bundlePricings.map((s) => ({ name: s.name, isAlternate: s.isAlternate, revenueSum: s.revenueSum, fixtureRows: s.fixtureRows }))
                                       : [{ name: 'Base bid', isAlternate: false, revenueSum: headlineAmount, fixtureRows }]
