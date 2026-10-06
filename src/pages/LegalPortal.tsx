@@ -394,6 +394,16 @@ function FirmActs({ matter, act, busy, notice, todayYmd }: { matter: LegalPortal
   const [feeOn, setFeeOn] = useState(todayYmd)
   const [stepOn, setStepOn] = useState(todayYmd)
   const [payOn, setPayOn] = useState(todayYmd)
+  // A page left open past midnight reloads with a new preparedOn: a date nobody changed follows it, so it never defaults to yesterday.
+  const seededFor = useRef(todayYmd)
+  useEffect(() => {
+    const was = seededFor.current
+    if (was === todayYmd) return
+    seededFor.current = todayYmd
+    setFeeOn((d) => (d === was ? todayYmd : d))
+    setStepOn((d) => (d === was ? todayYmd : d))
+    setPayOn((d) => (d === was ? todayYmd : d))
+  }, [todayYmd])
   const input: CSSProperties = { font: 'inherit', fontSize: 13, padding: '5px 8px', border: `1px solid ${HAIR}`, borderRadius: 4, background: 'var(--surface)', color: INK, width: '100%' }
   const lab: CSSProperties = { display: 'grid', gap: 3, fontSize: 11.5, color: MUTED }
   const submit = (payload: Record<string, unknown>, after: () => void) => async (e: FormEvent) => {

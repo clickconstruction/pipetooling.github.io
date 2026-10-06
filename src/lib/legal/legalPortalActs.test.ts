@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { isLegalClientId, legalActDateProblem, legalRateLimitMessage, recordedByOf } from '../../../supabase/functions/_shared/legalPortalActs'
 import { conversationRows, conversationWho, entryRecordedByWords } from './legalAsks'
@@ -35,5 +36,12 @@ describe('the firm’s acts (#85 item 18)', () => {
     const [q] = conversationRows([{ ...dana, kind: 'question', created_at: '2026-10-01T15:00:00Z' }])
     expect(conversationWho(q!, 'firm')).toBe('Dana Reyes asked')
     expect(conversationWho(q!, 'office')).toBe('Dana Reyes at the firm asked')
+  })
+})
+
+describe('an unknown Recorded by is refused, never saved as the firm (review)', () => {
+  it('submit-legal-portal answers 400 when the id names nobody live on the firm’s list', () => {
+    const src = readFileSync('supabase/functions/submit-legal-portal/index.ts', 'utf8')
+    expect(src).toMatch(/if \(!who\) return jsonResponse\(\{ error: 'Pick who recorded this from the list\.' \}, 400\)/)
   })
 })

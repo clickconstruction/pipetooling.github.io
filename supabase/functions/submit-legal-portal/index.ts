@@ -199,7 +199,9 @@ serve(async (req) => {
     const recordedById = str(body.recordedById, 64)
     if (recordedById) {
       const { data: who } = await admin.from('legal_firm_recipients').select('id, name').eq('id', recordedById).eq('firm_id', link.firm_id).is('removed_at', null).maybeSingle()
-      if (who) meta.recordedBy = { id: (who as { id: string }).id, name: (who as { name: string }).name }
+      // An id that names nobody on this firm's list is refused, never saved as "the firm".
+      if (!who) return jsonResponse({ error: 'Pick who recorded this from the list.' }, 400)
+      meta.recordedBy = { id: (who as { id: string }).id, name: (who as { name: string }).name }
     }
 
     if (kind === 'fee' || kind === 'cost') {
