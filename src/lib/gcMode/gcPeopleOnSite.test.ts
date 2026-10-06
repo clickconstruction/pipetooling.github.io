@@ -33,10 +33,10 @@ describe('people on site per week (G-84)', () => {
       ['Cool Breeze Mechanical', 3, 'log'],
     ])
     expect(weeks[0]?.rows).toEqual([
-      { label: 'Plan', text: '15 at the busiest, Mon Sep 21.' },
-      { label: 'Who', text: 'Iron Horse Fabrication 3, Pecan Valley Electric 2, Summit Roofing 4, our own crew 3, Cool Breeze Mechanical 3' },
-      { label: 'Log', text: '19 at the busiest, Tue Sep 22, 5 days logged.' },
-      { label: 'Counts', text: "Each is the daily log's last count for that trade. A trade with no count yet is counted as 3." },
+      { label: 'Plan', lines: ['15 at the busiest, Mon Sep 21.'] },
+      { label: 'Who', lines: ['Iron Horse Fabrication 3', 'Pecan Valley Electric 2', 'Summit Roofing 4', 'our own crew 3', 'Cool Breeze Mechanical 3'] },
+      { label: 'Log', lines: ['19 at the busiest, Tue Sep 22, 5 days logged.'] },
+      { label: 'Counts', lines: ["Each is the daily log's last count for that trade. A trade with no count yet is counted as 3."] },
     ])
   })
 
@@ -48,8 +48,8 @@ describe('people on site per week (G-84)', () => {
       ['Tri-County Site', 3, 'assumed'],
       ['Guadalupe Flatwork', 3, 'assumed'],
     ])
-    expect(jul20?.rows.find((r) => r.label === 'Who')?.text).toBe('Tri-County Site 3, assumed, Guadalupe Flatwork 3, assumed')
-    expect(jul20?.rows.find((r) => r.label === 'Log')?.text).toBe('No daily log this week.')
+    expect(jul20?.rows.find((r) => r.label === 'Who')?.lines).toEqual(['Tri-County Site 3, assumed', 'Guadalupe Flatwork 3, assumed'])
+    expect(jul20?.rows.find((r) => r.label === 'Log')?.lines).toEqual(['No daily log this week.'])
   })
 
   it('reads the plan on its own dates: a late bar does not fill the weeks ahead', () => {
@@ -84,8 +84,9 @@ describe('people on site per week (G-84)', () => {
     const [oct5, oct12] = weeksOf(said, '2026-10-05', '2026-10-12')
     expect(oct5?.planned.count).toBe(14)
     expect(oct5?.planned.by.find((b) => b.company === 'Summit Roofing')).toMatchObject({ count: 6, from: 'told' })
-    expect(oct5?.rows.find((r) => r.label === 'Who')?.text).toContain('Summit Roofing 6, its own count')
-    expect(oct5?.rows.find((r) => r.label === 'Counts')?.text).toBe("A trade's own count for the week comes first, then the daily log's last count. A trade with no count yet is counted as 3.")
+    // A company a line: Summit's own count on its line, our own crew on the next.
+    expect(oct5?.rows.find((r) => r.label === 'Who')?.lines).toEqual(['Pecan Valley Electric 2', 'Summit Roofing 6, its own count', 'our own crew 3', 'Cool Breeze Mechanical 3'])
+    expect(oct5?.rows.find((r) => r.label === 'Counts')?.lines).toEqual(["A trade's own count for the week comes first, then the daily log's last count. A trade with no count yet is counted as 3."])
     // Only for its own week: the week after falls back to the log's 4.
     expect(oct12?.planned.by.find((b) => b.company === 'Summit Roofing')).toMatchObject({ count: 4, from: 'log' })
     // A cut counts as the newest word: down to 2, the week reads 2.
@@ -101,12 +102,12 @@ describe('people on site per week (G-84)', () => {
     const state: GcState = { ...base, projects: base.projects.map((p) => (p.id === 'fairoaksd' ? { ...p, dailyLogs: (p.dailyLogs ?? []).map(off) } : p)) }
     const [sep28] = weeksOf(state, '2026-09-28', '2026-09-28')
     expect(sep28).toMatchObject({ planned: { count: 16 }, logged: { count: 13, on: '2026-09-28' }, short: true })
-    expect(sep28?.rows.find((r) => r.label === 'Short')?.text).toBe('The log had 3 fewer people than the plan.')
+    expect(sep28?.rows.find((r) => r.label === 'Short')?.lines).toEqual(['The log had 3 fewer people than the plan.'])
   })
 
   it('says every sentence in plain words', () => {
     const weeks = weeksOf(summitSays(initialGcState(), '2026-10-05', 6), '2026-07-20', '2026-10-26')
-    const sentences = weeks.flatMap((w) => w.rows.filter((r) => r.label !== 'Who').map((r) => r.text))
+    const sentences = weeks.flatMap((w) => w.rows.filter((r) => r.label !== 'Who').flatMap((r) => r.lines))
     expect(sentences.length).toBeGreaterThan(30)
     expect(sentences.flatMap(plainWordsFailures)).toEqual([])
   })

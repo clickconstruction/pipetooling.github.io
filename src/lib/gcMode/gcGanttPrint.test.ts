@@ -9,6 +9,7 @@ import { customerDoneWords, customerFullChart, customerSchedulePicture, customer
 import { PRINT_GROUP, PRINT_ROW, ganttPrint, ganttPrintHtml, lookAheadWindow, placeMilestones, printAxis, printPages, type GanttPrintInput, type GanttPrintRow } from './gcGanttPrint'
 import { plainWordsFailures } from '../plainWords'
 import type { GcProject } from './gcTypes'
+import { peopleOnSite } from './gcPeopleOnSite'
 
 /** The chart's filter pills, by their names on the toolbar. */
 const FILTER_NAMES: Record<keyof GanttFilters, string> = { critical: '5 or fewer spare days', late: 'Late or behind', held: 'Held', soon: 'Next 3 weeks', moved: 'Moved since Start' }
@@ -348,5 +349,73 @@ describe('the document', () => {
     for (const p of prints) {
       for (const words of [...p.shows, p.forWords, p.head.lines[0] ?? '', p.running, p.foot, p.everyDay ?? '', p.empty ?? '']) expect(plainWordsFailures(words)).toEqual([])
     }
+  })
+})
+
+describe('people on site on the paper (G-144)', () => {
+  /** Each week drawn on the paper: Monday, then the plan's and the log's numbers as the strip's data. */
+  const drawnWeeks = (html: string) => new Map([...html.matchAll(/data-people="([^"]+)" data-planned="(\d+)" data-logged="(\d*)"/g)].map((m) => [m[1] ?? '', [m[2], m[3]]]))
+  /** One week's marks on the paper. */
+  const weekSvg = (html: string, weekOf: string) => new RegExp(`<g data-people="${weekOf}"[^>]*>(.*?)</g>`).exec(html)?.[1] ?? ''
+
+  it('prints our team Fair Oaks D’s weeks under the last page’s rows while the strip is on, keyed and said; never the customer', () => {
+    const { input, state, project } = fairOaks()
+    const peopleOf = (from: string, to: string) => peopleOnSite(state, project, from, to)
+    const off = ganttPrint(input)
+    expect(off.pages.flat().some((r) => r.kind === 'people')).toBe(false)
+    expect(off.key.flat()).not.toContain('people')
+    expect(ganttPrintHtml(off)).not.toContain('data-people=')
+
+    const on = ganttPrint({ ...input, peopleOf })
+    // One row, the last of the last page, and the pages as many as before.
+    const last = on.pages[on.pages.length - 1] ?? []
+    expect(last[last.length - 1]?.kind).toBe('people')
+    expect(on.pages.flat().filter((r) => r.kind === 'people')).toHaveLength(1)
+    expect(on.pages).toHaveLength(off.pages.length)
+    // Fair Oaks D's numbers, as the strip on the chart has them, for every week of the paper's axis.
+    const html = ganttPrintHtml(on)
+    const drawn = drawnWeeks(html)
+    expect(['2026-09-21', '2026-09-28', '2026-10-05', '2026-10-12', '2026-10-19', '2026-10-26'].map((w) => drawn.get(w))).toEqual([
+      ['15', '19'],
+      ['15', '18'],
+      ['12', ''],
+      ['9', ''],
+      ['9', ''],
+      ['2', ''],
+    ])
+    expect([...drawn.keys()][0]).toBe(on.axis.first)
+    expect(drawn.size).toBe(Math.ceil(on.axis.days / 7))
+    // A week is 15.6 points at this scale: the numbers print over the bars, the log's bold in blue.
+    expect(weekSvg(html, '2026-09-21')).toContain('fill="#4b5563" text-anchor="middle">15</text>')
+    expect(weekSvg(html, '2026-09-21')).toContain('fill="#1e40af" font-weight="700" text-anchor="middle">19</text>')
+    // Keyed on the page it prints on, and said in the window and atop the first page.
+    expect(on.key[on.key.length - 1]).toContain('people')
+    expect(on.key.slice(0, -1).flat()).not.toContain('people')
+    expect(on.key.flat()).not.toContain('peopleShort')
+    expect(html).toContain("people on site, the plan's busiest day each week beside the daily log's")
+    const said = "People on site print under the last page's rows, the plan beside the daily log."
+    expect(on.shows).toContain(said)
+    expect(on.head.lines.some((l) => l.includes(said))).toBe(true)
+    expect(plainWordsFailures(said)).toEqual([])
+    // Never on the customer's copies, as stages or every bar.
+    const gc = customerSchedulePicture(state, { ...project, customerRole: 'ownersRep' })
+    for (const customer of [ganttPrint({ ...input, peopleOf, for: 'customer' }), ganttPrint({ ...input, peopleOf, for: 'customer', job: { ...input.job, customer: gc } })]) {
+      expect(customer.pages.flat().some((r) => r.kind === 'people')).toBe(false)
+      expect(customer.key.flat()).not.toContain('people')
+      expect(customer.shows).not.toContain(said)
+      expect(ganttPrintHtml(customer)).not.toContain('data-people=')
+    }
+  })
+
+  it('prints a short week’s log in amber, keyed', () => {
+    const { input, state, project } = fairOaks()
+    // The week of Sep 28 read short, as when a trade is left off the log.
+    const peopleOf = (from: string, to: string) => peopleOnSite(state, project, from, to).map((w) => (w.weekOf === '2026-09-28' ? { ...w, short: true } : w))
+    const on = ganttPrint({ ...input, peopleOf })
+    expect(on.key[on.key.length - 1]).toEqual(expect.arrayContaining(['people', 'peopleShort']))
+    const html = ganttPrintHtml(on)
+    expect(weekSvg(html, '2026-09-28')).toContain('fill="#d97706"')
+    expect(weekSvg(html, '2026-09-21')).not.toContain('fill="#d97706"')
+    expect(html).toContain('a week the daily log fell 3 or more people short of the plan')
   })
 })
