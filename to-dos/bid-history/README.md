@@ -238,7 +238,7 @@ waits a day for her answer, while PR 1 ships regardless.
 ## Where it stands
 
 Planned 2026-09-30. **PR 1 built 2026-10-05 as v2.4598**, directed and reviewed by PUNCHLIST: two
-migrations (`20261005215057_bid_changes`, then `20261005215059_bid_changes_triggers`, the
+migrations (`20261006190000_bid_changes`, then `20261006191000_bid_changes_triggers`, the
 seventeen triggers alone so their write locks are held for nothing else), the CI test
 `bidChangesCapture.test.ts`, and the full-schema bed `npm run test:pg:bid-changes`. It ran on a
 scratch Postgres 15 with stub tables (33 assertions; the bed itself needs docker and has not run, and the PR merges only after it runs green);

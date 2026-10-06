@@ -1,6 +1,6 @@
-# 20261005215059_bid_changes_triggers.sql (2026-10-05, v2.4598)
+# 20261006191000_bid_changes_triggers.sql (2026-10-05, v2.4598)
 
-Bid history, PR 1, file 2 of 2 (punch list #73): attaches `record_bid_change()` (from [`20261005215057_bid_changes`](20261005215057_bid_changes.md)) as `record_bid_change`, `AFTER INSERT OR UPDATE OR DELETE … FOR EACH ROW`, to the seventeen tables `bid_changes_tables()` lists. On `bids` the update side is `UPDATE OF` the 48 columns `bid_changes_bid_columns()` keeps. Nothing else is in the file: history starts the moment it commits.
+Bid history, PR 1, file 2 of 2 (punch list #73): attaches `record_bid_change()` (from [`20261006190000_bid_changes`](20261006190000_bid_changes.md)) as `record_bid_change`, `AFTER INSERT OR UPDATE OR DELETE … FOR EACH ROW`, to the seventeen tables `bid_changes_tables()` lists. On `bids` the update side is `UPDATE OF` the 48 columns `bid_changes_bid_columns()` keeps. Nothing else is in the file: history starts the moment it commits.
 
 ## Why a file of its own
 
@@ -8,7 +8,7 @@ Bid history, PR 1, file 2 of 2 (punch list #73): attaches `record_bid_change()` 
 
 ## Deploy note
 
-1. **File order.** `supabase db push` applies `20261005215057_bid_changes` first, then `20261005215059_bid_changes_triggers`, each in its own transaction. Push in a quiet moment (evenings): only the second file waits on bid writes.
+1. **File order.** `supabase db push` applies `20261006190000_bid_changes` first, then `20261006191000_bid_changes_triggers`, each in its own transaction. Push in a quiet moment (evenings): only the second file waits on bid writes.
 2. **If the second file trips its lock timeout** (`canceling statement due to lock timeout`): the first file is already applied and recorded, and the second rolled back whole, so no table has a trigger and no save was affected beyond a wait of up to three seconds. Run `supabase db push` again at a quieter moment. It applies the second file alone.
 3. **The one query that proves capture is live** (expect `17`, then a recent `last_change` once anyone saves a bid):
 
@@ -37,4 +37,4 @@ Not from the ledger's own work: the function catches every error inside it (`WHE
 
 ## Apply order
 
-After the merge, right after `20261005215057_bid_changes`. No client change.
+After the merge, right after `20261006190000_bid_changes`. No client change.
