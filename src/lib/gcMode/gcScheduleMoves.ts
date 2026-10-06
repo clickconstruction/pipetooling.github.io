@@ -45,6 +45,7 @@ export function moveActivityName(project: GcProject, lineId: string): string {
   const a = project.schedule?.activities.find((x) => x.lineId === lineId)
   if (!a) return lineId
   if (a.inspection) return a.inspection.label
+  if (a.added) return a.added.label
   const pkg = project.packages.find((k) => k.id === a.packageId)
   const label = pkg ? scheduleLinesOf(pkg).find((l) => l.lineId === lineId)?.label : undefined
   return pkg && label ? `${pkg.trade} · ${label}` : lineId
@@ -214,6 +215,40 @@ export function undoMove(project: GcProject, moveId: string, by: string, today: 
     ...schedule,
     activities: schedule.activities.map((a) => (back.has(a.lineId) ? { ...a, ...(back.get(a.lineId) as { start: string; finish: string }) } : a)),
     moves: (schedule.moves ?? []).map((m) => (m.id === move.id ? { ...m, undoneOn: today, undoneBy: by } : m)),
+  }
+}
+
+/**
+ * The move that can be put back (G-40): the newest undone move, while every activity it touched
+ * still sits where the undo left it and no move made after it still stands. Anything moved since
+ * would be overwritten, so then there is nothing to redo.
+ */
+export function redoableMove(project: GcProject): ScheduleMove | null {
+  const schedule = project.schedule
+  const moves = schedule?.moves ?? []
+  const move = moves.find((m) => m.undoneOn)
+  if (!schedule || !move) return null
+  // A standing move newer than it (the list is newest first) means the schedule went on without it.
+  if (moves.slice(0, moves.indexOf(move)).some((m) => !m.undoneOn)) return null
+  const now = new Map(schedule.activities.map((a) => [a.lineId, a]))
+  const sits = (lineId: string, at: { start: string; finish: string }) => now.get(lineId)?.start === at.start && now.get(lineId)?.finish === at.finish
+  return sits(move.lineId, move.from) && move.pushed.every((p) => sits(p.lineId, p.from)) ? move : null
+}
+
+/** The schedule with the undone move put back, the move standing again. Null: nothing to redo. */
+export function redoMove(project: GcProject, moveId: string): ProjectSchedule | null {
+  const schedule = project.schedule
+  const move = redoableMove(project)
+  if (!schedule || !move || move.id !== moveId) return null
+  const forward = new Map<string, { start: string; finish: string }>([[move.lineId, move.to], ...move.pushed.map((p) => [p.lineId, p.to] as [string, { start: string; finish: string }])])
+  return {
+    ...schedule,
+    activities: schedule.activities.map((a) => (forward.has(a.lineId) ? { ...a, ...(forward.get(a.lineId) as { start: string; finish: string }) } : a)),
+    moves: (schedule.moves ?? []).map((m) => {
+      if (m.id !== move.id) return m
+      const { undoneOn: _on, undoneBy: _by, ...stands } = m
+      return stands
+    }),
   }
 }
 

@@ -672,6 +672,20 @@ export interface GcProject {
   rfis?: Rfi[]
   /** What the work waits on from outside the trades (the Gantt, Phase 4): deliveries, the customer's decisions, permits, the utility. Unset: none. */
   waits?: ScheduleWait[]
+  /** The customer's schedule as we sent it on its own (the Gantt, G-94), every send kept as it went, newest last. Unset: never sent. */
+  scheduleSends?: ScheduleSend[]
+}
+
+/** The customer's schedule sent on its own, dated and kept as sent (G-94). */
+export interface ScheduleSend {
+  id: string
+  on: string
+  by: string
+  /** Who it went to: the customer's contact and company. */
+  to: string
+  subject: string
+  /** The letter, one paragraph a line. */
+  lines: string[]
 }
 
 /** A weekly report as it went to the customer (Building lane, 2026-10-05): kept as sent, for their portal. */
@@ -1206,6 +1220,20 @@ export type GcAction =
   /** It moved a step: ordered, asked for, applied for or requested; shipped (a delivery); in; or the expected day changed. */
   | { type: 'setScheduleWaitStep'; projectId: string; waitId: string; step: 'asked' | 'shipped' | 'done' | 'expected'; on: string; note?: string }
   | { type: 'removeScheduleWait'; projectId: string; waitId: string }
+  /** An activity that is no trade's line (the Gantt, G-38): mobilize, cure time, the customer's own work. `holdsUp`: the lines that wait on it from now on. */
+  | { type: 'addScheduleActivity'; projectId: string; label: string; who: string; start: string; finish: string; after: string[]; holdsUp: string[]; by: string }
+  /** The office marks an added activity done, or not done after all. */
+  | { type: 'setAddedActivityDone'; projectId: string; lineId: string; on: string | null }
+  /** An added activity comes off the schedule; whatever waited on it stops waiting. */
+  | { type: 'removeScheduleActivity'; projectId: string; lineId: string }
+  /** The day an activity really started or finished (G-55), from the walk or the editor. Null clears one; unset leaves it. */
+  | { type: 'setActualDates'; projectId: string; lineId: string; actualStart?: string | null; actualFinish?: string | null; by: string }
+  /** A new baseline after a signed change order (G-41): the plan as it stands becomes the one measured against; the old one is kept and named. */
+  | { type: 'setScheduleBaseline'; projectId: string; name: string; why: string; by: string }
+  /** Put an undone move back (G-40), while everything it touched still sits where the undo left it. */
+  | { type: 'redoScheduleMove'; projectId: string; moveId: string; by: string }
+  /** The customer's schedule sent on its own (G-94): the letter as it stands today, kept as sent. Written, never sent, in the prototype. */
+  | { type: 'sendCustomerSchedule'; projectId: string; by: string }
   /** A company answers a dates message from its portal: the dates work, or it needs another day, with a note. */
   | { type: 'tradeAnswerDates'; projectId: string; partnerId: string; moveId: string; ok: boolean; day?: string; note?: string }
 
@@ -1362,6 +1390,16 @@ export interface ScheduleActivity {
    * critical path, not in work done against the plan. Passed: the day it passed.
    */
   inspection?: { label: string; passedOn?: string; failed?: InspectionFailure[] }
+  /**
+   * An activity that is no line of a trade's statement of work (the Gantt, G-38): mobilize, cure
+   * time, the customer's own work. Its packageId is '' and its lineId its own (`${projectId}-own-N`).
+   * No dollars and nobody reports it: the office marks it done. It counts on the critical path.
+   */
+  added?: { label: string; who: string; doneOn: string | null }
+  /** The day it really started, beside the planned one (the Gantt, G-55): set by the walk or the editor. Unset: not recorded. */
+  actualStart?: string
+  /** The day it really finished (G-55). Unset: not recorded. */
+  actualFinish?: string
 }
 
 /**
@@ -1414,13 +1452,25 @@ export interface LookAheadMark {
 export interface ProjectSchedule {
   activities: ScheduleActivity[]
   milestones: ScheduleMilestone[]
-  /** Locked at Start: each activity's planned start and finish then, by line id. Null: not locked yet. */
-  baseline: { lockedOn: string; activities: Record<string, { start: string; finish: string }> } | null
+  /** Locked at Start, or set anew after a signed change order (G-41): each activity's planned start and finish then, by line id. Null: not locked yet. */
+  baseline: ScheduleBaseline | null
+  /** The baselines retired by a new one (G-41), oldest first, each kept and named. Unset: only the one at Start. */
+  baselines?: ScheduleBaseline[]
   lookAhead: LookAheadMark[]
   /** Every move made with an explanation, newest first (the owner, 2026-10-05; the Gantt, Phase 2). Unset: none yet. */
   moves?: ScheduleMove[]
   /** Every weekly walk of the schedule, newest first (the owner, 2026-10-05: "build the weekly walk"). Unset: never walked. */
   walks?: ScheduleWalk[]
+}
+
+/** A plan the schedule is measured against (G-41): the one locked at Start, or one set after a signed change order, named. */
+export interface ScheduleBaseline {
+  lockedOn: string
+  activities: Record<string, { start: string; finish: string }>
+  /** "At Start", "After change order 2". Unset: the one at Start. */
+  name?: string
+  by?: string
+  why?: string
 }
 
 /**

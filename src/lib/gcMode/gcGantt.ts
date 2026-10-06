@@ -142,8 +142,10 @@ export function ganttBars(items: ScheduleItem[], float: Map<string, number>, hol
     const daysLate = building && !done && a.finish < today ? daysBetween(a.finish, today) : 0
     const started = a.start <= today
     const gap = Math.round(item.plannedToday - item.actual)
-    const behind = building && !done && started && !a.inspection && gap >= BEHIND_POINTS
-    const ahead = building && !done && !a.inspection && item.actual - item.plannedToday >= BEHIND_POINTS
+    // An inspection or an added activity has no percent to read against the plan: it is done, or not.
+    const noReport = Boolean(a.inspection || a.added)
+    const behind = building && !done && started && !noReport && gap >= BEHIND_POINTS
+    const ahead = building && !done && !noReport && item.actual - item.plannedToday >= BEHIND_POINTS
     // An inspection that failed and has not passed since: the day it is seen again is its new day.
     const fails = a.inspection && !a.inspection.passedOn ? (a.inspection.failed ?? []) : []
     const lastFail = fails[fails.length - 1]
@@ -242,6 +244,8 @@ export interface GanttGroup {
 }
 
 const INSPECTIONS_KEY = 'inspections'
+/** Added activities (G-38) group together under the job's own name; by stage they sit where their dates fall. */
+const ADDED_KEY = 'added'
 
 function summarize(key: string, title: string, sub: string, bars: GanttBar[]): GanttGroup {
   const worth = bars.reduce((sum, b) => sum + b.item.worth, 0)
@@ -271,9 +275,9 @@ function uniq(words: string[]): string[] {
  */
 export function ganttGroups(bars: GanttBar[], by: GanttGroupBy): GanttGroup[] {
   const keyOf = (b: GanttBar): string => {
-    if (by === 'trade') return b.item.pkg?.id ?? INSPECTIONS_KEY
+    if (by === 'trade') return b.item.pkg?.id ?? (b.item.activity.added ? ADDED_KEY : INSPECTIONS_KEY)
     if (by === 'company') return b.item.company
-    return b.item.activity.inspection ? INSPECTIONS_KEY : lineStage(b.item.trade, b.item.label)
+    return b.item.activity.inspection ? INSPECTIONS_KEY : b.item.activity.added ? ADDED_KEY : lineStage(b.item.trade, b.item.label)
   }
   const order: string[] = []
   const byKey = new Map<string, GanttBar[]>()
@@ -289,17 +293,47 @@ export function ganttGroups(bars: GanttBar[], by: GanttGroupBy): GanttGroup[] {
     const list = byKey.get(key) ?? []
     const head = list[0]?.item
     const trades = uniq(list.map((b) => b.item.trade)).join(', ')
-    if (by === 'trade') return summarize(key, head?.trade ?? '', head?.company ?? '', list)
+    if (by === 'trade') return summarize(key, head?.trade ?? '', key === ADDED_KEY ? uniq(list.map((b) => b.item.company)).join(', ') : (head?.company ?? ''), list)
     if (by === 'company') return summarize(key, key, trades === key ? '' : trades, list)
     const stage = SCHEDULE_STAGES.find((s) => s.key === key)
-    return summarize(key, key === INSPECTIONS_KEY ? 'Inspections' : (stage?.label ?? key), trades, list)
+    return summarize(key, key === INSPECTIONS_KEY ? 'Inspections' : key === ADDED_KEY ? (head?.trade ?? key) : (stage?.label ?? key), trades, list)
   })
   if (by === 'stage') {
-    const at = (key: string) => (key === INSPECTIONS_KEY ? 999 : SCHEDULE_STAGES.findIndex((s) => s.key === key))
+    // The added ones sit among the stages where their first start falls.
+    const added = groups.find((g) => g.key === ADDED_KEY)
+    const stageAt = (key: string) => SCHEDULE_STAGES.findIndex((s) => s.key === key)
+    const addedAt = added ? (groups.filter((g) => g.key !== ADDED_KEY && g.key !== INSPECTIONS_KEY && g.start > added.start).map((g) => stageAt(g.key)).sort((a, b) => a - b)[0] ?? 998) - 0.5 : 0
+    const at = (key: string) => (key === INSPECTIONS_KEY ? 999 : key === ADDED_KEY ? addedAt : stageAt(key))
     return groups.sort((a, b) => at(a.key) - at(b.key))
   }
   if (by === 'company') return groups.map((g, i) => ({ g, i })).sort((a, b) => b.g.late - a.g.late || a.i - b.i).map((x) => x.g)
   return groups
+}
+
+/**
+ * The chart as a list for a phone (G-19): the stages of the job, the one running today first, then
+ * the ones ahead in order, then the ones done. A stage with every bar done opens folded.
+ */
+export function ganttListGroups(bars: GanttBar[], today: string): { group: GanttGroup; open: boolean; now: boolean }[] {
+  const groups = ganttGroups(bars, 'stage')
+  const rank = (g: GanttGroup) => (g.start <= today && g.finish >= today ? 0 : g.start > today ? 1 : 2)
+  return groups
+    .map((group, i) => ({ group, i }))
+    .sort((a, b) => rank(a.group) - rank(b.group) || (rank(a.group) === 2 ? b.group.finish.localeCompare(a.group.finish) : a.i - b.i))
+    .map(({ group }) => ({ group, now: rank(group) === 0, open: !group.bars.every((b) => b.status === 'done') }))
+}
+
+/** One row of the chart laid out: a group's header or a bar, with where it sits from the top. */
+export type GanttRowEntry = { kind: 'group'; key: string; y: number; height: number } | { kind: 'bar'; key: string; y: number; height: number; groupKey: string }
+
+/**
+ * Which rows to draw when only the rows in view are drawn (G-135): the entries whose span crosses
+ * the window, with some overscan so a slow scroll never shows a gap. Group headers always draw.
+ */
+export function rowsInView(entries: GanttRowEntry[], top: number, height: number, overscan = 400): Set<string> {
+  const from = top - overscan
+  const to = top + height + overscan
+  return new Set(entries.filter((e) => e.kind === 'group' || (e.y + e.height >= from && e.y <= to)).map((e) => e.key))
 }
 
 // ---------------------------------------------------------------------------------------------

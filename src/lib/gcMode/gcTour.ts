@@ -170,9 +170,32 @@ export const GC_PROJECT_TOUR_STEPS: SpotlightTourStep[] = [
     body: 'Each trade sends what it will put in: product data, shop drawings or samples. We look and send them to the architect. The architect approves them or sends them back. A trade cannot start that work until it is approved.',
   },
   {
+    anchor: 'gc-ptab-rfis',
+    title: 'RFIs',
+    body: 'A question about the plans while we build. A trade asks from its portal, or we write one. We send it to the architect. The answer is needed three days before the work it holds. A cost answer starts a change order in one tap.',
+  },
+  {
     anchor: 'gc-ptab-schedule',
     title: 'Schedule',
     body: 'The dates for each trade and what waits on what. Start locks it as the plan we measure against.',
+  },
+  {
+    anchor: 'gc-gantt-toolbar',
+    title: 'The chart',
+    body: 'Each bar is one piece of a trade’s work. Zoom with Days, Weeks or Months. Group it by trade, by stage or by company. The pills count what is late, held or tight, and filter the chart. Drag a bar to move it. Every move asks why.',
+    missingBody: 'Open the Schedule tab on a job with a schedule drawn and the chart is here.',
+  },
+  {
+    anchor: 'gc-walk-line',
+    title: 'Update the week',
+    body: 'A chart is only true on the day someone checked it. This line says when the schedule was last walked. Tap Update the week to go through every bar that should have moved, one at a time.',
+    missingBody: 'It sits over the chart on a job being built.',
+  },
+  {
+    anchor: 'gc-tell-trades',
+    title: 'Tell the trades',
+    body: 'Every move is kept under the chart with who made it and why. When dates moved, tap Tell the trades. Each company gets one email with its old and new days. It answers from its portal.',
+    missingBody: 'It shows under the chart once a move changed a company’s days.',
   },
   {
     anchor: 'gc-ptab-log',

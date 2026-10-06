@@ -3,7 +3,7 @@ import { initialGcState } from './gcFixture'
 import { gcReducer } from './gcReducer'
 import { addDays } from './gcBuilding'
 import type { GcState } from './gcTypes'
-import { moveRows, moveWhyProblem, planMove, scheduleFinish, undoableMove, whatIfSlips } from './gcScheduleMoves'
+import { moveRows, moveWhyProblem, planMove, redoableMove, scheduleFinish, undoableMove, whatIfSlips } from './gcScheduleMoves'
 
 /** Fair Oaks Shops, Building D: the roof (ftpo) is followed by sheet metal and curbs, and they by the rooftop units. */
 const ID = 'fairoaksd'
@@ -156,5 +156,36 @@ describe('waits drawn by hand, gaps and day limits (G-34 to G-36)', () => {
     const plan = planMove(job(state), tpo.lineId, tpo.start, tpo.finish, [...tpo.after, sheet.lineId])!
     expect(plan.linksChanged).toBe(true)
     expect(plan.warnings[0]).toContain('Roofing · Sheet metal and flashing already waits on this, so this makes a loop.')
+  })
+})
+
+describe('redo (G-40)', () => {
+  it('puts an undone move back while everything it touched still sits where the undo left it', () => {
+    let state = initialGcState()
+    const tpo = line(state, 'TPO membrane')
+    expect(redoableMove(job(state))).toBeNull()
+    state = gcReducer(state, { type: 'setScheduleActivity', projectId: ID, lineId: tpo.lineId, start: addDays(tpo.start, 7), finish: addDays(tpo.finish, 7), after: tpo.after, why })
+    const move = undoableMove(job(state))!
+    expect(redoableMove(job(state))).toBeNull()
+    state = gcReducer(state, { type: 'undoScheduleMove', projectId: ID, moveId: move.id, by: 'Robert' })
+    expect(redoableMove(job(state))?.id).toBe(move.id)
+    expect(undoableMove(job(state))).toBeNull()
+    state = gcReducer(state, { type: 'redoScheduleMove', projectId: ID, moveId: move.id, by: 'Robert' })
+    expect(line(state, 'TPO membrane').finish).toBe(addDays(tpo.finish, 7))
+    expect(job(state).schedule?.moves?.[0]).not.toHaveProperty('undoneOn')
+    expect(undoableMove(job(state))?.id).toBe(move.id)
+    expect(redoableMove(job(state))).toBeNull()
+    expect(state.log[0]?.text).toMatch(/^Robert put a move back: Roofing · TPO membrane is Sep 28 to Oct 16 again\./)
+  })
+
+  it('cannot redo once something it touched moved again', () => {
+    let state = initialGcState()
+    const tpo = line(state, 'TPO membrane')
+    state = gcReducer(state, { type: 'setScheduleActivity', projectId: ID, lineId: tpo.lineId, start: addDays(tpo.start, 7), finish: addDays(tpo.finish, 7), after: tpo.after, why })
+    const move = undoableMove(job(state))!
+    state = gcReducer(state, { type: 'undoScheduleMove', projectId: ID, moveId: move.id, by: 'Robert' })
+    state = gcReducer(state, { type: 'setScheduleActivity', projectId: ID, lineId: tpo.lineId, start: addDays(tpo.start, 1), finish: addDays(tpo.finish, 1), after: tpo.after, why: { ...why, note: 'A day for the crew to come back.' } })
+    expect(redoableMove(job(state))).toBeNull()
+    expect(gcReducer(state, { type: 'redoScheduleMove', projectId: ID, moveId: move.id, by: 'Robert' })).toBe(state)
   })
 })

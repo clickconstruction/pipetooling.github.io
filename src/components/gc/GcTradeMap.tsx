@@ -22,6 +22,7 @@ import {
 import { AskThread, PromiseChip } from './GcAskThread'
 import { Btn, Chip, type Tone } from './gcUi'
 import { GcDeclineForm } from './GcDeclineForm'
+import { GcAskCompanies } from './GcAskCompanies'
 
 /**
  * GC mode design spike: line up quotes for one trade on one project. The map shows the project
@@ -68,6 +69,8 @@ const RECORD: Record<ReturnType<typeof answerRecord>, { tone: Tone; word: string
 
 export function GcTradeMap({ state, project, packageId, dispatch, onPickPackage, onClose, onLevel }: Props) {
   const [selected, setSelected] = useState<string | null>(null)
+  // Asking from the map goes through the Ask window, ticked to the one company (the owner, 2026-10-05: look before anything goes out).
+  const [asking, setAsking] = useState<string | null>(null)
   const packages = project.packages.filter((p) => !p.selfPerform)
   const pkg = packages.find((p) => p.id === packageId) ?? packages[0]
 
@@ -84,8 +87,7 @@ export function GcTradeMap({ state, project, packageId, dispatch, onPickPackage,
   const quotes = bidsIn(pkg).length
   const waiting = rows.filter((r) => r.invite && (r.invite.status === 'invited' || r.invite.status === 'opened')).length
   const next = nextToAsk(rows)
-  const ids = { projectId: project.id, packageId: pkg.id }
-  const ask = (partnerId: string) => dispatch({ type: 'invite', ...ids, partnerId })
+  const ask = (partnerId: string) => setAsking(partnerId)
   const short = Math.max(0, BIDS_WANTED - quotes)
 
   return (
@@ -227,12 +229,14 @@ export function GcTradeMap({ state, project, packageId, dispatch, onPickPackage,
                 isNext={next?.partner.id === row.partner.id && short > 0}
                 selected={selected === row.partner.id}
                 onSelect={() => setSelected(row.partner.id)}
+                onAsk={ask}
                 dispatch={dispatch}
               />
             ))}
           </div>
         </div>
       </div>
+      {asking && <GcAskCompanies key={asking} state={state} dispatch={dispatch} projectId={project.id} packageId={pkg.id} tick={[asking]} onClose={() => setAsking(null)} />}
     </div>
   )
 }
@@ -341,6 +345,7 @@ function LineupItem({
   isNext,
   selected,
   onSelect,
+  onAsk,
   dispatch,
 }: {
   state: GcState
@@ -350,6 +355,8 @@ function LineupItem({
   isNext: boolean
   selected: boolean
   onSelect: () => void
+  /** Ask them: opens the Ask window ticked to this company. */
+  onAsk: (partnerId: string) => void
   dispatch: Dispatch<GcAction>
 }) {
   const { partner, travel, invite } = row
@@ -441,7 +448,7 @@ function LineupItem({
         )}
         {!invite && (
           <div onClick={(e) => e.stopPropagation()}>
-            <Btn kind={isNext ? 'primary' : 'plain'} onClick={() => dispatch({ type: 'invite', ...ids, partnerId: partner.id })}>
+            <Btn kind={isNext ? 'primary' : 'plain'} onClick={() => onAsk(partner.id)}>
               {travel.inZone ? 'Ask them' : 'Ask anyway'}
             </Btn>
           </div>

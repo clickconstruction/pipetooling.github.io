@@ -9,7 +9,9 @@ import {
   ganttFilter,
   ganttGroups,
   ganttLinks,
+  ganttListGroups,
   ganttNeighbors,
+  rowsInView,
   holidayOn,
   holidaysIn,
   holidaysOf,
@@ -204,5 +206,38 @@ describe('the time axis', () => {
     expect(days.ticks.length).toBe(days.days)
     expect(weeks.ticks.length).toBe(Math.floor(weeks.days / 7) + (weeks.days % 7 > 0 ? 1 : 0))
     expect(months.ticks.every((t) => t.label === '1' || t.label === '15')).toBe(true)
+  })
+})
+
+describe('the chart as a list for a phone (G-19)', () => {
+  it('puts the stage running today first, then the ones ahead, then the ones done, folded', () => {
+    const { bars, state } = fairOaks()
+    const list = ganttListGroups(bars, state.today)
+    const first = list[0]
+    if (!first) throw new Error('no stage on the list')
+    expect(first.now).toBe(true)
+    expect(first.group.start <= state.today && first.group.finish >= state.today).toBe(true)
+    const ranks = list.map((x) => (x.now ? 0 : x.group.start > state.today ? 1 : 2))
+    expect([...ranks].sort((a, b) => a - b)).toEqual(ranks)
+    const done = list.filter((x) => x.group.bars.every((b) => b.status === 'done'))
+    expect(done.length).toBeGreaterThan(0)
+    expect(done.every((x) => !x.open)).toBe(true)
+  })
+})
+
+describe('only the rows in view are drawn (G-135)', () => {
+  it('keeps the rows that cross the window and every group header, with overscan', () => {
+    const entries = [
+      { kind: 'group' as const, key: 'g1', y: 0, height: 30 },
+      ...Array.from({ length: 300 }, (_, i) => ({ kind: 'bar' as const, key: `b${i}`, y: 30 + i * 32, height: 32, groupKey: 'g1' })),
+    ]
+    const shown = rowsInView(entries, 3200, 700, 100)
+    expect(shown.has('g1')).toBe(true)
+    expect(shown.has('b0')).toBe(false)
+    expect(shown.has('b96')).toBe(true) // 30 + 96 * 32 = 3102: inside the overscan above
+    expect(shown.has('b94')).toBe(false)
+    expect(shown.has('b124')).toBe(true) // 3998: inside the overscan below
+    expect(shown.has('b126')).toBe(false)
+    expect(rowsInView(entries, 0, 700).size).toBeLessThan(entries.length)
   })
 })

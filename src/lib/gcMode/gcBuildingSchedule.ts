@@ -191,12 +191,34 @@ export function scheduleRows(state: GcState, project: GcProject): ScheduleRow[] 
   })
 }
 
-/** Every activity on the chart, in the order drawn: the trades' lines and the inspections. */
+/** An added activity as a chart row (G-38): no dollars, done when the office marks it. Null: not one. */
+function addedOf(schedule: ProjectSchedule, activity: ScheduleActivity, today: string): ScheduleItem | null {
+  const added = activity.added
+  if (!added) return null
+  const baseline = schedule.baseline?.activities[activity.lineId] ?? { start: activity.start, finish: activity.finish }
+  return {
+    activity,
+    pkg: null,
+    trade: ADDED_TRADE,
+    label: added.label,
+    company: added.who,
+    worth: 0,
+    actual: added.doneOn ? 100 : 0,
+    baseline,
+    plannedToday: plannedPct(baseline.start, baseline.finish, today),
+    slipDays: daysBetween(baseline.finish, activity.finish),
+  }
+}
+
+/** The trade an added activity shows under: the job's own, like an inspection. */
+export const ADDED_TRADE = "The job's own"
+
+/** Every activity on the chart, in the order drawn: the trades' lines, the inspections and the added ones. */
 export function scheduleItems(state: GcState, project: GcProject): ScheduleItem[] {
   const schedule = project.schedule
   if (!schedule) return []
   return schedule.activities.flatMap((activity) => {
-    const item = activity.inspection ? inspectionOf(schedule, activity, state.today) : rowOf(state, project, schedule, activity)
+    const item = activity.inspection ? inspectionOf(schedule, activity, state.today) : activity.added ? addedOf(schedule, activity, state.today) : rowOf(state, project, schedule, activity)
     return item ? [item] : []
   })
 }
@@ -335,6 +357,7 @@ function isoOf(day: number): string {
 /** "HVAC · Test and balance", or an inspection by its own name. */
 function activityLabel(project: GcProject, a: ScheduleActivity): string {
   if (a.inspection) return a.inspection.label
+  if (a.added) return a.added.label
   const pkg = project.packages.find((k) => k.id === a.packageId)
   const line = pkg ? lineOf(pkg, a.lineId) : null
   return pkg && line ? `${pkg.trade} · ${line.label}` : a.lineId
@@ -343,6 +366,7 @@ function activityLabel(project: GcProject, a: ScheduleActivity): string {
 /** Done: an inspection passed, or a line reported 100%. */
 function activityDone(project: GcProject, a: ScheduleActivity): boolean {
   if (a.inspection) return Boolean(a.inspection.passedOn)
+  if (a.added) return Boolean(a.added.doneOn)
   const pkg = project.packages.find((k) => k.id === a.packageId)
   return ((pkg && lineOf(pkg, a.lineId)?.actual) ?? 0) >= 100
 }
@@ -422,6 +446,7 @@ export function projectedFinish(project: GcProject, today: string): ProjectedFin
   const t = dayNumber(today)
   const info = (a: ScheduleActivity): { name: string; done: number; worth: number; actual: number } => {
     if (a.inspection) return { name: `The ${a.inspection.label.toLowerCase()}`, done: a.inspection.passedOn ? 100 : 0, worth: 0, actual: 0 }
+    if (a.added) return { name: a.added.label, done: a.added.doneOn ? 100 : 0, worth: 0, actual: 0 }
     const pkg = project.packages.find((k) => k.id === a.packageId)
     const line = pkg ? lineOf(pkg, a.lineId) : null
     return { name: pkg && line ? `${pkg.trade} · ${line.label}` : a.lineId, done: line?.actual ?? 0, worth: line?.worth ?? 0, actual: line?.actual ?? 0 }

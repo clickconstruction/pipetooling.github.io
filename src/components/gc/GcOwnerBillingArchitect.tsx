@@ -1,6 +1,7 @@
 import { useState, type Dispatch } from 'react'
 import { OwnerPayAppWindow } from './GcOwnerBillingPayApp'
 import { PortalBlock } from './GcPortalUi'
+import { GcArchitectSchedule } from './GcArchitectSchedule'
 import { Btn, Chip, input } from './gcUi'
 import {
   GC_COMPANY_NAME,
@@ -99,6 +100,9 @@ export function GcOwnerBillingArchitectPortal({ state, project, dispatch }: { st
             </div>
           </PortalBlock>
         )}
+
+        {/* The schedule as the architect reads it (the Gantt, G-95): the stages, and what waits on them. */}
+        {project.schedule && <GcArchitectSchedule state={state} project={project} />}
 
         <PortalBlock title={questions.length > 0 ? `Questions from the trades · ${questions.length}` : 'Questions from the trades'}>
           {questions.length === 0 ? (

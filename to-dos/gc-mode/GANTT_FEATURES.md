@@ -39,8 +39,8 @@ The three jobs the chart has, which every feature serves at least one of:
 | G-16 | A held bar is striped, and says what holds it: a submittal, an RFI, a failed inspection, a delivery | See | Have (submittals and RFIs 2026-10-05; a delivery, a decision, a permit or the utility 2026-10-06, when it is expected on or after the day the work starts or its day passed) | 1 |
 | G-17 | Inspections as their own rows; a failed one shows the day it failed and the day it is seen again | See | Have | — |
 | G-18 | The strip of numbers over the chart: finish against the contract, work done against plan, how many have no spare days, how many are held, what moved this week | See | Have (built 2026-10-05: the filter counts, under the four measures) | 1 |
-| G-19 | A phone view: one stage at a time as a list with small bars, today first | See | New | 5 |
-| G-20 | Keyboard: arrows move between bars, Enter opens one, a list a screen reader can read | See | New | 5 |
+| G-19 | A phone view: one stage at a time as a list with small bars, today first | See | Have (built 2026-10-06: the List view, which a phone opens on, the stages with the one running today first, each a table of its bars with a small bar in the stage's span; `GcGanttList.tsx`) | 5 |
+| G-20 | Keyboard: arrows move between bars, Enter opens one, a list a screen reader can read | See | Have (built 2026-10-06: up and down move between bars, left and right a week along, Home and End, Enter opens; every bar says its name, company, dates and standing; the List view is a real table) | 5 |
 | G-21 | Print and PDF of the chart as it is filtered, on one or more landscape pages | Tell | New | 3 |
 
 ## B. Building and changing the schedule
@@ -55,10 +55,10 @@ The three jobs the chart has, which every feature serves at least one of:
 | G-35 | Kinds of link: starts after it finishes (today's), starts with it, finishes with it, and a gap of days on any link (cure time, lead time) | See | Have (built 2026-10-06: a gap in days on each wait, on the opened activity; the pushes, spare days and projected finish count it) | 2 |
 | G-36 | A day an activity cannot start before (a delivery, a permit), and a day it must finish by | See | Have (built 2026-10-06: Not before stops a move; Must finish by warns, and a bar past it shows red) | 2 |
 | G-37 | Pull work earlier when the work before it finishes early, on a press, never by itself | See | New (today nothing moves earlier) | 2 |
-| G-38 | Add an activity that is not a schedule-of-values line: mobilize, a delivery, cure time, the customer's own work | See | New | 2 |
+| G-38 | Add an activity that is not a schedule-of-values line: mobilize, a delivery, cure time, the customer's own work | See | Have (built 2026-10-06: the job's own bar, no dollars, waits on work and holds work up, counts on the critical path, the office marks it done; a delivery is a wait, G-73; `gcAddedActivity.ts`) | 2 |
 | G-39 | Split one line into several bars (first floor, second floor) that add up to the line's percent | See | New | Later |
-| G-40 | Undo and redo, and Start over to the last saved schedule | See | Part (Undo on the last move, while nothing it touched has moved since; no redo) | 2 |
-| G-41 | The baseline: kept at Start. Set a new baseline after a signed change order, the old ones kept and named | See | Part (one baseline) | 2 |
+| G-40 | Undo and redo, and Start over to the last saved schedule | See | Have (Undo on the last move 2026-10-05; Redo on the newest undone move 2026-10-06, while everything it touched still sits where the undo left it; Start over is the prototype's own) | 2 |
+| G-41 | The baseline: kept at Start. Set a new baseline after a signed change order, the old ones kept and named | See | Have (built 2026-10-06: The baseline card says when a signed order's days call for one, offers its name, takes the plan as it stands and keeps the old ones named; `gcBaseline.ts`) | 2 |
 | G-42 | Every move asks for an explanation, which is kept with the move (the owner, 2026-10-05: "an explanation should be given and recorded"): a reason picked (weather, the trade before, materials, crew, the customer, the plans, an inspection, us) and their own words | See, Tell | Have (built 2026-10-05: no move saves without a reason and a sentence) | 2 |
 | G-43 | The history of the schedule: who moved what, when, why, and by how many days | See | Have (built 2026-10-05: Changes to the schedule, under the chart) | 2 |
 | G-44 | Templates: save a job's schedule shape and start the next job like it from it | See | New | Later |
@@ -73,7 +73,7 @@ The three jobs the chart has, which every feature serves at least one of:
 | G-52 | **Update the week**: a walk through every bar that should have moved, with what the trade said and what the daily log shows, one at a time | See | Have (built 2026-10-05: Update the week, over the chart) | 2 |
 | G-53 | The walk ends with what changed, ready to go to the trades and the customer | Tell, Chase | Have (built 2026-10-05: the walk's What changed, and Tell the trades from the same moves; the customer reads it as What changed this week) | 2 |
 | G-54 | A bar that should be done and is not turns amber, then red, without anyone touching it | See | Have (built 2026-10-05) | 1 |
-| G-55 | Actual start and actual finish kept beside the planned ones | See | New | 2 |
+| G-55 | Actual start and actual finish kept beside the planned ones | See | Have (built 2026-10-06: set by the walk, It started Mon Sep 21 / It started today / It finished today, or on the opened activity; a green line over the bar; the trade's report setting them is the owner's call, since it moves the golden walk; `gcActualDates.ts`) | 2 |
 | G-56 | The projected finish from the pace of the work so far | See | Have | — |
 | G-57 | The projected finish with a weather allowance and crew sizes | See | New | Later |
 | G-58 | Weather days from the daily log land on the chart as lost days on the work that was outside | See | Have (built 2026-10-06: a log that says the weather stopped a trade, or the site, marks a lost day on every bar that trade had running; the walk lists them and Add the lost days moves the finish with the weather as the reason and the log's words; `gcDaysLost.ts`) | 4 |
@@ -110,9 +110,9 @@ The three jobs the chart has, which every feature serves at least one of:
 | G-90 | The customer's view: the stages of the job as bars, the milestones, the finish against the contract. No company names, no dollars, no spare days | Tell | Have (built 2026-10-05: Your schedule in the customer's portal) | 3 |
 | G-91 | "What changed since last week" in plain words, written from the moves and their reasons | Tell | Have (built 2026-10-05: by stage and reason, never by company) | 3 |
 | G-92 | "What we need from you", with the day it starts costing time | Tell | Have (change orders waiting on their signature 2026-10-05; their decisions, with the day the work needs them, 2026-10-06) | 3 |
-| G-93 | The schedule picture at the top of the Friday weekly report and in their portal | Tell | Part (their portal; the Friday report's words are unchanged) | 3 |
-| G-94 | A link or a PDF to send on its own, dated, kept as sent | Tell | New | 3 |
-| G-95 | The architect's view: the customer's view plus submittals and RFIs waiting on them, with the work each holds | Tell, Chase | New | 3 |
+| G-93 | The schedule picture at the top of the Friday weekly report and in their portal | Tell | Have (their portal 2026-10-05; the Friday report's *The schedule* section 2026-10-06: each stage with where it stands, what changed this week, what we need from them) | 3 |
+| G-94 | A link or a PDF to send on its own, dated, kept as sent | Tell | Have (built 2026-10-06: the letter on the Schedule tab, the same picture as the portal, Send keeps it as it went, Print or PDF opens it as a page; `gcCustomerScheduleSend.ts`) | 3 |
+| G-95 | The architect's view: the customer's view plus submittals and RFIs waiting on them, with the work each holds | Tell, Chase | Have (built 2026-10-06: *The schedule* in the architect's portal, the stages and what waits on them, each with the work it holds and the day we need it back; `gcArchitectSchedule.ts`) | 3 |
 | G-96 | Days lost by cause across the job, for a time extension ask: the customer's, the weather's, ours, a trade's | Tell | Have (built 2026-10-06: Days lost, by cause on the Schedule tab adds every standing move up by whose door its reason lays at, on the finish and on the work, with the log's weather days beside) | 4 |
 | G-97 | The billing forecast follows the schedule: what we expect to bill each month, as the bars move | Tell | Part (Owner Billing's forecast) | 4 |
 | G-98 | The late-finish days in the contract, counted against the projected finish | See, Tell | Part (the contract's day) | 4 |
@@ -125,7 +125,7 @@ The three jobs the chart has, which every feature serves at least one of:
 | G-111 | The weekly done or not done, with a reason, from the same page | Chase | Have | — |
 | G-112 | **Tell the trades**: after a move, each company whose dates changed gets one email naming its old and new days | Chase | Have (built 2026-10-05: Tell the trades, from Changes to the schedule; written, never sent) | 3 |
 | G-113 | The trade confirms its dates or gives another day. A date nobody confirmed is a reason on Follow up | Chase | Have (built 2026-10-05: These dates work / I need another day, in English and Spanish; the office sees each answer on the move) | 3 |
-| G-114 | "You start in 14 days", then 3 days: a reminder with what must be in place (submittal approved, insurance current) | Chase | Part (Starting soon on the Schedule tab asks each trade for its start day; a reminder sent to the trade at 14 and 3 days is not built) | 3 |
+| G-114 | "You start in 14 days", then 3 days: a reminder with what must be in place (submittal approved, insurance current) | Chase | Have (built 2026-10-06: a message in the trade's portal at 14 and 3 days, in its language, naming the submittals not approved, an insurance certificate that runs out first and an unsigned statement of work; Starting soon on the Schedule tab is the office half; `gcStartReminders.ts`) | 3 |
 | G-115 | By company: the chart as a call list. Each company's late bars, unconfirmed dates and held work, with Call and Follow up | Chase | Part (Follow up) | 3 |
 | G-116 | A trade's record on our dates: milestones on time, look-ahead done as planned, dates confirmed and kept | Chase | Have (two of three) | 3 |
 | G-117 | A trade tells us from its portal that it will be late, with a new day, before the day passes | Chase | Part (Move the date) | 3 |
@@ -141,6 +141,6 @@ The three jobs the chart has, which every feature serves at least one of:
 | G-132 | Real tables: activities, links, baselines, moves with reasons, confirmations (see the plan) | — | New | Real build |
 | G-133 | Who may move a bar: anyone on our team (the owner, 2026-10-05). The customer and the trades only read | — | Part (anyone may move a bar on the prototype; the real build's RLS is not written) | Real build |
 | G-134 | Two people on one schedule: the second to save sees what the first changed | — | New | Real build |
-| G-135 | A job with 300 activities still scrolls: only the rows in view are drawn | See | New | 5 |
+| G-135 | A job with 300 activities still scrolls: only the rows in view are drawn | See | Have (built 2026-10-06: the rows outside the scroller's window, with overscan, are one spacer each; `rowsInView`) | 5 |
 | G-136 | Export to a spreadsheet, and to the file Microsoft Project and Primavera read, for a customer who asks | Tell | New | Later |
 | G-137 | Import a schedule a customer or architect hands us | See | New | Later |

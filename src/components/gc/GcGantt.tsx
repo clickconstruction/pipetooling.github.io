@@ -6,7 +6,7 @@
  * holidays marked (both are worked), with zoom, three ways to group, groups that fold, and filters whose counts are the
  * summary. It draws; `gcGantt.ts` works everything out. Pressing a bar opens it in the tab's editor.
  */
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { addDays, daysBetween, shortDate, weekdayDate, type MilestoneRow, type ScheduleItem } from '../../lib/gcMode/gcModel'
 import {
   NO_FILTERS,
@@ -18,8 +18,11 @@ import {
   ganttFilter,
   ganttGroups,
   ganttLinks,
+  ganttListGroups,
   ganttNeighbors,
   linkPath,
+  rowsInView,
+  type GanttRowEntry,
   type GanttBar,
   type GanttFilters,
   type GanttGroup,
@@ -29,7 +32,9 @@ import {
 } from '../../lib/gcMode/gcGantt'
 import { waitKind, type WaitRow } from '../../lib/gcMode/gcScheduleWaits'
 import { lostDayTitle, lostDaysWords, type LostDay } from '../../lib/gcMode/gcDaysLost'
+import { actualWords } from '../../lib/gcMode/gcActualDates'
 import { Chip } from './gcUi'
+import { GcGanttList } from './GcGanttList'
 
 const HEAD_H = 46
 const MS_H = 40
@@ -158,6 +163,15 @@ export function GcGantt({
 }) {
   const [zoom, setZoom] = useState<GanttZoom>('weeks')
   const [by, setBy] = useState<GanttGroupBy>('trade')
+  // A phone gives the chart little room, so it opens as a list by stage, today first (G-19). Anyone can switch.
+  const [view, setView] = useState<'chart' | 'list'>(() => (typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 640px)').matches ? 'list' : 'chart'))
+  // The window the chart scroller shows (G-135): only the rows in it are drawn. Until the scroller is measured (a test has no layout), every row draws.
+  const [win, setWin] = useState({ top: 0, height: Number.POSITIVE_INFINITY })
+  const winFrame = useRef<number | null>(null)
+  useEffect(() => {
+    const el = scroller.current
+    if (el && el.clientHeight > 0) setWin({ top: el.scrollTop, height: el.clientHeight })
+  }, [])
   const [filters, setFilters] = useState<GanttFilters>(NO_FILTERS)
   const [showLinks, setShowLinks] = useState(true)
   // A group whose work is all done opens folded: it is history, and the live work gets the room.
@@ -192,18 +206,22 @@ export function GcGantt({
   const layout = useMemo(() => {
     const at = new Map<string, number>()
     const waitAt = new Map<string, number>()
+    const entries: GanttRowEntry[] = []
     waitList.forEach((r, i) => waitAt.set(r.wait.id, HEAD_H + MS_H + GROUP_H + i * ROW_H + ROW_H / 2))
     let y = HEAD_H + MS_H + waitsH
     for (const g of groups) {
+      entries.push({ kind: 'group', key: `g:${g.key}`, y, height: GROUP_H })
       y += GROUP_H
       if (folded.has(g.key)) continue
       for (const b of g.bars) {
         at.set(b.id, y + ROW_H / 2)
+        entries.push({ kind: 'bar', key: b.id, y, height: ROW_H, groupKey: g.key })
         y += ROW_H
       }
     }
-    return { at, waitAt, height: y }
+    return { at, waitAt, entries, height: y }
   }, [groups, folded, waitList, waitsH])
+  const drawn = useMemo(() => rowsInView(layout.entries, win.top, win.height), [layout, win])
   const links = useMemo(() => (showLinks ? ganttLinks(shown).filter((l) => layout.at.has(l.from) && layout.at.has(l.to)) : []), [showLinks, shown, layout])
   const byId = useMemo(() => new Map(all.map((b) => [b.id, b])), [all])
   /** Where a dragged bar would sit: its dates with the drag applied, an end never crossing the other. */
@@ -218,6 +236,25 @@ export function GcGantt({
   const dragSpan = drag && dragBar ? draggedSpan(dragBar, drag) : null
   const dragPlan = useMemo(() => (drag && dragSpan && planOf && drag.days !== 0 ? planOf(drag.id, dragSpan.start, dragSpan.finish) : null), [drag, dragSpan?.start, dragSpan?.finish, planOf]) // eslint-disable-line react-hooks/exhaustive-deps
   const pushedTo = useMemo(() => new Map((dragPlan?.pushed ?? []).map((p) => [p.lineId, p])), [dragPlan])
+
+  // The arrow keys move between bars (G-20): up and down to the next bar, left and right a week along. Enter opens one, as any button.
+  const onKeys = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const el = scroller.current
+    const focused = document.activeElement
+    if (!el || !(focused instanceof HTMLElement) || !focused.hasAttribute('data-gantt-bar')) return
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Home' || e.key === 'End') {
+      const bars = [...el.querySelectorAll<HTMLElement>('[data-gantt-bar]')]
+      const i = bars.indexOf(focused)
+      const next = e.key === 'Home' ? bars[0] : e.key === 'End' ? bars[bars.length - 1] : bars[i + (e.key === 'ArrowDown' ? 1 : -1)]
+      if (next) {
+        e.preventDefault()
+        next.focus()
+      }
+    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+      e.preventDefault()
+      el.scrollLeft += (e.key === 'ArrowRight' ? 7 : -7) * px
+    }
+  }
 
   // Open on today, and come back to it when the zoom changes.
   const toToday = () => {
@@ -305,7 +342,7 @@ export function GcGantt({
           </button>
           {!phone && (
             <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-              {building && !a.inspection
+              {building && !a.inspection && !a.added
                 ? b.status === 'done' || a.start > today
                   ? `${Math.round(b.item.actual)}%`
                   : `${Math.round(b.item.actual)}% · plan ${Math.round(b.item.plannedToday)}%`
@@ -315,6 +352,13 @@ export function GcGantt({
           <Chip tone={b.tone}>{b.statusWords}</Chip>
         </div>
         <div style={{ position: 'relative', width }}>
+          {/* The days it really ran (G-55): a thin green line over the bar, open-ended until it finished. */}
+          {a.actualStart && !dragging && (
+            <span
+              title={actualWords(a) ?? ''}
+              style={{ position: 'absolute', left: x(a.actualStart), width: Math.max(px, (daysBetween(a.actualStart, a.actualFinish ?? (today > a.actualStart ? today : a.actualStart)) + 1) * px), top: 3, height: 3, borderRadius: 2, background: C.green, opacity: a.actualFinish ? 1 : 0.6 }}
+            />
+          )}
           {b.moved && b.status !== 'done' && (
             <span
               title={`In the plan at Start: ${shortDate(b.item.baseline.start)} to ${shortDate(b.item.baseline.finish)}`}
@@ -449,9 +493,10 @@ export function GcGantt({
 
   return (
     <div>
-      <div style={{ padding: '0.6rem 0.75rem', display: 'grid', gap: '0.5rem', borderBottom: '1px solid var(--border)' }}>
+      <div data-tour="gc-gantt-toolbar" style={{ padding: '0.6rem 0.75rem', display: 'grid', gap: '0.5rem', borderBottom: '1px solid var(--border)' }}>
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          {seg(zoom, [{ key: 'days', label: 'Days' }, { key: 'weeks', label: 'Weeks' }, { key: 'months', label: 'Months' }], setZoom, 'How close to look')}
+          {seg(view, [{ key: 'chart', label: 'Chart' }, { key: 'list', label: 'List' }], setView, 'Chart or list')}
+          {view === 'chart' && seg(zoom, [{ key: 'days', label: 'Days' }, { key: 'weeks', label: 'Weeks' }, { key: 'months', label: 'Months' }], setZoom, 'How close to look')}
           {seg(by, [{ key: 'trade', label: 'By trade' }, { key: 'stage', label: 'By stage' }, { key: 'company', label: 'By company' }], regroup, 'Group the chart')}
           <span style={{ flex: 1 }} />
           <button type="button" style={quietBtn} onClick={toToday}>
@@ -508,9 +553,23 @@ export function GcGantt({
         </div>
       </div>
 
+      {view === 'list' && <GcGanttList groups={ganttListGroups(shown, today)} today={today} building={building} picked={picked} onPick={onPick} />}
+
+      {view === 'chart' && (
       <div
         ref={scroller}
         data-gantt-scroller="yes"
+        role="region"
+        aria-label="The schedule as a chart. Tab to a bar, then the arrow keys move between bars and along the weeks. Enter opens one."
+        onKeyDown={onKeys}
+        onScroll={(e) => {
+          const el = e.currentTarget
+          if (winFrame.current !== null) return
+          winFrame.current = requestAnimationFrame(() => {
+            winFrame.current = null
+            if (el.clientHeight > 0) setWin({ top: el.scrollTop, height: el.clientHeight })
+          })
+        }}
         onPointerMove={(e) => {
           if (!linking) return
           const host = e.currentTarget.getBoundingClientRect()
@@ -647,12 +706,30 @@ export function GcGantt({
             </div>
           )}
 
-          {groups.map((g) => (
-            <div key={g.key}>
-              {groupRow(g)}
-              {!folded.has(g.key) && g.bars.map(barRow)}
-            </div>
-          ))}
+          {/* Only the rows in view are drawn (G-135); the rest keep their height as one spacer. */}
+          {groups.map((g) => {
+            const rows: ReactNode[] = []
+            let skipped = 0
+            const flush = () => {
+              if (skipped > 0) rows.push(<div key={`sp:${g.key}:${rows.length}`} aria-hidden style={{ height: skipped }} />)
+              skipped = 0
+            }
+            if (!folded.has(g.key)) {
+              for (const b of g.bars) {
+                if (drawn.has(b.id)) {
+                  flush()
+                  rows.push(barRow(b))
+                } else skipped += ROW_H
+              }
+              flush()
+            }
+            return (
+              <div key={g.key}>
+                {groupRow(g)}
+                {rows}
+              </div>
+            )
+          })}
           {shown.length === 0 && (
             <div style={{ position: 'sticky', left: 0, width: 'min(100%, 40rem)', padding: '1rem 0.75rem', color: 'var(--text-muted)', fontSize: '0.875rem', zIndex: 1 }}>
               Nothing on the schedule passes these filters.
@@ -725,8 +802,10 @@ export function GcGantt({
         </div>
       </div>
 
-      <GanttLegend building={building} canMove={Boolean(onMove)} />
-      {hovered && hover && !drag && <GanttHoverCard bar={hovered} all={all} at={hover} building={building} today={today} lost={lost?.get(hovered.id) ?? []} />}
+      )}
+
+      {view === 'chart' && <GanttLegend building={building} canMove={Boolean(onMove)} />}
+      {view === 'chart' && hovered && hover && !drag && <GanttHoverCard bar={hovered} all={all} at={hover} building={building} today={today} lost={lost?.get(hovered.id) ?? []} />}
     </div>
   )
 }
@@ -750,6 +829,7 @@ function GanttLegend({ building, canMove }: { building: boolean; canMove: boolea
       {key({ ...bar, background: 'repeating-linear-gradient(135deg, var(--bg-violet-100) 0 4px, var(--surface) 4px 8px)', border: `1.5px dashed ${C.violet}`, borderLeft: 'none', borderRadius: '0 3px 3px 0' }, 'days a signed change order adds, not on the dates yet')}
       {key({ width: 20, height: 8, borderRadius: 4, background: 'var(--bg-violet-100)', border: `1.5px solid ${C.violet}` }, 'what the work waits on: a delivery, a decision, a permit, the utility, from the day it was asked for to the day it is expected')}
       {key({ width: 20, height: 3, borderRadius: 2, background: 'var(--border-strong)' }, 'where it sat in the plan at Start')}
+      {building && key({ width: 20, height: 3, borderRadius: 2, background: C.green }, 'the days it really ran, as recorded')}
       {key({ width: 20, height: 7, borderRadius: 3, background: 'var(--border-strong)' }, 'a whole group, as one bar')}
       {key({ width: 10, height: 10, transform: 'rotate(45deg)', background: 'var(--text-muted)' }, 'a date the job must meet')}
       {key({ width: 12, height: 12, background: 'var(--bg-muted)', border: '1px solid var(--border)' }, 'a weekend')}
@@ -810,6 +890,7 @@ function GanttHoverCard({ bar, all, at, building, today, lost }: { bar: GanttBar
       {building && !a.inspection && row('Done', bar.status === 'done' ? '100%' : `${Math.round(bar.item.actual)}%, and the plan has ${Math.round(bar.item.plannedToday)}% by today`)}
       {bar.status !== 'done' && row('Spare', bar.critical ? 'None. A day lost here is a day lost on the finish.' : `${bar.spare} ${bar.spare === 1 ? 'day' : 'days'} before it moves the finish`, bar.tight ? 'var(--text-red-700)' : undefined)}
       {bar.moved && row('At Start', `${shortDate(bar.item.baseline.start)} to ${shortDate(bar.item.baseline.finish)}`)}
+      {a.actualStart && row('Really', actualWords(a) ?? '', 'var(--text-green-800)')}
       {a.notBefore && row('Not before', weekdayDate(a.notBefore))}
       {a.mustFinishBy && row('Must finish by', weekdayDate(a.mustFinishBy), a.finish > a.mustFinishBy ? 'var(--text-red-700)' : undefined)}
       {bar.coTail && row('Change order', bar.coTail.words, 'var(--text-violet-800)')}

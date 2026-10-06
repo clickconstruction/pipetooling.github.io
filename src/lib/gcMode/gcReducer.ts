@@ -2,7 +2,7 @@
  * GC mode — design spike. The reducer: every action, applied to the state.
  * Split out of gcModel.ts verbatim; import from `./gcModel`, which re-exports every file.
  */
-import type { AskContact, BackCharge, Rfi, ScheduleMove, CustomerSend, Draw, PartnerPerson, PortalMailGroup, DrawSentBack, GcAction, GcState, SovLine, Invite, LookAheadMark, PaperSend, Partner, PlanQuestion, PlanSet, SubBid, TradeChangeRequest } from './gcTypes'
+import type { AskContact, BackCharge, Rfi, ScheduleActivity, ScheduleMove, CustomerSend, Draw, PartnerPerson, PortalMailGroup, DrawSentBack, GcAction, GcState, SovLine, Invite, LookAheadMark, PaperSend, Partner, PlanQuestion, PlanSet, SubBid, TradeChangeRequest } from './gcTypes'
 import { money, shortDate, weekdayDate, daysUntil } from './gcWords'
 import { currentRev, partnerById, planLabel } from './gcLookups'
 import { planRecipients, questionRecipients, questionsOpen, timeWords } from './gcPlans'
@@ -10,9 +10,13 @@ import { bidsIn } from './gcBids'
 import { awardedPartner, find, logged, mapInvite, mapPackage, mapProject, mapSow, sowFromBid } from './gcReducerHelpers'
 import { EMPTY_SCOPE_BOOK, inScopeBook, linesToAdd, scopeBook, scopeWordKey } from './gcScopeBook'
 import { initialGcState } from './gcFixture'
-import { moveActivityName, moveRecord, moveWhyProblem, planMove, spanWords, undoMove } from './gcScheduleMoves'
+import { moveActivityName, moveRecord, moveWhyProblem, planMove, redoMove, spanWords, undoMove } from './gcScheduleMoves'
 import { companiesToTell } from './gcTellTrades'
 import { nextWaitId, waitKind } from './gcScheduleWaits'
+import { addedActivityProblem, nextOwnId } from './gcAddedActivity'
+import { withNewBaseline } from './gcBaseline'
+import { actualProblem } from './gcActualDates'
+import { customerScheduleLetter, scheduleSendRecord } from './gcCustomerScheduleSend'
 import { lostWhyLabel } from './gcLost'
 import { daysBetween, draftSchedule, pushAfter, pushedAfterWords, scheduleLinesOf, withBaselineKept } from './gcBuildingSchedule'
 import { buildNewProject, dryInMilestoneFor, packagesFromDrafts, pushSchedule, scheduleSetLines, withNewLines, withRetiedLines, withTradesInOrder } from './gcNewProject'
@@ -2525,6 +2529,113 @@ function reduce(state: GcState, action: GcAction): GcState {
         mapProject(state, project.id, (p) => ({ ...p, waits: (p.waits ?? []).filter((w) => w.id !== wait.id) })),
         'office',
         `${wait.title} came off ${project.name}'s schedule.`,
+      )
+    }
+
+    case 'addScheduleActivity': {
+      // An activity that is no trade's line (the Gantt, G-38): the job's own, drawn like any other bar.
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const schedule = project?.schedule
+      const label = action.label.trim()
+      const who = action.who.trim()
+      if (!project || !schedule || addedActivityProblem(label, who, action.start, action.finish)) return state
+      const ids = new Set(schedule.activities.map((a) => a.lineId))
+      const lineId = nextOwnId(project)
+      const after = [...new Set(action.after)].filter((id) => ids.has(id))
+      const holdsUp = new Set([...new Set(action.holdsUp)].filter((id) => ids.has(id) && !after.includes(id)))
+      const activity: ScheduleActivity = { lineId, packageId: '', start: action.start, finish: action.finish, after, added: { label, who, doneOn: null } }
+      const kept = withBaselineKept(project, schedule)
+      // The lines that wait on it from now on, then what that pushes (the owner, 2026-10-04: what comes after moves out).
+      const pushed = pushAfter(project, [...kept.activities.map((a) => (holdsUp.has(a.lineId) ? { ...a, after: [...a.after, lineId] } : a)), activity], lineId)
+      return logged(
+        mapProject(state, project.id, (p) => ({ ...p, schedule: { ...kept, activities: pushed.activities } })),
+        'office',
+        `${action.by} put ${label} on ${project.name}'s schedule, ${weekdayDate(action.start)} to ${weekdayDate(action.finish)}, ${who}.${holdsUp.size > 0 ? ` ${holdsUp.size} ${holdsUp.size === 1 ? 'activity waits' : 'activities wait'} on it.` : ''}${pushed.moved.length > 0 ? ` ${pushedAfterWords(pushed.moved)}` : ''}`,
+      )
+    }
+
+    case 'setAddedActivityDone': {
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const schedule = project?.schedule
+      const activity = schedule?.activities.find((a) => a.lineId === action.lineId)
+      if (!project || !schedule || !activity?.added || activity.added.doneOn === action.on) return state
+      const added = { ...activity.added, doneOn: action.on }
+      return logged(
+        mapProject(state, project.id, (p) => ({ ...p, schedule: { ...schedule, activities: schedule.activities.map((a) => (a.lineId === activity.lineId ? { ...a, added } : a)) } })),
+        'office',
+        action.on ? `${added.label} on ${project.name} is done, ${weekdayDate(action.on)}.` : `${added.label} on ${project.name} is not done after all.`,
+      )
+    }
+
+    case 'removeScheduleActivity': {
+      // Only an added activity comes off; a trade's line and an inspection stay. Whatever waited on it stops waiting.
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const schedule = project?.schedule
+      const activity = schedule?.activities.find((a) => a.lineId === action.lineId)
+      if (!project || !schedule || !activity?.added) return state
+      const activities = schedule.activities
+        .filter((a) => a.lineId !== activity.lineId)
+        .map((a) => {
+          if (!a.after.includes(activity.lineId)) return a
+          const { lag, ...rest } = a
+          const left = lag ? Object.fromEntries(Object.entries(lag).filter(([id]) => id !== activity.lineId)) : undefined
+          return { ...rest, after: a.after.filter((id) => id !== activity.lineId), ...(left && Object.keys(left).length > 0 ? { lag: left } : {}) }
+        })
+      return logged(mapProject(state, project.id, (p) => ({ ...p, schedule: { ...schedule, activities } })), 'office', `${activity.added.label} came off ${project.name}'s schedule.`)
+    }
+
+    case 'setActualDates': {
+      // The day it really started or finished (G-55), beside the planned ones. Null clears; unset leaves.
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const schedule = project?.schedule
+      const activity = schedule?.activities.find((a) => a.lineId === action.lineId)
+      if (!project || !schedule || !activity) return state
+      const actualStart = action.actualStart === undefined ? activity.actualStart : (action.actualStart ?? undefined)
+      const actualFinish = action.actualFinish === undefined ? activity.actualFinish : (action.actualFinish ?? undefined)
+      if (actualProblem(actualStart, actualFinish, state.today)) return state
+      if (actualStart === activity.actualStart && actualFinish === activity.actualFinish) return state
+      const { actualStart: _s, actualFinish: _f, ...rest } = activity
+      const next: ScheduleActivity = { ...rest, ...(actualStart ? { actualStart } : {}), ...(actualFinish ? { actualFinish } : {}) }
+      const name = moveActivityName(project, activity.lineId)
+      const words = actualFinish && actualFinish !== activity.actualFinish ? `finished ${weekdayDate(actualFinish)}` : actualStart && actualStart !== activity.actualStart ? `started ${weekdayDate(actualStart)}` : 'actual dates cleared'
+      return logged(
+        mapProject(state, project.id, (p) => ({ ...p, schedule: { ...schedule, activities: schedule.activities.map((a) => (a.lineId === activity.lineId ? next : a)) } })),
+        'office',
+        `${name} on ${project.name}: ${words}, by ${action.by}.`,
+      )
+    }
+
+    case 'setScheduleBaseline': {
+      // A new baseline after a signed change order (G-41): the plan as it stands, the old one kept and named.
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const schedule = project?.schedule ? withNewBaseline(project.schedule, action.name, action.why, action.by, state.today) : null
+      if (!project || !schedule) return state
+      return logged(mapProject(state, project.id, (p) => ({ ...p, schedule })), 'office', `${action.by} set a new baseline on ${project.name}, ${action.name.trim()}${action.why.trim() ? `: ${action.why.trim()}` : '.'} The plan at Start is kept.`)
+    }
+
+    case 'redoScheduleMove': {
+      // An undone move put back (G-40), while everything it touched still sits where the undo left it.
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const schedule = project ? redoMove(project, action.moveId) : null
+      if (!project || !schedule) return state
+      const move = schedule.moves?.find((m) => m.id === action.moveId)
+      return logged(
+        mapProject(state, project.id, (p) => ({ ...p, schedule })),
+        'office',
+        `${action.by} put a move back: ${move ? moveActivityName(project, move.lineId) : 'an activity'} is ${move ? spanWords(move.to) : 'where the move had it'} again.`,
+      )
+    }
+
+    case 'sendCustomerSchedule': {
+      // The customer's schedule on its own (G-94): the letter as it stands, kept as sent. Written, never sent, in the prototype.
+      const project = state.projects.find((p) => p.id === action.projectId)
+      if (!project?.schedule || !action.by.trim()) return state
+      const letter = customerScheduleLetter(state, project, action.by.trim())
+      const send = scheduleSendRecord(project, letter, action.by.trim(), state.today)
+      return logged(
+        mapProject(state, project.id, (p) => ({ ...p, scheduleSends: [...(p.scheduleSends ?? []), send] })),
+        'office',
+        `${action.by.trim()} sent ${letter.to} the schedule on ${project.name}: ${letter.lines.length} lines, kept as sent.`,
       )
     }
 

@@ -6,6 +6,7 @@
  * The words follow the plain-words rules at the top of `gcTour.ts`.
  */
 import { companiesToTell, datesMessage, datesNotices } from './gcTellTrades'
+import { startReminders } from './gcStartReminders'
 import type { BackCharge, PartnerPerson, PortalMailGroup, BidAlternate, ChangeOrder, ChangeOrderReason, Draw, GcProject, GcState, Invite, LookAheadMark, Partner, PlanQuestion, PlanSet, ProjectContact, PromiseKind, QuoteExclusion, ScopeItem, Sow, SubBid, TheirSovLine, TradeChangeRequest, TradePackage, TradePromise } from './gcTypes'
 import { daysUntil, money } from './gcWords'
 import { currentRev, partnerById } from './gcLookups'
@@ -858,7 +859,7 @@ export function portalLink(partnerId: string): string {
 export interface PortalMessage {
   key: string
   on: string
-  kind: 'invite' | 'nudge' | 'plans' | 'bidTab' | 'msa' | 'sow' | 'start' | 'less' | 'change' | 'paid' | 'answer' | 'coi' | 'closed' | 'vetted' | 'preBid' | 'changeAsk' | 'backCharge' | 'dates'
+  kind: 'invite' | 'nudge' | 'plans' | 'bidTab' | 'msa' | 'sow' | 'start' | 'less' | 'change' | 'paid' | 'answer' | 'coi' | 'closed' | 'vetted' | 'preBid' | 'changeAsk' | 'backCharge' | 'dates' | 'startSoon'
   /** Null: about the company, not one project (the master agreement). */
   projectId: string | null
   subject: string
@@ -874,7 +875,7 @@ export interface PortalMessage {
   to?: string[]
 }
 
-const KIND_ORDER: Record<PortalMessage['kind'], number> = { vetted: -2, closed: -1, preBid: -0.5, coi: 0, answer: 1, paid: 2, change: 3, changeAsk: 3.5, backCharge: 3.6, dates: 3.8, less: 4, start: 5, sow: 6, msa: 7, bidTab: 8, plans: 9, nudge: 10, invite: 11 }
+const KIND_ORDER: Record<PortalMessage['kind'], number> = { vetted: -2, closed: -1, preBid: -0.5, coi: 0, answer: 1, paid: 2, change: 3, changeAsk: 3.5, backCharge: 3.6, dates: 3.8, startSoon: 3.9, less: 4, start: 5, sow: 6, msa: 7, bidTab: 8, plans: 9, nudge: 10, invite: 11 }
 
 function firstName(contact: string): string {
   return contact.split(' ')[0] ?? contact
@@ -1157,6 +1158,8 @@ export function portalMessages(state: GcState, partnerId: string, language?: Por
         ],
       })
     }
+    // You start in 14 days, then 3 (the Gantt, G-114): with what must be in place, until the crew is on site.
+    out.push(...startReminders(state, partnerId, project, lang, hello))
     // Your dates moved (the Gantt, Phase 3): each move the office told this company of, as it was sent.
     for (const move of project.schedule?.moves ?? []) {
       if (!move.toldOn || move.undoneOn || !move.toldTo?.includes(partnerId)) continue
@@ -1272,6 +1275,7 @@ export function mailRecipients(partner: Partner, group: PortalMailGroup): { name
 
 const KIND_GROUP: Record<PortalMessage['kind'], PortalMailGroup> = {
   dates: 'job',
+  startSoon: 'job',
   invite: 'quotes',
   nudge: 'quotes',
   bidTab: 'quotes',

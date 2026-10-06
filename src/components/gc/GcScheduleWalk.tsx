@@ -13,6 +13,7 @@ import type { GanttHold } from '../../lib/gcMode/gcGantt'
 import { MOVE_REASONS, moveWhyProblem, planMove, spanWords } from '../../lib/gcMode/gcScheduleMoves'
 import { walkChanges, walkItems, walkStanding, walkTally, type WalkItem } from '../../lib/gcMode/gcScheduleWalk'
 import { lostDaysMoveNote } from '../../lib/gcMode/gcDaysLost'
+import { actualWords } from '../../lib/gcMode/gcActualDates'
 import { Btn, Chip, input } from './gcUi'
 
 /** The signed-in person's name. Outside the app's sign-in (a test), none. */
@@ -31,7 +32,7 @@ export function GcWalkLine({ state, project, holds, onWalk }: { state: GcState; 
   const standing = walkStanding(project, state.today)
   const count = walkItems(state, project, holds).length
   return (
-    <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', padding: '0.55rem 0.75rem', borderBottom: '1px solid var(--border)', background: standing.stale ? 'var(--bg-amber-tint)' : 'var(--bg-subtle)' }}>
+    <div data-tour="gc-walk-line" style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', padding: '0.55rem 0.75rem', borderBottom: '1px solid var(--border)', background: standing.stale ? 'var(--bg-amber-tint)' : 'var(--bg-subtle)' }}>
       {/* A walk that skipped bars is said so: walked, but not all of it. */}
       <Chip tone={standing.stale || standing.partial ? 'amber' : 'green'}>{standing.stale ? 'check the dates' : standing.partial ? 'part walked' : 'walked'}</Chip>
       <span style={{ fontSize: '0.875rem', color: standing.stale ? 'var(--text-amber-800)' : 'var(--text-600)', flex: '1 1 14rem' }}>
@@ -206,6 +207,27 @@ export function GcScheduleWalk({ state, project, holds, dispatch, onClose }: { s
                   <li key={f}>{f}</li>
                 ))}
               </ul>
+              {/* The real days, beside the planned ones (G-55): the walk is where someone knows. */}
+              {!activity.inspection && (
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.85rem' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Really: {actualWords(activity) ?? 'no start recorded yet.'}</span>
+                  {!activity.actualStart && item.started && (
+                    <Btn kind="quiet" onClick={() => dispatch({ type: 'setActualDates', projectId: project.id, lineId: activity.lineId, actualStart: activity.start, by: me })}>
+                      It started {weekdayDate(activity.start)}
+                    </Btn>
+                  )}
+                  {!activity.actualStart && (
+                    <Btn kind="quiet" onClick={() => dispatch({ type: 'setActualDates', projectId: project.id, lineId: activity.lineId, actualStart: state.today, by: me })}>
+                      It started today
+                    </Btn>
+                  )}
+                  {activity.actualStart && !activity.actualFinish && (
+                    <Btn kind="quiet" onClick={() => dispatch({ type: 'setActualDates', projectId: project.id, lineId: activity.lineId, actualFinish: state.today, by: me })}>
+                      It finished today
+                    </Btn>
+                  )}
+                </div>
+              )}
               <div style={{ background: 'var(--bg-subtle)', borderRadius: 8, padding: '0.7rem', display: 'grid', gap: '0.6rem' }}>
                 <strong>{item.started ? `Does it still finish ${weekdayDate(activity.finish)}?` : `Does it still start ${weekdayDate(activity.start)}?`}</strong>
                 {!moving && (

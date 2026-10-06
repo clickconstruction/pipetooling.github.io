@@ -1,7 +1,7 @@
 ---
 name: "GC mode spike: the punch list, for whoever picks it up next"
 parent: to-dos/gc-mode/README.md (punch list #81) · HANDOFF.md (the lanes' handoff, 2026-10-05)
-status: written 2026-10-06 at the owner's ask ("save what is left to a spike punchlist so that another user tomorrow can pick up where we left off") · everything below is on origin/spike/gc-mode · the branch still never merges
+status: written 2026-10-06 at the owner's ask ("save what is left to a spike punchlist so that another user tomorrow can pick up where we left off") · **the second sitting of 2026-10-06 built every box under Prototype work left** (Phases 2 to 5 of the Gantt, the Ask window's two doors, the tour's stops, the two browser checks); what stays open is the owner's calls · everything below is on origin/spike/gc-mode · the branch still never merges
 summary: >
   Where the GC mode prototype stands after the owner's 2026-10-05 and 2026-10-06 sittings (the
   Gantt, the Ask window, Follow up's two views, the address editor), how to run and check it, and
@@ -47,6 +47,18 @@ summary: >
   customer's schedule in their portal, the trade's chart in its portal. The owner's calendar:
   every day is a working day; weekends and holidays are only marked.
 
+## What landed in the second sitting of 2026-10-06
+
+Every box under *Prototype work left* below, each with its section in `GANTT_PLAN.md` and its row
+in `GANTT_FEATURES.md`; `README.md` → *What the prototype has* carries the screens. In order:
+change-order days on the chart (G-76); what the work waits on (G-73 to G-75); the daily log's
+weather days and days lost by cause (G-58, G-96); the Ask window on the map and the Trades tab,
+and the walkthrough's four new stops; an added activity (G-38); actual dates, a new baseline and
+redo (G-55, G-41, G-40); the architect's schedule, start reminders and the Friday report's
+schedule words (G-95, G-114, G-93); the schedule sent on its own (G-94); the List view, the arrow
+keys and rows drawn in view only (G-19, G-20, G-135). Checked as the branch is checked: the
+golden test unmoved, 71 files and 1020 tests, the typecheck, the theme check.
+
 ## The owner's calls still open
 
 Nothing below starts without the one named.
@@ -64,7 +76,11 @@ Nothing below starts without the one named.
   every move (call 4).
 - [ ] **The weekly walk's day**: Friday morning, before the Friday report, is the default (call 6).
 - [ ] **Who sets a new baseline** after a change order: anyone, like a move, or the project
-  manager (call 9).
+  manager (call 9). Built 2026-10-06 as anyone; the card says so.
+- [ ] **A trade's report setting the actual dates** (G-55): the first report over 0% would set
+  the start and a report of 100% the finish, but Helotes reports work after its schedule is drawn
+  in the golden walk, so the snapshots move. Say so and the reducer's `tradeReport` and
+  `selfReport` set them.
 - [ ] **Sample waits in the made-up data.** A delivery, a decision and a permit on Fair Oaks D
   would show the new rows without adding one by hand, but the golden test pins the whole state at
   the end, so they move that snapshot (`gcModel.test.ts`, *the whole state at the end*). Say so and
@@ -90,27 +106,37 @@ Each is one sitting or less. The feature numbers are `GANTT_FEATURES.md`'s.
 - [x] **Phase 4, days lost by cause** (G-96): the moves' reasons added up across the job, for a
   time-extension ask.
   Both built 2026-10-06 (`gcDaysLost.ts`; `GANTT_PLAN.md` → *Phase 4, days lost*).
-- [ ] **Phase 2, an added activity** that is not a schedule-of-values line (G-38): mobilize, a
+- [x] **Phase 2, an added activity** that is not a schedule-of-values line (G-38): mobilize, a
   delivery, cure time, the customer's own work. Needs a new action and a row shape with no `pkg`.
-- [ ] **Phase 2, actual start and finish** (G-55): kept beside the planned ones, set by the walk
-  and the trade's report.
-- [ ] **Phase 2, a new baseline** after a signed change order (G-41), the old ones kept and named;
-  and **redo** (G-40).
-- [ ] **Phase 3, the architect's view** (G-95): the customer's view plus submittals and RFIs waiting
-  on them, with the work each holds.
-- [ ] **Phase 3, start reminders** (G-114): at 14 and 3 days, with what must be in place; *Starting
-  soon* on the Schedule tab is the office half.
-- [ ] **Phase 3, the customer's PDF** (G-94) and the Friday report's schedule words (G-93).
-- [ ] **Phase 5**: a phone view of the chart of its own (G-19), keyboard and screen reader (G-20),
-  big jobs drawn in view only (G-135).
-- [ ] **The walkthrough** (*Walk me through this job*) has no RFIs stop and no stop for the Gantt's
-  toolbar, the walk or Tell the trades (`gcTour.ts`).
-- [ ] **Ask window, the map and a job's Trades tab** still invite on one press; the Ask window
-  could take those too (`README.md` → *Ask for quotes*).
-- [ ] **Add a company** in the browser and **Follow up on a phone** were not looked at after the
-  2026-10-05 changes (the address line, By people).
-- [ ] The weekend mock-up's option B drew a dot on a quiet weekend with a paper; a week with a
+  Built 2026-10-06 (`gcAddedActivity.ts`; `GANTT_PLAN.md` → *Phase 2, an added activity*). A
+  delivery went to G-73 instead.
+- [x] **Phase 2, actual start and finish** (G-55): kept beside the planned ones, set by the walk
+  and the trade's report. Built 2026-10-06, set by the walk and the opened activity; the trade's
+  report setting them is an owner's call above.
+- [x] **Phase 2, a new baseline** after a signed change order (G-41), the old ones kept and named;
+  and **redo** (G-40). Built 2026-10-06 (`gcBaseline.ts`; `GANTT_PLAN.md` → *Phase 2, the rest*).
+- [x] **Phase 3, the architect's view** (G-95): the customer's view plus submittals and RFIs waiting
+  on them, with the work each holds. Built 2026-10-06 (`gcArchitectSchedule.ts`).
+- [x] **Phase 3, start reminders** (G-114): at 14 and 3 days, with what must be in place; *Starting
+  soon* on the Schedule tab is the office half. Built 2026-10-06 (`gcStartReminders.ts`).
+- [x] **Phase 3, the customer's PDF** (G-94) and the Friday report's schedule words (G-93). Both
+  built 2026-10-06: *The schedule* section on the report; the letter, Send and Print or PDF on the
+  Schedule tab (`gcCustomerScheduleSend.ts`).
+- [x] **Phase 5**: a phone view of the chart of its own (G-19), keyboard and screen reader (G-20),
+  big jobs drawn in view only (G-135). Built 2026-10-06 (`GANTT_PLAN.md` → *Phase 5, fit and finish*).
+- [x] **The walkthrough** (*Walk me through this job*) has no RFIs stop and no stop for the Gantt's
+  toolbar, the walk or Tell the trades (`gcTour.ts`). Added 2026-10-06: four stops, the three on
+  the Schedule tab with a line for when they are not on the page.
+- [x] **Ask window, the map and a job's Trades tab** still invite on one press; the Ask window
+  could take those too (`README.md` → *Ask for quotes*). Done 2026-10-06: the map's *Ask them* and
+  the Trades tab's *Ask them…* open the window ticked to that company.
+- [x] **Add a company** in the browser and **Follow up on a phone** were not looked at after the
+  2026-10-05 changes (the address line, By people). Looked at 2026-10-06: a company added on
+  Trade partners shows its address and range on one line and lands in the vetting queue; Follow
+  up at 375 px keeps both views and every button inside the frame.
+- [x] The weekend mock-up's option B drew a dot on a quiet weekend with a paper; a week with a
   Saturday paper never folds, so that case never shows. Nothing to build; a note for the reader.
+  Read 2026-10-06; it stands.
 
 ## Gotchas learned these two days
 

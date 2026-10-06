@@ -11,6 +11,7 @@
 import type { GcCustomer, GcProject, GcState, SubmittalKind } from './gcTypes'
 import { addDays } from './gcBuilding'
 import { daysBetween, lookAheadWeeks, milestoneRows, mondayOf, projectedFinish, scheduleRows, scheduleSummary, substantialCompletionOn } from './gcBuildingSchedule'
+import { customerAsks, customerChanges, customerStages } from './gcCustomerSchedule'
 import { dailyLogOn, isWorkday } from './gcBuildingLog'
 import { submittalRowsOn } from './gcBuildingSubmittals'
 import { partnerById } from './gcLookups'
@@ -20,10 +21,11 @@ import { shortDate, weekdayDate } from './gcWords'
 /** The draft is ready from Friday (the owner's pick, 2026-10-05): 5 is Friday, Monday being 1. */
 export const WEEKLY_REPORT_DAY = 5
 
-export type WeeklySectionKey = 'glance' | 'week' | 'inspections' | 'watching' | 'next' | 'changes'
+export type WeeklySectionKey = 'glance' | 'schedule' | 'week' | 'inspections' | 'watching' | 'next' | 'changes'
 
 export const WEEKLY_SECTIONS: { key: WeeklySectionKey; title: string }[] = [
   { key: 'glance', title: 'At a glance' },
+  { key: 'schedule', title: 'The schedule' },
   { key: 'week', title: 'This week' },
   { key: 'inspections', title: 'Inspections' },
   { key: 'watching', title: 'What we are watching' },
@@ -137,6 +139,18 @@ export function weeklyReport(state: GcState, project: GcProject, weekOf = monday
     if (sum.milestones.next) glance.push(`Next: ${sum.milestones.next.label}, ${weekdayDate(sum.milestones.next.planned)}.`)
   }
   push('glance', glance, 'Finish, percent done, next milestone')
+
+  // The schedule picture (the Gantt, G-93): the stages as the customer's portal draws them, what changed this week, what we need from them.
+  const scheduleLines: string[] = []
+  for (const s of customerStages(state, project)) {
+    if (s.state === 'done') continue
+    const stand = s.state === 'behind' ? `behind, ${Math.round(s.pct)}% done` : s.state === 'underway' ? `under way, ${Math.round(s.pct)}% done` : `starts ${weekdayDate(s.start)}`
+    scheduleLines.push(`${s.label}: ${stand}, ${shortDate(s.start)} to ${shortDate(s.finish)}.`)
+  }
+  const changed = customerChanges(project, today)
+  if (changed.length > 0) scheduleLines.push(`What changed this week: ${changed.join(' ')}`)
+  for (const ask of customerAsks(project)) scheduleLines.push(`We need from you: ${ask.words}`)
+  push('schedule', scheduleLines, 'The stages, what changed, what we need from you')
 
   // This week: each day's log in the superintendent's words, then how many were on site.
   const logs = (project.dailyLogs ?? []).filter((l) => inWeek(l.date)).sort((a, b) => (a.date < b.date ? -1 : 1))

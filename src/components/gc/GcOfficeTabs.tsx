@@ -81,6 +81,7 @@ import { BUILDING_CSS } from './gcBuildingCss'
 import { GcBuildingCrewCard } from './GcBuildingCrew'
 import { GcPlansDoors } from './GcNewPlans'
 import { Btn, Card, Chip, PlusUnknown, Stat, Why, input, num, td, th, type Tone } from './gcUi'
+import { GcAskCompanies } from './GcAskCompanies'
 
 /** GC mode design spike: the office's side of one project. */
 
@@ -512,6 +513,8 @@ function SelfPerformPanel({ pkg }: { pkg: TradePackage }) {
 
 function LevelPanel({ state, project, pkg, dispatch, onSeePortal }: GcPaneProps & { pkg: TradePackage }) {
   const [pick, setPick] = useState('')
+  // An invitation goes through the Ask window first (the owner, 2026-10-05: look before anything goes out).
+  const [asking, setAsking] = useState(false)
   const bidders = bidsIn(pkg)
   const waiting = pkg.invites.filter((i) => i.bid === null)
   const invitedIds = new Set(pkg.invites.map((i) => i.partnerId))
@@ -549,19 +552,26 @@ function LevelPanel({ state, project, pkg, dispatch, onSeePortal }: GcPaneProps 
             </option>
           ))}
         </select>
-        <Btn
-          kind="primary"
-          disabled={!pick}
-          onClick={() => {
-            dispatch({ type: 'invite', ...ids, partnerId: pick })
-            setPick('')
-          }}
-        >
-          Send invitation
+        <Btn kind="primary" disabled={!pick} onClick={() => setAsking(true)} title="Look at the invitation before it goes.">
+          Ask them…
         </Btn>
         <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-          They get a portal link with the plans, this scope and the due date.
+          They get a portal link with the plans, this scope and the due date. The window shows it first.
         </span>
+        {asking && pick && (
+          <GcAskCompanies
+            key={pick}
+            state={state}
+            dispatch={dispatch}
+            projectId={project.id}
+            packageId={pkg.id}
+            tick={[pick]}
+            onClose={() => {
+              setAsking(false)
+              setPick('')
+            }}
+          />
+        )}
       </div>
 
       {waiting.length > 0 && (

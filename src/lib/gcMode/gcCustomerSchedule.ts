@@ -103,7 +103,7 @@ export function customerChanges(project: GcProject, today: string): string[] {
     const a = project.schedule?.activities.find((x) => x.lineId === m.lineId)
     const pkg = a ? project.packages.find((k) => k.id === a.packageId) : undefined
     const stageKey = a?.inspection ? 'inspection' : lineStage(pkg?.trade ?? '', a ? lineLabel(project, a.lineId) : '')
-    const stage = a?.inspection ? a.inspection.label : (SCHEDULE_STAGES.find((s) => s.key === stageKey)?.label ?? 'The work')
+    const stage = a?.inspection ? a.inspection.label : a?.added ? a.added.label : (SCHEDULE_STAGES.find((s) => s.key === stageKey)?.label ?? 'The work')
     const days = daysBetween(m.from.finish, m.to.finish)
     const moved = days === 0 ? `${stage} was replanned` : `${stage} is ${Math.abs(days)} ${Math.abs(days) === 1 ? 'day' : 'days'} ${days > 0 ? 'later' : 'sooner'} than planned`
     const why = CUSTOMER_WHY[m.reason]

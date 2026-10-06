@@ -8,7 +8,7 @@ import { useEffect, useState, type Dispatch } from 'react'
 import { createPortal } from 'react-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { daysBetween, weekdayDate, type GcAction, type GcProject, type GcState, type ScheduleMoveReason } from '../../lib/gcMode/gcModel'
-import { MOVE_REASONS, moveActivityName, moveRows, moveWhyProblem, planMove, spanWords, undoableMove, type MoveLimits } from '../../lib/gcMode/gcScheduleMoves'
+import { MOVE_REASONS, moveActivityName, moveRows, moveWhyProblem, planMove, redoableMove, spanWords, undoableMove, type MoveLimits } from '../../lib/gcMode/gcScheduleMoves'
 import { companiesToTell, datesMessage, moveAnswerWords, untoldMoves } from '../../lib/gcMode/gcTellTrades'
 import { Btn, Card, Chip, input } from './gcUi'
 
@@ -165,6 +165,8 @@ export function GcMoveHistory({ state, project, dispatch }: { state: GcState; pr
   const [all, setAll] = useState(false)
   const [telling, setTelling] = useState(false)
   const undoable = undoableMove(project)
+  // Redo (G-40): the newest undone move, while everything it touched still sits where the undo left it.
+  const redoable = redoableMove(project)
   // Tell the trades (Phase 3): the companies whose days the standing, untold moves changed.
   const untold = untoldMoves(project)
   const toTell = companiesToTell(state, project, untold)
@@ -184,9 +186,11 @@ export function GcMoveHistory({ state, project, dispatch }: { state: GcState; pr
         <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Every move, who made it and why. Newest first.</span>
         <span style={{ flex: 1 }} />
         {toTell.length > 0 && (
-          <Btn kind="primary" onClick={() => setTelling(true)} title="Each company whose days moved gets one message with its old and new days and why.">
-            Tell the trades · {toTell.length}
-          </Btn>
+          <span data-tour="gc-tell-trades">
+            <Btn kind="primary" onClick={() => setTelling(true)} title="Each company whose days moved gets one message with its old and new days and why.">
+              Tell the trades · {toTell.length}
+            </Btn>
+          </span>
         )}
       </div>
       {telling && <GcTellTrades state={state} project={project} dispatch={dispatch} onClose={() => setTelling(false)} />}
@@ -201,6 +205,11 @@ export function GcMoveHistory({ state, project, dispatch }: { state: GcState; pr
               {undoable?.id === r.move.id && (
                 <Btn kind="plain" onClick={() => dispatch({ type: 'undoScheduleMove', projectId: project.id, moveId: r.move.id, by: me })} title="Put every date this move changed back where it was. The move stays on the record.">
                   Undo
+                </Btn>
+              )}
+              {redoable?.id === r.move.id && (
+                <Btn kind="plain" onClick={() => dispatch({ type: 'redoScheduleMove', projectId: project.id, moveId: r.move.id, by: me })} title="Put the move back. Every date it changed moves again.">
+                  Redo
                 </Btn>
               )}
             </div>

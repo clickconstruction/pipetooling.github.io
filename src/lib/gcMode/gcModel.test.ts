@@ -920,6 +920,13 @@ describe('GC mode golden walk', () => {
     used.add('addScheduleWait') // played in gcScheduleWaits.test.ts: what the work waits on, from outside the trades
     used.add('setScheduleWaitStep') // played in gcScheduleWaits.test.ts
     used.add('removeScheduleWait') // played in gcScheduleWaits.test.ts
+    used.add('addScheduleActivity') // played in gcAddedActivity.test.ts: an activity that is no trade's line
+    used.add('setAddedActivityDone') // played in gcAddedActivity.test.ts
+    used.add('removeScheduleActivity') // played in gcAddedActivity.test.ts
+    used.add('setActualDates') // played in gcActualDates.test.ts
+    used.add('setScheduleBaseline') // played in gcBaseline.test.ts: it needs a signed change order's days on the schedule first
+    used.add('redoScheduleMove') // played in gcScheduleMoves.test.ts: it needs a move undone first
+    used.add('sendCustomerSchedule') // played in gcCustomerScheduleSend.test.ts
     const all: GcAction['type'][] = [
       'issueAddendum', 'tradeConfirmBid', 'setStartItem', 'setStartDate', 'startProject', 'invite', 'nudge',
       'logContact', 'tradePromise', 'tradeOpenPlans', 'tradeSubmitBid', 'tradeDecline', 'officeDecline', 'setPlug',
@@ -968,6 +975,9 @@ describe('GC mode golden walk', () => {
       'undoScheduleMove', 'recordScheduleWalk', 'tellTradesMoves', 'tradeAnswerDates',
       'addRfi', 'tradeAskRfi', 'sendRfiToArchitect', 'answerRfi', 'draftChangeOrderFromRfi',
       'addScheduleWait', 'setScheduleWaitStep', 'removeScheduleWait',
+      'addScheduleActivity', 'setAddedActivityDone', 'removeScheduleActivity',
+      'setActualDates', 'setScheduleBaseline', 'redoScheduleMove',
+      'sendCustomerSchedule',
     ]
     expect(all.filter((t) => !used.has(t))).toEqual([])
   })

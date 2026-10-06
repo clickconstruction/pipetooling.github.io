@@ -47,6 +47,11 @@ import type { GanttHold } from '../../lib/gcMode/gcGantt'
 import { changeOrderMove, changeOrdersOnChart, changeOrderTails, type ChangeOrderOnChart } from '../../lib/gcMode/gcChangeOrderDays'
 import { WAIT_KINDS, waitHolds, waitKind, waitRows, waitWhoDefault, type WaitRow } from '../../lib/gcMode/gcScheduleWaits'
 import { daysLostByCause, lostDaysByLine } from '../../lib/gcMode/gcDaysLost'
+import { ADDED_WHO, addedActivityProblem } from '../../lib/gcMode/gcAddedActivity'
+import { actualProblem, actualWords } from '../../lib/gcMode/gcActualDates'
+import { baselineDue, baselineHistory, baselineWords, nextBaselineName } from '../../lib/gcMode/gcBaseline'
+import { customerScheduleHtml, customerScheduleLetter, scheduleSends } from '../../lib/gcMode/gcCustomerScheduleSend'
+import { useAuth } from '../../hooks/useAuth'
 import type { WaitKind } from '../../lib/gcMode/gcTypes'
 
 /**
@@ -57,10 +62,20 @@ import type { WaitKind } from '../../lib/gcMode/gcTypes'
  * inspection is an activity of its own (owner, 2026-10-03): the city's, with no dollars.
  */
 
+/** The signed-in person's name. Outside the app's sign-in (a test), none. */
+function useMeName(): string | null {
+  try {
+    return useAuth().profileName
+  } catch {
+    return null
+  }
+}
+
 /** A box at the height of the button beside it (the owner, 2026-10-04): a date input runs taller on its own. */
 const rowBox = { ...input, height: 30, boxSizing: 'border-box', padding: '0 0.45rem' } as const
 
 export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps) {
+  const me = useMeName() ?? 'The office'
   const m = useMemo(() => scheduleMeasures(state, project), [state, project])
   const [picked, setPicked] = useState<string | null>(null)
   const holds = useMemo(() => holdsOf(state, project), [state, project])
@@ -120,6 +135,33 @@ export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps)
           rows={m.items}
           started={Boolean(project.startedOn)}
           onSave={(start, finish, after, limits) => setPending({ lineId: pickedRow.activity.lineId, start, finish, after, limits })}
+          today={state.today}
+          onActual={(actualStart, actualFinish) => dispatch({ type: 'setActualDates', projectId: project.id, lineId: pickedRow.activity.lineId, actualStart, actualFinish, by: me })}
+          extra={
+            pickedRow.activity.added ? (
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                <span style={{ color: 'var(--text-muted)' }}>{pickedRow.activity.added.who}. Nobody reports it: mark it here.</span>
+                {pickedRow.activity.added.doneOn ? (
+                  <Btn kind="plain" onClick={() => dispatch({ type: 'setAddedActivityDone', projectId: project.id, lineId: pickedRow.activity.lineId, on: null })}>
+                    Not done after all
+                  </Btn>
+                ) : (
+                  <Btn kind="primary" onClick={() => dispatch({ type: 'setAddedActivityDone', projectId: project.id, lineId: pickedRow.activity.lineId, on: state.today })}>
+                    Mark it done today
+                  </Btn>
+                )}
+                <Btn
+                  kind="quiet"
+                  onClick={() => {
+                    dispatch({ type: 'removeScheduleActivity', projectId: project.id, lineId: pickedRow.activity.lineId })
+                    setPicked(null)
+                  }}
+                >
+                  Take it off the schedule
+                </Btn>
+              </div>
+            ) : undefined
+          }
           check={
             building && pickedInspection && !pickedInspection.passedOn ? (
               <InspectionCheck project={project} activity={pickedRow.activity} today={state.today} dispatch={dispatch} hint="Our superintendent records it. A pass meets the milestone with the same name." />
@@ -175,7 +217,13 @@ export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps)
 
       <WaitsCard state={state} project={project} rows={waits} items={m.items} dispatch={dispatch} />
 
+      <AddActivityCard project={project} items={m.items} today={state.today} by={me} dispatch={dispatch} />
+
       <MilestonesCard project={project} milestones={schedule.milestones} dispatch={dispatch} />
+
+      {schedule.baseline && <BaselineCard project={project} today={state.today} by={me} dispatch={dispatch} />}
+
+      {building && <ScheduleSendCard state={state} project={project} by={me} dispatch={dispatch} />}
 
       {building && <VerifyCard project={project} rows={m.rows} today={state.today} dispatch={dispatch} />}
 
@@ -236,6 +284,9 @@ function ActivityEditor({
   started,
   onSave,
   check,
+  extra,
+  today,
+  onActual,
   onClose,
 }: {
   project: GcProject
@@ -245,6 +296,11 @@ function ActivityEditor({
   onSave: (start: string, finish: string, after: string[], limits: MoveLimits) => void
   /** An inspection not passed yet, on a job being built: passed or failed, today. */
   check?: ReactNode
+  /** An added activity's own buttons (G-38): done, not done, off the schedule. */
+  extra?: ReactNode
+  today: string
+  /** The real start and finish, recorded (G-55). Null clears one. */
+  onActual: (actualStart: string | null, actualFinish: string | null) => void
   onClose: () => void
 }) {
   const a = row.activity
@@ -255,6 +311,11 @@ function ActivityEditor({
   const [lag, setLag] = useState<Record<string, number>>(a.lag ?? {})
   const [notBefore, setNotBefore] = useState(a.notBefore ?? '')
   const [mustFinishBy, setMustFinishBy] = useState(a.mustFinishBy ?? '')
+  // The days it really ran (G-55), kept beside the planned ones.
+  const [actualStart, setActualStart] = useState(a.actualStart ?? '')
+  const [actualFinish, setActualFinish] = useState(a.actualFinish ?? '')
+  const actualChanged = (actualStart || undefined) !== a.actualStart || (actualFinish || undefined) !== a.actualFinish
+  const actualBad = actualProblem(actualStart || undefined, actualFinish || undefined, today)
   const limits: MoveLimits = { lag, notBefore: notBefore || null, mustFinishBy: mustFinishBy || null }
   const limitsChanged = JSON.stringify(Object.fromEntries(Object.entries(lag).filter(([id, d]) => after.includes(id) && d > 0))) !== JSON.stringify(a.lag ?? {}) || (notBefore || undefined) !== a.notBefore || (mustFinishBy || undefined) !== a.mustFinishBy
   const bad = !start || !finish || finish < start || (notBefore !== '' && start < notBefore)
@@ -371,7 +432,259 @@ function ActivityEditor({
             ))}
           </div>
         )}
+        {!a.inspection && (
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap', paddingTop: '0.5rem', borderTop: '1px solid var(--border)' }}>
+            <span style={{ color: 'var(--text-muted)' }}>Really</span>
+            <label style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+              <span style={{ color: 'var(--text-muted)' }}>started</span>
+              <input type="date" value={actualStart} max={today} onChange={(e) => setActualStart(e.target.value)} aria-label="The day it really started" style={input} />
+            </label>
+            <label style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+              <span style={{ color: 'var(--text-muted)' }}>finished</span>
+              <input type="date" value={actualFinish} min={actualStart || undefined} max={today} onChange={(e) => setActualFinish(e.target.value)} aria-label="The day it really finished" style={input} />
+            </label>
+            {actualChanged && (
+              <Btn kind="plain" disabled={actualBad !== null} title={actualBad ?? undefined} onClick={() => onActual(actualStart || null, actualFinish || null)}>
+                Keep the real days
+              </Btn>
+            )}
+            <span style={{ color: actualBad && actualChanged ? 'var(--text-red-700)' : 'var(--text-muted)', fontSize: '0.82rem' }}>{actualChanged && actualBad ? actualBad : (actualWords(a) ?? 'Not recorded. The walk asks when it started and finished.')}</span>
+          </div>
+        )}
+        {extra && <div style={{ paddingTop: '0.5rem', borderTop: '1px solid var(--border)' }}>{extra}</div>}
         {check && <div style={{ paddingTop: '0.5rem', borderTop: '1px solid var(--border)' }}>{check}</div>}
+      </div>
+    </Card>
+  )
+}
+
+/**
+ * The customer's schedule on its own (the Gantt, G-94): the letter as it would go today, the same
+ * picture as their portal, sent and kept as sent, or printed to a PDF. Nothing leaves the app in the prototype.
+ */
+function ScheduleSendCard({ state, project, by, dispatch }: { state: GcState; project: GcProject; by: string; dispatch: Dispatch<GcAction> }) {
+  const [open, setOpen] = useState(false)
+  const letter = customerScheduleLetter(state, project, by)
+  const sends = scheduleSends(project)
+  const print = () => {
+    const w = window.open('', '_blank', 'width=760,height=900')
+    if (!w) return
+    w.document.write(customerScheduleHtml(letter))
+    w.document.close()
+    w.focus()
+    w.print()
+  }
+  return (
+    <Card>
+      <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', flexWrap: 'wrap', marginBottom: '0.4rem' }}>
+        <strong>Send {project.owner} their schedule</strong>
+        {sends.length > 0 && <Chip tone="grey">{sends.length === 1 ? 'sent once' : `sent ${sends.length} times`}</Chip>}
+        <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', flex: '1 1 16rem' }}>The same picture as their portal, as a dated letter: the finish, the stages, what changed, what we need from them. Kept as it went.</span>
+        <Btn kind="plain" onClick={() => setOpen((v) => !v)}>
+          {open ? 'Hide the letter' : 'Read the letter'}
+        </Btn>
+        <Btn kind="plain" onClick={print} title="Opens it as a page to print or save as a PDF.">
+          Print or PDF
+        </Btn>
+        <Btn kind="primary" onClick={() => dispatch({ type: 'sendCustomerSchedule', projectId: project.id, by })} title="Kept on the job as sent, dated. In the prototype nothing leaves the app.">
+          Send to {letter.to.split(',')[0]}
+        </Btn>
+      </div>
+      {open && (
+        <article style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', marginBottom: sends.length > 0 ? '0.6rem' : 0 }}>
+          <div style={{ padding: '0.55rem 0.75rem', borderBottom: '1px solid var(--border)', fontSize: '0.82rem', display: 'grid', gap: '0.1rem', background: 'var(--bg-subtle)' }}>
+            <span>
+              <span style={{ color: 'var(--text-muted)' }}>To </span>
+              {letter.to}
+            </span>
+            <span style={{ fontSize: '0.95rem', fontWeight: 700, marginTop: '0.2rem' }}>{letter.subject}</span>
+          </div>
+          <div style={{ padding: '0.7rem 0.75rem', display: 'grid', gap: '0.4rem', lineHeight: 1.45, fontSize: '0.875rem' }}>
+            {letter.lines.map((line, i) => (
+              <div key={`${i}:${line}`}>{line}</div>
+            ))}
+          </div>
+        </article>
+      )}
+      {sends.length > 0 && (
+        <div style={{ display: 'grid', gap: '0.15rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+          {sends.map((s) => (
+            <div key={s.id}>
+              {weekdayDate(s.on)} · {s.by} sent {s.to} “{s.subject}”, {s.lines.length} lines.
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
+  )
+}
+
+/**
+ * The baseline (the Gantt, G-41): the plan every measure reads against, locked at Start. After a
+ * signed change order's days go on the schedule, a new one takes the plan as it stands; the old
+ * ones are kept and named. Anyone on our team may set one, like a move (the owner's call 9 is open).
+ */
+function BaselineCard({ project, today, by, dispatch }: { project: GcProject; today: string; by: string; dispatch: Dispatch<GcAction> }) {
+  const schedule = project.schedule
+  const [open, setOpen] = useState(false)
+  const [name, setName] = useState('')
+  const [why, setWhy] = useState('')
+  if (!schedule?.baseline) return null
+  const history = baselineHistory(schedule)
+  const due = baselineDue(project, today)
+  const offered = nextBaselineName(project, today)
+  return (
+    <Card>
+      <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', flexWrap: 'wrap', marginBottom: '0.4rem' }}>
+        <strong>The baseline</strong>
+        {due && <Chip tone="amber">a new one is due</Chip>}
+        <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', flex: '1 1 16rem' }}>The plan every measure reads against: work done against plan, spare days, where a bar sat. A signed change order's days call for a new one; the old ones are kept.</span>
+        {!open && (
+          <Btn
+            kind={due ? 'primary' : 'plain'}
+            onClick={() => {
+              setName(offered)
+              setWhy(due ? '' : '')
+              setOpen(true)
+            }}
+          >
+            Set a new baseline
+          </Btn>
+        )}
+      </div>
+      {due && <div style={{ color: 'var(--text-amber-800)', fontSize: '0.875rem', marginBottom: '0.4rem' }}>{due}</div>}
+      <div style={{ display: 'grid', gap: '0.15rem', fontSize: '0.875rem' }}>
+        {history.map((b, i) => (
+          <div key={`${b.lockedOn}:${b.name ?? ''}`} style={{ color: i === history.length - 1 ? 'var(--text-base)' : 'var(--text-muted)' }}>
+            {i === history.length - 1 ? <strong>Now: </strong> : 'Before: '}
+            {baselineWords(b)}
+          </div>
+        ))}
+      </div>
+      {open && (
+        <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '0.6rem', fontSize: '0.875rem' }}>
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="After change order 2" aria-label="The new baseline's name" style={{ ...rowBox, width: '14rem' }} />
+          <input value={why} onChange={(e) => setWhy(e.target.value)} placeholder="Why, in a few words" aria-label="Why a new baseline" style={{ ...rowBox, width: '18rem' }} />
+          <Btn
+            kind="primary"
+            disabled={!name.trim()}
+            onClick={() => {
+              dispatch({ type: 'setScheduleBaseline', projectId: project.id, name, why, by })
+              setOpen(false)
+            }}
+          >
+            Take the plan as it stands
+          </Btn>
+          <Btn kind="quiet" onClick={() => setOpen(false)}>
+            Cancel
+          </Btn>
+        </div>
+      )}
+    </Card>
+  )
+}
+
+/**
+ * An activity that is no trade's line (the Gantt, G-38): mobilize, cure time, the customer's own
+ * work. Named, given to someone, dated, and tied in: what it waits on and what waits on it.
+ */
+function AddActivityCard({ project, items, today, by, dispatch }: { project: GcProject; items: ScheduleItem[]; today: string; by: string; dispatch: Dispatch<GcAction> }) {
+  const [open, setOpen] = useState(false)
+  const [label, setLabel] = useState('')
+  const [whoPick, setWhoPick] = useState<(typeof ADDED_WHO)[number]>('Cure time')
+  const [whoText, setWhoText] = useState('')
+  const [start, setStart] = useState(today)
+  const [finish, setFinish] = useState(today)
+  const [after, setAfter] = useState<string[]>([])
+  const [holdsUp, setHoldsUp] = useState<string[]>([])
+  const who = whoPick === 'Someone else' ? whoText : whoPick
+  const problem = addedActivityProblem(label, who, start, finish)
+  const candidates = items.filter((r) => r.actual < 100)
+  const reset = () => {
+    setOpen(false)
+    setLabel('')
+    setWhoText('')
+    setAfter([])
+    setHoldsUp([])
+  }
+  if (!open) {
+    return (
+      <Card>
+        <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
+          <strong>Something that is no trade's line</strong>
+          <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', flex: '1 1 16rem' }}>Mobilize, cure time, the customer's own work: a bar of its own, with what it waits on and what waits on it. No dollars; the office marks it done.</span>
+          <Btn onClick={() => setOpen(true)}>Add an activity</Btn>
+        </div>
+      </Card>
+    )
+  }
+  const pick = (list: string[], set: (next: string[]) => void, id: string, on: boolean) => set(on ? [...list, id] : list.filter((x) => x !== id))
+  const list = (title: string, chosen: string[], set: (next: string[]) => void, skip: string[]) => (
+    <div>
+      <div style={{ color: 'var(--text-muted)', marginBottom: '0.25rem' }}>{title}</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(14rem, 1fr))', gap: '0.15rem 0.75rem' }}>
+        {candidates
+          .filter((r) => !skip.includes(r.activity.lineId))
+          .map((r) => (
+            <label key={r.activity.lineId} style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+              <input type="checkbox" checked={chosen.includes(r.activity.lineId)} onChange={(e) => pick(chosen, set, r.activity.lineId, e.target.checked)} />
+              <span>
+                {activityName(r)} <span style={{ color: 'var(--text-muted)' }}>· {shortDate(r.activity.start)} to {shortDate(r.activity.finish)}</span>
+              </span>
+            </label>
+          ))}
+      </div>
+    </div>
+  )
+  return (
+    <Card style={{ border: '2px solid #2563eb' }}>
+      <div style={{ display: 'grid', gap: '0.6rem', fontSize: '0.875rem' }}>
+        <strong>An activity that is no trade's line</strong>
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Slab cure" aria-label="What it is" style={{ ...rowBox, width: '16rem' }} />
+          <label style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+            <span style={{ color: 'var(--text-muted)' }}>Whose</span>
+            <select value={whoPick} onChange={(e) => setWhoPick(e.target.value as (typeof ADDED_WHO)[number])} aria-label="Whose it is" style={rowBox}>
+              {ADDED_WHO.map((w) => (
+                <option key={w} value={w}>
+                  {w}
+                </option>
+              ))}
+            </select>
+          </label>
+          {whoPick === 'Someone else' && <input value={whoText} onChange={(e) => setWhoText(e.target.value)} placeholder="Who" aria-label="Who it is" style={{ ...rowBox, width: '12rem' }} />}
+        </div>
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <label style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+            <span style={{ color: 'var(--text-muted)' }}>Starts</span>
+            <input type="date" value={start} onChange={(e) => setStart(e.target.value)} aria-label="The day it starts" style={rowBox} />
+          </label>
+          <label style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+            <span style={{ color: 'var(--text-muted)' }}>Finishes</span>
+            <input type="date" value={finish} min={start} onChange={(e) => setFinish(e.target.value)} aria-label="The day it finishes" style={rowBox} />
+          </label>
+          {start && finish && finish >= start && <span style={{ color: 'var(--text-muted)' }}>{daysBetween(start, finish) + 1} days</span>}
+        </div>
+        {list('It waits on', after, setAfter, holdsUp)}
+        {list('It holds up', holdsUp, setHoldsUp, after)}
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <Btn
+            kind="primary"
+            disabled={problem !== null}
+            title={problem ?? undefined}
+            onClick={() => {
+              dispatch({ type: 'addScheduleActivity', projectId: project.id, label, who, start, finish, after, holdsUp, by })
+              reset()
+            }}
+          >
+            Put it on the schedule
+          </Btn>
+          <Btn kind="quiet" onClick={reset}>
+            Cancel
+          </Btn>
+          {problem && <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>{problem}</span>}
+          {holdsUp.length > 0 && <span style={{ color: 'var(--text-amber-800)', fontSize: '0.82rem' }}>What waits on it moves out if it has to.</span>}
+        </div>
       </div>
     </Card>
   )

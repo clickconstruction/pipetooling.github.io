@@ -65,23 +65,26 @@ function itemOf(project: GcProject, b: GanttBar, today: string): WalkItem | null
     b.status === 'failed' ? 'failed' : b.status === 'late' ? 'late' : started && a.finish === today && !a.inspection ? 'due' : b.status === 'behind' ? 'behind' : b.hold ? 'held' : started ? 'underway' : 'starting'
   const pct = `${Math.round(b.item.actual)}%`
   const plan = `${Math.round(b.item.plannedToday)}%`
+  // An added activity (G-38) has no percent: it is under way, or done.
+  const noReport = Boolean(a.inspection || a.added)
   const chips: Record<WalkKind, string> = {
     failed: 'failed its inspection',
     late: `${b.daysLate} ${b.daysLate === 1 ? 'day' : 'days'} late`,
     due: `due today, ${pct} done`,
     behind: `${pct}, plan ${plan}`,
     held: 'held',
-    underway: a.inspection ? 'this week' : `${pct}, plan ${plan}`,
+    underway: a.inspection ? 'this week' : a.added ? 'under way' : `${pct}, plan ${plan}`,
     starting: startsIn === 0 ? 'starts today' : `starts in ${startsIn} ${startsIn === 1 ? 'day' : 'days'}`,
   }
   const tones: Record<WalkKind, WalkItem['tone']> = { failed: 'red', late: 'red', due: 'amber', behind: 'amber', held: 'amber', underway: b.status === 'ahead' ? 'green' : 'grey', starting: 'grey' }
-  const pace = a.inspection ? null : paceFinish(a.start, b.item.actual, today)
+  const pace = noReport ? null : paceFinish(a.start, b.item.actual, today)
   const paceLater = pace && pace > a.finish ? pace : null
   const facts: string[] = []
   const fails = a.inspection && !a.inspection.passedOn ? (a.inspection.failed ?? []) : []
   const lastFail = fails[fails.length - 1]
   if (lastFail) facts.push(`It failed ${shortDate(lastFail.on)}: ${lastFail.note} It is seen again ${weekdayDate(lastFail.reinspectOn)}.`)
-  if (!a.inspection && started) facts.push(`${b.item.company} reported ${pct}. The plan has ${plan} by today.`)
+  if (!noReport && started) facts.push(`${b.item.company} reported ${pct}. The plan has ${plan} by today.`)
+  if (a.added && started) facts.push(`${a.added.who}: nobody reports it. Mark it done on the chart when it is.`)
   if (b.item.pkg && started) {
     const log = onSiteWords(project, b.item.pkg.id, mondayOf(today))
     if (log) facts.push(log)
@@ -98,7 +101,7 @@ function itemOf(project: GcProject, b: GanttBar, today: string): WalkItem | null
   facts.push(b.critical ? 'It has no spare days: a day lost here is a day lost on the finish.' : `It has ${b.spare} spare ${b.spare === 1 ? 'day' : 'days'} before it moves the finish.`)
   return {
     lineId: a.lineId,
-    name: a.inspection ? b.item.label : `${b.item.trade} · ${b.item.label}`,
+    name: a.inspection || a.added ? b.item.label : `${b.item.trade} · ${b.item.label}`,
     company: b.item.company,
     kind,
     chip: chips[kind],

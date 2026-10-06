@@ -450,9 +450,100 @@ What the second look changed:
   the finish nothing; a customer's 10 days on the final inspection cost it all 10. The ask reads
   the first column; the trade's record reads the second.
 
+## Phase 2, an added activity, as built (2026-10-06)
+
+An activity that is no trade's line (G-38): mobilize, cure time, the customer's own work.
+`gcAddedActivity.ts` (tested, out of the barrel), a card on the Schedule tab, and the editor's
+own buttons for it.
+
+- **The job's own bar.** It has a name, whose it is (our own crew, the customer, cure time, or
+  typed), its days, what it waits on and what waits on it. Its id is its own
+  (`<project>-own-N`), its trade is "The job's own", and it has no dollars: it is not in work done
+  against the plan, and no trade reports it. It counts on the critical path like an inspection.
+- **Tied in on the press.** The lines ticked under *It holds up* wait on it from then on, and what
+  that pushes moves out, said in the log line. After that it moves like any other bar, with why.
+- **Done when the office says.** The opened activity has *Mark it done today*, *Not done after
+  all* and *Take it off the schedule*; off the schedule, whatever waited on it stops waiting.
+- **On the chart** it groups under *The job's own* by trade and by company; by stage it sits among
+  the stages where its first day falls. The walk lists it as starting or under way, with no
+  percent to read. The customer's What changed names it by its own name.
+
+What the second look changed:
+
+- **A delivery is not an added activity.** The plan listed it with mobilize and cure time, but a
+  delivery is something the work waits on from outside (G-73), with an order, a ship and an
+  arrival; it went there.
+- **No percent.** A cure is done when its days pass and someone says so; typing 60% on it would
+  be a number nobody reports and nobody verifies.
+
+## Phase 2, the rest, as built (2026-10-06)
+
+Actual dates (G-55), a new baseline (G-41) and redo (G-40): `gcActualDates.ts`, `gcBaseline.ts`,
+and redo in `gcScheduleMoves.ts`, each tested.
+
+- **The days it really ran** sit beside the planned ones. The walk asks, where someone knows: *It
+  started Mon Sep 21*, *It started today*, *It finished today*. The opened activity has the two
+  dates to type. The chart draws them as a thin green line over the bar, open-ended until it
+  finished, and the hover card says "Started Wed Sep 23, 2 days late; not finished."
+- **A new baseline** takes the plan as it stands as the one every measure reads against; the old
+  one is kept and named (*At Start* first). The card says when one is due, a signed change order's
+  days on the schedule since the last one, and offers the name *After change order 2*. Anyone on
+  our team may set one, like a move; who should is the owner's call 9.
+- **Redo** puts the newest undone move back, while everything it touched still sits where the undo
+  left it and no newer move stands.
+
+What the second look changed:
+
+- **A trade's report does not set the actual dates on the prototype.** It should, and the real build
+  will; here it would move the golden walk's snapshots (Helotes reports work after its schedule is
+  drawn), so it waits for the owner's word, in `PUNCHLIST.md`.
+- **A baseline set the same day a change order's days landed covers them.** Otherwise the card
+  would say a new one is due the moment one was set.
+
+## Phase 3, the rest, as built (2026-10-06)
+
+- **The architect's view** (G-95): *The schedule* in the architect's portal, the customer's
+  stages against the finish, then what waits on them: the submittals and questions in their hands,
+  each with the work it holds and the day we need it back, the soonest first, red once late.
+  `gcArchitectSchedule.ts`, `GcArchitectSchedule.tsx`.
+- **Start reminders** (G-114): a company whose first day is 14 days off reads so in its portal,
+  and again at 3 days, in its language, with what must be in place first: its submittals not yet
+  approved, an insurance certificate that runs out before the start, an unsigned statement of
+  work. A start that passed with nobody on site keeps the last one showing, in other words.
+  `gcStartReminders.ts`, rides in `portalMessages` as the job's kind of email.
+- **The Friday report's schedule** (G-93): a *The schedule* section after At a glance, each stage
+  with where it stands and its dates, what changed this week in the customer's words, and what we
+  need from them. The same sentences their portal shows.
+- **The schedule on its own** (G-94): *Send Cibolo Creek Partners their schedule* on the Schedule
+  tab, the letter as it would go today, the same picture as their portal with the dates to meet;
+  Send keeps it on the job as it went, dated and by whom; Print or PDF opens it as a plain page to
+  print or save. `gcCustomerScheduleSend.ts`.
+
+What the second look changed: the architect's holds are named by the work and its start, not by
+the trade's company, the way the customer's view keeps company names out; and the reminders are
+derived, not stored, so a trade that shows up on the daily log stops getting them with nothing to
+clean up.
+
+## Phase 5, fit and finish, as built (2026-10-06)
+
+- **A phone view** (G-19): the chart's toolbar has *Chart | List*. A phone opens on List: the
+  stages of the job, the one running today first, then the ones ahead, then the ones done,
+  folded; each a table of its bars with the dates, where each stands, and a small bar in the
+  stage's span with today marked. `GcGanttList.tsx`, `ganttListGroups`.
+- **Keyboard and screen reader** (G-20): on the chart, Tab reaches a bar, up and down move to
+  the next bar, left and right scroll a week, Home and End go to the ends, Enter opens one. Every
+  bar reads its name, company, dates and standing; the List view is a real table with headers.
+- **Big jobs** (G-135): only the rows inside the scroller's window are drawn, with 400 px of
+  overscan; the rest keep their height as spacers, so the links and the sticky names still line
+  up. `rowsInView`, tested on 300 rows.
+
+What the second look changed: the List is not only for phones. It is the same rows a screen
+reader gets and the quickest read of "what is this stage doing", so it is a view anyone can
+switch to, and the phone only opens on it.
+
 ## Status
 
-Planned 2026-10-05. Phases 1 and 2 (all but an added activity, actuals, a new baseline and redo)
-and most of Phase 3 built by 2026-10-06; Phase 4's change-order days, what the work waits on and the days lost the same day. Next: the rest of Phase 2 (what holds the work: long-lead items, the
+Planned 2026-10-05. Phases 1 and 2 (finished 2026-10-06: an added activity, actuals, a new baseline, redo)
+and most of Phase 3 built by 2026-10-06; Phase 4's change-order days, what the work waits on and the days lost the same day. Next: the owner's calls (`PUNCHLIST.md`), then the real build (what holds the work: long-lead items, the
 customer's decisions, change-order days on the chart, weather days from the log), or the rest of
 Phase 3 on the owner's word.

@@ -2,13 +2,13 @@ import { describe, expect, it } from 'vitest'
 import { initialGcState } from './gcFixture'
 import { gcReducer } from './gcReducer'
 import { addDays } from './gcBuilding'
-import type { GcState } from './gcTypes'
+import type { GcState, ScheduleMoveReason } from './gcTypes'
 import { CAUSE_OF, daysLostByCause, lostDaysByLine, lostDaysMoveNote, lostDaysUnanswered, lostDaysWords, weatherLostDays } from './gcDaysLost'
 
 /** Fair Oaks Shops, Building D: rain held the roofers on Thu Sep 24; lightning cleared the site Fri Sep 25 with only the electricians logged. */
 const ID = 'fairoaksd'
 const job = (state: GcState) => state.projects.find((p) => p.id === ID)!
-const why = (reason: Parameters<typeof gcReducer>[1] extends { why?: infer W } ? NonNullable<W>['reason'] : never, note: string) => ({ reason, note, by: 'Robert' })
+const why = (reason: ScheduleMoveReason, note: string) => ({ reason, note, by: 'Robert' })
 
 describe('weather days from the daily log (G-58)', () => {
   it('puts a lost day on every bar the stopped trades had running that day', () => {
