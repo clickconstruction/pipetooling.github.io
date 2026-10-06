@@ -1270,7 +1270,7 @@ export type GcAction =
   | { type: 'recoverScheduleDays'; projectId: string; key: string; why: { reason: ScheduleMoveReason; note: string; by: string } }
   /** A what-if copy of the schedule to try moves on (G-81), made from the real one. One per job. */
   | { type: 'startWhatIf'; projectId: string; by: string }
-  /** A move tried on the what-if copy (G-81): setScheduleActivity, pullScheduleEarlier, undoScheduleMove or redoScheduleMove. Any other is refused. */
+  /** A move tried on the what-if copy (G-81): setScheduleActivity, pullScheduleEarlier, undoScheduleMove, redoScheduleMove or recoverScheduleDays (G-82). Any other is refused. */
   | { type: 'inWhatIf'; projectId: string; action: GcAction; by: string }
   /** Keep the what-if (G-81): its standing moves go on the real schedule, oldest first, as real moves. `whys`: the reasons for moves tried with none, by the copy's move id. */
   | { type: 'keepWhatIf'; projectId: string; by: string; whys: Record<string, { reason: ScheduleMoveReason; note: string }> }

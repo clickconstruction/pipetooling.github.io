@@ -17,8 +17,8 @@ import { planBillingShift, shiftWords, type ForecastShift } from './gcBillingFor
 import { companiesToTell } from './gcTellTrades'
 import { weekdayDate } from './gcWords'
 
-/** What a what-if copy takes (G-81): a move, a pull, undo and redo. Everything else records what happened, so it belongs to the real schedule. */
-export const WHAT_IF_ACTIONS: GcAction['type'][] = ['setScheduleActivity', 'pullScheduleEarlier', 'undoScheduleMove', 'redoScheduleMove']
+/** What a what-if copy takes (G-81): a move, a pull, undo and redo, and days got back (G-82). Everything else records what happened, so it belongs to the real schedule. */
+export const WHAT_IF_ACTIONS: GcAction['type'][] = ['setScheduleActivity', 'pullScheduleEarlier', 'undoScheduleMove', 'redoScheduleMove', 'recoverScheduleDays']
 
 /** The stand-in kept on a move tried with no reason, so the copy's history has it. Keep asks for a real one. */
 export const WHAT_IF_NO_WHY: { reason: ScheduleMoveReason; note: string } = { reason: 'other', note: 'No reason yet. Keep asks for one.' }

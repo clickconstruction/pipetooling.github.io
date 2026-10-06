@@ -2792,7 +2792,7 @@ function reduce(state: GcState, action: GcAction): GcState {
       const copy = project?.whatIf
       const inner = action.action
       if (!project || !copy) return state
-      if (inner.type !== 'setScheduleActivity' && inner.type !== 'pullScheduleEarlier' && inner.type !== 'undoScheduleMove' && inner.type !== 'redoScheduleMove') return state
+      if (inner.type !== 'setScheduleActivity' && inner.type !== 'pullScheduleEarlier' && inner.type !== 'undoScheduleMove' && inner.type !== 'redoScheduleMove' && inner.type !== 'recoverScheduleDays') return state
       if (inner.projectId !== project.id) return state
       // Why it moved is optional in the copy: a move with none keeps a stand-in, marked, so the copy's history has it.
       const noWhy = inner.type === 'setScheduleActivity' && !inner.why

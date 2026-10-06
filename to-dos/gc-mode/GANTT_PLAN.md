@@ -1151,8 +1151,8 @@ barrel), `GcWhatIf.tsx`, and four actions: `startWhatIf`, `inWhatIf`, `keepWhatI
   every one of them reads as with no copy.
 - **The way in** is **What if…** on the chart's toolbar. With a copy open it reads **What if · 2**,
   and inside the copy **See the real schedule**. The copy stays open while the real one is shown.
-- **In the copy**, every move, pull (G-37) and wait the real schedule allows is tried through the
-  same windows, with Undo and Redo on the copy's own history. Why it moved is optional: *Try it*
+- **In the copy**, every move, pull (G-37), day got back (G-82) and wait the real schedule allows is
+  tried through the same windows, with Undo and Redo on the copy's own history. Why it moved is optional: *Try it*
   saves with a reason when one is given whole, else with none yet (`ScheduleMove.noWhy`). One
   wrapper action, `inWhatIf`, runs the move through the reducer on the copy and keeps only the
   schedule that comes out. Any other action is refused. The walk, actual dates, inspections, waits,
@@ -1175,7 +1175,7 @@ barrel), `GcWhatIf.tsx`, and four actions: `startWhatIf`, `inWhatIf`, `keepWhatI
   date or a wait changed, not a report or an actual date. The window names the bar and says to make
   a new copy, the way Undo stops when a later move stands.
 - **Throw it away** asks once inline, then drops the copy. The real schedule stays as it was.
-- Tests: `gcWhatIf.test.ts` (14) and `GcWhatIf.render.test.tsx` (6). The golden test did not move:
+- Tests: `gcWhatIf.test.ts` (15) and `GcWhatIf.render.test.tsx` (6). The golden test did not move:
   no fixture data and no new step; the four actions are in its list.
 
 What the second look changed:

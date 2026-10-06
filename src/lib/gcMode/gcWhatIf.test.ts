@@ -9,6 +9,7 @@
 import { describe, expect, it } from 'vitest'
 import { initialGcState } from './gcFixture'
 import { gcReducer } from './gcReducer'
+import { addDays } from './gcBuilding'
 import type { GcAction, GcState, ScheduleMoveReason } from './gcTypes'
 import { WHAT_IF_ACTIONS, WHAT_IF_NO_WHY, keepWhatIf, whatIfBaseChangedWords, whatIfBaseChanges, whatIfDiff, whatIfGhosts, whatIfKeptWords, whatIfProject, whatIfTried } from './gcWhatIf'
 import { moveRows, undoableMove } from './gcScheduleMoves'
@@ -132,8 +133,34 @@ describe('what the copy takes, and what it refuses', () => {
     expect(job(redone).schedule).toBe(job(done).schedule)
   })
 
+  it('days got back (G-82) are tried in the copy only, and Keep makes them an ordinary move', () => {
+    // G-98's late job: Trim a week later for the customer, Test and balance nine days for the rain. Then a copy.
+    const moveBy = (s: GcState, lineId: string, days: number, reason: ScheduleMoveReason, note: string) => {
+      const a = act(s, lineId)
+      return play(s, { type: 'setScheduleActivity', projectId: ID, lineId, start: addDays(a.start, days), finish: addDays(a.finish, days), after: a.after, why: why(reason, note) })
+    }
+    const late = play(moveBy(moveBy(s0, 'fplumb-4', 7, 'customer', 'Waiting on the restroom tile decision.'), 'fhvac-4', 9, 'weather', 'Rain kept the roof open a week.'), START)
+    const crew = why('recovery', 'Cool Breeze brings a second crew for the last days.')
+    const tried = play(late, { type: 'inWhatIf', projectId: ID, by: 'Robert', action: { type: 'recoverScheduleDays', projectId: ID, key: 'crew:fhvac-4', why: crew } })
+    expect(copyAct(tried, 'fhvac-4').finish).toBe('2026-12-12')
+    expect(act(tried, 'fhvac-4').finish).toBe('2026-12-13')
+    expect(job(tried).schedule).toBe(job(late).schedule)
+    expect(job(tried).whatIf!.schedule.moves?.[0]).toMatchObject({ lineId: 'fhvac-4', reason: 'recovery', recovery: { how: 'crew' } })
+    // A key the copy no longer offers does nothing.
+    expect(play(tried, { type: 'inWhatIf', projectId: ID, by: 'Robert', action: { type: 'recoverScheduleDays', projectId: ID, key: 'crew:fhvac-4', why: crew } })).toBe(tried)
+    // Kept: a real move with its reason and its recovery, told to Cool Breeze, and Undo takes it off.
+    const kept = play(tried, { type: 'keepWhatIf', projectId: ID, by: 'Robert', whys: {} })
+    const move = job(kept).schedule!.moves![0]!
+    expect(move).toMatchObject({ id: 'move-3', lineId: 'fhvac-4', reason: 'recovery', note: crew.note, recovery: { how: 'crew' }, fromWhatIf: '2026-10-02' })
+    expect(act(kept, 'fhvac-4').finish).toBe('2026-12-12')
+    expect(companiesToTell(kept, job(kept), [move]).map((c) => c.partner.company)).toEqual(['Cool Breeze Mechanical'])
+    expect(undoableMove(job(kept))?.id).toBe('move-3')
+    const undone = play(kept, { type: 'undoScheduleMove', projectId: ID, moveId: 'move-3', by: 'Robert' })
+    expect(job(undone).schedule!.activities).toEqual(job(late).schedule!.activities)
+  })
+
   it('takes only a move, a pull, undo and redo, on its own job, with a copy open', () => {
-    expect(WHAT_IF_ACTIONS).toEqual(['setScheduleActivity', 'pullScheduleEarlier', 'undoScheduleMove', 'redoScheduleMove'])
+    expect(WHAT_IF_ACTIONS).toEqual(['setScheduleActivity', 'pullScheduleEarlier', 'undoScheduleMove', 'redoScheduleMove', 'recoverScheduleDays'])
     const refused: GcAction[] = [
       { type: 'tellTradesMoves', projectId: ID, moveIds: [], by: 'Robert' },
       { type: 'setActualDates', projectId: ID, lineId: 'froof-1', actualStart: '2026-09-21', by: 'Robert' },
