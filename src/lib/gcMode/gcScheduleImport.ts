@@ -19,7 +19,9 @@ import { addDays } from './gcBuilding'
 import { daysBetween, scheduleLinesOf } from './gcBuildingSchedule'
 import { TRADE_TEMPLATES, lineStage, scheduleDraft } from './gcNewProject'
 import { weekdayDate } from './gcWords'
-import { CSV_COLUMNS, EXPORT_DATES_CUSTOMER, EXPORT_DATES_TEAM, EXPORT_WAITS_GROUP, MSPDI_NAMESPACE, type ExportCopy } from './gcScheduleExport'
+import { splitParts } from './gcSplitBars'
+import { CSV_COLUMNS, EXPORT_DATES_CUSTOMER, EXPORT_DATES_TEAM, EXPORT_WAITS_GROUP, MSPDI_NAMESPACE, csvHeads, type ExportCopy } from './gcScheduleExport'
+import { PLACE_MAX, cleanPlace, placeProblem, takesPlace } from './gcPlaces'
 
 function plural(n: number, one: string, many: string): string {
   return `${n} ${n === 1 ? one : many}`
@@ -58,6 +60,10 @@ export interface ImportFileRow {
   kind: string | null
   trade: string | null
   company: string | null
+  /** Shorter than a working day in their file (a project file's Duration): never a part of a split line. */
+  underADay: boolean
+  /** Where its work is, from our own file's Place column or the text field it names Place (G-83), tidied as G-83 keeps a place. Unset: none. */
+  workPlace?: string
 }
 
 export interface ScheduleFileReading {
@@ -80,7 +86,7 @@ const NOT_OUR_COLUMNS = 'This spreadsheet’s columns are not the ones Export wr
 const OWN_PROGRAM = 'Only its own program opens this file. Ask them to save it from Project or Primavera with Save as XML.'
 
 /** What a file could not give, counted while reading. */
-type Unread = { notFinishStart: number; outside: number; onGroup: number; onDate: number; percentGap: number; noDates: number; inactive: number; unknownName: number; outsideWaits: number; progress: boolean }
+type Unread = { notFinishStart: number; outside: number; onGroup: number; onDate: number; percentGap: number; noDates: number; inactive: number; unknownName: number; outsideWaits: number; progress: boolean; placeTooLong: number }
 
 function unreadWords(u: Unread): string[] {
   const left = (n: number) => (n === 1 ? 'it is' : 'they are')
@@ -95,11 +101,23 @@ function unreadWords(u: Unread): string[] {
     ...(u.inactive > 0 ? [`${plural(u.inactive, 'task is', 'tasks are')} marked inactive, so ${left(u.inactive)} left out.`] : []),
     ...(u.outsideWaits > 0 ? [`${plural(u.outsideWaits, 'thing the work waits on is', 'things the work waits on are')} left out. The office enters them on the job.`] : []),
     ...(u.progress ? ['The file says what is done. That comes from the trades and the walk, so it is passed over.'] : []),
+    ...(u.placeTooLong > 0 ? [`${plural(u.placeTooLong, 'place is', 'places are')} over ${PLACE_MAX} characters, so ${left(u.placeTooLong)} left off.`] : []),
   ]
 }
 
 function newUnread(): Unread {
-  return { notFinishStart: 0, outside: 0, onGroup: 0, onDate: 0, percentGap: 0, noDates: 0, inactive: 0, unknownName: 0, outsideWaits: 0, progress: false }
+  return { notFinishStart: 0, outside: 0, onGroup: 0, onDate: 0, percentGap: 0, noDates: 0, inactive: 0, unknownName: 0, outsideWaits: 0, progress: false, placeTooLong: 0 }
+}
+
+/** A place read from our own file, kept as G-83 keeps one: tidied, and left off and counted when it is too long. Empty: none. */
+function placeRead(raw: string | null | undefined, u: Unread): { workPlace?: string } {
+  const place = cleanPlace(raw ?? '')
+  if (place === '') return {}
+  if (placeProblem(place)) {
+    u.placeTooLong += 1
+    return {}
+  }
+  return { workPlace: place }
 }
 
 /** "2026-10-09T08:00:00" → "2026-10-09". Null: not a date. */
@@ -142,6 +160,9 @@ function readProjectXml(text: string): ScheduleFileResult {
   const root = doc.documentElement
   if (root.localName !== 'Project' || root.namespaceURI !== MSPDI_NAMESPACE) return { problem: NOT_PROJECT_XML }
   const minutesPerDay = Number(val(root, 'MinutesPerDay')) || 480
+  // Our own project file's places (G-83): the text field the file names Place, our Text2.
+  const placeField = Array.from(kid(root, 'ExtendedAttributes')?.children ?? []).find((a) => a.localName === 'ExtendedAttribute' && (val(a, 'Alias') ?? '').trim().toLowerCase() === 'place')
+  const placeId = placeField ? (val(placeField, 'FieldID') ?? '').trim() : ''
   const tasks = Array.from(kid(root, 'Tasks')?.children ?? []).filter((t) => t.localName === 'Task')
   const u = newUnread()
   const groups: { level: number; name: string }[] = []
@@ -182,6 +203,9 @@ function readProjectXml(text: string): ScheduleFileResult {
     if (Number(val(t, 'PercentComplete')) > 0 || isoDay(val(t, 'ActualStart'))) u.progress = true
     const held = isoDay(val(t, 'ConstraintDate'))
     const constraint = Number(val(t, 'ConstraintType'))
+    // "PT4H0M0S": its work in minutes, against the file's own working day.
+    const worked = /^PT(\d+)H(\d+)M/.exec(val(t, 'Duration') ?? '')
+    const minutes = worked ? Number(worked[1]) * 60 + Number(worked[2]) : null
     read.push({
       row: {
         key: `task:${uid}`,
@@ -197,6 +221,8 @@ function readProjectXml(text: string): ScheduleFileResult {
         kind: null,
         trade: null,
         company: null,
+        underADay: val(t, 'Milestone') !== '1' && minutes !== null && minutes < minutesPerDay,
+        ...(placeId ? placeRead(Array.from(t.children).find((c) => c.localName === 'ExtendedAttribute' && (val(c, 'FieldID') ?? '').trim() === placeId)?.getElementsByTagName('Value')[0]?.textContent, u) : {}),
       },
       links: Array.from(t.children)
         .filter((c) => c.localName === 'PredecessorLink')
@@ -268,7 +294,8 @@ const WAIT_KINDS = new Set(['delivery', 'decision', 'permit', 'utility'])
 function readSpreadsheet(text: string): ScheduleFileResult {
   const [head = [], ...lines] = csvTable(text.replace(/^﻿/, ''))
   const heads = head.map((h) => h.trim())
-  const copy = (Object.keys(CSV_COLUMNS) as ExportCopy[]).find((c) => CSV_COLUMNS[c].map((col) => col.head).join('\u0000') === heads.join('\u0000'))
+  // Our team's copy carries a Place column after Company while a bar has a place kept (G-83): either header is ours.
+  const copy = (Object.keys(CSV_COLUMNS) as ExportCopy[]).find((c) => [false, true].some((withPlace) => csvHeads(c, withPlace).join('\u0000') === heads.join('\u0000')))
   if (!copy) return { problem: NOT_OUR_COLUMNS }
   const cellOf = (cells: string[], name: string) => {
     const i = heads.indexOf(name)
@@ -309,6 +336,8 @@ function readSpreadsheet(text: string): ScheduleFileResult {
       kind,
       trade,
       company: copy === 'team' ? cellOf(cells, 'Company') || null : null,
+      underADay: false,
+      ...(copy === 'team' ? placeRead(cellOf(cells, 'Place'), u) : {}),
     })
     waitsOn.push(copy === 'team' ? cellOf(cells, 'Waits on') : '')
   })
@@ -536,6 +565,8 @@ export interface ImportedSchedule {
   inspectionsNotIn: string[]
   /** Our lines not in the file that run into or past their final inspection, by name. Empty when the file has no final inspection. */
   pastFinal: string[]
+  /** Our lines two of theirs or more land on: their parts (G-39), or one bar and why. */
+  together: { label: string; rows: number; parts: boolean; why: string | null }[]
   words: string
 }
 
@@ -583,6 +614,7 @@ export function importedSchedule(project: GcProject, imp: ScheduleImport): Impor
     }
   }
   // Their dates and waits on what the file names.
+  const together: ImportedSchedule['together'] = []
   for (const [id, rows] of landed) {
     const base = acts.get(id)
     if (!base) continue
@@ -600,7 +632,25 @@ export function importedSchedule(project: GcProject, imp: ScheduleImport): Impor
     const mustFinishBy = rows.map((r) => r.mustFinishBy).filter((d): d is string => Boolean(d)).sort()[0]
     const lag = Object.fromEntries([...gaps].filter(([, g]) => g !== 0))
     const { lag: _lag, notBefore: _nb, mustFinishBy: _mf, ...rest } = base
-    acts.set(id, { ...rest, start, finish: finish < start ? start : finish, after: [...gaps.keys()], ...(Object.keys(lag).length > 0 ? { lag } : {}), ...(notBefore ? { notBefore } : {}), ...(mustFinishBy ? { mustFinishBy } : {}) })
+    const made: ScheduleActivity = { ...rest, start, finish: finish < start ? start : finish, after: [...gaps.keys()], ...(Object.keys(lag).length > 0 ? { lag } : {}), ...(notBefore ? { notBefore } : {}), ...(mustFinishBy ? { mustFinishBy } : {}) }
+    // Where its work is, from our own file (G-83): kept on a trade's line or our crew's, the first of theirs on it that has one, by G-83's rule again.
+    const workPlace = rows.map((r) => cleanPlace(r.workPlace ?? '')).find((w) => w !== '' && !placeProblem(w))
+    if (workPlace && takesPlace(made)) made.place = workPlace
+    // Two of theirs or more on one of our lines are its parts (G-39), each as their file names it, counted from the line's
+    // start with its share from its days, at the line's own percent as its trade reported it. One bar when a part would be
+    // shorter than a day, or two would share a name.
+    const line = lines.find((l) => l.lineId === id)
+    if (line && rows.length >= 2) {
+      const pkg = project.packages.find((k) => k.id === line.packageId)
+      const self = pkg?.selfPerform
+      const linePct = self ? (self.pctByLine?.[id] ?? self.pctDone ?? 0) : (pkg?.sow?.sov.find((l) => l.id === id)?.pctReported ?? 0)
+      const short = rows.some((r) => r.underADay)
+      const split = short ? null : splitParts(made, [...rows].sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0)).map((r) => ({ name: r.name, start: r.start, finish: r.finish })), linePct)
+      const parts = split && 'parts' in split ? split.parts : null
+      if (parts) made.parts = parts
+      together.push({ label: line.label, rows: rows.length, parts: Boolean(parts), why: parts ? null : short ? 'One of them is shorter than a day.' : 'Two of them have the same name.' })
+    }
+    acts.set(id, made)
   }
   // A wait their own dates break is left out: the dates are theirs.
   const nameOf = (id: string) => {
@@ -681,7 +731,7 @@ export function importedSchedule(project: GcProject, imp: ScheduleImport): Impor
     `${kept} of their activities ${kept === 1 ? 'is' : 'are'} on our schedule${dates > 0 ? `, with ${plural(dates, 'date', 'dates')} to meet` : ''}.`,
     ...(drawn > 0 ? [`${plural(drawn, 'of our lines was', 'of our lines were')} drawn as the first draft draws them.`] : []),
   ].join(' ')
-  return { schedule: { activities: [...acts.values()], milestones, baseline: null, lookAhead: [] }, notes, kept, drawn, notIn, inspectionsNotIn, pastFinal, words }
+  return { schedule: { activities: [...acts.values()], milestones, baseline: null, lookAhead: [] }, notes, kept, drawn, notIn, inspectionsNotIn, pastFinal, together, words }
 }
 
 /**
@@ -729,4 +779,9 @@ export function notInWords(made: Pick<ImportedSchedule, 'notIn' | 'inspectionsNo
     ...made.inspectionsNotIn.map((label) => `The first draft's ${label.toLowerCase()} is not in it either. It is drawn after the work it waits on.`),
     ...(made.pastFinal.length > 0 ? [`${andList(made.pastFinal)} ${made.pastFinal.length === 1 ? 'runs' : 'run'} into their final inspection. Look at ${made.pastFinal.length === 1 ? 'it' : 'them'} before Start.`] : []),
   ]
+}
+
+/** "Hang and tape: 2 of theirs, each a part of it." or, as one bar, why: "One of them is shorter than a day." */
+export function togetherWords(made: Pick<ImportedSchedule, 'together'>): string[] {
+  return made.together.map((t) => (t.parts ? `${t.label}: ${t.rows} of theirs, each a part of it.` : `${t.label}: ${t.rows} of theirs as one bar. ${t.why ?? ''}`.trim()))
 }

@@ -19,6 +19,7 @@ import {
   notInWords,
   notPlacedWords,
   readScheduleFile,
+  togetherWords,
   type ImportChoice,
   type ImportGuess,
   type ScheduleFileResult,
@@ -89,7 +90,7 @@ export function GcScheduleImport({ state, project, dispatch, replacing, by, defa
       .flatMap((r) => {
         const guess = guesses.get(r.key)
         const place = placeOf(choices[r.key] ?? '', guess?.place?.kind === 'added' ? guess.place.who || (r.company ?? '') : (r.company ?? ''))
-        return place ? [{ key: r.key, name: r.name, start: r.start, finish: r.finish, place, after: r.after, ...(r.notBefore ? { notBefore: r.notBefore } : {}), ...(r.mustFinishBy ? { mustFinishBy: r.mustFinishBy } : {}) }] : []
+        return place ? [{ key: r.key, name: r.name, start: r.start, finish: r.finish, place, after: r.after, ...(r.notBefore ? { notBefore: r.notBefore } : {}), ...(r.mustFinishBy ? { mustFinishBy: r.mustFinishBy } : {}), ...(r.underADay ? { underADay: true } : {}), ...(r.workPlace ? { workPlace: r.workPlace } : {}) }] : []
       })
     return { file: file.name, from, workStarts, rows, dates: reading.rows.filter((r) => r.date && ticked[r.key]).map((r) => ({ name: r.name, on: r.start })) }
   }, [reading, file, guesses, choices, ticked, from, workStarts])
@@ -100,10 +101,6 @@ export function GcScheduleImport({ state, project, dispatch, replacing, by, defa
   const ordered = [...activities.filter((r) => !guesses.get(r.key)?.place), ...activities.filter((r) => guesses.get(r.key)?.place)]
   const nameOf = new Map(activities.map((r) => [r.key, r.name]))
   const notPlaced = activities.filter((r) => (choices[r.key] ?? '') === '').length
-  const shared = lines.flatMap((l) => {
-    const n = activities.filter((r) => choices[r.key] === `line:${l.lineId}`).length
-    return n > 1 ? [`${l.label}: ${n} of theirs.`] : []
-  })
   const trades = [...new Set(lines.map((l) => l.trade))]
   const ourDates = new Set((project.schedule?.milestones ?? []).map((m) => m.label.toLowerCase()).concat(['dry-in', 'rough-in inspection', 'substantial completion']))
   const canMake = Boolean(made && workStarts && (made.kept > 0 || (imported?.dates.length ?? 0) > 0))
@@ -210,7 +207,8 @@ export function GcScheduleImport({ state, project, dispatch, replacing, by, defa
                   </div>
                 )
               })}
-              {shared.length > 0 && <div style={muted}>{shared.join(' ')}</div>}
+              {/* Two of theirs on one of our lines: its parts (G-39), or one bar and why. */}
+              {made && made.together.length > 0 && <div style={muted}>{togetherWords(made).join(' ')}</div>}
             </div>
 
             {reading.rows.some((r) => r.date) && (

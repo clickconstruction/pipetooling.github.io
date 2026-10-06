@@ -905,7 +905,7 @@ words all count from it, so a move that changes the finish moves all three toget
 
 - **Under the Projected finish measure**, on a job past its contract: *At $500 a day, the 3 days cost
   $1,500.* Then whose they are: *All 3 are the customer's: a change order for them would save
-  $1,500.* Then each change order with days: *Change order 1 moved the contract 1 day, signed Fri
+  $1,500.*, and for two, *Both are the customer's: …*. Then each change order with days: *Change order 1 moved the contract 1 day, signed Fri
   Oct 2.* and *Change order 2 would move the contract 2 days once they sign it.* With no fee typed:
   *No late fee is entered from the contract. It goes on Bill the customer.* On time with a fee: *Each
   day past Fri Dec 11 costs $500.* The measure's chip reads the same call.
@@ -1274,7 +1274,8 @@ file so a test stands in for it), the Export button in `GcGantt.tsx`, and `forWo
   on the day it is expected or came, which the work it holds waits on; then *Dates the job must
   meet*. Each with its trade, company, days, percent, spare days (a number, so a sort puts the work
   that sets the finish on top), the chart's words for where it stands, what it waits on with its gap,
-  Not before, Must finish by, and the days it really ran.
+  Not before, Must finish by, and the days it really ran. While a bar has a place kept (G-83), a
+  *Place* column after *Company* carries each bar's place.
 - **The customer's copies** read `customerSchedulePicture` and nothing else. An owner gets *Stages of
   the job* (their portal's stages, dates, percent and words) and *Dates to meet*. A GC or an owner's
   rep gets every bar of their list by stage, in their words (*on plan*, *not started*), in the order
@@ -1296,8 +1297,8 @@ file so a test stands in for it), the Export button in `GcGantt.tsx`, and `forWo
   tasks are numbered 1, 2, 3; waits are finish-to-start links between tasks in the file, the gap in
   tenths of a minute (4800 a day). A date to meet and a wait are milestones at the end of their day,
   so the work after starts the next morning, as the chart holds it. The status date is today. The
-  company is in Text1, named *Company*, on our team's copy only. Left out: baselines, deadlines,
-  resources and notes.
+  company is in Text1, named *Company*, on our team's copy only, and a kept place (G-83) in Text2,
+  named *Place*, declared beside it. Left out: baselines, deadlines, resources and notes.
 - **Each task held to its day** (a change from the plan): both programs place a task as early as its
   links allow, so a bar with spare days before it would jump left on open, and the customer's copies,
   which have no links, would all start on the first day. So every task starts no earlier than its day
@@ -1488,6 +1489,15 @@ change in behavior.
   - The call list: a `crowded` line for each hired company in a crowded week of the look-ahead that
     has not given its count (G-142), amber this week and next. Its Follow up words ask for the
     count in English and Spanish. It goes once the count is given.
+  - Our team's exported file (G-136), as a follow-up: a *Place* column after *Company* in the
+    spreadsheet and Text2 *Place* beside Text1 *Company* in the project file, only while a bar has a
+    place kept, so a job without places writes the files as before. Two pins: both writers carry the
+    kernel's places in its order, and the customer's files hold no *Place*, no Text2 and no typed
+    place anywhere. G-137's reader knows our team's header with *Place* as ours. It brings each place
+    back in as a kept place on the line its row lands on, through `cleanPlace` and `placeProblem`; a
+    place over 40 characters is left off and said under *What it could not read*. A file with no
+    place, theirs or ours, leaves every place empty, and a text field named anything but *Place* is
+    none. A round-trip test holds the places out, in and out again, from either file.
   - Nothing on the customer's side, the trade's portal or the paper.
 - On Fair Oaks D with the guesses kept: Inside has 3 trades at once from Fri Oct 2 to Fri Oct 9,
   Pecan Valley Electric 2, our own crew 3 and Cool Breeze Mechanical 3, about 8 people a day. The
@@ -1517,7 +1527,9 @@ two doors.
   - while a what-if copy is open.
   The made-up data has no walk for Fair Oaks D, so Start is what keeps it shut.
 - **What it reads**: Project's XML (MSPDI), which P6 also writes, and our three spreadsheets. The
-  reader uses the namespace and headers `gcScheduleExport.ts` writes with.
+  reader uses the namespace and headers `gcScheduleExport.ts` writes with, our team's with or without
+  its *Place* column (G-83, `csvHeads`). It brings that column, and a project file's text field named
+  *Place*, back in as each line's kept place.
   - Passed over: task 0, groups, blank rows and inactive tasks. A group's name still helps the guess.
   - Waits: finish-to-start between activities. The gap is read in working days by the file's
     minutes a day, or as elapsed days.
@@ -1557,9 +1569,17 @@ two doors.
 - **The write**: one action, `importSchedule`, in the golden list. The reducer calls
   `importedSchedule` in five steps:
   1. `scheduleDraft(project, workStarts, project.rough?.days)`, exactly the first draft.
-  2. The lines, inspections and job's own activities the file names take its dates and waits. When
-     two of theirs land on one line, the bar spans both. A wait their own dates break is left out,
-     with a sentence.
+  2. The lines, inspections and job's own activities the file names take its dates and waits. A
+     wait their own dates break is left out, with a sentence. When two of theirs or more land on one
+     of our lines, the line spans them and each becomes one of its parts (G-39's `splitParts`):
+     - named as their file names it;
+     - counted from the line's start, its share from its days;
+     - at the line's own percent, from its trade's report.
+
+     The office then reports each part as the customer's file named it. The line stays one bar when
+     one of them is shorter than a working day in their file (its Duration), or when two share a
+     name. The window says which: *Hang and tape: 2 of theirs, each a part of it.* or *Hang and
+     tape: 2 of theirs as one bar. One of them is shorter than a day.*
   3. Our lines and the first draft's inspections not in the file keep the draft's waits and days.
      Each starts the day after what it waits on finishes, or on Work starts.
   4. A final inspection the file does not name waits on everything nothing else waits on.
