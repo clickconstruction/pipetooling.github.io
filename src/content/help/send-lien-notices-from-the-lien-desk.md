@@ -212,6 +212,22 @@ The desk shows the master only what needs a decision. He sees what is open with 
 - {{button:outline|Hold — I'll call first}} asks him again three days before the deadline.
 - **Back to the office** sends it back to be fixed.
 
+## A discount if they pay before the lien
+
+The owner's packet carries a pay page with one code per unpaid bill. The leader can offer a discount on each bill if it is paid in full by a day. The box sits above the footer when he approves a notice.
+
+- Tick **Offer a discount if a bill is paid in full by a day**.
+- Pick the percent. The default is 10.
+- Pick the day. The default is 14 days from today. The offer never runs later than a week before the affidavit must be filed. So the affidavit can still go out on time if they do not pay.
+
+The box shows the most the offer gives up, and the sentence as the page prints it. The notice form itself never changes. The claim stays the full amount. The offer is our own sentence on our own page.
+
+The pay page says it in one boxed sentence under its title. Every bill's row shows the full amount and the lower one. The rule line says whoever pays gets the same amount off. The closing line sums the lower amounts. The GC's envelope still carries no pay page.
+
+On the desk an approved notice reads {{chip:blue|Offer 10% by Nov 15}}. Its step card says the same on the Approve rung. The leader can change or remove the offer until the run goes out. Press **Save the offer** on the ready footer.
+
+A bill paid in full by the day is written down by the percent once the money lands. A bill still open after the day goes back to its full amount. An affidavit always swears the full balance. Counsel has not read the offer's words yet. The box says so in amber until they have.
+
 ## Sending the run
 
 Approved notices go out together. {{button:blue|Send the run · N}} sits at the left under the desk's title, on every view. It opens the run.

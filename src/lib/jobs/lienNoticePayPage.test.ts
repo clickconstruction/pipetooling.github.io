@@ -99,3 +99,22 @@ describe("the pay page — the GC's copy and the empty cases", () => {
     expect(blocks[1]).toEqual({ kind: 'refstrip', items: ['Job #273', 'Work months April, June, July and August 2026', 'September 22, 2026'] })
   })
 })
+
+describe('the pay page — the pay offer (v2.4700)', () => {
+  const offer = { pct: 10, by: '2026-11-15' }
+  it('puts the boxed sentence under the title, both amounts on every Stripe row, the payer on the rule line and the lower total at the end', () => {
+    const blocks = payPageBlocks({ ...base, copy: 'owner', offer })
+    const title = blocks.findIndex((b) => b.kind === 'title')
+    expect(blocks[title + 1]).toEqual({ kind: 'callout', text: 'Pay any of these bills in full by November 15, 2026 and it is 10% less. The lower amount is on the page the code opens. Pay all of them and no lien is filed.' })
+    const rule = blocks.filter((b) => b.kind === 'callout')[1]
+    expect(rule && rule.kind === 'callout' ? rule.text : '').toMatch(/Whoever pays, you or RMC-Dudley Mason, gets the same amount off\.$/)
+    const rows = blocks.filter((b): b is Extract<typeof b, { kind: 'payRow' }> => b.kind === 'payRow')
+    expect(rows.map((r) => r.amountLine)).toEqual(['Still owed: $13,420.00 · $12,078.00 if paid in full by November 15', 'Still owed: $665.00 · $598.50 if paid in full by November 15', 'Still owed: $3,500.00'])
+    const close = blocks.filter((b) => b.kind === 'paragraph').slice(-2)[0]
+    expect(close && close.kind === 'paragraph' ? close.text : '').toBe('3 bills enclosed behind this page · $17,585.00 still owed on them · $12,676.50 if both are paid in full by November 15.')
+  })
+  it('with no offer the page reads exactly as before', () => {
+    expect(payPageBlocks({ ...base, copy: 'owner', offer: null })).toEqual(payPageBlocks({ ...base, copy: 'owner' }))
+    expect(payPageBlocks({ ...base, copy: 'owner' }).filter((b) => b.kind === 'callout')).toHaveLength(1)
+  })
+})

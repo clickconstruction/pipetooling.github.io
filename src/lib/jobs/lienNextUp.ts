@@ -12,6 +12,7 @@ import { isLienLeader, isLienOffice, type LienDeskEntry, type LienDeskPile, type
 import type { LienAffidavitEntry } from './lienDeskAffidavits'
 import type { LienRetainageEntry } from './lienDeskRetainage'
 import { letterTwoIsDue, type LetterTwoStatus } from './lienLetterTwo'
+import { lienOfferChipWords, lienOfferFromItem } from './lienPayOffer'
 
 export type LienNextUpKind = 'notice' | 'affidavit' | 'retainage'
 
@@ -150,7 +151,8 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
       case 'ready': {
         // A GC with several ready is one row below; a single job sends from its own pane.
         if (e.gcCustomerId && (readyByGc.get(e.gcCustomerId)?.length ?? 0) > 1) break
-        push({ ...base, key: `notice:${e.jobId}`, sub: 'Approved · ready to send', action: 'send', button: office ? BUTTON.send : null, target: pane('ready') })
+        const offer = lienOfferFromItem(e.item)
+        push({ ...base, key: `notice:${e.jobId}`, sub: offer ? `Approved · ${lienOfferChipWords(offer).replace(/^Offer/, 'offer')} · ready to send` : 'Approved · ready to send', action: 'send', button: office ? BUTTON.send : null, target: pane('ready') })
         break
       }
       case 'printed':

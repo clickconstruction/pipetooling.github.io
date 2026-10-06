@@ -11,6 +11,7 @@ import type { FilingDocBlock, FilingDocExtras } from '../jobsDocuments/lienFilin
 import { demandMoney } from '../jobsDocuments/demandLetter'
 import { payLinkDisplay } from '../billing/payLink'
 import type { NoticeInvoiceDoc } from './noticeInvoiceEnclosure'
+import { lienOfferPayerLine, lienOfferRowWords, lienOfferSentence, lienOfferTotalWords, type LienPayOffer } from './lienPayOffer'
 
 /**
  * Decision 2 of the to-do: counsel's memo says the GC's envelope is "the form and invoices
@@ -78,27 +79,34 @@ export type PayPageInput = {
   contactPerson: string
   phone: string
   extras: FilingDocExtras
+  /** The pay offer (v2.4700): the leader's discount on each payable bill paid in full by a day; null or absent = no offer. */
+  offer?: LienPayOffer | null
 }
 
 /**
  * The page as the packet renders it — empty when the copy does not carry it, or when no bill has
  * a payment page (a page of codes with no code on it is not a page; the enclosed invoices say
  * what is owed). A paper bill beside a Stripe bill keeps its row, with a note instead of a code.
+ * With an offer (v2.4700) the boxed sentence sits under the title, every payable row carries
+ * the lower amount beside the full one, the rule line says whoever pays gets it, and the
+ * closing line sums the lower amounts. The notice form itself never changes.
  */
 export function payPageBlocks(i: PayPageInput): FilingDocBlock[] {
   if (!payPageAppliesTo(i.copy) || !i.rows.some((r) => r.payable)) return []
+  const offer = i.offer ?? null
   const blocks: FilingDocBlock[] = []
   if (i.extras.letterhead && i.extras.letterhead.company.trim()) blocks.push({ kind: 'letterhead', ...i.extras.letterhead })
   const refItems = [...(i.extras.refItems ?? []), ...(i.copyLabel.trim() ? [`Copy for: ${i.copyLabel.trim()}`] : [])]
   if (refItems.length) blocks.push({ kind: 'refstrip', items: refItems })
   blocks.push({ kind: 'title', lines: [PAY_PAGE_TITLE] })
+  if (offer) blocks.push({ kind: 'callout', text: lienOfferSentence(offer) })
   blocks.push({
     kind: 'paragraph',
     text: "Each code below opens that bill's secure payment page. Scan it with a phone camera to pay by card or bank transfer, or type the address under it. The bill itself is enclosed behind this page.",
   })
   if (i.copy === 'owner') {
     const rule = payPageOwnerRule(i.gcName, i.claimantName)
-    if (rule) blocks.push({ kind: 'callout', text: rule })
+    if (rule) blocks.push({ kind: 'callout', text: offer ? `${rule} ${lienOfferPayerLine(i.gcName)}` : rule })
   }
   for (const r of i.rows) {
     const asset = r.payable ? i.assets[r.invoiceId] : undefined
@@ -106,7 +114,7 @@ export function payPageBlocks(i: PayPageInput): FilingDocBlock[] {
       kind: 'payRow',
       label: r.label,
       description: r.description,
-      amountLine: `Still owed: ${demandMoney(String(r.openAmount))}`,
+      amountLine: `Still owed: ${demandMoney(String(r.openAmount))}${offer && r.payable ? ` · ${lienOfferRowWords(r.openAmount, offer)}` : ''}`,
       address: r.payable ? payLinkDisplay(r.invoiceId) : '',
       note: r.payable ? '' : 'No online payment page for this bill — pay by check to the address above.',
       svg: asset?.svg ?? null,
@@ -114,9 +122,10 @@ export function payPageBlocks(i: PayPageInput): FilingDocBlock[] {
     })
   }
   const total = i.rows.reduce((s, r) => s + r.openAmount, 0)
+  const payable = i.rows.filter((r) => r.payable).map((r) => r.openAmount)
   blocks.push({
     kind: 'paragraph',
-    text: `${i.rows.length} ${i.rows.length === 1 ? 'bill' : 'bills'} enclosed behind this page · ${demandMoney(String(total))} still owed on ${i.rows.length === 1 ? 'it' : 'them'}.`,
+    text: `${i.rows.length} ${i.rows.length === 1 ? 'bill' : 'bills'} enclosed behind this page · ${demandMoney(String(total))} still owed on ${i.rows.length === 1 ? 'it' : 'them'}${offer && payable.length ? ` · ${lienOfferTotalWords(payable, offer)}` : ''}.`,
   })
   const who = [i.contactPerson.trim(), i.phone.trim()].filter(Boolean).join(', ')
   blocks.push({

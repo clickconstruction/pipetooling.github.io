@@ -351,6 +351,13 @@ describe('LienDeskModal', () => {
     expect(screen.getByText(/Standing rule for Loberg Contracting/)).toBeTruthy()
     expect(screen.getByRole('radio', { name: 'Send notices without asking' })).toBeTruthy()
     expect(screen.getByRole('button', { name: /Approve & next/ })).toBeTruthy()
+    // The pay offer (v2.4700): the leader's box above the footer, off until he ticks it, then the sentence as the page prints it.
+    expect(screen.getByTestId('lien-offer-box').getAttribute('data-on')).toBe('no')
+    fireEvent.click(screen.getByTestId('lien-offer-switch'))
+    expect(screen.getByTestId('lien-offer-box').getAttribute('data-on')).toBe('yes')
+    expect(screen.getByTestId('lien-offer-prints').textContent).toContain('and it is 10% less')
+    fireEvent.click(screen.getByTestId('lien-offer-pct-15'))
+    expect(screen.getByTestId('lien-offer-prints').textContent).toContain('and it is 15% less')
     fireEvent.click(screen.getByRole('button', { name: /Hold — I'll call first/ }))
     expect(screen.getByText(/then asks again/)).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Hold' })).toBeTruthy()
