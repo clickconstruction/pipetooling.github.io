@@ -1279,6 +1279,12 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           else showToast('That job could not be loaded. Open it from the Pipeline board.', 'error')
         })
       },
+      // The Dashboard's "signed for the records" line (punch list #86): the window over the desk, as its own door opens it.
+      ownerRecords: (jobId) => {
+        setLienDesk({ jobId: null, kind: 'next', pile: null })
+        setOwnerRecordsJobId(jobId)
+        setOwnerRecordsOpen(true)
+      },
       round: (gcId) => {
         setGcReviewRoundGcId(gcId)
         setGcReviewModalOpen(true)
@@ -1741,6 +1747,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
 
   // An owner asked for our records (v2.4544): the window's open flag, and what it reads from the desk.
   const [ownerRecordsOpen, setOwnerRecordsOpen] = useState(false)
+  /** The job a door asked the window to open on (punch list #86); null when opened from the desk's own button. */
+  const [ownerRecordsJobId, setOwnerRecordsJobId] = useState<string | null>(null)
   const ownerRecordsDesk = useMemo(() => ownerRecordsFromDesk(ownerRecordsOpen ? lienDeskData : null), [ownerRecordsOpen, lienDeskData])
 
   // The Jobs on a map card's hidden choice (per device, `lib/jobs/jobsMap`), held here since
@@ -4582,7 +4590,11 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         authName={authProfileName?.trim() ?? ''}
         isLeader={isLienLeader(authRole)}
         isMobile={isMobile}
-        onClose={() => setOwnerRecordsOpen(false)}
+        initialJobId={ownerRecordsJobId}
+        onClose={() => {
+          setOwnerRecordsOpen(false)
+          setOwnerRecordsJobId(null)
+        }}
       />
       <GcOnNoticeModal
         open={gcNotice != null}
