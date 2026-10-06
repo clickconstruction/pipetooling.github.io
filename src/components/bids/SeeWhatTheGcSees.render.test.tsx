@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { SeeWhatTheGcSees } from './SeeWhatTheGcSees'
 import type { RoomItemSource } from '../../../supabase/functions/_shared/submittalRoomPayload'
+import { revisionStandings } from '../../../supabase/functions/_shared/submittalRecord'
 
 const item = (o: Partial<RoomItemSource> & Pick<RoomItemSource, 'id' | 'tag' | 'status'>): RoomItemSource => ({
   sequence_order: 1, specified_manufacturer: null, specified_model: null, specified_description: null, submitted_manufacturer: null, submitted_model: null, submitted_label: null,
@@ -54,18 +55,37 @@ describe('SeeWhatTheGcSees (v2.4189, #62 Layer 2)', () => {
   })
 
   it('v2.4606 · the page’s own header and chips: the list the GC will see after the share, read only, and the revisions it skips', () => {
-    const revisions = [
-      { id: 'r4', rev_number: 4, shared_at: null },
-      { id: 'r3', rev_number: 3, shared_at: null },
-      { id: 'r2', rev_number: 2, shared_at: '2026-09-16T15:00:00Z' },
-      { id: 'r1', rev_number: 1, shared_at: null },
-    ]
+    const revisions = revisionStandings(
+      [
+        { id: 'r4', rev_number: 4, shared_at: null, package_path: null },
+        { id: 'r3', rev_number: 3, shared_at: null, package_path: null },
+        { id: 'r2', rev_number: 2, shared_at: '2026-09-16T15:00:00Z', package_path: 'p2.pdf' },
+        { id: 'r1', rev_number: 1, shared_at: null, package_path: null },
+      ],
+      new Map(),
+    )
     render(<SeeWhatTheGcSees {...props} revNumber={4} revisions={revisions} link={{ linkShowsRev: 2, roomClosed: false }} />)
     const chips = within(screen.getByTestId('room-revisions')).getAllByRole('button')
     expect(chips.map((c) => c.textContent)).toEqual(['Rev 4 · current', expect.stringMatching(/^Rev 2 · /)])
     expect(chips.every((c) => c.getAttribute('aria-disabled') === 'true')).toBe(true)
     expect(chips[0]!.getAttribute('aria-pressed')).toBe('true')
     expect(screen.getByTestId('see-gc-list-line').textContent).toBe('Older revisions stay under it as the record. Rev 3 and Rev 1 are not on their page, because they were never shared.')
+  })
+
+  it('2026-10-06 · BP398: Rev 3 answered by email with its package stays on their list as the record, dated by the answers', () => {
+    const revisions = revisionStandings(
+      [
+        { id: 'r4', rev_number: 4, shared_at: null, package_path: null },
+        { id: 'r3', rev_number: 3, shared_at: null, package_path: 'p3.pdf' },
+        { id: 'r2', rev_number: 2, shared_at: '2026-09-16T15:00:00Z', package_path: 'p2.pdf' },
+      ],
+      new Map([['r3', [{ decision_source: 'entered', review_decision: 'approved', reviewed_at: '2026-10-02T17:00:00Z' }]]]),
+    )
+    render(<SeeWhatTheGcSees {...props} revNumber={4} revisions={revisions} link={{ linkShowsRev: 3, linkShowsByEmail: true, roomClosed: false }} />)
+    const chips = within(screen.getByTestId('room-revisions')).getAllByRole('button')
+    expect(chips.map((c) => c.textContent)).toEqual(['Rev 4 · current', 'Rev 3 · answered by email · Oct 2', expect.stringMatching(/^Rev 2 · /)])
+    expect(screen.getByTestId('see-gc-list-line').textContent).toBe('Older revisions stay under it as the record.')
+    expect(screen.getByTestId('see-gc-why').textContent).toContain('Until you share Rev 4, the link shows Rev 3, answered by email.')
   })
 
   it('v2.4608 · the door: their real page as it is now, flagged; only when the link shows something', () => {

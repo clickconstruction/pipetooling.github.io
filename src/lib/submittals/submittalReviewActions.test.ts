@@ -36,12 +36,12 @@ describe('decide', () => {
   })
 
   it('the verdict: closed, not on this link, watching, stale, then ok', () => {
-    const base = { roomStatus: 'open', personClosed: false, mayDecide: true, submittalBelongs: true, submittalShared: true, currentSubmittalId: 's2', submittalId: 's2' }
+    const base = { roomStatus: 'open', personClosed: false, mayDecide: true, submittalBelongs: true, submittalOnRecord: true, currentSubmittalId: 's2', submittalId: 's2' }
     expect(decideVerdict(base)).toEqual({ ok: true })
     expect(decideVerdict({ ...base, roomStatus: 'closed' })).toMatchObject({ ok: false, status: 410, code: 'closed' })
     expect(decideVerdict({ ...base, personClosed: true })).toMatchObject({ ok: false, status: 410 })
     expect(decideVerdict({ ...base, submittalBelongs: false })).toMatchObject({ ok: false, status: 404, code: 'not_found' })
-    expect(decideVerdict({ ...base, submittalShared: false })).toMatchObject({ ok: false, status: 404 })
+    expect(decideVerdict({ ...base, submittalOnRecord: false })).toMatchObject({ ok: false, status: 404 })
     expect(decideVerdict({ ...base, mayDecide: false })).toMatchObject({ ok: false, status: 403, code: 'watching' })
     expect(decideVerdict({ ...base, submittalId: 's1' })).toMatchObject({ ok: false, status: 409, code: 'stale_revision' })
     expect(decisionCounts([{ decision: 'approved' }, { decision: 'approved' }, { decision: 'revise' }])).toEqual({ approved: 2, revise: 1, rejected: 0 })

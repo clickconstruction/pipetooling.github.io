@@ -81,10 +81,10 @@ export type DecideContext = {
   roomStatus: string
   personClosed: boolean
   mayDecide: boolean
-  /** The revision the decisions are for, and whether it belongs to this room's bid and was shared. */
+  /** The revision the decisions are for, and whether it belongs to this room's bid and is on the GC's record (`submittalRecord.ts`). */
   submittalBelongs: boolean
-  submittalShared: boolean
-  /** The newest shared revision on the bid. */
+  submittalOnRecord: boolean
+  /** The newest revision on the record: the current one. */
   currentSubmittalId: string | null
   submittalId: string
 }
@@ -94,9 +94,9 @@ export type DecideVerdict = { ok: true } | { ok: false; status: 403 | 404 | 409 
 /** The rules, in the order the person would hear them. */
 export function decideVerdict(c: DecideContext): DecideVerdict {
   if (c.roomStatus === 'closed' || c.personClosed) return { ok: false, status: 410, code: 'closed', error: 'This review is closed.' }
-  if (!c.submittalBelongs || !c.submittalShared) return { ok: false, status: 404, code: 'not_found', error: 'That revision is not on this link.' }
+  if (!c.submittalBelongs || !c.submittalOnRecord) return { ok: false, status: 404, code: 'not_found', error: 'That revision is not on this link.' }
   if (!c.mayDecide) return { ok: false, status: 403, code: 'watching', error: 'Your link is for watching — the decisions are someone else\'s to make. Ask us if that is wrong.' }
-  if (c.currentSubmittalId && c.currentSubmittalId !== c.submittalId) return { ok: false, status: 409, code: 'stale_revision', error: 'A newer revision has been shared since you opened this page. Reload to see it.' }
+  if (c.currentSubmittalId && c.currentSubmittalId !== c.submittalId) return { ok: false, status: 409, code: 'stale_revision', error: 'A newer revision has been added since you opened this page. Reload to see it.' }
   return { ok: true }
 }
 

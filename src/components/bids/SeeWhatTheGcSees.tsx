@@ -3,7 +3,7 @@ import ResponsiveModalShell from '../ResponsiveModalShell'
 import { RoomHeader, RoomRevisionBody, RoomRevisionChips } from './SubmittalRoomView'
 import { roomQuiet } from '../../lib/submittals/roomStyles'
 import { roomPreviewLink } from '../../lib/submittals/submittalRoom'
-import { describeLink, linkListLine, linkRevisionsAfterShare, toRoomItemSource, type LinkView } from '../../lib/submittals/seeWhatTheySee'
+import { describeLink, linkListLine, linkRevisionsAfterShare, toRoomItemSource, type LinkRevision, type LinkView } from '../../lib/submittals/seeWhatTheySee'
 import { roomCounts, roomRowsFrom, type RoomItemSource, type RoomPartSource, type RoomRevision } from '../../../supabase/functions/_shared/submittalRoomPayload'
 
 /**
@@ -32,8 +32,8 @@ export function SeeWhatTheGcSees({
   /** The rows' parts (2026-10-01); the GC's card lists the ones it sees. */
   parts?: ReadonlyArray<RoomPartSource>
   revNumber: number
-  /** The bid's revisions: the chips list the ones the GC's page will show after the share. */
-  revisions?: ReadonlyArray<{ id: string; rev_number: number; shared_at: string | null }>
+  /** The bid's revisions with their standing on the GC's record: the chips list the ones the GC's page will show after the share. */
+  revisions?: ReadonlyArray<LinkRevision>
   /** What the room's link shows now: the shared revision, if any, and whether the room is closed. */
   link: Omit<LinkView, 'rev'>
   /** The room's token: the door to their real page as it is now (v2.4608). None, no door. */

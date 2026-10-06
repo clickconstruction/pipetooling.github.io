@@ -1,6 +1,7 @@
 /**
  * The review room, public fetch (Submittals stage 4a — to-dos/submittals/README.md,
- * decisions 8–12). GET ?t=<token> serves the bid's shared submittal revisions in the
+ * decisions 8–12). GET ?t=<token> serves the bid's submittal revisions on the GC's record (shared,
+ * or answered by email with a package: `_shared/submittalRecord.ts`, 2026-10-06) in the
  * customer's words: the token is either the room's (the link the GC forwards) or a
  * person's (minted when the office named them or when they identified themselves).
  * No JWT — the token is the credential; service role behind it. Nothing about money,
@@ -15,12 +16,13 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { publicViewDecision } from '../_shared/publicViewCounting.ts'
 import { DEFAULT_TEST_REPORT_SETTINGS, parseTestReportSettings } from '../_shared/testReport.ts'
 import { asRoomRole, roomCounts, roomRowsFrom, type RoomItemSource, type RoomMessage, type RoomPartSource,
-  type RoomProcurement, type RoomRevision, type SubmittalRoomPayload, gcRoomItems, officeOnlyTags } from '../_shared/submittalRoomPayload.ts'
+  type RoomProcurement, type SubmittalRoomPayload, gcRoomItems, officeOnlyTags } from '../_shared/submittalRoomPayload.ts'
 import { stageDatesFromJob } from '../_shared/procurementStageDates.ts'
 import { sampleStateFromToken } from '../_shared/customerSample.ts'
 import { sampleSubmittalRoomResponse } from '../_shared/customerSampleFixtures.ts'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
+import { answeredByEmailAt, loadRevisionStandings, onRecord, type RecordRoomRevision } from '../_shared/submittalRecord.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -85,14 +87,9 @@ serve(async (req) => {
     const closed = room.status === 'closed' || !!room.closed_at || !!person?.closed_at
     if (closed) return json({ status: 'closed', closedAt: room.closed_at ?? person?.closed_at ?? null, ...base, revisions: [] } satisfies SubmittalRoomPayload, 410)
 
-    // Every revision the office has shared, newest first; the newest is current.
-    const { data: revs } = await admin
-      .from('bid_submittals')
-      .select('id, rev_number, shared_at, package_path')
-      .eq('bid_id', room.bid_id)
-      .not('shared_at', 'is', null)
-      .order('rev_number', { ascending: false })
-    const revRows = (revs ?? []) as Array<{ id: string; rev_number: number; shared_at: string | null; package_path: string | null }>
+    // Every revision on the GC's record, newest first; the newest is current. Shared, or answered by
+    // email with its package built (2026-10-06, `_shared/submittalRecord.ts`).
+    const revRows = onRecord(await loadRevisionStandings(admin, room.bid_id))
     if (revRows.length === 0) return json({ error: 'Nothing shared yet.', code: 'empty' }, 404)
     const ids = revRows.map((r) => r.id)
     const { data: items } = await admin
@@ -117,9 +114,9 @@ serve(async (req) => {
       if (partErr) break
       for (const p of (partRows ?? []) as RoomPartSource[]) partsByItem.set(p.item_id, [...(partsByItem.get(p.item_id) ?? []), p])
     }
-    const revisions: RoomRevision[] = revRows.map((r, i) => {
+    const revisions: RecordRoomRevision[] = revRows.map((r, i) => {
       const rows = roomRowsFrom(byRev.get(r.id) ?? [], partsByItem)
-      return { id: r.id, rev: r.rev_number, sharedAt: r.shared_at, current: i === 0, hasPackage: !!r.package_path, rows, counts: roomCounts(rows) }
+      return { id: r.id, rev: r.rev_number, sharedAt: r.shared_at, answeredByEmailAt: answeredByEmailAt(r), current: i === 0, hasPackage: !!r.package_path, rows, counts: roomCounts(rows) }
     })
 
     const viewDecision = await publicViewDecision(req, admin, Deno.env.get('SUPABASE_ANON_KEY'))

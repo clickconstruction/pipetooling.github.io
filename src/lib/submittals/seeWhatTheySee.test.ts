@@ -1,6 +1,26 @@
 import { describe, expect, it } from 'vitest'
-import { describeForReviewer, isRoomClosed, linkListLine, linkRevisionsAfterShare, linkShowsRevOf } from './seeWhatTheySee'
+import { describeForReviewer, emailedRecordLine, isRoomClosed, linkListLine, linkRevisionsAfterShare, linkShowsRevOf, linkViewOf } from './seeWhatTheySee'
 import type { RoomItemSource } from '../../../supabase/functions/_shared/submittalRoomPayload'
+import { revisionStandings, type TypedAnswerSource } from '../../../supabase/functions/_shared/submittalRecord'
+
+const typedOn = (at: string): TypedAnswerSource => ({ decision_source: 'entered', review_decision: 'approved', reviewed_at: at })
+/** BP398's shape (2026-10-06): Rev 2 shared Sep 16, Rev 3 answered by email Oct 2 and never shared, Rev 4 a draft, Rev 1 replaced unseen. */
+const bp398 = (o: { rev4Shared?: boolean; rev3Package?: boolean } = {}) =>
+  revisionStandings(
+    [
+      { id: 'r4', rev_number: 4, shared_at: o.rev4Shared ? '2026-10-06T15:00:00Z' : null, package_path: 'b/r4/package.pdf' },
+      { id: 'r3', rev_number: 3, shared_at: null, package_path: o.rev3Package === false ? null : 'b/r3/package.pdf' },
+      { id: 'r2', rev_number: 2, shared_at: '2026-09-16T03:03:49.265Z', package_path: 'b/r2/package.pdf' },
+      { id: 'r1', rev_number: 1, shared_at: null, package_path: null },
+    ],
+    new Map([
+      ['r3', [typedOn('2026-10-02T17:00:00Z'), { decision_source: 'room', review_decision: null }]],
+      // A call carried onto the new draft from the revision before is not an answer to it.
+      ['r4', [{ decision_source: 'carried', review_decision: 'approved', reviewed_at: '2026-10-02T17:00:00Z' }]],
+    ]),
+  )
+const sharedOnly = (revs: ReadonlyArray<{ id?: string; rev_number: number; shared_at: string | null }>) =>
+  revisionStandings(revs.map((r) => ({ id: r.id ?? `r${r.rev_number}`, rev_number: r.rev_number, shared_at: r.shared_at, package_path: null })), new Map())
 
 const item = (o: Partial<RoomItemSource> & Pick<RoomItemSource, 'id' | 'tag' | 'status'>): RoomItemSource => ({
   sequence_order: 1, specified_manufacturer: null, specified_model: null, specified_description: null, submitted_manufacturer: null, submitted_model: null, submitted_label: null,
@@ -56,20 +76,20 @@ describe('what the link shows today (v2.4593, #62)', () => {
     expect(describeForReviewer(rows, { rev: 1, linkShowsRev: null, roomClosed: true }).note).toBe('The room is closed. Its link says only that the review is closed. Reopen it, then share Rev 1.')
   })
 
-  it('BP398 today: Rev 3 was answered by email and never shared, so the link skips it and shows Rev 2', () => {
-    const revisions = [
-      { rev_number: 4, status: 'draft', shared_at: null },
-      { rev_number: 3, status: 'superseded', shared_at: null },
-      { rev_number: 2, status: 'shared', shared_at: '2026-09-16T03:03:49.265Z' },
-      { rev_number: 1, status: 'superseded', shared_at: null },
-    ]
-    expect(linkShowsRevOf(revisions)).toBe(2)
-    expect(describeForReviewer(rows, { rev: 4, linkShowsRev: linkShowsRevOf(revisions), roomClosed: false }).note).toBe('Until you share Rev 4, the link shows Rev 2.')
+  it('BP398 today (2026-10-06): Rev 3 was answered by email and has its package, so the link shows it, answered by email', () => {
+    expect(linkShowsRevOf(bp398())).toBe(3)
+    expect(describeForReviewer(rows, { rev: 4, ...linkViewOf(bp398(), false) }).note).toBe('Until you share Rev 4, the link shows Rev 3, answered by email.')
+    expect(describeForReviewer(rows, { rev: 4, ...linkViewOf(bp398({ rev4Shared: true }), false) }).note).toBe('That is what the link shows now.')
   })
 
-  it('the link’s revision is the newest with a share date, in any order; none while nothing is shared', () => {
-    expect(linkShowsRevOf([{ rev_number: 1, shared_at: '2026-09-15T00:00:00Z' }, { rev_number: 3, shared_at: '2026-09-20T00:00:00Z' }, { rev_number: 2, shared_at: '2026-09-18T00:00:00Z' }])).toBe(3)
-    expect(linkShowsRevOf([{ rev_number: 1, shared_at: null }])).toBeNull()
+  it('the guard: answered by email with no package, Rev 3 waits, and the link shows Rev 2', () => {
+    expect(linkShowsRevOf(bp398({ rev3Package: false }))).toBe(2)
+    expect(describeForReviewer(rows, { rev: 4, ...linkViewOf(bp398({ rev3Package: false }), false) }).note).toBe('Until you share Rev 4, the link shows Rev 2.')
+  })
+
+  it('the link’s revision is the newest on the record, in any order; none while nothing is', () => {
+    expect(linkShowsRevOf(sharedOnly([{ rev_number: 1, shared_at: '2026-09-15T00:00:00Z' }, { rev_number: 3, shared_at: '2026-09-20T00:00:00Z' }, { rev_number: 2, shared_at: '2026-09-18T00:00:00Z' }]))).toBe(3)
+    expect(linkShowsRevOf(sharedOnly([{ rev_number: 1, shared_at: null }]))).toBeNull()
     expect(linkShowsRevOf([])).toBeNull()
   })
 
@@ -82,32 +102,45 @@ describe('what the link shows today (v2.4593, #62)', () => {
 })
 
 describe('the list the GC will see after the share (v2.4606, #62 PR 1b)', () => {
-  it('BP398: Rev 4 as current, then Rev 2; Rev 3 and Rev 1 were never shared, and the line says so', () => {
-    const list = linkRevisionsAfterShare(
-      [
-        { id: 'r4', rev_number: 4, shared_at: null },
-        { id: 'r3', rev_number: 3, shared_at: null },
-        { id: 'r2', rev_number: 2, shared_at: '2026-09-16T03:03:49.265Z' },
-        { id: 'r1', rev_number: 1, shared_at: null },
-      ],
-      4,
-    )
+  it('BP398: Rev 4 as current, then Rev 3 answered by email, then Rev 2; Rev 1 was never shared, and the line says so', () => {
+    const list = linkRevisionsAfterShare(bp398(), 4)
     expect(list.chips).toEqual([
       { id: 'r4', rev: 4, current: true, sharedAt: null },
-      { id: 'r2', rev: 2, current: false, sharedAt: '2026-09-16T03:03:49.265Z' },
+      { id: 'r3', rev: 3, current: false, sharedAt: null, answeredByEmailAt: '2026-10-02T17:00:00Z' },
+      { id: 'r2', rev: 2, current: false, sharedAt: '2026-09-16T03:03:49.265Z', answeredByEmailAt: null },
     ])
-    expect(list.neverShared).toEqual([3, 1])
-    expect(linkListLine(list)).toBe('Older revisions stay under it as the record. Rev 3 and Rev 1 are not on their page, because they were never shared.')
+    expect(list.neverShared).toEqual([1])
+    expect(list.waitsForPackage).toEqual([])
+    expect(linkListLine(list)).toBe('Older revisions stay under it as the record. Rev 1 is not on their page, because it was never shared.')
+  })
+
+  it('the guard: Rev 3 with no package waits off the list, and the line says what it waits for', () => {
+    const list = linkRevisionsAfterShare(bp398({ rev3Package: false }), 4)
+    expect(list.chips.map((c) => c.rev)).toEqual([4, 2])
+    expect(list.waitsForPackage).toEqual([3])
+    expect(linkListLine(list)).toBe('Older revisions stay under it as the record. Rev 1 is not on their page, because it was never shared. Rev 3 goes on their page once it has a package.')
   })
 
   it('a first share lists one revision and says nothing; a shared newest lists the room as it is', () => {
-    const first = linkRevisionsAfterShare([{ id: 'r1', rev_number: 1, shared_at: null }], 1)
-    expect(first).toEqual({ chips: [{ id: 'r1', rev: 1, current: true, sharedAt: null }], neverShared: [] })
+    const first = linkRevisionsAfterShare(sharedOnly([{ id: 'r1', rev_number: 1, shared_at: null }]), 1)
+    expect(first).toEqual({ chips: [{ id: 'r1', rev: 1, current: true, sharedAt: null }], neverShared: [], waitsForPackage: [] })
     expect(linkListLine(first)).toBe('')
-    const live = linkRevisionsAfterShare([{ id: 'r2', rev_number: 2, shared_at: '2026-09-20T00:00:00Z' }, { id: 'r1', rev_number: 1, shared_at: '2026-09-15T00:00:00Z' }], 2)
+    const live = linkRevisionsAfterShare(sharedOnly([{ id: 'r2', rev_number: 2, shared_at: '2026-09-20T00:00:00Z' }, { id: 'r1', rev_number: 1, shared_at: '2026-09-15T00:00:00Z' }]), 2)
     expect(live.chips.map((c) => `${c.rev}${c.current ? ' current' : ''}`)).toEqual(['2 current', '1'])
     expect(linkListLine(live)).toBe('Older revisions stay under it as the record.')
-    expect(linkListLine(linkRevisionsAfterShare([{ id: 'r2', rev_number: 2, shared_at: null }, { id: 'r1', rev_number: 1, shared_at: null }], 2))).toBe('Rev 1 is not on their page, because it was never shared.')
+    expect(linkListLine(linkRevisionsAfterShare(sharedOnly([{ id: 'r2', rev_number: 2, shared_at: null }, { id: 'r1', rev_number: 1, shared_at: null }]), 2))).toBe('Rev 1 is not on their page, because it was never shared.')
   })
 })
 
+describe('the heads-up in Their call (2026-10-06)', () => {
+  it('on a revision nobody shared, says what typing their answer does, before and after, with and without a package', () => {
+    expect(emailedRecordLine({ rev: 3, shared: false, hasPackage: true, hasAnswer: false })).toBe('Typing their answer puts Rev 3 on the GC’s page as the record.')
+    expect(emailedRecordLine({ rev: 3, shared: false, hasPackage: false, hasAnswer: false })).toBe('Typing their answer will put Rev 3 on the GC’s page once it has a package.')
+    expect(emailedRecordLine({ rev: 3, shared: false, hasPackage: true, hasAnswer: true })).toBe('Rev 3 is on the GC’s page as the record, answered by email.')
+    expect(emailedRecordLine({ rev: 3, shared: false, hasPackage: false, hasAnswer: true })).toBe('Rev 3 goes on the GC’s page as the record once it has a package.')
+  })
+
+  it('says nothing on a shared revision', () => {
+    expect(emailedRecordLine({ rev: 2, shared: true, hasPackage: true, hasAnswer: true })).toBe('')
+  })
+})

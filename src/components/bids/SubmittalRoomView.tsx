@@ -1,7 +1,8 @@
 import { useState, type CSSProperties, type ReactNode } from 'react'
 import { ROOM_COPPER, roomCard, roomLabel, roomQuiet, roomShortDate } from '../../lib/submittals/roomStyles'
 import { pendingKey } from '../../lib/submittals/submittalRoom'
-import { roomHeadline, roomSubline, type RoomPart, type RoomRevision, type RoomRow } from '../../../supabase/functions/_shared/submittalRoomPayload'
+import { roomHeadline, roomSubline, type RoomPart, type RoomRow } from '../../../supabase/functions/_shared/submittalRoomPayload'
+import type { RecordRoomRevision } from '../../../supabase/functions/_shared/submittalRecord'
 
 /**
  * The reviewer's view of one revision (v2.4187, punch list #62 Layer 2 PR 1): the headline
@@ -142,7 +143,7 @@ export function RoomRevisionBody({
   afterSubline,
   personLine,
 }: {
-  rev: RoomRevision
+  rev: RecordRoomRevision
   /** Calls not sent yet, keyed by `pendingKey(row, part?)`. */
   pending?: Record<string, { decision: DecisionKind; note: string }>
   onDecide?: (rowId: string, kind: DecisionKind, partId?: string) => void
@@ -163,6 +164,12 @@ export function RoomRevisionBody({
   )
   return (
     <>
+      {rev.answeredByEmailAt ? (
+        // 2026-10-06 · a revision answered by email is on the record with its package; the answers are theirs, typed in by the office.
+        <p style={{ ...roomQuiet, margin: '0 0 0.5rem' }} data-testid="room-emailed-line">
+          You answered this revision by email. Our office typed your answers in here, as the record.
+        </p>
+      ) : null}
       <div style={{ ...roomCard, borderLeft: `4px solid ${ROOM_COPPER}` }} data-testid="room-headline">
         <div style={{ ...roomLabel, color: ROOM_COPPER }}>{roomHeadline(rev.counts)}</div>
         <div style={{ ...roomQuiet, marginTop: 4 }}>
@@ -210,7 +217,7 @@ export function RoomHeader({ company, bid }: { company: { name: string; tagline?
 }
 
 /** One revision as the page's chips read it. */
-export type RoomChip = { id: string; rev: number; current: boolean; sharedAt: string | null }
+export type RoomChip = { id: string; rev: number; current: boolean; sharedAt: string | null; /** On the record by email (2026-10-06): the answers' own day. */ answeredByEmailAt?: string | null }
 
 /**
  * The page's revision chips (moved verbatim, v2.4606), drawn only when there is more than one. With
@@ -223,7 +230,7 @@ export function RoomRevisionChips({ revisions, selectedId, onSelect }: { revisio
     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: '0.8rem' }} data-testid="room-revisions">
       {revisions.map((r) => (
         <button key={r.id} type="button" aria-pressed={r.id === selectedId} aria-disabled={onSelect ? undefined : true} onClick={onSelect ? () => onSelect(r.id) : undefined} style={{ padding: '0.3rem 0.7rem', borderRadius: 999, border: '1px solid var(--border-strong)', background: r.id === selectedId ? 'var(--text-strong)' : 'var(--surface)', color: r.id === selectedId ? 'white' : 'var(--text-muted)', font: 'inherit', fontSize: '0.75rem', fontWeight: r.id === selectedId ? 700 : 500, cursor: onSelect ? 'pointer' : 'default' }}>
-          Rev {r.rev}{r.current ? ' · current' : ''}{r.sharedAt ? ` · ${roomShortDate(r.sharedAt)}` : ''}
+          Rev {r.rev}{r.current ? ' · current' : ''}{r.answeredByEmailAt ? ` · answered by email · ${roomShortDate(r.answeredByEmailAt)}` : r.sharedAt ? ` · ${roomShortDate(r.sharedAt)}` : ''}
         </button>
       ))}
     </div>
