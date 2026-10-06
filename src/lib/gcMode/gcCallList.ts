@@ -7,19 +7,22 @@
  * - A hired trade, for its bars: an inspection that failed on its work, a bar late, due today or
  *   behind, new dates told and not answered or answered with another day, a first day nobody
  *   confirmed.
- * - Whoever owes what holds a bar. The rule is keyed by the hold's kind and who owes it, so a kind
- *   added later (G-77's paperwork) reaches the trade's row as the chart words it. A hold that waits
- *   on us, the city or the utility is an aside under the trade, never a row: nobody to call.
+ * - Whoever owes what holds a bar. Every hold on it counts, not only the one the chart's pill shows:
+ *   a submittal, an RFI and a wait from their own records, any other kind (G-77's paperwork, one
+ *   added later) from the chart's own map. The rule is keyed by the hold's kind and who owes it; a
+ *   kind it does not know is the trade's own, worded as the chart words it. A hold that waits on
+ *   us, the city or the utility is an aside under the trade, never a row: nobody to call.
  * - Then everything else they owe on this job (`projectPeople`'s reasons): one call covers it all.
  *
  * Its own file, out of the barrel: it reads the schedule, the chart's holds and Follow up.
  */
-import type { GcAction, GcCustomer, GcProject, GcState, Partner, ScheduleMove, TradePackage } from './gcTypes'
+import type { GcAction, GcCustomer, GcProject, GcState, Partner, ScheduleMove, Submittal, TradePackage } from './gcTypes'
 import { daysUntil, shortDate, weekdayDate } from './gcWords'
 import { partnerById } from './gcLookups'
 import { daysBetween, scheduleMeasures, type ScheduleItem } from './gcBuildingSchedule'
 import { ganttBars, type GanttBar, type GanttHold } from './gcGantt'
 import { submittalHolding, submittalNeededBy, submittalState } from './gcBuildingSubmittals'
+import { notReadyBars, type NotReadyBar } from './gcNotReady'
 import { rfiRows, type RfiRow } from './gcBuildingRfis'
 import { waitRows, type WaitRow } from './gcScheduleWaits'
 import { companiesToTell, datesAsksOpen, untoldMoves } from './gcTellTrades'
@@ -205,8 +208,10 @@ class Rows {
 interface HoldOnBar {
   lineId: string
   hold: GanttHold
-  /** The wait behind it, when it is one (a delivery, a decision, a permit, the utility). */
+  /** The record behind it, when it has one: the wait (a delivery, a decision, a permit, the utility), the RFI, the submittal. */
   wait?: WaitRow
+  rfi?: RfiRow
+  submittal?: Submittal
 }
 
 /** What a resolver gets: the bar, the hold, the trade doing the bar, and where to put the reasons. */
@@ -217,7 +222,8 @@ interface HoldCtx {
   on: HoldOnBar
   trade: Partner | undefined
   rows: Rows
-  rfis: RfiRow[]
+  /** The bars a trade is not ready to start (G-77), each with the papers it waits on. */
+  notReady: NotReadyBar[]
 }
 
 /** The work's own name: "Sheet metal and flashing", or an inspection's. */
@@ -254,7 +260,7 @@ function holdIsTheTrades(ctx: HoldCtx): void {
  */
 const HOLD_OWNERS: Partial<Record<string, (ctx: HoldCtx) => void>> = {
   submittal: (ctx) => {
-    const s = submittalHolding(ctx.project, ctx.on.lineId)
+    const s = ctx.on.submittal ?? submittalHolding(ctx.project, ctx.on.lineId)
     if (!s) return holdIsTheTrades(ctx)
     const work = workOf(ctx.item)
     const today = ctx.state.today
@@ -300,7 +306,7 @@ const HOLD_OWNERS: Partial<Record<string, (ctx: HoldCtx) => void>> = {
   },
 
   rfi: (ctx) => {
-    const r = ctx.rfis.find((x) => x.state !== 'answered' && x.holds.some((h) => h.lineId === ctx.on.lineId))
+    const r = ctx.on.rfi
     if (!r) return holdIsTheTrades(ctx)
     const work = workOf(ctx.item)
     if (r.state === 'us') return aside(ctx, `${work} waits on ${r.label}. It is with us${r.needed ? `, ${r.needed}` : ''}.`)
@@ -371,6 +377,15 @@ const HOLD_OWNERS: Partial<Record<string, (ctx: HoldCtx) => void>> = {
     })
   },
 
+  // A trade not ready to start (G-77): its own papers, by name. The chart folds a hold already on the
+  // bar into the same words ("current insurance and submittal 28 31 11-01"); that hold reaches its
+  // own owner from its record, so the trade is not asked for the architect's submittal.
+  paperwork: (ctx) => {
+    const bar = ctx.notReady.find((b) => b.lineId === ctx.on.lineId)
+    if (!bar) return holdIsTheTrades(ctx)
+    holdIsTheTrades({ ...ctx, on: { ...ctx.on, hold: { ...ctx.on.hold, words: andList(bar.gaps.map((g) => g.noun)), late: bar.late } } })
+  },
+
   // The city and the utility: nobody to call from here, so the trade hears it as an aside.
   permit: (ctx) => {
     if (ctx.on.wait) aside(ctx, `${workOf(ctx.item)} waits on ${ctx.on.wait.wait.title} from ${ctx.on.wait.wait.who}.`)
@@ -380,32 +395,39 @@ const HOLD_OWNERS: Partial<Record<string, (ctx: HoldCtx) => void>> = {
   },
 }
 
+/** The holds with a record of their own: each reaches its owner from the record, whichever took the chart's pill. */
+const RECORD_KINDS = new Set<string>(['rfi', 'submittal', 'delivery', 'decision', 'permit', 'utility'])
+
 /**
- * Every hold on a bar: the chart's (one a bar, whatever its kind), and a late wait the chart keeps
- * under a submittal or an RFI on the same bar ("the wait is still drawn"), so whoever owes it hears.
+ * Every hold on a bar. The chart draws one a bar, so a bar held by a submittal and an RFI shows
+ * one of them, and G-77 folds both into its paperwork words. Here a submittal, an RFI and a wait
+ * come from their own records, by the chart's own rules, and every other kind from the chart's map.
  */
-function holdsOnBars(state: GcState, project: GcProject, holds: Map<string, GanttHold>): HoldOnBar[] {
-  const rows = waitRows(state, project)
-  const waitFor = (lineId: string, kind: string) => rows.find((r) => r.state !== 'done' && r.late && r.wait.kind === kind && r.holds.some((h) => h.lineId === lineId))
+function holdsOnBars(state: GcState, project: GcProject, holds: Map<string, GanttHold>, rfis: RfiRow[]): HoldOnBar[] {
   const out: HoldOnBar[] = []
-  for (const [lineId, hold] of holds) {
-    const wait = waitFor(lineId, hold.kind)
-    out.push({ lineId, hold, ...(wait ? { wait } : {}) })
+  for (const r of rfis) {
+    if (r.state === 'answered') continue
+    for (const h of r.holds) out.push({ lineId: h.lineId, hold: { kind: 'rfi', words: `${r.label}, ${r.stateWords}`, late: r.late }, rfi: r })
   }
-  for (const r of rows) {
+  for (const a of project.schedule?.activities ?? []) {
+    const s = submittalHolding(project, a.lineId)
+    if (!s) continue
+    const needed = submittalNeededBy(project, s)
+    out.push({ lineId: a.lineId, hold: { kind: 'submittal', words: `submittal ${s.number}`, late: needed !== null && needed < state.today }, submittal: s })
+  }
+  for (const r of waitRows(state, project)) {
     if (r.state === 'done' || !r.late) continue
-    for (const h of r.holds) {
-      if (holds.get(h.lineId)?.kind === r.wait.kind) continue
-      out.push({ lineId: h.lineId, hold: { kind: r.wait.kind, words: r.wait.title, late: true }, wait: r })
-    }
+    for (const h of r.holds) out.push({ lineId: h.lineId, hold: { kind: r.wait.kind, words: r.wait.title, late: true }, wait: r })
   }
+  for (const [lineId, hold] of holds) if (!RECORD_KINDS.has(hold.kind)) out.push({ lineId, hold })
   return out
 }
 
 /**
  * Everyone whose answer moves this chart, worst first, with everything they owe on this job. Only a
  * job being built: while the schedule is drawn, nothing is late yet. `holds` is the chart's own map
- * (the Schedule tab's `holdsOf`), so a hold kind added to the chart reaches the list with it.
+ * (the Schedule tab's `holdsOf`, with G-77's `withNotReady`): a hold kind added to the chart reaches
+ * the list with it.
  */
 export function callList(state: GcState, project: GcProject, holds: Map<string, GanttHold>, lateNotices: LateNotice[] = []): CallList {
   if (project.stage !== 'building' || project.closedOn || project.lostOn || !project.schedule || project.schedule.activities.length === 0) return NO_CALLS
@@ -577,13 +599,13 @@ export function callList(state: GcState, project: GcProject, holds: Map<string, 
   }
 
   // What holds the bars, each to whoever owes it.
-  const rfis = rfiRows(state, project)
   const items = new Map(m.items.map((i) => [i.activity.lineId, i]))
   const doneIds = new Set(bars.filter((b) => b.status === 'done').map((b) => b.id))
-  for (const on of holdsOnBars(state, project, holds)) {
+  const notReady = notReadyBars(state, project)
+  for (const on of holdsOnBars(state, project, holds, rfiRows(state, project))) {
     const item = items.get(on.lineId)
     if (!item || doneIds.has(on.lineId)) continue
-    const ctx: HoldCtx = { state, project, item, on, trade: hiredPartner(state, item.pkg), rows, rfis }
+    const ctx: HoldCtx = { state, project, item, on, trade: hiredPartner(state, item.pkg), rows, notReady }
     const owner = HOLD_OWNERS[on.hold.kind] ?? holdIsTheTrades
     owner(ctx)
   }
