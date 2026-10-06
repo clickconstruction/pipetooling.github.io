@@ -162,6 +162,8 @@ export type LienDeskModalProps = {
   onCalendarChanged?: (what: 'promise' | 'kind') => void
   /** Open on a pile — the Dashboard's missed-window line lands on the Missed lens (v2.3679). */
   initialPile?: LienDeskPile | null
+  /** Bumped by a door that re-aims an open desk (v2.4612): the tab is applied even when the job is the one already named. */
+  aimKey?: number
   /** Put a GC on notice (v2.3470): the header door — every owner on every job with this GC, one approved run. */
   onPutGcOnNotice?: (gcId: string) => void
 }
@@ -255,6 +257,7 @@ export default function LienDeskModal({
   onOpenOwnerRecords,
   onCalendarChanged,
   initialPile,
+  aimKey,
   onPutGcOnNotice,
   onOpenCompanySettings,
 }: LienDeskModalProps) {
@@ -349,15 +352,17 @@ export default function LienDeskModal({
   }, [open, initialKind])
   // A door can re-aim a desk that is already open (punch list #82: the job's Lien window, opened over the desk,
   // sends its next step back here). The job it names is new, so its tab is applied as on a fresh open.
-  const aimedJobRef = useRef(initialJobId ?? null)
+  // v2.4612: `aimKey` says the door was pressed again, so the same job re-aims too.
+  const aimedRef = useRef(`${initialJobId ?? ''}|${aimKey ?? 0}`)
   useEffect(() => {
-    const prev = aimedJobRef.current
-    aimedJobRef.current = initialJobId ?? null
-    if (open && wasOpenRef.current && initialJobId && initialJobId !== prev) {
+    const next = `${initialJobId ?? ''}|${aimKey ?? 0}`
+    const prev = aimedRef.current
+    aimedRef.current = next
+    if (open && wasOpenRef.current && initialJobId && next !== prev) {
       setKind(initialKind ?? 'notice')
       setMobileListShown(false)
     }
-  }, [open, initialJobId, initialKind])
+  }, [open, initialJobId, initialKind, aimKey])
   // All paper (punch list #82, PR 5): the four lists share one view; it reopens on the list last looked at.
   const paperShown = kind === 'notice' || kind === 'affidavit' || kind === 'retainage' || kind === 'timeline'
   const [lastPaperKind, setLastPaperKind] = useState<'notice' | 'affidavit' | 'retainage' | 'timeline'>('notice')
