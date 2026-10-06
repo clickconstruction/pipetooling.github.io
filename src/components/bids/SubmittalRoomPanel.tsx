@@ -4,15 +4,26 @@
  * it with how they arrived, what they did, and whether they decide or watch. It draws what it is
  * handed and reports each press; the tab owns the room and every write.
  */
+import { useState, type CSSProperties } from 'react'
 import { useToastContext } from '../../contexts/ToastContext'
 import { anonymousOpens, asPersonHow, asRoomRole, describeHow, describeTrail, personTrail, roomLink, roomPreviewLink, ROOM_ROLE_LABELS, type SubmittalEventRow, type SubmittalPersonRow, type SubmittalRoomRow } from '../../lib/submittals/submittalRoom'
 import type { StageGate } from '../../lib/submittals/submittalJourney'
 import { APP_CALENDAR_TZ as ROOM_TZ } from '../../utils/dateUtils'
-import { btn, btnPrimary, smallMuted } from './submittalTabStyles'
+import { btn, btnPrimary, btnQuiet, smallMuted } from './submittalTabStyles'
+import { formatShortDate } from '../../lib/submittals/submittalRevision'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
+
+// v2.4691 · the Sent by email door and its day box.
+const link: CSSProperties = { ...btnQuiet, color: 'var(--text-blue-700)', fontWeight: 600 }
+const inp: CSSProperties = { font: 'inherit', fontSize: '0.8125rem', padding: '0.15rem 0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-strong)' }
 
 export type SubmittalRoomPanelProps = {
   /** The newest revision has rows: the Share button draws. */
   showShare: boolean
+  /** v2.4691 · `bid_submittals.sent_outside_at`: the revision went by email or on paper. */
+  sentOutsideAt?: string | null
+  /** v2.4691 · the office says the draft went out by email on a day (YYYY-MM-DD). Not given: no door. */
+  onSentOutside?: (ymd: string) => void
   /** That revision is already shared: the button reads "share again". */
   revisionShared: boolean
   shareGate: StageGate
@@ -31,8 +42,10 @@ export type SubmittalRoomPanelProps = {
   onClosePerson: (personId: string) => void
 }
 
-export function SubmittalRoomPanel({ showShare, revisionShared, shareGate, room, roomLine, people, events, decidedBy, busy, onShare, onCloseRoom, onReopenRoom, onSetMayDecide, onClosePerson }: SubmittalRoomPanelProps) {
+export function SubmittalRoomPanel({ showShare, revisionShared, shareGate, room, roomLine, people, events, decidedBy, busy, onShare, onCloseRoom, onReopenRoom, onSetMayDecide, onClosePerson, sentOutsideAt = null, onSentOutside }: SubmittalRoomPanelProps) {
   const { showToast } = useToastContext()
+  // v2.4691 · "Sent by email on…": a day box opens in line; Save hands the day back.
+  const [sentOn, setSentOn] = useState<string | null>(null)
   return (
     <>
       {showShare ? (
@@ -41,6 +54,22 @@ export function SubmittalRoomPanel({ showShare, revisionShared, shareGate, room,
             {revisionShared ? 'Shared · share again' : 'Share'}
           </button>
           <span style={smallMuted} data-testid="share-caption">{!shareGate.on ? shareGate.why : room ? 'The same link shows every later version.' : 'Makes the link for the GC and copies it. Paste it into your email.'}</span>
+          {onSentOutside && !revisionShared && !room?.shared_at ? (
+            sentOn == null ? (
+              <button type="button" disabled={busy} onClick={() => setSentOn(todayYmdInAppTz())} style={{ ...link, fontSize: '0.8125rem' }} title="You emailed the package yourself, or handed it over. Nothing is sent." data-testid="sent-outside-open">
+                {sentOutsideAt ? `Sent by email ${formatShortDate(sentOutsideAt)} · change` : 'Sent by email on…'}
+              </button>
+            ) : (
+              <span style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'center', fontSize: '0.8125rem' }} data-testid="sent-outside-form">
+                <label style={{ display: 'inline-flex', gap: '0.3rem', alignItems: 'center' }}>
+                  Sent by email on
+                  <input type="date" aria-label="Sent by email on" value={sentOn} onChange={(e) => setSentOn(e.target.value)} style={{ ...inp, width: 'auto' }} />
+                </label>
+                <button type="button" disabled={busy || !sentOn} onClick={() => { if (sentOn) onSentOutside(sentOn); setSentOn(null) }} style={{ ...btnPrimary, padding: '0.2rem 0.55rem', fontSize: '0.75rem' }} data-testid="sent-outside-save">Save</button>
+                <button type="button" onClick={() => setSentOn(null)} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem' }}>Cancel</button>
+              </span>
+            )
+          ) : null}
         </div>
       ) : null}
       {room ? (

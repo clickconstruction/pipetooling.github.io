@@ -52,6 +52,8 @@ export type SubmittalJourneyInput = {
     owesReason: number
     sheetsNeeded: number
     packageBuilt: boolean
+    /** v2.4691 · the office sent it outside the app (by email, on paper): Share is done, though not from here. */
+    sentOutside?: boolean
   } | null
   /** The bid's review room once minted. */
   room: { status: string; opens: number; identified: string[] } | null
@@ -134,15 +136,17 @@ export function submittalJourney(input: SubmittalJourneyInput): SubmittalJourney
     // 2026-10-03 · a draft replaced by a newer one reads superseded: it was never shared, and the line must not say it was.
     const wasShared = rev.status === 'shared' || rev.status === 'reviewed'
     const answered = (input.decisions?.decided ?? 0) > 0
-    status.share = wasShared ? 'done' : 'later'
+    status.share = wasShared || rev.sentOutside ? 'done' : 'later'
     if (answered) status.review = 'done'
-    const what = wasShared ? `Rev ${rev.number} was shared.` : answered ? `Rev ${rev.number} was not shared from the app. Its answers were typed in.` : `Rev ${rev.number} was replaced before it was shared.`
+    const what = wasShared ? `Rev ${rev.number} was shared.` : rev.sentOutside ? `Rev ${rev.number} was sent outside the app.${answered ? ' Its answers were typed in.' : ''}` : answered ? `Rev ${rev.number} was not shared from the app. Its answers were typed in.` : `Rev ${rev.number} was replaced before it was shared.`
     return finish({ kind: 'done', text: `${what} It is the record now. Pick the newest version above to keep working.`, action: null, actionLabel: null })
   }
 
   if (rev.status === 'draft') {
     // A built package is done whatever the rows still owe (v2.4169): the pill says so, and step 7's door reads it.
     if (rev.packageBuilt) status.package = 'done'
+    // v2.4691 · sent by email or on paper: Share is done, though nothing went through the room.
+    if (rev.sentOutside) status.share = 'done'
     // 2026-10-03 · answers typed on a draft. The estimator emails the package and records what came back, so the
     // revision never reads shared. The strip read answers only on a shared revision: on BP375 it pointed at six
     // cut sheets while four rows were sent back, with Their call and Resubmit grey. Now the answers light those
@@ -186,6 +190,12 @@ export function submittalJourney(input: SubmittalJourneyInput): SubmittalJourney
         : finish({ kind: 'next', text: 'Every row has its reason and its cut sheet. Tap Build package to make the PDF for the GC.', action: 'build_package', actionLabel: 'Build package' })
     }
     status.package = 'done'
+    if (rev.sentOutside) {
+      // v2.4691 · it went by email: Share is done, and the next thing is whatever the GC writes back.
+      status.share = 'done'
+      status.review = 'waiting'
+      return finish({ kind: 'waiting', text: `Rev ${rev.number} went out by email. Type in their answers on step 6 as they come.`, action: null, actionLabel: null })
+    }
     status.share = 'current'
     return finish({ kind: 'next', text: sheets ? `The package is built. ${plural(rev.sheetsNeeded, 'row')} in it ${rev.sheetsNeeded === 1 ? 'reads' : 'read'} cut sheet to follow. Tap Share to get a link for the GC.` : 'The package is built. Tap Share to get a link for the GC.', action: 'share', actionLabel: 'Share' })
   }

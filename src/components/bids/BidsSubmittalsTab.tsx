@@ -109,6 +109,7 @@ import {
   buildPackageLabel,
   describeRevisionChip,
   revisionAnsweredAt,
+  sentByEmailLine,
   rowsOwingSheet,
   sheetsToFollowConfirm,
   draftToItemInsert,
@@ -1901,12 +1902,32 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       setApprovingAll(false)
       setItems(await loadItems(selectedRev.id))
       await loadRoom(bidId)
+      await markSentOutside(choice.on ?? null, { onlyIfUnset: true })
       showToast(`Approved on ${done.length} row${done.length === 1 ? '' : 's'} · ${person.name} · entered by ${profileName ?? 'you'}.`, 'success')
     } catch (e) {
       showToast(formatErrorMessage(e, 'Could not enter their approval'), 'error')
     } finally {
       setBusy(false)
     }
+  }
+
+  /**
+   * v2.4691 · the revision went out by email or on paper: `sent_outside_at` on the draft. Typed
+   * answers set it on their day, once (`is null`); the office sets or changes it from step 5.
+   */
+  async function markSentOutside(ymd: string | null, opts: { onlyIfUnset?: boolean } = {}) {
+    if (!selectedRev || !bidId || asRevisionStatus(selectedRev.status) !== 'draft') return
+    if (opts.onlyIfUnset && selectedRev.sent_outside_at) return
+    const at = enteredDecisionAt(ymd, new Date(), todayYmdInAppTz())
+    let q = db.from('bid_submittals').update({ sent_outside_at: at }).eq('id', selectedRev.id)
+    if (opts.onlyIfUnset) q = q.is('sent_outside_at', null)
+    const { error } = await q
+    if (error) {
+      if (!opts.onlyIfUnset) showToast(formatErrorMessage(error, 'Could not record the day it was sent'), 'error')
+      return
+    }
+    setRevisions(await loadRevisions(bidId))
+    if (!opts.onlyIfUnset) showToast(`Rev ${selectedRev.rev_number} · sent by email. Nobody was emailed.`, 'success')
   }
 
   /**
@@ -1947,6 +1968,8 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       setItems(fresh)
       setParts(await loadItemParts(db, fresh.map((x) => x.id)))
       if (who) await loadRoom(bidId)
+      // v2.4691 · an answer typed on a draft means the draft went out by email: the header stops saying "draft".
+      if (who) await markSentOutside(save.on ?? null, { onlyIfUnset: true })
       const said = [writes.counts.approved ? `${writes.counts.approved} approved` : '', writes.counts.revise ? `${writes.counts.revise} revise` : '', writes.counts.rejected ? `${writes.counts.rejected} rejected` : ''].filter(Boolean).join(' · ')
       const tag = row.tag.trim() || 'the accessory'
       showToast(who ? `${said} on ${tag} · ${who.name} · entered by ${profileName ?? 'you'}. Nobody was emailed.` : `Taken back on ${tag}.`, 'success')
@@ -2042,6 +2065,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
               owesReason: tiles.alternatesWithoutReason + tiles.designChangesWithoutReason,
               sheetsNeeded: tiles.sheetsNeeded,
               packageBuilt: !!selectedRev.package_path,
+              sentOutside: !!selectedRev.sent_outside_at,
             }
           : null,
         room: room ? { status: room.status, opens: events.filter((e) => e.event_type === 'view').length, identified: people.map((p) => p.name).filter((n): n is string => !!n) } : null,
@@ -2116,6 +2140,8 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
 
   const bid = selectedBid
   const isDraft = selectedRev ? asRevisionStatus(selectedRev.status) === 'draft' : false
+  // v2.4691 · step 5's line: a revision that went by email says so (until the room shares one); else the room's own words.
+  const shareLine = selectedRev?.sent_outside_at && !room?.shared_at ? sentByEmailLine(selectedRev.sent_outside_at, decisions.entered) : room ? describeRoomLine(room, events.filter((e) => e.event_type === 'view').length, ROOM_TZ, decisions.entered) : ''
   // 2026-10-01 · what a draft could catch up on: rows the takeoff reads differently, hand rows that read like another row's part.
   const refreshPlan = isDraft && takeoff ? planTakeoffRefresh(items, partsOf, takeoff.candidates) : { rows: [], skipped: [] }
   const gradePlan = isDraft && specified.length > 0 ? planScheduleGrade(items, specified, partsOf) : { rows: [], skipped: [] }
@@ -2513,14 +2539,16 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
               {/* 5 · Share — the room link and the people on it */}
               <RoadSection n={5} about={SUBMITTAL_STAGE_ABOUT[5]} onHelp={() => startWalkThrough(5)} title="Share" status={stageStatus('share')} open={sectionOpen('share')} onToggle={() => toggleSection('share')} onJump={() => jumpToSection('share')} anchor="submittals-share-section"
                 summaryWhenOpen={!room}
-                summary={room ? describeRoomLine(room, events.filter((e) => e.event_type === 'view').length, ROOM_TZ, decisions.entered) : items.length > 0 ? 'not shared yet' : 'appears once Rev 1 has rows'}>
+                summary={shareLine || (items.length > 0 ? 'not shared yet' : 'appears once Rev 1 has rows')}>
                 {(items.length > 0 && isNewest) || room ? (
                   <SubmittalRoomPanel
                     showShare={items.length > 0 && isNewest}
                     revisionShared={asRevisionStatus(selectedRev.status) === 'shared'}
                     shareGate={gates.share}
                     room={room}
-                    roomLine={room ? describeRoomLine(room, events.filter((e) => e.event_type === 'view').length, ROOM_TZ, decisions.entered) : ''}
+                    roomLine={shareLine}
+                    sentOutsideAt={selectedRev.sent_outside_at}
+                    onSentOutside={isDraft && isNewest ? (ymd) => void markSentOutside(ymd) : undefined}
                     people={people}
                     events={events}
                     decidedBy={(personId) => items.filter((it) => it.reviewed_by_person_id === personId).length}
@@ -2545,7 +2573,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                     canEdit={isDraft && isNewest}
                     isNewest={isNewest}
                     nextRev={selectedRev.rev_number + 1}
-                    sharedLine={room ? describeRoomLine(room, events.filter((e) => e.event_type === 'view').length, ROOM_TZ, decisions.entered) : ''}
+                    sharedLine={shareLine}
                     recordLine={emailedRecordLine({ rev: selectedRev.rev_number, shared: !!selectedRev.shared_at, hasPackage: !!selectedRev.package_path, hasAnswer: items.some(isReviewerAnswer) || parts.some(isReviewerAnswer) })}
                     onEdit={setEditing}
                     onAnswer={setAnswering}
