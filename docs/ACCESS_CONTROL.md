@@ -1375,7 +1375,7 @@ Default recipients of the "<who> signed $…" email (customer accepted an estima
 
 ## SECURITY DEFINER RPCs and the anon key (v2.2954)
 
-Supabase grants `EXECUTE` on every new function to `PUBLIC`, so the `anon` role — whoever holds the publishable key, which ships in the client bundle — can call any RPC. A `SECURITY DEFINER` body runs as its owner and bypasses RLS, so **the body is the whole boundary**: if it does not check the caller, the anon key gets the owner's view. The 2026-09-06 audit found 28 such RPCs answering or reachable with no session (the paid jobs ledger, the job / bid searches, customer hours, the roster); `20260906180000_revoke_anon_rpc_exposure.sql` revoked them.
+Supabase grants `EXECUTE` on every new function to `PUBLIC`, so the `anon` role — whoever holds the publishable key, which ships in the client bundle — can call any RPC. A `SECURITY DEFINER` body runs as its owner and bypasses RLS, so **the body is the whole boundary**: if it does not check the caller, the anon key gets the owner's view. The 2026-09-06 audit found 28 such RPCs answering or reachable with no session (the paid jobs ledger, the job / bid searches, customer hours, the roster); `20260906180000_revoke_anon_rpc_exposure.sql` revoked them. The three CREATE TABLE sweep helpers (`apply_read_only_write_blocks`, `apply_read_only_stmt_blocks`, `apply_digital_twin_write_blocks`) slipped that audit; since v2.4686 (`20261006160500`) only the migration owner and the service role can call them.
 
 Rules for every RPC, existing or new:
 
