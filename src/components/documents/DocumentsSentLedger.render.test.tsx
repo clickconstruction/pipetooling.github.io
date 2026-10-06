@@ -20,7 +20,7 @@ vi.mock('../../lib/sent/sentCopiesIo', () => ({
 }))
 
 const lastAsk = () => io.asks[io.asks.length - 1]
-const row = (over: Partial<SentCopy>): SentCopy => ({ id: 's1', kind: 'gc_statement', title: 'Statement for RMC', how: 'email', recipientName: 'RMC- Dudley Mason', recipientEmails: ['ap@rmc.example'], subject: 'Statement', sourceTable: '', sourceId: null, copyPath: 's1/copy.html', copyType: 'text/html', copyHash: 'h1', attachments: [], sentAt: '2026-10-05T20:30:00Z', sentByName: 'Dana', ...over })
+const row = (over: Partial<SentCopy>): SentCopy => ({ id: 's1', kind: 'gc_statement', title: 'Statement for RMC', how: 'email', recipientName: 'RMC- Dudley Mason', recipientEmails: ['ap@rmc.example'], subject: 'Statement', sourceTable: '', sourceId: null, copyPath: 's1/copy.html', copyType: 'text/html', copyHash: 'h1', attachments: [], sentAt: '2026-10-05T20:30:00Z', sentByName: 'Dana', sourceSnapshot: null, ...over })
 
 beforeEach(() => {
   io.rows = []

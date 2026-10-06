@@ -13,6 +13,7 @@ import type { TestReportDocumentRow } from '../../lib/jobsDocuments/testReportDo
 import type { JobContractRow } from '../../lib/jobs/jobContractLifecycle'
 import type { JobLienPaper } from '../../lib/jobs/jobLienPaperRows'
 import type { SentCopy } from '../../lib/sent/sentCopies'
+import { payApplicationSnapshot } from '../../lib/aiaPayApplicationHistory'
 import { JobWindowDocumentsTab } from './JobWindowDocumentsTab'
 import { payApplicationWriteFromForm, savedPayApplicationFromRow, type PayApplicationRow, type SavedPayApplication } from '../../lib/aiaPayApplications'
 
@@ -189,7 +190,7 @@ describe('JobWindowDocumentsTab', () => {
 
   it('lists each workbook that went out under its application, with who saved it, and keeps them out of Sent from this job', async () => {
     onJob = [{ ...app(1, 19400, 0, 0), createdAt: '2026-10-02T15:00:00Z', updatedAt: '2026-10-02T15:00:00Z', createdByName: 'Taunya', updatedByName: 'Taunya' }]
-    const base: Omit<SentCopy, 'id' | 'sentAt'> = { kind: 'pay_application', title: 'Pay application 1 · AIA G702-G703', how: 'download', recipientName: '', recipientEmails: [], subject: '', sourceTable: 'job_pay_applications', sourceId: 'app-1', copyPath: 'c1/J1-App1.xlsx', copyType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', copyHash: 'w1', attachments: [], sentByName: 'Taunya' }
+    const base: Omit<SentCopy, 'id' | 'sentAt'> = { kind: 'pay_application', title: 'Pay application 1 · AIA G702-G703', how: 'download', recipientName: '', recipientEmails: [], subject: '', sourceTable: 'job_pay_applications', sourceId: 'app-1', copyPath: 'c1/J1-App1.xlsx', copyType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', copyHash: 'w1', attachments: [], sentByName: 'Taunya', sourceSnapshot: null }
     sent = [
       { ...base, id: 'c1', sentAt: '2026-10-02T15:12:00Z' },
       { ...base, id: 'c2', sentAt: '2026-10-02T15:40:00Z', copyPath: 'c2/J1-App1.xlsx', copyHash: 'w2' },
@@ -207,6 +208,16 @@ describe('JobWindowDocumentsTab', () => {
     // Sent from this job lists the records packet alone.
     const sentRows = await screen.findAllByTestId('job-documents-sent-row')
     expect(sentRows.map((r) => r.textContent?.slice(0, 28))).toEqual(['Records for 9703 Lenox HillP'])
+  })
+
+  it('says what moved since the workbook went out', async () => {
+    // Went out at 19,400 this period; saved again at 21,000.
+    const went = payApplicationSnapshot(app(1, 19400, 0, 0))
+    onJob = [app(1, 21000, 0, 0)]
+    sent = [{ kind: 'pay_application', title: 'Pay application 1 · AIA G702-G703', how: 'download', recipientName: '', recipientEmails: [], subject: '', sourceTable: 'job_pay_applications', sourceId: 'app-1', copyPath: 'c1/J1-App1.xlsx', copyType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', copyHash: 'w1', attachments: [], sentByName: 'Taunya', sourceSnapshot: went as unknown as Record<string, unknown>, id: 'c1', sentAt: '2026-10-02T15:12:00Z' }]
+    renderWithProviders(<JobWindowDocumentsTab job={job} />)
+    await screen.findAllByTestId('job-documents-pay-app')
+    expect(screen.getByTestId('job-documents-pay-app-changed').textContent).toBe('⚠ Changed after it went out Oct 2: Plumbing this period $19,400.00 → $21,000.00 · completed and stored $19,400.00 → $21,000.00 · retainage held $1,940.00 → $2,100.00 · payment due $17,460.00 → $18,900.00. The GC has the Oct 2 workbook.')
   })
 
   it('marks an application that no longer matches the one before it, with its reason', async () => {
@@ -356,7 +367,7 @@ describe('JobWindowDocumentsTab', () => {
   })
 
   it('lists what was sent from the job, newest first: a line opens its copy, a repeat folds, an email shows its attachment', async () => {
-    const base: Omit<SentCopy, 'id' | 'sentAt'> = { kind: 'owner_records_packet', title: 'Records for 9703 Lenox Hill', how: 'print', recipientName: 'Umar Khan', recipientEmails: [], subject: '', sourceTable: '', sourceId: null, copyPath: 's1/copy.html', copyType: 'text/html', copyHash: 'h1', attachments: [], sentByName: 'Dana' }
+    const base: Omit<SentCopy, 'id' | 'sentAt'> = { kind: 'owner_records_packet', title: 'Records for 9703 Lenox Hill', how: 'print', recipientName: 'Umar Khan', recipientEmails: [], subject: '', sourceTable: '', sourceId: null, copyPath: 's1/copy.html', copyType: 'text/html', copyHash: 'h1', attachments: [], sentByName: 'Dana', sourceSnapshot: null }
     sent = [
       { ...base, id: 's1', sentAt: '2026-10-05T20:30:00Z' },
       { ...base, id: 's2', sentAt: '2026-10-05T20:34:00Z' },

@@ -21,6 +21,7 @@ const row = (over: Partial<SentCopy> = {}): SentCopy => ({
   attachments: [],
   sentAt: '2026-10-05T20:30:00Z',
   sentByName: 'Robert',
+  sourceSnapshot: null,
   ...over,
 })
 
