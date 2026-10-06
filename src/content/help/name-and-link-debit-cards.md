@@ -25,4 +25,4 @@ The ***Nobody yet (N)*** filter at the top shows only the person's cards with no
 
 ## Why it matters
 
-A purchase's person is what carries a fill-up to People → Vehicles → Wheels. From there it goes to that person's line on People → Review. Wheels lists the cards whose fuel has nobody on it. Each name is a door straight to its row here.
+A purchase's person is what carries a fill-up to People → Vehicles → Wheels. A fill-up on no job then goes to that person's vehicle line on People → Review. Wheels lists the cards whose fuel has nobody on it. Each name is a door straight to its row here.

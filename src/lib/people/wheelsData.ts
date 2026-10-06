@@ -102,7 +102,9 @@ export async function loadWheelsSnapshot(input: { todayYmd: string; users: Reado
   if (fuelTag && txRows.length > 0) {
     const labelIdByTxId = await fetchLabelIdByTxId(txRows.map((r) => r.id))
     familyRows = txRows.filter((r) => {
-      const bank = typeof r.mercury_category === 'string' ? r.mercury_category : null
+      // The bank category as stored: a string, or `{ name }` in older rows — read as the Job window reads it.
+      const raw = r.mercury_category as unknown
+      const bank = typeof raw === 'string' ? raw : raw && typeof raw === 'object' && typeof (raw as { name?: unknown }).name === 'string' ? (raw as { name: string }).name : null
       return categoryTagForCharge(lookups, labelIdByTxId.get(r.id) ?? null, bank)?.id === fuelTag.id
     })
   }
@@ -131,7 +133,8 @@ export async function loadWheelsSnapshot(input: { todayYmd: string; users: Reado
   for (const a of attributions) if (a.user_id) userByTx.set(a.mercury_transaction_id, a.user_id)
   const charges = fuelTx.map((r) => ({ amount: r.amount, userId: userByTx.get(r.id) ?? null, cardId: cardIdByTx.get(r.id) ?? null }))
   const fuelByUser = sumFuelByUser(charges)
-  const unattributedFuelUsd = Math.round(charges.filter((c) => !c.userId).reduce((s, c) => s + Math.abs(c.amount), 0) * 100) / 100
+  // A purchase adds and a refund comes off (the one card rule's sign).
+  const unattributedFuelUsd = Math.round(charges.filter((c) => !c.userId).reduce((s, c) => s - c.amount, 0) * 100) / 100
   const nicknameByCard = new Map<string, string>(Object.entries(directory.nicknameByCard))
   const unattributedCards = unattributedFuelByCard(charges, nicknameByCard)
   const companyCardSpend = {

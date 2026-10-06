@@ -1,12 +1,13 @@
 // Wheels on Labor (v2.2733): what a person's vehicle costs per field hour.
 //
-// Every field person is on one of three deals, and the deal decides where fuel
-// and truck cost land on People → Review (PR 2):
-//   none          — rides along / office. Nothing changes for them.
-//   own_fuel_paid — drives their own vehicle, the company pays fuel. Fuel is
-//                   part of employing that person → their labor cost.
-//   company       — drives a company truck. Fuel + insurance + registration +
-//                   service, per field hour, tied to the truck they hold.
+// Every field person is on one of three deals. Since punch list #52 PR 5 (v2.4653) fuel stays
+// on the jobs it was put on, on every screen, Review included; the deal decides only what the
+// person's vehicle line on People → Review charges for what is NOT on a job:
+//   none          — rides along / office. No vehicle line.
+//   own_fuel_paid — drives their own vehicle, the company pays fuel. The line is their fuel on
+//                   no job in the period (plus a manual fixed $/field h, if the office sets one).
+//   company       — drives a company truck. The line is the truck's fixed costs (insurance +
+//                   registration + service) per field hour, plus their fuel on no job.
 // This module is pure: the loader (`wheelsData.ts`) gathers the trailing-90-day
 // facts and these functions turn them into rates and report rows.
 
@@ -39,12 +40,18 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100
 }
 
-/** Card charges are negative amounts; refunds positive. Both count toward fuel spend as |amount|, same as the card-charge sums elsewhere. */
+/** Money out as cost: a purchase (negative on the bank's side) adds, a refund (positive) comes off — the one card rule's sign (`cardChargeCostUsd`). */
+function costUsd(amount: number): number {
+  const n = Number(amount)
+  return Number.isFinite(n) ? 0 - n : 0
+}
+
+/** Fuel spend by user: a purchase adds and a refund comes off, as on every job screen. */
 export function sumFuelByUser(charges: ReadonlyArray<{ amount: number; userId: string | null }>): Map<string, number> {
   const m = new Map<string, number>()
   for (const c of charges) {
     if (!c.userId) continue
-    m.set(c.userId, round2((m.get(c.userId) ?? 0) + Math.abs(c.amount)))
+    m.set(c.userId, round2((m.get(c.userId) ?? 0) + costUsd(c.amount)))
   }
   return m
 }
@@ -55,7 +62,7 @@ export type FuelFamilyTx = {
   amount: number
   kind: string
   counterparty: string | null
-  /** True when the row carries a Mercury debit card (a purchase at the pump / the parts counter). */
+  /** True when the row carries a Mercury debit card: a purchase, or a refund to the card (Mercury files those as kind `other`). */
   hasCard: boolean
   /** The card id when known (lower-cased). */
   cardId?: string | null
@@ -71,9 +78,11 @@ export type FuelSplit = {
 }
 
 /**
- * Only card purchases count as fuel (v2.2739). A $36k ACH to a supply
+ * Only card charges count as fuel (v2.2739). A $36k ACH to a supply
  * house that someone filed under a vehicle label is not anyone's fill-up;
- * before this split it showed up as "fuel with no person on it".
+ * before this split it showed up as "fuel with no person on it". A card
+ * charge is any row carrying a card (v2.4653): a refund to the card is kind
+ * `other` and comes off, as it does on the jobs.
  */
 export function splitFuelFamily(rows: readonly FuelFamilyTx[], companyCardIds: ReadonlySet<string> = new Set()): FuelSplit {
   const card: FuelFamilyTx[] = []
@@ -84,20 +93,20 @@ export function splitFuelFamily(rows: readonly FuelFamilyTx[], companyCardIds: R
   let companyUsd = 0
   let companyN = 0
   for (const r of rows) {
-    if (r.hasCard && r.kind === 'debitCardTransaction') {
+    if (r.hasCard) {
       if (r.cardId && companyCardIds.has(r.cardId)) {
-        companyUsd += Math.abs(r.amount)
+        companyUsd += costUsd(r.amount)
         companyN++
-        byCompanyCard.set(r.cardId, (byCompanyCard.get(r.cardId) ?? 0) + Math.abs(r.amount))
+        byCompanyCard.set(r.cardId, (byCompanyCard.get(r.cardId) ?? 0) + costUsd(r.amount))
         continue
       }
       card.push(r)
       continue
     }
-    usd += Math.abs(r.amount)
+    usd += costUsd(r.amount)
     n++
     const cp = (r.counterparty ?? '').trim() || 'Unknown'
-    byCp.set(cp, (byCp.get(cp) ?? 0) + Math.abs(r.amount))
+    byCp.set(cp, (byCp.get(cp) ?? 0) + costUsd(r.amount))
   }
   const top = [...byCp.entries()]
     .map(([counterparty, u]) => ({ counterparty, usd: round2(u) }))
@@ -117,7 +126,7 @@ export function unattributedFuelByCard(
     if (r.userId) continue
     const key = r.cardId ?? '(no card)'
     const e = m.get(key) ?? { cardId: r.cardId, usd: 0, n: 0 }
-    e.usd += Math.abs(r.amount)
+    e.usd += costUsd(r.amount)
     e.n++
     m.set(key, e)
   }
@@ -177,8 +186,10 @@ export type TruckRunningCost = {
   registration: number
   service: number
   total: number
-  /** null when the holder logged no field hours — there is nothing to divide by. */
+  /** The all-in rate, fuel included — the report's comparison. null when the holder logged no field hours. */
   ratePerFieldHour: number | null
+  /** Insurance + registration + service per field hour — what Review charges besides the holder's fuel on no job. null with no field hours. */
+  fixedRatePerFieldHour: number | null
 }
 
 export function truckRunningCost(i: TruckRunningCostInput): TruckRunningCost {
@@ -189,7 +200,8 @@ export function truckRunningCost(i: TruckRunningCostInput): TruckRunningCost {
   const service = round2(Math.max(0, i.serviceUsd))
   const total = round2(fuel + insurance + registration + service)
   const ratePerFieldHour = i.holderFieldHours > 0 ? round2(total / i.holderFieldHours) : null
-  return { fuel, insurance, registration, service, total, ratePerFieldHour }
+  const fixedRatePerFieldHour = i.holderFieldHours > 0 ? round2((insurance + registration + service) / i.holderFieldHours) : null
+  return { fuel, insurance, registration, service, total, ratePerFieldHour, fixedRatePerFieldHour }
 }
 
 /** Own vehicle, fuel paid: that person's fuel ÷ their field hours. */
@@ -215,11 +227,14 @@ export type WheelsPersonRow = {
   fuelUsd: number
   fieldHours: number
   fuelPerFieldHour: number | null
-  /** Manual $/field h from pay config; wins over the computed rate. */
+  /** What the deal costs per field hour, fuel included (own: fuel ÷ h; company: the truck all-in) — the report's comparison, not what Review charges. */
+  allInRate: number | null
+  /** Manual fixed $/field h from pay config; wins over the computed fixed rate. Fuel is never in it. */
   override: number | null
-  /** Computed rate for the arrangement (own: fuel ÷ h; company: the truck's all-in rate). */
-  computedRate: number | null
-  effectiveRate: number | null
+  /** Fixed costs per field hour for the deal (own: none, $0; company: the truck's insurance + registration + service). */
+  computedFixedRate: number | null
+  /** What Review charges per field hour besides the person's fuel on no job: the override, else the computed fixed rate. */
+  fixedRate: number | null
   /** Why the rate is what it is, or why there is none. */
   note: string
 }
@@ -244,24 +259,33 @@ export function buildWheelsRows(
     const fieldHours = p.userId ? (fieldHoursByUserId.get(p.userId) ?? 0) : 0
     const fuelPerFieldHour = ownVehicleFuelRate(fuelUsd, fieldHours)
     const truck = p.userId ? (truckByHolder.get(p.userId) ?? null) : null
-    let computedRate: number | null = null
+    let allInRate: number | null = null
+    let computedFixedRate: number | null = null
     let note = ''
     if (p.arrangement === 'own_fuel_paid') {
-      computedRate = fuelPerFieldHour
-      note = fieldHours > 0 ? `fuel ÷ ${fieldHours.toFixed(1)} field h` : 'no field hours in the window'
+      allInRate = fuelPerFieldHour
+      computedFixedRate = 0
+      note = 'fuel stays on the jobs; Review charges their fuel on no job'
       if (!p.userId) note = 'not linked to a login — fuel cannot be attributed'
     } else if (p.arrangement === 'company') {
       if (!truck) note = 'holds no company truck — assign one on Vehicles'
       else {
-        computedRate = truck.cost.ratePerFieldHour
-        note = truck.holderFieldHours > 0 ? `${truck.name} · $${truck.cost.total.toLocaleString('en-US')} ÷ ${truck.holderFieldHours.toFixed(1)} field h` : `${truck.name} · no field hours in the window`
+        allInRate = truck.cost.ratePerFieldHour
+        computedFixedRate = truck.cost.fixedRatePerFieldHour
+        const fixed = truck.cost.insurance + truck.cost.registration + truck.cost.service
+        note =
+          truck.holderFieldHours <= 0
+            ? `${truck.name} · no field hours in the window`
+            : fixed > 0
+              ? `${truck.name} · $${fixed.toLocaleString('en-US')} fixed ÷ ${truck.holderFieldHours.toFixed(1)} field h; fuel stays on the jobs`
+              : `${truck.name} · no insurance, registration or service on file; Review charges only their fuel on no job`
       }
     } else {
       note = truck ? `holds ${truck.name} but is set to None` : fuelUsd > 0 ? 'fuel stays on the job as parts' : ''
     }
-    const effectiveRate = p.override ?? computedRate
-    if (p.override != null) note = `manual override${computedRate != null ? ` (computed $${computedRate.toFixed(2)})` : ''}`
-    return { userId: p.userId, name: p.name, arrangement: p.arrangement, truck, fuelUsd, fieldHours, fuelPerFieldHour, override: p.override, computedRate, effectiveRate, note }
+    const fixedRate = p.override ?? computedFixedRate
+    if (p.override != null) note = `manual fixed rate${computedFixedRate != null ? ` (computed $${computedFixedRate.toFixed(2)})` : ''}; fuel stays on the jobs`
+    return { userId: p.userId, name: p.name, arrangement: p.arrangement, truck, fuelUsd, fieldHours, fuelPerFieldHour, allInRate, override: p.override, computedFixedRate, fixedRate, note }
   })
   const order: Record<VehicleArrangement, number> = { company: 0, own_fuel_paid: 1, none: 2 }
   return rows.sort((a, b) => order[a.arrangement] - order[b.arrangement] || b.fuelUsd - a.fuelUsd || a.name.localeCompare(b.name))
@@ -271,7 +295,7 @@ export function buildWheelsRows(
 export function wheelsComparison(rows: readonly WheelsPersonRow[]): { ownAvg: number | null; companyAvg: number | null } {
   const avg = (xs: number[]) => (xs.length > 0 ? round2(xs.reduce((s, x) => s + x, 0) / xs.length) : null)
   return {
-    ownAvg: avg(rows.filter((r) => r.arrangement === 'own_fuel_paid' && r.computedRate != null).map((r) => r.computedRate as number)),
-    companyAvg: avg(rows.filter((r) => r.arrangement === 'company' && r.computedRate != null).map((r) => r.computedRate as number)),
+    ownAvg: avg(rows.filter((r) => r.arrangement === 'own_fuel_paid' && r.allInRate != null).map((r) => r.allInRate as number)),
+    companyAvg: avg(rows.filter((r) => r.arrangement === 'company' && r.allInRate != null).map((r) => r.allInRate as number)),
   }
 }

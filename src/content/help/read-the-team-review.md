@@ -44,23 +44,29 @@ A name on the Bridge's Vectors panel opens this tab on that pay week with the pe
 
 You click a name. The drawer beside the list shows the formula with this period's figures:
 
-:::example Malachi · where $21,894 comes from
+:::example Malachi · where $20,175 comes from
 Gross revenue **$49,063** — 18 jobs, each job's bill × % complete, then his share by labor cost
 − Parts & job purchases **−$9,412** — tally, supply invoices, billed materials, card purchases outside the lines below
-− ⛽ Fuel & gas **−$1,006** — card charges in the Fuel & gas tag (the purchase's accounting label, else the bank's category)
+− ⛽ Fuel & gas **−$2,306** — card charges in the Fuel & gas tag (the purchase's accounting label, else the bank's category), his own fuel on the jobs included
 − Subs & team labor **−$15,319**
-Net revenue **$23,326**
+Net revenue **$22,026**
 − Own office / bid wages **−$604** — 10.5 h of office and bid sessions
 − Parts burden **−$828** — 165.5 field h × $5.00
-− 🚚 2019 Ford F-150 **−$1,377** — 165.5 field h × $8.32 (fuel + insurance + registration + service ÷ the holder's field hours, 90-day)
-Profit after overhead **$20,517** · ÷ 176 clocked hours = **$117/hr**
+− 🚚 2019 Ford F-150 **−$419** — 165.5 field h × $2.24 fixed + $48.10 of his fuel on no job in the period
+Profit after overhead **$20,175** · ÷ 176 clocked hours = **$115/hr**
 :::
 
 **What moves it** lists the things that would change that number the most. Those are jobs with no % complete and how much of his gross rides on them. Jobs with no bill amount. One job carrying most of the total. The worst job in the period. Hours that landed on no job. And crew assignments with zero hours. **Watch-outs** are the standing caveats. Revenue uses today's % complete, so a period's number moves when a job progresses later. Only a person's own office time is charged as overhead here.
 
 ### The vehicle deal
 
-Each person's **Vehicle** on Pay config decides one more line. {{chip:green|🚚 $8.32/h}} means a company truck. The truck they hold is priced all-in per field hour. {{chip:blue|🚗 $6.10/h}} means their own vehicle with fuel paid. Their fuel per field hour counts as part of employing them. Either way their fuel-tag card charges leave the job purchases, so nobody else carries them. The chip sits beside the name on every ranked bar. The rates come from People → Vehicles → Wheels.
+Each person's **Vehicle** on Pay config decides one more line. Their fuel stays on the jobs it was put on, like everyone's. It shows in the ⛽ line, shared like every job cost. So the vehicle line charges only what is not on a job.
+
+- {{chip:green|🚚 $2.24/h fixed}} means a company truck. The line is the truck's insurance, registration and service per field hour. It adds their fuel that is on no job.
+- {{chip:blue|🚗 own}} means their own vehicle with fuel paid. The line is their fuel that is on no job.
+- A truck with no insurance, registration or service on file charges only that fuel.
+
+The chip sits beside the name on every ranked bar. The fixed rates come from People → Vehicles → Wheels.
 
 ## How earned is counted
 
