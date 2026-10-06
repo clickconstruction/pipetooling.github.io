@@ -99,6 +99,8 @@ const CUSTOMER_WHY: Record<ScheduleMoveReason, string> = {
   us: 'our own scheduling',
   'change order': 'the change order you signed',
   other: '',
+  // A pull (G-37): good news that explains itself, with no company named.
+  early: '',
 }
 
 /** Days since the move counted as "this week" in What changed. */
