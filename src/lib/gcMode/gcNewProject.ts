@@ -439,9 +439,10 @@ export const SAMPLE_SHEET_INDEX = [
 /**
  * The stages a job goes through, in the order they are drawn. Each waits on the stage named in
  * `after` (or the nearest earlier one the job has). Site finish waits only on dry-in, so paving
- * runs beside the work inside. `days` is a first-draft length; `lag` is days between the stage
- * before and this one. The rough-in and final inspections are activities of their own (the owner,
- * 2026-10-03), drawn by `scheduleDraft`, not waits on a link.
+ * and site lighting run beside the work inside (G-143: inside a trade too, see `stageChain`).
+ * `days` is a first-draft length; `lag` is days between the stage before and this one. The
+ * rough-in and final inspections are activities of their own (the owner, 2026-10-03), drawn by
+ * `scheduleDraft`, not waits on a link.
  */
 export const SCHEDULE_STAGES: { key: string; label: string; after: string | null; days: number; lag?: number }[] = [
   { key: 'sitePrep', label: 'Site prep', after: null, days: 10 },
@@ -458,6 +459,25 @@ export const SCHEDULE_STAGES: { key: string; label: string; after: string | null
   { key: 'siteFinish', label: 'Site finish', after: 'dryIn', days: 10 },
   { key: 'closeout', label: 'Closeout', after: 'trim', days: 5 },
 ]
+
+/**
+ * A stage and every stage it comes after, along `after` (G-143). Inside a trade, a line waits on
+ * the trade's line before it among these stages only, so a crew does its lines one after another
+ * on each stage's own path. Every stage but two comes right after the one listed before it, so its
+ * chain is every stage listed before it. Site finish comes after dry-in: a site line waits on the
+ * trade's earlier site line, or its last line before dry-in, never its framing, rough-ins,
+ * close-in, finishes or trims. Closeout comes after trim, so a closeout line never waits on a site
+ * line.
+ */
+export function stageChain(key: string): Set<string> {
+  const chain = new Set<string>()
+  let at: string | null = key
+  while (at && !chain.has(at)) {
+    chain.add(at)
+    at = SCHEDULE_STAGES.find((st) => st.key === at)?.after ?? null
+  }
+  return chain
+}
 
 /** How long an inspection runs in the first draft, in days. The office changes it. */
 export const INSPECTION_DAYS = 2
@@ -526,7 +546,8 @@ function draftLines(pkg: TradePackage): { lineId: string; label: string }[] {
  * The schedule's first draft, from the stages of the job: every line of every trade, each in its
  * stage. A stage starts when the stage before it is done, so the trades' rough-ins run side by
  * side after framing, close-in waits on all of them and the inspection, and the trims come after
- * the finishes. Inside a trade, its lines run in stage order, one after another, and its lines in
+ * the finishes. Inside a trade, its lines run one after another along each stage's own path
+ * (`stageChain`), so its site lines run beside its inside work, and its lines in
  * one stage share that stage's days (at least two each). Two inspections are activities of their
  * own, with no trade (packageId ''): the rough-in inspection after every rough-in, which close-in
  * and anything else after the rough-ins wait on, and the final inspection after all the work.
@@ -617,9 +638,11 @@ export function scheduleDraft(project: GcProject, start: string, stageDays?: Par
         activities.push(a)
         continue
       }
-      // The line before it in its own trade, in stage order: a crew does its lines one after another.
+      // The line before it in its own trade, along its stage's own path (G-143): a crew does its lines
+      // one after another, and a site line never waits on the trade's inside work.
+      const chain = stageChain(line.stage)
       const own = lines
-        .filter((l) => l.packageId === line.packageId)
+        .filter((l) => l.packageId === line.packageId && chain.has(l.stage))
         .sort((a, b) => (order.get(a.stage) ?? 0) - (order.get(b.stage) ?? 0) || a.index - b.index)
       const before = own[own.indexOf(line) - 1]
       const prev = before ? done.get(before.lineId) : undefined
@@ -720,7 +743,7 @@ export function dryInMilestoneFor(
  * Work a set brings onto a schedule already drawn: a new trade's lines, or lines added to a trade.
  * Each is placed the way the first draft places it (`scheduleDraft`): in its stage, after what
  * that stage waits on (the rough-in inspection for anything after the rough-ins), and after the
- * trade's own line before it; never before `today`. What waits on its stage then waits on it too,
+ * trade's own line before it along its stage's path (`stageChain`, G-143); never before `today`. What waits on its stage then waits on it too,
  * and so does the final inspection if nothing else does. A line already on the schedule stays.
  * Nothing else moves here: `pushSchedule` then moves what must start later.
  */
@@ -757,9 +780,11 @@ export function scheduleSetLines(
     const gate = gateOf(line.stage)
     const gateActs = gate === 'roughIn' && roughInspection ? [roughInspection] : gate ? inStage(gate) : []
     const gateDay = gateActs.reduce<string | null>((m, a) => (m === null || a.finish > m ? a.finish : m), null)
-    // The trade's own line before it, in stage order: a crew does its lines one after another.
+    // The trade's own line before it, along its stage's own path (G-143): a crew does its lines one after another,
+    // and a site line never waits on the trade's inside work.
+    const chain = stageChain(line.stage)
     const own = out
-      .filter((a) => a.packageId === line.packageId && !a.inspection && (order.get(stageOf.get(a.lineId) ?? '') ?? 0) <= (order.get(line.stage) ?? 0))
+      .filter((a) => a.packageId === line.packageId && !a.inspection && chain.has(stageOf.get(a.lineId) ?? ''))
       .sort((a, b) => (a.finish < b.finish ? -1 : a.finish > b.finish ? 1 : 0))
     const prev = own[own.length - 1]
     const from = [today, gateDay ? plusDays(gateDay, 1 + (stage?.lag ?? 0)) : today, prev ? plusDays(prev.finish, 1) : today].reduce((m, d) => (d > m ? d : m))
