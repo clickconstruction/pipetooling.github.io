@@ -2,7 +2,7 @@
 title: use the cover letter studio
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: cover letter, studio, layout, preview, proposal, letter, send, google docs, versions, base, alternate, letter total, alternates, same page, separate pages, reduced, wording, rename, per GC
+keywords: cover letter, studio, layout, preview, proposal, letter, send, google docs, versions, base, alternate, letter total, alternates, same page, separate pages, reduced, wording, rename, per GC, options, option 1, two versions, pick one
 order: 93
 ---
 The **Bids → Cover Letter** tab is a two-pane studio, with your controls in numbered steps on the left. The letter itself stays on screen at the right the whole time, repainting live as you type.
@@ -39,6 +39,23 @@ Alternates:
 - **The difference is computed**, so it can never disagree with the Pricing tab. The line reads like *Deduct $5,287* or *Add $4,100* against the proposed amount, or *no change* when they match.
 - **No base bid, only alternates?** The ★ price leads the letter and the rest are listed against it. The headline amount is never $0.00.
 - **Want the old document?** You flip **Alternates in the letter** to {{chip:gray|Separate pages}} in step 1. The switch then gives one full letter per alternate, exactly as before. Your choice is remembered on this device.
+
+## Two versions as options
+
+Say a bid has two versions, To Plans and Value Engineered. Tick both into the letter and leave both on **Base**. The letter now reads as two options. It never adds the two up.
+
+- The letter says *we propose to do the plumbing in one of the following amounts*. Then each option prints its own amount in words and figures.
+- An alternate price under an option is a deduct or an add against that option. Alternates number across the whole letter. So a GC can say *Option 2 with Alternate 2*.
+- Each option lists its own fixtures when the lists differ. When they match, the list prints once. Exclusions and terms print once for both.
+- The first version in the list is **Option 1**. It leads the letter. Use the ▲▼ arrows to pick which version leads.
+- {{button:blue|Mark sent today}} stamps Option 1's amount as the bid value. Every version still gets its own sent value. The Bid Board shows Option 1's amount.
+- Click any option line or alternate line in the preview to reword it. The dashed text is yours to edit.
+
+:::example Two options on one bid
+Option 1, To Plans: $922,196.69, with Alternate 1 excluding med gas at Deduct $41,969.58. Option 2, Value Engineered: $366,998.23, with Alternate 2 excluding med gas at Deduct $37,556.68.
+:::
+
+A version you flag **Alternate** still prints as an in-lieu-of line under Option 1. The bid room signs Option 1 and offers the other options in place of it.
 
 ## Sending it
 
