@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildLegalDigestEmail, buildLegalNowEmail } from './legalEmails'
+import { LEGAL_CONFIRM_EXPIRED_REASON, buildLegalDigestEmail, buildLegalNowEmail, buildLegalWelcomeEmail } from './legalEmails'
 
 describe('the firm’s emails · punch list #85 item 3 · the firm’s words and the payload’s company name', () => {
   const now = (trigger: 'referred' | 'answer' | 'pulled') =>
@@ -57,5 +57,52 @@ describe('buildLegalDigestEmail · 2026-10-02 · a matter’s and an event’s d
 
   it('a matter with no release time prints no since', () => {
     expect(digest(null, '2026-10-02T12:00:00Z')).not.toContain(' · since ')
+  })
+})
+
+describe('buildLegalWelcomeEmail · v2.4624 · the firm’s link, sent from the desk', () => {
+  const base = { companyName: 'Click Plumbing and Electrical', companyPhone: '(512) 360-0599', firmName: 'Sample & Partner, PLLC', greetName: 'Ann Sample', portalUrl: 'https://x.test/legal?t=abc123', matterCount: 2, sender: { name: 'Will Douglas', email: 'will@x.test', phone: '(512) 555-0100' } }
+
+  it('says who we are, carries the link, and puts adding the firm’s people first', () => {
+    const m = buildLegalWelcomeEmail(base)
+    expect(m.subject).toBe('Your collections portal from Click Plumbing and Electrical')
+    expect(m.html).toContain('Hello Ann Sample,')
+    expect(m.html).toContain('This is Will Douglas at Click Plumbing and Electrical.')
+    expect(m.html).toContain('href="https://x.test/legal?t=abc123"')
+    expect(m.html).toContain('Sample &amp; Partner, PLLC')
+    expect(m.html).toContain('2 accounts are waiting for you there now.')
+    expect(m.html.indexOf('Open the portal and choose Notifications.')).toBeLessThan(m.html.indexOf('What you will find there'))
+    expect(m.replyTo).toBe('will@x.test')
+    expect(m.html).not.toContain('Stop these emails')
+  })
+
+  it('has a full plain-text part, not just the subject and the link', () => {
+    const t = buildLegalWelcomeEmail({ ...base, note: 'Good talking today.' }).text
+    expect(t).toContain('Your portal: https://x.test/legal?t=abc123')
+    expect(t).toContain('1. Open the portal and choose Notifications.')
+    expect(t).toContain('2. Add each person at the firm who should hear from us.')
+    expect(t).toContain('Good talking today.')
+    expect(t).toContain('call us at (512) 360-0599')
+    expect(t.split('\n').length).toBeGreaterThan(15)
+  })
+
+  it('greets the firm with no handling person, signs as the office with no sender, and escapes the office’s line', () => {
+    const m = buildLegalWelcomeEmail({ ...base, greetName: ' ', sender: null, matterCount: 0, note: '<b>hi</b>' })
+    expect(m.html).toContain('Hello Sample &amp; Partner, PLLC,')
+    expect(m.html).toContain('This is the office at Click Plumbing and Electrical.')
+    expect(m.html).toContain('No accounts are on it yet.')
+    expect(m.html).toContain('&lt;b&gt;hi&lt;/b&gt;')
+    expect(m.replyTo).toBeNull()
+  })
+
+  it('one account reads as one', () => {
+    expect(buildLegalWelcomeEmail({ ...base, matterCount: 1 }).text).toContain('One account is waiting for you there now.')
+  })
+})
+
+describe('the confirm page’s expired words · v2.4624', () => {
+  it('point at Resend the confirmation, not at being added again', () => {
+    expect(LEGAL_CONFIRM_EXPIRED_REASON).toContain('Resend the confirmation')
+    expect(LEGAL_CONFIRM_EXPIRED_REASON).not.toMatch(/add you again/)
   })
 })

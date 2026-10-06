@@ -461,7 +461,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
             <div style={{ ...MUTED, fontSize: '0.78rem' }}>Two exits: attorney-ready (a dev — that is what puts it with the firm) or write it down. {firm ? `Firm: ${firm.name}.` : stored ? 'No firm yet — add one on Settings → Jobs & billing.' : ''}</div>
           </div>
           {stored && firm && canEditReview ? <button type="button" onClick={() => setEmailsOpen(true)} style={btn} title="Who at the firm hears from us, by their own rules">✉ Firm’s emails{firmPaused ? ' · paused' : ''}</button> : null}
-          {stored && firm && canEditReview ? <LegalPortalLinkButton firmId={firm.id} firmName={firm.name} /> : null}
+          {stored && firm && canEditReview ? <LegalPortalLinkButton firmId={firm.id} firmName={firm.name} firmEmail={firm.email} /> : null}
           <button type="button" onClick={onClose} aria-label="Close" style={{ ...btn, height: 30, width: 30, justifyContent: 'center', padding: 0 }}>✕</button>
         </div>
 
@@ -680,7 +680,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
           <div role="dialog" aria-modal="true" aria-label="Who at the firm hears from us" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', color: 'var(--text)', borderRadius: 10, padding: 18, maxWidth: 640, width: '100%', boxShadow: '0 12px 40px rgba(0,0,0,0.28)' }}>
             <h3 style={{ margin: '0 0 4px', fontSize: '1rem' }}>✉ Who at {firm.name} hears from us</h3>
             <p style={{ ...MUTED, fontSize: '0.8rem', margin: '0 0 10px' }}>Managed by the firm on their portal’s Notifications page. The office keeps two overrides: pause everything, and remove a person. A new address is inert until they click their confirmation; every email carries a one-click stop.</p>
-            {(legal?.recipients ?? []).length === 0 ? <p style={{ fontSize: '0.84rem' }}>Nobody on the list yet — nothing is emailed until the firm adds its people on the portal’s Notifications page. Send them the portal link and they take it from there.</p> : (
+            {(legal?.recipients ?? []).length === 0 ? <p style={{ fontSize: '0.84rem' }}>Nobody on the list yet — nothing is emailed until the firm adds its people on the portal’s Notifications page. Send them their link from 🌐 Firm’s link: its email asks them to add their people.</p> : (
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead><tr><th style={TH}>Person</th><th style={TH}>Hears</th><th style={TH}>Scope</th><th style={TH}>Status</th><th style={TH}></th></tr></thead>
                 <tbody>

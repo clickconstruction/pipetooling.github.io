@@ -99,10 +99,103 @@ export function legalPageHtml(companyName: string, body: string): string {
   return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${legalEsc(companyName)}</title><style>body{font:16px/1.5 -apple-system,'Segoe UI',Roboto,sans-serif;color:#16283c;background:#f6f3ec;margin:0;padding:40px 20px}main{max-width:520px;margin:0 auto;background:#fdfcf9;border:1px solid #ddd6c8;border-radius:8px;padding:24px}h1{font-size:20px;margin:0 0 8px}p{margin:8px 0;color:#5a6b7e}</style></head><body><main>${body}</main></body></html>`
 }
 
+/** The confirm page's words when its link no longer matches (v2.4624): the function answers them, and the page falls back to them. */
+export const LEGAL_CONFIRM_EXPIRED_REASON = 'A newer confirmation email replaced it, or you were taken off the list. Ask whoever added you to press Resend the confirmation next to your name. It is on the portal’s Notifications tab.'
+
 export function legalConfirmedPageBody(companyName: string, name: string, email: string): string {
   return `<h1>You're confirmed, ${legalEsc(name)}.</h1><p>${legalEsc(email)} will now get the firm's emails from ${legalEsc(companyName)} — one email per event or a weekly digest, whichever the portal says. Every email carries a link to stop them.</p>`
 }
 
 export function legalUnsubscribedPageBody(companyName: string, name: string): string {
   return `<h1>Done, ${legalEsc(name)}.</h1><p>No more emails to you from ${legalEsc(companyName)}'s legal portal. The portal itself still works; turn emails back on from its Notifications page.</p>`
+}
+
+/** Who pressed send on the desk: the welcome email is signed by them, and a reply reaches them. */
+export type LegalWelcomeSender = { name: string; email: string; phone: string }
+
+/**
+ * `legal-send-firm-link` → the welcome email the office sends the firm from the desk's link card
+ * (v2.4624, punch list #85 item 21): who we are, what the portal is, the link, what to do first
+ * (add the people at the firm who should get our emails), and who to call. Sent by a person, once,
+ * so it carries no stop link; it is filed under the link it carries (`sent_documents`).
+ */
+export function buildLegalWelcomeEmail(i: {
+  companyName: string
+  companyPhone?: string | null
+  firmName: string
+  /** The firm's handling person on file, for the greeting; the firm's name when blank. */
+  greetName?: string | null
+  portalUrl: string
+  /** Accounts already with the firm; zero says they arrive as the office refers them. */
+  matterCount: number
+  /** A line the office typed on the card, printed as its own paragraph. */
+  note?: string | null
+  sender?: LegalWelcomeSender | null
+}): LegalEmail & { replyTo: string | null } {
+  const greet = (i.greetName ?? '').trim() || i.firmName
+  const senderName = (i.sender?.name ?? '').trim()
+  const senderEmail = (i.sender?.email ?? '').trim()
+  const senderPhone = (i.sender?.phone ?? '').trim()
+  const phone = (i.companyPhone ?? '').trim()
+  const note = (i.note ?? '').trim()
+  const n = Math.max(0, Math.floor(i.matterCount))
+  const subject = `Your collections portal from ${i.companyName}`
+  const intro = senderName ? `This is ${senderName} at ${i.companyName}.` : `This is the office at ${i.companyName}.`
+  const why = `We send unpaid accounts to ${i.firmName} through a private web page, and this email carries your link to it.`
+  const waiting = n === 0 ? 'No accounts are on it yet. Each one appears the day we refer it to you.' : n === 1 ? 'One account is waiting for you there now.' : `${n} accounts are waiting for you there now.`
+  const steps = [
+    'Open the portal and choose Notifications.',
+    'Add each person at the firm who should hear from us. Each gets one email to confirm their address.',
+    'Each person picks right away or a weekly digest, and every account or only their own.',
+  ]
+  const finds = [
+    'Every account we refer to you, as one packet: the account, the paper, the record of contact, the field evidence, and the fees and steps.',
+    `${i.companyName}’s particulars for filing.`,
+    'A place to record your fees, costs and steps, a payment you receive, and a question for us.',
+  ]
+  const keep = 'The link needs no sign-in. Keep it inside the firm, because anyone holding it can open the portal. If it ever leaks, tell us and we will replace it.'
+  const ask = phone ? `Questions: reply to this email, or call us at ${phone}.` : 'Questions: reply to this email.'
+  const sig = [senderName, i.companyName, senderPhone, senderEmail].filter(Boolean)
+
+  const p = (s: string) => `<p style="margin:0 0 12px">${s}</p>`
+  const html =
+    `<div style="font:15px/1.5 -apple-system,'Segoe UI',Roboto,sans-serif;color:#16283c;max-width:600px">` +
+    `<div style="border-bottom:2px solid #b0662f;padding-bottom:8px;margin-bottom:14px"><b>${legalEsc(i.companyName)}</b><br><span style="color:#5a6b7e;font-size:13px">Collections referred to counsel</span></div>` +
+    p(`Hello ${legalEsc(greet)},`) +
+    p(`${legalEsc(intro)} ${legalEsc(why)}`) +
+    (note ? `<p style="margin:0 0 12px;padding:8px 12px;background:#f1ece2;border-radius:5px">${legalEsc(note).replace(/\n/g, '<br>')}</p>` : '') +
+    PORTAL_BUTTON(i.portalUrl) +
+    `<p style="margin:0 0 14px;font-size:12px;color:#5a6b7e;word-break:break-all">${legalEsc(i.portalUrl)}</p>` +
+    p(legalEsc(waiting)) +
+    `<h3 style="font-size:14px;margin:16px 0 4px">What to do first</h3><ol style="margin:0 0 12px;padding-left:20px">${steps.map((s) => `<li>${legalEsc(s)}</li>`).join('')}</ol>` +
+    `<h3 style="font-size:14px;margin:16px 0 4px">What you will find there</h3><ul style="margin:0 0 12px;padding-left:20px">${finds.map((s) => `<li>${legalEsc(s)}</li>`).join('')}</ul>` +
+    p(legalEsc(keep)) +
+    p(legalEsc(ask)) +
+    (sig.length ? `<p style="margin:16px 0 0;color:#5a6b7e">${sig.map(legalEsc).join('<br>')}</p>` : '') +
+    `<p style="color:#8a97a6;font-size:12px;margin-top:22px">You get this because ${legalEsc(i.companyName)} sent ${legalEsc(i.firmName)} its portal link. Nothing else is emailed to this address unless someone at the firm adds it on the portal.</p>` +
+    `</div>`
+
+  const text = [
+    `Hello ${greet},`,
+    '',
+    `${intro} ${why}`,
+    ...(note ? ['', note] : []),
+    '',
+    `Your portal: ${i.portalUrl}`,
+    '',
+    waiting,
+    '',
+    'What to do first',
+    ...steps.map((s, k) => `${k + 1}. ${s}`),
+    '',
+    'What you will find there',
+    ...finds.map((s) => `- ${s}`),
+    '',
+    keep,
+    '',
+    ask,
+    ...(sig.length ? ['', ...sig] : []),
+  ].join('\n')
+
+  return { subject, text, html, replyTo: senderEmail || null }
 }

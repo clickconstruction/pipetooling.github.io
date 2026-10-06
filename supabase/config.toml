@@ -850,6 +850,11 @@ verify_jwt = false
 [functions.legal-notify-dispatch]
 verify_jwt = false
 
+# Send the firm its portal link (v2.4624): the Legal desk's link card; staff JWT validated in the
+# handler + the office role check (legal_office_can_read), the send-bid-room-link pattern.
+[functions.legal-send-firm-link]
+verify_jwt = false
+
 # The Contract sweep's Drive pass (v2.3390): staff JWT validated in-body (office roles); read-only Drive listing with the intake service account.
 [functions.drive-contract-scan]
 verify_jwt = false

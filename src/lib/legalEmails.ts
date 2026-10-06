@@ -1,8 +1,10 @@
 /** Client door to the law firm's email and page builders `legal-notify-dispatch` and `submit-legal-portal` use (v2.3512). */
 export {
+  LEGAL_CONFIRM_EXPIRED_REASON,
   buildLegalConfirmEmail,
   buildLegalDigestEmail,
   buildLegalNowEmail,
+  buildLegalWelcomeEmail,
   legalConfirmedPageBody,
   legalFirmStageWords,
   legalPageHtml,
@@ -12,4 +14,5 @@ export {
   type LegalDigestMatter,
   type LegalEmail,
   type LegalNowTrigger,
+  type LegalWelcomeSender,
 } from '../../supabase/functions/_shared/legalEmails'
