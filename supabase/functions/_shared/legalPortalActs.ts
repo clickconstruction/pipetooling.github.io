@@ -77,6 +77,11 @@ export function firmVoidProblem(e: VoidableEntry): string | null {
   return 'That entry cannot be undone.'
 }
 
+/** True when the firm already undid this entry through its portal for the same reason: a retry, answered ok. */
+export function voidIsRetry(e: { voided_at: string | null; voided_via_portal?: boolean | null; void_reason?: string | null }, reason: string): boolean {
+  return Boolean(e.voided_at) && e.voided_via_portal === true && (e.void_reason ?? '').trim() === reason.trim()
+}
+
 /** The office undoes the fees, costs and notes it wrote (`legal_void_entry` holds the same rule). */
 export function officeCanVoid(e: VoidableEntry): boolean {
   return !e.via_portal && !e.voided_at && (e.kind === 'fee' || e.kind === 'cost' || e.kind === 'note')

@@ -8,7 +8,7 @@ import { buildLegalConfirmEmail } from '../_shared/legalEmails.ts'
 import { unexpectedErrorBody } from '../_shared/legalPortalErrors.ts'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 import { legalRecipientSendPatch } from '../_shared/legalNotifyLedger.ts'
-import { firmVoidProblem, isLegalClientId, LEGAL_ACTS_PER_MATTER_PER_HOUR, legalActDateProblem, legalRateLimitMessage } from '../_shared/legalPortalActs.ts'
+import { firmVoidProblem, voidIsRetry, isLegalClientId, LEGAL_ACTS_PER_MATTER_PER_HOUR, legalActDateProblem, legalRateLimitMessage } from '../_shared/legalPortalActs.ts'
 import { matterOpenBalance, SETTLEMENT_ASK_FLAVOR, settlementBelowFloor, settlementFloorDollars, settlementFloorOf } from '../_shared/legalSettlement.ts'
 import { firmStepDecision, isLegalFirmStep, LEGAL_FIRM_STEP_WORDS, legalMatterOnPortal } from '../_shared/legalStages.ts'
 
@@ -212,9 +212,11 @@ serve(async (req) => {
     if (kind === 'void') {
       const entryId = str(body.entryId, 64)
       if (!note) return jsonResponse({ error: 'Say why you are undoing it.' }, 400)
-      const { data: row } = await admin.from('legal_matter_entries').select('id, matter_id, kind, via_portal, voided_at, acknowledged_at, meta').eq('id', entryId).maybeSingle()
-      const target = row as { id: string; matter_id: string; kind: string; via_portal: boolean; voided_at: string | null; acknowledged_at: string | null; meta: Record<string, unknown> | null } | null
+      const { data: row } = await admin.from('legal_matter_entries').select('id, matter_id, kind, via_portal, voided_at, voided_via_portal, void_reason, acknowledged_at, meta').eq('id', entryId).maybeSingle()
+      const target = row as { id: string; matter_id: string; kind: string; via_portal: boolean; voided_at: string | null; voided_via_portal: boolean | null; void_reason: string | null; acknowledged_at: string | null; meta: Record<string, unknown> | null } | null
       if (!target || target.matter_id !== matterId) return jsonResponse({ error: 'That entry is not on this matter.' }, 400)
+      // A retried undo (a double press, a timeout) is the same act: answer ok when the firm already undid it for the same reason.
+      if (voidIsRetry(target, note)) return jsonResponse({ ok: true, entryId: target.id, notice: 'Undone. It stays on the record, struck through, out of every total.' })
       const problem = firmVoidProblem(target)
       if (problem) return jsonResponse({ error: problem }, 400)
       const nextMeta = { ...(target.meta ?? {}), ...(meta.recordedBy ? { voidedBy: meta.recordedBy } : {}) }

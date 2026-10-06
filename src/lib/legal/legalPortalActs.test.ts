@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { firmVoidProblem, isLegalClientId, isVoidedEntry, legalActDateProblem, legalRateLimitMessage, officeCanVoid, recordedByOf } from '../../../supabase/functions/_shared/legalPortalActs'
+import { firmVoidProblem, isLegalClientId, isVoidedEntry, legalActDateProblem, legalRateLimitMessage, officeCanVoid, recordedByOf, voidIsRetry } from '../../../supabase/functions/_shared/legalPortalActs'
 import { buildFirmActivity, type LegalMatterRow } from './legalMatters'
 import { conversationRows, conversationWho, entryRecordedByWords } from './legalAsks'
 import type { LegalEntryRow } from './legalMatters'
@@ -67,5 +67,14 @@ describe('undo with a reason (#85 item 18, PR 2)', () => {
     const row = { id: 'f1', matter_id: 'm1', kind: 'fee', amount: 3500, body: 'Filing fee', occurred_on: '2026-10-01', meta: {}, via_portal: true, created_by: null, acknowledged_at: null, created_at: '2026-10-01T15:00:00Z' }
     expect(buildFirmActivity([row], [m]).count).toBe(1)
     expect(buildFirmActivity([{ ...row, voided_at: '2026-10-05T00:00:00Z' }], [m]).count).toBe(0)
+    // The office's Acknowledge on a fee row stamps acknowledged_at, which takes it off the card too.
+    expect(buildFirmActivity([{ ...row, acknowledged_at: '2026-10-05T00:00:00Z' }], [m]).count).toBe(0)
+  })
+  it('a retried undo with the same reason is the same act; a different reason is not', () => {
+    const done = { voided_at: '2026-10-05T00:00:00Z', voided_via_portal: true, void_reason: 'Entered twice' }
+    expect(voidIsRetry(done, ' Entered twice ')).toBe(true)
+    expect(voidIsRetry(done, 'Wrong matter')).toBe(false)
+    expect(voidIsRetry({ ...done, voided_via_portal: false }, 'Entered twice')).toBe(false)
+    expect(voidIsRetry({ voided_at: null }, 'Entered twice')).toBe(false)
   })
 })

@@ -9,6 +9,7 @@ const note: ReleaseNote = {
     'The law firm can undo its own fee, cost or a payment you have not applied yet. The Legal desk can undo a fee, cost or note the office wrote.',
     'Every undo needs a reason. The row stays struck through with the reason, and leaves every total.',
     'Two saves of the same act in the same instant now land once.',
+    'The Legal desk can now acknowledge a fee or cost the firm adds, which clears it from the Dashboard card.',
   ],
 }
 
