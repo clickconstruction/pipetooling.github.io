@@ -239,6 +239,7 @@ export default function BillCustomerLienReleaseStrip({
               ? (jobDetails.invoices ?? []).find((i) => releaseModal.invoiceIds.includes(i.id)) ?? null
               : null
           }
+          invoiceIds={releaseModal?.invoiceIds}
           signerNameFallback={profileName?.trim() ?? ''}
           initialFormType={releaseModal?.formType}
           onIssued={() => void loadRows()}

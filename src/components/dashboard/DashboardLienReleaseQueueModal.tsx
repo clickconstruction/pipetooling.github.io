@@ -371,6 +371,7 @@ export function DashboardLienReleaseQueueModal({
           onClose={() => setIssue(null)}
           job={issue.job}
           invoice={(issue.job.invoices ?? []).find((i) => issue.row.invoiceIds.includes(i.id)) ?? null}
+          invoiceIds={issue.row.invoiceIds}
           signerNameFallback={profileName?.trim() ?? ''}
           initialFormType={unconditionalFollowUpForm(issue.row.release.form_type)}
           onIssued={onChanged}

@@ -5,7 +5,7 @@
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
-import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { makeInvoice, makeJob, renderWithProviders } from '../../test/renderSmokeMocks'
 import BillCustomerLienReleaseStrip from './BillCustomerLienReleaseStrip'
 
 const io = vi.hoisted(() => ({ updates: [] as Array<Record<string, unknown>>, html: [] as string[], inkAsked: [] as string[] }))
@@ -40,6 +40,18 @@ vi.mock('../../lib/jobs/lienReleaseInk', () => ({
     return { printedName: 'Malachi Whites', signedAtIso: '2026-10-01T15:00:00Z', inkDataUrl: 'data:image/png;base64,INK' }
   },
 }))
+// Issue unconditional (#87 D): a cleared conditional, and what the strip hands the Release of Lien window.
+vi.mock('../../lib/jobs/lienReleaseTracking', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../lib/jobs/lienReleaseTracking')>()),
+  lienReleaseClearance: () => 'cleared',
+}))
+const opened = vi.hoisted(() => ({ props: [] as Array<{ open: boolean; invoice: { id: string } | null; invoiceIds?: readonly string[] | null; initialFormType?: string }> }))
+vi.mock('./LienReleaseModal', () => ({
+  default: (props: { open: boolean; invoice: { id: string } | null; invoiceIds?: readonly string[] | null; initialFormType?: string }) => {
+    opened.props.push(props)
+    return null
+  },
+}))
 vi.mock('../../lib/jobsDocuments/printWindow', () => ({
   openHtmlWindowWhenReady: async (build: () => Promise<string>) => {
     io.html.push(await build())
@@ -71,4 +83,23 @@ describe('BillCustomerLienReleaseStrip', () => {
     expect(io.updates[0]!.voided_by).toBe('smoke-auth-user-1')
     expect(typeof io.updates[0]!.voided_at).toBe('string')
   })
+
+  it('Issue unconditional hands the window every bill the conditional covered (#87 D)', async () => {
+    const before = release.invoice_ids
+    release.invoice_ids = ['inv-1', 'inv-2']
+    try {
+      opened.props = []
+      const job = makeJob({ id: 'job-1', invoices: [makeInvoice({ id: 'inv-1', status: 'paid', sequence_order: 0 }), makeInvoice({ id: 'inv-2', status: 'paid', sequence_order: 1 })] })
+      renderWithProviders(<BillCustomerLienReleaseStrip open jobId="job-1" jobDetails={job} jobNumber="1042" />)
+      fireEvent.click(await screen.findByRole('button', { name: 'Issue unconditional' }))
+      await waitFor(() => expect(opened.props.some((p) => p.open)).toBe(true))
+      const last = opened.props[opened.props.length - 1]!
+      expect(last.invoiceIds).toEqual(['inv-1', 'inv-2'])
+      expect(last.invoice?.id).toBe('inv-1')
+      expect(last.initialFormType).toBe('unconditional_progress')
+    } finally {
+      release.invoice_ids = before
+    }
+  })
 })
+
