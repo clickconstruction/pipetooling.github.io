@@ -149,10 +149,24 @@ export function notReadyWords(gaps: StartGap[]): string {
   return gaps.length === 1 && only ? only.barWords : listWords(gaps.map((g) => g.noun))
 }
 
+/** A typed title's first words that read lowercase inside the merged list. */
+const PLAIN_FIRST_WORDS = ['The', 'A', 'An', 'Their', 'Its', 'Our']
+
+/**
+ * A hold's words as they read folded into the merged "waits on" list. A wait's title is what the
+ * office typed, so it keeps its capitals, except a plain first word: "The transformer, …" reads
+ * "the transformer, …". "RFI-004" and "CPS Energy" never change.
+ */
+export function holdWordsInList(words: string): string {
+  const first = words.split(/[\s,]/, 1)[0] ?? ''
+  return PLAIN_FIRST_WORDS.includes(first) ? `${words.charAt(0).toLowerCase()}${words.slice(1)}` : words
+}
+
 /**
  * The chart's holds with each not-ready bar added (G-77), the kind 'paperwork'. A bar already held
  * by a submittal, a question or a wait keeps that hold too, last in one list after the papers:
- * "current insurance and submittal 28 31 11-01". Late when either is.
+ * "current insurance and submittal 28 31 11-01", "current insurance and the transformer, …"
+ * (`holdWordsInList`). Late when either is.
  */
 export function withNotReady(holds: Map<string, GanttHold>, state: GcState, project: GcProject): Map<string, GanttHold> {
   const bars = notReadyBars(state, project)
@@ -162,7 +176,7 @@ export function withNotReady(holds: Map<string, GanttHold>, state: GcState, proj
     const had = holds.get(bar.lineId)
     out.set(bar.lineId, {
       kind: 'paperwork',
-      words: had ? listWords([...bar.gaps.map((g) => g.noun), had.words]) : notReadyWords(bar.gaps),
+      words: had ? listWords([...bar.gaps.map((g) => g.noun), holdWordsInList(had.words)]) : notReadyWords(bar.gaps),
       late: bar.late || Boolean(had?.late),
     })
   }

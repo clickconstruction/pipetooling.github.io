@@ -6,7 +6,8 @@ import { startNeeds } from './gcStartReminders'
 import { walkItems } from './gcScheduleWalk'
 import type { GanttHold } from './gcGantt'
 import type { GcProject, GcState, Partner } from './gcTypes'
-import { NOT_READY_LATE_DAYS, notReadyBars, notReadyBlock, notReadyWords, startGaps, withNotReady, type NotReadyBlock } from './gcNotReady'
+import { chartHolds } from './gcChartHolds'
+import { NOT_READY_LATE_DAYS, holdWordsInList, notReadyBars, notReadyBlock, notReadyWords, startGaps, withNotReady, type NotReadyBlock } from './gcNotReady'
 
 /** Fair Oaks Shops, Building D, being built; the made-up today is Fri Oct 2, and Pecan Valley's insurance ran out Sep 15. */
 const fairOaks = (state: GcState) => state.projects.find((p) => p.id === 'fairoaksd')!
@@ -139,6 +140,24 @@ describe('a trade not ready to start (G-77)', () => {
     expect(facts('2026-10-12')).toMatchObject({ kind: 'held', chip: 'held' })
     expect(facts('2026-10-12')?.facts).toContain('It waits on current insurance, theirs ran out Sep 15.')
     expect(facts('2026-10-16')?.facts).toContain('It waits on current insurance, theirs ran out Sep 15, which is late.')
+  })
+
+  it('folds a hold already on the bar in as the office typed it, lowercasing only a plain first word', () => {
+    expect(holdWordsInList('The transformer, expected Oct 15 and not in')).toBe('the transformer, expected Oct 15 and not in')
+    expect(holdWordsInList('RFI-004, waiting on us')).toBe('RFI-004, waiting on us')
+    expect(holdWordsInList('CPS Energy service drop, expected Oct 15 and not in')).toBe('CPS Energy service drop, expected Oct 15 and not in')
+    for (const first of ['A', 'An', 'Their', 'Its', 'Our']) expect(holdWordsInList(`${first} new panel`)).toBe(`${first.toLowerCase()} new panel`)
+    // Only the whole first word: these stay as typed.
+    expect(holdWordsInList('Anchor bolts')).toBe('Anchor bolts')
+    expect(holdWordsInList('A/C units')).toBe('A/C units')
+    // On the chart, Mon Oct 19: Site lighting waits on its papers and the transformer that did not come.
+    const oct19 = { ...initialGcState(), today: '2026-10-19' }
+    expect(chartHolds(oct19, fairOaks(oct19)).get('felec-5')?.words).toBe('current insurance and the transformer, expected Oct 15 and not in')
+    // A question and a utility named by the office keep their capitals.
+    const state = initialGcState()
+    const folded = (kind: GanttHold['kind'], words: string) => withNotReady(new Map<string, GanttHold>([['felec-5', { kind, words, late: false }]]), state, fairOaks(state)).get('felec-5')?.words
+    expect(folded('rfi', 'RFI-004, waiting on us')).toBe('current insurance and RFI-004, waiting on us')
+    expect(folded('utility', 'CPS Energy service drop, expected Oct 15 and not in')).toBe('current insurance and CPS Energy service drop, expected Oct 15 and not in')
   })
 
   it('opens on what to do: each paper with its own next step', () => {
