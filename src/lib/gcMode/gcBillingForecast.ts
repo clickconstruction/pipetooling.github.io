@@ -78,13 +78,25 @@ function changeOrderFinish(project: GcProject, co: ChangeOrder, activities: Sche
   return bar?.finish ?? activities.reduce((last, a) => (a.finish > last ? a.finish : last), today)
 }
 
+/**
+ * The percent a trade's schedule-of-values line reaches by a bill day as the schedule stands: its
+ * bar's, from `nowPct`; or, on a change order's line, done by the finish of the bar its days are
+ * on. Null: no bar and no signed change order, so it stays where it is. Our bill (G-97) and the
+ * trades' draws (G-140) both read it, so the two sides move together.
+ */
+export function sovLinePctAt(project: GcProject, activities: ScheduleActivity[], line: { id: string; pctReported: number; changeOrderId?: string }, nowPct: number, today: string, on: string): number | null {
+  const a = activities.find((x) => x.lineId === line.id)
+  if (a) return forecastPct(a.start, a.finish, nowPct, today, on)
+  const co = line.changeOrderId ? signedChangeOrders(project).find((c) => c.id === line.changeOrderId) : undefined
+  return co ? forecastPct(today, changeOrderFinish(project, co, activities, today), line.pctReported, today, on) : null
+}
+
 /** The job's packages with every line at its percent by a bill day. */
 function packagesAt(project: GcProject, activities: ScheduleActivity[], now: Map<string, number>, today: string, on: string): TradePackage[] {
   const pctOf = (lineId: string): number | null => {
     const a = activities.find((x) => x.lineId === lineId)
     return a ? forecastPct(a.start, a.finish, now.get(lineId) ?? 0, today, on) : null
   }
-  const coFinish = new Map(signedChangeOrders(project).map((co) => [co.id, changeOrderFinish(project, co, activities, today)]))
   return project.packages.map((pkg) => {
     const self = pkg.selfPerform
     if (self) {
@@ -98,11 +110,8 @@ function packagesAt(project: GcProject, activities: ScheduleActivity[], now: Map
     const sow = pkg.sow
     if (!sow) return pkg
     const sov = sow.sov.map((line) => {
-      const pct = pctOf(line.id)
-      if (pct !== null) return { ...line, pctReported: pct }
-      // A change order's line on their statement of work: done by the bar its days are on.
-      const finish = line.changeOrderId ? coFinish.get(line.changeOrderId) : undefined
-      return finish ? { ...line, pctReported: forecastPct(today, finish, line.pctReported, today, on) } : line
+      const pct = sovLinePctAt(project, activities, line, now.get(line.id) ?? 0, today, on)
+      return pct === null ? line : { ...line, pctReported: pct }
     })
     // A pay application sent back is settled by the next bill day; stored materials count once in place.
     const draws = sow.draws.map((d) => ({ ...d, lines: d.lines.map((l) => ({ ...l, stored: 0 })) }))
