@@ -15,7 +15,7 @@ import { supabase } from './supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import type { ProjectsJobHistoryClockRow } from './projectsJobHistoryData'
 
-const SELECT_COLUMNS = 'job_ledger_id, user_id, work_date, clocked_out_at'
+const SELECT_COLUMNS = 'job_ledger_id, user_id, work_date, clocked_in_at, clocked_out_at, quick_add_minutes'
 const JOB_IDS_IN_CHUNK = 100
 
 export type FetchProjectsJobHistoryClockSessionsResult =

@@ -2,7 +2,7 @@
 name: "Legal portal: ready for the firm"
 number: 85
 group: waiting
-status: 23 of 29 built and merged 2026-10-05/06 (v2.4615–v2.4681); item 17 PR 2 (#4640) queued, its migration (#4690) held until the new dispatcher is live; 12–15 and 19 wait for the firm; 10 is the owner's
+status: 24 of 29 built and merged 2026-10-05/06 (v2.4615–v2.4681, v2.4649); item 17 PR 2b (#4690, the migration) queued once the new dispatcher was live at 13:32Z; 12–15 and 19 wait for the firm; 10 is the owner's
 summary: >
   The portal's data model and two-way channel are a real selling point, but the firm-facing
   surface still speaks the office's language, the print packet hands the firm the office's own
@@ -99,4 +99,4 @@ Found by the reviews and left for later:
 - A GC who is not the payer reads *GC* on the portal; the grid's *Paid out to GC* and *10 % reserved* stay *?* after the owner answers.
 - A second agreed write-down overwrites `agreed_write_down_previous_amount`, so the bill prints at the amount before the last write-down.
 - After the hash-only migration the Lien desk share says a link is live but cannot show it; the office sees the link only when it mints or rotates one.
-- Every public page is eager in `App.tsx`, so the main chunk is 4.9 MiB; PR CI does not run the production build, which is how v2.4655 broke every deploy for six hours (fixed v2.4687).
+- Every public page is eager in `App.tsx`, so the main chunk is 4.9 MiB; PR CI does not run the production build, which is how v2.4655 broke every deploy for six hours (fixed v2.4695, #4689).

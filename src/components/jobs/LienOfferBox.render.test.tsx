@@ -5,7 +5,7 @@ import LienOfferBox from './LienOfferBox'
 
 afterEach(cleanup)
 
-describe('LienOfferBox — the leader’s pay offer (v2.4700)', () => {
+describe('LienOfferBox — the leader’s pay offer (v2.4708)', () => {
   it('is off until switched on; on, it offers 10% by 14 days from today and prints the sentence', () => {
     const onChange = vi.fn()
     const { rerender } = render(<LienOfferBox offer={null} onChange={onChange} todayYmd="2026-11-01" affidavitDueOn="2026-12-15" amounts={[6240, 6165, 5180]} />)

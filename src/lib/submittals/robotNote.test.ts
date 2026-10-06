@@ -47,9 +47,15 @@ describe('robotScheduleNote', () => {
   })
 
   it('an ask nobody came for: the chip is amber and names the day; the card says what to do by hand', () => {
-    const n = robotScheduleNote(task({ requested_at: '2026-09-28T15:00:00Z' }), { live: true, line: 'A robot last ran 6 days ago.' }, NOW, day)
-    expect([n.tone, n.chip, n.button?.label]).toEqual(['warn', 'Asked Sep 28 · not picked up yet', 'Take the ask back'])
-    expect(n.lines).toEqual(['You asked the robot on Sep 28. A robot last ran 6 days ago. It has not picked this up.', 'Nobody is reading the plans. Type the schedule yourself, or leave the ask in place.'])
+    const n = robotScheduleNote(task({ requested_at: '2026-10-03T15:00:00Z' }), { live: true, line: 'A robot last ran 6 days ago.' }, NOW, day)
+    expect([n.tone, n.chip, n.button?.label]).toEqual(['warn', 'Asked Oct 3 · not picked up yet', 'Take the ask back'])
+    expect(n.lines).toEqual(['You asked the robot on Oct 3. A robot last ran 6 days ago. It has not picked this up.', 'Nobody is reading the plans. Type the schedule yourself, or leave the ask in place.'])
+  })
+
+  it('v2.4690 · an ask eight days old counts the days and offers Withdraw the ask', () => {
+    const n = robotScheduleNote(task({ requested_at: '2026-09-27T15:00:00Z' }), { live: true, line: 'A robot last ran 6 days ago.' }, NOW, day)
+    expect([n.tone, n.chip, n.button?.label]).toEqual(['warn', 'Asked 8 days ago · nobody picked it up', 'Withdraw the ask'])
+    expect(n.lines[0]).toBe('You asked the robot 8 days ago. Nobody has picked it up.')
   })
 
   it('no robot on shift at all makes even a new ask stale', () => {

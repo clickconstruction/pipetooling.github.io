@@ -10,7 +10,7 @@
  * asked, so nothing that matters waits for a hover.
  */
 import { describeTask } from '../../../supabase/functions/_shared/submittalRobot'
-import { robotOfferText, staleAsk, type RobotKind, type RobotSeatState } from './robotOffer'
+import { robotOfferText, staleAsk, type RobotKind, type RobotSeatState, ASK_OLD_AFTER_DAYS } from './robotOffer'
 import { scheduleToConfirm, taskStatus, type SubmittalTaskRow } from './robotTasks'
 
 export type RobotNoteTone = 'plain' | 'warn' | 'good' | 'bad'
@@ -52,7 +52,7 @@ export function robotScheduleNote(task: SubmittalTaskRow, seat: RobotSeatState, 
   const base = { heldWhy: '', guide: false }
   if (st === 'queued') {
     const stale = staleAsk('read_schedule', task.requested_at, seat, nowMs, day)
-    if (stale) return { ...base, tone: 'warn', chip: upperFirst(stale.suffix), lines: [stale.head, stale.detail], button: { label: 'Take the ask back', held: false } }
+    if (stale) return { ...base, tone: 'warn', chip: upperFirst(stale.suffix), lines: [stale.head, stale.detail], button: { label: stale.daysWaited >= ASK_OLD_AFTER_DAYS ? 'Withdraw the ask' : 'Take the ask back', held: false } }
     return { ...base, tone: 'plain', chip: 'Queued to read the plans', lines: ['The robot is queued to read the fixture schedule off the plans.', line], button: { label: 'Cancel', held: false } }
   }
   if (st === 'blocked') return { ...base, tone: 'bad', chip: 'Could not read the plans', lines: [task.summary || 'The robot could not read the plans.', line], button: { label: 'Dismiss', held: false } }

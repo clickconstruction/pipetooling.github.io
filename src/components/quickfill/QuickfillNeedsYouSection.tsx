@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { lienWindowHref } from '../../lib/jobs/stagesDeepLinks'
+import { lienWindowHref, ownerRecordsHref } from '../../lib/jobs/stagesDeepLinks'
 import { useAuth } from '../../hooks/useAuth'
 import { TALLY_STALE_MIN_AGE_DAYS } from '../../lib/tallyStaleMinAgeDays'
 import { useTallyUnlinkedCounts } from '../../hooks/useTallyUnlinkedCounts'
@@ -17,10 +17,12 @@ import { CLAIM_DEV_LOOKBACK_DAYS, useClaimDevAttemptsNudge } from '../../hooks/u
 import { useLienReleasesOwedNudge } from '../../hooks/useLienReleasesOwedNudge'
 import { useDemandDeadlinesNudge } from '../../hooks/useDemandDeadlinesNudge'
 import { useLienWatchNudge } from '../../hooks/useLienWatchNudge'
+import { useOwnerRecordsSignedNudge } from '../../hooks/useOwnerRecordsSignedNudge'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { useLienDeskData } from '../../hooks/useLienDeskData'
 import { LABEL_APPROVALS_MIN_AGE_DAYS, usePendingLabelApprovalsNudge } from '../../hooks/usePendingLabelApprovalsNudge'
 import { usePendingHrReportsNudge } from '../../hooks/usePendingHrReportsNudge'
+import { useVehicleRecordGapsNudge } from '../../hooks/useVehicleRecordGapsNudge'
 import {
   DISPATCH_REQUEST_AGE,
   DISPATCH_REQUESTS_MIN_AGE_DAYS,
@@ -93,6 +95,8 @@ export function QuickfillNeedsYouSection({
   const [lienReleaseQueueOpen, setLienReleaseQueueOpen] = useState(false)
   const { overdue: demandDeadlineOverdue } = useDemandDeadlinesNudge(lienUnconditionalEnabled)
   const { watch: lienWatch } = useLienWatchNudge(lienUnconditionalEnabled)
+  // Owners who signed for our records on their portal (punch list #86) — the same office set.
+  const { signed: ownerRecordsSigned } = useOwnerRecordsSignedNudge(lienUnconditionalEnabled)
   // The Lien desk (v2.3405): notices due per unpaid work month — the office's drafting pile, the leader's approvals.
   const { data: lienDeskData } = useLienDeskData(lienUnconditionalEnabled, todayYmdInAppTz(), { light: true })
   // Bank-label approvals ARE close-ritual work (journey-map Tier-2 #27): the
@@ -103,6 +107,9 @@ export function QuickfillNeedsYouSection({
   const { approvals: labelApprovals } = usePendingLabelApprovalsNudge(labelApprovalsEnabled)
   const hrReportsEnabled = Boolean(authUser?.id) && role === 'dev'
   const { aged: hrReportsAged } = usePendingHrReportsNudge(hrReportsEnabled)
+  // The owner, 2026-10-06 (v2.4700): the Dashboard's vehicle-records card here too, for dev, assistant and controller.
+  const vehicleRecordGapsEnabled = Boolean(authUser?.id) && (role === 'dev' || isAssistantLike(role))
+  const { gaps: vehicleRecordGaps } = useVehicleRecordGapsNudge(vehicleRecordGapsEnabled)
 
   const items = buildNeedsYouItems({
     role,
@@ -151,6 +158,8 @@ export function QuickfillNeedsYouSection({
     lienDeskEnabled: lienUnconditionalEnabled,
     lienDesk: lienDeskData?.summary ?? null,
     lienDeskLeader: role === 'dev' || role === 'master_technician',
+    ownerRecordsSignedEnabled: lienUnconditionalEnabled,
+    ownerRecordsSigned,
     // Hours approvals are people-desk work — a Dashboard concern, not billing.
     hoursApprovalsEnabled: false,
     hoursApprovals: null,
@@ -169,6 +178,8 @@ export function QuickfillNeedsYouSection({
     hrReportsAged,
     hrReportsMinAgeDays: HR_REPORTS_MIN_AGE_DAYS,
     hrReportsRedDays: HR_PENDING_REPORT_AGE.redDays,
+    vehicleRecordGapsEnabled,
+    vehicleRecordGaps,
   })
 
   useEffect(() => {
@@ -225,6 +236,9 @@ export function QuickfillNeedsYouSection({
             navigate('/jobs?tab=stages&liendesk=1&kind=timeline')
           } else if (item.key === 'lien-tracking-owed') {
             navigate('/jobs?tab=stages&liendesk=1&liendeskPile=sent')
+          } else if (item.key === 'owner-records-signed') {
+            const jobId = ownerRecordsSigned?.first.jobId
+            navigate(jobId ? ownerRecordsHref(jobId) : '/jobs?tab=stages&liendesk=1')
           } else if (item.key === 'lien-serve-copy') {
             // The lien whose serve-by day comes first, on its Mechanic's lien tab where service is recorded.
             const first = [...(lienWatch?.serveDue ?? [])].sort((a, b) => a.serveDue.localeCompare(b.serveDue))[0]
@@ -239,6 +253,8 @@ export function QuickfillNeedsYouSection({
             else navigate(customerWaitingCtx?.inboxHref ?? '/dispatch-mode/inbox')
           } else if (item.key === 'hr-reports-pending') {
             navigate('/people?tab=hr')
+          } else if (item.key === 'vehicle-records-missing') {
+            navigate('/people?tab=vehicles')
           }
         }}
         onSecondary={(item, key) => {
