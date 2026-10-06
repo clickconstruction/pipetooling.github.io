@@ -6,9 +6,10 @@
  * touches it — `npm run check:plain-words` fails CI while a touched guide is still listed —
  * and a guide that fails here is rewritten, never exempted.
  *
- * Held: the body's paragraphs and list items. Not held: the frontmatter, the headings, the
- * `:::example` panels (they quote real bids), a mock-UI token (the control's exact name is
- * the rule) and an italic span (what the screen prints, quoted as printed).
+ * Held: the body's paragraphs, list items and table rows. Not held: the frontmatter, the
+ * headings, the `:::example` panels (they quote real bids), a mock-UI token (the control's
+ * exact name is the rule), an italic span (what the screen prints, quoted as printed), a
+ * table row's pipes and a table cell holding only "—".
  */
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'

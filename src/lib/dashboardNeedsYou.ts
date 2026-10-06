@@ -584,7 +584,7 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
       severity: 'red',
       kicker: 'Lien filings',
       title: n === 1 ? 'A filed lien has not been served' : `${n} filed liens have not been served`,
-      detail: `A copy of the filed affidavit must reach the owner and contractor by the 5th day after filing (§ 53.055) — the ${n === 1 ? 'deadline is' : 'earliest deadline is'} ${worst}. Record the service on the job's lien instruments.`,
+      detail: `A copy of the filed affidavit must reach the owner and contractor by the 5th day after filing (§ 53.055) — the ${n === 1 ? 'deadline is' : 'earliest deadline is'} ${worst}. Record the service in the job's Lien window.`,
       figure: String(n),
       actionLabel: 'Record service',
     })
@@ -802,7 +802,7 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
         n === 1 ? 'A demand-letter deadline passed unpaid' : `${n} demand-letter deadlines passed unpaid`,
       detail:
         `${money} is still open past the payment deadline${n === 1 ? '' : 's'} you set in writing. ` +
-        "Follow through on the letter's next step — open the lien instruments on each job's Pipeline row.",
+        "Follow through on the letter's next step — open the job's Lien window from its Pipeline row.",
       figure: String(n),
       actionLabel: 'Open the jobs',
     })

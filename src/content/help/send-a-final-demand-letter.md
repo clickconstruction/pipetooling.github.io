@@ -1,16 +1,16 @@
 ---
 title: send a final demand letter
 category: Billing & Money
-keywords: demand letter, final demand, collections, certified mail, tracking number, deadline, escalate, lien instruments, lien window, theft of services, chapter 53, attorney's fees, exhibits, statement of account, delivery record
+keywords: demand letter, final demand, collections, certified mail, tracking number, deadline, escalate, liens on job, lien window, theft of services, chapter 53, attorney's fees, exhibits, statement of account, delivery record
 roles: dev, master_technician, assistant, controller
 ---
 A final demand letter gives a late payer one last dated deadline in writing. The app writes it from the job's own bills and history. Then it watches the deadline for you.
 
 Send one when calls and re-sent bills have not brought the money in.
 
-## Open Lien instruments
+## Open the job's Lien window
 
-Find the job's row under **Billed Awaiting Payment** or **Collections** on the Jobs Pipeline. Press the orange lien icon on the row. The **Lien instruments** window opens on its **Demand letter** tab.
+Find the job's row under **Billed Awaiting Payment** or **Collections** on the Jobs Pipeline. Press the orange lien icon on the row. The window opens on its **Demand letter** tab. Its title reads *Liens on job* and the job's number.
 
 On a phone, open the job card's menu and press *Lien window · timeline*.
 

@@ -9,6 +9,9 @@
  * that genuinely does not belong on the tab (sign-in, invites, the office's own reports) is
  * listed with `exempt` and the reason, so the count stays honest.
  *
+ * How the office sees each one as the outsider does (the real page in preview, a draft through
+ * the page's own components, a sample through the real kernels): `docs/GLOSSARY.md` → What customers see.
+ *
  * Pure data + pure functions; the test supplies the file contents.
  */
 import type { Journey, JourneyId } from './customerJourneys'

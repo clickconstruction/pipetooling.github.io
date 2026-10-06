@@ -22,7 +22,8 @@
  *
  * What is quoted is not held: a mock-UI token is the control's exact name whatever it
  * contains, an italic span in a guide is what the screen prints, quoted as printed, and a
- * guide's `:::example` panels quote real bids and are kept as written.
+ * guide's `:::example` panels quote real bids and are kept as written. A table row's pipes
+ * are its cell walls, not words, and a cell holding only "—" is an empty cell, not glue.
  */
 
 export const PLAIN_WORDS_MAX_SENTENCE_WORDS = 20
@@ -72,19 +73,23 @@ export function helpGuideProseLines(source: string): string[] {
   return lines
 }
 
-/** For counting: a link is its text, a token becomes its label, bold marks go, an italic span is one quoted word. */
+/** A table row (`| a | b |`): its pipes are cell walls, not words. */
+const TABLE_ROW = /^\|/
+
+/** For counting: a link is its text, a token becomes its label, bold marks go, an italic span is one quoted word, a table row's pipes go. */
 export function helpGuideLineForCounting(line: string): string {
-  return line
+  const counted = line
     .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
     .replace(/\{\{[a-z]+:[^|}]*\|([^}]*)\}\}/g, '$1')
     .replace(/\{\{[a-z]+:[^|}]*\}\}/g, 'icon')
     .replace(/\*\*/g, '')
     .replace(/\*[^*]+\*/g, 'quoted')
+  return TABLE_ROW.test(line) ? counted.replace(/\|/g, ' ').replace(/\s+/g, ' ').trim() : counted
 }
 
-/** For the glue rule: a link's target, tokens and italic spans are not prose, read around. */
+/** For the glue rule: a link's target, tokens and italic spans are not prose, read around, and a table cell holding only "—" is empty. */
 export function helpGuideLineForGlue(line: string): string {
-  return line
+  return (TABLE_ROW.test(line) ? line.replace(/\|[ \t]*—[ \t]*(?=\|)/g, '| ') : line)
     .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
     .replace(/\{\{[^}]*\}\}/g, '')
     .replace(/\*\*/g, '')

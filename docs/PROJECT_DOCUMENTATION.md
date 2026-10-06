@@ -2021,7 +2021,7 @@ VITE_SUPABASE_ANON_KEY=your-anon-key
 ### Database Migrations
 - Apply migrations ONLY with `supabase db push`, and only after the migration file is on `main` (or in the PR merging right now). Never apply DDL via Supabase MCP `apply_migration`, `execute_sql`, or the dashboard SQL editor — all three cause ledger drift (see CLAUDE.md / AGENTS.md for the full rule and the 2026-07-04 ledger-rewrite history)
 - Every new migration starts with `SET lock_timeout = '3s';` (CI-enforced) — there is no staging; DDL runs against prod while crews use the app
-- Migrations that CREATE TABLE must end with both `SELECT public.apply_read_only_write_blocks();` and `SELECT public.apply_read_only_stmt_blocks();` so read-only (training-mode) users can't write to the new table
+- Migrations that CREATE TABLE must end with `SELECT public.apply_read_only_write_blocks();`, `SELECT public.apply_read_only_stmt_blocks();` and `SELECT public.apply_digital_twin_write_blocks();` so neither read-only (training-mode) users nor digital twins can write to the new table
 - Number new migrations from `origin/main`'s latest file (`git ls-tree origin/main supabase/migrations/ | tail`), not from your branch
 - Write migrations idempotent (`IF NOT EXISTS` / `CREATE OR REPLACE`) and additive when possible; check ledger alignment with `npm run check:migration-drift`
 

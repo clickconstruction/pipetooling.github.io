@@ -4581,12 +4581,13 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
    DROP POLICY IF EXISTS my_policy ON my_table;  -- before re-creating it
    ```
 
-4. **CREATE TABLE migrations must end with BOTH sweep calls** (CI-enforced):
+4. **CREATE TABLE migrations must end with all three sweep calls** (no CI check; reviewers look for them):
    ```sql
    SELECT public.apply_read_only_write_blocks();
    SELECT public.apply_read_only_stmt_blocks();
+   SELECT public.apply_digital_twin_write_blocks();
    ```
-   Miss either and the new table is writable by read-only (training-mode) users.
+   Miss one and the new table is writable by read-only (training-mode) users or by digital twins. All three create only what is missing (the stmt trigger since `20260814185815`, the twin fence since `20261005222937`), so the call locks just the new table. The flip side: a plain rerun never rebuilds what exists. To change a twin-fence allowance (including an existing table gaining a `bid_id` or `cost_estimate_id` column) or the stmt trigger, ship a one-off migration that drops the affected policies or triggers first, then calls the helper.
 
 5. **Check dependencies and existing data**: verify foreign keys/constraints, and handle existing rows when altering populated columns.
 

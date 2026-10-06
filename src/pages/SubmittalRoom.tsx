@@ -9,7 +9,7 @@
  * pinned, phone first.
  */
 import { useEffect, useState, type CSSProperties } from 'react'
-import { RoomRevisionBody } from '../components/bids/SubmittalRoomView'
+import { RoomHeader, RoomRevisionBody, RoomRevisionChips } from '../components/bids/SubmittalRoomView'
 import { APP_CALENDAR_TZ, calendarYmdInAppTzFromIso } from '../utils/dateUtils'
 import { useSearchParams } from 'react-router-dom'
 
@@ -308,21 +308,14 @@ export default function SubmittalRoom() {
     <div data-theme="light" style={paper}>
       <div style={{ maxWidth: 560, margin: '0 auto', padding: '1rem 1rem 6rem' }}>
         {sample ? <SampleModeBanner /> : null}
+        {preview && !sample ? (
+          // v2.4608 · opened from the office's door: say so before anyone presses (the function refuses every write either way).
+          <div role="status" data-theme="light" data-testid="room-preview-banner" style={{ margin: '0 0 0.9rem', padding: '0.45rem 0.75rem', borderRadius: 6, background: 'var(--bg-amber-50)', border: '1px solid var(--border-amber)', color: 'var(--text-amber-800)', fontSize: '0.8rem', fontWeight: 600 }}>
+            You are looking as the office. Nothing here is counted or saved.
+          </div>
+        ) : null}
         {payload ? (
-          <header style={{ marginBottom: '0.9rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 12, paddingBottom: '0.7rem', borderBottom: `3px solid var(--text-strong)` }}>
-              <div>
-                <div style={{ fontSize: '1.5rem', fontWeight: 900, letterSpacing: '-0.03em', lineHeight: 1 }}>{payload.company.name.toUpperCase()}</div>
-                {payload.company.tagline ? <div style={{ ...label, marginTop: 4, letterSpacing: '0.22em' }}>{payload.company.tagline}</div> : null}
-              </div>
-              {payload.company.phone ? <div style={{ ...quiet, fontSize: '0.75rem', textAlign: 'right' }}>{payload.company.phone}</div> : null}
-            </div>
-            <div style={{ marginTop: '0.9rem' }}>
-              <div style={{ ...label, color: COPPER }}>Product review</div>
-              <div style={{ fontWeight: 700, fontSize: '1.05rem', lineHeight: 1.25 }}>{payload.bid.projectName || payload.bid.label}</div>
-              <div style={quiet}>Plumbing fixtures &amp; equipment{payload.bid.address ? ` · ${payload.bid.address}` : ''}</div>
-            </div>
-          </header>
+          <RoomHeader company={payload.company} bid={payload.bid} />
         ) : null}
 
         {view.kind === 'loading' ? <p style={{ ...quiet, padding: '3rem 0', textAlign: 'center' }}>Loading…</p> : null}
@@ -340,15 +333,7 @@ export default function SubmittalRoom() {
 
         {view.kind === 'open' && payload && rev ? (
           <>
-            {payload.revisions.length > 1 ? (
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: '0.8rem' }} data-testid="room-revisions">
-                {payload.revisions.map((r) => (
-                  <button key={r.id} type="button" aria-pressed={r.id === rev.id} onClick={() => setRevId(r.id)} style={{ padding: '0.3rem 0.7rem', borderRadius: 999, border: '1px solid var(--border-strong)', background: r.id === rev.id ? 'var(--text-strong)' : 'var(--surface)', color: r.id === rev.id ? 'white' : 'var(--text-muted)', font: 'inherit', fontSize: '0.75rem', fontWeight: r.id === rev.id ? 700 : 500, cursor: 'pointer' }}>
-                    Rev {r.rev}{r.current ? ' · current' : ''}{r.sharedAt ? ` · ${shortDate(r.sharedAt)}` : ''}
-                  </button>
-                ))}
-              </div>
-            ) : null}
+            <RoomRevisionChips revisions={payload.revisions} selectedId={rev.id} onSelect={setRevId} />
 
             <RoomRevisionBody
               rev={rev}

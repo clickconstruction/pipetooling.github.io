@@ -250,7 +250,7 @@ export default function LienDeskRetainagePane({
   } else if (entry.pile === 'sent') {
     footer = (
       <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-        Sent{entry.item?.sent_at ? ` ${demandDate(calendarYmdInAppTzFromIso(entry.item.sent_at))}` : ''} · the notice is on the job's lien instruments.{entry.inClaim ? '' : ' The owner may withhold this retainage once they receive a copy of the filed affidavit (§ 53.081(c)) — the Affidavits tab is watching this job.'}
+        Sent{entry.item?.sent_at ? ` ${demandDate(calendarYmdInAppTzFromIso(entry.item.sent_at))}` : ''} · the notice is in the job's Lien window.{entry.inClaim ? '' : ' The owner may withhold this retainage once they receive a copy of the filed affidavit (§ 53.081(c)) — the Affidavits tab is watching this job.'}
       </div>
     )
   } else if (entry.pile === 'missed') {
