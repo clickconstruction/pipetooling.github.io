@@ -140,3 +140,28 @@ describe('buildLienNextUp — who may act, and the order', () => {
     expect(groupLienNextUp([])).toEqual([])
   })
 })
+
+describe('buildLienNextUp — the late notice (v2.4708)', () => {
+  const gates = (noticeOk: boolean, ownerOk = true) => [
+    { key: 'owner' as const, ok: ownerOk, label: '' },
+    { key: 'legal' as const, ok: true, label: '' },
+    { key: 'notice' as const, ok: noticeOk, label: '' },
+    { key: 'homestead' as const, ok: true, label: '' },
+  ]
+  const closedOnly = (over: Partial<LienDeskEntry> = {}) => notice('j1', 'missed', { dueMonths: [], missedMonths: ['2026-07'], missedUnrecorded: ['2026-07'], earliestDeadline: null, daysLeft: null, severity: 'red', ...over })
+  it('every window closed, the affidavit still open: the notice row drafts it late, the affidavit row says send the notice first', () => {
+    const rows = build({ notices: [closedOnly()], affidavits: [affidavit('j1', 'needs_property', { deadline: '2026-10-15', daysLeft: 10, severity: 'amber', gates: gates(false) })] })
+    const n = rows.find((r) => r.kind === 'notice')!
+    expect([n.action, n.button, n.sub, n.dueOn, n.daysLeft]).toEqual(['draft_late', 'Draft it late', 'Late notice to draft · the window closed, the affidavit is still open', '2026-10-15', 10])
+    expect(n.target).toEqual({ open: 'notices', jobId: 'j1', pile: 'missed' })
+    const a = rows.find((r) => r.kind === 'affidavit')!
+    expect([a.action, a.button]).toEqual(['send_notice', 'Send the notice first'])
+    expect(a.sub).toContain('late is allowed')
+    expect(a.target).toEqual({ open: 'notices', jobId: 'j1', pile: 'missed' })
+  })
+  it('the affidavit window closed too: the notice row is Note it, as before; a property gate still failing keeps Fix the property', () => {
+    const rows = build({ notices: [closedOnly()], affidavits: [affidavit('j1', 'needs_property', { deadline: '2026-09-15', daysLeft: -20, severity: 'red', gates: gates(false, false) })] })
+    expect(rows.find((r) => r.kind === 'notice')!.action).toBe('note_missed')
+    expect(rows.find((r) => r.kind === 'affidavit')!.action).toBe('fix_property')
+  })
+})

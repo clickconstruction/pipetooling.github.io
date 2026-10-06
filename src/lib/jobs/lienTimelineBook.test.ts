@@ -22,7 +22,7 @@ function input(): LienTimelineBookInput {
     // 891: two open months, the first inside 30 days → due
     row('j891', '2026-07', '2026-10-15', { open_balance: 27_199 }),
     row('j891', '2026-08', '2026-11-16', { open_balance: 27_199 }),
-    // 650: one closed month, unnoted → lien gone, still due (the note)
+    // 650: one closed month, unnoted; the affidavit window (Oct 15) is still open on Sep 23 → the late notice is due (v2.4708)
     row('j650', '2026-06', '2026-09-15', { open_balance: 21_800, gc_customer_id: 'gc2' }),
     // 912: a month whose notice is 50 days out → later
     row('j912', '2026-09', '2026-12-15', { open_balance: 4_000 }),
@@ -37,7 +37,7 @@ function input(): LienTimelineBookInput {
     filingsByJob: { j707: [filing({})] },
     jobs: {
       j891: job('j891', { openBalance: 27_199 }),
-      j650: job('j650', { openBalance: 21_800, gcId: 'gc2', gcName: 'Burd & Assoc.' }),
+      j650: job('j650', { openBalance: 21_800, gcId: 'gc2', gcName: 'Burd & Assoc.', lastWorkDate: '2026-06-25' }),
       j912: job('j912', { openBalance: 4_000, lastWorkDate: '2026-09-10' }),
       j707: job('j707', { openBalance: 12_400, lastWorkDate: '2026-03-28' }),
     },
@@ -49,7 +49,7 @@ function input(): LienTimelineBookInput {
 describe('buildLienTimelineBook', () => {
   const book = buildLienTimelineBook(input())
   it('lists every job with a lien month, sorted by the next date, with a lens each', () => {
-    expect(book.rows.map((r) => `${r.jobId}:${r.lens}:${r.sortDate}`)).toEqual(['j891:due:2026-10-15', 'j912:later:2026-12-15', 'j707:later:2027-07-15', 'j650:due:'])
+    expect(book.rows.map((r) => `${r.jobId}:${r.lens}:${r.sortDate}`)).toEqual(['j891:due:2026-10-15', 'j650:due:2026-10-15', 'j912:later:2026-12-15', 'j707:later:2027-07-15'])
     expect(book.counts).toEqual({ due: 2, later: 2, dead: 0, all: 4 })
   })
   it('names the GCs with their counts', () => {
@@ -69,9 +69,10 @@ describe('buildLienTimelineBook', () => {
     expect(filterLienTimelineBook(book, { gcId: 'gc1', show: 'all' }).map((r) => r.jobId)).toEqual(['j891', 'j912', 'j707'])
     expect(filterLienTimelineBook(book, { gcId: null, show: 'due' }).map((r) => r.jobId)).toEqual(['j891', 'j650'])
   })
-  it('a lien gone and noted is dead, not due', () => {
+  it('a lien gone and noted is dead, not due — once the affidavit window has closed too (v2.4708: before that a late notice can still go)', () => {
     const noted = buildLienTimelineBook({
       ...input(),
+      todayYmd: '2026-10-20',
       items: [
         { id: 'i1', job_id: 'j650', kind: 'notice_53_056', status: 'missed', months: ['2026-06'], fields: { notice: {}, windowClosed: { name: 'Taunya', at: '2026-09-21T15:00:00Z' } }, created_at: '2026-09-21T15:00:00Z', updated_at: '2026-09-21T15:00:00Z', drafted_at: '2026-09-21T15:00:00Z', drafted_by: null, approval_mode: null, approved_at: null, approved_by: null, cover_note: false, held_at: null, held_by: null, hold_reason: '', hold_until: null, pulled_back_at: null, pulled_back_by: null, sent_at: null, sent_filing_id: null, submitted_at: null, voided_at: null, printed_at: null, printed_by: null, word_channel: '', word_note: '' },
       ],

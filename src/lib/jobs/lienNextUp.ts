@@ -26,6 +26,8 @@ export type LienNextUpAction =
   | 'letter_two'
   | 'note_missed'
   | 'fix_property'
+  | 'send_notice'
+  | 'draft_late'
   | 'file_affidavit'
   | 'record_service'
 
@@ -74,6 +76,8 @@ const BUTTON: Record<LienNextUpAction, string> = {
   letter_two: 'Send letter two',
   note_missed: 'Note it',
   fix_property: 'Fix the property',
+  send_notice: 'Send the notice first',
+  draft_late: 'Draft it late',
   file_affidavit: 'File the affidavit',
   record_service: 'Record service',
 }
@@ -168,7 +172,13 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
       case 'missed':
         // Months still open are drafted as on any other row; a closed window nobody wrote down is noted.
         if (e.dueMonths.length > 0) push({ ...base, key: `notice:${e.jobId}`, sub: 'Notice to draft · a window closed', action: 'draft', target: pane('missed') })
-        else if (e.missedUnrecorded.length > 0) push({ ...base, key: `notice:${e.jobId}`, sub: 'A window closed with nothing recorded', dueOn: null, daysLeft: null, severity: 'red', action: 'note_missed', button: office ? BUTTON.note_missed : null, target: pane('missed') })
+        else {
+          // v2.4708: every window closed unsent, but the affidavit's own window is still open — a late notice can still carry it (the owner's reading, 2026-10-06).
+          const aff = input.affidavits.find((a) => a.jobId === e.jobId)
+          const lateOpen = aff && aff.pile !== 'filed' && aff.deadline && aff.deadline >= input.todayYmd && e.missedMonths.length > 0
+          if (lateOpen) push({ ...base, key: `notice:${e.jobId}`, sub: 'Late notice to draft · the window closed, the affidavit is still open', dueOn: aff.deadline, daysLeft: aff.daysLeft, severity: aff.severity, action: 'draft_late', button: office ? BUTTON.draft_late : null, target: pane('missed') })
+          else if (e.missedUnrecorded.length > 0) push({ ...base, key: `notice:${e.jobId}`, sub: 'A window closed with nothing recorded', dueOn: null, daysLeft: null, severity: 'red', action: 'note_missed', button: office ? BUTTON.note_missed : null, target: pane('missed') })
+        }
         break
     }
   }
@@ -197,9 +207,13 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
     const base = { kind: 'affidavit' as const, jobId: e.jobId, gcId: e.gcCustomerId, title: input.jobTitle(e.jobId), dueOn: e.deadline || null, daysLeft: e.deadline ? e.daysLeft : null, severity: e.severity, target: { open: 'affidavits', jobId: e.jobId } as LienNextUpTarget }
     const key = `affidavit:${e.jobId}`
     switch (e.pile) {
-      case 'needs_property':
-        push({ ...base, key, sub: 'Affidavit · the property record is not complete', action: 'fix_property' })
+      case 'needs_property': {
+        // v2.4708: when the notice is the one gate left, the move is the late notice, not the property record.
+        const failing = e.gates.filter((g) => !g.ok).map((g) => g.key)
+        if (failing.length === 1 && failing[0] === 'notice') push({ ...base, key, sub: 'Affidavit · send the § 53.056 notice first — late is allowed while this window is open', action: 'send_notice', button: office ? BUTTON.send_notice : null, target: { open: 'notices', jobId: e.jobId, pile: 'missed' } })
+        else push({ ...base, key, sub: 'Affidavit · the property record is not complete', action: 'fix_property' })
         break
+      }
       case 'to_draft':
         push({ ...base, key, sub: 'Affidavit to draft', action: 'draft', button: canAct ? 'Draft affidavit' : null })
         break

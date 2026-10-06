@@ -265,6 +265,7 @@ Threats of a civil suit or a lien are allowed.
 
 A lawyer has not confirmed these readings. The app uses them today.
 
+- Whether a late § 53.056 notice still carries the affidavit while the affidavit window is open. The app says it does since Oct 6, 2026, on the owner's reading. Counsel's memo of Sep 22, 2026 read a closed month as information only.
 - Whether a bill counts as chapter 28's written payment request on a homeowner job. The letter says it does today.
 - The CPRC chapter 38 sentence on every letter.
 - The *§ 31.04* line, and delivery under *§ 31.04(c)*.
