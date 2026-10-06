@@ -14,7 +14,9 @@ import { MOVE_REASONS, moveWhyProblem, planMove, spanWords } from '../../lib/gcM
 import { walkChanges, walkItems, walkStanding, walkTally, type WalkItem } from '../../lib/gcMode/gcScheduleWalk'
 import { lostDaysMoveNote } from '../../lib/gcMode/gcDaysLost'
 import { actualWords } from '../../lib/gcMode/gcActualDates'
+import { planPull, pullCountWords, type PullOffer } from '../../lib/gcMode/gcPullEarlier'
 import { Btn, Chip, input } from './gcUi'
+import { GcPullBox, GcPullWindow } from './GcPullEarlier'
 
 /** The signed-in person's name. Outside the app's sign-in (a test), none. */
 function useMeName(): string | null {
@@ -30,7 +32,9 @@ const label = { fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', c
 /** Over the chart: when the schedule was last walked, and the door to walking it now. */
 export function GcWalkLine({ state, project, holds, onWalk }: { state: GcState; project: GcProject; holds: Map<string, GanttHold>; onWalk: () => void }) {
   const standing = walkStanding(project, state.today)
-  const count = walkItems(state, project, holds).length
+  // Work that finished early is one item more when there is something to press or chase (G-37).
+  const early = planPull(state, project)
+  const count = walkItems(state, project, holds).length + (early && early.show !== 'quiet' ? 1 : 0)
   // The walk's day is Friday morning, before the Friday report goes (call 6, the owner's OK 2026-10-06).
   const friday = new Date(`${state.today}T00:00:00Z`).getUTCDay() === 5 && standing.days !== 0
   return (
@@ -51,13 +55,37 @@ export function GcWalkLine({ state, project, holds, onWalk }: { state: GcState; 
 
 type Outcome = { kind: 'kept' } | { kind: 'moved'; moveId: string }
 
+/** The walk's item for work that finished early (G-37), listed above the week's bars. Never a line id. */
+const EARLY = 'pull:early'
+
+/** What the walk says about work that finished early: what finished, what can start sooner or holds it, the finish. */
+function earlyFacts(offer: PullOffer): string[] {
+  return [
+    ...offer.words.finished,
+    offer.words.state,
+    ...offer.pulls.map((p) => p.said),
+    ...offer.words.detail,
+    ...(offer.show === 'pull' ? [offer.words.finish] : []),
+    ...(offer.words.lost ? [offer.words.lost] : []),
+  ]
+}
+
 /** The walk: the bars down the side, one at a time on the right, then what changed. */
 export function GcScheduleWalk({ state, project, holds, dispatch, onClose }: { state: GcState; project: GcProject; holds: Map<string, GanttHold>; dispatch: Dispatch<GcAction>; onClose: () => void }) {
   const me = useMeName() ?? 'The office'
   // The list as it stood when the walk opened: a bar moved during the walk keeps its place on it.
   const [list] = useState<WalkItem[]>(() => walkItems(state, project, holds))
+  // Work that finished early, first on the walk when it opens with something to press or chase (G-37).
+  const [early] = useState(() => {
+    const o = planPull(state, project)
+    return o !== null && o.show !== 'quiet'
+  })
+  const keys = [...(early ? [EARLY] : []), ...list.map((i) => i.lineId)]
   const [done, setDone] = useState<Record<string, Outcome>>({})
-  const [pick, setPick] = useState<string | null>(list[0]?.lineId ?? null)
+  const [pick, setPick] = useState<string | null>(() => (early ? EARLY : (list[0]?.lineId ?? null)))
+  // The early finishes answered with Keep the dates, and the key of the item a pull window was opened from.
+  const [keptEarly, setKeptEarly] = useState<string[]>([])
+  const [pulling, setPulling] = useState<string | null>(null)
   const [finished, setFinished] = useState(false)
   // The new day being typed for the bar in hand, and why.
   const [day, setDay] = useState('')
@@ -66,21 +94,30 @@ export function GcScheduleWalk({ state, project, holds, dispatch, onClose }: { s
   const [note, setNote] = useState('')
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      // Escape over the pull window closes that window, not the walk.
+      if (e.key === 'Escape' && !pulling) onClose()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
+  }, [onClose, pulling])
 
   const phone = typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 700px)').matches
+  const offer = planPull(state, project)
   const item = list.find((i) => i.lineId === pick) ?? null
   const activity = item ? project.schedule?.activities.find((a) => a.lineId === item.lineId) : undefined
   const kept = list.filter((i) => done[i.lineId]?.kind === 'kept').map((i) => i.lineId)
-  const moveIds = list.flatMap((i) => {
-    const o = done[i.lineId]
-    return o?.kind === 'moved' ? [o.moveId] : []
-  })
-  const left = list.length - kept.length - moveIds.length
+  // Each move once: a pull saved from a bar also answers the item for work that finished early.
+  const moveIds = [
+    ...new Set(
+      keys.flatMap((k) => {
+        const o = done[k]
+        return o?.kind === 'moved' ? [o.moveId] : []
+      }),
+    ),
+  ]
+  const keptCount = kept.length + (done[EARLY]?.kind === 'kept' ? 1 : 0)
+  const left = keys.filter((k) => !done[k]).length
+  const listLeft = list.filter((i) => !done[i.lineId]).length
 
   const open = (lineId: string) => {
     setPick(lineId)
@@ -89,13 +126,18 @@ export function GcScheduleWalk({ state, project, holds, dispatch, onClose }: { s
     setReason(null)
     setNote('')
   }
-  const next = (from: string, outcome?: Outcome) => {
-    const now = outcome ? { ...done, [from]: outcome } : done
+  const next = (from: string, outcome?: Outcome, also?: Record<string, Outcome>) => {
+    const now = outcome ? { ...done, ...also, [from]: outcome } : done
     if (outcome) setDone(now)
-    const at = list.findIndex((i) => i.lineId === from)
-    const after = [...list.slice(at + 1), ...list.slice(0, at)].find((i) => !now[i.lineId])
-    if (after) open(after.lineId)
+    const at = keys.indexOf(from)
+    const after = [...keys.slice(at + 1), ...keys.slice(0, at)].find((k) => !now[k])
+    if (after) open(after)
     else setMoving(false)
+  }
+  // A pull saved from the walk (G-37) answers the item it was pressed from, and the item for work that finished early.
+  const pulled = (from: string, moveId: string) => {
+    const outcome: Outcome = { kind: 'moved', moveId }
+    next(from, outcome, early && from !== EARLY && !done[EARLY] ? { [EARLY]: outcome } : undefined)
   }
   // A started bar moves its finish; one not started moves whole, keeping its length.
   const target = item && activity && day ? (item.started ? { start: activity.start, finish: day } : { start: day, finish: addDays(day, daysBetween(activity.start, activity.finish)) }) : null
@@ -108,7 +150,7 @@ export function GcScheduleWalk({ state, project, holds, dispatch, onClose }: { s
     next(item.lineId, { kind: 'moved', moveId })
   }
   const finish = () => {
-    if (kept.length + moveIds.length > 0) dispatch({ type: 'recordScheduleWalk', projectId: project.id, by: me, kept, moveIds, skipped: left })
+    if (kept.length + moveIds.length + keptEarly.length > 0) dispatch({ type: 'recordScheduleWalk', projectId: project.id, by: me, kept, moveIds, skipped: left, ...(keptEarly.length > 0 ? { keptEarly } : {}) })
     setFinished(true)
   }
 
@@ -133,9 +175,9 @@ export function GcScheduleWalk({ state, project, holds, dispatch, onClose }: { s
     return shell(
       <div style={{ padding: '1.1rem', display: 'grid', gap: '0.75rem', overflow: 'auto' }}>
         <div>
-          <h3 style={{ margin: 0, fontSize: '1.05rem' }}>{kept.length + moveIds.length > 0 ? 'The week is updated' : 'Nothing was looked at'}</h3>
+          <h3 style={{ margin: 0, fontSize: '1.05rem' }}>{keptCount + moveIds.length > 0 ? 'The week is updated' : 'Nothing was looked at'}</h3>
           <div style={{ color: 'var(--text-muted)' }}>
-            {kept.length + moveIds.length > 0 ? `Walked today by ${me}. ${walkTally(kept.length, moveIds.length, left)}` : 'The walk is not recorded. The schedule still reads as not walked.'}
+            {keptCount + moveIds.length > 0 ? `Walked today by ${me}. ${walkTally(keptCount, moveIds.length, left)}` : 'The walk is not recorded. The schedule still reads as not walked.'}
           </div>
         </div>
         <div style={{ display: 'grid', gap: '0.35rem' }}>
@@ -168,8 +210,27 @@ export function GcScheduleWalk({ state, project, holds, dispatch, onClose }: { s
   return shell(
     <div style={{ display: 'grid', gridTemplateColumns: phone ? 'minmax(0, 1fr)' : '17rem minmax(0, 1fr)', gridTemplateRows: phone ? 'auto minmax(0, 1fr)' : 'minmax(0, 1fr)', minHeight: 0, overflow: 'hidden', maxHeight: 'inherit' }}>
       <div style={{ background: 'var(--bg-subtle)', borderRight: phone ? 'none' : '1px solid var(--border)', borderBottom: phone ? '1px solid var(--border)' : 'none', padding: '0.8rem 0.5rem', overflow: 'auto', maxHeight: phone ? '9.5rem' : undefined }}>
+        {early && (
+          <>
+            <div style={{ ...label, padding: '0 0.5rem 0.4rem' }}>Finished early</div>
+            <button
+              type="button"
+              aria-current={pick === EARLY}
+              onClick={() => open(EARLY)}
+              style={{ display: 'grid', gap: '0.1rem', width: '100%', textAlign: 'left', border: 'none', borderRadius: 8, padding: '0.45rem 0.5rem', marginBottom: '0.6rem', cursor: 'pointer', background: pick === EARLY ? 'var(--surface)' : 'transparent', color: 'var(--text-base)', font: 'inherit' }}
+            >
+              <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>
+                Work that finished early
+                {done[EARLY] && <span style={{ color: 'var(--text-green-800)', fontWeight: 600 }}> · {done[EARLY]?.kind === 'kept' ? 'kept' : 'pulled'}</span>}
+              </span>
+              <span style={{ color: offer?.show === 'chase' ? 'var(--text-amber-800)' : 'var(--text-green-800)', fontSize: '0.78rem' }}>
+                {offer?.show === 'pull' ? `${pullCountWords(offer)} can start sooner` : offer?.show === 'chase' ? 'the next work is held' : 'nothing left to pull'}
+              </span>
+            </button>
+          </>
+        )}
         <div style={{ ...label, padding: '0 0.5rem 0.4rem' }}>
-          The week · {list.length - left} of {list.length}
+          The week · {list.length - listLeft} of {list.length}
         </div>
         {list.map((i) => {
           const o = done[i.lineId]
@@ -193,7 +254,49 @@ export function GcScheduleWalk({ state, project, holds, dispatch, onClose }: { s
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0, minWidth: 0 }}>
         <div style={{ padding: '1rem', overflow: 'auto', display: 'grid', gap: '0.7rem', alignContent: 'start', flex: 1 }}>
-          {!item || !activity ? (
+          {pick === EARLY ? (
+            <>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
+                <h3 style={{ margin: 0, fontSize: '1.05rem' }}>Work that finished early</h3>
+                {offer && offer.show !== 'quiet' && <Chip tone={offer.show === 'pull' ? 'green' : 'amber'}>{offer.show === 'pull' ? `${pullCountWords(offer)} can start sooner` : 'held'}</Chip>}
+                {done[EARLY] && <Chip tone="green">{done[EARLY]?.kind === 'kept' ? 'dates kept' : 'pulled'}</Chip>}
+              </div>
+              {offer ? (
+                <ul style={{ margin: 0, paddingLeft: '1.1rem', display: 'grid', gap: '0.2rem' }}>
+                  {earlyFacts(offer).map((f) => (
+                    <li key={f}>{f}</li>
+                  ))}
+                </ul>
+              ) : (
+                <div style={{ color: 'var(--text-muted)' }}>Nothing that finished early is waiting now.</div>
+              )}
+              {offer && offer.show !== 'quiet' && !done[EARLY] && (
+                <div style={{ background: 'var(--bg-subtle)', borderRadius: 8, padding: '0.7rem', display: 'grid', gap: '0.6rem' }}>
+                  <strong>{offer.show === 'pull' ? 'Pull the work after it earlier?' : 'Nothing can come in until the hold is gone.'}</strong>
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    {offer.show === 'pull' && (
+                      <Btn kind="primary" onClick={() => setPulling(EARLY)}>
+                        Pull them earlier…
+                      </Btn>
+                    )}
+                    <Btn
+                      kind="plain"
+                      title="No work is pulled in after these. The walk keeps the answer."
+                      onClick={() => {
+                        setKeptEarly(offer.finished.map((f) => f.lineId))
+                        next(EARLY, { kind: 'kept' })
+                      }}
+                    >
+                      Keep the dates
+                    </Btn>
+                    <Btn kind="quiet" onClick={() => next(EARLY)}>
+                      Skip for now
+                    </Btn>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : !item || !activity ? (
             <div style={{ color: 'var(--text-muted)' }}>Nothing on the schedule needs a look this week.</div>
           ) : (
             <>
@@ -231,6 +334,8 @@ export function GcScheduleWalk({ state, project, holds, dispatch, onClose }: { s
                   )}
                 </div>
               )}
+              {/* An early finish recorded here, or a bar right behind one (G-37). */}
+              {offer && <GcPullBox offer={offer} lineId={activity.lineId} onPull={() => setPulling(activity.lineId)} />}
               <div style={{ background: 'var(--bg-subtle)', borderRadius: 8, padding: '0.7rem', display: 'grid', gap: '0.6rem' }}>
                 <strong>{item.started ? `Does it still finish ${weekdayDate(activity.finish)}?` : `Does it still start ${weekdayDate(activity.start)}?`}</strong>
                 {!moving && (
@@ -313,7 +418,7 @@ export function GcScheduleWalk({ state, project, holds, dispatch, onClose }: { s
         </div>
         <div style={{ padding: '0.7rem 1rem', borderTop: '1px solid var(--border)', display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem', flex: '1 1 10rem' }}>
-            {walkTally(kept.length, moveIds.length, left)} {left > 0 ? 'You can finish with some not looked at; the record says how many.' : 'Every bar has been looked at.'}
+            {walkTally(keptCount, moveIds.length, left)} {left > 0 ? 'You can finish with some not looked at; the record says how many.' : 'Every bar has been looked at.'}
           </span>
           <Btn kind="quiet" onClick={onClose}>
             Close
@@ -323,6 +428,7 @@ export function GcScheduleWalk({ state, project, holds, dispatch, onClose }: { s
           </Btn>
         </div>
       </div>
+      {pulling && <GcPullWindow state={state} project={project} dispatch={dispatch} onClose={() => setPulling(null)} onSaved={(moveId) => pulled(pulling, moveId)} />}
     </div>,
   )
 }

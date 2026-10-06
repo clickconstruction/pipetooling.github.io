@@ -45,6 +45,8 @@ import { GcMoveExplain, GcMoveHistory, type PendingMove } from './GcScheduleMove
 import { GcScheduleWalk, GcWalkLine } from './GcScheduleWalk'
 import { GcLateNotices } from './GcLateNotices'
 import { GcLogVsChart } from './GcLogVsChart'
+import { GcPullBox, GcPullLine, GcPullWindow } from './GcPullEarlier'
+import { planPull, pullGhosts } from '../../lib/gcMode/gcPullEarlier'
 import { walkStanding } from '../../lib/gcMode/gcScheduleWalk'
 import { planMove, whatIfSlips, type MoveLimits } from '../../lib/gcMode/gcScheduleMoves'
 import type { GanttHold } from '../../lib/gcMode/gcGantt'
@@ -109,6 +111,10 @@ export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps)
     setPicked(lineId)
     setTimeout(() => document.querySelector('[data-tour="gc-activity-editor"]')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0)
   }
+  // Work that finished early, and what can start sooner right behind it (G-37): one offer for the job, on a press.
+  const offer = useMemo(() => planPull(state, project), [state, project])
+  const earlier = useMemo(() => (offer && offer.show === 'pull' ? pullGhosts(offer) : new Map<string, { start: string; finish: string; words: string }>()), [offer])
+  const [pulling, setPulling] = useState(false)
   // Every move goes through the explanation window first (the owner, 2026-10-05; the Gantt, Phase 2).
   const [pending, setPending] = useState<PendingMove | null>(null)
   // The weekly walk (the owner, 2026-10-05): every bar that should have moved, one at a time.
@@ -227,8 +233,12 @@ export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps)
         </div>
       )}
 
+      {/* The opened activity, when it finished early, can come in, or keeps its dates behind an early finish (G-37). */}
+      {pickedRow && offer && <GcPullBox offer={offer} lineId={pickedRow.activity.lineId} onPull={() => setPulling(true)} />}
+
       <Card style={{ padding: 0, overflow: 'hidden' }}>
         {building && <GcWalkLine state={state} project={project} holds={holds} onWalk={() => setWalking(true)} />}
+        {building && offer && <GcPullLine offer={offer} onPull={() => setPulling(true)} />}
         <GcGantt
           holds={holds}
           tails={tails}
@@ -237,6 +247,7 @@ export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps)
           lateSaid={lateSaid}
           logNotes={logNotes}
           {...(printJob ? { print: printJob } : {})}
+          earlier={earlier}
           items={m.items}
           float={m.float}
           milestones={m.milestones}
@@ -282,6 +293,8 @@ export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps)
       )}
 
       {walking && <GcScheduleWalk state={state} project={project} holds={holds} dispatch={dispatch} onClose={() => setWalking(false)} />}
+
+      {pulling && <GcPullWindow state={state} project={project} dispatch={dispatch} onClose={() => setPulling(false)} />}
 
       {pending && <GcMoveExplain key={`${pending.lineId}:${pending.start}:${pending.finish}`} state={state} project={project} pending={pending} dispatch={dispatch} onClose={() => setPending(null)} />}
 
