@@ -3948,6 +3948,9 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
 /* A job's door on the Lien desk (v2.4531 the Calendar's number; v2.4628 text on every view, the Next up row's number and name too): underlines on hover and on focus only. */
 .lienJobDoor:hover, .lienJobDoor:focus-visible { text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1.5px; }
 .lienJobDoor:focus-visible { outline: 2px solid var(--border-blue); outline-offset: 2px; }
+/* A Do now row's four dots (v2.4631): a hover or focus lifts them so the card beside them reads as theirs. */
+.lienStepMark:hover, .lienStepMark:focus-visible { background: var(--bg-subtle); outline: none; }
+.lienStepMark:focus-visible { box-shadow: 0 0 0 2px var(--border-blue); }
 .lienCalDraft { border: none; border-radius: 7px; padding: 4px 11px; background: var(--text-amber-800); color: var(--surface); font: inherit; font-size: 0.75rem; font-weight: 700; white-space: nowrap; cursor: pointer; }
 .lienCalDraft:hover { opacity: 0.9; }
 .lienCalDraftPhone { min-height: 40px; padding: 0 14px; font-size: 0.8125rem; }

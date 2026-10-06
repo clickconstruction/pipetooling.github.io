@@ -65,6 +65,7 @@ import LienTrackingOwedEditor from './LienTrackingOwedEditor'
 import { sendsTrackingOwed } from '../../lib/jobs/lienSendTracking'
 import { clearLienDeskItemPrinted, markLienDeskItemsPrinted } from '../../lib/jobs/lienDeskIo'
 import { buildLienNextUp, type LienNextUpRow } from '../../lib/jobs/lienNextUp'
+import type { LienStepFacts } from '../../lib/jobs/lienNextUpSteps'
 import LienDeskNextUp from './LienDeskNextUp'
 import type { LienCalendarJob } from '../../lib/jobs/lienCalendar'
 import { callLetterFactsFor, practiceCallFacts, type CallerJobHit, type CallerMatchInput, type DeskJobRef } from '../../lib/jobs/lienCallerMatch'
@@ -925,6 +926,26 @@ export default function LienDeskModal({
   const retReady = data?.retainage.counts.ready ?? 0
   /** What the run lists (v2.4568): ready and printed notices, and ready retainage. The buttons that open it count the same. */
   const runCount = (counts?.ready ?? 0) + (counts?.printed ?? 0) + retReady
+  // What a Do now row's card may say about its job (v2.4631): read from what the desk already holds, nothing new.
+  const stepFactsFor = (row: LienNextUpRow): LienStepFacts => {
+    const base: LienStepFacts = { readyToSend: counts?.ready ?? 0, viewerIsLeader: leader }
+    if (!data || !row.jobId) return base
+    const jobId = row.jobId
+    const rowJob = data.jobsById[jobId]
+    const rowAddress = rowJob?.customer_address_id ? data.addressesById[rowJob.customer_address_id] ?? null : null
+    const rowOwner = lienPropertyOwnerDisplayName(resolveLienProperty(rowAddress, data.ownerByJob[jobId] ?? null).owner).trim() || null
+    if (row.kind === 'affidavit') {
+      const e = data.affidavits.entries.find((x) => x.jobId === jobId)
+      return { ...base, ownerName: rowOwner, draftedOn: e?.item?.drafted_at ?? null, approvedOn: e?.item?.approved_at ?? null, gatesMissing: e?.gates.filter((g) => !g.ok).map((g) => g.label) ?? [] }
+    }
+    if (row.kind === 'retainage') {
+      const e = data.retainage.entries.find((x) => x.jobId === jobId)
+      return { ...base, ownerName: rowOwner, draftedOn: e?.item?.drafted_at ?? null, approvedOn: e?.item?.approved_at ?? null, coverNote: e?.item?.cover_note ?? false, readyToSend: retReady }
+    }
+    const e = data.queue.entries.find((x) => x.jobId === jobId)
+    const months = e?.item?.months?.length ? e.item.months : e?.dueMonths ?? []
+    return { ...base, ownerName: rowOwner, months: months.length ? describeNoticeMonths(months) : null, draftedOn: e?.item?.drafted_at ?? null, approvedOn: e?.item?.approved_at ?? null, coverNote: e?.item?.cover_note ?? false }
+  }
   const wordSent = entries.filter((e) => e.item?.approval_mode === 'word' && (e.pile === 'ready' || e.pile === 'sent'))
 
   const list = (
@@ -2256,7 +2277,7 @@ export default function LienDeskModal({
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: isMobile || kind === 'timeline' || kind === 'calendar' || kind === 'next' ? '1fr' : '320px 1fr', overflow: 'hidden', minHeight: 0 }}>
           {kind === 'next' ? (
-            <LienDeskNextUp rows={nextUpRows} loading={loading && !data} isMobile={isMobile} onAct={actOnNextUp} onOpenJob={onOpenJob} />
+            <LienDeskNextUp rows={nextUpRows} loading={loading && !data} isMobile={isMobile} onAct={actOnNextUp} onOpenJob={onOpenJob} ready={{ notice: counts?.ready ?? 0, retainage: retReady }} onOpenRun={office ? () => setRunOpen(true) : undefined} factsFor={stepFactsFor} viewerIsLeader={leader} />
           ) : kind === 'calendar' ? (
             <LienDeskCalendarTab
               rows={calendarRows ?? null}
