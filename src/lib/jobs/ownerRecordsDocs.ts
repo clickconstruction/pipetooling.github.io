@@ -2,9 +2,8 @@ import type { OwnerPacket, OwnerPacketPayment } from './ownerRecords'
 
 /**
  * The papers for an owner's records request (v2.4544, pure): the cover note, the statement
- * for the property, and the acknowledgment the owner signs. DRAFT wording until counsel
- * approves it (`OWNER_RECORDS_WORDING_APPROVED` in `ownerRecords.ts`). Everything a person
- * typed is escaped; nothing here reads the clock or the network.
+ * for the property, and the acknowledgment the owner signs. Counsel approved the wording on
+ * 2026-10-06. Everything a person typed is escaped; nothing here reads the clock or the network.
  */
 
 export type OwnerRecordsDocFacts = {

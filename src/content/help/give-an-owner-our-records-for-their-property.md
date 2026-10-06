@@ -52,10 +52,6 @@ You can close the window and come back. The checks you put on file are kept.
 
 A copy of each page is kept when you print it or download it. The packet is kept again when you record it as sent. See [find a copy of what we sent](/help/find-a-copy-of-what-we-sent).
 
-## The wording is a draft
-
-The cover note and the acknowledgment are draft wording. The window says so until your attorney approves them. Each print asks before it goes.
-
 :::example Umar Khan asks about 9703 Lenox Hl
 He emails on Oct 3. Taunya opens the desk, presses An owner asked for records, and picks him. The packet shows four jobs and $29,337 owed. She puts his email on file. Malachi reads the Dudley contract and ticks check 2. She prints the acknowledgment. He signs it on Oct 6. She prints the packet, hands it to him, and records it as sent.
 :::

@@ -8,8 +8,8 @@
  * with the day it was paid and when it was recorded, and what is still owed. Other owners'
  * jobs, what the GC paid on other properties, check images and our own notes stay out.
  *
- * The cover note and the acknowledgment are DRAFT wording until counsel approves them
- * (`OWNER_RECORDS_WORDING_APPROVED`); the window says so and asks before it prints either.
+ * Counsel approved the cover note and the acknowledgment on 2026-10-06 (v2.4627); the draft
+ * stamp and the ask-before-print went with that.
  */
 
 export type OwnerRecordsHow = 'email' | 'letter' | 'text'
@@ -28,9 +28,6 @@ export type OwnerRecordsFile = {
 }
 
 export const EMPTY_OWNER_RECORDS: OwnerRecordsFile = { request: null, contractChecked: null, acknowledgment: null, sent: null }
-
-/** Flip to true, with counsel's words in place, once the cover note and the acknowledgment are approved. */
-export const OWNER_RECORDS_WORDING_APPROVED = false
 
 const YMD = /^\d{4}-\d{2}-\d{2}$/
 const str = (v: unknown): string => (typeof v === 'string' ? v : '')
