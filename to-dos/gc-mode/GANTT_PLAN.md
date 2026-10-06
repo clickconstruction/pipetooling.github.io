@@ -524,6 +524,47 @@ the trade's company, the way the customer's view keeps company names out; and th
 derived, not stored, so a trade that shows up on the daily log stops getting them with nothing to
 clean up.
 
+## Phase 3, a trade says it will be late, as built (2026-10-06)
+
+G-117, built by Helper 4 from `to-dos/gc-mode/mockups/G-117.md`. The kernel is
+`gcLateNotices.ts`, tested, out of the barrel. The screens are `GcPortalLate.tsx`, under each bar
+of *Your schedule on this job*, and `GcLateNotices.tsx`, a card on the Schedule tab.
+
+- **The trade's side.** Each of the company's unfinished bars in its portal has **We will be
+  late**. Work under way gives the day it will finish. Work not started gives the day it can
+  start, and the bar moves whole. It picks one of the look-ahead's five reasons and writes a
+  sentence. The form shows the bars that wait on this one and would move: *Rooftop units by Cool
+  Breeze Mechanical would start Thu Oct 15, 3 days later.* After sending, the bar reads *You said
+  Wed Oct 14. Click has not answered yet.*, then *Click took your day*, or *Click needs Fri Oct
+  9.* with Click's words. In both languages.
+- **The office's side.** **Trades say they will be late**, between the chart and Changes to the
+  schedule, shows what the company said and when: *Sent today, 7 days before its finish.* It also
+  says what taking it does. **Take Wed Oct 14** opens Why it moved with the trade's reason picked
+  and its words filled in, and the move carries `lateNoticeId`. So Tell the trades, the customer's
+  What changed and Days lost read it like any move, and Undo opens the notice again. **Push back**
+  sends the office's words to the portal and the portal's home. The trade answers *We will make
+  Fri Oct 9* or sends a new day.
+- **Everywhere else.** The bar has an amber dashed tail to the trade's day until it is answered.
+  The company has a `late` reason on Follow up, red once the day passes unanswered. Needs you
+  says *Summit Roofing says it will be late*. The weekly walk lists the trade's word among the
+  bar's facts.
+- **Helper 3's read.** `openLateNotices(project)` returns the open notices with `id`,
+  `partnerId`, `lineId`, the day asked for, `started`, `reason`, `note` and `on`. G-115's By
+  company list reads it, so its shape stays.
+
+What the second look changed:
+
+- **The trade sees what its day does before it sends.** It sees the work waiting on it, never a
+  price or the job's finish.
+- **A push back gets an answer.** Without one, a push back ends in silence.
+- **The walk carries the trade's word as a fact.** The walk cannot keep a bar as drawn while its
+  trade says otherwise. The Take buttons in the walk and on Starting soon wait for a later round.
+
+Where a notice stands is worked out each time from the schedule. A standing move carrying it
+means taken. A newer notice means replaced. The bar's dates changing means moved. Otherwise it
+is the office's answer, or open. No state is copied, and the golden walk did not move: the made-up
+data has no notice.
+
 ## Phase 5, fit and finish, as built (2026-10-06)
 
 - **A phone view** (G-19): the chart's toolbar has *Chart | List*. A phone opens on List: the

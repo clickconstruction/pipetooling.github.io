@@ -301,7 +301,7 @@ function ProjectPage({
       <GcPortalLookAhead state={state} project={project} partner={partner} dispatch={dispatch} />
 
       {/* Their own chart on the job (the Gantt, Phase 3, G-110). */}
-      <GcPortalSchedule state={state} project={project} partner={partner} />
+      <GcPortalSchedule state={state} project={project} partner={partner} dispatch={dispatch} />
 
       {mine.length === 0 && <div>{t('noInvite')}</div>}
       {mine.map(({ pkg, invite }) => (

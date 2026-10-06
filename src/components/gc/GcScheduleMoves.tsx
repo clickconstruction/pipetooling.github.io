@@ -10,6 +10,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { daysBetween, weekdayDate, type GcAction, type GcProject, type GcState, type ScheduleMoveReason } from '../../lib/gcMode/gcModel'
 import { MOVE_REASONS, moveActivityName, moveRows, moveWhyProblem, planMove, redoableMove, spanWords, undoableMove, type MoveLimits } from '../../lib/gcMode/gcScheduleMoves'
 import { companiesToTell, datesMessage, moveAnswerWords, untoldMoves } from '../../lib/gcMode/gcTellTrades'
+import { lateNoticeMoveWords } from '../../lib/gcMode/gcLateNotices'
 import { Btn, Card, Chip, input } from './gcUi'
 
 /** The signed-in person's name. Outside the app's sign-in (a test), none. */
@@ -33,6 +34,8 @@ export interface PendingMove {
   why?: { reason: ScheduleMoveReason; note: string }
   /** The signed change order whose days this move puts on the schedule. */
   changeOrderId?: string
+  /** The trade's late notice this move takes (G-117): its day, reason and words came with it. */
+  lateNoticeId?: string
 }
 
 const label = { fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-muted)', textTransform: 'uppercase' } as const
@@ -58,7 +61,7 @@ export function GcMoveExplain({ project, pending, dispatch, onClose }: { project
   const longer = daysBetween(plan.to.start, plan.to.finish) - daysBetween(plan.from.start, plan.from.finish)
   const save = () => {
     if (problem || !reason) return
-    dispatch({ type: 'setScheduleActivity', projectId: project.id, lineId: pending.lineId, start: pending.start, finish: pending.finish, after: pending.after, why: { reason, note: note.trim(), by: me }, ...(pending.limits ?? {}), ...(pending.changeOrderId ? { changeOrderId: pending.changeOrderId } : {}) })
+    dispatch({ type: 'setScheduleActivity', projectId: project.id, lineId: pending.lineId, start: pending.start, finish: pending.finish, after: pending.after, why: { reason, note: note.trim(), by: me }, ...(pending.limits ?? {}), ...(pending.changeOrderId ? { changeOrderId: pending.changeOrderId } : {}), ...(pending.lateNoticeId ? { lateNoticeId: pending.lateNoticeId } : {}) })
     onClose()
   }
   return createPortal(
@@ -216,6 +219,8 @@ export function GcMoveHistory({ state, project, dispatch }: { state: GcState; pr
             <div style={r.undone ? { textDecoration: 'line-through' } : undefined}>{r.what}</div>
             <div style={{ color: 'var(--text-base)' }}>“{r.move.note}”</div>
             {(r.effect || r.undone) && <div style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>{[r.effect, r.undone].filter(Boolean).join(' ')}</div>}
+            {/* A move that took a trade's late notice (G-117): who asked, and how far ahead. */}
+            {lateNoticeMoveWords(state, project, r.move) && <div style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>{lateNoticeMoveWords(state, project, r.move)}</div>}
             {/* Who was told, and what they said (Phase 3). */}
             {r.move.toldOn &&
               moveAnswerWords(state, r.move).map((w) => (
