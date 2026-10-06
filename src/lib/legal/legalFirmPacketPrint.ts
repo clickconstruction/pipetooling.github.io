@@ -8,7 +8,7 @@
  * to itself. Light-themed HTML for `openHtmlPrintWindow`; every color is
  * literal on purpose (print surfaces pin light).
  */
-import { formatLegalMoney, type LegalPacket } from './legalPacket'
+import { formatLegalMoney, legalSessionWords, type LegalPacket } from './legalPacket'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { envelopeAnswersWords, envelopeKindWords, envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords } from './legalLienPaper'
 import { firmEntryKindWords, firmFeeKindWords, firmHistoryKindWords, firmJobRecordWords, firmSaidKindWords, firmSaidRecordedBy, legalFirmStageWords } from './legalFirmWords'
@@ -72,7 +72,7 @@ export function buildFirmPacketPrintHtml(packet: LegalPacket, opts: FirmPacketPr
 
   // C. Record of contact — D. Evidence — E. Fees and steps
   const saidRows = shared.map((e) => row([`<span class="date">${esc(e.ymd)}</span>`, esc(firmSaidKindWords(e.kind)), esc(e.jobLabel ?? 'account'), esc(e.text), esc(firmSaidRecordedBy(e))]))
-  const evidenceRows = packet.evidence.map((e) => row([`<b>${esc(e.jobLabel)}</b>`, `${e.reports} (${e.reportsWithGps} with GPS)`, `${e.sessions} (${e.approvedSessions} approved, ${e.sessionsWithGps} with GPS)`, `${e.hours}h`, e.firstWorkYmd ? `${esc(e.firstWorkYmd)} to ${esc(e.lastWorkYmd)}` : '—', String(e.threadNotes)], [false, false, false, true, false, true]))
+  const evidenceRows = packet.evidence.map((e) => row([`<b>${esc(e.jobLabel)}</b>`, `${e.reports} (${e.reportsWithGps} with GPS)`, esc(legalSessionWords(e)), `${e.hours}h`, e.firstWorkYmd ? `${esc(e.firstWorkYmd)} to ${esc(e.lastWorkYmd)}` : '—', String(e.threadNotes)], [false, false, false, true, false, true]))
   const feeRows = fees.map((e) => row([`<span class="date">${esc(e.occurred_on)}</span>`, esc(firmFeeKindWords(e.kind)), esc(e.body), formatLegalMoney(Number(e.amount ?? 0))], [false, false, false, true]))
   const feeFoot = `<tr><td colspan="3"><b>Fees and costs to date</b></td><td class="num"><b>${formatLegalMoney(feesTotal)}</b></td></tr>`
   const matterRows = opts.matter.entries.filter((e) => !(e.kind === 'fee' || e.kind === 'cost')).map((e) => row([`<span class="date">${esc(e.occurred_on)}</span>`, esc(firmEntryKindWords(e)), esc(e.body), e.amount != null && e.kind !== 'question' && e.kind !== 'answer' ? formatLegalMoney(Number(e.amount)) : '', e.via_portal ? esc(opts.firm.name) : esc(opts.companyName)], [false, false, false, true, false]))

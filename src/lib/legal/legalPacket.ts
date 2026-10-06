@@ -466,8 +466,10 @@ export type LegalEvidenceJob = {
   reports: number
   reportsWithGps: number
   latestReport: LegalReportLike | null
+  /** Approved clock sessions that were not rejected or revoked — the one evidence rule (item 25); hours, days and GPS read only these. */
   sessions: number
-  approvedSessions: number
+  /** Live sessions nobody has approved yet: said, never counted. */
+  awaitingApproval: number
   sessionsWithGps: number
   hours: number
   firstWorkYmd: string | null
@@ -674,7 +676,10 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
   // --- Evidence (needed before sworn-account checks) -----------------------
   const evidence: LegalEvidenceJob[] = jobs.map((j) => {
     const reports = input.reports.filter((r) => r.jobId === j.id).sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-    const sessions = input.clockSessions.filter((s) => s.jobId === j.id && !s.disqualified)
+    // One evidence rule (item 25): an approved session that was not rejected or revoked counts, as in the
+    // timeline's work months (`workMonthsFromSessions`); the rest are said as awaiting approval.
+    const live = input.clockSessions.filter((s) => s.jobId === j.id && !s.disqualified)
+    const sessions = live.filter((s) => s.approved)
     const notes = input.threadNotes.filter((n) => n.jobId === j.id).sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     const workDays = sessions.map((s) => s.workDate).sort()
     return {
@@ -684,7 +689,7 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
       reportsWithGps: reports.filter((r) => r.hasGps).length,
       latestReport: reports[0] ?? null,
       sessions: sessions.length,
-      approvedSessions: sessions.filter((s) => s.approved).length,
+      awaitingApproval: live.length - sessions.length,
       sessionsWithGps: sessions.filter((s) => s.hasGps).length,
       hours: Math.round(sessions.reduce((s, x) => s + hoursBetween(x.clockedInAt, x.clockedOutAt), 0) * 10) / 10,
       firstWorkYmd: workDays[0] ?? null,
@@ -1027,7 +1032,7 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
     else if (p.gaps.length > 0) gaps.push({ key: `property:${p.key}`, severity: 'warn', label: `Property record incomplete · ${p.address} (${on})`, detail: `Missing ${p.gaps.filter((g) => g !== NO_PROPERTY_RECORD_GAP).join(', ')}.`, jobId: p.jobIds[0] ?? null, fix: 'lien_instruments' })
   }
   for (const e of evidence) {
-    if (e.reports === 0 && e.sessions === 0) gaps.push({ key: `evidence:${e.jobId}`, severity: 'warn', label: `No field evidence on ${e.jobLabel}`, detail: 'No field reports and no clock sessions — nothing places a crew on the property.', jobId: e.jobId, fix: 'none' })
+    if (e.reports === 0 && e.sessions === 0) gaps.push({ key: `evidence:${e.jobId}`, severity: 'warn', label: `No field evidence on ${e.jobLabel}`, detail: e.awaitingApproval > 0 ? `No field reports, and ${e.awaitingApproval} clock session${e.awaitingApproval === 1 ? ' is' : 's are'} awaiting approval. Approve them in Hours: only approved sessions count as evidence or date the lien clock.` : 'No field reports and no clock sessions — nothing places a crew on the property.', jobId: e.jobId, fix: 'none' })
   }
   if (timeline.every((e) => e.kind === 'note')) gaps.push({ key: 'never_asked', severity: 'warn', label: 'Never asked when they would pay', detail: 'No promise, no collection call and no contact on record. One call in call mode gives the attorney a “they said…” line.', jobId: null, fix: 'call_mode' })
   if (verdict === 'not worth it') gaps.push({ key: 'worth', severity: 'warn', label: `Estimated net is $${Math.round(net).toLocaleString('en-US')} — consider writing it down`, detail: theory.key === 'none' ? 'Nothing to plead yet and the firm’s cut plus costs eat the balance. Write down / stop pursuing keeps the record and clears the row.' : 'The firm’s cut and costs eat what is left. Write down / stop pursuing keeps the record and clears the row.', jobId: jobs[0]?.id ?? null, fix: 'write_down' })
@@ -1094,6 +1099,12 @@ export function quickNet(balance: number, fee: LegalFeeModel = LEGAL_DEFAULT_FEE
 }
 
 /** `$1,234.50`; a negative number reads `−$1,234.50` (the sign before the dollar, never `$-`). */
+/** The clock sessions cell, one wording for the desk, the firm's view and both prints (item 25): `2 approved (2 with GPS) · 1 awaiting approval`. */
+export function legalSessionWords(e: Pick<LegalEvidenceJob, 'sessions' | 'sessionsWithGps' | 'awaitingApproval'>): string {
+  const counted = `${e.sessions} approved${e.sessions ? ` (${e.sessionsWithGps} with GPS)` : ''}`
+  return e.awaitingApproval ? `${counted} · ${e.awaitingApproval} awaiting approval` : counted
+}
+
 export function formatLegalMoney(n: number): string {
   const abs = Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
   return n < 0 && abs !== '0.00' ? `−$${abs}` : `$${abs}`

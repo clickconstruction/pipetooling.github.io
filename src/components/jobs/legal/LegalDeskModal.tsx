@@ -15,6 +15,7 @@ import {
   type LegalPacket,
   type LegalPayerKey,
   legalLargestOpenLine,
+  legalSessionWords,
 } from '../../../lib/legal/legalPacket'
 import {
   feeModelOf,
@@ -902,7 +903,7 @@ function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDo
           rows={packet.evidence.map((e) => [
             <b key="l">{e.jobLabel}</b>,
             <span key="r">{e.reports}{e.reports ? <span style={MUTED}> · {e.reportsWithGps} with GPS</span> : null}{e.latestReport ? <div style={{ ...MUTED, fontSize: '0.76rem' }}>latest {calendarYmdInAppTzFromIso(e.latestReport.createdAt)} · {e.latestReport.templateName || 'report'} · {e.latestReport.authorName}</div> : null}</span>,
-            <span key="s">{e.sessions}{e.sessions ? <span style={MUTED}> · {e.approvedSessions} approved · {e.sessionsWithGps} with GPS</span> : null}</span>,
+            <span key="s">{legalSessionWords(e)}</span>,
             `${e.hours}h`, e.firstWorkYmd ? `${e.firstWorkYmd} → ${e.lastWorkYmd}` : '—',
             <span key="n">{e.threadNotes}{e.latestNote ? <div style={{ ...MUTED, fontSize: '0.76rem', maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.latestNote.body}</div> : null}</span>,
             <span key="k" style={{ display: 'flex', gap: 6 }}>
@@ -911,7 +912,7 @@ function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDo
               {!e.picturesLink && !e.driveLink ? <span style={MUTED}>—</span> : null}
             </span>,
           ])} empty="No jobs." />
-        <p style={{ ...MUTED, fontSize: '0.78rem', marginTop: 10 }}>Rejected and revoked clock sessions are left out. A sworn account needs at least one report or session carrying GPS on the property.</p>
+        <p style={{ ...MUTED, fontSize: '0.78rem', marginTop: 10 }}>Only approved clock sessions count: hours, days worked, the sworn-account check and the lien dates read them. Rejected and revoked sessions are left out; the rest show as awaiting approval. A sworn account needs at least one report or session carrying GPS on the property.</p>
       </div>
     )
   }

@@ -4,7 +4,7 @@
  * HTML for openHtmlPrintWindow; the browser's print-to-PDF is the PDF. Print
  * surfaces pin light — every color is literal on purpose.
  */
-import { formatLegalMoney, type LegalPacket } from './legalPacket'
+import { formatLegalMoney, legalSessionWords, type LegalPacket } from './legalPacket'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { envelopeAnswersWords, envelopeKindWords, envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords } from './legalLienPaper'
 import { legalRunningLedger } from './legalMoney'
@@ -43,7 +43,7 @@ export function buildLegalPacketPrintHtml(packet: LegalPacket, opts: { preparedO
     return row([esc(g.jobLabel), esc(text)])
   })
   const saidRows = shared.map((e) => row([esc(e.ymd), esc(e.kind), esc(e.jobLabel ?? ''), esc(e.text), esc(e.by ?? '—')]))
-  const evidenceRows = packet.evidence.map((e) => row([esc(e.jobLabel), `${e.reports} (${e.reportsWithGps} with GPS)`, `${e.sessions} (${e.approvedSessions} approved, ${e.sessionsWithGps} with GPS)`, `${e.hours}h`, `${esc(e.firstWorkYmd ?? '—')} → ${esc(e.lastWorkYmd ?? '—')}`, String(e.threadNotes)]))
+  const evidenceRows = packet.evidence.map((e) => row([esc(e.jobLabel), `${e.reports} (${e.reportsWithGps} with GPS)`, esc(legalSessionWords(e)), `${e.hours}h`, `${esc(e.firstWorkYmd ?? '—')} → ${esc(e.lastWorkYmd ?? '—')}`, String(e.threadNotes)]))
   const propertyRows = a.properties.map((p) => row([esc(p.jobLabels.join(', ')), esc(p.address), esc(p.county || '—'), esc(p.owner || '—'), esc(p.legalDescription || '—'), esc(p.parcelId || '—'), p.gaps.length ? `missing ${esc(p.gaps.join(', '))}` : 'complete']))
   const stepRows = packet.feesAndSteps.steps.map((s) => row([esc(s.ymd ?? '—'), esc(s.jobLabel ?? ''), esc(s.kind), esc(s.text)]))
   const gapItems = packet.gaps.map((g) => `<li class="${g.severity}"><b>${esc(g.label)}</b> — ${esc(g.detail)}</li>`).join('')
