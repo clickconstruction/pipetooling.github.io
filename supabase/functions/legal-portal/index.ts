@@ -208,7 +208,12 @@ serve(async (req) => {
     const recipients = ((recRows ?? []) as Row[]).map((r) => ({ id: r.id, name: r.name, email: r.email, role: r.role, mode: r.mode, scope: r.scope, digestWeekday: r.digest_weekday, digestTime: r.digest_time, confirmed: r.confirmed_at != null, paused: r.paused_at != null, addedViaPortal: Boolean(r.added_via_portal), failingSince: typeof r.send_failed_since === 'string' ? todayYmdInAppTz(new Date(r.send_failed_since)) : null }))
     const firmPaused = (firm as Row).paused_at != null
 
-    const { data: matterRows } = await admin.from('legal_matters').select(MATTER_COUNSEL_SELECT.matters).eq('firm_id', link.firm_id).in('stage', LEGAL_PORTAL_STAGES).is('closed_at', null).order('released_at')
+    // Item 20's floor columns ride the named list once its migration (20261006140000) is pushed; until then the
+    // read without them answers, and every matter reads no floor (item 23 names the columns, so '*' is gone).
+    const readMatters = (cols: string) => admin.from('legal_matters').select(cols).eq('firm_id', link.firm_id).in('stage', LEGAL_PORTAL_STAGES).is('closed_at', null).order('released_at')
+    let matterRes = await readMatters(`${MATTER_COUNSEL_SELECT.matters}, settlement_floor_amount, settlement_floor_pct`)
+    if (matterRes.error) matterRes = await readMatters(MATTER_COUNSEL_SELECT.matters)
+    const matterRows = matterRes.data
     const matters = (matterRows ?? []) as Row[]
     if (matters.length === 0) {
       return jsonResponse({ company: PORTAL_COMPANY, preparedOn: todayYmd, firm, particulars, recipients, firmPaused, matters: [], lienBook: await readLienBook(admin) })
