@@ -11,10 +11,10 @@ import { openHtmlPrintWindow } from '../lib/jobsDocuments/printWindow'
 import { FIRM_EMAIL_MODE_WORDS, firmRecipientStatusWords, firmSavedWords, legalFirmStageWords } from '../lib/legal/legalFirmWords'
 import { buildMatterPacket, parseLegalPortalPayload, portalFeeModel, type LegalPortalMatter, type LegalPortalPayload, type LegalPortalRecipient } from '../lib/legal/legalPortalPayload'
 import { WEEKDAY_LABELS } from '../lib/legal/legalMatters'
+import { legalNotReachingLine } from '../lib/legal/legalNotifyLedger'
 import { FirmMatterView } from '../components/jobs/legal/LegalFirmMatterView'
 import LegalPortalLienGrid from '../components/jobs/legal/LegalPortalLienGrid'
 import { askKindWords, openAsks } from '../lib/legal/legalAsks'
-import { legalNotReachingLine } from '../lib/legal/legalNotifyLedger'
 import { portalH, type FirmTab } from '../components/jobs/legal/legalFirmMatterViewShared'
 
 /**
