@@ -8,6 +8,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { GcGantt } from './GcGantt'
 import { GcBuildingScheduleTab } from './GcBuildingSchedule'
+import { gcReducer } from '../../lib/gcMode/gcReducer'
+import { addDays } from '../../lib/gcMode/gcBuilding'
+import type { GcState, ScheduleMoveReason } from '../../lib/gcMode/gcTypes'
 import { GC_COMPANY, initialGcState } from '../../lib/gcMode/gcFixture'
 import { scheduleMeasures } from '../../lib/gcMode/gcBuildingSchedule'
 import { customerDoneWords, customerSchedulePicture, customerStanding } from '../../lib/gcMode/gcCustomerSchedule'
@@ -154,5 +157,46 @@ describe('the paper takes the holds the chart is given (G-21 after G-77)', () =>
       expect(texts.slice(at, at + 5)).toContain('held')
       expect(texts).toContain(note)
     }
+  })
+})
+
+describe('the Projected finish measure’s late lines on our team’s paper (G-98 after G-21)', () => {
+  const ID = 'fairoaksd'
+  const job = (s: GcState) => s.projects.find((p) => p.id === ID)!
+  const moveBy = (s: GcState, label: string, days: number, reason: ScheduleMoveReason, note: string): GcState => {
+    const a = scheduleMeasures(s, job(s)).items.find((i) => i.label === label)!.activity
+    return gcReducer(s, { type: 'setScheduleActivity', projectId: ID, lineId: a.lineId, start: addDays(a.start, days), finish: addDays(a.finish, days), after: a.after, why: { reason, note, by: 'Robert' } })
+  }
+  const changeOrder = (s: GcState, description: string, days: number, sign: boolean): GcState => {
+    let state = gcReducer(s, { type: 'draftChangeOrder', projectId: ID, description, reason: 'plans', schedule: '', packageId: null, cost: 4_200, price: 0, days })
+    const all = job(state).changeOrders ?? []
+    const co = all[all.length - 1]!
+    state = gcReducer(state, { type: 'sendChangeOrder', projectId: ID, changeOrderId: co.id })
+    return sign ? gcReducer(state, { type: 'ownerSignChangeOrder', projectId: ID, changeOrderId: co.id }) : state
+  }
+  /** The late-finish tests' job: Trim a week on the customer's tile, rain on Test and balance, change order 1 signed, change order 2 sent, $500 a day. */
+  const lateJob = (): GcState => {
+    let s = initialGcState()
+    s = moveBy(s, 'Trim', 7, 'customer', 'Waiting on the restroom tile decision.')
+    s = moveBy(s, 'Test and balance', 9, 'weather', 'Rain kept the roof open a week.')
+    s = changeOrder(s, 'A larger roof curb for RTU-2', 1, true)
+    s = changeOrder(s, 'Extra exterior lighting', 2, false)
+    return gcReducer(s, { type: 'setOwnerLateFinish', projectId: ID, perDay: 500 })
+  }
+
+  it('prints each line the measure shows, in its order, right under the finish sentence; the customer’s copy keeps its own', () => {
+    const state = lateJob()
+    render(<GcBuildingScheduleTab state={state} project={job(state)} dispatch={vi.fn()} />)
+    const shown = [...document.querySelectorAll('[data-tour="gc-late-finish"] > span')].map((el) => el.textContent ?? '')
+    expect(shown.length).toBeGreaterThanOrEqual(3)
+    const toolbar = document.querySelector('[data-tour="gc-gantt-toolbar"]') as HTMLElement
+    fireEvent.click(within(toolbar).getByRole('button', { name: 'Print or PDF' }))
+    const head = () => [...new DOMParser().parseFromString(framed(), 'text/html').querySelectorAll('header.head p')].map((el) => el.textContent ?? '')
+    const lines = head()
+    const at = lines.findIndex((l) => l.startsWith('The contract says') || l.includes('The contract says'))
+    expect(at).toBeGreaterThan(0)
+    expect(lines.slice(at + 1, at + 1 + shown.length)).toEqual(shown)
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'The customer' }))
+    for (const line of shown) expect(head()).not.toContain(line)
   })
 })

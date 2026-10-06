@@ -46,6 +46,8 @@ export interface GanttPrintJob {
   by: string
   /** The projected finish as the Projected finish card says it, with the contract's day. */
   finishWords: string
+  /** The lines the Projected finish measure prints under that sentence on a late job (G-98's `lateFinish().words`): the money at the fee, whose days, the change orders. */
+  finishLines?: string[]
   /** "72% of the work is done. We planned 76% by today." Null while the schedule is being drawn. */
   doneWords: string | null
   customer: CustomerSchedulePicture
@@ -607,6 +609,7 @@ export function ganttPrint(input: GanttPrintInput): GanttPrint {
       ? [
           `${job.place ? `${job.place}. ` : ''}For our team. ${asOf}`,
           job.finishWords,
+          ...(job.finishLines ?? []),
           ...(job.doneWords ? [job.doneWords] : []),
           showsWords(input, shown, groups, window).slice(0, window ? -1 : undefined).join(' '),
           ...(window ? [`The page runs from ${weekdayDate(window.first)} to ${weekdayDate(window.last)}, a day at a time.`] : []),

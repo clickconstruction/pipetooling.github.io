@@ -139,11 +139,13 @@ export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps)
             company: GC_COMPANY.name,
             by: me,
             finishWords: finishSentence(m.finish, m.contract),
+            // The lines the Projected finish measure prints under it on a late job (G-98), from the same call, while it shows.
+            finishLines: project.stage === 'building' ? late.words : [],
             doneWords: project.stage === 'building' ? customerDoneWords(customerStanding(state, project)) : null,
             customer: customerSchedulePicture(state, project),
           }
         : null,
-    [state, project, m, me],
+    [state, project, m, me, late],
   )
   const schedule = project.schedule
   const building = project.stage === 'building'
