@@ -4,6 +4,7 @@ export {
   buildLegalDigestEmail,
   buildLegalNowEmail,
   legalConfirmedPageBody,
+  legalFirmStageWords,
   legalPageHtml,
   legalUnsubscribedPageBody,
   legalWrapHtml,

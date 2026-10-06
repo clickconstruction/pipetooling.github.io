@@ -116,7 +116,11 @@ export type PortalPayload = {
   checks: PortalChecksPayload | null
   /** Waivers (v2.4278): one row per sent bill the viewer pays, with the conditional and unconditional lien waivers it carries — `_shared/portalWaivers.ts`; [] from a function without it. */
   waivers: PortalWaiverRow[]
+  /** Records for an owner (punch list #86): the request the office offered on this portal and not yet sent — to sign, or signed; null from an older function. */
+  ownerRecords: PortalOwnerRecords | null
 }
+
+export type PortalOwnerRecords = { id: string; address: string; ownerName: string; offeredOn: string; signed: { on: string; name: string } | null }
 
 export type PortalChecksPayload = { jobs: ChecksJobIn[]; events: ChecksEventIn[] }
 
@@ -343,6 +347,21 @@ export function parsePortalPayload(raw: unknown): PortalPayload | null {
       })
     }
   }
+  let ownerRecords: PortalOwnerRecords | null = null
+  if (r.ownerRecords && typeof r.ownerRecords === 'object') {
+    const o = r.ownerRecords as Record<string, unknown>
+    const sg = o.signed && typeof o.signed === 'object' ? (o.signed as Record<string, unknown>) : null
+    if (typeof o.id === 'string' && o.id && typeof o.offeredOn === 'string') {
+      ownerRecords = {
+        id: o.id,
+        address: typeof o.address === 'string' ? o.address : '',
+        ownerName: typeof o.ownerName === 'string' ? o.ownerName : '',
+        offeredOn: o.offeredOn,
+        signed: sg && typeof sg.on === 'string' ? { on: sg.on, name: typeof sg.name === 'string' ? sg.name : '' } : null,
+      }
+    }
+  }
+
   return {
     company: {
       name: str(companyRaw.name, 'Click Plumbing and Electrical'),
@@ -364,6 +383,7 @@ export function parsePortalPayload(raw: unknown): PortalPayload | null {
     slug: typeof r.slug === 'string' && r.slug.trim() ? r.slug.trim() : null,
     agreements,
     waivers,
+    ownerRecords,
     testReports: parsePortalTestReports(r.testReports),
     bankTransfer: bankTransferDetailsForPortal(parseBankTransferDetails(r.bankTransfer)),
     stages: Array.isArray(r.stages) ? r.stages.map(parseJobStages).filter((x): x is PortalJobStages => x != null) : [],

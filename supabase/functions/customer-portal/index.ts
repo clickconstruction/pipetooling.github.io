@@ -406,6 +406,33 @@ serve(async (req) => {
       }
     }
 
+    // Records for an owner, on their portal (punch list #86, PR 1): the request the office offered
+    // to this customer that is not yet sent — what to sign, or that they signed. Never the packet.
+    let ownerRecords: { id: string; address: string; ownerName: string; offeredOn: string; signed: { on: string; name: string } | null } | null = null
+    {
+      const { data: reqRows } = await admin
+        .from('lien_owner_record_requests')
+        .select('id, owner_name, property_address, file, sent_at, updated_at')
+        .eq('customer_id', link.customer_id)
+        .is('sent_at', null)
+        .order('updated_at', { ascending: false })
+        .limit(10)
+      for (const r of (reqRows ?? []) as Array<{ id: string; owner_name: string; property_address: string; file: Record<string, unknown> | null }>) {
+        const f = (r.file && typeof r.file === 'object' ? r.file : {}) as Record<string, unknown>
+        const offer = f.offer as { at?: string } | null | undefined
+        if (!offer || typeof offer.at !== 'string') continue
+        const ack = f.acknowledgment as { signedOn?: string; printedName?: string } | null | undefined
+        ownerRecords = {
+          id: r.id,
+          address: r.property_address,
+          ownerName: r.owner_name,
+          offeredOn: offer.at.slice(0, 10),
+          signed: ack && typeof ack.signedOn === 'string' ? { on: ack.signedOn, name: typeof ack.printedName === 'string' ? ack.printedName : '' } : null,
+        }
+        break
+      }
+    }
+
     // Bank transfer details (v2.3308): the company's ACH / wire remittance
     // details and the check mailing address, one row entered at Settings →
     // Company and kept out of the public repo. Read with the service role
@@ -667,6 +694,7 @@ serve(async (req) => {
       waivers,
       promise,
       bankTransfer,
+      ownerRecords,
     })
   } catch (e) {
     console.error('customer-portal error', e)

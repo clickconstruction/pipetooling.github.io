@@ -489,6 +489,11 @@ verify_jwt = false
 [functions.sign-job-contract]
 verify_jwt = false
 
+# An owner signs the acknowledgment of a records request on their portal (punch list #86): the
+# portal link is the capability, as on customer-portal.
+[functions.sign-owner-records]
+verify_jwt = false
+
 [functions.send-job-contract]
 verify_jwt = false
 
