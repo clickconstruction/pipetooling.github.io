@@ -2,7 +2,7 @@
 name: "Fuel is a job cost: one rule, its own line, by day, and who is spending"
 number: 52
 group: ready
-status: PRs 1–3 shipped (v2.4059, v2.4068, v2.4104) · PR 4a shipped v2.4106 (migration 20260929001119 — the office roles read the tags; on prod, drift check clean 2026-09-29) · PR 4b-1 (the read + the kernel) on feat/card-charges-window, v2.4594, migration 20261005212106 · PR 4b-2 (the tab) on feat/people-spending-tab, v2.4602, merges after the push · PR 5 (Review follows the job) not started
+status: PRs 1–3 shipped (v2.4059, v2.4068, v2.4104) · PR 4a shipped v2.4106 (migration 20260929001119 — the office roles read the tags; on prod, drift check clean 2026-09-29) · PR 4b-1 (the read + the kernel) on feat/card-charges-window, v2.4594, migration 20261005212106 · PR 4b-1b (card refunds) v2.4611, migration 20261005235207 · PR 4b-2 (the tab) on feat/people-spending-tab, v2.4602, merges after the refunds push and the owner's EXPLAIN · PR 5 (Review follows the job) not started
 summary: >
   What a job cost, fuel included, the same on every screen, with fuel as its own line and dated
   to the day it was bought, so a long multi-day job shows whether it is making or losing money
