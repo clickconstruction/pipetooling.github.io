@@ -1225,8 +1225,8 @@ by the office's Schedule tab.
 - **A strip under the rows**, in Chart view, behind *Show people on site* beside *Show spare days*.
   Each week, Monday to Sunday as the axis runs, the plan's busiest day as an outlined bar beside the
   daily log's busiest day as a filled one, their numbers above where the week is wide enough (not at
-  Months zoom), and a card on hover: "15 at the busiest, Mon Sep 21.", who made it up with each
-  trade's count, "19 at the busiest, Tue Sep 22, 5 days logged.", and where the counts came from.
+  Months zoom), and a card on hover: "15 at the busiest, Mon Sep 21.", who made it up, a company a
+  line with its count, "19 at the busiest, Tue Sep 22, 5 days logged.", and where the counts came from.
 - **The counts**, per trade and week: its own count for the week (Helper 4's G-142: the Schedule tab
   passes `crewCountsNow(project)` as `told`), else the daily log's last count for it, else
   `ASSUMED_CREW`, 3, named on the strip and the card. Summit saying 6 for the week of Oct 5 turns
@@ -1238,6 +1238,9 @@ by the office's Schedule tab.
   *Short* line on the card.
 - **The whole job**: the strip's totals do not change with a filter or a fold; a test holds it. The
   customer never sees it: the chart is drawn only on the office's tab, and the print does not carry it.
+  While G-81's what-if copy is shown, the plan reads the copy's dates and the log stays the job's: Summit's
+  last roof bar tried two weeks later moves its 4 from the weeks of Oct 12 and 19 to Oct 26 and Nov 2;
+  a test holds that too, and that the strip stays on as the copy opens.
 - On Fair Oaks D: the week of Sep 21 plans 15 against 19 on the log, Sep 28 plans 15 against 18,
   then 12, 9, 9 and 2 ahead.
 

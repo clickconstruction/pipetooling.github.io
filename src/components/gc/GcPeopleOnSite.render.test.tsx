@@ -2,15 +2,16 @@
 /**
  * Render smoke for people on site per week (G-84): the toggle only on the office's chart, the strip
  * with Fair Oaks D's weeks, its hover card, the same totals whatever the chart filters or folds, no
- * strip when it is off or in List view, and the office's Schedule tab passing a trade's own count
- * (G-142) to it.
+ * strip when it is off or in List view, the office's Schedule tab passing a trade's own count
+ * (G-142) to it, and a what-if copy's dates read while the copy is shown (G-81).
  */
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { GcGantt } from './GcGantt'
 import { GcBuildingScheduleTab } from './GcBuildingSchedule'
 import { initialGcState } from '../../lib/gcMode/gcFixture'
 import { gcReducer } from '../../lib/gcMode/gcReducer'
+import { addDays } from '../../lib/gcMode/gcBuilding'
 import type { GcState } from '../../lib/gcMode/gcTypes'
 import { scheduleMeasures } from '../../lib/gcMode/gcBuildingSchedule'
 import { chartHolds } from '../../lib/gcMode/gcChartHolds'
@@ -32,6 +33,9 @@ function chart(withPeople = true) {
   const peopleOf = (from: string, to: string) => peopleOnSite(state, project, from, to)
   return render(<GcGantt items={m.items} float={m.float} milestones={m.milestones} holds={chartHolds(state, project)} today={state.today} building picked={null} onPick={vi.fn()} {...(withPeople ? { peopleOf } : {})} />)
 }
+
+/** The office's Schedule tab on Fair Oaks D, with its chart. */
+const tab = (s: GcState) => render(<GcBuildingScheduleTab state={s} project={s.projects.find((p) => p.id === 'fairoaksd')!} dispatch={() => undefined} />)
 
 /** A week's two numbers as the strip draws them. */
 function week(container: HTMLElement, weekOf: string): [string | null, string | null] {
@@ -95,7 +99,6 @@ describe('people on site per week, on the office’s chart', () => {
   })
 
   it('reads a trade’s own count for its week on the office’s Schedule tab, over the log’s last count (G-142)', () => {
-    const tab = (s: GcState) => render(<GcBuildingScheduleTab state={s} project={s.projects.find((p) => p.id === 'fairoaksd')!} dispatch={() => undefined} />)
     // No count given yet: the week of Oct 5 plans 12, Summit Roofing at the log's 4.
     let { container } = tab(state)
     fireEvent.click(screen.getByRole('button', { name: 'Show people on site' }))
@@ -110,8 +113,46 @@ describe('people on site per week, on the office’s chart', () => {
       ['9', ''],
     ])
     fireEvent.mouseEnter(container.querySelector('[data-people-week="2026-10-05"]')!, { clientX: 20, clientY: 20 })
-    const card = screen.getAllByRole('tooltip').map((t) => t.textContent ?? '').find((t) => t.startsWith('Week of')) ?? ''
-    expect(card).toContain('Summit Roofing 6, its own count')
-    expect(card).toContain("A trade's own count for the week comes first")
+    const card = screen.getAllByRole('tooltip').find((t) => t.textContent?.startsWith('Week of'))!
+    // A company a line: each is an element of its own, so the words match whole.
+    expect(within(card).getByText('Summit Roofing 6, its own count')).toBeTruthy()
+    expect(within(card).getByText('our own crew 3')).toBeTruthy()
+    expect(card.textContent).toContain("A trade's own count for the week comes first")
+  })
+
+  it('reads a what-if copy’s dates while the copy is shown, with the same daily log, and stays on (G-81)', () => {
+    // Summit's last roof bar, Oct 12 to 21, tried two weeks later in a copy.
+    let s = gcReducer(state, { type: 'startWhatIf', projectId: 'fairoaksd', by: 'Robert' })
+    const roof = s.projects.find((p) => p.id === 'fairoaksd')!.whatIf!.schedule.activities.find((a) => a.lineId === 'froof-3')!
+    expect([roof.start, roof.finish]).toEqual(['2026-10-12', '2026-10-21'])
+    s = gcReducer(s, { type: 'inWhatIf', projectId: 'fairoaksd', by: 'Robert', action: { type: 'setScheduleActivity', projectId: 'fairoaksd', lineId: 'froof-3', start: addDays(roof.start, 14), finish: addDays(roof.finish, 14), after: roof.after } })
+    const { container } = tab(s)
+    fireEvent.click(screen.getByRole('button', { name: 'Show people on site' }))
+    const weeks = ['2026-09-21', '2026-09-28', '2026-10-12', '2026-10-19', '2026-10-26', '2026-11-02']
+    const real = [
+      ['15', '19'],
+      ['15', '18'],
+      ['9', ''],
+      ['9', ''],
+      ['2', ''],
+      ['5', ''],
+    ]
+    expect(weeks.map((w) => week(container, w))).toEqual(real)
+    // The copy opens: the strip stays on, Summit's 4 move two weeks later, and the log's side stays.
+    fireEvent.click(screen.getByRole('button', { name: 'What if · 1' }))
+    // The way back is on the toolbar and on the copy's line over the chart.
+    expect(screen.getAllByRole('button', { name: 'See the real schedule' })).toHaveLength(2)
+    expect(container.querySelector('[data-people-strip]')).toBeTruthy()
+    expect(weeks.map((w) => week(container, w))).toEqual([
+      ['15', '19'],
+      ['15', '18'],
+      ['5', ''],
+      ['5', ''],
+      ['6', ''],
+      ['9', ''],
+    ])
+    // Back on the real schedule, the real weeks.
+    fireEvent.click(screen.getAllByRole('button', { name: 'See the real schedule' })[0]!)
+    expect(weeks.map((w) => week(container, w))).toEqual(real)
   })
 })
