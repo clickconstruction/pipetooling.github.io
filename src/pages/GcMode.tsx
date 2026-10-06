@@ -40,9 +40,9 @@ import { useMatchMedia } from '../hooks/useMatchMedia'
 import {
   boardCustomerElementId,
   projectPeople,
-  projectFollowPeople,
   allPeople,
   type ProjectPeopleSummary,
+  type PersonReason,
   type ProjectPerson,
   boardSectionCounts,
   boardSectionElementId,
@@ -73,7 +73,7 @@ import {
   type GcAction,
   type GcState,
 } from '../lib/gcMode/gcModel'
-import { pastContract as pastContractOf } from '../lib/gcMode/gcCounts'
+import { boardFollowPeople, pastContract as pastContractOf } from '../lib/gcMode/gcCounts'
 import { GC_PROJECT_TOUR_STEPS, GC_TOUR_STEPS } from '../lib/gcMode/gcTour'
 import { GcStageHealth } from '../components/gc/GcStageHealth'
 
@@ -200,6 +200,8 @@ export default function GcMode() {
   )
   const [mapFor, setMapFor] = useState<{ projectId: string; packageId: string } | null>(null)
   const [levelPackageId, setLevelPackageId] = useState<string | null>(null)
+  // A bar to open when the Schedule tab mounts (G-146): a reason about it pressed on a board row's card.
+  const [openLineId, setOpenLineId] = useState<string | null>(null)
   // New here? opens itself on a first visit (the big list, Board item 8), once per browser.
   const [tourOpen, setTourOpen] = useState(() => {
     try {
@@ -239,6 +241,14 @@ export default function GcMode() {
       summary,
       onFollowUp: (person: ProjectPerson, calling: boolean) => setSheet({ projectId: p.id, partnerId: sheetId(person), calling }),
       onWorkList: first ? () => setSheet({ projectId: p.id, partnerId: sheetId(first) }) : null,
+      // A reason about a bar pressed on the card (G-146): the job opens on its Schedule tab at that bar.
+      onReason: (_person: ProjectPerson, reason: PersonReason) => {
+        if (!reason.lineId) return
+        setOpenLineId(reason.lineId)
+        setBoardTab('projects')
+        setProjectId(p.id)
+        setTab('schedule')
+      },
     }
   }
   const sheetProject = state.projects.find((x) => x.id === sheet?.projectId) ?? null
@@ -358,7 +368,8 @@ export default function GcMode() {
           onClose={() => setSheet(null)}
           list={(s) => {
             const job = s.projects.find((x) => x.id === sheetProject.id)
-            return job ? projectFollowPeople(s, job) : []
+            // What the row counts (G-146): the call list's people with its items, then Follow up's others.
+            return job ? boardFollowPeople(s, job) : []
           }}
           title={sheetProject.name}
         />
@@ -642,7 +653,7 @@ export default function GcMode() {
               {tab === 'contracts' && <GcContractsTab state={state} project={project} dispatch={dispatch} />}
               {tab === 'draws' && <GcDrawsTab state={state} project={project} dispatch={dispatch} />}
               {tab === 'owner' && <GcOwnerBillingTab state={state} project={project} dispatch={dispatch} />}
-              {tab === 'schedule' && <GcBuildingScheduleTab state={state} project={project} dispatch={dispatch} />}
+              {tab === 'schedule' && <GcBuildingScheduleTab key={`${project.id}:${openLineId ?? ''}`} state={state} project={project} dispatch={dispatch} openLineId={openLineId} />}
               {tab === 'log' && <GcBuildingLogTab state={state} project={project} dispatch={dispatch} />}
               {tab === 'submittals' && <GcBuildingSubmittalsTab state={state} project={project} dispatch={dispatch} />}
               {tab === 'rfis' && <GcBuildingRfisTab state={state} project={project} dispatch={dispatch} />}
@@ -916,6 +927,8 @@ function ProjectRow({
     summary: ProjectPeopleSummary
     onFollowUp: (person: ProjectPerson, calling: boolean) => void
     onWorkList: (() => void) | null
+    /** A reason about a bar pressed (G-146): open the job's Schedule tab at the bar. */
+    onReason?: (person: ProjectPerson, reason: PersonReason) => void
   }
   /** Opens Follow up. */
   onChase: () => void
@@ -1033,6 +1046,7 @@ function ProjectRow({
           onFollowUp={people.onFollowUp}
           onWorkList={people.onWorkList}
           onOpenFollowUp={onChase}
+          {...(people.onReason ? { onReason: people.onReason } : {})}
         />
       </span>
       <span style={{ display: 'inline-flex', gap: '0.2rem', alignItems: 'center', ...(narrow ? { gridColumn: '1 / 3' } : null) }} aria-label="Links">

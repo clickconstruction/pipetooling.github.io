@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
 import { telHref, type PeopleTone, type PersonReason, type ProjectPeopleSummary, type ProjectPerson } from '../../lib/gcMode/gcModel'
+import { REASON_GROUPS, reasonGroup } from '../../lib/gcMode/gcCounts'
 
 /**
  * GC mode design spike: one count of the people we are waiting on, in place of the board row's
@@ -28,10 +29,13 @@ export function GcPeoplePill({
   onFollowUp,
   onWorkList,
   onOpenFollowUp,
+  onReason,
 }: {
   summary: ProjectPeopleSummary
   projectName: string
   tourKey?: string
+  /** A reason about a bar pressed (G-146): open the job's Schedule tab at that bar. Unset: reasons are words only. */
+  onReason?: (person: ProjectPerson, reason: PersonReason) => void
   /** Opens the Follow up sheet on this job's people, at them: on "What did they say?" after a Call. */
   onFollowUp: (person: ProjectPerson, calling: boolean) => void
   /** The Follow up sheet on this job's people, from the first. Null: nobody to call. */
@@ -166,6 +170,14 @@ export function GcPeoplePill({
                 close()
                 onFollowUp(person, calling)
               }}
+              {...(onReason
+                ? {
+                    onReason: (person: ProjectPerson, reason: PersonReason) => {
+                      close()
+                      onReason(person, reason)
+                    },
+                  }
+                : {})}
             />
             <span style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', flexWrap: 'wrap', borderTop: '1px solid var(--border)', paddingTop: '0.5rem' }}>
               {onWorkList ? (
@@ -244,24 +256,34 @@ export function PeopleRows({
               {person.tag}
             </span>
           </span>
-          {person.reasons.map((r) => (
-            <span key={r.text} style={{ display: 'flex', gap: '0.4rem', alignItems: 'baseline', ...(r.aside ? { color: 'var(--text-muted)' } : {}) }}>
-              {/* An aside (G-115) is said so the caller knows, not theirs to do: a hollow dot. */}
-              <span aria-hidden style={{ width: 7, height: 7, borderRadius: '50%', boxSizing: 'border-box', flex: 'none', transform: 'translateY(-1px)', ...(r.aside ? { border: `1.5px solid ${TONE.grey.dot}` } : { background: TONE[r.tone].dot }) }} />
-              {onReason && r.lineId ? (
-                <button
-                  type="button"
-                  onClick={() => onReason(person, r)}
-                  title="Open this bar on the chart"
-                  style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', cursor: 'pointer', textDecoration: 'underline dotted', textUnderlineOffset: 3 }}
-                >
-                  {r.text}
-                </button>
-              ) : (
-                r.text
-              )}
-            </span>
-          ))}
+          {/* A call about the work is not a paper owed (G-146): the reasons in two groups, each worst first. */}
+          {REASON_GROUPS.map((g) => {
+            const reasons = person.reasons.filter((r) => reasonGroup(r.code) === g.key)
+            if (reasons.length === 0) return null
+            return (
+              <span key={g.key} data-gc-reason-group={g.key} style={{ display: 'grid', gap: '0.12rem' }}>
+                <span style={{ fontSize: '0.64rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', marginTop: '0.15rem' }}>{g.words}</span>
+                {reasons.map((r) => (
+                <span key={r.text} style={{ display: 'flex', gap: '0.4rem', alignItems: 'baseline', ...(r.aside ? { color: 'var(--text-muted)' } : {}) }}>
+                  {/* An aside (G-115) is said so the caller knows, not theirs to do: a hollow dot. */}
+                  <span aria-hidden style={{ width: 7, height: 7, borderRadius: '50%', boxSizing: 'border-box', flex: 'none', transform: 'translateY(-1px)', ...(r.aside ? { border: `1.5px solid ${TONE.grey.dot}` } : { background: TONE[r.tone].dot }) }} />
+                  {onReason && r.lineId ? (
+                    <button
+                      type="button"
+                      onClick={() => onReason(person, r)}
+                      title="Open this bar on the chart"
+                      style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', cursor: 'pointer', textDecoration: 'underline dotted', textUnderlineOffset: 3 }}
+                    >
+                      {r.text}
+                    </button>
+                  ) : (
+                    r.text
+                  )}
+                </span>
+                ))}
+              </span>
+            )
+          })}
           {person.last && <span style={{ color: 'var(--text-muted)', fontSize: '0.76rem' }}>{person.last}</span>}
         </span>
         <span style={{ display: 'flex', gap: '0.3rem', ...(narrow ? { gridColumn: '2 / -1', marginTop: '0.2rem' } : {}) }}>

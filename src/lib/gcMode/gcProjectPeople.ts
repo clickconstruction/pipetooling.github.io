@@ -17,7 +17,7 @@ import { sentBackOpen, timesSentBack } from './gcBuilding'
 import { followUpPeople, partnerReach, type FollowItem, type FollowPerson } from './gcFollowUpSheet'
 import { contractWaitingOn, customerReminderLate, customerSentWords } from './gcCustomerSend'
 import { latePayApps, payReminderSentWords } from './gcOwnerBillingRemind'
-import { scheduleReasons, uninsuredReasons } from './gcCounts'
+import { barReasons, boardFollowPeople, scheduleReasons, uninsuredReasons } from './gcCounts'
 
 export type PeopleTone = 'red' | 'amber' | 'grey'
 
@@ -174,6 +174,7 @@ export function projectPeople(state: GcState, project: GcProject): ProjectPeople
     // The schedule's reasons on a company (the counts): not ready to start, its dates, the log, its crew, a crowded place.
     for (const r of scheduleReasons(state, project)) trade(r.partner, r.trade, r.reason)
 
+
     // One call covers every reason: a company we already call on this job hears about its insurance too.
     for (const person of byKey.values()) {
       if (person.kind !== 'trade' || !person.partnerId || person.reasons.some((r) => r.code === 'insurance')) continue
@@ -196,6 +197,13 @@ export function projectPeople(state: GcState, project: GcProject): ProjectPeople
 
     // A company that told us from its portal it will be late (the Gantt, G-117): on Follow up until we take the day, push back, or the bar moves.
     for (const late of lateNoticeReasons(state, project)) trade(late.partner, late.trade, { text: late.text, tone: late.tone, code: 'late' })
+
+    // The call list's own bar reasons (G-146): a bar failed, overdue, due today, behind or held, under whoever owes the call.
+    // After the reasons the count had before, so on a tie of tones theirs stay first: a trade's own word reads before "behind".
+    for (const b of barReasons(state, project)) {
+      const partner = b.person.partnerId ? partnerById(state, b.person.partnerId) : undefined
+      add(b.person, b.reason, partner ? lastWith(project, partner) : null)
+    }
 
     // The architect: questions sent to them and not answered.
     const architect = state.customers.find((c) => c.id === project.architectId)
@@ -481,7 +489,8 @@ export function allFollowPeople(state: GcState, also?: string): FollowPerson[] {
   const byId = new Map<string, FollowPerson>()
   for (const project of state.projects) {
     if (project.closedOn || project.lostOn) continue
-    for (const fp of projectFollowPeople(state, project)) {
+    // The board row's sheet (G-146): the call list's people with its items, then Follow up's others.
+    for (const fp of boardFollowPeople(state, project)) {
       const found = byId.get(fp.partner.id)
       if (!found) byId.set(fp.partner.id, { ...fp, items: [...fp.items] })
       else for (const item of fp.items) if (!found.items.some((i) => i.key === item.key)) found.items.push(item)

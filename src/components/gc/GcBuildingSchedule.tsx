@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useMemo, useState, type CSSProperties, type Dispatch, type ReactNode } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useState, type CSSProperties, type Dispatch, type ReactNode } from 'react'
 import {
   GC_COMPANY,
   activityName,
@@ -105,7 +105,7 @@ function useMeName(): string | null {
 /** A box at the height of the button beside it (the owner, 2026-10-04): a date input runs taller on its own. */
 const rowBox = { ...input, height: 30, boxSizing: 'border-box', padding: '0 0.45rem' } as const
 
-export function GcBuildingScheduleTab({ state, project: realProject, dispatch: realDispatch }: GcPaneProps) {
+export function GcBuildingScheduleTab({ state, project: realProject, dispatch: realDispatch, openLineId }: GcPaneProps) {
   const me = useMeName() ?? 'The office'
   // A what-if copy (G-81): while it is shown, the tab reads the copy, and every move it makes goes to the copy.
   const [copyShown, setCopyShown] = useState(false)
@@ -124,7 +124,11 @@ export function GcBuildingScheduleTab({ state, project: realProject, dispatch: r
   const offers = useMemo(() => (project.stage === 'building' && (late.late ?? 0) > 0 ? recoveryOffers(state, project) : []), [state, project, late])
   // The finish with weather and crews (G-57): a second line under the measure, ours only.
   const outlook = useMemo(() => finishOutlook(state, project), [state, project])
-  const [picked, setPicked] = useState<string | null>(null)
+  // A bar to open on arrival (G-146): a reason about it pressed on the board row's card. It comes into view as the call list's does.
+  const [picked, setPicked] = useState<string | null>(openLineId ?? null)
+  useEffect(() => {
+    if (openLineId) window.setTimeout(() => document.querySelector('[data-gc-opened-activity]')?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' }), 0)
+  }, [openLineId])
   // What holds each bar (gcChartHolds.ts): RFIs, submittals, waits, and a trade's papers not in (G-77).
   const holds = useMemo(() => chartHolds(state, project), [state, project])
   // Days a signed change order adds that are not on the dates yet, drawn as tails (G-76).

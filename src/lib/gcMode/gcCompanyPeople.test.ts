@@ -38,11 +38,17 @@ describe('who at a trade gets what, on the office side (the owner, 2026-10-05)',
 
   it("Follow up's email for a waiver and insurance goes to the bookkeeper, greets them by name, and says why", () => {
     const state = initialGcState()
-    const pecan = personOf(state, 'pecanvalley')
-    expect(pecan.items.map((i) => [i.kind, followItemMailGroup(state, i)])).toEqual([
+    const all = personOf(state, 'pecanvalley')
+    // Since G-146 the sheet carries the call list's schedule items too: those go to the job's contact, never the bookkeeper.
+    expect(all.items.map((i) => [i.kind, followItemMailGroup(state, i)])).toEqual([
       ['insurance', 'pay'],
       ['waiver', 'pay'],
+      ['schedule', 'job'],
+      ['schedule', 'job'],
+      ['schedule', 'job'],
     ])
+    // The email for the waiver and the insurance: the papers alone.
+    const pecan = { ...all, items: all.items.filter((i) => i.kind !== 'schedule') }
     const to = followUpMailTo(state, pecan.partner, pecan.items)
     expect(to.map((t) => [t.name, t.email])).toEqual([['Dana Whitfield', 'dana@pecanvalleyelectric.example']])
     expect(mailToWhy(state, pecan.partner, pecan.items, to)).toBe('Pecan Valley Electric sends pay and papers to Dana Whitfield, its bookkeeper.')

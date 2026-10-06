@@ -96,6 +96,8 @@ export interface GcPaneProps {
   onMap?: (packageId: string) => void
   /** Open a trade's leveling sheet when the tab mounts (the map's "Level the quotes"). */
   openPackageId?: string | null
+  /** Open this bar when the Schedule tab mounts (G-146): a reason about it pressed on a board row's card. */
+  openLineId?: string | null
 }
 
 const INVITE_WORDS: Record<Invite['status'], { tone: Tone; word: string }> = {

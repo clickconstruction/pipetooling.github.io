@@ -16,7 +16,9 @@
  * kernel reaches it through an import loop that works only at call time.
  */
 import type { GcProject, GcState, Partner, TradePackage } from './gcTypes'
-import type { PeopleTone, PersonReason } from './gcProjectPeople'
+import { projectFollowPeople, projectPeople, type PeopleTone, type PersonReason, type ProjectPerson } from './gcProjectPeople'
+import { callListFollowPeople, callRows, type CallReason } from './gcCallList'
+import type { FollowPerson } from './gcFollowUpSheet'
 import { daysUntil, weekdayDate } from './gcWords'
 import { partnerById } from './gcLookups'
 import { mondayOf, scheduleMeasures, type ScheduleItem } from './gcBuildingSchedule'
@@ -167,8 +169,8 @@ export function crewCalls(state: GcState, project: GcProject): DatesLine[] {
 /** The codes the counts add to a company's reasons. */
 export type ScheduleCode = 'notReady' | 'confirm' | 'pushedBack' | 'log' | 'crew' | 'crowded'
 
-/** The codes By company says in its own lines (G-115): its merge of Follow up's reasons skips them, so each is said once. */
-export const CALL_LIST_SAYS: readonly string[] = ['late', 'notReady', 'confirm', 'crew', 'crowded']
+/** The codes By company says in its own lines (G-115): its merge of Follow up's reasons skips them, so each is said once. G-146 adds its bar reasons. */
+export const CALL_LIST_SAYS: readonly string[] = ['late', 'notReady', 'confirm', 'crew', 'crowded', 'failed', 'overdue', 'dueToday', 'behind', 'held']
 
 /** A reason on a company, from the schedule. */
 export interface ScheduleReason {
@@ -467,4 +469,81 @@ export function gcScheduleMovesNeedsYou(state: GcState): GcScheduleMovesNeedsYou
     detail: sentences.join(' '),
     projectId: first.project.id,
   }
+}
+
+// ---------------------------------------------------------------------------------------------
+// G-146: the call list's own bar reasons on the count, and the board row's sheet
+// ---------------------------------------------------------------------------------------------
+
+/** The call list's bar reasons as the count codes them (G-146). */
+export type BarCode = 'failed' | 'overdue' | 'dueToday' | 'behind' | 'held'
+
+/** The call list's kinds to the count's codes: its `late` is `overdue`, so a trade's own word that it will be late (G-117's `late`) never clashes. */
+const BAR_CODE: Partial<Record<string, BarCode>> = { failed: 'failed', late: 'overdue', due: 'dueToday', behind: 'behind', held: 'held' }
+
+/** A bar reason on the count, under whoever owes the call: the trade doing the bar, the company bringing a delivery, the architect, the customer. */
+export interface BarReason {
+  person: Omit<ProjectPerson, 'reasons' | 'tone' | 'last'>
+  /** The call list's own line, its words kept for the sheet, with the count's code. */
+  reason: CallReason
+}
+
+const BARS = new WeakMap<GcState, WeakMap<GcProject, BarReason[]>>()
+
+/**
+ * The call list's own bar reasons (G-146), read from `callRows`: an inspection failed on their work,
+ * a bar past its finish, due today or behind, and a bar held by what someone owes, under whoever owes
+ * it. An aside never counts: it waits on us, the city or the utility. G-77's paperwork holds are the
+ * counts' `notReady` already, one per company, so they are not counted again.
+ */
+export function barReasons(state: GcState, project: GcProject): BarReason[] {
+  return kept(BARS, state, project, () => {
+    if (!counts(project)) return []
+    return callRows(state, project, chartHolds(state, project)).flatMap((p) => {
+      const person = { key: p.key, kind: p.kind, name: p.name, company: p.company, tag: p.tag, phone: p.phone, ...(p.partnerId ? { partnerId: p.partnerId } : {}), ...(p.customerId ? { customerId: p.customerId } : {}) }
+      return p.reasons.flatMap((r): BarReason[] => {
+        if (r.aside || !r.call || (r.call.kind === 'held' && r.call.hold === 'paperwork')) return []
+        const code = BAR_CODE[r.call.kind]
+        return code ? [{ person, reason: { ...r, code } }] : []
+      })
+    })
+  })
+}
+
+/** The codes of a person's reasons that come from the schedule: the call list's, the counts', a late notice, another day asked for. */
+const SCHEDULE_CODES: readonly string[] = ['failed', 'overdue', 'dueToday', 'behind', 'held', 'notReady', 'confirm', 'pushedBack', 'log', 'crew', 'crowded', 'late', 'dates', 'schedule']
+
+/** Which group a person's reason shows in (G-146): on the schedule, or owed to us (papers, answers, money). */
+export function reasonGroup(code: string | undefined): 'schedule' | 'owed' {
+  return SCHEDULE_CODES.includes(code ?? '') ? 'schedule' : 'owed'
+}
+
+/** The two groups' words, in the order they show. */
+export const REASON_GROUPS: readonly { key: 'schedule' | 'owed'; words: string }[] = [
+  { key: 'schedule', words: 'On the schedule' },
+  { key: 'owed', words: 'Owed to us' },
+]
+
+/**
+ * The board row's Follow up sheet for a job (G-146): the call list's people with its items, in the
+ * call list's own words, and Follow up's other people on the job, in the count's order. It is what
+ * the row counts, so a company there only for the schedule has items too. Before, a company on the
+ * row only for its dates or its crew had none, and the sheet left it out. Not a job being built:
+ * Follow up's own list, as before.
+ */
+export function boardFollowPeople(state: GcState, project: GcProject): FollowPerson[] {
+  const own = projectFollowPeople(state, project)
+  if (!counts(project)) return own
+  // G-77's paperwork holds are not asked twice: the paper's own item asks for it, as the count says it once.
+  const paperwork = (i: FollowPerson['items'][number]) => i.kind === 'schedule' && i.schedule?.kind === 'held' && i.schedule.hold === 'paperwork'
+  const calls = new Map(callListFollowPeople(state, project, chartHolds(state, project)).map((fp) => [fp.partner.id, { ...fp, items: fp.items.filter((i) => !paperwork(i)) }]))
+  const jobs = new Map(own.map((fp) => [fp.partner.id, fp]))
+  const out: FollowPerson[] = []
+  for (const p of projectPeople(state, project).people) {
+    const fp = calls.get(p.partnerId ?? `customer:${p.customerId ?? ''}`) ?? jobs.get(p.partnerId ?? `customer:${p.customerId ?? ''}`)
+    if (fp && !out.includes(fp)) out.push(fp)
+  }
+  // Anyone either list has that the count does not order is kept, never dropped.
+  for (const fp of [...calls.values(), ...jobs.values()]) if (!out.some((x) => x.partner.id === fp.partner.id)) out.push(fp)
+  return out
 }

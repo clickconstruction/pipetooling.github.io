@@ -5,7 +5,7 @@
  * past the contract, and a trade's bench says when it told us ahead of the day.
  */
 import { afterEach, beforeAll, describe, expect, it } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { GcPeoplePill } from './GcPeoplePill'
 import { GcBuildingScheduleBlock } from './GcBuildingSchedule'
 import { GcPartnersBoard } from './GcTradeBench'
@@ -34,12 +34,12 @@ function moveBy(s: GcState, lineId: string, days: number, reason: ScheduleMoveRe
 }
 
 describe('the board row', () => {
-  it("the people card says Pecan Valley's insurance at work and the bars that wait on it, still two to call", () => {
+  it("the people card says Pecan Valley's insurance at work and the bars that wait on it, among six to call (G-146)", () => {
     render(<GcPeoplePill summary={projectPeople(s0, job(s0))} projectName="Fair Oaks Shops, Building D" onFollowUp={() => undefined} onWorkList={() => undefined} onOpenFollowUp={() => undefined} />)
     fireEvent.click(screen.getByRole('button', { name: /Show who and why\./ }))
     expect(screen.getByText('Their insurance ran out Tue Sep 15. Nothing they do for us is covered. They are at work on Panels and feeders, and Lighting.')).toBeTruthy()
     expect(screen.getByText('Site lighting and Fire alarm wait on current insurance. Site lighting starts Mon Oct 19.')).toBeTruthy()
-    expect(screen.getByRole('button', { name: /^2 to call/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /^6 to call/ })).toBeTruthy()
   })
 
   it('the schedule block goes red with the days past the contract, and says the finish on its hover', () => {
@@ -55,6 +55,45 @@ describe('the board row', () => {
     const { container: onTime } = render(<GcBuildingScheduleBlock project={job(s0)} today={s0.today} box={{}} pastContract={pastContract(s0, job(s0))} />)
     expect(onTime.querySelector('[data-gc-past-contract]')).toBeNull()
     expect(onTime.textContent).toMatch(/milestones/)
+  })
+})
+
+describe('G-146: the card says which calls are about the work', () => {
+  const card = (onReason?: (lineId: string | undefined) => void) => {
+    render(
+      <GcPeoplePill
+        summary={projectPeople(s0, job(s0))}
+        projectName="Fair Oaks Shops, Building D"
+        onFollowUp={() => undefined}
+        onWorkList={() => undefined}
+        onOpenFollowUp={() => undefined}
+        {...(onReason ? { onReason: (_p: unknown, r: { lineId?: string }) => onReason(r.lineId) } : {})}
+      />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: /Show who and why\./ }))
+    return screen.getByRole('dialog', { name: 'Who to call on Fair Oaks Shops, Building D' })
+  }
+  const groupsOf = (dialog: HTMLElement, company: string) => {
+    const row = [...dialog.querySelectorAll('strong')].find((el) => el.textContent === company || el.parentElement?.textContent?.includes(company))!.closest('[style*="grid-template-columns"]')!
+    return [...row.querySelectorAll('[data-gc-reason-group]')].map((g) => [g.getAttribute('data-gc-reason-group'), g.firstElementChild?.textContent])
+  }
+
+  it('Pecan Valley shows both groups, Summit only the schedule, Cibolo only what it owes', () => {
+    const dialog = card()
+    expect(groupsOf(dialog, 'Pecan Valley Electric')).toEqual([
+      ['schedule', 'On the schedule'],
+      ['owed', 'Owed to us'],
+    ])
+    expect(groupsOf(dialog, 'Summit Roofing')).toEqual([['schedule', 'On the schedule']])
+    expect(groupsOf(dialog, 'Cibolo Creek Partners')).toEqual([['owed', 'Owed to us']])
+  })
+
+  it('a reason about a bar opens it; a paper owed is words only', () => {
+    const opened: (string | undefined)[] = []
+    const dialog = card((lineId) => opened.push(lineId))
+    fireEvent.click(within(dialog).getByText('Lighting is behind: 40% done against 48% in the plan. It is due Fri Oct 23.'))
+    expect(opened).toEqual(['felec-3'])
+    expect(within(dialog).getByText('The unconditional waiver on draw 1 has not come.').closest('button')).toBeNull()
   })
 })
 

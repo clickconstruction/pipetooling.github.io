@@ -184,8 +184,9 @@ describe('Follow up, Needs you and the walk', () => {
 
   it('counts the company on the dashboard, and names it there in its own phrase', () => {
     const { state, after } = told()
-    // Summit was not on Follow up before: the notice adds it to the count.
-    expect(gcNeedsYou(after)?.count).toBe((gcNeedsYou(state)?.count ?? 0) + 1)
+    // Summit is on Follow up already for TPO membrane behind (G-146): the notice adds its own reason, not a person.
+    expect(gcNeedsYou(after)?.count).toBe(gcNeedsYou(state)?.count)
+    expect(projectPeople(after, job(after)).people.find((p) => p.partnerId === 'summit')?.reasons[0]?.code).toBe('late')
     // The detail names the first three people; alone on the job, Summit is the one.
     const alone = { ...after, projects: [job(after)], partners: after.partners.filter((p) => p.id === 'summit'), customers: [] }
     expect(gcNeedsYou(alone)?.detail).toBe('Summit Roofing says it will be late.')

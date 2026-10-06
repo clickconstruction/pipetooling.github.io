@@ -60,6 +60,14 @@ export function phraseFor(state: GcState, person: ProjectPerson): string {
   if (code === 'log') return `${c} was not on site`
   if (code === 'crew') return `${c} is short a crew`
   if (code === 'crowded') return `${c} has not said how many it will have`
+  // The call list's bar reasons (G-146): said as the work, never as a paper owed.
+  const job = state.projects.find((p) => p.schedule?.activities.some((a) => a.lineId === top?.lineId))
+  const bar = job && top?.lineId ? lineLabel(job, top.lineId) : null
+  if (code === 'failed') return `${possessive(c)} work failed an inspection`
+  if (code === 'overdue' && bar) return `${c} is late on ${bar}`
+  if (code === 'dueToday' && bar) return `${c} is due today on ${bar}`
+  if (code === 'behind' && bar) return `${c} is behind on ${bar}`
+  if (code === 'held' && bar) return `${c} holds up ${bar}`
   if (code === 'sentBack') return `${possessive(c)} pay application went back`
   if (code === 'bid') return `${c} has our bid`
   return `${c} owes us an answer`
