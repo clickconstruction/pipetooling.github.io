@@ -692,6 +692,24 @@ export interface GcProject {
   waits?: ScheduleWait[]
   /** The customer's schedule as we sent it on its own (the Gantt, G-94), every send kept as it went, newest last. Unset: never sent. */
   scheduleSends?: ScheduleSend[]
+  /** Each trade's own word on how many a day it will have on site in a week (G-142), from its portal, newest first. Unset: none yet. */
+  crewCounts?: CrewCount[]
+}
+
+/**
+ * A trade's own word on how many people a day it will have on site in a week (G-142), from its
+ * portal's look-ahead. Kept newest first: the newest for a trade and week is the one that counts,
+ * and the ones before it say when a count was cut.
+ */
+export interface CrewCount {
+  packageId: string
+  partnerId: string
+  /** The Monday of the week it is for. */
+  weekOf: string
+  /** About how many people a day, a whole number. 0: nobody that week. */
+  count: number
+  /** The day they said it. */
+  on: string
 }
 
 /** The customer's schedule sent on its own, dated and kept as sent (G-94). */
@@ -1266,6 +1284,8 @@ export type GcAction =
   | { type: 'setRough'; projectId: string; start: string; days: Record<string, number>; by: string }
   /** Days got back (G-82): one offer from the late job's list, by its key, re-planned from the state and saved as one move. On a press, never by itself. */
   | { type: 'recoverScheduleDays'; projectId: string; key: string; why: { reason: ScheduleMoveReason; note: string; by: string } }
+  /** A trade says from its portal how many people a day it will have on site in a coming week (G-142). */
+  | { type: 'tradeSetCrewCount'; projectId: string; partnerId: string; packageId: string; weekOf: string; count: number }
 
 /** One trade on a new project, as the office left it in the New project window. */
 export interface NewTradeDraft {
