@@ -500,7 +500,8 @@ function showsWords(input: GanttPrintInput, shown: GanttBar[], groups: GanttGrou
   return words
 }
 
-function forWords(input: GanttPrintInput): string {
+/** The line under Who it is for. Export the schedule (G-136) says the same line under the same switch. */
+export function forWords(input: Pick<GanttPrintInput, 'for' | 'job'>): string {
   const c = input.job.customer
   if (input.for === 'team') return "Our team's copy names the companies and shows the spare days."
   const what = c.everyBar ? `${c.name} may see every bar. Their copy lists every bar by stage, as in their portal.` : `${c.name} reads the stages of the job, as in their portal. Their copy is those stages.`
