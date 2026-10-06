@@ -3264,6 +3264,9 @@ export type Database = {
           count_tooling_link: string | null
           count_tooling_plans_link: string | null
           cover_letter_alt_texts: Json | null
+          cover_letter_exclusions: string | null
+          cover_letter_inclusions: string | null
+          cover_letter_terms: string | null
           created_at: string | null
           created_by: string
           customer_id: string | null
@@ -3355,6 +3358,9 @@ export type Database = {
           count_tooling_link?: string | null
           count_tooling_plans_link?: string | null
           cover_letter_alt_texts?: Json | null
+          cover_letter_exclusions?: string | null
+          cover_letter_inclusions?: string | null
+          cover_letter_terms?: string | null
           created_at?: string | null
           created_by: string
           customer_id?: string | null
@@ -3446,6 +3452,9 @@ export type Database = {
           count_tooling_link?: string | null
           count_tooling_plans_link?: string | null
           cover_letter_alt_texts?: Json | null
+          cover_letter_exclusions?: string | null
+          cover_letter_inclusions?: string | null
+          cover_letter_terms?: string | null
           created_at?: string | null
           created_by?: string
           customer_id?: string | null
