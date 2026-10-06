@@ -2,16 +2,17 @@
 name: "Lien screens: the app's own words that are stale"
 number: 87
 group: ready
-status: found 2026-10-05 by the lien-guide freshness pass (read against main's code, no live look); J, K and L added 2026-10-06 · not started
+status: found 2026-10-05 by the lien-guide freshness pass (read against main's code, no live look); J, K and L added 2026-10-06; M found 2026-10-05 and fixed in v2.4679, waiting for a live look; N added 2026-10-06 · not started
 summary: >
-  Eight places on the lien screens where the app's own words promise something the app does not do,
-  or name a rule it no longer follows. The help guides were patched to say what the app does today;
-  these are the app's side, kept here so they are not lost. E, F and J are wording; G, H, I, K and L
-  need the owner's call.
-next: E, F and J as one small PR (a focus and two sentences); G, H, I, K and L once the owner says which way.
+  Nine open places on the lien screens (E to L, and N) where the app's own words promise something the app does not do,
+  name a rule it no longer follows, or lose the leader the office picked. The help guides were patched
+  to say what the app does today; these are the app's side, kept here so they are not lost. E, F and J
+  are wording and N is a small fix; G, H, I, K and L need the owner's call. M is fixed and waits for a
+  live look.
+next: E, F and J as one small PR (a focus and two sentences); N as its own small PR; G, H, I, K and L once the owner says which way; M deleted once seen live.
 size: XS each
-blocker: None for E, F and J. G, H, I, K and L wait on the owner.
-opinion: build E, F and J — each is one line; G, H, I, K and L are your call.
+blocker: None for E, F, J and N. G, H, I, K and L wait on the owner.
+opinion: build E, F, J and N — each is small; G, H, I, K and L are your call.
 mockup: not required — words and one focus on screens that exist
 ---
 
@@ -84,3 +85,17 @@ This card was first numbered #85. The legal-portal train had already named its c
 - `src/lib/jobs/lienTimeline.ts:379` (`lienGone`) treats a sub job whose every window closed unsent as having no affidavit to file, and the strip draws the lien as blocked (a dotted ghost since v2.4652).
 - Counsel's question: can a notice sent after its window still carry the affidavit, or is the claim gone for those months? If gone, the Affidavits pile should drop the job or list it under *Nothing left to claim*. If not, the timeline's *blocked* is too strong.
 - Found 2026-10-06 while redrawing the timeline (v2.4652).
+
+**M. A waiting signature request reopened with the wrong leader in Signs.** In the Release of Lien window, a waiver sent to a leader's desk, or opened for *He is here, he signs now*, reopened with the job's default leader in the **Signs** pick instead of the leader it asked. The pick is locked while the waiver waits, but *He is here, he signs now* reads it: pressing it moved the request to the default leader.
+
+- `src/components/jobs/LienReleaseModal.tsx` resumed a draft or a waiting request from the job's releases without the row's `signer_user_id`. The pick came from the users load: the company's signer, then the job's leader.
+- `signNow` in the same file rewrites `signer_user_id` to the pick when they differ. When the default leader was the signed-in user, the same button read *Sign it now* and let him sign in place of the leader asked.
+- Found 2026-10-05 while the lien release guide was checked against the signer reset (v2.4567). Fixed in v2.4679. A waiting request now reopens with the leader it asked in the pick. He stays its signer even when he is off the list, until the request is taken back. A slow read can no longer resume another job's waiver. Confirm it live on a waiting waiver, then delete this item.
+
+**N. A draft that was never asked forgets its leader.** The pick is saved only when a signature is asked. A draft whose saved Signed by line names one leader reopens with the job's default in **Signs**. Pressing **Send it to his desk** then asks the default leader to sign a page that prints the other's name.
+
+- `buildRowPayload` in `src/components/jobs/LienReleaseModal.tsx` (the draft's autosave) writes no `signer_user_id`. A request or a signature writes it: `ensureMinted('awaiting_signature')`, the request on an issued waiver, `signNow`, and the signing itself (`src/lib/jobs/lienReleaseSignIo.ts`).
+- A resumed draft keeps its saved Signed by line, because the prefill rebuild stays off for it (v2.2619). So the line and the pick can name two people.
+- A draft that **Cancel request** turned back keeps the asked leader's `signer_user_id`. v2.4679 seeds the pick only for a waiting request, so that draft reopens on the default too.
+- Fix: save the pick with the draft. Or, on resume, take the leader whose name matches the saved Signed by line. Saving it would not put the draft in a leader's list, because `useLienSignatureLanes` (`src/hooks/useLienSignatureLanes.ts`) reads only waiting and signed rows.
+- Found 2026-10-06 by the second read of v2.4679.

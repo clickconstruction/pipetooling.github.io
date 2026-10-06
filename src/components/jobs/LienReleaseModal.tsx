@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import {
@@ -189,6 +189,14 @@ export default function LienReleaseModal({
   // v2.4274: the leaders who can sign (the job's master first), the one standing here, and the GC's email.
   const [masters, setMasters] = useState<MasterOption[]>([])
   const [presentSignerId, setPresentSignerId] = useState<string | null>(null)
+  /**
+   * #87 M: the leader a resumed signature request asked. He stays the pick and the signer of record while
+   * the request waits, even when he is no longer on the list, named from his own users row (`name` stays
+   * null until that read lands, and when it finds no name: then nothing off the list is named).
+   */
+  const [waitingAsk, setWaitingAsk] = useState<{ id: string; name: string | null } | null>(null)
+  /** The job's default leader, as the users load last worked it out (the pick falls back to him, #87 M). */
+  const defaultSignerRef = useRef<string | null>(null)
   const [presentOpen, setPresentOpen] = useState(false)
   const [gcEmail, setGcEmail] = useState<string | null>(null)
   const [sendBusy, setSendBusy] = useState(false)
@@ -218,22 +226,30 @@ export default function LienReleaseModal({
   const openUnconditionalAskRef = useRef<{ preset: boolean; fallback: LienWaiverFormType } | null>(null)
   const [voidPendingId, setVoidPendingId] = useState<string | null>(null)
 
+  /** The job the window is on now: a history read that comes back for another job is dropped (#87 M). */
+  const currentJobIdRef = useRef<string | null>(null)
+  useLayoutEffect(() => {
+    currentJobIdRef.current = job?.id ?? null
+  }, [job?.id])
+
   const loadHistory = useCallback(async () => {
     if (!job?.id) {
       setHistoryRows([])
       return
     }
+    const forJob = job.id
     try {
       const { data } = await supabase
         .from('job_lien_releases')
         .select('*')
-        .eq('job_id', job.id)
+        .eq('job_id', forJob)
         .order('created_at', { ascending: false })
+      if (currentJobIdRef.current !== forJob) return
       setHistoryRows((data ?? []) as JobLienReleaseRow[])
     } catch {
-      setHistoryRows([])
+      if (currentJobIdRef.current === forJob) setHistoryRows([])
     } finally {
-      setHistoryReady(true)
+      if (currentJobIdRef.current === forJob) setHistoryReady(true)
     }
   }, [job?.id])
 
@@ -248,8 +264,10 @@ export default function LienReleaseModal({
   }, [open, loadHistory])
 
   // The pick belongs to one opening on one job (v2.4567): cleared here, the load below sets this job's default.
+  // A resumed row that was asked keeps its own leader (#87 M, the resume below).
   useEffect(() => {
     setPresentSignerId(null)
+    defaultSignerRef.current = null
   }, [open, job?.id])
 
   useEffect(() => {
@@ -272,7 +290,8 @@ export default function LienReleaseModal({
         // v2.4285: the company's signer (Settings → Jobs & billing) is the default; the job's master, then anyone, after.
         const companySigner = (getPhysicalInvoiceIssuerDraft().signerName ?? '').trim().toLowerCase()
         const byCompany = companySigner ? rows.find((r) => r.name.trim().toLowerCase() === companySigner)?.id : undefined
-        setPresentSignerId((cur) => cur ?? byCompany ?? job.master_user_id ?? rows[0]?.id ?? null)
+        defaultSignerRef.current = byCompany ?? job.master_user_id ?? rows[0]?.id ?? null
+        setPresentSignerId((cur) => cur ?? defaultSignerRef.current)
       } catch {
         setMasters([])
       }
@@ -414,6 +433,7 @@ export default function LienReleaseModal({
   useEffect(() => {
     if (!open || !job) return
     setReleaseRow(null)
+    setWaitingAsk(null)
     setAutosaveState('idle')
     setSignOpen(false)
     userTouchedRef.current = false
@@ -445,15 +465,36 @@ export default function LienReleaseModal({
   // release, and those live in the history box.
   useEffect(() => {
     if (!open || releaseRow) return
+    // Only this job's rows: a window reopened on another job never resumes the last one's waiver (#87 M).
+    const mine = historyRows.filter((r) => r.job_id === job?.id)
     const draft =
-      historyRows.find((r) => lienReleaseStatus(r) === 'draft' && !r.voided_at) ??
-      historyRows.find((r) => lienReleaseStatus(r) === 'awaiting_signature' && !r.voided_at)
+      mine.find((r) => lienReleaseStatus(r) === 'draft' && !r.voided_at) ??
+      mine.find((r) => lienReleaseStatus(r) === 'awaiting_signature' && !r.voided_at)
     if (!draft) return
     hydratedDraftRef.current = true
     setReleaseRow(draft)
     if (isLienWaiverFormType(draft.form_type)) setFormType(draft.form_type)
     setSelectedInvoiceIds(new Set(draft.invoice_ids ?? []))
     const s = lienReleaseFieldsFromSnapshot(draft.fields)
+    // #87 M: a waiting request names the leader it asked. The Signs pick shows him, and He signs now
+    // keeps him; the job's default would reassign the request on the next press. A draft keeps the
+    // default (#87 N).
+    if (lienReleaseStatus(draft) === 'awaiting_signature' && draft.signer_user_id) {
+      const askedId = draft.signer_user_id
+      setPresentSignerId(askedId)
+      setWaitingAsk({ id: askedId, name: null })
+      // His own users row names him, archived or not; the page's Signed by line may print someone else.
+      void (async () => {
+        try {
+          const { data } = await supabase.from('users').select('id, name, notes').eq('id', askedId).maybeSingle()
+          const u = data as { name: string | null; notes: string | null } | null
+          const name = u ? (u.notes?.trim() || u.name?.trim() || '').replace(/,.*$/, '').trim() : ''
+          if (name) setWaitingAsk((cur) => (cur && cur.id === askedId ? { id: askedId, name } : cur))
+        } catch {
+          /* unnamed: nothing off the list is named, as before */
+        }
+      })()
+    }
     setFields({
       companyName: s.companyName ?? '',
       checkFrom: s.checkFrom ?? '',
@@ -500,9 +541,15 @@ export default function LienReleaseModal({
    */
   const signerOfRecord = useMemo(() => {
     const id = releaseRow?.signer_user_id ?? presentSignerId
-    const m = (id ? masters.find((x) => x.id === id) : null) ?? presentSigner
+    const listed = (id ? masters.find((x) => x.id === id) : null) ?? presentSigner
+    // #87 M: the leader a waiting request asked is its signer of record even off the list (archived, or no longer a leader).
+    const askedOffList =
+      !listed && waitingAsk?.name && releaseRow && lienReleaseStatus(releaseRow) === 'awaiting_signature' && releaseRow.signer_user_id === waitingAsk.id
+        ? { id: waitingAsk.id, name: waitingAsk.name }
+        : null
+    const m = listed ?? askedOffList
     return m && m.id !== authUser?.id ? m : null
-  }, [releaseRow?.signer_user_id, presentSignerId, masters, presentSigner, authUser?.id])
+  }, [releaseRow, presentSignerId, masters, presentSigner, authUser?.id, waitingAsk])
 
   // Rebuild the prefill whenever its inputs change; keep user-typed signer lines.
   // A resumed draft opts out entirely — its saved fields ARE the document.
@@ -791,12 +838,17 @@ export default function LienReleaseModal({
         'cancel lien signature request',
       )
       if (data) setReleaseRow(data)
+      // #87 M: an asked leader off the list (archived) was the pick only while his request waited.
+      if (waitingAsk) {
+        if (!masters.some((m) => m.id === waitingAsk.id)) setPresentSignerId(defaultSignerRef.current)
+        setWaitingAsk(null)
+      }
       void loadHistory()
       if (target === 'draft') showToast('Request taken back. The waiver is a draft again, so you can change it.', 'success')
     } catch {
       showToast('Could not cancel the request.', 'error')
     }
-  }, [releaseRow, loadHistory, showToast])
+  }, [releaseRow, loadHistory, showToast, waitingAsk, masters])
 
   /**
    * He signs now (v2.4274): mint the row as awaiting the chosen leader's signature, then open the
@@ -1405,6 +1457,9 @@ export default function LienReleaseModal({
                   <span style={{ color: 'var(--text-muted)' }}>Signs</span>
                   {masters.length > 1 ? (
                     <select value={presentSignerId ?? ''} onChange={(e) => setPresentSignerId(e.target.value || null)} aria-label="Who signs" disabled={asked} style={{ fontSize: '0.8125rem', padding: '0.25rem 0.4rem', border: '1px solid var(--border-strong)', borderRadius: 7, background: 'var(--surface)', color: 'inherit', fontFamily: 'inherit' }}>
+                      {asked && waitingAsk?.name && presentSignerId === waitingAsk.id && !masters.some((m) => m.id === waitingAsk.id) ? (
+                        <option value={waitingAsk.id}>{waitingAsk.name}</option>
+                      ) : null}
                       {masters.map((m) => (
                         <option key={m.id} value={m.id}>
                           {m.name}
