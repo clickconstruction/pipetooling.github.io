@@ -6,12 +6,12 @@ import { supabase } from '../supabase'
 import { fetchAllRowsChunkedIn } from '../supabasePaging'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { ymdAddDays } from '../../utils/dateUtils'
-import { CARD_CHARGES_WINDOW_MAX_DAYS, fetchCardChargesWindow, type CardChargeWindowRow } from '../banking/cardChargesWindow'
+import { fetchCardChargesWindow, type CardChargeWindowRow } from '../banking/cardChargesWindow'
 import { formatJobLedgerShortLine, type LedgerPrefixMap } from '../ledgerDisplayPrefixes'
 import type { SortedTeamPurchaseRow } from '../teamPurchasesSorted'
 import type { StaleStaffRow } from './teamPurchaseRows'
-import { TALLY_NEIGHBOUR_REACH_DAYS, TALLY_STORE_LOOKBACK_DAYS, tallyDayKey } from './tallySortSuggestion'
-import { tallyChargeMadeAt, type TallyQueueScheduleRow, type TallyQueueSessionRow } from './tallyTeamQueue'
+import { TALLY_NEIGHBOUR_REACH_DAYS, tallyDayKey } from './tallySortSuggestion'
+import { tallyChargeMadeAt, tallyQueueHistoryRange, type TallyQueueScheduleRow, type TallyQueueSessionRow } from './tallyTeamQueue'
 
 export type TallyTeamQueueReads = {
   queue: StaleStaffRow[]
@@ -48,15 +48,13 @@ export async function fetchTallyTeamQueue(): Promise<TallyTeamQueueReads> {
 
   const oldest = ymds.reduce((a, b) => (b < a ? b : a))
   const newest = ymds.reduce((a, b) => (b > a ? b : a))
-  const lookbackStart = ymdAddDays(oldest, -TALLY_STORE_LOOKBACK_DAYS)
-  const widestStart = ymdAddDays(newest, -(CARD_CHARGES_WINDOW_MAX_DAYS - 1))
-  const historyStart = lookbackStart < widestStart ? widestStart : lookbackStart
+  const historyRange = tallyQueueHistoryRange(oldest, newest)
   const holders = [...new Set(queue.map((r) => r.target_user_id))]
   const workFrom = ymdAddDays(oldest, -TALLY_NEIGHBOUR_REACH_DAYS)
   const workTo = ymdAddDays(newest, TALLY_NEIGHBOUR_REACH_DAYS)
 
   const [history, sessions, schedule] = await Promise.all([
-    fetchCardChargesWindow({ startYmd: historyStart, endYmd: newest }, supabase, 'tally team queue history'),
+    fetchCardChargesWindow(historyRange, supabase, 'tally team queue history'),
     fetchAllRowsChunkedIn(
       holders,
       (chunk, from, to) =>

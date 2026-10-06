@@ -44,7 +44,7 @@ const session = (ymd: string, jobId: string | null, from: string, to: string | n
 })
 const sorted = (id: string, ymd: string, hm: string, counterparty: string, jobId: string, amount = -10): TallySortedCharge => ({
   id,
-  postedAt: at(ymd, hm),
+  madeAt: at(ymd, hm),
   counterparty,
   splits: [{ jobId, amount }],
 })
@@ -153,7 +153,7 @@ describe('suggestTallyDay — the pass-2 day cards', () => {
       [job(JOB_A), 'clock-one-job'],
       [job(OFFICE), 'same-day-sorted'],
     ])
-    expect(d.chips[1]!.facts).toEqual({ postedAt: [at('2026-09-29', '12:39')] })
+    expect(d.chips[1]!.facts).toEqual({ madeAt: [at('2026-09-29', '12:39')] })
   })
 
   it('a Saturday with no clock and nothing scheduled: no likely; Friday, Monday and the sorted one are offered', () => {
@@ -171,7 +171,7 @@ describe('suggestTallyDay — the pass-2 day cards', () => {
     expect(d.chips.map((c) => [c.choice, c.rule, c.facts])).toEqual([
       [job(JOB_D), 'neighbour-day', { days: ['2026-09-25'] }],
       [job(JOB_A), 'neighbour-day', { days: ['2026-09-28'] }],
-      [job(JOB_E), 'same-day-sorted', { postedAt: [at('2026-09-26', '09:26')] }],
+      [job(JOB_E), 'same-day-sorted', { madeAt: [at('2026-09-26', '09:26')] }],
       [job(OFFICE), 'office', {}],
     ])
     // Fuel takes no store rule, even with a Corner Fuel charge sorted that morning.
@@ -232,7 +232,7 @@ describe('suggestTallyDay — the line rules', () => {
     ])
     const split: TallySortedCharge = {
       id: 'x0',
-      postedAt: at('2026-09-29', '09:00'),
+      madeAt: at('2026-09-29', '09:00'),
       counterparty: 'Ridge Supply',
       splits: [
         { jobId: JOB_B, amount: -5 },
@@ -416,7 +416,7 @@ describe('suggestTallyDay — the day rules', () => {
   it('a refund is not history: it starts no store run and names no same-day job', () => {
     const refund = (id: string, ymd: string, hm: string, jobId: string): TallySortedCharge => ({
       id,
-      postedAt: at(ymd, hm),
+      madeAt: at(ymd, hm),
       counterparty: 'Ridge Supply',
       splits: [{ jobId, amount: 25 }],
     })

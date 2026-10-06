@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react'
 import { formatDenverTimeOnly } from '../../utils/dateUtils'
-import type { TallyQueueCard } from '../../lib/tally/tallyTeamQueue'
+import { tallyHistoryMadeAt, type TallyQueueCard } from '../../lib/tally/tallyTeamQueue'
 import type { StaleStaffRow } from '../../lib/tally/teamPurchaseRows'
 import type { TallyChoice, TallyLineSuggestion, TallySuggestion } from '../../lib/tally/tallySortSuggestion'
 import {
@@ -296,7 +296,7 @@ export function TallyTeamDayCard({
             data-testid="tally-team-sorted-line"
             style={{ borderTop: '1px solid var(--border)', paddingTop: '0.4rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}
           >
-            {h.counterpartyName ?? 'Unknown store'} {money(h.amount)} went to{' '}
+            {formatDenverTimeOnly(Date.parse(tallyHistoryMadeAt(h)))} {h.counterpartyName ?? 'Unknown store'} {money(h.amount)} went to{' '}
             {sortedWhere(h, label)}
             {h.sortedByName ? `, sorted by ${h.sortedByName}` : ''}.
           </div>

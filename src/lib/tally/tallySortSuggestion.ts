@@ -15,12 +15,12 @@ import { buildEvenSortModeSplit, type SortModeSplitLine } from './sortModeSplit'
  * press; `likely` is the best guess the day offers; `none` is offered only. Whether a likely chip
  * arrives selected is the screen's call (the owner's: it does not).
  *
- * ## Rule set v2, measured
+ * ## Rule set v3, measured
  *
  * Replayed 2026-10-06 over 90 days of sorted card charges (839 charges in 542 sorting visits) the
- * way the office queue reads them: each charge on the day it was swiped, the history on its
- * posting day (the history read has no swipe time yet), each day rebuilt as it stood when it was
- * sorted, the history only what was sorted before it.
+ * way the office queue reads them: each charge and its history on the day the card was swiped,
+ * each day rebuilt as it stood when it was sorted, the history only what was sorted before it.
+ * The likely rules read no history, so v3's table is v2's.
  *
  * | Rule | Level | n | Agrees | Share | Where the rest went |
  * |---|---|---|---|---|---|
@@ -43,8 +43,9 @@ import { buildEvenSortModeSplit, type SortModeSplitLine } from './sortModeSplit'
  * Rules built from the sorter's own past sorts (the store runs, the day's sorted charges) can only
  * echo the sorter's habits, so they stay offered whatever they score.
  *
- * The day's chips held the answer for 605 of the 839 at the cap of 5: 616 uncapped, 577 at a cap
- * of 4, 610 at 6. The median day shows 4 chips; a day never shows more than the cap.
+ * The day's chips held the answer for 602 of the 839 at the cap of 5: 615 uncapped, 575 at a cap
+ * of 4, 609 at 6 (v2, with history on the posting day: 605). The median day shows 4 chips; a day
+ * never shows more than the cap.
  *
  * What the data overruled in the to-do and the drawing (rule set v1, by the posting day):
  * - The only job clocked that day is a guess, not an answer. On a day clocked only on Office it
@@ -68,8 +69,10 @@ import { buildEvenSortModeSplit, type SortModeSplitLine } from './sortModeSplit'
 /**
  * Bump when a rule's meaning or level changes, so a measured precision names the rule set it
  * measured. v2 (PR 2a): a refund is not history, and the by-hours split is no longer a chip.
+ * v3: history is keyed on the swipe too (`purchased_at`), so the store runs and the day's
+ * sorted charges follow the day the card was used.
  */
-export const TALLY_SUGGESTION_RULES_VERSION = 2
+export const TALLY_SUGGESTION_RULES_VERSION = 3
 
 /** How far back the holder's charges at a store count. */
 export const TALLY_STORE_LOOKBACK_DAYS = 30
@@ -156,8 +159,8 @@ export type TallyCharge = {
 /** One of the holder's charges that already has its job split. A refund (splits summing above 0) is not history. */
 export type TallySortedCharge = {
   id: string
-  /** `posted_at`: the history read carries no swipe time yet, so history keeps the posting day. */
-  postedAt: string
+  /** When the card was swiped (`purchased_at`, else `posted_at`), as for `TallyCharge.madeAt`. */
+  madeAt: string
   counterparty: string
   splits: ReadonlyArray<{ jobId: string; amount: number }>
 }
@@ -214,8 +217,8 @@ export type TallyFacts = {
   category?: string
   /** The company days the job was worked. */
   days?: string[]
-  /** When the day's already-sorted charges that went to the job were posted, newest first. */
-  postedAt?: string[]
+  /** When the day's already-sorted charges that went to the job were swiped, newest first. */
+  madeAt?: string[]
 }
 
 export type TallySuggestion = {
@@ -282,10 +285,6 @@ function suggestion(choice: TallyChoice, rule: TallyRuleId, facts: TallyFacts = 
 
 function jobChoice(jobId: string): TallyChoice {
   return { kind: 'job', jobId }
-}
-
-function byPostedAt(a: { postedAt: string }, b: { postedAt: string }): number {
-  return Date.parse(a.postedAt) - Date.parse(b.postedAt)
 }
 
 function byMadeAt(a: { madeAt: string }, b: { madeAt: string }): number {
@@ -475,10 +474,10 @@ export function suggestTallyDay(input: TallyDayInput): TallyDaySuggestion {
   const history = input.history
     .filter((h) => {
       if (chargeIds.has(h.id) || !isPurchaseHistory(h)) return false
-      const d = tallyDayKey(h.postedAt)
+      const d = tallyDayKey(h.madeAt)
       return d != null && d >= since && d <= ymd
     })
-    .sort((a, b) => byPostedAt(b, a))
+    .sort((a, b) => byMadeAt(b, a))
 
   const ordered: TallySuggestion[] = []
   const offered = new Set<string>()
@@ -539,14 +538,14 @@ export function suggestTallyDay(input: TallyDayInput): TallyDaySuggestion {
   // 6. Where the day's already-sorted charges went.
   const sortedToday = new Map<string, string[]>()
   for (const h of history) {
-    if (tallyDayKey(h.postedAt) !== ymd) continue
+    if (tallyDayKey(h.madeAt) !== ymd) continue
     const j = wholeJobOf(h)
     if (!j) continue
     const list = sortedToday.get(j)
-    if (list) list.push(h.postedAt)
-    else sortedToday.set(j, [h.postedAt])
+    if (list) list.push(h.madeAt)
+    else sortedToday.set(j, [h.madeAt])
   }
-  for (const [jobId, postedAt] of sortedToday) add(suggestion(jobChoice(jobId), 'same-day-sorted', { postedAt }))
+  for (const [jobId, madeAt] of sortedToday) add(suggestion(jobChoice(jobId), 'same-day-sorted', { madeAt }))
 
   // 7. Office.
   if (officeJobId) add(suggestion(jobChoice(officeJobId), 'office'))

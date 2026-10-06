@@ -6,10 +6,11 @@
 
 import { mercuryCategoryString } from '../mercuryOfficeLikeCategories'
 import { mercurySwipeAtIso } from '../mercurySwipeTime'
-import type { CardChargeWindowRow } from '../banking/cardChargesWindow'
+import { CARD_CHARGES_WINDOW_MAX_DAYS, type CardChargeWindowRow } from '../banking/cardChargesWindow'
 import { ymdAddDays } from '../../utils/dateUtils'
 import type { StaleStaffRow } from './teamPurchaseRows'
 import {
+  TALLY_STORE_LOOKBACK_DAYS,
   suggestTallyDay,
   tallyDayKey,
   type TallyCharge,
@@ -115,6 +116,29 @@ export function tallyChargeFromStaffRow(row: StaleStaffRow): TallyCharge | null 
   }
 }
 
+/**
+ * When a history row's card was swiped: `purchased_at` (Mercury's `createdAt`, validated by the
+ * read the same way `mercurySwipeAtIso` does), else `posted_at`.
+ */
+export function tallyHistoryMadeAt(row: CardChargeWindowRow): string {
+  return row.purchasedAt || row.postedAt
+}
+
+/** How many days past the newest charge the history read looks: a charge posts up to a day or two after its swipe. */
+export const TALLY_HISTORY_POSTING_LAG_DAYS = 3
+
+/**
+ * The company days to ask `list_card_charges_window` for. It filters on `posted_at`, so the end runs
+ * past the newest swipe day; the start is the store lookback before the oldest, within the read's
+ * 366-day limit.
+ */
+export function tallyQueueHistoryRange(oldestYmd: string, newestYmd: string): { startYmd: string; endYmd: string } {
+  const endYmd = ymdAddDays(newestYmd, TALLY_HISTORY_POSTING_LAG_DAYS)
+  const lookbackStart = ymdAddDays(oldestYmd, -TALLY_STORE_LOOKBACK_DAYS)
+  const widestStart = ymdAddDays(endYmd, -(CARD_CHARGES_WINDOW_MAX_DAYS - 1))
+  return { startYmd: lookbackStart < widestStart ? widestStart : lookbackStart, endYmd }
+}
+
 /** A window row counts as sorted when it went to a job, to invoices, or was marked payroll. */
 function isSorted(row: CardChargeWindowRow): boolean {
   return row.splits.length > 0 || row.invoiceLinks.length > 0 || row.payrollMarked
@@ -162,14 +186,14 @@ export function buildTallyTeamQueue(input: TallyTeamQueueInput): TallyTeamQueue 
       const list = historyByHolder.get(h.holderUserId) ?? []
       list.push({
         id: h.id,
-        postedAt: h.postedAt,
+        madeAt: tallyHistoryMadeAt(h),
         counterparty: h.counterpartyName ?? '',
         splits: h.splits.map((s) => ({ jobId: s.jobId, amount: s.amount })),
       })
       historyByHolder.set(h.holderUserId, list)
     }
     if (isSorted(h)) {
-      const key = `${h.holderUserId}|${tallyDayKey(h.postedAt)}`
+      const key = `${h.holderUserId}|${tallyDayKey(tallyHistoryMadeAt(h))}`
       const list = sortedByCard.get(key) ?? []
       list.push(h)
       sortedByCard.set(key, list)
@@ -212,7 +236,9 @@ export function buildTallyTeamQueue(input: TallyTeamQueueInput): TallyTeamQueue 
       officeJobId: input.officeJobId,
       nowMs: input.nowMs,
     })
-    const sorted = (sortedByCard.get(key) ?? []).slice().sort((a, b) => Date.parse(a.postedAt) - Date.parse(b.postedAt))
+    const sorted = (sortedByCard.get(key) ?? [])
+      .slice()
+      .sort((a, b) => Date.parse(tallyHistoryMadeAt(a)) - Date.parse(tallyHistoryMadeAt(b)))
     cards.push({
       holderId,
       holderName: list[0]!.row.target_name?.trim() || 'Unknown',

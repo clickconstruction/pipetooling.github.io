@@ -5,6 +5,8 @@ import {
   buildTallyTeamQueue,
   tallyCategoryFromRaw,
   tallyChargeMadeAt,
+  tallyHistoryMadeAt,
+  tallyQueueHistoryRange,
   tallyThroughDate,
   type TallyQueueScheduleRow,
   type TallyQueueSessionRow,
@@ -34,9 +36,10 @@ const staff = (p: Partial<StaleStaffRow> & { id: string; holder: string; name: s
 
 // Asserted, not annotated: the row type gains fields as #52 grows the read (purchasedAt, v2.4665),
 // and these fixtures only need the ones the queue reads.
-const windowRow = (p: { id: string; holder: string; ymd: string; hm: string; amount: number; store: string; jobs?: Array<[string, number]>; invoices?: number; payroll?: boolean; by?: string }): CardChargeWindowRow => ({
+const windowRow = (p: { id: string; holder: string; ymd: string; hm: string; amount: number; store: string; jobs?: Array<[string, number]>; invoices?: number; payroll?: boolean; by?: string; postedYmd?: string; postedHm?: string; noPurchasedAt?: boolean }): CardChargeWindowRow => ({
   id: p.id,
-  postedAt: at(p.ymd, p.hm),
+  postedAt: at(p.postedYmd ?? p.ymd, p.postedHm ?? p.hm),
+  purchasedAt: p.noPurchasedAt ? null : at(p.ymd, p.hm),
   amount: p.amount,
   counterpartyName: p.store,
   kind: p.amount > 0 ? 'other' : 'debitCardTransaction',
@@ -182,5 +185,37 @@ describe('the day of a charge is the day of the swipe', () => {
     expect(tallyChargeMadeAt(swiped)).toBe(new Date(at('2026-09-28', '09:00')).toISOString())
     const noSwipe = staff({ id: 'x3', holder: 'u', name: 'U', ymd: '2026-09-28', hm: '09:00', amount: -1, store: 'S', noSwipeTime: true })
     expect(tallyChargeMadeAt(noSwipe)).toBe(at('2026-09-28', '09:00'))
+  })
+})
+
+describe('history is keyed on the swipe too', () => {
+  it('a sorted charge swiped Monday and posted Tuesday is one of Monday’s sorted lines and Monday’s same-day chip', () => {
+    const q = buildTallyTeamQueue({
+      queue: [staff({ id: 'q1', holder: 'u-ann', name: 'Ann', ymd: '2026-09-28', hm: '15:00', amount: -20, store: 'Corner Fuel', cat: 'FuelAndGas' })],
+      history: [
+        windowRow({ id: 's1', holder: 'u-ann', ymd: '2026-09-28', hm: '09:26', postedYmd: '2026-09-29', postedHm: '01:30', amount: -12, store: 'Ridge Supply', jobs: [['job-c', -12]] }),
+      ],
+      sessions: [],
+      schedule: [],
+      officeJobId: 'job-office',
+      nowMs: NOW,
+    })
+    const card = q.days[0]!.cards[0]!
+    expect(card.ymd).toBe('2026-09-28')
+    expect(card.sorted.map((h) => h.id)).toEqual(['s1'])
+    expect(card.suggestion.chips.find((c) => c.rule === 'same-day-sorted')?.choice).toEqual({ kind: 'job', jobId: 'job-c' })
+  })
+
+  it('falls back to posted_at when the read has no purchase time', () => {
+    const noTime = windowRow({ id: 's2', holder: 'u', ymd: '2026-09-28', hm: '09:00', postedYmd: '2026-09-29', amount: -1, store: 'S', noPurchasedAt: true })
+    expect(tallyHistoryMadeAt(noTime)).toBe(at('2026-09-29', '09:00'))
+  })
+
+  it('asks the read for 3 days past the newest charge, since it filters on posted_at', () => {
+    expect(tallyQueueHistoryRange('2026-09-20', '2026-09-30')).toEqual({ startYmd: '2026-08-21', endYmd: '2026-10-03' })
+  })
+
+  it('keeps a very old charge’s range within the read’s 366 days', () => {
+    expect(tallyQueueHistoryRange('2025-06-01', '2026-09-30')).toEqual({ startYmd: '2025-10-03', endYmd: '2026-10-03' })
   })
 })
