@@ -290,6 +290,64 @@ export function BidsCoverLetterTab({
     else if (bidUpdateRefused(rows)) showToast(BID_UPDATE_NOT_APPLIED_MESSAGE, 'error')
   }
 
+  // v2.4737 (bid history PR 0a): the three boxes — Additional inclusions, Exclusions and scope,
+  // Terms and warranty — are saved on the bid (bids.cover_letter_inclusions / _exclusions / _terms).
+  // They were React state only: typed, shown, and gone on a reload. On opening a bid the saved
+  // text seeds a box nobody has typed in this session (a typed box keeps its text); a change
+  // writes back after a pause. null in the column means nobody typed: the letter falls back to the
+  // org default and then the built-in wording, as before.
+  const letterTextsLoadedFor = useRef<string | null>(null)
+  // The same fact as state, so the save below runs once the read lands and writes a box typed before it.
+  const [letterTextsLoadedBid, setLetterTextsLoadedBid] = useState<string | null>(null)
+  const letterTextsSavedRef = useRef<{ inclusions: string | undefined; exclusions: string | undefined; terms: string | undefined }>({ inclusions: undefined, exclusions: undefined, terms: undefined })
+  useEffect(() => {
+    letterTextsLoadedFor.current = null
+    setLetterTextsLoadedBid(null)
+    const bid = selectedBidForPricing
+    if (!bid) return
+    let cancelled = false
+    void (async () => {
+      const { data } = await supabase.from('bids').select('cover_letter_inclusions, cover_letter_exclusions, cover_letter_terms').eq('id', bid.id).maybeSingle()
+      if (cancelled) return
+      const row = (data ?? null) as { cover_letter_inclusions?: string | null; cover_letter_exclusions?: string | null; cover_letter_terms?: string | null } | null
+      const seed = (setter: Dispatch<SetStateAction<Record<string, string>>>, saved: string | null | undefined) => {
+        if (saved == null) return
+        setter((prev) => (bid.id in prev ? prev : { ...prev, [bid.id]: saved }))
+      }
+      seed(setCoverLetterInclusionsByBid, row?.cover_letter_inclusions)
+      seed(setCoverLetterExclusionsByBid, row?.cover_letter_exclusions)
+      seed(setCoverLetterTermsByBid, row?.cover_letter_terms)
+      letterTextsSavedRef.current = { inclusions: row?.cover_letter_inclusions ?? undefined, exclusions: row?.cover_letter_exclusions ?? undefined, terms: row?.cover_letter_terms ?? undefined }
+      letterTextsLoadedFor.current = bid.id
+      setLetterTextsLoadedBid(bid.id)
+    })()
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on bid id; the setters are stable
+  }, [selectedBidForPricing?.id])
+  const letterInclusionsTyped = selectedBidForPricing ? coverLetterInclusionsByBid[selectedBidForPricing.id] : undefined
+  const letterExclusionsTyped = selectedBidForPricing ? coverLetterExclusionsByBid[selectedBidForPricing.id] : undefined
+  const letterTermsTyped = selectedBidForPricing ? coverLetterTermsByBid[selectedBidForPricing.id] : undefined
+  useEffect(() => {
+    const bidId = selectedBidForPricing?.id
+    if (!bidId || letterTextsLoadedBid !== bidId || letterTextsLoadedFor.current !== bidId) return
+    const saved = letterTextsSavedRef.current
+    const patch: Record<string, string> = {}
+    if (letterInclusionsTyped !== undefined && letterInclusionsTyped !== saved.inclusions) patch.cover_letter_inclusions = letterInclusionsTyped
+    if (letterExclusionsTyped !== undefined && letterExclusionsTyped !== saved.exclusions) patch.cover_letter_exclusions = letterExclusionsTyped
+    if (letterTermsTyped !== undefined && letterTermsTyped !== saved.terms) patch.cover_letter_terms = letterTermsTyped
+    if (Object.keys(patch).length === 0) return
+    const handle = window.setTimeout(() => {
+      if (letterTextsLoadedFor.current !== bidId) return
+      void supabase.from('bids').update(patch).eq('id', bidId).select('id').then(({ data: rows, error }) => {
+        if (error) showToast('Could not save the letter text: ' + error.message, 'error')
+        else if (bidUpdateRefused(rows)) showToast(BID_UPDATE_NOT_APPLIED_MESSAGE, 'error')
+        else letterTextsSavedRef.current = { inclusions: letterInclusionsTyped ?? saved.inclusions, exclusions: letterExclusionsTyped ?? saved.exclusions, terms: letterTermsTyped ?? saved.terms }
+      })
+    }, 800)
+    return () => window.clearTimeout(handle)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- showToast is stable; the save keys on the bid, its read landing, and the three typed texts
+  }, [selectedBidForPricing?.id, letterTextsLoadedBid, letterInclusionsTyped, letterExclusionsTyped, letterTermsTyped])
+
   // Reset quick-add when the selected bid changes
   useEffect(() => {
     if (coverLetterBidSubmissionQuickAddBidId != null && selectedBidForPricing?.id !== coverLetterBidSubmissionQuickAddBidId) {
@@ -2059,8 +2117,9 @@ export function BidsCoverLetterTab({
                         </div>
                       )}
                       <div style={{ marginBottom: '0.7rem' }}>
-                        <label style={studioFieldLabelStyle}>Additional inclusions (one per line → bullets)</label>
+                        <label htmlFor={`cover-letter-inclusions-${bid.id}`} style={studioFieldLabelStyle}>Additional inclusions (one per line → bullets)</label>
                         <textarea
+                          id={`cover-letter-inclusions-${bid.id}`}
                           value={inclusionsDisplay}
                           onChange={(e) => setCoverLetterInclusionsByBid((prev) => ({ ...prev, [bid.id]: e.target.value }))}
                           rows={3}
@@ -2069,8 +2128,9 @@ export function BidsCoverLetterTab({
                         />
                       </div>
                       <div style={{ marginBottom: '0.7rem' }}>
-                        <label style={studioFieldLabelStyle}>Exclusions and scope</label>
+                        <label htmlFor={`cover-letter-exclusions-${bid.id}`} style={studioFieldLabelStyle}>Exclusions and scope</label>
                         <textarea
+                          id={`cover-letter-exclusions-${bid.id}`}
                           value={exclusionsDisplay}
                           onChange={(e) => setCoverLetterExclusionsByBid((prev) => ({ ...prev, [bid.id]: e.target.value }))}
                           rows={3}
@@ -2079,8 +2139,9 @@ export function BidsCoverLetterTab({
                         />
                       </div>
                       <div>
-                        <label style={studioFieldLabelStyle}>Terms and warranty</label>
+                        <label htmlFor={`cover-letter-terms-${bid.id}`} style={studioFieldLabelStyle}>Terms and warranty</label>
                         <textarea
+                          id={`cover-letter-terms-${bid.id}`}
                           value={termsDisplay}
                           onChange={(e) => setCoverLetterTermsByBid((prev) => ({ ...prev, [bid.id]: e.target.value }))}
                           rows={3}

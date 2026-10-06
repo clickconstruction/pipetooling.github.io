@@ -55,8 +55,9 @@ could look like?"
 - **Undo exists twice, one level each**: the ten-second toast after a counts import
   (`countsImportUndo.ts`) and the margin brush's Undo sweep, both in memory.
 - **Two ways work vanishes without any delete being pressed**:
-  - the Cover Letter's per-bid Inclusions, Exclusions and Terms boxes are React state only
-    (`Bids.tsx` ~556, `BidsCoverLetterTab.tsx` ~2128) — typed, shown, never saved; a reload empties them;
+  - the Cover Letter's per-bid Inclusions, Exclusions and Terms boxes were React state only
+    (`Bids.tsx` ~556, `BidsCoverLetterTab.tsx` ~2128) — typed, shown, never saved; a reload emptied them
+    (fixed in v2.4737, PR 0a: three columns on `bids`);
   - the Labor tab's load sync (`useBidPricingEngine.ts` ~685) deletes every hours row whose fixture
     name no longer matches a count row and mints book defaults in its place, so a re-import that
     renames fixtures (the `[Group]` fix of v2.4188 changes names) wipes typed hours.
@@ -186,7 +187,7 @@ numbers people type are enough); per-tab put-back code (one RPC does it for ever
 
 | PR | What | Size |
 |---|---|---|
-| 0a | Cover Letter Inclusions / Exclusions / Terms saved per bid | S |
+| 0a | Cover Letter Inclusions / Exclusions / Terms saved per bid — **built v2.4737** (three columns on `bids`, in the ledger's list) | S |
 | 0b | Labor sync keeps typed hours through a rename; unmatched band | S |
 | 0c | Archive coverage for `bid_count_row_custom_costs`, `bid_takeoff_stage_splits` and `bid_submittal_takeoff_choices` (the custom-costs FK itself shipped in v2.4413) | XS (migration) |
 | 1 | `bid_changes` + `record_bid_change()` on the seventeen tables, RLS, purge, `docs/migrations` — built as v2.4598 (two migrations: the ledger, then the triggers alone) | S — ship first |
