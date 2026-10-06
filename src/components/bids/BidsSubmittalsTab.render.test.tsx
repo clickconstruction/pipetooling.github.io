@@ -847,6 +847,9 @@ describe('BidsSubmittalsTab', () => {
     // Step 6 says where it stands and who answered, in plain words.
     expect((await screen.findByTestId('decisions-line')).textContent).toContain('1sent back')
     expect(screen.getByTestId('their-call-who').textContent).toBe('Dana Whitfield answered. Wendi typed the answers in on Sep 17.')
+    // v2.4689 · Resubmit is the live step, so step 3 folds; its caret opens the rows (before, 3, 6 and 8 opened at once).
+    expect((await screen.findByTestId('road-3')).getAttribute('data-open')).toBe('false')
+    fireEvent.click(screen.getByTestId('road-3-caret'))
     const rows = await screen.findAllByTestId('submittal-row')
     expect(rows[0]!.textContent).toContain('Dana Whitfield · entered by Wendi')
   })
@@ -1571,6 +1574,8 @@ describe('BidsSubmittalsTab', () => {
       mount()
       // 2026-10-03 · the answers were typed on a draft: the strip lights Their call and Resubmit, names the rows sent back, and step 7 is open with its button.
       const button = await screen.findByTestId('new-revision')
+      // v2.4689 · step 7 opens step 6 with it (step 3 is open here on its own: a row still owes a reason).
+      expect(screen.getByTestId('road-6').getAttribute('data-open')).toBe('true')
       expect(screen.getByRole('button', { name: '6 Their call · waiting on the reviewer' })).toBeTruthy()
       expect(screen.getByRole('button', { name: '7 Resubmit · you are here' })).toBeTruthy()
       expect(screen.getByTestId('submittal-journey').textContent).toContain('structura approved 1 and sent 1 back. 1 row still has no answer. 1 row has no product yet. Start a Rev 2 draft to fix what was sent back. The rows with no answer go on it too. Nothing is sent until you share.')
