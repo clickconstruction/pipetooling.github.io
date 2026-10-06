@@ -19,7 +19,8 @@ import { payApplicationWriteFromForm, savedPayApplicationFromRow, type PayApplic
 
 let onJob: SavedPayApplication[] = []
 const loadSpy = vi.fn((_jobId: string) => Promise.resolve(onJob))
-vi.mock('../../lib/aiaPayApplicationsIo', () => ({ loadPayApplications: (jobId: string) => loadSpy(jobId) }))
+let deletedOnJob: SavedPayApplication[] = []
+vi.mock('../../lib/aiaPayApplicationsIo', () => ({ loadPayApplications: (jobId: string) => loadSpy(jobId), loadDeletedPayApplications: () => Promise.resolve(deletedOnJob) }))
 
 // Test reports: the rows the tab is given, the PDF link, and the Test report window's opener.
 let reports: TestReportDocumentRow[] = []
@@ -144,6 +145,7 @@ beforeEach(() => {
   contracts = []
   lienPaper = { filings: [], letters: [], releases: [] }
   sent = []
+  deletedOnJob = []
   authRole = 'dev'
   openCopySpy.mockClear()
   openFileSpy.mockClear()
@@ -218,6 +220,17 @@ describe('JobWindowDocumentsTab', () => {
     renderWithProviders(<JobWindowDocumentsTab job={job} />)
     await screen.findAllByTestId('job-documents-pay-app')
     expect(screen.getByTestId('job-documents-pay-app-changed').textContent).toBe('⚠ Changed after it went out Oct 2: Plumbing this period $19,400.00 → $21,000.00 · completed and stored $19,400.00 → $21,000.00 · retainage held $1,940.00 → $2,100.00 · payment due $17,460.00 → $18,900.00. The GC has the Oct 2 workbook.')
+  })
+
+  it('lists an application taken off the job after the live ones, saying who deleted it', async () => {
+    onJob = [app(2, 9700, 19400, 17460)]
+    deletedOnJob = [{ ...app(1, 19400, 0, 0), id: 'app-1-old', deletedAt: '2026-10-03T15:00:00Z', deletedByName: 'Robert' }]
+    renderWithProviders(<JobWindowDocumentsTab job={job} />)
+    const rows = await screen.findAllByTestId('job-documents-pay-app')
+    expect(rows).toHaveLength(1)
+    const gone = screen.getByTestId('job-documents-pay-app-deleted')
+    expect(gone.textContent).toBe('1 · deleted09/30/2026$17,460.00—Deleted Oct 3 by Robert')
+    expect(screen.queryByRole('button', { name: 'Open application 1' })).toBeNull()
   })
 
   it('marks an application that no longer matches the one before it, with its reason', async () => {

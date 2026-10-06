@@ -43,7 +43,7 @@ import {
   sortPayApplications,
   withCarriedAmounts,
 } from '../../lib/aiaPayApplications'
-import { PayApplicationLinesNotReady, PayApplicationNumberTaken, deletePayApplication, loadPayApplications, savePayApplication } from '../../lib/aiaPayApplicationsIo'
+import { PayApplicationLinesNotReady, PayApplicationNumberTaken, deletePayApplication, loadDeletedPayApplications, loadPayApplications, savePayApplication } from '../../lib/aiaPayApplicationsIo'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { BID_STAGE_NAMES, type BidSchedule, crewOfferForLine, crewPercentByStage, scaleLinesToAmount, scheduleGap } from '../../lib/aiaBidSchedule'
 import { type AiaLineSourceKey, aiaLineSources } from '../../lib/aiaLineSources'
@@ -224,9 +224,11 @@ export default function AiaG702G703Modal({
   const [openId, setOpenId] = useState<string | null>(null)
   // The workbooks that went out from this job (sent copies), for the history's lines.
   const [sent, setSent] = useState<SentCopy[]>([])
+  // The applications taken off the job (v2.4715): the history lists them after the live ones.
+  const [deleted, setDeleted] = useState<SavedPayApplication[]>([])
   // The history first on a job with saved applications; the form once one is opened or started.
   const [view, setView] = useState<'history' | 'form'>('form')
-  const history = useMemo(() => payApplicationHistory(saved, sent), [saved, sent])
+  const history = useMemo(() => payApplicationHistory(saved, sent, deleted), [saved, sent, deleted])
   // The bid's schedule of values, read when the job has a bid and nothing saved: application 1's lines.
   const [bidSchedule, setBidSchedule] = useState<BidSchedule | null>(null)
   // Where application 1's rows start from: one row, a row per Line Item, or the bid's schedule.
@@ -323,11 +325,12 @@ export default function AiaG702G703Modal({
     let cancelled = false
     setLoadedJobId(null)
     void (async () => {
-      const [, loadedFacts, list, copies] = await Promise.all([
+      const [, loadedFacts, list, copies, gone] = await Promise.all([
         fetchPhysicalInvoiceIssuerFromAppSettings({ authRole }),
         loadAiaPrefillFacts(job.id).catch(() => null),
         loadPayApplications(job.id).catch(() => [] as SavedPayApplication[]),
         loadSentCopiesForJob(job.id).catch(() => [] as SentCopy[]),
+        loadDeletedPayApplications(job.id).catch(() => [] as SavedPayApplication[]),
       ])
       if (cancelled) return
       // The bid's schedule is only application 1's start: once something is saved, the job's own lines carry.
@@ -339,6 +342,7 @@ export default function AiaG702G703Modal({
       setFacts(loadedFacts)
       setSaved(list)
       setSent(copies)
+      setDeleted(gone)
       const first = initialApplicationNumber == null ? null : list.find((a) => a.applicationNumber === initialApplicationNumber) ?? null
       setOpenId(first?.id ?? null)
       if (first) loadForm({ values: first.fields, lines: first.lines, splitLaborMaterial: first.splitLaborMaterial }, first.link, first.carryReason, first.name)
@@ -485,7 +489,7 @@ export default function AiaG702G703Modal({
     if (!openApp) return
     const ok = await confirm({
       title: `Delete application ${openApp.applicationNumber}?`,
-      message: 'It comes off the job. A later application keeps the previous amounts it was saved with.',
+      message: 'It comes off the job and stays in the history as a deleted application. A later application keeps the previous amounts it was saved with.',
       confirmLabel: 'Delete',
       danger: true,
     })
@@ -494,6 +498,8 @@ export default function AiaG702G703Modal({
       await deletePayApplication(openApp.id)
       const rest = saved.filter((a) => a.id !== openApp.id)
       setSaved(rest)
+      // The row is marked, not gone: the history lists it after the live ones.
+      setDeleted(await loadDeletedPayApplications(openApp.jobId).catch(() => [] as SavedPayApplication[]))
       setOpenId(null)
       startNew(rest, facts, rest.length === 0 ? bidSchedule : null)
       setView(rest.length > 0 ? 'history' : 'form')

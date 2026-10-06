@@ -35,6 +35,8 @@ export type PayApplicationHistoryLine = {
   app: SavedPayApplication
   /** The workbooks downloaded from this application as saved, newest first. */
   wentOut: SentCopy[]
+  /** Taken off the job (v2.4715): listed after the live ones, with no door to open it. */
+  deleted: boolean
 }
 
 /** Where the job stands, as the latest application says it: the G702's lines 1, 4, 5 and 6. */
@@ -54,7 +56,7 @@ export type PayApplicationSummary = {
 }
 
 export type PayApplicationHistory = {
-  /** One line per saved application, in number order. */
+  /** One line per saved application in number order, then the deleted ones in number order. */
   lines: PayApplicationHistoryLine[]
   /** Workbooks downloaded with no saved application to point at (no number was typed), newest first. */
   unsaved: SentCopy[]
@@ -84,15 +86,16 @@ export function payApplicationSummary(apps: ReadonlyArray<SavedPayApplication>):
 }
 
 /**
- * The history: the saved applications in number order, each with the workbooks filed on it;
- * the workbooks filed on no application; and the summary. Only pay application copies count;
- * a copy on another application's id, or another kind of paper, is left out.
+ * The history: the live applications in number order, then the deleted ones, each with the
+ * workbooks filed on it; the workbooks filed on no application; and the summary (the live
+ * ones). Only pay application copies count; a copy on another application's id, or another
+ * kind of paper, is left out.
  */
-export function payApplicationHistory(apps: ReadonlyArray<SavedPayApplication>, sent: ReadonlyArray<SentCopy>): PayApplicationHistory {
+export function payApplicationHistory(apps: ReadonlyArray<SavedPayApplication>, sent: ReadonlyArray<SentCopy>, deleted: ReadonlyArray<SavedPayApplication> = []): PayApplicationHistory {
   const copies = newestFirst(sent.filter(isPayApplicationCopy))
   const byApp = new Map<string, SentCopy[]>()
   const unsaved: SentCopy[] = []
-  const ids = new Set(apps.map((a) => a.id))
+  const ids = new Set([...apps, ...deleted].map((a) => a.id))
   for (const copy of copies) {
     if (copy.sourceId && ids.has(copy.sourceId)) {
       const list = byApp.get(copy.sourceId) ?? []
@@ -102,11 +105,19 @@ export function payApplicationHistory(apps: ReadonlyArray<SavedPayApplication>, 
       unsaved.push(copy)
     }
   }
-  const lines = apps
-    .slice()
-    .sort((a, b) => a.applicationNumber - b.applicationNumber)
-    .map((app) => ({ app, wentOut: byApp.get(app.id) ?? [] }))
+  const byNumber = (a: SavedPayApplication, b: SavedPayApplication) => a.applicationNumber - b.applicationNumber
+  const lines = [
+    ...apps.slice().sort(byNumber).map((app) => ({ app, wentOut: byApp.get(app.id) ?? [], deleted: false })),
+    ...deleted.slice().sort(byNumber).map((app) => ({ app, wentOut: byApp.get(app.id) ?? [], deleted: true })),
+  ]
   return { lines, unsaved, summary: payApplicationSummary(apps) }
+}
+
+/** "Deleted Sep 3 by Robert" for an application taken off the job; '' while it is live. */
+export function payApplicationDeletedWords(app: Pick<SavedPayApplication, 'deletedAt' | 'deletedByName'>, when: (iso: string) => string): string {
+  if (!app.deletedAt) return ''
+  const at = when(app.deletedAt)
+  return `Deleted${at ? ` ${at}` : ''}${app.deletedByName ? ` by ${app.deletedByName}` : ''}`
 }
 
 /** The file a kept workbook is stored under, from its path in the bucket; '' when the copy was not kept. */

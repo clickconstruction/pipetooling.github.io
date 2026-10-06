@@ -217,3 +217,7 @@ A saved application can still be changed. The kept workbook cannot. The workbook
 ## Take one off the job
 
 Open the saved application and press **Delete**. The window asks first. A later application keeps the amounts it was saved with.
+
+The deleted application stays in the history as a quiet line. The line says who deleted it and when. Its workbooks stay with it. Its number is free for a new application.
+
+A deleted application shows after the live ones, in grey. It has no **Open** button.

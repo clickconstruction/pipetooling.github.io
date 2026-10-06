@@ -4,8 +4,8 @@ import type { JobWithDetails } from '../../types/jobWithDetails'
 import { formatAiaDate } from '../../lib/aiaG702G703Template'
 import { formatAiaMoney } from '../../lib/aiaG702G703Preview'
 import { type SavedPayApplication, carryMismatch } from '../../lib/aiaPayApplications'
-import { loadPayApplications } from '../../lib/aiaPayApplicationsIo'
-import { changedAfterWentOut, changedAfterWords, isPayApplicationCopy, payApplicationDay, payApplicationDayTime, payApplicationFileName, payApplicationHistory, payApplicationSavedWords } from '../../lib/aiaPayApplicationHistory'
+import { loadDeletedPayApplications, loadPayApplications } from '../../lib/aiaPayApplicationsIo'
+import { changedAfterWentOut, changedAfterWords, isPayApplicationCopy, payApplicationDay, payApplicationDayTime, payApplicationDeletedWords, payApplicationFileName, payApplicationHistory, payApplicationSavedWords } from '../../lib/aiaPayApplicationHistory'
 import { jobDocumentFolderLinks } from '../../lib/jobs/jobDocumentsTab'
 import { type SentCopy, canReadSentCopies } from '../../lib/sent/sentCopies'
 import { loadSentCopiesForJob, openSentFile } from '../../lib/sent/sentCopiesIo'
@@ -42,6 +42,8 @@ export function JobWindowDocumentsTab({ job, onOverlayOpenChange }: { job: JobWi
   const [apps, setApps] = useState<SavedPayApplication[] | null>(null)
   // Everything sent from the job, read once: the pay application workbooks go under their applications, the rest to Sent from this job.
   const [sent, setSent] = useState<SentCopy[] | null>(null)
+  // The applications taken off the job (v2.4715), listed after the live ones.
+  const [deleted, setDeleted] = useState<SavedPayApplication[]>([])
   // null = closed; 'new' = a new application; a number = that saved application.
   const [aia, setAia] = useState<number | 'new' | null>(null)
 
@@ -57,12 +59,17 @@ export function JobWindowDocumentsTab({ job, onOverlayOpenChange }: { job: JobWi
       .then((list) => {
         if (!cancelled) setSent(list)
       })
+    void loadDeletedPayApplications(job.id)
+      .catch(() => [] as SavedPayApplication[])
+      .then((list) => {
+        if (!cancelled) setDeleted(list)
+      })
     return () => {
       cancelled = true
     }
   }, [job.id])
 
-  const history = payApplicationHistory(apps ?? [], sent ?? [])
+  const history = payApplicationHistory(apps ?? [], sent ?? [], deleted)
   const otherSent = sent == null ? null : sent.filter((r) => !isPayApplicationCopy(r))
   const openFile = async (copy: SentCopy) => {
     if (!copy.copyPath) return
@@ -99,7 +106,7 @@ export function JobWindowDocumentsTab({ job, onOverlayOpenChange }: { job: JobWi
         </div>
         {apps == null ? (
           <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
-        ) : apps.length === 0 ? (
+        ) : apps.length === 0 && deleted.length === 0 ? (
           <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>
             No pay applications are saved on this job. Press New application to make one, or to add one you already sent.
           </p>
@@ -118,7 +125,39 @@ export function JobWindowDocumentsTab({ job, onOverlayOpenChange }: { job: JobWi
                   </tr>
                 </thead>
                 <tbody>
-                  {history.lines.map(({ app, wentOut }) => {
+                  {history.lines.map(({ app, wentOut, deleted: gone }) => {
+                    if (gone) {
+                      return (
+                        <tr key={app.id} data-testid="job-documents-pay-app-deleted" style={{ color: 'var(--text-muted)' }}>
+                          <td style={{ ...td, fontWeight: 700 }}>
+                            {app.applicationNumber}
+                            {app.name ? <span style={{ fontWeight: 400 }}> · {app.name}</span> : null}
+                            <span style={{ fontWeight: 400 }}> · deleted</span>
+                          </td>
+                          <td style={td}>{formatAiaDate(app.periodTo) || '—'}</td>
+                          <td style={{ ...td, ...num }}>{formatAiaMoney(app.currentPaymentDue)}</td>
+                          <td style={td}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+                              {wentOut.map((copy) => (
+                                <span key={copy.id} style={{ whiteSpace: 'nowrap' }}>
+                                  {copy.copyPath ? (
+                                    <button type="button" onClick={() => void openFile(copy)} style={fileButton} title="Download the workbook as it went out">
+                                      {payApplicationFileName(copy) || 'the workbook'}
+                                    </button>
+                                  ) : (
+                                    <span>copy not kept</span>
+                                  )}
+                                  <span style={{ fontSize: '0.8125rem' }}> · {payApplicationDayTime(copy.sentAt)}</span>
+                                </span>
+                              ))}
+                              {wentOut.length === 0 ? <span>—</span> : null}
+                            </div>
+                          </td>
+                          <td style={{ ...td, fontSize: '0.8125rem' }}>{payApplicationDeletedWords(app, payApplicationDay) || 'Deleted'}</td>
+                          <td style={td} />
+                        </tr>
+                      )
+                    }
                     const mismatch = carryMismatch({ values: app.fields, lines: app.lines }, app.applicationNumber, apps)
                     const saved = payApplicationSavedWords(app, payApplicationDay).replace(/^Saved /, '')
                     const changed = changedAfterWentOut(app, wentOut)
@@ -199,9 +238,11 @@ export function JobWindowDocumentsTab({ job, onOverlayOpenChange }: { job: JobWi
                 ))}
               </p>
             ) : null}
-            <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-              Retainage held as of application {apps[apps.length - 1]!.applicationNumber}: {formatAiaMoney(held)}
-            </p>
+            {apps.length > 0 ? (
+              <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                Retainage held as of application {apps[apps.length - 1]!.applicationNumber}: {formatAiaMoney(held)}
+              </p>
+            ) : null}
           </>
         )}
       </section>

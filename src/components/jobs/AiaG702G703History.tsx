@@ -8,6 +8,7 @@ import {
   changedAfterWentOut,
   changedAfterWords,
   payApplicationDay,
+  payApplicationDeletedWords,
   payApplicationDayTime,
   payApplicationFileName,
   payApplicationSavedWords,
@@ -84,7 +85,7 @@ export default function AiaG702G703History({
   onNew: () => void
 }) {
   const { showToast } = useToastContext()
-  const apps = history.lines.map((l) => l.app)
+  const apps = history.lines.filter((l) => !l.deleted).map((l) => l.app)
   const last = apps.length > 0 ? apps[apps.length - 1]! : null
 
   const openFile = async (copy: SentCopy) => {
@@ -121,7 +122,26 @@ export default function AiaG702G703History({
       {history.summary ? <Summary summary={history.summary} /> : <p style={{ ...muted, margin: 0 }}>Nothing is saved on this job yet.</p>}
 
       <div style={{ display: 'flex', flexDirection: 'column' }}>
-        {history.lines.map(({ app, wentOut }) => {
+        {history.lines.map(({ app, wentOut, deleted }) => {
+          if (deleted) {
+            // Taken off the job (v2.4715): a quiet line with what it asked for, who deleted it, and its workbooks.
+            return (
+              <div key={app.id} data-testid="aia-history-deleted" style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', padding: '0.6rem 0', borderTop: '1px solid var(--border)', color: 'var(--text-muted)' }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap' }}>
+                  <span style={{ flex: 1, minWidth: 0, fontSize: '0.9375rem' }}>
+                    <strong>{app.applicationNumber}</strong>
+                    {app.name ? <span> · {app.name}</span> : null}
+                    <span> · {app.periodTo ? `period to ${formatAiaDate(app.periodTo)}` : 'no period typed'} · deleted</span>
+                  </span>
+                  <span style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{formatAiaMoney(app.currentPaymentDue)} due</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', paddingLeft: '0.6rem', borderLeft: '2px solid var(--border)' }}>
+                  <span style={{ fontSize: '0.8125rem' }}>{payApplicationDeletedWords(app, payApplicationDay) || 'Deleted'}</span>
+                  {wentOut.map(wentOutLine)}
+                </div>
+              </div>
+            )
+          }
           const mismatch = carryMismatch({ values: app.fields, lines: app.lines }, app.applicationNumber, apps)
           const saved = payApplicationSavedWords(app, payApplicationDay)
           const changed = changedAfterWentOut(app, wentOut)

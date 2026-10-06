@@ -53,9 +53,12 @@ const saveSpy = vi.fn((write: PayApplicationWrite, id: string | null): Promise<S
   return Promise.resolve(savedPayApplicationFromRow({ id: id ?? `new-${write.application_number}`, updated_at: '2026-10-04T15:00:00Z', ...write } as PayApplicationRow))
 })
 const deleteSpy = vi.fn((_id: string) => Promise.resolve())
+// The applications taken off the job (v2.4715): a list the tests set; Delete reads it again.
+let deletedOnJob: SavedPayApplication[] = []
 vi.mock('../../lib/aiaPayApplicationsIo', () => ({
   PayApplicationNumberTaken: TakenError,
   loadPayApplications: () => Promise.resolve(onJob),
+  loadDeletedPayApplications: () => Promise.resolve(deletedOnJob),
   savePayApplication: (write: PayApplicationWrite, id: string | null) => saveSpy(write, id),
   deletePayApplication: (id: string) => deleteSpy(id),
 }))
@@ -174,6 +177,7 @@ const toHistory = () => fireEvent.click(screen.getByRole('button', { name: '← 
 beforeEach(() => {
   onJob = []
   sentOnJob = []
+  deletedOnJob = []
   schedule = null
   scheduleSpy.mockClear()
   filedSpy.mockClear()
@@ -634,10 +638,36 @@ describe('AiaG702G703Modal', () => {
     await waitFor(() => expect(field('g702_n5_project').value).toBe('2'))
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
     const buttons = await screen.findAllByRole('button', { name: 'Delete' })
+    // The row is marked, not gone: the read after the delete brings it back as a deleted line.
+    deletedOnJob = [{ ...savedTwo(), deletedAt: '2026-11-06T15:00:00Z', deletedByName: 'Robert' }]
     fireEvent.click(buttons[buttons.length - 1]!)
     await waitFor(() => expect(deleteSpy).toHaveBeenCalledWith('app-2'))
     expect(await screen.findByTestId('aia-history-pane')).toBeTruthy()
     expect(screen.getAllByTestId('aia-history-line')).toHaveLength(1)
+    const gone = await screen.findByTestId('aia-history-deleted')
+    expect(gone.textContent).toContain('2 · period to 10/31/2026 · deleted')
+    expect(gone.textContent).toContain('$8,730.00 due')
+    expect(gone.textContent).toContain('Deleted Nov 6 by Robert')
+    expect(screen.queryByRole('button', { name: 'Open application 2' })).toBeNull()
+    // The next application starts from the live one.
+    expect(screen.getByRole('button', { name: 'New application · 2' })).toBeTruthy()
+  })
+
+  it('lists an application taken off the job after the live ones, with its workbooks and no door', async () => {
+    setWide(true)
+    onJob = [savedOne()]
+    deletedOnJob = [{ ...savedTwo(), id: 'app-2-old', deletedAt: '2026-11-06T15:00:00Z', deletedByName: 'Robert' }]
+    sentOnJob = [workbook({ id: 'copy-2', sourceId: 'app-2-old', copyPath: 'copy-2/J1023-App2.xlsx', sentAt: '2026-11-02T15:05:00Z' })]
+    renderWithProviders(<AiaG702G703Modal open onClose={() => undefined} job={job} hcpForFilename="1023" />)
+    await screen.findByTestId('aia-history-pane')
+    expect(screen.getAllByTestId('aia-history-line')).toHaveLength(1)
+    const gone = screen.getByTestId('aia-history-deleted')
+    expect(gone.textContent).toContain('Deleted Nov 6 by Robert')
+    expect(gone.textContent).toContain('Went out Nov 2, 9:05 AM by Taunyaas J1023-App2.xlsx')
+    expect(screen.queryByRole('button', { name: 'Open application 2' })).toBeNull()
+    // The standing and the next number come from the live application alone.
+    expect(screen.getByTestId('aia-history-pane').textContent).toContain('1 saved · $17,460.00 certified · 40% complete')
+    expect(screen.getByRole('button', { name: 'New application · 2' })).toBeTruthy()
   })
 
   it('takes a percent done for a line and works out this period, and the other way round', async () => {
