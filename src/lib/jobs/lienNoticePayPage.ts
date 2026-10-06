@@ -48,6 +48,33 @@ export function payPageRows(docs: readonly NoticeInvoiceDoc[]): PayPageRow[] {
   }))
 }
 
+/** The pay page's typed line under a bill (v2.4724): the desk's field key, and back. */
+export const PAY_LINE_FIELD_PREFIX = 'payLine:'
+export function payLineField(invoiceId: string): string {
+  return `${PAY_LINE_FIELD_PREFIX}${invoiceId}`
+}
+export function payLineInvoiceId(field: string): string | null {
+  return field.startsWith(PAY_LINE_FIELD_PREFIX) ? field.slice(PAY_LINE_FIELD_PREFIX.length) : null
+}
+
+/** The rows with the office's typed lines in place of the bills' (v2.4724); a line for a bill no longer enclosed is ignored. */
+export function applyPayLines(rows: readonly PayPageRow[], lines: Readonly<Record<string, string>> | null | undefined): PayPageRow[] {
+  if (!lines) return [...rows]
+  return rows.map((r) => (Object.prototype.hasOwnProperty.call(lines, r.invoiceId) ? { ...r, description: (lines[r.invoiceId] ?? '').trim() } : r))
+}
+
+/** The typed lines that differ from the bills' own, by invoice id — what the draft keeps and the label counts. */
+export function changedPayLines(rows: readonly PayPageRow[], lines: Readonly<Record<string, string>> | null | undefined): Record<string, string> {
+  const out: Record<string, string> = {}
+  if (!lines) return out
+  for (const r of rows) {
+    if (!Object.prototype.hasOwnProperty.call(lines, r.invoiceId)) continue
+    const v = (lines[r.invoiceId] ?? '').trim()
+    if (v !== r.description.trim()) out[r.invoiceId] = v
+  }
+  return out
+}
+
 /** Which copies carry the page. */
 export function payPageAppliesTo(copy: PayPageCopy): boolean {
   return copy === 'owner' || PAY_PAGE_ON_GC_COPY
@@ -81,6 +108,8 @@ export type PayPageInput = {
   extras: FilingDocExtras
   /** The pay offer (v2.4713): the leader's discount on each payable bill paid in full by a day; null or absent = no offer. */
   offer?: LienPayOffer | null
+  /** The office's typed lines (v2.4724), by invoice id; the bills' own lines elsewhere. */
+  lines?: Readonly<Record<string, string>> | null
 }
 
 /**
@@ -108,10 +137,11 @@ export function payPageBlocks(i: PayPageInput): FilingDocBlock[] {
     const rule = payPageOwnerRule(i.gcName, i.claimantName)
     if (rule) blocks.push({ kind: 'callout', text: offer ? `${rule} ${lienOfferPayerLine(i.gcName)}` : rule })
   }
-  for (const r of i.rows) {
+  for (const r of applyPayLines(i.rows, i.lines)) {
     const asset = r.payable ? i.assets[r.invoiceId] : undefined
     blocks.push({
       kind: 'payRow',
+      field: payLineField(r.invoiceId),
       label: r.label,
       description: r.description,
       amountLine: `Still owed: ${demandMoney(String(r.openAmount))}${offer && r.payable ? ` · ${lienOfferRowWords(r.openAmount, offer)}` : ''}`,

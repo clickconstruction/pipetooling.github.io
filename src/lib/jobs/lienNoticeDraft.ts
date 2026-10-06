@@ -210,6 +210,8 @@ export type LienDeskDraftFields = {
   releaseId?: string
   /** The wording was changed from the job's defaults (v2.3522): who, and when — the leader sees it before approving. */
   wording?: { editedBy: string; editedAt: string }
+  /** The pay page's line under each bill's code, typed by the office (v2.4724), by invoice id; '' prints no line. The bill keeps its own line. */
+  payLines?: Record<string, string>
   /** The months named are the job's creation month, not clock hours (v2.3747) — the paper trail says where the date came from. */
   monthsDatedFromCreation?: true
   /** Letter two (v2.3760): this item is the second mailing on the job — which letter, and the first packet it follows. */
@@ -222,7 +224,7 @@ export type LienDeskDraftFields = {
 
 export function parseLienDeskDraftFields(raw: unknown): LienDeskDraftFields | null {
   if (!raw || typeof raw !== 'object') return null
-  const o = raw as { notice?: unknown; gcEmail?: unknown; skipReason?: unknown; skippedBy?: unknown; windowClosed?: unknown; batchReason?: unknown; coverLetter?: unknown; staleNote?: unknown; wording?: unknown; monthsDatedFromCreation?: unknown; letterTwo?: unknown; gcAuthorizedDirectPay?: unknown; ownerCall?: unknown }
+  const o = raw as { notice?: unknown; gcEmail?: unknown; skipReason?: unknown; skippedBy?: unknown; windowClosed?: unknown; batchReason?: unknown; coverLetter?: unknown; staleNote?: unknown; wording?: unknown; payLines?: unknown; monthsDatedFromCreation?: unknown; letterTwo?: unknown; gcAuthorizedDirectPay?: unknown; ownerCall?: unknown }
   const n = o.notice as (Partial<LienNoticeFields> & { claimSplit?: unknown; retainageIncluded?: unknown }) | undefined
   if (!n || typeof n !== 'object') return null
   const str = (v: unknown) => (typeof v === 'string' ? v : '')
@@ -256,6 +258,9 @@ export function parseLienDeskDraftFields(raw: unknown): LienDeskDraftFields | nu
     ...(typeof o.coverLetter === 'string' && o.coverLetter.trim() ? { coverLetter: o.coverLetter } : {}),
     ...(o.wording && typeof o.wording === 'object' && typeof (o.wording as { editedBy?: unknown }).editedBy === 'string'
       ? { wording: { editedBy: str((o.wording as { editedBy?: unknown }).editedBy), editedAt: str((o.wording as { editedAt?: unknown }).editedAt) } }
+      : {}),
+    ...(o.payLines && typeof o.payLines === 'object' && Object.keys(o.payLines).length
+      ? { payLines: Object.fromEntries(Object.entries(o.payLines as Record<string, unknown>).filter(([, v]) => typeof v === 'string').map(([k, v]) => [k, v as string])) }
       : {}),
     ...(o.monthsDatedFromCreation === true ? { monthsDatedFromCreation: true as const } : {}),
     ...parseLienNoticeSentFacts(o),

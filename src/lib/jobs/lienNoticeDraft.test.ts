@@ -11,6 +11,14 @@ describe('parseLienDeskDraftFields · months dated from the job’s creation (v2
   })
 })
 
+describe('parseLienDeskDraftFields · the pay page lines (v2.4724)', () => {
+  it('keeps the typed lines by invoice id, drops anything that is not text, and reads older drafts without them', () => {
+    expect(parseLienDeskDraftFields({ notice, gcEmail: '', payLines: { a: 'Plumbing for the Lennox house', b: '', c: 3 } })).toMatchObject({ payLines: { a: 'Plumbing for the Lennox house', b: '' } })
+    expect(parseLienDeskDraftFields({ notice, gcEmail: '', payLines: { c: 3 } })?.payLines).toEqual({})
+    expect(parseLienDeskDraftFields({ notice, gcEmail: '' })).not.toHaveProperty('payLines')
+  })
+})
+
 describe('retainage inside the claim (v2.3753)', () => {
   const facts = { jobName: 'Lantern Row', jobAddress: '44 Lantern Row', originalContractorName: 'Harborline', openBalance: 9_800, contactPerson: 'Rey', issuer: null, todayYmd: '2026-09-24' }
   it('names the recorded retainage on the § 53.056 form, never more than the claim, nothing when none is recorded', () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { JobWithDetails } from '../../types/jobWithDetails'
-import { noticeEnclosureRefItem, noticeInvoiceDocs, noticeInvoicePrintSections, payPageDescription, unpaidBilledInvoices, type NoticeInvoiceDoc } from './noticeInvoiceEnclosure'
+import { noticeEnclosureRefItem, noticeInvoiceDocs, noticeInvoicePrintSections, payLineIsNotTheWork, payPageDescription, unpaidBilledInvoices, type NoticeInvoiceDoc } from './noticeInvoiceEnclosure'
 import type { PhysicalInvoiceDocument } from '../physicalInvoiceDocument'
 
 const inv = (id: string, amount: number, seq: number, status = 'billed') =>
@@ -79,6 +79,15 @@ describe("the pay page's description of a bill (v2.3758)", () => {
     expect(payPageDescription({ serviceLines: [line('Kitchen sink'), line('Lavatory'), line('Toilet')], narrativeTitle: 'Install and finish plumbing fixture trim.', lineDescription: '' })).toBe('Install and finish plumbing fixture trim.')
     expect(payPageDescription({ serviceLines: [line('Kitchen sink'), line('Lavatory'), line('Toilet')], narrativeTitle: '', lineDescription: '' })).toBe('Kitchen sink + 2 more')
     expect(payPageDescription({ serviceLines: [], narrativeTitle: '', lineDescription: '' })).toBe('')
+  })
+  it('a mailing note typed as the line, or the old system’s placeholder, is not the work (v2.4724)', () => {
+    const note = 'Paper checks can be sent to: Click Plumbing 12925 FM 20 Kingsbury TX 78638 (if you do this call 512 360-0599 first)'
+    expect(payPageDescription({ serviceLines: [line(note)], narrativeTitle: note, lineDescription: '' })).toBe('')
+    expect(payPageDescription({ serviceLines: [line(note), line('Water heater swap')], narrativeTitle: '', lineDescription: '' })).toBe('Water heater swap')
+    expect(payPageDescription({ serviceLines: [line('Job total (migrated)')], narrativeTitle: '', lineDescription: '' })).toBe('')
+    expect(payPageDescription({ serviceLines: [line('CHANGE ORDER: Added gas to fire features at pool')], narrativeTitle: note, lineDescription: '' })).toBe('CHANGE ORDER: Added gas to fire features at pool')
+    expect(payLineIsNotTheWork('Make checks payable to Click Plumbing')).toBe(true)
+    expect(payLineIsNotTheWork('Check valve replaced at the meter')).toBe(false)
   })
   it('never runs past a row', () => {
     const long = 'x'.repeat(200)

@@ -47,7 +47,7 @@ import { LienWordRecordRow } from './LienWordRecordRow'
 import { buildLienAffidavitFieldsForJob, buildLienNoticeFieldsForJob, describeNoticeMonths, homesteadStatementApplies, parseLienDeskDraftFields, type LienDeskDraftFields } from '../../lib/jobs/lienNoticeDraft'
 import type { LienDeskData, LienDeskJob } from '../../hooks/useLienDeskData'
 import { useNoticePayPage } from '../../hooks/useNoticePayPage'
-import { payPageBlocks, payPageSummary } from '../../lib/jobs/lienNoticePayPage'
+import { changedPayLines, payLineField, payLineInvoiceId, payPageBlocks, payPageSummary } from '../../lib/jobs/lienNoticePayPage'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { useLienJobSuppliers } from '../../hooks/useLienJobSuppliers'
@@ -337,6 +337,11 @@ export default function LienDeskModal({
   const [editing, setEditing] = useState<{ key: LienNoticeFieldKey; value: string; rect: { top: number; left: number; width: number; height: number }; font: string } | null>(null)
   const paperRef = useRef<HTMLDivElement | null>(null)
   const editInputRef = useRef<HTMLInputElement | null>(null)
+  // The pay page's lines (v2.4724, Taunya's ask): typed in place like the notice's wording, kept on the draft, the bill untouched.
+  const [payLineEdits, setPayLineEdits] = useState<Record<string, string>>({})
+  const [payEditing, setPayEditing] = useState<{ invoiceId: string; value: string; rect: { top: number; left: number; width: number; height: number }; font: string } | null>(null)
+  const payPaperRef = useRef<HTMLDivElement | null>(null)
+  const payInputRef = useRef<HTMLInputElement | null>(null)
   // A plain value's door (v2.3697): remember what it read when the office left, ring it on the paper when it comes back changed.
   const sourceTripRef = useRef<{ field: LienNoticeFieldKey; before: string } | null>(null)
   const [ringField, setRingField] = useState<LienNoticeFieldKey | null>(null)
@@ -781,6 +786,8 @@ export default function LienDeskModal({
     setLetterTwoMenu(false)
     setWordingEdits({})
     setEditing(null)
+    setPayLineEdits({})
+    setPayEditing(null)
     setPaneScrolled(false)
     // jsdom has no element scrollTo; the guard keeps the render smokes honest.
     if (typeof paneRef.current?.scrollTo === 'function') paneRef.current.scrollTo({ top: 0 })
@@ -954,6 +961,9 @@ export default function LienDeskModal({
   const coverHtml = useMemo(() => (coverBlocks.length ? filingDocHtml(coverBlocks) : ''), [coverBlocks])
   // The pay page (punch list #35, PR 3): the page the run prints behind the owner's copy, from the job's unpaid bills — fetched once per job while the desk is open.
   const payPage = useNoticePayPage(selected?.jobId ?? null, open)
+  const payLinesNow = useMemo(() => ({ ...(storedDraft?.payLines ?? {}), ...payLineEdits }), [storedDraft?.payLines, payLineEdits])
+  const payChanged = useMemo(() => changedPayLines(payPage.rows, payLinesNow), [payPage.rows, payLinesNow])
+  const payChangedCount = Object.keys(payChanged).length
   const payBlocks = useMemo(
     () =>
       selected && payPage.rows.length
@@ -968,11 +978,46 @@ export default function LienDeskModal({
             phone: (issuer?.phone ?? '').trim(),
             extras: docExtras,
             offer,
+            lines: payLinesNow,
           })
         : [],
-    [selected, payPage, noticeFields, issuer, docExtras, offer],
+    [selected, payPage, noticeFields, issuer, docExtras, offer, payLinesNow],
   )
-  const payHtml = useMemo(() => (payBlocks.length ? filingDocHtml(payBlocks) : ''), [payBlocks])
+  const payMarks = useMemo(() => {
+    const m: Record<string, FilingFieldMark> = {}
+    for (const r of payPage.rows) m[payLineField(r.invoiceId)] = { kind: wordingLocked ? 'locked' : 'typed', changed: r.invoiceId in payChanged, title: wordingLocked ? 'Sent for approval — pull it back to a draft to change it' : 'Click to change — on this page only, the bill keeps its own line' }
+    return m
+  }, [payPage.rows, payChanged, wordingLocked])
+  const payHtml = useMemo(() => (payBlocks.length ? filingDocHtml(payBlocks, { marks: payMarks }) : ''), [payBlocks, payMarks])
+  const onPayPaperClick = (ev: React.MouseEvent<HTMLDivElement>) => {
+    const t = ev.target as HTMLElement
+    const reset = payLineInvoiceId(t.closest<HTMLElement>('[data-reset]')?.getAttribute('data-reset') ?? '')
+    if (reset) {
+      if (!wordingLocked) setPayLineEdits((e) => ({ ...e, [reset]: payPage.rows.find((r) => r.invoiceId === reset)?.description ?? '' }))
+      return
+    }
+    const el = t.closest<HTMLElement>('[data-field]')
+    const id = payLineInvoiceId(el?.getAttribute('data-field') ?? '')
+    const wrap = payPaperRef.current
+    if (!el || !id || !wrap) return
+    if (wordingLocked) {
+      showToast('Sent for approval — pull it back to a draft to change the wording.', 'info')
+      return
+    }
+    const r = el.getBoundingClientRect()
+    const w = wrap.getBoundingClientRect()
+    const cs = typeof window !== 'undefined' && typeof window.getComputedStyle === 'function' ? window.getComputedStyle(el) : null
+    setPayEditing({ invoiceId: id, value: payLinesNow[id] ?? payPage.rows.find((x) => x.invoiceId === id)?.description ?? '', rect: { top: r.top - w.top, left: r.left - w.left, width: r.width, height: r.height }, font: cs?.font ?? '' })
+  }
+  const commitPayEdit = () => {
+    setPayEditing((e) => {
+      if (e) setPayLineEdits((x) => ({ ...x, [e.invoiceId]: e.value.trim() }))
+      return null
+    })
+  }
+  useEffect(() => {
+    if (payEditing) payInputRef.current?.focus()
+  }, [payEditing?.invoiceId])
   const pageTotal = (coverHtml ? 1 : 0) + (releaseHtml ? 1 : 0) + 1 + (payHtml ? 1 : 0)
   const noticePageNumber = (coverHtml ? 1 : 0) + (releaseHtml ? 1 : 0) + 1
 
@@ -988,7 +1033,9 @@ export default function LienDeskModal({
     ...(releaseIdRef.current ? { releaseId: releaseIdRef.current } : {}),
     // The month is the job's creation month, not clock hours (v2.3747): the record says where the date came from.
     ...(selected?.datedFromCreation ? { monthsDatedFromCreation: true as const } : {}),
-    ...(wordingDiff.length > 0 ? { wording: wordingTouched || !storedDraft?.wording ? { editedBy: authName, editedAt: new Date().toISOString() } : storedDraft.wording } : {}),
+    ...(wordingDiff.length > 0 || payChangedCount > 0 ? { wording: wordingTouched || Object.keys(payLineEdits).length > 0 || !storedDraft?.wording ? { editedBy: authName, editedAt: new Date().toISOString() } : storedDraft.wording } : {}),
+    // The pay page's typed lines (v2.4724): only those that differ from the bill; before the bills load, the stored ones stand.
+    ...(payPage.rows.length ? (payChangedCount ? { payLines: payChanged } : {}) : storedDraft?.payLines ? { payLines: storedDraft.payLines } : {}),
   })
   // A closed window, written down (v2.3679): one `missed` row naming the months and who looked; the live draft is untouched.
   const noteMissed = async (months: string[]) => {
@@ -1944,9 +1991,31 @@ export default function LienDeskModal({
       {/* The pay page (punch list #35, PR 3): one code per unpaid Stripe bill, as the run prints it behind the owner's copy. Nothing on it is typed — it is filled from the bills. */}
       {payHtml ? (
         <>
-          {pageLabel('pay', `Page ${pageTotal} of ${pageTotal} · pay codes`, <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: 'none' }}>· {payPageSummary(payPage.rows)} · filled from the bills, nothing to type</span>)}
-          <div data-theme="light" data-lien-desk-pay style={paperStyle}>
+          {pageLabel('pay', `Page ${pageTotal} of ${pageTotal} · pay codes`, <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: 'none', color: payChangedCount ? 'var(--text-amber-800)' : undefined }} data-lien-desk-pay-label>· {payPageSummary(payPage.rows)} · {payChangedCount ? `${payChangedCount} ${payChangedCount === 1 ? 'line' : 'lines'} changed on this page, the bills keep their own` : wordingLocked ? 'the lines under the codes are read from the bills' : 'a shaded line is yours to change, on this page only'}</span>)}
+          <div data-theme="light" data-lien-desk-pay ref={payPaperRef} onClick={onPayPaperClick} style={{ ...paperStyle, position: 'relative' }}>
             <div dangerouslySetInnerHTML={{ __html: payHtml }} />
+            {payEditing ? (
+              <input
+                ref={payInputRef}
+                aria-label="The line under this bill's code"
+                value={payEditing.value}
+                onChange={(ev) => setPayEditing((e) => (e ? { ...e, value: ev.target.value } : e))}
+                onKeyDown={(ev) => {
+                  if (ev.key === 'Enter') {
+                    ev.preventDefault()
+                    commitPayEdit()
+                  } else if (ev.key === 'Escape') {
+                    ev.preventDefault()
+                    ev.stopPropagation()
+                    setPayEditing(null)
+                  }
+                }}
+                onBlur={commitPayEdit}
+                placeholder="Empty prints no line"
+                data-lien-desk-pay-input
+                style={{ position: 'absolute', top: payEditing.rect.top, left: payEditing.rect.left, width: Math.max(payEditing.rect.width, 260), minHeight: payEditing.rect.height, boxSizing: 'border-box', font: payEditing.font || 'inherit', fontWeight: 700, color: 'var(--text-strong)', padding: '0.1em 0.5em', border: '2px solid #d97706', borderRadius: 5, background: 'var(--bg-amber-tint)', outline: 'none', zIndex: 3 }}
+              />
+            ) : null}
           </div>
         </>
       ) : null}

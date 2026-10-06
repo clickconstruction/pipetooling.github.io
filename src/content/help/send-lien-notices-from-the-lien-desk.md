@@ -208,6 +208,8 @@ The correction follows the job. Put a GC on notice claims the corrected figure, 
 
 Press a box and type in place. Enter keeps the change, and Esc puts it back. A changed value says so beneath it, with {{button:outline|Back to the job’s wording}}. The page label counts the changes. The leader sees them too, so an edited notice never reaches approval unannounced.
 
+**Change a line on the pay page.** Each bill on the pay page has a bold line under its code. It is read from the bill, and it sits in a shaded box too. Press it and type what the owner should read. Enter keeps it, and Esc puts it back. An empty line prints nothing. The change is on this page only. The bill behind it keeps its own line, and so does its payment page. A changed line says so beneath it, with {{button:outline|Back to the bill’s line}}. A line that is only a note about mailing checks is left off on its own.
+
 Every other value is the statute's form or is filled from somewhere else. Hover over a value to see where it comes from, and press it to go there. The original contractor, for example, opens Edit Job on its GC row. Save there, and the paper reads the job again. The date has no door, because it is the day the notice is drafted or sent.
 
 ## The master's decisions

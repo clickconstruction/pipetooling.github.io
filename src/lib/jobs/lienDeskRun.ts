@@ -75,6 +75,8 @@ export type RunNotice = {
   offer?: LienPayOffer | null
   /** The conditional release enclosed with the notice (v2.4729): behind the owner's letter and the GC's form, named in the letter; absent or null = none. */
   release?: NoticeRelease | null
+  /** The pay page's lines the office typed (v2.4724), by invoice id, from the item's draft. */
+  payLines?: Record<string, string>
 }
 
 /** Every Ready-to-send entry as a run notice. Entries with no live approved item are skipped. */
@@ -139,6 +141,7 @@ export function buildLienDeskRun(
       ownerUnconfirmed: property.owner.source === 'property_record' && ownerFromRollUnconfirmed(address),
       offer: lienOfferFromItem(item),
       release,
+      ...(draft?.payLines ? { payLines: draft.payLines } : {}),
       recipients: [
         { key: 'owner', label: 'Owner of record', name: ownerName, address: property.owner.mailingAddress, email: ownerEmail, method: 'certified_mail', tracking: '' },
         { key: 'original_contractor', label: 'Original contractor', name: gc?.name ?? fields.originalContractorName, address: gc?.address ?? '', email: gcEmail, method: 'certified_mail', tracking: '', courtesy: gcEmail.trim() !== '' },
@@ -340,6 +343,7 @@ export function runPayPageBlocks(n: RunNotice, r: RunRecipient, rows: readonly P
     phone,
     extras: n.extras,
     offer: n.offer ?? null,
+    lines: n.payLines ?? null,
   })
 }
 

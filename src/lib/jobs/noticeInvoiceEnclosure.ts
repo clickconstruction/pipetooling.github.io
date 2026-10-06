@@ -48,14 +48,28 @@ export type NoticeInvoiceDoc = {
 export const PAY_PAGE_DESCRIPTION_MAX = 140
 
 /**
+ * A bill line that is not the work (v2.4724, Taunya's ask): the office's mailing note typed as
+ * a service line ("Paper checks can be sent to: … call 512 360-0599 first") and the old
+ * system's placeholder ("Job total (migrated)"). The pay page tells an owner what each code is
+ * for, so these never stand for the bill there.
+ */
+export function payLineIsNotTheWork(line: string): boolean {
+  const s = line.trim()
+  if (!s) return true
+  if (/\(migrated\)/i.test(s)) return true
+  return /\b(?:paper\s+)?checks?\s+(?:can|may|should)\s+be\s+(?:sent|mailed)|\bmake\s+checks?\s+payable|\bremit\s+(?:payment\s+)?to\b|\bmail\s+(?:your\s+)?(?:check|payment)s?\s+to\b/i.test(s)
+}
+
+/**
  * The bill's line for the pay page (v2.3758): a bill with one service line is that line (a
  * trip charge, a change order — the Stripe memo under it is the mailing note, not the work);
  * a bill with many lines reads its scope (the memo) when it has one, else the first line and
  * how many more. Never longer than a row.
  */
 export function payPageDescription(doc: Pick<PhysicalInvoiceDocument, 'serviceLines' | 'narrativeTitle' | 'lineDescription'>): string {
-  const lines = (doc.serviceLines ?? []).map((l) => (l.description ?? '').trim()).filter(Boolean)
-  const scope = (doc.narrativeTitle || doc.lineDescription || '').trim()
+  const lines = (doc.serviceLines ?? []).map((l) => (l.description ?? '').trim()).filter((l) => !payLineIsNotTheWork(l))
+  const scopeRaw = (doc.narrativeTitle || doc.lineDescription || '').trim()
+  const scope = payLineIsNotTheWork(scopeRaw) ? '' : scopeRaw
   let out = ''
   if (lines.length === 1) out = lines[0]!
   else if (scope) out = scope

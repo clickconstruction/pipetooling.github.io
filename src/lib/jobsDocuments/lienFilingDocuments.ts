@@ -39,7 +39,7 @@ export type FilingDocBlock =
    * PDF; both null for a bill with no payment page), the bill's label and description, the amount
    * line, the address in words and a note when there is no code.
    */
-  | { kind: 'payRow'; label: string; description: string; amountLine: string; address: string; note: string; svg: string | null; png: string | null }
+  | { kind: 'payRow'; label: string; description: string; amountLine: string; address: string; note: string; svg: string | null; png: string | null; field?: string }
 
 /**
  * Dressing around the statutory text (v2.2663): the issuer letterhead, the
@@ -98,6 +98,23 @@ const MARK_STYLE: Record<'typed' | 'typedChanged' | 'locked' | 'ghost', string> 
   ghost: `${MARK_BOX}background:#fafafa;border:1px dashed #d1d5db;color:#9ca3af;font-style:italic;font-weight:400;cursor:text`,
 }
 
+/**
+ * The bold line under a pay code (v2.4724): plain on paper; on the desk a shaded box the office
+ * types in, with a ghost when empty and, once changed, the note that the bill keeps its own line.
+ */
+function payRowLineHtml(b: Extract<FilingDocBlock, { kind: 'payRow' }>, mark: FilingFieldMark | undefined): string {
+  if (!mark || mark.kind === 'derived' || !b.field) return b.description ? `<div style="font-weight:700;margin-top:0.2em">${esc(b.description)}</div>` : ''
+  const typed = mark.kind === 'typed'
+  if (!b.description && !typed) return ''
+  const style = !b.description ? MARK_STYLE.ghost : typed ? (mark.changed ? MARK_STYLE.typedChanged : MARK_STYLE.typed) : MARK_STYLE.locked
+  const attrs = ` data-field="${esc(b.field)}" data-editable="${typed ? 'yes' : 'locked'}"${mark.changed ? ' data-changed="yes"' : ''}${mark.title ? ` title="${esc(mark.title)}"` : ''}`
+  const text = b.description ? esc(b.description) : 'no line · click to add one'
+  const sub = mark.changed
+    ? `<div data-field-sub="${esc(b.field)}" style="${HTML_LABEL_FONT};font-size:0.78em;font-weight:400;color:#92400e;margin-top:0.25em">changed on this page only · the bill keeps its own line${typed ? ` · <button type="button" data-reset="${esc(b.field)}" style="font:inherit;color:#2563eb;background:none;border:none;padding:0;cursor:pointer;font-weight:600">Back to the bill’s line</button>` : ''}</div>`
+    : ''
+  return `<div style="margin-top:0.2em"><span${attrs} style="${style};font-weight:700"><span data-field-text>${text}</span></span>${sub}</div>`
+}
+
 export function filingDocHtml(blocks: FilingDocBlock[], opts?: FilingDocHtmlOptions): string {
   const parts: string[] = []
   for (const b of blocks) {
@@ -132,7 +149,7 @@ export function filingDocHtml(blocks: FilingDocBlock[], opts?: FilingDocHtmlOpti
             `<div style="width:120px;height:120px;line-height:0">${b.svg ?? `<div style="width:120px;height:120px;border:1px dashed ${HTML_RULE};box-sizing:border-box"></div>`}</div>` +
             `<div style="${HTML_LABEL_FONT};font-size:0.86em;line-height:1.45">` +
             `<div style="font-size:0.74em;color:${HTML_MUTED};letter-spacing:0.03em;text-transform:uppercase">${esc(b.label)}</div>` +
-            (b.description ? `<div style="font-weight:700;margin-top:0.2em">${esc(b.description)}</div>` : '') +
+            payRowLineHtml(b, b.field ? opts?.marks?.[b.field] : undefined) +
             `<div style="margin-top:0.3em">${esc(b.amountLine)}</div>` +
             (b.address ? `<div style="font-family:ui-monospace,Menlo,monospace;font-size:0.72em;color:${HTML_MUTED};margin-top:0.25em;word-break:break-all">${esc(b.address)}</div>` : '') +
             (b.note ? `<div style="font-style:italic;color:${HTML_MUTED};margin-top:0.25em">${esc(b.note)}</div>` : '') +
