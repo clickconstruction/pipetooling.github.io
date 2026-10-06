@@ -3,15 +3,16 @@ name: People spine — residuals
 number: 29
 group: residual
 status: >
-  open 2026-09-22 — the six-PR train shipped (v2.3698 · 3700 · 3701 · 3702 · 3705; the planned PR 4 was already in place since July); the view is pushed and typed; these are what it deliberately left, re-checked 2026-09-29 — none moved
+  open 2026-09-22 — the six-PR train shipped (v2.3698 · 3700 · 3701 · 3702 · 3705; the planned PR 4 was already in place since July); the view is pushed and typed. 2026-10-06 (v2.4658): item 2 swept (the edge functions take one `REAL_ACCOUNT` rule; deployed in waves after the merge), item 1 closed by a pin; items 3–5 open
 summary: >
   **People spine residuals**: after the roster view, Leave, Hire, the Users lenses and the pointers
-  landed, four small things stay open — the crew pickers still read `users` directly, thirteen edge
-  functions still filter `is_sample = false` by hand, `get_archived_user_names()` still serves three
-  surfaces, one fixture account has its twin flag unset in prod, and the `as never` cast outlived the regen.
+  landed, small things stayed open. Done in v2.4658: the edge functions' hand-written sample
+  filters (one shared rule that also refuses twins), and the crew pickers (pinned to the view, not
+  moved). Open: `get_archived_user_names()` still serves four surfaces, one fixture account has its
+  twin flag unset in prod, and the `as never` cast outlived the regen.
 next: >
-  One mechanical sweep PR: crew pickers and the thirteen edge functions read `roster_people`; then
-  Offsets, Contracts and the Teams member filter take the view's verdict and the RPC drops.
+  After v2.4658's deploy waves: Offsets, Contracts, the Teams member filter and the Hours grid take
+  the view's `is_archived` and the RPC drops (separate PRs); then the `as never` cast (one line).
 size: S
 blocker: none
 ver: v2.3698 · 3700 · 3701 · 3702 · 3705
@@ -29,12 +30,19 @@ The train: [`docs/recent-features/v2.3698.md`](../docs/recent-features/v2.3698.m
 
 ## Left open, on purpose
 
-1. **Crew pickers onto the view.** The 19 `activeUsersQuery` / `activeRosterOnly` callers (still 19 on 2026-09-29) (`src/lib/people/fetchActiveUsers.ts`, `activeRoster.ts`) still read `users` with their own flags. They need contact columns, so they would join `roster_people` by `user_id` for membership and keep their own select for email and phone. The view already guarantees membership for the pay lists; this is the tidy-up.
-2. **The thirteen edge functions** that carry `eq('is_sample', false)` by hand (`_shared/jobWatchers`, schedule-day, schedule-share, crew-day, weekly-money, weekly-movement, money-waiting, payment-forecast, statement-round, recurring-job-report, paid-job, send-report, billed-report, send-rfq, send-bid-pricing-package): read the view's `is_active_roster` instead. Mechanical; merges alone. (All thirteen still carry it on 2026-09-29. `_shared/rosterRow.ts`, v2.3701, also reads `is_sample` — on purpose, fixture accounts get no roster row — and is not part of the sweep.)
+1. **Crew pickers onto the view — closed by a pin, not moved (v2.4658).** The pickers (21 files on 2026-10-06) all go through `activeUsersQuery` / `fetchActiveUsers` and `activeRosterOnly` (`src/lib/people/fetchActiveUsers.ts`, `activeRoster.ts`), which already apply the view's rule in one place: no twin, no sample, not archived, dev only on request. The view carries no email, phone or sign-in stamp, so every picker would need a second read for no gain. The people-half archive is the only difference, and End employment archives both halves together. `src/lib/people/rosterRulePin.test.ts` pins `isActiveRosterPerson` to the view's `is_active_roster`, so a condition added to the view fails CI until the pickers learn it.
+2. **The edge functions' hand-written sample filter — swept (v2.4658).** Fifteen functions and two shared modules, not "thirteen": billed-report, crew-day, money-waiting, paid-job, payment-forecast, recurring-job-report, schedule-day, schedule-share, send-bid-pricing-package, send-lien-desk-summary, send-report, send-rfq, statement-round, weekly-money and weekly-movement, plus `_shared/jobWatchers` (bundled by submit-sub-portal) and `_shared/arReturnCaseNotify` (ar-returned-checks, mercury-webhook).
+   - **Why not the view.** They could not read it. Every one looks its sender or recipient up as the service role, which the view answers with no rows. The view carries no email, and `is_active_roster` leaves out devs, who send and receive these emails.
+   - **What they take instead.** `.match(REAL_ACCOUNT)` from `_shared/realAccount.ts`: no sample, and now no twin. Twins are estimators, so before the sweep a twin's session passed the sender check of send-bid-pricing-package (to a GC) and send-rfq-email (to a supply house). Archived stays with each caller.
+   - **How it was done.** `scripts/sweep-real-account.mjs` did the rewrite. `realAccountSweep.test.ts` fails CI on a new hand-written copy.
+   - **Deploy waves.** The two outside-email senders first, then the other thirteen. The three shared-module importers are held until they deploy for their own reasons.
+   - **Left alone on purpose:** `create-user` (writes the flag), `dev-mcp` and `_shared/devMcpComposites` (View-as reads the samples), and `_shared/rosterRow.ts` (fixture accounts get no roster row, v2.3701).
 3. **`get_archived_user_names()`** still serves Offsets (the archived fold), Contracts (archived grouped at the bottom), the Teams member filter in `People.tsx` and the Hours grid's roster (`src/lib/people/hoursGridRoster.ts` keeps the pre-v2.3698 archived-name rule as its first filter). Swap them to the view's `is_archived` and drop the RPC (revoke first — `20260906180000` revoked anon on it).
-4. **Twin Estimator 2** (`twin-estimator-2@twins.pipetooling.local`) has `is_digital_twin = false` in prod, so it sits in the People → Users roster under Estimators and the roster view calls it a person. A dev sets the flag from Settings → System → Digital twins & samples (the twin minter sets it after `create-user`; this one predates that). Data, not code.
+4. **Twin Estimator 2** (`twin-estimator-2@twins.pipetooling.local`) has `is_digital_twin = false` in prod, so it sits in the People → Users roster under Estimators and the roster view calls it a person. Until the flag is set, v2.4658's twin refusal does not catch it either. A dev sets the flag from Settings → System → Digital twins & samples (the twin minter sets it after `create-user`; this one predates that). Data, not code — the owner's.
 5. **The `as never` cast** in `src/lib/people/rosterPeople.ts` — `src/types/database.ts` has carried `roster_people` since the 2026-09-22 regen, so this is a one-line PR that is simply not done yet.
 
 ## How to verify the sweep
 
 Read-only on prod through the app's screens: the Hours grid, the crew pickers on Jobs and Schedule, and one email preview must list the same people before and after. The throwaway-Postgres recipe in the memory note *throwaway-postgres-recipe* covers the RPC drop.
+
+For v2.4658 the pickers do not change, so they need no check. The edge half is proven by `src/lib/people/realAccountSenders.run.test.ts` and `realAccountRecipients.run.test.ts`, which run the real handlers on a fake database. Both fail on the pre-sweep code, where a twin gets through. After each deploy wave, an `OPTIONS` probe per function must answer 2xx, not 503. The PR body lists the waves and the probe.

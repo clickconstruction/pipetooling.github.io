@@ -20,9 +20,9 @@ There are three, and the Console's *Run the robots* card lists them in this orde
 
 One command, and you never see the key. The same setup serves the Code tab and chats.
 
-1. You open **Bids → 🤖 Robots → Console**. In step 1 of the *From Claude Code* column, you press {{button:purple|Set up on this Mac}}. The same button is on the robot's row at Settings → Digital twins. You type whose Mac it is. That becomes the key's label, so it can be revoked on its own later. You press {{button:purple|Make my setup command}}.
-2. You press {{button:purple|Copy the command}}. It carries a one-time code that is good for ten minutes and one use.
-3. You open Terminal: press ⌘ Space, type *Terminal*, press Return. You paste and press Return. The command trades the code for a fresh key on the server. It writes the key straight into Claude's connector config. Then it quits Claude and reopens it so the connector loads. It also puts the robot's kickoff on your clipboard. Anything running in Claude stops when it quits, so finish or pause that first. If it says Node is missing, you install Node 18 or newer from nodejs.org and run it again.
+1. Open **Bids → 🤖 Robots → Console**. In step 1 of the *From Claude Code* column, press {{button:purple|Set up on this Mac}}. The same button is on the robot's row at Settings → Digital twins. Type whose Mac it is. That becomes the key's label, so it can be revoked on its own later. Press {{button:purple|Make my setup command}}.
+2. Press {{button:purple|Copy the command}}. It carries a one-time code that is good for ten minutes and one use.
+3. Open Terminal: press ⌘ Space, type *Terminal*, press Return. Paste and press Return. The command trades the code for a fresh key on the server. It writes the key straight into Claude's connector config. Then it quits Claude and reopens it so the connector loads. It also puts the robot's kickoff on your clipboard. Anything running in Claude stops when it quits, so finish or pause that first. If it says Node is missing, install Node 18 or newer from nodejs.org and run it again.
 4. In Claude, you open the **Code** tab, start a new session and paste. The robot reads its brief and says the connector answered.
 
 :::example Why a code instead of a key
@@ -33,7 +33,7 @@ The long way is for another harness, or a Mac where the short way failed. A harn
 
 ## Run a batch
 
-1. You open **Bids → 🤖 Robots → Console** and press {{button:blue|Copy Code kickoff}}. It is step 2 of the *Run the robots* card. {{button:gray|Preview the Code kickoff}} under it shows exactly what goes to the clipboard.
+1. Open **Bids → 🤖 Robots → Console** and press {{button:blue|Copy Code kickoff}}. It is step 2 of the *Run the robots* card. {{button:gray|Preview the Code kickoff}} under it shows exactly what goes to the clipboard.
 2. In Claude, you open the **Code** tab, start a **new session** and paste. The kickoff opens by telling the session to run it, so it starts without a question. If it does ask what to do with the text, you answer *run it here as the robot*.
 3. The robot scores existing shadows and reads its guides. Then it calls the dispatcher for the oldest uncovered bid, human requests first. At the plans stage it fetches the sheets itself, a few pages at a time. It reads them and carries on. The steps are substrate, takeoff, counts, prices, lock, audit questions and report. A takeoff is the parts list read off the plans. There is nothing to attach.
 4. It claims the next bid only after the current one is locked and reported. It stops after three bids in one session. You paste the kickoff into a fresh session for the rest. *done: true* from the dispatcher means the live board is fully covered.
@@ -59,9 +59,9 @@ The chat has its own kickoff: {{button:gray|Copy chat kickoff}} in the *From a C
 
 On a Mac the setup above already covers chats. With no Mac, on claude.ai or the phone, you add the connector by hand. That needs a *Request headers* section in your Claude account when adding a connector. Anthropic is rolling it out. Some accounts do not have it yet. The card that shows a fresh key walks through it:
 
-1. You issue the key as above. On claude.ai you go to **Customize → Connectors → Add custom connector**. You name it after the robot, *Twin Estimator 1*. The address is `https://mcp.clicktooling.com/twin`.
-2. You choose **No sign-in**. Under **Request headers** you pick `authorization`. You paste what {{button:purple|Copy header value}} on the card copied. That is the word *Bearer*, a space, and the key. You press Add.
-3. You start a **new incognito chat**. You switch the connector on under the ＋ menu. You paste the chat kickoff.
+1. Issue the key as above. On claude.ai, go to **Customize → Connectors → Add custom connector**. Name it after the robot, *Twin Estimator 1*. The address is `https://mcp.clicktooling.com/twin`.
+2. Choose **No sign-in**. Under **Request headers**, pick `authorization`. Paste what {{button:purple|Copy header value}} on the card copied. That is the word *Bearer*, a space, and the key. Press Add.
+3. Start a **new incognito chat**. Switch the connector on under the ＋ menu. Paste the chat kickoff.
 
 :::example One connector per robot
 The connector holds one key, and a key is one robot's seat. A second robot — the pricing twin — is a second connector with its own key and its own kickoff. Revoking the key's label on the Digital twins page cuts that connector off wherever it was added.

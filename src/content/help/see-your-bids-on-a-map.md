@@ -65,7 +65,7 @@ On a phone the rail sits under the map: the three boxes in a row, then the due l
 
 Under the map, ***N bids have no map location yet · add their addresses*** is a link. The link opens a sheet with every bid the map can't place. The ones with **no address** come first. Then come the ones whose address the map **couldn't find**. Each bid has its address ready to type or fix. Every row starts with the bid's stage in the section's colour: **Unsent**, **Pending**, **Won**, **Started** or **Lost**. So you can skip the lost ones and type the addresses that still matter.
 
-1. You type the site address: street, city and state. Then you tap {{button:blue|Save}} or press Enter. The row reads *Placed ✓ · 38 mi from the office* as soon as the map finds it. If the map still can't find it, it says so and asks you to check the address.
+1. Type the site address: street, city and state. Then tap {{button:blue|Save}} or press Enter. The row reads *Placed ✓ · 38 mi from the office* as soon as the map finds it. If the map still can't find it, it says so and asks you to check the address.
 2. Not sure of the spelling? {{button:outline-blue|Check on Google Maps ↗}} opens what's in the box, not what's saved.
 3. When the customer has an address on file, it's shown under the row with {{button:outline-blue|Use it}}. One tap fills the box. You tap Use it for a residential bid at the customer's own address. Nothing is saved until you tap Save.
 4. Anything else on the bid: {{button:outline-blue|Edit bid}} opens the full form.

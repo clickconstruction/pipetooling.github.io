@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  lienReleaseCancelTarget,
   canRequestLienSignature,
   lienReleaseChips,
   lienReleaseIsEditable,
@@ -80,5 +81,25 @@ describe('lienReleaseLifecycle', () => {
     })
     expect(lienReleaseRowSignature({ ...row, status: 'awaiting_signature' })).toBeNull()
     expect(lienReleaseRowSignature({ ...row, signer_printed_name: null })).toBeNull()
+  })
+})
+
+describe('lienReleaseCancelTarget (#87 C)', () => {
+  const asked = '2026-10-01T18:00:00.000Z'
+  it('sends a waiver minted by its own request back to a draft', () => {
+    expect(lienReleaseCancelTarget({ status: 'awaiting_signature', minted_at: asked, signature_requested_at: asked })).toBe('draft')
+    // The database may answer in another ISO shape for the same instant.
+    expect(lienReleaseCancelTarget({ status: 'awaiting_signature', minted_at: '2026-10-01T18:00:00+00:00', signature_requested_at: asked })).toBe('draft')
+  })
+  it('keeps a waiver printed or marked issued first locked as issued', () => {
+    expect(lienReleaseCancelTarget({ status: 'awaiting_signature', minted_at: '2026-10-01T15:12:00.000Z', signature_requested_at: asked })).toBe('issued')
+  })
+  it('keeps a row with no mint or request stamp locked (old rows, odd data)', () => {
+    expect(lienReleaseCancelTarget({ status: 'awaiting_signature', minted_at: null, signature_requested_at: asked })).toBe('issued')
+    expect(lienReleaseCancelTarget({ status: 'awaiting_signature', minted_at: null, signature_requested_at: null })).toBe('issued')
+  })
+  it('only applies to a waiting request', () => {
+    expect(lienReleaseCancelTarget({ status: 'issued', minted_at: asked, signature_requested_at: asked })).toBe('issued')
+    expect(lienReleaseCancelTarget({ status: 'signed', minted_at: asked, signature_requested_at: asked })).toBe('issued')
   })
 })

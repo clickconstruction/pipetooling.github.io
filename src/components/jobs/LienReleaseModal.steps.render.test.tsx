@@ -12,7 +12,7 @@ import LienReleaseModal from './LienReleaseModal'
 vi.mock('../../hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'assistant-1' }, role: 'assistant', profileName: 'Taunya' }) }))
 vi.mock('signature_pad', () => ({ default: class { off() {} clear() {} isEmpty() { return true } toDataURL() { return null } } }))
 
-const db = vi.hoisted(() => ({ releases: [] as Array<Record<string, unknown>> }))
+const db = vi.hoisted(() => ({ releases: [] as Array<Record<string, unknown>>, writes: [] as Array<Record<string, unknown>> }))
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
   const stub = makeSupabaseStub() as { from: (t: string) => unknown }
@@ -31,6 +31,7 @@ vi.mock('../../lib/supabase', async () => {
     for (const m of ['select', 'eq', 'order', 'in', 'is', 'limit', 'insert']) builder[m] = () => builder
     builder.update = (payload: Record<string, unknown>) => {
       wrote = payload
+      db.writes.push(payload)
       return builder
     }
     builder.single = () => Promise.resolve({ data: wrote && db.releases[0] ? { ...db.releases[0], ...wrote } : null, error: null })
@@ -93,6 +94,7 @@ const AWAITING = {
 afterEach(() => {
   cleanup()
   db.releases = []
+  db.writes = []
 })
 
 const step = (n: number) => screen.getByTestId(`lien-step-${n}`)
@@ -228,6 +230,35 @@ describe('LienReleaseModal — six steps (v2.4314)', () => {
     await waitFor(() => expect(within(step(2)).getByRole('button', { name: 'Fold' })).toBeTruthy())
     fireEvent.click(within(step(5)).getByRole('button', { name: 'Cancel request' }))
     await waitFor(() => expect(within(step(2)).queryByRole('button', { name: 'Fold' })).toBeNull())
+  })
+
+  it('Cancel request on a waiver sent straight to his desk makes it a draft again, to change (#87 C)', async () => {
+    db.releases = [AWAITING]
+    await open650()
+    await waitFor(() => expect(step(5).textContent).toContain('Waiting for Malachi Whites to sign'))
+    const cancel = within(step(5)).getByRole('button', { name: 'Cancel request' })
+    expect(cancel.getAttribute('title')).toBe('Take the request back. The waiver becomes a draft you can change.')
+    fireEvent.click(cancel)
+    await waitFor(() => expect(db.writes.length).toBeGreaterThan(0))
+    expect(db.writes[0]).toEqual({ status: 'draft', minted_at: null, minted_pdf_path: null, signature_requested_at: null, signature_requested_by: null })
+    // Unlocked: the amount can be typed again, and the footer drops a draft rather than voiding a waiver.
+    await waitFor(() => expect((within(step(3)).getByLabelText('Amount ($)') as HTMLInputElement).disabled).toBe(false))
+    expect(screen.getByRole('button', { name: 'Discard this draft' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Void this waiver' })).toBeNull()
+  })
+
+  it('a waiver printed before it went to his desk stays issued when the request is cancelled, and its steps say to void it (#87 C)', async () => {
+    db.releases = [{ ...AWAITING, minted_at: '2026-10-01T15:12:00Z' }]
+    await open650()
+    await waitFor(() => expect(step(5).textContent).toContain('Waiting for Malachi Whites to sign'))
+    fireEvent.click(within(step(3)).getByRole('button', { name: '3 · Check the amount' }))
+    await waitFor(() => expect(within(step(3)).getByTestId('lien-waiver-math')).toBeTruthy())
+    expect(step(3).textContent).toContain('It was printed for a paper signature, so to change it, click Void this waiver at the bottom and make a new one.')
+    const cancel = within(step(5)).getByRole('button', { name: 'Cancel request' })
+    expect(cancel.getAttribute('title')).toBe('Take the request back. It was printed, so the waiver stays issued.')
+    fireEvent.click(cancel)
+    await waitFor(() => expect(db.writes.length).toBeGreaterThan(0))
+    expect(db.writes[0]).toEqual({ status: 'issued' })
   })
 
   it('a draft folds nothing, so there is nothing to open; the numbers still bring a step into view', async () => {

@@ -11,8 +11,8 @@ A report can be a percent, *my work here is done*, or the days they picked. The 
 
 ## The bell on the job
 
-1. You open **Jobs → Subs → Work**. Every job group has a bell: {{button:outline|🔔 Watching · 2}}.
-2. You open it. Each watcher has a ✕ and three switches: **progress**, **done** and **dates**. Assigned superintendents start with progress and done on, and dates off.
+1. Open **Jobs → Subs → Work**. Every job group has a bell: {{button:outline|🔔 Watching · 2}}.
+2. Open it. Each watcher has a ✕ and three switches: **progress**, **done** and **dates**. Assigned superintendents start with progress and done on, and dates off.
 3. {{button:outline|+ Subscribe someone…}} adds an office user or a superintendent with all three on.
 
 :::example What the email says

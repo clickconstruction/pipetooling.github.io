@@ -7,6 +7,7 @@
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { sendEmailViaResend } from './resendSendEmail.ts'
 import { buildWatchEmail, recipientsFor, resolveWatchers, shouldFold, type WatchKind, type WatcherRow } from './jobWatchersCore.ts'
+import { REAL_ACCOUNT } from './realAccount.ts'
 
 export async function notifyJobWatchers(
   admin: SupabaseClient,
@@ -29,7 +30,7 @@ export async function notifyJobWatchers(
     }
     const watchers = recipientsFor(resolveWatchers((rows ?? []) as WatcherRow[], supers), args.kind)
     if (watchers.length === 0) return
-    const { data: usersRaw } = await admin.from('users').select('id, email, name, archived_at').eq('is_sample', false).in('id', watchers.map((w) => w.userId))
+    const { data: usersRaw } = await admin.from('users').select('id, email, name, archived_at').match(REAL_ACCOUNT).in('id', watchers.map((w) => w.userId))
     const users = new Map(((usersRaw ?? []) as Array<{ id: string; email: string | null; name: string | null; archived_at?: string | null }>).map((u) => [u.id, u]))
     const jobNumber = (j?.hcp_number ?? '').trim() || null
     const jobLabel = j ? `${jobNumber ? `#${jobNumber}` : 'Job'}${j.customer_name ? ` · ${j.customer_name}` : j.job_name ? ` · ${j.job_name}` : ''}` : 'Job'

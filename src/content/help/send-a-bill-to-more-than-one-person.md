@@ -11,8 +11,8 @@ The copy might go to the accounts-payable clerk at a builder, a spouse or the pr
 
 ## Set it on the job
 
-1. You open the job in **Edit Job**. There is a **Bills also go to** row under the customer's Email. When the job has a GC, it sits under **Bills go to** too. Collapsed, it names who is copied, or says *nobody else*.
-2. You click it. You see the people on file for whoever pays this job, each with a tick:
+1. Open the job in **Edit Job**. There is a **Bills also go to** row under the customer's Email. When the job has a GC, it sits under **Bills go to** too. Collapsed, it names who is copied, or says *nobody else*.
+2. Click it. You see the people on file for whoever pays this job, each with a tick:
 
 :::example the row, opened
 ☑ **DRF** ap@drfbuilders.com · contact on Josh Peterson
@@ -20,7 +20,7 @@ The copy might go to the accounts-payable clerk at a builder, a spouse or the pr
 {{button:outline|+ Add a person}}
 :::
 
-3. You tick who should get every bill. The tick saves on its own, straight onto the customer's record. So the next job for this customer already has them.
+3. Tick who should get every bill. The tick saves on its own, straight onto the customer's record. So the next job for this customer already has them.
 4. Nobody on file yet? {{button:outline|+ Add a person}} takes a name and an email. The person is added as a contact of the customer, already ticked.
 
 ## Copy the GC, or copy the customer

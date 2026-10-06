@@ -189,6 +189,25 @@ describe('LienReleaseModal — our waiver to the GC (v2.4274)', () => {
     expect(within(screen.getByTestId('lien-waiver-form')).getByRole('button', { name: 'Unconditional' }).getAttribute('aria-pressed')).toBe('true')
   })
 
+  it('Add the unconditional on a paid bill opens on that bill and its unconditional form (#87 I)', async () => {
+    // A bill paid in full is marked paid (mark_invoice_paid); the window used to leave it out and open on Conditional · progress.
+    const paid = makeInvoice({ id: 'inv-paid', status: 'paid', amount: 9022.49, sequence_order: 0 })
+    const later = makeInvoice({ id: 'inv-later', status: 'billed', amount: 15406, sequence_order: 1 })
+    const paidJob = { ...job, invoices: [paid, later] }
+    renderWithProviders(<LienReleaseModal open onClose={() => undefined} job={paidJob} invoice={paid} signerNameFallback="Malachi Reyes" />)
+    // The bill picked the unconditional, so the window asks first (v2.4582).
+    fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Acknowledge and choose Unconditional' }))
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull())
+    const form = screen.getByTestId('lien-waiver-form')
+    expect(within(form).getByRole('button', { name: 'Unconditional' }).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByText('Unconditional Waiver and Release on Progress Payment')).toBeTruthy()
+    // That bill is the one selected, and its chip says it is paid.
+    const chipPaid = screen.getByRole('button', { name: /#1 · \$9,022\.49/ })
+    expect(chipPaid.getAttribute('aria-pressed')).toBe('true')
+    expect(chipPaid.getAttribute('title')).toMatch(/^Paid — /)
+    expect(screen.getByRole('button', { name: /#2 · / }).getAttribute('aria-pressed')).toBe('false')
+  })
+
   it('a window that opens conditional asks nothing (v2.4582)', async () => {
     renderWithProviders(<LienReleaseModal open onClose={() => undefined} job={job} invoice={inv2} signerNameFallback="Malachi Reyes" />)
     await screen.findByTestId('lien-waiver-form')

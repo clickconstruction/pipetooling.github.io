@@ -83,6 +83,8 @@ function makeBreakdown(overrides: Partial<TeamSummaryBreakdown> = {}): TeamSumma
     vehicleArrangement: 'none' as const,
     vehicleRate: null,
     vehicleTruckName: null,
+    vehicleFixedCost: 0,
+    vehicleFuelOffJobs: 0,
     vehicleCost: 0,
     allocatedLabor: 0,
     overheadLaborCost: 0,

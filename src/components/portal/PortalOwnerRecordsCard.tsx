@@ -25,6 +25,7 @@ export function PortalOwnerRecordsCard({ records, token, companyName, phone, tod
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [signed, setSigned] = useState<{ on: string; name: string } | null>(records.signed)
+  const sent = records.sent
   const nameOk = ownerNameLetterMatch(printedName, [records.ownerName])
   const lines = ownerAcknowledgmentLines(
     { company: companyName, owner: records.ownerName, address: records.address, asOfYmd: todayYmd, requestedOnYmd: records.offeredOn },
@@ -60,9 +61,23 @@ export function PortalOwnerRecordsCard({ records, token, companyName, phone, tod
 
   const tel = phone.replace(/[^\d+]/g, '')
   return (
-    <div data-portal-owner-records data-state={signed ? 'signed' : 'to-sign'} style={{ margin: '1.2rem 0', background: CARD, border: `1px solid ${HAIR}`, borderLeft: `3px solid ${PAPER_GREEN}`, padding: '1rem 1.2rem', fontSize: 14 }}>
+    <div data-portal-owner-records data-state={signed && sent ? 'sent' : signed ? 'signed' : 'to-sign'} style={{ margin: '1.2rem 0', background: CARD, border: `1px solid ${HAIR}`, borderLeft: `3px solid ${PAPER_GREEN}`, padding: '1rem 1.2rem', fontSize: 14 }}>
       <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: PAPER_GREEN, marginBottom: 6 }}>Our records for {records.address || 'your property'}</div>
-      {signed ? (
+      {signed && sent ? (
+        <>
+          <p style={{ margin: '0 0 6px', fontWeight: 700 }}>The office sent your records on {formatPortalDate(sent.on) ?? sent.on}.</p>
+          {sent.downloadUrl ? (
+            <a href={sent.downloadUrl} download data-portal-owner-records-download style={{ display: 'inline-block', marginTop: 4, padding: '8px 14px', borderRadius: 8, background: PAPER_GREEN, color: '#fff', fontWeight: 700, fontSize: 13.5, textDecoration: 'none' }}>
+              Download the records
+            </a>
+          ) : (
+            <p style={{ margin: 0, color: MUTED }}>The file is being prepared. Open this page again in a minute.</p>
+          )}
+          <p style={{ margin: '8px 0 0', color: MUTED, fontSize: 12.5 }}>
+            One PDF: the cover note and the statement as of the day it was sent. {phone ? <>Questions? Call <a href={`tel:${tel}`} style={{ color: 'inherit' }}>{phone}</a>.</> : null}
+          </p>
+        </>
+      ) : signed ? (
         <>
           <p style={{ margin: '0 0 6px', fontWeight: 700 }}>Thank you, {signed.name || 'you have signed'}. You signed on {formatPortalDate(signed.on) ?? signed.on}.</p>
           <p style={{ margin: 0, color: MUTED }}>

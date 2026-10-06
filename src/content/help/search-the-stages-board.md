@@ -24,8 +24,8 @@ The **#** chip inside the search bar is a faster path when you already know the 
 
 You can also search dispatch-schedule notes and clock-session notes, plus the people and dates on them. This is an opt-in, because it is much heavier. The app has to pull schedule and clock records for every job on the board while you type.
 
-1. You click the {{button:outline|⋯}} tools button at the right end of the search bar.
-2. You turn on **Schedule & time in search**.
+1. Click the {{button:outline|⋯}} tools button at the right end of the search bar.
+2. Turn on **Schedule & time in search**.
 
 While it is on, the search placeholder reads *Search HCP, name, address, schedule notes, or clock notes*. Results can include jobs matched only by a schedule block or clock session. The setting is remembered per device. You turn it off again from the same menu when you are done.
 

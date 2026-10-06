@@ -42,7 +42,7 @@ Every line item on the job is a stage. Under each row in **① Line Items** the 
 A **stage** is one of the job's line items read as a unit of sub work. A **window** is the span you want it done in.
 
 1. On the job's header you press {{button:outline|+ Add a stage…}}.
-2. You pick the line item and the two days, then press {{button:blue|Set the window}}.
+2. Pick the line item and the two days, then press {{button:blue|Set the window}}.
 
 {{gif:schedule-a-sub-add-stage.gif|Add a stage: pick the line item and the two days, then Set the window}}
 
