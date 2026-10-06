@@ -1557,9 +1557,17 @@ two doors.
 - **The write**: one action, `importSchedule`, in the golden list. The reducer calls
   `importedSchedule` in five steps:
   1. `scheduleDraft(project, workStarts, project.rough?.days)`, exactly the first draft.
-  2. The lines, inspections and job's own activities the file names take its dates and waits. When
-     two of theirs land on one line, the bar spans both. A wait their own dates break is left out,
-     with a sentence.
+  2. The lines, inspections and job's own activities the file names take its dates and waits. A
+     wait their own dates break is left out, with a sentence. When two of theirs or more land on one
+     of our lines, the line spans them and each becomes one of its parts (G-39's `splitParts`):
+     - named as their file names it;
+     - counted from the line's start, its share from its days;
+     - at the line's own percent, from its trade's report.
+
+     The office then reports each part as the customer's file named it. The line stays one bar when
+     one of them is shorter than a working day in their file (its Duration), or when two share a
+     name. The window says which: *Hang and tape: 2 of theirs, each a part of it.* or *Hang and
+     tape: 2 of theirs as one bar. One of them is shorter than a day.*
   3. Our lines and the first draft's inspections not in the file keep the draft's waits and days.
      Each starts the day after what it waits on finishes, or on Work starts.
   4. A final inspection the file does not name waits on everything nothing else waits on.
