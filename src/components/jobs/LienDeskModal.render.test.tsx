@@ -965,6 +965,34 @@ describe('LienDeskModal · the pay page in the pane (punch list #35, PR 3)', () 
   })
 })
 
+describe('LienDeskModal · the pay page lines are typed in place (v2.4724)', () => {
+  it('a shaded line opens a box; Enter keeps it on this page only, the label counts it, and Back puts the bill’s line back', async () => {
+    payPageState.rows = [{ invoiceId: 'inv-1', label: 'Invoice #650, August 18, 2026', description: 'Rough-in.', openAmount: 33_500, payable: true }]
+    payPageState.assets = { 'inv-1': { svg: '<svg data-code></svg>', png: null } }
+    try {
+      renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650.map((r) => ({ ...r, has_owner: true })), [], true)} />)
+      await settle()
+      const pay = () => document.querySelector('[data-lien-desk-pay]') as HTMLElement
+      const label = () => (document.querySelector('[data-lien-desk-pay-label]') as HTMLElement).textContent ?? ''
+      expect(label()).toContain('a shaded line is yours to change, on this page only')
+      fireEvent.click(pay().querySelector('[data-field="payLine:inv-1"]')!)
+      const box = screen.getByLabelText("The line under this bill's code") as HTMLInputElement
+      expect(box.value).toBe('Rough-in.')
+      fireEvent.change(box, { target: { value: 'Plumbing rough-in at 650 Schertz Pkwy' } })
+      fireEvent.keyDown(box, { key: 'Enter' })
+      expect(pay().textContent).toContain('Plumbing rough-in at 650 Schertz Pkwy')
+      expect(pay().textContent).toContain('changed on this page only · the bill keeps its own line')
+      expect(label()).toContain('1 line changed on this page, the bills keep their own')
+      fireEvent.click(pay().querySelector('[data-reset="payLine:inv-1"]')!)
+      expect(pay().textContent).toContain('Rough-in.')
+      expect(label()).not.toContain('changed')
+    } finally {
+      payPageState.rows = []
+      payPageState.assets = {}
+    }
+  })
+})
+
 describe('LienDeskModal · a notice that already went out (#35 PR 2)', () => {
   it('the draft footer offers "Already mailed? Record it…" and opens the by-hand pane prefilled with the desk’s months', async () => {
     renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650.map((r) => ({ ...r, has_owner: true })), [], true)} />)

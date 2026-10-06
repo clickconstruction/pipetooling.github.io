@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { filingDocHtml } from '../jobsDocuments/lienFilingDocuments'
-import { PAY_PAGE_ON_GC_COPY, PAY_PAGE_TITLE, payPageAppliesTo, payPageBlocks, payPageOwnerRule, payPageRows, payPageSummary, type PayPageRow } from './lienNoticePayPage'
+import { PAY_PAGE_ON_GC_COPY, PAY_PAGE_TITLE, applyPayLines, changedPayLines, payLineField, payLineInvoiceId, payPageAppliesTo, payPageBlocks, payPageOwnerRule, payPageRows, payPageSummary, type PayPageRow } from './lienNoticePayPage'
 import type { NoticeInvoiceDoc } from './noticeInvoiceEnclosure'
 import type { PhysicalInvoiceDocument } from '../physicalInvoiceDocument'
 
@@ -62,9 +62,9 @@ describe("the pay page — the owner's copy", () => {
   it('a row per bill: the code and the address for a Stripe bill, a note instead for a paper one', () => {
     const payRows = blocks.filter((b) => b.kind === 'payRow')
     expect(payRows).toEqual([
-      { kind: 'payRow', label: 'Invoice #273-1, May 5, 2026', description: 'Install and finish plumbing fixture trim.', amountLine: 'Still owed: $13,420.00', address: 'clicktooling.com/pay/inv-1', note: '', svg: '<svg data-code="1"></svg>', png: 'data:image/png;base64,AAA' },
-      { kind: 'payRow', label: 'Invoice #273-2, June 12, 2026', description: 'Change Order: Moved the washing machine connections.', amountLine: 'Still owed: $665.00', address: 'clicktooling.com/pay/inv-2', note: '', svg: '<svg data-code="2"></svg>', png: null },
-      { kind: 'payRow', label: 'Invoice #273-3, July 3, 2026', description: '', amountLine: 'Still owed: $3,500.00', address: '', note: 'No online payment page for this bill — pay by check to the address above.', svg: null, png: null },
+      { kind: 'payRow', field: 'payLine:inv-1', label: 'Invoice #273-1, May 5, 2026', description: 'Install and finish plumbing fixture trim.', amountLine: 'Still owed: $13,420.00', address: 'clicktooling.com/pay/inv-1', note: '', svg: '<svg data-code="1"></svg>', png: 'data:image/png;base64,AAA' },
+      { kind: 'payRow', field: 'payLine:inv-2', label: 'Invoice #273-2, June 12, 2026', description: 'Change Order: Moved the washing machine connections.', amountLine: 'Still owed: $665.00', address: 'clicktooling.com/pay/inv-2', note: '', svg: '<svg data-code="2"></svg>', png: null },
+      { kind: 'payRow', field: 'payLine:inv-3', label: 'Invoice #273-3, July 3, 2026', description: '', amountLine: 'Still owed: $3,500.00', address: '', note: 'No online payment page for this bill — pay by check to the address above.', svg: null, png: null },
     ])
   })
 
@@ -118,3 +118,34 @@ describe('the pay page — the pay offer (v2.4713)', () => {
     expect(payPageBlocks({ ...base, copy: 'owner' }).filter((b) => b.kind === 'callout')).toHaveLength(1)
   })
 })
+
+describe('the pay page lines the office types (v2.4724)', () => {
+  const rows: PayPageRow[] = [
+    { invoiceId: 'a', label: 'Invoice #273, March 16, 2026', description: '', openAmount: 13_420, payable: true },
+    { invoiceId: 'b', label: 'Invoice #2, August 21, 2026', description: 'CHANGE ORDER: Added gas to fire features at pool', openAmount: 3_500, payable: true },
+  ]
+  it('puts a typed line in place of the bill’s, ignores bills no longer enclosed, and counts only real changes', () => {
+    const lines = { a: '  Plumbing for the Lennox house  ', b: 'CHANGE ORDER: Added gas to fire features at pool', gone: 'x' }
+    expect(applyPayLines(rows, lines).map((r) => r.description)).toEqual(['Plumbing for the Lennox house', 'CHANGE ORDER: Added gas to fire features at pool'])
+    expect(changedPayLines(rows, lines)).toEqual({ a: 'Plumbing for the Lennox house' })
+    expect(changedPayLines(rows, { b: '' })).toEqual({ b: '' })
+    expect(applyPayLines(rows, null)).toEqual(rows)
+    expect(payLineInvoiceId(payLineField('a'))).toBe('a')
+    expect(payLineInvoiceId('claimAmount')).toBeNull()
+  })
+  it('prints the typed line plain on paper, and as a box with its note on the desk', () => {
+    const blocks = payPageBlocks({ rows, assets: {}, copy: 'owner', copyLabel: '', gcName: 'RMC- Dudley Mason', claimantName: 'Click Plumbing and Electrical', contactPerson: '', phone: '', extras: {}, lines: { a: 'Plumbing for the Lennox house' } })
+    const printed = filingDocHtml(blocks)
+    expect(printed).toContain('Plumbing for the Lennox house')
+    expect(printed).not.toContain('data-field')
+    const desk = filingDocHtml(blocks, { marks: { [payLineField('a')]: { kind: 'typed', changed: true }, [payLineField('b')]: { kind: 'typed' } } })
+    expect(desk).toContain('data-field="payLine:a"')
+    expect(desk).toContain('changed on this page only · the bill keeps its own line')
+    expect(desk).toContain('data-reset="payLine:a"')
+    const locked = filingDocHtml(blocks, { marks: { [payLineField('a')]: { kind: 'locked', changed: true } } })
+    expect(locked).not.toContain('data-reset')
+    const empty = filingDocHtml(payPageBlocks({ rows, assets: {}, copy: 'owner', copyLabel: '', gcName: '', claimantName: '', contactPerson: '', phone: '', extras: {} }), { marks: { [payLineField('a')]: { kind: 'typed' } } })
+    expect(empty).toContain('no line · click to add one')
+  })
+})
+
