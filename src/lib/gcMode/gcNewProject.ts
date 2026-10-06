@@ -528,7 +528,7 @@ function draftLines(pkg: TradePackage): { lineId: string; label: string }[] {
  * Milestones: dry-in (the last dry-in line), the rough-in inspection (on its finish) and
  * substantial completion (three days after the final inspection). The office changes every date.
  */
-export function scheduleDraft(project: GcProject, start: string): ProjectSchedule {
+export function scheduleDraft(project: GcProject, start: string, stageDays?: Partial<Record<string, number>>): ProjectSchedule {
   const order = new Map(SCHEDULE_STAGES.map((st, i) => [st.key, i]))
   type Line = { lineId: string; packageId: string; trade: string; stage: string; index: number }
   const lines: Line[] = project.packages.flatMap((pkg) =>
@@ -569,7 +569,8 @@ export function scheduleDraft(project: GcProject, start: string): ProjectSchedul
       const after = [...new Set([...gateActs.map((a) => a.lineId), ...(prev ? [prev.lineId] : [])])]
       // A trade's lines in one stage share the stage's days: roofing's four lines take about ten days, not forty.
       const shares = own.filter((l) => l.stage === stage.key).length
-      const days = Math.max(2, Math.ceil(stage.days / Math.max(1, shares)))
+      // A rough schedule may set this job's own stage lengths (G-45); every other caller draws the usual ones.
+      const days = Math.max(2, Math.ceil((stageDays?.[stage.key] ?? stage.days) / Math.max(1, shares)))
       const a: ScheduleActivity = { lineId: line.lineId, packageId: line.packageId, start: from, finish: plusDays(from, days - 1), after }
       done.set(line.lineId, a)
       activities.push(a)

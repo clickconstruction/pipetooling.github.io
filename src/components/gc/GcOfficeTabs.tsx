@@ -82,6 +82,7 @@ import { GcBuildingCrewCard } from './GcBuildingCrew'
 import { GcPlansDoors } from './GcNewPlans'
 import { Btn, Card, Chip, PlusUnknown, Stat, Why, input, num, td, th, type Tone } from './gcUi'
 import { GcAskCompanies } from './GcAskCompanies'
+import { proposalWeeksWords, roughWeeks, roughWeeksWords } from '../../lib/gcMode/gcRoughSchedule'
 
 /** GC mode design spike: the office's side of one project. */
 
@@ -1084,6 +1085,10 @@ export function GcPlansTab({ state, project, dispatch }: GcPaneProps) {
 
 export function GcNumberTab({ state, project, dispatch }: GcPaneProps) {
   const totals = proposalTotals(project)
+  // Weeks to build, from the rough schedule while we bid (G-45): one count, kept as it went with the bid.
+  const weeks = roughWeeks(project)
+  const proposal = proposalWeeksWords(project)
+  const [copied, setCopied] = useState(false)
   const signedFor = priceToOwner(project)
   const [losing, setLosing] = useState(false)
   const field = (label: string, key: 'generalConditions' | 'contingencyPct' | 'feePct', suffix: string) => (
@@ -1120,7 +1125,28 @@ export function GcNumberTab({ state, project, dispatch }: GcPaneProps) {
             value={<>{money(totals.price)}<PlusUnknown words={proposalUncostedWords(project)} /></>}
             tone={totals.holes.length > 0 ? 'red' : proposalUncosted(project).length > 0 ? undefined : 'green'}
           />
+          {(weeks || project.stage === 'pursuing') && <Stat label="Weeks to build" value={weeks ? String(weeks.weeks) : 'not drawn'} />}
         </div>
+        {weeks && proposal ? (
+          <div data-tour="gc-bid-weeks" style={{ marginTop: '0.6rem', fontSize: '0.9rem', display: 'grid', gap: '0.25rem' }}>
+            <span>{roughWeeksWords(project)}</span>
+            <span style={{ display: 'flex', gap: '0.4rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
+              <span style={{ color: 'var(--text-muted)' }}>For the proposal:</span>
+              <span>{proposal}</span>
+              <Btn
+                kind="quiet"
+                onClick={() => {
+                  void navigator.clipboard?.writeText(proposal)
+                  setCopied(true)
+                }}
+              >
+                {copied ? 'Copied' : 'Copy'}
+              </Btn>
+            </span>
+          </div>
+        ) : project.stage === 'pursuing' && !project.lostOn ? (
+          <div style={{ marginTop: '0.6rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>Weeks to build: not drawn yet. Draw a rough schedule on the Schedule tab.</div>
+        ) : null}
         {/* Once signed, the owner's price stays put (Owner Billing, 2026-10-04); this is the gap buying out makes. */}
         {signedFor.signed && (
           <div style={{ marginTop: '0.6rem', fontSize: '0.9rem' }}>
