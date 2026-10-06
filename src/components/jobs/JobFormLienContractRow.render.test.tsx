@@ -9,6 +9,11 @@ import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { JobFormLienContractRow } from './JobFormLienContractRow'
 
+vi.mock('../../hooks/useAuth', async () => {
+  const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')
+  return useAuthModuleMock()
+})
+
 const writes: Array<Record<string, unknown>> = []
 const state: { job: Record<string, unknown> } = { job: {} }
 

@@ -43,9 +43,16 @@ export type LienDeskJob = {
   master_user_id: string | null
   /** 'YYYY-MM-DD' — the timeline's last-work fallback when the RPC's months are older (v2.3761). */
   last_work_date: string | null
+  /** The day the job was created — the last-day line's fallback when there are no clock hours (v2.4653). */
+  created_at?: string | null
   /** The lien clock (v2.3753): the day our contract on the job ended and how; null while open. */
   lien_contract_ended_on?: string | null
   lien_contract_ended_how?: string | null
+  /** The last day of work set by hand (v2.4653), with who, when and why; null while the clock hours (or the creation day) stand. */
+  lien_last_work_on?: string | null
+  lien_last_work_note?: string | null
+  lien_last_work_set_at?: string | null
+  lien_last_work_set_by?: string | null
   /** Unpaid subcontract retainage the GC holds (v2.3753); null = not recorded. */
   lien_retainage_held?: number | null
   lien_payment_bond?: string | null
@@ -54,22 +61,29 @@ export type LienDeskJob = {
 }
 
 /** The columns the desk reads from jobs_ledger. */
-export const LIEN_DESK_JOB_COLUMNS = 'id, hcp_number, click_number, job_name, job_address, customer_id, customer_name, gc_customer_id, customer_address_id, revenue, payments_made, master_user_id, last_work_date, lien_contract_ended_on, lien_contract_ended_how, lien_retainage_held, lien_payment_bond, service_type:service_types(name)'
+export const LIEN_DESK_JOB_COLUMNS = 'id, hcp_number, click_number, job_name, job_address, customer_id, customer_name, gc_customer_id, customer_address_id, revenue, payments_made, master_user_id, last_work_date, lien_contract_ended_on, lien_contract_ended_how, lien_retainage_held, lien_payment_bond, service_type:service_types(name), created_at'
 
 
 /** The four lien-clock columns (v2.3753) on their own — the lien timeline book reads them beside its own job select; the desk and the GC run read them in LIEN_DESK_JOB_COLUMNS. */
-export type LienClockColumns = Pick<LienDeskJob, 'lien_contract_ended_on' | 'lien_contract_ended_how' | 'lien_retainage_held' | 'lien_payment_bond'>
+export type LienClockColumns = Pick<LienDeskJob, 'lien_contract_ended_on' | 'lien_contract_ended_how' | 'lien_retainage_held' | 'lien_payment_bond' | 'lien_last_work_on' | 'lien_last_work_note' | 'lien_last_work_set_at' | 'lien_last_work_set_by'>
 
 export async function fetchLienClockColumns(jobIds: ReadonlyArray<string>): Promise<Record<string, LienClockColumns>> {
   const out: Record<string, LienClockColumns> = {}
   for (const chunk of chunkIds([...jobIds])) {
     if (chunk.length === 0) continue
+    // The last-day columns (v2.4653) ride along once the migration is on prod; until then the four clock columns alone, so the desk never goes dark on a client that landed first.
     const part = await withSupabaseRetry(
-      () => supabase.from('jobs_ledger').select('id, lien_contract_ended_on, lien_contract_ended_how, lien_retainage_held, lien_payment_bond').in('id', chunk),
+      () => supabase.from('jobs_ledger').select('id, lien_contract_ended_on, lien_contract_ended_how, lien_retainage_held, lien_payment_bond, lien_last_work_on, lien_last_work_note, lien_last_work_set_at, lien_last_work_set_by').in('id', chunk),
       'lien desk: lien clock columns',
+    ).catch(() =>
+      withSupabaseRetry(
+        () => supabase.from('jobs_ledger').select('id, lien_contract_ended_on, lien_contract_ended_how, lien_retainage_held, lien_payment_bond').in('id', chunk),
+        'lien desk: lien clock columns (without the last day)',
+      ),
     )
-    for (const r of part ?? []) {
-      out[r.id] = { lien_contract_ended_on: r.lien_contract_ended_on ?? null, lien_contract_ended_how: r.lien_contract_ended_how ?? null, lien_retainage_held: r.lien_retainage_held == null ? null : Number(r.lien_retainage_held), lien_payment_bond: r.lien_payment_bond ?? null }
+    for (const r0 of part ?? []) {
+      const r = r0 as typeof r0 & { lien_last_work_on?: string | null; lien_last_work_note?: string | null; lien_last_work_set_at?: string | null; lien_last_work_set_by?: string | null }
+      out[r.id] = { lien_contract_ended_on: r.lien_contract_ended_on ?? null, lien_contract_ended_how: r.lien_contract_ended_how ?? null, lien_retainage_held: r.lien_retainage_held == null ? null : Number(r.lien_retainage_held), lien_payment_bond: r.lien_payment_bond ?? null, lien_last_work_on: r.lien_last_work_on ?? null, lien_last_work_note: r.lien_last_work_note ?? null, lien_last_work_set_at: r.lien_last_work_set_at ?? null, lien_last_work_set_by: r.lien_last_work_set_by ?? null }
     }
   }
   return out

@@ -109,6 +109,7 @@ export default function LienDeskMonths({
   onPreviewThis,
   onRecordByHand,
   tail,
+  lastWork,
 }: {
   grid: LienMonthGrid
   claim: string
@@ -125,6 +126,8 @@ export default function LienDeskMonths({
   onRecordByHand?: () => void
   /** Lines under the grid beside the claim — the affidavit's state, for one. */
   tail?: ReactNode
+  /** The last day of work line (v2.4653), above the grid. */
+  lastWork?: ReactNode
 }) {
   const view = useLienTimelineView()
   const filings = grid.papers.filter((p) => p.kind === 'filing')
@@ -136,6 +139,7 @@ export default function LienDeskMonths({
         <strong>Months on this job</strong>
         <span>Every month worked, oldest first. A check is a paper that names the month; the last column is this notice — tick a month to put it on.</span>
       </div>
+      {lastWork ? <div style={{ margin: '0.5rem 0 0.25rem' }}>{lastWork}</div> : null}
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
           <thead>

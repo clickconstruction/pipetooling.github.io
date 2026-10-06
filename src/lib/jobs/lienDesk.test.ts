@@ -225,7 +225,8 @@ describe('buildLienDeskQueue · a job with no clock hours is dated from its crea
     // J858: created 2026-08-18, never clocked — the RPC hands back one 'job_created' row with the August window (Oct 15).
     const q = buildLienDeskQueue([row({ job_id: 'j858', work_month: '2026-08', deadline: '2026-10-15', approved_hours: 0, open_balance: 7_902, month_source: 'job_created' })], [], {}, TODAY)
     const e = q.entries[0]!
-    expect(e.months).toEqual([{ key: '2026-08', approvedHours: 0, deadline: '2026-10-15', daysLeft: 31, noticed: false, fromCreation: true }])
+    expect(e.months).toEqual([{ key: '2026-08', approvedHours: 0, deadline: '2026-10-15', daysLeft: 31, noticed: false, fromCreation: true, byHand: false }])
+    expect(e.datedByHand).toBe(false)
     expect(e.datedFromCreation).toBe(true)
     expect(e.dueMonths).toEqual(['2026-08'])
     expect(e.pile).toBe('to_draft')

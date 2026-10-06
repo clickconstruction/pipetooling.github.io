@@ -8,6 +8,9 @@ import { retainageDeadlineFor } from '../../lib/jobs/lienDeadlines'
 import { LIEN_CONTRACT_ENDED_HOW, parseContractEndedHow, parsePaymentBond, paymentBondWords, type LienContractEndedHow, type LienPaymentBond } from '../../lib/jobs/lienDeskRetainage'
 import { FinishedDateInput } from '../FinishedDateInput'
 import { JobFormFactRow } from './JobFormFactRow'
+import { LienLastWorkDayLine } from './LienLastWorkDayLine'
+import { useAuth } from '../../hooks/useAuth'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 
 /**
  * Edit Job → *Our contract on this job* (v2.3753, punch list #33 PR 1): the
@@ -36,7 +39,11 @@ const chip = (bg: string, fg: string): CSSProperties => ({ display: 'inline-bloc
 
 export function JobFormLienContractRow({ jobId, gcName, expanded, onToggle, flash, anchorRef }: { jobId: string | null; gcName: string; expanded: boolean; onToggle: () => void; flash: boolean; anchorRef?: React.Ref<HTMLDivElement> }) {
   const { showToast } = useToastContext()
+  const { user: authUser } = useAuth()
   const [loaded, setLoaded] = useState<Loaded | null>(null)
+  // The last day of work set by hand (v2.4653): re-read after the line saves.
+  const [lastWorkTick, setLastWorkTick] = useState(0)
+  const [lastWork, setLastWork] = useState<{ lien_last_work_on: string | null; lien_last_work_note: string | null; lien_last_work_set_at: string | null; lien_last_work_set_by: string | null; created_at: string | null } | null>(null)
   const [unavailable, setUnavailable] = useState(false)
   const [busy, setBusy] = useState(false)
   const [retainageDraft, setRetainageDraft] = useState('')
@@ -71,11 +78,16 @@ export function JobFormLienContractRow({ jobId, gcName, expanded, onToggle, flas
       setLoaded(next)
       setRetainageDraft(next.retainage)
       setDateDraft(next.endedOn || next.lastWorkDate || '')
+      // The last day of work (v2.4653), best-effort: the line waits until its columns are on prod.
+      const lwRes = await supabase.from('jobs_ledger').select('created_at, lien_last_work_on, lien_last_work_note, lien_last_work_set_at, lien_last_work_set_by').eq('id', jobId).maybeSingle()
+      if (cancelled) return
+      const lw = (lwRes.error ? null : lwRes.data) as { lien_last_work_on?: string | null; lien_last_work_note?: string | null; lien_last_work_set_at?: string | null; lien_last_work_set_by?: string | null; created_at?: string | null } | null
+      setLastWork(lw ? { lien_last_work_on: lw.lien_last_work_on ?? null, lien_last_work_note: lw.lien_last_work_note ?? null, lien_last_work_set_at: lw.lien_last_work_set_at ?? null, lien_last_work_set_by: lw.lien_last_work_set_by ?? null, created_at: lw.created_at ?? null } : null)
     })()
     return () => {
       cancelled = true
     }
-  }, [jobId])
+  }, [jobId, lastWorkTick])
 
   function save(patch: Record<string, unknown>, apply: (l: Loaded) => Loaded, what: string): Promise<void> {
     const run = async () => {
@@ -200,6 +212,9 @@ export function JobFormLienContractRow({ jobId, gcName, expanded, onToggle, flas
                   </span>
                 </label>
               </div>
+              {jobId && lastWork ? (
+                <LienLastWorkDayLine jobId={jobId} job={{ ...lastWork, last_work_date: loaded.lastWorkDate }} todayYmd={todayYmdInAppTz()} canEdit userId={authUser?.id ?? null} onSaved={() => setLastWorkTick((t) => t + 1)} />
+              ) : null}
               <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>The retainage is named inside every § 53.056 notice the desk sends on this job, and is what the § 53.057 form claims. Counsel: check each job for a bond before telling an owner to hold 10 percent. Saved on the job as you pick.</p>
             </div>
           )}
