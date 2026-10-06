@@ -65,6 +65,10 @@ Nothing below starts without the one named.
 - [ ] **The weekly walk's day**: Friday morning, before the Friday report, is the default (call 6).
 - [ ] **Who sets a new baseline** after a change order: anyone, like a move, or the project
   manager (call 9).
+- [ ] **Sample waits in the made-up data.** A delivery, a decision and a permit on Fair Oaks D
+  would show the new rows without adding one by hand, but the golden test pins the whole state at
+  the end, so they move that snapshot (`gcModel.test.ts`, *the whole state at the end*). Say so and
+  the next sitting adds them with `-u` on that one test.
 - [ ] Every earlier call in `HANDOFF.md` → section 1 (PR 1b, Quo, the defaults, the Spanish).
 
 ## Prototype work left, in the order I would take it
@@ -75,14 +79,17 @@ Each is one sitting or less. The feature numbers are `GANTT_FEATURES.md`'s.
   the work is and move the contract's finish; the customer's schedule says so. Owner Billing's
   `changeOrderDays` exists; `substantialCompletionOn` already adds the days to the contract.
   Built 2026-10-06 (`gcChangeOrderDays.ts`; `GANTT_PLAN.md` → *Phase 4, change-order days*).
-- [ ] **Phase 4, long-lead items as bars** (G-73): ordered, shipped, on site, each tied to the
+- [x] **Phase 4, long-lead items as bars** (G-73): ordered, shipped, on site, each tied to the
   work that needs it, holding it the way a submittal does (`GanttHold` gains a kind).
-- [ ] **Phase 4, the customer's decisions as rows** (G-74) and permits and the utility (G-75), with
+- [x] **Phase 4, the customer's decisions as rows** (G-74) and permits and the utility (G-75), with
   who waits on whom; the customer's *What we need from you* reads them.
-- [ ] **Phase 4, weather days from the daily log** (G-58): a log that says work stopped puts a lost
+  Both built 2026-10-06 as one record (`gcScheduleWaits.ts`; `GANTT_PLAN.md` → *Phase 4, what the
+  work waits on*). No sample wait is in the made-up data: see the owner's calls.
+- [x] **Phase 4, weather days from the daily log** (G-58): a log that says work stopped puts a lost
   day on the bars that were outside; **Update the week** offers it as the reason.
-- [ ] **Phase 4, days lost by cause** (G-96): the moves' reasons added up across the job, for a
+- [x] **Phase 4, days lost by cause** (G-96): the moves' reasons added up across the job, for a
   time-extension ask.
+  Both built 2026-10-06 (`gcDaysLost.ts`; `GANTT_PLAN.md` → *Phase 4, days lost*).
 - [ ] **Phase 2, an added activity** that is not a schedule-of-values line (G-38): mobilize, a
   delivery, cure time, the customer's own work. Needs a new action and a row shape with no `pkg`.
 - [ ] **Phase 2, actual start and finish** (G-55): kept beside the planned ones, set by the walk

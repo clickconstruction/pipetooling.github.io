@@ -393,9 +393,66 @@ What the second look changed:
 - **A tail, not a longer bar.** Until the press, the bar keeps its drawn dates, so the trade's own
   chart and the walk read what was agreed; the tail says what is coming.
 
+## Phase 4, what the work waits on, as built (2026-10-06)
+
+Long-lead items, the customer's decisions, permits and the utility (G-73, G-74, G-75) are one
+record (`ScheduleWait`, four kinds), one kernel (`gcScheduleWaits.ts`, tested, out of the barrel),
+one card on the Schedule tab and one block on the chart.
+
+- **One row each, over the groups**, from the day it was ordered, asked for, applied for or
+  requested to the day it is expected or came: ● ordered, ▲ shipped (a delivery), ◆ expected or
+  ■ in; a mark on the day the work needs it; a dashed line to each line it holds. Red when it
+  comes after the work was to start, or its day has passed with nothing in.
+- **It holds the work the way a submittal does**, but only when it would: expected on or after the
+  day the work starts, or its day passed. One expected well before the work is a row to watch, not
+  a held bar. A submittal or an RFI on the same line wins the pill; the wait is still drawn.
+- **The card**: each one's kind, who we wait on, where it stands, its next step in its kind's words
+  (*Ordered today*, *Shipped today*, *On site today*; *Asked*, *Decided*; *Applied for*, *Issued*;
+  *Requested*, *Done*), a new expected day with who said so, and a way off. **Add one** asks the
+  kind, the name, whose work it is for, who we wait on (the trade's supplier, the customer, the
+  city or the utility by default), the day expected, the day asked, and the lines it holds.
+- **The customer reads their decisions** under What we need from you, with the day the work needs
+  them: "Your decision on the restroom tile, needed by Mon Nov 30: Trim waits on it."
+
+What the second look changed:
+
+- **Four kinds, one record.** Three records would have meant three cards and three blocks on the
+  chart for the same question, who we wait on and when. The kind only changes the words.
+- **A hold only when it would hold.** Holding every line on order from the day it was ordered
+  would have striped half the chart on a healthy job.
+- **No sample waits in the made-up data.** The golden test pins the whole state at the end, so a
+  sample delivery on Fair Oaks D moves that snapshot; adding one is the owner's call
+  (`PUNCHLIST.md`). The flow is checked by adding one in the browser.
+
+## Phase 4, days lost, as built (2026-10-06)
+
+Weather days from the daily log (G-58) and days lost by cause (G-96), one kernel
+(`gcDaysLost.ts`, tested, out of the barrel).
+
+- **A lost day on the bar.** A daily log that says the weather held a trade, or stopped the site,
+  puts a lost day on every bar that trade had running that day: a dark stripe on the day, the
+  log's words on its title, a line on the hover card. "Outside" is read from the log, not guessed
+  from the trade: the trade the superintendent said the rain stopped was outside.
+- **The walk offers them.** A bar with lost days no weather move has answered lists them among
+  its facts, and **Add the N lost days** fills the move in: the finish out by that many days, the
+  weather as the reason, the dates and the log's words as the explanation. One press and Move it.
+- **Days lost, by cause**, a card under Changes to the schedule: every standing move's reason laid
+  at a door (the customer's: the customer, a change order, the plans; the weather's; a trade's:
+  the trade before, materials, crew, an inspection; ours; other), with what each did to the job's
+  finish and to the work itself, and the log's weather days beside. The sentence on top is the one
+  a time extension ask opens with.
+
+What the second look changed:
+
+- **A lost day is answered by a weather move on that bar**, not by any move. A bar moved for a
+  short crew still has its rain day open.
+- **The finish and the work are two columns.** A trade's 7 lost days inside its spare days cost
+  the finish nothing; a customer's 10 days on the final inspection cost it all 10. The ask reads
+  the first column; the trade's record reads the second.
+
 ## Status
 
 Planned 2026-10-05. Phases 1 and 2 (all but an added activity, actuals, a new baseline and redo)
-and most of Phase 3 built by 2026-10-06; Phase 4's change-order days the same day. Next: the rest of Phase 4 (what holds the work: long-lead items, the
+and most of Phase 3 built by 2026-10-06; Phase 4's change-order days, what the work waits on and the days lost the same day. Next: the rest of Phase 2 (what holds the work: long-lead items, the
 customer's decisions, change-order days on the chart, weather days from the log), or the rest of
 Phase 3 on the owner's word.

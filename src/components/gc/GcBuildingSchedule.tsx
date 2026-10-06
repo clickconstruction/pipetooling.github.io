@@ -45,6 +45,9 @@ import { GcScheduleWalk, GcWalkLine } from './GcScheduleWalk'
 import { planMove, whatIfSlips, type MoveLimits } from '../../lib/gcMode/gcScheduleMoves'
 import type { GanttHold } from '../../lib/gcMode/gcGantt'
 import { changeOrderMove, changeOrdersOnChart, changeOrderTails, type ChangeOrderOnChart } from '../../lib/gcMode/gcChangeOrderDays'
+import { WAIT_KINDS, waitHolds, waitKind, waitRows, waitWhoDefault, type WaitRow } from '../../lib/gcMode/gcScheduleWaits'
+import { daysLostByCause, lostDaysByLine } from '../../lib/gcMode/gcDaysLost'
+import type { WaitKind } from '../../lib/gcMode/gcTypes'
 
 /**
  * GC mode design spike: the schedule (Building lane, owner's shape 2026-10-02). Each activity is a
@@ -63,6 +66,10 @@ export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps)
   const holds = useMemo(() => holdsOf(state, project), [state, project])
   // Days a signed change order adds that are not on the dates yet, drawn as tails (G-76).
   const tails = useMemo(() => changeOrderTails(project, state.today), [project, state.today])
+  // What the work waits on from outside the trades (G-73 to G-75): rows on the chart, and the card.
+  const waits = useMemo(() => waitRows(state, project), [state, project])
+  // Days the daily log says were lost to the weather, by bar (G-58).
+  const lost = useMemo(() => lostDaysByLine(project), [project])
   // Every move goes through the explanation window first (the owner, 2026-10-05; the Gantt, Phase 2).
   const [pending, setPending] = useState<PendingMove | null>(null)
   // The weekly walk (the owner, 2026-10-05): every bar that should have moved, one at a time.
@@ -127,6 +134,8 @@ export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps)
         <GcGantt
           holds={holds}
           tails={tails}
+          waits={waits}
+          lost={lost}
           items={m.items}
           float={m.float}
           milestones={m.milestones}
@@ -153,6 +162,8 @@ export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps)
 
       <GcMoveHistory state={state} project={project} dispatch={dispatch} />
 
+      {building && <DaysLostCard project={project} />}
+
       <ChangeOrderDaysCard
         project={project}
         today={state.today}
@@ -161,6 +172,8 @@ export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps)
           if (move) setPending(move)
         }}
       />
+
+      <WaitsCard state={state} project={project} rows={waits} items={m.items} dispatch={dispatch} />
 
       <MilestonesCard project={project} milestones={schedule.milestones} dispatch={dispatch} />
 
@@ -364,6 +377,47 @@ function ActivityEditor({
   )
 }
 
+/** Days lost by cause (the Gantt, G-96): the moves' reasons added up, the customer's, the weather's, a trade's, ours, for a time extension ask. */
+function DaysLostCard({ project }: { project: GcProject }) {
+  const lost = daysLostByCause(project)
+  if (lost.moves === 0 && lost.logWeatherDays === 0) return null
+  const n = (d: number) => `${Math.abs(d)} ${Math.abs(d) === 1 ? 'day' : 'days'}${d < 0 ? ' back' : ''}`
+  return (
+    <Card>
+      <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', flexWrap: 'wrap', marginBottom: '0.4rem' }}>
+        <strong>Days lost, by cause</strong>
+        {lost.finishDays > 0 && <Chip tone="red">finish {n(lost.finishDays)} later</Chip>}
+        <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Every standing move's reason, laid at a door. The numbers a time extension ask is written from.</span>
+      </div>
+      <div style={{ fontSize: '0.875rem', marginBottom: lost.rows.length > 0 ? '0.5rem' : 0 }}>{lost.words}</div>
+      {lost.rows.length > 0 && (
+        <table style={{ borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+          <thead>
+            <tr style={{ color: 'var(--text-muted)', textAlign: 'left' }}>
+              <th style={{ padding: '0.2rem 1rem 0.2rem 0', fontWeight: 500 }}>Whose</th>
+              <th style={{ padding: '0.2rem 1rem 0.2rem 0', fontWeight: 500, textAlign: 'right' }}>On the finish</th>
+              <th style={{ padding: '0.2rem 1rem 0.2rem 0', fontWeight: 500, textAlign: 'right' }}>On the work</th>
+              <th style={{ padding: '0.2rem 1rem 0.2rem 0', fontWeight: 500, textAlign: 'right' }}>Moves</th>
+              <th style={{ padding: '0.2rem 0', fontWeight: 500 }}>Given as</th>
+            </tr>
+          </thead>
+          <tbody>
+            {lost.rows.map((r) => (
+              <tr key={r.cause} style={{ borderTop: '1px solid var(--border)' }}>
+                <td style={{ padding: '0.25rem 1rem 0.25rem 0', textTransform: 'capitalize' }}>{r.label}</td>
+                <td style={{ padding: '0.25rem 1rem 0.25rem 0', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: r.finishDays > 0 ? 'var(--text-red-700)' : undefined }}>{r.finishDays === 0 ? '—' : n(r.finishDays)}</td>
+                <td style={{ padding: '0.25rem 1rem 0.25rem 0', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{r.workDays === 0 ? '—' : n(r.workDays)}</td>
+                <td style={{ padding: '0.25rem 1rem 0.25rem 0', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{r.moves}</td>
+                <td style={{ padding: '0.25rem 0', color: 'var(--text-muted)' }}>{r.reasons.join(', ')}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </Card>
+  )
+}
+
 /**
  * Days from signed change orders (the Gantt, G-76): where each order's days land and whether they
  * are on the schedule yet. The contract's finish moves by itself; the bar moves when someone puts
@@ -397,6 +451,191 @@ function ChangeOrderDaysCard({ project, today, onPut }: { project: GcProject; to
         ))}
       </div>
     </Card>
+  )
+}
+
+/**
+ * What the work waits on from outside the trades (the Gantt, G-73 to G-75): deliveries on order,
+ * the decisions the customer owes, permits, the utility. Each with where it stands, its next step,
+ * a new expected day, and a way off. Add one with the work it holds.
+ */
+function WaitsCard({ state, project, rows, items, dispatch }: { state: GcState; project: GcProject; rows: WaitRow[]; items: ScheduleItem[]; dispatch: Dispatch<GcAction> }) {
+  const [adding, setAdding] = useState(false)
+  const [redating, setRedating] = useState<string | null>(null)
+  const [newDay, setNewDay] = useState('')
+  const [newNote, setNewNote] = useState('')
+  const late = rows.filter((r) => r.state !== 'done' && r.late).length
+  const open = rows.filter((r) => r.state !== 'done').length
+  const step = (r: WaitRow) => {
+    if (!r.nextStep) return
+    dispatch({ type: 'setScheduleWaitStep', projectId: project.id, waitId: r.wait.id, step: r.nextStep.step, on: state.today })
+  }
+  return (
+    <Card>
+      <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', flexWrap: 'wrap', marginBottom: '0.4rem' }}>
+        <strong>What the work waits on{rows.length > 0 ? ` (${open} open)` : ''}</strong>
+        {late > 0 && <Chip tone="red">{late} {late === 1 ? 'comes' : 'come'} late</Chip>}
+        <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', flex: '1 1 16rem' }}>Deliveries on order, decisions the customer owes, permits, the utility's work. Each holds the work that needs it, and shows on the chart beside the day that work starts.</span>
+        {!adding && <Btn onClick={() => setAdding(true)}>Add one</Btn>}
+      </div>
+      {adding && <NewWait state={state} project={project} items={items} dispatch={dispatch} onDone={() => setAdding(false)} />}
+      {rows.length === 0 && !adding && <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Nothing yet. A long-lead item, a tile the customer has to pick, the service permit: put it here and the chart holds the work until it is in.</div>}
+      <div style={{ display: 'grid' }}>
+        {rows.map((r) => (
+          <div key={r.wait.id} style={{ display: 'grid', gap: '0.2rem', padding: '0.5rem 0', borderTop: '1px solid var(--border)', fontSize: '0.875rem', opacity: r.state === 'done' ? 0.7 : 1 }}>
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
+              <Chip tone="violet">{waitKind(r.wait.kind).label}</Chip>
+              <strong>{r.wait.title}</strong>
+              <span style={{ color: 'var(--text-muted)' }}>
+                · {r.wait.who} · for {r.trade}
+              </span>
+              <Chip tone={r.tone}>{r.stateWords}</Chip>
+            </div>
+            <div style={{ color: r.late && r.state !== 'done' ? 'var(--text-red-700)' : 'var(--text-muted)' }}>
+              {r.words}
+              {r.wait.note ? ` ${r.wait.note}` : ''}
+            </div>
+            {r.holds.length > 0 && <div style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>Holds {r.holds.map((h) => `${h.name} (${shortDate(h.start)})`).join(', ')}.</div>}
+            {r.state !== 'done' && (
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                {r.nextStep && (
+                  <Btn kind="primary" onClick={() => step(r)} title={`Mark it ${r.nextStep.label.toLowerCase()} today.`}>
+                    {r.nextStep.label} today
+                  </Btn>
+                )}
+                {redating === r.wait.id ? (
+                  <>
+                    <input type="date" value={newDay} onChange={(e) => setNewDay(e.target.value)} aria-label="The new expected day" style={rowBox} />
+                    <input value={newNote} onChange={(e) => setNewNote(e.target.value)} placeholder="Who said so" aria-label="Who said the new day" style={{ ...rowBox, width: '14rem' }} />
+                    <Btn
+                      kind="primary"
+                      disabled={!newDay}
+                      onClick={() => {
+                        dispatch({ type: 'setScheduleWaitStep', projectId: project.id, waitId: r.wait.id, step: 'expected', on: newDay, note: newNote })
+                        setRedating(null)
+                        setNewDay('')
+                        setNewNote('')
+                      }}
+                    >
+                      Save the day
+                    </Btn>
+                    <Btn kind="quiet" onClick={() => setRedating(null)}>
+                      Cancel
+                    </Btn>
+                  </>
+                ) : (
+                  <Btn
+                    kind="plain"
+                    onClick={() => {
+                      setRedating(r.wait.id)
+                      setNewDay(r.wait.expectedOn)
+                      setNewNote('')
+                    }}
+                  >
+                    A new expected day
+                  </Btn>
+                )}
+                <Btn kind="quiet" onClick={() => dispatch({ type: 'removeScheduleWait', projectId: project.id, waitId: r.wait.id })}>
+                  Take it off
+                </Btn>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </Card>
+  )
+}
+
+/** One thing the work waits on, added: its kind, its name, whose work it is for, who we wait on, the day it is expected, and the lines it holds. */
+function NewWait({ state, project, items, dispatch, onDone }: { state: GcState; project: GcProject; items: ScheduleItem[]; dispatch: Dispatch<GcAction>; onDone: () => void }) {
+  const [kind, setKind] = useState<WaitKind>('delivery')
+  const [title, setTitle] = useState('')
+  const [packageId, setPackageId] = useState<string>(project.packages[0]?.id ?? '')
+  const [who, setWho] = useState('')
+  const [expectedOn, setExpectedOn] = useState('')
+  const [askedOn, setAskedOn] = useState('')
+  const [lineIds, setLineIds] = useState<string[]>([])
+  const k = waitKind(kind)
+  const pkgId = packageId || null
+  const whoDefault = waitWhoDefault(state, project, kind, pkgId)
+  // The lines it can hold: the trade's own, or every line left to do for the job's own.
+  const candidates = items.filter((r) => r.actual < 100 && !r.activity.inspection && (pkgId ? r.pkg?.id === pkgId : true))
+  const problem = !title.trim() ? 'Give it a name.' : !expectedOn ? 'Say when it is expected.' : null
+  return (
+    <div style={{ display: 'grid', gap: '0.55rem', padding: '0.7rem', border: '1px solid var(--border)', borderRadius: 8, marginBottom: '0.6rem', fontSize: '0.875rem' }}>
+      <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }} role="group" aria-label="What kind of wait">
+        {WAIT_KINDS.map((w) => {
+          const on = kind === w.key
+          return (
+            <button key={w.key} type="button" aria-pressed={on} onClick={() => setKind(w.key)} style={{ border: `1px solid ${on ? 'transparent' : 'var(--border)'}`, borderRadius: 999, padding: '0.25rem 0.7rem', fontSize: '0.82rem', cursor: 'pointer', fontWeight: on ? 600 : 400, background: on ? 'var(--bg-blue-200)' : 'var(--surface)', color: on ? 'var(--text-blue-800)' : 'var(--text-base)' }}>
+              {w.label}
+            </button>
+          )
+        })}
+      </div>
+      <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={kind === 'delivery' ? 'Rooftop units' : kind === 'decision' ? 'The restroom tile' : kind === 'permit' ? 'Electrical service permit' : 'The transformer'} aria-label="What it is" style={{ ...rowBox, width: '16rem' }} />
+        <label style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+          <span style={{ color: 'var(--text-muted)' }}>For</span>
+          <select value={packageId} onChange={(e) => { setPackageId(e.target.value); setLineIds([]) }} aria-label="Whose work it is for" style={rowBox}>
+            {project.packages.map((p) => (
+              <option key={p.id} value={p.id}>{p.trade}</option>
+            ))}
+            <option value="">The job's own</option>
+          </select>
+        </label>
+        <label style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+          <span style={{ color: 'var(--text-muted)' }}>From</span>
+          <input value={who} onChange={(e) => setWho(e.target.value)} placeholder={whoDefault} aria-label="Who we wait on" style={{ ...rowBox, width: '14rem' }} />
+        </label>
+      </div>
+      <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        <label style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+          <span style={{ color: 'var(--text-muted)' }}>Expected</span>
+          <input type="date" value={expectedOn} onChange={(e) => setExpectedOn(e.target.value)} aria-label="The day it is expected" style={rowBox} />
+        </label>
+        <label style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+          <span style={{ color: 'var(--text-muted)' }}>{k.asked.charAt(0).toUpperCase() + k.asked.slice(1)} on</span>
+          <input type="date" value={askedOn} onChange={(e) => setAskedOn(e.target.value)} aria-label={`The day it was ${k.asked}`} style={rowBox} />
+          <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>blank: not yet</span>
+        </label>
+      </div>
+      <div>
+        <div style={{ color: 'var(--text-muted)', marginBottom: '0.25rem' }}>The work that cannot start without it</div>
+        {candidates.length === 0 ? (
+          <div style={{ color: 'var(--text-muted)' }}>Nothing left to do on this trade's lines.</div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(14rem, 1fr))', gap: '0.15rem 0.75rem' }}>
+            {candidates.map((r) => (
+              <label key={r.activity.lineId} style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+                <input type="checkbox" checked={lineIds.includes(r.activity.lineId)} onChange={(e) => setLineIds((list) => (e.target.checked ? [...list, r.activity.lineId] : list.filter((id) => id !== r.activity.lineId)))} />
+                <span>
+                  {activityName(r)} <span style={{ color: 'var(--text-muted)' }}>· starts {shortDate(r.activity.start)}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+        )}
+      </div>
+      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        <Btn
+          kind="primary"
+          disabled={problem !== null}
+          title={problem ?? undefined}
+          onClick={() => {
+            dispatch({ type: 'addScheduleWait', projectId: project.id, kind, title, packageId: pkgId, who: who.trim() || whoDefault, lineIds, expectedOn, askedOn: askedOn || null })
+            onDone()
+          }}
+        >
+          Put it on the schedule
+        </Btn>
+        <Btn kind="quiet" onClick={onDone}>
+          Cancel
+        </Btn>
+        {problem && <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>{problem}</span>}
+      </div>
+    </div>
   )
 }
 
@@ -590,6 +829,8 @@ function holdsOf(state: GcState, project: GcProject): Map<string, GanttHold> {
     const needed = submittalNeededBy(project, s)
     holds.set(a.lineId, { kind: 'submittal', words: `submittal ${s.number}`, late: needed !== null && needed < state.today })
   }
+  // A delivery, a decision, a permit or the utility (G-73 to G-75), where nothing else holds the line.
+  for (const [lineId, hold] of waitHolds(state, project)) if (!holds.has(lineId)) holds.set(lineId, hold)
   return holds
 }
 

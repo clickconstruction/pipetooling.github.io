@@ -15,6 +15,7 @@ import { onSiteWords } from './gcBuildingLog'
 import { shortDate, weekdayDate } from './gcWords'
 import { ganttBars, type GanttBar, type GanttHold } from './gcGantt'
 import { moveRows, type MoveRow } from './gcScheduleMoves'
+import { lostDaysUnanswered, lostDaysWords, type LostDay } from './gcDaysLost'
 
 /** A schedule not walked in this many days is stale. */
 export const WALK_STALE_DAYS = 7
@@ -41,6 +42,8 @@ export interface WalkItem {
   paceFinish: string | null
   /** Not started: the walk asks about its start, and a move shifts the whole bar. Started: about its finish. */
   started: boolean
+  /** Days the daily log says it lost to the weather that no move has answered (G-58): the walk offers to add them. */
+  lostDays: LostDay[]
 }
 
 const ORDER: Record<WalkKind, number> = { failed: 0, late: 1, due: 2, behind: 3, held: 4, underway: 5, starting: 6 }
@@ -89,6 +92,9 @@ function itemOf(project: GcProject, b: GanttBar, today: string): WalkItem | null
     facts.push(`At this pace it finishes ${weekdayDate(paceLater)}, ${over} ${over === 1 ? 'day' : 'days'} after the day drawn.`)
   }
   if (b.status === 'ahead') facts.push('It is ahead of the plan.')
+  const lostDays = a.inspection ? [] : lostDaysUnanswered(project, a.lineId)
+  const lost = lostDaysWords(lostDays)
+  if (lost) facts.push(lost)
   facts.push(b.critical ? 'It has no spare days: a day lost here is a day lost on the finish.' : `It has ${b.spare} spare ${b.spare === 1 ? 'day' : 'days'} before it moves the finish.`)
   return {
     lineId: a.lineId,
@@ -102,6 +108,7 @@ function itemOf(project: GcProject, b: GanttBar, today: string): WalkItem | null
     facts,
     paceFinish: paceLater,
     started,
+    lostDays,
   }
 }
 

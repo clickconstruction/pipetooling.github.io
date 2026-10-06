@@ -27,6 +27,8 @@ import {
   type GanttHold,
   type GanttZoom,
 } from '../../lib/gcMode/gcGantt'
+import { waitKind, type WaitRow } from '../../lib/gcMode/gcScheduleWaits'
+import { lostDayTitle, lostDaysWords, type LostDay } from '../../lib/gcMode/gcDaysLost'
 import { Chip } from './gcUi'
 
 const HEAD_H = 46
@@ -42,7 +44,7 @@ const MS_COLORS: Record<MilestoneRow['state'], string> = { hit: C.green, missed:
 const FILTER_WORDS: { key: keyof GanttFilters; label: string; title: string }[] = [
   { key: 'critical', label: `${TIGHT_SPARE_DAYS} or fewer spare days`, title: 'The work that sets the finish: a slip of a week here moves the last day.' },
   { key: 'late', label: 'Late or behind', title: 'Past its finish, behind where the plan has it today, or an inspection that failed.' },
-  { key: 'held', label: 'Held', title: 'Waiting on a submittal or a question about the plans.' },
+  { key: 'held', label: 'Held', title: 'Waiting on a submittal, a question about the plans, a delivery, a decision, a permit or the utility.' },
   { key: 'soon', label: 'Next 3 weeks', title: 'Under way now or starting inside three weeks.' },
   { key: 'moved', label: 'Moved since Start', title: 'Not where the plan at Start had it.' },
 ]
@@ -126,6 +128,8 @@ export function GcGantt({
   onLink,
   onUnlink,
   tails,
+  waits,
+  lost,
 }: {
   items: ScheduleItem[]
   float: Map<string, number>
@@ -147,6 +151,10 @@ export function GcGantt({
   onUnlink?: (from: string, to: string) => void
   /** Days a signed change order adds to a bar that are not on its dates yet (G-76), drawn as a tail after it. */
   tails?: Map<string, { days: number; words: string }>
+  /** What the work waits on from outside the trades (G-73 to G-75): each a row over the groups, linked to the work it holds. */
+  waits?: WaitRow[]
+  /** Days the daily log says each bar lost to the weather (G-58), marked on the bar. */
+  lost?: Map<string, LostDay[]>
 }) {
   const [zoom, setZoom] = useState<GanttZoom>('weeks')
   const [by, setBy] = useState<GanttGroupBy>('trade')
@@ -177,10 +185,15 @@ export function GcGantt({
   const x = (on: string) => daysBetween(axis.first, on) * px
   const todayX = x(today) + px / 2
 
+  // The waits (deliveries, decisions, permits, the utility) sit under the milestones, over the groups.
+  const waitList = useMemo(() => waits ?? [], [waits])
+  const waitsH = waitList.length > 0 ? GROUP_H + waitList.length * ROW_H : 0
   // Where each row sits, so the links can be drawn over them. A folded group's bars have no row.
   const layout = useMemo(() => {
     const at = new Map<string, number>()
-    let y = HEAD_H + MS_H
+    const waitAt = new Map<string, number>()
+    waitList.forEach((r, i) => waitAt.set(r.wait.id, HEAD_H + MS_H + GROUP_H + i * ROW_H + ROW_H / 2))
+    let y = HEAD_H + MS_H + waitsH
     for (const g of groups) {
       y += GROUP_H
       if (folded.has(g.key)) continue
@@ -189,8 +202,8 @@ export function GcGantt({
         y += ROW_H
       }
     }
-    return { at, height: y }
-  }, [groups, folded])
+    return { at, waitAt, height: y }
+  }, [groups, folded, waitList, waitsH])
   const links = useMemo(() => (showLinks ? ganttLinks(shown).filter((l) => layout.at.has(l.from) && layout.at.has(l.to)) : []), [showLinks, shown, layout])
   const byId = useMemo(() => new Map(all.map((b) => [b.id, b])), [all])
   /** Where a dragged bar would sit: its dates with the drag applied, an end never crossing the other. */
@@ -373,6 +386,11 @@ export function GcGantt({
             {b.item.actual > 0 && b.status !== 'done' && (
               <span style={{ display: 'block', height: '100%', width: `${Math.min(100, b.item.actual)}%`, background: C.blue, opacity: 0.8 }} />
             )}
+            {/* A day lost to the weather by the daily log (G-58): a dark stripe on that day. */}
+            {!dragging &&
+              (lost?.get(b.id) ?? []).map((d) => (
+                <span key={d.date} aria-hidden title={lostDayTitle(d)} style={{ position: 'absolute', left: x(d.date) - left, top: 0, bottom: 0, width: Math.max(2, px), boxSizing: 'border-box', background: 'repeating-linear-gradient(90deg, var(--text-base) 0 2px, transparent 2px 4px)', opacity: 0.55, pointerEvents: 'none' }} />
+              ))}
             {/* The ends take a pull to change the length. */}
             {canDrag && w >= 22 && <span aria-hidden style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 6, cursor: 'ew-resize' }} />}
             {canDrag && w >= 22 && <span aria-hidden style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 6, cursor: 'ew-resize' }} />}
@@ -580,6 +598,55 @@ export function GcGantt({
             </div>
           </div>
 
+          {/* What the work waits on (G-73 to G-75): a row each, from the day it was asked for to the day it is expected or came, with the day the work needs it. */}
+          {waitList.length > 0 && (
+            <div>
+              <div style={{ display: 'flex', height: GROUP_H, borderTop: '1px solid var(--border)', background: 'var(--bg-subtle)' }}>
+                <div style={{ ...label, background: 'var(--bg-subtle)' }}>
+                  <strong style={{ whiteSpace: 'nowrap' }}>What the work waits on</strong>
+                  {!phone && <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>deliveries, decisions, permits, the utility</span>}
+                </div>
+                <div style={{ width }} />
+              </div>
+              {waitList.map((r) => {
+                const wt = r.wait
+                const k = waitKind(wt.kind)
+                const from = wt.askedOn ?? (today < wt.expectedOn ? today : wt.expectedOn)
+                const to = wt.doneOn ?? wt.expectedOn
+                const start = from < to ? from : to
+                const end = from < to ? to : from
+                const wl = x(start)
+                const ww = Math.max(px, (daysBetween(start, end) + 1) * px)
+                const color = r.state === 'done' ? C.green : r.late ? C.red : C.violet
+                const mark = (on: string, glyph: string, words: string) => (
+                  <span key={`${wt.id}:${words}`} title={words} aria-label={words} style={{ position: 'absolute', left: x(on) + px / 2, top: ROW_H / 2, transform: 'translate(-50%, -50%)', fontSize: 10, lineHeight: 1, color, zIndex: 1 }}>
+                    {glyph}
+                  </span>
+                )
+                return (
+                  <div key={wt.id} style={{ display: 'flex', height: ROW_H, borderTop: '1px solid var(--border)' }}>
+                    <div style={{ ...label, background: 'var(--surface)', paddingLeft: '1.55rem' }}>
+                      <span style={{ flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={`${k.label}: ${r.words}`}>
+                        {wt.title}
+                        {!phone && <span style={{ color: 'var(--text-muted)' }}> · {wt.who}</span>}
+                      </span>
+                      <Chip tone={r.tone}>{r.stateWords}</Chip>
+                    </div>
+                    <div style={{ position: 'relative', width }}>
+                      <span data-gantt-wait={wt.id} title={r.words} style={{ position: 'absolute', left: wl, width: ww, top: (ROW_H - 10) / 2, height: 10, borderRadius: 5, boxSizing: 'border-box', border: `1.5px ${wt.askedOn ? 'solid' : 'dashed'} ${color}`, background: r.state === 'done' ? 'var(--bg-green-200)' : 'var(--bg-violet-100)' }} />
+                      {wt.askedOn && mark(wt.askedOn, '●', `${k.asked} ${shortDate(wt.askedOn)}`)}
+                      {wt.shippedOn && mark(wt.shippedOn, '▲', `shipped ${shortDate(wt.shippedOn)}`)}
+                      {mark(to, wt.doneOn ? '■' : '◆', wt.doneOn ? `${k.done} ${shortDate(wt.doneOn)}` : `expected ${shortDate(wt.expectedOn)}`)}
+                      {r.neededBy && r.state !== 'done' && (
+                        <span aria-hidden title={`The work needs it ${weekdayDate(r.neededBy)}`} style={{ position: 'absolute', left: x(r.neededBy) - 1, top: 4, height: ROW_H - 8, width: 0, borderLeft: `2px solid ${r.late ? C.red : C.violet}` }} />
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
           {groups.map((g) => (
             <div key={g.key}>
               {groupRow(g)}
@@ -602,6 +669,20 @@ export function GcGantt({
                 strokeWidth={1.6}
                 strokeDasharray={linking.over ? undefined : '4 3'}
               />
+            )}
+            {/* From each wait to the work it holds (G-73 to G-75): dashed, red when it comes late. */}
+            {waitList.flatMap((r) =>
+              r.state === 'done'
+                ? []
+                : r.holds.flatMap((h) => {
+                    const y1 = layout.waitAt.get(r.wait.id)
+                    const y2 = layout.at.get(h.lineId)
+                    const to = byId.get(h.lineId)
+                    if (y1 === undefined || y2 === undefined || !to) return []
+                    const x2 = labelW + x(r.wait.doneOn ?? r.wait.expectedOn) + px
+                    const x1 = labelW + x(to.item.activity.start) - 1
+                    return [<path key={`w:${r.wait.id}>${h.lineId}`} d={linkPath(x2, y1, x1, y2, ROW_H)} fill="none" stroke={r.late ? C.red : C.violet} strokeWidth={1.2} strokeDasharray="4 3" opacity={0.85} strokeLinejoin="round" />]
+                  }),
             )}
             {links.map((l) => {
               const from = byId.get(l.from)
@@ -645,7 +726,7 @@ export function GcGantt({
       </div>
 
       <GanttLegend building={building} canMove={Boolean(onMove)} />
-      {hovered && hover && !drag && <GanttHoverCard bar={hovered} all={all} at={hover} building={building} today={today} />}
+      {hovered && hover && !drag && <GanttHoverCard bar={hovered} all={all} at={hover} building={building} today={today} lost={lost?.get(hovered.id) ?? []} />}
     </div>
   )
 }
@@ -667,11 +748,13 @@ function GanttLegend({ building, canMove }: { building: boolean; canMove: boolea
       {key({ ...bar, background: 'repeating-linear-gradient(135deg, var(--bg-amber-100) 0 4px, var(--surface) 4px 8px)', border: `1.5px solid ${C.amber}` }, 'held by a submittal or a question')}
       {key({ ...bar, background: 'var(--bg-violet-100)', border: `1.5px dashed ${C.violet}` }, 'an inspection')}
       {key({ ...bar, background: 'repeating-linear-gradient(135deg, var(--bg-violet-100) 0 4px, var(--surface) 4px 8px)', border: `1.5px dashed ${C.violet}`, borderLeft: 'none', borderRadius: '0 3px 3px 0' }, 'days a signed change order adds, not on the dates yet')}
+      {key({ width: 20, height: 8, borderRadius: 4, background: 'var(--bg-violet-100)', border: `1.5px solid ${C.violet}` }, 'what the work waits on: a delivery, a decision, a permit, the utility, from the day it was asked for to the day it is expected')}
       {key({ width: 20, height: 3, borderRadius: 2, background: 'var(--border-strong)' }, 'where it sat in the plan at Start')}
       {key({ width: 20, height: 7, borderRadius: 3, background: 'var(--border-strong)' }, 'a whole group, as one bar')}
       {key({ width: 10, height: 10, transform: 'rotate(45deg)', background: 'var(--text-muted)' }, 'a date the job must meet')}
       {key({ width: 12, height: 12, background: 'var(--bg-muted)', border: '1px solid var(--border)' }, 'a weekend')}
       {key({ width: 12, height: 12, background: 'var(--bg-amber-100)', border: '1px solid var(--border)' }, 'a holiday')}
+      {building && key({ width: 12, height: 11, borderRadius: 2, background: 'repeating-linear-gradient(90deg, var(--text-base) 0 2px, var(--bg-blue-200) 2px 4px)', opacity: 0.7 }, 'a day lost to the weather, by the daily log')}
       <span>Every day is a working day, weekends and holidays too.</span>
       {canMove && <span style={{ flexBasis: '100%', color: 'var(--text-600)' }}>Drag a bar to move it, or pull an end to change its length. Pull the small circle at a bar's end to another bar to make that one wait on it; press a line to take a wait off. Every change asks why before it saves. Press a bar to open it.</span>}
     </div>
@@ -679,7 +762,7 @@ function GanttLegend({ building, canMove }: { building: boolean; canMove: boolea
 }
 
 /** Everything about one bar, beside the pointer: its days, how far along, what it waits on and holds up. */
-function GanttHoverCard({ bar, all, at, building, today }: { bar: GanttBar; all: GanttBar[]; at: { x: number; y: number }; building: boolean; today: string }) {
+function GanttHoverCard({ bar, all, at, building, today, lost }: { bar: GanttBar; all: GanttBar[]; at: { x: number; y: number }; building: boolean; today: string; lost: LostDay[] }) {
   const a = bar.item.activity
   const n = ganttNeighbors(all, bar.id)
   const note = barNote(bar)
@@ -730,6 +813,7 @@ function GanttHoverCard({ bar, all, at, building, today }: { bar: GanttBar; all:
       {a.notBefore && row('Not before', weekdayDate(a.notBefore))}
       {a.mustFinishBy && row('Must finish by', weekdayDate(a.mustFinishBy), a.finish > a.mustFinishBy ? 'var(--text-red-700)' : undefined)}
       {bar.coTail && row('Change order', bar.coTail.words, 'var(--text-violet-800)')}
+      {lost.length > 0 && row('Lost', lostDaysWords(lost) ?? '', 'var(--text-amber-800)')}
       {note && !bar.coTail && row('Note', note.words, note.color)}
       {n.waitsOn.length > 0 && row('Waits on', n.waitsOn.join(', '))}
       {n.holdsUp.length > 0 && row('Holds up', n.holdsUp.join(', '))}

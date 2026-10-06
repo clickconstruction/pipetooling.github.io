@@ -28,6 +28,13 @@ describe('what the weekly walk goes through', () => {
     expect(list.some((i) => i.name.includes('Fire alarm'))).toBe(false) // a month out
   })
 
+  it('puts the daily log’s lost days on the bar, for the walk to add (G-58)', () => {
+    const tpo = items(initialGcState()).find((i) => i.name === 'Roofing · TPO membrane')!
+    expect(tpo.lostDays.map((d) => d.date)).toEqual(['2026-09-24'])
+    expect(tpo.facts).toContain('1 day lost to the weather by the daily log: Thu Sep 24.')
+    expect(items(initialGcState()).find((i) => i.name === 'Electrical service inspection')?.lostDays).toEqual([])
+  })
+
   it('says what was reported, what the log shows, and the day the pace points to', () => {
     const erection = items(initialGcState()).find((i) => i.name === 'Structural steel · Erection')!
     expect(erection.chip).toBe('due today, 80% done')

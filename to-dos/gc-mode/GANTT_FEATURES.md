@@ -36,7 +36,7 @@ The three jobs the chart has, which every feature serves at least one of:
 | G-13 | Filters: no spare days, only late, next 3 weeks, one company, held | See, Chase | Part (five filters with counts; no one-company filter, By company does that job) | 1 |
 | G-14 | The left columns stay put while the chart scrolls sideways; the header stays while it scrolls down | See | Have (built 2026-10-05) | 1 |
 | G-15 | Hover a bar: dates, working days, percent against plan, who, what holds it | See | Have (built 2026-10-05: a card beside the pointer) | 1 |
-| G-16 | A held bar is striped, and says what holds it: a submittal, an RFI, a failed inspection, a delivery | See | Part (submittals and RFIs; a delivery is Phase 4) | 1 |
+| G-16 | A held bar is striped, and says what holds it: a submittal, an RFI, a failed inspection, a delivery | See | Have (submittals and RFIs 2026-10-05; a delivery, a decision, a permit or the utility 2026-10-06, when it is expected on or after the day the work starts or its day passed) | 1 |
 | G-17 | Inspections as their own rows; a failed one shows the day it failed and the day it is seen again | See | Have | — |
 | G-18 | The strip of numbers over the chart: finish against the contract, work done against plan, how many have no spare days, how many are held, what moved this week | See | Have (built 2026-10-05: the filter counts, under the four measures) | 1 |
 | G-19 | A phone view: one stage at a time as a list with small bars, today first | See | New | 5 |
@@ -76,7 +76,7 @@ The three jobs the chart has, which every feature serves at least one of:
 | G-55 | Actual start and actual finish kept beside the planned ones | See | New | 2 |
 | G-56 | The projected finish from the pace of the work so far | See | Have | — |
 | G-57 | The projected finish with a weather allowance and crew sizes | See | New | Later |
-| G-58 | Weather days from the daily log land on the chart as lost days on the work that was outside | See | New | 4 |
+| G-58 | Weather days from the daily log land on the chart as lost days on the work that was outside | See | Have (built 2026-10-06: a log that says the weather stopped a trade, or the site, marks a lost day on every bar that trade had running; the walk lists them and Add the lost days moves the finish with the weather as the reason and the log's words; `gcDaysLost.ts`) | 4 |
 | G-59 | A stale schedule says so: "not walked since Sep 25" on the chart, the board row and Needs you | See | Part (on the Schedule tab: check the dates, part walked, walked; not on the board row or Needs you, which would move every lane's snapshots) | 2 |
 | G-60 | The daily log and the chart disagree: a trade on site with no bar that week, or a bar with nobody on site | See | Part (the walk puts the log's days on site beside what the trade reported; the verify list too) | 4 |
 
@@ -87,9 +87,9 @@ The three jobs the chart has, which every feature serves at least one of:
 | G-70 | A submittal holds the lines it covers until approved, with its lead days | See | Have | — |
 | G-71 | An RFI holds the work it is about | See | Have (built 2026-10-05) | 1 |
 | G-72 | A failed inspection moves what waits on it | See | Have | — |
-| G-73 | Long-lead items as bars: ordered, shipped, on site, each tied to the work that needs it | See, Chase | New | 4 |
-| G-74 | The customer's own decisions as rows with a needed-by day (a finish to pick, a tenant's equipment) | Tell | New | 4 |
-| G-75 | Permits and the utility's work as rows, with who is waiting on whom | See | New | 4 |
+| G-73 | Long-lead items as bars: ordered, shipped, on site, each tied to the work that needs it | See, Chase | Have (built 2026-10-06: a row under the milestones from the day ordered to the day expected, ● ordered ▲ shipped ■ on site, the day the work needs it marked, a dashed line to each line it holds; `gcScheduleWaits.ts`) | 4 |
+| G-74 | The customer's own decisions as rows with a needed-by day (a finish to pick, a tenant's equipment) | Tell | Have (built 2026-10-06: the same row, kind decision; the customer reads it under What we need from you with the day the work needs it) | 4 |
+| G-75 | Permits and the utility's work as rows, with who is waiting on whom | See | Have (built 2026-10-06: the same row, kinds permit and utility, who we wait on named, the work waiting on it listed) | 4 |
 | G-76 | A change order's days: signed, it adds its days where the work is and moves the contract's finish | See, Tell | Have (built 2026-10-06: the days land on the trade's bar running the day it was signed, drawn as a tail until Put its days on the schedule makes them a move with the change order as its reason; the customer's schedule says what each signed order did to the contract) | 4 |
 | G-77 | A trade not ready to start: no signed statement of work, insurance run out. The bar says so before its start day | See, Chase | Part (Get started) | 4 |
 
@@ -109,11 +109,11 @@ The three jobs the chart has, which every feature serves at least one of:
 |---|---|---|---|---|
 | G-90 | The customer's view: the stages of the job as bars, the milestones, the finish against the contract. No company names, no dollars, no spare days | Tell | Have (built 2026-10-05: Your schedule in the customer's portal) | 3 |
 | G-91 | "What changed since last week" in plain words, written from the moves and their reasons | Tell | Have (built 2026-10-05: by stage and reason, never by company) | 3 |
-| G-92 | "What we need from you", with the day it starts costing time | Tell | Part (change orders waiting on their signature; a customer decision as a row is Phase 4) | 3 |
+| G-92 | "What we need from you", with the day it starts costing time | Tell | Have (change orders waiting on their signature 2026-10-05; their decisions, with the day the work needs them, 2026-10-06) | 3 |
 | G-93 | The schedule picture at the top of the Friday weekly report and in their portal | Tell | Part (their portal; the Friday report's words are unchanged) | 3 |
 | G-94 | A link or a PDF to send on its own, dated, kept as sent | Tell | New | 3 |
 | G-95 | The architect's view: the customer's view plus submittals and RFIs waiting on them, with the work each holds | Tell, Chase | New | 3 |
-| G-96 | Days lost by cause across the job, for a time extension ask: the customer's, the weather's, ours, a trade's | Tell | New | 4 |
+| G-96 | Days lost by cause across the job, for a time extension ask: the customer's, the weather's, ours, a trade's | Tell | Have (built 2026-10-06: Days lost, by cause on the Schedule tab adds every standing move up by whose door its reason lays at, on the finish and on the work, with the log's weather days beside) | 4 |
 | G-97 | The billing forecast follows the schedule: what we expect to bill each month, as the bars move | Tell | Part (Owner Billing's forecast) | 4 |
 | G-98 | The late-finish days in the contract, counted against the projected finish | See, Tell | Part (the contract's day) | 4 |
 

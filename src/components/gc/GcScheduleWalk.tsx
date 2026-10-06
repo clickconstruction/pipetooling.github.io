@@ -12,6 +12,7 @@ import { addDays, daysBetween, weekdayDate, type GcAction, type GcProject, type 
 import type { GanttHold } from '../../lib/gcMode/gcGantt'
 import { MOVE_REASONS, moveWhyProblem, planMove, spanWords } from '../../lib/gcMode/gcScheduleMoves'
 import { walkChanges, walkItems, walkStanding, walkTally, type WalkItem } from '../../lib/gcMode/gcScheduleWalk'
+import { lostDaysMoveNote } from '../../lib/gcMode/gcDaysLost'
 import { Btn, Chip, input } from './gcUi'
 
 /** The signed-in person's name. Outside the app's sign-in (a test), none. */
@@ -221,6 +222,20 @@ export function GcScheduleWalk({ state, project, holds, dispatch, onClose }: { s
                         }}
                       >
                         Take {weekdayDate(item.paceFinish)}, its pace
+                      </Btn>
+                    )}
+                    {item.lostDays.length > 0 && item.started && (
+                      <Btn
+                        kind="plain"
+                        title="The finish out by the days the daily log says were lost to the weather, with the weather as the reason and the log's words."
+                        onClick={() => {
+                          setDay(addDays(activity.finish, item.lostDays.length))
+                          setReason('weather')
+                          setNote(lostDaysMoveNote(item.lostDays))
+                          setMoving(true)
+                        }}
+                      >
+                        Add the {item.lostDays.length} lost {item.lostDays.length === 1 ? 'day' : 'days'}
                       </Btn>
                     )}
                     <Btn kind="plain" onClick={() => setMoving(true)}>
