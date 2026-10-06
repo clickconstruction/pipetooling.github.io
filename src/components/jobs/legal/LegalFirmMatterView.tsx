@@ -5,6 +5,7 @@ import { envelopeAnswersWords, envelopeKindWords, envelopeMonthsWords, envelopeS
 import { firmAgreementWords, firmEntryKindWords, firmEntryStatusWords, firmNotNeededWords, firmExhibitTitle, firmFeeKindWords, firmHistoryKindWords, firmJobRecord, firmSaidKindWords, firmSaidRecordedBy } from '../../../lib/legal/legalFirmWords'
 import { contingencyEntries, firmDemand, firmFeeEntries, legalRunningLedger } from '../../../lib/legal/legalMoney'
 import { conversationRows, conversationStateWords, conversationWho, isConversationEntry } from '../../../lib/legal/legalAsks'
+import { propertyKindWords } from '../../../lib/legal/legalProperty'
 import LienTimelineStrip from '../LienTimelineStrip'
 
 /**
@@ -71,8 +72,8 @@ function JobRecordCell({ job }: { job: LegalPacket['account']['jobs'][number] })
 function JobTimelines({ packet }: { packet: LegalPacket }) {
   const a = packet.account
   if (packet.paper.timelines.length === 0) return <p style={{ color: MUTED, fontSize: 13, margin: '4px 0' }}>No jobs.</p>
-  const kind = a.properties[0]?.propertyKind
-  const kindWords = kind === 'residential' ? 'residential' : kind ? 'non-residential' : 'property kind unknown'
+  // Each job's own property kind (#85 item 6): two jobs of one matter can stand on a house and a store.
+  const kindWordsOf = (jobId: string) => propertyKindWords(a.jobs.find((j) => j.jobId === jobId)?.property?.propertyKind) || 'property kind unknown'
   const roleWords = a.payer.viaGc ? `subcontractor under ${a.payer.name}` : 'original contractor'
   return (
     <div>
@@ -80,7 +81,7 @@ function JobTimelines({ packet }: { packet: LegalPacket }) {
         <div key={t.jobId} data-legal-job-timeline={t.jobId} className="legalJobTimeline" style={{ padding: '8px 0', borderBottom: `1px dotted ${HAIR}` }}>
           <div style={{ fontSize: 12.5 }}>
             <b style={{ fontSize: 13 }}>{t.jobLabel}</b>
-            <div style={{ color: MUTED, fontSize: 11.5 }}>{kindWords} · {roleWords}{t.lastWorkYmd ? ` · last on site ${t.lastWorkYmd}` : ''}</div>
+            <div style={{ color: MUTED, fontSize: 11.5 }}>{kindWordsOf(t.jobId)} · {roleWords}{t.lastWorkYmd ? ` · last on site ${t.lastWorkYmd}` : ''}</div>
             <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{formatLegalMoney(t.openBalance)} open</div>
             {t.retainageWords ? <div style={{ color: MUTED, fontSize: 11.5 }}>{t.retainageWords}</div> : null}
           </div>
@@ -110,7 +111,7 @@ export function FirmMatterTab({ tab, packet, matter, companyName, acts }: { tab:
         <div style={h}>Jobs</div>
         <PortalTable head={['Job', 'Name', 'Address', 'Age', 'On file', 'Balance']} numCols={[3, 5]} rows={a.jobs.map((j) => [<b key="l">{j.label}</b>, j.name, j.address, j.agingDays == null ? '—' : `${j.agingDays}d`, <JobRecordCell key="r" job={j} />, formatLegalMoney(j.balance)])} empty="No jobs." />
         <div style={h}>Property record</div>
-        <PortalTable head={['Address', 'County', 'Owner of record', 'Legal description', 'Parcel', 'Kind']} rows={a.properties.map((p) => [p.address, p.county || '—', p.owner || '—', p.legalDescription || '—', p.parcelId || '—', p.propertyKind === 'residential' ? 'residential' : p.propertyKind ? 'non-residential' : '—'])} empty="No property record on file." />
+        <PortalTable head={['Job', 'Address', 'County', 'Owner of record', 'Legal description', 'Parcel', 'Kind']} rows={a.properties.map((p) => [<b key="j">{p.jobLabels.join(', ')}</b>, p.source === 'job_address' ? <span key="a">{p.address || '—'} <span style={{ color: MUTED }}>· no property record linked</span></span> : p.address, p.county || '—', p.owner || '—', p.legalDescription || '—', p.parcelId || '—', propertyKindWords(p.propertyKind) || '—'])} empty="No property record on file." />
       </div>
     )
   }
@@ -194,6 +195,8 @@ export function FirmMatterView({ packet, matter, companyName, tab, onTab, acts, 
   onPrint: () => void
 }) {
   const { demand: totalDemand, feesTotal } = firmDemand(packet.account.totals.balance, matter.entries)
+  // The county and owner line reads the first job's own property (#85 item 6), never the payer's first address.
+  const firstProperty = packet.account.jobs[0]?.property ?? null
   return (
     <div>
       <div style={portalCard}>
@@ -203,8 +206,8 @@ export function FirmMatterView({ packet, matter, companyName, tab, onTab, acts, 
             <div style={{ fontSize: 18, fontWeight: 700 }}>{matter.payerName}</div>
             <div style={{ fontSize: 12.5, color: MUTED }}>
               {packet.account.customerAddress || packet.account.jobs[0]?.address || ''}
-              {packet.account.properties[0]?.county ? ` · ${packet.account.properties[0].county} County` : ''}
-              {packet.account.properties[0]?.owner ? ` · owner of record: ${packet.account.properties[0].owner}` : ''}
+              {firstProperty?.county ? ` · ${firstProperty.county} County` : ''}
+              {firstProperty?.owner ? ` · owner of record: ${firstProperty.owner}${packet.account.jobs.length > 1 ? ` (job ${packet.account.jobs[0]?.label})` : ''}` : ''}
             </div>
             {matter.noteToFirm ? <div style={{ fontSize: 12.5, marginTop: 4, color: MUTED }}><b style={{ color: INK }}>From the office:</b> {matter.noteToFirm}</div> : null}
           </div>

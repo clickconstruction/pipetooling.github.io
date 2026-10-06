@@ -43,7 +43,8 @@ function demandSnapshotExhibits(fields: unknown): number {
   return Array.isArray(f?.enclosures) ? f.enclosures.length : 0
 }
 import { computeJobLienClock, type JobLienFilingRow, liveFilings, suitDeadlineFor, LIEN_SUIT_COUNSEL_LEAD_DAYS } from '../jobs/lienDeadlines'
-import { customerAddressLienGaps, customerAddressLienReady, type CustomerAddressRow } from '../jobs/lienProperty'
+import type { CustomerAddressRow } from '../jobs/lienProperty'
+import { NO_PROPERTY_RECORD_GAP, resolveLegalJobProperties, type LegalJobOwnerRow, type LegalPropertyLine } from './legalProperty'
 import { attachEnvelopeAnswers, buildLegalEnvelopes, buildLegalJobTimelines, type LegalDeskItemLike, type LegalEnvelope, type LegalJobTimeline } from './legalLienPaper'
 import type { PaymentPromise, PromiseOutcome } from '../jobs/paymentPromises'
 import type { ChaseTouch } from '../jobs/paymentChase'
@@ -272,7 +273,12 @@ export type LegalPacketInput = {
   customer: LegalCustomerLike
   contacts: ReadonlyArray<LegalContactLike>
   contactEntries: ReadonlyArray<LegalContactEntryLike>
+  /** The payer's own property records — used only for an exact address match when a job names no record (item 6). */
   addresses: ReadonlyArray<CustomerAddressRow>
+  /** The records the jobs name (`jobs_ledger.customer_address_id`), fetched by id whatever customer holds them (item 6). Absent on an older caller. */
+  jobAddresses?: ReadonlyArray<CustomerAddressRow>
+  /** The jobs' owner overrides (`job_property_owners`, no email) — the override wins for the owner block (item 6). */
+  jobOwners?: ReadonlyArray<LegalJobOwnerRow>
   contracts: ReadonlyArray<JobContractRowLike>
   signedEstimates: ReadonlyArray<SignedEstimateLike>
   demandLetters: ReadonlyArray<JobDemandLetterRow>
@@ -350,6 +356,8 @@ export type LegalJobLine = {
   primaryInvoiceId: string | null
   /** What is still open on that line (0 when there is none) — ranks the jobs of an account (v2.4570). */
   primaryInvoiceOpen: number
+  /** The property this job stands on (item 6): the job's own record and owner override, the same line as in `account.properties`. */
+  property: LegalPropertyLine
 }
 
 /**
@@ -366,18 +374,7 @@ export function legalLargestOpenLine(jobs: ReadonlyArray<Pick<LegalJobLine, 'job
   return best ? { jobId: best.jobId, invoiceId: best.invoiceId } : null
 }
 
-export type LegalPropertyLine = {
-  address: string
-  county: string
-  owner: string
-  legalDescription: string
-  parcelId: string
-  propertyKind: string
-  homestead: boolean
-  lienReady: boolean
-  /** From customerAddressLienGaps — empty means lien-ready. */
-  gaps: string[]
-}
+export type { LegalPropertyLine, LegalJobOwnerRow } from './legalProperty'
 
 export type LegalDemandLine = {
   jobLabel: string
@@ -669,18 +666,11 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
   const emails = uniqStrings([...input.contacts.map((c) => c.email), ...ci.emails, ...jobs.map((j) => j.customer_email)])
   const phones = uniqStrings([...input.contacts.map((c) => c.phone), ...ci.phones, ...jobs.map((j) => j.customer_phone)])
 
-  const properties: LegalPropertyLine[] = input.addresses.map((a) => ({
-    address: a.address,
-    county: (a.county ?? '').trim(),
-    owner: [a.owner_company, a.owner_name].map((s) => (s ?? '').trim()).filter(Boolean).join(' · '),
-    legalDescription: (a.legal_description ?? '').trim(),
-    parcelId: (a.parcel_id ?? '').trim(),
-    propertyKind: (a.property_kind ?? '').trim(),
-    homestead: a.homestead,
-    lienReady: customerAddressLienReady(a),
-    gaps: customerAddressLienGaps(a),
-  }))
-  const propertyKind = properties[0]?.propertyKind ?? ''
+  // Property per job (item 6): each job's own record and owner override; the lien clock reads each job's kind.
+  const resolved = resolveLegalJobProperties(jobs, { labelOf: (id) => labelByJob.get(id) ?? '—', jobAddresses: input.jobAddresses ?? [], payerAddresses: input.addresses, owners: input.jobOwners ?? [] })
+  const properties: LegalPropertyLine[] = resolved.properties
+  const propertyOf = (jobId: string): LegalPropertyLine => resolved.byJob.get(jobId) as LegalPropertyLine
+  const propertyKindOf = (jobId: string): string => resolved.byJob.get(jobId)?.propertyKind ?? ''
 
   // --- Evidence (needed before sworn-account checks) -----------------------
   const evidence: LegalEvidenceJob[] = jobs.map((j) => {
@@ -757,6 +747,7 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
       swornMissing: swornMissingFor(record),
       primaryInvoiceId: openBilled[0]?.id ?? null,
       primaryInvoiceOpen: openBilled[0]?.open ?? 0,
+      property: propertyOf(j.id),
     }
   })
 
@@ -838,7 +829,7 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
   const lienClock: LegalLienClockLine[] = jobs.map((j) => {
     const ev = evidenceByJob.get(j.id)
     const lastWorkYmd = ev?.lastWorkYmd ?? null
-    const clock = computeJobLienClock({ lastWorkYmd, propertyKind, isSub: account.viaGc })
+    const clock = computeJobLienClock({ lastWorkYmd, propertyKind: propertyKindOf(j.id), isSub: account.viaGc })
     const noticeLeft = clock.noticeDeadline ? daysLeft(clock.noticeDeadline, todayYmd) : null
     const filingLeft = clock.filingDeadline ? daysLeft(clock.filingDeadline, todayYmd) : null
     let status: LegalLienClockStatus = 'no_work'
@@ -860,12 +851,13 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
     lastWorkOf: (id) => evidenceByJob.get(id)?.lastWorkYmd ?? null,
     sessions: input.clockSessions,
     filings: lienFilingsLive,
-    propertyKind,
+    propertyKind: '',
+    propertyKindOf,
     isSub: account.viaGc,
     todayYmd,
   })
   const openBalanceOf = (id: string) => { const j = jobs.find((x) => x.id === id); return j ? jobOpenBalance(j) : 0 }
-  const envelopes = attachEnvelopeAnswers(buildLegalEnvelopes(lienFilingsLive, { labelOf: (id) => labelByJob.get(id) ?? '—', propertyKind }), { items: input.lienDeskItems ?? [], openBalanceOf, todayYmd })
+  const envelopes = attachEnvelopeAnswers(buildLegalEnvelopes(lienFilingsLive, { labelOf: (id) => labelByJob.get(id) ?? '—', propertyKind: '', propertyKindOf }), { items: input.lienDeskItems ?? [], openBalanceOf, todayYmd })
 
   const demandLetters: LegalDemandLine[] = liveDemandLetters(input.demandLetters.filter((d) => jobIds.has(d.job_id))).map((d) => ({
     jobLabel: labelByJob.get(d.job_id) ?? '—',
@@ -933,7 +925,8 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
   const swornJobs = jobLines.filter((l) => l.swornMissing.length === 0).length
   // A petition pleads the jobs that qualify: one job with a sworn-account basis is a theory; the others stay gaps.
   const swornHolds = swornJobs > 0
-  const lienable = properties.some((p) => p.lienReady) && lienClock.some((c) => c.status === 'notice_open' || c.status === 'affidavit_open' || c.status === 'filed')
+  // A lien is on the table on a job whose own property record is complete and whose window is open or filed (item 6: per job, not the first address).
+  const lienable = lienClock.some((c) => propertyOf(c.jobId)?.lienReady && (c.status === 'notice_open' || c.status === 'affidavit_open' || c.status === 'filed'))
   const theory: LegalTheory = anySigned
     ? { key: 'contract', label: theoryLabel('contract'), basis: 'a signed agreement is on file' }
     : swornHolds
@@ -1028,8 +1021,12 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
   }
   if (demandLetters.filter((d) => d.sentYmd).length === 0) gaps.push({ key: 'demand', severity: 'warn', label: 'No final demand letter sent', detail: 'Most firms send their own, but one already on record with a tracking number shortens the first call.', jobId: jobs[0]?.id ?? null, fix: 'lien_instruments' })
   else if (demandLetters.some((d) => d.sentYmd && d.deadlineYmd && !d.deadlinePassed)) gaps.push({ key: 'demand_open', severity: 'warn', label: 'A demand deadline has not passed yet', detail: 'Referring before the letter’s own deadline undercuts the letter.', jobId: null, fix: 'none' })
-  if (properties.length === 0) gaps.push({ key: 'property', severity: 'warn', label: 'No property record on the customer', detail: 'County, owner of record and legal description decide whether a lien is on the table.', jobId: null, fix: 'edit_customer' })
-  else for (const p of properties) if (p.gaps.length > 0) gaps.push({ key: `property:${p.address}`, severity: 'warn', label: `Property record incomplete · ${p.address}`, detail: `Missing ${p.gaps.join(', ')}.`, jobId: null, fix: 'edit_customer' })
+  // Per property the jobs stand on (item 6). The fix opens Lien instruments on the first job, where the job's property record and owner are set.
+  for (const p of properties) {
+    const on = p.jobLabels.join(', ')
+    if (p.source === 'job_address') gaps.push({ key: `property:${p.key}`, severity: 'warn', label: `No property record linked to ${on}`, detail: `County, owner of record and legal description decide whether a lien is on the table. Link ${p.address || 'the job address'} to its property record.`, jobId: p.jobIds[0] ?? null, fix: 'lien_instruments' })
+    else if (p.gaps.length > 0) gaps.push({ key: `property:${p.key}`, severity: 'warn', label: `Property record incomplete · ${p.address} (${on})`, detail: `Missing ${p.gaps.filter((g) => g !== NO_PROPERTY_RECORD_GAP).join(', ')}.`, jobId: p.jobIds[0] ?? null, fix: 'lien_instruments' })
+  }
   for (const e of evidence) {
     if (e.reports === 0 && e.sessions === 0) gaps.push({ key: `evidence:${e.jobId}`, severity: 'warn', label: `No field evidence on ${e.jobLabel}`, detail: 'No field reports and no clock sessions — nothing places a crew on the property.', jobId: e.jobId, fix: 'none' })
   }
@@ -1049,7 +1046,7 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
     { title: 'Lien notices and filings', count: lienFilings.length },
     { title: 'What was said — contacts, promises, calls', count: timeline.filter((e) => e.shared).length },
     { title: 'Field reports and clock sessions', count: evidence.reduce((s, e) => s + e.reports + e.sessions, 0) },
-    { title: 'Property record', count: properties.length },
+    { title: 'Property record', count: properties.filter((p) => p.source !== 'job_address').length },
   ]
   const exhibits: LegalExhibit[] = []
   for (const c of exhibitCandidates) {

@@ -129,17 +129,20 @@ export function buildLegalJobTimelines(args: {
   sessions: ReadonlyArray<LegalPaperSessionLike>
   filings: ReadonlyArray<JobLienFilingRow>
   propertyKind: string
+  /** Each job's own property kind (#85 item 6); `propertyKind` is the fallback for an older caller. */
+  propertyKindOf?: (jobId: string) => string
   isSub: boolean
   todayYmd: string
 }): LegalJobTimeline[] {
   return args.jobs.map((j) => {
     const openBalance = args.openBalanceOf(j.id)
+    const propertyKind = args.propertyKindOf ? args.propertyKindOf(j.id) : args.propertyKind
     const timeline = buildLienTimelineFromWindow({
-      workMonths: workMonthsFromSessions(j.id, args.sessions, { isSub: args.isSub, propertyKind: args.propertyKind }),
+      workMonths: workMonthsFromSessions(j.id, args.sessions, { isSub: args.isSub, propertyKind }),
       filings: args.filings,
       job: { id: j.id, created_at: j.created_at ?? null, last_work_date: j.last_work_date ?? null, lien_contract_ended_on: j.lien_contract_ended_on ?? null },
       isSub: args.isSub,
-      propertyKind: args.propertyKind,
+      propertyKind,
       openBalance,
       todayYmd: args.todayYmd,
     })
@@ -223,7 +226,7 @@ const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
  * rows belong (the caller has already dropped voided ones). Ordered by the day
  * the paper went out, oldest first, lettered in that order.
  */
-export function buildLegalEnvelopes(filings: ReadonlyArray<JobLienFilingRow>, opts: { labelOf: (jobId: string) => string; propertyKind: string }): LegalEnvelope[] {
+export function buildLegalEnvelopes(filings: ReadonlyArray<JobLienFilingRow>, opts: { labelOf: (jobId: string) => string; propertyKind: string; /** The first job's own kind dates the paper's months (#85 item 6). */ propertyKindOf?: (jobId: string) => string }): LegalEnvelope[] {
   type Group = { key: string; rows: JobLienFilingRow[] }
   const groups = new Map<string, Group>()
   for (const f of filings) {
@@ -245,10 +248,11 @@ export function buildLegalEnvelopes(filings: ReadonlyArray<JobLienFilingRow>, op
     const printed = (first as unknown as { printed_claim?: number | null }).printed_claim
     const claim = typeof printed === 'number' && printed > 0 ? printed : shares.reduce((s, x) => s + x.amount, 0)
     const monthKeys = [...new Set(g.rows.flatMap((r) => r.months_covered ?? []))].sort()
+    const kind = opts.propertyKindOf ? opts.propertyKindOf(first.job_id) : opts.propertyKind
     const months: LegalEnvelopeMonth[] = monthKeys.map((key) => ({
       key,
       label: workMonthShort(key),
-      asInformation: first.kind === 'notice_53_056' && wentOutYmd != null && noticeDeadlineForMonth(`${key}-01`, opts.propertyKind) < wentOutYmd,
+      asInformation: first.kind === 'notice_53_056' && wentOutYmd != null && noticeDeadlineForMonth(`${key}-01`, kind) < wentOutYmd,
     }))
     const doc = first as unknown as { document_url?: string | null; document_note?: string | null; by_hand?: boolean | null }
     envelopes.push({

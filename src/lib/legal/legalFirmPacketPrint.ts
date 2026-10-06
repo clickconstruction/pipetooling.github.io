@@ -16,6 +16,7 @@ import { lienFirmNext } from '../jobs/lienTimeline'
 import type { LegalEntryRow } from './legalMatters'
 import type { LegalPortalParticulars } from './legalPortalPayload'
 import { contingencyEntries, firmDemand, firmFeeEntries, legalRunningLedger } from './legalMoney'
+import { propertyKindWords } from './legalProperty'
 
 export type FirmPacketPrintOptions = {
   preparedOn: string
@@ -50,7 +51,7 @@ export function buildFirmPacketPrintHtml(packet: LegalPacket, opts: FirmPacketPr
   const jobsRows = a.jobs.map((j) => row([`<b>${esc(j.label)}</b>`, esc(j.name), esc(j.address), j.agingDays == null ? '—' : `${j.agingDays}d`, esc(firmJobRecordWords(j)), formatLegalMoney(j.balance)], [false, false, false, true, false, true]))
   const ledgerRows = legalRunningLedger(a.ledger).map((e) => row([`<span class="date">${esc(e.ymd ?? '—')}</span>`, esc(e.jobLabel), esc(e.text), formatLegalMoney(e.amount), formatLegalMoney(e.running)], [false, false, false, true, true]))
   const ledgerFoot = `<tr><td colspan="3"><b>Balance owed</b></td><td></td><td class="num"><b>${formatLegalMoney(a.totals.balance)}</b></td></tr>`
-  const propertyRows = a.properties.map((p) => row([esc(p.address), esc(p.county || '—'), esc(p.owner || '—'), esc(p.legalDescription || '—'), esc(p.parcelId || '—'), p.propertyKind === 'residential' ? 'residential' : p.propertyKind ? 'non-residential' : '—']))
+  const propertyRows = a.properties.map((p) => row([`<b>${esc(p.jobLabels.join(', '))}</b>`, `${esc(p.address || '—')}${p.source === 'job_address' ? ' <span class="muted">· no property record linked</span>' : ''}`, esc(p.county || '—'), esc(p.owner || '—'), esc(p.legalDescription || '—'), esc(p.parcelId || '—'), esc(propertyKindWords(p.propertyKind) || '—')]))
 
   // B. Paper
   const agreementRows = packet.paper.agreements.map((g) => {
@@ -149,7 +150,7 @@ ${table(['Job', 'Name', 'Address', 'Age', 'On file', 'Balance'], jobsRows, 'No j
 <h3>Statement of account</h3>
 ${table(['Date', 'Job', 'Entry', 'Amount', 'Balance'], ledgerRows, 'No billed lines or payments recorded.', ledgerFoot)}
 <h3>Property record</h3>
-${table(['Address', 'County', 'Owner of record', 'Legal description', 'Parcel', 'Kind'], propertyRows, 'No property record on file.')}
+${table(['Job', 'Address', 'County', 'Owner of record', 'Legal description', 'Parcel', 'Kind'], propertyRows, 'No property record on file.')}
 <h2><span class="sec">B</span> Paper</h2>
 <h3>Agreements</h3>
 ${table(['Job', 'Agreement'], agreementRows, 'No agreement on file for any job in this account.')}

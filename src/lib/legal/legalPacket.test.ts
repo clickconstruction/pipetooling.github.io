@@ -291,10 +291,13 @@ describe('buildLegalPacket', () => {
   it('property records: incomplete warns with what is missing; complete is silent and lien-ready', () => {
     const addr = (over: Partial<CustomerAddressRow>): CustomerAddressRow =>
       ({ id: 'a1', customer_id: 'tle', address: '15054 State Hwy 71, Bee Cave, TX', county: 'Travis', county_source: 'manual', legal_description: 'Lot 4, Block B', owner_mode: 'company', owner_name: '', owner_company: 'TLE Holdings', owner_mailing_address: 'PO Box 1', parcel_id: 'R123', parcel_source: 'cad', parcel_tax_year: '2026', parcel_looked_up_at: null, homestead: false, property_kind: 'non_residential', is_primary: true, note: null, sequence_order: 0, created_at: null, updated_at: null, ...over }) as CustomerAddressRow
-    const complete = buildLegalPacket(baseInput(account, { addresses: [addr({})] }))
-    expect(complete.account.properties[0]).toEqual(expect.objectContaining({ lienReady: true, gaps: [] }))
+    // Item 6: the property is the record each job names, whoever's record it is; both jobs stand on it.
+    const linked = { ...account, jobs: account.jobs.map((j) => ({ ...j, customer_address_id: 'a1' })) }
+    const complete = buildLegalPacket(baseInput(linked, { jobAddresses: [addr({})] }))
+    expect(complete.account.properties).toHaveLength(1)
+    expect(complete.account.properties[0]).toEqual(expect.objectContaining({ lienReady: true, gaps: [], source: 'linked', jobLabels: ['717', '718'] }))
     expect(complete.gaps.some((g) => g.key.startsWith('property'))).toBe(false)
-    const partial = buildLegalPacket(baseInput(account, { addresses: [addr({ county: '', legal_description: '' })] }))
+    const partial = buildLegalPacket(baseInput(linked, { jobAddresses: [addr({ county: '', legal_description: '' })] }))
     expect(partial.gaps.find((g) => g.key.startsWith('property:'))?.detail).toMatch(/Missing/)
   })
 
