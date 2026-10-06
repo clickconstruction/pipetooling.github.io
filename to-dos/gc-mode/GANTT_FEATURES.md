@@ -41,7 +41,7 @@ The three jobs the chart has, which every feature serves at least one of:
 | G-18 | The strip of numbers over the chart: finish against the contract, work done against plan, how many have no spare days, how many are held, what moved this week | See | Have (built 2026-10-05: the filter counts, under the four measures) | 1 |
 | G-19 | A phone view: one stage at a time as a list with small bars, today first | See | Have (built 2026-10-06: the List view, which a phone opens on, the stages with the one running today first, each a table of its bars with a small bar in the stage's span; `GcGanttList.tsx`) | 5 |
 | G-20 | Keyboard: arrows move between bars, Enter opens one, a list a screen reader can read | See | Have (built 2026-10-06: up and down move between bars, left and right a week along, Home and End, Enter opens; every bar says its name, company, dates and standing; the List view is a real table) | 5 |
-| G-21 | Print and PDF of the chart as it is filtered, on one or more landscape pages | Tell | New | 3 |
+| G-21 | Print and PDF of the chart as it is filtered, on one or more landscape pages | Tell | Have (built 2026-10-06: **Print or PDF** on the chart's toolbar opens *Print the chart*; our team's copy is the chart as it is filtered, grouped and folded, the customer's is their portal's picture, and Next 3 weeks prints the look-ahead sheet; letter landscape pages through the print dialog; `gcGanttPrint.ts`, `GcGanttPrint.tsx`) | 3 |
 
 ## B. Building and changing the schedule
 

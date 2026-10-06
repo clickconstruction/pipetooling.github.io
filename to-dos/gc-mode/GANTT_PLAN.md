@@ -759,6 +759,70 @@ What the second look changed:
 - **Left out on purpose**: a Follow up call from a row (the sheet belongs to the page; G-115's call
   list is its home) and a one-press move with the log's reason (the log gives a reason, not a day).
 
+## Phase 3, print and PDF, as built (2026-10-06)
+
+G-21, Helper 2 on `spike/g21`; the mock-up and plan are `mockups/G-21.md`. `gcGanttPrint.ts` (tested,
+out of the barrel), `GcGanttPrint.tsx`, one optional prop on `GcGantt.tsx`, and the job's words from
+the Schedule tab.
+
+- **Print or PDF** at the right end of the chart's toolbar, in the Chart and the List view, off when
+  nothing passes the filters. It opens **Print the chart**: how many landscape pages, what it shows
+  in the pills' own names (*It shows 5 of 30 activities, by trade. Filter on: Late or behind.*),
+  the folds, the lines, **Who it is for** (*Our team*, *The customer*), and the pages small in a
+  frame as they will print. Its **Print or PDF** opens them in the browser's print dialog through
+  the app's `printHtmlInNewWindow`; *Save as PDF* is one of the printers there. The window is
+  light in both themes (`data-theme="light"`).
+- **The paper is a document of its own**, never the screen sent to a printer: letter landscape,
+  one SVG a page, drawn in points from the chart's own kernel (`ganttFilter`, `ganttGroups`,
+  `ganttLinks`). The filters, the grouping, the folds and *Hide the links* carry over; the zoom does
+  not, since the paper fits the span to its width: every day at 10 points a day or more, Mondays at
+  2 or more, the 1st and 15th below. The span is `ganttAxis` over the bars shown, so a filtered print
+  draws close. Black and the greys for the page, the chart's status colors for the bars, and patterns
+  and words so a black and white printer keeps the meaning.
+- **Our team's copy**: the head (the job, *For our team*, the projected finish as the Projected
+  finish card says it, the work done, what it shows), then columns for the hover card's facts
+  (*Activity*, *Dates*, *Done*, *Plan*, *Where it stands*), the dates to meet on every page, what the
+  work waits on on page 1, the chart's own notes beside the bars (`barNote`, so G-77's papers and
+  G-60's word from the daily log print as the chart says them), a trade's new day from its portal as
+  the chart's amber dashed tail (G-117), the lines, today, and a key of only the marks on that page,
+  with *Page n of N*.
+- **The customer's copy** reads what the customer's own views read, from one call,
+  `customerSchedulePicture` in `gcCustomerSchedule.ts`: the stages for an owner, every bar by stage
+  for a GC or an owner's rep (`customerFullChart`, call 5), then *What changed this week* and *What
+  we need from you*. No company, no spare days, no red edge; the filters and folds do not change it.
+  The words the letter, the portal and the list each wrote out (`CUSTOMER_STAGE_WORDS`,
+  `customerDoneWords`, `CUSTOMER_NOTHING_MOVED`, `customerBarWords`) now live in that file once, and
+  all three read them.
+- **Next 3 weeks** prints the look-ahead sheet: the Monday of last week to the Sunday three weeks
+  out, a day at a time, the weekends tinted, a bar past an edge cut there and marked.
+- **Paging**: a page takes rows while they fit; a heading never ends a page unless two of its rows
+  fit under it; a cut group repeats its heading, *continued*; a line prints only when both its bars
+  are on the page; the customer's lists go under the last rows, or on a page of their own. Fair Oaks
+  D as the chart opens is 2 pages, with Late or behind 1, with Next 3 weeks 1, the customer's
+  stages 1.
+- **Tests**: `gcGanttPrint.test.ts` (19: the rows under each filter, the folds, the span and the
+  scale, paging, the lines, the dates to meet, both customer copies with no company and no spare
+  days, the look-ahead, G-117's tail, the document, and plain words for every sentence),
+  `GcGanttPrint.render.test.tsx` (7, G-60's note on paper among them), and the customer's words in
+  `gcCustomerSchedule.test.ts` (2).
+  No action and no fixture change: the golden test did not move.
+
+What the second look changed:
+
+- **The customer's every-bar copy is their list, not our page with things taken off** (the lead's
+  rule): one rule for what a customer may see, in `gcCustomerSchedule.ts`, so the portal, the
+  letter and the paper cannot disagree.
+- **A heading keeps two of its rows.** A heading with one row under it at the foot of a page read as
+  a stray line; it moves to the next page instead.
+- **The dates to meet take a third line before two labels run together.** On paper a day is about
+  2 points, so *Dry-in Sep 25, 7 days late* ran into *Substantial completion Dec 11* on two lines.
+- **The key lists only the marks on its page**, and the page keeps room for the key the print needs,
+  so no foot is cut off.
+
+Left out, as planned: a long job's weeks tiled across pages, a paper size choice (a letter PDF prints
+on 11 by 17 with *Fit to page*), a line from a bar on one page to a bar on another, a tour stop
+(`gcTour.ts` is shared), and a record that a print was made (printing changes nothing on the job).
+
 ## Status
 
 Planned 2026-10-05. Phases 1 and 2 (finished 2026-10-06: an added activity, actuals, a new baseline, redo)

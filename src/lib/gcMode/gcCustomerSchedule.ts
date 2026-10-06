@@ -9,11 +9,12 @@
 import type { GcProject, GcState, ScheduleMoveReason } from './gcTypes'
 import { daysBetween, milestoneRows, projectedFinish, scheduleMeasures, substantialCompletionOn, type MilestoneRow } from './gcBuildingSchedule'
 import { shortDate, weekdayDate } from './gcWords'
-import { ganttBars, ganttGroups, ganttListGroups } from './gcGantt'
+import { ganttBars, ganttGroups, ganttListGroups, type GanttBar } from './gcGantt'
 import { lineStage } from './gcNewProject'
 import { SCHEDULE_STAGES } from './gcNewProject'
 import { changeOrderDays, projectChangeOrders } from './gcOwnerBilling'
 import { customerDecisions } from './gcScheduleWaits'
+import { customerContractDays } from './gcChangeOrderDays'
 
 /** One stage of the job as the customer sees it. */
 export interface CustomerStage {
@@ -149,4 +150,62 @@ export function customerAsks(project: GcProject): { words: string; by: string | 
 /** The milestones the customer sees: every date the job must meet. */
 export function customerMilestones(state: GcState, project: GcProject): MilestoneRow[] {
   return milestoneRows(state, project).sort((a, b) => (a.due < b.due ? -1 : 1))
+}
+
+// ---------------------------------------------------------------------------------------------
+// The customer's words, in one place (G-21): the portal, the letter and the printed copy read
+// these, so the three can never say a stage, a bar or the work done two ways.
+// ---------------------------------------------------------------------------------------------
+
+/** Where a stage stands, in the customer's words. */
+export const CUSTOMER_STAGE_WORDS: Record<CustomerStage['state'], string> = { done: 'done', underway: 'under way', behind: 'behind', notStarted: 'not started' }
+
+/** What What changed this week says when nothing moved. */
+export const CUSTOMER_NOTHING_MOVED = 'Nothing moved. The schedule stands as planned.'
+
+/** "72% of the work is done. We planned 76% by today." Null while the schedule is being drawn. */
+export function customerDoneWords(standing: CustomerStanding): string | null {
+  return standing.finish ? `${standing.donePct}% of the work is done. We planned ${standing.plannedPct}% by today.` : null
+}
+
+/** One bar as a customer reads it: no spare days, so a bar on track says "on plan" and one not begun "not started", in grey. */
+export function customerBarWords(bar: GanttBar): { words: string; tone: GanttBar['tone'] } {
+  if (bar.status === 'onTrack') return { words: 'on plan', tone: 'grey' }
+  if (bar.status === 'notStarted') return { words: 'not started', tone: 'grey' }
+  return { words: bar.statusWords, tone: bar.tone }
+}
+
+/** Everything the customer's schedule shows, read once: their portal's picture, which the printed copy draws (G-21). */
+export interface CustomerSchedulePicture {
+  /** Who the customer is, as the letter names them. */
+  name: string
+  /** A GC or an owner's rep: they may see every bar (call 3). */
+  everyBar: boolean
+  standing: CustomerStanding
+  doneWords: string | null
+  /** What their signed change orders did to the contract's finish (G-76), as their portal says it. */
+  contractDays: string[]
+  stages: CustomerStage[]
+  /** Every bar by stage, today first, when they may see every bar (call 5). Empty otherwise. */
+  fullChart: ReturnType<typeof customerFullChart>
+  milestones: MilestoneRow[]
+  changes: string[]
+  asks: string[]
+}
+
+export function customerSchedulePicture(state: GcState, project: GcProject): CustomerSchedulePicture {
+  const standing = customerStanding(state, project)
+  const everyBar = customerMaySeeEveryBar(project)
+  return {
+    name: state.customers.find((c) => c.id === project.customerId)?.name ?? project.owner,
+    everyBar,
+    standing,
+    doneWords: customerDoneWords(standing),
+    contractDays: customerContractDays(project),
+    stages: customerStages(state, project),
+    fullChart: everyBar ? customerFullChart(state, project) : [],
+    milestones: customerMilestones(state, project),
+    changes: customerChanges(project, state.today),
+    asks: customerAsks(project).map((a) => a.words),
+  }
 }
