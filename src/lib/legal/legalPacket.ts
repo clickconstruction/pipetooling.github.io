@@ -49,7 +49,8 @@ import type { PaymentPromise, PromiseOutcome } from '../jobs/paymentPromises'
 import type { ChaseTouch } from '../jobs/paymentChase'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
-import { attributeJobPayments, isSentBill } from '../jobs/paymentAttribution'
+import { isSentBill } from '../jobs/paymentAttribution'
+import { invoiceWrittenDown, legalJobMoneyOf, type LegalJobMoney } from './legalJobMoney'
 import { invoiceSentWords, paymentHowWords } from './legalMoney'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
@@ -95,70 +96,15 @@ export function invoiceOpenAmount(inv: Pick<JobsLedgerInvoice, 'id' | 'amount'>,
 
 const round2 = (n: number): number => Math.round(n * 100) / 100
 
-/** What an agreed write-down took off a bill (its previous amount less what it bills now); 0 when none. */
-export function invoiceWrittenDown(inv: Pick<JobsLedgerInvoice, 'amount' | 'agreed_write_down_at' | 'agreed_write_down_previous_amount'>): number {
-  const prev = inv.agreed_write_down_previous_amount
-  const amt = Number(inv.amount ?? 0)
-  return inv.agreed_write_down_at && typeof prev === 'number' && prev > amt ? round2(prev - amt) : 0
-}
-
 /**
- * One job's money under the app's one rule for payments (punch list #85 item 5, on
- * `attributeJobPayments`, v2.3592 + v2.4534): a payment linked to a bill is that bill's;
- * a payment with no bill pays the work on no sent bill first, then the sent bills oldest
- * first. The balance is what the open billed lines still need, less any credit (money
- * beyond every sent bill). A job with no billed line owes its job-level remainder (the
- * "No line" shell), as before.
+ * One job's money under the app's one rule for payments (punch list #85 item 5). The rule lives in
+ * `_shared/legalJobMoney.ts` (item 20 review) so `submit-legal-portal`'s settlement floor and every
+ * reader here add up the same way; this is the packet's door to it.
  */
-export type LegalJobMoney = {
-  balance: number
-  /** What each open billed line still needs after its own money and its share of unlinked money. */
-  openByInvoice: Map<string, number>
-  /** Money that paid work on no sent bill: unlinked money the rule spent there, and money linked to a line never sent. */
-  offBill: number
-  /** Bills marked paid whose recorded money falls short of them: what no payment covers. */
-  settledShort: Array<{ invoiceId: string; amount: number }>
-  /** True when the job has no billed line and owes its job-level remainder. */
-  shell: boolean
-  /** Money paid beyond everything owed on the job: a credit to the customer, never a negative demand. 0 when none. */
-  credit: number
-}
+export { invoiceWrittenDown, type LegalJobMoney } from './legalJobMoney'
 
 export function legalJobMoney(job: JobWithDetails): LegalJobMoney {
-  const invoices = job.invoices ?? []
-  const payments = job.payments ?? []
-  const billed = invoices.filter((i) => i.status === 'billed')
-  const sent = invoices.filter((i) => isSentBill(i.status))
-  const sentIds = new Set(sent.map((i) => i.id))
-  // The written-down part of a bill is no longer owed; it is not work on no bill, so the rule gets the job total less it.
-  const writtenDown = sent.reduce((s, i) => s + invoiceWrittenDown(i), 0)
-  const jobTotal = job.revenue == null ? null : Number(job.revenue) - writtenDown
-  const att = attributeJobPayments(invoices, payments, jobTotal)
-  const appliedOf = (id: string) => att.byBill.get(id)?.applied ?? 0
-  // A refund (a negative payment on no bill) is money handed back: the rule skips it, so it is added back here.
-  const refunds = round2(payments.filter((p) => !p.invoice_id && Number(p.amount ?? 0) < 0).reduce((s, p) => s - Number(p.amount ?? 0), 0))
-  // A bill marked paid whose recorded money falls short: no payment covers that part, and nobody owes it.
-  const settledShort = sent
-    .filter((i) => i.status === 'paid')
-    .map((i) => ({ invoiceId: i.id, amount: round2(Number(i.amount ?? 0) - appliedOf(i.id)) }))
-    .filter((x) => x.amount > 0.004)
-  const shortTotal = settledShort.reduce((s, x) => s + x.amount, 0)
-  if (billed.length === 0) {
-    // No open billed line: the job owes its total less what was written down, paid, or marked paid without money.
-    const raw = round2(Number(job.revenue ?? 0) - writtenDown - Number(job.payments_made ?? 0) - shortTotal)
-    return { balance: Math.max(0, raw), openByInvoice: new Map(), offBill: 0, settledShort, shell: true, credit: Math.max(0, round2(-raw)) }
-  }
-  const openByInvoice = new Map<string, number>()
-  let open = 0
-  for (const i of billed) {
-    const o = Math.max(0, round2(Number(i.amount ?? 0) - appliedOf(i.id)))
-    openByInvoice.set(i.id, o)
-    open += o
-  }
-  const overpaid = sent.reduce((s, i) => s + Math.max(0, round2(appliedOf(i.id) - Number(i.amount ?? 0))), 0)
-  const linkedElsewhere = payments.filter((p) => p.invoice_id && !sentIds.has(p.invoice_id)).reduce((s, p) => s + Number(p.amount ?? 0), 0)
-  const raw = round2(open - att.surplus - overpaid + refunds)
-  return { balance: raw, openByInvoice, offBill: round2(att.offBill + linkedElsewhere), settledShort, shell: false, credit: Math.max(0, round2(-raw)) }
+  return legalJobMoneyOf({ revenue: job.revenue, payments_made: job.payments_made, invoices: job.invoices ?? [], payments: job.payments ?? [] })
 }
 
 /** What the account still owes on one job — `legalJobMoney(job).balance`, the one number the desk, the firm and the prints share. */
