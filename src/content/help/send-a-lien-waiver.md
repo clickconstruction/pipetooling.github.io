@@ -9,8 +9,8 @@ When you pay a sub, you want their lien rights for that money released. Texas ha
 
 ## Send one from the pay row
 
-1. Open the job, then **Subs**, then **Pay**. Every sheet shows what is agreed, paid and still due.
-2. On the sheet you just paid, press {{button:outline|Lien waiver…}}.
+1. Open **Jobs**, then **Subs**, then **Pay**. Every sheet shows what is agreed, paid and still due.
+2. On the sheet you just paid, press **⋯**, then {{button:outline|Lien waiver…}}.
 3. The window names the waiver it picked and says why in one line.
 4. Check the two facts it read from the payment. One chip reads {{chip:green|Settled in the bank}} or {{chip:gray|Not settled yet}}. The other says whether this is the last payment on the sheet.
 5. Check the address under **Sub's email for the signing link**. Type it if the box is empty.
@@ -18,10 +18,10 @@ When you pay a sub, you want their lien rights for that money released. Texas ha
 
 The window sends the signing link itself. There is no second email to write.
 
-The sub signs on their phone. The form arrives filled in. It has the project, the job number, the amount, the payee, the owner and the address. They check it and sign. The signed PDF files to the sheet and to **People → Contracts**.
+The sub signs on their phone. The form arrives filled in. It has the project, the job number, the amount, the payee, the owner and the address. They check it and sign. The signed PDF files to **People → Contracts**.
 
 :::example What the window shows
-The title reads **Send a lien waiver · Texas R & A**. The chips read {{chip:blue|Payment $17,752.65}}, {{chip:gray|Not settled yet}} and {{chip:gray|One of several payments}}. The form is **Conditional waiver on progress payment**. It goes out with this check. It releases the sub's lien rights for the period once the check clears. So it is safe to sign before the money arrives.
+The title reads **Send a lien waiver · Texas R & A**. The chips read {{chip:blue|Payment $17,752.65}}, {{chip:gray|Not settled yet}} and {{chip:gray|One of several payments}}. The form is **Conditional Waiver and Release on Progress Payment**. It goes out with this check. It releases the sub's lien rights for the period once the check clears. So it is safe to sign before the money arrives.
 :::
 
 ## If the app read the payment wrong
@@ -52,7 +52,7 @@ Press **Not this one? See the other three** in the window. Each of the other for
 
 ## Where the signed waiver lives
 
-- On the sheet's row under **Pay**, with the payment it covers.
+- In the sheet's **Lien waiver…** window, on the **Already on this sheet** line.
 - In **People → Contracts** on the sub's row, like every other signed document. It has **View signed** and the PDF.
 
 The four forms live in the Contract library's **Forms** tab. They are the four Texas § 53.284 forms. They sit in a packet with no assignees on purpose. They are sent one at a time, per payment, never as part of onboarding.
