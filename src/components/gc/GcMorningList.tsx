@@ -12,6 +12,9 @@ import { morningList, morningSteps, type MorningCompany } from '../../lib/gcMode
 import { Btn, Card, Chip } from './gcUi'
 import { PartnerLink } from './GcCompanyFile'
 
+/** The line's colour when a trade's own count sets it (G-142). */
+const CREW_TONE = { red: 'var(--text-red-700)', amber: 'var(--text-amber-800)', green: 'var(--text-green-800)', grey: 'var(--text-muted)' } as const
+
 const head = { fontSize: '0.72rem', letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)', marginTop: '0.4rem' } as const
 
 function CompanyName({ c }: { c: MorningCompany }) {
@@ -61,7 +64,8 @@ export function GcMorningList({ state, project, day, onDay }: { state: GcState; 
                 </span>
               )}
             </div>
-            <div style={{ color: c.missing ? 'var(--text-red-700)' : c.onTheDay ? 'var(--text-green-800)' : 'var(--text-muted)', fontWeight: c.missing ? 600 : 400 }}>{c.logWords}</div>
+            {/* The trade's own count sets the tone when it gave one (G-142): a short crew reads amber. */}
+            <div style={{ color: c.crewTone ? CREW_TONE[c.crewTone] : c.missing ? 'var(--text-red-700)' : c.onTheDay ? 'var(--text-green-800)' : 'var(--text-muted)', fontWeight: c.missing || c.short ? 600 : 400 }}>{c.logWords}</div>
             {/* At the gate (G-138): a crew whose insurance ran out works uncovered. */}
             {c.insurance && <div style={{ color: 'var(--text-red-700)', fontWeight: 600 }}>{c.insurance}</div>}
             {c.bars.map((b) => (

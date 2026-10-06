@@ -120,7 +120,7 @@ column headers are in one block at the end of `gcBuildingWords.ts`, for the nati
 
 ## For a native speaker to read
 
-Every Spanish string the trade's portal shows, 977 in all, drawn from the code on 2026-10-05.
+Every Spanish string the trade's portal shows, 985 in all, drawn from the code on 2026-10-05.
 They're grouped by screen, English on the left. Please mark anything that reads wrong, stiff or
 unclear, and write the better words beside it. The Portal lane makes the changes and passes the
 other lanes theirs. After any change to the words, redraw the tables below from the code with
@@ -1008,6 +1008,19 @@ they were written in. The portal does not translate them.
 | You said you will make {date}. | Dijo que va a cumplir el {date}. |
 | Sent. {gc} has your new day. | Enviado. {gc} tiene su nueva fecha. |
 | {gc} needs {date} on {work} at {project}. Say you will make it, or give another day. | {gc} necesita el {date} para {work} en {project}. Díganos si va a cumplir o denos otra fecha. |
+
+#### A trade's own crew count, beside its look-ahead (G-142). El número: masculine.
+
+| English | Español |
+|---|---|
+| People a day on site | Personas al día en la obra |
+| {trade}: people a day on site | {trade}: personas al día en la obra |
+| How many people a day | Cuántas personas al día |
+| Tell {gc} | Avisar a {gc} |
+| You said {n} a day. | Dijo {n} al día. |
+| You said nobody. | Dijo que nadie. |
+| Change it | Cambiarlo |
+| A whole number, 0 to 50. | Un número entero, de 0 a 50. |
 
 #### The usual exclusions, by name
 
