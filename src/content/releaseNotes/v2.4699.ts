@@ -1,7 +1,7 @@
 import type { ReleaseNote } from '../../lib/releaseNotes'
 
 const note: ReleaseNote = {
-  version: 'v2.4686',
+  version: 'v2.4699',
   date: '2026-10-06',
   title: 'Counts: a second import is reviewed against the sheet, not piled on top of it',
   kind: 'feature',

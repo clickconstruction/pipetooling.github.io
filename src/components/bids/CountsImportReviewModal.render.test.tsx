@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * Render smoke for the import review (v2.4686): the four piles drawn from the kernel's review, the
+ * Render smoke for the import review (v2.4699): the four piles drawn from the kernel's review, the
  * bucket switch and a row's tick changing the summary, the rename proposal becoming one update,
  * Missing starting on Keep for a partial copy, and Apply handing back the choices. The kernel's own
  * tests pin what each choice writes.

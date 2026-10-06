@@ -1,5 +1,5 @@
 /**
- * Import review (v2.4686): what "Import from /Tooling" shows when the bid already has count
+ * Import review (v2.4699): what "Import from /Tooling" shows when the bid already has count
  * rows. Until now the import appended every pasted line, so a re-copy from CountTooling after a
  * small change doubled the sheet (the SpaceX re-import behind punch list #73). This kernel pairs
  * the pasted rows with the rows on the bid and sorts them into piles the person approves:

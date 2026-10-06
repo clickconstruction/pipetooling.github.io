@@ -145,7 +145,7 @@ export function BidsCountsTab({
   const [countsImportOpen, setCountsImportOpen] = useState(false)
   const [countsImportText, setCountsImportText] = useState('')
   const [countsImportError, setCountsImportError] = useState<string | null>(null)
-  // v2.4686: the import review — a paste onto a sheet that already has rows is sorted against
+  // v2.4699: the import review — a paste onto a sheet that already has rows is sorted against
   // them (update / add / remove / same) and nothing is written until Apply.
   const [countsReview, setCountsReview] = useState<{ review: CountsImportReview; parsed: ReturnType<typeof parseCountsImportText>; attached: Map<string, CountRowAttachedWork>; existingCount: number } | null>(null)
   const [countsReviewBusy, setCountsReviewBusy] = useState(false)
@@ -545,7 +545,7 @@ export function BidsCountsTab({
           if (error) throw error
         }
       }
-      // v2.4686: a reviewed import also updated and removed rows — put the old values back and
+      // v2.4699: a reviewed import also updated and removed rows — put the old values back and
       // re-insert the removed rows under their old ids (bare: their parts went with them).
       for (const r of plan.restoreRows) {
         const { error } = await supabase.from('bids_count_rows').update(r.before).eq('id', r.id)
@@ -616,7 +616,7 @@ export function BidsCountsTab({
   }
 
   /**
-   * v2.4686: both doors come here. An empty sheet takes the paste as it always did; a sheet with
+   * v2.4699: both doors come here. An empty sheet takes the paste as it always did; a sheet with
    * rows is compared first and the review decides what is written. Returns the error to show at
    * the door, or null when the paste was taken (or handed to the review).
    */

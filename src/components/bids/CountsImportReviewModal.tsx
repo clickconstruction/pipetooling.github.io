@@ -12,7 +12,7 @@ import { COUNT_UNIT_LABEL, effectiveCountUnit, formatUnitTotal } from '../../lib
 import { ModalShell } from './ModalShell'
 
 /**
- * The import review (v2.4686): what "Import from /Tooling" opens when the bid already has count
+ * The import review (v2.4699): what "Import from /Tooling" opens when the bid already has count
  * rows. Four piles — Changed, New, Missing, Same (folded) — each with a bucket switch first and a
  * tick per row second, the rename / move proposals at the head of Missing, what each row carries
  * downstream beside it, and one Apply. Pure over its props: the kernel sorts, the tab writes.

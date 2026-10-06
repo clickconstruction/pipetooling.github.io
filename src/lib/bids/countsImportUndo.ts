@@ -4,7 +4,7 @@
  * CountTooling source link; undo must delete exactly the rows it inserted and
  * put the link back only when the import actually changed it.
  *
- * v2.4686: an import reviewed against the bid's rows also updates and removes
+ * v2.4699: an import reviewed against the bid's rows also updates and removes
  * rows, so the plan carries each updated row's old values and each removed row
  * whole. A removed row comes back bare — its parts and prices went with it
  * (ON DELETE CASCADE), which is why the review says so before Apply.

@@ -30,7 +30,7 @@ describe('importUndoPlan', () => {
   })
 })
 
-describe('importUndoPlan — a reviewed import (v2.4686)', () => {
+describe('importUndoPlan — a reviewed import (v2.4699)', () => {
   it('carries the updated rows’ old values and the removed rows whole, dropping empty patches', () => {
     const plan = importUndoPlan({
       insertedIds: ['n1'],

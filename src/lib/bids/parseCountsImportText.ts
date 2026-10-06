@@ -41,7 +41,7 @@ export const COUNT_ALTERNATE_SCHEDULE_SUFFIX_RE = /\s*·\s*(Duct|Water sizing)$/
 // column stayed empty on every import since the classic table (v2.4188).
 export const COUNT_GROUP_PREFIX_RE = /^\[([^\]]*)\]\s*/
 
-// v2.4686: the scope heading says what the copy covers — `every sheet` is the whole takeoff
+// v2.4699: the scope heading says what the copy covers — `every sheet` is the whole takeoff
 // (Copy to /Tooling → All Canvases), anything else is a part of it (This Canvas Only, …). The
 // import review reads it to decide whether a row missing from the copy was deleted on purpose.
 export const COUNT_SCOPE_HEADING_RE = /^---\s*Counts,/i
@@ -53,7 +53,7 @@ export function parseCountsImportText(text: string): {
   sourceLink: string | null
   /** The alternate groups the text names, first spelling kept, in the order they appear. */
   alternateGroups: string[]
-  /** v2.4686: what the scope heading said the copy covers; 'unknown' without one (a hand-typed paste). */
+  /** v2.4699: what the scope heading said the copy covers; 'unknown' without one (a hand-typed paste). */
   scope: CountsImportScope
 } {
   const rows: ParsedCountImportRow[] = []

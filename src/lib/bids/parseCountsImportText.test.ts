@@ -195,7 +195,7 @@ describe('groups and alternates from CountTooling (v2.4188)', () => {
   })
 })
 
-describe('the scope heading (v2.4686)', () => {
+describe('the scope heading (v2.4699)', () => {
   it('reads every sheet as the whole takeoff, another Counts heading as a part, none as unknown', () => {
     expect(parseCountsImportText('--- Counts, Elm Creek · every sheet · every layer ---\nWC\t4\t2').scope).toBe('all')
     expect(parseCountsImportText('--- Counts, Elm Creek · P-2 · every layer ---\nWC\t4\t2').scope).toBe('partial')
