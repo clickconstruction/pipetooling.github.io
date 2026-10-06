@@ -53,6 +53,8 @@ export default function LienDeskNextUp({
   onOpenRun,
   factsFor,
   viewerIsLeader,
+  onOpenPaper,
+  gapsFor,
 }: {
   rows: ReadonlyArray<LienNextUpRow>
   loading: boolean
@@ -67,6 +69,10 @@ export default function LienDeskNextUp({
   /** What the desk knows about a row's job, for its card (v2.4631). */
   factsFor?: (row: LienNextUpRow) => LienStepFacts
   viewerIsLeader?: boolean
+  /** The chip as a door to the paper (v2.4632): opens the notice or the affidavit as it stands, blanks marked. */
+  onOpenPaper?: (row: LienNextUpRow) => void
+  /** How many statutory blanks the row's paper has (the chip's red count; a tick at zero); null when unknown. */
+  gapsFor?: (row: LienNextUpRow) => number | null
 }) {
   // The rung the list is narrowed to (v2.4631); session-only, cleared on a second press.
   const [on, setOn] = useState<LienStepAt | null>(null)
@@ -106,6 +112,32 @@ export default function LienDeskNextUp({
         style={{ ...style, border: 'none', background: 'none', padding: 0, margin: 0, font: 'inherit', color: 'inherit', cursor: 'pointer', textAlign: 'left', borderRadius: 3, minWidth: 0, maxWidth: '100%', ...(isMobile ? { minHeight: 28 } : null) }}
       >
         {r.title}
+      </button>
+    )
+  }
+  // The chip: a door to the paper when the desk offers one (v2.4632), ringed on hover, a red count of blanks or a tick.
+  const chip = (r: LienNextUpRow) => {
+    const canOpen = onOpenPaper && r.jobId && r.kind !== 'retainage'
+    if (!canOpen) return <span style={tag(r.kind)}>{KIND_WORDS[r.kind]}</span>
+    const gaps = gapsFor?.(r) ?? null
+    return (
+      <button
+        type="button"
+        className="lienPaperDoor"
+        data-testid={`lien-next-up-paper-${r.jobId}-${r.kind}`}
+        title={gaps ? `Open the ${r.kind} as it stands: ${gaps} ${gaps === 1 ? 'detail' : 'details'} missing` : `Open the ${r.kind} as it stands`}
+        onClick={(ev) => {
+          ev.stopPropagation()
+          onOpenPaper(r)
+        }}
+        style={{ ...tag(r.kind), display: 'inline-flex', alignItems: 'center', gap: 5, border: 'none', font: 'inherit', fontSize: '0.68rem', cursor: 'pointer', ...(isMobile ? { minHeight: 28 } : null) }}
+      >
+        {KIND_WORDS[r.kind]}
+        {gaps == null ? null : gaps > 0 ? (
+          <span data-testid="lien-paper-gap-count" style={{ background: '#dc2626', color: '#fff', borderRadius: 999, minWidth: 14, height: 14, display: 'inline-grid', placeItems: 'center', fontSize: '0.6rem', padding: '0 4px', lineHeight: 1 }}>{gaps}</span>
+        ) : (
+          <span data-testid="lien-paper-gap-ok" aria-label="nothing missing" style={{ color: 'var(--text-green-700)', fontSize: '0.7rem', lineHeight: 1 }}>✓</span>
+        )}
       </button>
     )
   }
@@ -152,7 +184,7 @@ export default function LienDeskNextUp({
               return isMobile ? (
                 <div key={r.key} data-lien-next-up-row={r.key} data-dim={dim ? 'yes' : undefined} style={{ border: '1px solid var(--border)', borderRadius: 9, padding: '0.6rem 0.7rem', display: 'grid', gap: 6, background: 'var(--surface)', opacity: dim ? 0.3 : 1 }}>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                    <span style={tag(r.kind)}>{KIND_WORDS[r.kind]}</span>
+                    {chip(r)}
                     {mark(r)}
                     {due ? <span style={{ fontSize: '0.78rem', fontWeight: 600, color: dueColor(r) }}>{due}</span> : null}
                   </div>
@@ -168,7 +200,7 @@ export default function LienDeskNextUp({
                   onClick={() => onAct(r)}
                   style={{ display: 'grid', gridTemplateColumns: '84px minmax(0, 1.2fr) 86px minmax(0, 1.4fr) 170px auto', gap: '0.75rem', alignItems: 'center', padding: '0.5rem 0.8rem', borderTop: i === 0 ? 'none' : '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', opacity: dim ? 0.3 : 1 }}
                 >
-                  <span><span style={tag(r.kind)}>{KIND_WORDS[r.kind]}</span></span>
+                  <span>{chip(r)}</span>
                   <span style={{ minWidth: 0, overflow: 'hidden' }}>{title(r, { fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' })}</span>
                   <span>{mark(r)}</span>
                   <span style={{ color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.sub}>{r.sub}</span>

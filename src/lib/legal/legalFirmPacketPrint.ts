@@ -11,7 +11,7 @@
 import { formatLegalMoney, type LegalPacket } from './legalPacket'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { envelopeAnswersWords, envelopeKindWords, envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords } from './legalLienPaper'
-import { firmEntryKindWords, firmFeeKindWords, firmHistoryKindWords, firmSaidKindWords, firmSaidRecordedBy, legalFirmStageWords } from './legalFirmWords'
+import { firmEntryKindWords, firmFeeKindWords, firmHistoryKindWords, firmJobRecordWords, firmSaidKindWords, firmSaidRecordedBy, legalFirmStageWords } from './legalFirmWords'
 import { lienFirmNext } from '../jobs/lienTimeline'
 import type { LegalEntryRow } from './legalMatters'
 import type { LegalPortalParticulars } from './legalPortalPayload'
@@ -33,17 +33,6 @@ function row(cells: string[], num: boolean[] = []): string {
 function table(head: string[], rows: string[], empty: string, foot?: string): string {
   if (rows.length === 0) return `<p class="muted">${esc(empty)}</p>`
   return `<table><thead><tr>${head.map((h) => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody>${foot ? `<tfoot>${foot}</tfoot>` : ''}</table>`
-}
-
-/** A job's record for the claim, as facts: what is on file, and what is not. */
-export function firmJobRecordWords(j: LegalPacket['account']['jobs'][number]): string {
-  if (j.contract.kind === 'signed') {
-    const when = j.contract.signedAt ? ` ${calendarYmdInAppTzFromIso(j.contract.signedAt)}` : ''
-    const who = j.contract.signerName ? ` by ${j.contract.signerName}` : ''
-    return `signed agreement${when}${who}`
-  }
-  if (j.swornMissing.length === 0) return 'bill sent, crew on site with GPS, no dispute logged'
-  return `on file: ${['bill sent', 'crew on site with GPS', 'no dispute logged'].filter((f) => !j.swornMissing.some((m) => (f === 'bill sent' && m.startsWith('a bill')) || (f === 'crew on site with GPS' && m.startsWith('field evidence')) || (f === 'no dispute logged' && m.startsWith('no dispute')))).join(', ') || 'nothing yet'} · missing: ${j.swornMissing.join(', ')}`
 }
 
 /** The firm's fees and costs, less the contingency the office books when it applies a recovery (that is the firm's share, not a cost the debtor owes). */

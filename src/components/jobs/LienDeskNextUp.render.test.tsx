@@ -154,3 +154,35 @@ describe('LienDeskNextUp · the steps (v2.4631)', () => {
     expect(screen.queryByTestId('lien-step-card')).toBeNull()
   })
 })
+
+describe('LienDeskNextUp · the chip as a door to the paper (v2.4632)', () => {
+  it('with onOpenPaper the chip is a button that opens the paper and not the row, wears the gap count or a tick; a run row and retainage stay plain', () => {
+    const onAct = vi.fn()
+    const onOpenPaper = vi.fn()
+    const rows = [
+      row({ action: 'find_owner', sub: 'Needs the owner of record', button: 'Find the owner' }),
+      row({ key: 'notice:j2', jobId: 'j2', title: '651 · ATI Schertz II', action: 'approve', button: 'Approve' }),
+      row({ key: 'run:gc1', jobId: null, title: 'Loberg Contracting', action: 'send_run', button: 'Send the run', target: { open: 'run', gcId: 'gc1' } }),
+      row({ key: 'retainage:j3', jobId: 'j3', kind: 'retainage', title: '700 · Retainage', action: 'draft', button: 'Draft notice', target: { open: 'retainage', jobId: 'j3' } }),
+    ]
+    render(<LienDeskNextUp rows={rows} loading={false} isMobile={false} onAct={onAct} onOpenPaper={onOpenPaper} gapsFor={(r) => (r.jobId === 'j1' ? 1 : 0)} />)
+    const door = screen.getByTestId('lien-next-up-paper-j1-notice')
+    expect(door.tagName).toBe('BUTTON')
+    expect(door.className).toBe('lienPaperDoor')
+    expect(door.getAttribute('title')).toBe('Open the notice as it stands: 1 detail missing')
+    expect(within(door).getByTestId('lien-paper-gap-count').textContent).toBe('1')
+    expect(within(screen.getByTestId('lien-next-up-paper-j2-notice')).getByTestId('lien-paper-gap-ok')).toBeTruthy()
+    fireEvent.click(door)
+    expect(onOpenPaper).toHaveBeenCalledTimes(1)
+    expect(onOpenPaper.mock.calls[0]![0].key).toBe('notice:j1')
+    expect(onAct).not.toHaveBeenCalled()
+    expect(screen.queryByTestId('lien-next-up-paper-j3-retainage')).toBeNull()
+    const run = document.querySelector('[data-lien-next-up-row="run:gc1"]') as HTMLElement
+    expect(within(run).queryByRole('button', { name: /Notice/ })).toBeNull()
+  })
+  it('without onOpenPaper the chip is the plain tag', () => {
+    render(<LienDeskNextUp rows={[row({})]} loading={false} isMobile={false} onAct={() => {}} />)
+    expect(screen.queryByTestId('lien-next-up-paper-j1-notice')).toBeNull()
+    expect(screen.getByText('Notice').tagName).toBe('SPAN')
+  })
+})

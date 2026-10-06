@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import { LIEN_KIND_UNKNOWN_WORDS, lienDateWords, lienFirmNext, lienFirmWaitingOn, lienMoveWords, lienWindowSpan, type LienTimeline, type LienTimelineMove, type LienTimelineStep } from '../../lib/jobs/lienTimeline'
+import { LIEN_KIND_UNKNOWN_WORDS, keepDatesWhole, lienDateWords, lienFirmNext, lienFirmWaitingOn, lienMoveWords, lienWindowSpan, type LienTimeline, type LienTimelineMove, type LienTimelineStep } from '../../lib/jobs/lienTimeline'
 import { daysBetweenYmd } from '../../lib/jobs/billedExpectedPay'
 import { setLienTimelineView, useLienTimelineView, type LienTimelineView } from '../../hooks/useLienTimelineView'
 
@@ -293,8 +293,8 @@ export default function LienTimelineStrip({ timeline, voice = 'office', layout: 
                 {s.move ? <MovePill move={s.move} voice={voice} style={{ marginRight: '0.4rem', verticalAlign: 1 }} /> : null}
                 <span style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>{s.label}</span>
                 <span style={{ margin: '0 0.4rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: s.state === 'undated' || s.state === 'blocked' ? 'var(--text-muted)' : 'var(--text-strong)' }}>{s.dateWords}</span>
-                {s.opensWords ? <span data-lien-timeline-opens style={{ color: 'var(--text-green-800)', fontWeight: 600, marginRight: '0.4rem' }}>{s.opensWords} ·</span> : null}
-                <span style={{ color: wordsColor(s) }}>{s.fold ? <FoldWords s={s} /> : s.words}</span>
+                {s.opensWords ? <span data-lien-timeline-opens style={{ color: 'var(--text-green-800)', fontWeight: 600, marginRight: '0.4rem' }}>{keepDatesWhole(s.opensWords)} ·</span> : null}
+                <span style={{ color: wordsColor(s) }}>{s.fold ? <FoldWords s={s} /> : keepDatesWhole(s.words)}</span>
                 {s.fold ? <span style={{ marginLeft: '0.4rem', fontSize: '0.75rem' }}>{foldDoor(s)}</span> : null}
                 {s.door && onDoor ? (
                   <button type="button" onClick={() => onDoor(s.door!)} style={{ marginLeft: '0.4rem', border: 'none', background: 'none', color: 'var(--text-link)', font: 'inherit', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', padding: 0 }}>
@@ -330,11 +330,11 @@ export default function LienTimelineStrip({ timeline, voice = 'office', layout: 
             <div key={s.key} data-lien-timeline-step={s.key} title={s.fold ? foldTitle(s, timeline.todayYmd) : `${s.label}${s.dateWords ? ` · ${s.dateWords}` : ''}${s.words ? ` · ${s.words}` : ''}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '0 2px', minWidth: 0, fontSize: mini ? '0.68rem' : '0.72rem', lineHeight: 1.25, height: '100%' }}>
               <Node s={s} size={nodeSize} />
               {mini ? null : <span style={{ marginTop: 3, fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.03em', textTransform: 'uppercase', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{s.label}</span>}
-              {!mini && s.opensWords ? <span data-lien-timeline-opens style={{ color: 'var(--text-green-800)', fontWeight: 600, maxWidth: '100%' }}>{s.opensWords}</span> : null}
+              {!mini && s.opensWords ? <span data-lien-timeline-opens style={{ color: 'var(--text-green-800)', fontWeight: 600, maxWidth: '100%' }}>{keepDatesWhole(s.opensWords)}</span> : null}
               <span style={{ marginTop: mini ? 2 : 1, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: s.state === 'undated' || s.state === 'blocked' ? 'var(--text-muted)' : 'var(--text-strong)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{mini ? miniDateWords(s.dateWords) : s.dateWords}</span>
               {mini ? null : (
                 <span style={{ color: wordsColor(s), maxWidth: '100%' }}>
-                  {s.fold ? <FoldWords s={s} /> : s.words}
+                  {s.fold ? <FoldWords s={s} /> : keepDatesWhole(s.words)}
                   {s.fold ? (
                     <>
                       <br />

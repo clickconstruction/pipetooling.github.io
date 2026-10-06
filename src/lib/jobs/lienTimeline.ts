@@ -207,6 +207,17 @@ export interface LienTimelineInput {
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
+/**
+ * A date never breaks across lines (v2.4633, the owner's ask: *Aug 1 goes to the second line if the 1 does*):
+ * the spaces inside `Aug 1`, `Jan 17, 2028` and `Sep 2026` become no-break spaces, so a narrow
+ * column wraps before the date, never inside it. The words around the date still wrap.
+ */
+export function keepDatesWhole(text: string): string {
+  return text
+    .replace(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{1,2})(, (\d{4}))?\b/g, (_m, mon: string, day: string, _y, year?: string) => `${mon}\u00a0${day}${year ? `,\u00a0${year}` : ''}`)
+    .replace(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{4})\b/g, '$1\u00a0$2')
+}
+
 /** `Oct 15`, or `Oct 15, 2027` when the year is not this one. */
 export function lienDateWords(ymd: string, todayYmd: string): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(ymd ?? '')

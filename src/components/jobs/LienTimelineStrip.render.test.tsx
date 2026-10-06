@@ -87,7 +87,7 @@ describe('LienTimelineStrip — whose move, the demand letter, Waiting on (v2.38
     const letter = container.querySelector('[data-lien-timeline-step="demand"]')!
     expect(letter.textContent).toContain('Demand letter')
     expect(letter.textContent).toContain('reply by Sep 28')
-    expect(letter.textContent).toContain('tomorrow · sent Sep 14 · $8,940')
+    expect(letter.textContent).toContain('tomorrow · sent Sep\u00a014 · $8,940')
     expect(letter.querySelector('[data-lien-timeline-move="gc"]')?.textContent).toBe('the GC')
     expect((letter.querySelector('span[aria-hidden]') as HTMLElement).style.borderRadius).toBe('3px')
     expect(container.querySelector('[data-lien-timeline-step="affidavit"] [data-lien-timeline-move="ours"]')?.textContent).toBe('ours')
