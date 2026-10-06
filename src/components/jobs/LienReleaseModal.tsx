@@ -55,6 +55,7 @@ import { MarkedWaiverAmount, WaiverCoveredNote, WaiverMathBox, WaiverPaidNote } 
 import { LienReleaseStepRow, LienWaiverSignedLook } from './LienReleaseStepRow'
 import { MoneyTypingInput } from '../MoneyTypingInput'
 import { lienReleaseSteps, releaseStepLookNote, releaseStepPagePart } from '../../lib/jobs/lienReleaseSteps'
+import { lienReleaseBillStatusWord, lienReleaseOpening, lienReleaseSelectableInvoices } from '../../lib/jobs/lienReleaseOpening'
 import { lienWaiverAlreadyCovered, lienWaiverAmountMath, lienWaiverPaidUnwaived } from '../../lib/jobs/lienWaiverAmountMath'
 import {
   customerAddressLienGaps,
@@ -154,19 +155,6 @@ function lienChipStyle(c: LienReleaseChip): React.CSSProperties {
     default:
       return { ...base, background: 'var(--bg-subtle)', color: 'var(--text-muted)', border: '1px solid var(--border)' }
   }
-}
-
-/** Bill lines the release can cover — anything already minted for billing. */
-function selectableInvoices(job: JobWithDetails): JobsLedgerInvoice[] {
-  return (job.invoices ?? [])
-    .filter((i) => i.status === 'billed' || i.status === 'ready_to_bill')
-    .slice()
-    .sort((a, b) => a.sequence_order - b.sequence_order)
-}
-
-/** The conditional form of the same kind: a final stays a final. */
-function conditionalFormOf(formType: LienWaiverFormType): LienWaiverFormType {
-  return lienWaiverFormFrom({ conditional: true, final: formType.endsWith('final') })
 }
 
 export default function LienReleaseModal({
@@ -414,32 +402,32 @@ export default function LienReleaseModal({
   const resolvedProperty = useMemo(() => resolveLienProperty(linkedAddress, jobOwnerRow), [linkedAddress, jobOwnerRow])
   const ownerName = useMemo(() => lienPropertyOwnerDisplayName(resolvedProperty.owner) || null, [resolvedProperty])
 
-  const invoices = useMemo(() => (job ? selectableInvoices(job) : []), [job])
+  // #87 I: a paid bill is a line a release can cover — what an unconditional is for.
+  const invoices = useMemo(() => (job ? lienReleaseSelectableInvoices(job.invoices) : []), [job])
 
   // Open-reset: default the selection to the row's invoice, else billed lines, else everything selectable.
   useEffect(() => {
     if (!open || !job) return
-    setFormType(initialFormType ?? 'conditional_progress')
-    openUnconditionalAskRef.current = initialFormType && !isConditionalLienForm(initialFormType) ? { preset: true, fallback: conditionalFormOf(initialFormType) } : null
     setReleaseRow(null)
     setAutosaveState('idle')
     setSignOpen(false)
     userTouchedRef.current = false
     signerTouchedRef.current = false
     hydratedDraftRef.current = false
-    const selectable = selectableInvoices(job)
-    if (invoice && selectable.some((i) => i.id === invoice.id)) {
-      setSelectedInvoiceIds(new Set([invoice.id]))
-      // The bill picks its own form (v2.4274) unless the opener asked for one.
-      if (!initialFormType) {
-        const pickedForm = pickLienWaiverForBill(job, invoice).formType
-        setFormType(pickedForm)
-        if (!isConditionalLienForm(pickedForm)) openUnconditionalAskRef.current = { preset: false, fallback: conditionalFormOf(pickedForm) }
-      }
-      return
-    }
-    const billed = selectable.filter((i) => i.status === 'billed')
-    setSelectedInvoiceIds(new Set((billed.length > 0 ? billed : selectable).map((i) => i.id)))
+    // The row's bill alone, picking its own form (v2.4274) unless the opener asked for one; else the billed
+    // lines. A paid bill (#87 I) is selected only when it is the row's bill — Add the unconditional's.
+    const opening = lienReleaseOpening({
+      selectable: lienReleaseSelectableInvoices(job.invoices),
+      invoiceId: invoice?.id ?? null,
+      initialFormType: initialFormType ?? null,
+      formForBill: (id) => {
+        const bill = (job.invoices ?? []).find((i) => i.id === id)
+        return bill ? pickLienWaiverForBill(job, bill).formType : 'conditional_progress'
+      },
+    })
+    setFormType(opening.formType)
+    openUnconditionalAskRef.current = opening.askUnconditional
+    setSelectedInvoiceIds(new Set(opening.invoiceIds))
   }, [open, job?.id, invoice?.id, initialFormType])
 
   // Resume the newest live draft (v2.2619) — and, since v2.2641, a pending
@@ -1195,7 +1183,7 @@ export default function LienReleaseModal({
                         disabled={!editable}
                         aria-pressed={on}
                         onClick={() => toggleInvoice(i.id)}
-                        title={`${i.status === 'billed' ? 'Billed' : 'Ready to bill'} — $${Number(i.amount ?? 0).toLocaleString('en-US')} (open $${openRem.toLocaleString('en-US')})`}
+                        title={`${lienReleaseBillStatusWord(i.status)} — $${Number(i.amount ?? 0).toLocaleString('en-US')} (open $${openRem.toLocaleString('en-US')})`}
                         style={{
                           padding: '0.35rem 0.7rem',
                           fontSize: '0.8125rem',
