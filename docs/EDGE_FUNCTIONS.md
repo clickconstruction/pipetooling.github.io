@@ -121,6 +121,7 @@ when_to_read:
    - [send-rfq-email](#send-rfq-email)
    - [customer-portal](#customer-portal)
    - [submit-portal-request](#submit-portal-request)
+   - [sign-owner-records](#sign-owner-records)
    - [bid-basis-grant](#bid-basis-grant)
    - [sub-portal](#sub-portal)
    - [submit-sub-portal](#submit-sub-portal)
@@ -1173,6 +1174,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 ### customer-portal
 
+> **v2.4650 — records for an owner**: the payload gains `ownerRecords` — the request the office offered on this portal and has not sent (`lien_owner_record_requests` for the link's customer with `file.offer` and no `sent_at`): `{ id, address, ownerName, offeredOn, signed: { on, name } | null }`, or null. The packet itself is never in the payload.
+
 > **v2.4596 — a second signer**: *Your agreements* reads the frames. The select adds `recipient_name, signer_consented_at, co_signer_name, co_signed_at, co_signer_printed_name`, and the function names who signed through [`_shared/jobContractSigners.ts`](../supabase/functions/_shared/jobContractSigners.ts), the kernel the app reads too (v2.4590). `signerName` is both signers on a two-frame agreement. A part-signed one gains `signingProgress` (*Sam Owner signed · waiting on Alex Owner*), which the page shows in place of *Waiting for your signature*. An older client ignores the new field. **Redeploy required.**
 
 > **v2.4456 — an instant reads its own day**: the payload's days cut from a `timestamptz` read in `APP_CALENDAR_TZ` (`todayYmdInAppTz(new Date(iso))`), not as the UTC date: `billedOn` on `bills` and `sharedBills` ([`_shared/portalMergedBills.ts`](../supabase/functions/_shared/portalMergedBills.ts)), `checks.jobs[].invoices[].billed_at` ([`_shared/portalChecks.ts`](../supabase/functions/_shared/portalChecks.ts)), a notice's fallback `mailedOn` ([`_shared/portalPropertyNotices.ts`](../supabase/functions/_shared/portalPropertyNotices.ts)), and a waiver's `ymd` and `billedYmd` ([`_shared/portalWaivers.ts`](../supabase/functions/_shared/portalWaivers.ts)). Redeploy after merge.
@@ -1224,6 +1227,12 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 **Who counts** (v2.2875, journey-map #37): the row is skipped when the request is an office peek — `?preview=1` (the globe modal's iframe / Preview as customer / Full screen / Edit-chips fetch add it; `CustomerPortal.tsx` forwards it) **or** an `Authorization` bearer that is a verifiable user access token (the page sends the browser's own session when it has one; `admin.auth.getUser` checks it — any valid account is staff, since customers never sign in). Shared decision: [`_shared/publicViewCounting.ts`](../supabase/functions/_shared/publicViewCounting.ts) `publicViewDecision(req, admin, anonKey)`, twin + tests in `src/lib/publicViewCounting*.ts`. Unverifiable tokens count as customers. **Staff-only payload block**: when the session verifies, the response also carries `officeViewStats: { opens, lastOpenedAt }` — the customer's own view rows, read with the service role — which feeds the globe gear's **Opened** row ("Opened 3 times · last Sep 3"). A customer's payload never includes it.
 
 **Receipt landings** (v2.2878, journey-map J22-F3): the Stripe invoice footer's portal link carries `?paid=1`, and the page then calls `…customer-portal?token=…&return=stripe`; a refetch after a PAY ONLINE tab sends `return=refresh` (bounded: immediate, +6 s, +20 s). `return=stripe` logs one structured **`portal_return_from_stripe`** line (`customer_id`, `audience`, `via`) and `portal_statement_rendered` gains `return_from` — function-log telemetry like the statement line, because `public_page_views.via` is CHECK-limited to `token`/`slug`. Refetches still append a view row each; skipping `return=refresh` in the counter belongs to the view-counting work (#37). **Redeploy required.**
+
+### sign-owner-records
+
+**Purpose** (v2.4650, punch list #86 PR 1): an owner of record signs the acknowledgment of a records request on their portal. POST `{ token, requestId, printedName, mode: 'type' | 'draw', signaturePngBase64?, esignConsent }`. The portal link is the capability (raw token or its hash, as `customer-portal` reads it; `verify_jwt = false`). The request must belong to the link's customer, carry `file.offer` (the office pressed **Offer it on their portal ›**), and be neither signed nor sent — otherwise 404 / 409 with a plain sentence. The name must match the roll's `owner_name` or `file.offer.alsoAllowed` letter for letter ([`_shared/ownerNameMatch.ts`](../supabase/functions/_shared/ownerNameMatch.ts)); a miss answers 422 `{ error, nameMismatch: true }` naming the roll's owner. A drawn signature is kept in the private `sent-documents` bucket at `<request id>/acknowledgment-signature-<uuid>.png`; the consent goes to `esign_consents` as `lien_owner_record_request` (migration `20261006040000`). **Writes** `lien_owner_record_requests.file`: `request` (`how: 'portal'`, from the typed name) when none is on file, and `acknowledgment { signedOn, link: '', printedName, mode, signaturePath?, consentedAt }`. Returns `{ ok, signedOn, printedName }`. Nothing is shown to the owner until the office records the packet as sent.
+
+**Reads by**: [`PortalOwnerRecordsCard.tsx`](../src/components/portal/PortalOwnerRecordsCard.tsx), from `customer-portal`'s `ownerRecords` (the offered, unsent request for the link's customer: id, address, the roll's owner name, the offer day, and `signed { on, name }` once signed).
 
 ### submit-portal-request
 
