@@ -10,7 +10,7 @@
  */
 import { formatLegalMoney, legalSessionWords, type LegalPacket } from './legalPacket'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
-import { envelopeAnswersWords, envelopeKindWords, envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords } from './legalLienPaper'
+import { envelopeAnswersWords, envelopeKindWords, envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords, legalLastWorkWords } from './legalLienPaper'
 import { firmEntryKindWords, firmFeeKindWords, firmHistoryKindWords, firmJobRecordWords, firmSaidKindWords, firmSaidRecordedBy, legalFirmStageWords } from './legalFirmWords'
 import { lienFirmNext } from '../jobs/lienTimeline'
 import type { LegalEntryRow } from './legalMatters'
@@ -59,7 +59,7 @@ export function buildFirmPacketPrintHtml(packet: LegalPacket, opts: FirmPacketPr
     const text = c.kind === 'signed' ? `Signed${c.signedAt ? ` ${calendarYmdInAppTzFromIso(c.signedAt)}` : ''}${c.signerName ? ` by ${c.signerName}` : ''} · ${c.source}` : c.kind === 'sent' ? `Sent ${calendarYmdInAppTzFromIso(c.sentAt)} · viewed ${c.viewCount}× · never signed` : 'Draft, never sent'
     return row([`<b>${esc(g.jobLabel)}</b>`, esc(text)])
   })
-  const timelineRows = packet.paper.timelines.flatMap((t) => t.timeline.steps.map((s, i) => row([i === 0 ? `<b>${esc(t.jobLabel)}</b>` : '', i === 0 ? formatLegalMoney(t.openBalance) : '', esc(s.label), esc(s.dateWords), esc(s.state), esc(s.words)], [false, true, false, false, false, false])))
+  const timelineRows = packet.paper.timelines.flatMap((t) => t.timeline.steps.map((s, i) => row([i === 0 ? `<b>${esc(t.jobLabel)}</b>${legalLastWorkWords(t.lastWorkYmd, t.lastWorkSource) ? `<br><span class="muted">${esc(legalLastWorkWords(t.lastWorkYmd, t.lastWorkSource))}</span>` : ''}` : '', i === 0 ? formatLegalMoney(t.openBalance) : '', esc(s.label), esc(s.dateWords), esc(s.state), esc(s.words)], [false, true, false, false, false, false])))
   const nextRows = packet.paper.timelines.map((t) => row([`<b>${esc(t.jobLabel)}</b>`, esc(lienFirmNext(t.timeline.next).words), esc(t.retainageWords || '—')]))
   const demandRows = packet.paper.demandLetters.map((d) => row([`<b>${esc(d.jobLabel)}</b>`, esc(d.sentYmd ?? 'not sent'), esc(d.method), esc(d.tracking || '—'), `${esc(d.deadlineYmd ?? '—')}${d.deadlinePassed ? ' (passed)' : ''}`, formatLegalMoney(d.amount)], [false, false, false, false, false, true]))
   const gcName = a.payer.viaGc ? a.payer.name : 'the general contractor'
@@ -177,7 +177,7 @@ ${table(['Date', 'Entry', 'What happened', 'Amount', 'By'], matterRows, 'Nothing
 ${table(['Date', 'Job', 'Step', 'What happened'], officeStepRows, 'No steps recorded.')}
 <div class="foot">
   ${particularRows.map(([k, v]) => `<span><b>${esc(k)}</b> · ${esc(v)}</span>`).join('')}
-  <span class="all">Prepared from ${esc(opts.companyName)}'s business records as of ${esc(opts.preparedOn)}. Dates in Section B are the app's reading of Chapter 53 from each job's last day on site and the property kind.</span>
+  <span class="all">Prepared from ${esc(opts.companyName)}'s business records as of ${esc(opts.preparedOn)}. Dates in Section B are the app's reading of Chapter 53 from each job's last day of work (its last approved clock day, else its last work date, else its creation month) and the property kind.</span>
 </div>
 </body></html>`
 }

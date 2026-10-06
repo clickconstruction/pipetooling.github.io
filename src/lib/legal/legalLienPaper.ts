@@ -85,11 +85,38 @@ export function workMonthsFromSessions(jobId: string, sessions: ReadonlyArray<Le
   }
 }
 
+/**
+ * Where a job's last day of work comes from (item 25: one fallback chain for the lien clock and the
+ * Paper tab, the same as the timeline kernel's): the last approved clock session, else the job's last
+ * work date, else the day the job was created (the timeline runs its creation month), else nothing.
+ */
+export type LegalLastWorkSource = 'sessions' | 'last_work_date' | 'created' | 'none'
+
+export function legalLastWorkBasis(approvedSessionDays: ReadonlyArray<string>, job: { last_work_date?: string | null; created_at?: string | null }): { ymd: string | null; source: LegalLastWorkSource } {
+  const days = [...approvedSessionDays].filter(Boolean).sort()
+  if (days.length) return { ymd: days[days.length - 1] ?? null, source: 'sessions' }
+  const lw = /^\d{4}-\d{2}-\d{2}/.test(job.last_work_date ?? '') ? String(job.last_work_date).slice(0, 10) : ''
+  if (lw) return { ymd: lw, source: 'last_work_date' }
+  const created = calendarYmdInAppTzFromIso(job.created_at ?? '')
+  if (created) return { ymd: created, source: 'created' }
+  return { ymd: null, source: 'none' }
+}
+
+/** The Paper tab's words for that day, saying where it came from. */
+export function legalLastWorkWords(ymd: string | null, source: LegalLastWorkSource | undefined): string {
+  if (!ymd || source === 'none') return ''
+  if (source === 'last_work_date') return `last work date on the job ${ymd} (no approved clock session)`
+  if (source === 'created') return `no work date on file: dated from the job's creation month, ${ymd.slice(0, 7)}`
+  return `last approved clock day ${ymd}`
+}
+
 export type LegalJobTimeline = {
   jobId: string
   jobLabel: string
-  /** 'YYYY-MM-DD' of the last approved session, else the ledger's last_work_date; null when neither. */
+  /** 'YYYY-MM-DD' of the last approved session, else the ledger's last_work_date, else the job's creation day (`legalLastWorkBasis`); null when none. */
   lastWorkYmd: string | null
+  /** Which of those it is. */
+  lastWorkSource?: LegalLastWorkSource
   openBalance: number
   timeline: LienTimeline
   /** The § 53.057 facts the job row carries — `contract ended Nov 30 · retainage held $2,400 · payment bond on the project`; '' when the row holds none. */
@@ -126,6 +153,8 @@ export function buildLegalJobTimelines(args: {
   labelOf: (jobId: string) => string
   openBalanceOf: (jobId: string) => number
   lastWorkOf: (jobId: string) => string | null
+  /** Where `lastWorkOf`'s day came from (item 25); absent for an older caller. */
+  lastWorkSourceOf?: (jobId: string) => LegalLastWorkSource
   sessions: ReadonlyArray<LegalPaperSessionLike>
   filings: ReadonlyArray<JobLienFilingRow>
   propertyKind: string
@@ -146,7 +175,7 @@ export function buildLegalJobTimelines(args: {
       openBalance,
       todayYmd: args.todayYmd,
     })
-    return { jobId: j.id, jobLabel: args.labelOf(j.id), lastWorkYmd: args.lastWorkOf(j.id), openBalance, timeline, retainageWords: retainageWordsFor(j, args.todayYmd) }
+    return { jobId: j.id, jobLabel: args.labelOf(j.id), lastWorkYmd: args.lastWorkOf(j.id), lastWorkSource: args.lastWorkSourceOf?.(j.id), openBalance, timeline, retainageWords: retainageWordsFor(j, args.todayYmd) }
   })
 }
 
