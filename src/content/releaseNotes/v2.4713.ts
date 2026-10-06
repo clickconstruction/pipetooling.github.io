@@ -1,7 +1,7 @@
 import type { ReleaseNote } from '../../lib/releaseNotes'
 
 const note: ReleaseNote = {
-  version: 'v2.4708',
+  version: 'v2.4713',
   date: '2026-10-07',
   title: 'Lien desk: offer a discount if they pay before the lien',
   kind: 'feature',

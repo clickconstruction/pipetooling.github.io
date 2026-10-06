@@ -100,7 +100,7 @@ describe("the pay page — the GC's copy and the empty cases", () => {
   })
 })
 
-describe('the pay page — the pay offer (v2.4708)', () => {
+describe('the pay page — the pay offer (v2.4713)', () => {
   const offer = { pct: 10, by: '2026-11-15' }
   it('puts the boxed sentence under the title, both amounts on every Stripe row, the payer on the rule line and the lower total at the end', () => {
     const blocks = payPageBlocks({ ...base, copy: 'owner', offer })
