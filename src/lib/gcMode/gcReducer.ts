@@ -18,6 +18,7 @@ import { withNewBaseline } from './gcBaseline'
 import { actualProblem, withReportedActuals } from './gcActualDates'
 import { LATE_REASONS, lateDoor, lateKeepLogWords, lateNoticeLogWords, lateNoticeProblem, lateNoticeState, latePushBackLogWords, lateTarget, nextLateNoticeId } from './gcLateNotices'
 import { planPull, pullCountWords, pullMove } from './gcPullEarlier'
+import { recoveryMove, recoveryOffers } from './gcRecovery'
 import { customerScheduleLetter, scheduleSendRecord } from './gcCustomerScheduleSend'
 import { lostWhyLabel } from './gcLost'
 import { daysBetween, draftSchedule, pushAfter, pushedAfterWords, scheduleLinesOf, withBaselineKept } from './gcBuildingSchedule'
@@ -1128,7 +1129,8 @@ function reduce(state: GcState, action: GcAction): GcState {
       const ids = new Set(schedule.activities.map((a) => a.lineId))
       const after = [...new Set(action.after)].filter((id) => id !== activity.lineId && ids.has(id))
       // The gap after each wait, the day it cannot start before, the day it must finish by (G-35, G-36): kept as sent, dropped when null.
-      const lag = action.lag === undefined ? activity.lag : Object.fromEntries(Object.entries(action.lag).filter(([id, days]) => after.includes(id) && days > 0))
+      // A gap below zero starts it before the wait finishes, side by side (G-82). Zero is no gap.
+      const lag = action.lag === undefined ? activity.lag : Object.fromEntries(Object.entries(action.lag).filter(([id, days]) => after.includes(id) && Number.isFinite(days) && days !== 0))
       const notBefore = action.notBefore === undefined ? activity.notBefore : (action.notBefore ?? undefined)
       const mustFinishBy = action.mustFinishBy === undefined ? activity.mustFinishBy : (action.mustFinishBy ?? undefined)
       const sameLimits = JSON.stringify(lag ?? {}) === JSON.stringify(activity.lag ?? {}) && notBefore === activity.notBefore && mustFinishBy === activity.mustFinishBy
@@ -2755,6 +2757,23 @@ function reduce(state: GcState, action: GcAction): GcState {
       const rough = { start: action.start, days, by: action.by, on: state.today }
       const next = mapProject(state, project.id, (p) => ({ ...p, rough }))
       return logged(next, 'office', roughDrawnWords({ ...project, rough }) ?? `Drew a rough schedule for our bid on ${project.name}.`)
+    }
+
+    case 'recoverScheduleDays': {
+      // Days got back on a late job (G-82): one offer, re-planned from the state by its key, saved as
+      // one move with why. On the office's press, never by itself; a stale press does nothing.
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const schedule = project?.schedule
+      if (!project || !schedule || moveWhyProblem(action.why.reason, action.why.note)) return state
+      const offer = recoveryOffers(state, project).find((o) => o.key === action.key)
+      if (!offer) return state
+      const move = recoveryMove(schedule, offer, action.why, state.today)
+      const kept = withBaselineKept(project, schedule)
+      return logged(
+        mapProject(state, project.id, (p) => ({ ...p, schedule: { ...kept, activities: offer.activities, moves: [move, ...(schedule.moves ?? [])] } })),
+        'office',
+        `${action.why.by} got ${offer.daysBack} ${offer.daysBack === 1 ? 'day' : 'days'} back on ${project.name}. ${offer.words.title}`,
+      )
     }
   }
 }

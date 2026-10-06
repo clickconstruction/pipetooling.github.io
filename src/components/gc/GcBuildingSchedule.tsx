@@ -68,6 +68,8 @@ import { barCaller, callList, callListFollowPeople, callSheetId } from '../../li
 import { GcBarCaller, GcCallList } from './GcCallList'
 import { GcFollowUpSheet } from './GcFollowUpSheet'
 import { lateFinish, type LateFinish } from '../../lib/gcMode/gcLateFinish'
+import { recoveryOffers, sideBySideWords, type RecoveryOffer } from '../../lib/gcMode/gcRecovery'
+import { GcDaysBack } from './GcRecovery'
 
 /**
  * GC mode design spike: the schedule (Building lane, owner's shape 2026-10-02). Each activity is a
@@ -94,6 +96,8 @@ export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps)
   const m = useMemo(() => scheduleMeasures(state, project), [state, project])
   // The finish against the contract (G-98): the days, the money at its fee, whose days, the change orders. One call for every count.
   const late = useMemo(() => lateFinish(state, project), [state, project])
+  // How to get days back (G-82): on a job past its contract, the offers on the red chain.
+  const offers = useMemo(() => (project.stage === 'building' && (late.late ?? 0) > 0 ? recoveryOffers(state, project) : []), [state, project, late])
   const [picked, setPicked] = useState<string | null>(null)
   // What holds each bar (gcChartHolds.ts): RFIs, submittals, waits, and a trade's papers not in (G-77).
   const holds = useMemo(() => chartHolds(state, project), [state, project])
@@ -182,7 +186,7 @@ export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps)
       <ScheduleWhy />
 
       {building ? (
-        <Measures m={m} late={late} />
+        <Measures m={m} late={late} {...(offers[0] ? { best: offers[0] } : {})} />
       ) : (
         <Card>
           <strong>Drawing the schedule.</strong>{' '}
@@ -194,6 +198,9 @@ export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps)
           {firstDraftAgainstBid(project) && <div data-tour="gc-draft-vs-bid" style={{ marginTop: '0.35rem' }}>{firstDraftAgainstBid(project)}</div>}
         </Card>
       )}
+
+      {/* How to get days back (G-82): only on a job past its contract, where someone asks. */}
+      {building && (late.late ?? 0) > 0 && <GcDaysBack state={state} project={project} offers={offers} dispatch={dispatch} />}
 
       {pickedRow && (
         <div data-gc-opened-activity>
@@ -433,13 +440,14 @@ function ActivityEditor({
   const actualChanged = (actualStart || undefined) !== a.actualStart || (actualFinish || undefined) !== a.actualFinish
   const actualBad = actualProblem(actualStart || undefined, actualFinish || undefined, today)
   const limits: MoveLimits = { lag, notBefore: notBefore || null, mustFinishBy: mustFinishBy || null }
-  const limitsChanged = JSON.stringify(Object.fromEntries(Object.entries(lag).filter(([id, d]) => after.includes(id) && d > 0))) !== JSON.stringify(a.lag ?? {}) || (notBefore || undefined) !== a.notBefore || (mustFinishBy || undefined) !== a.mustFinishBy
+  const limitsChanged = JSON.stringify(Object.fromEntries(Object.entries(lag).filter(([id, d]) => after.includes(id) && d !== 0))) !== JSON.stringify(a.lag ?? {}) || (notBefore || undefined) !== a.notBefore || (mustFinishBy || undefined) !== a.mustFinishBy
   const bad = !start || !finish || finish < start || (notBefore !== '' && start < notBefore)
   const changed = start !== a.start || finish !== a.finish || after.join() !== a.after.join() || limitsChanged
   const others = rows.filter((r) => r.activity.lineId !== a.lineId)
   const trades = [...new Set(others.map((r) => r.pkg?.id ?? ''))]
   // What it waits on, finishing after it starts: it cannot start on the day drawn.
-  const late = others.filter((r) => after.includes(r.activity.lineId) && r.activity.finish >= start)
+  // A wait it is meant to overlap, side by side (a gap below zero, G-82), is no warning.
+  const late = others.filter((r) => after.includes(r.activity.lineId) && r.activity.finish >= start && !((lag[r.activity.lineId] ?? 0) < 0 && addDays(r.activity.finish, 1 + (lag[r.activity.lineId] ?? 0)) <= start))
   // What comes after it moves out with it on Save (owner, 2026-10-04).
   const moves = bad
     ? ''
@@ -502,12 +510,13 @@ function ActivityEditor({
                     <span>
                       {activityName(r)} <span style={{ color: 'var(--text-muted)' }}>· ends {shortDate(r.activity.finish)}</span>
                     </span>
-                    {/* A gap after it finishes: cure time, a lead time (G-35). */}
+                    {/* A gap after it finishes: cure time, a lead time (G-35). Below zero it starts before that work finishes, side by side (G-82), never before it starts. */}
                     {after.includes(r.activity.lineId) && (
                       <span style={{ display: 'inline-flex', gap: '0.25rem', alignItems: 'center', color: 'var(--text-muted)', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
-                        +
-                        <input type="number" min={0} value={lag[r.activity.lineId] ?? 0} onChange={(e) => setLag((was) => ({ ...was, [r.activity.lineId]: Math.max(0, Number(e.target.value) || 0) }))} aria-label={`Days of gap after ${activityName(r)}`} style={{ ...input, width: '3.4rem', height: 24, padding: '0 0.3rem' }} />
+                        {(lag[r.activity.lineId] ?? 0) >= 0 ? '+' : ''}
+                        <input type="number" min={-daysBetween(r.activity.start, r.activity.finish)} value={lag[r.activity.lineId] ?? 0} onChange={(e) => setLag((was) => ({ ...was, [r.activity.lineId]: Math.max(-daysBetween(r.activity.start, r.activity.finish), Number(e.target.value) || 0) }))} aria-label={`Days of gap after ${activityName(r)}`} style={{ ...input, width: '3.4rem', height: 24, padding: '0 0.3rem' }} />
                         days
+                        {(lag[r.activity.lineId] ?? 0) < 0 && <span>: starts {sideBySideWords(-(lag[r.activity.lineId] ?? 0), r.label)}</span>}
                       </span>
                     )}
                   </label>
@@ -1158,7 +1167,7 @@ function TradePick({ project, value, onChange }: { project: GcProject; value: st
 // The measures
 // ---------------------------------------------------------------------------------------------
 
-function Measures({ m, late }: { m: ReturnType<typeof scheduleMeasures>; late?: LateFinish }) {
+function Measures({ m, late, best }: { m: ReturnType<typeof scheduleMeasures>; late?: LateFinish; best?: RecoveryOffer }) {
   const behind = m.work.daysBehind
   const nextMilestone = m.milestones.find((r) => r.state === 'due')
   const lateOnes = m.milestones.filter((r) => r.state === 'late' || r.state === 'missed')
@@ -1193,7 +1202,7 @@ function Measures({ m, late }: { m: ReturnType<typeof scheduleMeasures>; late?: 
       >
         {rel.done} of {rel.of} verified marks were done. {rel.waiting > 0 ? `${rel.waiting} ${rel.waiting === 1 ? 'mark waits' : 'marks wait'} on our superintendent.` : ''}
       </Measure>
-      {m.finish && <FinishMeasure finish={m.finish} contract={m.contract} {...(late ? { late } : {})} />}
+      {m.finish && <FinishMeasure finish={m.finish} contract={m.contract} {...(late ? { late } : {})} {...(best ? { best } : {})} />}
     </div>
   )
 }
@@ -1208,7 +1217,7 @@ function finishSentence(finish: ProjectedFinish, contract: ReturnType<typeof sub
   return `${finish.why} ${contract ? `The contract says substantial completion by ${shortDate(contract.on)}${contract.days > 0 ? `, with ${days(contract.days)} by change order` : ''}.` : 'No substantial completion milestone to measure against.'}`
 }
 
-function FinishMeasure({ finish, contract, late }: { finish: ProjectedFinish; contract: ReturnType<typeof substantialCompletionOn>; late?: LateFinish }) {
+function FinishMeasure({ finish, contract, late, best }: { finish: ProjectedFinish; contract: ReturnType<typeof substantialCompletionOn>; late?: LateFinish; best?: RecoveryOffer }) {
   const days = (n: number) => `${n} ${n === 1 ? 'day' : 'days'}`
   // The days past come from the one call Bill the customer and the customer's words read too (G-98).
   const past = late ? late.risk.past : contract ? daysBetween(contract.on, finish.on) : null
@@ -1232,6 +1241,12 @@ function FinishMeasure({ finish, contract, late }: { finish: ProjectedFinish; co
           {late.words.map((w) => (
             <span key={w}>{w}</span>
           ))}
+        </span>
+      )}
+      {/* What the best way to get days back is worth against the contract (G-82), under G-98's lines. An offer, not a fact, so not on the paper: the list is under the measures. */}
+      {late && late.words.length > 0 && best && (
+        <span data-tour="gc-days-back-worth" style={{ display: 'block', marginTop: '0.15rem', color: best.lateAfter === 0 ? 'var(--text-green-800)' : 'var(--text-base)' }}>
+          Getting {best.words.worth}
         </span>
       )}
     </Measure>

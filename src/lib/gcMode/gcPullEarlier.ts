@@ -199,7 +199,6 @@ export function planPull(state: GcState, project: GcProject, leaveOut: string[] 
   if (!schedule || project.stage !== 'building') return null
   const today = state.today
   const list = schedule.activities
-  const byId = new Map(list.map((a) => [a.lineId, a]))
   const items = new Map<string, ScheduleItem>(scheduleItems(state, project).map((i) => [i.activity.lineId, i]))
   const who = (lineId: string) => {
     const item = items.get(lineId)
@@ -218,9 +217,73 @@ export function planPull(state: GcState, project: GcProject, leaveOut: string[] 
   }
   if (finished.length === 0) return null
 
-  const finishedIds = new Set(finished.map((f) => f.lineId))
-  // The dates as they would stand: the finished lines caught up, then each pull as it is found.
+  // The work right behind each early finish, by the days it gave back (`pullBehind`, which G-82 reads too).
   const span = new Map<string, PullSpan>(finished.map((f) => [f.lineId, f.to]))
+  const { pulls, stays, lostDays } = pullBehind(state, project, span, leaveOut)
+  for (const p of pulls) span.set(p.lineId, p.to)
+
+  const next = list.map((a) => {
+    const s = span.get(a.lineId)
+    return s ? { ...a, start: s.start, finish: s.finish } : a
+  })
+  const finishFrom = scheduleFinish(list)
+  const finishTo = scheduleFinish(next)
+  const finishDays = daysBetween(finishFrom, finishTo)
+  const held = stays.filter((s) => s.held)
+  const show: PullOffer['show'] = pulls.length > 0 ? 'pull' : held.length > 0 ? 'chase' : 'quiet'
+  const most = pulls.reduce((m, p) => Math.max(m, p.days), 0)
+  const same = pulls.every((p) => p.days === most)
+  const state_ =
+    show === 'pull' ? `${activities(pulls.length)} can start ${same ? '' : 'up to '}${days(most)} sooner.` : show === 'chase' ? 'The next work is held, so nothing can start sooner yet.' : 'Nothing can start sooner yet.'
+  const finishedWords = finished.map((f) => `${f.name} finished ${weekdayDate(f.finishedOn)}, ${days(f.early)} early.`)
+  return {
+    finished,
+    pulls,
+    stays,
+    activities: next,
+    finishFrom,
+    finishTo,
+    finishDays,
+    lostDays,
+    words: {
+      finished: finishedWords,
+      state: state_,
+      detail: show === 'quiet' ? stays.map((s) => s.said) : held.map((s) => s.said),
+      finish: finishDays === 0 ? `The job still finishes ${weekdayDate(finishTo)}.` : `The job finishes ${weekdayDate(finishTo)}, ${days(-finishDays)} sooner.`,
+      lost: lostDays > 0 ? `${lostDays === 1 ? 'One of those days is' : `${lostDays} of those days are`} gone already. Each day of waiting costs one more.` : null,
+    },
+    note: finishedWords.join(' '),
+    show,
+  }
+}
+
+/** What the work right behind a set of sooner finishes would do: what comes in, what keeps its dates and why. */
+export interface PullBehind {
+  pulls: PullLine[]
+  stays: PullStay[]
+  /** Days tomorrow already cost: the work could have come in this many more had it been pressed sooner. */
+  lostDays: number
+}
+
+/**
+ * The work right behind the seeds, brought in by the days they give back and never more, then what
+ * is right behind that (G-37's rules, read by G-82's days back too). `seeds`: lines whose dates
+ * change first, with their new dates. Each comes in only if it was waiting right behind, has not
+ * started, is not held, and never before tomorrow, its Not before day or a wait's day.
+ */
+export function pullBehind(state: GcState, project: GcProject, seeds: Map<string, PullSpan>, leaveOut: string[] = []): PullBehind {
+  const schedule = project.schedule
+  if (!schedule) return { pulls: [], stays: [], lostDays: 0 }
+  const today = state.today
+  const list = schedule.activities
+  const byId = new Map(list.map((a) => [a.lineId, a]))
+  const items = new Map<string, ScheduleItem>(scheduleItems(state, project).map((i) => [i.activity.lineId, i]))
+  const who = (lineId: string) => {
+    const item = items.get(lineId)
+    return { name: item?.label ?? moveActivityName(project, lineId), trade: item?.trade ?? '', company: item?.company ?? '' }
+  }
+  // The dates as they would stand: the seeds, then each pull as it is found.
+  const span = new Map<string, PullSpan>(seeds)
   const finishOf = (id: string) => span.get(id)?.finish ?? byId.get(id)?.finish ?? today
   const holds = pullHolds(state, project)
   // A trade's own word that it starts later stands until the office answers it: a late notice from its portal (G-117), or another day asked for (G-113).
@@ -233,7 +296,7 @@ export function planPull(state: GcState, project: GcProject, leaveOut: string[] 
   let lostDays = 0
 
   for (const a of waitOrder(list)) {
-    if (finishedIds.has(a.lineId)) continue
+    if (seeds.has(a.lineId)) continue
     const waits = a.after.filter((id) => byId.has(id))
     // Only the work right after something that finished early or came in.
     if (!waits.some((id) => span.has(id))) continue
@@ -315,39 +378,7 @@ export function planPull(state: GcState, project: GcProject, leaveOut: string[] 
     pulls.push({ lineId: a.lineId, ...w, from: { start: a.start, finish: a.finish }, to, days: n, limit: want < floor.on ? floor.why('It') : null, said: `${w.name} can start ${weekdayDate(start)}, ${days(n)} sooner.` })
   }
 
-  const next = list.map((a) => {
-    const s = span.get(a.lineId)
-    return s ? { ...a, start: s.start, finish: s.finish } : a
-  })
-  const finishFrom = scheduleFinish(list)
-  const finishTo = scheduleFinish(next)
-  const finishDays = daysBetween(finishFrom, finishTo)
-  const held = stays.filter((s) => s.held)
-  const show: PullOffer['show'] = pulls.length > 0 ? 'pull' : held.length > 0 ? 'chase' : 'quiet'
-  const most = pulls.reduce((m, p) => Math.max(m, p.days), 0)
-  const same = pulls.every((p) => p.days === most)
-  const state_ =
-    show === 'pull' ? `${activities(pulls.length)} can start ${same ? '' : 'up to '}${days(most)} sooner.` : show === 'chase' ? 'The next work is held, so nothing can start sooner yet.' : 'Nothing can start sooner yet.'
-  const finishedWords = finished.map((f) => `${f.name} finished ${weekdayDate(f.finishedOn)}, ${days(f.early)} early.`)
-  return {
-    finished,
-    pulls,
-    stays,
-    activities: next,
-    finishFrom,
-    finishTo,
-    finishDays,
-    lostDays,
-    words: {
-      finished: finishedWords,
-      state: state_,
-      detail: show === 'quiet' ? stays.map((s) => s.said) : held.map((s) => s.said),
-      finish: finishDays === 0 ? `The job still finishes ${weekdayDate(finishTo)}.` : `The job finishes ${weekdayDate(finishTo)}, ${days(-finishDays)} sooner.`,
-      lost: lostDays > 0 ? `${lostDays === 1 ? 'One of those days is' : `${lostDays} of those days are`} gone already. Each day of waiting costs one more.` : null,
-    },
-    note: finishedWords.join(' '),
-    show,
-  }
+  return { pulls, stays, lostDays }
 }
 
 /**
