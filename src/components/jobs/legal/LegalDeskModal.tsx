@@ -779,7 +779,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
       ) : null}
 
       {firmOpen && stored ? (
-        <LegalFirmWindow firm={firm} matters={legal?.matters ?? []} recipients={legal?.recipients ?? []} canEdit={canEditFirm} onClose={() => setFirmOpen(false)} onSaved={() => { void legal?.reload() }} zIndex={overlayZIndex + 14} />
+        <LegalFirmWindow firm={firm} matters={legal?.matters ?? []} recipients={legal?.recipients ?? []} canEdit={canEditFirm} onClose={() => setFirmOpen(false)} onSaved={() => { void legal?.reload() }} onShowAccount={(key) => { setFirmOpen(false); setSelectedKey(key); setTab('account') }} zIndex={overlayZIndex + 14} />
       ) : null}
       {emailsOpen && firm ? (
         <div role="presentation" onClick={(e) => { e.stopPropagation(); setEmailsOpen(false) }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: overlayZIndex + 12, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(14px + var(--app-top-chrome, 0px)) 14px 14px' }}>

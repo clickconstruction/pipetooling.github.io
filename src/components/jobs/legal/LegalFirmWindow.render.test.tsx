@@ -74,6 +74,7 @@ describe('LegalFirmWindow', () => {
     expect(screen.getByText('2 people on its email list')).toBeTruthy()
     expect(await screen.findByText('2 of 8 filled')).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Open in Settings ↗' }).getAttribute('href')).toBe(LEGAL_FIRM_SETTINGS_HREF)
+    expect(screen.getByRole('button', { name: 'Replace with a new firm…' })).toBeTruthy()
     fireEvent.change(name, { target: { value: 'Example Law Firm, PLLC' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save firm' }))
     await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1))
@@ -90,6 +91,7 @@ describe('LegalFirmWindow', () => {
     expect(screen.getByText('Only a dev can change the firm. Ask a dev to update it.')).toBeTruthy()
     expect(screen.queryByRole('link', { name: 'Open in Settings ↗' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Save firm' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Replace with a new firm…' })).toBeNull()
   })
 
   it('says so when no firm is set up', async () => {
