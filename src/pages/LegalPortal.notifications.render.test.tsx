@@ -37,7 +37,7 @@ describe('LegalPortal — Notifications · a person not reaching', () => {
     await openNotifications('2026-10-05')
     const lines = document.querySelectorAll('[data-legal-not-reaching]')
     expect(lines).toHaveLength(1)
-    expect(lines[0]?.textContent).toBe('Our emails to bo@samplepartner.example.com have not gone through since 2026-10-05. We try each one again for an hour. If the address is wrong, press Stop emails to this person and add the right one.')
+    expect(lines[0]?.textContent).toBe('Our emails to bo@samplepartner.example.com have not gone through since 2026-10-05. We try the digest again every five minutes for the rest of its day. If the address is wrong, press Stop emails to this person and add the right one.')
   })
 
   it('shows nothing while emails go through, or once the person is stopped', async () => {

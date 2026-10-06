@@ -48,7 +48,8 @@ function table(name: string): Chain {
 }
 
 vi.mock('https://deno.land/std@0.168.0/http/server.ts', () => ({ serve: (h: Handler) => void (box.handler = h) }))
-vi.mock('https://esm.sh/@supabase/supabase-js@2', () => ({ createClient: () => ({ from: (name: string) => table(name) }) }))
+// `rpc` answers like a missing function: item 22 (#4639) adds `admin.rpc('legal_portal_link_token')` to the dispatcher, so this mock survives either merge order.
+vi.mock('https://esm.sh/@supabase/supabase-js@2', () => ({ createClient: () => ({ from: (name: string) => table(name), rpc: async () => ({ data: null, error: { message: 'missing' } }) }) }))
 vi.mock('../../../supabase/functions/_shared/resendSendEmail.ts', () => ({
   sendEmailViaResend: async (to: string, subject: string, _text: string, html: string) => {
     sent.push({ to, subject, html })

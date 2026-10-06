@@ -9,7 +9,7 @@ const note: ReleaseNote = {
     'When an email to someone at the law firm does not go, it is tried again every five minutes for an hour. The others are not sent it twice.',
     'The Legal desk’s Firm’s emails marks that person not reaching, with since when and what the mail service said. The header button counts them.',
     'The firm sees the same line against the person on its portal’s Notifications page.',
-    'The Stop these emails link now works in every email, not only the newest one.',
+    'The Stop these emails link now works in every email sent after this deploy, and after a person is turned back on, not only in the newest one.',
   ],
 }
 

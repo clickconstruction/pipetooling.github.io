@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { LEGAL_NOTIFY_MAX_TRIES, constantTimeEqual, legalNotReachingLine, legalNotifyDone, legalNotifyDue, legalNotifyRecord, legalRecipientSendPatch, legalUnsubscribeToken, parseSentTo } from './legalNotifyLedger'
+import { LEGAL_NOTIFY_MAX_TRIES, constantTimeEqual, legalNotReachingLine, legalNotifyDone, legalNotifyDue, legalNotifyRecord, legalRecipientSendPatch, legalUnsubscribeSecret, legalUnsubscribeToken, parseSentTo } from './legalNotifyLedger'
 
 const NOW = '2026-10-05T15:00:00Z'
 
@@ -61,7 +61,25 @@ describe('legalNotReachingLine · v2.4632', () => {
   it('the office reads the mail service’s words; the firm reads what to do', () => {
     expect(legalNotReachingLine({ email: 'bo@firm.test', sinceYmd: '2026-10-05', error: 'The to address is invalid.' }, 'office')).toBe('Could not reach bo@firm.test since 2026-10-05: The to address is invalid. The queue tries each email again every five minutes, for an hour.')
     expect(legalNotReachingLine({ email: 'bo@firm.test', sinceYmd: '2026-10-05', error: null }, 'office')).toBe('Could not reach bo@firm.test since 2026-10-05. The queue tries each email again every five minutes, for an hour.')
-    expect(legalNotReachingLine({ email: 'bo@firm.test', sinceYmd: '2026-10-05' }, 'firm')).toBe('Our emails to bo@firm.test have not gone through since 2026-10-05. We try each one again for an hour. If the address is wrong, press Stop emails to this person and add the right one.')
+    expect(legalNotReachingLine({ email: 'bo@firm.test', sinceYmd: '2026-10-05' }, 'firm')).toBe('Our emails to bo@firm.test have not gone through since 2026-10-05. We try each one again every five minutes for an hour. If the address is wrong, press Stop emails to this person and add the right one.')
+  })
+  it('says what is really tried again: never a confirmation, a digest for the rest of its day', () => {
+    const unconfirmed = { email: 'bo@firm.test', sinceYmd: '2026-10-05', confirmed: false }
+    expect(legalNotReachingLine(unconfirmed, 'firm')).toContain('Press Resend the confirmation')
+    expect(legalNotReachingLine(unconfirmed, 'firm')).not.toMatch(/for an hour/)
+    expect(legalNotReachingLine(unconfirmed, 'office')).toContain('the firm presses Resend the confirmation')
+    expect(legalNotReachingLine(unconfirmed, 'office')).not.toMatch(/for an hour/)
+    const digest = { email: 'bo@firm.test', sinceYmd: '2026-10-05', confirmed: true, mode: 'digest' }
+    expect(legalNotReachingLine(digest, 'firm')).toContain('rest of its day')
+    expect(legalNotReachingLine(digest, 'office')).not.toMatch(/for an hour/)
+  })
+})
+
+describe('legalUnsubscribeSecret · v2.4632', () => {
+  it('prefers its own secret, falls back to the service key, and is empty when both are', () => {
+    expect(legalUnsubscribeSecret('own', 'svc')).toBe('own')
+    expect(legalUnsubscribeSecret('  ', 'svc')).toBe('svc')
+    expect(legalUnsubscribeSecret(undefined, '')).toBe('')
   })
 })
 

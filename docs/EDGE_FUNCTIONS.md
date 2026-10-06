@@ -1721,7 +1721,7 @@ _v2.3351:_ an event is heard by whoever is subscribed when it happens and never 
 
 **Sends**: `sendEmailViaResend` (`RESEND_API_KEY`); the portal link from `APP_ORIGIN`; every email ends with the one-click stop link. Wording is fixed (catalog ids `legal_referral`, `legal_digest`; the confirmation is `legal_recipient_confirm`, sent by `submit-legal-portal`).
 
-**Auth**: `verify_jwt = false`; cron `POST` is gated by `CRON_SECRET`, `GET` by the tokens. **Deploy**: after the v2.3325 migration (tables, triggers, cron). **Required secrets**: `CRON_SECRET`, `RESEND_API_KEY`; optional `APP_ORIGIN`.
+**Auth**: `verify_jwt = false`; cron `POST` is gated by `CRON_SECRET`, `GET` by the tokens. **Deploy**: after the v2.3325 migration (tables, triggers, cron). **Required secrets**: `CRON_SECRET`, `RESEND_API_KEY`; optional `APP_ORIGIN`, and `LEGAL_UNSUBSCRIBE_SECRET` (v2.4632: the key of every stop link; falls back to `SUPABASE_SERVICE_ROLE_KEY`, so rotating the service key would otherwise break the links already sent; with both empty an email goes with no stop link and the error is logged). Setting it later re-mints each person's stop link at their next email.
 
 **v2.3512 (What customers see PR 6):** the now and digest emails and the confirm / unsubscribe pages are built by `_shared/legalEmails.ts`; `GET ?confirm=sample` / `?unsubscribe=sample` render the two pages for Ann Sample without touching a row.
 

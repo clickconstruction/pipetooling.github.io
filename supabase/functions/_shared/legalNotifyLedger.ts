@@ -85,10 +85,17 @@ export function legalRecipientSendPatch(prevFailedSince: string | null | undefin
  * service's words) and against the person on the firm's Notifications page (`firm`). `sinceYmd` is
  * the company-zone day of `send_failed_since`.
  */
-export function legalNotReachingLine(i: { email: string; sinceYmd: string; error?: string | null }, audience: 'office' | 'firm'): string {
-  if (audience === 'firm') return `Our emails to ${i.email} have not gone through since ${i.sinceYmd}. We try each one again for an hour. If the address is wrong, press Stop emails to this person and add the right one.`
+export function legalNotReachingLine(i: { email: string; sinceYmd: string; error?: string | null; confirmed?: boolean; mode?: 'now' | 'digest' | string }, audience: 'office' | 'firm'): string {
+  // What is tried again depends on the person: a confirmation never is (someone presses Resend the
+  // confirmation), a digest is tried each tick for the rest of its day, an event email for an hour.
+  const retry = i.confirmed === false
+    ? (audience === 'firm' ? 'Press Resend the confirmation next to their name.' : 'A confirmation is not sent again by itself: the firm presses Resend the confirmation.')
+    : i.mode === 'digest'
+      ? (audience === 'firm' ? 'We try the digest again every five minutes for the rest of its day.' : 'The queue tries the digest again every five minutes for the rest of its day.')
+      : (audience === 'firm' ? 'We try each one again every five minutes for an hour.' : 'The queue tries each email again every five minutes, for an hour.')
+  if (audience === 'firm') return `Our emails to ${i.email} have not gone through since ${i.sinceYmd}. ${retry} If the address is wrong, press Stop emails to this person and add the right one.`
   const said = (i.error ?? '').trim().replace(/\.+$/, '')
-  return `Could not reach ${i.email} since ${i.sinceYmd}${said ? `: ${said}` : ''}. The queue tries each email again every five minutes, for an hour.`
+  return `Could not reach ${i.email} since ${i.sinceYmd}${said ? `: ${said}` : ''}. ${retry}`
 }
 
 /** Compare two secrets in time that does not depend on where they first differ. */
@@ -109,6 +116,11 @@ const hex = (buf: ArrayBuffer): string => Array.from(new Uint8Array(buf), (b) =>
  * row keeps only its SHA-256 (`unsubscribe_token_hash`, what the stop link is looked up by). A
  * new salt — set when the person turns emails back on — is the only rotation.
  */
+/** The stop link's key: `LEGAL_UNSUBSCRIBE_SECRET` when set, else the service key; '' when both are empty (the caller sends no link). */
+export function legalUnsubscribeSecret(own: string | null | undefined, serviceKey: string | null | undefined): string {
+  return (own ?? '').trim() || (serviceKey ?? '').trim()
+}
+
 export async function legalUnsubscribeToken(serverKey: string, recipientId: string, salt: string | null | undefined): Promise<{ token: string; hash: string }> {
   const enc = new TextEncoder()
   const key = await crypto.subtle.importKey('raw', enc.encode(`legal-unsubscribe:${serverKey}`), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])

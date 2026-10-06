@@ -317,7 +317,7 @@ function NotificationsPanel({ payload, act, busy, notice }: { payload: LegalPort
               <div><b>{r.name}</b> <span style={{ color: MUTED, fontSize: 12.5 }}>{r.email}{r.role ? ` · ${r.role}` : ''}</span></div>
               <span style={{ fontSize: 11.5, fontWeight: 700, color: r.paused ? PAPER_RED : r.confirmed ? PAPER_GREEN : COPPER }}>{firmRecipientStatusWords(r)}</span>
             </div>
-            {r.failingSince && !r.paused ? <div data-legal-not-reaching style={{ color: PAPER_RED, fontSize: 12.5, marginTop: 6 }}>{legalNotReachingLine({ email: r.email, sinceYmd: r.failingSince }, 'firm')}</div> : null}
+            {r.failingSince && !r.paused ? <div data-legal-not-reaching style={{ color: PAPER_RED, fontSize: 12.5, marginTop: 6 }}>{legalNotReachingLine({ email: r.email, sinceYmd: r.failingSince, confirmed: r.confirmed, mode: r.mode }, 'firm')}</div> : null}
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 8, fontSize: 13 }}>
               <span style={{ color: MUTED }}>Emails</span>
               <span style={{ display: 'inline-flex', border: `1px solid ${HAIR}`, borderRadius: 999, overflow: 'hidden', fontSize: 11.5, fontWeight: 700 }}>

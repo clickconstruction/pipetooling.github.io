@@ -5,7 +5,7 @@ import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { COMPANY_EMAIL_FROM } from '../_shared/emailFrom.ts'
 import { buildLegalDigestEmail, buildLegalNowEmail, legalPageHtml, legalWrapHtml, type LegalNowTrigger } from '../_shared/legalEmails.ts'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
-import { constantTimeEqual, legalNotifyDone, legalNotifyDue, legalNotifyRecord, legalRecipientSendPatch, legalUnsubscribeToken, parseSentTo } from '../_shared/legalNotifyLedger.ts'
+import { constantTimeEqual, legalNotifyDone, legalNotifyDue, legalNotifyRecord, legalRecipientSendPatch, legalUnsubscribeSecret, legalUnsubscribeToken, parseSentTo } from '../_shared/legalNotifyLedger.ts'
 
 /**
  * The firm's emails (Legal portal train, PR 5). Two doors:
@@ -73,7 +73,14 @@ async function unsubscribeLink(admin: SupabaseClient, r: Recipient): Promise<str
   // the row is written when the hash is missing or stale (a new salt, a rotated key), never per email.
   // v2.3521: the link lands on the app's page (the platform relays this function's HTML as text/plain).
   const base = `${Deno.env.get('APP_ORIGIN') ?? 'https://clicktooling.com'}/legal/confirm`
-  const { token, hash } = await legalUnsubscribeToken(Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '', r.id, r.unsubscribe_salt)
+  // The key: LEGAL_UNSUBSCRIBE_SECRET, else the service key (a rotated service key would otherwise break every
+  // stop link already sent). Both empty: fail closed, no link, and say so in the log.
+  const secret = legalUnsubscribeSecret(Deno.env.get('LEGAL_UNSUBSCRIBE_SECRET'), Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'))
+  if (!secret) {
+    console.error('legal-notify-dispatch: no LEGAL_UNSUBSCRIBE_SECRET and no service key; the email goes without a stop link')
+    return ''
+  }
+  const { token, hash } = await legalUnsubscribeToken(secret, r.id, r.unsubscribe_salt)
   if (r.unsubscribe_token_hash !== hash) {
     await admin.from('legal_firm_recipients').update({ unsubscribe_token_hash: hash, updated_at: new Date().toISOString() }).eq('id', r.id)
     r.unsubscribe_token_hash = hash
