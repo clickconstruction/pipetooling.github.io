@@ -10,7 +10,9 @@ Some general contractors pay from an AIA G702-G703. That is an application for p
 
 Go to **Jobs → Pipeline**. Find the job in **Ready to Bill** or **Billed Awaiting Payment**. Press the green sheet button on its row. The same button sits in **View bill**.
 
-The window has two sides. The paper is on the left. The form is on the right.
+On a job with nothing saved, the window opens on a new application. On a job with saved applications, it opens on their history. Press {{button:green|New application}} there to start the next one.
+
+The form has two sides. The paper is on the left. The form is on the right.
 
 ## Fill the form
 
@@ -123,23 +125,44 @@ You see one side at a time. Press **Preview** at the top to see the paper. Press
 
 Press {{button:outline|Save}}. The application is kept on the job under its number. {{button:green|Generate}} saves it too, after it downloads.
 
-Saved applications sit at the top of the form, under **APPLICATIONS ON THIS JOB**. Press one to open it. You can change it and save it again. Nothing locks.
+The top of the form names the application you are on. It also says who saved it and when.
+
+Saved applications are listed in the job's history. Press **← Pay applications** at the top of the form to see it. Press **Open** on an application to change it and save it again. Nothing locks.
 
 The window asks before you lose what you typed. Press **Stay** to keep typing.
+
+## Read the job's history
+
+The history is the first thing you see on a job with saved applications. It answers four questions.
+
+- **Where the job stands.** Four numbers from the latest application. Contract to date, completed and stored, held as retainage, and work left.
+- **What each application asked for.** One line per application. Its number, its name, its period and the payment due.
+- **Who saved it and when.** Under each line. A second save shows as *saved again*, with the name and the day.
+- **What went out.** Each workbook you generated, with the time and who pressed Generate. Press the file name to download the same file again.
+
+:::example job 892, two applications
+The line reads *2 saved · $24,458.76 certified · 72% complete*. Application 1 says *Saved Aug 1 by Taunya* and *Went out Aug 1, 9:40 AM by Taunya as J892-App1.xlsx*. Application 2 says *Saved Sep 2 by Taunya · saved again Sep 18 by Robert*.
+:::
+
+A warning under a line means it no longer matches the application before it. The reason you typed shows beside it.
+
+A workbook you generated with no application number shows at the bottom. It belongs to no application.
+
+Press {{button:green|New application}} to start the next one. It starts from the last one saved.
 
 ## Name an application
 
 You can give a saved application a name of your own. Type it under **NAME**, then press {{button:outline|Save}}.
 
-The name shows in the list at the top of the form. It also shows on the job's **Documents** tab. It is never printed on the paper.
+The name shows in the job's history. It also shows on the job's **Documents** tab. It is never printed on the paper.
 
-To rename one, open it from the list. Type the new name and press {{button:outline|Save}}. Clear the box and save to take the name off.
+To rename one, open it from the history. Type the new name and press {{button:outline|Save}}. Clear the box and save to take the name off.
 
 A new application starts with no name.
 
 ## Start the next application
 
-Open the window again next month. It opens on a new application. The number is one more than the last.
+Open the window again next month. It opens on the job's history. Press {{button:green|New application}}. The number is one more than the last.
 
 The new one starts from the last one saved.
 
@@ -184,9 +207,11 @@ Press **Open** beside the link to see the file. Any saved application can carry 
 
 Open the job and press the **Documents** tab. Every saved application is listed with its number, its period and the payment due.
 
-Press **Open the file** to see the file you sent. Press **Open** to change the application. Press **New application** to start one from there.
+Each row also says what went out and who saved it. Under **Went out** is each workbook you generated, with its time. Press its name to download the same file again. A link you pasted shows there as **Open the file**.
 
-Each workbook you download is also kept as it was. Find it lower on the tab under **Sent from this job**. A saved application can still be changed. The kept workbook cannot.
+Press **Open** to change the application. Press **New application** to start one from there.
+
+A saved application can still be changed. The kept workbook cannot. The workbooks sit with their applications here, not under **Sent from this job**.
 
 ## Take one off the job
 

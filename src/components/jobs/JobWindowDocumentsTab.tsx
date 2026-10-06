@@ -5,9 +5,12 @@ import { formatAiaDate } from '../../lib/aiaG702G703Template'
 import { formatAiaMoney } from '../../lib/aiaG702G703Preview'
 import { type SavedPayApplication, carryMismatch } from '../../lib/aiaPayApplications'
 import { loadPayApplications } from '../../lib/aiaPayApplicationsIo'
+import { isPayApplicationCopy, payApplicationDay, payApplicationDayTime, payApplicationFileName, payApplicationHistory, payApplicationSavedWords } from '../../lib/aiaPayApplicationHistory'
 import { jobDocumentFolderLinks } from '../../lib/jobs/jobDocumentsTab'
-import { canReadSentCopies } from '../../lib/sent/sentCopies'
+import { type SentCopy, canReadSentCopies } from '../../lib/sent/sentCopies'
+import { loadSentCopiesForJob, openSentFile } from '../../lib/sent/sentCopiesIo'
 import { useAuth } from '../../hooks/useAuth'
+import { useToastContext } from '../../contexts/ToastContext'
 import AiaG702G703Modal from './AiaG702G703Modal'
 import { JobDocumentsBills } from './JobDocumentsBills'
 import { JobDocumentsContract } from './JobDocumentsContract'
@@ -16,12 +19,12 @@ import { JobDocumentsSent } from './JobDocumentsSent'
 import { JobDocumentsTestReports } from './JobDocumentsTestReports'
 
 /**
- * The job window's Documents tab (v2.4491): the job's pay applications, each with the link to the
- * file that was sent, then its bills, contract, test reports and lien paper (v2.4495, v2.4496),
- * then what was sent from the job, each with the copy as it went (v2.4554, the office only),
- * then the job's folders. A row
- * opens the AIA G702-G703 window on that application; the window sits above the job window and
- * the list reloads when it closes.
+ * The job window's Documents tab (v2.4491): the job's pay applications, each with the workbooks
+ * that went out from it and who saved it (v2.4710), then its bills, contract, test reports and
+ * lien paper (v2.4495, v2.4496), then everything else sent from the job, each with the copy as
+ * it went (v2.4554, the office only), then the job's folders. A row opens the AIA G702-G703
+ * window on that application; the window sits above the job window and the lists reload when
+ * it closes.
  */
 
 /** One step above the job window's overlay (1010) and its form's nested overlays. */
@@ -35,7 +38,10 @@ const quietButton: CSSProperties = { padding: '0.3rem 0.7rem', fontSize: '0.8125
 
 export function JobWindowDocumentsTab({ job, onOverlayOpenChange }: { job: JobWithDetails; onOverlayOpenChange?: (open: boolean) => void }) {
   const { role } = useAuth()
+  const { showToast } = useToastContext()
   const [apps, setApps] = useState<SavedPayApplication[] | null>(null)
+  // Everything sent from the job, read once: the pay application workbooks go under their applications, the rest to Sent from this job.
+  const [sent, setSent] = useState<SentCopy[] | null>(null)
   // null = closed; 'new' = a new application; a number = that saved application.
   const [aia, setAia] = useState<number | 'new' | null>(null)
 
@@ -46,10 +52,23 @@ export function JobWindowDocumentsTab({ job, onOverlayOpenChange }: { job: JobWi
       .then((list) => {
         if (!cancelled) setApps(list)
       })
+    void loadSentCopiesForJob(job.id)
+      .catch(() => [] as SentCopy[])
+      .then((list) => {
+        if (!cancelled) setSent(list)
+      })
     return () => {
       cancelled = true
     }
   }, [job.id])
+
+  const history = payApplicationHistory(apps ?? [], sent ?? [])
+  const otherSent = sent == null ? null : sent.filter((r) => !isPayApplicationCopy(r))
+  const openFile = async (copy: SentCopy) => {
+    if (!copy.copyPath) return
+    if (!(await openSentFile(copy.copyPath))) showToast('Could not open the workbook.', 'error')
+  }
+  const fileButton: CSSProperties = { border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', font: 'inherit', fontSize: '0.875rem', color: 'var(--text-blue-700)', textDecoration: 'underline' }
 
   useEffect(() => reload(), [reload])
 
@@ -93,13 +112,15 @@ export function JobWindowDocumentsTab({ job, onOverlayOpenChange }: { job: JobWi
                     <th style={th}>No.</th>
                     <th style={th}>Period to</th>
                     <th style={{ ...th, textAlign: 'right' }}>Payment due</th>
-                    <th style={th}>File</th>
+                    <th style={th}>Went out</th>
+                    <th style={th}>Saved</th>
                     <th style={th} />
                   </tr>
                 </thead>
                 <tbody>
-                  {apps.map((app) => {
+                  {history.lines.map(({ app, wentOut }) => {
                     const mismatch = carryMismatch({ values: app.fields, lines: app.lines }, app.applicationNumber, apps)
+                    const saved = payApplicationSavedWords(app, payApplicationDay).replace(/^Saved /, '')
                     return (
                     <Fragment key={app.id}>
                     <tr data-testid="job-documents-pay-app">
@@ -110,14 +131,28 @@ export function JobWindowDocumentsTab({ job, onOverlayOpenChange }: { job: JobWi
                       <td style={td}>{formatAiaDate(app.periodTo) || '—'}</td>
                       <td style={{ ...td, ...num }}>{formatAiaMoney(app.currentPaymentDue)}</td>
                       <td style={td}>
-                        {app.link ? (
-                          <a href={app.link} target="_blank" rel="noopener noreferrer">
-                            Open the file
-                          </a>
-                        ) : (
-                          <span style={{ color: 'var(--text-muted)' }}>No link</span>
-                        )}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+                          {wentOut.map((copy) => (
+                            <span key={copy.id} data-testid="job-documents-pay-app-workbook" style={{ whiteSpace: 'nowrap' }}>
+                              {copy.copyPath ? (
+                                <button type="button" onClick={() => void openFile(copy)} style={fileButton} title="Download the workbook as it went out">
+                                  {payApplicationFileName(copy) || 'the workbook'}
+                                </button>
+                              ) : (
+                                <span style={{ color: 'var(--text-amber-800)' }}>copy not kept</span>
+                              )}
+                              <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}> · {payApplicationDayTime(copy.sentAt)}</span>
+                            </span>
+                          ))}
+                          {app.link ? (
+                            <a href={app.link} target="_blank" rel="noopener noreferrer">
+                              Open the file
+                            </a>
+                          ) : null}
+                          {wentOut.length === 0 && !app.link ? <span style={{ color: 'var(--text-muted)' }}>Not yet</span> : null}
+                        </div>
                       </td>
+                      <td style={{ ...td, fontSize: '0.8125rem', color: 'var(--text-600)' }}>{saved || '—'}</td>
                       <td style={{ ...td, textAlign: 'right' }}>
                         <button type="button" onClick={() => openAia(app.applicationNumber)} style={quietButton} aria-label={`Open application ${app.applicationNumber}`}>
                           Open
@@ -126,7 +161,7 @@ export function JobWindowDocumentsTab({ job, onOverlayOpenChange }: { job: JobWi
                     </tr>
                     {mismatch ? (
                       <tr data-testid="job-documents-pay-app-flag">
-                        <td colSpan={5} style={{ ...td, paddingTop: 0, fontSize: '0.8125rem', color: 'var(--text-amber-800)' }}>
+                        <td colSpan={6} style={{ ...td, paddingTop: 0, fontSize: '0.8125rem', color: 'var(--text-amber-800)' }}>
                           ⚠ No longer matches application {mismatch.previousNumber}.{' '}
                           {app.carryReason ? `Kept as it is: ${app.carryReason}` : 'No reason given yet.'}
                         </td>
@@ -138,6 +173,24 @@ export function JobWindowDocumentsTab({ job, onOverlayOpenChange }: { job: JobWi
                 </tbody>
               </table>
             </div>
+            {history.unsaved.length > 0 ? (
+              <p data-testid="job-documents-pay-app-unsaved" style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-600)' }}>
+                Downloaded with no number typed, so saved on no application:{' '}
+                {history.unsaved.map((copy, i) => (
+                  <Fragment key={copy.id}>
+                    {i > 0 ? ', ' : ''}
+                    {copy.copyPath ? (
+                      <button type="button" onClick={() => void openFile(copy)} style={{ ...fileButton, fontSize: '0.8125rem' }}>
+                        {payApplicationFileName(copy) || 'the workbook'}
+                      </button>
+                    ) : (
+                      'a copy that was not kept'
+                    )}{' '}
+                    {payApplicationDayTime(copy.sentAt)}
+                  </Fragment>
+                ))}
+              </p>
+            ) : null}
             <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
               Retainage held as of application {apps[apps.length - 1]!.applicationNumber}: {formatAiaMoney(held)}
             </p>
@@ -153,7 +206,7 @@ export function JobWindowDocumentsTab({ job, onOverlayOpenChange }: { job: JobWi
 
       <JobDocumentsLienPaper job={job} onOverlayOpenChange={onOverlayOpenChange} />
 
-      {canReadSentCopies(role) ? <JobDocumentsSent job={job} /> : null}
+      {canReadSentCopies(role) ? <JobDocumentsSent job={job} rows={otherSent} /> : null}
 
       <section aria-labelledby="job-documents-folders" style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
         <h3 id="job-documents-folders" style={heading}>
@@ -180,6 +233,7 @@ export function JobWindowDocumentsTab({ job, onOverlayOpenChange }: { job: JobWi
         job={job}
         hcpForFilename={job.hcp_number ?? ''}
         initialApplicationNumber={typeof aia === 'number' ? aia : null}
+        startOn="new"
         zIndex={AIA_FROM_JOB_WINDOW_Z_INDEX}
       />
     </div>
