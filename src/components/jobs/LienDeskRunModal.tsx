@@ -6,11 +6,11 @@ import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
 import { printAndFile } from '../../lib/sent/sentCopiesIo'
 import { describeNoticeMonths } from '../../lib/jobs/lienNoticeDraft'
-import { RUN_SEND_METHODS, runCopyPages, runEnvelopeFacesHtml, runNoticeProblems, runPacketHtml, runPayPageBlocks, runRecordSplit, trackingShape, type RunNotice, type RunPayPages, type RunSendMethod } from '../../lib/jobs/lienDeskRun'
+import { RUN_SEND_METHODS, runCopyPages, runCourtesyResultWords, runEnvelopeFacesHtml, runNoticeProblems, runPacketHtml, runPayPageBlocks, runRecordSplit, trackingShape, type RunNotice, type RunPayPages, type RunSendMethod } from '../../lib/jobs/lienDeskRun'
 import { payPageRows, type PayPageAssets, type PayPageRow } from '../../lib/jobs/lienNoticePayPage'
 import { buildPayPageAssets } from '../../lib/jobs/lienNoticePayPageAssets'
 import { filingDocHtml, type FilingDocBlock } from '../../lib/jobsDocuments/lienFilingDocuments'
-import { runCopies, runEnvelopes, type RunEnvelope } from '../../lib/jobs/runEnvelopes'
+import { envelopeCourtesy, runCopies, runEnvelopes, type RunEnvelope } from '../../lib/jobs/runEnvelopes'
 import { recordLienDeskRun } from '../../lib/jobs/lienDeskRunIo'
 import { combineNoticesByProperty, combineSummary, type CombinedRunNotice } from '../../lib/jobs/lienNoticeCombine'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -157,6 +157,11 @@ export default function LienDeskRunModal({
     const inside = new Set(env.contents.flatMap((c) => (partsOf(c.notice as CombinedRunNotice) ?? [{ itemId: c.notice.itemId }]).map((p) => `${p.itemId}:${c.recipient.key}`)))
     setNotices((prev) => prev.map((n) => ({ ...n, recipients: n.recipients.map((r) => (inside.has(`${n.itemId}:${r.key}`) ? { ...r, ...patch } : r)) })))
   }
+  // The courtesy PDF (punch list #87 B): the tick reaches every original contractor's copy inside, never an owner's.
+  const setCourtesy = (env: RunEnvelope, on: boolean) => {
+    const inside = new Set(env.contents.filter((c) => c.recipient.key === 'original_contractor').flatMap((c) => (partsOf(c.notice as CombinedRunNotice) ?? [{ itemId: c.notice.itemId }]).map((p) => p.itemId)))
+    setNotices((prev) => prev.map((n) => (inside.has(n.itemId) ? { ...n, recipients: n.recipients.map((r) => (r.key === 'original_contractor' ? { ...r, courtesy: on } : r)) } : n)))
+  }
 
   const printPacket = () => {
     // A print counts as a send (docs/SENT_COPIES.md): the packet is filed as it printed, on every job in it.
@@ -183,8 +188,10 @@ export default function LienDeskRunModal({
     setBusy(true)
     try {
       const result = await recordLienDeskRun(split.mailed, { userId, todayYmd, mailedOn, invoiceDocsByJob: invoiceDocsShown, payBlocksByJob, document: { url: docUrl, note: docNote } })
-      if (result.recorded.length) showToast(`${result.recorded.length} ${result.recorded.length === 1 ? 'notice' : 'notices'} recorded — the desk reads them as sent.${split.waiting.length ? ` ${split.waiting.length} ${split.waiting.length === 1 ? 'stays' : 'stay'} in the mail pile until its number is typed.` : ''}`, 'success')
+      const courtesy = runCourtesyResultWords(result.courtesySent, result.courtesyFailed)
+      if (result.recorded.length) showToast(`${result.recorded.length} ${result.recorded.length === 1 ? 'notice' : 'notices'} recorded — the desk reads them as sent.${courtesy.sent ? ` ${courtesy.sent}` : ''}${split.waiting.length ? ` ${split.waiting.length} ${split.waiting.length === 1 ? 'stays' : 'stay'} in the mail pile until its number is typed.` : ''}`, 'success')
       if (result.failed.length) showToast(`${result.failed.length} not recorded: ${result.failed.map((f) => `${f.label} (${f.reason})`).join('; ')}`, 'error')
+      if (courtesy.failed) showToast(courtesy.failed, 'warning')
       onRecorded()
       if (result.failed.length === 0 && split.waiting.length === 0) onClose()
       else {
@@ -296,6 +303,17 @@ export default function LienDeskRunModal({
                         {env.address || (env.name ? 'no mailing address' : '')}{env.email ? ` · ${env.email}` : ''}
                         {env.contents.length > 1 ? ` · ${env.contents.length} notices inside` : ''}
                       </div>
+                      {(() => {
+                        const offer = envelopeCourtesy(env)
+                        return offer ? (
+                          <label data-testid={`run-courtesy-${env.n}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', marginTop: 3, fontSize: '0.72rem', fontWeight: 500, color: 'var(--text-muted)', cursor: 'pointer' }}>
+                            <input type="checkbox" checked={offer.on} onChange={(ev) => setCourtesy(env, ev.target.checked)} aria-label={`${who} — courtesy PDF by email`} style={{ margin: 0 }} />
+                            <span>
+                              Courtesy PDF to {offer.emails.join(', ')}, emailed when the run is recorded{offer.copies > 1 ? ', one email per notice' : ''}
+                            </span>
+                          </label>
+                        ) : null
+                      })()}
                     </td>
                     <td className="lienRunMethod" data-label="Method">
                       <select value={env.method} onChange={(ev) => setEnvelope(env, { method: ev.target.value as RunSendMethod })} aria-label={`${who} — method`} className="lienRunSelect" style={{ font: 'inherit', fontSize: '0.78rem', padding: '3px 6px', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit' }}>

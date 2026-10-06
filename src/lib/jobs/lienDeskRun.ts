@@ -41,6 +41,12 @@ export type RunRecipient = {
   email: string
   method: RunSendMethod
   tracking: string
+  /**
+   * Email this copy too, beside the paper one (punch list #87 B): the desk's envelope line
+   * promises the original contractor a courtesy PDF when an email is on file, so the builders
+   * set it there and the run's tick can turn it off. The owner's copy never carries it.
+   */
+  courtesy?: boolean
 }
 
 export type RunNotice = {
@@ -102,6 +108,7 @@ export function buildLienDeskRun(
     const jobNumber = job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—' : '—'
     const name = (job?.job_name ?? '').trim()
     const ownerEmail = (data.ownerByJob[e.jobId]?.owner_email ?? '').trim()
+    const gcEmail = draft?.gcEmail || gc?.email || ''
     const phone = signerPhoneFor ? signerPhoneFor(job?.master_user_id ?? null) : (issuer?.phone ?? '').trim()
     out.push({
       itemId: item.id,
@@ -122,7 +129,7 @@ export function buildLienDeskRun(
       ownerUnconfirmed: property.owner.source === 'property_record' && ownerFromRollUnconfirmed(address),
       recipients: [
         { key: 'owner', label: 'Owner of record', name: ownerName, address: property.owner.mailingAddress, email: ownerEmail, method: 'certified_mail', tracking: '' },
-        { key: 'original_contractor', label: 'Original contractor', name: gc?.name ?? fields.originalContractorName, address: gc?.address ?? '', email: draft?.gcEmail || gc?.email || '', method: 'certified_mail', tracking: '' },
+        { key: 'original_contractor', label: 'Original contractor', name: gc?.name ?? fields.originalContractorName, address: gc?.address ?? '', email: gcEmail, method: 'certified_mail', tracking: '', courtesy: gcEmail.trim() !== '' },
       ],
     })
   }
@@ -171,6 +178,7 @@ export function buildLienRetainageRun(
     const jobNumber = job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—' : '—'
     const name = (job?.job_name ?? '').trim()
     const ownerEmail = (data.ownerByJob[e.jobId]?.owner_email ?? '').trim()
+    const gcEmail = draft?.gcEmail || gc?.email || ''
     out.push({
       itemId: item.id,
       jobId: e.jobId,
@@ -190,7 +198,7 @@ export function buildLienRetainageRun(
       ownerUnconfirmed: property.owner.source === 'property_record' && ownerFromRollUnconfirmed(address),
       recipients: [
         { key: 'owner', label: 'Owner of record', name: ownerName, address: property.owner.mailingAddress, email: ownerEmail, method: 'certified_mail', tracking: '' },
-        { key: 'original_contractor', label: 'Original contractor', name: gc?.name ?? fields.originalContractorName, address: gc?.address ?? '', email: draft?.gcEmail || gc?.email || '', method: 'certified_mail', tracking: '' },
+        { key: 'original_contractor', label: 'Original contractor', name: gc?.name ?? fields.originalContractorName, address: gc?.address ?? '', email: gcEmail, method: 'certified_mail', tracking: '', courtesy: gcEmail.trim() !== '' },
       ],
     })
   }
@@ -385,6 +393,46 @@ export function runPacketHtml(
 }
 
 export type RunSendRecord = { recipient: 'owner' | 'original_contractor'; method: RunSendMethod; tracking: string; sent_on: string }
+
+/**
+ * The courtesy PDFs a recorded notice owes (punch list #87 B): every copy still ticked, with an
+ * email on file, whose envelope goes on paper. An envelope sent by email already is the email.
+ */
+export function runCourtesyCopies(n: Pick<RunNotice, 'recipients'>): RunRecipient[] {
+  return n.recipients.filter((r) => r.courtesy === true && r.method !== 'email' && r.email.trim() !== '')
+}
+
+const PAPER_ROUTE: Record<Exclude<RunSendMethod, 'email'>, string> = {
+  certified_mail: 'by certified mail',
+  traceable_courier: 'by traceable courier',
+  hand: 'by hand',
+}
+
+/**
+ * The courtesy email's subject and text: the form the notice is and how its paper copy travels.
+ * The owner's wording (2026-10-06): the email says it is a courtesy copy and that the notice itself
+ * goes on paper. The email function's own default names § 53.056 and certified mail whatever went.
+ */
+export function runCourtesyEmailWords(n: Pick<RunNotice, 'kind' | 'label'>, method: RunSendMethod): { subject: string; text: string } {
+  const form = runNoticeInstrumentWords(n.kind)
+  const lower = `${form.charAt(0).toLowerCase()}${form.slice(1)}`
+  const route = method === 'email' ? '' : PAPER_ROUTE[method]
+  return {
+    subject: `Courtesy copy: ${lower.replace(/ \(.*\)$/, '')} — ${n.label}`,
+    text: `Attached is a courtesy copy of our ${lower}.${route ? ` The notice itself is being delivered ${route}.` : ''}`,
+  }
+}
+
+export type RunCourtesySend = { itemId: string; label: string; email: string }
+
+/** What the record says about the courtesy PDFs: who got one, and which did not go. A failed one never un-records its notice. */
+export function runCourtesyResultWords(sent: ReadonlyArray<RunCourtesySend>, failed: ReadonlyArray<RunCourtesySend & { reason: string }>): { sent: string; failed: string } {
+  const to = [...new Set(sent.map((s) => s.email))].join(', ')
+  return {
+    sent: sent.length === 0 ? '' : `${sent.length === 1 ? 'Courtesy PDF' : `${sent.length} courtesy PDFs`} emailed to ${to}.`,
+    failed: failed.length === 0 ? '' : `Courtesy PDF not emailed: ${failed.map((f) => `${f.label} to ${f.email} (${f.reason})`).join('; ')}. ${failed.length === 1 ? 'That notice is' : 'Those notices are'} recorded all the same.`,
+  }
+}
 
 /** The shape of a tracking number for its method (v2.4119): a certified article number is 20 digits (22 with the service prefix); a courier number is any non-empty string; email and hand delivery need none. */
 export type TrackingShape = { ok: boolean; hint: string; digits: number }

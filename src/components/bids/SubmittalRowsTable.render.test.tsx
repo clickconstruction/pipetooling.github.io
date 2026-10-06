@@ -65,7 +65,7 @@ describe('SubmittalRowsTable', () => {
     expect(within(rows[2]!).getByTestId('their-call-head').textContent).toBe('1 of 2 rejected')
     expect(within(rows[2]!).getByTestId('their-call-parts').textContent).toBe('1 with no answer yet')
     // The verdict shares the buttons' column, under Their answer.
-    expect(within(rows[2]!).getByTestId('their-call').closest('td')).toBe(within(rows[2]!).getByTestId('their-answer-row').closest('td'))
+    expect(within(rows[2]!).getByTestId('their-call').closest('td')).toBe(within(rows[2]!).getByTestId('row-more').closest('td'))
     // The order-only fixture sits under them, in its own group.
     expect(screen.getByTestId('submittal-rows').textContent).toContain('STOPS')
   })
@@ -74,8 +74,12 @@ describe('SubmittalRowsTable', () => {
     const on = mount()
     fireEvent.click(screen.getByRole('button', { name: 'Edit DWH-1' }))
     expect(on.onEdit).toHaveBeenCalledWith(dwh)
+    // v2.4687 · Their answer sits behind the row's ⋯, with Part of… and ×.
+    expect(screen.queryByRole('button', { name: 'Their answer on FCO' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'More for FCO' }))
     fireEvent.click(screen.getByRole('button', { name: 'Their answer on FCO' }))
     expect(on.onAnswer).toHaveBeenCalledWith(fco)
+    fireEvent.click(screen.getByRole('button', { name: 'More for FCO' }))
     fireEvent.click(screen.getByRole('button', { name: 'Split LAV-1, LAV-2' }))
     expect(on.onSplit).toHaveBeenCalledWith(lav)
     // Closed, the two are not on the page at all.
@@ -97,9 +101,12 @@ describe('SubmittalRowsTable', () => {
     expect(screen.queryByTestId('fold-row')).toBeNull()
   })
 
-  it('on a shared revision the draft-only buttons are gone, and an empty revision says so', () => {
+  it('on a shared revision the draft-only buttons are gone (⋯ keeps Their answer alone, v2.4687), and an empty revision says so', () => {
     mount({ isDraft: false })
-    expect(screen.queryByTestId('row-more')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'More for DWH-1' }))
+    expect(screen.getByRole('button', { name: 'Their answer on DWH-1' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Remove DWH-1' })).toBeNull()
+    expect(screen.queryByTestId('fold-row')).toBeNull()
     expect(screen.queryByRole('button', { name: 'Split LAV-1, LAV-2' })).toBeNull()
     expect(screen.getByRole('button', { name: 'Edit DWH-1' })).toBeTruthy()
   })

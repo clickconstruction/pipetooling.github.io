@@ -2130,7 +2130,9 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   // 2026-10-03 · every stage that is live, not the first alone: a draft answered by email has its rows, Their call and Resubmit live at once.
   const liveStageKeys = journey.stages.filter((st) => (st.status === 'current' || st.status === 'waiting') && st.key !== 'procure').map((st) => st.key)
   // What each stage reads from stays open beside it: the package reads the rows; their call and the resubmit land on the rows.
-  const readsFrom: Partial<Record<JourneyStageKey, JourneyStageKey[]>> = { package: ['rows'], share: ['package'], review: ['rows'], resubmit: ['rows', 'review'] }
+  // v2.4689 · step 7 opens step 6 alone: the Resubmit button's own line names the rows sent back, so the fourteen rows of
+  // step 3 need not open with it (BP375 at step 7 opened 3, 6 and 8 at once — five screens before the log; punch list #89, item 7).
+  const readsFrom: Partial<Record<JourneyStageKey, JourneyStageKey[]>> = { package: ['rows'], share: ['package'], review: ['rows'], resubmit: ['review'] }
   // 2026-10-05 · the robot's schedule read keeps step 1 open only while its tags wait to be confirmed; anything else it is doing rides on the folded step's line.
   const scheduleRead = liveTask(tasks, 'read_schedule')
   const scheduleReadNote = scheduleRead ? robotScheduleNote(scheduleRead, robotSeat, Date.now(), formatShortDate) : null
