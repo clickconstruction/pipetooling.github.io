@@ -938,6 +938,11 @@ describe('GC mode golden walk', () => {
     used.add('inWhatIf') // played in gcWhatIf.test.ts: it needs a copy open
     used.add('keepWhatIf') // played in gcWhatIf.test.ts: it needs moves tried in a copy
     used.add('throwAwayWhatIf') // played in gcWhatIf.test.ts: it needs a copy open
+    used.add('splitActivity') // played in gcSplitBars.test.ts: one line as several bars (G-39)
+    used.add('joinActivity') // played in gcSplitBars.test.ts: it needs a split line
+    used.add('moveActivityPart') // played in gcSplitBars.test.ts: it needs a split line
+    used.add('tradeReportPart') // played in gcSplitBars.test.ts: it needs a split line
+    used.add('selfReportPart') // played in gcSplitBars.test.ts: it needs a split stage of our own crew
     used.add('setActivityPlaces') // played in gcPlaces.test.ts: where the work is (G-83)
     const all: GcAction['type'][] = [
       'issueAddendum', 'tradeConfirmBid', 'setStartItem', 'setStartDate', 'startProject', 'invite', 'nudge',
@@ -996,6 +1001,7 @@ describe('GC mode golden walk', () => {
       'recoverScheduleDays',
       'tradeSetCrewCount',
       'startWhatIf', 'inWhatIf', 'keepWhatIf', 'throwAwayWhatIf',
+      'splitActivity', 'joinActivity', 'moveActivityPart', 'tradeReportPart', 'selfReportPart',
       'setActivityPlaces',
     ]
     expect(all.filter((t) => !used.has(t))).toEqual([])

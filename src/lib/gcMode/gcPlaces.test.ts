@@ -167,6 +167,17 @@ describe('the made-up job with its guesses kept', () => {
     for (const t of [...weeks.map((w) => w.words), ...calls.map((c) => c.text)]) expect([t, plainWordsFailures(t)]).toEqual([t, []])
   })
 
+  it('reads a split line once, its parts sharing the line’s place (G-39)', () => {
+    const k = guessesKept()
+    const lighting = lineOf(k, 'Lighting')
+    const s = gcReducer(k, { type: 'splitActivity', projectId: ID, lineId: lighting, parts: [{ name: 'Sales floor', start: '2026-09-14', finish: '2026-10-09' }, { name: 'Back of house', start: '2026-10-10', finish: '2026-10-23' }], by: 'Robert' })
+    expect(job(s).schedule!.activities.find((a) => a.lineId === lighting)?.parts).toHaveLength(2)
+    // The lane, the window's rows and the morning list read the line, not each part: Pecan Valley counts once.
+    expect(crowdedWeeks(s, job(s))).toEqual(crowdedWeeks(k, job(k)))
+    expect(placeRows(s, job(s)).filter((r) => r.lineId.startsWith(lighting))).toHaveLength(1)
+    expect(morningCrowding(job(s), morningList(s, job(s), chartHolds(s, job(s))), s.today)).toEqual(['Inside has 3 trades at once today. They are Pecan Valley Electric, our own crew and Cool Breeze Mechanical.'])
+  })
+
   it('counts a trade’s own number for the week first (G-142)', () => {
     const s = gcReducer(guessesKept(), { type: 'tradeSetCrewCount', projectId: ID, partnerId: 'coolbreeze', packageId: 'fhvac', weekOf: '2026-10-05', count: 5 })
     const week = crowdedWeeks(s, job(s)).find((w) => w.weekOf === '2026-10-05')!

@@ -12,6 +12,7 @@ import { MOVE_REASONS, moveActivityName, moveRows, moveWhyProblem, planMove, red
 import { companiesToTell, datesMessage, moveAnswerWords, untoldMoves } from '../../lib/gcMode/gcTellTrades'
 import { lateNoticeMoveWords } from '../../lib/gcMode/gcLateNotices'
 import { moveBillingShift, planBillingShift, shiftWords } from '../../lib/gcMode/gcBillingForecast'
+import { lineLabel } from '../../lib/gcMode/gcSplitBars'
 import { crowdingAfterMove } from '../../lib/gcMode/gcPlaces'
 import { Btn, Card, Chip, input } from './gcUi'
 
@@ -38,6 +39,8 @@ export interface PendingMove {
   changeOrderId?: string
   /** The trade's late notice this move takes (G-117): its day, reason and words came with it. */
   lateNoticeId?: string
+  /** A split line's part moved (G-39): the part, its dates before, and its new ones. The move's start and finish are then its line's new span. */
+  part?: { id: string; name: string; from: { start: string; finish: string }; start: string; finish: string }
 }
 
 const label = { fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-muted)', textTransform: 'uppercase' } as const
@@ -59,17 +62,23 @@ export function GcMoveExplain({ state, project, pending, dispatch, onClose, tryI
   const billing = useMemo(() => (state && plan && !plan.problem && !plan.same ? shiftWords(planBillingShift(state, project, plan), 'will') : null), [state, project, pending]) // eslint-disable-line react-hooks/exhaustive-deps
   // What the move does to a place with too many trades (G-83), said before it saves.
   const crowding = useMemo(() => (state && plan && !plan.problem && !plan.same ? crowdingAfterMove(state, project, plan.activities) : []), [state, project, pending]) // eslint-disable-line react-hooks/exhaustive-deps
-  if (!plan || plan.same) return null
+  // A part moved inside its line's span (G-39) leaves the line's dates as they are: still a move, with its reason.
+  if (!plan || (plan.same && !pending.part)) return null
   // In a what-if (G-81) a reason is optional: the move is tried with one when it is given whole, else with none yet.
   const whyGiven = moveWhyProblem(reason, note) === null
   const problem = tryIt ? plan.problem : (plan.problem ?? moveWhyProblem(reason, note))
   const phone = typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 640px)').matches
-  const dated = plan.from.start !== plan.to.start || plan.from.finish !== plan.to.finish
+  const dated = plan.from.start !== plan.to.start || plan.from.finish !== plan.to.finish || Boolean(pending.part)
   const shift = daysBetween(plan.from.finish, plan.to.finish)
   const longer = daysBetween(plan.to.start, plan.to.finish) - daysBetween(plan.from.start, plan.from.finish)
   const save = () => {
     if (problem || (!tryIt && !reason)) return
     const why = reason && whyGiven ? { why: { reason, note: note.trim(), by: me } } : {}
+    if (pending.part) {
+      dispatch({ type: 'moveActivityPart', projectId: project.id, lineId: pending.lineId, partId: pending.part.id, start: pending.part.start, finish: pending.part.finish, ...why })
+      onClose()
+      return
+    }
     dispatch({ type: 'setScheduleActivity', projectId: project.id, lineId: pending.lineId, start: pending.start, finish: pending.finish, after: pending.after, ...why, ...(pending.limits ?? {}), ...(pending.changeOrderId ? { changeOrderId: pending.changeOrderId } : {}), ...(pending.lateNoticeId ? { lateNoticeId: pending.lateNoticeId } : {}) })
     onClose()
   }
@@ -89,13 +98,16 @@ export function GcMoveExplain({ state, project, pending, dispatch, onClose, tryI
         <div>
           <h3 style={{ margin: 0, fontSize: '1.05rem' }}>
             {tryIt ? `Try ${dated ? 'moving' : 'changing'}` : dated ? 'Move' : 'Change'} {moveActivityName(project, pending.lineId)}
+            {pending.part ? `, ${pending.part.name}` : ''}
           </h3>
           <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
             {tryIt ? 'In the what-if, a reason is optional. Keep asks for one.' : "A move is saved with why it moved. Both stay on the schedule's record."}
           </div>
         </div>
         <div style={{ display: 'grid', gap: '0.3rem', background: 'var(--bg-subtle)', borderRadius: 8, padding: '0.6rem 0.7rem' }}>
-          {dated ? (
+          {pending.part ? (
+            <GcPartMoveLines project={project} pending={pending} part={pending.part} plan={plan} />
+          ) : dated ? (
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
               <span style={{ color: 'var(--text-muted)', textDecoration: 'line-through' }}>{spanWords(plan.from)}</span>
               <span aria-hidden>→</span>
@@ -357,4 +369,33 @@ export function GcTellTrades({ state, project, dispatch, onClose }: { state: GcS
 function MoveBilling({ state, project, move }: { state: GcState; project: GcProject; move: ScheduleMove }) {
   const words = useMemo(() => shiftWords(moveBillingShift(state, project, move) ?? [], 'did'), [state, project, move])
   return words ? <div style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>Billing: {words}</div> : null
+}
+
+/** A part's move (G-39): the part's dates before and after, then what its line's span does. What that pushes follows, as for any move. */
+function GcPartMoveLines({ project, pending, part, plan }: { project: GcProject; pending: PendingMove; part: NonNullable<PendingMove['part']>; plan: { same: boolean; from: { start: string; finish: string }; to: { start: string; finish: string } } }) {
+  const shift = daysBetween(part.from.finish, part.finish)
+  const longer = daysBetween(part.start, part.finish) - daysBetween(part.from.start, part.from.finish)
+  const name = lineLabel(project, pending.lineId)
+  const lineWords = plan.same
+    ? `${name} keeps its dates, ${spanWords(plan.from)}. Nothing after it moves.`
+    : plan.from.start === plan.to.start
+      ? `${name} now ends ${weekdayDate(plan.to.finish)}.`
+      : plan.from.finish === plan.to.finish
+        ? `${name} now starts ${weekdayDate(plan.to.start)}.`
+        : `${name} now runs ${weekdayDate(plan.to.start)} to ${weekdayDate(plan.to.finish)}.`
+  return (
+    <>
+      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
+        <span>{part.name}</span>
+        <span style={{ color: 'var(--text-muted)', textDecoration: 'line-through' }}>{spanWords(part.from)}</span>
+        <span aria-hidden>→</span>
+        <strong>
+          {weekdayDate(part.start)} to {weekdayDate(part.finish)}
+        </strong>
+        {shift !== 0 && <Chip tone={shift > 0 ? 'amber' : 'green'}>{Math.abs(shift)} {Math.abs(shift) === 1 ? 'day' : 'days'} {shift > 0 ? 'later' : 'sooner'}</Chip>}
+        {longer !== 0 && <Chip tone="grey">{Math.abs(longer)} {Math.abs(longer) === 1 ? 'day' : 'days'} {longer > 0 ? 'longer' : 'shorter'}</Chip>}
+      </div>
+      <div data-gc-part-line>{lineWords}</div>
+    </>
+  )
 }
