@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { legalJobMoneyOf } from './legalJobMoney'
 import { matterOpenBalance, settlementBelowFloor, settlementFloorDollars, settlementFloorOf, settlementFloorWords } from '../../../supabase/functions/_shared/legalSettlement'
 import { buildFirmActivity, type LegalEntryRow, type LegalMatterRow } from './legalMatters'
 import { conversationRows, conversationStateWords, conversationWho } from './legalAsks'
@@ -26,6 +27,16 @@ describe('settlement floor (#85 item 20)', () => {
     const invoices = [{ id: 'i1', job_id: 'a', amount: 6000, status: 'billed' }, { id: 'i2', job_id: 'a', amount: 3000, status: 'draft' }]
     const payments = [{ job_id: 'a', invoice_id: 'i1', amount: 1500 }]
     expect(matterOpenBalance(jobs, invoices, payments)).toBe(4500 + 4000)
+  })
+  it('reads the card’s one money rule (review): a payment with no bill lowers the floor’s balance, as on the card', () => {
+    const jobs = [{ id: 'a', revenue: 6000, payments_made: 2000 }]
+    const invoices = [{ id: 'i1', job_id: 'a', amount: 6000, status: 'billed', sequence_order: 1 }]
+    const payments = [{ job_id: 'a', invoice_id: null, amount: 2000, paid_on: '2026-09-01' }]
+    // The old linked-payments-only rule read $6,000; the card reads $4,000.
+    expect(matterOpenBalance(jobs, invoices, payments)).toBe(4000)
+    expect(legalJobMoneyOf({ revenue: 6000, payments_made: 2000, invoices, payments }).balance).toBe(4000)
+    // An overpaid matter's balance is 0, never a negative floor base.
+    expect(matterOpenBalance(jobs, invoices, [{ job_id: 'a', invoice_id: 'i1', amount: 7000 }])).toBe(0)
   })
   it('the firm’s proposal threads as a settlement ask and leads the Needs You card', () => {
     const ask: LegalEntryRow = { id: 's1', matter_id: 'm1', kind: 'question', amount: 9000, body: 'Two payments', occurred_on: '2026-10-06', meta: { flavor: 'settlement', proposedAmount: 9000, floor: 14000, recordedBy: { id: 'r1', name: 'Dana Reyes' } }, via_portal: true, created_by: null, acknowledged_at: null, created_at: '2026-10-06T15:00:00Z' }

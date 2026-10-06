@@ -336,14 +336,19 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
   const confirmReady = async () => {
     if (sheet?.kind !== 'ready' || !firm) return
     const floorN = Number(sheet.floor ?? '')
+    const wantsFloor = Number.isFinite(floorN) && floorN > 0
+    const setFloor = (matterId: string) => legalRpc('legal_set_settlement_floor', { p_matter_id: matterId, p_amount: sheet.floorUnit === 'usd' ? floorN : null, p_pct: sheet.floorUnit === 'usd' ? null : floorN })
     const ok = await run('Attorney-ready', async () => {
+      // #85 item 20 review: the floor goes on first, so the firm never sees the matter without it. A matter the
+      // desk has not saved yet has no row to put it on, so its floor follows the release at once.
+      if (wantsFloor && matter?.id) {
+        const fe = await setFloor(matter.id)
+        if (fe) return fe
+      }
       const r = await legalRpcData('legal_mark_attorney_ready', { p_payer_key: selected?.key, p_customer_id: selected?.customerId, p_payer_name: selected?.name, p_job_ids: jobIds, p_firm_id: firm.id, p_handling_name: sheet.handling, p_note: sheet.note })
       if (r.error) return r.error
-      // #85 item 20: the settlement floor rides the release when the sheet set one.
       const matterId = typeof r.data?.matter_id === 'string' ? r.data.matter_id : null
-      if (matterId && Number.isFinite(floorN) && floorN > 0) {
-        return legalRpc('legal_set_settlement_floor', { p_matter_id: matterId, p_amount: sheet.floorUnit === 'usd' ? floorN : null, p_pct: sheet.floorUnit === 'usd' ? null : floorN })
-      }
+      if (wantsFloor && matterId && matterId !== matter?.id) return setFloor(matterId)
       return null
     })
     if (ok) {
@@ -978,8 +983,9 @@ function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDo
             rows={talk.map((r) => {
               const e = r.entry
               const s = conversationStateWords(r, 'office')
+              // #85 item 20 review: sign off only while the matter is with the firm (the RPC refuses otherwise).
               const acts = !r.isAnswer && r.thread.flavor === 'settlement' && r.thread.state === 'open' && officeActs ? (
-                <SettlementAnswer key="s" busy={officeActs.busy} onAnswer={(yes, note) => officeActs.answerSettlement(e.id, yes, note)} />
+                officeActs.canAsk ? <SettlementAnswer key="s" busy={officeActs.busy} onAnswer={(yes, note) => officeActs.answerSettlement(e.id, yes, note)} /> : <span key="s" style={{ ...MUTED, fontSize: '0.76rem' }}>No longer with the firm</span>
               ) : !r.isAnswer && r.thread.askedBy === 'firm' && r.thread.state === 'open' && officeActs ? (
                 answerBox(e)
               ) : !r.isAnswer && r.thread.askedBy === 'office' && r.thread.state === 'open' && officeActs ? (

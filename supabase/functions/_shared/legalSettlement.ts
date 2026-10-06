@@ -10,6 +10,7 @@
  * floor with it, the desk words it with it — one rule, so the firm never sees
  * one floor and meets another.
  */
+import { legalJobMoneyOf, type LegalMoneyInvoice, type LegalMoneyPayment } from './legalJobMoney.ts'
 
 export type LegalSettlementFloor = { amount: number | null; pct: number | null }
 
@@ -44,29 +45,20 @@ export function settlementBelowFloor(proposed: number, floor: LegalSettlementFlo
   return f != null && proposed < f
 }
 
-type JobLike = { id: string; revenue?: unknown; payments_made?: unknown }
-type InvoiceLike = { id: string; job_id: string; amount?: unknown; status?: unknown }
-type PaymentLike = { job_id: string; invoice_id?: unknown; amount?: unknown }
+type JobLike = { id: string; revenue?: number | string | null; payments_made?: number | string | null }
+type InvoiceLike = LegalMoneyInvoice & { job_id: string }
+type PaymentLike = LegalMoneyPayment & { job_id: string }
 
 /**
- * The matter's open balance by the packet's rule (`src/lib/legal/legalPacket.ts`
- * `jobOpenBalance`): per job, its open billed lines when it has any (each line's
- * amount less what was paid against it), else revenue less payments made.
+ * The matter's open balance by the one money rule the firm's card reads (`_shared/legalJobMoney.ts`, item 5):
+ * each job's balance summed, never below 0. The floor and the card can no longer disagree.
  */
 export function matterOpenBalance(jobs: ReadonlyArray<JobLike>, invoices: ReadonlyArray<InvoiceLike>, payments: ReadonlyArray<PaymentLike>): number {
   let total = 0
   for (const j of jobs) {
-    const billed = invoices.filter((i) => i.job_id === j.id && i.status === 'billed')
-    if (billed.length > 0) {
-      for (const inv of billed) {
-        const applied = payments.filter((p) => p.invoice_id === inv.id).reduce((s, p) => s + (num(p.amount) ?? 0), 0)
-        total += Math.max(0, (num(inv.amount) ?? 0) - applied)
-      }
-    } else {
-      total += Math.max(0, (num(j.revenue) ?? 0) - (num(j.payments_made) ?? 0))
-    }
+    total += legalJobMoneyOf({ revenue: j.revenue, payments_made: j.payments_made, invoices: invoices.filter((i) => i.job_id === j.id), payments: payments.filter((p) => p.job_id === j.id) }).balance
   }
-  return Math.round(total * 100) / 100
+  return Math.max(0, Math.round(total * 100) / 100)
 }
 
 function usd(n: number): string {

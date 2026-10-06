@@ -237,19 +237,24 @@ serve(async (req) => {
         meta.settlementAmount = amount
       }
       let balance = 0
+      // A percent floor needs the balance. When it cannot be read, or the matter has no jobs, the floor is
+      // unknown: the settlement goes to the office as an ask, never through at $0 (item 20 review).
+      let floorUnknown = false
       if (floor?.pct != null && amount != null) {
-        const { data: links } = await admin.from('legal_matter_jobs').select('job_id').eq('matter_id', matterId)
+        const { data: links, error: linkErr } = await admin.from('legal_matter_jobs').select('job_id').eq('matter_id', matterId)
         const jobIds = ((links ?? []) as Array<{ job_id: string }>).map((l) => l.job_id)
-        if (jobIds.length) {
+        if (linkErr || !jobIds.length) floorUnknown = true
+        else {
           const [jr, ir, pr] = await Promise.all([
             admin.from('jobs_ledger').select('id, revenue, payments_made').in('id', jobIds),
-            admin.from('jobs_ledger_invoices').select('id, job_id, amount, status').in('job_id', jobIds),
-            admin.from('jobs_ledger_payments').select('job_id, invoice_id, amount').in('job_id', jobIds),
+            admin.from('jobs_ledger_invoices').select('id, job_id, amount, status, sequence_order, billed_at, agreed_write_down_at, agreed_write_down_previous_amount').in('job_id', jobIds),
+            admin.from('jobs_ledger_payments').select('job_id, invoice_id, amount, paid_on').in('job_id', jobIds),
           ])
-          balance = matterOpenBalance((jr.data ?? []) as Array<{ id: string }>, (ir.data ?? []) as Array<{ id: string; job_id: string }>, (pr.data ?? []) as Array<{ job_id: string }>)
+          if (jr.error || ir.error || pr.error || !(jr.data ?? []).length) floorUnknown = true
+          else balance = matterOpenBalance((jr.data ?? []) as Array<{ id: string }>, (ir.data ?? []) as Array<{ id: string; job_id: string }>, (pr.data ?? []) as Array<{ job_id: string }>)
         }
       }
-      if (floor && amount != null && settlementBelowFloor(amount, floor, balance)) {
+      if (floor && amount != null && (floorUnknown || settlementBelowFloor(amount, floor, balance))) {
         const floorDollars = settlementFloorDollars(floor, balance) ?? 0
         const money = (n: number) => `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
         entryKind = 'question'
@@ -259,7 +264,10 @@ serve(async (req) => {
         meta.floor = floorDollars
         if (floor.pct != null) meta.floorPct = floor.pct
         delete meta.settlementAmount
-        notice = `${money(amount)} is below the office's floor of ${money(floorDollars)}. It went to the office as a settlement ask. The stage moves when they sign off.`
+        notice = floorUnknown
+          ? `The office's floor could not be worked out just now, so ${money(amount)} went to the office as a settlement ask. The stage moves when they sign off.`
+          : `${money(amount)} is below the office's floor of ${money(floorDollars)}. It went to the office as a settlement ask. The stage moves when they sign off.`
+        if (floorUnknown) meta.floorUnknown = true
       } else if (decision === 'ask') {
         // Backward (judgment → demand, or anything after an end): recorded, the stage waits for the office.
         meta.proposed = true

@@ -34,7 +34,7 @@ BEGIN
   IF NOT public.legal_office_can_read() THEN RETURN jsonb_build_object('error', 'Not authorized'); END IF;
   IF p_amount IS NOT NULL AND p_pct IS NOT NULL THEN RETURN jsonb_build_object('error', 'Set a dollar floor or a percent, not both'); END IF;
   IF p_amount IS NOT NULL AND p_amount <= 0 THEN RETURN jsonb_build_object('error', 'The floor must be more than zero'); END IF;
-  IF p_pct IS NOT NULL AND (p_pct <= 0 OR p_pct > 100) THEN RETURN jsonb_build_object('error', 'A percent floor is between 1 and 100'); END IF;
+  IF p_pct IS NOT NULL AND (p_pct <= 0 OR p_pct > 100) THEN RETURN jsonb_build_object('error', 'A percent floor is more than 0 and at most 100'); END IF;
   UPDATE public.legal_matters
     SET settlement_floor_amount = ROUND(p_amount, 2), settlement_floor_pct = p_pct, updated_at = now()
   WHERE id = p_matter_id;
@@ -71,6 +71,17 @@ BEGIN
     RETURN jsonb_build_object('error', 'That is not a settlement ask from the firm');
   END IF;
   IF v_ask.acknowledged_at IS NOT NULL THEN RETURN jsonb_build_object('error', 'That ask was already answered'); END IF;
+  -- The matter must still be with the firm (#85 item 20 review): assigned, on a portal stage, not closed. A matter
+  -- pulled back, written down or closed since the ask cannot be settled from it.
+  PERFORM 1 FROM public.legal_matters m
+   WHERE m.id = v_ask.matter_id
+     AND m.firm_id IS NOT NULL
+     AND m.stage = ANY (ARRAY['referred','demand','suit','judgment','post_judgment','payment_plan','settled','uncollectible','dismissed'])
+     AND m.closed_at IS NULL
+   FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'The matter is no longer with the firm, so its settlement cannot be signed off' USING ERRCODE = 'P0001';
+  END IF;
   v_amount := COALESCE(NULLIF(v_ask.meta->>'proposedAmount', '')::numeric, v_ask.amount);
   v_amount_words := '$' || to_char(COALESCE(v_amount, 0), 'FM999,999,990.00');
 
