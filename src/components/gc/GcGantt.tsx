@@ -35,6 +35,8 @@ import { lostDayTitle, lostDaysWords, type LostDay } from '../../lib/gcMode/gcDa
 import { actualWords } from '../../lib/gcMode/gcActualDates'
 import { Chip } from './gcUi'
 import { GcGanttList } from './GcGanttList'
+import { GcGanttPrint } from './GcGanttPrint'
+import type { GanttPrintJob } from '../../lib/gcMode/gcGanttPrint'
 
 const HEAD_H = 46
 const MS_H = 40
@@ -139,6 +141,7 @@ export function GcGantt({
   lateSaid,
   logNotes,
   callList,
+  print,
 }: {
   items: ScheduleItem[]
   float: Map<string, number>
@@ -170,6 +173,8 @@ export function GcGantt({
   logNotes?: Map<string, { note: string; words: string }>
   /** By company as a call list (G-115): drawn under the toolbar while the chart is grouped by company. */
   callList?: ReactNode
+  /** The job's words for Print or PDF (G-21). Unset: the toolbar has no print button. */
+  print?: GanttPrintJob
 }) {
   const [zoom, setZoom] = useState<GanttZoom>('weeks')
   const [by, setBy] = useState<GanttGroupBy>('trade')
@@ -195,6 +200,8 @@ export function GcGantt({
   const justDragged = useRef(false)
   // A link being drawn (G-34): from a bar's end port to wherever the pointer is, over a bar or not.
   const [linking, setLinking] = useState<{ from: string; x: number; y: number; over: string | null } | null>(null)
+  // Print or PDF (G-21): the window, fed the chart as the person has it.
+  const [printing, setPrinting] = useState(false)
   // A phone gives the names less room so a few weeks of bars still show beside them.
   const phone = typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 640px)').matches
   const labelW = phone ? 168 : 360
@@ -277,6 +284,29 @@ export function GcGantt({
     setBy(next)
     setFolded(finishedGroups(items, float, holds, today, building, next))
   }
+  const printInput = useMemo(
+    () =>
+      print
+        ? {
+            bars: all,
+            filters,
+            filterNames: Object.fromEntries(FILTER_WORDS.map((f) => [f.key, f.label])) as Record<keyof GanttFilters, string>,
+            by,
+            folded,
+            links: showLinks,
+            milestones,
+            waits: waitList,
+            lost: lost ?? new Map<string, LostDay[]>(),
+            today,
+            building,
+            job: print,
+            // The chart's own note, with what the daily log says of the bar (G-60), so paper and screen say the same.
+            noteOf: (bar: GanttBar) => barNote(bar, logNotes?.get(bar.id)),
+            ...(lateSaid ? { lateSaid } : {}),
+          }
+        : null,
+    [print, all, filters, by, folded, showLinks, milestones, waitList, lost, today, building, lateSaid, logNotes],
+  )
   const anyFilter = Object.values(filters).some(Boolean)
   // Open all whenever anything is folded (finished trades open folded); Fold all only when nothing is.
   const anyFolded = groups.some((g) => folded.has(g.key))
@@ -529,6 +559,17 @@ export function GcGantt({
           <button type="button" style={quietBtn} onClick={() => setFolded(anyFolded ? new Set() : new Set(groups.map((g) => g.key)))}>
             {anyFolded ? 'Open all' : 'Fold all'}
           </button>
+          {print && (
+            <button
+              type="button"
+              style={{ ...quietBtn, ...(shown.length === 0 ? { opacity: 0.55, cursor: 'default' } : {}) }}
+              disabled={shown.length === 0}
+              onClick={() => setPrinting(true)}
+              title={shown.length === 0 ? 'Nothing passes these filters, so there is nothing to print.' : 'Opens the chart as you see it on landscape pages, to print or save as a PDF.'}
+            >
+              Print or PDF
+            </button>
+          )}
         </div>
         {/* The filters carry their counts, so the row is the chart's summary too (GANTT_FEATURES G-13, G-18). */}
         <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -829,6 +870,7 @@ export function GcGantt({
 
       {view === 'chart' && <GanttLegend building={building} canMove={Boolean(onMove)} />}
       {view === 'chart' && hovered && hover && !drag && <GanttHoverCard bar={hovered} all={all} at={hover} building={building} today={today} lost={lost?.get(hovered.id) ?? []} said={lateSaid?.get(hovered.id)} log={logNotes?.get(hovered.id)} />}
+      {printing && printInput && <GcGanttPrint input={printInput} onClose={() => setPrinting(false)} />}
     </div>
   )
 }
