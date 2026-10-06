@@ -473,7 +473,8 @@ describe('options (v2.4723): one amount line per option, its alternates under it
       { label: 'Option 2 — Value Engineered', amountWords: 'THREE HUNDRED 00/100 DOLLARS', amountFormatted: '$300.00', fixtureRows: [{ fixture: 'WC', count: 5 }], alternates: [{ label: 'Alternate 2', deltaText: 'Deduct $50', amountFormatted: '$250.00', note: 'Med gas by others' }] },
     ],
   }
-  const args = ['GC', '1 Main', 'Elm Creek', '2 Job Rd', 'IGNORED WORDS', '$1.00', [{ fixture: 'IGNORED', count: 1 }], 'Permits', '', '', null, 'Plumbing', false, true, null, null, null, null, null, null, null] as const
+  const IGNORED_ROWS = [{ fixture: 'IGNORED', count: 1 }]
+  const args = ['GC', '1 Main', 'Elm Creek', '2 Job Rd', 'IGNORED WORDS', '$1.00', IGNORED_ROWS, 'Permits', '', '', null, 'Plumbing', false, true, null, null, null, null, null, null, null] as const
 
   it('HTML: the sentence opens the list, each option is bold with words and figure, the alternate deducts against its option, fixtures print per option, the typed inclusion once', () => {
     const out = buildCoverLetterHtml(...args, options)

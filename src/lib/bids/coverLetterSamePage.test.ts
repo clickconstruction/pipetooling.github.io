@@ -198,6 +198,7 @@ describe('customerFacingAlternateName', () => {
       headlineRevenue: 0,
       fixtureRows: [],
       alternateLeads: false,
+      options: null,
     }
     const block = buildAlternatesBlock(
       plan,
