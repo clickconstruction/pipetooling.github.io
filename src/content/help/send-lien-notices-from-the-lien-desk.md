@@ -166,6 +166,22 @@ Robert opens J650 under Awaiting approval. Loberg Contracting owes $33,500 on it
 
 ## Reading the notice before it goes
 
+The pane is five sections tall. Each one has a thin title row that stays pinned as you scroll. The rows you have passed stack at the top. The rows still to come stack at the bottom. The one you are in has a blue bar. Press any row to jump to its section.
+
+Each row ends with its fact.
+
+- **Where this notice is**. The next step and its days.
+- **The four gates**. How many are clear.
+- **Supply houses**. The houses and their money. This row shows only when the job bought from a house.
+- **Months on this job**. The months and the claim.
+- **In the envelope**. The pages in the envelope.
+
+:::example the rows halfway down a job
+Where this notice is · Draft the Jul + Aug notice — 9 days
+The four gates · ✓ Ready to go out · All 4 clear
+Supply houses · 1 house owed · $6,258
+:::
+
 The pane shows what goes in the envelope, page by page.
 
 1. Counsel's cover letter is page 1 while its box is ticked. Untick it, and the page leaves.

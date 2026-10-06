@@ -24,6 +24,7 @@ export default function LienDeskGates({
   activeAt = 0,
   onPick,
   open = [],
+  headless = false,
 }: {
   gates: LienGate[]
   verdict: LienGateVerdict
@@ -35,6 +36,8 @@ export default function LienDeskGates({
   onPick?: (key: LienGateKey) => void
   /** Clear gates whose section stays open whatever the fold says — the owner's, while its pane has a Confirm to press. */
   open?: ReadonlyArray<LienGateKey>
+  /** The verdict row is drawn by the pane's stacked head instead (v2.4733). */
+  headless?: boolean
 }) {
   const box = useRef<HTMLDivElement | null>(null)
   // The clear gates a person opened; a gate that is not clear is open whatever this says.
@@ -63,6 +66,7 @@ export default function LienDeskGates({
 
   return (
     <div ref={box} className="lienGates" data-lien-desk-gates data-ready={verdict.ready ? 'yes' : 'no'}>
+      {headless ? null : (
       <div className="lienGatesHead">
         <span className="lienGatesVerdict" data-ready={verdict.ready ? 'yes' : 'no'}>
           <span aria-hidden="true">{verdict.ready ? '✓' : '✗'}</span> {verdict.headline}
@@ -74,6 +78,7 @@ export default function LienDeskGates({
           ))}
         </span>
       </div>
+      )}
       <div className="lienGatesGrid">
         {gates.map((g) => {
           const detail = details[g.key]

@@ -307,7 +307,7 @@ describe('LienDeskModal', () => {
     expect((document.querySelector('[data-lien-desk-next]') as HTMLElement).textContent).toContain('Owner of record missing')
     // The gates (v2.3657): the verdict is the headline, gate 1 is the one blocker, and its detail is numbered to match.
     const gatesBox = document.querySelector('[data-lien-desk-gates]') as HTMLElement
-    expect(gatesBox.textContent).toContain("Can't go out yet1 blocker · 1 to check")
+    expect(document.querySelector('[data-lien-pane-head="gates"]')?.textContent).toBe("The four gates✗ Can't go out yet · 1 blocker · 1 to check")
     expect((gatesBox.querySelector('[data-gate="owner"]') as HTMLElement).getAttribute('data-tone')).toBe('blocker')
     // A gate that is not clear opens on its own (v2.4718); the clear ones stay folded until asked.
     expect((gatesBox.querySelector('[data-gate-detail="owner"]') as HTMLElement).textContent).toContain('1Owner of record')
@@ -615,7 +615,9 @@ describe('LienDeskModal · wording and the preview (v2.3522)', () => {
     expect(screen.getByLabelText(/Include counsel's cover letter/)).toBeTruthy()
     const gatesBox = document.querySelector('[data-lien-desk-gates]') as HTMLElement
     expect(gatesBox.getAttribute('data-ready')).toBe('yes')
-    expect(gatesBox.textContent).toContain('Ready to go out1 to check')
+    // The verdict row is the pane's stacked head now (v2.4733).
+    expect(document.querySelector('[data-lien-pane-head="gates"]')?.textContent).toBe('The four gates✓ Ready to go out · 1 to check')
+    expect(gatesBox.querySelector('.lienGatesHead')).toBeNull()
     expect([...gatesBox.querySelectorAll('[data-gate]')].map((g) => `${g.getAttribute('data-n')}:${g.getAttribute('data-tone')}`)).toEqual(['1:ok', '2:ok', '3:check', '4:ok'])
     expect((gatesBox.querySelector('[data-gate-detail="kind"]') as HTMLElement).textContent).toContain('3Property kind')
     // The sections fold (v2.4718): the clear gates' rows wait behind Details ∨; the one to check is open on its own.
@@ -718,7 +720,10 @@ describe('LienDeskModal · wording and the preview (v2.3522)', () => {
     } as unknown as LienDeskItemRow
     renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650.map((r) => ({ ...r, has_owner: true })), [skippedMay], true)} />)
     const box = document.querySelector('[data-lien-desk-month-grid]') as HTMLElement
-    expect(box.textContent).toContain('Months on this job')
+    // The title is the pane's stacked head now (v2.4733); the helper sentence stays on the card.
+    expect(document.querySelector('[data-lien-pane-head="months"]')?.textContent).toContain('Months on this job')
+    expect(box.textContent).not.toContain('Months on this job')
+    expect(box.textContent).toContain('Every month worked, oldest first.')
     expect(box.textContent).toContain('Claim amount on the notice$33,500')
     // Every month is a row; July's window column spells the deadline out.
     const jul = box.querySelector('[data-lien-grid-row="2026-07"]') as HTMLElement
@@ -1315,6 +1320,40 @@ describe('LienDeskModal the owner’s call and the piles (v2.3767)', () => {
     expect(document.querySelector('[data-lien-desk-cover]')?.textContent).not.toContain('conditional release')
   })
 
+  it('pins a head per section, like the list’s pile heads (v2.4733): five in order with their facts, the first lit, a press lands on its section, and the cards give up their titles', async () => {
+    supplierState.byJob = buildLienSupplierJobs({
+      invoices: [{ id: 'r2', supply_house_id: 'reece', amount: 9612.4, is_paid: false, invoice_date: '2026-07-18', paidYmd: null, on_job_account: false }],
+      allocations: [{ invoice_id: 'r2', job_id: 'j650', pct: 100 }],
+      houses: [{ id: 'reece', name: 'Reece' }],
+    })
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650.map((r) => ({ ...r, has_owner: true })), [], true)} />)
+    await settle()
+    const heads = [...document.querySelectorAll<HTMLElement>('[data-lien-pane-head]')]
+    expect(heads.map((h) => h.getAttribute('data-lien-pane-head'))).toEqual(['path', 'gates', 'houses', 'months', 'envelope'])
+    expect(heads.map((h) => h.querySelector('.lienPaneHeadLabel')?.textContent)).toEqual(['Where this notice is', 'The four gates', 'Supply houses', 'Months on this job', 'In the envelope'])
+    expect(heads[1]!.textContent).toContain('✓ Ready to go out · All 4 clear')
+    expect(heads[2]!.textContent).toBe('Supply houses1 house owed · $9,612 · from our books · Sep 14')
+    expect(heads[3]!.textContent).toBe('Months on this jobJun + Jul + Aug · $33,500')
+    expect(heads[4]!.textContent).toBe('In the envelope2 pages · owner + GC · courtesy PDF to the GC')
+    // Stacked: passed heads at the top, coming ones at the bottom; the first is lit at the top of the pane.
+    expect(heads.map((h) => [h.style.top, h.style.bottom])).toEqual([['0px', '120px'], ['30px', '90px'], ['60px', '60px'], ['90px', '30px'], ['120px', '0px']])
+    expect(heads.map((h) => h.getAttribute('data-on'))).toEqual(['yes', 'no', 'no', 'no', 'no'])
+    // Every head sits before its section, as a sibling in the pane's grid.
+    for (const key of ['path', 'gates', 'houses', 'months', 'envelope']) {
+      const head = document.querySelector(`[data-lien-pane-head="${key}"]`)!
+      const body = document.querySelector(`[data-lien-pane-body="${key}"]`)!
+      expect(head.parentElement).toBe(body.parentElement)
+      expect(head.compareDocumentPosition(body) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    }
+    // The cards gave their title rows to the heads.
+    expect(screen.queryByText('Supply houses on this job')).toBeNull()
+    expect(document.querySelector('[data-lien-desk-gates] .lienGatesHead')).toBeNull()
+    // Press a head: the pane scrolls to its section and the head lights.
+    fireEvent.click(heads[3]!.querySelector('button')!)
+    expect(heads[3]!.getAttribute('data-on')).toBe('yes')
+    expect(heads[0]!.getAttribute('data-on')).toBe('no')
+  })
+
   it('draws no card and no mark on a job that bought nothing (v2.4404)', async () => {
     renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} />)
     await settle()
@@ -1442,9 +1481,12 @@ describe('LienDeskModal — the page labels stick (v2.4726)', () => {
     await settle()
     const labels = Array.from(document.querySelectorAll('[data-lien-desk-page-label]')) as HTMLElement[]
     expect(labels.length).toBeGreaterThanOrEqual(2)
-    // Stacked like the pile titles: the i-th label sits i bars from the top once passed and n-1-i bars from the bottom while ahead.
-    expect(labels.map((l) => l.style.top)).toEqual(labels.map((_, i) => `${i * 30}px`))
-    expect(labels.map((l) => l.style.bottom)).toEqual(labels.map((_, i) => `${(labels.length - 1 - i) * 30}px`))
+    // Stacked like the pile titles, under the pane's section heads (v2.4733: four on this job, which bought from no house) — the i-th label sits
+    // heads + i bars from the top once passed; it does not stack at the foot, where the envelope head already names the pages.
+    const headCount = document.querySelectorAll('[data-lien-pane-head]').length
+    expect(headCount).toBe(4)
+    expect(labels.map((l) => l.style.top)).toEqual(labels.map((_, i) => `${(headCount + i) * 30}px`))
+    expect(labels.map((l) => l.style.bottom)).toEqual(labels.map(() => 'auto'))
     expect(labels.map((l) => l.getAttribute('data-on'))).toEqual(labels.map((_, i) => (i === 0 ? 'yes' : 'no')))
     expect(labels[0]!.textContent).toMatch(/^Page 1 of \d/)
     // Each is a button that goes to its page and lights up.

@@ -89,6 +89,8 @@ import { LIEN_HOUSES_PARAGRAPH_READ_BY_COUNSEL, lienSupplierLetterParagraphFor, 
 import { LIEN_RELEASE_PARAGRAPH_READ_BY_COUNSEL, conditionalReleaseParagraph, noticeReleaseFields, noticeReleaseFormType, noticeReleasePageHtml, noticeReleaseThroughDate } from '../../lib/jobs/lienNoticeRelease'
 import { createNoticeReleaseDraft, refreshNoticeReleaseDraft, voidNoticeReleaseDraft, type NoticeReleaseDraftInput } from '../../lib/jobs/lienNoticeReleaseIo'
 import { useNoticeReleases } from '../../hooks/useNoticeReleases'
+import LienPaneHead from './LienPaneHead'
+import { LIEN_PANE_HEAD_H, lienPaneSectionScrollTop, lienPaneSections, litLienPaneSection, type LienPaneSectionKey } from '../../lib/jobs/lienPaneSections'
 import LienDeskAffidavitPane, { affidavitDeadlineWords } from './LienDeskAffidavitPane'
 import LienDeskRetainagePane from './LienDeskRetainagePane'
 import { LIEN_RETAINAGE_PILES, contractEndedWords, retainageDeadlineWords, type LienRetainagePile } from '../../lib/jobs/lienDeskRetainage'
@@ -357,6 +359,8 @@ export default function LienDeskModal({
     setStripH(paneScrolled ? stripRef.current?.offsetHeight ?? 0 : 0)
   }, [paneScrolled, selectedJobId])
   const paneRef = useRef<HTMLDivElement | null>(null)
+  // The pane's stacked heads (v2.4733): which section the reader is in; they stack under the pinned strip, whose height v2.4726 measures (`stripH`, 0 while it is not pinned).
+  const [litSection, setLitSection] = useState<LienPaneSectionKey | null>(null)
   // The gate being brought up (v2.3670): a cell click or the footer's Go to gate rings the cell and its section for 4s.
   const [activeGate, setActiveGate] = useState<{ key: LienGateKey; at: number } | null>(null)
   useEffect(() => {
@@ -758,6 +762,7 @@ export default function LienDeskModal({
   useEffect(() => {
     setCheckedMonths(null)
     setCoverNote(selected?.item ? selected.item.cover_note : true)
+    setLitSection(null)
     setHousesInLetter(parseLienDeskDraftFields(selected?.item?.fields)?.housesInLetter !== false)
     const storedRelease = parseLienDeskDraftFields(selected?.item?.fields)?.releaseId ?? null
     releaseIdRef.current = storedRelease
@@ -1453,7 +1458,7 @@ export default function LienDeskModal({
     let on: string | null = null
     pageKeys.forEach((key, i) => {
       const label = host.querySelector<HTMLElement>(`[data-lien-desk-page-label="${key}"]`)
-      if (label && label.offsetTop <= host.scrollTop + stripH + (i + 1) * PAGE_LABEL_H) on = key
+      if (label && label.offsetTop <= host.scrollTop + stripH + paneHeads.length * LIEN_PANE_HEAD_H + (i + 1) * PAGE_LABEL_H) on = key
     })
     setLitPage((prev) => (prev === on ? prev : on))
   }
@@ -1461,7 +1466,7 @@ export default function LienDeskModal({
     const host = paneRef.current
     const label = host?.querySelector<HTMLElement>(`[data-lien-desk-page-label="${key}"]`)
     if (!host || !label) return
-    const top = Math.max(0, label.offsetTop - stripH - i * PAGE_LABEL_H)
+    const top = Math.max(0, label.offsetTop - stripH - paneHeads.length * LIEN_PANE_HEAD_H - i * PAGE_LABEL_H)
     if (typeof host.scrollTo === 'function') host.scrollTo({ top, behavior: 'smooth' })
     else host.scrollTop = top
     setLitPage(key)
@@ -1470,7 +1475,7 @@ export default function LienDeskModal({
     const i = pageKeys.indexOf(key)
     const on = (litPage ?? pageKeys[0]) === key
     return (
-      <div className="lienPileHead" data-lien-desk-page-label={key} data-on={on ? 'yes' : 'no'} style={{ top: stripH + i * PAGE_LABEL_H, bottom: (pageKeys.length - 1 - i) * PAGE_LABEL_H, zIndex: 1, margin: '0 -1.1rem -0.3rem', padding: '0 1.1rem' }}>
+      <div className="lienPileHead" data-lien-desk-page-label={key} data-on={on ? 'yes' : 'no'} style={{ top: stripH + paneHeads.length * LIEN_PANE_HEAD_H + i * PAGE_LABEL_H, bottom: 'auto', zIndex: 1, margin: '0 -1.1rem -0.3rem', padding: '0 1.1rem' }}>
         <button type="button" className="lienPileHeadBtn" onClick={() => scrollToPage(key, i)} title="Go to this page" style={{ overflow: 'hidden', whiteSpace: 'nowrap' }}>
           <span>{words}</span>
           {extra ? (
@@ -1600,6 +1605,65 @@ export default function LienDeskModal({
         })
       : null
 
+  // The pane's stacked heads (v2.4733): the five sections' title rows, pinned like the list's pile heads — passed ones under the strip, coming ones at the bottom, the one the reader is in lit.
+  const paneHeads = selected
+    ? lienPaneSections({
+        nextWords: timeline?.next.words ?? null,
+        gates: { ready: gateVerdict.ready, headline: gateVerdict.headline, summary: gateVerdict.summary },
+        houses: supplierJob ? { count: supplierJob.houses.length, housesOwed: supplierJob.housesOwed, owed: supplierJob.owed, paid: supplierJob.paid, asOf: formatYmdMonthDay(todayYmd) } : null,
+        months: monthsList,
+        claimWords: formatUsdNoCents(claimed.claim),
+        pages: pageTotal,
+        gcEmail: Boolean(gc?.email),
+        monthShort: workMonthShort,
+        money: formatUsdNoCents,
+      })
+    : []
+  const paneStripH = stripH
+  const relightPane = (host: HTMLElement) => {
+    const bodies = paneHeads
+      .map((h) => ({ key: h.key, el: host.querySelector<HTMLElement>(`[data-lien-pane-body="${h.key}"]`) }))
+      .filter((b): b is { key: LienPaneSectionKey; el: HTMLElement } => b.el != null)
+      .map((b) => ({ key: b.key, offsetTop: b.el.offsetTop }))
+    const next = litLienPaneSection(bodies, host.scrollTop, host.scrollTop > STRIP_COLLAPSE_PX ? stripH : 0)
+    setLitSection((prev) => (prev === next ? prev : next))
+  }
+  const goToSection = (key: LienPaneSectionKey) => {
+    const host = paneRef.current
+    const i = paneHeads.findIndex((h) => h.key === key)
+    const body = host?.querySelector<HTMLElement>(`[data-lien-pane-body="${key}"]`)
+    if (!host || !body || i < 0) return
+    const scroll = (top: number, smooth: boolean) => {
+      if (typeof host.scrollTo === 'function') host.scrollTo({ top, behavior: smooth ? 'smooth' : 'auto' })
+      else host.scrollTop = top
+    }
+    const measured = () => stripRef.current?.getBoundingClientRect().height || stripH
+    const plain = lienPaneSectionScrollTop(body.offsetTop, i, 0)
+    if (plain <= STRIP_COLLAPSE_PX) {
+      scroll(plain, true)
+      setLitSection(key)
+      return
+    }
+    if (paneScrolled) {
+      // The strip is pinned already: its height is on the page to read.
+      scroll(lienPaneSectionScrollTop(body.offsetTop, i, measured()), true)
+      setLitSection(key)
+      return
+    }
+    // The strip will pin at the landing but is not on the page yet, so its height is a guess (the first live press
+    // landed 15 px short on a wrapped strip). Step just past the fold so it mounts, read it, then land exactly.
+    scroll(STRIP_COLLAPSE_PX + 1, false)
+    window.setTimeout(() => {
+      scroll(lienPaneSectionScrollTop(body.offsetTop, i, measured()), true)
+      setLitSection(key)
+    }, 80)
+  }
+  const paneHead = (key: LienPaneSectionKey) => {
+    const i = paneHeads.findIndex((h) => h.key === key)
+    if (i < 0) return null
+    return <LienPaneHead section={paneHeads[i]!} index={i} count={paneHeads.length} stripHeight={paneStripH} lit={(litSection ?? paneHeads[0]?.key) === key} onGo={() => goToSection(key)} />
+  }
+
   // The pane (v2.3522): a strip — title, gates, months, wording — then the paper, which takes the rest and is the
   // pane's own scroll. Once the gates scroll away a one-line strip sticks to the top so the facts stay one glance away.
   const pane = selected ? (
@@ -1610,8 +1674,9 @@ export default function LienDeskModal({
         const next = ev.currentTarget.scrollTop > STRIP_COLLAPSE_PX
         setPaneScrolled((prev) => (prev === next ? prev : next))
         relightPages(ev.currentTarget)
+        relightPane(ev.currentTarget)
       }}
-      style={{ padding: '0 1.1rem 0.9rem', display: 'grid', gap: '0.6rem', alignContent: 'start', overflow: 'auto', minWidth: 0 }}
+      style={{ position: 'relative', padding: '0 1.1rem 0.9rem', display: 'grid', gap: '0.6rem', alignContent: 'start', overflow: 'auto', minWidth: 0 }}
     >
       {paneScrolled ? (
         <div
@@ -1658,6 +1723,8 @@ export default function LienDeskModal({
           {gc?.name ? `· GC ${gc.name}` : '· no GC'} {job?.job_address ? `· ${job.job_address}` : ''}
         </span>
       </div>
+      {paneHead('path')}
+      <div data-lien-pane-body="path" style={{ display: 'grid', gap: '0.6rem' }}>
       {timeline ? (
         <div data-lien-desk-timeline style={{ ...boxStyle, padding: isMobile ? '0.5rem 0.7rem' : '0.55rem 0.8rem 0.5rem' }}>
           <LienTimelineStrip timeline={timeline} onDoor={job && 'lien_contract_ended_on' in job ? () => onOpenEditJob(selected.jobId) : undefined} />
@@ -1702,7 +1769,12 @@ export default function LienDeskModal({
       ) : null}
 
       {/* The gates (v2.3657): four numbered steps in fixed slots under a verdict headline. Every gate has its section (v2.3670): a gate that is not clear carries its sentence and its door, a clear one the fact the notice will use; a cell click brings its section up. */}
+      </div>
+
+      {paneHead('gates')}
+      <div data-lien-pane-body="gates">
       <LienDeskGates
+        headless
         gates={gates}
         verdict={gateVerdict}
         active={activeGate?.key ?? null}
@@ -1867,12 +1939,20 @@ export default function LienDeskModal({
           ),
         }}
       />
+      </div>
 
       {/* Supply houses on this job (v2.4404): a second claim can ride the same property. Not drawn when the job bought nothing. */}
       {supplierJob ? (
-        <LienJobSuppliersCard job={supplierJob} propertyKind={property.propertyKind ?? ''} todayYmd={todayYmd} openBalance={openBalance} payerName={gc?.name ?? ''} jobLabel={jobLabel(job, selected.jobId)} isMobile={isMobile} word={office ? { authName, onChanged: suppliers.reload } : undefined} />
+        <>
+        {paneHead('houses')}
+        <div data-lien-pane-body="houses">
+        <LienJobSuppliersCard headless job={supplierJob} propertyKind={property.propertyKind ?? ''} todayYmd={todayYmd} openBalance={openBalance} payerName={gc?.name ?? ''} jobLabel={jobLabel(job, selected.jobId)} isMobile={isMobile} word={office ? { authName, onChanged: suppliers.reload } : undefined} />
+        </div>
+        </>
       ) : null}
 
+      {paneHead('months')}
+      <div data-lien-pane-body="months" style={{ display: 'grid', gap: '0.6rem' }}>
       {/* A carried correction nobody has looked at since the last notice (v2.3682): the paper says so and asks before it goes. */}
       {correction && correctionNeedsLook(correction, lastSentAt) ? (
         <div data-lien-claim-carry-strip style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.3rem 0.8rem', padding: '0.5rem 0.75rem', borderRadius: 9, border: '1px solid var(--border-amber)', background: 'var(--bg-amber-tint)', fontSize: '0.8125rem' }}>
@@ -1894,6 +1974,7 @@ export default function LienDeskModal({
 
       {/* Months (#38): the grid — months down, papers across, this notice as the last column. */}
       <LienDeskMonths
+        headless
         grid={monthGrid!}
         lastWork={<LienLastWorkDayLine jobId={selected.jobId} job={job ?? null} todayYmd={todayYmd} canEdit={office} userId={authUserId} onSaved={() => (onCalendarChanged ? onCalendarChanged('last_work') : onChanged())} jobLabel={`${job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '' : ''} · ${(job?.job_name ?? '').trim()}`} clockMonths={selected.months.filter((m) => !m.fromCreation && !m.byHand).map((m) => m.key)} noticedMonths={selected.months.filter((m) => m.noticed).map((m) => m.key)} propertyKind={selected.propertyKind} />}
         claimNode={
@@ -1932,7 +2013,10 @@ export default function LienDeskModal({
           setCheckedMonths(next)
         }}
       />
+      </div>
 
+      {paneHead('envelope')}
+      <div data-lien-pane-body="envelope" style={{ display: 'grid', gap: '0.6rem' }}>
       {/* The envelope (v2.3776): who the paper goes to and the cover-note switch, with the paper they describe — the footer keeps only the verbs. */}
       <div className="lienEnvelope" data-lien-desk-send-line>
         <span>
@@ -2078,6 +2162,7 @@ export default function LienDeskModal({
           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>A rule sets the default for every future month on every {gc?.name ?? 'GC'} job. You still see each send in your FYI list, and a live promise always comes back to you.{gcHasPriorNotice ? '' : ' “Send” starts with the second notice — this first one comes to you either way, so the office proves the addresses on real mail first.'}</div>
         </div>
       ) : null}
+      </div>
     </div>
   ) : (
     <div style={{ padding: '1.5rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>{isMobile ? '' : 'Pick a job on the left.'}</div>
