@@ -140,7 +140,7 @@ Render smokes, all under `src/components/jobs/`: `LienReleaseModal.steps.render.
 - **What holds a step:** `coveredBlocks` 975 (a waiver already covers a picked bill, until *Make it anyway* adds `'covered'` to `overrides`), `amountMath.tooEarly` (until *go on* adds `'early'`), `detailsMissing` 974 (a blank printed detail other than the title).
 - **Step 4's two faces:** `showDetailInputs` 1018 (`editable && (editDetails || detailsMissing > 0)`): inputs over `detailKeys` 971, else the `dl` (`data-testid="lien-waiver-details"`) with *Change a detail*.
 - **Click to look:** `looking` 935, `lookAt` 936 (reset on open, job and `rowStatus`, 944–947), `toggleLook` 958–970, `lookProps` 1000–1008, `lookNote` 999, `lookPart` 1009 (which part of the page to mark). `stepToShow` 950 + effect 951–956 scrolls the step into view and moves focus.
-- **Step 2's toggles** are an IIFE (1191–1234): `lienWaiverToggles` → `pick` → `lienWaiverFormFrom`; `pickUnconditional` 1200–1205 asks `confirmDialog(UNCONDITIONAL_WAIVER_WARNING)` first.
+- **Step 2's toggles** are an IIFE (1191–1234): `lienWaiverToggles` → `pick` → `lienWaiverFormFrom`; `pickUnconditional` 1200–1205 asks `confirmDialog(UNCONDITIONAL_WAIVER_WARNING)` first. Since v2.4582 every route into an unconditional form asks: `waivePaid` asks while the form is conditional (*Stay conditional* leaves the form and the amount alone); a window opened on a preset unconditional form asks once after `historyReady` (*Stay conditional* closes a preset window, or steps a form the bill picked back through `conditionalFormOf`); a resumed draft or a pending signature request is not asked.
 - **Extraction:** the six bodies become six components in the order of the extraction list; `useReleaseStepLook` (`looking`, `lookAt`, `stepToShow`, `toggleLook`, `lookProps`) last.
 
 ### J. The page
@@ -217,7 +217,7 @@ Verification per step: `npm run typecheck && npm run lint && npm test`, behavior
 
 ## Hazards
 
-- **A signed legal paper:** a waiver gives up lien rights for an amount. `buildRowPayload` is the only source of what is saved and what is minted; an unconditional form asks first (`UNCONDITIONAL_WAIVER_WARNING`, 1203).
+- **A signed legal paper:** a waiver gives up lien rights for an amount. `buildRowPayload` is the only source of what is saved and what is minted; an unconditional form asks first, on every route since v2.4582 (`UNCONDITIONAL_WAIVER_WARNING`, 1203).
 - **No paper without the record:** print, download, *Mark issued*, *Send it to his desk* and *He signs now* all go through `ensureMinted`, which stops on a half-typed year (629–633). `dateHold`'s `it.each` holds the five.
 - **Status-guarded writes:** each transition is `update(...).eq('id').eq('status', <expected>)` with `.select('*').single()`, so a row changed elsewhere fails and toasts. Two writes are not: the autosave update (594) reads nothing back, so zero rows matched still prints *All changes saved*; `voidHistoryRelease` (889) has no status filter.
 - **An edit in the last 800 ms is dropped on close:** the autosave is a timer the effect's cleanup clears when `open` changes, and the backdrop click is `onClose`.
