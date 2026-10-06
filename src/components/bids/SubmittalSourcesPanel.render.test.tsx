@@ -4,6 +4,7 @@
  * seam pinned. It draws what it is handed and reports each press; nothing is written here.
  */
 import { describe, expect, it, vi } from 'vitest'
+import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import { cleanup, fireEvent, screen, within } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { SubmittalSourcesPanel, type SubmittalSourcesPanelProps } from './SubmittalSourcesPanel'
@@ -100,7 +101,7 @@ describe('SubmittalSourcesPanel', () => {
 
   it('an ask nobody came for says the day it was asked and offers to take it back', () => {
     const twoDaysAgo = new Date(Date.now() - 2 * 86_400_000)
-    const day = twoDaysAgo.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/Chicago' })
+    const day = twoDaysAgo.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: APP_CALENDAR_TZ })
     const on = mount({ tasks: [{ ...queued, requested_at: twoDaysAgo.toISOString() } as SubmittalTaskRow] })
     const state = screen.getByTestId('robot-schedule')
     expect(state.getAttribute('data-stale')).toBe('true')
