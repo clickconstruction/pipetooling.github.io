@@ -99,14 +99,15 @@ function barLook(b: GanttBar): CSSProperties {
   return { background: b.item.actual > 0 ? 'var(--bg-blue-200)' : 'var(--bg-blue-tint)', border: edge ?? `1.5px solid ${C.blue}` }
 }
 
-/** The one thing worth saying beside a bar, if anything: what holds it, how it failed, what the daily log says against it (G-60), how far it moved. */
-function barNote(b: GanttBar, log?: { note: string }): { words: string; color: string } | null {
+/** The one thing worth saying beside a bar, if anything: what holds it, how it failed, its trade at work uncovered (G-138), what the daily log says against it (G-60), how far it moved. */
+function barNote(b: GanttBar, log?: { note: string }, uninsured?: { note: string }): { words: string; color: string } | null {
   const a = b.item.activity
   if (b.status === 'done') return null
   const fails = a.inspection && !a.inspection.passedOn ? (a.inspection.failed ?? []) : []
   const lastFail = fails[fails.length - 1]
   if (lastFail) return { words: `failed ${shortDate(lastFail.on)}, seen again ${shortDate(lastFail.reinspectOn)}`, color: 'var(--text-red-700)' }
   if (b.hold) return { words: `waits on ${b.hold.words}${b.hold.late ? ', late' : ''}`, color: b.hold.late ? 'var(--text-red-700)' : 'var(--text-amber-800)' }
+  if (uninsured) return { words: uninsured.note, color: 'var(--text-red-700)' }
   if (log) return { words: log.note, color: 'var(--text-amber-800)' }
   if (b.coTail) return { words: `+${b.coTail.days} ${b.coTail.days === 1 ? 'day' : 'days'} by change order, not on the dates yet`, color: 'var(--text-violet-800)' }
   if (b.item.slipDays > 0) return { words: `${b.item.slipDays} ${b.item.slipDays === 1 ? 'day' : 'days'} later than at Start`, color: 'var(--text-muted)' }
@@ -142,6 +143,7 @@ export function GcGantt({
   lost,
   lateSaid,
   logNotes,
+  uninsured,
   callList,
   print,
   earlier,
@@ -174,6 +176,8 @@ export function GcGantt({
   lateSaid?: Map<string, { finish: string; words: string }>
   /** What this week's daily log says against a bar (G-60): a note beside it and a line on its hover card. */
   logNotes?: Map<string, { note: string; words: string }>
+  /** A bar under way whose trade's insurance ran out (G-138): a red note beside it and a line on its hover card. No stripes: the work goes on. */
+  uninsured?: Map<string, { note: string; words: string }>
   /** By company as a call list (G-115): drawn under the toolbar while the chart is grouped by company. */
   callList?: ReactNode
   /** The job's words for Print or PDF (G-21). Unset: the toolbar has no print button. */
@@ -309,12 +313,12 @@ export function GcGantt({
             building,
             job: print,
             // The chart's own note, with what the daily log says of the bar (G-60), so paper and screen say the same.
-            noteOf: (bar: GanttBar) => barNote(bar, logNotes?.get(bar.id)),
+            noteOf: (bar: GanttBar) => barNote(bar, logNotes?.get(bar.id), uninsured?.get(bar.id)),
             ...(lateSaid ? { lateSaid } : {}),
             ...(earlier ? { earlier } : {}),
           }
         : null,
-    [print, all, filters, by, folded, showLinks, showSpare, milestones, waitList, lost, today, building, lateSaid, logNotes, earlier],
+    [print, all, filters, by, folded, showLinks, showSpare, milestones, waitList, lost, today, building, lateSaid, logNotes, uninsured, earlier],
   )
   const anyFilter = Object.values(filters).some(Boolean)
   // Open all whenever anything is folded (finished trades open folded); Fold all only when nothing is.
@@ -384,7 +388,7 @@ export function GcGantt({
     const span = dragging ?? { start: a.start, finish: a.finish }
     const left = x(span.start)
     const w = Math.max(px, (daysBetween(span.start, span.finish) + 1) * px)
-    const note = dragging ? null : barNote(b, logNotes?.get(b.id))
+    const note = dragging ? null : barNote(b, logNotes?.get(b.id), uninsured?.get(b.id))
     // The days a change order adds, drawn after the bar until they are on its dates (G-76).
     const tailW = b.coTail && !dragging ? b.coTail.days * px : 0
     // A trade's own new finish, not on the dates yet (G-117): an amber dashed tail out to it.
@@ -906,7 +910,7 @@ export function GcGantt({
       )}
 
       {view === 'chart' && <GanttLegend building={building} canMove={Boolean(onMove)} spare={showSpare} />}
-      {view === 'chart' && hovered && hover && !drag && <GanttHoverCard bar={hovered} all={all} at={hover} building={building} today={today} lost={lost?.get(hovered.id) ?? []} said={lateSaid?.get(hovered.id)} log={logNotes?.get(hovered.id)} soon={earlier?.get(hovered.id) ?? null} />}
+      {view === 'chart' && hovered && hover && !drag && <GanttHoverCard bar={hovered} all={all} at={hover} building={building} today={today} lost={lost?.get(hovered.id) ?? []} said={lateSaid?.get(hovered.id)} log={logNotes?.get(hovered.id)} uninsured={uninsured?.get(hovered.id)} soon={earlier?.get(hovered.id) ?? null} />}
       {printing && printInput && <GcGanttPrint input={printInput} onClose={() => setPrinting(false)} />}
     </div>
   )
@@ -946,10 +950,10 @@ function GanttLegend({ building, canMove, spare = false }: { building: boolean; 
 }
 
 /** Everything about one bar, beside the pointer: its days, how far along, what it waits on and holds up. */
-function GanttHoverCard({ bar, all, at, building, today, lost, said, log, soon }: { bar: GanttBar; all: GanttBar[]; at: { x: number; y: number }; building: boolean; today: string; lost: LostDay[]; said?: { finish: string; words: string } | undefined; log?: { note: string; words: string } | undefined; soon: { words: string } | null }) {
+function GanttHoverCard({ bar, all, at, building, today, lost, said, log, uninsured, soon }: { bar: GanttBar; all: GanttBar[]; at: { x: number; y: number }; building: boolean; today: string; lost: LostDay[]; said?: { finish: string; words: string } | undefined; log?: { note: string; words: string } | undefined; uninsured?: { note: string; words: string } | undefined; soon: { words: string } | null }) {
   const a = bar.item.activity
   const n = ganttNeighbors(all, bar.id)
-  const note = barNote(bar, log)
+  const note = barNote(bar, log, uninsured)
   const starts = daysBetween(today, a.start)
   const vw = typeof window !== 'undefined' ? window.innerWidth : 1200
   const vh = typeof window !== 'undefined' ? window.innerHeight : 800
@@ -1001,9 +1005,10 @@ function GanttHoverCard({ bar, all, at, building, today, lost, said, log, soon }
       {bar.coTail && row('Change order', bar.coTail.words, 'var(--text-violet-800)')}
       {lost.length > 0 && row('Lost', lostDaysWords(lost) ?? '', 'var(--text-amber-800)')}
       {said && row('Their word', said.words, 'var(--text-amber-800)')}
+      {uninsured && row('Insurance', uninsured.words, 'var(--text-red-700)')}
       {log && row('Log', log.words, 'var(--text-amber-800)')}
       {soon && row('Could start', soon.words, 'var(--text-green-800)')}
-      {note && !bar.coTail && note.words !== log?.note && row('Note', note.words, note.color)}
+      {note && !bar.coTail && note.words !== log?.note && note.words !== uninsured?.note && row('Note', note.words, note.color)}
       {n.waitsOn.length > 0 && row('Waits on', n.waitsOn.join(', '))}
       {n.holdsUp.length > 0 && row('Holds up', n.holdsUp.join(', '))}
       {a.finish < addDays(today, 1) && bar.status !== 'done' && !a.inspection && row('Due', a.finish === today ? 'Today' : weekdayDate(a.finish), 'var(--text-red-700)')}
