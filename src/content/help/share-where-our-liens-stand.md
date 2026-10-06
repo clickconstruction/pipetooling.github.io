@@ -14,7 +14,7 @@ Open the [Lien desk](/jobs?tab=stages&liendesk=1). Press {{button:outline|Share}
 
 **What to send** starts on **Everything on the desk**. Open it to pick one GC instead. Each GC in the menu shows its jobs and the money owed on them.
 
-The message counts every notice that has not gone in the mail. It is the same count the lien card on the Dashboard shows. It names what waits for approval, then each GC with its jobs and its money. It ends with what is left to do and any liens to file.
+The message counts every notice that has not gone in the mail. It names what waits for approval, then each GC with its jobs and its money. It ends with what is left to do and any liens to file.
 
 :::example the top of the message for the whole desk
 Liens, Thu Oct 1, 2:14 PM
@@ -23,7 +23,7 @@ $173,597 is owed on them.
 The first must be mailed by Oct 15, in 14 days.
 :::
 
-For one GC, the message lists each job with its months, its money and where it stands. A job with no property kind set gets a line of its own. Its dates could come a month sooner.
+For one GC, the message lists each job with its months, its money and where it stands. Jobs with no property kind set get one line that counts them. Those jobs' dates could come a month sooner.
 
 The menu also offers **Jobs where a supply house is also owed** when there are any. That message lists each job that still owes a supply house. Each line says what is owed to us and what is owed to the houses. It names the house whose own notice comes first. Read more in [see which supply houses are owed on a lien job](/help/see-which-supply-houses-are-owed-on-a-lien-job).
 

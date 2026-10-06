@@ -32,7 +32,7 @@ Once your letter is out, the letter is a square step at its reply by day. **Wait
 On a phone, the timeline folds to one strip, so the letter gets the room.
 
 - **Next** on the strip names the step to do now.
-- The strip also says who you wait on. A red chip names any notice window that closed.
+- The strip also says who you wait on. A red chip counts the notice windows that closed.
 - Press **Steps** to drop the steps down over the letter. Press **Hide** to put them away.
 - The tabs become one bar under the strip. With four papers, slide the bar sideways to reach the last one.
 
