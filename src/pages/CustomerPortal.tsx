@@ -4,6 +4,7 @@ import { PortalPromiseAsk } from '../components/portal/PortalPromiseAsk'
 import { PortalBankTransferCard } from '../components/portal/PortalBankTransferCard'
 import { PortalSharedBillsCard } from '../components/portal/PortalSharedBillsCard'
 import { PortalPropertyNoticeCard } from '../components/portal/PortalPropertyNoticeCard'
+import { PortalOwnerRecordsCard } from '../components/portal/PortalOwnerRecordsCard'
 import { buildBankTransferMemo } from '../lib/bankTransferDetails'
 import { promiseAskVisible } from '../../supabase/functions/_shared/portalPromise'
 import { PortalStagesCard } from '../components/portal/PortalStagesCard'
@@ -488,6 +489,8 @@ function PortalStatement({ payload, today, requestToken }: { payload: PortalPayl
       {payload.propertyNotices.map((n) => (
         <PortalPropertyNoticeCard key={n.key} notice={n} phone={payload.company.phone} companyName={payload.company.name} />
       ))}
+      {/* Records for an owner (punch list #86): sign for the records the office offered here; nothing shows until the office sends. */}
+      {payload.ownerRecords ? <PortalOwnerRecordsCard records={payload.ownerRecords} token={requestToken} companyName={payload.company.name} phone={payload.company.phone} todayYmd={todayYmd} /> : null}
       {payload.sharedBills.length > 0 ? <PortalSharedBillsCard bills={payload.sharedBills} todayYmd={todayYmd} token={requestToken} noticedJobNumbers={new Set(payload.propertyNotices.flatMap((n) => n.jobNumbers))} waivers={payload.waivers} /> : null}
 
       {/* Bank transfer details (v2.3308): collapsed under the ledger — ACH / wire

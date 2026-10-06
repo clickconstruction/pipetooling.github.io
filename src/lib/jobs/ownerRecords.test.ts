@@ -7,6 +7,7 @@ import {
   ownerRecordsMissing,
   ownerRecordsProperties,
   ownerRecordsPropertyMatches,
+  ownerRecordsAllowedNames,
   ownerRecordsSteps,
   parseOwnerRecords,
   type OwnerPacketJobInput,
@@ -78,6 +79,7 @@ describe('the four checks', () => {
     request: { on: '2026-10-05', how: 'email', from: 'Umar Khan', link: 'https://drive.example/req' },
     contractChecked: { by: 'Malachi', at: '2026-10-05T16:00:00Z' },
     acknowledgment: { signedOn: '2026-10-06', link: '' },
+    offer: null,
     sent: null,
   }
 
@@ -121,6 +123,7 @@ describe('parseOwnerRecords', () => {
       request: { on: '2026-10-05', how: 'text', from: 'A', link: '' },
       contractChecked: { by: 'M', at: '2026-10-05T16:00:00Z' },
       acknowledgment: null,
+      offer: null,
       sent: { at: '2026-10-07T15:00:00Z', by: 'T', how: 'handed', total: 12, jobIds: ['a'] },
     })
     expect(parseOwnerRecords({})).toBeNull()
@@ -149,5 +152,41 @@ describe('the picker', () => {
     expect(ownerRecordsPropertyMatches(r, 'dudley')).toBe(true)
     expect(ownerRecordsPropertyMatches(r, 'terrell')).toBe(false)
     expect(ownerRecordsPropertyMatches(r, '  ')).toBe(true)
+  })
+})
+
+describe('offered and signed on the portal (punch list #86)', () => {
+  const day = (ymd: string) => `day(${ymd})`
+  const numbers = { agree: true, lines: ['ok'] } as never
+
+  it('parses the offer and a portal signature, and keeps a paper signature as it was', () => {
+    const f = parseOwnerRecords({
+      offer: { at: '2026-10-06T15:00:00Z', by: 'Taunya', alsoAllowed: 'Bangash Shazmeena' },
+      acknowledgment: { signedOn: '2026-10-06', link: '', printedName: 'Umar Khan', mode: 'draw', signaturePath: 'id/acknowledgment-signature-x.png', consentedAt: '2026-10-06T16:00:00Z' },
+    })!
+    expect(f.offer).toEqual({ at: '2026-10-06T15:00:00Z', by: 'Taunya', alsoAllowed: 'Bangash Shazmeena' })
+    expect(f.acknowledgment).toEqual({ signedOn: '2026-10-06', link: '', printedName: 'Umar Khan', mode: 'draw', signaturePath: 'id/acknowledgment-signature-x.png', consentedAt: '2026-10-06T16:00:00Z' })
+    expect(parseOwnerRecords({ acknowledgment: { signedOn: '2026-10-06', link: 'drive' } })!.acknowledgment).toEqual({ signedOn: '2026-10-06', link: 'drive' })
+    expect(parseOwnerRecords({ offer: { at: '' } })).toBeNull()
+  })
+
+  it('the names the portal accepts: the roll\u2019s owner and the second name, trimmed, never an empty one', () => {
+    expect(ownerRecordsAllowedNames('Umar Khan', { offer: { at: 'x', by: 'T', alsoAllowed: '  Bangash Shazmeena ' } })).toEqual(['Umar Khan', 'Bangash Shazmeena'])
+    expect(ownerRecordsAllowedNames('Umar Khan', { offer: null })).toEqual(['Umar Khan'])
+    expect(ownerRecordsAllowedNames('', { offer: { at: 'x', by: 'T', alsoAllowed: '' } })).toEqual([])
+  })
+
+  it('the steps read the offer while it waits, and the portal signature once it lands', () => {
+    const offered = { ...EMPTY_OWNER_RECORDS, offer: { at: '2026-10-06T15:00:00Z', by: 'Taunya', alsoAllowed: '' } }
+    const steps = ownerRecordsSteps(offered, numbers, day)
+    expect(steps[0]!.words).toBe('Offered on their portal day(2026-10-06). Waiting for them to sign.')
+    expect(steps[0]!.state).toBe('todo')
+    expect(steps[3]!.words).toBe('Not signed yet. They sign on their portal.')
+    const signed = { ...offered, request: { on: '2026-10-06', how: 'portal' as const, from: 'Umar Khan', link: '' }, acknowledgment: { signedOn: '2026-10-06', link: '', printedName: 'Umar Khan', mode: 'type' as const } }
+    const done = ownerRecordsSteps(signed, numbers, day)
+    expect(done[0]!.words).toBe('On their portal from Umar Khan, day(2026-10-06). Their signing is the request.')
+    expect(done[0]!.state).toBe('done')
+    expect(done[3]!.words).toBe('Signed on their portal day(2026-10-06) by Umar Khan, typed.')
+    expect(ownerRecordsMissing(signed)).toEqual(['the contract check'])
   })
 })

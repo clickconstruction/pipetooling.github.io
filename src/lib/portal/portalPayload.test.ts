@@ -297,3 +297,15 @@ describe('parsePortalChecks (Your payments, v2.4053)', () => {
     expect(r?.events).toEqual([{ id: 'e1', kind: 'moved', payment_id: 'p1', from_job_id: 'j0', to_job_id: 'j1', amount: 9750, created_at: '2026-09-26T16:00:00Z' }])
   })
 })
+
+describe('ownerRecords (punch list #86)', () => {
+  it('reads the request offered on this portal, signed or not; an older function sends none', () => {
+    const base = { customerName: 'Umar Khan', company: {}, bills: [] }
+    expect(parsePortalPayload(base)!.ownerRecords).toBeNull()
+    const open = parsePortalPayload({ ...base, ownerRecords: { id: 'r1', address: '9703 Lenox Hill', ownerName: 'Umar Khan', offeredOn: '2026-10-06', signed: null } })!.ownerRecords
+    expect(open).toEqual({ id: 'r1', address: '9703 Lenox Hill', ownerName: 'Umar Khan', offeredOn: '2026-10-06', signed: null })
+    const signed = parsePortalPayload({ ...base, ownerRecords: { id: 'r1', address: '9703 Lenox Hill', ownerName: 'Umar Khan', offeredOn: '2026-10-06', signed: { on: '2026-10-07', name: 'UMAR KHAN' } } })!.ownerRecords
+    expect(signed?.signed).toEqual({ on: '2026-10-07', name: 'UMAR KHAN' })
+    expect(parsePortalPayload({ ...base, ownerRecords: { id: '', offeredOn: '2026-10-06' } })!.ownerRecords).toBeNull()
+  })
+})

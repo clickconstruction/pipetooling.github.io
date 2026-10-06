@@ -2,7 +2,7 @@
 name: "Records for an owner, on their portal: they ask, they sign, they download"
 number: 86
 group: gated
-status: proposed 2026-10-06 · nothing built · waits on the owner's pick between the two shapes below
+status: shape B picked 2026-10-06 · PR 1 built the same day (v2.4650) · PR 2 next
 summary: >
   Today an owner's records request is worked by hand: the office puts their written request on
   file, prints the acknowledgment for them to sign, prints or downloads the packet and hands it
@@ -13,9 +13,9 @@ summary: >
   store and the records window all exist; this plugs them together. Two shapes are drawn: the
   full one (ask → sign → the papers live on the portal) and a shorter one the owner said he would
   accept (sign → download, nothing kept on the portal).
-next: The owner picks shape A or B. Then PR 1, the acknowledgment signed on the portal.
+next: PR 2, Record it as sent to the portal (the fifth way to send), then PR 4, the one Download on the signed card.
 size: M (shape A, four PRs) · S–M (shape B, two PRs)
-blocker: The owner's pick. Counsel has not approved the cover note or the acknowledgment wording (`OWNER_RECORDS_WORDING_APPROVED` is false); a signed acknowledgment on the portal should wait for that, or carry the draft stamp.
+blocker: None. Counsel approved the wording (v2.4627); the owner picked shape B.
 opinion: build shape A — the owner's own act on the portal is their request in writing, so it fills check 1 and check 4 in one sitting; shape B saves one PR and loses the record of what they got.
 ---
 
@@ -78,18 +78,22 @@ Stops 1 to 4 as above. At stop 5 there is no portal card: once the office presse
 
 ## The plan
 
-1. **PR 1 (S–M): sign on the portal.** The name kernel + tests; `sign-owner-records`; the portal card's ask and signing stops; the `file` writes; the office window's **Offer it on their portal ›** and the request check's new words. Nothing is shown to the owner after signing but *Thank you. The office sends the records once it has checked our contract.*
+1. **PR 1 (S–M): sign on the portal — built v2.4650.** The name kernel + tests; `sign-owner-records`; the portal card's ask and signing stops; the `file` writes; the office window's **Offer it on their portal ›** and the request check's new words. Nothing is shown to the owner after signing but *Thank you. The office sends the records once it has checked our contract.*
 2. **PR 2 (S): the office sends to the portal.** `OwnerRecordsSentHow` gains `portal`; *Record it as sent* files the packet and marks it shown; the Needs you line.
 3. **PR 3 (S–M, shape A only): Your papers.** The `owner_records` verb returns the sent packets; the portal lists them with **Download** (signed URL) and **Email it to me**; `send-owner-records-email`.
 4. **PR 4 (S, shape B instead of 3): the one Download.** The signed card shows **Download** once the office has sent.
 
 Each PR ships its release note, its `docs/recent-features/` fragment, its `docs/EDGE_FUNCTIONS.md` section and the guide edit. The functions deploy after merge.
 
-## Open questions for the owner
+## The owner's answers (2026-10-06)
 
-1. **A or B.** The card above says why A.
-2. **Who may sign.** The owner of record alone (the name on the county roll), or anyone the office names on the request (a spouse, a property manager)? The letter match needs one name to match against. Proposed: the owner of record, and the office may type a second name on the request when the roll's name is a company (*Harbor Ridge Homes LP* cannot sign; its manager can).
-3. **Counsel's wording.** The portal shows the acknowledgment to a member of the public. Wait for counsel, or ship behind the same draft stamp the window shows today?
+- **Shape B.** One Download on the card they signed, after the office sends; nothing listed, no *Email it to me*. PR 3 is not built.
+- **Who may sign: the owner of record, and a second name the office adds when it offers** (a spouse, a property manager, the manager of a company on the roll). The letter match runs against either.
+- **Counsel approved the wording** (v2.4627). The portal acknowledgment carries the approved words.
+
+## Where it stands
+
+**PR 1 built 2026-10-06 (v2.4650).** `_shared/ownerNameMatch.ts`; `sign-owner-records`; `customer-portal`'s `ownerRecords`; `PortalOwnerRecordsCard`; the window's **Offer it on their portal ›** with the second name; `file.offer` and the portal `acknowledgment`; migration `20261006040000` for the consent ledger. The function deploys and the migration pushes after the merge. Not yet: PR 2 (the *On their portal* way to send) and PR 4 (the owner's Download).
 
 ## How to verify
 

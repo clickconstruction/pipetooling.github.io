@@ -12,10 +12,10 @@
  * stamp and the ask-before-print went with that.
  */
 
-export type OwnerRecordsHow = 'email' | 'letter' | 'text'
+export type OwnerRecordsHow = 'email' | 'letter' | 'text' | 'portal'
 export type OwnerRecordsSentHow = 'handed' | 'email' | 'mail'
 
-export const OWNER_RECORDS_HOW_WORDS: Record<OwnerRecordsHow, string> = { email: 'Email', letter: 'Letter', text: 'Text message' }
+export const OWNER_RECORDS_HOW_WORDS: Record<OwnerRecordsHow, string> = { email: 'Email', letter: 'Letter', text: 'Text message', portal: 'On their portal' }
 export const OWNER_RECORDS_SENT_HOW_WORDS: Record<OwnerRecordsSentHow, string> = { handed: 'Handed to them', email: 'Emailed', mail: 'Mailed' }
 
 /** What the desk keeps about one owner's request: the `file` of its `lien_owner_record_requests` row. */
@@ -23,11 +23,22 @@ export type OwnerRecordsFile = {
   request: { on: string; how: OwnerRecordsHow; from: string; link: string } | null
   /** Our contract with the GC was read and no clause stops this: the leader's tick, kept per GC. */
   contractChecked: { by: string; at: string } | null
-  acknowledgment: { signedOn: string; link: string } | null
+  /**
+   * Signed on paper (a link to the copy), or on their portal (punch list #86): the name they typed,
+   * how they signed, the ink's path in the sent-documents bucket when drawn, and the consent instant.
+   */
+  acknowledgment: { signedOn: string; link: string; printedName?: string; mode?: 'type' | 'draw'; signaturePath?: string; consentedAt?: string } | null
+  /** Offered on their portal (punch list #86): when, by whom, and a second name allowed to sign (a spouse, a manager). */
+  offer: { at: string; by: string; alsoAllowed: string } | null
   sent: { at: string; by: string; how: OwnerRecordsSentHow; total: number; jobIds: string[] } | null
 }
 
-export const EMPTY_OWNER_RECORDS: OwnerRecordsFile = { request: null, contractChecked: null, acknowledgment: null, sent: null }
+export const EMPTY_OWNER_RECORDS: OwnerRecordsFile = { request: null, contractChecked: null, acknowledgment: null, offer: null, sent: null }
+
+/** Every name the portal accepts, letter for letter: the roll's owner and the office's second name. */
+export function ownerRecordsAllowedNames(ownerName: string, file: Pick<OwnerRecordsFile, 'offer'>): string[] {
+  return [ownerName, file.offer?.alsoAllowed ?? ''].map((n) => n.trim()).filter(Boolean)
+}
 
 const YMD = /^\d{4}-\d{2}-\d{2}$/
 const str = (v: unknown): string => (typeof v === 'string' ? v : '')
@@ -40,18 +51,30 @@ export function parseOwnerRecords(raw: unknown): OwnerRecordsFile | null {
   const cc = o.contractChecked as Record<string, unknown> | null | undefined
   const ak = o.acknowledgment as Record<string, unknown> | null | undefined
   const st = o.sent as Record<string, unknown> | null | undefined
-  const how = (v: unknown): OwnerRecordsHow => (v === 'letter' || v === 'text' ? v : 'email')
+  const of = o.offer as Record<string, unknown> | null | undefined
+  const how = (v: unknown): OwnerRecordsHow => (v === 'letter' || v === 'text' || v === 'portal' ? v : 'email')
   const sentHow = (v: unknown): OwnerRecordsSentHow => (v === 'email' || v === 'mail' ? v : 'handed')
   const file: OwnerRecordsFile = {
     request: rq && YMD.test(str(rq.on)) ? { on: str(rq.on), how: how(rq.how), from: str(rq.from), link: str(rq.link) } : null,
     contractChecked: cc && str(cc.at) ? { by: str(cc.by), at: str(cc.at) } : null,
-    acknowledgment: ak && YMD.test(str(ak.signedOn)) ? { signedOn: str(ak.signedOn), link: str(ak.link) } : null,
+    acknowledgment:
+      ak && YMD.test(str(ak.signedOn))
+        ? {
+            signedOn: str(ak.signedOn),
+            link: str(ak.link),
+            ...(str(ak.printedName) ? { printedName: str(ak.printedName) } : {}),
+            ...(ak.mode === 'type' || ak.mode === 'draw' ? { mode: ak.mode } : {}),
+            ...(str(ak.signaturePath) ? { signaturePath: str(ak.signaturePath) } : {}),
+            ...(str(ak.consentedAt) ? { consentedAt: str(ak.consentedAt) } : {}),
+          }
+        : null,
+    offer: of && str(of.at) ? { at: str(of.at), by: str(of.by), alsoAllowed: str(of.alsoAllowed) } : null,
     sent:
       st && str(st.at)
         ? { at: str(st.at), by: str(st.by), how: sentHow(st.how), total: typeof st.total === 'number' && Number.isFinite(st.total) ? st.total : 0, jobIds: Array.isArray(st.jobIds) ? st.jobIds.filter((x): x is string => typeof x === 'string') : [] }
         : null,
   }
-  return file.request || file.contractChecked || file.acknowledgment || file.sent ? file : null
+  return file.request || file.contractChecked || file.acknowledgment || file.offer || file.sent ? file : null
 }
 
 // ---------- the packet ----------
@@ -180,7 +203,7 @@ export function ownerRecordsSteps(file: OwnerRecordsFile, numbers: OwnerPacketNu
       n: 1,
       title: 'Their request, in writing',
       state: rq ? 'done' : 'todo',
-      words: rq ? `${OWNER_RECORDS_HOW_WORDS[rq.how]}${rq.from.trim() ? ` from ${rq.from.trim()}` : ''}, ${day(rq.on)}. ${rq.link.trim() ? 'Link on file.' : 'No link on file.'}` : 'Not on file yet. Ask them to put it in an email or a letter.',
+      words: rq ? `${OWNER_RECORDS_HOW_WORDS[rq.how]}${rq.from.trim() ? ` from ${rq.from.trim()}` : ''}, ${day(rq.on)}. ${rq.how === 'portal' ? 'Their signing is the request.' : rq.link.trim() ? 'Link on file.' : 'No link on file.'}` : file.offer ? `Offered on their portal ${day(file.offer.at.slice(0, 10))}. Waiting for them to sign.` : 'Not on file yet. Ask them to put it in an email or a letter.',
     },
     {
       key: 'contract',
@@ -195,7 +218,7 @@ export function ownerRecordsSteps(file: OwnerRecordsFile, numbers: OwnerPacketNu
       n: 4,
       title: 'Their acknowledgment',
       state: ak ? 'done' : 'todo',
-      words: ak ? `Signed ${day(ak.signedOn)}. ${ak.link.trim() ? 'Copy on file.' : 'No copy linked.'}` : 'Not signed yet. Print it for them to sign.',
+      words: ak ? (ak.printedName ? `Signed on their portal ${day(ak.signedOn)} by ${ak.printedName}${ak.mode === 'draw' ? ', drawn' : ', typed'}.` : `Signed ${day(ak.signedOn)}. ${ak.link.trim() ? 'Copy on file.' : 'No copy linked.'}`) : file.offer ? 'Not signed yet. They sign on their portal.' : 'Not signed yet. Print it for them to sign.',
     },
   ]
 }

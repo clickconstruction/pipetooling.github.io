@@ -6,7 +6,8 @@
 import { describe, expect, it } from 'vitest'
 import { sampleLegalPortalResponse } from '../../../supabase/functions/_shared/customerSampleFixtures'
 import { buildMatterPacket, parseLegalPortalPayload, portalFeeModel } from './legalPortalPayload'
-import { buildFirmPacketPrintHtml, firmFeeEntries, firmJobRecordWords, firmStageWords } from './legalFirmPacketPrint'
+import { buildFirmPacketPrintHtml, firmFeeEntries, firmJobRecordWords } from './legalFirmPacketPrint'
+import { legalFirmStageWords } from './legalFirmWords'
 import { buildLegalPacketPrintHtml } from './legalPacketPrint'
 import { formatLegalMoney } from './legalPacket'
 import type { LegalEntryRow } from './legalMatters'
@@ -95,7 +96,7 @@ describe('firmFeeEntries', () => {
   })
 })
 
-describe('firmJobRecordWords and firmStageWords', () => {
+describe('firmJobRecordWords and legalFirmStageWords', () => {
   it('says what is on file as facts, never a theory', () => {
     const { packet } = sample()
     const job = packet.account.jobs[0]
@@ -107,9 +108,9 @@ describe('firmJobRecordWords and firmStageWords', () => {
     expect(firmJobRecordWords(missing)).toBe('on file: bill sent, no dispute logged · missing: field evidence with GPS')
   })
   it('names the stage in the firm’s words', () => {
-    expect(firmStageWords('referred')).toBe('referred · no step recorded yet')
-    expect(firmStageWords('suit')).toBe('suit filed')
-    expect(firmStageWords('pulled')).toBe('pulled back by the office')
+    expect(legalFirmStageWords('referred')).toBe('referred')
+    expect(legalFirmStageWords('suit')).toBe('suit filed')
+    expect(legalFirmStageWords('pulled')).toBe('referral withdrawn')
   })
 })
 

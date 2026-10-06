@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildLienTimeline, LIEN_KIND_UNKNOWN_WORDS, lienDateWords, lienTimelineFoldSummary, lienNoticeOpensOn, lienOpensWords, lienWindowSpan, suitDeadlineFor, type LienTimelineInput } from './lienTimeline'
+import { buildLienTimeline, LIEN_KIND_UNKNOWN_WORDS, lienDateWords, lienFirmMoveWords, lienFirmNext, lienFirmWaitingOn, lienTimelineFoldSummary, lienNoticeOpensOn, lienOpensWords, lienWindowSpan, suitDeadlineFor, type LienTimelineInput } from './lienTimeline'
 
 const TODAY = '2026-09-23'
 
@@ -110,6 +110,14 @@ describe('buildLienTimeline — every window closed, nothing sent (650 ATI Scher
     expect(t.next.words).toBe('Lien: gone. Money: still owed — chase it in Collections.')
     expect(t.next.aside).toContain('Write the closed window down')
     expect(t.next.tone).toBe('red')
+  })
+  it('the law firm reads the fact, with no office screen named and no waiting line (punch list #85, item 3)', () => {
+    expect(lienFirmNext(t.next)).toEqual({ words: 'The lien window closed with nothing filed. The lien is gone; the money is still owed.', aside: 'The office referred the account to you.' })
+    expect(lienFirmWaitingOn(t)).toBeNull()
+    expect(t.next.words).toContain('Collections')
+    expect(lienFirmMoveWords('ours')).toBe('the office')
+    expect(lienFirmMoveWords('counsel')).toBe('you')
+    expect(lienFirmMoveWords('gc')).toBe('the GC')
   })
   it('once someone notes the miss, the aside goes quiet', () => {
     const noted = buildLienTimeline(base({ lastMonth: '2026-06', months: [{ key: '2026-06', deadline: '2026-09-15', fromCreation: false, outcome: 'missed', at: '2026-09-21T15:00:00Z' }] }))
