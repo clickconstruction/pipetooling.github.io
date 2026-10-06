@@ -44,7 +44,7 @@ export type OrderGroup = {
   openByDefault: boolean
 }
 
-export type OrderSectionKind = 'now' | 'on_order' | 'sent_back' | 'waiting' | 'on_site'
+export type OrderSectionKind = 'now' | 'on_order' | 'sent_back' | 'waiting' | 'not_sent' | 'on_site'
 export type OrderSection = {
   key: string
   kind: OrderSectionKind
@@ -99,11 +99,14 @@ const latest = (dates: ReadonlyArray<string | null>): string | null => dates.fil
 /**
  * The To order lens: *Order now* (one section per house, a group per order-by date, soonest
  * first) · *On order* (a group per PO, late first) · *Sent back by the GC* (a line per part) ·
- * *Waiting on their answer* (a group per fixture, in the log's order) · *On site* (a group per
- * PO). A section with no lines is left out. `changed` holds the keys changed since the last
- * update; pass none before the first one.
+ * *Waiting on their answer* (a group per fixture, in the log's order) · *Not sent to the GC yet*
+ * (v2.4663 · the fixtures of a draft nobody has shared: the same groups, with no door and no
+ * right-hand words, since nothing is waited for) · *On site* (a group per PO). A section with no
+ * lines is left out. `changed` holds the keys changed since the last update; pass none before the
+ * first one. `draftRev` is the newest revision's number while it is an unshared draft, null once
+ * shared: with it, every line not on the submittal (but a hand line) is not sent yet.
  */
-export function orderSections(rows: ReadonlyArray<ProcurementRow>, asOf: string, changed: ReadonlySet<string> = new Set()): OrderSection[] {
+export function orderSections(rows: ReadonlyArray<ProcurementRow>, asOf: string, changed: ReadonlySet<string> = new Set(), draftRev: number | null = null): OrderSection[] {
   const isNew = (list: ReadonlyArray<ProcurementRow>) => changed.size > 0 && list.every((r) => changed.has(r.key))
   const base = (kind: OrderGroupKind, key: string, list: ProcurementRow[]): OrderGroup => {
     const f = facts(list)
@@ -151,9 +154,9 @@ export function orderSections(rows: ReadonlyArray<ProcurementRow>, asOf: string,
   if (back.length > 0) out.push({ key: 'sent_back', kind: 'sent_back', title: 'Sent back by the GC', count: back.length, note: 'pick another product, then resubmit on step 7', tone: 'back', groups: [], rows: back })
 
   // Waiting: a group per fixture in the log's order; a line added by hand stands as its own.
-  const waiting = rows.filter((r) => r.status === 'awaiting' || r.status === 'not_submitted')
-  if (waiting.length > 0) {
-    const groups = groupBy(waiting, (r) => (r.isHand ? r.key : `tag:${r.tag ?? ''}`)).map(([k, parts]): OrderGroup => {
+  // The lines of a draft nobody has shared make the same groups under their own heading (v2.4663).
+  const fixtureGroups = (list: ReadonlyArray<ProcurementRow>, sent: boolean) =>
+    groupBy(list, (r) => (r.isHand ? r.key : `tag:${r.tag ?? ''}`)).map(([k, parts]): OrderGroup => {
       const gc = parts.filter((r) => !r.orderOnly)
       const orderOnly = parts.filter((r) => r.orderOnly)
       const list = [...gc, ...orderOnly]
@@ -173,17 +176,26 @@ export function orderSections(rows: ReadonlyArray<ProcurementRow>, asOf: string,
             : list.length === 1
               ? first.product
               : [fixture?.fixture ? `${fixture.fixture}${fixture.fixtureCount != null ? ` × ${fixture.fixtureCount}` : ''}` : '', gc.length > 0 ? plural(gc.length, 'part') : '', orderOnly.length > 0 ? `${orderOnly.length} order only` : ''].filter(Boolean).join(' · '),
-        right: ask ? `answer by ${shortDate(ask)}` : '',
+        right: sent && ask ? `answer by ${shortDate(ask)}` : '',
         orderOnlyFrom: gc.length > 0 && orderOnly.length > 0 ? gc.length : null,
         showTag: false,
         showFacts: list.length > 1,
         warn: gc.filter((r) => r.partKey && isCarrier(r.product)).length > 1 ? 'Two carriers' : '',
         noProduct,
-        answerItemId: door?.itemId ?? null,
+        answerItemId: sent ? door?.itemId ?? null : null,
       }
     })
+  const unsent = (r: ProcurementRow) => draftRev != null && r.status === 'not_submitted' && !r.isHand
+  const waiting = rows.filter((r) => (r.status === 'awaiting' || r.status === 'not_submitted') && !unsent(r))
+  if (waiting.length > 0) {
+    const groups = fixtureGroups(waiting, true)
     const firstAsk = earliest(waiting.map((r) => approveBy(r)))
     out.push({ key: 'waiting', kind: 'waiting', title: 'Waiting on their answer', count: waiting.length, note: `${plural(groups.length, 'fixture')} · ${firstAsk ? `the first needs an answer by ${shortDate(firstAsk)}` : 'not ordered until they approve'}`, tone: 'quiet', groups, rows: [] })
+  }
+  const notSent = rows.filter(unsent)
+  if (notSent.length > 0) {
+    const groups = fixtureGroups(notSent, false)
+    out.push({ key: 'not_sent', kind: 'not_sent', title: 'Not sent to the GC yet', count: notSent.length, note: `${plural(groups.length, 'fixture')} · share Rev ${draftRev} to get an answer`, tone: 'quiet', groups, rows: [] })
   }
 
   // On site: a group per PO.

@@ -80,6 +80,24 @@ describe('orderSections', () => {
     expect(secs[3]!.groups.map((g) => [g.title, g.count, g.note, g.right])).toEqual([['No PO', 2, 'e, f · Trim Set', '']])
   })
 
+  it('v2.4663 · a draft nobody has shared: its fixtures sit under Not sent to the GC yet, with no door and no answer-by; a hand line still waits as its own; shared, the same lines wait on their answer', () => {
+    const draft = today.filter((r) => r.status === 'awaiting').map((r) => ({ ...r, status: 'not_submitted' as const, submittal: 'none' as const, leadTimeDays: 28, requiredOn: '2026-12-08' }))
+    const hand = row('hand:1', 'not_submitted', { isHand: true, tag: null, product: 'Grease interceptor 750 gal', itemId: null, submittal: 'none' })
+    const secs = orderSections([...draft, hand], '2026-10-05', new Set(), 4)
+    expect(secs.map((s) => [s.kind, s.title, s.count, s.note])).toEqual([
+      ['waiting', 'Waiting on their answer', 1, '1 fixture · not ordered until they approve'],
+      ['not_sent', 'Not sent to the GC yet', 38, '13 fixtures · share Rev 4 to get an answer'],
+    ])
+    const lav2 = secs[1]!.groups.find((g) => g.title === 'LAV-2')!
+    expect(lav2).toMatchObject({ kind: 'fixture', note: 'LAV2 × 6 · 1 part · 5 order only', count: 6, right: '', answerItemId: null })
+    expect(groupDateWords(lav2, '2026-10-05')).toEqual({ words: '', tone: 'quiet' })
+    expect(secs[1]!.groups.every((g) => g.answerItemId === null && g.right === '')).toBe(true)
+    // Once shared (no draft number) the same lines wait on the GC, with their doors and the answer-by date.
+    const shared = orderSections([...draft, hand], '2026-10-05', new Set(), null)
+    expect(shared.map((s) => [s.kind, s.count, s.note])).toEqual([['waiting', 39, '14 fixtures · the first needs an answer by 11/10']])
+    expect(shared[0]!.groups.find((g) => g.title === 'LAV-2')).toMatchObject({ right: 'answer by 11/10', answerItemId: 'it-LAV-2' })
+  })
+
   it('a group is new only when every part changed since the last update; before the first update nothing is', () => {
     expect(orderSections(later, '2026-10-26').flatMap((s) => s.groups).some((g) => g.isNew)).toBe(false)
     const changed = new Set(['part:h2', 'part:h3', 'part:h5', 'part:m1'].map((k) => (k === 'part:h2' ? 'WHA-200' : k === 'part:h3' ? 'WHA-300' : k === 'part:h5' ? 'WHA-500' : k)))

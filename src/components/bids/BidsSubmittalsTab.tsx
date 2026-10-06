@@ -188,7 +188,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   // 2026-10-03 · the newest answer on each earlier revision's rows, by revision id: a replaced draft that holds answers reads "answered", not "superseded".
   const [answeredByRev, setAnsweredByRev] = useState<Map<string, string>>(() => new Map())
   const [standing, setStanding] = useState<{ items: SubmittalItemRow[]; parts: SubmittalPartRow[]; revOf: Map<string, number> }>({ items: [], parts: [], revOf: new Map() })
-  const [procCounts, setProcCounts] = useState<{ released: number; ordered: number; delivered: number; late: number; steps: { gc: number; to_order: number; on_order: number; on_site: number } } | null>(null)
+  const [procCounts, setProcCounts] = useState<{ released: number; ordered: number; delivered: number; late: number; steps: { gc: number; to_order: number; on_order: number; on_site: number }; gcLabel: string } | null>(null)
   const [reportSettings, setReportSettings] = useState<TestReportSettings>(() => cachedTestReportSettings())
   const companyName = reportSettings.companyName
   const [prevItems, setPrevItems] = useState<SubmittalItemRow[]>([])
@@ -2576,7 +2576,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
               {/* 8 · Procure — a side track, always open (v2.4201) and drawn with or without a revision: long-lead items go in before a row is approved; never the Next stage until every row is approved */}
             <RoadSection n={8} about={SUBMITTAL_STAGE_ABOUT[8]} onHelp={() => startWalkThrough(8)} title="Procure" status={stageStatus('procure')} open={sectionOpen('procure')} onToggle={() => toggleSection('procure')} onJump={() => jumpToSection('procure')} anchor="submittals-procure-section" last always
               summaryWhenOpen={!procCounts}
-              summary={procCounts ? `${procCounts.steps.gc} waiting on the GC · ${procCounts.steps.to_order} to order · ${procCounts.steps.on_order} on order · ${procCounts.steps.on_site} on site${procCounts.late > 0 ? ` · ${procCounts.late} behind schedule` : ''}` : isNewest || !selectedRev ? 'fills in as the GC approves rows · long-lead items can go in now' : 'on the newest version'}>
+              summary={procCounts ? `${procCounts.steps.gc} ${procCounts.gcLabel.toLowerCase()} · ${procCounts.steps.to_order} to order · ${procCounts.steps.on_order} on order · ${procCounts.steps.on_site} on site${procCounts.late > 0 ? ` · ${procCounts.late} behind schedule` : ''}` : isNewest || !selectedRev ? 'fills in as the GC approves rows · long-lead items can go in now' : 'on the newest version'}>
               {(isNewest || !selectedRev) && bidId && selectedBid ? (
                 <SubmittalProcurementPanel
                   bidId={bidId}
@@ -2591,6 +2591,8 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                   currentUser={{ id: user?.id ?? null, name: profileName ?? '' }}
                   busy={busy}
                   onCounts={setProcCounts}
+                  // v2.4663 · a draft nobody has shared: its lines read Not sent yet, not Waiting on the GC.
+                  draftRev={selectedRev && selectedRev.status === 'draft' ? selectedRev.rev_number : null}
                   // The Next line's door to the approve-all window, while a row still has no call (v2.4581).
                   onEnterApproval={isNewest && selectedRev && approvableRows.length > 0 ? () => setApprovingAll(true) : undefined}
                   houses={houses}
