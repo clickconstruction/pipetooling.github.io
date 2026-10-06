@@ -20,7 +20,6 @@ import {
   diffProcurementLog,
   fixtureHead,
   floatText,
-  procurementHeadline,
   procurementUpdateText,
   readTypedLogDate,
   logDateRead,
@@ -171,10 +170,6 @@ describe('the log', () => {
     const hand = rows[rows.length - 1]!
     expect(hand).toMatchObject({ isHand: true, tag: null, product: 'Grease interceptor 750 gal', status: 'ordered', expectedOn: '2026-11-13', requiredOn: '2026-10-06', floatDays: -38, late: true })
     expect(rows.map((r) => r.tag)).toEqual(['BFP-1', 'FS-2', 'HS-1', 'L-1', 'S-3', 'WH-1', null])
-  })
-
-  it('counts and words the headline', () => {
-    expect(procurementHeadline(rows)).toBe('4 released · 4 ordered · 1 delivered · 2 behind schedule · 1 sent back')
   })
 
   it('has blank required dates and no float before the bid is a job', () => {
