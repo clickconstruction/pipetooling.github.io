@@ -24,7 +24,8 @@ import {
   WEEKDAY_LABELS,
   stageIsClosed,
   stageIsWithFirm,
-  withHoldOverride,
+  heldReasonsOf,
+  withHold,
   type LegalMatterRow,
 } from '../../../lib/legal/legalMatters'
 import { buildLegalPacketPrintHtml } from '../../../lib/legal/legalPacketPrint'
@@ -55,8 +56,9 @@ type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['R
  *
  * Two exits: a dev's **Mark attorney ready** IS the release (stage → referred,
  * the firm's portal picks it up); **Write down…** opens the agreed write-down
- * and closes the matter. The office asks a dev with one click; held-back
- * entries are per-entry toggles stored on the matter.
+ * and closes the matter. The office asks a dev with one click. Every "what
+ * was said" entry goes to counsel unless the office holds it back with a
+ * reason (#85 item 29), stored on the matter.
  *
  * Opens from the ⚖ Legal button in the Collections header tier (mirrors the
  * Accounts Receivable button: modal in place, `?legal=<payer key>` deep link).
@@ -219,6 +221,8 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
   /** Ask the firm (#41 PR 3): a question, or a sign-off on one job. */
   const [askForm, setAskForm] = useState<{ flavor: LegalAskFlavor; jobId: string; text: string } | null>(null)
   const [emailsOpen, setEmailsOpen] = useState(false)
+  /** Hold back… on the Their word tab (#85 item 29): which entry, and the office's reason. */
+  const [holdFor, setHoldFor] = useState<{ key: string; reason: string } | null>(null)
   /** The Mark attorney ready sheet's preview: the firm's own view of this account, held entries left out (v2.3363). */
   const [previewOpen, setPreviewOpen] = useState(false)
   const [previewTab, setPreviewTab] = useState<FirmTab>('account')
@@ -302,7 +306,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
       setBusy(false)
     }
   }
-  const saveReview = (args: { heldOverrides?: Record<string, boolean>; requestReview?: boolean; note?: string }) =>
+  const saveReview = (args: { heldOverrides?: Record<string, unknown>; requestReview?: boolean; note?: string }) =>
     legalRpc('legal_matter_save_review', {
       p_payer_key: selected?.key,
       p_customer_id: selected?.customerId,
@@ -312,15 +316,17 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
       p_request_review: args.requestReview ?? null,
       p_review_note: args.note ?? null,
     })
-  const toggleHold = async (key: string, held: boolean, heldByDefault: boolean) => {
-    const next = withHoldOverride(holdOverrides, key, held, heldByDefault)
-    await run('Sharing', () => saveReview({ heldOverrides: next }))
+  /** #85 item 29: everything goes to counsel; the office holds one entry back, with a reason, or shares it again. */
+  const holdBack = async (key: string, reason: string) => {
+    if (!reason.trim()) return
+    const ok = await run('Hold back', () => saveReview({ heldOverrides: withHold(matter, key, reason) }))
+    if (ok) setHoldFor(null)
   }
-  const setAllShared = async (share: boolean) => {
-    if (!packet) return
-    const next: Record<string, boolean> = {}
-    if (share) for (const e of packet.theirWord.timeline) if (!e.sharedByDefault) next[e.key] = false
-    await run('Sharing', () => saveReview({ heldOverrides: next }))
+  const shareAgain = async (key: string) => {
+    await run('Share', () => saveReview({ heldOverrides: withHold(matter, key, null) }))
+  }
+  const shareAll = async () => {
+    await run('Share all', () => saveReview({ heldOverrides: {} }))
   }
   const confirmReady = async () => {
     if (sheet?.kind !== 'ready' || !firm) return
@@ -582,7 +588,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
 
                 {packet ? (
                   <PacketTab tab={tab} packet={packet} selected={selected} props={props} openEditCustomer={openEditCustomer} openWriteDown={openWriteDown}
-                    curation={stored && canEditReview ? { toggleHold, setAllShared, busy } : null} entries={matter ? (legal?.entriesByMatter.get(matter.id) ?? []) : []}
+                    curation={stored && canEditReview ? { holdBack, shareAgain, shareAll, holdFor, setHoldFor, reasons: heldReasonsOf(matter), busy } : null} entries={matter ? (legal?.entriesByMatter.get(matter.id) ?? []) : []}
                     officeActs={stored && canEditReview ? { acknowledge, answerFor, setAnswerFor, sendAnswer, markApplied, busy, onOpenPipelineRow: () => { if (firstJob) props.onFocusJob(firstJob.id) }, askForm: matter ? askForm : null, setAskForm, sendAsk, withdrawFirmAsk, canAsk: Boolean(matter && stageIsWithFirm(matter.stage)) } : null} />
                 ) : null}
               </>
@@ -725,7 +731,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
   )
 }
 
-type Curation = { toggleHold: (key: string, held: boolean, heldByDefault: boolean) => Promise<void>; setAllShared: (share: boolean) => Promise<void>; busy: boolean } | null
+type Curation = { holdBack: (key: string, reason: string) => Promise<void>; shareAgain: (key: string) => Promise<void>; shareAll: () => Promise<void>; holdFor: { key: string; reason: string } | null; setHoldFor: (v: { key: string; reason: string } | null) => void; reasons: Record<string, string>; busy: boolean } | null
 type EntryLike = LegalEntryRow
 type OfficeActs = { acknowledge: (entryId: string) => Promise<void>; answerFor: { entryId: string; text: string } | null; setAnswerFor: (v: { entryId: string; text: string } | null) => void; sendAnswer: () => Promise<void>; markApplied: (entry: { id: string; amount: number | null; body: string }) => Promise<void>; busy: boolean; onOpenPipelineRow: () => void; askForm: { flavor: LegalAskFlavor; jobId: string; text: string } | null; setAskForm: (v: { flavor: LegalAskFlavor; jobId: string; text: string } | null) => void; sendAsk: () => Promise<void>; withdrawFirmAsk: (entryId: string) => Promise<void>; /** A matter exists for the account (asks hang on a matter). */ canAsk: boolean } | null
 
@@ -820,30 +826,45 @@ function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDo
     const tw = packet.theirWord
     const kindTone: Record<string, Tone> = { contact: 'neutral', promise: 'warn', call: 'neutral', note: 'stop' }
     const kindLabel: Record<string, string> = { contact: 'contact', promise: 'promise', call: 'call', note: 'collections' }
+    const holdInput: CSSProperties = { font: 'inherit', fontSize: '0.8rem', padding: '3px 6px', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text)', flex: '1 1 220px', minWidth: 0 }
     return (
       <div>
         <SectionTitle doors={<>
-          {curation ? <><Door label="Only after the first bill" onClick={() => void curation.setAllShared(false)} title="Clear every override — entries before the first bill are held, the rest go" /><Door label="Share all" onClick={() => void curation.setAllShared(true)} /></> : null}
+          {curation && tw.heldCount ? <Door label="Share all" onClick={() => void curation.shareAll()} title="Clear every hold — every entry goes to counsel" /> : null}
           {customerDoor('Customer notes')}{first ? <Door label="They said…" onClick={() => props.onOpenPromisedPay({ jobId: first.id, jobLabel: first.hcp_number || first.click_number || '', initialYmd: null })} /> : null}<Door label="Call mode" onClick={props.onOpenCallMode} /></>}>
-          What was said{tw.decided ? ` · keeps ${tw.kept} of ${tw.decided}${tw.broken ? ` · ${tw.broken} broken` : ''}` : ''}
+          What was said{tw.decided ? ` · keeps ${tw.kept} of ${tw.decided}${tw.broken ? ` · ${tw.broken} broken` : ''}` : ''}{tw.heldCount ? ` · ${tw.heldCount} held back` : ''}
         </SectionTitle>
         <p style={{ ...MUTED, fontSize: '0.78rem', margin: '0 0 6px' }}>
-          Contacts, promises, collection calls and the collections note, oldest first. {tw.firstBillYmd ? <>Entries before the first bill ({tw.firstBillYmd}) are held back from counsel unless you tick them{tw.heldCount ? ` — ${tw.heldCount} held` : ''}.</> : 'No bill date yet, so everything would go unless you untick it.'}
+          Contacts, promises, collection calls and the collections note, oldest first. Everything here goes to counsel. Hold one back only with a reason; the firm sees how many were held, never what or why.
         </p>
         <Table head={['Date', 'Kind', 'Job', 'What was said', 'By', 'To counsel']}
           rows={tw.timeline.map((e) => [
             e.ymd, pill(kindLabel[e.kind] ?? e.kind, kindTone[e.kind] ?? 'neutral'), e.jobLabel ?? <span style={MUTED}>account</span>,
-            <span key="t" style={e.shared ? undefined : { ...MUTED, textDecoration: 'line-through' }}>{e.text}</span>, e.by ?? <span style={MUTED}>the customer</span>,
+            <span key="t">
+              <span style={e.shared ? undefined : { ...MUTED, textDecoration: 'line-through' }}>{e.text}</span>
+              {!e.shared && curation?.reasons[e.key] ? <span style={{ ...MUTED, display: 'block', fontSize: '0.74rem' }} data-legal-held-reason>Held: {curation.reasons[e.key]}</span> : null}
+            </span>,
+            e.by ?? <span style={MUTED}>the customer</span>,
             curation ? (
-              <label key="c" style={{ display: 'inline-flex', gap: 5, alignItems: 'center', fontSize: '0.74rem', color: 'var(--text-muted)', cursor: 'pointer' }}>
-                <input type="checkbox" checked={e.shared} disabled={curation.busy} onChange={(ev) => void curation.toggleHold(e.key, !ev.target.checked, !e.sharedByDefault)} /> {e.shared ? 'goes' : 'held'}
-              </label>
+              e.shared ? (
+                <span key="c" style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>{pill('goes', 'ok')}<button type="button" disabled={curation.busy} onClick={() => curation.setHoldFor({ key: e.key, reason: '' })} style={btn}>Hold back…</button></span>
+              ) : (
+                <span key="c" style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>{pill('held', 'neutral')}<button type="button" disabled={curation.busy} onClick={() => void curation.shareAgain(e.key)} style={btn}>Share</button></span>
+              )
             ) : e.shared ? pill('goes', 'ok') : pill('held', 'neutral'),
-          ])} empty="Nothing on record — no contact, promise or collection call. One call in call mode gives the attorney a “they said…” line." />
+          ])}
+          subRows={tw.timeline.map((e) => curation?.holdFor?.key === e.key ? (
+            <div data-legal-hold-form style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8rem' }}>
+              <span>Hold this back from counsel because</span>
+              <input autoFocus value={curation.holdFor.reason} onChange={(ev) => curation.setHoldFor({ key: e.key, reason: ev.target.value })} placeholder="Why counsel should not see it" aria-label="Why counsel should not see it" style={holdInput} />
+              <button type="button" disabled={curation.busy || !curation.holdFor.reason.trim()} onClick={() => void curation.holdBack(e.key, curation.holdFor?.reason ?? '')} style={btnPrimary}>Hold back</button>
+              <button type="button" onClick={() => curation.setHoldFor(null)} style={btn}>Cancel</button>
+            </div>
+          ) : null)}
+          empty="Nothing on record — no contact, promise or collection call. One call in call mode gives the attorney a “they said…” line." />
       </div>
     )
   }
-
   if (tab === 'evidence') {
     return (
       <div>

@@ -40,13 +40,16 @@ describe('parseLegalPortalPayload', () => {
     const p = parseLegalPortalPayload({ company: { name: 'Click' }, preparedOn: '2026-09-11', firm, particulars: { entity: 'Click, LLC' }, matters: [{ ...matterRaw(), sharedOverrides: { 'contact:c0': false, junk: 'x' } }] })
     expect(p?.matters).toHaveLength(1)
     expect(p?.matters[0]?.sharedOverrides).toEqual({ 'contact:c0': false })
+    // #85 item 29: the count of entries the office held back, as the function counted them; 0 from an older function.
+    expect(p?.matters[0]?.heldCount).toBe(0)
+    expect(parseLegalPortalPayload({ firm, matters: [{ ...matterRaw(), heldCount: 2 }] })?.matters[0]?.heldCount).toBe(2)
     expect(p?.particulars.entity).toBe('Click, LLC')
     expect(portalFeeModel(p!)).toEqual({ contingencyPct: 0.3, filingCost: 400 })
   })
 })
 
 describe('buildMatterPacket', () => {
-  it('runs one matter through the same kernel the desk uses, honoring the shared pre-bill entry and the firm’s fee model', () => {
+  it('runs one matter through the same kernel the desk uses, sharing the pre-bill entry like every other (#85 item 29) and honoring the firm’s fee model', () => {
     const p = parseLegalPortalPayload({ company: { name: 'Click' }, preparedOn: '2026-09-11', firm, particulars: {}, matters: [matterRaw()] })!
     const packet = buildMatterPacket(p.matters[0]!, '2026-09-11', portalFeeModel(p))!
     expect(packet.account.payer.name).toBe('The Learning Experience')
@@ -54,7 +57,7 @@ describe('buildMatterPacket', () => {
     expect(packet.worth.contingencyPct).toBe(0.3)
     expect(packet.worth.filingCost).toBe(400)
     const c0 = packet.theirWord.timeline.find((e) => e.key === 'contact:c0')
-    expect(c0).toEqual(expect.objectContaining({ sharedByDefault: false, shared: true }))
+    expect(c0).toEqual(expect.objectContaining({ sharedByDefault: true, shared: true }))
     expect(packet.theirWord.timeline.find((e) => e.key === 'promise:pr1')?.text).toContain('broken')
   })
 })

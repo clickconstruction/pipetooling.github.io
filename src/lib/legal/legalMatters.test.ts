@@ -10,7 +10,8 @@ import {
   releaseRecipients,
   stageIsClosed,
   stageIsWithFirm,
-  withHoldOverride,
+  heldReasonsOf,
+  withHold,
   type LegalMatterRow,
 } from './legalMatters'
 
@@ -58,13 +59,16 @@ describe('held overrides', () => {
   it('reads only boolean overrides and stores only the ones that differ from the default', () => {
     expect(heldOverridesOf(matter({ held_overrides: { 'contact:1': true, 'contact:2': 'no', 'call:3': false } }))).toEqual({ 'contact:1': true, 'call:3': false })
     expect(heldOverridesOf(matter({ held_overrides: null }))).toEqual({})
-    let o: Record<string, boolean> = {}
-    o = withHoldOverride(o, 'contact:1', true, false) // hold an entry that would go
-    expect(o).toEqual({ 'contact:1': true })
-    o = withHoldOverride(o, 'contact:1', false, false) // back to default → override removed
-    expect(o).toEqual({})
-    o = withHoldOverride(o, 'contact:0', false, true) // share a pre-bill entry
-    expect(o).toEqual({ 'contact:0': false })
+    // #85 item 29: a hold carries the office's reason; sharing again drops both; an old `false` is dropped.
+    const m0 = matter({ held_overrides: { 'contact:0': false } })
+    const held = withHold(m0, 'call:3', '  names a family illness ')
+    expect(held).toEqual({ 'call:3': true, _reasons: { 'call:3': 'names a family illness' } })
+    const m1 = matter({ held_overrides: held })
+    expect(heldOverridesOf(m1)).toEqual({ 'call:3': true })
+    expect(heldReasonsOf(m1)).toEqual({ 'call:3': 'names a family illness' })
+    expect(withHold(m1, 'call:3', null)).toEqual({})
+    expect(withHold(m1, 'contact:1', '')).toEqual({ 'call:3': true, _reasons: { 'call:3': 'names a family illness' } })
+    expect(heldReasonsOf(matter({ held_overrides: { _reasons: 'x' } }))).toEqual({})
   })
 })
 

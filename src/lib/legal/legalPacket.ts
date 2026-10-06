@@ -289,7 +289,7 @@ export type LegalPacketInput = {
   threadNotes: ReadonlyArray<LegalThreadNoteLike>
   /** For naming who flagged Collections. */
   users: ReadonlyArray<{ id: string; name: string | null }>
-  /** Per-entry sharing overrides keyed by timeline entry key: true = hold back, false = share (PR 2 stores them). */
+  /** Per-entry holds keyed by timeline entry key: true = hold back from counsel (PR 2 stores them). Since #85 item 29 everything else goes; a `false` is a no-op. */
   holdOverrides?: Readonly<Record<string, boolean>>
   fee?: LegalFeeModel
 }
@@ -456,7 +456,7 @@ export type LegalSaidEntry = {
   jobLabel: string | null
   /** A promise the customer made themselves, on their statement page: no one in the office recorded it. */
   fromCustomer?: boolean
-  /** Shared under the default rule (on or after the first bill). */
+  /** Shared under the default rule — always true since #85 item 29 (share everything unless held); kept for the readers that compare. */
   sharedByDefault: boolean
   /** What actually goes to counsel after overrides. */
   shared: boolean
@@ -912,10 +912,10 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
   }
   const timeline: LegalSaidEntry[] = raw
     .map((e) => {
-      const sharedByDefault = firstBillYmd == null || e.ymd >= firstBillYmd
-      const override = holdOverrides[e.key]
-      const shared = override == null ? sharedByDefault : !override
-      return { ...e, sharedByDefault, shared }
+      // #85 item 29 (owner, 2026-10-05): everything goes to counsel unless the office holds it back.
+      // Only `true` holds; an old `false` (share a pre-bill entry) is the default now and changes nothing.
+      const shared = holdOverrides[e.key] !== true
+      return { ...e, sharedByDefault: true, shared }
     })
     .sort((a, b) => a.ymd.localeCompare(b.ymd) || a.key.localeCompare(b.key))
   const heldCount = timeline.filter((e) => !e.shared).length

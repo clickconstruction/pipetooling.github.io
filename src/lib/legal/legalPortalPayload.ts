@@ -3,9 +3,10 @@
  * parsed defensively, and the step that turns one matter's raw records into
  * the same packet the office desk shows — through the one kernel, so the firm
  * and the office never disagree. Held entries never arrive (the function
- * applies the office's decisions under the service role); `sharedOverrides`
- * carries only the pre-bill entries the office chose to share, so the kernel
- * shows them as going rather than held.
+ * applies the office's decisions under the service role) — since #85 item 29
+ * everything goes unless the office held it back, and `heldCount` says how
+ * many were. `sharedOverrides` marks every entry that arrived as shared, so a
+ * page still on the old default rule shows them too.
  */
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { CustomerAddressRow } from '../jobs/lienProperty'
@@ -33,6 +34,8 @@ export type LegalPortalMatter = {
   releasedAt: string | null
   feesToStatement: boolean
   sharedOverrides: Record<string, boolean>
+  /** Entries the office held back from counsel (#85 item 29) — they never arrive, so the page shows the count; 0 from an older function. */
+  heldCount: number
   jobs: Array<JobWithDetails & { collections_by_name?: string | null }>
   customer: LegalCustomerLike
   contacts: LegalContactLike[]
@@ -88,6 +91,7 @@ export function parseLegalPortalPayload(raw: unknown): LegalPortalPayload | null
       releasedAt: typeof m.releasedAt === 'string' ? m.releasedAt : null,
       feesToStatement: Boolean(m.feesToStatement),
       sharedOverrides: isRecord(m.sharedOverrides) ? Object.fromEntries(Object.entries(m.sharedOverrides).filter(([, v]) => typeof v === 'boolean') as Array<[string, boolean]>) : {},
+      heldCount: typeof m.heldCount === 'number' && Number.isFinite(m.heldCount) && m.heldCount > 0 ? Math.floor(m.heldCount) : 0,
       jobs: m.jobs as LegalPortalMatter['jobs'],
       customer: (isRecord(m.customer) ? m.customer : null) as LegalCustomerLike,
       contacts: Array.isArray(m.contacts) ? (m.contacts as LegalContactLike[]) : [],

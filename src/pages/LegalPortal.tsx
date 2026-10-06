@@ -232,7 +232,7 @@ export default function LegalPortal() {
               <FirmMatterView
                 packet={packet}
                 companyName={payload.company.name}
-                matter={{ payerName: selected.payer.name, noteToFirm: selected.noteToFirm, contracts: selected.contracts, entries: selected.entries }}
+                matter={{ payerName: selected.payer.name, noteToFirm: selected.noteToFirm, contracts: selected.contracts, entries: selected.entries, heldCount: selected.heldCount }}
                 tab={tab}
                 onTab={setTab}
                 acts={<><FirmAsks matter={selected} act={act} busy={busy} /><FirmActs matter={selected} act={act} busy={busy} notice={notice} /></>}

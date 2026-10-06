@@ -136,10 +136,13 @@ export function FirmMatterTab({ tab, packet, matter, companyName, acts }: { tab:
   }
   if (tab === 'their_word') {
     const tw = packet.theirWord
+    // #85 item 29: everything goes unless held; the firm sees how many were held, never what or why.
+    const held = Math.max(matter.heldCount ?? 0, tw.heldCount)
     return (
       <div>
         <p style={{ fontSize: 12.5, color: MUTED, margin: '4px 0 8px' }}>{companyName}'s contact record with this customer, oldest first. Calls, emails, visits, promises to pay and the note that sent it to collections.{tw.decided ? ` Promises kept: ${tw.kept} of ${tw.decided}${tw.broken ? `, ${tw.broken} broken` : ''}.` : ''}</p>
         <PortalTable head={['Date', 'Kind', 'Job', 'What was said', 'Recorded by']} rows={tw.timeline.filter((e) => e.shared).map((e) => [e.ymd, firmSaidKindWords(e.kind), e.jobLabel ?? 'account', e.text, firmSaidRecordedBy(e)])} empty="No contact on record." />
+        {held > 0 ? <p data-legal-held-count style={{ fontSize: 12.5, margin: '8px 0 0' }}>The office held back <b>{held} entr{held === 1 ? 'y' : 'ies'}</b>. Ask the office if you need {held === 1 ? 'it' : 'them'}.</p> : null}
       </div>
     )
   }

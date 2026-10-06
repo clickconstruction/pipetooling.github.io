@@ -39,11 +39,11 @@ const account = groupCollectionsByPayer([job], new Map(), '2026-09-11')[0] as Le
 const users: Array<{ id: string; name: string | null }> = []
 
 describe('useLegalPacketData — a contact is dated on the company calendar', () => {
-  it('a call logged at 7:30 pm CDT the evening before the first bill is that evening, and held', async () => {
+  it('a call logged at 7:30 pm CDT the evening before the first bill is that evening, and goes to counsel like every entry (#85 item 29)', async () => {
     db.contacts = [{ id: 'c1', contact_date: '2026-04-17T00:30:00+00:00', contact_method: 'Phone', details: 'Walked the scope.', created_by: null }]
     const { result } = renderHook(() => useLegalPacketData(account, users, true))
     await waitFor(() => expect(result.current.packet).not.toBeNull())
     const entry = result.current.packet!.theirWord.timeline.find((e) => e.key === 'contact:c1')
-    expect(entry).toEqual(expect.objectContaining({ ymd: '2026-04-16', sharedByDefault: false, shared: false }))
+    expect(entry).toEqual(expect.objectContaining({ ymd: '2026-04-16', sharedByDefault: true, shared: true }))
   })
 })

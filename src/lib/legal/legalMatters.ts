@@ -104,12 +104,38 @@ export function heldOverridesOf(matter: LegalMatterRow | null | undefined): Reco
   return out
 }
 
-/** Toggle one timeline entry: the override only exists where it differs from the default. */
-export function withHoldOverride(current: Readonly<Record<string, boolean>>, key: string, held: boolean, heldByDefault: boolean): Record<string, boolean> {
-  const next = { ...current }
-  if (held === heldByDefault) delete next[key]
-  else next[key] = held
-  return next
+/** Where the office's reason for each hold rides (#85 item 29): inside `held_overrides`, a key the boolean readers skip. */
+export const HELD_REASONS_KEY = '_reasons'
+
+/** The office's reason for each held entry, keyed like the overrides; {} when none were written. */
+export function heldReasonsOf(matter: LegalMatterRow | null | undefined): Record<string, string> {
+  const raw = matter?.held_overrides
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {}
+  const reasons = (raw as Record<string, unknown>)[HELD_REASONS_KEY]
+  if (!reasons || typeof reasons !== 'object' || Array.isArray(reasons)) return {}
+  const out: Record<string, string> = {}
+  for (const [k, v] of Object.entries(reasons as Record<string, unknown>)) if (typeof v === 'string') out[k] = v
+  return out
+}
+
+/**
+ * The `held_overrides` to save after holding one entry back (with the office's
+ * reason) or sharing it again (`reason` null). Since #85 item 29 everything
+ * goes to counsel unless held: only `true` is kept, an old `false` is dropped,
+ * and a hold without a reason is refused by the caller.
+ */
+export function withHold(matter: LegalMatterRow | null | undefined, key: string, reason: string | null): Record<string, unknown> {
+  const holds = Object.fromEntries(Object.entries(heldOverridesOf(matter)).filter(([, v]) => v === true)) as Record<string, unknown>
+  const reasons = heldReasonsOf(matter)
+  if (reason != null && reason.trim()) {
+    holds[key] = true
+    reasons[key] = reason.trim()
+  } else {
+    delete holds[key]
+    delete reasons[key]
+  }
+  for (const k of Object.keys(reasons)) if (holds[k] !== true) delete reasons[k]
+  return Object.keys(reasons).length ? { ...holds, [HELD_REASONS_KEY]: reasons } : holds
 }
 
 export function feeModelOf(firm: LegalFirmRow | null | undefined): LegalFeeModel {
