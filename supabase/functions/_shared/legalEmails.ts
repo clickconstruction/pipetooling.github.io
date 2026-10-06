@@ -63,9 +63,9 @@ export function buildLegalConfirmEmail(i: { companyName: string; email: string; 
 }
 
 /**
- * The events that reach the firm (`legal_notification_queue.trigger`). Since #85 item 17 every office event
- * emails the firm, not three: an ask, a note, a payment applied, and — digest only — a fee or cost the office
- * saw (a paralegal entering six costs should not get six emails back).
+ * The events that reach the firm (`legal_notification_queue.trigger`). Since #85 item 17 the office's asks,
+ * notes and applied payments email the firm too, and — digest only — a fee or cost the office saw. Closing a
+ * matter, moving a step back, the office's undo and a signed-off step send nothing yet (a paralegal entering six costs should not get six emails back).
  */
 export const LEGAL_NOW_TRIGGERS = ['referred', 'answer', 'pulled', 'ask', 'note', 'applied', 'fee_seen'] as const
 export type LegalNowTrigger = (typeof LEGAL_NOW_TRIGGERS)[number]
@@ -137,7 +137,7 @@ export function buildLegalNowEmail(i: {
       subject = `${i.companyName} saw your fee on ${payer}`
       line = `The office saw ${i.amount != null ? `<b>${money(i.amount)}</b>` : 'your fee'} on ${p}.${said}`
       break
-    default:
+    case 'pulled':
       subject = `${LEGAL_REFERRAL_WITHDRAWN}: ${payer}`
       line = `${legalEsc(i.companyName)} has withdrawn the referral of ${p}.${i.reason ? `<br>Why: <i>${legalEsc(i.reason)}</i>` : ''}<br>Your fees and costs and the conversation stay readable on the portal; the account's records do not.`
   }

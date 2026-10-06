@@ -42,9 +42,10 @@ BEGIN
   SELECT firm_id, payer_name INTO v_firm, v_payer FROM public.legal_matters WHERE id = NEW.matter_id;
   IF v_firm IS NULL THEN RETURN NEW; END IF;
   IF NEW.kind = 'answer' THEN
-    IF NEW.meta ? 'askId' THEN
+    -- A malformed askId must never fail the office's insert (item 17 review): cast only a real uuid.
+    IF NEW.meta ? 'askId' AND (NEW.meta->>'askId') ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' THEN
       SELECT body INTO v_question FROM public.legal_matter_entries
-      WHERE id = NULLIF(NEW.meta->>'askId', '')::uuid AND matter_id = NEW.matter_id AND via_portal;
+      WHERE id = (NEW.meta->>'askId')::uuid AND matter_id = NEW.matter_id AND via_portal;
     END IF;
     INSERT INTO public.legal_notification_queue (firm_id, matter_id, trigger, payload)
     VALUES (v_firm, NEW.matter_id, 'answer', jsonb_build_object('payer', v_payer, 'body', NEW.body, 'question', v_question));

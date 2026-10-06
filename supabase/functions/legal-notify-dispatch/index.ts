@@ -202,6 +202,8 @@ serve(async (req) => {
         const hasLedger = ev.sent_to !== undefined
         // #85 item 17: every office event; an unknown trigger is skipped, never mislabeled; a fee the office saw rides the digest only.
         const trigger = legalNowTriggerOf(ev.trigger)
+        // An explicit list (item 17 review): an unknown trigger is logged and stamped with nobody to send to, never sent as another kind.
+        if (!trigger) console.warn(`legal-notify-dispatch: unknown trigger ${JSON.stringify(ev.trigger)} on ${ev.id}; skipped`)
         const targetIds = trigger && legalTriggerSendsNow(trigger) ? recipients.filter((r) => r.mode === 'now' && canSee(r, ev.matter_id)).map((r) => r.id) : []
         const plan = legalNotifyDue(hasLedger ? parseSentTo(ev.sent_to) : {}, targetIds)
         let sentTo = plan.sentTo
