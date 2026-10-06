@@ -71,6 +71,7 @@ Start at [`PAGE_DECOMPOSITION_PLAYBOOK.md`](./PAGE_DECOMPOSITION_PLAYBOOK.md) â€
 | [`BIDS_DOCUMENT_TABS_ARCHITECTURE.md`](./BIDS_DOCUMENT_TABS_ARCHITECTURE.md) | `BidsCoverLetterTab` + `BidsSubmittalsTab` + `BidsBuilderReviewTab` |
 | [`BID_SUBMISSION_FOLLOWUP_TAB_ARCHITECTURE.md`](./BID_SUBMISSION_FOLLOWUP_TAB_ARCHITECTURE.md) | `BidSubmissionFollowupTab` |
 | [`BIDS_AUDITS_TAB_ARCHITECTURE.md`](./BIDS_AUDITS_TAB_ARCHITECTURE.md) | `BidsAuditsTab` (the ðŸ¤– Audits lens: questions, queue, open card) |
+| [`SUBMITTAL_PROCUREMENT_PANEL_ARCHITECTURE.md`](./SUBMITTAL_PROCUREMENT_PANEL_ARCHITECTURE.md) | `SubmittalProcurementPanel` (Submittals step 8: the procurement log as orders, with its calendar) |
 | [`JOBS_TABS_ARCHITECTURE.md`](./JOBS_TABS_ARCHITECTURE.md) | `src/pages/Jobs.tsx` (tab router + the page side of the Pipeline) |
 | [`JOBS_STAGES_TAB_ARCHITECTURE.md`](./JOBS_STAGES_TAB_ARCHITECTURE.md) | `JobsStagesTab` + its table/row sub-files |
 | [`LIEN_DESK_ARCHITECTURE.md`](./LIEN_DESK_ARCHITECTURE.md) | `LienDeskModal` (the Lien desk, mounted by the Pipeline) |

@@ -5,7 +5,7 @@ roles: dev, master_technician, assistant, controller, estimator, helpers, subcon
 keywords: password, forgot, locked out, magic link, sign-in link, email link, login, can't log in
 ---
 
-If your password isn't working, the sign-in page can email you a one-time sign-in link instead — no password needed.
+If your password isn't working, the sign-in page can email you a one-time sign-in link instead. You need no password to use it.
 
 ## Get the email link
 
@@ -21,9 +21,9 @@ The link signs in whichever browser opens it. If you want to be signed in on you
 ## If the email doesn't arrive
 
 - Check your spam folder.
-- The **Resend link** button unlocks after a one-minute wait — email limits mean back-to-back sends don't go through.
-- If it says *"No account found for that email"*, the email you typed isn't on an account — double-check the spelling, or contact the office to get set up.
+- The **Resend link** button unlocks after a one-minute wait. Email limits mean back-to-back sends don't go through.
+- If it says *"No account found for that email"*, the email you typed isn't on an account. Double-check the spelling, or contact the office to get set up.
 
 ## Afterward
 
-The link signs you in once. Your password is unchanged — if you've forgotten it for good, contact the office and they'll help you set a new one.
+The link signs you in once. Your password is unchanged. If you've forgotten it for good, contact the office and they'll help you set a new one.
