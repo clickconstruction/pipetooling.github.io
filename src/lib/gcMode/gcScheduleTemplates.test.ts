@@ -7,6 +7,7 @@ import { scheduleLinesOf } from './gcBuildingSchedule'
 import { scheduleDraft } from './gcNewProject'
 import { drawWeeks, roughDraw, roughFirstDraftWords, roughWeeks } from './gcRoughSchedule'
 import { customerSchedulePicture } from './gcCustomerSchedule'
+import { keptPlaces } from './gcPlaces'
 import {
   drawnFromWords,
   roughTemplateWords,
@@ -74,7 +75,8 @@ describe('saving a job’s shape (G-44)', () => {
     const shape = JSON.stringify({ lines: t?.lines, stages: t?.stages })
     expect(shape).not.toMatch(/\d{4}-\d{2}-\d{2}/)
     for (const p of initialGcState().partners) expect(shape).not.toContain(p.company)
-    // Only these fields, so no percent, actual date, move, start, finish or limit rides along.
+    // Only these fields, so no percent, actual date, move, start, finish or limit rides along. A kept place and a split line's
+    // parts join a line only where the office kept or split one, and the made-up job has none.
     expect([...new Set(t?.lines.flatMap((l) => Object.keys(l)))].sort()).toEqual(['after', 'days', 'label', 'offset', 'stage', 'trade'])
     expect([...new Set(t?.lines.flatMap((l) => l.after.flatMap((w) => Object.keys(w))))].sort()).toEqual(['label', 'trade'])
     // The electrical service inspection was Fair Oaks D's own, not one the first draft draws: it stays with its job.
@@ -92,6 +94,38 @@ describe('saving a job’s shape (G-44)', () => {
     expect(t?.lines.find((l) => l.label === 'Structural steel')).toMatchObject({ after: [{ trade: 'Concrete', label: 'Foundations', gap: 7 }], offset: 9 })
     const redrawn = scheduleDraft(job(cured, 'fairoaksd'), '2026-07-06', undefined, t?.lines)
     expect(redrawn.activities.find((a) => a.lineId === steel)).toMatchObject({ start: '2026-08-17', lag: { [footings]: 7 } })
+  })
+})
+
+describe('a kept place and a split line ride with the line (G-83, G-39)', () => {
+  it('keeps them on the template and writes them on the same line of the next job, with nothing done', () => {
+    const base = initialGcState()
+    const fo = job(base, 'fairoaksd')
+    const roughIn = lineIdOf(fo, 'Plumbing', 'Rough in')
+    const lighting = lineIdOf(fo, 'Electrical', 'Lighting')
+    let s = play(
+      base,
+      { type: 'setActivityPlaces', projectId: 'fairoaksd', places: { [roughIn]: 'Inside' } },
+      { type: 'splitActivity', projectId: 'fairoaksd', lineId: lighting, parts: [{ name: 'Sales floor', start: '2026-09-14', finish: '2026-10-09' }, { name: 'Back of house', start: '2026-10-05', finish: '2026-10-23' }], by: 'Robert' },
+      save(),
+    )
+    const t = s.scheduleTemplates?.[0]
+    expect(t?.lines.find((l) => l.label === 'Rough in')?.place).toBe('Inside')
+    const split = job(s, 'fairoaksd').schedule?.activities.find((a) => a.lineId === lighting)?.parts ?? []
+    expect(t?.lines.find((l) => l.label === 'Lighting')?.parts).toEqual(split.map((x) => ({ name: x.name, from: x.from, days: x.days, share: x.share })))
+    expect(split.map((x) => [x.name, x.from, x.days])).toEqual([
+      ['Sales floor', 0, 26],
+      ['Back of house', 21, 19],
+    ])
+    // Helotes Dental Office has a plumbing rough-in and lighting by the same names: the place is kept there, the parts split, nothing done.
+    s = play(s, { type: 'draftSchedule', projectId: 'helotes', start: '2026-10-12', templateId: 'tpl-1' })
+    const helotes = job(s, 'helotes')
+    expect(keptPlaces(helotes).get(lineIdOf(helotes, 'Plumbing', 'Rough in'))).toBe('Inside')
+    const lit = helotes.schedule?.activities.find((a) => a.lineId === lineIdOf(helotes, 'Electrical', 'Lighting'))
+    expect(lit?.parts?.map((x) => [x.id, x.name, x.from, x.days, x.pct])).toEqual([
+      [`${lit?.lineId}-p1`, 'Sales floor', 0, 26, 0],
+      [`${lit?.lineId}-p2`, 'Back of house', 21, 19, 0],
+    ])
   })
 })
 

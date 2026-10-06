@@ -19,6 +19,7 @@ import type { GcProject, GcState, ScheduleTemplate, TemplateLine, TemplateUse } 
 import { daysBetween, scheduleLinesOf, scheduleSummary } from './gcBuildingSchedule'
 import { SCHEDULE_STAGES, lineStage, scheduleDraft, templateKey } from './gcNewProject'
 import { drawWeeks } from './gcRoughSchedule'
+import { cleanPlace, keptPlaces, placeProblem } from './gcPlaces'
 import { weekdayDate } from './gcWords'
 
 /** The two inspections the first draft draws, by their names: a template keeps these and no other. */
@@ -48,8 +49,9 @@ export function templateNameProblem(state: GcState, name: string, exceptId?: str
 /**
  * The shape of a job's schedule, ready to save. Its trades' lines and the first draft's two
  * inspections, each with its days, its waits among them, the gaps set on those waits, and its offset
- * after the last of them, or after the job's first day. Its stages' spans and its weeks, for the card.
- * No dates, companies, percents or moves. Null: nothing drawn.
+ * after the last of them, or after the job's first day. A line's kept place (G-83) and its parts when
+ * split (G-39) go with it. Its stages' spans and its weeks, for the card. No dates, companies, percents
+ * or moves. Null: nothing drawn.
  */
 export function templateShape(state: GcState, project: GcProject): Pick<ScheduleTemplate, 'from' | 'lines' | 'stages' | 'weeks'> | null {
   const schedule = project.schedule
@@ -62,6 +64,12 @@ export function templateShape(state: GcState, project: GcProject): Pick<Schedule
   const kept = schedule.activities.filter((a) => named.has(a.lineId))
   const byId = new Map(kept.map((a) => [a.lineId, a]))
   const firstDay = schedule.activities.reduce((m, a) => (a.start < m ? a.start : m), first.start)
+  // Where the work is, only as the office kept it (G-83), tidied as G-83 keeps one.
+  const places = keptPlaces(project)
+  const placeOf = (lineId: string) => {
+    const place = cleanPlace(places.get(lineId) ?? '')
+    return place && !placeProblem(place) ? place : null
+  }
   const lines: TemplateLine[] = kept.map((a) => {
     const n = named.get(a.lineId) ?? { trade: '', label: '', stage: '' }
     // Its waits among the kept lines: an inspection only that job had, or an activity the office added, stays with its job.
@@ -78,6 +86,9 @@ export function templateShape(state: GcState, project: GcProject): Pick<Schedule
       days: daysBetween(a.start, a.finish) + 1,
       after: waits.map((x) => ({ trade: x.wn.trade, label: x.wn.label, ...(x.gap !== 0 ? { gap: x.gap } : {}) })),
       offset: last ? daysBetween(last, a.start) - 1 : daysBetween(firstDay, a.start),
+      ...(placeOf(a.lineId) ? { place: placeOf(a.lineId) ?? '' } : {}),
+      // Its parts (G-39), by name, days from the line's start, days and share: no percent and no actual dates.
+      ...(a.parts && a.parts.length > 0 ? { parts: a.parts.map((x) => ({ name: x.name, from: x.from, days: x.days, share: x.share })) } : {}),
     }
   })
   const stages = SCHEDULE_STAGES.flatMap((st) => {

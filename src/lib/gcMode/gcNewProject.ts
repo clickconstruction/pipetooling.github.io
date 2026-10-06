@@ -537,8 +537,9 @@ function draftLines(pkg: TradePackage): { lineId: string; label: string }[] {
  * job. It takes its days, the template's waits this job has (with their gaps), and its offset: as many
  * days after the last of them as it started there. A line with nothing to wait on starts its offset after
  * the first day. The two inspections follow the template's the same way, and the rough-in inspection
- * still waits on every rough-in the template does not cover. Every other line is drawn as above. With no
- * `like`, nothing here runs differently.
+ * still waits on every rough-in the template does not cover. A covered line also keeps the place the
+ * office kept there (G-83) and its parts (G-39), with no percent done. Every other line is drawn as
+ * above. With no `like`, nothing here runs differently.
  */
 export function scheduleDraft(project: GcProject, start: string, stageDays?: Partial<Record<string, number>>, like?: TemplateLine[]): ProjectSchedule {
   const order = new Map(SCHEDULE_STAGES.map((st, i) => [st.key, i]))
@@ -567,6 +568,11 @@ export function scheduleDraft(project: GcProject, start: string, stageDays?: Par
     const gaps = waits.filter((w) => w.gap !== 0)
     return { from, after: [...new Set(waits.map((w) => w.a.lineId))], ...(gaps.length > 0 ? { lag: Object.fromEntries(gaps.map((w) => [w.a.lineId, w.gap])) } : {}) }
   }
+  /** What a covered line keeps besides its dates (G-44): the place kept there (G-83) and its parts (G-39), none of them done. */
+  const keepsOf = (lineId: string, t: TemplateLine): Pick<ScheduleActivity, 'place' | 'parts'> => ({
+    ...(t.place ? { place: t.place } : {}),
+    ...(t.parts && t.parts.length > 0 ? { parts: t.parts.map((x, i) => ({ id: `${lineId}-p${i + 1}`, name: x.name, from: x.from, days: x.days, share: x.share, pct: 0 })) } : {}),
+  })
   /** A stage's lines as drawn: as listed, except a covered line comes after the lines of its stage it waits on. */
   const inWaitOrder = (stageLines: Line[]): Line[] => {
     if (likeOf.size === 0) return stageLines
@@ -604,8 +610,8 @@ export function scheduleDraft(project: GcProject, start: string, stageDays?: Par
       const t = likeOf.get(keyOfLine(line))
       const at = t ? placeLike(t) : null
       if (t && at) {
-        // G-83's kept place joins here once G-83 is on the spike: the template line's place, written as kept (the lead, 2026-10-06).
-        const a: ScheduleActivity = { lineId: line.lineId, packageId: line.packageId, start: at.from, finish: plusDays(at.from, t.days - 1), after: at.after, ...(at.lag ? { lag: at.lag } : {}) }
+        // Its place is written as kept, not as a guess: the office kept it once on purpose (the lead, 2026-10-06).
+        const a: ScheduleActivity = { lineId: line.lineId, packageId: line.packageId, start: at.from, finish: plusDays(at.from, t.days - 1), after: at.after, ...(at.lag ? { lag: at.lag } : {}), ...keepsOf(line.lineId, t) }
         done.set(line.lineId, a)
         drawnByKey.set(keyOfLine(line), a)
         activities.push(a)
@@ -628,7 +634,7 @@ export function scheduleDraft(project: GcProject, start: string, stageDays?: Par
       // A rough schedule may set this job's own stage lengths (G-45); every other caller draws the usual ones.
       // A covered line whose waits this job has none of keeps the template's days (G-44).
       const days = t ? t.days : Math.max(2, Math.ceil((stageDays?.[stage.key] ?? stage.days) / Math.max(1, shares)))
-      const a: ScheduleActivity = { lineId: line.lineId, packageId: line.packageId, start: from, finish: plusDays(from, days - 1), after }
+      const a: ScheduleActivity = { lineId: line.lineId, packageId: line.packageId, start: from, finish: plusDays(from, days - 1), after, ...(t ? keepsOf(line.lineId, t) : {}) }
       done.set(line.lineId, a)
       drawnByKey.set(keyOfLine(line), a)
       activities.push(a)

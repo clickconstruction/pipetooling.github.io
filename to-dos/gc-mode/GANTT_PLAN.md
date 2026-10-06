@@ -1532,10 +1532,12 @@ three actions, and `templateId` on `setRough` and `draftSchedule`.
   even with the template set aside. Renaming or setting a template aside never touches a job.
 - **Nothing reaches the trades or the customer**: templates live in `state.scheduleTemplates`, and the
   customer's picture of a job drawn from one says nothing of it.
-- **Places (G-83)**: a template line keeps its line's kept place, and the draw writes it as kept on the
-  same line of the new job, not as a guess, since the office kept it once on purpose. It waits on
-  G-83's `ScheduleActivity.place`: one field and one line join when G-83 lands.
-- **Tests**: `gcScheduleTemplates.test.ts` (13) and `GcScheduleTemplates.render.test.tsx` (5). The
+- **Places (G-83) and parts (G-39)**, both on the spike by the end of the build: a template line keeps
+  its line's kept place, tidied as G-83 keeps one, and the draw writes it as kept on the same line of
+  the new job, not as a guess, since the office kept it once on purpose. A split line keeps its parts'
+  names, first days from the line's start, days and shares, and the new line is split the same way with
+  nothing done.
+- **Tests**: `gcScheduleTemplates.test.ts` (14) and `GcScheduleTemplates.render.test.tsx` (5). The
   golden test lists the three actions. No fixture change, and nothing moved.
 
 Left for later: B, days from what really happened (G-55's actual dates), once they are recorded as a

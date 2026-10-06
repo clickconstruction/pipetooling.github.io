@@ -610,6 +610,10 @@ export interface TemplateLine {
   after: { trade: string; label: string; gap?: number }[]
   /** Days after the last of those finished that it started. With nothing to wait on: days after the job's first day. */
   offset: number
+  /** Where the work is, as the office kept it on that job (G-83). The draw keeps it on the same line of the new job. Unset: none kept. */
+  place?: string
+  /** Its parts when the line was split (G-39): each name, its first day from the line's start, its days and its share. No percent. Unset: one bar. */
+  parts?: { name: string; from: number; days: number; share: number }[]
 }
 
 /** A job's schedule shape kept to start the next job like it (G-44). Never dates, companies, percents or moves. */
