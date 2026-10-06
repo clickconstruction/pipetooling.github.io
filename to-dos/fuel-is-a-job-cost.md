@@ -1,14 +1,15 @@
 ---
 name: "Fuel is a job cost: one rule, its own line, by day, and who is spending"
 number: 52
-group: ready
-status: PRs 1–3 shipped (v2.4059, v2.4068, v2.4104) · PR 4a shipped v2.4106 (migration 20260929001119 — the office roles read the tags; on prod, drift check clean 2026-09-29) · PR 4b-1 (the read + the kernel) shipped v2.4594, migration 20261005212106 on prod · PR 4b-1b (card refunds) shipped v2.4611, migration 20261005235207 on prod · PR 4b-2 (People → Spending) shipped v2.4602 · PR 5 (Review follows the job) on feat/review-follows-job, v2.4653, client only
+group: close
+status: PRs 1–3 shipped (v2.4059, v2.4068, v2.4104) · PR 4a shipped v2.4106 (migration 20260929001119 — the office roles read the tags; on prod, drift check clean 2026-09-29) · PR 4b-1 (the read + the kernel) shipped v2.4594, migration 20261005212106 on prod · PR 4b-1b (card refunds) shipped v2.4611, migration 20261005235207 on prod · PR 4b-2 (People → Spending) shipped v2.4602 · PR 5 (Review follows the job) shipped v2.4653, client only
 summary: >
   What a job cost, fuel included, the same on every screen, with fuel as its own line and dated
   to the day it was bought, so a long multi-day job shows whether it is making or losing money
   while it runs; then who is spending what; then Review follows the job numbers.
 next: >
-  PR 5, Review follows the job (v2.4653), in review; after it, the follow-ups below are the owner's to pick.
+  The owner enters the 2007 Ram 3500's insurance, registration and service on People → Vehicles;
+  until then Review charges its driver only fuel on no job. The follow-ups below are the owner's to pick.
 size: M for PRs 1–3 · M for the spend view
 blocker: None.
 ver: v2.4059 · 4068 · 4104 · 4106 · 4594 · 4611 · 4602 · 4653
@@ -56,8 +57,9 @@ Then: "build it" — which takes the recommended answer to the first decision be
 - **Follow-up: Job Summary's print** (`jobSummaryCostBreakdown.ts`) does not take off card charges already on a supply invoice, so the printed parts can read higher than the table, and it folds fuel into parts.
 - **Follow-up: dev-mcp `get_job`** still sums every card line (no Internal Transfer or invoice rule) — an edge deploy.
 - **Review took a vehicle-deal person's fuel off the jobs** (v2.2735) — fixed in v2.4653 (PR 5).
-- **Payroll-marked fuel — measured, not the problem feared.** A Tally payroll mark settles a card charge with no job (`tallyPayrollRules.ts`), so fuel the payroll rules marked would never reach a job's cost. #72's replay measured Jul 7 – Oct 5: 196 payroll-marked card charges, $82,630, exactly one of them fuel ($52), none with a job split — the payroll rules do not keep fuel off jobs. That slice is what People → Spending leaves out for a viewer without payroll access (the read's rule), so the tab says so in one line. A read of our own after the push repeats the count.
+- **Payroll-marked fuel — measured, not the problem feared.** A Tally payroll mark settles a card charge with no job (`tallyPayrollRules.ts`), so fuel the payroll rules marked would never reach a job's cost. #72's replay measured Jul 7 – Oct 5: 196 payroll-marked card charges, $82,630, exactly one of them fuel ($52), none with a job split — the payroll rules do not keep fuel off jobs. That slice is what People → Spending leaves out for a viewer without payroll access (the read's rule), so the tab says so in one line. A read of our own after the push repeats the count. Review's fuel on no job (v2.4653) leaves payroll-marked fuel out too, reading the mark as a repayment. The owner's question: does a payroll mark on fuel ever mean a stipend rather than a repayment?
 - **Follow-up: Wheels** (People → Vehicles) adds fuel by person by attribution only, so a held card's fuel with no attribution is listed by card, where Spending and Review's fuel on no job give it to the holder. It should read the Spending kernel (`lib/people/spendingRollup.ts`) for the same window. Its `Math.abs` is gone (v2.4653): a refund comes off.
+- **Follow-up: the `vehicle_rate_override` column comment** still reads "Manual $/field hour that replaces the computed vehicle rate" (migration `20260903233954`). Since v2.4653 the override is the fixed part only. A one-line `COMMENT` migration; not now (2026-10-06).
 - **Follow-up, naming: the Job window's "Card charges"** counts every Mercury allocation on the job, ACH included (`fetchJobMaterialsCostSnapshot` has no kind filter); People → Spending is card purchases only.
 - **Follow-up: a job whose refunds outweigh its other card charges** — the Job window and Job Summary floor its card line at $0 (`jobCardChargesCountedFromLines`, `Jobs.tsx`), Review's `netCardChargesByJobId` keeps the net credit, and so does Spending (pinned in `spendingRollup.test.ts`).
 - **Follow-up: fuel on a supply-house invoice** — the ⛽ line's slice (`tagSliceForOneJob`) keeps an invoice-linked fuel charge that the card total leaves out (clamped to it); Spending lists it under the invoice.
