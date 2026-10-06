@@ -33,7 +33,7 @@ You run the day from the office: dispatch, billing, people, and paperwork. Contr
 
 [Bill a customer and get paid](?g=ready-to-bill-pipeline) is the main flow. Split billing is covered in [bill part of a job to someone else](?g=bill-part-of-a-job-to-someone-else). What you owe subs lives in [sub labor outstanding](?g=sub-labor-outstanding). Per-step work orders are in [pay a sub per step](?g=pay-a-sub-per-step).
 
-- **An owner calls about a lien letter.** A lien is a legal claim on a property for an unpaid bill. Open the Lien desk from the Collections header on Jobs → Pipeline, with {{button:outline|⏱ Lien desk}}. Press the {{button:blue|☎}} button before you say anything past hello. The button finds the letter they are holding, then gives you the words one card at a time. [Answer an owner who calls about a lien letter](?g=answer-an-owner-who-calls-about-a-lien-letter) has the whole call.
+- **An owner calls about a lien letter.** A lien is a legal claim on a property for an unpaid bill. Open the Lien desk from the Collections header on Jobs → Pipeline, with {{button:outline|Lien desk}}. That button wears the orange gavel. Press the {{button:blue|☎}} button before you say anything past hello. The button finds the letter they are holding, then gives you the words one card at a time. [Answer an owner who calls about a lien letter](?g=answer-an-owner-who-calls-about-a-lien-letter) has the whole call.
 
 ## What the field sees
 

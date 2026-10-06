@@ -26,8 +26,9 @@ PR like any other.
    check:todos` prints it: one past the highest number ever assigned — the folder, the
    `docs/recent-features/` fragments' "punch list #N" citations and every `number:` git history
    has seen, so deleting the newest to-do does not hand its number to the next one; a retired
-   to-do's number is never refilled, so "#16" always means the same work). **Change** — edit that
-   front matter (`status`,
+   to-do's number is never refilled, so "#16" always means the same work; it reads `main` only, so
+   first scan the open PRs' `+number:` lines and skip any number one of them already holds).
+   **Change** — edit that front matter (`status`,
    `next`, `group`, …) and the prose under it. **Retire** — delete the file or folder; the release
    notes and `docs/recent-features/` carry the record from then on.
 2. **A mock-up is a file beside the to-do** — `mockup.html`, `before-after-pr2.html`, any `.html`
