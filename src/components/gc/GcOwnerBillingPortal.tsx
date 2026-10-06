@@ -5,6 +5,7 @@ import { PortalBlock, PortalNote } from './GcPortalUi'
 import { GcCustomerSchedule } from './GcCustomerSchedule'
 import { GcCustomerContractSign } from './GcCustomerContractSign'
 import { GcOwnerBillingMessages } from './GcOwnerBillingMessages'
+import { GcBillingForecastPortal } from './GcBillingForecast'
 import {
   GC_COMPANY_NAME,
   CHANGE_ORDER_REASON_WORDS,
@@ -284,6 +285,8 @@ export function GcOwnerBillingPortal({ state, project, dispatch }: { state: GcSt
             {sent.length > 0 && !allBilled && (
               <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>The next bill comes {weekdayDate(next.billOn)}.</div>
             )}
+            {/* Their bills ahead as the schedule stands (the Gantt, G-97): rounded, never by trade. */}
+            <GcBillingForecastPortal state={state} project={project} />
           </div>
         </PortalBlock>
 

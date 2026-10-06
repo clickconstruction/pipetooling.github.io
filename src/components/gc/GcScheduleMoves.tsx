@@ -4,13 +4,14 @@
  * be given and recorded with that saved somewhere." Two pieces: the window every move goes through
  * (what it does, why, in whose words), and the list of every move made, with Undo on the last.
  */
-import { useEffect, useState, type Dispatch } from 'react'
+import { useEffect, useMemo, useState, type Dispatch } from 'react'
 import { createPortal } from 'react-dom'
 import { useAuth } from '../../hooks/useAuth'
-import { daysBetween, weekdayDate, type GcAction, type GcProject, type GcState, type ScheduleMoveReason } from '../../lib/gcMode/gcModel'
+import { daysBetween, weekdayDate, type GcAction, type GcProject, type GcState, type ScheduleMove, type ScheduleMoveReason } from '../../lib/gcMode/gcModel'
 import { MOVE_REASONS, moveActivityName, moveRows, moveWhyProblem, planMove, redoableMove, spanWords, undoableMove, type MoveLimits } from '../../lib/gcMode/gcScheduleMoves'
 import { companiesToTell, datesMessage, moveAnswerWords, untoldMoves } from '../../lib/gcMode/gcTellTrades'
 import { lateNoticeMoveWords } from '../../lib/gcMode/gcLateNotices'
+import { moveBillingShift, planBillingShift, shiftWords } from '../../lib/gcMode/gcBillingForecast'
 import { Btn, Card, Chip, input } from './gcUi'
 
 /** The signed-in person's name. Outside the app's sign-in (a test), none. */
@@ -41,7 +42,7 @@ export interface PendingMove {
 const label = { fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-muted)', textTransform: 'uppercase' } as const
 
 /** The window a move is saved from: what it does, then why. Nothing is saved without both. */
-export function GcMoveExplain({ project, pending, dispatch, onClose }: { project: GcProject; pending: PendingMove; dispatch: Dispatch<GcAction>; onClose: () => void }) {
+export function GcMoveExplain({ state, project, pending, dispatch, onClose }: { state?: GcState; project: GcProject; pending: PendingMove; dispatch: Dispatch<GcAction>; onClose: () => void }) {
   const me = useMeName() ?? 'The office'
   const [reason, setReason] = useState<ScheduleMoveReason | null>(pending.why?.reason ?? null)
   const [note, setNote] = useState(pending.why?.note ?? '')
@@ -53,6 +54,8 @@ export function GcMoveExplain({ project, pending, dispatch, onClose }: { project
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
   const plan = planMove(project, pending.lineId, pending.start, pending.finish, pending.after, pending.limits)
+  // What the move does to the bills (G-97): worked out once per move, not on every keystroke.
+  const billing = useMemo(() => (state && plan && !plan.problem && !plan.same ? shiftWords(planBillingShift(state, project, plan), 'will') : null), [state, project, pending]) // eslint-disable-line react-hooks/exhaustive-deps
   if (!plan || plan.same) return null
   const problem = plan.problem ?? moveWhyProblem(reason, note)
   const phone = typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 640px)').matches
@@ -112,6 +115,7 @@ export function GcMoveExplain({ project, pending, dispatch, onClose }: { project
               {plan.pushed.length > 5 && <li>and {plan.pushed.length - 5} more</li>}
             </ul>
           )}
+          {billing && <div style={{ color: 'var(--text-600)' }}>Billing: {billing}</div>}
         </div>
         <div style={{ display: 'grid', gap: '0.35rem' }}>
           <span style={label}>Why it moved</span>
@@ -221,6 +225,8 @@ export function GcMoveHistory({ state, project, dispatch }: { state: GcState; pr
             {(r.effect || r.undone) && <div style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>{[r.effect, r.undone].filter(Boolean).join(' ')}</div>}
             {/* A move that took a trade's late notice (G-117): who asked, and how far ahead. */}
             {lateNoticeMoveWords(state, project, r.move) && <div style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>{lateNoticeMoveWords(state, project, r.move)}</div>}
+            {/* What the move did to the bills (G-97), while its bars still sit where it left them. */}
+            {!r.undone && <MoveBilling state={state} project={project} move={r.move} />}
             {/* Who was told, and what they said (Phase 3). */}
             {r.move.toldOn &&
               moveAnswerWords(state, r.move).map((w) => (
@@ -323,4 +329,10 @@ function GcTellTrades({ state, project, dispatch, onClose }: { state: GcState; p
     </div>,
     document.body,
   )
+}
+
+/** What a standing move did to the bills (G-97): "Billing: it moved $6,600 of the Oct 25 bill to Nov 25." Nothing when it moved no money. */
+function MoveBilling({ state, project, move }: { state: GcState; project: GcProject; move: ScheduleMove }) {
+  const words = useMemo(() => shiftWords(moveBillingShift(state, project, move) ?? [], 'did'), [state, project, move])
+  return words ? <div style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>Billing: {words}</div> : null
 }

@@ -7,6 +7,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { GcGantt } from './GcGantt'
+import { GcBuildingScheduleTab } from './GcBuildingSchedule'
 import { GC_COMPANY, initialGcState } from '../../lib/gcMode/gcFixture'
 import { scheduleMeasures } from '../../lib/gcMode/gcBuildingSchedule'
 import { customerDoneWords, customerSchedulePicture, customerStanding } from '../../lib/gcMode/gcCustomerSchedule'
@@ -115,5 +116,33 @@ describe('Print or PDF on the chart (G-21)', () => {
     expect(screen.getByText('Nothing on the schedule passes these filters.')).toBeTruthy()
     expect((printButton() as HTMLButtonElement).disabled).toBe(true)
     expect(printButton().getAttribute('title')).toBe('Nothing passes these filters, so there is nothing to print.')
+  })
+})
+
+describe('the paper takes the holds the chart is given (G-21 after G-77)', () => {
+  it('prints Site lighting and Fire alarm as the Schedule tab’s chart shows them: held, by Pecan Valley’s papers', () => {
+    const state = initialGcState()
+    const project = state.projects.find((p) => p.name === 'Fair Oaks Shops, Building D')!
+    render(<GcBuildingScheduleTab state={state} project={project} dispatch={vi.fn()} />)
+    const toolbar = document.querySelector('[data-tour="gc-gantt-toolbar"]') as HTMLElement
+    // What the chart says beside each bar: the note drawn after it (barNote, from the tab's holds).
+    const onChart = (label: string) => {
+      const name = [...document.querySelectorAll('[data-gantt-scroller] button')].find((b) => b.textContent?.trim() === label && !b.hasAttribute('data-gantt-bar'))
+      const lane = name?.parentElement?.parentElement?.children[1]
+      return [...(lane?.querySelectorAll('span') ?? [])].find((sp) => (sp as HTMLElement).style.whiteSpace === 'nowrap')?.textContent ?? ''
+    }
+    const site = onChart('Site lighting')
+    const fire = onChart('Fire alarm')
+    expect(site).toBe('waits on current insurance, theirs ran out Sep 15')
+    expect(fire).toBe('waits on current insurance and submittal 28 31 11-01')
+    fireEvent.click(within(toolbar).getByRole('button', { name: 'Print or PDF' }))
+    const paper = new DOMParser().parseFromString(framed(), 'text/html')
+    const texts = [...paper.querySelectorAll('svg.chart text')].map((t) => t.textContent ?? '')
+    for (const [label, note] of [['Site lighting', site], ['Fire alarm', fire]] as const) {
+      const at = texts.indexOf(label)
+      expect(at).toBeGreaterThan(-1)
+      expect(texts.slice(at, at + 5)).toContain('held')
+      expect(texts).toContain(note)
+    }
   })
 })

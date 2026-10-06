@@ -823,6 +823,43 @@ Left out, as planned: a long job's weeks tiled across pages, a paper size choice
 on 11 by 17 with *Fit to page*), a line from a bar on one page to a bar on another, a tour stop
 (`gcTour.ts` is shared), and a record that a print was made (printing changes nothing on the job).
 
+## Phase 4, the billing forecast follows the schedule, as built (2026-10-06)
+
+G-97, built by Helper 4 from `to-dos/gc-mode/mockups/G-97.md`. The kernel is
+`gcBillingForecast.ts`, tested, out of the barrel. The screens are in `GcBillingForecast.tsx`.
+
+- **One rule moves the work.** Each bar keeps the percent its trade reported. The rest is spread
+  evenly over its days to its finish. On or after its finish it is done.
+- **One rule bills it.** At each bill day the job is copied with every line at that percent, and
+  Owner Billing's own `ownerPayApp`, the draft's math, runs on the copy. Retainage steps, our costs
+  and fee following the trades, and the floor of what was already billed come out the same. The
+  bill counts as sent before the next month. `cashAhead` and `ownerPayApp` are untouched, and a
+  test proves it.
+- **Fair Oaks D, as the schedule stands:** Sun Oct 25 $368,744 (92%), Wed Nov 25 $70,405 (97%),
+  Fri Dec 25 $40,043 (100%), then the $148,876 Cibolo Creek Partners holds, with the final bill.
+  With the $860,695 asked so far, that is the price. The draft today asks $98,566 for Oct 25,
+  because it bills only the work reported so far. Taking Summit's late day (G-117) moves $6,600
+  of the Oct 25 bill to Nov 25, through the rooftop units it pushes.
+- **Where it shows.**
+  - *What we expect to bill*, under the draft on Bill the customer. A month's ▸ opens the trades
+    its bill carries, our costs spread in: Roofing $122,230, Electrical $120,519 and HVAC $114,407
+    in October. A *Moved this week* column appears once this week's moves changed a month.
+  - *What we bill, month by month*, under the next six weeks on the Money tab, every job with
+    what customers hold until the final bills.
+  - The customer's bills ahead in their portal's *Your bills*, rounded to the hundred, never by
+    trade, with what this week's moves did to them.
+  - *Billing: $6,600 of the Oct 25 bill moves to Nov 25.* in Why it moved, and the same in the
+    past tense on the move's row, while its bars still sit where it left them.
+- **What the data does not carry is said, not invented.** Work spreads evenly inside a bar. The
+  architect certifies a bill in full. Stored materials count once they are in place. Retainage
+  comes with the final bill, on no day. Any part of the price no bar carries is named on the
+  surface.
+
+The second look: a month's trades (▸) answer the first question anyone asks of a big month. The
+cash weeks following the bars is G-140, the owner's call: the trades' draws would have to follow
+in the same change. The bars' pace instead of their drawn days was not taken, because two dates
+would argue. The walk moves the bar, and the forecast follows.
+
 ## Status
 
 Planned 2026-10-05. Phases 1 and 2 (finished 2026-10-06: an added activity, actuals, a new baseline, redo)

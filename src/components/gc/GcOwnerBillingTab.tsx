@@ -1,6 +1,7 @@
 import { useState, type Dispatch } from 'react'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
 import { GcOwnerBillingCash } from './GcOwnerBillingCash'
+import { GcBillingForecastCard } from './GcBillingForecast'
 import { GcOwnerBillingChangeOrders } from './GcOwnerBillingChangeOrders'
 import { OwnerPayAppWindow } from './GcOwnerBillingPayApp'
 import { GcOwnerBillingArchitectPortal } from './GcOwnerBillingArchitect'
@@ -271,6 +272,9 @@ function OfficeSide({
         </div>
       </Card>
       )}
+
+      {/* What we expect to bill each month as the schedule stands (the Gantt, G-97): the months after the draft. */}
+      <GcBillingForecastCard state={state} project={project} />
 
       <GcOwnerBillingFinish state={state} project={project} dispatch={dispatch} />
 
