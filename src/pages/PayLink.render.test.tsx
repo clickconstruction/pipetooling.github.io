@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen, waitFor } from '@testing-library/react'
+import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import PayLink from './PayLink'
@@ -47,6 +47,26 @@ describe('PayLink page', () => {
     expect(screen.getByText('Invoice #1025-2609180905 · Lago Vista St')).toBeTruthy()
     expect(screen.getByTestId('pay-link-pay-now').getAttribute('href')).toBe('https://invoice.stripe.com/i/fresh')
     expect(vi.mocked(fetch).mock.calls[0]?.[0]).toContain(`/functions/v1/pay-link?id=${ID}`)
+  })
+
+  it('the pay offer (v2.4704): the full amount struck through and the day while live; the ended line after; the offer named once paid', async () => {
+    const offer = { pct: 10, by: '2026-11-15', state: 'live', fullCents: 624000 }
+    answer(200, { ...open, amountRemainingCents: 561600, offer })
+    mount(ID)
+    expect((await screen.findByTestId('pay-link-amount')).textContent).toBe('$5,616.00')
+    expect(screen.getByTestId('pay-link-full').textContent).toBe('$6,240.00')
+    expect(screen.getByTestId('pay-link-offer').textContent).toBe('10% off if paid in full by November 15. Today it is.')
+    cleanup()
+    answer(200, { ...open, amountRemainingCents: 624000, offer: { ...offer, state: 'ended', fullCents: null } })
+    mount(ID)
+    expect((await screen.findByTestId('pay-link-offer')).textContent).toBe('The 10% offer ended November 15. This is the full amount owed.')
+    expect(screen.queryByTestId('pay-link-full')).toBeNull()
+    cleanup()
+    answer(200, { ...open, state: 'paid', amountRemainingCents: 0, paidOn: '2026-11-03', offer: { ...offer, state: 'taken', fullCents: null } })
+    mount(ID)
+    expect((await screen.findByTestId('pay-link-paid')).textContent).toContain('Paid')
+    expect(screen.getByText(/paid on November 3, 2026/)).toBeTruthy()
+    expect(screen.getByTestId('pay-link-offer').textContent).toBe(' with the 10% offer')
   })
 
   it('says Paid, with the day, and never offers to pay again', async () => {

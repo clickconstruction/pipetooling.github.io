@@ -37,6 +37,8 @@ import { QuickfillMyInboxSection } from '../components/quickfill/QuickfillMyInbo
 import { JobsBillingReminderSection } from '../components/quickfill/JobsBillingReminderSection'
 import { QuickfillCompleteNoBillSection } from '../components/quickfill/QuickfillCompleteNoBillSection'
 import { QuickfillStagesNoCustomerSection } from '../components/quickfill/QuickfillStagesNoCustomerSection'
+import { QuickfillPropertyKindsSection } from '../components/quickfill/QuickfillPropertyKindsSection'
+import { useQuickfillPropertyKinds } from '../hooks/useQuickfillPropertyKinds'
 import { QuickfillFieldPhotoHandoverSection } from '../components/quickfill/QuickfillFieldPhotoHandoverSection'
 import { QuickfillJobsCleanupSection } from '../components/quickfill/QuickfillJobsCleanupSection'
 import { QuickfillSectionMarkHistoryModal } from '../components/quickfill/QuickfillSectionMarkHistoryModal'
@@ -112,6 +114,7 @@ const SECTIONS: { id: string; sectionId: string; label: string }[] = [
   { id: 'quickfill-complete-no-bill', sectionId: 'complete-no-bill', label: 'Complete, no Total Bill' },
   { id: 'quickfill-undated-bills', sectionId: 'undated-bills', label: 'Missing bill dates' },
   { id: 'quickfill-no-customer-stages', sectionId: 'no-customer-stages', label: 'Missing job info' },
+  { id: 'quickfill-property-kinds', sectionId: 'property-kinds', label: 'Property kinds' },
   { id: 'quickfill-jobs-cleanup', sectionId: 'jobs-cleanup', label: 'Jobs Cleanup' },
   { id: 'quickfill-dispatch-inbox', sectionId: 'dispatch-inbox', label: 'Dispatch inbox' },
   { id: 'quickfill-field-photos', sectionId: 'field-photos', label: 'Field photos → Drive' },
@@ -141,6 +144,7 @@ const SECTION_INSERT_AFTER: Record<string, string> = {
   'jobs-cleanup': 'no-customer-stages',
   'assistant-dailys': 'office-arriving',
   'undated-bills': 'complete-no-bill',
+  'property-kinds': 'no-customer-stages',
 }
 
 const VALID_SECTION_IDS = new Set(SECTIONS.map((s) => s.sectionId))
@@ -488,6 +492,13 @@ function QuickfillPage() {
     quickfillStagesAlertsUnionCount,
     quickfillNoCustomerStages.fetchEnabled && quickfillNoCustomerStages.loading,
   )
+  // Property kinds (v2.4727): one row per unset property across the unpaid jobs; the count is properties, reported from here so it stays live while the strip is collapsed.
+  const quickfillPropertyKinds = useQuickfillPropertyKinds()
+  useReportQuickfillSectionMetric(
+    'property-kinds',
+    quickfillPropertyKinds.fetchEnabled ? (quickfillPropertyKinds.loading ? null : quickfillPropertyKinds.rows.length) : null,
+    quickfillPropertyKinds.fetchEnabled && quickfillPropertyKinds.loading,
+  )
   const {
     peopleCount: staleTallyStaffPeopleCount,
     transactionCount: staleTallyStaffTxCount,
@@ -745,6 +756,7 @@ function QuickfillPage() {
       }
       if (sectionId === 'needs-you') return warningsSectionEligible
       if (sectionId === 'no-customer-stages') return quickfillNoCustomerStages.fetchEnabled
+      if (sectionId === 'property-kinds') return quickfillPropertyKinds.fetchEnabled
       // Banking is controller and above (v2.3305); the snapshot is the Banking page in miniature.
       if (sectionId === 'banking-sorting') return canAccessBanking(role)
       if (sectionId === 'undated-bills') {
@@ -778,6 +790,7 @@ function QuickfillPage() {
       authUser,
       canAccessProspects,
       quickfillNoCustomerStages.fetchEnabled,
+      quickfillPropertyKinds.fetchEnabled,
       quickfillCompleteNoBill.fetchEnabled,
       quickfillCantReach.fetchEnabled,
       quickfillCantReach.loading,
@@ -1475,6 +1488,30 @@ function QuickfillPage() {
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'jobs-cleanup', label: 'Jobs Cleanup' })}
           >
             <QuickfillJobsCleanupSection />
+          </QuickfillSectionWrapper>
+        )
+      case 'property-kinds':
+        return (
+          <QuickfillSectionWrapper
+            id={id}
+            sectionId={sectionId}
+            label={label}
+            bannerText={bannerText}
+            withTopDivider={withTopDivider}
+            color={chipColorOf('property-kinds')}
+            collapsed={isCollapsed('property-kinds') && !forceExpandedSections.has('property-kinds')}
+            mark={sectionMarks['property-kinds']}
+            onMarkUpToDate={() => void markSectionUpToDate('property-kinds')}
+            onOpenNow={() => openSectionNow('property-kinds')}
+            onOpenHistory={() => setMarkHistoryModal({ sectionId: 'property-kinds', label: 'Property kinds' })}
+          >
+            <QuickfillPropertyKindsSection
+              rows={quickfillPropertyKinds.rows}
+              noCustomerCount={quickfillPropertyKinds.noCustomerCount}
+              loading={quickfillPropertyKinds.loading}
+              onKindSaved={quickfillPropertyKinds.setKind}
+              onJobLinked={quickfillPropertyKinds.linkJob}
+            />
           </QuickfillSectionWrapper>
         )
       case 'no-customer-stages':

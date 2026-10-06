@@ -16,6 +16,9 @@ import DetailJobModal, {
 } from './DetailJobModal'
 import JobFormModal from './JobFormModal'
 import JobHistoryLienTimeline from './JobHistoryLienTimeline'
+import { useJobLienTimeline } from '../../hooks/useJobLienTimeline'
+import { jobOpenBalance, showJobHistoryLienTimeline } from '../../lib/jobs/jobHistoryLienTimeline'
+import { lienMonthLines } from '../../lib/jobs/lienMonthLines'
 import { JobWindowDocumentsTab } from './JobWindowDocumentsTab'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 
@@ -124,6 +127,9 @@ export function JobWindowModal({
   // verb · Note, read from the job the Job pane loaded (the same chip the Pipeline row shows).
   const phone = useNarrowViewport640()
   const [fullJob, setFullJob] = useState<JobWithDetails | null>(initialJob)
+  // The job's lien timeline for the History tab (v2.3879; lifted here v2.4707): one read, two readers — the box above and the calendar's month lines.
+  const lien = useJobLienTimeline(fullJob, historyMounted)
+  const lienShown = !!fullJob && !!lien.timeline && showJobHistoryLienTimeline({ openBalance: jobOpenBalance(fullJob), hasPaper: lien.hasPaper })
   const [statusSheetOpen, setStatusSheetOpen] = useState(false)
   const verb = useMemo(() => {
     if (!phone || !fullJob) return null
@@ -364,10 +370,11 @@ export function JobWindowModal({
           {/* History pane (T5-05 / J31-adj3): the Projects day-grid for THIS job — every job, any status. */}
           {historyMounted ? (
             <div style={tab !== 'history' ? { display: 'none' } : undefined} role="tabpanel" aria-label="History">
-              {/* The lien timeline above the grid (v2.3879, punch list #32): every deadline, whose move it is, the demand letter — while money is owed or paper is out. */}
-              {fullJob ? <JobHistoryLienTimeline job={fullJob} /> : null}
+              {/* The lien timeline above the calendar (v2.3879, punch list #32): every deadline, whose move it is, the demand letter — while money is owed or paper is out.
+                  Since v2.4707 the read lives here, so Days on the job can carry each month's § 53.056 line from the same timeline. */}
+              {lienShown && lien.timeline ? <JobHistoryLienTimeline timeline={lien.timeline} /> : null}
               <Suspense fallback={<p style={{ color: 'var(--text-muted)' }}>Loading…</p>}>
-                <ProjectsJobHistoryTabLazy customerId={null} jobId={jobId} />
+                <ProjectsJobHistoryTabLazy customerId={null} jobId={jobId} lienMonthLines={lienShown && lien.timeline ? lienMonthLines(lien.timeline) : null} />
               </Suspense>
             </div>
           ) : null}

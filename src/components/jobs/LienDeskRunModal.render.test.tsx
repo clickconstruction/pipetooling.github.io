@@ -19,7 +19,7 @@ vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
   return { supabase: makeSupabaseStub() }
 })
-const recordMock = vi.fn(async () => ({ recorded: ['it1'], failed: [], courtesySent: [] as { itemId: string; label: string; email: string }[], courtesyFailed: [] as { itemId: string; label: string; email: string; reason: string }[] }))
+const recordMock = vi.fn(async () => ({ recorded: ['it1'], failed: [], releaseFailed: [] as { label: string; reason: string }[], courtesySent: [] as { itemId: string; label: string; email: string }[], courtesyFailed: [] as { itemId: string; label: string; email: string; reason: string }[] }))
 vi.mock('../../lib/jobs/lienDeskRunIo', () => ({ recordLienDeskRun: (...args: unknown[]) => recordMock(...(args as [])) }))
 
 function notice(partial: Partial<RunNotice> = {}): RunNotice {
@@ -153,13 +153,13 @@ describe('LienDeskRunModal · the courtesy PDF to the original contractor (punch
   })
 
   it('the record names the courtesy PDF that went, and warns when one did not', async () => {
-    recordMock.mockImplementationOnce(async () => ({ recorded: ['it1'], failed: [], courtesySent: [{ itemId: 'it1', label: '650 · ATI Schertz', email: 'office@loberg.test' }], courtesyFailed: [] }))
+    recordMock.mockImplementationOnce(async () => ({ recorded: ['it1'], failed: [], releaseFailed: [] as { label: string; reason: string }[], courtesySent: [{ itemId: 'it1', label: '650 · ATI Schertz', email: 'office@loberg.test' }], courtesyFailed: [] }))
     const view = renderWithProviders(<LienDeskRunModal notices={[ticked()]} issuer={null} todayYmd="2026-10-06" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
     await settle()
     fireEvent.click(screen.getByRole('button', { name: /Record the run/ }))
     expect(await screen.findByText('1 notice recorded — the desk reads them as sent. Courtesy PDF emailed to office@loberg.test.')).toBeTruthy()
     view.unmount()
-    recordMock.mockImplementationOnce(async () => ({ recorded: ['it1'], failed: [], courtesySent: [], courtesyFailed: [{ itemId: 'it1', label: '650 · ATI Schertz', email: 'office@loberg.test', reason: 'Resend 502' }] }))
+    recordMock.mockImplementationOnce(async () => ({ recorded: ['it1'], failed: [], releaseFailed: [] as { label: string; reason: string }[], courtesySent: [], courtesyFailed: [{ itemId: 'it1', label: '650 · ATI Schertz', email: 'office@loberg.test', reason: 'Resend 502' }] }))
     renderWithProviders(<LienDeskRunModal notices={[ticked()]} issuer={null} todayYmd="2026-10-06" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
     await settle()
     fireEvent.click(screen.getByRole('button', { name: /Record the run/ }))

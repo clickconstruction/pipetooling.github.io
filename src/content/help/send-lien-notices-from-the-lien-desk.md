@@ -20,7 +20,7 @@ Open the Lien desk from the orange gavel on the Pipeline. It opens on its **Do n
 - A row waiting on the leader shows {{button:outline|Open}} to the office. The leader sees {{button:blue|Approve}}.
 - The job's number and name underline when you point at them. Press them to open the job itself, over the desk. Close the job and the desk reads its rows again. The same door is on every view of the desk.
 - A rail above the rows shows the four steps of a notice. They are Find the owner, Draft notice, Approve and Send the run. Each step shows how many rows stand on it. Press a step to see only those rows. Press it again to see every row. Affidavits get a rail of their own when one needs an act.
-- The Notice or Affidavit chip on a row is a door too. It rings when you point at it. A red count on it says how many details the paper still needs. Press it to see the paper as it would print today. Each missing detail is marked in red on the page with a number. A list beside the page names each one and gives the button that fills it. The arrow keys walk the rows. Esc closes the paper.
+- The Notice or Affidavit chip on a row is a door too. It rings when you point at it. A red count on it says how many details the paper still needs. Press it to see the paper as it would print today. Each missing detail is marked in red on the page with a number. A list beside the page names each one and gives the button that fills it. {{button:blue|Fix the property}} opens the property record in a window above the paper. The lookup fills the county, the legal description and the owner when it can. {{button:blue|Pick the GC}} sets the job's original contractor the same way. Press {{button:blue|Done}} and the paper fills in behind it. Each filled detail turns green in the list and shows what it reads now. The arrow keys walk the rows. Esc closes the paper.
 - Each row wears four dots and a count like 2/4. Point at the dots to read where that paper stands. The card lists what is done, what is being done now and what is left. On a phone, tap the dots.
 
 When nothing needs anyone, the tab says so and points you at the Deadlines.
@@ -54,6 +54,10 @@ Press a job to open its Lien window. The desk stays open behind it. Close the Li
 
 The button left of the × makes the desk full screen. The same button sits on Put a GC on notice. Each window opens the way you left it. Press the button again to go back to the window.
 
+## Find a job on the list
+
+A find box sits under {{button:blue|Send the run · N}} on every list. Type a job number, a name, a GC, a street or an owner's name. The list narrows as you type. Each pile keeps its title with a count, like 2 of 12. A pile with no match turns grey. A match on the street or the owner is written into the row, because the row does not show those. One match opens its own pane. Press **/** to jump to the box. Press **Esc** or **×** to clear it. When nothing matches, the list says what to try. A notice already sent is under the Sent pile, or ask ☎ Someone's calling.
+
 ## The piles
 
 The **Notices** tab lists each job with a GC and an unpaid month whose window closes within 30 days. The list is in piles, each under its own title with a count. The titles stay on screen as you scroll. The ones you passed stack at the top and the ones ahead wait at the bottom. Press a title to go to that pile. The Ready to send title carries the {{button:blue|Send the run · N}} button.
@@ -86,7 +90,7 @@ The steps are these:
 
 Each step wears a mark. {{chip:green|✓}} means done. {{chip:yellow|!}} means due, and it turns red inside a week. {{chip:red|✗}} means missed. A grey dash means blocked. A dashed ring is a step the app cannot date yet, with a door to set the date.
 
-**Next on the path** sits in a tinted band above the steps. It names the one thing to do and how many days are left. **Waiting on** sits in the same band. When every window closed with nothing sent, the band turns red and says so plainly. The lien is gone, and the money is still owed in Collections.
+**Next on the path** sits in a tinted band above the steps. It names the one thing to do and how many days are left. **Waiting on** sits in the same band. When every window closed with nothing sent, the band says what is left. While the affidavit window is still open, it says to send the notice late and then file. Once that window closes too, it turns red. The lien is gone, and the money is still owed in Collections.
 
 Under each step still to come, a small word says whose move it is. {{chip:blue|ours}} marks the notices, the retainage notice, the affidavit and the serve. {{chip:purple|the GC}} or {{chip:yellow|the owner}} marks the release until it is paid. {{chip:yellow|the owner}} also marks the owner's hold. {{chip:gray|counsel}} marks the year to sue, which the firm takes. **Waiting on** says who we wait on and for what.
 
@@ -113,14 +117,14 @@ The **Timeline** tab is the book. It lists every billed job with money open and 
 
 ## Drafting a notice
 
-Pick the row. The pane first shows what must be true before the notice can go. Then comes **Months on this job**, a grid with months down and papers across. Above the grid, one line names the last day of work and where it came from. It reads from clock hours, or from the job's creation when there are none. Press **Change ›** to set the day by hand, with a line on why. The months follow the day you set. Clock hours and pay are not changed. The same line sits in Edit Job, under Our contract on this job.
+Pick the row. The pane first shows what must be true before the notice can go. Then comes **Months on this job**, a grid with months down and papers across. Above the grid, one line names the last day of work and where it came from. It reads from clock hours, or from the job's creation when there are none. Press **Change ›** to set the day by hand. {{button:blue|Save the day}} opens a window before anything is written. It says how far the day sits from the clock hours, in words. A table shows the dates that move with it, today beside the new day. A changed row is lit. A day earlier than the hours is refused there, and so is a day after today. A day far past the hours asks for a second look. The reason is typed in the window, and it is required. Press **Set the day** to write it. The months follow the day you set. Clock hours and pay are not changed. The same line sits in Edit Job, under Our contract on this job. The Lien window has it too. Press **change ›** under **Last work** on its timeline, and the line opens there. On **Deadlines**, the date where a row's bar starts opens the same thing. A day set in either place moves the row to its new group.
 
 - Each row is one month worked, oldest first, with its hours and crew. A job nobody clocked in on has one row, the month it was created.
 - Each row shows its window, with the day to mail by and the days left. A closed month says it was not noted, with {{button:outline|Note it as missed}}. A skipped month says who skipped it and why.
 - Each column is a § 53.056 notice already sent on the job, lettered A, B and on. A ✓ marks each month the paper names. Its header says when it was sent and links the saved copy.
 - The last column is this notice. Every open month is ticked, because one notice may carry several months. It must beat the earliest deadline.
 
-The claim amount sits under the grid, then the notice itself. It is the same paper the Lien window prints.
+The claim amount sits under the grid, then the notice itself. It is the same paper the Lien window prints. Each page has a label above it, like Page 2 of 3. The labels stack as you scroll, the way the pile titles do on the list. Pages you have passed stack at the top. Pages still ahead stack at the foot. The page under you is lit. Press a label to go to that page.
 
 Above the paper, one line says who gets it. The owner of record and the GC get it by certified mail. The GC also gets a PDF by email when we have an address. The **Include counsel's cover letter** box adds counsel's letter as page 1 of the owner's copy. The letter matches the property's kind, commercial, residential or homestead. The GC's copy is the form only.
 
@@ -152,7 +156,7 @@ A window that closes with nothing recorded is never silent. The Dashboard's lien
 
 Noting a month is not a skip. It records that a person saw the loss, with a name and a date. Then the Dashboard stops naming it. The money is still owed, and it rides on the notice for the open months.
 
-A skipped or missed month stays as a row in the **Months** grid. A skipped month reads {{chip:yellow|skipped}}, with who skipped it and why. A month whose window closed unsent reads {{chip:red|closed}} with its date. Beside it the row says who noted it, or {{chip:yellow|not noted}}. A missed month's row keeps two things apart. The lien is gone for that month's work. The money is still owed, and the notice claims it with the whole balance.
+A skipped or missed month stays as a row in the **Months** grid. A skipped month reads {{chip:yellow|skipped}}, with who skipped it and why. A month whose window closed unsent reads {{chip:red|closed}} with its date. Beside it the row says who noted it, or {{chip:yellow|not noted}}. A missed month's row keeps two things apart. While the affidavit window is open, a late notice can still claim that month. The row says so, and the tick reads late. Once that window closes too, the lien is gone for that month's work. The money is still owed, and the notice claims it with the whole balance.
 
 On the **Affidavits** tab, the job's pane shows **Months the affidavit claims**. Each month reads {{chip:green|on the lien}}, {{chip:blue|window open}} or {{chip:yellow|unsecured}}. A month whose window closed unsent is named and left off the lien. Its share of the money is chased in Collections.
 
@@ -165,15 +169,18 @@ Robert opens J650 under Awaiting approval. Loberg Contracting owes $33,500 on it
 The pane shows what goes in the envelope, page by page.
 
 1. Counsel's cover letter is page 1 while its box is ticked. Untick it, and the page leaves.
-2. The notice comes next.
+   When a supply house is still owed on the job, the letter ends with a paragraph about it. A second box reads **Name the supply house owed**. It starts ticked. Untick it, and the paragraph leaves. Read more in [see which supply houses are owed on a lien job](/help/see-which-supply-houses-are-owed-on-a-lien-job#name-the-house-in-the-owners-letter).
+   A third box reads **Enclose a conditional release**. It starts off. Ticked, the app's conditional release rides behind the letter. The letter says it is not effective until the money clears. Read more in [give a customer a lien release](/help/give-a-customer-a-lien-release#enclose-one-with-a-lien-notice).
+2. The conditional release is page 2 when its box is ticked.
+3. The notice comes next.
 3. The pay codes page comes last when the job has unpaid bills. It shows one QR code per Stripe bill, with what is still owed on it. It says that once these bills are paid, no lien will be filed.
 
 The job's unpaid invoices follow in the packet. On a residential or homestead property, the § 53.254 statement prints under the form on its own. The property record's kind and homestead flag decide it.
 
-**The four gates.** Under the job's line sit four gates, always in this order. They are 1 owner of record, 2 original contractor, 3 property kind and 4 approved hours. A headline says {{chip:red|✗ Can't go out yet}} or {{chip:green|✓ Ready to go out}}. Each gate has its own section below, numbered to match. Press a gate to bring its section up.
+**The four gates.** Under the job's line sit four gates, always in this order. They are 1 owner of record, 2 original contractor, 3 property kind and 4 approved hours. A headline says {{chip:red|✗ Can't go out yet}} or {{chip:green|✓ Ready to go out}}. Each gate has its own row below, numbered to match. A row shows the fact on its first line, with its buttons at the right. One grey line sits under it. When all four gates are clear the rows fold away, because the gates already say every answer. Press a gate to open its row, or **Details** to open them all. A gate that is not clear opens its row on its own.
 
 - A red gate is a blocker. The notice cannot go until it is fixed, and its door sits in its section.
-- An amber gate is only to check. An unknown property kind moves the deadline, but it does not stop the send. On a job with a linked property, its section is the {{button:outline|Residential}} {{button:blue|Commercial}} switch itself. It saves on the property record as you pick.
+- An amber gate is only to check. An unknown property kind moves the deadline, but it does not stop the send. On a linked property, its row reads the kind and the county on one line, with **Change ›**. Change opens the {{button:outline|Residential}} {{button:blue|Commercial}} switch and says what the other kind does to the dates. A pick saves on the property record and closes the switch. Switching takes two clicks on purpose, because every deadline on the job moves with it. While the kind is blank the switch is open already.
 - A green gate's section shows the fact the notice will use. For the owner, that is the name and mailing address as the envelope will read. Beside them sit *Check on the county CAD ↗* and {{button:outline|Change ›}}.
 
 After the gates come the months with the claim and the line that says who gets the envelopes. Then come a one line key to the shaded boxes and the notice itself. Once you scroll into the notice, a one line strip stays pinned at the top. It holds the headline, the months, the claim and {{button:outline|Show gates ▴}}.
@@ -201,6 +208,8 @@ The correction follows the job. Put a GC on notice claims the corrected figure, 
 
 Press a box and type in place. Enter keeps the change, and Esc puts it back. A changed value says so beneath it, with {{button:outline|Back to the job’s wording}}. The page label counts the changes. The leader sees them too, so an edited notice never reaches approval unannounced.
 
+**Change a line on the pay page.** Each bill on the pay page has a bold line under its code. It is read from the bill, and it sits in a shaded box too. Press it and type what the owner should read. Enter keeps it, and Esc puts it back. An empty line prints nothing. The change is on this page only. The bill behind it keeps its own line, and so does its payment page. A changed line says so beneath it, with {{button:outline|Back to the bill’s line}}. A line that is only a note about mailing checks is left off on its own.
+
 Every other value is the statute's form or is filled from somewhere else. Hover over a value to see where it comes from, and press it to go there. The original contractor, for example, opens Edit Job on its GC row. Save there, and the paper reads the job again. The date has no door, because it is the day the notice is drafted or sent.
 
 ## The master's decisions
@@ -211,6 +220,22 @@ The desk shows the master only what needs a decision. He sees what is open with 
 - {{button:outline|Hold — they promised…}} asks him again on the promise date.
 - {{button:outline|Hold — I'll call first}} asks him again three days before the deadline.
 - **Back to the office** sends it back to be fixed.
+
+## A discount if they pay before the lien
+
+The owner's packet carries a pay page with one code per unpaid bill. The leader can offer a discount on each bill if it is paid in full by a day. The box sits above the footer when he approves a notice.
+
+- Tick **Offer a discount if a bill is paid in full by a day**.
+- Pick the percent. The default is 10.
+- Pick the day. The default is 14 days from today. The offer never runs later than a week before the affidavit must be filed. So the affidavit can still go out on time if they do not pay.
+
+The box shows the most the offer gives up, and the sentence as the page prints it. The notice form itself never changes. The claim stays the full amount. The offer is our own sentence on our own page.
+
+The pay page says it in one boxed sentence under its title. Every bill's row shows the full amount and the lower one. The rule line says whoever pays gets the same amount off. The closing line sums the lower amounts. The GC's envelope still carries no pay page.
+
+On the desk an approved notice reads {{chip:blue|Offer 10% by Nov 15}}. Its step card says the same on the Approve rung. The leader can change or remove the offer until the run goes out. Press **Save the offer** on the ready footer.
+
+A bill paid in full by the day is written down by the percent once the money lands. A bill still open after the day goes back to its full amount. An affidavit always swears the full balance. Counsel has not read the offer's words yet. The box says so in amber until they have.
 
 ## Sending the run
 

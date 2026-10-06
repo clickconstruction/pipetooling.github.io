@@ -196,6 +196,22 @@ describe('LienDeskCalendarTab', () => {
     expect(screen.getByTitle(/No approved hours — the board counts from the month the job was created \(Aug 3\)/)).toBeTruthy()
   })
 
+  it('the work tick’s label is a door to the last day of work when the desk passes one; plain otherwise (v2.4735)', () => {
+    const onOpenLastWork = vi.fn()
+    const { onOpen } = mount({ onOpenLastWork })
+    const doors = screen.getAllByTestId('lien-cal-work-door')
+    expect(doors.length).toBe(4)
+    const amber = doors.find((d) => d.textContent === 'Aug · no hours')!
+    expect(amber.getAttribute('title')).toMatch(/click to change the last day of work$/)
+    fireEvent.click(amber)
+    expect(onOpenLastWork).toHaveBeenCalledTimes(1)
+    expect(onOpen).not.toHaveBeenCalled()
+    cleanup()
+    mount()
+    expect(screen.queryAllByTestId('lien-cal-work-door')).toHaveLength(0)
+    expect(screen.getByText('Aug · no hours').tagName).toBe('SPAN')
+  })
+
   it('a job row says only what its GC row does not; under a GC the dashed dot is the GC’s (v2.4265)', () => {
     mount()
     const money = screen.getAllByTestId('lien-cal-row-money')

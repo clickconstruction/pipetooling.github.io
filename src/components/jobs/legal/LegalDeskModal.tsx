@@ -46,6 +46,7 @@ import { settlementFloorDollars, settlementFloorOf, settlementFloorWords, type L
 import { isVoidedEntry, officeCanVoid } from '../../../../supabase/functions/_shared/legalPortalActs'
 import AgreedWriteDownModal from '../AgreedWriteDownModal'
 import LegalPortalLinkButton from './LegalPortalLinkButton'
+import LegalFirmWindow from './LegalFirmWindow'
 import { legalNotReachingLine } from '../../../lib/legal/legalNotifyLedger'
 import { useLegalPacketData } from './useLegalPacketData'
 
@@ -92,6 +93,8 @@ export type LegalDeskModalProps = {
   canMarkReady?: boolean
   /** Office roles curate: held entries, ask a dev, write down. */
   canEditReview?: boolean
+  /** Only a dev changes the collections law firm (RLS on `legal_firms`); the firm window is read only for everyone else. Defaults to `canMarkReady`. */
+  canEditFirm?: boolean
   onOpenContract: (job: JobWithDetails) => void
   onOpenLienInstruments: (job: JobWithDetails) => void
   onOpenEditJob: (jobId: string) => void
@@ -113,6 +116,9 @@ const TH: CSSProperties = { textAlign: 'left', fontSize: '0.68rem', letterSpacin
 const TD: CSSProperties = { padding: '6px 8px', borderBottom: '1px solid var(--border-subtle)', verticalAlign: 'top', fontSize: '0.84rem' }
 const btn: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 5, height: 26, padding: '0 0.55rem', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-700)', fontSize: '0.74rem', fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' }
 const btnPrimary: CSSProperties = { ...btn, background: 'var(--text-700)', color: 'var(--surface)', borderColor: 'var(--text-700)' }
+/** The firm's name in the header, as the door to its window (v2.4711); amber while no firm is set. */
+const FIRM_CHIP: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 5, maxWidth: '100%', padding: '0 8px', border: '1px solid var(--border-blue)', borderRadius: 999, background: 'var(--bg-blue-tint)', color: 'var(--text-blue-800)', font: 'inherit', fontSize: '0.76rem', fontWeight: 600, lineHeight: 1.6, cursor: 'pointer', textAlign: 'left', verticalAlign: 'baseline' }
+const FIRM_CHIP_NONE: CSSProperties = { ...FIRM_CHIP, border: '1px solid var(--border-amber-soft)', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' }
 const sheetInput: CSSProperties = { width: '100%', font: 'inherit', padding: '6px 8px', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text)', margin: '4px 0 8px' }
 
 type Tone = 'stop' | 'warn' | 'ok' | 'neutral' | 'legal' | 'blue'
@@ -206,7 +212,7 @@ function daysAgo(iso: string | null | undefined, todayYmd: string): number | nul
 }
 
 export default function LegalDeskModal(props: LegalDeskModalProps) {
-  const { open, onClose, collectionsJobs, jobsLoading = false, contractCoverage, users, companyName, initialPayerKey = null, initialTab = null, legal = null, canMarkReady = false, canEditReview = false, overlayZIndex = 760 } = props
+  const { open, onClose, collectionsJobs, jobsLoading = false, contractCoverage, users, companyName, initialPayerKey = null, initialTab = null, legal = null, canMarkReady = false, canEditReview = false, canEditFirm = canMarkReady, overlayZIndex = 760 } = props
   const { showToast } = useToastContext()
   const editCustomer = useEditCustomerModal()
   const todayYmd = todayYmdInAppTz()
@@ -226,6 +232,8 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
   /** Ask the firm (#41 PR 3): a question, or a sign-off on one job. */
   const [askForm, setAskForm] = useState<{ flavor: LegalAskFlavor; jobId: string; text: string } | null>(null)
   const [emailsOpen, setEmailsOpen] = useState(false)
+  /** The firm's window (v2.4711), opened from the firm's name in the header or the release sheet. */
+  const [firmOpen, setFirmOpen] = useState(false)
   /** Hold back… on the Their word tab (#85 item 29): which entry, and the office's reason. */
   const [holdFor, setHoldFor] = useState<{ key: string; reason: string } | null>(null)
   /** The Mark attorney ready sheet's preview: the firm's own view of this account, held entries left out (v2.3363). */
@@ -524,7 +532,14 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
           <span aria-hidden style={{ fontSize: '1.1rem' }}>⚖</span>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontWeight: 600 }}>Legal · Collections accounts</div>
-            <div style={{ ...MUTED, fontSize: '0.78rem' }}>Two exits: attorney-ready (a dev — that is what puts it with the firm) or write it down. {firm ? `Firm: ${firm.name}.` : stored ? 'No firm yet — add one on Settings → Jobs & billing.' : ''}</div>
+            <div style={{ ...MUTED, fontSize: '0.78rem' }}>
+              Two exits: attorney-ready (a dev — that is what puts it with the firm) or write it down.{' '}
+              {stored ? (
+                <button type="button" onClick={() => setFirmOpen(true)} data-legal-firm-door={firm ? 'firm' : 'none'} aria-label={firm ? `The collections law firm: ${firm.name}` : 'Set up the collections law firm'} title={firm ? 'The firm: its details, its fee model and our particulars for filing' : 'No collections law firm is set up yet'} style={firm ? FIRM_CHIP : FIRM_CHIP_NONE}>
+                  {firm ? <>⚖ {firm.name} <span aria-hidden>✎</span></> : canEditFirm ? 'No firm yet · Set up the firm…' : 'No firm yet'}
+                </button>
+              ) : null}
+            </div>
           </div>
           {stored && firm && canEditReview ? <button type="button" onClick={() => setEmailsOpen(true)} style={btn} title="Who at the firm hears from us, by their own rules">✉ Firm’s emails{firmPaused ? ' · paused' : ''}{notReaching ? ` · ${notReaching} not reaching` : ''}</button> : null}
           {stored && firm && canEditReview ? <LegalPortalLinkButton firmId={firm.id} firmName={firm.name} /> : null}
@@ -659,7 +674,10 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
           <div role="dialog" aria-modal="true" aria-label="Mark attorney-ready" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', color: 'var(--text)', borderRadius: 10, padding: 18, maxWidth: 620, width: '100%', boxShadow: '0 12px 40px rgba(0,0,0,0.28)' }}>
             <h3 style={{ margin: '0 0 8px', fontSize: '1rem' }}>Mark {selected.name} attorney-ready?</h3>
             {!firm ? (
-              <p style={{ fontSize: '0.86rem', color: '#b42318' }}>No firm is set up. Add the collections law firm on Settings → Jobs &amp; billing first.</p>
+              <p style={{ fontSize: '0.86rem', color: '#b42318', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                No firm is set up yet.
+                {stored ? <button type="button" onClick={() => { setSheet(null); setFirmOpen(true) }} style={btn}>{canEditFirm ? 'Set up the firm…' : 'See the firm…'}</button> : null}
+              </p>
             ) : (
               <>
                 <p style={{ ...MUTED, fontSize: '0.84rem', margin: '0 0 8px' }}>
@@ -760,6 +778,9 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
         </div>
       ) : null}
 
+      {firmOpen && stored ? (
+        <LegalFirmWindow firm={firm} matters={legal?.matters ?? []} recipients={legal?.recipients ?? []} canEdit={canEditFirm} onClose={() => setFirmOpen(false)} onSaved={() => { void legal?.reload() }} onShowAccount={(key) => { setFirmOpen(false); setSelectedKey(key); setTab('account') }} zIndex={overlayZIndex + 14} />
+      ) : null}
       {emailsOpen && firm ? (
         <div role="presentation" onClick={(e) => { e.stopPropagation(); setEmailsOpen(false) }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: overlayZIndex + 12, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(14px + var(--app-top-chrome, 0px)) 14px 14px' }}>
           <div role="dialog" aria-modal="true" aria-label="Who at the firm hears from us" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', color: 'var(--text)', borderRadius: 10, padding: 18, maxWidth: 640, width: '100%', boxShadow: '0 12px 40px rgba(0,0,0,0.28)' }}>

@@ -73,6 +73,7 @@ export default function LienDeskAffidavitPane({
   signerNameFor,
   onChanged,
   onOpenEditJob,
+  onFixProperty,
   onOpenJob,
   onOpenLienAffidavit,
   onOpenLegalDesk,
@@ -95,6 +96,8 @@ export default function LienDeskAffidavitPane({
   signerNameFor: (masterUserId: string | null) => string
   onChanged: () => void
   onOpenEditJob: (jobId: string) => void
+  /** Fill in the property record in a window over the desk (v2.4724); without it the gate's door opens Edit Job. */
+  onFixProperty?: (jobId: string, focus: 'owner' | 'legal') => void
   /** The heading's job number opens the job itself (v2.4535). */
   onOpenJob?: (jobId: string) => void
   /** The Lien window on its affidavit tab — print for notarization, file, record. */
@@ -317,7 +320,7 @@ export default function LienDeskAffidavitPane({
             <div key={g.key} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
               <span style={{ fontWeight: 700, color: g.ok ? 'var(--text-green-800)' : 'var(--text-red-600)' }}>{g.ok ? '✓' : '✗'}</span>
               <span>{g.label}{g.key === 'owner' && ownerName ? ` — ${ownerName}` : ''}{g.key === 'legal' && property.county ? ` — ${property.county}` : ''}</span>
-              {!g.ok && (g.key === 'owner' || g.key === 'legal') ? <button type="button" onClick={() => onOpenEditJob(entry.jobId)} style={{ ...btn('plain'), padding: '1px 8px', fontSize: '0.72rem' }}>Property record ›</button> : null}
+              {!g.ok && (g.key === 'owner' || g.key === 'legal') ? <button type="button" onClick={() => (onFixProperty ? onFixProperty(entry.jobId, g.key === 'owner' ? 'owner' : 'legal') : onOpenEditJob(entry.jobId))} style={{ ...btn('plain'), padding: '1px 8px', fontSize: '0.72rem' }}>{onFixProperty ? 'Fill in the record ›' : 'Property record ›'}</button> : null}
               {!g.ok && g.key === 'notice' ? <button type="button" onClick={() => onShowNotices(entry.jobId)} style={{ ...btn('plain'), padding: '1px 8px', fontSize: '0.72rem' }}>Send the notice first ›</button> : null}
             </div>
           ))}

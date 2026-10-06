@@ -4,6 +4,7 @@ import { publicFunctionHeaders, SAMPLE_BANNER_TEXT } from '../lib/customerSample
 import { SAMPLE_TOKEN } from '../lib/customerSample'
 import { formatPayLinkCents, isPayLinkId } from '../lib/billing/payLink'
 import { PAY_LINK_FORWARD_MS, payLinkView, type PayLinkView } from '../lib/billing/payLinkView'
+import { lienOfferPayLinkWords } from '../lib/jobs/lienPayOffer'
 import { CARD, COPPER, FAINT, HAIR, INK, MUTED, PAPER, PAPER_GREEN, PORTAL_FONT } from '../lib/portal/portalTheme'
 
 /**
@@ -19,7 +20,7 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 const SAMPLE_VIEW: PayLinkView = {
   kind: 'open',
   url: '#sample',
-  payload: { ok: true, state: 'open', url: '#sample', number: '1025-2609180905', jobName: 'Lago Vista St', company: 'Click Plumbing and Electrical', phone: '(512) 360-0599', amountRemainingCents: 466000, currency: 'usd', paidOn: null },
+  payload: { ok: true, state: 'open', url: '#sample', number: '1025-2609180905', jobName: 'Lago Vista St', company: 'Click Plumbing and Electrical', phone: '(512) 360-0599', amountRemainingCents: 466000, currency: 'usd', paidOn: null, offer: null },
 }
 function longDate(ymd: string): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd)
@@ -88,6 +89,16 @@ export default function PayLink() {
           <>
             <div style={{ color: MUTED, fontSize: 13 }}>{billLine}</div>
             {payload?.amountRemainingCents != null ? <div style={{ fontSize: 30, fontWeight: 800, lineHeight: 1.1 }} data-testid="pay-link-amount">{formatPayLinkCents(payload.amountRemainingCents)}</div> : null}
+            {payload?.offer?.state === 'live' ? (
+              <>
+                {payload.offer.fullCents != null && payload.offer.fullCents > (payload.amountRemainingCents ?? 0) ? (
+                  <div style={{ color: MUTED, fontSize: 12.5, textDecoration: 'line-through', fontVariantNumeric: 'tabular-nums' }} data-testid="pay-link-full">{formatPayLinkCents(payload.offer.fullCents)}</div>
+                ) : null}
+                <div style={{ fontSize: 12.5, lineHeight: 1.45 }} data-testid="pay-link-offer">{lienOfferPayLinkWords(payload.offer, 'live')}</div>
+              </>
+            ) : payload?.offer?.state === 'ended' ? (
+              <div style={{ fontSize: 12.5, lineHeight: 1.45, color: MUTED }} data-testid="pay-link-offer">{lienOfferPayLinkWords(payload.offer, 'ended')}</div>
+            ) : null}
             <div style={{ fontSize: 13.5 }}>Opening your secure payment page…</div>
             <Spinner />
             <a href={view.url} style={{ ...btn, background: '#fde047', color: INK }} data-testid="pay-link-pay-now">
@@ -104,7 +115,8 @@ export default function PayLink() {
               Paid
             </div>
             <div style={{ fontSize: 13.5, lineHeight: 1.5 }}>
-              {payload?.paidOn ? `This bill was paid on ${longDate(payload.paidOn)}. ` : 'This bill is paid. '}Nothing is owed on it. Thank you.
+              {payload?.paidOn ? `This bill was paid on ${longDate(payload.paidOn)}` : 'This bill is paid'}
+              {payload?.offer?.state === 'taken' ? <span data-testid="pay-link-offer">{` with the ${payload.offer.pct}% offer`}</span> : null}. Nothing is owed on it. Thank you.
             </div>
             <div style={{ ...btn, background: 'var(--bg-green-100)', color: PAPER_GREEN }}>Nothing to pay</div>
             <div style={{ fontSize: 11, color: FAINT }}>

@@ -156,7 +156,7 @@ describe('one GC', () => {
   })
 })
 
-describe('lienShareScopeOptions — the What to send menu', () => {
+describe('lienShareScopeOptions — the Which liens menu', () => {
   it('the whole desk first, then each GC with a notice, most money first', () => {
     const opts = lienShareScopeOptions(data)
     expect(opts.map((o) => o.name)).toEqual(['Everything on the desk', 'Southern Post Construction', 'RMC- Dudley Mason', 'Loberg Contracting', 'Michael Holub'])

@@ -11,8 +11,11 @@ import type { LienDeskData } from '../../hooks/useLienDeskData'
 import { buildLienNoticeFieldsForJob, buildLienRetainageNoticeFieldsForJob, describeNoticeMonths, homesteadStatementApplies, lienRetainageCoverLetter, parseLienDeskDraftFields } from './lienNoticeDraft'
 import type { LienRetainageEntry } from './lienDeskRetainage'
 import { affidavitMonthWord, coverLetterKindFor, coverLetterParagraphs, counselCoverLetterTemplate, fillCoverLetter } from './gcOnNotice'
+import { lienSupplierLetterParagraphFor, type LienSupplierJob } from './lienJobSuppliers'
+import { conditionalReleaseParagraph, noticeReleaseEnclosureWords, noticeReleaseLabel, noticeReleasePageHtml, type NoticeRelease } from './lienNoticeRelease'
 import { runCopies, runEnvelopes, type RunEnvelope } from './runEnvelopes'
 import { payPageBlocks, type PayPageAssets, type PayPageRow } from './lienNoticePayPage'
+import { lienOfferFromItem, type LienPayOffer } from './lienPayOffer'
 
 /**
  * The run (pure kernel): every approved notice on the desk, its two
@@ -68,6 +71,12 @@ export type RunNotice = {
   recipients: RunRecipient[]
   /** The owner came from the appraisal roll (the nightly save, v2.3450) and no person has confirmed it — the run refuses until someone does. */
   ownerUnconfirmed: boolean
+  /** The pay offer (v2.4713): the leader's discount on each enclosed bill paid in full by a day, carried from the desk item to the pay page; absent or null = none. */
+  offer?: LienPayOffer | null
+  /** The conditional release enclosed with the notice (v2.4729): behind the owner's letter and the GC's form, named in the letter; absent or null = none. */
+  release?: NoticeRelease | null
+  /** The pay page's lines the office typed (v2.4724), by invoice id, from the item's draft. */
+  payLines?: Record<string, string>
 }
 
 /** Every Ready-to-send entry as a run notice. Entries with no live approved item are skipped. */
@@ -79,6 +88,8 @@ export function buildLienDeskRun(
   todayYmd: string,
   /** The signer's own phone for `{{phone}}` (v2.3753); the letterhead's when absent. */
   signerPhoneFor?: (masterUserId: string | null) => string,
+  /** The supply houses per job (v2.4725): the letter's `{{supply_houses}}` paragraph, unless the draft left it out. The releases by row id (v2.4729): the one the draft points at rides in the envelope. */
+  opts?: { suppliers?: ReadonlyMap<string, LienSupplierJob>; releases?: ReadonlyMap<string, NoticeRelease> },
 ): RunNotice[] {
   const out: RunNotice[] = []
   for (const e of entries) {
@@ -110,6 +121,7 @@ export function buildLienDeskRun(
     const ownerEmail = (data.ownerByJob[e.jobId]?.owner_email ?? '').trim()
     const gcEmail = draft?.gcEmail || gc?.email || ''
     const phone = signerPhoneFor ? signerPhoneFor(job?.master_user_id ?? null) : (issuer?.phone ?? '').trim()
+    const release = draft?.releaseId ? (opts?.releases?.get(draft.releaseId) ?? null) : null
     out.push({
       itemId: item.id,
       jobId: e.jobId,
@@ -125,8 +137,11 @@ export function buildLienDeskRun(
       },
       // Counsel's letter everywhere (v2.3828): the box on the desk now turns counsel's letter on or off; the short routine note is gone.
       coverNote: null,
-      coverLetter: item.cover_note || draft?.coverLetter ? fillCoverLetter(counselCoverLetterTemplate({ stored: draft?.coverLetter, gcName: gc?.name ?? fields.originalContractorName, claimantName: fields.claimantName, property }), { property: (job?.job_address ?? '').trim(), months: describeNoticeMonths(months), job: jobNumber, amount: demandMoney(fields.claimAmount), staleNote: draft?.staleNote ?? '', contact: fields.contactPerson, phone, affidavitMonth: affidavitMonthWord(coverLetterKindFor(property)), trade: job?.service_type?.name }) : null,
+      coverLetter: item.cover_note || draft?.coverLetter ? fillCoverLetter(counselCoverLetterTemplate({ stored: draft?.coverLetter, gcName: gc?.name ?? fields.originalContractorName, claimantName: fields.claimantName, property }), { property: (job?.job_address ?? '').trim(), months: describeNoticeMonths(months), job: jobNumber, amount: demandMoney(fields.claimAmount), staleNote: draft?.staleNote ?? '', contact: fields.contactPerson, phone, affidavitMonth: affidavitMonthWord(coverLetterKindFor(property)), trade: job?.service_type?.name, supplyHouses: draft?.housesInLetter === false ? '' : lienSupplierLetterParagraphFor(opts?.suppliers?.get(e.jobId), { propertyKind: property.propertyKind ?? '', todayYmd, payerName: gc?.name ?? fields.originalContractorName, claim: moneyNumber(fields.claimAmount) }), conditionalRelease: release ? conditionalReleaseParagraph(demandMoney(fields.claimAmount)) : '' }) : null,
       ownerUnconfirmed: property.owner.source === 'property_record' && ownerFromRollUnconfirmed(address),
+      offer: lienOfferFromItem(item),
+      release,
+      ...(draft?.payLines ? { payLines: draft.payLines } : {}),
       recipients: [
         { key: 'owner', label: 'Owner of record', name: ownerName, address: property.owner.mailingAddress, email: ownerEmail, method: 'certified_mail', tracking: '' },
         { key: 'original_contractor', label: 'Original contractor', name: gc?.name ?? fields.originalContractorName, address: gc?.address ?? '', email: gcEmail, method: 'certified_mail', tracking: '', courtesy: gcEmail.trim() !== '' },
@@ -205,6 +220,12 @@ export function buildLienRetainageRun(
   return out
 }
 
+/** The form's Claim amount as a number ("17585.00" or "$17,585.00"); 0 when it is not one. */
+function moneyNumber(s: string): number {
+  const n = Number(String(s ?? '').replace(/[$,\s]/g, ''))
+  return Number.isFinite(n) ? n : 0
+}
+
 /** "Notice of claim for unpaid labor or materials (Tex. Prop. Code § 53.056)" / the retainage form's name — the cover page's "Enclosed:" line and the run's words. */
 export function runNoticeInstrumentWords(kind: LienNoticeInstrument): string {
   return kind === 'retainage_53_057' ? 'Notice of claim for unpaid retainage (Tex. Prop. Code § 53.057)' : 'Notice of claim for unpaid labor or materials (Tex. Prop. Code § 53.056)'
@@ -270,7 +291,7 @@ export function runCoverSheetBlocks(notices: ReadonlyArray<RunNotice>, todayYmd:
  * first line as the salutation). Every § 53.056 notice carries counsel's letter (v2.3828); a § 53.057 notice its counsel note.
  */
 /** What the cover page needs — the run passes a whole notice; the desk passes the same six fields for the paper it shows (v2.3540). */
-export type CoverPageInput = Pick<RunNotice, 'label' | 'months' | 'fields' | 'extras' | 'coverNote' | 'coverLetter'> & Partial<Pick<RunNotice, 'kind'>> & {
+export type CoverPageInput = Pick<RunNotice, 'label' | 'months' | 'fields' | 'extras' | 'coverNote' | 'coverLetter'> & Partial<Pick<RunNotice, 'kind' | 'release'>> & {
   /** Unpaid invoices ride behind the form (§ 53.056(a-3)): the letter's Enclosed line says so, as counsel's letter does (v2.3828). */
   withInvoices?: boolean
 }
@@ -285,7 +306,7 @@ export function runCoverNoteBlocks(n: CoverPageInput): FilingDocBlock[] {
       ...head,
       { kind: 'title', lines: [`Re: ${n.label}`, runNoticeWhatWords({ kind: n.kind ?? 'notice_53_056', months: n.months })] },
       ...paragraphs.map((text): FilingDocBlock => ({ kind: 'paragraph', text })),
-      { kind: 'paragraph', text: `Enclosed: ${runNoticeInstrumentWords(n.kind ?? 'notice_53_056')}${n.withInvoices ? ', with invoices' : ''}.` },
+      { kind: 'paragraph', text: `Enclosed: ${runNoticeInstrumentWords(n.kind ?? 'notice_53_056')}${n.withInvoices ? ', with invoices' : ''}${noticeReleaseEnclosureWords(n.release)}.` },
       { kind: 'signature', lines: [n.fields.contactPerson, n.fields.claimantName].filter((l) => l) },
     ]
   }
@@ -321,6 +342,8 @@ export function runPayPageBlocks(n: RunNotice, r: RunRecipient, rows: readonly P
     contactPerson: n.fields.contactPerson,
     phone,
     extras: n.extras,
+    offer: n.offer ?? null,
+    lines: n.payLines ?? null,
   })
 }
 
@@ -348,7 +371,11 @@ export function runCopyPages(
     const note = runCoverNoteBlocks({ ...n, withInvoices: invoices.length > 0 })
     if (note.length) pages.push({ label: n.coverLetter ? 'Cover letter' : 'Cover note', html: filingDocHtml(note) })
   }
+  // The conditional release (v2.4729) rides behind the owner's letter, so the letter's "enclosed" reads true at once; the GC, who is expected to pay, gets it behind the form.
+  const releasePage = n.release ? { label: noticeReleaseLabel(n.release.amount), html: noticeReleasePageHtml(n.release, n.extras) } : null
+  if (r.key === 'owner' && releasePage) pages.push(releasePage)
   pages.push({ label: `${n.kind === 'retainage_53_057' ? '§ 53.057 retainage notice' : '§ 53.056 notice'} · copy for ${r.label.toLowerCase()}`, html: filingDocHtml(runNoticeBlocks(n, r)) })
+  if (r.key !== 'owner' && releasePage) pages.push(releasePage)
   // The pay page (v2.3758) sits between the form and the invoices it points at.
   const pay = payPagesByJob?.[n.jobId]?.[r.key]
   if (pay) pages.push({ label: 'Pay codes', html: pay })

@@ -11,8 +11,8 @@ import { LIEN_STATUS_NOTE_MAX, lienStatusEmailHtml, lienStatusFacts, lienStatusS
 
 const PRIMARY = '#2563eb'
 
-/** Where the email comes from and where replies go; outside mail is the user's own (the owner's rule). */
-const FROM_WORDS = 'Sends from ClickTooling, and replies come to you. Mail to anyone outside the company goes from your own inbox, so use Send… for that.'
+/** Where the email comes from and where replies go. The list is the desk's own people, so the email never leaves the office (v2.4722). */
+const FROM_WORDS = 'Sends from ClickTooling, and replies come to you. Only people who use the Lien desk are on the list.'
 
 const label: CSSProperties = { padding: '9px 0 9px 18px', color: 'var(--text-muted)', fontSize: '0.8rem' }
 const cell: CSSProperties = { padding: '7px 18px 7px 0', fontSize: '0.84rem', minWidth: 0 }
@@ -189,7 +189,7 @@ export default function LienDeskEmailSheet(p: LienDeskEmailSheetProps) {
 
           <div style={{ padding: '12px 18px 0', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 12 }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 4 }}>
-              <div style={boxHead}>What to send</div>
+              <div style={boxHead}>Which liens</div>
               <LienShareScopeMenu options={p.options} value={p.scope} onChange={(s) => { setSubjectTyped(null); p.onScope(s) }} big={p.isMobile} />
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 4 }}>

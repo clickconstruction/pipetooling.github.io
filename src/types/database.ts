@@ -2818,6 +2818,7 @@ export type Database = {
           package_path: string | null
           rev_number: number
           reviewer_files: Json
+          sent_outside_at: string | null
           shared_at: string | null
           shared_by: string | null
           source_files: Json
@@ -2838,6 +2839,7 @@ export type Database = {
           package_path?: string | null
           rev_number: number
           reviewer_files?: Json
+          sent_outside_at?: string | null
           shared_at?: string | null
           shared_by?: string | null
           source_files?: Json
@@ -2858,6 +2860,7 @@ export type Database = {
           package_path?: string | null
           rev_number?: number
           reviewer_files?: Json
+          sent_outside_at?: string | null
           shared_at?: string | null
           shared_by?: string | null
           source_files?: Json
@@ -3261,6 +3264,9 @@ export type Database = {
           count_tooling_link: string | null
           count_tooling_plans_link: string | null
           cover_letter_alt_texts: Json | null
+          cover_letter_exclusions: string | null
+          cover_letter_inclusions: string | null
+          cover_letter_terms: string | null
           created_at: string | null
           created_by: string
           customer_id: string | null
@@ -3352,6 +3358,9 @@ export type Database = {
           count_tooling_link?: string | null
           count_tooling_plans_link?: string | null
           cover_letter_alt_texts?: Json | null
+          cover_letter_exclusions?: string | null
+          cover_letter_inclusions?: string | null
+          cover_letter_terms?: string | null
           created_at?: string | null
           created_by: string
           customer_id?: string | null
@@ -3443,6 +3452,9 @@ export type Database = {
           count_tooling_link?: string | null
           count_tooling_plans_link?: string | null
           cover_letter_alt_texts?: Json | null
+          cover_letter_exclusions?: string | null
+          cover_letter_inclusions?: string | null
+          cover_letter_terms?: string | null
           created_at?: string | null
           created_by?: string
           customer_id?: string | null
@@ -8492,6 +8504,350 @@ export type Database = {
           },
         ]
       }
+      gc_plan_questions: {
+        Row: {
+          answer: string
+          answer_sent_to: string[]
+          answered_on: string | null
+          asked_on: string
+          company_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          in_set_id: string | null
+          package_id: string | null
+          project_id: string
+          sent_to_architect_on: string | null
+          sheets: string[]
+          text: string
+        }
+        Insert: {
+          answer?: string
+          answer_sent_to?: string[]
+          answered_on?: string | null
+          asked_on: string
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          in_set_id?: string | null
+          package_id?: string | null
+          project_id: string
+          sent_to_architect_on?: string | null
+          sheets?: string[]
+          text: string
+        }
+        Update: {
+          answer?: string
+          answer_sent_to?: string[]
+          answered_on?: string | null
+          asked_on?: string
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          in_set_id?: string | null
+          package_id?: string | null
+          project_id?: string
+          sent_to_architect_on?: string | null
+          sheets?: string[]
+          text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_plan_questions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_plan_questions_in_set_id_fkey"
+            columns: ["in_set_id"]
+            isOneToOne: false
+            referencedRelation: "gc_plan_sets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_plan_questions_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "gc_trade_packages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_plan_questions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gc_plan_set_items: {
+        Row: {
+          change: string
+          created_at: string
+          discipline: string | null
+          id: string
+          kind: string
+          number: string
+          page: number | null
+          position: number
+          set_id: string
+          title: string
+          was_title: string | null
+        }
+        Insert: {
+          change?: string
+          created_at?: string
+          discipline?: string | null
+          id?: string
+          kind: string
+          number: string
+          page?: number | null
+          position?: number
+          set_id: string
+          title?: string
+          was_title?: string | null
+        }
+        Update: {
+          change?: string
+          created_at?: string
+          discipline?: string | null
+          id?: string
+          kind?: string
+          number?: string
+          page?: number | null
+          position?: number
+          set_id?: string
+          title?: string
+          was_title?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_plan_set_items_set_id_fkey"
+            columns: ["set_id"]
+            isOneToOne: false
+            referencedRelation: "gc_plan_sets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gc_plan_set_sends: {
+        Row: {
+          company_id: string
+          email_send_log_id: string | null
+          id: string
+          sent_at: string
+          set_id: string
+          touched: boolean
+        }
+        Insert: {
+          company_id: string
+          email_send_log_id?: string | null
+          id?: string
+          sent_at?: string
+          set_id: string
+          touched?: boolean
+        }
+        Update: {
+          company_id?: string
+          email_send_log_id?: string | null
+          id?: string
+          sent_at?: string
+          set_id?: string
+          touched?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_plan_set_sends_email_send_log_id_fkey"
+            columns: ["email_send_log_id"]
+            isOneToOne: false
+            referencedRelation: "email_send_log"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_plan_set_sends_set_id_fkey"
+            columns: ["set_id"]
+            isOneToOne: false
+            referencedRelation: "gc_plan_sets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gc_plan_sets: {
+        Row: {
+          checked_by_user_id: string | null
+          created_at: string
+          created_by: string | null
+          drive_access: string | null
+          drive_checked_on: string | null
+          drive_url: string
+          id: string
+          issued_on: string
+          kind: string
+          label: string
+          note: string
+          project_id: string
+          rev: number
+        }
+        Insert: {
+          checked_by_user_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          drive_access?: string | null
+          drive_checked_on?: string | null
+          drive_url?: string
+          id?: string
+          issued_on: string
+          kind?: string
+          label: string
+          note?: string
+          project_id: string
+          rev: number
+        }
+        Update: {
+          checked_by_user_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          drive_access?: string | null
+          drive_checked_on?: string | null
+          drive_url?: string
+          id?: string
+          issued_on?: string
+          kind?: string
+          label?: string
+          note?: string
+          project_id?: string
+          rev?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_plan_sets_checked_by_user_id_fkey"
+            columns: ["checked_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_plan_sets_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_plan_sets_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gc_projects: {
+        Row: {
+          architect_customer_id: string | null
+          bid_due: string | null
+          contingency_pct: number
+          created_at: string
+          created_by: string | null
+          customer_role: string
+          drive_folder_url: string
+          fee_pct: number
+          general_conditions: number
+          lost_note: string | null
+          lost_on: string | null
+          lost_why: string | null
+          project_id: string
+          project_manager_user_id: string | null
+          property_owner_customer_id: string | null
+          size_note: string
+          sq_ft: number | null
+          stage: string
+          won_by: string | null
+        }
+        Insert: {
+          architect_customer_id?: string | null
+          bid_due?: string | null
+          contingency_pct?: number
+          created_at?: string
+          created_by?: string | null
+          customer_role?: string
+          drive_folder_url?: string
+          fee_pct?: number
+          general_conditions?: number
+          lost_note?: string | null
+          lost_on?: string | null
+          lost_why?: string | null
+          project_id: string
+          project_manager_user_id?: string | null
+          property_owner_customer_id?: string | null
+          size_note?: string
+          sq_ft?: number | null
+          stage?: string
+          won_by?: string | null
+        }
+        Update: {
+          architect_customer_id?: string | null
+          bid_due?: string | null
+          contingency_pct?: number
+          created_at?: string
+          created_by?: string | null
+          customer_role?: string
+          drive_folder_url?: string
+          fee_pct?: number
+          general_conditions?: number
+          lost_note?: string | null
+          lost_on?: string | null
+          lost_why?: string | null
+          project_id?: string
+          project_manager_user_id?: string | null
+          property_owner_customer_id?: string | null
+          size_note?: string
+          sq_ft?: number | null
+          stage?: string
+          won_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_projects_architect_customer_id_fkey"
+            columns: ["architect_customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_projects_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_projects_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_projects_project_manager_user_id_fkey"
+            columns: ["project_manager_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_projects_property_owner_customer_id_fkey"
+            columns: ["property_owner_customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gc_review_certifications: {
         Row: {
           certified_at: string
@@ -8542,6 +8898,260 @@ export type Database = {
             columns: ["gc_customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gc_scope_book_edits: {
+        Row: {
+          clear_leaves_out: boolean
+          clear_spec: boolean
+          edited_at: string
+          edited_by: string | null
+          id: string
+          to_leaves_out_by: string | null
+          to_leaves_out_label: string | null
+          to_spec: string | null
+          to_words: string
+          trade: string
+          words: string
+        }
+        Insert: {
+          clear_leaves_out?: boolean
+          clear_spec?: boolean
+          edited_at?: string
+          edited_by?: string | null
+          id?: string
+          to_leaves_out_by?: string | null
+          to_leaves_out_label?: string | null
+          to_spec?: string | null
+          to_words: string
+          trade: string
+          words: string
+        }
+        Update: {
+          clear_leaves_out?: boolean
+          clear_spec?: boolean
+          edited_at?: string
+          edited_by?: string | null
+          id?: string
+          to_leaves_out_by?: string | null
+          to_leaves_out_label?: string | null
+          to_spec?: string | null
+          to_words?: string
+          trade?: string
+          words?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_scope_book_edits_edited_by_fkey"
+            columns: ["edited_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gc_scope_book_merges: {
+        Row: {
+          from_words: string
+          id: string
+          into_words: string
+          merged_at: string
+          merged_by: string | null
+          trade: string
+        }
+        Insert: {
+          from_words: string
+          id?: string
+          into_words: string
+          merged_at?: string
+          merged_by?: string | null
+          trade: string
+        }
+        Update: {
+          from_words?: string
+          id?: string
+          into_words?: string
+          merged_at?: string
+          merged_by?: string | null
+          trade?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_scope_book_merges_merged_by_fkey"
+            columns: ["merged_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gc_scope_book_saved: {
+        Row: {
+          id: string
+          leaves_out_by: string | null
+          leaves_out_label: string | null
+          saved_at: string
+          saved_by: string | null
+          spec: string | null
+          trade: string
+          words: string
+        }
+        Insert: {
+          id?: string
+          leaves_out_by?: string | null
+          leaves_out_label?: string | null
+          saved_at?: string
+          saved_by?: string | null
+          spec?: string | null
+          trade: string
+          words: string
+        }
+        Update: {
+          id?: string
+          leaves_out_by?: string | null
+          leaves_out_label?: string | null
+          saved_at?: string
+          saved_by?: string | null
+          spec?: string | null
+          trade?: string
+          words?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_scope_book_saved_saved_by_fkey"
+            columns: ["saved_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gc_scope_exclusions: {
+        Row: {
+          by: string
+          created_at: string
+          id: string
+          label: string
+          package_id: string
+          position: number
+        }
+        Insert: {
+          by?: string
+          created_at?: string
+          id?: string
+          label: string
+          package_id: string
+          position?: number
+        }
+        Update: {
+          by?: string
+          created_at?: string
+          id?: string
+          label?: string
+          package_id?: string
+          position?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_scope_exclusions_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "gc_trade_packages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gc_scope_items: {
+        Row: {
+          added_in_set_id: string | null
+          created_at: string
+          id: string
+          label: string
+          package_id: string
+          position: number
+          sheets: string[] | null
+          specs: string[] | null
+        }
+        Insert: {
+          added_in_set_id?: string | null
+          created_at?: string
+          id?: string
+          label: string
+          package_id: string
+          position?: number
+          sheets?: string[] | null
+          specs?: string[] | null
+        }
+        Update: {
+          added_in_set_id?: string | null
+          created_at?: string
+          id?: string
+          label?: string
+          package_id?: string
+          position?: number
+          sheets?: string[] | null
+          specs?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_scope_items_added_in_set_fkey"
+            columns: ["added_in_set_id"]
+            isOneToOne: false
+            referencedRelation: "gc_plan_sets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_scope_items_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "gc_trade_packages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gc_scope_sets: {
+        Row: {
+          from_project_id: string | null
+          id: string
+          lines: string[]
+          name: string
+          saved_at: string
+          saved_by: string | null
+          trade: string
+        }
+        Insert: {
+          from_project_id?: string | null
+          id?: string
+          lines?: string[]
+          name: string
+          saved_at?: string
+          saved_by?: string | null
+          trade: string
+        }
+        Update: {
+          from_project_id?: string | null
+          id?: string
+          lines?: string[]
+          name?: string
+          saved_at?: string
+          saved_by?: string | null
+          trade?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_scope_sets_from_project_id_fkey"
+            columns: ["from_project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_scope_sets_saved_by_fkey"
+            columns: ["saved_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -8770,6 +9380,54 @@ export type Database = {
             columns: ["word_from_user_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gc_trade_packages: {
+        Row: {
+          budget: number
+          created_at: string
+          id: string
+          ours: boolean
+          own_bid_id: string | null
+          position: number
+          project_id: string
+          trade: string
+        }
+        Insert: {
+          budget?: number
+          created_at?: string
+          id?: string
+          ours?: boolean
+          own_bid_id?: string | null
+          position?: number
+          project_id: string
+          trade: string
+        }
+        Update: {
+          budget?: number
+          created_at?: string
+          id?: string
+          ours?: boolean
+          own_bid_id?: string | null
+          position?: number
+          project_id?: string
+          trade?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_trade_packages_own_bid_id_fkey"
+            columns: ["own_bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_trade_packages_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
@@ -10302,6 +10960,10 @@ export type Database = {
           job_id: string
           kind: string
           months: string[]
+          offer_by: string | null
+          offer_pct: number
+          offer_set_at: string | null
+          offer_set_by: string | null
           printed_at: string | null
           printed_by: string | null
           pulled_back_at: string | null
@@ -10332,6 +10994,10 @@ export type Database = {
           job_id: string
           kind?: string
           months?: string[]
+          offer_by?: string | null
+          offer_pct?: number
+          offer_set_at?: string | null
+          offer_set_by?: string | null
           printed_at?: string | null
           printed_by?: string | null
           pulled_back_at?: string | null
@@ -10362,6 +11028,10 @@ export type Database = {
           job_id?: string
           kind?: string
           months?: string[]
+          offer_by?: string | null
+          offer_pct?: number
+          offer_set_at?: string | null
+          offer_set_by?: string | null
           printed_at?: string | null
           printed_by?: string | null
           pulled_back_at?: string | null
@@ -10402,6 +11072,13 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_lien_desk_items_offer_set_by_fkey"
+            columns: ["offer_set_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
@@ -10666,6 +11343,8 @@ export type Database = {
           created_at: string
           created_by: string | null
           current_payment_due: number
+          deleted_at: string | null
+          deleted_by: string | null
           fields: Json
           files: Json
           id: string
@@ -10690,6 +11369,8 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           current_payment_due?: number
+          deleted_at?: string | null
+          deleted_by?: string | null
           fields?: Json
           files?: Json
           id?: string
@@ -10714,6 +11395,8 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           current_payment_due?: number
+          deleted_at?: string | null
+          deleted_by?: string | null
           fields?: Json
           files?: Json
           id?: string
@@ -10734,6 +11417,13 @@ export type Database = {
           {
             foreignKeyName: "job_pay_applications_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_pay_applications_deleted_by_fkey"
+            columns: ["deleted_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -11706,12 +12396,12 @@ export type Database = {
           last_work_date: string | null
           lien_contract_ended_how: string | null
           lien_contract_ended_on: string | null
+          lien_contract_ended_set_at: string | null
+          lien_contract_ended_set_by: string | null
           lien_last_work_note: string
           lien_last_work_on: string | null
           lien_last_work_set_at: string | null
           lien_last_work_set_by: string | null
-          lien_contract_ended_set_at: string | null
-          lien_contract_ended_set_by: string | null
           lien_payment_bond: string
           lien_retainage_held: number | null
           master_user_id: string
@@ -11767,12 +12457,12 @@ export type Database = {
           last_work_date?: string | null
           lien_contract_ended_how?: string | null
           lien_contract_ended_on?: string | null
+          lien_contract_ended_set_at?: string | null
+          lien_contract_ended_set_by?: string | null
           lien_last_work_note?: string
           lien_last_work_on?: string | null
           lien_last_work_set_at?: string | null
           lien_last_work_set_by?: string | null
-          lien_contract_ended_set_at?: string | null
-          lien_contract_ended_set_by?: string | null
           lien_payment_bond?: string
           lien_retainage_held?: number | null
           master_user_id: string
@@ -11828,12 +12518,12 @@ export type Database = {
           last_work_date?: string | null
           lien_contract_ended_how?: string | null
           lien_contract_ended_on?: string | null
+          lien_contract_ended_set_at?: string | null
+          lien_contract_ended_set_by?: string | null
           lien_last_work_note?: string
           lien_last_work_on?: string | null
           lien_last_work_set_at?: string | null
           lien_last_work_set_by?: string | null
-          lien_contract_ended_set_at?: string | null
-          lien_contract_ended_set_by?: string | null
           lien_payment_bond?: string
           lien_retainage_held?: number | null
           master_user_id?: string
@@ -11912,6 +12602,13 @@ export type Database = {
           {
             foreignKeyName: "jobs_ledger_lien_contract_ended_set_by_fkey"
             columns: ["lien_contract_ended_set_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_ledger_lien_last_work_set_by_fkey"
+            columns: ["lien_last_work_set_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -12095,6 +12792,15 @@ export type Database = {
           id: string
           is_primary_rtb_bundle: boolean
           job_id: string
+          lien_offer_applied_at: string | null
+          lien_offer_by: string | null
+          lien_offer_credit_cents: number | null
+          lien_offer_credit_note_id: string | null
+          lien_offer_ended_at: string | null
+          lien_offer_filing_id: string | null
+          lien_offer_pct: number
+          lien_offer_set_by: string | null
+          lien_offer_taken_at: string | null
           sent_by_user_id: string | null
           sent_to_customer_at: string | null
           sequence_order: number
@@ -12128,6 +12834,15 @@ export type Database = {
           id?: string
           is_primary_rtb_bundle?: boolean
           job_id: string
+          lien_offer_applied_at?: string | null
+          lien_offer_by?: string | null
+          lien_offer_credit_cents?: number | null
+          lien_offer_credit_note_id?: string | null
+          lien_offer_ended_at?: string | null
+          lien_offer_filing_id?: string | null
+          lien_offer_pct?: number
+          lien_offer_set_by?: string | null
+          lien_offer_taken_at?: string | null
           sent_by_user_id?: string | null
           sent_to_customer_at?: string | null
           sequence_order?: number
@@ -12161,6 +12876,15 @@ export type Database = {
           id?: string
           is_primary_rtb_bundle?: boolean
           job_id?: string
+          lien_offer_applied_at?: string | null
+          lien_offer_by?: string | null
+          lien_offer_credit_cents?: number | null
+          lien_offer_credit_note_id?: string | null
+          lien_offer_ended_at?: string | null
+          lien_offer_filing_id?: string | null
+          lien_offer_pct?: number
+          lien_offer_set_by?: string | null
+          lien_offer_taken_at?: string | null
           sent_by_user_id?: string | null
           sent_to_customer_at?: string | null
           sequence_order?: number
@@ -12178,6 +12902,20 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_ledger_invoices_lien_offer_filing_id_fkey"
+            columns: ["lien_offer_filing_id"]
+            isOneToOne: false
+            referencedRelation: "job_lien_filings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_ledger_invoices_lien_offer_set_by_fkey"
+            columns: ["lien_offer_set_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
@@ -12818,6 +13556,9 @@ export type Database = {
           removed_at: string | null
           role: string
           scope: string
+          send_error: string | null
+          send_failed_since: string | null
+          unsubscribe_salt: string | null
           unsubscribe_token_hash: string | null
           updated_at: string
         }
@@ -12839,6 +13580,9 @@ export type Database = {
           removed_at?: string | null
           role?: string
           scope?: string
+          send_error?: string | null
+          send_failed_since?: string | null
+          unsubscribe_salt?: string | null
           unsubscribe_token_hash?: string | null
           updated_at?: string
         }
@@ -12860,6 +13604,9 @@ export type Database = {
           removed_at?: string | null
           role?: string
           scope?: string
+          send_error?: string | null
+          send_failed_since?: string | null
+          unsubscribe_salt?: string | null
           unsubscribe_token_hash?: string | null
           updated_at?: string
         }
@@ -12947,6 +13694,10 @@ export type Database = {
           meta: Json
           occurred_on: string
           via_portal: boolean
+          void_reason: string
+          voided_at: string | null
+          voided_by: string | null
+          voided_via_portal: boolean
         }
         Insert: {
           acknowledged_at?: string | null
@@ -12961,6 +13712,10 @@ export type Database = {
           meta?: Json
           occurred_on?: string
           via_portal?: boolean
+          void_reason?: string
+          voided_at?: string | null
+          voided_by?: string | null
+          voided_via_portal?: boolean
         }
         Update: {
           acknowledged_at?: string | null
@@ -12975,6 +13730,10 @@ export type Database = {
           meta?: Json
           occurred_on?: string
           via_portal?: boolean
+          void_reason?: string
+          voided_at?: string | null
+          voided_by?: string | null
+          voided_via_portal?: boolean
         }
         Relationships: [
           {
@@ -12996,6 +13755,13 @@ export type Database = {
             columns: ["matter_id"]
             isOneToOne: false
             referencedRelation: "legal_matters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_matter_entries_voided_by_fkey"
+            columns: ["voided_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -13045,12 +13811,16 @@ export type Database = {
           note_to_firm: string
           payer_key: string
           payer_name: string
+          pulled_at: string | null
+          pulled_reason: string
           ready_marked_at: string | null
           ready_marked_by: string | null
           released_at: string | null
           review_request_note: string
           review_requested_at: string | null
           review_requested_by: string | null
+          settlement_floor_amount: number | null
+          settlement_floor_pct: number | null
           stage: string
           updated_at: string
         }
@@ -13068,12 +13838,16 @@ export type Database = {
           note_to_firm?: string
           payer_key: string
           payer_name?: string
+          pulled_at?: string | null
+          pulled_reason?: string
           ready_marked_at?: string | null
           ready_marked_by?: string | null
           released_at?: string | null
           review_request_note?: string
           review_requested_at?: string | null
           review_requested_by?: string | null
+          settlement_floor_amount?: number | null
+          settlement_floor_pct?: number | null
           stage?: string
           updated_at?: string
         }
@@ -13091,12 +13865,16 @@ export type Database = {
           note_to_firm?: string
           payer_key?: string
           payer_name?: string
+          pulled_at?: string | null
+          pulled_reason?: string
           ready_marked_at?: string | null
           ready_marked_by?: string | null
           released_at?: string | null
           review_request_note?: string
           review_requested_at?: string | null
           review_requested_by?: string | null
+          settlement_floor_amount?: number | null
+          settlement_floor_pct?: number | null
           stage?: string
           updated_at?: string
         }
@@ -13147,6 +13925,7 @@ export type Database = {
           matter_id: string | null
           payload: Json
           sent_now_at: string | null
+          sent_to: Json
           trigger: string
         }
         Insert: {
@@ -13157,6 +13936,7 @@ export type Database = {
           matter_id?: string | null
           payload?: Json
           sent_now_at?: string | null
+          sent_to?: Json
           trigger: string
         }
         Update: {
@@ -13167,6 +13947,7 @@ export type Database = {
           matter_id?: string | null
           payload?: Json
           sent_now_at?: string | null
+          sent_to?: Json
           trigger?: string
         }
         Relationships: [
@@ -13195,6 +13976,7 @@ export type Database = {
           revoked_at: string | null
           token: string | null
           token_hash: string | null
+          token_secret_id: string | null
         }
         Insert: {
           created_at?: string
@@ -13204,6 +13986,7 @@ export type Database = {
           revoked_at?: string | null
           token?: string | null
           token_hash?: string | null
+          token_secret_id?: string | null
         }
         Update: {
           created_at?: string
@@ -13213,6 +13996,7 @@ export type Database = {
           revoked_at?: string | null
           token?: string | null
           token_hash?: string | null
+          token_secret_id?: string | null
         }
         Relationships: [
           {
@@ -19315,6 +20099,7 @@ export type Database = {
           sent_by: string | null
           sent_by_name: string
           source_id: string | null
+          source_snapshot: Json | null
           source_table: string
           subject: string
           title: string
@@ -19339,6 +20124,7 @@ export type Database = {
           sent_by?: string | null
           sent_by_name?: string
           source_id?: string | null
+          source_snapshot?: Json | null
           source_table?: string
           subject?: string
           title?: string
@@ -19363,6 +20149,7 @@ export type Database = {
           sent_by?: string | null
           sent_by_name?: string
           source_id?: string | null
+          source_snapshot?: Json | null
           source_table?: string
           subject?: string
           title?: string
@@ -23515,6 +24302,39 @@ export type Database = {
       }
       _ar_payer_key: { Args: { p: string }; Returns: string }
       _ar_try_timestamptz: { Args: { p: string }; Returns: string }
+      _card_charges_window_rows: {
+        Args: {
+          p_hi: string
+          p_lo: string
+          p_payroll_access: boolean
+          p_viewer: string
+        }
+        Returns: {
+          amount: number
+          attributed_person_id: string
+          attributed_user_id: string
+          bank_category: string
+          card_nickname: string
+          card_role: string
+          counterparty_name: string
+          debit_card_id: string
+          holder_name: string
+          holder_user_id: string
+          invoice_links: Json
+          job_splits: Json
+          kind: string
+          label_default_key: string
+          label_id: string
+          mercury_transaction_id: string
+          payroll_marked: boolean
+          posted_at: string
+          purchased_at: string
+          sorted_at: string
+          sorted_by_name: string
+          status: string
+          viewer_can_sort: boolean
+        }[]
+      }
       _mercury_raw_debit_card_id_lower: {
         Args: { p_raw: Json }
         Returns: string
@@ -24764,6 +25584,10 @@ export type Database = {
         }
         Returns: Json
       }
+      legal_answer_settlement: {
+        Args: { p_entry_id: string; p_note?: string; p_signed_off: boolean }
+        Returns: Json
+      }
       legal_close_matter: {
         Args: { p_matter_id: string; p_note?: string; p_stage: string }
         Returns: Json
@@ -24801,8 +25625,25 @@ export type Database = {
         Returns: Json
       }
       legal_office_can_read: { Args: never; Returns: boolean }
+      legal_portal_link_forget_secrets: {
+        Args: { p_firm_id: string }
+        Returns: undefined
+      }
+      legal_portal_link_token: { Args: { p_firm_id: string }; Returns: string }
       legal_pull_back: {
         Args: { p_matter_id: string; p_note?: string }
+        Returns: Json
+      }
+      legal_set_settlement_floor: {
+        Args: { p_amount?: number; p_matter_id: string; p_pct?: number }
+        Returns: Json
+      }
+      legal_set_stage: {
+        Args: { p_entry_id?: string; p_matter_id: string; p_stage: string }
+        Returns: Json
+      }
+      legal_void_entry: {
+        Args: { p_entry_id: string; p_reason: string }
         Returns: Json
       }
       lien_fallback_month: { Args: { p_created_at: string }; Returns: string }
@@ -24998,6 +25839,34 @@ export type Database = {
           waiting_days: number
           window_end: string
           window_start: string
+        }[]
+      }
+      list_card_charges_window: {
+        Args: { p_end_ymd: string; p_start_ymd: string }
+        Returns: {
+          amount: number
+          attributed_person_id: string
+          attributed_user_id: string
+          bank_category: string
+          card_nickname: string
+          card_role: string
+          counterparty_name: string
+          debit_card_id: string
+          holder_name: string
+          holder_user_id: string
+          invoice_links: Json
+          job_splits: Json
+          kind: string
+          label_default_key: string
+          label_id: string
+          mercury_transaction_id: string
+          payroll_marked: boolean
+          posted_at: string
+          purchased_at: string
+          sorted_at: string
+          sorted_by_name: string
+          status: string
+          viewer_can_sort: boolean
         }[]
       }
       list_customer_review_customer_sessions: {
@@ -25509,6 +26378,26 @@ export type Database = {
           pct_complete: number
           revenue: number
           status: string
+        }[]
+      }
+      list_recently_sorted_mercury_transactions_for_tally_staff: {
+        Args: { p_days?: number }
+        Returns: {
+          amount: number
+          counterparty_name: string
+          currency: string
+          invoice_links: Json
+          job_splits: Json
+          mercury_account_id: string
+          mercury_id: string
+          mercury_transaction_id: string
+          note: string
+          posted_at: string
+          raw: Json
+          sorted_at: string
+          sorted_by_name: string
+          target_name: string
+          target_user_id: string
         }[]
       }
       list_reference_presence: {

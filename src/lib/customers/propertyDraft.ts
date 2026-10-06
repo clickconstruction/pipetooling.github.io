@@ -1,4 +1,5 @@
 import type { PropertyRecordDraft } from '../../components/customers/CustomerPropertyRecordPanel'
+import type { CustomerAddressRow } from '../jobs/lienProperty'
 
 /** One property's editable fields on Edit customer (v2.3009): address + note + the legal record draft. */
 export type PropertyDraft = PropertyRecordDraft & { address: string; note: string }
@@ -68,3 +69,24 @@ export function emptyPropertyDraft(address = ''): PropertyDraft {
   }
 }
 
+
+/** A saved `customer_addresses` row as an editable draft (Edit customer's Properties, and the Lien desk's fix window, v2.4719). */
+export function draftFromRow(a: CustomerAddressRow): PropertyDraft {
+  return {
+    address: a.address,
+    note: a.note ?? '',
+    county: a.county ?? '',
+    county_source: a.county_source ?? '',
+    legal_description: a.legal_description ?? '',
+    property_kind: a.property_kind ?? '',
+    homestead: a.homestead ?? false,
+    owner_mode: a.owner_mode ?? '',
+    owner_name: a.owner_name ?? '',
+    owner_company: a.owner_company ?? '',
+    owner_mailing_address: a.owner_mailing_address ?? '',
+    parcel_id: a.parcel_id ?? '',
+    parcel_source: a.parcel_source ?? '',
+    parcel_tax_year: a.parcel_tax_year ?? '',
+    parcel_looked_up_at: a.parcel_looked_up_at ?? '',
+  }
+}

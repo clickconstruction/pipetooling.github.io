@@ -61,4 +61,21 @@ describe('LienPaperPreviewOverlay', () => {
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(onClose).toHaveBeenCalledTimes(1)
   })
+  it('with onFix, each blank opens its window from the paper; the paper pauses its keys while one is open; filled blanks come back green (v2.4719)', () => {
+    const onFix = vi.fn()
+    const onAct = vi.fn()
+    const onClose = vi.fn()
+    const gcFacts = { ...facts, gcName: '' }
+    const gaps = lienPaperGaps('affidavit', gcFacts)
+    const entry: LienPaperPreviewEntry = { ...entries[0]!, gaps, filled: [{ key: 'county', label: 'County', value: 'Guadalupe' }] }
+    const view = render(<LienPaperPreviewOverlay entries={[entry]} index={0} onIndex={() => {}} onClose={onClose} onAct={onAct} onFix={onFix} />)
+    expect(screen.getAllByTestId('lien-paper-preview-fix').map((b) => b.textContent)).toEqual(['Fix the property', 'Fix the property', 'Fix the property', 'Pick the GC'])
+    fireEvent.click(screen.getAllByTestId('lien-paper-preview-fix')[3]!)
+    expect(onFix).toHaveBeenCalledWith(0, expect.objectContaining({ key: 'gc' }))
+    expect(onAct).not.toHaveBeenCalled()
+    expect(screen.getByTestId('lien-paper-preview-filled').textContent).toBe('✓CountyGuadalupe')
+    view.rerender(<LienPaperPreviewOverlay entries={[entry]} index={0} onIndex={() => {}} onClose={onClose} onAct={onAct} onFix={onFix} paused />)
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(onClose).not.toHaveBeenCalled()
+  })
 })

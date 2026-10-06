@@ -134,9 +134,38 @@ export function propertyKindClockWords(propertyKind: string | null | undefined, 
 
 /** Gate 1, owner on file: where the name came from, so a job-level override is never mistaken for the record. */
 export function ownerSourceWords(source: 'job_override' | 'property_record' | 'none'): string {
-  if (source === 'job_override') return 'Set on this job — the property record’s owner is not used here.'
-  if (source === 'property_record') return 'From the property record — every job at this property uses it.'
+  if (source === 'job_override') return 'Set on this job · the property record’s owner is not used here.'
+  if (source === 'property_record') return 'From the property record · every job here uses it.'
   return ''
+}
+
+/** Gate 3's one line (v2.4718): "Residential · Bexar County", or "Not set" while the kind is blank. */
+export function propertyKindLine(propertyKind: string | null | undefined, county: string): string {
+  const kind = (propertyKind ?? '').trim()
+  const where = county.trim() ? ` · ${county.trim()} County` : ''
+  if (!kind) return `Not set${where}`
+  return `${kind === 'residential' ? 'Residential' : 'Commercial'}${where}`
+}
+
+/** The rule the kind sets, short, for the muted line under gate 3. */
+export function propertyKindRuleWords(propertyKind: string | null | undefined): string {
+  const kind = (propertyKind ?? '').trim()
+  if (kind === 'residential') return 'Notice due the 15th of the 2nd month after the work'
+  if (kind) return 'Notice due the 15th of the 3rd month after the work'
+  return 'Commercial dates shown; a residential property is a month earlier'
+}
+
+/** What the other kind would do to the dates — said while the chooser is open, since every deadline on the job moves with it. */
+export function propertyKindSwitchWarning(propertyKind: string | null | undefined): string {
+  const kind = (propertyKind ?? '').trim()
+  if (kind === 'residential') return 'Commercial makes each notice due the 15th of the 3rd month after the work, and the affidavit a month later. Every date on the job moves.'
+  if (kind) return 'Residential makes each notice due the 15th of the 2nd month after the work, and the affidavit a month earlier. Every date on the job moves.'
+  return 'Residential makes each notice due the 15th of the 2nd month after the work; commercial the 3rd. Every date on the job follows the pick.'
+}
+
+/** "shared with 273, 866, 1009, 858" — the jobs on the same property record, which follow a change here. */
+export function sharedWithWords(labels: ReadonlyArray<string>): string {
+  return labels.length ? `shared with ${labels.join(', ')}` : ''
 }
 
 /** Gate 4, one line per month the notice names: "Jul 2026 · 5.2 approved hours · 1 person · 2 days". */

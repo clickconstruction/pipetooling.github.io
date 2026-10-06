@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { BID_ACTIONS, withBidAction } from '../lib/bids/bidActionHeader'
 import { jobScopeRows } from '../lib/bids/alternateAcceptance'
 import { supabase } from '../lib/supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
@@ -533,7 +534,8 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
         }
         const hasHours = hours.rough_in_hrs > 0 || hours.top_out_hrs > 0 || hours.trim_set_hrs > 0
 
-        const { data: inserted, error: insErr } = await supabase
+        // The sync's writes are the app's own, not the viewer's (bid history, PR 1b).
+        const { data: inserted, error: insErr } = await withBidAction(supabase
           .from('cost_estimate_labor_rows')
           .insert({
             cost_estimate_id: estimateId,
@@ -550,15 +552,15 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
             source_note: hasHours ? reading.source_note : null,
           })
           .select('*')
-          .single()
+          .single(), BID_ACTIONS.laborSync)
         if (!insErr && inserted) rows = [...rows, inserted as CostEstimateLaborRow]
       } else if (Number(existing.count) !== countVal) {
-        await supabase.from('cost_estimate_labor_rows').update({ count: countVal }).eq('id', existing.id)
+        await withBidAction(supabase.from('cost_estimate_labor_rows').update({ count: countVal }).eq('id', existing.id), BID_ACTIONS.laborSync)
       }
     }
     const toDelete = rows.filter((r) => !fixtureSet.has(r.fixture ?? ''))
     for (const r of toDelete) {
-      await supabase.from('cost_estimate_labor_rows').delete().eq('id', r.id)
+      await withBidAction(supabase.from('cost_estimate_labor_rows').delete().eq('id', r.id), BID_ACTIONS.laborSync)
     }
     const { data: refetched } = await supabase
       .from('cost_estimate_labor_rows')

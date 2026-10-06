@@ -4,13 +4,16 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import { LIEN_LAST_WORK_CLEAR, lienLastWorkDay, lienLastWorkDayPatch, lienLastWorkDayProblem, lienLastWorkSourceLine, type LienLastWorkJob } from '../../lib/jobs/lienLastWorkDay'
 import { FinishedDateInput } from '../FinishedDateInput'
+import { LienLastWorkDayConfirm } from './LienLastWorkDayConfirm'
 
 /**
  * The last day of work, on one line (v2.4676): the day, a chip saying where it came from (clock
  * hours, the job's creation, or a person), the reason when a person set it, and *Change ›* to set
  * it by hand — a day and a one-line reason, saved on the job. Clock hours and pay are never
  * touched, and the line says so. Drawn above the Months card on the Lien desk and in Edit Job's
- * lien row; the caller re-reads after a save.
+ * lien row; the caller re-reads after a save. Since v2.4717 *Save the day* opens a window first
+ * (`LienLastWorkDayConfirm`): how far the day moves from the hours, the dates that move with it,
+ * and the reason, asked there; the write happens on its *Set the day*.
  */
 const chip = (tone: 'hand' | 'hours' | 'created'): CSSProperties => ({
   display: 'inline-block',
@@ -33,6 +36,12 @@ export function LienLastWorkDayLine({
   userId,
   setByName,
   onSaved,
+  jobLabel,
+  clockMonths,
+  noticedMonths,
+  propertyKind,
+  startEditing = false,
+  onCancel,
 }: {
   jobId: string
   job: LienLastWorkJob | null | undefined
@@ -43,15 +52,29 @@ export function LienLastWorkDayLine({
   setByName?: string | null
   /** After a save or a clear: the caller re-reads the job and the desk. */
   onSaved: () => void
+  /** "922 · Michael Palmer" — the window's subtitle. */
+  jobLabel?: string
+  /** The months with approved hours (YYYY-MM), for the window's dates; the Edit Job row has none. */
+  clockMonths?: ReadonlyArray<string>
+  noticedMonths?: ReadonlyArray<string>
+  /** 'residential' | 'commercial'; '' or absent draws the words without the table. */
+  propertyKind?: string
+  /** Open on the editor (v2.4733): the Lien window draws the line only when its timeline's *change ›* is pressed. */
+  startEditing?: boolean
+  /** Cancel pressed: the Lien window folds the line away again. */
+  onCancel?: () => void
 }) {
   const { showToast } = useToastContext()
   const d = lienLastWorkDay(job)
-  const [editing, setEditing] = useState(false)
+  const [editing, setEditing] = useState(startEditing)
   const [dayDraft, setDayDraft] = useState(d.day ?? '')
   const [noteDraft, setNoteDraft] = useState(d.note)
   const [busy, setBusy] = useState(false)
+  const [confirming, setConfirming] = useState(false)
   useEffect(() => {
-    setEditing(false)
+    // Back to how the line opened (the Lien window opens it editing) whenever the job or its day changes.
+    setEditing(startEditing)
+    setConfirming(false)
     setDayDraft(d.day ?? '')
     setNoteDraft(d.note)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -66,15 +89,15 @@ export function LienLastWorkDayLine({
       return
     }
     showToast(done, 'success')
+    setConfirming(false)
     setEditing(false)
     onSaved()
   }
-  const save = () => {
+  // Save the day opens the window (v2.4717); the write is its Set the day, after the day and the reason stand.
+  const save = () => setConfirming(true)
+  const confirm = () => {
     const problem = lienLastWorkDayProblem(dayDraft, job?.last_work_date ?? null, todayYmd)
-    if (problem) {
-      showToast(problem, 'error')
-      return
-    }
+    if (problem || !noteDraft.trim()) return
     void write(lienLastWorkDayPatch(dayDraft, noteDraft, userId, new Date().toISOString()), `Last day of work set to ${formatYmdMonthDay(dayDraft)}. The lien months follow it; clock hours are untouched.`)
   }
   const clear = () => void write(LIEN_LAST_WORK_CLEAR, job?.last_work_date ? 'Back to the clock hours.' : "Back to the job's creation day.")
@@ -99,10 +122,7 @@ export function LienLastWorkDayLine({
               Last day of work
               <FinishedDateInput aria-label="Last day of work" value={dayDraft} onCommit={(day) => setDayDraft(day ?? '')} style={{ padding: '0.3rem 0.4rem', fontSize: '0.8125rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)' }} />
             </label>
-            <label style={{ display: 'grid', gap: 3, fontSize: '0.75rem', color: 'var(--text-muted)', flex: '1 1 16rem', minWidth: 0 }}>
-              Why, in a line
-              <input aria-label="Why the last day is set by hand" value={noteDraft} onChange={(e) => setNoteDraft(e.target.value)} placeholder="what was done that day, and why the hours do not show it" style={{ font: 'inherit', fontSize: '0.8125rem', padding: '0.3rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)', width: '100%' }} />
-            </label>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', flex: '1 1 16rem', minWidth: 0 }}>Save the day shows what moves with it before anything is written, and asks why.</span>
           </div>
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <button type="button" onClick={save} disabled={busy} data-testid="lien-last-work-save" style={btn(true)}>
@@ -113,12 +133,33 @@ export function LienLastWorkDayLine({
                 {job?.last_work_date ? 'Back to clock hours' : "Back to the job's creation day"}
               </button>
             ) : null}
-            <button type="button" onClick={() => setEditing(false)} disabled={busy} style={btn()}>
+            <button
+              type="button"
+              onClick={() => {
+                setEditing(false)
+                onCancel?.()
+              }}
+              disabled={busy}
+              style={btn()}
+            >
               Cancel
             </button>
             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Clock hours and pay are not changed. The day sets the lien months only.</span>
           </div>
         </div>
+      ) : null}
+      {confirming ? (
+        <LienLastWorkDayConfirm
+          jobLabel={jobLabel ?? ''}
+          input={{ currentDay: d.day, currentSource: d.source, lastSessionDay: job?.last_work_date ?? null, clockMonths: clockMonths ?? [], noticedMonths: noticedMonths ?? [], propertyKind: propertyKind ?? '', todayYmd }}
+          day={dayDraft}
+          onDay={setDayDraft}
+          note={noteDraft}
+          onNote={setNoteDraft}
+          onConfirm={confirm}
+          onCancel={() => setConfirming(false)}
+          busy={busy}
+        />
       ) : null}
     </div>
   )

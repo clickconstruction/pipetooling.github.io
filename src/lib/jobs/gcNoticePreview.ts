@@ -46,6 +46,8 @@ export type GcNoticePreviewInput = {
   serviceTypeName?: string | null
   /** The pay page's rows and codes (punch list #35, PR 3), when the job has unpaid bills — page 3 of the owner's copy. */
   pay?: { rows: readonly PayPageRow[]; assets: PayPageAssets }
+  /** The supply houses paragraph for the letter (v2.4725), '' or absent when none. */
+  supplyHouses?: string
 }
 
 export type GcNoticePreviewPage = { key: 'cover' | 'notice' | 'pay'; label: string; blocks: FilingDocBlock[] }
@@ -85,7 +87,7 @@ export function buildGcNoticePreview(input: GcNoticePreviewInput): GcNoticePrevi
     extras,
     coverNote: null,
     withInvoices: input.job.isBilled,
-    coverLetter: useLetter ? fillCoverLetter(input.letter.trim(), { property: (input.jobAddress ?? '').trim(), months: describeNoticeMonths(months), job: input.jobNumber, amount: demandMoney(fields.claimAmount), staleNote: '', contact: fields.contactPerson, phone: (input.phone ?? '').trim(), affidavitMonth: affidavitMonthWord(input.letterKind ?? 'commercial'), trade: input.serviceTypeName }) : null,
+    coverLetter: useLetter ? fillCoverLetter(input.letter.trim(), { property: (input.jobAddress ?? '').trim(), months: describeNoticeMonths(months), job: input.jobNumber, amount: demandMoney(fields.claimAmount), staleNote: '', contact: fields.contactPerson, phone: (input.phone ?? '').trim(), affidavitMonth: affidavitMonthWord(input.letterKind ?? 'commercial'), trade: input.serviceTypeName, supplyHouses: input.supplyHouses ?? '' }) : null,
   })
   const copyBlocks = (who: string) => buildLienNoticeBlocks(fields, { ...extras, refItems: [...(extras.refItems ?? []), `Copy for: ${who}`] })
   // The pay page, as the run prints it behind this copy (empty for a copy it does not go to, or with nothing to pay).

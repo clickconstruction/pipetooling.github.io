@@ -11,6 +11,8 @@ import AiaG702G703Modal from './AiaG702G703Modal'
 import { payApplicationWriteFromForm, savedPayApplicationFromRow, type PayApplicationRow, type PayApplicationWrite, type SavedPayApplication } from '../../lib/aiaPayApplications'
 import type { PayApplicationLine } from '../../lib/aiaPayApplicationLines'
 import type { BidSchedule } from '../../lib/aiaBidSchedule'
+import type { SentCopy } from '../../lib/sent/sentCopies'
+import { payApplicationSnapshot } from '../../lib/aiaPayApplicationHistory'
 
 vi.mock('../../hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'u1' }, role: 'dev' }) }))
 vi.mock('../../lib/physicalInvoiceIssuer', () => ({
@@ -51,15 +53,48 @@ const saveSpy = vi.fn((write: PayApplicationWrite, id: string | null): Promise<S
   return Promise.resolve(savedPayApplicationFromRow({ id: id ?? `new-${write.application_number}`, updated_at: '2026-10-04T15:00:00Z', ...write } as PayApplicationRow))
 })
 const deleteSpy = vi.fn((_id: string) => Promise.resolve())
+// The applications taken off the job (v2.4715): a list the tests set; Delete reads it again.
+let deletedOnJob: SavedPayApplication[] = []
 vi.mock('../../lib/aiaPayApplicationsIo', () => ({
   PayApplicationNumberTaken: TakenError,
   loadPayApplications: () => Promise.resolve(onJob),
+  loadDeletedPayApplications: () => Promise.resolve(deletedOnJob),
   savePayApplication: (write: PayApplicationWrite, id: string | null) => saveSpy(write, id),
   deletePayApplication: (id: string) => deleteSpy(id),
 }))
 // Sent copies (v2.4575): the workbook that was downloaded is filed; the stub keeps what was filed.
+// The history (v2.4710) reads the job's copies back and opens a kept workbook.
 const filedSpy = vi.fn((_filing: Record<string, unknown>, _body: { fileName: string; contentType: string; blob: Blob }) => Promise.resolve(true))
-vi.mock('../../lib/sent/sentCopiesIo', () => ({ fileSentCopy: (filing: Record<string, unknown>, body: { fileName: string; contentType: string; blob: Blob }) => filedSpy(filing, body) }))
+let sentOnJob: SentCopy[] = []
+const openFileSpy = vi.fn((_path: string) => Promise.resolve(true))
+vi.mock('../../lib/sent/sentCopiesIo', () => ({
+  fileSentCopy: (filing: Record<string, unknown>, body: { fileName: string; contentType: string; blob: Blob }) => filedSpy(filing, body),
+  loadSentCopiesForJob: () => Promise.resolve(sentOnJob),
+  openSentFile: (path: string) => openFileSpy(path),
+}))
+
+/** A workbook filed on an application, as the sent copies table reads it. */
+function workbook(p: Partial<SentCopy>): SentCopy {
+  return {
+    id: 'copy-1',
+    kind: 'pay_application',
+    title: 'Pay application 1 · AIA G702-G703',
+    how: 'download',
+    recipientName: '',
+    recipientEmails: [],
+    subject: '',
+    sourceTable: 'job_pay_applications',
+    sourceId: 'app-1',
+    copyPath: 'copy-1/J1023-App1.xlsx',
+    copyType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    copyHash: 'h1',
+    attachments: [],
+    sentAt: '2026-10-02T15:12:00Z',
+    sentByName: 'Taunya',
+    sourceSnapshot: null,
+    ...p,
+  }
+}
 // The workbook itself is covered by the fill tests; here Generate only has to hand over a file.
 const fillSpy = vi.fn((_url: string, _values: unknown, _lines: PayApplicationLine[], _options: { splitLaborMaterial?: boolean }) => Promise.resolve(new ArrayBuffer(8)))
 vi.mock('../../lib/fillAiaG702G703Workbook', async () => {
@@ -134,11 +169,19 @@ const cell = (key: string) => document.querySelector(`[data-aia-cell="${key}"]`)
 const field = (key: string) => document.getElementById(`aia-field-${key}`) as HTMLInputElement
 /** A box of a line in the form: label, scheduled, from, pct, this or stored. */
 const lineField = (column: string, id = 'line-1') => document.getElementById(`aia-line-${id}-${column}`) as HTMLInputElement
+/** The history opens first on a job with saved applications: these press through it. */
+const openNew = async () => fireEvent.click(await screen.findByRole('button', { name: /^New application · \d+$/ }))
+const openSaved = async (no: number) => fireEvent.click(await screen.findByRole('button', { name: `Open application ${no}` }))
+const toHistory = () => fireEvent.click(screen.getByRole('button', { name: '← Pay applications' }))
 
 beforeEach(() => {
   onJob = []
+  sentOnJob = []
+  deletedOnJob = []
   schedule = null
   scheduleSpy.mockClear()
+  filedSpy.mockClear()
+  openFileSpy.mockClear()
   saveSpy.mockClear()
   deleteSpy.mockClear()
   fillSpy.mockClear()
@@ -220,8 +263,9 @@ describe('AiaG702G703Modal', () => {
     const [write, id] = saveSpy.mock.calls[0]!
     expect(id).toBeNull()
     expect(write).toMatchObject({ job_id: job.id, application_number: 1, total_completed_and_stored: 19400, retainage_held: 1940, current_payment_due: 17460 })
-    // It is now a chip on the list, and the one that is open.
-    expect(screen.getByRole('button', { name: /^1 · \$17,460\.00 due$/ }).getAttribute('aria-pressed')).toBe('true')
+    // It is now the application that is open, and the job has a history to go back to.
+    expect(screen.getByTestId('aia-applications').textContent).toContain('Application 1')
+    expect(screen.getByRole('button', { name: '← Pay applications' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Reset to saved' })).toBeTruthy()
 
     // Saving again writes the same row.
@@ -271,14 +315,14 @@ describe('AiaG702G703Modal', () => {
     await waitFor(() => expect(saveSpy).toHaveBeenCalledTimes(2))
     expect(saveSpy.mock.calls[1]![0].name).toBe('Sent to the GC')
     expect(saveSpy.mock.calls[1]![1]).toBe('new-1')
-    await waitFor(() => expect(screen.getByTestId('aia-applications').textContent).toContain('1 · Sent to the GC'))
+    await waitFor(() => expect(screen.getByTestId('aia-applications').textContent).toContain('Application 1 · Sent to the GC'))
 
     // Renaming is the same box and Save.
     fireEvent.change(nameBox, { target: { value: 'Revised after the walk' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
     await waitFor(() => expect(saveSpy).toHaveBeenCalledTimes(3))
     expect(saveSpy.mock.calls[2]![0].name).toBe('Revised after the walk')
-    await waitFor(() => expect(screen.getByTestId('aia-applications').textContent).toContain('1 · Revised after the walk'))
+    await waitFor(() => expect(screen.getByTestId('aia-applications').textContent).toContain('Application 1 · Revised after the walk'))
 
     // Clearing it writes the empty name, so the old one does not stay.
     fireEvent.change(nameBox, { target: { value: '' } })
@@ -291,9 +335,12 @@ describe('AiaG702G703Modal', () => {
     setWide(true)
     onJob = [{ ...savedOne(), name: 'Sent to the GC' }]
     renderWithProviders(<AiaG702G703Modal open onClose={() => undefined} job={job} hcpForFilename="1023" />)
+    await openNew()
     await waitFor(() => expect(field('g702_n5_project').value).toBe('2'))
     expect((screen.getByLabelText(/^NAME/) as HTMLInputElement).value).toBe('')
-    fireEvent.click(screen.getByRole('button', { name: /^1 · Sent to the GC/ }))
+    toHistory()
+    expect((await screen.findByTestId('aia-history-pane')).textContent).toContain('1 · Sent to the GC')
+    await openSaved(1)
     await waitFor(() => expect((screen.getByLabelText(/^NAME/) as HTMLInputElement).value).toBe('Sent to the GC'))
   })
 
@@ -302,6 +349,7 @@ describe('AiaG702G703Modal', () => {
     onJob = [savedOne()]
     // The job today: 60% of 48,500 is 29,100 created.
     renderWithProviders(<AiaG702G703Modal open onClose={() => undefined} job={{ ...job, pct_complete: 60 }} hcpForFilename="1023" />)
+    await openNew()
     await waitFor(() => expect(field('g702_n5_project').value).toBe('2'))
 
     expect(screen.getByTestId('aia-applications').textContent).toContain('It starts from application 1')
@@ -314,7 +362,8 @@ describe('AiaG702G703Modal', () => {
     expect(screen.getByLabelText('G702 page').textContent).toContain('CURRENT PAYMENT DUE$8,730.00')
 
     // The saved one opens as it was saved.
-    fireEvent.click(screen.getByRole('button', { name: /^1 · 09\/30\/2026/ }))
+    toHistory()
+    await openSaved(1)
     await waitFor(() => expect(field('g702_n5_project').value).toBe('1'))
     expect(lineField('from').value).toBe('')
     expect(screen.getByLabelText('G702 page').textContent).toContain('CURRENT PAYMENT DUE$17,460.00')
@@ -325,6 +374,7 @@ describe('AiaG702G703Modal', () => {
     onJob = [savedOne()]
     // 60% of 48,500 created: application 2 opens with 19,400 before and 9,700 now.
     renderWithProviders(<AiaG702G703Modal open onClose={() => undefined} job={{ ...job, pct_complete: 60 }} hcpForFilename="1023" />)
+    await openNew()
     await waitFor(() => expect(field('g702_n5_project').value).toBe('2'))
 
     const offer = screen.getByTestId('aia-retainage-drop')
@@ -336,9 +386,10 @@ describe('AiaG702G703Modal', () => {
     // 29,100 at 5% leaves 27,645 earned; 17,460 was certified before.
     expect(screen.getByLabelText('G702 page').textContent).toContain('CURRENT PAYMENT DUE$10,185.00')
 
-    // Application 1 was 40% complete: no offer there.
-    fireEvent.click(screen.getByRole('button', { name: /^1 · 09\/30\/2026/ }))
+    // Application 1 was 40% complete: no offer there. Going back asks about the 5% that was typed.
+    toHistory()
     fireEvent.click(await screen.findByRole('button', { name: 'Leave' }))
+    await openSaved(1)
     await waitFor(() => expect(field('g702_n5_project').value).toBe('1'))
     expect(screen.queryByTestId('aia-retainage-drop')).toBeNull()
   })
@@ -353,9 +404,11 @@ describe('AiaG702G703Modal', () => {
     expect(flag.textContent).toContain('This application does not match application 1.')
     expect(flag.textContent).toContain('Plumbing, work from previous application: $19,400.00 here, $21,000.00 from application 1.')
     expect(flag.textContent).toContain('LESS PREVIOUS CERTIFICATES FOR PAYMENT: $17,460.00 here, $18,900.00 from application 1.')
-    // Its chip carries the mark; application 1's does not.
-    expect(screen.getByRole('button', { name: /^⚠ 2 · 10\/31\/2026/ })).toBeTruthy()
-    expect(screen.getByRole('button', { name: /^1 · 09\/30\/2026/ })).toBeTruthy()
+    // Its line in the history carries the mark; application 1's does not.
+    toHistory()
+    expect((await screen.findAllByTestId('aia-history-flag')).map((f) => f.textContent)).toEqual(['⚠ No longer matches application 1. No reason given yet.'])
+    await openSaved(2)
+    await waitFor(() => expect(field('g702_n5_project').value).toBe('2'))
 
     // It is not blocked: a reason is typed and it saves as it is.
     fireEvent.change(screen.getByLabelText('WHY IT STAYS AS IT IS'), { target: { value: 'It went out this way on Nov 2.' } })
@@ -401,10 +454,11 @@ describe('AiaG702G703Modal', () => {
     setWide(true)
     onJob = [savedOne()]
     renderWithProviders(<AiaG702G703Modal open onClose={() => undefined} job={job} hcpForFilename="1023" />)
+    await openNew()
     await waitFor(() => expect(field('g702_n5_project').value).toBe('2'))
 
     fireEvent.change(field('g702_n6_period_to'), { target: { value: '10/31/2026' } })
-    fireEvent.click(screen.getByRole('button', { name: /^1 · 09\/30\/2026/ }))
+    toHistory()
     expect(await screen.findByText('Leave without saving?')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Stay' }))
     await settle()
@@ -416,6 +470,7 @@ describe('AiaG702G703Modal', () => {
     setWide(true)
     onJob = [savedOne()]
     renderWithProviders(<AiaG702G703Modal open onClose={() => undefined} job={job} hcpForFilename="1023" />)
+    await openNew()
     await waitFor(() => expect(field('g702_n5_project').value).toBe('2'))
 
     fireEvent.change(field('g702_n5_project'), { target: { value: '1' } })
@@ -437,10 +492,13 @@ describe('AiaG702G703Modal', () => {
     expect(saveSpy).toHaveBeenCalledTimes(1)
     // Each download files the workbook itself: the first with no saved application to point at, the second on its row.
     expect(filedSpy).toHaveBeenCalledTimes(2)
-    expect(filedSpy.mock.calls[0]![0]).toMatchObject({ kind: 'pay_application', how: 'download', jobIds: [job.id], source: null })
+    expect(filedSpy.mock.calls[0]![0]).toMatchObject({ kind: 'pay_application', how: 'download', jobIds: [job.id], source: null, sourceSnapshot: null })
     const [filing, body] = filedSpy.mock.calls[1]!
     expect(filing).toMatchObject({ kind: 'pay_application', title: 'Pay application 1 · AIA G702-G703', how: 'download', jobIds: [job.id] })
     expect((filing.source as { table: string }).table).toBe('job_pay_applications')
+    // What the application said goes with the workbook, so a later save can be named against it.
+    expect(filing.sourceSnapshot).toMatchObject({ applicationNumber: 1, totalCompletedAndStored: 19400, currentPaymentDue: 17460 })
+    expect((filing.sourceSnapshot as { lines: unknown[] }).lines).toHaveLength(1)
     expect(body.fileName).toMatch(/\.xlsx$/)
     expect(body.contentType).toBe('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     expect(body.blob.size).toBe(8)
@@ -450,8 +508,7 @@ describe('AiaG702G703Modal', () => {
     setWide(true)
     onJob = [savedOne()]
     renderWithProviders(<AiaG702G703Modal open onClose={() => undefined} job={job} hcpForFilename="1023" />)
-    await waitFor(() => expect(field('g702_n5_project').value).toBe('2'))
-    fireEvent.click(screen.getByRole('button', { name: /^1 · 09\/30\/2026/ }))
+    await openSaved(1)
     await waitFor(() => expect(field('g702_n5_project').value).toBe('1'))
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
@@ -459,15 +516,165 @@ describe('AiaG702G703Modal', () => {
     const buttons = screen.getAllByRole('button', { name: 'Delete' })
     fireEvent.click(buttons[buttons.length - 1]!)
     await waitFor(() => expect(deleteSpy).toHaveBeenCalledWith('app-1'))
-    // With nothing saved, the new application is the first again.
-    await waitFor(() => expect(screen.getByRole('button', { name: 'New · 1' })).toBeTruthy())
+    // With nothing saved there is no history to go back to: the new application is the first again.
+    await waitFor(() => expect(screen.getByTestId('aia-applications').textContent).toContain('New application 1'))
+    expect(screen.queryByRole('button', { name: '← Pay applications' })).toBeNull()
     expect(field('g702_n5_project').value).toBe('')
+  })
+
+  it('opens on the job\'s history: where it stands, each application\'s stops, the workbooks that went out, and the door to the next', async () => {
+    setWide(true)
+    const one = { ...savedOne(), createdAt: '2026-10-02T15:00:00Z', createdByName: 'Taunya', updatedByName: 'Taunya' }
+    const two = { ...savedTwo(), createdAt: '2026-11-02T15:00:00Z', updatedAt: '2026-11-05T20:31:00Z', createdByName: 'Taunya', updatedByName: 'Robert' }
+    onJob = [one, two]
+    sentOnJob = [
+      workbook({ id: 'copy-1', sentAt: '2026-10-02T15:12:00Z' }),
+      workbook({ id: 'copy-1b', sentAt: '2026-10-02T15:40:00Z', copyPath: 'copy-1b/J1023-App1.xlsx' }),
+      workbook({ id: 'copy-2', sourceId: 'app-2', sentAt: '2026-11-02T15:05:00Z', copyPath: 'copy-2/J1023-App2.xlsx', sentByName: 'Taunya' }),
+      // A copy that could not be kept, and a bill sent from the job: the first is said, the second is another paper.
+      workbook({ id: 'copy-3', sourceId: null, sentAt: '2026-10-01T15:05:00Z', copyPath: null }),
+      workbook({ id: 'copy-4', kind: 'bill', sourceId: null, sentAt: '2026-10-01T16:05:00Z' }),
+    ]
+    renderWithProviders(<AiaG702G703Modal open onClose={() => undefined} job={job} hcpForFilename="1023" />)
+
+    const pane = await screen.findByTestId('aia-history-pane')
+    // The paper and the form wait: no field is drawn yet, and the Form / Preview switch is not offered.
+    expect(screen.queryByTestId('aia-preview-pane')).toBeNull()
+    expect(document.getElementById('aia-field-g702_n5_project')).toBeNull()
+    expect(pane.textContent).toContain('2 saved · $26,190.00 certified · 60% complete')
+    // 29,100 of 48,500 to date, 2,910 held, 19,400 of work left.
+    const summary = screen.getByTestId('aia-history-summary')
+    expect(summary.textContent).toContain('CONTRACT TO DATE$48,500.00')
+    expect(summary.textContent).toContain('COMPLETED AND STORED$29,100.00 60%')
+    expect(summary.textContent).toContain('HELD AS RETAINAGE$2,910.00')
+    expect(summary.textContent).toContain('WORK LEFT$19,400.00')
+
+    const lines = screen.getAllByTestId('aia-history-line')
+    expect(lines).toHaveLength(2)
+    expect(lines[0]!.textContent).toContain('1 · period to 09/30/2026')
+    expect(lines[0]!.textContent).toContain('$17,460.00 due')
+    expect(lines[0]!.textContent).toContain('Saved Oct 2 by Taunya')
+    expect(lines[1]!.textContent).toContain('Saved Nov 2 by Taunya · saved again Nov 5 by Robert')
+    // Each workbook that went out, newest first, with the file to open.
+    const wentOut = screen.getAllByTestId('aia-history-went-out')
+    expect(wentOut.map((w) => w.textContent)).toEqual([
+      'Went out Oct 2, 10:40 AM by Taunyaas J1023-App1.xlsx',
+      'Went out Oct 2, 10:12 AM by Taunyaas J1023-App1.xlsx',
+      'Went out Nov 2, 9:05 AM by Taunyaas J1023-App2.xlsx',
+      'Went out Oct 1, 10:05 AM by TaunyaThe copy was not kept.',
+    ])
+    expect(screen.getByTestId('aia-history-unsaved').textContent).toContain('Downloaded with no number typed')
+    fireEvent.click(screen.getByRole('button', { name: 'J1023-App2.xlsx' }))
+    await waitFor(() => expect(openFileSpy).toHaveBeenCalledWith('copy-2/J1023-App2.xlsx'))
+
+    // The door to the next application: it starts from 2 and the form opens on it.
+    expect(pane.textContent).toContain('Starts from application 2 as it is saved now.')
+    await openNew()
+    await waitFor(() => expect(field('g702_n5_project').value).toBe('3'))
+    expect(screen.getByTestId('aia-preview-pane')).toBeTruthy()
+    expect(screen.getByTestId('aia-applications').textContent).toContain('New application 3')
+    // And back, with nothing typed, straight away.
+    toHistory()
+    expect(await screen.findByTestId('aia-history-pane')).toBeTruthy()
+    // Open puts a saved application in the form, saying who saved it.
+    await openSaved(2)
+    await waitFor(() => expect(field('g702_n5_project').value).toBe('2'))
+    expect(screen.getByTestId('aia-applications').textContent).toContain('Application 2')
+    expect(screen.getByTestId('aia-applications').textContent).toContain('Saved Nov 2 by Taunya · saved again Nov 5 by Robert. You can change it and save it again.')
+  })
+
+  it('names what moved since the workbook went out, against the figures filed with it', async () => {
+    setWide(true)
+    // Application 1 went out at 19,400 this period and was then saved again at 21,000.
+    const went = payApplicationSnapshot(savedOne())
+    onJob = [savedOneChanged()]
+    sentOnJob = [workbook({ id: 'copy-1', sourceSnapshot: went as unknown as Record<string, unknown>, sentAt: '2026-10-02T15:12:00Z' })]
+    renderWithProviders(<AiaG702G703Modal open onClose={() => undefined} job={job} hcpForFilename="1023" />)
+    const flag = await screen.findByTestId('aia-history-changed')
+    expect(flag.textContent).toContain('Changed after it went out Oct 2: Plumbing this period $19,400.00 → $21,000.00 · completed and stored $19,400.00 → $21,000.00 · retainage held $1,940.00 → $2,100.00 · payment due $17,460.00 → $18,900.00.')
+    expect(flag.textContent).toContain('The GC has the Oct 2 workbook. Generate it again to send the change, or open it and put the amounts back.')
+  })
+
+  it('starts on a new application when asked to, and offers no Form / Preview switch on a narrow history', async () => {
+    setWide(true)
+    onJob = [savedOne()]
+    const { unmount } = renderWithProviders(<AiaG702G703Modal open onClose={() => undefined} job={job} hcpForFilename="1023" startOn="new" />)
+    await waitFor(() => expect(field('g702_n5_project').value).toBe('2'))
+    expect(screen.queryByTestId('aia-history-pane')).toBeNull()
+    unmount()
+
+    setWide(false)
+    renderWithProviders(<AiaG702G703Modal open onClose={() => undefined} job={job} hcpForFilename="1023" />)
+    await screen.findByTestId('aia-history-pane')
+    expect(screen.queryByRole('button', { name: 'Preview' })).toBeNull()
+    await openNew()
+    expect(await screen.findByRole('button', { name: 'Preview' })).toBeTruthy()
+  })
+
+  it('lists the workbook Generate filed once the history is read again', async () => {
+    setWide(true)
+    onJob = [savedOne()]
+    renderWithProviders(<AiaG702G703Modal open onClose={() => undefined} job={job} hcpForFilename="1023" />)
+    await openNew()
+    await waitFor(() => expect(field('g702_n5_project').value).toBe('2'))
+    expect(screen.queryByTestId('aia-history-went-out')).toBeNull()
+
+    // The filing lands in the table; the read after it brings the workbook back.
+    sentOnJob = [workbook({ id: 'copy-2', sourceId: 'new-2', title: 'Pay application 2 · AIA G702-G703', copyPath: 'copy-2/J1023-App2.xlsx', sentAt: '2026-11-02T15:05:00Z' })]
+    fireEvent.click(screen.getByRole('button', { name: 'Generate' }))
+    expect(await screen.findByText('Workbook downloaded. Application 2 saved on the job.')).toBeTruthy()
+    await waitFor(() => expect(filedSpy).toHaveBeenCalledTimes(1))
+    toHistory()
+    await screen.findByTestId('aia-history-pane')
+    await waitFor(() => expect(screen.getAllByTestId('aia-history-line')).toHaveLength(2))
+    expect(screen.getAllByTestId('aia-history-went-out').map((w) => w.textContent)).toEqual(['Went out Nov 2, 9:05 AM by Taunyaas J1023-App2.xlsx'])
+  })
+
+  it('deletes from the form and lands on the history when applications remain', async () => {
+    setWide(true)
+    onJob = [savedOne(), savedTwo()]
+    renderWithProviders(<AiaG702G703Modal open onClose={() => undefined} job={job} hcpForFilename="1023" />)
+    await openSaved(2)
+    await waitFor(() => expect(field('g702_n5_project').value).toBe('2'))
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    const buttons = await screen.findAllByRole('button', { name: 'Delete' })
+    // The row is marked, not gone: the read after the delete brings it back as a deleted line.
+    deletedOnJob = [{ ...savedTwo(), deletedAt: '2026-11-06T15:00:00Z', deletedByName: 'Robert' }]
+    fireEvent.click(buttons[buttons.length - 1]!)
+    await waitFor(() => expect(deleteSpy).toHaveBeenCalledWith('app-2'))
+    expect(await screen.findByTestId('aia-history-pane')).toBeTruthy()
+    expect(screen.getAllByTestId('aia-history-line')).toHaveLength(1)
+    const gone = await screen.findByTestId('aia-history-deleted')
+    expect(gone.textContent).toContain('2 · period to 10/31/2026 · deleted')
+    expect(gone.textContent).toContain('$8,730.00 due')
+    expect(gone.textContent).toContain('Deleted Nov 6 by Robert')
+    expect(screen.queryByRole('button', { name: 'Open application 2' })).toBeNull()
+    // The next application starts from the live one.
+    expect(screen.getByRole('button', { name: 'New application · 2' })).toBeTruthy()
+  })
+
+  it('lists an application taken off the job after the live ones, with its workbooks and no door', async () => {
+    setWide(true)
+    onJob = [savedOne()]
+    deletedOnJob = [{ ...savedTwo(), id: 'app-2-old', deletedAt: '2026-11-06T15:00:00Z', deletedByName: 'Robert' }]
+    sentOnJob = [workbook({ id: 'copy-2', sourceId: 'app-2-old', copyPath: 'copy-2/J1023-App2.xlsx', sentAt: '2026-11-02T15:05:00Z' })]
+    renderWithProviders(<AiaG702G703Modal open onClose={() => undefined} job={job} hcpForFilename="1023" />)
+    await screen.findByTestId('aia-history-pane')
+    expect(screen.getAllByTestId('aia-history-line')).toHaveLength(1)
+    const gone = screen.getByTestId('aia-history-deleted')
+    expect(gone.textContent).toContain('Deleted Nov 6 by Robert')
+    expect(gone.textContent).toContain('Went out Nov 2, 9:05 AM by Taunyaas J1023-App2.xlsx')
+    expect(screen.queryByRole('button', { name: 'Open application 2' })).toBeNull()
+    // The standing and the next number come from the live application alone.
+    expect(screen.getByTestId('aia-history-pane').textContent).toContain('1 saved · $17,460.00 certified · 40% complete')
+    expect(screen.getByRole('button', { name: 'New application · 2' })).toBeTruthy()
   })
 
   it('takes a percent done for a line and works out this period, and the other way round', async () => {
     setWide(true)
     onJob = [savedOne()]
     renderWithProviders(<AiaG702G703Modal open onClose={() => undefined} job={job} hcpForFilename="1023" />)
+    await openNew()
     await waitFor(() => expect(field('g702_n5_project').value).toBe('2'))
     // Application 2 opens with 19,400 before and nothing this period: 40% done.
     expect(lineField('pct').value).toBe('40')
@@ -650,6 +857,7 @@ describe('AiaG702G703Modal', () => {
     schedule = stageSchedule()
     onJob = [savedOne()]
     renderWithProviders(<AiaG702G703Modal open onClose={() => undefined} job={bidJob()} hcpForFilename="1041" />)
+    await openNew()
     await waitFor(() => expect(field('g702_n5_project').value).toBe('2'))
     expect(scheduleSpy).not.toHaveBeenCalled()
     // Application 2 carries application 1's one line.
@@ -764,6 +972,7 @@ describe('AiaG702G703Modal', () => {
 
     onJob = [savedOne()]
     renderWithProviders(<AiaG702G703Modal open onClose={() => undefined} job={stageItemsJob()} hcpForFilename="892" />)
+    await openNew()
     await waitFor(() => expect(field('g702_n5_project').value).toBe('2'))
     expect(screen.queryByTestId('aia-line-source')).toBeNull()
   })

@@ -41,6 +41,12 @@ export type SentFiling = {
   personId?: string | null
   /** The record the paper was drawn from, so its own row can link to the copy. */
   source?: { table: string; id: string | null } | null
+  /**
+   * What that record said when the copy went (v2.4714): a pay application files its lines and
+   * the G702's totals, so a later change to the saved record can be named against what went.
+   * Left out by most papers. Written with the row; a database without the column drops it.
+   */
+  sourceSnapshot?: Record<string, unknown> | null
 }
 
 /** The copy itself: a page as it was drawn, or a file's bytes. */
@@ -91,6 +97,7 @@ export function sentDocumentInsert(id: string, filing: SentFiling, stored: SentC
     copy_type: stored?.type ?? '',
     copy_hash: stored?.hash ?? '',
     copy_bytes: stored?.bytes ?? null,
+    ...(filing.sourceSnapshot && typeof filing.sourceSnapshot === 'object' ? { source_snapshot: filing.sourceSnapshot } : {}),
   }
 }
 
@@ -114,6 +121,8 @@ export type SentCopy = {
   attachments: SentCopyAttachment[]
   sentAt: string
   sentByName: string
+  /** The source record's figures as filed with the copy (v2.4714), or null. */
+  sourceSnapshot: Record<string, unknown> | null
 }
 
 const text = (v: unknown): string => (typeof v === 'string' ? v : '')
@@ -144,6 +153,7 @@ export function parseSentCopy(raw: unknown): SentCopy | null {
     attachments,
     sentAt: text(r.sent_at),
     sentByName: text(r.sent_by_name).trim(),
+    sourceSnapshot: r.source_snapshot && typeof r.source_snapshot === 'object' && !Array.isArray(r.source_snapshot) ? (r.source_snapshot as Record<string, unknown>) : null,
   }
 }
 

@@ -17,7 +17,10 @@ PORT="${PGTEST_PORT:-55441}"
 NAME="pgtest-pay-applications"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
 BED="supabase/tests/pay_applications"
-MIGRATION="supabase/migrations/20261004145511_job_pay_applications.sql"
+# The newest migration of the table, re-run to prove it changes nothing. Not the birth file: its
+# CREATE OR REPLACE of the stamp trigger would undo the v2.4715 definition (the hazard
+# docs/MIGRATIONS.md warns of), and the bed would then test the old trigger.
+MIGRATION="supabase/migrations/20261006235000_job_pay_applications_deleted.sql"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }

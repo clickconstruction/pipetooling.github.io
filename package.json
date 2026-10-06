@@ -44,6 +44,7 @@
     "test:pg:bid-copies": "bash scripts/pgtest-bid-copies.sh",
     "test:pg:bid-next-followup": "bash scripts/pgtest-bid-next-followup.sh",
     "test:pg:card-charges-window": "bash scripts/pgtest-card-charges-window.sh",
+    "test:pg:bid-changes": "bash scripts/pgtest-bid-changes.sh",
     "forms:inspect": "vite-node scripts/forms/inspect.ts",
     "forms:draft": "vite-node scripts/forms/draft.ts",
     "forms:preview": "vite-node scripts/forms/preview.ts",

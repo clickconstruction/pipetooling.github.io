@@ -2635,8 +2635,11 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       }, null, 2))
     }
     case 'paste_counts': {
+      // Every write of this call is the robot's paste in the bid's history (punch list #73, PR 1b):
+      // the x-bid-action tag rides on the client, and record_bid_change() stores it.
       const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
         auth: { autoRefreshToken: false, persistSession: false },
+        global: { headers: { 'x-bid-action': 'robot-paste' } },
       })
       const ref = String(args.bid ?? '').trim()
       const rows = Array.isArray(args.rows) ? args.rows as Record<string, unknown>[] : []

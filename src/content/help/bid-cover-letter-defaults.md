@@ -25,7 +25,7 @@ Leave a box **blank** to keep the built-in wording. The built-in wording is show
 
 ## How the defaults interact with a bid
 
-- On the **Cover Letter tab** of a bid, the Inclusions, Exclusions and Terms boxes are per-bid. Anything typed there wins for that bid.
+- On the **Cover Letter tab** of a bid, the Inclusions, Exclusions and Terms boxes are per-bid. Anything typed there wins for that bid. It is saved with the bid as you type, so it is there when you open the bid again.
 - When a bid's Terms or Exclusions box is empty, the letter falls back to your org default from Settings. Only if that is blank too does it use the built-in text.
 - The **closing paragraph** is not per-bid. It comes from Settings, or from the built-in, on every letter. It is always followed by "Respectfully submitted by Click Plumbing and Electrical".
 

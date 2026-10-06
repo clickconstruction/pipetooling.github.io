@@ -8,6 +8,7 @@
  */
 import { formatYmdMonthDay } from './billedExpectedPay'
 import type { LienNextUpKind, LienNextUpRow } from './lienNextUp'
+import { lienOfferApprovedWords, type LienPayOffer } from './lienPayOffer'
 
 export type LienStepLadder = LienNextUpKind
 export type LienStepN = 1 | 2 | 3 | 4
@@ -79,6 +80,8 @@ export type LienStepFacts = {
   /** Notices approved and waiting for the run. */
   readyToSend?: number
   viewerIsLeader?: boolean
+  /** The pay offer on an approved notice (v2.4713); null or absent = none. */
+  offer?: LienPayOffer | null
 }
 
 export type LienStepCardItem = { state: 'done' | 'now' | 'todo'; title: string; detail: string }
@@ -149,7 +152,7 @@ function ladderItems(ladder: LienStepLadder, at: LienStepN, f: LienStepFacts): L
     {
       state: s(3),
       title: s(3) === 'done' ? 'Approved' : 'Approve',
-      detail: s(3) === 'done' ? `Approved${f.approvedOn ? ` ${dayWords(f.approvedOn)}` : ''}.` : s(3) === 'now' ? leaderNow : 'The leader approves it, once per notice or once per GC.',
+      detail: s(3) === 'done' ? `Approved${f.approvedOn ? ` ${dayWords(f.approvedOn)}` : ''}${f.offer ? ` ${lienOfferApprovedWords(f.offer)}` : ''}.` : s(3) === 'now' ? leaderNow : 'The leader approves it, once per notice or once per GC.',
     },
     { state: s(4), title: 'Send the run', detail: `Goes out in the next packet${ready}. Certified mail, one tracking number per envelope.` },
   ]

@@ -70,6 +70,8 @@ export type LienDeskCalendarTabProps = {
   onOpenJob: (jobId: string) => void
   /** The job number opens the job itself (v2.4531): the Job window, with its history and Edit. Left out, the number is plain. */
   onOpenJobWindow?: (jobId: string) => void
+  /** The last-day label at the start of a row's bar (v2.4735): the Lien window with the last day's line editing. Left out, the label is plain. */
+  onOpenLastWork?: (jobId: string) => void
   /** Phone: no axis, the column cards and the sentences instead. */
   isMobile?: boolean
   /** Office roles write; everyone else reads (the dot opens the Lien window instead). */
@@ -79,7 +81,7 @@ export type LienDeskCalendarTabProps = {
   /** Set property kind on a job with no linked property record — Edit Job on the Property record row. */
   onOpenEditJob?: (jobId: string) => void
   /** The pen wrote something: a promise, or a property kind. */
-  onChanged?: (what: 'promise' | 'kind') => void
+  onChanged?: (what: 'promise' | 'kind' | 'last_work') => void
   /** Jobs where a supply house is still owed (v2.4404): the row shows a storefront and the money. */
   supplierMarks?: ReadonlyMap<string, LienSupplierMark>
 }
@@ -197,7 +199,7 @@ function monthWords(key: string | null): string {
 }
 
 /** One row's marks laid on the shared axis. */
-function Track({ marks, j, onOpen, onPen }: { marks: LienCalendarMark[]; j: LienCalendarJob; onOpen: () => void; onPen?: (pct: number) => void }) {
+function Track({ marks, j, onOpen, onPen, onLastWork }: { marks: LienCalendarMark[]; j: LienCalendarJob; onOpen: () => void; onPen?: (pct: number) => void; /** The last-day label is a door (v2.4735). */ onLastWork?: () => void }) {
   const gone = marks.find((m): m is Extract<LienCalendarMark, { kind: 'gone' }> => m.kind === 'gone') ?? null
   return (
     <div style={{ position: 'relative', height: TRACK_H }} data-testid="lien-cal-track">
@@ -216,7 +218,15 @@ function Track({ marks, j, onOpen, onPen }: { marks: LienCalendarMark[]; j: Lien
           const labelled = !gone || gone.pct - m.pct >= 12
           return (
             <div key={i} title={title} data-testid="lien-cal-work" style={{ position: 'absolute', left: `calc(${m.pct}% - 1px)`, top: LINE_Y - 8, width: 2, height: 8, background: m.fromCreation ? 'transparent' : 'var(--text-muted)', borderLeft: m.fromCreation ? `2px dashed ${NOTICE_INK}` : 'none', zIndex: 1 }}>
-              {labelled ? <span style={{ position: 'absolute', left: m.offAxis ? 4 : undefined, top: 11, transform: m.offAxis ? 'none' : 'translateX(-50%)', fontSize: 10, lineHeight: 1, whiteSpace: 'nowrap', color: m.fromCreation ? 'var(--text-amber-800)' : 'var(--text-muted)' }}>{m.label}</span> : null}
+              {labelled ? (
+                onLastWork ? (
+                  <button type="button" data-testid="lien-cal-work-door" className="lienCalWorkDoor" title={`${title} — click to change the last day of work`} aria-label={`Change the last day of work · ${j.number}`} onClick={onLastWork} style={{ position: 'absolute', left: m.offAxis ? 4 : undefined, top: 11, transform: m.offAxis ? 'none' : 'translateX(-50%)', fontSize: 10, lineHeight: 1, whiteSpace: 'nowrap', color: m.fromCreation ? 'var(--text-amber-800)' : 'var(--text-muted)', background: 'none', border: 'none', padding: 0, font: 'inherit', cursor: 'pointer' }}>
+                    {m.label}
+                  </button>
+                ) : (
+                  <span style={{ position: 'absolute', left: m.offAxis ? 4 : undefined, top: 11, transform: m.offAxis ? 'none' : 'translateX(-50%)', fontSize: 10, lineHeight: 1, whiteSpace: 'nowrap', color: m.fromCreation ? 'var(--text-amber-800)' : 'var(--text-muted)' }}>{m.label}</span>
+                )
+              ) : null}
             </div>
           )
         }
@@ -458,7 +468,7 @@ function PropertyLabel({ label, phone }: { label: string; phone?: boolean }) {
   )
 }
 
-function JobRow({ j, g, index, axis, onOpen, onOpenJob, onPen, mark, closedHere }: { j: LienCalendarJob; g: LienCalendarGroup; index: number; axis: LienCalendarAxis | null; onOpen: () => void; /** The number's own door: the Job window. */ onOpenJob?: () => void; onPen?: (pct: number) => void; mark?: LienSupplierMark; /** An overdue job listed with its property: greyed. */ closedHere?: boolean }) {
+function JobRow({ j, g, index, axis, onOpen, onOpenJob, onPen, mark, closedHere, onLastWork }: { j: LienCalendarJob; g: LienCalendarGroup; index: number; axis: LienCalendarAxis | null; onOpen: () => void; /** The number's own door: the Job window. */ onOpenJob?: () => void; onLastWork?: () => void; onPen?: (pct: number) => void; mark?: LienSupplierMark; /** An overdue job listed with its property: greyed. */ closedHere?: boolean }) {
   // Under a GC row its one dot speaks for every job; a job draws the dashed dot only on its own.
   const marks = axis ? lienCalendarMarks(j, axis, { payMissingDot: g.kind !== 'gc' }) : []
   const word = rowWord(j, g)
@@ -483,7 +493,7 @@ function JobRow({ j, g, index, axis, onOpen, onOpenJob, onPen, mark, closedHere 
           {j.address ? ` · ${j.address}` : ''}
         </span>
       </div>
-      {axis ? <Track marks={marks} j={j} onOpen={onOpen} onPen={onPen} /> : <div />}
+      {axis ? <Track marks={marks} j={j} onOpen={onOpen} onPen={onPen} onLastWork={onLastWork} /> : <div />}
       <div style={{ padding: '0 14px', textAlign: 'right' }} data-testid="lien-cal-row-money">
         <div style={{ fontSize: '0.8125rem', fontWeight: 500, fontVariantNumeric: 'tabular-nums', color: dead ? 'var(--text-muted)' : undefined }}>{formatUsdNoCents(j.openBalance)}</div>
         {word ? (
@@ -743,7 +753,7 @@ function PhoneBoard({ shown, folded, onFold, onDraft, onOpenJob, onOpenJobWindow
   )
 }
 
-export default function LienDeskCalendarTab({ rows, todayYmd, onOpenJob, onOpenJobWindow, isMobile = false, canWrite = false, onDraft, onOpenEditJob, onChanged, supplierMarks }: LienDeskCalendarTabProps) {
+export default function LienDeskCalendarTab({ rows, todayYmd, onOpenJob, onOpenJobWindow, onOpenLastWork, isMobile = false, canWrite = false, onDraft, onOpenEditJob, onChanged, supplierMarks }: LienDeskCalendarTabProps) {
   const [query, setQuery] = useState('')
   const [pen, setPen] = useState<PenTarget | null>(null)
   const [kindsOpen, setKindsOpen] = useState(false)
@@ -886,7 +896,7 @@ export default function LienDeskCalendarTab({ rows, todayYmd, onOpenJob, onOpenJ
                                       const j = row.job
                                       return (
                                       <div key={j.jobId} style={{ position: 'relative' }}>
-                                        <JobRow j={j} g={g} index={index} closedHere={row.closed} axis={axis} onOpen={() => onOpenJob(j.jobId)} onOpenJob={onOpenJobWindow ? () => onOpenJobWindow(j.jobId) : undefined} onPen={penOn ? (pct) => setPen({ kind: 'job', job: j, pct }) : undefined} mark={supplierMarks?.get(j.jobId)} />
+                                        <JobRow j={j} g={g} index={index} closedHere={row.closed} axis={axis} onOpen={() => onOpenJob(j.jobId)} onOpenJob={onOpenJobWindow ? () => onOpenJobWindow(j.jobId) : undefined} onPen={penOn ? (pct) => setPen({ kind: 'job', job: j, pct }) : undefined} mark={supplierMarks?.get(j.jobId)} onLastWork={onOpenLastWork ? () => onOpenLastWork(j.jobId) : undefined} />
                                         {pen && pen.kind === 'job' && pen.job.jobId === j.jobId ? (
                                           <div style={{ ...GRID, position: 'absolute', left: 0, right: 0, top: 0, pointerEvents: 'none' }}>
                                             <div />

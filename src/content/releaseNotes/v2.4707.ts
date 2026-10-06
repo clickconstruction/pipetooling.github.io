@@ -3,12 +3,12 @@ import type { ReleaseNote } from '../../lib/releaseNotes'
 const note: ReleaseNote = {
   version: 'v2.4707',
   date: '2026-10-06',
-  title: 'GC mode: the one press that makes a project writes all of it, or nothing',
-  kind: 'infra',
-  roles: ['dev'],
+  title: 'Days on the job: each month carries its lien notice line',
+  kind: 'feature',
   highlights: [
-    'The database gains the function New project will call: the project, its trades with their scope lines and exclusions, and the first set of plans with every sheet and section go in together, or not at all.',
-    'Nothing on a screen calls it yet. The New project page on real data is the next step of the GC mode real build.',
+    'On a sub job, every month on the History tab\'s calendar now shows its § 53.056 notice line under the month name: window closed · not noted, open since Sep 1 · mail by Oct 15, opens Nov 1, or notice sent Aug 10.',
+    'The words and colors are the lien timeline\'s own, read from the same path-to-a-lien box above, so the crew calendar and the lien clock tell one story.',
+    'A job contracted with the owner, or a paid job with no paper out, keeps the plain month names.',
   ],
 }
 

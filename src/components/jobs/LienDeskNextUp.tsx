@@ -1,4 +1,4 @@
-import { useMemo, useState, type CSSProperties } from 'react'
+import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import { groupLienNextUp, type LienNextUpKind, type LienNextUpRow } from '../../lib/jobs/lienNextUp'
 import { countLienSteps, lienLaddersShown, lienStepCard, lienStepOfRow, type LienStepAt, type LienStepFacts, type LienStepLadder } from '../../lib/jobs/lienNextUpSteps'
@@ -45,6 +45,7 @@ function dueColor(r: LienNextUpRow): string {
 
 export default function LienDeskNextUp({
   rows,
+  markTitle,
   loading,
   isMobile,
   onAct,
@@ -73,6 +74,8 @@ export default function LienDeskNextUp({
   onOpenPaper?: (row: LienNextUpRow) => void
   /** How many statutory blanks the row's paper has (the chip's red count; a tick at zero); null when unknown. */
   gapsFor?: (row: LienNextUpRow) => number | null
+  /** The find (v2.4721): a row's title with the typed words marked. */
+  markTitle?: (text: string) => ReactNode
 }) {
   // The rung the list is narrowed to (v2.4631); session-only, cleared on a second press.
   const [on, setOn] = useState<LienStepAt | null>(null)
@@ -98,7 +101,7 @@ export default function LienDeskNextUp({
   // The title: a text door to the job when there is one, underlined on hover (`.lienJobDoor`); the click stops here, so the row keeps its own.
   const title = (r: LienNextUpRow, style: CSSProperties) => {
     const jobId = r.jobId
-    if (!jobId || !onOpenJob) return <span style={style} title={r.title}>{r.title}</span>
+    if (!jobId || !onOpenJob) return <span style={style} title={r.title}>{markTitle ? markTitle(r.title) : r.title}</span>
     return (
       <button
         type="button"
@@ -111,7 +114,7 @@ export default function LienDeskNextUp({
         }}
         style={{ ...style, border: 'none', background: 'none', padding: 0, margin: 0, font: 'inherit', color: 'inherit', cursor: 'pointer', textAlign: 'left', borderRadius: 3, minWidth: 0, maxWidth: '100%', ...(isMobile ? { minHeight: 28 } : null) }}
       >
-        {r.title}
+        {markTitle ? markTitle(r.title) : r.title}
       </button>
     )
   }

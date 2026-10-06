@@ -229,10 +229,12 @@ export type LienTimelineStripProps = {
   view?: LienTimelineView
   /** The one door to the next step (v2.4693): the Lien window's button, drawn at the verdict band's right so the step is said once. */
   nextDoor?: ReactNode
+  /** The last day of work's door (v2.4735): *change ›* under the LAST WORK stop; the Lien window opens its last-day line. */
+  onChangeLastWork?: () => void
   style?: CSSProperties
 }
 
-export default function LienTimelineStrip({ timeline, voice = 'office', layout: layoutProp = 'auto', onDoor, withNext = true, view: viewProp, nextDoor, style }: LienTimelineStripProps) {
+export default function LienTimelineStrip({ timeline, voice = 'office', layout: layoutProp = 'auto', onDoor, withNext = true, view: viewProp, nextDoor, onChangeLastWork, style }: LienTimelineStripProps) {
   const { steps, todayIndex, kindUnknown } = timeline
   const next = voice === 'firm' ? { ...timeline.next, ...lienFirmNext(timeline.next) } : timeline.next
   const waiting = voice === 'firm' ? lienFirmWaitingOn(timeline) : timeline.waitingOn ? { who: lienMoveWords(timeline.waitingOn.who), words: timeline.waitingOn.words } : null
@@ -331,6 +333,11 @@ export default function LienTimelineStrip({ timeline, voice = 'office', layout: 
                     set the date ›
                   </button>
                 ) : null}
+                {s.kind === 'last_work' && onChangeLastWork ? (
+                  <button type="button" data-lien-timeline-last-work-door onClick={onChangeLastWork} style={{ marginLeft: '0.4rem', border: 'none', background: 'none', color: 'var(--text-link)', font: 'inherit', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', padding: 0 }}>
+                    change ›
+                  </button>
+                ) : null}
               </div>
             </div>
           ))}
@@ -374,6 +381,14 @@ export default function LienTimelineStrip({ timeline, voice = 'office', layout: 
                       {' '}
                       <button type="button" onClick={() => onDoor(s.door!)} style={{ border: 'none', background: 'none', color: 'var(--text-link)', font: 'inherit', fontSize: 'inherit', fontWeight: 600, cursor: 'pointer', padding: 0 }}>
                         set the date ›
+                      </button>
+                    </>
+                  ) : null}
+                  {s.kind === 'last_work' && onChangeLastWork ? (
+                    <>
+                      {' '}
+                      <button type="button" data-lien-timeline-last-work-door onClick={onChangeLastWork} style={{ border: 'none', background: 'none', color: 'var(--text-link)', font: 'inherit', fontSize: 'inherit', fontWeight: 600, cursor: 'pointer', padding: 0 }}>
+                        change ›
                       </button>
                     </>
                   ) : null}

@@ -41,6 +41,31 @@ describe('SubmittalRoomPanel', () => {
     expect(on.onCloseRoom).toHaveBeenCalledTimes(1)
   })
 
+  it('v2.4705 · Sent by email on… opens a day box beside Share and hands the day back; once set it reads the day with change; a shared room has no door', () => {
+    const onSentOutside = vi.fn()
+    const { unmount } = (() => {
+      mount({ room: null, roomLine: '', people: [], events: [], onSentOutside })
+      return { unmount: () => undefined }
+    })()
+    expect(screen.getByTestId('sent-outside-open').textContent).toBe('Sent by email on…')
+    fireEvent.click(screen.getByTestId('sent-outside-open'))
+    fireEvent.change(screen.getByLabelText('Sent by email on'), { target: { value: '2026-09-29' } })
+    fireEvent.click(screen.getByTestId('sent-outside-save'))
+    expect(onSentOutside).toHaveBeenCalledWith('2026-09-29')
+    expect(screen.queryByTestId('sent-outside-form')).toBeNull()
+    unmount()
+  })
+
+  it('v2.4705 · once the day is set the door reads it with change; a room that shared a revision, or a shared revision, has no door', () => {
+    mount({ room: null, roomLine: '', people: [], events: [], onSentOutside: vi.fn(), sentOutsideAt: '2026-09-29T22:00:00Z' })
+    expect(screen.getByTestId('sent-outside-open').textContent).toBe('Sent by email Sep 29 · change')
+  })
+
+  it('v2.4705 · no door when the room has shared a revision, when the revision is shared, or when the tab hands none', () => {
+    mount({ onSentOutside: vi.fn() })
+    expect(screen.queryByTestId('sent-outside-open')).toBeNull()
+  })
+
   it('a held Share says what turns it on; a shared revision reads share again', () => {
     mount({ shareGate: { on: false, why: 'Share turns on once the package is built.' }, room: null, roomLine: '', people: [], events: [] })
     expect((screen.getByTestId('share-button') as HTMLButtonElement).disabled).toBe(true)

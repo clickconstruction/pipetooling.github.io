@@ -41,6 +41,8 @@ import { parsePaymentPromisesRpc } from '../../lib/jobs/paymentPromises'
 import { computeJobLienClock, type JobLienFilingRow } from '../../lib/jobs/lienDeadlines'
 import { buildLienTimelineFromWindow } from '../../lib/jobs/lienTimelineDesk'
 import LienTimelineStrip from './LienTimelineStrip'
+import { LienLastWorkDayLine } from './LienLastWorkDayLine'
+import { isLienOffice } from '../../lib/jobs/lienDesk'
 import { lienWindowNextStep } from '../../lib/jobs/lienWindowNextStep'
 import LienWindowFoldedSteps from './LienWindowFoldedSteps'
 import DemandRecordSendSheet from './DemandRecordSendSheet'
@@ -123,6 +125,8 @@ export default function LienInstrumentsModal({
   noticeMonths,
   onOpenLienDesk,
   onOpenRelease,
+  openLastWork = false,
+  onLastWorkSaved,
 }: {
   open: boolean
   onClose: () => void
@@ -142,6 +146,10 @@ export default function LienInstrumentsModal({
   onOpenLienDesk?: (jobId: string, kind: 'notice' | 'retainage') => void
   /** *Waivers on the bills* (punch list #82): the Release of Lien window for this job, opened over this one. */
   onOpenRelease?: (job: JobWithDetails) => void
+  /** Open with the last day of work's line already editing (v2.4735): the Deadlines grid's last-day label. */
+  openLastWork?: boolean
+  /** The last day of work was set or cleared here: the opener re-reads its clocks and the desk. */
+  onLastWorkSaved?: () => void
 }) {
   const { role: authRole, user: authUser } = useAuth()
   const { showToast } = useToastContext()
@@ -157,6 +165,13 @@ export default function LienInstrumentsModal({
   const [customerAddress, setCustomerAddress] = useState('')
   const [propertyKind, setPropertyKind] = useState('')
   const [historyRows, setHistoryRows] = useState<JobDemandLetterRow[]>([])
+  // The last day of work (v2.4735): the timeline's *change ›* opens the All filings line here; a save re-reads the job's five columns.
+  const [lastWorkOpen, setLastWorkOpen] = useState(openLastWork)
+  const [lastWorkPatch, setLastWorkPatch] = useState<Partial<Pick<JobWithDetails, 'last_work_date' | 'lien_last_work_on' | 'lien_last_work_note' | 'lien_last_work_set_at' | 'lien_last_work_set_by'>> | null>(null)
+  useEffect(() => {
+    setLastWorkOpen(open && openLastWork)
+    setLastWorkPatch(null)
+  }, [open, job?.id, openLastWork])
   const [voidPendingId, setVoidPendingId] = useState<string | null>(null)
   const [pdfBusy, setPdfBusy] = useState(false)
   // The footer's three doors say what they are doing (v2.4584): busy for at least 1.5 s, then done for 2 s, at one width.
@@ -607,6 +622,15 @@ export default function LienInstrumentsModal({
 
   const jobNumber = job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—' : '—'
   const isSub = Boolean(job?.gc_customer_id)
+  const lastWorkJob = useMemo(() => (job ? { ...job, ...(lastWorkPatch ?? {}) } : null), [job, lastWorkPatch])
+  const canSetLastWork = isLienOffice(authRole)
+  const reReadLastWork = useCallback(async () => {
+    if (!job) return
+    const { data } = await supabase.from('jobs_ledger').select('last_work_date, lien_last_work_on, lien_last_work_note, lien_last_work_set_at, lien_last_work_set_by').eq('id', job.id).maybeSingle()
+    if (data) setLastWorkPatch(data as NonNullable<typeof lastWorkPatch>)
+    setLastWorkOpen(false)
+    onLastWorkSaved?.()
+  }, [job, onLastWorkSaved])
   const clock = useMemo(
     () => computeJobLienClock({ lastWorkYmd: job?.last_work_date ?? null, propertyKind, isSub }),
     [job?.last_work_date, propertyKind, isSub],
@@ -629,7 +653,8 @@ export default function LienInstrumentsModal({
         ? buildLienTimelineFromWindow({
             workMonths: windowWorkMonths?.[job.id] ?? null,
             filings,
-            job: { id: job.id, created_at: job.created_at ?? null, last_work_date: job.last_work_date ?? null, lien_contract_ended_on: (job as { lien_contract_ended_on?: string | null }).lien_contract_ended_on ?? null },
+            // v2.4735: the day set by hand reaches the window's timeline too (it read the clock hours and the creation day only).
+            job: { id: job.id, created_at: job.created_at ?? null, last_work_date: lastWorkJob?.last_work_date ?? null, lien_contract_ended_on: (job as { lien_contract_ended_on?: string | null }).lien_contract_ended_on ?? null, lien_last_work_on: lastWorkJob?.lien_last_work_on ?? null },
             isSub,
             propertyKind,
             openBalance: Math.max(0, Number(job.revenue ?? 0) - Number(job.payments_made ?? 0)),
@@ -637,7 +662,7 @@ export default function LienInstrumentsModal({
             demandLetters: historyRows,
           })
         : null,
-    [job, windowWorkMonths, filings, isSub, propertyKind, historyRows],
+    [job, lastWorkJob, windowWorkMonths, filings, isSub, propertyKind, historyRows],
   )
   const originalContractorName = isSub
     ? (job?.gcCustomer?.name ?? '').trim() || (job?.customer_name ?? '').trim()
@@ -952,12 +977,38 @@ export default function LienInstrumentsModal({
           </p>
           {timeline ? (
             isMobile ? (
-              <LienWindowFoldedSteps timeline={timeline} />
+              <>
+                <LienWindowFoldedSteps timeline={timeline} />
+                {canSetLastWork && !lastWorkOpen ? (
+                  <button type="button" data-lien-window-last-work-door onClick={() => setLastWorkOpen(true)} style={{ marginTop: '0.3rem', border: 'none', background: 'none', padding: 0, color: 'var(--text-link)', font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', minHeight: 32 }}>
+                    Change the last day of work ›
+                  </button>
+                ) : null}
+              </>
             ) : (
               <div data-lien-window-timeline style={{ marginTop: '0.6rem', border: '1px solid var(--border)', borderRadius: 9, padding: '0.55rem 0.8rem 0.5rem', background: 'var(--surface)' }}>
-                <LienTimelineStrip timeline={timeline} nextDoor={nextStepButton} />
+                <LienTimelineStrip timeline={timeline} nextDoor={nextStepButton} onChangeLastWork={canSetLastWork && !lastWorkOpen ? () => setLastWorkOpen(true) : undefined} />
               </div>
             )
+          ) : null}
+          {lastWorkOpen && lastWorkJob ? (
+            // The All filings line, already editing: Save the day opens the window that shows what moves (v2.4717) before anything is written.
+            <div data-lien-window-last-work style={{ marginTop: '0.5rem' }}>
+              <LienLastWorkDayLine
+                jobId={lastWorkJob.id}
+                job={lastWorkJob}
+                todayYmd={todayYmdLocal()}
+                canEdit={canSetLastWork}
+                userId={authUser?.id ?? null}
+                onSaved={() => void reReadLastWork()}
+                startEditing
+                onCancel={() => setLastWorkOpen(false)}
+                jobLabel={`${jobNumber} · ${(lastWorkJob.job_name ?? '').trim()}`}
+                clockMonths={(windowWorkMonths?.[lastWorkJob.id]?.months ?? []).map((m) => m.key)}
+                noticedMonths={[...new Set(filings.filter((f) => f.kind === 'notice_53_056' && f.voided_at == null).flatMap((f) => f.months_covered ?? []))]}
+                propertyKind={propertyKind}
+              />
+            </div>
           ) : null}
           {nextStep && (isMobile || !timeline) ? (
             <div data-lien-window-next-step data-tone={nextStep.tone} style={{ marginTop: isMobile ? '0.4rem' : '0.6rem', border: `1px solid ${nextStep.tone === 'red' ? 'var(--text-red-600)' : 'var(--border-strong)'}`, borderRadius: 9, padding: '0.55rem 0.8rem', background: nextStep.tone === 'red' ? 'var(--bg-red-tint)' : nextStep.tone === 'amber' ? 'var(--bg-amber-tint)' : nextStep.tone === 'green' ? 'var(--bg-green-tint)' : 'var(--bg-subtle)', display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>

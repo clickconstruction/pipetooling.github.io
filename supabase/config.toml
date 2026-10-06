@@ -871,3 +871,6 @@ verify_jwt = false
 # Pay links (v2.3754): what a scanned pay code opens — GET ?id=<bill id>, no auth (the id is the capability, as Stripe's own link is); rate-limited in memory.
 [functions.pay-link]
 verify_jwt = false
+# The pay offer (v2.4704): apply = the office's JWT checked in the function; expire = pg_cron with X-Cron-Secret, so the gateway cannot demand a JWT.
+[functions.lien-pay-offer]
+verify_jwt = false

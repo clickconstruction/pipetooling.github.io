@@ -5,7 +5,7 @@ file: EDGE_FUNCTIONS.md
 type: API Reference
 purpose: Complete API documentation for all 85 Supabase Edge Functions
 audience: Developers, DevOps, AI Agents
-last_updated: 2026-10-05
+last_updated: 2026-10-06
 estimated_read_time: 20-25 minutes
 difficulty: Intermediate
 
@@ -146,6 +146,7 @@ when_to_read:
    - [geocode-address-batch](#geocode-address-batch)
    - [geocode-one](#geocode-one)
    - [property-lookup](#property-lookup)
+   - [lien-pay-offer](#lien-pay-offer)
    - [owner-confirm-nightly](#owner-confirm-nightly)
    - [driving-distance](#driving-distance)
    - [travel-time-batch](#travel-time-batch)
@@ -944,6 +945,8 @@ The function reads and writes with the service role, so every bid-scoped verb en
 
 ---
 
+`paste_counts` writes through an admin client that carries `x-bid-action: robot-paste` (v2.4736, bid history PR 1b), so `record_bid_change()` files a robot's rows and assignments as the robot's one action.
+
 ### twin-setup
 
 **Purpose**: "Set up on this Mac" (v2.3277, Price Matrix PR 6 — `docs/PRICE_MATRIX_PLAN.md`). Collapses the three-step Claude Desktop connector setup (issue a key, paste it into Terminal, quit/reopen Desktop) into one click and one paste, with the robot key never shown to a person. Two actions in one JSON body:
@@ -1513,6 +1516,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 **Purpose**: Record a GC's signature or decline on a bid-room proposal (Signable Bids Phase 2, v2.2470) — the signature-time freeze.
 
 > **v2.4197 — add-ons**: the sign body takes `addOnKeys: string[]` (keys of the revision's `add_ons`, the with-and-without alternates; unknown keys ignored). The frozen estimate carries one line per taken add-on and the grand total, the `signed` event carries `add_ons_taken` / `add_on_keys`, the staff notice totals the grand total, and when the plan marks the bid won the function writes `bids.accepted_alternate_tags` and `agreed_value` (the sent base plus the taken add-ons) and, since v2.4225, `bids.declined_alternate_tags` — the room's add-ons left unticked; an alternate the room did not carry keeps its prior answer. **Redeploy `sign-bid-room` and `get-bid-proposal-room`** (both bundle `_shared/bidRoomPayload.ts`, which now parses `add_ons`).
+
+> **v2.4728 — the option taken**: an option on the revision may carry `bid_version_id` (a letter with options, v2.4723). A signature then wins that version alone (`wonVersionIdsForSignature` in `_shared/bidRoomOutcome.ts`; the other options in the packet stay as they were), sets `bids.selected_bid_version_id` to it, writes `agreed_value` as the option's own total plus the taken add-ons, and the `signed` event carries `option_version_id`. **Redeploy `sign-bid-room` and `get-bid-proposal-room`** (`_shared/bidRoomPayload.ts` parses the id).
 
 **Endpoint**: `POST /functions/v1/sign-bid-room` — `{ token, revision_id, action: 'sign'|'decline', … }` (sign: `optionKey`, `printedName`, `agreedTerms`, optional `signaturePngBase64`; decline: `category`?, `note`?)
 
@@ -2192,6 +2197,18 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 **Implementation**: [`supabase/functions/property-lookup/index.ts`](../supabase/functions/property-lookup/index.ts); kernel [`supabase/functions/_shared/txParcelRecord.ts`](../supabase/functions/_shared/txParcelRecord.ts) (client re-export [`src/lib/customers/propertyRecord.ts`](../src/lib/customers/propertyRecord.ts)); the parcel identify (tolerance ladder, timeout) in [`_shared/txParcelIdentify.ts`](../supabase/functions/_shared/txParcelIdentify.ts) since **v2.3450**, shared with `owner-confirm-nightly`; client invoke [`src/lib/customers/propertyLookupClient.ts`](../src/lib/customers/propertyLookupClient.ts).
 
 ---
+
+### lien-pay-offer
+
+**Purpose**: The money side of the **pay offer** (**v2.4704**; the choice and the words are v2.4713): the leader's discount on each bill behind a § 53.056 notice if it is paid in full by a day. Two actions. **`apply`** — the Lien desk calls it right after *Record the run* inserts a notice's `job_lien_filings` row and marks its desk item sent: the offer is read off the desk item the filing closed (`job_lien_desk_items.sent_filing_id` → `offer_pct`, `offer_by`, `offer_set_by`), and for every enclosed Stripe bill still open (`invoice_ids`, `status = billed`, Stripe says `open`) a **credit note** is created for the percent of what Stripe then asks for (`reason: order_change`, memo *10% off if paid in full by Nov 15 — lien notice offer*, metadata `pipetooling_lien_offer`, `filing_id`, `offer_by`), and the row remembers it (`lien_offer_pct / _by / _set_by / _filing_id / _credit_note_id / _credit_cents / _applied_at`). So the scanned code, Stripe's hosted page and Stripe's own emails show the lower amount. A bill already carrying a live credit is skipped (a second call is harmless); a row write that fails voids the credit again; an offer whose day has passed is not applied. **The ledger's amount is never changed here** — `stripe-webhook` writes it down once the bill is paid in full, so an affidavit always swears the full balance. **`expire`** — pg_cron (`lien-pay-offer-nightly`, 06:05 UTC, `20261007020000`) a few minutes after midnight Central: every live credit whose day has passed (`lien_offer_by < today`, neither taken nor ended, at most 200 a night) is **voided** on Stripe and the row marked `lien_offer_ended_at`, so the code shows the full amount again; a bill Stripe says is paid is marked `lien_offer_taken_at` instead, with a warning line (the webhook normally did it first). One structured line per run: `{"event":"lien_pay_offer_expire","today","dry_run","candidates","ended","taken","failed"}`; per apply: `{"event":"lien_pay_offer_apply","filing","pct","by","applied","skipped","failed","by_user"}`.
+
+**Request**: `POST /functions/v1/lien-pay-offer` with `{ "action": "apply", "filing_id": "<uuid>" }` (the caller's JWT; role dev · master_technician · assistant · controller, not a `read_only` training account → 403 otherwise) or `{ "action": "expire", "dry_run"?: true }` with `X-Cron-Secret` (or `cron_secret` in the body) = `CRON_SECRET` → 401 otherwise. Gateway `verify_jwt = false` (the cron has no JWT).
+
+**Response**: apply → `{ ok: true, pct, by, applied: [{ id, credit_cents, credit_note_id }], skipped: [{ id, reason }], failed: [{ id, reason }] }`, or `{ ok: true, applied: [], …, reason: "no offer on the notice" | "the offer’s day has passed" }`; expire → `{ ok: true, today, dry_run, ended: [ids], taken: [ids], failed: [{ id, reason }] }`.
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `CRON_SECRET`, `STRIPE_SECRET_KEY_LIVE` / `STRIPE_SECRET_KEY_TEST` (legacy `STRIPE_SECRET_KEY`); the row's `stripe_mode` picks the key.
+
+**Implementation**: [`supabase/functions/lien-pay-offer/index.ts`](../supabase/functions/lien-pay-offer/index.ts); the pure part — the cents, the state of a bill's offer, what the page reads, the write-down, which credits expire — in [`_shared/lienPayOffer.ts`](../supabase/functions/_shared/lienPayOffer.ts), re-exported by [`src/lib/jobs/lienPayOfferShared.ts`](../src/lib/jobs/lienPayOfferShared.ts) and tested from `src/lib/jobs/lienPayOfferShared.test.ts`; the desk's call in [`src/lib/jobs/lienDeskRunIo.ts`](../src/lib/jobs/lienDeskRunIo.ts). **Deploy**: `supabase functions deploy lien-pay-offer`.
 
 ### owner-confirm-nightly
 
@@ -4073,6 +4090,8 @@ interface Body {
 
 > **v2.1115 — livemode enforcement (A2)**: every event's mode (`event.livemode`, cross-checked against which signing secret verified — `stripeWebhookSecretsWithModes()`) is recorded into `stripe_webhook_events.livemode` and **must match `jobs_ledger_invoices.stripe_mode`** before any row is touched: mismatch → `200 {applied:false, reason:'mode_mismatch'}` with a warn log; NULL-mode legacy rows **self-heal** their `stripe_mode` from the verified event mode. `credit_note.created` now retrieves with the **event-mode** API key (previously test-first, silently failing live credit-note syncs when both keys were configured). Redeploy required.
 
+**The pay offer** (**v2.4704**): on `invoice.paid` / `invoice.payment_succeeded`, a bill carrying a live offer credit (`lien_offer_credit_note_id`, neither taken nor ended) is written down **before** `mark_invoice_paid_from_stripe` runs — that RPC records the ledger's remaining amount, not Stripe's — through `service_apply_agreed_write_down_from_stripe` (new amount = the ledger amount less `lien_offer_credit_cents`; actor = `lien_offer_set_by`, the leader who gave the offer; note *Lien notice offer: 10% off, paid in full Nov 3 (by Nov 15) (Stripe credit note cn_…)*) and marked `lien_offer_taken_at`. A refused write-down is a warning line and the bill is still marked paid. The decision is `_shared/lienPayOffer.ts`'s `lienOfferWriteDown`.
+
 **Purpose**: Handle Stripe invoice lifecycle events: **`invoice.paid`** / **`invoice.payment_succeeded`** marks the matching **`jobs_ledger_invoices`** row paid via **`mark_invoice_paid_from_stripe`**, then **`complete_job_collect_payment_flow_for_invoice`** when a **`job_collect_payment_flows`** row is **`approved_for_terminal`** for that Stripe invoice (field collect payment hosted page). **`invoice.updated`**, **`invoice.voided`**, and **`invoice.payment_failed`** sync **`stripe_invoice_status`** only (does not downgrade app **`status`** when the row is already **`paid`**). **`credit_note.created`** **`invoices.retrieve`** + **`syncJobsLedgerStripeInvoiceStatus`** after **reverse-stripe-invoice-out-of-band-payment** credit notes.
 
 **Endpoint**: `POST /functions/v1/stripe-webhook`
@@ -4126,7 +4145,7 @@ interface Body {
 
 **Request**: `GET /functions/v1/pay-link?id=<uuid>`. No auth (`verify_jwt = false`): the id is the capability, exactly as Stripe's own hosted link is — a UUID, never guessed; anything that is not one is a 400 before the database is touched. A row that is not a billed or paid Stripe invoice (a draft, a paper bill) is a 404 `{ error: "not_found" }`. **Rate limit**: 60 opens a minute per client address and 600 across the isolate, in memory (best effort) → 429.
 
-**Response**: `{ ok: true, state: "open"|"paid"|"void", url, number, jobName, company, phone, amountRemainingCents, currency, paidOn }` — `url` null only when neither Stripe nor the row has a link; `number` and `amountRemainingCents` null when Stripe was not reachable (the page then shows no amount); `paidOn` only on a paid bill.
+**Response**: `{ ok: true, state: "open"|"paid"|"void", url, number, jobName, company, phone, amountRemainingCents, currency, paidOn, offer }` — `url` null only when neither Stripe nor the row has a link; `number` and `amountRemainingCents` null when Stripe was not reachable (the page then shows no amount); `paidOn` only on a paid bill; `offer` (**v2.4704**, the pay offer — `{ pct, by, state: "live"|"ended"|"taken", fullCents }` from the row's `lien_offer_*` columns through `_shared/lienPayOffer.ts`'s `lienOfferForPayLink`, today in the company's calendar; `fullCents` = Stripe's balance plus the credit, only while live) or null. The function never writes Stripe for the offer: the credit is already on the bill (`lien-pay-offer`), so Stripe's balance *is* the lower amount; the page only says why, and until when.
 
 **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `STRIPE_SECRET_KEY_LIVE` / `STRIPE_SECRET_KEY_TEST` (legacy `STRIPE_SECRET_KEY`).
 
@@ -4599,6 +4618,11 @@ supabase functions list
 
 # Check function logs
 supabase functions logs create-user
+
+# Every repo function deployed and running this checkout's code: index.ts and every file it
+# imports, _shared included (scripts/check-edge-function-drift.mjs)
+npm run check:edge-drift             # reads the functions whose code changed since their deploy
+npm run check:edge-drift -- --full   # reads every deployed function (the daily CI run)
 ```
 
 ### Local Testing

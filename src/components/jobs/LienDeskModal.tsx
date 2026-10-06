@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { PhysicalInvoiceIssuer } from '../../lib/physicalInvoiceIssuer'
 import { buildLienAffidavitBlocks, buildLienNoticeBlocks, filingDocHtml, filingLetterheadFromIssuer, type FilingDocExtras, type FilingFieldMark, type LienNoticeFields } from '../../lib/jobsDocuments/lienFilingDocuments'
 import { LIEN_NOTICE_FIELD_GUIDE, LIEN_NOTICE_PREVIEW_EDIT_MESSAGE, LIEN_NOTICE_PREVIEW_MESSAGE, LIEN_NOTICE_PREVIEW_SAVE_MESSAGE, applyWordingEdits, buildLienNoticePreviewHtml, isTypedNoticeField, lienNoticePreviewPages, noticeWordingDiff, wordingLineText, type LienNoticeFieldKey } from '../../lib/jobs/lienNoticePreview'
@@ -47,7 +47,7 @@ import { LienWordRecordRow } from './LienWordRecordRow'
 import { buildLienAffidavitFieldsForJob, buildLienNoticeFieldsForJob, describeNoticeMonths, homesteadStatementApplies, parseLienDeskDraftFields, type LienDeskDraftFields } from '../../lib/jobs/lienNoticeDraft'
 import type { LienDeskData, LienDeskJob } from '../../hooks/useLienDeskData'
 import { useNoticePayPage } from '../../hooks/useNoticePayPage'
-import { payPageBlocks, payPageSummary } from '../../lib/jobs/lienNoticePayPage'
+import { changedPayLines, payLineField, payLineInvoiceId, payPageBlocks, payPageSummary } from '../../lib/jobs/lienNoticePayPage'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { useLienJobSuppliers } from '../../hooks/useLienJobSuppliers'
@@ -64,27 +64,40 @@ import LienDeskCalendarTab from './LienDeskCalendarTab'
 import LienTrackingOwedEditor from './LienTrackingOwedEditor'
 import { sendsTrackingOwed } from '../../lib/jobs/lienSendTracking'
 import { clearLienDeskItemPrinted, markLienDeskItemsPrinted } from '../../lib/jobs/lienDeskIo'
+import LienOfferBox from './LienOfferBox'
+import { lienOfferChipWords, lienOfferDayProblem, lienOfferFromItem, type LienPayOffer } from '../../lib/jobs/lienPayOffer'
+import { setLienDeskItemOffer } from '../../lib/jobs/lienPayOfferIo'
 import { buildLienNextUp, type LienNextUpRow } from '../../lib/jobs/lienNextUp'
 import { lienStepDueWords, LIEN_STEP_LADDERS, lienStepOfRow, type LienStepFacts } from '../../lib/jobs/lienNextUpSteps'
-import { gapToken, lienPaperGaps, paintGaps, withGapTokens, type LienPaperFacts } from '../../lib/jobs/lienPaperGaps'
+import { freshHtml, gapToken, lienPaperFilledSince, lienPaperFixWindow, lienPaperGaps, paintGaps, withFreshMarks, withGapTokens, type LienPaperFacts, type LienPaperFixWindow, type LienPaperGap } from '../../lib/jobs/lienPaperGaps'
+import LienPaperPropertyWindow from './LienPaperPropertyWindow'
+import LienPaperGcWindow from './LienPaperGcWindow'
 import LienPaperPreviewOverlay, { type LienPaperPreviewEntry } from './LienPaperPreviewOverlay'
 import { LienLastWorkDayLine } from './LienLastWorkDayLine'
 import LienDeskNextUp from './LienDeskNextUp'
 import type { LienCalendarJob } from '../../lib/jobs/lienCalendar'
-import { callLetterFactsFor, practiceCallFacts, type CallerJobHit, type CallerMatchInput, type DeskJobRef } from '../../lib/jobs/lienCallerMatch'
+import { callLetterFactsFor, callerIndex, findOnDesk, practiceCallFacts, type CallerMatchInput, type CallerOwnerHit, type DeskJobRef } from '../../lib/jobs/lienCallerMatch'
+import LienCallScriptModal from './LienCallScriptModal'
+import { genericCallFacts } from '../../lib/jobs/lienCallScript'
 import { DEFAULT_CLAIMANT_NAME } from '../../lib/jobs/lienNoticeDraft'
 import LienDeskRunModal from './LienDeskRunModal'
 import LienDeskShare from './LienDeskShare'
 import { Share } from 'lucide-react'
 import { useScrollEdgeFade } from '../../hooks/useScrollEdgeFade'
 import { LienJobSuppliersCard, LienSupplierMarkLine } from './LienJobSuppliers'
-import { lienSupplierMark, type LienSupplierMark } from '../../lib/jobs/lienJobSuppliers'
+import { LIEN_HOUSES_PARAGRAPH_READ_BY_COUNSEL, lienSupplierLetterParagraphFor, lienSupplierMark, type LienSupplierMark } from '../../lib/jobs/lienJobSuppliers'
+import { LIEN_RELEASE_PARAGRAPH_READ_BY_COUNSEL, conditionalReleaseParagraph, noticeReleaseFields, noticeReleaseFormType, noticeReleasePageHtml, noticeReleaseThroughDate } from '../../lib/jobs/lienNoticeRelease'
+import { createNoticeReleaseDraft, refreshNoticeReleaseDraft, voidNoticeReleaseDraft, type NoticeReleaseDraftInput } from '../../lib/jobs/lienNoticeReleaseIo'
+import { useNoticeReleases } from '../../hooks/useNoticeReleases'
 import LienDeskAffidavitPane, { affidavitDeadlineWords } from './LienDeskAffidavitPane'
 import LienDeskRetainagePane from './LienDeskRetainagePane'
 import { LIEN_RETAINAGE_PILES, contractEndedWords, retainageDeadlineWords, type LienRetainagePile } from '../../lib/jobs/lienDeskRetainage'
 import { retainageInsideClaim } from '../../lib/jobs/lienNoticeDraft'
 import LienDeskOwnerPane from './LienDeskOwnerPane'
 import LienDeskGates from './LienDeskGates'
+import LienDeskFindBox, { LienFindHits, LienFindMarked } from './LienDeskFindBox'
+import { lienFindMatch, lienFindNothingWords, lienFindPileCount, lienFindSingle, lienFindWords, type LienFindFact, type LienFindFacts } from '../../lib/jobs/lienDeskFind'
+import { ownerFromRollUnconfirmed } from '../../lib/jobs/ownerConfirm'
 import LienDeskMonths, { type LienDeskMonthCard } from './LienDeskMonths'
 import LienNoticeByHandPane from './LienNoticeByHandPane'
 import { buildLienMonthGrid } from '../../lib/jobs/lienMonthGrid'
@@ -94,7 +107,7 @@ import LienDeskTimelineTab from './LienDeskTimelineTab'
 import { useLienTimelineBook } from '../../hooks/useLienTimelineBook'
 import { lienGridHtml, type LienBookShow, type LienTimelineBookRow } from '../../lib/jobs/lienTimelineBook'
 import { printAndFile } from '../../lib/sent/sentCopiesIo'
-import { buildLienDeskGates, lienGateMonthLine, ownerSourceWords, propertyKindClockWords, type LienGate, type LienGateKey } from '../../lib/jobs/lienDeskGates'
+import { buildLienDeskGates, lienGateMonthLine, ownerSourceWords, propertyKindLine, propertyKindRuleWords, propertyKindSwitchWarning, sharedWithWords, type LienGate, type LienGateKey } from '../../lib/jobs/lienDeskGates'
 import { rollMailingLines } from '../../lib/jobs/rollMailingLines'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { txCountyCadPropertyUrl, txCountyCadSearchUrl } from '../../lib/txCountyLookup'
@@ -102,7 +115,7 @@ import PropertyKindSwitch from './PropertyKindSwitch'
 import LienClaimBox from './LienClaimBox'
 import { claimDeltaWords, claimSplit, claimSplitWords, correctedClaim, correctionGateWords, correctionNeedsLook, correctionSendGate, correctionSetWords } from '../../lib/jobs/lienClaimCorrection'
 import { clearLienClaimCorrection, lookLienClaimCorrection, saveLienClaimCorrection } from '../../lib/jobs/lienClaimCorrectionIo'
-import { jobsSharingProperty, normalizePropertyKind, propertyKindWords, sharedPropertyWords, type PropertyKind } from '../../lib/jobs/propertyKind'
+import { jobsSharingProperty, normalizePropertyKind, propertyKindWords, type PropertyKind } from '../../lib/jobs/propertyKind'
 import { savePropertyKind } from '../../lib/jobs/propertyKindWrite'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { LIEN_AFFIDAVIT_PILES, type LienAffidavitPile } from '../../lib/jobs/lienDeskAffidavits'
@@ -158,12 +171,14 @@ export type LienDeskModalProps = {
   calendarRows?: ReadonlyArray<LienCalendarJob> | null
   /** A Calendar row opens the job's Lien window. */
   onOpenCalendarJob?: (jobId: string) => void
+  /** The Deadlines grid's last-day label (v2.4735): the Lien window with the last day's line already editing. */
+  onOpenCalendarLastWork?: (jobId: string) => void
   /** The title bar's door for an owner who asks for our records on their property (v2.4544). */
   onOpenOwnerRecords?: () => void
   /** A job number opens the job itself: the Job window, with its history and Edit (v2.4531 the Calendar; v2.4535 the Timeline and the three panes' headings). */
   onOpenJob?: (jobId: string) => void
   /** The Calendar's pen wrote something (v2.4153): a pay date, or a property kind — the Pipeline re-reads what changed. */
-  onCalendarChanged?: (what: 'promise' | 'kind') => void
+  onCalendarChanged?: (what: 'promise' | 'kind' | 'last_work') => void
   /** Open on a pile — the Dashboard's missed-window line lands on the Missed lens (v2.3679). */
   initialPile?: LienDeskPile | null
   /** Bumped by a door that re-aims an open desk (v2.4612): the tab is applied even when the job is the one already named. */
@@ -228,6 +243,8 @@ const btn = (kind: 'primary' | 'green' | 'amber' | 'plain' = 'plain', disabled =
 })
 const boxStyle: React.CSSProperties = { border: '1px solid var(--border)', borderRadius: 9, padding: '0.6rem 0.75rem', display: 'grid', gap: '0.35rem', background: 'var(--surface)' }
 const boxHead: React.CSSProperties = { fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)' }
+/** The page labels (v2.4726) stack like the Notices list's pile titles (v2.4651): one bar each, this tall. */
+const PAGE_LABEL_H = 30
 /** The paper stays light in both themes — `data-theme="light"` re-pins the tokens and the text color (index.css). */
 const paperStyle: React.CSSProperties = { border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '1.1rem 1.4rem' }
 const linkBtn: React.CSSProperties = { border: 'none', background: 'none', color: 'var(--text-link)', cursor: 'pointer', font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: 0, whiteSpace: 'nowrap' }
@@ -260,6 +277,7 @@ export default function LienDeskModal({
   onOpenJob,
   onOpenOwnerRecords,
   onCalendarChanged,
+  onOpenCalendarLastWork,
   initialPile,
   aimKey,
   onPutGcOnNotice,
@@ -275,6 +293,13 @@ export default function LienDeskModal({
   /** The GCs on the desk right now — the picker behind Put a GC on notice… (v2.3470; rows v2.3817: how soon, what is stuck, nothing-left last). */
   const gcPickerOptions = useMemo(() => buildLienGcPickerOptions(data?.queue.entries ?? [], data?.gcsById ?? {}), [data])
   const [pile, setPile] = useState<LienDeskPile | null>(initialPile ?? null)
+  // Find on the list (v2.4721): one box, one set of words, for every list on the desk; cleared when the desk closes.
+  const [find, setFind] = useState('')
+  const findWords = useMemo(() => lienFindWords(find), [find])
+  const finding = findWords.length > 0
+  useEffect(() => {
+    if (!open) setFind('')
+  }, [open])
   // Each open starts on the pile its door names, or on every pile (v2.4568): a pile from an earlier door no longer sticks.
   useEffect(() => {
     if (open) setPile(initialPile ?? null)
@@ -282,6 +307,13 @@ export default function LienDeskModal({
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null)
   const [checkedMonths, setCheckedMonths] = useState<ReadonlySet<string> | null>(null)
   const [coverNote, setCoverNote] = useState(true)
+  // The supply houses in the owner's letter (v2.4725): on when a house is owed, unless the draft left them out.
+  const [housesInLetter, setHousesInLetter] = useState(true)
+  // The conditional release enclosed with the notice (v2.4729): the draft row the tick made, kept on the item's draft fields; the ref is what the next save writes.
+  const [releaseId, setReleaseId] = useState<string | null>(null)
+  const releaseIdRef = useRef<string | null>(null)
+  // The pay offer (v2.4713): the leader's choice, written with the approval; read back from the item when one is selected.
+  const [offer, setOffer] = useState<LienPayOffer | null>(null)
   const [wordOpen, setWordOpen] = useState(false)
   const [wordNote, setWordNote] = useState('')
   const [wordChannel, setWordChannel] = useState<LienWordChannel>('phone')
@@ -307,11 +339,23 @@ export default function LienDeskModal({
   const [editing, setEditing] = useState<{ key: LienNoticeFieldKey; value: string; rect: { top: number; left: number; width: number; height: number }; font: string } | null>(null)
   const paperRef = useRef<HTMLDivElement | null>(null)
   const editInputRef = useRef<HTMLInputElement | null>(null)
+  // The pay page's lines (v2.4724, Taunya's ask): typed in place like the notice's wording, kept on the draft, the bill untouched.
+  const [payLineEdits, setPayLineEdits] = useState<Record<string, string>>({})
+  const [payEditing, setPayEditing] = useState<{ invoiceId: string; value: string; rect: { top: number; left: number; width: number; height: number }; font: string } | null>(null)
+  const payPaperRef = useRef<HTMLDivElement | null>(null)
+  const payInputRef = useRef<HTMLInputElement | null>(null)
   // A plain value's door (v2.3697): remember what it read when the office left, ring it on the paper when it comes back changed.
   const sourceTripRef = useRef<{ field: LienNoticeFieldKey; before: string } | null>(null)
   const [ringField, setRingField] = useState<LienNoticeFieldKey | null>(null)
   const [claimOpenSignal, setClaimOpenSignal] = useState(0)
   const [paneScrolled, setPaneScrolled] = useState(false)
+  // The page labels stick under the strip while their page scrolls (v2.4726): the strip's height is measured, since its chips can wrap.
+  const stripRef = useRef<HTMLDivElement | null>(null)
+  const [stripH, setStripH] = useState(0)
+  const [litPage, setLitPage] = useState<string | null>(null)
+  useEffect(() => {
+    setStripH(paneScrolled ? stripRef.current?.offsetHeight ?? 0 : 0)
+  }, [paneScrolled, selectedJobId])
   const paneRef = useRef<HTMLDivElement | null>(null)
   // The gate being brought up (v2.3670): a cell click or the footer's Go to gate rings the cell and its section for 4s.
   const [activeGate, setActiveGate] = useState<{ key: LienGateKey; at: number } | null>(null)
@@ -321,6 +365,8 @@ export default function LienDeskModal({
     return () => window.clearTimeout(t)
   }, [activeGate])
   const pickGate = (key: LienGateKey) => setActiveGate({ key, at: Date.now() })
+  // Gate 3 as one line (v2.4718): the chooser opens on Change › and closes on a pick, so switching the kind takes two clicks on purpose.
+  const [kindOpen, setKindOpen] = useState(false)
   // Gate 3's switch writes the property's kind in place (v2.3670) — the same column the property sheet and Edit Job write.
   const [kindBusy, setKindBusy] = useState(false)
   // The run (v2.3410): every approved notice as one packet + one tracking form.
@@ -397,6 +443,8 @@ export default function LienDeskModal({
   const [callerJobId, setCallerJobId] = useState<string | null>(null)
   // The door's practice call (v2.4249): the same sheet on a made-up letter — no job, no item, no save.
   const [practiceCallOpen, setPracticeCallOpen] = useState(false)
+  // An owner is calling (v2.4731): the ☎ button opens the words, filled with the job under the reader.
+  const [callScriptOpen, setCallScriptOpen] = useState(false)
   /** A job the door's search just opened: the list's selection effect leaves it alone once. */
   const doorPickedJobId = useRef<string | null>(null)
   const [affSelectedJobId, setAffSelectedJobId] = useState<string | null>(null)
@@ -416,6 +464,9 @@ export default function LienDeskModal({
     return [...ids]
   }, [data, calendarRows])
   const suppliers = useLienJobSuppliers(supplierJobIds, open)
+  // The conditional releases the drafts point at (v2.4729): the pane's page and the run's packet read them by row id.
+  const releaseIds = useMemo(() => (data?.items ?? []).map((it) => parseLienDeskDraftFields(it.fields)?.releaseId ?? '').filter(Boolean), [data?.items])
+  const releases = useNoticeReleases(releaseIds, open)
   const supplierMarks = useMemo(() => {
     const marks = new Map<string, LienSupplierMark>()
     for (const [jobId, job] of suppliers.byJob) {
@@ -424,14 +475,48 @@ export default function LienDeskModal({
     }
     return marks
   }, [suppliers.byJob])
+  // What a row offers the find (v2.4721): the words it shows, plus the street and the owner it keeps quiet.
+  const findFactsFor = useCallback(
+    (jobId: string, gcId: string | null, shown: ReadonlyArray<string>): LienFindFacts => {
+      const j = data?.jobsById[jobId]
+      const g = gcId ? data?.gcsById[gcId] : undefined
+      const addr = j?.customer_address_id ? data?.addressesById[j.customer_address_id] ?? null : null
+      const owner = data ? lienPropertyOwnerDisplayName(resolveLienProperty(addr, data.ownerByJob[jobId] ?? null).owner).trim() : ''
+      return {
+        shown: [jobLabel(j, jobId), g?.name ?? '', supplierMarks.get(jobId)?.words ?? '', ...shown],
+        hidden: [
+          { label: 'address', text: (j?.job_address ?? '').trim() },
+          { label: 'owner', text: owner },
+        ].filter((h) => h.text),
+      }
+    },
+    [data, supplierMarks],
+  )
   // The Calendar's "Draft the N" (v2.4153): the notice list narrows to those jobs until the chip is cleared.
   const [calendarJobFilter, setCalendarJobFilter] = useState<{ ymd: string; jobIds: ReadonlySet<string> } | null>(null)
-  const visible = useMemo(() => {
+  const visibleAll = useMemo(() => {
     // Missed is a lens (v2.3679): a job in To draft with a closed month shows under it too.
     const scoped = calendarJobFilter ? entries.filter((e) => calendarJobFilter.jobIds.has(e.jobId)) : entries
     const list = pile ? scoped.filter((e) => e.pile === pile || (pile === 'missed' && e.missedMonths.length > 0)) : scoped
     return PILE_ORDER.flatMap((p) => list.filter((e) => e.pile === p))
   }, [entries, pile, calendarJobFilter])
+  // The find narrows the list (v2.4721); the hidden facts it landed on ride beside each row.
+  const { visible, findHits } = useMemo(() => {
+    const hits = new Map<string, LienFindFact[]>()
+    if (!finding) return { visible: visibleAll, findHits: hits }
+    const kept = visibleAll.filter((e) => {
+      const m = lienFindMatch(findFactsFor(e.jobId, e.gcCustomerId, [e.dueMonths.map(workMonthShort).join(' '), e.missedMonths.map(workMonthShort).join(' '), LIEN_DESK_PILES.find((x) => x.key === e.pile)?.label ?? '']), findWords)
+      if (m.ok && m.hits.length) hits.set(e.jobId, m.hits)
+      return m.ok
+    })
+    return { visible: kept, findHits: hits }
+  }, [visibleAll, finding, findWords, findFactsFor])
+  // One match selects itself (v2.4721).
+  useEffect(() => {
+    const one = lienFindSingle(visible, finding)
+    if (one) setSelectedJobId(one)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [finding, visible.map((e) => e.jobId).join('|')])
 
   // Selection follows the list: the requested job, else the first visible row (desktop).
   useEffect(() => {
@@ -471,25 +556,13 @@ export default function LienDeskModal({
     return { items: data.items, jobsById: data.jobsById, gcsById: data.gcsById, addressesById: data.addressesById, ownerByJob: data.ownerByJob, letterTwoByJob: data.letterTwoByJob, deskJobs, us: callerUs }
   }, [data, callerUs])
   /** The door's "Open the job ›" (v2.4249): the job's own tab, with any pile or calendar narrowing lifted so its row is in the list. */
-  const openDeskJob = (hit: CallerJobHit) => {
-    setMobileListShown(false)
-    if (hit.tab === 'affidavit') {
-      setKind('affidavit')
-      setAffPile(null)
-      setAffSelectedJobId(hit.jobId)
-    } else if (hit.tab === 'retainage') {
-      setKind('retainage')
-      setRetPile(null)
-      setRetSelectedJobId(hit.jobId)
-    } else {
-      // Lifting a filter changes the list, which re-runs the selection effect — it keeps this pick.
-      if (pile != null || calendarJobFilter != null) doorPickedJobId.current = hit.jobId
-      setKind('notice')
-      setPile(null)
-      setCalendarJobFilter(null)
-      setSelectedJobId(hit.jobId)
-    }
-  }
+  // The find box reaches every notice the desk ever sent (v2.4731): the ☎ index, under the piles, less the jobs the list already shows.
+  const sentIndex = useMemo(() => (callerInput ? callerIndex(callerInput, { day: formatYmdMonthDay, money: formatUsdNoCents }) : null), [callerInput])
+  const alsoSent = useMemo<CallerOwnerHit[]>(() => {
+    if (!finding || !sentIndex) return []
+    const shown = new Set(visible.map((e) => e.jobId))
+    return findOnDesk(find, sentIndex).sent.filter((h) => !shown.has(h.jobId))
+  }, [finding, find, sentIndex, visible])
   // Do now (punch list #82; Next up until v2.4630): the queues this desk already holds, folded into one ordered list. No read of its own.
   const nextUpRows = useMemo(() => {
     if (!data) return []
@@ -512,6 +585,18 @@ export default function LienDeskModal({
   // The paper behind a Do now chip (v2.4632): the notice or the affidavit as it stands, every statutory blank marked.
   const [paperOpen, setPaperOpen] = useState<number | null>(null)
   const paperRows = useMemo(() => nextUpRows.filter((r) => r.jobId && r.kind !== 'retainage'), [nextUpRows])
+  // Fix it from the paper (v2.4719): the window stacked over the paper, and the blanks the row had when it opened.
+  const [paperFix, setPaperFix] = useState<{ index: number; window: LienPaperFixWindow; gap: LienPaperGap } | null>(null)
+  // The affidavit pane's gate doors open the same window over the desk (v2.4724).
+  const [paneFix, setPaneFix] = useState<{ jobId: string; focus: 'owner' | 'legal' } | null>(null)
+  const [paperFilledFrom, setPaperFilledFrom] = useState<{ key: string; gaps: ReadonlyArray<LienPaperGap> } | null>(null)
+  // A fix can move the row (a whole property turns "Fix the property" into "Draft affidavit"): the paper stays on it by key.
+  useEffect(() => {
+    if (!paperFilledFrom) return
+    const at = paperRows.findIndex((r) => r.key === paperFilledFrom.key)
+    if (at >= 0) setPaperOpen((cur) => (cur == null || cur === at ? cur : at))
+  }, [paperRows, paperFilledFrom])
+  const nextUpRowsFound = useMemo(() => (finding ? nextUpRows.filter((r) => lienFindMatch(r.jobId ? findFactsFor(r.jobId, r.gcId, [r.title, r.sub]) : { shown: [r.title, r.sub], hidden: [] }, findWords).ok) : nextUpRows), [nextUpRows, finding, findWords, findFactsFor])
   const paperFactsFor = (row: LienNextUpRow): LienPaperFacts | null => {
     if (!data || !row.jobId) return null
     const rowJob = data.jobsById[row.jobId]
@@ -551,6 +636,10 @@ export default function LienDeskModal({
       const at = lienStepOfRow(row)
       const next = (at ? LIEN_STEP_LADDERS.find((l) => l.key === at.ladder)?.steps[at.step - 1] : row.button) ?? 'the next step'
       const gapByField = (field: string) => gaps.find((g) => g.field === field)
+      const filledGaps = paperFilledFrom?.key === row.key ? lienPaperFilledSince(paperFilledFrom.gaps, gaps) : []
+      const filledValue = (k: LienPaperGap['key']): string => (k === 'county' ? f.county : k === 'legal' ? f.legalDescription : k === 'owner' ? [f.ownerName, f.ownerAddress].filter(Boolean).join(', ') : k === 'owner_address' ? f.ownerAddress : k === 'gc' ? f.gcName : '')
+      const filled = filledGaps.map((g) => ({ key: g.key, label: g.label, value: filledValue(g.key) }))
+      const filledKeys = new Set(filledGaps.map((g) => g.key))
       if (kind === 'affidavit') {
         const e = data.affidavits.entries.find((x) => x.jobId === jobId)
         const fields = buildLienAffidavitFieldsForJob({
@@ -573,8 +662,8 @@ export default function LienDeskModal({
           contactPerson: f.contactPerson,
           issuer,
         })
-        const html = paintGaps(filingDocHtml(buildLienAffidavitBlocks(withGapTokens(fields, gaps), { letterhead, refItems: [`Job #${jobNo}`, e ? `Last work month ${e.lastMonth}` : '', demandDate(todayYmd)].filter(Boolean) })), gaps)
-        return { key: row.key, title: row.title, kind, deadline: lienStepDueWords(row), envelope: null, html, gaps, next, button: row.action === 'fix_property' ? row.button : null }
+        const html = paintGaps(filingDocHtml(buildLienAffidavitBlocks(withGapTokens(withFreshMarks(fields, filledGaps), gaps), { letterhead, refItems: [`Job #${jobNo}`, e ? `Last work month ${e.lastMonth}` : '', demandDate(todayYmd)].filter(Boolean) })), gaps)
+        return { key: row.key, title: row.title, kind, deadline: lienStepDueWords(row), envelope: null, html, gaps, next, button: row.action === 'fix_property' ? row.button : null, filled }
       }
       const e = data.queue.entries.find((x) => x.jobId === jobId)
       const stored = e?.item ? parseLienDeskDraftFields(e.item.fields) : null
@@ -593,16 +682,18 @@ export default function LienDeskModal({
       })
       const fields: LienNoticeFields = { ...(stored?.notice ?? defaults), claimAmount: defaults.claimAmount }
       const months = e?.item?.months?.length ? e.item.months : e?.dueMonths ?? []
-      const html = paintGaps(filingDocHtml(buildLienNoticeBlocks(withGapTokens(fields, gaps), { letterhead, refItems: [`Job #${jobNo}`, months.length ? `Work months ${describeNoticeMonths(months)}` : '', demandDate(todayYmd)].filter(Boolean) })), gaps)
+      const html = paintGaps(filingDocHtml(buildLienNoticeBlocks(withGapTokens(withFreshMarks(fields, filledGaps), gaps), { letterhead, refItems: [`Job #${jobNo}`, months.length ? `Work months ${describeNoticeMonths(months)}` : '', demandDate(todayYmd)].filter(Boolean) })), gaps)
       const ownerGap = gaps.find((g) => g.where === 'envelope')
       const esc = (t: string) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] as string)
-      const ownerHtml = ownerGap ? paintGaps(gapToken(ownerGap.n), gaps) : esc([f.ownerName, f.ownerAddress].filter(Boolean).join(', '))
+      const ownerWords = esc([f.ownerName, f.ownerAddress].filter(Boolean).join(', '))
+      const ownerHtml = ownerGap ? paintGaps(gapToken(ownerGap.n), gaps) : filledKeys.has('owner') || filledKeys.has('owner_address') ? freshHtml(ownerWords) : ownerWords
       const gcGap = gapByField('originalContractorName')
-      const gcHtml = gcGap ? paintGaps(gapToken(gcGap.n), gaps) : esc([rowGc?.name ?? '', rowGc?.address ?? ''].filter(Boolean).join(', '))
-      return { key: row.key, title: row.title, kind, deadline: lienStepDueWords(row), envelope: { ownerHtml, gcHtml }, html, gaps, next, button: row.action === 'find_owner' ? row.button : null }
+      const gcWords = esc([rowGc?.name ?? '', rowGc?.address ?? ''].filter(Boolean).join(', '))
+      const gcHtml = gcGap ? paintGaps(gapToken(gcGap.n), gaps) : filledKeys.has('gc') ? freshHtml(gcWords) : gcWords
+      return { key: row.key, title: row.title, kind, deadline: lienStepDueWords(row), envelope: { ownerHtml, gcHtml }, html, gaps, next, button: row.action === 'find_owner' ? row.button : null, filled }
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paperOpen, paperRows, data, issuer, todayYmd])
+  }, [paperOpen, paperRows, data, issuer, todayYmd, paperFilledFrom])
   /** A Do now row's button: the pane that already does that work, on that job and pile. Nothing is written here. */
   const actOnNextUp = (row: LienNextUpRow) => {
     const t = row.target
@@ -647,14 +738,30 @@ export default function LienDeskModal({
   const ruleLive = selected ? selected.policy === 'send' && !ruleWaitsOnFirstNotice(selected.policy, gcHasPriorNotice) : false
   const wm = selected ? workMonths?.[selected.jobId] ?? null : null
   const item = selected?.item && selected.item.status !== 'sent' && selected.item.status !== 'missed' ? selected.item : null
+  useEffect(() => {
+    setOffer(lienOfferFromItem(item))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [item?.id, item?.offer_pct, item?.offer_by])
   const storedDraft = useMemo(() => (selected?.item ? parseLienDeskDraftFields(selected.item.fields) : null), [selected?.item])
 
   // Months a new notice names: the draft's, else every open month, minus what the user unticked.
   const monthChoices = useMemo(() => (selected ? selected.months.map((m) => ({ ...m, closed: m.daysLeft < 0 })) : []), [selected])
-  const defaultMonths = useMemo(() => new Set(item?.months.length ? item.months : (selected?.dueMonths ?? [])), [item, selected])
+  // v2.4708: every window closed unsent while the affidavit's own window is still open — the new notice names the closed months, late.
+  const lateUntil = useMemo(() => {
+    if (!selected || !data) return null
+    const aff = data.affidavits.entries.find((e) => e.jobId === selected.jobId)
+    if (!aff || aff.pile === 'filed' || !aff.deadline || aff.deadline < todayYmd) return null
+    if (selected.dueMonths.length > 0 || selected.months.some((m) => m.noticed) || selected.missedMonths.length === 0) return null
+    return aff.deadline
+  }, [selected, data, todayYmd])
+  const defaultMonths = useMemo(() => new Set(item?.months.length ? item.months : selected?.dueMonths.length ? selected.dueMonths : lateUntil && selected ? selected.missedMonths : []), [item, selected, lateUntil])
   useEffect(() => {
     setCheckedMonths(null)
     setCoverNote(selected?.item ? selected.item.cover_note : true)
+    setHousesInLetter(parseLienDeskDraftFields(selected?.item?.fields)?.housesInLetter !== false)
+    const storedRelease = parseLienDeskDraftFields(selected?.item?.fields)?.releaseId ?? null
+    releaseIdRef.current = storedRelease
+    setReleaseId(storedRelease)
     setWordOpen(false)
     setSkipOpen(false)
     setByHandOpen(false)
@@ -671,6 +778,8 @@ export default function LienDeskModal({
     setLetterTwoMenu(false)
     setWordingEdits({})
     setEditing(null)
+    setPayLineEdits({})
+    setPayEditing(null)
     setPaneScrolled(false)
     // jsdom has no element scrollTo; the guard keeps the render smokes honest.
     if (typeof paneRef.current?.scrollTo === 'function') paneRef.current.scrollTo({ top: 0 })
@@ -803,6 +912,29 @@ export default function LienDeskModal({
     if (editing) editInputRef.current?.focus()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editing?.key])
+  // The supply houses paragraph for the owner's letter (v2.4725): the same words the run prints, from the job's houses and the letter's own claim figure.
+  const claimNumber = Number(String(noticeFields.claimAmount ?? '').replace(/[$,\s]/g, '')) || 0
+  const supplierParagraph = useMemo(
+    () => lienSupplierLetterParagraphFor(supplierJob, { propertyKind: property.propertyKind ?? '', todayYmd, payerName: gc?.name ?? noticeFields.originalContractorName, claim: claimNumber }),
+    [supplierJob, property.propertyKind, todayYmd, gc?.name, noticeFields.originalContractorName, claimNumber],
+  )
+  // The enclosed release (v2.4729): the row the draft points at, as the run carries it; the page behind the letter.
+  const noticeRelease = releaseId ? (releases.byId.get(releaseId) ?? null) : null
+  const releaseHtml = useMemo(() => (noticeRelease ? noticeReleasePageHtml(noticeRelease, docExtras) : ''), [noticeRelease, docExtras])
+  /** The release's draft as the notice reads now — the tick creates it, and every save of the notice's draft refreshes it. */
+  const releaseDraftInput = (): NoticeReleaseDraftInput | null =>
+    selected
+      ? {
+          jobId: selected.jobId,
+          formType: noticeReleaseFormType(claimNumber, payPage.rows.reduce((s, r) => s + r.openAmount, 0)),
+          fields: noticeReleaseFields({ claimantName: noticeFields.claimantName, gcName: gc?.name ?? noticeFields.originalContractorName, jobName: job?.job_name, jobAddress: job?.job_address, claim: noticeFields.claimAmount, months: monthsList, signerName: (issuer?.signerName ?? '').trim() || noticeFields.contactPerson, signerTitle: issuer?.signerTitle }),
+          amount: claimNumber,
+          invoiceIds: payPage.rows.map((r) => r.invoiceId),
+          throughDate: noticeReleaseThroughDate(monthsList),
+          signerUserId: job?.master_user_id ?? null,
+          userId: authUserId,
+        }
+      : null
   // The cover page (v2.3540): the same page the run prints — counsel's letter for the property's kind while the box is ticked (v2.3828), or the letter the item carries.
   const coverBlocks = useMemo(() => {
     if (!selected) return []
@@ -813,13 +945,17 @@ export default function LienDeskModal({
       fields: noticeFields,
       extras: docExtras,
       coverNote: null,
-      coverLetter: coverNote || storedDraft?.coverLetter ? fillCoverLetter(counselCoverLetterTemplate({ stored: storedDraft?.coverLetter, gcName: gc?.name ?? noticeFields.originalContractorName, claimantName: noticeFields.claimantName, property }), { property: (job?.job_address ?? '').trim(), months: describeNoticeMonths(monthsList), job: jobNumber, amount: demandMoney(noticeFields.claimAmount), staleNote: storedDraft?.staleNote ?? '', contact: noticeFields.contactPerson, phone: signerPhoneFor ? signerPhoneFor(job?.master_user_id ?? null) : (issuer?.phone ?? '').trim(), affidavitMonth: affidavitMonthWord(coverLetterKindFor(property)), trade: job?.service_type?.name }) : null,
+      release: noticeRelease,
+      coverLetter: coverNote || storedDraft?.coverLetter ? fillCoverLetter(counselCoverLetterTemplate({ stored: storedDraft?.coverLetter, gcName: gc?.name ?? noticeFields.originalContractorName, claimantName: noticeFields.claimantName, property }), { property: (job?.job_address ?? '').trim(), months: describeNoticeMonths(monthsList), job: jobNumber, amount: demandMoney(noticeFields.claimAmount), staleNote: storedDraft?.staleNote ?? '', contact: noticeFields.contactPerson, phone: signerPhoneFor ? signerPhoneFor(job?.master_user_id ?? null) : (issuer?.phone ?? '').trim(), affidavitMonth: affidavitMonthWord(coverLetterKindFor(property)), trade: job?.service_type?.name, supplyHouses: housesInLetter ? supplierParagraph : '', conditionalRelease: noticeRelease ? conditionalReleaseParagraph(demandMoney(noticeFields.claimAmount)) : '' }) : null,
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected?.jobId, job, monthsList.join('|'), noticeFields, docExtras, coverNote, storedDraft?.coverLetter, signerPhoneFor, gc?.name, property])
+  }, [selected?.jobId, job, monthsList.join('|'), noticeFields, docExtras, coverNote, storedDraft?.coverLetter, signerPhoneFor, gc?.name, property, housesInLetter, supplierParagraph, noticeRelease])
   const coverHtml = useMemo(() => (coverBlocks.length ? filingDocHtml(coverBlocks) : ''), [coverBlocks])
   // The pay page (punch list #35, PR 3): the page the run prints behind the owner's copy, from the job's unpaid bills — fetched once per job while the desk is open.
   const payPage = useNoticePayPage(selected?.jobId ?? null, open)
+  const payLinesNow = useMemo(() => ({ ...(storedDraft?.payLines ?? {}), ...payLineEdits }), [storedDraft?.payLines, payLineEdits])
+  const payChanged = useMemo(() => changedPayLines(payPage.rows, payLinesNow), [payPage.rows, payLinesNow])
+  const payChangedCount = Object.keys(payChanged).length
   const payBlocks = useMemo(
     () =>
       selected && payPage.rows.length
@@ -833,12 +969,49 @@ export default function LienDeskModal({
             contactPerson: noticeFields.contactPerson,
             phone: (issuer?.phone ?? '').trim(),
             extras: docExtras,
+            offer,
+            lines: payLinesNow,
           })
         : [],
-    [selected, payPage, noticeFields, issuer, docExtras],
+    [selected, payPage, noticeFields, issuer, docExtras, offer, payLinesNow],
   )
-  const payHtml = useMemo(() => (payBlocks.length ? filingDocHtml(payBlocks) : ''), [payBlocks])
-  const pageTotal = (coverHtml ? 1 : 0) + 1 + (payHtml ? 1 : 0)
+  const payMarks = useMemo(() => {
+    const m: Record<string, FilingFieldMark> = {}
+    for (const r of payPage.rows) m[payLineField(r.invoiceId)] = { kind: wordingLocked ? 'locked' : 'typed', changed: r.invoiceId in payChanged, title: wordingLocked ? 'Sent for approval — pull it back to a draft to change it' : 'Click to change — on this page only, the bill keeps its own line' }
+    return m
+  }, [payPage.rows, payChanged, wordingLocked])
+  const payHtml = useMemo(() => (payBlocks.length ? filingDocHtml(payBlocks, { marks: payMarks }) : ''), [payBlocks, payMarks])
+  const onPayPaperClick = (ev: React.MouseEvent<HTMLDivElement>) => {
+    const t = ev.target as HTMLElement
+    const reset = payLineInvoiceId(t.closest<HTMLElement>('[data-reset]')?.getAttribute('data-reset') ?? '')
+    if (reset) {
+      if (!wordingLocked) setPayLineEdits((e) => ({ ...e, [reset]: payPage.rows.find((r) => r.invoiceId === reset)?.description ?? '' }))
+      return
+    }
+    const el = t.closest<HTMLElement>('[data-field]')
+    const id = payLineInvoiceId(el?.getAttribute('data-field') ?? '')
+    const wrap = payPaperRef.current
+    if (!el || !id || !wrap) return
+    if (wordingLocked) {
+      showToast('Sent for approval — pull it back to a draft to change the wording.', 'info')
+      return
+    }
+    const r = el.getBoundingClientRect()
+    const w = wrap.getBoundingClientRect()
+    const cs = typeof window !== 'undefined' && typeof window.getComputedStyle === 'function' ? window.getComputedStyle(el) : null
+    setPayEditing({ invoiceId: id, value: payLinesNow[id] ?? payPage.rows.find((x) => x.invoiceId === id)?.description ?? '', rect: { top: r.top - w.top, left: r.left - w.left, width: r.width, height: r.height }, font: cs?.font ?? '' })
+  }
+  const commitPayEdit = () => {
+    setPayEditing((e) => {
+      if (e) setPayLineEdits((x) => ({ ...x, [e.invoiceId]: e.value.trim() }))
+      return null
+    })
+  }
+  useEffect(() => {
+    if (payEditing) payInputRef.current?.focus()
+  }, [payEditing?.invoiceId])
+  const pageTotal = (coverHtml ? 1 : 0) + (releaseHtml ? 1 : 0) + 1 + (payHtml ? 1 : 0)
+  const noticePageNumber = (coverHtml ? 1 : 0) + (releaseHtml ? 1 : 0) + 1
 
   const draftFields = (): LienDeskDraftFields => ({
     notice: noticeFields,
@@ -846,9 +1019,15 @@ export default function LienDeskModal({
     // A re-save keeps what Put a GC on notice wrote on the item (v2.3522 — these used to be dropped).
     ...(storedDraft?.batchReason ? { batchReason: storedDraft.batchReason } : {}),
     ...(storedDraft?.coverLetter ? { coverLetter: storedDraft.coverLetter } : {}),
+    // The supply houses left out of the owner's letter (v2.4725) — only the leaving-out is written down.
+    ...(housesInLetter ? {} : { housesInLetter: false as const }),
+    // The conditional release enclosed with this notice (v2.4729).
+    ...(releaseIdRef.current ? { releaseId: releaseIdRef.current } : {}),
     // The month is the job's creation month, not clock hours (v2.3747): the record says where the date came from.
     ...(selected?.datedFromCreation ? { monthsDatedFromCreation: true as const } : {}),
-    ...(wordingDiff.length > 0 ? { wording: wordingTouched || !storedDraft?.wording ? { editedBy: authName, editedAt: new Date().toISOString() } : storedDraft.wording } : {}),
+    ...(wordingDiff.length > 0 || payChangedCount > 0 ? { wording: wordingTouched || Object.keys(payLineEdits).length > 0 || !storedDraft?.wording ? { editedBy: authName, editedAt: new Date().toISOString() } : storedDraft.wording } : {}),
+    // The pay page's typed lines (v2.4724): only those that differ from the bill; before the bills load, the stored ones stand.
+    ...(payPage.rows.length ? (payChangedCount ? { payLines: payChanged } : {}) : storedDraft?.payLines ? { payLines: storedDraft.payLines } : {}),
   })
   // A closed window, written down (v2.3679): one `missed` row naming the months and who looked; the live draft is untouched.
   const noteMissed = async (months: string[]) => {
@@ -892,7 +1071,44 @@ export default function LienDeskModal({
 
   const ensureDraft = async (): Promise<string> => {
     if (!selected) throw new Error('nothing selected')
-    return saveLienDeskDraft({ itemId: item?.id ?? null, jobId: selected.jobId, months: monthsList, fields: draftFields(), coverNote, userId: authUserId })
+    const id = await saveLienDeskDraft({ itemId: item?.id ?? null, jobId: selected.jobId, months: monthsList, fields: draftFields(), coverNote, userId: authUserId })
+    // The enclosed release follows the notice (v2.4729): a claim or a month changed here is written to its draft too; a release past a draft is left as it is.
+    const rel = releaseIdRef.current
+    const relInput = rel ? releaseDraftInput() : null
+    if (rel && relInput) await refreshNoticeReleaseDraft(rel, relInput).catch(() => undefined)
+    return id
+  }
+  /** Enclose a conditional release (v2.4729): on makes the draft row and points the notice's draft at it; off voids the row and forgets it. */
+  const toggleRelease = (on: boolean) => {
+    if (!selected) return
+    if (on) {
+      void run(
+        'Enclose a conditional release',
+        async () => {
+          const input = releaseDraftInput()
+          if (!input) return
+          const id = await createNoticeReleaseDraft(input)
+          releaseIdRef.current = id
+          setReleaseId(id)
+          await ensureDraft()
+          releases.reload()
+        },
+        'The conditional release rides with the notice. It is issued when the run is recorded.',
+      )
+    } else {
+      const id = releaseIdRef.current
+      void run(
+        'Leave the release out',
+        async () => {
+          if (id) await voidNoticeReleaseDraft(id, authUserId)
+          releaseIdRef.current = null
+          setReleaseId(null)
+          await ensureDraft()
+          releases.reload()
+        },
+        'The release is left out.',
+      )
+    }
   }
 
   const saveDraft = () => run('Save draft', async () => void (await ensureDraft()), 'Draft saved.')
@@ -928,7 +1144,17 @@ export default function LienDeskModal({
       },
       'Skipped — the lien right on those months is given up.',
     )
-  const approve = () => run('Approve', async () => void (item && (await approveLienDeskItem(item.id))), 'Approved — it is in the run.')
+  const approve = () =>
+    run(
+      'Approve',
+      async () => {
+        if (!item) return
+        await setLienDeskItemOffer(item.id, offer)
+        await approveLienDeskItem(item.id)
+      },
+      offer ? `Approved with a ${offer.pct}% offer — it is in the run.` : 'Approved — it is in the run.',
+    )
+  const saveOffer = () => run('The pay offer', async () => void (item && (await setLienDeskItemOffer(item.id, offer))), offer ? `Offer saved: ${lienOfferChipWords(offer)}.` : 'The offer is off.')
   const hold = (reason: 'promised' | 'call_first') =>
     run('Hold', async () => void (item && selected && (await holdLienDeskItem(item.id, { reason, until: holdUntilFor(reason, selected.earliestDeadline, promise?.promisedYmd ?? null, todayYmd) }))), 'Held — the desk re-asks before the deadline.')
   const backToReady = () => run('Back to ready', async () => void (item && (await clearLienDeskItemPrinted(item.id))), 'Back in Ready to send.')
@@ -1010,17 +1236,17 @@ export default function LienDeskModal({
   const rulesAndCaller = (
     <>
       <LienRulesDoor where={kind === 'affidavit' ? 'desk_affidavit' : 'desk_notice'} />
-      {office ? <LienCallerDoor input={callerInput} onPick={(h) => setCallerJobId(h.jobId)} onOpenJob={openDeskJob} onPractice={() => setPracticeCallOpen(true)} /> : null}
+      {office ? <LienCallerDoor open={callScriptOpen} onOpen={() => setCallScriptOpen(true)} /> : null}
     </>
   )
 
   const counts = data?.queue.counts
   const affEntries = data?.affidavits.entries ?? []
-  const affVisible = (['needs_property', 'to_draft', 'awaiting', 'ready', 'held', 'filed', 'missed'] as LienAffidavitPile[]).flatMap((p) => affEntries.filter((e) => e.pile === p && (affPile == null || affPile === p)))
+  const affVisible = (['needs_property', 'to_draft', 'awaiting', 'ready', 'held', 'filed', 'missed'] as LienAffidavitPile[]).flatMap((p) => affEntries.filter((e) => e.pile === p && (affPile == null || affPile === p))).filter((e) => !finding || lienFindMatch(findFactsFor(e.jobId, e.gcCustomerId, [workMonthShort(e.lastMonth), e.pile]), findWords).ok)
   const affSelected = affVisible.find((e) => e.jobId === affSelectedJobId) ?? (!isMobile ? affVisible[0] : undefined) ?? null
   const affCount = affEntries.filter((e) => e.pile !== 'filed').length
   const retEntries = data?.retainage.entries ?? []
-  const retVisible = LIEN_RETAINAGE_PILES.flatMap((p) => retEntries.filter((e) => e.pile === p.key && (retPile == null || retPile === p.key)))
+  const retVisible = LIEN_RETAINAGE_PILES.flatMap((p) => retEntries.filter((e) => e.pile === p.key && (retPile == null || retPile === p.key) && (!finding || lienFindMatch(findFactsFor(e.jobId, e.gcCustomerId, [p.label]), findWords).ok)))
   const retSelected = retVisible.find((e) => e.jobId === retSelectedJobId) ?? (!isMobile ? retVisible[0] : undefined) ?? null
   const retCount = retEntries.filter((e) => e.pile !== 'sent').length
   const retReady = data?.retainage.counts.ready ?? 0
@@ -1044,13 +1270,13 @@ export default function LienDeskModal({
     }
     const e = data.queue.entries.find((x) => x.jobId === jobId)
     const months = e?.item?.months?.length ? e.item.months : e?.dueMonths ?? []
-    return { ...base, ownerName: rowOwner, months: months.length ? describeNoticeMonths(months) : null, draftedOn: e?.item?.drafted_at ?? null, approvedOn: e?.item?.approved_at ?? null, coverNote: e?.item?.cover_note ?? false }
+    return { ...base, ownerName: rowOwner, months: months.length ? describeNoticeMonths(months) : null, draftedOn: e?.item?.drafted_at ?? null, approvedOn: e?.item?.approved_at ?? null, coverNote: e?.item?.cover_note ?? false, offer: lienOfferFromItem(e?.item) }
   }
   const wordSent = entries.filter((e) => e.item?.approval_mode === 'word' && (e.pile === 'ready' || e.pile === 'sent'))
 
   // The piles with rows, in order; a title per pile sticks at `i` bars from the top once passed and `n-1-i` from the bottom while ahead (v2.4672).
   const PILE_HEAD_H = 30
-  const pilesShown = PILE_ORDER.map((p) => ({ p, rows: visible.filter((e) => e.pile === p) })).filter((x) => x.rows.length > 0)
+  const pilesShown = PILE_ORDER.map((p) => ({ p, rows: visible.filter((e) => e.pile === p), total: visibleAll.filter((e) => e.pile === p).length })).filter((x) => (finding ? x.total > 0 : x.rows.length > 0))
   const scrollToPile = (p: LienDeskPile, i: number) => {
     const host = listRef.current
     const rows = host?.querySelector<HTMLElement>(`[data-lien-pile-rows="${p}"]`)
@@ -1072,7 +1298,13 @@ export default function LienDeskModal({
   }
   const list = (
     <div ref={listRef} onScroll={relightPiles} data-lien-desk-list style={{ position: 'relative', borderRight: isMobile ? 'none' : '1px solid var(--border)', overflow: 'auto', minWidth: 0 }}>
-      {visible.length === 0 ? (
+      {visible.length === 0 && finding && visibleAll.length > 0 && alsoSent.length === 0 ? (
+        <div data-testid="lien-desk-find-nothing" style={{ padding: '1rem', color: 'var(--text-muted)', fontSize: '0.8125rem', display: 'grid', gap: 4 }}>
+          <strong style={{ color: 'var(--text-strong)' }}>{lienFindNothingWords(find).head}</strong>
+          <span>{lienFindNothingWords(find).tryWords}</span>
+          <span>{lienFindNothingWords(find).elsewhere}</span>
+        </div>
+      ) : visible.length === 0 ? (
         <p style={{ padding: '1rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
           {loading || data == null ? 'Looking at every unpaid sub job…' : pile ? 'Nothing in this pile.' : 'Nothing is due — every unpaid month on a sub job is noticed, or is more than 30 days from its deadline.'}
         </p>
@@ -1087,14 +1319,14 @@ export default function LienDeskModal({
           </button>
         </div>
       ) : null}
-      {pilesShown.map(({ p, rows }, i) => {
+      {pilesShown.map(({ p, rows, total }, i) => {
         const label = LIEN_DESK_PILES.find((x) => x.key === p)?.label ?? p
         return (
           <Fragment key={p}>
-            <div className="lienPileHead" data-lien-pile-head={p} data-on={(litPile ?? pilesShown[0]?.p) === p ? 'yes' : 'no'} style={{ top: i * PILE_HEAD_H, bottom: (pilesShown.length - 1 - i) * PILE_HEAD_H }}>
+            <div className="lienPileHead" data-lien-pile-head={p} data-on={(litPile ?? pilesShown[0]?.p) === p ? 'yes' : 'no'} data-empty={finding && rows.length === 0 ? 'yes' : undefined} style={{ top: i * PILE_HEAD_H, bottom: (pilesShown.length - 1 - i) * PILE_HEAD_H, opacity: finding && rows.length === 0 ? 0.55 : undefined }}>
               <button type="button" className="lienPileHeadBtn" onClick={() => scrollToPile(p, i)} title="Go to this pile">
                 {label}
-                <span className="n" data-lien-pile-count={p}>{counts?.[p] ?? rows.length}</span>
+                <span className="n" data-lien-pile-count={p}>{finding ? lienFindPileCount(rows.length, total, true) : (counts?.[p] ?? rows.length)}</span>
               </button>
               {p === 'ready' && office && runCount > 0 ? (
                 <button type="button" data-lien-pile-run onClick={() => setRunOpen(true)} title="Every approved notice as one packet" style={{ padding: '1px 8px', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', font: 'inherit', fontSize: '0.66rem', fontWeight: 700, letterSpacing: 0, textTransform: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
@@ -1147,8 +1379,8 @@ export default function LienDeskModal({
                 >
                   <span aria-hidden style={{ width: 8, height: 8, borderRadius: '50%', marginTop: 6, background: e.severity === 'red' ? 'var(--text-red-600)' : e.severity === 'amber' ? 'var(--text-amber-800)' : 'var(--border-strong)' }} />
                   <span style={{ minWidth: 0 }}>
-                    <strong>{jobLabel(j, e.jobId)}</strong>
-                    {g?.name ? <span style={{ color: 'var(--text-muted)' }}> · GC {g.name}</span> : null}
+                    <strong><LienFindMarked text={jobLabel(j, e.jobId)} words={findWords} /></strong>
+                    {g?.name ? <span style={{ color: 'var(--text-muted)' }}> · GC <LienFindMarked text={g.name} words={findWords} /></span> : null}
                   </span>
                   <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{formatUsdNoCents(e.openBalance)}</span>
                   <span style={{ gridColumn: '2 / 4', display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
@@ -1171,6 +1403,7 @@ export default function LienDeskModal({
                       return <span style={tone} data-lien-letter-two={lt.state}>{lt.words}</span>
                     })()}
                     <LienSupplierMarkLine mark={supplierMarks.get(e.jobId)} />
+                    <LienFindHits hits={findHits.get(e.jobId)} words={findWords} />
                   </span>
                 </button>
               )
@@ -1179,6 +1412,104 @@ export default function LienDeskModal({
           </Fragment>
         )
       })}
+      {alsoSent.length ? (
+        <>
+          <div className="lienPileHead" data-lien-pile-head="also_sent" data-on="no" style={{ position: 'static', color: 'var(--text-blue-800)', background: 'var(--bg-blue-tint)' }}>
+            <span className="lienPileHeadBtn" style={{ cursor: 'default' }}>
+              Also sent · every notice out
+              <span className="n" data-lien-pile-count="also_sent">{alsoSent.length}</span>
+            </span>
+          </div>
+          <div data-lien-pile-rows="also_sent">
+            {alsoSent.map((h) => (
+              <button
+                key={h.itemId}
+                type="button"
+                onClick={() => setCallerJobId(h.jobId)}
+                data-lien-also-sent={h.jobId}
+                title="Open the owner’s call on this notice"
+                style={{ display: 'grid', gap: '0.2rem', width: '100%', textAlign: 'left', padding: '0.5rem 0.9rem', border: 'none', borderTop: '1px solid var(--border)', background: 'var(--surface)', color: 'inherit', font: 'inherit', cursor: 'pointer' }}
+              >
+                <span style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                  <strong><LienFindMarked text={h.who} words={findWords} /></strong>
+                  <span style={{ color: 'var(--text-link)', fontWeight: 600, whiteSpace: 'nowrap' }}>Open the call ›</span>
+                </span>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                  <span style={{ padding: '0 7px', borderRadius: 999, background: 'var(--bg-green-tint)', color: 'var(--text-green-800)', fontWeight: 700 }}>Sent {formatYmdMonthDay(h.facts.mailedOn)}</span> · <LienFindMarked text={h.what} words={findWords} />
+                </span>
+              </button>
+            ))}
+          </div>
+        </>
+      ) : null}
+    </div>
+  )
+
+  // The page labels (v2.4726): the pages in the pane in order, each label a sticky bar that stacks under the strip once
+  // passed and at the pane's foot while ahead (the Notices list's pile titles, v2.4651), lit for the page under the reader,
+  // and a button that scrolls to its page.
+  const pageKeys: string[] = [...(coverHtml ? ['cover'] : []), ...(releaseHtml ? ['release'] : []), 'notice', ...(payHtml ? ['pay'] : [])]
+  const relightPages = (host: HTMLElement) => {
+    let on: string | null = null
+    pageKeys.forEach((key, i) => {
+      const label = host.querySelector<HTMLElement>(`[data-lien-desk-page-label="${key}"]`)
+      if (label && label.offsetTop <= host.scrollTop + stripH + (i + 1) * PAGE_LABEL_H) on = key
+    })
+    setLitPage((prev) => (prev === on ? prev : on))
+  }
+  const scrollToPage = (key: string, i: number) => {
+    const host = paneRef.current
+    const label = host?.querySelector<HTMLElement>(`[data-lien-desk-page-label="${key}"]`)
+    if (!host || !label) return
+    const top = Math.max(0, label.offsetTop - stripH - i * PAGE_LABEL_H)
+    if (typeof host.scrollTo === 'function') host.scrollTo({ top, behavior: 'smooth' })
+    else host.scrollTop = top
+    setLitPage(key)
+  }
+  const pageLabel = (key: string, words: string, extra: ReactNode) => {
+    const i = pageKeys.indexOf(key)
+    const on = (litPage ?? pageKeys[0]) === key
+    return (
+      <div className="lienPileHead" data-lien-desk-page-label={key} data-on={on ? 'yes' : 'no'} style={{ top: stripH + i * PAGE_LABEL_H, bottom: (pageKeys.length - 1 - i) * PAGE_LABEL_H, zIndex: 1, margin: '0 -1.1rem -0.3rem', padding: '0 1.1rem' }}>
+        <button type="button" className="lienPileHeadBtn" onClick={() => scrollToPage(key, i)} title="Go to this page" style={{ overflow: 'hidden', whiteSpace: 'nowrap' }}>
+          <span>{words}</span>
+          {extra ? (
+            <>
+              {' '}
+              <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{extra}</span>
+            </>
+          ) : null}
+        </button>
+      </div>
+    )
+  }
+  // The letter in the caller's hand (v2.4731): the selected job's last notice, as the call sheet reads it.
+  const callFactsFor = (jobId: string) => {
+    if (!data) return null
+    const lt = data.letterTwoByJob[jobId]
+    const first =
+      (lt?.firstItemId ? data.items.find((i) => i.id === lt.firstItemId) : null) ??
+      data.items.filter((i) => i.job_id === jobId && i.status === 'sent' && !i.voided_at).sort((a, b) => (b.sent_at ?? '').localeCompare(a.sent_at ?? ''))[0] ??
+      (selected?.jobId === jobId ? selected.item : null) ??
+      null
+    const cJob = data.jobsById[jobId]
+    const cGc = cJob?.gc_customer_id ? data.gcsById[cJob.gc_customer_id] : undefined
+    const cAddress = cJob?.customer_address_id ? data.addressesById[cJob.customer_address_id] ?? null : null
+    if (!first) {
+      // Nothing drafted or mailed yet: the words still read with the job's own facts, and the window says nothing has gone out.
+      if (!cJob) return null
+      const owner = lienPropertyOwnerDisplayName(resolveLienProperty(cAddress, data.ownerByJob[jobId] ?? null).owner).trim()
+      const open = Number(cJob.revenue ?? 0) - Number(cJob.payments_made ?? 0)
+      return { hasLetter: false, facts: { ...genericCallFacts(callerUs), jobLabel: jobLabel(cJob, jobId), property: (cJob.job_address ?? '').trim() || 'your property', ownerName: owner, gcName: cGc?.name ?? 'your builder', amount: open > 0 ? formatUsdNoCents(open) : '' } }
+    }
+    return { hasLetter: first.status === 'sent', facts: callLetterFactsFor({ item: first, job: cJob, gc: cGc, address: cAddress, owner: data.ownerByJob[jobId] ?? null, us: callerUs, phone: signerPhoneFor ? signerPhoneFor(cJob?.master_user_id ?? null) : (issuer?.phone ?? '').trim() }) }
+  }
+
+  // The find box above a list (v2.4721): one column, the box then the scrolling list.
+  const withFind = (node: ReactNode, matched: number) => (
+    <div style={{ display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)', minHeight: 0, overflow: 'hidden' }} data-lien-desk-find-column>
+      <LienDeskFindBox value={find} onChange={setFind} matched={matched} isMobile={isMobile} />
+      {node}
     </div>
   )
 
@@ -1215,6 +1546,7 @@ export default function LienDeskModal({
         thisPile: selected.pile,
         propertyKind: property.propertyKind ?? '',
         todayYmd,
+        lateUntil,
       })
     : null
 
@@ -1277,11 +1609,13 @@ export default function LienDeskModal({
       onScroll={(ev) => {
         const next = ev.currentTarget.scrollTop > STRIP_COLLAPSE_PX
         setPaneScrolled((prev) => (prev === next ? prev : next))
+        relightPages(ev.currentTarget)
       }}
       style={{ padding: '0 1.1rem 0.9rem', display: 'grid', gap: '0.6rem', alignContent: 'start', overflow: 'auto', minWidth: 0 }}
     >
       {paneScrolled ? (
         <div
+          ref={stripRef}
           data-lien-desk-strip
           style={{ position: 'sticky', top: 0, zIndex: 2, margin: '0 -1.1rem', padding: '0.45rem 1.1rem', background: 'var(--surface)', borderBottom: '1px solid var(--border)', boxShadow: '0 8px 14px -12px rgba(0,0,0,0.35)', display: 'flex', flexWrap: 'wrap', gap: '0.3rem 0.7rem', alignItems: 'center', fontSize: '0.8125rem' }}
         >
@@ -1374,6 +1708,7 @@ export default function LienDeskModal({
         active={activeGate?.key ?? null}
         activeAt={activeGate?.at ?? 0}
         onPick={pickGate}
+        open={property.owner.source === 'property_record' && ownerFromRollUnconfirmed(address) ? ['owner'] : []}
         details={{
           owner: (
             <>
@@ -1391,13 +1726,7 @@ export default function LienDeskModal({
                     return (
                       <>
                         <div className="lienGateFact" data-lien-gate-owner-fact>
-                          <address className="lienOwnerRollAddress">
-                            <strong>{ownerName}</strong>
-                            {mailing.careOf ? <span className="lienOwnerRollCareOf">c/o {mailing.careOf}</span> : null}
-                            {mailing.lines.map((line) => (
-                              <span key={line}>{line}</span>
-                            ))}
-                          </address>
+                          <strong className="lienGateFactValue">{ownerName}</strong>
                           <span className="lienGateFactActions">
                             {cadUrl ? (
                               <button type="button" style={linkBtn} onClick={() => openInExternalBrowser(cadUrl)} title={`Check this owner on the ${county || 'county'} appraisal district site`}>
@@ -1414,7 +1743,8 @@ export default function LienDeskModal({
                             </button>
                           </span>
                         </div>
-                        {ownerSourceWords(property.owner.source) ? <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{ownerSourceWords(property.owner.source)}</div> : null}
+                        <address className="lienOwnerRollAddress" style={{ fontStyle: 'normal' }}>{[mailing.careOf ? `c/o ${mailing.careOf}` : '', ...mailing.lines].filter(Boolean).join(', ')}</address>
+                        {ownerSourceWords(property.owner.source) ? <div className="lienGateRowMeta">{ownerSourceWords(property.owner.source)}</div> : null}
                       </>
                     )
                   })()
@@ -1447,44 +1777,57 @@ export default function LienDeskModal({
               </div>
             ) : (
               // The GC as the notice names them, with the address the certified copy goes to.
-              <div className="lienGateFact" data-lien-gate-gc-fact>
-                <span style={{ minWidth: 0 }}>
-                  <strong>{gc?.name}</strong>
-                  {gc?.address ? <span style={{ color: 'var(--text-600)' }}> · {gc.address}</span> : <span style={{ color: 'var(--text-amber-800)' }}> · no mailing address on the customer</span>}
-                </span>
-                <span className="lienGateFactActions">
-                  <button type="button" onClick={() => onOpenEditJob(selected.jobId)} style={{ ...btn('plain'), padding: '1px 8px', fontSize: '0.72rem' }} title="Edit Job: the GC on the job">
-                    Change the GC ›
-                  </button>
-                </span>
-              </div>
+              <>
+                <div className="lienGateFact" data-lien-gate-gc-fact>
+                  <strong className="lienGateFactValue">{gc?.name}</strong>
+                  <span className="lienGateFactActions">
+                    <button type="button" onClick={() => onOpenEditJob(selected.jobId)} style={{ ...btn('plain'), padding: '1px 8px', fontSize: '0.72rem' }} title="Edit Job: the GC on the job">
+                      Change the GC ›
+                    </button>
+                  </span>
+                </div>
+                {gc?.address ? <div className="lienGateRowMeta">{gc.address}</div> : <div className="lienGateRowMeta" style={{ color: 'var(--text-amber-800)' }}>No mailing address on the customer.</div>}
+              </>
             ),
           kind: (
             // The kind as the switch the claims row and Edit Job use (v2.3667), set right here; without a linked property there is nothing to write on, so the door stays.
-            <>
-              <div className="lienGateFact" data-lien-gate-kind-fact>
-                {address ? <PropertyKindSwitch value={normalizePropertyKind(property.propertyKind)} onPick={(k) => void pickKind(k)} disabled={kindBusy} label={`Property kind for ${jobLabel(job, selected.jobId)}`} /> : null}
-                <span style={{ minWidth: 0 }}>{kindBusy ? 'saving…' : propertyKindClockWords(property.propertyKind, property.county)}</span>
-                {!address ? (
-                  <span className="lienGateFactActions">
-                    <button type="button" onClick={() => onOpenEditJob(selected.jobId, 'property-record')} style={{ ...btn('plain'), padding: '1px 8px', fontSize: '0.72rem' }} title="Edit Job → Property record: link the property, then say whether it is residential or commercial">
-                      Set property kind ›
-                    </button>
-                  </span>
-                ) : null}
-              </div>
-              {address ? (
-                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                  Saved on the property record
-                  {(() => {
-                    const shared = data ? jobsSharingProperty(selected.jobId, Object.keys(data.jobsById), (id) => data.jobsById[id]?.customer_address_id) : []
-                    const words = sharedPropertyWords(shared.map((id) => effectiveJobLedgerNumber(data?.jobsById[id]?.hcp_number ?? null, data?.jobsById[id]?.click_number ?? null) || id.slice(0, 8)))
-                    return words ? ` — ${words}, which follows it` : ''
-                  })()}
-                  .
-                </div>
-              ) : null}
-            </>
+            (() => {
+              const kindSet = Boolean((property.propertyKind ?? '').trim())
+              const chooser = address && (kindOpen || !kindSet)
+              const shared = data && address ? jobsSharingProperty(selected.jobId, Object.keys(data.jobsById), (id) => data.jobsById[id]?.customer_address_id) : []
+              const sharedWords = sharedWithWords(shared.map((id) => effectiveJobLedgerNumber(data?.jobsById[id]?.hcp_number ?? null, data?.jobsById[id]?.click_number ?? null) || id.slice(0, 8)))
+              return (
+                <>
+                  <div className="lienGateFact" data-lien-gate-kind-fact data-kind-open={chooser ? 'yes' : 'no'}>
+                    <strong className="lienGateFactValue">{kindBusy ? 'saving…' : propertyKindLine(property.propertyKind, property.county)}</strong>
+                    <span className="lienGateFactActions">
+                      {!address ? (
+                        <button type="button" onClick={() => onOpenEditJob(selected.jobId, 'property-record')} style={{ ...btn('plain'), padding: '1px 8px', fontSize: '0.72rem' }} title="Edit Job → Property record: link the property, then say whether it is residential or commercial">
+                          Set property kind ›
+                        </button>
+                      ) : chooser ? (
+                        kindSet ? (
+                          <button type="button" onClick={() => setKindOpen(false)} style={linkBtn} data-lien-gate-kind-cancel>
+                            Cancel
+                          </button>
+                        ) : null
+                      ) : (
+                        <button type="button" onClick={() => setKindOpen(true)} style={{ ...btn('plain'), padding: '1px 8px', fontSize: '0.72rem' }} data-lien-gate-kind-change title="Switch the property kind: two clicks on purpose, since every deadline on the job moves with it">
+                          Change ›
+                        </button>
+                      )}
+                    </span>
+                  </div>
+                  {chooser ? (
+                    <div className="lienGateFact" data-lien-gate-kind-chooser>
+                      <PropertyKindSwitch value={normalizePropertyKind(property.propertyKind)} onPick={(k) => { setKindOpen(false); void pickKind(k) }} disabled={kindBusy} label={`Property kind for ${jobLabel(job, selected.jobId)}`} />
+                      <span className="lienGateRowMeta" style={{ flex: '1 1 16rem', minWidth: 0 }}>{propertyKindSwitchWarning(property.propertyKind)}</span>
+                    </div>
+                  ) : null}
+                  <div className="lienGateRowMeta">{[propertyKindRuleWords(property.propertyKind), address ? 'saved on the property record' : '', sharedWords].filter(Boolean).join(' · ')}.</div>
+                </>
+              )
+            })()
           ),
           months: (
             <>
@@ -1504,7 +1847,7 @@ export default function LienDeskModal({
                     {monthCards.map((c) => (
                       <span key={c.key}>
                         {lienGateMonthLine(workMonthLabel(c.key), c.hours, c.crew)}
-                        {c.on ? <span style={{ color: 'var(--text-muted)' }}> · on this notice</span> : null}
+                        {c.on ? <span className="lienGateRowMeta"> · on this notice</span> : null}
                       </span>
                     ))}
                   </span>
@@ -1516,7 +1859,7 @@ export default function LienDeskModal({
                 </div>
               )}
               {wm && wm.pendingSessions > 0 ? (
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                <div className="lienGateRowMeta">
                   {wm.pendingSessions} {wm.pendingSessions === 1 ? 'session' : 'sessions'} awaiting approval not counted in the hours.
                 </div>
               ) : null}
@@ -1552,7 +1895,7 @@ export default function LienDeskModal({
       {/* Months (#38): the grid — months down, papers across, this notice as the last column. */}
       <LienDeskMonths
         grid={monthGrid!}
-        lastWork={<LienLastWorkDayLine jobId={selected.jobId} job={job ?? null} todayYmd={todayYmd} canEdit={office} userId={authUserId} onSaved={onChanged} />}
+        lastWork={<LienLastWorkDayLine jobId={selected.jobId} job={job ?? null} todayYmd={todayYmd} canEdit={office} userId={authUserId} onSaved={() => (onCalendarChanged ? onCalendarChanged('last_work') : onChanged())} jobLabel={`${job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '' : ''} · ${(job?.job_name ?? '').trim()}`} clockMonths={selected.months.filter((m) => !m.fromCreation && !m.byHand).map((m) => m.key)} noticedMonths={selected.months.filter((m) => m.noticed).map((m) => m.key)} propertyKind={selected.propertyKind} />}
         claimNode={
           <LienClaimBox
             openSignal={claimOpenSignal}
@@ -1599,6 +1942,29 @@ export default function LienDeskModal({
           <input type="checkbox" checked={coverNote} disabled={item != null && item.status !== 'drafted'} onChange={(ev) => setCoverNote(ev.target.checked)} />
           <span>Include counsel's cover letter</span>
         </label>
+        {/* The supply houses in the owner's letter (v2.4725, Taunya's ask): one more tick, drawn only while the letter is on and a house is owed. */}
+        {coverNote && supplierJob && supplierJob.owed > 0 ? (
+          <label data-lien-desk-houses-tick title="A paragraph at the end of counsel's letter: the house, what it is owed, the day its own notice goes out, that it is a separate claim our release does not cover, and that paying us is what clears it">
+            <input type="checkbox" checked={housesInLetter} disabled={item != null && item.status !== 'drafted'} onChange={(ev) => setHousesInLetter(ev.target.checked)} />
+            <span>Name the supply {supplierJob.housesOwed === 1 ? 'house' : 'houses'} owed · {formatUsdNoCents(supplierJob.owed)}</span>
+          </label>
+        ) : null}
+        {/* A conditional release of lien in the envelope (v2.4729, Stephen's addition): off until asked for; the tick makes the draft row, the run issues it. */}
+        {coverNote && selected && claimNumber > 0 ? (
+          <label data-lien-desk-release-tick title="The app's § 53.284 conditional release, prefilled from the notice — the claim as the amount, the GC as the check's maker — behind the owner's letter and the GC's form, named in the letter; a draft on the job now, issued when the run is recorded">
+            <input type="checkbox" checked={releaseId != null} disabled={(item != null && item.status !== 'drafted') || busy} onChange={(ev) => toggleRelease(ev.target.checked)} />
+            <span>Enclose a conditional release · {formatUsdNoCents(claimNumber)}</span>
+          </label>
+        ) : null}
+        {coverNote && ((housesInLetter && supplierJob && supplierJob.owed > 0 && !LIEN_HOUSES_PARAGRAPH_READ_BY_COUNSEL) || (releaseId != null && !LIEN_RELEASE_PARAGRAPH_READ_BY_COUNSEL)) ? (
+          <span data-lien-desk-houses-counsel style={{ flexBasis: '100%', fontSize: '0.72rem', color: 'var(--text-amber-800)' }}>
+            {housesInLetter && supplierJob && supplierJob.owed > 0 && !LIEN_HOUSES_PARAGRAPH_READ_BY_COUNSEL && releaseId != null && !LIEN_RELEASE_PARAGRAPH_READ_BY_COUNSEL
+              ? 'Counsel has not read the supply house and release paragraphs yet.'
+              : releaseId != null && !LIEN_RELEASE_PARAGRAPH_READ_BY_COUNSEL
+                ? 'Counsel has not read the release paragraph yet.'
+                : 'Counsel has not read the supply house paragraph yet.'}
+          </span>
+        ) : null}
       </div>
 
       {/* The paper is the editor (v2.3694): the four values the office may change sit in shaded boxes on the notice itself; this row keeps only the legend and the preview door. */}
@@ -1619,18 +1985,28 @@ export default function LienDeskModal({
       {/* What goes in the envelope (v2.3540): the cover page first while it is ticked, then the notice — the pages as the packet prints them. */}
       {coverHtml ? (
         <>
-          <div style={{ ...boxHead, marginBottom: '-0.3rem' }} data-lien-desk-page-label>Page 1 of {pageTotal} · cover letter</div>
+          {pageLabel('cover', `Page 1 of ${pageTotal} · cover letter`, null)}
           <div data-theme="light" data-lien-desk-cover style={paperStyle}>
             <div dangerouslySetInnerHTML={{ __html: coverHtml }} />
           </div>
         </>
       ) : null}
-      <div style={{ ...boxHead, marginBottom: '-0.3rem' }} data-lien-desk-page-label>
-        {`Page ${coverHtml ? 2 : 1} of ${pageTotal} · the notice`}{' '}
+      {/* The conditional release (v2.4729): the § 53.284 form behind the letter, as the Release of Lien window would print it. */}
+      {releaseHtml ? (
+        <>
+          {pageLabel('release', `Page ${coverHtml ? 2 : 1} of ${pageTotal} · conditional release`, <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: 'none' }}>· {noticeRelease?.signature ? 'signed in the app' : 'the master signs it with the notice'} · change it in the Release of Lien window</span>)}
+          <div data-theme="light" data-lien-desk-release style={paperStyle}>
+            <div dangerouslySetInnerHTML={{ __html: releaseHtml }} />
+          </div>
+        </>
+      ) : null}
+      {pageLabel(
+        'notice',
+        `Page ${noticePageNumber} of ${pageTotal} · the notice`,
         <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: 'none', color: wordingDiff.length ? 'var(--text-amber-800)' : undefined }}>
           · {wordingDiff.length ? wordingLineText(wordingDiff, wordingEditedBy) : payHtml ? 'the pay codes and the invoice follow it in the packet' : "the job's unpaid invoice follows it in the packet"}
-        </span>
-      </div>
+        </span>,
+      )}
       <div data-theme="light" data-lien-desk-paper ref={paperRef} onClick={onPaperClick} style={{ ...paperStyle, position: 'relative' }}>
         <div dangerouslySetInnerHTML={{ __html: docHtml }} />
         {editing ? (
@@ -1659,12 +2035,31 @@ export default function LienDeskModal({
       {/* The pay page (punch list #35, PR 3): one code per unpaid Stripe bill, as the run prints it behind the owner's copy. Nothing on it is typed — it is filled from the bills. */}
       {payHtml ? (
         <>
-          <div style={{ ...boxHead, marginBottom: '-0.3rem' }} data-lien-desk-page-label>
-            {`Page ${pageTotal} of ${pageTotal} · pay codes`}{' '}
-            <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: 'none' }}>· {payPageSummary(payPage.rows)} · filled from the bills, nothing to type</span>
-          </div>
-          <div data-theme="light" data-lien-desk-pay style={paperStyle}>
+          {pageLabel('pay', `Page ${pageTotal} of ${pageTotal} · pay codes`, <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: 'none', color: payChangedCount ? 'var(--text-amber-800)' : undefined }} data-lien-desk-pay-label>· {payPageSummary(payPage.rows)} · {payChangedCount ? `${payChangedCount} ${payChangedCount === 1 ? 'line' : 'lines'} changed on this page, the bills keep their own` : wordingLocked ? 'the lines under the codes are read from the bills' : 'a shaded line is yours to change, on this page only'}</span>)}
+          <div data-theme="light" data-lien-desk-pay ref={payPaperRef} onClick={onPayPaperClick} style={{ ...paperStyle, position: 'relative' }}>
             <div dangerouslySetInnerHTML={{ __html: payHtml }} />
+            {payEditing ? (
+              <input
+                ref={payInputRef}
+                aria-label="The line under this bill's code"
+                value={payEditing.value}
+                onChange={(ev) => setPayEditing((e) => (e ? { ...e, value: ev.target.value } : e))}
+                onKeyDown={(ev) => {
+                  if (ev.key === 'Enter') {
+                    ev.preventDefault()
+                    commitPayEdit()
+                  } else if (ev.key === 'Escape') {
+                    ev.preventDefault()
+                    ev.stopPropagation()
+                    setPayEditing(null)
+                  }
+                }}
+                onBlur={commitPayEdit}
+                placeholder="Empty prints no line"
+                data-lien-desk-pay-input
+                style={{ position: 'absolute', top: payEditing.rect.top, left: payEditing.rect.left, width: Math.max(payEditing.rect.width, 260), minHeight: payEditing.rect.height, boxSizing: 'border-box', font: payEditing.font || 'inherit', fontWeight: 700, color: 'var(--text-strong)', padding: '0.1em 0.5em', border: '2px solid #d97706', borderRadius: 5, background: 'var(--bg-amber-tint)', outline: 'none', zIndex: 3 }}
+              />
+            ) : null}
           </div>
         </>
       ) : null}
@@ -1760,6 +2155,7 @@ export default function LienDeskModal({
         signerNameFor={signerNameFor}
         onChanged={onChanged}
         onOpenEditJob={onOpenEditJob}
+        onFixProperty={office ? (jobId, focus) => setPaneFix({ jobId, focus }) : undefined}
         onOpenJob={onOpenJob}
         ownerCall={data.ownerCallByJob[affSelected.jobId] ?? null}
         bond={parsePaymentBond(data.jobsById[affSelected.jobId]?.lien_payment_bond)}
@@ -1886,6 +2282,13 @@ export default function LienDeskModal({
   if (selected) {
     const state = selected.pile
     const monthsWord = monthsList.length ? describeNoticeMonths(monthsList) : 'no months'
+    // The pay offer (v2.4713): the leader's box above the footer, on a notice he can approve or has approved.
+    const affidavitDueOn = timeline?.steps.find((st) => st.kind === 'affidavit')?.date || null
+    const offerAmounts = payPage.rows.filter((r) => r.payable).map((r) => r.openAmount)
+    const offerProblem = offer ? lienOfferDayProblem(offer.by, todayYmd, affidavitDueOn) : null
+    const offerBox = (onSave?: () => void) => (
+      <LienOfferBox offer={offer} onChange={setOffer} todayYmd={todayYmd} affidavitDueOn={affidavitDueOn} amounts={offerAmounts} disabled={busy} onSave={onSave} saving={busy} />
+    )
     if (state === 'needs_owner' || state === 'to_draft' || (state === 'missed' && selected.dueMonths.length > 0)) {
       const blocked = !ready
       // The draft footer (v2.3776, punch list #36): ONE row — the state and its verb on the left, Save draft and a quiet
@@ -1959,6 +2362,8 @@ export default function LienDeskModal({
               btn={btn}
             />
           ) : (
+            <>
+            {leader && !blocked ? offerBox() : null}
             <div className="lienFootRow" data-lien-desk-next data-blocked={blocked ? 'yes' : 'no'}>
               <span className="lienFootState">
                 <span aria-hidden="true">{blocked ? '✗' : '→'}</span> {stateWords}
@@ -1987,7 +2392,7 @@ export default function LienDeskModal({
                     {firstBlocker ? `Go to gate ${firstBlocker.n} ▴` : 'Show what is missing ▴'}
                   </button>
                 ) : leader ? (
-                  <button type="button" onClick={() => run('Approve', async () => { const id = await ensureDraft(); await approveLienDeskItem(id) }, 'Approved — it is in the run.')} disabled={busy} style={btn('green', busy)}>
+                  <button type="button" onClick={() => run('Approve', async () => { const id = await ensureDraft(); await setLienDeskItemOffer(id, offer); await approveLienDeskItem(id) }, offer ? `Approved with a ${offer.pct}% offer — it is in the run.` : 'Approved — it is in the run.')} disabled={busy || Boolean(offerProblem)} style={btn('green', busy || Boolean(offerProblem))}>
                     Approve ▸
                   </button>
                 ) : (
@@ -1997,6 +2402,7 @@ export default function LienDeskModal({
                 )}
               </div>
             </div>
+            </>
           )}
         </>
       )
@@ -2013,6 +2419,8 @@ export default function LienDeskModal({
               <button type="button" onClick={() => setHoldOpen(null)} style={btn('plain')}>Cancel</button>
             </div>
           ) : (
+            <>
+            {offerBox()}
             <div className="lienFootRow" data-lien-desk-next data-blocked="no">
               <span className="lienFootState">
                 <span aria-hidden="true">→</span> Your call on {monthsWord}
@@ -2023,8 +2431,9 @@ export default function LienDeskModal({
               <button type="button" onClick={() => setHoldOpen('call_first')} disabled={busy} style={btn('plain', busy)}>Hold — I'll call first</button>
               <button type="button" onClick={pullBack} disabled={busy} style={btn('plain', busy)}>Back to the office</button>
               <button type="button" onClick={() => setByHandOpen(true)} disabled={busy} style={btn('plain', busy)} data-lien-desk-by-hand title="The paper was printed here and already went out by hand — record it instead of approving">Already mailed? Record it…</button>
-              <button type="button" onClick={approve} disabled={busy} style={btn('green', busy)}>Approve &amp; next ▸</button>
+              <button type="button" onClick={approve} disabled={busy || Boolean(offerProblem)} style={btn('green', busy || Boolean(offerProblem))}>Approve &amp; next ▸</button>
             </div>
+            </>
           )}
         </>
       ) : wordOpen ? (
@@ -2066,10 +2475,13 @@ export default function LienDeskModal({
         </div>
       ))
     } else if (state === 'ready') {
+      const itemOffer = lienOfferFromItem(selected.item)
       footer = byHandPane ?? (
+        <>
+        {leader ? offerBox(saveOffer) : null}
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-          <span>
-            {selected.item?.approval_mode === 'word' ? `On ${wordRecordWords(selected.item).slice(3)}` : selected.item?.approval_mode === 'rule' ? `Approved by ${gc?.name ?? 'the GC'}'s standing rule` : `Approved${selected.item?.approved_at ? ` ${demandDate(calendarYmdInAppTzFromIso(selected.item.approved_at))}` : ''}`} · in the run.
+          <span data-lien-desk-ready-words>
+            {selected.item?.approval_mode === 'word' ? `On ${wordRecordWords(selected.item).slice(3)}` : selected.item?.approval_mode === 'rule' ? `Approved by ${gc?.name ?? 'the GC'}'s standing rule` : `Approved${selected.item?.approved_at ? ` ${demandDate(calendarYmdInAppTzFromIso(selected.item.approved_at))}` : ''}`}{itemOffer ? ` · ${lienOfferChipWords(itemOffer)}` : ''} · in the run.
           </span>
           {leader && selected.item?.approval_mode === 'word' ? (
             <button type="button" onClick={pullBack} disabled={busy} style={btn('plain', busy)} title="Pull it back to the office's draft — it has not gone out">Not what I said</button>
@@ -2085,6 +2497,7 @@ export default function LienDeskModal({
             Send the run · {runCount} ▸
           </button>
         </div>
+        </>
       )
     } else if (state === 'printed') {
       // v2.4568: a printed notice had no footer at all. The run is where its tracking numbers are typed and the mailing recorded.
@@ -2409,17 +2822,63 @@ export default function LienDeskModal({
             <LienPaperPreviewOverlay
               entries={paperEntries}
               index={paperOpen}
-              onIndex={setPaperOpen}
-              onClose={() => setPaperOpen(null)}
+              onIndex={(i) => {
+                setPaperFilledFrom(null)
+                setPaperOpen(i)
+              }}
+              onClose={() => {
+                setPaperFilledFrom(null)
+                setPaperOpen(null)
+              }}
               onAct={(i) => {
                 const row = paperRows[i]
                 setPaperOpen(null)
                 if (row) actOnNextUp(row)
               }}
+              onFix={office ? (i, gap) => {
+                const w = lienPaperFixWindow(gap)
+                if (w) setPaperFix({ index: i, window: w, gap })
+              } : undefined}
+              paused={paperFix != null}
             />
           ) : null}
+          {paneFix && data && data.jobsById[paneFix.jobId] ? (() => {
+            const fixJob = data.jobsById[paneFix.jobId]!
+            const fixAddress = fixJob.customer_address_id ? data.addressesById[fixJob.customer_address_id] ?? null : null
+            return (
+              <LienPaperPropertyWindow
+                job={fixJob}
+                address={fixAddress}
+                ownerOnJob={resolveLienProperty(fixAddress, data.ownerByJob[fixJob.id] ?? null).owner.source === 'job_override'}
+                focus={paneFix.focus}
+                onClose={(saved) => {
+                  setPaneFix(null)
+                  if (saved) onChanged()
+                }}
+              />
+            )
+          })() : null}
+          {paperFix && data ? (() => {
+            const entry = paperEntries[paperFix.index]
+            const row = paperRows[paperFix.index]
+            const fixJob = row?.jobId ? data.jobsById[row.jobId] : undefined
+            if (!entry || !fixJob) return null
+            const done = (saved: boolean) => {
+              setPaperFix(null)
+              if (!saved) return
+              // Every blank this paper had since the first fix, so a second window keeps the first one's green cards.
+              setPaperFilledFrom((prev) => ({ key: entry.key, gaps: prev?.key === entry.key ? [...prev.gaps, ...entry.gaps.filter((g) => !prev.gaps.some((p) => p.key === g.key))] : entry.gaps }))
+              onChanged()
+            }
+            if (paperFix.window === 'gc') return <LienPaperGcWindow job={fixJob} knownGcs={Object.values(data.gcsById)} onClose={done} />
+            const fixAddress = fixJob.customer_address_id ? data.addressesById[fixJob.customer_address_id] ?? null : null
+            return <LienPaperPropertyWindow job={fixJob} address={fixAddress} ownerOnJob={resolveLienProperty(fixAddress, data.ownerByJob[fixJob.id] ?? null).owner.source === 'job_override'} focus={paperFix.gap.key} onClose={done} />
+          })() : null}
           {kind === 'next' ? (
-            <LienDeskNextUp rows={nextUpRows} loading={loading && !data} isMobile={isMobile} onAct={actOnNextUp} onOpenJob={onOpenJob} ready={{ notice: counts?.ready ?? 0, retainage: retReady }} onOpenRun={office ? () => setRunOpen(true) : undefined} factsFor={stepFactsFor} viewerIsLeader={leader} onOpenPaper={(row) => setPaperOpen(Math.max(0, paperRows.findIndex((r) => r.key === row.key)))} gapsFor={paperGapCount} />
+            <div style={{ display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)', minHeight: 0, overflow: 'hidden' }}>
+            <LienDeskFindBox value={find} onChange={setFind} matched={nextUpRowsFound.length} isMobile={isMobile} />
+            <LienDeskNextUp rows={nextUpRowsFound} markTitle={(t) => <LienFindMarked text={t} words={findWords} />} loading={loading && !data} isMobile={isMobile} onAct={actOnNextUp} onOpenJob={onOpenJob} ready={{ notice: counts?.ready ?? 0, retainage: retReady }} onOpenRun={office ? () => setRunOpen(true) : undefined} factsFor={stepFactsFor} viewerIsLeader={leader} onOpenPaper={(row) => setPaperOpen(Math.max(0, paperRows.findIndex((r) => r.key === row.key)))} gapsFor={paperGapCount} />
+            </div>
           ) : kind === 'calendar' ? (
             <LienDeskCalendarTab
               rows={calendarRows ?? null}
@@ -2428,6 +2887,7 @@ export default function LienDeskModal({
               isMobile={isMobile}
               canWrite={office}
               onOpenJob={(jobId) => (onOpenCalendarJob ?? onOpenLienInstruments)(jobId)}
+              onOpenLastWork={office ? onOpenCalendarLastWork : undefined}
               onOpenJobWindow={onOpenJob}
               onOpenEditJob={(jobId) => onOpenEditJob(jobId, 'property-record')}
               onChanged={(what) => {
@@ -2458,22 +2918,22 @@ export default function LienDeskModal({
               }}
             />
           ) : kind === 'affidavit'
-            ? (isMobile ? (mobileListShown ? affList : affPane) : (
+            ? (isMobile ? (mobileListShown ? withFind(affList, affVisible.length) : affPane) : (
                 <>
-                  {affList}
+                  {withFind(affList, affVisible.length)}
                   {affPane}
                 </>
               ))
             : kind === 'retainage'
-              ? (isMobile ? (mobileListShown ? retList : retPane) : (
+              ? (isMobile ? (mobileListShown ? withFind(retList, retVisible.length) : retPane) : (
                   <>
-                    {retList}
+                    {withFind(retList, retVisible.length)}
                     {retPane}
                   </>
                 ))
-            : isMobile ? (mobileListShown ? list : pane) : (
+            : isMobile ? (mobileListShown ? withFind(list, visible.length) : pane) : (
             <>
-              {list}
+              {withFind(list, visible.length)}
               {pane}
             </>
           )}
@@ -2512,6 +2972,30 @@ export default function LienDeskModal({
           />
         )
       })()}
+      {callScriptOpen ? (() => {
+        const sel = selected ? callFactsFor(selected.jobId) : null
+        return (
+          <LienCallScriptModal
+            facts={sel?.facts ?? null}
+            jobLabel={selected ? jobLabel(job, selected.jobId) : null}
+            hasLetter={Boolean(sel?.hasLetter)}
+            us={callerUs}
+            onRecord={() => {
+              setCallScriptOpen(false)
+              if (selected) setCallerJobId(selected.jobId)
+            }}
+            onFindJob={() => {
+              setCallScriptOpen(false)
+              window.setTimeout(() => document.querySelector<HTMLInputElement>('[data-testid="lien-desk-find-input"]')?.focus(), 0)
+            }}
+            onPractice={() => {
+              setCallScriptOpen(false)
+              setPracticeCallOpen(true)
+            }}
+            onClose={() => setCallScriptOpen(false)}
+          />
+        )
+      })() : null}
       {practiceCallOpen ? (
         <LienOwnerCallDialog
           practice
@@ -2529,7 +3013,7 @@ export default function LienDeskModal({
             await markLienDeskItemsPrinted(ids, authUserId).catch(() => undefined)
             onChanged()
           }}
-          notices={[...buildLienDeskRun([...data.queue.piles.ready, ...data.queue.piles.printed], data, issuer, signerNameFor, todayYmd, signerPhoneFor), ...buildLienRetainageRun(data.retainage.piles.ready, data, issuer, signerNameFor, todayYmd, signerPhoneFor)]}
+          notices={[...buildLienDeskRun([...data.queue.piles.ready, ...data.queue.piles.printed], data, issuer, signerNameFor, todayYmd, signerPhoneFor, { suppliers: suppliers.byJob, releases: releases.byId }), ...buildLienRetainageRun(data.retainage.piles.ready, data, issuer, signerNameFor, todayYmd, signerPhoneFor)]}
           issuer={issuer}
           todayYmd={todayYmd}
           userId={authUserId}

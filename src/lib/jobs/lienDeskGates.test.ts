@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildLienDeskGates, lienGateMark, lienGateMonthLine, ownerSourceWords, propertyKindClockWords, type LienDeskGatesInput } from './lienDeskGates'
+import { buildLienDeskGates, lienGateMark, lienGateMonthLine, ownerSourceWords, propertyKindClockWords, propertyKindLine, propertyKindRuleWords, propertyKindSwitchWarning, sharedWithWords, type LienDeskGatesInput } from './lienDeskGates'
 
 const clear: LienDeskGatesInput = {
   ownerName: 'Sabra Texas Holdings Lp',
@@ -65,8 +65,8 @@ describe('the sections under the gates (v2.3670)', () => {
   })
 
   it('gate 1 says where a filed owner came from', () => {
-    expect(ownerSourceWords('property_record')).toBe('From the property record — every job at this property uses it.')
-    expect(ownerSourceWords('job_override')).toBe('Set on this job — the property record’s owner is not used here.')
+    expect(ownerSourceWords('property_record')).toBe('From the property record · every job here uses it.')
+    expect(ownerSourceWords('job_override')).toBe('Set on this job · the property record’s owner is not used here.')
     expect(ownerSourceWords('none')).toBe('')
   })
 
@@ -83,5 +83,17 @@ describe('a job with no clock hours is dated from its creation month (v2.3747)',
     expect(gates[3]!.title).toContain('dated from the job’s creation · no clock hours')
     expect(verdict.ready).toBe(true)
     expect(buildLienDeskGates({ ...clear, pickedMonthsCount: 0, datedFromCreation: true }).gates[3]).toMatchObject({ label: 'Dated from creation', tone: 'blocker' })
+  })
+
+  it('gate 3 as one line (v2.4718): the kind and county, the rule under it, the warning while the chooser is open, and who shares the record', () => {
+    expect(propertyKindLine('residential', 'Bexar')).toBe('Residential · Bexar County')
+    expect(propertyKindLine('non_residential', '')).toBe('Commercial')
+    expect(propertyKindLine('', 'Comal')).toBe('Not set · Comal County')
+    expect(propertyKindRuleWords('residential')).toBe('Notice due the 15th of the 2nd month after the work')
+    expect(propertyKindRuleWords('non_residential')).toBe('Notice due the 15th of the 3rd month after the work')
+    expect(propertyKindSwitchWarning('residential')).toBe('Commercial makes each notice due the 15th of the 3rd month after the work, and the affidavit a month later. Every date on the job moves.')
+    expect(propertyKindSwitchWarning('non_residential')).toMatch(/^Residential makes each notice due the 15th of the 2nd month/)
+    expect(sharedWithWords(['273', '866', '1009', '858'])).toBe('shared with 273, 866, 1009, 858')
+    expect(sharedWithWords([])).toBe('')
   })
 })

@@ -36,6 +36,7 @@ export function lienWindowNextStep(next: LienTimelineNext, waitingOn: LienTimeli
   let button: LienWindowNextStep['button'] = null
   switch (next.kind) {
     case 'notice':
+    case 'late_notice':
       button = { label: 'Open it on the Lien desk', door: { to: 'desk', kind: 'notice' } }
       break
     case 'retainage':

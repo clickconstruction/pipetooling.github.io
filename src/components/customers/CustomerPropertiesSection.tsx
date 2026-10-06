@@ -4,7 +4,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { customerAddressLienGaps, type CustomerAddressRow } from '../../lib/jobs/lienProperty'
 import { jobCountsByProperty, suggestPropertiesFromJobs, type JobAddressLike } from '../../lib/customers/customerPropertiesFromJobs'
 import CustomerPropertySheet from './CustomerPropertySheet'
-import { emptyPropertyDraft, payloadFromDraft, type PropertyDraft } from '../../lib/customers/propertyDraft'
+import { draftFromRow, emptyPropertyDraft, payloadFromDraft, type PropertyDraft } from '../../lib/customers/propertyDraft'
 
 /**
  * Properties on Edit customer (customer properties train, PR 3 — v2.3009):
@@ -28,26 +28,6 @@ type JobRow = JobAddressLike
 const smallBtn: CSSProperties = { padding: '0.2rem 0.55rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer' }
 const linkBtn: CSSProperties = { background: 'none', border: 'none', cursor: 'pointer', padding: '0 0.2rem', fontSize: '0.8125rem', color: 'var(--text-link)', fontWeight: 600 }
 const chip = (extra: CSSProperties): CSSProperties => ({ fontSize: '0.6875rem', fontWeight: 600, borderRadius: 6, padding: '0.05rem 0.45rem', border: '1px solid var(--border)', color: 'var(--text-muted)', background: 'var(--surface)', whiteSpace: 'nowrap', ...extra })
-
-function draftFromRow(a: CustomerAddressRow): PropertyDraft {
-  return {
-    address: a.address,
-    note: a.note ?? '',
-    county: a.county ?? '',
-    county_source: a.county_source ?? '',
-    legal_description: a.legal_description ?? '',
-    property_kind: a.property_kind ?? '',
-    homestead: a.homestead ?? false,
-    owner_mode: a.owner_mode ?? '',
-    owner_name: a.owner_name ?? '',
-    owner_company: a.owner_company ?? '',
-    owner_mailing_address: a.owner_mailing_address ?? '',
-    parcel_id: a.parcel_id ?? '',
-    parcel_source: a.parcel_source ?? '',
-    parcel_tax_year: a.parcel_tax_year ?? '',
-    parcel_looked_up_at: a.parcel_looked_up_at ?? '',
-  }
-}
 
 export default function CustomerPropertiesSection({ customerId, onPrimaryAddressChange }: Props) {
   const { showToast } = useToastContext()

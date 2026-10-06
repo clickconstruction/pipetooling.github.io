@@ -13,12 +13,14 @@ import type { TestReportDocumentRow } from '../../lib/jobsDocuments/testReportDo
 import type { JobContractRow } from '../../lib/jobs/jobContractLifecycle'
 import type { JobLienPaper } from '../../lib/jobs/jobLienPaperRows'
 import type { SentCopy } from '../../lib/sent/sentCopies'
+import { payApplicationSnapshot } from '../../lib/aiaPayApplicationHistory'
 import { JobWindowDocumentsTab } from './JobWindowDocumentsTab'
 import { payApplicationWriteFromForm, savedPayApplicationFromRow, type PayApplicationRow, type SavedPayApplication } from '../../lib/aiaPayApplications'
 
 let onJob: SavedPayApplication[] = []
 const loadSpy = vi.fn((_jobId: string) => Promise.resolve(onJob))
-vi.mock('../../lib/aiaPayApplicationsIo', () => ({ loadPayApplications: (jobId: string) => loadSpy(jobId) }))
+let deletedOnJob: SavedPayApplication[] = []
+vi.mock('../../lib/aiaPayApplicationsIo', () => ({ loadPayApplications: (jobId: string) => loadSpy(jobId), loadDeletedPayApplications: () => Promise.resolve(deletedOnJob) }))
 
 // Test reports: the rows the tab is given, the PDF link, and the Test report window's opener.
 let reports: TestReportDocumentRow[] = []
@@ -103,10 +105,10 @@ vi.mock('../../lib/sent/sentCopiesIo', () => ({
 
 // The AIA window has its own render test; here it is a stub that says what it was handed.
 vi.mock('./AiaG702G703Modal', () => ({
-  default: ({ open, onClose, initialApplicationNumber, zIndex }: { open: boolean; onClose: () => void; initialApplicationNumber?: number | null; zIndex?: number }) =>
+  default: ({ open, onClose, initialApplicationNumber, startOn, zIndex }: { open: boolean; onClose: () => void; initialApplicationNumber?: number | null; startOn?: string; zIndex?: number }) =>
     open ? (
       <div data-testid="aia-stub">
-        application {initialApplicationNumber ?? 'new'} at {zIndex}
+        application {initialApplicationNumber ?? 'new'} at {zIndex} starting on {startOn}
         <button type="button" onClick={onClose}>
           close aia
         </button>
@@ -143,6 +145,7 @@ beforeEach(() => {
   contracts = []
   lienPaper = { filings: [], letters: [], releases: [] }
   sent = []
+  deletedOnJob = []
   authRole = 'dev'
   openCopySpy.mockClear()
   openFileSpy.mockClear()
@@ -162,13 +165,13 @@ describe('JobWindowDocumentsTab', () => {
     renderWithProviders(<JobWindowDocumentsTab job={job} onOverlayOpenChange={escSpy} />)
 
     const rows = await screen.findAllByTestId('job-documents-pay-app')
-    expect(rows.map((r) => r.textContent)).toEqual(['109/30/2026$17,460.00Open the fileOpen', '210/31/2026$8,730.00No linkOpen'])
+    expect(rows.map((r) => r.textContent)).toEqual(['109/30/2026$17,460.00Open the file—Open', '210/31/2026$8,730.00Not yet—Open'])
     expect((screen.getByRole('link', { name: 'Open the file' }) as HTMLAnchorElement).href).toBe('https://docs.google.com/spreadsheets/d/abc123/edit')
     // 29,100 to date at 10%.
     expect(screen.getByText('Retainage held as of application 2: $2,910.00')).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: 'Open application 2' }))
-    expect(screen.getByTestId('aia-stub').textContent).toContain('application 2 at 1030')
+    expect(screen.getByTestId('aia-stub').textContent).toContain('application 2 at 1030 starting on new')
     expect(escSpy).toHaveBeenLastCalledWith(true)
 
     // Closing the window reads the list again: what was saved in it shows here.
@@ -185,6 +188,49 @@ describe('JobWindowDocumentsTab', () => {
     const rows = await screen.findAllByTestId('job-documents-pay-app')
     expect(rows[0]!.textContent).toContain('1 · Sent to the GC')
     expect(screen.getAllByTestId('job-documents-pay-app-name')).toHaveLength(1)
+  })
+
+  it('lists each workbook that went out under its application, with who saved it, and keeps them out of Sent from this job', async () => {
+    onJob = [{ ...app(1, 19400, 0, 0), createdAt: '2026-10-02T15:00:00Z', updatedAt: '2026-10-02T15:00:00Z', createdByName: 'Taunya', updatedByName: 'Taunya' }]
+    const base: Omit<SentCopy, 'id' | 'sentAt'> = { kind: 'pay_application', title: 'Pay application 1 · AIA G702-G703', how: 'download', recipientName: '', recipientEmails: [], subject: '', sourceTable: 'job_pay_applications', sourceId: 'app-1', copyPath: 'c1/J1-App1.xlsx', copyType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', copyHash: 'w1', attachments: [], sentByName: 'Taunya', sourceSnapshot: null }
+    sent = [
+      { ...base, id: 'c1', sentAt: '2026-10-02T15:12:00Z' },
+      { ...base, id: 'c2', sentAt: '2026-10-02T15:40:00Z', copyPath: 'c2/J1-App1.xlsx', copyHash: 'w2' },
+      { ...base, id: 'c3', sourceId: null, sentAt: '2026-10-01T15:00:00Z', copyPath: 'c3/J1-App.xlsx', copyHash: 'w3' },
+      { ...base, id: 's1', kind: 'owner_records_packet', title: 'Records for 9703 Lenox Hill', how: 'print', recipientName: 'Umar Khan', sourceTable: '', sourceId: null, copyPath: 's1/copy.html', copyType: 'text/html', copyHash: 'h1', sentByName: 'Dana', sentAt: '2026-10-05T20:30:00Z' },
+    ]
+    renderWithProviders(<JobWindowDocumentsTab job={job} />)
+    const rows = await screen.findAllByTestId('job-documents-pay-app')
+    // Newest workbook first, then who saved it.
+    expect(rows[0]!.textContent).toBe('109/30/2026$17,460.00J1-App1.xlsx · Oct 2, 10:40 AMJ1-App1.xlsx · Oct 2, 10:12 AMOct 2 by TaunyaOpen')
+    expect(screen.getAllByTestId('job-documents-pay-app-workbook')).toHaveLength(2)
+    fireEvent.click(screen.getAllByRole('button', { name: 'J1-App1.xlsx' })[0]!)
+    await waitFor(() => expect(openFileSpy).toHaveBeenCalledWith('c2/J1-App1.xlsx'))
+    expect(screen.getByTestId('job-documents-pay-app-unsaved').textContent).toContain('J1-App.xlsx Oct 1, 10:00 AM')
+    // Sent from this job lists the records packet alone.
+    const sentRows = await screen.findAllByTestId('job-documents-sent-row')
+    expect(sentRows.map((r) => r.textContent?.slice(0, 28))).toEqual(['Records for 9703 Lenox HillP'])
+  })
+
+  it('says what moved since the workbook went out', async () => {
+    // Went out at 19,400 this period; saved again at 21,000.
+    const went = payApplicationSnapshot(app(1, 19400, 0, 0))
+    onJob = [app(1, 21000, 0, 0)]
+    sent = [{ kind: 'pay_application', title: 'Pay application 1 · AIA G702-G703', how: 'download', recipientName: '', recipientEmails: [], subject: '', sourceTable: 'job_pay_applications', sourceId: 'app-1', copyPath: 'c1/J1-App1.xlsx', copyType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', copyHash: 'w1', attachments: [], sentByName: 'Taunya', sourceSnapshot: went as unknown as Record<string, unknown>, id: 'c1', sentAt: '2026-10-02T15:12:00Z' }]
+    renderWithProviders(<JobWindowDocumentsTab job={job} />)
+    await screen.findAllByTestId('job-documents-pay-app')
+    expect(screen.getByTestId('job-documents-pay-app-changed').textContent).toBe('⚠ Changed after it went out Oct 2: Plumbing this period $19,400.00 → $21,000.00 · completed and stored $19,400.00 → $21,000.00 · retainage held $1,940.00 → $2,100.00 · payment due $17,460.00 → $18,900.00. The GC has the Oct 2 workbook.')
+  })
+
+  it('lists an application taken off the job after the live ones, saying who deleted it', async () => {
+    onJob = [app(2, 9700, 19400, 17460)]
+    deletedOnJob = [{ ...app(1, 19400, 0, 0), id: 'app-1-old', deletedAt: '2026-10-03T15:00:00Z', deletedByName: 'Robert' }]
+    renderWithProviders(<JobWindowDocumentsTab job={job} />)
+    const rows = await screen.findAllByTestId('job-documents-pay-app')
+    expect(rows).toHaveLength(1)
+    const gone = screen.getByTestId('job-documents-pay-app-deleted')
+    expect(gone.textContent).toBe('1 · deleted09/30/2026$17,460.00—Deleted Oct 3 by Robert')
+    expect(screen.queryByRole('button', { name: 'Open application 1' })).toBeNull()
   })
 
   it('marks an application that no longer matches the one before it, with its reason', async () => {
@@ -334,7 +380,7 @@ describe('JobWindowDocumentsTab', () => {
   })
 
   it('lists what was sent from the job, newest first: a line opens its copy, a repeat folds, an email shows its attachment', async () => {
-    const base: Omit<SentCopy, 'id' | 'sentAt'> = { kind: 'owner_records_packet', title: 'Records for 9703 Lenox Hill', how: 'print', recipientName: 'Umar Khan', recipientEmails: [], subject: '', sourceTable: '', sourceId: null, copyPath: 's1/copy.html', copyType: 'text/html', copyHash: 'h1', attachments: [], sentByName: 'Dana' }
+    const base: Omit<SentCopy, 'id' | 'sentAt'> = { kind: 'owner_records_packet', title: 'Records for 9703 Lenox Hill', how: 'print', recipientName: 'Umar Khan', recipientEmails: [], subject: '', sourceTable: '', sourceId: null, copyPath: 's1/copy.html', copyType: 'text/html', copyHash: 'h1', attachments: [], sentByName: 'Dana', sourceSnapshot: null }
     sent = [
       { ...base, id: 's1', sentAt: '2026-10-05T20:30:00Z' },
       { ...base, id: 's2', sentAt: '2026-10-05T20:34:00Z' },
