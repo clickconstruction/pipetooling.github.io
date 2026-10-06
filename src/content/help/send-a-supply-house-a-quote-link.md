@@ -11,9 +11,9 @@ The rep is your contact at the supply house. With a quote link, the vendor opens
 
 ## Send the link
 
-1. On **Bids → Pricing**, you open the {{button:green|Supply house prices (RFQ) ▾}} menu beside Share. RFQ means request for quote. You pick **Supply house prices**. The button used to be a bare ▾, but the menu is the same.
+1. On **Bids → Pricing**, open the {{button:green|Supply house prices (RFQ) ▾}} menu beside Share. RFQ means request for quote. Pick **Supply house prices**. The button used to be a bare ▾, but the menu is the same.
 2. Scope the list like always: {{chip:blue|Whole job}}, {{chip:blue|Pipe &amp; fittings}}, or hand-picked rows.
-3. In the strip above the footer, you **pick the supply house** the link is for. You set a **needed by** date if there's a deadline. Then you tap {{button:blue|Copy with quote link}}.
+3. In the strip above the footer, you **pick the supply house** the link is for. Set a **needed by** date if there's a deadline. Then tap {{button:blue|Copy with quote link}}.
    - Picking the house also shows what they've quoted before. The line reads like *Moore Supply has last-quoted prices for 12 of these 63 items · newest 3 days ago*. So you know which vendor already knows this scope.
    - Only suppliers you quote from are listed. Some vendors are really an insurer, a rental yard or a payee-only account. Such a vendor is hidden here once someone ticks **Not a supplier we quote from** on its card. The card is under Materials → Supply Houses. The vendor stays there for bills and POs, the purchase orders.
 4. Paste into your text or email like always. The list now ends with a `Price it here:` link.

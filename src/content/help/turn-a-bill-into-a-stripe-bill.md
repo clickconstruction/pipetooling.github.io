@@ -12,7 +12,7 @@ Outside Stripe means HouseCall Pro or a paper invoice. Stripe is the service tha
 
 1. Open the job at **Edit Job → Bill**. Find the line under **Invoices**.
 2. Click {{button:blue|⚡ Make Stripe bill}}. The button appears on billed lines that aren't Stripe yet.
-3. The confirm window shows the amount, the customer and a **live preview of the exact Stripe invoice**. The window also shows the promise that matters: *billed date stays put*. You click {{button:blue|Create Stripe bill}}.
+3. The confirm window shows the amount, the customer and a **live preview of the exact Stripe invoice**. The window also shows the promise that matters: *billed date stays put*. Click {{button:blue|Create Stripe bill}}.
 
 You're done. The line now has a hosted pay page and card payment. A hosted pay page is a Stripe web page where the customer pays. The customer's portal statement swaps its check-reference box for {{button:blue|Pay online}} on its own. The portal is the customer's own web page of bills and payments. **Nothing is emailed** by converting. You can send it afterward if you want, like any Stripe bill.
 

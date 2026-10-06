@@ -14,7 +14,7 @@ The GC is the general contractor running the site. The plans may show a fixture 
 You open the bid on the **RFI** tab. The queue sits above the letter composer:
 
 1. Type where it lives, like *P201 near 3/B*, and the question. Then click {{button:gray|Draft RFI}}.
-2. Or you click {{button:gray|Paste RFI flags}}. You paste what CountTooling's **Copy RFI Flags** button put on your clipboard. CountTooling is the app where you count the plans. Every `RFI:` note you dropped while drawing becomes a draft here, with its sheet.
+2. Or you click {{button:gray|Paste RFI flags}}. Paste what CountTooling's **Copy RFI Flags** button put on your clipboard. CountTooling is the app where you count the plans. Every `RFI:` note you dropped while drawing becomes a draft here, with its sheet.
 
 Drafts are just drafts. Nothing reaches the GC until a person approves it.
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { asDecision, asReason, asStatus, buildPackageLabel, rowsOwingSheet, sheetsToFollowConfirm, carriedRowInsert, rowsToCarry, describeRevision, describeRevisionChip, describeWhatIsLeft, draftToItemInsert, formatPages, itemToPrevious, needsSheet, parsePageRange, parseSourceFiles, revisionAnsweredAt, revisionTiles, serializeSourceFiles } from './submittalRevision'
+import { asDecision, asReason, asStatus, buildPackageLabel, rowsOwingSheet, sheetsToFollowConfirm, carriedRowInsert, rowsToCarry, describeRevision, describeRevisionChip, describeWhatIsLeft, draftToItemInsert, formatPages, itemToPrevious, needsSheet, parsePageRange, parseSourceFiles, revisionAnsweredAt, revisionTiles, sentByEmailLine, serializeSourceFiles } from './submittalRevision'
 import type { SubmittalItemRow } from './submittalRevision'
 import type { SubmittalRowDraft } from './buildSubmittalRows'
 
@@ -132,6 +132,17 @@ describe('the revision chip', () => {
     expect(describeRevisionChip({ ...rev, status: 'draft' }, '2026-10-02T17:00:00Z')).toBe('Rev 3 · draft · Sep 15')
     expect(revisionAnsweredAt([{ review_decision: 'approved', reviewed_at: '2026-09-17T12:00:00Z' }, { review_decision: null, reviewed_at: null }], [{ review_decision: 'rejected', reviewed_at: '2026-10-02T17:00:00Z' }])).toBe('2026-10-02T17:00:00Z')
     expect(revisionAnsweredAt([{ review_decision: null, reviewed_at: '2026-10-02T17:00:00Z' }])).toBeNull()
+  })
+  it('v2.4705 · a draft the office sent by email reads sent by email with that day, not draft; shared from the app it keeps its share; a replaced draft that was answered still reads answered', () => {
+    const rev = { rev_number: 1, status: 'draft', created_at: '2026-09-29T20:00:00Z', shared_at: null, sent_outside_at: '2026-09-29T22:00:00Z' }
+    expect(describeRevisionChip(rev)).toBe('Rev 1 · sent by email · Sep 29')
+    expect(describeRevisionChip(rev, '2026-10-02T17:00:00Z')).toBe('Rev 1 · sent by email · Sep 29')
+    expect(describeRevisionChip({ ...rev, status: 'superseded' })).toBe('Rev 1 · sent by email · Sep 29')
+    expect(describeRevisionChip({ ...rev, status: 'superseded' }, '2026-10-02T17:00:00Z')).toBe('Rev 1 · answered Oct 2')
+    expect(describeRevisionChip({ ...rev, status: 'shared', shared_at: '2026-10-01T20:00:00Z' })).toBe('Rev 2 · shared · Oct 1'.replace('Rev 2', 'Rev 1'))
+    expect(describeRevisionChip({ ...rev, sent_outside_at: null })).toBe('Rev 1 · draft · Sep 29')
+    expect(sentByEmailLine('2026-09-29T22:00:00Z')).toBe('Sent by email · Sep 29')
+    expect(sentByEmailLine('2026-09-29T22:00:00Z', 4)).toBe('Sent by email · Sep 29 · answers typed in')
   })
 })
 

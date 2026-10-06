@@ -124,6 +124,16 @@ describe('submittalJourney', () => {
     expect(submittalJourney(all).next).toEqual({ kind: 'done', text: 'structura approved every row. Next is the order log, Step 8.', action: null, actionLabel: null })
   })
 
+  it('v2.4705 · a draft sent by email lights Share as done, and a replaced one says it was sent outside the app', () => {
+    const sent = { ...base, rev: draft({ number: 1, rows: 14, packageBuilt: true, sentOutside: true }), decisions: { decided: 0, approved: 0, open: 14, noAnswer: 14, sentBack: 0, byName: [] } }
+    expect(statuses(sent)).toBe('done,done,done,done,done,waiting,later,later')
+    expect(submittalJourney(sent).next).toEqual({ kind: 'waiting', text: 'Rev 1 went out by email. Type in their answers on step 6 as they come.', action: null, actionLabel: null })
+    const older = { ...base, rev: draft({ number: 3, status: 'superseded', isNewest: false, sentOutside: true }), decisions: { decided: 3, approved: 2, open: 1, sentBack: 1, byName: ['ZZ Test GC'] } }
+    expect(submittalJourney(older).next.text).toBe('Rev 3 was sent outside the app. Its answers were typed in. It is the record now. Pick the newest version above to keep working.')
+    expect(statuses(older)).toBe('done,done,done,later,done,done,later,current')
+    expect(submittalJourney({ ...older, decisions: { decided: 0, approved: 0, open: 14, sentBack: 0, byName: [] } }).next.text).toBe('Rev 3 was sent outside the app. It is the record now. Pick the newest version above to keep working.')
+  })
+
   it('a draft nobody has answered lights nothing past its own steps', () => {
     const quiet = { ...base, rev: draft({ number: 1, rows: 14, sheetsNeeded: 6 }), decisions: { decided: 0, approved: 0, open: 13, noAnswer: 14, sentBack: 0, byName: [] } }
     expect(statuses(quiet)).toBe('done,done,current,current,later,later,later,later')
