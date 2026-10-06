@@ -919,7 +919,8 @@ describe('BidsSubmittalsTab', () => {
     try {
       mount()
       await screen.findAllByTestId('submittal-row')
-      // Every row has the door, on a draft too; the row editor no longer asks who or what.
+      // Every row has the door behind its ⋯ (v2.4687), on a draft too; the row editor no longer asks who or what.
+      fireEvent.click(await screen.findByRole('button', { name: 'More for WC-1' }))
       fireEvent.click(await screen.findByRole('button', { name: 'Their answer on WC-1' }))
       const dialog = await screen.findByRole('dialog', { name: 'Their answer on WC-1' })
       await waitFor(() => expect(within(dialog).getAllByTestId('answer-line')).toHaveLength(2))
@@ -1180,7 +1181,8 @@ describe('BidsSubmittalsTab', () => {
       // The answered part is released, so its line loses the door; the other part still waits and keeps it.
       await waitFor(() => expect(screen.queryByRole('button', { name: 'Enter their answer on DWH-1 WATTS LFN36M1' })).toBeNull())
       expect(screen.getByRole('button', { name: 'Enter their answer on DWH-1 RHEEM PROPH40-T2-RH400-SO' })).toBeTruthy()
-      // From the row's own button the same window opens with no part ringed.
+      // From the row's own door, behind its ⋯ (v2.4687), the same window opens with no part ringed.
+      fireEvent.click(screen.getByRole('button', { name: 'More for DWH-1' }))
       fireEvent.click(screen.getByRole('button', { name: 'Their answer on DWH-1' }))
       const again = await screen.findByRole('dialog', { name: 'Their answer on DWH-1' })
       expect(within(again).getAllByTestId('answer-line').some((l) => l.getAttribute('data-focused') === 'true')).toBe(false)
