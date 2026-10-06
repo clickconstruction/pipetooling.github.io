@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useModalStackEntry } from '../../hooks/useModalStackEntry'
 import type { LienDeskGc, LienDeskJob } from '../../hooks/useLienDeskData'
 
 /**
@@ -21,6 +22,7 @@ type Option = { id: string; name: string; address: string }
 const optBtn: CSSProperties = { display: 'flex', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'baseline', width: '100%', textAlign: 'left', padding: '0.45rem 0.65rem', border: '1px solid var(--border-strong)', borderRadius: 7, background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit', fontSize: '0.84rem', cursor: 'pointer' }
 
 export default function LienPaperGcWindow({ job, knownGcs, onClose }: Props) {
+  useModalStackEntry()
   const { showToast } = useToastContext()
   const [q, setQ] = useState('')
   const [found, setFound] = useState<Option[]>([])

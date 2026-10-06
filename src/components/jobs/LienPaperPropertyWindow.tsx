@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useModalStackEntry } from '../../hooks/useModalStackEntry'
+import { formatErrorMessage } from '../../utils/errorHandling'
 import CustomerPropertyRecordPanel from '../customers/CustomerPropertyRecordPanel'
 import { draftFromRow, emptyPropertyDraft, payloadFromDraft, type PropertyDraft } from '../../lib/customers/propertyDraft'
 import { cleanStoredAddress } from '../../lib/displayAddress'
@@ -18,13 +20,19 @@ import type { LienDeskJob } from '../../hooks/useLienDeskData'
  * the desk, so the paper redraws behind with the new values marked.
  */
 type Props = {
-  job: LienDeskJob
+  /** The job's own facts; the desk's row or Edit Job's form (v2.4724). */
+  job: Pick<LienDeskJob, 'id' | 'job_address' | 'customer_id' | 'gc_customer_id'>
   address: CustomerAddressRow | null
+  /** A linked record known only by id (Edit Job holds a slim copy): the window reads the whole row before it draws, so a save never blanks the columns the slim copy lacks. */
+  loadAddressId?: string | null
   /** The job names its own owner (Edit Job's owner block), which wins over the record on the paper. */
   ownerOnJob: boolean
   /** The blank she pressed, focused on open. */
   focus: LienPaperGap['key']
-  onClose: (saved: boolean) => void
+  /** Above the Lien desk's paper (805) by default; Edit Job inside the Job window passes its own. */
+  zIndex?: number
+  /** Saved hands back the row as written, so a caller holding the record (Edit Job) can redraw it. */
+  onClose: (saved: boolean, row?: CustomerAddressRow) => void
 }
 
 const FOCUS_LABEL: Partial<Record<LienPaperGap['key'], string>> = {
@@ -37,10 +45,38 @@ const FOCUS_LABEL: Partial<Record<LienPaperGap['key'], string>> = {
 const btn: CSSProperties = { padding: '0.35rem 0.9rem', fontSize: '0.8125rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontWeight: 600, cursor: 'pointer' }
 const note: CSSProperties = { fontSize: '0.76rem', color: 'var(--text-muted)', background: 'var(--bg-muted)', border: '1px solid var(--border)', borderRadius: 7, padding: '0.4rem 0.6rem', lineHeight: 1.45 }
 
-export default function LienPaperPropertyWindow({ job, address, ownerOnJob, focus, onClose }: Props) {
+export default function LienPaperPropertyWindow({ job, address: givenAddress, loadAddressId = null, ownerOnJob, focus, onClose, zIndex = 805 }: Props) {
+  // On the modal stack, so the window underneath (Edit Job, the Job window) leaves Esc to this one.
+  useModalStackEntry()
   const { showToast } = useToastContext()
   const jobAddress = cleanStoredAddress(job.job_address)
-  const [draft, setDraft] = useState<PropertyDraft>(() => (address ? draftFromRow(address) : emptyPropertyDraft(jobAddress)))
+  const [address, setAddress] = useState<CustomerAddressRow | null>(givenAddress)
+  const loading = Boolean(loadAddressId) && !address
+  const [draft, setDraft] = useState<PropertyDraft>(() => (givenAddress ? draftFromRow(givenAddress) : emptyPropertyDraft(jobAddress)))
+  useEffect(() => {
+    if (!loadAddressId || givenAddress) return
+    let live = true
+    void supabase
+      .from('customer_addresses')
+      .select('*')
+      .eq('id', loadAddressId)
+      .single()
+      .then(({ data, error }) => {
+        if (!live) return
+        if (error || !data) {
+          showToast(formatErrorMessage(error, 'Could not read the property record'), 'error')
+          onClose(false)
+          return
+        }
+        const row = data as CustomerAddressRow
+        setAddress(row)
+        setDraft(draftFromRow(row))
+      })
+    return () => {
+      live = false
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadAddressId, givenAddress])
   const [dirty, setDirty] = useState(false)
   const [busy, setBusy] = useState(false)
   const [otherJobs, setOtherJobs] = useState<number | null>(null)
@@ -66,43 +102,45 @@ export default function LienPaperPropertyWindow({ job, address, ownerOnJob, focu
 
   // The pressed blank's field, focused once the panel is drawn.
   useEffect(() => {
+    if (loading) return
     const label = FOCUS_LABEL[focus]
     const el = label ? bodyRef.current?.querySelector<HTMLElement>(`[aria-label="${label}"]`) : null
     el?.focus()
-  }, [focus])
+  }, [focus, loading])
 
-  const save = async (): Promise<boolean> => {
-    if (!dirty) return false
+  const save = async (): Promise<CustomerAddressRow | null> => {
+    if (!dirty) return null
     if (!draft.address.trim()) {
       showToast('The property needs its address before it can be saved.', 'error')
-      return false
+      return null
     }
     setBusy(true)
     try {
       if (address) {
-        const { error } = await supabase.from('customer_addresses').update(payloadFromDraft(draft)).eq('id', address.id)
+        const { data, error } = await supabase.from('customer_addresses').update(payloadFromDraft(draft)).eq('id', address.id).select('*').single()
         if (error) throw error
         showToast(`Property record saved for ${draft.address.trim()}.`, 'success')
-        return true
+        return (data as CustomerAddressRow | null) ?? { ...address, ...payloadFromDraft(draft) }
       }
       if (!homeId) {
         showToast('This job has no customer or GC to hold the property. Set one in Edit Job first.', 'error')
-        return false
+        return null
       }
       const { count } = await supabase.from('customer_addresses').select('id', { count: 'exact', head: true }).eq('customer_id', homeId)
       const { data, error } = await supabase
         .from('customer_addresses')
         .insert({ customer_id: homeId, ...payloadFromDraft(draft), sequence_order: count ?? 0 })
-        .select('id')
+        .select('*')
         .single()
       if (error || !data) throw error ?? new Error('no row came back')
-      const link = await supabase.from('jobs_ledger').update({ customer_address_id: (data as { id: string }).id }).eq('id', job.id)
+      const row = data as CustomerAddressRow
+      const link = await supabase.from('jobs_ledger').update({ customer_address_id: row.id }).eq('id', job.id)
       if (link.error) throw link.error
       showToast(`Property saved and linked to this job.`, 'success')
-      return true
+      return row
     } catch (e) {
-      showToast(`Could not save the property: ${e instanceof Error ? e.message : String(e)}`, 'error')
-      return false
+      showToast(formatErrorMessage(e, 'Could not save the property'), 'error')
+      return null
     } finally {
       setBusy(false)
     }
@@ -111,8 +149,8 @@ export default function LienPaperPropertyWindow({ job, address, ownerOnJob, focu
   const closeSaving = async () => {
     if (busy) return
     if (!dirty) return onClose(false)
-    const ok = await save()
-    if (ok) onClose(true)
+    const row = await save()
+    if (row) onClose(true, row)
   }
   const closeRef = useRef(closeSaving)
   closeRef.current = closeSaving
@@ -140,7 +178,7 @@ export default function LienPaperPropertyWindow({ job, address, ownerOnJob, focu
         e.stopPropagation()
         if (e.target === e.currentTarget) void closeSaving()
       }}
-      style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 'var(--app-bottom-chrome, 0px)', paddingTop: 'var(--app-top-chrome, 0px)', background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 805 }}
+      style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 'var(--app-bottom-chrome, 0px)', paddingTop: 'var(--app-top-chrome, 0px)', background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex }}
     >
       <div style={{ background: 'var(--surface)', borderRadius: 10, width: 'min(560px, calc(100vw - 2rem))', maxHeight: 'calc(100dvh - 3rem - var(--app-top-chrome, 0px) - var(--app-bottom-chrome, 0px))', display: 'grid', gridTemplateRows: 'auto 1fr auto', overflow: 'hidden', boxShadow: '0 18px 50px rgba(0,0,0,0.45)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', padding: '0.6rem 0.9rem', borderBottom: '1px solid var(--border)' }}>
@@ -154,7 +192,7 @@ export default function LienPaperPropertyWindow({ job, address, ownerOnJob, focu
                 This record is shared. <strong>{otherJobs} other {otherJobs === 1 ? 'job sits' : 'jobs sit'}</strong> at this address, and their papers read it too.
               </div>
             ) : null
-          ) : (
+          ) : loadAddressId ? null : (
             <div style={note} data-testid="lien-paper-property-new">
               No property is linked to this job yet. Saving keeps <strong>{jobAddress || 'this address'}</strong> as a property on the {homeIsGc ? 'GC' : 'customer'} and links the job to it.
             </div>
@@ -164,7 +202,7 @@ export default function LienPaperPropertyWindow({ job, address, ownerOnJob, focu
               This job names its own owner in Edit Job. The paper reads that owner, not the one below.
             </div>
           ) : null}
-          <CustomerPropertyRecordPanel
+          {loading ? <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Reading the property record…</p> : <CustomerPropertyRecordPanel
             address={draft.address}
             fields={draft}
             onChange={(patch) => {
@@ -172,7 +210,8 @@ export default function LienPaperPropertyWindow({ job, address, ownerOnJob, focu
               setDirty(true)
             }}
             autoLookup={draft.address.trim().length > 0}
-          />
+            pasteFirst
+          />}
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', padding: '0.55rem 0.9rem', borderTop: '1px solid var(--border)' }}>
           <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>Closing keeps what you typed.</span>
