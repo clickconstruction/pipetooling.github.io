@@ -122,7 +122,9 @@ export type HouseRows = {
 }
 
 export type FirmRows = {
-  portalLinks: { token: string | null; revoked_at: string | null; created_at: string | null }[]
+  portalLinks: { id?: string | null; token: string | null; revoked_at: string | null; created_at: string | null }[]
+  /** v2.4624: the welcome emails the desk sent (`sent_documents`, kind `legal_firm_link`), each under the link it carried. */
+  linkSends?: { source_id: string | null; sent_at: string | null; recipient_emails: string[] | null }[]
   recipients: { name: string | null; email: string | null; mode: string | null; confirmed_at: string | null; paused_at: string | null; removed_at: string | null; last_digest_at: string | null }[]
   queue: { sent_now_at: string | null; digested_at: string | null; created_at: string | null }[]
 }
@@ -557,6 +559,14 @@ export function firmJourney(subject: Extract<PersonSubject, { kind: 'firm' }>, r
   const waiting = recipients.filter((r) => !r.confirmed_at)
   const paused = recipients.filter((r) => r.paused_at)
   const firmAction = { label: 'Manage who gets emails', to: '/customers' }
+  const activeLink = rows.portalLinks.find((l) => !l.revoked_at && l.token) ?? null
+  const sends = (rows.linkSends ?? []).filter((s) => !activeLink?.id || s.source_id === activeLink.id)
+  const lastSend = latestBy(sends, (s) => s.sent_at)
+  steps['firm-welcome-email'] = !activeLink
+    ? never('No portal link yet', { label: 'Share their portal', to: '/customers' })
+    : lastSend
+      ? { state: 'sent', headline: `Sent ${dayWord(lastSend.sent_at, now)}`, detail: (lastSend.recipient_emails ?? []).join(', '), at: lastSend.sent_at, link: null, action: null }
+      : never('Link not sent from the desk yet', { label: 'Send their link', to: '/customers' })
   steps['firm-confirm-email'] = recipients.length
     ? { state: confirmed.length ? 'signed' : 'sent', headline: `${plural(confirmed.length, 'address')} confirmed${waiting.length ? ` · ${waiting.length} waiting` : ''}${paused.length ? ` · ${paused.length} paused` : ''}`, detail: recipients.map((r) => r.name ?? r.email ?? '').filter(Boolean).join(', '), at: latestBy(recipients, (r) => r.confirmed_at)?.confirmed_at ?? null, link: null, action: waiting.length ? firmAction : null }
     : never('No recipients yet', firmAction)
