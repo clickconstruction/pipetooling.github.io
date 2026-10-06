@@ -933,6 +933,11 @@ describe('GC mode golden walk', () => {
     used.add('pullScheduleEarlier') // played in gcPullEarlier.test.ts: it needs work that finished early first
     used.add('setRough') // played in gcRoughSchedule.test.ts: a rough schedule while we bid (G-45), on a job the walk does not bid
     used.add('recoverScheduleDays') // played in gcRecovery.test.ts: it needs a job past its contract first
+    used.add('tradeSetCrewCount') // played in gcCrewCounts.test.ts: a trade's own crew count (G-142)
+    used.add('startWhatIf') // played in gcWhatIf.test.ts: a what-if copy of the schedule (G-81)
+    used.add('inWhatIf') // played in gcWhatIf.test.ts: it needs a copy open
+    used.add('keepWhatIf') // played in gcWhatIf.test.ts: it needs moves tried in a copy
+    used.add('throwAwayWhatIf') // played in gcWhatIf.test.ts: it needs a copy open
     const all: GcAction['type'][] = [
       'issueAddendum', 'tradeConfirmBid', 'setStartItem', 'setStartDate', 'startProject', 'invite', 'nudge',
       'logContact', 'tradePromise', 'tradeOpenPlans', 'tradeSubmitBid', 'tradeDecline', 'officeDecline', 'setPlug',
@@ -988,6 +993,8 @@ describe('GC mode golden walk', () => {
       'pullScheduleEarlier',
       'setRough',
       'recoverScheduleDays',
+      'tradeSetCrewCount',
+      'startWhatIf', 'inWhatIf', 'keepWhatIf', 'throwAwayWhatIf',
     ]
     expect(all.filter((t) => !used.has(t))).toEqual([])
   })

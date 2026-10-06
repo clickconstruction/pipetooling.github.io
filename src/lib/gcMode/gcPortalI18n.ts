@@ -892,6 +892,15 @@ const S = {
   lateKept: { en: 'You said you will make {date}.', es: 'Dijo que va a cumplir el {date}.' },
   lateThanks: { en: 'Sent. {gc} has your new day.', es: 'Enviado. {gc} tiene su nueva fecha.' },
   todoLatePushed: { en: '{gc} needs {date} on {work} at {project}. Say you will make it, or give another day.', es: '{gc} necesita el {date} para {work} en {project}. Díganos si va a cumplir o denos otra fecha.' },
+  // A trade's own crew count, beside its look-ahead (G-142). El número: masculine.
+  crewLine: { en: 'People a day on site', es: 'Personas al día en la obra' },
+  crewLineTrade: { en: '{trade}: people a day on site', es: '{trade}: personas al día en la obra' },
+  crewAria: { en: 'How many people a day', es: 'Cuántas personas al día' },
+  crewSend: { en: 'Tell {gc}', es: 'Avisar a {gc}' },
+  crewSaid: { en: 'You said {n} a day.', es: 'Dijo {n} al día.' },
+  crewSaidNone: { en: 'You said nobody.', es: 'Dijo que nadie.' },
+  crewChange: { en: 'Change it', es: 'Cambiarlo' },
+  crewWhole: { en: 'A whole number, 0 to 50.', es: 'Un número entero, de 0 a 50.' },
 } satisfies Record<string, Record<PortalLang, string>>
 
 export type PortalKey = keyof typeof S

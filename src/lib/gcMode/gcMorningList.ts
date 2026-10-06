@@ -23,6 +23,7 @@ import { partnerById } from './gcLookups'
 import { partnerReach } from './gcFollowUpSheet'
 import { weekdayDate } from './gcWords'
 import { lapsedInsuranceWords } from './gcNotReady'
+import { crewCountOn, crewLogWords, type CrewSaid } from './gcCrewCounts'
 
 export interface MorningBar {
   lineId: string
@@ -54,6 +55,12 @@ export interface MorningCompany {
   missing: boolean
   /** Its insurance not current that day, in red under its name (G-138): "Their insurance ran out Tue Sep 15. …". Null: current, or our own crew. */
   insurance: string | null
+  /** The trade's own count for the day's week (G-142), and the higher one it cut. Unset: it gave none, and the line is the log's alone. */
+  said?: CrewSaid
+  /** On the day's log with fewer than it said (G-142). */
+  short?: true
+  /** The line's tone when the trade's word sets it (G-142). Unset: G-118's own. */
+  crewTone?: 'red' | 'amber' | 'green' | 'grey'
 }
 
 export interface MorningList {
@@ -148,6 +155,9 @@ export function morningList(state: GcState, project: GcProject, holds: Map<strin
     const last = lastOnLog ? `Last on the log ${weekdayDate(lastOnLog.on)} with ${lastOnLog.workers}.` : 'Not on the daily log before.'
     const logWords = onTheDay === null ? last : onTheDay > 0 ? `On ${dayLogName} with ${onTheDay}.` : `Not on ${dayLogName}.${lastOnLog ? ` Last on it ${weekdayDate(lastOnLog.on)} with ${lastOnLog.workers}.` : ''}`
     const expected = morningBars.some((b) => !b.held)
+    // The trade's own count for the week (G-142), beside the log's: the line says both; a short crew reads amber.
+    const said = crewCountOn(project, pkg.id, day)
+    const crew = said ? crewLogWords(said, onTheDay, lastOnLog, dayLogName) : null
     const reach = partner ? partnerReach(partner) : null
     companies.push({
       pkg,
@@ -157,9 +167,11 @@ export function morningList(state: GcState, project: GcProject, holds: Map<strin
       bars: morningBars,
       lastOnLog,
       onTheDay,
-      logWords,
+      logWords: crew?.words ?? logWords,
       missing: expected && onTheDay === 0,
       insurance: partner ? lapsedInsuranceWords(partner, day) : null,
+      ...(said && crew ? { said, crewTone: crew.tone } : {}),
+      ...(said && onTheDay !== null && onTheDay > 0 && onTheDay < said.count ? { short: true as const } : {}),
     })
   }
   const expected = companies.filter((c) => c.bars.some((b) => !b.held))

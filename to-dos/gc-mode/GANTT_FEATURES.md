@@ -101,10 +101,10 @@ The three jobs the chart has, which every feature serves at least one of:
 | # | Feature | Serves | Stands | Phase |
 |---|---|---|---|---|
 | G-80 | On one bar: "if this slips 5 days", what moves and where the finish lands | See | Have (built 2026-10-05: 5 and 10 days, on the opened activity; and every move shows its effect before it saves) | 2 |
-| G-81 | A what-if copy of the whole schedule to try moves on, beside the real one, kept or thrown away | See | New | Later |
+| G-81 | A what-if copy of the whole schedule to try moves on, beside the real one, kept or thrown away | See | Have (built 2026-10-06: **What if…** on the chart's toolbar makes a copy beside the schedule. Every move, pull and wait is tried on it with a reason optional. The real dates show as dashed outlines. **Keep** puts its moves on the real schedule as real moves with their reasons, and **Throw it away** drops it. `gcWhatIf.ts`) | Later |
 | G-82 | How to get days back: the bars on the red chain that could run together or take a bigger crew | See | Have (built 2026-10-06: on a job past its contract, *Days back* under the measures: side by side, a gap below zero on a wait between two trades nothing holds, or a second crew under a rule said on every offer (two thirds the days left); each read on the projected finish through G-37's cascade (`pullBehind`), with its worth against the contract in G-98's lines; *Look at it* saves one move, *Getting days back*, Undo and Redo putting the gap back too; who has to agree with Call and Follow up; `gcRecovery.ts`) | Later |
 | G-83 | Too many trades in one place in one week, flagged | See | New | Later |
-| G-84 | People on site per week as a strip under the chart, planned against the daily log's count | See | New | Later |
+| G-84 | People on site per week as a strip under the chart, planned against the daily log's count | See | Have (built 2026-10-06: *Show people on site* in Chart view, a strip under the rows with each week's plan at its busiest day beside the daily log's busiest day, the whole job whatever is filtered or folded; each trade's count its own (G-142's), else the log's last, else an assumed 3, named; a week 3 or more short reads amber; `gcPeopleOnSite.ts`, `GcPeopleStrip.tsx`) | Later |
 
 ## F. Telling the customer
 
@@ -136,6 +136,7 @@ The three jobs the chart has, which every feature serves at least one of:
 | G-117 | A trade tells us from its portal that it will be late, with a new day, before the day passes | Chase | Have (built 2026-10-06: *We will be late* on each of its unfinished bars in its portal, a new finish or a new start with why, and what that day does to the work waiting on it; the office's *Trades say they will be late* card takes it as a move carrying the trade's reason and words, or pushes back, and the trade answers *We will make Fri Oct 9*; a dashed tail on the bar, a reason on Follow up, a phrase in Needs you, a fact on the walk; `gcLateNotices.ts`) | 3 |
 | G-118 | The superintendent's morning list from the chart: who should be on site today and what they are doing | See, Chase | Have (built 2026-10-06: on the Daily log tab above the log, for the tab's day: each company with work running, its phone, the log's last count, each bar's day and standing, held and why, a late notice; the day's inspections and arrivals; once the day's log is written, the missing first in red; `gcMorningList.ts`, the chart's holds moved to `gcChartHolds.ts`) | 4 |
 | G-119 | The portal's chart in Spanish | Chase | Have (built 2026-10-06: the chart, Your dates moved and the dates message all read in Spanish) | 3 |
+| G-142 | A trade's own crew count: from its portal, how many people a day it will have on site each coming week, one count a trade; the superintendent's morning list reads it beside the daily log's | See, Chase | Have (built 2026-10-06: *People a day on site* under each coming week of *Your next three weeks*, in English and Spanish; the morning list says *They said 4 a day this week*, a short crew *On today's log with 2 of the 4 they said.* in amber, and a cut count; `crewCountsNow` is G-84's read; `gcCrewCounts.ts`) | Later |
 
 ## H. Under the hood
 
