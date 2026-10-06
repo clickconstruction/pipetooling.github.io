@@ -14,9 +14,10 @@ import type { LegalEntryRow } from './legalMatters'
 const company = { name: 'Click Plumbing and Electrical', cityLine: 'Kyle, TX', phone: '(512) 555-0100', email: 'office@example.com' }
 
 function sample(todayYmd = '2026-10-05') {
-  const payload = parseLegalPortalPayload(sampleLegalPortalResponse(company, todayYmd))
+  const payload = parseLegalPortalPayload(sampleLegalPortalResponse(company as Parameters<typeof sampleLegalPortalResponse>[0], todayYmd))
   if (!payload) throw new Error('sample did not parse')
   const m = payload.matters[0]
+  if (!m) throw new Error('sample has no matter')
   const packet = buildMatterPacket(m, payload.preparedOn, portalFeeModel(payload))
   if (!packet) throw new Error('sample built no packet')
   return { payload, m, packet }
@@ -97,10 +98,12 @@ describe('firmFeeEntries', () => {
 describe('firmJobRecordWords and firmStageWords', () => {
   it('says what is on file as facts, never a theory', () => {
     const { packet } = sample()
-    expect(firmJobRecordWords(packet.account.jobs[0])).toBe('signed agreement 2026-04-22 by Pat Sample')
-    const sworn = { ...packet.account.jobs[0], contract: { ...packet.account.jobs[0].contract, kind: 'none' as const }, swornMissing: [] }
+    const job = packet.account.jobs[0]
+    if (!job) throw new Error('sample has no job')
+    expect(firmJobRecordWords(job)).toBe('signed agreement 2026-04-22 by Pat Sample')
+    const sworn = { ...job, contract: { ...job.contract, kind: 'none' as const }, swornMissing: [] } as unknown as typeof job
     expect(firmJobRecordWords(sworn)).toBe('bill sent, crew on site with GPS, no dispute logged')
-    const missing = { ...sworn, swornMissing: ['field evidence with GPS'] }
+    const missing = { ...sworn, swornMissing: ['field evidence with GPS'] } as unknown as typeof job
     expect(firmJobRecordWords(missing)).toBe('on file: bill sent, no dispute logged · missing: field evidence with GPS')
   })
   it('names the stage in the firm’s words', () => {
