@@ -4060,7 +4060,7 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
 }
 /* Lien desk → the draft footer (v2.3776, punch list #36): ONE row — the state and its verb left, Save draft and a quiet Skip right; the why is a parenthetical. */
 .lienFootRow { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.8rem; }
-.lienFootState { font-size: 0.9375rem; font-weight: 700; color: var(--text-strong); min-width: 0; }
+.lienFootState { font-size: 0.9375rem; font-weight: 700; color: var(--text-strong); min-width: 0; flex: 1 1 12rem; }
 .lienFootRow[data-blocked='yes'] .lienFootState { color: var(--text-red-700); }
 .lienFootWhy { font-size: 0.8125rem; font-weight: 400; color: var(--text-muted); }
 .lienFootSpacer { flex: 1 1 0; }
@@ -4068,6 +4068,8 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
 .lienFootSkip { border: none; background: none; padding: 0; font: inherit; font-size: 0.78rem; color: var(--text-muted); cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; white-space: nowrap; }
 .lienFootSkip:hover { color: var(--text-red-700); }
 .lienFootSkip:disabled { cursor: default; opacity: 0.6; }
+/* v2.4745 (the owner's ask): Already mailed? over Record it…, so the footer row keeps its room. */
+.lienByHandWords { display: inline-block; line-height: 1.15; text-align: left; }
 @media (max-width: 640px) {
   .lienFootState { flex: 1 1 100%; }
   .lienFootSpacer { display: none; }
