@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { sentAttachmentFileName, sentAttachmentPath, sentAttachmentType, sentEmailAddresses, sentEmailCopyHtml, sentEmailRow } from '../../../supabase/functions/_shared/sentCopyEmail'
+import { sentAttachmentFileName, sentAttachmentPath, sentAttachmentType, sentCopyKeptHtml, sentEmailAddresses, sentEmailCopyHtml, sentEmailRow } from '../../../supabase/functions/_shared/sentCopyEmail'
 
 const ID = '11111111-2222-4333-8444-555555555555'
 const JOB = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
@@ -90,5 +90,16 @@ describe('attachments and addresses', () => {
 
   it('lists each address once', () => {
     expect(sentEmailAddresses(['a@b.example', ' A@B.example', '', 'c@d.example'])).toEqual(['a@b.example', 'c@d.example'])
+  })
+})
+
+describe('sentCopyKeptHtml (punch list #85, item 21)', () => {
+  it('keeps the law firm\u2019s link out of its filed copy, and leaves every other kind alone', () => {
+    const html = '<a href="https://clicktooling.com/legal?t=tok_SECRET123">Open</a> https://clicktooling.com/legal?x=1&amp;t=tok_SECRET123 .'
+    const kept = sentCopyKeptHtml('legal_firm_link', html)
+    expect(kept).not.toContain('tok_SECRET123')
+    expect(kept).toContain('/legal?t=…"')
+    expect(kept).toContain('&amp;t=…')
+    expect(sentCopyKeptHtml('bill', html)).toBe(html)
   })
 })

@@ -86,6 +86,7 @@ export const CUSTOMER_SURFACES: readonly SurfaceEntry[] = [
   { kind: 'sender', ref: 'send-supply-house-job-account', audience: 'house', steps: [HS('job-account-email')] },
   { kind: 'sender', ref: 'legal-notify-dispatch', audience: 'firm', steps: [F('firm-now-email'), F('firm-digest-email')] },
   { kind: 'sender', ref: 'submit-legal-portal', audience: 'firm', steps: [F('firm-confirm-email')] },
+  { kind: 'sender', ref: 'legal-send-firm-link', audience: 'firm', steps: [F('firm-welcome-email')] },
   { kind: 'sender', ref: 'submit-portal-request', audience: 'staff', exempt: 'Tells the office a portal request came in; the customer sees the portal\'s own thank-you.' },
   { kind: 'sender', ref: 'billed-report-email', audience: 'staff', exempt: 'The office\'s Billed Awaiting Payment report.' },
   { kind: 'sender', ref: 'crew-day-email-dispatch', audience: 'staff', exempt: 'The crew\'s day email.' },

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * § Rules as a window (v2.4634): the door opens the rules guide over the desk at the rule for
+ * § Rules as a window (v2.4655): the door opens the rules guide over the desk at the rule for
  * what is on screen, the find box marks and narrows, Enter walks the matches, Esc closes it alone.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'

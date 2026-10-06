@@ -2,7 +2,7 @@
 name: "Fuel is a job cost: one rule, its own line, by day, and who is spending"
 number: 52
 group: ready
-status: PRs 1–3 shipped (v2.4059, v2.4068, v2.4104) · PR 4a shipped v2.4106 (migration 20260929001119 — the office roles read the tags; on prod, drift check clean 2026-09-29) · PR 4b-1 (the read + the kernel) open on feat/card-charges-window, v2.4594, migration 20261005212106 · PR 4b-2 (the tab) after the push · PR 5 (Review follows the job) not started
+status: PRs 1–3 shipped (v2.4059, v2.4068, v2.4104) · PR 4a shipped v2.4106 (migration 20260929001119 — the office roles read the tags; on prod, drift check clean 2026-09-29) · PR 4b-1 (the read + the kernel) on feat/card-charges-window, v2.4594, migration 20261005212106 · PR 4b-1b (card refunds) v2.4611, migration 20261005235207 · PR 4b-2 (the tab) on feat/people-spending-tab, v2.4602, merges after the refunds push and the owner's EXPLAIN · PR 5 (Review follows the job) not started
 summary: >
   What a job cost, fuel included, the same on every screen, with fuel as its own line and dated
   to the day it was bought, so a long multi-day job shows whether it is making or losing money
@@ -56,7 +56,7 @@ Then: "build it" — which takes the recommended answer to the first decision be
 - **Follow-up: Job Summary's print** (`jobSummaryCostBreakdown.ts`) does not take off card charges already on a supply invoice, so the printed parts can read higher than the table, and it folds fuel into parts.
 - **Follow-up: dev-mcp `get_job`** still sums every card line (no Internal Transfer or invoice rule) — an edge deploy.
 - **Follow-up: Review** takes a vehicle-deal person's fuel off the jobs (v2.2735) — PR 5.
-- **Follow-up, the owner's call: payroll-marked fuel.** A Tally payroll mark settles a card charge with no job (`tallyPayrollRules.ts`), so any fuel the payroll rules mark never reaches a job's cost. Measure before PR 5's plan: 90 days of fuel marked payroll, for whom, and whether any of it also sits on a job. People → Spending shows payroll as its own column to the roles with payroll access.
+- **Payroll-marked fuel — measured, not the problem feared.** A Tally payroll mark settles a card charge with no job (`tallyPayrollRules.ts`), so fuel the payroll rules marked would never reach a job's cost. #72's replay measured Jul 7 – Oct 5: 196 payroll-marked card charges, $82,630, exactly one of them fuel ($52), none with a job split — the payroll rules do not keep fuel off jobs. That slice is what People → Spending leaves out for a viewer without payroll access (the read's rule), so the tab says so in one line. A read of our own after the push repeats the count.
 - **Follow-up: Wheels** (People → Vehicles) adds fuel by person with `Math.abs`, so a refund counts as more fuel, and by attribution only. It should read the Spending kernel (`lib/people/spendingRollup.ts`) for the same window.
 - **Follow-up, naming: the Job window's "Card charges"** counts every Mercury allocation on the job, ACH included (`fetchJobMaterialsCostSnapshot` has no kind filter); People → Spending is card purchases only.
 - **Follow-up: a job whose refunds outweigh its other card charges** — the Job window and Job Summary floor its card line at $0 (`jobCardChargesCountedFromLines`, `Jobs.tsx`), Review's `netCardChargesByJobId` keeps the net credit, and so does Spending (pinned in `spendingRollup.test.ts`).

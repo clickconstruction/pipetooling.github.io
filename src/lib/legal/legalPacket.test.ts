@@ -158,6 +158,9 @@ describe('buildLegalPacket', () => {
     expect(partial.gaps.find((g) => g.key === 'contract:job-a')?.severity).toBe('stop')
     expect(partial.gaps.find((g) => g.key === 'contract:job-b')?.severity).toBe('warn')
     expect(partial.worth.verdict).toBe('worth it')
+    // The facts behind the theory travel as data for the firm's words (punch list #85, item 4).
+    expect(partial.account.jobs.map((j) => [j.jobId, j.record.field])).toEqual(expect.arrayContaining([['job-a', 'none'], ['job-b', 'gps']]))
+    expect(partial.account.jobs.every((j) => j.record.dispute === false)).toBe(true)
   })
 
   it('the printed packet dates a signed or sent agreement on the company calendar', () => {
@@ -175,6 +178,7 @@ describe('buildLegalPacket', () => {
     )
     expect(disputed.theory.key).toBe('none')
     expect(disputed.worth.flags).toContain('dispute on record')
+    expect(disputed.account.jobs.every((j) => j.record.dispute)).toBe(true)
     const contract: JobContractRowLike = { id: 'c1', job_id: 'job-a', status: 'signed', revision: 1, recipient_email: null, sent_at: null, last_sent_at: null, view_count: 0, signed_at: '2026-04-01T10:00:00Z', signer_printed_name: 'Aaron Smith', signer_mode: 'paper', voided_at: null }
     const signed = buildLegalPacket(baseInput(account, { ...withEvidence, contracts: [contract] }))
     expect(signed.theory.key).toBe('contract')
